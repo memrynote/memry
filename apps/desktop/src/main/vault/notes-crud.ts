@@ -50,8 +50,11 @@ import {
   getNoteTags,
   ensureTagDefinitions,
   getNotePropertiesAsRecord,
-  resolveLinkTarget
+  resolveLinkTarget,
+  updateNoteCache
 } from '@main/database/queries/notes'
+import { scanTaskCheckboxStates } from '@memry/shared/task-block'
+import { reconcileTaskCheckboxesLazily } from '../tasks/reconcile-markdown-tasks-lazy'
 import { folderConfigs } from '@memry/db-schema/schema/folder-configs'
 import { inboxItems } from '@memry/db-schema/schema/inbox'
 import {
@@ -436,12 +439,13 @@ export async function getNoteById(id: string): Promise<Note | null> {
 
   const file = await openVaultFile(getVaultRoot(), cached.path)
   let fileContent: string | null = null
+  let stats: Stats | null = null
   try {
     // Classify before reading. A file over the byte ceiling must never become a
     // JS string: V8 caps one at ~512 MB, and well below that a 250 MB read is a
     // main-process allocation and GC pause on its own. `stat` settles those
     // without touching the bytes.
-    const stats = file === null ? null : await file.stat().catch(() => null)
+    stats = file === null ? null : await file.stat().catch(() => null)
     const bySize = stats ? classifyMarkdownStat(stats.size) : null
     if (bySize) {
       logger.info('Note is large-file class by size; body not read', {
@@ -522,18 +526,22 @@ export async function getNoteById(id: string): Promise<Note | null> {
   // a task completed away from this note (Tasks view, a synced peer, the CLI),
   // and reconciling from it reopened the done task on every open.
   //
-  // Fire and forget otherwise — the note must render immediately, and the task
-  // events that follow refresh the affected rows.
+  // Otherwise only the lines edited since the acknowledged state follow the
+  // file, and these bytes become that state, so the next open does not apply
+  // the same edit over a later change made in the app.
+  //
+  // Fire and forget — the note must render immediately, and the task events
+  // that follow refresh the affected rows.
   if (!hasPendingWriteback(id) && generateContentHash(fileContent) !== cached.contentHash) {
-    // Loaded on first use: the tasks domain reaches back into note writes
-    // (header status sync), so a static import here is a cycle.
-    void import('../tasks/reconcile-markdown-tasks')
-      .then(({ reconcileTaskCheckboxesFromMarkdown }) =>
-        reconcileTaskCheckboxesFromMarkdown(parsed.content)
-      )
-      .catch((err: unknown) => {
-        logger.warn('Failed to reconcile task checkboxes on note open', { id, error: err })
-      })
+    reconcileTaskCheckboxesLazily(id, {
+      markdown: parsed.content,
+      acknowledged: cached.taskChecks,
+      fileModifiedAt: stats?.mtime ?? new Date(0)
+    })
+    updateNoteCache(db, id, {
+      taskChecks: Object.fromEntries(scanTaskCheckboxStates(parsed.content)),
+      indexedAt: cached.indexedAt
+    })
   }
 
   return {

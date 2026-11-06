@@ -165,7 +165,7 @@ describe('notes cache queries', () => {
     expect(JSON.stringify(listNotesFromCache(db))).toBe(
       '[{"id":"proj-1","path":"notes/proj-1.md","title":"Projection proj-1","fileType":"markdown",' +
         '"mimeType":"text/markdown","fileSize":4096,"attachmentId":null,"emoji":"📝","cover":null,"taskIds":null,' +
-        '"localOnly":false,' +
+        '"taskChecks":null,"localOnly":false,' +
         '"contentHash":"hash-proj-1","wordCount":320,"characterCount":1800,"snippet":"' +
         'x'.repeat(200) +
         '","date":null,"clock":null,"syncedAt":null,"createdAt":"2026-01-10T00:00:00.000Z",' +

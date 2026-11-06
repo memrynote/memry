@@ -424,10 +424,25 @@ describe('notes operations', () => {
       fs.writeFileSync(path.join(tempVault.path, created.path), '- [x] Ship it {task:t1}\n')
       await notes.getNoteById(created.id)
 
-      // #then only the outside edit reaches the reconciler; the stale `[ ]`
-      // would have reopened the done task
+      // #then only the outside edit reaches the reconciler, measured against
+      // the state the app wrote; the stale `[ ]` would have reopened the done
+      // task
       await vi.waitFor(() => expect(reconcile).toHaveBeenCalled())
-      expect(reconcile.mock.calls).toEqual([['- [x] Ship it {task:t1}\n']])
+      expect(reconcile.mock.calls).toEqual([
+        [
+          {
+            markdown: '- [x] Ship it {task:t1}\n',
+            acknowledged: { t1: false },
+            fileModifiedAt: expect.any(Date)
+          }
+        ]
+      ])
+
+      // #then the open acknowledges those bytes, so a later open does not apply
+      // the same edit over a change made in the app since
+      await notes.getNoteById(created.id)
+      await vi.waitFor(() => expect(reconcile).toHaveBeenCalledTimes(2))
+      expect(reconcile.mock.calls[1]?.[0]).toMatchObject({ acknowledged: { t1: true } })
     })
 
     it('T362: returns null for non-existent note', async () => {

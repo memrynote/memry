@@ -27,6 +27,7 @@ import { generateNoteId } from '../lib/id'
 import { normalizeRelativePath } from '../lib/paths'
 import { syncNoteToCache, syncFileToCache, findCanonicalNoteByPath } from './note-sync'
 import { flushProjectionEvents } from '../projections'
+import { reconcileTaskCheckboxesLazily } from '../tasks/reconcile-markdown-tasks-lazy'
 import {
   getNoteCacheByPath,
   countNotes,
@@ -254,6 +255,14 @@ async function indexMarkdownFile(
       { isNew: true }
     )
     await flushProjectionEvents()
+    // The index has no acknowledged checkbox state for a body it reads for the
+    // first time, so a line follows the file only where the file is newer than
+    // the task (a note edited, or copied in, while Memry was closed).
+    reconcileTaskCheckboxesLazily(noteId, {
+      markdown: parsed.content,
+      acknowledged: null,
+      fileModifiedAt: stats?.mtime ?? new Date(0)
+    })
     logger.debug(`Indexed: ${relativePath}${result.date ? ` (journal: ${result.date})` : ''}`)
     if (result.tags.length > 0) {
       ensureTagDefinitions(getDatabase(), result.tags)

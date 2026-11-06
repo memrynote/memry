@@ -39,6 +39,7 @@ import { createSnippet, extractProperties, extractTags, parseNote } from './fron
 import { openVaultFile } from '../lib/paths'
 import { scanMarkdownFile } from './file-scan'
 import { syncLargeFileBodyToCache, syncNoteToCache } from './note-sync'
+import { reconcileTaskCheckboxesLazily } from '../tasks/reconcile-markdown-tasks-lazy'
 
 const logger = createLogger('IngestBackfill')
 
@@ -187,6 +188,13 @@ async function backfillNote(
     { isNew: false }
   )
   await flushProjectionEvents()
+  // A body read for the first time has no acknowledged checkbox state, so a
+  // line follows the file only where the file is newer than the task.
+  reconcileTaskCheckboxesLazily(cached.id, {
+    markdown: parsed.content,
+    acknowledged: null,
+    fileModifiedAt: stats.mtime
+  })
 
   const tags = syncResult.tags
   if (tags.length > 0) {
