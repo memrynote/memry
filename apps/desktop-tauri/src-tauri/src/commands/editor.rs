@@ -128,17 +128,20 @@ async fn apply<R: Runtime>(
 }
 
 /// Sync step 1: the window's state vector is the raw body; the answer is what the document
-/// holds beyond it, then the document's state vector.
+/// holds beyond it, then the document's state vector. Refused unless the window opened the
+/// document in the open vault.
 #[tauri::command]
 pub async fn crdt_sync_step_1<R: Runtime>(
     app: AppHandle<R>,
+    window: WebviewWindow<R>,
     request: Request<'_>,
 ) -> Result<Response, CommandError> {
     let meta: NoteMeta = binary::meta(&request)?;
     let state_vector = binary::raw_body(&request)?.to_vec();
     let host = host(&app)?;
+    let label = window.label().to_owned();
     let (diff, state_vector) = blocking("crdt_sync_step_1", move || {
-        host.sync_step_1(&meta.note_id, &state_vector)
+        host.sync_step_1(&meta.note_id, &state_vector, &label)
             .map_err(|error| CommandError::from_core(&error))
     })
     .await?;
@@ -188,7 +191,11 @@ pub async fn crdt_get_health(app: AppHandle<Wry>) -> Result<CrdtHealth, CommandE
 }
 
 /// Window `label` is gone, or its page died or was replaced: its documents are let go and its
-/// channels dropped. On the caller's thread, so a reloaded page's first open comes after it.
+/// channels dropped. On the caller's thread, the window event loop included, so a reloaded
+/// page's first open comes after it: a blocking task could release the hold the new page just
+/// took under the same label. The cost, accepted: `release_holder` waits for core's resident
+/// lock, which an open or an edit holds while it waits for the writer, so a long sync write can
+/// stall this event for its length.
 pub fn forget_window<R: Runtime>(app: &AppHandle<R>, label: &str) {
     if let Some(host) = app.try_state::<Arc<EditorHost>>() {
         host.forget_window(label);
