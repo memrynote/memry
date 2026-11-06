@@ -324,23 +324,7 @@ fn a_folder_the_days_cannot_live_in_is_refused() {
     config["excludePatterns"] = json!(["Archive"]);
     let e = opened(config, &[("journal/2025-01-02.md", "A day\n")]);
     fs::create_dir(e.vault.join("Diary")).unwrap();
-    let mut refused = vec![
-        "",
-        " / ",
-        ".hidden",
-        "Archive/Days",
-        "attachments/Days",
-        "Journal",
-        "diary",
-    ];
-    #[cfg(unix)]
-    {
-        let elsewhere = e._dir.path().join("elsewhere");
-        fs::create_dir(&elsewhere).unwrap();
-        std::os::unix::fs::symlink(&elsewhere, e.vault.join("Linked")).unwrap();
-        refused.push("Linked/Days");
-    }
-    for to in refused {
+    let refused = |to: &str| {
         let answer = update(&e, folder(to), |_| panic!("{to:?} announced"));
         assert!(
             matches!(answer, Err(SettingsError::InvalidJournalFolder)),
@@ -348,6 +332,24 @@ fn a_folder_the_days_cannot_live_in_is_refused() {
         );
         assert_eq!(stored(&e.vault)["journalFolder"], "journal", "{to:?}");
         assert!(e.vault.join("journal/2025-01-02.md").exists(), "{to:?}");
+    };
+    for to in [
+        "",
+        " / ",
+        ".hidden",
+        "Archive/Days",
+        "attachments/Days",
+        "Journal",
+        "diary",
+    ] {
+        refused(to);
+    }
+    #[cfg(unix)]
+    {
+        let elsewhere = e._dir.path().join("elsewhere");
+        fs::create_dir(&elsewhere).unwrap();
+        std::os::unix::fs::symlink(&elsewhere, e.vault.join("Linked")).unwrap();
+        refused("Linked/Days");
     }
 }
 
