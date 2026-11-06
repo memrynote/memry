@@ -133,7 +133,7 @@
   },
   "devDependencies": {
     "@memry/sync-harness": "workspace:*",
-    "@modelcontextprotocol/sdk": "1.32.2",
+    "@modelcontextprotocol/sdk": "1.32.0",
     "@tailwindcss/vite": "^4.1.18",
     "@tauri-apps/api": "2.12.4",
     "@tauri-apps/cli": "2.12.4",
