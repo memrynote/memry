@@ -70,7 +70,9 @@
       "openExternalFailed": "Nem sikerült megnyitni a jegyzetet",
       "moved": "Jegyzet áthelyezve",
       "moveFailed": "Nem sikerült áthelyezni a jegyzetet",
-      "deleteFailed": "Nem sikerült törölni a jegyzetet"
+      "deleteFailed": "Nem sikerült törölni a jegyzetet",
+      "outsideEditReplaced": "A gépelésed felülírt egy külső módosítást. A verzióelőzményekben megtalálod.",
+      "showVersions": "Verziók megjelenítése"
     },
     "deleteDialogTitle": "{count, plural, one {Jegyzet törlése} other {# jegyzet törlése}}",
     "itemsCount": "{count, plural, one {# elem} other {# elem}}",

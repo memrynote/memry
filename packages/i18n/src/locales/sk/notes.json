@@ -70,7 +70,9 @@
       "openExternalFailed": "Nepodarilo sa otvoriť poznámku",
       "moved": "Poznámka presunutá",
       "moveFailed": "Nepodarilo sa presunúť poznámku",
-      "deleteFailed": "Nepodarilo sa odstrániť poznámku"
+      "deleteFailed": "Nepodarilo sa odstrániť poznámku",
+      "outsideEditReplaced": "Vaše písanie nahradilo zmenu urobenú mimo aplikácie. Je uložená v histórii verzií.",
+      "showVersions": "Zobraziť verzie"
     },
     "deleteDialogTitle": "{count, plural, one {Odstrániť poznámku} few {Odstrániť # poznámky} other {Odstrániť # poznámok}}",
     "itemsCount": "{count, plural, one {# položka} few {# položky} many {# položky} other {# položiek}}",

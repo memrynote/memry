@@ -70,7 +70,9 @@
       "openExternalFailed": "노트를 열지 못했습니다",
       "moved": "노트를 이동했습니다",
       "moveFailed": "노트를 이동하지 못했습니다",
-      "deleteFailed": "노트를 삭제하지 못했습니다"
+      "deleteFailed": "노트를 삭제하지 못했습니다",
+      "outsideEditReplaced": "입력한 내용이 외부 변경 사항을 대체했습니다. 변경 사항은 버전 기록에 저장되어 있습니다.",
+      "showVersions": "버전 보기"
     },
     "deleteDialogTitle": "{count, plural, other {노트 #개 삭제}}",
     "itemsCount": "{count, plural, other {항목 #개}}",

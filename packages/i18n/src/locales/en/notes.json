@@ -70,7 +70,9 @@
       "openExternalFailed": "Failed to open note",
       "moved": "Note moved",
       "moveFailed": "Failed to move note",
-      "deleteFailed": "Failed to delete note"
+      "deleteFailed": "Failed to delete note",
+      "outsideEditReplaced": "An outside change was replaced by your typing. It's saved in version history.",
+      "showVersions": "Show versions"
     },
     "deleteDialogTitle": "{count, plural, one {Delete Note} other {Delete # Notes}}",
     "itemsCount": "{count, plural, one {# item} other {# items}}",
