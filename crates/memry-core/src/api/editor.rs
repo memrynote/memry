@@ -58,7 +58,7 @@
 
 use std::collections::HashMap;
 use std::panic::{AssertUnwindSafe, catch_unwind};
-use std::sync::{Arc, Mutex, MutexGuard, PoisonError};
+use std::sync::{Arc, Mutex, MutexGuard, OnceLock, PoisonError};
 
 use rusqlite::Connection;
 use yrs::updates::decoder::Decode as _;
@@ -104,6 +104,15 @@ pub struct Applied {
     pub seq: i64,
     /// Its outbox row; `None` for a local-only note.
     pub outbox_id: Option<i64>,
+}
+
+/// Whether the documents' edits reach disk.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub struct Health {
+    /// False when the vault's database opened read-only: every edit is then
+    /// refused ([`Editor::apply_update`] fails), so it lives only in the window
+    /// that typed it, and no other window or device sees it.
+    pub persistent: bool,
 }
 
 #[derive(Debug, Clone, PartialEq, Eq, thiserror::Error)]
@@ -159,6 +168,9 @@ pub struct Editor {
     device_id: String,
     resident: Mutex<Resident>,
     listeners: Mutex<Listeners>,
+    /// The writer's read-only state, read once: it holds for the connection's
+    /// life.
+    read_only: OnceLock<bool>,
 }
 
 impl Editor {
@@ -181,6 +193,7 @@ impl Editor {
             device_id: keys::local_device_id_hex(public)?,
             resident: Mutex::new(Resident::new(EDITOR_LIFECYCLE)),
             listeners: Mutex::new(Listeners::default()),
+            read_only: OnceLock::new(),
         })
     }
 
@@ -327,6 +340,22 @@ impl Editor {
     /// Unloads the documents nobody has held for the grace period; returns them.
     pub fn sweep(&self, now_ms: i64) -> Vec<String> {
         self.resident().sweep(now_ms)
+    }
+
+    /// Whether the edits this host takes are stored (`crdt:get-health`).
+    /// Waits for the writer on its first call only.
+    pub fn health(&self) -> Result<Health, EditorError> {
+        let read_only = match self.read_only.get() {
+            Some(read_only) => *read_only,
+            None => {
+                let read_only =
+                    self.on_writer(|conn| conn.is_readonly(rusqlite::MAIN_DB).map_err(storage))?;
+                *self.read_only.get_or_init(|| read_only)
+            }
+        };
+        Ok(Health {
+            persistent: !read_only,
+        })
     }
 
     /// Whether any holder has `note_id` open.
