@@ -152,6 +152,18 @@ pub fn read_note(vault: &Path, rel: &str) -> Result<Option<NoteFile>, NoteFileEr
     Ok(Some(NoteFile { raw, hash }))
 }
 
+/// [`read_note`] for a file that is not UTF-8: the text Node's UTF-8 decoder gives (each
+/// invalid sequence one U+FFFD), which Electron reads every note file as, and its hash, which is
+/// [`hash_file`]'s. Past the cap it fails as [`read_note`] does.
+pub fn read_note_lossy(vault: &Path, rel: &str) -> Result<Option<NoteFile>, NoteFileError> {
+    let Some(bytes) = read_bytes(vault, rel)? else {
+        return Ok(None);
+    };
+    let raw = String::from_utf8_lossy(&bytes).into_owned();
+    let hash = content_hash(&raw);
+    Ok(Some(NoteFile { raw, hash }))
+}
+
 /// The hash of the file at `rel` as Electron computes it, streamed; `None` when missing.
 pub fn hash_file(vault: &Path, rel: &str) -> Result<Option<String>, NoteFileError> {
     let Some(file) = open_note_file(vault, rel)? else {

@@ -269,6 +269,9 @@ impl Applier {
                 Ok(None) => return Step::Done,
                 Err(Unread::Missing) => return Step::Retry(path.to_owned()),
                 Err(Unread::Failed { file_hash, failure }) => {
+                    if let Some(step) = self.restored_unreadable(note_id, path) {
+                        return step;
+                    }
                     report_unread(scan, path, failure);
                     // Too large to read whole (past the read cap) is large by its size.
                     if large_by_size(size).is_some() {

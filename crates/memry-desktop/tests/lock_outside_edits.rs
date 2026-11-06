@@ -7,13 +7,18 @@
 //! - what changed while the app was closed is put back at the next open;
 //! - a revert that could not be written keeps the version, feeds nothing, and the next open
 //!   writes it, once however often the vault opens;
+//! - a revert writes only over the bytes it kept, or into a path that is free;
+//! - a file that is not UTF-8 is kept as the text Electron reads it as, then reverted;
+//! - a change that could not be kept as a version is left on disk and fed nowhere;
 //! - the app's own writes through the lock (another device's text, the write-back) stay.
 
 use std::fs;
 use std::time::{Duration, Instant};
 
 use memry_core::domain::vault_locks::TargetKind;
-use memry_desktop::locks::Locks;
+use memry_desktop::locks::{Locks, RestoreError};
+use memry_desktop::vault::hash::content_hash;
+use memry_desktop::vault::note_file::{NoteFile, NoteFileError};
 
 use crate::lock_service::{NOTE, guarded, lock, read_only, reopen, unlock};
 use crate::notes_link_rewrite::id_at;
@@ -272,4 +277,110 @@ fn an_unlocked_notes_outside_edit_is_taken() {
     });
     std::thread::sleep(QUIET);
     assert_eq!(e.read("Plan.md"), OUTSIDE);
+}
+
+/// The lock, its baseline and its vault, with the app closed: nothing but the test touches the
+/// file, which holds `on_disk`.
+fn closed_with(on_disk: &str) -> (Env, std::sync::Arc<memry_core::api::vault::Vault>, String) {
+    let (mut e, id) = locked(&[("Plan.md", NOTE)], "Plan.md", TargetKind::Note);
+    let core = e.core();
+    e.close();
+    edit_outside(&e, "Plan.md", on_disk);
+    (e, core, id)
+}
+
+/// The bytes a revert would write over are the ones it kept: a newer edit landed since is not
+/// written over unkept.
+#[test]
+fn a_revert_does_not_write_over_bytes_newer_than_the_ones_it_kept() {
+    let (e, core, id) = closed_with("Newer.\n");
+    let kept = NoteFile {
+        raw: OUTSIDE.to_owned(),
+        hash: content_hash(OUTSIDE),
+    };
+
+    let refused = Locks::new(&e.vault, &core).restore(&id, "Plan.md", Some(&kept));
+
+    assert!(
+        matches!(
+            refused,
+            Err(RestoreError::Write(NoteFileError::ChangedUnderWrite))
+        ),
+        "{refused:?}"
+    );
+    assert_eq!(e.read("Plan.md"), "Newer.\n");
+}
+
+/// A removed file is written back only into a free path: a file that appeared there since is
+/// not written over.
+#[test]
+fn a_removed_file_is_not_written_back_over_one_that_appeared() {
+    let (e, core, id) = closed_with("Appeared.\n");
+
+    let refused = Locks::new(&e.vault, &core).restore(&id, "Plan.md", None);
+
+    assert!(
+        matches!(
+            refused,
+            Err(RestoreError::Write(NoteFileError::AlreadyExists))
+        ),
+        "{refused:?}"
+    );
+    assert_eq!(e.read("Plan.md"), "Appeared.\n");
+}
+
+#[test]
+fn an_outside_write_that_is_not_utf8_is_kept_as_text_and_reverted() {
+    let (e, id) = locked(&[("Plan.md", NOTE)], "Plan.md", TargetKind::Note);
+    edit_outside(&e, "Plan.md", "");
+
+    fs::write(e.vault.join("Plan.md"), [0xff, 0xfe, b'A']).unwrap();
+
+    until("the locked text is back", || {
+        fs::read(e.vault.join("Plan.md")).unwrap() == NOTE.as_bytes()
+    });
+    std::thread::sleep(QUIET);
+    assert_eq!(e.read("Plan.md"), NOTE);
+    assert!(read_only(&e, "Plan.md"));
+    assert_eq!(e.body(&id), "The body.");
+    let versions = e.versions(&id);
+    assert!(
+        versions.iter().any(|v| v == "\u{FFFD}\u{FFFD}A"),
+        "{versions:?}"
+    );
+}
+
+/// Safer than Electron, which feeds a change it could not keep: the lock holds, the change
+/// stays on disk, and the retry after the versions take rows again keeps it and reverts. Only
+/// the outside text's version fails: a feed keeps a version of the body it replaces, and the
+/// test must not stop that one.
+#[test]
+fn a_change_that_cannot_be_kept_stays_on_disk_and_is_not_fed() {
+    let (e, id) = locked(&[("Plan.md", NOTE)], "Plan.md", TargetKind::Note);
+    let versions = |sql: &'static str| {
+        e.core()
+            .db_handle()
+            .call_blocking(move |conn| {
+                conn.execute_batch(sql).unwrap();
+                Ok(())
+            })
+            .unwrap();
+    };
+    versions(
+        "CREATE TRIGGER no_versions BEFORE INSERT ON note_snapshots \
+         WHEN NEW.content LIKE 'Written outside%' \
+         BEGIN SELECT RAISE(ABORT, 'no versions'); END;",
+    );
+
+    edit_outside(&e, "Plan.md", OUTSIDE);
+    std::thread::sleep(QUIET);
+    assert_eq!(e.read("Plan.md"), OUTSIDE);
+    assert_eq!(e.body(&id), "The body.", "the unkept change was fed");
+
+    versions("DROP TRIGGER no_versions;");
+    until("the retry keeps it and reverts", || {
+        e.read("Plan.md") == NOTE
+    });
+    std::thread::sleep(QUIET);
+    assert_locked_text(&e, "Plan.md", &id);
 }

@@ -18,6 +18,9 @@ use crate::vault::note_file::{NoteFile, NoteFileError, write_new_text, write_not
 pub enum RestoreError {
     #[error(transparent)]
     Storage(#[from] StorageError),
+    /// The changed text could not be kept as a version, so nothing is written over it.
+    #[error("the outside change was not kept as a version: {0}")]
+    Unkept(StorageError),
     #[error("the locked text was not written back: {0}")]
     Write(#[from] NoteFileError),
 }
@@ -28,9 +31,9 @@ impl Locks<'_> {
     /// `Ok(true)`: `changed` is kept as a version and the locked text is back on disk; the
     /// caller feeds and deletes nothing. `Ok(false)`: the caller goes on as for any file: the
     /// note is not locked, or one of Electron's fallbacks holds: no baseline (`changed` becomes
-    /// it), `changed` is the baseline, or the version could not be kept, which leaves the file
-    /// as it is rather than lose its text. `Err`: the version is kept and the file not written
-    /// back; the caller tries again later, and feeds nothing meanwhile.
+    /// it), or `changed` is the baseline. `Err`: the file is left as it is, its text kept as a
+    /// version or not; the caller tries again later, and feeds nothing meanwhile. Electron feeds
+    /// a change it could not keep, which sends it to every device past the lock.
     pub fn restore(
         &self,
         note_id: &str,
@@ -51,19 +54,10 @@ impl Locks<'_> {
             if file.hash == baseline.content_hash {
                 return Ok(false);
             }
-            let kept = self
-                .vault
+            self.vault
                 .write_back()
-                .keep_replaced(note_id, &file.raw, file.split().body);
-            if let Err(error) = kept {
-                tracing::error!(
-                    scope = SCOPE,
-                    note_id,
-                    "the outside change to a locked note was not kept as a version, so it stays: \
-                     {error}"
-                );
-                return Ok(false);
-            }
+                .keep_replaced(note_id, &file.raw, file.split().body)
+                .map_err(RestoreError::Unkept)?;
         }
         // Only over the bytes just kept, or into the path while it is free: a newer outside
         // edit is the watcher's next report, and is kept before it is written over.
