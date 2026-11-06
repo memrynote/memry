@@ -187,8 +187,14 @@ import { useNoteFold } from '@/components/note/fold/use-note-fold'
 import { useT } from '@memry/i18n/renderer'
 import { getTabIconForFileType } from '@memry/shared/file-types'
 import * as trashQuestion from '@/lib/permanent-delete-question'
+import type { NoteUpdateResponse } from '@memry/contracts/notes-api'
 
 const log = createLogger('Page:Note')
+
+/** The note's text a save left on disk, when its answer carries it. */
+function savedText(result: NoteUpdateResponse): string | null {
+  return result.success && result.note && !result.note.contentOmitted ? result.note.content : null
+}
 
 // ============================================================================
 // Types
@@ -598,17 +604,22 @@ export function NotePage({ noteId }: NotePageProps) {
   const liveNoteIdRef = useRef<string | null>(null)
 
   // ============================================================================
-  // Sync lastSavedContent with note data from query
+  // lastSavedContent: the file text the editor shows. Set from the note it opened
+  // with, an outside edit it took, and the file a save of its text left.
   // ============================================================================
 
+  // Only the note's first read for this page seeds it. A later read can see an outside
+  // edit whose event has not arrived yet; taken here, that event would read as text the
+  // editor already shows and be dropped, and the next save would write over it (#3967).
+  const seededNoteIdRef = useRef<string | null>(null)
+  const loadedNoteId = note?.id
   const noteContentForLastSaved = note?.content
-
-  // Update lastSavedContent when note data changes (from cache or fresh fetch)
   useEffect(() => {
-    if (noteContentForLastSaved !== undefined) {
-      lastSavedContent.current = noteContentForLastSaved
-    }
-  }, [noteContentForLastSaved])
+    if (loadedNoteId === undefined || noteContentForLastSaved === undefined) return
+    if (seededNoteIdRef.current === loadedNoteId) return
+    seededNoteIdRef.current = loadedNoteId
+    lastSavedContent.current = noteContentForLastSaved
+  }, [loadedNoteId, noteContentForLastSaved])
 
   // Reset deleted state during render when switching to a new note.
   const [storedNoteIdForDelete, setStoredNoteIdForDelete] = useState(note?.id)
@@ -639,6 +650,8 @@ export function NotePage({ noteId }: NotePageProps) {
       if (pending !== null) {
         pendingMarkdownRef.current = null
         const result = await updateNoteRef.current({ id: noteId, content: pending })
+        const saved = savedText(result)
+        if (saved !== null) lastSavedContent.current = saved
         outsideEdit.saved(noteId, pending, result)
       }
     })
@@ -732,8 +745,8 @@ export function NotePage({ noteId }: NotePageProps) {
     const unsubUpdated = onNoteUpdated(handleUpdated)
 
     // A dropped event may have been an outside edit of this note: its text is read again. The
-    // text the editor holds is taken when the signal arrives: the note's query refetches on
-    // the same signal and moves `lastSavedContent` before this read answers.
+    // text the editor holds is taken when the signal arrives, so a save that lands during the
+    // read is told apart from it.
     const unsubDropped = onNoteEventsDropped(() => {
       if (isSavingRef.current) return
       const shown = lastSavedContent.current
@@ -957,7 +970,7 @@ export function NotePage({ noteId }: NotePageProps) {
             isSavingRef.current = true
             try {
               const result = await updateNote.mutateAsync({ id: noteId, content: markdown })
-              lastSavedContent.current = markdown
+              lastSavedContent.current = savedText(result) ?? markdown
               outsideEdit.saved(noteId, markdown, result)
               setEventContentOverride(null)
               // Typing that came in while this save ran is still unsaved.

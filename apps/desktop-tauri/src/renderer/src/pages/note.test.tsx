@@ -1655,6 +1655,25 @@ describe('NotePage', () => {
     expect(mocks.contentAreaMounts).toBe(1)
   })
 
+  // The note query refetches on each outside edit's event and reads the file. A read slower
+  // than the next outside edit returns that edit before its own event arrives (#3967).
+  it('takes an outside edit the note query read before its event arrived', async () => {
+    const page = renderWithProviders(<NotePage noteId="note-1" />)
+    expect(await screen.findByTestId('editor-content')).toHaveTextContent('Original body')
+    const outsideEdit = (content: string) =>
+      act(() => {
+        mocks.updatedHandler?.({ id: 'note-1', source: 'external', changes: { content } })
+      })
+
+    outsideEdit('First edit')
+    mocks.noteState.note = { ...note, content: 'First edit\n\nSecond edit' }
+    page.rerender(<NotePage noteId="note-1" />)
+    outsideEdit('First edit\n\nSecond edit')
+
+    expect(screen.getByTestId('editor-live-content')).toHaveTextContent('Second edit')
+    expect(screen.getByTestId('editor-external-revision')).toHaveTextContent('2')
+  })
+
   it('leaves typing not saved yet in the editor when an outside edit arrives, an emptied body too', async () => {
     renderWithProviders(<NotePage noteId="note-1" />)
     expect(await screen.findByTestId('editor-content')).toHaveTextContent('Original body')
@@ -1895,6 +1914,44 @@ describe('NotePage', () => {
     expect(screen.getByTestId('editor-external-revision')).toHaveTextContent('0')
     expect(mocks.contentAreaMounts).toBe(1)
   })
+
+  // The file a save leaves can differ from the typing (a final newline): its echo is the save's.
+  const saveLands: Record<string, () => Promise<void>> = {
+    'the debounced save': () => vi.advanceTimersByTimeAsync(1000).then(() => undefined),
+    'a registry flush': () => {
+      const flush = mocks.registerPendingSave.mock.calls.at(-1)?.[1] as () => Promise<void>
+      return flush()
+    }
+  }
+  it.each(Object.keys(saveLands))(
+    'does not reload the editor for the echo of the file %s wrote',
+    async (path) => {
+      vi.useFakeTimers()
+      mocks.updateNote.mockResolvedValue({
+        success: true,
+        note: { ...note, content: 'Typed body\n' }
+      })
+      renderWithProviders(<NotePage noteId="note-1" />)
+      await act(async () => {
+        await vi.advanceTimersByTimeAsync(0)
+      })
+
+      act(() => mocks.onMarkdownChange?.('Typed body'))
+      await act(async () => {
+        await saveLands[path]?.()
+      })
+      expect(mocks.updateNote).toHaveBeenCalledWith({ id: 'note-1', content: 'Typed body' })
+      act(() => {
+        mocks.updatedHandler?.({
+          id: 'note-1',
+          source: 'internal',
+          changes: { content: 'Typed body\n' }
+        })
+      })
+
+      expect(screen.getByTestId('editor-external-revision')).toHaveTextContent('0')
+    }
+  )
 
   // The CRDT write-back fires 500ms after any Y.Doc change — including local
   // typing, ahead of the 1000ms save — and it now carries `content`. Remounting
