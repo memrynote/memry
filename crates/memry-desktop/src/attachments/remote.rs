@@ -23,8 +23,10 @@ use crate::session::OpenVault;
 pub const MAX_REMOTE_BYTES: usize = 25 * 1024 * 1024;
 /// `DownloadAttachmentFromUrlSchema`'s `max(2048)`.
 const MAX_URL_LEN: usize = 2048;
-/// A host that sends nothing for this long fails the download; a slow, steady body does not.
+/// A host that sends nothing for this long fails the download.
 const READ_TIMEOUT: Duration = Duration::from_secs(10);
+/// The whole download, so a host that trickles a byte now and then cannot keep it open.
+const TOTAL_TIMEOUT: Duration = Duration::from_secs(90);
 /// The longest name taken from the URL, before the extension.
 const MAX_STEM_CHARS: usize = 64;
 
@@ -62,7 +64,10 @@ impl RemoteImages {
     /// Fails only when `http` cannot build a client (no process default crypto provider).
     pub fn new(http: ClientBuilder) -> Result<Self, reqwest::Error> {
         Ok(Self {
-            http: http.read_timeout(READ_TIMEOUT).build()?,
+            http: http
+                .read_timeout(READ_TIMEOUT)
+                .timeout(TOTAL_TIMEOUT)
+                .build()?,
         })
     }
 
@@ -74,6 +79,8 @@ impl RemoteImages {
                 url.len() <= MAX_URL_LEN && matches!(parsed.scheme(), "http" | "https")
             })
             .ok_or(RemoteFailure::Failed)?;
+        // The log names the host only: the path and query of a signed URL carry its token.
+        let host = parsed.host_str().unwrap_or_default().to_owned();
         let response = self
             .http
             .get(parsed.clone())
@@ -82,14 +89,15 @@ impl RemoteImages {
             .map_err(|error| {
                 tracing::warn!(
                     scope = SCOPE,
-                    "a linked image could not be fetched: {error}"
+                    "a linked image from {host} could not be fetched: {}",
+                    error.without_url()
                 );
                 RemoteFailure::Offline
             })?;
         if !response.status().is_success() {
             tracing::warn!(
                 scope = SCOPE,
-                "a linked image answered with an error status: {}",
+                "a linked image from {host} answered with an error status: {}",
                 response.status()
             );
             return Err(RemoteFailure::Failed);
@@ -107,7 +115,8 @@ impl RemoteImages {
                 ReadError::Transport(error) => {
                     tracing::error!(
                         scope = SCOPE,
-                        "a linked image body could not be read: {error}"
+                        "a linked image body from {host} could not be read: {}",
+                        error.without_url()
                     );
                     RemoteFailure::Failed
                 }

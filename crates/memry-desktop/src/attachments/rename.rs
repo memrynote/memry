@@ -99,6 +99,10 @@ fn rename_with(
     }
     plain_folder(&open.path, note_id)?;
     let folder = open.path.join(ATTACHMENTS_DIR).join(note_id);
+    // A link, even to a sibling, or a FIFO, which an open would wait on, is not the file.
+    if !fs::symlink_metadata(folder.join(file))?.is_file() {
+        return Err(AttachmentError::FileNotFound);
+    }
     let current = entry_name(&folder, target, file)?;
     let from = folder.join(&current);
     let candidate = renamed_filename(&current, requested);

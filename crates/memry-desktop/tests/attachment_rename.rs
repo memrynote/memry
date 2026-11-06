@@ -444,19 +444,74 @@ fn the_name_on_disk_not_the_urls_spelling_keeps_its_prefix() {
 }
 
 /// Windows drops a trailing dot, so `...pdf.` opens the `.pdf` file; the rename keeps its
-/// extension or refuses, and never makes a name without one.
+/// extension or refuses and leaves the file as it was, and never makes a name without one.
 #[cfg(windows)]
 #[test]
 fn a_trailing_dot_never_drops_the_extension() {
     let v = Vault::new();
     v.attach(&v.note, "k3f9x2-a.pdf", b"x");
     let url = format!("../attachments/{}/k3f9x2-a.pdf.", v.note);
-    if let Ok(renamed) = v.rename(&url, "b") {
-        assert_eq!(renamed.stored_filename, "k3f9x2-b.pdf");
+    match v.rename(&url, "b") {
+        Ok(renamed) => {
+            assert_eq!(renamed.stored_filename, "k3f9x2-b.pdf");
+            assert_eq!(names(&v.folder(&v.note)), ["k3f9x2-b.pdf"]);
+        }
+        Err(error) => {
+            assert!(
+                matches!(
+                    error,
+                    AttachmentError::FileNotFound
+                        | AttachmentError::OutsideVault
+                        | AttachmentError::NotOwned
+                ),
+                "{error:?}"
+            );
+            assert_eq!(names(&v.folder(&v.note)), ["k3f9x2-a.pdf"]);
+        }
     }
+}
+
+/// A link in the note's folder is not the file, even to a sibling there: renaming through it
+/// would take another block's file, with another prefix.
+#[cfg(unix)]
+#[test]
+fn a_link_to_a_sibling_in_the_folder_is_refused() {
+    let v = Vault::new();
+    let real = v.attach(&v.note, "aaaaaa-real.pdf", b"real");
+    std::os::unix::fs::symlink(&real, v.folder(&v.note).join("k3f9x2-link.pdf")).unwrap();
+    let url = format!("../attachments/{}/k3f9x2-link.pdf", v.note);
+    assert!(matches!(
+        v.rename(&url, "renamed"),
+        Err(AttachmentError::FileNotFound)
+    ));
+    assert_eq!(
+        names(&v.folder(&v.note)),
+        ["aaaaaa-real.pdf", "k3f9x2-link.pdf"]
+    );
+}
+
+/// A FIFO is not a file: opening one to read its identity would wait for a writer forever.
+#[cfg(unix)]
+#[test]
+fn a_fifo_is_refused_without_waiting_on_it() {
+    let v = Vault::new();
+    let fifo = v.folder(&v.note).join("k3f9x2-pipe.pdf");
+    fs::create_dir_all(v.folder(&v.note)).unwrap();
+    let made = std::process::Command::new("mkfifo")
+        .arg(&fifo)
+        .status()
+        .unwrap();
+    assert!(made.success());
+    let url = format!("../attachments/{}/k3f9x2-pipe.pdf", v.note);
+    let (send, receive) = std::sync::mpsc::channel();
+    std::thread::spawn(move || {
+        let _ = send.send(v.rename(&url, "renamed").map(|_| ()));
+    });
+    let result = receive
+        .recv_timeout(std::time::Duration::from_secs(10))
+        .expect("the rename waited on the FIFO");
     assert!(
-        names(&v.folder(&v.note))
-            .iter()
-            .all(|name| name.ends_with(".pdf"))
+        matches!(result, Err(AttachmentError::FileNotFound)),
+        "{result:?}"
     );
 }

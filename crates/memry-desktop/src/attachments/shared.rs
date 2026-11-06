@@ -62,7 +62,8 @@ pub struct InsertedAttachment {
 }
 
 /// `listVaultAttachments`: every attachment of an allowed type, newest first. A folder whose
-/// note is gone is listed without a title. An unreadable folder is skipped and logged.
+/// note is gone, or whose note row cannot be read, is listed without a title. An entry or folder
+/// that cannot be read is skipped and logged.
 pub fn list_vault(open: &OpenVault) -> Result<Vec<VaultAttachmentEntry>, AttachmentError> {
     let root = open.path.join(ATTACHMENTS_DIR);
     if fs::symlink_metadata(&root).is_err() {
@@ -77,18 +78,35 @@ pub fn list_vault(open: &OpenVault) -> Result<Vec<VaultAttachmentEntry>, Attachm
     }
     let mut listed: Vec<(SystemTime, VaultAttachmentEntry)> = Vec::new();
     for owner in fs::read_dir(&root)? {
-        let owner = owner?;
+        let owner = match owner.and_then(|owner| Ok((owner.file_type()?, owner))) {
+            Ok((kind, owner)) if kind.is_dir() => owner,
+            Ok(_) => continue,
+            Err(error) => {
+                tracing::warn!(
+                    scope = SCOPE,
+                    "an attachments entry was not read: {:?}",
+                    error.kind()
+                );
+                continue;
+            }
+        };
         let Ok(owner_id) = owner.file_name().into_string() else {
             continue;
         };
-        if owner_id.starts_with('.') || !owner.file_type()?.is_dir() {
+        if owner_id.starts_with('.') {
             continue;
         }
-        let title = open
-            .vault
-            .note_files()
-            .listed_by_id(&owner_id)?
-            .map(|note| note.title);
+        // Without a title the folder's files are still listed, as for a note that is gone.
+        let title = match open.vault.note_files().listed_by_id(&owner_id) {
+            Ok(note) => note.map(|note| note.title),
+            Err(error) => {
+                tracing::warn!(
+                    scope = SCOPE,
+                    "the note of an attachment folder was not read: {error}"
+                );
+                None
+            }
+        };
         let files = match fs::read_dir(owner.path()) {
             Ok(files) => files,
             Err(error) => {

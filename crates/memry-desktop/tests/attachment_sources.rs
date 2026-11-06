@@ -17,8 +17,9 @@
 #[allow(unused_imports)]
 use crate::device_key;
 #[allow(unused_imports)]
-use crate::unsplash_server;
+use crate::on_warning::logged;
 #[allow(unused_imports)]
+use crate::unsplash_server;
 use crate::vault_env;
 
 use std::fs;
@@ -294,6 +295,36 @@ async fn an_image_at_a_url_is_fetched_with_a_name_from_the_url() {
     assert_eq!(fetched.bytes, b"\x89PNG-bytes");
     assert_eq!(fetched.filename, "Sunset-Beach.png");
     assert_eq!(server.seen()[0].target, "/photos/Sunset%20Beach.webp?w=1");
+}
+
+/// The local log names the host of a failed link, never its path or query, where a signed URL
+/// carries its token.
+#[test]
+fn a_failed_link_logs_its_host_and_not_its_url() {
+    let runtime = tokio::runtime::Builder::new_current_thread()
+        .enable_all()
+        .build()
+        .unwrap();
+    let (outcome, lines) = logged("memry_desktop::attachments::remote", || {
+        runtime.block_on(async {
+            let server = serve(|_| Reply::Hangup).await;
+            let remote = RemoteImages::new(server.builder()).unwrap();
+            remote
+                .fetch("https://other.example/private/a.png?token=s3cr3t")
+                .await
+        })
+    });
+    assert_eq!(outcome, Err(RemoteFailure::Offline));
+    assert!(
+        lines.iter().any(|line| line.contains("other.example")),
+        "{lines:?}"
+    );
+    assert!(
+        lines
+            .iter()
+            .all(|line| !line.contains("s3cr3t") && !line.contains("/private/")),
+        "{lines:?}"
+    );
 }
 
 #[tokio::test]
