@@ -51,6 +51,40 @@ function record(page: Page): Promise<unknown> {
       (e) => log(`scroll ${e.target instanceof Element ? describe(e.target) : 'document'}`),
       true
     )
+    for (const type of [
+      'mousemove',
+      'mousedown',
+      'mouseup',
+      'wheel',
+      'keydown',
+      'keyup',
+      'dragstart',
+      'dragover',
+      'selectstart',
+      'pointermove',
+      'pointerdown',
+      'pointerup',
+      'touchstart',
+      'contextmenu',
+      'mouseover',
+      'mouseout'
+    ]) {
+      window.addEventListener(
+        type,
+        (e) => {
+          if (!e.isTrusted) return
+          const m = e as MouseEvent & KeyboardEvent & WheelEvent
+          log(
+            `TRUSTED ${type} on ${describe(e.target as Element)} xy=${m.clientX},${m.clientY} buttons=${m.buttons} key=${m.key} dy=${m.deltaY} mode=${m.deltaMode}`
+          )
+        },
+        true
+      )
+    }
+    document.addEventListener('selectionchange', () => {
+      const sel = document.getSelection()
+      log(`selectionchange type=${sel?.type} anchor=${sel?.anchorNode?.nodeName}`)
+    })
     window.addEventListener('resize', () => log(`resize ${innerWidth}x${innerHeight}`))
     document.addEventListener('focusin', (e) => log(`focusin ${describe(e.target as Element)}`))
     for (const type of ['mousedown', 'mouseup', 'click', 'pointerdown']) {
@@ -84,7 +118,7 @@ async function dump(page: Page, label: string): Promise<void> {
   )
 }
 
-for (let round = 1; round <= 30; round += 1) {
+for (let round = 1; round <= 40; round += 1) {
   test(`diag round ${round}: an offline check from Settings, then the auto-check switch`, async ({
     app,
     page
