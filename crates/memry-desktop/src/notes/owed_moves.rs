@@ -4,14 +4,16 @@
 //! (`renameKeepsJournalDate`, `vault/watcher.ts`). A day the whole journal folder carried is
 //! held, never crossed ([`held`]).
 
-use std::path::Path;
+use std::collections::BTreeSet;
+use std::path::{Path, PathBuf};
+use std::sync::{Mutex, PoisonError};
 
 use memry_core::api::notes_write::NotesWriter;
 use memry_core::domain::notes::identity::{Crossing, Moved, Removed};
 use memry_core::markdown::frontmatter::split_frontmatter_block;
 
 use super::identity::{NotesIdentity, electron_db_beside, is_large_file, place};
-use crate::journal::folder_follow::journal_folder_moved;
+use crate::journal::folder_follow::{Follow, follow_moved_journal, journal_folder_moved};
 use crate::vault::consumer::identity::{Crossed, IdentityCtx, IdentityError};
 use crate::vault::journal_format::JournalDays;
 
@@ -73,7 +75,10 @@ pub(crate) fn settle_followed(
 
 /// Whether the move of the day `id` from `from` to `to` is the journal folder moving whole
 /// ([`journal_folder_moved`]). Crossed, every day would be deleted and the delete synced; it is
-/// owed instead, until the config follows the folder and the move keeps what the file is.
+/// owed instead, until the config follows the folder and the move keeps what the file is. A day
+/// already owed a move is read from where it was before that one (its owed `from_path`): the
+/// held folder renamed again before the setting followed is the journal moving on, never a day
+/// leaving it. A held day marks its vault for the follow after the batch ([`follow_held`]).
 pub(super) fn held(
     root: &Path,
     journal: &JournalDays,
@@ -82,9 +87,35 @@ pub(super) fn held(
     from: &str,
     to: &str,
 ) -> Result<bool, IdentityError> {
-    Ok(writer.journal_date(id)?.is_some()
-        && journal.day_of(to).is_none()
-        && journal_folder_moved(root, journal.folder(), from, to).is_some())
+    if writer.journal_date(id)?.is_none() || journal.day_of(to).is_some() {
+        return Ok(false);
+    }
+    let first = writer
+        .owed_places()?
+        .into_iter()
+        .find(|owed| owed.note_id == id);
+    let from = first.as_ref().map_or(from, |owed| owed.from_path.as_str());
+    let held = journal_folder_moved(root, journal.folder(), from, to).is_some();
+    if held {
+        HELD.lock()
+            .unwrap_or_else(PoisonError::into_inner)
+            .insert(root.to_path_buf());
+    }
+    Ok(held)
+}
+
+/// The vaults a batch of the consumer's held a day in, since the follow after it last ran.
+static HELD: Mutex<BTreeSet<PathBuf>> = Mutex::new(BTreeSet::new());
+
+/// Once the consumer's queue went quiet after a batch, with the rows' lane released: the journal
+/// setting follows the folder the batch held days in (`journal::folder_follow::follow_moved_journal`), as
+/// Electron's watcher follows at the move's first event. `true` when it followed.
+pub(super) fn follow_held(root: &Path, writer: &NotesWriter) -> bool {
+    let marked = HELD
+        .lock()
+        .unwrap_or_else(PoisonError::into_inner)
+        .remove(root);
+    marked && follow_moved_journal(root, writer) == Follow::Followed
 }
 
 /// Each owed move that changes what its file is, with its record deleted as the watcher's move

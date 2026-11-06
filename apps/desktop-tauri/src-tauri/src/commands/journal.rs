@@ -19,12 +19,13 @@ use memry_desktop::journal::{self, JournalEntryView};
 use memry_desktop::notes::error::NotesError;
 use memry_desktop::telemetry::Service;
 use memry_desktop::telemetry::time::now_ms;
+use memry_desktop::vault::config::settings::vault_settings;
 use serde::{Deserialize, Serialize};
 use serde_json::{Map, Value};
 use tauri::{AppHandle, Manager, Runtime};
 
 use super::error::CommandError;
-use super::folders::{Refused, settings_or_failed};
+use super::folders::{Refused, announce_followed, settings_or_failed};
 use super::{blocking, notes};
 use crate::events::{
     JournalEntryCreatedEvent, JournalEntryDeletedEvent, JournalEntryUpdatedEvent, broadcast,
@@ -160,7 +161,9 @@ pub async fn journal_get_entry<R: Runtime>(
     .await
 }
 
-/// The day made on its first write; a day that has a file is answered as it is.
+/// The day made on its first write; a day that has a file is answered as it is. A journal
+/// setting that followed its folder first (moved outside the app, or by a folder move a crash
+/// cut short) is heard by every window ([`announce_followed`]).
 #[tauri::command]
 #[specta::specta]
 pub async fn journal_create_entry<R: Runtime>(
@@ -169,15 +172,16 @@ pub async fn journal_create_entry<R: Runtime>(
 ) -> Result<JournalEntryView, CommandError> {
     blocking("journal_create_entry", move || {
         let open = notes::open_vault(&app)?;
+        let before = vault_settings(Some(&open.path));
         let day = NewDay {
             date: input.date,
             content: input.content.unwrap_or_default(),
             tags: input.tags.unwrap_or_default(),
             properties: input.properties.unwrap_or_default(),
         };
-        let entry = notes::service(&app)?
-            .create_day(&open, day)
-            .map_err(|error| settings_or_failed(&app, &error, Refused::JournalDay))?;
+        let entry = notes::service(&app)?.create_day(&open, day);
+        announce_followed(&app, &open.path, &before);
+        let entry = entry.map_err(|error| settings_or_failed(&app, &error, Refused::JournalDay))?;
         journal_events::measure(&app, &entry.id, &entry.date);
         announce(&app, Landed::Created(&entry));
         Ok(entry)
@@ -185,7 +189,9 @@ pub async fn journal_create_entry<R: Runtime>(
     .await
 }
 
-/// The day edited: its text, tags or properties; a day with no file is made.
+/// The day edited: its text, tags or properties; a day with no file is made. A journal setting
+/// that followed its folder first, as a day create does, is heard by every window
+/// ([`announce_followed`]).
 #[tauri::command]
 #[specta::specta]
 pub async fn journal_update_entry<R: Runtime>(
@@ -194,6 +200,7 @@ pub async fn journal_update_entry<R: Runtime>(
 ) -> Result<JournalEntryView, CommandError> {
     blocking("journal_update_entry", move || {
         let open = notes::open_vault(&app)?;
+        let before = vault_settings(Some(&open.path));
         // A tags-only update writes the record alone: the file, and so its counts, stay.
         let rewrites_file = input.content.is_some() || input.properties.is_some();
         let update = DayUpdate {
@@ -206,9 +213,10 @@ pub async fn journal_update_entry<R: Runtime>(
             }),
             properties: input.properties,
         };
-        let updated = notes::service(&app)?
-            .update_day(&open, update)
-            .map_err(|error| settings_or_failed(&app, &error, Refused::JournalDay))?;
+        let updated = notes::service(&app)?.update_day(&open, update);
+        announce_followed(&app, &open.path, &before);
+        let updated =
+            updated.map_err(|error| settings_or_failed(&app, &error, Refused::JournalDay))?;
         if rewrites_file || updated.created {
             journal_events::measure(&app, &updated.entry.id, &updated.entry.date);
         }

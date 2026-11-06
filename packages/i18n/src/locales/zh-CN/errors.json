@@ -21,6 +21,8 @@
     "journalUnlisted": "无法读取日记文件夹，因此更改未保存。请检查你是否有权访问该文件夹。",
     "excludeUnwatched": "已保存排除的文件夹，但在应用外所做的更改要等你重新打开保险库后才会显示。",
     "journalChangeWaits": "之前对日记文件夹或日期格式的更改尚未完成。请重新打开保险库以完成更改，然后重试。",
+    "journalFolderHeld": "日记文件夹已在应用外被移动，其中的日期暂时无法跟随过去。请将文件夹移回原处，或移到保险库中的一个普通文件夹，然后重试。",
+    "journalMovesWait": "笔记或文件夹的移动未完成。请重新打开保险库以完成移动，然后再次更改日记设置。",
     "journalChangeUnrecorded": "无法准备日记更改，因此没有移动任何日记日期，已保存的设置保持不变。请重试。",
     "settingsUnreadable": "无法读取仓库设置文件（.memry/config.json）时，不能移动文件夹。请修复该文件后重试。",
     "settingsUnreadableDelete": "无法读取仓库设置文件（.memry/config.json）时，不能删除文件夹。请修复该文件后重试。",

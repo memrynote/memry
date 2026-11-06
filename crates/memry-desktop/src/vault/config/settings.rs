@@ -28,11 +28,16 @@
 //! The change is recorded before the first day moves and forgotten once the setting is saved
 //! or every day went back (`journal_rename::finish_journal_change`): a crash between leaves the
 //! record, and the next open puts the days back. A change an open could not finish is finished
-//! first by the next update, which records no other change while it waits. Nor while a folder
-//! or note move a crash cut short waits for an open that can finish it (`vault::app_move`): the
-//! journal folder it carried may be on disk where the saved setting is not yet, so the days
-//! would not be listed, and the open after the save would settle their moves under the new
-//! setting, as crossings that delete them.
+//! first by the next update, which records no other change while it waits. Nor while a note
+//! move waits for an open that can finish it (`vault::app_move`), a folder move's notes
+//! included ([`SettingsError::MovesWait`]): a day's file may be on disk where the saved setting
+//! does not read it yet, so the day would not be listed, and the open after the save would
+//! settle its move under the new setting, as a crossing that deletes it. A folder move records
+//! a move for each note it carries, so one that carries no note waits on nothing here. A journal
+//! folder moved outside the app has its setting follow it first (`journal::folder_follow`), so
+//! its held days move from where they are; saved over them, the next open would cross each into
+//! a note. While held days wait for the setting to follow (it cannot), no change that moves
+//! days is made ([`SettingsError::JournalFolderHeld`]).
 //!
 //! The journal folder moved in the app with a folder that holds it takes the setting along
 //! ([`JournalFollow`], `notes::folder_move`), as Electron's `followJournalFolderMove` does.
@@ -69,6 +74,7 @@ use super::{
     ConfigError, VaultConfig, VaultConfigPatch, read_vault_config, read_vault_config_strict,
     unreadable, write_vault_config,
 };
+use crate::journal::folder_follow::{Follow, follow_moved_journal};
 use crate::locks::Refused;
 use crate::notes::folders::holds_journal_days;
 use crate::vault::consumer::VaultTier;
@@ -121,10 +127,16 @@ pub enum SettingsError {
     #[error("{left} journal days could not be moved to the new journal setting")]
     DaysNotRenamed { left: usize },
     /// An earlier change's days still wait to go back (`journal_rename::finish_journal_change`),
-    /// another version of the app recorded a change this one cannot finish, or a folder or note
-    /// move a crash cut short waits (the module's doc).
+    /// or another version of the app recorded a change this one cannot finish.
     #[error("an earlier journal setting change did not finish")]
     ChangeWaits,
+    /// A note move waits for an open that can finish it (the module's doc).
+    #[error("a note move did not finish")]
+    MovesWait,
+    /// Journal days a journal folder moved outside the app carried wait for the setting to
+    /// follow them (`journal::folder_follow::Follow::HeldWaits`).
+    #[error("journal days wait for the setting to follow the journal folder")]
+    JournalFolderHeld,
     /// The change could not be recorded before its first move, so nothing moved.
     #[error("the journal setting change could not be recorded: {0}")]
     Unrecorded(String),
@@ -183,6 +195,20 @@ pub fn update_vault_settings_checked(
     announce: impl FnOnce(&VaultConfig),
     step: &mut dyn FnMut(ChangeStep),
 ) -> Result<VaultConfig, SettingsError> {
+    // Before the settings' lock, which it takes: a journal folder moved outside the app has
+    // its setting follow it, so the days move from where they are.
+    let follow = days.map_or(Follow::Nothing, |(vault, tier)| {
+        match vault.notes_writer(tier.store()) {
+            Ok(writer) => follow_moved_journal(root, &writer),
+            Err(error) => {
+                tracing::warn!(
+                    scope = SCOPE,
+                    "a journal folder moved outside the app was not looked for: {error}"
+                );
+                Follow::Nothing
+            }
+        }
+    });
     let held = JournalFollow::hold();
     if let Some((vault, tier)) = days {
         finish_journal_change(JournalVault { root, vault, tier }, &held);
@@ -206,6 +232,9 @@ pub fn update_vault_settings_checked(
         return Ok(current);
     }
     let moves_days = patch.journal_folder.is_some() || patch.journal_date_format.is_some();
+    if moves_days && matches!(follow, Follow::HeldWaits { .. }) {
+        return Err(SettingsError::JournalFolderHeld);
+    }
     let _no_day_made = moves_days.then(|| held.no_day_named());
     let to = JournalPlace {
         folder: patch
@@ -321,11 +350,10 @@ fn moved_for<'a>(
         .notes_writer(at.tier.store())
         .map_err(|error| unrecorded(&error))?;
     let moves_wait = writer
-        .pending_folder_moves()
-        .and_then(|folders| Ok(!folders.is_empty() || !writer.pending_app_moves()?.is_empty()))
+        .pending_app_moves()
         .map_err(|error| unrecorded(&error))?;
-    if moves_wait {
-        return Err(SettingsError::ChangeWaits);
+    if !moves_wait.is_empty() {
+        return Err(SettingsError::MovesWait);
     }
     let setting = |folder: &str, format: &str| JournalSetting {
         folder: folder.to_owned(),

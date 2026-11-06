@@ -12,6 +12,7 @@
 //! | a day cut off between its two steps keeps an outside edit         | the row back before the walk          |
 //! | a journal change killed at any step keeps an edit made while the  | the rows back before the settings are |
 //! | settings could not be read                                        | read                                  |
+//! | a saved journal change's record leaves a file moved by hand alone | saved: the record only forgotten      |
 //! | a refused journal change killed on its way back keeps every day   | the same record                       |
 //! | a journal change cut short leaves no day where the setting is not | P2: a third folder after it           |
 //! | a journal change cut short waits for readable settings            | the record waits, a day create ends it |
@@ -213,6 +214,53 @@ fn edit_every_file(dir: &std::path::Path) {
             let text = fs::read_to_string(&path).unwrap();
             fs::write(&path, format!("{text}{EDIT}")).unwrap();
         }
+    }
+}
+
+/// Stopped after the save, before its record was forgotten, and a day's file then moved back to
+/// its old folder by hand, or replaced there by a file the app never wrote: the open forgets the
+/// record of the saved change and leaves both files to the walk, as it would with no record. It
+/// takes no row back to them, which would make a file outside the saved journal a day, or send
+/// a stranger's text to every device as the day's edit.
+#[test]
+fn a_saved_journal_changes_record_leaves_a_file_moved_by_hand_alone() {
+    let (e, ..) = two_days();
+    let (steps, _) = change_killed(&e, folder("Diary"), None);
+    drop(e);
+    for replaced in [false, true] {
+        let (mut e, ..) = two_days();
+        let (_, killed) = change_killed(&e, folder("Diary"), Some(steps));
+        assert!(killed);
+        assert_eq!(stored(&e.vault)["journalFolder"], "Diary");
+        let edits = |e: &Env| {
+            outbox(e, DAY)
+                .iter()
+                .filter(|op| *op == "crdt-update")
+                .count()
+        };
+        let before = edits(&e);
+        e.close();
+        let (moved, old) = (
+            e.vault.join("Diary/2025-01-02.md"),
+            e.vault.join("journal/2025-01-02.md"),
+        );
+        if replaced {
+            fs::remove_file(&moved).unwrap();
+            fs::write(&old, "Unrelated\n").unwrap();
+        } else {
+            fs::rename(&moved, &old).unwrap();
+        }
+        e.drain();
+        e.open();
+        e.facts_until(vault_env::indexed);
+        std::thread::sleep(QUIET);
+        e.drain();
+        assert!(
+            !e.rows().contains(&row(DAY, "journal/2025-01-02.md")),
+            "{replaced}"
+        );
+        assert_eq!(edits(&e), before, "{replaced}");
+        assert_eq!(stored(&e.vault)["journalFolder"], "Diary");
     }
 }
 

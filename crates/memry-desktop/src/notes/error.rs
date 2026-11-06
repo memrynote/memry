@@ -111,6 +111,13 @@ pub enum NotesError {
     /// (`vault::journal_rename::finish_journal_change`).
     #[error("an earlier journal setting change did not finish; reopen the vault to finish it")]
     JournalChangeWaits,
+    /// Journal days a journal folder moved outside the app carried wait for the setting to
+    /// follow them, and the day or folder asked for would leave them outside the journal
+    /// (`journal::folder_follow::Follow::HeldWaits`).
+    #[error(
+        "the journal folder was moved outside the app and its days wait for the setting to follow"
+    )]
+    JournalFolderHeld,
     /// The folder to delete is inside the journal folder (a year folder of a nested date
     /// format): it holds days, which a note delete does not take.
     #[error("the folder is inside the journal folder; delete its days in the journal")]
@@ -344,6 +351,7 @@ impl CoreError for NotesError {
             Self::SettingsUnreadable(_) => (FailureKind::Invalid, "vault_settings_unreadable"),
             Self::FolderInJournal => (FailureKind::Invalid, "folder_in_journal"),
             Self::JournalChangeWaits => (FailureKind::Invalid, "journal_change_waits"),
+            Self::JournalFolderHeld => (FailureKind::Invalid, "journal_folder_held"),
             Self::FolderMoveIncomplete => (FailureKind::Storage, "folder_move_incomplete"),
             Self::FolderFile(FolderFileError::Unreadable { .. }) => {
                 (FailureKind::Invalid, "folder_file_unreadable")

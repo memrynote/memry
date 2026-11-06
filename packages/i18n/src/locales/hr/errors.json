@@ -21,6 +21,8 @@
     "journalUnlisted": "Mapu dnevnika nije bilo moguće pročitati pa promjena nije spremljena. Provjerite imate li pristup njoj.",
     "excludeUnwatched": "Izuzete mape su spremljene, ali promjene napravljene izvan aplikacije neće se prikazati dok ponovno ne otvorite trezor.",
     "journalChangeWaits": "Ranija promjena mape dnevnika ili formata datuma nije dovršena. Ponovno otvorite trezor da se dovrši, a zatim pokušajte ponovno.",
+    "journalFolderHeld": "Mapa dnevnika premještena je izvan aplikacije i njezini je dani još ne mogu slijediti onamo. Vratite mapu ili je premjestite u jednu običnu mapu trezora pa pokušajte ponovno.",
+    "journalMovesWait": "Premještanje bilješke ili mape nije dovršeno. Ponovno otvorite trezor da se dovrši, a zatim ponovno promijenite postavku dnevnika.",
     "journalChangeUnrecorded": "Promjenu dnevnika nije bilo moguće pripremiti, pa nijedan dan dnevnika nije premješten i spremljena postavka ostaje. Pokušajte ponovno.",
     "settingsUnreadable": "Mape se ne mogu premjestiti dok se datoteka postavki trezora (.memry/config.json) ne može pročitati. Popravite tu datoteku pa pokušajte ponovno.",
     "settingsUnreadableDelete": "Mape se ne mogu izbrisati dok se datoteka postavki trezora (.memry/config.json) ne može pročitati. Popravite tu datoteku pa pokušajte ponovno.",

@@ -14,12 +14,12 @@ use memry_desktop::notes::error::NotesError;
 use memry_desktop::notes::service::NotesService;
 use memry_desktop::vault::config::config_path;
 use memry_desktop::vault::config::settings::SettingsError;
-use vault_env::indexed;
+use vault_env::{Env, indexed};
 
 use crate::journal_change::folder;
 use crate::journal_change_crash::{change_killed, reopened, settled, two_days};
 use crate::journal_folder::{
-    DAY, crashed_after_disk, crossed, daily, dated_note, outbox, quiet, settles,
+    DAY, crashed_after_disk, crossed, daily, dated_note, outbox, quiet, reopen, row, settles,
 };
 use crate::vault_settings::{opened_keeping, stored, update};
 
@@ -42,7 +42,7 @@ fn a_journal_folder_change_waits_for_an_interrupted_journal_folder_move() {
 
     let refused = update(&e, folder("Other"), |_| panic!("announced"));
     assert!(
-        matches!(refused, Err(SettingsError::ChangeWaits)),
+        matches!(refused, Err(SettingsError::MovesWait)),
         "{refused:?}"
     );
     assert_eq!(stored(&e.vault)["journalFolder"], "journal");
@@ -55,8 +55,8 @@ fn a_journal_folder_change_waits_for_an_interrupted_journal_folder_move() {
 
 /// A change to `Box/Diary` whose moved day cannot go back (a folder took its old path): until it
 /// can, no folder move or delete takes a folder that is, holds or is inside either the folder its
-/// days left or the one they wait in, where one of them would leave a day outside the saved
-/// journal. A folder apart from both still moves. Once the path is free, the next open puts the
+/// days left or the one they wait in, where each would leave a day outside the saved journal; a
+/// note move or rename takes no day at all. A folder apart from both still moves. Once the path is free, the next open puts the
 /// day back.
 #[test]
 fn a_journal_change_that_waits_holds_both_its_folders() {
@@ -98,6 +98,14 @@ fn a_journal_change_that_waits_holds_both_its_folders() {
             "{held}: {deleted:?}"
         );
     }
+    // A day is no note a note move or rename takes, waiting or not.
+    let moved = notes.move_to_folder(&open, DAY, "Apart");
+    assert!(matches!(moved, Err(NotesError::NotFound(_))), "{moved:?}");
+    let renamed = notes.rename(&open, DAY, "Renamed");
+    assert!(
+        matches!(renamed, Err(NotesError::NotFound(_))),
+        "{renamed:?}"
+    );
     notes
         .rename_folder(&open, "Apart", "Moved", |_| panic!("announced"))
         .unwrap();
@@ -111,4 +119,52 @@ fn a_journal_change_that_waits_holds_both_its_folders() {
     reopened(&mut e);
     assert!(e.vault.join("journal/2025-01-02.md").is_file());
     settled(&mut e, &notes, &store, &note);
+}
+
+/// A note's move that a newer build recorded and this one cannot finish (one that settles at the
+/// open needs a crash and an open that cannot finish it, which a lone note move does not leave):
+/// while it waits, a journal folder change is refused (`journal_moves_wait`), since that note may
+/// be a day whose file is where the saved setting does not read it. Once the record is gone, the
+/// change goes through.
+#[test]
+fn a_journal_folder_change_waits_for_a_note_move_this_build_cannot_finish() {
+    let (mut e, _store) = opened_keeping(
+        daily("journal"),
+        &[
+            ("journal/2025-01-02.md", "A day\n"),
+            ("Notes/Plan.md", "A plan\n"),
+        ],
+    );
+    let (id, _) = e
+        .rows()
+        .into_iter()
+        .find(|(_, at)| at == "Notes/Plan.md")
+        .unwrap();
+    let key = format!("notes.app_move.v1:{id}");
+    let meta = |e: &Env, sql: &'static str, key: &str| {
+        let key = key.to_owned();
+        e.core()
+            .db_handle()
+            .call_blocking(move |conn| Ok(conn.execute(sql, [key]).unwrap()))
+            .unwrap();
+    };
+    meta(
+        &e,
+        r#"INSERT INTO meta (key, value) VALUES (?1, '{"version":2}')"#,
+        &key,
+    );
+
+    let refused = update(&e, folder("Diary"), |_| panic!("announced"));
+    assert!(
+        matches!(refused, Err(SettingsError::MovesWait)),
+        "{refused:?}"
+    );
+    assert!(e.vault.join("journal/2025-01-02.md").exists());
+    assert_eq!(stored(&e.vault)["journalFolder"], "journal");
+    meta(&e, "DELETE FROM meta WHERE key = ?1", &key);
+    update(&e, folder("Diary"), |_| {}).unwrap();
+    assert!(e.vault.join("Diary/2025-01-02.md").exists());
+    reopen(&mut e);
+    assert!(e.rows().contains(&row(DAY, "Diary/2025-01-02.md")));
+    assert!(!outbox(&e, DAY).contains(&"delete".to_owned()));
 }

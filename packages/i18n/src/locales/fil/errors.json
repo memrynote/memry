@@ -21,6 +21,8 @@
     "journalUnlisted": "Hindi mabasa ang folder ng talaarawan, kaya hindi na-save ang pagbabago. Tiyaking may access ka rito.",
     "excludeUnwatched": "Na-save ang mga hindi isinamang folder, pero hindi lalabas ang mga pagbabagong ginawa sa labas ng app hanggang buksan mong muli ang vault.",
     "journalChangeWaits": "Hindi natapos ang naunang pagbabago sa folder ng journal o sa format ng petsa. Buksan muli ang vault para matapos ito, saka subukang muli.",
+    "journalFolderHeld": "Inilipat ang folder ng journal sa labas ng app, at hindi pa ito masusundan ng mga araw nito roon. Ibalik ang folder, o ilipat ito sa isang karaniwang folder ng vault, saka subukan muli.",
+    "journalMovesWait": "Hindi natapos ang paglipat ng isang tala o folder. Buksan muli ang vault para matapos ito, saka baguhin muli ang setting ng journal.",
     "journalChangeUnrecorded": "Hindi maihanda ang pagbabago sa journal, kaya walang araw ng journal na nailipat at nananatili ang naka-save mong setting. Subukan muli.",
     "settingsUnreadable": "Hindi maililipat ang mga folder habang hindi mabasa ang settings file ng vault (.memry/config.json). Ayusin ang file na iyon, pagkatapos ay subukang muli.",
     "settingsUnreadableDelete": "Hindi mabubura ang mga folder habang hindi mabasa ang settings file ng vault (.memry/config.json). Ayusin ang file na iyon, pagkatapos ay subukang muli.",

@@ -21,6 +21,8 @@
     "journalUnlisted": "Non è stato possibile leggere la cartella diario, quindi la modifica non è stata salvata. Verifica di avervi accesso.",
     "excludeUnwatched": "Le cartelle escluse sono state salvate, ma le modifiche fatte fuori dall'app non compariranno finché non riapri la vault.",
     "journalChangeWaits": "Una modifica precedente della cartella del diario o del formato della data non è stata completata. Riapri il vault per completarla, poi riprova.",
+    "journalFolderHeld": "La cartella del diario è stata spostata fuori dall'app e i suoi giorni non possono ancora seguirla lì. Riporta la cartella dov'era o spostala in una normale cartella della cassaforte, poi riprova.",
+    "journalMovesWait": "Lo spostamento di una nota o di una cartella non è stato completato. Riapri la cassaforte per completarlo, poi modifica di nuovo l'impostazione del diario.",
     "journalChangeUnrecorded": "Non è stato possibile preparare la modifica del diario, quindi nessun giorno è stato spostato e l'impostazione salvata resta invariata. Riprova.",
     "settingsUnreadable": "Non è possibile spostare le cartelle finché il file delle impostazioni del vault (.memry/config.json) non è leggibile. Correggi il file e riprova.",
     "settingsUnreadableDelete": "Non è possibile eliminare le cartelle finché il file delle impostazioni del vault (.memry/config.json) non è leggibile. Correggi il file e riprova.",

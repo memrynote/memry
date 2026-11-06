@@ -21,6 +21,8 @@
     "journalUnlisted": "Não foi possível ler a pasta do diário, então a alteração não foi salva. Verifique se você tem acesso a ela.",
     "excludeUnwatched": "As pastas excluídas foram salvas, mas as alterações feitas fora do app só aparecerão quando você reabrir o cofre.",
     "journalChangeWaits": "Uma alteração anterior da pasta do diário ou do formato de data não terminou. Reabra o cofre para concluí-la e tente novamente.",
+    "journalFolderHeld": "A pasta do diário foi movida fora da aplicação e os seus dias ainda não a podem seguir para lá. Volte a pôr a pasta no lugar ou mova-a para uma pasta normal do cofre e tente novamente.",
+    "journalMovesWait": "A deslocação de uma nota ou pasta não terminou. Reabra o cofre para a concluir e depois altere novamente a definição do diário.",
     "journalChangeUnrecorded": "Não foi possível preparar a alteração do diário, por isso nenhum dia foi movido e a definição guardada mantém-se. Tente novamente.",
     "settingsUnreadable": "Não é possível mover pastas enquanto o arquivo de configurações do cofre (.memry/config.json) não puder ser lido. Corrija esse arquivo e tente novamente.",
     "settingsUnreadableDelete": "Não é possível excluir pastas enquanto o arquivo de configurações do cofre (.memry/config.json) não puder ser lido. Corrija esse arquivo e tente novamente.",

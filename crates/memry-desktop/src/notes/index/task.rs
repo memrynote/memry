@@ -351,7 +351,7 @@ impl Indexer {
                 }
                 owed.owe_scan();
             }
-            Applied::Vault(_) => {}
+            Applied::Vault(_) | Applied::JournalFollowed => {}
         }
     }
 
