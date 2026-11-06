@@ -63,6 +63,8 @@ pub(crate) enum Hold {
     ConsumerStopped,
     /// A start, right before its watcher starts.
     WatcherStart,
+    /// A stop, right before it clears the slots.
+    StopClears,
     /// The stop of the OS watch a start sets up, on the thread that stops it, right before it
     /// stops.
     OsWatchStop,
@@ -82,10 +84,25 @@ struct Open {
     writeback: Arc<WriteBack>,
     /// The write-back's pass, for the reconcile that ends each walk.
     pass: Arc<Pass>,
-    /// What the app asks of this open's watcher; dropped once the watcher stopped.
-    watch: WatchHandle,
-    /// Taken by the first stop; a second stop finds them gone.
-    tasks: Mutex<Option<(VaultWatcher, Consumer)>>,
+    /// What the app asks of this open's watcher, the one a restart started last.
+    watch: Mutex<WatchHandle>,
+    /// Held by a restart from its stop to its start, so a close waits for it and stops what it
+    /// started.
+    tasks: Mutex<Tasks>,
+}
+
+enum Tasks {
+    Running(VaultWatcher, Consumer),
+    /// A restart stopped them and could not start them again; the next restart tries.
+    Unwatched,
+    /// Stopped for good, by the first stop; a second stop or a restart finds nothing to do.
+    Stopped,
+}
+
+impl Open {
+    fn watch(&self) -> WatchHandle {
+        lock(&self.watch).clone()
+    }
 }
 
 impl VaultTier {
@@ -130,8 +147,8 @@ impl VaultTier {
     pub fn rescan_watcher(&self, forget: bool) {
         if let Some(open) = self.current() {
             match forget {
-                true => open.watch.resync(),
-                false => open.watch.rescan(),
+                true => open.watch().resync(),
+                false => open.watch().rescan(),
             }
         }
     }
@@ -181,7 +198,7 @@ impl VaultTier {
     /// is not the open one.
     pub(crate) fn not_written(&self, session: RowSession, rel: &str) {
         if let Some(open) = self.current().filter(|open| open.session == session) {
-            open.watch.rehome(rel.to_owned());
+            open.watch().rehome(rel.to_owned());
         }
     }
 
@@ -247,14 +264,17 @@ impl VaultTier {
         else {
             return;
         };
-        let tasks = open.tasks.lock().unwrap_or_else(|e| e.into_inner()).take();
-        if let Some((watcher, mut consumer)) = tasks {
+        // Waits for a restart under way, then stops what it started.
+        let tasks = std::mem::replace(&mut *lock(&open.tasks), Tasks::Stopped);
+        if let Tasks::Running(watcher, mut consumer) = tasks {
             watcher.stop_and_drop();
             consumer.stop();
             #[cfg(test)]
             self.hold(Hold::ConsumerStopped);
         }
         open.writeback.stop();
+        #[cfg(test)]
+        self.hold(Hold::StopClears);
         clear_if_held(&self.open, &open);
         clear_if_held(&self.echo, &open.echo);
         self.rows.close_session(open.session);
@@ -278,11 +298,15 @@ impl VaultTier {
     /// Restarts the watcher and the consumer of `vault`'s open on the exclude patterns saved now
     /// (`updateConfig`'s watcher restart), so a folder a pattern now drops is no longer read and
     /// one it no longer drops is. The new watcher's start rescan and the consumer's walk read the
-    /// vault again under them; a row whose file a pattern drops stays, since the rescan asks the
-    /// disk before it reports a file the walk skipped as missing. The rows' session, the
-    /// own-write record and the write-back keep running, so the app's writes go on meanwhile.
-    /// Nothing when `vault` is not the open one, or its watcher never started (the next open
-    /// reads the patterns). `unwatched` runs between the stop and the start.
+    /// vault again under them; a row whose file a pattern drops stays (the rescan keeps the
+    /// homes the patterns ignore). The rows' session, the own-write record and the write-back
+    /// keep running, so the app's writes go on meanwhile, and the walk ends with the
+    /// write-back's reconcile again: a restart during the open walk stopped that walk's.
+    ///
+    /// The tasks stay locked from the stop to the start, so a close meanwhile waits and stops
+    /// what this started. A start that fails leaves the open unwatched and is reported; the next
+    /// restart tries again. Nothing when `vault` is not the open one, or a close stopped it.
+    /// `unwatched` runs between the stop and the start.
     pub(crate) fn rewatch(
         &self,
         vault: &Arc<Vault>,
@@ -294,35 +318,23 @@ impl VaultTier {
         else {
             return Ok(());
         };
-        let tasks = open.tasks.lock().unwrap_or_else(|e| e.into_inner()).take();
-        let Some((watcher, mut consumer)) = tasks else {
-            // A close stopping it.
-            return Ok(());
-        };
-        watcher.stop_and_drop();
-        consumer.stop();
-        unwatched();
-        // The reconcile again: a stop during the open walk took the open's.
-        let after_walk = after_walk(&open.pass, &open.writeback);
-        let tasks = self.watch(&open.view, open.session, &open.echo, after_walk)?;
-        let rewatched = Arc::new(Open {
-            view: open.view.clone(),
-            session: open.session,
-            echo: open.echo.clone(),
-            writeback: open.writeback.clone(),
-            pass: open.pass.clone(),
-            watch: tasks.0.handle(),
-            tasks: Mutex::new(Some(tasks)),
-        });
-        let mut slot = self.slot();
-        match slot.as_ref() {
-            Some(held) if Arc::ptr_eq(held, &open) => *slot = Some(rewatched),
-            // A close or another open took the slot meanwhile; the new tasks stop as they drop.
-            _ => {
-                drop(slot);
-                drop(rewatched);
+        let mut tasks = lock(&open.tasks);
+        match std::mem::replace(&mut *tasks, Tasks::Unwatched) {
+            Tasks::Stopped => {
+                *tasks = Tasks::Stopped;
+                return Ok(());
             }
+            Tasks::Running(watcher, mut consumer) => {
+                watcher.stop_and_drop();
+                consumer.stop();
+            }
+            Tasks::Unwatched => {}
         }
+        unwatched();
+        let after_walk = after_walk(&open.pass, &open.writeback);
+        let (watcher, consumer) = self.watch(&open.view, open.session, &open.echo, after_walk)?;
+        *lock(&open.watch) = watcher.handle();
+        *tasks = Tasks::Running(watcher, consumer);
         Ok(())
     }
 
@@ -389,8 +401,8 @@ impl VaultTier {
             echo,
             writeback,
             pass,
-            watch: tasks.0.handle(),
-            tasks: Mutex::new(Some(tasks)),
+            watch: Mutex::new(tasks.0.handle()),
+            tasks: Mutex::new(Tasks::Running(tasks.0, tasks.1)),
         })
     }
 

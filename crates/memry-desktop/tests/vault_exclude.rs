@@ -10,23 +10,31 @@
 //! | an excluded note still takes the app's edits                    | its row and write-back stay             |
 //! | excluding the journal folder keeps every day                    | a day is a day by folder and format     |
 //! | an exclude change killed at any step keeps every note           | the save is the only durable step       |
+//! | an excluded note renamed outside keeps its record               | `note_metadata`: no delete syncs        |
+//! | an excluded note deleted outside keeps its record through a ... | the same, an overflow resync included   |
+//! | an excluded folder renamed outside keeps the record it left     | the same; the file is a new note        |
+//! | a restart during the open walk still writes back what it owed   | the restart's walk reconciles too       |
 
 #[allow(unused_imports)]
 use crate::device_key;
 #[allow(unused_imports)]
 use crate::vault_env;
 
+use std::fs;
 use std::sync::Arc;
 
 use memry_core::seams::secure_store::SecureStore;
 use memry_desktop::notes::service::NotesService;
 use memry_desktop::vault::config::VaultConfigPatch;
+use memry_desktop::vault::config::config_path;
 use memry_desktop::vault::consumer::Applied;
+use memry_desktop::vault::consumer::identity::NoteIdentity;
+use memry_desktop::vault::watch::VaultEvent;
 use serde_json::json;
-use vault_env::{Env, QUIET, WAIT, indexed};
+use vault_env::{Env, QUIET, WAIT, creates, env, indexed};
 
 use crate::journal_change_crash::{change_killed, reopened};
-use crate::journal_folder::{DAY, crossed, daily, make_day, outbox, reopen, row};
+use crate::journal_folder::{DAY, crossed, daily, make_day, outbox, quiet, reopen, row};
 use crate::vault_settings::{opened_keeping, stored, update};
 
 const DEFAULTS: [&str; 5] = [".git", "node_modules", ".trash", ".obsidian", ".memry"];
@@ -221,5 +229,153 @@ fn an_exclude_change_killed_at_any_step_keeps_every_note() {
         let facts = changed(&mut e, excludes(&[]));
         assert!(!crossed(&facts), "step {kill_at}: {facts:?}");
         kept(&e, &rows);
+    }
+}
+
+/// No fact removed `id`.
+fn not_removed(facts: &[Applied], id: &str) {
+    assert!(
+        !facts
+            .iter()
+            .any(|f| matches!(f, Applied::Removed { note_id, .. } if note_id == id)),
+        "{facts:?}"
+    );
+}
+
+/// Renamed outside the app inside the excluded folder: the watcher does not read there, so the
+/// record keeps its path and nothing is removed, through three opens.
+#[test]
+fn an_excluded_note_renamed_outside_keeps_its_record() {
+    let (mut e, _store, old, _new) = two_notes();
+    let rows = e.rows();
+    changed(&mut e, excludes(&["archive"]));
+    fs::rename(
+        e.vault.join("archive/old.md"),
+        e.vault.join("archive/old2.md"),
+    )
+    .unwrap();
+    quiet(&mut e);
+    for _ in 0..3 {
+        reopen(&mut e);
+    }
+    kept(&e, &rows);
+
+    // Read again once the pattern is dropped, the rename pairs as the note's move.
+    let facts = changed(&mut e, excludes(&[]));
+    assert!(
+        facts
+            .iter()
+            .any(|f| matches!(f, Applied::Renamed { note_id, new_path, .. }
+            if *note_id == old && new_path == "archive/old2.md")),
+        "{facts:?}"
+    );
+    not_removed(&facts, &old);
+    assert!(!outbox(&e, &old).contains(&"delete".to_owned()));
+}
+
+/// Deleted outside the app, then a resync in the session (an OS event overflow) and three
+/// opens: Electron keeps an excluded note's record, and no delete reaches other devices while
+/// the pattern covers it.
+#[test]
+fn an_excluded_note_deleted_outside_keeps_its_record_through_a_resync() {
+    let (mut e, _store, old, _new) = two_notes();
+    let rows = e.rows();
+    changed(&mut e, excludes(&["archive"]));
+    fs::remove_file(e.vault.join("archive/old.md")).unwrap();
+    e.tier.rescan_watcher(true);
+    let facts = e.facts_until(|f| matches!(f, Applied::Vault(VaultEvent::Rescanned { .. })));
+    assert!(!crossed(&facts), "{facts:?}");
+    quiet(&mut e);
+    for _ in 0..3 {
+        reopen(&mut e);
+    }
+    kept(&e, &rows);
+
+    // Read again once the pattern is dropped, the file is gone: a removal like any other.
+    let facts = changed(&mut e, excludes(&[]));
+    assert!(
+        facts
+            .iter()
+            .any(|f| matches!(f, Applied::Removed { note_id, .. } if *note_id == old)),
+        "{facts:?}"
+    );
+}
+
+/// The excluded folder renamed outside the app: its file is a new note at its new path (no
+/// removal to pair it with, as in Electron), and the record it left keeps its path, with no
+/// delete synced, through three opens.
+#[test]
+fn an_excluded_folder_renamed_outside_keeps_the_record_it_left() {
+    let (mut e, _store, old, _new) = two_notes();
+    let rows = e.rows();
+    changed(&mut e, excludes(&["archive"]));
+    fs::rename(e.vault.join("archive"), e.vault.join("kept")).unwrap();
+    std::thread::sleep(QUIET);
+    not_removed(&e.drain(), &old);
+    for _ in 0..3 {
+        reopen(&mut e);
+    }
+    let now = e.rows();
+    assert!(now.contains(&row(&old, "archive/old.md")), "{now:?}");
+    assert_eq!(now.len(), rows.len() + 1, "{now:?}");
+    for (id, _) in &now {
+        assert!(!outbox(&e, id).contains(&"delete".to_owned()), "{id}");
+    }
+}
+
+/// A restart while the open walk is held ends with a write-back reconcile of its own: an app
+/// edit whose write-back never ran reaches its file, though the stopped walk never got there.
+#[test]
+fn a_restart_during_the_open_walk_still_writes_back_what_the_walk_owed() {
+    let mut made = None;
+    let mut e = env(|store| {
+        let identity = creates(store);
+        made = Some(identity.clone());
+        Some(identity as Arc<dyn NoteIdentity>)
+    });
+    let identity = made.expect("the identity");
+    fs::create_dir_all(e.vault.join(".memry")).unwrap();
+    fs::write(
+        config_path(&e.vault),
+        serde_json::to_vec(&json!({"excludePatterns": DEFAULTS})).unwrap(),
+    )
+    .unwrap();
+    e.write("n.md", "Old\n");
+    e.open();
+    e.facts_until(indexed);
+    let id = e.rows()[0].0.clone();
+    e.edit_in_app(&identity.store, &id, "Typed in the app");
+    e.close();
+    e.drain();
+
+    // More new files than two of the walk's batches: it offers the first batch while it goes on
+    // listing, so once let go it looks at the stop before its end.
+    for n in 0..300 {
+        e.write(&format!("z-{n:03}.md"), "New\n");
+    }
+    identity.hold();
+    e.open();
+    let deadline = std::time::Instant::now() + WAIT;
+    while identity.offered.lock().unwrap().is_empty() {
+        assert!(
+            std::time::Instant::now() < deadline,
+            "the walk never offered a file"
+        );
+        std::thread::sleep(std::time::Duration::from_millis(20));
+    }
+    std::thread::scope(|s| {
+        let restart = s.spawn(|| update(&e, excludes(&["archive"]), |_| {}));
+        // Room for the restart to stop the held walk.
+        std::thread::sleep(std::time::Duration::from_millis(300));
+        identity.release();
+        restart.join().unwrap().unwrap();
+    });
+    let deadline = std::time::Instant::now() + WAIT;
+    while !e.read("n.md").contains("Typed in the app") {
+        assert!(
+            std::time::Instant::now() < deadline,
+            "the owed write-back never ran"
+        );
+        std::thread::sleep(std::time::Duration::from_millis(50));
     }
 }

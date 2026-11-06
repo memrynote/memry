@@ -19,6 +19,7 @@
     "journalFolderRespelled": "A napló mappájának neve csak a kis- és nagybetűkben tér el, ezért a módosítás nem lett mentve. Inkább az oldalsávon nevezd át a mappát.",
     "journalDaysNotRenamed": "A módosítás nem lett mentve, mert néhány naplónapot nem sikerült oda áthelyezni ({count}). Lehet, hogy egy fájlnak már megvan egy nap új neve.",
     "journalUnlisted": "A naplómappát nem sikerült beolvasni, ezért a módosítás nem lett mentve. Ellenőrizze, hogy van-e hozzáférése.",
+    "excludeUnwatched": "A kizárt mappák mentve lettek, de az alkalmazáson kívül végzett módosítások csak a széf újbóli megnyitása után jelennek meg.",
     "journalChangeWaits": "Egy korábbi naplómappa- vagy dátumformátum-módosítás nem fejeződött be. Nyisd meg újra a széfet a befejezéséhez, majd próbáld újra.",
     "journalChangeUnrecorded": "A napló módosítását nem sikerült előkészíteni, ezért egyetlen napló-nap sem került át, és a mentett beállítás megmarad. Próbáld újra.",
     "settingsUnreadable": "A mappák nem helyezhetők át, amíg a széf beállításfájlja (.memry/config.json) nem olvasható. Javítsd ki a fájlt, majd próbáld újra.",

@@ -540,4 +540,5 @@ mod outside_edit;
 mod pipeline;
 #[cfg(windows)]
 mod replace_race;
+mod rewatch;
 mod slow_watch_stop;

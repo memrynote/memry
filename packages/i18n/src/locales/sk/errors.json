@@ -19,6 +19,7 @@
     "journalFolderRespelled": "Názov priečinka denníka sa líši iba veľkosťou písmen, preto sa zmena neuložila. Namiesto toho premenujte priečinok na bočnom paneli.",
     "journalDaysNotRenamed": "Zmena sa neuložila, pretože niektoré dni denníka sa tam nepodarilo presunúť ({count}). Nový názov dňa možno už má iný súbor.",
     "journalUnlisted": "Priečinok denníka sa nepodarilo prečítať, preto sa zmena neuložila. Overte, či k nemu máte prístup.",
+    "excludeUnwatched": "Vylúčené priečinky boli uložené, ale zmeny vykonané mimo aplikácie sa zobrazia až po opätovnom otvorení trezoru.",
     "journalChangeWaits": "Predchádzajúca zmena priečinka denníka alebo formátu dátumu sa nedokončila. Znova otvorte trezor, aby sa dokončila, a potom to skúste znova.",
     "journalChangeUnrecorded": "Zmenu denníka sa nepodarilo pripraviť, takže sa žiadny deň denníka nepresunul a uložené nastavenie zostáva. Skúste to znova.",
     "settingsUnreadable": "Priečinky nemožno presúvať, kým sa nedá prečítať súbor nastavení trezoru (.memry/config.json). Opravte tento súbor a skúste to znova.",

@@ -306,7 +306,8 @@ pub async fn vault_get_config<R: Runtime>(app: AppHandle<R>) -> Result<VaultConf
 /// the order the writes land. A setting not every day can take is refused as
 /// `journal_format_incomplete`, `journal_folder_invalid`, `journal_folder_respelled`,
 /// `journal_unlisted`, `journal_days_not_renamed`, `journal_change_waits` or
-/// `journal_change_unrecorded` (`vault::config::settings`).
+/// `journal_change_unrecorded` (`vault::config::settings`). New exclude patterns whose watcher
+/// could not restart are saved and sent, and answer `vault_unwatched`.
 #[tauri::command]
 #[specta::specta]
 pub async fn vault_update_config<R: Runtime>(
@@ -342,6 +343,7 @@ pub(crate) const CHANGE_WAITS_KEY: &str = "errors:vault.journalChangeWaits";
 const UNRECORDED_KEY: &str = "errors:vault.journalChangeUnrecorded";
 const DAYS_NOT_RENAMED_KEY: &str = "errors:vault.journalDaysNotRenamed";
 const UNLISTED_KEY: &str = "errors:vault.journalUnlisted";
+const UNWATCHED_KEY: &str = "errors:vault.excludeUnwatched";
 
 fn localized<R: Runtime>(app: &AppHandle<R>, key: &str) -> String {
     localized_with(app, key, &i18n::Args::new())
@@ -408,6 +410,12 @@ fn settings_failed<R: Runtime>(app: &AppHandle<R>, error: SettingsError) -> Comm
         SettingsError::Locked => {
             CommandError::new(ErrorKind::Locked, "note_locked", error.to_string())
         }
+        // Saved and sent; the vault's outside edits wait for a later change or open.
+        SettingsError::Unwatched(_) => CommandError::new(
+            ErrorKind::Internal,
+            "vault_unwatched",
+            localized(app, UNWATCHED_KEY),
+        ),
         SettingsError::NoTier => {
             CommandError::new(ErrorKind::Internal, "no_vault_tier", "no vault tier")
         }

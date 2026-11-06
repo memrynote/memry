@@ -19,6 +19,7 @@
     "journalFolderRespelled": "De naam van de journaalmap verschilt alleen in hoofdletters, dus de wijziging is niet opgeslagen. Wijzig de naam van de map in plaats daarvan in de zijbalk.",
     "journalDaysNotRenamed": "De wijziging is niet opgeslagen, omdat sommige dagboekdagen er niet naartoe verplaatst konden worden ({count}). Misschien heeft een bestand al de nieuwe naam van een dag.",
     "journalUnlisted": "De dagboekmap kon niet worden gelezen, dus de wijziging is niet opgeslagen. Controleer of je er toegang toe hebt.",
+    "excludeUnwatched": "De uitgesloten mappen zijn opgeslagen, maar wijzigingen buiten de app verschijnen pas als je de kluis opnieuw opent.",
     "journalChangeWaits": "Een eerdere wijziging van de journaalmap of de datumnotatie is niet afgerond. Open de kluis opnieuw om die af te ronden en probeer het dan opnieuw.",
     "journalChangeUnrecorded": "De journaalwijziging kon niet worden voorbereid, dus er is geen journaaldag verplaatst en je opgeslagen instelling blijft behouden. Probeer het opnieuw.",
     "settingsUnreadable": "Mappen kunnen niet worden verplaatst zolang het instellingenbestand van de kluis (.memry/config.json) niet leesbaar is. Herstel dat bestand en probeer het opnieuw.",

@@ -19,6 +19,7 @@
     "journalFolderRespelled": "O nome da pasta do diário difere apenas em maiúsculas e minúsculas, por isso a alteração não foi salva. Renomeie a pasta na barra lateral.",
     "journalDaysNotRenamed": "A alteração não foi salva porque alguns dias do diário não puderam ser movidos para lá ({count}). Talvez um arquivo já tenha o novo nome de um dia.",
     "journalUnlisted": "Não foi possível ler a pasta do diário, então a alteração não foi salva. Verifique se você tem acesso a ela.",
+    "excludeUnwatched": "As pastas excluídas foram salvas, mas as alterações feitas fora do app só aparecerão quando você reabrir o cofre.",
     "journalChangeWaits": "Uma alteração anterior da pasta do diário ou do formato de data não terminou. Reabra o cofre para concluí-la e tente novamente.",
     "journalChangeUnrecorded": "Não foi possível preparar a alteração do diário, por isso nenhum dia foi movido e a definição guardada mantém-se. Tente novamente.",
     "settingsUnreadable": "Não é possível mover pastas enquanto o arquivo de configurações do cofre (.memry/config.json) não puder ser lido. Corrija esse arquivo e tente novamente.",

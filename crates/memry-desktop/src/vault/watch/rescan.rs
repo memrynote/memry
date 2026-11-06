@@ -71,6 +71,12 @@ impl Reconciler {
             if listed.contains(home.path.as_str()) || under_any(&home.path, &walk.unreadable) {
                 continue;
             }
+            // A note the exclude patterns cover keeps its record whatever happens to its file,
+            // as Electron's `note_metadata` does: the watcher does not read that place, so an
+            // absence there is no removal of this app's to sync.
+            if self.filter.ignores(&home.path) {
+                continue;
+            }
             // The walk skips hidden, excluded and unreadable places; the disk has the last word.
             if is_gone_from_disk(&self.root.join(&home.path)) {
                 missing.push(home);

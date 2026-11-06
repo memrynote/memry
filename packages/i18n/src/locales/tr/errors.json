@@ -19,6 +19,7 @@
     "journalFolderRespelled": "Günlük klasörünün adı yalnızca büyük/küçük harf açısından farklı olduğu için değişiklik kaydedilmedi. Bunun yerine klasörü kenar çubuğundan yeniden adlandırın.",
     "journalDaysNotRenamed": "Bazı günlük günleri oraya taşınamadığı için değişiklik kaydedilmedi ({count}). Bir dosya bir günün yeni adını zaten taşıyor olabilir.",
     "journalUnlisted": "Günlük klasörü okunamadığı için değişiklik kaydedilmedi. Klasöre erişiminiz olduğunu kontrol edin.",
+    "excludeUnwatched": "Hariç tutulan klasörler kaydedildi, ancak uygulama dışında yapılan değişiklikler kasayı yeniden açana kadar görünmeyecek.",
     "journalChangeWaits": "Önceki bir günlük klasörü veya tarih biçimi değişikliği tamamlanmadı. Tamamlanması için kasayı yeniden açın, ardından tekrar deneyin.",
     "journalChangeUnrecorded": "Günlük değişikliği hazırlanamadı; bu yüzden hiçbir günlük günü taşınmadı ve kayıtlı ayarın korunuyor. Tekrar dene.",
     "settingsUnreadable": "Kasa ayarları dosyası (.memry/config.json) okunamadığı sürece klasörler taşınamaz. Dosyayı düzeltip yeniden deneyin.",

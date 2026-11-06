@@ -41,10 +41,15 @@
 //! (`VaultTier::rewatch`), as Electron's `updateConfig` restarts its watcher. Electron then
 //! rebuilds its derived index, which drops a newly excluded note from its lists and keeps its
 //! record (`note_metadata`), so no delete syncs, and takes a file that stops matching back under
-//! that record's id. Here the note's row stays, so it stays listed and keeps its id; the
-//! restart's walk takes an outside edit made while its file was excluded. The save is the only
-//! durable step: an open after a crash reads the saved patterns, and its rescan reports no row
-//! whose file is on disk as removed.
+//! that record's id. Here the note's row stays, so it stays listed and keeps its id, whatever
+//! happens to its file while the patterns cover it: the rescan reports no removal there, so a
+//! file renamed or deleted outside leaves its record behind, as Electron's does, and syncs no
+//! delete. Once the pattern is dropped, the restart's walk reads the file again: an outside edit
+//! made meanwhile replaces the note's body (an app edit made meanwhile is kept as a version;
+//! Step 13m-7b-3b makes a covered note read-only), a rename pairs as a move, and a file that is
+//! gone is a removal then. The save is the only durable step: an open after a crash reads the
+//! saved patterns. A watcher that cannot start on them is reported
+//! ([`SettingsError::Unwatched`]); the save stands, and the next change or open starts it.
 
 use std::io;
 use std::path::Path;
@@ -118,6 +123,10 @@ pub enum SettingsError {
     /// The change could not be recorded before its first move, so nothing moved.
     #[error("the journal setting change could not be recorded: {0}")]
     Unrecorded(String),
+    /// New exclude patterns are saved and announced, and the open vault's watcher could not
+    /// start on them: outside edits are not read until a later change or open starts it.
+    #[error("the vault's watcher did not restart: {0}")]
+    Unwatched(String),
     /// A journal setting change in a vault whose tier did not start, through which the days move.
     #[error("the vault's tier is not running")]
     NoTier,
@@ -216,19 +225,25 @@ pub fn update_vault_settings_checked(
     if let Some(moved) = &moved {
         forget_change(&moved.writer, &moved.change);
     }
-    if let Some((vault, tier)) = days.filter(|_| patch.exclude_patterns.is_some()) {
-        // Saved either way: the next open starts the watcher on the saved patterns.
-        if let Err(error) = tier.rewatch(vault, &mut || step(ChangeStep::Unwatched)) {
-            tracing::error!(
-                scope = SCOPE,
-                "the watcher did not restart on the new exclude patterns; the vault is not \
-                 watched until it opens again: {error}"
-            );
-        }
-    }
+    let unwatched = days
+        .filter(|_| patch.exclude_patterns.is_some())
+        .and_then(|(vault, tier)| {
+            tier.rewatch(vault, &mut || step(ChangeStep::Unwatched))
+                .err()
+        });
     let settings = normalized(written);
     announce(&settings);
-    Ok(settings)
+    match unwatched {
+        // Saved and announced either way; the next change or open starts the watcher again.
+        Some(error) => {
+            tracing::error!(
+                scope = SCOPE,
+                "the watcher did not restart on the new exclude patterns: {error}"
+            );
+            Err(SettingsError::Unwatched(error))
+        }
+        None => Ok(settings),
+    }
 }
 
 /// The settings as stored, read strictly: one that cannot be read names no folder or format

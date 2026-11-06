@@ -19,6 +19,7 @@
     "journalFolderRespelled": "Název složky deníku se liší jen velikostí písmen, proto změna nebyla uložena. Místo toho složku přejmenujte v postranním panelu.",
     "journalDaysNotRenamed": "Změna se neuložila, protože některé dny deníku se tam nepodařilo přesunout ({count}). Nový název dne možná už má jiný soubor.",
     "journalUnlisted": "Složku deníku se nepodařilo přečíst, proto se změna neuložila. Ověřte, že k ní máte přístup.",
+    "excludeUnwatched": "Vyloučené složky byly uloženy, ale změny provedené mimo aplikaci se zobrazí až po opětovném otevření trezoru.",
     "journalChangeWaits": "Dřívější změna složky deníku nebo formátu data nebyla dokončena. Otevřete trezor znovu, aby se dokončila, a pak to zkuste znovu.",
     "journalChangeUnrecorded": "Změnu deníku se nepodařilo připravit, takže se žádný den deníku nepřesunul a uložené nastavení zůstává. Zkuste to znovu.",
     "settingsUnreadable": "Složky nelze přesouvat, dokud nelze přečíst soubor nastavení trezoru (.memry/config.json). Opravte tento soubor a zkuste to znovu.",

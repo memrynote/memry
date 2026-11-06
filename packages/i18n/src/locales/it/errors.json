@@ -19,6 +19,7 @@
     "journalFolderRespelled": "Il nome della cartella del diario cambia solo nelle maiuscole e minuscole, quindi la modifica non è stata salvata. Rinomina invece la cartella nella barra laterale.",
     "journalDaysNotRenamed": "La modifica non è stata salvata perché non è stato possibile spostarvi alcuni giorni del diario ({count}). Forse un file ha già il nuovo nome di un giorno.",
     "journalUnlisted": "Non è stato possibile leggere la cartella diario, quindi la modifica non è stata salvata. Verifica di avervi accesso.",
+    "excludeUnwatched": "Le cartelle escluse sono state salvate, ma le modifiche fatte fuori dall'app non compariranno finché non riapri la vault.",
     "journalChangeWaits": "Una modifica precedente della cartella del diario o del formato della data non è stata completata. Riapri il vault per completarla, poi riprova.",
     "journalChangeUnrecorded": "Non è stato possibile preparare la modifica del diario, quindi nessun giorno è stato spostato e l'impostazione salvata resta invariata. Riprova.",
     "settingsUnreadable": "Non è possibile spostare le cartelle finché il file delle impostazioni del vault (.memry/config.json) non è leggibile. Correggi il file e riprova.",

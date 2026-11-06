@@ -19,6 +19,7 @@
     "journalFolderRespelled": "Nama folder jurnal hanya berbeda pada huruf besar dan kecil, jadi perubahan tidak disimpan. Ganti nama folder di bilah samping saja.",
     "journalDaysNotRenamed": "Perubahan tidak disimpan karena beberapa hari jurnal tidak dapat dipindahkan ke sana ({count}). Mungkin sebuah file sudah memakai nama baru salah satu hari.",
     "journalUnlisted": "Folder jurnal tidak dapat dibaca, jadi perubahan tidak disimpan. Periksa apakah Anda memiliki akses ke folder itu.",
+    "excludeUnwatched": "Folder yang dikecualikan sudah disimpan, tetapi perubahan di luar aplikasi tidak akan muncul sampai kamu membuka ulang vault.",
     "journalChangeWaits": "Perubahan folder jurnal atau format tanggal sebelumnya belum selesai. Buka ulang vault untuk menyelesaikannya, lalu coba lagi.",
     "journalChangeUnrecorded": "Perubahan jurnal tidak dapat disiapkan, jadi tidak ada hari jurnal yang dipindahkan dan pengaturan tersimpan Anda tetap. Coba lagi.",
     "settingsUnreadable": "Folder tidak dapat dipindahkan selama file pengaturan brankas (.memry/config.json) tidak dapat dibaca. Perbaiki file itu, lalu coba lagi.",

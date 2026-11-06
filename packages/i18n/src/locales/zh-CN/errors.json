@@ -19,6 +19,7 @@
     "journalFolderRespelled": "日记文件夹名称仅大小写不同，因此未保存更改。请改为在侧边栏中重命名该文件夹。",
     "journalDaysNotRenamed": "更改未保存，因为部分日记日期无法移到那里（{count}）。可能已有文件使用了某一天的新名称。",
     "journalUnlisted": "无法读取日记文件夹，因此更改未保存。请检查你是否有权访问该文件夹。",
+    "excludeUnwatched": "已保存排除的文件夹，但在应用外所做的更改要等你重新打开保险库后才会显示。",
     "journalChangeWaits": "之前对日记文件夹或日期格式的更改尚未完成。请重新打开保险库以完成更改，然后重试。",
     "journalChangeUnrecorded": "无法准备日记更改，因此没有移动任何日记日期，已保存的设置保持不变。请重试。",
     "settingsUnreadable": "无法读取仓库设置文件（.memry/config.json）时，不能移动文件夹。请修复该文件后重试。",

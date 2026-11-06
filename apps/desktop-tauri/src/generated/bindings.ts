@@ -441,7 +441,8 @@ export const commands = {
 	 *  the order the writes land. A setting not every day can take is refused as
 	 *  `journal_format_incomplete`, `journal_folder_invalid`, `journal_folder_respelled`,
 	 *  `journal_unlisted`, `journal_days_not_renamed`, `journal_change_waits` or
-	 *  `journal_change_unrecorded` (`vault::config::settings`).
+	 *  `journal_change_unrecorded` (`vault::config::settings`). New exclude patterns whose watcher
+	 *  could not restart are saved and sent, and answer `vault_unwatched`.
 	 */
 	vaultUpdateConfig: (config: VaultConfigPatch) => __TAURI_INVOKE<VaultConfig>("vault_update_config", { config }),
 	/**  Drops every retained entry, on disk too. */

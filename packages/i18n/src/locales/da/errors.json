@@ -19,6 +19,7 @@
     "journalFolderRespelled": "Navnet på journalmappen afviger kun i store og små bogstaver, så ændringen blev ikke gemt. Omdøb i stedet mappen i sidepanelet.",
     "journalDaysNotRenamed": "Ændringen blev ikke gemt, fordi nogle dagbogsdage ikke kunne flyttes dertil ({count}). En fil har måske allerede en dags nye navn.",
     "journalUnlisted": "Dagbogsmappen kunne ikke læses, så ændringen blev ikke gemt. Kontrollér, at du har adgang til den.",
+    "excludeUnwatched": "De udelukkede mapper blev gemt, men ændringer foretaget uden for appen vises først, når du åbner boksen igen.",
     "journalChangeWaits": "En tidligere ændring af journalmappen eller datoformatet blev ikke gjort færdig. Åbn boksen igen for at gøre den færdig, og prøv så igen.",
     "journalChangeUnrecorded": "Journalændringen kunne ikke forberedes, så ingen journaldag blev flyttet, og din gemte indstilling er bevaret. Prøv igen.",
     "settingsUnreadable": "Mapper kan ikke flyttes, mens boksens indstillingsfil (.memry/config.json) ikke kan læses. Ret filen, og prøv igen.",

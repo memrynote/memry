@@ -19,6 +19,7 @@
     "journalFolderRespelled": "Nama folder jurnal hanya berbeza pada huruf besar dan kecil, jadi perubahan tidak disimpan. Sebaliknya, namakan semula folder di bar sisi.",
     "journalDaysNotRenamed": "Perubahan tidak disimpan kerana beberapa hari jurnal tidak dapat dialihkan ke sana ({count}). Mungkin sesuatu fail sudah mempunyai nama baharu sesuatu hari.",
     "journalUnlisted": "Folder jurnal tidak dapat dibaca, jadi perubahan tidak disimpan. Pastikan anda mempunyai akses kepadanya.",
+    "excludeUnwatched": "Folder yang dikecualikan telah disimpan, tetapi perubahan di luar apl tidak akan dipaparkan sehingga anda membuka semula peti besi.",
     "journalChangeWaits": "Perubahan folder jurnal atau format tarikh sebelum ini tidak selesai. Buka semula peti besi untuk menyelesaikannya, kemudian cuba lagi.",
     "journalChangeUnrecorded": "Perubahan jurnal tidak dapat disediakan, jadi tiada hari jurnal dialihkan dan tetapan tersimpan anda dikekalkan. Cuba lagi.",
     "settingsUnreadable": "Folder tidak boleh dialihkan selagi fail tetapan bilik kebal (.memry/config.json) tidak boleh dibaca. Betulkan fail itu, kemudian cuba lagi.",
