@@ -9,11 +9,12 @@
 //! | a file changed on disk closes the old leases                | `closed`, never a stale index         |
 //! | a fifth file evicts the oldest scanned session              | `MAX_OPEN_SESSIONS`                   |
 //! | a file past the ceiling is not opened                       | `VIEWER_MAX_BYTES`                    |
-//! | a missing file is missing                                   | `missing`                             |
+//! | a closed or reloaded page lets go of its leases             | no lease outlives its page            |
 //! | a newer search cancels the older one                        | one search per session                |
 //! | a search reports progress and the true total                | `total` past the hit cap              |
 //! | page and query sizes are refused past their caps            | the contract's bounds                 |
 //! | a vault's note opens by id and closes with the vault        | `closeAllLargeFileSessions`           |
+//! | a hard-linked, special or gone note file is missing         | the vault's file-open rules           |
 
 #[allow(unused_imports)]
 use crate::device_key;
@@ -66,6 +67,16 @@ fn until_ready(events: &Receiver<LargeFileEvent>) -> Vec<LargeFileEvent> {
     }
 }
 
+/// Opens `path` as note `note_id` for the main window.
+fn open_at(
+    files: &Arc<LargeFiles>,
+    note_id: &str,
+    path: &Path,
+    sink: EventSink,
+) -> Result<LargeFileOpenResult, LargeFileError> {
+    files.open_file(note_id, "main", fs::File::open(path).unwrap(), sink)
+}
+
 fn write_lines(dir: &Path, name: &str, lines: usize) -> PathBuf {
     let path = dir.join(name);
     let text: String = (0..lines)
@@ -91,7 +102,7 @@ fn opened(
     path: &Path,
 ) -> (String, Receiver<LargeFileEvent>) {
     let (sink, events) = sink();
-    let session = session_of(&files.open_path(note_id, path, sink).unwrap());
+    let session = session_of(&open_at(files, note_id, path, sink).unwrap());
     until_ready(&events);
     (session, events)
 }
@@ -105,7 +116,7 @@ fn an_open_scans_on_its_own_thread_and_pages_read_through_it() {
     let files = LargeFiles::new();
     let (sink, events) = sink();
 
-    let opened = files.open_path("n1", &path, sink).unwrap();
+    let opened = open_at(&files, "n1", &path, sink).unwrap();
     let LargeFileOpenResult::Indexing {
         session_id,
         file_bytes: measured,
@@ -151,7 +162,7 @@ fn a_second_open_shares_the_scanned_file() {
     let (first, _events) = opened(&files, "n1", &path);
     let (sink, events) = sink();
 
-    let second = files.open_path("n1", &path, sink).unwrap();
+    let second = open_at(&files, "n1", &path, sink).unwrap();
 
     let LargeFileOpenResult::Ready {
         session_id,
@@ -174,7 +185,7 @@ fn a_session_lives_until_its_last_lease_closes() {
     let files = LargeFiles::new();
     let (first, _a) = opened(&files, "n1", &path);
     let (sink, _b) = sink();
-    let second = session_of(&files.open_path("n1", &path, sink).unwrap());
+    let second = session_of(&open_at(&files, "n1", &path, sink).unwrap());
 
     files.close(&first);
     assert!(page(&files, &first, 0, 1).is_none());
@@ -241,7 +252,7 @@ fn a_file_past_the_ceiling_is_not_opened() {
         .unwrap();
     let (sink, _events) = sink();
 
-    let opened = LargeFiles::new().open_path("n1", &path, sink).unwrap();
+    let opened = open_at(&LargeFiles::new(), "n1", &path, sink).unwrap();
 
     assert_eq!(
         opened,
@@ -250,16 +261,6 @@ fn a_file_past_the_ceiling_is_not_opened() {
             max_bytes: VIEWER_MAX_BYTES,
         }
     );
-}
-
-#[test]
-fn a_missing_file_is_missing() {
-    let dir = tempfile::tempdir().unwrap();
-    let (sink, _events) = sink();
-    let opened = LargeFiles::new()
-        .open_path("n1", &dir.path().join("gone.md"), sink)
-        .unwrap();
-    assert_eq!(opened, LargeFileOpenResult::Missing);
 }
 
 fn query(session_id: &str, text: &str) -> LargeFileSearchInput {
@@ -400,15 +401,94 @@ fn a_vaults_note_opens_by_id_and_closes_with_the_vault() {
     let vault = e.session.current().expect("open");
     let (sink, events) = sink();
 
-    let session_id = session_of(&files.open(&vault, &id, sink).unwrap());
+    let session_id = session_of(&files.open(&vault, &id, "main", sink).unwrap());
     until_ready(&events);
     assert_eq!(page(&files, &session_id, 59_999, 1).unwrap(), ["row 59999"]);
     let (sink, _) = self::sink();
     assert_eq!(
-        files.open(&vault, "no-such-note", sink).unwrap(),
+        files.open(&vault, "no-such-note", "main", sink).unwrap(),
         LargeFileOpenResult::Missing
     );
 
     e.close();
     assert!(page(&files, &session_id, 0, 1).is_none());
+}
+
+#[test]
+fn a_closed_or_reloaded_page_lets_go_of_its_leases() {
+    let dir = tempfile::tempdir().unwrap();
+    let path = write_lines(dir.path(), "a.md", 10);
+    let files = LargeFiles::new();
+    let (main, _a) = opened(&files, "n1", &path);
+    let (sink, _b) = sink();
+    let other = session_of(
+        &files
+            .open_file("n1", "note-window", fs::File::open(&path).unwrap(), sink)
+            .unwrap(),
+    );
+
+    files.release_owner("note-window");
+    assert!(page(&files, &other, 0, 1).is_none());
+    assert!(page(&files, &main, 0, 1).is_some());
+
+    files.release_owner("main");
+    assert!(page(&files, &main, 0, 1).is_none());
+}
+
+/// A vault holding `Big.md` as a note, opened, with the note's id.
+fn vault_with_note() -> (vault_env::Env, String) {
+    let mut e = env(|store| Some(NotesIdentity::new(store)));
+    e.write("Big.md", "# Big\n");
+    e.open();
+    e.facts_until(indexed);
+    let id = e
+        .rows()
+        .into_iter()
+        .find(|(_, path)| path == "Big.md")
+        .expect("a row for Big.md")
+        .0;
+    (e, id)
+}
+
+#[test]
+fn a_hard_linked_special_or_gone_note_file_is_missing() {
+    let (e, id) = vault_with_note();
+    let vault = e.session.current().expect("open");
+    let files = LargeFiles::new();
+    let open = |files: &Arc<LargeFiles>| {
+        let (sink, _) = sink();
+        files.open(&vault, &id, "main", sink).unwrap()
+    };
+    let note = e.vault.join("Big.md");
+
+    let link = e._dir.path().join("elsewhere.md");
+    fs::hard_link(&note, &link).unwrap();
+    assert_eq!(open(&files), LargeFileOpenResult::Missing, "hard-linked");
+    fs::remove_file(&link).unwrap();
+
+    fs::remove_file(&note).unwrap();
+    assert_eq!(open(&files), LargeFileOpenResult::Missing, "gone");
+
+    #[cfg(unix)]
+    {
+        // A FIFO with no writer: a plain open would block until one appears.
+        let status = std::process::Command::new("mkfifo")
+            .arg(&note)
+            .status()
+            .unwrap();
+        assert!(status.success());
+        let (done, answered) = channel();
+        let files = files.clone();
+        let vault = vault.clone();
+        let id = id.clone();
+        std::thread::spawn(move || {
+            let (sink, _) = sink();
+            let _ = done.send(files.open(&vault, &id, "main", sink).unwrap());
+        });
+        assert_eq!(
+            answered.recv_timeout(WAIT).expect("the open answered"),
+            LargeFileOpenResult::Missing,
+            "a FIFO"
+        );
+    }
 }

@@ -93,8 +93,9 @@ fn a_session_over_a_64_mib_file_peaks_at_a_few_windows() {
     let before = LIVE.load(Ordering::Relaxed);
     PEAK.store(before, Ordering::Relaxed);
 
-    let LargeFileOpenResult::Indexing { session_id, .. } =
-        files.open_path("n1", &path, sink).unwrap()
+    let LargeFileOpenResult::Indexing { session_id, .. } = files
+        .open_file("n1", "main", std::fs::File::open(&path).unwrap(), sink)
+        .unwrap()
     else {
         panic!("not indexing");
     };

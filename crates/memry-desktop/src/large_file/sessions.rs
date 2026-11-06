@@ -2,7 +2,6 @@
 //! `searchLargeFileSession`, `closeLargeFileSession` of `vault/large-file-session.ts`).
 
 use std::fs::File;
-use std::path::Path;
 use std::sync::atomic::{AtomicBool, AtomicU64, Ordering};
 use std::sync::{Arc, Mutex, MutexGuard, PoisonError};
 use std::time::SystemTime;
@@ -16,8 +15,9 @@ use super::{
     MAX_PAGE_LINES, MAX_QUERY_UNITS, VIEWER_MAX_BYTES,
 };
 use crate::notes::error::NotesError;
-use crate::notes::read;
 use crate::session::{OpenVault, Session};
+use crate::shell::file_open::OpenError;
+use crate::vault::paths::open_vault_file;
 
 const SCOPE: &str = "LargeFileSession";
 
@@ -28,6 +28,8 @@ pub type ProgressSink = Arc<dyn Fn(LargeFileSearchProgress) + Send + Sync>;
 
 struct Lease {
     id: String,
+    /// The webview that opened it: a closed or reloaded page lets go of its leases.
+    owner: String,
     sink: EventSink,
 }
 
@@ -112,37 +114,50 @@ impl LargeFiles {
         self.state.lock().unwrap_or_else(PoisonError::into_inner)
     }
 
-    /// Opens the note's file. Returns as soon as the file is open; the scan runs on its own
-    /// thread and reports on `sink`. A note with no file in the vault is `missing`.
+    /// Opens the note's file for `owner` (a webview label). Returns as soon as the file is open;
+    /// the scan runs on its own thread and reports on `sink`. A note whose file is gone, outside
+    /// the vault, not a regular file or hard-linked is `missing`, as the vault's own reads refuse
+    /// it.
     pub fn open(
         self: &Arc<Self>,
         vault: &OpenVault,
         note_id: &str,
+        owner: &str,
         sink: EventSink,
     ) -> Result<LargeFileOpenResult, LargeFileError> {
-        match read::file_path(vault, note_id) {
-            Ok(path) => self.open_path(note_id, &path, sink),
-            Err(NotesError::NotFound(_) | NotesError::Outside) => Ok(LargeFileOpenResult::Missing),
-            Err(error) => Err(error.into()),
+        let Some(row) = vault
+            .vault
+            .note_files()
+            .by_id(note_id)
+            .map_err(NotesError::from)?
+        else {
+            return Ok(LargeFileOpenResult::Missing);
+        };
+        match open_vault_file(&vault.path, &row.path) {
+            Ok(Some(file)) => self.open_file(note_id, owner, file, sink),
+            Ok(None) => Ok(LargeFileOpenResult::Missing),
+            Err(
+                error @ (OpenError::Outside
+                | OpenError::NotRegular
+                | OpenError::HardLinked
+                | OpenError::KeptChanging
+                | OpenError::Io(_)),
+            ) => {
+                tracing::warn!(scope = SCOPE, note_id, "a large file did not open: {error}");
+                Ok(LargeFileOpenResult::Missing)
+            }
         }
     }
 
-    /// [`Self::open`] over a resolved path.
-    pub fn open_path(
+    /// [`Self::open`] over a file the vault opened. Measured through the handle, so the size is
+    /// the opened file's, whatever the path names by now.
+    pub fn open_file(
         self: &Arc<Self>,
         note_id: &str,
-        path: &Path,
+        owner: &str,
+        file: File,
         sink: EventSink,
     ) -> Result<LargeFileOpenResult, LargeFileError> {
-        // Open first, then measure through the handle: stat-then-open would measure whatever the
-        // path named before the open landed.
-        let file = match File::open(path) {
-            Ok(file) => file,
-            Err(error) => {
-                tracing::warn!(scope = SCOPE, note_id, "a large file did not open: {error}");
-                return Ok(LargeFileOpenResult::Missing);
-            }
-        };
         let metadata = match file.metadata() {
             Ok(metadata) => metadata,
             Err(error) => {
@@ -175,6 +190,7 @@ impl LargeFiles {
             if entry.file_bytes == file_bytes && entry.modified == modified {
                 entry.leases.push(Lease {
                     id: lease_id.clone(),
+                    owner: owner.to_owned(),
                     sink,
                 });
                 return Ok(match &entry.index {
@@ -207,6 +223,7 @@ impl LargeFiles {
             index: None,
             leases: vec![Lease {
                 id: lease_id.clone(),
+                owner: owner.to_owned(),
                 sink,
             }],
             gone: gone.clone(),
@@ -394,6 +411,17 @@ impl LargeFiles {
         let entry = &mut state.entries[at];
         entry.leases.retain(|lease| lease.id != session_id);
         if entry.leases.is_empty() {
+            state.dispose(at, false);
+        }
+    }
+
+    /// Releases every lease of `owner`: its page closed or reloaded, and will never close them.
+    pub fn release_owner(&self, owner: &str) {
+        let mut state = self.state();
+        for entry in &mut state.entries {
+            entry.leases.retain(|lease| lease.owner != owner);
+        }
+        while let Some(at) = state.entries.iter().position(|e| e.leases.is_empty()) {
             state.dispose(at, false);
         }
     }
