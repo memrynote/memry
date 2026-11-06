@@ -65,6 +65,23 @@ fn watcher_changed(id: &str) -> impl Fn(&Applied) -> bool + '_ {
     move |f| matches!(f, Applied::Changed { note_id, source: ChangeSource::Watcher, .. } if note_id == id)
 }
 
+fn outside_kept(id: &str) -> impl Fn(&Applied) -> bool + '_ {
+    move |f| matches!(f, Applied::OutsideEditKept { note_id, .. } if note_id == id)
+}
+
+/// Waits for the file to read `text`.
+fn until_file(e: &Env, rel: &str, text: &str) {
+    let deadline = std::time::Instant::now() + WAIT;
+    while e.read(rel) != text {
+        assert!(
+            std::time::Instant::now() < deadline,
+            "{rel}: {:?}",
+            e.read(rel)
+        );
+        std::thread::sleep(Duration::from_millis(20));
+    }
+}
+
 /// The seam Steps 14 and 17 call: an edit made in the app, scheduled the way the editor and
 /// the sync driver do, reaches the file, and the watcher takes that write for the app's own.
 #[test]
@@ -107,24 +124,33 @@ fn an_outside_edit_reaches_the_body_and_the_replaced_body_is_kept() {
     assert!(kept.iter().any(|v| v.contains("first words")), "{kept:?}");
 }
 
-/// The file is edited outside while an edit made in the app waits for its write. Whichever
-/// lands first, the outside edit is the file and the body, and the app's edit is a version.
+/// The file is edited outside while an edit made in the app waits for its write: the app's edit
+/// wins, as unsaved typing does (#4030), and the outside edit is a version.
 #[test]
-fn an_outside_edit_made_before_the_apps_write_wins_and_the_apps_edit_is_kept() {
+fn an_outside_edit_made_before_the_apps_write_is_kept_and_the_apps_edit_wins() {
     let (mut e, identity, id) = one_note();
     e.edit_in_app(&identity.store, &id, "typed in the app");
     e.tier.schedule(&id);
     e.write("n.md", "edited outside\n");
-    e.facts_until(watcher_changed(&id));
+    e.facts_until(outside_kept(&id));
     assert!(e.tier.flush(WAIT));
-    std::thread::sleep(QUIET);
-    assert_eq!(e.read("n.md"), "edited outside\n");
-    assert_eq!(e.body(&id), "edited outside");
+    until_file(&e, "n.md", "typed in the app\n");
+    assert_eq!(e.body(&id), "typed in the app");
     let kept = e.versions(&id);
-    assert!(
-        kept.iter().any(|v| v.contains("typed in the app")),
-        "{kept:?}"
-    );
+    assert!(kept.iter().any(|v| v == "edited outside\n"), "{kept:?}");
+}
+
+/// A window put back typing over an outside edit the note took before that typing reached it:
+/// the file, which holds the outside edit, is a version, and the note page is told.
+#[test]
+fn an_outside_edit_a_window_typed_over_is_kept_as_a_version() {
+    let (mut e, _, id) = one_note();
+    e.write("n.md", "edited outside\n");
+    e.facts_until(watcher_changed(&id));
+    e.tier.keep_outside_edit(&id);
+    e.facts_until(outside_kept(&id));
+    let kept = e.versions(&id);
+    assert!(kept.iter().any(|v| v == "edited outside\n"), "{kept:?}");
 }
 
 /// One note whose frontmatter stopped parsing outside the app (#3750) with `body` under it,
@@ -178,26 +204,18 @@ fn an_edit_made_after_the_frontmatter_broke_outside_is_kept_and_told() {
     }
 }
 
-/// The user fixes the frontmatter outside the app after the edit above: the file's text is the
-/// note's again, as for any outside edit, and the edit made in the app is kept as a version of
-/// the note, not lost.
+/// The user fixes the frontmatter outside the app after the edit above: the edit made in the
+/// app, which the file never got, wins over that outside edit as any unwritten edit does, and
+/// is written under the fixed frontmatter. The fixed file is kept as a version.
 #[test]
-fn a_frontmatter_fixed_outside_replaces_the_app_edit_and_keeps_it_as_a_version() {
+fn a_frontmatter_fixed_outside_takes_the_app_edit_written_under_it() {
     let (e, id, _, _) = edited_in_app_after_its_frontmatter_broke("edited outside");
-    e.write("n.md", "---\ntags: [closed]\n---\nedited outside\n");
-    let deadline = std::time::Instant::now() + WAIT;
-    while e.body(&id) != "edited outside" {
-        assert!(
-            std::time::Instant::now() < deadline,
-            "the fixed file never reached the note"
-        );
-        std::thread::sleep(Duration::from_millis(20));
-    }
+    let fixed = "---\ntags: [closed]\n---\nedited outside\n";
+    e.write("n.md", fixed);
+    until_file(&e, "n.md", "---\ntags: [closed]\n---\ntyped in the app\n");
+    assert_eq!(e.body(&id), "typed in the app");
     let versions = e.versions(&id);
-    assert!(
-        versions.iter().any(|v| v.contains("typed in the app")),
-        "the app's edit was not kept: {versions:?}"
-    );
+    assert!(versions.iter().any(|v| v == fixed), "{versions:?}");
 }
 
 #[cfg(unix)]

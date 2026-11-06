@@ -2,6 +2,7 @@
 //! `OpenStage::Watcher` of every open and stop, joined, when the vault closes. The rows' lane
 //! lives across sessions (the app holds it), and is open only while a vault is.
 
+use std::path::PathBuf;
 use std::sync::{Arc, Mutex, MutexGuard};
 use std::time::Duration;
 
@@ -19,6 +20,7 @@ use crate::vault::activity::ActivityLog;
 use crate::vault::app_edit::OwnFiles;
 use crate::vault::app_move::{finish_interrupted, follow_interrupted};
 use crate::vault::config::read_vault_config;
+use crate::vault::note_file::read_note;
 #[cfg(test)]
 use crate::vault::watch::HoldFn;
 use crate::vault::watch::{EchoGuard, NewFiles, VaultWatcher, WatchHandle};
@@ -72,6 +74,7 @@ pub(crate) enum Hold {
 struct Open {
     /// The vault this open belongs to: a close hook stops the open only if it is its vault's.
     vault: Arc<Vault>,
+    root: PathBuf,
     session: RowSession,
     /// The own-write record of this open; a record made in one vault never hides a change in
     /// the next.
@@ -165,6 +168,41 @@ impl VaultTier {
                 note_id,
                 "no vault is open: the file is written on the next open"
             ),
+        }
+    }
+
+    /// A window puts back typing over an outside edit the note's document took before that
+    /// typing reached it (`HostEvent::OutsideEditKept`): the note's file, which holds the outside
+    /// edit, is kept as a version, under the rows' lane so no write-back replaces it meanwhile,
+    /// and the pages are told ([`Applied::OutsideEditKept`]). The typing's write is scheduled
+    /// once it is stored.
+    pub fn keep_outside_edit(&self, note_id: &str) {
+        let Some(open) = self.current() else {
+            return tracing::warn!(scope = "vault_writeback", note_id, "no vault is open");
+        };
+        let kept = (|| {
+            let lane = self.rows.lane_of(open.session).map_err(|e| e.to_string())?;
+            let row = lane.files().by_id(note_id).map_err(|e| e.to_string())?;
+            let row = row.ok_or("the note has no file")?;
+            let file = read_note(&open.root, &row.path).map_err(|e| e.to_string())?;
+            let file = file.ok_or("the note's file is gone")?;
+            let body = file.split().body;
+            open.vault
+                .write_back()
+                .keep_replaced(note_id, &file.raw, body)
+                .map_err(|e| e.to_string())?;
+            lane.publish(Applied::OutsideEditKept {
+                note_id: note_id.to_owned(),
+                path: row.path,
+            });
+            Ok::<(), String>(())
+        })();
+        if let Err(error) = kept {
+            tracing::error!(
+                scope = "vault_writeback",
+                note_id,
+                "the outside edit under typing put back was not kept: {error}"
+            );
         }
     }
 
@@ -361,6 +399,7 @@ impl VaultTier {
             own_files: self.own_files.clone(),
             watch: Some(watcher.handle()),
             untaken: Mutex::default(),
+            writeback: Some(writeback.clone()),
         };
         let after_walk: AfterWalk = {
             let writeback = writeback.clone();
@@ -370,6 +409,7 @@ impl VaultTier {
             .map_err(|error| error.to_string())?;
         Ok(Open {
             vault: vault.vault.clone(),
+            root: vault.path.clone(),
             session,
             echo,
             writeback,

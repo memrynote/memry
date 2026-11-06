@@ -147,6 +147,12 @@ impl NoteFiles {
         self.db.read_blocking(note_files::behind_bodies)
     }
 
+    /// Whether the note's body moved after its row's stamp ([`note_files::behind_body`]).
+    pub fn behind_body(&self, note_id: &str) -> Result<bool, StorageError> {
+        self.db
+            .read_blocking(move |conn| note_files::behind_body(conn, note_id))
+    }
+
     /// The markdown rows of tombstoned notes ([`note_files::rows_of_deleted_notes`]).
     pub fn rows_of_deleted_notes(&self) -> Result<Vec<NoteFile>, StorageError> {
         self.db.read_blocking(note_files::rows_of_deleted_notes)

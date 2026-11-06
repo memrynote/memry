@@ -1,7 +1,7 @@
 //! One write-back pass for one note; the rules are the module invariants.
 
 use std::collections::HashMap;
-use std::path::PathBuf;
+use std::path::{Path, PathBuf};
 use std::sync::{Arc, Mutex};
 
 use memry_core::api::vault::Vault;
@@ -20,7 +20,8 @@ use crate::vault::embeds::Resolved;
 use crate::vault::file_types::FileType;
 use crate::vault::hash::content_hash;
 use crate::vault::note_file::{
-    NoteFileError, large_file_class, read_note, record_large_file, write_note_over_checked,
+    NoteFile, NoteFileError, large_file_class, read_note, record_large_file,
+    write_note_over_checked,
 };
 use crate::vault::watch::EchoGuard;
 
@@ -116,11 +117,6 @@ impl Pass {
         // The row's stamp: taken before the body is read, so an edit made after the read is
         // after the stamp and the note stays behind its body (`reconcile`).
         let read_at = now_ms();
-        // A journal day's file takes the day's date in its frontmatter (`journal`).
-        let file_date = match self.vault.write_back().file_date(note_id) {
-            Ok(date) => date,
-            Err(error) => return Outcome::Failed(format!("the journal day: {error}")),
-        };
         let row = match lane.files().by_id(note_id) {
             Ok(Some(row)) => row,
             Ok(None) => return Outcome::Kept(Keep::NoRow),
@@ -140,52 +136,14 @@ impl Pass {
         if file.hash != row_hash {
             return Outcome::Kept(Keep::FileChanged);
         }
-        // A block that does not parse is bytes the document does not hold, and the row may name
-        // such a file (`vault::consumer`): it is never written over.
-        let parsed = match file.parse() {
-            Ok(parsed) => parsed,
-            Err(error) => return Outcome::FrontmatterUnreadable(error.to_string()),
-        };
-        let old_body = file.split().body;
-        let converter = converter_for(self.settings.as_ref());
-        // Outside the read: the lookup reads the database the read holds.
-        let embeds =
-            Resolved::of_markdown(&self.root, &self.vault.note_files(), old_body, &row.path);
-        let read = self.vault.write_back().body(
-            &converter,
+        let output = match output_over(
+            (&self.vault, self.settings.as_ref(), &self.root),
             note_id,
             &row.path,
-            old_body.strip_prefix(BOM).unwrap_or(old_body),
-            &embeds,
-        );
-        let body = match read {
-            Ok(BodyRead::Body(body)) => body,
-            Ok(BodyRead::NoNote) => return Outcome::Kept(Keep::NoNote),
-            Ok(BodyRead::FileAhead) => return Outcome::Kept(Keep::FileAhead),
-            Ok(BodyRead::BodyNotPulled) => return Outcome::Kept(Keep::BodyNotPulled),
-            Ok(BodyRead::NotRepresentable(what)) => {
-                return Outcome::Kept(Keep::NotRepresentable(what));
-            }
-            Ok(BodyRead::Failed(reason)) => return Outcome::Failed(reason.to_owned()),
-            Err(error) => return Outcome::Failed(format!("the body could not be read: {error}")),
-        };
-        // The same text in the file's spelling (mixed line ends, extra final newlines) is the
-        // file's: the document does not hold the spelling, so the file keeps it.
-        let bare = old_body.strip_prefix(BOM).unwrap_or(old_body);
-        let markdown = if same_text(&body.markdown, bare) {
-            old_body
-        } else {
-            body.markdown.as_str()
-        };
-        let output = match file_for(
-            parsed,
-            markdown,
-            &body.writing,
-            &file.raw,
-            (note_id, file_date.as_deref()),
+            &file,
         ) {
             Ok(output) => output,
-            Err(reason) => return Outcome::Failed(reason),
+            Err(outcome) => return outcome,
         };
         if output == file.raw {
             let stat = RowStat {
@@ -277,6 +235,69 @@ impl Pass {
             .keep_replaced(note_id, raw, split_frontmatter_block(raw).body)
             .map_err(|error| error.to_string())
     }
+}
+
+/// The file the note's body makes of `file`, the note's file at `path`, as a pass writes it;
+/// `Err` with the pass's outcome when the body is not written over it.
+pub(crate) fn output_over(
+    (vault, settings, root): (&Vault, Option<&AppSettings>, &Path),
+    note_id: &str,
+    path: &str,
+    file: &NoteFile,
+) -> Result<String, Outcome> {
+    // A journal day's file takes the day's date in its frontmatter (`journal`).
+    let file_date = match vault.write_back().file_date(note_id) {
+        Ok(date) => date,
+        Err(error) => return Err(Outcome::Failed(format!("the journal day: {error}"))),
+    };
+    // A block that does not parse is bytes the document does not hold, and the row may name
+    // such a file (`vault::consumer`): it is never written over.
+    let parsed = match file.parse() {
+        Ok(parsed) => parsed,
+        Err(error) => return Err(Outcome::FrontmatterUnreadable(error.to_string())),
+    };
+    let old_body = file.split().body;
+    let converter = converter_for(settings);
+    // Outside the read: the lookup reads the database the read holds.
+    let embeds = Resolved::of_markdown(root, &vault.note_files(), old_body, path);
+    let read = vault.write_back().body(
+        &converter,
+        note_id,
+        path,
+        old_body.strip_prefix(BOM).unwrap_or(old_body),
+        &embeds,
+    );
+    let body = match read {
+        Ok(BodyRead::Body(body)) => body,
+        Ok(BodyRead::NoNote) => return Err(Outcome::Kept(Keep::NoNote)),
+        Ok(BodyRead::FileAhead) => return Err(Outcome::Kept(Keep::FileAhead)),
+        Ok(BodyRead::BodyNotPulled) => return Err(Outcome::Kept(Keep::BodyNotPulled)),
+        Ok(BodyRead::NotRepresentable(what)) => {
+            return Err(Outcome::Kept(Keep::NotRepresentable(what)));
+        }
+        Ok(BodyRead::Failed(reason)) => return Err(Outcome::Failed(reason.to_owned())),
+        Err(error) => {
+            return Err(Outcome::Failed(format!(
+                "the body could not be read: {error}"
+            )));
+        }
+    };
+    // The same text in the file's spelling (mixed line ends, extra final newlines) is the
+    // file's: the document does not hold the spelling, so the file keeps it.
+    let bare = old_body.strip_prefix(BOM).unwrap_or(old_body);
+    let markdown = if same_text(&body.markdown, bare) {
+        old_body
+    } else {
+        body.markdown.as_str()
+    };
+    file_for(
+        parsed,
+        markdown,
+        &body.writing,
+        &file.raw,
+        (note_id, file_date.as_deref()),
+    )
+    .map_err(Outcome::Failed)
 }
 
 /// The file the body makes of `parsed`: its frontmatter block kept byte for byte unless the

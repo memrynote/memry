@@ -24,6 +24,7 @@ use crate::vault::note_file::{
     record_large_file,
 };
 use crate::vault::watch::{VaultEvent, WatchHandle};
+use crate::vault::writeback::WriteBack;
 
 mod crossing;
 
@@ -56,6 +57,9 @@ pub(super) struct Applier {
     pub(super) watch: Option<WatchHandle>,
     /// By note id, how many times in a row an outside edit did not reach its record.
     pub(super) untaken: Mutex<HashMap<String, u32>>,
+    /// The open's write-back, which writes a body that won over an outside edit; `None` in a
+    /// test that runs none.
+    pub(super) writeback: Option<Arc<WriteBack>>,
 }
 
 impl Applier {
@@ -109,7 +113,7 @@ impl Applier {
     /// record did not take it and the fact is to be retried. Once it failed past the retries,
     /// the edit goes on without it, the record keeping what it had, so the row names the file
     /// the document holds and the app's edits of it are not refused for good.
-    fn told(&self, note_id: &str, previous: &str, file: &NoteFile) -> bool {
+    pub(super) fn told(&self, note_id: &str, previous: &str, file: &NoteFile) -> bool {
         let Err(error) = self
             .identity
             .on_changed(&self.ctx(), note_id, previous, file)
@@ -304,7 +308,13 @@ impl Applier {
                     }
                     return Step::Done;
                 }
-                Some(_) => Write::Replace,
+                Some(previous) => {
+                    match self.outside_edit(lane, note_id, path, (previous, row.indexed_at), &file)
+                    {
+                        Ok(mark) => Write::Replace(mark),
+                        Err(step) => return step,
+                    }
+                }
                 // The row names no text the document holds, so the body may be one the file
                 // never had (synced, kept, owed and since pulled): the file only fills an
                 // empty body. A conflict between the two is the write-back's (12e-3, Step 17).

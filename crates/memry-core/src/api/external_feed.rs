@@ -11,7 +11,8 @@ use crate::api::errors::AuthError;
 use crate::crdt::body_writes;
 use crate::crdt::errors::CrdtError;
 use crate::crypto::keys;
-use crate::domain::external_feed::{self, FeedInput, FeedOutcome, FirstBody};
+use crate::domain::external_feed::{self, AppRead, FeedInput, FeedOutcome, FirstBody};
+use crate::domain::write_back::LogMark;
 use crate::markdown::convert::api::Converter;
 use crate::seams::secure_store::{SecureStore, SecureStoreKey};
 use crate::storage::Db;
@@ -56,13 +57,37 @@ impl ExternalFeed {
         self.run(external_feed::feed_external_edit, converter, input)
     }
 
-    /// The app's own write of a note's body, after it read `read` from the file. See
+    /// [`Self::feed`] unless the document took an edit since `compared_at`. See
+    /// [`external_feed::feed_external_edit_since`].
+    pub fn feed_since(
+        &self,
+        converter: &Converter,
+        input: FeedInput<'_>,
+        compared_at: LogMark,
+    ) -> Result<FeedOutcome, CrdtError> {
+        self.run(
+            |conn, converter, input, device_id, now_ms| {
+                external_feed::feed_external_edit_since(
+                    conn,
+                    converter,
+                    input,
+                    compared_at,
+                    device_id,
+                    now_ms,
+                )
+            },
+            converter,
+            input,
+        )
+    }
+
+    /// The app's own write of a note's body, after it read `read`. See
     /// [`external_feed::feed_app_edit`].
     pub fn feed_app_edit(
         &self,
         converter: &Converter,
         input: FeedInput<'_>,
-        read: &str,
+        read: AppRead<'_>,
     ) -> Result<FeedOutcome, CrdtError> {
         self.run(
             |conn, converter, input, device_id, now_ms| {

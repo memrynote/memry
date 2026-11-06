@@ -557,3 +557,29 @@ fn only_a_stored_window_edit_asks_for_its_file_to_be_written() {
     assert!(refused.is_err());
     assert_eq!(edited().len(), 1, "a refused edit writes no file");
 }
+
+/// Typing a window put back over an outside edit: the shell keeps the file the outside edit
+/// wrote before the typing is stored, so the write-back never writes the typing over it first.
+#[test]
+fn typing_put_back_over_an_outside_edit_keeps_that_edit_first() {
+    let env = env();
+    let note = env.note();
+    let (main, _) = env.open(&note, "main");
+    env.events.lock().unwrap().clear();
+    let typed = main.type_text("typed");
+    let refused = env.host.apply_over_outside_edit(&note, &typed, "popout");
+    assert!(refused.is_err());
+    assert!(
+        env.events.lock().unwrap().is_empty(),
+        "a window that has not opened it"
+    );
+
+    env.host
+        .apply_over_outside_edit(&note, &typed, "main")
+        .unwrap();
+    let kept = HostEvent::OutsideEditKept {
+        note_id: note.clone(),
+    };
+    let edited = HostEvent::Edited { note_id: note };
+    assert_eq!(*env.events.lock().unwrap(), [kept, edited]);
+}

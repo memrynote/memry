@@ -520,6 +520,7 @@ pub(super) fn applier(
         own_files: Arc::default(),
         watch: None,
         untaken: Mutex::default(),
+        writeback: None,
     }
 }
 
@@ -541,3 +542,4 @@ mod pipeline;
 #[cfg(windows)]
 mod replace_race;
 mod slow_watch_stop;
+mod typing_wins;

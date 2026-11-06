@@ -275,6 +275,7 @@ pub fn builder() -> Builder<Wry> {
             crate::events::NoteEventsDroppedEvent,
             crate::events::NoteLinksChangedEvent,
             crate::events::NoteMovedEvent,
+            crate::events::NoteOutsideEditKeptEvent,
             crate::events::NoteRenamedEvent,
             crate::events::NoteTagsChangedEvent,
             crate::events::NoteUpdatedEvent,

@@ -196,6 +196,10 @@ fn register_editor_host(app: &AppHandle<Wry>, session: &Session) {
                 "no vault tier: the edit reaches the file on the next open"
             ),
         },
+        HostEvent::OutsideEditKept { note_id } => match &tier {
+            Some(tier) => tier.keep_outside_edit(&note_id),
+            None => tracing::error!(scope = "editor", note_id, "no vault tier: nothing kept"),
+        },
     });
     host.register(session);
     app.manage(host);

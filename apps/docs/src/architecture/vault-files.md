@@ -39,6 +39,8 @@ The consumer is the one writer of `note_files`. A row holds the file's path, siz
 
 When a file changes outside the app, the consumer feeds the new text to the note's document and keeps the body it replaces as a version. The row's hash is recorded only after the document took the whole file. The write-back trusts that hash, so a hash recorded too early would let it write over text the document never had.
 
+An outside edit that meets typing the file does not have yet (the write-back's 500 ms wait, or a write the edit refused) does not reach the document. The typing wins: the consumer keeps the outside file as a version, the write-back writes the typing over it, and the note page shows a toast that opens version history. Typing that is still on its way from the window when an outside edit reaches the document wins the same way: the window puts its text back and the outside file is kept as a version.
+
 ## The write-back
 
 **When.** A note's file is written 500 ms after its last edit. Every edit starts the wait again, so typing writes the file once, when you pause. After every pass, whether it wrote the file or not, the note's next pass waits 9 times what that pass cost, at most 5 seconds, so a large note does not keep a core busy while you type. Every quit and every vault close writes all waiting notes first (the `flush-writebacks` step of [Quit and Shutdown](/architecture/shutdown)).

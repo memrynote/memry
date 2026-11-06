@@ -12,10 +12,11 @@
 //!   hash, and the document must serialize to its text and `writing` data. Anything else is
 //!   [`Edited::Kept`] and nothing changes: an outside edit not fed yet, a document ahead of its
 //!   file, a body not pulled or not representable. The edit keeps no version, since it replaces
-//!   only what both already hold. The document is compared before the feed and fed without
-//!   `unless_changed_from`: the note's turn and the lane keep every writer of this device out
-//!   in between, and no body writer runs outside them today. One that does (the resident
-//!   editor, Step 14) must pass the body read as `unless_changed_from` here.
+//!   only what both already hold. The document is compared before the feed, and fed only if it
+//!   took no edit since (`AppRead::compared_at`): the note's turn and the lane keep this
+//!   device's other writers out in between, but not an editor window, whose typing the
+//!   resident editor (Step 14) stores at once. Typing that lands in between is
+//!   [`Kept::BodyAhead`], and nothing changes.
 //! - [`Precondition::HeldAt`]: [`Precondition::Held`] for a note whose file moved since its
 //!   document took it (a moved note's own refs, `notes::link_rewrite`). The document is compared
 //!   as it was built, with its Obsidian embeds resolved from the file's old path: from the new
@@ -61,9 +62,10 @@
 //!   replayed record, #3886). The other order leaves the whole edit in the file, which the walk
 //!   feeds at the next open.
 //! - **An outside edit that lands between the read and the write** makes the write refuse
-//!   ([`Kept::FileChanged`]). The document already holds the edit, and the consumer, once the
-//!   lane is free, feeds the outside edit over it and keeps the edit as a version: the outside
-//!   edit wins and the edit is not lost. The other order loses it.
+//!   ([`Kept::FileChanged`]). The document already holds the edit, so the consumer, once the
+//!   lane is free, finds it ahead of the outside file: the edit wins, as unwritten typing does
+//!   (#4030), the outside file is kept as a version, and the write-back writes the edit over it.
+//!   Neither is lost. The other order loses the edit.
 //! - **A feed that does not take the text** (an error, a large file, a refused or owed body):
 //!   the file is written anyway, the own-write record is cleared rather than told, and the row
 //!   is left. The watcher then reports the write once the lane is free, and the consumer feeds
@@ -88,8 +90,8 @@ use memry_core::api::external_feed::ExternalFeed;
 use memry_core::api::search::Search;
 use memry_core::api::vault::Vault;
 use memry_core::crdt::errors::CrdtError;
-use memry_core::domain::external_feed::{FeedInput, FeedOutcome, same_text};
-use memry_core::domain::write_back::BodyRead;
+use memry_core::domain::external_feed::{AppRead, FeedInput, FeedOutcome, same_text};
+use memry_core::domain::write_back::{BodyRead, LogMark};
 use memry_core::markdown::convert::api::Converter;
 use memry_core::markdown::frontmatter::{YamlValue, parse_markdown_note, split_frontmatter_block};
 use memry_core::markdown::shared::writing_tools::writing_of_yaml;
@@ -293,6 +295,8 @@ impl AppEdit {
         let read_body = split_frontmatter_block(read).body;
         let row_names_file = row.content_hash.as_deref() == Some(file.hash.as_str());
         let mut outside = false;
+        // How far the document had come when `Held` compared it; the feed refuses one past it.
+        let mut compared_at = None;
         let own = match precondition {
             Precondition::Held | Precondition::HeldAt(_) | Precondition::Replace => {
                 if row.content_hash.is_none() {
@@ -305,9 +309,10 @@ impl AppEdit {
                     Precondition::HeldAt(path) => path,
                     _ => &row.path,
                 };
-                let differs = self.document_differs(note_id, built_at, read, &parsed.frontmatter);
-                if let Some(kept) = differs.map_err(AppEditError::from)? {
-                    return Ok(Edited::Kept(kept));
+                let held = self.document_held(note_id, built_at, read, &parsed.frontmatter);
+                match held.map_err(AppEditError::from)? {
+                    Ok(mark) => compared_at = Some(mark),
+                    Err(kept) => return Ok(Edited::Kept(kept)),
                 }
                 None
             }
@@ -363,7 +368,11 @@ impl AppEdit {
         }
         let takes = match body_moved {
             true => {
-                match self.feed_text(note_id, &row.path, next, &edited.frontmatter, read_body) {
+                let read = AppRead {
+                    file_body: read_body,
+                    compared_at,
+                };
+                match self.feed_text(note_id, &row.path, next, &edited.frontmatter, read) {
                     Ok(takes) => takes,
                     Err(kept) => return Ok(Edited::Kept(kept)),
                 }
@@ -459,14 +468,17 @@ impl AppEdit {
             })
     }
 
-    /// Why the document is not the file's text `read`, or `None` when it is.
-    fn document_differs(
+    /// How far the document had come when its body was found to be the file's text `read`
+    /// (`body_mark`), or why it is not. The mark is taken first: an edit stored after it either
+    /// shows in the comparison or makes the feed refuse.
+    fn document_held(
         &self,
         note_id: &str,
         path: &str,
         read: &str,
         frontmatter: &YamlValue,
-    ) -> Result<Option<Kept>, CrdtError> {
+    ) -> Result<Result<LogMark, Kept>, CrdtError> {
+        let mark = self.vault.write_back().body_mark(note_id)?;
         let body = split_frontmatter_block(read).body;
         // Outside the read: the lookup reads the database the read holds.
         let embeds = Resolved::of_markdown(&self.root, &self.vault.note_files(), body, path);
@@ -475,25 +487,30 @@ impl AppEdit {
             .write_back()
             .body(&self.converter, note_id, path, body, &embeds)?;
         Ok(match read {
-            BodyRead::Body(held) => (!same_text(&held.markdown, body)
-                || held.writing != writing_of_yaml(frontmatter))
-            .then_some(Kept::BodyAhead),
-            BodyRead::FileAhead => Some(Kept::FileAhead),
-            BodyRead::BodyNotPulled => Some(Kept::BodyNotPulled),
-            BodyRead::NotRepresentable(_) | BodyRead::Failed(_) => Some(Kept::NotRepresentable),
-            BodyRead::NoNote => Some(Kept::NoBody),
+            BodyRead::Body(held)
+                if same_text(&held.markdown, body)
+                    && held.writing == writing_of_yaml(frontmatter) =>
+            {
+                Ok(mark)
+            }
+            BodyRead::Body(_) => Err(Kept::BodyAhead),
+            BodyRead::FileAhead => Err(Kept::FileAhead),
+            BodyRead::BodyNotPulled => Err(Kept::BodyNotPulled),
+            BodyRead::NotRepresentable(_) | BodyRead::Failed(_) => Err(Kept::NotRepresentable),
+            BodyRead::NoNote => Err(Kept::NoBody),
         })
     }
 
-    /// Feeds the new text's body over `read`, the body read: whether the document now holds
-    /// it, or why the file is kept (no such note, or a lock taken since the read).
+    /// Feeds the new text's body over `read`: whether the document now holds it, or why the
+    /// file is kept (no such note, a lock taken since the read, or typing stored since the
+    /// document was compared).
     fn feed_text(
         &self,
         note_id: &str,
         path: &str,
         text: &str,
         frontmatter: &YamlValue,
-        read: &str,
+        read: AppRead<'_>,
     ) -> Result<bool, Kept> {
         let split = split_frontmatter_block(text);
         let embeds = Resolved::of_markdown(&self.root, &self.vault.note_files(), split.body, path);
@@ -515,6 +532,7 @@ impl AppEdit {
         match fed {
             Ok(FeedOutcome::Fed | FeedOutcome::Unchanged) => Ok(true),
             Ok(FeedOutcome::NoNote) => Err(Kept::NoBody),
+            Ok(FeedOutcome::Changed) => Err(Kept::BodyAhead),
             Err(CrdtError::Locked { .. }) => Err(Kept::Locked),
             Ok(outcome) => {
                 tracing::warn!(

@@ -43,6 +43,11 @@ pub enum HostEvent {
     /// A window's edit of `note_id` is stored: its file is written from the body once the note
     /// is quiet (`VaultTier::schedule`, Electron's `scheduleWriteback` for an IPC origin).
     Edited { note_id: String },
+    /// A window puts back typing over an outside edit the document took before that typing
+    /// reached it ([`EditorHost::apply_over_outside_edit`]): the note's file, which holds the
+    /// outside edit, is kept as a version (`VaultTier::keep_outside_edit`) before the typing is
+    /// stored and its write scheduled.
+    OutsideEditKept { note_id: String },
 }
 
 /// `crdt:get-health`.
@@ -210,6 +215,21 @@ impl EditorHost {
             });
         }
         Ok(())
+    }
+
+    /// [`Self::apply_update`] of typing the window put back over an outside edit
+    /// ([`HostEvent::OutsideEditKept`], told first).
+    pub fn apply_over_outside_edit(
+        &self,
+        note_id: &str,
+        update: &[u8],
+        window_label: &str,
+    ) -> Result<(), EditorHostError> {
+        self.live()?.require_open(note_id, window_label)?;
+        (self.notify)(HostEvent::OutsideEditKept {
+            note_id: note_id.to_owned(),
+        });
+        self.apply_update(note_id, update, window_label)
     }
 
     /// Sync step 1: what the document holds beyond the window's `state_vector`, and the

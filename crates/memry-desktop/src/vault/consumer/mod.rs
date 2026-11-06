@@ -157,4 +157,8 @@ pub enum Applied {
     /// A watcher fact that changes no row (`Unsupported`, `Unreadable`, `Unreachable`,
     /// `Reachable`, `Rescanned`, `WatchFailed`), passed on as it came.
     Vault(VaultEvent),
+    /// An outside edit of the note's file met a body ahead of that file (typing, or a merge,
+    /// the write-back had not written yet): the body won (#4030). The outside file is kept as a
+    /// version, and the write-back writes the body over it.
+    OutsideEditKept { note_id: String, path: String },
 }

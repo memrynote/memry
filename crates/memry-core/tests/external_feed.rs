@@ -19,7 +19,7 @@ use memry_core::api::vault::Vault;
 use memry_core::crdt::registry::UpdateSink;
 use memry_core::crdt::{BODY_FRAGMENT, DocumentRegistry, update_log};
 use memry_core::crypto::sodium;
-use memry_core::domain::external_feed::{FeedInput, FeedOutcome, Refusal};
+use memry_core::domain::external_feed::{AppRead, FeedInput, FeedOutcome, Refusal};
 use memry_core::markdown::convert::NoEmbeds;
 use memry_core::markdown::convert::api::Converter;
 use memry_core::markdown::schema::callout_types::CalloutTypes;
@@ -832,7 +832,14 @@ fn a_link_written_by_blocknote_0_47_is_fed_and_kept_whole() {
 
 fn app_edit(f: &Fixture, id: &str, markdown: &str, read: &str) -> FeedOutcome {
     f.feed
-        .feed_app_edit(&f.converter, input(id, markdown), read)
+        .feed_app_edit(
+            &f.converter,
+            input(id, markdown),
+            AppRead {
+                file_body: read,
+                compared_at: None,
+            },
+        )
         .expect("the feed itself does not fail")
 }
 
@@ -888,4 +895,29 @@ fn an_app_save_over_a_body_the_file_never_held_keeps_that_body() {
     assert_eq!(kept.len(), 1, "{kept:?}");
     assert!(kept[0].0.contains("a peer's text"), "{kept:?}");
     assert_eq!(f.body(&id).trim_end(), "the user's save");
+}
+
+/// The consumer compared the body to its file, then typing was stored, then the outside edit
+/// reached the feed: the typing is kept, and nothing is written.
+#[test]
+fn an_outside_edit_after_typing_stored_since_the_compare_writes_nothing() {
+    let f = fixture();
+    let id = f.note();
+    assert_eq!(f.feed(&id, "first text"), FeedOutcome::Fed);
+    let compared = f.vault.write_back().body_mark(&id).expect("a mark");
+    assert_eq!(f.feed(&id, "typed text"), FeedOutcome::Fed);
+    let updates = f.updates(&id);
+    let fed = f
+        .feed
+        .feed_since(&f.converter, input(&id, "outside text"), compared);
+    assert_eq!(fed.expect("no failure"), FeedOutcome::Changed);
+    assert_eq!(f.body(&id).trim_end(), "typed text");
+    assert_eq!(f.updates(&id), updates);
+
+    let compared = f.vault.write_back().body_mark(&id).expect("a mark");
+    let fed = f
+        .feed
+        .feed_since(&f.converter, input(&id, "outside text"), compared);
+    assert_eq!(fed.expect("no failure"), FeedOutcome::Fed);
+    assert_eq!(f.body(&id).trim_end(), "outside text");
 }

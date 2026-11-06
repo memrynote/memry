@@ -39,7 +39,7 @@
 use std::path::Path;
 
 use memry_core::crdt::errors::CrdtError;
-use memry_core::domain::external_feed::{FeedInput, FeedOutcome};
+use memry_core::domain::external_feed::{AppRead, FeedInput, FeedOutcome};
 use memry_core::domain::note_stats::word_count;
 use memry_core::markdown::convert::api::Converter;
 use memry_core::markdown::frontmatter::{split_frontmatter_block, write_markdown_note};
@@ -396,6 +396,10 @@ impl Seed<'_> {
         read: &str,
     ) -> Result<bool, NotesError> {
         self.feed_with(service, |converter, input| {
+            let read = AppRead {
+                file_body: read,
+                compared_at: None,
+            };
             feed.feed_app_edit(converter, input, read)
         })
     }

@@ -80,6 +80,34 @@ fn held_keeps_a_file_the_document_does_not_hold() {
     assert_eq!(e.read("Ideas.md"), "See [[Plan]].\n");
 }
 
+/// The resident editor (Step 14) stores a window's typing outside the note's turn. Typing that
+/// lands after the seam compared the document keeps the file: the edit is kept, the typing stays
+/// the body, and no version is taken of it.
+#[test]
+fn held_keeps_the_file_when_typing_lands_after_the_document_was_compared() {
+    let (e, _, store) = opened(&[("Ideas.md", "See [[Plan]].\n")]);
+    let open = e.session.current().unwrap();
+    let ideas = id_at(&e, "Ideas.md");
+    let edit = AppEdit::new(&e.tier, &store, &open).unwrap();
+    let versions = e.versions(&ideas);
+
+    let done = run(
+        &edit,
+        &ideas,
+        Precondition::Held,
+        ChangeSource::AppEdit,
+        |_| {
+            e.edit_in_app(&store, &ideas, "Typed meanwhile");
+            Some("See [[Roadmap]].\n".to_owned())
+        },
+    );
+
+    assert_eq!(done, Edited::Kept(Kept::BodyAhead));
+    assert_eq!(e.read("Ideas.md"), "See [[Plan]].\n");
+    assert_eq!(e.body(&ideas), "Typed meanwhile");
+    assert_eq!(e.versions(&ideas), versions);
+}
+
 const WRITING: &str = "---\nwriting:\n  alternatives:\n    k3x9q2:\n      versions:\n        \
                        - text: two\n        - text: zwei\n---\n\
                        one <!--alt:k3x9q2-->two<!--/alt:k3x9q2--> three\n";

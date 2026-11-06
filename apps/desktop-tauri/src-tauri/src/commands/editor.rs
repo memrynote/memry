@@ -49,6 +49,9 @@ struct StepOneHeader {
 #[serde(rename_all = "camelCase")]
 struct NoteMeta {
     note_id: String,
+    /// The window puts back typing over an outside edit (`EditorHost::apply_over_outside_edit`).
+    #[serde(default)]
+    over_outside_edit: bool,
 }
 
 fn host<R: Runtime>(app: &AppHandle<R>) -> Result<Arc<EditorHost>, CommandError> {
@@ -124,8 +127,11 @@ async fn apply<R: Runtime>(
     let host = host(app)?;
     let label = window.label().to_owned();
     blocking(command, move || {
-        host.apply_update(&meta.note_id, &update, &label)
-            .map_err(|error| CommandError::from_core(&error))
+        let applied = match meta.over_outside_edit {
+            true => host.apply_over_outside_edit(&meta.note_id, &update, &label),
+            false => host.apply_update(&meta.note_id, &update, &label),
+        };
+        applied.map_err(|error| CommandError::from_core(&error))
     })
     .await
 }

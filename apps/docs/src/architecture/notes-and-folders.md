@@ -94,7 +94,7 @@ The caller passes a precondition that says what the edit may replace:
 
 A `Kept` answer names why: an outside edit not fed yet (`FileChanged`, `NotRead`), a document ahead of its file (`BodyAhead`), a body not pulled yet, or a frontmatter that does not parse. Callers turn it into an error you can act on, or skip the note and log it.
 
-The seam feeds the document first, then writes the file, then the row. In this order, an outside edit that lands during the write makes the write refuse. The document already holds the app's edit, and the consumer then feeds the outside edit over it and keeps the app's edit as a version, so neither is lost. In the other order the outside edit would be lost. The module doc has the full trace of each crash point.
+The seam feeds the document first, then writes the file, then the row. In this order, an outside edit that lands during the write makes the write refuse. The document already holds the app's edit, so the consumer finds the document ahead of the outside file. The app's edit wins, as unwritten typing does: the consumer keeps the outside file as a version, and the write-back writes the edit over it, so neither is lost. In the other order the outside edit would be lost. The module doc has the full trace of each crash point.
 
 ## Links follow a rename
 

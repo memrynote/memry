@@ -76,7 +76,8 @@ fn emit<R: Runtime>(app: &AppHandle<R>, fact: Applied) {
             path,
             source: ChangeSource::Watcher | ChangeSource::LinkRewrite,
             ..
-        } => (note_id, path, Change::Edited),
+        }
+        | Applied::OutsideEditKept { note_id, path } => (note_id, path, Change::Edited),
         Applied::Removed {
             note_id,
             path,
