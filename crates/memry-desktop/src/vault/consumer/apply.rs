@@ -23,6 +23,7 @@ use crate::vault::note_file::{
     NoteFile, NoteFileError, hash_file, large_by_size, large_file_class, read_note,
     record_large_file,
 };
+use crate::vault::watch::filter::WatchFilter;
 use crate::vault::watch::{VaultEvent, WatchHandle};
 
 mod crossing;
@@ -54,6 +55,8 @@ pub(super) struct Applier {
     pub(super) own_files: Arc<OwnFiles>,
     /// `None` in a test that runs no watcher.
     pub(super) watch: Option<WatchHandle>,
+    /// The places the exclude patterns cover, whose records never cross (`apply::crossing`).
+    pub(super) filter: WatchFilter,
     /// By note id, how many times in a row an outside edit did not reach its record.
     pub(super) untaken: Mutex<HashMap<String, u32>>,
 }
@@ -444,6 +447,9 @@ impl Applier {
                 "a moved file's row was not moved: {collision}"
             );
             return Step::Done;
+        }
+        if self.crosses_from_cover(note_id, old_path, new_path) {
+            return self.made_anew(lane, new_path);
         }
         // The record first: on a failure both stay at the old path, and the next open's
         // rescan reports the move again.

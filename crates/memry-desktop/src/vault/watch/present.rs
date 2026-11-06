@@ -5,8 +5,7 @@ use std::fs::Metadata;
 use std::time::Instant;
 
 use super::event::VaultEvent;
-use super::gone::is_gone_from_disk;
-use super::home::{Home, home_of_row, spelling_listed};
+use super::home::{Home, spelling_listed};
 use super::reconcile::{ADD_GRACE, HeldAdd, MAX_HELD_ADDS, Reconciler, modified_ms};
 use super::rename::{Pending, observed};
 use super::reported::Seen;
@@ -184,12 +183,6 @@ impl Reconciler {
             self.report_rename(from, rel.to_owned(), hash.clone(), stat);
             return;
         }
-        if let Some(hash) = &hash
-            && let Some(from) = self.covered_gone(hash)
-        {
-            self.report_rename(from, rel.to_owned(), hash.clone(), stat);
-            return;
-        }
         if hash.is_some() && self.held_adds.len() < MAX_HELD_ADDS {
             self.held_adds.retain(|a| a.path != rel);
             self.held_adds.push(HeldAdd {
@@ -203,29 +196,6 @@ impl Reconciler {
             return;
         }
         self.report_added(rel.to_owned(), file_type, stat, hash);
-    }
-
-    /// The note whose file held `hash` in a place the exclude patterns cover and is gone from
-    /// it: a file moved out of an excluded folder, whose leaving the watcher never saw (it does
-    /// not read there). The add is that note's move, as a rescan pairs it.
-    fn covered_gone(&mut self, hash: &str) -> Option<Pending> {
-        if let Err(error) = self.rows() {
-            tracing::warn!(
-                scope = "vault_watch",
-                "an add was not paired with an excluded note: {error}"
-            );
-            return None;
-        }
-        let rows = self.all_rows.as_deref().unwrap_or_default();
-        rows.iter()
-            .filter(|row| self.filter.ignores(&row.path))
-            .filter_map(|row| home_of_row(&self.reported, row))
-            .find(|home| {
-                home.hash.as_deref() == Some(hash)
-                    && self.filter.ignores(&home.path)
-                    && is_gone_from_disk(&self.root.join(&home.path))
-            })
-            .map(Home::pending)
     }
 
     fn report_rename(&mut self, from: Pending, to: String, hash: String, stat: (u64, i64)) {

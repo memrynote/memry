@@ -24,6 +24,7 @@ use crate::vault::config::settings::JournalFollow;
 use crate::vault::journal_rename::{JournalVault, finish_journal_change};
 #[cfg(test)]
 use crate::vault::watch::HoldFn;
+use crate::vault::watch::filter::WatchFilter;
 use crate::vault::watch::{EchoGuard, NewFiles, VaultWatcher, WatchHandle};
 use crate::vault::writeback::{Pass, WriteBack, WriteBackFailed, reconcile};
 
@@ -460,6 +461,7 @@ impl VaultTier {
             activity: self.activity.clone(),
             own_files: self.own_files.clone(),
             watch: Some(watcher.handle()),
+            filter: WatchFilter::new(exclude.clone()),
             untaken: Mutex::default(),
         };
         let consumer = Consumer::start(applier, inbox, watcher.handle(), exclude, after_walk)

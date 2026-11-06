@@ -43,8 +43,6 @@ impl Reconciler {
         let root = &self.root;
         self.echo
             .seen_all(|path| std::fs::symlink_metadata(root.join(path)).is_ok());
-        // Rows read by an earlier batch are stale now.
-        self.all_rows = None;
         let rows = self.files.list_missing_candidates()?;
         // Each note where it was last reported, else where its row says: a move already
         // reported leaves the row stale, and a removal already reported leaves nothing to

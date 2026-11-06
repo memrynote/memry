@@ -44,12 +44,15 @@
 //! that record's id. Here the note's row stays, so it stays listed and keeps its id, whatever
 //! happens to its file while the patterns cover it: the rescan reports no removal there, so a
 //! file renamed or deleted outside leaves its record behind, as Electron's does, and syncs no
-//! delete. A file moved out of a covered place, while the app watches or not, pairs with that
-//! record by its content and keeps its id (Electron makes it a new note). Once the pattern is
-//! dropped, the restart's walk reads the file again: an outside edit
-//! made meanwhile replaces the note's body (an app edit made meanwhile is kept as a version;
-//! Step 13m-7b-3b makes a covered note read-only), a rename pairs as a move, and a file that is
-//! gone is a removal then. The save is the only durable step: an open after a crash reads the
+//! delete. A file moved out of a covered place that a rescan finds (an open, an overflow, the
+//! restart) pairs with that record like any move and keeps its id, unless the move changes what
+//! the file is (a day to a note): it never crosses, the file is new and the record stays. One
+//! the watcher sees arrive is a new note, as in Electron, since the watcher never saw it leave;
+//! the record it left stays while the pattern covers it. Once the pattern is dropped, the
+//! restart's walk reads the file again: an outside edit made meanwhile replaces the note's body
+//! (an app edit made meanwhile is kept as a version; Step 13m-7b-3b makes a covered note
+//! read-only), a rename pairs as a move, and a file that is gone is a removal then, the record a
+//! live move out left included (its text lives on under the new note). The save is the only durable step: an open after a crash reads the
 //! saved patterns. A watcher that cannot start on them is reported
 //! ([`SettingsError::Unwatched`]); the save stands, and the next change or open starts it.
 

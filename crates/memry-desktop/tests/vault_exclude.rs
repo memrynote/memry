@@ -12,11 +12,13 @@
 //! | an exclude change killed at any step keeps every note           | the save is the only durable step       |
 //! | an excluded note renamed outside keeps its record               | `note_metadata`: no delete syncs        |
 //! | an excluded note deleted outside keeps its record through a ... | the same, an overflow resync included   |
-//! | an excluded folder renamed outside keeps its note               | its file pairs with the covered row     |
+//! | an excluded folder renamed outside keeps the record it left     | the same; the file is a new note        |
 //! | a restart during the open walk still writes back what it owed   | the restart's walk reconciles too       |
-//! | an excluded note moved out while closed keeps its id            | a covered home still pairs              |
-//! | an excluded note moved out live keeps its id                    | the add pairs with the covered row      |
-//! | an excluded note moved out before a resync keeps its id         | either pairing, one note                |
+//! | an excluded note moved out while closed keeps its id            | a covered gone home still pairs         |
+//! | an excluded note moved out unseen keeps its id                  | the same, in a restart's rescan         |
+//! | an excluded note moved out live is a new note                   | the watcher never saw it go             |
+//! | an excluded day moved out to a note keeps its record            | a covered record never crosses          |
+//! | an excluded note moved out to a day keeps its record            | the same, the other way                 |
 
 #[allow(unused_imports)]
 use crate::device_key;
@@ -304,11 +306,11 @@ fn an_excluded_note_deleted_outside_keeps_its_record_through_a_resync() {
     );
 }
 
-/// The excluded folder renamed outside the app: its file pairs with the note the patterns
-/// cover, which keeps its id at the new path, with no removal and no delete synced, through
-/// three opens. (Electron makes it a new note and keeps the old record.)
+/// The excluded folder renamed outside the app: its file is a new note at its new path (no
+/// removal to pair it with, as in Electron), and the record it left keeps its path, with no
+/// delete synced, through three opens.
 #[test]
-fn an_excluded_folder_renamed_outside_keeps_its_note() {
+fn an_excluded_folder_renamed_outside_keeps_the_record_it_left() {
     let (mut e, _store, old, _new) = two_notes();
     let rows = e.rows();
     changed(&mut e, excludes(&["archive"]));
@@ -319,8 +321,8 @@ fn an_excluded_folder_renamed_outside_keeps_its_note() {
         reopen(&mut e);
     }
     let now = e.rows();
-    assert!(now.contains(&row(&old, "kept/old.md")), "{now:?}");
-    assert_eq!(now.len(), rows.len(), "{now:?}");
+    assert!(now.contains(&row(&old, "archive/old.md")), "{now:?}");
+    assert_eq!(now.len(), rows.len() + 1, "{now:?}");
     for (id, _) in &now {
         assert!(!outbox(&e, id).contains(&"delete".to_owned()), "{id}");
     }
@@ -383,39 +385,6 @@ fn a_restart_during_the_open_walk_still_writes_back_what_the_walk_owed() {
     }
 }
 
-/// After an excluded note's file moved to `notes/moved.md`: one move fact, the record at its new
-/// path under its id, through three opens and the pattern dropped, and no delete synced.
-fn moved_out(e: &mut Env, facts: &[Applied], rows: &[(String, String)], old: &str) {
-    assert!(
-        facts
-            .iter()
-            .any(|f| matches!(f, Applied::Renamed { note_id, new_path, .. }
-            if note_id == old && new_path == "notes/moved.md")),
-        "{facts:?}"
-    );
-    assert!(!crossed(facts), "{facts:?}");
-    let moved: Vec<(String, String)> = rows
-        .iter()
-        .map(|(id, at)| match id == old {
-            true => (id.clone(), "notes/moved.md".to_owned()),
-            false => (id.clone(), at.clone()),
-        })
-        .collect();
-    for _ in 0..3 {
-        reopen(e);
-    }
-    let mut now = e.rows();
-    now.sort();
-    let mut want = moved;
-    want.sort();
-    assert_eq!(now, want);
-    let facts = changed(e, excludes(&[]));
-    assert!(!crossed(&facts), "{facts:?}");
-    for (id, _) in &want {
-        assert!(!outbox(e, id).contains(&"delete".to_owned()), "{id}");
-    }
-}
-
 /// Moved out of the excluded folder while the vault was closed: the open's rescan pairs the
 /// file with the note the patterns cover, which keeps its id.
 #[test]
@@ -435,28 +404,31 @@ fn an_excluded_note_moved_out_while_closed_keeps_its_id() {
     moved_out(&mut e, &facts, &rows, &old);
 }
 
-/// Moved out of the excluded folder while the app watches: the watcher never sees the file go
-/// (it does not read there), and the add pairs with the covered note by its content.
+/// Moved out where the watcher could not see it arrive either (its destination was excluded
+/// too, as an overflow loses both halves), then found by a rescan in the session (the restart
+/// on the patterns dropped for it): the note keeps its id.
 #[test]
-fn an_excluded_note_moved_out_live_keeps_its_id() {
+fn an_excluded_note_moved_out_unseen_keeps_its_id() {
     let (mut e, _store, old, _new) = two_notes();
     let rows = e.rows();
-    changed(&mut e, excludes(&["archive"]));
+    changed(&mut e, excludes(&["archive", "notes"]));
     fs::rename(
         e.vault.join("archive/old.md"),
         e.vault.join("notes/moved.md"),
     )
     .unwrap();
-    let facts = e.facts_until(|f| matches!(f, Applied::Renamed { .. } | Applied::Added { .. }));
     std::thread::sleep(QUIET);
-    let facts = [facts, e.drain()].concat();
+    assert!(e.drain().is_empty());
+    let facts = changed(&mut e, excludes(&["archive"]));
     moved_out(&mut e, &facts, &rows, &old);
 }
 
-/// Moved out, then a resync in the session (an OS event overflow): whichever pairs first, the
-/// note keeps its id and no second note is made.
+/// Moved out while the app watches: the watcher never sees the file leave (it does not read
+/// there), so the file is a new note, as in Electron, and the record it left stays, with no
+/// delete synced while the pattern covers it. The pattern dropped, that record's file is gone:
+/// a removal then, while the text lives on under the new note.
 #[test]
-fn an_excluded_note_moved_out_before_a_resync_keeps_its_id() {
+fn an_excluded_note_moved_out_live_is_a_new_note() {
     let (mut e, _store, old, _new) = two_notes();
     let rows = e.rows();
     changed(&mut e, excludes(&["archive"]));
@@ -465,9 +437,119 @@ fn an_excluded_note_moved_out_before_a_resync_keeps_its_id() {
         e.vault.join("notes/moved.md"),
     )
     .unwrap();
-    e.tier.rescan_watcher(true);
-    let facts = e.facts_until(|f| matches!(f, Applied::Vault(VaultEvent::Rescanned { .. })));
-    std::thread::sleep(QUIET);
-    let facts = [facts, e.drain()].concat();
-    moved_out(&mut e, &facts, &rows, &old);
+    e.facts_until(|f| matches!(f, Applied::Added { path, .. } if path == "notes/moved.md"));
+    for _ in 0..3 {
+        reopen(&mut e);
+    }
+    let now = e.rows();
+    assert!(now.contains(&row(&old, "archive/old.md")), "{now:?}");
+    assert_eq!(now.len(), rows.len() + 1, "{now:?}");
+    for (id, _) in &now {
+        assert!(!outbox(&e, id).contains(&"delete".to_owned()), "{id}");
+    }
+    let facts = changed(&mut e, excludes(&[]));
+    assert!(
+        facts
+            .iter()
+            .any(|f| matches!(f, Applied::Removed { note_id, .. } if *note_id == old)),
+        "{facts:?}"
+    );
+    let moved = e.rows().into_iter().find(|(_, at)| at == "notes/moved.md");
+    assert_eq!(e.body(&moved.expect("the new note").0), "Old");
+}
+
+/// After an excluded note's file moved to `notes/moved.md`: one move fact, the record at its new
+/// path under its id, through three opens and the pattern dropped, and no delete synced.
+fn moved_out(e: &mut Env, facts: &[Applied], rows: &[(String, String)], old: &str) {
+    assert!(
+        facts
+            .iter()
+            .any(|f| matches!(f, Applied::Renamed { note_id, new_path, .. }
+            if note_id == old && new_path == "notes/moved.md")),
+        "{facts:?}"
+    );
+    assert!(!crossed(facts), "{facts:?}");
+    let mut want: Vec<(String, String)> = rows
+        .iter()
+        .map(|(id, at)| match id == old {
+            true => (id.clone(), "notes/moved.md".to_owned()),
+            false => (id.clone(), at.clone()),
+        })
+        .collect();
+    want.sort();
+    for _ in 0..3 {
+        reopen(e);
+    }
+    let mut now = e.rows();
+    now.sort();
+    assert_eq!(now, want);
+    let facts = changed(e, excludes(&[]));
+    assert!(!crossed(&facts), "{facts:?}");
+    for (id, _) in &want {
+        assert!(!outbox(e, id).contains(&"delete".to_owned()), "{id}");
+    }
+}
+
+/// A move out of a covered place that changes what the file is (a day to a note, or the other
+/// way) pairs in the rescan but never crosses: the file is a new item, and the covered record
+/// stays where it was, not removed and with no delete synced, through three opens.
+fn crossed_out(config: serde_json::Value, from: &str, text: &str, to: &str, pattern: &str) {
+    let (mut e, _store) = opened_keeping(config, &[(from, text), ("notes/new.md", "New\n")]);
+    let rows = e.rows();
+    let (kept_id, _) = rows
+        .iter()
+        .find(|(_, at)| at == from)
+        .expect("the record")
+        .clone();
+    changed(&mut e, excludes(&[pattern]));
+    e.close();
+    e.drain();
+    let to_path = e.vault.join(to);
+    fs::create_dir_all(to_path.parent().unwrap()).unwrap();
+    fs::rename(e.vault.join(from), to_path).unwrap();
+    e.open();
+    let facts = e.facts_until(indexed);
+    assert!(
+        !facts.iter().any(|f| matches!(f, Applied::Removed { .. })),
+        "{facts:?}"
+    );
+    for _ in 0..3 {
+        reopen(&mut e);
+    }
+    let now = e.rows();
+    assert!(now.contains(&row(&kept_id, from)), "{now:?}");
+    assert!(
+        now.iter().any(|(id, at)| at == to && *id != kept_id),
+        "{now:?}"
+    );
+    assert_eq!(now.len(), rows.len() + 1, "{now:?}");
+    for (id, _) in &now {
+        assert!(!outbox(&e, id).contains(&"delete".to_owned()), "{id}");
+    }
+}
+
+#[test]
+fn an_excluded_day_moved_out_to_a_note_keeps_its_record() {
+    let mut config = daily("journal");
+    config["excludePatterns"] = json!(DEFAULTS);
+    crossed_out(
+        config,
+        "journal/2025-01-02.md",
+        "Same\n",
+        "notes/x.md",
+        "journal",
+    );
+}
+
+#[test]
+fn an_excluded_note_moved_out_to_a_day_keeps_its_record() {
+    let mut config = daily("journal");
+    config["excludePatterns"] = json!(DEFAULTS);
+    crossed_out(
+        config,
+        "archive/o.md",
+        "Same\n",
+        "journal/2025-03-04.md",
+        "archive",
+    );
 }
