@@ -9,6 +9,7 @@
 
 mod compaction;
 mod host;
+pub mod versions;
 
 use std::sync::Arc;
 
