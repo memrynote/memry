@@ -1,6 +1,6 @@
 /**
- * The 40 documents of `note-fold.json`: English, Turkish and Japanese
- * notes that reach every rule of the local fold (sections, chunk splits,
+ * The documents of `note-fold.json`: English, Turkish, Japanese, Chinese and
+ * Korean notes that reach every rule of the local fold (sections, chunk splits,
  * skipped blocks, list items, inline marks, date and link tokens, the
  * sentence and word boundaries, the Brief pick, the fold threshold).
  */
@@ -9,7 +9,7 @@ import { serializeDateMentionToken, type DateMentionData } from '@memry/shared/d
 export interface NoteFoldCase {
   name: string
   /** The language the note is written in; the engine detects its own tag. */
-  written: 'en' | 'tr' | 'ja'
+  written: 'en' | 'tr' | 'ja' | 'zh' | 'ko'
   markdown: string
 }
 
@@ -401,4 +401,110 @@ const JA: NoteFoldCase[] = [
   { name: 'ja-repeated', written: 'ja', markdown: doc(...repeat(JA_C, 4)) }
 ]
 
-export const NOTE_FOLD_CASES: readonly NoteFoldCase[] = [...EN, ...TR, ...JA]
+// ---------------------------------------------------------------------------
+// Bounds: each case sits on a number the fold compares against, so flipping
+// the comparison or shifting the constant changes the snapshot.
+// ---------------------------------------------------------------------------
+
+const WORDS = ['the', 'fold', 'keeps', 'each', 'paragraph', 'short', 'when', 'a', 'reader', 'skims']
+
+/** A sentence of exactly `n` English words, with no digit (a digit scores). */
+const sentenceOf = (n: number): string => {
+  const words = Array.from({ length: n }, (_, i) => WORDS[i % WORDS.length])
+  words[0] = words[0][0].toUpperCase() + words[0].slice(1)
+  return `${words.join(' ')}.`
+}
+
+/** A paragraph of exactly `n` English words, in sentences of ten. */
+const paragraphOf = (n: number): string =>
+  Array.from({ length: Math.ceil(n / 10) }, (_, i) => sentenceOf(Math.min(10, n - i * 10))).join(
+    ' '
+  )
+
+const KANA = 'かきくけこさしすせそたちつてとなにぬねの'
+
+/** A Japanese sentence of exactly `n` units. */
+const kanaOf = (n: number): string =>
+  `${Array.from({ length: n }, (_, i) => KANA[i % KANA.length]).join('')}。`
+
+/** A short question opens each paragraph: it scores 0, so the window alone decides. */
+const EN_QUESTION = 'Is it ready?'
+const JA_QUESTION = '本当？'
+
+const BOUNDS: NoteFoldCase[] = [
+  {
+    // Two paragraphs of 214 words: ceil(214 * 1.4) = 300 tokens each, 600 together, one chunk.
+    name: 'en-chunk-budget-at-600',
+    written: 'en',
+    markdown: doc('## Budget', paragraphOf(214), paragraphOf(214))
+  },
+  {
+    // 300 + ceil(215 * 1.4) = 601 tokens: the second paragraph starts a chunk.
+    name: 'en-chunk-budget-past-600',
+    written: 'en',
+    markdown: doc('## Budget', paragraphOf(214), paragraphOf(215))
+  },
+  {
+    // A second sentence of 5, 6, 30 and 31 words: picked only inside the 6 to 30 window.
+    name: 'en-brief-window-edges',
+    written: 'en',
+    markdown: doc(EN_A, ...[5, 6, 30, 31].map((n) => `${EN_QUESTION} ${sentenceOf(n)}`), EN_B, EN_C)
+  },
+  {
+    // The same for Japanese units: 7, 8, 60 and 61, window 8 to 60.
+    name: 'ja-brief-window-edges',
+    written: 'ja',
+    markdown: doc(JA_A, ...[7, 8, 60, 61].map((n) => `${JA_QUESTION}${kanaOf(n)}`), JA_B, JA_C)
+  },
+  {
+    // Decomposed letters: the paragraph hash is taken over NFC, the text stays as written.
+    name: 'en-decomposed-letters',
+    written: 'en',
+    markdown: doc(
+      'The cafe\u0301 in I\u0307stanbul serves a re\u0301sume\u0301 of the week to every guest. The owner writes it by hand and pins it by the door.',
+      EN_A,
+      EN_B,
+      EN_C
+    )
+  }
+]
+
+// ---------------------------------------------------------------------------
+// Chinese, Korean and mixed scripts
+// ---------------------------------------------------------------------------
+
+const ZH = [
+  '迁移计划把桌面应用分成许多小步骤，每一步都单独发布，并且保证所有的笔记库都能继续打开。团队在第一次改动之前，先在三台电脑上测量了启动时间。',
+  '为什么顺序很重要？改变存储格式的步骤，必须等到每个读取这种格式的版本都能理解它之后才能发布。否则另一台设备上的旧版本就会打不开笔记库。',
+  '本地优先的应用把用户的数据保存在设备上。网络只是一种优化，而不是必要条件！连接恢复后同步会自动补上，保存一次按键从来不需要等待服务器。',
+  '审查在周一进行，重点是写前日志和索引重建。审查人发现了同步服务器里的一个竞争条件，修复用了大约三个半小时，并且在同一周带着回归测试发布。',
+  '长笔记适合折叠阅读。读者先看每段最重要的一句话，需要细节时再展开整段，这样既节省时间，也不会丢掉任何内容。'
+]
+
+const KO = [
+  '이전 계획은 데스크톱 앱을 작은 단계로 나누어 옮깁니다. 각 단계는 따로 배포되며 모든 보관함을 계속 읽을 수 있게 합니다. 팀은 첫 변경 전에 세 대의 컴퓨터에서 시작 시간을 측정했습니다.',
+  '순서가 왜 중요할까요? 저장 형식을 바꾸는 단계는 그 형식을 읽는 모든 버전이 이해한 뒤에 배포되어야 합니다. 그렇지 않으면 다른 기기의 오래된 버전이 보관함을 열지 못합니다.',
+  '로컬 우선 앱은 사용자의 데이터를 기기에 보관합니다. 네트워크는 필수가 아니라 최적화일 뿐입니다! 연결이 돌아오면 동기화가 따라잡고, 키 입력을 저장할 때 서버를 기다리지 않습니다.',
+  '검토는 월요일에 진행되었고 쓰기 전 로그와 색인 재구성을 살펴보았습니다. 검토자는 동기화 서버에서 경쟁 상태 하나를 찾았고, 수정은 회귀 테스트와 함께 같은 주에 배포되었습니다.',
+  '긴 노트는 접어서 읽기 좋습니다. 독자는 먼저 각 문단의 핵심 문장을 보고, 자세한 내용이 필요할 때 문단 전체를 펼칩니다.'
+]
+
+/** English with runs of the scripts ICU splits by dictionary, and marks that are no words. */
+const MIXED = [
+  'The design team met in 東京 last spring to plan the new note layout for every reader.',
+  'Our partner office in Bangkok answers the phone with สวัสดี and a short greeting for each caller.',
+  'The new studio measures about 48 m² and the rent takes roughly ½ of the monthly budget.',
+  'The office in ວຽງຈັນ shares the same plan and the same weekly review with the rest of the team.'
+]
+
+const OTHERS: NoteFoldCase[] = [
+  { name: 'zh-plan', written: 'zh', markdown: doc('## 迁移', ...ZH) },
+  { name: 'ko-plan', written: 'ko', markdown: doc('## 이전', ...KO) },
+  {
+    name: 'en-mixed-scripts',
+    written: 'en',
+    markdown: doc('## Offices', MIXED.join(' '), EN_A, EN_B, EN_C)
+  }
+]
+
+export const NOTE_FOLD_CASES: readonly NoteFoldCase[] = [...EN, ...TR, ...JA, ...BOUNDS, ...OTHERS]
