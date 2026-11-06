@@ -1655,6 +1655,26 @@ describe('NotePage', () => {
     expect(mocks.contentAreaMounts).toBe(1)
   })
 
+  // Tauri sends a note event on its own thread, so the reply of the edit that caused it can come
+  // first (#3967): a header tag's reply carries the template its app edit wrote into the body.
+  it('hands an app edit to the editor when the reply that carried it came before its event', async () => {
+    const page = renderWithProviders(<NotePage noteId="note-1" />)
+    expect(await screen.findByTestId('editor-content')).toHaveTextContent('Original body')
+
+    mocks.noteState.note = { ...note, content: 'Template body' }
+    page.rerender(<NotePage noteId="note-1" />)
+    act(() => {
+      mocks.updatedHandler?.({
+        id: 'note-1',
+        source: 'external',
+        changes: { content: 'Template body' }
+      })
+    })
+
+    expect(screen.getByTestId('editor-live-content')).toHaveTextContent('Template body')
+    expect(screen.getByTestId('editor-external-revision')).toHaveTextContent('1')
+  })
+
   it('leaves typing not saved yet in the editor when an outside edit arrives, an emptied body too', async () => {
     renderWithProviders(<NotePage noteId="note-1" />)
     expect(await screen.findByTestId('editor-content')).toHaveTextContent('Original body')
