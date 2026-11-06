@@ -5,6 +5,7 @@ use std::path::{Path, PathBuf};
 use std::sync::mpsc::Receiver;
 use std::sync::{Arc, Mutex, OnceLock, PoisonError};
 
+use memry_desktop::fold::service::FoldService;
 use memry_desktop::launch_env::LaunchEnv;
 use memry_desktop::launch_timeline::LaunchPhase;
 use memry_desktop::locale::LocaleService;
@@ -109,7 +110,8 @@ fn register_settings_hook(app: &AppHandle<Wry>, session: &Session) {
 /// the vault status whenever its indexing changes, and the links each pass committed, and is
 /// managed for `vault_reindex`. A tag rename an earlier run did not finish is finished once each
 /// open's walk ends (Step 13j-4). The pre-sync template
-/// files import as the vault opens (Step 13l), into its activity log.
+/// files import as the vault opens (Step 13l), into its activity log. The note fold starts with
+/// every open and stops with every close (Step 14h).
 fn register_vault_watcher(app: &AppHandle<Wry>, session: &Session) {
     // Managed by the `Handlers` stage, which runs before this one.
     let Some(store) = app.try_state::<Arc<DeviceIdentityStore>>() else {
@@ -145,6 +147,9 @@ fn register_vault_watcher(app: &AppHandle<Wry>, session: &Session) {
     app.manage(tier.activity());
     let notes = NotesService::new(tier.clone(), store.inner().clone());
     notes.register_resume(session);
+    let fold = FoldService::new(notes.clone());
+    fold.register(session);
+    app.manage(fold);
     crate::shell::note_events::forward(app.clone(), tier.subscribe());
     crate::shell::journal_events::forward(app.clone(), tier.subscribe());
     app.manage(notes);
