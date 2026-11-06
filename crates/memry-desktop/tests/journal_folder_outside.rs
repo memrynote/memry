@@ -17,6 +17,8 @@
 //! | a follow cut short after its save settles at the next open        | crash between save and settle      |
 //! | an outside move waits for readable settings                      | unread: held, then followed        |
 //! | a folder moved while closed and unread keeps its dated note       | followed moves keep what they were |
+//! | a journal change another build recorded holds the setting         | a waiting change owns the days     |
+//! | the journal folder made again is not left for the moved one       | the old folder gone (Electron)     |
 
 #[allow(unused_imports)]
 use crate::device_key;
@@ -26,6 +28,7 @@ use crate::vault_env;
 use std::fs;
 use std::sync::Arc;
 
+use memry_core::domain::notes::journal_change;
 use memry_core::seams::secure_store::SecureStore;
 use memry_desktop::notes::error::NotesError;
 use memry_desktop::notes::service::NotesService;
@@ -209,4 +212,43 @@ fn a_folder_moved_while_closed_and_unread_keeps_its_dated_note() {
     std::thread::sleep(QUIET);
     e.drain();
     settles(&mut e, &notes, &note, "Diary");
+}
+
+/// A journal setting change another build recorded, which this one cannot finish, owns the
+/// journal's days until that build settles it: the setting follows no folder meanwhile, and the
+/// moved day stays held.
+#[test]
+fn a_journal_change_another_build_recorded_holds_the_setting() {
+    let (mut e, ..) = journal();
+    e.core()
+        .db_handle()
+        .call_blocking(|conn| {
+            conn.execute(
+                "INSERT INTO meta (key, value) VALUES (?1, '{\"version\":2}')",
+                [journal_change::KEY],
+            )
+            .unwrap();
+            Ok(())
+        })
+        .unwrap();
+    moved_outside(&mut e, "Diary");
+    reopen(&mut e);
+    assert_eq!(stored(&e.vault)["journalFolder"], "journal");
+    assert!(e.rows().contains(&row(DAY, "Diary/2025-01-02.md")));
+    assert!(!outbox(&e, DAY).contains(&"delete".to_owned()));
+}
+
+/// The journal folder made again under its name after the move: the moved folder is not the
+/// journal gone whole (`renameKeepsJournalDate` asks the old folder to be gone), so the setting
+/// stays, and the day made next lands in the folder it names.
+#[test]
+fn the_journal_folder_made_again_is_not_left_for_the_moved_one() {
+    let (mut e, notes, ..) = journal();
+    moved_outside(&mut e, "Diary");
+    fs::create_dir(e.vault.join("journal")).unwrap();
+    make_day(&notes, &e, "2025-01-07");
+    assert_eq!(stored(&e.vault)["journalFolder"], "journal");
+    assert!(e.vault.join("journal/2025-01-07.md").exists());
+    assert!(e.rows().contains(&row(DAY, "Diary/2025-01-02.md")));
+    assert!(!outbox(&e, DAY).contains(&"delete".to_owned()));
 }

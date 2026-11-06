@@ -50,7 +50,11 @@ export const commands = {
 	flushReady: () => __TAURI_INVOKE<null>("flush_ready"),
 	/**  The note or journal day folded for a reader who asked for `level`. */
 	foldRun: (noteId: string, level: FoldLevel) => __TAURI_INVOKE<FoldLayers>("fold_run", { noteId, level }),
-	/**  The day made on its first write; a day that has a file is answered as it is. */
+	/**
+	 *  The day made on its first write; a day that has a file is answered as it is. A journal
+	 *  setting that followed its folder first (moved outside the app, or by a folder move a crash
+	 *  cut short) is heard by every window ([`announce_followed`]).
+	 */
 	journalCreateEntry: (input: JournalCreateInput) => __TAURI_INVOKE<JournalEntryView>("journal_create_entry", { input }),
 	/**  `success` is whether the day had an entry to delete. */
 	journalDeleteEntry: (date: string) => __TAURI_INVOKE<JournalDeleteOutput>("journal_delete_entry", { date }),
@@ -94,7 +98,8 @@ export const commands = {
 	notesCreateFolder: (path: string) => __TAURI_INVOKE<null>("notes_create_folder", { path }),
 	/**
 	 *  `notes:delete-folder`: the folder to the OS trash with everything in it, and its notes and
-	 *  records deleted (`notes::folder_delete`).
+	 *  records deleted (`notes::folder_delete`). A journal setting that followed a journal folder
+	 *  moved outside the app first is heard by every window ([`announce_followed`]).
 	 */
 	notesDeleteFolder: (path: string) => __TAURI_INVOKE<null>("notes_delete_folder", { path }),
 	/**
@@ -110,7 +115,8 @@ export const commands = {
 	 *  `notes:rename-folder`: the folder at `old_path` to `new_path`, a rename in place or a drag
 	 *  to another parent, its notes with it (`notes::folder_move`). A journal setting that follows
 	 *  the folder is heard by every window as [`VaultConfigChangedEvent`], as Electron's
-	 *  `followJournalFolder` broadcasts it.
+	 *  `followJournalFolder` broadcasts it, and so is one that followed a journal folder moved
+	 *  outside the app first ([`announce_followed`]).
 	 */
 	notesRenameFolder: (oldPath: string, newPath: string) => __TAURI_INVOKE<null>("notes_rename_folder", { oldPath, newPath }),
 	/**  `notes:reveal-folder-in-finder`: the folder itself, selected in its parent. */

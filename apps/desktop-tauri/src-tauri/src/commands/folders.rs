@@ -2,6 +2,8 @@
 //! call of `memry_desktop::notes::folders`. Generic over the runtime so a mock app drives them
 //! (`tests/folders.rs`); the reveal goes through the shell, which runs on `Wry` only.
 
+use std::cell::Cell;
+use std::path::Path;
 use std::sync::Arc;
 
 use memry_desktop::i18n::{self, Args};
@@ -9,6 +11,7 @@ use memry_desktop::locale::LocaleService;
 use memry_desktop::notes::error::NotesError;
 use memry_desktop::notes::folders::{self, FolderConfigInput, FolderView};
 use memry_desktop::vault::config::VaultConfig;
+use memry_desktop::vault::config::settings::vault_settings;
 use memry_desktop::vault::folder_file::FolderConfigView;
 use tauri::{AppHandle, Manager, Runtime, Wry};
 
@@ -49,7 +52,8 @@ pub async fn notes_create_folder<R: Runtime>(
 /// `notes:rename-folder`: the folder at `old_path` to `new_path`, a rename in place or a drag
 /// to another parent, its notes with it (`notes::folder_move`). A journal setting that follows
 /// the folder is heard by every window as [`VaultConfigChangedEvent`], as Electron's
-/// `followJournalFolder` broadcasts it.
+/// `followJournalFolder` broadcasts it, and so is one that followed a journal folder moved
+/// outside the app first ([`announce_followed`]).
 #[tauri::command]
 #[specta::specta]
 pub async fn notes_rename_folder<R: Runtime>(
@@ -58,14 +62,32 @@ pub async fn notes_rename_folder<R: Runtime>(
     new_path: String,
 ) -> Result<(), CommandError> {
     blocking("notes_rename_folder", move || {
+        let open = open_vault(&app)?;
+        let before = vault_settings(Some(&open.path));
+        let announced = Cell::new(false);
         let announce = |settings: &VaultConfig| {
+            announced.set(true);
             broadcast(&app, VaultConfigChangedEvent(settings.clone()));
         };
-        service(&app)?
-            .rename_folder(&open_vault(&app)?, &old_path, &new_path, announce)
-            .map_err(|error| settings_or_failed(&app, &error, Refused::FolderMove))
+        let moved = service(&app)?
+            .rename_folder(&open, &old_path, &new_path, announce)
+            .map_err(|error| settings_or_failed(&app, &error, Refused::FolderMove));
+        if !announced.get() {
+            announce_followed(&app, &open.path, &before);
+        }
+        moved
     })
     .await
+}
+
+/// Every window hears the settings when the journal folder changed from `before`: a day create,
+/// a folder move and a folder delete first have the setting follow a journal folder moved
+/// outside the app (`journal::folder_follow`), whether or not they then go through.
+pub(crate) fn announce_followed<R: Runtime>(app: &AppHandle<R>, root: &Path, before: &VaultConfig) {
+    let after = vault_settings(Some(root));
+    if after.journal_folder != before.journal_folder {
+        broadcast(app, VaultConfigChangedEvent(after));
+    }
 }
 
 /// What settings that cannot be read refused, for the words that say so.
@@ -115,7 +137,8 @@ pub(crate) fn settings_or_failed<R: Runtime>(
 }
 
 /// `notes:delete-folder`: the folder to the OS trash with everything in it, and its notes and
-/// records deleted (`notes::folder_delete`).
+/// records deleted (`notes::folder_delete`). A journal setting that followed a journal folder
+/// moved outside the app first is heard by every window ([`announce_followed`]).
 #[tauri::command]
 #[specta::specta]
 pub async fn notes_delete_folder<R: Runtime>(
@@ -123,9 +146,13 @@ pub async fn notes_delete_folder<R: Runtime>(
     path: String,
 ) -> Result<(), CommandError> {
     blocking("notes_delete_folder", move || {
-        service(&app)?
-            .delete_folder(&open_vault(&app)?, &path)
-            .map_err(|error| settings_or_failed(&app, &error, Refused::FolderDelete))
+        let open = open_vault(&app)?;
+        let before = vault_settings(Some(&open.path));
+        let deleted = service(&app)?
+            .delete_folder(&open, &path)
+            .map_err(|error| settings_or_failed(&app, &error, Refused::FolderDelete));
+        announce_followed(&app, &open.path, &before);
+        deleted
     })
     .await
 }

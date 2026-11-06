@@ -7,6 +7,7 @@ mod support;
 
 use std::fs;
 use std::sync::{Arc, Mutex};
+use std::time::{Duration, Instant};
 
 use memry_tauri::events::VaultConfigChangedEvent;
 use serde_json::{Value, json};
@@ -24,6 +25,9 @@ fn opened() -> (Mocked, Arc<Mutex<Vec<Value>>>) {
         .commands(collect_commands![
             memry_tauri::commands::vault::vault_get_config::<MockRuntime>,
             memry_tauri::commands::vault::vault_update_config::<MockRuntime>,
+            memry_tauri::commands::journal::journal_create_entry::<MockRuntime>,
+            memry_tauri::commands::folders::notes_rename_folder::<MockRuntime>,
+            memry_tauri::commands::folders::notes_delete_folder::<MockRuntime>,
         ]);
     let mocked = Mocked::open(
         &[
@@ -269,4 +273,47 @@ fn a_journal_folder_that_cannot_be_listed_is_refused_in_words() {
         "{refused}"
     );
     assert!(heard.lock().unwrap().is_empty());
+}
+
+/// The journal folder moved outside the app: a day create, a folder move or a folder delete has
+/// the setting follow it first, and every window hears the folder that followed, whether the
+/// command then goes through or not.
+#[test]
+fn a_journal_folder_moved_outside_is_followed_and_every_window_hears_it() {
+    let commands: [(&str, Value); 3] = [
+        (
+            "journal_create_entry",
+            json!({ "input": { "date": "2025-01-07" } }),
+        ),
+        (
+            "notes_rename_folder",
+            json!({ "oldPath": "Apart", "newPath": "Moved" }),
+        ),
+        ("notes_delete_folder", json!({ "path": "Diary" })),
+    ];
+    for (command, args) in commands {
+        let (mocked, heard) = opened();
+        fs::create_dir(mocked.vault.join("Apart")).unwrap();
+        fs::rename(mocked.vault.join("Daily"), mocked.vault.join("Diary")).unwrap();
+        let deadline = Instant::now() + Duration::from_secs(10);
+        while !held(&mocked) {
+            assert!(Instant::now() < deadline, "{command}: the day was not held");
+            std::thread::sleep(Duration::from_millis(50));
+        }
+        let _ = mocked.invoke(command, args);
+        let heard = heard.lock().unwrap();
+        assert_eq!(heard.len(), 1, "{command}: {heard:?}");
+        assert_eq!(heard[0]["journalFolder"], "Diary", "{command}");
+    }
+}
+
+/// Whether the watcher took the day's move: its row at the moved folder.
+fn held(mocked: &Mocked) -> bool {
+    let open = mocked.session().current().unwrap();
+    open.vault
+        .note_files()
+        .list_paths()
+        .unwrap()
+        .iter()
+        .any(|(_, path)| path == "Diary/2025-01-02.md")
 }
