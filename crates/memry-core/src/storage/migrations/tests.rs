@@ -52,7 +52,7 @@ fn a_fresh_data_database_reaches_the_latest_version() {
     let version = db
         .call_blocking(|conn| user_version(conn))
         .expect("user_version");
-    assert_eq!(version, 19);
+    assert_eq!(version, 20);
 
     let names = table_names(&db);
     // Source of record, §A.2.
@@ -166,7 +166,7 @@ fn an_older_database_steps_forward_without_losing_rows() {
     let version = db
         .call_blocking(|conn| run(conn, DATA_MIGRATIONS))
         .expect("step forward");
-    assert_eq!(version, 19);
+    assert_eq!(version, 20);
 
     let (count, payload): (i64, String) = db
         .call_blocking(|conn| {
@@ -266,7 +266,7 @@ fn note_snapshots_applies_to_a_version_12_database_and_keeps_its_rows() {
     let version = db
         .call_blocking(|conn| run(conn, DATA_MIGRATIONS))
         .expect("step forward");
-    assert_eq!(version, 19);
+    assert_eq!(version, 20);
 
     let (device, indexes): (String, i64) = db
         .call_blocking(|conn| {
@@ -326,7 +326,7 @@ fn local_settings_applies_to_a_version_13_database_and_keeps_its_rows() {
     let version = db
         .call_blocking(|conn| run(conn, DATA_MIGRATIONS))
         .expect("step forward");
-    assert_eq!(version, 19);
+    assert_eq!(version, 20);
 
     let (device, rows): (String, i64) = db
         .call_blocking(|conn| {
@@ -412,7 +412,7 @@ fn note_files_applies_to_a_version_14_database_and_keeps_its_rows() {
     let version = db
         .call_blocking(|conn| run(conn, DATA_MIGRATIONS))
         .expect("step forward");
-    assert_eq!(version, 19);
+    assert_eq!(version, 20);
 
     let (kept, files): (i64, i64) = db
         .call_blocking(|conn| {
@@ -451,7 +451,7 @@ fn note_positions_applies_to_a_version_15_database_and_keeps_its_rows() {
     let version = db
         .call_blocking(|conn| run(conn, DATA_MIGRATIONS))
         .expect("step forward");
-    assert_eq!(version, 19);
+    assert_eq!(version, 20);
     // The crash window of §A.0: the migration is a no-op the second time.
     db.call_blocking(|conn| {
         conn.execute_batch(DATA_MIGRATIONS[15].sql)
@@ -497,7 +497,7 @@ fn note_file_hashes_applies_to_a_version_16_database_and_names_the_hashes_rows_h
     let version = db
         .call_blocking(|conn| run(conn, DATA_MIGRATIONS))
         .expect("step forward");
-    assert_eq!(version, 19);
+    assert_eq!(version, 20);
     // The crash window of §A.0: the migration is a no-op the second time.
     db.call_blocking(|conn| {
         conn.execute_batch(DATA_MIGRATIONS[16].sql)
@@ -544,7 +544,7 @@ fn the_note_identity_migration_applies_to_a_version_17_database_and_answers_the_
     let version = db
         .call_blocking(|conn| run(conn, DATA_MIGRATIONS))
         .expect("step forward");
-    assert_eq!(version, 19);
+    assert_eq!(version, 20);
     db.call_blocking(|conn| {
         conn.execute_batch(DATA_MIGRATIONS[17].sql)
             .map_err(|err| StorageError::Failed {
