@@ -552,6 +552,12 @@ impl NoteIdentity for NotesIdentity {
         Ok(Rename::Followed)
     }
 
+    /// [`owed_moves::follow_held`].
+    fn follow_held(&self, ctx: &IdentityCtx<'_>) -> bool {
+        self.writer(ctx)
+            .is_ok_and(|writer| owed_moves::follow_held(ctx.root, &writer))
+    }
+
     /// The owed moves that change what their file is, now that the journal days are known
     /// ([`owed_moves::crossings`]).
     fn settle_crossings(&self, ctx: &IdentityCtx<'_>) -> Vec<Crossed> {

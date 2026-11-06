@@ -17,6 +17,7 @@ use crate::notes::owed_moves::settle_followed;
 use crate::vault::config::read_vault_config_strict;
 use crate::vault::config::settings::JournalFollow;
 use crate::vault::journal_format::{JournalDays, normalize_journal_folder};
+use crate::vault::path_key::folded_key;
 
 const SCOPE: &str = "journal_folder_follow";
 
@@ -84,64 +85,115 @@ pub fn journal_folder_moved(
     })
 }
 
+/// What [`follow_moved_journal`] found.
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub(crate) enum Follow {
+    /// No day is held, or the settings cannot be read (each caller refuses that on its own).
+    Nothing,
+    /// The setting followed the folder the held days are in.
+    Followed,
+    /// Days are held in `folders`, and the setting cannot follow them (the module's doc of
+    /// [`follow_moved_journal`]). A day named under the old folder would make it again, and a
+    /// change saved over them would leave them outside the journal: either way the next open
+    /// would cross every held day into a note. So no day is made, no journal setting change
+    /// moves days, and no folder that is, holds or is inside one of `folders` moves or goes,
+    /// until they can follow or go back.
+    HeldWaits { folders: Vec<String> },
+}
+
+impl Follow {
+    /// Whether `folder` is, holds or is inside a folder whose held days wait.
+    pub(crate) fn holds(&self, folder: &str) -> bool {
+        let Self::HeldWaits { folders } = self else {
+            return false;
+        };
+        folders.iter().any(|held| overlaps(held, folder))
+    }
+}
+
+/// Whether one of the two folders is the other or inside it, in any case.
+pub(crate) fn overlaps(a: &str, b: &str) -> bool {
+    let at_or_below = |inner: &str, outer: &str| {
+        let (inner, outer) = (folded_key(inner), folded_key(outer));
+        inner == outer || inner.starts_with(&format!("{outer}/"))
+    };
+    at_or_below(a, b) || at_or_below(b, a)
+}
+
 /// The journal setting follows the journal folder moved outside the app
-/// (`followJournalFolderMove` for the watcher's moves): once every day held owed its move went
-/// from the configured folder to one folder `M` with the path below unchanged, the configured
-/// folder is gone under its exact spelling and `M` is there, and `M` is a folder the days can
-/// live in, `M` is saved. The moves the folder's files are owed then settle by
-/// [`settle_followed`], so each day keeps its day and a note a date names stays that note.
+/// (`followJournalFolderMove` for the watcher's moves). A day the move carried is held, owed
+/// its move (`notes::owed_moves::held`); once every held day went from the configured folder to
+/// one folder `M` with the path below unchanged, the configured folder is gone under its exact
+/// spelling and `M` is there, and `M` is a folder the days can live in, `M` is saved. The moves
+/// the folder's files are owed then settle by [`settle_followed`], so each day keeps its day and
+/// a note a date names stays that note. Each held day's move is read from where it was before
+/// the first move the record is owed (the owed `from_path`), so a folder renamed twice is the
+/// journal moving twice.
 ///
-/// Called before the rows' lane and the settings' locks, as `follow_interrupted` is: by the
-/// open, which follows a move the session before saw (one made while the app was closed is held
-/// by this open's walk, and followed by the next), and by a day create, a settings update, a
-/// folder move and a folder delete, so none works on the folder the days left. Takes the
-/// settings' lock only when a move is owed. Nothing follows while a journal setting change waits
-/// to put its days back, or while the settings cannot be read; the days stay held, and the
-/// failures are logged.
-pub(crate) fn follow_moved_journal(root: &Path, writer: &NotesWriter) {
+/// Electron follows at the first event of the move. Here the consumer follows once its queue
+/// went quiet after the batch of facts that held a day, the rows' lane released
+/// (`NoteIdentity::follow_held`): every file of the folder's move is applied by then, so a note
+/// a date names moved with the days is never judged under the new setting mid-move, and no
+/// later move, folder made again under the old name, day create or settings change sees the
+/// held state. The open follows too, before its lane and walk, for days an earlier session
+/// held and could not follow; a day create, a settings update, a folder move and a folder delete
+/// ask first, for days a batch held and could not follow yet, and refuse while they wait
+/// ([`Follow::HeldWaits`]). Called with no settings' lock held, since it takes it, and only
+/// when a move is owed.
+///
+/// Nothing follows while a journal setting change is recorded (it owns the days until it
+/// settles), while the settings cannot be read, while the held days name more than one folder,
+/// or into a folder the days cannot live in. The days then stay held; the failures are logged.
+pub(crate) fn follow_moved_journal(root: &Path, writer: &NotesWriter) -> Follow {
     let owed = match writer.owed_places() {
-        Ok(owed) if owed.is_empty() => return,
+        Ok(owed) if owed.is_empty() => return Follow::Nothing,
         Ok(owed) => owed,
         Err(error) => {
-            return tracing::error!(scope = SCOPE, "the owed moves could not be read: {error}");
+            tracing::error!(scope = SCOPE, "the owed moves could not be read: {error}");
+            return Follow::Nothing;
         }
     };
     let settings = JournalFollow::hold();
-    let followed = (|| -> Result<Option<String>, String> {
+    let followed = (|| -> Result<Follow, String> {
         let failed = |error: &dyn std::fmt::Display| error.to_string();
-        if writer
-            .pending_journal_change()
-            .map_err(|e| failed(&e))?
-            .is_some()
-        {
-            return Ok(None);
-        }
         let Ok(config) = read_vault_config_strict(root) else {
-            return Ok(None);
+            return Ok(Follow::Nothing);
         };
         let journal = normalize_journal_folder(&config.journal_folder);
         let mut moved = BTreeSet::new();
         for owed in &owed {
-            if writer
-                .journal_date(&owed.note_id)
-                .map_err(|e| failed(&e))?
-                .is_some()
-            {
-                moved.insert(moved_journal_folder(&journal, &owed.from_path, &owed.path));
+            let day = writer.journal_date(&owed.note_id).map_err(|e| failed(&e))?;
+            if let Some(to) = day.and(moved_journal_folder(&journal, &owed.from_path, &owed.path)) {
+                moved.insert(to);
             }
         }
-        let mut moved = moved.into_iter();
-        let (Some(Some(to)), None) = (moved.next(), moved.next()) else {
-            return Ok(None);
-        };
-        if folder_exists_exact_case(root, &journal)
-            || !folder_exists_exact_case(root, &to)
-            || !holds_journal_days(root, &to, config.exclude_patterns.clone())
-                .map_err(|e| failed(&e))?
-        {
-            return Ok(None);
+        if moved.is_empty() {
+            return Ok(Follow::Nothing);
         }
-        settings.save(root, &to).map_err(|e| failed(&e))?;
+        let waits = Follow::HeldWaits {
+            folders: moved.iter().cloned().collect(),
+        };
+        let mut folders = moved.into_iter();
+        let (Some(to), None) = (folders.next(), folders.next()) else {
+            return Ok(waits);
+        };
+        // A check that cannot be made counts as failed: the days stay held. A target that is
+        // gone, or there in another spelling, is one the days cannot live in.
+        if !writer
+            .pending_journal_change()
+            .is_ok_and(|change| change.is_none())
+            || folder_exists_exact_case(root, &journal)
+            || !holds_journal_days(root, &to, config.exclude_patterns.clone()).unwrap_or(false)
+        {
+            return Ok(waits);
+        }
+        if let Err(error) = settings.save(root, &to) {
+            tracing::warn!(
+                scope = SCOPE,
+                "the followed journal folder was not saved: {error}"
+            );
+            return Ok(waits);
+        }
         let format = &config.journal_date_format;
         let days = (
             JournalDays::new(&journal, format),
@@ -158,19 +210,32 @@ pub(crate) fn follow_moved_journal(root: &Path, writer: &NotesWriter) {
             // Saved: the open's identity settles each day's move by the new setting.
             tracing::warn!(scope = SCOPE, "the followed folder's moves wait: {error}");
         }
-        Ok(Some(to))
+        tracing::info!(
+            scope = SCOPE,
+            folder = to,
+            "the journal setting followed the journal folder moved outside the app"
+        );
+        Ok(Follow::Followed)
     })();
     match followed {
-        Ok(Some(folder)) => tracing::info!(
-            scope = SCOPE,
-            folder,
-            "the journal setting followed the journal folder moved outside the app"
-        ),
-        Ok(None) => {}
-        Err(error) => tracing::warn!(
-            scope = SCOPE,
-            "the journal setting waits to follow a journal folder moved outside the app: {error}"
-        ),
+        Ok(Follow::HeldWaits { folders }) => {
+            // TODO(#3531 Step 14): tell the user the journal days wait in these folders.
+            tracing::warn!(
+                scope = SCOPE,
+                ?folders,
+                "journal days the journal folder's move carried wait for the setting to follow"
+            );
+            Follow::HeldWaits { folders }
+        }
+        Ok(follow) => follow,
+        Err(error) => {
+            tracing::warn!(
+                scope = SCOPE,
+                "the journal setting waits to follow a journal folder moved outside the app: \
+                 {error}"
+            );
+            Follow::Nothing
+        }
     }
 }
 

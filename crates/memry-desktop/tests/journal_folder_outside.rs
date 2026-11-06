@@ -1,24 +1,26 @@
 //! The journal folder moved outside the app (Finder), followed (Step 13m-7b-2b stage c, #3530):
-//! once every day the move carried is held, owed its move, and the folder the setting names is
-//! gone while the one they went to is there, the setting follows that folder
-//! (`journal::folder_follow::follow_moved_journal`) at the next open, or first in a day create,
-//! a settings update, a folder move or a folder delete. Each test runs on the app's own identity
-//! with a day and a note whose title is a date, and ends with both in the folder the setting
-//! names, no record deleted and no delete in the outbox.
+//! each day the move carried is held, owed its move, and right after the consumer's batch that
+//! held it the setting follows the folder the days went to
+//! (`journal::folder_follow::follow_moved_journal`), as Electron's watcher follows at the move's
+//! first event. The open follows too, before its walk, for days an earlier session held, and a
+//! day create, a settings update, a folder move and a folder delete ask first. Each test runs
+//! on the app's own identity with a day and a note whose title is a date, and ends with both in
+//! the folder the setting names, no record deleted and no delete in the outbox. What waits
+//! instead of following: `journal_folder_held`.
 //!
 //! | Test                                                              | Rule                               |
 //! | ----------------------------------------------------------------- | ---------------------------------- |
-//! | a journal folder moved outside is followed at the next open       | open                               |
-//! | a journal folder moved while closed is followed by the open after | the walk holds, the next open follows |
-//! | a day made after an outside move lands in the moved folder        | day create follows first           |
-//! | a settings change after an outside move takes the moved days      | settings update follows first      |
-//! | a folder move after an outside move takes the journal along       | folder move follows first          |
-//! | a folder delete after an outside move is refused as the journal's | folder delete follows first        |
-//! | a follow cut short after its save settles at the next open        | crash between save and settle      |
-//! | an outside move waits for readable settings                      | unread: held, then followed        |
+//! | a journal folder moved outside is followed right after the move   | the batch that held follows        |
+//! | a journal folder moved while closed is followed by that open      | after the walk's batch             |
+//! | the moved folder renamed again is followed again                  | P1: in session                     |
+//! | the followed folder renamed while closed is followed at the open  | P2: across opens                   |
+//! | the journal folder made again after the follow keeps every day    | nothing held is left to cross      |
+//! | a day made after an outside move lands in the moved folder        | day create                         |
+//! | a settings change after an outside move takes the moved days      | settings update                    |
+//! | a folder move after an outside move takes the journal along       | folder move                        |
+//! | a folder delete after an outside move is refused as the journal's | folder delete                      |
+//! | an outside move while the settings are unread is followed later   | unread: owed, then followed        |
 //! | a folder moved while closed and unread keeps its dated note       | followed moves keep what they were |
-//! | a journal change another build recorded holds the setting         | a waiting change owns the days     |
-//! | the journal folder made again is not left for the moved one       | the old folder gone (Electron)     |
 
 #[allow(unused_imports)]
 use crate::device_key;
@@ -28,7 +30,6 @@ use crate::vault_env;
 use std::fs;
 use std::sync::Arc;
 
-use memry_core::domain::notes::journal_change;
 use memry_core::seams::secure_store::SecureStore;
 use memry_desktop::notes::error::NotesError;
 use memry_desktop::notes::service::NotesService;
@@ -42,71 +43,109 @@ use crate::journal_folder::{
 use crate::vault_settings::{opened_keeping, stored, update};
 
 /// A vault with a day and a dated note in `journal/`, open.
-fn journal() -> (Env, Arc<NotesService>, Arc<dyn SecureStore>, String) {
+pub(crate) fn journal() -> (Env, Arc<NotesService>, Arc<dyn SecureStore>, String) {
     let (mut e, store) = opened_keeping(daily("journal"), &[("journal/2025-01-02.md", "A day\n")]);
     let notes = NotesService::new(e.tier.clone(), store.clone());
     let note = dated_note(&notes, &mut e);
     (e, notes, store, note)
 }
 
-/// `journal` renamed to `to` outside the app while it runs: the watcher holds the day, owed its
-/// move, and makes and removes no note.
-fn moved_outside(e: &mut Env, to: &str) {
-    fs::rename(e.vault.join("journal"), e.vault.join(to)).unwrap();
+/// `from` renamed to `to` outside the app while it runs: the watcher holds the day, makes and
+/// removes no note, and the day's row follows its file.
+pub(crate) fn moved_outside(e: &mut Env, from: &str, to: &str) {
+    fs::rename(e.vault.join(from), e.vault.join(to)).unwrap();
     std::thread::sleep(QUIET);
     let facts = e.drain();
     assert!(!crossed(&facts), "{facts:?}");
     assert!(e.rows().contains(&row(DAY, &format!("{to}/2025-01-02.md"))));
-    assert_eq!(stored(&e.vault)["journalFolder"], "journal");
 }
 
-#[test]
-fn a_journal_folder_moved_outside_is_followed_at_the_next_open() {
-    let (mut e, notes, _, note) = journal();
-    moved_outside(&mut e, "Diary");
-    reopen(&mut e);
-    assert_eq!(stored(&e.vault)["journalFolder"], "Diary");
-    settles(&mut e, &notes, &note, "Diary");
-}
-
-/// Moved while the app is closed, the open's walk holds the day; the open after it follows.
-#[test]
-fn a_journal_folder_moved_while_closed_is_followed_by_the_open_after() {
-    let (mut e, notes, _, note) = journal();
-    e.close();
-    fs::rename(e.vault.join("journal"), e.vault.join("Diary")).unwrap();
+/// Opens after a change made while the app was closed: the open makes and removes no note.
+pub(crate) fn opened_after(e: &mut Env) {
     e.drain();
     e.open();
     let facts = e.facts_until(indexed);
     assert!(!crossed(&facts), "{facts:?}");
-    quiet(&mut e);
-    reopen(&mut e);
+    quiet(e);
+}
+
+#[test]
+fn a_journal_folder_moved_outside_is_followed_right_after_the_move() {
+    let (mut e, notes, _, note) = journal();
+    moved_outside(&mut e, "journal", "Diary");
     assert_eq!(stored(&e.vault)["journalFolder"], "Diary");
     settles(&mut e, &notes, &note, "Diary");
 }
 
-/// A day made in the session of the move follows the folder first, so it lands beside the other
-/// days instead of in a new folder under the old name.
+/// Moved while the app is closed: the open's walk holds the day, and the follow after its batch
+/// saves the folder in that same open.
 #[test]
-fn a_day_made_after_an_outside_move_lands_in_the_moved_folder() {
+fn a_journal_folder_moved_while_closed_is_followed_by_that_open() {
     let (mut e, notes, _, note) = journal();
-    moved_outside(&mut e, "Diary");
+    e.close();
+    fs::rename(e.vault.join("journal"), e.vault.join("Diary")).unwrap();
+    opened_after(&mut e);
+    assert_eq!(stored(&e.vault)["journalFolder"], "Diary");
+    settles(&mut e, &notes, &note, "Diary");
+}
+
+/// P1: the moved folder renamed again in the session (a typo fixed). The setting followed the
+/// first move already, so the second is the journal moving again, followed again. Left to a
+/// later follow, the second move would read as each day leaving the journal: crossed into a
+/// note, the day deleted, and the delete synced.
+#[test]
+fn the_moved_folder_renamed_again_is_followed_again() {
+    let (mut e, notes, _, note) = journal();
+    moved_outside(&mut e, "journal", "Diary");
+    moved_outside(&mut e, "Diary", "Diary2");
+    assert_eq!(stored(&e.vault)["journalFolder"], "Diary2");
+    settles(&mut e, &notes, &note, "Diary2");
+}
+
+/// P2: the followed folder renamed again while the app is closed: the open's walk holds the day
+/// and follows the folder again.
+#[test]
+fn the_followed_folder_renamed_while_closed_is_followed_at_the_open() {
+    let (mut e, notes, _, note) = journal();
+    moved_outside(&mut e, "journal", "Diary");
+    e.close();
+    fs::rename(e.vault.join("Diary"), e.vault.join("Diary2")).unwrap();
+    opened_after(&mut e);
+    assert_eq!(stored(&e.vault)["journalFolder"], "Diary2");
+    settles(&mut e, &notes, &note, "Diary2");
+}
+
+/// The old folder made again once the setting followed (by hand, or by a day create) holds no
+/// day, and leaves every moved day a day through the opens after.
+#[test]
+fn the_journal_folder_made_again_after_the_follow_keeps_every_day() {
+    let (mut e, notes, _, note) = journal();
+    moved_outside(&mut e, "journal", "Diary");
+    fs::create_dir(e.vault.join("journal")).unwrap();
     make_day(&notes, &e, "2025-01-07");
     assert!(e.vault.join("Diary/2025-01-07.md").exists());
-    assert!(!e.vault.join("journal").exists());
-    assert_eq!(stored(&e.vault)["journalFolder"], "Diary");
     std::thread::sleep(QUIET);
     e.drain();
     settles(&mut e, &notes, &note, "Diary");
 }
 
-/// A journal folder change in the session of the move follows the folder first and moves the
-/// days from there. Saved over the held days, the next open would cross each into a note: the
-/// day deleted, and the delete synced.
+#[test]
+fn a_day_made_after_an_outside_move_lands_in_the_moved_folder() {
+    let (mut e, notes, _, note) = journal();
+    moved_outside(&mut e, "journal", "Diary");
+    make_day(&notes, &e, "2025-01-07");
+    assert!(e.vault.join("Diary/2025-01-07.md").exists());
+    assert!(!e.vault.join("journal").exists());
+    std::thread::sleep(QUIET);
+    e.drain();
+    settles(&mut e, &notes, &note, "Diary");
+}
+
+/// A journal folder change after the move moves the days from the folder they are in.
 #[test]
 fn a_settings_change_after_an_outside_move_takes_the_moved_days() {
     let (mut e, _, _, note) = journal();
-    moved_outside(&mut e, "Diary");
+    moved_outside(&mut e, "journal", "Diary");
     update(&e, folder("Other"), |_| {}).unwrap();
     assert!(e.vault.join("Other/2025-01-02.md").exists());
     std::thread::sleep(QUIET);
@@ -118,12 +157,11 @@ fn a_settings_change_after_an_outside_move_takes_the_moved_days() {
     assert_eq!(stored(&e.vault)["journalFolder"], "Other");
 }
 
-/// The moved folder moved again in the app: the setting follows the outside move first, so the
-/// app's move carries the journal and its setting along.
+/// The moved folder moved again in the app carries the journal and its setting along.
 #[test]
 fn a_folder_move_after_an_outside_move_takes_the_journal_along() {
     let (mut e, notes, _, note) = journal();
-    moved_outside(&mut e, "Diary");
+    moved_outside(&mut e, "journal", "Diary");
     let open = e.session.current().unwrap();
     notes
         .rename_folder(&open, "Diary", "Archive", |_| {})
@@ -135,12 +173,11 @@ fn a_folder_move_after_an_outside_move_takes_the_journal_along() {
     settles(&mut e, &notes, &note, "Archive");
 }
 
-/// The moved folder deleted in the app: the setting follows first, so the folder is refused as
-/// the one that holds the journal instead of taking the days with it.
+/// The moved folder deleted in the app is refused as the one that holds the journal.
 #[test]
 fn a_folder_delete_after_an_outside_move_is_refused_as_the_journals() {
     let (mut e, notes, _, note) = journal();
-    moved_outside(&mut e, "Diary");
+    moved_outside(&mut e, "journal", "Diary");
     let open = e.session.current().unwrap();
     let deleted = notes.delete_folder(&open, "Diary");
     assert!(
@@ -152,37 +189,16 @@ fn a_folder_delete_after_an_outside_move_is_refused_as_the_journals() {
     settles(&mut e, &notes, &note, "Diary");
 }
 
-/// Stopped after the followed folder was saved and before the moves owed settled, as a crash
-/// there stops it: the next open settles each day's move by the saved setting.
+/// Moved while the settings cannot be read: the day is owed its move as one while the journal
+/// is unknown, and the batch follows nothing. Once they read again, the next day made follows
+/// first and lands beside the moved day.
 #[test]
-fn a_follow_cut_short_after_its_save_settles_at_the_next_open() {
+fn an_outside_move_while_the_settings_are_unread_is_followed_later() {
     let (mut e, notes, _, note) = journal();
-    moved_outside(&mut e, "Diary");
-    e.close();
-    fs::write(config_path(&e.vault), daily("Diary").to_string()).unwrap();
-    e.drain();
-    e.open();
-    let facts = e.facts_until(indexed);
-    assert!(!crossed(&facts), "{facts:?}");
-    quiet(&mut e);
-    settles(&mut e, &notes, &note, "Diary");
-}
-
-/// The next open cannot read the settings: nothing follows and the day stays held. Once they
-/// read again, the next day made follows first and lands beside the moved day.
-#[test]
-fn an_outside_move_waits_for_readable_settings() {
-    let (mut e, notes, _, note) = journal();
-    moved_outside(&mut e, "Diary");
-    e.close();
     fs::write(config_path(&e.vault), "{").unwrap();
-    e.drain();
-    e.open();
-    let facts = e.facts_until(indexed);
-    assert!(!crossed(&facts), "{facts:?}");
-    quiet(&mut e);
-    assert!(e.rows().contains(&row(DAY, "Diary/2025-01-02.md")));
+    moved_outside(&mut e, "journal", "Diary");
     fs::write(config_path(&e.vault), daily("journal").to_string()).unwrap();
+    assert_eq!(stored(&e.vault)["journalFolder"], "journal");
     make_day(&notes, &e, "2025-01-07");
     assert!(e.vault.join("Diary/2025-01-07.md").exists());
     assert_eq!(stored(&e.vault)["journalFolder"], "Diary");
@@ -201,54 +217,11 @@ fn a_folder_moved_while_closed_and_unread_keeps_its_dated_note() {
     e.close();
     fs::rename(e.vault.join("journal"), e.vault.join("Diary")).unwrap();
     fs::write(config_path(&e.vault), "{").unwrap();
-    e.drain();
-    e.open();
-    let facts = e.facts_until(indexed);
-    assert!(!crossed(&facts), "{facts:?}");
-    quiet(&mut e);
+    opened_after(&mut e);
     fs::write(config_path(&e.vault), daily("journal").to_string()).unwrap();
     make_day(&notes, &e, "2025-01-07");
     assert_eq!(stored(&e.vault)["journalFolder"], "Diary");
     std::thread::sleep(QUIET);
     e.drain();
     settles(&mut e, &notes, &note, "Diary");
-}
-
-/// A journal setting change another build recorded, which this one cannot finish, owns the
-/// journal's days until that build settles it: the setting follows no folder meanwhile, and the
-/// moved day stays held.
-#[test]
-fn a_journal_change_another_build_recorded_holds_the_setting() {
-    let (mut e, ..) = journal();
-    e.core()
-        .db_handle()
-        .call_blocking(|conn| {
-            conn.execute(
-                "INSERT INTO meta (key, value) VALUES (?1, '{\"version\":2}')",
-                [journal_change::KEY],
-            )
-            .unwrap();
-            Ok(())
-        })
-        .unwrap();
-    moved_outside(&mut e, "Diary");
-    reopen(&mut e);
-    assert_eq!(stored(&e.vault)["journalFolder"], "journal");
-    assert!(e.rows().contains(&row(DAY, "Diary/2025-01-02.md")));
-    assert!(!outbox(&e, DAY).contains(&"delete".to_owned()));
-}
-
-/// The journal folder made again under its name after the move: the moved folder is not the
-/// journal gone whole (`renameKeepsJournalDate` asks the old folder to be gone), so the setting
-/// stays, and the day made next lands in the folder it names.
-#[test]
-fn the_journal_folder_made_again_is_not_left_for_the_moved_one() {
-    let (mut e, notes, ..) = journal();
-    moved_outside(&mut e, "Diary");
-    fs::create_dir(e.vault.join("journal")).unwrap();
-    make_day(&notes, &e, "2025-01-07");
-    assert_eq!(stored(&e.vault)["journalFolder"], "journal");
-    assert!(e.vault.join("journal/2025-01-07.md").exists());
-    assert!(e.rows().contains(&row(DAY, "Diary/2025-01-02.md")));
-    assert!(!outbox(&e, DAY).contains(&"delete".to_owned()));
 }

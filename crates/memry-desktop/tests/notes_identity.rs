@@ -1582,8 +1582,8 @@ fn an_outside_edit_of_the_journal_settings_turns_no_day_into_a_note() {
 
 /// The journal folder renamed in Finder moves every day out of the folder the config names.
 /// Crossed, each would be deleted and the delete synced (#3930); held, each stays its day, owed
-/// the move, live, until the next open has the config follow the folder and settles the moves
-/// (`journal::folder_follow`).
+/// the move, until the consumer's queue goes quiet and the config follows the folder, which
+/// settles the moves (`journal::folder_follow`).
 #[test]
 fn a_journal_folder_renamed_outside_the_app_keeps_its_days() {
     let mut e = notes_env();
@@ -1596,21 +1596,24 @@ fn a_journal_folder_renamed_outside_the_app_keeps_its_days() {
     until("both days are at their new paths", || {
         row_id(&e, "Diary/2025-01-02.md").is_some() && row_id(&e, "Diary/2025-01-03.md").is_some()
     });
-    let held = || vec!["j2025-01-02".to_owned(), "j2025-01-03".to_owned()];
     assert_eq!(
         row_id(&e, "Diary/2025-01-02.md").as_deref(),
         Some("j2025-01-02")
     );
     no_day_deleted(&e);
-    assert_eq!(owed(&e), held());
+    until("the config followed the folder", || followed(&e, "Diary"));
 
     reopen(&mut e);
     no_day_deleted(&e);
     assert!(owed(&e).is_empty(), "{:?}", owed(&e));
-    let config = fs::read_to_string(e.vault.join(".memry/config.json")).unwrap();
-    let config: Value = serde_json::from_str(&config).unwrap();
-    assert_eq!(config["journalFolder"], "Diary");
     assert_eq!(e.body("j2025-01-03"), "Another day");
+}
+
+/// Whether the config names `folder` as the journal folder and no move is owed.
+fn followed(e: &Env, folder: &str) -> bool {
+    let config = fs::read_to_string(e.vault.join(".memry/config.json")).unwrap_or_default();
+    let config: Value = serde_json::from_str(&config).unwrap_or_default();
+    config["journalFolder"] == folder && owed(e).is_empty()
 }
 
 #[test]
@@ -1628,5 +1631,5 @@ fn a_journal_folder_renamed_while_closed_keeps_its_days() {
         row_id(&e, "Diary/2025-01-02.md").as_deref(),
         Some("j2025-01-02")
     );
-    assert_eq!(owed(&e), vec!["j2025-01-02".to_owned()]);
+    until("the config followed the folder", || followed(&e, "Diary"));
 }

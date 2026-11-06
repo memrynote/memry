@@ -21,6 +21,7 @@
     "journalDaysNotRenamed": "Perubahan tidak disimpan karena beberapa hari jurnal tidak dapat dipindahkan ke sana ({count}). Mungkin sebuah file sudah memakai nama baru salah satu hari.",
     "journalUnlisted": "Folder jurnal tidak dapat dibaca, jadi perubahan tidak disimpan. Periksa apakah Anda memiliki akses ke folder itu.",
     "journalChangeWaits": "Perubahan folder jurnal atau format tanggal sebelumnya belum selesai. Buka ulang vault untuk menyelesaikannya, lalu coba lagi.",
+    "journalFolderHeld": "Folder jurnal dipindahkan di luar aplikasi, dan hari-harinya belum dapat mengikutinya ke sana. Pindahkan folder kembali, atau ke satu folder biasa di brankas, lalu coba lagi.",
     "journalMovesWait": "Pemindahan catatan atau folder belum selesai. Buka kembali brankas untuk menyelesaikannya, lalu ubah lagi pengaturan jurnal.",
     "journalChangeUnrecorded": "Perubahan jurnal tidak dapat disiapkan, jadi tidak ada hari jurnal yang dipindahkan dan pengaturan tersimpan Anda tetap. Coba lagi.",
     "settingsUnreadable": "Folder tidak dapat dipindahkan selama file pengaturan brankas (.memry/config.json) tidak dapat dibaca. Perbaiki file itu, lalu coba lagi.",

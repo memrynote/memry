@@ -18,7 +18,7 @@ use tauri::{AppHandle, Manager, Runtime, Wry};
 use super::blocking;
 use super::error::{CommandError, ErrorKind};
 use super::notes::{failed, open_vault, service};
-use super::vault::CHANGE_WAITS_KEY;
+use super::vault::{CHANGE_WAITS_KEY, FOLDER_HELD_KEY};
 use crate::events::{VaultConfigChangedEvent, broadcast};
 use crate::shell::external;
 
@@ -130,6 +130,14 @@ pub(crate) fn settings_or_failed<R: Runtime>(
                 ErrorKind::Invalid,
                 "journal_change_waits",
                 i18n::t(locale, CHANGE_WAITS_KEY, &Args::new()),
+            )
+        }
+        NotesError::JournalFolderHeld => {
+            let locale = app.state::<Arc<LocaleService>>().get();
+            CommandError::new(
+                ErrorKind::Invalid,
+                "journal_folder_held",
+                i18n::t(locale, FOLDER_HELD_KEY, &Args::new()),
             )
         }
         _ => failed(error),

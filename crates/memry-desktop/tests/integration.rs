@@ -104,6 +104,8 @@ mod journal_change_waits;
 mod journal_folder;
 #[path = "journal_folder_claim.rs"]
 mod journal_folder_claim;
+#[path = "journal_folder_held.rs"]
+mod journal_folder_held;
 #[path = "journal_folder_outside.rs"]
 mod journal_folder_outside;
 #[path = "journal_format_vectors.rs"]

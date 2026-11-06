@@ -21,6 +21,7 @@
     "journalDaysNotRenamed": "Die Änderung wurde nicht gespeichert, weil einige Journaltage nicht dorthin verschoben werden konnten ({count}). Möglicherweise trägt eine Datei bereits den neuen Namen eines Tages.",
     "journalUnlisted": "Der Journal-Ordner konnte nicht gelesen werden, daher wurde die Änderung nicht gespeichert. Prüfe, ob du Zugriff darauf hast.",
     "journalChangeWaits": "Eine frühere Änderung des Journal-Ordners oder Datumsformats wurde nicht abgeschlossen. Öffne den Tresor erneut, um sie abzuschließen, und versuche es dann noch einmal.",
+    "journalFolderHeld": "Der Journal-Ordner wurde außerhalb der App verschoben, und seine Tage können ihm dorthin noch nicht folgen. Verschiebe den Ordner zurück oder in einen normalen Ordner des Tresors und versuche es erneut.",
     "journalMovesWait": "Das Verschieben einer Notiz oder eines Ordners wurde nicht abgeschlossen. Öffne den Tresor erneut, um es abzuschließen, und ändere dann die Journal-Einstellung noch einmal.",
     "journalChangeUnrecorded": "Die Journal-Änderung konnte nicht vorbereitet werden. Es wurde kein Journaltag verschoben, und deine gespeicherte Einstellung bleibt erhalten. Versuche es erneut.",
     "settingsUnreadable": "Ordner können nicht verschoben werden, solange die Einstellungsdatei des Tresors (.memry/config.json) nicht gelesen werden kann. Korrigiere diese Datei und versuche es erneut.",

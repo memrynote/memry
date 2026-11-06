@@ -189,7 +189,9 @@ pub async fn journal_create_entry<R: Runtime>(
     .await
 }
 
-/// The day edited: its text, tags or properties; a day with no file is made.
+/// The day edited: its text, tags or properties; a day with no file is made. A journal setting
+/// that followed its folder first, as a day create does, is heard by every window
+/// ([`announce_followed`]).
 #[tauri::command]
 #[specta::specta]
 pub async fn journal_update_entry<R: Runtime>(
@@ -198,6 +200,7 @@ pub async fn journal_update_entry<R: Runtime>(
 ) -> Result<JournalEntryView, CommandError> {
     blocking("journal_update_entry", move || {
         let open = notes::open_vault(&app)?;
+        let before = vault_settings(Some(&open.path));
         // A tags-only update writes the record alone: the file, and so its counts, stay.
         let rewrites_file = input.content.is_some() || input.properties.is_some();
         let update = DayUpdate {
@@ -210,9 +213,10 @@ pub async fn journal_update_entry<R: Runtime>(
             }),
             properties: input.properties,
         };
-        let updated = notes::service(&app)?
-            .update_day(&open, update)
-            .map_err(|error| settings_or_failed(&app, &error, Refused::JournalDay))?;
+        let updated = notes::service(&app)?.update_day(&open, update);
+        announce_followed(&app, &open.path, &before);
+        let updated =
+            updated.map_err(|error| settings_or_failed(&app, &error, Refused::JournalDay))?;
         if rewrites_file || updated.created {
             journal_events::measure(&app, &updated.entry.id, &updated.entry.date);
         }

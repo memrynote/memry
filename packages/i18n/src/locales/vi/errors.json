@@ -21,6 +21,7 @@
     "journalDaysNotRenamed": "Thay đổi không được lưu vì một số ngày nhật ký không thể chuyển đến đó ({count}). Có thể một tệp đã mang tên mới của một ngày.",
     "journalUnlisted": "Không thể đọc thư mục nhật ký nên thay đổi không được lưu. Hãy kiểm tra bạn có quyền truy cập thư mục đó.",
     "journalChangeWaits": "Lần thay đổi thư mục nhật ký hoặc định dạng ngày trước đó chưa hoàn tất. Hãy mở lại kho để hoàn tất, rồi thử lại.",
+    "journalFolderHeld": "Thư mục nhật ký đã bị di chuyển bên ngoài ứng dụng và các ngày của nó chưa thể theo đến đó. Hãy chuyển thư mục về chỗ cũ hoặc vào một thư mục thông thường trong kho, rồi thử lại.",
     "journalMovesWait": "Việc di chuyển một ghi chú hoặc thư mục chưa hoàn tất. Hãy mở lại kho để hoàn tất, rồi thay đổi lại cài đặt nhật ký.",
     "journalChangeUnrecorded": "Không thể chuẩn bị thay đổi nhật ký nên không ngày nào được di chuyển và cài đặt đã lưu được giữ nguyên. Hãy thử lại.",
     "settingsUnreadable": "Không thể di chuyển thư mục khi chưa đọc được tệp cài đặt kho (.memry/config.json). Hãy sửa tệp đó rồi thử lại.",

@@ -78,7 +78,11 @@ export const commands = {
 	journalGetStreak: () => __TAURI_INVOKE<StreakView>("journal_get_streak"),
 	/**  One row per month of the year that has a live day (`journal:getYearStats`). */
 	journalGetYearStats: (year: number) => __TAURI_INVOKE<MonthStatsView[]>("journal_get_year_stats", { year }),
-	/**  The day edited: its text, tags or properties; a day with no file is made. */
+	/**
+	 *  The day edited: its text, tags or properties; a day with no file is made. A journal setting
+	 *  that followed its folder first, as a day create does, is heard by every window
+	 *  ([`announce_followed`]).
+	 */
 	journalUpdateEntry: (input: JournalUpdateInput) => __TAURI_INVOKE<JournalEntryView>("journal_update_entry", { input }),
 	localeGet: () => __TAURI_INVOKE<string>("locale_get"),
 	localeList: () => __TAURI_INVOKE<string[]>("locale_list"),
@@ -446,8 +450,10 @@ export const commands = {
 	 *  hears as [`VaultConfigChangedEvent`], in the order the writes land. A change that is not
 	 *  ported yet is refused as `config_change_not_ported`, and a setting not every day can take as
 	 *  `journal_format_incomplete`, `journal_folder_invalid`, `journal_folder_respelled`,
-	 *  `journal_unlisted`, `journal_days_not_renamed`, `journal_change_waits`, `journal_moves_wait`
-	 *  or `journal_change_unrecorded` (`vault::config::settings`).
+	 *  `journal_unlisted`, `journal_days_not_renamed`, `journal_change_waits`, `journal_moves_wait`,
+	 *  `journal_folder_held` or `journal_change_unrecorded` (`vault::config::settings`). A journal
+	 *  folder moved outside the app is followed first, and every window hears that too, whether the
+	 *  update then writes, changes nothing or is refused.
 	 */
 	vaultUpdateConfig: (config: VaultConfigPatch) => __TAURI_INVOKE<VaultConfig>("vault_update_config", { config }),
 	/**  Drops every retained entry, on disk too. */

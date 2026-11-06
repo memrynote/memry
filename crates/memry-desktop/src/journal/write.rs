@@ -53,7 +53,7 @@ use memry_core::markdown::shared::writing_tools::merge_writing_yaml;
 use serde_json::{Map, Value};
 
 use super::{JournalEntryView, SCOPE, day_path, entry, is_reserved_day_key, view_of};
-use crate::journal::folder_follow::follow_moved_journal;
+use crate::journal::folder_follow::{Follow, follow_moved_journal};
 use crate::notes::create::{Seed, remove_file, remove_row};
 use crate::notes::error::NotesError;
 use crate::notes::frontmatter::is_reserved_key;
@@ -128,7 +128,9 @@ impl NotesService {
         finish_journal_change(at, &JournalFollow::hold());
         let writer = open.vault.notes_writer(self.store.clone())?;
         follow_interrupted(root, &writer);
-        follow_moved_journal(root, &writer);
+        if let Follow::HeldWaits { .. } = follow_moved_journal(root, &writer) {
+            return Err(NotesError::JournalFolderHeld);
+        }
         read_vault_config_strict(root).map_err(NotesError::SettingsUnreadable)?;
         // The file is named in the format a change in progress saves (`vault::config::settings`).
         let _format = day_names();

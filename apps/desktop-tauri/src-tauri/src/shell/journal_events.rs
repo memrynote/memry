@@ -27,6 +27,7 @@ use memry_desktop::journal::{self, JournalEntryView};
 use memry_desktop::notes::index::NoteIndex;
 use memry_desktop::notes::service::NotesService;
 use memry_desktop::session::{OpenVault, Session};
+use memry_desktop::vault::config::settings::vault_settings;
 use memry_desktop::vault::consumer::{Applied, ChangeSource};
 use tauri::{AppHandle, Manager, Runtime};
 use tokio::sync::broadcast::Receiver;
@@ -35,7 +36,7 @@ use tokio::sync::broadcast::error::RecvError;
 use crate::events::{
     JournalEntryCreatedEvent, JournalEntryDeletedEvent, JournalEntryUpdatedEvent,
     JournalEventsDroppedEvent, JournalExternalChange, JournalExternalChangeEvent, NoteEventSource,
-    NoteTagsChangedEvent, broadcast,
+    NoteTagsChangedEvent, VaultConfigChangedEvent, broadcast,
 };
 
 const SCOPE: &str = "journal";
@@ -65,6 +66,15 @@ enum Change {
 
 fn emit<R: Runtime>(app: &AppHandle<R>, fact: Applied) {
     let (note_id, path, change) = match fact {
+        // The journal setting followed a journal folder moved outside the app: every window
+        // hears the new setting, as for a folder move in the app.
+        Applied::JournalFollowed => {
+            if let Some(open) = app.state::<Session>().current() {
+                let settings = vault_settings(Some(&open.path));
+                broadcast(app, VaultConfigChangedEvent(settings));
+            }
+            return;
+        }
         Applied::Added {
             note_id,
             path,

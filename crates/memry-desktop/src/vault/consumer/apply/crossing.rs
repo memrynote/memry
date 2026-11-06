@@ -21,6 +21,17 @@ impl Applier {
         }
     }
 
+    /// Once the queue went quiet after a batch of facts: the journal setting follows a journal folder whose days the
+    /// batch held, and the rows' facts say so (`NoteIdentity::follow_held`).
+    pub(in crate::vault::consumer) fn follow_held(&self) {
+        if !self.identity.follow_held(&self.ctx()) {
+            return;
+        }
+        if let Ok(lane) = self.rows.lane_of(self.session) {
+            lane.publish(Applied::JournalFollowed);
+        }
+    }
+
     /// The note's record was deleted, since its file, at `new_path` now, is another kind
     /// (`Rename::Crossed`): its row goes from `old_path`, and the file is a new one, as
     /// Electron lists it (`handleMarkdownFileAdd`).
