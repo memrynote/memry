@@ -206,6 +206,22 @@ interface NotePageProps {
   noteId?: string
 }
 
+/** What came in while saves of the editor's text ran (#3967). */
+interface SaveWindow {
+  /** The text the editor's baseline held when the first save started. */
+  base: string
+  /** The texts the saves left in the file. */
+  own: Set<string>
+  /** Every text an event or a read gave meanwhile, in order. */
+  outside: string[]
+  /** Note events were dropped meanwhile. */
+  dropped: boolean
+  /** A save's reply already told the user it went over an outside edit. */
+  toasted: boolean
+  /** The last save to answer. */
+  last: { markdown: string; result: NoteUpdateResponse } | null
+}
+
 // ============================================================================
 // Error State Component
 // ============================================================================
@@ -256,6 +272,7 @@ export function NotePage({ noteId }: NotePageProps) {
   const {
     note,
     isLoading,
+    isFetching,
     isFetchedAfterMount,
     error: noteError,
     refetch: refetchNote
@@ -629,11 +646,10 @@ export function NotePage({ noteId }: NotePageProps) {
     lastSavedContent.current = noteContentForLastSaved
   }, [loadedNoteId, noteContentForLastSaved])
 
-  // A save cannot tell its own echo from an outside edit while it runs: what came in meanwhile
-  // waits for its reply (`settleSave`). `text` is the last outside text, `null` once events were
-  // dropped.
-  const isSavingRef = useRef(false)
-  const changedDuringSaveRef = useRef<{ text: string | null } | null>(null)
+  // While saves of the editor's text run, a save cannot tell its own echo from an outside edit:
+  // what comes in is kept in the save window and settled when the last save ends.
+  const saveWindowRef = useRef<SaveWindow | null>(null)
+  const savesInFlightRef = useRef(0)
 
   // The editor takes an outside edit's text. Typing not saved yet is the user's newest text:
   // its save follows and says it went over this one (`outsideEdit`).
@@ -651,12 +667,13 @@ export function NotePage({ noteId }: NotePageProps) {
     [noteId, outsideEdit]
   )
 
-  // The note's text as an event or a read gave it.
+  // The note's text as an event or a read gave it; `null` when events were dropped.
   const outsideText = useCallback(
     (content: string | null) => {
-      if (isSavingRef.current) {
-        const dropped = changedDuringSaveRef.current?.text === null
-        changedDuringSaveRef.current = { text: dropped ? null : content }
+      const window = saveWindowRef.current
+      if (window) {
+        if (content === null) window.dropped = true
+        else window.outside.push(content)
         return
       }
       if (content !== null && content !== lastSavedContent.current) takeContent(content)
@@ -664,30 +681,72 @@ export function NotePage({ noteId }: NotePageProps) {
     [takeContent]
   )
 
-  // After a save's reply, with `lastSavedContent` set to what it wrote: something came in while
-  // it ran. The file read again tells which: past the save it is an edit that landed after it;
-  // at the save, an outside edit (not the echo of the save before, `base`) went under it.
-  const settleSave = useCallback(
-    (markdown: string, base: string, result: NoteUpdateResponse) => {
-      const changed = changedDuringSaveRef.current
-      changedDuringSaveRef.current = null
+  // The last save of a window ended. Its texts that are no save's own (nor the text the window
+  // started from) are outside edits; the file read again tells where they went: a file that is
+  // no save's text holds an edit that landed after the saves, and a file at the last save's
+  // text means a save went over them, which the user is told once.
+  const settleSaves = useCallback(
+    (window: SaveWindow) => {
+      const outside = window.outside.filter((text) => text !== window.base && !window.own.has(text))
+      if (!noteId || (!window.dropped && outside.length === 0)) return
       const saved = lastSavedContent.current
-      if (!noteId || !changed || changed.text === saved) return
       notesService
         .get(noteId)
         .then((fresh) => {
-          if (!fresh || fresh.contentOmitted) return
-          if (fresh.content !== saved) {
-            if (lastSavedContent.current === saved) outsideText(fresh.content)
+          if (!fresh || fresh.contentOmitted || lastSavedContent.current !== saved) return
+          if (window.own.has(fresh.content)) {
+            // An older save's reply came last: the file holds the newer one.
+            lastSavedContent.current = fresh.content
+          } else if (fresh.content !== saved) {
+            outsideText(fresh.content)
             return
           }
-          if (changed.text === null || changed.text === base || result.keptOutsideEdit) return
-          outsideEdit.held(noteId, changed.text)
-          outsideEdit.saved(noteId, markdown, result)
+          const last = outside.at(-1)
+          if (last === undefined || window.toasted || !window.last) return
+          outsideEdit.held(noteId, last)
+          outsideEdit.saved(noteId, window.last.markdown, window.last.result)
         })
         .catch((readError: unknown) => log.warn('the note was not read again', readError))
     },
     [noteId, outsideEdit, outsideText]
+  )
+
+  // One save of the editor's text. `answered` runs on the reply, before the window settles.
+  const saveText = useCallback(
+    async (
+      markdown: string,
+      answered: (result: NoteUpdateResponse) => void
+    ): Promise<NoteUpdateResponse> => {
+      const window = (saveWindowRef.current ??= {
+        base: lastSavedContent.current,
+        own: new Set(),
+        outside: [],
+        dropped: false,
+        toasted: false,
+        last: null
+      })
+      savesInFlightRef.current += 1
+      try {
+        const result = await updateNoteRef.current({ id: noteId ?? '', content: markdown })
+        // A refused save wrote nothing: the editor's text is still not the file's.
+        if (result.success) {
+          lastSavedContent.current = savedText(markdown, result)
+          window.own.add(lastSavedContent.current)
+        }
+        window.toasted = outsideEdit.saved(noteId ?? '', markdown, result) || window.toasted
+        window.last = { markdown, result }
+        answered(result)
+        return result
+      } finally {
+        savesInFlightRef.current -= 1
+        if (savesInFlightRef.current === 0) {
+          saveWindowRef.current = null
+          settleSaves(window)
+        }
+      }
+    },
+    // oxlint-disable-next-line react/memo-dependencies -- dependency list is intentional; the compiler trace misreads the reply handled in `try`/`finally` (`settleSaves` runs there)
+    [noteId, outsideEdit, settleSaves]
   )
 
   // A note opened from the query's cache shows the cache's text until its read on mount
@@ -696,14 +755,14 @@ export function NotePage({ noteId }: NotePageProps) {
   const checkedNoteIdRef = useRef<string | null>(null)
   useEffect(() => {
     const seed = seededRef.current
-    if (!note || !isFetchedAfterMount || seed?.noteId !== note.id) return
+    if (!note || !isFetchedAfterMount || isFetching || seed?.noteId !== note.id) return
     if (checkedNoteIdRef.current === note.id) return
     checkedNoteIdRef.current = note.id
     if (note.contentOmitted || note.content === seed.content) return
     if (lastSavedContent.current !== seed.content) return
     // oxlint-disable-next-line react-you-might-not-need-an-effect/no-derived-state, react-you-might-not-need-an-effect/no-pass-ref-to-parent -- an outside edit handed to the live editor once per note; whether it is taken or held depends on refs (typing, a save in flight) a render cannot read
     outsideText(note.content)
-  }, [note, isFetchedAfterMount, outsideText])
+  }, [note, isFetchedAfterMount, isFetching, outsideText])
 
   // Reset deleted state during render when switching to a new note.
   const [storedNoteIdForDelete, setStoredNoteIdForDelete] = useState(note?.id)
@@ -733,17 +792,10 @@ export function NotePage({ noteId }: NotePageProps) {
       const pending = pendingMarkdownRef.current
       if (pending !== null) {
         pendingMarkdownRef.current = null
-        const base = lastSavedContent.current
-        isSavingRef.current = true
-        let result: NoteUpdateResponse = { success: false, note: null }
-        try {
-          result = await updateNoteRef.current({ id: noteId, content: pending })
-          if (result.success) lastSavedContent.current = savedText(pending, result)
-          outsideEdit.saved(noteId, pending, result)
-        } finally {
-          isSavingRef.current = false
-          settleSave(pending, base, result)
-        }
+        await saveText(pending, (result) => {
+          // A refused save leaves the typing to the next save, unless newer typing replaced it.
+          if (!result.success) pendingMarkdownRef.current ??= pending
+        })
       }
     })
 
@@ -762,8 +814,8 @@ export function NotePage({ noteId }: NotePageProps) {
       unregisterPendingSave(registryKey)
       liveNoteIdRef.current = null
     }
-    // oxlint-disable-next-line react/exhaustive-effect-dependencies -- `settleSave` runs inside the registered flush; the compiler trace misreads that closure
-  }, [noteId, outsideEdit, settleSave])
+    // oxlint-disable-next-line react/exhaustive-effect-dependencies -- `saveText` runs inside the registered flush; the compiler trace misreads that closure
+  }, [noteId, saveText])
 
   // Listen for note deletion events
   useEffect(() => {
@@ -823,7 +875,7 @@ export function NotePage({ noteId }: NotePageProps) {
     // text the editor holds is taken when the signal arrives, so a save that lands during the
     // read is told apart from it.
     const unsubDropped = onNoteEventsDropped(() => {
-      if (isSavingRef.current) {
+      if (saveWindowRef.current) {
         outsideText(null)
         return
       }
@@ -1045,35 +1097,33 @@ export function NotePage({ noteId }: NotePageProps) {
         saveTimeoutRef.current = setTimeout(() => {
           saveTimeoutRef.current = null
           void (async () => {
-            const base = lastSavedContent.current
-            let result: NoteUpdateResponse = { success: false, note: null }
-            isSavingRef.current = true
             try {
-              result = await updateNote.mutateAsync({ id: noteId, content: markdown })
-              lastSavedContent.current = savedText(markdown, result)
-              outsideEdit.saved(noteId, markdown, result)
-              setEventContentOverride(null)
-              // Typing that came in while this save ran is still unsaved.
-              if (pendingMarkdownRef.current === markdown) pendingMarkdownRef.current = null
-              if (isLocalGraphOpen) {
-                void queryClient.invalidateQueries({ queryKey: graphKeys.local(noteId) })
-              }
+              await saveText(markdown, (result) => {
+                if (!result.success) {
+                  // Nothing was written: the typing stays pending for the next save or flush.
+                  log.error('The note was not saved:', result.error)
+                  return
+                }
+                setEventContentOverride(null)
+                // Typing that came in while this save ran is still unsaved.
+                if (pendingMarkdownRef.current === markdown) pendingMarkdownRef.current = null
+                if (isLocalGraphOpen) {
+                  void queryClient.invalidateQueries({ queryKey: graphKeys.local(noteId) })
+                }
+              })
             } catch (err) {
               log.error('Failed to save note, trying again:', err)
               // Unless newer typing has its own save, or the note's lifecycle has flushed.
               const unsaved = pendingMarkdownRef.current === markdown
               if (unsaved && !saveTimeoutRef.current && liveNoteIdRef.current === noteId) armSave()
-            } finally {
-              isSavingRef.current = false
-              settleSave(markdown, base, result)
             }
           })()
         }, 1000)
       }
       armSave()
     },
-    // oxlint-disable-next-line react/memo-dependencies -- dependency list is intentional; compiler trace misreads indirect closure (`settleSave` runs inside the timer)
-    [noteId, note, isDeleted, t, updateNote, isLocalGraphOpen, queryClient, outsideEdit, settleSave]
+    // oxlint-disable-next-line react/memo-dependencies -- dependency list is intentional; compiler trace misreads indirect closure (`saveText` runs inside the timer)
+    [noteId, note, isDeleted, t, isLocalGraphOpen, queryClient, saveText]
   )
 
   const handleContentChange = useCallback((_blocks: Block[]) => {
