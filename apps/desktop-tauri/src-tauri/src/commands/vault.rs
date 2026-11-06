@@ -301,12 +301,13 @@ pub async fn vault_get_config<R: Runtime>(app: AppHandle<R>) -> Result<VaultConf
 }
 
 /// `vault:update-config`: writes the fields `config` names, a new date format or journal folder
-/// with the day files moved to it first, and answers the settings after it, which every window
-/// hears as [`VaultConfigChangedEvent`], in the order the writes land. A change that is not
-/// ported yet is refused as `config_change_not_ported`, and a setting not every day can take as
+/// with the day files moved to it first, new exclude patterns with the watcher restarted on them,
+/// and answers the settings after it, which every window hears as [`VaultConfigChangedEvent`], in
+/// the order the writes land. A setting not every day can take is refused as
 /// `journal_format_incomplete`, `journal_folder_invalid`, `journal_folder_respelled`,
 /// `journal_unlisted`, `journal_days_not_renamed`, `journal_change_waits` or
-/// `journal_change_unrecorded` (`vault::config::settings`).
+/// `journal_change_unrecorded` (`vault::config::settings`). New exclude patterns whose watcher
+/// could not restart are saved and sent, and answer `vault_unwatched`.
 #[tauri::command]
 #[specta::specta]
 pub async fn vault_update_config<R: Runtime>(
@@ -335,7 +336,6 @@ pub async fn vault_update_config<R: Runtime>(
 }
 
 /// The messages of refused changes, which Settings shows as it puts the saved value back.
-const NOT_PORTED_KEY: &str = "errors:vault.configChangeNotPorted";
 const FORMAT_INCOMPLETE_KEY: &str = "errors:vault.journalFormatIncomplete";
 const FOLDER_INVALID_KEY: &str = "errors:vault.journalFolderInvalid";
 const FOLDER_RESPELLED_KEY: &str = "errors:vault.journalFolderRespelled";
@@ -343,6 +343,7 @@ pub(crate) const CHANGE_WAITS_KEY: &str = "errors:vault.journalChangeWaits";
 const UNRECORDED_KEY: &str = "errors:vault.journalChangeUnrecorded";
 const DAYS_NOT_RENAMED_KEY: &str = "errors:vault.journalDaysNotRenamed";
 const UNLISTED_KEY: &str = "errors:vault.journalUnlisted";
+const UNWATCHED_KEY: &str = "errors:vault.excludeUnwatched";
 
 fn localized<R: Runtime>(app: &AppHandle<R>, key: &str) -> String {
     localized_with(app, key, &i18n::Args::new())
@@ -354,11 +355,6 @@ fn localized_with<R: Runtime>(app: &AppHandle<R>, key: &str, args: &i18n::Args) 
 
 fn settings_failed<R: Runtime>(app: &AppHandle<R>, error: SettingsError) -> CommandError {
     match error {
-        SettingsError::NotPorted(_) => CommandError::new(
-            ErrorKind::Invalid,
-            "config_change_not_ported",
-            localized(app, NOT_PORTED_KEY),
-        ),
         SettingsError::IncompleteFormat => CommandError::new(
             ErrorKind::Invalid,
             "journal_format_incomplete",
@@ -414,6 +410,12 @@ fn settings_failed<R: Runtime>(app: &AppHandle<R>, error: SettingsError) -> Comm
         SettingsError::Locked => {
             CommandError::new(ErrorKind::Locked, "note_locked", error.to_string())
         }
+        // Saved and sent; the vault's outside edits wait for a later change or open.
+        SettingsError::Unwatched(_) => CommandError::new(
+            ErrorKind::Internal,
+            "vault_unwatched",
+            localized(app, UNWATCHED_KEY),
+        ),
         SettingsError::NoTier => {
             CommandError::new(ErrorKind::Internal, "no_vault_tier", "no vault tier")
         }

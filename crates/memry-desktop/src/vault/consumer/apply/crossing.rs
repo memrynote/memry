@@ -1,5 +1,6 @@
 //! The moves that changed what a file is (`Rename::Crossed`): the row of the record the
-//! identity deleted goes, and the file is made anew as the item it now is.
+//! identity deleted goes, and the file is made anew as the item it now is. A move out of a
+//! place the exclude patterns cover never crosses: the file is new, and the record stays.
 
 use super::super::rows::Lane;
 use super::super::{Applied, ChangeSource};
@@ -42,8 +43,34 @@ impl Applier {
             source: ChangeSource::Watcher,
         });
         self.report_removed(old_path);
+        self.made_anew(lane, new_path)
+    }
+
+    /// Whether the move of a note whose file was in a place the exclude patterns cover changes
+    /// what the file is, or may (unknown). The rescan pairs such a move ([`Applier::renamed`]),
+    /// but crossed, its record would be deleted and the delete synced, which a covered record
+    /// never is: the file is a new one instead ([`Self::made_anew`]), and the record stays.
+    pub(super) fn crosses_from_cover(&self, note_id: &str, old_path: &str, new_path: &str) -> bool {
+        if !self.filter.ignores(old_path) {
+            return false;
+        }
+        match self.identity.keeps_kind(&self.ctx(), note_id, new_path) {
+            Ok(keeps) => !keeps,
+            Err(error) => {
+                tracing::warn!(
+                    scope = SCOPE,
+                    note_id,
+                    "an excluded note's move was taken as a new file: {error}"
+                );
+                true
+            }
+        }
+    }
+
+    /// The file at `path`, reported as the move of a note that does not follow it, made anew.
+    pub(super) fn made_anew(&self, lane: &mut Lane<'_>, new_path: &str) -> Step {
         // The watcher pairs a later move or edit of the file on what it reported, which names
-        // the deleted note.
+        // the note it moved from.
         if let Some(watch) = &self.watch {
             watch.rehome(new_path.to_owned());
         }
