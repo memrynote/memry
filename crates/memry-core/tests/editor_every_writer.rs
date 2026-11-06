@@ -454,3 +454,50 @@ fn a_window_edit_that_waited_on_a_purge_is_refused_and_writes_nothing() {
     );
     assert_eq!(f.queued(&day), queued, "nor queued for the other devices");
 }
+
+/// A window's edit that waits for the writer while another writer commits lands on the body
+/// that writer made: the editor takes the committed rows before the edit, so the listeners hear
+/// the outside edit first, though its writer tells only once the writer is free.
+#[test]
+fn a_window_edit_waiting_for_the_writer_lands_after_the_write_holding_it() {
+    let f = fixture();
+    let note = f.note();
+    let state = f.editor.open(&note, "main").expect("open").state;
+    let main = Replica::from_state(1, &state);
+    let outside = Replica::from_state(2, &state).type_text("edited outside");
+    let heard = listen(&f, &note);
+    let db = f.vault.db_handle();
+    let (committed, written) = mpsc::channel();
+    let id = note.clone();
+    let writer = std::thread::spawn(move || {
+        db.call_blocking(|conn| {
+            memry_core::crdt::body_writes::as_external(|| {
+                update_log::append_local_update(conn, &id, &outside, 1)
+            })
+            .map_err(|error| StorageError::Failed {
+                what: error.to_string(),
+            })?;
+            committed.send(()).unwrap();
+            // Holds the writer, its row committed and not told yet.
+            std::thread::sleep(Duration::from_millis(30));
+            Ok(())
+        })
+    });
+    written.recv().unwrap();
+
+    f.editor
+        .apply_update(&note, &main.type_text("typed"), "main")
+        .expect("stored");
+    writer.join().unwrap().unwrap();
+
+    let origins: Vec<Origin> = heard
+        .lock()
+        .unwrap()
+        .iter()
+        .filter_map(|heard| match heard {
+            Heard::Update(_, origin) => Some(origin.clone()),
+            Heard::Purged => None,
+        })
+        .collect();
+    assert_eq!(origins, [Origin::External, Origin::Local("main".into())]);
+}

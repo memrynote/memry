@@ -120,7 +120,14 @@ impl Db {
         let observer = self.observer.get().and_then(Weak::upgrade);
         let (result, writes) = body_writes::recording(observer.is_some(), || {
             let mut guard = lock(&self.writer)?;
-            f(&mut guard)
+            let result = f(&mut guard);
+            if let Some(observer) = &observer {
+                let noted = body_writes::recorded();
+                if !noted.is_empty() {
+                    observer.bodies_committing(&noted);
+                }
+            }
+            result
         });
         if let Some(observer) = observer.filter(|_| !writes.is_empty()) {
             observer.bodies_written(&writes);
