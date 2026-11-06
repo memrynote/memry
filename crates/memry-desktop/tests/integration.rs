@@ -94,6 +94,12 @@ mod journal_rename;
 mod journal_service;
 #[path = "journal_update.rs"]
 mod journal_update;
+#[path = "large_file_index.rs"]
+mod large_file_index;
+#[path = "large_file_search.rs"]
+mod large_file_search;
+#[path = "large_file_sessions.rs"]
+mod large_file_sessions;
 #[path = "logship.rs"]
 mod logship;
 #[path = "move_dir.rs"]

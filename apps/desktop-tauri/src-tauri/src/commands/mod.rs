@@ -8,6 +8,7 @@ pub mod drop_stage;
 pub mod error;
 pub mod folders;
 pub mod journal;
+pub mod large_file;
 pub mod locale;
 pub mod logging;
 pub mod notes;

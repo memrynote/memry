@@ -2,19 +2,25 @@
  * Find-in-file for the large-file viewer.
  *
  * Large-file-class files never enter FTS, so the global search box cannot see
- * inside them; this is the only search that can. The pass itself runs in the
- * main process on a worker, over the session's already-open handle — nothing
+ * inside them; this is the only search that can. The pass itself runs in Rust
+ * (`memry-desktop/src/large_file/search.rs`) over the session's already-open
+ * handle — nothing
  * here ever holds the file, and nothing here searches the rendered rows, which
  * are a few dozen lines out of millions.
  *
- * The count arrives in two parts: partial counts on an event while the pass is
+ * The count arrives in two parts: partial counts on the search's channel while the pass is
  * still crossing the file, then a final result. `searching` is what keeps the
  * UI from showing the first as if it were the second.
  */
 
+import { Channel } from '@tauri-apps/api/core'
 import { useCallback, useEffect, useRef, useState, type RefObject } from 'react'
 import { createLogger } from '@/lib/logger'
-import type { LargeFileSearchHit } from '@memry/contracts/notes-api'
+import {
+  commands,
+  type LargeFileHit,
+  type LargeFileSearchProgress
+} from '../../../generated/bindings'
 
 const log = createLogger('LargeFileSearch')
 
@@ -34,13 +40,13 @@ export interface LargeFileSearch {
   isOpen: boolean
   query: string
   /** Positions to navigate. Shorter than `total` when `limited`. */
-  hits: LargeFileSearchHit[]
+  hits: LargeFileHit[]
   /** Matches in the file. Still growing while `searching`. */
   total: number
   limited: boolean
   searching: boolean
   currentIndex: number
-  currentHit: LargeFileSearchHit | null
+  currentHit: LargeFileHit | null
   open: () => void
   close: () => void
   setQuery: (query: string) => void
@@ -52,7 +58,7 @@ export interface LargeFileSearch {
 export function useLargeFileSearch(sessionId: string | null): LargeFileSearch {
   const [isOpen, setIsOpen] = useState(false)
   const [query, setQueryState] = useState('')
-  const [hits, setHits] = useState<LargeFileSearchHit[]>([])
+  const [hits, setHits] = useState<LargeFileHit[]>([])
   const [total, setTotal] = useState(0)
   const [limited, setLimited] = useState(false)
   const [searching, setSearching] = useState(false)
@@ -91,8 +97,15 @@ export function useLargeFileSearch(sessionId: string | null): LargeFileSearch {
     setLimited(false)
     setCurrentIndex(0)
 
-    void window.api.notes
-      .largeFileSearch({ sessionId: session, query: next })
+    // The pass reports its growing count on this search's own channel.
+    const onProgress = new Channel<LargeFileSearchProgress>((event) => {
+      if (!searchingRef.current) return
+      if (event.sessionId !== sessionRef.current || event.query !== queryRef.current) return
+      setTotal(event.total)
+    })
+
+    void commands
+      .notesLargeFileSearch({ sessionId: session, query: next }, onProgress)
       .then((result) => {
         // A newer query, or a different file, owns the bar now.
         if (queryRef.current !== next || sessionRef.current !== session) return
@@ -141,15 +154,6 @@ export function useLargeFileSearch(sessionId: string | null): LargeFileSearch {
     cancelPending()
     runSearch(pending)
   }, [cancelPending, runSearch])
-
-  useEffect(() => {
-    const unsubscribe = window.api.onLargeFileSearchProgress((event) => {
-      if (!searchingRef.current) return
-      if (event.sessionId !== sessionRef.current || event.query !== queryRef.current) return
-      setTotal(event.total)
-    })
-    return unsubscribe
-  }, [])
 
   const setQuery = useCallback(
     (next: string) => {
