@@ -276,7 +276,7 @@ fn a_folder_the_days_cannot_live_in_is_refused() {
     config["excludePatterns"] = json!(["Archive"]);
     let e = opened(config, &[("journal/2025-01-02.md", "A day\n")]);
     fs::create_dir(e.vault.join("Diary")).unwrap();
-    let mut refused = vec![
+    let refused = [
         "",
         " / ",
         ".hidden",
@@ -287,12 +287,12 @@ fn a_folder_the_days_cannot_live_in_is_refused() {
         "Days/C:",
     ];
     #[cfg(unix)]
-    {
+    let refused = {
         let elsewhere = e._dir.path().join("elsewhere");
         fs::create_dir(&elsewhere).unwrap();
         std::os::unix::fs::symlink(&elsewhere, e.vault.join("Linked")).unwrap();
-        refused.push("Linked/Days");
-    }
+        [refused.as_slice(), &["Linked/Days"]].concat()
+    };
     for to in refused {
         let answer = update(&e, folder(to), |_| panic!("{to:?} announced"));
         assert!(
