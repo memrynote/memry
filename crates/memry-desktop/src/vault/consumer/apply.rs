@@ -27,6 +27,7 @@ use crate::vault::watch::filter::WatchFilter;
 use crate::vault::watch::{VaultEvent, WatchHandle};
 
 mod crossing;
+mod locked;
 
 const SCOPE: &str = "vault_consumer";
 
@@ -271,6 +272,9 @@ impl Applier {
                 Ok(None) => return Step::Done,
                 Err(Unread::Missing) => return Step::Retry(path.to_owned()),
                 Err(Unread::Failed { file_hash, failure }) => {
+                    if let Some(step) = self.restored_unreadable(note_id, path) {
+                        return step;
+                    }
                     report_unread(scan, path, failure);
                     // Too large to read whole (past the read cap) is large by its size.
                     if large_by_size(size).is_some() {
@@ -313,6 +317,11 @@ impl Applier {
                 // empty body. A conflict between the two is the write-back's (12e-3, Step 17).
                 None => Write::Seed,
             };
+            // A locked note's outside edit is kept as a version and its locked text written
+            // back: it never reaches the document or the peers (`restoreLockedNoteFile`).
+            if let Some(step) = self.restored(note_id, path, Some(&file)) {
+                return step;
+            }
             match self.write_body(note_id, path, &file, write) {
                 Body::Wrote { holds_file: true } => {
                     // An outside edit of the file the row named (a seed's row names none):
@@ -392,6 +401,10 @@ impl Applier {
                     "note_files could not be read: {error}"
                 );
             }
+        }
+        // A locked note's file comes back instead of a delete that would reach every device.
+        if self.restored(note_id, path, None).is_some() {
+            return;
         }
         match self.identity.on_removed(&self.ctx(), note_id, path) {
             Ok(Removal::Deleted) => {}
