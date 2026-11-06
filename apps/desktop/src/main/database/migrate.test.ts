@@ -195,23 +195,28 @@ describe('0035_spatial_canvas migration', () => {
     sqlite.close()
   })
 
-  it('resets only Google calendar cursors so their purged events are pulled again', () => {
-    const copy = path.join(tempDir, 'drizzle-data-pre-0080')
+  /** A copy of the migrations folder that stops before `tag`. */
+  function migrationsBefore(tag: string): string {
+    const copy = path.join(tempDir, `drizzle-data-before-${tag}`)
     fs.cpSync(migrationsDir, copy, { recursive: true })
     const journalPath = path.join(copy, 'meta', '_journal.json')
     const journal = JSON.parse(fs.readFileSync(journalPath, 'utf8')) as {
       entries: { tag: string }[]
     }
-    const cutoff = journal.entries.findIndex((e) => e.tag === '0080_google_calendar_cursor_reset')
+    const cutoff = journal.entries.findIndex((e) => e.tag === tag)
     expect(cutoff).toBeGreaterThanOrEqual(0)
     for (const entry of journal.entries.splice(cutoff)) {
       fs.rmSync(path.join(copy, `${entry.tag}.sql`))
     }
     fs.writeFileSync(journalPath, JSON.stringify(journal, null, 2))
+    return copy
+  }
 
+  /** Cursors after migrating a vault that held them from `before` up to `upTo`. */
+  function cursorsAcross(before: string, upTo: string): unknown[] {
     const sqlite = new Database(path.join(tempDir, 'data.db'))
     const db = drizzle(sqlite)
-    migrate(db, { migrationsFolder: copy })
+    migrate(db, { migrationsFolder: migrationsBefore(before) })
     const insert = sqlite.prepare(
       `INSERT INTO calendar_sources (id, provider, kind, remote_id, title, sync_cursor, created_at, modified_at)
        VALUES (?, ?, ?, ?, 'x', ?, '2026-11-01T00:00:00.000Z', '2026-11-01T00:00:00.000Z')`
@@ -219,17 +224,35 @@ describe('0035_spatial_canvas migration', () => {
     insert.run('google-calendar:work', 'google', 'calendar', 'work', 'google-token')
     insert.run('google-account:work', 'google', 'account', 'work', 'account-cursor')
     insert.run('caldav-calendar:home', 'caldav', 'calendar', 'home', 'sync-token:1')
+    insert.run('ics-calendar:feed', 'ics', 'calendar', 'feed', 'etag-1')
 
-    migrate(db, { migrationsFolder: migrationsDir })
+    migrate(db, { migrationsFolder: upTo })
+    const rows = sqlite.prepare('SELECT id, sync_cursor FROM calendar_sources ORDER BY id').all()
+    sqlite.close()
+    return rows
+  }
 
+  it('resets only Google calendar cursors so their purged events are pulled again', () => {
     expect(
-      sqlite.prepare('SELECT id, sync_cursor FROM calendar_sources ORDER BY id').all()
+      cursorsAcross(
+        '0080_google_calendar_cursor_reset',
+        migrationsBefore('0081_calendar_foreign_cursor_reset')
+      )
     ).toEqual([
       { id: 'caldav-calendar:home', sync_cursor: 'sync-token:1' },
       { id: 'google-account:work', sync_cursor: 'account-cursor' },
-      { id: 'google-calendar:work', sync_cursor: null }
+      { id: 'google-calendar:work', sync_cursor: null },
+      { id: 'ics-calendar:feed', sync_cursor: 'etag-1' }
     ])
-    sqlite.close()
+  })
+
+  it("resets Google and CalDAV calendar cursors that may be another device's", () => {
+    expect(cursorsAcross('0081_calendar_foreign_cursor_reset', migrationsDir)).toEqual([
+      { id: 'caldav-calendar:home', sync_cursor: null },
+      { id: 'google-account:work', sync_cursor: 'account-cursor' },
+      { id: 'google-calendar:work', sync_cursor: null },
+      { id: 'ics-calendar:feed', sync_cursor: 'etag-1' }
+    ])
   })
 
   it('raw SQL statements are idempotent when executed twice', () => {

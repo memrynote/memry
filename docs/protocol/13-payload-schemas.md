@@ -817,6 +817,10 @@ device (`calendar-api.ts` `DEVICE_LOCAL_CALENDAR_PROVIDERS`).
 gate, every key is read as `data.x ?? existing.x`, so a `null` **keeps** the local
 value. Insert defaults: `provider 'google'`, `kind 'calendar'`, `remoteId` = the
 item id, `title 'Untitled calendar'`, `syncStatus 'idle'`, flags `false`.
+`syncCursor` is the exception: it is the writing device's pull progress, so a
+receiver never takes it. An update keeps the local cursor, `null` included, and
+an insert stores `null` so the receiver pulls the calendar in full
+(`calendar-source-handler.ts:19-26`, `:115`). Senders still include it.
 
 ### 13.7.17 `calendar_event` — `:371-408`
 

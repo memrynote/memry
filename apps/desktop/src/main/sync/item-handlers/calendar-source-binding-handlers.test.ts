@@ -82,7 +82,6 @@ describe('calendarSourceHandler', () => {
       isPrimary: true,
       isSelected: true,
       syncStatus: 'ok',
-      syncCursor: 'cursor-1',
       metadata: { pageToken: 'next' },
       clock: { 'device-b': 2 }
     })
@@ -181,6 +180,62 @@ describe('calendarSourceHandler', () => {
       id: 'source-local',
       clock: { 'device-a': 1 }
     })
+  })
+
+  it("never takes another device's sync cursor, so this device pulls the calendar itself", () => {
+    // Inserted from a peer: no cursor of ours yet, so the first pull here is full.
+    calendarSourceHandler.applyUpsert(
+      ctx,
+      'source-peer',
+      { remoteId: 'peer@example.com', isSelected: true, syncCursor: 'peer-token-1' },
+      { 'device-b': 1 }
+    )
+    // Updated by a peer: keep the cursor this device has, null included.
+    testDb.db
+      .insert(calendarSources)
+      .values([
+        {
+          id: 'source-ours',
+          provider: 'google',
+          kind: 'calendar',
+          remoteId: 'ours',
+          title: 'Ours',
+          syncCursor: 'our-token'
+        },
+        {
+          id: 'source-reset',
+          provider: 'google',
+          kind: 'calendar',
+          remoteId: 'reset',
+          title: 'Reset',
+          syncCursor: null
+        }
+      ])
+      .run()
+    for (const id of ['source-ours', 'source-reset']) {
+      expect(
+        calendarSourceHandler.applyUpsert(
+          ctx,
+          id,
+          { title: 'Renamed', syncCursor: 'peer-token-2' },
+          { 'device-b': 1 }
+        )
+      ).toBe('applied')
+    }
+
+    const cursors = testDb.db
+      .select({
+        id: calendarSources.id,
+        title: calendarSources.title,
+        cursor: calendarSources.syncCursor
+      })
+      .from(calendarSources)
+      .all()
+    expect(cursors).toEqual([
+      { id: 'source-peer', title: 'Untitled calendar', cursor: null },
+      { id: 'source-ours', title: 'Renamed', cursor: 'our-token' },
+      { id: 'source-reset', title: 'Renamed', cursor: null }
+    ])
   })
 
   it('declines a new id whose provider, kind and remote id are already held', () => {

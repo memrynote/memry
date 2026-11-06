@@ -568,6 +568,13 @@
       "when": 1791581375087,
       "tag": "0080_google_calendar_cursor_reset",
       "breakpoints": true
+    },
+    {
+      "idx": 81,
+      "version": "6",
+      "when": 1793979291237,
+      "tag": "0081_calendar_foreign_cursor_reset",
+      "breakpoints": true
     }
   ]
 }
