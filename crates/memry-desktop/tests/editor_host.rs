@@ -4,11 +4,15 @@
 
 use std::fs;
 use std::path::PathBuf;
+use std::sync::atomic::{AtomicBool, Ordering};
 use std::sync::{Arc, Mutex};
 
 use memry_core::api::editor::Editor;
+use memry_core::api::errors::SecureStoreError;
 use memry_core::seams::secure_store::SecureStore;
-use memry_desktop::editor::{EditorHost, EditorHostError, HostEvent, PURGED, Subscriber};
+use memry_core::seams::secure_store::SecureStoreKey;
+use memry_desktop::editor::{EditorHost, EditorHostError, HostEvent, Subscriber};
+use memry_desktop::error::map_core;
 use memry_desktop::registry::{AppConfig, VaultRegistry};
 use memry_desktop::session::{OpenSource, Session};
 use yrs::updates::decoder::Decode as _;
@@ -29,6 +33,10 @@ struct Env {
 }
 
 fn env() -> Env {
+    env_with(device_key::with_device_key())
+}
+
+fn env_with(store: Arc<dyn SecureStore>) -> Env {
     let dir = tempfile::tempdir().unwrap();
     let vault = dir.path().join("vault");
     fs::create_dir_all(&vault).unwrap();
@@ -37,7 +45,6 @@ fn env() -> Env {
         dir.path().join("app/memry-config.json"),
     )));
     let session = Session::new(registry);
-    let store = device_key::with_device_key();
     let events: Arc<Mutex<Vec<HostEvent>>> = Arc::default();
     let heard = Arc::clone(&events);
     let host = EditorHost::new(store.clone(), move |event| {
@@ -71,23 +78,64 @@ impl Env {
 
     /// `window` opens `note` with a channel that records each frame.
     fn open(&self, note: &str, window: &str) -> (Window, Frames) {
-        let frames: Frames = Arc::default();
-        let sink = Arc::clone(&frames);
-        let opened = self
-            .host
-            .open(
-                note,
-                Some(&self.vault),
-                Subscriber {
-                    window_label: window.to_owned(),
-                    channel: Arc::new(move |frame| {
-                        sink.lock().unwrap().push(frame);
-                        true
-                    }),
-                },
-            )
-            .unwrap();
+        let (subscriber, frames) = recording(window);
+        let opened = self.host.open(note, Some(&self.vault), subscriber).unwrap();
         (Window::from_state(&opened.state), frames)
+    }
+}
+
+/// A subscriber of `window` that records each frame.
+fn recording(window: &str) -> (Subscriber, Frames) {
+    let frames: Frames = Arc::default();
+    let sink = Arc::clone(&frames);
+    let subscriber = Subscriber {
+        window_label: window.to_owned(),
+        channel: Arc::new(move |frame| {
+            sink.lock().unwrap().push(frame);
+            true
+        }),
+    };
+    (subscriber, frames)
+}
+
+/// A secure store that answers `Locked` while `locked` is set, as a keychain behind an
+/// unanswered prompt does.
+struct Lockable {
+    inner: Arc<dyn SecureStore>,
+    locked: AtomicBool,
+}
+
+impl SecureStore for Lockable {
+    fn get(&self, key: SecureStoreKey) -> Result<Option<Vec<u8>>, SecureStoreError> {
+        if self.locked.load(Ordering::SeqCst) {
+            return Err(SecureStoreError::Locked);
+        }
+        self.inner.get(key)
+    }
+
+    fn set(&self, key: SecureStoreKey, value: Vec<u8>) -> Result<(), SecureStoreError> {
+        self.inner.set(key, value)
+    }
+
+    fn delete(&self, key: SecureStoreKey) -> Result<(), SecureStoreError> {
+        self.inner.delete(key)
+    }
+
+    fn clear(&self) -> Result<(), SecureStoreError> {
+        self.inner.clear()
+    }
+}
+
+fn copy_dir(from: &std::path::Path, to: &std::path::Path) {
+    fs::create_dir_all(to).unwrap();
+    for entry in fs::read_dir(from).unwrap() {
+        let entry = entry.unwrap();
+        let target = to.join(entry.file_name());
+        if entry.file_type().unwrap().is_dir() {
+            copy_dir(&entry.path(), &target);
+        } else {
+            fs::copy(entry.path(), target).unwrap();
+        }
     }
 }
 
@@ -228,7 +276,7 @@ fn sync_step_1_answers_what_the_window_lacks_and_the_documents_state_vector() {
         .apply_update(&note, &main.type_text("missed"), "main")
         .unwrap();
 
-    let (diff, state_vector) = env.host.sync_step_1(&note, &before).unwrap();
+    let (diff, state_vector) = env.host.sync_step_1(&note, &before, "side").unwrap();
     let late = Window::from_state(&diff);
     assert_eq!(late.text(), "missed");
     assert_eq!(
@@ -280,8 +328,8 @@ fn a_purged_document_tells_every_window_to_open_it_again() {
 
     env.editor().purge(&note);
 
-    assert_eq!(*main_frames.lock().unwrap(), vec![vec![PURGED]]);
-    assert_eq!(*side_frames.lock().unwrap(), vec![vec![PURGED]]);
+    assert_eq!(*main_frames.lock().unwrap(), vec![vec![4]]);
+    assert_eq!(*side_frames.lock().unwrap(), vec![vec![4]]);
 }
 
 #[test]
@@ -338,4 +386,85 @@ fn a_vault_close_resets_the_windows_and_the_next_open_says_ready() {
         "a late close of the earlier vault resets nobody"
     );
     assert!(env.host.health().unwrap().persistent);
+}
+
+#[test]
+fn a_window_left_bound_to_the_previous_vault_cannot_write_into_the_next() {
+    let env = env();
+    let note = env.note();
+    let (popout, _) = env.open(&note, "popout");
+    env.session.close();
+    let copy = env.vault.with_file_name("copy");
+    copy_dir(&env.vault, &copy);
+    env.session.open(&copy, OpenSource::Select).unwrap();
+
+    let typed = popout.type_text("written in the vault that was left");
+    let refused = env.host.apply_update(&note, &typed, "popout");
+    let step = env
+        .host
+        .sync_step_1(&note, &popout.state_vector(), "popout");
+
+    assert!(
+        matches!(refused, Err(EditorHostError::NotOpen { .. })),
+        "{refused:?}"
+    );
+    assert!(
+        matches!(step, Err(EditorHostError::NotOpen { .. })),
+        "{step:?}"
+    );
+    let (main, _) = recording("main");
+    let opened = env.host.open(&note, Some(&copy), main).unwrap();
+    assert_eq!(Window::from_state(&opened.state).text(), "");
+}
+
+#[test]
+fn a_keychain_locked_while_the_vault_opens_fails_only_until_it_unlocks() {
+    let store = Arc::new(Lockable {
+        inner: device_key::with_device_key(),
+        locked: AtomicBool::new(true),
+    });
+    let env = env_with(store.clone());
+    let (window, _) = recording("main");
+
+    let locked = env.host.open("any", None, window.clone()).unwrap_err();
+
+    assert_eq!(map_core(&locked).code, "secure_store_locked");
+    store.locked.store(false, Ordering::SeqCst);
+    let note = env.note();
+    env.host.open(&note, None, window).unwrap();
+}
+
+#[test]
+fn a_failed_open_leaves_no_subscriber_behind() {
+    let env = env();
+    let (window, frames) = recording("main");
+
+    let missing = env.host.open("no-such-note", None, window);
+
+    assert!(missing.is_err());
+    env.editor().purge("no-such-note");
+    assert!(frames.lock().unwrap().is_empty());
+}
+
+#[test]
+fn the_last_dead_channel_takes_the_documents_listener_with_it() {
+    let env = env();
+    let note = env.note();
+    let dead = Subscriber {
+        window_label: "crashed".to_owned(),
+        channel: Arc::new(|_| false),
+    };
+    env.host.open(&note, None, dead).unwrap();
+    let writer = Window(Doc::new());
+    env.editor()
+        .apply_update(&note, &writer.type_text("one"), "elsewhere")
+        .unwrap();
+
+    let (reloaded, frames) = recording("crashed");
+    env.host.open(&note, None, reloaded).unwrap();
+    env.editor()
+        .apply_update(&note, &writer.type_text("two"), "elsewhere")
+        .unwrap();
+
+    assert_eq!(frames.lock().unwrap().len(), 1, "one listener, one frame");
 }

@@ -3,7 +3,12 @@
 //! **Subscribed before opened.** A window's subscriber and the document's listener are in place
 //! before core opens the document for it, so an update committed while the open runs reaches
 //! the window: either inside the state it receives or on its channel, and Yjs ignores the one it
-//! gets twice. Subscribing after the open would lose an update committed in between.
+//! gets twice. The renderer's sync step 1 after the open heals the same gap a second way.
+//!
+//! **Built on first use.** The open vault is recorded when it opens; its `Editor` is taken from
+//! `Vault::editor` (built once, then cached) by each call. The editor needs the device identity,
+//! so a keychain that is locked while the vault opens fails the calls made while it stays
+//! locked, with its own error, and not the rest of the session.
 //!
 //! **Lock order.** Core calls a listener on the thread of any write of the document, after the
 //! writer was released and with none of its locks held, and the listener takes only the
@@ -40,7 +45,7 @@ pub enum HostEvent {
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub struct EditorHealth {
     pub persistent: bool,
-    /// Launches in a row, this one included, whose edits stayed in memory. The streak across
+    /// Launches in a row, this one included, whose edits were not stored. The streak across
     /// launches is not kept yet, so it counts this launch only.
     pub in_memory_sessions: u32,
 }
@@ -52,11 +57,18 @@ struct Doc {
 
 type Docs = Mutex<HashMap<String, Doc>>;
 
+/// The open vault, recorded by its open hook.
 #[derive(Clone)]
 struct Served {
     vault: Weak<Vault>,
     path: PathBuf,
+    docs: Arc<Docs>,
+}
+
+/// The open vault's editor for one call.
+struct Live {
     editor: Arc<Editor>,
+    path: PathBuf,
     docs: Arc<Docs>,
 }
 
@@ -85,14 +97,21 @@ impl EditorHost {
         session.on_open(
             "editor-host",
             OpenStage::Defaults,
-            Arc::new(move |view| host.serve(view)),
+            Arc::new(move |view| {
+                *lock(&host.served) = Some(Served {
+                    vault: Arc::downgrade(&view.vault),
+                    path: canonical(&view.path),
+                    docs: Arc::default(),
+                });
+                Ok(())
+            }),
         );
         let host = Arc::clone(self);
         session.on_open(
             "editor-ready",
             OpenStage::SyncStart,
             Arc::new(move |view| {
-                if host.serving(view).is_some() {
+                if host.serves(view) {
                     (host.notify)(HostEvent::Ready {
                         vault_path: view.path.to_string_lossy().into_owned(),
                     });
@@ -113,8 +132,10 @@ impl EditorHost {
                         std::thread::sleep(SWEEP_TICK);
                         waited += SWEEP_TICK;
                     }
-                    if let Some(served) = host.serving(view) {
-                        served.editor.sweep(now_ms());
+                    if host.serves(view)
+                        && let Ok(live) = host.live()
+                    {
+                        live.editor.sweep(now_ms());
                     }
                 }
             }),
@@ -123,24 +144,9 @@ impl EditorHost {
         session.on_close("editor-host", Arc::new(move |view| host.stop(view)));
     }
 
-    /// Serves `view`'s editor from now on.
-    fn serve(&self, view: &OpenVault) -> Result<(), String> {
-        let editor = view
-            .vault
-            .editor(Arc::clone(&self.store))
-            .map_err(|error| format!("the vault opens without its editor: {error}"))?;
-        *lock(&self.served) = Some(Served {
-            vault: Arc::downgrade(&view.vault),
-            path: canonical(&view.path),
-            editor,
-            docs: Arc::default(),
-        });
-        Ok(())
-    }
-
-    /// `view` closed: its windows' subscriptions go with the served editor (its listeners find
-    /// no subscriber), and every window hears the reset. A late close of an earlier vault
-    /// leaves the open one served and its windows bound.
+    /// `view` closed: its windows' subscriptions go with the record (its listeners find no
+    /// subscriber), and every window hears the reset. A late close of an earlier vault leaves
+    /// the open one served and its windows bound.
     pub fn stop(&self, view: &OpenVault) {
         {
             let mut served = lock(&self.served);
@@ -164,64 +170,68 @@ impl EditorHost {
         vault_path: Option<&Path>,
         subscriber: Subscriber,
     ) -> Result<Opened, EditorHostError> {
-        let served = self.current()?;
-        if vault_path.is_some_and(|path| canonical(path) != served.path) {
+        let live = self.live()?;
+        if vault_path.is_some_and(|path| canonical(path) != live.path) {
             return Err(EditorHostError::OtherVault);
         }
         let label = subscriber.window_label.clone();
-        let replaced = served.subscribe(note_id, subscriber);
-        served.editor.open(note_id, &label).map_err(|error| {
+        let channel = Arc::clone(&subscriber.channel);
+        let replaced = live.subscribe(note_id, subscriber);
+        live.editor.open(note_id, &label).map_err(|error| {
             // A window that had the document open keeps it, as core keeps its hold.
             if !replaced {
-                served.drop_subscriber(note_id, &label);
+                live.drop_channel(note_id, &channel);
             }
             error.into()
         })
     }
 
-    /// A window's edit: stored, queued and sent to the other windows.
+    /// A window's edit: stored, queued and sent to the other windows. Refused unless the window
+    /// opened the document in this vault.
     pub fn apply_update(
         &self,
         note_id: &str,
         update: &[u8],
         window_label: &str,
     ) -> Result<(), EditorHostError> {
-        self.current()?
-            .editor
-            .apply_update(note_id, update, window_label)?;
+        let live = self.live()?;
+        live.require_open(note_id, window_label)?;
+        live.editor.apply_update(note_id, update, window_label)?;
         Ok(())
     }
 
     /// Sync step 1: what the document holds beyond the window's `state_vector`, and the
-    /// document's own state vector.
+    /// document's own state vector. Refused unless the window opened the document in this vault.
     pub fn sync_step_1(
         &self,
         note_id: &str,
         state_vector: &[u8],
+        window_label: &str,
     ) -> Result<(Vec<u8>, Vec<u8>), EditorHostError> {
-        let editor = self.current()?.editor;
-        let diff = editor.state_diff(note_id, state_vector)?;
-        Ok((diff, editor.state_vector(note_id)?))
+        let live = self.live()?;
+        live.require_open(note_id, window_label)?;
+        let diff = live.editor.state_diff(note_id, state_vector)?;
+        Ok((diff, live.editor.state_vector(note_id)?))
     }
 
     /// The window closed its editor of `note_id`.
     pub fn close(&self, note_id: &str, window_label: &str) {
-        if let Ok(served) = self.current() {
-            served.editor.release(note_id, window_label);
-            served.drop_subscriber(note_id, window_label);
+        if let Ok(live) = self.live() {
+            live.editor.release(note_id, window_label);
+            live.drop_window(note_id, window_label);
         }
     }
 
     /// The window is gone (closed, or its page died or was replaced): it lets go of every
     /// document it held, and nothing is sent to it any more.
     pub fn forget_window(&self, window_label: &str) {
-        let Ok(served) = self.current() else { return };
-        served.editor.release_holder(window_label);
-        let mut docs = lock(&served.docs);
+        let Ok(live) = self.live() else { return };
+        live.editor.release_holder(window_label);
+        let mut docs = lock(&live.docs);
         docs.retain(|_, doc| {
             doc.subscribers.retain(|s| s.window_label != window_label);
             if doc.subscribers.is_empty() {
-                served.editor.unsubscribe(doc.listener);
+                live.editor.unsubscribe(doc.listener);
             }
             !doc.subscribers.is_empty()
         });
@@ -230,33 +240,42 @@ impl EditorHost {
     pub fn health(&self) -> Result<EditorHealth, EditorHostError> {
         // With no vault open nothing is held in memory: Electron answers from the last launch's
         // verdict, which is persistent unless its store failed.
-        let Ok(served) = self.current() else {
+        let Ok(live) = self.live() else {
             return Ok(EditorHealth {
                 persistent: true,
                 in_memory_sessions: 0,
             });
         };
-        let persistent = served.editor.health()?.persistent;
+        let persistent = live.editor.health()?.persistent;
         Ok(EditorHealth {
             persistent,
             in_memory_sessions: u32::from(!persistent),
         })
     }
 
-    fn current(&self) -> Result<Served, EditorHostError> {
-        lock(&self.served)
+    fn live(&self) -> Result<Live, EditorHostError> {
+        let served = lock(&self.served)
             .clone()
-            .ok_or(EditorHostError::NotServing)
+            .ok_or(EditorHostError::NotServing)?;
+        let vault = served.vault.upgrade().ok_or(EditorHostError::NotServing)?;
+        let editor = vault
+            .editor(Arc::clone(&self.store))
+            .map_err(EditorHostError::Identity)?;
+        Ok(Live {
+            editor,
+            path: served.path,
+            docs: served.docs,
+        })
     }
 
-    fn serving(&self, view: &OpenVault) -> Option<Served> {
-        self.current()
-            .ok()
-            .filter(|s| Weak::ptr_eq(&s.vault, &Arc::downgrade(&view.vault)))
+    fn serves(&self, view: &OpenVault) -> bool {
+        lock(&self.served)
+            .as_ref()
+            .is_some_and(|s| Weak::ptr_eq(&s.vault, &Arc::downgrade(&view.vault)))
     }
 }
 
-impl Served {
+impl Live {
     /// Adds `subscriber`, or replaces its window's earlier one (a reopen brings a new channel).
     /// True when it replaced one.
     fn subscribe(&self, note_id: &str, subscriber: Subscriber) -> bool {
@@ -264,9 +283,14 @@ impl Served {
         let doc = match docs.entry(note_id.to_owned()) {
             Entry::Occupied(entry) => entry.into_mut(),
             Entry::Vacant(entry) => {
-                let listener = self
-                    .editor
-                    .subscribe(note_id, fan_out(Arc::downgrade(&self.docs), note_id));
+                let listener = self.editor.subscribe(
+                    note_id,
+                    fan_out(
+                        Arc::downgrade(&self.docs),
+                        Arc::downgrade(&self.editor),
+                        note_id,
+                    ),
+                );
                 entry.insert(Doc {
                     listener,
                     subscribers: Vec::new(),
@@ -290,12 +314,36 @@ impl Served {
         }
     }
 
-    fn drop_subscriber(&self, note_id: &str, window_label: &str) {
+    fn require_open(&self, note_id: &str, window_label: &str) -> Result<(), EditorHostError> {
+        let open = lock(&self.docs).get(note_id).is_some_and(|doc| {
+            doc.subscribers
+                .iter()
+                .any(|s| s.window_label == window_label)
+        });
+        if open {
+            Ok(())
+        } else {
+            Err(EditorHostError::NotOpen {
+                note_id: note_id.to_owned(),
+            })
+        }
+    }
+
+    fn drop_window(&self, note_id: &str, window_label: &str) {
+        self.drop_where(note_id, |s| s.window_label == window_label);
+    }
+
+    /// Drops the subscriber holding `channel`, and no later one of its window.
+    fn drop_channel(&self, note_id: &str, channel: &Deliver) {
+        self.drop_where(note_id, |s| Arc::ptr_eq(&s.channel, channel));
+    }
+
+    fn drop_where(&self, note_id: &str, gone: impl Fn(&Subscriber) -> bool) {
         let mut docs = lock(&self.docs);
         let Some(doc) = docs.get_mut(note_id) else {
             return;
         };
-        doc.subscribers.retain(|s| s.window_label != window_label);
+        doc.subscribers.retain(|s| !gone(s));
         if doc.subscribers.is_empty() {
             self.editor.unsubscribe(doc.listener);
             docs.remove(note_id);
@@ -304,10 +352,15 @@ impl Served {
 }
 
 /// The listener of one document: each notice goes to every subscriber but the window that sent
-/// the update. A channel that cannot receive any more is dropped (its window is gone); the
-/// window's close releases its hold. Core runs it on the thread of any write of the document,
-/// so it takes only the subscriber map, which no caller holds while it writes.
-fn fan_out(docs: Weak<Docs>, note_id: &str) -> impl Fn(Notice<'_>) + Send + Sync + 'static {
+/// the update. A channel that cannot receive any more is dropped (its window is gone), and with
+/// the last one the listener; the window's close releases its hold. Core runs it on the thread
+/// of any write of the document, so it takes only the subscriber map, which no caller holds
+/// while it writes.
+fn fan_out(
+    docs: Weak<Docs>,
+    editor: Weak<Editor>,
+    note_id: &str,
+) -> impl Fn(Notice<'_>) + Send + Sync + 'static {
     let note_id = note_id.to_owned();
     move |notice| {
         let Some(docs) = docs.upgrade() else { return };
@@ -336,9 +389,21 @@ fn fan_out(docs: Weak<Docs>, note_id: &str) -> impl Fn(Notice<'_>) + Send + Sync
         if gone.is_empty() {
             return;
         }
-        if let Some(doc) = lock(&docs).get_mut(&note_id) {
+        let emptied = {
+            let mut docs = lock(&docs);
+            let Some(doc) = docs.get_mut(&note_id) else {
+                return;
+            };
             doc.subscribers
                 .retain(|s| !gone.iter().any(|g| Arc::ptr_eq(g, &s.channel)));
+            let listener = doc.listener;
+            doc.subscribers
+                .is_empty()
+                .then(|| docs.remove(&note_id).map(|_| listener))
+                .flatten()
+        };
+        if let (Some(listener), Some(editor)) = (emptied, editor.upgrade()) {
+            editor.unsubscribe(listener);
         }
     }
 }
