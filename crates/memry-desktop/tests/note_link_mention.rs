@@ -282,3 +282,28 @@ fn a_document_ahead_of_its_file_or_an_unreadable_frontmatter_is_never_linked_ove
     assert_eq!(e.read("Unread.md"), "Target unread.\n");
     drop(open);
 }
+
+/// Electron refuses a locked source (`unlinked-mentions.ts`, Step 14e-2): `note_locked`, not
+/// "the mention is gone", and the file is left.
+#[test]
+fn a_locked_source_refuses_the_link_as_note_locked() {
+    let (e, notes, _) = opened(&[
+        ("Target.md", "# Target\n".to_owned()),
+        ("Standup.md", "We met about target today.\n".to_owned()),
+    ]);
+    let open = e.session.current().unwrap();
+    let (target, source) = (id_at(&e, "Target.md"), id_at(&e, "Standup.md"));
+    e.core()
+        .locks()
+        .set(
+            memry_core::domain::vault_locks::TargetKind::Note,
+            &source,
+            true,
+        )
+        .unwrap();
+
+    let refused = notes.link_mention(&open, &source, &target, 0).unwrap_err();
+
+    assert_eq!(memry_desktop::error::map_core(&refused).code, "note_locked");
+    assert_eq!(e.read("Standup.md"), "We met about target today.\n");
+}

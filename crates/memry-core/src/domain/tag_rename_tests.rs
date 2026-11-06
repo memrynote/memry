@@ -438,6 +438,30 @@ fn a_rename_under_the_old_name_lands_once_however_often_it_runs() {
     assert_eq!(upserts(&db, "n5"), 1);
 }
 
+/// A locked holder is struck off with its record kept (Electron `keepLockedNoteTags`), unless
+/// its file edit began: then the record takes the name its written file holds (14e-2 review).
+#[cfg(feature = "markdown")]
+#[test]
+fn a_locked_holder_keeps_its_record_unless_its_file_edit_began() {
+    use crate::domain::vault_locks::{TargetKind, set};
+    let (db, _d) = vault("tags-rename-locked-holder");
+    db.call_blocking(|c| {
+        let plan = holders(c, Vec::new(), "job")?;
+        begin(c, &job("job", "career"), plan)?;
+        set(c, TargetKind::Note, "n1", true, NOW)?;
+        set(c, TargetKind::Note, "j1", true, NOW)?;
+        start_holder(c, "j1", "b", "a")?;
+        assert!(!rename_holder(c, "n1", "phone", NOW + 1)?);
+        assert!(rename_holder(c, "j1", "phone", NOW + 1)?);
+        assert!(!listed(c, "n1")? && !listed(c, "j1")?, "both struck off");
+        Ok(())
+    })
+    .expect("rename");
+    assert_eq!(tags_of(&db, "note", "n1"), ["Job", "job/Lead", "ideas"]);
+    assert_eq!(tags_of(&db, "journal", "j1"), ["career"]);
+    assert_eq!(upserts(&db, "n1"), 0);
+}
+
 /// A file edit begun and not written is forgotten for that holder only, which stays listed; a
 /// holder no longer listed records none.
 #[test]

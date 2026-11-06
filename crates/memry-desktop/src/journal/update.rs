@@ -161,6 +161,14 @@ impl NotesService {
             Ok(())
         };
         if update.content.is_none() && update.properties.is_none() {
+            // No file edit, so no `AppEdit` to refuse a locked day: the record is the edit.
+            if open
+                .vault
+                .locks()
+                .is_note_locked(&stamp.id, stamp.path.as_deref())?
+            {
+                return Err(NotesError::EditKept(Kept::Locked));
+            }
             mirror_tags()?;
             return answer(open, journal, date);
         }

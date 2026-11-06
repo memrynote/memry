@@ -64,6 +64,7 @@ use tokio::sync::broadcast::{Receiver, error::TryRecvError};
 
 use super::error::{NotesError, SCOPE, kept_is_retryable};
 use super::service::NotesService;
+use super::tag_rename_unfinished::file_holds;
 use super::tag_retag::tags_edited;
 use crate::session::{OpenStage, OpenVault, Session};
 use crate::vault::app_edit::{AppEdit, Edited, Kept, Precondition};
@@ -277,7 +278,7 @@ impl NotesService {
             if stop() {
                 return Err(NotesError::Closed);
             }
-            match self.rename_one(&edit, hub, holder, from, to) {
+            match self.rename_one(open, &edit, hub, holder, from, to) {
                 InNote::Written => renamed.written.push(holder.id.clone()),
                 InNote::Unchanged => {}
                 InNote::Again => again.push(holder),
@@ -299,7 +300,7 @@ impl NotesService {
             self.tier.flush(SETTLE);
         }
         for holder in again {
-            match self.rename_one(&edit, hub, holder, from, to) {
+            match self.rename_one(open, &edit, hub, holder, from, to) {
                 InNote::Written => renamed.written.push(holder.id.clone()),
                 InNote::Unchanged => {}
                 InNote::Again | InNote::Failed | InNote::Unsure => {
@@ -319,6 +320,7 @@ impl NotesService {
     /// began on it. A note left as it was is logged.
     fn rename_one(
         &self,
+        open: &OpenVault,
         edit: &AppEdit,
         hub: &TagHub,
         holder: &Holder,
@@ -419,7 +421,13 @@ impl NotesService {
                     match kept {
                         // A locked note keeps the old tag (Electron `keepLockedNoteTags`): struck
                         // off the plan, its record left.
+                        // A file edit a stopped run began that never landed keeps the record too.
                         Kept::Locked => {
+                            if let Some(begun) = hub.rename_started(id)?
+                                && !file_holds(open, id, &begun.after)?
+                            {
+                                hub.rename_unstart(id)?;
+                            }
                             hub.rename_in(id)?;
                             InNote::Unchanged
                         }

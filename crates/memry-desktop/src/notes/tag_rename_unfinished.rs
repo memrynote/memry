@@ -107,14 +107,7 @@ impl NotesService {
                 continue;
             };
             let written = self.order.run(id, |_turn| {
-                let Some(row) = open.vault.note_files().by_id(id)? else {
-                    return Ok(None);
-                };
-                let Some(file) = read_note(&open.path, &row.path)? else {
-                    return Ok(None);
-                };
-                let text = file.raw.strip_prefix('\u{feff}').unwrap_or(&file.raw);
-                if content_hash(text) != begun.after {
+                if !file_holds(open, id, &begun.after)? {
                     return Ok(None);
                 }
                 Ok::<_, NotesError>(Some(hub.rename_in(id)?))
@@ -137,4 +130,16 @@ impl NotesService {
             renamed,
         }))
     }
+}
+
+/// Whether the note `id`'s file is the text hashed `after`: a begun file edit that landed.
+pub(super) fn file_holds(open: &OpenVault, id: &str, after: &str) -> Result<bool, NotesError> {
+    let Some(row) = open.vault.note_files().by_id(id)? else {
+        return Ok(false);
+    };
+    let Some(file) = read_note(&open.path, &row.path)? else {
+        return Ok(false);
+    };
+    let text = file.raw.strip_prefix('\u{feff}').unwrap_or(&file.raw);
+    Ok(content_hash(text) == after)
 }

@@ -82,6 +82,8 @@ impl NotesService {
             }
             Edited::Unchanged { .. } => Ok(false),
             Edited::Kept(Kept::NoRow) => Err(NotesError::NotFound(source_id.to_owned())),
+            // Electron refuses a locked source (`unlinked-mentions.ts`, `assertNoteWritable`).
+            Edited::Kept(Kept::Locked) => Err(NotesError::EditKept(Kept::Locked)),
             Edited::Kept(kept) => {
                 tracing::info!(
                     scope = SCOPE,

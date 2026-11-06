@@ -17,7 +17,7 @@ use crate::domain::tag_admin::{
     delete_definitions, item_count, refuse, rewrite_of, upsert_definition,
 };
 use crate::domain::tag_rename::{Holder, holders_where};
-use crate::domain::{tag_schema_refs, tags};
+use crate::domain::{body_write, tag_schema_refs, tags};
 
 /// `tags` with `source` replaced by `target`, or dropped with no `target`; a target the list
 /// holds already keeps its first spelling and place.
@@ -44,9 +44,20 @@ pub fn retagged_lists(
     (next, pins)
 }
 
+/// What [`retag`] did to one note or day.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum Retag {
+    Wrote,
+    /// Neither list changed.
+    Unchanged,
+    /// The note or day is locked: its tags are kept (Electron `keepLockedNoteTags`,
+    /// `writableTagCarrier`), and nothing was written.
+    Locked,
+}
+
 /// `source` merged into `target` (or deleted, with no `target`) in the `tags` and `pinnedTags`
 /// of the live note or journal day `item_id`: one transaction and one outbox row
-/// ([`tags::rename_with`]), nothing written when neither list changes. Returns whether it wrote.
+/// ([`tags::rename_with`]), nothing written when neither list changes or the item is locked.
 pub fn retag(
     conn: &Connection,
     item_id: &str,
@@ -54,14 +65,22 @@ pub fn retag(
     target: Option<&str>,
     device_id: &str,
     now_ms: i64,
-) -> Result<bool, StorageError> {
-    tags::rename_with(
+) -> Result<Retag, StorageError> {
+    if body_write::is_locked(conn, item_id)? {
+        return Ok(Retag::Locked);
+    }
+    let wrote = tags::rename_with(
         conn,
         item_id,
         |tags, pins| retagged_lists(tags, pins, source, target),
         device_id,
         now_ms,
-    )
+    )?;
+    Ok(if wrote {
+        Retag::Wrote
+    } else {
+        Retag::Unchanged
+    })
 }
 
 /// The live notes and journal days carrying `tag` itself in their record's tags or, for a

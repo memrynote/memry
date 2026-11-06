@@ -400,7 +400,7 @@ pub fn started(conn: &Connection, id: &str) -> Result<Option<Started>, StorageEr
 /// struck off, in one transaction. A holder the plan no longer lists is left alone: its record
 /// took the new name already. With its file edit begun ([`start_holder`]), the record takes
 /// what the rename made of its lists then, with what an edit changed since ([`since_begun`]).
-/// A locked holder is struck off with its record unchanged.
+/// A locked holder with no file edit begun is struck off with its record unchanged.
 pub fn rename_holder(
     conn: &Connection,
     id: &str,
@@ -417,7 +417,8 @@ pub fn rename_holder(
     let (from, to) = (job.from.as_str(), job.to.trim());
     let wrote = match started(&tx, id)? {
         // A locked holder keeps its tags (Electron `keepLockedNoteTags`): struck off, unwritten.
-        _ if body_write::is_locked(&tx, id)? => false,
+        // One whose file edit began (and landed, as the caller checks) takes the file's name.
+        None if body_write::is_locked(&tx, id)? => false,
         None => tags::rename(&tx, id, from, to, device_id, now_ms)?,
         Some(begun) => tags::rename_with(
             &tx,

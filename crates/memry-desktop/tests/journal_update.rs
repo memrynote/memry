@@ -838,3 +838,31 @@ fn a_day_written_past_the_block_bound_and_back_records_its_class() {
         .unwrap();
     assert!(!large(), "shrunk by the save");
 }
+
+/// A tags-only update writes the record, not the file (Step 14e-2 review): a locked day refuses
+/// it too.
+#[test]
+fn a_tags_only_update_of_a_locked_day_is_refused_and_keeps_its_tags() {
+    let (mut e, notes, _) = opened();
+    made(&mut e, &notes);
+    let open = e.session.current().unwrap();
+    e.core()
+        .locks()
+        .set(memry_core::domain::vault_locks::TargetKind::Note, ID, true)
+        .unwrap();
+    let before = record(&e);
+
+    let refused = notes
+        .update_day(
+            &open,
+            DayUpdate {
+                tags: Some(vec!["other".into()]),
+                ..update(DAY)
+            },
+        )
+        .unwrap_err();
+
+    assert_eq!(memry_desktop::error::map_core(&refused).code, "note_locked");
+    assert_eq!(record(&e), before);
+    assert_eq!(e.read(DAY_FILE), NEW_FILE);
+}
