@@ -9,10 +9,10 @@
 // The upload case picks a file in the cover picker, which stores it through
 // `notes_upload_attachment` (#3531 14f-1); the other cases write the attachment and the `cover:`
 // line to disk, as a sync or another app leaves them. Removing a cover writes the frontmatter
-// through `notes.update({ frontmatter })` (13q-2). The cover picker opens from the header's details menu, which the harness opens from
-// the keyboard (`openDetailsMenu`, #3986).
+// through `notes.update({ frontmatter })` (13q-2). The cover picker opens from the header's
+// details menu, which the harness opens from the keyboard (`openDetailsMenu`, #3986).
 import { readFileSync, writeFileSync, mkdirSync } from 'node:fs'
-import { join } from 'node:path'
+import { dirname, join } from 'node:path'
 
 import { openDetailsMenu, openFromSidebar, vaultOpen } from '../../harness/notes'
 import type { Page } from '../../harness/pw-compat/page'
@@ -128,6 +128,8 @@ test('an uploaded cover is stored as a note-relative attachment ref', async ({
   // Neither a URL nor an absolute path.
   expect(coverRef).not.toMatch(/^([a-zA-Z][a-zA-Z\d+\-.]*:|\/)/)
   expect(readFileSync(noteFile, 'utf8')).not.toContain(testVaultPath)
+  // The ref names the picked file's bytes, relative to the note.
+  expect(readFileSync(join(dirname(noteFile), coverRef))).toEqual(PNG_BYTES)
 })
 
 test('Remove cover takes the cover line out of the file', async ({ page, testVaultPath }) => {

@@ -7,16 +7,16 @@
 //! (`../attachments/<noteId>/<file>` for `notes/Plan.md`), the only form that resolves on another
 //! device; a note without a known path gets the absolute `memry-file:` URL, as Electron does.
 //!
-//! The note id and the file name come from the renderer and are untrusted. The id must be one
-//! plain path segment that no platform reads as a device ([`is_plain_segment`],
-//! [`is_reserved_device_name`]); the stored name is always `<prefix>-...`, so it is never a
+//! The note id and the file name come from the renderer and are untrusted. The id must have the
+//! shape ids are minted in, `[A-Za-z0-9_-]+` ([`is_note_id`]), and not be a name Windows reads as
+//! a device ([`is_reserved_device_name`]); the stored name is always `<prefix>-...`, so it is never a
 //! device name, and it keeps only an allowed extension. The attachments folder and the note's
 //! folder must resolve inside the vault, so a link or a junction to elsewhere is refused before
 //! anything is created through it, and again right before the file takes its name.
 //!
 //! Three differences from Electron: the stored name keeps at most [`MAX_STORED_NAME_BYTES`]
-//! bytes (a long CJK name failed the write there) and no control character, the note id is
-//! checked, and the errors are the localized ones of
+//! bytes (a long CJK name failed the write there) and no control, bidi or zero-width character,
+//! the note id is checked, and the errors are the localized ones of
 //! `errors:attachment.*`. Lock refusals are Step 14e-3's, the sync of the new file Step 18's.
 
 use std::fs;
@@ -28,9 +28,7 @@ use memry_core::api::errors::StorageError;
 use serde::Serialize;
 
 use crate::session::OpenVault;
-use crate::shell::file_open::{
-    Resolution, is_plain_segment, is_reserved_device_name, resolve_under_root,
-};
+use crate::shell::file_open::{Resolution, is_reserved_device_name, resolve_under_root};
 use crate::vault::embeds::memry_file_url;
 use crate::vault::fs_atomic::{RETRY_DELAYS_MS, WriteError, atomic_create_checked};
 use crate::vault::layout::ATTACHMENTS_DIR;
@@ -52,18 +50,22 @@ const HTML_EXTENSIONS: [&str; 2] = ["html", "htm"];
 /// The longest stored name, in bytes; every common file system takes 255.
 pub const MAX_STORED_NAME_BYTES: usize = 200;
 
+/// The largest file one raw request body carries. Larger files wait for the chunked upload of
+/// 14f-2 (#3531), which sends 8 MiB parts; until then they are refused with this limit.
+pub const MAX_UPLOAD_BODY: usize = 16 * 1024 * 1024;
+
 /// Attempts at a free name before the write gives up; one random prefix in 36^6 collides.
 const NAME_ATTEMPTS: usize = 5;
 
 #[derive(Debug, thiserror::Error)]
 pub enum AttachmentError {
-    /// The note id is not one plain path segment, or names a device on Windows.
+    /// The note id is not of the minted shape, or names a device on Windows.
     #[error("invalid note id for an attachment")]
     InvalidNote,
     #[error("attachment type .{0} is not allowed")]
     UnsupportedType(String),
-    #[error("attachment of {size} bytes is over the {MAX_FILE_SIZE} byte limit")]
-    TooLarge { size: usize },
+    #[error("attachment of {size} bytes is over the {limit} byte limit")]
+    TooLarge { size: usize, limit: usize },
     /// The attachments folder or the note's folder resolves outside the vault, or is a file.
     #[error("the attachments folder is a link out of the vault or not a folder")]
     NotAFolder,
@@ -108,6 +110,39 @@ pub fn extension(file_name: &str) -> &str {
         Some(dot) if dot > 0 && base != ".." => &base[dot + 1..],
         _ => "",
     }
+}
+
+/// Whether `note_id` has the shape note ids are minted in: a nanoid, 12 of `0-9a-z`, or
+/// `j<YYYY-MM-DD>` for a journal day. Nothing in it is a separator, a control character or a
+/// character Windows refuses.
+pub fn is_note_id(note_id: &str) -> bool {
+    !note_id.is_empty()
+        && note_id
+            .bytes()
+            .all(|b| b.is_ascii_alphanumeric() || b == b'_' || b == b'-')
+}
+
+/// Characters that reorder or hide text where a name is shown (`evil\u{202E}fdp.png` shows as
+/// `evilgnp.pdf`): the bidi marks, embeddings, overrides and isolates, and the zero-width ones.
+fn is_invisible_format(c: char) -> bool {
+    matches!(
+        c,
+        '\u{061C}' | '\u{180E}' | '\u{200B}'..='\u{200F}' | '\u{202A}'..='\u{202E}'
+            | '\u{2060}'..='\u{2064}' | '\u{2066}'..='\u{2069}' | '\u{FEFF}'
+    )
+}
+
+/// The refusal of an upload whose declared or received size is over [`MAX_UPLOAD_BODY`], before
+/// its body is read. The renderer sends an empty body for a file it declares over the limit.
+pub fn check_upload_size(declared: usize, received: usize) -> Result<(), AttachmentError> {
+    let size = declared.max(received);
+    if size > MAX_UPLOAD_BODY {
+        return Err(AttachmentError::TooLarge {
+            size,
+            limit: MAX_UPLOAD_BODY,
+        });
+    }
+    Ok(())
 }
 
 /// The last segment of `file_name`, split at either separator.
@@ -183,7 +218,7 @@ fn random_prefix() -> String {
 
 /// `generateUniqueFilename` with a given prefix: `<prefix>-<name><.ext>`. The name is
 /// `sanitizeFilename`'s, with white space, parentheses and braces turned into `-` (they end a
-/// markdown link or a file block marker), control characters too (Windows refuses them, and NUL
+/// markdown link or a file block marker), bidi and zero-width characters, control characters too (Windows refuses them, and NUL
 /// ends a path everywhere; Electron kept them and failed the write), runs of `-` collapsed, one `-` trimmed from each end,
 /// `file` when nothing is left. The extension keeps its case. The name is cut at a character
 /// boundary so the whole stays within [`MAX_STORED_NAME_BYTES`].
@@ -193,7 +228,8 @@ pub fn stored_name(prefix: &str, file_name: &str) -> String {
     let stem = &base[..base.len() - ext.len() - usize::from(!ext.is_empty())];
     let mut dashed = String::new();
     for c in sanitize_filename(stem).chars() {
-        let c = if is_js_space(c) || c.is_control() || "(){}".contains(c) {
+        let c = if is_js_space(c) || c.is_control() || is_invisible_format(c) || "(){}".contains(c)
+        {
             '-'
         } else {
             c
@@ -256,7 +292,21 @@ pub fn save(
     file_name: &str,
     bytes: &[u8],
 ) -> Result<SavedAttachment, AttachmentError> {
-    if !is_plain_segment(note_id) || is_reserved_device_name(note_id) {
+    save_checked(vault, note_id, note_path, file_name, bytes, &mut || {})
+}
+
+/// [`save`] with `before_recheck` run right before the last check of the note's folder, the one
+/// in the same step as the file taking its name. Only for the test that swaps a link in there.
+#[doc(hidden)]
+pub fn save_checked(
+    vault: &Path,
+    note_id: &str,
+    note_path: Option<&str>,
+    file_name: &str,
+    bytes: &[u8],
+    before_recheck: &mut dyn FnMut(),
+) -> Result<SavedAttachment, AttachmentError> {
+    if !is_note_id(note_id) || is_reserved_device_name(note_id) {
         return Err(AttachmentError::InvalidNote);
     }
     let ext = extension(file_name);
@@ -264,7 +314,10 @@ pub fn save(
         return Err(AttachmentError::UnsupportedType(ext.to_ascii_lowercase()));
     }
     if bytes.len() > MAX_FILE_SIZE {
-        return Err(AttachmentError::TooLarge { size: bytes.len() });
+        return Err(AttachmentError::TooLarge {
+            size: bytes.len(),
+            limit: MAX_FILE_SIZE,
+        });
     }
     // One level at a time, each checked before the next is made through it.
     create_dir(&vault.join(ATTACHMENTS_DIR))?;
@@ -278,6 +331,7 @@ pub fn save(
     let stored = loop {
         let stored = stored_name(&random_prefix(), file_name);
         let mut recheck = || {
+            before_recheck();
             inside_vault(vault, &folder_rel).map_err(|error| match error {
                 AttachmentError::Io(error) => error,
                 other => io::Error::other(other.to_string()),

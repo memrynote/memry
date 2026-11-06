@@ -94,6 +94,7 @@ describe('notes-service', () => {
     api = createMockApi()
     ;(window as Window & { api: unknown }).api = api
     for (const command of Object.values(commands)) command.mockReset()
+    invokeBinary.mockReset()
   })
 
   it('reads notes through the notes commands, with dates as Electron sends them', async () => {
@@ -833,9 +834,10 @@ describe('notes-service', () => {
       type: 'file'
     }
     invokeBinary.mockResolvedValueOnce(saved)
-    // jsdom's File has no `arrayBuffer`; the service reads nothing else of it.
+    // jsdom's File has no `arrayBuffer`. Without a `size`, the bytes read give it.
     const file = {
       name: 'note.txt',
+      size: 4,
       arrayBuffer: async () => new TextEncoder().encode('data').buffer
     }
     await expect(notesService.uploadAttachment('note-1', file)).resolves.toEqual({
@@ -845,17 +847,25 @@ describe('notes-service', () => {
     const [command, bytes, meta] = invokeBinary.mock.calls[0]
     expect(command).toBe('notes_upload_attachment')
     expect(new TextDecoder().decode(bytes)).toBe('data')
-    expect(meta).toEqual({ noteId: 'note-1', fileName: 'note.txt' })
+    expect(meta).toEqual({ noteId: 'note-1', fileName: 'note.txt', size: 4 })
+  })
 
+  it('never reads a file over the single-body limit and answers what Rust refused', async () => {
+    const arrayBuffer = vi.fn()
+    const big = { name: 'clip.mp4', size: 16 * 1024 * 1024 + 1, arrayBuffer }
     invokeBinary.mockRejectedValueOnce({
       kind: 'invalid',
       code: 'attachment_too_large',
-      message: 'File too large: 120.0 MB exceeds 100.0 MB limit'
+      message: 'File too large: 16.0 MB exceeds 16.0 MB limit'
     })
-    await expect(notesService.uploadAttachment('note-1', file)).resolves.toEqual({
+    await expect(notesService.uploadAttachment('note-1', big)).resolves.toEqual({
       success: false,
-      error: 'File too large: 120.0 MB exceeds 100.0 MB limit'
+      error: 'File too large: 16.0 MB exceeds 16.0 MB limit'
     })
+    expect(arrayBuffer).not.toHaveBeenCalled()
+    const [, bytes, meta] = invokeBinary.mock.calls[0]
+    expect(bytes).toHaveLength(0)
+    expect(meta).toEqual({ noteId: 'note-1', fileName: 'clip.mp4', size: 16 * 1024 * 1024 + 1 })
   })
 
   it('forwards export and version helpers', async () => {

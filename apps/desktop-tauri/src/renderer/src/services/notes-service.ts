@@ -156,6 +156,12 @@ function failure(error: unknown): { success: false; error?: string } {
   return message ? { success: false, error: message } : { success: false }
 }
 
+/**
+ * The largest file one upload body carries (`memry_desktop::attachments::MAX_UPLOAD_BODY`); the
+ * chunked upload of 14f-2 (#3531) lifts it to the 100 MiB attachment cap.
+ */
+const MAX_UPLOAD_BODY = 16 * 1024 * 1024
+
 /** What `notes_upload_attachment` answers (`memry_desktop::attachments::SavedAttachment`). */
 type SavedAttachment = Required<
   Pick<AttachmentResult, 'path' | 'name' | 'size' | 'mimeType' | 'type'>
@@ -490,15 +496,17 @@ const ported = {
   },
   getFolderTemplate: (folderPath: string): Promise<string | null> =>
     commands.notesGetFolderTemplate(folderPath),
-  // The bytes travel as the raw request body. A refused or failed save answers as Electron's
-  // `saveAttachment` envelope does.
+  // The bytes travel as the raw request body, with the file's size in the meta. A file over
+  // `MAX_UPLOAD_BODY` is never read: an empty body goes, and Rust refuses it on the size with its
+  // localized message. A refused or failed save answers as Electron's `saveAttachment` envelope.
   uploadAttachment: async (
     noteId: string,
-    file: AttachmentUploadFile
+    file: AttachmentUploadFile & { size?: number }
   ): Promise<AttachmentResult> => {
     try {
-      const bytes = new Uint8Array(await file.arrayBuffer())
-      const meta = { noteId, fileName: file.name }
+      const over = file.size !== undefined && file.size > MAX_UPLOAD_BODY
+      const bytes = over ? new Uint8Array() : new Uint8Array(await file.arrayBuffer())
+      const meta = { noteId, fileName: file.name, size: file.size ?? bytes.length }
       const saved = await invokeBinary<SavedAttachment>('notes_upload_attachment', bytes, meta)
       return { success: true, ...saved }
     } catch (error) {

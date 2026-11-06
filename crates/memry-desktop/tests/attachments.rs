@@ -8,9 +8,11 @@
 //! | names, extensions, types, sizes and refs match Electron        | `attachments.ts:150-290`          |
 //! | an upload lands in the note's folder, referenced from its file | `saveAttachment`, #1488           |
 //! | an oversized or refused file writes nothing                    | 100 MiB cap, allowed set          |
-//! | a note id that is not one plain segment writes nothing         | stricter than Electron            |
+//! | a note id not of the minted shape writes nothing               | stricter than Electron            |
+//! | a file over the single-body limit is refused on its size       | 16 MiB until 14f-2's chunks       |
 //! | an attacker's file name stays one name inside the folder       | `generateUniqueFilename`          |
 //! | a link out of the vault is refused before a write through it   | `resolve_under_root`              |
+//! | a link swapped in before the file takes its name is refused    | the recheck in the commit step    |
 
 #[allow(unused_imports)]
 use crate::device_key;
@@ -21,8 +23,9 @@ use std::fs;
 use std::path::Path;
 
 use memry_desktop::attachments::{
-    self, AttachmentError, AttachmentKind, MAX_FILE_SIZE, MAX_STORED_NAME_BYTES, extension,
-    format_size, is_allowed_extension, kind_of, mime_type, relative_ref, save, stored_name,
+    self, AttachmentError, AttachmentKind, MAX_FILE_SIZE, MAX_STORED_NAME_BYTES, MAX_UPLOAD_BODY,
+    check_upload_size, extension, format_size, is_allowed_extension, kind_of, mime_type,
+    relative_ref, save, stored_name,
 };
 use memry_desktop::notes::identity::NotesIdentity;
 use memry_desktop::notes::read;
@@ -172,7 +175,8 @@ fn an_oversized_or_refused_file_writes_nothing() {
     let too_big = vec![0_u8; MAX_FILE_SIZE + 1];
     assert!(matches!(
         save(dir.path(), "n1", None, "large.png", &too_big),
-        Err(AttachmentError::TooLarge { size }) if size == MAX_FILE_SIZE + 1
+        Err(AttachmentError::TooLarge { size, limit })
+            if size == MAX_FILE_SIZE + 1 && limit == MAX_FILE_SIZE
     ));
     for name in [
         "script.exe",
@@ -202,7 +206,7 @@ fn an_oversized_or_refused_file_writes_nothing() {
 }
 
 #[test]
-fn a_note_id_that_is_not_one_plain_segment_writes_nothing() {
+fn a_note_id_not_of_the_minted_shape_writes_nothing() {
     let dir = vault();
     let root = dir.path().join("vault");
     fs::create_dir(&root).unwrap();
@@ -225,6 +229,21 @@ fn a_note_id_that_is_not_one_plain_segment_writes_nothing() {
         "NUL.txt",
         "Com1",
         "LPT9.md",
+        "COM0",
+        "lpt0",
+        "a\nb",
+        "a\tb",
+        "a*b",
+        "a?b",
+        "a|b",
+        "a<b",
+        "a\"b",
+        "CON .x",
+        "COM\u{b9}",
+        "CONIN$",
+        "a.b",
+        "\u{e9}t\u{e9}",
+        "a\u{202e}b",
     ] {
         assert!(
             matches!(
@@ -236,6 +255,31 @@ fn a_note_id_that_is_not_one_plain_segment_writes_nothing() {
     }
     assert_eq!(names(dir.path()), ["vault"]);
     assert_eq!(names(&root), Vec::<String>::new());
+
+    // Every shape ids are minted in is taken.
+    for note_id in ["k3f9x2abcd12", "j2026-01-01", "V1StGXR8_Z5jdHi6B-myT"] {
+        assert!(
+            save(&root, note_id, None, "a.png", b"x").is_ok(),
+            "{note_id:?}"
+        );
+    }
+}
+
+#[test]
+fn a_file_over_the_single_body_limit_is_refused_on_its_size() {
+    assert_eq!(MAX_UPLOAD_BODY, 16 * 1024 * 1024);
+    assert!(check_upload_size(MAX_UPLOAD_BODY, MAX_UPLOAD_BODY).is_ok());
+    // The renderer declares a file over the limit and sends no body.
+    for (declared, received) in [(MAX_UPLOAD_BODY + 1, 0), (0, MAX_UPLOAD_BODY + 1)] {
+        assert!(
+            matches!(
+                check_upload_size(declared, received),
+                Err(AttachmentError::TooLarge { size, limit })
+                    if size == MAX_UPLOAD_BODY + 1 && limit == MAX_UPLOAD_BODY
+            ),
+            "{declared} {received}"
+        );
+    }
 }
 
 #[test]
@@ -252,6 +296,8 @@ fn an_attackers_file_name_stays_one_name_inside_the_notes_folder() {
         ("nul.txt", "nul.txt"),
         ("a\0b.png", "a-b.png"),
         ("a\u{1}\u{7f}b.png", "a-b.png"),
+        ("evil\u{202e}fdp.png", "evil-fdp.png"),
+        ("a\u{200b}b\u{2066}c\u{061c}.png", "a-b-c.png"),
         ("..png", "untitled.png"),
     ] {
         let saved = save(dir.path(), "n1", Some("Note.md"), name, b"x").unwrap();
@@ -316,4 +362,34 @@ fn a_link_out_of_the_vault_is_refused_before_a_write_through_it() {
     let saved = save(&root, "n3", None, "a.png", b"x").unwrap();
     assert_eq!(names(&root.join("kept")).len(), 1);
     assert!(saved.disk_path.is_file());
+}
+
+/// The folder checks pass, then the note's folder is moved out of the vault and a link to it
+/// takes its place before the file takes its name: the check in the commit step refuses it, and
+/// nothing lands outside (the file being written moved with the folder, so without the check
+/// the commit would go through the link).
+#[cfg(unix)]
+#[test]
+fn a_link_swapped_in_before_the_file_takes_its_name_is_refused() {
+    use std::os::unix::fs::symlink;
+
+    let dir = vault();
+    let root = dir.path().join("vault");
+    let outside = dir.path().join("outside");
+    let folder = root.join("attachments/n1");
+    fs::create_dir_all(&folder).unwrap();
+    let mut swapped = false;
+    let outcome = attachments::save_checked(&root, "n1", None, "a.png", b"x", &mut || {
+        if !swapped {
+            fs::rename(&folder, &outside).unwrap();
+            symlink(&outside, &folder).unwrap();
+            swapped = true;
+        }
+    });
+    assert!(swapped);
+    assert!(
+        matches!(outcome, Err(AttachmentError::Write(_))),
+        "{outcome:?}"
+    );
+    assert_eq!(names(&outside), Vec::<String>::new());
 }
