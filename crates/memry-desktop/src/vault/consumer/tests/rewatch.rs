@@ -6,12 +6,17 @@ use std::time::Duration;
 
 use super::late_close::{Gate, WAIT, eventually, two_with};
 use crate::session::OpenSource;
+#[cfg(unix)]
 use crate::vault::config::settings::{SettingsError, update_vault_settings};
+#[cfg(unix)]
 use crate::vault::config::{VaultConfigPatch, read_vault_config};
 use crate::vault::consumer::{Applied, Hold};
 
 /// A close that arrives while a restart is between its stop and its start waits for the
 /// restart, then stops what it started: nothing keeps the vault, which opens again at once.
+/// The open's `Drop` would stop a pair started after the close as well; the tasks lock is what
+/// makes the close return only once they stopped, which no fact shows (a closed session's lane
+/// publishes nothing).
 #[test]
 fn a_close_during_a_restart_stops_what_the_restart_started() {
     let t = two_with(WAIT);

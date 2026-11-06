@@ -304,7 +304,8 @@ impl VaultTier {
     /// write-back's reconcile again: a restart during the open walk stopped that walk's.
     ///
     /// The tasks stay locked from the stop to the start, so a close meanwhile waits and stops
-    /// what this started. A start that fails leaves the open unwatched and is reported; the next
+    /// what this started, and returns only once they stopped. (The open's `Drop` stops a pair
+    /// that outlives its close as well, later: the lock is the ordering.) A start that fails leaves the open unwatched and is reported; the next
     /// restart tries again. Nothing when `vault` is not the open one, or a close stopped it.
     /// `unwatched` runs between the stop and the start.
     pub(crate) fn rewatch(

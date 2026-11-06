@@ -12,8 +12,11 @@
 //! | an exclude change killed at any step keeps every note           | the save is the only durable step       |
 //! | an excluded note renamed outside keeps its record               | `note_metadata`: no delete syncs        |
 //! | an excluded note deleted outside keeps its record through a ... | the same, an overflow resync included   |
-//! | an excluded folder renamed outside keeps the record it left     | the same; the file is a new note        |
+//! | an excluded folder renamed outside keeps its note               | its file pairs with the covered row     |
 //! | a restart during the open walk still writes back what it owed   | the restart's walk reconciles too       |
+//! | an excluded note moved out while closed keeps its id            | a covered home still pairs              |
+//! | an excluded note moved out live keeps its id                    | the add pairs with the covered row      |
+//! | an excluded note moved out before a resync keeps its id         | either pairing, one note                |
 
 #[allow(unused_imports)]
 use crate::device_key;
@@ -301,11 +304,11 @@ fn an_excluded_note_deleted_outside_keeps_its_record_through_a_resync() {
     );
 }
 
-/// The excluded folder renamed outside the app: its file is a new note at its new path (no
-/// removal to pair it with, as in Electron), and the record it left keeps its path, with no
-/// delete synced, through three opens.
+/// The excluded folder renamed outside the app: its file pairs with the note the patterns
+/// cover, which keeps its id at the new path, with no removal and no delete synced, through
+/// three opens. (Electron makes it a new note and keeps the old record.)
 #[test]
-fn an_excluded_folder_renamed_outside_keeps_the_record_it_left() {
+fn an_excluded_folder_renamed_outside_keeps_its_note() {
     let (mut e, _store, old, _new) = two_notes();
     let rows = e.rows();
     changed(&mut e, excludes(&["archive"]));
@@ -316,8 +319,8 @@ fn an_excluded_folder_renamed_outside_keeps_the_record_it_left() {
         reopen(&mut e);
     }
     let now = e.rows();
-    assert!(now.contains(&row(&old, "archive/old.md")), "{now:?}");
-    assert_eq!(now.len(), rows.len() + 1, "{now:?}");
+    assert!(now.contains(&row(&old, "kept/old.md")), "{now:?}");
+    assert_eq!(now.len(), rows.len(), "{now:?}");
     for (id, _) in &now {
         assert!(!outbox(&e, id).contains(&"delete".to_owned()), "{id}");
     }
@@ -378,4 +381,93 @@ fn a_restart_during_the_open_walk_still_writes_back_what_the_walk_owed() {
         );
         std::thread::sleep(std::time::Duration::from_millis(50));
     }
+}
+
+/// After an excluded note's file moved to `notes/moved.md`: one move fact, the record at its new
+/// path under its id, through three opens and the pattern dropped, and no delete synced.
+fn moved_out(e: &mut Env, facts: &[Applied], rows: &[(String, String)], old: &str) {
+    assert!(
+        facts
+            .iter()
+            .any(|f| matches!(f, Applied::Renamed { note_id, new_path, .. }
+            if note_id == old && new_path == "notes/moved.md")),
+        "{facts:?}"
+    );
+    assert!(!crossed(facts), "{facts:?}");
+    let moved: Vec<(String, String)> = rows
+        .iter()
+        .map(|(id, at)| match id == old {
+            true => (id.clone(), "notes/moved.md".to_owned()),
+            false => (id.clone(), at.clone()),
+        })
+        .collect();
+    for _ in 0..3 {
+        reopen(e);
+    }
+    let mut now = e.rows();
+    now.sort();
+    let mut want = moved;
+    want.sort();
+    assert_eq!(now, want);
+    let facts = changed(e, excludes(&[]));
+    assert!(!crossed(&facts), "{facts:?}");
+    for (id, _) in &want {
+        assert!(!outbox(e, id).contains(&"delete".to_owned()), "{id}");
+    }
+}
+
+/// Moved out of the excluded folder while the vault was closed: the open's rescan pairs the
+/// file with the note the patterns cover, which keeps its id.
+#[test]
+fn an_excluded_note_moved_out_while_closed_keeps_its_id() {
+    let (mut e, _store, old, _new) = two_notes();
+    let rows = e.rows();
+    changed(&mut e, excludes(&["archive"]));
+    e.close();
+    e.drain();
+    fs::rename(
+        e.vault.join("archive/old.md"),
+        e.vault.join("notes/moved.md"),
+    )
+    .unwrap();
+    e.open();
+    let facts = e.facts_until(indexed);
+    moved_out(&mut e, &facts, &rows, &old);
+}
+
+/// Moved out of the excluded folder while the app watches: the watcher never sees the file go
+/// (it does not read there), and the add pairs with the covered note by its content.
+#[test]
+fn an_excluded_note_moved_out_live_keeps_its_id() {
+    let (mut e, _store, old, _new) = two_notes();
+    let rows = e.rows();
+    changed(&mut e, excludes(&["archive"]));
+    fs::rename(
+        e.vault.join("archive/old.md"),
+        e.vault.join("notes/moved.md"),
+    )
+    .unwrap();
+    let facts = e.facts_until(|f| matches!(f, Applied::Renamed { .. } | Applied::Added { .. }));
+    std::thread::sleep(QUIET);
+    let facts = [facts, e.drain()].concat();
+    moved_out(&mut e, &facts, &rows, &old);
+}
+
+/// Moved out, then a resync in the session (an OS event overflow): whichever pairs first, the
+/// note keeps its id and no second note is made.
+#[test]
+fn an_excluded_note_moved_out_before_a_resync_keeps_its_id() {
+    let (mut e, _store, old, _new) = two_notes();
+    let rows = e.rows();
+    changed(&mut e, excludes(&["archive"]));
+    fs::rename(
+        e.vault.join("archive/old.md"),
+        e.vault.join("notes/moved.md"),
+    )
+    .unwrap();
+    e.tier.rescan_watcher(true);
+    let facts = e.facts_until(|f| matches!(f, Applied::Vault(VaultEvent::Rescanned { .. })));
+    std::thread::sleep(QUIET);
+    let facts = [facts, e.drain()].concat();
+    moved_out(&mut e, &facts, &rows, &old);
 }

@@ -44,7 +44,9 @@
 //! that record's id. Here the note's row stays, so it stays listed and keeps its id, whatever
 //! happens to its file while the patterns cover it: the rescan reports no removal there, so a
 //! file renamed or deleted outside leaves its record behind, as Electron's does, and syncs no
-//! delete. Once the pattern is dropped, the restart's walk reads the file again: an outside edit
+//! delete. A file moved out of a covered place, while the app watches or not, pairs with that
+//! record by its content and keeps its id (Electron makes it a new note). Once the pattern is
+//! dropped, the restart's walk reads the file again: an outside edit
 //! made meanwhile replaces the note's body (an app edit made meanwhile is kept as a version;
 //! Step 13m-7b-3b makes a covered note read-only), a rename pairs as a move, and a file that is
 //! gone is a removal then. The save is the only durable step: an open after a crash reads the

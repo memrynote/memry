@@ -43,6 +43,8 @@ impl Reconciler {
         let root = &self.root;
         self.echo
             .seen_all(|path| std::fs::symlink_metadata(root.join(path)).is_ok());
+        // Rows read by an earlier batch are stale now.
+        self.all_rows = None;
         let rows = self.files.list_missing_candidates()?;
         // Each note where it was last reported, else where its row says: a move already
         // reported leaves the row stale, and a removal already reported leaves nothing to
@@ -64,6 +66,11 @@ impl Reconciler {
         let listed: HashSet<&str> = walk.files.iter().map(String::as_str).collect();
 
         let mut missing: Vec<&Home> = Vec::new();
+        // Gone homes the exclude patterns cover. A note there keeps its record whatever
+        // happens to its file, as Electron's `note_metadata` does: the watcher does not read
+        // that place, so its absence is no removal to sync. It still pairs with an add, so a
+        // file moved out of the folder keeps its note.
+        let mut covered: HashSet<&str> = HashSet::new();
         for home in &homes {
             if stop.load(Ordering::Relaxed) {
                 return Ok(false);
@@ -71,27 +78,25 @@ impl Reconciler {
             if listed.contains(home.path.as_str()) || under_any(&home.path, &walk.unreadable) {
                 continue;
             }
-            // A note the exclude patterns cover keeps its record whatever happens to its file,
-            // as Electron's `note_metadata` does: the watcher does not read that place, so an
-            // absence there is no removal of this app's to sync.
-            if self.filter.ignores(&home.path) {
-                continue;
-            }
             // The walk skips hidden, excluded and unreadable places; the disk has the last word.
             if is_gone_from_disk(&self.root.join(&home.path)) {
+                if self.filter.ignores(&home.path) {
+                    covered.insert(&home.note_id);
+                }
                 missing.push(home);
             }
         }
+        let removable = missing.len() - covered.len();
         let added: Vec<&String> = walk.files.iter().filter(|p| !known.contains(*p)).collect();
         // A partial walk cannot say what is gone, so it never drives a delete.
         let cut_short = walk.truncated.is_some() || walk.too_deep > 0;
-        let mass = missing.len() > MASS_REMOVAL_MIN_COUNT
-            && missing.len() as f64 > homes.len() as f64 * MASS_REMOVAL_MIN_SHARE;
+        let mass = removable > MASS_REMOVAL_MIN_COUNT
+            && removable as f64 > homes.len() as f64 * MASS_REMOVAL_MIN_SHARE;
         let withheld = cut_short || mass;
         if withheld {
             tracing::warn!(
                 scope = "vault_watch",
-                missing = missing.len(),
+                missing = removable,
                 checked = homes.len(),
                 cut_short,
                 "too many files are missing at once; reporting no removals until the next open"
@@ -164,6 +169,9 @@ impl Reconciler {
         let mut waiting_notes = HashSet::new();
         if !withheld {
             for pending in self.tracker.settle(batch) {
+                if covered.contains(pending.note_id.as_str()) {
+                    continue;
+                }
                 waiting_notes.insert(pending.note_id.clone());
                 self.track_removal(pending, now);
             }
@@ -179,7 +187,7 @@ impl Reconciler {
             }
         }
         let event = VaultEvent::Rescanned {
-            missing: missing.len(),
+            missing: removable,
             removed: 0,
             added: added.len(),
             changed: changed.len(),
