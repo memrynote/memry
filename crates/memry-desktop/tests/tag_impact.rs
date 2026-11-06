@@ -290,7 +290,11 @@ fn a_query_without_a_tag_or_a_field_name_or_with_one_too_long_is_refused() {
     ] {
         let refused = schemas.preview_impact(query.clone());
         let kind = refused.as_ref().map_err(|error| error.kind_and_code().0);
-        assert_eq!(kind.err(), Some(FailureKind::Invalid), "{query:?}: {refused:?}");
+        assert_eq!(
+            kind.err(),
+            Some(FailureKind::Invalid),
+            "{query:?}: {refused:?}"
+        );
     }
     e.close();
 }
