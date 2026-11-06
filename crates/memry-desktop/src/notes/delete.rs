@@ -22,8 +22,10 @@
 //! missing. Either way a second delete goes through: the file is gone, so only the record and
 //! the row are left to go.
 //!
-//! Not here yet: the date reminders Electron clears (Step 21) and the locked-folder check
-//! (`assertNoteWritable`, Step 13n).
+//! A locked note, or one in a locked folder, is refused before its file is touched
+//! (`assertNoteWritable`, [`Locks::refuse_note`]).
+//!
+//! Not here yet: the date reminders Electron clears (Step 21).
 
 use std::io::{self, ErrorKind};
 use std::path::{Path, PathBuf};
@@ -32,6 +34,7 @@ use memry_core::domain::note_files::NoteFile as Row;
 
 use super::error::{NotesError, SCOPE};
 use super::service::NotesService;
+use crate::locks::Locks;
 use crate::session::OpenVault;
 use crate::shell::file_open::Resolution;
 use crate::vault::consumer::{Applied, ChangeSource};
@@ -66,6 +69,7 @@ impl NotesService {
         let Some(row) = lane.files().by_id(note_id)? else {
             return Err(NotesError::NotFound(note_id.to_owned()));
         };
+        Locks::of(open).refuse_note(note_id, &row.path)?;
         self.remove_file_of(root, &row, permanent)?;
         writer.delete(note_id.to_owned())?;
         lane.remove(note_id)?;

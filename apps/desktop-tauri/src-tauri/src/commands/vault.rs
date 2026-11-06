@@ -404,6 +404,10 @@ fn settings_failed<R: Runtime>(app: &AppHandle<R>, error: SettingsError) -> Comm
                 localized(app, UNLISTED_KEY),
             )
         }
+        // Electron's `noteLockedError`, which the renderer maps to its localized message.
+        SettingsError::Locked => {
+            CommandError::new(ErrorKind::Locked, "note_locked", error.to_string())
+        }
         SettingsError::NoTier => {
             CommandError::new(ErrorKind::Internal, "no_vault_tier", "no vault tier")
         }
