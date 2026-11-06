@@ -386,7 +386,7 @@ impl NotesService {
                 },
             )?;
             Ok::<_, NotesError>(match edited {
-                Edited::Unchanged if unsure => {
+                Edited::Unchanged { .. } if unsure => {
                     tracing::warn!(
                         scope = SCOPE,
                         note_id = id,
@@ -395,8 +395,8 @@ impl NotesService {
                     InNote::Unsure
                 }
                 Edited::Wrote { .. } => InNote::Written,
-                Edited::Unchanged if record => InNote::Written,
-                Edited::Unchanged => InNote::Unchanged,
+                Edited::Unchanged { .. } if record => InNote::Written,
+                Edited::Unchanged { .. } => InNote::Unchanged,
                 // No file holds the tags: the record is the note's only copy.
                 Edited::Kept(Kept::NoRow | Kept::NoFile | Kept::NotMarkdown) => {
                     match hub.rename_in(id)? {

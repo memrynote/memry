@@ -54,9 +54,6 @@ use super::write_order::NoteTurn;
 use crate::session::OpenVault;
 use crate::vault::app_edit::{Edited, Precondition};
 use crate::vault::consumer::ChangeSource;
-use crate::vault::hash::content_hash;
-
-const BOM: char = '\u{feff}';
 
 /// `HeaderTagEditSchema`: at most 50 names per list, each 1 to 50 UTF-16 units once trimmed.
 const MAX_EDIT_TAGS: usize = 50;
@@ -284,9 +281,8 @@ impl NotesService {
             false => HashSet::new(),
         };
         let app_edit = self.save_edit(open)?;
-        // What the text decided, for the record once the file holds it, and the text itself.
+        // What the text decided, for the record once the file holds it.
         let planned = RefCell::new(None);
-        let written = RefCell::new(String::new());
         let edited = app_edit.run_then(
             turn,
             Precondition::Save(&self.own_files),
@@ -299,7 +295,6 @@ impl NotesService {
                     .ok_or_else(|| NotesError::NotFound(id.to_owned()))?;
                 let (output, plan) = next_text(text, edit, &with_fields, types, listed.emoji)?;
                 *planned.borrow_mut() = Some(plan);
-                written.replace(output.clone());
                 Ok(Some(output))
             },
             || {
@@ -330,42 +325,32 @@ impl NotesService {
             between,
         )?;
         let plan = planned.into_inner();
-        let kept_outside = matches!(
-            edited,
+        let (kept_outside, file) = match edited {
             Edited::Wrote {
-                kept_outside: true,
-                ..
-            }
-        );
-        let mut file = written.into_inner();
-        // The seam put back the byte order mark the file had; a body with no frontmatter keeps
-        // it as the read does.
-        if let Edited::Wrote { hash, .. } = &edited
-            && *hash != content_hash(&file)
-        {
-            file.insert(0, BOM);
-        }
-        let body = split_frontmatter_block(&file).body.to_owned();
-        match edited {
-            Edited::Wrote { .. } | Edited::Unchanged => Ok(match plan {
-                Some(plan) => Saved {
-                    tags_changed: plan.tags_changed,
-                    added: plan.added,
-                    kept_outside,
-                    body,
-                },
-                None => Saved {
-                    tags_changed: false,
-                    added: Vec::new(),
-                    kept_outside,
-                    body,
-                },
-            }),
+                kept_outside, text, ..
+            } => (kept_outside, text),
+            Edited::Unchanged { text } => (false, text),
             Edited::Kept(kept) => {
                 tracing::info!(scope = SCOPE, note_id = id, ?kept, "a save was refused");
-                Err(NotesError::EditKept(kept))
+                return Err(NotesError::EditKept(kept));
             }
-        }
+        };
+        // The body as the note's read gives it: a file with no frontmatter keeps its mark there.
+        let body = split_frontmatter_block(&file).body.to_owned();
+        Ok(match plan {
+            Some(plan) => Saved {
+                tags_changed: plan.tags_changed,
+                added: plan.added,
+                kept_outside,
+                body,
+            },
+            None => Saved {
+                tags_changed: false,
+                added: Vec::new(),
+                kept_outside,
+                body,
+            },
+        })
     }
 }
 
