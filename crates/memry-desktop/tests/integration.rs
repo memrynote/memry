@@ -48,6 +48,8 @@ mod article_vectors;
 mod attachment_locks;
 #[path = "attachment_rename.rs"]
 mod attachment_rename;
+#[path = "attachment_sources.rs"]
+mod attachment_sources;
 #[path = "attachment_uploads.rs"]
 mod attachment_uploads;
 #[path = "attachments.rs"]

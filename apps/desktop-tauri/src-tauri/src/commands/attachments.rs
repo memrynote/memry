@@ -35,7 +35,12 @@ struct UploadMeta {
     size: usize,
 }
 
-fn attachment_error<R: Runtime>(app: &AppHandle<R>, error: &AttachmentError) -> CommandError {
+/// The command's answer to `error`; `command` names it in the log of a disk failure.
+pub(super) fn attachment_error<R: Runtime>(
+    app: &AppHandle<R>,
+    command: &str,
+    error: &AttachmentError,
+) -> CommandError {
     let locale = app.state::<Arc<LocaleService>>().get();
     let t = |key: &str, args: &Args| i18n::t(locale, key, args);
     match error {
@@ -72,7 +77,8 @@ fn attachment_error<R: Runtime>(app: &AppHandle<R>, error: &AttachmentError) -> 
         | AttachmentError::OutsideVault
         | AttachmentError::NotOwned
         | AttachmentError::BadName
-        | AttachmentError::NoFreeName => CommandError::new(
+        | AttachmentError::NoFreeName
+        | AttachmentError::BadReference => CommandError::new(
             ErrorKind::Invalid,
             "attachment_invalid_path",
             error.to_string(),
@@ -84,10 +90,7 @@ fn attachment_error<R: Runtime>(app: &AppHandle<R>, error: &AttachmentError) -> 
             CommandError::new(ErrorKind::Invalid, "attachment_upload_refused", message)
         }
         AttachmentError::NotAFolder | AttachmentError::Io(_) | AttachmentError::Write(_) => {
-            tracing::warn!(
-                scope = "attachments",
-                "an attachment was not saved: {error}"
-            );
+            tracing::warn!(scope = "attachments", "{command} failed on disk: {error}");
             let message = t("errors:attachment.writeFailed", &Args::new());
             CommandError::new(ErrorKind::Storage, "attachment_write_failed", message)
         }
@@ -105,14 +108,14 @@ pub async fn notes_upload_attachment<R: Runtime>(
     let body = binary::raw_body(&request)?;
     // On the declared size, so a file over the limit never crosses IPC.
     if let Err(error) = attachments::check_upload_size(meta.size, body.len()) {
-        let error = attachment_error(&app, &error);
+        let error = attachment_error(&app, "notes_upload_attachment", &error);
         log_failure("notes_upload_attachment", &error);
         return Err(error);
     }
     let body = body.to_vec();
     blocking("notes_upload_attachment", move || {
         attachments::upload(&open_vault(&app)?, &meta.note_id, &meta.file_name, &body)
-            .map_err(|error| attachment_error(&app, &error))
+            .map_err(|error| attachment_error(&app, "notes_upload_attachment", &error))
     })
     .await
 }
@@ -139,7 +142,7 @@ pub async fn notes_upload_attachment_begin<R: Runtime>(
     blocking("notes_upload_attachment_begin", move || {
         uploads(&app)?
             .begin(&open_vault(&app)?, &owner, &note_id, &file_name, size)
-            .map_err(|error| attachment_error(&app, &error))
+            .map_err(|error| attachment_error(&app, "notes_upload_attachment_begin", &error))
     })
     .await
 }
@@ -163,7 +166,7 @@ pub async fn notes_upload_attachment_chunk<R: Runtime>(
     blocking("notes_upload_attachment_chunk", move || {
         uploads(&app)?
             .write_chunk(&open_vault(&app)?, &meta.id, meta.offset, &body)
-            .map_err(|error| attachment_error(&app, &error))
+            .map_err(|error| attachment_error(&app, "notes_upload_attachment_chunk", &error))
     })
     .await
 }
@@ -194,7 +197,7 @@ pub async fn notes_attachment_rename<R: Runtime>(
 ) -> Result<RenamedAttachment, CommandError> {
     blocking("notes_attachment_rename", move || {
         attachments::rename(&open_vault(&app)?, &note_id, &url, &new_name)
-            .map_err(|error| attachment_error(&app, &error))
+            .map_err(|error| attachment_error(&app, "notes_attachment_rename", &error))
     })
     .await
 }
@@ -205,5 +208,68 @@ pub fn release_page<R: Runtime>(app: &AppHandle<R>, label: &str) {
     if let Some(uploads) = app.try_state::<Arc<Uploads>>() {
         let ended = uploads.release_owner(label);
         tauri::async_runtime::spawn_blocking(move || ended.finish());
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use std::io::Write;
+    use std::sync::Mutex;
+
+    use memry_desktop::locale::LocaleService;
+    use tauri::test::mock_app;
+    use tracing_subscriber::fmt::MakeWriter;
+
+    use super::*;
+
+    #[derive(Clone, Default)]
+    struct Logged(Arc<Mutex<Vec<u8>>>);
+
+    impl Write for Logged {
+        fn write(&mut self, bytes: &[u8]) -> std::io::Result<usize> {
+            self.0
+                .lock()
+                .unwrap_or_else(std::sync::PoisonError::into_inner)
+                .extend_from_slice(bytes);
+            Ok(bytes.len())
+        }
+
+        fn flush(&mut self) -> std::io::Result<()> {
+            Ok(())
+        }
+    }
+
+    impl MakeWriter<'_> for Logged {
+        type Writer = Self;
+
+        fn make_writer(&self) -> Self {
+            self.clone()
+        }
+    }
+
+    /// A disk failure's log line names the command that hit it, a rename as a rename.
+    #[test]
+    fn a_disk_failure_is_logged_with_its_command() {
+        let app = mock_app();
+        app.manage(Arc::new(LocaleService::new("en")));
+        let logged = Logged::default();
+        let subscriber = tracing_subscriber::fmt()
+            .with_writer(logged.clone())
+            .with_ansi(false)
+            .finish();
+        tracing::subscriber::with_default(subscriber, || {
+            tracing::callsite::rebuild_interest_cache();
+            let answer = attachment_error(
+                app.handle(),
+                "notes_attachment_rename",
+                &AttachmentError::NotAFolder,
+            );
+            assert_eq!(answer.code, "attachment_write_failed");
+        });
+        let text = String::from_utf8(logged.0.lock().unwrap().clone()).unwrap();
+        assert!(
+            text.contains("notes_attachment_rename failed on disk"),
+            "{text}"
+        );
     }
 }

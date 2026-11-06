@@ -2,6 +2,7 @@
 //! paths to `registry.rs`.
 
 pub mod app;
+pub mod attachment_sources;
 pub mod attachments;
 pub mod custom_icons;
 pub mod diagnostics;
