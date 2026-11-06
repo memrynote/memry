@@ -3,8 +3,8 @@
 //! text. A note of 150 words or fewer (300 characters in Chinese, Japanese and Korean) does not
 //! fold. [`text`] reads a note's language, sentences and words; [`tokens`] turns its date and
 //! link pills into the text a reader sees; [`engine`] turns a note's Markdown into the
-//! snapshot the renderer shows; [`service::FoldService`] reads the note, keeps the Brief rows
-//! in `index.db`'s `note_fold_chunks` and records the last run.
+//! snapshot the renderer shows; [`service::FoldService`] reads the note or day and folds it,
+//! picking the Brief again on every run (no cache, as in Electron).
 //!
 //! The layered-summary idea follows github.com/chenxiachan/textfold (Apache-2.0); the code is
 //! original.

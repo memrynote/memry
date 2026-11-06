@@ -45,8 +45,6 @@ export const commands = {
 	flushDone: (requestId: string) => __TAURI_INVOKE<null>("flush_done", { requestId }),
 	/**  The calling window's page subscribed to flush requests: from now on a quit or a close asks it. */
 	flushReady: () => __TAURI_INVOKE<null>("flush_ready"),
-	/**  The most recent run of this vault session, `null` before the first. */
-	foldGetLastRun: () => __TAURI_INVOKE<FoldRunState | null>("fold_get_last_run"),
 	/**  The note or journal day folded for a reader who asked for `level`. */
 	foldRun: (noteId: string, level: FoldLevel) => __TAURI_INVOKE<FoldLayers>("fold_run", { noteId, level }),
 	/**  The day made on its first write; a day that has a file is answered as it is. */
@@ -872,15 +870,6 @@ export type FoldParagraph = {
 	srcSentenceStart: number[],
 	/**  Indices into `sentences` that make Brief. */
 	briefIdx: number[],
-};
-
-/**  The most recent run, for `fold_get_last_run`. */
-export type FoldRunState = {
-	noteId: string,
-	level: FoldLevel,
-	ok: boolean,
-	/**  Why it failed; null when it did not. */
-	error: string | null,
 };
 
 export type FoldSection = {

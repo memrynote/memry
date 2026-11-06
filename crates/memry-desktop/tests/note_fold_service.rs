@@ -13,7 +13,7 @@ use std::sync::mpsc;
 use std::time::Duration;
 
 use memry_core::seams::secure_store::SecureStore;
-use memry_desktop::fold::service::{FoldRunState, FoldService};
+use memry_desktop::fold::service::FoldService;
 use memry_desktop::fold::{FoldLayers, FoldLevel};
 use memry_desktop::notes::error::NotesError;
 use memry_desktop::notes::identity::NotesIdentity;
@@ -80,19 +80,9 @@ fn a_long_note_folds_to_its_brief() {
     // Each paragraph's first sentence: first, a claim of 6 to 30 words, no question.
     assert!(briefs(&layers).iter().all(|b| b == &[0]));
     assert_eq!(layers.sections[0].paragraphs[0].sentences[0], SENTENCE);
-    assert_eq!(
-        fold.last_run(),
-        Some(FoldRunState {
-            note_id: id.clone(),
-            level: FoldLevel::Brief,
-            ok: true,
-            error: None,
-        })
-    );
 
     // Full folds the same snapshot.
     assert_eq!(fold.run(&id, FoldLevel::Full).expect("fold"), layers);
-    assert_eq!(fold.last_run().expect("run").level, FoldLevel::Full);
 }
 
 #[test]
@@ -148,13 +138,28 @@ fn a_journal_day_folds_from_its_file() {
     assert_eq!(layers.sections[0].paragraphs.len(), 8);
 }
 
+/// A deleted day reads as no day, as Electron's lookup of live days answers: its id does not
+/// fold the file still at its date.
+#[test]
+fn a_deleted_journal_day_does_not_fold() {
+    let (e, fold) = opened(&[("journal/2025-01-17.md", &long_note(8))]);
+    let data = rusqlite::Connection::open(e.vault.join(".memry/core/data.db")).expect("data.db");
+    data.execute(
+        "UPDATE journal_entries SET deleted_at = 1 WHERE id = 'j2025-01-17'",
+        [],
+    )
+    .expect("delete the day");
+    let layers = fold.run("j2025-01-17", FoldLevel::Brief).expect("fold");
+    assert!(!layers.foldable);
+    assert!(layers.sections.is_empty());
+}
+
 #[test]
 fn the_service_lets_go_of_the_vault_when_it_closes() {
     let (mut e, fold) = opened(&[("plan.md", &long_note(8))]);
     let id = id_of(&e, "plan.md");
     fold.run(&id, FoldLevel::Brief).expect("fold");
     e.close();
-    assert_eq!(fold.last_run(), None);
     assert!(matches!(
         fold.run(&id, FoldLevel::Brief),
         Err(NotesError::Closed)

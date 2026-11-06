@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from 'react'
-import { fireEvent, render, screen, waitFor } from '@testing-library/react'
+import { act, fireEvent, render, screen, waitFor } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 import type { FoldLevel } from '@memry/contracts/note-fold'
@@ -101,6 +101,14 @@ describe('FoldSurface', () => {
     await waitFor(() => expect(commands.foldRun).toHaveBeenCalledWith('note-1', 'full'))
     expect(screen.queryByTestId('note-fold-control')).toBeNull()
     expect(screen.queryByTestId('note-fold-overlay')).toBeNull()
+  })
+
+  it('shows no level control for a long note with nothing to fold', async () => {
+    // Over 150 words, all in lists or code: the service says it does not fold.
+    serve(localLayers({ foldable: false, totalWords: 400, sections: [] }))
+    render(<Host wordCount={400} />)
+    await act(() => vi.mocked(commands.foldRun).mock.results[0]?.value)
+    expect(screen.queryByTestId('note-fold-control')).toBeNull()
   })
 
   it('opens at Full: the editor shows and no overlay covers it', async () => {

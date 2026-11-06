@@ -44,7 +44,6 @@ pub fn builder() -> Builder<Wry> {
             crate::commands::shell_integrations::flush_done,
             crate::commands::shell_integrations::flush_ready,
             // fold
-            crate::commands::fold::fold_get_last_run::<Wry>,
             crate::commands::fold::fold_run::<Wry>,
             // journal
             crate::commands::journal::journal_create_entry::<Wry>,

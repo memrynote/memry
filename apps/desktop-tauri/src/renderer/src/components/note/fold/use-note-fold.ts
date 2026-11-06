@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useMemo, useReducer, useState } from 'react'
+import { useCallback, useEffect, useMemo, useReducer, useRef, useState } from 'react'
 import { FOLD_MIN_WORDS, type FoldLayers, type FoldLevel } from '@memry/contracts/note-fold'
 import { useTabCommands } from '@/commands'
 import type { FoldLevelControlProps } from './fold-level-control'
@@ -46,13 +46,17 @@ export function useNoteFold(noteId: string | null | undefined, wordCount: number
   const [layers, setLayers] = useState<FoldLayers | null>(null)
   const [state, dispatchState] = useReducer(foldReducer, INITIAL_FOLD_STATE)
   const long = wordCount > FOLD_MIN_WORDS
+  // The journal keeps one hook across days, and a long note folds slower than a short one:
+  // only the latest request's answer is shown, so an older note's or day's never replaces it.
+  const latestRequest = useRef(0)
 
   const refresh = useCallback(
     async (level: FoldLevel = 'full'): Promise<void> => {
+      const request = ++latestRequest.current
       if (!noteId) return
       try {
         const next = fromLocal(await commands.foldRun(noteId, localLevel(level)))
-        if (next.noteId === noteId) setLayers(next)
+        if (request === latestRequest.current) setLayers(next)
       } catch (error) {
         log.error('Failed to load fold layers', { noteId, error })
       }
@@ -71,7 +75,7 @@ export function useNoteFold(noteId: string | null | undefined, wordCount: number
   // Crossing the length threshold refetches, so a note that grows past it gains
   // the control without reopening.
   useEffect(() => {
-    // oxlint-disable-next-line react/set-state-in-effect -- synchronizes local state with an external source (IPC fetch / layout measurement) on this trigger
+    // oxlint-disable-next-line react/set-state-in-effect, react-you-might-not-need-an-effect/no-pass-ref-to-parent -- fetches the fold on this trigger; the ref is this hook's own request counter, nothing crosses a component boundary
     void refresh()
     // oxlint-disable-next-line react/exhaustive-effect-dependencies -- effect re-runs on this trigger by design; the value is not read in the effect
   }, [refresh, long])
@@ -96,7 +100,8 @@ export function useNoteFold(noteId: string | null | undefined, wordCount: number
     [layers, setLevel, state.level]
   )
 
-  // Nothing a model writes can fail here: a retry folds the note again.
+  // The pill offers Retry only for a failed model level, which the local fold never reports;
+  // kept for Step 22's model levels. A retry folds the note again.
   const retry = useCallback((): void => void refresh(state.level), [refresh, state.level])
 
   // Crossfade: when `folded` flips, both surfaces show for a moment. Set during
