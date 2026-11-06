@@ -8,6 +8,7 @@
 use std::sync::Arc;
 
 use crate::api::errors::AuthError;
+use crate::crdt::body_writes;
 use crate::crdt::errors::CrdtError;
 use crate::crypto::keys;
 use crate::domain::external_feed::{self, FeedInput, FeedOutcome, FirstBody};
@@ -102,7 +103,12 @@ impl ExternalFeed {
     ) -> Result<FeedOutcome, CrdtError> {
         let device_id = self.device_id.clone();
         self.db
-            .call_blocking(move |conn| Ok(step(conn, converter, input, &device_id, now_ms())))
+            .call_blocking(move |conn| {
+                // The editor host's windows hear the body as an outside edit.
+                Ok(body_writes::as_external(|| {
+                    step(conn, converter, input, &device_id, now_ms())
+                }))
+            })
             .map_err(CrdtError::from)?
     }
 }

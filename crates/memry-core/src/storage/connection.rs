@@ -19,13 +19,19 @@
 //!
 //! A statement run on the async runtime's worker threads would stall every other
 //! task on that thread for the duration of the write.
+//!
+//! **Body writes are told.** A write closure records which document bodies it
+//! wrote while a [`BodyObserver`] is registered ([`Db::observe`]), and the
+//! observer hears of them once the closure returned and the writer is free
+//! ([`crate::crdt::body_writes`]).
 
 use std::path::Path;
-use std::sync::{Arc, Mutex, MutexGuard};
+use std::sync::{Arc, Mutex, MutexGuard, OnceLock, Weak};
 
 use rusqlite::Connection;
 
 use crate::api::errors::StorageError;
+use crate::crdt::body_writes::{self, BodyObserver};
 use crate::storage::pool::ReaderPool;
 use crate::storage::pragmas;
 pub use crate::storage::pragmas::{BUSY_TIMEOUT_MS, Profile};
@@ -43,6 +49,7 @@ pub struct Db {
     /// `data.db-wal` outlives the handle holding every recent write.
     readers: Option<Arc<ReaderPool>>,
     writer: Arc<Mutex<Connection>>,
+    observer: Arc<OnceLock<Weak<dyn BodyObserver>>>,
 }
 
 impl Db {
@@ -67,6 +74,7 @@ impl Db {
         Ok(Self {
             writer: Arc::new(Mutex::new(conn)),
             readers: Some(Arc::new(readers)),
+            observer: Arc::default(),
         })
     }
 
@@ -83,6 +91,7 @@ impl Db {
         Ok(Self {
             writer: Arc::new(Mutex::new(conn)),
             readers: None,
+            observer: Arc::default(),
         })
     }
 
@@ -95,12 +104,8 @@ impl Db {
         F: FnOnce(&mut Connection) -> Result<T, StorageError> + Send + 'static,
         T: Send + 'static,
     {
-        let conn = Arc::clone(&self.writer);
-        join(tokio::task::spawn_blocking(move || {
-            let mut guard = lock(&conn)?;
-            f(&mut guard)
-        }))
-        .await
+        let db = self.clone();
+        join(tokio::task::spawn_blocking(move || db.call_blocking(f))).await
     }
 
     /// Runs `f` against the writer on the calling thread.
@@ -112,8 +117,31 @@ impl Db {
     where
         F: FnOnce(&mut Connection) -> Result<T, StorageError>,
     {
-        let mut guard = lock(&self.writer)?;
-        f(&mut guard)
+        let observer = self.observer.get().and_then(Weak::upgrade);
+        let (result, writes) = body_writes::recording(observer.is_some(), || {
+            let mut guard = lock(&self.writer)?;
+            f(&mut guard)
+        });
+        if let Some(observer) = observer.filter(|_| !writes.is_empty()) {
+            observer.bodies_written(&writes);
+        }
+        result
+    }
+
+    /// [`Db::call_blocking`] that tells no observer: for the observer's own
+    /// writes, which it runs while holding what it takes to hear one.
+    #[cfg(feature = "markdown")]
+    pub(crate) fn call_blocking_untold<F, T>(&self, f: F) -> Result<T, StorageError>
+    where
+        F: FnOnce(&mut Connection) -> Result<T, StorageError>,
+    {
+        body_writes::recording(false, || f(&mut *lock(&self.writer)?)).0
+    }
+
+    /// Registers the one observer of this database's body writes, for every
+    /// clone of the handle. False when one is already registered.
+    pub fn observe(&self, observer: Weak<dyn BodyObserver>) -> bool {
+        self.observer.set(observer).is_ok()
     }
 
     /// Runs the `SELECT`-only `f` on a pooled reader, on the blocking pool. It

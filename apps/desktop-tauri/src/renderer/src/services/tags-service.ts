@@ -21,6 +21,7 @@ import type {
   TagsProgressEvent
 } from '@memry/contracts/tag-schema-api'
 import type { RenameTagResponse } from '@memry/contracts/tags-api'
+import type { SearchObjectsResponse } from '@memry/contracts/tag-objects-api'
 import { commands, events } from '../../../generated/bindings'
 import type { KeptNoteView, UnfinishedRenameView } from '../../../generated/bindings'
 import { commandErrorCode, extractErrorMessage } from '../lib/ipc-error'
@@ -147,6 +148,13 @@ const ported = {
   /** Every tag's resolved schema, the notes that are objects, and the ready-made tags. */
   getSchemaSnapshot: (): Promise<TagSchemaSnapshot> => commands.tagsGetSchemaSnapshot(),
 
+  /** The objects whose title matches, for the `@` menu and the relation picker. */
+  searchObjects: (input: {
+    query: string
+    tag?: string
+    limit?: number
+  }): Promise<SearchObjectsResponse> => commands.tagsSearchObjects(input),
+
   /** Renames the tag and its children in every note's file and record; `runId` names its progress. */
   renameTag: async (input: {
     oldName: string
@@ -215,8 +223,6 @@ export const tagsService: TagsService = {
   getFillStatus: () => window.api.tags.getFillStatus(),
 
   fillFields: (input) => window.api.tags.fillFields(input),
-
-  searchObjects: (input) => window.api.tags.searchObjects(input),
 
   getLinkedHere: (input) => window.api.tags.getLinkedHere(input)
 }

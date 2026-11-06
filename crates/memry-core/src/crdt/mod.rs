@@ -27,6 +27,7 @@
 
 pub mod blocks;
 pub mod body_edit;
+pub mod body_writes;
 pub mod canonical;
 pub mod comments;
 pub mod epoch;

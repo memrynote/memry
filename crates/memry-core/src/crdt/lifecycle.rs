@@ -269,6 +269,12 @@ impl DocumentLifecycle {
         due
     }
 
+    /// The document's log was purged, so a log that failed to replay may now:
+    /// the next request replays it again.
+    pub fn forgive(&mut self, doc_id: &str) {
+        self.poisoned.remove(doc_id);
+    }
+
     /// Whether a document's log already failed in this process.
     pub fn is_poisoned(&self, doc_id: &str) -> bool {
         self.poisoned.contains(doc_id)
