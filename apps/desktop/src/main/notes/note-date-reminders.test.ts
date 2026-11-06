@@ -10,6 +10,8 @@ import {
   type TestDatabaseResult
 } from '@tests/utils/test-db'
 import { makeCtx } from '@tests/utils/fixtures/sync-item-handlers'
+import { eq } from 'drizzle-orm'
+import { reminders } from '@memry/db-schema/schema/reminders'
 import { reminderHandler } from '@memry/sync-client/item-handlers/reminder-handler'
 
 function fakeService(existing: any[] = []) {
@@ -202,6 +204,27 @@ describe('syncNoteDateReminders sync convergence', () => {
     onMutate.mockClear()
     await syncNoteDateReminders('note_1', markdown, service)
     expect(onMutate).not.toHaveBeenCalled()
+  })
+
+  // A device that derived the row from a remote body fires it, then the
+  // server's copy for the same id arrives. `triggered` is device-local and goes
+  // out as `pending`, so that copy always reads "not fired yet". Applying it
+  // verbatim un-fires the reminder here and the next minute tick files a second
+  // inbox item for the same pill.
+  it('does not un-fire a reminder this device already fired when the server copy arrives', async () => {
+    const { id: pushedId, payload } = await pushFromDeviceA()
+    await syncNoteDateReminders('note_1', markdown, service)
+    testDb.db
+      .update(reminders)
+      .set({ status: 'triggered', triggeredAt: '2026-06-20T08:00:05.000Z' })
+      .where(eq(reminders.id, pushedId))
+      .run()
+
+    reminderHandler.applyUpsert(makeCtx(testDb), pushedId, payload, { device_a: 1 })
+
+    const row = await service.get(pushedId)
+    expect(row?.status).toBe('triggered')
+    expect(await service.due()).toHaveLength(0)
   })
 
   it('enqueues nothing on a re-run over unchanged markdown (loop guard)', async () => {
