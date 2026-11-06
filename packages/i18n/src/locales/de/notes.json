@@ -1890,7 +1890,8 @@
         "confirm": "Umbenennen",
         "taken": "Dieser Tag hat bereits {name}.",
         "done": "{from} in {to} umbenannt in {count, plural, one {# Element} other {# Elementen}}.",
-        "skipped": "{from} in {to} umbenannt in {count, plural, one {# Element} other {# Elementen}}. {locked, plural, =0 {} one {# gesperrte Notiz wird abgeschlossen, sobald sie entsperrt ist.} other {# gesperrte Notizen werden abgeschlossen, sobald sie entsperrt sind.}} {existing, plural, =0 {} one {# Notiz hatte bereits {to} und behält beides.} other {# Notizen hatten bereits {to} und behalten beides.}}"
+        "skipped": "{from} in {to} umbenannt in {count, plural, one {# Element} other {# Elementen}}. {locked, plural, =0 {} one {# gesperrte Notiz wird abgeschlossen, sobald sie entsperrt ist.} other {# gesperrte Notizen werden abgeschlossen, sobald sie entsperrt sind.}} {existing, plural, =0 {} one {# Notiz hatte bereits {to} und behält beides.} other {# Notizen hatten bereits {to} und behalten beides.}}",
+        "kept": "{from} in {to} umbenannt in {count, plural, one {# Element} other {# Elementen}}. {kept, plural, =0 {} one {# Notiz wurde während der Umbenennung geändert und behält {from}, bis der Tresor wieder geöffnet wird.} other {# Notizen wurden während der Umbenennung geändert und behalten {from}, bis der Tresor wieder geöffnet wird.}} {existing, plural, =0 {} one {# Notiz hatte bereits {to} und behält beides.} other {# Notizen hatten bereits {to} und behalten beides.}}"
       },
       "delete": {
         "button": "Tag löschen",

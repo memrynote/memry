@@ -17,7 +17,8 @@
     "configChangeNotPorted": "Táto verzia zatiaľ nemôže zmeniť priečinok denníka, formát dátumu ani vylúčené priečinky. Uložené nastavenie zostáva.",
     "journalFormatIncomplete": "Tento formát dátumu nedokáže pomenovať každý deň, preto nebol uložený. Uveďte rok, mesiac a deň.",
     "journalDaysNotRenamed": "Formát dátumu sa nezmenil, pretože niektoré dni denníka sa nepodarilo premenovať podľa neho ({count}). Nový názov dňa možno už má iný súbor.",
-    "journalUnlisted": "Priečinok denníka sa nepodarilo prečítať, preto sa formát dátumu nezmenil. Overte, či k nemu máte prístup."
+    "journalUnlisted": "Priečinok denníka sa nepodarilo prečítať, preto sa formát dátumu nezmenil. Overte, či k nemu máte prístup.",
+    "settingsUnreadable": "Priečinky nemožno presúvať, kým sa nedá prečítať súbor nastavení trezoru (.memry/config.json). Opravte tento súbor a skúste to znova."
   },
   "note": {
     "notFound": "Táto poznámka sa nenašla. Možno bola odstránená.",
@@ -385,6 +386,7 @@
     "cycle": "#{parent} už preberá polia z tejto značky",
     "unreadableSchema": "Novšia verzia Memry zmenila túto značku. Ak ju chcete upraviť, aktualizujte Memry",
     "relationTargetRequired": "Vyberte, na ktorú značku táto relácia odkazuje",
-    "renameRunning": "Ďalšie premenovanie poľa ešte dobieha ({from} na {to}). Skúste to znova, keď skončí."
+    "renameRunning": "Ďalšie premenovanie poľa ešte dobieha ({from} na {to}). Skúste to znova, keď skončí.",
+    "renameTaskUnreadable": "Premenovanie poľa {from} na {to} nemôže pokračovať: táto verzia Memry nedokáže prečítať tieto úlohy: {tasks}. Aktualizujte Memry a skúste to znova."
   }
 }

@@ -17,7 +17,8 @@
     "configChangeNotPorted": "Deze versie kan de dagboekmap, de datumnotatie of uitgesloten mappen nog niet wijzigen. Je opgeslagen instelling blijft behouden.",
     "journalFormatIncomplete": "Deze datumnotatie kan niet elke dag een naam geven en is daarom niet opgeslagen. Neem het jaar, de maand en de dag op.",
     "journalDaysNotRenamed": "De datumnotatie is niet gewijzigd, omdat sommige dagboekdagen er niet naar hernoemd konden worden ({count}). Misschien heeft een bestand al de nieuwe naam van een dag.",
-    "journalUnlisted": "De dagboekmap kon niet worden gelezen, dus de datumnotatie is niet gewijzigd. Controleer of je er toegang toe hebt."
+    "journalUnlisted": "De dagboekmap kon niet worden gelezen, dus de datumnotatie is niet gewijzigd. Controleer of je er toegang toe hebt.",
+    "settingsUnreadable": "Mappen kunnen niet worden verplaatst zolang het instellingenbestand van de kluis (.memry/config.json) niet leesbaar is. Herstel dat bestand en probeer het opnieuw."
   },
   "note": {
     "notFound": "Deze notitie kon niet worden gevonden. Mogelijk is deze verwijderd.",
@@ -385,6 +386,7 @@
     "cycle": "#{parent} neemt zijn velden al over van deze tag",
     "unreadableSchema": "Een nieuwere versie van Memry heeft deze tag gewijzigd. Werk Memry bij om hem te bewerken",
     "relationTargetRequired": "Kies naar welke tag deze relatie verwijst",
-    "renameRunning": "Een andere veldhernoeming wordt nog afgerond ({from} naar {to}). Probeer het opnieuw als ze klaar is."
+    "renameRunning": "Een andere veldhernoeming wordt nog afgerond ({from} naar {to}). Probeer het opnieuw als ze klaar is.",
+    "renameTaskUnreadable": "De veldhernoeming van {from} naar {to} kan niet verder: deze versie van Memry kan deze taken niet lezen: {tasks}. Werk Memry bij en probeer het opnieuw."
   }
 }

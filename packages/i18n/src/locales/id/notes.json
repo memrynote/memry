@@ -1890,7 +1890,8 @@
         "confirm": "Ganti nama",
         "taken": "Tag ini sudah memiliki {name}.",
         "done": "{from} diganti namanya menjadi {to} di {count, plural, other {# item}}.",
-        "skipped": "{from} diganti namanya menjadi {to} di {count, plural, other {# item}}. {locked, plural, =0 {} other {# catatan terkunci selesai saat kuncinya dibuka.}} {existing, plural, =0 {} other {# catatan sudah memiliki {to} dan mempertahankan keduanya.}}"
+        "skipped": "{from} diganti namanya menjadi {to} di {count, plural, other {# item}}. {locked, plural, =0 {} other {# catatan terkunci selesai saat kuncinya dibuka.}} {existing, plural, =0 {} other {# catatan sudah memiliki {to} dan mempertahankan keduanya.}}",
+        "kept": "{from} diganti namanya menjadi {to} di {count, plural, other {# item}}. {kept, plural, =0 {} other {# catatan berubah selama penggantian nama dan tetap memakai {from} sampai vault dibuka lagi.}} {existing, plural, =0 {} other {# catatan sudah memiliki {to} dan mempertahankan keduanya.}}"
       },
       "delete": {
         "button": "Hapus tag",

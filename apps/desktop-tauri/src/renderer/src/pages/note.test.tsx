@@ -41,6 +41,8 @@ const mocks = vi.hoisted(() => ({
   noteState: {
     note: null as Record<string, unknown> | null,
     isLoading: false,
+    isFetchedAfterMount: true,
+    isFetching: false,
     error: null as Error | null
   },
   refetchNote: vi.fn(),
@@ -161,9 +163,12 @@ vi.mock('@/hooks/use-notes-query', async (importOriginal) => {
   return {
     graphKeys: { local: (id: string) => ['graph', id] },
     notesKeys: { note: (id: string) => ['notes', 'note', id] },
-    useNote: () => ({
+    // A query that does not read on mount never answers after it from a fresh cache.
+    useNote: (_id: string, options?: { readOnMount?: boolean }) => ({
       note: mocks.noteState.note,
       isLoading: mocks.noteState.isLoading,
+      isFetching: mocks.noteState.isFetching,
+      isFetchedAfterMount: options?.readOnMount === true && mocks.noteState.isFetchedAfterMount,
       error: mocks.noteState.error,
       refetch: mocks.refetchNote
     }),
@@ -1001,6 +1006,8 @@ describe('NotePage', () => {
     vi.clearAllMocks()
     mocks.noteState.note = note
     mocks.noteState.isLoading = false
+    mocks.noteState.isFetchedAfterMount = true
+    mocks.noteState.isFetching = false
     mocks.noteState.error = null
     // `clearAllMocks` keeps a return value set by a test, so the default that
     // stands for a live map is re-asserted here rather than assumed.
@@ -1666,6 +1673,590 @@ describe('NotePage', () => {
     expect(mocks.contentAreaMounts).toBe(1)
   })
 
+  // The note query refetches on each outside edit's event and reads the file. A read slower
+  // than the next outside edit returns that edit before its own event arrives (#3967).
+  it('takes an outside edit the note query read before its event arrived', async () => {
+    const page = renderWithProviders(<NotePage noteId="note-1" />)
+    expect(await screen.findByTestId('editor-content')).toHaveTextContent('Original body')
+    const outsideEdit = (content: string) =>
+      act(() => {
+        mocks.updatedHandler?.({ id: 'note-1', source: 'external', changes: { content } })
+      })
+
+    outsideEdit('First edit')
+    mocks.noteState.note = { ...note, content: 'First edit\n\nSecond edit' }
+    page.rerender(<NotePage noteId="note-1" />)
+    outsideEdit('First edit\n\nSecond edit')
+
+    expect(screen.getByTestId('editor-live-content')).toHaveTextContent('Second edit')
+    expect(screen.getByTestId('editor-external-revision')).toHaveTextContent('2')
+  })
+
+  // Tauri sends a note event on its own thread, so the reply of the edit that caused it can come
+  // first (#3967): a header tag's reply carries the template its app edit wrote into the body.
+  it('hands an app edit to the editor when the reply that carried it came before its event', async () => {
+    const page = renderWithProviders(<NotePage noteId="note-1" />)
+    expect(await screen.findByTestId('editor-content')).toHaveTextContent('Original body')
+
+    mocks.noteState.note = { ...note, content: 'Template body' }
+    page.rerender(<NotePage noteId="note-1" />)
+    act(() => {
+      mocks.updatedHandler?.({
+        id: 'note-1',
+        source: 'external',
+        changes: { content: 'Template body' }
+      })
+    })
+
+    expect(screen.getByTestId('editor-live-content')).toHaveTextContent('Template body')
+    expect(screen.getByTestId('editor-external-revision')).toHaveTextContent('1')
+  })
+
+  // The save's reply reads the note after the save's turn: an outside edit in between is in its
+  // `note`, and only `savedContent` says what the save wrote (#3967).
+  it("takes an outside edit the save's reply read after the save", async () => {
+    vi.useFakeTimers()
+    mocks.updateNote.mockResolvedValue({
+      success: true,
+      note: { ...note, content: 'Agent wrote this' },
+      savedContent: 'Typed'
+    })
+    renderWithProviders(<NotePage noteId="note-1" />)
+    await act(async () => {
+      await vi.advanceTimersByTimeAsync(0)
+    })
+
+    act(() => mocks.onMarkdownChange?.('Typed'))
+    await act(async () => {
+      await vi.advanceTimersByTimeAsync(1000)
+    })
+    act(() => {
+      mocks.updatedHandler?.({
+        id: 'note-1',
+        source: 'external',
+        changes: { content: 'Agent wrote this' }
+      })
+    })
+
+    expect(screen.getByTestId('editor-live-content')).toHaveTextContent('Agent wrote this')
+    expect(screen.getByTestId('editor-external-revision')).toHaveTextContent('1')
+  })
+
+  // A tab switch unmounts the page and its event subscription; on return the note opens from the
+  // query's cache and only the read on mount brings an outside edit made meanwhile (#3967).
+  describe('a note opened from the cache', () => {
+    const freshRead = (page: ReturnType<typeof renderWithProviders>, content: string) => {
+      mocks.noteState.note = { ...note, content }
+      mocks.noteState.isFetchedAfterMount = true
+      page.rerender(<NotePage noteId="note-1" />)
+    }
+
+    it('takes the outside edit its read on mount found', async () => {
+      mocks.noteState.isFetchedAfterMount = false
+      const page = renderWithProviders(<NotePage noteId="note-1" />)
+      expect(await screen.findByTestId('editor-content')).toHaveTextContent('Original body')
+
+      freshRead(page, 'Edited while closed')
+
+      expect(screen.getByTestId('editor-live-content')).toHaveTextContent('Edited while closed')
+      expect(screen.getByTestId('editor-external-revision')).toHaveTextContent('1')
+    })
+
+    it('keeps typing over it and says so once the typing saves', async () => {
+      vi.useFakeTimers()
+      mocks.noteState.isFetchedAfterMount = false
+      const page = renderWithProviders(<NotePage noteId="note-1" />)
+      await act(async () => {
+        await vi.advanceTimersByTimeAsync(0)
+      })
+
+      act(() => mocks.onMarkdownChange?.('Typed at once'))
+      freshRead(page, 'Edited while closed')
+      expect(screen.getByTestId('editor-external-revision')).toHaveTextContent('0')
+      await act(async () => {
+        await vi.advanceTimersByTimeAsync(1000)
+      })
+
+      expect(mocks.updateNote).toHaveBeenCalledWith({ id: 'note-1', content: 'Typed at once' })
+      expect(toast).toHaveBeenCalledTimes(1)
+    })
+
+    it('leaves the editor alone when the read on mount finds the cached text', async () => {
+      mocks.noteState.isFetchedAfterMount = false
+      const page = renderWithProviders(<NotePage noteId="note-1" />)
+      expect(await screen.findByTestId('editor-content')).toHaveTextContent('Original body')
+
+      freshRead(page, 'Original body')
+
+      expect(screen.getByTestId('editor-external-revision')).toHaveTextContent('0')
+    })
+
+    it('waits for the read on mount, past a text the cache took meanwhile', async () => {
+      mocks.noteState.isFetchedAfterMount = false
+      const page = renderWithProviders(<NotePage noteId="note-1" />)
+      expect(await screen.findByTestId('editor-content')).toHaveTextContent('Original body')
+
+      // A move or a save's answer sets the cached note while the read still runs.
+      mocks.noteState.isFetching = true
+      freshRead(page, 'Set in the cache')
+      mocks.noteState.isFetching = false
+      freshRead(page, 'Edited while closed')
+
+      expect(screen.getByTestId('editor-live-content')).toHaveTextContent('Edited while closed')
+      expect(screen.getByTestId('editor-external-revision')).toHaveTextContent('1')
+    })
+
+    it('does not roll the editor back to a read that started before its own save', async () => {
+      vi.useFakeTimers()
+      mocks.noteState.isFetchedAfterMount = false
+      const page = renderWithProviders(<NotePage noteId="note-1" />)
+      await act(async () => {
+        await vi.advanceTimersByTimeAsync(0)
+      })
+      act(() => mocks.onMarkdownChange?.('Typed'))
+      await act(async () => {
+        await vi.advanceTimersByTimeAsync(1000)
+      })
+      expect(mocks.updateNote).toHaveBeenCalledWith({ id: 'note-1', content: 'Typed' })
+
+      freshRead(page, 'Edited while closed')
+
+      expect(screen.getByTestId('editor-external-revision')).toHaveTextContent('0')
+    })
+  })
+
+  // An event that comes while a save runs may be the save's echo, an edit the save went over, or
+  // one that landed after it: the reply and a read of the file tell which (#3967).
+  describe('an outside edit while a save runs', () => {
+    let finishSave: (result: unknown) => void = () => undefined
+    beforeEach(() => {
+      mocks.updateNote.mockImplementationOnce(
+        () =>
+          new Promise((resolve) => {
+            finishSave = resolve
+          })
+      )
+    })
+    const saveStarted = async () => {
+      const page = renderWithProviders(<NotePage noteId="note-1" />)
+      expect(await screen.findByTestId('editor-content')).toHaveTextContent('Original body')
+      act(() => mocks.onMarkdownChange?.('Typed'))
+      await waitFor(() => expect(mocks.updateNote).toHaveBeenCalled(), { timeout: 3000 })
+      return page
+    }
+    const event = (content: string) =>
+      act(() => {
+        mocks.updatedHandler?.({ id: 'note-1', source: 'external', changes: { content } })
+      })
+
+    it('takes an edit that landed after the save', async () => {
+      mocks.notesGet.mockResolvedValue({ id: 'note-1', content: 'Edited outside' })
+      await saveStarted()
+
+      event('Edited outside')
+      expect(screen.getByTestId('editor-external-revision')).toHaveTextContent('0')
+      await act(async () => finishSave({ success: true, savedContent: 'Typed' }))
+
+      await waitFor(() =>
+        expect(screen.getByTestId('editor-live-content')).toHaveTextContent('Edited outside')
+      )
+      expect(toast).not.toHaveBeenCalled()
+    })
+
+    it('says so when the save went over the edit', async () => {
+      mocks.notesGet.mockResolvedValue({ id: 'note-1', content: 'Typed' })
+      await saveStarted()
+
+      event('Edited outside')
+      await act(async () => finishSave({ success: true, savedContent: 'Typed' }))
+
+      await waitFor(() => expect(toast).toHaveBeenCalledTimes(1))
+      expect(screen.getByTestId('editor-external-revision')).toHaveTextContent('0')
+    })
+
+    it('says so when the save went over an edit whose event came before its own echo', async () => {
+      mocks.notesGet.mockResolvedValue({ id: 'note-1', content: 'Typed' })
+      await saveStarted()
+
+      event('Edited outside')
+      event('Typed')
+      await act(async () => finishSave({ success: true, savedContent: 'Typed' }))
+
+      await waitFor(() => expect(toast).toHaveBeenCalledTimes(1))
+      expect(screen.getByTestId('editor-external-revision')).toHaveTextContent('0')
+    })
+
+    it('says so once when the save went over an edit held before it and one during it', async () => {
+      mocks.notesGet.mockResolvedValue({ id: 'note-1', content: 'Typed' })
+      renderWithProviders(<NotePage noteId="note-1" />)
+      expect(await screen.findByTestId('editor-content')).toHaveTextContent('Original body')
+      act(() => mocks.onMarkdownChange?.('Typed'))
+      event('Held outside')
+      await waitFor(() => expect(mocks.updateNote).toHaveBeenCalled(), { timeout: 3000 })
+
+      event('Edited outside')
+      await act(async () => finishSave({ success: true, savedContent: 'Typed' }))
+      await waitFor(() => expect(mocks.notesGet).toHaveBeenCalled())
+      await act(async () => undefined)
+
+      expect(toast).toHaveBeenCalledTimes(1)
+    })
+
+    it('says so once when the reply says it kept an outside edit', async () => {
+      mocks.notesGet.mockResolvedValue({ id: 'note-1', content: 'Typed' })
+      await saveStarted()
+
+      event('Edited outside')
+      await act(async () =>
+        finishSave({ success: true, savedContent: 'Typed', keptOutsideEdit: true })
+      )
+      await waitFor(() => expect(mocks.notesGet).toHaveBeenCalled())
+      await act(async () => undefined)
+
+      expect(toast).toHaveBeenCalledTimes(1)
+    })
+
+    it('reads the file when events were dropped while the save ran', async () => {
+      let file = 'Original body'
+      mocks.notesGet.mockImplementation(async () => ({ id: 'note-1', content: file }))
+      await saveStarted()
+
+      act(() => mocks.droppedHandler?.())
+      event('Typed')
+      file = 'Edited outside'
+      await act(async () => finishSave({ success: true, savedContent: 'Typed' }))
+
+      await waitFor(() =>
+        expect(screen.getByTestId('editor-live-content')).toHaveTextContent('Edited outside')
+      )
+    })
+
+    it('does not roll the editor back to a read that a newer save passed', async () => {
+      let answerRead: (value: unknown) => void = () => undefined
+      mocks.notesGet.mockImplementationOnce(
+        () =>
+          new Promise((resolve) => {
+            answerRead = resolve
+          })
+      )
+      await saveStarted()
+      event('Edited outside')
+      await act(async () => finishSave({ success: true, savedContent: 'Typed' }))
+      await waitFor(() => expect(mocks.notesGet).toHaveBeenCalled())
+
+      act(() => mocks.onMarkdownChange?.('Typed again'))
+      await waitFor(() => expect(mocks.updateNote).toHaveBeenCalledTimes(2), { timeout: 3000 })
+      await act(async () => answerRead({ id: 'note-1', content: 'Edited outside' }))
+
+      expect(screen.getByTestId('editor-external-revision')).toHaveTextContent('0')
+    })
+
+    it('keeps the typing a refused save left, and the edit that came meanwhile out of the editor', async () => {
+      mocks.notesGet.mockResolvedValue({ id: 'note-1', content: 'Edited outside' })
+      await saveStarted()
+
+      event('Edited outside')
+      await act(async () => finishSave({ success: false, note: null, error: 'changed' }))
+      await waitFor(() => expect(mocks.notesGet).toHaveBeenCalled())
+      await act(async () => undefined)
+      expect(screen.getByTestId('editor-external-revision')).toHaveTextContent('0')
+
+      // The typing is still unsaved: the next save writes it, over the edit it held.
+      const flush = mocks.registerPendingSave.mock.calls.at(-1)?.[1] as () => Promise<void>
+      await act(async () => flush())
+      expect(mocks.updateNote).toHaveBeenLastCalledWith({ id: 'note-1', content: 'Typed' })
+      expect(toast).toHaveBeenCalledTimes(1)
+    })
+
+    it("keeps a flush's echo out of the editor when a save before it answers first", async () => {
+      let finishFlush: (result: unknown) => void = () => undefined
+      await saveStarted()
+      act(() => mocks.onMarkdownChange?.('Typed more'))
+      mocks.updateNote.mockImplementationOnce(
+        () =>
+          new Promise((resolve) => {
+            finishFlush = resolve
+          })
+      )
+      const flush = mocks.registerPendingSave.mock.calls.at(-1)?.[1] as () => Promise<void>
+      let flushed: Promise<void> = Promise.resolve()
+      act(() => {
+        flushed = flush()
+      })
+
+      await act(async () => finishSave({ success: true, savedContent: 'Typed' }))
+      event('Typed more')
+      await act(async () => {
+        finishFlush({ success: true, savedContent: 'Typed more' })
+        await flushed
+      })
+
+      expect(mocks.notesGet).not.toHaveBeenCalled()
+      expect(screen.getByTestId('editor-external-revision')).toHaveTextContent('0')
+    })
+
+    it('takes the file as its own when an older save answers last', async () => {
+      let finishFlush: (result: unknown) => void = () => undefined
+      mocks.notesGet.mockResolvedValue({ id: 'note-1', content: 'Typed more' })
+      await saveStarted()
+      act(() => mocks.onMarkdownChange?.('Typed more'))
+      mocks.updateNote.mockImplementationOnce(
+        () =>
+          new Promise((resolve) => {
+            finishFlush = resolve
+          })
+      )
+      const flush = mocks.registerPendingSave.mock.calls.at(-1)?.[1] as () => Promise<void>
+      let flushed: Promise<void> = Promise.resolve()
+      act(() => {
+        flushed = flush()
+      })
+
+      event('Edited outside')
+      await act(async () => {
+        finishFlush({ success: true, savedContent: 'Typed more' })
+        await flushed
+      })
+      await act(async () => finishSave({ success: true, savedContent: 'Typed' }))
+      await waitFor(() => expect(mocks.notesGet).toHaveBeenCalled())
+
+      await waitFor(() => expect(toast).toHaveBeenCalledTimes(1))
+      expect(screen.getByTestId('editor-external-revision')).toHaveTextContent('0')
+    })
+
+    it('takes an outside revert to the text from before the save', async () => {
+      mocks.notesGet.mockResolvedValue({ id: 'note-1', content: 'Original body' })
+      await saveStarted()
+
+      event('Typed')
+      event('Original body')
+      await act(async () => finishSave({ success: true, savedContent: 'Typed' }))
+
+      await waitFor(() =>
+        expect(screen.getByTestId('editor-external-revision')).toHaveTextContent('1')
+      )
+      expect(screen.getByTestId('editor-live-content')).toHaveTextContent('Original body')
+      expect(toast).not.toHaveBeenCalled()
+    })
+
+    it.each([
+      ['with', true],
+      ['without', false]
+    ])(
+      'keeps the newer save as the baseline when the older one answers last, %s an outside event',
+      async (_, withOutside) => {
+        let finishFlush: (result: unknown) => void = () => undefined
+        mocks.notesGet.mockResolvedValue({ id: 'note-1', content: 'Typed more' })
+        await saveStarted()
+        act(() => mocks.onMarkdownChange?.('Typed more'))
+        mocks.updateNote.mockImplementationOnce(
+          () =>
+            new Promise((resolve) => {
+              finishFlush = resolve
+            })
+        )
+        const flush = mocks.registerPendingSave.mock.calls.at(-1)?.[1] as () => Promise<void>
+        let flushed: Promise<void> = Promise.resolve()
+        act(() => {
+          flushed = flush()
+        })
+        if (withOutside) event('Edited outside')
+        await act(async () => {
+          finishFlush({ success: true, savedContent: 'Typed more' })
+          await flushed
+        })
+        await act(async () => finishSave({ success: true, savedContent: 'Typed' }))
+        await act(async () => undefined)
+        mocks.updateNote.mockClear()
+
+        // Typing back to the older text is a change: the file holds the newer one.
+        act(() => mocks.onMarkdownChange?.('Typed'))
+        await waitFor(
+          () => expect(mocks.updateNote).toHaveBeenCalledWith({ id: 'note-1', content: 'Typed' }),
+          { timeout: 3000 }
+        )
+      }
+    )
+
+    it("hands another note's read on mount to its editor while this note's save runs", async () => {
+      mocks.notesGet.mockResolvedValue({ id: 'note-1', content: 'Typed' })
+      const page = await saveStarted()
+
+      // A wiki link opens a note from the cache; its read on mount finds an outside edit.
+      mocks.noteState.note = { ...note, id: 'note-2', title: 'Two', content: 'Cached two' }
+      mocks.noteState.isFetchedAfterMount = false
+      page.rerender(<NotePage noteId="note-2" />)
+      expect(await screen.findByTestId('editor-content')).toHaveTextContent('Cached two')
+      mocks.noteState.note = { ...note, id: 'note-2', title: 'Two', content: 'Edited two' }
+      mocks.noteState.isFetchedAfterMount = true
+      page.rerender(<NotePage noteId="note-2" />)
+      await act(async () => finishSave({ success: true, savedContent: 'Typed' }))
+      await act(async () => undefined)
+
+      expect(toast).not.toHaveBeenCalled()
+      expect(screen.getByTestId('editor-live-content')).toHaveTextContent('Edited two')
+      expect(screen.getByTestId('editor-external-revision')).toHaveTextContent('1')
+      // The other note's reply left this note's baseline alone.
+      act(() => mocks.onMarkdownChange?.('Typed'))
+      await waitFor(
+        () => expect(mocks.updateNote).toHaveBeenCalledWith({ id: 'note-2', content: 'Typed' }),
+        { timeout: 3000 }
+      )
+    })
+
+    it('keeps the saves of a note the page left apart from the next note', async () => {
+      mocks.notesGet.mockImplementation(async (id: string) => ({
+        id,
+        content: id === 'note-1' ? 'Typed' : 'Two typed'
+      }))
+      const page = await saveStarted()
+      event('Edited outside')
+
+      mocks.noteState.note = { ...note, id: 'note-2', title: 'Two', content: 'Cached two' }
+      page.rerender(<NotePage noteId="note-2" />)
+      expect(await screen.findByTestId('editor-content')).toHaveTextContent('Cached two')
+      let finishTwo: (result: unknown) => void = () => undefined
+      mocks.updateNote.mockImplementationOnce(
+        () =>
+          new Promise((resolve) => {
+            finishTwo = resolve
+          })
+      )
+      act(() => mocks.onMarkdownChange?.('Two typed'))
+      await waitFor(
+        () => expect(mocks.updateNote).toHaveBeenCalledWith({ id: 'note-2', content: 'Two typed' }),
+        { timeout: 3000 }
+      )
+
+      await act(async () => finishSave({ success: true, savedContent: 'Typed' }))
+      act(() => {
+        mocks.updatedHandler?.({
+          id: 'note-2',
+          source: 'internal',
+          changes: { content: 'Two typed' }
+        })
+      })
+      await act(async () => finishTwo({ success: true, savedContent: 'Two typed' }))
+      await act(async () => undefined)
+
+      expect(mocks.notesGet).not.toHaveBeenCalled()
+      expect(toast).not.toHaveBeenCalled()
+      expect(screen.getByTestId('editor-external-revision')).toHaveTextContent('0')
+    })
+
+    it("reads nothing for the save's own echo, and reads but tells nothing for the echo of the save before", async () => {
+      mocks.notesGet.mockResolvedValue({ id: 'note-1', content: 'Typed' })
+      await saveStarted()
+
+      event('Typed')
+      await act(async () => finishSave({ success: true, savedContent: 'Typed' }))
+      expect(mocks.notesGet).not.toHaveBeenCalled()
+
+      // The echo of an older save is the text this one started from.
+      mocks.notesGet.mockResolvedValue({ id: 'note-1', content: 'Typed more' })
+      mocks.updateNote.mockImplementationOnce(
+        () =>
+          new Promise((resolve) => {
+            finishSave = resolve
+          })
+      )
+      act(() => mocks.onMarkdownChange?.('Typed more'))
+      await waitFor(() => expect(mocks.updateNote).toHaveBeenCalledTimes(2), { timeout: 3000 })
+      event('Typed')
+      await act(async () => finishSave({ success: true, savedContent: 'Typed more' }))
+      await waitFor(() => expect(mocks.notesGet).toHaveBeenCalled())
+
+      expect(toast).not.toHaveBeenCalled()
+      expect(screen.getByTestId('editor-external-revision')).toHaveTextContent('0')
+    })
+  })
+
+  it("keeps a flush's echo that came before its reply out of the editor", async () => {
+    let finishFlush: (result: unknown) => void = () => undefined
+    mocks.updateNote.mockImplementationOnce(
+      () =>
+        new Promise((resolve) => {
+          finishFlush = resolve
+        })
+    )
+    renderWithProviders(<NotePage noteId="note-1" />)
+    expect(await screen.findByTestId('editor-content')).toHaveTextContent('Original body')
+
+    act(() => mocks.onMarkdownChange?.('Flushed'))
+    const flush = mocks.registerPendingSave.mock.calls.at(-1)?.[1] as () => Promise<void>
+    let flushed: Promise<void> = Promise.resolve()
+    act(() => {
+      flushed = flush()
+    })
+    act(() => {
+      mocks.updatedHandler?.({ id: 'note-1', source: 'internal', changes: { content: 'Flushed' } })
+    })
+    // A large note's reply carries no text: the flush's own is the baseline.
+    await act(async () => {
+      finishFlush({ success: true })
+      await flushed
+    })
+
+    expect(mocks.notesGet).not.toHaveBeenCalled()
+    expect(screen.getByTestId('editor-external-revision')).toHaveTextContent('0')
+  })
+
+  it('says so when a flush went over an outside edit', async () => {
+    let finishFlush: (result: unknown) => void = () => undefined
+    mocks.updateNote.mockImplementationOnce(
+      () =>
+        new Promise((resolve) => {
+          finishFlush = resolve
+        })
+    )
+    mocks.notesGet.mockResolvedValue({ id: 'note-1', content: 'Flushed' })
+    renderWithProviders(<NotePage noteId="note-1" />)
+    expect(await screen.findByTestId('editor-content')).toHaveTextContent('Original body')
+
+    act(() => mocks.onMarkdownChange?.('Flushed'))
+    const flush = mocks.registerPendingSave.mock.calls.at(-1)?.[1] as () => Promise<void>
+    let flushed: Promise<void> = Promise.resolve()
+    act(() => {
+      flushed = flush()
+    })
+    act(() => {
+      mocks.updatedHandler?.({ id: 'note-1', source: 'external', changes: { content: 'Edited' } })
+    })
+    await act(async () => {
+      finishFlush({ success: true, savedContent: 'Flushed' })
+      await flushed
+    })
+
+    await waitFor(() => expect(toast).toHaveBeenCalledTimes(1))
+  })
+
+  it('keeps typing a refused flush left unsaved', async () => {
+    mocks.updateNote.mockResolvedValueOnce({ success: false, note: null, error: 'changed' })
+    renderWithProviders(<NotePage noteId="note-1" />)
+    expect(await screen.findByTestId('editor-content')).toHaveTextContent('Original body')
+
+    act(() => mocks.onMarkdownChange?.('Flushed'))
+    const flush = mocks.registerPendingSave.mock.calls.at(-1)?.[1] as () => Promise<void>
+    await act(async () => flush())
+    // The editor says the same text again: it is still not the file's.
+    act(() => mocks.onMarkdownChange?.('Flushed'))
+    await waitFor(() => expect(mocks.updateNote).toHaveBeenCalledTimes(2), { timeout: 3000 })
+  })
+
+  it('leaves the typing a refused flush did not write to the next flush', async () => {
+    mocks.updateNote.mockResolvedValueOnce({ success: false, note: null, error: 'changed' })
+    renderWithProviders(<NotePage noteId="note-1" />)
+    expect(await screen.findByTestId('editor-content')).toHaveTextContent('Original body')
+
+    act(() => mocks.onMarkdownChange?.('Flushed'))
+    const flush = mocks.registerPendingSave.mock.calls.at(-1)?.[1] as () => Promise<void>
+    await act(async () => flush())
+    await act(async () => flush())
+
+    expect(mocks.updateNote).toHaveBeenCalledTimes(2)
+    expect(mocks.updateNote).toHaveBeenLastCalledWith({ id: 'note-1', content: 'Flushed' })
+  })
+
   it('leaves typing not saved yet in the editor when an outside edit arrives, an emptied body too', async () => {
     renderWithProviders(<NotePage noteId="note-1" />)
     expect(await screen.findByTestId('editor-content')).toHaveTextContent('Original body')
@@ -1906,6 +2497,45 @@ describe('NotePage', () => {
     expect(screen.getByTestId('editor-external-revision')).toHaveTextContent('0')
     expect(mocks.contentAreaMounts).toBe(1)
   })
+
+  // The file a save leaves can differ from the typing (a final newline): its echo is the save's.
+  const saveLands: Record<string, () => Promise<void>> = {
+    'the debounced save': () => vi.advanceTimersByTimeAsync(1000).then(() => undefined),
+    'a registry flush': () => {
+      const flush = mocks.registerPendingSave.mock.calls.at(-1)?.[1] as () => Promise<void>
+      return flush()
+    }
+  }
+  it.each(Object.keys(saveLands))(
+    'does not reload the editor for the echo of the file %s wrote',
+    async (path) => {
+      vi.useFakeTimers()
+      mocks.updateNote.mockResolvedValue({
+        success: true,
+        note: { ...note, content: 'Read after the save' },
+        savedContent: 'Typed body\n'
+      })
+      renderWithProviders(<NotePage noteId="note-1" />)
+      await act(async () => {
+        await vi.advanceTimersByTimeAsync(0)
+      })
+
+      act(() => mocks.onMarkdownChange?.('Typed body'))
+      await act(async () => {
+        await saveLands[path]?.()
+      })
+      expect(mocks.updateNote).toHaveBeenCalledWith({ id: 'note-1', content: 'Typed body' })
+      act(() => {
+        mocks.updatedHandler?.({
+          id: 'note-1',
+          source: 'internal',
+          changes: { content: 'Typed body\n' }
+        })
+      })
+
+      expect(screen.getByTestId('editor-external-revision')).toHaveTextContent('0')
+    }
+  )
 
   // The CRDT write-back fires 500ms after any Y.Doc change — including local
   // typing, ahead of the 1000ms save — and it now carries `content`. Remounting

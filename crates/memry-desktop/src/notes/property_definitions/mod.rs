@@ -26,6 +26,7 @@
 mod kind;
 mod learned;
 mod record;
+mod rename;
 mod settle;
 mod view;
 

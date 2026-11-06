@@ -1890,7 +1890,8 @@
         "confirm": "Renommer",
         "taken": "Ce tag a déjà {name}.",
         "done": "{from} renommé en {to} dans {count, plural, one {# élément} other {# éléments}}.",
-        "skipped": "{from} renommé en {to} dans {count, plural, one {# élément} other {# éléments}}. {locked, plural, =0 {} one {# note verrouillée sera terminée à son déverrouillage.} other {# notes verrouillées seront terminées à leur déverrouillage.}} {existing, plural, =0 {} one {# note avait déjà {to} et garde les deux.} other {# notes avaient déjà {to} et gardent les deux.}}"
+        "skipped": "{from} renommé en {to} dans {count, plural, one {# élément} other {# éléments}}. {locked, plural, =0 {} one {# note verrouillée sera terminée à son déverrouillage.} other {# notes verrouillées seront terminées à leur déverrouillage.}} {existing, plural, =0 {} one {# note avait déjà {to} et garde les deux.} other {# notes avaient déjà {to} et gardent les deux.}}",
+        "kept": "{from} renommé en {to} dans {count, plural, one {# élément} other {# éléments}}. {kept, plural, =0 {} one {# note a changé pendant le renommage et garde {from} jusqu’à la prochaine ouverture du coffre.} other {# notes ont changé pendant le renommage et gardent {from} jusqu’à la prochaine ouverture du coffre.}} {existing, plural, =0 {} one {# note avait déjà {to} et garde les deux.} other {# notes avaient déjà {to} et gardent les deux.}}"
       },
       "delete": {
         "button": "Supprimer le tag",

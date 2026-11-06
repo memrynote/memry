@@ -7,14 +7,16 @@
 //! by the vault's property definitions ([`PropertyDefinitions`], `properties.md` and the
 //! records). A schema edit writes the `tag_definition` record only, never a note file; a new
 //! field's definition and a preset's template are written through their own owners first.
-//! What a change would reach is [`impact`]'s. `rename-field`, which rewrites note files, is
-//! 13j-3d-2's. The object search and Linked here read the same resolved tags ([`objects`]).
+//! What a change would reach is [`impact`]'s. `rename-field`, the one command that writes note
+//! files and tasks, is [`rename`]'s. The object search and Linked here read the same resolved
+//! tags ([`objects`]).
 
 mod catalog;
 mod edit;
 pub mod impact;
 pub mod objects;
 mod presets;
+pub mod rename;
 pub mod view;
 
 use std::collections::{BTreeMap, HashMap};
@@ -25,13 +27,13 @@ use memry_core::api::tag_hub::TagHub;
 use memry_core::api::tag_schemas::TagSchemas;
 use memry_core::api::tasks::Tasks;
 use memry_core::domain::tag_schema::{self, PropertyInfo, ResolvedTag};
-use memry_core::seams::secure_store::SecureStore;
 
 use crate::error::{CoreError, FailureKind};
 use crate::i18n::{self, Args};
 use crate::notes::property_definitions::{
     DefinitionType, DefinitionsError, PropertyDefinitionView, PropertyDefinitions,
 };
+use crate::notes::service::NotesService;
 use crate::session::OpenVault;
 use crate::templates::Templates;
 pub use edit::{Effects, Ran};
@@ -48,6 +50,9 @@ pub enum SchemaError {
     Storage(#[from] StorageError),
     #[error(transparent)]
     Auth(#[from] AuthError),
+    /// A field rename ended between two notes, as a quit ends it; its job stays recorded.
+    #[error("the field rename stopped; the next open finishes it")]
+    Stopped,
 }
 
 impl CoreError for SchemaError {
@@ -57,6 +62,7 @@ impl CoreError for SchemaError {
             Self::Definitions(error) => error.kind_and_code(),
             Self::Storage(error) => error.kind_and_code(),
             Self::Auth(error) => error.kind_and_code(),
+            Self::Stopped => (FailureKind::Invalid, "no_vault_open"),
         }
     }
 }
@@ -69,15 +75,19 @@ pub struct Schemas {
     tasks: Arc<Tasks>,
     definitions: PropertyDefinitions,
     templates: Templates,
+    /// The note writer a field rename goes through, which holds its lock.
+    notes: Arc<NotesService>,
     locale: String,
 }
 
 impl Schemas {
+    /// Written under the device identity `notes` holds.
     pub fn open(
         open: &OpenVault,
-        store: Arc<dyn SecureStore>,
+        notes: &Arc<NotesService>,
         locale: &str,
     ) -> Result<Self, SchemaError> {
+        let store = notes.store.clone();
         Ok(Self {
             schemas: open.vault.tag_schemas(store.clone())?,
             hub: open.vault.tag_hub(store.clone())?,
@@ -85,6 +95,7 @@ impl Schemas {
             definitions: PropertyDefinitions::open(open, store.clone())?,
             templates: Templates::open(open, store)?,
             open: open.clone(),
+            notes: notes.clone(),
             locale: locale.to_owned(),
         })
     }

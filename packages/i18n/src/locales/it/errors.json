@@ -17,7 +17,8 @@
     "configChangeNotPorted": "Questa versione non può ancora modificare la cartella diario, il formato data o le cartelle escluse. L'impostazione salvata viene mantenuta.",
     "journalFormatIncomplete": "Questo formato data non può dare un nome a ogni giorno, quindi non è stato salvato. Includi anno, mese e giorno.",
     "journalDaysNotRenamed": "Il formato data non è stato modificato perché non è stato possibile rinominare alcuni giorni del diario ({count}). Forse un file ha già il nuovo nome di un giorno.",
-    "journalUnlisted": "Non è stato possibile leggere la cartella diario, quindi il formato data non è stato modificato. Verifica di avervi accesso."
+    "journalUnlisted": "Non è stato possibile leggere la cartella diario, quindi il formato data non è stato modificato. Verifica di avervi accesso.",
+    "settingsUnreadable": "Non è possibile spostare le cartelle finché il file delle impostazioni del vault (.memry/config.json) non è leggibile. Correggi il file e riprova."
   },
   "note": {
     "notFound": "Impossibile trovare questa nota. Potrebbe essere stata eliminata.",
@@ -385,6 +386,7 @@
     "cycle": "#{parent} prende già i suoi campi da questo tag",
     "unreadableSchema": "Una versione più recente di Memry ha modificato questo tag. Aggiorna Memry per modificarlo",
     "relationTargetRequired": "Scegli a quale tag punta questa relazione",
-    "renameRunning": "Un'altra rinomina di campo è ancora in corso ({from} in {to}). Riprova quando ha finito."
+    "renameRunning": "Un'altra rinomina di campo è ancora in corso ({from} in {to}). Riprova quando ha finito.",
+    "renameTaskUnreadable": "La rinomina del campo {from} in {to} non può proseguire: questa versione di Memry non riesce a leggere queste attività: {tasks}. Aggiorna Memry e riprova."
   }
 }

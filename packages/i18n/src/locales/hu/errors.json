@@ -17,7 +17,8 @@
     "configChangeNotPorted": "Ez a verzió még nem tudja módosítani a naplómappát, a dátumformátumot vagy a kizárt mappákat. A mentett beállítás megmarad.",
     "journalFormatIncomplete": "Ez a dátumformátum nem tud minden napot elnevezni, ezért nem lett mentve. Adja meg az évet, a hónapot és a napot.",
     "journalDaysNotRenamed": "A dátumformátum nem változott, mert néhány naplónapot nem sikerült átnevezni rá ({count}). Lehet, hogy egy fájlnak már megvan egy nap új neve.",
-    "journalUnlisted": "A naplómappát nem sikerült beolvasni, ezért a dátumformátum nem változott. Ellenőrizze, hogy van-e hozzáférése."
+    "journalUnlisted": "A naplómappát nem sikerült beolvasni, ezért a dátumformátum nem változott. Ellenőrizze, hogy van-e hozzáférése.",
+    "settingsUnreadable": "A mappák nem helyezhetők át, amíg a széf beállításfájlja (.memry/config.json) nem olvasható. Javítsd ki a fájlt, majd próbáld újra."
   },
   "note": {
     "notFound": "Ez a jegyzet nem található. Lehet, hogy törölték.",
@@ -385,6 +386,7 @@
     "cycle": "A(z) #{parent} már ebből a címkéből veszi a mezőit",
     "unreadableSchema": "A Memry egy újabb verziója módosította ezt a címkét. A szerkesztéséhez frissítse a Memryt",
     "relationTargetRequired": "Válassza ki, melyik címkére mutasson ez a kapcsolat",
-    "renameRunning": "Egy másik mező átnevezése még folyamatban van ({from} → {to}). Próbálja újra, ha elkészült."
+    "renameRunning": "Egy másik mező átnevezése még folyamatban van ({from} → {to}). Próbálja újra, ha elkészült.",
+    "renameTaskUnreadable": "A(z) {from} → {to} mezőátnevezés nem folytatódhat: a Memry ezen verziója nem tudja beolvasni ezeket a feladatokat: {tasks}. Frissítse a Memryt, majd próbálja újra."
   }
 }

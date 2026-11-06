@@ -9,6 +9,8 @@ use memry_core::domain::tag_schema::{
 use serde::{Deserialize, Serialize};
 use serde_json::Value;
 
+use super::rename::FieldRenameView;
+
 /// `RelationConfig`.
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize, specta::Type)]
 pub struct RelationView {
@@ -264,7 +266,7 @@ pub struct TemplateChoice {
     pub autofill: bool,
 }
 
-/// `TagSchemaCommand`. `rename-field` is 13j-3d's.
+/// `TagSchemaCommand`.
 #[derive(Debug, Clone, PartialEq, Eq, Deserialize, specta::Type)]
 #[serde(tag = "kind", rename_all = "kebab-case")]
 pub enum TagSchemaCommand {
@@ -308,6 +310,14 @@ pub enum TagSchemaCommand {
         #[serde(default)]
         tag: Option<String>,
     },
+    // Vault-wide: a field name is a property key. `runId` names its progress events. A doc comment
+    // here would put trailing whitespace into the generated union.
+    #[serde(rename_all = "camelCase")]
+    RenameField {
+        from: String,
+        to: String,
+        run_id: String,
+    },
     DismissPresetOffer,
 }
 
@@ -345,4 +355,7 @@ pub struct TagSchemaCommandResultView {
     #[serde(skip_serializing_if = "Option::is_none")]
     #[specta(optional, type = String)]
     pub tag: Option<String>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    #[specta(optional, type = FieldRenameView)]
+    pub rename: Option<FieldRenameView>,
 }

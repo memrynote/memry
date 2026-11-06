@@ -99,6 +99,10 @@ pub enum NotesError {
     /// follow it, which this version does not do yet.
     #[error("the folder holds the journal folder, which cannot be moved yet")]
     FolderHoldsJournal,
+    /// The vault's settings file cannot be read, so a folder move cannot tell whether the folder
+    /// holds the journal.
+    #[error("the vault settings file cannot be read: {0}")]
+    SettingsUnreadable(String),
     /// The folder to delete is inside the journal folder (a year folder of a nested date
     /// format): it holds days, which a note delete does not take.
     #[error("the folder is inside the journal folder; delete its days in the journal")]
@@ -323,6 +327,7 @@ impl CoreError for NotesError {
             Self::Storage(error) => error.kind_and_code(),
             Self::FolderNotFound => (FailureKind::NotFound, "folder_not_found"),
             Self::FolderHoldsJournal => (FailureKind::Invalid, "folder_holds_journal"),
+            Self::SettingsUnreadable(_) => (FailureKind::Invalid, "vault_settings_unreadable"),
             Self::FolderInJournal => (FailureKind::Invalid, "folder_in_journal"),
             Self::FolderMoveIncomplete => (FailureKind::Storage, "folder_move_incomplete"),
             Self::FolderFile(FolderFileError::Unreadable { .. }) => {
