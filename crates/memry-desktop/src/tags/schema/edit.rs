@@ -9,6 +9,7 @@ use memry_core::domain::tag_schema::{
 };
 use memry_core::domain::tags::tag_key;
 
+use super::rename::{FieldRenameJob, Progress};
 use super::view::{
     FieldType, NewFieldSpec, RelationView, TagSchemaCommand, TagSchemaCommandResultView,
     TemplateChoice,
@@ -37,7 +38,12 @@ pub struct Ran {
 }
 
 impl Schemas {
-    fn refused(&self, code: &'static str, key: &str, args: &[(&str, &str)]) -> SchemaError {
+    pub(super) fn refused(
+        &self,
+        code: &'static str,
+        key: &str,
+        args: &[(&str, &str)],
+    ) -> SchemaError {
         let args: Args = args
             .iter()
             .map(|(name, value)| ((*name).to_owned(), Arg::from(*value)))
@@ -86,17 +92,23 @@ impl Schemas {
         }
     }
 
-    fn saved(&self, error: SaveError) -> SchemaError {
+    pub(super) fn saved(&self, error: SaveError) -> SchemaError {
         match error {
             SaveError::Storage(error) => error.into(),
             SaveError::Edit(error) => self.edit_refused(error),
         }
     }
 
-    /// `tags:edit-schema` (`runTagSchemaCommand`), then the snapshot after it.
-    pub fn run(&self, command: TagSchemaCommand) -> Result<Ran, SchemaError> {
+    /// `tags:edit-schema` (`runTagSchemaCommand`), then the snapshot after it. A field rename
+    /// tells `progress` as it goes.
+    pub fn run(
+        &self,
+        command: TagSchemaCommand,
+        progress: Progress<'_>,
+    ) -> Result<Ran, SchemaError> {
         let mut effects = Effects::default();
         let mut tag = None;
+        let mut rename = None;
         let tags_changed = match command {
             TagSchemaCommand::AddField {
                 tag: name,
@@ -153,6 +165,13 @@ impl Schemas {
                 tag = Some(self.add_preset(preset, name.as_deref(), &mut adding, &mut effects)?);
                 true
             }
+            TagSchemaCommand::RenameField { from, to, run_id } => {
+                let job = FieldRenameJob { from, to, run_id };
+                // The definition went to the new name, unless a pull or a newer build held it.
+                effects.definitions = vec![job.from.trim().to_owned(), job.to.trim().to_owned()];
+                rename = Some(self.rename_field(job, progress)?);
+                true
+            }
             TagSchemaCommand::DismissPresetOffer => {
                 self.schemas.dismiss_preset_offer()?;
                 true
@@ -162,6 +181,7 @@ impl Schemas {
             result: TagSchemaCommandResultView {
                 snapshot: self.snapshot()?,
                 tag,
+                rename,
             },
             tags_changed,
             effects,

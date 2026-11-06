@@ -64,3 +64,36 @@ impl Tasks {
         })
     }
 }
+
+/// The desktop's vault-wide field rename (Step 13j). Not on the FFI surface: iOS renames no
+/// field.
+impl Tasks {
+    /// Renames one task's field `from` to `to` ([`tasks::rename_field`]), with an audit row for
+    /// each key, best effort as every task write's.
+    pub fn rename_field(
+        &self,
+        id: &str,
+        from: &str,
+        to: &str,
+    ) -> Result<tasks::FieldRenamed, StorageError> {
+        self.db.call_blocking(|conn| {
+            let now = now_ms();
+            let renamed = tasks::rename_field(conn, id, from, to, &self.device_id, now)?;
+            if let tasks::FieldRenamed::Renamed { value } = &renamed {
+                for (name, old, new) in [(from, value, &Value::Null), (to, &Value::Null, value)] {
+                    let field = format!("fields.{name}");
+                    let _ = task_activity::record_field_change(
+                        conn,
+                        id,
+                        &field,
+                        old,
+                        new,
+                        &self.device_id,
+                        now,
+                    );
+                }
+            }
+            Ok(renamed)
+        })
+    }
+}

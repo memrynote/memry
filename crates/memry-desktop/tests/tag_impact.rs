@@ -16,6 +16,7 @@ use memry_core::api::projects::ProjectDraft;
 use memry_core::api::tasks_write::NewTaskInput;
 use memry_core::seams::secure_store::SecureStore;
 use memry_desktop::notes::identity::NotesIdentity;
+use memry_desktop::notes::service::NotesService;
 use memry_desktop::session::OpenVault;
 use memry_desktop::tags::schema::Schemas;
 use memry_desktop::tags::schema::impact::{ImpactQuery, ImpactView};
@@ -101,7 +102,9 @@ fn define(schemas: &Schemas, template: &str) {
         extend("person/vip"),
         add("candidate", "Role"),
     ] {
-        schemas.run(command).expect("a schema edit");
+        schemas
+            .run(command, &mut |_, _, _| {})
+            .expect("a schema edit");
     }
 }
 
@@ -159,7 +162,12 @@ fn tasks(open: &OpenVault, store: &Arc<dyn SecureStore>) {
 #[test]
 fn a_schema_change_counts_the_objects_values_and_tasks_it_reaches() {
     let (mut e, open, store) = opened();
-    let schemas = Schemas::open(&open, store.clone(), "en").unwrap();
+    let schemas = Schemas::open(
+        &open,
+        &NotesService::new(e.tier.clone(), store.clone()),
+        "en",
+    )
+    .unwrap();
     let template = Templates::open(&open, store.clone())
         .unwrap()
         .list()
@@ -269,7 +277,12 @@ fn a_schema_change_counts_the_objects_values_and_tasks_it_reaches() {
 #[test]
 fn a_query_without_a_tag_or_a_field_name_is_refused() {
     let (mut e, open, store) = opened();
-    let schemas = Schemas::open(&open, store.clone(), "en").unwrap();
+    let schemas = Schemas::open(
+        &open,
+        &NotesService::new(e.tier.clone(), store.clone()),
+        "en",
+    )
+    .unwrap();
     let blank = schemas.preview_impact(ImpactQuery::RemoveField {
         tag: "person".into(),
         name: "  ".into(),

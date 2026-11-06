@@ -1890,7 +1890,8 @@
         "confirm": "重命名",
         "taken": "此标签已有{name}。",
         "done": "已在 {count, plural, other {# 项}}中将{from}重命名为{to}。",
-        "skipped": "已在 {count, plural, other {# 项}}中将{from}重命名为{to}。{locked, plural, =0 {} other {# 篇已锁定的笔记将在解锁后完成。}}{existing, plural, =0 {} other {# 篇笔记已有{to}，两者都会保留。}}"
+        "skipped": "已在 {count, plural, other {# 项}}中将{from}重命名为{to}。{locked, plural, =0 {} other {# 篇已锁定的笔记将在解锁后完成。}}{existing, plural, =0 {} other {# 篇笔记已有{to}，两者都会保留。}}",
+        "kept": "已在 {count, plural, other {# 项}}中将{from}重命名为{to}。{kept, plural, =0 {} other {# 篇笔记在重命名期间被修改，将保留{from}，直到下次打开仓库。}}{existing, plural, =0 {} other {# 篇笔记已有{to}，两者都会保留。}}"
       },
       "delete": {
         "button": "删除标签",

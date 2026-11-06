@@ -108,6 +108,8 @@ export interface FieldRenameResult {
   skippedLocked: number
   /** Notes that already had a value under the new name, left as they were. */
   skippedExisting: number
+  /** Tauri: notes that changed while the rename ran; the next open finishes them. */
+  kept?: number
 }
 
 export interface TagSchemaCommandResult {

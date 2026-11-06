@@ -181,3 +181,64 @@ pub fn set_field_value(
     .acknowledge();
     Ok(Some((before, value)))
 }
+
+/// What [`rename_field`] did to one task.
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub enum FieldRenamed {
+    /// `to` holds the value `from` held, and `from` holds none.
+    Renamed { value: Value },
+    /// The task holds no value under `from`.
+    Unchanged,
+    /// Another field whose name folds to `to` holds a value: the task is left as it was
+    /// (`skippedExisting`).
+    Existing,
+}
+
+/// A field renamed on one task (`updateTask({ fields: { [from]: null, [to]: value } })` of the
+/// vault-wide rename): both keys stamped in one map edit, one transaction, one outbox row.
+pub fn rename_field(
+    conn: &Connection,
+    task_id: &str,
+    from: &str,
+    to: &str,
+    device_id: &str,
+    now_ms: i64,
+) -> Result<FieldRenamed, StorageError> {
+    let stored = require_payload(conn, ITEM_TYPE, task_id)?;
+    let fields = stored.object().get("fields");
+    let held = versioned::plain(fields);
+    let Some(value) = held.get(from).cloned() else {
+        return Ok(FieldRenamed::Unchanged);
+    };
+    let target = to.to_lowercase();
+    if held
+        .keys()
+        .any(|name| name != from && name.to_lowercase() == target)
+    {
+        return Ok(FieldRenamed::Existing);
+    }
+    let total = u64::try_from(clock_total(&clock_in(stored.object())?)).unwrap_or(0);
+    let patch = serde_json::Map::from_iter([
+        (from.to_owned(), Value::Null),
+        (to.to_owned(), value.clone()),
+    ]);
+    let next = versioned::stamp_map(fields, &patch, total);
+    outbox::commit(
+        conn,
+        &outbox::Change::upsert(ITEM_TYPE, task_id),
+        now_ms,
+        |tx| {
+            edit_merged_in(
+                tx,
+                ITEM_TYPE,
+                &TASK_SYNCABLE_FIELDS,
+                task_id,
+                vec![("fields", Change::Set(next))],
+                device_id,
+                now_ms,
+            )
+        },
+    )?
+    .acknowledge();
+    Ok(FieldRenamed::Renamed { value })
+}

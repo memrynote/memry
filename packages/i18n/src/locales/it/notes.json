@@ -1890,7 +1890,8 @@
         "confirm": "Rinomina",
         "taken": "Questo tag ha già {name}.",
         "done": "{from} rinominato in {to} in {count, plural, one {# elemento} other {# elementi}}.",
-        "skipped": "{from} rinominato in {to} in {count, plural, one {# elemento} other {# elementi}}. {locked, plural, =0 {} one {# nota bloccata si completa quando viene sbloccata.} other {# note bloccate si completano quando vengono sbloccate.}} {existing, plural, =0 {} one {# nota aveva già {to} e conserva entrambi.} other {# note avevano già {to} e conservano entrambi.}}"
+        "skipped": "{from} rinominato in {to} in {count, plural, one {# elemento} other {# elementi}}. {locked, plural, =0 {} one {# nota bloccata si completa quando viene sbloccata.} other {# note bloccate si completano quando vengono sbloccate.}} {existing, plural, =0 {} one {# nota aveva già {to} e conserva entrambi.} other {# note avevano già {to} e conservano entrambi.}}",
+        "kept": "{from} rinominato in {to} in {count, plural, one {# elemento} other {# elementi}}. {kept, plural, =0 {} one {# nota è cambiata durante la rinomina e mantiene {from} finché la cassaforte non viene riaperta.} other {# note sono cambiate durante la rinomina e mantengono {from} finché la cassaforte non viene riaperta.}} {existing, plural, =0 {} one {# nota aveva già {to} e conserva entrambi.} other {# note avevano già {to} e conservano entrambi.}}"
       },
       "delete": {
         "button": "Elimina tag",

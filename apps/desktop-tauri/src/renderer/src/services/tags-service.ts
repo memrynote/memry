@@ -152,6 +152,10 @@ const ported = {
   /** What a schema change would reach, counted for its dialog. */
   previewImpact: (query: ImpactQuery): Promise<ImpactResult> => commands.tagsPreviewImpact(query),
 
+  /** One schema command; rejects with the refusal's message. A field rename tells its progress. */
+  editSchema: (command: TagSchemaCommand): Promise<TagSchemaCommandResult> =>
+    commands.tagsEditSchema(command),
+
   /** Renames the tag and its children in every note's file and record; `runId` names its progress. */
   renameTag: async (input: {
     oldName: string
@@ -209,12 +213,6 @@ export type PortedTagMethod = keyof typeof ported
 export const tagsService: TagsService = {
   ...ported,
 
-  /** One schema command; rejects with the refusal's message. A field rename is not ported yet. */
-  editSchema: (command: TagSchemaCommand): Promise<TagSchemaCommandResult> =>
-    command.kind === 'rename-field'
-      ? window.api.tags.editSchema(command)
-      : commands.tagsEditSchema(command),
-
   getFillStatus: () => window.api.tags.getFillStatus(),
 
   fillFields: (input) => window.api.tags.fillFields(input),
@@ -237,8 +235,7 @@ export function onTagRenamed(callback: (event: TagRenamedEvent) => void): () => 
 }
 
 /**
- * Subscribe to a tag rename's progress. A field rename's progress still comes through
- * `window.api.onTagsProgress` until its command is ported.
+ * Subscribe to a tag rename's or a field rename's progress, each named by its `runId`.
  * @returns Unsubscribe function
  */
 export function onTagsProgress(callback: (event: TagsProgressEvent) => void): () => void {
@@ -295,6 +292,7 @@ export type PortedTagEvent =
   | 'onTagDeleted'
   | 'onTagNotesChanged'
   | 'onTagRenamed'
+  | 'onTagsProgress'
 
 // ============================================================================
 // Type Re-exports

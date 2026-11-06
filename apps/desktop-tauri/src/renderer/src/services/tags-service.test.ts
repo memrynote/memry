@@ -158,7 +158,7 @@ describe('tags-service', () => {
     await expect(tagsService.listCategories()).resolves.toEqual({ success: false, error: 'disk' })
   })
 
-  it('reads, edits and previews tag schemas through the commands, a field rename still on window.api', async () => {
+  it('reads, edits and previews tag schemas through the commands, a field rename included', async () => {
     const snapshot = { tags: {}, objects: {}, presets: [], presetStripDismissed: false }
     commands.tagsGetSchemaSnapshot.mockResolvedValue(snapshot)
     expect(await tagsService.getSchemaSnapshot()).toBe(snapshot)
@@ -171,10 +171,10 @@ describe('tags-service', () => {
     await expect(tagsService.editSchema(command)).rejects.toMatchObject({ message: 'refused' })
 
     const rename = { kind: 'rename-field' as const, from: 'Role', to: 'Title', runId: 'r1' }
-    api.tags.editSchema = vi.fn().mockResolvedValue({ snapshot })
-    await tagsService.editSchema(rename)
-    expect(api.tags.editSchema).toHaveBeenCalledWith(rename)
-    expect(commands.tagsEditSchema).toHaveBeenCalledTimes(2)
+    const renamed = { notes: 2, tasks: 1, skippedLocked: 0, skippedExisting: 0, kept: 0 }
+    commands.tagsEditSchema.mockResolvedValue({ snapshot, rename: renamed })
+    expect(await tagsService.editSchema(rename)).toEqual({ snapshot, rename: renamed })
+    expect(commands.tagsEditSchema).toHaveBeenLastCalledWith(rename)
 
     const query = { kind: 'delete-tag' as const, tag: 'person' }
     const impact = {

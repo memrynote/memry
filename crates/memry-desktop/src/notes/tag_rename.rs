@@ -71,7 +71,7 @@ use crate::vault::consumer::{Applied, ChangeSource};
 use crate::vault::hash::content_hash;
 
 /// How long a kept note waits for the write-back before its second try.
-pub(super) const SETTLE: Duration = Duration::from_secs(2);
+pub(crate) const SETTLE: Duration = Duration::from_secs(2);
 /// How often the progress is told, at most (`PROGRESS_INTERVAL_MS`).
 const PROGRESS_EVERY: Duration = Duration::from_millis(100);
 
@@ -487,7 +487,7 @@ pub(super) fn recorded_plan(open: &OpenVault) -> Result<Option<RenamePlan>, Note
 /// Waits for the open walk's end (`Indexed`), `false` when `cancel` or the tier ends it first.
 /// Facts the receiver lost (`Lagged`) may hold it or not: the wait goes on, so the resume
 /// never starts beside the walk; an `Indexed` lost so leaves the rename to the next open.
-fn walked(facts: &mut Receiver<Applied>, cancel: &dyn Fn() -> bool) -> bool {
+pub(crate) fn walked(facts: &mut Receiver<Applied>, cancel: &dyn Fn() -> bool) -> bool {
     loop {
         if cancel() {
             return false;
