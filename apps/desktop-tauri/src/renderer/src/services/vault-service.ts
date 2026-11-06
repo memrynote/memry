@@ -73,14 +73,25 @@ async function openVaultPath(): Promise<string | null> {
 
 async function readStatus(callback: (status: VaultStatus) => void): Promise<void> {
   try {
-    callback(toStatus(await commands.vaultGetStatus()))
+    callback(newestStatus(await commands.vaultGetStatus()))
   } catch (error) {
     log.warn('initial vault status failed', error)
   }
 }
 
-function toStatus(wire: Awaited<ReturnType<typeof commands.vaultGetStatus>>): VaultStatus {
-  const { indexBuilt, indexTotal, movesRecovered, ...rest } = wire
+type WireStatus = Awaited<ReturnType<typeof commands.vaultGetStatus>>
+
+/** The highest-revision status this window received, as an event or as an answer. */
+let newest: WireStatus | null = null
+
+/**
+ * `wire`, unless the window already received a newer status. An answer and the events travel
+ * apart, so a status read while a reindex ran can land after the event that ended it, and the
+ * palette would say "Indexing…" until the next status (#3967). Rust orders them by revision.
+ */
+function newestStatus(wire: WireStatus): VaultStatus {
+  if (newest === null || wire.revision >= newest.revision) newest = wire
+  const { indexBuilt, indexTotal, movesRecovered, revision: _revision, ...rest } = newest
   return {
     ...rest,
     ...(indexBuilt != null && { indexBuilt }),
@@ -124,7 +135,7 @@ export const vaultService: VaultClientAPI = {
    * Get current vault status.
    */
   getStatus: (): Promise<VaultStatus> => {
-    return commands.vaultGetStatus().then(toStatus)
+    return commands.vaultGetStatus().then(newestStatus)
   },
 
   /**
@@ -234,7 +245,7 @@ export function onVaultListChanged(callback: () => void): () => void {
 export function onVaultStatusChanged(callback: (status: VaultStatus) => void): () => void {
   return subscribe(
     events.vaultStatusChangedEvent,
-    (status) => callback(toStatus(status)),
+    (status) => callback(newestStatus(status)),
     () => {
       void readStatus(callback)
     }
