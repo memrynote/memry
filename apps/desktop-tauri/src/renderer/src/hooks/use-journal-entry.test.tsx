@@ -197,10 +197,12 @@ describe('useJournalEntry dedicated hook', () => {
       result.current.updateContent('Pending old date')
     })
     rerender({ date: '2026-05-11' })
-    expect(window.api.journal.updateEntry).toHaveBeenCalledWith({
-      date: '2026-05-10',
-      content: 'Pending old date'
-    })
+    await waitFor(() =>
+      expect(window.api.journal.updateEntry).toHaveBeenCalledWith({
+        date: '2026-05-10',
+        content: 'Pending old date'
+      })
+    )
 
     await waitFor(() => expect(result.current.loadedForDate).toBe('2026-05-11'))
     ;(window.api.journal.updateEntry as ReturnType<typeof vi.fn>).mockRejectedValueOnce(

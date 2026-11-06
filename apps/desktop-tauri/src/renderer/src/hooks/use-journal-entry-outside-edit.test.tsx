@@ -430,15 +430,31 @@ describe('useJournalEntry: outside edits of the open day', () => {
       const hook = await mount()
       const save = holdNextSave()
       await startSave(hook.result, 'Typed.')
+      // The save wrote; its reply has not come.
+      files[DAY] = 'Typed.'
       await openDay(hook, NEXT)
       await openDay(hook, DAY)
-      expect(hook.result.current.entry?.content).toBe('Existing')
+      expect(hook.result.current.entry?.content).toBe('Typed.')
       const before = hook.result.current.externalUpdateCount
 
       await save.finish('Typed.')
 
-      expect(hook.result.current.externalUpdateCount).toBe(before + 1)
+      expect(hook.result.current.externalUpdateCount).toBe(before)
       expect(hook.result.current.entry?.content).toBe('Typed.')
+    })
+
+    // Typing on the day before the save's reply goes on top of the text being saved, not under
+    // the cache's older text: the overwritten file is the app's own write, of which the core
+    // keeps no version.
+    it('opens on the text being saved, so typing before the reply keeps it', async () => {
+      const hook = await mount()
+      holdNextSave()
+      await startSave(hook.result, 'Existing. Typed before leaving.')
+      await openDay(hook, NEXT)
+
+      await openDay(hook, DAY)
+
+      expect(hook.result.current.entry?.content).toBe('Existing. Typed before leaving.')
     })
 
     // A sidebar note opened in the same tab unmounts the page mid-save, and the day opened
@@ -465,6 +481,89 @@ describe('useJournalEntry: outside edits of the open day', () => {
 
       expect(second.result.current.externalUpdateCount).toBe(1)
       expect(second.result.current.entry?.content).toBe('First. Second.')
+    })
+  })
+
+  // The switch saves the day's typing once: a second write of the same text could go over an
+  // outside edit that landed between the two, as a version with no toast.
+  describe('a day switch with typing not saved yet', () => {
+    const savesOf = (date: string): number =>
+      updateEntry.mock.calls.filter(([input]) => (input as { date: string }).date === date).length
+
+    it('saves the typing once', async () => {
+      const hook = await mount()
+      act(() => {
+        hook.result.current.updateContent('Typed.')
+      })
+
+      await openDay(hook, NEXT)
+
+      expect(savesOf(DAY)).toBe(1)
+      expect(files[DAY]).toBe('Typed.')
+    })
+
+    it('does not send the save running again over an outside edit that landed after it wrote', async () => {
+      const hook = await mount()
+      const save = holdNextSave()
+      await startSave(hook.result, 'Typed.')
+      outsideEdit('Edited outside.')
+
+      await openDay(hook, NEXT)
+      await save.finish('Typed.')
+
+      expect(savesOf(DAY)).toBe(1)
+      expect(files[DAY]).toBe('Edited outside.')
+    })
+
+    it('sends typing made during the save running', async () => {
+      const hook = await mount()
+      holdNextSave()
+      await startSave(hook.result, 'Typed.')
+      act(() => {
+        hook.result.current.updateContent('Typed. And more.')
+      })
+
+      await openDay(hook, NEXT)
+
+      expect(updateEntry).toHaveBeenLastCalledWith({ date: DAY, content: 'Typed. And more.' })
+      expect(files[DAY]).toBe('Typed. And more.')
+    })
+
+    it('sends the same text typed on another day than the one the save running writes', async () => {
+      const hook = await mount()
+      holdNextSave()
+      await startSave(hook.result, 'Same.')
+      await openDay(hook, NEXT)
+      act(() => {
+        hook.result.current.updateContent('Same.')
+      })
+
+      await openDay(hook, DAY)
+
+      expect(savesOf(NEXT)).toBe(1)
+      expect(files[NEXT]).toBe('Same.')
+    })
+
+    it('sends the typing again when the save running fails', async () => {
+      const hook = await mount()
+      let fail: () => void = () => {}
+      updateEntry.mockImplementationOnce(
+        // oxlint-disable-next-line typescript/no-misused-promises -- mockImplementation is typed as a void-returning callback; rejecting a Promise is what the mocked IPC method does
+        () =>
+          new Promise<JournalEntry>((_, reject) => {
+            fail = () => reject(new Error('write failed'))
+          })
+      )
+      await startSave(hook.result, 'Typed.')
+
+      await openDay(hook, NEXT)
+      await act(async () => {
+        fail()
+        for (let i = 0; i < 20; i++) await Promise.resolve()
+      })
+
+      expect(savesOf(DAY)).toBe(2)
+      expect(files[DAY]).toBe('Typed.')
     })
   })
 
