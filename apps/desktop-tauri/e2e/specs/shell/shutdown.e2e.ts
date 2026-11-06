@@ -6,7 +6,7 @@ import { invokeTest, sendTest } from '../../harness/invoke-test'
 import { isAlive } from '../../harness/app-process'
 import { sendQuitEvent } from '../../harness/mac-quit-event'
 import { appInfo, restart } from '../../harness/tauri-lifecycle'
-import { pollUntil, readMainLog } from '../../harness/wait'
+import { pollUntil, readMainLog, waitForMainLog } from '../../harness/wait'
 
 const markerPath = (dataDir: string): string => join(dataDir, 'session-marker.json')
 
@@ -14,6 +14,11 @@ interface SessionMarker {
   shutdownFailure?: string
   shutdownStep?: string
 }
+
+// What the quit logs when one of its bounded waits runs out: a window's flush, the write-back
+// flush, a close hook, a projection or background task, the telemetry flush, the budget.
+const EXPIRED_WAIT =
+  /timed out|ran out of|overran|cut short|did not stop before the deadline|backstop reached/
 
 async function quitAndMeasure(app: { executor: never; pid: number }): Promise<number> {
   await sendTest(app, 'e2e_request_quit')
@@ -30,11 +35,16 @@ test('the renderer answers a flush request for its own window', async ({ app }) 
 test('a flush request to a window that does not listen returns instead of hanging', async ({
   app
 }) => {
-  const startedAt = Date.now()
   expect(await invokeTest<boolean>(app, 'e2e_request_flush', { label: 'no-such-window' })).toBe(
     false
   )
-  expect(Date.now() - startedAt).toBeLessThan(4_000)
+  // Logged only when the request returns without waiting for a reply.
+  expect(
+    await waitForMainLog(
+      app,
+      'the page of window no-such-window does not listen for flushes; its flush is skipped'
+    )
+  ).toBe(true)
 })
 
 // A page that is still loading (at a launch, after a reload) holds no edits and cannot answer
@@ -54,12 +64,17 @@ test('a quit while the page loads does not wait for its flush', async ({ app }) 
   expect(log).toContain('the page of window main does not listen for flushes; its flush is skipped')
 })
 
-test('a clean quit exits promptly and leaves no crash marker', async ({ app }) => {
-  const { appDataDir } = await appInfo(app)
+// The quit's own logs say whether it waited on a timer; a wall-clock bound measures the runner's
+// load instead (5.6 s on a loaded Windows runner with every wait answered in time, #3967).
+test('a clean quit waits on no timeout and leaves no crash marker', async ({ app }) => {
+  const { appDataDir, logDir } = await appInfo(app)
   expect(existsSync(markerPath(appDataDir))).toBe(true)
-  const elapsed = await quitAndMeasure(app as never)
-  expect(elapsed).toBeLessThan(3_000)
+  await quitAndMeasure(app as never)
   expect(existsSync(markerPath(appDataDir))).toBe(false)
+  const log = readMainLog(logDir)
+  const quit = log.slice(log.indexOf('starting graceful shutdown'))
+  expect(quit).toContain('cleanup complete')
+  expect(quit).not.toMatch(EXPIRED_WAIT)
 })
 
 test('a hung step is forced out within 10.5 s and named for the next launch', async ({ app }) => {

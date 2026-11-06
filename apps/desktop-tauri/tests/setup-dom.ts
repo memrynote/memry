@@ -286,6 +286,7 @@ vi.mock('../src/generated/bindings', () => {
       tagsGetSchemaSnapshot: () => tags().getSchemaSnapshot(),
       tagsEditSchema: (command: unknown) => tags().editSchema(command),
       tagsPreviewImpact: (query: unknown) => tags().previewImpact(query),
+      tagsSearchObjects: (input: unknown) => tags().searchObjects(input),
       tagsGetAllWithCounts: async () =>
         ((await tags().getAllWithCounts()) as { tags: unknown[] }).tags,
       tagsGetNotesByTag: (input: unknown) => tags().getNotesByTag(input),

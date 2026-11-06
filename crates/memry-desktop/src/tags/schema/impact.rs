@@ -10,9 +10,10 @@
 
 use std::collections::HashSet;
 
-use memry_core::domain::task_records::TaskFieldHolder;
+use memry_core::domain::tag_objects::search::members as header_members;
 use memry_core::domain::tag_schema::{ResolvedTag, descendants_of};
 use memry_core::domain::tags::tag_key;
+use memry_core::domain::task_records::TaskFieldHolder;
 use serde::{Deserialize, Serialize};
 
 use super::edit::{field_name, tag_name};
@@ -163,16 +164,11 @@ impl Schemas {
         })
     }
 
-    /// The notes whose header carries one of `tags` (keys), markdown and not journal days.
+    /// The notes whose header carries one of `tags` (keys), markdown and not journal days
+    /// (`headerObjectNoteIds`, the object search's `headerMembers`).
     fn objects_of(&self, tags: &[String]) -> Result<HashSet<String>, SchemaError> {
-        Ok(self
-            .open
-            .search
-            .object_headers()?
-            .into_iter()
-            .filter(|(_, header)| header.iter().any(|tag| tags.contains(&tag_key(tag))))
-            .map(|(id, _)| id)
-            .collect())
+        let headers = self.open.search.object_headers()?;
+        Ok(header_members(headers, tags).into_keys().collect())
     }
 
     /// Every live task's tags and filled fields; a task whose payload does not read is in no

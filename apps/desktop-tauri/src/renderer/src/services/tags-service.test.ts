@@ -5,6 +5,7 @@ const commands = vi.hoisted(() => ({
   tagsGetSchemaSnapshot: vi.fn(),
   tagsEditSchema: vi.fn(),
   tagsPreviewImpact: vi.fn(),
+  tagsSearchObjects: vi.fn(),
   tagsGetAllWithCounts: vi.fn(),
   tagsGetNotesByTag: vi.fn(),
   tagsUpdateColor: vi.fn(),
@@ -196,6 +197,20 @@ describe('tags-service', () => {
     expect(changed).toHaveBeenCalledWith({ name: 'Role' })
     stop()
     await vi.waitFor(() => expect(listeners.has('definitions')).toBe(false))
+  })
+
+  it('searches objects through the command, never window.api', async () => {
+    api.tags.searchObjects = vi.fn()
+    const matches = { matches: [], complete: true }
+    commands.tagsSearchObjects.mockResolvedValue(matches)
+    const input = { query: 'ada', tag: 'person', limit: 8 }
+    expect(await tagsService.searchObjects(input)).toBe(matches)
+    expect(commands.tagsSearchObjects).toHaveBeenCalledWith(input)
+    commands.tagsSearchObjects.mockRejectedValue({ kind: 'Invalid', code: 'x', message: 'bad' })
+    await expect(tagsService.searchObjects({ query: '', limit: 0 })).rejects.toMatchObject({
+      message: 'bad'
+    })
+    expect(api.tags.searchObjects).not.toHaveBeenCalled()
   })
 
   it('pins and unpins through the commands, a failure answering its message', async () => {
