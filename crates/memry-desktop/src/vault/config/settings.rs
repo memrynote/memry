@@ -33,7 +33,10 @@
 //! included ([`SettingsError::MovesWait`]): a day's file may be on disk where the saved setting
 //! does not read it yet, so the day would not be listed, and the open after the save would
 //! settle its move under the new setting, as a crossing that deletes it. A folder move records
-//! a move for each note it carries, so one that carries no note waits on nothing here.
+//! a move for each note it carries, so one that carries no note waits on nothing here. A journal
+//! folder moved outside the app has its setting follow it first (`journal::folder_follow`), so
+//! its held days move from where they are; saved over them, the next open would cross each into
+//! a note.
 //!
 //! The journal folder moved in the app with a folder that holds it takes the setting along
 //! ([`JournalFollow`], `notes::folder_move`), as Electron's `followJournalFolderMove` does.
@@ -55,6 +58,7 @@ use super::{
     ConfigError, VaultConfig, VaultConfigPatch, read_vault_config, read_vault_config_strict,
     unreadable, write_vault_config,
 };
+use crate::journal::folder_follow::follow_moved_journal;
 use crate::notes::folders::holds_journal_days;
 use crate::vault::consumer::VaultTier;
 use crate::vault::journal_format::{normalize_journal_date_format, normalize_journal_folder};
@@ -165,6 +169,17 @@ pub fn update_vault_settings_checked(
     announce: impl FnOnce(&VaultConfig),
     step: &mut dyn FnMut(ChangeStep),
 ) -> Result<VaultConfig, SettingsError> {
+    if let Some((vault, tier)) = days {
+        // Before the settings' lock, which it takes: a journal folder moved outside the app
+        // has its setting follow it, so the days move from where they are.
+        match vault.notes_writer(tier.store()) {
+            Ok(writer) => follow_moved_journal(root, &writer),
+            Err(error) => tracing::warn!(
+                scope = SCOPE,
+                "a journal folder moved outside the app was not looked for: {error}"
+            ),
+        }
+    }
     let held = JournalFollow::hold();
     if let Some((vault, tier)) = days {
         finish_journal_change(JournalVault { root, vault, tier }, &held);

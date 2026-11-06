@@ -44,6 +44,7 @@ use super::folder_move::within;
 use super::folders::{tree_filter, vault_folder};
 use super::moves::plain_folders;
 use super::service::NotesService;
+use crate::journal::folder_follow::follow_moved_journal;
 use crate::session::OpenVault;
 use crate::vault::app_move::on_disk;
 use crate::vault::config::read_vault_config_strict;
@@ -68,6 +69,9 @@ impl NotesService {
     ) -> Result<(), NotesError> {
         let root = open.path.as_path();
         let folder = vault_folder(root, path)?;
+        // A journal folder moved outside the app has its setting follow first, so the folder
+        // that holds the days is refused as the journal's (`journal::folder_follow`).
+        follow_moved_journal(root, &*open.vault.notes_writer(self.store.clone())?);
         // Before the lane: the settings' locks come first (`settings`'s lock order). Held to the
         // end, so no journal setting moves into the folder after `check` read it.
         let settings = JournalFollow::hold();
