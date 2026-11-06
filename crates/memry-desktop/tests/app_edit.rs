@@ -2,10 +2,12 @@
 //! index: what `Held` replaces and what it keeps, a text the document does not take reaching it
 //! through the watcher (a feed that fails included), and the byte order mark.
 
+use memry_core::api::editor::ReadOnly;
 use memry_core::domain::external_feed::{FeedInput, FeedOutcome};
 use memry_core::markdown::convert::api::Converter;
 use memry_core::markdown::frontmatter::{parse_markdown_note, split_frontmatter_block};
 use memry_core::markdown::schema::callout_types::CalloutTypes;
+use memry_core::markdown::shared::markdown_class::{NOTE_MAX_BLOCK_BYTES, NOTE_MAX_BYTES};
 use memry_core::markdown::shared::writing_tools::writing_of_yaml;
 use memry_desktop::notes::error::NotesError;
 use memry_desktop::notes::write_order::WriteOrder;
@@ -257,4 +259,67 @@ fn a_save_whose_feed_fails_is_written_and_brought_in_by_the_watcher() {
     until("the watcher fed the saved file", || {
         e.body(&id) == "Second text." && row_hash(&e, &id) == Some(content_hash(saved))
     });
+}
+
+/// The app's own write records its file's class (#3531 14c-2): the watcher skips the echo, so
+/// no read of it would. A save grown past the ceiling by its frontmatter alone opens read-only
+/// at once.
+#[test]
+fn a_save_grown_past_the_ceiling_by_its_frontmatter_opens_read_only() {
+    let (e, _, store) = opened(&[("Plan.md", "Small.\n")]);
+    let open = e.session.current().unwrap();
+    let id = id_at(&e, "Plan.md");
+    let edit = AppEdit::new(&e.tier, &store, &open).unwrap();
+    let own = OwnFiles::default();
+    let big = format!("---\nnotes: {}\n---\nSmall.\n", "a".repeat(NOTE_MAX_BYTES));
+
+    let done = run(
+        &edit,
+        &id,
+        Precondition::Save(&own),
+        ChangeSource::Save,
+        |_| Some(big.clone()),
+    );
+    assert!(matches!(done, Edited::Wrote { .. }), "{done:?}");
+    let editor = open.vault.editor(store).unwrap();
+    assert_eq!(
+        editor.open(&id, "main").unwrap().read_only,
+        Some(ReadOnly::LargeFile)
+    );
+}
+
+/// A save that shrinks a large file makes it a note again, and the next open's walk, which
+/// skips a file its row names, leaves it so.
+#[test]
+fn a_save_that_shrinks_a_large_file_makes_it_a_note_across_a_reopen() {
+    let (mut e, _, store) = opened(&[("Log.md", "a note\n")]);
+    let id = id_at(&e, "Log.md");
+    let large = |e: &Env| e.core().note_files().is_large_file(&id).unwrap();
+    // A note's file grown outside past the block bound (a file that was never a note is not
+    // taken for one).
+    e.write(
+        "Log.md",
+        &format!("{}\n", "x".repeat(NOTE_MAX_BLOCK_BYTES + 1)),
+    );
+    until("the watcher measured it", || large(&e));
+    let open = e.session.current().unwrap();
+    let edit = AppEdit::new(&e.tier, &store, &open).unwrap();
+    let own = OwnFiles::default();
+
+    let done = run(
+        &edit,
+        &id,
+        Precondition::Save(&own),
+        ChangeSource::Save,
+        |_| Some("small now\n".to_owned()),
+    );
+    assert!(matches!(done, Edited::Wrote { .. }), "{done:?}");
+    assert!(!large(&e));
+    drop((edit, open));
+    e.close();
+    e.open();
+    e.facts_until(crate::vault_env::indexed);
+    assert!(!large(&e), "the reopen keeps the class");
+    let editor = e.core().editor(store).unwrap();
+    assert_eq!(editor.open(&id, "main").unwrap().read_only, None);
 }

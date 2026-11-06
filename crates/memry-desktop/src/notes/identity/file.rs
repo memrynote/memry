@@ -4,9 +4,7 @@
 use std::path::Path;
 use std::time::UNIX_EPOCH;
 
-use memry_core::markdown::shared::markdown_class::{
-    MarkdownClassThresholds, classify_markdown_content, classify_markdown_stat,
-};
+use crate::vault::note_file::{large_by_size, large_file_class};
 
 /// Electron's database is beside the vault's files (`<vault>/.memry/data.db`).
 pub(in crate::notes) fn electron_db_beside(root: &Path) -> bool {
@@ -15,14 +13,7 @@ pub(in crate::notes) fn electron_db_beside(root: &Path) -> bool {
 
 /// Large-file class (`packages/shared/src/markdown-class.ts`): the size alone, else the text.
 pub(in crate::notes) fn is_large_file(size: u64, raw: &str) -> bool {
-    let thresholds = MarkdownClassThresholds::default();
-    let by_size = usize::try_from(size).map_or(true, |bytes| {
-        classify_markdown_stat(bytes, thresholds).is_some()
-    });
-    by_size
-        || classify_markdown_content(raw, thresholds)
-            .large_file
-            .is_some()
+    large_by_size(size).is_some() || large_file_class(raw).is_some()
 }
 
 /// The folder (`None` at the root) and the title of a vault-relative `/` path: the file name

@@ -24,7 +24,7 @@ fn the_wiki_name_keys_migration_owes_every_row_and_follows_every_name_write() {
     let version = db
         .call_blocking(|conn| run(conn, DATA_MIGRATIONS))
         .expect("step forward");
-    assert_eq!(version, 20);
+    assert_eq!(version, latest_version(DATA_MIGRATIONS));
     db.call_blocking(|conn| conn.execute_batch(DATA_MIGRATIONS[18].sql).map_err(failed))
         .expect("idempotent");
 
