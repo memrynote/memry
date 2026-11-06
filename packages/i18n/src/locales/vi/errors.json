@@ -16,8 +16,11 @@
     "corrupted": "Kho này có vẻ bị hỏng. Thử khôi phục từ bản sao lưu.",
     "configChangeNotPorted": "Phiên bản này chưa thể thay đổi thư mục nhật ký, định dạng ngày hoặc các thư mục bị loại trừ. Cài đặt đã lưu của bạn được giữ nguyên.",
     "journalFormatIncomplete": "Định dạng ngày này không thể đặt tên cho mọi ngày nên chưa được lưu. Hãy thêm năm, tháng và ngày.",
-    "journalDaysNotRenamed": "Định dạng ngày không được thay đổi vì một số ngày nhật ký không thể đổi tên theo định dạng này ({count}). Có thể một tệp đã mang tên mới của một ngày.",
-    "journalUnlisted": "Không thể đọc thư mục nhật ký nên định dạng ngày không được thay đổi. Hãy kiểm tra bạn có quyền truy cập thư mục đó.",
+    "journalFolderInvalid": "Không thể đặt nhật ký trong thư mục này nên thay đổi không được lưu. Hãy chọn một thư mục hiển thị, không bị loại trừ và không phải liên kết.",
+    "journalFolderRespelled": "Tên thư mục nhật ký chỉ khác về chữ hoa và chữ thường nên thay đổi chưa được lưu. Thay vào đó, hãy đổi tên thư mục ở thanh bên.",
+    "journalDaysNotRenamed": "Thay đổi không được lưu vì một số ngày nhật ký không thể chuyển đến đó ({count}). Có thể một tệp đã mang tên mới của một ngày.",
+    "journalUnlisted": "Không thể đọc thư mục nhật ký nên thay đổi không được lưu. Hãy kiểm tra bạn có quyền truy cập thư mục đó.",
+    "journalChangeWaits": "Lần thay đổi thư mục nhật ký hoặc định dạng ngày trước đó chưa hoàn tất. Hãy mở lại kho để hoàn tất, rồi thử lại.",
     "settingsUnreadable": "Không thể di chuyển thư mục khi chưa đọc được tệp cài đặt kho (.memry/config.json). Hãy sửa tệp đó rồi thử lại.",
     "settingsUnreadableDelete": "Không thể xóa thư mục khi chưa đọc được tệp cài đặt kho (.memry/config.json). Hãy sửa tệp đó rồi thử lại.",
     "settingsUnreadableJournalDay": "Không thể tạo ngày nhật ký khi chưa đọc được tệp cài đặt kho (.memry/config.json). Hãy sửa tệp đó rồi thử lại."

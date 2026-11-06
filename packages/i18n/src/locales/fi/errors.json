@@ -16,8 +16,11 @@
     "corrupted": "Tämä holvi näyttää olevan vioittunut. Yritä palauttaa varmuuskopiosta.",
     "configChangeNotPorted": "Tämä versio ei vielä voi muuttaa päiväkirjakansiota, päivämäärämuotoa tai pois jätettyjä kansioita. Tallennettu asetus säilyy.",
     "journalFormatIncomplete": "Tämä päivämäärämuoto ei pysty nimeämään jokaista päivää, joten sitä ei tallennettu. Sisällytä vuosi, kuukausi ja päivä.",
-    "journalDaysNotRenamed": "Päivämäärämuotoa ei muutettu, koska joitakin päiväkirjan päiviä ei voitu nimetä uudelleen sen mukaan ({count}). Jollakin tiedostolla voi jo olla päivän uusi nimi.",
-    "journalUnlisted": "Päiväkirjakansiota ei voitu lukea, joten päivämäärämuotoa ei muutettu. Tarkista, että sinulla on siihen käyttöoikeus.",
+    "journalFolderInvalid": "Päiväkirjaa ei voi pitää tässä kansiossa, joten muutosta ei tallennettu. Valitse näkyvä kansio, jota ei ole jätetty pois ja joka ei ole linkki.",
+    "journalFolderRespelled": "Päiväkirjakansion nimi eroaa vain kirjainkoon osalta, joten muutosta ei tallennettu. Nimeä kansio sen sijaan uudelleen sivupalkissa.",
+    "journalDaysNotRenamed": "Muutosta ei tallennettu, koska joitakin päiväkirjan päiviä ei voitu siirtää sinne ({count}). Jollakin tiedostolla voi jo olla päivän uusi nimi.",
+    "journalUnlisted": "Päiväkirjakansiota ei voitu lukea, joten muutosta ei tallennettu. Tarkista, että sinulla on siihen käyttöoikeus.",
+    "journalChangeWaits": "Aiempi päiväkirjakansion tai päivämäärämuodon muutos jäi kesken. Avaa holvi uudelleen, jotta se valmistuu, ja yritä sitten uudelleen.",
     "settingsUnreadable": "Kansioita ei voi siirtää, kun holvin asetustiedostoa (.memry/config.json) ei voi lukea. Korjaa tiedosto ja yritä uudelleen.",
     "settingsUnreadableDelete": "Kansioita ei voi poistaa, kun holvin asetustiedostoa (.memry/config.json) ei voi lukea. Korjaa tiedosto ja yritä uudelleen.",
     "settingsUnreadableJournalDay": "Päiväkirjan päiviä ei voi luoda, kun holvin asetustiedostoa (.memry/config.json) ei voi lukea. Korjaa tiedosto ja yritä uudelleen."

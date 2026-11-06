@@ -102,6 +102,10 @@ pub enum NotesError {
     /// folder move or delete, or a day create, would act on the defaults instead.
     #[error("the vault settings file cannot be read: {0}")]
     SettingsUnreadable(String),
+    /// A journal setting change a crash cut short still has days at its new folder, which is,
+    /// holds or is inside the folder to move (`vault::journal_rename::finish_journal_change`).
+    #[error("an earlier journal setting change did not finish; reopen the vault to finish it")]
+    JournalChangeWaits,
     /// The folder to delete is inside the journal folder (a year folder of a nested date
     /// format): it holds days, which a note delete does not take.
     #[error("the folder is inside the journal folder; delete its days in the journal")]
@@ -328,6 +332,7 @@ impl CoreError for NotesError {
             Self::FolderHoldsJournal => (FailureKind::Invalid, "folder_holds_journal"),
             Self::SettingsUnreadable(_) => (FailureKind::Invalid, "vault_settings_unreadable"),
             Self::FolderInJournal => (FailureKind::Invalid, "folder_in_journal"),
+            Self::JournalChangeWaits => (FailureKind::Invalid, "journal_change_waits"),
             Self::FolderMoveIncomplete => (FailureKind::Storage, "folder_move_incomplete"),
             Self::FolderFile(FolderFileError::Unreadable { .. }) => {
                 (FailureKind::Invalid, "folder_file_unreadable")

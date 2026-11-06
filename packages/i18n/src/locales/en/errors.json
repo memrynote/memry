@@ -16,8 +16,11 @@
     "corrupted": "This vault appears to be corrupted. Try restoring from a backup.",
     "configChangeNotPorted": "This version can't change the journal folder, date format or excluded folders yet. Your saved setting is kept.",
     "journalFormatIncomplete": "This date format can't name every day, so it wasn't saved. Include the year, month and day.",
-    "journalDaysNotRenamed": "The date format wasn't changed because some journal days couldn't be renamed to it ({count}). A file may already have a day's new name.",
-    "journalUnlisted": "The journal folder couldn't be read, so the date format wasn't changed. Check that you have access to it.",
+    "journalFolderInvalid": "The journal can't be kept in this folder, so the change wasn't saved. Choose a visible folder that isn't excluded or a link.",
+    "journalFolderRespelled": "The journal folder name differs only in capitalization, so the change wasn't saved. Rename the folder in the sidebar instead.",
+    "journalDaysNotRenamed": "The change wasn't saved because some journal days ({count}) couldn't be moved. A file may already have a day's new name.",
+    "journalUnlisted": "The journal folder couldn't be read, so the change wasn't saved. Check that you have access to it.",
+    "journalChangeWaits": "An earlier journal folder or date format change didn't finish. Reopen the vault to finish it, then try again.",
     "settingsUnreadable": "Folders can't be moved while the vault settings file (.memry/config.json) can't be read. Fix that file, then try again.",
     "settingsUnreadableDelete": "Folders can't be deleted while the vault settings file (.memry/config.json) can't be read. Fix that file, then try again.",
     "settingsUnreadableJournalDay": "Journal days can't be created while the vault settings file (.memry/config.json) can't be read. Fix that file, then try again."

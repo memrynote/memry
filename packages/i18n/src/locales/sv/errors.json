@@ -16,8 +16,11 @@
     "corrupted": "Det här valvet verkar vara skadat. Försök att återställa från en säkerhetskopia.",
     "configChangeNotPorted": "Den här versionen kan ännu inte ändra dagboksmappen, datumformatet eller exkluderade mappar. Din sparade inställning behålls.",
     "journalFormatIncomplete": "Det här datumformatet kan inte namnge varje dag, så det sparades inte. Ta med år, månad och dag.",
-    "journalDaysNotRenamed": "Datumformatet ändrades inte eftersom vissa dagboksdagar inte kunde byta namn till det ({count}). En fil har kanske redan en dags nya namn.",
-    "journalUnlisted": "Dagboksmappen kunde inte läsas, så datumformatet ändrades inte. Kontrollera att du har åtkomst till den.",
+    "journalFolderInvalid": "Dagboken kan inte ligga i den här mappen, så ändringen sparades inte. Välj en synlig mapp som inte är undantagen och inte är en länk.",
+    "journalFolderRespelled": "Journalmappens namn skiljer sig bara i versaler och gemener, så ändringen sparades inte. Byt i stället namn på mappen i sidofältet.",
+    "journalDaysNotRenamed": "Ändringen sparades inte eftersom vissa dagboksdagar inte kunde flyttas dit ({count}). En fil har kanske redan en dags nya namn.",
+    "journalUnlisted": "Dagboksmappen kunde inte läsas, så ändringen sparades inte. Kontrollera att du har åtkomst till den.",
+    "journalChangeWaits": "En tidigare ändring av journalmappen eller datumformatet slutfördes inte. Öppna valvet igen för att slutföra den och försök sedan igen.",
     "settingsUnreadable": "Mappar kan inte flyttas medan valvets inställningsfil (.memry/config.json) inte kan läsas. Rätta filen och försök igen.",
     "settingsUnreadableDelete": "Mappar kan inte tas bort medan valvets inställningsfil (.memry/config.json) inte kan läsas. Rätta filen och försök igen.",
     "settingsUnreadableJournalDay": "Journaldagar kan inte skapas medan valvets inställningsfil (.memry/config.json) inte kan läsas. Rätta filen och försök igen."

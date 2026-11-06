@@ -16,8 +16,11 @@
     "corrupted": "Tento trezor je zřejmě poškozený. Zkuste ho obnovit ze zálohy.",
     "configChangeNotPorted": "Tato verze zatím nemůže změnit složku deníku, formát data ani vyloučené složky. Uložené nastavení zůstává.",
     "journalFormatIncomplete": "Tento formát data neumí pojmenovat každý den, proto nebyl uložen. Uveďte rok, měsíc a den.",
-    "journalDaysNotRenamed": "Formát data se nezměnil, protože některé dny deníku se na něj nepodařilo přejmenovat ({count}). Nový název dne možná už má jiný soubor.",
-    "journalUnlisted": "Složku deníku se nepodařilo přečíst, proto se formát data nezměnil. Ověřte, že k ní máte přístup.",
+    "journalFolderInvalid": "Deník nemůže být v této složce, proto se změna neuložila. Vyberte viditelnou složku, která není vyloučená ani není odkazem.",
+    "journalFolderRespelled": "Název složky deníku se liší jen velikostí písmen, proto změna nebyla uložena. Místo toho složku přejmenujte v postranním panelu.",
+    "journalDaysNotRenamed": "Změna se neuložila, protože některé dny deníku se tam nepodařilo přesunout ({count}). Nový název dne možná už má jiný soubor.",
+    "journalUnlisted": "Složku deníku se nepodařilo přečíst, proto se změna neuložila. Ověřte, že k ní máte přístup.",
+    "journalChangeWaits": "Dřívější změna složky deníku nebo formátu data nebyla dokončena. Otevřete trezor znovu, aby se dokončila, a pak to zkuste znovu.",
     "settingsUnreadable": "Složky nelze přesouvat, dokud nelze přečíst soubor nastavení trezoru (.memry/config.json). Opravte tento soubor a zkuste to znovu.",
     "settingsUnreadableDelete": "Složky nelze mazat, dokud nelze přečíst soubor nastavení trezoru (.memry/config.json). Opravte tento soubor a zkuste to znovu.",
     "settingsUnreadableJournalDay": "Dny deníku nelze vytvářet, dokud nelze přečíst soubor nastavení trezoru (.memry/config.json). Opravte tento soubor a zkuste to znovu."
