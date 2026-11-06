@@ -173,7 +173,7 @@ const SPECS: Spec[] = [
   },
   {
     name: 'refused: a local update waits on one the log lacks',
-    pins: 'an update held back for a missing antecedent is not in the encode, so nothing folds',
+    pins: 'the encode would carry the held-back update, but a log missing an antecedent is not folded: conservative',
     plan: () => {
       const window = recorder(WINDOW)
       churn(window.doc, 30)

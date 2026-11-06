@@ -454,6 +454,7 @@ impl Editor {
             })
         };
         let document = epoch::open_for_write(conn, &self.device_id, note_id, sink)?;
+        self.count_loaded(conn, note_id)?;
         Converter::new(CalloutTypes::default()).repair_empty_block_ids(&document, BODY_FRAGMENT);
         let taken = authored
             .lock()

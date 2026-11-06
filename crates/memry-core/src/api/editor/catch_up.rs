@@ -94,7 +94,10 @@ impl Editor {
 ///
 /// A row a fold took after its writer committed it ([`crate::crdt::compact`],
 /// or a pushed snapshot's prune) is read from the snapshot that holds it, once.
-/// A row that rolled back is above every fold point and reads nothing.
+/// A row that rolled back reads nothing, unless a later row reused its sequence
+/// and was folded: the snapshot read then is committed content. The snapshot
+/// goes to the windows under this write's origin, though it may hold rows
+/// another writer committed.
 fn committed(
     conn: &Connection,
     device_id: &str,

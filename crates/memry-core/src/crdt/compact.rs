@@ -21,9 +21,11 @@
 //! was queued.
 //!
 //! [`compact_doc`] answers `None`, and nothing is written, when the namespace
-//! has no update to fold, when the replay holds updates waiting on one it lacks
-//! (the encode would not carry them), or when the snapshot would not be smaller
-//! than the rows it replaces.
+//! has no update to fold, when the replay holds updates waiting on one it lacks,
+//! or when the snapshot would not be smaller than the rows it replaces. The
+//! encode would carry the held-back updates (`yrs` and yjs merge them in); a log
+//! missing an antecedent is left as it is all the same, the conservative choice
+//! for a state no test reaches as a whole.
 
 use std::sync::Arc;
 

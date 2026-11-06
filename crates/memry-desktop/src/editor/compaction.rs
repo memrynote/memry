@@ -10,6 +10,8 @@ use std::time::Duration;
 
 use memry_core::api::editor::Editor;
 
+use crate::session::projection::CancelToken;
+
 /// How often the documents that grew are compacted: Electron's `SIZE_CHECK_INTERVAL_MS`
 /// (`crdt-provider.ts:73`).
 pub(super) const COMPACT_EVERY: Duration = Duration::from_secs(60);
@@ -17,10 +19,14 @@ pub(super) const COMPACT_EVERY: Duration = Duration::from_secs(60);
 const SCOPE: &str = "EditorCompaction";
 
 /// Compacts every document `editor` says is due; returns the ones it folded. A document that
-/// fails is logged and waits for its next growth.
-pub fn compact_due(editor: &Editor) -> Vec<String> {
+/// fails is logged and waits for its next growth. Stops between documents once `cancel` is set
+/// (the vault is closing), so a close never waits on more than one fold.
+pub fn compact_due(editor: &Editor, cancel: &CancelToken) -> Vec<String> {
     let mut folded = Vec::new();
     for note_id in editor.compaction_due() {
+        if cancel.is_cancelled() {
+            break;
+        }
         match editor.compact(&note_id) {
             Ok(Some(fold)) => {
                 tracing::info!(

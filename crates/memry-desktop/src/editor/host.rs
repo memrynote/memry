@@ -144,7 +144,7 @@ impl EditorHost {
                     if host.serves(view)
                         && let Ok(live) = host.live()
                     {
-                        compact_due(&live.editor);
+                        compact_due(&live.editor, cancel);
                     }
                 }
                 Ok(())

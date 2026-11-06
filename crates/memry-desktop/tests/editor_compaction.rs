@@ -9,6 +9,7 @@ use memry_core::api::editor::COMPACTION_GROWTH_BYTES;
 use memry_core::seams::secure_store::SecureStore;
 use memry_desktop::editor::{EditorHost, Subscriber, compact_due};
 use memry_desktop::registry::{AppConfig, VaultRegistry};
+use memry_desktop::session::projection::CancelToken;
 use memry_desktop::session::{OpenSource, Session};
 use rusqlite::{Connection, params};
 use yrs::updates::decoder::Decode as _;
@@ -101,6 +102,10 @@ fn a_document_grown_past_the_threshold_is_compacted_while_its_windows_keep_typin
     let mut typed = 0usize;
     let mut n = 0;
     while typed < COMPACTION_GROWTH_BYTES {
+        assert!(
+            n < 2 * COMPACTION_GROWTH_BYTES / 1024,
+            "never reached the threshold"
+        );
         let update = main.rewrite(&format!("{n:04}").repeat(256));
         typed += update.len();
         host.apply_update(&note, &update, "main").unwrap();
@@ -112,7 +117,16 @@ fn a_document_grown_past_the_threshold_is_compacted_while_its_windows_keep_typin
     let queued = count(&db, queued_sql, &note);
     let heard = side_frames.lock().unwrap().len();
 
-    assert_eq!(compact_due(&editor), vec![note.clone()]);
+    let closing = CancelToken::default();
+    closing.cancel();
+    assert!(
+        compact_due(&editor, &closing).is_empty(),
+        "a closing vault folds nothing"
+    );
+    assert_eq!(editor.compaction_due(), vec![note.clone()]);
+
+    let open = CancelToken::default();
+    assert_eq!(compact_due(&editor, &open), vec![note.clone()]);
 
     assert_eq!(count(&db, rows_sql, &note), 0, "the log was folded");
     assert_eq!(
@@ -125,7 +139,10 @@ fn a_document_grown_past_the_threshold_is_compacted_while_its_windows_keep_typin
         heard,
         "windows hear nothing"
     );
-    assert!(compact_due(&editor).is_empty(), "the count starts over");
+    assert!(
+        compact_due(&editor, &open).is_empty(),
+        "the count starts over"
+    );
 
     let update = main.rewrite("after the fold");
     host.apply_update(&note, &update, "main").unwrap();

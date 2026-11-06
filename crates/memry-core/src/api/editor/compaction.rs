@@ -1,13 +1,15 @@
 //! Local compaction of the editor's documents (desktop Step 14i, #3531;
 //! Electron's `maybeCompact`, `crdt-provider.ts:2220-2251`).
 //!
-//! The editor counts the bytes each document's log takes: every committed
-//! update its listeners hear, a window's edit, a repair or another writer's row.
-//! The shell asks on its timer which documents grew by
-//! [`COMPACTION_GROWTH_BYTES`] since their last compaction
-//! ([`Editor::compaction_due`]) and compacts each ([`Editor::compact`]), which
-//! folds the document's local namespace into one snapshot
-//! ([`crate::crdt::compact`]).
+//! The editor counts the bytes each document's local log holds since its last
+//! fold: what the log held when the document loaded (rows an earlier launch
+//! left), then every committed update its listeners hear that lands in the
+//! local namespace (a window's edit, an outside edit, a repair or an app
+//! write). Bytes merged from the server are not counted: a local fold cannot
+//! shrink the server rows. The shell asks on its timer which documents reach
+//! [`COMPACTION_GROWTH_BYTES`] ([`Editor::compaction_due`]) and compacts each
+//! ([`Editor::compact`]), which folds the document's local namespace into one
+//! snapshot ([`crate::crdt::compact`]).
 //!
 //! The fold reads the log, not the resident document: it runs on the writer in
 //! one transaction, so it holds every row committed before it, whatever the
@@ -15,17 +17,25 @@
 //! lands above the fold point. The resident document is left as it is: it holds
 //! the same items, so no window reloads. Pending outbox rows are not touched.
 //!
-//! Counting starts when the vault opens: a log that grew in an earlier launch
-//! waits for this launch's growth. A document nobody opens is not counted.
+//! A document nobody opens is not counted, and not compacted.
 
 use std::collections::HashMap;
 use std::sync::{MutexGuard, PoisonError};
 
-use super::{Editor, EditorError, Notice};
-use crate::crdt::compact::{Folded, fold_compacted};
+use rusqlite::{Connection, params};
 
-/// The growth after which a document is compacted: Electron's
-/// `ACCUMULATED_BYTES_RECHECK_THRESHOLD` (`crdt-provider.ts:75`).
+use super::{Editor, EditorError, Notice, Origin};
+use crate::api::errors::StorageError;
+use crate::crdt::compact::{Folded, fold_compacted};
+use crate::crdt::errors::CrdtError;
+use crate::crdt::update_log::Namespace;
+
+/// The local log size at which a document is compacted. Not Electron's rule:
+/// there 512 KiB of updates only triggers a size check, which compacts when the
+/// encoded document passes 1 MiB with no window open and otherwise flushes the
+/// store (`crdt-provider.ts:2229-2245`). Here a fold keeps the document's items,
+/// so an open window does not stop it, and the local log's size is what it
+/// shrinks.
 pub const COMPACTION_GROWTH_BYTES: usize = 512 * 1024;
 
 impl Editor {
@@ -52,11 +62,12 @@ impl Editor {
         self.on_writer(|conn| Ok(fold_compacted(conn, note_id)?))
     }
 
-    /// Counts a committed update toward `note_id`'s next compaction; a purge
-    /// starts the new document's count from nothing.
+    /// Counts a committed local update toward `note_id`'s next compaction; a
+    /// purge starts the new document's count from nothing.
     pub(super) fn count_growth(&self, note_id: &str, notice: Notice<'_>) {
         let mut grown = self.grown();
         match notice {
+            Notice::Update(_, Origin::Remote) => {}
             Notice::Update(update, _) => {
                 let bytes = grown.entry(note_id.to_owned()).or_default();
                 *bytes = bytes.saturating_add(update.len());
@@ -65,6 +76,25 @@ impl Editor {
                 grown.remove(note_id);
             }
         }
+    }
+
+    /// Starts `note_id`'s count at the bytes its local log holds, when the
+    /// document loads: what earlier launches left counts.
+    pub(super) fn count_loaded(&self, conn: &Connection, note_id: &str) -> Result<(), CrdtError> {
+        let held: i64 = conn
+            .query_row(
+                "SELECT COALESCE(SUM(length(update_blob)), 0) FROM yjs_updates WHERE doc_id = ?1",
+                params![Namespace::Local.row_id(note_id)],
+                |row| row.get(0),
+            )
+            .map_err(|error| StorageError::Failed {
+                what: format!("could not measure a local log: {error}"),
+            })?;
+        self.grown().insert(
+            note_id.to_owned(),
+            usize::try_from(held).unwrap_or_default(),
+        );
+        Ok(())
     }
 
     fn grown(&self) -> MutexGuard<'_, HashMap<String, usize>> {

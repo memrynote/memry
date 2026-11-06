@@ -690,8 +690,9 @@ one local snapshot, and changes nothing else:
    before the transaction is in the snapshot; one committed after it is above
    the fold point and stays.
 3. **It refuses, writing nothing,** when there is no local update, when the
-   replay holds an update still waiting on one the log lacks, or when the
-   snapshot is not smaller than the local rows it replaces.
+   replay holds an update still waiting on one the log lacks (the encode would
+   carry it; the refusal is conservative), or when the snapshot is not smaller
+   than the local rows it replaces.
 4. **The snapshot carries the newest stamp it replaces** (`compacted_at` = the
    largest `created_at` of the folded rows and of the earlier local snapshot),
    so a reader comparing stamps (write-back's behind check, the search
@@ -700,9 +701,13 @@ one local snapshot, and changes nothing else:
    keeps its own bytes and is sent as queued; a server row is pruned only by a
    pushed snapshot (chapter 07 §7.13).
 
-Desktop on Tauri counts the bytes each open document's log takes and compacts
-the ones that took 512 KiB or more on a 60 s timer, as Electron's accumulated
-threshold does (`apps/desktop/src/main/sync/crdt-provider.ts:73-75`). The
+Desktop on Tauri compacts, on a 60 s timer, each document the editor has loaded
+whose local log holds 512 KiB or more: the local rows it found at load plus every
+local, outside or app update since, never bytes merged from the server
+(`crates/memry-core/src/api/editor/compaction.rs`). An open window does not stop
+it. Electron's rule differs: 512 KiB of updates only triggers a size check, which
+compacts when the encoded document passes 1 MiB with no window open and otherwise
+flushes the store (`apps/desktop/src/main/sync/crdt-provider.ts:2229-2245`). The
 `crdt-compact.json` vector class pins rules 1 and 3; its snapshots compare as
 the document they encode, because yjs and `yrs` write a delete set's clients in
 different orders.

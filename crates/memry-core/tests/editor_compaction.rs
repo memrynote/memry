@@ -98,6 +98,7 @@ fn a_document_grown_past_the_threshold_is_due_and_its_fold_keeps_the_body_and_th
     let mut last = String::new();
     let mut n = 0;
     while !f.editor.compaction_due().contains(&note) {
+        assert!(n < 2 * COMPACTION_GROWTH_BYTES / 1024, "never due");
         last = kib(n);
         let update = window.rewrite(&last);
         f.editor.apply_update(&note, &update, "main").unwrap();
@@ -128,6 +129,11 @@ fn a_document_grown_past_the_threshold_is_due_and_its_fold_keeps_the_body_and_th
     assert_eq!(body_after_relaunch(f, &note), last);
 }
 
+/// Probabilistic: a compaction loop races the edits, so how they interleave
+/// varies from run to run. The guards are structural (the read, the encode
+/// and the fold are one transaction, and `fold_local_in` refuses autocommit,
+/// `update_log_tests.rs`); with the read and the fold split into two writer
+/// turns this went red in 2 runs of 3.
 #[test]
 fn a_window_typing_while_the_log_is_compacted_loses_no_edit() {
     let f = fixture();
@@ -322,4 +328,55 @@ fn a_fold_leaves_a_written_file_current() {
     f.editor.compact(&note).unwrap().expect("a fold");
 
     assert!(!note_files::behind_body(&conn, &note).unwrap());
+}
+
+/// A note edited a little each launch: the log the earlier launches left
+/// counts toward the next compaction.
+#[test]
+fn a_log_grown_a_little_in_each_of_several_launches_is_due() {
+    let mut f = fixture();
+    let note = f.note();
+    let mut n = 0;
+    for launch in 0..3 {
+        let window = Rewriter::from_state(1, &f.editor.open(&note, "main").unwrap().state);
+        for _ in 0..200 {
+            let update = window.rewrite(&kib(n));
+            f.editor.apply_update(&note, &update, "main").unwrap();
+            n += 1;
+        }
+        if launch < 2 {
+            assert!(
+                !f.editor.compaction_due().contains(&note),
+                "two launches' edits stay below the threshold"
+            );
+        }
+        f = f.relaunch();
+    }
+    f.editor.open(&note, "main").unwrap();
+
+    assert_eq!(f.editor.compaction_due(), vec![note.clone()]);
+    f.editor.compact(&note).unwrap().expect("a fold");
+    assert_eq!(body_after_relaunch(f, &note), kib(n - 1));
+}
+
+/// Remote bytes cannot shrink by a local fold, so they do not count.
+#[test]
+fn bytes_merged_from_the_server_do_not_make_a_document_due() {
+    let f = fixture();
+    let note = f.note();
+    let opened = f.editor.open(&note, "main").unwrap().state;
+    let peer = Rewriter::from_state(6, &opened);
+    let conn = raw(&f);
+    for n in 0..600 {
+        let update = peer.rewrite(&kib(n));
+        let seq = i64::try_from(n).unwrap() + 1;
+        update_log::append_server_update(&conn, &note, seq, &update, 5).unwrap();
+        f.editor.bodies_written(&[BodyWrite {
+            doc_id: note.clone(),
+            origin: Origin::Remote,
+            rows: vec![LogRow::Server(seq)],
+            purged: false,
+        }]);
+    }
+    assert!(f.editor.compaction_due().is_empty());
 }
