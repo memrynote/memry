@@ -15,6 +15,8 @@ import type {
   TagsClientAPI
 } from '../../../preload/index.d'
 import type {
+  ImpactQuery,
+  ImpactResult,
   TagSchemaCommand,
   TagSchemaCommandResult,
   TagSchemaSnapshot,
@@ -148,6 +150,8 @@ const ported = {
   /** Every tag's resolved schema, the notes that are objects, and the ready-made tags. */
   getSchemaSnapshot: (): Promise<TagSchemaSnapshot> => commands.tagsGetSchemaSnapshot(),
 
+  /** What a schema change would reach, counted for its dialog. */
+  previewImpact: (query: ImpactQuery): Promise<ImpactResult> => commands.tagsPreviewImpact(query),
   /** The objects whose title matches, for the `@` menu and the relation picker. */
   searchObjects: (input: {
     query: string
@@ -223,8 +227,6 @@ export const tagsService: TagsService = {
     command.kind === 'rename-field'
       ? window.api.tags.editSchema(command)
       : commands.tagsEditSchema(command),
-
-  previewImpact: (query) => window.api.tags.previewImpact(query),
 
   getFillStatus: () => window.api.tags.getFillStatus(),
 
