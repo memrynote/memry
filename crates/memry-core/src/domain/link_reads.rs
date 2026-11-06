@@ -100,7 +100,10 @@ pub fn rewrite_sources(
 }
 
 /// The ids of the notes and days whose links resolved to `target_id`.
-fn linking_ids(index: &Connection, target_id: &str) -> Result<Vec<String>, StorageError> {
+pub(crate) fn linking_ids(
+    index: &Connection,
+    target_id: &str,
+) -> Result<Vec<String>, StorageError> {
     let mut statement = index
         .prepare("SELECT DISTINCT source_id FROM note_links WHERE target_id = ?1")
         .map_err(failed)?;

@@ -1,10 +1,10 @@
 //! Object reads for tags with fields (`ipc/tag-object-handlers.ts`,
-//! `packages/contracts/src/tag-objects-api.ts`): the `@` menu and relation picker search. The
-//! rules live in the core ([`memry_core::domain::tag_objects`]); this checks the input as
-//! Electron's zod schemas do and shapes the answer.
+//! `packages/contracts/src/tag-objects-api.ts`): the `@` menu and relation picker search, and a
+//! note's "Linked here" groups. The rules live in the core ([`memry_core::domain::tag_objects`]);
+//! this checks the input as Electron's zod schemas do and shapes the answer.
 
 use memry_core::api::errors::StorageError;
-use memry_core::domain::tag_objects::ObjectMatch;
+use memry_core::domain::tag_objects::{LinkedGroup, LinkedNote, LinkedTask, ObjectMatch};
 use serde::{Deserialize, Serialize};
 
 use super::{SchemaError, Schemas};
@@ -19,6 +19,18 @@ pub struct SearchObjectsInput {
     #[serde(default)]
     pub limit: Option<u32>,
 }
+
+/// `GetLinkedHereSchema`.
+#[derive(Debug, Clone, PartialEq, Eq, Deserialize, specta::Type)]
+#[serde(rename_all = "camelCase")]
+pub struct GetLinkedHereInput {
+    pub note_id: String,
+    #[serde(default)]
+    pub limit_per_group: Option<u32>,
+}
+
+/// The most notes a Linked here group returns in one read (`LINKED_HERE_MAX_PER_GROUP`).
+pub const LINKED_HERE_MAX_PER_GROUP: u32 = 500;
 
 /// `ObjectMatch`.
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, specta::Type)]
@@ -55,8 +67,122 @@ pub struct SearchObjectsView {
     pub complete: bool,
 }
 
+/// `LinkedNoteItem`.
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, specta::Type)]
+#[serde(rename_all = "camelCase")]
+pub struct LinkedNoteView {
+    pub note_id: String,
+    pub title: String,
+    pub date: Option<String>,
+    pub snippet: Option<String>,
+}
+
+impl From<LinkedNote> for LinkedNoteView {
+    fn from(note: LinkedNote) -> Self {
+        Self {
+            note_id: note.note_id,
+            title: note.title,
+            date: note.date,
+            snippet: note.snippet,
+        }
+    }
+}
+
+/// `LinkedTaskItem`.
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, specta::Type)]
+#[serde(rename_all = "camelCase")]
+pub struct LinkedTaskView {
+    pub task_id: String,
+    pub title: String,
+    pub due_date: Option<String>,
+    pub completed: bool,
+}
+
+impl From<LinkedTask> for LinkedTaskView {
+    fn from(task: LinkedTask) -> Self {
+        Self {
+            task_id: task.task_id,
+            title: task.title,
+            due_date: task.due_date,
+            completed: task.completed,
+        }
+    }
+}
+
+/// `LinkedHereGroup`.
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, specta::Type)]
+#[serde(tag = "kind", rename_all = "kebab-case")]
+pub enum LinkedHereGroupView {
+    #[serde(rename_all = "camelCase")]
+    Relation {
+        source_tag: String,
+        field: String,
+        label: String,
+        total: u32,
+        items: Vec<LinkedNoteView>,
+        filter: String,
+    },
+    #[serde(rename_all = "camelCase")]
+    TaskField {
+        tag: String,
+        field: String,
+        total: u32,
+        items: Vec<LinkedTaskView>,
+        filter: String,
+    },
+    Mentions {
+        total: u32,
+        items: Vec<LinkedNoteView>,
+    },
+}
+
 fn views<T, V: From<T>>(items: Vec<T>) -> Vec<V> {
     items.into_iter().map(V::from).collect()
+}
+
+impl From<LinkedGroup> for LinkedHereGroupView {
+    fn from(group: LinkedGroup) -> Self {
+        match group {
+            LinkedGroup::Relation {
+                source_tag,
+                field,
+                label,
+                total,
+                items,
+                filter,
+            } => Self::Relation {
+                source_tag,
+                field,
+                label,
+                total,
+                items: views(items),
+                filter,
+            },
+            LinkedGroup::TaskField {
+                tag,
+                field,
+                total,
+                items,
+                filter,
+            } => Self::TaskField {
+                tag,
+                field,
+                total,
+                items: views(items),
+                filter,
+            },
+            LinkedGroup::Mentions { total, items } => Self::Mentions {
+                total,
+                items: views(items),
+            },
+        }
+    }
+}
+
+/// `GetLinkedHereResponse`.
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, specta::Type)]
+pub struct LinkedHereView {
+    pub groups: Vec<LinkedHereGroupView>,
 }
 
 fn invalid(what: &str) -> SchemaError {
@@ -95,6 +221,26 @@ impl Schemas {
         Ok(SearchObjectsView {
             matches: views(matches),
             complete: true,
+        })
+    }
+
+    /// `tags:get-linked-here`.
+    pub fn linked_here(&self, input: &GetLinkedHereInput) -> Result<LinkedHereView, SchemaError> {
+        if input.note_id.is_empty() {
+            return Err(invalid("a note id is required"));
+        }
+        let limit = bounded(
+            input.limit_per_group,
+            2,
+            LINKED_HERE_MAX_PER_GROUP,
+            "a group limit",
+        )?;
+        let groups = self
+            .open
+            .search
+            .linked_here(&self.resolved()?, &input.note_id, limit)?;
+        Ok(LinkedHereView {
+            groups: views(groups),
         })
     }
 }

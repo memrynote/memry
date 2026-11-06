@@ -1,6 +1,7 @@
-//! The object search of tags with fields (#3530 13j-3c) over a real session, tier, watcher and
-//! index task, the oracle being Electron's `tags/objects.test.ts`: locale folding, root-tag
-//! groups and subtitles.
+//! Object reads for tags with fields (#3530 13j-3c) over a real session, tier, watcher and
+//! index task, the oracle being Electron's `tags/objects.test.ts`: the object search with its
+//! locale folding and root-tag groups, and what Linked here lists for a note (relation fields,
+//! task fields, wiki links), each group by the tag that defines its field.
 
 #[allow(unused_imports)]
 use crate::device_key;
@@ -12,12 +13,16 @@ use crate::vault_env;
 use std::sync::Arc;
 
 use index_support::until;
+use memry_core::api::projects::ProjectDraft;
+use memry_core::api::tasks_write::NewTaskInput;
 use memry_core::seams::secure_store::SecureStore;
 use memry_desktop::error::{CoreError, FailureKind};
 use memry_desktop::notes::identity::NotesIdentity;
 use memry_desktop::notes::index::NoteIndex;
 use memry_desktop::tags::schema::Schemas;
-use memry_desktop::tags::schema::objects::SearchObjectsInput;
+use memry_desktop::tags::schema::objects::{
+    GetLinkedHereInput, LinkedHereGroupView, SearchObjectsInput,
+};
 use memry_desktop::tags::schema::view::{FieldType, NewFieldSpec, RelationView, TagSchemaCommand};
 use memry_desktop::vault::hash::content_hash;
 use serde_json::{Value, json};
@@ -122,6 +127,14 @@ impl Fixture {
         };
         serde_json::to_value(self.schemas().search_objects(&input).unwrap()).unwrap()
     }
+
+    fn linked_here(&self, note_id: &str) -> Vec<LinkedHereGroupView> {
+        let input = GetLinkedHereInput {
+            note_id: note_id.to_owned(),
+            limit_per_group: None,
+        };
+        self.schemas().linked_here(&input).unwrap().groups
+    }
 }
 
 fn uri(id: &str) -> String {
@@ -184,6 +197,130 @@ fn found_tags(answer: &Value) -> Vec<String> {
 }
 
 #[test]
+fn linked_here_lists_relation_fields_task_fields_and_wiki_links() {
+    let mut f = opened(&[
+        ("Acme.md", "---\ntags: [company]\n---\nAcme\n"),
+        ("Ahmet.md", "---\ntags: [person]\n---\n"),
+        ("journal/2026-01-02.md", "Met [[Acme]] today\n"),
+    ]);
+    f.people();
+    f.field("followup", "Waiting on", Some("company"));
+    let acme = f.id_at("Acme.md");
+    let ahmet = f.id_at("Ahmet.md");
+    let company = json!([uri(&acme)]).to_string();
+    f.outside(
+        "Ahmet.md",
+        &format!("---\ntags: [person]\nCompany: {company}\n---\n"),
+    );
+    f.outside(
+        "Acme.md",
+        &format!("---\ntags: [company]\nSelf: {company}\n---\nAcme [[Acme]]\n"),
+    );
+
+    let open = f.e.session.current().unwrap();
+    let tasks = open.vault.tasks(f.store.clone()).unwrap();
+    let project = tasks
+        .create_project(ProjectDraft {
+            name: "Home".into(),
+            description: None,
+            color: None,
+            icon: None,
+            statuses: None,
+        })
+        .unwrap();
+    let task = |title: &str| {
+        tasks
+            .create(NewTaskInput {
+                title: title.into(),
+                project_id: project.clone(),
+                status_id: None,
+                parent_id: None,
+                priority: 0,
+                description: None,
+                due_date: None,
+                due_time: None,
+                start_date: None,
+                repeat: None,
+                repeat_from: None,
+                tags: vec!["followup".into()],
+                linked_note_ids: Vec::new(),
+                linked_canvas_ids: Vec::new(),
+                source_note_id: None,
+                position: None,
+            })
+            .unwrap()
+            .created[0]
+            .clone()
+    };
+    let ping = task("Ping Acme");
+    let stale = task("Stale");
+    tasks
+        .set_field_value(ping.clone(), "Waiting on".into(), Some(company.clone()))
+        .unwrap();
+    tasks
+        .set_field_value(stale.clone(), "Waiting on".into(), Some(company.clone()))
+        .unwrap();
+    tasks
+        .set_field_value(stale, "Waiting on".into(), None)
+        .unwrap();
+
+    let day = "j2026-01-02";
+    until("the day's link indexed", || {
+        f.linked_here(&acme)
+            .iter()
+            .any(|g| matches!(g, LinkedHereGroupView::Mentions { .. }))
+    });
+    let groups = serde_json::to_value(f.linked_here(&acme)).unwrap();
+    let filter = format!("contains \"{}\"", uri(&acme));
+    assert_eq!(
+        groups,
+        json!([
+            {
+                "kind": "relation",
+                "sourceTag": "person",
+                "field": "Company",
+                "label": "person",
+                "total": 1,
+                "items": [{"noteId": ahmet, "title": "Ahmet", "date": null, "snippet": ""}],
+                "filter": format!("Company {filter}"),
+            },
+            {
+                "kind": "task-field",
+                "tag": "followup",
+                "field": "Waiting on",
+                "total": 1,
+                "items": [{"taskId": ping, "title": "Ping Acme", "dueDate": null, "completed": false}],
+                "filter": format!("Waiting on {filter}"),
+            },
+            {
+                "kind": "mentions",
+                "total": 1,
+                "items": [{"noteId": day, "title": "2026-01-02", "date": "2026-01-02", "snippet": "Met Acme today"}],
+            },
+        ]),
+        "the self link, the self property and the cleared task field are left out"
+    );
+
+    f.run(TagSchemaCommand::SetRelation {
+        tag: "person".into(),
+        name: "Company".into(),
+        relation: RelationView {
+            target: Some("company".into()),
+            many: false,
+            inverse: Some("People".into()),
+        },
+    });
+    let relation = serde_json::to_value(&f.linked_here(&acme)[0]).unwrap();
+    assert_eq!(
+        relation["label"],
+        json!("People"),
+        "the inverse labels the group"
+    );
+    assert!(f.linked_here(&ahmet).is_empty());
+    f.e.close();
+}
+
+#[test]
 fn input_electrons_schemas_refuse_is_refused_as_invalid() {
     let mut f = opened(&[("Plain.md", "Plain\n")]);
     let schemas = f.schemas();
@@ -194,16 +331,25 @@ fn input_electrons_schemas_refuse_is_refused_as_invalid() {
             limit,
         })
     };
+    let linked = |note_id: &str, limit_per_group: Option<u32>| {
+        schemas.linked_here(&GetLinkedHereInput {
+            note_id: note_id.into(),
+            limit_per_group,
+        })
+    };
     let refusals = [
         search(&"a".repeat(201), None, None).err(),
         search("", Some("  "), None).err(),
         search("", None, Some(0)).err(),
         search("", None, Some(51)).err(),
+        linked("", None).err(),
+        linked("x", Some(501)).err(),
     ];
     for refusal in refusals {
         let kind = refusal.expect("refused").kind_and_code().0;
         assert_eq!(kind, FailureKind::Invalid);
     }
     assert!(search(&"a".repeat(200), Some(" person "), Some(50)).is_ok());
+    assert!(linked("x", Some(500)).unwrap().groups.is_empty());
     f.e.close();
 }

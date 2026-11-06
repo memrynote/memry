@@ -21,7 +21,7 @@ import type {
   TagsProgressEvent
 } from '@memry/contracts/tag-schema-api'
 import type { RenameTagResponse } from '@memry/contracts/tags-api'
-import type { SearchObjectsResponse } from '@memry/contracts/tag-objects-api'
+import type { GetLinkedHereResponse, SearchObjectsResponse } from '@memry/contracts/tag-objects-api'
 import { commands, events } from '../../../generated/bindings'
 import type { KeptNoteView, UnfinishedRenameView } from '../../../generated/bindings'
 import { commandErrorCode, extractErrorMessage } from '../lib/ipc-error'
@@ -155,6 +155,12 @@ const ported = {
     limit?: number
   }): Promise<SearchObjectsResponse> => commands.tagsSearchObjects(input),
 
+  /** What points at a note: relation fields, task fields and wiki links. */
+  getLinkedHere: (input: {
+    noteId: string
+    limitPerGroup?: number
+  }): Promise<GetLinkedHereResponse> => commands.tagsGetLinkedHere(input),
+
   /** Renames the tag and its children in every note's file and record; `runId` names its progress. */
   renameTag: async (input: {
     oldName: string
@@ -222,9 +228,7 @@ export const tagsService: TagsService = {
 
   getFillStatus: () => window.api.tags.getFillStatus(),
 
-  fillFields: (input) => window.api.tags.fillFields(input),
-
-  getLinkedHere: (input) => window.api.tags.getLinkedHere(input)
+  fillFields: (input) => window.api.tags.fillFields(input)
 }
 
 // ============================================================================

@@ -150,6 +150,7 @@ pub fn builder() -> Builder<Wry> {
             crate::commands::shell::shell_take_crash_reload,
             // tags
             crate::commands::tag_schema::tags_edit_schema,
+            crate::commands::tag_schema::tags_get_linked_here,
             crate::commands::tag_schema::tags_get_schema_snapshot,
             crate::commands::tag_schema::tags_search_objects,
             crate::commands::tags::tags_create_category,

@@ -313,6 +313,8 @@ export const commands = {
 	shellTakeCrashReload: () => __TAURI_INVOKE<boolean>("shell_take_crash_reload"),
 	/**  One schema command, answered with the snapshot after it. */
 	tagsEditSchema: (command: TagSchemaCommand) => __TAURI_INVOKE<TagSchemaCommandResultView>("tags_edit_schema", { command }),
+	/**  What points at a note: relation fields, task fields and wiki links, grouped. */
+	tagsGetLinkedHere: (input: GetLinkedHereInput) => __TAURI_INVOKE<LinkedHereView>("tags_get_linked_here", { input }),
 	/**  Every tag's resolved schema, the notes that are objects, and the ready-made tags. */
 	tagsGetSchemaSnapshot: () => __TAURI_INVOKE<TagSchemaSnapshotView>("tags_get_schema_snapshot"),
 	/**
@@ -853,6 +855,12 @@ export type FolderView = {
 	icon: string | null,
 };
 
+/**  `GetLinkedHereSchema`. */
+export type GetLinkedHereInput = {
+	noteId: string,
+	limitPerGroup?: number | null,
+};
+
 export type GetVaultsResponse = {
 	vaults: VaultInfo[],
 	currentVault: string | null,
@@ -1050,6 +1058,30 @@ export type LinkTargetView = {
 	fileType: FileType,
 	/**  The heading to scroll to, `None` when the link names none. */
 	heading: string | null,
+};
+
+/**  `LinkedHereGroup`. */
+export type LinkedHereGroupView = { kind: "relation"; sourceTag: string; field: string; label: string; total: number; items: LinkedNoteView[]; filter: string } | { kind: "task-field"; tag: string; field: string; total: number; items: LinkedTaskView[]; filter: string } | { kind: "mentions"; total: number; items: LinkedNoteView[] };
+
+/**  `GetLinkedHereResponse`. */
+export type LinkedHereView = {
+	groups: LinkedHereGroupView[],
+};
+
+/**  `LinkedNoteItem`. */
+export type LinkedNoteView = {
+	noteId: string,
+	title: string,
+	date: string | null,
+	snippet: string | null,
+};
+
+/**  `LinkedTaskItem`. */
+export type LinkedTaskView = {
+	taskId: string,
+	title: string,
+	dueDate: string | null,
+	completed: boolean,
 };
 
 /**  The UI language changed (`locale:changed`). */

@@ -1,23 +1,30 @@
 //! Object reads for tags with fields (`tags/objects.ts`, `queries/tag-objects.ts`): the `@` menu
-//! and relation picker search ([`search`]). Read-only.
+//! and relation picker search ([`search`]) and a note's "Linked here" groups ([`linked_here`]).
+//! Read-only: an inverse list is derived on every call, never stored.
 //!
 //! A note is an object of a tag through its file's header only: `note_stats.header_tags` of a
 //! markdown note that is not a journal day ([`crate::api::search::Search::object_headers`]),
 //! never a body `#tag`. Electron also answers `complete: false` while an older build's tag rows
 //! lack a header flag; `note_stats` has no such row, so the reads here are always complete.
 
+pub mod linked_here;
 pub mod search;
 #[cfg(test)]
 mod tests;
 
-use std::collections::BTreeMap;
+use std::collections::{BTreeMap, HashMap};
 
+use rusqlite::{Connection, params};
 use serde_json::Value;
 
+use crate::api::errors::StorageError;
+use crate::domain::journal_ops::links::id_list;
+use crate::domain::notes::failed;
 use crate::domain::property_values::parse_relation_uri;
 use crate::domain::tag_schema::{ResolvedTag, descendants_of};
 use crate::domain::tags::tag_key;
 
+pub use linked_here::{LinkedGroup, LinkedNote, LinkedTask};
 pub use search::{ObjectMatch, fold_for_search};
 
 /// Tag key to its resolved schema ([`crate::domain::tag_schema::resolve`]).
@@ -66,4 +73,61 @@ pub fn note_refs(value: &Value) -> Vec<&str> {
         .filter(|(kind, _)| *kind == "note")
         .map(|(_, id)| id)
         .collect()
+}
+
+/// What the note index measured of a file: its snippet and header tags.
+#[derive(Debug, Clone, Default, PartialEq, Eq)]
+pub struct Measured {
+    pub snippet: Option<String>,
+    pub header_tags: Vec<String>,
+}
+
+/// The `note_stats` rows of `ids`, in one statement.
+pub fn measured<'a>(
+    index: &Connection,
+    ids: impl Iterator<Item = &'a str>,
+) -> Result<HashMap<String, Measured>, StorageError> {
+    let mut statement = index
+        .prepare(
+            "SELECT note_id, snippet, header_tags FROM note_stats \
+             WHERE note_id IN (SELECT value FROM json_each(?1))",
+        )
+        .map_err(failed)?;
+    let rows = statement
+        .query_map(params![id_list(ids)?], |row| {
+            Ok((
+                row.get::<_, String>(0)?,
+                row.get::<_, String>(1)?,
+                row.get::<_, String>(2)?,
+            ))
+        })
+        .map_err(failed)?;
+    let mut out = HashMap::new();
+    for row in rows {
+        let (id, snippet, header_tags) = row.map_err(failed)?;
+        let header_tags =
+            serde_json::from_str(&header_tags).map_err(|error| StorageError::Failed {
+                what: format!("a note_stats list will not parse: {error}"),
+            })?;
+        out.insert(
+            id,
+            Measured {
+                snippet: Some(snippet),
+                header_tags,
+            },
+        );
+    }
+    Ok(out)
+}
+
+/// `%memry://note/<id>%` for a `LIKE … ESCAPE '\'` prefilter.
+fn mentioning(note_id: &str) -> String {
+    let escaped: String = note_id
+        .chars()
+        .flat_map(|c| match c {
+            '\\' | '%' | '_' => vec!['\\', c],
+            c => vec![c],
+        })
+        .collect();
+    format!("%memry://note/{escaped}%")
 }

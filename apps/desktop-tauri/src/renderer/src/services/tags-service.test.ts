@@ -5,6 +5,7 @@ const commands = vi.hoisted(() => ({
   tagsGetSchemaSnapshot: vi.fn(),
   tagsEditSchema: vi.fn(),
   tagsSearchObjects: vi.fn(),
+  tagsGetLinkedHere: vi.fn(),
   tagsGetAllWithCounts: vi.fn(),
   tagsGetNotesByTag: vi.fn(),
   tagsUpdateColor: vi.fn(),
@@ -185,18 +186,25 @@ describe('tags-service', () => {
     await vi.waitFor(() => expect(listeners.has('definitions')).toBe(false))
   })
 
-  it('searches objects through the command, never window.api', async () => {
+  it('searches objects and reads Linked here through the commands, never window.api', async () => {
     api.tags.searchObjects = vi.fn()
+    api.tags.getLinkedHere = vi.fn()
     const matches = { matches: [], complete: true }
     commands.tagsSearchObjects.mockResolvedValue(matches)
     const input = { query: 'ada', tag: 'person', limit: 8 }
     expect(await tagsService.searchObjects(input)).toBe(matches)
     expect(commands.tagsSearchObjects).toHaveBeenCalledWith(input)
-    commands.tagsSearchObjects.mockRejectedValue({ kind: 'Invalid', code: 'x', message: 'bad' })
-    await expect(tagsService.searchObjects({ query: '', limit: 0 })).rejects.toMatchObject({
+
+    const linked = { groups: [{ kind: 'mentions', total: 0, items: [] }] }
+    commands.tagsGetLinkedHere.mockResolvedValue(linked)
+    expect(await tagsService.getLinkedHere({ noteId: 'n1', limitPerGroup: 2 })).toBe(linked)
+    expect(commands.tagsGetLinkedHere).toHaveBeenCalledWith({ noteId: 'n1', limitPerGroup: 2 })
+    commands.tagsGetLinkedHere.mockRejectedValue({ kind: 'Invalid', code: 'x', message: 'bad' })
+    await expect(tagsService.getLinkedHere({ noteId: '' })).rejects.toMatchObject({
       message: 'bad'
     })
     expect(api.tags.searchObjects).not.toHaveBeenCalled()
+    expect(api.tags.getLinkedHere).not.toHaveBeenCalled()
   })
 
   it('pins and unpins through the commands, a failure answering its message', async () => {
