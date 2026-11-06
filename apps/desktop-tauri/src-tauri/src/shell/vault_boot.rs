@@ -6,7 +6,6 @@ use std::sync::mpsc::Receiver;
 use std::sync::{Arc, Mutex, OnceLock, PoisonError};
 
 use memry_desktop::attachments::Uploads;
-use memry_desktop::editor::versions;
 use memry_desktop::editor::{EditorHost, HostEvent};
 use memry_desktop::fold::service::FoldService;
 use memry_desktop::large_file::LargeFiles;
@@ -145,7 +144,7 @@ fn register_vault_watcher(app: &AppHandle<Wry>, session: &Session) {
     );
     index.register(session);
     app.manage(index);
-    register_flushes(app, &tier, session, store.inner().clone());
+    register_flushes(app, &tier, session);
     forward_writeback_failures(app.clone(), tier.subscribe_failures());
     forward_activity_changes(app.clone(), tier.activity().subscribe());
     memry_desktop::templates::legacy::register(session, store.inner().clone(), tier.activity());
@@ -203,15 +202,9 @@ fn register_uploads(app: &AppHandle<Wry>, session: &Session) {
     app.manage(uploads);
 }
 
-/// `flush-writebacks`: no edit scheduled for a note's file waits out the quit.
-/// `flush-activity-log`: the buffered activity entries reach the file.
-/// `close-snapshots`: every note an editor holds keeps its file as a `close` version.
-fn register_flushes(
-    app: &AppHandle<Wry>,
-    tier: &Arc<VaultTier>,
-    session: &Session,
-    store: Arc<DeviceIdentityStore>,
-) {
+/// The vault's quit steps (`VaultTier::quit_steps`): `flush-writebacks`, `flush-activity-log`
+/// and `close-snapshots`.
+fn register_flushes(app: &AppHandle<Wry>, tier: &Arc<VaultTier>, session: &Session) {
     // Managed by the `Handlers` stage, which runs before this one.
     let Some(shutdown) = app.try_state::<ShutdownService>() else {
         tracing::error!(
@@ -220,14 +213,7 @@ fn register_flushes(
         );
         return;
     };
-    for (step, run) in [
-        ("flush-writebacks", tier.flush_step()),
-        ("flush-activity-log", tier.activity().flush_step()),
-        (
-            "close-snapshots",
-            versions::close_step(session.clone(), store),
-        ),
-    ] {
+    for (step, run) in tier.quit_steps(session) {
         if let Err(error) = shutdown.register(step, run) {
             tracing::error!(scope = "vault_writeback", "{error}");
         }

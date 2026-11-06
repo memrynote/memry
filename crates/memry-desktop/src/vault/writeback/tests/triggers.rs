@@ -158,7 +158,8 @@ fn a_replaced_file_the_app_did_not_write_is_kept_as_a_version() {
 }
 
 /// Its own last write is kept too when the body moves by ten words or more (Electron's
-/// `keepVersionBeforeWriteback`), and not for less.
+/// `keepVersionBeforeWriteback`), and not for less; only bytes it did not write count as an
+/// outside text replaced, which the user is told of.
 #[test]
 fn the_apps_own_last_write_is_kept_when_ten_words_move() {
     let mut f = fixture();
@@ -166,6 +167,17 @@ fn the_apps_own_last_write_is_kept_when_ten_words_move() {
     let id = f.adopt("n.md", text);
     f.edit_in_app(&id, "typed in the app");
     let first = f.run(&id);
+    assert!(
+        matches!(
+            first,
+            Outcome::Wrote {
+                version_kept: true,
+                replaced_outside: true,
+                ..
+            }
+        ),
+        "{first:?}"
+    );
     let written = assert_wrote(&mut f, &first, "n.md");
 
     f.edit_in_app(&id, "typed in the app and two more");
@@ -193,6 +205,7 @@ fn the_apps_own_last_write_is_kept_when_ten_words_move() {
             large,
             Outcome::Wrote {
                 version_kept: true,
+                replaced_outside: false,
                 ..
             }
         ),

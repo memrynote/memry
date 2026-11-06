@@ -208,3 +208,66 @@ fn a_close_version_carries_the_title_and_outlives_a_relaunch() {
     assert_eq!(only.created_at.len(), "2026-11-06T10:00:00.000Z".len());
     assert_eq!(contents(&f, &note), [file]);
 }
+
+#[test]
+fn a_text_seen_again_moves_its_version_up_so_it_is_not_the_next_pruned() {
+    let f = fixture();
+    let note = f.note();
+    let conn = sql(&f);
+    let keep = |content: &str, at| {
+        note_snapshots::keep(&conn, version(&note, content, Reason::Significant), at)
+    };
+    keep("A", T0).unwrap();
+    for n in 1..50 {
+        keep(&format!("text {n}"), T0 + n).unwrap();
+    }
+    assert_eq!(keep("A", T0 + 100), Ok(false), "held already");
+    assert_eq!(rows(&f, &note).first().map(String::as_str), Some("A"));
+    keep("one more", T0 + 101).unwrap();
+
+    let kept = rows(&f, &note);
+    assert_eq!(kept.len(), 50);
+    assert!(
+        kept.contains(&"A".to_owned()),
+        "the only copy of A was pruned"
+    );
+    assert!(!kept.contains(&"text 1".to_owned()));
+    // A clock behind never moves it back.
+    keep("A", T0).unwrap();
+    assert_eq!(rows(&f, &note)[1], "A");
+}
+
+#[test]
+fn the_version_just_kept_is_never_pruned_even_when_the_clock_is_behind() {
+    let f = fixture();
+    let note = f.note();
+    let conn = sql(&f);
+    for n in 0..50 {
+        let content = format!("text {n}");
+        note_snapshots::keep(&conn, version(&note, &content, Reason::Significant), T0 + n).unwrap();
+    }
+    let behind = T0 - 24 * 60 * MINUTE;
+    let kept = note_snapshots::keep(&conn, version(&note, "behind", Reason::Close), behind);
+    assert_eq!(kept, Ok(true));
+    let kept = rows(&f, &note);
+    assert_eq!(kept.len(), 50);
+    assert!(
+        kept.contains(&"behind".to_owned()),
+        "the version just kept was pruned"
+    );
+    assert!(!kept.contains(&"text 0".to_owned()) && kept.contains(&"text 1".to_owned()));
+
+    // A restore point too; the one kept before it is now the oldest, and goes.
+    note_snapshots::keep_always(
+        &conn,
+        version(&note, "point", Reason::Significant),
+        behind - 1,
+    )
+    .unwrap();
+    let kept = rows(&f, &note);
+    assert_eq!(kept.len(), 50);
+    assert!(
+        kept.contains(&"point".to_owned()),
+        "the restore point was pruned"
+    );
+}

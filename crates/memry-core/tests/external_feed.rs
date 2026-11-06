@@ -497,9 +497,17 @@ fn a_replaced_body_is_kept_as_a_version_once() {
     assert_eq!(f.feed(&id, "second text"), FeedOutcome::Fed);
     assert_eq!(f.feed(&id, "first text"), FeedOutcome::Fed);
     assert_eq!(f.feed(&id, "second text"), FeedOutcome::Fed);
+    // A body seen again moves its version up (`note_snapshots::keep`): the order is the clock's.
     let kept = versions(&f, &id);
     assert_eq!(kept.len(), 2, "one version per distinct body: {kept:?}");
-    assert!(kept[0].0.contains("first text") && kept[1].0.contains("second text"));
+    assert!(
+        kept.iter()
+            .any(|(content, _)| content.contains("first text"))
+    );
+    assert!(
+        kept.iter()
+            .any(|(content, _)| content.contains("second text"))
+    );
     assert!(kept.iter().all(|(_, reason)| reason == "significant"));
 }
 

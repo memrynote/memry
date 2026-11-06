@@ -31,9 +31,13 @@ const BOM: char = '\u{feff}';
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub enum Outcome {
     /// The file now holds the body. `version_kept` when the replaced file was kept first.
+    /// `replaced_outside` when the write replaced bytes this session did not write (an outside
+    /// edit, a file of an earlier session), which a version holds: the signal to tell the
+    /// user. `version_kept` alone is also true for the app's own write of ten words or more.
     Wrote {
         hash: String,
         version_kept: bool,
+        replaced_outside: bool,
     },
     /// The file already holds the body, byte for byte.
     Unchanged,
@@ -207,7 +211,8 @@ impl Pass {
             return Outcome::Unchanged;
         }
         let hash = content_hash(&output);
-        let version_kept = match self.keep_replaced(note_id, &file.raw, &file.hash, &output) {
+        let kept = self.keep_replaced(note_id, &file.raw, &file.hash, &output);
+        let (version_kept, replaced_outside) = match kept {
             Ok(kept) => kept,
             Err(error) => {
                 return Outcome::Failed(format!(
@@ -247,24 +252,29 @@ impl Pass {
             content_hash: Some(hash.clone()),
             source: ChangeSource::App,
         });
-        Outcome::Wrote { hash, version_kept }
+        Outcome::Wrote {
+            hash,
+            version_kept,
+            replaced_outside,
+        }
     }
 
     /// Keeps the file a write replaces when the write changes bytes the document does not hold
     /// ([`replaces_unheld_bytes`]) and the file is not what this session last wrote for the
     /// note, or, when it is, when the body moves by ten words or more
-    /// ([`note_snapshots::is_significant`], Electron's `keepVersionBeforeWriteback`). `Ok(true)`
-    /// when a version was written. An error stops the write: the replaced file is the only copy
-    /// of those bytes.
+    /// ([`note_snapshots::is_significant`], Electron's `keepVersionBeforeWriteback`). Answers
+    /// whether a version was written, and whether the replaced bytes were not this session's
+    /// (then a version holds them, newly kept or kept before). An error stops the write: the
+    /// replaced file is the only copy of those bytes.
     fn keep_replaced(
         &self,
         note_id: &str,
         raw: &str,
         hash: &str,
         output: &str,
-    ) -> Result<bool, String> {
+    ) -> Result<(bool, bool), String> {
         if !replaces_unheld_bytes(raw, output) {
-            return Ok(false);
+            return Ok((false, false));
         }
         let ours = self
             .last_written
@@ -274,12 +284,10 @@ impl Pass {
             .is_some_and(|last| last == hash);
         let body = split_frontmatter_block(raw).body;
         if ours && !note_snapshots::is_significant(body, split_frontmatter_block(output).body) {
-            return Ok(false);
+            return Ok((false, false));
         }
-        self.vault
-            .write_back()
-            .keep_replaced(note_id, raw, body)
-            .map_err(|error| error.to_string())
+        let kept = self.vault.write_back().keep_replaced(note_id, raw, body);
+        Ok((kept.map_err(|error| error.to_string())?, !ours))
     }
 }
 

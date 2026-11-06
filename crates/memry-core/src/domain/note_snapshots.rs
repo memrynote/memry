@@ -3,10 +3,13 @@
 //!
 //! [`keep`] is the one writer, with Electron's rules (`note-snapshots.ts:26-28`):
 //! - a version whose content this note already holds is not kept twice
-//!   (`snapshotExistsWithHash`);
+//!   (`snapshotExistsWithHash`); the version that holds it is moved up to now instead, so a
+//!   text seen again is not the next one pruned (Electron left it where it was, and pruned the
+//!   only copy of a text that came back);
 //! - an [`Reason::Auto`] or [`Reason::Timer`] version needs 5 minutes since the note's last
 //!   one;
-//! - every kept version prunes the note to its newest 50.
+//! - every kept version prunes the note to its newest 50, never the one just kept (a clock
+//!   behind the note's versions would date it oldest).
 //!
 //! The callers decide when a replaced body is worth a version: bytes the app did not write
 //! (an outside edit, a peer's merge the file never held) always are, and the app's own
@@ -90,19 +93,20 @@ pub struct Kept {
     pub content: String,
 }
 
-/// Keeps `version` unless the note already has one with the same content, or it is an
-/// automatic or timer version less than [`MIN_INTERVAL_MS`] after the note's last one. True
-/// when a row was written.
+/// Keeps `version` unless the note already has one with the same content (which is moved up
+/// to `now_ms` instead, never back), or it is an automatic or timer version less than
+/// [`MIN_INTERVAL_MS`] after the note's last one. True when a row was written.
 pub fn keep(conn: &Connection, version: Version<'_>, now_ms: i64) -> Result<bool, StorageError> {
     let hash = content_hash(version.content);
-    let exists: bool = conn
-        .query_row(
-            "SELECT EXISTS (SELECT 1 FROM note_snapshots WHERE note_id = ?1 AND content_hash = ?2)",
-            params![version.note_id, hash],
-            |row| row.get(0),
+    let now = iso(now_ms)?;
+    let held = conn
+        .execute(
+            "UPDATE note_snapshots SET created_at = MAX(created_at, ?3)
+             WHERE note_id = ?1 AND content_hash = ?2",
+            params![version.note_id, hash, now],
         )
         .map_err(failed)?;
-    if exists {
+    if held > 0 {
         return Ok(false);
     }
     if matches!(version.reason, Reason::Auto | Reason::Timer)
@@ -195,38 +199,43 @@ fn latest_ms(conn: &Connection, note_id: &str) -> Result<Option<i64>, StorageErr
     Ok(latest.as_deref().and_then(instants::to_epoch_ms))
 }
 
-/// Writes the row, then prunes the note to its newest [`MAX_PER_NOTE`] (`pruneOldSnapshots`).
-/// Versions kept in one millisecond order by when they were written.
+fn iso(now_ms: i64) -> Result<String, StorageError> {
+    instants::to_iso8601(now_ms).ok_or_else(|| StorageError::Failed {
+        what: format!("{now_ms} is not a representable instant"),
+    })
+}
+
+/// Writes the row, then prunes the note to its newest [`MAX_PER_NOTE`] (`pruneOldSnapshots`):
+/// the new row and the newest others. Versions kept in one millisecond order by when they were
+/// written.
 fn insert(
     conn: &Connection,
     version: &Version<'_>,
     hash: &str,
     now_ms: i64,
 ) -> Result<(), StorageError> {
-    let created_at = instants::to_iso8601(now_ms).ok_or_else(|| StorageError::Failed {
-        what: format!("{now_ms} is not a representable instant"),
-    })?;
+    let id = crate::domain::inbox::write::mint_id();
     conn.execute(
         "INSERT INTO note_snapshots
            (id, note_id, content, title, word_count, content_hash, reason, created_at)
          VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7, ?8)",
         params![
-            crate::domain::inbox::write::mint_id(),
+            id,
             version.note_id,
             version.content,
             version.title,
             i64::try_from(word_count(version.body)).unwrap_or(i64::MAX),
             hash,
             version.reason.as_str(),
-            created_at,
+            iso(now_ms)?,
         ],
     )
     .map_err(failed)?;
     conn.execute(
-        "DELETE FROM note_snapshots WHERE note_id = ?1 AND id NOT IN (
-           SELECT id FROM note_snapshots WHERE note_id = ?1
-           ORDER BY created_at DESC, rowid DESC LIMIT ?2)",
-        params![version.note_id, MAX_PER_NOTE],
+        "DELETE FROM note_snapshots WHERE note_id = ?1 AND id != ?2 AND id NOT IN (
+           SELECT id FROM note_snapshots WHERE note_id = ?1 AND id != ?2
+           ORDER BY created_at DESC, rowid DESC LIMIT ?3)",
+        params![version.note_id, id, MAX_PER_NOTE - 1],
     )
     .map_err(failed)?;
     Ok(())

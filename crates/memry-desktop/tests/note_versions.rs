@@ -12,6 +12,8 @@ use memry_core::domain::vault_locks::TargetKind;
 use memry_desktop::editor::versions;
 use memry_desktop::notes::error::NotesError;
 use memry_desktop::notes::update::{HeaderTagEditInput, NoteUpdateInput};
+use memry_desktop::shell::shutdown::{ShutdownCore, ShutdownEffects, ShutdownReason, StepFn};
+use memry_desktop::telemetry::crash::ShutdownFailure;
 use memry_desktop::vault::app_edit::Kept;
 
 use crate::notes_link_rewrite::{id_at, opened};
@@ -27,17 +29,29 @@ fn save(id: &str, content: &str) -> NoteUpdateInput {
     }
 }
 
-/// The note's versions as the panel lists them, newest first: `(id, file)`.
+/// The note's versions as the panel lists them, newest first: `(id, file kept)`.
 fn listed(e: &Env, id: &str) -> Vec<(String, String)> {
     let open = e.session.current().unwrap();
     versions::list(&open, id)
         .unwrap()
         .into_iter()
         .map(|view| {
-            let detail = versions::get(&open, &view.id).unwrap().expect("listed");
-            (view.id, detail.file_content)
+            let kept = open
+                .vault
+                .versions()
+                .get(&view.id)
+                .unwrap()
+                .expect("listed");
+            (view.id, kept.content)
         })
         .collect()
+}
+
+/// Keeps `file` as a version of `id`, as an outside edit would.
+fn keep(e: &Env, id: &str, file: &str) -> String {
+    let core = e.core();
+    assert!(core.write_back().keep_replaced(id, file, file).unwrap());
+    listed(e, id)[0].0.clone()
 }
 
 fn files(e: &Env, id: &str) -> Vec<String> {
@@ -114,8 +128,10 @@ fn a_restore_keeps_the_text_typed_but_not_written_to_the_file_yet() {
     );
 }
 
+/// The app's own write, not an outside edit: a rule for outside edits (typing wins over them)
+/// leaves a restore alone.
 #[test]
-fn an_open_editor_hears_the_restore_as_an_outside_edit() {
+fn an_open_editor_hears_the_restore_as_the_apps_own_write() {
     let (e, notes, store) = opened(&[("Plan.md", PLAN)]);
     let open = e.session.current().unwrap();
     let id = id_at(&e, "Plan.md");
@@ -135,7 +151,7 @@ fn an_open_editor_hears_the_restore_as_an_outside_edit() {
 
     let first = listed(&e, &id)[0].0.clone();
     versions::restore(&notes, &open, &first).unwrap();
-    assert_eq!(*heard.lock().unwrap(), [Origin::External.kind()]);
+    assert_eq!(*heard.lock().unwrap(), [Origin::System.kind()]);
 }
 
 #[test]
@@ -199,8 +215,8 @@ fn the_quit_keeps_the_file_of_every_open_note_once() {
         .open(&id, "main")
         .unwrap();
 
-    assert_eq!(versions::keep_close_versions(&open, store.clone()), Ok(1));
-    assert_eq!(versions::keep_close_versions(&open, store), Ok(0));
+    assert_eq!(versions::keep_close_versions(&open), 1);
+    assert_eq!(versions::keep_close_versions(&open), 0);
     let listed = versions::list(&open, &id).unwrap();
     let reasons: Vec<_> = listed.iter().map(|view| view.reason.as_str()).collect();
     assert_eq!(reasons, ["close"]);
@@ -223,4 +239,178 @@ fn a_save_over_the_runs_own_file_keeps_it_when_ten_words_move() {
     let longer = "Second text, two more, then one two three four five six seven eight nine ten\n";
     notes.update(&open, save(&id, longer)).unwrap();
     assert_eq!(files(&e, &id), [own.as_str(), PLAN]);
+}
+
+#[derive(Default)]
+struct Quit {
+    exits: Mutex<Vec<&'static str>>,
+    failures: Mutex<Vec<Option<String>>>,
+}
+
+impl ShutdownEffects for Quit {
+    fn step_started(&self, _: &str) {}
+    fn mark_failure(&self, _: ShutdownFailure, step: Option<&str>) {
+        self.failures.lock().unwrap().push(step.map(str::to_owned));
+    }
+    fn clear_marker(&self) {}
+    fn exit_clean(&self) {
+        self.exits.lock().unwrap().push("exit_clean");
+    }
+    fn terminate(&self) {
+        self.exits.lock().unwrap().push("terminate");
+    }
+}
+
+/// The vault's quit steps as the shell registers them (`VaultTier::quit_steps`), and a
+/// `stop-sync-runtime` that says whether it ran; what the quit came to.
+async fn quit(e: &Env) -> (Arc<Quit>, bool) {
+    let core = Arc::new(ShutdownCore::default());
+    for (name, step) in e.tier.quit_steps(&e.session) {
+        core.registry.register(name, step).unwrap();
+    }
+    let stopped = Arc::new(Mutex::new(false));
+    let stop_sync: StepFn = {
+        let stopped = stopped.clone();
+        Arc::new(move |_, _| {
+            *stopped.lock().unwrap() = true;
+            Box::pin(async { Ok(()) })
+        })
+    };
+    core.registry
+        .register("stop-sync-runtime", stop_sync)
+        .unwrap();
+    let quit = Arc::new(Quit::default());
+    let effects: Arc<dyn ShutdownEffects> = quit.clone();
+    core.run(ShutdownReason::Quit, &effects).await;
+    let stopped = *stopped.lock().unwrap();
+    (quit, stopped)
+}
+
+/// No editor was built this launch (a locked keychain refuses the device identity it reads):
+/// the quit builds none, keeps nothing and goes on to stop sync.
+#[tokio::test(flavor = "multi_thread")]
+async fn the_quit_reads_no_keychain_for_close_versions_and_runs_every_step() {
+    let (e, _notes, _) = opened(&[("Plan.md", PLAN)]);
+    let id = id_at(&e, "Plan.md");
+    let (quit, stopped) = quit(&e).await;
+    assert!(stopped, "stop-sync-runtime never ran");
+    assert_eq!(*quit.exits.lock().unwrap(), ["exit_clean"]);
+    assert_eq!(*quit.failures.lock().unwrap(), Vec::<Option<String>>::new());
+    let open = e.session.current().unwrap();
+    assert!(
+        open.vault.built_editor().is_none(),
+        "the quit built the editor"
+    );
+    assert_eq!(files(&e, &id), Vec::<String>::new());
+}
+
+/// With a note open, the quit's `close-snapshots` keeps it, and the steps behind it run.
+#[tokio::test(flavor = "multi_thread")]
+async fn the_quit_keeps_a_close_version_of_the_open_note() {
+    let (e, _notes, store) = opened(&[("Plan.md", PLAN)]);
+    let id = id_at(&e, "Plan.md");
+    let open = e.session.current().unwrap();
+    open.vault.editor(store).unwrap().open(&id, "main").unwrap();
+    let (quit, stopped) = quit(&e).await;
+    assert!(stopped);
+    assert_eq!(*quit.exits.lock().unwrap(), ["exit_clean"]);
+    assert_eq!(files(&e, &id), [PLAN]);
+}
+
+/// The version says what the file says, and the document is ahead of both (typed, not
+/// written): the restore still puts the version's body in the document, and keeps the typed
+/// text.
+#[test]
+fn a_restore_of_the_files_own_text_still_reaches_a_document_that_is_ahead() {
+    let (e, notes, store) = opened(&[("Plan.md", PLAN)]);
+    let open = e.session.current().unwrap();
+    let id = id_at(&e, "Plan.md");
+    notes.update(&open, save(&id, "Second text\n")).unwrap();
+    let current = keep(&e, &id, &e.read("Plan.md"));
+    e.edit_in_app(&store, &id, "Typed, not written");
+
+    versions::restore(&notes, &open, &current).unwrap();
+    assert_eq!(e.body(&id), "Second text");
+    assert_eq!(e.read("Plan.md"), "---\nstatus: open\n---\nSecond text\n");
+    let kept = files(&e, &id);
+    assert!(
+        kept.iter().any(|file| file.contains("Typed, not written")),
+        "the typed text was lost: {kept:?}"
+    );
+}
+
+/// A version whose file began with a byte order mark and had no frontmatter: the mark stays out
+/// of the restored body and of the preview.
+#[test]
+fn a_restore_leaves_a_versions_byte_order_mark_out_of_the_body() {
+    let (e, notes, _) = opened(&[("Plan.md", PLAN)]);
+    let open = e.session.current().unwrap();
+    let id = id_at(&e, "Plan.md");
+    let old = keep(&e, &id, "\u{feff}Old body\n");
+
+    assert_eq!(
+        versions::get(&open, &old).unwrap().map(|v| v.file_content),
+        Some("Old body\n".to_owned()),
+        "the preview is the body a restore writes"
+    );
+    versions::restore(&notes, &open, &old).unwrap();
+    assert_eq!(e.read("Plan.md"), "---\nstatus: open\n---\nOld body\n");
+}
+
+/// The preview is the body a restore writes, not the version's old frontmatter.
+#[test]
+fn the_preview_shows_the_body_a_restore_writes() {
+    let (e, _notes, _) = opened(&[("Plan.md", PLAN)]);
+    let open = e.session.current().unwrap();
+    let id = id_at(&e, "Plan.md");
+    let old = keep(&e, &id, "---\nstatus: closed\n---\nOld body\n");
+    let detail = versions::get(&open, &old).unwrap().expect("kept");
+    assert_eq!(detail.file_content, "Old body\n");
+}
+
+/// Restoring the oldest of fifty versions keeps the text it replaced; the restored version's
+/// row is the one pruned, its text now in the note.
+#[test]
+fn restoring_the_oldest_of_fifty_versions_keeps_what_it_replaced() {
+    let (e, notes, _) = opened(&[("Plan.md", PLAN)]);
+    let open = e.session.current().unwrap();
+    let id = id_at(&e, "Plan.md");
+    let oldest = keep(&e, &id, "Oldest body\n");
+    for n in 1..50 {
+        std::thread::sleep(std::time::Duration::from_millis(2));
+        keep(&e, &id, &format!("Body {n}\n"));
+    }
+    assert_eq!(listed(&e, &id).len(), 50);
+
+    versions::restore(&notes, &open, &oldest).unwrap();
+    assert_eq!(e.read("Plan.md"), "---\nstatus: open\n---\nOldest body\n");
+    let kept = files(&e, &id);
+    assert_eq!(kept.len(), 50);
+    assert_eq!(kept[0], PLAN, "the replaced text is the newest version");
+}
+
+/// Only a markdown note's file is kept at quit.
+#[test]
+fn the_quit_keeps_no_close_version_of_a_file_that_is_not_markdown() {
+    let (e, _notes, store) = opened(&[("Plan.md", PLAN)]);
+    let open = e.session.current().unwrap();
+    let id = id_at(&e, "Plan.md");
+    open.vault.editor(store).unwrap().open(&id, "main").unwrap();
+    let row = open.vault.note_files().by_id(&id).unwrap().unwrap();
+    open.vault
+        .note_files()
+        .upsert_stat(memry_core::domain::note_files::NoteFileStat {
+            note_id: id.clone(),
+            path: row.path,
+            file_type: "pdf".to_owned(),
+            mime_type: None,
+            file_size: row.file_size,
+            content_hash: row.content_hash,
+            file_hash: row.file_hash,
+            indexed_at: 1,
+        })
+        .unwrap();
+
+    assert_eq!(versions::keep_close_versions(&open), 0);
+    assert_eq!(files(&e, &id), Vec::<String>::new());
 }

@@ -22,7 +22,6 @@ use std::sync::Arc;
 use memry_core::api::errors::StorageError;
 use memry_core::domain::note_snapshots::{Kept, Listed};
 use memry_core::markdown::frontmatter::split_frontmatter_block;
-use memry_core::seams::secure_store::SecureStore;
 use serde::Serialize;
 
 use crate::notes::error::NotesError;
@@ -52,7 +51,9 @@ pub struct VersionView {
     pub created_at: String,
 }
 
-/// `SnapshotDetail`: the version and the file it restores to.
+/// `SnapshotDetail`: the version and what a restore puts in the note, which the panel previews:
+/// the version's body ([`restore_body`]). Electron sent the whole file, whose frontmatter its
+/// restore wrote too; this restore keeps the note's.
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, specta::Type)]
 #[serde(rename_all = "camelCase")]
 pub struct VersionDetailView {
@@ -95,7 +96,7 @@ impl From<Kept> for VersionDetailView {
             word_count,
             reason,
             created_at,
-            file_content: kept.content,
+            file_content: restore_body(&kept.content).to_owned(),
         }
     }
 }
@@ -133,7 +134,7 @@ pub fn restore(notes: &NotesService, open: &OpenVault, id: &str) -> Result<Resto
         .get(id)?
         .ok_or_else(|| NotesError::NotFound(id.to_owned()))?;
     let note_id = version.listed.note_id.as_str();
-    let body = split_frontmatter_block(&version.content).body;
+    let body = restore_body(&version.content);
     let read_body = RefCell::new(String::new());
     let edited = notes.order.run(note_id, |turn| {
         notes.save_edit(open)?.run(
@@ -157,29 +158,45 @@ pub fn restore(notes: &NotesService, open: &OpenVault, id: &str) -> Result<Resto
     })
 }
 
-/// The `close-snapshots` quit step: [`keep_close_versions`] for the open vault.
-pub fn close_step(session: Session, store: Arc<dyn SecureStore>) -> StepFn {
-    Arc::new(move |_, _| {
-        let (session, store) = (session.clone(), store.clone());
+/// What a restore of a version whose file is `content` puts in the note: its body, without the
+/// frontmatter block and the byte order mark, which the note's file keeps as they are.
+pub fn restore_body(content: &str) -> &str {
+    split_frontmatter_block(content.strip_prefix('\u{feff}').unwrap_or(content)).body
+}
+
+/// The `close-snapshots` quit step: [`keep_close_versions`] for the open vault, within what is
+/// left of the quit. Best effort, as Electron's `createCloseSnapshots`: a failure or a timeout
+/// is logged and the step succeeds, since a failed step ends the sequence before the steps
+/// behind it (the sync runtime's stop and final push).
+pub fn close_step(session: Session) -> StepFn {
+    Arc::new(move |_, deadline| {
+        let session = session.clone();
         Box::pin(async move {
-            tokio::task::spawn_blocking(move || match session.current() {
-                Some(open) => keep_close_versions(&open, store).map(drop),
-                None => Ok(()),
-            })
-            .await
-            .map_err(|error| error.to_string())?
+            let keep = tokio::task::spawn_blocking(move || {
+                session
+                    .current()
+                    .map_or(0, |open| keep_close_versions(&open))
+            });
+            match tokio::time::timeout(deadline.remaining(), keep).await {
+                Ok(Ok(_)) => {}
+                Ok(Err(error)) => {
+                    tracing::error!(scope = SCOPE, "the close versions failed: {error}");
+                }
+                Err(_) => tracing::warn!(scope = SCOPE, "the close versions ran out of time"),
+            }
+            Ok(())
         })
     })
 }
 
-/// Keeps the file of every note an editor holds as a `close` version. A note that fails is
-/// logged by id and the rest still run. The number kept, or why the editor could not be
-/// asked.
-pub fn keep_close_versions(open: &OpenVault, store: Arc<dyn SecureStore>) -> Result<usize, String> {
-    let editor = open
-        .vault
-        .editor(store)
-        .map_err(|error| error.to_string())?;
+/// Keeps the file of every note an editor holds as a `close` version; the number kept. The
+/// editor is never built here (that reads the device identity, which a locked keychain
+/// refuses): with none built, no note is open. A note that fails is logged by id and the
+/// rest still run.
+pub fn keep_close_versions(open: &OpenVault) -> usize {
+    let Some(editor) = open.vault.built_editor() else {
+        return 0;
+    };
     let mut kept = 0;
     for note_id in editor.open_note_ids() {
         match keep_close(open, &note_id) {
@@ -193,7 +210,7 @@ pub fn keep_close_versions(open: &OpenVault, store: Arc<dyn SecureStore>) -> Res
     if kept > 0 {
         tracing::info!(scope = SCOPE, kept, "close versions kept");
     }
-    Ok(kept)
+    kept
 }
 
 fn keep_close(open: &OpenVault, note_id: &str) -> Result<bool, String> {

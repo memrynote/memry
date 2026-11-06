@@ -2400,7 +2400,11 @@ export type VaultStatus = {
  */
 export type VaultStatusChangedEvent = VaultStatus;
 
-/**  `SnapshotDetail`: the version and the file it restores to. */
+/**
+ *  `SnapshotDetail`: the version and what a restore puts in the note, which the panel previews:
+ *  the version's body ([`restore_body`]). Electron sent the whole file, whose frontmatter its
+ *  restore wrote too; this restore keeps the note's.
+ */
 export type VersionDetailView = {
 	id: string,
 	noteId: string,

@@ -44,7 +44,9 @@
 //! - [`Precondition::Restore`]: [`Precondition::Save`] of a restored version
 //!   (`notes:restore-version`): the file it replaces is always kept, as the note's newest
 //!   version (`WriteBackReader::keep_restore_point`), and the feed keeps the document's body
-//!   when it is ahead of the file, so the text the user had is a version to go back to.
+//!   when it is ahead of the file, so the text the user had is a version to go back to. The
+//!   body is fed even when the file already says it (the document may be ahead), and the
+//!   windows hear it as the app's own write (`ExternalFeed::feed_restore`), not an outside edit.
 //!
 //! A frontmatter that does not parse, in the file or in the edit's text, is kept as it is
 //! (#3750). The caller's closure gets the file's text without a byte order mark and returns the
@@ -336,7 +338,10 @@ impl AppEdit {
             true => format!("{BOM}{}", bare(&next)),
             false => bare(&next).to_owned(),
         });
-        let Some(text) = text.filter(|text| *text != file.raw) else {
+        // A restore feeds its body even when the file says it already: the document can be
+        // ahead of the file (typing the write-back has not written), and must take it.
+        let restore = matches!(precondition, Precondition::Restore(_));
+        let Some(text) = text.filter(|text| restore || *text != file.raw) else {
             if let Some(own) = own {
                 own.carried(note_id, &file.hash, &file.hash);
             }
@@ -358,7 +363,7 @@ impl AppEdit {
         // ahead of its file keeps its text, and loses nothing a version would hold.
         let next_body = split_frontmatter_block(next).body;
         let body_changed = next_body != read_body;
-        let body_moved = own.is_none() || body_changed;
+        let body_moved = own.is_none() || body_changed || restore;
         let keeps = match precondition {
             Precondition::Held | Precondition::HeldAt(_) => false,
             Precondition::Replace | Precondition::Restore(_) => body_changed,
@@ -381,7 +386,13 @@ impl AppEdit {
         }
         let takes = match body_moved {
             true => {
-                match self.feed_text(note_id, &row.path, next, &edited.frontmatter, read_body) {
+                let fed = self.feed_text(
+                    note_id,
+                    &row.path,
+                    (next, &edited.frontmatter, read_body),
+                    restore,
+                );
+                match fed {
                     Ok(takes) => takes,
                     Err(kept) => return Ok(Edited::Kept(kept)),
                 }
@@ -505,13 +516,14 @@ impl AppEdit {
 
     /// Feeds the new text's body over `read`, the body read: whether the document now holds
     /// it, or why the file is kept (no such note, or a lock taken since the read).
+    /// `restore`: the windows hear it as the app's own write, not as an outside edit
+    /// ([`ExternalFeed::feed_restore`]).
     fn feed_text(
         &self,
         note_id: &str,
         path: &str,
-        text: &str,
-        frontmatter: &YamlValue,
-        read: &str,
+        (text, frontmatter, read): (&str, &YamlValue, &str),
+        restore: bool,
     ) -> Result<bool, Kept> {
         let split = split_frontmatter_block(text);
         let embeds = Resolved::of_markdown(&self.root, &self.vault.note_files(), split.body, path);
@@ -528,6 +540,7 @@ impl AppEdit {
                 doc_id: note_id.to_owned(),
                 what: "test fault".to_owned(),
             }),
+            false if restore => self.feed.feed_restore(&self.converter, input, read),
             false => self.feed.feed_app_edit(&self.converter, input, read),
         };
         match fed {

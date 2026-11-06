@@ -13,6 +13,7 @@ use super::apply::Applier;
 use super::identity::{DeferIdentity, IdentityCtx, NoteIdentity};
 use super::rows::{RowOwner, RowSession};
 use super::{AfterWalk, Applied, Consumer, QUEUE_CAPACITY, inbox};
+use crate::editor::versions::close_step;
 use crate::session::{OpenStage, OpenVault, Session};
 use crate::shell::shutdown::{StepFn, writeback_flush_timeout};
 use crate::vault::activity::ActivityLog;
@@ -192,6 +193,17 @@ impl VaultTier {
     pub fn flush(&self, timeout: Duration) -> bool {
         self.current()
             .is_none_or(|open| open.writeback.flush(timeout))
+    }
+
+    /// The quit steps of the vault the shell registers, by step name: `flush-writebacks`
+    /// ([`Self::flush_step`]), `flush-activity-log` and `close-snapshots`
+    /// (`editor::versions::close_step`).
+    pub fn quit_steps(self: &Arc<Self>, session: &Session) -> [(&'static str, StepFn); 3] {
+        [
+            ("flush-writebacks", self.flush_step()),
+            ("flush-activity-log", self.activity().flush_step()),
+            ("close-snapshots", close_step(session.clone())),
+        ]
     }
 
     /// The `flush-writebacks` shutdown step: the scheduled write-backs run within
