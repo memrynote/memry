@@ -26,6 +26,7 @@ use memry_core::api::vault::Vault;
 use memry_core::seams::secure_store::SecureStore;
 
 use super::compaction::{COMPACT_EVERY, compact_due};
+use super::typing::Barriers;
 use super::{Deliver, EditorHostError, Subscriber, frame};
 use crate::session::projection::CancelToken;
 use crate::session::{OpenStage, OpenVault, Session, canonical, lock};
@@ -34,13 +35,17 @@ use crate::session::{OpenStage, OpenVault, Session, canonical, lock};
 const SWEEP_EVERY: Duration = Duration::from_secs(15);
 const SWEEP_TICK: Duration = Duration::from_millis(100);
 
-/// The editor's lifecycle, for the windows (`crdt:provider-reset`, `crdt:provider-ready`).
+/// The editor's lifecycle, for the windows (`crdt:provider-reset`, `crdt:provider-ready`), and
+/// the window edits the note file must follow.
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub enum HostEvent {
     /// The vault closed: every window's binding is dead. Windows wait for `Ready` to reopen.
     Reset,
     /// The vault at `vault_path` serves `open` again.
     Ready { vault_path: String },
+    /// A window's edit of `note_id` is stored: its file is written from the body once the note
+    /// is quiet (`VaultTier::schedule`, Electron's `scheduleWriteback` for an IPC origin).
+    Edited { note_id: String },
 }
 
 /// `crdt:get-health`.
@@ -78,6 +83,7 @@ pub struct EditorHost {
     store: Arc<dyn SecureStore>,
     notify: Box<dyn Fn(HostEvent) + Send + Sync>,
     served: Mutex<Option<Served>>,
+    pub(super) barriers: Barriers,
 }
 
 impl EditorHost {
@@ -89,6 +95,7 @@ impl EditorHost {
             store,
             notify: Box::new(notify),
             served: Mutex::new(None),
+            barriers: Barriers::default(),
         })
     }
 
@@ -206,7 +213,15 @@ impl EditorHost {
     ) -> Result<(), EditorHostError> {
         let live = self.live()?;
         live.require_open(note_id, window_label)?;
-        live.editor.apply_update(note_id, update, window_label)?;
+        if live
+            .editor
+            .apply_update(note_id, update, window_label)?
+            .is_some()
+        {
+            (self.notify)(HostEvent::Edited {
+                note_id: note_id.to_owned(),
+            });
+        }
         Ok(())
     }
 
@@ -276,6 +291,17 @@ impl EditorHost {
             path: served.path,
             docs: served.docs,
         })
+    }
+
+    /// The windows that have `note_id` open in the vault served now.
+    pub(super) fn subscribers(&self, note_id: &str) -> Vec<Subscriber> {
+        let Some(docs) = lock(&self.served).as_ref().map(|s| Arc::clone(&s.docs)) else {
+            return Vec::new();
+        };
+        lock(&docs)
+            .get(note_id)
+            .map(|doc| doc.subscribers.clone())
+            .unwrap_or_default()
     }
 
     fn serves(&self, view: &OpenVault) -> bool {

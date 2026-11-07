@@ -25,6 +25,7 @@ pub fn builder() -> Builder<Wry> {
             // crdt (`crdt_open_doc`, `crdt_apply_update` and the sync steps are binary commands)
             crate::commands::editor::crdt_close_doc::<Wry>,
             crate::commands::editor::crdt_get_health::<Wry>,
+            crate::commands::editor::crdt_typing_sent::<Wry>,
             // custom icons (`custom_icons_add` is a binary command)
             crate::commands::custom_icons::custom_icons_add_from_url,
             crate::commands::custom_icons::custom_icons_delete,
@@ -281,6 +282,7 @@ pub fn builder() -> Builder<Wry> {
             crate::events::NoteEventsDroppedEvent,
             crate::events::NoteLinksChangedEvent,
             crate::events::NoteMovedEvent,
+            crate::events::NoteOutsideEditKeptEvent,
             crate::events::NoteRenamedEvent,
             crate::events::NoteTagsChangedEvent,
             crate::events::NoteUpdatedEvent,

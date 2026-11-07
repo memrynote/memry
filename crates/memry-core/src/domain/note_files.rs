@@ -40,10 +40,12 @@ use crate::api::errors::StorageError;
 
 mod behind;
 mod large;
+mod marks;
 
 use behind::body_moved_after_stamp;
 pub use behind::{behind_bodies, behind_body};
 pub use large::{is_large_file, set_large_file};
+pub use marks::{StampMark, stamped_mark};
 
 const COLUMNS: &str = "f.note_id, f.path, f.file_type, f.mime_type, f.file_size, f.content_hash,
      f.local_only, f.indexed_at, h.file_hash";
@@ -165,6 +167,15 @@ pub fn by_id(conn: &Connection, note_id: &str) -> Result<Option<NoteFile>, Stora
 /// keeping `local_only`, all in one transaction or none. A path another note holds is
 /// refused: it is never taken over silently.
 pub fn upsert_stats(conn: &mut Connection, stats: &[NoteFileStat]) -> Result<(), StorageError> {
+    upsert_stats_as(conn, stats, StampMark::Now)
+}
+
+/// [`upsert_stats`] with the mark each row's stamp records ([`StampMark`]).
+pub fn upsert_stats_as(
+    conn: &mut Connection,
+    stats: &[NoteFileStat],
+    mark: StampMark,
+) -> Result<(), StorageError> {
     let tx = conn.transaction().map_err(failed)?;
     for stat in stats {
         check_path(&stat.path)?;
@@ -188,6 +199,7 @@ pub fn upsert_stats(conn: &mut Connection, stats: &[NoteFileStat]) -> Result<(),
         )
         .map_err(path_taken(&stat.path))?;
         write_file_hash(&tx, &stat.note_id, stat.file_hash.as_deref())?;
+        marks::write(&tx, &stat.note_id, stat.indexed_at, mark)?;
     }
     tx.commit().map_err(failed)
 }
@@ -279,6 +291,16 @@ pub fn refresh_stat(conn: &Connection, stat: &NoteFileStat) -> Result<(), Storag
         .map_err(path_taken(&stat.path))?;
     if changed == 0 {
         return Err(not_found(&stat.note_id));
+    }
+    let stamp: i64 = tx
+        .query_row(
+            "SELECT indexed_at FROM note_files WHERE note_id = ?1",
+            params![stat.note_id],
+            |row| row.get(0),
+        )
+        .map_err(failed)?;
+    if stamp == stat.indexed_at {
+        marks::write(&tx, &stat.note_id, stamp, StampMark::Now)?;
     }
     write_file_hash(&tx, &stat.note_id, stat.file_hash.as_deref())?;
     crate::domain::owed_file_body::clear(&tx, &stat.note_id)?;
@@ -407,6 +429,7 @@ pub(crate) fn remove_in(tx: &Connection, note_id: &str) -> Result<bool, StorageE
     crate::domain::properties::forget_file_baseline(tx, note_id)?;
     write_file_hash(tx, note_id, None)?;
     set_large_file(tx, note_id, false)?;
+    marks::forget(tx, note_id)?;
     let owed = "DELETE FROM note_place_owed WHERE note_id = ?1";
     tx.execute(owed, params![note_id]).map_err(failed)?;
     Ok(removed)

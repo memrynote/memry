@@ -68,6 +68,23 @@ pub fn e2e_windows<R: Runtime>(app: AppHandle<R>) -> Result<Vec<E2eWindow>, Comm
     Ok(windows)
 }
 
+/// Opens a second app window, `e2e-<n>` with the lowest `n` no open window has, on the app's page,
+/// and answers its label: the WebDriver window handle the spec switches to. Electron's
+/// `createSecondaryWindowForE2E`.
+#[tauri::command]
+pub async fn e2e_create_secondary_window(
+    app: AppHandle<tauri::Wry>,
+) -> Result<String, CommandError> {
+    use crate::windows::registry::WindowKind;
+    let windows = app.webview_windows();
+    let label = (1..)
+        .map(|n| WindowKind::TestSecondary.label(n))
+        .find(|label| !windows.contains_key(label))
+        .ok_or_else(|| failure("no free e2e window label"))?;
+    crate::windows::main_window::create_test_secondary(&app, &label).map_err(failure)?;
+    Ok(label)
+}
+
 /// Restores the window, then moves it and sets its inner size, both in logical pixels, on the
 /// main thread.
 #[tauri::command]

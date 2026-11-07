@@ -92,6 +92,7 @@ use crate::crdt::markdown_seed::body_is_empty;
 use crate::crdt::registry::{DocumentRegistry, UpdateSink, client_id_from_device_id};
 use crate::domain::body_write::{append_in, refuse_locked};
 use crate::domain::notes::journal_day::body_owner;
+use crate::domain::write_back::{LogMark, body_mark};
 use crate::domain::{note_snapshots, owed_file_body};
 use crate::markdown::convert::EmbedResolver;
 use crate::markdown::convert::api::{Converter, ReplaceOptions};
@@ -125,6 +126,10 @@ pub enum FeedOutcome {
     /// The document's body already serializes to this markdown: nothing was
     /// written, and the file counts as read.
     Unchanged,
+    /// The document took an edit after the caller compared it ([`AppRead::compared_at`],
+    /// [`feed_external_edit_since`]), from a writer outside the caller's turn (an editor window's
+    /// typing). Nothing was written and nothing is owed: the document is ahead of its file.
+    Changed,
     /// Nothing was written, and the note now owes its file body: the file holds
     /// an edit the document did not take. The caller logs it with the note id and
     /// the reason, and does not treat the file as read.
@@ -164,6 +169,18 @@ pub struct FeedInput<'a> {
     pub embeds: Option<&'a dyn EmbedResolver>,
 }
 
+/// What the app read before its own write ([`feed_app_edit`]).
+#[derive(Clone, Copy)]
+pub struct AppRead<'a> {
+    /// The file's body before the write. A leading byte-order mark is dropped, as
+    /// `FeedInput::markdown`'s is.
+    pub file_body: &'a str,
+    /// How far the document had come when the caller compared it with the file
+    /// ([`super::write_back::body_mark`]), when it did: the replace happens only while the
+    /// document has taken no edit since.
+    pub compared_at: Option<LogMark>,
+}
+
 /// Replaces the body of the note with the file's text.
 pub fn feed_external_edit(
     conn: &Connection,
@@ -178,35 +195,60 @@ pub fn feed_external_edit(
         input,
         device_id,
         now_ms,
-        Write::Replace { read: None },
+        Write::Replace {
+            read: None,
+            compared_at: None,
+        },
     )
 }
 
+/// [`feed_external_edit`] after the caller found the document's body not ahead of its file at
+/// `compared_at` ([`super::write_back::body_mark`]): a document that took an edit since is left
+/// as it is ([`FeedOutcome::Changed`]), so typing stored meanwhile is never replaced.
+pub fn feed_external_edit_since(
+    conn: &Connection,
+    converter: &Converter,
+    input: FeedInput<'_>,
+    compared_at: LogMark,
+    device_id: &str,
+    now_ms: i64,
+) -> Result<FeedOutcome, CrdtError> {
+    let write = Write::Replace {
+        read: None,
+        compared_at: Some(compared_at),
+    };
+    author(conn, converter, input, device_id, now_ms, write)
+}
+
 /// The app's own edit of a note's file: the body the app wrote (`input.markdown`) replaces the
-/// note's, as [`feed_external_edit`] does, after the app read `read`, the file's body before its
-/// write. A replaced body is kept as a version only when it is not the text the app read: it
-/// then holds what the file did not (a peer's edit merged after the file was last written).
-/// The body the app read is the note as the user saw it, so an editor save keeps no version of
-/// its own previous save (desktop's note command feeds a save with none). A leading byte-order
-/// mark of `read` is dropped, as `input.markdown`'s is. A locked note refuses it
-/// ([`CrdtError::Locked`]) before anything is read or written.
+/// note's, as [`feed_external_edit`] does, after the app read `read.file_body`, the file's body
+/// before its write. A replaced body is kept as a version only when it is not the text the app
+/// read: it then holds what the file did not (a peer's edit merged after the file was last
+/// written). The body the app read is the note as the user saw it, so an editor save keeps no
+/// version of its own previous save (desktop's note command feeds a save with none). With
+/// `read.compared_at`, a document that took an edit since is left as it is
+/// ([`FeedOutcome::Changed`]). A locked note refuses it ([`CrdtError::Locked`]) before anything
+/// is read or written.
 pub fn feed_app_edit(
     conn: &Connection,
     converter: &Converter,
     input: FeedInput<'_>,
-    read: &str,
+    read: AppRead<'_>,
     device_id: &str,
     now_ms: i64,
 ) -> Result<FeedOutcome, CrdtError> {
     refuse_locked(conn, input.note_id)?;
-    let read = read.strip_prefix('\u{feff}').unwrap_or(read);
+    let file_body = read.file_body;
     author(
         conn,
         converter,
         input,
         device_id,
         now_ms,
-        Write::Replace { read: Some(read) },
+        Write::Replace {
+            read: Some(file_body.strip_prefix('\u{feff}').unwrap_or(file_body)),
+            compared_at: read.compared_at,
+        },
     )
 }
 
@@ -233,8 +275,10 @@ pub fn seed_body_if_empty(
 #[derive(Clone, Copy, PartialEq, Eq)]
 enum Write<'r> {
     /// `read`: the file body the app read before its own write, which needs no version.
+    /// `compared_at`: how far the document had come when the app compared it.
     Replace {
         read: Option<&'r str>,
+        compared_at: Option<LogMark>,
     },
     SeedIfEmpty,
 }
@@ -268,6 +312,15 @@ fn author(
     }
 
     let tx = conn.unchecked_transaction().map_err(storage_failed)?;
+    // Under the writer: no edit lands between this read and the feed's commit.
+    if let Write::Replace {
+        compared_at: Some(compared_at),
+        ..
+    } = write
+        && body_mark(&tx, note_id)? != compared_at
+    {
+        return Ok(FeedOutcome::Changed);
+    }
     if body_debt::is_owed(&tx, note_id)? {
         owed_file_body::record(&tx, note_id, now_ms)?;
         tx.commit().map_err(storage_failed)?;
@@ -338,7 +391,7 @@ fn author(
         return too_large(tx, note_id, now_ms);
     }
     let read = match write {
-        Write::Replace { read } => read,
+        Write::Replace { read, .. } => read,
         Write::SeedIfEmpty => None,
     };
     if let Some(previous) =
@@ -530,35 +583,4 @@ fn storage_failed(error: rusqlite::Error) -> CrdtError {
 }
 
 #[cfg(test)]
-mod tests {
-    use super::*;
-
-    #[test]
-    fn a_version_block_says_the_writing_data_of_its_body_and_keeps_its_byte_order_mark() {
-        let block =
-            "\u{feff}---\ntitle: t\nwriting: {alternatives: {k3x9q2: {versions: [two]}}}\n---\n";
-        let rewritten = with_writing(Some(block), &WritingFrontmatter::default()).unwrap();
-        assert_eq!(rewritten, "\u{feff}---\ntitle: t\n---\n");
-        assert_eq!(
-            with_writing(Some("---\ntitle: t\n---\n"), &WritingFrontmatter::default()).as_deref(),
-            Some("---\ntitle: t\n---\n")
-        );
-        assert_eq!(with_writing(None, &WritingFrontmatter::default()), None);
-    }
-
-    #[test]
-    fn the_cap_is_on_the_packed_length_not_the_raw_one() {
-        // Repetitive: 6 MiB raw packs far below the cap. Incompressible: 5 MiB raw packs above it.
-        assert!(rides_as_one_update(&vec![b'a'; 6 * 1024 * 1024]));
-        let mut state = 0x2545_F491_4F6C_DD1Du64;
-        let noise: Vec<u8> = (0..MAX_UPDATE_BYTES)
-            .map(|_| {
-                state ^= state << 13;
-                state ^= state >> 7;
-                state ^= state << 17;
-                state.to_le_bytes()[0]
-            })
-            .collect();
-        assert!(!rides_as_one_update(&noise));
-    }
-}
+mod tests;

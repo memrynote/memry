@@ -10,6 +10,11 @@ export const commands = {
 	crdtCloseDoc: (noteId: string) => __TAURI_INVOKE<null>("crdt_close_doc", { noteId }),
 	crdtGetHealth: () => __TAURI_INVOKE<CrdtHealth>("crdt_get_health"),
 	/**
+	 *  The calling window sent its typing for the typing barrier `barrier` and holds new typing
+	 *  until the barrier's release frame (`memry_desktop::editor::BARRIER`).
+	 */
+	crdtTypingSent: (barrier: number) => __TAURI_INVOKE<null>("crdt_typing_sent", { barrier }),
+	/**
 	 *  Downloads the image behind `url` once and adds it like an upload, named `name` or after the
 	 *  link.
 	 */
@@ -515,6 +520,7 @@ export const events = {
 	noteEventsDroppedEvent: makeEvent<NoteEventsDroppedEvent, NoteEventsDroppedEvent>("note-events-dropped-event"),
 	noteLinksChangedEvent: makeEvent<NoteLinksChangedEvent, NoteLinksChangedEvent>("note-links-changed-event"),
 	noteMovedEvent: makeEvent<NoteMovedEvent, NoteMovedEvent>("note-moved-event"),
+	noteOutsideEditKeptEvent: makeEvent<NoteOutsideEditKeptEvent, NoteOutsideEditKeptEvent>("note-outside-edit-kept-event"),
 	noteRenamedEvent: makeEvent<NoteRenamedEvent, NoteRenamedEvent>("note-renamed-event"),
 	noteTagsChangedEvent: makeEvent<NoteTagsChangedEvent, NoteTagsChangedEvent>("note-tags-changed-event"),
 	noteUpdatedEvent: makeEvent<NoteUpdatedEvent, NoteUpdatedEvent>("note-updated-event"),
@@ -1528,6 +1534,16 @@ export type NoteMovedEvent = {
 	id: string,
 	oldPath: string,
 	newPath: string,
+};
+
+/**
+ *  An outside edit of the note's file met typing the file did not have yet, and the typing won
+ *  (`notes:outside-edit-kept`, #4030): the outside text is kept as a version, and the write-back
+ *  writes the typing over it. No Electron channel: Electron's editor held the outside edit
+ *  itself.
+ */
+export type NoteOutsideEditKeptEvent = {
+	id: string,
 };
 
 /**

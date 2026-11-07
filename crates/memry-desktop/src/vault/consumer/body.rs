@@ -2,12 +2,18 @@
 //! with, and what that came to. Split from `apply`, whose invariants it keeps.
 
 use memry_core::domain::external_feed::{FeedInput, FeedOutcome};
+use memry_core::domain::note_files::StampMark;
+use memry_core::domain::write_back::LogMark;
 use memry_core::markdown::shared::writing_tools::{WritingFrontmatter, writing_of_yaml};
 
-use super::apply::Applier;
-use super::converter_for;
+use super::apply::{Applier, Step};
+use super::rows::{Lane, RowStat};
+use super::{Applied, ChangeSource, converter_for};
 use crate::vault::embeds::Resolved;
+use crate::vault::file_types::FileType;
+use crate::vault::hash::content_hash;
 use crate::vault::note_file::NoteFile;
+use crate::vault::writeback::output_over;
 
 const SCOPE: &str = "vault_consumer";
 
@@ -45,10 +51,111 @@ pub(super) enum Body {
 #[derive(Clone, Copy)]
 pub(super) enum Write {
     Seed,
-    Replace,
+    /// Unless the document took an edit after the mark, which the fact is retried for.
+    Replace(LogMark),
 }
 
 impl Applier {
+    /// An outside edit of the note's file, which replaced the file the row named
+    /// (`previous`, the row stamped `stamp`). A body ahead of that file (typing, or a merge, the
+    /// write-back has not written yet) wins over it, as unsaved typing does in the editor
+    /// (#4030): the record takes what the file's frontmatter says, the file is kept as a
+    /// version, the row names it as the file the body goes over, with its stamp kept so the
+    /// body stays ahead for the next open's reconcile too, and the write-back writes the body
+    /// over it. The file is recorded as the outside edit read ([`OwnFiles::read_outside`]), so
+    /// that write tells the page (`Outcome::Wrote::replaced_outside`). Otherwise the file is fed:
+    /// `Ok` with the mark the feed must still find. Bytes the app wrote are no outside edit, and
+    /// are fed.
+    pub(super) fn outside_edit(
+        &self,
+        lane: &mut Lane<'_>,
+        (note_id, source): (&str, ChangeSource),
+        path: &str,
+        (previous, stamp): (&str, i64),
+        file: &NoteFile,
+    ) -> Result<LogMark, Step> {
+        let retry = |what: &str, error: &dyn std::fmt::Display| {
+            tracing::error!(scope = SCOPE, note_id, "an outside edit {what}: {error}");
+            Step::Retry(path.to_owned())
+        };
+        // Before the body is compared: an edit stored after it makes the feed refuse.
+        let mark = self
+            .vault
+            .write_back()
+            .body_mark(note_id)
+            .map_err(|error| retry("met no mark of the body", &error))?;
+        let ahead = self
+            .vault
+            .note_files()
+            .behind_body(note_id)
+            .map_err(|error| retry("met no body to compare", &error))?;
+        if !ahead
+            || self.own_files.writer(note_id, &file.hash).is_some()
+            || !self.text_moved(note_id, path, previous, file)
+        {
+            return Ok(mark);
+        }
+        if !self.told(note_id, previous, file) {
+            return Err(Step::Retry(path.to_owned()));
+        }
+        self.vault
+            .write_back()
+            .keep_replaced(note_id, &file.raw, file.split().body)
+            .map_err(|error| retry("was not kept as a version", &error))?;
+        let stat = RowStat {
+            file_type: FileType::Markdown,
+            size: file.raw.len() as u64,
+            content_hash: Some(file.hash.clone()),
+            file_hash: Some(file.hash.clone()),
+        };
+        lane.put_as_of(note_id, path, stat, (stamp, StampMark::Kept))
+            .map_err(|error| retry("kept its row", &error))?;
+        if let Some(writeback) = &self.writeback {
+            writeback.schedule(note_id);
+        }
+        tracing::info!(
+            scope = SCOPE,
+            note_id,
+            "an outside edit met a body ahead of its file; the body wins"
+        );
+        self.own_files.read_outside(note_id, Some(&file.hash));
+        // The record took the file's frontmatter.
+        lane.publish(Applied::Changed {
+            note_id: note_id.to_owned(),
+            path: path.to_owned(),
+            content_hash: Some(file.hash.clone()),
+            source,
+        });
+        Err(Step::Done)
+    }
+
+    /// Whether the body's text changed since the row's stamp: a body that moved without changing
+    /// it (a link the editor made a chip of, an edit undone, a fold) holds no typing, and the
+    /// outside edit is fed. A change of the file's frontmatter does not count, except for a row
+    /// with no mark, compared through the file; a body that cannot be compared does.
+    fn text_moved(&self, note_id: &str, path: &str, previous: &str, file: &NoteFile) -> bool {
+        let converter = converter_for(self.settings.as_ref());
+        let moved = self
+            .vault
+            .write_back()
+            .text_moved_since_stamp(&converter, note_id);
+        match moved {
+            Ok(Some(moved)) => moved,
+            // No mark to read the log at (a row an older build stamped, or a fold took it): the
+            // body holds no typing when, written over the outside file, it makes the file the
+            // row named.
+            Ok(None) => {
+                let made = (&*self.vault, self.settings.as_ref(), self.root.as_path());
+                !output_over(made, note_id, path, file)
+                    .is_ok_and(|output| content_hash(&output) == previous)
+            }
+            Err(error) => {
+                tracing::warn!(scope = SCOPE, note_id, "the body was not compared: {error}");
+                true
+            }
+        }
+    }
+
     /// Seeds or replaces the note's body with the file's text.
     pub(super) fn write_body(
         &self,
@@ -76,9 +183,11 @@ impl Applier {
         let converter = converter_for(self.settings.as_ref());
         let outcome = match write {
             Write::Seed => feed.seed_body_if_empty(&converter, input),
-            Write::Replace => feed.feed(&converter, input),
+            Write::Replace(mark) => feed.feed_since(&converter, input, mark),
         };
         match outcome {
+            // Typing stored since the body was compared: the retry finds the body ahead.
+            Ok(FeedOutcome::Changed) => Body::Failed,
             Ok(outcome) => {
                 if !matches!(outcome, FeedOutcome::Fed | FeedOutcome::Unchanged) {
                     tracing::warn!(

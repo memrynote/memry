@@ -143,6 +143,13 @@ Step 14 (#3531) edits notes, these commands drive the write-back
   `e2e_flush_after_browser_exit` (Windows) ends the WebView2 browser process, asks its page to
   flush with the main thread held, so WebView2 cannot report the death first, then quits.
 
+## Editor windows
+
+`e2e_create_secondary_window` (`src-tauri/src/e2e/window.rs`) opens a second app window on the
+app's page and answers its label, `e2e-<n>`, which is also its WebDriver window handle. The e2e
+config (`tauri.e2e.conf.json`) gives `e2e-*` windows the main window's permissions and the
+driver's. `specs/editor/two-window-typing.e2e.ts` types in one window and reads the other.
+
 ## Control file
 
 Each app instance reads `<temp dir>/memry-e2e/control-<port>.json`, keyed by its own

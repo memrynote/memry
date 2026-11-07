@@ -11,7 +11,8 @@ use crate::api::errors::AuthError;
 use crate::crdt::body_writes;
 use crate::crdt::errors::CrdtError;
 use crate::crypto::keys;
-use crate::domain::external_feed::{self, FeedInput, FeedOutcome, FirstBody};
+use crate::domain::external_feed::{self, AppRead, FeedInput, FeedOutcome, FirstBody};
+use crate::domain::write_back::LogMark;
 use crate::markdown::convert::api::Converter;
 use crate::seams::secure_store::{SecureStore, SecureStoreKey};
 use crate::storage::Db;
@@ -56,31 +57,39 @@ impl ExternalFeed {
         self.run(external_feed::feed_external_edit, converter, input)
     }
 
-    /// The app's own write of a note's body, after it read `read` from the file. See
-    /// [`external_feed::feed_app_edit`].
-    pub fn feed_app_edit(
+    /// [`Self::feed`] unless the document took an edit since `compared_at`. See
+    /// [`external_feed::feed_external_edit_since`].
+    pub fn feed_since(
         &self,
         converter: &Converter,
         input: FeedInput<'_>,
-        read: &str,
+        compared_at: LogMark,
     ) -> Result<FeedOutcome, CrdtError> {
         self.run(
             |conn, converter, input, device_id, now_ms| {
-                external_feed::feed_app_edit(conn, converter, input, read, device_id, now_ms)
+                external_feed::feed_external_edit_since(
+                    conn,
+                    converter,
+                    input,
+                    compared_at,
+                    device_id,
+                    now_ms,
+                )
             },
             converter,
             input,
         )
     }
 
-    /// [`Self::feed_app_edit`] of a restored version (desktop Step 14d): the editor windows
-    /// hear it as the app's own write ([`body_writes::Origin::System`]), not as an outside
-    /// edit, so a rule for outside edits (typing wins over them) leaves a restore alone.
-    pub fn feed_restore(
+    /// The app's own write of a note's body, after it read `read`. See
+    /// [`external_feed::feed_app_edit`]. The editor host's windows hear it as a system write,
+    /// not an outside edit: a save, a version restore or a rename the app made is not one that
+    /// typing on its way to the host wins over.
+    pub fn feed_app_edit(
         &self,
         converter: &Converter,
         input: FeedInput<'_>,
-        read: &str,
+        read: AppRead<'_>,
     ) -> Result<FeedOutcome, CrdtError> {
         let device_id = self.device_id.clone();
         self.db
@@ -128,7 +137,7 @@ impl ExternalFeed {
         let device_id = self.device_id.clone();
         self.db
             .call_blocking(move |conn| {
-                // The editor host's windows hear the body as an outside edit.
+                // The editor host's windows hear the file's text as an outside edit.
                 Ok(body_writes::as_external(|| {
                     step(conn, converter, input, &device_id, now_ms())
                 }))
