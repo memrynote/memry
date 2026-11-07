@@ -365,7 +365,9 @@ export const TaskBlockRenderer: FC<TaskBlockRendererProps> = ({ block, editor: e
     async (newTitle: string) => {
       if (!newTitle.trim()) return
       syncingRef.current = true
-      editor.updateBlock(block, { props: { ...block.props, title: newTitle.trim() } })
+      // The title alone: a debounced save can run after this render's props went
+      // stale, and writing them back would erase a task id that landed since.
+      editor.updateBlock(block, { props: { title: newTitle.trim() } })
       if (taskId) {
         try {
           await tasksService.update({ id: taskId, title: newTitle.trim() })

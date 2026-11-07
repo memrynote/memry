@@ -423,6 +423,33 @@ describe('TaskBlockRenderer', () => {
     })
   })
 
+  // A keystroke typed while the draft's create is in flight schedules its save
+  // before the block has its id. That save used to write the whole prop set it
+  // rendered with, `taskId: ''` included, over the id that had landed since:
+  // the draft path then created a second task for the same line.
+  it('keeps the task id a draft got while a title save was pending', () => {
+    mocks.taskState.task = null
+    const live = makeBlock({ taskId: '', title: 'Buy mil' })
+    const editor = makeEditor([live])
+    editor.updateBlock = vi.fn((target, update) => {
+      const block = editor.document.find((each) => each.id === target.id)
+      if (block) Object.assign(block.props, update.props)
+    })
+    const snapshot = (): TaskBlock => ({ ...live, props: { ...live.props } })
+
+    const { rerender } = render(<TaskBlockRenderer block={snapshot()} editor={editor} />)
+    fireEvent.change(screen.getByDisplayValue('Buy mil'), { target: { value: 'Buy milk' } })
+
+    // The create lands before the save's debounce runs out.
+    live.props.taskId = 'task-1'
+    rerender(<TaskBlockRenderer block={snapshot()} editor={editor} />)
+    act(() => {
+      vi.advanceTimersByTime(600)
+    })
+
+    expect(live.props).toMatchObject({ taskId: 'task-1', title: 'Buy milk' })
+  })
+
   it('saves on Escape, skips the trailing blur, and uncompletes completed tasks', async () => {
     const editor = makeEditor()
     const block = makeBlock({ checked: true })
@@ -576,9 +603,7 @@ describe('TaskBlockRenderer', () => {
 
     expect(mocks.update).toHaveBeenCalledWith({ id: 'task-1', priority: 3, tags: ['launch'] })
     expect(mocks.update).toHaveBeenCalledWith({ id: 'task-1', title: 'Ship it' })
-    expect(editor.updateBlock).toHaveBeenCalledWith(block, {
-      props: { ...block.props, title: 'Ship it' }
-    })
+    expect(editor.updateBlock).toHaveBeenCalledWith(block, { props: { title: 'Ship it' } })
   })
 
   it('holds shorthand typed into a draft until its task id arrives', async () => {
@@ -594,9 +619,7 @@ describe('TaskBlockRenderer', () => {
     await act(async () => Promise.resolve())
 
     // The block is named without the tokens, which is what the create sees.
-    expect(editor.updateBlock).toHaveBeenCalledWith(draft, {
-      props: { ...draft.props, title: 'Buy milk' }
-    })
+    expect(editor.updateBlock).toHaveBeenCalledWith(draft, { props: { title: 'Buy milk' } })
     expect(mocks.update).not.toHaveBeenCalled()
 
     const created = makeBlock({ taskId: 'task-9', title: 'Buy milk' })
