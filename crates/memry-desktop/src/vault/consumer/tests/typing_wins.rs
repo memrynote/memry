@@ -180,14 +180,19 @@ fn a_body_back_at_its_files_text_takes_an_outside_edit_of_the_frontmatter_too() 
 /// wins.
 #[test]
 fn a_row_with_no_mark_compares_the_body_through_the_file() {
+    // As an older build left it: no mark, and a stamp before the typing (the clock alone cannot
+    // tell typing in the stamp's millisecond).
     let forget_marks = |f: &Fixture| {
         f.vault
             .db_handle()
             .call_blocking(|conn| {
-                conn.execute("DELETE FROM note_file_marks", [])
-                    .map_err(|error| memry_core::api::errors::StorageError::Failed {
-                        what: error.to_string(),
-                    })
+                conn.execute_batch(
+                    "DELETE FROM note_file_marks;
+                     UPDATE note_files SET indexed_at = indexed_at - 1000;",
+                )
+                .map_err(|error| memry_core::api::errors::StorageError::Failed {
+                    what: error.to_string(),
+                })
             })
             .unwrap();
     };
