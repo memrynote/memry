@@ -3,15 +3,15 @@ import fs from 'fs'
 import os from 'os'
 import path from 'path'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
-import { BrowserWindow } from 'electron'
 import { SettingsChannels } from '@memry/contracts/ipc-channels'
 import { formatWorkerStderrTail, isInformationalWorkerStderr } from './embeddings-worker-stderr'
 import { embeddingModelWeightsPath } from './embeddings-constants'
+import type { EmbeddingMainToWorkerMessage } from './embedding-model-protocol'
 
 const mockApp = vi.hoisted(() => ({
   getPath: vi.fn((name: string) => `/mock/${name}`)
 }))
-const getAllWindows = vi.hoisted(() => vi.fn())
+const getAllWindows = vi.hoisted(() => vi.fn<() => MockBrowserWindow[]>())
 const mockFork = vi.hoisted(() => vi.fn())
 const trackMainLogMock = vi.hoisted(() => vi.fn())
 
@@ -24,7 +24,7 @@ vi.mock('../telemetry/diagnostics', () => ({
 }))
 
 class MockUtilityProcess extends EventEmitter {
-  postMessage = vi.fn()
+  postMessage = vi.fn<(message: EmbeddingMainToWorkerMessage) => void>()
   // Real utilityProcess.kill() ALWAYS causes an 'exit'; the old no-op stub hid
   // every force-kill / reset exit path (where the phase-attribution bugs live).
   // Arm killExitCode to model the OS delivering that 'exit' as a LATER macrotask,
@@ -81,6 +81,8 @@ import { resetTelemetryThrottle } from '../telemetry/throttle'
 import {
   EMBEDDING_DIMENSION,
   generateEmbedding,
+  generateImageEmbedding,
+  generateAudioEmbedding,
   getEmbeddingWorkerCrashContext,
   getModelInfo,
   initEmbeddingModel,
@@ -100,7 +102,7 @@ describe('embeddings', () => {
     mockApp.getPath.mockImplementation((name: string) =>
       name === 'userData' ? '/mock/user-data' : `/mock/${name}`
     )
-    vi.mocked(BrowserWindow.getAllWindows).mockReturnValue([])
+    getAllWindows.mockReturnValue([])
   })
 
   afterEach(() => {
@@ -111,7 +113,7 @@ describe('embeddings', () => {
 
   it('loads the model through a utility process and forwards progress events', async () => {
     const window = new MockBrowserWindow()
-    vi.mocked(BrowserWindow.getAllWindows).mockReturnValue([window])
+    getAllWindows.mockReturnValue([window])
 
     const loadPromise = initEmbeddingModel()
 
@@ -350,6 +352,299 @@ describe('embeddings', () => {
 
     await vi.advanceTimersByTimeAsync(30_000)
     expect(mockUtilityProcessInstance.postMessage).toHaveBeenLastCalledWith({ type: 'shutdown' })
+  })
+
+  describe('worker generation recovery', () => {
+    const vector = Array.from(new Float32Array(EMBEDDING_DIMENSION).fill(0.25))
+
+    const lastRequest = (worker: MockUtilityProcess) => {
+      const message = worker.postMessage.mock.calls.at(-1)?.[0]
+      if (!message || !('requestId' in message)) {
+        throw new Error('Expected a worker request')
+      }
+      return message
+    }
+
+    const warmWorker = async (): Promise<MockUtilityProcess> => {
+      const pending = generateEmbedding('warm worker with synthetic content')
+      const worker = mockUtilityProcessInstance
+      worker.simulateMessage({ type: 'ready' })
+      await vi.advanceTimersByTimeAsync(0)
+      worker.simulateMessage({
+        type: 'embed-result',
+        requestId: lastRequest(worker).requestId,
+        embedding: vector
+      })
+      await expect(pending).resolves.toEqual(new Float32Array(vector))
+      return worker
+    }
+
+    beforeEach(() => {
+      vi.useFakeTimers()
+    })
+
+    it('retires a warm timed-out worker immediately and settles all its pending modalities', async () => {
+      const worker = await warmWorker()
+      const first = generateEmbedding('first hung synthetic note content')
+      await vi.advanceTimersByTimeAsync(0)
+      await vi.advanceTimersByTimeAsync(1_000)
+
+      const settled = vi.fn()
+      const pending = Promise.all([
+        first,
+        generateEmbedding('second hung synthetic note content'),
+        initEmbeddingModel(),
+        generateImageEmbedding(new Uint8Array([1, 2, 3])),
+        generateAudioEmbedding(new Float32Array([0.1, 0.2]))
+      ]).then(settled)
+      await vi.advanceTimersByTimeAsync(0)
+      expect(worker.postMessage).toHaveBeenCalledTimes(6)
+
+      await vi.advanceTimersByTimeAsync(15 * 60_000 - 1_001)
+      expect(worker.kill).not.toHaveBeenCalled()
+      expect(settled).not.toHaveBeenCalled()
+
+      await vi.advanceTimersByTimeAsync(1)
+      expect(worker.kill).toHaveBeenCalledOnce()
+      expect(settled).toHaveBeenCalledExactlyOnceWith([null, null, false, null, null])
+      expect(getModelInfo()).toMatchObject({ loaded: false, loading: false })
+      await pending
+    })
+
+    it.each(['progress', 'exit', 'fatal error'] as const)(
+      'ignores a retired worker %s while its replacement delivers an embedding',
+      async (event) => {
+        const retired = await warmWorker()
+        unloadModel()
+        const pending = generateEmbedding('replacement synthetic note content')
+        const replacement = mockUtilityProcessInstance
+        replacement.simulateMessage({ type: 'ready' })
+        await vi.advanceTimersByTimeAsync(0)
+        const request = lastRequest(replacement)
+        const settled = vi.fn()
+        const result = pending.then(settled)
+
+        switch (event) {
+          case 'progress':
+            retired.simulateMessage({
+              type: 'progress',
+              phase: 'error',
+              progress: 0,
+              status: 'retired worker failure'
+            })
+            break
+          case 'exit':
+            retired.emit('exit', 11)
+            break
+          case 'fatal error':
+            retired.emit('error', 'fatal', 'retired worker', 'synthetic failure')
+            break
+        }
+        await vi.advanceTimersByTimeAsync(0)
+
+        expect(replacement.kill).not.toHaveBeenCalled()
+        expect(settled).not.toHaveBeenCalled()
+        expect(getModelInfo()).toMatchObject({ loaded: false, loading: true, error: null })
+        replacement.simulateMessage({
+          type: 'embed-result',
+          requestId: request.requestId,
+          embedding: vector
+        })
+        await expect(pending).resolves.toEqual(new Float32Array(vector))
+        await result
+      }
+    )
+
+    it('discards a delivered result if its generation retires before the caller resumes', async () => {
+      const retired = await warmWorker()
+      const settled = vi.fn()
+      const stale = generateEmbedding('retiring synthetic note content').then(settled)
+      await vi.advanceTimersByTimeAsync(0)
+      const oldRequest = lastRequest(retired)
+      retired.simulateMessage({
+        type: 'embed-result',
+        requestId: oldRequest.requestId,
+        embedding: vector
+      })
+      unloadModel()
+      const pending = generateEmbedding('replacement synthetic note content')
+      const replacement = mockUtilityProcessInstance
+      retired.simulateMessage({
+        type: 'embed-result',
+        requestId: oldRequest.requestId,
+        embedding: vector
+      })
+      await vi.advanceTimersByTimeAsync(0)
+
+      expect(settled).toHaveBeenCalledExactlyOnceWith(null)
+      expect(getModelInfo()).toMatchObject({ loaded: false, loading: true, error: null })
+      replacement.simulateMessage({ type: 'ready' })
+      await vi.advanceTimersByTimeAsync(0)
+      replacement.simulateMessage({
+        type: 'embed-result',
+        requestId: lastRequest(replacement).requestId,
+        embedding: vector
+      })
+      await expect(pending).resolves.toEqual(new Float32Array(vector))
+      await stale
+    })
+
+    it.each(['before ready', 'after ready'] as const)(
+      'does not migrate an awaiting caller to the replacement when retired %s',
+      async (retirement) => {
+        const settled = vi.fn()
+        const stale = generateEmbedding('retired caller synthetic note content').then(settled)
+        const retired = mockUtilityProcessInstance
+        if (retirement === 'after ready') retired.simulateMessage({ type: 'ready' })
+        unloadModel()
+
+        const pending = generateEmbedding('replacement synthetic note content')
+        const replacement = mockUtilityProcessInstance
+        replacement.simulateMessage({ type: 'ready' })
+        if (retirement === 'before ready') retired.simulateMessage({ type: 'ready' })
+        await vi.advanceTimersByTimeAsync(0)
+
+        expect(settled).toHaveBeenCalledExactlyOnceWith(null)
+        expect(retired.postMessage).not.toHaveBeenCalled()
+        expect(replacement.postMessage).toHaveBeenCalledExactlyOnceWith(
+          expect.objectContaining({ type: 'embed', text: 'replacement synthetic note content' })
+        )
+        replacement.simulateMessage({
+          type: 'embed-result',
+          requestId: lastRequest(replacement).requestId,
+          embedding: vector
+        })
+        await expect(pending).resolves.toEqual(new Float32Array(vector))
+        await stale
+      }
+    )
+
+    it('cancels a retired startup deadline without killing a ready replacement', async () => {
+      const stale = generateEmbedding('retired startup synthetic note content')
+      unloadModel()
+      const pending = generateEmbedding('replacement synthetic note content')
+      const replacement = mockUtilityProcessInstance
+      replacement.simulateMessage({ type: 'ready' })
+      await vi.advanceTimersByTimeAsync(0)
+      const request = lastRequest(replacement)
+
+      await vi.advanceTimersByTimeAsync(10_000)
+
+      expect(replacement.kill).not.toHaveBeenCalled()
+      expect(getModelInfo()).toMatchObject({ loading: true, error: null })
+      replacement.simulateMessage({
+        type: 'embed-result',
+        requestId: request.requestId,
+        embedding: vector
+      })
+      await expect(pending).resolves.toEqual(new Float32Array(vector))
+      await expect(stale).resolves.toBeNull()
+    })
+
+    it('uses one backoff step when a timed-out generation had five waiting calls', async () => {
+      const retired = await warmWorker()
+      const pending = Array.from({ length: 5 }, (_, index) =>
+        generateEmbedding(`hung synthetic note content ${index}`)
+      )
+      await vi.advanceTimersByTimeAsync(0)
+      await vi.advanceTimersByTimeAsync(15 * 60_000)
+      await expect(Promise.all(pending)).resolves.toEqual([null, null, null, null, null])
+
+      await expect(generateEmbedding('retry inside first backoff')).resolves.toBeNull()
+      expect(mockFork).toHaveBeenCalledOnce()
+      await vi.advanceTimersByTimeAsync(70_000)
+
+      const retry = generateEmbedding('retry after one generation failure')
+      expect(mockFork).toHaveBeenCalledTimes(2)
+      const replacement = mockUtilityProcessInstance
+      expect(replacement).not.toBe(retired)
+      replacement.simulateMessage({ type: 'ready' })
+      await vi.advanceTimersByTimeAsync(0)
+      replacement.simulateMessage({
+        type: 'embed-result',
+        requestId: lastRequest(replacement).requestId,
+        embedding: vector
+      })
+      await expect(retry).resolves.toEqual(new Float32Array(vector))
+    })
+
+    it('does not dispatch new inference to a worker already shutting down', async () => {
+      const retiring = await warmWorker()
+      const stopping = stopEmbeddingModel()
+      const settled = vi.fn()
+      const newcomer = generateEmbedding('new synthetic note during shutdown').then(settled)
+      await vi.advanceTimersByTimeAsync(0)
+
+      expect(retiring.postMessage).toHaveBeenCalledTimes(2)
+      expect(retiring.postMessage).toHaveBeenLastCalledWith({ type: 'shutdown' })
+      retiring.emit('exit', 0)
+      await stopping
+      if (mockUtilityProcessInstance !== retiring) {
+        const replacement = mockUtilityProcessInstance
+        replacement.simulateMessage({ type: 'ready' })
+        await vi.advanceTimersByTimeAsync(0)
+        replacement.simulateMessage({
+          type: 'embed-result',
+          requestId: lastRequest(replacement).requestId,
+          embedding: vector
+        })
+      }
+      await vi.advanceTimersByTimeAsync(0)
+      expect(settled).toHaveBeenCalledOnce()
+      await newcomer
+    })
+
+    it('initializes a replacement immediately when stopping an unfinished model load', async () => {
+      const initial = initEmbeddingModel()
+      const retired = mockUtilityProcessInstance
+      retired.simulateMessage({ type: 'ready' })
+      await vi.advanceTimersByTimeAsync(0)
+      const oldRequest = lastRequest(retired)
+      expect(oldRequest.type).toBe('load-model')
+
+      const stopping = stopEmbeddingModel()
+      const pending = initEmbeddingModel()
+      expect(mockFork).toHaveBeenCalledTimes(2)
+      const replacement = mockUtilityProcessInstance
+      replacement.simulateMessage({ type: 'ready' })
+      await vi.advanceTimersByTimeAsync(0)
+      const request = lastRequest(replacement)
+      expect(request.type).toBe('load-model')
+      retired.simulateMessage({ type: 'load-model-result', requestId: oldRequest.requestId })
+      retired.emit('exit', 0)
+      await stopping
+      await expect(initial).resolves.toBe(false)
+
+      expect(replacement.kill).not.toHaveBeenCalled()
+      expect(getModelInfo()).toMatchObject({ loaded: false, loading: true, error: null })
+      replacement.simulateMessage({ type: 'load-model-result', requestId: request.requestId })
+      await expect(pending).resolves.toBe(true)
+      expect(isModelLoaded()).toBe(true)
+    })
+
+    it('keeps the replacement alive when an older shutdown finishes', async () => {
+      const retired = await warmWorker()
+      const stopping = stopEmbeddingModel()
+      unloadModel()
+      const pending = generateEmbedding('replacement synthetic note during old shutdown')
+      const replacement = mockUtilityProcessInstance
+      replacement.simulateMessage({ type: 'ready' })
+      await vi.advanceTimersByTimeAsync(0)
+      const request = lastRequest(replacement)
+
+      retired.emit('exit', 0)
+      await stopping
+
+      expect(replacement.kill).not.toHaveBeenCalled()
+      expect(getModelInfo()).toMatchObject({ loaded: false, loading: true, error: null })
+      replacement.simulateMessage({
+        type: 'embed-result',
+        requestId: request.requestId,
+        embedding: vector
+      })
+      await expect(pending).resolves.toEqual(new Float32Array(vector))
+      expect(isModelLoaded()).toBe(true)
+    })
   })
 
   // These exist to answer the open production question behind the
@@ -967,6 +1262,41 @@ describe('embeddings', () => {
 
       // #then no second download is attempted — this is the tight retry loop
       expect(loadRequests()).toBe(1)
+    })
+
+    it('retries after one backoff when five callers share a failed model download', async () => {
+      vi.useFakeTimers()
+      const loads = Array.from({ length: 5 }, () => initEmbeddingModel())
+      const worker = mockUtilityProcessInstance
+      worker.simulateMessage({ type: 'ready' })
+      await vi.advanceTimersByTimeAsync(0)
+      expect(worker.postMessage).toHaveBeenCalled()
+
+      for (const [message] of worker.postMessage.mock.calls) {
+        if (message.type === 'load-model') {
+          worker.simulateMessage({
+            type: 'error',
+            requestId: message.requestId,
+            error: 'shared download failed'
+          })
+        }
+      }
+      await expect(Promise.all(loads)).resolves.toEqual([false, false, false, false, false])
+      await expect(initEmbeddingModel()).resolves.toBe(false)
+      expect(mockFork).toHaveBeenCalledOnce()
+
+      await vi.advanceTimersByTimeAsync(FIRST_BACKOFF_ELAPSED_MS)
+      const retry = initEmbeddingModel()
+      expect(mockFork).toHaveBeenCalledTimes(2)
+      const replacement = mockUtilityProcessInstance
+      replacement.simulateMessage({ type: 'ready' })
+      await vi.advanceTimersByTimeAsync(0)
+      const request = replacement.postMessage.mock.calls.at(-1)?.[0]
+      expect(request).toMatchObject({ type: 'load-model' })
+      if (request?.type !== 'load-model') throw new Error('Expected model load request')
+      replacement.simulateMessage({ type: 'load-model-result', requestId: request.requestId })
+      await expect(retry).resolves.toBe(true)
+      expect(isModelLoaded()).toBe(true)
     })
 
     it('retries once the backoff window elapses', async () => {

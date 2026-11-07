@@ -1,4 +1,4 @@
-import { beforeEach, describe, expect, it, vi } from 'vitest'
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import Database from 'better-sqlite3'
 import { drizzle } from 'drizzle-orm/better-sqlite3'
 import { NEGOTIABLE_SYNC_TYPES, RECORD_SYNC_ITEM_TYPES } from '@memry/contracts/sync-api'
@@ -101,14 +101,22 @@ const lastRequestHeaders = (): Record<string, string> => {
 
 describe('http-client', () => {
   let vault: ReturnType<typeof createVaultDb>
+  let clock = Date.now()
 
   beforeEach(() => {
+    vi.useFakeTimers({ toFake: ['Date'] })
+    clock += 1000
+    vi.setSystemTime(clock)
     vi.clearAllMocks()
     // The vault identity is cached per DataDb handle for the process lifetime,
     // so without this a test could read a previous test's cached value.
     resetVaultUuidCache()
     vault = createVaultDb('vault-1')
     mockGetDatabase.mockReturnValue(vault.db)
+  })
+
+  afterEach(() => {
+    vi.useRealTimers()
   })
 
   describe('syncFetch', () => {
@@ -477,6 +485,7 @@ describe('http-client', () => {
         coversThrough: 50,
         baseRevision: 'rev-7'
       })
+      vi.setSystemTime(Date.now() + 250)
       await pushCrdtSnapshot('note-1', new Uint8Array([1]), 'token-1')
 
       const bodies = mockFetch.mock.calls.map((call) =>

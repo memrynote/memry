@@ -152,6 +152,14 @@ Sync runs **continuously** while the app is open and online:
 - Pull runs on a polling interval and after every push
 - Backoff with jitter on repeated errors
 
+After a large import, note-text uploads wait in a durable queue on this device. Desktop prepares
+at most two notes at a time and shares request pacing across note-text and snapshot uploads. If the
+server asks it to wait, that wait applies to all those uploads, rather than each note retrying
+independently. Unsent edits stay queued until the server accepts them.
+
+A request-rate limit is separate from your plan's storage limit. It can temporarily delay a large
+import on a paid account without changing the plan or discarding notes.
+
 **Sync Now**, in the indicator menu or the command palette, runs a full sync right away, and ends a
 pause first. When nothing could be sent, a notice says why: the device is offline, it needs you to
 sign in again (with a button that opens **Settings -> Account**), or another sync is still running.

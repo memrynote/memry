@@ -57,6 +57,7 @@ export type WorkerRelease =
   | 'live'
   | 'teardown'
   | 'start_timeout'
+  | 'request_timeout'
   | 'fatal_error'
   | 'exit'
   | 'graceful_stop'
@@ -169,8 +170,20 @@ type PendingRequest = {
   timer: ReturnType<typeof setTimeout>
 }
 
-/** Facts about one forked worker, captured at fork time. */
+type WorkerRequest = Extract<EmbeddingMainToWorkerMessage, { requestId: string }>
+
+/** Transport ownership and diagnostics belong to the same fork. */
 type WorkerGeneration = {
+  process: ReturnType<typeof utilityProcess.fork>
+  readiness: PromiseWithResolvers<void>
+  startTimer: ReturnType<typeof setTimeout> | null
+  idleTimer: ReturnType<typeof setTimeout> | null
+  pendingRequests: Map<string, PendingRequest>
+  activeRequests: Map<string, WorkerRequest['type']>
+  stopping: boolean
+  stopPromise: Promise<void> | null
+  loadPromise: Promise<boolean> | null
+  forceKilled: boolean
   pid?: number
   forkedAt: number
   ready: boolean
@@ -207,13 +220,9 @@ function emitProgress(
 interface EncoderBreaker {
   failures: number
   retryNotBefore: number
-  cancelled: boolean
 }
 
 class EmbeddingModelBridge {
-  private process: ReturnType<typeof utilityProcess.fork> | null = null
-  private pendingRequests = new Map<string, PendingRequest>()
-  private readyPromise: Promise<void> | null = null
   private requestCounter = 0
   private loaded = false
   private loading = false
@@ -240,25 +249,13 @@ class EmbeddingModelBridge {
   // crashes the worker, must not stop text indexing (which shares the worker but
   // not this state).
   private encoderBreakers: Record<EmbeddingEncoderModality, EncoderBreaker> = {
-    vision: { failures: 0, retryNotBefore: 0, cancelled: false },
-    audio: { failures: 0, retryNotBefore: 0, cancelled: false }
+    vision: { failures: 0, retryNotBefore: 0 },
+    audio: { failures: 0, retryNotBefore: 0 }
   }
   private error: string | null = null
-  private shuttingDown = false
-  private idleShutdownTimer: ReturnType<typeof setTimeout> | null = null
-  // Latched when WE force-kill the worker (shutdown timeout / reset). The kill's
-  // 'exit' arrives as a later macrotask, after `shuttingDown` is already cleared,
-  // so the exit handler cannot recover the phase from `shuttingDown` alone —
-  // without this latch a wedged teardown is misreported as `idle` ("died doing
-  // nothing") instead of `idle_shutdown` ("died tearing down").
-  private pendingExitPhase: WorkerExitPhase | null = null
-  // Per-generation facts about the CURRENT worker, all captured at fork time so a
-  // crash report can be read without guessing. Reset on every fork.
   private worker: WorkerGeneration | null = null
-  // The worker the bridge most recently let go of. Production's crash reports all
-  // arrive in this state — `process` and `pendingExitPhase` both already null —
-  // so without this record every report resolves to no phase at all. TTL'd, so a
-  // late unrelated crash cannot inherit it.
+  // Retain the released fork for delayed child-process-gone reports. The TTL
+  // prevents a later unrelated crash from inheriting this generation's context.
   private lastWorker: (WorkerGeneration & { release: WorkerRelease; releasedAt: number }) | null =
     null
   // Crash reports attributed to an embedding worker this session. A burst on one
@@ -285,23 +282,33 @@ class EmbeddingModelBridge {
     }
   }
 
-  async loadModel(): Promise<boolean> {
-    // A recent load already failed — do not re-fork the worker or re-attempt the
-    // download until the backoff expires. Once the breaker latches for good,
-    // recover via resetEmbeddingModelFailure() (AI re-enable), unloadModel(), or
-    // app restart.
-    if (this.isBreakerOpen()) {
-      return false
+  loadModel(): Promise<boolean> {
+    if (this.isBreakerOpen()) return Promise.resolve(false)
+    try {
+      const generation = this.start()
+      if (!this.isActive(generation)) return Promise.resolve(false)
+      if (generation.loadPromise) return generation.loadPromise
+      const attempt: Promise<boolean> = this.loadGeneration(generation).finally(() => {
+        if (generation.loadPromise === attempt) generation.loadPromise = null
+      })
+      generation.loadPromise = attempt
+      return attempt
+    } catch (error) {
+      this.loading = false
+      this.error = error instanceof Error ? error.message : String(error)
+      this.recordFailure()
+      return Promise.resolve(false)
     }
+  }
 
+  private async loadGeneration(generation: WorkerGeneration): Promise<boolean> {
     try {
       this.loading = !this.loaded
-      await this.start()
-      const requestId = this.nextRequestId()
-      const response = await this.sendRequest({
+      const response = await this.sendRequest(generation, {
         type: 'load-model',
-        requestId
+        requestId: this.nextRequestId()
       })
+      if (!this.isActive(generation)) return false
 
       if (response.type === 'error') {
         this.error = response.error
@@ -323,6 +330,7 @@ class EmbeddingModelBridge {
       if (this.embedFailures === 0) this.recordSuccess()
       return true
     } catch (error) {
+      if (!this.isActive(generation)) return false
       this.loading = false
       this.error = error instanceof Error ? error.message : String(error)
       this.recordFailure()
@@ -344,15 +352,17 @@ class EmbeddingModelBridge {
     // inference fault — leave the breaker alone so the next note simply re-forks.
     const wasLoaded = this.loaded
 
+    let generation: WorkerGeneration | null = null
     try {
+      generation = this.start()
+      if (!this.isActive(generation)) return null
       this.loading = !this.loaded
-      await this.start()
-      const requestId = this.nextRequestId()
-      const response = await this.sendRequest({
+      const response = await this.sendRequest(generation, {
         type: 'embed',
-        requestId,
+        requestId: this.nextRequestId(),
         text: text.substring(0, MAX_EMBEDDING_INPUT_LENGTH)
       })
+      if (!this.isActive(generation)) return null
 
       if (response.type === 'error') {
         this.error = response.error
@@ -383,22 +393,12 @@ class EmbeddingModelBridge {
       this.recordSuccess()
       return embedding
     } catch (error) {
+      if (generation && !this.isActive(generation)) return null
       this.loading = false
       this.error = error instanceof Error ? error.message : String(error)
       this.embedFailures += 1
       this.recordFailure()
-      logger.error('Generation failed:', error)
-      // Until now this failure only ever reached electron-log, so a user
-      // silently losing semantic-search indexing was invisible to us. Throttled
-      // because a broken worker fails once per note edit; we need the yes/no,
-      // not the volume (worker_exit_* above carries the true cadence).
-      if (shouldEmitThrottled('embeddings:embed_failed')) {
-        trackMainLog('error', {
-          scope: 'Embeddings',
-          action: 'embed_failed',
-          errorCode: error instanceof Error && error.name ? error.name : 'UnknownError'
-        })
-      }
+      this.reportEmbeddingFailure(error)
       return null
     }
   }
@@ -430,16 +430,18 @@ class EmbeddingModelBridge {
 
   private async embedWithEncoder(
     modality: EmbeddingEncoderModality,
-    message: (requestId: string) => Extract<EmbeddingMainToWorkerMessage, { requestId: string }>
+    message: (requestId: string) => WorkerRequest
   ): Promise<Float32Array | null> {
     const breaker = this.encoderBreakers[modality]
     if (this.isBreakerOpen() || Date.now() < breaker.retryNotBefore) return null
 
-    breaker.cancelled = false
+    let generation: WorkerGeneration | null = null
     try {
-      await this.start()
-      if (this.worker?.[modality] === 'off') this.worker[modality] = 'loading'
-      const response = await this.sendRequest(message(this.nextRequestId()))
+      generation = this.start()
+      if (!this.isActive(generation)) return null
+      if (generation[modality] === 'off') generation[modality] = 'loading'
+      const response = await this.sendRequest(generation, message(this.nextRequestId()))
+      if (!this.isActive(generation)) return null
 
       if (response.type === 'error') {
         this.recordEncoderFailure(modality, response.error)
@@ -456,15 +458,13 @@ class EmbeddingModelBridge {
         return null
       }
 
-      if (this.worker) this.worker[modality] = 'ready'
+      generation[modality] = 'ready'
       breaker.failures = 0
       breaker.retryNotBefore = 0
       return embedding
     } catch (error) {
-      // cancelEncoderLoad() kills the worker on purpose; that is not a failure.
-      if (!breaker.cancelled) {
-        this.recordEncoderFailure(modality, error instanceof Error ? error.message : String(error))
-      }
+      if (generation && !this.isActive(generation)) return null
+      this.recordEncoderFailure(modality, error instanceof Error ? error.message : String(error))
       return null
     }
   }
@@ -476,7 +476,6 @@ class EmbeddingModelBridge {
    */
   cancelEncoderLoad(modality: EmbeddingEncoderModality): void {
     if (this.worker?.[modality] !== 'loading') return
-    this.encoderBreakers[modality].cancelled = true
     this.reset()
   }
 
@@ -501,72 +500,59 @@ class EmbeddingModelBridge {
   }
 
   async stop(): Promise<void> {
-    this.clearIdleShutdown()
+    const generation = this.worker
+    if (!generation) return
+    if (generation.stopPromise) return generation.stopPromise
 
-    if (!this.process) {
-      this.readyPromise = null
-      this.loaded = false
-      this.loading = false
-      return
-    }
-
-    const activeProcess = this.process
-    this.shuttingDown = true
+    generation.stopping = true
+    this.clearIdleShutdown(generation)
+    clearTimeout(generation.startTimer ?? undefined)
+    const error = new Error('Embedding utility stopping')
+    generation.readiness.reject(error)
+    this.rejectAll(generation, error)
     this.loaded = false
     this.loading = false
 
-    activeProcess.postMessage({ type: 'shutdown' } satisfies EmbeddingMainToWorkerMessage)
-
-    await new Promise<void>((resolve) => {
-      const timeout = setTimeout(() => {
-        // The worker ignored the graceful shutdown and wedged — this is the
-        // onnxruntime-dispose failure mode this telemetry exists to catch. Latch
-        // the phase before killing: the kill's 'exit' races (and loses to) the
-        // `shuttingDown = false` reset below.
-        this.pendingExitPhase = 'idle_shutdown'
-        activeProcess.kill()
-        resolve()
-      }, SHUTDOWN_TIMEOUT_MS)
-
-      activeProcess.once('exit', () => {
+    generation.stopPromise = new Promise<void>((resolve) => {
+      const finish = (): void => {
         clearTimeout(timeout)
+        generation.process.off('exit', finish)
+        this.releaseWorker(generation, 'teardown', 'idle_shutdown')
         resolve()
-      })
+      }
+      const timeout = setTimeout(() => {
+        generation.forceKilled = true
+        this.releaseWorker(generation, 'teardown', 'idle_shutdown')
+        generation.process.kill()
+        finish()
+      }, SHUTDOWN_TIMEOUT_MS)
+      generation.process.once('exit', finish)
+      try {
+        generation.process.postMessage({ type: 'shutdown' } satisfies EmbeddingMainToWorkerMessage)
+      } catch (shutdownError) {
+        logger.warn('Embedding utility shutdown failed', { error: shutdownError })
+        generation.forceKilled = true
+        this.releaseWorker(generation, 'teardown', 'idle_shutdown')
+        generation.process.kill()
+        finish()
+      }
     })
-
-    // Whether it exited on its own or had to be force-killed, the bridge is done
-    // with this worker here. Record it so a crash report landing after the handle
-    // is gone is still attributed — a no-op when an exit handler already did.
-    this.releaseWorker('teardown', 'idle_shutdown')
-    this.process = null
-    this.readyPromise = null
-    this.shuttingDown = false
+    await generation.stopPromise
   }
 
   reset(): void {
-    this.shuttingDown = true
-    this.clearIdleShutdown()
-    // Same force-kill race as stop(): latch the phase so the kill's async 'exit'
-    // is attributed to a deliberate teardown, not a spontaneous `idle` death.
-    // Cleared — not left alone — when there is nothing to kill: the latch now
-    // outlives the exit handler (which never runs for a native crash), so a stale
-    // one would make the NEXT worker's crash read as a teardown it never had.
-    this.pendingExitPhase = this.process ? 'idle_shutdown' : null
-    // Same rule as the latch above, for the same reason: a live worker is
-    // recorded so a crash report can still find it, while a reset with nothing
-    // to kill wipes the record — a stale one would make an unrelated later crash
-    // read as a teardown it never had.
-    if (this.process) this.releaseWorker('teardown', 'idle_shutdown')
-    else this.lastWorker = null
-    this.process?.kill()
-    this.process = null
-    this.readyPromise = null
-    this.rejectAll(new Error('Embedding utility reset'))
+    const generation = this.worker
+    if (generation) {
+      generation.forceKilled = true
+      this.releaseWorker(generation, 'teardown', 'idle_shutdown')
+      generation.process.kill()
+    } else {
+      this.lastWorker = null
+    }
     this.loaded = false
     this.loading = false
     this.clearLoadFailure()
     this.error = null
-    this.shuttingDown = false
   }
 
   clearLoadFailure(): void {
@@ -613,47 +599,50 @@ class EmbeddingModelBridge {
     this.retryNotBefore = 0
   }
 
-  private async start(): Promise<void> {
-    this.clearIdleShutdown()
+  private isActive(generation: WorkerGeneration): boolean {
+    return this.worker === generation && !generation.stopping
+  }
 
-    if (this.process) {
-      await this.readyPromise
-      return
+  private start(): WorkerGeneration {
+    if (this.worker) {
+      if (!this.worker.stopping) {
+        this.clearIdleShutdown(this.worker)
+        return this.worker
+      }
+      // Re-enable may arrive before the old bounded shutdown finishes.
+      this.releaseWorker(this.worker, 'teardown', 'idle_shutdown')
     }
 
     const workerPath = path.join(__dirname, 'embedding-worker.js')
     const userDataPath = app.getPath('userData')
     const modelCache = probeModelCache(userDataPath)
-    const visionCache = probeEncoderCache(userDataPath, 'vision')
-    const audioCache = probeEncoderCache(userDataPath, 'audio')
     const child = utilityProcess.fork(workerPath, [], {
       serviceName: WORKER_SERVICE_NAME,
       stdio: 'pipe',
-      env: {
-        ...process.env,
-        MEMRY_USER_DATA_PATH: userDataPath
-      },
+      env: { ...process.env, MEMRY_USER_DATA_PATH: userDataPath },
       allowLoadingUnsignedLibraries: process.platform === 'darwin'
     })
-
-    // Inference is background work: a vault-wide re-embed must not take the
-    // machine's CPU away from the user. The pid exists once the process spawns.
     child.once('spawn', () => lowerProcessPriority(child.pid))
-    this.process = child
-    // A fresh worker must never inherit a force-kill phase latched for a prior one.
-    this.pendingExitPhase = null
     const generation: WorkerGeneration = {
+      process: child,
+      readiness: Promise.withResolvers<void>(),
+      startTimer: null,
+      idleTimer: null,
+      pendingRequests: new Map(),
+      activeRequests: new Map(),
+      stopping: false,
+      stopPromise: null,
+      loadPromise: null,
+      forceKilled: false,
       pid: child.pid,
       forkedAt: Date.now(),
       ready: false,
       modelCache: modelCache.state,
       modelCacheBytes: modelCache.bytes,
       vision: 'off',
-      visionCache,
+      visionCache: probeEncoderCache(userDataPath, 'vision'),
       audio: 'off',
-      audioCache,
-      // Read BEFORE this attempt can fail, so it describes the state the fork was
-      // made in: `reload` means a load had already failed before this worker.
+      audioCache: probeEncoderCache(userDataPath, 'audio'),
       load: this.consecutiveFailures > 0 ? 'reload' : 'first',
       stderrTail: '',
       releasePhase: null
@@ -661,166 +650,94 @@ class EmbeddingModelBridge {
     this.worker = generation
     child.stdout?.on('data', (chunk: Buffer | string) => {
       const output = chunk.toString().trim()
-      if (output) {
-        logger.info(`Embedding utility stdout: ${output}`)
-      }
+      if (output) logger.info(`Embedding utility stdout: ${output}`)
     })
     child.stderr?.on('data', (chunk: Buffer | string) => {
       const output = chunk.toString().trim()
       if (!output) return
-      // Kept for THIS generation even when the line is benign: a native abort is
-      // usually preceded by the runtime's own progress notes, and the tail is the
-      // only "what happened" a crash report can ever carry. Bounded from the end.
       generation.stderrTail = `${generation.stderrTail}${output}\n`.slice(-STDERR_TAIL_LIMIT)
       if (isInformationalWorkerStderr(output)) {
         logger.debug(`Embedding utility stderr: ${output}`)
-        return
+      } else {
+        logger.error(`Embedding utility stderr: ${output}`)
       }
-      logger.error(`Embedding utility stderr: ${output}`)
     })
-
-    this.readyPromise = new Promise<void>((resolve, reject) => {
-      const timeout = setTimeout(() => {
-        const error = new Error('Embedding utility failed to start within timeout')
-        logger.error('Embedding utility start timeout', {
-          workerPath,
-          pid: child.pid
-        })
-        this.failProcess(error, 'start_timeout')
-        reject(error)
-      }, START_TIMEOUT_MS)
-
-      const cleanup = (): void => {
-        clearTimeout(timeout)
-        child.off('message', onMessage)
-        child.off('error', onFatalError)
-        child.off('exit', onExitBeforeReady)
-      }
-
-      const onMessage = (message: EmbeddingWorkerToMainMessage): void => {
-        if (message.type === 'log') {
-          getLogShip()?.ingestForwarded(message.record, 'Embeddings')
-          return
-        }
-
-        if (message.type !== 'ready') return
-
-        cleanup()
-        generation.ready = true
-        this.setupProcessHandlers(child)
-        logger.info('Embedding utility ready')
-        resolve()
-      }
-
-      const onFatalError = (type: string, location: string, report: string): void => {
-        cleanup()
-        const error = new Error(`Embedding utility fatal error: ${type} at ${location}`)
-        logger.error('Embedding utility fatal error', { type, location, report })
-        this.failProcess(error, 'fatal_error')
-        reject(error)
-      }
-
-      const onExitBeforeReady = (code: number): void => {
-        cleanup()
-        const forcedPhase = this.pendingExitPhase
-        this.pendingExitPhase = null
-        // A clean exit during shutdown is lifecycle, not a fault (mirrors the
-        // ready-state guard below). Without this, quitting the app mid-bootstrap
-        // emits a spurious error-level worker_exit_starting with exit code 0.
-        const phase = forcedPhase ?? 'starting'
-        if (!(forcedPhase === null && this.shuttingDown && code === 0)) {
-          this.trackWorkerExit(phase, code)
-        }
-        const error = new Error(`Embedding utility exited unexpectedly (code ${code})`)
-        this.failProcess(error, 'exit', phase)
-        reject(error)
-      }
-
-      child.on('message', onMessage)
-      child.on('error', onFatalError)
-      child.on('exit', onExitBeforeReady)
-    })
-
-    await this.readyPromise
+    generation.startTimer = setTimeout(() => {
+      if (!this.isActive(generation)) return
+      const error = new Error('Embedding utility failed to start within timeout')
+      logger.error('Embedding utility start timeout', { workerPath, pid: child.pid })
+      this.failProcess(generation, error, 'start_timeout')
+    }, START_TIMEOUT_MS)
+    this.setupProcessHandlers(generation)
+    return generation
   }
 
-  private setupProcessHandlers(child: ReturnType<typeof utilityProcess.fork>): void {
+  private setupProcessHandlers(generation: WorkerGeneration): void {
+    const child = generation.process
     child.on('message', (message: EmbeddingWorkerToMainMessage) => {
       if (message.type === 'log') {
         getLogShip()?.ingestForwarded(message.record, 'Embeddings')
         return
       }
-
+      if (!this.isActive(generation)) return
       if (message.type === 'ready') {
+        clearTimeout(generation.startTimer ?? undefined)
+        generation.startTimer = null
+        generation.ready = true
+        generation.readiness.resolve()
+        logger.info('Embedding utility ready')
         return
       }
-
+      if (!generation.ready) return
       if (message.type === 'progress') {
         this.applyProgress(message)
         return
       }
-
       if ('requestId' in message) {
-        const pending = this.pendingRequests.get(message.requestId)
-        if (!pending) {
-          return
-        }
-
+        const pending = generation.pendingRequests.get(message.requestId)
+        if (!pending) return
         clearTimeout(pending.timer)
-        this.pendingRequests.delete(message.requestId)
-
+        generation.pendingRequests.delete(message.requestId)
         if (message.type === 'error') {
           this.error = message.error
           this.loading = false
-          this.scheduleIdleShutdown()
-          pending.resolve(message)
-          return
         }
-
-        this.scheduleIdleShutdown()
+        this.scheduleIdleShutdown(generation)
         pending.resolve(message)
       }
     })
-
     child.on('error', (type: string, location: string, report: string) => {
+      if (!this.isActive(generation)) return
       const error = new Error(`Embedding utility fatal error: ${type} at ${location}`)
       logger.error('Embedding utility fatal error', { type, location, report })
-      this.failProcess(error, 'fatal_error')
+      this.failProcess(generation, error, 'fatal_error')
     })
-
-    child.on('exit', (code: number) => {
-      const forcedPhase = this.pendingExitPhase
-      this.pendingExitPhase = null
-
-      // A clean, graceful shutdown (the worker exited 0 on its own after the
-      // shutdown message) is lifecycle, not a fault. A forced kill (forcedPhase
-      // set) is a teardown death worth measuring even though shuttingDown may
-      // already be cleared by the time its async 'exit' lands.
-      if (forcedPhase === null && this.shuttingDown && code === 0) {
-        this.process = null
-        // Still recorded: a runtime that aborts while unwinding after exit(0)
-        // produces a crash report AFTER this clean exit, and the teardown-abort
-        // hypothesis is only testable if that report can still find the worker.
-        this.releaseWorker('graceful_stop')
-        this.readyPromise = null
+    child.once('exit', (code: number) => {
+      const phase = generation.releasePhase ?? this.currentPhase(generation)
+      if (this.worker !== generation) {
+        // Teardown telemetry belongs to the old fork, never to its replacement.
+        if (phase === 'idle_shutdown' && (generation.forceKilled || code !== 0)) {
+          this.trackWorkerExit(phase, code)
+        }
         return
       }
-
-      // Phase must be read before failProcess(), which rejects and clears the
-      // pending requests this classification depends on.
-      const phase = forcedPhase ?? this.currentPhase()
+      if (generation.stopping && code === 0) {
+        this.releaseWorker(generation, 'graceful_stop', phase)
+        return
+      }
       this.trackWorkerExit(phase, code)
-      const error = new Error(`Embedding utility exited unexpectedly (code ${code})`)
-      this.failProcess(error, 'exit', phase)
+      this.failProcess(
+        generation,
+        new Error(`Embedding utility exited unexpectedly (code ${code})`),
+        'exit'
+      )
     })
   }
 
-  private currentPhase(): WorkerExitPhase {
-    if (this.shuttingDown) return 'idle_shutdown'
-    if (this.pendingRequests.size > 0) return 'in_flight'
-    // A worker that never sent 'ready' died bootstrapping, not sitting idle.
-    if (this.worker && !this.worker.ready) return 'starting'
-    return 'idle'
+  private currentPhase(generation: WorkerGeneration): WorkerExitPhase {
+    if (generation.stopping) return 'idle_shutdown'
+    if (generation.pendingRequests.size > 0) return 'in_flight'
+    return generation.ready ? 'idle' : 'starting'
   }
 
   /**
@@ -862,25 +779,37 @@ class EmbeddingModelBridge {
     emitProgress(message.phase, message.progress, message.status)
   }
 
-  private sendRequest(
-    message: Extract<EmbeddingMainToWorkerMessage, { requestId: string }>
+  private async sendRequest(
+    generation: WorkerGeneration,
+    message: WorkerRequest
   ): Promise<EmbeddingWorkerToMainMessage> {
-    if (!this.process) {
-      return Promise.reject(new Error('Embedding utility is not running'))
+    generation.activeRequests.set(message.requestId, message.type)
+    try {
+      await generation.readiness.promise
+      if (!this.isActive(generation)) throw new Error('Embedding utility generation retired')
+      this.clearIdleShutdown(generation)
+      return await new Promise<EmbeddingWorkerToMainMessage>((resolve, reject) => {
+        const timer = setTimeout(() => {
+          this.failProcess(
+            generation,
+            new Error(`Embedding request timed out: ${message.type}`),
+            'request_timeout'
+          )
+        }, REQUEST_TIMEOUT_MS)
+        generation.pendingRequests.set(message.requestId, { resolve, reject, timer })
+        try {
+          generation.process.postMessage(message)
+        } catch (error) {
+          this.failProcess(
+            generation,
+            error instanceof Error ? error : new Error(String(error)),
+            'fatal_error'
+          )
+        }
+      })
+    } finally {
+      generation.activeRequests.delete(message.requestId)
     }
-
-    this.clearIdleShutdown()
-
-    return new Promise((resolve, reject) => {
-      const timer = setTimeout(() => {
-        this.pendingRequests.delete(message.requestId)
-        this.scheduleIdleShutdown()
-        reject(new Error(`Embedding request timed out: ${message.type}`))
-      }, REQUEST_TIMEOUT_MS)
-
-      this.pendingRequests.set(message.requestId, { resolve, reject, timer })
-      this.process!.postMessage(message)
-    })
   }
 
   private nextRequestId(): string {
@@ -888,64 +817,69 @@ class EmbeddingModelBridge {
     return `embedding_${this.requestCounter}_${Date.now()}`
   }
 
-  /**
-   * Stop tracking the worker after a fault.
-   *
-   * This is the path every production crash report arrives behind. It nulls
-   * `process` without latching `pendingExitPhase`, so before the last-worker
-   * record existed the phase resolver had nothing left to read — which is why
-   * 100% of `Utility:crashed:Embeddings` events shipped with no phase.
-   *
-   * It also used to abandon a still-LIVE child (`start_timeout` / `fatal_error`
-   * reach here with the process running): the orphan was unreachable — every
-   * request goes through `this.process` — yet kept a whole onnxruntime alive to
-   * abort later, and its late `ready` message would re-attach handlers and flip
-   * `loaded` on for a worker the bridge no longer owned. It is killed now.
-   */
-  private failProcess(error: Error, release: WorkerRelease, phase?: WorkerExitPhase): void {
-    this.clearIdleShutdown()
-    const orphan = this.process
-    // Read before rejectAll(), which clears the pending requests the phase
-    // classification depends on.
-    this.releaseWorker(release, phase)
-    if (orphan) {
-      this.process = null
-      orphan.kill()
-    }
-    this.readyPromise = null
-    this.loaded = false
-    this.loading = false
+  private failProcess(generation: WorkerGeneration, error: Error, release: WorkerRelease): void {
+    if (!this.isActive(generation)) return
+    const phase = this.currentPhase(generation)
+    const requests = new Set(generation.activeRequests.values())
     this.error = error.message
-    this.rejectAll(error)
+    // A terminal fault belongs to the fork, not to each caller rejected by it.
+    if (requests.has('embed')) {
+      this.embedFailures += 1
+      this.reportEmbeddingFailure(error)
+    }
+    if (requests.has('load-model') || requests.has('embed')) this.recordFailure()
+    if (requests.has('embed-image')) this.recordEncoderFailure('vision', error.message)
+    if (requests.has('embed-audio')) this.recordEncoderFailure('audio', error.message)
+    this.releaseWorker(generation, release, phase)
+    if (release !== 'exit') generation.process.kill()
   }
 
-  /**
-   * Remember the worker the bridge is letting go of, so a `child-process-gone`
-   * report that lands afterwards can still be attributed to it.
-   */
-  private releaseWorker(release: WorkerRelease, phase?: WorkerExitPhase): void {
-    const generation = this.worker
-    if (!generation) return
-    generation.releasePhase = phase ?? this.currentPhase()
+  private reportEmbeddingFailure(error: unknown): void {
+    logger.error('Generation failed:', error)
+    if (shouldEmitThrottled('embeddings:embed_failed')) {
+      trackMainLog('error', {
+        scope: 'Embeddings',
+        action: 'embed_failed',
+        errorCode: error instanceof Error && error.name ? error.name : 'UnknownError'
+      })
+    }
+  }
+
+  private releaseWorker(
+    generation: WorkerGeneration,
+    release: WorkerRelease,
+    phase: WorkerExitPhase
+  ): void {
+    generation.stopping = true
+    generation.loadPromise = null
+    generation.releasePhase ??= phase
+    clearTimeout(generation.startTimer ?? undefined)
+    generation.startTimer = null
+    this.clearIdleShutdown(generation)
+    const error = new Error('Embedding utility generation retired')
+    generation.readiness.reject(error)
+    this.rejectAll(generation, error)
+    if (this.worker !== generation) return
     this.lastWorker = { ...generation, release, releasedAt: Date.now() }
     this.worker = null
+    this.loaded = false
+    this.loading = false
   }
 
   /**
    * The worker a `child-process-gone` report belongs to, with everything the
    * main process knows about it.
    *
-   * Reads, in order: the live worker, a force-kill latch (`stop()`/`reset()`
-   * kill and null the handle in the same tick), then the last worker the bridge
-   * released — the state every production report has actually arrived in.
+   * Reads the live generation, then its retained release record. A delayed exit
+   * from that fork cannot change a newer worker's phase or transport ownership.
    */
   crashContext(): EmbeddingWorkerCrashContext | null {
     const now = Date.now()
     if (this.worker) {
       const live = this.worker
       return {
-        phase: this.pendingExitPhase ?? this.currentPhase(),
-        release: this.pendingExitPhase ? 'teardown' : 'live',
+        phase: this.currentPhase(live),
+        release: live.stopping ? 'teardown' : 'live',
         uptimeMs: Math.max(0, now - live.forkedAt),
         ...this.describeGeneration(live)
       }
@@ -986,42 +920,29 @@ class EmbeddingModelBridge {
     this.crashCount += 1
   }
 
-  private rejectAll(error: Error): void {
-    for (const [requestId, pending] of this.pendingRequests) {
+  private rejectAll(generation: WorkerGeneration, error: Error): void {
+    for (const pending of generation.pendingRequests.values()) {
       clearTimeout(pending.timer)
       pending.reject(error)
-      this.pendingRequests.delete(requestId)
     }
+    generation.pendingRequests.clear()
   }
 
-  private scheduleIdleShutdown(): void {
-    this.clearIdleShutdown()
-
-    if (!this.process || this.pendingRequests.size > 0 || this.shuttingDown) {
-      return
-    }
-
-    this.idleShutdownTimer = setTimeout(() => {
-      this.idleShutdownTimer = null
-      if (!this.process || this.pendingRequests.size > 0 || this.shuttingDown) {
-        return
-      }
-
+  private scheduleIdleShutdown(generation: WorkerGeneration): void {
+    this.clearIdleShutdown(generation)
+    if (!this.isActive(generation) || generation.pendingRequests.size > 0) return
+    generation.idleTimer = setTimeout(() => {
+      generation.idleTimer = null
+      if (!this.isActive(generation) || generation.activeRequests.size > 0) return
       void this.stop().catch((error: unknown) => {
-        logger.warn('Embedding utility idle shutdown failed', {
-          error: error instanceof Error ? error.message : String(error)
-        })
+        logger.warn('Embedding utility idle shutdown failed', { error })
       })
     }, IDLE_SHUTDOWN_MS)
   }
 
-  private clearIdleShutdown(): void {
-    if (!this.idleShutdownTimer) {
-      return
-    }
-
-    clearTimeout(this.idleShutdownTimer)
-    this.idleShutdownTimer = null
+  private clearIdleShutdown(generation: WorkerGeneration): void {
+    if (generation.idleTimer) clearTimeout(generation.idleTimer)
+    generation.idleTimer = null
   }
 }
 
@@ -1143,14 +1064,8 @@ export function resetEmbeddingModelFailure(): void {
  * `Utility:crashed:Embeddings` events, `worker_exit_<phase>` emitted zero and so
  * did `embed_failed`.
  *
- * It also never arrives while the bridge still owns the worker. Every path that
- * nulls `process` either latches a teardown phase (`stop()`/`reset()`) or runs
- * inside an 'exit' handler that emits `EmbeddingWorkerExit` — and production has
- * neither a phase-suffixed event nor an `EmbeddingWorkerExit` on the affected
- * release. What is left is `failProcess()`, which forgets a worker that is still
- * running (start timeout / fatal error) and leaves nothing behind to read. So
- * the answer has to survive the bridge moving on: hence the last-worker record,
- * bounded by LAST_WORKER_TTL_MS so an unrelated later crash cannot inherit it.
+ * Retirement retains a bounded diagnostic record after the worker is detached,
+ * so a delayed native-crash report can still identify the released generation.
  *
  * Returns null when the report is not about our embedding worker, when the
  * reason is lifecycle rather than a fault, or when no worker is attributable.

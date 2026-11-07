@@ -34,6 +34,16 @@ const mockGlobalShortcutUnregisterAll = electronMocks.globalShortcutUnregisterAl
 const mockGlobalShortcutUnregister = electronMocks.globalShortcutUnregister
 const mockGlobalShortcutRegister = electronMocks.globalShortcutRegister
 const mockIsTrustedAccessibilityClient = electronMocks.isTrustedAccessibilityClient
+const mockRecoveryLog = vi.hoisted(() => vi.fn())
+vi.mock('../lib/logger', () => ({
+  createLogger: () => ({
+    info: vi.fn(),
+    debug: vi.fn(),
+    warn: mockRecoveryLog,
+    error: mockRecoveryLog
+  })
+}))
+
 const mockTrackMainEvent = vi.hoisted(() => vi.fn())
 const mockGetVoiceModelStatus = vi.hoisted(() => vi.fn())
 const mockDownloadVoiceModel = vi.hoisted(() => vi.fn())
@@ -99,7 +109,8 @@ vi.mock('../lib/embeddings', () => ({
   getModelInfo: vi.fn(),
   isModelLoaded: vi.fn(),
   isModelLoading: vi.fn(),
-  resetEmbeddingModelFailure: vi.fn()
+  resetEmbeddingModelFailure: vi.fn(),
+  stopEmbeddingModel: vi.fn(async () => undefined)
 }))
 
 vi.mock('../telemetry/track', () => ({
@@ -128,6 +139,7 @@ vi.mock('@memry/sync-client/settings-sync', () => ({
 }))
 
 vi.mock('../projections', () => ({
+  reconcileProjections: vi.fn(async () => ({})),
   rebuildProjections: vi.fn(() =>
     Promise.resolve({
       embedding: { success: true, computed: 1, skipped: 0 }
@@ -228,6 +240,8 @@ describe('settings-handlers', () => {
       updateField: mockUpdateField
     })
     ;(getDatabase as Mock).mockReturnValue({})
+    vi.mocked(projections.reconcileProjections).mockReset().mockResolvedValue({})
+    vi.mocked(embeddings.stopEmbeddingModel).mockReset().mockResolvedValue(undefined)
   })
 
   afterEach(() => {
@@ -571,6 +585,122 @@ describe('settings-handlers', () => {
     expect(mockSend).toHaveBeenCalledWith(SettingsChannels.events.CHANGED, {
       key: 'ai',
       value: { enabled: false }
+    })
+  })
+
+  it('resumes only embedding projections on a real AI re-enable without waiting for indexing', async () => {
+    const stored = new Map<string, string>([['ai.enabled', 'false']])
+    vi.mocked(settingsQueries.getSetting).mockImplementation((_db, key) => stored.get(key) ?? null)
+    vi.mocked(settingsQueries.setSetting).mockImplementation((_db, key, value) => {
+      stored.set(key, value)
+    })
+    const recovery = Promise.withResolvers<Record<string, unknown>>()
+    vi.mocked(projections.reconcileProjections).mockReturnValue(recovery.promise)
+    registerSettingsHandlers()
+
+    try {
+      const enabling = invokeHandler(SettingsChannels.invoke.SET_AI_SETTINGS, { enabled: true })
+      // The facade must capture this vault's runtime before the handler yields.
+      expect(projections.reconcileProjections).toHaveBeenCalledExactlyOnceWith([
+        'embedding',
+        'image-embedding',
+        'voice-embedding'
+      ])
+      await expect(enabling).resolves.toEqual({ success: true })
+      expect(stored.get('ai.enabled')).toBe('true')
+      expect(embeddings.resetEmbeddingModelFailure).toHaveBeenCalled()
+      expect(refreshNoteFold).toHaveBeenCalled()
+      expect(mockSend).toHaveBeenCalledWith(SettingsChannels.events.CHANGED, {
+        key: 'ai',
+        value: { enabled: true }
+      })
+      expect(projections.rebuildProjections).not.toHaveBeenCalled()
+
+      await invokeHandler(SettingsChannels.invoke.SET_AI_SETTINGS, { enabled: true })
+      await invokeHandler(SettingsChannels.invoke.SET_AI_SETTINGS, { imageEmbeddings: false })
+      await invokeHandler(SettingsChannels.invoke.SET_AI_SETTINGS, { enabled: false })
+      stored.delete('ai.enabled') // An absent setting already means enabled.
+      await invokeHandler(SettingsChannels.invoke.SET_AI_SETTINGS, { enabled: true })
+      expect(projections.reconcileProjections).toHaveBeenCalledTimes(1)
+    } finally {
+      recovery.resolve({})
+      vi.mocked(settingsQueries.setSetting).mockReset()
+    }
+  })
+
+  it('logs a rejected AI recovery pass without failing the saved setting', async () => {
+    registerSettingsHandlers()
+    vi.mocked(settingsQueries.getSetting).mockReturnValue('false')
+    const failure = new Error('embedding recovery unavailable')
+    vi.mocked(projections.reconcileProjections).mockRejectedValueOnce(failure)
+
+    await expect(
+      invokeHandler(SettingsChannels.invoke.SET_AI_SETTINGS, { enabled: true })
+    ).resolves.toEqual({ success: true })
+
+    expect(projections.reconcileProjections).toHaveBeenCalledExactlyOnceWith([
+      'embedding',
+      'image-embedding',
+      'voice-embedding'
+    ])
+    await vi.waitFor(() => {
+      expect(mockRecoveryLog).toHaveBeenCalledWith(
+        expect.any(String),
+        expect.objectContaining({ error: failure })
+      )
+    })
+  })
+
+  it('stops active inference only on a real AI disable without waiting for shutdown', async () => {
+    let enabled = 'true'
+    vi.mocked(settingsQueries.getSetting).mockImplementation((_db, key) =>
+      key === 'ai.enabled' ? enabled : null
+    )
+    vi.mocked(settingsQueries.setSetting).mockImplementation((_db, key, value) => {
+      if (key === 'ai.enabled') enabled = value
+    })
+    const stopping = Promise.withResolvers<void>()
+    vi.mocked(embeddings.stopEmbeddingModel).mockReturnValue(stopping.promise)
+    registerSettingsHandlers()
+
+    try {
+      const disabling = invokeHandler(SettingsChannels.invoke.SET_AI_SETTINGS, { enabled: false })
+      expect(embeddings.stopEmbeddingModel).toHaveBeenCalledOnce()
+      await expect(disabling).resolves.toEqual({ success: true })
+      expect(enabled).toBe('false')
+      expect(refreshNoteFold).toHaveBeenCalled()
+      expect(mockSend).toHaveBeenCalledWith(SettingsChannels.events.CHANGED, {
+        key: 'ai',
+        value: { enabled: false }
+      })
+      expect(projections.rebuildProjections).not.toHaveBeenCalled()
+      expect(projections.reconcileProjections).not.toHaveBeenCalled()
+
+      await invokeHandler(SettingsChannels.invoke.SET_AI_SETTINGS, { enabled: false })
+      await invokeHandler(SettingsChannels.invoke.SET_AI_SETTINGS, { imageEmbeddings: false })
+      expect(embeddings.stopEmbeddingModel).toHaveBeenCalledOnce()
+    } finally {
+      stopping.resolve()
+      vi.mocked(settingsQueries.setSetting).mockReset()
+    }
+  })
+
+  it('logs a rejected AI shutdown without failing the saved setting', async () => {
+    registerSettingsHandlers()
+    vi.mocked(settingsQueries.getSetting).mockReturnValue('true')
+    const failure = new Error('embedding shutdown unavailable')
+    vi.mocked(embeddings.stopEmbeddingModel).mockRejectedValueOnce(failure)
+
+    await expect(
+      invokeHandler(SettingsChannels.invoke.SET_AI_SETTINGS, { enabled: false })
+    ).resolves.toEqual({ success: true })
+
+    expect(embeddings.stopEmbeddingModel).toHaveBeenCalledOnce()
+    await vi.waitFor(() => {
+      expect(mockRecoveryLog).toHaveBeenCalledWith(
+        expect.any(String),
+        expect.objectContaining({ error: failure })
+      )
     })
   })
 

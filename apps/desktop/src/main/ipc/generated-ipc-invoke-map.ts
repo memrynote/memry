@@ -52,6 +52,7 @@ import type { TagAssignment, TagCategoryRow } from '../database/queries/tag-cate
 import type { ImportSummary } from '../import/types'
 import type { VoiceModelStatus } from '../inbox/voice-model'
 import type { VoiceRecordingReadiness } from '../inbox/voice-transcription-settings'
+import type { AIModelStatus, AISettings } from '../settings/ai-settings'
 import type { CaptureUrlResult } from '../tasks/capture-url'
 import type { ImportFilesToProjectResult } from '../tasks/import-files-to-project'
 import type { AttachmentInfo, AttachmentResult } from '../vault/attachments'
@@ -59,7 +60,7 @@ import type { SnapshotListItem } from '../vault/note-snapshots'
 import type { FileMetadata, ImportFilesResult, Note, NoteListResponse } from '../vault/notes-crud'
 import type { SnapshotDetail } from '../vault/notes-versions'
 import type { AccountInfo } from './account-handlers'
-import type { AIModelStatus, AISettings, JournalSettings, NoteEditorSettings, TabSettings, TerminalCommandMutationResult, TerminalCommandStatus, VoiceTranscriptionOpenAIKeyStatus } from './settings-handlers'
+import type { JournalSettings, NoteEditorSettings, TabSettings, TerminalCommandMutationResult, TerminalCommandStatus, VoiceTranscriptionOpenAIKeyStatus } from './settings-handlers'
 
 export interface MainIpcInvokeHandlers {
   "account:changePlan": (...args: [any]) => Awaited<Promise<BillingStatus | (BillingActionResult & { status?: undefined; })>>
@@ -294,7 +295,7 @@ export interface MainIpcInvokeHandlers {
   "locale:get": (...args: []) => Awaited<"ar" | "cs" | "da" | "en" | "de" | "el" | "es" | "fi" | "fil" | "fr" | "he" | "hr" | "hu" | "id" | "it" | "ja" | "ko" | "ms" | "nl" | "no" | "pl" | "pt" | "ro" | "ru" | "sk" | "sv" | "th" | "tr" | "uk" | "vi" | "zh-CN" | "zh-TW">
   "locale:list": (...args: []) => Awaited<("ar" | "cs" | "da" | "en" | "de" | "el" | "es" | "fi" | "fil" | "fr" | "he" | "hr" | "hu" | "id" | "it" | "ja" | "ko" | "ms" | "nl" | "no" | "pl" | "pt" | "ro" | "ru" | "sk" | "sv" | "th" | "tr" | "uk" | "vi" | "zh-CN" | "zh-TW")[]>
   "locale:set": (...args: [unknown]) => Awaited<Promise<void>>
-  "note-fold:agent-status": (...args: []) => Awaited<Promise<{ choice: "auto" | "claude_cli" | "codex_cli" | "antigravity_cli" | "local_openai_compatible"; available: { id: "auto" | "claude_cli" | "codex_cli" | "antigravity_cli" | "local_openai_compatible"; label: string; }[]; resolved: string | null; }>>
+  "note-fold:agent-status": (...args: []) => Awaited<Promise<{ choice: "claude_cli" | "codex_cli" | "antigravity_cli" | "local_openai_compatible" | "auto"; available: { id: "claude_cli" | "codex_cli" | "antigravity_cli" | "local_openai_compatible" | "auto"; label: string; }[]; resolved: string | null; }>>
   "note-fold:get": (...args: [{ noteId: string; }]) => Awaited<Promise<{ noteId: string; sourceHash: string; language: string; totalWords: number; wordsByLevel: Record<"key" | "full" | "brief" | "takeaway" | "topic", number>; sections: { hash: string; heading: string | null; takeaway: string | null; paragraphs: { hash: string; text: string; sentences: string[]; sentencesMd: string[]; srcTokens: string[]; srcSentenceStart: number[]; morph: { keyTakeaway: { text: string; src: number | null; }[] | null; keyReason: { text: string; src: number | null; }[] | null; takeaway: { text: string; src: number | null; }[] | null; topic: { text: string; src: number | null; }[] | null; }; briefIdx: number[]; key: { takeaway: string; reason: string; } | null; takeaway: string | null; topic: string | null; evidence: number[]; }[]; skipped: { afterParagraph: number; kind: "embed" | "code" | "image" | "table" | "other" | "callout"; count: number; }[]; }[]; ready: ("key" | "full" | "brief" | "takeaway" | "topic")[]; status: "off" | "failed" | "ready" | "short" | "no_agent" | "writing"; agent: string | null; }>>
   "note-fold:last-run": (...args: []) => Awaited<{ status: "failed" | "idle" | "writing"; noteId: string | null; }>
   "note-fold:retry": (...args: [{ noteId?: string | undefined; }]) => Awaited<Promise<{ noteId: string; sourceHash: string; language: string; totalWords: number; wordsByLevel: Record<"key" | "full" | "brief" | "takeaway" | "topic", number>; sections: { hash: string; heading: string | null; takeaway: string | null; paragraphs: { hash: string; text: string; sentences: string[]; sentencesMd: string[]; srcTokens: string[]; srcSentenceStart: number[]; morph: { keyTakeaway: { text: string; src: number | null; }[] | null; keyReason: { text: string; src: number | null; }[] | null; takeaway: { text: string; src: number | null; }[] | null; topic: { text: string; src: number | null; }[] | null; }; briefIdx: number[]; key: { takeaway: string; reason: string; } | null; takeaway: string | null; topic: string | null; evidence: number[]; }[]; skipped: { afterParagraph: number; kind: "embed" | "code" | "image" | "table" | "other" | "callout"; count: number; }[]; }[]; ready: ("key" | "full" | "brief" | "takeaway" | "topic")[]; status: "off" | "failed" | "ready" | "short" | "no_agent" | "writing"; agent: string | null; } | null>>
@@ -450,7 +451,7 @@ export interface MainIpcInvokeHandlers {
   "settings:getVoiceTranscriptionOpenAIKeyStatus": (...args: []) => Awaited<Promise<VoiceTranscriptionOpenAIKeyStatus>>
   "settings:getVoiceTranscriptionSettings": (...args: []) => Awaited<{ provider: "local" | "openai"; memoNameMode: "transcript" | "timestamp" | "none"; language?: "ar" | "cs" | "da" | "en" | "de" | "el" | "es" | "fi" | "fr" | "he" | "hr" | "hu" | "id" | "it" | "ja" | "ko" | "ms" | "nl" | "no" | "pl" | "pt" | "ro" | "ru" | "sk" | "sv" | "th" | "tr" | "uk" | "vi" | "zh" | "ca" | "hi" | "ta" | "ur" | "bg" | "lt" | "la" | "mi" | "ml" | "cy" | "te" | "fa" | "lv" | "bn" | "sr" | "az" | "sl" | "kn" | "et" | "mk" | "br" | "eu" | "is" | "hy" | "ne" | "mn" | "bs" | "kk" | "sq" | "sw" | "gl" | "mr" | "pa" | "si" | "km" | "sn" | "yo" | "so" | "af" | "oc" | "ka" | "be" | "tg" | "sd" | "gu" | "am" | "yi" | "lo" | "uz" | "fo" | "ht" | "ps" | "tk" | "nn" | "mt" | "sa" | "lb" | "my" | "bo" | "tl" | "mg" | "as" | "tt" | "haw" | "ln" | "ha" | "ba" | "jw" | "su" | undefined; audioSearch?: boolean | undefined; }>
   "settings:installTerminalCommand": (...args: []) => Awaited<Promise<TerminalCommandMutationResult>>
-  "settings:loadAIModel": (...args: []) => Awaited<Promise<{ success: false; error: string; } | { success: boolean; message: string; error?: undefined; } | { success: boolean; error: string; message?: undefined; } | { success: boolean; message?: undefined; error?: undefined; }>>
+  "settings:loadAIModel": (...args: []) => Awaited<Promise<{ success: false; error: string; } | { success: boolean; message?: string | undefined; error?: string | undefined; }>>
   "settings:openOsMicrophoneSettings": (...args: []) => Awaited<Promise<{ success: boolean; }>>
   "settings:registerGlobalCapture": (...args: []) => Awaited<Promise<GlobalCaptureResult>>
   "settings:registerStickyShortcut": (...args: []) => Awaited<StickyShortcutResult>
@@ -458,7 +459,7 @@ export interface MainIpcInvokeHandlers {
   "settings:resetKeyboardSettings": (...args: []) => Awaited<{ success: boolean; error: string; } | { success: boolean; error?: undefined; }>
   "settings:sendTestInboxReviewNotification": (...args: []) => Awaited<{ supported: boolean; }>
   "settings:set": (...args: [{ key: string; value: string; }]) => Awaited<{ success: boolean; error: string; } | { success: boolean; error?: undefined; }>
-  "settings:setAISettings": (...args: [Partial<AISettings>]) => Awaited<{ success: boolean; error: string; } | { success: boolean; error?: undefined; }>
+  "settings:setAISettings": (...args: [Partial<AISettings>]) => Awaited<{ success: boolean; error?: string | undefined; }>
   "settings:setBackupSettings": (...args: [Partial<{ autoBackup: boolean; frequencyHours: 1 | 12 | 24 | 6; maxBackups: number; lastBackupAt: string | null; }>]) => Awaited<{ success: boolean; error?: string | undefined; }>
   "settings:setCalendarGoogleSettings": (...args: [Partial<{ defaultTargetCalendarId: string | null; onboardingCompleted: boolean; promoteConfirmDismissed: boolean; pushEventsToGoogle: boolean; agentReadEventsConsent: boolean | null; }>]) => Awaited<{ success: boolean; error?: string | undefined; }>
   "settings:setCalendarProviderSettings": (...args: [unknown]) => Awaited<{ success: boolean; error?: string | undefined; }>
