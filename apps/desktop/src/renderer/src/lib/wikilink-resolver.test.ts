@@ -333,6 +333,8 @@ describe('wikilink-resolver', () => {
     })
 
     it.each<[string, string | null]>([
+      ['2011-12-30', null],
+      ['2024-02-29', null],
       ['2026-11-08', null],
       ['2026-11-08#Decisions', 'Decisions'],
       ['2026-11-08#Morning#Decisions', 'Decisions'],
@@ -341,7 +343,7 @@ describe('wikilink-resolver', () => {
     ])('opens an unwritten day instead of creating a note for %s', async (target, heading) => {
       resolveByTitle.mockResolvedValue(null)
 
-      expect(await resolveWikiLink(target)).toEqual({ ...journalDay('2026-11-08'), heading })
+      expect(await resolveWikiLink(target)).toEqual({ ...journalDay(target.slice(0, 10)), heading })
     })
 
     it.each(['2026-11-08', '2026-11-08#Ideas'])(

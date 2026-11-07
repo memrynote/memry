@@ -10,9 +10,7 @@ import { toLocalDateString } from '@/components/calendar/date-utils'
 export function isJournalDay(text: string): boolean {
   // `isValidJournalDate` lets `2026-02-31` roll over to March; a day that is
   // not on the calendar is not a journal day.
-  return (
-    isValidJournalDate(text) && new Date(`${text}T00:00:00.000Z`).toISOString().startsWith(text)
-  )
+  return isValidJournalDate(text) && new Date(text).toISOString().startsWith(text)
 }
 
 const RELATIVE_DAYS = new Map([
