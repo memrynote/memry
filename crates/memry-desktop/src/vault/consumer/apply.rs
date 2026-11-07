@@ -21,6 +21,7 @@ use crate::vault::activity::{ActivityLog, ScanActivity};
 use crate::vault::app_edit::OwnFiles;
 use crate::vault::file_types::{FileType, extension, file_type_of_extension};
 use crate::vault::note_file::{NoteFile, large_by_size, large_file_class, record_large_file};
+use crate::vault::watch::filter::WatchFilter;
 use crate::vault::watch::{VaultEvent, WatchHandle};
 use crate::vault::writeback::WriteBack;
 
@@ -58,6 +59,8 @@ pub(super) struct Applier {
     pub(super) editor: Weak<EditorHost>,
     /// `None` in a test that runs no watcher.
     pub(super) watch: Option<WatchHandle>,
+    /// The places the exclude patterns cover, whose records never cross (`apply::crossing`).
+    pub(super) filter: WatchFilter,
     /// By note id, how many times in a row an outside edit did not reach its record.
     pub(super) untaken: Mutex<HashMap<String, u32>>,
     /// The open's write-back, which writes a body that won over an outside edit; `None` in a
@@ -472,6 +475,9 @@ impl Applier {
                 "a moved file's row was not moved: {collision}"
             );
             return Step::Done;
+        }
+        if self.crosses_from_cover(note_id, old_path, new_path) {
+            return self.made_anew(lane, new_path);
         }
         // The record first: on a failure both stay at the old path, and the next open's
         // rescan reports the move again.

@@ -1,8 +1,7 @@
 //! The vault settings through `vault:get-config` and `vault:update-config`'s owner
 //! (`vault::config::settings`), on a real `config.json` of an open vault: Electron's
 //! `getConfig` and `updateConfig`. A date format change renames the day files first and keeps
-//! each day (a folder change: `journal_change`); the change not ported yet (Step 13m-7b-3) is
-//! refused and leaves the file as it was.
+//! each day (a folder change: `journal_change`; an exclude pattern change: `vault_exclude`).
 
 #[allow(unused_imports)]
 use crate::device_key;
@@ -132,10 +131,10 @@ fn an_update_writes_the_fields_it_names_and_keeps_the_rest_of_the_file() {
     assert_eq!(file["defaultNoteFolder"], "inbox");
 }
 
-/// A change the tier cannot follow yet (the exclude patterns) is refused whole, and the file is
-/// left as it was; the current value again (in any spelling that normalizes to it) is no change.
+/// The current values again (the journal ones in any spelling that normalizes to them) are no
+/// change: nothing is written or announced.
 #[test]
-fn a_change_of_the_excludes_is_refused() {
+fn the_current_settings_again_are_no_change() {
     let e = opened(
         json!({
             "journalFolder": "/diary/",
@@ -145,29 +144,15 @@ fn a_change_of_the_excludes_is_refused() {
         &[],
     );
     let before = fs::read(config_path(&e.vault)).unwrap();
-    let patch = VaultConfigPatch {
-        exclude_patterns: Some(vec![]),
-        journal_show_in_sidebar: Some(true),
-        journal_folder: Some("Diary".to_owned()),
-        journal_date_format: Some("DD-MM-YYYY".to_owned()),
-        ..Default::default()
-    };
-    match update(&e, patch, |_| panic!("announced")) {
-        Err(SettingsError::NotPorted(refused)) => assert_eq!(refused, "excludePatterns"),
-        other => panic!("{other:?}"),
-    }
-    assert_eq!(fs::read(config_path(&e.vault)).unwrap(), before);
-
     let same = VaultConfigPatch {
         journal_folder: Some("diary/".to_owned()),
         journal_date_format: Some(" YYYY-MM-DD".to_owned()),
         exclude_patterns: Some(vec![".git".to_owned()]),
-        journal_show_in_sidebar: Some(true),
         ..VaultConfigPatch::default()
     };
-    let settings = update(&e, same, |_| {}).unwrap();
-    assert!(settings.journal_show_in_sidebar);
-    assert_eq!(stored(&e.vault)["journalFolder"], "/diary/");
+    let settings = update(&e, same, |_| panic!("announced")).unwrap();
+    assert_eq!(settings.exclude_patterns, [".git"]);
+    assert_eq!(fs::read(config_path(&e.vault)).unwrap(), before);
 }
 
 /// The input is `UpdateVaultConfigSchema`: every field optional, an unknown key ignored.

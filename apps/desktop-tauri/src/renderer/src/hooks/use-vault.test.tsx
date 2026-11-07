@@ -107,10 +107,10 @@ describe('useVault', () => {
 
   it('answers a refused config change with its message and keeps the saved config', async () => {
     const api = vaultApi()
-    const message = "This version can't change the journal folder yet."
+    const message = "The journal can't be kept in this folder, so the change wasn't saved."
     api.vault.updateConfig.mockRejectedValueOnce({
       kind: 'invalid',
-      code: 'config_change_not_ported',
+      code: 'journal_folder_invalid',
       message
     })
     const { result } = renderHook(() => useVault())
