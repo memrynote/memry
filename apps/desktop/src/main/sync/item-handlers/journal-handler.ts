@@ -26,6 +26,7 @@ import { flushProjectionEvents } from '../../projections'
 import { createLogger } from '../../lib/logger'
 import { BaseItemHandler } from '@memry/sync-client/item-handlers/base-handler'
 import { belongsToOtherType } from './note-row-type'
+import { pulledRowSyncedAt } from './pulled-row-synced-at'
 import { remoteAliases } from './note-handler-frontmatter'
 import { extractAliases } from '../../vault/frontmatter'
 import { seedSkipsDeletedNote } from '../pending-deletes'
@@ -136,12 +137,7 @@ class JournalHandler extends BaseItemHandler<JournalSyncPayload> {
     const { absolutePath, entry, fileContent, frontmatter } = write
     const path = getJournalRelativePath(entry.date)
     const modifiedAt = existing ? (data.modifiedAt ?? entry.modifiedAt) : entry.modifiedAt
-    // The row holds the server's state, so it never reads as edited since its
-    // sync, even when the parse stamped it after `now` or the sender's clock
-    // runs ahead. Read as edited, its file (empty when an update record lands
-    // first) is owed to the doc and replaces the server body on every device
-    // (`oweUnsyncedFileBody`).
-    const syncedAt = modifiedAt > now ? modifiedAt : now
+    const syncedAt = pulledRowSyncedAt(modifiedAt, now)
 
     saveCanonicalNote(ctx.db, {
       id: itemId,
