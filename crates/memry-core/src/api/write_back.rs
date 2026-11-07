@@ -5,8 +5,9 @@
 
 use crate::api::errors::StorageError;
 use crate::crdt::errors::CrdtError;
+use crate::domain::note_files::LogMark;
 use crate::domain::notes::journal_day;
-use crate::domain::write_back::{self, BodyRead, LogMark};
+use crate::domain::write_back::{self, BodyRead};
 use crate::markdown::convert::EmbedResolver;
 use crate::markdown::convert::api::Converter;
 use crate::storage::Db;

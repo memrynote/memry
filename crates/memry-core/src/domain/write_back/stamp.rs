@@ -5,12 +5,12 @@ use std::sync::Arc;
 
 use rusqlite::Connection;
 
-use super::LogMark;
 use crate::crdt::BODY_FRAGMENT;
 use crate::crdt::errors::CrdtError;
 use crate::crdt::registry::{Document, DocumentRegistry, UpdateSink};
 use crate::crdt::update_log::{self, LoadPlan};
 use crate::domain::note_files;
+use crate::domain::note_files::LogMark;
 use crate::markdown::convert::api::Converter;
 
 const READER: &str = "memry-core-stamp-reader";

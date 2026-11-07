@@ -22,6 +22,7 @@ use crate::api::errors::StorageError;
 use crate::crdt::BODY_FRAGMENT;
 use crate::crdt::errors::CrdtError;
 use crate::crdt::update_log::{Namespace, next_local_seq};
+use crate::domain::note_files::LogMark;
 use crate::domain::notes::journal_day::body_owner;
 use crate::domain::{note_snapshots, owed_file_body, reads};
 use crate::markdown::convert::EmbedResolver;
@@ -91,15 +92,6 @@ pub fn body_for_file(
         return Ok(BodyRead::NotRepresentable(body.unrepresentable));
     }
     Ok(BodyRead::Body(body))
-}
-
-/// How far a note's document has come: one past the highest sequence each namespace of its
-/// log has claimed, a fold point included. Every update stored moves it and a fold does not,
-/// so two equal marks mean the document took no edit in between.
-#[derive(Debug, Clone, Copy, PartialEq, Eq)]
-pub struct LogMark {
-    pub(crate) server: i64,
-    pub(crate) local: i64,
 }
 
 /// The note's [`LogMark`] now: taken before its body is compared, it makes a feed that finds

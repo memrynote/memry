@@ -12,7 +12,7 @@ use crate::crdt::body_writes;
 use crate::crdt::errors::CrdtError;
 use crate::crypto::keys;
 use crate::domain::external_feed::{self, AppRead, FeedInput, FeedOutcome, FirstBody};
-use crate::domain::write_back::LogMark;
+use crate::domain::note_files::LogMark;
 use crate::markdown::convert::api::Converter;
 use crate::seams::secure_store::{SecureStore, SecureStoreKey};
 use crate::storage::Db;

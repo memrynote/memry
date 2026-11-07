@@ -2,8 +2,8 @@
 //! with, and what that came to. Split from `apply`, whose invariants it keeps.
 
 use memry_core::domain::external_feed::{FeedInput, FeedOutcome};
+use memry_core::domain::note_files::LogMark;
 use memry_core::domain::note_files::StampMark;
-use memry_core::domain::write_back::LogMark;
 use memry_core::markdown::shared::writing_tools::{WritingFrontmatter, writing_of_yaml};
 
 use super::apply::{Applier, Step};

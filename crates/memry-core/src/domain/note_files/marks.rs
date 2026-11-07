@@ -8,7 +8,15 @@ use rusqlite::{Connection, OptionalExtension, params};
 use super::failed;
 use crate::api::errors::StorageError;
 use crate::crdt::update_log::LOCAL_NAMESPACE_PREFIX;
-use crate::domain::write_back::LogMark;
+
+/// How far a note's document has come: one past the highest sequence each namespace of its
+/// log has claimed, a fold point included. Every update stored moves it and a fold does not,
+/// so two equal marks mean the document took no edit in between.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub struct LogMark {
+    pub(crate) server: i64,
+    pub(crate) local: i64,
+}
 
 /// Which mark a stamp write records.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
