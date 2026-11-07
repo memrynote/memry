@@ -337,13 +337,13 @@ instead, and after a complete merge the pull takes it
 left to the merge, because its file may be the item record's copy of a body the
 server has since moved past.
 
-A row that a pull writes is synced by definition, so the journal record apply
-stamps `syncedAt` no earlier than the `modifiedAt` it writes. The parse that
-builds the day's file stamps `modifiedAt` a few milliseconds after the apply
-time, and a sender whose clock runs ahead sends a later one. Read as edited, a
-fresh device's day owed its file, which an update record leaves empty, and the
-take replaced the server body with nothing and synced the deletes to every
-device.
+A row that a pull writes is synced by definition, so the note and journal
+record applies stamp `syncedAt` no earlier than the `modifiedAt` they write
+(`pulledRowSyncedAt`). The parse that builds a journal day's file stamps
+`modifiedAt` a few milliseconds after the apply time, and a sender whose clock
+runs ahead sends a later one. Read as edited, a fresh device's day owed its
+file, which an update record leaves empty, and the take replaced the server
+body with nothing and synced the deletes to every device.
 
 The file is taken only after a complete server merge into the live document,
 and every other pass leaves the file alone while the marker stands. The
