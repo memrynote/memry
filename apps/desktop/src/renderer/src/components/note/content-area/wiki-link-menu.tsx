@@ -3,8 +3,9 @@
  */
 
 import type { SuggestionMenuProps } from '@blocknote/react'
-import { FileAudio, FileText, Hash, PenTool, Plus, Type } from '@/lib/icons'
+import { BookOpen, FileAudio, FileText, Hash, PenTool, Plus, Type } from '@/lib/icons'
 import { cn } from '@/lib/utils'
+import { getActiveLocale } from '@/lib/active-locale'
 import { useT } from '@memry/i18n/renderer'
 import { NoteMenuIcon } from './note-menu-icon'
 
@@ -40,12 +41,14 @@ interface NoteFields {
  * settled: one row that commits the display name.
  * `canvas` is a spatial canvas — a vault item with no headings and no
  * embed form, so it is a plain row with the canvas icon (#1983).
+ * `journal` is a journal day, its `target` the ISO date. `exists: false` is a
+ * day nobody has written yet: a ghost row, linked all the same.
  */
 export type WikiLinkSuggestionItem = SuggestionBase &
   (
     | ({ type: 'note' } & NoteFields)
     | ({ type: 'noteName'; noteTitle: string } & NoteFields)
-    | { type: 'canvas' | 'create' | 'alias' | 'addName' }
+    | { type: 'canvas' | 'create' | 'alias' | 'addName' | 'journal' }
     /** `headingLevel` indents the row so the note's outline is readable. */
     | { type: 'heading'; headingLevel: 1 | 2 | 3 | 4 | 5 | 6 }
     /** `filtered`: whether a heading filter is what emptied the list. */
@@ -144,6 +147,50 @@ export function WikiLinkMenu({
                 <div className="font-medium">{t('menus.wiki.displayAs')}</div>
                 <div className="truncate text-xs text-muted-foreground">
                   {item.alias} → {item.target}
+                </div>
+              </div>
+            </button>
+          )
+        }
+
+        if (item.type === 'journal') {
+          const [year, month, day] = item.title.split('-').map(Number)
+          return (
+            <button
+              type="button"
+              key={`${item.type}-${item.id}`}
+              className={itemClassName}
+              onClick={() => onItemClick?.({ ...item, insertMode: 'wikiLink' })}
+              // oxlint-disable-next-line jsx-a11y/prefer-tag-over-role -- ARIA widget pattern; native tag would change styling or behavior
+              role="option"
+              aria-selected={isSelected}
+              data-journal-day={item.exists ? 'written' : 'ghost'}
+            >
+              <BookOpen
+                className={cn('h-4 w-4 shrink-0', item.exists ? 'opacity-70' : 'opacity-40')}
+                aria-hidden
+              />
+              <div className="flex min-w-0 flex-1 flex-col gap-0.5 text-start">
+                <div
+                  className={cn(
+                    'truncate font-medium',
+                    !item.exists &&
+                      'text-muted-foreground underline decoration-dashed underline-offset-4'
+                  )}
+                >
+                  {item.title}
+                </div>
+                <div className="truncate text-xs text-muted-foreground">
+                  {item.exists
+                    ? t('menus.wiki.journalDay', {
+                        date: new Date(year, month - 1, day).toLocaleDateString(getActiveLocale(), {
+                          weekday: 'long',
+                          day: 'numeric',
+                          month: 'long',
+                          year: 'numeric'
+                        })
+                      })
+                    : t('menus.wiki.journalDayUnwritten')}
                 </div>
               </div>
             </button>

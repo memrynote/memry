@@ -33,6 +33,8 @@ Click the chevron to open the note's tasks beneath its row. Each task shows its 
 
 Click a task to open its detail drawer, the same one the Tasks page uses. Click its checkbox to complete or reopen it without leaving the table. Clicking the note's title still opens the note.
 
+The **Folder** column shows where each row sits. A note directly in the folder you are viewing shows that folder's name. A note in a subfolder shows the subfolder's path from the viewed folder, such as `/2024`, and clicking it opens that subfolder.
+
 ## Sorting
 
 Click any header to sort. Click again to reverse direction. <kbd>⇧</kbd>+click for **secondary sort** (sort by A then B).

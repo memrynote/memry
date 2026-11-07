@@ -119,6 +119,8 @@ export interface WikiLinkResolution {
   path: string
   title: string
   fileType: 'markdown' | 'pdf' | 'image' | 'audio' | 'video'
+  /** Authoritative journal day; journal entries may have imported, non-date ids. */
+  journalDate?: string | null
 }
 
 /**

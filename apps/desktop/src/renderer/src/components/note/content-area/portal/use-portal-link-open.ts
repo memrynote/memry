@@ -11,6 +11,7 @@ import { toast } from 'sonner'
 import { useT } from '@memry/i18n/renderer'
 import { useSidebarNavigation } from '@/hooks/use-sidebar-navigation'
 import { resolveWikiLink } from '@/lib/wikilink-resolver'
+import { journalDayTab } from '@/lib/memry-links'
 import { createLogger } from '@/lib/logger'
 import type { WikiLinkOpenTarget } from '../types'
 
@@ -25,6 +26,19 @@ export function usePortalLinkOpen(): (target: string, open?: WikiLinkOpenTarget)
       void (async () => {
         try {
           const resolved = await resolveWikiLink(target)
+          const options = {
+            inNewTab: open === 'newTab' || open === 'backgroundTab',
+            inBackground: open === 'backgroundTab',
+            toTheSide: open === 'side'
+          }
+          if (resolved.type === 'journal') {
+            const { type, path, entityId, title, viewState } = journalDayTab(
+              resolved.id,
+              resolved.heading
+            )
+            openSidebarItem({ type, path, entityId, title, viewState }, options)
+            return
+          }
           if (resolved.type !== 'note' && resolved.type !== 'file') return
           openSidebarItem(
             {
@@ -33,11 +47,7 @@ export function usePortalLinkOpen(): (target: string, open?: WikiLinkOpenTarget)
               entityId: resolved.id,
               title: resolved.title
             },
-            {
-              inNewTab: open === 'newTab' || open === 'backgroundTab',
-              inBackground: open === 'backgroundTab',
-              toTheSide: open === 'side'
-            }
+            options
           )
         } catch (err) {
           log.error('Failed to open a link from a portal', err)

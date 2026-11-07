@@ -202,6 +202,8 @@ Events from every connected and subscribed calendar can be relation targets. An 
 
 Use the relation picker to search and add targets, and to remove existing ones. A target that's been deleted still shows its chip, dimmed, so the reference isn't silently dropped.
 
+Type a date, such as `2026-05-07`, `today` or `yesterday`, to pick that journal day. A day you have not written yet is offered as **Not written yet**, and its chip shows the date with a dashed underline. Clicking it opens the empty day, and once you write on that day the relation shows up in its backlinks.
+
 Relation properties also feed the [Backlinks panel and Graph view](/user-guide/notes/wiki-links) on the note(s) they point to, alongside wiki links — so a relation and a `[[wiki link]]` to the same note both show up as connections.
 
 ### Project Property

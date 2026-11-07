@@ -8,6 +8,7 @@
 
 import { createSnippet } from './frontmatter'
 import { stripMarkdownComments } from '@memry/shared/markdown-code'
+import { dateFromJournalId } from '@memry/contracts/journal-api'
 import {
   getNoteCacheById,
   listNotesFromCache,
@@ -185,7 +186,7 @@ export async function getNoteLinks(id: string): Promise<NoteLinksResponse> {
 
   const incoming = getIncomingReferences(db, id)
   const targetCache = getNoteCacheById(db, id)
-  const targetTitle = targetCache?.title ?? ''
+  const targetTitle = targetCache?.title ?? dateFromJournalId(id) ?? ''
 
   // Canvas arrows between two note cards. Only note-to-note edges belong here:
   // both lists open their entries as notes. An endpoint whose note is gone from

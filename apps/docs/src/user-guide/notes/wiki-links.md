@@ -704,6 +704,11 @@ The styling stays current without a reload: creating, renaming, or deleting a no
 this device or another — restyles the links in every open editor. Recreating a note with a
 broken link's title makes that link live again, because links match by title.
 
+A link to a date, such as `[[2026-05-08]]`, is a journal day rather than a missing note. It
+looks the same until the day is written, but hovering it says the day is not written yet and
+clicking it opens that day in the Journal. See
+[Wiki Linking from Today](/user-guide/journal/daily-entries#wiki-linking-from-today).
+
 Only the note half is checked: `[[Meeting#Decisions]]` is broken when there is no note
 titled "Meeting", not when the heading is missing — a link to a renamed or deleted heading
 still opens the note at the top, as before.

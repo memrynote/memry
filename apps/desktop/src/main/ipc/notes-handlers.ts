@@ -266,7 +266,8 @@ export function registerNotesHandlers(): void {
         id: result.id,
         path: result.path,
         title: result.title,
-        fileType: result.fileType ?? 'markdown'
+        fileType: result.fileType ?? 'markdown',
+        ...(result.date ? { journalDate: result.date } : {})
       }
     })
   )

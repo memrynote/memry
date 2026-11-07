@@ -358,7 +358,7 @@ export interface MainIpcInvokeHandlers {
   "notes:rename-folder": (...args: [{ oldPath: string; newPath: string; }]) => Awaited<Promise<{ success: true; }> | { success: false; error: string }>
   "notes:rename-property-option": (...args: [{ propertyName: string; oldValue: string; newValue: string; }]) => Awaited<Promise<{ success: boolean; }>>
   "notes:reorder": (...args: [{ folderPath: string; notePaths: string[]; }]) => Awaited<{ success: true; } | { success: false; error: string }>
-  "notes:resolve-by-title": (...args: [string]) => Awaited<Promise<{ id: string; path: string; title: string; fileType: FileType; } | null>>
+  "notes:resolve-by-title": (...args: [string]) => Awaited<Promise<{ journalDate?: string | undefined; id: string; path: string; title: string; fileType: FileType; } | null>>
   "notes:resolve-titles": (...args: [string[]]) => Awaited<Promise<{ [k: string]: { id: string; path: string; } | null; }>>
   "notes:resolve-wiki-target": (...args: [string]) => Awaited<Promise<{ id: string; path: string; title: string; fileType: FileType; heading: string | null; } | null>>
   "notes:restore-version": (...args: [string]) => Awaited<Promise<{ success: false; error: string; } | { success: boolean; note: Note; }>>

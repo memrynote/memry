@@ -473,6 +473,7 @@ export function GroupedTable({
       return (
         <FolderCell
           path={note.folder}
+          notePath={note.path}
           onClick={() => {
             if (note.folder && note.folder !== '/') {
               onFolderClick?.(note.folder)

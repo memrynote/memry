@@ -1,7 +1,8 @@
 import { useEffect, useState } from 'react'
 import type { CalendarEventSearchItem } from '@memry/contracts/calendar-api'
-import type { SearchResultItem } from '@memry/contracts/search-api'
 import { encodeExternalEventRelationId, type RelationKind } from '@memry/contracts/relation-uri'
+import { notesService } from '@/services/notes-service'
+import { journalDayOf } from '@/lib/journal-link-days'
 import { calendarService } from '@/services/calendar-service'
 import { canvasService } from '@/services/canvas-service'
 import { searchService } from '@/services/search-service'
@@ -22,6 +23,8 @@ export interface RelationSearchResult {
   kind?: RelationKind
   /** Events only. A recurring event's occurrences share a title, so the picker shows the date. */
   startAt?: string
+  /** Journals only: a day nobody has written yet, offered as a ghost. */
+  unwritten?: boolean
 }
 
 export interface RelationSearchState {
@@ -73,10 +76,18 @@ export function useRelationSearch(query: string): RelationSearchState {
     setLoading(true)
     let cancelled = false
     const timer = setTimeout(() => {
+      // A date names its journal day whether or not anything was written that
+      // day, and full-text search finds neither an empty day nor one whose
+      // text never mentions its own date. So the day is looked up by title and
+      // always leads the journal group.
+      const day = journalDayOf(trimmed)
       // Settled independently: one source failing must not blank the other.
-      const searching = searchService.quick(trimmed).then(
+      const searching = Promise.all([
+        searchService.quick(trimmed),
+        day ? notesService.resolveByTitle(day) : null
+      ]).then(
         // oxlint-disable-next-line promise/always-return -- side-effect handler; the promise only signals settlement to Promise.all
-        (response: { results: SearchResultItem[] }) => {
+        ([response, dayMatch]) => {
           if (cancelled) return
           setNotes(
             response.results
@@ -88,12 +99,16 @@ export function useRelationSearch(query: string): RelationSearchState {
               .filter((r) => r.metadata.type === 'task')
               .map((r) => ({ id: r.id, title: r.title }))
           )
+          const found = response.results.flatMap((r) =>
+            r.metadata.type === 'journal' && r.metadata.date !== day
+              ? [{ id: r.metadata.date, title: r.title || r.metadata.date }]
+              : []
+          )
+          const written = day !== null && dayMatch?.journalDate === day
           setJournals(
-            response.results.flatMap((r) =>
-              r.metadata.type === 'journal'
-                ? [{ id: r.metadata.date, title: r.title || r.metadata.date }]
-                : []
-            )
+            day
+              ? [{ id: day, title: day, ...(written ? {} : { unwritten: true }) }, ...found]
+              : found
           )
         },
         (err: unknown) => {

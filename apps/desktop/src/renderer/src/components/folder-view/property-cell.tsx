@@ -44,7 +44,8 @@ import { extractErrorMessage } from '@/lib/ipc-error'
 import { propertiesService } from '@/services/properties-service'
 import type { RelationKind, ResolvedRelationRef } from '@memry/contracts/properties-api'
 import { useT } from '@memry/i18n/renderer'
-import { useRelationNavigation } from '@/hooks/use-relation-navigation'
+import { isUnwrittenJournalDay, useRelationNavigation } from '@/hooks/use-relation-navigation'
+import { useJournalRelationRevision } from '@/hooks/use-journal-relation-revision'
 import { ObjectAvatar, TagGlyph } from '@/features/tag-fields/object-avatar'
 import { useOptionalObjectIdentity } from '@/features/tag-fields/use-optional-object-identity'
 import { useTabs } from '@/contexts/tabs'
@@ -110,6 +111,8 @@ interface TitleCellProps {
 interface FolderCellProps {
   /** Relative folder path */
   path: string
+  /** The note's vault-relative path, which names the folder `/` stands for. */
+  notePath?: string
   /** Click handler to navigate to folder */
   onClick?: () => void
   /** Additional CSS classes */
@@ -753,6 +756,8 @@ export const RelationCell = memo(function RelationCell({
     [value]
   )
 
+  const journalRevision = useJournalRelationRevision(uris)
+
   useEffect(() => {
     if (uris.length === 0) return undefined
 
@@ -765,7 +770,8 @@ export const RelationCell = memo(function RelationCell({
     return () => {
       cancelled = true
     }
-  }, [uris])
+    // oxlint-disable-next-line react/exhaustive-effect-dependencies -- journalRevision refreshes unchanged URIs when the day gains or loses its file
+  }, [uris, journalRevision])
 
   if (uris.length === 0) {
     return <span className={cn('text-muted-foreground/50', className)}>—</span>
@@ -775,7 +781,12 @@ export const RelationCell = memo(function RelationCell({
     <div className={cn('flex flex-wrap items-center gap-1', className)}>
       {resolved.map((ref) => {
         const Icon = RELATION_KIND_ICONS[ref.targetType]
-        const label = ref.exists ? ref.title : t('properties.relation.deleted')
+        const unwritten = isUnwrittenJournalDay(ref)
+        const label = ref.exists
+          ? ref.title
+          : unwritten
+            ? ref.targetId
+            : t('properties.relation.deleted')
 
         // A note's own emoji stands in for the generic kind icon.
         const glyph = ref.emoji ? (
@@ -796,7 +807,7 @@ export const RelationCell = memo(function RelationCell({
 
         // The cell is read-only for editing, but navigation is a read action.
         // A dangling ref has nothing to open and stays inert.
-        if (!ref.exists) {
+        if (!ref.exists && !unwritten) {
           return (
             <span key={ref.uri} className={chipClass}>
               {glyph}
@@ -823,7 +834,14 @@ export const RelationCell = memo(function RelationCell({
             )}
           >
             {glyph}
-            <span className="truncate">{label}</span>
+            <span
+              className={cn(
+                'truncate',
+                unwritten && 'underline decoration-dashed underline-offset-2'
+              )}
+            >
+              {label}
+            </span>
           </button>
         )
       })}
@@ -1031,14 +1049,38 @@ export const TitleCell = memo(function TitleCell({
 /**
  * T050: Folder cell - relative folder path with icon
  */
+/**
+ * The folder a note sits in, as the folder column shows it. The column's value
+ * is relative to the viewed folder, so a note directly inside it is `/`: that
+ * one is named by its own folder instead, since a dash reads as "no folder".
+ * Null only at the vault root.
+ */
+export function folderLabel(folder: string, notePath = ''): string | null {
+  if (folder && folder !== '/') return folder
+  return notePath.split('/').slice(0, -1).pop() || null
+}
+
 export const FolderCell = memo(function FolderCell({
   path,
+  notePath,
   onClick,
   className
 }: FolderCellProps): React.JSX.Element {
-  // Root folder display
-  if (!path || path === '/') {
+  const label = folderLabel(path, notePath)
+  if (!label) {
     return <span className={cn('text-muted-foreground/50', className)}>—</span>
+  }
+  // The viewed folder itself: nowhere to navigate to.
+  if (!path || path === '/') {
+    return (
+      <span
+        className={cn('flex items-center gap-1.5 truncate text-muted-foreground', className)}
+        title={label}
+      >
+        <Folder className="h-3.5 w-3.5 flex-shrink-0" />
+        <span className="truncate text-sm">{label}</span>
+      </span>
+    )
   }
 
   return (
