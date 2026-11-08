@@ -32,7 +32,7 @@ overrides:
   prosemirror-transform: 1.12.1
   qs: '>=6.16.0'
   protobufjs: '>=7.6.5 <8'
-  serialize-javascript: 7.0.5
+  serialize-javascript: 7.1.3
   '@xmldom/xmldom': 0.8.15
   shell-quote: '>=1.11.0'
   linkify-it: '>=5.0.2 <6'
