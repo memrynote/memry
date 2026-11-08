@@ -1347,6 +1347,7 @@
       "keySaveError": "OpenAI-avaimen tallentaminen epäonnistui"
     },
     "embedding": {
+      "load": "Lataa malli",
       "loaded": "Ladattu",
       "loading": "Ladataan",
       "downloadLoad": "Lataa ja ota malli käyttöön",

@@ -123,6 +123,7 @@
     "requestTimedOut": "انتهت مهلة طلب المزامنة. يرجى التحقق من اتصالك بالإنترنت."
   },
   "googleCalendar": {
+    "requestRejected": "رفضت Google هذا العنصر. تحقق من تاريخه ووقته، ثم حاول مرة أخرى.",
     "connectFailed": "تعذّر توصيل Google Calendar. حاول مرة أخرى بعد قليل.",
     "reconnectNeeded": "انتهت صلاحية اتصالك بـGoogle Calendar. افصله ثم وصّله مرة أخرى.",
     "misconfigured": "لم تتم تهيئة Google Calendar بشكل صحيح. يرجى التواصل مع الدعم إذا استمر هذا.",

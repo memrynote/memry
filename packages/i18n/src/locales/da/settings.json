@@ -1347,6 +1347,7 @@
       "keySaveError": "Kunne ikke gemme OpenAI-nøglen"
     },
     "embedding": {
+      "load": "Indlæs model",
       "loaded": "Indlæst",
       "loading": "Indlæser",
       "downloadLoad": "Hent og indlæs model",

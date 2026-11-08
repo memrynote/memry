@@ -1347,6 +1347,7 @@
       "keySaveError": "無法儲存 OpenAI 金鑰"
     },
     "embedding": {
+      "load": "載入模型",
       "loaded": "已載入",
       "loading": "載入中",
       "downloadLoad": "下載並載入模型",

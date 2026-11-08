@@ -123,6 +123,7 @@
     "requestTimedOut": "Permintaan penyegerakan tamat masa. Sila semak sambungan internet anda."
   },
   "googleCalendar": {
+    "requestRejected": "Google menolak item ini. Semak tarikh dan masanya, kemudian cuba lagi.",
     "connectFailed": "Tidak dapat menyambung ke Google Calendar. Sila cuba lagi sebentar.",
     "reconnectNeeded": "Sambungan Google Calendar anda telah tamat tempoh. Sila putuskan sambungan dan sambung semula.",
     "misconfigured": "Google Calendar tidak dikonfigurasikan dengan betul. Sila hubungi sokongan jika ini berterusan.",

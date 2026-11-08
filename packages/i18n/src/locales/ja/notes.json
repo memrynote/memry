@@ -5,6 +5,7 @@
     "create": "作成"
   },
   "wikiLinkPreview": {
+    "journalUnwritten": "{date}のジャーナルはまだ書かれていません。クリックしてその日を開く",
     "notFound": "見つかりません。クリックして「{title}」を作成"
   },
   "wikiLinkMenu": {
@@ -661,6 +662,8 @@
   },
   "menus": {
     "wiki": {
+      "journalDay": "ジャーナル · {date}",
+      "journalDayUnwritten": "ジャーナル · 未記入",
       "aria": "ノートの候補",
       "loading": "ノートを読み込み中…",
       "empty": "ノートが見つかりません",
@@ -878,6 +881,7 @@
     "showOnCalendar": "カレンダーに表示",
     "showingOnCalendar": "カレンダーに表示中",
     "relation": {
+      "unwrittenDay": "未記入",
       "deleted": "削除済み",
       "removeAria": "{title} を外す",
       "addAria": "リレーションを追加",

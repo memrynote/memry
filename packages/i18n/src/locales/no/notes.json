@@ -5,6 +5,7 @@
     "create": "Opprett"
   },
   "wikiLinkPreview": {
+    "journalUnwritten": "Det er ikke skrevet noe for {date} ennå. Klikk for å åpne dagen",
     "notFound": "Ikke funnet – klikk for å opprette «{title}»"
   },
   "wikiLinkMenu": {
@@ -661,6 +662,8 @@
   },
   "menus": {
     "wiki": {
+      "journalDay": "Dagbok · {date}",
+      "journalDayUnwritten": "Dagbok · ikke skrevet ennå",
       "aria": "Notatforslag",
       "loading": "Laster inn notater …",
       "empty": "Ingen notater funnet",
@@ -878,6 +881,7 @@
     "showOnCalendar": "Vis i kalender",
     "showingOnCalendar": "Vises i kalender",
     "relation": {
+      "unwrittenDay": "Ikke skrevet ennå",
       "deleted": "Slettet",
       "removeAria": "Fjern {title}",
       "addAria": "Legg til relasjon",

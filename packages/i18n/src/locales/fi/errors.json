@@ -123,6 +123,7 @@
     "requestTimedOut": "Synkronointipyyntö aikakatkaistiin. Tarkista internetyhteytesi."
   },
   "googleCalendar": {
+    "requestRejected": "Google hylkäsi tämän kohteen. Tarkista sen päivämäärä ja kellonaika ja yritä uudelleen.",
     "connectFailed": "Yhteyden muodostaminen Google Calendariin epäonnistui. Yritä hetken kuluttua uudelleen.",
     "reconnectNeeded": "Google Calendar -yhteytesi on vanhentunut. Katkaise yhteys ja yhdistä uudelleen.",
     "misconfigured": "Google Calendaria ei ole määritetty oikein. Ota yhteyttä tukeen, jos tämä toistuu.",

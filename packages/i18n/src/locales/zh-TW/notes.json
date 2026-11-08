@@ -5,6 +5,7 @@
     "create": "建立"
   },
   "wikiLinkPreview": {
+    "journalUnwritten": "{date}的日誌尚未撰寫。按一下以開啟當日",
     "notFound": "找不到——按一下以建立「{title}」"
   },
   "wikiLinkMenu": {
@@ -661,6 +662,8 @@
   },
   "menus": {
     "wiki": {
+      "journalDay": "日誌 · {date}",
+      "journalDayUnwritten": "日誌 · 尚未撰寫",
       "aria": "筆記建議",
       "loading": "正在載入筆記…",
       "empty": "找不到筆記",
@@ -878,6 +881,7 @@
     "showOnCalendar": "顯示於行事曆",
     "showingOnCalendar": "已在行事曆中顯示",
     "relation": {
+      "unwrittenDay": "尚未撰寫",
       "deleted": "已刪除",
       "removeAria": "移除「{title}」",
       "addAria": "新增關聯",

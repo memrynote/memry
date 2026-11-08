@@ -5,6 +5,7 @@
     "create": "Tạo"
   },
   "wikiLinkPreview": {
+    "journalUnwritten": "Chưa viết nhật ký cho ngày {date}. Bấm để mở ngày đó",
     "notFound": "Không tìm thấy — bấm để tạo “{title}”"
   },
   "wikiLinkMenu": {
@@ -661,6 +662,8 @@
   },
   "menus": {
     "wiki": {
+      "journalDay": "Nhật ký · {date}",
+      "journalDayUnwritten": "Nhật ký · chưa viết",
       "aria": "Gợi ý ghi chú",
       "loading": "Đang tải ghi chú…",
       "empty": "Không tìm thấy ghi chú nào",
@@ -878,6 +881,7 @@
     "showOnCalendar": "Hiện trên lịch",
     "showingOnCalendar": "Đang hiện trên lịch",
     "relation": {
+      "unwrittenDay": "Chưa viết",
       "deleted": "Đã xóa",
       "removeAria": "Gỡ {title}",
       "addAria": "Thêm quan hệ",

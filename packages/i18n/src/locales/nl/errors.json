@@ -123,6 +123,7 @@
     "requestTimedOut": "Het synchronisatieverzoek duurde te lang. Controleer je internetverbinding."
   },
   "googleCalendar": {
+    "requestRejected": "Google heeft dit item geweigerd. Controleer de datum en tijd en probeer het opnieuw.",
     "connectFailed": "Kan geen verbinding maken met Google Calendar. Probeer het zo meteen opnieuw.",
     "reconnectNeeded": "Je verbinding met Google Calendar is verlopen. Verbreek de verbinding en maak opnieuw verbinding.",
     "misconfigured": "Google Calendar is niet juist geconfigureerd. Neem contact op met support als dit blijft gebeuren.",

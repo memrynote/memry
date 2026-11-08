@@ -1347,6 +1347,7 @@
       "keySaveError": "บันทึกคีย์ OpenAI ไม่สำเร็จ"
     },
     "embedding": {
+      "load": "โหลดโมเดล",
       "loaded": "โหลดแล้ว",
       "loading": "กำลังโหลด",
       "downloadLoad": "ดาวน์โหลดและโหลดโมเดล",

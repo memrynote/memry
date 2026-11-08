@@ -123,6 +123,7 @@
     "requestTimedOut": "同步请求超时，请检查你的网络连接。"
   },
   "googleCalendar": {
+    "requestRejected": "Google 拒绝了此项目。请检查其日期和时间，然后重试。",
     "connectFailed": "无法连接到 Google Calendar，请稍后重试。",
     "reconnectNeeded": "你的 Google Calendar 连接已过期。请断开后重新连接。",
     "misconfigured": "Google Calendar 的配置不正确。如果问题持续出现，请联系支持团队。",

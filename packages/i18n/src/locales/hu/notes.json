@@ -5,6 +5,7 @@
     "create": "Létrehozás"
   },
   "wikiLinkPreview": {
+    "journalUnwritten": "A bejegyzés még nincs megírva erre a napra: {date}. Kattintson a nap megnyitásához",
     "notFound": "Nem található – kattintson a(z) „{title}” jegyzet létrehozásához"
   },
   "wikiLinkMenu": {
@@ -661,6 +662,8 @@
   },
   "menus": {
     "wiki": {
+      "journalDay": "Napló · {date}",
+      "journalDayUnwritten": "Napló · még nincs megírva",
       "aria": "Jegyzetjavaslatok",
       "loading": "Jegyzetek betöltése…",
       "empty": "Nem található jegyzet",
@@ -878,6 +881,7 @@
     "showOnCalendar": "Megjelenítés a naptárban",
     "showingOnCalendar": "Megjelenik a naptárban",
     "relation": {
+      "unwrittenDay": "Még nincs megírva",
       "deleted": "Törölve",
       "removeAria": "{title} eltávolítása",
       "addAria": "Kapcsolat hozzáadása",

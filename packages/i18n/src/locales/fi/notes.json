@@ -5,6 +5,7 @@
     "create": "Luo"
   },
   "wikiLinkPreview": {
+    "journalUnwritten": "Päivälle {date} ei ole vielä kirjoitettu. Avaa päivä napsauttamalla",
     "notFound": "Ei löytynyt – luo ”{title}” napsauttamalla"
   },
   "wikiLinkMenu": {
@@ -661,6 +662,8 @@
   },
   "menus": {
     "wiki": {
+      "journalDay": "Päiväkirja · {date}",
+      "journalDayUnwritten": "Päiväkirja · ei vielä kirjoitettu",
       "aria": "Muistiinpanoehdotukset",
       "loading": "Ladataan muistiinpanoja…",
       "empty": "Muistiinpanoja ei löytynyt",
@@ -878,6 +881,7 @@
     "showOnCalendar": "Näytä kalenterissa",
     "showingOnCalendar": "Näytetään kalenterissa",
     "relation": {
+      "unwrittenDay": "Ei vielä kirjoitettu",
       "deleted": "Poistettu",
       "removeAria": "Poista ”{title}”",
       "addAria": "Lisää relaatio",

@@ -123,6 +123,7 @@
     "requestTimedOut": "同期リクエストがタイムアウトしました。インターネット接続を確認してください。"
   },
   "googleCalendar": {
+    "requestRejected": "Google がこの項目を拒否しました。日付と時刻を確認して、もう一度お試しください。",
     "connectFailed": "Google Calendar に接続できませんでした。少し時間をおいてもう一度お試しください。",
     "reconnectNeeded": "Google Calendar の接続の有効期限が切れました。接続を解除してから、もう一度接続してください。",
     "misconfigured": "Google Calendar が正しく設定されていません。繰り返し発生する場合はサポートにご連絡ください。",

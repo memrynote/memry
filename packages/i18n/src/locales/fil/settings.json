@@ -1347,6 +1347,7 @@
       "keySaveError": "Hindi ma-save ang OpenAI key"
     },
     "embedding": {
+      "load": "I-load ang modelo",
       "loaded": "Na-load",
       "loading": "Naglo-load",
       "downloadLoad": "I-download at i-load ang modelo",

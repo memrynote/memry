@@ -1347,6 +1347,7 @@
       "keySaveError": "OpenAI anahtarı kaydedilemedi"
     },
     "embedding": {
+      "load": "Modeli yükle",
       "loaded": "Yüklendi",
       "loading": "Yükleniyor",
       "downloadLoad": "Modeli indir ve yükle",

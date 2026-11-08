@@ -5,6 +5,7 @@
     "create": "Создать"
   },
   "wikiLinkPreview": {
+    "journalUnwritten": "Запись за {date} ещё не написана. Нажмите, чтобы открыть этот день",
     "notFound": "Не найдено — нажмите, чтобы создать «{title}»"
   },
   "wikiLinkMenu": {
@@ -661,6 +662,8 @@
   },
   "menus": {
     "wiki": {
+      "journalDay": "Журнал · {date}",
+      "journalDayUnwritten": "Журнал · пока не написано",
       "aria": "Подсказки заметок",
       "loading": "Загрузка заметок…",
       "empty": "Заметки не найдены",
@@ -878,6 +881,7 @@
     "showOnCalendar": "Показывать в календаре",
     "showingOnCalendar": "Показывается в календаре",
     "relation": {
+      "unwrittenDay": "Пока не написано",
       "deleted": "Удалено",
       "removeAria": "Убрать «{title}»",
       "addAria": "Добавить связь",

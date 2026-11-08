@@ -123,6 +123,7 @@
     "requestTimedOut": "Eşitleme isteği zaman aşımına uğradı. İnternet bağlantınızı kontrol edin."
   },
   "googleCalendar": {
+    "requestRejected": "Google bu öğeyi reddetti. Tarih ve saatini kontrol edip yeniden deneyin.",
     "connectFailed": "Google Calendar'a bağlanılamadı. Lütfen birazdan tekrar deneyin.",
     "reconnectNeeded": "Google Calendar bağlantınızın süresi doldu. Lütfen bağlantıyı kesip yeniden bağlanın.",
     "misconfigured": "Google Calendar doğru yapılandırılmamış. Bu durum devam ederse lütfen destek ekibiyle iletişime geçin.",

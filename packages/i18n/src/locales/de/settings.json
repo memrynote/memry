@@ -1347,6 +1347,7 @@
       "keySaveError": "Der OpenAI-Schlüssel konnte nicht gespeichert werden"
     },
     "embedding": {
+      "load": "Modell laden",
       "loaded": "Geladen",
       "loading": "Wird geladen",
       "downloadLoad": "Modell herunterladen und laden",

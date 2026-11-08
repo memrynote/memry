@@ -1347,6 +1347,7 @@
       "keySaveError": "OpenAI 키를 저장하지 못했습니다."
     },
     "embedding": {
+      "load": "모델 불러오기",
       "loaded": "불러옴",
       "loading": "불러오는 중",
       "downloadLoad": "모델 다운로드 및 불러오기",

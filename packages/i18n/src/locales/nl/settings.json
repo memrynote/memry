@@ -1347,6 +1347,7 @@
       "keySaveError": "Kan de OpenAI-sleutel niet opslaan"
     },
     "embedding": {
+      "load": "Model laden",
       "loaded": "Geladen",
       "loading": "Laden",
       "downloadLoad": "Model downloaden en laden",

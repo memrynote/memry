@@ -1347,6 +1347,7 @@
       "keySaveError": "Spremanje OpenAI ključa nije uspjelo"
     },
     "embedding": {
+      "load": "Učitaj model",
       "loaded": "Učitano",
       "loading": "Učitavanje",
       "downloadLoad": "Preuzmi i učitaj model",

@@ -5,6 +5,7 @@
     "create": "יצירה"
   },
   "wikiLinkPreview": {
+    "journalUnwritten": "הרשומה של {date} עדיין לא נכתבה. יש ללחוץ כדי לפתוח את היום",
     "notFound": "לא נמצא — יש ללחוץ כדי ליצור את \"{title}\""
   },
   "wikiLinkMenu": {
@@ -661,6 +662,8 @@
   },
   "menus": {
     "wiki": {
+      "journalDay": "יומן · {date}",
+      "journalDayUnwritten": "יומן · עדיין לא נכתב",
       "aria": "הצעות לפתקים",
       "loading": "טוען פתקים…",
       "empty": "לא נמצאו פתקים",
@@ -878,6 +881,7 @@
     "showOnCalendar": "הצגה בלוח השנה",
     "showingOnCalendar": "מוצג בלוח השנה",
     "relation": {
+      "unwrittenDay": "עדיין לא נכתב",
       "deleted": "נמחק",
       "removeAria": "הסרת {title}",
       "addAria": "הוספת קשר",

@@ -5,6 +5,7 @@
     "create": "Skapa"
   },
   "wikiLinkPreview": {
+    "journalUnwritten": "Det finns inget skrivet för {date} än. Klicka för att öppna dagen",
     "notFound": "Hittades inte – klicka för att skapa ”{title}”"
   },
   "wikiLinkMenu": {
@@ -661,6 +662,8 @@
   },
   "menus": {
     "wiki": {
+      "journalDay": "Dagbok · {date}",
+      "journalDayUnwritten": "Dagbok · inte skrivet än",
       "aria": "Anteckningsförslag",
       "loading": "Läser in anteckningar…",
       "empty": "Inga anteckningar hittades",
@@ -878,6 +881,7 @@
     "showOnCalendar": "Visa i kalender",
     "showingOnCalendar": "Visas i kalender",
     "relation": {
+      "unwrittenDay": "Inte skrivet än",
       "deleted": "Raderad",
       "removeAria": "Ta bort {title}",
       "addAria": "Lägg till relation",

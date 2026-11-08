@@ -123,6 +123,7 @@
     "requestTimedOut": "Časový limit požadavku na synchronizaci vypršel. Zkontrolujte prosím připojení k internetu."
   },
   "googleCalendar": {
+    "requestRejected": "Google tuto položku odmítl. Zkontrolujte její datum a čas a zkuste to znovu.",
     "connectFailed": "Ke Google Calendar se nepodařilo připojit. Zkuste to prosím za chvíli znovu.",
     "reconnectNeeded": "Vaše připojení ke Google Calendar vypršelo. Odpojte se prosím a připojte znovu.",
     "misconfigured": "Google Calendar není správně nastaven. Pokud se to bude opakovat, kontaktujte prosím podporu.",

@@ -5,6 +5,7 @@
     "create": "Creează"
   },
   "wikiLinkPreview": {
+    "journalUnwritten": "Însemnarea pentru {date} nu a fost încă scrisă. Faceți clic pentru a deschide ziua",
     "notFound": "Nu a fost găsită – faceți clic pentru a crea „{title}”"
   },
   "wikiLinkMenu": {
@@ -661,6 +662,8 @@
   },
   "menus": {
     "wiki": {
+      "journalDay": "Jurnal · {date}",
+      "journalDayUnwritten": "Jurnal · încă nescris",
       "aria": "Sugestii de notițe",
       "loading": "Se încarcă notițele…",
       "empty": "Nicio notiță găsită",
@@ -878,6 +881,7 @@
     "showOnCalendar": "Arată în calendar",
     "showingOnCalendar": "Se afișează în calendar",
     "relation": {
+      "unwrittenDay": "Încă nescris",
       "deleted": "Șters",
       "removeAria": "Elimină {title}",
       "addAria": "Adaugă o relație",

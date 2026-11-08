@@ -5,6 +5,7 @@
     "create": "Buat"
   },
   "wikiLinkPreview": {
+    "journalUnwritten": "Catatan untuk {date} belum ditulis. Klik untuk membuka hari tersebut",
     "notFound": "Tidak ditemui — klik untuk membuat “{title}”"
   },
   "wikiLinkMenu": {
@@ -661,6 +662,8 @@
   },
   "menus": {
     "wiki": {
+      "journalDay": "Jurnal · {date}",
+      "journalDayUnwritten": "Jurnal · belum ditulis",
       "aria": "Cadangan nota",
       "loading": "Memuatkan nota…",
       "empty": "Tiada nota ditemui",
@@ -878,6 +881,7 @@
     "showOnCalendar": "Tunjukkan pada kalendar",
     "showingOnCalendar": "Dipaparkan pada kalendar",
     "relation": {
+      "unwrittenDay": "Belum ditulis",
       "deleted": "Dipadam",
       "removeAria": "Alih keluar {title}",
       "addAria": "Tambah hubungan",

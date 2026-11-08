@@ -5,6 +5,7 @@
     "create": "Opret"
   },
   "wikiLinkPreview": {
+    "journalUnwritten": "Der er endnu ikke skrevet noget for {date}. Klik for at åbne dagen",
     "notFound": "Ikke fundet – klik for at oprette »{title}«"
   },
   "wikiLinkMenu": {
@@ -661,6 +662,8 @@
   },
   "menus": {
     "wiki": {
+      "journalDay": "Dagbog · {date}",
+      "journalDayUnwritten": "Dagbog · ikke skrevet endnu",
       "aria": "Noteforslag",
       "loading": "Indlæser noter…",
       "empty": "Ingen noter fundet",
@@ -878,6 +881,7 @@
     "showOnCalendar": "Vis i kalenderen",
     "showingOnCalendar": "Vises i kalenderen",
     "relation": {
+      "unwrittenDay": "Ikke skrevet endnu",
       "deleted": "Slettet",
       "removeAria": "Fjern {title}",
       "addAria": "Tilføj relation",

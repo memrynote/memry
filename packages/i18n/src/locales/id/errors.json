@@ -123,6 +123,7 @@
     "requestTimedOut": "Permintaan sinkronisasi kehabisan waktu. Periksa koneksi internet Anda."
   },
   "googleCalendar": {
+    "requestRejected": "Google menolak item ini. Periksa tanggal dan waktunya, lalu coba lagi.",
     "connectFailed": "Tidak dapat terhubung ke Google Calendar. Silakan coba lagi sebentar lagi.",
     "reconnectNeeded": "Koneksi Google Calendar Anda telah kedaluwarsa. Putuskan lalu hubungkan kembali.",
     "misconfigured": "Google Calendar tidak dikonfigurasi dengan benar. Hubungi dukungan jika ini terus terjadi.",

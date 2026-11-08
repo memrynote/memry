@@ -1347,6 +1347,7 @@
       "keySaveError": "Gagal menyimpan kunci OpenAI"
     },
     "embedding": {
+      "load": "Muat model",
       "loaded": "Dimuat",
       "loading": "Memuat",
       "downloadLoad": "Unduh & muat model",

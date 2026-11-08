@@ -123,6 +123,7 @@
     "requestTimedOut": "A szinkronizálási kérés túllépte az időkorlátot. Ellenőrizze az internetkapcsolatát."
   },
   "googleCalendar": {
+    "requestRejected": "A Google elutasította ezt az elemet. Ellenőrizze a dátumát és az időpontját, majd próbálja újra.",
     "connectFailed": "Nem sikerült csatlakozni a Google Calendarhoz. Próbálja újra egy pillanat múlva.",
     "reconnectNeeded": "A Google Calendar-kapcsolata lejárt. Válassza le, majd csatlakoztassa újra.",
     "misconfigured": "A Google Calendar nincs helyesen beállítva. Ha ez továbbra is előfordul, forduljon az ügyfélszolgálathoz.",

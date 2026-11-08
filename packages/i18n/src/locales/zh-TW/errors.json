@@ -123,6 +123,7 @@
     "requestTimedOut": "同步請求逾時，請檢查網路連線。"
   },
   "googleCalendar": {
+    "requestRejected": "Google 拒絕了此項目。請檢查其日期和時間，然後再試一次。",
     "connectFailed": "無法連結 Google Calendar，請稍後再試一次。",
     "reconnectNeeded": "Google Calendar 連線已過期，請中斷連結後重新連結。",
     "misconfigured": "Google Calendar 的設定不正確。若持續發生，請聯絡支援團隊。",

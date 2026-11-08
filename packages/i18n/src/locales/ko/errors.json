@@ -123,6 +123,7 @@
     "requestTimedOut": "동기화 요청 시간이 초과되었습니다. 인터넷 연결을 확인하세요."
   },
   "googleCalendar": {
+    "requestRejected": "Google에서 이 항목을 거부했습니다. 날짜와 시간을 확인한 후 다시 시도하세요.",
     "connectFailed": "Google Calendar에 연결하지 못했습니다. 잠시 후 다시 시도하세요.",
     "reconnectNeeded": "Google Calendar 연결이 만료되었습니다. 연결을 해제한 뒤 다시 연결하세요.",
     "misconfigured": "Google Calendar가 올바르게 구성되어 있지 않습니다. 문제가 계속되면 지원팀에 문의하세요.",

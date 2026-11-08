@@ -1347,6 +1347,7 @@
       "keySaveError": "Nepodarilo sa uložiť kľúč OpenAI"
     },
     "embedding": {
+      "load": "Načítať model",
       "loaded": "Načítané",
       "loading": "Načítava sa",
       "downloadLoad": "Stiahnuť a načítať model",

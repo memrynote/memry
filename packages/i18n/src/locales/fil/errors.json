@@ -123,6 +123,7 @@
     "requestTimedOut": "Nag-time out ang kahilingan sa pag-sync. Pakisuri ang iyong koneksyon sa internet."
   },
   "googleCalendar": {
+    "requestRejected": "Tinanggihan ng Google ang item na ito. Suriin ang petsa at oras nito, saka subukan muli.",
     "connectFailed": "Hindi makakonekta sa Google Calendar. Subukan ulit maya-maya.",
     "reconnectNeeded": "Nag-expire na ang iyong koneksyon sa Google Calendar. Idiskonekta at kumonekta muli.",
     "misconfigured": "Hindi wastong naka-configure ang Google Calendar. Makipag-ugnayan sa support kung magpatuloy ito.",

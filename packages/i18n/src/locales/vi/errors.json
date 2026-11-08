@@ -123,6 +123,7 @@
     "requestTimedOut": "Yêu cầu đồng bộ đã hết thời gian chờ. Vui lòng kiểm tra kết nối internet của bạn."
   },
   "googleCalendar": {
+    "requestRejected": "Google đã từ chối mục này. Kiểm tra ngày và giờ của mục đó, rồi thử lại.",
     "connectFailed": "Không thể kết nối với Google Calendar. Vui lòng thử lại sau giây lát.",
     "reconnectNeeded": "Kết nối Google Calendar của bạn đã hết hạn. Vui lòng ngắt kết nối rồi kết nối lại.",
     "misconfigured": "Google Calendar chưa được cấu hình đúng. Vui lòng liên hệ hỗ trợ nếu việc này tiếp diễn.",

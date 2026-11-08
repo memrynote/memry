@@ -123,6 +123,7 @@
     "requestTimedOut": "Synkroniseringsförfrågan tog för lång tid. Kontrollera din internetanslutning."
   },
   "googleCalendar": {
+    "requestRejected": "Google avvisade det här objektet. Kontrollera dess datum och klockslag och försök igen.",
     "connectFailed": "Det gick inte att ansluta till Google Calendar. Försök igen om en liten stund.",
     "reconnectNeeded": "Din anslutning till Google Calendar har gått ut. Koppla från och anslut igen.",
     "misconfigured": "Google Calendar är inte korrekt konfigurerat. Kontakta supporten om det fortsätter hända.",

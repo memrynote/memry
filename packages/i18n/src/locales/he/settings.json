@@ -1347,6 +1347,7 @@
       "keySaveError": "שמירת מפתח OpenAI נכשלה"
     },
     "embedding": {
+      "load": "טעינת מודל",
       "loaded": "טעון",
       "loading": "טוען",
       "downloadLoad": "הורדה וטעינה של המודל",

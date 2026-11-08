@@ -5,6 +5,7 @@
     "create": "Stvori"
   },
   "wikiLinkPreview": {
+    "journalUnwritten": "Zapis za {date} još nije napisan. Kliknite za otvaranje tog dana",
     "notFound": "Nije pronađeno – kliknite da biste stvorili „{title}”"
   },
   "wikiLinkMenu": {
@@ -661,6 +662,8 @@
   },
   "menus": {
     "wiki": {
+      "journalDay": "Dnevnik · {date}",
+      "journalDayUnwritten": "Dnevnik · još nije napisano",
       "aria": "Prijedlozi bilješki",
       "loading": "Učitavanje bilješki…",
       "empty": "Nisu pronađene bilješke",
@@ -878,6 +881,7 @@
     "showOnCalendar": "Prikaži u kalendaru",
     "showingOnCalendar": "Prikazuje se u kalendaru",
     "relation": {
+      "unwrittenDay": "Još nije napisano",
       "deleted": "Izbrisano",
       "removeAria": "Ukloni „{title}”",
       "addAria": "Dodaj relaciju",

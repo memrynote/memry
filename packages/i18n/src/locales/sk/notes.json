@@ -5,6 +5,7 @@
     "create": "Vytvoriť"
   },
   "wikiLinkPreview": {
+    "journalUnwritten": "Záznam pre {date} ešte nie je napísaný. Kliknutím otvoríte tento deň",
     "notFound": "Nenájdené – kliknutím vytvoríte „{title}“"
   },
   "wikiLinkMenu": {
@@ -661,6 +662,8 @@
   },
   "menus": {
     "wiki": {
+      "journalDay": "Denník · {date}",
+      "journalDayUnwritten": "Denník · ešte nenapísané",
       "aria": "Návrhy poznámok",
       "loading": "Načítavajú sa poznámky…",
       "empty": "Nenašli sa žiadne poznámky",
@@ -878,6 +881,7 @@
     "showOnCalendar": "Zobraziť v kalendári",
     "showingOnCalendar": "Zobrazuje sa v kalendári",
     "relation": {
+      "unwrittenDay": "Ešte nenapísané",
       "deleted": "Odstránené",
       "removeAria": "Odstrániť „{title}“",
       "addAria": "Pridať vzťah",

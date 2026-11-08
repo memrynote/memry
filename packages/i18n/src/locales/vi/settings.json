@@ -1347,6 +1347,7 @@
       "keySaveError": "Không thể lưu khóa OpenAI"
     },
     "embedding": {
+      "load": "Tải mô hình",
       "loaded": "Đã tải",
       "loading": "Đang tải",
       "downloadLoad": "Tải xuống và tải mô hình",

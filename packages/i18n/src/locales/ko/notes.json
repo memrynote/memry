@@ -5,6 +5,7 @@
     "create": "만들기"
   },
   "wikiLinkPreview": {
+    "journalUnwritten": "{date} 저널은 아직 작성되지 않았습니다. 클릭하여 해당 날짜 열기",
     "notFound": "찾을 수 없음 — 클릭하여 “{title}” 만들기"
   },
   "wikiLinkMenu": {
@@ -661,6 +662,8 @@
   },
   "menus": {
     "wiki": {
+      "journalDay": "저널 · {date}",
+      "journalDayUnwritten": "저널 · 아직 작성되지 않음",
       "aria": "노트 제안",
       "loading": "노트 불러오는 중…",
       "empty": "노트를 찾을 수 없습니다",
@@ -878,6 +881,7 @@
     "showOnCalendar": "캘린더에 표시",
     "showingOnCalendar": "캘린더에 표시 중",
     "relation": {
+      "unwrittenDay": "아직 작성되지 않음",
       "deleted": "삭제됨",
       "removeAria": "{title} 제거",
       "addAria": "관계 추가",

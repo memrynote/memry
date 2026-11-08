@@ -123,6 +123,7 @@
     "requestTimedOut": "תם הזמן שהוקצב לבקשת הסנכרון. כדאי לבדוק את החיבור לאינטרנט."
   },
   "googleCalendar": {
+    "requestRejected": "Google דחתה את הפריט הזה. יש לבדוק את התאריך והשעה שלו ולנסות שוב.",
     "connectFailed": "לא ניתן היה להתחבר ל-Google Calendar. אפשר לנסות שוב בעוד רגע.",
     "reconnectNeeded": "פג תוקף החיבור שלך ל-Google Calendar. יש לנתק ולהתחבר מחדש.",
     "misconfigured": "Google Calendar לא מוגדר כראוי. אם זה ממשיך לקרות, אפשר לפנות לתמיכה.",

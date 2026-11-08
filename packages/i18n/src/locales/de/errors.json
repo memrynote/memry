@@ -123,6 +123,7 @@
     "requestTimedOut": "Die Sync-Anfrage hat das Zeitlimit überschritten. Bitte prüfe deine Internetverbindung."
   },
   "googleCalendar": {
+    "requestRejected": "Google hat diesen Eintrag abgelehnt. Prüfe Datum und Uhrzeit und versuche es erneut.",
     "connectFailed": "Die Verbindung zu Google Calendar konnte nicht hergestellt werden. Bitte versuch es gleich noch einmal.",
     "reconnectNeeded": "Deine Verbindung zu Google Calendar ist abgelaufen. Bitte trenne sie und verbinde dich erneut.",
     "misconfigured": "Google Calendar ist nicht richtig konfiguriert. Bitte wende dich an den Support, falls das weiterhin auftritt.",

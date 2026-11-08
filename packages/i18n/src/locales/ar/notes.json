@@ -5,6 +5,7 @@
     "create": "إنشاء"
   },
   "wikiLinkPreview": {
+    "journalUnwritten": "لم تُكتب يوميات {date} بعد. انقر لفتح اليوم",
     "notFound": "غير موجودة — انقر لإنشاء «{title}»"
   },
   "wikiLinkMenu": {
@@ -661,6 +662,8 @@
   },
   "menus": {
     "wiki": {
+      "journalDay": "اليوميات · {date}",
+      "journalDayUnwritten": "اليوميات · لم تُكتب بعد",
       "aria": "اقتراحات الملاحظات",
       "loading": "جارٍ تحميل الملاحظات…",
       "empty": "لم يتم العثور على أي ملاحظات",
@@ -878,6 +881,7 @@
     "showOnCalendar": "إظهار في التقويم",
     "showingOnCalendar": "يظهر في التقويم",
     "relation": {
+      "unwrittenDay": "لم تُكتب بعد",
       "deleted": "محذوف",
       "removeAria": "إزالة {title}",
       "addAria": "إضافة علاقة",

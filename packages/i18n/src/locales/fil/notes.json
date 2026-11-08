@@ -5,6 +5,7 @@
     "create": "Gumawa"
   },
   "wikiLinkPreview": {
+    "journalUnwritten": "Wala pang naisusulat para sa {date}. I-click para buksan ang araw na iyon",
     "notFound": "Hindi nahanap — i-click para gawin ang “{title}”"
   },
   "wikiLinkMenu": {
@@ -661,6 +662,8 @@
   },
   "menus": {
     "wiki": {
+      "journalDay": "Talaarawan · {date}",
+      "journalDayUnwritten": "Talaarawan · wala pang naisusulat",
       "aria": "Mga mungkahing tala",
       "loading": "Nilo-load ang mga tala…",
       "empty": "Walang nakitang tala",
@@ -878,6 +881,7 @@
     "showOnCalendar": "Ipakita sa kalendaryo",
     "showingOnCalendar": "Ipinapakita sa kalendaryo",
     "relation": {
+      "unwrittenDay": "Wala pang naisusulat",
       "deleted": "Tinanggal",
       "removeAria": "Alisin ang {title}",
       "addAria": "Magdagdag ng kaugnayan",

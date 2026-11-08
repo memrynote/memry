@@ -1347,6 +1347,7 @@
       "keySaveError": "Det gick inte att spara OpenAI-nyckeln"
     },
     "embedding": {
+      "load": "Läs in modell",
       "loaded": "Inläst",
       "loading": "Läser in",
       "downloadLoad": "Ladda ner och läs in modell",

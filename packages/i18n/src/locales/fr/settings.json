@@ -1347,6 +1347,7 @@
       "keySaveError": "Impossible d'enregistrer la clé OpenAI"
     },
     "embedding": {
+      "load": "Charger le modèle",
       "loaded": "Chargé",
       "loading": "Chargement",
       "downloadLoad": "Télécharger et charger le modèle",

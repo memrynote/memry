@@ -123,6 +123,7 @@
     "requestTimedOut": "Cererea de sincronizare a expirat. Verificați conexiunea la internet."
   },
   "googleCalendar": {
+    "requestRejected": "Google a respins acest element. Verificați data și ora acestuia, apoi încercați din nou.",
     "connectFailed": "Conectarea la Google Calendar nu a reușit. Vă rugăm să încercați din nou peste puțin timp.",
     "reconnectNeeded": "Conexiunea la Google Calendar a expirat. Vă rugăm să îl deconectați și să îl conectați din nou.",
     "misconfigured": "Google Calendar nu este configurat corect. Vă rugăm să contactați asistența dacă se repetă.",

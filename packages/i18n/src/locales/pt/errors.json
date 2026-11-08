@@ -123,6 +123,7 @@
     "requestTimedOut": "A solicitação de sincronização excedeu o tempo limite. Verifique sua conexão com a internet."
   },
   "googleCalendar": {
+    "requestRejected": "O Google rejeitou este item. Verifique a data e a hora dele e tente novamente.",
     "connectFailed": "Não foi possível conectar ao Google Calendar. Tente novamente em instantes.",
     "reconnectNeeded": "Sua conexão com o Google Calendar expirou. Desconecte e conecte novamente.",
     "misconfigured": "O Google Calendar não está configurado corretamente. Entre em contato com o suporte se isso continuar acontecendo.",

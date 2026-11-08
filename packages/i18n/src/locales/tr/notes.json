@@ -5,6 +5,7 @@
     "create": "Oluştur"
   },
   "wikiLinkPreview": {
+    "journalUnwritten": "{date} için henüz yazılmadı. Günü açmak için tıklayın",
     "notFound": "Bulunamadı — “{title}” notunu oluşturmak için tıklayın"
   },
   "wikiLinkMenu": {
@@ -661,6 +662,8 @@
   },
   "menus": {
     "wiki": {
+      "journalDay": "Günlük · {date}",
+      "journalDayUnwritten": "Günlük · henüz yazılmadı",
       "aria": "Not önerileri",
       "loading": "Notlar yükleniyor…",
       "empty": "Hiçbir not bulunamadı",
@@ -878,6 +881,7 @@
     "showOnCalendar": "Takvimde göster",
     "showingOnCalendar": "Takvimde gösteriliyor",
     "relation": {
+      "unwrittenDay": "Henüz yazılmadı",
       "deleted": "Silindi",
       "removeAria": "Kaldır: {title}",
       "addAria": "İlişki ekle",

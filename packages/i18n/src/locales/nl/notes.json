@@ -5,6 +5,7 @@
     "create": "Maken"
   },
   "wikiLinkPreview": {
+    "journalUnwritten": "Het dagboekbericht voor {date} is nog niet geschreven. Klik om de dag te openen",
     "notFound": "Niet gevonden – klik om “{title}” te maken"
   },
   "wikiLinkMenu": {
@@ -661,6 +662,8 @@
   },
   "menus": {
     "wiki": {
+      "journalDay": "Dagboek · {date}",
+      "journalDayUnwritten": "Dagboek · nog niet geschreven",
       "aria": "Notitiesuggesties",
       "loading": "Notities laden…",
       "empty": "Geen notities gevonden",
@@ -878,6 +881,7 @@
     "showOnCalendar": "Tonen in agenda",
     "showingOnCalendar": "Wordt getoond in agenda",
     "relation": {
+      "unwrittenDay": "Nog niet geschreven",
       "deleted": "Verwijderd",
       "removeAria": "{title} verwijderen",
       "addAria": "Relatie toevoegen",

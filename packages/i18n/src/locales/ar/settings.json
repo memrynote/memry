@@ -1347,6 +1347,7 @@
       "keySaveError": "تعذّر حفظ مفتاح OpenAI"
     },
     "embedding": {
+      "load": "تحميل النموذج",
       "loaded": "تم التحميل",
       "loading": "جارٍ التحميل",
       "downloadLoad": "تنزيل النموذج وتحميله",

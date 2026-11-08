@@ -5,6 +5,7 @@
     "create": "Створити"
   },
   "wikiLinkPreview": {
+    "journalUnwritten": "Запис за {date} ще не написано. Натисніть, щоб відкрити цей день",
     "notFound": "Не знайдено — натисніть, щоб створити «{title}»"
   },
   "wikiLinkMenu": {
@@ -661,6 +662,8 @@
   },
   "menus": {
     "wiki": {
+      "journalDay": "Щоденник · {date}",
+      "journalDayUnwritten": "Щоденник · ще не написано",
       "aria": "Пропозиції щодо нотаток",
       "loading": "Завантаження нотаток…",
       "empty": "Нотаток не знайдено",
@@ -878,6 +881,7 @@
     "showOnCalendar": "Показувати в календарі",
     "showingOnCalendar": "Показується в календарі",
     "relation": {
+      "unwrittenDay": "Ще не написано",
       "deleted": "Видалено",
       "removeAria": "Прибрати «{title}»",
       "addAria": "Додати зв’язок",

@@ -1347,6 +1347,7 @@
       "keySaveError": "Nem sikerült menteni az OpenAI-kulcsot"
     },
     "embedding": {
+      "load": "Modell betöltése",
       "loaded": "Betöltve",
       "loading": "Betöltés",
       "downloadLoad": "Modell letöltése és betöltése",

@@ -1347,6 +1347,7 @@
       "keySaveError": "Kunne ikke lagre OpenAI-nøkkelen"
     },
     "embedding": {
+      "load": "Last inn modell",
       "loaded": "Lastet inn",
       "loading": "Laster inn",
       "downloadLoad": "Last ned og last inn modell",

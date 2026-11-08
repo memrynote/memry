@@ -123,6 +123,7 @@
     "requestTimedOut": "Zahtjev za sinkronizaciju je istekao. Provjerite internetsku vezu."
   },
   "googleCalendar": {
+    "requestRejected": "Google je odbio ovu stavku. Provjerite njezin datum i vrijeme pa pokušajte ponovno.",
     "connectFailed": "Povezivanje s uslugom Google Calendar nije uspjelo. Pokušajte ponovno za koji trenutak.",
     "reconnectNeeded": "Veza s uslugom Google Calendar je istekla. Prekinite vezu i ponovno se povežite.",
     "misconfigured": "Google Calendar nije ispravno konfiguriran. Obratite se podršci ako se ovo nastavi događati.",

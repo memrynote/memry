@@ -5,6 +5,7 @@
     "create": "Erstellen"
   },
   "wikiLinkPreview": {
+    "journalUnwritten": "Der Eintrag für {date} ist noch nicht geschrieben. Klicke, um den Tag zu öffnen",
     "notFound": "Nicht gefunden – klicke, um „{title}“ zu erstellen"
   },
   "wikiLinkMenu": {
@@ -661,6 +662,8 @@
   },
   "menus": {
     "wiki": {
+      "journalDay": "Journal · {date}",
+      "journalDayUnwritten": "Journal · noch nicht geschrieben",
       "aria": "Notizvorschläge",
       "loading": "Notizen werden geladen…",
       "empty": "Keine Notizen gefunden",
@@ -878,6 +881,7 @@
     "showOnCalendar": "Im Kalender anzeigen",
     "showingOnCalendar": "Wird im Kalender angezeigt",
     "relation": {
+      "unwrittenDay": "Noch nicht geschrieben",
       "deleted": "Gelöscht",
       "removeAria": "{title} entfernen",
       "addAria": "Verknüpfung hinzufügen",

@@ -1347,6 +1347,7 @@
       "keySaveError": "Nie udało się zapisać klucza OpenAI"
     },
     "embedding": {
+      "load": "Załaduj model",
       "loaded": "Załadowano",
       "loading": "Ładowanie",
       "downloadLoad": "Pobierz i załaduj model",
