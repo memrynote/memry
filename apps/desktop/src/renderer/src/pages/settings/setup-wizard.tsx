@@ -9,6 +9,7 @@ import { useAuth, type WizardStep } from '@/contexts/auth-context'
 import { EmailEntryForm } from '@/components/sync/email-entry-form'
 import { OtpVerification } from '@/components/sync/otp-verification'
 import { OAuthButtons } from '@/components/sync/oauth-buttons'
+import { OAuthBrowserRecovery } from '@/components/sync/oauth-browser-recovery'
 import { RecoveryPhraseDisplay } from '@/components/sync/recovery-phrase-display'
 import { RecoveryPhraseConfirm } from '@/components/sync/recovery-phrase-confirm'
 import { RecoveryPhraseInput } from '@/components/sync/recovery-phrase-input'
@@ -54,7 +55,11 @@ export function SetupWizard({
     requestOtp,
     verifyOtp,
     resendOtp,
+    oauthSession,
+    isOAuthBusy,
     initOAuth,
+    retryOAuth,
+    cancelOAuth,
     confirmRecoveryPhrase,
     linkViaRecovery,
     linkingCompleted,
@@ -179,23 +184,10 @@ export function SetupWizard({
   }, [resendOtp, setWizardStep, setWizardError, clearWizardError, t])
 
   const handleGoogleClick = useCallback(() => {
-    if (isLoading) return
-    setIsLoading(true)
+    if (isLoading || isOAuthBusy) return
     clearWizardError()
-    initOAuth()
-      .then((result) => {
-        if (!result) {
-          setIsLoading(false)
-          setWizardError(t('setup.signIn.errors.googleStart'))
-          return
-        }
-        setWizardStep('sign-in', { oauthState: result.state })
-      })
-      .catch((err: unknown) => {
-        setIsLoading(false)
-        setWizardError(extractErrorMessage(err, t('setup.signIn.errors.googleStart')))
-      })
-  }, [isLoading, initOAuth, setWizardStep, setWizardError, clearWizardError, t])
+    void initOAuth()
+  }, [isLoading, isOAuthBusy, initOAuth, clearWizardError])
 
   const handleRecoverySubmit = useCallback(
     (phrase: string) => {
@@ -241,6 +233,7 @@ export function SetupWizard({
   }, [clearWizardError, logout])
 
   const currentStepIndex = STEP_MAP[wizardStep]
+  const signInLoading = isLoading || isOAuthBusy
 
   return (
     <div className="flex flex-col" ref={containerRef}>
@@ -263,24 +256,39 @@ export function SetupWizard({
             </div>
           </div>
 
-          <EmailEntryForm onSubmit={handleEmailSubmit} isLoading={isLoading} error={wizardError} />
+          {oauthSession ? (
+            <OAuthBrowserRecovery
+              key={oauthSession.state}
+              session={oauthSession}
+              onRetry={retryOAuth}
+              onCancel={cancelOAuth}
+            />
+          ) : (
+            <>
+              <EmailEntryForm
+                onSubmit={handleEmailSubmit}
+                isLoading={signInLoading}
+                error={wizardError}
+              />
 
-          <div className="relative py-1">
-            <div className="absolute inset-0 flex items-center">
-              <div className="w-full h-px bg-gradient-to-r from-transparent via-border to-transparent" />
-            </div>
-            <div className="relative flex justify-center">
-              <span className="bg-background px-3 uppercase tracking-[0.05em] font-medium text-[10px]/3.5 text-muted-foreground/50">
-                {t('setup.signIn.or')}
-              </span>
-            </div>
-          </div>
+              <div className="relative py-1">
+                <div className="absolute inset-0 flex items-center">
+                  <div className="w-full h-px bg-gradient-to-r from-transparent via-border to-transparent" />
+                </div>
+                <div className="relative flex justify-center">
+                  <span className="bg-background px-3 uppercase tracking-[0.05em] font-medium text-[10px]/3.5 text-muted-foreground/50">
+                    {t('setup.signIn.or')}
+                  </span>
+                </div>
+              </div>
 
-          <OAuthButtons
-            onGoogleClick={handleGoogleClick}
-            isLoading={isLoading}
-            error={wizardError}
-          />
+              <OAuthButtons
+                onGoogleClick={handleGoogleClick}
+                isLoading={signInLoading}
+                error={wizardError}
+              />
+            </>
+          )}
 
           <p className="flex flex-wrap items-center justify-center gap-x-1.5 gap-y-1 pt-1 text-[11px]/4 text-muted-foreground/70">
             <Lock className="size-3 shrink-0" aria-hidden="true" />

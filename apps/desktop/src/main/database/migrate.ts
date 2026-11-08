@@ -9,13 +9,15 @@ import path from 'path'
  */
 export function runMigrations(dbPath: string): void {
   const sqlite = new Database(dbPath)
-  sqlite.pragma('journal_mode = WAL')
-  const db = drizzle(sqlite)
+  try {
+    sqlite.pragma('journal_mode = WAL')
+    const db = drizzle(sqlite)
 
-  const migrationsFolder = path.join(__dirname, 'drizzle-data')
-  migrate(db, { migrationsFolder })
-
-  sqlite.close()
+    const migrationsFolder = path.join(__dirname, 'drizzle-data')
+    migrate(db, { migrationsFolder })
+  } finally {
+    sqlite.close()
+  }
 }
 
 /**

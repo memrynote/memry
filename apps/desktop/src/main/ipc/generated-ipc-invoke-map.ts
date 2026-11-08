@@ -103,10 +103,11 @@ export interface MainIpcInvokeHandlers {
   "ai-inline:start-server": (...args: []) => Awaited<Promise<{ success: false; error: string; } | { success: boolean; error: string; port?: undefined; } | { success: boolean; port: number; error?: undefined; }>>
   "ai-inline:stop-server": (...args: []) => Awaited<Promise<{ success: boolean; }>>
   "ai:generateWritingAssist": (...args: [unknown]) => Awaited<Promise<WritingAssistResponse>>
-  "auth:init-oauth": (...args: [{ provider: "google"; }]) => Awaited<Promise<{ state: string; }> | { success: false; error: string }>
+  "auth:init-oauth": (...args: [{ provider: "google"; }]) => Awaited<Promise<{ state: string; authorizationUrl: string; browserOpened: boolean; }> | { success: false; error: string }>
   "auth:refresh-token": (...args: []) => Awaited<Promise<{ success: boolean; sessionEnded: boolean; error: string | undefined; }>>
   "auth:request-otp": (...args: [{ email: string; }]) => Awaited<Promise<unknown> | { success: false; error: string }>
   "auth:resend-otp": (...args: [{ email: string; }]) => Awaited<Promise<unknown> | { success: false; error: string }>
+  "auth:retry-oauth": (...args: [{ state: string; }]) => Awaited<Promise<{ browserOpened: boolean; }> | { success: false; error: string }>
   "auth:verify-otp": (...args: [{ email: string; code: string; }]) => Awaited<Promise<{ deviceId?: string | undefined; success: boolean; isNewUser: boolean; needsSetup: boolean; needsRecoveryInput: boolean; }> | { success: false; error: string }>
   "bookmarks:bulk-create": (...args: [{ items: { itemType: string; itemId: string; }[]; }]) => Awaited<Promise<{ success: boolean; createdCount: number; }>>
   "bookmarks:bulk-delete": (...args: [{ bookmarkIds: string[]; }]) => Awaited<Promise<{ success: boolean; deletedCount: number; }>>

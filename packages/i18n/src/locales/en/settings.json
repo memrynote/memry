@@ -1110,7 +1110,16 @@
       "sending": "Sending code..."
     },
     "oauth": {
-      "google": "Continue with Google"
+      "google": "Continue with Google",
+      "waiting": "Finish signing in with Google in your browser.",
+      "browserUnavailable": "Could not open your browser.",
+      "manualInstructions": "Copy the sign-in link and open it in a browser on this computer. Keep memrynote open while you sign in.",
+      "linkLabel": "Sign-in link",
+      "copyLink": "Copy sign-in link",
+      "retryBrowser": "Try opening browser again",
+      "copied": "Sign-in link copied.",
+      "copyFailed": "Could not copy the sign-in link. Select and copy it from the field above.",
+      "cancel": "Use another sign-in method"
     },
     "otp": {
       "title": "Enter verification code",

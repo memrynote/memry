@@ -1,4 +1,5 @@
 import type { ElectronAPI } from '@electron-toolkit/preload'
+import type { InitOAuthResult, RetryOAuthResult } from '@memry/contracts/ipc-auth'
 import type { GeneratedRpcApi } from '@memry/rpc'
 import type * as InboxRpc from '@memry/rpc/inbox'
 import type * as NotesRpc from '@memry/rpc/notes'
@@ -1692,9 +1693,12 @@ interface SyncAuthClientAPI {
     message?: string
     error?: string
   }>
-  initOAuth: (input: { provider: 'google' }) => Promise<{
+  initOAuth: (input: {
+    provider: 'google'
+  }) => Promise<InitOAuthResult | { success: false; error: string }>
+  retryOAuth: (input: {
     state: string
-  }>
+  }) => Promise<RetryOAuthResult | { success: false; error: string }>
   refreshToken/* auth action */ : () => Promise<{
     success: boolean
     /** True only when the session can no longer refresh and needs a new sign-in. */

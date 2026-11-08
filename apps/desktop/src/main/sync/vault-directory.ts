@@ -283,7 +283,6 @@ export async function downloadRemoteVault(input: {
   try {
     const cached = getAccountVaultsCache()?.vaults.find((v) => v.vaultUuid === input.vaultUuid)
     const parent = input.parentPath ?? defaultParentDir()
-    fs.mkdirSync(parent, { recursive: true })
     const folder = suggestVaultFolder(
       { vaultUuid: input.vaultUuid, name: cached?.name ?? null },
       parent
@@ -291,8 +290,6 @@ export async function downloadRemoteVault(input: {
 
     const { createDormantVault } = await import('./vault-provisioning')
     createDormantVault(folder, input.vaultUuid)
-    // createDormantVault repoints the data.db singleton — open the new vault now
-    // so the singleton ends on the vault the user is actually in.
     const result = await selectVault({ path: folder })
     if (!result.success) {
       // The vault did not open — there is no bootstrap to measure and no
