@@ -46,16 +46,10 @@ const PROVIDER_OPTIONS = [
 ] as const
 
 const MODEL_PRESETS: Record<string, string[]> = {
-  ollama: ['qwen2.5:7b', 'llama3.2', 'llama3.1', 'mistral', 'gemma2', 'phi3'],
-  openai: ['gpt-4.1', 'gpt-4.1-mini', 'gpt-4o', 'gpt-4o-mini', 'o4-mini'],
-  anthropic: ['claude-sonnet-5', 'claude-opus-5', 'claude-haiku-4-5'],
-  google: [
-    'gemini-3.8-flash',
-    'gemini-3.5-flash',
-    'gemini-3.1-pro-preview',
-    'gemini-2.5-flash',
-    'gemini-2.5-pro'
-  ]
+  ollama: ['qwen3.5', 'gemma4', 'gpt-oss', 'qwen3', 'llama3.2'],
+  openai: ['gpt-6.1-sol', 'gpt-6-astra', 'gpt-6-luna'],
+  anthropic: ['claude-sonnet-5-5', 'claude-opus-5-5', 'claude-haiku-5-5', 'claude-fable-5-1'],
+  google: ['gemini-3.8-flash', 'gemini-4-argon', 'gemini-3.6-flash', 'gemini-3.5-flash-lite']
 }
 
 const BASE_URL_DEFAULTS: Record<string, string> = {

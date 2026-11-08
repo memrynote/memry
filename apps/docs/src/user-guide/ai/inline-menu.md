@@ -6,7 +6,7 @@ Transform selected text in the editor without leaving it.
 
 ## Opening the Menu
 
-Select text in any note or journal entry. The formatting toolbar shows an **AI** affordance — click it (or press the AI shortcut) to open the prompt menu.
+Select text in any note or journal entry. The formatting toolbar shows an **AI** button — click it (or press `Cmd/Ctrl+J`, or type `/ai`) to open the prompt menu.
 If the global **Settings -> AI -> Enable** switch is off, memrynote hides the inline AI menu and slash
 menu AI commands entirely.
 

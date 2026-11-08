@@ -41,7 +41,7 @@ Best when you want privacy, no metering, and don't mind running an extra backgro
 1. Get an API key from [platform.openai.com](https://platform.openai.com/).
 2. **Provider: OpenAI**
 3. Paste the API key into the input. Toggle visibility with the eye icon.
-4. **Model**: pick from presets (e.g. `gpt-4o-mini`, `gpt-4o`).
+4. **Model**: pick from presets (e.g. `gpt-6.1-sol`, `gpt-6-luna`).
 5. Click **Test Connection**.
 
 ### Notes
@@ -57,7 +57,7 @@ Best when you want privacy, no metering, and don't mind running an extra backgro
 1. Get an API key from [console.anthropic.com](https://console.anthropic.com/).
 2. **Provider: Anthropic**
 3. Paste the API key.
-4. **Model**: pick a Claude preset (e.g. `claude-sonnet-5`).
+4. **Model**: pick a Claude preset (e.g. `claude-sonnet-5-5`).
 5. Click **Test Connection**.
 
 ### Notes
@@ -93,7 +93,7 @@ A status indicator (green / yellow / red) shows the most recent test result.
 
 You can change provider at any time. Memory of past prompts is local — switching doesn't carry conversation state.
 
-memrynote keeps one local inline-AI bridge running for the active provider settings. Re-opening the editor or another window reuses that bridge when settings are unchanged; changing provider, model, base URL, or API key restarts it with the new configuration.
+memrynote keeps one local inline-AI bridge running for the active provider settings. Re-opening the editor or another window reuses that bridge when settings are unchanged; changing provider, model, base URL, or API key restarts it with the new configuration. Open notes pick up the change, including turning inline AI on, without restarting the app.
 
 ## Where Keys Live
 

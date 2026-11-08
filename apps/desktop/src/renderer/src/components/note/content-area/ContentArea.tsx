@@ -3264,11 +3264,13 @@ const ContentAreaEditor = memo(function ContentAreaEditor({
                 variant="sticky"
                 onAddComment={review?.onAddComment}
                 onStickyChange={onStickyToolbarChange}
+                aiAvailable={aiEnabled && aiReady}
               />
             ) : (
               <ReviewFormattingToolbarController
                 onAddComment={review?.onAddComment}
                 onStickyChange={onStickyToolbarChange}
+                aiAvailable={aiEnabled && aiReady}
               />
             )}
             {/* Memry's block menu: BlockNote's stock drag-handle menu carries

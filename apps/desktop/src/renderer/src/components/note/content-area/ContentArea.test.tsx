@@ -240,6 +240,7 @@ vi.mock('@blocknote/shadcn', () => ({
 
 vi.mock('@blocknote/xl-ai', () => ({
   AIMenuController: () => <div data-testid="ai-menu" />,
+  AIToolbarButton: () => <button type="button">ask ai</button>,
   getAISlashMenuItems: vi.fn(() => [{ title: 'AI Write', aliases: ['ai'] }])
 }))
 
