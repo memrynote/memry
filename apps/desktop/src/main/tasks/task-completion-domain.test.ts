@@ -136,6 +136,87 @@ describe('task completion and status stay in agreement', () => {
     }
   })
 
+  describe('a repeating task', () => {
+    const weekly = {
+      frequency: 'weekly' as const,
+      interval: 1,
+      daysOfWeek: [5],
+      endType: 'never' as const,
+      completedCount: 0,
+      createdAt: '2026-10-01T00:00:00.000Z'
+    }
+
+    async function newRepeating(d: ReturnType<typeof setup>) {
+      const created = await d.createTask({
+        projectId: 'p1',
+        title: 'Take out garbage',
+        statusId: 's-todo',
+        dueDate: '2026-11-06',
+        repeatConfig: weekly,
+        tags: ['home']
+      })
+      return created.task!.id
+    }
+
+    function rows() {
+      return t.db.select().from(tasks).all()
+    }
+
+    // Completion from any surface reaches main through one of these commands;
+    // each must leave next Friday's occurrence behind, exactly once.
+    it.each([
+      ['completeTask', (d: ReturnType<typeof setup>, id: string) => d.completeTask({ id })],
+      [
+        'a done status',
+        (d: ReturnType<typeof setup>, id: string) => d.updateTask({ id, statusId: 's-done' })
+      ],
+      [
+        'a drop into done',
+        (d: ReturnType<typeof setup>, id: string) =>
+          d.moveTask({ taskId: id, targetStatusId: 's-done', position: 0 })
+      ]
+    ])('rolls to the next occurrence when completed through %s', async (_, complete) => {
+      const d = setup()
+      const id = await newRepeating(d)
+
+      await complete(d, id)
+      await d.completeTask({ id })
+
+      const all = rows()
+      expect(all).toHaveLength(2)
+      const closed = all.find((row) => row.id === id)!
+      expect(closed.completedAt).not.toBeNull()
+      expect(closed.repeatConfig).toBeNull()
+      const next = all.find((row) => row.id !== id)!
+      expect(next).toMatchObject({
+        title: 'Take out garbage',
+        dueDate: '2026-11-13',
+        statusId: 's-todo',
+        completedAt: null,
+        repeatConfig: { ...weekly, completedCount: 1 }
+      })
+      expect(d.getTask(next.id)?.tags).toEqual(['home'])
+    })
+
+    it('returns the next occurrence from completeTask', async () => {
+      const d = setup()
+      const id = await newRepeating(d)
+
+      const result = await d.completeTask({ id })
+
+      expect(result.nextOccurrence).toEqual({ id: expect.any(String), dueDate: '2026-11-13' })
+    })
+
+    it('does not roll a completion recorded from an import', async () => {
+      const d = setup()
+      const id = await newRepeating(d)
+
+      await d.completeTask({ id, completedAt: '2026-11-06T09:00:00.000Z', recordOnly: true })
+
+      expect(rows()).toHaveLength(1)
+    })
+  })
+
   it('leaves a task with no status completable', async () => {
     const d = setup()
     const created = await d.createTask({ projectId: 'p1', title: 'No status' })

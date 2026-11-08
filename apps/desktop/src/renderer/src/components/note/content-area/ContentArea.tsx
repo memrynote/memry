@@ -1482,7 +1482,11 @@ const ContentAreaEditor = memo(function ContentAreaEditor({
   // exists at this point, and a block left on `taskId: ''` can never find it.
   const completeConverted = useCallback(async (taskId: string, completedAt: string | null) => {
     try {
-      await tasksService.complete({ id: taskId, ...(completedAt ? { completedAt } : {}) })
+      await tasksService.complete({
+        id: taskId,
+        ...(completedAt ? { completedAt } : {}),
+        recordOnly: true
+      })
     } catch (err) {
       toast.error(extractErrorMessage(err, tRef.current('editor.obsidianTask.completeFailed')))
     }

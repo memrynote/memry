@@ -2224,7 +2224,9 @@ describe('ContentArea', () => {
     expect(contentAreaMocks.tasksService.complete).toHaveBeenCalledWith({
       id: 'created-task',
       // The plugin wrote a calendar date, so the instant is local midnight on it.
-      completedAt: new Date(2026, 0, 7).toISOString()
+      completedAt: new Date(2026, 0, 7).toISOString(),
+      // The note already holds the done line; a repeat must not roll again.
+      recordOnly: true
     })
     // The plugin fields left the block, so the markdown line the `{task:<id>}`
     // suffix lands on is the description alone.

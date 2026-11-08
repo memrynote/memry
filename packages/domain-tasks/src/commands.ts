@@ -14,6 +14,7 @@ import type {
 import { createProjectCommands } from './commands-projects.ts'
 import { completedAtOnStatus, doneStatusIdOnComplete, openStatusIdOnReopen } from './completion.ts'
 import { checkParent, type ParentLookup } from './tree.ts'
+import { rollRepeatingSeries } from './repeat-completion.ts'
 
 const AUTOCOMMIT_UNIT_OF_WORK: TasksUnitOfWork = {
   run: (write) => write()
@@ -340,10 +341,15 @@ export function createTasksCommands({
         const oldCanvasIds =
           linkedCanvasIds !== undefined ? repository.getTaskCanvasIds(id) : undefined
 
-        const task = repository.updateTask(id, updates)
-        if (!task) {
+        const updated = repository.updateTask(id, updates)
+        if (!updated) {
           return { result: { success: false, task: null, error: 'Task not found' }, events: [] }
         }
+        // A done status completes the task, so a repeating one rolls here too.
+        const roll = updates.completedAt
+          ? rollRepeatingSeries(repository, generateId, existingTask, updates.completedAt)
+          : undefined
+        const task = roll?.closed ?? updated
 
         if (tags !== undefined) {
           repository.setTaskTags(id, tags)
@@ -415,7 +421,8 @@ export function createTasksCommands({
                 ...(fieldsPatch ? { fields: fieldsPatch.before } : {})
               })
             }
-          }
+          },
+          ...(roll?.events ?? [])
         ]
         return { result: { success: true, task: resolvedTask }, events }
       })
@@ -457,9 +464,18 @@ export function createTasksCommands({
         }
         // Completion also puts the task in its project's done status.
         const doneStatusId = doneStatusIdOnComplete(repository, before)
-        const task = doneStatusId
+        const done = doneStatusId
           ? (repository.updateTask(input.id, { statusId: doneStatusId }) ?? completed)
           : completed
+        const roll = input.recordOnly
+          ? undefined
+          : rollRepeatingSeries(
+              repository,
+              generateId,
+              before,
+              completed.completedAt ?? new Date().toISOString()
+            )
+        const task = roll?.closed ?? done
 
         const events: TasksDomainEvent[] = [
           {
@@ -472,9 +488,13 @@ export function createTasksCommands({
                 ...(doneStatusId ? { statusId: before?.statusId ?? null } : {})
               }
             }
-          }
+          },
+          ...(roll?.events ?? [])
         ]
-        return { result: { success: true, task }, events }
+        return {
+          result: { success: true, task, nextOccurrence: roll?.nextOccurrence ?? null },
+          events
+        }
       })
     },
 
@@ -616,6 +636,10 @@ export function createTasksCommands({
           task = repository.updateTask(input.taskId, { completedAt }) ?? task
           changedFields.push('completedAt')
         }
+        const roll = completedAt
+          ? rollRepeatingSeries(repository, generateId, before, completedAt)
+          : undefined
+        task = roll?.closed ?? task
         if (input.targetParentId !== undefined) changedFields.push('parentId')
 
         const events: TasksDomainEvent[] = [
@@ -627,7 +651,8 @@ export function createTasksCommands({
               changedFields,
               previous: pickPrevious(before, changedFields)
             }
-          }
+          },
+          ...(roll?.events ?? [])
         ]
         return { result: { success: true, task }, events }
       })

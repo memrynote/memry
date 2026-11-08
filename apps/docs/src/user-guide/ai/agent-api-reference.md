@@ -11,7 +11,7 @@ reach, with each argument's type, whether it is required, the values it takes, a
 with the reply a running Memry gave. It is written for agents and the people who set them up, so an
 agent never has to read the app's own files to find out how to call it.
 
-**Describes Memry `2026.1108.1`.** A version ending in `+main` means the reference
+**Describes Memry `2026.1108.1+main`.** A version ending in `+main` means the reference
 was regenerated from the source after that release, and the next release ships it. The reference
 is generated from the schemas Memry checks every call against, the same schemas behind
 `vault_desktop_describe` and the `VALIDATION` errors, and is regenerated for each release.
@@ -11981,11 +11981,12 @@ Mark a task done.
 
 `tasks.complete(input)` through `vault_desktop_write`; needs approval.
 
-| Argument            | Type     | Required | Allowed values                                                                                                                                                                                                                                                                                                      |
-| ------------------- | -------- | -------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| `input`             | `object` | yes      |                                                                                                                                                                                                                                                                                                                     |
-| `input.id`          | `string` | yes      |                                                                                                                                                                                                                                                                                                                     |
-| `input.completedAt` | `string` | no       | format `date-time`; pattern `^(?:(?:\d\d[2468][048]\|\d\d[13579][26]\|\d\d0[48]\|[02468][048]00\|[13579][26]00)-02-29\|\d{4}-(?:(?:0[13578]\|1[02])-(?:0[1-9]\|[12]\d\|3[01])\|(?:0[469]\|11)-(?:0[1-9]\|[12]\d\|30)\|(?:02)-(?:0[1-9]\|1\d\|2[0-8])))T(?:(?:[01]\d\|2[0-3]):[0-5]\d(?::[0-5]\d(?:\.\d+)?)?(?:Z))$` |
+| Argument            | Type      | Required | Allowed values                                                                                                                                                                                                                                                                                                      |
+| ------------------- | --------- | -------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `input`             | `object`  | yes      |                                                                                                                                                                                                                                                                                                                     |
+| `input.id`          | `string`  | yes      |                                                                                                                                                                                                                                                                                                                     |
+| `input.completedAt` | `string`  | no       | format `date-time`; pattern `^(?:(?:\d\d[2468][048]\|\d\d[13579][26]\|\d\d0[48]\|[02468][048]00\|[13579][26]00)-02-29\|\d{4}-(?:(?:0[13578]\|1[02])-(?:0[1-9]\|[12]\d\|3[01])\|(?:0[469]\|11)-(?:0[1-9]\|[12]\d\|30)\|(?:02)-(?:0[1-9]\|1\d\|2[0-8])))T(?:(?:[01]\d\|2[0-3]):[0-5]\d(?::[0-5]\d(?:\.\d+)?)?(?:Z))$` |
+| `input.recordOnly`  | `boolean` | no       |                                                                                                                                                                                                                                                                                                                     |
 
 Example call:
 
