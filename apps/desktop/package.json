@@ -122,7 +122,7 @@
   },
   "devDependencies": {
     "@ai-sdk/anthropic": "^3.0.140",
-    "@ai-sdk/google": "^3.0.140",
+    "@ai-sdk/google": "^3.0.143",
     "@ai-sdk/openai": "^3.0.91",
     "@ai-sdk/openai-compatible": "^2.0.81",
     "@blocknote/code-block": "^0.54.2",
