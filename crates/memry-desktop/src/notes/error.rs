@@ -414,6 +414,7 @@ mod tests {
             Kept::NotRepresentable,
             Kept::NoBody,
             Kept::Locked,
+            Kept::Excluded,
         ];
         for kept in all {
             let variant = format!("{kept:?}");

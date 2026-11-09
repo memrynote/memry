@@ -85,6 +85,13 @@ impl<'a> Locks<'a> {
         }
     }
 
+    /// Whether the file of the note or day `id` is excluded: a change across notes passes it
+    /// by, as Electron's index-wide changes do, which never see it.
+    pub fn is_excluded(&self, id: &str) -> Result<bool, StorageError> {
+        let file = self.vault.note_files().by_id(id)?;
+        Ok(file.is_some_and(|file| self.vault.excluded().covers(&file.path)))
+    }
+
     /// `assertFolderWritable`: creating or moving anything into a locked folder.
     pub fn refuse_folder(&self, folder: &str) -> Result<(), NotesError> {
         match self.vault.locks().folder_covering(folder)? {
@@ -128,7 +135,12 @@ impl<'a> Locks<'a> {
     /// attachments, says "note"; any other file in a locked folder says "folder".
     pub fn refuse_path(&self, rel: &str) -> Result<(), NotesError> {
         if !self.is_path_locked(rel)? {
-            return Ok(());
+            // An excluded file, which no write of the app reaches, as Electron's index does not
+            // hold it.
+            return match self.vault.excluded().covers(rel) {
+                true => Err(NotesError::Locked(Refused::Excluded)),
+                false => Ok(()),
+            };
         }
         let rel = normalize_folder_path(rel);
         let at_note = self.vault.note_files().by_path(&rel)?.is_some();

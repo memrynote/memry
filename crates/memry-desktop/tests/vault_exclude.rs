@@ -29,6 +29,7 @@ use std::fs;
 use std::sync::Arc;
 
 use memry_core::seams::secure_store::SecureStore;
+use memry_desktop::error::CoreError;
 use memry_desktop::notes::service::NotesService;
 use memry_desktop::vault::config::VaultConfigPatch;
 use memry_desktop::vault::config::config_path;
@@ -39,7 +40,7 @@ use serde_json::json;
 use vault_env::{Env, QUIET, WAIT, creates, env, indexed};
 
 use crate::journal_change_crash::{change_killed, reopened};
-use crate::journal_folder::{DAY, crossed, daily, make_day, outbox, quiet, reopen, row};
+use crate::journal_folder::{DAY, crossed, daily, outbox, quiet, reopen, row, try_day};
 use crate::vault_settings::{opened_keeping, stored, update};
 
 const DEFAULTS: [&str; 5] = [".git", "node_modules", ".trash", ".obsidian", ".memry"];
@@ -186,14 +187,16 @@ fn an_excluded_notes_body_change_from_elsewhere_still_reaches_its_file() {
 }
 
 /// The days of an excluded journal folder stay days: a day is one by its folder and format,
-/// which the patterns do not change. A day made then is a day, through three opens.
+/// which the patterns do not change, through three opens. No day is made there meanwhile: the
+/// folder is read-only (`vault_exclude_read_only`).
 #[test]
 fn excluding_the_journal_folder_keeps_every_day() {
     let (mut e, store) = opened_keeping(daily("journal"), &[("journal/2025-01-02.md", "A day\n")]);
     let notes = NotesService::new(e.tier.clone(), store);
     let facts = changed(&mut e, excludes(&["journal"]));
     assert!(!crossed(&facts), "{facts:?}");
-    make_day(&notes, &e, "2025-01-06");
+    let refused = try_day(&notes, &e, "2025-01-06").unwrap_err();
+    assert_eq!(refused.kind_and_code().1, "note_excluded");
     for _ in 0..3 {
         reopen(&mut e);
     }
@@ -202,10 +205,7 @@ fn excluding_the_journal_folder_keeps_every_day() {
         rows.contains(&row(DAY, "journal/2025-01-02.md")),
         "{rows:?}"
     );
-    assert!(
-        rows.contains(&row("j2025-01-06", "journal/2025-01-06.md")),
-        "{rows:?}"
-    );
+    assert!(!e.vault.join("journal/2025-01-06.md").exists());
     for (id, _) in &rows {
         assert!(!outbox(&e, id).contains(&"delete".to_owned()), "{id}");
     }
