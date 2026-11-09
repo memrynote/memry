@@ -6,20 +6,23 @@
 //! renderer writes the block's `url` and `name` after: a crash in between leaves the body on the
 //! old name, which self-heal finds again by the prefix.
 //!
-//! Only a regular file of the note's own folder is renamed, never through a link: the folder is
-//! checked inside the vault right before the rename, and the rename never replaces a file, so a
-//! name taken meanwhile walks on to the next suffix.
+//! Only a regular file of the note's own folder is renamed, and never through a link: neither
+//! `attachments/` nor `attachments/<noteId>/` may be one, even to a folder of the vault, checked
+//! again right before the rename. The name kept is the one on disk, not the url's spelling. A
+//! stale url renames only a file that self-heal found by the url's prefix. The rename never
+//! replaces a file, so a name taken meanwhile walks on to the next suffix.
 
-use std::fs;
+use std::fs::{self, File};
 use std::path::Path;
 use std::time::Duration;
 
 use serde::Serialize;
 
 use super::{
-    AttachmentError, extension, fit_name, inside_vault, relative_ref, resolve, writable_note,
+    AttachmentError, extension, fit_name, is_plain_segment, relative_ref, resolve, writable_note,
 };
 use crate::session::OpenVault;
+use crate::shell::file_open::file_identity;
 use crate::shell::local_scheme::{STORED_PREFIX_LEN, attachment_parts, has_stored_prefix};
 use crate::vault::fs_atomic::{RETRY_DELAYS_MS, rename_no_replace, sync_dir, with_transient_retry};
 use crate::vault::layout::ATTACHMENTS_DIR;
@@ -82,35 +85,94 @@ fn rename_with(
     }
     let note_path = note_path.ok_or_else(|| AttachmentError::NoteNotFound(note_id.to_owned()))?;
     let resolved = resolve(&open.path, note_id, &note_path, url)?;
-    if resolved.path.is_none() {
+    let Some(target) = resolved.path.as_deref() else {
         return Err(AttachmentError::FileNotFound);
-    }
+    };
     // Only this note's files: another note's, or one out of the folder, has references this note
     // cannot rewrite.
-    let current = match attachment_parts(&resolved.rel) {
-        Some((owner, file)) if owner == note_id => file.to_owned(),
+    let file = match attachment_parts(&resolved.rel) {
+        Some((owner, file)) if owner == note_id => file,
         _ => return Err(AttachmentError::NotOwned),
     };
-    let folder_rel = format!("{ATTACHMENTS_DIR}/{note_id}");
-    inside_vault(&open.path, &folder_rel)?;
-    let folder = open.path.join(ATTACHMENTS_DIR).join(note_id);
-    let from = folder.join(&current);
-    // A link or a folder in the note's folder is not one of its files.
-    if !fs::symlink_metadata(&from)?.is_file() {
+    if resolved.rel != resolved.named && !kept_prefix(&resolved.named, file) {
         return Err(AttachmentError::FileNotFound);
     }
+    plain_folder(&open.path, note_id)?;
+    let folder = open.path.join(ATTACHMENTS_DIR).join(note_id);
+    // A link, even to a sibling, or a FIFO, which an open would wait on, is not the file.
+    if !fs::symlink_metadata(folder.join(file))?.is_file() {
+        return Err(AttachmentError::FileNotFound);
+    }
+    let current = entry_name(&folder, target, file)?;
+    let from = folder.join(&current);
     let candidate = renamed_filename(&current, requested);
     // The name it has already: the file holding it is this one, so no suffix.
     let stored = if candidate == current {
         candidate
     } else {
-        move_to_free_name(&open.path, &folder_rel, &from, &candidate, before_recheck)?
+        move_to_free_name(&open.path, note_id, &from, &candidate, before_recheck)?
     };
     Ok(RenamedAttachment {
-        url: relative_ref(&note_path, &format!("{folder_rel}/{stored}")),
+        url: relative_ref(&note_path, &format!("{ATTACHMENTS_DIR}/{note_id}/{stored}")),
         name: display_name(&stored, requested),
         stored_filename: stored,
     })
+}
+
+/// Whether self-heal found the file `healed` by the prefix of the file the url `named`. Found by the name's
+/// end only, it may be another block's file whose own download is pending; renaming it would
+/// take that block's bytes, so a write refuses it.
+fn kept_prefix(named: &str, healed: &str) -> bool {
+    let wanted = attachment_parts(named).map_or("", |(_, file)| file);
+    has_stored_prefix(wanted) && healed.starts_with(&wanted[..STORED_PREFIX_LEN])
+}
+
+/// `Ok` when `attachments/` and `attachments/<note_id>/` are folders of the vault itself, not
+/// links (a junction on Windows) to anywhere, the vault included.
+fn plain_folder(vault: &Path, note_id: &str) -> Result<(), AttachmentError> {
+    let root = vault.join(ATTACHMENTS_DIR);
+    for dir in [root.join(note_id), root] {
+        let kind = fs::symlink_metadata(&dir)?.file_type();
+        if kind.is_symlink() || !kind.is_dir() {
+            return Err(AttachmentError::NotAFolder);
+        }
+    }
+    Ok(())
+}
+
+/// The name the file at `target` has in `folder`. The url's `named` may spell it otherwise: in
+/// another case on a volume that ignores case, or with a trailing dot Windows drops. The name
+/// on disk carries the prefix and extension the rename keeps. A link is never the file.
+fn entry_name(folder: &Path, target: &Path, named: &str) -> Result<String, AttachmentError> {
+    let mut files = Vec::new();
+    for entry in fs::read_dir(folder)? {
+        let entry = entry?;
+        if !entry.file_type()?.is_file() {
+            continue;
+        }
+        let Ok(name) = entry.file_name().into_string() else {
+            continue;
+        };
+        if name == named {
+            files = vec![name];
+            break;
+        }
+        files.push(name);
+    }
+    let found = match files.as_slice() {
+        [only] if only == named => Some(only.clone()),
+        _ => {
+            let wanted = file_identity(&File::open(target)?)?.0;
+            files.into_iter().find(|name| {
+                File::open(folder.join(name))
+                    .and_then(|file| file_identity(&file))
+                    .is_ok_and(|(id, _)| id == wanted)
+            })
+        }
+    };
+    found
+        .filter(|name| is_plain_segment(name))
+        .ok_or(AttachmentError::FileNotFound)
 }
 
 /// `buildRenamedFilename`: the current prefix and extension around the typed name, an extension
@@ -147,11 +209,10 @@ fn display_name(stored: &str, requested: &str) -> String {
 }
 
 /// Renames `from` to `candidate`, or to `<name>-2<.ext>`... when a file holds that name, and
-/// answers the name taken. The note's folder is checked inside the vault right before each
-/// rename, and the rename never replaces a file (`resolveCollision` looked first and could).
+/// answers the name taken. The folders are checked again for a link right before each rename, and the rename never replaces a file (`resolveCollision` looked first and could).
 fn move_to_free_name(
     vault: &Path,
-    folder_rel: &str,
+    note_id: &str,
     from: &Path,
     candidate: &str,
     before_recheck: &mut dyn FnMut(&Path),
@@ -171,7 +232,7 @@ fn move_to_free_name(
         let to = folder.join(&name);
         let moved = with_transient_retry(&delays, || {
             before_recheck(&to);
-            inside_vault(vault, folder_rel).map_err(|error| match error {
+            plain_folder(vault, note_id).map_err(|error| match error {
                 AttachmentError::Io(error) => error,
                 other => std::io::Error::other(other.to_string()),
             })?;

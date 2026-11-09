@@ -82,6 +82,8 @@
   "crdt": {
     "persistenceDegradedTitle": "Redigeringshistorikken gemmes ikke på denne enhed",
     "persistenceDegradedBody": "Dine noter er i sikkerhed – de ligger i din boks som almindelige filer og kan stadig åbnes og gemmes som normalt. Kun denne enheds lokale redigeringshistorik og flettetilstand kører i hukommelsen, så de starter forfra, hver gang memrynote åbnes.",
+    "editsNotSavedTitle": "Dine seneste ændringer i denne note kunne ikke gemmes",
+    "editsNotSavedBody": "memrynote bliver ved med at prøve, mens noten er åben. Hvis du lukker den, så kopiér først det, du har skrevet.",
     "writebackFailedTitle": "En notes fil på disken kunne ikke opdateres",
     "writebackFailedTitleNamed": "»{title}« kunne ikke opdateres på disken",
     "writebackFailedTitleMany": "{count} noters filer på disken kunne ikke opdateres",

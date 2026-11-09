@@ -215,8 +215,11 @@ fn a_plain_tag_typed_into_the_body_joins_the_header() {
     );
 }
 
+/// The save's text reached the note before the file; the outside edit that refused the file's
+/// write meets it there, and the save wins as unwritten typing does (#4030): the write-back
+/// writes it, and the outside edit is a version.
 #[test]
-fn an_outside_edit_that_lands_during_a_save_wins_and_the_save_is_kept() {
+fn an_outside_edit_that_lands_during_a_save_is_kept_and_the_save_wins() {
     let (mut e, notes) = opened(&[("Plan.md", PLAN)]);
     let open = e.session.current().unwrap();
     let id = id_at(&e, "Plan.md");
@@ -229,25 +232,15 @@ fn an_outside_edit_that_lands_during_a_save_wins_and_the_save_is_kept() {
         matches!(refused, Err(NotesError::EditKept(Kept::FileChanged))),
         "{refused:?}"
     );
-    e.facts_until(|fact| {
-        matches!(
-            fact,
-            Applied::Changed {
-                source: ChangeSource::Watcher,
-                ..
-            }
-        )
+    e.facts_until(|fact| matches!(fact, Applied::OutsideEditKept { .. }));
+    until("the save written over the outside edit", || {
+        e.read("Plan.md") == "---\nstatus: open\n---\nThe user's save\n"
     });
-    assert_eq!(
-        e.read("Plan.md"),
-        outside,
-        "the outside edit was written over"
-    );
-    assert_eq!(e.body(&id), "From another editor");
+    assert_eq!(e.body(&id), "The user's save");
     let versions = e.versions(&id);
     assert!(
-        versions.iter().any(|v| v.contains("The user's save")),
-        "the save was lost: {versions:?}"
+        versions.iter().any(|v| v == outside),
+        "the outside edit was lost: {versions:?}"
     );
 }
 
@@ -299,16 +292,9 @@ fn a_save_after_an_outside_edit_the_editor_never_showed_keeps_that_edit() {
         std::fs::write(vault.join("Plan.md"), outside).unwrap();
     });
     assert!(refused.is_err(), "{refused:?}");
-    e.facts_until(|fact| {
-        matches!(
-            fact,
-            Applied::Changed {
-                source: ChangeSource::Watcher,
-                ..
-            }
-        )
-    });
-    assert_eq!(e.body(&id), "From another editor");
+    // The refused save's text reached the note, and wins over the outside edit.
+    e.facts_until(|fact| matches!(fact, Applied::OutsideEditKept { .. }));
+    assert_eq!(e.body(&id), "The user's next save");
     // The editor still shows the user's text and saves it again.
     notes
         .update(&open, save(&id, "The user's next save, again\n"))

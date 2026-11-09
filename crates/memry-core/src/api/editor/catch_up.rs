@@ -6,16 +6,24 @@
 //! closure. A row that rolled back is not there, so nothing uncommitted reaches
 //! a document or a window.
 
+use std::sync::{MutexGuard, PoisonError};
+
 use rusqlite::{Connection, OptionalExtension as _, params};
 
 use super::{Editor, EditorError, Notice};
 use crate::api::errors::StorageError;
+use crate::crdt::body_writes::Origin;
 use crate::crdt::body_writes::{BodyObserver, BodyWrite, LogRow};
 use crate::crdt::epoch;
 use crate::crdt::errors::CrdtError;
+use crate::crdt::registry::Document;
 use crate::crdt::update_log::{self, Namespace};
 
 impl BodyObserver for Editor {
+    fn bodies_committing(&self, writes: &[BodyWrite]) {
+        self.committing().extend(writes.iter().cloned());
+    }
+
     fn bodies_written(&self, writes: &[BodyWrite]) {
         for write in writes {
             if let Err(error) = self.catch_up(write) {
@@ -29,10 +37,57 @@ impl BodyObserver for Editor {
                 );
             }
         }
+        // Only now: an edit that took the writer first may still be catching them up, and
+        // the catch-up above waited for it.
+        let mut committing = self.committing();
+        for write in writes {
+            if let Some(at) = committing.iter().position(|noted| noted == write) {
+                committing.remove(at);
+            }
+        }
     }
 }
 
 impl Editor {
+    /// Brings `document`, `note_id`'s resident copy, up to the rows writers
+    /// committed and have not told yet: the caller holds the writer, so every
+    /// one of them is in the log, and a window's edit taken next lands on the
+    /// body they made. Answers the rows that added to it, for the listeners
+    /// (before the edit); the observer later finds them taken. A purged log is
+    /// left to the caller's epoch check.
+    pub(super) fn catch_up_committed(
+        &self,
+        conn: &Connection,
+        document: &Document,
+        note_id: &str,
+    ) -> Result<Vec<(Vec<u8>, Origin)>, EditorError> {
+        let writes: Vec<BodyWrite> = self
+            .committing()
+            .iter()
+            .filter(|write| write.doc_id == note_id && !write.purged)
+            .cloned()
+            .collect();
+        let mut took = Vec::new();
+        for write in writes {
+            let (client_id, rows) = committed(conn, &self.device_id, note_id, &write.rows)?;
+            if client_id != document.client_id() {
+                continue;
+            }
+            for row in rows {
+                if document.apply_durable_update_changed(&row)? {
+                    took.push((row, write.origin.clone()));
+                }
+            }
+        }
+        Ok(took)
+    }
+
+    fn committing(&self) -> MutexGuard<'_, Vec<BodyWrite>> {
+        self.committing
+            .lock()
+            .unwrap_or_else(PoisonError::into_inner)
+    }
+
     /// Applies the rows `write` committed to its resident document and hands
     /// each one that adds to it to the listeners, with the writer's origin. A
     /// held document not in memory replays the log when it loads, and its

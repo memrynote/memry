@@ -161,4 +161,6 @@ keyring-core = "1.0.1"
 memry-core = { path = "../../../crates/memry-core" }
 tauri = { version = "2.12", features = ["specta", "test"] }
 tempfile = "3"
+# A test reads what a command logged.
+tracing-subscriber = { version = "0.3.23", default-features = false, features = ["std", "fmt"] }
 yrs = { workspace = true }

@@ -64,6 +64,51 @@ fn normalizes_traversal_without_leaving_the_root() {
 }
 
 #[test]
+fn a_windows_reader_takes_only_the_attachments_tail_of_a_path_a_mac_wrote() {
+    let vault = vec![normalize_absolute("C:\\Users\\me\\Vault", true).unwrap()];
+    let tail = |url: &str, scheme| {
+        let requested = resolve_requested_path(url, scheme, true)?;
+        assert_eq!(locate(&requested, &vault, true), None, "{url}");
+        remap_cross_device(&requested)
+    };
+    assert_eq!(
+        tail(
+            "memry-file://local/Users/kaan/Vault/attachments/abc123/photo.png",
+            LocalScheme::File
+        )
+        .as_deref(),
+        Some("attachments/abc123/photo.png")
+    );
+    assert_eq!(
+        tail(
+            "memry-html://local/Users/kaan/Vault/attachments/abc123/page.html",
+            LocalScheme::Html
+        )
+        .as_deref(),
+        Some("attachments/abc123/page.html")
+    );
+    // Nothing of the path but its tail is read, and the tail never climbs.
+    for url in [
+        "memry-file://local/Users/kaan/Vault/notes/a.md",
+        "memry-file://local/Users/kaan/attachments/../../Windows/win.ini",
+        "memry-file://local/Users/kaan/attachments/n1/..%5C..%5Csecret.png",
+        "memry-file://local/Users/kaan/attachments/%zz",
+    ] {
+        assert_eq!(tail(url, LocalScheme::File), None, "{url}");
+    }
+    // A path of this platform is read as before.
+    assert_eq!(
+        resolve_requested_path(
+            "memry-file://local/C:/Users/me/Vault/a.png",
+            LocalScheme::File,
+            true
+        )
+        .as_deref(),
+        Some("C:\\Users\\me\\Vault\\a.png")
+    );
+}
+
+#[test]
 fn reads_the_webview_form_of_the_url() {
     assert_eq!(
         file(

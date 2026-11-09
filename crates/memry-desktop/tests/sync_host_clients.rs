@@ -37,6 +37,14 @@ const ALLOWED: &[(&str, &str)] = &[
         "the image link a person pastes as a custom icon, one GET",
     ),
     (
+        "crates/memry-desktop/src/attachments/remote.rs",
+        "the image link a person pastes as a cover or attachment, one GET",
+    ),
+    (
+        "apps/desktop-tauri/src-tauri/src/commands/attachment_sources.rs",
+        "the image link a person pastes as a cover or attachment, one GET",
+    ),
+    (
         "crates/memry-desktop/src/notes/unsplash/mod.rs",
         "api.unsplash.com",
     ),

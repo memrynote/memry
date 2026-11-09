@@ -3,7 +3,14 @@ import { beforeEach, describe, expect, it, vi } from 'vitest'
 const invoke = vi.hoisted(() => vi.fn())
 vi.mock('@tauri-apps/api/core', () => ({ invoke }))
 
-import { decodeChunk, invokeBinary, META_HEADER, readBinary, sliceChunks } from './ipc-binary'
+import {
+  decodeChunk,
+  decodeFramedHeader,
+  invokeBinary,
+  META_HEADER,
+  readBinary,
+  sliceChunks
+} from './ipc-binary'
 
 beforeEach(() => {
   invoke.mockReset()
@@ -50,6 +57,41 @@ describe('readBinary and decodeChunk', () => {
 
   it('refuses anything else', () => {
     expect(() => decodeChunk('text')).toThrow(TypeError)
+  })
+})
+
+/** As `binary::framed` writes one: the header's length big-endian, the header, the parts. */
+function framed(header: unknown, ...parts: number[][]): Uint8Array {
+  const json = new TextEncoder().encode(JSON.stringify(header))
+  const bytes = new Uint8Array(4 + json.length + parts.flat().length)
+  new DataView(bytes.buffer).setUint32(0, json.length, false)
+  bytes.set(json, 4)
+  bytes.set(parts.flat(), 4 + json.length)
+  return bytes
+}
+
+describe('decodeFramedHeader', () => {
+  it('reads the header and leaves the parts after it', () => {
+    const { header, body } = decodeFramedHeader(framed({ stateLength: 2 }, [7, 8], [9]))
+
+    expect(header).toEqual({ stateLength: 2 })
+    expect([...body]).toEqual([7, 8, 9])
+  })
+
+  it('reads a frame that starts inside a larger buffer', () => {
+    const inner = framed({ a: 'é' }, [1])
+    const outer = new Uint8Array(inner.length + 3)
+    outer.set(inner, 3)
+
+    const { header, body } = decodeFramedHeader(outer.subarray(3))
+
+    expect(header).toEqual({ a: 'é' })
+    expect([...body]).toEqual([1])
+  })
+
+  it('refuses a frame cut inside its length or its header', () => {
+    expect(() => decodeFramedHeader(new Uint8Array([0, 0]))).toThrow(RangeError)
+    expect(() => decodeFramedHeader(framed({ long: true }).subarray(0, 8))).toThrow(RangeError)
   })
 })
 

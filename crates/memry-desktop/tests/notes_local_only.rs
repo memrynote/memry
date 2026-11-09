@@ -89,8 +89,11 @@ fn a_local_only_note_queues_nothing_from_the_editor_or_its_file_until_it_syncs_a
 
     e.edit_in_app(&store, &plan, "Typed while local only");
     e.write("Plan.md", "Edited outside while local only\n");
-    e.facts_until(|fact| matches!(fact, Applied::Changed { note_id, .. } if *note_id == plan));
-    assert_eq!(e.body(&plan), "Edited outside while local only");
+    // The typing the file does not have yet wins; the outside edit is a version.
+    e.facts_until(
+        |fact| matches!(fact, Applied::OutsideEditKept { note_id, .. } if *note_id == plan),
+    );
+    assert_eq!(e.body(&plan), "Typed while local only");
     assert_eq!(queued(&e, &plan), Vec::<String>::new());
 
     let note = local_only::set(&open, &plan, false, None).unwrap();

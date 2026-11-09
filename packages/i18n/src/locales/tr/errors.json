@@ -82,6 +82,8 @@
   "crdt": {
     "persistenceDegradedTitle": "Düzenleme geçmişi bu cihazda tutulmuyor",
     "persistenceDegradedBody": "Notlarınız güvende — kasanızda düz dosyalar olarak duruyor ve hâlâ normal şekilde açılıp kaydediliyor. Yalnızca bu cihazın yerel düzenleme geçmişi ve birleştirme durumu bellekte tutuluyor; bu yüzden memrynote her açıldığında sıfırdan başlıyor.",
+    "editsNotSavedTitle": "Bu nottaki son düzenlemeleriniz kaydedilemedi",
+    "editsNotSavedBody": "Not açık kaldığı sürece memrynote denemeye devam eder. Notu kapatacaksanız önce yazdıklarınızı kopyalayın.",
     "writebackFailedTitle": "Bir notun diskteki dosyası güncellenemedi",
     "writebackFailedTitleNamed": "“{title}” diskte güncellenemedi",
     "writebackFailedTitleMany": "{count} notun diskteki dosyaları güncellenemedi",

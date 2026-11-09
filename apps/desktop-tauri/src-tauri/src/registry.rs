@@ -25,6 +25,7 @@ pub fn builder() -> Builder<Wry> {
             // crdt (`crdt_open_doc`, `crdt_apply_update` and the sync steps are binary commands)
             crate::commands::editor::crdt_close_doc::<Wry>,
             crate::commands::editor::crdt_get_health::<Wry>,
+            crate::commands::editor::crdt_typing_sent::<Wry>,
             // custom icons (`custom_icons_add` is a binary command)
             crate::commands::custom_icons::custom_icons_add_from_url,
             crate::commands::custom_icons::custom_icons_delete,
@@ -65,6 +66,9 @@ pub fn builder() -> Builder<Wry> {
             crate::commands::locale::locale_set,
             // notes (`notes_upload_attachment` and `notes_upload_attachment_chunk` are binary
             // commands)
+            crate::commands::attachment_sources::notes_download_attachment_from_url::<Wry>,
+            crate::commands::attachment_sources::notes_insert_existing_attachment::<Wry>,
+            crate::commands::attachment_sources::notes_list_vault_attachments::<Wry>,
             crate::commands::attachments::notes_attachment_rename::<Wry>,
             crate::commands::attachments::notes_upload_attachment_abort::<Wry>,
             crate::commands::attachments::notes_upload_attachment_begin::<Wry>,
@@ -120,6 +124,7 @@ pub fn builder() -> Builder<Wry> {
             crate::commands::property_definitions::notes_set_calendar_property_visibility,
             crate::commands::property_definitions::notes_update_option_color,
             crate::commands::property_definitions::notes_update_property_definition,
+            crate::commands::unsplash::notes_download_unsplash_photo,
             // notes: versions
             crate::commands::notes_versions::notes_delete_version,
             crate::commands::notes_versions::notes_get_version,
@@ -281,6 +286,7 @@ pub fn builder() -> Builder<Wry> {
             crate::events::NoteEventsDroppedEvent,
             crate::events::NoteLinksChangedEvent,
             crate::events::NoteMovedEvent,
+            crate::events::NoteOutsideEditKeptEvent,
             crate::events::NoteRenamedEvent,
             crate::events::NoteTagsChangedEvent,
             crate::events::NoteUpdatedEvent,

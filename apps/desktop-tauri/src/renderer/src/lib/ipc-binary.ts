@@ -36,6 +36,22 @@ export function decodeChunk(data: unknown): Uint8Array {
   throw new TypeError('A raw channel message is an ArrayBuffer')
 }
 
+/**
+ * Splits a framed `Response` (`binary::framed`): a 4-byte big-endian header length, the JSON
+ * header, then the parts back to back, which the header says the lengths of.
+ */
+export function decodeFramedHeader(bytes: Uint8Array): { header: unknown; body: Uint8Array } {
+  if (bytes.byteLength < 4) throw new RangeError('A framed answer is shorter than its length')
+  const length = new DataView(bytes.buffer, bytes.byteOffset, 4).getUint32(0, false)
+  if (4 + length > bytes.byteLength) {
+    throw new RangeError('A framed answer is shorter than its header')
+  }
+  return {
+    header: JSON.parse(new TextDecoder().decode(bytes.subarray(4, 4 + length))),
+    body: bytes.subarray(4 + length)
+  }
+}
+
 /** Yields `bytes` in slices of at most `size` bytes. */
 export function* sliceChunks(bytes: Uint8Array, size: number): Generator<Uint8Array> {
   if (!Number.isInteger(size) || size <= 0) {

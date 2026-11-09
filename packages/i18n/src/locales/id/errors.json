@@ -82,6 +82,8 @@
   "crdt": {
     "persistenceDegradedTitle": "Riwayat edit tidak disimpan di perangkat ini",
     "persistenceDegradedBody": "Catatan Anda aman — catatan tersimpan di brankas sebagai file biasa, dan tetap dapat dibuka dan disimpan seperti biasa. Hanya riwayat edit lokal dan status penggabungan di perangkat ini yang berjalan di memori, sehingga keduanya dimulai dari awal setiap kali memrynote dibuka.",
+    "editsNotSavedTitle": "Perubahan terbaru Anda pada catatan ini tidak dapat disimpan",
+    "editsNotSavedBody": "memrynote terus mencoba selama catatan tetap terbuka. Jika Anda menutupnya, salin dulu apa yang Anda ketik.",
     "writebackFailedTitle": "File catatan di disk tidak dapat diperbarui",
     "writebackFailedTitleNamed": "“{title}” tidak dapat diperbarui di disk",
     "writebackFailedTitleMany": "File {count} catatan di disk tidak dapat diperbarui",
