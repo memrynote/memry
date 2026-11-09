@@ -17,7 +17,6 @@ import { cn } from '@/lib/utils'
 import { scrollToLandingTarget } from '@/lib/smooth-scroll'
 import { trackLandingEvent } from '@/lib/analytics'
 import { useAuth } from '@/contexts/use-auth'
-import { platformForOS, startDownload, useDetectedOS } from '@/lib/download'
 
 /** Rest height of the bar; the dark-section probe reads the page at half of it. */
 const BAR_HEIGHT = 64
@@ -227,7 +226,6 @@ function DiscordLink() {
  */
 function PrimaryAction({ visible }: { visible: boolean }) {
   const reduceMotion = useReducedMotion()
-  const platform = platformForOS(useDetectedOS())
 
   return (
     <AnimatePresence initial={false}>
@@ -249,12 +247,7 @@ function PrimaryAction({ visible }: { visible: boolean }) {
           <div className="ps-5">
             <Link
               to="/download"
-              onClick={() => {
-                trackLandingEvent('landing_nav_click', 'nav:download')
-                // A detected desktop gets its installer right away, alongside the page.
-                // Phones and unknown systems only get the page, which lists every build.
-                if (platform) startDownload(platform)
-              }}
+              onClick={() => trackLandingEvent('landing_nav_click', 'nav:download')}
               className="inline-flex h-8 items-center whitespace-nowrap rounded-lg bg-terracotta px-3 text-sm font-medium leading-5 text-white shadow-[inset_0_1px_0_rgb(255_255_255/0.22),0_1px_2px_rgb(179_60_0/0.3)] transition-colors duration-200 hover:bg-terracotta-dark focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-white/80"
             >
               Download

@@ -1,59 +1,67 @@
-import { useState } from 'react'
+import type { ReactNode } from 'react'
 import { Link } from 'react-router'
-import { ArrowRight, Share } from 'lucide-react'
+import {
+  AppWindow,
+  ArrowRight,
+  Copy,
+  Monitor,
+  Share,
+  Smartphone,
+  SquareTerminal
+} from 'lucide-react'
 import { Container } from '@/components/layout/Container'
 import { ClipboardButton } from '@/components/download/ClipboardButton'
-import { DownloadIndex } from '@/components/download/DownloadIndex'
 import { PageHead } from '@/components/shared/PageHead'
 import { trackLandingEvent } from '@/lib/analytics'
+import { CHROME_WEBSTORE_URL, FIREFOX_ADDONS_URL } from '@/lib/constants'
 import {
   DESKTOP_PLATFORM,
   downloadHref,
+  isMobileOS,
   osLabel,
-  takeStartedDownload,
   useDetectedOS,
   type DesktopOS,
   type DetectedOS,
-  type DownloadPlatform,
-  type MobileOS
+  type DownloadPlatform
 } from '@/lib/download'
 import { getCanonicalUrl, PAGE_META } from '@/lib/seo'
 import { cn } from '@/lib/utils'
 
+// Same cask the install guide documents (apps/docs/src/guide/install.md).
+const BREW_COMMAND = 'brew install --cask memrynote/tap/memry'
+
 const FOCUS_RING =
   'focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ink/50 focus-visible:ring-offset-2 focus-visible:ring-offset-paper'
 
-const PRIMARY_BUTTON = cn(
-  'inline-flex h-[52px] items-center justify-center gap-2.5 rounded-xl bg-ink px-5 text-[16px] font-semibold leading-5 text-white shadow-[inset_0_1px_0_rgb(255_255_255/0.12),0_6px_16px_rgb(31_41_55/0.16)] transition-colors duration-200 hover:bg-ink/90',
+const BUTTON_BASE =
+  'inline-flex h-11 w-full items-center justify-center gap-2.5 rounded-xl px-4 text-[14px] font-semibold leading-5 transition-colors duration-200'
+
+const OUTLINE_BUTTON = cn(
+  BUTTON_BASE,
+  'border border-ink/15 bg-card text-ink hover:bg-paper-alt',
   FOCUS_RING
 )
 
-const SECONDARY_BUTTON = cn(
-  'inline-flex h-12 items-center justify-center gap-2 rounded-xl border border-ink/15 bg-card px-4 text-[15px] font-semibold leading-5 text-ink transition-colors duration-200 hover:bg-paper-alt',
+/** The build that matches the visitor's computer, once detection has run. */
+const PICK_BUTTON = cn(
+  BUTTON_BASE,
+  'border border-ink bg-ink text-white shadow-[inset_0_1px_0_rgb(255_255_255/0.12),0_6px_16px_rgb(31_41_55/0.16)] hover:bg-ink/90',
   FOCUS_RING
+)
+
+const SOON_BUTTON = cn(
+  BUTTON_BASE,
+  'cursor-default border border-dashed border-ink/15 bg-transparent text-muted'
 )
 
 const TEXT_LINK = cn(
-  'text-ink underline decoration-ink/25 underline-offset-[3px] transition-colors hover:decoration-ink',
+  'rounded-sm text-ink underline decoration-ink/25 underline-offset-[3px] transition-colors hover:decoration-ink',
   FOCUS_RING
 )
 
 const META = 'font-mono text-[12px] leading-4 text-muted'
 
 const DESKTOPS: readonly DesktopOS[] = ['mac', 'windows', 'linux']
-
-/** What the detected computer's button downloads, and the one other build it may want. */
-const DESKTOP_LEAD: Record<
-  DesktopOS,
-  { note: string; alternate?: { platform: DownloadPlatform; label: string } }
-> = {
-  mac: {
-    note: 'Apple Silicon · macOS 12+',
-    alternate: { platform: 'mac-x64', label: 'Intel build' }
-  },
-  windows: { note: '.exe · Windows 10+' },
-  linux: { note: '.AppImage · x64', alternate: { platform: 'linux-deb', label: '.deb package' } }
-}
 
 // Real brand marks (simple-icons), 24px viewBox, solid fill via currentColor.
 const PLATFORM_LOGO: Record<DesktopOS, string> = {
@@ -71,6 +79,10 @@ const LOGO_SIZE: Record<DesktopOS, string> = {
   linux: 'size-[17px]'
 }
 
+// simple-icons "Google Play" mark, 24px viewBox.
+const GOOGLE_PLAY_LOGO =
+  'M22.018 13.298l-3.919 2.218-3.515-3.493 3.543-3.521 3.891 2.202a1.49 1.49 0 0 1 0 2.594zM1.337.924a1.486 1.486 0 0 0-.112.568v21.017c0 .217.045.419.124.6l11.155-11.087L1.337.924zm12.207 10.065l3.258-3.238L3.45.195a1.466 1.466 0 0 0-.946-.179l11.04 10.973zm0 2.067l-11 10.933c.298.036.612-.016.906-.183l13.324-7.54-3.23-3.21z'
+
 function PlatformLogo({ os }: { os: DesktopOS }) {
   return (
     <svg
@@ -84,172 +96,245 @@ function PlatformLogo({ os }: { os: DesktopOS }) {
   )
 }
 
-function trackHeroDownload(platform: DownloadPlatform) {
-  trackLandingEvent('landing_download_click', `download:${platform}:download-hero`)
+function trackDownload(platform: DownloadPlatform) {
+  trackLandingEvent('landing_download_click', `download:${platform}:download-card`)
+}
+
+function trackPage(target: string) {
+  trackLandingEvent('landing_nav_click', `download:${target}:download-card`)
 }
 
 /**
- * /download: every product memrynote ships, on one page. The lead block answers "what
- * do I install on this device"; the index beside it lists everything else.
- *
- * Detection runs on the client only, so the prerendered HTML is the "pick your computer"
- * state and the lead switches after hydration. The index keeps one order and one layout
- * in every state, so that switch never moves the page.
+ * /download: one card per product memrynote ships. Nothing downloads until the visitor
+ * picks a build. Detection runs on the client only, so the prerendered HTML has no
+ * highlighted build; after hydration the matching desktop button turns solid, which
+ * changes its color and never its size.
  */
 export function DownloadPage() {
   const os = useDetectedOS()
-  // Set only when the nav Download button sent the user here and already started the
-  // installer, so the page confirms it instead of asking for a second click.
-  const [started] = useState(takeStartedDownload)
 
   return (
     <>
       <PageHead page="download" />
       <Container className="pb-24 pt-28 md:pb-32 md:pt-36">
-        <div className="grid gap-14 xl:grid-cols-[27.5rem_minmax(0,1fr)] xl:gap-24">
-          <div>
-            {/* Weight, leading and tracking need `!`: the base h1 rule is unlayered. */}
-            <h1 className="text-[clamp(2.875rem,7vw,5.25rem)] font-[650]! leading-[0.98]! tracking-[-0.045em]! text-ink">
-              Get
-              <br />
-              memrynote.
-            </h1>
-            <p className="mt-5 text-[16px] leading-6 text-muted md:mt-6 md:text-[18px] md:leading-7">
-              Everything memrynote ships, on one page.
-            </p>
-            <Lead os={os} started={started !== null} />
-          </div>
-          <DownloadIndex os={os} />
+        <header className="mx-auto flex max-w-2xl flex-col items-center text-center">
+          {/* Weight, leading and tracking need `!`: the base h1 rule is unlayered. */}
+          <h1 className="text-[clamp(2.75rem,6vw,4.5rem)] font-[650]! leading-[1]! tracking-[-0.04em]! text-ink">
+            Get memrynote
+          </h1>
+          <p className="mt-5 text-[16px] leading-6 text-muted md:text-[18px] md:leading-7">
+            Notes, journal, tasks and calendar in one local-first, end-to-end encrypted app. Pick
+            where you want to use it.
+          </p>
+          {isMobileOS(os) && <SharePageButton />}
+        </header>
+        <div className="mt-14 grid gap-4 sm:grid-cols-2 md:mt-20 xl:grid-cols-4">
+          <DesktopCard os={os} />
+          <MobileCard />
+          <ClipperCard />
+          <CliCard />
         </div>
       </Container>
     </>
   )
 }
 
-function Lead({ os, started }: { os: DetectedOS; started: boolean }) {
-  if (os === null) return <PickComputer />
-  if (os === 'ios') return <IosLead />
-  if (os === 'android') return <AndroidLead />
-  return <DesktopLead os={os} started={started} />
-}
-
-function Detected({ os }: { os: DesktopOS | MobileOS }) {
+function Card({
+  icon,
+  title,
+  description,
+  children
+}: {
+  icon: ReactNode
+  title: string
+  description: ReactNode
+  children: ReactNode
+}) {
   return (
-    <p className={cn(META, 'flex items-center gap-1.5')}>
-      <span aria-hidden className="size-1.5 rounded-full bg-terracotta" />
-      Detected: {osLabel(os)}
-    </p>
+    <section className="flex flex-col rounded-2xl border border-border bg-paper-alt p-6 md:p-7">
+      <span aria-hidden className="text-terracotta">
+        {icon}
+      </span>
+      {/* Type sits on the span: the unlayered base h2 rule would beat utilities here. */}
+      <h2 className="mt-5">
+        <span className="text-[20px] font-semibold leading-7 tracking-[-0.01em] text-ink">
+          {title}
+        </span>
+      </h2>
+      <p className="mt-1.5 text-[14px] leading-[22px] text-muted">{description}</p>
+      <div className="mt-auto flex flex-col gap-2.5 pt-8">{children}</div>
+    </section>
   )
 }
 
-function DesktopLead({ os, started }: { os: DesktopOS; started: boolean }) {
-  const platform = DESKTOP_PLATFORM[os]
-  const { note, alternate } = DESKTOP_LEAD[os]
+const CARD_ICON = 'size-7'
 
+function DesktopCard({ os }: { os: DetectedOS }) {
   return (
-    <div className="mt-10 flex flex-col items-start gap-3.5">
-      {started ? (
-        <output className={cn(META, 'flex items-center gap-1.5')}>
-          <span aria-hidden className="size-1.5 rounded-full bg-terracotta" />
-          Your download has started. Nothing yet? Use the button.
-        </output>
-      ) : (
-        <Detected os={os} />
-      )}
-      <a
-        href={downloadHref(platform)}
-        onClick={() => trackHeroDownload(platform)}
-        className={PRIMARY_BUTTON}
-      >
-        <PlatformLogo os={os} />
-        Download for {osLabel(os)}
-      </a>
-      <p className={META}>
-        {note}
-        {alternate && (
-          <>
-            {' · '}
-            <a
-              href={downloadHref(alternate.platform)}
-              onClick={() => trackHeroDownload(alternate.platform)}
-              className={TEXT_LINK}
-            >
-              {alternate.label}
-            </a>
-          </>
-        )}
+    <Card
+      icon={<Monitor className={CARD_ICON} strokeWidth={1.8} />}
+      title="Desktop"
+      description="The full app, offline first. Your vault lives on your computer."
+    >
+      {DESKTOPS.map((desktop) => {
+        const platform = DESKTOP_PLATFORM[desktop]
+        return (
+          <a
+            key={desktop}
+            href={downloadHref(platform)}
+            onClick={() => trackDownload(platform)}
+            className={desktop === os ? PICK_BUTTON : OUTLINE_BUTTON}
+          >
+            <PlatformLogo os={desktop} />
+            Download for {osLabel(desktop)}
+            {desktop === os && <span className="sr-only">, matches this device</span>}
+          </a>
+        )
+      })}
+      <p className={cn(META, 'mt-1.5 flex flex-wrap items-center gap-x-2 gap-y-1')}>
+        <a
+          href={downloadHref('mac-x64')}
+          onClick={() => trackDownload('mac-x64')}
+          className={TEXT_LINK}
+        >
+          Intel Mac
+        </a>
+        <span aria-hidden>·</span>
+        <a
+          href={downloadHref('linux-deb')}
+          onClick={() => trackDownload('linux-deb')}
+          className={TEXT_LINK}
+        >
+          .deb
+        </a>
+        <span aria-hidden>·</span>
+        <ClipboardButton
+          intent={{ kind: 'copy', text: BREW_COMMAND }}
+          label="Homebrew"
+          srLabel=": copy the install command"
+          icon={<Copy className="size-3 shrink-0" aria-hidden />}
+          className={cn(TEXT_LINK, 'inline-flex items-center gap-1')}
+          onSuccess={() =>
+            trackLandingEvent('landing_download_click', 'download:brew:download-card')
+          }
+        />
+        <span aria-hidden>·</span>
+        <Link to="/changelog" onClick={() => trackPage('changelog')} className={TEXT_LINK}>
+          Release notes
+        </Link>
       </p>
-    </div>
+    </Card>
   )
 }
 
-function PickComputer() {
+function MobileCard() {
   return (
-    <div className="mt-10 flex flex-col gap-3.5">
-      <p className={META}>Pick your computer</p>
-      <div className="grid max-w-[27.5rem] grid-cols-3 gap-2.5">
-        {DESKTOPS.map((desktop) => {
-          const platform = DESKTOP_PLATFORM[desktop]
-          return (
+    <Card
+      icon={<Smartphone className={CARD_ICON} strokeWidth={1.8} />}
+      title="Mobile"
+      description="Capture and read on the go. The iPhone app is in beta on TestFlight."
+    >
+      <Link to="/ios-beta" onClick={() => trackPage('ios-beta')} className={OUTLINE_BUTTON}>
+        <PlatformLogo os="mac" />
+        <span className="flex flex-col items-start leading-none">
+          <span className="text-[10px] font-medium uppercase tracking-[0.04em] text-muted">
+            TestFlight beta
+          </span>
+          <span className="mt-0.5">iPhone</span>
+        </span>
+      </Link>
+      <span aria-disabled className={SOON_BUTTON}>
+        <svg viewBox="0 0 24 24" fill="currentColor" aria-hidden className="size-4 shrink-0">
+          <path d={GOOGLE_PLAY_LOGO} />
+        </svg>
+        <span className="flex flex-col items-start leading-none">
+          <span className="text-[10px] font-medium uppercase tracking-[0.04em]">Coming soon</span>
+          <span className="mt-0.5">Google Play</span>
+        </span>
+      </span>
+    </Card>
+  )
+}
+
+const BROWSERS: readonly { name: string; logo: string; href?: string }[] = [
+  { name: 'Chrome', logo: '/browsers/chrome.svg', href: CHROME_WEBSTORE_URL },
+  { name: 'Firefox', logo: '/browsers/firefox.svg', href: FIREFOX_ADDONS_URL },
+  { name: 'Edge', logo: '/browsers/edge.svg' }
+]
+
+const BROWSER_TILE =
+  'flex h-[76px] flex-col items-center justify-center gap-1.5 rounded-xl border text-[12px] font-medium leading-4'
+
+function ClipperCard() {
+  return (
+    <Card
+      icon={<AppWindow className={CARD_ICON} strokeWidth={1.8} />}
+      title="Web Clipper"
+      description="Save any page, selection or link to your Inbox in one click."
+    >
+      <div className="grid grid-cols-3 gap-2">
+        {BROWSERS.map((browser) =>
+          browser.href ? (
             <a
-              key={desktop}
-              href={downloadHref(platform)}
-              onClick={() => trackHeroDownload(platform)}
-              className={SECONDARY_BUTTON}
+              key={browser.name}
+              href={browser.href}
+              target="_blank"
+              rel="noopener noreferrer"
+              onClick={() =>
+                trackLandingEvent(
+                  'landing_external_click',
+                  `download:${browser.name.toLowerCase()}:download-card`
+                )
+              }
+              className={cn(
+                BROWSER_TILE,
+                'border-ink/15 bg-card text-ink transition-colors hover:bg-paper-alt',
+                FOCUS_RING
+              )}
             >
-              <PlatformLogo os={desktop} />
-              <span>
-                <span className="sr-only">Download for </span>
-                {osLabel(desktop)}
-              </span>
+              <img src={browser.logo} alt="" width={22} height={22} className="size-[22px]" />
+              {browser.name}
+              <span className="sr-only"> (opens in a new tab)</span>
             </a>
+          ) : (
+            <span
+              key={browser.name}
+              aria-disabled
+              className={cn(BROWSER_TILE, 'border-dashed border-ink/15 text-muted')}
+            >
+              <img
+                src={browser.logo}
+                alt=""
+                width={22}
+                height={22}
+                className="size-[22px] opacity-50 grayscale"
+              />
+              {browser.name} · Soon
+            </span>
           )
-        })}
+        )}
       </div>
-      <p className={META}>Every build is in the list.</p>
-    </div>
+    </Card>
   )
 }
 
-function IosLead() {
+function CliCard() {
   return (
-    <div className="mt-10 flex flex-col gap-3 sm:items-start">
-      <Detected os="ios" />
-      <Link
-        to="/ios-beta"
-        onClick={() => trackLandingEvent('landing_nav_click', 'download:ios-beta:download-hero')}
-        className={PRIMARY_BUTTON}
-      >
-        Join the iPhone beta
+    <Card
+      icon={<SquareTerminal className={CARD_ICON} strokeWidth={1.8} />}
+      title="CLI"
+      description="Your vault from the terminal. It ships with the desktop app, so there is nothing extra to download."
+    >
+      <Link to="/cli" onClick={() => trackPage('cli')} className={OUTLINE_BUTTON}>
+        Set up the CLI
         <ArrowRight className="size-4 shrink-0 rtl:-scale-x-100" aria-hidden />
       </Link>
-      <SharePageButton className={SECONDARY_BUTTON} />
-      <p className={META}>TestFlight invite arrives by email</p>
-    </div>
-  )
-}
-
-function AndroidLead() {
-  return (
-    <div className="mt-10 flex flex-col gap-3 sm:items-start">
-      <Detected os="android" />
-      <p className="text-[16px] leading-6 text-ink">
-        No Android app yet. memrynote runs on your computer today.
-      </p>
-      <SharePageButton className={PRIMARY_BUTTON} />
-      <Link
-        to="/roadmap"
-        onClick={() => trackLandingEvent('landing_nav_click', 'download:roadmap:download-hero')}
-        className={cn(TEXT_LINK, 'self-start text-[14px] leading-5')}
-      >
-        See the roadmap
-      </Link>
-    </div>
+    </Card>
   )
 }
 
 /** Phones can't run the desktop app, so the useful move is to send this page onward. */
-function SharePageButton({ className }: { className: string }) {
+function SharePageButton() {
   return (
     <ClipboardButton
       intent={{
@@ -259,7 +344,7 @@ function SharePageButton({ className }: { className: string }) {
       }}
       label="Send this page to your computer"
       icon={<Share className="size-4 shrink-0" aria-hidden />}
-      className={className}
+      className={cn(OUTLINE_BUTTON, 'mt-8 w-auto')}
       onSuccess={() => trackLandingEvent('landing_download_share', 'share:page:download-hero')}
     />
   )
