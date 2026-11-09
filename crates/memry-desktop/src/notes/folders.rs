@@ -240,8 +240,10 @@ fn under_a_file(root: &Path, folder: &str) -> io::Result<bool> {
 pub(super) fn respells_a_sibling(root: &Path, folder: &str) -> io::Result<bool> {
     let mut dir = root.to_path_buf();
     for segment in folder.split('/') {
-        if sibling_named(&dir, segment)?.is_some_and(|name| !name.nfc().eq(segment.nfc())) {
-            return Ok(true);
+        match sibling_named(&dir, segment)? {
+            Sibling::Named(name) if !name.nfc().eq(segment.nfc()) => return Ok(true),
+            Sibling::Several => return Ok(true),
+            Sibling::Named(_) | Sibling::Missing => {}
         }
         dir.push(segment);
     }
@@ -269,29 +271,54 @@ pub(crate) fn holds_journal_days(
         && !respells_a_sibling(root, folder)?)
 }
 
+/// The entry of a folder that a name in it is ([`sibling_named`]).
+#[derive(Debug, PartialEq, Eq)]
+pub(super) enum Sibling {
+    /// No entry, or no folder.
+    Missing,
+    /// The entry, as the folder lists it.
+    Named(String),
+    /// No entry spelled as the name, and more than one that differs from it in case only
+    /// (`WORK` and `work` for `Work`, on a case-sensitive volume): which one is meant cannot be
+    /// told.
+    Several,
+}
+
 /// The entry of `dir` that a folder `segment` there would be on a disk that folds case or
-/// Unicode form, as `dir` lists it: one spelled as `segment` in any Unicode form, else one
-/// that differs from it in case only. `None` when there is none, or no `dir`. Every volume
-/// answers alike, so a vault copied between them keeps one spelling per folder.
-pub(super) fn sibling_named(dir: &Path, segment: &str) -> io::Result<Option<String>> {
+/// Unicode form, as `dir` lists it: one spelled as `segment` in any Unicode form, else the one
+/// that differs from it in case only. Every volume answers alike, so a vault copied between
+/// them keeps one spelling per folder.
+pub(super) fn sibling_named(dir: &Path, segment: &str) -> io::Result<Sibling> {
     let entries = match fs::read_dir(dir) {
         Ok(entries) => entries,
-        Err(error) if error.kind() == ErrorKind::NotFound => return Ok(None),
+        Err(error) if error.kind() == ErrorKind::NotFound => return Ok(Sibling::Missing),
         Err(error) => return Err(error),
     };
-    let (wanted, folded) = (segment.nfc().collect::<String>(), folded_key(segment));
-    let mut respelled = None;
+    let mut names = Vec::new();
     for entry in entries {
-        let name = entry?.file_name();
-        let Some(name) = name.to_str() else { continue };
-        if name.nfc().eq(wanted.chars()) {
-            return Ok(Some(name.to_owned()));
-        }
-        if respelled.is_none() && folded_key(name) == folded {
-            respelled = Some(name.to_owned());
+        if let Ok(name) = entry?.file_name().into_string() {
+            names.push(name);
         }
     }
-    Ok(respelled)
+    Ok(sibling_among(names, segment))
+}
+
+/// [`sibling_named`] over the names a folder lists.
+fn sibling_among(names: Vec<String>, segment: &str) -> Sibling {
+    let (wanted, folded) = (segment.nfc().collect::<String>(), folded_key(segment));
+    let mut respelled = Sibling::Missing;
+    for name in names {
+        if name.nfc().eq(wanted.chars()) {
+            return Sibling::Named(name);
+        }
+        if folded_key(&name) == folded {
+            respelled = match respelled {
+                Sibling::Missing => Sibling::Named(name),
+                _ => Sibling::Several,
+            };
+        }
+    }
+    respelled
 }
 
 /// `notes:get-folder-config`: `None` when the folder has no file, or one that cannot be read.
@@ -404,5 +431,38 @@ impl NotesService {
 impl From<FolderFileError> for NotesError {
     fn from(error: FolderFileError) -> Self {
         Self::FolderFile(error)
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    fn among(names: &[&str], segment: &str) -> Sibling {
+        sibling_among(
+            names.iter().map(|name| (*name).to_owned()).collect(),
+            segment,
+        )
+    }
+
+    /// A case-sensitive volume can hold `WORK` and `work`: `Work` names neither, in either order
+    /// the folder lists them, while a spelling one of them has exactly names that one.
+    #[test]
+    fn a_name_two_entries_spell_in_case_only_names_neither() {
+        assert_eq!(among(&["WORK", "work"], "Work"), Sibling::Several);
+        assert_eq!(among(&["work", "WORK"], "Work"), Sibling::Several);
+        assert_eq!(
+            among(&["WORK", "work"], "work"),
+            Sibling::Named("work".into())
+        );
+        assert_eq!(
+            among(&["WORK", "Plan.md"], "Work"),
+            Sibling::Named("WORK".into())
+        );
+        assert_eq!(
+            among(&["Cafe\u{301}"], "Caf\u{e9}"),
+            Sibling::Named("Cafe\u{301}".into())
+        );
+        assert_eq!(among(&["Other"], "Work"), Sibling::Missing);
     }
 }

@@ -63,7 +63,7 @@ use memry_core::domain::notes::app_move::AppMoved;
 use memry_core::domain::notes::link_rewrite::LinkNames;
 
 use super::error::NotesError;
-use super::folders::sibling_named;
+use super::folders::{Sibling, sibling_named};
 use super::read;
 use super::service::NotesService;
 use super::view::{MovedNoteView, NoteView};
@@ -327,7 +327,9 @@ fn free_target(
     let folder = match folder {
         "" => String::new(),
         folder => {
-            let folder = folder_on_disk(root, folder)?.ok_or(NotesError::InvalidFolder)?;
+            let OnDisk::Spelled(folder) = folder_on_disk(root, folder)? else {
+                return Err(NotesError::InvalidFolder);
+            };
             if resolve_vault_file(root, &folder)? == Resolution::Outside {
                 return Err(NotesError::Outside);
             }
@@ -374,42 +376,58 @@ pub(super) fn disk_spelling(root: &Path, folder: &str) -> String {
         return String::new();
     }
     match folder_on_disk(root, folder) {
-        Ok(Some(spelled)) => spelled,
+        Ok(OnDisk::Spelled(spelled)) => spelled,
         _ => folder.to_owned(),
     }
 }
 
 /// Whether each segment of `folder` that is there is a plain folder ([`folder_on_disk`]).
 pub(super) fn plain_folders(root: &Path, folder: &str) -> io::Result<bool> {
-    Ok(folder_on_disk(root, folder)?.is_some())
+    Ok(!matches!(folder_on_disk(root, folder)?, OnDisk::NotPlain))
+}
+
+/// A folder path as the disk holds it ([`folder_on_disk`]).
+#[derive(Debug, PartialEq, Eq)]
+pub(super) enum OnDisk {
+    /// As the disk spells it.
+    Spelled(String),
+    /// A segment is a link or a file.
+    NotPlain,
+    /// A segment names no entry exactly and several in case only ([`Sibling::Several`]).
+    Ambiguous,
 }
 
 /// `folder` as the disk spells it, when each segment that is there is a plain folder: not a
 /// link (a junction on Windows), which the open walk does not enter, so a note moved under one
 /// would read as removed at the next open, and not a file, which the move could not create the
 /// folder over. A segment its parent holds in another case or Unicode form takes that spelling
-/// on every volume ([`sibling_named`], the rule `create_folder` refuses a second spelling by);
-/// the segments not there yet stay as given.
-pub(super) fn folder_on_disk(root: &Path, folder: &str) -> io::Result<Option<String>> {
+/// on every volume ([`sibling_named`], the rule `create_folder` refuses a second spelling by),
+/// unless it holds several such and none spelled as given, which names none of them; the
+/// segments not there yet stay as given.
+pub(super) fn folder_on_disk(root: &Path, folder: &str) -> io::Result<OnDisk> {
     let mut path = root.to_path_buf();
     let mut spelled = Vec::new();
     let mut segments = folder.split('/');
     for segment in segments.by_ref() {
-        let Some(listed) = sibling_named(&path, segment)? else {
-            spelled.push(segment.to_owned());
-            break;
+        let listed = match sibling_named(&path, segment)? {
+            Sibling::Named(listed) => listed,
+            Sibling::Several => return Ok(OnDisk::Ambiguous),
+            Sibling::Missing => {
+                spelled.push(segment.to_owned());
+                break;
+            }
         };
         path.push(&listed);
         spelled.push(listed);
         match fs::symlink_metadata(&path) {
-            Ok(meta) if !meta.file_type().is_dir() => return Ok(None),
+            Ok(meta) if !meta.file_type().is_dir() => return Ok(OnDisk::NotPlain),
             Ok(_) => {}
             Err(error) if error.kind() == ErrorKind::NotFound => break,
             Err(error) => return Err(error),
         }
     }
     spelled.extend(segments.map(str::to_owned));
-    Ok(Some(spelled.join("/")))
+    Ok(OnDisk::Spelled(spelled.join("/")))
 }
 
 pub(super) fn identity_failed(error: IdentityError) -> NotesError {
