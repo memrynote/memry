@@ -571,7 +571,7 @@ importers:
         specifier: ^8.0.3
         version: 8.0.3
       dotenv:
-        specifier: ^17.2.3
+        specifier: ^17.4.2
         version: 17.4.2
       driver.js:
         specifier: ^1.6.0

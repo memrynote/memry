@@ -245,7 +245,7 @@
     "cross-env": "^10.1.0",
     "date-fns": "^4.1.0",
     "diff": "^8.0.3",
-    "dotenv": "^17.2.3",
+    "dotenv": "^17.4.2",
     "driver.js": "^1.6.0",
     "drizzle-kit": "^0.31.10",
     "drizzle-orm": "^0.45.2",
