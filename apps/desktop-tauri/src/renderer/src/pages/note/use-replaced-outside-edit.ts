@@ -11,7 +11,9 @@ import { onNoteOutsideEditKept } from '@/services/notes-service'
  * that save lands, with a way into version history. A save that lands before
  * the watcher reports an outside edit leaves the editor no event to hold; the
  * save's answer says so instead (`keptOutsideEdit`). Typing the core holds and the file does
- * not yet wins there too, and the core says so (`notes:outside-edit-kept`).
+ * not yet wins there too, and the core says so (`notes:outside-edit-kept`). Held edits are kept
+ * per note: the save the editor sends when it closes, or moves to another note, answers after
+ * the next note's are held (#4088).
  */
 export function useReplacedOutsideEdit(
   noteId: string | undefined,
@@ -19,6 +21,10 @@ export function useReplacedOutsideEdit(
 ): {
   /** The outside edit's body that unsaved typing kept out of the editor. */
   held: (noteId: string, content: string) => void
+  /** An outside edit of the note is held: a save replaces text the editor never showed. */
+  holds: (noteId: string) => boolean
+  /** Hands over the note's held outside edit, and holds it no more. */
+  take: (noteId: string) => string | undefined
   /**
    * The typing's save answered: tells the user when it replaced a different outside body, and
    * answers whether it did.
@@ -26,17 +32,13 @@ export function useReplacedOutsideEdit(
   saved: (noteId: string, content: string, result: NoteUpdateResponse) => boolean
 } {
   const { t } = useT('notes')
-  const heldRef = useRef<{ noteId: string; content: string } | null>(null)
+  const heldRef = useRef(new Map<string, string>())
   const showRef = useRef(showVersionHistory)
   const tRef = useRef(t)
   useLayoutEffect(() => {
     showRef.current = showVersionHistory
     tRef.current = t
   })
-  // An edit held for the note the page showed before is not this note's.
-  useLayoutEffect(() => {
-    if (heldRef.current?.noteId !== noteId) heldRef.current = null
-  }, [noteId])
   useEffect(() => {
     if (!noteId) return undefined
     return onNoteOutsideEditKept(({ id }) => {
@@ -47,14 +49,20 @@ export function useReplacedOutsideEdit(
   return useMemo(
     () => ({
       held: (id, content) => {
-        heldRef.current = { noteId: id, content }
+        heldRef.current.set(id, content)
+      },
+      holds: (id) => heldRef.current.has(id),
+      take: (id) => {
+        const held = heldRef.current.get(id)
+        heldRef.current.delete(id)
+        return held
       },
       saved: (id, content, result) => {
         // A failed save replaced nothing; the held edit waits for the save that lands.
         if (!result.success) return false
-        const held = heldRef.current
-        heldRef.current = null
-        const replaced = held?.noteId === id && held.content !== content
+        const held = heldRef.current.get(id)
+        heldRef.current.delete(id)
+        const replaced = held !== undefined && held !== content
         if (!replaced && !result.keptOutsideEdit) return false
         toastReplaced(id, tRef.current, showRef.current)
         return true

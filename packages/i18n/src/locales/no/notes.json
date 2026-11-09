@@ -74,6 +74,7 @@
       "outsideEditReplaced": "Skrivingen din erstattet en endring utenfra. Den er lagret i versjonsloggen.",
       "showVersions": "Vis versjoner",
       "notSaved": "Endringene dine i dette notatet ble ikke lagret. De blir værende i redigeringsprogrammet, og neste endring prøver igjen.",
+      "notSavedClosed": "De siste endringene dine i dette notatet kunne ikke lagres etter at redigeringsprogrammet ble lukket.",
       "readOnlyUnsaved": "Dette notatet ble skrivebeskyttet før de siste endringene dine ble lagret. De blir værende i redigeringsprogrammet, ulagret."
     },
     "deleteDialogTitle": "{count, plural, one {Slett notat} other {Slett # notater}}",

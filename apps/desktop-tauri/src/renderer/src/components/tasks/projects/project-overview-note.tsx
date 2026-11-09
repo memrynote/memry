@@ -182,7 +182,7 @@ export const ProjectOverviewNote = ({
           onOpenChange={setVersionsOpen}
           noteId={note.id}
           noteTitle={note.title}
-          onRestore={body.cancelScheduledSave}
+          onRestore={body.dropTyping}
         />
       )}
     </section>

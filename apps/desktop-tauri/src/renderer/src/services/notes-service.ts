@@ -291,15 +291,16 @@ const ported = {
   },
   // `title` is `notes:rename`'s: Electron's update renames the record and leaves the file, and no
   // caller sends one, so it stays refused. A failure answers as Electron's `registerCommand` does.
-  update: async (input: NoteUpdateInput): Promise<NoteUpdateResponse> => {
+  update: async (input: NoteSaveInput): Promise<NoteUpdateResponse> => {
     if (input.title !== undefined) throw new NotPortedError('notes.update({ title })')
     try {
-      const { id, content, headerTags, emoji, frontmatter } = input
+      const { id, content, headerTags, emoji, frontmatter, keepReplaced } = input
       const { note, tagTemplate, keptOutsideEdit, savedContent } = await commands.notesUpdate({
         id,
         content,
         headerTags,
         emoji,
+        keepReplaced,
         // oxlint-disable-next-line typescript/no-unsafe-type-assertion -- frontmatter values are the JSON the command carries as is
         frontmatter: frontmatter as Record<string, Value> | undefined
       })
@@ -615,7 +616,16 @@ export type PortedLargeFileMethod =
   | 'largeFileSearch'
   | 'largeFileClose'
 
-type NotesServiceApi = Omit<NotesClientAPI, PortedLargeFileMethod>
+/**
+ * An update, and from an editor that held off an outside edit it never showed, `keepReplaced`:
+ * the core keeps the file the save replaces as a version (#4088). Tauri only, so not in
+ * `NoteUpdateSchema`, which Electron and the agent API share.
+ */
+export type NoteSaveInput = NoteUpdateInput & { keepReplaced?: boolean }
+
+type NotesServiceApi = Omit<NotesClientAPI, PortedLargeFileMethod | 'update'> & {
+  update: (input: NoteSaveInput) => Promise<NoteUpdateResponse>
+}
 
 export const notesService: NotesServiceApi = createWindowApiForwarder<
   NotesServiceApi,

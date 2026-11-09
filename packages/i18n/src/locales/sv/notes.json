@@ -74,6 +74,7 @@
       "outsideEditReplaced": "Det du skrev ersatte en ändring utifrån. Den finns sparad i versionshistoriken.",
       "showVersions": "Visa versioner",
       "notSaved": "Dina ändringar i den här anteckningen sparades inte. De finns kvar i redigeraren, och nästa ändring försöker igen.",
+      "notSavedClosed": "Dina senaste ändringar i den här anteckningen kunde inte sparas efter att redigeraren stängdes.",
       "readOnlyUnsaved": "Den här anteckningen blev skrivskyddad innan dina senaste ändringar sparades. De finns kvar i redigeraren, osparade."
     },
     "deleteDialogTitle": "{count, plural, one {Radera anteckning} other {Radera # anteckningar}}",

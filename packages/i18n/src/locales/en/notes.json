@@ -74,6 +74,7 @@
       "outsideEditReplaced": "An outside change was replaced by your typing. It's saved in version history.",
       "showVersions": "Show versions",
       "notSaved": "Your changes to this note were not saved. They stay in the editor, and your next edit tries again.",
+      "notSavedClosed": "Your latest changes to this note could not be saved after its editor closed.",
       "readOnlyUnsaved": "This note became read-only before your latest changes were saved. They stay in the editor, unsaved."
     },
     "deleteDialogTitle": "{count, plural, one {Delete Note} other {Delete # Notes}}",

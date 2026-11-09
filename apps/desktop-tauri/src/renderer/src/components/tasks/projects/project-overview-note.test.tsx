@@ -272,7 +272,7 @@ describe('ProjectOverviewNote', () => {
 
     unmount()
 
-    expect(mocks.unregisterPendingSave).toHaveBeenCalledWith('project-overview:n1')
+    expect(mocks.unregisterPendingSave).toHaveBeenCalledWith('project-overview:n1', flush)
     // Already flushed above — unmount must not save the same edit again.
     expect(mocks.notesUpdate).toHaveBeenCalledTimes(1)
   })

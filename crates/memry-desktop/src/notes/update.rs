@@ -78,6 +78,11 @@ pub struct NoteUpdateInput {
     #[serde(default)]
     #[specta(optional)]
     pub frontmatter: Option<Map<String, Value>>,
+    /// The editor's typing held off an outside edit it never showed: the file the save replaces
+    /// is kept as a version, the run's own and under ten words too (#4088).
+    #[serde(default)]
+    #[specta(optional)]
+    pub keep_replaced: bool,
 }
 
 /// The frontmatter keys an update may not name, each with the edit that owns it. `writing` is
@@ -193,6 +198,7 @@ struct Edit {
     header_tags: Option<HeaderTagEdit>,
     emoji: Option<Option<String>>,
     frontmatter: Option<Map<String, Value>>,
+    keep_replaced: bool,
 }
 
 impl NotesService {
@@ -218,6 +224,7 @@ impl NotesService {
             content: input.content,
             emoji: input.emoji,
             frontmatter: input.frontmatter,
+            keep_replaced: input.keep_replaced,
         };
         let managed = edit
             .frontmatter
@@ -285,7 +292,10 @@ impl NotesService {
         let planned = RefCell::new(None);
         let edited = app_edit.run_then(
             turn,
-            Precondition::Save(&self.own_files),
+            match edit.keep_replaced {
+                true => Precondition::SaveOver(&self.own_files),
+                false => Precondition::Save(&self.own_files),
+            },
             ChangeSource::Save,
             |text| {
                 let listed = open

@@ -32,12 +32,6 @@ export type NoteBodySurface = keyof typeof SURFACES
 const SAVE_DEBOUNCE_MS = 1000
 
 /**
- * Refusals whose reply says why the note cannot be written: the user is shown that, not a
- * generic failure. `note_excluded` ships with #4098.
- */
-const READ_ONLY_REFUSALS = new Set(['note_locked', 'note_excluded'])
-
-/**
  * The body a save of `markdown` left in the file, as its event will say. Not `result.note`: the
  * note is read after the save and can hold a later edit (a tag's template, an outside edit).
  */
@@ -90,8 +84,8 @@ export interface NoteBody {
   revision: number
   /** The editor's `onMarkdownChange`: saves its text after a pause. */
   onMarkdownChange: (markdown: string) => void
-  /** Drops the save the pause would start; the typing stays for the flush. */
-  cancelScheduledSave: () => void
+  /** A version was restored over the note: its typing is dropped, and the editor takes the file. */
+  dropTyping: () => void
 }
 
 /**
@@ -131,18 +125,20 @@ export function useNoteBody(noteId: string | undefined, options: NoteBodyOptions
   }
 
   // A refused save wrote nothing: its typing stays the editor's, unsaved, and the user is told.
+  // `closed`: the editor that held the typing is gone, so nothing tries again.
   const tRef = useRef(t)
   // oxlint-disable-next-line react/refs -- latest-value ref (callbacks/state mirrored for stable handlers); not render output
   tRef.current = t
   const notSaved = useCallback(
-    (id: string, error: unknown, refusal?: NoteUpdateResponse) => {
-      log.error('The note was not saved:', { surface, noteId: id, error })
+    (id: string, error: unknown, refusal?: NoteUpdateResponse, closed = false) => {
+      log.error('The note was not saved:', { surface, noteId: id, error, closed })
       const action = SURFACES[surface]
       if (action) trackRendererError(action, error)
-      const why =
-        refusal?.code && READ_ONLY_REFUSALS.has(refusal.code) && refusal.error
-          ? refusal.error
-          : tRef.current('page.toast.notSaved')
+      // A refusal that says why the note cannot be written is shown as that. `note_excluded`
+      // ships with #4098, which owns its text.
+      let why = tRef.current(closed ? 'page.toast.notSavedClosed' : 'page.toast.notSaved')
+      if (refusal?.code === 'note_locked') why = tRef.current('errors:vaultLock.noteReadOnly')
+      if (refusal?.code === 'note_excluded' && refusal.error) why = refusal.error
       toast.error(why, { id: `note-not-saved:${id}` })
     },
     [surface]
@@ -240,6 +236,19 @@ export function useNoteBody(noteId: string | undefined, options: NoteBodyOptions
     [noteId, outsideEdit, outsideText]
   )
 
+  // A save of the note writes over text the editor never showed: the outside edit its typing
+  // held off, or one that came in while its saves ran. The core keeps that file as a version
+  // however small the change (`keepReplaced`), as the toast that follows says.
+  const overUnseen = useCallback(
+    (id: string): boolean => {
+      const window = saveWindowRef.current
+      if (outsideEdit.holds(id)) return true
+      if (window?.noteId !== id) return false
+      return window.dropped || window.outside.some((text) => !window.own.has(text))
+    },
+    [outsideEdit]
+  )
+
   // Stable ref so cleanup can always call the latest mutateAsync
   const updateNoteRef = useRef(updateNote.mutateAsync)
   // oxlint-disable-next-line react/refs -- latest-value ref (callbacks/state mirrored for stable handlers); not render output
@@ -268,13 +277,16 @@ export function useNoteBody(noteId: string | undefined, options: NoteBodyOptions
         }
       }
       const window = saveWindowRef.current
+      const keepReplaced = overUnseen(id)
       window.inFlight += 1
       const order = (window.started += 1)
       try {
-        const result = await updateNoteRef.current({ id, content: markdown })
-        // The page shows another note now: its baseline, typing and toasts are not this save's.
+        const input = { id, content: markdown, ...(keepReplaced && { keepReplaced }) }
+        const result = await updateNoteRef.current(input)
+        // The page shows another note now: its baseline and typing are not this save's.
         if (liveNoteIdRef.current !== id) {
-          if (!result.success) notSaved(id, result.error, result)
+          if (result.success) outsideEdit.saved(id, markdown, result)
+          else notSaved(id, result.error, result, true)
           return result
         }
         // A refused save wrote nothing: the editor's text is still not the file's.
@@ -301,22 +313,29 @@ export function useNoteBody(noteId: string | undefined, options: NoteBodyOptions
       }
     },
     // oxlint-disable-next-line react/memo-dependencies -- dependency list is intentional; the compiler trace misreads the reply handled in `try`/`finally` (`settleSaves` runs there)
-    [noteId, outsideEdit, settleSaves, notSaved]
+    [noteId, outsideEdit, settleSaves, notSaved, overUnseen]
   )
 
   // A save after the note's save lifecycle ended: nothing is left to keep its typing if it is
-  // refused, so the user is told.
+  // refused, so the user is told. One that went over an outside edit says so, as a live save does.
   const saveDetached = useCallback(
     (id: string, markdown: string) => {
+      const keepReplaced = overUnseen(id)
+      // The typing is gone with its editor, and with it the reason to hold an outside edit.
+      const refused = (error: unknown, refusal?: NoteUpdateResponse): void => {
+        outsideEdit.take(id)
+        notSaved(id, error, refusal, true)
+      }
       updateNoteRef
-        .current({ id, content: markdown })
+        .current({ id, content: markdown, ...(keepReplaced && { keepReplaced }) })
         .then((result) => {
-          if (!result.success) notSaved(id, result.error, result)
+          if (result.success) outsideEdit.saved(id, markdown, result)
+          else refused(result.error, result)
           return undefined
         })
-        .catch((err: unknown) => notSaved(id, err))
+        .catch((err: unknown) => refused(err))
     },
-    [notSaved]
+    [notSaved, outsideEdit, overUnseen]
   )
 
   // A note opened from the query's cache shows the cache's text until its read on mount
@@ -351,7 +370,7 @@ export function useNoteBody(noteId: string | undefined, options: NoteBodyOptions
     const registryKey = `${surface}:${noteId}`
     liveNoteIdRef.current = noteId
 
-    registerPendingSave(registryKey, async () => {
+    const flush = async (): Promise<void> => {
       // The debounced save would write the same typing again, over whatever lands after this.
       if (saveTimeoutRef.current) {
         clearTimeout(saveTimeoutRef.current)
@@ -365,7 +384,8 @@ export function useNoteBody(noteId: string | undefined, options: NoteBodyOptions
           if (!result.success) pendingMarkdownRef.current ??= pending
         })
       }
-    })
+    }
+    registerPendingSave(registryKey, flush)
 
     return () => {
       if (saveTimeoutRef.current) {
@@ -379,7 +399,8 @@ export function useNoteBody(noteId: string | undefined, options: NoteBodyOptions
         saveDetached(noteId, pending)
       }
 
-      unregisterPendingSave(registryKey)
+      // Another editor of the note on this surface may have registered since: its flush stays.
+      unregisterPendingSave(registryKey, flush)
       liveNoteIdRef.current = null
     }
   }, [noteId, surface, saveText, saveDetached])
@@ -488,12 +509,17 @@ export function useNoteBody(noteId: string | undefined, options: NoteBodyOptions
     [noteId, note, deleted, t, saveText, saveDetached]
   )
 
-  const cancelScheduledSave = useCallback(() => {
+  // A restored version replaced the note: a save of the typing would write over it. The
+  // restore's event may have come first and been held off by the typing; the editor takes it.
+  const dropTyping = useCallback(() => {
     if (saveTimeoutRef.current) {
       clearTimeout(saveTimeoutRef.current)
       saveTimeoutRef.current = null
     }
-  }, [])
+    pendingMarkdownRef.current = null
+    const held = noteId === undefined ? undefined : outsideEdit.take(noteId)
+    if (held !== undefined) takeContent(held)
+  }, [noteId, outsideEdit, takeContent])
 
   return {
     query,
@@ -501,6 +527,6 @@ export function useNoteBody(noteId: string | undefined, options: NoteBodyOptions
     content,
     revision: externalUpdateCount,
     onMarkdownChange,
-    cancelScheduledSave
+    dropTyping
   }
 }

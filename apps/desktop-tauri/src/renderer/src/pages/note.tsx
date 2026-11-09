@@ -2087,7 +2087,7 @@ export function NotePage({ noteId }: NotePageProps) {
         noteId={noteId}
         noteTitle={note.title}
         onRestore={() => {
-          body.cancelScheduledSave()
+          body.dropTyping()
           refetchNote()
         }}
       />

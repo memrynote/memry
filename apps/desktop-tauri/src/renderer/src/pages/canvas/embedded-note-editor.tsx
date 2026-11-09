@@ -51,7 +51,7 @@ export const EmbeddedNoteEditor = ({ noteId }: EmbeddedNoteEditorProps): React.J
         onOpenChange={setVersionsOpen}
         noteId={noteId}
         noteTitle={note.title}
-        onRestore={body.cancelScheduledSave}
+        onRestore={body.dropTyping}
       />
     </div>
   )

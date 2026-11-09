@@ -106,6 +106,27 @@ fn a_restore_replaces_the_body_and_keeps_the_text_it_replaced_as_the_newest_vers
 }
 
 #[test]
+fn a_save_over_an_outside_edit_the_editor_never_showed_keeps_it_however_small() {
+    let (e, notes, _) = opened(&[("Plan.md", PLAN)]);
+    let open = e.session.current().unwrap();
+    let id = id_at(&e, "Plan.md");
+    notes.update(&open, save(&id, "Second text\n")).unwrap();
+    // Another editor's save of the note: the run's own, under ten words, so no version.
+    notes.update(&open, save(&id, "Third text\n")).unwrap();
+    assert_eq!(files(&e, &id), [PLAN]);
+
+    // The editor that held that save off writes its typing over it (#4088).
+    let over = NoteUpdateInput {
+        keep_replaced: true,
+        ..save(&id, "Second text, typed on\n")
+    };
+    notes.update(&open, over).unwrap();
+    assert_eq!(e.body(&id), "Second text, typed on");
+    let third = "---\nstatus: open\n---\nThird text\n";
+    assert_eq!(files(&e, &id), [third, PLAN]);
+}
+
+#[test]
 fn a_restore_keeps_the_text_typed_but_not_written_to_the_file_yet() {
     let (e, notes, store) = opened(&[("Plan.md", PLAN)]);
     let open = e.session.current().unwrap();

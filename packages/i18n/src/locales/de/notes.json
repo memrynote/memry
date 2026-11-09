@@ -74,6 +74,7 @@
       "outsideEditReplaced": "Deine Eingabe hat eine Änderung von außen ersetzt. Sie ist im Versionsverlauf gespeichert.",
       "showVersions": "Versionen anzeigen",
       "notSaved": "Deine Änderungen an dieser Notiz wurden nicht gespeichert. Sie bleiben im Editor, und deine nächste Bearbeitung versucht es erneut.",
+      "notSavedClosed": "Deine letzten Änderungen an dieser Notiz konnten nach dem Schließen ihres Editors nicht gespeichert werden.",
       "readOnlyUnsaved": "Diese Notiz wurde schreibgeschützt, bevor deine letzten Änderungen gespeichert wurden. Sie bleiben ungespeichert im Editor."
     },
     "deleteDialogTitle": "{count, plural, one {Notiz löschen} other {# Notizen löschen}}",

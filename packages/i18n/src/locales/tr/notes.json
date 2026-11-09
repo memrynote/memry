@@ -74,6 +74,7 @@
       "outsideEditReplaced": "Yazdıkların dışarıdan yapılan bir değişikliğin yerini aldı. Değişiklik sürüm geçmişinde saklanıyor.",
       "showVersions": "Sürümleri göster",
       "notSaved": "Bu nottaki değişiklikler kaydedilmedi. Düzenleyicide duruyorlar; bir sonraki düzenlemende yeniden denenecek.",
+      "notSavedClosed": "Bu nottaki son değişikliklerin, düzenleyicisi kapandıktan sonra kaydedilemedi.",
       "readOnlyUnsaved": "Bu not, son değişikliklerin kaydedilmeden önce salt okunur oldu. Değişiklikler kaydedilmeden düzenleyicide duruyor."
     },
     "deleteDialogTitle": "{count, plural, one {Notu sil} other {# notu sil}}",

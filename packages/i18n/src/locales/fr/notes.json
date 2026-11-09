@@ -74,6 +74,7 @@
       "outsideEditReplaced": "Votre saisie a remplacé une modification externe. Elle est enregistrée dans l’historique des versions.",
       "showVersions": "Voir les versions",
       "notSaved": "Vos modifications de cette note n’ont pas été enregistrées. Elles restent dans l’éditeur, et votre prochaine modification réessaiera.",
+      "notSavedClosed": "Vos dernières modifications de cette note n’ont pas pu être enregistrées après la fermeture de son éditeur.",
       "readOnlyUnsaved": "Cette note est passée en lecture seule avant l’enregistrement de vos dernières modifications. Elles restent dans l’éditeur, non enregistrées."
     },
     "deleteDialogTitle": "{count, plural, one {Supprimer la note} other {Supprimer # notes}}",

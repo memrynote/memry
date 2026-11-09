@@ -74,6 +74,7 @@
       "outsideEditReplaced": "你的輸入取代了一項外部變更。該變更已儲存在版本記錄中。",
       "showVersions": "檢視版本",
       "notSaved": "你對此筆記的變更未儲存。變更仍保留在編輯器中，下次編輯時會再次嘗試儲存。",
+      "notSavedClosed": "編輯器關閉後，你對此筆記的最新變更未能儲存。",
       "readOnlyUnsaved": "在你最新的變更儲存之前，此筆記已變為唯讀。變更仍保留在編輯器中，未儲存。"
     },
     "deleteDialogTitle": "{count, plural, other {刪除 # 則筆記}}",

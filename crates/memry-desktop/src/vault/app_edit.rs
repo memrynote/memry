@@ -42,6 +42,8 @@
 //!   not take) is no outside edit: those bytes carry the record already. The run's own file is
 //!   kept too when the save moves its body by ten words or more
 //!   ([`note_snapshots::is_significant`], Electron's `maybeCreateSignificantSnapshot`).
+//! - [`Precondition::SaveOver`]: [`Precondition::Save`] of typing that held off an outside edit
+//!   the editor never showed (#4088): a body it changes is kept, the run's own file too.
 //! - [`Precondition::Restore`]: [`Precondition::Save`] of a restored version
 //!   (`notes:restore-version`): the file it replaces is always kept, as the note's newest
 //!   version (`WriteBackReader::keep_restore_point`), and the feed keeps the document's body
@@ -141,6 +143,8 @@ pub enum Precondition<'a> {
     /// The user's save: whatever is there, a file that is not the run's own, or a body that
     /// moved by ten words or more, kept as a version first.
     Save(&'a OwnFiles),
+    /// [`Self::Save`] over a file the editor never showed: a changed body is always kept.
+    SaveOver(&'a OwnFiles),
     /// [`Self::Save`] of a restored version: the replaced file is always kept, as the newest
     /// version.
     Restore(&'a OwnFiles),
@@ -330,7 +334,7 @@ impl AppEdit {
                 }
                 None
             }
-            Precondition::Save(own) | Precondition::Restore(own) => {
+            Precondition::Save(own) | Precondition::SaveOver(own) | Precondition::Restore(own) => {
                 // A row with no hash names no file the document took, so none was replaced.
                 outside =
                     row.content_hash.is_some() && !row_names_file && !own.is(note_id, &file.hash);
@@ -373,7 +377,9 @@ impl AppEdit {
         let body_moved = own.is_none() || body_changed || restore;
         let keeps = match precondition {
             Precondition::Held | Precondition::HeldAt(_) => false,
-            Precondition::Replace | Precondition::Restore(_) => body_changed,
+            Precondition::Replace | Precondition::SaveOver(_) | Precondition::Restore(_) => {
+                body_changed
+            }
             Precondition::Save(own) => {
                 let own_file = row_names_file && own.is(note_id, &file.hash);
                 body_changed && (!own_file || note_snapshots::is_significant(read_body, next_body))

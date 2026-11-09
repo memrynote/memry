@@ -74,6 +74,7 @@
       "outsideEditReplaced": "Quello che hai scritto ha sostituito una modifica esterna. È salvata nella cronologia delle versioni.",
       "showVersions": "Mostra versioni",
       "notSaved": "Le modifiche a questa nota non sono state salvate. Restano nell’editor e la prossima modifica riproverà.",
+      "notSavedClosed": "Le ultime modifiche a questa nota non sono state salvate dopo la chiusura del suo editor.",
       "readOnlyUnsaved": "Questa nota è diventata di sola lettura prima che le ultime modifiche fossero salvate. Restano nell’editor, non salvate."
     },
     "deleteDialogTitle": "{count, plural, one {Elimina nota} other {Elimina # note}}",

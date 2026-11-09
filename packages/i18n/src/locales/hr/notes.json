@@ -74,6 +74,7 @@
       "outsideEditReplaced": "Vaše tipkanje zamijenilo je vanjsku promjenu. Spremljena je u povijesti verzija.",
       "showVersions": "Prikaži verzije",
       "notSaved": "Vaše promjene ove bilješke nisu spremljene. Ostaju u uređivaču, a vaša sljedeća izmjena pokušat će ponovno.",
+      "notSavedClosed": "Vaše posljednje promjene ove bilješke nisu se mogle spremiti nakon zatvaranja njezina uređivača.",
       "readOnlyUnsaved": "Ova je bilješka postala samo za čitanje prije nego što su vaše posljednje promjene spremljene. Ostaju u uređivaču, nespremljene."
     },
     "deleteDialogTitle": "{count, plural, =1 {Izbriši bilješku} one {Izbriši # bilješku} few {Izbriši # bilješke} other {Izbriši # bilješki}}",

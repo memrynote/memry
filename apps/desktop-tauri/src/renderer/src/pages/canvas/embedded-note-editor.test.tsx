@@ -98,6 +98,13 @@ vi.mock('@/components/note/content-area', () => ({
   }
 }))
 
+// The panel's restore, as its `onRestore` follows a restored version.
+vi.mock('@/components/note/version-history', () => ({
+  VersionHistory: ({ onRestore }: { onRestore?: () => void }) => (
+    <button data-testid="restored" aria-label="restored" onClick={() => onRestore?.()} />
+  )
+}))
+
 function makeNote(overrides: Partial<Note> = {}): Note {
   return {
     id: 'n1',
@@ -118,13 +125,25 @@ function makeNote(overrides: Partial<Note> = {}): Note {
 
 let queryClient: QueryClient
 
-function renderCard(): ReturnType<typeof render> {
-  return render(
+function card(noteId: string): React.JSX.Element {
+  return (
     <QueryClientProvider client={queryClient}>
-      <EmbeddedNoteEditor noteId="n1" />
+      <EmbeddedNoteEditor noteId={noteId} />
     </QueryClientProvider>
   )
 }
+
+function renderCard(noteId = 'n1'): ReturnType<typeof render> {
+  return render(card(noteId))
+}
+
+function emitUpdated(id: string, content: string): void {
+  act(() => {
+    for (const handler of mocks.updatedHandlers) handler({ id, changes: { content } })
+  })
+}
+
+const REPLACED = "An outside change was replaced by your typing. It's saved in version history."
 
 /** What each save sent; the mutation passes its context after the input. */
 function saves(): unknown[] {
@@ -272,7 +291,7 @@ describe('EmbeddedNoteEditor', () => {
       mocks.update.mockResolvedValue({
         success: false,
         code: 'note_locked',
-        error: 'The owner made this note read-only.',
+        error: 'note n1 is locked',
         note: null
       })
       renderCard()
@@ -330,5 +349,103 @@ describe('EmbeddedNoteEditor', () => {
         { id: 'note-not-saved:n1' }
       )
     })
+  })
+  it('keeps the quit flush of a newer card of the note when an older one closes', async () => {
+    const first = renderCard()
+    renderCard()
+    await vi.waitFor(() => expect(screen.getAllByTestId('edit')).toHaveLength(2))
+    act(() => screen.getAllByTestId('edit')[1].click())
+
+    first.unmount()
+    await act(() => flushAllPendingSaves())
+
+    expect(saves()).toEqual([{ id: 'n1', content: 'edited body' }])
+  })
+
+  it('drops the typing a restored version replaced, and shows the version', async () => {
+    renderCard()
+    await screen.findByTestId('content-area')
+    act(() => screen.getByTestId('edit').click())
+    // The restore's event came before the panel's answer: the typing held it off.
+    emitUpdated('n1', 'restored body')
+
+    act(() => screen.getByTestId('restored').click())
+
+    expect(screen.getByTestId('editor-text')).toHaveTextContent('restored body')
+    await act(() => flushAllPendingSaves())
+    expect(mocks.update).not.toHaveBeenCalled()
+  })
+
+  describe('a save over an outside edit the card never showed (#4088)', () => {
+    it.each([
+      ['closes', (view: ReturnType<typeof render>) => view.unmount()],
+      ['moves to another note', (view: ReturnType<typeof render>) => view.rerender(card('n2'))]
+    ])(
+      'when the card %s after a refused save, keeps the edit as a version and says so',
+      async (_, leave) => {
+        mocks.get.mockImplementation((id: string) => Promise.resolve(makeNote({ id })))
+        mocks.update
+          .mockResolvedValueOnce({ success: false, code: 'note_locked', error: 'x', note: null })
+          .mockResolvedValue({ success: true, note: null })
+        const view = renderCard()
+        await screen.findByTestId('content-area')
+        vi.useFakeTimers()
+        act(() => screen.getByTestId('edit').click())
+        await act(async () => {
+          await vi.advanceTimersByTimeAsync(1000)
+        })
+        emitUpdated('n1', 'written by an agent')
+        vi.useRealTimers()
+
+        // The lock is gone: the save the card sends as it leaves lands.
+        leave(view)
+
+        await vi.waitFor(() =>
+          expect(toast).toHaveBeenCalledWith(
+            REPLACED,
+            expect.objectContaining({ id: 'outside-edit-replaced:n1' })
+          )
+        )
+        expect(saves().at(-1)).toEqual({ id: 'n1', content: 'edited body', keepReplaced: true })
+      }
+    )
+
+    it('asks the core to keep a note tab save that came in while its own save ran', async () => {
+      mocks.update.mockImplementationOnce(() => new Promise(() => {}))
+      renderCard()
+      await screen.findByTestId('content-area')
+      vi.useFakeTimers()
+      act(() => screen.getByTestId('edit').click())
+      await act(async () => {
+        await vi.advanceTimersByTimeAsync(1000)
+      })
+      emitUpdated('n1', 'saved in the tab')
+
+      act(() => screen.getByTestId('edit-again').click())
+      await act(async () => {
+        await vi.advanceTimersByTimeAsync(1000)
+      })
+
+      expect(saves()).toEqual([
+        { id: 'n1', content: 'edited body' },
+        { id: 'n1', content: 'edited again', keepReplaced: true }
+      ])
+    })
+  })
+
+  it('says the typing is lost when the save its closing card sent is refused', async () => {
+    mocks.update.mockResolvedValue({ success: false, error: 'The file changed', note: null })
+    const { unmount } = renderCard()
+    await screen.findByTestId('content-area')
+    act(() => screen.getByTestId('edit').click())
+
+    unmount()
+
+    await vi.waitFor(() =>
+      expect(toast.error).toHaveBeenCalledWith(
+        'Your latest changes to this note could not be saved after its editor closed.',
+        { id: 'note-not-saved:n1' }
+      )
+    )
   })
 })

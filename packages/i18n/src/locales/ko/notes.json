@@ -74,6 +74,7 @@
       "outsideEditReplaced": "입력한 내용이 외부 변경 사항을 대체했습니다. 변경 사항은 버전 기록에 저장되어 있습니다.",
       "showVersions": "버전 보기",
       "notSaved": "이 노트의 변경 사항이 저장되지 않았습니다. 변경 사항은 편집기에 남아 있으며 다음 편집 때 다시 시도합니다.",
+      "notSavedClosed": "편집기가 닫힌 후 이 노트의 최근 변경 사항을 저장하지 못했습니다.",
       "readOnlyUnsaved": "최근 변경 사항이 저장되기 전에 이 노트가 읽기 전용이 되었습니다. 변경 사항은 저장되지 않은 채 편집기에 남아 있습니다."
     },
     "deleteDialogTitle": "{count, plural, other {노트 #개 삭제}}",

@@ -1348,7 +1348,7 @@ describe('NotePage', () => {
 
     expect(mocks.updateNote).toHaveBeenCalledWith({ id: 'note-1', content: '# Changed' })
     first.unmount()
-    expect(mocks.unregisterPendingSave).toHaveBeenCalledWith('note-page:note-1')
+    expect(mocks.unregisterPendingSave).toHaveBeenCalledWith('note-page:note-1', flush)
 
     vi.clearAllMocks()
     mocks.updateNote.mockResolvedValue({ success: true })
@@ -1358,7 +1358,10 @@ describe('NotePage', () => {
     second.unmount()
 
     expect(mocks.updateNote).toHaveBeenCalledWith({ id: 'note-1', content: '# Changed' })
-    expect(mocks.unregisterPendingSave).toHaveBeenCalledWith('note-page:note-1')
+    expect(mocks.unregisterPendingSave).toHaveBeenCalledWith(
+      'note-page:note-1',
+      mocks.registerPendingSave.mock.calls[0]?.[1]
+    )
   })
 
   // The editor's teardown flush serializes its last debounced edit async, so it
@@ -1782,7 +1785,11 @@ describe('NotePage', () => {
         await vi.advanceTimersByTimeAsync(1000)
       })
 
-      expect(mocks.updateNote).toHaveBeenCalledWith({ id: 'note-1', content: 'Typed at once' })
+      expect(mocks.updateNote).toHaveBeenCalledWith({
+        id: 'note-1',
+        content: 'Typed at once',
+        keepReplaced: true
+      })
       expect(toast).toHaveBeenCalledTimes(1)
     })
 
@@ -1969,7 +1976,11 @@ describe('NotePage', () => {
       // The typing is still unsaved: the next save writes it, over the edit it held.
       const flush = mocks.registerPendingSave.mock.calls.at(-1)?.[1] as () => Promise<void>
       await act(async () => flush())
-      expect(mocks.updateNote).toHaveBeenLastCalledWith({ id: 'note-1', content: 'Typed' })
+      expect(mocks.updateNote).toHaveBeenLastCalledWith({
+        id: 'note-1',
+        content: 'Typed',
+        keepReplaced: true
+      })
       expect(toast).toHaveBeenCalledTimes(1)
     })
 
@@ -2277,7 +2288,8 @@ describe('NotePage', () => {
       () =>
         expect(mocks.updateNote).toHaveBeenCalledWith({
           id: 'note-1',
-          content: 'Typed, not saved'
+          content: 'Typed, not saved',
+          keepReplaced: true
         }),
       { timeout: 3000 }
     )
@@ -2306,7 +2318,11 @@ describe('NotePage', () => {
       expect(toast).not.toHaveBeenCalled()
       await saveLands()
 
-      expect(mocks.updateNote).toHaveBeenCalledWith({ id: 'note-1', content: 'Typed, not saved' })
+      expect(mocks.updateNote).toHaveBeenCalledWith({
+        id: 'note-1',
+        content: 'Typed, not saved',
+        keepReplaced: true
+      })
       expect(toast).toHaveBeenCalledTimes(1)
       const [message, options] = vi.mocked(toast).mock.calls[0] as [
         string,
@@ -2343,7 +2359,7 @@ describe('NotePage', () => {
       expect(toast).toHaveBeenCalledTimes(1)
     })
 
-    it('forgets a held outside edit when the page moves to another note', async () => {
+    it('tells of a held outside edit once, when the save sent leaving the note lands', async () => {
       vi.useFakeTimers()
       const view = renderWithProviders(<NotePage noteId="note-1" />)
       await act(async () => {
@@ -2359,9 +2375,14 @@ describe('NotePage', () => {
 
       expect(mocks.updateNote).toHaveBeenCalledWith({
         id: 'note-1',
+        content: 'Typed, not saved',
+        keepReplaced: true
+      })
+      expect(mocks.updateNote).toHaveBeenLastCalledWith({
+        id: 'note-1',
         content: 'Typed on coming back'
       })
-      expect(toast).not.toHaveBeenCalled()
+      expect(toast).toHaveBeenCalledTimes(1)
     })
 
     it('tells the user when a flush lands the typing', async () => {
@@ -2458,7 +2479,8 @@ describe('NotePage', () => {
       () =>
         expect(mocks.updateNote).toHaveBeenLastCalledWith({
           id: 'note-1',
-          content: 'Newer typing'
+          content: 'Newer typing',
+          keepReplaced: true
         }),
       { timeout: 3000 }
     )

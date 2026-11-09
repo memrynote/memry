@@ -74,6 +74,7 @@
       "outsideEditReplaced": "Lo que escribiste reemplazó un cambio externo. Está guardado en el historial de versiones.",
       "showVersions": "Ver versiones",
       "notSaved": "Tus cambios en esta nota no se guardaron. Siguen en el editor y tu próxima edición lo volverá a intentar.",
+      "notSavedClosed": "Tus últimos cambios en esta nota no se pudieron guardar después de cerrarse su editor.",
       "readOnlyUnsaved": "Esta nota pasó a ser de solo lectura antes de que se guardaran tus últimos cambios. Siguen en el editor, sin guardar."
     },
     "deleteDialogTitle": "{count, plural, one {Eliminar nota} other {Eliminar # notas}}",

@@ -826,12 +826,10 @@ export const CanvasCardLayer = ({
   }, [activeCardId])
 
   // A note tab becoming visible in another pane while a card is active would
-  // reopen the clobber window, so the card yields immediately. EmbeddedNoteEditor
-  // flushes its pending save on unmount (embedded-note-editor.tsx), but that
-  // flush is fire-and-forget (`void flush()`) and races the newly-opened tab's
-  // own fetch — a sub-second window that only loses text if the user types
-  // into the tab before the flush lands. Pre-existing, shared with the ↗
-  // redirect path; not introduced by this guard.
+  // reopen the clobber window, so the card yields immediately. The card's
+  // editor saves its typing on unmount (`useNoteBody`, pages/note/use-note-body.ts),
+  // which can land after the tab's read: the tab takes it as an outside edit, or,
+  // with typing of its own, writes over it, keeps it as a version and says so.
   // Reacts to an external context change (the note becoming locked elsewhere
   // via useNoteEditLock), not a user action on this component — there is no
   // event handler to move this into.
