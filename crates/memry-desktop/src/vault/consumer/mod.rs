@@ -36,6 +36,10 @@
 //!   Edits in the app and from sync reach the file through the write-back
 //!   ([`crate::vault::writeback`]) once the note is quiet, so an outside edit replaces what
 //!   its file showed, except for edits made in the moments before it, which the version holds.
+//! - **A locked note's outside change never reaches its note.** Before a changed file is fed or
+//!   a removed file's note deleted, the lock answers ([`crate::locks::Locks::restore`]): the
+//!   changed text is kept as a version and the locked text written back, and a revert that
+//!   could not be written is retried, never fed.
 //! - **A file the consumer could not read is read again.** A read that fails or finds no file
 //!   is retried, never applied as done and never taken for a removal (#3736): only the
 //!   watcher reports a removal, after its rename window. Otherwise a save read in the moment
