@@ -544,6 +544,36 @@ describe('useJournalEntry: outside edits of the open day', () => {
       expect(files[NEXT]).toBe('Same.')
     })
 
+    // Typing made during a save goes with the switch's own save. Commands run concurrently: the
+    // read after the first save could answer the file from before the second wrote, put the
+    // editor back on it, and the next save would write that over the typing, the app's own
+    // text, of which the core keeps no version (#4088).
+    it('reads the day it came back to once the save the switch sent answered', async () => {
+      const hook = await mount()
+      const first = holdNextSave()
+      await startSave(hook.result, 'Typed.')
+      act(() => {
+        hook.result.current.updateContent('Typed. More.')
+      })
+      const sent = holdNextSave()
+      await openDay(hook, NEXT)
+      expect(savesOf(DAY)).toBe(2)
+      await openDay(hook, DAY)
+
+      files[DAY] = 'Typed.'
+      await first.finish('Typed.')
+
+      expect(hook.result.current.externalUpdateCount).toBe(0)
+      files[DAY] = 'Typed. More.'
+      await sent.finish('Typed. More.')
+      // The query tells its observers on a timer.
+      await act(async () => {
+        await vi.advanceTimersByTimeAsync(0)
+      })
+      expect(hook.result.current.externalUpdateCount).toBe(0)
+      expect(hook.result.current.entry?.content).toBe('Typed. More.')
+    })
+
     it('sends the typing again when the save running fails', async () => {
       const hook = await mount()
       let fail: () => void = () => {}
