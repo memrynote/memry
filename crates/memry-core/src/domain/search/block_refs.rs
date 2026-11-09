@@ -12,7 +12,7 @@
 //!   Shown children are taken in anchor order, where Electron took the JSON's key order; `root`
 //!   only keeps the rows apart. A source that cannot be a note id gets no rows (Electron kept
 //!   them), so one long string is never stored once per anchor.
-//! - A link to a block is a wiki target (a `wikiLink` or `linkMention` node, or `[[…]]` left as
+//! - A link to a block is a wiki target (a `wikiLink` node, or `[[…]]` left as
 //!   text) or a link mark whose address is a note (`memry://note/<id>` or a path with no
 //!   scheme), with a `#^anchor`. Its note half is stored as first written, keyed by
 //!   [`name_key`], and resolved when read, the way a wiki link resolves.
@@ -160,14 +160,12 @@ fn is_note_id(id: &str) -> bool {
             .all(|byte| byte.is_ascii_alphanumeric() || matches!(byte, b'_' | b'-'))
 }
 
-/// Wiki targets: the nodes' and the literal `[[…]]` runs'.
+/// Wiki targets: the `wikiLink` nodes' and the literal `[[…]]` runs'. A `linkMention` is a URL
+/// mention (Electron writes it as `((mention:<url>))`) and `extractBlockLinks` never reads it.
 fn wiki_targets(block: &Block) -> impl Iterator<Item = String> + '_ {
     let nodes = block.inline.iter().filter_map(|run| {
         step(1);
-        let is_link = run
-            .marks
-            .iter()
-            .any(|mark| mark == "wikiLink" || mark == "linkMention");
+        let is_link = run.marks.iter().any(|mark| mark == "wikiLink");
         run.target.clone().filter(|_| is_link)
     });
     nodes.chain(super::literal_links::targets(block))

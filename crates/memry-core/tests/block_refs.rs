@@ -25,7 +25,7 @@ use memry_core::domain::search::block_refs::{
 use memry_core::domain::search::reindex;
 use memry_core::storage::migrations::{self, DATA_MIGRATIONS, INDEX_MIGRATIONS};
 use rusqlite::Connection;
-use yrs::{ReadTxn as _, XmlFragment as _};
+use yrs::{Any, ReadTxn as _, Text as _, XmlElementPrelim, XmlFragment as _, XmlTextPrelim};
 
 const NOW: i64 = 1_760_000_000_000;
 
@@ -145,6 +145,16 @@ fn block_links_come_from_nodes_text_and_note_addresses_once_per_target_key() {
     );
 }
 
+#[test]
+fn a_link_mention_is_a_url_mention_and_never_a_block_link() {
+    let blocks = [paragraph(vec![run(
+        "x.com",
+        &["linkMention"],
+        Some("https://x.com/p#^abcd"),
+    )])];
+    assert!(block_refs::derive(&blocks).links.is_empty());
+}
+
 /// A note's document and the updates its writes captured, not yet stored.
 type Captured = (Arc<Document>, Arc<Mutex<Vec<Vec<u8>>>>);
 
@@ -198,8 +208,33 @@ impl Vault {
         self.body(id, markdown);
     }
 
+    /// A note whose body is one paragraph holding only `label`, a link mark to `href`: the
+    /// shape the editor writes, which markdown never seeds for a `memry://` address.
+    fn link_note(&mut self, id: &str, title: &str, label: &str, href: &str) {
+        self.note(id, title, "");
+        self.replace_body(id, |document| {
+            document
+                .write(|txn| {
+                    let fragment = txn.get_xml_fragment("prosemirror").expect("body");
+                    let container =
+                        fragment.push_back(txn, XmlElementPrelim::empty("blockContainer"));
+                    let paragraph = container.push_back(txn, XmlElementPrelim::empty("paragraph"));
+                    let text = paragraph.push_back(txn, XmlTextPrelim::new(label));
+                    let attrs = Any::from(HashMap::from([("href".to_owned(), Any::from(href))]));
+                    text.format(txn, 0, label.len() as u32, [("link".into(), attrs)].into());
+                })
+                .expect("write the link");
+        });
+    }
+
     /// Replaces `id`'s body with `markdown`, as a pulled update.
     fn body(&mut self, id: &str, markdown: &str) {
+        self.replace_body(id, |document| {
+            seed_document(document, markdown).expect("seed");
+        });
+    }
+
+    fn replace_body(&mut self, id: &str, fill: impl FnOnce(&Document)) {
         let (document, captured) = self.docs[id].clone();
         document
             .write(|txn| {
@@ -208,7 +243,7 @@ impl Vault {
                 fragment.remove_range(txn, 0, length);
             })
             .expect("clear the body");
-        seed_document(&document, markdown).expect("seed");
+        fill(&document);
         for update in captured.lock().unwrap().drain(..) {
             self.seq += 1;
             update_log::append_server_update(&self.data, id, self.seq, &update, NOW + self.seq)
@@ -277,6 +312,45 @@ fn a_reindex_writes_the_edges_replaces_them_with_the_body_and_drops_a_deleted_no
         .query_row("SELECT count(*) FROM block_link_refs", [], |row| row.get(0))
         .unwrap();
     assert_eq!(link_rows, 0, "a deleted note's rows go, not only its edges");
+}
+
+#[test]
+fn a_note_address_alone_links_to_the_block_whatever_its_scheme_case_or_query() {
+    let dir = tempfile::tempdir().expect("scratch");
+    let mut vault = Vault::new(dir.path(), INDEX_MIGRATIONS);
+    vault.note("n-src", "Source", "Para ^abc1\n");
+    vault.link_note("n-id", "By id", "x", "memry://note/n-src#^abc1");
+    vault.link_note(
+        "n-upper",
+        "By id, labelled",
+        "x",
+        "MEMRY://note/n-src?label=Hi#^abc1",
+    );
+    vault.reindex();
+    assert_eq!(
+        vault.edges(),
+        [
+            edge("n-id", "n-src", Some("abc1"), BlockRefKind::Link),
+            edge("n-upper", "n-src", Some("abc1"), BlockRefKind::Link),
+        ]
+    );
+}
+
+#[test]
+fn a_row_of_a_note_deleted_since_the_last_reindex_is_no_edge() {
+    let dir = tempfile::tempdir().expect("scratch");
+    let mut vault = Vault::new(dir.path(), INDEX_MIGRATIONS);
+    vault.note("n-src", "Source", "Para ^abc1\n");
+    vault.note("n-host", "Host", HOST);
+    vault.reindex();
+    assert_eq!(vault.edges().len(), 1);
+    for sql in [
+        "DELETE FROM sync_items WHERE item_id = 'n-host'",
+        "DELETE FROM notes WHERE id = 'n-host'",
+    ] {
+        vault.data.execute(sql, []).expect("hard delete the host");
+    }
+    assert_eq!(vault.edges(), []);
 }
 
 #[test]
