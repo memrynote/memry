@@ -1,14 +1,15 @@
 //! The typing barrier end to end, over a real session, the shipped tier, its watcher and the
 //! editor host: typing a window had not sent when the note's file was edited outside reaches
 //! the body before the consumer chooses between the two, so it wins and is never lost in blocks
-//! the outside edit deleted. The barrier's frames are the host tests in `editor_host.rs`.
+//! the outside edit deleted; and a window with no typing hears the outside edit between its
+//! barrier and its release. The barrier's frames are the host tests in `editor_host.rs`.
 
 use std::sync::{Arc, Mutex};
 use std::thread::JoinHandle;
 use std::time::{Duration, Instant};
 
 use memry_core::crdt::BODY_FRAGMENT;
-use memry_desktop::editor::{BARRIER, EditorHost, Subscriber};
+use memry_desktop::editor::{BARRIER, EditorHost, RELEASE, Subscriber};
 use memry_desktop::vault::consumer::{Applied, ChangeSource};
 use yrs::types::xml::XmlOut;
 use yrs::updates::decoder::Decode as _;
@@ -96,6 +97,20 @@ impl Served {
 }
 
 impl Window {
+    /// The kind byte of each frame the window received, once it holds the outside edit's frame
+    /// and the release.
+    fn kinds_once_released(&self) -> Vec<u8> {
+        let deadline = Instant::now() + WAIT;
+        loop {
+            let kinds: Vec<u8> = self.frames.lock().unwrap().iter().map(|f| f[0]).collect();
+            if kinds.contains(&RELEASE) && kinds.contains(&2) {
+                return kinds;
+            }
+            assert!(Instant::now() < deadline, "the frames are {kinds:?}");
+            std::thread::sleep(Duration::from_millis(5));
+        }
+    }
+
     /// Types `text` at the end of the first paragraph and returns the update, not sent yet.
     fn type_text(&self, text: &str) -> Vec<u8> {
         let before = self.doc.transact().state_vector();
@@ -199,4 +214,40 @@ fn two_windows_typing_both_win_over_an_outside_edit_once_each() {
     assert_eq!(body.matches(" from side").count(), 1, "{body}");
     assert!(s.e.versions(&s.id).iter().any(|v| v == OUTSIDE));
     assert_eq!(answered, [Some(BARRIER); 2]);
+}
+
+/// A window with no typing answers its barrier at once; the consumer feeds the outside edit and
+/// drops its hold only after: the window's frames come barrier, the edit's frame, release, so
+/// its hold of new typing covers the whole time the edit's frame is on its way.
+#[test]
+fn a_window_hears_the_fed_outside_edit_between_its_barrier_and_its_release() {
+    let mut s = served();
+    let main = s.open("main");
+    let answered = {
+        let (host, frames) = (Arc::clone(&s.host), Arc::clone(&main.frames));
+        std::thread::spawn(move || {
+            let deadline = Instant::now() + WAIT;
+            loop {
+                let barrier = frames
+                    .lock()
+                    .unwrap()
+                    .iter()
+                    .find(|frame| frame.first() == Some(&BARRIER))
+                    .map(|frame| u32::from_le_bytes(frame[1..5].try_into().unwrap()));
+                if let Some(barrier) = barrier {
+                    host.typing_sent("main", barrier);
+                    return;
+                }
+                assert!(Instant::now() < deadline, "no barrier frame");
+                std::thread::sleep(Duration::from_millis(5));
+            }
+        })
+    };
+
+    s.e.write("n.md", OUTSIDE);
+    s.changed_by_the_watcher();
+    answered.join().unwrap();
+
+    assert_eq!(s.e.body(&s.id), "edited outside");
+    assert_eq!(main.kinds_once_released(), [BARRIER, 2, RELEASE]);
 }
