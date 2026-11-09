@@ -77,7 +77,6 @@ use memry_core::markdown::convert::api::Converter;
 use memry_core::markdown::frontmatter::split_frontmatter_block;
 use memry_core::seams::secure_store::SecureStore;
 
-use crate::journal::folder_follow::mark_batch;
 use crate::vault::config::read_vault_config_strict;
 use crate::vault::consumer::converter_of;
 use crate::vault::consumer::identity::{
@@ -520,7 +519,6 @@ impl NoteIdentity for NotesIdentity {
                 note_id,
                 "a day the journal folder carried is held, owed"
             );
-            mark_batch(ctx.root);
             self.unsettle(ctx.root);
             return Ok(Rename::Followed);
         }

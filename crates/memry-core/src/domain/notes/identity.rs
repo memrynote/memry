@@ -515,6 +515,28 @@ pub fn held_places(conn: &Connection) -> Result<Vec<OwedPlace>, StorageError> {
         .collect())
 }
 
+/// Where the move `note_id` owes is from, when it owes one [`owed_places`] lists, and whether
+/// that move is held ([`super::place_held`]).
+pub fn owed_place(
+    conn: &Connection,
+    note_id: &str,
+) -> Result<Option<(String, bool)>, StorageError> {
+    let from: Option<String> = conn
+        .query_row(
+            "SELECT o.from_path FROM note_place_owed o
+               JOIN note_files f ON f.note_id = o.note_id
+              WHERE o.note_id = ?1",
+            params![note_id],
+            |row| row.get(0),
+        )
+        .optional()
+        .map_err(failed)?;
+    match from {
+        Some(from) => Ok(Some((from, place_held::is_held(conn, note_id)?))),
+        None => Ok(None),
+    }
+}
+
 pub(super) fn settle_place(conn: &Connection, note_id: &str) -> Result<(), StorageError> {
     conn.execute(
         "DELETE FROM note_place_owed WHERE note_id = ?1",

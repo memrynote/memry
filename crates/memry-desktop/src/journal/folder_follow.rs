@@ -14,7 +14,7 @@ use std::sync::{Mutex, PoisonError};
 use memry_core::api::notes_write::NotesWriter;
 
 use crate::notes::folders::holds_journal_days;
-use crate::notes::owed_moves::{held, settle_followed};
+use crate::notes::owed_moves::{held_owed, holds, settle_followed};
 use crate::vault::config::read_vault_config_strict;
 use crate::vault::config::settings::JournalFollow;
 use crate::vault::journal_format::{JournalDays, normalize_journal_folder};
@@ -249,11 +249,11 @@ fn follow(root: &Path, writer: &NotesWriter, mid_batch: bool) -> Follow {
         }
         let format = &config.journal_date_format;
         let before = JournalDays::new(&journal, format);
+        let holds = holds(writer).map_err(|e| failed(&e))?;
         let mut moved = BTreeSet::new();
         for owed in &owed {
-            let (id, from, to) = (&owed.note_id, &owed.from_path, &owed.path);
-            if held(root, &before, writer, id, from, to).map_err(|e| failed(&e))? {
-                moved.extend(moved_journal_folder(&journal, from, to));
+            if held_owed(root, &before, writer, &holds, owed).map_err(|e| failed(&e))? {
+                moved.extend(moved_journal_folder(&journal, &owed.from_path, &owed.path));
             }
         }
         if moved.is_empty() {

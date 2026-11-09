@@ -333,6 +333,12 @@ impl NotesWriter {
             .call_blocking(move |conn| identity::hold_place(conn, note_id, from_path, now_ms()))
     }
 
+    /// Where the move `note_id` owes is from, and whether it is held ([`identity::owed_place`]).
+    pub fn owed_place(&self, note_id: &str) -> Result<Option<(String, bool)>, StorageError> {
+        self.db
+            .call_blocking(move |conn| identity::owed_place(conn, note_id))
+    }
+
     /// The owed moves that are held ([`identity::held_places`]).
     pub fn held_places(&self) -> Result<Vec<OwedPlace>, StorageError> {
         self.db.call_blocking(|conn| identity::held_places(conn))

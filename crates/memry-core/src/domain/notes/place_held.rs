@@ -47,8 +47,8 @@ pub(super) fn held(conn: &Connection) -> Result<BTreeSet<String>, StorageError> 
     conn.execute(
         "DELETE FROM meta WHERE key >= ?1 AND key < ?2
            AND NOT EXISTS (SELECT 1 FROM note_place_owed o
-                            WHERE ?1 || o.note_id = meta.key AND o.from_path = meta.value)",
-        params![PREFIX, PREFIX_END],
+                            WHERE o.note_id = substr(meta.key, ?3) AND o.from_path = meta.value)",
+        params![PREFIX, PREFIX_END, PREFIX.len() as i64 + 1],
     )
     .map_err(failed)?;
     let mut statement = conn
@@ -61,6 +61,18 @@ pub(super) fn held(conn: &Connection) -> Result<BTreeSet<String>, StorageError> 
         )
         .map_err(failed)?;
     ids.collect::<Result<_, _>>().map_err(failed)
+}
+
+/// Whether the owed move of `note_id` is held: [`held`] for one note, read by its keys alone.
+#[cfg(feature = "markdown")]
+pub(super) fn is_held(conn: &Connection, note_id: &str) -> Result<bool, StorageError> {
+    conn.query_row(
+        "SELECT EXISTS (SELECT 1 FROM meta WHERE key = ?1 || ?2
+                          AND value = (SELECT from_path FROM note_place_owed WHERE note_id = ?2))",
+        params![PREFIX, note_id],
+        |row| row.get(0),
+    )
+    .map_err(failed)
 }
 
 /// Forgets the hold of `note_id`, whose owed move is settled or dropped.

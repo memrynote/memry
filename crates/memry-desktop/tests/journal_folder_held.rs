@@ -16,6 +16,7 @@
 //! | a held folder renamed while closed is followed from where it was  | first owed path; target gone       |
 //! | a day added to the held folder while closed opens as a day        | the open follows before its walk   |
 //! | a follow cut short after its save settles at the next open        | crash between save and settle      |
+//! | a command reads the held days once however many wait              | cost per held day stays flat       |
 
 #[allow(unused_imports)]
 use crate::device_key;
@@ -23,6 +24,8 @@ use crate::device_key;
 use crate::vault_env;
 
 use std::fs;
+use std::sync::Arc;
+use std::sync::atomic::{AtomicU64, Ordering};
 
 use memry_core::domain::notes::journal_change;
 use memry_desktop::notes::error::NotesError;
@@ -201,4 +204,56 @@ fn a_follow_cut_short_after_its_save_settles_at_the_next_open() {
     std::thread::sleep(QUIET);
     e.drain();
     settles(&mut e, &notes, &note, "Diary");
+}
+
+/// Days held in `canvases`, read for a command: the steps the database takes for the refused
+/// day create grow with the days held, not with their square or cube. Before, each day read
+/// every owed move and every hold, and the read of the holds matched each hold against every
+/// owed move, so each command, open and batch grew with the cube of the held days: 900 held
+/// days took a refused day create 131 s. Counted in SQLite's own steps, never in time.
+#[test]
+fn a_command_reads_the_held_days_once_however_many_wait() {
+    const DAYS: u64 = 300;
+    let paths: Vec<String> = (0..DAYS)
+        .map(|i| format!("journal/2024-{:02}-{:02}.md", i / 28 + 1, i % 28 + 1))
+        .collect();
+    let files: Vec<(&str, &str)> = paths.iter().map(|path| (&**path, "A day\n")).collect();
+    let (mut e, store) = opened_keeping(daily("journal"), &files);
+    let notes = NotesService::new(e.tier.clone(), store);
+    e.close();
+    fs::rename(e.vault.join("journal"), e.vault.join("canvases")).unwrap();
+    opened_after(&mut e);
+    assert!(
+        e.rows()
+            .contains(&row("j2024-11-20", "canvases/2024-11-20.md"))
+    );
+
+    let steps = Arc::new(AtomicU64::new(0));
+    let counted = Arc::clone(&steps);
+    e.core()
+        .db_handle()
+        .call_blocking(move |conn| {
+            let count = move || {
+                counted.fetch_add(1, Ordering::Relaxed);
+                false
+            };
+            conn.progress_handler(1, Some(count)).unwrap();
+            Ok(())
+        })
+        .unwrap();
+    let refused = try_day(&notes, &e, "2025-06-07");
+    e.core()
+        .db_handle()
+        .call_blocking(|conn| {
+            conn.progress_handler(0, None::<fn() -> bool>).unwrap();
+            Ok(())
+        })
+        .unwrap();
+    assert!(
+        matches!(refused, Err(NotesError::JournalFolderHeld)),
+        "{refused:?}"
+    );
+    let steps = steps.load(Ordering::Relaxed);
+    assert!(steps < 1_000 * DAYS, "{steps} steps for {DAYS} held days");
+    assert!(!outbox(&e, "j2024-11-20").contains(&"delete".to_owned()));
 }

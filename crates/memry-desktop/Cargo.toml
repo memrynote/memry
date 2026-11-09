@@ -142,6 +142,8 @@ rcgen = { version = "0.14", default-features = false, features = ["ring", "pem"]
 flate2 = { workspace = true }
 # The write-back tests author another device's edit the way the core's tests do.
 yrs = { workspace = true }
+# `journal_folder_held` counts the database steps a pass over the held days takes (`hooks`).
+rusqlite = { workspace = true, features = ["hooks"] }
 
 [target.'cfg(target_os = "linux")'.dev-dependencies]
 # `shell/tray_host.rs` tests the real zbus over a socket pair, which is the `p2p` feature.

@@ -268,6 +268,15 @@ fn held(db: &memry_core::storage::Db) -> Vec<OwedPlace> {
     run(db, |conn| identity::held_places(conn))
 }
 
+/// `n1`'s owed move and whether it is held, read for that note alone.
+fn n1_place(db: &memry_core::storage::Db) -> Option<(String, bool)> {
+    run(db, |conn| identity::owed_place(conn, "n1"))
+}
+
+fn n1_from(from: &str, held: bool) -> Option<(String, bool)> {
+    Some((from.to_owned(), held))
+}
+
 /// The `meta` rows of the holds, read from the table itself.
 fn hold_keys(db: &memry_core::storage::Db) -> Vec<String> {
     run(db, |conn| {
@@ -300,10 +309,12 @@ fn a_hold_lasts_as_long_as_its_owed_move() {
         path: "Diary/Old.md".to_owned(),
     };
     assert_eq!(held(&db), vec![n1.clone()]);
+    assert_eq!(n1_place(&db), n1_from("journal/Old.md", true));
     run(&db, |conn| {
         identity::owe_place(conn, "n1", "Diary/Old.md", NOW + 1)
     });
     assert_eq!(held(&db), vec![n1]);
+    assert_eq!(n1_place(&db), n1_from("journal/Old.md", true));
 
     let moved = Moved {
         old_path: "Diary/Old.md",
@@ -315,9 +326,11 @@ fn a_hold_lasts_as_long_as_its_owed_move() {
         identity::renamed(conn, "n1", &moved, DEVICE, NOW + 2)
     });
     assert!(hold_keys(&db).is_empty());
+    assert_eq!(n1_place(&db), None);
     run(&db, |conn| {
         identity::owe_place(conn, "n1", "journal/Old.md", NOW + 3)
     });
+    assert_eq!(n1_place(&db), n1_from("journal/Old.md", false));
     assert!(held(&db).is_empty());
 
     run(&db, |conn| {
@@ -338,6 +351,7 @@ fn a_hold_lasts_as_long_as_its_owed_move() {
             })?;
         identity::owe_place(conn, "n1", "Diary/Old.md", NOW + 6)
     });
+    assert_eq!(n1_place(&db), n1_from("Diary/Old.md", false));
     assert!(held(&db).is_empty());
     assert!(hold_keys(&db).is_empty());
 }

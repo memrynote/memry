@@ -4,10 +4,11 @@
 //! (`renameKeepsJournalDate`, `vault/watcher.ts`). A day the whole journal folder carried is
 //! held, never crossed, and stays held whatever is on disk later ([`held`]).
 
+use std::collections::BTreeSet;
 use std::path::Path;
 
 use memry_core::api::notes_write::NotesWriter;
-use memry_core::domain::notes::identity::{Crossing, Moved, Removed};
+use memry_core::domain::notes::identity::{Crossing, Moved, OwedPlace, Removed};
 use memry_core::markdown::frontmatter::split_frontmatter_block;
 
 use super::identity::{NotesIdentity, electron_db_beside, is_large_file, place};
@@ -73,16 +74,17 @@ pub(crate) fn settle_followed(
     Ok(())
 }
 
-/// Whether the day `id`, moved from `from` to `to`, is held: owed its move until the journal
-/// setting follows the folder ([`crate::journal::folder_follow`]), never crossed. Crossed, a
-/// folder renamed in Finder would delete every day and sync the delete. A day held already
-/// stays held whatever is on disk now ([`NotesWriter::held_places`]); otherwise it is held when
-/// the move is the journal folder moving whole ([`journal_folder_moved`]), read from where the
-/// day was before its first owed move, so the held folder renamed again before the setting
-/// followed is the journal moving on. The disk decides only here, once, and the hold is kept
-/// ([`NotesWriter::hold_place`]): the old folder made again later (a folder or note create, or
-/// by hand) never turns a held day into a crossing. A day at a path the setting reads as a day
-/// is not held.
+/// Whether the day `id`, moved from `from` to `to` by the watcher's move, is held: owed its
+/// move until the journal setting follows the folder ([`crate::journal::folder_follow`]), never
+/// crossed. Crossed, a folder renamed in Finder would delete every day and sync the delete. A day
+/// held already stays held whatever is on disk now ([`NotesWriter::owed_place`]); otherwise it is
+/// held when the move is the journal folder moving whole ([`journal_folder_moved`]), read from
+/// where the day was before its first owed move, so the held folder renamed again before the
+/// setting followed is the journal moving on. The disk decides only here, once, and the hold is
+/// kept ([`NotesWriter::hold_place`]): the old folder made again later (a folder or note create,
+/// or by hand) never turns a held day into a crossing. A day at a path the setting reads as a day
+/// is not held. The consumer's batch is marked before the hold is kept, so a command that sees
+/// the hold waits for the batch's follow ([`mark_batch`]).
 pub(crate) fn held(
     root: &Path,
     journal: &JournalDays,
@@ -91,22 +93,65 @@ pub(crate) fn held(
     from: &str,
     to: &str,
 ) -> Result<bool, IdentityError> {
+    let (from, already) = match writer.owed_place(id)? {
+        Some((first, already)) => (first, already),
+        None => (from.to_owned(), false),
+    };
+    decide(root, journal, writer, id, (&from, to), already, true)
+}
+
+/// The days held already, read once for a pass over every owed move ([`held_owed`]).
+pub(crate) fn holds(writer: &NotesWriter) -> Result<BTreeSet<String>, IdentityError> {
+    Ok(writer
+        .held_places()?
+        .into_iter()
+        .map(|held| held.note_id)
+        .collect())
+}
+
+/// [`held`] for the owed move `owed` in a pass over every owed move, `holds` read before the
+/// pass. Marks no batch: the pass runs at the open or in a command, not in the consumer's batch.
+pub(crate) fn held_owed(
+    root: &Path,
+    journal: &JournalDays,
+    writer: &NotesWriter,
+    holds: &BTreeSet<String>,
+    owed: &OwedPlace,
+) -> Result<bool, IdentityError> {
+    let (id, from, to) = (&owed.note_id, &owed.from_path, &owed.path);
+    decide(
+        root,
+        journal,
+        writer,
+        id,
+        (from, to),
+        holds.contains(id),
+        false,
+    )
+}
+
+fn decide(
+    root: &Path,
+    journal: &JournalDays,
+    writer: &NotesWriter,
+    id: &str,
+    (from, to): (&str, &str),
+    already: bool,
+    batch: bool,
+) -> Result<bool, IdentityError> {
     if writer.journal_date(id)?.is_none() || journal.day_of(to).is_some() {
         return Ok(false);
     }
-    let first = writer
-        .owed_places()?
-        .into_iter()
-        .find(|owed| owed.note_id == id);
-    if first.is_some() && writer.held_places()?.iter().any(|held| held.note_id == id) {
-        return Ok(true);
+    if !already && journal_folder_moved(root, journal.folder(), from, to).is_none() {
+        return Ok(false);
     }
-    let from = first.as_ref().map_or(from, |owed| owed.from_path.as_str());
-    let held = journal_folder_moved(root, journal.folder(), from, to).is_some();
-    if held {
+    if batch {
+        mark_batch(root);
+    }
+    if !already {
         writer.hold_place(id, from)?;
     }
-    Ok(held)
+    Ok(true)
 }
 
 /// Once the consumer's queue went quiet after a batch, with the rows' lane released: the journal
@@ -137,21 +182,20 @@ pub(super) fn crossings(
             return Vec::new();
         }
     };
+    let holds = match holds(writer) {
+        Ok(holds) => holds,
+        Err(error) => {
+            tracing::error!(scope = SCOPE, "the held days could not be read: {error}");
+            return Vec::new();
+        }
+    };
     let mut crossed = Vec::new();
     for owed in owed {
         let removed = keeps_kind(journal, writer, &owed.note_id, &owed.path).and_then(|keeps| {
             if keeps {
                 return Ok(None);
             }
-            if held(
-                root,
-                journal,
-                writer,
-                &owed.note_id,
-                &owed.from_path,
-                &owed.path,
-            )? {
-                mark_batch(root);
+            if held_owed(root, journal, writer, &holds, &owed)? {
                 return Ok(None);
             }
             let (id, from) = (&owed.note_id, &owed.from_path);
