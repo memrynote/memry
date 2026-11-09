@@ -1,12 +1,12 @@
 //! Journal days a move outside the app carried, held while the setting cannot follow them
 //! (Step 13m-7b-2b stage c, #3530; `journal::folder_follow::Follow::HeldWaits`): a journal
 //! setting change another build recorded, a folder the days cannot live in, or days that went
-//! to more than one folder. A day named under the old folder would make it again, and a setting
-//! saved over the days would leave them outside the journal: either way the next open would
-//! cross every held day into a note, the day deleted and the delete synced. So no day is made,
-//! no journal setting change moves days, and the held folder neither moves nor goes
-//! (`journal_folder_held`), until the days can follow or go back. Followed cases:
-//! `journal_folder_outside`.
+//! to more than one folder. The hold is kept, so no open crosses a held day into a note
+//! (`journal_folder_kept_held`), but a day named under the old folder would make it again, after
+//! which the setting never follows, and a setting saved over the days would leave them outside
+//! the journal. So no day is made, no journal setting change moves days, and the held folder
+//! neither moves nor goes (`journal_folder_held`), until the days can follow or go back.
+//! Followed cases: `journal_folder_outside`.
 //!
 //! | Test                                                              | Rule                               |
 //! | ----------------------------------------------------------------- | ---------------------------------- |
@@ -37,7 +37,7 @@ use crate::journal_folder_outside::{journal, moved_outside, opened_after};
 use crate::vault_settings::{opened_keeping, stored, update};
 
 /// A journal setting change record of another build's, which this one cannot read.
-fn recorded_elsewhere(e: &Env, record: bool) {
+pub(crate) fn recorded_elsewhere(e: &Env, record: bool) {
     let sql = if record {
         "INSERT INTO meta (key, value) VALUES (?1, '{\"version\":2}')"
     } else {

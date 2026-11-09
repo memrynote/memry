@@ -72,6 +72,7 @@ use rusqlite::{Connection, OptionalExtension as _, params};
 use serde_json::Value;
 
 use super::new_files::create_new;
+use super::place_held;
 pub use super::removal::{Crossing, crossed, removed};
 use super::{ITEM_TYPE, edit_in, failed};
 use crate::api::errors::StorageError;
@@ -452,6 +453,20 @@ pub(super) fn owe_in(
     note_positions::remove(conn, from_path).map(drop)
 }
 
+/// The day's file moved with the whole journal folder outside the app: owed the move from
+/// `from_path`, as [`owe_place`], and held, never crossed ([`super::place_held`]).
+pub fn hold_place(
+    conn: &Connection,
+    note_id: &str,
+    from_path: &str,
+    now_ms: i64,
+) -> Result<(), StorageError> {
+    let tx = conn.unchecked_transaction().map_err(failed)?;
+    owe_in(&tx, note_id, from_path, now_ms)?;
+    place_held::hold(&tx, note_id)?;
+    tx.commit().map_err(failed)
+}
+
 /// A move the record is owed.
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct OwedPlace {
@@ -490,13 +505,23 @@ pub fn owed_places(conn: &Connection) -> Result<Vec<OwedPlace>, StorageError> {
     owed.collect::<Result<_, _>>().map_err(failed)
 }
 
+/// The owed moves that are held ([`super::place_held`]), as [`owed_places`] lists them.
+pub fn held_places(conn: &Connection) -> Result<Vec<OwedPlace>, StorageError> {
+    let owed = owed_places(conn)?;
+    let held = place_held::held(conn)?;
+    Ok(owed
+        .into_iter()
+        .filter(|owed| held.contains(&owed.note_id))
+        .collect())
+}
+
 pub(super) fn settle_place(conn: &Connection, note_id: &str) -> Result<(), StorageError> {
     conn.execute(
         "DELETE FROM note_place_owed WHERE note_id = ?1",
         params![note_id],
     )
-    .map(drop)
-    .map_err(failed)
+    .map_err(failed)?;
+    place_held::forget(conn, note_id)
 }
 
 pub(super) fn folder_of(path: &str) -> &str {

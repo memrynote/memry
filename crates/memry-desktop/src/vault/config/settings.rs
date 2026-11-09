@@ -35,9 +35,10 @@
 //! settle its move under the new setting, as a crossing that deletes it. A folder move records
 //! a move for each note it carries, so one that carries no note waits on nothing here. A journal
 //! folder moved outside the app has its setting follow it first (`journal::folder_follow`), so
-//! its held days move from where they are; saved over them, the next open would cross each into
-//! a note. While held days wait for the setting to follow (it cannot), no change that moves
-//! days is made ([`SettingsError::JournalFolderHeld`]).
+//! its held days move from where they are; saved over them, the held days would stay held
+//! outside the journal. While held days wait for the setting to follow (it cannot yet, or the
+//! consumer's batch is still holding them), no change that moves days is made
+//! ([`SettingsError::JournalFolderHeld`]).
 //!
 //! The journal folder moved in the app with a folder that holds it takes the setting along
 //! ([`JournalFollow`], `notes::folder_move`), as Electron's `followJournalFolderMove` does.

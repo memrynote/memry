@@ -2,18 +2,18 @@
 //! what the file is ([`keeps_kind`]) is made at the next open's walk ([`crossings`]), the
 //! record deleted for the consumer to make the file anew, as Electron does
 //! (`renameKeepsJournalDate`, `vault/watcher.ts`). A day the whole journal folder carried is
-//! held, never crossed ([`held`]).
+//! held, never crossed, and stays held whatever is on disk later ([`held`]).
 
-use std::collections::BTreeSet;
-use std::path::{Path, PathBuf};
-use std::sync::{Mutex, PoisonError};
+use std::path::Path;
 
 use memry_core::api::notes_write::NotesWriter;
 use memry_core::domain::notes::identity::{Crossing, Moved, Removed};
 use memry_core::markdown::frontmatter::split_frontmatter_block;
 
 use super::identity::{NotesIdentity, electron_db_beside, is_large_file, place};
-use crate::journal::folder_follow::{Follow, follow_moved_journal, journal_folder_moved};
+use crate::journal::folder_follow::{
+    Follow, batch_held, follow_after_batch, journal_folder_moved, mark_batch,
+};
 use crate::vault::consumer::identity::{Crossed, IdentityCtx, IdentityError};
 use crate::vault::journal_format::JournalDays;
 
@@ -73,13 +73,17 @@ pub(crate) fn settle_followed(
     Ok(())
 }
 
-/// Whether the move of the day `id` from `from` to `to` is the journal folder moving whole
-/// ([`journal_folder_moved`]). Crossed, every day would be deleted and the delete synced; it is
-/// owed instead, until the config follows the folder and the move keeps what the file is. A day
-/// already owed a move is read from where it was before that one (its owed `from_path`): the
-/// held folder renamed again before the setting followed is the journal moving on, never a day
-/// leaving it. A held day marks its vault for the follow after the batch ([`follow_held`]).
-pub(super) fn held(
+/// Whether the day `id`, moved from `from` to `to`, is held: owed its move until the journal
+/// setting follows the folder ([`crate::journal::folder_follow`]), never crossed. Crossed, a
+/// folder renamed in Finder would delete every day and sync the delete. A day held already
+/// stays held whatever is on disk now ([`NotesWriter::held_places`]); otherwise it is held when
+/// the move is the journal folder moving whole ([`journal_folder_moved`]), read from where the
+/// day was before its first owed move, so the held folder renamed again before the setting
+/// followed is the journal moving on. The disk decides only here, once, and the hold is kept
+/// ([`NotesWriter::hold_place`]): the old folder made again later (a folder or note create, or
+/// by hand) never turns a held day into a crossing. A day at a path the setting reads as a day
+/// is not held.
+pub(crate) fn held(
     root: &Path,
     journal: &JournalDays,
     writer: &NotesWriter,
@@ -94,33 +98,31 @@ pub(super) fn held(
         .owed_places()?
         .into_iter()
         .find(|owed| owed.note_id == id);
+    if first.is_some() && writer.held_places()?.iter().any(|held| held.note_id == id) {
+        return Ok(true);
+    }
     let from = first.as_ref().map_or(from, |owed| owed.from_path.as_str());
     let held = journal_folder_moved(root, journal.folder(), from, to).is_some();
     if held {
-        HELD.lock()
-            .unwrap_or_else(PoisonError::into_inner)
-            .insert(root.to_path_buf());
+        writer.hold_place(id, from)?;
     }
     Ok(held)
 }
 
-/// The vaults a batch of the consumer's held a day in, since the follow after it last ran.
-static HELD: Mutex<BTreeSet<PathBuf>> = Mutex::new(BTreeSet::new());
-
 /// Once the consumer's queue went quiet after a batch, with the rows' lane released: the journal
-/// setting follows the folder the batch held days in (`journal::folder_follow::follow_moved_journal`), as
-/// Electron's watcher follows at the move's first event. `true` when it followed.
-pub(super) fn follow_held(root: &Path, writer: &NotesWriter) -> bool {
-    let marked = HELD
-        .lock()
-        .unwrap_or_else(PoisonError::into_inner)
-        .remove(root);
-    marked && follow_moved_journal(root, writer) == Follow::Followed
+/// setting follows the folder the batch held days in (`journal::folder_follow`), as Electron's
+/// watcher follows at the move's first event. `true` when it followed. A quiet queue after a
+/// batch that held nothing asks nothing of the database.
+pub(super) fn follow_held(identity: &NotesIdentity, ctx: &IdentityCtx<'_>) -> bool {
+    batch_held(ctx.root)
+        && identity
+            .writer(ctx)
+            .is_ok_and(|writer| follow_after_batch(ctx.root, &writer) == Follow::Followed)
 }
 
 /// Each owed move that changes what its file is, with its record deleted as the watcher's move
-/// deletes it ([`NotesWriter::file_crossed`]); one whose record stays is left owed, and so is a
-/// day the journal folder carried ([`held`]).
+/// deletes it ([`NotesWriter::file_crossed`]); one whose record stays is left owed, and a held
+/// day is never crossed ([`held`]).
 pub(super) fn crossings(
     identity: &NotesIdentity,
     ctx: &IdentityCtx<'_>,
@@ -138,16 +140,18 @@ pub(super) fn crossings(
     let mut crossed = Vec::new();
     for owed in owed {
         let removed = keeps_kind(journal, writer, &owed.note_id, &owed.path).and_then(|keeps| {
-            if keeps
-                || held(
-                    root,
-                    journal,
-                    writer,
-                    &owed.note_id,
-                    &owed.from_path,
-                    &owed.path,
-                )?
-            {
+            if keeps {
+                return Ok(None);
+            }
+            if held(
+                root,
+                journal,
+                writer,
+                &owed.note_id,
+                &owed.from_path,
+                &owed.path,
+            )? {
+                mark_batch(root);
                 return Ok(None);
             }
             let (id, from) = (&owed.note_id, &owed.from_path);

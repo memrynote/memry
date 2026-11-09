@@ -112,6 +112,8 @@ mod journal_folder;
 mod journal_folder_claim;
 #[path = "journal_folder_held.rs"]
 mod journal_folder_held;
+#[path = "journal_folder_kept_held.rs"]
+mod journal_folder_kept_held;
 #[path = "journal_folder_outside.rs"]
 mod journal_folder_outside;
 #[path = "journal_format_vectors.rs"]

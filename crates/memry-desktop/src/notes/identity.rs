@@ -77,6 +77,7 @@ use memry_core::markdown::convert::api::Converter;
 use memry_core::markdown::frontmatter::split_frontmatter_block;
 use memry_core::seams::secure_store::SecureStore;
 
+use crate::journal::folder_follow::mark_batch;
 use crate::vault::config::read_vault_config_strict;
 use crate::vault::consumer::converter_of;
 use crate::vault::consumer::identity::{
@@ -128,7 +129,7 @@ impl NotesIdentity {
         })
     }
 
-    fn writer(&self, ctx: &IdentityCtx<'_>) -> Result<Arc<NotesWriter>, IdentityError> {
+    pub(super) fn writer(&self, ctx: &IdentityCtx<'_>) -> Result<Arc<NotesWriter>, IdentityError> {
         ctx.vault
             .notes_writer(self.store.clone())
             .map_err(|error| IdentityError::Other(error.to_string()))
@@ -519,7 +520,7 @@ impl NoteIdentity for NotesIdentity {
                 note_id,
                 "a day the journal folder carried is held, owed"
             );
-            writer.owe_place(note_id, old_path)?;
+            mark_batch(ctx.root);
             self.unsettle(ctx.root);
             return Ok(Rename::Followed);
         }
@@ -554,8 +555,7 @@ impl NoteIdentity for NotesIdentity {
 
     /// [`owed_moves::follow_held`].
     fn follow_held(&self, ctx: &IdentityCtx<'_>) -> bool {
-        self.writer(ctx)
-            .is_ok_and(|writer| owed_moves::follow_held(ctx.root, &writer))
+        owed_moves::follow_held(self, ctx)
     }
 
     /// The owed moves that change what their file is, now that the journal days are known
