@@ -208,6 +208,8 @@ mod paths;
 mod properties_file;
 #[path = "property_definitions.rs"]
 mod property_definitions;
+#[path = "property_definitions_seed.rs"]
+mod property_definitions_seed;
 #[path = "property_definitions_sync.rs"]
 mod property_definitions_sync;
 #[path = "sanitize_svg_inert.rs"]

@@ -143,21 +143,30 @@ pub(super) fn options_text(kind: &PropertyKind) -> Option<String> {
     options_over(kind, None, None)
 }
 
-/// The record `definition` mirrors, over the record it replaces. The calendar flag of a date
-/// stays in this device's file.
+/// The record `definition` mirrors, over the record it replaces and `before`, the kind it
+/// replaces. The calendar flag of a date stays in this device's file. A `project` holds no
+/// options the file keeps, so its record keeps the ones it held, or those of the type it
+/// replaces (Electron's learner passes `existing?.options`, #4025).
 pub(super) fn record_of(
     name: &str,
     definition: &PropertyDefinition,
     prior: Option<&DefinitionRecord>,
+    before: Option<&PropertyKind>,
     renamed: Renamed<'_>,
 ) -> DefinitionRecord {
-    let prior = prior
-        .and_then(|prior| prior.options.as_deref())
+    let held = prior.and_then(|prior| prior.options.clone());
+    let prior = held
+        .as_deref()
         .and_then(|text| serde_json::from_str::<Value>(text).ok());
+    let options = match (&definition.kind, before) {
+        (PropertyKind::Project, Some(PropertyKind::Project) | None) => held,
+        (PropertyKind::Project, Some(before)) => options_over(before, prior.as_ref(), None),
+        (kind, _) => options_over(kind, prior.as_ref(), renamed),
+    };
     DefinitionRecord {
         name: name.to_owned(),
         type_name: definition.kind.type_name().to_owned(),
-        options: options_over(&definition.kind, prior.as_ref(), renamed),
+        options,
         default_value: definition.default_value.clone(),
         color: definition.color.clone(),
     }

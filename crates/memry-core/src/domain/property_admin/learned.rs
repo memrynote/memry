@@ -10,14 +10,20 @@
 //! A name with a record, live or deleted, has a definition or had one: it is not learned, and a
 //! type learned before the record came is not read. So a definition the user or another device
 //! deleted stays deleted here.
+//!
+//! Once the device syncs, a learned type becomes a definition ([`promote`], Electron's
+//! `seedUnclocked`, #4025): the sync pass calls it after its pull reached the feed head, so a
+//! definition another device pushed first has landed and wins.
 
-use std::collections::BTreeMap;
+use std::collections::{BTreeMap, BTreeSet};
 
 use rusqlite::{Connection, OptionalExtension, params};
 
+use super::records::{DefinitionRecord, write_record};
 use super::{DEFINITION_TYPES, ITEM_TYPE};
 use crate::api::errors::StorageError;
 use crate::domain::notes::failed;
+use crate::sync::outbox;
 
 /// The `meta` key of the learned types.
 const LEARNED: &str = "property_definitions.learned";
@@ -51,18 +57,89 @@ pub fn learn(conn: &Connection, wanted: &BTreeMap<String, String>) -> Result<boo
         }
     }
     if learned {
-        let value = serde_json::to_string(&types).map_err(|error| StorageError::Failed {
-            what: format!("the learned property types will not serialise: {error}"),
-        })?;
-        tx.execute(
-            "INSERT INTO meta (key, value) VALUES (?1, ?2)
-             ON CONFLICT(key) DO UPDATE SET value = excluded.value",
-            params![LEARNED, value],
-        )
-        .map_err(failed)?;
+        store(&tx, &types)?;
     }
     tx.commit().map_err(failed)?;
     Ok(learned)
+}
+
+/// Makes each learned type a definition record, as Electron's `seedUnclocked` pushes its
+/// unclocked rows: a record of the name and type with no options, default or color, queued for
+/// the push. A name with a record, live or deleted, is not promoted, so a deletion stays deleted;
+/// neither is a name in `held` (the names the shell's definitions file holds, an entry it cannot
+/// parse included) or a type this build does not know. Each promoted name, and each with a
+/// record, leaves the learned types, in the same transaction as the records: a retry or the next
+/// pass finds a record and promotes nothing twice, and a tombstone purged later cannot bring a
+/// deleted name back. A stored value this build cannot read promotes nothing and stays.
+/// Returns the promoted names.
+pub fn promote(
+    conn: &Connection,
+    held: &BTreeSet<String>,
+    device_id: &str,
+    now_ms: i64,
+) -> Result<Vec<String>, StorageError> {
+    let tx = conn.unchecked_transaction().map_err(failed)?;
+    let Some(mut types) = stored(&tx)? else {
+        return Ok(Vec::new());
+    };
+    let recorded = recorded(&tx)?;
+    let mut promoted = Vec::new();
+    let mut changed = false;
+    for (name, type_name) in types.clone() {
+        if recorded.contains_key(&name) {
+            types.remove(&name);
+            changed = true;
+            continue;
+        }
+        if held.contains(&name) || !DEFINITION_TYPES.contains(&type_name.as_str()) {
+            continue;
+        }
+        let record = DefinitionRecord {
+            name: name.clone(),
+            type_name,
+            options: None,
+            default_value: None,
+            color: None,
+        };
+        write_record(&tx, &record, device_id, now_ms)?;
+        outbox::enqueue(&tx, &outbox::Change::upsert(ITEM_TYPE, &name), now_ms)?;
+        types.remove(&name);
+        changed = true;
+        promoted.push(name);
+    }
+    if changed {
+        store(&tx, &types)?;
+    }
+    tx.commit().map_err(failed)?;
+    Ok(promoted)
+}
+
+/// Whether a live note or journal record carries a value for `name`.
+pub fn in_use(conn: &Connection, name: &str) -> Result<bool, StorageError> {
+    conn.query_row(
+        "SELECT EXISTS (SELECT 1 FROM sync_items
+                         WHERE item_type IN ('note', 'journal') AND deleted_at IS NULL
+                           AND json_valid(payload)
+                           AND json_type(payload, '$.properties') = 'object'
+                           AND json_type(json_extract(payload, '$.properties'),
+                                         '$.\"' || replace(?1, '\"', '') || '\"') IS NOT NULL)",
+        [name],
+        |row| row.get(0),
+    )
+    .map_err(failed)
+}
+
+fn store(conn: &Connection, types: &BTreeMap<String, String>) -> Result<(), StorageError> {
+    let value = serde_json::to_string(types).map_err(|error| StorageError::Failed {
+        what: format!("the learned property types will not serialise: {error}"),
+    })?;
+    conn.execute(
+        "INSERT INTO meta (key, value) VALUES (?1, ?2)
+         ON CONFLICT(key) DO UPDATE SET value = excluded.value",
+        params![LEARNED, value],
+    )
+    .map_err(failed)?;
+    Ok(())
 }
 
 /// The stored types; `None` when the value does not read.
@@ -149,6 +226,118 @@ mod tests {
             Ok(())
         })
         .expect("learned");
+    }
+
+    fn outbox(c: &Connection) -> Vec<(String, String)> {
+        let mut statement = c
+            .prepare("SELECT item_id, op FROM outbox ORDER BY id")
+            .expect("prepare");
+        statement
+            .query_map([], |row| Ok((row.get(0)?, row.get(1)?)))
+            .expect("query")
+            .collect::<Result<_, _>>()
+            .expect("rows")
+    }
+
+    fn held(names: &[&str]) -> BTreeSet<String> {
+        names.iter().map(|name| (*name).to_owned()).collect()
+    }
+
+    /// #4025: what the sync pass promotes. A name with a record, live or deleted, never; a name
+    /// the shell's file holds, never; the rest once, as the record Electron's `seedUnclocked`
+    /// pushes for an unclocked learned row.
+    #[test]
+    fn a_learned_type_is_promoted_once_and_never_over_a_record_or_a_held_name() {
+        let dir = temp_dir("props-learned-promote");
+        let db = open_data(&dir.path().join("data.db")).expect("open");
+        db.call_blocking(|c| {
+            let wanted = types(&[
+                ("rating", "number"),
+                ("stage", "text"),
+                ("gone", "text"),
+                ("filed", "url"),
+            ]);
+            assert!(learn(c, &wanted)?);
+            // Records that came after the names were learned: one live, one deleted.
+            put(c, &record("stage"), "p", NOW)?;
+            put(c, &record("gone"), "p", NOW)?;
+            remove(c, "gone", "p", NOW + 1)?;
+            let queued = outbox(c).len();
+
+            let promoted = promote(c, &held(&["filed"]), "p", NOW + 2)?;
+            assert_eq!(promoted, ["rating"]);
+            let row = crate::storage::repositories::sync_items::load(c, ITEM_TYPE, "rating")?
+                .expect("the record");
+            let payload: serde_json::Value =
+                serde_json::from_str(&row.payload.expect("a payload")).expect("json");
+            assert_eq!(
+                payload,
+                serde_json::json!({
+                    "name": "rating", "type": "number", "options": null, "defaultValue": null,
+                    "color": null, "createdAt": "2025-10-09T08:53:20.002Z", "clock": {"p": 1}
+                })
+            );
+            assert_eq!(&outbox(c)[queued..], [("rating".into(), "upsert".into())]);
+            let gone = crate::storage::repositories::sync_items::load(c, ITEM_TYPE, "gone")?
+                .expect("the tombstone");
+            assert!(gone.deleted_at.is_some(), "the deletion stays");
+            // The promoted name and the recorded ones left the learned types; the held one stays.
+            assert_eq!(stored(c)?, Some(types(&[("filed", "url")])));
+
+            // A retry promotes nothing and queues nothing.
+            assert!(promote(c, &held(&["filed"]), "p", NOW + 3)?.is_empty());
+            assert_eq!(outbox(c).len(), queued + 1);
+            // Once the file no longer holds it, the held name is promoted.
+            assert_eq!(promote(c, &held(&[]), "p", NOW + 4)?, ["filed"]);
+            Ok(())
+        })
+        .expect("promoted");
+    }
+
+    #[test]
+    fn a_stored_value_that_does_not_read_promotes_nothing_and_stays() {
+        let dir = temp_dir("props-learned-promote-unread");
+        let db = open_data(&dir.path().join("data.db")).expect("open");
+        db.call_blocking(|c| {
+            let newer = r#"[{"name":"rating","type":"number"}]"#;
+            c.execute(
+                "INSERT INTO meta (key, value) VALUES (?1, ?2)",
+                params![LEARNED, newer],
+            )
+            .map_err(failed)?;
+            assert!(promote(c, &held(&[]), "p", NOW)?.is_empty());
+            assert!(outbox(c).is_empty());
+            let kept: String = c
+                .query_row("SELECT value FROM meta WHERE key = ?1", [LEARNED], |row| {
+                    row.get(0)
+                })
+                .map_err(failed)?;
+            assert_eq!(kept, newer);
+            Ok(())
+        })
+        .expect("kept");
+    }
+
+    #[test]
+    fn a_name_is_in_use_while_a_live_note_or_day_carries_it() {
+        let dir = temp_dir("props-learned-in-use");
+        let db = open_data(&dir.path().join("data.db")).expect("open");
+        db.call_blocking(|c| {
+            assert!(!in_use(c, "project")?);
+            c.execute(
+                "INSERT INTO sync_items (item_type, item_id, payload, payload_state, updated_at)
+                 VALUES ('journal', 'j1', ?1, 'plain', 1)",
+                [r#"{"properties":{"project":"memry://note/a"}}"#],
+            )
+            .map_err(failed)?;
+            assert!(in_use(c, "project")?);
+            assert!(!in_use(c, "rating")?);
+            c.execute("UPDATE sync_items SET deleted_at = 2", [])
+                .map_err(failed)?;
+            assert!(!in_use(c, "project")?);
+            Ok(())
+        })
+        .expect("in use");
     }
 
     /// A value a newer build wrote in a shape this one cannot read is kept: nothing is learned

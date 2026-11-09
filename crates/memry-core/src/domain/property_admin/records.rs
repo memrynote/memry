@@ -4,7 +4,7 @@
 //! queues the name it changed. [`put`] writes only the fields that differ, so a definition
 //! that did not change queues nothing.
 
-use std::collections::BTreeMap;
+use std::collections::{BTreeMap, BTreeSet};
 use std::sync::Arc;
 
 use rusqlite::Connection;
@@ -83,9 +83,10 @@ fn same_options(stored: Option<&Value>, next: Option<&str>) -> bool {
     }
 }
 
-/// Creates the record of `record.name`, over its tombstone when it has one.
-pub(super) fn insert(
-    conn: &Connection,
+/// Writes the record of `record.name`, over its tombstone when it has one, inside the caller's
+/// transaction, which queues it.
+pub(super) fn write_record(
+    tx: &Connection,
     record: &DefinitionRecord,
     device_id: &str,
     now_ms: i64,
@@ -98,11 +99,22 @@ pub(super) fn insert(
         "color": text_or_null(record.color.as_deref()),
         "createdAt": iso(now_ms)?,
     }));
+    write_over_tombstone(tx, ITEM_TYPE, &record.name, payload, device_id, now_ms)?;
+    Ok(())
+}
+
+/// Creates the record of `record.name`, over its tombstone when it has one.
+pub(super) fn insert(
+    conn: &Connection,
+    record: &DefinitionRecord,
+    device_id: &str,
+    now_ms: i64,
+) -> Result<(), StorageError> {
     outbox::commit(
         conn,
         &outbox::Change::upsert(ITEM_TYPE, &record.name),
         now_ms,
-        |tx| write_over_tombstone(tx, ITEM_TYPE, &record.name, payload, device_id, now_ms),
+        |tx| write_record(tx, record, device_id, now_ms),
     )?
     .acknowledge();
     Ok(())
@@ -213,6 +225,21 @@ impl DefinitionRecords {
     /// [`learned::learn`].
     pub fn learn(&self, wanted: &BTreeMap<String, String>) -> Result<bool, StorageError> {
         self.db.call_blocking(|conn| learned::learn(conn, wanted))
+    }
+
+    /// [`learned::promote`], under this device's identity.
+    pub fn promote(
+        &self,
+        held: &BTreeSet<String>,
+        now_ms: i64,
+    ) -> Result<Vec<String>, StorageError> {
+        self.db
+            .call_blocking(|conn| learned::promote(conn, held, &self.device_id, now_ms))
+    }
+
+    /// [`learned::in_use`].
+    pub fn in_use(&self, name: &str) -> Result<bool, StorageError> {
+        self.db.read_blocking(|conn| learned::in_use(conn, name))
     }
 
     /// [`mirror::write`].
