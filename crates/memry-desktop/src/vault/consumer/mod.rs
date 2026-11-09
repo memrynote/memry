@@ -158,6 +158,9 @@ pub enum Applied {
     /// its caps, or when the identity adopts nothing (files without a row stay unindexed);
     /// the next open walks again.
     Indexed { complete: bool },
+    /// A locked note's file changed or removed outside the app has its locked text back, the
+    /// outside text kept as a version (`vault-locks:external-edit-restored`).
+    LockRestored { note_id: String, path: String },
     /// A watcher fact that changes no row (`Unsupported`, `Unreadable`, `Unreachable`,
     /// `Reachable`, `Rescanned`, `WatchFailed`), passed on as it came.
     Vault(VaultEvent),

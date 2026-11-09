@@ -517,6 +517,10 @@ export const commands = {
 	 *  is left out, and so is every embed while no vault is open.
 	 */
 	vaultResolveEmbeds: (refs: string[], notePath: string | null) => __TAURI_INVOKE<{ [key in string]: string }>("vault_resolve_embeds", { refs, notePath }),
+	/**  `vault-locks:list`. */
+	vaultLocksList: () => __TAURI_INVOKE<VaultLockStateView>("vault_locks_list"),
+	/**  `vault-locks:set`: locks or unlocks, brings the files in line, and tells every window. */
+	vaultLocksSet: (input: VaultLockSetInput) => __TAURI_INVOKE<VaultLockStateView>("vault_locks_set", { input }),
 	/**  Closes the calling window. The `CloseRequested` handlers (flush, tray) decide what follows. */
 	windowClose: () => __TAURI_INVOKE<null>("window_close"),
 	/**  Minimizes the calling window. */
@@ -575,6 +579,8 @@ export const events = {
 	vaultIndexProgressEvent: makeEvent<VaultIndexProgressEvent, VaultIndexProgressEvent>("vault-index-progress-event"),
 	vaultIndexRecoveredEvent: makeEvent<VaultIndexRecoveredEvent, VaultIndexRecoveredEvent>("vault-index-recovered-event"),
 	vaultListChangedEvent: makeEvent<VaultListChangedEvent, VaultListChangedEvent>("vault-list-changed-event"),
+	vaultLocksChangedEvent: makeEvent<VaultLocksChangedEvent, VaultLocksChangedEvent>("vault-locks-changed-event"),
+	vaultLocksExternalEditRestoredEvent: makeEvent<VaultLocksExternalEditRestoredEvent, VaultLocksExternalEditRestoredEvent>("vault-locks-external-edit-restored-event"),
 	vaultStatusChangedEvent: makeEvent<VaultStatusChangedEvent, VaultStatusChangedEvent>("vault-status-changed-event"),
 	windowCaptionHoverChangedEvent: makeEvent<WindowCaptionHoverChangedEvent, WindowCaptionHoverChangedEvent>("window-caption-hover-changed-event"),
 	windowCaptionPressedChangedEvent: makeEvent<WindowCaptionPressedChangedEvent, WindowCaptionPressedChangedEvent>("window-caption-pressed-changed-event"),
@@ -2498,6 +2504,41 @@ export type VaultInfo = {
 
 /**  The registry list or a vault's icon changed (`vault:list-changed`). */
 export type VaultListChangedEvent = null;
+
+/**  What a lock covers (`VaultLockTargetKind`). */
+export type VaultLockKind = "note" | "folder";
+
+/**  `VaultLockSetInput`: a note by id or a folder by vault-relative path. */
+export type VaultLockSetInput = {
+	kind: VaultLockKind,
+	target: string,
+	locked: boolean,
+};
+
+/**  `VaultLockState`: every locked note id and folder path. */
+export type VaultLockStateView = {
+	notes: string[],
+	folders: string[],
+};
+
+/**
+ *  A lock was set or lifted on this device, or a vault opened (`vault-locks:changed`): every
+ *  locked note id and folder path now.
+ */
+export type VaultLocksChangedEvent = {
+	notes: string[],
+	folders: string[],
+};
+
+/**
+ *  A locked note's file changed or was removed outside the app, and its locked text was written
+ *  back; the outside text is a version of the note (`vault-locks:external-edit-restored`).
+ */
+export type VaultLocksExternalEditRestoredEvent = {
+	noteId: string,
+	path: string,
+	title: string,
+};
 
 export type VaultStatus = {
 	isOpen: boolean,

@@ -129,11 +129,6 @@ import type { ResolvedRelationRef } from '@memry/contracts/properties-api'
 import type { GetLinkedHereResponse, SearchObjectsResponse } from '@memry/contracts/tag-objects-api'
 import type { GetPropertyRowsOutput } from '@memry/contracts/journal-api'
 import type {
-  VaultLockExternalEditRestoredEvent,
-  VaultLockSetInput,
-  VaultLockState
-} from '@memry/contracts/vault-locks-api'
-import type {
   StickyDraft,
   StickyOpenTargetInput,
   StickySaveDraftInput,
@@ -642,11 +637,6 @@ export interface HomePage {
   position: number
   widgets: WidgetInstance[]
   cover?: HomePageCoverSync
-}
-
-export interface VaultLocksClientAPI {
-  list(): Promise<VaultLockState>
-  set(input: VaultLockSetInput): Promise<VaultLockState>
 }
 
 export interface StickyClientAPI {
@@ -2000,7 +1990,6 @@ interface API
   crypto: CryptoClientAPI
   syncAttachments: SyncAttachmentsClientAPI
   homePages: HomePagesClientAPI
-  vaultLocks: VaultLocksClientAPI
   sticky: StickyClientAPI
   noteFold: NoteFoldClientAPI
   ocrLanguages: OcrLanguagesClientAPI
@@ -2053,11 +2042,7 @@ interface API
   // Home boards event subscriptions (local writes and remote applies both emit)
   onHomePageCreated: (callback: (event: { id: string }) => void) => () => void
   onHomePageUpdated: (callback: (event: { id: string }) => void) => () => void
-  onVaultLocksChanged: (callback: (state: VaultLockState) => void) => () => void
   onOcrLanguagesChanged: (callback: (state: OcrLanguagesState) => void) => () => void
-  onVaultLockExternalEditRestored: (
-    callback: (event: VaultLockExternalEditRestoredEvent) => void
-  ) => () => void
   onHomePageDeleted: (callback: (event: { id: string }) => void) => () => void
   // Journal event subscriptions
   onJournalEntryUpdated: (callback: (event: JournalEntryUpdatedEvent) => void) => () => void

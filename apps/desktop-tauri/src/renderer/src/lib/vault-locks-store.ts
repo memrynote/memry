@@ -3,12 +3,14 @@
  *
  * A plain module store read through `useSyncExternalStore`, like the custom
  * icon store: sidebar rows read it by the hundred. The first subscriber loads
- * the state and wires `vault-locks:changed`, which main broadcasts after every
- * local or remote lock change and at vault open.
+ * the state and wires `VaultLocksChangedEvent`, which Rust sends after every
+ * lock change and at every vault open.
  */
 
 import { useSyncExternalStore } from 'react'
 import type { VaultLockState, VaultLockTargetKind } from '@memry/contracts/vault-locks-api'
+import { commands, events } from '../../../generated/bindings'
+import { subscribeToEvent } from '@/services/tauri-event'
 import { createLogger } from './logger'
 
 const log = createLogger('VaultLocksStore')
@@ -29,11 +31,10 @@ function publish(next: VaultLockState): void {
 function start(): void {
   if (started) return
   started = true
-  const api = window.api
-  if (!api?.vaultLocks) return
-  api.onVaultLocksChanged(publish)
-  void api.vaultLocks
-    .list()
+  // App-lifetime: the locks follow the open vault, whose open sends them again.
+  subscribeToEvent(events.vaultLocksChangedEvent, publish)
+  commands
+    .vaultLocksList()
     .then(publish)
     .catch((error: unknown) => log.warn('Failed to load vault locks', error))
 }
@@ -93,5 +94,5 @@ export async function setVaultLock(
   target: string,
   locked: boolean
 ): Promise<void> {
-  publish(await window.api.vaultLocks.set({ kind, target, locked }))
+  publish(await commands.vaultLocksSet({ kind, target, locked }))
 }

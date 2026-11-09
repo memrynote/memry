@@ -11,6 +11,8 @@ use memry_desktop::vault::config::VaultConfig;
 use serde::Serialize;
 use tauri::{AppHandle, Emitter, EventTarget, Runtime};
 
+use crate::commands::vault_locks::VaultLockStateView;
+
 /// Emit `event` to every webview: the one window-wide emit (inv09#66). Each listener gets it once.
 /// The generated `listen` registers for any target, and Tauri hands every such listener each
 /// `emit_to` as well, so a `send_to` per window would deliver one copy per window. A failed
@@ -368,6 +370,34 @@ pub struct VaultConfigChangedEvent(pub VaultConfig);
 #[derive(Debug, Clone, Serialize, serde::Deserialize, specta::Type, tauri_specta::Event)]
 pub struct FolderConfigUpdatedEvent {
     pub path: String,
+}
+
+/// A lock was set or lifted on this device, or a vault opened (`vault-locks:changed`): every
+/// locked note id and folder path now.
+#[derive(Debug, Clone, Serialize, serde::Deserialize, specta::Type, tauri_specta::Event)]
+#[serde(rename_all = "camelCase")]
+pub struct VaultLocksChangedEvent {
+    pub notes: Vec<String>,
+    pub folders: Vec<String>,
+}
+
+impl From<VaultLockStateView> for VaultLocksChangedEvent {
+    fn from(state: VaultLockStateView) -> Self {
+        Self {
+            notes: state.notes,
+            folders: state.folders,
+        }
+    }
+}
+
+/// A locked note's file changed or was removed outside the app, and its locked text was written
+/// back; the outside text is a version of the note (`vault-locks:external-edit-restored`).
+#[derive(Debug, Clone, Serialize, serde::Deserialize, specta::Type, tauri_specta::Event)]
+#[serde(rename_all = "camelCase")]
+pub struct VaultLocksExternalEditRestoredEvent {
+    pub note_id: String,
+    pub path: String,
+    pub title: String,
 }
 
 /// The registry list or a vault's icon changed (`vault:list-changed`).
