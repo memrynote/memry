@@ -11,6 +11,7 @@ import type { GraphViewsSettings } from '../../../../../packages/contracts/src/g
 import type { HomePageSetCoverResult } from '../../../../../packages/contracts/src/home-page-api'
 import type { AppleNotesCheckUnlockResult, AppleNotesFoldersResult, ImporterMeta, ImportPreview, OneNoteAuthStatusResult, OneNoteNotebooksResult, ReadwiseDeletedBook, ReadwiseStatusResult } from '../../../../../packages/contracts/src/import-channels'
 import type { ArchivedListResponse, BulkResponse, CapturePattern, CaptureResponse, FilingHistoryResponse, InboxItem, InboxJobsResponse, InboxListResponse, InboxStats, TranscribeAudioResponse } from '../../../../../packages/contracts/src/inbox-api'
+import type { IosBetaJoinResult } from '../../../../../packages/contracts/src/ios-beta-api'
 import type { Conversation, Message } from '../../../../../packages/contracts/src/ipc-agent'
 import type { CrdtHealth, CrdtSyncStep1Result } from '../../../../../packages/contracts/src/ipc-crdt'
 import type { DecryptItemResult, EncryptItemResult, VerifySignatureResult } from '../../../../../packages/contracts/src/ipc-crypto'
@@ -283,6 +284,7 @@ export interface MainIpcInvokeHandlers {
   "inbox:undo-file": (...args: [any]) => Awaited<Promise<{ success: boolean; error?: string | undefined; }>>
   "inbox:unsnooze": (...args: [any]) => Awaited<Promise<{ success: boolean; error?: string | undefined; }>>
   "inbox:update": (...args: [any]) => Awaited<Promise<CaptureResponse>>
+  "iosBeta:join": (...args: [{ email: string; source: "settings" | "launch_prompt" | "help_menu"; }]) => Awaited<Promise<IosBetaJoinResult> | { success: false; error: string }>
   "journal:createEntry": (...args: [{ date: string; content?: string | undefined; tags?: string[] | undefined; properties?: Record<string, unknown> | undefined; }]) => Awaited<Promise<{ id: string; date: string; content: string; wordCount: number; characterCount: number; tags: string[]; createdAt: string; modifiedAt: string; aliases?: string[] | undefined; properties?: Record<string, unknown> | undefined; }>>
   "journal:deleteEntry": (...args: [{ date: string; }]) => Awaited<Promise<{ success: boolean; }>>
   "journal:getAllTags": (...args: []) => Awaited<Promise<{ tag: string; count: number; }[]>>

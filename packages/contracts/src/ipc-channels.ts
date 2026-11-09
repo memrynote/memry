@@ -666,6 +666,20 @@ export type FeedbackInvokeChannel =
   (typeof FeedbackChannels.invoke)[keyof typeof FeedbackChannels.invoke]
 
 // ============================================================================
+// iPhone Beta Channels
+// ============================================================================
+
+export const IosBetaChannels = {
+  invoke: {
+    /** Ask for the iPhone TestFlight invite (anonymous-friendly) */
+    JOIN: 'iosBeta:join'
+  }
+} as const
+
+export type IosBetaInvokeChannel =
+  (typeof IosBetaChannels.invoke)[keyof typeof IosBetaChannels.invoke]
+
+// ============================================================================
 // Data Management Channels
 // ============================================================================
 

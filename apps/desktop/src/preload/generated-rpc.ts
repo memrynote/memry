@@ -720,6 +720,10 @@ export function createGeneratedRpcApi({
       // oxlint-disable-next-line typescript/no-unsafe-type-assertion -- the IPC invoke result type is wider than the public API contract; the cast pins the contract
       "submit": ((input) => invoke("feedback:submit", input)) as GeneratedRpcApi["feedback"]["submit"],
     },
+    "iosBeta": {
+      // oxlint-disable-next-line typescript/no-unsafe-type-assertion -- the IPC invoke result type is wider than the public API contract; the cast pins the contract
+      "join": ((input) => invoke("iosBeta:join", input)) as GeneratedRpcApi["iosBeta"]["join"],
+    },
     "diagnostics": {
       // oxlint-disable-next-line typescript/no-unsafe-type-assertion -- the IPC invoke result type is wider than the public API contract; the cast pins the contract
       "previewReport": ((trigger) => invoke("diagnostics:previewReport", trigger)) as GeneratedRpcApi["diagnostics"]["previewReport"],

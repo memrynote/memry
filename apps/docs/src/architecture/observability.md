@@ -564,6 +564,16 @@ version), which is what Error Tracking's `library` filter matches on. Server-sid
 to the same capture API, tagged `surface: 'server'`, so one PostHog project holds every event from
 both desktop and server.
 
+The desktop iPhone beta invite (`POST /ios-beta/join`, `routes/ios-beta.ts`) adds one more
+server-side event, `ios_beta_joined`, with `source` (`launch_prompt`, `settings`, `help_menu`),
+`app_version`, `platform`, and the person property `ios_beta_joined: true`. It lands on the same
+distinct id as the install's other events (`resolveDistinctId`), and only when the desktop sent its
+install id, which it does only while telemetry is on. The email never reaches PostHog. It goes to App
+Store Connect (the TestFlight invite) and to the Resend iOS beta segment, where the contact carries
+`signup_source: desktop` and `install_hash` (the same HMAC). An email can be traced to its PostHog
+person through Resend, never the other way. Landing `/ios-beta` signups carry neither property, so
+`signup_source` separates desktop signups from web ones.
+
 Errors additionally become `$exception` events for PostHog Error Tracking (`exceptionEvent` in
 `services/posthog-transform.ts`), fingerprinted on our own `errorCode` when one is present so
 grouping follows the app's own error taxonomy rather than PostHog's pattern-hash default. They

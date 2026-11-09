@@ -209,6 +209,30 @@ Note content, titles, tags and file paths are never included.
 
 ---
 
+## Join the iPhone Beta
+
+The iPhone app is in beta on TestFlight. Enter your email and Apple sends you a TestFlight invite.
+Use the email of the Apple ID on your iPhone. You can join from three places:
+
+- A one-time announcement that opens on launch. Close it and it does not come back.
+- The **iPhone beta is live** card at the bottom of the Settings sidebar, on every settings page.
+  After you join it shows where the invite went, and **Send again** lets you use another address.
+- **Join TestFlight** in the Help and feedback menu at the foot of the rail.
+
+What is sent when you join:
+
+- **Your email**, to add you to the TestFlight group and to the iPhone beta mailing list for launch
+  news. You can unsubscribe from the list at any time.
+- **App version and operating system**, and which of the three places you joined from.
+- **An anonymous install ID**, only while usage analytics is on. The server stores a one-way hash
+  of it next to your email on the mailing list, and analytics records that this install joined.
+  Analytics never receives your email.
+
+Once Apple's email arrives, install TestFlight from the App Store, open the invite on your iPhone,
+and sign in to memrynote on the phone.
+
+---
+
 ## Templates
 
 ### Built-in Templates
