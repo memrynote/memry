@@ -213,6 +213,8 @@ fn serves_an_attachment_from_a_url_a_mac_wrote() {
     assert_eq!(bytes_of(served), b"png");
     let page = "memry-html://local/Users/kaan/Vault/attachments/n1/abc123-page.html";
     assert_eq!(serve_html(page, true, Some(&fx.vault), WINDOWS).status, 200);
+    // The climb's target exists, so its 403 is the refusal of `..`, not a missing file.
+    fs::write(fx.vault.join("abc123-photo.png"), b"x").unwrap();
     let climb = "memry-file://local/Users/kaan/attachments/n1/..%5C..%5Cabc123-photo.png";
     assert_eq!(
         serve_file(climb, &req(None), &fx.roots(), WINDOWS, Caps::UNBOUNDED).status,
