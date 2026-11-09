@@ -40,7 +40,7 @@ export function useReplacedOutsideEdit(
   useEffect(() => {
     if (!noteId) return undefined
     return onNoteOutsideEditKept(({ id }) => {
-      if (id === noteId) toastReplaced(tRef.current, showRef.current)
+      if (id === noteId) toastReplaced(id, tRef.current, showRef.current)
     })
   }, [noteId])
 
@@ -56,7 +56,7 @@ export function useReplacedOutsideEdit(
         heldRef.current = null
         const replaced = held?.noteId === id && held.content !== content
         if (!replaced && !result.keptOutsideEdit) return false
-        toastReplaced(tRef.current, showRef.current)
+        toastReplaced(id, tRef.current, showRef.current)
         return true
       }
     }),
@@ -64,8 +64,15 @@ export function useReplacedOutsideEdit(
   )
 }
 
-function toastReplaced(t: (key: string) => string, showVersionHistory: () => void): void {
+// One toast per note: every editor of the note open (a note tab, its project's overview, a canvas
+// card) hears the core's event (#4088).
+function toastReplaced(
+  noteId: string,
+  t: (key: string) => string,
+  showVersionHistory: () => void
+): void {
   toast(t('page.toast.outsideEditReplaced'), {
+    id: `outside-edit-replaced:${noteId}`,
     duration: 10_000,
     action: {
       label: t('page.toast.showVersions'),
