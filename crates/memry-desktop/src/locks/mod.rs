@@ -3,8 +3,9 @@
 //!
 //! A lock stops what this device does to a note or a folder. The core refuses the body and
 //! record edits (14e-2a); this module refuses what moves, creates or removes files, keeps a
-//! locked file read-only on disk ([`mode`]), and brings the disk in line with the locks at
-//! every open ([`reconcile`]).
+//! locked file read-only on disk ([`mode`]), brings the disk in line with the locks at every
+//! open ([`reconcile`]), and gives a locked note's file changed or removed outside the app its
+//! locked text back ([`restore`]).
 //!
 //! Electron lifts its checks inside `runWithLockedWritesAllowed`, an ambient async scope. Rust
 //! has none, so each writer states its own: an operation of this device refuses at its entry
@@ -16,6 +17,9 @@
 
 mod mode;
 mod reconcile;
+mod restore;
+
+pub use restore::RestoreError;
 
 use std::path::Path;
 use std::sync::Arc;
