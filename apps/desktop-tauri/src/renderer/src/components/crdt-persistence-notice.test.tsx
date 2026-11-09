@@ -1,5 +1,5 @@
 import { render, waitFor } from '@testing-library/react'
-import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
+import { beforeEach, describe, expect, it, vi } from 'vitest'
 
 const toastFn = vi.hoisted(() => vi.fn())
 
@@ -13,19 +13,14 @@ vi.mock('@/lib/logger', () => ({
   createLogger: () => ({ debug: vi.fn(), info: vi.fn(), warn: vi.fn(), error: vi.fn() })
 }))
 
-import { CrdtPersistenceNotice } from './crdt-persistence-notice'
+const getHealth = vi.hoisted(() => vi.fn())
 
-const getHealth = vi.fn()
-const api = window.api as unknown as { syncCrdt: { getHealth: typeof getHealth } }
-const realSyncCrdt = api.syncCrdt
+vi.mock('../../../generated/bindings', () => ({ commands: { crdtGetHealth: getHealth } }))
+
+import { CrdtPersistenceNotice } from './crdt-persistence-notice'
 
 beforeEach(() => {
   vi.clearAllMocks()
-  api.syncCrdt = { getHealth }
-})
-
-afterEach(() => {
-  api.syncCrdt = realSyncCrdt
 })
 
 describe('CrdtPersistenceNotice', () => {

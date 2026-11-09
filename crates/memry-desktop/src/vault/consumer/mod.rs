@@ -161,4 +161,8 @@ pub enum Applied {
     /// A watcher fact that changes no row (`Unsupported`, `Unreadable`, `Unreachable`,
     /// `Reachable`, `Rescanned`, `WatchFailed`), passed on as it came.
     Vault(VaultEvent),
+    /// The write-back wrote the note's body over the outside edit the consumer read last
+    /// (`Outcome::Wrote::replaced_outside`): typing won over it (#4030), and a version holds it.
+    /// Published after the write's [`Applied::Changed`]; only the pages are told.
+    OutsideEditKept { note_id: String, path: String },
 }

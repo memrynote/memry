@@ -10,7 +10,8 @@
 //! - a revert writes only over the bytes it kept, or into a path that is free;
 //! - a file that is not UTF-8 is kept as the text Electron reads it as, then reverted;
 //! - a change that could not be kept as a version is left on disk and fed nowhere;
-//! - the app's own writes through the lock (another device's text, the write-back) stay.
+//! - the app's own writes through the lock (another device's text, the write-back) stay;
+//! - a body ahead of its file does not win over the lock.
 
 use std::fs;
 use std::time::{Duration, Instant};
@@ -239,6 +240,33 @@ fn a_locked_notes_write_back_lands_and_stays() {
         kept_outside_text(&e, &id) == 1 && e.read("Plan.md") == "From another device\n"
     });
     assert_eq!(e.body(&id), "From another device");
+}
+
+/// A locked note whose body is ahead of its file (an edit stored before the lock, its write-back
+/// not run yet, the file's text recorded as an open's lock pass records it): the lock answers the
+/// outside edit before the typing rule does, so the outside text is kept as a version and the
+/// file gets the locked text back, not the body written over it.
+#[test]
+fn a_locked_note_with_its_body_ahead_reverts_an_outside_edit() {
+    let (e, store) = guarded(&[("Plan.md", NOTE)]);
+    let id = id_at(&e, "Plan.md");
+    e.edit_in_app(&store, &id, "From another device");
+    lock(&e, TargetKind::Note, &id);
+    e.core()
+        .locks()
+        .write_baseline(&id, NOTE, &content_hash(NOTE))
+        .unwrap();
+
+    edit_outside(&e, "Plan.md", OUTSIDE);
+
+    until("the outside text is kept", || {
+        kept_outside_text(&e, &id) > 0
+    });
+    std::thread::sleep(QUIET);
+    assert_eq!(e.read("Plan.md"), NOTE);
+    assert!(read_only(&e, "Plan.md"), "Plan.md is read-only again");
+    assert_eq!(e.body(&id), "From another device");
+    assert_eq!(kept_outside_text(&e, &id), 1, "{:?}", e.versions(&id));
 }
 
 /// A lock whose open has not recorded the note's text yet (Electron's fallback): the outside

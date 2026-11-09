@@ -1,11 +1,12 @@
 // An outside edit that empties the open note's body (#3530): the editor shows the empty body
-// instead of the text it held. On Tauri no CRDT doc carries the edit to the editor, so the editor
-// reloads from the note's body, as it does for any other outside edit. A tag template's Undo
-// reaches the editor the same way.
+// instead of the text it held. The core feeds the edit into the note's document, and the editor,
+// bound to that document (#3531 14b-2), takes it as an update. A tag template's Undo reaches the
+// editor the same way.
 import { readFileSync, writeFileSync } from 'node:fs'
 import { join } from 'node:path'
 
 import { SELECTORS } from '../../harness/app-helpers'
+import { invokeTest } from '../../harness/invoke-test'
 import { createNote, getNote, openFromSidebar, vaultOpen } from '../../harness/notes'
 import { test, expect } from '../../harness/test'
 
@@ -32,11 +33,11 @@ test('an outside edit that empties the body empties the open editor', async ({
   await expect(editor).not.toContainText('Written before the outside edit')
 })
 
-// Unsaved typing wins over an outside edit, and its save replaces the outside text on disk. The
-// core keeps that text as a version, and a toast says so once, with a way into version history.
-// The save lands up to 1 s after the typing, before or after the watcher reports the outside
-// edit: the editor holds the event's text, or the save's answer says it went over one.
-test('typing saved over an outside edit says so and opens version history', async ({
+// Typing the file does not have yet wins over an outside edit (#4030), the editor bound to the
+// core's document included (#3531 14b-2): the core keeps the outside file as a version, the
+// write-back writes the typing over it, and a toast says so once, with a way into version history.
+test('typing not yet written wins over an outside edit, says so and opens version history', async ({
+  app,
   page,
   testVaultPath
 }) => {
@@ -51,18 +52,24 @@ test('typing saved over an outside edit says so and opens version history', asyn
   await expect(editor).toContainText('Written before the outside edit')
 
   await editor.click()
+  await page.keyboard.press('End')
   await page.keyboard.insertText(' typed')
   const file = join(testVaultPath, note.path)
   const frontmatter = readFileSync(file, 'utf8').match(/^---\n[\s\S]*?\n---\n/)?.[0] ?? ''
-  writeFileSync(file, `${frontmatter}Written by an agent\n`)
+  const outside = `${frontmatter}Written by an agent\n`
+  writeFileSync(file, outside)
 
   const toast = page.locator(
     '[data-sonner-toast]:has-text("An outside change was replaced by your typing")'
   )
   await expect(toast).toBeVisible()
-  expect(readFileSync(file, 'utf8')).toContain(' typed')
+  await expect(editor).toContainText(' typed')
+  await expect(editor).not.toContainText('Written by an agent')
+  await expect.poll(() => readFileSync(file, 'utf8')).toContain(' typed')
+  const versions = await invokeTest<{ content: string }[]>(app, 'e2e_debug_query', {
+    sql: `SELECT content FROM note_snapshots WHERE note_id = '${note.id}'`
+  })
+  expect(versions.map((version) => version.content)).toContain(outside)
   await toast.getByRole('button', { name: 'Show versions' }).click()
   await expect(page.getByRole('dialog', { name: 'Version History' })).toBeVisible()
-  // The panel lists the kept version once Step 14 (#3531) ports `notes_get_versions`; the core
-  // keeping it is `notes_update::a_save_says_when_it_replaced_an_outside_edit_not_fed_yet`.
 })

@@ -207,7 +207,7 @@ pub fn append_local_update_in(
 /// The snapshot half matters. A fold deletes the rows it absorbed, so
 /// `MAX(seq)` over `yjs_updates` alone walks backwards after a compaction and
 /// hands out a sequence that was already used.
-fn next_local_seq(conn: &Connection, row_id: &str) -> Result<i64, CrdtError> {
+pub(crate) fn next_local_seq(conn: &Connection, row_id: &str) -> Result<i64, CrdtError> {
     let high: i64 = conn
         .query_row(
             "SELECT MAX(high) FROM (

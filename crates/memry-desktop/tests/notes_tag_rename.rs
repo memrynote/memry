@@ -522,8 +522,10 @@ fn an_outside_edit_of_a_renamed_days_header_adds_its_new_tag_alone() {
     assert_eq!(record(&e, &day, "tags"), ["career", "x"]);
 }
 
-/// An edit outside the app that lands while the rename writes a file wins: the file keeps it,
-/// and the record takes the file's tags, not the rename's.
+/// An edit outside the app that lands while the rename writes a file meets the rename's body,
+/// which the note took first, and loses to it as to unwritten typing (#4030): it is kept as a
+/// version, and its frontmatter stays the file's, so the record takes the file's tags, not the
+/// rename's.
 #[test]
 fn an_outside_edit_during_the_rename_is_kept() {
     let (mut e, notes, _) = opened();
@@ -535,15 +537,12 @@ fn an_outside_edit_during_the_rename_is_kept() {
     let open = e.session.current().unwrap();
     let renamed = notes.rename_tag(&open, &job("job", "career"), &mut |_, _| {});
     assert_eq!(renamed.unwrap().written.len(), 0);
-    e.facts_until(|f| {
-        matches!(f, Applied::Changed { note_id, source: ChangeSource::Watcher, .. } if *note_id == id)
-    });
-    assert_eq!(
-        e.read("Plan.md"),
-        outside,
-        "the outside edit was written over"
+    e.facts_until(|f| matches!(f, Applied::OutsideEditKept { note_id, .. } if *note_id == id));
+    until(
+        "the rename's body written under the outside frontmatter",
+        || e.read("Plan.md") == "---\ntags: [other]\n---\n#career here\n",
     );
-    assert_eq!(e.body(&id), "From another editor");
+    assert!(e.versions(&id).iter().any(|v| v == outside));
     until("the record took the file's tags", || {
         record(&e, &id, "tags") == ["other"]
     });

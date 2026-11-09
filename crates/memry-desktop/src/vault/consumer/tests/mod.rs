@@ -519,9 +519,11 @@ pub(super) fn applier(
         session: rows.session_for(vault).unwrap(),
         activity: crate::vault::activity::ActivityLog::new(),
         own_files: Arc::default(),
+        editor: std::sync::Weak::new(),
         watch: None,
         filter: WatchFilter::new(Vec::new()),
         untaken: Mutex::default(),
+        writeback: None,
     }
 }
 
@@ -544,3 +546,4 @@ mod pipeline;
 mod replace_race;
 mod rewatch;
 mod slow_watch_stop;
+mod typing_wins;
