@@ -1,4 +1,4 @@
--- data.db, migration 0020: read-only locks on notes and folders (desktop Step 14,
+-- data.db, migration 0022: read-only locks on notes and folders (desktop Step 14,
 -- #3531; Electron `packages/db-schema/src/schema/vault-locks.ts`, drizzle 0067,
 -- 0069, 0070).
 --

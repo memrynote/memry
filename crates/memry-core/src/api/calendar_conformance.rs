@@ -22,7 +22,7 @@ use crate::sync::apply::apply_inbound;
 
 fn fresh() -> Result<Db, StorageError> {
     let db = Db::open_in_memory()?;
-    db.call_blocking(|conn| migrations::run(conn, migrations::DATA_MIGRATIONS))?;
+    db.call_blocking(migrations::run_data)?;
     Ok(db)
 }
 

@@ -52,7 +52,7 @@ fn a_fresh_data_database_reaches_the_latest_version() {
     let version = db
         .call_blocking(|conn| user_version(conn))
         .expect("user_version");
-    assert_eq!(version, 21);
+    assert_eq!(version, 23);
 
     let names = table_names(&db);
     // Source of record, §A.2.
@@ -247,9 +247,9 @@ fn a_failing_migration_leaves_the_previous_version_in_place() {
 }
 
 #[test]
-fn note_snapshots_applies_to_a_version_12_database_and_keeps_its_rows() {
+fn note_snapshots_applies_to_a_version_14_database_and_keeps_its_rows() {
     let db = Db::open_in_memory().expect("open");
-    db.call_blocking(|conn| run(conn, &DATA_MIGRATIONS[..12]))
+    db.call_blocking(|conn| run(conn, &DATA_MIGRATIONS[..14]))
         .expect("a database as the last shipped build left it");
     db.call_blocking(|conn| {
         conn.execute(
@@ -307,9 +307,9 @@ fn note_snapshots_applies_to_a_version_12_database_and_keeps_its_rows() {
 }
 
 #[test]
-fn local_settings_applies_to_a_version_13_database_and_keeps_its_rows() {
+fn local_settings_applies_to_a_version_15_database_and_keeps_its_rows() {
     let db = Db::open_in_memory().expect("open");
-    db.call_blocking(|conn| run(conn, &DATA_MIGRATIONS[..13]))
+    db.call_blocking(|conn| run(conn, &DATA_MIGRATIONS[..15]))
         .expect("a database as the last shipped build left it");
     db.call_blocking(|conn| {
         conn.execute(
@@ -393,9 +393,9 @@ fn run_atomic_leaves_a_failed_migration_and_its_counter_untouched() {
 }
 
 #[test]
-fn note_files_applies_to_a_version_14_database_and_keeps_its_rows() {
+fn note_files_applies_to_a_version_16_database_and_keeps_its_rows() {
     let db = Db::open_in_memory().expect("open");
-    db.call_blocking(|conn| run(conn, &DATA_MIGRATIONS[..14]))
+    db.call_blocking(|conn| run(conn, &DATA_MIGRATIONS[..16]))
         .expect("a database as the last shipped build left it");
     db.call_blocking(|conn| {
         conn.execute(
@@ -432,9 +432,9 @@ fn note_files_applies_to_a_version_14_database_and_keeps_its_rows() {
 }
 
 #[test]
-fn note_positions_applies_to_a_version_15_database_and_keeps_its_rows() {
+fn note_positions_applies_to_a_version_17_database_and_keeps_its_rows() {
     let db = Db::open_in_memory().expect("open");
-    db.call_blocking(|conn| run(conn, &DATA_MIGRATIONS[..15]))
+    db.call_blocking(|conn| run(conn, &DATA_MIGRATIONS[..17]))
         .expect("a database as the last shipped build left it");
     db.call_blocking(|conn| {
         conn.execute(
@@ -454,7 +454,7 @@ fn note_positions_applies_to_a_version_15_database_and_keeps_its_rows() {
     assert_eq!(version, latest_version(DATA_MIGRATIONS));
     // The crash window of §A.0: the migration is a no-op the second time.
     db.call_blocking(|conn| {
-        conn.execute_batch(DATA_MIGRATIONS[15].sql)
+        conn.execute_batch(DATA_MIGRATIONS[17].sql)
             .map_err(|err| StorageError::Failed {
                 what: err.to_string(),
             })
@@ -479,9 +479,9 @@ fn note_positions_applies_to_a_version_15_database_and_keeps_its_rows() {
 }
 
 #[test]
-fn note_file_hashes_applies_to_a_version_16_database_and_names_the_hashes_rows_had() {
+fn note_file_hashes_applies_to_a_version_18_database_and_names_the_hashes_rows_had() {
     let db = Db::open_in_memory().expect("open");
-    db.call_blocking(|conn| run(conn, &DATA_MIGRATIONS[..16]))
+    db.call_blocking(|conn| run(conn, &DATA_MIGRATIONS[..18]))
         .expect("a database as the last shipped build left it");
     db.call_blocking(|conn| {
         conn.execute_batch(
@@ -500,7 +500,7 @@ fn note_file_hashes_applies_to_a_version_16_database_and_names_the_hashes_rows_h
     assert_eq!(version, latest_version(DATA_MIGRATIONS));
     // The crash window of §A.0: the migration is a no-op the second time.
     db.call_blocking(|conn| {
-        conn.execute_batch(DATA_MIGRATIONS[16].sql)
+        conn.execute_batch(DATA_MIGRATIONS[18].sql)
             .map_err(|err| StorageError::Failed {
                 what: err.to_string(),
             })
@@ -526,9 +526,9 @@ fn note_file_hashes_applies_to_a_version_16_database_and_names_the_hashes_rows_h
 /// feature its module is built with.
 #[cfg(feature = "markdown")]
 #[test]
-fn the_note_identity_migration_applies_to_a_version_17_database_and_answers_the_identity() {
+fn the_note_identity_migration_applies_to_a_version_19_database_and_answers_the_identity() {
     let db = Db::open_in_memory().expect("open");
-    db.call_blocking(|conn| run(conn, &DATA_MIGRATIONS[..17]))
+    db.call_blocking(|conn| run(conn, &DATA_MIGRATIONS[..19]))
         .expect("a database as the last build left it");
     db.call_blocking(|conn| {
         conn.execute(
@@ -546,7 +546,7 @@ fn the_note_identity_migration_applies_to_a_version_17_database_and_answers_the_
         .expect("step forward");
     assert_eq!(version, latest_version(DATA_MIGRATIONS));
     db.call_blocking(|conn| {
-        conn.execute_batch(DATA_MIGRATIONS[17].sql)
+        conn.execute_batch(DATA_MIGRATIONS[19].sql)
             .map_err(|err| StorageError::Failed {
                 what: err.to_string(),
             })

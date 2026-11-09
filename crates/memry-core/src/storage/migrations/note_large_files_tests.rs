@@ -1,4 +1,4 @@
-//! Data migration 0021, `note_large_files`: kept apart from `tests.rs` for its line ceiling.
+//! Data migration 0023, `note_large_files`: kept apart from `tests.rs` for its line ceiling.
 
 use super::*;
 use crate::domain::note_files;

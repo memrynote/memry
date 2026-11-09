@@ -100,50 +100,63 @@ pub const DATA_MIGRATIONS: &[Migration] = &[
         name: "journal_aliases",
         sql: include_str!("migrations/data/0012_journal_aliases.sql"),
     },
+    // main's 13 and 14, shipped in v2026-11-05.2 and v2026-11-06. feat/tauri-v2
+    // builds had used 13..21 for the entries below; `legacy_numbering` moves a
+    // file they migrated onto this numbering (#4052).
     Migration {
         version: 13,
-        name: "note_snapshots",
-        sql: include_str!("migrations/data/0013_note_snapshots.sql"),
+        name: "calendar_cursor_reset",
+        sql: include_str!("migrations/data/0013_calendar_cursor_reset.sql"),
     },
     Migration {
         version: 14,
-        name: "local_settings",
-        sql: include_str!("migrations/data/0014_local_settings.sql"),
+        name: "calendar_foreign_cursor_reset",
+        sql: include_str!("migrations/data/0014_calendar_foreign_cursor_reset.sql"),
     },
     Migration {
         version: 15,
-        name: "note_files",
-        sql: include_str!("migrations/data/0015_note_files.sql"),
+        name: "note_snapshots",
+        sql: include_str!("migrations/data/0015_note_snapshots.sql"),
     },
     Migration {
         version: 16,
-        name: "notes_device_tables",
-        sql: include_str!("migrations/data/0016_notes_device_tables.sql"),
+        name: "local_settings",
+        sql: include_str!("migrations/data/0016_local_settings.sql"),
     },
     Migration {
         version: 17,
-        name: "note_file_hashes",
-        sql: include_str!("migrations/data/0017_note_file_hashes.sql"),
+        name: "note_files",
+        sql: include_str!("migrations/data/0017_note_files.sql"),
     },
     Migration {
         version: 18,
-        name: "note_identity",
-        sql: include_str!("migrations/data/0018_note_identity.sql"),
+        name: "notes_device_tables",
+        sql: include_str!("migrations/data/0018_notes_device_tables.sql"),
     },
     Migration {
         version: 19,
-        name: "wiki_name_keys",
-        sql: include_str!("migrations/data/0019_wiki_name_keys.sql"),
+        name: "note_file_hashes",
+        sql: include_str!("migrations/data/0019_note_file_hashes.sql"),
     },
     Migration {
         version: 20,
-        name: "vault_locks",
-        sql: include_str!("migrations/data/0020_vault_locks.sql"),
+        name: "note_identity",
+        sql: include_str!("migrations/data/0020_note_identity.sql"),
     },
     Migration {
         version: 21,
+        name: "wiki_name_keys",
+        sql: include_str!("migrations/data/0021_wiki_name_keys.sql"),
+    },
+    Migration {
+        version: 22,
+        name: "vault_locks",
+        sql: include_str!("migrations/data/0022_vault_locks.sql"),
+    },
+    Migration {
+        version: 23,
         name: "note_large_files",
-        sql: include_str!("migrations/data/0021_note_large_files.sql"),
+        sql: include_str!("migrations/data/0023_note_large_files.sql"),
     },
 ];
 
@@ -193,6 +206,14 @@ pub fn user_version(conn: &Connection) -> Result<u32, StorageError> {
         .map_err(|err| StorageError::Failed {
             what: format!("could not read user_version: {err}"),
         })
+}
+
+/// Migrates `data.db`, as every open of the file does: moves a file an earlier
+/// feat/tauri-v2 build left onto this numbering ([`legacy_numbering`]), then
+/// applies [`DATA_MIGRATIONS`].
+pub fn run_data(conn: &mut Connection) -> Result<u32, StorageError> {
+    legacy_numbering::renumber(conn)?;
+    run(conn, DATA_MIGRATIONS)
 }
 
 /// Applies every migration newer than the database's `user_version`, in order,
@@ -281,8 +302,11 @@ fn set_user_version(conn: &Connection, version: u32) -> Result<(), StorageError>
         })
 }
 
+mod legacy_numbering;
 #[cfg(test)]
 mod note_large_files_tests;
+#[cfg(test)]
+mod numbering_tests;
 #[cfg(test)]
 mod tests;
 #[cfg(test)]
