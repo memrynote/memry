@@ -50,6 +50,10 @@ mod attachment_upload_wire;
 mod auth_session;
 #[path = "block_edit_vectors.rs"]
 mod block_edit_vectors;
+#[path = "block_refs.rs"]
+mod block_refs;
+#[path = "block_refs_untrusted.rs"]
+mod block_refs_untrusted;
 #[path = "body_edit_append.rs"]
 mod body_edit_append;
 #[path = "body_edit_columns.rs"]

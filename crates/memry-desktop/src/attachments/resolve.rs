@@ -18,7 +18,7 @@ use crate::shell::file_open::{Resolution, resolve_under_root};
 use crate::shell::file_service::heal;
 use crate::shell::local_scheme::{
     LocalScheme, escapes_are_well_formed, locate, normalize_absolute, remap_cross_device,
-    resolve_local_scheme_path,
+    resolve_requested_path,
 };
 use crate::vault::layout::ATTACHMENTS_DIR;
 
@@ -90,13 +90,9 @@ pub fn resolve(
 
 /// The vault-relative path of a `memry-file:` url: its path when it is in this vault, else the
 /// `attachments/...` tail of a path written on another device (`remapCrossDeviceAttachmentPath`).
-/// A path a Mac wrote has no drive, which is no absolute path on Windows; only its tail is used.
 fn legacy_rel(vault: &Path, url: &str, windows: bool) -> Result<String, AttachmentError> {
-    let Some(requested) = resolve_local_scheme_path(url, LocalScheme::File, windows) else {
-        return resolve_local_scheme_path(url, LocalScheme::File, false)
-            .and_then(|written| remap_cross_device(&written))
-            .ok_or(AttachmentError::OutsideVault);
-    };
+    let requested = resolve_requested_path(url, LocalScheme::File, windows)
+        .ok_or(AttachmentError::OutsideVault)?;
     let root = normalize_absolute(&vault.to_string_lossy(), windows)
         .ok_or(AttachmentError::OutsideVault)?;
     match locate(&requested, std::slice::from_ref(&root), windows) {
