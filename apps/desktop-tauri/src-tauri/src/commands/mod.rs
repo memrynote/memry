@@ -35,6 +35,7 @@ pub mod vault;
 pub mod vault_activity;
 pub mod vault_files;
 pub mod vault_index;
+pub mod vault_locks;
 
 use error::{CommandError, ErrorKind, log_failure};
 

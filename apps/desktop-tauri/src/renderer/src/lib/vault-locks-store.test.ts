@@ -11,22 +11,28 @@ import {
 } from './vault-locks-store'
 
 // The store starts once per renderer: the first subscriber loads the state and
-// wires `vault-locks:changed`. These tests share that one start, in order.
-const broadcasts: Array<(state: VaultLockState) => void> = []
-const list = vi.fn<() => Promise<VaultLockState>>()
-const set = vi.fn()
-list.mockResolvedValue({ notes: ['note-own'], folders: ['Archive'] })
-Object.assign(window.api, {
-  vaultLocks: { list, set },
-  onVaultLocksChanged: (callback: (state: VaultLockState) => void) => {
-    broadcasts.push(callback)
-    return () => {}
+// wires `VaultLocksChangedEvent`. These tests share that one start, in order.
+const { broadcasts, list, set } = vi.hoisted(() => ({
+  broadcasts: [] as Array<(received: { payload: unknown }) => void>,
+  list: vi.fn(),
+  set: vi.fn()
+}))
+vi.mock('../../../generated/bindings', () => ({
+  commands: { vaultLocksList: list, vaultLocksSet: set },
+  events: {
+    vaultLocksChangedEvent: {
+      listen: async (handler: (received: { payload: unknown }) => void) => {
+        broadcasts.push(handler)
+        return () => {}
+      }
+    }
   }
-})
+}))
+list.mockResolvedValue({ notes: ['note-own'], folders: ['Archive'] })
 
 function broadcast(state: VaultLockState): void {
   act(() => {
-    for (const callback of broadcasts) callback(state)
+    for (const handler of broadcasts) handler({ payload: state })
   })
 }
 
@@ -55,7 +61,7 @@ describe('vault-locks-store (#2606)', () => {
     expect(renderHook(() => useIsNoteLocked(null, null)).result.current).toBe(false)
   })
 
-  it('follows every broadcast from main', () => {
+  it('follows every lock change Rust sends', () => {
     const state = renderHook(() => useVaultLockState())
     const locked = renderHook(() => useIsNoteLocked('note-own', 'Notes/own.md'))
 
@@ -68,7 +74,7 @@ describe('vault-locks-store (#2606)', () => {
     expect(locked.result.current).toBe(false)
   })
 
-  it('publishes the state main returns after a lock change', async () => {
+  it('publishes the state the command answers after a lock change', async () => {
     set.mockResolvedValueOnce({ notes: ['note-new'], folders: [] })
     const ownLock = renderHook(() => useHasOwnNoteLock('note-new'))
 

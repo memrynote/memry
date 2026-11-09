@@ -91,6 +91,10 @@ vi.mock('../src/generated/bindings', () => {
   // `window.api.journal` is typed without the ported journal methods; component tests still set them.
   const journal = () =>
     window.api.journal as unknown as Record<string, (...args: unknown[]) => Promise<unknown>>
+  // The locks are off `window.api`'s type; component tests still set `window.api.vaultLocks`.
+  const vaultLocks = () =>
+    (window.api as unknown as { vaultLocks: Record<string, (...args: unknown[]) => unknown> })
+      .vaultLocks
   // The window functions are off `window.api`'s type; the mock below still provides them.
   const win = () => window.api as unknown as Record<string, (...args: unknown[]) => unknown>
   const definition = async (result: Promise<unknown>) => {
@@ -303,6 +307,9 @@ vi.mock('../src/generated/bindings', () => {
         return null
       },
       notesGetFolderTemplate: (folderPath: string) => notes().getFolderTemplate(folderPath),
+      // Async, so a test that sets no `window.api.vaultLocks` gets a rejection the store logs.
+      vaultLocksList: async () => vaultLocks().list(),
+      vaultLocksSet: async (input: unknown) => vaultLocks().set(input),
       tagsGetSchemaSnapshot: () => tags().getSchemaSnapshot(),
       tagsEditSchema: (command: unknown) => tags().editSchema(command),
       tagsPreviewImpact: (query: unknown) => tags().previewImpact(query),
@@ -404,6 +411,8 @@ vi.mock('../src/generated/bindings', () => {
       tagRenamedEvent: event(() => api().onTagRenamed),
       tagDeletedEvent: event(() => api().onTagDeleted),
       tagsProgressEvent: event(() => api().onTagsProgress),
+      vaultLocksChangedEvent: event(() => api().onVaultLocksChanged),
+      vaultLocksExternalEditRestoredEvent: event(() => api().onVaultLockExternalEditRestored),
       vaultIndexRecoveredEvent: event(
         () => window.api.onVaultIndexRecovered,
         (recovered) => ({ ...(recovered as object), detail: '' })
