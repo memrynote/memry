@@ -21,7 +21,7 @@ use super::file_serve::{
 };
 use super::local_scheme::{
     LocalScheme, Located, attachment_parts, find_heal_candidate, locate, normalize_absolute,
-    remap_cross_device, resolve_local_scheme_path,
+    remap_cross_device, resolve_requested_path,
 };
 
 /// The most an embedded HTML file may weigh. Larger is refused rather than read into memory.
@@ -319,7 +319,7 @@ fn serve_checked(
     windows: bool,
     caps: Caps,
 ) -> Served {
-    let Some(requested) = resolve_local_scheme_path(url, LocalScheme::File, windows) else {
+    let Some(requested) = resolve_requested_path(url, LocalScheme::File, windows) else {
         return Served::status(404);
     };
     let Some((texts, paths, vault_index)) = normalized_roots(roots, windows) else {
@@ -425,7 +425,7 @@ pub fn serve_html(url: &str, is_get: bool, vault: Option<&Path>, windows: bool) 
     }
     let (Some(vault), Some(requested)) = (
         vault,
-        resolve_local_scheme_path(url, LocalScheme::Html, windows),
+        resolve_requested_path(url, LocalScheme::Html, windows),
     ) else {
         return Served::status(404);
     };
