@@ -124,6 +124,8 @@ mod large_file_index;
 mod large_file_search;
 #[path = "large_file_sessions.rs"]
 mod large_file_sessions;
+#[path = "lock_outside_edits.rs"]
+mod lock_outside_edits;
 #[path = "lock_service.rs"]
 mod lock_service;
 #[path = "logship.rs"]

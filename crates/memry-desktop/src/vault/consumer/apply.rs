@@ -26,6 +26,7 @@ use crate::vault::watch::{VaultEvent, WatchHandle};
 use crate::vault::writeback::WriteBack;
 
 mod crossing;
+mod locked;
 mod read;
 
 use read::Unread;
@@ -287,6 +288,9 @@ impl Applier {
                 Ok(None) => return Step::Done,
                 Err(Unread::Missing) => return Step::Retry(path.to_owned()),
                 Err(Unread::Failed { file_hash, failure }) => {
+                    if let Some(step) = self.restored_unreadable(note_id, path) {
+                        return step;
+                    }
                     report_unread(scan, path, failure);
                     // Too large to read whole (past the read cap) is large by its size.
                     if large_by_size(size).is_some() {
@@ -303,6 +307,14 @@ impl Applier {
             };
             // Before the feed: whatever it does with the text, the file is what it is.
             record_large_file(lane.files(), note_id, large_file_class(&file.raw).is_some());
+            // A locked note's outside edit is kept as a version and its locked text written
+            // back: it never reaches the document or the peers (`restoreLockedNoteFile`). The
+            // lock answers before the typing rule (`outside_edit`), which tells the record.
+            if row.content_hash.as_deref() != Some(file.hash.as_str())
+                && let Some(step) = self.restored(note_id, path, Some(&file))
+            {
+                return step;
+            }
             let write = match row.content_hash.as_deref() {
                 // Read back as recorded: the row's time moves on, so the walk does not read it
                 // again, unless the body moved since (a pass a crash cut short): then the note
@@ -419,6 +431,10 @@ impl Applier {
                     "note_files could not be read: {error}"
                 );
             }
+        }
+        // A locked note's file comes back instead of a delete that would reach every device.
+        if self.restored(note_id, path, None).is_some() {
+            return;
         }
         match self.identity.on_removed(&self.ctx(), note_id, path) {
             Ok(Removal::Deleted) => {}
