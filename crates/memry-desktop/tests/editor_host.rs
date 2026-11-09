@@ -28,6 +28,7 @@ use yrs::updates::encoder::Encode as _;
 use yrs::{Doc, GetString as _, ReadTxn as _, StateVector, Text as _, Transact as _, Update};
 
 use crate::device_key;
+use crate::on_warning::logged;
 
 type Frames = Arc<Mutex<Vec<Vec<u8>>>>;
 
@@ -671,6 +672,25 @@ fn a_window_that_does_not_answer_holds_an_outside_edit_only_as_long_as_the_wait(
         kinds(&main_frames),
         [(BARRIER, Some(id)), (RELEASE, Some(id))]
     );
+}
+
+/// A window whose channel is gone cannot answer: the outside edit answers for it and waits for
+/// none, so it never waits out the wait (and warns) for a window that is not there.
+#[test]
+fn a_window_whose_channel_is_gone_is_answered_for_and_not_waited_for() {
+    let env = env();
+    let note = env.note();
+    let gone = Subscriber {
+        window_label: "gone".to_owned(),
+        channel: Arc::new(|_| false),
+    };
+    env.host.open(&note, Some(&env.vault), gone).unwrap();
+
+    let (hold, lines) = logged("memry_desktop::editor::typing", || {
+        env.host.hold_typing(&note, Duration::from_millis(50))
+    });
+    assert!(hold.is_some(), "the window has the note open");
+    assert_eq!(lines, Vec::<String>::new());
 }
 
 /// An outside edit of a note no window has open asks no window, and waits for none.
