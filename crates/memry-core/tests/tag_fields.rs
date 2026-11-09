@@ -188,3 +188,95 @@ fn a_tag_has_fields_of_its_own_or_through_an_ancestor() {
     keys.sort();
     assert_eq!(keys, ["author", "person"]);
 }
+
+#[test]
+fn a_tag_template_resolves_by_tag_key_as_desktop_resolves_it() {
+    let db = open();
+    define_tag(
+        &db,
+        " Person",
+        json!({ "t": 1, "template": { "id": "tpl-person", "autofill": true } }),
+    );
+    let resolved = db
+        .call_blocking(|conn: &mut Connection| {
+            memry_core::domain::tag_schema::resolved(conn, &|_| None)
+        })
+        .expect("the read");
+    assert_eq!(
+        resolved
+            .get("person")
+            .and_then(|tag| tag.template.as_ref())
+            .map(|t| t.id.as_str()),
+        Some("tpl-person")
+    );
+    for spelling in [" Person", "Person", "person "] {
+        let tags = vec![spelling.to_owned()];
+        let template = db
+            .call_blocking(|conn: &mut Connection| {
+                memry_core::domain::tag_fields::tag_template(conn, &tags)
+            })
+            .expect("the read");
+        assert_eq!(
+            template,
+            Some(memry_core::domain::tag_fields::TagTemplate {
+                tag: spelling.to_owned(),
+                id: s("tpl-person"),
+                autofill: true,
+            }),
+            "{spelling:?}"
+        );
+    }
+}
+
+#[test]
+fn a_field_takes_its_definitions_options_only_when_it_takes_its_type() {
+    let db = open();
+    db.call_blocking(|conn: &mut Connection| {
+        conn.execute_batch(
+            "INSERT INTO property_definitions (name, type, options, color) VALUES
+                ('Stage', 'select', '[\"a\",\"b\"]', 'red'),
+                ('Home', 'project', '{\"x\":1}', 'green'),
+                ('Boss', 'select', '[\"c\"]', 'blue');",
+        )
+        .expect("the property definitions");
+        Ok(())
+    })
+    .expect("the property definitions");
+    define_tag(
+        &db,
+        "deal",
+        json!({ "t": 1, "fields": [
+            { "name": "Stage" },
+            { "name": "Home" },
+            { "name": "Boss", "relation": { "target": null, "many": true } }
+        ]}),
+    );
+    let meta = note(&db, &["deal"], json!({}));
+    let fields: Vec<_> = meta.tag_fields[0]
+        .fields
+        .iter()
+        .map(|f| {
+            (
+                f.property.name.as_str(),
+                f.property.type_name.as_deref(),
+                f.property.options_json.as_deref(),
+                f.property.color.as_deref(),
+                f.relation_many,
+            )
+        })
+        .collect();
+    assert_eq!(
+        fields,
+        [
+            (
+                "Stage",
+                Some("select"),
+                Some("[\"a\",\"b\"]"),
+                Some("red"),
+                false
+            ),
+            ("Home", Some("text"), None, Some("green"), false),
+            ("Boss", Some("relation"), None, Some("blue"), true),
+        ]
+    );
+}
