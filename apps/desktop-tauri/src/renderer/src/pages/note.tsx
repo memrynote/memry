@@ -158,6 +158,7 @@ import { useIsBookmarked } from '@/hooks/use-bookmarks'
 import { useEditorSettings, EDITOR_NORMAL_CONTENT_WIDTH } from '@/hooks/use-editor-settings'
 import { extractErrorMessage } from '@/lib/ipc-error'
 import { useHasOwnNoteLock, useIsNoteLocked } from '@/lib/vault-locks-store'
+import { useIsNoteExcluded } from '@/lib/excluded-notes-store'
 import { LockedNoteNotice } from '@/components/note/locked-note-notice'
 import { createLogger } from '@/lib/logger'
 import { markLaunchNoteReadable } from '@/lib/launch-restore'
@@ -287,7 +288,9 @@ export function NotePage({ noteId }: NotePageProps) {
   } = useNote(noteId ?? null, { readOnMount: true })
   // The owner locked this note or a folder above it (#2606): read-only here
   // and for every agent write path.
-  const isLocked = useIsNoteLocked(noteId ?? null, note?.path ?? null)
+  // Or its file is in an excluded folder, which main refuses every write to (#3530).
+  const isExcluded = useIsNoteExcluded(note?.path)
+  const isLocked = useIsNoteLocked(noteId ?? null, note?.path ?? null) || isExcluded
   const hasOwnLock = useHasOwnNoteLock(noteId ?? null)
   const { createNote, updateNote, renameNote, deleteNote } = useNoteMutations()
   const {
@@ -2141,7 +2144,7 @@ export function NotePage({ noteId }: NotePageProps) {
           data-testid="note-metadata"
           data-marquee-ignore
         >
-          {isLocked && <LockedNoteNotice />}
+          {isLocked && <LockedNoteNotice excluded={isExcluded} />}
           <NoteTitle
             disabled={isLocked}
             noteId={note.id}

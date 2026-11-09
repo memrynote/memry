@@ -23,6 +23,7 @@ const COMMAND_CODE_KEYS = new Map<string, string>([
   ['frontmatter_failed', 'errors:note.invalidFrontmatter'],
   ['invalid_title', 'errors:note.invalidTitle'],
   ['note_body_not_pulled', 'errors:property.noteNotPulled'],
+  ['note_excluded', 'errors:note.excluded'],
   ['note_edit_kept', 'errors:property.noteChanged'],
   ['note_not_representable', 'errors:property.setFailed'],
   ['note_too_large_to_sync', 'errors:note.tooLargeToSync'],

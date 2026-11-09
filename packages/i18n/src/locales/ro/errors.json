@@ -28,6 +28,7 @@
   },
   "note": {
     "notFound": "Această notiță nu a putut fi găsită. Este posibil să fi fost ștearsă.",
+    "excluded": "Această notă se află într-un dosar exclus, așa că nu poate fi modificată.",
     "invalidFrontmatter": "Această notiță are metadate nevalide și nu poate fi citită.",
     "invalidTitle": "Titlul unei notițe trebuie să aibă între 1 și 200 de caractere.",
     "duplicateId": "Există deja o notiță cu acest ID.",

@@ -32,6 +32,7 @@ Object.defineProperty(navigator, 'platform', {
 
 const mocks = vi.hoisted(() => ({
   isNoteLocked: false,
+  isNoteExcluded: false,
   /** The links hook and the backlinks panel as they ship, fed by the `notesGetLinks` binding. */
   realLinks: false,
   /** Null: the note's own lock follows `isNoteLocked`. */
@@ -729,6 +730,10 @@ vi.mock('@/lib/vault-locks-store', async (importOriginal) => ({
   setVaultLock: mocks.setVaultLock
 }))
 
+vi.mock('@/lib/excluded-notes-store', () => ({
+  useIsNoteExcluded: () => mocks.isNoteExcluded
+}))
+
 vi.mock('@/components/note/ghost-affordance-row', () => ({
   GhostAffordanceRow: ({ onAddProperty }: { onAddProperty: (property: unknown) => void }) => (
     <button type="button" onClick={() => onAddProperty({ name: 'Ghost', type: 'text' })}>
@@ -1029,6 +1034,7 @@ describe('NotePage', () => {
     mocks.onMarkdownChange = null
     mocks.propertyOnBlocked = null
     mocks.isNoteLocked = false
+    mocks.isNoteExcluded = false
     mocks.realLinks = false
     mocks.hasOwnNoteLock = null
     mocks.setVaultLock.mockReset().mockResolvedValue(undefined)
@@ -2666,6 +2672,29 @@ describe('NotePage', () => {
       await screen.findByRole('button', { name: 'editor.toolbar.setLocalOnly' })
       expect(screen.queryByRole('button', { name: 'vaultLock.lockNote' })).not.toBeInTheDocument()
       expect(screen.queryByRole('button', { name: 'vaultLock.unlockNote' })).not.toBeInTheDocument()
+    })
+  })
+
+  describe('a note in an excluded folder (#3530)', () => {
+    it('opens read-only and says why', async () => {
+      mocks.isNoteExcluded = true
+      renderWithProviders(<NotePage noteId="note-1" />)
+
+      expect(await screen.findByTestId('info-section')).toHaveAttribute('data-disabled', 'true')
+      expect(screen.getByTestId('note-locked-indicator')).toHaveTextContent(
+        'vaultLock.excludedIndicator'
+      )
+      expect(screen.getByRole('button', { name: 'editor.toolbar.setLocalOnly' })).toBeDisabled()
+      expect(screen.queryByRole('button', { name: 'vaultLock.lockNote' })).not.toBeInTheDocument()
+    })
+
+    it('a locked note keeps its own notice', async () => {
+      mocks.isNoteLocked = true
+      renderWithProviders(<NotePage noteId="note-1" />)
+
+      expect(await screen.findByTestId('note-locked-indicator')).toHaveTextContent(
+        'vaultLock.readOnlyIndicator'
+      )
     })
   })
 

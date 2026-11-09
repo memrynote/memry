@@ -28,6 +28,7 @@
   },
   "note": {
     "notFound": "Hindi mahanap ang talang ito. Baka natanggal na ito.",
+    "excluded": "Nasa isang hindi isinasamang folder ang talang ito, kaya hindi ito mababago.",
     "invalidFrontmatter": "May hindi wastong metadata ang talang ito kaya hindi ito mabasa.",
     "invalidTitle": "Ang pamagat ng tala ay dapat may 1 hanggang 200 character.",
     "duplicateId": "Mayroon nang tala na may ganitong ID.",

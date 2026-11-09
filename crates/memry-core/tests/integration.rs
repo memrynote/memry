@@ -196,6 +196,8 @@ mod editor_compaction;
 mod editor_concurrency;
 #[path = "editor_every_writer.rs"]
 mod editor_every_writer;
+#[path = "editor_excluded_refuses.rs"]
+mod editor_excluded_refuses;
 #[path = "editor_large_file.rs"]
 mod editor_large_file;
 #[path = "editor_locked_refuses.rs"]

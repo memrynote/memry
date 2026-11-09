@@ -63,6 +63,9 @@ fn attachment_error<R: Runtime>(app: &AppHandle<R>, error: &AttachmentError) -> 
         AttachmentError::Locked => {
             CommandError::new(ErrorKind::Locked, "note_locked", error.to_string())
         }
+        AttachmentError::Excluded => {
+            CommandError::new(ErrorKind::Locked, "note_excluded", error.to_string())
+        }
         AttachmentError::NoteNotFound(_) | AttachmentError::FileNotFound => CommandError::new(
             ErrorKind::NotFound,
             "attachment_not_found",

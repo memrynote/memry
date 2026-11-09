@@ -70,6 +70,9 @@ pub struct Vault {
     /// The one editor host of this vault, made on the first [`Vault::editor`].
     #[cfg(feature = "markdown")]
     editor: std::sync::OnceLock<Arc<crate::api::editor::Editor>>,
+    /// The files no write of the app reaches, shared with the editor.
+    #[cfg(feature = "markdown")]
+    excluded: crate::api::excluded_paths::ExcludedPaths,
 }
 
 impl Vault {
@@ -89,6 +92,8 @@ impl Vault {
             directory,
             #[cfg(feature = "markdown")]
             editor: std::sync::OnceLock::new(),
+            #[cfg(feature = "markdown")]
+            excluded: Default::default(),
         })
     }
 
@@ -151,13 +156,25 @@ impl Vault {
         if let Some(editor) = self.editor.get() {
             return Ok(Arc::clone(editor));
         }
-        let built = Arc::new(crate::api::editor::Editor::over(self.db.clone(), &store)?);
+        let built = Arc::new(crate::api::editor::Editor::over(
+            self.db.clone(),
+            &store,
+            self.excluded.clone(),
+        )?);
         Ok(Arc::clone(self.editor.get_or_init(|| {
             // Every other writer of a body log reaches the editor's documents.
             let observer: Arc<dyn crate::crdt::body_writes::BodyObserver> = built.clone();
             self.db.observe(Arc::downgrade(&observer));
             built
         })))
+    }
+
+    /// The files no write of the app reaches: the editor opens their notes read-only and
+    /// refuses their edits (desktop #3530 13m-7b-3b). Not part of the FFI surface.
+    #[cfg(feature = "markdown")]
+    #[doc(hidden)]
+    pub fn excluded(&self) -> &crate::api::excluded_paths::ExcludedPaths {
+        &self.excluded
     }
 
     /// The kept versions of this vault's notes and days (desktop Step 14d).
@@ -352,6 +369,8 @@ impl Vault {
             directory,
             #[cfg(feature = "markdown")]
             editor: std::sync::OnceLock::new(),
+            #[cfg(feature = "markdown")]
+            excluded: Default::default(),
         })
     }
 

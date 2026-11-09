@@ -28,6 +28,7 @@
   },
   "note": {
     "notFound": "Táto poznámka sa nenašla. Možno bola odstránená.",
+    "excluded": "Táto poznámka je vo vylúčenom priečinku, takže ju nemožno zmeniť.",
     "invalidFrontmatter": "Táto poznámka má neplatné metaúdaje a nemožno ju čítať.",
     "invalidTitle": "Názov poznámky musí mať 1 až 200 znakov.",
     "duplicateId": "Poznámka s týmto ID už existuje.",

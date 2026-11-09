@@ -430,6 +430,10 @@ impl VaultTier {
         after_walk: AfterWalk,
     ) -> Result<(VaultWatcher, Consumer), String> {
         let exclude = read_vault_config(&vault.path).exclude_patterns;
+        // The files the watcher does not read are the ones no write of the app reaches
+        // (`ExcludedPaths`): the note stays listed, read-only, as Electron's index drops it.
+        let filter = WatchFilter::new(exclude.clone());
+        vault.vault.excluded().set(move |path| filter.ignores(path));
         let identity = self.identity();
         let new_files = if identity.adopts() {
             NewFiles::Report

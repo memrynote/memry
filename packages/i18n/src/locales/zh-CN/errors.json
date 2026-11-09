@@ -28,6 +28,7 @@
   },
   "note": {
     "notFound": "未找到此笔记。它可能已被删除。",
+    "excluded": "此笔记位于已排除的文件夹中，因此无法更改。",
     "invalidFrontmatter": "此笔记的元数据无效，无法读取。",
     "invalidTitle": "笔记标题长度须为 1 到 200 个字符。",
     "duplicateId": "已存在具有此 ID 的笔记。",

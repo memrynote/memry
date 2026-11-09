@@ -28,6 +28,7 @@
   },
   "note": {
     "notFound": "Ez a jegyzet nem található. Lehet, hogy törölték.",
+    "excluded": "Ez a jegyzet egy kizárt mappában van, ezért nem módosítható.",
     "invalidFrontmatter": "Ennek a jegyzetnek érvénytelen metaadatai vannak, ezért nem olvasható.",
     "invalidTitle": "A jegyzet címének 1 és 200 karakter közötti hosszúságúnak kell lennie.",
     "duplicateId": "Ezzel az azonosítóval már létezik jegyzet.",

@@ -7,7 +7,7 @@
 //! | Test                                                            | Rule                                    |
 //! | --------------------------------------------------------------- | --------------------------------------- |
 //! | excluding a folder keeps its notes, and including it takes ...  | no record deleted, same id, no duplicate |
-//! | an excluded note still takes the app's edits                    | its row and write-back stay             |
+//! | an excluded note's body change from elsewhere reaches its file  | its row and write-back stay             |
 //! | excluding the journal folder keeps every day                    | a day is a day by folder and format     |
 //! | an exclude change killed at any step keeps every note           | the save is the only durable step       |
 //! | an excluded note renamed outside keeps its record               | `note_metadata`: no delete syncs        |
@@ -168,9 +168,11 @@ fn a_folder_no_longer_excluded_is_watched_at_once() {
     assert_eq!(e.rows().len(), rows.len() + 1);
 }
 
-/// The row of an excluded note stays, so an edit in the app still reaches its file.
+/// The row of an excluded note stays, so a body change that reaches its document from
+/// elsewhere (another device's, through sync) is still written to its file, as the write-back
+/// carries a locked note's. The app's own writes are refused (`vault_exclude_read_only`).
 #[test]
-fn an_excluded_note_still_takes_the_apps_edits() {
+fn an_excluded_notes_body_change_from_elsewhere_still_reaches_its_file() {
     let (mut e, store, old, _new) = two_notes();
     changed(&mut e, excludes(&["archive"]));
     e.edit_in_app(&store, &old, "Edited in the app");

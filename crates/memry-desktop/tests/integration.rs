@@ -250,6 +250,8 @@ mod vault_config;
 mod vault_consumer;
 #[path = "vault_exclude.rs"]
 mod vault_exclude;
+#[path = "vault_exclude_read_only.rs"]
+mod vault_exclude_read_only;
 #[path = "vault_init.rs"]
 mod vault_init;
 #[path = "vault_locks_app_edit.rs"]

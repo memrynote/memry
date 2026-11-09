@@ -190,6 +190,9 @@ pub enum Kept {
     NoBody,
     /// The note, or a folder above its file, is locked (Electron `assertNoteWritable`).
     Locked,
+    /// The note's file is excluded (`ExcludedPaths`): Electron's index does not hold it, so no
+    /// edit of the app reaches it.
+    Excluded,
 }
 
 /// How an edit failed. Every failure but [`AppEditError::File`] after the feed left the file,
@@ -288,8 +291,8 @@ impl AppEdit {
         let Some(row) = lane.files().by_id(note_id).map_err(AppEditError::from)? else {
             return Ok(Edited::Kept(Kept::NoRow));
         };
-        if self.locked(note_id, &row.path)? {
-            return Ok(Edited::Kept(Kept::Locked));
+        if let Some(kept) = self.read_only(note_id, &row.path)? {
+            return Ok(Edited::Kept(kept));
         }
         if row.file_type != FileType::Markdown.as_str() {
             return Ok(Edited::Kept(Kept::NotMarkdown));
@@ -398,9 +401,13 @@ impl AppEdit {
                 }
             }
             // No feed asked the lock since the first check: a lock taken meanwhile refuses here.
-            false if self.locked(note_id, &row.path)? => return Ok(Edited::Kept(Kept::Locked)),
-            // The document holds what the row names; the file is its text only if that is it.
-            false => row_names_file,
+            false => {
+                if let Some(kept) = self.read_only(note_id, &row.path)? {
+                    return Ok(Edited::Kept(kept));
+                }
+                // The document holds what the row names; the file is its text only if that is it.
+                row_names_file
+            }
         };
         let hash = content_hash(&text);
         if takes {
@@ -462,9 +469,13 @@ impl AppEdit {
         })
     }
 
-    /// Whether the note, or a folder above `path`, is locked.
-    fn locked(&self, note_id: &str, path: &str) -> Result<bool, AppEditError> {
-        Ok(self.vault.locks().is_note_locked(note_id, Some(path))?)
+    /// Why no edit reaches the note at `path`: it, or a folder above it, is locked, or its
+    /// file is excluded.
+    fn read_only(&self, note_id: &str, path: &str) -> Result<Option<Kept>, AppEditError> {
+        if self.vault.locks().is_note_locked(note_id, Some(path))? {
+            return Ok(Some(Kept::Locked));
+        }
+        Ok(self.vault.excluded().covers(path).then_some(Kept::Excluded))
     }
 
     /// The record takes what an outside edit not fed yet, the file `file` that replaced the

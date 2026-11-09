@@ -28,6 +28,7 @@
   },
   "note": {
     "notFound": "Esta nota não foi encontrada. Ela pode ter sido excluída.",
+    "excluded": "Esta nota está em uma pasta excluída, então não pode ser alterada.",
     "invalidFrontmatter": "Esta nota contém metadados inválidos e não pode ser lida.",
     "invalidTitle": "O título de uma nota deve ter de 1 a 200 caracteres.",
     "duplicateId": "Já existe uma nota com este ID.",

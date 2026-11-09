@@ -28,6 +28,7 @@
   },
   "note": {
     "notFound": "Deze notitie kon niet worden gevonden. Mogelijk is deze verwijderd.",
+    "excluded": "Deze notitie staat in een uitgesloten map en kan dus niet worden gewijzigd.",
     "invalidFrontmatter": "Deze notitie bevat ongeldige metagegevens en kan niet worden gelezen.",
     "invalidTitle": "Een notitietitel moet 1 tot 200 tekens lang zijn.",
     "duplicateId": "Er bestaat al een notitie met deze ID.",

@@ -28,6 +28,7 @@
   },
   "note": {
     "notFound": "Denne note kunne ikke findes. Den kan være blevet slettet.",
+    "excluded": "Denne note ligger i en udelukket mappe, så den kan ikke ændres.",
     "invalidFrontmatter": "Denne note har ugyldige metadata og kan ikke læses.",
     "invalidTitle": "En notes titel skal være på 1 til 200 tegn.",
     "duplicateId": "Der findes allerede en note med dette id.",
