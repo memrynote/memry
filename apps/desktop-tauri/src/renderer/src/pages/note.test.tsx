@@ -81,6 +81,9 @@ const mocks = vi.hoisted(() => ({
   pickerOnValueChange: null as ((value: string) => void) | null,
   /** The newest `onMarkdownChange` the editor was handed, kept for late calls. */
   onMarkdownChange: null as ((markdown: string) => void) | null,
+  onReadOnlyChange: undefined as
+    | ((readOnly: 'locked' | 'large-file' | 'purged' | null) => void)
+    | undefined,
   contentAreaMounts: 0,
   /** What the tab would persist; the mind-map toggle lives in here. */
   tabViewState: {} as Record<string, unknown>,
@@ -533,7 +536,8 @@ vi.mock('@/components/note', () => ({
     onInternalLinkClick,
     onInlineTagsChange,
     focusAtEndRef,
-    review
+    review,
+    onReadOnlyChange
   }: {
     initialContent: string
     externalContentRevision?: number
@@ -546,8 +550,10 @@ vi.mock('@/components/note', () => ({
     onInlineTagsChange: (tags: string[], origin: 'load' | 'edit') => void
     focusAtEndRef: React.RefObject<(() => void) | null>
     review?: { onEditorReady?: (editor: unknown) => void }
+    onReadOnlyChange?: (readOnly: 'locked' | 'large-file' | 'purged' | null) => void
   }) => {
     mocks.onMarkdownChange = onMarkdownChange
+    mocks.onReadOnlyChange = onReadOnlyChange
     const [content] = useState(initialContent)
     // A fresh mount mints a fresh editor, exactly as the real one does — which
     // is what makes "same instance across a round trip" a real assertion and
@@ -2685,6 +2691,18 @@ describe('NotePage', () => {
 
       await waitFor(() => expect(mocks.setVaultLock).toHaveBeenCalledWith('note', 'note-1', false))
       await waitFor(() => expect(toast.error).toHaveBeenCalledWith('disk is read-only'))
+    })
+
+    it('shows the lock notice when the editor host refuses the note as locked', async () => {
+      renderWithProviders(<NotePage noteId="note-1" />)
+      await screen.findByTestId('info-section')
+      expect(screen.queryByTestId('note-locked-indicator')).not.toBeInTheDocument()
+
+      act(() => mocks.onReadOnlyChange?.('locked'))
+      expect(screen.getByTestId('note-locked-indicator')).toBeInTheDocument()
+
+      act(() => mocks.onReadOnlyChange?.(null))
+      expect(screen.queryByTestId('note-locked-indicator')).not.toBeInTheDocument()
     })
 
     it('offers no lock toggle for a note locked only by its folder', async () => {

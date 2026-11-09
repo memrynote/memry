@@ -3866,6 +3866,8 @@ export const ContentArea = memo(function ContentArea(props: ContentAreaProps) {
       noteId: props.noteId,
       enabled: localDocLive
     })
+  const { onReadOnlyChange } = props
+  useEffect(() => onReadOnlyChange?.(readOnly), [onReadOnlyChange, readOnly])
   // Standalone/non-canvas callers pass no runSideEffects → own their effects.
   // A second editor on the same note in this window (R17) is a non-owner.
   const runSideEffects = props.runSideEffects ?? isSideEffectOwner

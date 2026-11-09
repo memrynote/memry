@@ -160,6 +160,7 @@ import { extractErrorMessage } from '@/lib/ipc-error'
 import { useHasOwnNoteLock, useIsNoteLocked } from '@/lib/vault-locks-store'
 import { useIsNoteExcluded } from '@/lib/excluded-notes-store'
 import { LockedNoteNotice } from '@/components/note/locked-note-notice'
+import type { DocReadOnly } from '@/sync/yjs-ipc-provider'
 import { createLogger } from '@/lib/logger'
 import { markLaunchNoteReadable } from '@/lib/launch-restore'
 import { LocalGraphPanel } from '@/components/graph/local-graph-panel'
@@ -291,6 +292,9 @@ export function NotePage({ noteId }: NotePageProps) {
   // Or its file is in an excluded folder, which main refuses every write to (#3530).
   const isExcluded = useIsNoteExcluded(note?.path)
   const isLocked = useIsNoteLocked(noteId ?? null, note?.path ?? null) || isExcluded
+  // The editor host's own answer (open header or a refused `note_locked`), which can come before
+  // the lock store hears of the lock: the notice shows for either.
+  const [docReadOnly, setDocReadOnly] = useState<DocReadOnly | null>(null)
   const hasOwnLock = useHasOwnNoteLock(noteId ?? null)
   const { createNote, updateNote, renameNote, deleteNote } = useNoteMutations()
   const {
@@ -2144,7 +2148,7 @@ export function NotePage({ noteId }: NotePageProps) {
           data-testid="note-metadata"
           data-marquee-ignore
         >
-          {isLocked && <LockedNoteNotice excluded={isExcluded} />}
+          {(isLocked || docReadOnly === 'locked') && <LockedNoteNotice excluded={isExcluded} />}
           <NoteTitle
             disabled={isLocked}
             noteId={note.id}
@@ -2307,6 +2311,7 @@ export function NotePage({ noteId }: NotePageProps) {
                     key={noteId}
                     noteId={noteId}
                     editable={!isLocked}
+                    onReadOnlyChange={setDocReadOnly}
                     notePath={note.path}
                     initialContent={review.editorInitialContent}
                     contentType="markdown"
