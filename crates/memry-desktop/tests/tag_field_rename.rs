@@ -17,7 +17,7 @@ use memry_core::api::projects::ProjectDraft;
 use memry_core::api::tasks_write::NewTaskInput;
 use memry_core::seams::secure_store::SecureStore;
 use memry_core::sync::versioned;
-use memry_desktop::locks::{self, Locks, TargetKind};
+use memry_desktop::locks::{self, TargetKind};
 use memry_desktop::notes::identity::NotesIdentity;
 use memry_desktop::notes::index::NoteIndex;
 use memry_desktop::notes::local_only;
@@ -717,7 +717,7 @@ fn a_locked_note_is_left_and_holds_the_rename_until_its_unlock() {
     let vault = opened(&[("Ahmet.md", AHMET), ("Elif.md", ELIF)]);
     let open = vault.open();
     let elif = vault.id("Elif.md");
-    Locks::of(&open).set(TargetKind::Note, &elif, true).unwrap();
+    locks::set(&open, &vault.notes, TargetKind::Note, &elif, true, || {}).unwrap();
 
     let renamed = rename(&vault, "Phone", "Mobile").unwrap();
     assert_eq!(

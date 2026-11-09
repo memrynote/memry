@@ -540,6 +540,7 @@ mod hash_rule;
 mod lane;
 mod large_class;
 mod late_close;
+mod lock_window;
 mod outside_edit;
 mod pipeline;
 #[cfg(windows)]

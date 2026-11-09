@@ -6,10 +6,15 @@
 //!   edit is then reverted to that text, not rolled back to an older one;
 //! - a folder unlocked frees the files an older build made read-only without a record, and
 //!   leaves those another lock covers;
-//! - a folder lock needs a folder on disk inside the vault.
+//! - a folder lock needs a folder on disk inside the vault, and names it as the disk spells it.
 
-use memry_desktop::locks::{Locks, TargetKind};
+use std::sync::Arc;
+
+use memry_core::seams::secure_store::SecureStore;
+use memry_desktop::locks::{self, LockSet, TargetKind};
 use memry_desktop::notes::error::NotesError;
+use memry_desktop::notes::service::NotesService;
+use memry_desktop::session::OpenVault;
 
 use crate::lock_outside_edits::{edit_outside, until};
 use crate::lock_service::{NOTE, guarded, read_only, unlock};
@@ -22,14 +27,32 @@ fn baseline(e: &Env, id: &str) -> Option<String> {
     e.core().locks().baseline(id).unwrap().map(|b| b.content)
 }
 
+/// The app's lock change ([`locks::set`]) on the open vault.
+struct Setter {
+    open: OpenVault,
+    notes: Arc<NotesService>,
+}
+
+impl Setter {
+    fn new(e: &Env, store: Arc<dyn SecureStore>) -> Self {
+        Self {
+            open: e.session.current().unwrap(),
+            notes: NotesService::new(e.tier.clone(), store),
+        }
+    }
+
+    fn set(&self, kind: TargetKind, target: &str, locked: bool) -> Result<LockSet, NotesError> {
+        locks::set(&self.open, &self.notes, kind, target, locked, || {})
+    }
+}
+
 #[test]
 fn a_lock_protects_the_note_at_once_and_an_unlock_frees_it() {
-    let (e, _) = guarded(&[("Plan.md", NOTE), ("Free.md", NOTE)]);
-    let open = e.session.current().unwrap();
+    let (e, store) = guarded(&[("Plan.md", NOTE), ("Free.md", NOTE)]);
     let plan = id_at(&e, "Plan.md");
     let picture = format!("attachments/{plan}/a1b2c3-pic.png");
     e.write(&picture, "png bytes");
-    let locks = Locks::of(&open);
+    let locks = Setter::new(&e, store);
 
     let set = locks.set(TargetKind::Note, &plan, true).unwrap();
     assert!(set.changed);
@@ -49,10 +72,9 @@ fn a_lock_protects_the_note_at_once_and_an_unlock_frees_it() {
 /// crash) leaves the old baseline; the next lock must record the text the note has now.
 #[test]
 fn a_lock_records_the_text_the_note_has_now_and_an_outside_edit_goes_back_to_it() {
-    let (e, _) = guarded(&[("Plan.md", NOTE)]);
-    let open = e.session.current().unwrap();
+    let (e, store) = guarded(&[("Plan.md", NOTE)]);
     let plan = id_at(&e, "Plan.md");
-    let locks = Locks::of(&open);
+    let locks = Setter::new(&e, store);
     locks.set(TargetKind::Note, &plan, true).unwrap();
     unlock(&e, TargetKind::Note, &plan);
     assert_eq!(
@@ -76,11 +98,10 @@ fn a_lock_records_the_text_the_note_has_now_and_an_outside_edit_goes_back_to_it(
 
 #[test]
 fn an_unlocked_folder_frees_what_an_older_build_left_read_only_but_not_another_locks() {
-    let (e, _) = guarded(&[("Archive/Old.md", NOTE), ("Archive/Kept.md", NOTE)]);
-    let open = e.session.current().unwrap();
+    let (e, store) = guarded(&[("Archive/Old.md", NOTE), ("Archive/Kept.md", NOTE)]);
     let kept = id_at(&e, "Archive/Kept.md");
     e.write("Archive/pic.png", "png bytes");
-    let locks = Locks::of(&open);
+    let locks = Setter::new(&e, store);
     locks.set(TargetKind::Folder, "Archive", true).unwrap();
     locks.set(TargetKind::Note, &kept, true).unwrap();
     // Read-only with no record of its bits, as a build before the records left it.
@@ -100,9 +121,8 @@ fn an_unlocked_folder_frees_what_an_older_build_left_read_only_but_not_another_l
 
 #[test]
 fn a_folder_lock_needs_a_folder_on_disk_inside_the_vault() {
-    let (e, _) = guarded(&[("Archive/Old.md", NOTE)]);
-    let open = e.session.current().unwrap();
-    let locks = Locks::of(&open);
+    let (e, store) = guarded(&[("Archive/Old.md", NOTE)]);
+    let locks = Setter::new(&e, store);
 
     for target in ["Missing", "", "/", "Archive/Old.md", "../outside"] {
         let refused = locks.set(TargetKind::Folder, target, true);
@@ -121,4 +141,33 @@ fn a_folder_lock_needs_a_folder_on_disk_inside_the_vault() {
     );
     let state = e.core().locks().list().unwrap();
     assert!(state.notes.is_empty() && state.folders.is_empty());
+}
+
+/// #4089's rule: the lock names the folder as the disk spells it. Stored as typed (`archive`
+/// over `Archive/`, or `Café` in the other Unicode form), no note check would match it while
+/// its files are read-only, and an outside edit of one would be fed past the lock.
+#[test]
+fn a_folder_lock_names_the_folder_as_the_disk_spells_it() {
+    let nfc = "Caf\u{e9}";
+    let nfd = "Cafe\u{301}";
+    let (e, store) = guarded(&[("Archive/Plan.md", NOTE), (&format!("{nfc}/Menu.md"), NOTE)]);
+    let locks = Setter::new(&e, store);
+    let plan = id_at(&e, "Archive/Plan.md");
+    let menu = id_at(&e, &format!("{nfc}/Menu.md"));
+    let case_blind = e.vault.join("ARCHIVE").is_dir();
+
+    // Every volume: the folder the disk holds in another Unicode form is that folder.
+    let set = locks.set(TargetKind::Folder, nfd, true).unwrap();
+    assert_eq!(set.state.folders, [nfc]);
+    assert!(e.core().locks().is_note_locked(&menu, None).unwrap());
+    assert!(read_only(&e, &format!("{nfc}/Menu.md")));
+    let set = locks.set(TargetKind::Folder, nfd, false).unwrap();
+    assert!(set.changed && set.state.folders.is_empty());
+    assert!(!read_only(&e, &format!("{nfc}/Menu.md")));
+
+    if case_blind {
+        let set = locks.set(TargetKind::Folder, "archive", true).unwrap();
+        assert_eq!(set.state.folders, ["Archive"]);
+        assert!(e.core().locks().is_note_locked(&plan, None).unwrap());
+    }
 }
