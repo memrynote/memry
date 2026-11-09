@@ -39,7 +39,9 @@ use crate::domain::unlinked_mentions::{self, UnlinkedMention};
 use crate::domain::wiki_target;
 use crate::storage::{Db, open_index};
 
-// Desktop folds notes; iOS links none of it.
+// Desktop folds notes and reads block references; iOS links none of it.
+#[cfg(feature = "markdown")]
+mod block_refs;
 #[cfg(feature = "markdown")]
 mod fold;
 #[cfg(feature = "markdown")]
