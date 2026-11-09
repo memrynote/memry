@@ -536,10 +536,15 @@ const ported = {
       await commands.notesDeleteFolder(path)
       return { success: true }
     } catch (error) {
-      // Electron's text for any failed folder delete. The codes it can carry are shared with
-      // create, rename and the note delete, so they get no text of their own here.
+      // A refusal says why. Electron's text for any other failed folder delete: its codes are
+      // shared with create, rename and the note delete, so they get no text of their own here.
       log.error('Failed to delete folder', { path, error })
-      return { success: false, error: getI18n().t('errors:folder.deleteFailed') }
+      const code = commandErrorCode(error)
+      const refused = code === 'note_excluded' || code === 'folder_locked'
+      return {
+        success: false,
+        error: refused ? extractErrorMessage(error) : getI18n().t('errors:folder.deleteFailed')
+      }
     }
   },
   revealFolderInFinder: async (folderPath: string): Promise<void> => {

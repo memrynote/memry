@@ -17,14 +17,12 @@ Object.assign(window.api, {
 })
 
 describe('excluded-notes-store (#3530)', () => {
-  // The cases of main's `WatchFilter` test (`vault/watch/filter.rs`), which refuses the writes.
-  it('decides a path as the watcher filter does', () => {
+  // The pattern cases of main's `WatchFilter::excludes` (`vault/watch/filter.rs`), which refuses
+  // the writes. A hidden name or the root attachments folder is not a pattern: the app writes
+  // there (a `.journal` journal folder).
+  it('decides a path by the exclude patterns as main does', () => {
     const patterns = ['node_modules', 'vendor/cache']
     for (const path of [
-      '.memry/core/data.db',
-      'notes/.hidden.md',
-      '.git/x.md',
-      'attachments/a.png',
       'node_modules/p/readme.md',
       'a/node_modules/x.md',
       'vendor/cache/x.md',
@@ -33,6 +31,9 @@ describe('excluded-notes-store (#3530)', () => {
       expect(isExcludedPath(path, patterns), path).toBe(true)
     }
     for (const path of [
+      '.journal/2025-01-02.md',
+      'notes/.hidden.md',
+      'attachments/a.png',
       'notes/a.md',
       'notes/attachments/b.md',
       'vendor/other.md',

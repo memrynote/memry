@@ -607,7 +607,8 @@ export function JournalPage({ className }: JournalPageProps): React.JSX.Element 
     entityId: entry?.id ?? null,
     includeExplicitType: true,
     canEdit: () => !isLocked,
-    onBlocked: () => toast.error(notesT('errors:vaultLock.noteReadOnly'))
+    onBlocked: () =>
+      toast.error(notesT(isExcluded ? 'errors:note.excluded' : 'errors:vaultLock.noteReadOnly'))
   })
 
   const [propertiesCollapsed, togglePropertiesCollapsed, setPropertiesCollapsed] =

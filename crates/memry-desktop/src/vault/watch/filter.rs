@@ -21,19 +21,20 @@ impl WatchFilter {
 
     /// Whether `rel` or any folder above it is ignored.
     pub fn ignores(&self, rel: &str) -> bool {
-        let mut first = true;
-        for name in rel.split('/') {
-            if name.starts_with('.') {
-                return true;
-            }
+        rel.split('/').any(|name| name.starts_with('.'))
             // The root attachments folder, or a file named so at the root.
-            if first && name == ATTACHMENTS_DIR {
-                return true;
-            }
-            first = false;
-            if self.exclude.iter().any(|pattern| pattern == name) {
-                return true;
-            }
+            || rel.split('/').next() == Some(ATTACHMENTS_DIR)
+            || self.excludes(rel)
+    }
+
+    /// Whether an exclude pattern covers `rel` or a folder above it: the user's own exclusion,
+    /// without the hidden names and the root attachments folder the watcher skips as well.
+    pub fn excludes(&self, rel: &str) -> bool {
+        if rel
+            .split('/')
+            .any(|name| self.exclude.iter().any(|pattern| pattern == name))
+        {
+            return true;
         }
         // A pattern with a separator (`vendor/cache`) names a path, not a name.
         let framed = format!("/{rel}/");

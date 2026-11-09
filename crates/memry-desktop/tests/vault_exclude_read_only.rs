@@ -9,6 +9,7 @@
 //! | a tag change across notes leaves the excluded note          | its file and record keep the tag   |
 //! | a folder holding an excluded note is not deleted            | no note goes, no delete syncs      |
 //! | every write to an excluded day is refused                   | update, delete, a new day there    |
+//! | a hidden folder is writable until a pattern names it        | dot names are not exclude patterns |
 
 #[allow(unused_imports)]
 use crate::device_key;
@@ -82,6 +83,14 @@ fn every_app_write_to_an_excluded_note_is_refused_and_changes_nothing() {
     excluded(notes.delete(&open, &old, true));
     excluded(versions::restore(&notes, &open, &version));
     excluded(local_only::set(&open, &old, true, None));
+    let into_archive = NewNoteFile {
+        title: "Later".into(),
+        content: "Body".into(),
+        folder: Some("archive".into()),
+        ..NewNoteFile::default()
+    };
+    excluded(notes.create(&open, into_archive));
+    assert!(!e.vault.join("archive/Later.md").exists());
     assert!(matches!(
         upload(&open, &old, "a.png", b"png"),
         Err(AttachmentError::Excluded)
@@ -191,6 +200,42 @@ fn every_write_to_an_excluded_day_is_refused() {
         .into_iter()
         .find(|(_, at)| at == "journal/2025-01-02.md");
     assert!(!outbox(&e, &id.unwrap().0).contains(&"delete".to_owned()));
+}
+
+#[test]
+fn a_hidden_folder_is_writable_until_a_pattern_names_it() {
+    let (mut e, notes) = journal_vault(daily(".journal"), &[]);
+    try_day(&notes, &e, "2025-01-02").unwrap();
+    let open = e.session.current().unwrap();
+    let draft = NewNoteFile {
+        title: "Draft".into(),
+        content: "Body".into(),
+        folder: Some(".drafts".into()),
+        ..NewNoteFile::default()
+    };
+    let draft = notes.create(&open, draft).unwrap();
+    let save = NoteUpdateInput {
+        id: draft.id.clone(),
+        content: Some("Changed".to_owned()),
+        ..NoteUpdateInput::default()
+    };
+    notes.update(&open, save).unwrap();
+    let day = DayUpdate {
+        date: "2025-01-02".into(),
+        content: Some("Changed".to_owned()),
+        tags: None,
+        inline_tags: None,
+        properties: None,
+    };
+    notes.update_day(&open, day.clone()).unwrap();
+    drop(open);
+    assert!(e.read(&draft.path).contains("Changed"));
+    assert!(e.read(".journal/2025-01-02.md").contains("Changed"));
+
+    exclude(&mut e, &[".journal"]);
+    excluded(try_day(&notes, &e, "2025-01-03"));
+    let open = e.session.current().unwrap();
+    excluded(notes.update_day(&open, day));
 }
 
 #[test]

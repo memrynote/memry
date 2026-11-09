@@ -451,7 +451,7 @@ export function NotePage({ noteId }: NotePageProps) {
   const handlePropertyBlocked = useCallback(
     (action: PropertySectionAction) => {
       if (isLocked) {
-        toast.error(t('errors:vaultLock.noteReadOnly'))
+        toast.error(t(isExcluded ? 'errors:note.excluded' : 'errors:vaultLock.noteReadOnly'))
         return
       }
       const messages: Record<PropertySectionAction, string> = {
@@ -463,7 +463,7 @@ export function NotePage({ noteId }: NotePageProps) {
       }
       toast.error(messages[action])
     },
-    [isLocked, t]
+    [isExcluded, isLocked, t]
   )
 
   const {

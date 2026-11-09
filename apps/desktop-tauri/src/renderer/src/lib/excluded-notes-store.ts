@@ -12,9 +12,6 @@ import { createLogger } from './logger'
 
 const log = createLogger('ExcludedNotesStore')
 
-/** The vault root's own attachments folder, which the watcher never reads either. */
-const ATTACHMENTS_DIR = 'attachments'
-
 let patterns: readonly string[] = []
 const listeners = new Set<() => void>()
 let started = false
@@ -51,17 +48,12 @@ function subscribe(listener: () => void): () => void {
 }
 
 /**
- * Whether the vault-relative `path` is one the watcher does not read, as main's `WatchFilter`
- * decides it: a hidden name, the root attachments folder, a folder or file named like a
- * pattern, or a pattern with a separator that names part of the path.
+ * Whether an exclude pattern covers the vault-relative `path`, as main's `WatchFilter::excludes`
+ * decides it: a folder or file named like a pattern, or a pattern with a separator that names
+ * part of the path. A hidden name or the root attachments folder is not excluded.
  */
 export function isExcludedPath(path: string, excludePatterns: readonly string[]): boolean {
-  const names = path.split('/')
-  for (const [index, name] of names.entries()) {
-    if (name.startsWith('.')) return true
-    if (index === 0 && name === ATTACHMENTS_DIR) return true
-    if (excludePatterns.includes(name)) return true
-  }
+  if (path.split('/').some((name) => excludePatterns.includes(name))) return true
   const framed = `/${path}/`
   return excludePatterns.some((pattern) => pattern.includes('/') && framed.includes(`/${pattern}/`))
 }

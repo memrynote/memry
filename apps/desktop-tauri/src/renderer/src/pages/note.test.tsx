@@ -2688,6 +2688,18 @@ describe('NotePage', () => {
       expect(screen.queryByRole('button', { name: 'vaultLock.lockNote' })).not.toBeInTheDocument()
     })
 
+    it('says the note is excluded when a property edit is refused', async () => {
+      mocks.isNoteExcluded = true
+      renderWithProviders(<NotePage noteId="note-1" />)
+      await screen.findByTestId('info-section')
+
+      act(() => {
+        mocks.propertyOnBlocked?.('update')
+      })
+
+      expect(toast.error).toHaveBeenCalledWith('errors:note.excluded')
+    })
+
     it('a locked note keeps its own notice', async () => {
       mocks.isNoteLocked = true
       renderWithProviders(<NotePage noteId="note-1" />)
