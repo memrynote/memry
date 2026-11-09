@@ -8,16 +8,18 @@
 //! ([`release_page`]). A refused or failed upload rejects with the localized
 //! `errors:attachment.*` message; the renderer's service answers it as Electron's
 //! `{ success: false, error }`. `notes_attachment_rename` renames a block's file
-//! (`notes:attachment-rename`) and rejects as Electron's handler does. A locked note refuses each
-//! of them with `note_locked`.
+//! (`notes:attachment-rename`) and rejects as Electron's handler does. `notes_delete_attachment`
+//! moves a file to the OS trash unless another note names it (`notes:delete-attachment`). A
+//! locked note refuses each of them with `note_locked`.
 
 use std::sync::Arc;
 
 use memry_desktop::attachments::{
-    self, AttachmentError, RenamedAttachment, SavedAttachment, Uploads,
+    self, AttachmentError, DeletedAttachment, RenamedAttachment, SavedAttachment, Uploads,
 };
 use memry_desktop::i18n::{self, Arg, Args};
 use memry_desktop::locale::LocaleService;
+use memry_desktop::vault::trash::move_to_trash;
 use serde::Deserialize;
 use tauri::ipc::Request;
 use tauri::{AppHandle, Manager, Runtime, Webview};
@@ -200,6 +202,39 @@ pub async fn notes_attachment_rename<R: Runtime>(
             .map_err(|error| attachment_error(&app, "notes_attachment_rename", &error))
     })
     .await
+}
+
+/// Deletes a file of the note's attachments folder, unless another note names it or the scan
+/// could not read every note: then the file stays and the answer names the notes.
+#[tauri::command]
+#[specta::specta]
+pub async fn notes_delete_attachment<R: Runtime>(
+    app: AppHandle<R>,
+    note_id: String,
+    filename: String,
+) -> Result<DeletedAttachment, CommandError> {
+    blocking("notes_delete_attachment", move || {
+        attachments::delete(&open_vault(&app)?, &note_id, &filename, &move_to_trash)
+            .map_err(|error| delete_error(&app, &error))
+    })
+    .await
+}
+
+/// `notes_delete_attachment`'s answer to `error`: a disk failure says the delete failed
+/// (`errors:attachment.deleteFailed`, Electron's fallback), the rest as [`attachment_error`].
+pub fn delete_error<R: Runtime>(app: &AppHandle<R>, error: &AttachmentError) -> CommandError {
+    match error {
+        AttachmentError::Io(_) | AttachmentError::NotAFolder => {
+            tracing::warn!(
+                scope = "attachments",
+                "notes_delete_attachment failed on disk: {error}"
+            );
+            let locale = app.state::<Arc<LocaleService>>().get();
+            let message = i18n::t(locale, "errors:attachment.deleteFailed", &Args::new());
+            CommandError::new(ErrorKind::Storage, "attachment_delete_failed", message)
+        }
+        other => attachment_error(app, "notes_delete_attachment", other),
+    }
 }
 
 /// The page of window `label` reloaded or closed: its uploads end with nothing. Called on the main

@@ -97,6 +97,11 @@ export const commands = {
 	 *  its prefix and extension, and answers the block's new `url` and `name`.
 	 */
 	notesAttachmentRename: (noteId: string, url: string, newName: string) => __TAURI_INVOKE<RenamedAttachment>("notes_attachment_rename", { noteId, url, newName }),
+	/**
+	 *  Deletes a file of the note's attachments folder, unless another note names it or the scan
+	 *  could not read every note: then the file stays and the answer names the notes.
+	 */
+	notesDeleteAttachment: (noteId: string, filename: string) => __TAURI_INVOKE<DeletedAttachment>("notes_delete_attachment", { noteId, filename }),
 	/**  Cancels a chunked upload; its part file is deleted. */
 	notesUploadAttachmentAbort: (id: string) => __TAURI_INVOKE<null>("notes_upload_attachment_abort", { id }),
 	/**
@@ -780,6 +785,14 @@ export type DeleteTagView = {
 	failedNotes: KeptNoteView[],
 	/**  Deleting again can finish every one of them; else some need their file fixed first. */
 	retryFinishes: boolean,
+};
+
+/**  `DeleteAttachmentOutcome`. */
+export type DeletedAttachment = {
+	/**  False when the file was kept because another note names it, or the scan could not tell. */
+	deleted: boolean,
+	/**  The notes that still name the file; empty whenever `deleted` is true. */
+	referencedBy: string[],
 };
 
 /**  One shipped line (`DiagnosticLogLineSchema`). */
