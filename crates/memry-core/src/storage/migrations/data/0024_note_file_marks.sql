@@ -1,4 +1,4 @@
--- data.db, migration 0022: how far each note's body log had come when its
+-- data.db, migration 0024: how far each note's body log had come when its
 -- `note_files` row was stamped (desktop Step 14b-2, #3531).
 --
 -- A row's stamp (`indexed_at`) is a millisecond, and "the body moved after the
@@ -11,7 +11,7 @@
 -- leaves the mark unused rather than wrong.
 --
 -- Device-local and never synced. A new table rather than columns on
--- `note_files` for the reason 0017 gives. Additive: no existing table or row
+-- `note_files` for the reason 0019 gives. Additive: no existing table or row
 -- touched, no backfill; a row with no mark of its stamp is read by its
 -- millisecond, as before. An older build never reads the table, and a removed
 -- `note_files` row takes its mark with it.

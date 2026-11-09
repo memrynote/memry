@@ -28,7 +28,7 @@
 //! `wiki_name_keys` holds every key each live note and day claims, computed here
 //! because SQLite's `lower()` folds ASCII only. Triggers on `notes`,
 //! `journal_entries` and `journal_aliases` list a changed id in
-//! `wiki_names_owed` (data migration 0019), so a row written by any writer, an
+//! `wiki_names_owed` (data migration 0021), so a row written by any writer, an
 //! older build's included, is read whole until [`settle_name_keys`] stores its
 //! keys again. A lookup is answered from every row claiming one of its keys plus
 //! every owed row, and the tie-break needs only the rows claiming a key, so the
@@ -297,7 +297,7 @@ impl WikiNames {
 /// `wiki_name_keys` stores these, so a change to what a key is ([`name_key`], [`fold`], the
 /// NFC step, a new map) leaves stored keys stale: it ships with a data migration that marks
 /// every row owed (`INSERT INTO wiki_names_owed (id) SELECT id FROM notes UNION SELECT id
-/// FROM journal_entries`), as 0019 does.
+/// FROM journal_entries`), as 0021 does.
 struct Claims {
     /// `by_path`: a markdown note's folded `folder/Title.md`.
     path: Option<String>,

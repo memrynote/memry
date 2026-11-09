@@ -19,6 +19,13 @@
 //!   presence and `archivedAt` by `??`. A side with no `fieldClocks` seeds them
 //!   from its document clock.
 //!
+//! A source's `syncCursor` is this device's pull position, not shared state
+//! (#4069). It stays in the pushed payload (format unchanged) but a remote one
+//! is never adopted: an update keeps the local value, whatever it is, and a
+//! source first seen from a remote starts with `null`, so this device pulls it
+//! in full. Adopting another device's token makes the next pull incremental
+//! from a point this device never reached.
+//!
 //! Keys this build does not model ride along (§13.2 rule 3): every overlay
 //! starts from the local object. Nothing here enqueues (§6.5.2 P3).
 
@@ -55,6 +62,9 @@ pub const EVENT_SYNCABLE_FIELDS: [&str; 14] = [
     "conferenceData",
 ];
 
+/// The source key that is per-device pull state (see the module docs).
+const SOURCE_SYNC_CURSOR: &str = "syncCursor";
+
 /// Schema keys a remote `null` does **not** clear (desktop's `??`).
 const SOURCE_NULL_KEEPS: &[&str] = &[
     "provider",
@@ -67,7 +77,6 @@ const SOURCE_NULL_KEEPS: &[&str] = &[
     "isPrimary",
     "isSelected",
     "isMemryManaged",
-    "syncCursor",
     "syncStatus",
     "lastSyncedAt",
     "metadata",
@@ -147,12 +156,21 @@ pub(crate) fn apply_remote(
         }
     };
     let is_event = record.item_type == EVENT_TYPE;
+    let is_source = record.item_type == SOURCE_TYPE;
     match task_merge::document_gate(conn, record)? {
         Gate::Skip => Ok(Inbound::Skipped),
         Gate::Wholesale => {
             let Some(local) = live_local(conn, record)? else {
                 // Desktop's insert: `insertedFC = remoteFieldClocks ??
                 // initAllFieldClocks(remoteClock)`.
+                if is_source
+                    && record.deleted_at.is_none()
+                    && let Ok(remote) = StoredPayload::parse(&record.payload_json)
+                {
+                    let mut fresh = remote.object().clone();
+                    fresh.insert(SOURCE_SYNC_CURSOR.to_owned(), Value::Null);
+                    return store(conn, record, fresh, now_ms);
+                }
                 if is_event
                     && record.deleted_at.is_none()
                     && let Ok(remote) = StoredPayload::parse(&record.payload_json)
@@ -171,7 +189,11 @@ pub(crate) fn apply_remote(
             let Ok(remote) = StoredPayload::parse(&record.payload_json) else {
                 return task_merge::wholesale(conn, record, now_ms);
             };
-            let mut merged = overlay(local.object(), remote.object(), null_keeps);
+            let mut merged = overlay(
+                local.object(),
+                &remote_keys(is_source, remote.object()),
+                null_keeps,
+            );
             if is_event {
                 // `appliedFC = remoteFieldClocks ?? initAllFieldClocks(remoteClock)`.
                 let clocks = field_clocks_or_seed(remote.object(), "remote")?;
@@ -187,12 +209,25 @@ pub(crate) fn apply_remote(
             let mut merged = if is_event {
                 merge_event(local.object(), remote.object())?
             } else {
-                overlay(local.object(), remote.object(), null_keeps)
+                overlay(
+                    local.object(),
+                    &remote_keys(is_source, remote.object()),
+                    null_keeps,
+                )
             };
             merged.insert("clock".to_owned(), to_json(&merged_clock)?);
             store(conn, record, merged, now_ms)
         }
     }
+}
+
+/// The remote keys an update may overlay: a source's own cursor is not one.
+fn remote_keys(is_source: bool, remote: &Map<String, Value>) -> Map<String, Value> {
+    let mut keys = remote.clone();
+    if is_source {
+        keys.remove(SOURCE_SYNC_CURSOR);
+    }
+    keys
 }
 
 /// The local payload with every remote key laid over it. A remote `null` in a
