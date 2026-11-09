@@ -31,19 +31,26 @@ use serde::Serialize;
 
 use crate::session::OpenVault;
 use crate::shell::file_open::{Resolution, is_reserved_device_name, resolve_under_root};
+use crate::shell::local_scheme::{STORED_PREFIX_LEN, has_stored_prefix};
 use crate::vault::embeds::memry_file_url;
 use crate::vault::fs_atomic::{BeforeCommit, RETRY_DELAYS_MS, WriteError, atomic_create_checked};
 use crate::vault::layout::ATTACHMENTS_DIR;
 use crate::vault::paths::{is_js_space, sanitize_filename};
 
+mod remote;
 mod rename;
 mod resolve;
+mod shared;
 mod upload;
 
+pub use remote::{
+    FetchedImage, MAX_REMOTE_BYTES, RemoteFailure, RemoteImages, image_file_name, save_fetched,
+};
 #[cfg(feature = "test-hooks")]
 pub use rename::rename_checked;
 pub use rename::{RenamedAttachment, rename};
 pub use resolve::{ResolvedAttachment, resolve};
+pub use shared::{InsertedAttachment, VaultAttachmentEntry, insert_existing, list_vault};
 pub use upload::{CHUNK_BYTES, Ended, MAX_UPLOADS, Uploads};
 
 const SCOPE: &str = "attachments";
@@ -121,10 +128,13 @@ pub enum AttachmentError {
     BadName,
     #[error("Could not find a free attachment filename")]
     NoFreeName,
+    /// An owner id or a stored name that is not one plain name.
+    #[error("Invalid attachment reference")]
+    BadReference,
 }
 
 /// `image` or `file`; a video stays `file`, which older clients read as a file block (#2190).
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, specta::Type)]
 #[serde(rename_all = "camelCase")]
 pub enum AttachmentKind {
     Image,
@@ -174,6 +184,24 @@ pub fn is_note_id(note_id: &str) -> bool {
             .any(|c| c.is_control() || "/\\<>:\"|?*".contains(c))
         && !note_id.ends_with(['.', ' '])
         && !is_reserved_device_name(note_id)
+}
+
+/// `isPlainSegment`: one name, not `.` or `..`, and no trailing dot or space, which Windows
+/// drops.
+pub(crate) fn is_plain_segment(name: &str) -> bool {
+    !name.is_empty()
+        && !name.contains(['/', '\\'])
+        && !matches!(name, "." | "..")
+        && !name.ends_with(['.', ' '])
+}
+
+/// `displayNameForStoredFilename`: the stored name without its `<6>-` prefix.
+pub fn display_name_for_stored(filename: &str) -> &str {
+    if has_stored_prefix(filename) {
+        &filename[STORED_PREFIX_LEN..]
+    } else {
+        filename
+    }
 }
 
 /// Characters that reorder or hide text where a name is shown (`evil\u{202E}fdp.png` shows as

@@ -1,8 +1,9 @@
 //! A note's tag fields (§13.7.7.1): the properties its tags' schemas list,
 //! grouped per tag, with the value the note holds for each.
 //!
-//! Twin of desktop's `resolveTagSchemas` (`packages/app-core/src/tag-schema.ts`)
-//! and `buildFieldGroups` (`renderer/src/features/tag-fields/build-field-groups.ts`).
+//! Reads the schemas through [`tag_schema::resolve`], the twin of desktop's
+//! `resolveTagSchemas` (`packages/app-core/src/tag-schema.ts`), and groups the
+//! fields as `buildFieldGroups` (`renderer/src/features/tag-fields/build-field-groups.ts`) does.
 //! A field carries no type: the vault-wide property definition owns it, and a
 //! field with none reads as `text`. A field's value is an ordinary note
 //! property, so a shell edits it through the property writes.
@@ -10,7 +11,7 @@
 //! A schema this build cannot read (a newer desktop wrote it) lists no fields,
 //! as desktop treats an unreadable column: shown nowhere, never rewritten.
 
-use std::collections::{BTreeMap, HashSet};
+use std::collections::HashSet;
 
 use rusqlite::Connection;
 use serde_json::{Map, Value};
@@ -18,7 +19,8 @@ use serde_json::{Map, Value};
 use crate::api::errors::StorageError;
 use crate::domain::note_meta::NoteProperty;
 use crate::domain::properties::PropertyDefinition;
-use crate::domain::{tag_admin, tags};
+use crate::domain::tag_schema::{self, PropertyInfo, ResolvedField, ResolvedTag};
+use crate::domain::tags;
 
 /// Mirrors `RESERVED_FIELD_NAMES` in `packages/contracts/src/tag-schema.ts`.
 const RESERVED: [&str; 12] = [
@@ -58,19 +60,6 @@ pub struct TagFieldGroup {
     pub icon: Option<String>,
     pub via: Option<String>,
     pub fields: Vec<TagField>,
-}
-
-struct Def {
-    name: String,
-    color: String,
-    icon: Option<String>,
-    /// `None` when the column is absent or unreadable: no fields, no parent.
-    schema: Option<Map<String, Value>>,
-}
-
-struct Field {
-    name: String,
-    relation: Option<(Option<String>, bool)>,
 }
 
 fn fold(name: &str) -> String {
@@ -131,88 +120,14 @@ pub(crate) fn readable(schema: &Map<String, Value>) -> bool {
         && nullable_str(schema.get("preset"))
 }
 
-fn definitions(conn: &Connection) -> Result<BTreeMap<String, Def>, StorageError> {
-    let mut out = BTreeMap::new();
-    for (key, def) in tag_admin::definitions(conn)? {
-        let schema = tag_admin::live_definition(conn, &def.id)?
-            .and_then(|payload| payload.get("schema").and_then(Value::as_object).cloned())
-            .filter(readable);
-        out.insert(
-            key,
-            Def {
-                name: def.id,
-                color: def.color,
-                icon: def.icon,
-                schema,
-            },
-        );
-    }
-    Ok(out)
-}
-
-fn own_fields(def: Option<&Def>) -> Vec<Field> {
-    let mut seen = HashSet::new();
-    let mut out = Vec::new();
-    let stored = def
-        .and_then(|d| d.schema.as_ref())
-        .and_then(|s| s.get("fields"))
-        .and_then(Value::as_array);
-    for field in stored.into_iter().flatten() {
-        let Some(name) = field.get("name").and_then(Value::as_str).map(str::trim) else {
-            continue;
-        };
-        let folded = fold(name);
-        if name.is_empty() || is_reserved(&folded) || !seen.insert(folded) {
-            continue;
-        }
-        let relation = field.get("relation").and_then(Value::as_object).map(|r| {
-            let target = r
-                .get("target")
-                .and_then(Value::as_str)
-                .map(tags::tag_key)
-                .filter(|k| !k.is_empty());
-            (target, r.get("many") == Some(&Value::Bool(true)))
-        });
-        out.push(Field {
-            name: name.to_owned(),
-            relation,
-        });
-    }
-    out
-}
-
-fn ancestors(key: &str, defs: &BTreeMap<String, Def>) -> Vec<String> {
-    let parent_of = |k: &str| {
-        defs.get(k)
-            .and_then(|d| d.schema.as_ref())
-            .and_then(|s| s.get("extends"))
-            .and_then(Value::as_str)
-            .map(tags::tag_key)
-    };
-    let mut chain = Vec::new();
-    let mut visited = HashSet::from([key.to_owned()]);
-    let mut parent = parent_of(key);
-    while let Some(next) = parent {
-        if next.is_empty() || visited.contains(&next) || !defs.contains_key(&next) {
-            break;
-        }
-        visited.insert(next.clone());
-        parent = parent_of(&next);
-        chain.push(next);
-    }
-    chain
-}
-
 /// The keys of the tags with fields, their own or an ancestor's (desktop `tagsWithFields`, the
 /// `hasFields` of `resolveTagSchemas`). A body's `#tag` of one of these never joins or leaves a
 /// note's header ([`super::header_tags`]).
 pub fn with_fields(conn: &Connection) -> Result<HashSet<String>, StorageError> {
-    let defs = definitions(conn)?;
-    let has_own = |key: &str| !own_fields(defs.get(key)).is_empty();
-    Ok(defs
-        .keys()
-        .filter(|key| has_own(key) || ancestors(key, &defs).iter().any(|a| has_own(a)))
-        .cloned()
+    Ok(tag_schema::resolved(conn, &|_| None)?
+        .into_iter()
+        .filter(|(_, tag)| tag.has_fields)
+        .map(|(key, _)| key)
         .collect())
 }
 
@@ -227,7 +142,7 @@ pub struct TagTemplate {
     pub autofill: bool,
 }
 
-/// The first tag of `item_tags`, in order and by `foldTag`, whose schema names a template, its
+/// The first tag of `item_tags`, in order and by `tagKey`, whose schema names a template, its
 /// own or the nearest ancestor's, and that template (desktop `firstTagTemplate`).
 pub fn tag_template(
     conn: &Connection,
@@ -236,26 +151,13 @@ pub fn tag_template(
     if item_tags.is_empty() {
         return Ok(None);
     }
-    let defs = definitions(conn)?;
-    let named = |key: &str| {
-        let template = defs
-            .get(key)?
-            .schema
-            .as_ref()?
-            .get("template")?
-            .as_object()?;
-        let id = template.get("id")?.as_str()?.to_owned();
-        Some((id, template.get("autofill") == Some(&Value::Bool(true))))
-    };
+    let resolved = tag_schema::resolved(conn, &|_| None)?;
     Ok(item_tags.iter().find_map(|tag| {
-        let key = tags::fold(tag);
-        defs.get(&key)?.schema.as_ref()?;
-        let mut owners = std::iter::once(key.clone()).chain(ancestors(&key, &defs));
-        let (id, autofill) = owners.find_map(|owner| named(&owner))?;
+        let template = resolved.get(&tags::tag_key(tag))?.template.as_ref()?;
         Some(TagTemplate {
             tag: tag.clone(),
-            id,
-            autofill,
+            id: template.id.clone(),
+            autofill: template.autofill,
         })
     }))
 }
@@ -278,46 +180,55 @@ pub fn groups(
     values: &Map<String, Value>,
     properties: &[PropertyDefinition],
 ) -> Result<Vec<TagFieldGroup>, StorageError> {
-    let defs = definitions(conn)?;
+    let definition = |name: &str| properties.iter().find(|d| d.name == name);
+    let types = |name: &str| {
+        definition(name).map(|d| PropertyInfo {
+            type_name: d.type_name.clone(),
+            options: None,
+            show_on_calendar: None,
+        })
+    };
+    let resolved = tag_schema::resolved(conn, &types)?;
     let mut shown: HashSet<String> = HashSet::new();
     let mut seen_tags = HashSet::new();
     let mut out = Vec::new();
 
-    let slots = |fields: Vec<Field>, shown: &mut HashSet<String>| -> Vec<TagField> {
-        fields
-            .into_iter()
-            .filter(|f| shown.insert(f.name.clone()))
-            .map(|f| {
-                let definition = properties.iter().find(|d| d.name == f.name);
-                let (type_name, options_json) = match (&f.relation, definition) {
-                    (Some(_), _) => ("relation".to_owned(), None),
-                    (None, Some(d)) if d.type_name != "project" && d.type_name != "relation" => {
-                        (d.type_name.clone(), d.options.clone())
-                    }
-                    _ => ("text".to_owned(), None),
-                };
-                let value = values.get(&f.name);
-                TagField {
-                    has_value: value.is_some(),
-                    relation_target: f.relation.as_ref().and_then(|r| r.0.clone()),
-                    relation_many: f.relation.as_ref().is_some_and(|r| r.1),
-                    property: NoteProperty {
-                        value_json: value.unwrap_or(&Value::Null).to_string(),
-                        type_name: Some(type_name),
-                        options_json,
-                        color: definition.and_then(|d| d.color.clone()),
-                        name: f.name,
-                    },
-                }
-            })
-            .collect()
+    let slot = |field: &ResolvedField| {
+        let definition = definition(&field.name);
+        // The definition's options come along only when the field takes its type: not a
+        // relation, and not a `project` or `relation` definition read as text.
+        let options_json = definition
+            .filter(|d| field.relation.is_none() && d.type_name == field.type_name)
+            .and_then(|d| d.options.clone());
+        let value = values.get(&field.name);
+        TagField {
+            has_value: value.is_some(),
+            relation_target: field.relation.as_ref().and_then(|r| r.target.clone()),
+            relation_many: field.relation.as_ref().is_some_and(|r| r.many),
+            property: NoteProperty {
+                value_json: value.unwrap_or(&Value::Null).to_string(),
+                type_name: Some(field.type_name.clone()),
+                options_json,
+                color: definition.and_then(|d| d.color.clone()),
+                name: field.name.clone(),
+            },
+        }
     };
-    let group = |def: &Def, via: Option<&Def>, fields: Vec<TagField>| TagFieldGroup {
-        tag: def.name.clone(),
-        color: def.color.clone(),
-        icon: def.icon.clone(),
-        via: via.map(|d| d.name.clone()),
-        fields,
+    let mut group = |tag: &ResolvedTag, via: Option<&ResolvedTag>, fields: &[ResolvedField]| {
+        let fields: Vec<TagField> = fields
+            .iter()
+            .filter(|f| shown.insert(f.name.clone()))
+            .map(slot)
+            .collect();
+        if !fields.is_empty() {
+            out.push(TagFieldGroup {
+                tag: tag.name.clone(),
+                color: tag.color.clone(),
+                icon: tag.icon.clone(),
+                via: via.map(|v| v.name.clone()),
+                fields,
+            });
+        }
     };
 
     for name in item_tags {
@@ -325,27 +236,13 @@ pub fn groups(
         if !seen_tags.insert(key.clone()) {
             continue;
         }
-        let Some(def) = defs.get(&key).filter(|d| d.schema.is_some()) else {
+        let Some(tag) = resolved.get(&key) else {
             continue;
         };
-        let own = own_fields(Some(def));
-        let mut listed: HashSet<String> = own.iter().map(|f| fold(&f.name)).collect();
-        let own = slots(own, &mut shown);
-        if !own.is_empty() {
-            out.push(group(def, None, own));
-        }
-        for ancestor in ancestors(&key, &defs) {
-            let parent = defs.get(&ancestor);
-            let inherited: Vec<Field> = own_fields(parent)
-                .into_iter()
-                .filter(|f| listed.insert(fold(&f.name)))
-                .collect();
-            let (Some(parent), false) = (parent, inherited.is_empty()) else {
-                continue;
-            };
-            let fields = slots(inherited, &mut shown);
-            if !fields.is_empty() {
-                out.push(group(parent, Some(def), fields));
+        group(tag, None, &tag.own_fields);
+        for inherited in &tag.inherited {
+            if let Some(parent) = resolved.get(&inherited.from) {
+                group(parent, Some(tag), &inherited.fields);
             }
         }
     }
