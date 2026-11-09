@@ -252,7 +252,7 @@ impl PushCoordinator {
         let now = now_ms();
         let mut acked: Vec<i64> = Vec::new();
         let mut deferred: Vec<(Vec<i64>, String, i64)> = Vec::new();
-        let mut deleted_there: Vec<String> = Vec::new();
+        let mut deleted_there: Vec<(String, String)> = Vec::new();
         for item in sent {
             let key = item.row.item_id.clone();
             if accepted.iter().any(|id| id == &key) {
@@ -269,7 +269,7 @@ impl PushCoordinator {
                     && item.row.item_type == property_admin::ITEM_TYPE
                     && item.row.op == outbox::OP_UPSERT
                 {
-                    deleted_there.push(key);
+                    deleted_there.push((item.row.item_type.clone(), key));
                 }
             } else {
                 let at = retry_at(now, item.row.attempt_count);
@@ -286,8 +286,8 @@ impl PushCoordinator {
                 for (ids, reason, at) in &deferred {
                     outbox::defer(&tx, ids, reason, Some(*at))?;
                 }
-                for name in &deleted_there {
-                    take_the_delete(&tx, property_admin::ITEM_TYPE, name, now)?;
+                for (item_type, item_id) in &deleted_there {
+                    take_the_delete(&tx, item_type, item_id, now)?;
                 }
                 tx.commit().map_err(failed)
             })
@@ -389,29 +389,46 @@ fn local_failure(error: StorageError) -> ApiError {
 
 /// §5.8's client rule for a write the server refused because it holds the item deleted: the
 /// delete wins here too, as a pulled one would, and nothing is queued. Only for a
-/// `property_definition` (#4025): a device that never saw a definition's tombstone (shed to a
-/// marker, §5.12.3, which this core never pulls) can still learn its name and promote it, and
-/// this refusal is the only delete it will ever see. Acked in the same transaction, so the
-/// local record never outlives its outbox row.
+/// `property_definition` upsert (#4025): a device that never saw a definition's tombstone (shed
+/// to a marker, §5.12.3, which this core never pulls) can still learn its name and promote it,
+/// and this refusal is the only delete it will ever see. A user's create is a `create`, which the
+/// server re-creates over the marker. Acked in the same transaction, so the local record never
+/// outlives its outbox row.
+///
+/// A change queued while the refused push was in flight is the user's newer edit, create or
+/// delete: the record stays as it is and that row is pushed next.
 fn take_the_delete(
     conn: &rusqlite::Connection,
     item_type: &str,
     item_id: &str,
     now_ms: i64,
 ) -> Result<(), StorageError> {
+    let queued: bool = conn
+        .query_row(
+            "SELECT EXISTS(SELECT 1 FROM outbox
+              WHERE item_type = ?1 AND item_id = ?2 AND op <> ?3)",
+            rusqlite::params![item_type, item_id, outbox::OP_CRDT_UPDATE],
+            |row| row.get(0),
+        )
+        .map_err(failed)?;
     let live =
         sync_items::load(conn, item_type, item_id)?.is_some_and(|row| row.deleted_at.is_none());
-    if live {
-        store::mark_deleted(conn, item_type, item_id, now_ms, None, now_ms)?;
-        projectors::delete(conn, item_type, item_id, now_ms)?;
+    if queued || !live {
+        return Ok(());
     }
-    Ok(())
+    eprintln!(
+        "memry-core: the server holds {item_type} `{item_id}` deleted (SYNC_DELETE_WINS); \
+         deleted here too"
+    );
+    store::mark_deleted(conn, item_type, item_id, now_ms, None, now_ms)?;
+    projectors::delete(conn, item_type, item_id, now_ms)
 }
 
-/// The outbox has one upsert op; chapter 04 §4.9 makes `update` the neutral
-/// spelling, since a reader that sees no `operation` at all reads `update`.
+/// `upsert` is `update` on the wire, chapter 04 §4.9's neutral spelling, since a reader that sees
+/// no `operation` at all reads `update`. `create` is a record a user created (#4025).
 fn operation_of(row: &OutboxRow) -> Option<SyncOperation> {
     match row.op.as_str() {
+        outbox::OP_CREATE => Some(SyncOperation::Create),
         outbox::OP_UPSERT => Some(SyncOperation::Update),
         outbox::OP_DELETE => Some(SyncOperation::Delete),
         _ => None,
@@ -523,6 +540,10 @@ mod tests {
         assert_eq!(
             operation_of(&row(RecordOp::Delete)),
             Some(SyncOperation::Delete)
+        );
+        assert_eq!(
+            operation_of(&row(RecordOp::Create)),
+            Some(SyncOperation::Create)
         );
     }
 

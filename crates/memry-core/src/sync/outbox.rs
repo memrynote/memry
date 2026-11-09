@@ -29,17 +29,23 @@
 //! individually if the batch is rejected, and the server acks CRDT rows
 //! against the sequence it assigned to each specific update.
 
-use std::collections::HashMap;
-
 use rusqlite::{Connection, params};
 
 use crate::api::errors::StorageError;
 use crate::protocol::crdt_envelope::{MAX_REQUEST_PAYLOAD_CHARS, max_payload_chars};
 
-/// The three `op` spellings data-model §A.2 defines.
+mod collapse;
+pub use collapse::{Collapsed, collapse_records};
+
+/// The three `op` spellings data-model §A.2 defines, and `create`.
 pub const OP_UPSERT: &str = "upsert";
 pub const OP_DELETE: &str = "delete";
 pub const OP_CRDT_UPDATE: &str = "crdt-update";
+/// A record a user created, pushed as `create` (#4025): over a purged tombstone the server
+/// re-creates only a `create` (chapter 05 §5.12.3). A build before #4025 has no such op and
+/// retires the row unsent (`unknown outbox op`), so on a downgrade a queued create is not pushed
+/// until its record is edited again.
+pub const OP_CREATE: &str = "create";
 
 /// §A.2 calls `last_error` truncated without naming a length. This is the
 /// core's ceiling: long enough to carry a server reason, short enough that a
@@ -64,6 +70,7 @@ fn failed(error: rusqlite::Error) -> StorageError {
 /// widening this enum is how the two sets of rules get confused.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum RecordOp {
+    Create,
     Upsert,
     Delete,
 }
@@ -71,6 +78,7 @@ pub enum RecordOp {
 impl RecordOp {
     pub fn as_str(self) -> &'static str {
         match self {
+            RecordOp::Create => OP_CREATE,
             RecordOp::Upsert => OP_UPSERT,
             RecordOp::Delete => OP_DELETE,
         }
@@ -99,6 +107,14 @@ pub enum Change {
 }
 
 impl Change {
+    pub fn create(item_type: &str, item_id: &str) -> Self {
+        Change::Record {
+            item_type: item_type.to_owned(),
+            item_id: item_id.to_owned(),
+            op: RecordOp::Create,
+        }
+    }
+
     pub fn upsert(item_type: &str, item_id: &str) -> Self {
         Change::Record {
             item_type: item_type.to_owned(),
@@ -252,11 +268,26 @@ pub fn enqueue(tx: &Connection, change: &Change, now_ms: i64) -> Result<Option<i
     // row says nothing new, and a row sitting in backoff is invisible to a
     // per-id collapse and later re-pushes a stale payload. Scoped to
     // `op != 'crdt-update'` — collapsing CRDT rows drops updates a peer has
-    // not seen.
+    // not seen. An upsert over a queued `create` stays a create, which the server re-creates over
+    // a purged tombstone (§5.12.3) and an update does not.
+    let mut op = change.op();
     if let Change::Record {
-        item_type, item_id, ..
+        item_type,
+        item_id,
+        op: record_op,
     } = change
     {
+        let created: bool = tx
+            .query_row(
+                "SELECT EXISTS(SELECT 1 FROM outbox
+                  WHERE item_type = ?1 AND item_id = ?2 AND op = ?3)",
+                params![item_type, item_id, OP_CREATE],
+                |row| row.get(0),
+            )
+            .map_err(failed)?;
+        if created && *record_op == RecordOp::Upsert {
+            op = OP_CREATE;
+        }
         tx.execute(
             "DELETE FROM outbox
               WHERE item_type = ?1 AND item_id = ?2 AND op <> ?3",
@@ -287,13 +318,7 @@ pub fn enqueue(tx: &Connection, change: &Change, now_ms: i64) -> Result<Option<i
     tx.execute(
         "INSERT INTO outbox (item_type, item_id, op, payload, enqueued_at)
          VALUES (?1, ?2, ?3, ?4, ?5)",
-        params![
-            change.item_type(),
-            change.item_id(),
-            change.op(),
-            payload,
-            now_ms
-        ],
+        params![change.item_type(), change.item_id(), op, payload, now_ms],
     )
     .map_err(failed)?;
     Ok(Some(tx.last_insert_rowid()))
@@ -322,28 +347,6 @@ pub fn depth(conn: &Connection) -> Result<usize, StorageError> {
     })
     .map_err(failed)
     .map(|count| count as usize)
-}
-
-/// One record row to send, plus the older rows it stands for.
-///
-/// The push response is per item id, so two rows sharing an id cannot be told
-/// apart in a mixed accept-and-reject response (§A.2). The newest row is sent
-/// and the rest ride its verdict.
-#[derive(Debug, Clone, PartialEq, Eq)]
-pub struct Collapsed {
-    pub row: OutboxRow,
-    /// Older rows for the same `(item_type, item_id)`. Acked with `row`,
-    /// never sent.
-    pub superseded: Vec<i64>,
-}
-
-impl Collapsed {
-    /// Every outbox id this push item accounts for.
-    pub fn ids(&self) -> Vec<i64> {
-        let mut ids = vec![self.row.id];
-        ids.extend_from_slice(&self.superseded);
-        ids
-    }
 }
 
 /// The next wave of work, already ordered and grouped.
@@ -494,40 +497,6 @@ pub fn next_batch(
     Ok(Some(Batch::Records {
         items: collapse_records(rows),
     }))
-}
-
-/// Collapses record rows to one per `(item_type, item_id)`, keeping the
-/// newest — the highest `id`, which is the insertion order (§A.2).
-///
-/// CRDT rows are returned untouched and uncollapsed; collapsing them would
-/// drop updates a peer has not seen.
-pub fn collapse_records(rows: Vec<OutboxRow>) -> Vec<Collapsed> {
-    let mut order: Vec<(String, String)> = Vec::new();
-    let mut grouped: HashMap<(String, String), Vec<OutboxRow>> = HashMap::new();
-    for row in rows {
-        if row.is_crdt() {
-            continue;
-        }
-        let key = (row.item_type.clone(), row.item_id.clone());
-        if !grouped.contains_key(&key) {
-            order.push(key.clone());
-        }
-        grouped.entry(key).or_default().push(row);
-    }
-
-    order
-        .into_iter()
-        .filter_map(|key| {
-            let mut rows = grouped.remove(&key)?;
-            rows.sort_by_key(|row| row.id);
-            let newest = rows.pop()?;
-            Ok::<_, ()>(Collapsed {
-                row: newest,
-                superseded: rows.into_iter().map(|row| row.id).collect(),
-            })
-            .ok()
-        })
-        .collect()
 }
 
 /// Ack is delete, per id, and **only for ids the server accepted** (§A.2).

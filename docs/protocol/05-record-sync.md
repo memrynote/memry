@@ -183,7 +183,7 @@ reached `hasMore: false` (`crates/memry-core/src/sync/feed_restart.rs`,
 
 **Acks are per item id.** Two queued rows sharing an id cannot be told apart in a
 mixed response, so **a client MUST collapse to one push item per id before
-sending** (`crates/memry-core/src/sync/outbox.rs:426-458`, rationale at `:295-297`).
+sending** (`crates/memry-core/src/sync/outbox/collapse.rs:38-67`, rationale at `:7-11`).
 
 Rejection reasons a client MUST handle:
 
@@ -204,7 +204,8 @@ no verdict for as failed**, which is what retires such a row.
 
 A delete, being last, correctly wins over a preceding update when rows collapse,
 because collapse sends the newest row and the older rows ride its verdict
-(`crates/memry-core/src/sync/outbox.rs:426-427`, pinned at `:545-558`).
+(`crates/memry-core/src/sync/outbox/collapse.rs:56-57`, pinned at
+`crates/memry-core/src/sync/outbox/tests.rs:18-31`).
 
 ## 5.6 The push wave
 
@@ -1037,6 +1038,17 @@ attestable delete it pushes and carries the verifier
 (`crates/memry-core/src/protocol/delete_attestation.rs`), but consumes no
 purged tombstone: that would need a new delete path on iOS, and the §5.12.1
 untyped-delete behaviour stays as documented there.
+
+The Rust core pushes `create` only for a `property_definition` the user creates
+(`crates/memry-core/src/domain/property_admin/records.rs:117`), so the server
+re-creates it over a marker. Its other writes go as `update`, a learned
+property type's promotion included
+(`crates/memry-core/src/domain/property_admin/learned.rs:103`). The server
+refuses that promotion over a marker with `SYNC_DELETE_WINS`, and the core
+tombstones the local record in the same transaction as the ack
+(`crates/memry-core/src/sync/push.rs:268-272`), unless a newer local change is
+queued for it. A learned name therefore never brings back a deleted definition
+(#4025).
 
 **Residual risks.**
 

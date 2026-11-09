@@ -7,6 +7,7 @@
 //! | ------------------------------------------------------ | ----------------------------------------- |
 //! | a learned type reaches the other device as a definition | Electron's pull, `seedUnclocked`, push    |
 //! | a learned name whose deletion was purged stays deleted  | chapter 05 §5.8, §5.12.3                  |
+//! | a definition the user creates over a purged deletion    | chapter 05 §5.12.3 (`create`)             |
 //!
 //! Within it: a definition another device pushed first wins over the learned type, a deleted one
 //! stays deleted, the record has the shape Electron's seed pushes, a retry pushes nothing twice,
@@ -446,4 +447,38 @@ async fn a_learned_name_whose_deletion_was_purged_stays_deleted() {
     let again = a.sync().await;
     assert!(!again.pushed, "{again:?}");
     assert!(a.listed().is_empty());
+}
+
+/// The user's own definition over a purged deletion: pushed as `create`, which the server
+/// re-creates over the marker (§5.12.3), so it stays on the device that made it and reaches the
+/// others.
+#[tokio::test(flavor = "multi_thread")]
+async fn a_definition_the_user_creates_over_a_purged_deletion_is_kept_and_synced() {
+    let mut server = Server::start();
+    let b = Device::new(&server, 1).await;
+    let gone = |type_name| DefinitionInput {
+        name: "gone".into(),
+        type_name: Some(type_name),
+        options: None,
+        default_value: None,
+        color: None,
+    };
+    b.definitions.create(gone(DefinitionType::Text)).unwrap();
+    assert!(b.sync().await.pushed);
+    b.definitions.delete("gone").unwrap();
+    assert!(b.sync().await.pushed);
+    tokio::time::sleep(Duration::from_millis(1_100)).await;
+    assert_eq!(server.purge(), 1, "the tombstone is a marker now");
+
+    let a = Device::new(&server, 0).await;
+    a.sync().await;
+    a.definitions.create(gone(DefinitionType::Number)).unwrap();
+    let created = a.sync().await;
+    assert!(created.pushed, "{created:?}");
+    assert_eq!(a.listed(), types(&[("gone", "number")]));
+    assert!(a.file().contains("gone:\n    type: number"), "{}", a.file());
+    assert_eq!(a.queued(), 0);
+
+    b.sync().await;
+    assert_eq!(b.listed(), types(&[("gone", "number")]));
 }

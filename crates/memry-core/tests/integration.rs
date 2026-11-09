@@ -326,6 +326,8 @@ mod portal_vectors;
 mod projector_null_tolerance;
 #[path = "push_crdt_update_cap.rs"]
 mod push_crdt_update_cap;
+#[path = "push_delete_wins.rs"]
+mod push_delete_wins;
 #[path = "push_seal.rs"]
 mod push_seal;
 #[path = "read_your_writes.rs"]
