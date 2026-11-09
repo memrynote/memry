@@ -5,6 +5,7 @@
 
 use crate::api::errors::StorageError;
 use crate::crdt::errors::CrdtError;
+use crate::domain::note_files::LogMark;
 use crate::domain::notes::journal_day;
 use crate::domain::write_back::{self, BodyRead};
 use crate::markdown::convert::EmbedResolver;
@@ -34,6 +35,26 @@ impl WriteBackReader {
                 Ok(write_back::body_for_file(
                     conn, converter, note_id, note_path, file_body, embeds,
                 ))
+            })
+            .map_err(CrdtError::from)?
+    }
+
+    /// [`write_back::body_mark`].
+    pub fn body_mark(&self, note_id: &str) -> Result<LogMark, CrdtError> {
+        self.db
+            .call_blocking(move |conn| Ok(write_back::body_mark(conn, note_id)))
+            .map_err(CrdtError::from)?
+    }
+
+    /// [`write_back::text_moved_since_stamp`].
+    pub fn text_moved_since_stamp(
+        &self,
+        converter: &Converter,
+        note_id: &str,
+    ) -> Result<Option<bool>, CrdtError> {
+        self.db
+            .call_blocking(move |conn| {
+                Ok(write_back::text_moved_since_stamp(conn, converter, note_id))
             })
             .map_err(CrdtError::from)?
     }

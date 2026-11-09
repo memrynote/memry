@@ -9,7 +9,7 @@
 use memry_core::crdt::body_edit::BlockEdit;
 use memry_core::crdt::errors::CrdtError;
 use memry_core::domain::body_write;
-use memry_core::domain::external_feed::{FeedInput, FeedOutcome};
+use memry_core::domain::external_feed::{AppRead, FeedInput, FeedOutcome};
 use memry_core::domain::journal_ops::body::edit_entry;
 use memry_core::domain::vault_locks::TargetKind;
 use memry_core::markdown::convert::api::Converter;
@@ -44,6 +44,13 @@ fn written(f: &Fixture, id: &str) -> (usize, i64) {
     (f.local_blobs(id).len(), f.queued(id))
 }
 
+fn read(file_body: &str) -> AppRead<'_> {
+    AppRead {
+        file_body,
+        compared_at: None,
+    }
+}
+
 fn feed_app_edit(f: &Fixture, note: &str, markdown: &str) -> Result<FeedOutcome, CrdtError> {
     let input = FeedInput {
         note_id: note,
@@ -56,7 +63,7 @@ fn feed_app_edit(f: &Fixture, note: &str, markdown: &str) -> Result<FeedOutcome,
     f.vault
         .external_feed(f.store.clone())
         .expect("a feed")
-        .feed_app_edit(&Converter::new(Default::default()), input, "before\n")
+        .feed_app_edit(&Converter::new(Default::default()), input, read("before\n"))
 }
 
 #[test]

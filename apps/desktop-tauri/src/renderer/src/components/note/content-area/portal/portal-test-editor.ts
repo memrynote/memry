@@ -29,6 +29,7 @@ export const para = (text: string, children?: PartialBlock[]): PartialBlock => (
 export function mountTestEditor(blocks: PartialBlock[]): {
   editor: BlockNoteEditor
   view: EditorView
+  doc: Y.Doc
 } {
   const doc = new Y.Doc()
   // oxlint-disable-next-line typescript/no-unsafe-type-assertion, anti-slop/no-chained-type-assertions -- the tests drive the app schema through the default BlockNoteEditor surface; the two schema generics do not unify
@@ -41,5 +42,5 @@ export function mountTestEditor(blocks: PartialBlock[]): {
   mounted.push({ editor, el, doc })
   editor.replaceBlocks(editor.document, blocks)
   const view = editor._tiptapEditor.view
-  return { editor, view }
+  return { editor, view, doc }
 }

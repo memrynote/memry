@@ -245,6 +245,18 @@ pub struct NoteMovedEvent {
     pub new_path: String,
 }
 
+/// An outside edit of the note's file met typing the file did not have yet, and the typing won
+/// (`notes:outside-edit-kept`, #4030): the outside text is kept as a version, and the write-back
+/// writes the typing over it. No Electron channel: Electron's editor held the outside edit
+/// itself.
+#[derive(
+    Debug, Clone, PartialEq, Eq, Serialize, serde::Deserialize, specta::Type, tauri_specta::Event,
+)]
+#[serde(rename_all = "camelCase")]
+pub struct NoteOutsideEditKeptEvent {
+    pub id: String,
+}
+
 /// Note events were dropped because their forwarder fell behind (no Electron channel: Electron
 /// sends every event). No payload; the renderer refetches its note lists, its tags and every
 /// note it shows.
