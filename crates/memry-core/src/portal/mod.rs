@@ -22,7 +22,9 @@ mod definition;
 mod resolve;
 
 pub use anchor::{extract_anchor, is_anchor};
-pub use definition::{PortalDefinition, PortalOpen, PortalTarget, parse_portal_definition};
+pub use definition::{
+    PortalDefinition, PortalOpen, PortalTarget, anchor_steps, parse_portal_definition,
+};
 
 /// Why a portal shows what it shows.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, uniffi::Enum)]

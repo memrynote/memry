@@ -54,6 +54,8 @@ mod attachment_sources;
 mod attachment_uploads;
 #[path = "attachments.rs"]
 mod attachments;
+#[path = "block_refs.rs"]
+mod block_refs;
 #[path = "byte_preservation.rs"]
 mod byte_preservation;
 #[path = "command_failure.rs"]
@@ -170,6 +172,8 @@ mod notes_create_template;
 mod notes_folder_delete;
 #[path = "notes_folder_move.rs"]
 mod notes_folder_move;
+#[path = "notes_folder_move_spelling.rs"]
+mod notes_folder_move_spelling;
 #[path = "notes_folders.rs"]
 mod notes_folders;
 #[path = "notes_frontmatter.rs"]
