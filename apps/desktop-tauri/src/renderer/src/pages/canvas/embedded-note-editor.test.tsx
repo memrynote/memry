@@ -266,4 +266,69 @@ describe('EmbeddedNoteEditor', () => {
       { id: 'n1', content: 'edited body' }
     ])
   })
+
+  describe('a note the core will not let the app write (#4088)', () => {
+    it('shows why a locked note refused the save and keeps the typing', async () => {
+      mocks.update.mockResolvedValue({
+        success: false,
+        code: 'note_locked',
+        error: 'The owner made this note read-only.',
+        note: null
+      })
+      renderCard()
+      await screen.findByTestId('content-area')
+
+      vi.useFakeTimers()
+      act(() => screen.getByTestId('edit').click())
+      await act(async () => {
+        await vi.advanceTimersByTimeAsync(1000)
+      })
+      expect(toast.error).toHaveBeenCalledWith('The owner made this note read-only.', {
+        id: 'note-not-saved:n1'
+      })
+
+      await act(() => flushAllPendingSaves())
+      expect(saves()).toHaveLength(2)
+    })
+
+    it('shows why the save the unmount sent was refused', async () => {
+      mocks.update.mockResolvedValue({
+        success: false,
+        code: 'note_excluded',
+        error: 'This note is excluded from the vault.',
+        note: null
+      })
+      const { unmount } = renderCard()
+      await screen.findByTestId('content-area')
+      act(() => screen.getByTestId('edit').click())
+
+      unmount()
+
+      await vi.waitFor(() =>
+        expect(toast.error).toHaveBeenCalledWith('This note is excluded from the vault.', {
+          id: 'note-not-saved:n1'
+        })
+      )
+    })
+
+    it('says the typing is unsaved when the note turns read-only before its save', async () => {
+      const { rerender } = renderCard()
+      await screen.findByTestId('content-area')
+      act(() => screen.getByTestId('edit').click())
+      expect(toast.error).not.toHaveBeenCalled()
+
+      mocks.isNoteLocked = true
+      rerender(
+        <QueryClientProvider client={queryClient}>
+          <EmbeddedNoteEditor noteId="n1" />
+        </QueryClientProvider>
+      )
+
+      expect(toast.error).toHaveBeenCalledTimes(1)
+      expect(toast.error).toHaveBeenCalledWith(
+        'This note became read-only before your latest changes were saved. They stay in the editor, unsaved.',
+        { id: 'note-not-saved:n1' }
+      )
+    })
+  })
 })

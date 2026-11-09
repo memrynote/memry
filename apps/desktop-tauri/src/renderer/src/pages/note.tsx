@@ -144,7 +144,7 @@ import { toast } from 'sonner'
 import { useIsBookmarked } from '@/hooks/use-bookmarks'
 import { useEditorSettings, EDITOR_NORMAL_CONTENT_WIDTH } from '@/hooks/use-editor-settings'
 import { extractErrorMessage } from '@/lib/ipc-error'
-import { useHasOwnNoteLock, useIsNoteLocked } from '@/lib/vault-locks-store'
+import { useHasOwnNoteLock } from '@/lib/vault-locks-store'
 import { LockedNoteNotice } from '@/components/note/locked-note-notice'
 import { createLogger } from '@/lib/logger'
 import { markLaunchNoteReadable } from '@/lib/launch-restore'
@@ -248,7 +248,7 @@ export function NotePage({ noteId }: NotePageProps) {
   const { note, isLoading, error: noteError, refetch: refetchNote } = body.query
   // The owner locked this note or a folder above it (#2606): read-only here
   // and for every agent write path.
-  const isLocked = useIsNoteLocked(noteId ?? null, note?.path ?? null)
+  const isLocked = body.locked
   const hasOwnLock = useHasOwnNoteLock(noteId ?? null)
   const { createNote, updateNote, renameNote, deleteNote } = useNoteMutations()
   const {

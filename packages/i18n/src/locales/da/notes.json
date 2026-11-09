@@ -73,7 +73,8 @@
       "deleteFailed": "Kunne ikke slette noten",
       "outsideEditReplaced": "Din skrivning erstattede en ændring udefra. Den er gemt i versionshistorikken.",
       "showVersions": "Vis versioner",
-      "notSaved": "Dine ændringer i denne note blev ikke gemt. De bliver i editoren, og din næste redigering prøver igen."
+      "notSaved": "Dine ændringer i denne note blev ikke gemt. De bliver i editoren, og din næste redigering prøver igen.",
+      "readOnlyUnsaved": "Denne note blev skrivebeskyttet, før dine seneste ændringer blev gemt. De bliver i editoren, ikke gemt."
     },
     "deleteDialogTitle": "{count, plural, one {Slet note} other {Slet # noter}}",
     "itemsCount": "{count, plural, one {# element} other {# elementer}}",

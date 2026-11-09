@@ -73,7 +73,8 @@
       "deleteFailed": "Gagal memadamkan nota",
       "outsideEditReplaced": "Taipan anda menggantikan perubahan dari luar. Ia disimpan dalam sejarah versi.",
       "showVersions": "Tunjukkan versi",
-      "notSaved": "Perubahan anda pada nota ini tidak disimpan. Ia kekal dalam editor, dan suntingan anda yang seterusnya akan mencuba lagi."
+      "notSaved": "Perubahan anda pada nota ini tidak disimpan. Ia kekal dalam editor, dan suntingan anda yang seterusnya akan mencuba lagi.",
+      "readOnlyUnsaved": "Nota ini menjadi baca sahaja sebelum perubahan terkini anda disimpan. Ia kekal dalam editor, tidak disimpan."
     },
     "deleteDialogTitle": "{count, plural, one {Padam nota} other {Padam # nota}}",
     "itemsCount": "{count, plural, other {# item}}",

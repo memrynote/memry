@@ -73,7 +73,8 @@
       "deleteFailed": "Kan notitie niet verwijderen",
       "outsideEditReplaced": "Je typwerk heeft een wijziging van buitenaf vervangen. Die staat in de versiegeschiedenis.",
       "showVersions": "Versies tonen",
-      "notSaved": "Je wijzigingen in deze notitie zijn niet opgeslagen. Ze blijven in de editor staan, en je volgende bewerking probeert het opnieuw."
+      "notSaved": "Je wijzigingen in deze notitie zijn niet opgeslagen. Ze blijven in de editor staan, en je volgende bewerking probeert het opnieuw.",
+      "readOnlyUnsaved": "Deze notitie werd alleen-lezen voordat je laatste wijzigingen waren opgeslagen. Ze blijven in de editor staan, niet opgeslagen."
     },
     "deleteDialogTitle": "{count, plural, one {Notitie verwijderen} other {# notities verwijderen}}",
     "itemsCount": "{count, plural, one {# item} other {# items}}",

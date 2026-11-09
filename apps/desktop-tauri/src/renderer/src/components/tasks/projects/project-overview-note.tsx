@@ -10,7 +10,6 @@ import { extractErrorMessage } from '@/lib/ipc-error'
 import { createLogger } from '@/lib/logger'
 import { trackRendererError } from '@/lib/telemetry-diagnostics'
 import { useT } from '@memry/i18n/renderer'
-import { useIsNoteLocked } from '@/lib/vault-locks-store'
 import { LockedNoteNotice } from '@/components/note/locked-note-notice'
 import { VersionHistory } from '@/components/note/version-history'
 import { useNoteBody } from '@/pages/note/use-note-body'
@@ -51,7 +50,7 @@ export const ProjectOverviewNote = ({
     showVersionHistory: () => setVersionsOpen(true)
   })
   const { note, isLoading, error: loadError } = body.query
-  const isLocked = useIsNoteLocked(homeNoteId, note?.path ?? null)
+  const isLocked = body.locked
 
   const handleCreate = useCallback(async (): Promise<void> => {
     setIsCreating(true)

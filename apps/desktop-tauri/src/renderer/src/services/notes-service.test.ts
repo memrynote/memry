@@ -629,6 +629,7 @@ describe('notes-service', () => {
     await expect(notesService.update({ id: 'note-1', content: 'Other' })).resolves.toEqual({
       success: false,
       error: 'the file changed while it was being written',
+      code: 'note_file_failed',
       note: null
     })
   })

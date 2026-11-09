@@ -311,7 +311,8 @@ const ported = {
         ...(savedContent !== undefined && { savedContent })
       }
     } catch (error) {
-      return { ...failure(error), note: null }
+      const code = commandErrorCode(error)
+      return { ...failure(error), note: null, ...(code && { code }) }
     }
   },
   // `plainChecklists` is Step 32's; an apply without it would drop what was asked. A failure

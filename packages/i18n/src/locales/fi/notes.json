@@ -73,7 +73,8 @@
       "deleteFailed": "Muistiinpanon poistaminen epäonnistui",
       "outsideEditReplaced": "Kirjoituksesi korvasi ulkopuolisen muutoksen. Se on tallessa versiohistoriassa.",
       "showVersions": "Näytä versiot",
-      "notSaved": "Muutoksiasi tähän muistiinpanoon ei tallennettu. Ne pysyvät editorissa, ja seuraava muokkauksesi yrittää uudelleen."
+      "notSaved": "Muutoksiasi tähän muistiinpanoon ei tallennettu. Ne pysyvät editorissa, ja seuraava muokkauksesi yrittää uudelleen.",
+      "readOnlyUnsaved": "Tämä muistiinpano muuttui vain luku -tilaan ennen kuin viimeisimmät muutoksesi tallennettiin. Ne pysyvät editorissa tallentamattomina."
     },
     "deleteDialogTitle": "{count, plural, one {Poista muistiinpano} other {Poista # muistiinpanoa}}",
     "itemsCount": "{count, plural, one {# kohde} other {# kohdetta}}",

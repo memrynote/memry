@@ -13,7 +13,6 @@
 import React, { useState } from 'react'
 import { ContentArea } from '@/components/note/content-area'
 import { VersionHistory } from '@/components/note/version-history'
-import { useIsNoteLocked } from '@/lib/vault-locks-store'
 import { LockedNoteNotice } from '@/components/note/locked-note-notice'
 import { useNoteBody } from '@/pages/note/use-note-body'
 
@@ -28,7 +27,7 @@ export const EmbeddedNoteEditor = ({ noteId }: EmbeddedNoteEditorProps): React.J
     showVersionHistory: () => setVersionsOpen(true)
   })
   const { note } = body.query
-  const isLocked = useIsNoteLocked(noteId, note?.path ?? null)
+  const isLocked = body.locked
 
   if (!note) {
     return <div className="min-h-0 flex-1 overflow-auto" />

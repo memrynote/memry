@@ -12,6 +12,7 @@ import {
 import { registerPendingSave, unregisterPendingSave } from '@/lib/save-registry'
 import { createLogger } from '@/lib/logger'
 import { trackRendererError } from '@/lib/telemetry-diagnostics'
+import { useIsNoteLocked } from '@/lib/vault-locks-store'
 import { useReplacedOutsideEdit } from './use-replaced-outside-edit'
 
 const log = createLogger('NoteBody')
@@ -29,6 +30,12 @@ const SURFACES = {
 export type NoteBodySurface = keyof typeof SURFACES
 
 const SAVE_DEBOUNCE_MS = 1000
+
+/**
+ * Refusals whose reply says why the note cannot be written: the user is shown that, not a
+ * generic failure. `note_excluded` ships with #4098.
+ */
+const READ_ONLY_REFUSALS = new Set(['note_locked', 'note_excluded'])
 
 /**
  * The body a save of `markdown` left in the file, as its event will say. Not `result.note`: the
@@ -75,6 +82,8 @@ export interface NoteBodyOptions {
 export interface NoteBody {
   /** The note, read again on mount (`readOnMount`). */
   query: UseNoteResult
+  /** The owner locked the note or a folder above it (#2606): the editor takes no typing. */
+  locked: boolean
   /** The text the editor opens on: the note's, or the outside edit it was handed since. */
   content: string
   /** Bumped when `content` is an outside edit for the live editor (`externalContentRevision`). */
@@ -98,6 +107,7 @@ export function useNoteBody(noteId: string | undefined, options: NoteBodyOptions
   const { t } = useT('notes')
   const query = useNote(noteId ?? null, { readOnMount: true })
   const { note, isFetching, isFetchedAfterMount } = query
+  const locked = useIsNoteLocked(noteId ?? null, note?.path ?? null)
   const { updateNote } = useNoteMutations()
   const outsideEdit = useReplacedOutsideEdit(noteId, showVersionHistory)
   const onSavedRef = useRef(options.onSaved)
@@ -125,11 +135,15 @@ export function useNoteBody(noteId: string | undefined, options: NoteBodyOptions
   // oxlint-disable-next-line react/refs -- latest-value ref (callbacks/state mirrored for stable handlers); not render output
   tRef.current = t
   const notSaved = useCallback(
-    (id: string, error: unknown) => {
+    (id: string, error: unknown, refusal?: NoteUpdateResponse) => {
       log.error('The note was not saved:', { surface, noteId: id, error })
       const action = SURFACES[surface]
       if (action) trackRendererError(action, error)
-      toast.error(tRef.current('page.toast.notSaved'), { id: `note-not-saved:${id}` })
+      const why =
+        refusal?.code && READ_ONLY_REFUSALS.has(refusal.code) && refusal.error
+          ? refusal.error
+          : tRef.current('page.toast.notSaved')
+      toast.error(why, { id: `note-not-saved:${id}` })
     },
     [surface]
   )
@@ -260,7 +274,7 @@ export function useNoteBody(noteId: string | undefined, options: NoteBodyOptions
         const result = await updateNoteRef.current({ id, content: markdown })
         // The page shows another note now: its baseline, typing and toasts are not this save's.
         if (liveNoteIdRef.current !== id) {
-          if (!result.success) notSaved(id, result.error)
+          if (!result.success) notSaved(id, result.error, result)
           return result
         }
         // A refused save wrote nothing: the editor's text is still not the file's.
@@ -272,7 +286,7 @@ export function useNoteBody(noteId: string | undefined, options: NoteBodyOptions
             lastSavedContent.current = text
           }
         } else {
-          notSaved(id, result.error)
+          notSaved(id, result.error, result)
         }
         window.toasted = outsideEdit.saved(id, markdown, result) || window.toasted
         window.last = { markdown, result }
@@ -297,7 +311,7 @@ export function useNoteBody(noteId: string | undefined, options: NoteBodyOptions
       updateNoteRef
         .current({ id, content: markdown })
         .then((result) => {
-          if (!result.success) notSaved(id, result.error)
+          if (!result.success) notSaved(id, result.error, result)
           return undefined
         })
         .catch((err: unknown) => notSaved(id, err))
@@ -319,6 +333,16 @@ export function useNoteBody(noteId: string | undefined, options: NoteBodyOptions
     // oxlint-disable-next-line react-you-might-not-need-an-effect/no-derived-state, react-you-might-not-need-an-effect/no-pass-ref-to-parent -- an outside edit handed to the live editor once per note; whether it is taken or held depends on refs (typing, a save in flight) a render cannot read
     outsideText(note.content)
   }, [note, isFetchedAfterMount, isFetching, outsideText])
+
+  // The note turned read-only (a lock) with typing its save has not written: that save will be
+  // refused, so the user is told now. The typing stays pending, and in the editor.
+  const wasLockedRef = useRef(locked)
+  useEffect(() => {
+    const turned = locked && !wasLockedRef.current
+    wasLockedRef.current = locked
+    if (!turned || !noteId || pendingMarkdownRef.current === null) return
+    toast.error(tRef.current('page.toast.readOnlyUnsaved'), { id: `note-not-saved:${noteId}` })
+  }, [locked, noteId])
 
   // Register with save registry + flush on unmount
   useEffect(() => {
@@ -471,5 +495,12 @@ export function useNoteBody(noteId: string | undefined, options: NoteBodyOptions
     }
   }, [])
 
-  return { query, content, revision: externalUpdateCount, onMarkdownChange, cancelScheduledSave }
+  return {
+    query,
+    locked,
+    content,
+    revision: externalUpdateCount,
+    onMarkdownChange,
+    cancelScheduledSave
+  }
 }
