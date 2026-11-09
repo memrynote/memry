@@ -201,6 +201,25 @@ fn serves_a_path_written_on_another_device_from_this_vault() {
     );
 }
 
+/// A Mac path has no drive: on Windows it is read for its `attachments/` tail only (#4081).
+#[test]
+fn serves_an_attachment_from_a_url_a_mac_wrote() {
+    let fx = fixture();
+    fs::write(fx.vault.join("attachments/n1/abc123-photo.png"), b"png").unwrap();
+    fs::write(fx.vault.join("attachments/n1/abc123-page.html"), "x").unwrap();
+    let image = "memry-file://local/Users/kaan/Vault/attachments/n1/abc123-photo.png";
+    let served = serve_file(image, &req(None), &fx.roots(), WINDOWS, Caps::UNBOUNDED);
+    assert_eq!(served.status, 200);
+    assert_eq!(bytes_of(served), b"png");
+    let page = "memry-html://local/Users/kaan/Vault/attachments/n1/abc123-page.html";
+    assert_eq!(serve_html(page, true, Some(&fx.vault), WINDOWS).status, 200);
+    let climb = "memry-file://local/Users/kaan/attachments/n1/..%5C..%5Cabc123-photo.png";
+    assert_eq!(
+        serve_file(climb, &req(None), &fx.roots(), WINDOWS, Caps::UNBOUNDED).status,
+        403
+    );
+}
+
 #[test]
 fn heals_an_attachment_renamed_on_disk_before_the_blank_image_fallback() {
     let fx = fixture();
