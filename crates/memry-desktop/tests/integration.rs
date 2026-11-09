@@ -166,6 +166,8 @@ mod notes_create_template;
 mod notes_folder_delete;
 #[path = "notes_folder_move.rs"]
 mod notes_folder_move;
+#[path = "notes_folder_move_spelling.rs"]
+mod notes_folder_move_spelling;
 #[path = "notes_folders.rs"]
 mod notes_folders;
 #[path = "notes_frontmatter.rs"]

@@ -43,6 +43,10 @@
 //! folder. A settings file that cannot be read refuses every folder move
 //! (`vault_settings_unreadable`): it does not say where the journal is, or whether it follows.
 //!
+//! The folder is the one the disk lists under the name given in any case or Unicode form
+//! (`WORK` for `Work`, [`disk_spelling`]), on every volume: the rows name the disk's spelling,
+//! and a case-blind disk moves that folder for any other (#4077).
+//!
 //! Refused: a folder that is not there (`folder_not_found`, #2531's stale sidebar), a target that
 //! exists under any spelling but the folder's own (`name_conflict`), and one inside the folder, one
 //! the tree hides, the vault ignores, a link leads to, or no record can name (`invalid_folder`),
@@ -153,11 +157,15 @@ impl NotesService {
         after_disk: &mut dyn FnMut() -> Result<(), NotesError>,
     ) -> Result<(), NotesError> {
         let root = open.path.as_path();
-        let (from, to) = (vault_folder(root, old)?, vault_folder(root, new)?);
-        // Nothing locked moves with the folder, and nothing moves into a locked one.
-        // Each as the disk spells it: `ARCHIVE` names a locked `Archive`.
+        // The folder as the disk spells it, the one that moves: `ARCHIVE` names `Archive`, whose
+        // rows name `Archive/`. Under the caller's spelling a case-blind disk moves the folder
+        // and no row follows it (#4077).
+        let from = disk_spelling(root, &vault_folder(root, old)?);
+        let to = vault_folder(root, new)?;
+        // Nothing locked moves with the folder, and nothing moves into a locked one, the target
+        // too as the disk spells it.
         let locks = Locks::of(open);
-        locks.refuse_folder_tree(&disk_spelling(root, &from))?;
+        locks.refuse_folder_tree(&from)?;
         locks.refuse_parent_folder(&disk_spelling(root, &to))?;
         if from == to {
             return Ok(());
