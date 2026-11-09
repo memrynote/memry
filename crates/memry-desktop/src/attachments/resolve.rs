@@ -27,7 +27,9 @@ const MEMRY_FILE_PREFIX: &str = "memry-file://local/";
 /// Where a block's url points in this vault.
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct ResolvedAttachment {
-    /// Vault-relative with `/`: the url's path, or the file self-heal found in its place.
+    /// Vault-relative with `/`: the path the url names.
+    pub named: String,
+    /// Vault-relative with `/`: [`Self::named`], or the file self-heal found in its place.
     pub rel: String,
     /// What is there, its real location inside the vault; `None` when nothing is.
     pub path: Option<PathBuf>,
@@ -62,6 +64,7 @@ pub fn resolve(
     };
     match resolve_under_root(vault, &rel)? {
         Resolution::Inside(path) => Ok(ResolvedAttachment {
+            named: rel.clone(),
             rel,
             path: Some(path),
         }),
@@ -71,11 +74,16 @@ pub fn resolve(
                 && let Resolution::Inside(path) = resolve_under_root(vault, &healed)?
             {
                 return Ok(ResolvedAttachment {
+                    named: rel,
                     rel: healed,
                     path: Some(path),
                 });
             }
-            Ok(ResolvedAttachment { rel, path: None })
+            Ok(ResolvedAttachment {
+                named: rel.clone(),
+                rel,
+                path: None,
+            })
         }
     }
 }

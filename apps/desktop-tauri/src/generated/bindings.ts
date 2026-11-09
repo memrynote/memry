@@ -83,6 +83,15 @@ export const commands = {
 	 *  the synced `general.language`, and tells every window.
 	 */
 	localeSet: (locale: string) => __TAURI_INVOKE<null>("locale_set", { locale }),
+	/**  Copies the image at `url` into the note's attachments folder. */
+	notesDownloadAttachmentFromUrl: (noteId: string, url: string) => __TAURI_INVOKE<UrlDownload>("notes_download_attachment_from_url", { noteId, url }),
+	/**
+	 *  The block props for `note_id` to embed `filename` of `owner_note_id`'s attachments folder.
+	 *  Nothing is copied.
+	 */
+	notesInsertExistingAttachment: (noteId: string, ownerNoteId: string, filename: string) => __TAURI_INVOKE<InsertedAttachment>("notes_insert_existing_attachment", { noteId, ownerNoteId, filename }),
+	/**  Every attachment the vault stores, newest first, for the pickers. */
+	notesListVaultAttachments: () => __TAURI_INVOKE<VaultAttachmentEntry[]>("notes_list_vault_attachments"),
 	/**
 	 *  Renames the file a block's `url` names in the note's attachments folder to `new_name`, keeping
 	 *  its prefix and extension, and answers the block's new `url` and `name`.
@@ -237,6 +246,12 @@ export const commands = {
 	notesUpdateOptionColor: (propertyName: string, optionValue: string, newColor: string) => __TAURI_INVOKE<null>("notes_update_option_color", { propertyName, optionValue, newColor }),
 	/**  `notes:update-property-definition`: `null` when there is no definition of the name. */
 	notesUpdatePropertyDefinition: (input: DefinitionInput) => __TAURI_INVOKE<PropertyDefinitionView | null>("notes_update_property_definition", { input }),
+	/**
+	 *  Saves a photo picked in the cover picker as an attachment of the note, and answers its ref
+	 *  and the credit the licence asks for. A note the vault has no row for, a locked note or a
+	 *  failed write saves nothing.
+	 */
+	notesDownloadUnsplashPhoto: (noteId: string, photo: UnsplashPhoto) => __TAURI_INVOKE<UnsplashDownloadResponse>("notes_download_unsplash_photo", { noteId, photo }),
 	/**  `notes:delete-version`: a version that is not there is no failure, as in Electron. */
 	notesDeleteVersion: (snapshotId: string) => __TAURI_INVOKE<null>("notes_delete_version", { snapshotId }),
 	/**  `notes:get-version`: the version and the file it restores to; `null` for none. */
@@ -588,6 +603,9 @@ export type ApplyTemplateInput = {
 /**  The kinds of a note whose file is not markdown. */
 export type AttachedFileType = "pdf" | "image" | "audio" | "video";
 
+/**  `image` or `file`; a video stays `file`, which older clients read as a file block (#2190). */
+export type AttachmentKind = "image" | "file";
+
 /**  A link's text in the linking note (`BacklinkContext`); offsets are UTF-16 units. */
 export type BacklinkContextView = {
 	snippet: string,
@@ -682,6 +700,12 @@ export type CrdtWriteBackFailedEvent = {
 	noteId: string,
 	title: string | null,
 	reason: WriteBackFailureReason,
+};
+
+/**  Who to credit for a photo, as the licence asks. */
+export type Credit = {
+	name: string,
+	url: string,
 };
 
 /**  One icon as the renderer sees it (`CustomIconSchema`). */
@@ -1049,6 +1073,18 @@ export type InboxOpenItemEvent = {
 export type InheritedFieldsView = {
 	from: string,
 	fields: ResolvedFieldView[],
+};
+
+/**  The block props that embed an attachment another note stores: `InsertExistingAttachmentResult`. */
+export type InsertedAttachment = {
+	/**  The block's `url`, relative to the receiving note's file. */
+	url: string,
+	name: string,
+	filename: string,
+	ownerNoteId: string,
+	size: number,
+	mimeType: string,
+	type: AttachmentKind,
 };
 
 /**  The previous session handed off an install that never applied. */
@@ -1748,6 +1784,9 @@ export type RelationView = {
 	inverse: string | null,
 };
 
+/**  Why a link produced no attachment: `DownloadAttachmentFromUrlFailure`. */
+export type RemoteFailure = "not-an-image" | "too-large" | "offline" | "failed" | "write-failed";
+
 /**  `RemoveTagFromNoteSchema`. */
 export type RemoveTagFromNoteInput = {
 	noteId: string,
@@ -2241,6 +2280,9 @@ export type UnlinkedMentionView = {
 	truncated: boolean,
 };
 
+/**  What a photo download came to: `UnsplashDownloadResult` without its `ok` flag. */
+export type UnsplashDownloadResponse = { status: "saved"; ref: string; credit: Credit } | { status: "unavailable"; reason: UnsplashFailure } | { status: "writeFailed" };
+
 /**
  *  Why an Unsplash request produced nothing. The wire names are the contract's
  *  `UnsplashFailureReason`; `NotConfigured` is "hide the Photos tab", not an error to show.
@@ -2279,6 +2321,9 @@ export type UnsplashSearchResponse = { status: "photos"; photos: UnsplashPhoto[]
 export type UpdaterStateChangedEvent = AppUpdateState;
 
 export type UpdaterStatus = "unavailable" | "idle" | "checking" | "available" | "downloading" | "downloaded" | "installing" | "up-to-date" | "error";
+
+/**  What a URL download came to: `DownloadAttachmentFromUrlResult` without its `ok` flag. */
+export type UrlDownload = { status: "saved"; ref: string } | { status: "failed"; reason: RemoteFailure };
 
 export type Value = null | boolean | number | string | Value[] | { [key in string]: Value };
 
@@ -2325,6 +2370,22 @@ export type VaultActivityList = {
 
 /**  `VAULT_ACTIVITY_SOURCES`. */
 export type VaultActivitySource = "watcher" | "scan" | "import" | "drop" | "sync";
+
+/**  One stored attachment anywhere in the vault: `VaultAttachmentEntry` of `@memry/rpc/notes`. */
+export type VaultAttachmentEntry = {
+	ownerNoteId: string,
+	/**  `None` when the owning note is gone from the vault; its bytes are still here. */
+	ownerNoteTitle: string | null,
+	/**  The stored name, `k3f9x2-report.pdf`. */
+	filename: string,
+	/**  The stored name without its prefix. */
+	displayName: string,
+	size: number,
+	mimeType: string,
+	type: AttachmentKind,
+	/**  The file's modification time, ISO-8601 in UTC with milliseconds. */
+	modifiedAt: string,
+};
 
 /**  The vault settings, in the `VaultConfig` shape of `packages/contracts/src/vault-api.ts`. */
 export type VaultConfig = {
