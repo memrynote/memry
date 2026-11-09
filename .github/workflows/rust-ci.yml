@@ -19,6 +19,8 @@ on:
       - 'crates/**'
       - 'apps/desktop-tauri/**'
       - 'tests/sync-harness/scripts/serve.ts'
+      - 'tests/sync-harness/src/**'
+      - 'apps/sync-server/**'
       - 'pnpm-lock.yaml'
       - 'packages/swift/**'
       - 'packages/contracts/test-vectors/**'
@@ -118,7 +120,7 @@ jobs:
         uses: ./.github/actions/paths-changed
         with:
           token: ${{ github.token }}
-          include: '^(crates/|apps/desktop-tauri/|tests/sync-harness/scripts/serve\.ts$|pnpm-lock\.yaml$|packages/swift/|packages/contracts/test-vectors/|packages/article-extract/|scripts/check-line-ceilings\.mjs$|scripts/check-test-timing(\.test)?\.mjs$|\.github/workflows/rust-ci\.yml$)'
+          include: '^(crates/|apps/desktop-tauri/|tests/sync-harness/scripts/serve\.ts$|tests/sync-harness/src/|apps/sync-server/|pnpm-lock\.yaml$|packages/swift/|packages/contracts/test-vectors/|packages/article-extract/|scripts/check-line-ceilings\.mjs$|scripts/check-test-timing(\.test)?\.mjs$|\.github/workflows/rust-ci\.yml$)'
 
   lint-and-test:
     name: Rust ${{ matrix.part }}${{ matrix.partition && format(' {0}', matrix.partition) || '' }} (${{ matrix.os }})

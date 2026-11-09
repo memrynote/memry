@@ -36,6 +36,8 @@ use std::sync::atomic::{AtomicUsize, Ordering};
 use serde_json::{Value as Json, json};
 
 use crate::api::errors::{ApiError, StorageError};
+use crate::domain::notes::failed;
+use crate::domain::property_admin;
 use crate::protocol::envelope::{EnvelopeError, SyncOperation};
 use crate::protocol::http::{
     ApiRequest, Auth, DEFAULT_BASE_DELAY_MS, HttpClient, RetryPolicy, SYNC_TYPES_HEADER,
@@ -43,12 +45,14 @@ use crate::protocol::http::{
 };
 use crate::protocol::types::Declaration;
 use crate::storage::Db;
+use crate::storage::repositories::projectors;
 use crate::storage::repositories::sync_items::{self, SyncItemRow};
 
 mod crdt;
 
 use super::engine::PushWave;
 use super::outbox::{self, Batch, Collapsed, OutboxRow};
+use super::store;
 use crdt::BatchEnd;
 pub use crdt::{SnapshotFallback, SnapshotFallbackOutcome};
 
@@ -248,6 +252,7 @@ impl PushCoordinator {
         let now = now_ms();
         let mut acked: Vec<i64> = Vec::new();
         let mut deferred: Vec<(Vec<i64>, String, i64)> = Vec::new();
+        let mut deleted_there: Vec<String> = Vec::new();
         for item in sent {
             let key = item.row.item_id.clone();
             if accepted.iter().any(|id| id == &key) {
@@ -260,6 +265,12 @@ impl PushCoordinator {
             // row queued would retry it every pass for ever.
             if reason == REASON_REPLAY_DETECTED || reason == REASON_DELETE_WINS {
                 acked.extend(item.ids());
+                if reason == REASON_DELETE_WINS
+                    && item.row.item_type == property_admin::ITEM_TYPE
+                    && item.row.op == outbox::OP_UPSERT
+                {
+                    deleted_there.push(key);
+                }
             } else {
                 let at = retry_at(now, item.row.attempt_count);
                 deferred.push((item.ids(), reason, at));
@@ -270,11 +281,15 @@ impl PushCoordinator {
         report.rejected += deferred.len();
         self.db
             .call(move |conn| {
-                outbox::ack(conn, &acked)?;
+                let tx = conn.unchecked_transaction().map_err(failed)?;
+                outbox::ack(&tx, &acked)?;
                 for (ids, reason, at) in &deferred {
-                    outbox::defer(conn, ids, reason, Some(*at))?;
+                    outbox::defer(&tx, ids, reason, Some(*at))?;
                 }
-                Ok(())
+                for name in &deleted_there {
+                    take_the_delete(&tx, property_admin::ITEM_TYPE, name, now)?;
+                }
+                tx.commit().map_err(failed)
             })
             .await?;
         Ok(())
@@ -370,6 +385,27 @@ fn local_failure(error: StorageError) -> ApiError {
     ApiError::Storage {
         what: error.to_string(),
     }
+}
+
+/// §5.8's client rule for a write the server refused because it holds the item deleted: the
+/// delete wins here too, as a pulled one would, and nothing is queued. Only for a
+/// `property_definition` (#4025): a device that never saw a definition's tombstone (shed to a
+/// marker, §5.12.3, which this core never pulls) can still learn its name and promote it, and
+/// this refusal is the only delete it will ever see. Acked in the same transaction, so the
+/// local record never outlives its outbox row.
+fn take_the_delete(
+    conn: &rusqlite::Connection,
+    item_type: &str,
+    item_id: &str,
+    now_ms: i64,
+) -> Result<(), StorageError> {
+    let live =
+        sync_items::load(conn, item_type, item_id)?.is_some_and(|row| row.deleted_at.is_none());
+    if live {
+        store::mark_deleted(conn, item_type, item_id, now_ms, None, now_ms)?;
+        projectors::delete(conn, item_type, item_id, now_ms)?;
+    }
+    Ok(())
 }
 
 /// The outbox has one upsert op; chapter 04 §4.9 makes `update` the neutral

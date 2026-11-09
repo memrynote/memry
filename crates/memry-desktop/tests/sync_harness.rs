@@ -6,6 +6,7 @@
 //! | Test                                                   | Rule (#4025)                              |
 //! | ------------------------------------------------------ | ----------------------------------------- |
 //! | a learned type reaches the other device as a definition | Electron's pull, `seedUnclocked`, push    |
+//! | a learned name whose deletion was purged stays deleted  | chapter 05 §5.8, §5.12.3                  |
 //!
 //! Within it: a definition another device pushed first wins over the learned type, a deleted one
 //! stays deleted, the record has the shape Electron's seed pushes, a retry pushes nothing twice,
@@ -17,10 +18,12 @@
 mod device_key;
 
 use std::collections::BTreeMap;
-use std::io::{BufRead, BufReader};
+use std::io::{BufRead, BufReader, Write};
 use std::path::{Path, PathBuf};
 use std::process::{Child, Command, Stdio};
 use std::sync::Arc;
+use std::sync::mpsc::{Receiver, channel};
+use std::time::Duration;
 
 use base64::Engine as _;
 use base64::engine::general_purpose::STANDARD as BASE64;
@@ -54,6 +57,7 @@ struct Server {
     child: Child,
     url: String,
     devices: Vec<Value>,
+    replies: Receiver<Value>,
 }
 
 impl Server {
@@ -71,9 +75,15 @@ impl Server {
         let mut line = String::new();
         out.read_line(&mut line).expect("the bootstrap line");
         // The Worker logs to stdout; a closed pipe would end it on its first line.
+        let (reply, replies) = channel();
         std::thread::spawn(move || {
             for line in out.lines().map_while(Result::ok) {
-                eprintln!("[worker] {line}");
+                match serde_json::from_str::<Value>(&line) {
+                    Ok(value) if value.get("harnessMarkers").is_some() => {
+                        let _ = reply.send(value);
+                    }
+                    _ => eprintln!("[worker] {line}"),
+                }
             }
         });
         let boot: Value = serde_json::from_str(&line).expect("the bootstrap is JSON");
@@ -81,7 +91,20 @@ impl Server {
             child,
             url: boot["url"].as_str().expect("a url").to_owned(),
             devices: boot["devices"].as_array().expect("devices").clone(),
+            replies,
         }
+    }
+
+    /// Runs the Worker's cron, which sheds every tombstone to a marker (§5.12.3, retention 0 days
+    /// for a user with no entitlement). Returns how many markers the server holds.
+    fn purge(&mut self) -> u64 {
+        let stdin = self.child.stdin.as_mut().expect("its stdin");
+        stdin
+            .write_all(b"purge\n")
+            .and_then(|()| stdin.flush())
+            .expect("purge");
+        let reply = self.replies.recv().expect("the purge reply");
+        reply["harnessMarkers"].as_u64().expect("a marker count")
     }
 }
 
@@ -382,4 +405,45 @@ async fn a_learned_type_reaches_the_other_device_as_a_definition() {
     assert_eq!(a.queued(), 0);
     b.sync().await;
     assert_eq!(b.listed().get("due").map(String::as_str), Some("date"));
+}
+
+/// A device that never pulled a definition's tombstone, because the server shed it to a marker
+/// (§5.12.3) that the core never pulls, learns the name and promotes it. The server refuses the
+/// push (`SYNC_DELETE_WINS`), and the delete wins on that device too: it lists nothing, its file
+/// drops the name, and the name is never learned again.
+#[tokio::test(flavor = "multi_thread")]
+async fn a_learned_name_whose_deletion_was_purged_stays_deleted() {
+    let mut server = Server::start();
+    let b = Device::new(&server, 1).await;
+    b.definitions
+        .create(DefinitionInput {
+            name: "gone".into(),
+            type_name: Some(DefinitionType::Text),
+            options: None,
+            default_value: None,
+            color: None,
+        })
+        .unwrap();
+    assert!(b.sync().await.pushed);
+    b.definitions.delete("gone").unwrap();
+    assert!(b.sync().await.pushed);
+    // The shed takes tombstones whose `deleted_at` second has passed.
+    tokio::time::sleep(Duration::from_millis(1_100)).await;
+    assert_eq!(server.purge(), 1, "the tombstone is a marker now");
+
+    let a = Device::new(&server, 0).await;
+    a.learn(&[("gone", DefinitionType::Text)]);
+    let first = a.sync().await;
+    assert!(first.pushed, "{first:?}");
+    assert!(a.listed().is_empty(), "{:?}", a.listed());
+    assert!(!a.file().contains("gone"), "{}", a.file());
+    assert_eq!(a.queued(), 0);
+    assert!(a.payload("gone").is_none(), "the record is a tombstone");
+
+    // Retyping the name learns nothing, and the next pass pushes nothing.
+    let wanted = BTreeMap::from([("gone".to_owned(), DefinitionType::Number)]);
+    assert!(!a.definitions.learn(wanted).unwrap());
+    let again = a.sync().await;
+    assert!(!again.pushed, "{again:?}");
+    assert!(a.listed().is_empty());
 }

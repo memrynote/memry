@@ -49,9 +49,7 @@ pub fn learn(conn: &Connection, wanted: &BTreeMap<String, String>) -> Result<boo
     let recorded = recorded(&tx)?;
     let mut learned = false;
     for (name, type_name) in wanted {
-        let learnable = DEFINITION_TYPES.contains(&type_name.as_str())
-            && !matches!(type_name.as_str(), "relation" | "project");
-        if learnable && !recorded.contains_key(name) && !types.contains_key(name) {
+        if learnable(type_name) && !recorded.contains_key(name) && !types.contains_key(name) {
             types.insert(name.clone(), type_name.clone());
             learned = true;
         }
@@ -67,7 +65,7 @@ pub fn learn(conn: &Connection, wanted: &BTreeMap<String, String>) -> Result<boo
 /// unclocked rows: a record of the name and type with no options, default or color, queued for
 /// the push. A name with a record, live or deleted, is not promoted, so a deletion stays deleted;
 /// neither is a name in `held` (the names the shell's definitions file holds, an entry it cannot
-/// parse included) or a type this build does not know. Each promoted name, and each with a
+/// parse included) or a type [`learn`] would not learn. Each promoted name, and each with a
 /// record, leaves the learned types, in the same transaction as the records: a retry or the next
 /// pass finds a record and promotes nothing twice, and a tombstone purged later cannot bring a
 /// deleted name back. A stored value this build cannot read promotes nothing and stays.
@@ -91,7 +89,7 @@ pub fn promote(
             changed = true;
             continue;
         }
-        if held.contains(&name) || !DEFINITION_TYPES.contains(&type_name.as_str()) {
+        if held.contains(&name) || !learnable(&type_name) {
             continue;
         }
         let record = DefinitionRecord {
@@ -112,6 +110,12 @@ pub fn promote(
     }
     tx.commit().map_err(failed)?;
     Ok(promoted)
+}
+
+/// A type a definition holds: no `relation`, which none holds, and no `project`, which its name
+/// decides.
+fn learnable(type_name: &str) -> bool {
+    DEFINITION_TYPES.contains(&type_name) && !matches!(type_name, "relation" | "project")
 }
 
 /// Whether a live note or journal record carries a value for `name`.
@@ -292,6 +296,29 @@ mod tests {
             Ok(())
         })
         .expect("promoted");
+    }
+
+    /// A stored entry `learn` would not have learned (an older build's `relation` or `project`)
+    /// is never promoted: no definition holds `relation`, and `project` is the desktop's own step.
+    #[test]
+    fn a_stored_relation_or_project_is_not_promoted() {
+        let dir = temp_dir("props-learned-promote-relation");
+        let db = open_data(&dir.path().join("data.db")).expect("open");
+        db.call_blocking(|c| {
+            let stored_types = types(&[
+                ("links", "relation"),
+                ("project", "project"),
+                ("rating", "number"),
+            ]);
+            store(c, &stored_types)?;
+            assert_eq!(promote(c, &held(&[]), "p", NOW)?, ["rating"]);
+            assert_eq!(outbox(c), [("rating".into(), "upsert".into())]);
+            assert!(
+                crate::storage::repositories::sync_items::load(c, ITEM_TYPE, "links")?.is_none()
+            );
+            Ok(())
+        })
+        .expect("not promoted");
     }
 
     #[test]
