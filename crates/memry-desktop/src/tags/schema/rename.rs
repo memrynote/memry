@@ -19,7 +19,8 @@
 //! crash) is run again with `resuming` by the next open ([`register_resume`]) and comes to the
 //! same end. A note the seam keeps for an edit its file or its document has not caught up with
 //! is tried once more after the write-back ran; one still kept is answered in `kept` and holds
-//! the job for the next open. Tauri has no note lock yet (Step 14), so `skippedLocked` is 0.
+//! the job for the next open. A locked note is left as it is and counted in `skipped_locked`,
+//! and it holds the job too, until an unlock ([`crate::locks`]) or the next open resumes it.
 //!
 //! [`Tasks::rename_field`]: memry_core::api::tasks::Tasks
 
@@ -39,7 +40,8 @@ use crate::notes::error::{NotesError, kept_is_retryable};
 use crate::notes::properties::FieldInNote;
 use crate::notes::service::NotesService;
 use crate::notes::tag_rename::{SETTLE, walked};
-use crate::session::{OpenStage, Session};
+use crate::session::{OpenStage, OpenVault, Session};
+use crate::vault::app_edit::Kept;
 use crate::vault::consumer::Applied;
 
 #[cfg(doc)]
@@ -71,6 +73,8 @@ enum InNote {
     Done(FieldInNote),
     /// Kept by an edit its file or its document has and the other has not yet.
     Again,
+    /// Locked (`isNoteLocked`): left as it is, and the job stays for the unlock.
+    Locked,
     /// Not written for good (its frontmatter is broken, it is gone): logged.
     Failed,
 }
@@ -222,6 +226,7 @@ impl Schemas {
             match self.rename_in_note(id, from, to)? {
                 InNote::Done(done) => count(&mut view, done),
                 InNote::Again => again.push(id),
+                InNote::Locked => view.skipped_locked += 1,
                 InNote::Failed => {}
             }
             tick(progress);
@@ -237,6 +242,7 @@ impl Schemas {
             match self.rename_in_note(id, from, to)? {
                 InNote::Done(done) => count(&mut view, done),
                 InNote::Again => view.kept += 1,
+                InNote::Locked => view.skipped_locked += 1,
                 InNote::Failed => {}
             }
         }
@@ -252,7 +258,7 @@ impl Schemas {
         if total == 0 {
             progress(&job.run_id, 0, 0);
         }
-        if view.kept == 0 {
+        if view.kept == 0 && view.skipped_locked == 0 {
             self.schemas.finish_field_rename()?;
         }
         Ok(view)
@@ -273,6 +279,7 @@ impl Schemas {
         match self.notes.rename_field_in_note(&self.open, id, from, to) {
             Ok(done) => Ok(InNote::Done(done)),
             Err(NotesError::EditKept(kept)) if kept_is_retryable(&kept) => Ok(InNote::Again),
+            Err(NotesError::EditKept(Kept::Locked)) => Ok(InNote::Locked),
             Err(NotesError::Closed) => Err(SchemaError::Stopped),
             Err(error) => {
                 tracing::warn!(
@@ -357,23 +364,58 @@ pub fn register_resume(
                 return Ok(());
             }
             drop(facts);
-            let resumed = Schemas::open(open, &notes, "en")
-                .and_then(|schemas| schemas.resume_field_rename(&|| cancel.is_cancelled()));
-            match resumed {
-                Ok(Some(view)) => {
-                    if view.kept > 0 {
-                        tracing::warn!(
-                            scope = SCOPE,
-                            kept = view.kept,
-                            "a resumed field rename left notes for the next open"
-                        );
-                    }
-                    finished();
-                    Ok(())
-                }
-                Ok(None) | Err(SchemaError::Stopped) => Ok(()),
-                Err(error) => Err(format!("resuming a field rename failed: {error}")),
+            if resume_recorded(open, &notes, &|| cancel.is_cancelled())? {
+                finished();
             }
+            Ok(())
         }),
     );
+}
+
+/// `resumeFieldRenameAfterUnlock`: once a lock is lifted, a rename the lock held finishes on its
+/// own thread, and `finished` runs after a resume that ran. A failure is logged.
+pub fn resume_after_unlock(
+    open: OpenVault,
+    notes: Arc<NotesService>,
+    finished: impl FnOnce() + Send + 'static,
+) {
+    let spawned = std::thread::Builder::new()
+        .name("field-rename-resume".into())
+        .spawn(move || match resume_recorded(&open, &notes, &|| false) {
+            Ok(true) => finished(),
+            Ok(false) => {}
+            Err(error) => tracing::warn!(scope = SCOPE, "after an unlock: {error}"),
+        });
+    if let Err(error) = spawned {
+        tracing::warn!(scope = SCOPE, "no thread to resume a field rename: {error}");
+    }
+}
+
+/// The recorded rename run to its end; `true` when one ran.
+fn resume_recorded(
+    open: &OpenVault,
+    notes: &Arc<NotesService>,
+    stop: &dyn Fn() -> bool,
+) -> Result<bool, String> {
+    // Most calls have nothing to finish: nothing is opened under the device identity.
+    if matches!(open.vault.field_rename_recorded(), Ok(None)) {
+        return Ok(false);
+    }
+    let resumed =
+        Schemas::open(open, notes, "en").and_then(|schemas| schemas.resume_field_rename(stop));
+    match resumed {
+        Ok(Some(view)) => {
+            if view.kept > 0 || view.skipped_locked > 0 {
+                tracing::warn!(
+                    scope = SCOPE,
+                    kept = view.kept,
+                    locked = view.skipped_locked,
+                    "a resumed field rename left notes for later"
+                );
+            }
+            Ok(true)
+        }
+        Ok(None) | Err(SchemaError::Stopped) => Ok(false),
+        Err(error) => Err(format!("resuming a field rename failed: {error}")),
+    }
 }

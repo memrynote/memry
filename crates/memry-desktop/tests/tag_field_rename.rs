@@ -3,13 +3,13 @@
 //! (a run stopped after its first note finishes at the next open without writing anything twice,
 //! a refusal writes nothing, a kept note holds the job, a case-only rename keeps the key's place),
 //! plus journal days, local-only notes, the outbox row per changed item and an outside edit made
-//! while the job runs.
+//! while the job runs, and a locked note, left as it is and holding the job until its unlock.
 
 #[allow(unused_imports)]
 use crate::vault_env;
 
 use std::sync::atomic::{AtomicUsize, Ordering};
-use std::sync::{Arc, Mutex};
+use std::sync::{Arc, Mutex, mpsc};
 
 use crate::index_support::until;
 use crate::notes_tag_rename::{clear_outbox, path_of, upserts};
@@ -17,6 +17,7 @@ use memry_core::api::projects::ProjectDraft;
 use memry_core::api::tasks_write::NewTaskInput;
 use memry_core::seams::secure_store::SecureStore;
 use memry_core::sync::versioned;
+use memry_desktop::locks::{self, Locks, TargetKind};
 use memry_desktop::notes::identity::NotesIdentity;
 use memry_desktop::notes::index::NoteIndex;
 use memry_desktop::notes::local_only;
@@ -27,7 +28,7 @@ use memry_desktop::tags::schema::rename::{FieldRenameJob, FieldRenameView, regis
 use memry_desktop::tags::schema::view::{FieldType, NewFieldSpec, TagSchemaCommand};
 use memry_desktop::tags::schema::{SchemaError, Schemas};
 use serde_json::{Value, json};
-use vault_env::{Env, QUIET, env, indexed};
+use vault_env::{Env, QUIET, WAIT, env, indexed};
 
 const AHMET: &str = "---\ntags: [person]\nRole: PM\nPhone: '111'\n---\nA\n";
 const ELIF: &str = "---\ntags: [person]\nPhone: '222'\nEmail: e@x.io\n---\nE\n";
@@ -707,4 +708,40 @@ fn a_rename_stopped_at_any_step_comes_to_the_same_end_when_resumed() {
     assert_eq!(task, json!({"Mobile": "444"}));
     assert_eq!(schema, json!([{"name": "Mobile"}]));
     assert!(names.contains(&"Mobile".to_owned()) && !names.contains(&"Phone".to_owned()));
+}
+
+/// `skippedLocked`: a locked note keeps its field and holds the job, which the unlock resumes
+/// (`resumeFieldRenameAfterUnlock`).
+#[test]
+fn a_locked_note_is_left_and_holds_the_rename_until_its_unlock() {
+    let vault = opened(&[("Ahmet.md", AHMET), ("Elif.md", ELIF)]);
+    let open = vault.open();
+    let elif = vault.id("Elif.md");
+    Locks::of(&open).set(TargetKind::Note, &elif, true).unwrap();
+
+    let renamed = rename(&vault, "Phone", "Mobile").unwrap();
+    assert_eq!(
+        (renamed.notes, renamed.skipped_locked, renamed.kept),
+        (1, 1, 0)
+    );
+    assert!(vault.e.read("Ahmet.md").contains("Mobile: '111'"));
+    assert_eq!(vault.e.read("Elif.md"), ELIF);
+    assert!(vault.job(), "the locked note holds the job");
+
+    let (resumed, done) = mpsc::channel();
+    let unlocked = locks::set(
+        &open,
+        &vault.notes,
+        TargetKind::Note,
+        &elif,
+        false,
+        move || {
+            resumed.send(()).unwrap();
+        },
+    );
+    assert!(unlocked.unwrap().changed);
+    done.recv_timeout(WAIT)
+        .expect("the unlock resumes the rename");
+    assert_eq!(keys(&vault, "Elif.md"), ["tags", "Email", "Mobile"]);
+    assert!(!vault.job());
 }

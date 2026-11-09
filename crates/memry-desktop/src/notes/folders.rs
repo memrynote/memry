@@ -200,7 +200,7 @@ fn file_of(root: &Path, folder: &str) -> Option<folder_file::FolderFile> {
 /// A folder the renderer names (`""` is the vault root), as a plain path inside the vault. One
 /// under a file is no folder; the disk would say so in its own words (`ENOTDIR` on Unix, not
 /// found on Windows).
-pub(super) fn vault_folder(root: &Path, folder: &str) -> Result<String, NotesError> {
+pub(crate) fn vault_folder(root: &Path, folder: &str) -> Result<String, NotesError> {
     let folder = plain_folder(folder)?;
     if folder.is_empty() {
         return Ok(folder);
