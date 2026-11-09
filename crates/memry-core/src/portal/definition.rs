@@ -2,11 +2,22 @@
 //! (`parsePortalDefinition`): unknown keys are ignored, anything unreadable is
 //! `None`.
 
-use std::collections::HashMap;
+use std::cell::Cell;
+use std::collections::{HashMap, HashSet};
 
 use serde_json::{Map, Value};
 
 use super::anchor::is_anchor;
+
+thread_local! {
+    static ANCHOR_STEPS: Cell<usize> = const { Cell::new(0) };
+}
+
+/// Anchor entries this thread's reads looked at, for the complexity tests.
+#[doc(hidden)]
+pub fn anchor_steps() -> usize {
+    ANCHOR_STEPS.with(Cell::get)
+}
 
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub enum PortalOpen {
@@ -49,10 +60,13 @@ fn read_anchors(value: Option<&Value>) -> Vec<String> {
         return Vec::new();
     };
     let mut anchors: Vec<String> = Vec::new();
+    // A set, not a scan of the list so far: a fence of many anchors was quadratic.
+    let mut seen = HashSet::new();
     for entry in entries {
+        ANCHOR_STEPS.with(|steps| steps.set(steps.get() + 1));
         if let Value::String(anchor) = entry
             && is_anchor(anchor)
-            && !anchors.contains(anchor)
+            && seen.insert(anchor.as_str())
         {
             anchors.push(anchor.clone());
         }

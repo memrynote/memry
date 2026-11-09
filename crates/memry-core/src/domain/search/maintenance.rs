@@ -266,6 +266,8 @@ fn index_note_rows(
     index
         .execute("DELETE FROM note_links WHERE source_id = ?1", params![id])
         .map_err(failed)?;
+    #[cfg(feature = "markdown")]
+    super::block_refs::clear(index, id)?;
     body_tags::clear(data, id)?;
 
     // The primary key is (item_type, item_id), so one id could in principle
@@ -353,6 +355,8 @@ fn index_links(
     };
     let blocks = extract_blocks(&document).map_err(|error| crdt_failed(id, error))?;
     body_tags::write(data, id, &body_tags::extract(&blocks))?;
+    #[cfg(feature = "markdown")]
+    super::block_refs::write(index, id, &blocks)?;
 
     super::links::write(names, index, id, &blocks)
 }
