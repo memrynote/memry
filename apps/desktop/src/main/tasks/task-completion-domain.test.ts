@@ -207,6 +207,23 @@ describe('task completion and status stay in agreement', () => {
       expect(result.nextOccurrence).toEqual({ id: expect.any(String), dueDate: '2026-11-13' })
     })
 
+    it('moves the start date with the due date', async () => {
+      const d = setup()
+      const created = await d.createTask({
+        projectId: 'p1',
+        title: 'Weekly review',
+        statusId: 's-todo',
+        startDate: '2026-11-04',
+        dueDate: '2026-11-08',
+        repeatConfig: { ...weekly, daysOfWeek: [0] }
+      })
+
+      await d.completeTask({ id: created.task!.id })
+
+      const next = rows().find((row) => row.id !== created.task!.id)!
+      expect(next).toMatchObject({ startDate: '2026-11-11', dueDate: '2026-11-15' })
+    })
+
     it('does not roll a completion recorded from an import', async () => {
       const d = setup()
       const id = await newRepeating(d)

@@ -1,7 +1,7 @@
 import type { TasksCommandRepository, TasksDomainEvent } from './commands-types.ts'
 import type { RepeatConfig, Task } from './types.ts'
 import { completeRepeatingTask } from './parsing/recurrence.ts'
-import { formatDateKey, parseDateKey } from './parsing/dates.ts'
+import { addDays, formatDateKey, parseDateKey } from './parsing/dates.ts'
 import type { RepeatConfig as RecurrenceConfig } from './parsing/types.ts'
 
 /** The task a repeating completion created. */
@@ -31,6 +31,19 @@ function toRecurrenceConfig(config: RepeatConfig): RecurrenceConfig {
   }
 }
 
+const MS_PER_DAY = 86_400_000
+
+// The start keeps its distance to the due date: start Wednesday, due Sunday
+// stays Wednesday to Sunday every week. A start that does not parse is kept.
+function shiftStartDate(startDate: string | null, previousDue: Date, nextDue: Date): string | null {
+  if (!startDate) return startDate
+  const start = parseDateKey(startDate.slice(0, 10))
+  if (Number.isNaN(start.getTime())) return startDate
+  // Rounded because a DST change makes a local day 23 or 25 hours long.
+  const shift = Math.round((nextDue.getTime() - previousDue.getTime()) / MS_PER_DAY)
+  return formatDateKey(addDays(start, shift))
+}
+
 function defaultOpenStatusId(repository: TasksCommandRepository, task: Task): string | null {
   const open = repository
     .listStatuses(task.projectId)
@@ -54,9 +67,10 @@ export function rollRepeatingSeries(
 ): RepeatRoll {
   if (!before?.repeatConfig || !before.dueDate || before.completedAt) return NO_ROLL
   const config = before.repeatConfig
+  const previousDue = parseDateKey(before.dueDate.slice(0, 10))
   const { nextDueDate, completedCount } = completeRepeatingTask(
     {
-      dueDate: parseDateKey(before.dueDate.slice(0, 10)),
+      dueDate: previousDue,
       repeatConfig: toRecurrenceConfig(config),
       repeatFrom: before.repeatFrom
     },
@@ -94,7 +108,7 @@ export function rollRepeatingSeries(
     dueDate,
     dueTime: before.dueTime,
     durationMinutes: before.durationMinutes,
-    startDate: before.startDate,
+    startDate: shiftStartDate(before.startDate, previousDue, nextDueDate),
     repeatConfig: { ...config, completedCount },
     repeatFrom: before.repeatFrom,
     sourceNoteId: null,

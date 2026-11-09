@@ -125,6 +125,11 @@ anchored to its **completion date**, which restarts the interval on the day you 
 finished — finishing Monday's daily task on Thursday then schedules Friday. That is what
 habit tracking usually wants.
 
+The rule runs on the due date, so set the weekdays to the day the task is due. A start
+date moves with it and keeps the same distance before the due date: a weekly task that
+starts Wednesday and is due Sunday repeats on Sundays, and each next occurrence starts the
+Wednesday before its Sunday.
+
 The anchor has no picker in the app yet. It is set by the importers and the CLI: an
 Obsidian task written as `🔁 every day when done` keeps its completion anchor through
 [Obsidian import](/user-guide/tasks/import-obsidian), and `memrynote tasks create` takes
