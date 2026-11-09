@@ -1,7 +1,7 @@
 //! Manual order of notes and folders in the sidebar (desktop Step 13), after
 //! `database/queries/note-positions.ts`.
 //!
-//! One `note_positions` row per vault-relative path (migration 16). A note's
+//! One `note_positions` row per vault-relative path (migration 18). A note's
 //! path and a folder's path share one namespace per parent folder, and the
 //! vault root is the empty `folder_path`. The tree reads a missing row as
 //! "last", so a row exists only for an item somebody ordered by hand; every

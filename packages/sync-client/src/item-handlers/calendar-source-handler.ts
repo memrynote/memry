@@ -17,6 +17,14 @@ import type { ApplyContext, ApplyResult, DrizzleDb } from './types'
 const log = createLogger('CalendarSourceHandler')
 const CALENDAR_CHANGED = 'calendar:changed'
 
+/*
+ * `syncCursor` is this device's pull progress, not shared state. It still rides
+ * the payload because older builds read it, but a peer's cursor is never taken:
+ * listing a calendar from another device's token returns only what changed
+ * since that device pulled, so every event this device lacks would stay
+ * missing (#4069). A source first seen from a peer starts with no cursor and
+ * is pulled in full here.
+ */
 class CalendarSourceHandler extends BaseItemHandler<CalendarSourceSyncPayload> {
   readonly type = 'calendar_source' as const
   readonly schema = CalendarSourceSyncPayloadSchema
@@ -51,7 +59,6 @@ class CalendarSourceHandler extends BaseItemHandler<CalendarSourceSyncPayload> {
             isPrimary: data.isPrimary ?? existing.isPrimary,
             isSelected: data.isSelected ?? existing.isSelected,
             isMemryManaged: data.isMemryManaged ?? existing.isMemryManaged,
-            syncCursor: data.syncCursor ?? existing.syncCursor,
             syncStatus: data.syncStatus ?? existing.syncStatus,
             lastSyncedAt: data.lastSyncedAt ?? existing.lastSyncedAt,
             metadata: data.metadata ?? existing.metadata ?? null,
@@ -105,7 +112,7 @@ class CalendarSourceHandler extends BaseItemHandler<CalendarSourceSyncPayload> {
           isPrimary: data.isPrimary ?? false,
           isSelected: data.isSelected ?? false,
           isMemryManaged: data.isMemryManaged ?? false,
-          syncCursor: data.syncCursor ?? null,
+          syncCursor: null,
           syncStatus: data.syncStatus ?? 'idle',
           lastSyncedAt: data.lastSyncedAt ?? null,
           metadata: data.metadata ?? null,
