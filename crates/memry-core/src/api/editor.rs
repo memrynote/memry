@@ -55,8 +55,12 @@
 //! [`Editor::compaction_due`] names (`compaction.rs`). Every method blocks on the vault's writer
 //! connection; the shell runs them in `spawn_blocking`. Locks are taken in one
 //! order, the resident set and then the writer, and no lock is held while a
-//! listener runs. A listener that panics is caught and reported on stderr, so
-//! the caller still gets its answer for a durable edit and the other listeners
+//! listener runs, but one: [`Editor::apply_update`] tells the rows it caught up of
+//! another writer, and a load's repair, with the resident set held, so that writer,
+//! whose own catch-up takes the set, returns only once its rows reached the
+//! listeners. A listener therefore never takes the resident set (an editor call).
+//! A listener that panics is caught and reported on stderr, so the caller still
+//! gets its answer for a durable edit and the other listeners
 //! still run. Listeners run on the caller's thread: [`Editor::apply_update`]'s,
 //! any core writer's after its writer is released, and [`Editor::open`]'s,
 //! [`Editor::state_vector`]'s and [`Editor::state_diff`]'s when a load repaired
@@ -280,7 +284,7 @@ impl Editor {
                     note_id: note_id.to_owned(),
                 });
             }
-            self.on_writer(|conn| {
+            let applied = self.on_writer(|conn| {
                 let owner = body_owner(conn, note_id)?.ok_or_else(|| not_found(note_id))?;
                 if let Some(why) = read_only(conn, note_id)? {
                     let note_id = note_id.to_owned();
@@ -327,12 +331,16 @@ impl Editor {
                     resident.invalidate(note_id);
                 }
                 stored.map(Some)
-            })
+            });
+            // Before the documents are let go: the writer of the rows caught up returns only
+            // once its own catch-up got them, and a shell takes that return to mean the windows
+            // have its frames (the typing barrier's release follows the outside edit's frame).
+            self.tell_repair(note_id, repaired);
+            for (row, origin) in &caught {
+                self.fan_out(note_id, Notice::Update(row, origin));
+            }
+            applied
         };
-        self.tell_repair(note_id, repaired);
-        for (row, origin) in &caught {
-            self.fan_out(note_id, Notice::Update(row, origin));
-        }
         let applied = applied?;
         if applied.is_some() {
             let origin = Origin::Local(holder.to_owned());
