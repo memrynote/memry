@@ -86,6 +86,12 @@ pub trait BodyObserver: Send + Sync {
     /// Runs after the closure returned and released the writer, on its thread.
     /// A write named here may have rolled back.
     fn bodies_written(&self, writes: &[BodyWrite]);
+
+    /// Runs after the closure returned, on its thread, before it releases the
+    /// writer: the next holder of the writer can find what this closure
+    /// committed before [`Self::bodies_written`] runs. Takes no lock a holder
+    /// of the writer waits on.
+    fn bodies_committing(&self, _writes: &[BodyWrite]) {}
 }
 
 /// What [`super::update_log`] wrote.
@@ -142,6 +148,11 @@ pub fn as_external<T>(f: impl FnOnce() -> T) -> T {
     }
     let _restore = Restore(EXTERNAL.replace(true));
     f()
+}
+
+/// What the closure recording on this thread noted so far.
+pub(crate) fn recorded() -> Vec<BodyWrite> {
+    RECORDED.with_borrow(|recorded| recorded.clone().unwrap_or_default())
 }
 
 /// Runs `f`, recording what it writes when `on`; returns what it recorded.

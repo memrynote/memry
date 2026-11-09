@@ -190,7 +190,7 @@ pub(super) fn reresolve(
     Ok(())
 }
 
-fn target_id(names: &WikiNames, title: &str) -> Option<String> {
+pub(super) fn target_id(names: &WikiNames, title: &str) -> Option<String> {
     if let Some(found) = names.resolve(title) {
         return Some(found.id);
     }

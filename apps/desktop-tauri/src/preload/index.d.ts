@@ -109,7 +109,6 @@ import type {
   CertificatePinFailedEvent,
   VaultRecoveryNeededEvent
 } from '../shared/contracts/ipc-sync'
-import type { CrdtHealth, CrdtOpenDocResult, CrdtSyncStep1Result } from '@memry/contracts/ipc-crdt'
 import type {
   RepairDeviceKeysResult,
   ResolveVaultBindingResult,
@@ -2039,18 +2038,6 @@ interface API
       ackErrorToast: () => Promise<{ first: boolean }>
     }
   }
-  syncCrdt: {
-    openDoc: (input: { noteId: string; vaultPath?: string }) => Promise<CrdtOpenDocResult>
-    closeDoc: (input: { noteId: string }) => Promise<void>
-    applyUpdate: (input: { noteId: string; update: Uint8Array }) => Promise<void>
-    syncStep1: (input: {
-      noteId: string
-      stateVector: Uint8Array
-    }) => Promise<CrdtSyncStep1Result | null>
-    syncStep2: (input: { noteId: string; diff: Uint8Array }) => Promise<void>
-    /** Whether CRDT state is durable on this install, and for how long it has not been. */
-    getHealth: () => Promise<CrdtHealth>
-  }
   // Vault event subscriptions
   onVaultStatusChanged: (callback: (status: VaultStatus) => void) => () => void
   onVaultIndexProgress: (callback: (progress: number) => void) => () => void
@@ -2131,14 +2118,6 @@ interface API
   onLocaleChanged: (callback: (locale: Locale) => void) => () => void
   onMainInvoke: (callback: (payload: MainInvokePayload) => void | Promise<void>) => () => void
   respondToMainInvoke: (requestId: string, response: unknown) => void
-  onCrdtStateChanged: (
-    noteId: string,
-    callback: (data: { noteId: string; update: Uint8Array; origin: string }) => void
-  ) => () => void
-  onCrdtProviderReset: (callback: () => void) => () => void
-  onCrdtProviderReady: (
-    callback: (data: { vaultPath: string | null } | undefined) => void
-  ) => () => void
 }
 
 interface ElectronShim {
