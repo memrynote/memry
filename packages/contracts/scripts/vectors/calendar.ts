@@ -101,12 +101,12 @@ function applySource(existing: Row | null, data: Row, clock: VectorClock): Row |
       'isPrimary',
       'isSelected',
       'isMemryManaged',
-      'syncCursor',
       'syncStatus',
       'lastSyncedAt',
       'metadata',
       'archivedAt'
     ]
+    // `syncCursor` is this device's pull progress: a remote one is never taken (#4069).
     const next: Row = { ...existing }
     for (const k of keys) next[k] = data[k] ?? existing[k] ?? null
     next.clock = r.mergedClock
@@ -123,7 +123,7 @@ function applySource(existing: Row | null, data: Row, clock: VectorClock): Row |
     isPrimary: data.isPrimary ?? false,
     isSelected: data.isSelected ?? false,
     isMemryManaged: data.isMemryManaged ?? false,
-    syncCursor: data.syncCursor ?? null,
+    syncCursor: null,
     syncStatus: data.syncStatus ?? 'idle',
     lastSyncedAt: data.lastSyncedAt ?? null,
     metadata: data.metadata ?? null,
@@ -1095,6 +1095,7 @@ function buildWrites(): Row {
             { id: 'src-sel', remoteId: 'selection@group.calendar.google.com' }
           ),
           isSelected: false,
+          syncCursor: null,
           modifiedAt: NOW,
           clock: increment({ desktop: 1 }, DEVICE)
         },

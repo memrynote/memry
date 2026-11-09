@@ -12,6 +12,12 @@
 //! V + 2, and the crash window of §A.0 leaves at most V + 1 committed past the counter, so the
 //! table is absent. A renumbered file sits at V + 2, whose old table belongs to migration V + 4
 //! here and is absent too, so a later open leaves the file alone.
+//!
+//! The next clash: merge main into feat/tauri-v2 before main ships another data migration.
+//! This check reads only a shift of two. A one-step shift cannot be told apart by the schema:
+//! old V's table belongs to new V + 1, which a file at new V holds in its crash window, so it
+//! needs an explicit marker that the shifted build writes. A second shift needs its own
+//! `OLD_TABLES` set.
 
 use rusqlite::{Connection, TransactionBehavior};
 
@@ -65,10 +71,31 @@ pub(super) fn renumber(conn: &mut Connection) -> Result<(), StorageError> {
     tx.commit().map_err(fail)
 }
 
+/// Whether the file is at an old version and holds that version's old table. Such a file must
+/// hold every earlier old table too, because each old migration committed before the next ran.
+/// One that lacks any did not come from an earlier build, so it is refused, not renumbered.
 fn on_old_numbering(conn: &Connection, version: u32) -> Result<bool, StorageError> {
     let Some((_, table)) = OLD_TABLES.iter().find(|(old, _)| *old == version) else {
         return Ok(false);
     };
+    if !has_table(conn, table)? {
+        return Ok(false);
+    }
+    for (old, table) in OLD_TABLES.iter().filter(|(old, _)| *old < version) {
+        if !has_table(conn, table)? {
+            return Err(StorageError::Migration {
+                version: version + 2,
+                what: format!(
+                    "data.db at {version} holds the earlier desktop numbering's tables but not \
+                     {table} (its migration {old}), so it is not renumbered"
+                ),
+            });
+        }
+    }
+    Ok(true)
+}
+
+fn has_table(conn: &Connection, table: &str) -> Result<bool, StorageError> {
     conn.query_row(
         "SELECT EXISTS (SELECT 1 FROM sqlite_schema WHERE type = 'table' AND name = ?1)",
         [table],

@@ -237,6 +237,15 @@ fn a_file_numbered_by_an_earlier_feat_build_is_renumbered_once_and_gets_mains_re
         for crashed in [false, true] {
             let what = format!("earlier feat numbering at {version}, crash window {crashed}");
             let (_dir, path, seeded) = file_at(&list, version);
+            // From old 17 on the hashes are kept apart from `note_files`, so a hash with no
+            // `note_file_hashes` row stays without one. Re-running `note_file_hashes` would
+            // backfill it: the file must land past the migrations it ran, not one short.
+            let hashes_owned = version >= 17;
+            if hashes_owned {
+                let conn = Connection::open(&path).expect("open");
+                conn.execute_batch("UPDATE note_files SET content_hash = 'h-1'")
+                    .expect("a hash");
+            }
             if crashed && let Some(next) = list.get(version as usize) {
                 let conn = Connection::open(&path).expect("open");
                 conn.execute_batch(next.sql)
@@ -245,9 +254,51 @@ fn a_file_numbered_by_an_earlier_feat_build_is_renumbered_once_and_gets_mains_re
 
             let conn = open_and_check(&path, &seeded, &what);
             assert_eq!(cursors(&conn), (None, None), "{what}: cursors not reset");
+            if hashes_owned {
+                assert!(
+                    !file_hash_backfilled(&conn),
+                    "{what}: an old migration ran again"
+                );
+            }
             reopen_keeps_a_later_cursor(&path, conn, &what);
         }
     }
+}
+
+fn file_hash_backfilled(conn: &Connection) -> bool {
+    conn.query_row(
+        "SELECT EXISTS (SELECT 1 FROM note_file_hashes WHERE note_id = 'n1')",
+        [],
+        |row| row.get(0),
+    )
+    .expect("note_file_hashes")
+}
+
+/// A file at an old version that lacks the table of an earlier old migration did not come
+/// from an earlier build, whatever its counter says. It is refused and left as found.
+#[test]
+fn an_old_numbered_file_missing_an_earlier_table_is_refused_untouched() {
+    let list = earlier_feat_list();
+    let (_dir, path, _) = file_at(&list, 17);
+    let conn = Connection::open(&path).expect("open");
+    conn.execute_batch("DROP TABLE local_settings")
+        .expect("drop old 14's table");
+    drop(conn);
+
+    let err = open_data(&path)
+        .err()
+        .expect("a file missing local_settings must not open");
+    assert!(
+        matches!(&err, StorageError::Migration { what, .. } if what.contains("local_settings")),
+        "{err:?}"
+    );
+    let conn = Connection::open(&path).expect("a reader");
+    assert_eq!(user_version(&conn).expect("version"), 17);
+    assert_eq!(
+        cursors(&conn),
+        (Some("tok-1".to_owned()), Some("tok-1".to_owned()))
+    );
+    assert!(!has_table(&conn, "local_settings"), "no migration ran");
 }
 
 /// iOS and the CLI on main leave `data.db` at 13 or 14; a desktop build opening it adds the

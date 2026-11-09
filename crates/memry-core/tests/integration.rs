@@ -60,6 +60,8 @@ mod body_edit_ops;
 mod body_edit_replace_text;
 #[path = "body_edit_restore.rs"]
 mod body_edit_restore;
+#[path = "calendar_cursor_device_local.rs"]
+mod calendar_cursor_device_local;
 #[path = "calendar_external_relation.rs"]
 mod calendar_external_relation;
 #[path = "calendar_feeds.rs"]
@@ -70,6 +72,8 @@ mod calendar_ical_vectors;
 mod calendar_provider_push;
 #[path = "calendar_settings_sync.rs"]
 mod calendar_settings_sync;
+#[path = "calendar_source_purge.rs"]
+mod calendar_source_purge;
 #[path = "calendar_vectors.rs"]
 mod calendar_vectors;
 #[path = "calendar_week_load.rs"]

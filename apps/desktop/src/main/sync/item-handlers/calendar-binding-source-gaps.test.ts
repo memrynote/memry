@@ -51,7 +51,6 @@ describe('calendarSourceHandler — partial payload merge', () => {
         isPrimary: true,
         isSelected: true,
         isMemryManaged: true,
-        syncCursor: 'cursor-1',
         syncStatus: 'ok',
         lastSyncedAt: '2026-05-01T00:00:00.000Z',
         metadata: { pageToken: 'next' }
@@ -82,7 +81,6 @@ describe('calendarSourceHandler — partial payload merge', () => {
       isPrimary: true,
       isSelected: true,
       isMemryManaged: true,
-      syncCursor: 'cursor-1',
       syncStatus: 'ok',
       lastSyncedAt: '2026-05-01T00:00:00.000Z',
       metadata: { pageToken: 'next' }
