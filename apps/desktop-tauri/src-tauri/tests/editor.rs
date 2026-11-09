@@ -10,6 +10,7 @@ use std::sync::{Arc, Mutex};
 
 use memry_core::api::errors::SecureStoreError;
 use memry_core::crypto::sodium;
+use memry_core::domain::note_files::NoteFileStat;
 use memry_core::domain::vault_locks::TargetKind;
 use memry_core::seams::secure_store::{SecureStore, SecureStoreKey};
 use memry_desktop::editor::EditorHost;
@@ -268,7 +269,7 @@ fn a_closed_editor_takes_no_more_edits_and_the_health_is_persistent() {
 }
 
 #[test]
-fn a_locked_or_large_file_note_opens_read_only_by_its_reason() {
+fn a_locked_large_file_or_excluded_note_opens_read_only_by_its_reason() {
     let f = opened();
     f.core
         .note_files()
@@ -284,4 +285,23 @@ fn a_locked_or_large_file_note_opens_read_only_by_its_reason() {
     f.core.locks().set(TargetKind::Note, &f.note, true).unwrap();
     let (header, _) = f.open_doc(&f.main);
     assert_eq!(header["readOnly"], "locked");
+
+    f.core
+        .locks()
+        .set(TargetKind::Note, &f.note, false)
+        .unwrap();
+    let file = NoteFileStat {
+        note_id: f.note.clone(),
+        path: "archive/a-note.md".into(),
+        file_type: "markdown".into(),
+        mime_type: None,
+        file_size: Some(1),
+        content_hash: None,
+        file_hash: None,
+        indexed_at: 1,
+    };
+    f.core.note_files().upsert_stat(file).unwrap();
+    f.core.excluded().set(|path| path.starts_with("archive/"));
+    let (header, _) = f.open_doc(&f.main);
+    assert_eq!(header["readOnly"], "excluded");
 }

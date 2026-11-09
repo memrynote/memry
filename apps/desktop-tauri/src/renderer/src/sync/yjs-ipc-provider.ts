@@ -17,7 +17,7 @@ const log = createLogger('YjsIpcProvider')
  * Why the window must not edit the note: the host's `readOnly`, the code of a refused edit, or a
  * purge, after which the host takes no edit of this copy.
  */
-export type DocReadOnly = 'locked' | 'large-file' | 'purged'
+export type DocReadOnly = 'locked' | 'large-file' | 'excluded' | 'purged'
 
 /** The header of `crdt_open_doc`'s framed answer (`commands/editor.rs`). */
 interface OpenedHeader {
@@ -499,6 +499,10 @@ export class YjsIpcProvider extends Observable<string> {
         case 'note_large_file':
           this.outgoing = []
           this.setReadOnly('large-file')
+          break
+        case 'note_excluded':
+          this.outgoing = []
+          this.setReadOnly('excluded')
           break
         case 'document_purged':
           this.markPurged()

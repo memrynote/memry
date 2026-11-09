@@ -58,6 +58,7 @@ pub fn read_only_name(reason: ReadOnly) -> &'static str {
     match reason {
         ReadOnly::Locked => "locked",
         ReadOnly::LargeFile => "large-file",
+        ReadOnly::Excluded => "excluded",
     }
 }
 
