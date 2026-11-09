@@ -8,7 +8,22 @@
 //! `wikiLinkTargets` scan, run over a block's plain text with code left out,
 //! as the reference blanks code before scanning.
 
+use std::cell::Cell;
+
 use crate::crdt::blocks::Block;
+
+thread_local! {
+    static STEPS: Cell<usize> = const { Cell::new(0) };
+}
+
+/// Characters this thread's scans looked at, for the complexity tests.
+pub fn steps() -> usize {
+    STEPS.with(Cell::get)
+}
+
+fn step() {
+    STEPS.with(|steps| steps.set(steps.get() + 1));
+}
 
 /// Marks whose run is not prose: code is not a link, and an inline node's
 /// text is not the characters a reader typed.
@@ -37,27 +52,44 @@ pub(super) fn targets(block: &Block) -> Vec<String> {
 }
 
 /// The targets `/\[\[([^\]|]+)(?:\|[^\]]+)?\]\]/g` captures, as the
-/// reference's `wikiLinkTargets` finds them.
+/// reference's `wikiLinkTargets` finds them: in linear time, each position's
+/// next `]` and next `]`-or-`|` looked up once. Searching forward from every
+/// `[[` instead took quadratic time on a run of unclosed `[[`.
 fn scan(text: &[char]) -> Vec<String> {
-    let find = |from: usize, wanted: &dyn Fn(char) -> bool| {
-        (from..text.len())
-            .find(|&at| wanted(text[at]))
-            .unwrap_or(text.len())
-    };
+    let length = text.len();
+    let mut next_close = vec![length; length + 1];
+    let mut next_stop = vec![length; length + 1];
+    for at in (0..length).rev() {
+        step();
+        next_close[at] = if text[at] == ']' {
+            at
+        } else {
+            next_close[at + 1]
+        };
+        next_stop[at] = if matches!(text[at], ']' | '|') {
+            at
+        } else {
+            next_stop[at + 1]
+        };
+    }
+    let find = |from: usize, next: &[usize]| next[from.min(length)];
     let open_from = |from: usize| {
-        (from..text.len().saturating_sub(1)).find(|&at| text[at] == '[' && text[at + 1] == '[')
+        (from..length.saturating_sub(1)).find(|&at| {
+            step();
+            text[at] == '[' && text[at + 1] == '['
+        })
     };
 
     let mut targets = Vec::new();
     let mut open = open_from(0);
     while let Some(at) = open {
         let start = at + 2;
-        let stop = find(start, &|c| c == ']' || c == '|');
+        let stop = find(start, &next_stop);
         let mut end = None;
         if stop > start && stop < text.len() {
             let aliased = text[stop] == '|';
             let close = if aliased {
-                find(stop + 1, &|c| c == ']')
+                find(stop + 1, &next_close)
             } else {
                 stop
             };

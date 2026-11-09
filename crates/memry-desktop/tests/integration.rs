@@ -52,6 +52,8 @@ mod attachment_rename;
 mod attachment_uploads;
 #[path = "attachments.rs"]
 mod attachments;
+#[path = "block_refs.rs"]
+mod block_refs;
 #[path = "byte_preservation.rs"]
 mod byte_preservation;
 #[path = "command_failure.rs"]
