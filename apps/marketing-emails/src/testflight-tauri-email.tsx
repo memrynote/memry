@@ -18,7 +18,7 @@ import { trackedMemryUrl, WAITLIST_CAMPAIGNS } from './tracking-links'
 export const testflightTauriContent = {
   subject: 'Memrynote for iPhone is on TestFlight, and the desktop app is moving to Tauri',
   preview:
-    'The iPhone beta is open: join with one link. And over the next month or so, the desktop app moves from Electron to Tauri.'
+    'The iPhone beta is open, and your TestFlight invite is already in your inbox. And over the next month or so, the desktop app moves from Electron to Tauri.'
 } as const
 
 export type TestflightTauriEmailProps = {
@@ -26,7 +26,6 @@ export type TestflightTauriEmailProps = {
   logoUrl?: string
   iconUrl?: string
   iosImageUrl?: string
-  testflightUrl?: string
   unsubscribeUrl?: string
 }
 
@@ -41,13 +40,12 @@ const defaultProps = {
   logoUrl: 'https://memrynote.com/memrynote-logo.png',
   iconUrl: 'https://memrynote.com/memrynote-icon.png',
   iosImageUrl: `${assetsUrl}/ios.gif`,
-  // TODO(Kaan): replace with the public TestFlight link before export. No utm params: the link
-  // goes straight to Apple.
-  testflightUrl: 'https://testflight.apple.com/join/REPLACE_ME',
   unsubscribeUrl: '{{{RESEND_UNSUBSCRIBE_URL}}}'
 } satisfies Required<TestflightTauriEmailProps>
 
 const homeUrl = trackedMemryUrl('/', campaign, 'logo')
+// Every address on this list already has a TestFlight invite; /ios-beta sends one to another.
+const iosBetaUrl = trackedMemryUrl('/ios-beta', campaign, 'ios_beta')
 const docsUrl = trackedMemryUrl('https://docs.memrynote.com/', campaign, 'docs')
 const roadmapUrl = trackedMemryUrl('/roadmap', campaign, 'roadmap')
 const releaseNotesUrl = trackedMemryUrl(
@@ -66,7 +64,7 @@ type EmailComponent = {
 }
 
 export const TestflightTauriEmail: EmailComponent = (props) => {
-  const { firstName, logoUrl, iconUrl, iosImageUrl, testflightUrl, unsubscribeUrl } = {
+  const { firstName, logoUrl, iconUrl, iosImageUrl, unsubscribeUrl } = {
     ...defaultProps,
     ...props
   }
@@ -103,8 +101,9 @@ export const TestflightTauriEmail: EmailComponent = (props) => {
           </Heading>
 
           <Text style={styles.paragraph}>
-            Memrynote for iPhone is now on TestFlight, and anyone on this list can join with one
-            link. It is a native app, and it opens the same vault as your desktop with the same
+            Memrynote for iPhone is now on TestFlight, and I have already sent a TestFlight invite
+            to the address this email came to. Look for an email from TestFlight and open it on your
+            iPhone. It is a native app, and it opens the same vault as your desktop with the same
             end-to-end encryption. Your notes, tasks, journal and calendar sync to your phone, and
             the server still cannot read any of it.
           </Text>
@@ -118,13 +117,16 @@ export const TestflightTauriEmail: EmailComponent = (props) => {
             hint="iosImageUrl: the animated GIF from the October update."
           />
 
+          <Text style={styles.paragraph}>
+            You need iOS 26 or later and the TestFlight app. Want the invite at a different email
+            address? Enter it on the beta page, and TestFlight sends a new invite there.
+          </Text>
+
           <Section style={styles.buttonRow}>
-            <Button href={testflightUrl} style={styles.button}>
-              Join the iPhone beta
+            <Button href={iosBetaUrl} style={styles.button}>
+              Get the invite at another email
             </Button>
           </Section>
-
-          <Text style={styles.paragraph}>You need iOS 26 or later and the TestFlight app.</Text>
 
           <Text style={styles.paragraph}>
             <strong>Free and paid.</strong> Everyone in the beta can keep using the iPhone app for
