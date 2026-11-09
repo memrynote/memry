@@ -43,6 +43,13 @@
 //! folder. A settings file that cannot be read refuses every folder move
 //! (`vault_settings_unreadable`): it does not say where the journal is, or whether it follows.
 //!
+//! The folder is the one the disk lists under the name given in any case or Unicode form
+//! (`WORK` for `Work`, [`folder_on_disk`]), on every volume: the rows name the disk's spelling,
+//! and a case-blind disk moves that folder for any other (#4077). A name that could be several
+//! (`WORK/` and `work/` for `Work` on a case-sensitive volume) is `folder_not_found`. A target
+//! in the parent as the caller spelled it, the sidebar's rename, lands in that parent as the
+//! disk spells it.
+//!
 //! Refused: a folder that is not there (`folder_not_found`, #2531's stale sidebar), a target that
 //! exists under any spelling but the folder's own (`name_conflict`), and one inside the folder, one
 //! the tree hides, the vault ignores, a link leads to, or no record can name (`invalid_folder`),
@@ -62,7 +69,7 @@ use memry_core::domain::notes::link_rewrite::LinkNames;
 
 use super::error::{NotesError, SCOPE};
 use super::folders::{respells_a_sibling, tree_filter, vault_folder};
-use super::moves::{Named, disk_spelling, identity_failed, plain_folders};
+use super::moves::{Named, OnDisk, disk_spelling, folder_on_disk, identity_failed, plain_folders};
 use super::owed_moves::keeps_kind_followed;
 use super::service::NotesService;
 use crate::journal::folder_follow::followed_journal_folder;
@@ -153,11 +160,30 @@ impl NotesService {
         after_disk: &mut dyn FnMut() -> Result<(), NotesError>,
     ) -> Result<(), NotesError> {
         let root = open.path.as_path();
-        let (from, to) = (vault_folder(root, old)?, vault_folder(root, new)?);
-        // Nothing locked moves with the folder, and nothing moves into a locked one.
-        // Each as the disk spells it: `ARCHIVE` names a locked `Archive`.
+        // The folder as the disk spells it, the one that moves: `ARCHIVE` names `Archive`, whose
+        // rows name `Archive/`. Under the caller's spelling a case-blind disk moves the folder
+        // and no row follows it (#4077).
+        let given = vault_folder(root, old)?;
+        let from = match folder_on_disk(root, &given)? {
+            OnDisk::Spelled(from) => from,
+            // `check` refuses it.
+            OnDisk::NotPlain => given.clone(),
+            OnDisk::Ambiguous => return Err(NotesError::FolderNotFound),
+        };
+        // The sidebar renames a folder in its parent as it spelled the folder (`WORK/Done` for
+        // `WORK/Sub`): that parent is the disk's.
+        let to = vault_folder(root, new)?;
+        let to = match (parent_and_name(&given), parent_and_name(&to)) {
+            ((Some(given), _), (Some(parent), name)) if parent == given => {
+                let parent = from.rsplit_once('/').map_or("", |(parent, _)| parent);
+                format!("{parent}/{name}")
+            }
+            _ => to,
+        };
+        // Nothing locked moves with the folder, and nothing moves into a locked one, the target
+        // too as the disk spells it.
         let locks = Locks::of(open);
-        locks.refuse_folder_tree(&disk_spelling(root, &from))?;
+        locks.refuse_folder_tree(&from)?;
         locks.refuse_parent_folder(&disk_spelling(root, &to))?;
         if from == to {
             return Ok(());
@@ -514,6 +540,14 @@ fn check(root: &Path, from: &str, to: &str) -> Result<(), NotesError> {
         return Err(NotesError::NameConflict);
     }
     Ok(())
+}
+
+/// A folder path's parent, `None` at the root, and its name.
+fn parent_and_name(path: &str) -> (Option<&str>, &str) {
+    match path.rsplit_once('/') {
+        Some((parent, name)) => (Some(parent), name),
+        None => (None, path),
+    }
 }
 
 /// Whether `path` is `root` or sits under it.

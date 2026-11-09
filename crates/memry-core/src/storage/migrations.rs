@@ -145,6 +145,11 @@ pub const DATA_MIGRATIONS: &[Migration] = &[
         name: "note_large_files",
         sql: include_str!("migrations/data/0021_note_large_files.sql"),
     },
+    Migration {
+        version: 22,
+        name: "note_file_marks",
+        sql: include_str!("migrations/data/0022_note_file_marks.sql"),
+    },
 ];
 
 /// `index.db`: the rebuildable search and link index.
@@ -178,6 +183,11 @@ pub const INDEX_MIGRATIONS: &[Migration] = &[
         version: 5,
         name: "note_fold_chunks",
         sql: include_str!("migrations/index/0005_note_fold_chunks.sql"),
+    },
+    Migration {
+        version: 6,
+        name: "block_refs",
+        sql: include_str!("migrations/index/0006_block_refs.sql"),
     },
 ];
 
@@ -281,6 +291,8 @@ fn set_user_version(conn: &Connection, version: u32) -> Result<(), StorageError>
         })
 }
 
+#[cfg(test)]
+mod note_file_marks_tests;
 #[cfg(test)]
 mod note_large_files_tests;
 #[cfg(test)]

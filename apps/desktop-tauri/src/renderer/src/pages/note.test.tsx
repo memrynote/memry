@@ -108,6 +108,7 @@ const mocks = vi.hoisted(() => ({
     | null,
   renamedHandler: null as ((event: { id: string; newTitle: string }) => void) | null,
   droppedHandler: null as (() => void) | null,
+  outsideKeptHandler: null as ((event: { id: string }) => void) | null,
   notesGet: vi.fn(),
   getFile: vi.fn(),
   findInPageEnabled: undefined as boolean | undefined,
@@ -281,6 +282,10 @@ vi.mock('@/services/notes-service', async (importOriginal) => {
     },
     onNoteEventsDropped: (handler: () => void) => {
       mocks.droppedHandler = handler
+      return vi.fn()
+    },
+    onNoteOutsideEditKept: (handler: (event: { id: string }) => void) => {
+      mocks.outsideKeptHandler = handler
       return vi.fn()
     },
     onNoteDeleted: (handler: (event: { id: string }) => void) => {
@@ -2377,6 +2382,24 @@ describe('NotePage', () => {
       })
 
       expect(toast).toHaveBeenCalledTimes(1)
+    })
+
+    it('tells the user when the core kept an outside edit under typing its file did not have', async () => {
+      renderWithProviders(<NotePage noteId="note-1" />)
+      expect(await screen.findByTestId('editor-content')).toHaveTextContent('Original body')
+
+      act(() => mocks.outsideKeptHandler?.({ id: 'note-2' }))
+      expect(toast).not.toHaveBeenCalled()
+      act(() => mocks.outsideKeptHandler?.({ id: 'note-1' }))
+
+      expect(toast).toHaveBeenCalledTimes(1)
+      const [message, options] = vi.mocked(toast).mock.calls[0] as [
+        string,
+        { action: { label: string; onClick: () => void } }
+      ]
+      expect(message).toBe('page.toast.outsideEditReplaced')
+      act(() => options.action.onClick())
+      expect(screen.getByText('Version Test Note')).toBeInTheDocument()
     })
 
     it('tells the user when the save went over an outside edit the editor had no event for', async () => {

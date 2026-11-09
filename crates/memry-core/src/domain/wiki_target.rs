@@ -250,6 +250,11 @@ impl WikiNames {
         self.resolve(raw).map(|found| (found, None))
     }
 
+    /// Whether `id` is a live note or day of this vault.
+    pub fn holds(&self, id: &str) -> bool {
+        self.by_id.contains_key(id)
+    }
+
     pub fn journal_on(&self, date: &str) -> Option<&str> {
         self.by_date
             .get(date)

@@ -82,6 +82,18 @@ pub fn resolve_local_scheme_path(raw: &str, scheme: LocalScheme, windows: bool) 
     normalize_absolute(&decoded, windows)
 }
 
+/// The path a local-scheme URL names, for a reader on `windows`: [`resolve_local_scheme_path`],
+/// or, for a path a Mac wrote, which has no drive and so is no absolute path on Windows, that
+/// path as the Mac wrote it (`/Users/...`). A Windows root has a drive or a UNC prefix, so
+/// [`locate`] never places such a path in one: only its `attachments/` tail
+/// ([`remap_cross_device`]) is read, as Electron did (`remapCrossDeviceAttachmentPath`).
+pub fn resolve_requested_path(raw: &str, scheme: LocalScheme, windows: bool) -> Option<String> {
+    match resolve_local_scheme_path(raw, scheme, windows) {
+        None if windows => resolve_local_scheme_path(raw, scheme, false),
+        native => native,
+    }
+}
+
 /// `decodeURIComponent` throws on a `%` without two hex digits; `percent_decode_str` would keep it
 /// literally, which names a different file than the one the writer meant.
 pub(crate) fn escapes_are_well_formed(encoded: &str) -> bool {

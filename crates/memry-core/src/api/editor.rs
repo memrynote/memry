@@ -87,6 +87,7 @@ use crate::seams::secure_store::{SecureStore, SecureStoreKey};
 use crate::storage::Db;
 use crate::sync::{body_debt, outbox};
 
+use crate::crdt::body_writes::BodyWrite;
 pub use crate::crdt::body_writes::Origin;
 pub use crate::crdt::compact::Folded;
 pub use compaction::COMPACTION_GROWTH_BYTES;
@@ -188,6 +189,9 @@ pub struct Editor {
     listeners: Mutex<Listeners>,
     /// Bytes each document's log took since its last compaction.
     grown: Mutex<HashMap<String, usize>>,
+    /// Writes committed and not yet told
+    /// ([`crate::crdt::body_writes::BodyObserver::bodies_committing`]).
+    committing: Mutex<Vec<BodyWrite>>,
     /// The writer's read-only state, read once: it holds for the connection's
     /// life.
     read_only: OnceLock<bool>,
@@ -220,6 +224,7 @@ impl Editor {
             resident: Mutex::new(Resident::new(EDITOR_LIFECYCLE)),
             listeners: Mutex::new(Listeners::default()),
             grown: Mutex::default(),
+            committing: Mutex::default(),
             read_only: OnceLock::new(),
             excluded,
         })
@@ -281,6 +286,7 @@ impl Editor {
     ) -> Result<Option<Applied>, EditorError> {
         let now = now_ms();
         let mut repaired = None;
+        let mut caught = Vec::new();
         let applied = {
             let mut resident = self.resident();
             if resident.is_stale(note_id, holder) {
@@ -310,6 +316,11 @@ impl Editor {
                         note_id: note_id.to_owned(),
                     });
                 }
+                // A writer that committed while this edit waited for the writer has
+                // not told yet: the edit goes on the body it made.
+                caught = self
+                    .catch_up_committed(conn, &document, note_id)
+                    .inspect_err(|_| resident.invalidate(note_id))?;
                 // Durable origin: the rows below hold these bytes, so the
                 // document's own sink must not report them a second time.
                 let changed = document
@@ -334,6 +345,9 @@ impl Editor {
             })
         };
         self.tell_repair(note_id, repaired);
+        for (row, origin) in &caught {
+            self.fan_out(note_id, Notice::Update(row, origin));
+        }
         let applied = applied?;
         if applied.is_some() {
             let origin = Origin::Local(holder.to_owned());

@@ -2,6 +2,7 @@ import { useEffect, useRef } from 'react'
 import { toast } from 'sonner'
 import { useT } from '@memry/i18n/renderer'
 import { createLogger } from '@/lib/logger'
+import { commands } from '../../../generated/bindings'
 
 const log = createLogger('CrdtPersistenceNotice')
 
@@ -26,8 +27,7 @@ const DEGRADED_SESSION_THRESHOLD = 3
  * vector that lets an offline device merge cleanly instead of resolving against
  * a from-scratch document.
  *
- * Renders nothing. Mounted next to the app rather than inside it so a partially
- * mocked `window.api` in a component test cannot reach it, and so the query
+ * Renders nothing. Mounted next to the app rather than inside it, so the query
  * resolves after the app's Toaster is mounted.
  */
 export function CrdtPersistenceNotice(): null {
@@ -41,7 +41,7 @@ export function CrdtPersistenceNotice(): null {
     let cancelled = false
     void (async () => {
       try {
-        const health = await window.api.syncCrdt.getHealth()
+        const health = await commands.crdtGetHealth()
         if (cancelled) return
         if (health.persistent) return
         if (health.inMemorySessions < DEGRADED_SESSION_THRESHOLD) return

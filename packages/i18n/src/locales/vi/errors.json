@@ -81,6 +81,8 @@
   "crdt": {
     "persistenceDegradedTitle": "Lịch sử chỉnh sửa không được lưu trên thiết bị này",
     "persistenceDegradedBody": "Ghi chú của bạn vẫn an toàn — chúng nằm trong kho dưới dạng tệp văn bản thuần, và vẫn mở và lưu bình thường. Chỉ lịch sử chỉnh sửa cục bộ và trạng thái hợp nhất của thiết bị này đang chạy trong bộ nhớ, nên chúng bắt đầu lại từ đầu mỗi khi memrynote mở.",
+    "editsNotSavedTitle": "Không thể lưu các chỉnh sửa mới nhất của bạn trong ghi chú này",
+    "editsNotSavedBody": "memrynote sẽ tiếp tục thử khi ghi chú còn mở. Nếu bạn đóng nó, hãy sao chép nội dung đã gõ trước.",
     "writebackFailedTitle": "Không thể cập nhật tệp của một ghi chú trên ổ đĩa",
     "writebackFailedTitleNamed": "Không thể cập nhật “{title}” trên ổ đĩa",
     "writebackFailedTitleMany": "Không thể cập nhật tệp của {count} ghi chú trên ổ đĩa",

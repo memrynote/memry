@@ -351,7 +351,8 @@ impl Indexer {
                 }
                 owed.owe_scan();
             }
-            Applied::Vault(_) => {}
+            // The write it follows published its `Changed`.
+            Applied::OutsideEditKept { .. } | Applied::Vault(_) => {}
         }
     }
 

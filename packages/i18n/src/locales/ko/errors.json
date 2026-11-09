@@ -81,6 +81,8 @@
   "crdt": {
     "persistenceDegradedTitle": "이 기기에 편집 기록이 저장되지 않습니다",
     "persistenceDegradedBody": "노트는 안전합니다 — 볼트에 일반 파일로 저장되어 있으며 평소처럼 열고 저장할 수 있습니다. 이 기기의 로컬 편집 기록과 병합 상태만 메모리에서 실행되므로 memrynote를 열 때마다 새로 시작됩니다.",
+    "editsNotSavedTitle": "이 노트의 최근 편집 내용을 저장하지 못했습니다",
+    "editsNotSavedBody": "노트가 열려 있는 동안 memrynote가 계속 다시 시도합니다. 노트를 닫으려면 먼저 입력한 내용을 복사하세요.",
     "writebackFailedTitle": "디스크의 노트 파일을 업데이트하지 못했습니다",
     "writebackFailedTitleNamed": "디스크의 “{title}” 파일을 업데이트하지 못했습니다",
     "writebackFailedTitleMany": "디스크의 노트 파일 {count}개를 업데이트하지 못했습니다",

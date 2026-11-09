@@ -5,14 +5,21 @@
 use std::fs;
 use std::path::PathBuf;
 use std::sync::atomic::{AtomicBool, Ordering};
-use std::sync::{Arc, Mutex};
+use std::sync::{Arc, Mutex, mpsc};
+use std::time::Duration;
 
 use memry_core::api::editor::Editor;
 use memry_core::api::errors::SecureStoreError;
+use memry_core::api::errors::StorageError;
+use memry_core::crdt::{body_writes, update_log};
+use memry_core::domain::external_feed::{FeedInput, FeedOutcome};
 use memry_core::domain::vault_locks::TargetKind;
+use memry_core::markdown::convert::api::Converter;
 use memry_core::seams::secure_store::SecureStore;
 use memry_core::seams::secure_store::SecureStoreKey;
-use memry_desktop::editor::{EditorHost, EditorHostError, HostEvent, Subscriber};
+use memry_desktop::editor::{
+    BARRIER, EditorHost, EditorHostError, HostEvent, RELEASE, Subscriber, TypingHold,
+};
 use memry_desktop::error::{FailureKind, map_core};
 use memry_desktop::registry::{AppConfig, VaultRegistry};
 use memry_desktop::session::{OpenSource, Session};
@@ -75,6 +82,22 @@ impl Env {
     fn editor(&self) -> Arc<Editor> {
         let core = self.session.current().unwrap().vault;
         core.editor(self.store.clone()).unwrap()
+    }
+
+    /// The note's file was edited outside the app, and the feed took it.
+    fn outside_edit(&self, note: &str, markdown: &str) {
+        let core = self.session.current().unwrap().vault;
+        let feed = core.external_feed(self.store.clone()).unwrap();
+        let input = FeedInput {
+            note_id: note,
+            markdown,
+            note_path: None,
+            writing: None,
+            frontmatter: None,
+            embeds: None,
+        };
+        let fed = feed.feed(&Converter::new(Default::default()), input);
+        assert_eq!(fed.unwrap(), FeedOutcome::Fed);
     }
 
     /// `window` opens `note` with a channel that records each frame.
@@ -522,4 +545,184 @@ fn an_edit_of_a_large_file_note_is_refused_as_note_large_file_and_reaches_no_win
         "user-facing text, no note id"
     );
     assert!(side_frames.lock().unwrap().is_empty());
+}
+
+#[test]
+fn only_a_stored_window_edit_asks_for_its_file_to_be_written() {
+    let env = env();
+    let note = env.note();
+    let (main, _) = env.open(&note, "main");
+    let edited = || {
+        env.events
+            .lock()
+            .unwrap()
+            .iter()
+            .filter(|event| matches!(event, HostEvent::Edited { .. }))
+            .cloned()
+            .collect::<Vec<_>>()
+    };
+
+    let update = main.type_text("typed");
+    env.host.apply_update(&note, &update, "main").unwrap();
+    assert_eq!(
+        edited(),
+        vec![HostEvent::Edited {
+            note_id: note.clone()
+        }]
+    );
+
+    env.host.apply_update(&note, &update, "main").unwrap();
+    assert_eq!(edited().len(), 1, "an update the body has changes nothing");
+
+    let core = env.session.current().unwrap().vault;
+    core.locks().set(TargetKind::Note, &note, true).unwrap();
+    let refused = env.host.apply_update(&note, &main.type_text("x"), "main");
+    assert!(refused.is_err());
+    assert_eq!(edited().len(), 1, "a refused edit writes no file");
+}
+
+/// The kind byte and the barrier id of each barrier frame `frames` recorded, and the origin
+/// byte alone of each update.
+fn kinds(frames: &Frames) -> Vec<(u8, Option<u32>)> {
+    frames
+        .lock()
+        .unwrap()
+        .iter()
+        .map(|frame| match frame[0] {
+            BARRIER | RELEASE => (
+                frame[0],
+                Some(u32::from_le_bytes(frame[1..5].try_into().unwrap())),
+            ),
+            origin => (origin, None),
+        })
+        .collect()
+}
+
+/// Waits for the barrier frame `frames` recorded first, and returns its id.
+fn barrier_of(frames: &Frames) -> u32 {
+    let deadline = std::time::Instant::now() + Duration::from_secs(25);
+    loop {
+        if let Some((_, Some(id))) = kinds(frames).into_iter().find(|(k, _)| *k == BARRIER) {
+            return id;
+        }
+        assert!(std::time::Instant::now() < deadline, "no barrier frame");
+        std::thread::sleep(Duration::from_millis(5));
+    }
+}
+
+/// An outside edit waits for each window's answer to its barrier, and the window hears the
+/// release after the edit's frame, on the same channel: its hold of new typing covers the
+/// whole time the edit's frame is on its way.
+#[test]
+fn a_window_hears_the_outside_edit_between_its_barrier_and_its_release() {
+    let env = env();
+    let note = env.note();
+    let (main, main_frames) = env.open(&note, "main");
+    let (_side, side_frames) = env.open(&note, "side");
+    let holding = {
+        let (host, note) = (Arc::clone(&env.host), note.clone());
+        std::thread::spawn(move || host.hold_typing(&note, Duration::from_secs(25)))
+    };
+
+    let id = barrier_of(&main_frames);
+    assert_eq!(barrier_of(&side_frames), id);
+    // Typing sent at the barrier is stored before the hold is given.
+    let typed = main.type_text("typed before the answer");
+    env.host.apply_update(&note, &typed, "main").unwrap();
+    env.host.typing_sent("main", id);
+    assert!(!holding.is_finished(), "given before every window answered");
+    env.host.typing_sent("side", id);
+    let hold: TypingHold = holding.join().unwrap().expect("windows have the note open");
+    env.outside_edit(&note, "edited outside");
+    drop(hold);
+
+    let side = [
+        (BARRIER, Some(id)),
+        (0, None),
+        (2, None),
+        (RELEASE, Some(id)),
+    ];
+    assert_eq!(kinds(&side_frames), side);
+    let main = [(BARRIER, Some(id)), (2, None), (RELEASE, Some(id))];
+    assert_eq!(kinds(&main_frames), main);
+}
+
+/// A window that does not answer is waited for no longer than the wait: the outside edit goes
+/// on, and the window is released with the others.
+#[test]
+fn a_window_that_does_not_answer_holds_an_outside_edit_only_as_long_as_the_wait() {
+    let env = env();
+    let note = env.note();
+    let (_main, main_frames) = env.open(&note, "main");
+    let (_side, side_frames) = env.open(&note, "side");
+    let holding = {
+        let (host, note) = (Arc::clone(&env.host), note.clone());
+        std::thread::spawn(move || host.hold_typing(&note, Duration::from_millis(200)))
+    };
+    let id = barrier_of(&main_frames);
+    env.host.typing_sent("main", id);
+
+    drop(holding.join().unwrap().expect("windows have the note open"));
+    assert_eq!(
+        kinds(&side_frames),
+        [(BARRIER, Some(id)), (RELEASE, Some(id))]
+    );
+    assert_eq!(
+        kinds(&main_frames),
+        [(BARRIER, Some(id)), (RELEASE, Some(id))]
+    );
+}
+
+/// An outside edit of a note no window has open asks no window, and waits for none.
+#[test]
+fn an_outside_edit_of_a_note_no_window_has_open_holds_nothing() {
+    let env = env();
+    let note = env.note();
+    assert!(
+        env.host
+            .hold_typing(&note, Duration::from_secs(25))
+            .is_none()
+    );
+    let (_main, frames) = env.open(&note, "main");
+    env.host.close(&note, "main");
+    assert!(
+        env.host
+            .hold_typing(&note, Duration::from_secs(25))
+            .is_none()
+    );
+    assert!(frames.lock().unwrap().is_empty());
+}
+
+/// A window's edit that waits for the writer while the feed holds it lands after the feed's
+/// rows: the other windows hear the outside edit first, though core tells its listeners only
+/// once the writer is free.
+#[test]
+fn a_window_edit_waiting_for_an_outside_edit_reaches_the_other_windows_after_it() {
+    let env = env();
+    let note = env.note();
+    let (main, _) = env.open(&note, "main");
+    let (side, side_frames) = env.open(&note, "side");
+    let outside = side.type_text("edited outside");
+    let db = env.session.current().unwrap().vault.db_handle();
+    let (committed, written) = mpsc::channel();
+    let id = note.clone();
+    let writer = std::thread::spawn(move || {
+        db.call_blocking(|conn| {
+            body_writes::as_external(|| update_log::append_local_update(conn, &id, &outside, 1))
+                .map_err(|error| StorageError::Failed {
+                    what: error.to_string(),
+                })?;
+            committed.send(()).unwrap();
+            // Holds the writer, its row committed and not told yet.
+            std::thread::sleep(Duration::from_millis(30));
+            Ok(())
+        })
+    });
+    written.recv().unwrap();
+
+    let typed = main.type_text("typed");
+    env.host.apply_update(&note, &typed, "main").unwrap();
+    writer.join().unwrap().unwrap();
+
+    assert_eq!(kinds(&side_frames), [(2, None), (0, None)]);
 }
