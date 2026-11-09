@@ -159,6 +159,7 @@ import { useEditorSettings, EDITOR_NORMAL_CONTENT_WIDTH } from '@/hooks/use-edit
 import { extractErrorMessage } from '@/lib/ipc-error'
 import { useHasOwnNoteLock, useIsNoteLocked } from '@/lib/vault-locks-store'
 import { LockedNoteNotice } from '@/components/note/locked-note-notice'
+import type { DocReadOnly } from '@/sync/yjs-ipc-provider'
 import { createLogger } from '@/lib/logger'
 import { markLaunchNoteReadable } from '@/lib/launch-restore'
 import { LocalGraphPanel } from '@/components/graph/local-graph-panel'
@@ -288,6 +289,9 @@ export function NotePage({ noteId }: NotePageProps) {
   // The owner locked this note or a folder above it (#2606): read-only here
   // and for every agent write path.
   const isLocked = useIsNoteLocked(noteId ?? null, note?.path ?? null)
+  // The editor host's own answer (open header or a refused `note_locked`), which can come before
+  // the lock store hears of the lock: the notice shows for either.
+  const [docReadOnly, setDocReadOnly] = useState<DocReadOnly | null>(null)
   const hasOwnLock = useHasOwnNoteLock(noteId ?? null)
   const { createNote, updateNote, renameNote, deleteNote } = useNoteMutations()
   const {
@@ -2141,7 +2145,7 @@ export function NotePage({ noteId }: NotePageProps) {
           data-testid="note-metadata"
           data-marquee-ignore
         >
-          {isLocked && <LockedNoteNotice />}
+          {(isLocked || docReadOnly === 'locked') && <LockedNoteNotice />}
           <NoteTitle
             disabled={isLocked}
             noteId={note.id}
@@ -2304,6 +2308,7 @@ export function NotePage({ noteId }: NotePageProps) {
                     key={noteId}
                     noteId={noteId}
                     editable={!isLocked}
+                    onReadOnlyChange={setDocReadOnly}
                     notePath={note.path}
                     initialContent={review.editorInitialContent}
                     contentType="markdown"
