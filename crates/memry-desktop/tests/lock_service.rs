@@ -30,13 +30,13 @@ use crate::notes_link_rewrite::{id_at, opened, row_hash};
 use crate::vault_env::{Env, env, indexed};
 use crate::vault_settings::{opened_keeping, stored};
 
-const NOTE: &str = "The body.\n";
+pub(crate) const NOTE: &str = "The body.\n";
 
-fn lock(e: &Env, kind: TargetKind, target: &str) {
+pub(crate) fn lock(e: &Env, kind: TargetKind, target: &str) {
     e.core().locks().set(kind, target, true).unwrap();
 }
 
-fn unlock(e: &Env, kind: TargetKind, target: &str) {
+pub(crate) fn unlock(e: &Env, kind: TargetKind, target: &str) {
     e.core().locks().set(kind, target, false).unwrap();
 }
 
@@ -56,7 +56,7 @@ fn no_trash(_: &Path) -> Result<(), String> {
     Err("no trash in this test".into())
 }
 
-fn read_only(e: &Env, rel: &str) -> bool {
+pub(crate) fn read_only(e: &Env, rel: &str) -> bool {
     fs::metadata(e.vault.join(rel))
         .unwrap()
         .permissions()
@@ -64,7 +64,7 @@ fn read_only(e: &Env, rel: &str) -> bool {
 }
 
 #[cfg(unix)]
-fn mode(e: &Env, rel: &str) -> u32 {
+pub(crate) fn mode(e: &Env, rel: &str) -> u32 {
     use std::os::unix::fs::PermissionsExt;
     fs::metadata(e.vault.join(rel))
         .unwrap()
@@ -74,7 +74,7 @@ fn mode(e: &Env, rel: &str) -> u32 {
 }
 
 #[cfg(unix)]
-fn set_mode(e: &Env, rel: &str, mode: u32) {
+pub(crate) fn set_mode(e: &Env, rel: &str, mode: u32) {
     use std::os::unix::fs::PermissionsExt;
     fs::set_permissions(e.vault.join(rel), fs::Permissions::from_mode(mode)).unwrap();
 }
@@ -361,7 +361,7 @@ fn a_date_format_change_moves_no_day_into_a_locked_folder() {
 }
 
 /// An open vault over `files` whose opens run the lock guard, its first walk done.
-fn guarded(files: &[(&str, &str)]) -> (Env, Arc<dyn SecureStore>) {
+pub(crate) fn guarded(files: &[(&str, &str)]) -> (Env, Arc<dyn SecureStore>) {
     let mut kept: Option<Arc<dyn SecureStore>> = None;
     let mut e = env(|store| {
         kept = Some(store.clone());
@@ -377,7 +377,7 @@ fn guarded(files: &[(&str, &str)]) -> (Env, Arc<dyn SecureStore>) {
     (e, kept.expect("the store"))
 }
 
-fn reopen(e: &mut Env) {
+pub(crate) fn reopen(e: &mut Env) {
     e.close();
     e.open();
     e.facts_until(indexed);

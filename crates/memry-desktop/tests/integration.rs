@@ -126,6 +126,8 @@ mod large_file_index;
 mod large_file_search;
 #[path = "large_file_sessions.rs"]
 mod large_file_sessions;
+#[path = "lock_outside_edits.rs"]
+mod lock_outside_edits;
 #[path = "lock_service.rs"]
 mod lock_service;
 #[path = "logship.rs"]
@@ -250,6 +252,8 @@ mod vault_app_move_open;
 mod vault_config;
 #[path = "vault_consumer.rs"]
 mod vault_consumer;
+#[path = "vault_exclude.rs"]
+mod vault_exclude;
 #[path = "vault_init.rs"]
 mod vault_init;
 #[path = "vault_locks_app_edit.rs"]

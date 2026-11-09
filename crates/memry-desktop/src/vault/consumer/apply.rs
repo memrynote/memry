@@ -23,9 +23,11 @@ use crate::vault::note_file::{
     NoteFile, NoteFileError, hash_file, large_by_size, large_file_class, read_note,
     record_large_file,
 };
+use crate::vault::watch::filter::WatchFilter;
 use crate::vault::watch::{VaultEvent, WatchHandle};
 
 mod crossing;
+mod locked;
 
 const SCOPE: &str = "vault_consumer";
 
@@ -54,6 +56,8 @@ pub(super) struct Applier {
     pub(super) own_files: Arc<OwnFiles>,
     /// `None` in a test that runs no watcher.
     pub(super) watch: Option<WatchHandle>,
+    /// The places the exclude patterns cover, whose records never cross (`apply::crossing`).
+    pub(super) filter: WatchFilter,
     /// By note id, how many times in a row an outside edit did not reach its record.
     pub(super) untaken: Mutex<HashMap<String, u32>>,
 }
@@ -268,6 +272,9 @@ impl Applier {
                 Ok(None) => return Step::Done,
                 Err(Unread::Missing) => return Step::Retry(path.to_owned()),
                 Err(Unread::Failed { file_hash, failure }) => {
+                    if let Some(step) = self.restored_unreadable(note_id, path) {
+                        return step;
+                    }
                     report_unread(scan, path, failure);
                     // Too large to read whole (past the read cap) is large by its size.
                     if large_by_size(size).is_some() {
@@ -310,6 +317,11 @@ impl Applier {
                 // empty body. A conflict between the two is the write-back's (12e-3, Step 17).
                 None => Write::Seed,
             };
+            // A locked note's outside edit is kept as a version and its locked text written
+            // back: it never reaches the document or the peers (`restoreLockedNoteFile`).
+            if let Some(step) = self.restored(note_id, path, Some(&file)) {
+                return step;
+            }
             match self.write_body(note_id, path, &file, write) {
                 Body::Wrote { holds_file: true } => {
                     // An outside edit of the file the row named (a seed's row names none):
@@ -390,6 +402,10 @@ impl Applier {
                 );
             }
         }
+        // A locked note's file comes back instead of a delete that would reach every device.
+        if self.restored(note_id, path, None).is_some() {
+            return;
+        }
         match self.identity.on_removed(&self.ctx(), note_id, path) {
             Ok(Removal::Deleted) => {}
             Ok(Removal::Kept) => {
@@ -445,6 +461,9 @@ impl Applier {
                 "a moved file's row was not moved: {collision}"
             );
             return Step::Done;
+        }
+        if self.crosses_from_cover(note_id, old_path, new_path) {
+            return self.made_anew(lane, new_path);
         }
         // The record first: on a failure both stay at the old path, and the next open's
         // rescan reports the move again.
