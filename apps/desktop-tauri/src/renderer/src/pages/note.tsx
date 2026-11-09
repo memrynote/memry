@@ -68,13 +68,7 @@ import { LinkedTasksSection } from '@/components/note/linked-tasks'
 import { LinkedHereOrBacklinks } from '@/features/tag-fields/linked-here-section'
 import { useOpenTaskDetail } from '@/components/tasks/task-detail-host'
 import { NoteSimilarNotes } from '@/components/note/similar-notes'
-import {
-  useNote,
-  useNoteMutations,
-  useNoteLinksQuery,
-  useNoteTagsQuery,
-  type Note
-} from '@/hooks/use-notes-query'
+import { useNoteMutations, useNoteLinksQuery, useNoteTagsQuery } from '@/hooks/use-notes-query'
 import { usePropertySection, type PropertySectionAction } from '@/hooks/use-property-section'
 import { useHeaderTags } from '@/features/tag-fields/use-header-tags'
 import { useTagSchemas } from '@/features/tag-fields/use-tag-schemas'
@@ -85,13 +79,7 @@ import { TemplateOffers } from '@/features/tag-fields/TemplateOfferRow'
 import { useNoteProjectTaskMove } from '@/hooks/use-note-project-task-move'
 import { usePropertiesCollapsed } from '@/hooks/use-properties-collapsed'
 import { useTasksLinkedToNote } from '@/hooks/use-tasks-linked-to-note'
-import {
-  notesService,
-  onNoteDeleted,
-  onNoteEventsDropped,
-  onNoteUpdated,
-  onNoteRenamed
-} from '@/services/notes-service'
+import { notesService, onNoteDeleted, onNoteRenamed } from '@/services/notes-service'
 import { resolveWikiLink } from '@/lib/wikilink-resolver'
 import { scrollToHeadingBlock, scrollToHeadingWhenReady } from '@/lib/scroll-to-heading'
 import { RESTORE_MAX_MS } from '@/hooks/use-tab-scroll-restore'
@@ -153,7 +141,6 @@ import {
   AlertDialogTitle
 } from '@/components/ui/alert-dialog'
 import { toast } from 'sonner'
-import { registerPendingSave, unregisterPendingSave } from '@/lib/save-registry'
 import { useIsBookmarked } from '@/hooks/use-bookmarks'
 import { useEditorSettings, EDITOR_NORMAL_CONTENT_WIDTH } from '@/hooks/use-editor-settings'
 import { extractErrorMessage } from '@/lib/ipc-error'
@@ -176,7 +163,7 @@ import { FIND_REQUEST_KEY, readFindRequest } from '@/lib/find-request'
 import { ReadwiseMenuGroup } from '@/components/note/readwise-menu-group'
 import { ReadwiseReimportDialog } from '@/components/note/readwise-reimport-dialog'
 import { useNoteCommands, type NoteCommandId, type NoteDialog } from './note/use-note-commands'
-import { useReplacedOutsideEdit } from './note/use-replaced-outside-edit'
+import { useNoteBody } from './note/use-note-body'
 import { useDialogState } from '@/hooks/use-dialog-state'
 import { ReviewBadgeLayer, ReviewRail, useCriticMarkupReview } from '@/components/note/review'
 import { AgentReviewSurface, useAgentBodyReview } from '@/components/note/agent-review'
@@ -187,16 +174,8 @@ import { useNoteFold } from '@/components/note/fold/use-note-fold'
 import { useT } from '@memry/i18n/renderer'
 import { getTabIconForFileType } from '@memry/shared/file-types'
 import * as trashQuestion from '@/lib/permanent-delete-question'
-import type { NoteUpdateResponse } from '@memry/contracts/notes-api'
 
 const log = createLogger('Page:Note')
-
-/**
- * The body a save of `markdown` left in the file, as its event will say. Not `result.note`: the
- * note is read after the save and can hold a later edit (a tag's template, an outside edit).
- */
-const savedText = (markdown: string, result: NoteUpdateResponse): string =>
-  result.savedContent ?? markdown
 
 // ============================================================================
 // Types
@@ -204,30 +183,6 @@ const savedText = (markdown: string, result: NoteUpdateResponse): string =>
 
 interface NotePageProps {
   noteId?: string
-}
-
-/** What came in while saves of the editor's text ran (#3967). */
-interface SaveWindow {
-  /** The note the saves write. */
-  noteId: string
-  /** Saves running. */
-  inFlight: number
-  /** Saves started, numbering each one. */
-  started: number
-  /** The newest save that answered: an older reply after it does not move the baseline. */
-  answered: number
-  /** The text the editor's baseline held when the first save started. */
-  base: string
-  /** The texts the saves left in the file. */
-  own: Set<string>
-  /** Every text an event or a read gave meanwhile, in order. */
-  outside: string[]
-  /** Note events were dropped meanwhile. */
-  dropped: boolean
-  /** A save's reply already told the user it went over an outside edit. */
-  toasted: boolean
-  /** The last save to answer. */
-  last: { markdown: string; result: NoteUpdateResponse } | null
 }
 
 // ============================================================================
@@ -276,15 +231,21 @@ function NoteEmptyState() {
 
 export function NotePage({ noteId }: NotePageProps) {
   const { t } = useT('notes')
-  // TanStack Query hooks for data fetching with caching
-  const {
-    note,
-    isLoading,
-    isFetching,
-    isFetchedAfterMount,
-    error: noteError,
-    refetch: refetchNote
-  } = useNote(noteId ?? null, { readOnMount: true })
+  const [isDeleted, setIsDeleted] = useState(false)
+  const dialog = useDialogState<NoteDialog>()
+  const [isLocalGraphOpen, setIsLocalGraphOpen] = useState(false)
+  const queryClient = useQueryClient()
+  const body = useNoteBody(noteId, {
+    surface: 'note-page',
+    showVersionHistory: () => dialog.show('versionHistory'),
+    deleted: isDeleted,
+    onSaved: () => {
+      if (isLocalGraphOpen && noteId) {
+        void queryClient.invalidateQueries({ queryKey: graphKeys.local(noteId) })
+      }
+    }
+  })
+  const { note, isLoading, error: noteError, refetch: refetchNote } = body.query
   // The owner locked this note or a folder above it (#2606): read-only here
   // and for every agent write path.
   const isLocked = useIsNoteLocked(noteId ?? null, note?.path ?? null)
@@ -301,7 +262,6 @@ export function NotePage({ noteId }: NotePageProps) {
   const openTaskDetail = useOpenTaskDetail()
   const activeTab = useActiveTab()
   const { openSidebarItem } = useSidebarNavigation()
-  const queryClient = useQueryClient()
   const prefersReducedMotion = useReducedMotion()
 
   // Extract highlight info from tab viewState (from reminder navigation)
@@ -343,10 +303,6 @@ export function NotePage({ noteId }: NotePageProps) {
 
   // Local state (UI-only, not data loading)
   const [headings, setHeadings] = useState<HeadingItem[]>([])
-  const [isDeleted, setIsDeleted] = useState(false)
-  const dialog = useDialogState<NoteDialog>()
-  const outsideEdit = useReplacedOutsideEdit(noteId, () => dialog.show('versionHistory'))
-  const [isLocalGraphOpen, setIsLocalGraphOpen] = useState(false)
   // The unresolved wiki-link title awaiting the user's create/cancel (#1716).
   const [pendingWikiLinkCreate, setPendingWikiLinkCreate] = useState<string | null>(null)
   const [moreMenuOpen, setMoreMenuOpen] = useState(false)
@@ -369,12 +325,6 @@ export function NotePage({ noteId }: NotePageProps) {
     setFreshTitleNoteId(noteId)
   }
   const isFreshTitle = !!noteId && freshTitleNoteId === noteId
-  const [externalUpdateCount, setExternalUpdateCount] = useState(0)
-  const [eventContentOverride, setEventContentOverride] = useState<{
-    noteId: string
-    content: string
-  } | null>(null)
-  const [storedNoteIdForContent, setStoredNoteIdForContent] = useState(noteId)
 
   // #800 belt-and-suspenders: a filed binary (image/PDF/…) mis-opened as a note
   // tab must never mount the markdown editor — raw bytes render as junk tag
@@ -598,22 +548,16 @@ export function NotePage({ noteId }: NotePageProps) {
   const findRequest = useMemo(() => readFindRequest(activeTab?.viewState), [activeTab?.viewState])
   const openFindAt = findInPage.openAt
   useEffect(() => {
+    // The lint plugin traces `note` back through `useNoteBody`'s options (page state) and misreads
+    // this effect as an event handler forwarding live state; it takes a find request once.
+    // oxlint-disable-next-line react-you-might-not-need-an-effect/no-event-handler -- see above
     if (!findRequest || !activeTab || !note || !isActiveNote || isLargeFile) return
-    // oxlint-disable-next-line react-you-might-not-need-an-effect/no-pass-ref-to-parent -- effect only calls openFindAt on a find request; no ref is passed
+    // oxlint-disable-next-line react-you-might-not-need-an-effect/no-pass-ref-to-parent, react-you-might-not-need-an-effect/no-pass-live-state-to-parent -- effect only calls openFindAt on a find request; no ref or state is passed up
     openFindAt(findRequest.query, findRequest.index)
     saveTabState(activeTab.id, { viewState: { [FIND_REQUEST_KEY]: undefined } })
   }, [findRequest, activeTab, note, isActiveNote, isLargeFile, openFindAt, saveTabState])
 
-  // Content tracking for change detection
-  if (storedNoteIdForContent !== noteId) {
-    setStoredNoteIdForContent(noteId)
-    setEventContentOverride(null)
-  }
-
-  let editorInitialContent = note?.content ?? ''
-  if (eventContentOverride !== null && eventContentOverride.noteId === noteId) {
-    editorInitialContent = eventContentOverride.content
-  }
+  const editorInitialContent = body.content
 
   const documentStats = useMemo(() => {
     if (!note) return undefined
@@ -625,219 +569,12 @@ export function NotePage({ noteId }: NotePageProps) {
     }
   }, [editorInitialContent.length, note])
 
-  const lastSavedContent = useRef<string>('')
-
-  // Refs for debouncing
-  const saveTimeoutRef = useRef<NodeJS.Timeout | null>(null)
-  const pendingMarkdownRef = useRef<string | null>(null)
-  // The note whose save lifecycle is running: registered below, cleared when
-  // its cleanup has flushed. The editor's teardown flush reports its last edit
-  // after that cleanup (#1900), so an edit for a note that is no longer live
-  // must not land in the refs above, which now belong to the next note.
-  const liveNoteIdRef = useRef<string | null>(null)
-
-  // ============================================================================
-  // lastSavedContent: the file text the editor shows. Set from the note it opened
-  // with, an outside edit it took, and the file a save of its text left.
-  // ============================================================================
-
-  // Only the note's first read for this page seeds it. A later read can see an outside
-  // edit whose event has not arrived yet; taken here, that event would read as text the
-  // editor already shows and be dropped, and the next save would write over it (#3967).
-  const seededRef = useRef<{ noteId: string; content: string } | null>(null)
-  const loadedNoteId = note?.id
-  const noteContentForLastSaved = note?.content
-  useEffect(() => {
-    if (loadedNoteId === undefined || noteContentForLastSaved === undefined) return
-    if (seededRef.current?.noteId === loadedNoteId) return
-    seededRef.current = { noteId: loadedNoteId, content: noteContentForLastSaved }
-    lastSavedContent.current = noteContentForLastSaved
-  }, [loadedNoteId, noteContentForLastSaved])
-
-  // While saves of the editor's text run, a save cannot tell its own echo from an outside edit:
-  // what comes in is kept in the save window and settled when the last save ends.
-  const saveWindowRef = useRef<SaveWindow | null>(null)
-
-  // The editor takes an outside edit's text. Typing not saved yet is the user's newest text:
-  // its save follows and says it went over this one (`outsideEdit`).
-  const takeContent = useCallback(
-    (content: string) => {
-      if (!noteId) return
-      if (pendingMarkdownRef.current !== null) {
-        outsideEdit.held(noteId, content)
-        return
-      }
-      lastSavedContent.current = content
-      setEventContentOverride({ noteId, content })
-      setExternalUpdateCount((c) => c + 1)
-    },
-    [noteId, outsideEdit]
-  )
-
-  // The note's text as an event or a read gave it; `null` when events were dropped.
-  const outsideText = useCallback(
-    (content: string | null) => {
-      const window = saveWindowRef.current
-      // Saves of a note the page showed before keep no text of this one.
-      if (window && window.noteId === noteId) {
-        if (content === null) window.dropped = true
-        else window.outside.push(content)
-        return
-      }
-      if (content !== null && content !== lastSavedContent.current) takeContent(content)
-    },
-    [noteId, takeContent]
-  )
-
-  // The last save of a window ended. Its texts that are no save's own are outside edits, the
-  // text from before the saves too (a revert); the file read again tells where they went: a
-  // file that is not the newest save's text holds an edit that landed after the saves, and a
-  // file at that text means a save went over them, which the user is told once.
-  const settleSaves = useCallback(
-    (window: SaveWindow) => {
-      const outside = window.outside.filter((text) => !window.own.has(text))
-      if (!noteId || (!window.dropped && outside.length === 0)) return
-      const saved = lastSavedContent.current
-      notesService
-        .get(noteId)
-        .then((fresh) => {
-          if (!fresh || fresh.contentOmitted || lastSavedContent.current !== saved) return
-          if (fresh.content !== saved) {
-            outsideText(fresh.content)
-            return
-          }
-          // The late echo of the save before the window is no edit to tell about.
-          const last = outside.findLast((text) => text !== window.base)
-          if (last === undefined || window.toasted || !window.last) return
-          outsideEdit.held(noteId, last)
-          outsideEdit.saved(noteId, window.last.markdown, window.last.result)
-        })
-        .catch((readError: unknown) => log.warn('the note was not read again', readError))
-    },
-    [noteId, outsideEdit, outsideText]
-  )
-
-  // One save of the editor's text. `answered` runs on the reply, before the window settles.
-  const saveText = useCallback(
-    async (
-      markdown: string,
-      answered: (result: NoteUpdateResponse) => void
-    ): Promise<NoteUpdateResponse> => {
-      const id = noteId ?? ''
-      // A save of the note the page showed before keeps its own window.
-      if (saveWindowRef.current?.noteId !== id) {
-        saveWindowRef.current = {
-          noteId: id,
-          inFlight: 0,
-          started: 0,
-          answered: 0,
-          base: lastSavedContent.current,
-          own: new Set(),
-          outside: [],
-          dropped: false,
-          toasted: false,
-          last: null
-        }
-      }
-      const window = saveWindowRef.current
-      window.inFlight += 1
-      const order = (window.started += 1)
-      try {
-        const result = await updateNoteRef.current({ id, content: markdown })
-        // The page shows another note now: its baseline, typing and toasts are not this save's.
-        if (liveNoteIdRef.current !== id) return result
-        // A refused save wrote nothing: the editor's text is still not the file's.
-        if (result.success) {
-          const text = savedText(markdown, result)
-          window.own.add(text)
-          if (order > window.answered) {
-            window.answered = order
-            lastSavedContent.current = text
-          }
-        }
-        window.toasted = outsideEdit.saved(id, markdown, result) || window.toasted
-        window.last = { markdown, result }
-        answered(result)
-        return result
-      } finally {
-        window.inFlight -= 1
-        if (window.inFlight === 0) {
-          if (saveWindowRef.current === window) saveWindowRef.current = null
-          if (liveNoteIdRef.current === id) settleSaves(window)
-        }
-      }
-    },
-    // oxlint-disable-next-line react/memo-dependencies -- dependency list is intentional; the compiler trace misreads the reply handled in `try`/`finally` (`settleSaves` runs there)
-    [noteId, outsideEdit, settleSaves]
-  )
-
-  // A note opened from the query's cache shows the cache's text until its read on mount
-  // (`readOnMount`) answers. An outside edit made while no page had the note open sends this
-  // one no event, so that answer is its only news.
-  const checkedNoteIdRef = useRef<string | null>(null)
-  useEffect(() => {
-    const seed = seededRef.current
-    if (!note || !isFetchedAfterMount || isFetching || seed?.noteId !== note.id) return
-    if (checkedNoteIdRef.current === note.id) return
-    checkedNoteIdRef.current = note.id
-    if (note.contentOmitted || note.content === seed.content) return
-    if (lastSavedContent.current !== seed.content) return
-    // oxlint-disable-next-line react-you-might-not-need-an-effect/no-derived-state, react-you-might-not-need-an-effect/no-pass-ref-to-parent -- an outside edit handed to the live editor once per note; whether it is taken or held depends on refs (typing, a save in flight) a render cannot read
-    outsideText(note.content)
-  }, [note, isFetchedAfterMount, isFetching, outsideText])
-
   // Reset deleted state during render when switching to a new note.
   const [storedNoteIdForDelete, setStoredNoteIdForDelete] = useState(note?.id)
   if (storedNoteIdForDelete !== note?.id) {
     setStoredNoteIdForDelete(note?.id)
     setIsDeleted(false)
   }
-
-  // Stable ref so cleanup can always call the latest mutateAsync
-  const updateNoteRef = useRef(updateNote.mutateAsync)
-  // oxlint-disable-next-line react/refs -- latest-value ref (callbacks/state mirrored for stable handlers); not render output
-  updateNoteRef.current = updateNote.mutateAsync
-
-  // Register with save registry + flush on unmount
-  useEffect(() => {
-    if (!noteId) return undefined
-
-    const registryKey = `note-page:${noteId}`
-    liveNoteIdRef.current = noteId
-
-    registerPendingSave(registryKey, async () => {
-      // The debounced save would write the same typing again, over whatever lands after this.
-      if (saveTimeoutRef.current) {
-        clearTimeout(saveTimeoutRef.current)
-        saveTimeoutRef.current = null
-      }
-      const pending = pendingMarkdownRef.current
-      if (pending !== null) {
-        pendingMarkdownRef.current = null
-        await saveText(pending, (result) => {
-          // A refused save leaves the typing to the next save, unless newer typing replaced it.
-          if (!result.success) pendingMarkdownRef.current ??= pending
-        })
-      }
-    })
-
-    return () => {
-      if (saveTimeoutRef.current) {
-        clearTimeout(saveTimeoutRef.current)
-        saveTimeoutRef.current = null
-      }
-
-      const pending = pendingMarkdownRef.current
-      if (pending !== null) {
-        pendingMarkdownRef.current = null
-        void updateNoteRef.current({ id: noteId, content: pending })
-      }
-
-      unregisterPendingSave(registryKey)
-      liveNoteIdRef.current = null
-    }
-    // oxlint-disable-next-line react/exhaustive-effect-dependencies -- `updateNoteRef` is a stable ref
-  }, [noteId, saveText])
 
   // Listen for note deletion events
   useEffect(() => {
@@ -870,55 +607,6 @@ export function NotePage({ noteId }: NotePageProps) {
 
     return unsub
   }, [noteId, updateTabTitleByEntityId])
-
-  // Listen for note updates that did not originate from this editor instance.
-  useEffect(() => {
-    if (!noteId) return undefined
-
-    const handleUpdated = (event: { id: string; changes: Partial<Note>; source?: string }) => {
-      if (event.id !== noteId) return
-
-      // `sync` means the CRDT write-back rewrote the file from the Y.Doc. The
-      // IPC CRDT provider has already applied those bytes to this editor, so a
-      // remount here would add nothing — and write-back also fires for local
-      // typing (500ms debounce, ahead of the 1000ms save), where it would blow
-      // away the editor mid-keystroke.
-      if (event.source === 'sync') return
-
-      // TanStack Query will handle the cache invalidation and refetch.
-      // We just need to update lastSavedContent and force editor remount.
-      if (typeof event.changes.content !== 'string') return
-      outsideText(event.changes.content)
-    }
-
-    const unsubUpdated = onNoteUpdated(handleUpdated)
-
-    // A dropped event may have been an outside edit of this note: its text is read again. The
-    // text the editor holds is taken when the signal arrives, so a save that lands during the
-    // read is told apart from it.
-    const unsubDropped = onNoteEventsDropped(() => {
-      if (saveWindowRef.current?.noteId === noteId) {
-        outsideText(null)
-        return
-      }
-      const shown = lastSavedContent.current
-      notesService
-        .get(noteId)
-        .then((fresh) => {
-          if (!fresh || fresh.contentOmitted || fresh.content === shown) return
-          // A save that finished during the read wrote newer text than the read saw.
-          const saved = lastSavedContent.current
-          if (saved !== shown && saved !== fresh.content) return
-          takeContent(fresh.content)
-        })
-        .catch((readError: unknown) => log.warn('the note was not read again', readError))
-    })
-
-    return () => {
-      unsubUpdated()
-      unsubDropped()
-    }
-  }, [noteId, takeContent, outsideText])
 
   // ============================================================================
   // Tags - Convert between string[] and Tag[]
@@ -1082,71 +770,7 @@ export function NotePage({ noteId }: NotePageProps) {
     )
   }, [])
 
-  // Debounced save on markdown content change
-  const handleMarkdownChange = useCallback(
-    (markdown: string) => {
-      if (!noteId || !note) return
-
-      // A late edit from an editor torn down after this note's save lifecycle
-      // ended. Nothing is left to debounce it or flush it on quit, so it is
-      // saved now, to the note it was typed in.
-      if (liveNoteIdRef.current !== noteId) {
-        if (isDeleted) return
-        updateNoteRef.current({ id: noteId, content: markdown }).catch((err: unknown) => {
-          log.error('Failed to save note after its editor closed:', err)
-        })
-        return
-      }
-
-      // Block saves if note was deleted
-      if (isDeleted) {
-        toast.error(t('page.toast.cannotSaveDeleted'))
-        return
-      }
-
-      // Skip if content hasn't changed
-      if (markdown === lastSavedContent.current) return
-
-      pendingMarkdownRef.current = markdown
-
-      // Clear previous timeout
-      if (saveTimeoutRef.current) {
-        clearTimeout(saveTimeoutRef.current)
-      }
-
-      // Debounce save (fixed 1000ms)
-      const armSave = (): void => {
-        saveTimeoutRef.current = setTimeout(() => {
-          saveTimeoutRef.current = null
-          void (async () => {
-            try {
-              await saveText(markdown, (result) => {
-                if (!result.success) {
-                  // Nothing was written: the typing stays pending for the next save or flush.
-                  log.error('The note was not saved:', result.error)
-                  return
-                }
-                setEventContentOverride(null)
-                // Typing that came in while this save ran is still unsaved.
-                if (pendingMarkdownRef.current === markdown) pendingMarkdownRef.current = null
-                if (isLocalGraphOpen) {
-                  void queryClient.invalidateQueries({ queryKey: graphKeys.local(noteId) })
-                }
-              })
-            } catch (err) {
-              log.error('Failed to save note, trying again:', err)
-              // Unless newer typing has its own save, or the note's lifecycle has flushed.
-              const unsaved = pendingMarkdownRef.current === markdown
-              if (unsaved && !saveTimeoutRef.current && liveNoteIdRef.current === noteId) armSave()
-            }
-          })()
-        }, 1000)
-      }
-      armSave()
-    },
-    // oxlint-disable-next-line react/memo-dependencies -- `updateNoteRef` is a stable ref
-    [noteId, note, isDeleted, t, isLocalGraphOpen, queryClient, saveText]
-  )
+  const handleMarkdownChange = body.onMarkdownChange
 
   const handleContentChange = useCallback((_blocks: Block[]) => {
     // Content change is handled via onMarkdownChange
@@ -1225,7 +849,7 @@ export function NotePage({ noteId }: NotePageProps) {
   // that chain and misreads it as this effect forwarding a ref or live state
   // to a parent — it does neither; it only calls `refreshMindMap()`.
   useEffect(() => {
-    // oxlint-disable-next-line react-you-might-not-need-an-effect/no-pass-live-state-to-parent, react-you-might-not-need-an-effect/no-pass-ref-to-parent, react-you-might-not-need-an-effect/no-derived-state
+    // oxlint-disable-next-line react-you-might-not-need-an-effect/no-pass-live-state-to-parent, react-you-might-not-need-an-effect/no-pass-ref-to-parent, react-you-might-not-need-an-effect/no-derived-state, react-you-might-not-need-an-effect/no-pass-data-to-parent
     refreshMindMap()
     // oxlint-disable-next-line react/exhaustive-effect-dependencies -- dependency is an intentional re-run trigger (token/identity), not read by the effect
   }, [headings, refreshMindMap])
@@ -2295,7 +1919,7 @@ export function NotePage({ noteId }: NotePageProps) {
                   className={cn(agentReview && 'hidden')}
                   inert={Boolean(agentReview) || undefined}
                 >
-                  {/* `externalUpdateCount` is deliberately NOT part of the key: an
+                  {/* `body.revision` is deliberately NOT part of the key: an
                 update that did not originate here is handed to the live editor
                 via `externalContentRevision` instead of destroying and
                 rebuilding the editor for every remote change. `noteId` stays —
@@ -2307,7 +1931,7 @@ export function NotePage({ noteId }: NotePageProps) {
                     notePath={note.path}
                     initialContent={review.editorInitialContent}
                     contentType="markdown"
-                    externalContentRevision={externalUpdateCount}
+                    externalContentRevision={body.revision}
                     placeholder={t('editor.content.placeholder')}
                     stickyToolbar={editorSettings.toolbarMode === 'sticky'}
                     onStickyToolbarChange={(sticky) =>
@@ -2463,10 +2087,7 @@ export function NotePage({ noteId }: NotePageProps) {
         noteId={noteId}
         noteTitle={note.title}
         onRestore={() => {
-          if (saveTimeoutRef.current) {
-            clearTimeout(saveTimeoutRef.current)
-            saveTimeoutRef.current = null
-          }
+          body.cancelScheduledSave()
           refetchNote()
         }}
       />

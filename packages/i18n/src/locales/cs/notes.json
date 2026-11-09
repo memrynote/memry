@@ -72,7 +72,8 @@
       "moveFailed": "Poznámku se nepodařilo přesunout",
       "deleteFailed": "Poznámku se nepodařilo smazat",
       "outsideEditReplaced": "Vaše psaní nahradilo změnu provedenou mimo aplikaci. Je uložena v historii verzí.",
-      "showVersions": "Zobrazit verze"
+      "showVersions": "Zobrazit verze",
+      "notSaved": "Změny této poznámky se neuložily. Zůstávají v editoru a při další úpravě se uložení zkusí znovu."
     },
     "deleteDialogTitle": "{count, plural, one {Smazat poznámku} few {Smazat # poznámky} other {Smazat # poznámek}}",
     "itemsCount": "{count, plural, one {# položka} few {# položky} many {# položky} other {# položek}}",

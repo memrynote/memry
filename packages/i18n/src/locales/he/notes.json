@@ -72,7 +72,8 @@
       "moveFailed": "העברת הפתק נכשלה",
       "deleteFailed": "מחיקת הפתק נכשלה",
       "outsideEditReplaced": "ההקלדה שלך החליפה שינוי חיצוני. השינוי שמור בהיסטוריית הגרסאות.",
-      "showVersions": "הצגת גרסאות"
+      "showVersions": "הצגת גרסאות",
+      "notSaved": "השינויים שלך בפתק הזה לא נשמרו. הם נשארים בעורך, והעריכה הבאה שלך תנסה שוב."
     },
     "deleteDialogTitle": "{count, plural, one {מחיקת פתק} other {מחיקת # פתקים}}",
     "itemsCount": "{count, plural, one {פריט אחד} other {# פריטים}}",

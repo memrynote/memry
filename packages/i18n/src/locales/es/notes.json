@@ -72,7 +72,8 @@
       "moveFailed": "No se pudo mover la nota",
       "deleteFailed": "No se pudo eliminar la nota",
       "outsideEditReplaced": "Lo que escribiste reemplazó un cambio externo. Está guardado en el historial de versiones.",
-      "showVersions": "Ver versiones"
+      "showVersions": "Ver versiones",
+      "notSaved": "Tus cambios en esta nota no se guardaron. Siguen en el editor y tu próxima edición lo volverá a intentar."
     },
     "deleteDialogTitle": "{count, plural, one {Eliminar nota} other {Eliminar # notas}}",
     "itemsCount": "{count, plural, one {# elemento} many {# elementos} other {# elementos}}",

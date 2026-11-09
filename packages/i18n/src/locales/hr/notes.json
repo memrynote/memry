@@ -72,7 +72,8 @@
       "moveFailed": "Premještanje bilješke nije uspjelo",
       "deleteFailed": "Brisanje bilješke nije uspjelo",
       "outsideEditReplaced": "Vaše tipkanje zamijenilo je vanjsku promjenu. Spremljena je u povijesti verzija.",
-      "showVersions": "Prikaži verzije"
+      "showVersions": "Prikaži verzije",
+      "notSaved": "Vaše promjene ove bilješke nisu spremljene. Ostaju u uređivaču, a vaša sljedeća izmjena pokušat će ponovno."
     },
     "deleteDialogTitle": "{count, plural, =1 {Izbriši bilješku} one {Izbriši # bilješku} few {Izbriši # bilješke} other {Izbriši # bilješki}}",
     "itemsCount": "{count, plural, one {# stavka} few {# stavke} other {# stavki}}",

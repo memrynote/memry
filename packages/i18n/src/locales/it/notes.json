@@ -72,7 +72,8 @@
       "moveFailed": "Impossibile spostare la nota",
       "deleteFailed": "Impossibile eliminare la nota",
       "outsideEditReplaced": "Quello che hai scritto ha sostituito una modifica esterna. È salvata nella cronologia delle versioni.",
-      "showVersions": "Mostra versioni"
+      "showVersions": "Mostra versioni",
+      "notSaved": "Le modifiche a questa nota non sono state salvate. Restano nell’editor e la prossima modifica riproverà."
     },
     "deleteDialogTitle": "{count, plural, one {Elimina nota} other {Elimina # note}}",
     "itemsCount": "{count, plural, one {# elemento} many {# elementi} other {# elementi}}",

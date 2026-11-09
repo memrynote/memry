@@ -72,7 +72,8 @@
       "moveFailed": "Not taşınamadı",
       "deleteFailed": "Not silinemedi",
       "outsideEditReplaced": "Yazdıkların dışarıdan yapılan bir değişikliğin yerini aldı. Değişiklik sürüm geçmişinde saklanıyor.",
-      "showVersions": "Sürümleri göster"
+      "showVersions": "Sürümleri göster",
+      "notSaved": "Bu nottaki değişiklikler kaydedilmedi. Düzenleyicide duruyorlar; bir sonraki düzenlemende yeniden denenecek."
     },
     "deleteDialogTitle": "{count, plural, one {Notu sil} other {# notu sil}}",
     "itemsCount": "{count, plural, one {# öğe} other {# öğe}}",

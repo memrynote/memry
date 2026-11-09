@@ -72,7 +72,8 @@
       "moveFailed": "Failed to move note",
       "deleteFailed": "Failed to delete note",
       "outsideEditReplaced": "An outside change was replaced by your typing. It's saved in version history.",
-      "showVersions": "Show versions"
+      "showVersions": "Show versions",
+      "notSaved": "Your changes to this note were not saved. They stay in the editor, and your next edit tries again."
     },
     "deleteDialogTitle": "{count, plural, one {Delete Note} other {Delete # Notes}}",
     "itemsCount": "{count, plural, one {# item} other {# items}}",

@@ -72,7 +72,8 @@
       "moveFailed": "無法移動筆記",
       "deleteFailed": "無法刪除筆記",
       "outsideEditReplaced": "你的輸入取代了一項外部變更。該變更已儲存在版本記錄中。",
-      "showVersions": "檢視版本"
+      "showVersions": "檢視版本",
+      "notSaved": "你對此筆記的變更未儲存。變更仍保留在編輯器中，下次編輯時會再次嘗試儲存。"
     },
     "deleteDialogTitle": "{count, plural, other {刪除 # 則筆記}}",
     "itemsCount": "{count, plural, other {# 個項目}}",

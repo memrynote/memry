@@ -72,7 +72,8 @@
       "moveFailed": "无法移动笔记",
       "deleteFailed": "无法删除笔记",
       "outsideEditReplaced": "你的输入替换了一处外部更改。该更改已保存在版本历史中。",
-      "showVersions": "查看版本"
+      "showVersions": "查看版本",
+      "notSaved": "你对此笔记的更改未保存。更改仍保留在编辑器中，下次编辑时会再次尝试保存。"
     },
     "deleteDialogTitle": "{count, plural, other {删除 # 篇笔记}}",
     "itemsCount": "{count, plural, other {# 项}}",

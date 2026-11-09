@@ -72,7 +72,8 @@
       "moveFailed": "Nu s-a putut muta notița",
       "deleteFailed": "Nu s-a putut șterge notița",
       "outsideEditReplaced": "Ce ai tastat a înlocuit o modificare din exterior. Este salvată în istoricul versiunilor.",
-      "showVersions": "Afișează versiunile"
+      "showVersions": "Afișează versiunile",
+      "notSaved": "Modificările tale la această notă nu au fost salvate. Rămân în editor, iar următoarea ta editare va încerca din nou."
     },
     "deleteDialogTitle": "{count, plural, one {Ștergeți notița} few {Ștergeți # notițe} other {Ștergeți # de notițe}}",
     "itemsCount": "{count, plural, one {# element} few {# elemente} other {# de elemente}}",

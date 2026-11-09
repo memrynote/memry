@@ -72,7 +72,8 @@
       "moveFailed": "Kunne ikke flytte notatet",
       "deleteFailed": "Kunne ikke slette notatet",
       "outsideEditReplaced": "Skrivingen din erstattet en endring utenfra. Den er lagret i versjonsloggen.",
-      "showVersions": "Vis versjoner"
+      "showVersions": "Vis versjoner",
+      "notSaved": "Endringene dine i dette notatet ble ikke lagret. De blir værende i redigeringsprogrammet, og neste endring prøver igjen."
     },
     "deleteDialogTitle": "{count, plural, one {Slett notat} other {Slett # notater}}",
     "itemsCount": "{count, plural, one {# element} other {# elementer}}",

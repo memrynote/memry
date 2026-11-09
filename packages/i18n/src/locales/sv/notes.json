@@ -72,7 +72,8 @@
       "moveFailed": "Det gick inte att flytta anteckningen",
       "deleteFailed": "Det gick inte att radera anteckningen",
       "outsideEditReplaced": "Det du skrev ersatte en ändring utifrån. Den finns sparad i versionshistoriken.",
-      "showVersions": "Visa versioner"
+      "showVersions": "Visa versioner",
+      "notSaved": "Dina ändringar i den här anteckningen sparades inte. De finns kvar i redigeraren, och nästa ändring försöker igen."
     },
     "deleteDialogTitle": "{count, plural, one {Radera anteckning} other {Radera # anteckningar}}",
     "itemsCount": "{count, plural, one {# objekt} other {# objekt}}",
