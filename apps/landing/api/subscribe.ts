@@ -4,7 +4,7 @@ import {
   addExternalBetaTester,
   readAppStoreConnectConfig,
   verifyTurnstileToken
-} from './ios-beta-support.ts'
+} from './_ios-beta-support.ts'
 
 const RESEND_API_BASE_URL = 'https://api.resend.com'
 
