@@ -23,12 +23,18 @@ const ipc = vi.hoisted(() => ({
   settle: [] as Array<() => void>
 }))
 
-// Only the three members the entry factory touches: construct, connect, destroy.
+// Only the members the entry factory touches: construct, connect, destroy, its read-only
+// reason, the event that changes it, and the error a note that needs seeding fails with.
 // `reject` reproduces the fail-open (`crdt:open-doc` answering success:false, a
 // rejecting validateNoteForCrdt, a throwing handshake); `pending` holds the slot
 // in its pre-settle state.
 vi.mock('@/sync/yjs-ipc-provider', () => ({
+  DocNeedsSeedError: class extends Error {},
   YjsIpcProvider: class {
+    readonly readOnly = null
+    on(): void {
+      /* the reason never changes here */
+    }
     connect(): Promise<void> {
       if (ipc.mode === 'reject') return Promise.reject(new Error('crdt:open-doc failed'))
       if (ipc.mode === 'pending') {

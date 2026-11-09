@@ -158,6 +158,11 @@ pub const DATA_MIGRATIONS: &[Migration] = &[
         name: "note_large_files",
         sql: include_str!("migrations/data/0023_note_large_files.sql"),
     },
+    Migration {
+        version: 24,
+        name: "note_file_marks",
+        sql: include_str!("migrations/data/0024_note_file_marks.sql"),
+    },
 ];
 
 /// `index.db`: the rebuildable search and link index.
@@ -303,6 +308,8 @@ fn set_user_version(conn: &Connection, version: u32) -> Result<(), StorageError>
 }
 
 mod legacy_numbering;
+#[cfg(test)]
+mod note_file_marks_tests;
 #[cfg(test)]
 mod note_large_files_tests;
 #[cfg(test)]

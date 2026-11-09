@@ -279,7 +279,10 @@ export class ValueExpect {
   }
 }
 
-/** `expect.poll(fn).toBe(...)`: re-reads `fn` every 100 ms until the matcher holds. */
+/**
+ * `expect.poll(fn).toBe(...)`: re-reads `fn` every 100 ms until the matcher holds. A read that
+ * throws is retried too, as in Playwright: a locator read between two renders matches nothing.
+ */
 export class PollExpect {
   constructor(
     private readonly read: () => unknown,
@@ -295,9 +298,8 @@ export class PollExpect {
   private async until(run: (matchers: ValueExpect) => void): Promise<void> {
     const deadline = Date.now() + this.timeout
     for (let attempt = 0; ; attempt += 1) {
-      const actual = await this.read()
       try {
-        run(new ValueExpect(actual, this.negate))
+        run(new ValueExpect(await this.read(), this.negate))
         return
       } catch (error) {
         if (Date.now() >= deadline) throw error

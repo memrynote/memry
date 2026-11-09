@@ -21,6 +21,8 @@ use rusqlite::Connection;
 use crate::api::errors::StorageError;
 use crate::crdt::BODY_FRAGMENT;
 use crate::crdt::errors::CrdtError;
+use crate::crdt::update_log::{Namespace, next_local_seq};
+use crate::domain::note_files::LogMark;
 use crate::domain::notes::journal_day::body_owner;
 use crate::domain::{note_snapshots, owed_file_body, reads};
 use crate::markdown::convert::EmbedResolver;
@@ -28,6 +30,10 @@ use crate::markdown::convert::api::Converter;
 use crate::markdown::convert::note_body::NoteBody;
 use crate::markdown::convert::restore::SerializeOptions;
 use crate::sync::body_debt;
+
+mod stamp;
+
+pub use stamp::text_moved_since_stamp;
 
 #[derive(Debug, Clone, PartialEq)]
 pub enum BodyRead {
@@ -86,6 +92,15 @@ pub fn body_for_file(
         return Ok(BodyRead::NotRepresentable(body.unrepresentable));
     }
     Ok(BodyRead::Body(body))
+}
+
+/// The note's [`LogMark`] now: taken before its body is compared, it makes a feed that finds
+/// the document moved since refuse ([`super::external_feed::AppRead`]).
+pub fn body_mark(conn: &Connection, note_id: &str) -> Result<LogMark, CrdtError> {
+    Ok(LogMark {
+        server: next_local_seq(conn, &Namespace::Server.row_id(note_id))?,
+        local: next_local_seq(conn, &Namespace::Local.row_id(note_id))?,
+    })
 }
 
 /// Keeps `content`, the whole file a write is about to replace, as a version of the note.

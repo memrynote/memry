@@ -15,7 +15,8 @@ fn failed(err: rusqlite::Error) -> StorageError {
 #[test]
 fn the_large_files_migration_keeps_rows_reruns_and_leaves_the_file_readable_to_older_builds() {
     let db = Db::open_in_memory().expect("open");
-    let before = latest_version(DATA_MIGRATIONS) as usize - 1;
+    // Migration 23: the builds before it ran the first 22.
+    let before = 22;
     db.call_blocking(|conn| run(conn, &DATA_MIGRATIONS[..before]))
         .expect("a database as the last build left it");
     db.call_blocking(|conn| {
@@ -37,7 +38,7 @@ fn the_large_files_migration_keeps_rows_reruns_and_leaves_the_file_readable_to_o
                 "nothing measured yet"
             );
             note_files::set_large_file(conn, "n1", true)?;
-            let migration = DATA_MIGRATIONS.last().expect("this migration");
+            let migration = &DATA_MIGRATIONS[before];
             assert_eq!(migration.name, "note_large_files");
             conn.execute_batch(migration.sql).map_err(failed)?;
             note_files::is_large_file(conn, "n1")

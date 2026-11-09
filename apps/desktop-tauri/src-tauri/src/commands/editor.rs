@@ -4,12 +4,13 @@
 //! and `crdt_sync_step_2` take the update as the raw body with `{ noteId }` in the metadata
 //! header, so the four are binary commands (`binary.rs`). The calling window's label is the
 //! holder, and the document's updates reach the window on the `Channel` it opened it with, as
-//! [`memry_desktop::editor::frame`]s. `crdt_close_doc` and `crdt_get_health` are typed commands.
+//! [`memry_desktop::editor::frame`]s. `crdt_close_doc`, `crdt_typing_sent`
+//! and `crdt_get_health` are typed commands.
 
 use std::path::Path;
 use std::sync::Arc;
 
-use memry_desktop::editor::{Deliver, EditorHost, Subscriber};
+use memry_desktop::editor::{Deliver, EditorHost, Subscriber, read_only_name};
 use serde::{Deserialize, Serialize};
 use tauri::ipc::{Channel, InvokeResponseBody, Request, Response};
 use tauri::{AppHandle, Manager, Runtime, WebviewWindow};
@@ -34,6 +35,8 @@ struct OpenedHeader {
     /// The body is empty and owes no server body: the window may seed it from the file.
     needs_seed: bool,
     state_length: usize,
+    /// Why the window must not edit it ([`read_only_name`]), or null.
+    read_only: Option<&'static str>,
 }
 
 /// The header of `crdt_sync_step_1`'s answer; the diff then the state vector follow it.
@@ -86,6 +89,7 @@ pub async fn crdt_open_doc<R: Runtime>(
     let header = OpenedHeader {
         needs_seed: opened.needs_seed,
         state_length: opened.state.len(),
+        read_only: opened.read_only.map(read_only_name),
     };
     binary::framed(&header, &[&opened.state, &opened.state_vector])
 }
@@ -167,6 +171,21 @@ pub async fn crdt_close_doc<R: Runtime>(
         Ok(())
     })
     .await
+}
+
+/// The calling window sent its typing for the typing barrier `barrier` and holds new typing
+/// until the barrier's release frame (`memry_desktop::editor::BARRIER`).
+#[tauri::command]
+#[specta::specta]
+pub async fn crdt_typing_sent<R: Runtime>(
+    app: AppHandle<R>,
+    window: WebviewWindow<R>,
+    barrier: u32,
+) -> Result<(), CommandError> {
+    // After a vault closed no outside edit waits.
+    let Ok(host) = host(&app) else { return Ok(()) };
+    host.typing_sent(window.label(), barrier);
+    Ok(())
 }
 
 #[tauri::command]

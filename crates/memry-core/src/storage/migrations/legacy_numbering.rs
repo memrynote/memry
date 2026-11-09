@@ -2,8 +2,8 @@
 //! (#4052).
 //!
 //! main shipped data migrations 13 `calendar_cursor_reset` and 14
-//! `calendar_foreign_cursor_reset`. feat/tauri-v2 builds had used 13..21 for their own
-//! migrations, which now run as 15..23. Those builds ran on test machines only, but their files
+//! `calendar_foreign_cursor_reset`. feat/tauri-v2 builds had used 13..22 for their own
+//! migrations, which now run as 15..24. Those builds ran on test machines only, but their files
 //! must still open with every row, and they never ran main's two cursor resets.
 //!
 //! The counter alone cannot tell the numberings apart: a file at 17 can be either. The schema
@@ -25,7 +25,7 @@ use super::{DATA_MIGRATIONS, user_version};
 use crate::api::errors::StorageError;
 
 /// For each old version, the table only that old migration created.
-const OLD_TABLES: [(u32, &str); 9] = [
+const OLD_TABLES: [(u32, &str); 10] = [
     (13, "note_snapshots"),
     (14, "local_settings"),
     (15, "note_files"),
@@ -35,6 +35,7 @@ const OLD_TABLES: [(u32, &str); 9] = [
     (19, "wiki_name_keys"),
     (20, "vault_locks"),
     (21, "note_large_files"),
+    (22, "note_file_marks"),
 ];
 
 /// main's 13 and 14, which the old numbering never ran. Both are idempotent cursor resets.

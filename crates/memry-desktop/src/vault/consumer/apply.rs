@@ -4,7 +4,7 @@
 
 use std::collections::HashMap;
 use std::path::PathBuf;
-use std::sync::{Arc, Mutex, PoisonError};
+use std::sync::{Arc, Mutex, PoisonError, Weak};
 
 use memry_core::api::external_feed::ExternalFeed;
 use memry_core::api::search::Search;
@@ -16,18 +16,20 @@ use super::body::{Body, Write};
 use super::identity::{Adoption, Candidate, IdentityCtx, NoteIdentity, Removal, Rename};
 use super::rows::{Lane, RowOwner, RowSession, RowStat};
 use super::{Applied, ChangeSource, MAX_RETRIES, MoveKind};
-use crate::vault::activity::{ActivityLog, ScanActivity, failure_key};
+use crate::editor::{BARRIER_WAIT, EditorHost};
+use crate::vault::activity::{ActivityLog, ScanActivity};
 use crate::vault::app_edit::OwnFiles;
 use crate::vault::file_types::{FileType, extension, file_type_of_extension};
-use crate::vault::note_file::{
-    NoteFile, NoteFileError, hash_file, large_by_size, large_file_class, read_note,
-    record_large_file,
-};
+use crate::vault::note_file::{NoteFile, large_by_size, large_file_class, record_large_file};
 use crate::vault::watch::filter::WatchFilter;
 use crate::vault::watch::{VaultEvent, WatchHandle};
+use crate::vault::writeback::WriteBack;
 
 mod crossing;
 mod locked;
+mod read;
+
+use read::Unread;
 
 const SCOPE: &str = "vault_consumer";
 
@@ -54,16 +56,30 @@ pub(super) struct Applier {
     pub(super) settings: Option<AppSettings>,
     pub(super) activity: Arc<ActivityLog>,
     pub(super) own_files: Arc<OwnFiles>,
+    /// The editor whose windows send their typing before an outside edit of their note applies.
+    pub(super) editor: Weak<EditorHost>,
     /// `None` in a test that runs no watcher.
     pub(super) watch: Option<WatchHandle>,
     /// The places the exclude patterns cover, whose records never cross (`apply::crossing`).
     pub(super) filter: WatchFilter,
     /// By note id, how many times in a row an outside edit did not reach its record.
     pub(super) untaken: Mutex<HashMap<String, u32>>,
+    /// The open's write-back, which writes a body that won over an outside edit; `None` in a
+    /// test that runs none.
+    pub(super) writeback: Option<Arc<WriteBack>>,
 }
 
 impl Applier {
     pub(super) fn apply(&self, event: VaultEvent) -> Step {
+        // Before the lane, so a window that does not answer holds up no write of the rows; and
+        // dropped after the change applied, so a window hears the release after the edit.
+        let _typing = match &event {
+            VaultEvent::Changed { note_id, .. } => self
+                .editor
+                .upgrade()
+                .and_then(|editor| editor.hold_typing(note_id, BARRIER_WAIT)),
+            _ => None,
+        };
         let Ok(mut lane) = self.rows.lane_of(self.session) else {
             return Step::Done;
         };
@@ -113,7 +129,7 @@ impl Applier {
     /// record did not take it and the fact is to be retried. Once it failed past the retries,
     /// the edit goes on without it, the record keeping what it had, so the row names the file
     /// the document holds and the app's edits of it are not refused for good.
-    fn told(&self, note_id: &str, previous: &str, file: &NoteFile) -> bool {
+    pub(super) fn told(&self, note_id: &str, previous: &str, file: &NoteFile) -> bool {
         let Err(error) = self
             .identity
             .on_changed(&self.ctx(), note_id, previous, file)
@@ -291,6 +307,14 @@ impl Applier {
             };
             // Before the feed: whatever it does with the text, the file is what it is.
             record_large_file(lane.files(), note_id, large_file_class(&file.raw).is_some());
+            // A locked note's outside edit is kept as a version and its locked text written
+            // back: it never reaches the document or the peers (`restoreLockedNoteFile`). The
+            // lock answers before the typing rule (`outside_edit`), which tells the record.
+            if row.content_hash.as_deref() != Some(file.hash.as_str())
+                && let Some(step) = self.restored(note_id, path, Some(&file))
+            {
+                return step;
+            }
             let write = match row.content_hash.as_deref() {
                 // Read back as recorded: the row's time moves on, so the walk does not read it
                 // again, unless the body moved since (a pass a crash cut short): then the note
@@ -311,17 +335,23 @@ impl Applier {
                     }
                     return Step::Done;
                 }
-                Some(_) => Write::Replace,
+                Some(previous) => {
+                    match self.outside_edit(
+                        lane,
+                        (note_id, source),
+                        path,
+                        (previous, row.indexed_at),
+                        &file,
+                    ) {
+                        Ok(mark) => Write::Replace(mark),
+                        Err(step) => return step,
+                    }
+                }
                 // The row names no text the document holds, so the body may be one the file
                 // never had (synced, kept, owed and since pulled): the file only fills an
                 // empty body. A conflict between the two is the write-back's (12e-3, Step 17).
                 None => Write::Seed,
             };
-            // A locked note's outside edit is kept as a version and its locked text written
-            // back: it never reaches the document or the peers (`restoreLockedNoteFile`).
-            if let Some(step) = self.restored(note_id, path, Some(&file)) {
-                return step;
-            }
             match self.write_body(note_id, path, &file, write) {
                 Body::Wrote { holds_file: true } => {
                     // An outside edit of the file the row named (a seed's row names none):
@@ -499,60 +529,6 @@ impl Applier {
         self.report_renamed(old_path, new_path);
         Step::Done
     }
-
-    /// The markdown file at `path`, read once; `Ok(None)` for every other kind. A markdown file
-    /// found missing is retried like one that could not be read (#3736): a save can leave the
-    /// name missing for a moment (Windows renaming a new file over it, an editor that deletes
-    /// and writes again), and the watcher, which already reported the bytes it puts back, does
-    /// not report them again. The retry has the watcher look again, keeping what it reported
-    /// for the note: a file that is back is reported again, a move pairs on the bytes last
-    /// reported, and a file that is gone gets its removal, which waits out the rename window
-    /// and finds it absent once more.
-    fn read(&self, path: &str, file_type: FileType) -> Result<Option<NoteFile>, Unread> {
-        if file_type != FileType::Markdown {
-            return Ok(None);
-        }
-        match read_note(&self.root, path) {
-            Ok(Some(file)) => {
-                // A file that read again is reported the next time it does not, inside the
-                // hour too.
-                self.activity
-                    .release(&self.root, &failure_key("read-failed", path));
-                Ok(Some(file))
-            }
-            Ok(None) => Err(Unread::Missing),
-            Err(error) => {
-                tracing::warn!(scope = SCOPE, "a vault file could not be read: {error}");
-                // The hash the watcher pairs a move of such a file on: Electron's, streamed.
-                // A read that failed knows no bytes, and is the only one Electron, which reads
-                // any file as text, reports as `read-failed`: the open or the read itself.
-                let (file_hash, failure) = match error {
-                    NoteFileError::NotUtf8 | NoteFileError::TooLarge => {
-                        (hash_file(&self.root, path).ok().flatten(), None)
-                    }
-                    NoteFileError::Open(_) | NoteFileError::Io(_) => {
-                        (None, Some(error.to_string()))
-                    }
-                    _ => (None, None),
-                };
-                Err(Unread::Failed { file_hash, failure })
-            }
-        }
-    }
-}
-
-/// Why [`Applier::read`] has no note file.
-enum Unread {
-    /// No file was there when it was read: gone, or missing for a moment mid-save. Retried
-    /// either way, and its row's pairing hash stays.
-    Missing,
-    /// It is there and was not read, and is retried. `file_hash` is its bytes' hash when this
-    /// build reads them only as bytes (not UTF-8, past the note size cap), else `None`.
-    /// `failure` is the read's error when the read itself failed.
-    Failed {
-        file_hash: Option<String>,
-        failure: Option<String>,
-    },
 }
 
 /// Who found a file: the open walk, which hands its activity in, or the watcher.

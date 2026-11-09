@@ -321,6 +321,8 @@ fn a_note_is_behind_its_body_when_a_body_entry_is_stamped_after_its_row() {
     let mut image = row("image", "image.png", 100);
     image.file_type = "image".to_owned();
     files.upsert_stat(image).unwrap();
+    // Rows an older build stamped carry no mark: they are read by the clock alone.
+    exec(&vault, "DELETE FROM note_file_marks");
     exec(
         &vault,
         "INSERT INTO yjs_updates (doc_id, seq, update_blob, created_at) VALUES
@@ -341,6 +343,37 @@ fn a_note_is_behind_its_body_when_a_body_entry_is_stamped_after_its_row() {
         files.behind_bodies().unwrap(),
         ["local", "local-snap", "server", "server-snap"]
     );
+}
+
+/// The row's mark counts what its clock cannot: an edit stored after the row was written, in
+/// the stamp's millisecond. The entries stored before the row are its own (the feed that wrote
+/// it), whatever their clock; a mark of a stamp another writer moved is not used.
+#[test]
+fn an_entry_stored_after_the_row_in_its_millisecond_puts_the_note_behind() {
+    let Fixture { vault, .. } = fixture();
+    let files = vault.note_files();
+    exec(
+        &vault,
+        "INSERT INTO yjs_updates (doc_id, seq, update_blob, created_at) VALUES
+           ('fed', 1, x'00', 100), ('local.fed', 1, x'00', 100);",
+    );
+    for id in ["fed", "typed", "typed-server", "restamped"] {
+        let mut row = stat(id, &format!("{id}.md"));
+        row.indexed_at = 100;
+        files.upsert_stat(row).unwrap();
+    }
+    exec(
+        &vault,
+        "INSERT INTO yjs_updates (doc_id, seq, update_blob, created_at) VALUES
+           ('local.typed', 1, x'00', 100), ('typed-server', 1, x'00', 100),
+           ('local.restamped', 1, x'00', 100);
+         UPDATE note_files SET indexed_at = 100 WHERE note_id = 'fed';
+         UPDATE note_files SET indexed_at = 101 WHERE note_id = 'restamped';",
+    );
+
+    assert_eq!(files.behind_bodies().unwrap(), ["typed", "typed-server"]);
+    assert!(files.behind_body("typed").unwrap());
+    assert!(!files.behind_body("fed").unwrap());
 }
 
 /// The rows the open reconcile moves to the trash: markdown rows of a tombstoned note or
@@ -392,6 +425,7 @@ fn a_refresh_moves_the_stamp_only_while_the_body_has_not_moved_since() {
         row.indexed_at = 100;
         files.upsert_stat(row).unwrap();
     }
+    exec(&vault, "DELETE FROM note_file_marks");
     exec(
         &vault,
         "INSERT INTO yjs_updates (doc_id, seq, update_blob, created_at) VALUES

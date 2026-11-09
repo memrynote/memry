@@ -1,5 +1,5 @@
 //! Data migration numbering (#4052): main shipped `calendar_cursor_reset` and
-//! `calendar_foreign_cursor_reset` as 13 and 14, while feat/tauri-v2 builds had used 13..21
+//! `calendar_foreign_cursor_reset` as 13 and 14, while feat/tauri-v2 builds had used 13..22
 //! for their own. Files written under either numbering open through [`open_data`], the real
 //! entry point, and end with the schema of a fresh database, every row and the calendar cursors
 //! reset.
@@ -12,8 +12,8 @@ use super::*;
 use crate::storage::open_data;
 use crate::storage::test_support::{TempDir, temp_dir};
 
-/// feat/tauri-v2's own data migrations, in the order its earlier builds numbered them 13..21.
-const FEAT_OWN: [&str; 9] = [
+/// feat/tauri-v2's own data migrations, in the order its earlier builds numbered them 13..22.
+const FEAT_OWN: [&str; 10] = [
     "note_snapshots",
     "local_settings",
     "note_files",
@@ -23,6 +23,7 @@ const FEAT_OWN: [&str; 9] = [
     "wiki_name_keys",
     "vault_locks",
     "note_large_files",
+    "note_file_marks",
 ];
 
 fn copy(migration: &Migration, version: u32) -> Migration {
@@ -37,7 +38,7 @@ fn shared() -> impl Iterator<Item = Migration> {
     DATA_MIGRATIONS[..12].iter().map(|m| copy(m, m.version))
 }
 
-/// The list a feat/tauri-v2 build before #4052 ran: 1..12 as main, then its own at 13..21.
+/// The list a feat/tauri-v2 build before #4052 ran: 1..12 as main, then its own at 13..22.
 fn earlier_feat_list() -> Vec<Migration> {
     let own = FEAT_OWN.iter().zip(13..).map(|(name, version)| {
         let migration = DATA_MIGRATIONS
@@ -228,12 +229,12 @@ fn reopen_keeps_a_later_cursor(path: &Path, conn: Connection, what: &str) {
 }
 
 /// Test machines hold files an earlier feat/tauri-v2 build migrated under its own numbering:
-/// `note_snapshots` at 13 and on to `note_large_files` at 21. They keep every row, gain what
+/// `note_snapshots` at 13 and on to `note_file_marks` at 22. They keep every row, gain what
 /// they lack, and get main's calendar cursor resets.
 #[test]
 fn a_file_numbered_by_an_earlier_feat_build_is_renumbered_once_and_gets_mains_resets() {
     let list = earlier_feat_list();
-    for version in 13..=21 {
+    for version in 13..=22 {
         for crashed in [false, true] {
             let what = format!("earlier feat numbering at {version}, crash window {crashed}");
             let (_dir, path, seeded) = file_at(&list, version);

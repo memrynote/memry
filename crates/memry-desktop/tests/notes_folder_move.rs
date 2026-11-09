@@ -86,7 +86,7 @@ pub(crate) fn note(title: &str, folder: &str) -> NewNoteFile {
 }
 
 /// A PDF at `rel` with a record and a row with no hash, known to the tier after a reopen.
-fn file_note(e: &mut Env, store: &Arc<dyn SecureStore>, rel: &str) -> String {
+pub(crate) fn file_note(e: &mut Env, store: &Arc<dyn SecureStore>, rel: &str) -> String {
     fs::write(e.vault.join(rel), b"%PDF-1.4 bytes").unwrap();
     let core = e.core();
     let id = core
