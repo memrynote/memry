@@ -42,8 +42,12 @@ const RELEASE_FRAME = 6
 const EXTERNAL_ORIGIN = 2
 /** The host waits this long for the window's answer (`BARRIER_WAIT`). */
 const BARRIER_WAIT_MS = 1500
-/** A hold no release ends is let go after this long. */
-const HOLD_MS = 2000
+/**
+ * A hold no release ends is let go after this long: the host's wait for the windows' answers,
+ * which another window may use up, then 2 s for the host to take the vault's rows and apply the
+ * edit.
+ */
+const HOLD_MS = BARRIER_WAIT_MS + 2000
 
 /** An empty Yjs update: no structs, no deletions. */
 const EMPTY_UPDATE_BYTES = 2
