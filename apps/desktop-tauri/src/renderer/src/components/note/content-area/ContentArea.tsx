@@ -53,6 +53,7 @@ import { cn } from '@/lib/utils'
 import { blockNoteShadCNComponents } from '@/lib/blocknote-shadcn-components'
 import { notesService, onNoteMoved, onNoteRenamed } from '@/services/notes-service'
 import { useYjsCollaboration } from '@/sync/use-yjs-collaboration'
+import { typingHoldOf } from '@/sync/typing-hold'
 import { isLocalCrdtDocLive } from '@/sync/collaboration-status'
 import { useWikiLinkHover } from '@/hooks/use-wiki-link-hover'
 import { useLinkMentionHover } from '@/hooks/use-link-mention-hover'
@@ -116,6 +117,7 @@ import { Plugin } from 'prosemirror-state'
 import { isMac } from '@/lib/shortcut-catalog'
 import { checkboxLineMarkdown, serializeBlocksPreservingBlanks } from './markdown-utils'
 import { registerEditorPlugin } from './register-editor-plugin'
+import { createTypingHoldPlugin } from './typing-hold-plugin'
 import { createBlockDirectionPlugin } from './block-direction-plugin'
 import { createAnchorVisibilityPlugin } from './portal/anchor-visibility-plugin'
 import { createPortalTrailingParagraphPlugin } from './portal/portal-trailing-paragraph-plugin'
@@ -878,6 +880,14 @@ const ContentAreaEditor = memo(function ContentAreaEditor({
   useEffect(() => registerEditorPlugin(editor, createAnchorVisibilityPlugin()), [editor])
   useEffect(() => registerEditorPlugin(editor, createBlockDirectionPlugin()), [editor])
   useEffect(() => registerEditorPlugin(editor, createPortalTrailingParagraphPlugin()), [editor])
+  // While the host applies an outside edit of the note, typing waits for the edit's frame.
+  useEffect(
+    () =>
+      yjsDoc
+        ? registerEditorPlugin(editor, createTypingHoldPlugin(typingHoldOf(yjsDoc)))
+        : undefined,
+    [editor, yjsDoc]
+  )
 
   const footnoteHover = useFootnotes(editor)
 
@@ -3851,10 +3861,11 @@ export const ContentArea = memo(function ContentArea(props: ContentAreaProps) {
   // the next mount binds.
   const [mountedWithoutNote] = useState(!props.noteId)
   const localDocLive = !mountedWithoutNote && isLocalCrdtDocLive(props.noteId)
-  const { fragment, doc, isReady, isRemoteUpdateRef, isSideEffectOwner } = useYjsCollaboration({
-    noteId: props.noteId,
-    enabled: localDocLive
-  })
+  const { fragment, doc, isReady, readOnly, isRemoteUpdateRef, isSideEffectOwner } =
+    useYjsCollaboration({
+      noteId: props.noteId,
+      enabled: localDocLive
+    })
   // Standalone/non-canvas callers pass no runSideEffects → own their effects.
   // A second editor on the same note in this window (R17) is a non-owner.
   const runSideEffects = props.runSideEffects ?? isSideEffectOwner
@@ -3872,6 +3883,9 @@ export const ContentArea = memo(function ContentArea(props: ContentAreaProps) {
     <TaskPrefetchProvider noteId={props.noteId}>
       <ContentAreaEditor
         {...props}
+        // The host refuses this window's edits of a locked or large-file note: the editor takes
+        // none, whatever the page knows of it.
+        editable={props.editable !== false && !readOnly}
         runSideEffects={runSideEffects}
         yjsFragment={isReady && fragment ? fragment : undefined}
         yjsDoc={isReady && doc ? doc : undefined}

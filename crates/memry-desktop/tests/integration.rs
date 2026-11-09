@@ -48,6 +48,8 @@ mod article_vectors;
 mod attachment_locks;
 #[path = "attachment_rename.rs"]
 mod attachment_rename;
+#[path = "attachment_sources.rs"]
+mod attachment_sources;
 #[path = "attachment_uploads.rs"]
 mod attachment_uploads;
 #[path = "attachments.rs"]
@@ -240,6 +242,8 @@ mod telemetry_flush;
 mod templates;
 #[path = "templates_legacy.rs"]
 mod templates_legacy;
+#[path = "typing_barrier.rs"]
+mod typing_barrier;
 #[path = "unsplash.rs"]
 mod unsplash;
 #[path = "untrusted_scheme_input.rs"]

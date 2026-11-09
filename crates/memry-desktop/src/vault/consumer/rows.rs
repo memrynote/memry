@@ -28,7 +28,7 @@ use memry_core::api::errors::StorageError;
 use memry_core::api::note_files::NoteFiles;
 use memry_core::api::notes_write::NotesWriter;
 use memry_core::api::vault::Vault;
-use memry_core::domain::note_files::{NoteFile as Row, NoteFileStat};
+use memry_core::domain::note_files::{NoteFile as Row, NoteFileStat, StampMark};
 use memry_core::domain::notes::app_move::{AppMoved, BeginError};
 use tokio::sync::broadcast;
 
@@ -308,23 +308,24 @@ impl Lane<'_> {
     /// milliseconds, before that edit's own pass, leaves its file lagging. A stamp taken before
     /// the feed would instead put the feed's own commit after it, and every fed note behind.
     pub(crate) fn put(&mut self, note_id: &str, path: &str, stat: RowStat) -> Result<(), RowError> {
-        self.put_as_of(note_id, path, stat, now_ms())
+        self.put_as_of(note_id, path, stat, (now_ms(), StampMark::Now))
     }
 
-    /// [`Lane::put`] stamped `at`: a time before the caller read the body and the file it
-    /// records (the write-back's stamp, `vault::writeback`).
+    /// [`Lane::put`] stamped `at` with its log mark: a time and a mark taken before the caller
+    /// read the body and the file it records (the write-back's stamp, `vault::writeback`), or
+    /// the stamp the row had, kept ([`StampMark::Kept`]).
     pub(crate) fn put_as_of(
         &mut self,
         note_id: &str,
         path: &str,
         stat: RowStat,
-        at: i64,
+        (at, mark): (i64, StampMark),
     ) -> Result<(), RowError> {
         let state = self.state_mut();
         state.index.check(note_id, path)?;
         state
             .files
-            .upsert_stat(file_stat(note_id, path, stat, at))?;
+            .upsert_stat_as(file_stat(note_id, path, stat, at), mark)?;
         state.index.insert(note_id, path);
         Ok(())
     }
