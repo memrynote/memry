@@ -13,6 +13,7 @@ import {
   Section,
   Text
 } from 'react-email'
+import { EmailFooter } from './email-footer'
 import { trackedMemryUrl, WAITLIST_CAMPAIGNS } from './tracking-links'
 
 export const testflightTauriContent = {
@@ -53,9 +54,6 @@ const releaseNotesUrl = trackedMemryUrl(
   campaign,
   'release_notes'
 )
-const footerDownloadUrl = trackedMemryUrl('/download/desktop', campaign, 'footer_download')
-const footerHomeUrl = trackedMemryUrl('/', campaign, 'footer_home')
-const redditUrl = trackedMemryUrl('https://www.reddit.com/r/MemryNote/', campaign, 'reddit')
 const twitterUrl = trackedMemryUrl('https://x.com/h4yfans', campaign, 'twitter')
 
 type EmailComponent = {
@@ -117,9 +115,11 @@ export const TestflightTauriEmail: EmailComponent = (props) => {
             hint="iosImageUrl: the animated GIF from the October update."
           />
 
+          <Text style={styles.paragraph}>You need iOS 26 or later and the TestFlight app.</Text>
+
           <Text style={styles.paragraph}>
-            You need iOS 26 or later and the TestFlight app. Want the invite at a different email
-            address? Enter it on the beta page, and TestFlight sends a new invite there.
+            <strong>Your invite is already in your inbox</strong>, in a separate email from
+            TestFlight. Want it at a different email instead? Get a new one here:
           </Text>
 
           <Section style={styles.buttonRow}>
@@ -208,33 +208,7 @@ export const TestflightTauriEmail: EmailComponent = (props) => {
 
           <Hr style={styles.divider} />
 
-          <Section style={styles.footer}>
-            <Img src={logoUrl} alt="Memrynote" width="185" height="26" style={styles.footerLogo} />
-
-            <Text style={styles.footerText}>
-              <Link href={footerDownloadUrl} style={styles.link}>
-                Download Memrynote
-              </Link>{' '}
-              ·{' '}
-              <Link href={docsUrl} style={styles.link}>
-                Docs
-              </Link>{' '}
-              ·{' '}
-              <Link href={footerHomeUrl} style={styles.link}>
-                memrynote.com
-              </Link>{' '}
-              ·{' '}
-              <Link href={redditUrl} style={styles.link}>
-                r/MemryNote
-              </Link>
-              <br />
-              <span style={styles.footerMuted}>© 2026 Memrynote</span>
-              <br />
-              <Link href={unsubscribeUrl} style={styles.link}>
-                <u>Unsubscribe</u>
-              </Link>
-            </Text>
-          </Section>
+          <EmailFooter campaign={campaign} logoUrl={logoUrl} unsubscribeUrl={unsubscribeUrl} />
         </Container>
       </Body>
     </Html>
@@ -380,27 +354,5 @@ const styles = {
     fontSize: '12px',
     fontWeight: 400,
     lineHeight: '18px'
-  },
-  footer: {
-    fontSize: '11px'
-  },
-  footerLogo: {
-    display: 'block',
-    outline: 'none',
-    border: 'none',
-    textDecoration: 'none',
-    padding: '10px 0'
-  },
-  footerText: {
-    margin: 0,
-    padding: '7px 0',
-    color: '#a8a29e',
-    fontSize: '11px',
-    fontWeight: 400,
-    lineHeight: '18px',
-    textAlign: 'center'
-  },
-  footerMuted: {
-    color: '#a8a29e'
   }
 } satisfies Record<string, CSSProperties>
