@@ -417,7 +417,7 @@ fn take_the_delete(
         return Ok(());
     }
     eprintln!(
-        "memry-core: the server holds {item_type} `{item_id}` deleted (SYNC_DELETE_WINS); \
+        "memry-core: the server holds a {item_type} deleted (SYNC_DELETE_WINS); \
          deleted here too"
     );
     store::mark_deleted(conn, item_type, item_id, now_ms, None, now_ms)?;
