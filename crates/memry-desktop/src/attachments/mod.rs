@@ -27,6 +27,7 @@ use std::path::{Path, PathBuf};
 use std::time::Duration;
 
 use memry_core::api::errors::StorageError;
+use memry_core::api::vault::Vault;
 use serde::Serialize;
 
 use crate::session::OpenVault;
@@ -38,6 +39,7 @@ use crate::vault::layout::ATTACHMENTS_DIR;
 use crate::vault::paths::{is_js_space, sanitize_filename};
 
 mod delete;
+mod reconcile;
 mod references;
 mod remote;
 mod rename;
@@ -46,6 +48,7 @@ mod shared;
 mod upload;
 
 pub use delete::{DeletedAttachment, delete};
+pub use reconcile::{PlannedRename, plan_renames, reconcile_renames};
 pub use references::{ReferenceScan, filenames, find_references, scan_steps};
 pub use remote::{
     FetchedImage, MAX_REMOTE_BYTES, RemoteFailure, RemoteImages, image_file_name, save_fetched,
@@ -512,12 +515,13 @@ fn store(
 /// `None` when the vault has no row for the note. Every write to a note's attachments asks here
 /// first.
 pub fn writable_note(open: &OpenVault, note_id: &str) -> Result<Option<String>, AttachmentError> {
-    let path = open.vault.note_files().by_id(note_id)?.map(|row| row.path);
-    if open
-        .vault
-        .locks()
-        .is_note_locked(note_id, path.as_deref())?
-    {
+    writable_in(&open.vault, note_id)
+}
+
+/// [`writable_note`] for a caller that holds the core vault, not the session's open vault.
+pub(crate) fn writable_in(vault: &Vault, note_id: &str) -> Result<Option<String>, AttachmentError> {
+    let path = vault.note_files().by_id(note_id)?.map(|row| row.path);
+    if vault.locks().is_note_locked(note_id, path.as_deref())? {
         return Err(AttachmentError::Locked);
     }
     Ok(path)
