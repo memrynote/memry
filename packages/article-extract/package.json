@@ -19,7 +19,7 @@
   },
   "devDependencies": {
     "@memry/typescript-config": "workspace:*",
-    "esbuild": "0.28.1",
+    "esbuild": "0.28.2",
     "whatwg-url-minimum": "0.1.2"
   }
 }

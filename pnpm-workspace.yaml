@@ -43,7 +43,7 @@ overrides:
   # @modelcontextprotocol/sdk >=1.30 accepts '^1.19.9 || ^2.0.5';
   # 1.x has no patch.
   '@hono/node-server': '>=2.0.5 <3'
-  esbuild: '>=0.28.1'
+  esbuild: '>=0.28.2'
   express-rate-limit: '>=8.2.2'
   # Electron 43 (ABI 148) ABI detection: @electron/rebuild's transitive node-abi
   # is otherwise capped at 4.26.0 by minimumReleaseAge, and 4.26.0 predates

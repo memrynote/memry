@@ -13,7 +13,7 @@ overrides:
   rollup: '>=4.59.0'
   hono: '>=4.13.12'
   '@hono/node-server': '>=2.0.5 <3'
-  esbuild: '>=0.28.1'
+  esbuild: '>=0.28.2'
   express-rate-limit: '>=8.2.2'
   node-abi: 4.33.0
   minimatch@<4: 3.1.5
@@ -1052,7 +1052,7 @@ importers:
         specifier: workspace:*
         version: link:../typescript-config
       esbuild:
-        specifier: '>=0.28.1'
+        specifier: '>=0.28.2'
         version: 0.28.2
       whatwg-url-minimum:
         specifier: 0.1.2
@@ -1372,7 +1372,7 @@ importers:
         specifier: ^2.0.3
         version: 2.0.4
       esbuild:
-        specifier: '>=0.28.1'
+        specifier: '>=0.28.2'
         version: 0.28.2
       tsx:
         specifier: ^4.19.0
