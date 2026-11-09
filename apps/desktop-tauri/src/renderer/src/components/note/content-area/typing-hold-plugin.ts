@@ -3,14 +3,16 @@
  * edit of the note (`sync/typing-hold.ts`): typing made before the edit's frame arrives would land
  * in blocks the edit deletes, and be lost. Updates from the document (the edit itself, another
  * window's) still apply, and a composition is never cut: its transactions pass, and the hold
- * waits for it to end before it starts.
+ * waits for it to end before it starts. Undo and redo write the document directly, past the
+ * filter, so they do nothing while held.
  *
  * @module note/content-area/typing-hold-plugin
  */
 
 import { Plugin, PluginKey } from '@tiptap/pm/state'
 import type { EditorView } from '@tiptap/pm/view'
-import { ySyncPluginKey } from 'y-prosemirror'
+import { ySyncPluginKey, yUndoPluginKey } from 'y-prosemirror'
+import type * as Y from 'yjs'
 import type { TypingHold } from '@/sync/typing-hold'
 
 export function createTypingHoldPlugin(hold: TypingHold): Plugin {
@@ -19,11 +21,16 @@ export function createTypingHoldPlugin(hold: TypingHold): Plugin {
     key: new PluginKey('typingHold'),
     view(editorView) {
       view = editorView
+      const undoManager: Y.UndoManager | undefined = yUndoPluginKey.getState(
+        editorView.state
+      )?.undoManager
+      const restoreUndo = undoManager && holdUndo(undoManager, hold)
       return {
         destroy() {
           // An editor that goes mid-composition must not leave the hold waiting for its end.
           if (view?.composing) hold.compositionEnded()
           view = null
+          restoreUndo?.()
         }
       }
     },
@@ -49,4 +56,18 @@ export function createTypingHoldPlugin(hold: TypingHold): Plugin {
       }
     }
   })
+}
+
+/** Makes `undoManager`'s undo and redo do nothing while `hold` is held; returns the undo of that. */
+function holdUndo(undoManager: Y.UndoManager, hold: TypingHold): () => void {
+  const undo = undoManager.undo.bind(undoManager)
+  const redo = undoManager.redo.bind(undoManager)
+  const heldUndo = (): ReturnType<typeof undo> => (hold.held ? null : undo())
+  const heldRedo = (): ReturnType<typeof redo> => (hold.held ? null : redo())
+  undoManager.undo = heldUndo
+  undoManager.redo = heldRedo
+  return () => {
+    if (undoManager.undo === heldUndo) undoManager.undo = undo
+    if (undoManager.redo === heldRedo) undoManager.redo = redo
+  }
 }

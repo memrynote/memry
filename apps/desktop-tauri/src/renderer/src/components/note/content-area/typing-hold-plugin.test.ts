@@ -1,9 +1,11 @@
 /**
- * While the window holds typing for an outside edit, the editor refuses its own changes and
- * still takes the document's and a composition's; once released it takes typing again.
+ * While the window holds typing for an outside edit, the editor refuses its own changes, undo and
+ * redo included, and still takes the document's and a composition's; once released it takes
+ * typing again.
  */
 
 import { afterEach, describe, expect, it, vi } from 'vitest'
+import { redo, undo, yUndoPluginKey } from 'y-prosemirror'
 import * as Y from 'yjs'
 
 vi.mock('react-pdf', () => ({
@@ -61,5 +63,28 @@ describe('typing hold plugin', () => {
     hold.hold(1, 2000)
     view.dispatch(view.state.tr.insertText('composed ', 3).setMeta('composition', 1))
     expect(view.state.doc.textContent).toBe('composed first words')
+  })
+
+  it('refuses undo and redo while held and undoes again once released', () => {
+    const { view, doc, hold } = mount()
+    const undoManager = yUndoPluginKey.getState(view.state)?.undoManager
+    undoManager?.stopCapturing()
+    view.dispatch(view.state.tr.insertText('typed ', 3))
+    undoManager?.stopCapturing()
+    view.dispatch(view.state.tr.insertText('more ', 3))
+    undo(view.state)
+    expect(view.state.doc.textContent).toBe('typed first words')
+    let updates = 0
+    doc.on('update', () => updates++)
+
+    hold.hold(1, 2000)
+    undo(view.state)
+    redo(view.state)
+    expect(updates).toBe(0)
+    expect(view.state.doc.textContent).toBe('typed first words')
+
+    hold.release(1)
+    expect(undo(view.state)).toBe(true)
+    expect(view.state.doc.textContent).toBe('first words')
   })
 })
