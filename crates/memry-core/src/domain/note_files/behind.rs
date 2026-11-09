@@ -4,20 +4,23 @@
 use rusqlite::{Connection, params};
 
 use super::failed;
+use super::marks::moved_after_mark;
 use crate::api::errors::StorageError;
 use crate::crdt::update_log;
 
 /// The SQL test, over a `note_files` row, that an entry of the note's body log or snapshot,
-/// in either namespace ([`update_log`]), is stamped after the row.
+/// in either namespace ([`update_log`]), is stamped after the row: by its clock, or by the
+/// row's mark ([`super::marks`]), which also names an entry stored in the stamp's millisecond.
 pub(super) fn body_moved_after_stamp() -> String {
     let local = update_log::LOCAL_NAMESPACE_PREFIX;
     format!(
-        "(EXISTS (SELECT 1 FROM yjs_updates u
+        "({} OR EXISTS (SELECT 1 FROM yjs_updates u
                    WHERE u.doc_id IN (note_files.note_id, '{local}' || note_files.note_id)
                      AND u.created_at > note_files.indexed_at)
           OR EXISTS (SELECT 1 FROM yjs_snapshots s
                       WHERE s.doc_id IN (note_files.note_id, '{local}' || note_files.note_id)
-                        AND s.compacted_at > note_files.indexed_at))"
+                        AND s.compacted_at > note_files.indexed_at))",
+        moved_after_mark()
     )
 }
 
@@ -29,8 +32,9 @@ pub(super) fn body_moved_after_stamp() -> String {
 ///
 /// A row's stamp is the time up to which it accounts for the body ([`NoteFile::indexed_at`]),
 /// so this names every note whose body moved after that: an edit or a merged page whose
-/// write-back never ran. An entry stamped in the same millisecond as the row is not counted,
-/// so the feed that recorded the row does not name its own note.
+/// write-back never ran. By the clock, an entry stamped in the same millisecond as the row is
+/// not counted, so the feed that recorded the row does not name its own note; the row's mark,
+/// taken as the row is written, counts an entry stored after it in that millisecond too.
 pub fn behind_bodies(conn: &Connection) -> Result<Vec<String>, StorageError> {
     let mut statement = conn
         .prepare(&format!(

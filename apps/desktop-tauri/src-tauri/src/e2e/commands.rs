@@ -61,6 +61,7 @@ e2e_commands! {
     ],
     window => [
         e2e_windows,
+        e2e_create_secondary_window,
         e2e_set_window_rect,
         e2e_traffic_lights,
         e2e_bare_alt_menu_mode

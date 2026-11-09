@@ -3,7 +3,7 @@
 //! patterns restart the watcher and the consumer alone ([`VaultTier::rewatch`]). The rows' lane
 //! lives across sessions (the app holds it), and is open only while a vault is.
 
-use std::sync::{Arc, Mutex, MutexGuard};
+use std::sync::{Arc, Mutex, MutexGuard, Weak};
 use std::time::Duration;
 
 use memry_core::api::vault::Vault;
@@ -14,6 +14,7 @@ use super::apply::Applier;
 use super::identity::{DeferIdentity, IdentityCtx, NoteIdentity};
 use super::rows::{RowOwner, RowSession};
 use super::{AfterWalk, Applied, Consumer, QUEUE_CAPACITY, inbox};
+use crate::editor::EditorHost;
 use crate::editor::versions::close_step;
 use crate::session::{OpenStage, OpenVault, Session};
 use crate::shell::shutdown::{StepFn, writeback_flush_timeout};
@@ -50,6 +51,9 @@ pub struct VaultTier {
     /// consumer, which reports the watcher's read of those bytes as their writer's. Cleared as
     /// a vault opens: a day's id is the same in every vault.
     own_files: Arc<OwnFiles>,
+    /// The editor the windows type in, which holds their typing while an outside edit of a
+    /// note they have open is applied; unset in a test that serves no windows.
+    editor: Mutex<Weak<EditorHost>>,
     /// Where a test holds a stop or a start, each run once: [`VaultTier::hold_at`].
     #[cfg(test)]
     holds: Mutex<Vec<(Hold, HoldFn)>>,
@@ -123,6 +127,7 @@ impl VaultTier {
             open: Mutex::new(None),
             echo: Mutex::new(None),
             own_files: Arc::default(),
+            editor: Mutex::new(Weak::new()),
             #[cfg(test)]
             holds: Mutex::default(),
         })
@@ -252,6 +257,12 @@ impl VaultTier {
         *self.identity.lock().unwrap_or_else(|e| e.into_inner()) = identity;
     }
 
+    /// The editor whose windows hold their typing while an outside edit of their note applies
+    /// (`crate::editor::typing`), from the next open on.
+    pub fn set_editor_host(&self, editor: &Arc<EditorHost>) {
+        *self.editor.lock().unwrap_or_else(|e| e.into_inner()) = Arc::downgrade(editor);
+    }
+
     /// The identity set last, which the app's own file moves ask too.
     pub(crate) fn identity(&self) -> Arc<dyn NoteIdentity> {
         self.identity
@@ -346,7 +357,8 @@ impl VaultTier {
         }
         unwatched();
         let after_walk = after_walk(&open.pass, &open.writeback);
-        let (watcher, consumer) = self.watch(&open.view, open.session, &open.echo, after_walk)?;
+        let owned = (&open.echo, &open.writeback);
+        let (watcher, consumer) = self.watch(&open.view, open.session, owned, after_walk)?;
         *lock(&open.watch) = watcher.handle();
         *tasks = Tasks::Running(watcher, consumer);
         Ok(())
@@ -409,7 +421,12 @@ impl VaultTier {
         let writeback = WriteBack::start(pass.clone(), self.failures.clone())
             .map(Arc::new)
             .map_err(|error| error.to_string())?;
-        let tasks = self.watch(vault, session, &echo, after_walk(&pass, &writeback))?;
+        let tasks = self.watch(
+            vault,
+            session,
+            (&echo, &writeback),
+            after_walk(&pass, &writeback),
+        )?;
         Ok(Open {
             view: vault.clone(),
             session,
@@ -426,7 +443,7 @@ impl VaultTier {
         &self,
         vault: &OpenVault,
         session: RowSession,
-        echo: &Arc<EchoGuard>,
+        (echo, writeback): (&Arc<EchoGuard>, &Arc<WriteBack>),
         after_walk: AfterWalk,
     ) -> Result<(VaultWatcher, Consumer), String> {
         let exclude = read_vault_config(&vault.path).exclude_patterns;
@@ -473,9 +490,15 @@ impl VaultTier {
             settings: vault.vault.app_settings(self.store.clone()).ok(),
             activity: self.activity.clone(),
             own_files: self.own_files.clone(),
+            editor: self
+                .editor
+                .lock()
+                .unwrap_or_else(|e| e.into_inner())
+                .clone(),
             watch: Some(watcher.handle()),
             filter: WatchFilter::new(exclude.clone()),
             untaken: Mutex::default(),
+            writeback: Some(writeback.clone()),
         };
         let consumer = Consumer::start(applier, inbox, watcher.handle(), exclude, after_walk)
             .map_err(|error| error.to_string())?;

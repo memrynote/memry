@@ -12,6 +12,10 @@
 //!   refetches its lists (`use-notes-query.ts`). A first open of a large vault would otherwise
 //!   send one event, and one read, per file.
 //!
+//! A write-back that replaced an outside edit typing won over (`OutsideEditKept`, after the
+//! write's own `Changed`) sends [`NoteOutsideEditKeptEvent`], on which the note page tells the
+//! user the outside text is a version.
+//!
 //! A created note is read for its list item, an outside edit for the fields it may have changed
 //! ([`NoteView::changes`]). Facts missed because this thread fell behind are made up for with
 //! one [`NoteEventsDroppedEvent`], on which the renderer refetches what it shows.
@@ -34,7 +38,7 @@ use tokio::sync::broadcast::error::RecvError;
 
 use crate::events::{
     NoteCreatedEvent, NoteDeletedEvent, NoteEventSource, NoteEventsDroppedEvent, NoteMovedEvent,
-    NoteRenamedEvent, NoteUpdatedEvent, broadcast,
+    NoteOutsideEditKeptEvent, NoteRenamedEvent, NoteUpdatedEvent, broadcast,
 };
 
 /// Generic over the runtime so a test drives it on a mock app.
@@ -72,6 +76,9 @@ enum Outgoing {
         old_path: String,
         new_path: String,
     },
+    OutsideEditKept {
+        note_id: String,
+    },
 }
 
 fn emit<R: Runtime>(app: &AppHandle<R>, fact: Applied) {
@@ -106,6 +113,9 @@ fn emit<R: Runtime>(app: &AppHandle<R>, fact: Applied) {
                 );
             }
         },
+        Outgoing::OutsideEditKept { note_id } => {
+            broadcast(app, NoteOutsideEditKeptEvent { id: note_id });
+        }
         Outgoing::Renamed {
             note_id,
             old_path,
@@ -201,6 +211,7 @@ fn outgoing(fact: Applied) -> Option<Outgoing> {
             })),
             MoveKind::JournalFormat => None,
         },
+        Applied::OutsideEditKept { note_id, .. } => Some(Outgoing::OutsideEditKept { note_id }),
         _ => None,
     }
 }
@@ -303,6 +314,16 @@ mod tests {
                 })
             );
         }
+        let kept = Applied::OutsideEditKept {
+            note_id: "n".into(),
+            path: "a.md".into(),
+        };
+        assert_eq!(
+            outgoing(kept),
+            Some(Outgoing::OutsideEditKept {
+                note_id: "n".into()
+            })
+        );
         // The open walk's notes reach the lists through the index's progress instead.
         assert_eq!(outgoing(added(ChangeSource::Walk)), None);
         assert_eq!(outgoing(changed(ChangeSource::Walk)), None);

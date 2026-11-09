@@ -1,7 +1,8 @@
-import { useLayoutEffect, useMemo, useRef } from 'react'
+import { useEffect, useLayoutEffect, useMemo, useRef } from 'react'
 import { toast } from 'sonner'
 import { useT } from '@memry/i18n/renderer'
 import type { NoteUpdateResponse } from '@memry/contracts/notes-api'
+import { onNoteOutsideEditKept } from '@/services/notes-service'
 
 /**
  * An outside edit (an agent, another editor) that arrives while typing is not
@@ -9,7 +10,8 @@ import type { NoteUpdateResponse } from '@memry/contracts/notes-api'
  * disk. The core keeps the replaced file as a version, so the user is told once
  * that save lands, with a way into version history. A save that lands before
  * the watcher reports an outside edit leaves the editor no event to hold; the
- * save's answer says so instead (`keptOutsideEdit`).
+ * save's answer says so instead (`keptOutsideEdit`). Typing the core holds and the file does
+ * not yet wins there too, and the core says so (`notes:outside-edit-kept`).
  */
 export function useReplacedOutsideEdit(
   noteId: string | undefined,
@@ -35,6 +37,12 @@ export function useReplacedOutsideEdit(
   useLayoutEffect(() => {
     if (heldRef.current?.noteId !== noteId) heldRef.current = null
   }, [noteId])
+  useEffect(() => {
+    if (!noteId) return undefined
+    return onNoteOutsideEditKept(({ id }) => {
+      if (id === noteId) toastReplaced(tRef.current, showRef.current)
+    })
+  }, [noteId])
 
   return useMemo(
     () => ({
@@ -48,16 +56,20 @@ export function useReplacedOutsideEdit(
         heldRef.current = null
         const replaced = held?.noteId === id && held.content !== content
         if (!replaced && !result.keptOutsideEdit) return false
-        toast(tRef.current('page.toast.outsideEditReplaced'), {
-          duration: 10_000,
-          action: {
-            label: tRef.current('page.toast.showVersions'),
-            onClick: () => showRef.current()
-          }
-        })
+        toastReplaced(tRef.current, showRef.current)
         return true
       }
     }),
     []
   )
+}
+
+function toastReplaced(t: (key: string) => string, showVersionHistory: () => void): void {
+  toast(t('page.toast.outsideEditReplaced'), {
+    duration: 10_000,
+    action: {
+      label: t('page.toast.showVersions'),
+      onClick: () => showVersionHistory()
+    }
+  })
 }
