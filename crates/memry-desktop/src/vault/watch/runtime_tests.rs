@@ -176,17 +176,17 @@ fn a_failed_re_arm_keeps_the_old_watch() {
         sink.clone(),
     );
     let (tx, rx) = sync_channel(8);
-    let overflow = Arc::<AtomicBool>::default();
+    let lost = Arc::<Lost>::default();
     let mut worker = Worker::new(
         reconciler,
         root.clone(),
         sink,
         Tuning::windows(),
         (tx.clone(), rx),
-        overflow.clone(),
+        lost.clone(),
         Arc::default(),
     );
-    worker.watcher = Some(watch(&root, &tx, &overflow).unwrap());
+    worker.watcher = Some(watch(&root, &tx, &lost).unwrap());
 
     worker.root = dir.path().join("not-there");
     worker.rearm(Instant::now());
@@ -202,4 +202,123 @@ fn a_failed_re_arm_keeps_the_old_watch() {
     worker.root = root.clone();
     worker.rearm(Instant::now());
     assert!(worker.watcher.is_some());
+}
+
+type Log = Arc<Mutex<Vec<VaultEvent>>>;
+
+/// A worker on an empty vault under `dir`, and the log of what it reports.
+fn worker_on(
+    dir: &Path,
+    tx: SyncSender<Msg>,
+    rx: Receiver<Msg>,
+    lost: Arc<Lost>,
+) -> (Worker, Log, Vault) {
+    let root = dir.join("vault");
+    let core = root.join(".memry/core");
+    std::fs::create_dir_all(&core).unwrap();
+    let vault =
+        Vault::open_with(core.to_string_lossy().into_owned(), OpenOptions::default()).unwrap();
+    let log: Log = Arc::default();
+    let events = log.clone();
+    let sink: EventSink = Arc::new(move |event| events.lock().unwrap().push(event));
+    let reconciler = Reconciler::new(
+        root.clone(),
+        vec![],
+        vault.note_files(),
+        Arc::new(EchoGuard::default()),
+        sink.clone(),
+    );
+    let worker = Worker::new(
+        reconciler,
+        root,
+        sink,
+        Tuning::none(),
+        (tx, rx),
+        lost,
+        Arc::default(),
+    );
+    (worker, log, vault)
+}
+
+/// The inotify limit is hit while the channel is full (a flood at the open of a big vault):
+/// the notice still reaches the app, it is not lost with the messages that did not fit.
+#[test]
+fn a_watch_limit_hit_while_the_channel_is_full_is_still_reported() {
+    let dir = tempfile::tempdir().unwrap();
+    let (tx, rx) = sync_channel(1);
+    let lost = Arc::<Lost>::default();
+    let (mut worker, log, _vault) = worker_on(dir.path(), tx.clone(), rx, lost.clone());
+    tx.send(Msg::Rescan).unwrap();
+    hit_watch_limit(&worker.root);
+    worker.watcher = Some(watch(&worker.root, &tx, &lost).unwrap());
+    let stop = worker.stop.clone();
+    let thread = std::thread::spawn(move || worker.work());
+
+    let limited = |log: &Log| {
+        log.lock()
+            .unwrap()
+            .iter()
+            .any(|e| matches!(e, VaultEvent::WatchFailed { limit: true, .. }))
+    };
+    let deadline = Instant::now() + Duration::from_secs(20);
+    while !limited(&log) && Instant::now() < deadline {
+        std::thread::sleep(Duration::from_millis(50));
+    }
+    stop.store(true, Ordering::Relaxed);
+    thread.join().unwrap();
+    assert!(limited(&log), "no limit notice: {:?}", log.lock().unwrap());
+}
+
+/// A folder created at the limit fails again each time: the log keeps one line per report, not
+/// one per failure.
+#[test]
+fn a_burst_of_watcher_errors_logs_one_line() {
+    let dir = tempfile::tempdir().unwrap();
+    let (tx, rx) = sync_channel(8);
+    let (mut worker, _log, _vault) = worker_on(dir.path(), tx, rx, Arc::default());
+    let written = Arc::new(Mutex::new(Vec::<u8>::new()));
+    let subscriber = tracing_subscriber::fmt()
+        .with_writer(Mutex::new(Capture(written.clone())))
+        .with_ansi(false)
+        .finish();
+    let error = notify::Error::new(notify::ErrorKind::MaxFilesWatch);
+    let now = Instant::now();
+    tracing::subscriber::with_default(subscriber, || {
+        worker.report(&error, now);
+        worker.report(&error, now + Duration::from_secs(1));
+    });
+
+    let lines = String::from_utf8(written.lock().unwrap().clone()).unwrap();
+    assert_eq!(
+        lines.matches("the OS watcher reported an error").count(),
+        1,
+        "{lines}"
+    );
+}
+
+/// Where inotify's limit counts every watch, the vault's return stops the old watch, on the
+/// worker, before it arms the new one: arming first could hit the limit only because both are up.
+#[test]
+fn the_vault_return_stops_the_old_watch_before_arming_a_new_one() {
+    let dir = tempfile::tempdir().unwrap();
+    let (tx, rx) = sync_channel(8);
+    let lost = Arc::<Lost>::default();
+    let (mut worker, _log, _vault) = worker_on(dir.path(), tx.clone(), rx, lost.clone());
+    worker.stop_before_rewatch = true;
+    let old = watch(&worker.root, &tx, &lost).unwrap();
+    let (stopped, stopped_on) = std::sync::mpsc::channel();
+    *old.stop_hold.lock().unwrap() = Some(Box::new(move || {
+        stopped.send(std::thread::current().id()).unwrap();
+    }));
+    worker.watcher = Some(old);
+
+    worker.try_return();
+
+    let on = stopped_on.recv_timeout(Duration::from_secs(10)).unwrap();
+    assert_eq!(
+        on,
+        std::thread::current().id(),
+        "the old watch stopped elsewhere"
+    );
+    assert!(worker.watcher.is_some(), "the vault is watched again");
 }
