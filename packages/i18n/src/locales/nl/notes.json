@@ -597,7 +597,8 @@
         "title": "Blok naar notitie verplaatsen",
         "searchPlaceholder": "Notities zoeken…",
         "noResults": "Geen overeenkomende notities",
-        "failed": "Kan het blok niet verplaatsen"
+        "failed": "Kan het blok niet verplaatsen",
+        "targetNotTaken": "Deze notitie is te groot of bevat tekst die de app niet kan opnemen, dus de blokken zijn gebleven waar ze waren."
       }
     },
     "attachmentPicker": {

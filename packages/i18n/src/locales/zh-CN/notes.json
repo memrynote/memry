@@ -597,7 +597,8 @@
         "title": "将块移动到笔记",
         "searchPlaceholder": "搜索笔记…",
         "noResults": "没有匹配的笔记",
-        "failed": "无法移动块"
+        "failed": "无法移动块",
+        "targetNotTaken": "此笔记过大，或包含应用无法接收的文本，因此这些块保留在原处。"
       }
     },
     "attachmentPicker": {

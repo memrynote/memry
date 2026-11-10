@@ -8,6 +8,7 @@ import { getDefaultReactSlashMenuItems } from '@blocknote/react'
 import { serializeCriticMarkup } from '@memry/shared'
 import { WIKI_LINK_EDIT_PLUGIN_KEY } from './wiki-link-edit-plugin'
 import type * as AttachmentPickerDialogModule from './attachment-picker-dialog'
+import type * as BlockSideMenuModule from './block-side-menu'
 
 type NoteEventHandler = (event: { id: string }) => void
 const noteEvents = vi.hoisted(() => new Set<NoteEventHandler>())
@@ -18,6 +19,7 @@ const contentAreaMocks = vi.hoisted(() => ({
   blocks: new Map<string, any>(),
   suggestionControllers: [] as any[],
   sideMenuControllers: [] as any[],
+  requestBlockMove: null as null | ((blockId: string) => void),
   pasteSelect: null as
     | null
     | ((option: 'url' | 'mention' | 'embed' | 'bookmark', url: string) => void),
@@ -46,7 +48,8 @@ const contentAreaMocks = vi.hoisted(() => ({
   getTaskSettings: vi.fn(),
   notesService: {
     uploadAttachment: vi.fn(),
-    get: vi.fn()
+    get: vi.fn(),
+    appendBlocks: vi.fn()
   },
   templatesService: {
     list: vi.fn(),
@@ -101,6 +104,28 @@ vi.mock('./attachment-picker-dialog', async (importOriginal) => ({
   ...(await importOriginal<typeof AttachmentPickerDialogModule>()),
   AttachmentPickerDialog: ({ kind }: { kind: string }) => (
     <div data-testid="attachment-picker-dialog" data-kind={kind} />
+  )
+}))
+
+// The block menu's "Move to" is reached through the side menu, which needs layout jsdom does
+// not have: the controller keeps its real render and hands its move request to the tests, and
+// the note picker stands in as one row naming the target.
+vi.mock('./block-side-menu', async (importOriginal) => {
+  const actual = await importOriginal<typeof BlockSideMenuModule>()
+  return {
+    ...actual,
+    BlockSideMenuController: (props: Parameters<typeof actual.BlockSideMenuController>[0]) => {
+      contentAreaMocks.requestBlockMove = props.onRequestMove ?? null
+      return actual.BlockSideMenuController(props)
+    }
+  }
+})
+
+vi.mock('./move-block-dialog', () => ({
+  MoveBlockDialog: ({ onSelect }: { onSelect: (targetNoteId: string) => void }) => (
+    <button type="button" onClick={() => onSelect('note-2')}>
+      move to note-2
+    </button>
   )
 }))
 
@@ -570,6 +595,7 @@ function resetEditor(): void {
       if ('props' in update) block.props = { ...block.props, ...(update.props as object) }
     }),
     insertBlocks: vi.fn(),
+    removeBlocks: vi.fn(),
     // The portal flows watch the change stream for deleted source blocks.
     onChange: vi.fn(() => () => {}),
     // Plain text runs only: every checkbox built above is one.
@@ -3028,5 +3054,64 @@ describe('ContentArea', () => {
     fireEvent.keyDown(screen.getByRole('application'), { key: 'Backspace' })
 
     expect(clickSpy).toHaveBeenCalledTimes(1)
+  })
+
+  // "Move to" removes the block here only once the target took it: a refused move keeps it.
+  async function moveParaToNote2(): Promise<void> {
+    render(<ContentArea noteId="note-1" />)
+    await waitFor(() => expect(contentAreaMocks.requestBlockMove).not.toBeNull())
+    act(() => contentAreaMocks.requestBlockMove?.('para'))
+    fireEvent.click(await screen.findByRole('button', { name: 'move to note-2' }))
+    await waitFor(() => expect(contentAreaMocks.notesService.appendBlocks).toHaveBeenCalled())
+    expect(contentAreaMocks.notesService.appendBlocks.mock.calls[0][0]).toMatchObject({
+      sourceNoteId: 'note-1',
+      targetNoteId: 'note-2'
+    })
+  }
+
+  it('keeps the block when the target refuses the move', async () => {
+    contentAreaMocks.notesService.appendBlocks.mockResolvedValue({
+      success: false,
+      error: 'the note changed while it was being edited; try again'
+    })
+    await moveParaToNote2()
+
+    await waitFor(() =>
+      expect(contentAreaMocks.toastError).toHaveBeenCalledWith(
+        'the note changed while it was being edited; try again'
+      )
+    )
+    expect(contentAreaMocks.editor.removeBlocks).not.toHaveBeenCalled()
+  })
+
+  it('tells the user in their language when the target never took its file', async () => {
+    contentAreaMocks.notesService.appendBlocks.mockResolvedValue({
+      success: false,
+      error: "the target note's file is too large or holds text the app cannot take in",
+      errorCode: 'target_not_taken'
+    })
+    await moveParaToNote2()
+
+    await waitFor(() =>
+      expect(contentAreaMocks.toastError).toHaveBeenCalledWith(
+        "This note is too large or has text the app can't take in, so the blocks stayed where they were."
+      )
+    )
+    expect(contentAreaMocks.editor.removeBlocks).not.toHaveBeenCalled()
+  })
+
+  it('removes the block once the target took it', async () => {
+    contentAreaMocks.notesService.appendBlocks.mockResolvedValue({
+      success: true,
+      targetPath: 'Target.md'
+    })
+    await moveParaToNote2()
+
+    await waitFor(() =>
+      expect(contentAreaMocks.editor.removeBlocks).toHaveBeenCalledWith([
+        contentAreaMocks.blocks.get('para')
+      ])
+    )
+    expect(contentAreaMocks.toastError).not.toHaveBeenCalled()
   })
 })
