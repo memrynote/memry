@@ -191,6 +191,8 @@ const SETTINGS_KEYS = {
   JOURNAL_SHOW_TASKS: 'journal.showTasks',
   JOURNAL_SHOW_AI_CONNECTIONS: 'journal.showAIConnections',
   JOURNAL_SHOW_STATS_FOOTER: 'journal.showStatsFooter',
+  JOURNAL_SHOW_ON_THIS_DAY: 'journal.showOnThisDay',
+  JOURNAL_ALL_YEARS_VIEW: 'journal.allYearsView',
   // Tab settings
   TAB_RESTORE_SESSION: 'tabs.restoreSessionOnStart',
   TAB_CLOSE_BUTTON: 'tabs.tabCloseButton',
@@ -213,6 +215,10 @@ export interface JournalSettings {
   showTasks: boolean
   showAIConnections: boolean
   showStatsFooter: boolean
+  /** Show the same day from past years under a journal entry */
+  showOnThisDay: boolean
+  /** Show every year of the day in full under the entry (the Forever Journal) */
+  allYearsView: boolean
 }
 
 export interface VoiceTranscriptionOpenAIKeyStatus {
@@ -478,7 +484,9 @@ export function getJournalSettings(): JournalSettings {
       showSchedule: true,
       showTasks: true,
       showAIConnections: true,
-      showStatsFooter: false
+      showStatsFooter: false,
+      showOnThisDay: true,
+      allYearsView: false
     }
   }
 
@@ -497,7 +505,9 @@ export function getJournalSettings(): JournalSettings {
     showSchedule: showScheduleStr !== 'false', // Default true
     showTasks: showTasksStr !== 'false', // Default true
     showAIConnections: showAIConnectionsStr !== 'false', // Default true
-    showStatsFooter: showStatsFooterStr === 'true' // Default false
+    showStatsFooter: showStatsFooterStr === 'true', // Default false
+    showOnThisDay: getSetting(db, SETTINGS_KEYS.JOURNAL_SHOW_ON_THIS_DAY) !== 'false',
+    allYearsView: getSetting(db, SETTINGS_KEYS.JOURNAL_ALL_YEARS_VIEW) === 'true'
   }
 }
 
@@ -555,6 +565,16 @@ export function writeJournalSettings(settings: Partial<JournalSettings>): {
       SETTINGS_KEYS.JOURNAL_SHOW_STATS_FOOTER,
       settings.showStatsFooter ? 'true' : 'false'
     )
+  }
+  if (settings.showOnThisDay !== undefined) {
+    setSetting(
+      db,
+      SETTINGS_KEYS.JOURNAL_SHOW_ON_THIS_DAY,
+      settings.showOnThisDay ? 'true' : 'false'
+    )
+  }
+  if (settings.allYearsView !== undefined) {
+    setSetting(db, SETTINGS_KEYS.JOURNAL_ALL_YEARS_VIEW, settings.allYearsView ? 'true' : 'false')
   }
 
   // Emit settings changed event. The weekday map goes out whole: the

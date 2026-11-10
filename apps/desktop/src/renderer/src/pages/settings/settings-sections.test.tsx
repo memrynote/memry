@@ -81,7 +81,9 @@ const mocks = vi.hoisted(() => ({
       showSchedule: true,
       showTasks: true,
       showAIConnections: false,
-      showStatsFooter: true
+      showStatsFooter: true,
+      showOnThisDay: true,
+      allYearsView: false
     },
     updateSettings: vi.fn(),
     setDefaultTemplate: vi.fn(),
@@ -1113,8 +1115,13 @@ describe('settings section coverage', () => {
     expect(screen.queryByText('journal.showTasks.label')).toBeNull()
     expect(screen.queryByText('journal.showAIConnections.label')).toBeNull()
 
-    // [5] is "Show in sidebar" in the location group; the footer switch follows.
-    fireEvent.click(screen.getAllByRole('switch')[6])
+    fireEvent.click(screen.getByRole('switch', { name: 'journal.allYearsView.label' }))
+    await waitFor(() =>
+      expect(mocks.journalSettings.updateSettings).toHaveBeenCalledWith({ allYearsView: true })
+    )
+
+    // [5] is "Show in sidebar", then the two past-years switches; the footer switch follows.
+    fireEvent.click(screen.getAllByRole('switch')[8])
     await waitFor(() =>
       expect(mocks.journalSettings.updateSettings).toHaveBeenCalledWith({
         showStatsFooter: false

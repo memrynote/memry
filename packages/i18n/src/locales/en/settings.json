@@ -504,7 +504,8 @@
       "loading": "Loading settings..."
     },
     "groups": {
-      "footer": "Footer"
+      "footer": "Footer",
+      "pastYears": "Past years"
     },
     "template": {
       "label": "Template",
@@ -562,6 +563,14 @@
     "showInSidebar": {
       "label": "Show in sidebar",
       "description": "Show the journal folder and its entries in the notes tree"
+    },
+    "showOnThisDay": {
+      "label": "Show On this day",
+      "description": "List the same date from past years under the entry"
+    },
+    "allYearsView": {
+      "label": "Show all years in full",
+      "description": "The Forever Journal: every year of the date on one page, under the entry"
     }
   },
   "tasks": {

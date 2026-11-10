@@ -183,6 +183,11 @@ The header next to the source holds the rest:
 - **Filter**, the same filter builder a folder page has. Filters set here apply on
   top of the saved view's.
 - **Layout**: list, table, gallery or [chart](#charts).
+- **New note** creates a note where the view lists it and opens it, as the
+  folder page's **New note** does: in the folder (with the folder's template),
+  in the vault's default folder for **All notes**, or carrying the tag. It is not
+  there for a journal chart. A note that the view's own filters exclude is still
+  created, but the list does not show it.
 - **Open as tab** opens the folder or tag page itself, on the same saved view.
 
 The list stays current. Create, edit, tag or delete a note anywhere and the view
@@ -208,6 +213,17 @@ row or a menu cannot type into the text by accident. If the text stops being val
 and keeps the text visible until it is fixed. Obsidian, GitHub, the phone and
 older versions of memrynote show the fence as an ordinary code block and leave it
 as it is.
+
+### A new view with its own folder
+
+`/new view` (or `/new database`, `/inline database`, `/collection`) starts a
+view for notes that do not exist yet. It creates a folder named `Untitled View`
+next to the note, numbered `Untitled View 2` and so on when that name is taken,
+and puts a view over that folder in the note. Notes made with the block's
+**New note** go into that folder, so the list fills itself. Renaming the folder
+later does not update the view: it then says the folder is gone, and you pick
+the renamed folder from its source menu. If the folder cannot be created,
+nothing is inserted and an error says why.
 
 ### Views in templates
 

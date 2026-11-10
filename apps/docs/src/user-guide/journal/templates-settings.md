@@ -32,13 +32,20 @@ Templates apply to any entry that doesn't exist yet, including past and future d
 
 Toggle the footer that displays word count, character count, and entry counts at the bottom of the writing column.
 
+## Past Years
+
+- **Show On this day** lists the same date from past years under the entry. On by default.
+- **Show all years in full** opens the section in the Forever Journal layout, with every year's entry in full instead of previews. Off by default. The **All years** and **Previews** buttons in the section change the same setting.
+
+See [On This Day](/user-guide/journal/calendar-navigation#on-this-day).
+
 ## What Syncs
 
 Your template choices — the default and the per-day overrides — sync across your devices, so the same day opens with the same prompt everywhere. Each day syncs independently: setting Monday on one machine and Tuesday on another keeps both.
 
 Existing choices aren't pushed out until you change them, so upgrading won't overwrite what another device already had.
 
-Layout preferences like the stats footer stay device-local, so a laptop and a desktop can differ.
+Layout preferences like the stats footer and the past-years settings stay device-local, so a laptop and a desktop can differ.
 
 ## See Also
 

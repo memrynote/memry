@@ -1,5 +1,6 @@
 import { FileText, FileType2, Image, Music, Video } from '@/lib/icons'
 import { getExtension } from '@memry/shared/file-types'
+import { pairedFolderPath } from '@memry/shared/folder-note'
 import { NoteIconDisplay } from '@/lib/render-note-icon'
 import { TagGlyph } from '@/features/tag-fields/object-avatar'
 import { useOptionalObjectIdentity } from '@/features/tag-fields/use-optional-object-identity'
@@ -317,12 +318,8 @@ export function hideVaultFiles(tree: TreeStructure): TreeStructure {
 /**
  * The tree with every note `X.md` folded into its sibling folder `X/`, so the
  * sidebar draws the two as one row: the label opens the note, the chevron
- * opens the folder. A sidebar view only: nothing on disk, in sync, or in the
- * databases knows about the pair.
- *
- * Names match exactly, case included, so a rename of the row can keep both
- * names identical. Only markdown notes pair: a file or a journal entry is not
- * a page a folder can belong to. Returns new nodes; `tree` is not mutated.
+ * opens the folder. `pairedFolderPath` owns which note pairs with which
+ * folder. Returns new nodes; `tree` is not mutated.
  */
 export function pairFolderNotes(tree: TreeStructure): TreeStructure {
   const pairLevel = (
@@ -331,10 +328,8 @@ export function pairFolderNotes(tree: TreeStructure): TreeStructure {
   ): { folders: FolderNode[]; notes: NoteListItem[] } => {
     const notesByStem = new Map<string, NoteListItem>()
     for (const note of notes) {
-      if (isVaultFile(note) || note.journalDate) continue
-      const folder = extractFolderFromPath(note.path)
-      const stem = folder ? `${folder}/${getDisplayName(note.path)}` : getDisplayName(note.path)
-      if (!notesByStem.has(stem)) notesByStem.set(stem, note)
+      const stem = pairedFolderPath(note.path, note.fileType, !!note.journalDate)
+      if (stem !== null && !notesByStem.has(stem)) notesByStem.set(stem, note)
     }
 
     const pairedIds = new Set<string>()
