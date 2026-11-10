@@ -23,8 +23,13 @@ use crate::journal_folder_held::recorded_elsewhere;
 use crate::journal_folder_outside::moved_outside;
 use crate::vault_settings::{opened_noticing, stored};
 
+/// `path` is a vault-relative, `/`-separated path; joined per component so the separators are
+/// the platform's, as the notices' own paths are.
 fn absolute(e: &Env, path: &str) -> String {
-    e.vault.join(path).to_string_lossy().into_owned()
+    path.split('/')
+        .fold(e.vault.clone(), |at, part| at.join(part))
+        .to_string_lossy()
+        .into_owned()
 }
 
 /// The board's notice of `notice`'s kind, if it is up.
