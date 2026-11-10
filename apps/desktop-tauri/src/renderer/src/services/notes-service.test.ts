@@ -642,6 +642,16 @@ describe('notes-service', () => {
     expect(result).toMatchObject({ success: true, keptOutsideEdit: true })
   })
 
+  // A save over an outside edit the editor never showed asks the core to keep it as a version.
+  it('asks the core to keep the body a save replaces', async () => {
+    const view = { id: 'note-1', path: 'Plan.md', created: CREATED, modified: MODIFIED }
+    commands.notesUpdate.mockResolvedValue({ note: view })
+    await notesService.update({ id: 'note-1', content: 'Typed', keepReplaced: true })
+    expect(commands.notesUpdate).toHaveBeenCalledWith(
+      expect.objectContaining({ id: 'note-1', content: 'Typed', keepReplaced: true })
+    )
+  })
+
   it('hands on the body the save wrote, which the note read after it may not hold', async () => {
     const view = { id: 'note-1', path: 'Plan.md', created: CREATED, modified: MODIFIED }
     commands.notesUpdate.mockResolvedValue({ note: view, savedContent: '' })

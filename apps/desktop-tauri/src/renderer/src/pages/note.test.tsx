@@ -2385,6 +2385,39 @@ describe('NotePage', () => {
       expect(toast).toHaveBeenCalledTimes(1)
     })
 
+    // The refused save took the typing that held the outside edit off with it: the edit is in the
+    // file, and the next save does not go over it.
+    it('forgets a held outside edit when the save sent leaving the note is refused', async () => {
+      vi.useFakeTimers()
+      mocks.updateNote.mockResolvedValueOnce({ success: false, error: 'disk full' })
+      const view = renderWithProviders(<NotePage noteId="note-1" />)
+      await act(async () => {
+        await vi.advanceTimersByTimeAsync(0)
+      })
+      act(() => mocks.onMarkdownChange?.('Typed, not saved'))
+      outsideEdit('Written by an agent')
+
+      view.rerender(<NotePage noteId="note-2" />)
+      view.rerender(<NotePage noteId="note-1" />)
+      act(() => mocks.onMarkdownChange?.('Typed on coming back'))
+      await saveLands()
+
+      expect(mocks.updateNote).toHaveBeenLastCalledWith({
+        id: 'note-1',
+        content: 'Typed on coming back'
+      })
+      expect(toast).not.toHaveBeenCalled()
+    })
+
+    // The toast of an editor that moved on opens the replaced note in its tab with its versions.
+    it('opens version history when its tab asks for it, once', async () => {
+      mocks.tabViewState = { versionHistory: true }
+      renderWithProviders(<NotePage noteId="note-1" />)
+
+      expect(await screen.findByText('Version Test Note')).toBeInTheDocument()
+      expect(mocks.tabViewState.versionHistory).toBe(false)
+    })
+
     it('tells the user when a flush lands the typing', async () => {
       renderWithProviders(<NotePage noteId="note-1" />)
       expect(await screen.findByTestId('editor-content')).toHaveTextContent('Original body')

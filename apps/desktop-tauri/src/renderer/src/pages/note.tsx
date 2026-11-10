@@ -164,6 +164,8 @@ import { ReadwiseMenuGroup } from '@/components/note/readwise-menu-group'
 import { ReadwiseReimportDialog } from '@/components/note/readwise-reimport-dialog'
 import { useNoteCommands, type NoteCommandId, type NoteDialog } from './note/use-note-commands'
 import { useNoteBody } from './note/use-note-body'
+import { VERSION_HISTORY_REQUEST_KEY } from './note/use-replaced-outside-edit'
+import { useTabViewState } from '@/hooks/use-tab-view-state'
 import { useDialogState } from '@/hooks/use-dialog-state'
 import { ReviewBadgeLayer, ReviewRail, useCriticMarkupReview } from '@/components/note/review'
 import { AgentReviewSurface, useAgentBodyReview } from '@/components/note/agent-review'
@@ -246,6 +248,20 @@ export function NotePage({ noteId }: NotePageProps) {
     }
   })
   const { note, isLoading, error: noteError, refetch: refetchNote } = body.query
+  // The replaced-outside-edit toast of an editor that has moved on opens the note here, with its
+  // version history (#4088). Taken once.
+  const [versionsRequested, setVersionsRequested] = useTabViewState<boolean>({
+    key: VERSION_HISTORY_REQUEST_KEY,
+    defaultValue: false,
+    parse: (raw) => (raw === true ? true : undefined)
+  })
+  const showDialog = dialog.show
+  useEffect(() => {
+    // oxlint-disable-next-line react-you-might-not-need-an-effect/no-event-handler -- the request arrives via tab state from another surface; the effect takes it once
+    if (!versionsRequested || !note) return
+    showDialog('versionHistory')
+    setVersionsRequested(false)
+  }, [versionsRequested, note, showDialog, setVersionsRequested])
   // The owner locked this note or a folder above it (#2606): read-only here
   // and for every agent write path.
   const isLocked = body.locked

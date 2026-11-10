@@ -103,7 +103,7 @@ export function useNoteBody(noteId: string | undefined, options: NoteBodyOptions
   const { note, isFetching, isFetchedAfterMount } = query
   const locked = useIsNoteLocked(noteId ?? null, note?.path ?? null)
   const { updateNote } = useNoteMutations()
-  const outsideEdit = useReplacedOutsideEdit(noteId, showVersionHistory)
+  const outsideEdit = useReplacedOutsideEdit(noteId, note?.title, showVersionHistory)
   const onSavedRef = useRef(options.onSaved)
   // oxlint-disable-next-line react/refs -- latest-value ref (callbacks/state mirrored for stable handlers); not render output
   onSavedRef.current = options.onSaved
