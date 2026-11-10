@@ -4,24 +4,46 @@
 #[allow(unused_imports)]
 use crate::vault_env;
 
+use std::fs;
 use std::path::Path;
 use std::sync::Arc;
 use std::time::{Duration, Instant};
 
+use memry_core::seams::secure_store::SecureStore;
 use memry_desktop::notes::identity::NotesIdentity;
 use memry_desktop::vault::config::config_path;
 use memry_desktop::vault::consumer::Applied;
-use memry_desktop::vault::notices::{VaultNotice, VaultNotices};
-use memry_desktop::vault::watch::{VaultEvent, hit_watch_limit};
-use tokio::sync::broadcast;
+use memry_desktop::vault::notices::{KeptRemoval, LISTED, Listed, VaultNotice, VaultNotices};
+use memry_desktop::vault::watch::hit_watch_limit;
 use vault_env::{Env, env, indexed};
 
 fn noticing_env() -> (Env, Arc<VaultNotices>) {
+    let (e, notices, _) = noticing_env_with_store();
+    (e, notices)
+}
+
+fn noticing_env_with_store() -> (Env, Arc<VaultNotices>, Arc<dyn SecureStore>) {
     let notices = VaultNotices::new();
     let board = notices.clone();
-    let e = env(|store| Some(NotesIdentity::noticing(store, board)));
+    let mut kept = None;
+    let e = env(|store| {
+        kept = Some(store.clone());
+        Some(NotesIdentity::noticing(store, board))
+    });
     notices.register(&e.session);
-    (e, notices)
+    (e, notices, kept.expect("the store"))
+}
+
+fn row_id(e: &Env, path: &str) -> String {
+    e.rows()
+        .into_iter()
+        .find(|(_, p)| p == path)
+        .map(|(id, _)| id)
+        .expect("a row")
+}
+
+fn absolute(e: &Env, path: &str) -> String {
+    e.vault.join(path).to_string_lossy().into_owned()
 }
 
 fn until(what: &str, holds: impl Fn() -> bool) {
@@ -97,38 +119,12 @@ fn a_notice_of_another_vault_is_dropped() {
     assert_eq!(notices.list(), vec![VaultNotice::WatchLimit]);
 }
 
-/// The watcher's report of the Linux inotify limit shows the notice; any other watcher failure
-/// does not.
-#[test]
-fn the_watch_limit_shows_a_notice() {
-    let notices = VaultNotices::new();
-    let (facts, receiver) = broadcast::channel(8);
-    notices.follow(receiver);
-    notices.open(Path::new("/vaults/open"));
-    let failed = |limit| {
-        Applied::Vault(VaultEvent::WatchFailed {
-            message: "watch failed".to_owned(),
-            limit,
-        })
-    };
-    facts.send(failed(false)).unwrap();
-    // Taken only once the failure before it was handled.
-    facts.send(Applied::Indexed { complete: true }).unwrap();
-    until("the board took both facts", || facts.is_empty());
-    assert!(notices.list().is_empty(), "{:?}", notices.list());
-    facts.send(failed(true)).unwrap();
-    until("the watch limit notice", || {
-        notices.list() == vec![VaultNotice::WatchLimit]
-    });
-}
-
 /// The Linux inotify limit hit as the vault opens: the vault still opens with its watcher,
 /// shows the notice, and an outside edit made after the open reaches its note with the rescan
 /// the limit owes (no folder is watched, so no OS event brings it).
 #[test]
 fn a_watch_limit_at_the_open_shows_and_rescans() {
     let (mut e, notices) = noticing_env();
-    notices.follow(e.tier.subscribe());
     e.write("a.md", "A\n");
     hit_watch_limit(&e.vault);
     e.open();
@@ -139,4 +135,126 @@ fn a_watch_limit_at_the_open_shows_and_rescans() {
 
     e.write("a.md", "A, edited outside\n");
     e.facts_until(|fact| matches!(fact, Applied::Changed { path, .. } if path == "a.md"));
+}
+
+/// A file named like a note whose text is not the file's stays a file and is listed; once its
+/// text is the note's again, the next ask names it and the notice goes.
+#[test]
+fn an_undecided_file_is_listed_until_it_is_named() {
+    let (mut e, notices) = noticing_env();
+    e.write("x.md", "Mine\n");
+    e.open();
+    e.facts_until(indexed);
+    let id = row_id(&e, "x.md");
+    let lost = id.clone();
+    e.core()
+        .db_handle()
+        .call_blocking(move |conn| {
+            conn.execute("DELETE FROM note_file_hashes WHERE note_id = ?1", [&lost])
+                .unwrap();
+            conn.execute("DELETE FROM note_files WHERE note_id = ?1", [&lost])
+                .unwrap();
+            Ok(())
+        })
+        .unwrap();
+    e.close();
+    e.write("x.md", "Another text\n");
+    e.open();
+    e.facts_until(indexed);
+    assert_eq!(
+        notices.list(),
+        vec![VaultNotice::UndecidedFiles {
+            paths: vec![absolute(&e, "x.md")],
+            more: false
+        }]
+    );
+
+    e.write("x.md", "Mine\n");
+    e.facts_until(|f| matches!(f, Applied::Added { note_id, .. } if *note_id == id));
+    assert!(notices.list().is_empty(), "{:?}", notices.list());
+}
+
+/// A file deleted outside the app whose note has an edit the file never got keeps its note,
+/// which is listed for the user to open, at every open while the file is gone.
+#[test]
+fn a_kept_removal_is_listed_at_every_open_while_its_file_is_gone() {
+    let (mut e, notices, store) = noticing_env_with_store();
+    e.write("a.md", "Alpha\n");
+    e.open();
+    e.facts_until(indexed);
+    let id = row_id(&e, "a.md");
+    // An edit stamped in the row's own millisecond is not after it.
+    std::thread::sleep(Duration::from_millis(2));
+    e.edit_in_app(&store, &id, "typed in the app");
+    fs::remove_file(e.vault.join("a.md")).unwrap();
+    let kept = VaultNotice::KeptRemovals {
+        notes: vec![KeptRemoval {
+            note_id: id.clone(),
+            path: absolute(&e, "a.md"),
+        }],
+        more: false,
+    };
+    until("the kept removal is listed", || {
+        notices.list() == vec![kept.clone()]
+    });
+
+    e.close();
+    e.drain();
+    e.open();
+    e.facts_until(indexed);
+    assert_eq!(notices.list(), vec![kept]);
+
+    e.write("a.md", "Alpha again\n");
+    e.close();
+    e.drain();
+    e.open();
+    e.facts_until(indexed);
+    assert!(notices.list().is_empty(), "{:?}", notices.list());
+}
+
+/// A list notice names at most [`LISTED`] items and says there were more; it goes with its
+/// last listed item only when it listed them all.
+#[test]
+fn a_list_notice_is_bounded() {
+    let notices = VaultNotices::new();
+    let root = Path::new("/vaults/open");
+    notices.open(root);
+    let paths: Vec<String> = (0..=LISTED)
+        .map(|n| format!("/vaults/open/{n}.md"))
+        .collect();
+    assert!(notices.add(root, Listed::Undecided(&paths[0])), "first");
+    for path in &paths {
+        assert!(!notices.add(root, Listed::Undecided(path)), "raised again");
+    }
+    let [
+        VaultNotice::UndecidedFiles {
+            paths: listed,
+            more,
+        },
+    ] = &notices.list()[..]
+    else {
+        panic!("{:?}", notices.list());
+    };
+    assert_eq!((listed.len(), *more), (LISTED, true));
+    for path in &paths {
+        notices.remove(root, Listed::Undecided(path));
+    }
+    assert_eq!(
+        notices.list(),
+        vec![VaultNotice::UndecidedFiles {
+            paths: Vec::new(),
+            more: true
+        }],
+        "the unlisted files are still undecided"
+    );
+
+    let kept = |note_id| Listed::Kept {
+        note_id,
+        path: "/vaults/open/a.md",
+    };
+    notices.add(root, kept("a"));
+    notices.add(root, kept("b"));
+    notices.remove(root, kept("a"));
+    notices.remove(root, kept("b"));
+    assert_eq!(notices.list().len(), 1, "{:?}", notices.list());
 }

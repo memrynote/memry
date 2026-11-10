@@ -1,11 +1,18 @@
-import { renderHook, waitFor } from '@testing-library/react'
+import { render, renderHook, waitFor } from '@testing-library/react'
+import type { ReactNode } from 'react'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 
-type Toast = { onDismiss?: () => void; action?: { label: string; onClick: (e: Event) => void } }
+type Toast = {
+  id?: string
+  description?: ReactNode
+  onDismiss?: () => void
+  action?: { label: string; onClick: (e: Event) => void }
+}
 
 const mocks = vi.hoisted(() => ({
   vaultNoticesList: vi.fn(),
   shellRevealPath: vi.fn(),
+  openTab: vi.fn(),
   listener: null as null | ((event: { payload: null }) => void),
   toast: Object.assign(vi.fn(), {
     warning: vi.fn(),
@@ -16,6 +23,8 @@ const mocks = vi.hoisted(() => ({
 }))
 
 vi.mock('sonner', () => ({ toast: mocks.toast }))
+
+vi.mock('@/contexts/tabs', () => ({ useTabs: () => ({ openTab: mocks.openTab }) }))
 
 vi.mock('../../../generated/bindings', () => ({
   commands: {
@@ -149,5 +158,55 @@ describe('useVaultNotices (#3531 14l)', () => {
     await changeTo([LIMIT], 2)
     expect(mocks.toast.warning).toHaveBeenCalledTimes(2)
     await changeTo([], 2)
+  })
+
+  it('lists the undecided files as the list grows, and reveals the first', async () => {
+    const paths = ['/v/a/one.md', '/v/a/sub/two.md']
+    mocks.vaultNoticesList.mockResolvedValue(
+      listOf([{ kind: 'undecidedFiles', paths, more: false }])
+    )
+    renderHook(() => useVaultNotices())
+    await waitFor(() => expect(mocks.toast.warning).toHaveBeenCalledTimes(1))
+    expect(mocks.toast.warning.mock.lastCall?.[0]).toBe("Some files didn't become notes")
+    expect(render(<>{lastOptions().description}</>).container.textContent).toContain(
+      'one.md, two.md'
+    )
+    expect(click(lastOptions().action).defaultPrevented).toBe(true)
+    expect(mocks.shellRevealPath).toHaveBeenCalledWith('/v/a/one.md')
+
+    const grown = [...paths, '/v/a/three.md', '/v/a/four.md', '/v/a/five.md']
+    await changeTo([{ kind: 'undecidedFiles', paths: grown, more: true }])
+    expect(mocks.toast.warning).toHaveBeenCalledTimes(2)
+    expect(lastOptions().id).toBe('vault-notice-undecidedFiles')
+    expect(render(<>{lastOptions().description}</>).container.textContent).toContain(
+      'one.md, two.md, three.md +2+'
+    )
+    await changeTo([])
+  })
+
+  it('opens the first kept note, a journal day in the journal', async () => {
+    const note = { noteId: 'n1', path: '/v/a/Alpha.md' }
+    const day = { noteId: 'j2025-01-02', path: '/v/a/journal/2025-01-02.md' }
+    mocks.vaultNoticesList.mockResolvedValue(
+      listOf([{ kind: 'keptRemovals', notes: [note, day], more: false }])
+    )
+    renderHook(() => useVaultNotices())
+    await waitFor(() => expect(mocks.toast.warning).toHaveBeenCalledTimes(1))
+    expect(mocks.toast.warning.mock.lastCall?.[0]).toBe('Memry kept notes whose files were deleted')
+    expect(render(<>{lastOptions().description}</>).container.textContent).toContain(
+      'Alpha, 2025-01-02'
+    )
+    expect(lastOptions().action?.label).toBe('Open note')
+    click(lastOptions().action)
+    expect(mocks.openTab).toHaveBeenCalledWith(
+      expect.objectContaining({ type: 'note', path: '/notes/n1', entityId: 'n1' })
+    )
+
+    await changeTo([{ kind: 'keptRemovals', notes: [day], more: false }])
+    click(lastOptions().action)
+    expect(mocks.openTab).toHaveBeenLastCalledWith(
+      expect.objectContaining({ type: 'journal', viewState: { date: '2025-01-02' } })
+    )
+    await changeTo([])
   })
 })

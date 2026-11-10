@@ -1667,6 +1667,11 @@
     "watchLimitHint": "Linux povoľuje pre tento trezor príliš málo sledovaní súborov, takže Memry vidí vonkajšie zmeny len pri opätovnom prehľadaní. Spustite tento príkaz a potom Memry reštartujte:",
     "copyCommand": "Kopírovať príkaz",
     "commandCopied": "Príkaz bol skopírovaný. Vložte ho do terminálu.",
-    "copyFailed": "Príkaz sa nepodarilo skopírovať. Prepíšte ho z oznámenia."
+    "copyFailed": "Príkaz sa nepodarilo skopírovať. Prepíšte ho z oznámenia.",
+    "undecidedFiles": "Niektoré súbory sa nestali poznámkami",
+    "undecidedFilesHint": "Poznámka alebo záznam denníka s rovnakým názvom má iný text alebo ešte nebol synchronizovaný do tohto zariadenia. Memry tieto súbory ponechá bez zmeny a znova ich skontroluje pri ďalšom otvorení tohto trezoru.",
+    "keptRemovals": "Memry ponechal poznámky, ktorých súbory boli odstránené",
+    "keptRemovalsHint": "Tieto súbory boli odstránené mimo Memry, ale ich poznámky obsahujú text, ktorý súbory nikdy nemali. Otvorte poznámku a ponechajte ju alebo ju odstráňte.",
+    "openNote": "Otvoriť poznámku"
   }
 }

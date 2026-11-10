@@ -104,6 +104,7 @@ pub(super) fn adopt(
         return Ok(created);
     }
     for (at, _, _) in made {
+        identity.named(ctx.root, files[at].candidate.path);
         created[at] = true;
     }
     Ok(created)

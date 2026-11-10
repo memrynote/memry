@@ -1667,6 +1667,11 @@
     "watchLimitHint": "Linux staat te weinig bestandsbewakingen toe voor deze kluis, dus Memry ziet wijzigingen van buitenaf alleen bij een nieuwe scan. Voer deze opdracht uit en start Memry daarna opnieuw:",
     "copyCommand": "Opdracht kopiëren",
     "commandCopied": "Opdracht gekopieerd. Plak hem in een terminal.",
-    "copyFailed": "Kan de opdracht niet kopiëren. Typ hem over uit de melding."
+    "copyFailed": "Kan de opdracht niet kopiëren. Typ hem over uit de melding.",
+    "undecidedFiles": "Sommige bestanden zijn geen notities geworden",
+    "undecidedFilesHint": "Een notitie of dagboekpagina met dezelfde naam heeft andere tekst, of is nog niet met dit apparaat gesynchroniseerd. Memry laat deze bestanden ongewijzigd en controleert ze opnieuw wanneer deze kluis de volgende keer wordt geopend.",
+    "keptRemovals": "Memry heeft notities bewaard waarvan de bestanden zijn verwijderd",
+    "keptRemovalsHint": "Deze bestanden zijn buiten Memry verwijderd, maar hun notities bevatten tekst die de bestanden nooit hadden. Open een notitie om die te bewaren of te verwijderen.",
+    "openNote": "Notitie openen"
   }
 }

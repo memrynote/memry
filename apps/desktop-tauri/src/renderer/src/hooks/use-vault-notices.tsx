@@ -1,17 +1,19 @@
 /**
  * Shows the open vault's notices (Step 14l, #3531): a state of the vault the user can act on
  * that no screen shows otherwise. Each notice is one persistent toast with an action, updated
- * in place while it holds and taken down when it clears. A notice the user closed stays closed
+ * in place while it holds (a list notice as its list grows) and taken down when it clears. A notice the user closed stays closed
  * until it clears and is raised again; a notice of the next vault starts fresh.
  */
 
-import { useEffect } from 'react'
+import { useEffect, type ReactNode } from 'react'
 import { toast } from 'sonner'
 import { useT } from '@memry/i18n/renderer'
 import type { VaultNotice } from '../../../generated/bindings'
 import { commands } from '../../../generated/bindings'
+import { useTabs } from '@/contexts/tabs'
 import { useFileActionLabels } from '@/hooks/use-file-action-labels'
 import { createLogger } from '@/lib/logger'
+import { noteTabData } from '@/lib/sidebar-tab-data'
 import { onVaultNotices } from '@/services/vault-service'
 
 const log = createLogger('VaultNotices')
@@ -25,6 +27,39 @@ export const WATCH_LIMIT_COMMAND =
   'echo fs.inotify.max_user_watches=1048576 | sudo tee /etc/sysctl.d/60-memry.conf && sudo sysctl --system'
 
 type Kind = VaultNotice['kind']
+
+/** How many names a list notice spells out; the rest are counted. */
+const NAMED = 3
+
+/** A path's last part, on any platform's separators. */
+const fileName = (path: string): string => path.split(/[\\/]/).pop() || path
+
+/** A journal day's note id is `j` and its date. */
+const journalDateOf = (noteId: string): string | null =>
+  /^j(\d{4}-\d{2}-\d{2})$/.exec(noteId)?.[1] ?? null
+
+/**
+ * A list notice's hint and the first names it lists, each isolated so a name in another
+ * script keeps its order; past [NAMED] names, a count of the rest (`+` when the vault has more
+ * than it listed).
+ */
+function listed(hint: string, items: { key: string; name: string }[], more: boolean): ReactNode {
+  const rest = items.length - NAMED
+  return (
+    <>
+      {hint}
+      <span className="mt-1 block text-start">
+        {items.slice(0, NAMED).map(({ key, name }, at) => (
+          <span key={key}>
+            {at > 0 && ', '}
+            <bdi>{name}</bdi>
+          </span>
+        ))}
+        {(rest > 0 || more) && <bdi dir="ltr">{` +${Math.max(rest, 0)}${more ? '+' : ''}`}</bdi>}
+      </span>
+    </>
+  )
+}
 
 const toastId = (kind: Kind): string => `vault-notice-${kind}`
 
@@ -40,6 +75,7 @@ const closed = new Set<Kind>()
 export function useVaultNotices(): void {
   const { t } = useT('common')
   const { revealInFolder } = useFileActionLabels()
+  const { openTab } = useTabs()
 
   useEffect(() => {
     const show = (notice: VaultNotice): void => {
@@ -69,6 +105,60 @@ export function useVaultNotices(): void {
             }
           })
           return
+        case 'undecidedFiles': {
+          const [first] = notice.paths
+          toast.warning(t('vaultNotice.undecidedFiles'), {
+            ...sticky,
+            description: listed(
+              t('vaultNotice.undecidedFilesHint'),
+              notice.paths.map((path) => ({ key: path, name: fileName(path) })),
+              notice.more
+            ),
+            action: first
+              ? {
+                  label: revealInFolder,
+                  onClick: (event) => {
+                    event.preventDefault()
+                    commands.shellRevealPath(first).catch((error: unknown) => {
+                      log.error('an undecided file could not be revealed', error)
+                      toast.error(t('fileActions.revealFailed'))
+                    })
+                  }
+                }
+              : undefined
+          })
+          return
+        }
+        case 'keptRemovals': {
+          const [first] = notice.notes
+          toast.warning(t('vaultNotice.keptRemovals'), {
+            ...sticky,
+            description: listed(
+              t('vaultNotice.keptRemovalsHint'),
+              notice.notes.map((note) => ({
+                key: note.noteId,
+                name: fileName(note.path).replace(/\.md$/i, '')
+              })),
+              notice.more
+            ),
+            action: first
+              ? {
+                  label: t('vaultNotice.openNote'),
+                  onClick: (event) => {
+                    event.preventDefault()
+                    openTab(
+                      noteTabData({
+                        id: first.noteId,
+                        path: first.path,
+                        journalDate: journalDateOf(first.noteId)
+                      })
+                    )
+                  }
+                }
+              : undefined
+          })
+          return
+        }
         case 'watchLimit':
           toast.warning(t('vaultNotice.watchLimit'), {
             ...sticky,
@@ -115,5 +205,5 @@ export function useVaultNotices(): void {
         if (!closed.has(notice.kind)) show(notice)
       }
     })
-  }, [t, revealInFolder])
+  }, [t, revealInFolder, openTab])
 }

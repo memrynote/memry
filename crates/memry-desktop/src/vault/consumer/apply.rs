@@ -111,6 +111,9 @@ impl Applier {
             other => {
                 log_watch(&other);
                 self.report(&other);
+                if matches!(other, VaultEvent::WatchFailed { limit: true, .. }) {
+                    self.identity.watch_limited(&self.ctx());
+                }
                 lane.publish(Applied::Vault(other));
                 Step::Done
             }

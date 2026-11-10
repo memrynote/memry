@@ -1667,6 +1667,11 @@
     "watchLimitHint": "Linux cho phép quá ít lượt theo dõi tệp cho kho này, nên Memry chỉ thấy thay đổi từ bên ngoài khi quét lại. Hãy chạy lệnh này, rồi khởi động lại Memry:",
     "copyCommand": "Sao chép lệnh",
     "commandCopied": "Đã sao chép lệnh. Hãy dán vào terminal.",
-    "copyFailed": "Không sao chép được lệnh. Hãy gõ lại lệnh từ thông báo."
+    "copyFailed": "Không sao chép được lệnh. Hãy gõ lại lệnh từ thông báo.",
+    "undecidedFiles": "Một số tệp chưa trở thành ghi chú",
+    "undecidedFilesHint": "Một ghi chú hoặc mục nhật ký cùng tên có nội dung khác, hoặc chưa được đồng bộ về thiết bị này. Memry giữ nguyên các tệp này và kiểm tra lại vào lần tới mở kho này.",
+    "keptRemovals": "Memry đã giữ lại các ghi chú có tệp bị xóa",
+    "keptRemovalsHint": "Các tệp này đã bị xóa bên ngoài Memry, nhưng ghi chú của chúng có nội dung mà tệp chưa từng có. Mở ghi chú để giữ lại hoặc xóa nó.",
+    "openNote": "Mở ghi chú"
   }
 }

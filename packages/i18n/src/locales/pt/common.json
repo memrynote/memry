@@ -1667,6 +1667,11 @@
     "watchLimitHint": "O Linux permite poucas observações de arquivos para este cofre, então o Memry só vê alterações externas quando faz uma nova varredura. Execute este comando e depois reinicie o Memry:",
     "copyCommand": "Copiar comando",
     "commandCopied": "Comando copiado. Cole-o em um terminal.",
-    "copyFailed": "Não foi possível copiar o comando. Digite-o a partir do aviso."
+    "copyFailed": "Não foi possível copiar o comando. Digite-o a partir do aviso.",
+    "undecidedFiles": "Alguns arquivos não se tornaram notas",
+    "undecidedFilesHint": "Uma nota ou entrada do diário com o mesmo nome tem outro texto, ou ainda não foi sincronizada com este dispositivo. O Memry deixa esses arquivos como estão e os verifica de novo na próxima vez que abrir este cofre.",
+    "keptRemovals": "O Memry manteve notas cujos arquivos foram excluídos",
+    "keptRemovalsHint": "Esses arquivos foram excluídos fora do Memry, mas suas notas têm texto que os arquivos nunca tiveram. Abra uma nota para mantê-la ou excluí-la.",
+    "openNote": "Abrir nota"
   }
 }

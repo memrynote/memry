@@ -1667,6 +1667,11 @@
     "watchLimitHint": "Linux autorise trop peu de surveillances de fichiers pour ce coffre, donc Memry ne voit les modifications externes que lorsqu'il analyse de nouveau. Exécutez cette commande, puis redémarrez Memry :",
     "copyCommand": "Copier la commande",
     "commandCopied": "Commande copiée. Collez-la dans un terminal.",
-    "copyFailed": "Impossible de copier la commande. Recopiez-la depuis la notification."
+    "copyFailed": "Impossible de copier la commande. Recopiez-la depuis la notification.",
+    "undecidedFiles": "Certains fichiers ne sont pas devenus des notes",
+    "undecidedFilesHint": "Une note ou une entrée de journal du même nom a un autre texte, ou n'est pas encore synchronisée sur cet appareil. Memry laisse ces fichiers tels quels et les vérifie à nouveau à la prochaine ouverture de ce coffre.",
+    "keptRemovals": "Memry a conservé des notes dont les fichiers ont été supprimés",
+    "keptRemovalsHint": "Ces fichiers ont été supprimés en dehors de Memry, mais leurs notes contiennent du texte que les fichiers n'ont jamais eu. Ouvrez une note pour la conserver ou la supprimer.",
+    "openNote": "Ouvrir la note"
   }
 }

@@ -1667,6 +1667,11 @@
     "watchLimitHint": "Linux membenarkan terlalu sedikit pemerhatian fail untuk bilik kebal ini, jadi Memry hanya nampak perubahan dari luar apabila ia mengimbas semula. Jalankan arahan ini, kemudian mulakan semula Memry:",
     "copyCommand": "Salin arahan",
     "commandCopied": "Arahan disalin. Tampalkannya dalam terminal.",
-    "copyFailed": "Tidak dapat menyalin arahan. Taipkannya daripada notis ini."
+    "copyFailed": "Tidak dapat menyalin arahan. Taipkannya daripada notis ini.",
+    "undecidedFiles": "Sesetengah fail tidak menjadi nota",
+    "undecidedFilesHint": "Nota atau entri jurnal dengan nama yang sama mempunyai teks yang berbeza, atau belum disegerakkan ke peranti ini. Memry membiarkan fail ini tanpa perubahan dan menyemaknya semula apabila bilik kebal ini dibuka seterusnya.",
+    "keptRemovals": "Memry menyimpan nota yang failnya telah dipadam",
+    "keptRemovalsHint": "Fail ini dipadam di luar Memry, tetapi notanya mempunyai teks yang tidak pernah ada dalam fail. Buka nota untuk menyimpan atau memadamnya.",
+    "openNote": "Buka nota"
   }
 }

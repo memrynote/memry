@@ -1667,6 +1667,11 @@
     "watchLimitHint": "Linux pozwala na zbyt mało obserwacji plików dla tego sejfu, więc Memry widzi zmiany z zewnątrz tylko podczas ponownego skanowania. Uruchom to polecenie, a potem uruchom ponownie Memry:",
     "copyCommand": "Kopiuj polecenie",
     "commandCopied": "Skopiowano polecenie. Wklej je w terminalu.",
-    "copyFailed": "Nie udało się skopiować polecenia. Przepisz je z powiadomienia."
+    "copyFailed": "Nie udało się skopiować polecenia. Przepisz je z powiadomienia.",
+    "undecidedFiles": "Niektóre pliki nie stały się notatkami",
+    "undecidedFilesHint": "Notatka lub wpis w dzienniku o tej samej nazwie ma inny tekst albo nie został jeszcze zsynchronizowany z tym urządzeniem. Memry zostawia te pliki bez zmian i sprawdzi je ponownie przy następnym otwarciu tego sejfu.",
+    "keptRemovals": "Memry zachował notatki, których pliki usunięto",
+    "keptRemovalsHint": "Te pliki usunięto poza Memry, ale ich notatki zawierają tekst, którego pliki nigdy nie miały. Otwórz notatkę, aby ją zachować lub usunąć.",
+    "openNote": "Otwórz notatkę"
   }
 }

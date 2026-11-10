@@ -1667,6 +1667,11 @@
     "watchLimitHint": "Linux 允許此儲存庫使用的檔案監看數量太少，因此 Memry 只有在重新掃描時才會看到外部變更。請執行此指令，然後重新啟動 Memry：",
     "copyCommand": "複製指令",
     "commandCopied": "已複製指令。請貼到終端機中。",
-    "copyFailed": "無法複製指令。請依照通知手動輸入。"
+    "copyFailed": "無法複製指令。請依照通知手動輸入。",
+    "undecidedFiles": "部分檔案沒有成為筆記",
+    "undecidedFilesHint": "同名的筆記或日誌項目內容不同，或尚未同步到此裝置。Memry 不會更動這些檔案，並會在下次開啟此儲存庫時再次檢查。",
+    "keptRemovals": "Memry 保留了檔案已被刪除的筆記",
+    "keptRemovalsHint": "這些檔案在 Memry 之外被刪除，但它們的筆記包含檔案中從未有過的內容。開啟筆記以保留或刪除它。",
+    "openNote": "開啟筆記"
   }
 }

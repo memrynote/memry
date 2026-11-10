@@ -227,3 +227,18 @@ fn a_file_that_read_again_is_reported_when_it_fails_again() {
     unreadable(&f, "a.md");
     assert_eq!(failed(&f), 2);
 }
+
+/// The watcher's report of the Linux inotify limit reaches the identity, which shows it on the
+/// vault's notices; any other watcher failure does not.
+#[test]
+fn only_the_watch_limit_reaches_the_identity() {
+    let f = fixture();
+    let failed = |limit| VaultEvent::WatchFailed {
+        message: "watch failed".to_owned(),
+        limit,
+    };
+    f.applier.apply(failed(false));
+    assert_eq!(f.identity.watch_limited.load(Ordering::SeqCst), 0);
+    f.applier.apply(failed(true));
+    assert_eq!(f.identity.watch_limited.load(Ordering::SeqCst), 1);
+}

@@ -99,6 +99,8 @@ pub(super) struct Recorder {
     pub(super) during_may_be_new: Mutex<Option<Hook>>,
     /// Runs inside every `adopt_new_files`.
     pub(super) during_adopt_new: Mutex<Option<Hook>>,
+    /// How many `watch_limited` calls came.
+    pub(super) watch_limited: AtomicUsize,
 }
 
 pub(super) type Hook = Arc<dyn Fn() + Send + Sync>;
@@ -120,6 +122,10 @@ pub(super) enum Batch {
 impl NoteIdentity for Recorder {
     fn adopts(&self) -> bool {
         self.adopts.load(Ordering::SeqCst)
+    }
+
+    fn watch_limited(&self, _: &IdentityCtx<'_>) {
+        self.watch_limited.fetch_add(1, Ordering::SeqCst);
     }
 
     fn adopt_or_create(
@@ -292,6 +298,7 @@ pub(super) fn fixture() -> Fixture {
         asked_new: AtomicUsize::new(0),
         during_may_be_new: Mutex::default(),
         during_adopt_new: Mutex::default(),
+        watch_limited: AtomicUsize::new(0),
     });
     let applier = applier(&root, &vault, &store, &rows, identity.clone());
     Fixture {

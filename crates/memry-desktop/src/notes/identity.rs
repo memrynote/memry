@@ -137,17 +137,23 @@ impl NotesIdentity {
             .map_err(|error| IdentityError::Other(error.to_string()))
     }
 
-    /// What a file no row names is, from the core's answer.
-    fn adoption(&self, adopted: Adopted, root: &Path) -> Adoption {
+    /// What the file at `path` no row names is, from the core's answer.
+    fn adoption(&self, adopted: Adopted, root: &Path, path: &str) -> Adoption {
         match adopted {
-            Adopted::Existing(id) => Adoption::Existing(id),
-            Adopted::Created(id) => Adoption::Created(id),
+            Adopted::Existing(id) => {
+                self.named(root, path);
+                Adoption::Existing(id)
+            }
+            Adopted::Created(id) => {
+                self.named(root, path);
+                Adoption::Created(id)
+            }
             Adopted::Deferred(Deferral::ElectronNotImported) => {
                 self.tell_once(Notice::ElectronNotImported, root);
                 Adoption::Defer
             }
             Adopted::Deferred(Deferral::Undecided) => {
-                self.tell_once(Notice::Undecided, root);
+                self.undecided(root, path);
                 Adoption::Defer
             }
         }
@@ -290,6 +296,10 @@ impl NoteIdentity for NotesIdentity {
         }
     }
 
+    fn watch_limited(&self, ctx: &IdentityCtx<'_>) {
+        self.watch_limit(ctx.root);
+    }
+
     fn adopt_or_create(
         &self,
         ctx: &IdentityCtx<'_>,
@@ -381,7 +391,7 @@ impl NoteIdentity for NotesIdentity {
         if let Adopted::Created(id) | Adopted::Existing(id) = &adopted {
             properties::found(&writer, ctx, self.store.clone(), id, text)?;
         }
-        Ok(self.adoption(adopted, ctx.root))
+        Ok(self.adoption(adopted, ctx.root, file.path))
     }
 
     fn may_be_new(&self, ctx: &IdentityCtx<'_>, files: &[Candidate<'_>]) -> Vec<bool> {
@@ -410,8 +420,8 @@ impl NoteIdentity for NotesIdentity {
         }
         Ok(match writer.file_removed(note_id, path)? {
             Removed::Deleted => Removal::Deleted,
-            // A file that is truly gone leaves a note the user deleted outside the app.
-            // TODO(#3531 Step 14l-2): a notice, with the undecided files (`Notice::Undecided`).
+            // A file that is truly gone leaves a note the user deleted outside the app: listed
+            // for the user to open, and again by every open's walk while the row has no file.
             Removed::Undecided => {
                 tracing::warn!(
                     scope = SCOPE,
@@ -419,6 +429,7 @@ impl NoteIdentity for NotesIdentity {
                     "a removed file's note is kept: its row does not say the file held the whole \
                      note (the removal may be a move, or the note has text the file never had)"
                 );
+                self.kept(ctx.root, note_id, path);
                 Removal::Kept
             }
         })

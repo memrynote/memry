@@ -6,7 +6,9 @@
 //! A detector raises a notice for the vault it works in and clears it when the state passes; a
 //! notice for a vault that is not the open one is dropped, so a late report of a closed vault
 //! never shows in the next. The board holds at most one notice of each kind, and only in
-//! memory: every open starts empty and finds its notices again.
+//! memory: every open starts empty and finds its notices again. A notice about some files or
+//! notes lists them ([`VaultNotices::add`], [`VaultNotices::remove`]), at most [`LISTED`] of
+//! them.
 //!
 //! Each change is told to [`VaultNotices::subscribe`]rs with no payload; the window reads the
 //! list ([`VaultNotices::list`]), so one that mounts after the open still sees it.
@@ -17,11 +19,8 @@ use std::sync::{Arc, Mutex, MutexGuard, PoisonError};
 
 use serde::{Deserialize, Serialize};
 use tokio::sync::broadcast;
-use tokio::sync::broadcast::error::RecvError;
 
 use crate::session::{OpenStage, Session};
-use crate::vault::consumer::Applied;
-use crate::vault::watch::VaultEvent;
 
 /// A state of the open vault the user can act on:
 /// - `configUnreadable`: `.memry/config.json` is there and cannot be read, so the journal days
@@ -31,6 +30,13 @@ use crate::vault::watch::VaultEvent;
 ///   (`WatchFailed { limit: true }`): changes made outside the app there arrive with the
 ///   watcher's rescans, not at once, until the user raises `fs.inotify.max_user_watches` and
 ///   restarts.
+/// - `undecidedFiles`: files that have the name of a note or a journal day whose text is not
+///   the file's, or is not on this device yet (`Deferral::Undecided`): they stay files, not
+///   notes, and the next open asks again. `paths` are absolute, for the user to find them.
+/// - `keptRemovals`: files deleted outside the app whose notes were kept, because the note has
+///   text the file never had (`Removed::Undecided`). The user opens the note to keep or delete
+///   it.
+/// - `more` says a list notice had more items than [`LISTED`].
 //
 // The variants carry no doc comments: specta would write them into a union with trailing
 // whitespace in `bindings.ts`.
@@ -43,6 +49,31 @@ use crate::vault::watch::VaultEvent;
 pub enum VaultNotice {
     ConfigUnreadable { path: String },
     WatchLimit,
+    UndecidedFiles { paths: Vec<String>, more: bool },
+    KeptRemovals { notes: Vec<KeptRemoval>, more: bool },
+}
+
+/// A note kept when its file was deleted outside the app; `path` is the deleted file's,
+/// absolute.
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize, specta::Type)]
+#[serde(rename_all = "camelCase")]
+pub struct KeptRemoval {
+    pub note_id: String,
+    pub path: String,
+}
+
+/// The most items a list notice names, few enough to act on one by one; past it the notice
+/// only says there are more.
+pub const LISTED: usize = 50;
+
+/// An item of a list notice: [`VaultNotices::add`] adds it to its notice,
+/// [`VaultNotices::remove`] takes it off once its state passed.
+#[derive(Debug, Clone, Copy)]
+pub enum Listed<'a> {
+    /// An undecided file, by its absolute path.
+    Undecided(&'a str),
+    /// A kept note: its id, and the deleted file's absolute path (only `add` reads it).
+    Kept { note_id: &'a str, path: &'a str },
 }
 
 /// The open vault's notices, as a window reads them.
@@ -138,65 +169,153 @@ impl VaultNotices {
         }
     }
 
-    /// Shows `notice` for the vault at `root`, in place of one of its kind. `true` when the
-    /// board had no notice of its kind, for the caller to log the state once per open; `false`
-    /// too when `root` is not the open vault.
-    pub fn raise(&self, root: &Path, notice: VaultNotice) -> bool {
+    /// Runs `edit` on the notices of the vault at `root`, and tells the subscribers when it
+    /// says it changed them. Nothing runs when `root` is not the open vault.
+    fn edit(&self, root: &Path, edit: impl FnOnce(&mut Vec<VaultNotice>) -> bool) -> bool {
         let mut board = self.board();
-        if board.root.as_deref() != Some(root) {
+        if board.root.as_deref() != Some(root) || !edit(&mut board.notices) {
             return false;
-        }
-        let kind = discriminant(&notice);
-        match board
-            .notices
-            .iter_mut()
-            .find(|n| discriminant(&**n) == kind)
-        {
-            Some(held) if *held == notice => return false,
-            Some(held) => *held = notice,
-            None => board.notices.push(notice),
         }
         let _ = self.changed.send(());
         true
     }
 
-    /// The state of `like`'s kind passed in the vault at `root`.
-    pub fn clear(&self, root: &Path, like: &VaultNotice) {
-        let mut board = self.board();
-        if board.root.as_deref() != Some(root) {
-            return;
-        }
-        let before = board.notices.len();
-        board
-            .notices
-            .retain(|n| discriminant(n) != discriminant(like));
-        if board.notices.len() != before {
-            let _ = self.changed.send(());
-        }
-    }
-
-    /// Raises [`VaultNotice::WatchLimit`] for the open vault when its watcher reports the
-    /// limit. The tier publishes a watcher fact only for the open it belongs to.
-    pub fn follow(self: &Arc<Self>, mut facts: broadcast::Receiver<Applied>) {
-        let board = self.clone();
-        std::thread::spawn(move || {
-            loop {
-                match facts.blocking_recv() {
-                    Ok(Applied::Vault(VaultEvent::WatchFailed { limit: true, .. })) => {
-                        let root = board.board().root.clone();
-                        if let Some(root) = root {
-                            board.raise(&root, VaultNotice::WatchLimit);
-                        }
-                    }
-                    Ok(_) => {}
-                    Err(RecvError::Lagged(missed)) => tracing::warn!(
-                        scope = "vault_notices",
-                        missed,
-                        "watcher facts were dropped: a watch limit among them shows no notice"
-                    ),
-                    Err(RecvError::Closed) => return,
+    /// Shows `notice` for the vault at `root`, in place of one of its kind. `true` when the
+    /// board had no notice of its kind, for the caller to log the state once per open; `false`
+    /// too when `root` is not the open vault.
+    pub fn raise(&self, root: &Path, notice: VaultNotice) -> bool {
+        let mut new = false;
+        self.edit(root, |notices| {
+            let kind = discriminant(&notice);
+            match notices.iter_mut().find(|n| discriminant(&**n) == kind) {
+                Some(held) if *held == notice => return false,
+                Some(held) => *held = notice,
+                None => {
+                    notices.push(notice);
+                    new = true;
                 }
             }
+            true
         });
+        new
+    }
+
+    /// The state of `like`'s kind passed in the vault at `root`.
+    pub fn clear(&self, root: &Path, like: &VaultNotice) {
+        self.edit(root, |notices| {
+            let before = notices.len();
+            notices.retain(|n| discriminant(n) != discriminant(like));
+            notices.len() != before
+        });
+    }
+
+    /// Lists `item` in its notice for the vault at `root`, raising the notice if it is not up.
+    /// `true` when it was not, for the caller to log the state once per open.
+    pub fn add(&self, root: &Path, item: Listed<'_>) -> bool {
+        let mut new = false;
+        self.edit(root, |notices| {
+            let at = match notices
+                .iter()
+                .position(|n| listed_kind(n) == Some(kind_of(item)))
+            {
+                Some(at) => at,
+                None => {
+                    notices.push(empty(item));
+                    new = true;
+                    notices.len() - 1
+                }
+            };
+            match (&mut notices[at], item) {
+                (VaultNotice::UndecidedFiles { paths, more }, Listed::Undecided(path)) => {
+                    push_listed(paths, more, path.to_owned())
+                }
+                (VaultNotice::KeptRemovals { notes, more }, Listed::Kept { note_id, path }) => {
+                    let note = KeptRemoval {
+                        note_id: note_id.to_owned(),
+                        path: path.to_owned(),
+                    };
+                    push_listed(notes, more, note)
+                }
+                _ => false,
+            }
+        });
+        new
+    }
+
+    /// `item`'s state passed: it leaves its notice, and the notice goes with its last item.
+    /// A notice that had more items than it listed stays until the next open.
+    pub fn remove(&self, root: &Path, item: Listed<'_>) {
+        self.edit(root, |notices| {
+            let Some(at) = notices
+                .iter()
+                .position(|n| listed_kind(n) == Some(kind_of(item)))
+            else {
+                return false;
+            };
+            let (removed, empty) = match (&mut notices[at], item) {
+                (VaultNotice::UndecidedFiles { paths, more }, Listed::Undecided(path)) => {
+                    let before = paths.len();
+                    paths.retain(|held| held != path);
+                    (paths.len() != before, paths.is_empty() && !*more)
+                }
+                (VaultNotice::KeptRemovals { notes, more }, Listed::Kept { note_id, .. }) => {
+                    let before = notes.len();
+                    notes.retain(|held| held.note_id != note_id);
+                    (notes.len() != before, notes.is_empty() && !*more)
+                }
+                _ => (false, false),
+            };
+            if empty {
+                notices.remove(at);
+            }
+            removed
+        });
+    }
+}
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+enum ListKind {
+    Undecided,
+    Kept,
+}
+
+fn kind_of(item: Listed<'_>) -> ListKind {
+    match item {
+        Listed::Undecided(_) => ListKind::Undecided,
+        Listed::Kept { .. } => ListKind::Kept,
+    }
+}
+
+fn listed_kind(notice: &VaultNotice) -> Option<ListKind> {
+    match notice {
+        VaultNotice::UndecidedFiles { .. } => Some(ListKind::Undecided),
+        VaultNotice::KeptRemovals { .. } => Some(ListKind::Kept),
+        VaultNotice::ConfigUnreadable { .. } | VaultNotice::WatchLimit => None,
+    }
+}
+
+fn empty(item: Listed<'_>) -> VaultNotice {
+    match item {
+        Listed::Undecided(_) => VaultNotice::UndecidedFiles {
+            paths: Vec::new(),
+            more: false,
+        },
+        Listed::Kept { .. } => VaultNotice::KeptRemovals {
+            notes: Vec::new(),
+            more: false,
+        },
+    }
+}
+
+/// Adds `item` to `list` unless it is there; past [`LISTED`] items only `more` is set. `true`
+/// when the list or `more` changed.
+fn push_listed<T: PartialEq>(list: &mut Vec<T>, more: &mut bool, item: T) -> bool {
+    if list.contains(&item) {
+        false
+    } else if list.len() < LISTED {
+        list.push(item);
+        true
+    } else {
+        !std::mem::replace(more, true)
     }
 }
