@@ -1110,7 +1110,16 @@
       "sending": "Kód küldése…"
     },
     "oauth": {
-      "google": "Folytatás a Google-lal"
+      "google": "Folytatás a Google-lal",
+      "waiting": "Fejezze be a Google-bejelentkezést a böngészőjében.",
+      "browserUnavailable": "Nem sikerült megnyitni a böngészőt.",
+      "manualInstructions": "Másolja ki a bejelentkezési hivatkozást, és nyissa meg egy böngészőben ezen a számítógépen. Hagyja nyitva a memrynote-ot a bejelentkezés közben.",
+      "linkLabel": "Bejelentkezési hivatkozás",
+      "copyLink": "Bejelentkezési hivatkozás másolása",
+      "retryBrowser": "Böngésző megnyitásának újrapróbálása",
+      "copied": "A bejelentkezési hivatkozás kimásolva.",
+      "copyFailed": "Nem sikerült kimásolni a bejelentkezési hivatkozást. Jelölje ki a fenti mezőben, és másolja ki.",
+      "cancel": "Másik bejelentkezési mód használata"
     },
     "otp": {
       "title": "Írja be az ellenőrző kódot",
@@ -2396,7 +2405,6 @@
   "phaseI": {
     "errors": {
       "failedToUpdateTagColor": "Nem sikerült frissíteni a címke színét",
-      "googleSignInFailed": "A Google-bejelentkezés sikertelen",
       "failedToSendVerificationCode": "Nem sikerült elküldeni az ellenőrző kódot",
       "invalidVerificationCode": "Érvénytelen ellenőrző kód",
       "accountSetupFailed": "A fiók beállítása sikertelen",

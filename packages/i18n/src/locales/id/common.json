@@ -1263,6 +1263,7 @@
     "label": "Bantuan dan masukan",
     "reportBug": "Laporkan bug",
     "requestFeature": "Minta fitur",
+    "joinTestflight": "Gabung TestFlight",
     "starOnGithub": "Beri bintang di GitHub",
     "version": "MemryNote {version}",
     "whatsNew": "Yang baru",
@@ -1647,5 +1648,29 @@
       "agentModel": "Default",
       "date": "13 Oktober"
     }
+  },
+  "iosBeta": {
+    "badge": "Baru · TestFlight",
+    "title": "Memry untuk iPhone sedang dalam beta",
+    "promptBody": "Vault Anda di ponsel, terenkripsi end-to-end. Tinggalkan email Anda dan Apple akan mengirimkan undangan TestFlight.",
+    "emailPlaceholder": "you@example.com",
+    "emailLabel": "Email untuk undangan TestFlight",
+    "submit": "Dapatkan undangan",
+    "sending": "Mengirim…",
+    "listNote": "Kami juga menambahkan Anda ke daftar beta iPhone untuk kabar peluncuran. Anda bisa berhenti berlangganan kapan saja.",
+    "error": "Tidak dapat mengirim undangan TestFlight. Silakan coba lagi.",
+    "sentTitle": "Periksa kotak masuk Anda",
+    "sentBody": "Apple mengirim undangan ke {email}. Mungkin perlu beberapa menit dan bisa masuk ke spam.",
+    "stepInstall": "Instal TestFlight dari App Store",
+    "stepOpen": "Buka undangan di iPhone Anda",
+    "stepSignIn": "Masuk ke Memry di ponsel Anda",
+    "done": "Selesai",
+    "dialogTitle": "Bergabung dengan Memry untuk iPhone",
+    "dialogBody": "Apple mengirimkan undangan TestFlight lewat email. Gunakan email Apple ID di iPhone Anda.",
+    "entryTitle": "Beta iPhone sudah tersedia",
+    "entrySubtitle": "Lewat TestFlight",
+    "entryJoin": "Gabung beta",
+    "entrySent": "Undangan dikirim ke {email}",
+    "sendAgain": "Kirim lagi"
   }
 }

@@ -164,6 +164,10 @@
     "removeDeviceFailed": "Impossibile rimuovere il dispositivo",
     "renameDeviceFailed": "Impossibile rinominare il dispositivo",
     "initiateOAuthFailed": "Impossibile avviare OAuth",
+    "retryOAuthFailed": "Impossibile riaprire il browser per l'accesso. Avvia di nuovo l'accesso.",
+    "oauthExpired": "L'accesso è scaduto. Riprova.",
+    "oauthInvalidResponse": "Impossibile ottenere un link di accesso valido. Riprova.",
+    "oauthCancelled": "L'accesso con Google è stato annullato. Riprova.",
     "setupFirstDeviceOAuthFailed": "Impossibile configurare il primo dispositivo tramite OAuth",
     "confirmRecoveryPhraseFailed": "Impossibile confermare la frase di recupero"
   },

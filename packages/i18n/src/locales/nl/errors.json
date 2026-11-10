@@ -164,6 +164,10 @@
     "removeDeviceFailed": "Kan het apparaat niet verwijderen",
     "renameDeviceFailed": "Kan de naam van het apparaat niet wijzigen",
     "initiateOAuthFailed": "Kan OAuth niet starten",
+    "retryOAuthFailed": "Kan de browser voor het inloggen niet opnieuw openen. Begin opnieuw met inloggen.",
+    "oauthExpired": "Inloggen is verlopen. Probeer het opnieuw.",
+    "oauthInvalidResponse": "Kan geen geldige inloglink ophalen. Probeer het opnieuw.",
+    "oauthCancelled": "Inloggen met Google is geannuleerd. Probeer het opnieuw.",
     "setupFirstDeviceOAuthFailed": "Kan het eerste apparaat niet instellen via OAuth",
     "confirmRecoveryPhraseFailed": "Kan de herstelzin niet bevestigen"
   },

@@ -164,6 +164,10 @@
     "removeDeviceFailed": "Impossible de retirer l'appareil",
     "renameDeviceFailed": "Impossible de renommer l'appareil",
     "initiateOAuthFailed": "Impossible de lancer l'authentification OAuth",
+    "retryOAuthFailed": "Impossible de rouvrir le navigateur de connexion. Relancez la connexion.",
+    "oauthExpired": "La connexion a expiré. Veuillez réessayer.",
+    "oauthInvalidResponse": "Impossible d'obtenir un lien de connexion valide. Veuillez réessayer.",
+    "oauthCancelled": "La connexion avec Google a été annulée. Veuillez réessayer.",
     "setupFirstDeviceOAuthFailed": "Impossible de configurer le premier appareil via OAuth",
     "confirmRecoveryPhraseFailed": "Impossible de confirmer la phrase de récupération"
   },

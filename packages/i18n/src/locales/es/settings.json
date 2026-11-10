@@ -1110,7 +1110,16 @@
       "sending": "Enviando código…"
     },
     "oauth": {
-      "google": "Continuar con Google"
+      "google": "Continuar con Google",
+      "waiting": "Termina de iniciar sesión con Google en tu navegador.",
+      "browserUnavailable": "No se pudo abrir tu navegador.",
+      "manualInstructions": "Copia el enlace de inicio de sesión y ábrelo en un navegador de este ordenador. Mantén memrynote abierto mientras inicias sesión.",
+      "linkLabel": "Enlace de inicio de sesión",
+      "copyLink": "Copiar enlace de inicio de sesión",
+      "retryBrowser": "Intentar abrir el navegador de nuevo",
+      "copied": "Enlace de inicio de sesión copiado.",
+      "copyFailed": "No se pudo copiar el enlace de inicio de sesión. Selecciónalo y cópialo desde el campo de arriba.",
+      "cancel": "Usar otro método de inicio de sesión"
     },
     "otp": {
       "title": "Introduce el código de verificación",
@@ -2396,7 +2405,6 @@
   "phaseI": {
     "errors": {
       "failedToUpdateTagColor": "No se pudo actualizar el color de la etiqueta",
-      "googleSignInFailed": "No se pudo iniciar sesión con Google",
       "failedToSendVerificationCode": "No se pudo enviar el código de verificación",
       "invalidVerificationCode": "Código de verificación no válido",
       "accountSetupFailed": "Error al configurar la cuenta",

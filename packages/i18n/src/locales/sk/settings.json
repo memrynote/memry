@@ -1110,7 +1110,16 @@
       "sending": "Odosiela sa kód…"
     },
     "oauth": {
-      "google": "Pokračovať s účtom Google"
+      "google": "Pokračovať s účtom Google",
+      "waiting": "Dokončite prihlásenie cez Google vo svojom prehliadači.",
+      "browserUnavailable": "Prehliadač sa nepodarilo otvoriť.",
+      "manualInstructions": "Skopírujte odkaz na prihlásenie a otvorte ho v prehliadači v tomto počítači. Počas prihlasovania nechajte memrynote otvorené.",
+      "linkLabel": "Odkaz na prihlásenie",
+      "copyLink": "Kopírovať odkaz na prihlásenie",
+      "retryBrowser": "Skúsiť prehliadač otvoriť znova",
+      "copied": "Odkaz na prihlásenie bol skopírovaný.",
+      "copyFailed": "Odkaz na prihlásenie sa nepodarilo skopírovať. Označte ho v poli vyššie a skopírujte.",
+      "cancel": "Použiť iný spôsob prihlásenia"
     },
     "otp": {
       "title": "Zadajte overovací kód",
@@ -2396,7 +2405,6 @@
   "phaseI": {
     "errors": {
       "failedToUpdateTagColor": "Nepodarilo sa aktualizovať farbu značky",
-      "googleSignInFailed": "Prihlásenie cez Google zlyhalo",
       "failedToSendVerificationCode": "Nepodarilo sa odoslať overovací kód",
       "invalidVerificationCode": "Neplatný overovací kód",
       "accountSetupFailed": "Nepodarilo sa nastaviť účet",

@@ -1263,6 +1263,7 @@
     "label": "Hilfe und Feedback",
     "reportBug": "Fehler melden",
     "requestFeature": "Funktion vorschlagen",
+    "joinTestflight": "TestFlight beitreten",
     "starOnGithub": "Stern auf GitHub geben",
     "version": "MemryNote {version}",
     "whatsNew": "Neuigkeiten",
@@ -1647,5 +1648,29 @@
       "agentModel": "Standard",
       "date": "13. Oktober"
     }
+  },
+  "iosBeta": {
+    "badge": "Neu · TestFlight",
+    "title": "Memry für iPhone ist in der Beta",
+    "promptBody": "Dein Tresor auf deinem Handy, Ende-zu-Ende-verschlüsselt. Hinterlasse deine E-Mail-Adresse, und Apple schickt dir eine TestFlight-Einladung.",
+    "emailPlaceholder": "you@example.com",
+    "emailLabel": "E-Mail-Adresse für die TestFlight-Einladung",
+    "submit": "Einladung erhalten",
+    "sending": "Wird gesendet…",
+    "listNote": "Wir nehmen dich außerdem in die iPhone-Beta-Liste auf, damit du Neuigkeiten zum Start bekommst. Abmeldung jederzeit möglich.",
+    "error": "Die TestFlight-Einladung konnte nicht gesendet werden. Bitte versuche es erneut.",
+    "sentTitle": "Prüfe dein Postfach",
+    "sentBody": "Apple hat die Einladung an {email} geschickt. Das kann ein paar Minuten dauern, und sie landet eventuell im Spam.",
+    "stepInstall": "TestFlight aus dem App Store installieren",
+    "stepOpen": "Die Einladung auf deinem iPhone öffnen",
+    "stepSignIn": "Auf deinem Handy bei Memry anmelden",
+    "done": "Fertig",
+    "dialogTitle": "Memry für iPhone beitreten",
+    "dialogBody": "Apple schickt dir eine TestFlight-Einladung per E-Mail. Verwende die E-Mail-Adresse der Apple-ID auf deinem iPhone.",
+    "entryTitle": "iPhone-Beta ist live",
+    "entrySubtitle": "Über TestFlight",
+    "entryJoin": "Der Beta beitreten",
+    "entrySent": "Einladung an {email} gesendet",
+    "sendAgain": "Erneut senden"
   }
 }

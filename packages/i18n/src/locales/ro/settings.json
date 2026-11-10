@@ -1110,7 +1110,16 @@
       "sending": "Se trimite codul…"
     },
     "oauth": {
-      "google": "Continuă cu Google"
+      "google": "Continuă cu Google",
+      "waiting": "Finalizați conectarea cu Google în browser.",
+      "browserUnavailable": "Nu s-a putut deschide browserul.",
+      "manualInstructions": "Copiați linkul de conectare și deschideți-l într-un browser de pe acest computer. Lăsați memrynote deschis cât timp vă conectați.",
+      "linkLabel": "Link de conectare",
+      "copyLink": "Copiază linkul de conectare",
+      "retryBrowser": "Încearcă din nou să deschizi browserul",
+      "copied": "Linkul de conectare a fost copiat.",
+      "copyFailed": "Nu s-a putut copia linkul de conectare. Selectați-l și copiați-l din câmpul de mai sus.",
+      "cancel": "Folosiți altă metodă de conectare"
     },
     "otp": {
       "title": "Introduceți codul de verificare",
@@ -2396,7 +2405,6 @@
   "phaseI": {
     "errors": {
       "failedToUpdateTagColor": "Nu s-a putut actualiza culoarea etichetei",
-      "googleSignInFailed": "Conectarea la Google a eșuat",
       "failedToSendVerificationCode": "Nu s-a putut trimite codul de verificare",
       "invalidVerificationCode": "Cod de verificare nevalid",
       "accountSetupFailed": "Configurarea contului a eșuat",

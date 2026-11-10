@@ -1110,7 +1110,16 @@
       "sending": "코드 보내는 중…"
     },
     "oauth": {
-      "google": "Google로 계속하기"
+      "google": "Google로 계속하기",
+      "waiting": "브라우저에서 Google 로그인을 완료하세요.",
+      "browserUnavailable": "브라우저를 열지 못했습니다.",
+      "manualInstructions": "로그인 링크를 복사해 이 컴퓨터의 브라우저에서 여세요. 로그인하는 동안 memrynote를 열어 두세요.",
+      "linkLabel": "로그인 링크",
+      "copyLink": "로그인 링크 복사",
+      "retryBrowser": "브라우저 다시 열기 시도",
+      "copied": "로그인 링크를 복사했습니다.",
+      "copyFailed": "로그인 링크를 복사하지 못했습니다. 위 입력란에서 선택해 복사하세요.",
+      "cancel": "다른 로그인 방법 사용"
     },
     "otp": {
       "title": "인증 코드 입력",
@@ -2396,7 +2405,6 @@
   "phaseI": {
     "errors": {
       "failedToUpdateTagColor": "태그 색상을 업데이트하지 못했습니다.",
-      "googleSignInFailed": "Google 로그인 실패",
       "failedToSendVerificationCode": "인증 코드를 보내지 못했습니다.",
       "invalidVerificationCode": "잘못된 인증 코드",
       "accountSetupFailed": "계정 설정 실패",

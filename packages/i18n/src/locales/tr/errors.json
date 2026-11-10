@@ -164,6 +164,10 @@
     "removeDeviceFailed": "Cihaz kaldırılamadı",
     "renameDeviceFailed": "Cihaz yeniden adlandırılamadı",
     "initiateOAuthFailed": "OAuth başlatılamadı",
+    "retryOAuthFailed": "Giriş tarayıcısı yeniden açılamadı. Girişi baştan başlatın.",
+    "oauthExpired": "Girişin süresi doldu. Lütfen tekrar deneyin.",
+    "oauthInvalidResponse": "Geçerli bir giriş bağlantısı alınamadı. Lütfen tekrar deneyin.",
+    "oauthCancelled": "Google ile giriş iptal edildi. Lütfen tekrar deneyin.",
     "setupFirstDeviceOAuthFailed": "İlk cihaz OAuth ile kurulamadı",
     "confirmRecoveryPhraseFailed": "Kurtarma ifadesi onaylanamadı"
   },
