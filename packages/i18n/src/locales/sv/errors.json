@@ -21,6 +21,8 @@
     "journalUnlisted": "Dagboksmappen kunde inte läsas, så ändringen sparades inte. Kontrollera att du har åtkomst till den.",
     "excludeUnwatched": "De exkluderade mapparna sparades, men ändringar som görs utanför appen visas inte förrän du öppnar valvet igen.",
     "journalChangeWaits": "En tidigare ändring av journalmappen eller datumformatet slutfördes inte. Öppna valvet igen för att slutföra den och försök sedan igen.",
+    "journalFolderHeld": "Journalmappen flyttades utanför appen och dess dagar kan inte följa med dit än. Flytta tillbaka mappen eller till en vanlig mapp i valvet och försök igen.",
+    "journalMovesWait": "En flytt av en anteckning eller mapp slutfördes inte. Öppna valvet igen för att slutföra den och ändra sedan journalinställningen igen.",
     "journalChangeUnrecorded": "Journaländringen kunde inte förberedas, så ingen journaldag flyttades och din sparade inställning behålls. Försök igen.",
     "settingsUnreadable": "Mappar kan inte flyttas medan valvets inställningsfil (.memry/config.json) inte kan läsas. Rätta filen och försök igen.",
     "settingsUnreadableDelete": "Mappar kan inte tas bort medan valvets inställningsfil (.memry/config.json) inte kan läsas. Rätta filen och försök igen.",

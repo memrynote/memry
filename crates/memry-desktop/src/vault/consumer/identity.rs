@@ -188,6 +188,13 @@ pub trait NoteIdentity: Send + Sync {
         new_path: &str,
     ) -> Result<Rename, IdentityError>;
 
+    /// Once the queue went quiet after a batch of facts, with the rows' lane released: the
+    /// journal setting follows a journal folder whose days the batch held (`notes::owed_moves::follow_held`). `true` when
+    /// it followed, for the consumer to say so ([`super::Applied::JournalFollowed`]).
+    fn follow_held(&self, _ctx: &IdentityCtx<'_>) -> bool {
+        false
+    }
+
     /// Before the open walk: deletes the records of the owed moves that changed what their
     /// file is and returns them, whose rows the consumer drops and whose files it asks about
     /// as new ([`Rename::Crossed`]). Its failures are its own to log.

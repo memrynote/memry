@@ -7,7 +7,7 @@ use memry_core::crdt::body_edit::BlockEdit;
 
 use super::*;
 use crate::vault::watch::EchoGuard;
-use crate::vault::writeback::{Keep, Outcome, Pass};
+use crate::vault::writeback::{Keep, Outcome, Pass, WriteBack, reconcile};
 
 const OUTSIDE: &str = "edited outside\n";
 
@@ -214,4 +214,49 @@ fn a_row_with_no_mark_compares_the_body_through_the_file() {
     f.write("n.md", OUTSIDE);
     assert_eq!(f.changed(&id, "n.md"), Step::Done);
     assert_typing_won(&mut f, &id, &pass);
+}
+
+/// The open marks a row an older build stamped while its body is not ahead of it, so a body that
+/// moved back to the file's text since is read through the mark: an outside edit of the
+/// frontmatter and the text applies, with no version of it and no toast (#4097).
+#[test]
+fn the_open_marks_an_older_builds_row_so_an_outside_edit_of_its_frontmatter_applies() {
+    let mut f = fixture();
+    let (id, pass) = note(&f);
+    // As an older build left it: no mark, and the body not ahead of the stamp.
+    f.vault
+        .db_handle()
+        .call_blocking(|conn| {
+            conn.execute_batch("DELETE FROM note_file_marks;")
+                .map_err(|error| memry_core::api::errors::StorageError::Failed {
+                    what: error.to_string(),
+                })
+        })
+        .unwrap();
+    let pass = Arc::new(pass);
+    let writeback = WriteBack::start(pass.clone(), broadcast::channel(16).0).unwrap();
+    reconcile(&pass, &writeback, &|| false);
+    // Later than the stamp by the clock too, so the row is behind its body.
+    std::thread::sleep(std::time::Duration::from_millis(3));
+    type_in_app(&f, &id, "typed in the app");
+    type_in_app(&f, &id, "first words");
+    f.facts();
+    let outside = "---\nstatus: done\n---\nedited outside\n";
+    f.write("n.md", outside);
+
+    assert_eq!(f.changed(&id, "n.md"), Step::Done);
+    assert_eq!(f.body(&id), "edited outside");
+    assert!(f.versions(&id).iter().all(|v| v != outside));
+    assert!(!kept_outside(&f.facts()));
+    assert!(!matches!(
+        pass.run(&id),
+        Outcome::Wrote {
+            replaced_outside: true,
+            ..
+        }
+    ));
+    assert_eq!(
+        std::fs::read_to_string(f.root.join("n.md")).unwrap(),
+        outside
+    );
 }

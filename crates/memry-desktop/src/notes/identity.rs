@@ -128,7 +128,7 @@ impl NotesIdentity {
         })
     }
 
-    fn writer(&self, ctx: &IdentityCtx<'_>) -> Result<Arc<NotesWriter>, IdentityError> {
+    pub(super) fn writer(&self, ctx: &IdentityCtx<'_>) -> Result<Arc<NotesWriter>, IdentityError> {
         ctx.vault
             .notes_writer(self.store.clone())
             .map_err(|error| IdentityError::Other(error.to_string()))
@@ -519,7 +519,6 @@ impl NoteIdentity for NotesIdentity {
                 note_id,
                 "a day the journal folder carried is held, owed"
             );
-            writer.owe_place(note_id, old_path)?;
             self.unsettle(ctx.root);
             return Ok(Rename::Followed);
         }
@@ -550,6 +549,11 @@ impl NoteIdentity for NotesIdentity {
         };
         writer.file_moved(note_id, moved)?;
         Ok(Rename::Followed)
+    }
+
+    /// [`owed_moves::follow_held`].
+    fn follow_held(&self, ctx: &IdentityCtx<'_>) -> bool {
+        owed_moves::follow_held(self, ctx)
     }
 
     /// The owed moves that change what their file is, now that the journal days are known

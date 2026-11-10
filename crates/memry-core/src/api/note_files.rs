@@ -154,6 +154,12 @@ impl NoteFiles {
         self.db.read_blocking(note_files::behind_bodies)
     }
 
+    /// [`note_files::mark_unmarked`], once the vault opened.
+    pub fn mark_unmarked(&self) -> Result<usize, StorageError> {
+        self.db
+            .call_blocking(|conn| note_files::mark_unmarked(conn))
+    }
+
     /// Whether the note's body moved after its row's stamp ([`note_files::behind_body`]).
     pub fn behind_body(&self, note_id: &str) -> Result<bool, StorageError> {
         self.db

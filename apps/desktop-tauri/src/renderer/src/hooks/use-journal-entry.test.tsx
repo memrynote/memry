@@ -32,6 +32,8 @@ vi.mock('react-i18next', () => ({
 }))
 
 const { logWarn } = vi.hoisted(() => ({ logWarn: vi.fn() }))
+const { toastError } = vi.hoisted(() => ({ toastError: vi.fn() }))
+vi.mock('sonner', () => ({ toast: { error: toastError } }))
 
 vi.mock('@/lib/logger', () => ({
   createLogger: () => ({
@@ -327,6 +329,44 @@ describe('useJournalEntry dedicated hook', () => {
     expect(updateEntry).toHaveBeenCalledWith({ date: '2026-05-10', content: 'Typed on the tenth' })
     expect(updateEntry).not.toHaveBeenCalledWith(expect.objectContaining({ date: '2026-05-11' }))
     expect(result.current.isDirty).toBe(false)
+  })
+
+  it('shows the refusal of a save made for a day no longer open', async () => {
+    const updateEntry = window.api.journal.updateEntry as ReturnType<typeof vi.fn>
+    const refusal = {
+      kind: 'invalid',
+      code: 'journal_folder_held',
+      message: 'The journal folder was moved outside the app.'
+    }
+    const { result, rerender } = renderHook(({ date }) => useJournalEntry(date), {
+      wrapper,
+      initialProps: { date: '2026-05-10' }
+    })
+    await waitFor(() => expect(result.current.loadedForDate).toBe('2026-05-10'))
+    const updateTenth = result.current.updateContent
+
+    // Refused twice: the save the switch flushes, and the one sent again after it.
+    updateEntry.mockRejectedValueOnce(refusal).mockRejectedValueOnce(refusal)
+    act(() => {
+      updateTenth('Pending old date')
+    })
+    rerender({ date: '2026-05-11' })
+    await waitFor(() => expect(toastError).toHaveBeenCalledWith(refusal.message))
+    await waitFor(() => expect(result.current.loadedForDate).toBe('2026-05-11'))
+
+    toastError.mockClear()
+    updateEntry.mockRejectedValueOnce(refusal)
+    act(() => {
+      updateTenth('Typed on the tenth')
+    })
+    await act(async () => {
+      await vi.runOnlyPendingTimersAsync()
+    })
+    expect(updateEntry).toHaveBeenLastCalledWith({
+      date: '2026-05-10',
+      content: 'Typed on the tenth'
+    })
+    expect(toastError).toHaveBeenCalledWith(refusal.message)
   })
 
   it('saves a late edit straight away once the journal has unmounted', async () => {

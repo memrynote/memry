@@ -264,6 +264,98 @@ fn a_move_left_owed_keeps_its_first_path_until_it_is_applied() {
     assert!(owed(&db).is_empty());
 }
 
+fn held(db: &memry_core::storage::Db) -> Vec<OwedPlace> {
+    run(db, |conn| identity::held_places(conn))
+}
+
+/// `n1`'s owed move and whether it is held, read for that note alone.
+fn n1_place(db: &memry_core::storage::Db) -> Option<(String, bool)> {
+    run(db, |conn| identity::owed_place(conn, "n1"))
+}
+
+fn n1_from(from: &str, held: bool) -> Option<(String, bool)> {
+    Some((from.to_owned(), held))
+}
+
+/// The `meta` rows of the holds, read from the table itself.
+fn hold_keys(db: &memry_core::storage::Db) -> Vec<String> {
+    run(db, |conn| {
+        let mut statement = conn
+            .prepare("SELECT key FROM meta WHERE key LIKE 'notes.place_held.v1:%' ORDER BY key")
+            .unwrap();
+        Ok(statement
+            .query_map([], |row| row.get(0))
+            .unwrap()
+            .collect::<Result<Vec<String>, _>>()
+            .unwrap())
+    })
+}
+
+/// A day the journal folder carried is held as long as the move it is owed: owing it again
+/// keeps the hold, and settling the move, removing its row, or an older build settling it
+/// without the hold's key forgets the hold, so the same day owed later for another reason is
+/// not held (`place_held`).
+#[test]
+fn a_hold_lasts_as_long_as_its_owed_move() {
+    let db = open("held");
+    create(&db, "n1", "Old", None);
+    give_row(&db, "n1", "Diary/Old.md");
+    run(&db, |conn| {
+        identity::hold_place(conn, "n1", "journal/Old.md", NOW)
+    });
+    let n1 = OwedPlace {
+        note_id: "n1".to_owned(),
+        from_path: "journal/Old.md".to_owned(),
+        path: "Diary/Old.md".to_owned(),
+    };
+    assert_eq!(held(&db), vec![n1.clone()]);
+    assert_eq!(n1_place(&db), n1_from("journal/Old.md", true));
+    run(&db, |conn| {
+        identity::owe_place(conn, "n1", "Diary/Old.md", NOW + 1)
+    });
+    assert_eq!(held(&db), vec![n1]);
+    assert_eq!(n1_place(&db), n1_from("journal/Old.md", true));
+
+    let moved = Moved {
+        old_path: "Diary/Old.md",
+        new_path: "Diary/New.md",
+        title: "New",
+        folder_path: Some("Diary"),
+    };
+    run(&db, move |conn| {
+        identity::renamed(conn, "n1", &moved, DEVICE, NOW + 2)
+    });
+    assert!(hold_keys(&db).is_empty());
+    assert_eq!(n1_place(&db), None);
+    run(&db, |conn| {
+        identity::owe_place(conn, "n1", "journal/Old.md", NOW + 3)
+    });
+    assert_eq!(n1_place(&db), n1_from("journal/Old.md", false));
+    assert!(held(&db).is_empty());
+
+    run(&db, |conn| {
+        identity::hold_place(conn, "n1", "journal/Old.md", NOW + 4)
+    });
+    assert_eq!(held(&db).len(), 1);
+    run(&db, |conn| note_files::remove(conn, "n1").map(drop));
+    assert!(hold_keys(&db).is_empty());
+
+    give_row(&db, "n1", "Diary/Old.md");
+    run(&db, |conn| {
+        identity::hold_place(conn, "n1", "journal/Old.md", NOW + 5)
+    });
+    run(&db, |conn| {
+        conn.execute("DELETE FROM note_place_owed WHERE note_id = 'n1'", [])
+            .map_err(|error| StorageError::Failed {
+                what: error.to_string(),
+            })?;
+        identity::owe_place(conn, "n1", "Diary/Old.md", NOW + 6)
+    });
+    assert_eq!(n1_place(&db), n1_from("Diary/Old.md", false));
+    assert!(held(&db).is_empty());
+    assert!(hold_keys(&db).is_empty());
+}
+
 /// A move that changed what the file is deletes the note as a removal does, and owes the move
 /// while the row is there: a crash before the tier drops the row is found by the next open,
 /// whose ask deletes nothing more. One the removal may not delete is only owed.
