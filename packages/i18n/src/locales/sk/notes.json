@@ -597,7 +597,8 @@
         "title": "Presunúť blok do poznámky",
         "searchPlaceholder": "Hľadať poznámky…",
         "noResults": "Žiadne zodpovedajúce poznámky",
-        "failed": "Blok sa nepodarilo presunúť"
+        "failed": "Blok sa nepodarilo presunúť",
+        "targetNotTaken": "Táto poznámka je príliš veľká alebo obsahuje text, ktorý aplikácia nedokáže prijať, preto bloky zostali tam, kde boli."
       }
     },
     "attachmentPicker": {

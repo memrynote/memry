@@ -597,7 +597,8 @@
         "title": "Block in Notiz verschieben",
         "searchPlaceholder": "Notizen durchsuchen…",
         "noResults": "Keine passenden Notizen",
-        "failed": "Der Block konnte nicht verschoben werden"
+        "failed": "Der Block konnte nicht verschoben werden",
+        "targetNotTaken": "Diese Notiz ist zu groß oder enthält Text, den die App nicht aufnehmen kann. Die Blöcke sind deshalb geblieben, wo sie waren."
       }
     },
     "attachmentPicker": {

@@ -597,7 +597,8 @@
         "title": "Siirrä lohko muistiinpanoon",
         "searchPlaceholder": "Hae muistiinpanoista…",
         "noResults": "Ei vastaavia muistiinpanoja",
-        "failed": "Lohkon siirtäminen epäonnistui"
+        "failed": "Lohkon siirtäminen epäonnistui",
+        "targetNotTaken": "Tämä muistiinpano on liian suuri tai sisältää tekstiä, jota sovellus ei voi vastaanottaa, joten lohkot jäivät paikoilleen."
       }
     },
     "attachmentPicker": {

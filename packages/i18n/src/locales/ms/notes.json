@@ -597,7 +597,8 @@
         "title": "Alihkan blok ke nota",
         "searchPlaceholder": "Cari nota…",
         "noResults": "Tiada nota yang sepadan",
-        "failed": "Tidak dapat mengalihkan blok"
+        "failed": "Tidak dapat mengalihkan blok",
+        "targetNotTaken": "Nota ini terlalu besar atau mengandungi teks yang tidak dapat diterima oleh aplikasi, jadi blok kekal di tempat asalnya."
       }
     },
     "attachmentPicker": {

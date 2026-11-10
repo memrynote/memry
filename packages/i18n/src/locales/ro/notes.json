@@ -597,7 +597,8 @@
         "title": "Mutați blocul într-o notiță",
         "searchPlaceholder": "Caută notițe…",
         "noResults": "Nicio notiță potrivită",
-        "failed": "Nu s-a putut muta blocul"
+        "failed": "Nu s-a putut muta blocul",
+        "targetNotTaken": "Această notiță este prea mare sau conține text pe care aplicația nu îl poate prelua, așa că blocurile au rămas unde erau."
       }
     },
     "attachmentPicker": {

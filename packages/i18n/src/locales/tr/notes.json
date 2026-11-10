@@ -597,7 +597,8 @@
         "title": "Bloğu nota taşı",
         "searchPlaceholder": "Notlarda ara…",
         "noResults": "Eşleşen not yok",
-        "failed": "Blok taşınamadı"
+        "failed": "Blok taşınamadı",
+        "targetNotTaken": "Bu not çok büyük veya uygulamanın kabul edemediği metin içeriyor, bu yüzden bloklar bulundukları yerde kaldı."
       }
     },
     "attachmentPicker": {

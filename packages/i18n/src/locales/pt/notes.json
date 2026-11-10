@@ -597,7 +597,8 @@
         "title": "Mover bloco para nota",
         "searchPlaceholder": "Pesquisar notas…",
         "noResults": "Nenhuma nota correspondente",
-        "failed": "Não foi possível mover o bloco"
+        "failed": "Não foi possível mover o bloco",
+        "targetNotTaken": "Esta nota é grande demais ou tem texto que o app não consegue receber, por isso os blocos ficaram onde estavam."
       }
     },
     "attachmentPicker": {
