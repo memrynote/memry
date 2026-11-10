@@ -103,6 +103,7 @@ export function createVaultAdminService({
       const previousAt = typeof previous?.updatedAt === 'number' ? previous.updatedAt : 0
       const updatedAt = Math.max(Date.now(), previousAt + 1)
       await writeFileAtomic(
+        vaultPath,
         configPath,
         `${JSON.stringify({ ...existing, vaultIcon: { value: icon, updatedAt, pendingSync: true } }, null, 2)}\n`
       )
@@ -142,7 +143,7 @@ export function createVaultAdminService({
       } catch {
         return { cleared: true }
       }
-      await writeFileAtomic(activityPath, '')
+      await writeFileAtomic(vaultPath, activityPath, '')
       return { cleared: true }
     },
 

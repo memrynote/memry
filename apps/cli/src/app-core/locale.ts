@@ -54,9 +54,14 @@ export function createLocaleService({
     async set(candidate) {
       const locale = LocaleSchema.parse(candidate)
       const config = await withPortablePreference(locale)
-      await settings.setGroup('general', { language: locale })
+      // The file first: a failed write leaves the settings db and the file agreeing.
       await fs.mkdir(getMemryDir(vaultPath), { recursive: true })
-      await writeFileAtomic(getConfigPath(vaultPath), `${JSON.stringify(config, null, 2)}\n`)
+      await writeFileAtomic(
+        vaultPath,
+        getConfigPath(vaultPath),
+        `${JSON.stringify(config, null, 2)}\n`
+      )
+      await settings.setGroup('general', { language: locale })
       return { locale }
     },
 

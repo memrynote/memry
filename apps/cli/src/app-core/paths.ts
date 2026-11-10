@@ -112,7 +112,7 @@ export async function updateVaultConfig(
   }
   const { excludePatterns: _inMemory, ...current } = config
   const file: Record<string, unknown> = { ...stored.value, ...current, ...updates }
-  await writeFileAtomic(configPath, `${JSON.stringify(file, null, 2)}\n`)
+  await writeFileAtomic(vaultPath, configPath, `${JSON.stringify(file, null, 2)}\n`)
   await ensureVaultFolders(vaultPath, { ...config, ...updates })
 
   const exclude = resolveExcludePatterns(vaultPath, file, configPath)
@@ -219,7 +219,7 @@ export async function ensureVaultLayout(vaultPath: string): Promise<VaultConfig>
     // Write only the default keys the file lacks: a read command leaves a complete file
     // alone. Never the default excludePatterns: the desktop would take them as the user's.
     if (Object.keys(defaults).some((key) => !(key in file))) {
-      await writeFileAtomic(configPath, `${JSON.stringify(merged, null, 2)}\n`)
+      await writeFileAtomic(vaultPath, configPath, `${JSON.stringify(merged, null, 2)}\n`)
     }
   } else {
     // Leave the file alone: overwriting it would lose the user's settings.
@@ -229,6 +229,11 @@ export async function ensureVaultLayout(vaultPath: string): Promise<VaultConfig>
   }
 
   const exclude = resolveExcludePatterns(vaultPath, file, configPath)
+  if (file.excludePatterns !== undefined && !Array.isArray(file.excludePatterns)) {
+    process.stderr.write(
+      `Warning: ${configPath} has an excludePatterns that is not a list; using the default patterns.\n`
+    )
+  }
   // Same normalization as desktop's getConfig (main/vault/index.ts).
   const config: VaultConfig = {
     ...merged,
