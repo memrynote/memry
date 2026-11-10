@@ -43,6 +43,7 @@ struct EditableBlockView: UIViewRepresentable {
         // intrinsic width; the width comes from `sizeThatFits` instead.
         view.setContentCompressionResistancePriority(.defaultLow, for: .horizontal)
         view.accessibilityIdentifier = "note.block.\(block.id ?? "")"
+        session.drawn(context.coordinator)
         context.coordinator.render()
         return view
     }
@@ -121,6 +122,9 @@ struct EditableBlockView: UIViewRepresentable {
 final class BlockTextView: UITextView {
     /// A layout manager holds its storage weakly; this keeps it alive.
     private let storage: NSTextStorage
+    /// Backspace with the caret at the start and nothing selected. UIKit asks
+    /// the delegate about no change then, since there is nothing to delete.
+    var backspaceAtStart: (() -> Void)?
 
     init() {
         let storage = NSTextStorage()
@@ -135,6 +139,13 @@ final class BlockTextView: UITextView {
 
     @available(*, unavailable)
     required init?(coder: NSCoder) { nil }
+
+    override func deleteBackward() {
+        guard selectedRange == NSRange(location: 0, length: 0), markedTextRange == nil,
+              let backspaceAtStart
+        else { return super.deleteBackward() }
+        backspaceAtStart()
+    }
 }
 
 /// Draws the fill under a typed `#tag` (`BlockText.markTags`) as a rounded
@@ -204,6 +215,10 @@ final class BlockField: NSObject, UITextViewDelegate, UIGestureRecognizerDelegat
         let tap = UITapGestureRecognizer(target: self, action: #selector(openTappedTag(_:)))
         tap.delegate = self
         textView.addGestureRecognizer(tap)
+        textView.backspaceAtStart = { [weak self] in
+            guard let self else { return }
+            self.session?.backspaceAtStart(self)
+        }
     }
 
     var blockId: String { block.id ?? "" }
@@ -433,9 +448,6 @@ final class BlockField: NSObject, UITextViewDelegate, UIGestureRecognizerDelegat
             return false
         }
         if applyMarkdownShortcut(textView, range: range, text: text) { return false }
-        if text.isEmpty, range.location == 0, range.length == 0, string.length == 0 {
-            session?.backspaceAtStart(self)
-        }
         return true
     }
 
@@ -466,14 +478,48 @@ extension EditorSession {
             guard let self, let model = self.model else { return }
             guard let newId = await model.insert(next, after: field.blockId) else { return }
             self.history.record(.insert(blockId: newId, after: field.blockId, kind: next, text: ""))
-            self.pendingFocus = newId
+            self.focus(newId)
         }
     }
 
-    /// Backspace in an empty block that is not a paragraph turns it into one,
-    /// as desktop does before it deletes anything.
+    /// Backspace with the caret at a block's start, in desktop's order
+    /// (BlockNote's `handleBackspace`): a block that is not a paragraph turns
+    /// into one, a nested paragraph moves out a level, and a paragraph then
+    /// joins the block drawn above it, the caret at the join. Above an empty
+    /// text block, the empty block goes instead; above a block with no text,
+    /// only an empty paragraph goes. Not yet here: a block with nested blocks
+    /// (desktop lifts them out) and the first block of a column.
     func backspaceAtStart(_ field: BlockField) {
-        guard field.block.kind != "paragraph" else { return }
-        turnInto(InsertableBlock.all[0])
+        if field.block.kind != "paragraph" { return turnInto(InsertableBlock.all[0]) }
+        if canOutdent { return nest(false) }
+        let blocks = blocks()
+        guard let index = blocks.firstIndex(where: { $0.id == field.blockId }), index > 0,
+              let previousId = blocks[index - 1].id,
+              !NoteColumns.structuralKinds.contains(blocks[index - 1].kind),
+              index + 1 == blocks.count || blocks[index + 1].depth <= blocks[index].depth
+        else { return }
+        let previous = blocks[index - 1]
+        let empty = field.textView.textStorage.length == 0
+        guard BlockActionTarget.textKinds.contains(previous.kind) else {
+            if empty { runner(for: blocks, at: index).delete() }
+            return
+        }
+        if !empty, BlockText.shown(previous.inline).isEmpty {
+            return runner(for: blocks, at: index - 1).delete()
+        }
+        let blockId = field.blockId
+        commit(field) { [weak self] in
+            guard let self, let model = self.model else { return }
+            if let step = await model.merge(blockId, into: previousId) { self.history.record(step) }
+        }
+        // The caret goes now, so the keyboard stays up: at the end of the
+        // block above, which is the join once the merge redraws it.
+        focus(previousId)
+    }
+
+    private func runner(for blocks: [Block], at index: Int) -> BlockActionRunner {
+        BlockActionRunner(
+            session: self, target: BlockActionTarget(block: blocks[index], siblings: BlockSiblings.of(index, in: blocks))
+        )
     }
 }
