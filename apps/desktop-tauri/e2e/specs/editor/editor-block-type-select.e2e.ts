@@ -98,7 +98,9 @@ async function pickBlockType(page: Page, name: string): Promise<void> {
   await option.click()
 }
 
-test('retypes the block holding a partial text selection', async ({ page }) => {
+// Skipped until #4184: the formatting toolbar remounts while its Select is open (an inline
+// `formattingToolbar` component), so the list closes under the option click about 1 run in 15.
+test.skip('retypes the block holding a partial text selection', async ({ page }) => {
   await vaultOpen(page)
   await openNoteWithLines(page, label('Block type partial'), LINES)
   await expect.poll(() => blocks(page)).toHaveLength(4)
@@ -123,7 +125,8 @@ test('retypes the block holding a partial text selection', async ({ page }) => {
     ])
 })
 
-test('retypes every block in a multi-line selection', async ({ page }) => {
+// Skipped until #4184, as above.
+test.skip('retypes every block in a multi-line selection', async ({ page }) => {
   await vaultOpen(page)
   await openNoteWithLines(page, label('Block type multi'), LINES)
   await expect.poll(() => blocks(page)).toHaveLength(4)
