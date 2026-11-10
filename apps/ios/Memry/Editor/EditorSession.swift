@@ -105,6 +105,9 @@ final class EditorSession {
     @ObservationIgnored weak var field: BlockField?
     /// A block to put the caret in once it is drawn.
     @ObservationIgnored var pendingFocus: String?
+    /// Each drawn block's field by block id, so the caret can move into a
+    /// block whose row does not redraw (`focus`).
+    @ObservationIgnored private let drawnFields = NSMapTable<NSString, BlockField>.strongToWeakObjects()
     /// The field a block shortcut fired in, held until the row its type
     /// change redraws takes the caret (`BlockField.takeOver`).
     @ObservationIgnored var shortcutField: BlockField?
@@ -277,6 +280,23 @@ final class EditorSession {
     }
 
     // MARK: Focus and selection
+
+    func drawn(_ field: BlockField) {
+        drawnFields.setObject(field, forKey: field.blockId as NSString)
+    }
+
+    /// Puts the caret at the end of `blockId`: now when its row is on
+    /// screen, else once it is drawn (`pendingFocus`). A row the page drew
+    /// before the request (a reload that raced the write) never reads
+    /// `pendingFocus` again.
+    func focus(_ blockId: String) {
+        guard let textView = drawnFields.object(forKey: blockId as NSString)?.textView, textView.window != nil else {
+            pendingFocus = blockId
+            return
+        }
+        textView.becomeFirstResponder()
+        textView.selectedRange = NSRange(location: textView.textStorage.length, length: 0)
+    }
 
     func focusChanged(to field: BlockField?) {
         focusedBlockId = field?.blockId
@@ -960,7 +980,7 @@ final class EditorSession {
             return
         }
         guard let step = history.popUndo() else { return }
-        replay([step.backward])
+        replay([step.backward] + step.backwardAfter)
     }
 
     func redo() {

@@ -57,6 +57,32 @@ final class JournalUITests: XCTestCase {
         XCTAssertTrue(waitUntil { row.label.contains(", entry, ") }, row.label)
     }
 
+    /// #4152: Backspace at a block's start, on a journal day as on a note.
+    func testBackspaceDeletesAnEmptyLineAndJoinsLines() throws {
+        try openJournal(today: Self.randomDay())
+        let field = app.descendants(matching: .any)["journal.day.firstLine"].firstMatch
+        for _ in 0 ..< 10 where !field.waitForExistence(timeout: 3) {
+            app.buttons["journal.day.next"].firstMatch.tap()
+        }
+        XCTAssertTrue(field.exists, "no empty day within ten days")
+        let line = "[agent] SHIP-4152 a"
+        field.tap()
+        // Return makes the line the day's first block.
+        field.typeText(line + "\n")
+        let block = app.textViews.matching(NSPredicate(format: "value == %@", line)).firstMatch
+        XCTAssertTrue(block.waitForExistence(timeout: 10), "the typed line did not become a block")
+        // The caret at the end of the line.
+        block.coordinate(withNormalizedOffset: CGVector(dx: 0.99, dy: 0.5)).tap()
+        assertBackspaceJoinsBlocks(in: app, line: line)
+
+        let more = app.buttons["journal.more"].firstMatch
+        XCTAssertTrue(more.waitForExistence(timeout: 10))
+        more.tap()
+        app.buttons["journal.more.delete"].firstMatch.tap()
+        app.buttons["Delete entry"].firstMatch.tap()
+        XCTAssertTrue(field.waitForExistence(timeout: 10), "the day was not deleted")
+    }
+
     func testMonthAndYearDrillDownAndBack() throws {
         let today = Self.randomDay()
         try openJournal(today: today)

@@ -27313,10 +27313,15 @@ public enum BlockEdit: Equatable, Hashable {
      *
      * `new_block_id` becomes the `columnList`'s own `id`; the core mints the
      * ids of each column and of each column's paragraph container.
-     *
-     * Last in the enum so the variants before it keep their FFI indices.
      */
     case insertColumnList(afterBlockId: String?, columns: UInt32, newBlockId: String
+    )
+    /**
+     * Backspace at a block's start: appends `block_id`'s inline content, marks
+     * and inline nodes kept, to `into_block_id`'s, then removes `block_id`. A
+     * block with nested blocks is refused. Last, to keep earlier FFI indices.
+     */
+    case mergeBlocks(blockId: String, intoBlockId: String
     )
 
 
@@ -27406,6 +27411,9 @@ public struct FfiConverterTypeBlockEdit: FfiConverterRustBuffer {
         )
         
         case 23: return .insertColumnList(afterBlockId: try FfiConverterOptionString.read(from: &buf), columns: try FfiConverterUInt32.read(from: &buf), newBlockId: try FfiConverterString.read(from: &buf)
+        )
+        
+        case 24: return .mergeBlocks(blockId: try FfiConverterString.read(from: &buf), intoBlockId: try FfiConverterString.read(from: &buf)
         )
         
         default: throw UniffiInternalError.unexpectedEnumCase
@@ -27571,6 +27579,12 @@ public struct FfiConverterTypeBlockEdit: FfiConverterRustBuffer {
             FfiConverterOptionString.write(afterBlockId, into: &buf)
             FfiConverterUInt32.write(columns, into: &buf)
             FfiConverterString.write(newBlockId, into: &buf)
+            
+        
+        case let .mergeBlocks(blockId,intoBlockId):
+            writeInt(&buf, Int32(24))
+            FfiConverterString.write(blockId, into: &buf)
+            FfiConverterString.write(intoBlockId, into: &buf)
             
         }
     }
