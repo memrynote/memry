@@ -60,23 +60,25 @@ type JournalSaveInput = { date: string; content?: string } & PendingTagsEdit
 /** How long a write of a day waits for the day's write before it, which may never answer. */
 const DAY_WRITE_WAIT_MS = 10_000
 
+type DayWriteWaiter = 'next write' | 'read' | 'save flag'
+
+/** Each day's writes sent, the text of the last one that carried text, and those not answered. */
+interface DaySends {
+  sent: number
+  text: string | null
+  unanswered: Set<Promise<unknown>>
+}
+
 /**
  * Whether `write` answered within `DAY_WRITE_WAIT_MS` (its failure rejects): a write that never
  * answers would otherwise hold the day's later writes, its reread, and the save flag every day's
- * saves wait on. `waiting` names what goes on without it. Past the wait, an older write can still
- * land after a newer one; the timeout is reported so that shows in the field (#4138).
+ * saves wait on. `timedOut` runs when the wait ends without it (#4138).
  */
-function answeredInTime(
-  write: Promise<unknown>,
-  day: string,
-  waiting: 'next write' | 'read' | 'save flag'
-): Promise<boolean> {
+function answeredInTime(write: Promise<unknown>, timedOut: () => void): Promise<boolean> {
   let timer: ReturnType<typeof setTimeout> | undefined
   const waited = new Promise<false>((resolve) => {
     timer = setTimeout(() => {
-      const message = `A write of ${day} has not answered in ${DAY_WRITE_WAIT_MS} ms; the ${waiting} waiting on it goes on`
-      log.warn(message)
-      trackRendererError('journal_day_write_timeout', new Error(message))
+      timedOut()
       resolve(false)
     }, DAY_WRITE_WAIT_MS)
   })
@@ -200,6 +202,11 @@ export function useJournalEntry(date: string): UseJournalEntryResult {
   // the one ahead of it answered could land first, and the older text would stay in the file;
   // a read of the day sent before it answered could answer the file from before it (#4088).
   const daySavesRef = useRef(new Map<string, Promise<unknown>>())
+  // Past the wait above a newer write of a day can go out before an older one answered, which
+  // may then land last (`sendDayWrite`, #4138).
+  const daySendsRef = useRef(new Map<string, DaySends>())
+  // Stalled writes already reported, so a stall is reported once whatever waits on it.
+  const reportedStallsRef = useRef(new WeakSet<Promise<unknown>>())
   const [isSeedingFromTemplate, setIsSeedingFromTemplate] = useState(false)
 
   useEffect(() => {
@@ -217,22 +224,106 @@ export function useJournalEntry(date: string): UseJournalEntryResult {
     setSaveError(null)
   }
 
+  const dayWriteStalled = useCallback((day: string, waiting: DayWriteWaiter): void => {
+    log.warn(
+      `A write of ${day} has not answered in ${DAY_WRITE_WAIT_MS} ms; the ${waiting} waiting on it goes on`
+    )
+    const reported = reportedStallsRef.current
+    const stalled = [...(daySendsRef.current.get(day)?.unanswered ?? [])].filter(
+      (write) => !reported.has(write)
+    )
+    if (stalled.length === 0) return
+    for (const write of stalled) reported.add(write)
+    trackRendererError(
+      'journal_day_write_timeout',
+      new Error(`journal day write timeout: ${waiting}`)
+    )
+  }, [])
+
   // Sends a write of `day` once the day's writes before it answered: the day's saves, the save a
   // date switch sends for the day it left, and the editor's late report of a day it left.
-  const queueDaySave = useCallback(<T>(day: string, write: () => Promise<T>): Promise<T> => {
-    const saves = daySavesRef.current
-    const previous = saves.get(day)
-    const sent = (previous ? answeredInTime(previous, day, 'next write') : Promise.resolve()).then(
-      write
-    )
-    const done: Promise<unknown> = sent
-      .catch(() => undefined)
-      .finally(() => {
-        if (saves.get(day) === done) saves.delete(day)
-      })
-    saves.set(day, done)
-    return sent
-  }, [])
+  const queueDaySave = useCallback(
+    <T>(day: string, write: () => Promise<T>): Promise<T> => {
+      const saves = daySavesRef.current
+      const previous = saves.get(day)
+      const sent = (
+        previous
+          ? answeredInTime(previous, () => dayWriteStalled(day, 'next write'))
+          : Promise.resolve()
+      ).then(write)
+      const done: Promise<unknown> = sent
+        .catch(() => undefined)
+        .finally(() => {
+          if (saves.get(day) === done) saves.delete(day)
+        })
+      saves.set(day, done)
+      return sent
+    },
+    [dayWriteStalled]
+  )
+
+  // Sends a write of `day` from inside `queueDaySave`. Once a write passed the wait, a newer write
+  // of the day may go out before it answers; the core then runs the two in either order, each
+  // replacing the file, and the older text can land last. So when a write answers after a newer
+  // one went out, the day's newest text (the editor's if the day is open, else the last sent) is
+  // queued again behind it, and lands last. A write that fails past the wait, its caller no
+  // longer waiting, is sent again the same way (#4138).
+  const sendDayWrite = useCallback(
+    <T>(day: string, content: string | undefined, send: () => Promise<T>): Promise<T> => {
+      const sends = daySendsRef.current
+      const resend = (): void => {
+        const held = editorTextRef.current
+        const open = currentDateRef.current === day && held?.date === day
+        const text = open ? held.text : (sends.get(day)?.text ?? null)
+        if (text === null) return
+        queueDaySave(day, () =>
+          write(text, () => journalService.updateEntry({ date: day, content: text }), true)
+        )
+          .then((entry) => queryClient.setQueryData(journalKeys.entry(day), entry))
+          .catch((err: unknown) => {
+            trackRendererError('journal_save_failed', err)
+            log.error(`Failed to send the newest text of ${day} again:`, err)
+            if (currentDateRef.current === day) setSaveError(savedElsewhereError(err))
+            else toast.error(savedElsewhereError(err))
+          })
+      }
+      const write = <U>(
+        text: string | undefined,
+        run: () => Promise<U>,
+        retry: boolean
+      ): Promise<U> => {
+        const known = sends.get(day) ?? { sent: 0, text: null, unanswered: new Set() }
+        known.sent += 1
+        if (text !== undefined) known.text = text
+        sends.set(day, known)
+        const order = known.sent
+        let late = false
+        const timer = setTimeout(() => {
+          late = true
+        }, DAY_WRITE_WAIT_MS)
+        const sent = run()
+        known.unanswered.add(sent)
+        const answered = (failure: { err: unknown } | null): void => {
+          clearTimeout(timer)
+          known.unanswered.delete(sent)
+          // A retry's failure reaches its caller, which shows it.
+          const lateFailure = failure !== null && late && !retry
+          if (lateFailure) {
+            trackRendererError('journal_save_failed', failure.err)
+            log.error(`A write of ${day} failed after the wait on it ended:`, failure.err)
+          }
+          if (known.sent !== order || lateFailure) resend()
+        }
+        sent.then(
+          () => answered(null),
+          (err: unknown) => answered({ err })
+        )
+        return sent
+      }
+      return write(content, send, false)
+    },
+    [queryClient, queueDaySave]
+  )
 
   // Save pending content for old date before switching, and update tracking refs.
   useEffect(() => {
@@ -260,10 +351,12 @@ export function useJournalEntry(date: string): UseJournalEntryResult {
         saving.tags === pendingTags
           ? running
           : null
+      // oxlint-disable react-you-might-not-need-an-effect/no-pass-ref-to-parent -- sendDayWrite is this hook's own callback, not a parent's prop or ref
       queueDaySave(oldDate, async () => {
         if (sendsThese && (await sendsThese)) return undefined
-        return journalService.updateEntry(saveInput)
+        return sendDayWrite(oldDate, saveInput.content, () => journalService.updateEntry(saveInput))
       }).catch((err: unknown) => {
+        // oxlint-enable react-you-might-not-need-an-effect/no-pass-ref-to-parent
         // The user has already navigated away, so the day's save error is not on screen.
         trackRendererError('journal_pending_save_failed', err)
         log.error(`Failed to save pending changes for ${oldDate}:`, err)
@@ -283,7 +376,7 @@ export function useJournalEntry(date: string): UseJournalEntryResult {
     pendingContentRef.current = null
     pendingTagsRef.current = null
     editorTextRef.current = null
-  }, [date, queryClient, queueDaySave])
+  }, [date, queryClient, queueDaySave, sendDayWrite])
 
   const {
     data: entry = null,
@@ -449,11 +542,20 @@ export function useJournalEntry(date: string): UseJournalEntryResult {
             log.warn(`Failed to read ${open} again after an outside change:`, err)
           })
       }
-      const writes = daySavesRef.current.get(day)
-      if (writes) void answeredInTime(writes, day, 'read').then(() => read(day))
-      else read(day)
+      // A write past the wait answers after newer ones; its answer queues the day's newest text
+      // again (`sendDayWrite`), which the read then waits for too.
+      const waits: Promise<unknown>[] = [...(daySendsRef.current.get(day)?.unanswered ?? [])]
+      const queued = daySavesRef.current.get(day)
+      if (queued) waits.push(queued)
+      if (waits.length === 0) return read(day)
+      const stalled = (): void => dayWriteStalled(day, 'read')
+      void answeredInTime(Promise.allSettled(waits), stalled).then((answered) => {
+        const resent = daySavesRef.current.get(day)
+        if (answered && resent) void answeredInTime(resent, stalled).then(() => read(day))
+        else read(day)
+      })
     },
-    [queryClient]
+    [dayWriteStalled, queryClient]
   )
 
   const performSave = useCallback(async () => {
@@ -481,7 +583,12 @@ export function useJournalEntry(date: string): UseJournalEntryResult {
 
       // A write that never answers releases the save flag; its edits stay pending for the next save.
       saved = await queueDaySave(currentDate, () =>
-        answeredInTime(updateMutation.mutateAsync(updateInput), currentDate, 'save flag')
+        answeredInTime(
+          sendDayWrite(currentDate, updateInput.content, () =>
+            updateMutation.mutateAsync(updateInput)
+          ),
+          () => dayWriteStalled(currentDate, 'save flag')
+        )
       )
 
       if (saved && currentDateRef.current === currentDate) {
@@ -523,7 +630,7 @@ export function useJournalEntry(date: string): UseJournalEntryResult {
       if (told !== null) readDayAgain(told)
     }
     // oxlint-disable-next-line react/memo-dependencies -- readDayAgain changes only with queryClient; listed to satisfy hooks/exhaustive-deps
-  }, [queueDaySave, readDayAgain, updateMutation])
+  }, [dayWriteStalled, queueDaySave, readDayAgain, sendDayWrite, updateMutation])
 
   // oxlint-disable-next-line react/refs -- latest-value ref (callbacks/state mirrored for stable handlers); not render output
   performSaveRef.current = performSave
@@ -549,13 +656,13 @@ export function useJournalEntry(date: string): UseJournalEntryResult {
           log.warn(`Dropped a late journal edit for ${date}: its vault closed before it arrived`)
           return
         }
-        queueDaySave(date, () => updateMutation.mutateAsync({ date, content })).catch(
-          (err: unknown) => {
-            trackRendererError('journal_pending_save_failed', err)
-            log.error(`Failed to save late changes for ${date}:`, err)
-            toast.error(savedElsewhereError(err))
-          }
-        )
+        queueDaySave(date, () =>
+          sendDayWrite(date, content, () => updateMutation.mutateAsync({ date, content }))
+        ).catch((err: unknown) => {
+          trackRendererError('journal_pending_save_failed', err)
+          log.error(`Failed to save late changes for ${date}:`, err)
+          toast.error(savedElsewhereError(err))
+        })
         return
       }
       // The editor reports the text it was handed (the day's load, an outside edit) as a change.
@@ -568,7 +675,7 @@ export function useJournalEntry(date: string): UseJournalEntryResult {
       setIsDirty(true)
       scheduleSave()
     },
-    [date, lifecycle, queueDaySave, scheduleSave, updateMutation, vaultScope]
+    [date, lifecycle, queueDaySave, scheduleSave, sendDayWrite, updateMutation, vaultScope]
   )
 
   const updateTags = useCallback(
