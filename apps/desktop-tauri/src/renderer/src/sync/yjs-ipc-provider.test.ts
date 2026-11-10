@@ -614,6 +614,25 @@ describe('YjsIpcProvider unlock', () => {
     expect(text(host.doc)).toBe('stored refused typed')
   })
 
+  it('coalesces the lock events that arrive during an open into one reopen', async () => {
+    host.readOnly = 'locked'
+    await connected()
+    await settle()
+
+    // A reopen is in flight (a folder lock above the note still holds) when 20 more events come.
+    let answer!: () => void
+    host.openGate = new Promise((resolve) => (answer = resolve))
+    locksChanged([], ['projects'])
+    await settle()
+    expect(host.opens).toHaveLength(2)
+    for (let i = 0; i < 20; i += 1) locksChanged([], ['projects'])
+    host.openGate = null
+    answer()
+    await settle(200)
+
+    expect(host.opens).toHaveLength(3)
+  })
+
   it('does not reopen a note that is not read-only, or after the teardown', async () => {
     const { provider } = await connected()
     locksChanged([])

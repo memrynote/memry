@@ -156,6 +156,8 @@ export class YjsIpcProvider extends Observable<string> {
   private readonly unheld = new Map<number, boolean>()
   /** Serialises rebinds so two ready events in a row cannot interleave handshakes. */
   private rebinding: Promise<void> | null = null
+  /** A reopen waits behind the open in flight and has not begun: it reads the newest state. */
+  private reopenQueued = false
   private readonly canRebind: (readyVaultPath: string | null | undefined) => boolean
   private readonly vaultPath: string | null
   /** Vault of the editor host main last announced ready; cleared on reset. */
@@ -343,13 +345,20 @@ export class YjsIpcProvider extends Observable<string> {
     }
   }
 
-  /** Reopens a note the host refused as locked, queued with the rebinds. */
+  /**
+   * Reopens a note the host refused as locked, queued with the rebinds. Lock events that arrive
+   * while a reopen waits join it: its open begins after them all, so it reads their newest state.
+   */
   private scheduleReopen(): void {
-    const opening = this.opening
+    if (this.reopenQueued) return
+    this.reopenQueued = true
     this.rebinding = (this.rebinding ?? Promise.resolve())
       .catch(() => {})
-      .then(() => opening?.catch(() => {}))
-      .then(() => this.reopenLocked())
+      .then(() => this.opening?.catch(() => {}))
+      .then(() => {
+        this.reopenQueued = false
+        return this.reopenLocked()
+      })
   }
 
   /**
