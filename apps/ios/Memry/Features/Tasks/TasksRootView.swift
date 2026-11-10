@@ -156,6 +156,7 @@ struct VaultTasksScope<Content: View>: View {
         content(store, failure)
             .environment(\.requestVaultSync, syncRequest)
             .environment(\.vaultSyncPasses, store?.syncPasses ?? 0)
+            .environment(\.vaultProjects, store?.projects ?? [])
             .environment(\.whiteboards, secureStore.map { CoreWhiteboardBoards(vault: vault, store: $0, executor: .shared) })
             // Pull and push on every return to the foreground, whichever tab
             // shows: a tab's own views miss scene changes while hidden. The
@@ -265,4 +266,8 @@ extension EnvironmentValues {
     /// How many sync passes have finished in this vault. A screen that shows
     /// a record or body another device edits re-reads when it changes.
     @Entry var vaultSyncPasses: Int = 0
+
+    /// The vault's projects, archived ones included, for screens outside the
+    /// Tasks tab such as a note's `project` property.
+    @Entry var vaultProjects: [ProjectItem] = []
 }
