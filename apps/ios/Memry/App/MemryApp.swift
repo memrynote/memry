@@ -31,6 +31,11 @@ final class MemryAppDelegate: NSObject, UIApplicationDelegate {
         CalendarBackgroundRefresh.register()
         TelemetryLaunch.start()
         // One-time hints (the Notes "+" hold). A failure only means no tips.
+        #if DEBUG
+        // UI tests pass `-MEMRY_HIDE_TIPS YES`: a tip's popover takes the
+        // next tap, so a test's tap would land on it on a fresh install.
+        if UserDefaults.standard.bool(forKey: "MEMRY_HIDE_TIPS") { Tips.hideAllTipsForTesting() }
+        #endif
         do {
             try Tips.configure()
         } catch {
