@@ -249,7 +249,8 @@ export function NotePage({ noteId }: NotePageProps) {
   })
   const { note, isLoading, error: noteError, refetch: refetchNote } = body.query
   // The replaced-outside-edit toast of an editor that has moved on opens the note here, with its
-  // version history (#4088). Taken once.
+  // version history (#4088). Taken once, and dropped when the note does not open: kept, it would
+  // open history on a retry or when the closed tab reopens.
   const [versionsRequested, setVersionsRequested] = useTabViewState<boolean>({
     key: VERSION_HISTORY_REQUEST_KEY,
     defaultValue: false,
@@ -257,11 +258,12 @@ export function NotePage({ noteId }: NotePageProps) {
   })
   const showDialog = dialog.show
   useEffect(() => {
-    // oxlint-disable-next-line react-you-might-not-need-an-effect/no-event-handler -- the request arrives via tab state from another surface; the effect takes it once
-    if (!versionsRequested || !note) return
-    showDialog('versionHistory')
+    /* oxlint-disable react-you-might-not-need-an-effect/no-event-handler -- the request arrives via tab state from another surface; the effect takes it once */
+    if (!versionsRequested || (!note && isLoading)) return
+    if (note) showDialog('versionHistory')
+    /* oxlint-enable react-you-might-not-need-an-effect/no-event-handler */
     setVersionsRequested(false)
-  }, [versionsRequested, note, showDialog, setVersionsRequested])
+  }, [versionsRequested, note, isLoading, showDialog, setVersionsRequested])
   // The owner locked this note or a folder above it (#2606): read-only here
   // and for every agent write path.
   const isLocked = body.locked

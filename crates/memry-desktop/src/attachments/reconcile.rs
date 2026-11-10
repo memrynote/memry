@@ -68,16 +68,18 @@ fn is_stored_name(name: &str) -> bool {
 
 /// `planAttachmentRenames`: for each stored name that left, the one that arrived with its
 /// prefix, when exactly one left and one arrived with it. Two files renamed in one change pair
-/// up (their prefixes differ); an ambiguous prefix is left alone. A pair whose extension
-/// changed is not a rename the app makes and is left alone too.
+/// up (their prefixes differ); an ambiguous prefix is left alone. As in Electron, every name
+/// with the prefix counts toward that, a name that is not a stored one too (#4122). A pair
+/// that is not two stored names, or whose extension changed, is not a rename the app makes
+/// and is left alone.
 pub fn plan_renames(previous: &BTreeSet<String>, next: &BTreeSet<String>) -> Vec<PlannedRename> {
     let left: Vec<&String> = previous
         .iter()
-        .filter(|name| !next.contains(*name) && is_stored_name(name))
+        .filter(|name| !next.contains(*name) && has_stored_prefix(name))
         .collect();
     let arrived: Vec<&String> = next
         .iter()
-        .filter(|name| !previous.contains(*name) && is_stored_name(name))
+        .filter(|name| !previous.contains(*name) && has_stored_prefix(name))
         .collect();
     let prefix = |name: &str| name[..STORED_PREFIX_LEN].to_owned();
     let mut plans = Vec::new();
@@ -86,6 +88,8 @@ pub fn plan_renames(previous: &BTreeSet<String>, next: &BTreeSet<String>) -> Vec
         let candidates: Vec<&&String> = arrived.iter().filter(|n| n.starts_with(&p)).collect();
         let sources = left.iter().filter(|n| n.starts_with(&p)).count();
         if let ([to], 1) = (candidates.as_slice(), sources)
+            && is_stored_name(from)
+            && is_stored_name(to)
             && extension(from).eq_ignore_ascii_case(extension(to))
         {
             plans.push(PlannedRename {
