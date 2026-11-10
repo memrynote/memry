@@ -77,6 +77,39 @@ describe('tabCrudReducer', () => {
     vi.unstubAllGlobals()
   })
 
+  // A note converted in place to a file viewer keeps its entity id. The note's view state (an
+  // open-history request, #4102) means nothing there: given to it, it would stay in its view
+  // state and its closed-tab snapshot.
+  it.each([
+    ['in the target group', 'g1'],
+    ['in another group', 'g2']
+  ])('focuses a tab of another type for the entity %s without its view state', (_, at) => {
+    const file = tab('doc', 'file', { entityId: 'doc-1', viewState: { zoom: 2 } })
+    const state = baseState()
+    state.tabGroups[at] = group(at, [...state.tabGroups[at].tabs, file])
+
+    const next = tabCrudReducer(
+      state,
+      openAction({
+        tab: {
+          type: 'note',
+          title: 'Doc',
+          icon: 'file-text',
+          path: '/note/doc-1',
+          entityId: 'doc-1',
+          isPinned: false,
+          isModified: false,
+          isPreview: false,
+          isDeleted: false,
+          viewState: { versionHistory: true }
+        }
+      })
+    )
+
+    expect(next.tabGroups[at].activeTabId).toBe('doc')
+    expect(next.tabGroups[at].tabs.find((t) => t.id === 'doc')?.viewState).toEqual({ zoom: 2 })
+  })
+
   it('carries viewState onto a singleton focused in another group', () => {
     // #2071: a journal tab opened from the command palette lives at
     // `/journal/<date>` with an entityId, so a reminder's `/journal` open misses

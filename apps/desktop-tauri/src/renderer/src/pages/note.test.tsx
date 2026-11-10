@@ -2518,6 +2518,26 @@ describe('NotePage', () => {
       expect(mocks.tabViewState.versionHistory).toBe(false)
     })
 
+    // Kept, the request would open history later: on a retry, or when the closed tab reopens.
+    it.each([
+      ['fails to load', { note: null, error: new Error('load failed') }],
+      ['is gone', { note: null, error: null }]
+    ])('drops the request of a note that %s', async (_, state) => {
+      Object.assign(mocks.noteState, state)
+      mocks.tabViewState = { versionHistory: true }
+      renderWithProviders(<NotePage noteId="note-1" />)
+
+      await waitFor(() => expect(mocks.tabViewState.versionHistory).toBe(false))
+    })
+
+    it('keeps the request while the note loads', () => {
+      Object.assign(mocks.noteState, { note: null, isLoading: true })
+      mocks.tabViewState = { versionHistory: true }
+      renderWithProviders(<NotePage noteId="note-1" />)
+
+      expect(mocks.tabViewState.versionHistory).toBe(true)
+    })
+
     it('tells the user when a flush lands the typing', async () => {
       renderWithProviders(<NotePage noteId="note-1" />)
       expect(await screen.findByTestId('editor-content')).toHaveTextContent('Original body')

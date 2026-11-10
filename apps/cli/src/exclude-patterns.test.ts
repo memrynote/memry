@@ -4,6 +4,8 @@ import fs from 'node:fs/promises'
 import path from 'node:path'
 import test, { type TestContext } from 'node:test'
 
+import Database from 'better-sqlite3'
+
 import { getConfigPath } from './app-core/paths.ts'
 import { runCli } from './run.ts'
 
@@ -105,4 +107,52 @@ test('update-config keeps the user excludePatterns and writes the ones it is giv
   const set = await cli(t, vaultPath, 'vault', 'update-config', '{"excludePatterns":["tmp"]}')
   assert.equal(set.code, 0, set.stderr)
   assert.deepEqual((await readConfig(vaultPath)).excludePatterns, ['tmp'])
+})
+
+/** The Tauri desktop's kept list (#4119): `meta` in `<vault>/.memry/core/data.db`. */
+async function keepDesktopPatterns(vaultPath: string, value: string): Promise<void> {
+  await fs.mkdir(path.join(vaultPath, '.memry', 'core'), { recursive: true })
+  const db = new Database(path.join(vaultPath, '.memry', 'core', 'data.db'))
+  db.pragma('journal_mode = WAL')
+  db.exec('CREATE TABLE meta (key TEXT PRIMARY KEY, value TEXT NOT NULL)')
+  db.prepare('INSERT INTO meta (key, value) VALUES (?, ?)').run('desktop.exclude_patterns', value)
+  db.close()
+}
+
+const listedPaths = (stdout: string[]): string[] =>
+  (JSON.parse(stdout.at(-1) ?? '[]') as Array<{ path: string }>).map((f) => f.path)
+
+test('folders list hides the folders the desktop kept when config.json has no excludePatterns', async (t) => {
+  const vaultPath = await makeVault('{"journalFolder":"journal"}', ['private', 'notes', '.git'])
+  await keepDesktopPatterns(vaultPath, '["private"]')
+
+  const listed = await cli(t, vaultPath, 'folders', 'list')
+
+  assert.equal(listed.code, 0, listed.stderr)
+  const paths = listedPaths(listed.stdout)
+  assert.ok(!paths.includes('private') && paths.includes('notes'), JSON.stringify(paths))
+  assert.ok(!paths.includes('.git'), JSON.stringify(paths))
+  assert.ok(!('excludePatterns' in (await readConfig(vaultPath))))
+})
+
+test('a listed excludePatterns replaces the desktop kept list, as on desktop', async (t) => {
+  const vaultPath = await makeVault('{"excludePatterns":["tmp"]}', ['private', 'tmp'])
+  await keepDesktopPatterns(vaultPath, '["private"]')
+
+  const listed = await cli(t, vaultPath, 'folders', 'list')
+
+  assert.equal(listed.code, 0, listed.stderr)
+  const paths = listedPaths(listed.stdout)
+  assert.ok(paths.includes('private') && !paths.includes('tmp'), JSON.stringify(paths))
+})
+
+test('folders list fails safe when the desktop kept list cannot be read', async (t) => {
+  const vaultPath = await makeVault('{"journalFolder":"journal"}', ['private', 'notes'])
+  await keepDesktopPatterns(vaultPath, '{ nope')
+
+  const listed = await cli(t, vaultPath, 'folders', 'list')
+
+  assert.equal(listed.code, 1, listed.stdout.join('\n'))
+  assert.match(listed.stderr, /core\/data\.db/)
+  assert.equal((await cli(t, vaultPath, 'vault', 'config')).code, 0)
 })

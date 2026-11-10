@@ -7,7 +7,8 @@ import {
   type Locale
 } from '@memry/contracts/locale-api'
 
-import { getConfigPath, getMemryDir } from './paths.ts'
+import { getConfigPath, getMemryDir, readVaultConfig } from './paths.ts'
+import { writeFileAtomic } from './write-file-atomic.ts'
 import type { SettingsService } from '@memry/app-core/settings'
 
 export interface LocaleService {
@@ -23,16 +24,16 @@ export function createLocaleService({
   vaultPath: string
   settings: SettingsService
 }): LocaleService {
-  async function writePortablePreference(locale: Locale): Promise<void> {
-    const configPath = getConfigPath(vaultPath)
-    let config: Record<string, unknown> = {}
-    try {
-      // oxlint-disable-next-line typescript/no-unsafe-type-assertion -- untyped JSON or driver result; shape fixed by the producer, a runtime parser would change accepted input
-      config = JSON.parse(await fs.readFile(configPath, 'utf-8')) as Record<string, unknown>
-    } catch {
-      config = {}
+  /**
+   * The config with `preferences.language` set. Refuses an unreadable config.json before
+   * anything changes: rewriting it would lose the user's settings.
+   */
+  async function withPortablePreference(locale: Locale): Promise<Record<string, unknown>> {
+    const stored = await readVaultConfig(getConfigPath(vaultPath))
+    if (stored.kind === 'unreadable') {
+      throw new Error(`${stored.reason}; the locale is not changed. Fix the file and retry.`)
     }
-
+    const config = stored.value
     const preferences =
       config.preferences &&
       typeof config.preferences === 'object' &&
@@ -40,13 +41,7 @@ export function createLocaleService({
         ? // oxlint-disable-next-line typescript/no-unsafe-type-assertion -- boundary value (JSON, SQL row or test double) whose shape the producer fixes
           (config.preferences as Record<string, unknown>)
         : {}
-
-    await fs.mkdir(getMemryDir(vaultPath), { recursive: true })
-    await fs.writeFile(
-      configPath,
-      `${JSON.stringify({ ...config, preferences: { ...preferences, language: locale } }, null, 2)}\n`,
-      'utf-8'
-    )
+    return { ...config, preferences: { ...preferences, language: locale } }
   }
 
   return {
@@ -58,8 +53,15 @@ export function createLocaleService({
 
     async set(candidate) {
       const locale = LocaleSchema.parse(candidate)
+      const config = await withPortablePreference(locale)
+      // The file first: a failed write leaves the settings db and the file agreeing.
+      await fs.mkdir(getMemryDir(vaultPath), { recursive: true })
+      await writeFileAtomic(
+        vaultPath,
+        getConfigPath(vaultPath),
+        `${JSON.stringify(config, null, 2)}\n`
+      )
       await settings.setGroup('general', { language: locale })
-      await writePortablePreference(locale)
       return { locale }
     },
 

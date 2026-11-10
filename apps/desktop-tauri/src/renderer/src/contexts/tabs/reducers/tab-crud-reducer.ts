@@ -236,7 +236,9 @@ export function tabCrudReducer(state: TabSystemState, action: CrudAction): TabSy
         }
       }
 
-      // Per-group entityId dedup
+      // Per-group entityId dedup. The entity alone picks the tab (a note converted in place to a
+      // file viewer keeps its id, see `isSameDestination`), but view state is per type: it goes
+      // only to a tab of the type it was written for.
       if (!forceNew && tab.entityId) {
         const existingInGroup = findTabByEntityIdInGroup(targetGroup, tab.entityId)
         if (existingInGroup) {
@@ -246,9 +248,10 @@ export function tabCrudReducer(state: TabSystemState, action: CrudAction): TabSy
                   ...t,
                   isPreview: false,
                   lastAccessedAt: Date.now(),
-                  ...(tab.viewState && {
-                    viewState: { ...t.viewState, ...tab.viewState }
-                  })
+                  ...(tab.viewState &&
+                    t.type === tab.type && {
+                      viewState: { ...t.viewState, ...tab.viewState }
+                    })
                 }
               : t
           )
@@ -274,9 +277,10 @@ export function tabCrudReducer(state: TabSystemState, action: CrudAction): TabSy
                     ...t,
                     isPreview: false,
                     lastAccessedAt: Date.now(),
-                    ...(tab.viewState && {
-                      viewState: { ...t.viewState, ...tab.viewState }
-                    })
+                    ...(tab.viewState &&
+                      t.type === tab.type && {
+                        viewState: { ...t.viewState, ...tab.viewState }
+                      })
                   }
                 : t
             )
