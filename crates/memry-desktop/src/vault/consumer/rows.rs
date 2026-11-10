@@ -21,7 +21,7 @@
 //! (`tests::note_files_is_written_only_through_the_lane`).
 
 use std::sync::atomic::{AtomicU64, Ordering};
-use std::sync::{Arc, Mutex, MutexGuard};
+use std::sync::{Arc, Mutex, MutexGuard, PoisonError, Weak};
 use std::time::{SystemTime, UNIX_EPOCH};
 
 use memry_core::api::errors::StorageError;
@@ -82,6 +82,11 @@ pub struct RowOwner {
     line: Line,
     applied: broadcast::Sender<Applied>,
     sessions: AtomicU64,
+    /// The vault whose consumer's walk ended complete, with every folder listed, and whose files
+    /// it found all have a row: none failed, or each one's retry landed. Cleared when a consumer
+    /// starts, so an exclude pattern's restart walks again first. Apart from `state`, so a reader
+    /// does not wait for the lane.
+    walked: Mutex<Weak<Vault>>,
 }
 
 impl RowOwner {
@@ -91,6 +96,7 @@ impl RowOwner {
             line: Line::default(),
             applied: broadcast::channel(APPLIED_CAPACITY).0,
             sessions: AtomicU64::new(0),
+            walked: Mutex::new(Weak::new()),
         })
     }
 
@@ -135,6 +141,14 @@ impl RowOwner {
         }
     }
 
+    /// Whether the walk of `vault`, the handle of the open being asked about, gave every file it
+    /// found a row (`walked`). Until then a file on disk may have no row, so the rows are not the
+    /// vault. A file written after the walk and not yet reported by the watcher is still unseen.
+    pub fn walked(&self, vault: &Arc<Vault>) -> bool {
+        let walked = self.walked.lock().unwrap_or_else(PoisonError::into_inner);
+        std::ptr::eq(walked.as_ptr(), Arc::as_ptr(vault))
+    }
+
     fn lock(&self) -> MutexGuard<'_, Option<RowState>> {
         self.state.lock().unwrap_or_else(|e| e.into_inner())
     }
@@ -149,6 +163,7 @@ impl RowOwner {
             guard,
             _turn: turn,
             applied: &self.applied,
+            walked: &self.walked,
         })
     }
 
@@ -249,6 +264,7 @@ pub(crate) struct Lane<'a> {
     /// Dropped after `guard`: the next in line takes the rows once they are free.
     _turn: Turn<'a>,
     applied: &'a broadcast::Sender<Applied>,
+    walked: &'a Mutex<Weak<Vault>>,
 }
 
 impl Lane<'_> {
@@ -503,6 +519,15 @@ impl Lane<'_> {
         state.files.remove(note_id)?;
         state.index.remove_note(note_id);
         Ok(())
+    }
+
+    /// Records whether every file the consumer's walk found has a row ([`RowOwner::walked`]).
+    pub(crate) fn set_walked(&self, walked: bool) {
+        *self.walked.lock().unwrap_or_else(PoisonError::into_inner) = if walked {
+            Arc::downgrade(&self.state().vault)
+        } else {
+            Weak::new()
+        };
     }
 
     pub(crate) fn publish(&self, fact: Applied) {

@@ -70,6 +70,7 @@ pub fn builder() -> Builder<Wry> {
             crate::commands::attachment_sources::notes_insert_existing_attachment::<Wry>,
             crate::commands::attachment_sources::notes_list_vault_attachments::<Wry>,
             crate::commands::attachments::notes_attachment_rename::<Wry>,
+            crate::commands::attachments::notes_delete_attachment::<Wry>,
             crate::commands::attachments::notes_upload_attachment_abort::<Wry>,
             crate::commands::attachments::notes_upload_attachment_begin::<Wry>,
             crate::commands::folders::notes_create_folder::<Wry>,

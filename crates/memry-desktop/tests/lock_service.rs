@@ -374,6 +374,7 @@ pub(crate) fn guarded(files: &[(&str, &str)]) -> (Env, Arc<dyn SecureStore>) {
     NoteIndex::new(e.tier.clone(), |_| {}, |_| {}, |_| {}).register(&e.session);
     e.open();
     e.facts_until(indexed);
+    e.after_reconcile();
     (e, kept.expect("the store"))
 }
 
@@ -381,6 +382,7 @@ pub(crate) fn reopen(e: &mut Env) {
     e.close();
     e.open();
     e.facts_until(indexed);
+    e.after_reconcile();
 }
 
 #[test]
