@@ -12,7 +12,8 @@ import {
   events,
   type GetVaultsResponse as WireVaultsResponse,
   type SelectVaultResponse as WireSelectResponse,
-  type VaultInfo as WireVaultInfo
+  type VaultInfo as WireVaultInfo,
+  type VaultNotice
 } from '../../../generated/bindings'
 import { createLogger } from '../lib/logger'
 
@@ -250,6 +251,35 @@ export function onVaultStatusChanged(callback: (status: VaultStatus) => void): (
       void readStatus(callback)
     }
   )
+}
+
+/**
+ * Subscribe to the open vault's notices (`vault_notices_list`). The list is read once the
+ * subscription is registered and again after each change, so a window that mounts after the
+ * open still gets it; an answer older than a later one is dropped.
+ * Returns unsubscribe function.
+ */
+export function onVaultNotices(callback: (notices: VaultNotice[]) => void): () => void {
+  let asked = 0
+  let closed = false
+  const read = async (): Promise<void> => {
+    const ask = ++asked
+    try {
+      const notices = await commands.vaultNoticesList()
+      if (ask === asked && !closed) callback(notices)
+    } catch (error) {
+      log.warn('vault notices read failed', error)
+    }
+  }
+  const unsubscribe = subscribe(
+    events.vaultNoticesChangedEvent,
+    () => void read(),
+    () => void read()
+  )
+  return () => {
+    closed = true
+    unsubscribe()
+  }
 }
 
 /**

@@ -1659,5 +1659,14 @@
       "agentModel": "Default",
       "date": "13 Oktober"
     }
+  },
+  "vaultNotice": {
+    "configUnreadable": "Memry tidak dapat membaca pengaturan brankas ini",
+    "configUnreadableHint": "Sampai .memry/config.json diperbaiki, Memry tidak dapat menjadikan file sebagai catatan atau mengikuti perpindahannya. Perbaiki file tersebut, lalu mulai ulang Memry. Catatan Anda aman.",
+    "watchLimit": "Perubahan dari aplikasi lain muncul terlambat",
+    "watchLimitHint": "Linux mengizinkan terlalu sedikit pemantauan file untuk brankas ini, jadi Memry hanya melihat perubahan dari luar saat memindai ulang. Jalankan perintah ini, lalu mulai ulang Memry:",
+    "copyCommand": "Salin perintah",
+    "commandCopied": "Perintah disalin. Tempelkan ke terminal.",
+    "copyFailed": "Tidak dapat menyalin perintah. Ketik perintah dari pemberitahuan ini."
   }
 }

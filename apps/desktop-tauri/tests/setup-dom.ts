@@ -125,6 +125,8 @@ vi.mock('../src/generated/bindings', () => {
       vaultGetDefaultParent: () => vault().getDefaultParent(),
       vaultList: () => vault().getAll(),
       vaultGetStatus: () => vault().getStatus().then(revised),
+      // The vault notices (hooks/use-vault-notices.tsx): none; its tests mock the bindings.
+      vaultNoticesList: () => Promise.resolve([]),
       vaultClose: () => vault().close(),
       vaultSwitch: (path: string) => vault().switch(path),
       vaultRemove: (path: string) => vault().remove(path),
@@ -383,6 +385,7 @@ vi.mock('../src/generated/bindings', () => {
       ),
       // The icon library (lib/custom-icons-store.ts) refetches on it; its tests mock the service.
       customIconsUpdatedEvent: { listen: async () => () => undefined },
+      vaultNoticesChangedEvent: { listen: async () => () => undefined },
       journalEntryCreatedEvent: event(() => api().onJournalEntryCreated),
       journalEntryUpdatedEvent: event(() => api().onJournalEntryUpdated),
       journalEntryDeletedEvent: event(() => api().onJournalEntryDeleted),

@@ -1659,5 +1659,14 @@
       "agentModel": "Zadano",
       "date": "13. listopada"
     }
+  },
+  "vaultNotice": {
+    "configUnreadable": "Memry ne može pročitati postavke ovog trezora",
+    "configUnreadableHint": "Dok se .memry/config.json ne popravi, Memry ne može pretvarati datoteke u bilješke ni pratiti premještanja. Popravite datoteku, a zatim ponovno pokrenite Memry. Vaše bilješke su sigurne.",
+    "watchLimit": "Promjene iz drugih aplikacija pojavljuju se sa zakašnjenjem",
+    "watchLimitHint": "Linux dopušta premalo praćenja datoteka za ovaj trezor, pa Memry vidi vanjske promjene tek kad ponovno skenira. Pokrenite ovu naredbu, a zatim ponovno pokrenite Memry:",
+    "copyCommand": "Kopiraj naredbu",
+    "commandCopied": "Naredba je kopirana. Zalijepite je u terminal.",
+    "copyFailed": "Naredbu nije moguće kopirati. Prepišite je iz obavijesti."
   }
 }

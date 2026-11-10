@@ -1659,5 +1659,14 @@
       "agentModel": "Standard",
       "date": "13. Oktober"
     }
+  },
+  "vaultNotice": {
+    "configUnreadable": "Memry kann die Einstellungen dieses Tresors nicht lesen",
+    "configUnreadableHint": "Solange .memry/config.json nicht repariert ist, kann Memry keine Dateien zu Notizen machen und Verschiebungen nicht verfolgen. Repariere die Datei und starte Memry dann neu. Deine Notizen sind sicher.",
+    "watchLimit": "Änderungen aus anderen Apps erscheinen verzögert",
+    "watchLimitHint": "Linux erlaubt für diesen Tresor zu wenige Dateiüberwachungen, daher sieht Memry Änderungen von außen nur beim erneuten Scannen. Führe diesen Befehl aus und starte Memry dann neu:",
+    "copyCommand": "Befehl kopieren",
+    "commandCopied": "Befehl kopiert. Füge ihn in ein Terminal ein.",
+    "copyFailed": "Der Befehl konnte nicht kopiert werden. Tippe ihn stattdessen aus der Meldung ab."
   }
 }

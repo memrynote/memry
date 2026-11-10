@@ -274,6 +274,8 @@ mod vault_exclude_read_only;
 mod vault_init;
 #[path = "vault_locks_app_edit.rs"]
 mod vault_locks_app_edit;
+#[path = "vault_notices.rs"]
+mod vault_notices;
 #[path = "vault_pairing.rs"]
 mod vault_pairing;
 #[path = "vault_paths.rs"]

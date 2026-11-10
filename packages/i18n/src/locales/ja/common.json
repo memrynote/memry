@@ -1659,5 +1659,14 @@
       "agentModel": "既定",
       "date": "10月13日"
     }
+  },
+  "vaultNotice": {
+    "configUnreadable": "Memry がこの保管庫の設定を読み込めません",
+    "configUnreadableHint": ".memry/config.json が修正されるまで、Memry はファイルをノートにしたり、移動を追跡したりできません。ファイルを修正してから、Memry を再起動してください。ノートは安全です。",
+    "watchLimit": "他のアプリでの変更の反映が遅れます",
+    "watchLimitHint": "Linux がこの保管庫に許可しているファイル監視の数が少なすぎるため、Memry は再スキャン時にしか外部の変更を検出できません。次のコマンドを実行してから、Memry を再起動してください:",
+    "copyCommand": "コマンドをコピー",
+    "commandCopied": "コマンドをコピーしました。ターミナルに貼り付けてください。",
+    "copyFailed": "コマンドをコピーできませんでした。通知を見て入力してください。"
   }
 }

@@ -1659,5 +1659,14 @@
       "agentModel": "Standard",
       "date": "13. oktober"
     }
+  },
+  "vaultNotice": {
+    "configUnreadable": "Memry kan ikke lese innstillingene for dette hvelvet",
+    "configUnreadableHint": "Til .memry/config.json er rettet, kan ikke Memry gjøre filer om til notater eller følge flyttinger. Rett filen, og start deretter Memry på nytt. Notatene dine er trygge.",
+    "watchLimit": "Endringer fra andre apper vises sent",
+    "watchLimitHint": "Linux tillater for få filovervåkinger for dette hvelvet, så Memry ser bare endringer utenfra når den skanner på nytt. Kjør denne kommandoen, og start deretter Memry på nytt:",
+    "copyCommand": "Kopier kommando",
+    "commandCopied": "Kommandoen er kopiert. Lim den inn i en terminal.",
+    "copyFailed": "Kunne ikke kopiere kommandoen. Skriv den av fra varselet i stedet."
   }
 }

@@ -1659,5 +1659,14 @@
       "agentModel": "Implicit",
       "date": "13 octombrie"
     }
+  },
+  "vaultNotice": {
+    "configUnreadable": "Memry nu poate citi setările acestui seif",
+    "configUnreadableHint": "Până când .memry/config.json nu este reparat, Memry nu poate transforma fișierele în note și nici nu poate urmări mutările. Repară fișierul, apoi repornește Memry. Notele tale sunt în siguranță.",
+    "watchLimit": "Modificările din alte aplicații apar cu întârziere",
+    "watchLimitHint": "Linux permite prea puține monitorizări de fișiere pentru acest seif, așa că Memry vede modificările din afară doar când scanează din nou. Rulează această comandă, apoi repornește Memry:",
+    "copyCommand": "Copiază comanda",
+    "commandCopied": "Comanda a fost copiată. Lipește-o într-un terminal.",
+    "copyFailed": "Comanda nu a putut fi copiată. Tasteaz-o din notificare."
   }
 }

@@ -1659,5 +1659,14 @@
       "agentModel": "Standaard",
       "date": "13 oktober"
     }
+  },
+  "vaultNotice": {
+    "configUnreadable": "Memry kan de instellingen van deze kluis niet lezen",
+    "configUnreadableHint": "Zolang .memry/config.json niet is hersteld, kan Memry geen notities van bestanden maken of verplaatsingen volgen. Herstel het bestand en start Memry daarna opnieuw. Je notities zijn veilig.",
+    "watchLimit": "Wijzigingen uit andere apps komen later binnen",
+    "watchLimitHint": "Linux staat te weinig bestandsbewakingen toe voor deze kluis, dus Memry ziet wijzigingen van buitenaf alleen bij een nieuwe scan. Voer deze opdracht uit en start Memry daarna opnieuw:",
+    "copyCommand": "Opdracht kopiëren",
+    "commandCopied": "Opdracht gekopieerd. Plak hem in een terminal.",
+    "copyFailed": "Kan de opdracht niet kopiëren. Typ hem over uit de melding."
   }
 }

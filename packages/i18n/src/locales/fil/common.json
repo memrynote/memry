@@ -1659,5 +1659,14 @@
       "agentModel": "Default",
       "date": "Oktubre 13"
     }
+  },
+  "vaultNotice": {
+    "configUnreadable": "Hindi mabasa ng Memry ang mga setting ng vault na ito",
+    "configUnreadableHint": "Hangga't hindi naaayos ang .memry/config.json, hindi magagawang tala ng Memry ang mga file o masusundan ang mga paglipat. Ayusin ang file, pagkatapos ay i-restart ang Memry. Ligtas ang iyong mga tala.",
+    "watchLimit": "Huling lumalabas ang mga pagbabago mula sa ibang app",
+    "watchLimitHint": "Masyadong kaunti ang pinapayagan ng Linux na file watch para sa vault na ito, kaya nakikita lang ng Memry ang mga pagbabago mula sa labas kapag nag-rescan ito. Patakbuhin ang command na ito, pagkatapos ay i-restart ang Memry:",
+    "copyCommand": "Kopyahin ang command",
+    "commandCopied": "Nakopya ang command. I-paste ito sa isang terminal.",
+    "copyFailed": "Hindi makopya ang command. I-type na lang ito mula sa abiso."
   }
 }
