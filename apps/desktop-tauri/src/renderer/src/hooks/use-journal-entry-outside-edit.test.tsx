@@ -517,13 +517,14 @@ describe('useJournalEntry: outside edits of the open day', () => {
 
     it('sends typing made during the save running', async () => {
       const hook = await mount()
-      holdNextSave()
+      const running = holdNextSave()
       await startSave(hook.result, 'Typed.')
       act(() => {
         hook.result.current.updateContent('Typed. And more.')
       })
 
       await openDay(hook, NEXT)
+      await running.finish()
 
       expect(updateEntry).toHaveBeenLastCalledWith({ date: DAY, content: 'Typed. And more.' })
       expect(files[DAY]).toBe('Typed. And more.')
@@ -544,11 +545,12 @@ describe('useJournalEntry: outside edits of the open day', () => {
       expect(files[NEXT]).toBe('Same.')
     })
 
-    // Typing made during a save goes with the switch's own save. Commands run concurrently: the
+    // Typing made during a save goes with the switch's own save. Commands run concurrently: sent
+    // at once, it could land before the first, which would leave the older text in the file; the
     // read after the first save could answer the file from before the second wrote, put the
     // editor back on it, and the next save would write that over the typing, the app's own
     // text, of which the core keeps no version (#4088).
-    it('reads the day it came back to once the save the switch sent answered', async () => {
+    it('sends the switch save once the save running answered, and reads the day after it', async () => {
       const hook = await mount()
       const first = holdNextSave()
       await startSave(hook.result, 'Typed.')
@@ -557,12 +559,13 @@ describe('useJournalEntry: outside edits of the open day', () => {
       })
       const sent = holdNextSave()
       await openDay(hook, NEXT)
-      expect(savesOf(DAY)).toBe(2)
+      expect(savesOf(DAY)).toBe(1)
       await openDay(hook, DAY)
 
       files[DAY] = 'Typed.'
       await first.finish('Typed.')
 
+      expect(savesOf(DAY)).toBe(2)
       expect(hook.result.current.externalUpdateCount).toBe(0)
       files[DAY] = 'Typed. More.'
       await sent.finish('Typed. More.')
@@ -572,6 +575,38 @@ describe('useJournalEntry: outside edits of the open day', () => {
       })
       expect(hook.result.current.externalUpdateCount).toBe(0)
       expect(hook.result.current.entry?.content).toBe('Typed. More.')
+    })
+
+    // The editor's teardown reports its last edit after the page left the day (#1900), while the
+    // day's save may still run: sent at once, the older save could land last and stay in the
+    // file, and the read of the day reopened could answer the file from before it (#4088).
+    it("sends the editor's late report of the day after the day's save, and reads after it", async () => {
+      const hook = await mount()
+      const first = holdNextSave()
+      await startSave(hook.result, 'Typed.')
+      const reportLate = hook.result.current.updateContent
+      await openDay(hook, NEXT)
+      const late = holdNextSave()
+      act(() => {
+        reportLate('Typed. Late.')
+      })
+      await settle()
+      expect(savesOf(DAY)).toBe(1)
+      await openDay(hook, DAY)
+
+      await first.finish('Typed.')
+
+      expect(updateEntry).toHaveBeenLastCalledWith({ date: DAY, content: 'Typed. Late.' })
+      expect(hook.result.current.externalUpdateCount).toBe(0)
+      files[DAY] = 'Typed. Late.'
+      await late.finish('Typed. Late.')
+      await act(async () => {
+        await vi.advanceTimersByTimeAsync(0)
+      })
+      // The editor reopened on the text the switch saved; the late report reaches it as the file's.
+      expect(savesOf(DAY)).toBe(2)
+      expect(hook.result.current.externalUpdateCount).toBe(1)
+      expect(hook.result.current.entry?.content).toBe('Typed. Late.')
     })
 
     it('sends the typing again when the save running fails', async () => {

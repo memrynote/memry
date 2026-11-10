@@ -170,9 +170,10 @@ export function useJournalEntry(date: string): UseJournalEntryResult {
   // that began before either is older than what the day holds. The save's own event is not
   // counted; it comes with the save's reply, in either order.
   const dayChangesRef = useRef(0)
-  // The save a date switch sends for the day it left, until it answers: the read made when the
-  // page comes back to that day waits for it, or it can answer the file from before it (#4088).
-  const switchSavesRef = useRef(new Map<string, Promise<unknown>>())
+  // Each day's last write, until it answers. Commands run concurrently, so a write sent before
+  // the one ahead of it answered could land first, and the older text would stay in the file;
+  // a read of the day sent before it answered could answer the file from before it (#4088).
+  const daySavesRef = useRef(new Map<string, Promise<unknown>>())
   const [isSeedingFromTemplate, setIsSeedingFromTemplate] = useState(false)
 
   useEffect(() => {
@@ -190,6 +191,20 @@ export function useJournalEntry(date: string): UseJournalEntryResult {
     setSaveError(null)
   }
 
+  // Sends a write of `day` once the day's writes before it answered: the day's saves, the save a
+  // date switch sends for the day it left, and the editor's late report of a day it left.
+  const queueDaySave = useCallback(<T>(day: string, write: () => Promise<T>): Promise<T> => {
+    const saves = daySavesRef.current
+    const sent = (saves.get(day) ?? Promise.resolve()).then(write)
+    const done: Promise<unknown> = sent
+      .catch(() => undefined)
+      .finally(() => {
+        if (saves.get(day) === done) saves.delete(day)
+      })
+    saves.set(day, done)
+    return sent
+  }, [])
+
   // Save pending content for old date before switching, and update tracking refs.
   useEffect(() => {
     const oldDate = previousDateRef.current
@@ -204,31 +219,27 @@ export function useJournalEntry(date: string): UseJournalEntryResult {
     if (oldDate && oldDate !== date && (pendingContent !== null || pendingTags !== null)) {
       const saveInput: JournalSaveInput = { date: oldDate, ...pendingTags }
       if (pendingContent !== null) saveInput.content = pendingContent
-      const send = (): Promise<unknown> =>
-        journalService.updateEntry(saveInput).catch((err: unknown) => {
-          // The user has already navigated away, so the day's save error is not on screen.
-          trackRendererError('journal_pending_save_failed', err)
-          log.error(`Failed to save pending changes for ${oldDate}:`, err)
-          toast.error(savedElsewhereError(err))
-        })
-
       // The save running may already send these edits: the unmount flush of the save registry
       // runs before this effect and starts one. A second write of the same text could go over
       // an outside edit that landed between the two; it is sent again only if that save fails.
       const saving = savingRef.current
       const running = inFlightSaveRef.current
-      const sent =
+      const sendsThese =
         running &&
         saving?.date === oldDate &&
         saving.content === pendingContent &&
         saving.tags === pendingTags
-          ? running.then((saved) => (saved ? undefined : send()))
-          : send()
-      const switchSaves = switchSavesRef.current
-      const tracked = sent.finally(() => {
-        if (switchSaves.get(oldDate) === tracked) switchSaves.delete(oldDate)
+          ? running
+          : null
+      queueDaySave(oldDate, async () => {
+        if (sendsThese && (await sendsThese)) return undefined
+        return journalService.updateEntry(saveInput)
+      }).catch((err: unknown) => {
+        // The user has already navigated away, so the day's save error is not on screen.
+        trackRendererError('journal_pending_save_failed', err)
+        log.error(`Failed to save pending changes for ${oldDate}:`, err)
+        toast.error(savedElsewhereError(err))
       })
-      switchSaves.set(oldDate, tracked)
       // The day reopened before the save's reply opens on these edits, not on the cache's
       // older text, which typing then would save over.
       if (pendingContent !== null) {
@@ -243,7 +254,7 @@ export function useJournalEntry(date: string): UseJournalEntryResult {
     pendingContentRef.current = null
     pendingTagsRef.current = null
     editorTextRef.current = null
-  }, [date, queryClient])
+  }, [date, queryClient, queueDaySave])
 
   const {
     data: entry = null,
@@ -380,7 +391,7 @@ export function useJournalEntry(date: string): UseJournalEntryResult {
   // edit's event does. The read is dropped when the day holds typing not saved yet by the time it
   // lands, or when a save or an outside edit came since it began: either is newer than it.
   // Callers wait for a save of the day that is running (`outsideDuringSaveRef`); the read waits
-  // for the save a date switch sent for the day.
+  // for every write of the day sent before it (`queueDaySave`).
   const readDayAgain = useCallback(
     (day: string) => {
       const read = (open: string): void => {
@@ -408,8 +419,8 @@ export function useJournalEntry(date: string): UseJournalEntryResult {
             log.warn(`Failed to read ${open} again after an outside change:`, err)
           })
       }
-      const switchSave = switchSavesRef.current.get(day)
-      if (switchSave) void switchSave.then(() => read(day))
+      const writes = daySavesRef.current.get(day)
+      if (writes) void writes.then(() => read(day))
       else read(day)
     },
     [queryClient]
@@ -438,7 +449,7 @@ export function useJournalEntry(date: string): UseJournalEntryResult {
       const updateInput: JournalSaveInput = { date: currentDate, ...tags }
       if (content !== null) updateInput.content = content
 
-      await updateMutation.mutateAsync(updateInput)
+      await queueDaySave(currentDate, () => updateMutation.mutateAsync(updateInput))
       saved = true
 
       if (currentDateRef.current === currentDate) {
@@ -480,7 +491,7 @@ export function useJournalEntry(date: string): UseJournalEntryResult {
       if (told !== null) readDayAgain(told)
     }
     // oxlint-disable-next-line react/memo-dependencies -- readDayAgain changes only with queryClient; listed to satisfy hooks/exhaustive-deps
-  }, [readDayAgain, updateMutation])
+  }, [queueDaySave, readDayAgain, updateMutation])
 
   // oxlint-disable-next-line react/refs -- latest-value ref (callbacks/state mirrored for stable handlers); not render output
   performSaveRef.current = performSave
@@ -506,11 +517,13 @@ export function useJournalEntry(date: string): UseJournalEntryResult {
           log.warn(`Dropped a late journal edit for ${date}: its vault closed before it arrived`)
           return
         }
-        updateMutation.mutateAsync({ date, content }).catch((err: unknown) => {
-          trackRendererError('journal_pending_save_failed', err)
-          log.error(`Failed to save late changes for ${date}:`, err)
-          toast.error(savedElsewhereError(err))
-        })
+        queueDaySave(date, () => updateMutation.mutateAsync({ date, content })).catch(
+          (err: unknown) => {
+            trackRendererError('journal_pending_save_failed', err)
+            log.error(`Failed to save late changes for ${date}:`, err)
+            toast.error(savedElsewhereError(err))
+          }
+        )
         return
       }
       // The editor reports the text it was handed (the day's load, an outside edit) as a change.
@@ -523,7 +536,7 @@ export function useJournalEntry(date: string): UseJournalEntryResult {
       setIsDirty(true)
       scheduleSave()
     },
-    [date, lifecycle, scheduleSave, updateMutation, vaultScope]
+    [date, lifecycle, queueDaySave, scheduleSave, updateMutation, vaultScope]
   )
 
   const updateTags = useCallback(
