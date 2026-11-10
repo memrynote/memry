@@ -1659,5 +1659,14 @@
       "agentModel": "Výchozí",
       "date": "13. října"
     }
+  },
+  "vaultNotice": {
+    "configUnreadable": "Memry nemůže přečíst nastavení tohoto trezoru",
+    "configUnreadableHint": "Dokud nebude soubor .memry/config.json opraven, Memry nemůže ze souborů vytvářet poznámky ani sledovat jejich přesuny. Opravte soubor a pak Memry restartujte. Vaše poznámky jsou v bezpečí.",
+    "watchLimit": "Změny z jiných aplikací se zobrazují se zpožděním",
+    "watchLimitHint": "Linux povoluje pro tento trezor příliš málo sledování souborů, takže Memry vidí vnější změny jen při novém prohledání. Spusťte tento příkaz a pak Memry restartujte:",
+    "copyCommand": "Kopírovat příkaz",
+    "commandCopied": "Příkaz zkopírován. Vložte ho do terminálu.",
+    "copyFailed": "Příkaz se nepodařilo zkopírovat. Opište ho z oznámení."
   }
 }

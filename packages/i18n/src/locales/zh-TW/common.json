@@ -1659,5 +1659,14 @@
       "agentModel": "預設",
       "date": "10月13日"
     }
+  },
+  "vaultNotice": {
+    "configUnreadable": "Memry 無法讀取此儲存庫的設定",
+    "configUnreadableHint": "在 .memry/config.json 修正之前，Memry 無法將檔案變成筆記，也無法追蹤移動。請修正該檔案，然後重新啟動 Memry。你的筆記是安全的。",
+    "watchLimit": "其他應用程式中的變更顯示較慢",
+    "watchLimitHint": "Linux 允許此儲存庫使用的檔案監看數量太少，因此 Memry 只有在重新掃描時才會看到外部變更。請執行此指令，然後重新啟動 Memry：",
+    "copyCommand": "複製指令",
+    "commandCopied": "已複製指令。請貼到終端機中。",
+    "copyFailed": "無法複製指令。請依照通知手動輸入。"
   }
 }

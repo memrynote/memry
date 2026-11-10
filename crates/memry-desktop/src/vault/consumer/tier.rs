@@ -22,7 +22,7 @@ use crate::shell::shutdown::{StepFn, writeback_flush_timeout};
 use crate::vault::activity::ActivityLog;
 use crate::vault::app_edit::OwnFiles;
 use crate::vault::app_move::{finish_interrupted, follow_interrupted};
-use crate::vault::config::read_vault_config;
+use crate::vault::config::applied_exclude_patterns;
 use crate::vault::config::settings::JournalFollow;
 use crate::vault::journal_rename::{JournalVault, finish_journal_change};
 #[cfg(test)]
@@ -448,7 +448,7 @@ impl VaultTier {
         (echo, writeback): (&Arc<EchoGuard>, &Arc<WriteBack>),
         after_walk: AfterWalk,
     ) -> Result<(VaultWatcher, Consumer), String> {
-        let exclude = read_vault_config(&vault.path).exclude_patterns;
+        let exclude = applied_exclude_patterns(&vault.path, &vault.vault);
         // The files an exclude pattern covers are the ones no write of the app reaches
         // (`ExcludedPaths`): the note stays listed, read-only, as Electron's index drops it.
         // Hidden names and the root attachments folder the watcher skips too stay writable: the

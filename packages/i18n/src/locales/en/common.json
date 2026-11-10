@@ -1659,5 +1659,14 @@
       "agentModel": "Default",
       "date": "October 13"
     }
+  },
+  "vaultNotice": {
+    "configUnreadable": "Memry can't read this vault's settings",
+    "configUnreadableHint": "Until .memry/config.json is fixed, Memry can't turn files into notes or follow moves. Fix the file, then restart Memry. Your notes are safe.",
+    "watchLimit": "Changes from other apps show up late",
+    "watchLimitHint": "Linux allows too few file watches for this vault, so Memry sees outside changes only when it rescans. Run this command, then restart Memry:",
+    "copyCommand": "Copy command",
+    "commandCopied": "Command copied. Paste it into a terminal.",
+    "copyFailed": "Couldn't copy the command. Type it from the notice instead."
   }
 }

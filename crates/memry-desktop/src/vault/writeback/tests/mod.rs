@@ -127,7 +127,7 @@ impl Fixture {
         id
     }
 
-    fn seed(&mut self, id: &str, rel: &str, text: &str) {
+    pub(super) fn seed(&mut self, id: &str, rel: &str, text: &str) {
         self.write(rel, text);
         let parsed = parse_markdown_note(text).unwrap();
         let split = split_frontmatter_block(text);
@@ -355,6 +355,7 @@ pub(super) fn assert_kept(f: &mut Fixture, outcome: &Outcome, keep: Keep, rel: &
     assert!(f.facts().is_empty());
 }
 
+mod attachments;
 mod deleted;
 mod embeds;
 mod guards;

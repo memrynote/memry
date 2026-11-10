@@ -1659,5 +1659,14 @@
       "agentModel": "Alapértelmezett",
       "date": "október 13."
     }
+  },
+  "vaultNotice": {
+    "configUnreadable": "A Memry nem tudja olvasni ennek a széfnek a beállításait",
+    "configUnreadableHint": "Amíg a .memry/config.json nincs kijavítva, a Memry nem tud jegyzetet készíteni a fájlokból, és nem követi az áthelyezéseket. Javítsd ki a fájlt, majd indítsd újra a Memryt. A jegyzeteid biztonságban vannak.",
+    "watchLimit": "A más alkalmazásokban végzett módosítások késve jelennek meg",
+    "watchLimitHint": "A Linux túl kevés fájlfigyelést enged ehhez a széfhez, ezért a Memry csak újraolvasáskor látja a külső módosításokat. Futtasd ezt a parancsot, majd indítsd újra a Memryt:",
+    "copyCommand": "Parancs másolása",
+    "commandCopied": "A parancs a vágólapra került. Illeszd be egy terminálba.",
+    "copyFailed": "Nem sikerült másolni a parancsot. Gépeld be az értesítésből."
   }
 }

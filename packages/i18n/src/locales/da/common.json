@@ -1659,5 +1659,14 @@
       "agentModel": "Standard",
       "date": "13. oktober"
     }
+  },
+  "vaultNotice": {
+    "configUnreadable": "Memry kan ikke læse denne boks' indstillinger",
+    "configUnreadableHint": "Indtil .memry/config.json er rettet, kan Memry ikke gøre filer til noter eller følge flytninger. Ret filen, og genstart derefter Memry. Dine noter er i sikkerhed.",
+    "watchLimit": "Ændringer fra andre apps vises sent",
+    "watchLimitHint": "Linux tillader for få filovervågninger til denne boks, så Memry ser kun ændringer udefra, når den scanner igen. Kør denne kommando, og genstart derefter Memry:",
+    "copyCommand": "Kopiér kommando",
+    "commandCopied": "Kommandoen er kopieret. Indsæt den i en terminal.",
+    "copyFailed": "Kunne ikke kopiere kommandoen. Skriv den af fra meddelelsen i stedet."
   }
 }

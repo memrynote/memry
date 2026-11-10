@@ -78,6 +78,11 @@ pub struct NoteUpdateInput {
     #[serde(default)]
     #[specta(optional)]
     pub frontmatter: Option<Map<String, Value>>,
+    /// The editor's typing held off an outside edit it never showed: the file the save replaces
+    /// is kept as a version, the run's own and under ten words too (#4088).
+    #[serde(default)]
+    #[specta(optional)]
+    pub keep_replaced: bool,
 }
 
 /// The frontmatter keys an update may not name, each with the edit that owns it. `writing` is
@@ -172,6 +177,9 @@ pub struct Updated {
     /// The save's body went over an outside edit the watcher had not fed yet, kept as a version
     /// first. The editor never had that edit's event, so only this tells it.
     pub kept_outside_edit: bool,
+    /// The file the save replaced is a version ([`Edited::Wrote`]'s `kept`). The one answer to
+    /// whether the editor may tell the user a text it replaced is in version history (#4110).
+    pub kept_replaced: bool,
     /// The body this save left in the file, as the note's event reads it. `note` is read again
     /// after the save's turn ends, so it can hold a later edit (a tag's template, an outside
     /// edit); the editor compares events with this instead (#3967). `None` when no save ran.
@@ -183,6 +191,7 @@ struct Saved {
     tags_changed: bool,
     added: Vec<String>,
     kept_outside: bool,
+    kept: bool,
     body: String,
 }
 
@@ -193,6 +202,7 @@ struct Edit {
     header_tags: Option<HeaderTagEdit>,
     emoji: Option<Option<String>>,
     frontmatter: Option<Map<String, Value>>,
+    keep_replaced: bool,
 }
 
 impl NotesService {
@@ -218,6 +228,7 @@ impl NotesService {
             content: input.content,
             emoji: input.emoji,
             frontmatter: input.frontmatter,
+            keep_replaced: input.keep_replaced,
         };
         let managed = edit
             .frontmatter
@@ -240,6 +251,7 @@ impl NotesService {
             tags_changed,
             added,
             kept_outside: kept_outside_edit,
+            kept: kept_replaced,
             body,
         } = saved;
         // `addedInOrder`: the added tags in the order the caller asked for them.
@@ -263,6 +275,7 @@ impl NotesService {
             tags_changed,
             tag_template,
             kept_outside_edit,
+            kept_replaced,
         })
     }
 
@@ -285,7 +298,10 @@ impl NotesService {
         let planned = RefCell::new(None);
         let edited = app_edit.run_then(
             turn,
-            Precondition::Save(&self.own_files),
+            match edit.keep_replaced {
+                true => Precondition::SaveOver(&self.own_files),
+                false => Precondition::Save(&self.own_files),
+            },
             ChangeSource::Save,
             |text| {
                 let listed = open
@@ -325,11 +341,14 @@ impl NotesService {
             between,
         )?;
         let plan = planned.into_inner();
-        let (kept_outside, file) = match edited {
+        let (kept_outside, kept, file) = match edited {
             Edited::Wrote {
-                kept_outside, text, ..
-            } => (kept_outside, text),
-            Edited::Unchanged { text } => (false, text),
+                kept_outside,
+                kept,
+                text,
+                ..
+            } => (kept_outside, kept, text),
+            Edited::Unchanged { text } => (false, false, text),
             Edited::Kept(kept) => {
                 tracing::info!(scope = SCOPE, note_id = id, ?kept, "a save was refused");
                 return Err(NotesError::EditKept(kept));
@@ -342,12 +361,14 @@ impl NotesService {
                 tags_changed: plan.tags_changed,
                 added: plan.added,
                 kept_outside,
+                kept,
                 body,
             },
             None => Saved {
                 tags_changed: false,
                 added: Vec::new(),
                 kept_outside,
+                kept,
                 body,
             },
         })

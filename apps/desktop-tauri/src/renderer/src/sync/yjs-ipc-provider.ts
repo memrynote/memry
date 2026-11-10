@@ -405,15 +405,18 @@ export class YjsIpcProvider extends Observable<string> {
       typingHoldOf(this.doc).release(barrier)
       return
     }
-    // The outside edit a hold waits for: typing from now on lands in the blocks it makes, and
-    // the editor's own changes in answer to it (a link it makes a chip of) must apply.
-    if (frame[0] === EXTERNAL_ORIGIN) {
-      for (const barrier of this.unheld.keys()) this.unheld.set(barrier, true)
-      typingHoldOf(this.doc).release()
-    }
     // Every origin, another window's, the server's, a file edit or the app's, applies as
     // 'remote', so this provider sends none of them back.
-    Y.applyUpdate(this.doc, frame.subarray(1), 'remote')
+    const apply = (): void => Y.applyUpdate(this.doc, frame.subarray(1), 'remote')
+    // The outside edit a hold waits for: typing from now on lands in the blocks it makes, and
+    // the editor's own changes in answer to it (a link it makes a chip of) must apply. Its
+    // feed tells the editors to keep their selection through it.
+    if (frame[0] === EXTERNAL_ORIGIN) {
+      for (const barrier of this.unheld.keys()) this.unheld.set(barrier, true)
+      typingHoldOf(this.doc).feed(apply)
+      return
+    }
+    apply()
   }
 
   /**

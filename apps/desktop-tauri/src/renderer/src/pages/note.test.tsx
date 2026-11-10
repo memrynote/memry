@@ -1354,7 +1354,7 @@ describe('NotePage', () => {
 
     expect(mocks.updateNote).toHaveBeenCalledWith({ id: 'note-1', content: '# Changed' })
     first.unmount()
-    expect(mocks.unregisterPendingSave).toHaveBeenCalledWith('note-page:note-1')
+    expect(mocks.unregisterPendingSave).toHaveBeenCalledWith('note-page:note-1', flush)
 
     vi.clearAllMocks()
     mocks.updateNote.mockResolvedValue({ success: true })
@@ -1364,7 +1364,10 @@ describe('NotePage', () => {
     second.unmount()
 
     expect(mocks.updateNote).toHaveBeenCalledWith({ id: 'note-1', content: '# Changed' })
-    expect(mocks.unregisterPendingSave).toHaveBeenCalledWith('note-page:note-1')
+    expect(mocks.unregisterPendingSave).toHaveBeenCalledWith(
+      'note-page:note-1',
+      mocks.registerPendingSave.mock.calls[0]?.[1]
+    )
   })
 
   // The editor's teardown flush serializes its last debounced edit async, so it
@@ -1775,6 +1778,7 @@ describe('NotePage', () => {
 
     it('keeps typing over it and says so once the typing saves', async () => {
       vi.useFakeTimers()
+      mocks.updateNote.mockResolvedValue({ success: true, keptReplaced: true })
       mocks.noteState.isFetchedAfterMount = false
       const page = renderWithProviders(<NotePage noteId="note-1" />)
       await act(async () => {
@@ -1788,7 +1792,11 @@ describe('NotePage', () => {
         await vi.advanceTimersByTimeAsync(1000)
       })
 
-      expect(mocks.updateNote).toHaveBeenCalledWith({ id: 'note-1', content: 'Typed at once' })
+      expect(mocks.updateNote).toHaveBeenCalledWith({
+        id: 'note-1',
+        content: 'Typed at once',
+        keepReplaced: true
+      })
       expect(toast).toHaveBeenCalledTimes(1)
     })
 
@@ -1879,7 +1887,9 @@ describe('NotePage', () => {
       await saveStarted()
 
       event('Edited outside')
-      await act(async () => finishSave({ success: true, savedContent: 'Typed' }))
+      await act(async () =>
+        finishSave({ success: true, savedContent: 'Typed', keptReplaced: true })
+      )
 
       await waitFor(() => expect(toast).toHaveBeenCalledTimes(1))
       expect(screen.getByTestId('editor-external-revision')).toHaveTextContent('0')
@@ -1891,7 +1901,9 @@ describe('NotePage', () => {
 
       event('Edited outside')
       event('Typed')
-      await act(async () => finishSave({ success: true, savedContent: 'Typed' }))
+      await act(async () =>
+        finishSave({ success: true, savedContent: 'Typed', keptReplaced: true })
+      )
 
       await waitFor(() => expect(toast).toHaveBeenCalledTimes(1))
       expect(screen.getByTestId('editor-external-revision')).toHaveTextContent('0')
@@ -1906,7 +1918,9 @@ describe('NotePage', () => {
       await waitFor(() => expect(mocks.updateNote).toHaveBeenCalled(), { timeout: 3000 })
 
       event('Edited outside')
-      await act(async () => finishSave({ success: true, savedContent: 'Typed' }))
+      await act(async () =>
+        finishSave({ success: true, savedContent: 'Typed', keptReplaced: true })
+      )
       await waitFor(() => expect(mocks.notesGet).toHaveBeenCalled())
       await act(async () => undefined)
 
@@ -1919,7 +1933,12 @@ describe('NotePage', () => {
 
       event('Edited outside')
       await act(async () =>
-        finishSave({ success: true, savedContent: 'Typed', keptOutsideEdit: true })
+        finishSave({
+          success: true,
+          savedContent: 'Typed',
+          keptOutsideEdit: true,
+          keptReplaced: true
+        })
       )
       await waitFor(() => expect(mocks.notesGet).toHaveBeenCalled())
       await act(async () => undefined)
@@ -1973,9 +1992,14 @@ describe('NotePage', () => {
       expect(screen.getByTestId('editor-external-revision')).toHaveTextContent('0')
 
       // The typing is still unsaved: the next save writes it, over the edit it held.
+      mocks.updateNote.mockResolvedValue({ success: true, keptReplaced: true })
       const flush = mocks.registerPendingSave.mock.calls.at(-1)?.[1] as () => Promise<void>
       await act(async () => flush())
-      expect(mocks.updateNote).toHaveBeenLastCalledWith({ id: 'note-1', content: 'Typed' })
+      expect(mocks.updateNote).toHaveBeenLastCalledWith({
+        id: 'note-1',
+        content: 'Typed',
+        keepReplaced: true
+      })
       expect(toast).toHaveBeenCalledTimes(1)
     })
 
@@ -2025,7 +2049,7 @@ describe('NotePage', () => {
 
       event('Edited outside')
       await act(async () => {
-        finishFlush({ success: true, savedContent: 'Typed more' })
+        finishFlush({ success: true, savedContent: 'Typed more', keptReplaced: true })
         await flushed
       })
       await act(async () => finishSave({ success: true, savedContent: 'Typed' }))
@@ -2234,7 +2258,7 @@ describe('NotePage', () => {
       mocks.updatedHandler?.({ id: 'note-1', source: 'external', changes: { content: 'Edited' } })
     })
     await act(async () => {
-      finishFlush({ success: true, savedContent: 'Flushed' })
+      finishFlush({ success: true, savedContent: 'Flushed', keptReplaced: true })
       await flushed
     })
 
@@ -2283,13 +2307,18 @@ describe('NotePage', () => {
       () =>
         expect(mocks.updateNote).toHaveBeenCalledWith({
           id: 'note-1',
-          content: 'Typed, not saved'
+          content: 'Typed, not saved',
+          keepReplaced: true
         }),
       { timeout: 3000 }
     )
   })
 
   describe('typing saved over an outside edit', () => {
+    // A save over a body that changed: the core keeps the file it replaced.
+    beforeEach(() => {
+      mocks.updateNote.mockResolvedValue({ success: true, keptReplaced: true })
+    })
     const outsideEdit = (content: string) =>
       act(() => {
         mocks.updatedHandler?.({ id: 'note-1', source: 'external', changes: { content } })
@@ -2312,7 +2341,11 @@ describe('NotePage', () => {
       expect(toast).not.toHaveBeenCalled()
       await saveLands()
 
-      expect(mocks.updateNote).toHaveBeenCalledWith({ id: 'note-1', content: 'Typed, not saved' })
+      expect(mocks.updateNote).toHaveBeenCalledWith({
+        id: 'note-1',
+        content: 'Typed, not saved',
+        keepReplaced: true
+      })
       expect(toast).toHaveBeenCalledTimes(1)
       const [message, options] = vi.mocked(toast).mock.calls[0] as [
         string,
@@ -2349,7 +2382,7 @@ describe('NotePage', () => {
       expect(toast).toHaveBeenCalledTimes(1)
     })
 
-    it('forgets a held outside edit when the page moves to another note', async () => {
+    it('tells of a held outside edit once, when the save sent leaving the note lands', async () => {
       vi.useFakeTimers()
       const view = renderWithProviders(<NotePage noteId="note-1" />)
       await act(async () => {
@@ -2365,9 +2398,67 @@ describe('NotePage', () => {
 
       expect(mocks.updateNote).toHaveBeenCalledWith({
         id: 'note-1',
+        content: 'Typed, not saved',
+        keepReplaced: true
+      })
+      expect(mocks.updateNote).toHaveBeenLastCalledWith({
+        id: 'note-1',
+        content: 'Typed on coming back'
+      })
+      expect(toast).toHaveBeenCalledTimes(1)
+    })
+
+    // The refused save took the typing that held the outside edit off with it: the edit is in the
+    // file, and the next save does not go over it.
+    it('forgets a held outside edit when the save sent leaving the note is refused', async () => {
+      vi.useFakeTimers()
+      mocks.updateNote.mockResolvedValueOnce({ success: false, error: 'disk full' })
+      const view = renderWithProviders(<NotePage noteId="note-1" />)
+      await act(async () => {
+        await vi.advanceTimersByTimeAsync(0)
+      })
+      act(() => mocks.onMarkdownChange?.('Typed, not saved'))
+      outsideEdit('Written by an agent')
+
+      view.rerender(<NotePage noteId="note-2" />)
+      view.rerender(<NotePage noteId="note-1" />)
+      act(() => mocks.onMarkdownChange?.('Typed on coming back'))
+      await saveLands()
+
+      expect(mocks.updateNote).toHaveBeenLastCalledWith({
+        id: 'note-1',
         content: 'Typed on coming back'
       })
       expect(toast).not.toHaveBeenCalled()
+    })
+
+    // The toast of an editor that moved on opens the replaced note in its tab with its versions.
+    it('opens version history when its tab asks for it, once', async () => {
+      mocks.tabViewState = { versionHistory: true }
+      renderWithProviders(<NotePage noteId="note-1" />)
+
+      expect(await screen.findByText('Version Test Note')).toBeInTheDocument()
+      expect(mocks.tabViewState.versionHistory).toBe(false)
+    })
+
+    // Kept, the request would open history later: on a retry, or when the closed tab reopens.
+    it.each([
+      ['fails to load', { note: null, error: new Error('load failed') }],
+      ['is gone', { note: null, error: null }]
+    ])('drops the request of a note that %s', async (_, state) => {
+      Object.assign(mocks.noteState, state)
+      mocks.tabViewState = { versionHistory: true }
+      renderWithProviders(<NotePage noteId="note-1" />)
+
+      await waitFor(() => expect(mocks.tabViewState.versionHistory).toBe(false))
+    })
+
+    it('keeps the request while the note loads', () => {
+      Object.assign(mocks.noteState, { note: null, isLoading: true })
+      mocks.tabViewState = { versionHistory: true }
+      renderWithProviders(<NotePage noteId="note-1" />)
+
+      expect(mocks.tabViewState.versionHistory).toBe(true)
     })
 
     it('tells the user when a flush lands the typing', async () => {
@@ -2404,7 +2495,11 @@ describe('NotePage', () => {
 
     it('tells the user when the save went over an outside edit the editor had no event for', async () => {
       vi.useFakeTimers()
-      mocks.updateNote.mockResolvedValue({ success: true, keptOutsideEdit: true })
+      mocks.updateNote.mockResolvedValue({
+        success: true,
+        keptOutsideEdit: true,
+        keptReplaced: true
+      })
       renderWithProviders(<NotePage noteId="note-1" />)
       await act(async () => {
         await vi.advanceTimersByTimeAsync(0)
@@ -2464,7 +2559,8 @@ describe('NotePage', () => {
       () =>
         expect(mocks.updateNote).toHaveBeenLastCalledWith({
           id: 'note-1',
-          content: 'Newer typing'
+          content: 'Newer typing',
+          keepReplaced: true
         }),
       { timeout: 3000 }
     )

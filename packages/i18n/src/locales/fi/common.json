@@ -1659,5 +1659,14 @@
       "agentModel": "Oletus",
       "date": "13. lokakuuta"
     }
+  },
+  "vaultNotice": {
+    "configUnreadable": "Memry ei voi lukea tämän holvin asetuksia",
+    "configUnreadableHint": "Ennen kuin .memry/config.json on korjattu, Memry ei voi tehdä tiedostoista muistiinpanoja eikä seurata siirtoja. Korjaa tiedosto ja käynnistä Memry sitten uudelleen. Muistiinpanosi ovat turvassa.",
+    "watchLimit": "Muiden sovellusten muutokset näkyvät viiveellä",
+    "watchLimitHint": "Linux sallii tälle holville liian vähän tiedostojen seurantoja, joten Memry näkee ulkopuoliset muutokset vain skannatessaan uudelleen. Suorita tämä komento ja käynnistä Memry sitten uudelleen:",
+    "copyCommand": "Kopioi komento",
+    "commandCopied": "Komento kopioitu. Liitä se päätteeseen.",
+    "copyFailed": "Komentoa ei voitu kopioida. Kirjoita se ilmoituksesta käsin."
   }
 }

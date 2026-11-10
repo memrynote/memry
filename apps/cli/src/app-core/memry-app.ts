@@ -48,7 +48,7 @@ import type { NotesService } from './notes.ts'
 import { createNotesService } from './notes.ts'
 import type { PropertiesService } from './properties.ts'
 import { createPropertiesService } from './properties.ts'
-import { ensureVaultLayout, writeVaultConfig, type VaultConfig } from './paths.ts'
+import { ensureVaultLayout, updateVaultConfig, type VaultConfig } from './paths.ts'
 import type { RemindersService } from '@memry/app-core/reminders'
 import { createRemindersService } from '@memry/app-core/reminders'
 import type { SettingsService } from '@memry/app-core/settings'
@@ -363,9 +363,7 @@ export async function createMemryApp({ vaultPath }: CreateMemryAppInput): Promis
         return config
       },
       async updateConfig(updates) {
-        const next = { ...config, ...updates }
-        await writeVaultConfig(vaultPath, next)
-        Object.assign(config, next)
+        await updateVaultConfig(vaultPath, config, updates)
         return config
       },
       reindex() {

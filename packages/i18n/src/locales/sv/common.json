@@ -1659,5 +1659,14 @@
       "agentModel": "Standard",
       "date": "13 oktober"
     }
+  },
+  "vaultNotice": {
+    "configUnreadable": "Memry kan inte läsa inställningarna för det här valvet",
+    "configUnreadableHint": "Tills .memry/config.json är åtgärdad kan Memry inte göra filer till anteckningar eller följa flyttar. Åtgärda filen och starta sedan om Memry. Dina anteckningar är säkra.",
+    "watchLimit": "Ändringar från andra appar dyker upp sent",
+    "watchLimitHint": "Linux tillåter för få filbevakningar för det här valvet, så Memry ser ändringar utifrån först när den skannar om. Kör det här kommandot och starta sedan om Memry:",
+    "copyCommand": "Kopiera kommando",
+    "commandCopied": "Kommandot har kopierats. Klistra in det i en terminal.",
+    "copyFailed": "Det gick inte att kopiera kommandot. Skriv av det från meddelandet i stället."
   }
 }
