@@ -2,7 +2,7 @@
 // through the webview's async clipboard and, when the webview refuses it, through
 // `clipboard_write_image`. Either way the OS clipboard must hold the image the page drew. The
 // command takes PNG bytes and nothing else, and no HTML embed in a note can reach it: on every OS
-// the embed has no Tauri IPC globals (#4150), and its fetches to the command are blocked or refused.
+// the embed has no Tauri IPC globals (#4150), and nothing it sends or fetches reaches the command.
 import { mkdirSync, writeFileSync } from 'node:fs'
 import { join } from 'node:path'
 import { createNote, openFromSidebar, vaultOpen, NOTE_EDITOR } from '../../harness/notes'
@@ -92,6 +92,16 @@ const EMBED_IPC_URLS = [
 const EMBED_IPC_OUTCOMES: Record<'win32' | 'other', string[]> = {
   win32: ['blocked', 'blocked', 'status 500'],
   other: ['blocked', 'blocked', 'blocked']
+}
+/**
+ * Whether the embed has wry's raw `window.ipc` postMessage channel. #4160 keeps Tauri's globals
+ * (`__TAURI_INTERNALS__`, `__TAURI__`) out of WebView2 frames, but wry's own `window.ipc` is not a
+ * main-frame-only script, so on Windows an embed still has it. It holds no invoke key or callback
+ * table, and the clipboard assertions below show its message reaches nothing.
+ */
+const EMBED_WINDOW_IPC: Record<'win32' | 'other', string> = {
+  win32: 'ipc sent',
+  other: 'ipc absent'
 }
 
 const clipboardImage = (app: Parameters<typeof invokeTest>[0]): Promise<[number, number] | null> =>
@@ -183,9 +193,8 @@ test('clipboard_write_image takes PNG bytes only, and no HTML embed in a note re
       out.ipc.push('blocked')
     }
   }
-  // The postMessage IPC channel of each webview, with an invoke payload for the command. The embed
-  // has no Tauri window.ipc or __TAURI_INTERNALS__ on any OS (#4150). chrome.webview is WebView2's
-  // own channel, not Tauri's, so only the final no-image check covers it.
+  // The postMessage IPC channel of each webview, with an invoke payload for the command. The final
+  // no-image check is the assertion for whichever channel exists (see EMBED_WINDOW_IPC).
   const invokeMessage = JSON.stringify({
     cmd: 'clipboard_write_image',
     callback: 1,
@@ -255,12 +264,13 @@ test('clipboard_write_image takes PNG bytes only, and no HTML embed in a note re
   ) as { tauri: string; ipc: string[]; invoke: string; post: string[] }
   console.log(`clipboard-image embed on ${process.platform}: ${JSON.stringify(reply)}`)
   // No OS gives the embed Tauri's IPC globals (the patched wry keeps them out of WebView2 frames),
-  // so it has no invoke to call and no window.ipc to post to.
+  // so it has no invoke to call.
+  const os = process.platform === 'win32' ? 'win32' : 'other'
   expect(reply.tauri).toBe('undefinedundefined')
   expect(reply.invoke).toBe('none')
-  expect(reply.post[0]).toBe('ipc absent')
+  expect(reply.post[0]).toBe(EMBED_WINDOW_IPC[os])
   expect(reply.post).toHaveLength(2)
-  expect(reply.ipc).toEqual(EMBED_IPC_OUTCOMES[process.platform === 'win32' ? 'win32' : 'other'])
+  expect(reply.ipc).toEqual(EMBED_IPC_OUTCOMES[os])
   // Nothing the page or the embed sent reached the clipboard.
   expect(await clipboardImage(app)).toBeNull()
   expect(await invokeTest<string | null>(app, 'e2e_clipboard_read')).toBe('before')
