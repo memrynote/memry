@@ -1263,6 +1263,7 @@
     "label": "المساعدة والآراء",
     "reportBug": "الإبلاغ عن خطأ",
     "requestFeature": "طلب ميزة",
+    "joinTestflight": "انضم إلى TestFlight",
     "starOnGithub": "منح نجمة على GitHub",
     "version": "MemryNote {version}",
     "whatsNew": "ما الجديد",
@@ -1647,5 +1648,29 @@
       "agentModel": "الافتراضي",
       "date": "13 أكتوبر"
     }
+  },
+  "iosBeta": {
+    "badge": "جديد · TestFlight",
+    "title": "Memry لـ iPhone في مرحلة تجريبية",
+    "promptBody": "خزنتك على هاتفك، بتشفير شامل. اترك بريدك الإلكتروني وسترسل لك Apple دعوة TestFlight.",
+    "emailPlaceholder": "you@example.com",
+    "emailLabel": "البريد الإلكتروني لدعوة TestFlight",
+    "submit": "احصل على الدعوة",
+    "sending": "جارٍ الإرسال…",
+    "listNote": "نضيفك أيضًا إلى القائمة البريدية للنسخة التجريبية لـ iPhone لإبلاغك بأخبار الإطلاق. يمكنك إلغاء الاشتراك في أي وقت.",
+    "error": "تعذّر إرسال دعوة TestFlight. حاول مرة أخرى.",
+    "sentTitle": "تحقق من بريدك الوارد",
+    "sentBody": "أرسلت Apple الدعوة إلى {email}. قد يستغرق ذلك بضع دقائق وقد تصل إلى البريد العشوائي.",
+    "stepInstall": "ثبّت TestFlight من App Store",
+    "stepOpen": "افتح الدعوة على iPhone",
+    "stepSignIn": "سجّل الدخول إلى Memry على هاتفك",
+    "done": "تم",
+    "dialogTitle": "انضم إلى Memry لـ iPhone",
+    "dialogBody": "ترسل لك Apple دعوة TestFlight عبر البريد الإلكتروني. استخدم البريد الإلكتروني الخاص بمعرّف Apple ID على iPhone.",
+    "entryTitle": "النسخة التجريبية لـ iPhone متاحة الآن",
+    "entrySubtitle": "عبر TestFlight",
+    "entryJoin": "انضم إلى النسخة التجريبية",
+    "entrySent": "تم إرسال الدعوة إلى {email}",
+    "sendAgain": "إعادة الإرسال"
   }
 }

@@ -1110,7 +1110,16 @@
       "sending": "Đang gửi mã…"
     },
     "oauth": {
-      "google": "Tiếp tục bằng Google"
+      "google": "Tiếp tục bằng Google",
+      "waiting": "Hoàn tất đăng nhập bằng Google trong trình duyệt của bạn.",
+      "browserUnavailable": "Không thể mở trình duyệt của bạn.",
+      "manualInstructions": "Sao chép liên kết đăng nhập và mở trong trình duyệt trên máy tính này. Hãy để memrynote mở trong khi bạn đăng nhập.",
+      "linkLabel": "Liên kết đăng nhập",
+      "copyLink": "Sao chép liên kết đăng nhập",
+      "retryBrowser": "Thử mở lại trình duyệt",
+      "copied": "Đã sao chép liên kết đăng nhập.",
+      "copyFailed": "Không thể sao chép liên kết đăng nhập. Hãy chọn và sao chép từ trường ở trên.",
+      "cancel": "Dùng cách đăng nhập khác"
     },
     "otp": {
       "title": "Nhập mã xác minh",
@@ -2396,7 +2405,6 @@
   "phaseI": {
     "errors": {
       "failedToUpdateTagColor": "Không thể cập nhật màu thẻ",
-      "googleSignInFailed": "Không thể đăng nhập bằng Google",
       "failedToSendVerificationCode": "Không thể gửi mã xác minh",
       "invalidVerificationCode": "Mã xác minh không hợp lệ",
       "accountSetupFailed": "Không thể thiết lập tài khoản",

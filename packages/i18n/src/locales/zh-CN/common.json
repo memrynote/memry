@@ -1263,6 +1263,7 @@
     "label": "帮助与反馈",
     "reportBug": "报告问题",
     "requestFeature": "提出功能建议",
+    "joinTestflight": "加入 TestFlight",
     "starOnGithub": "在 GitHub 上加星标",
     "version": "MemryNote {version}",
     "whatsNew": "新功能",
@@ -1647,5 +1648,29 @@
       "agentModel": "默认",
       "date": "10月13日"
     }
+  },
+  "iosBeta": {
+    "badge": "新 · TestFlight",
+    "title": "Memry iPhone 版处于测试阶段",
+    "promptBody": "你的仓库随身携带，端到端加密。留下你的邮箱，Apple 会向你发送 TestFlight 邀请。",
+    "emailPlaceholder": "you@example.com",
+    "emailLabel": "接收 TestFlight 邀请的邮箱",
+    "submit": "获取邀请",
+    "sending": "正在发送…",
+    "listNote": "我们还会将你加入 iPhone 测试版名单，用于发送上线消息。你可以随时退订。",
+    "error": "无法发送 TestFlight 邀请。请重试。",
+    "sentTitle": "请查看你的收件箱",
+    "sentBody": "Apple 已将邀请发送至 {email}。可能需要几分钟，也可能进入垃圾邮件。",
+    "stepInstall": "从 App Store 安装 TestFlight",
+    "stepOpen": "在 iPhone 上打开邀请",
+    "stepSignIn": "在手机上登录 Memry",
+    "done": "完成",
+    "dialogTitle": "加入 Memry iPhone 版",
+    "dialogBody": "Apple 会通过邮件向你发送 TestFlight 邀请。请使用 iPhone 上 Apple ID 对应的邮箱。",
+    "entryTitle": "iPhone 测试版已上线",
+    "entrySubtitle": "通过 TestFlight",
+    "entryJoin": "加入测试",
+    "entrySent": "邀请已发送至 {email}",
+    "sendAgain": "重新发送"
   }
 }

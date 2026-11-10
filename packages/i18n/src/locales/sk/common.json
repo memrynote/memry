@@ -1263,6 +1263,7 @@
     "label": "Pomocník a spätná väzba",
     "reportBug": "Nahlásiť chybu",
     "requestFeature": "Navrhnúť funkciu",
+    "joinTestflight": "Pridať sa k TestFlight",
     "starOnGithub": "Dať hviezdičku v službe GitHub",
     "version": "MemryNote {version}",
     "whatsNew": "Novinky",
@@ -1647,5 +1648,29 @@
       "agentModel": "Predvolený",
       "date": "13. októbra"
     }
+  },
+  "iosBeta": {
+    "badge": "Novinka · TestFlight",
+    "title": "Memry pre iPhone je v beta verzii",
+    "promptBody": "Váš trezor v telefóne s end-to-end šifrovaním. Nechajte nám e-mail a Apple vám pošle pozvánku do TestFlight.",
+    "emailPlaceholder": "you@example.com",
+    "emailLabel": "E-mail pre pozvánku do TestFlight",
+    "submit": "Získať pozvánku",
+    "sending": "Odosiela sa…",
+    "listNote": "Pridáme vás aj do zoznamu beta verzie pre iPhone, aby ste dostávali novinky o spustení. Odhlásiť sa môžete kedykoľvek.",
+    "error": "Pozvánku do TestFlight sa nepodarilo odoslať. Skúste to znova.",
+    "sentTitle": "Skontrolujte doručenú poštu",
+    "sentBody": "Apple odoslal pozvánku na {email}. Môže to trvať niekoľko minút a správa môže skončiť v spame.",
+    "stepInstall": "Nainštalujte TestFlight z App Store",
+    "stepOpen": "Otvorte pozvánku na iPhone",
+    "stepSignIn": "Prihláste sa do Memry v telefóne",
+    "done": "Hotovo",
+    "dialogTitle": "Pridajte sa k Memry pre iPhone",
+    "dialogBody": "Apple vám pošle pozvánku do TestFlight e-mailom. Použite e-mail Apple ID z vášho iPhonu.",
+    "entryTitle": "Beta pre iPhone je spustená",
+    "entrySubtitle": "Cez TestFlight",
+    "entryJoin": "Pridať sa k beta verzii",
+    "entrySent": "Pozvánka odoslaná na {email}",
+    "sendAgain": "Odoslať znova"
   }
 }

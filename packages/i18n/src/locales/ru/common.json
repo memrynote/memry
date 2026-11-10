@@ -1263,6 +1263,7 @@
     "label": "Справка и отзывы",
     "reportBug": "Сообщить об ошибке",
     "requestFeature": "Предложить функцию",
+    "joinTestflight": "Присоединиться к TestFlight",
     "starOnGithub": "Поставить звезду на GitHub",
     "version": "MemryNote {version}",
     "whatsNew": "Что нового",
@@ -1647,5 +1648,29 @@
       "agentModel": "По умолчанию",
       "date": "13 октября"
     }
+  },
+  "iosBeta": {
+    "badge": "Новинка · TestFlight",
+    "title": "Memry для iPhone в бета-версии",
+    "promptBody": "Ваше хранилище на телефоне со сквозным шифрованием. Оставьте email, и Apple пришлёт вам приглашение TestFlight.",
+    "emailPlaceholder": "you@example.com",
+    "emailLabel": "Email для приглашения TestFlight",
+    "submit": "Получить приглашение",
+    "sending": "Отправка…",
+    "listNote": "Мы также добавим вас в список беты для iPhone, чтобы присылать новости о запуске. Отписаться можно в любой момент.",
+    "error": "Не удалось отправить приглашение TestFlight. Попробуйте ещё раз.",
+    "sentTitle": "Проверьте почту",
+    "sentBody": "Apple отправила приглашение на {email}. Это может занять несколько минут, а письмо может попасть в спам.",
+    "stepInstall": "Установите TestFlight из App Store",
+    "stepOpen": "Откройте приглашение на iPhone",
+    "stepSignIn": "Войдите в Memry на телефоне",
+    "done": "Готово",
+    "dialogTitle": "Присоединяйтесь к Memry для iPhone",
+    "dialogBody": "Apple отправит вам приглашение TestFlight по email. Укажите email от Apple ID на вашем iPhone.",
+    "entryTitle": "Бета для iPhone уже доступна",
+    "entrySubtitle": "Через TestFlight",
+    "entryJoin": "Присоединиться к бете",
+    "entrySent": "Приглашение отправлено на {email}",
+    "sendAgain": "Отправить ещё раз"
   }
 }

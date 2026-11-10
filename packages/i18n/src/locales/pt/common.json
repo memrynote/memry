@@ -1263,6 +1263,7 @@
     "label": "Ajuda e feedback",
     "reportBug": "Relatar um bug",
     "requestFeature": "Sugerir um recurso",
+    "joinTestflight": "Participar do TestFlight",
     "starOnGithub": "Dar uma estrela no GitHub",
     "version": "MemryNote {version}",
     "whatsNew": "Novidades",
@@ -1647,5 +1648,29 @@
       "agentModel": "Padrão",
       "date": "13 de outubro"
     }
+  },
+  "iosBeta": {
+    "badge": "Novo · TestFlight",
+    "title": "O Memry para iPhone está em beta",
+    "promptBody": "Seu cofre no celular, com criptografia de ponta a ponta. Deixe seu e-mail e a Apple envia um convite do TestFlight.",
+    "emailPlaceholder": "you@example.com",
+    "emailLabel": "E-mail para o convite do TestFlight",
+    "submit": "Receber o convite",
+    "sending": "Enviando…",
+    "listNote": "Também adicionamos você à lista do beta para iPhone para enviar novidades do lançamento. Você pode cancelar a inscrição quando quiser.",
+    "error": "Não foi possível enviar o convite do TestFlight. Tente novamente.",
+    "sentTitle": "Confira sua caixa de entrada",
+    "sentBody": "A Apple enviou o convite para {email}. Pode levar alguns minutos e cair na caixa de spam.",
+    "stepInstall": "Instale o TestFlight pela App Store",
+    "stepOpen": "Abra o convite no seu iPhone",
+    "stepSignIn": "Entre no Memry no seu celular",
+    "done": "Concluído",
+    "dialogTitle": "Participe do Memry para iPhone",
+    "dialogBody": "A Apple envia um convite do TestFlight por e-mail. Use o e-mail do Apple ID do seu iPhone.",
+    "entryTitle": "O beta para iPhone já está no ar",
+    "entrySubtitle": "Via TestFlight",
+    "entryJoin": "Participar do beta",
+    "entrySent": "Convite enviado para {email}",
+    "sendAgain": "Enviar novamente"
   }
 }

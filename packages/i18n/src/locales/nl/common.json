@@ -1263,6 +1263,7 @@
     "label": "Help en feedback",
     "reportBug": "Fout melden",
     "requestFeature": "Functie aanvragen",
+    "joinTestflight": "Doe mee met TestFlight",
     "starOnGithub": "Ster geven op GitHub",
     "version": "MemryNote {version}",
     "whatsNew": "Wat is er nieuw",
@@ -1647,5 +1648,29 @@
       "agentModel": "Standaard",
       "date": "13 oktober"
     }
+  },
+  "iosBeta": {
+    "badge": "Nieuw · TestFlight",
+    "title": "Memry voor iPhone is in bèta",
+    "promptBody": "Je kluis op je telefoon, end-to-end versleuteld. Laat je e-mailadres achter en Apple stuurt je een TestFlight-uitnodiging.",
+    "emailPlaceholder": "you@example.com",
+    "emailLabel": "E-mailadres voor de TestFlight-uitnodiging",
+    "submit": "Uitnodiging aanvragen",
+    "sending": "Versturen…",
+    "listNote": "We zetten je ook op de iPhone-bètalijst voor nieuws over de lancering. Je kunt je altijd uitschrijven.",
+    "error": "Kan de TestFlight-uitnodiging niet versturen. Probeer het opnieuw.",
+    "sentTitle": "Check je inbox",
+    "sentBody": "Apple heeft de uitnodiging naar {email} gestuurd. Dit kan een paar minuten duren en de mail kan in je spam terechtkomen.",
+    "stepInstall": "Installeer TestFlight vanuit de App Store",
+    "stepOpen": "Open de uitnodiging op je iPhone",
+    "stepSignIn": "Log in bij Memry op je telefoon",
+    "done": "Klaar",
+    "dialogTitle": "Doe mee met Memry voor iPhone",
+    "dialogBody": "Apple mailt je een TestFlight-uitnodiging. Gebruik het e-mailadres van de Apple ID op je iPhone.",
+    "entryTitle": "iPhone-bèta is live",
+    "entrySubtitle": "Via TestFlight",
+    "entryJoin": "Doe mee met de bèta",
+    "entrySent": "Uitnodiging verstuurd naar {email}",
+    "sendAgain": "Opnieuw versturen"
   }
 }

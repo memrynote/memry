@@ -1110,7 +1110,16 @@
       "sending": "Slanje koda…"
     },
     "oauth": {
-      "google": "Nastavi s Googleom"
+      "google": "Nastavi s Googleom",
+      "waiting": "Dovršite prijavu putem Googlea u svom pregledniku.",
+      "browserUnavailable": "Nije moguće otvoriti vaš preglednik.",
+      "manualInstructions": "Kopirajte poveznicu za prijavu i otvorite je u pregledniku na ovom računalu. Neka memrynote ostane otvoren dok se prijavljujete.",
+      "linkLabel": "Poveznica za prijavu",
+      "copyLink": "Kopiraj poveznicu za prijavu",
+      "retryBrowser": "Pokušaj ponovno otvoriti preglednik",
+      "copied": "Poveznica za prijavu je kopirana.",
+      "copyFailed": "Kopiranje poveznice za prijavu nije uspjelo. Odaberite je u polju iznad i kopirajte.",
+      "cancel": "Upotrijebi drugi način prijave"
     },
     "otp": {
       "title": "Unesite kontrolni kod",
@@ -2396,7 +2405,6 @@
   "phaseI": {
     "errors": {
       "failedToUpdateTagColor": "Ažuriranje boje oznake nije uspjelo",
-      "googleSignInFailed": "Prijava putem Googlea nije uspjela",
       "failedToSendVerificationCode": "Slanje kontrolnog koda nije uspjelo",
       "invalidVerificationCode": "Nevažeći kontrolni kod",
       "accountSetupFailed": "Postavljanje računa nije uspjelo",

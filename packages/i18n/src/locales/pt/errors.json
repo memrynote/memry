@@ -164,6 +164,10 @@
     "removeDeviceFailed": "Não foi possível remover o dispositivo",
     "renameDeviceFailed": "Não foi possível renomear o dispositivo",
     "initiateOAuthFailed": "Não foi possível iniciar o OAuth",
+    "retryOAuthFailed": "Não foi possível reabrir o navegador de login. Inicie o login novamente.",
+    "oauthExpired": "O login expirou. Tente novamente.",
+    "oauthInvalidResponse": "Não foi possível obter um link de login válido. Tente novamente.",
+    "oauthCancelled": "O login com o Google foi cancelado. Tente novamente.",
     "setupFirstDeviceOAuthFailed": "Não foi possível configurar o primeiro dispositivo via OAuth",
     "confirmRecoveryPhraseFailed": "Não foi possível confirmar a frase de recuperação"
   },

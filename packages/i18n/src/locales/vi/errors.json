@@ -164,6 +164,10 @@
     "removeDeviceFailed": "Không thể gỡ thiết bị",
     "renameDeviceFailed": "Không thể đổi tên thiết bị",
     "initiateOAuthFailed": "Không thể bắt đầu OAuth",
+    "retryOAuthFailed": "Không thể mở lại trình duyệt đăng nhập. Hãy bắt đầu đăng nhập lại.",
+    "oauthExpired": "Phiên đăng nhập đã hết hạn. Vui lòng thử lại.",
+    "oauthInvalidResponse": "Không thể nhận liên kết đăng nhập hợp lệ. Vui lòng thử lại.",
+    "oauthCancelled": "Đã hủy đăng nhập bằng Google. Vui lòng thử lại.",
     "setupFirstDeviceOAuthFailed": "Không thể thiết lập thiết bị đầu tiên qua OAuth",
     "confirmRecoveryPhraseFailed": "Không thể xác nhận cụm từ khôi phục"
   },

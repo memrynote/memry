@@ -1110,7 +1110,16 @@
       "sending": "Envoi du code…"
     },
     "oauth": {
-      "google": "Continuer avec Google"
+      "google": "Continuer avec Google",
+      "waiting": "Terminez la connexion avec Google dans votre navigateur.",
+      "browserUnavailable": "Impossible d'ouvrir votre navigateur.",
+      "manualInstructions": "Copiez le lien de connexion et ouvrez-le dans un navigateur sur cet ordinateur. Gardez memrynote ouvert pendant la connexion.",
+      "linkLabel": "Lien de connexion",
+      "copyLink": "Copier le lien de connexion",
+      "retryBrowser": "Réessayer d'ouvrir le navigateur",
+      "copied": "Lien de connexion copié.",
+      "copyFailed": "Impossible de copier le lien de connexion. Sélectionnez-le dans le champ ci-dessus et copiez-le.",
+      "cancel": "Utiliser une autre méthode de connexion"
     },
     "otp": {
       "title": "Entrez le code de vérification",
@@ -2396,7 +2405,6 @@
   "phaseI": {
     "errors": {
       "failedToUpdateTagColor": "Impossible de modifier la couleur du tag",
-      "googleSignInFailed": "La connexion à Google a échoué",
       "failedToSendVerificationCode": "Impossible d'envoyer le code de vérification",
       "invalidVerificationCode": "Code de vérification invalide",
       "accountSetupFailed": "Échec de la configuration du compte",

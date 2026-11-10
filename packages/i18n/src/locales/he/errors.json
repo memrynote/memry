@@ -164,6 +164,10 @@
     "removeDeviceFailed": "הסרת המכשיר נכשלה",
     "renameDeviceFailed": "שינוי שם המכשיר נכשל",
     "initiateOAuthFailed": "הפעלת OAuth נכשלה",
+    "retryOAuthFailed": "לא ניתן היה לפתוח מחדש את הדפדפן להתחברות. יש להתחיל את ההתחברות מחדש.",
+    "oauthExpired": "תוקף ההתחברות פג. אפשר לנסות שוב.",
+    "oauthInvalidResponse": "לא ניתן היה לקבל קישור התחברות תקין. אפשר לנסות שוב.",
+    "oauthCancelled": "ההתחברות באמצעות Google בוטלה. אפשר לנסות שוב.",
     "setupFirstDeviceOAuthFailed": "הגדרת המכשיר הראשון באמצעות OAuth נכשלה",
     "confirmRecoveryPhraseFailed": "אישור ביטוי השחזור נכשל"
   },
