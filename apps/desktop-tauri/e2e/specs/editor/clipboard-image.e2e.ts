@@ -80,7 +80,7 @@ const recorded = (page: Page): Promise<Recorded> =>
 /**
  * The endpoints an embed can fetch to reach the command. The embed CSP (`connect-src https:`)
  * blocks the first two. `https://ipc.localhost` is Windows' IPC origin (`use_https_scheme(true)`)
- * and the CSP allows it: there Tauri refuses the raw request (no `Tauri-Invoke-Key`) with a 400,
+ * and the CSP allows it: there Tauri refuses the raw request (no `Tauri-Invoke-Key`) with a 500,
  * and elsewhere nothing listens on it.
  */
 const EMBED_IPC_URLS = [
@@ -89,7 +89,7 @@ const EMBED_IPC_URLS = [
   'https://ipc.localhost/clipboard_write_image'
 ]
 const EMBED_IPC_OUTCOMES: Record<'win32' | 'other', string[]> = {
-  win32: ['blocked', 'blocked', 'status 400'],
+  win32: ['blocked', 'blocked', 'status 500'],
   other: ['blocked', 'blocked', 'blocked']
 }
 
