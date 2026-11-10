@@ -268,6 +268,7 @@ export const LargeFileViewer = memo(function LargeFileViewer({
           rowHeight={LARGE_FILE_LINE_HEIGHT}
           overscan={OVERSCAN_ROWS}
           target={currentHit}
+          label={t('page.largeFile.viewer.lines', { count: lineCount })}
           ensureRange={ensureRange}
           renderRow={(line) => (
             <LineRow

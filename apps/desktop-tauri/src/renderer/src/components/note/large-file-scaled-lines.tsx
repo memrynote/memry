@@ -21,6 +21,8 @@ interface ScaledLinesProps {
   overscan: number
   /** A line to center, set by find; a new object moves the viewport again. */
   target: { line: number } | null
+  /** Names the scroll region for assistive tech. */
+  label: string
   ensureRange: (startLine: number, endLine: number) => void
   renderRow: (line: number) => ReactNode
 }
@@ -41,10 +43,11 @@ export function ScaledLines({
   rowHeight,
   overscan,
   target,
+  label,
   ensureRange,
   renderRow
 }: ScaledLinesProps): React.JSX.Element {
-  const scrollRef = useRef<HTMLDivElement>(null)
+  const scrollRef = useRef<HTMLElement>(null)
   const windowRef = useRef<HTMLDivElement>(null)
   const [anchor, setAnchor] = useState<ScrollAnchor>({ line: 0, offset: 0 })
   const [size, setSize] = useState({ width: 0, height: 0 })
@@ -72,6 +75,12 @@ export function ScaledLines({
 
   // The anchor after layout clamped it, which is what a wheel turn starts from.
   const settledRef = useRef(anchor)
+  // The anchor a move asked for and no render has settled yet. A second wheel
+  // event before that render starts from here, not from `settledRef`, so no
+  // delta is dropped.
+  const pendingRef = useRef<ScrollAnchor | null>(null)
+  // Whether layout left the viewport on the file's last row.
+  const atEndRef = useRef(false)
   // The scrollTop this component last wrote, so its own scroll event is not
   // read back as a drag.
   const writtenScrollTopRef = useRef<number | null>(null)
@@ -118,6 +127,8 @@ export function ScaledLines({
       ) ?? anchorRow
     const settled = { line: atTop.line, offset: top - atTop.element.offsetTop }
     settledRef.current = settled
+    pendingRef.current = null
+    atEndRef.current = last === lineCount - 1 && top >= contentHeight - size.height - 1
 
     if (syncRequest !== syncedRequestRef.current) {
       syncedRequestRef.current = syncRequest
@@ -150,20 +161,27 @@ export function ScaledLines({
     const moveTo = (next: ScrollAnchor): void => {
       const geometry = geometryRef.current
       const heights = new Map(rowElements(windowElement).map((row) => [row.line, row.height]))
-      setAnchor(
+      const settled =
         next.offset === Number.MAX_SAFE_INTEGER
           ? next
           : settle(next, (line) => heights.get(line) ?? geometry.rowHeight, geometry.lineCount)
-      )
+      pendingRef.current = settled
+      setAnchor(settled)
       setSyncRequest((request) => request + 1)
     }
     const moveBy = (px: number): void => {
-      const from = settledRef.current
+      const from = pendingRef.current ?? settledRef.current
       moveTo({ line: from.line, offset: from.offset + px })
+    }
+    // At either end of the file a wheel turn past it is left to the page behind.
+    const atEdge = (direction: number): boolean => {
+      const current = pendingRef.current ?? settledRef.current
+      if (direction < 0) return current.line === 0 && current.offset <= 0
+      return current.offset === Number.MAX_SAFE_INTEGER || (!pendingRef.current && atEndRef.current)
     }
 
     const onWheel = (event: WheelEvent): void => {
-      if (event.ctrlKey || event.deltaY === 0) return
+      if (event.ctrlKey || event.deltaY === 0 || atEdge(Math.sign(event.deltaY))) return
       event.preventDefault()
       const { rowHeight: lineHeight, height } = geometryRef.current
       const unit = event.deltaMode === 1 ? lineHeight : event.deltaMode === 2 ? height : 1
@@ -171,13 +189,18 @@ export function ScaledLines({
     }
 
     const onKeyDown = (event: KeyboardEvent): void => {
-      if (event.altKey || event.metaKey || event.ctrlKey) return
+      if (event.metaKey || event.ctrlKey) return
+      // Option/Alt + arrow is a page move in the browser; nothing else takes Alt.
+      if (event.altKey && !event.key.startsWith('Arrow')) return
+      // Space on a button inside a row (show the rest of a line) is the button's.
+      if (event.key === ' ' && event.target !== element) return
       const page = geometryRef.current.height * PAGE_STEP
       const steps: Record<string, (() => void) | undefined> = {
-        ArrowDown: () => moveBy(ARROW_STEP_PX),
-        ArrowUp: () => moveBy(-ARROW_STEP_PX),
+        ArrowDown: () => moveBy(event.altKey ? page : ARROW_STEP_PX),
+        ArrowUp: () => moveBy(event.altKey ? -page : -ARROW_STEP_PX),
         PageDown: () => moveBy(page),
         PageUp: () => moveBy(-page),
+        ' ': () => moveBy(event.shiftKey ? -page : page),
         Home: () => moveTo({ line: 0, offset: 0 }),
         End: () => moveTo(endAnchor(geometryRef.current.lineCount))
       }
@@ -216,14 +239,15 @@ export function ScaledLines({
   for (let line = first; line <= last; line += 1) lines.push(line)
 
   return (
-    <div
+    <section
       ref={scrollRef}
       data-testid="large-file-scaled-lines"
+      aria-label={label}
       // Focusable so the keys above reach it: left to the browser, an arrow
       // key would scroll the scaled bar by hundreds of lines.
       // oxlint-disable-next-line jsx-a11y/no-noninteractive-tabindex -- scroll region must take keys
       tabIndex={0}
-      className="min-h-0 flex-1 overflow-y-auto focus-visible:outline-none"
+      className="min-h-0 flex-1 overflow-y-auto focus-visible:ring-2 focus-visible:ring-[var(--tint-ring)] focus-visible:ring-inset focus-visible:outline-none"
     >
       <div className="relative w-full" style={{ height: span }}>
         <div className="sticky top-0 overflow-hidden" style={{ height: size.height }}>
@@ -236,7 +260,7 @@ export function ScaledLines({
           </div>
         </div>
       </div>
-    </div>
+    </section>
   )
 }
 

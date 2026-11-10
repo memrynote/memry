@@ -1,6 +1,6 @@
-import { act, render, screen, waitFor, within } from '@testing-library/react'
+import { act, fireEvent, render, screen, waitFor, within } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
-import { beforeEach, describe, expect, it, vi } from 'vitest'
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import type {
   LargeFileEvent as LargeFileIndexEvent,
   LargeFileLines as LargeFileLinesResult,
@@ -97,8 +97,8 @@ class TestResizeObserver {
   observe = (): void => {}
   unobserve = (): void => {}
   disconnect = (): void => {}
-  emit(width: number): void {
-    this.callback([{ contentRect: { width } } as ResizeObserverEntry], this)
+  emit(width: number, height?: number): void {
+    this.callback([{ contentRect: { width, height } } as ResizeObserverEntry], this)
   }
 }
 
@@ -106,6 +106,13 @@ class TestResizeObserver {
 function resizePane(width: number): void {
   act(() => {
     for (const observer of Array.from(mocks.resizeObservers)) observer.emit(width)
+  })
+}
+
+/** Report a new pane height too, which the scaled rows size their window by. */
+function resizePaneTo(width: number, height: number): void {
+  act(() => {
+    for (const observer of Array.from(mocks.resizeObservers)) observer.emit(width, height)
   })
 }
 
@@ -1158,5 +1165,151 @@ describe('LargeFileViewer', () => {
     expect(mark.closest('[data-line]')?.getAttribute('data-line')).toBe('29999990')
     expect(mocks.scrollToIndex).not.toHaveBeenCalled()
     expect(screen.queryByText('row 0')).not.toBeInTheDocument()
+  })
+
+  describe('scaled rows move by what the user does', () => {
+    const ROW_PX = 20
+    const originals = {
+      height: Object.getOwnPropertyDescriptor(HTMLElement.prototype, 'offsetHeight'),
+      top: Object.getOwnPropertyDescriptor(HTMLElement.prototype, 'offsetTop')
+    }
+
+    beforeEach(() => {
+      // jsdom does no layout, so every box is 0 tall. Give each row a 20 px
+      // box, stacked in document order, and the row window the sum of them.
+      Object.defineProperty(HTMLElement.prototype, 'offsetHeight', {
+        configurable: true,
+        get(this: HTMLElement) {
+          return 'line' in this.dataset ? ROW_PX : this.children.length * ROW_PX
+        }
+      })
+      Object.defineProperty(HTMLElement.prototype, 'offsetTop', {
+        configurable: true,
+        get(this: HTMLElement) {
+          return 'line' in this.dataset
+            ? Array.from(this.parentElement?.children ?? []).indexOf(this) * ROW_PX
+            : 0
+        }
+      })
+    })
+
+    afterEach(() => {
+      if (originals.height)
+        Object.defineProperty(HTMLElement.prototype, 'offsetHeight', originals.height)
+      if (originals.top) Object.defineProperty(HTMLElement.prototype, 'offsetTop', originals.top)
+    })
+
+    async function openScaled(): Promise<HTMLElement> {
+      await openReady(30_000_000)
+      await screen.findByText('row 0')
+      resizePaneTo(800, 400)
+      const region = screen.getByTestId('large-file-scaled-lines')
+      region.focus()
+      return region
+    }
+
+    const windowOf = (region: HTMLElement): HTMLElement =>
+      region.querySelector('[data-line]')?.parentElement as HTMLElement
+
+    it('names the scroll region by what it holds', async () => {
+      const region = await openScaled()
+
+      expect(screen.getByRole('region', { name: '30000000 lines' })).toBe(region)
+    })
+
+    it('goes to the last line on End and back to the first on Home', async () => {
+      const region = await openScaled()
+
+      fireEvent.keyDown(region, { key: 'End' })
+      expect(await screen.findByText('row 29999999')).toBeInTheDocument()
+      expect(screen.queryByText('row 0')).not.toBeInTheDocument()
+
+      fireEvent.keyDown(region, { key: 'Home' })
+      expect(await screen.findByText('row 0')).toBeInTheDocument()
+      expect(screen.queryByText('row 29999999')).not.toBeInTheDocument()
+    })
+
+    it('moves a page on Space and takes it back on Shift+Space', async () => {
+      const region = await openScaled()
+
+      // #when — Space is not left to the browser, which would scroll the scaled
+      // bar by thousands of lines
+      const notPrevented = fireEvent.keyDown(region, { key: ' ' })
+
+      // #then — one page is 0.9 of the 400 px pane
+      expect(notPrevented).toBe(false)
+      await waitFor(() => expect(windowOf(region).style.transform).toBe('translateY(-360px)'))
+
+      fireEvent.keyDown(region, { key: ' ', shiftKey: true })
+      await waitFor(() => expect(windowOf(region).style.transform).toBe('translateY(0px)'))
+    })
+
+    it('moves a page on Alt+Down instead of scrolling the scaled bar', async () => {
+      const region = await openScaled()
+
+      const notPrevented = fireEvent.keyDown(region, { key: 'ArrowDown', altKey: true })
+
+      expect(notPrevented).toBe(false)
+      await waitFor(() => expect(windowOf(region).style.transform).toBe('translateY(-360px)'))
+    })
+
+    it('leaves Space to a button inside a row', async () => {
+      const region = await openScaled()
+      const button = document.createElement('button')
+      region.appendChild(button)
+
+      const notPrevented = fireEvent.keyDown(button, { key: ' ' })
+
+      expect(notPrevented).toBe(true)
+    })
+
+    it('puts the thumb back on the file when the scrollbar is dragged to the middle', async () => {
+      const region = await openScaled()
+      Object.defineProperty(region, 'scrollHeight', { configurable: true, value: 3_000 })
+      Object.defineProperty(region, 'clientHeight', { configurable: true, value: 400 })
+
+      // #when the thumb is dragged halfway down its 2 600 px of travel
+      region.scrollTop = 1_300
+      fireEvent.scroll(region)
+
+      // #then the window is around the middle line of the file
+      await waitFor(() => {
+        const lines = Array.from(region.querySelectorAll('[data-line]')).map((row) =>
+          Number((row as HTMLElement).dataset.line)
+        )
+        expect(Math.min(...lines)).toBeGreaterThan(14_999_000)
+        expect(Math.max(...lines)).toBeLessThan(15_001_000)
+      })
+      expect(screen.queryByText('row 0')).not.toBeInTheDocument()
+    })
+
+    it('keeps both wheel turns that land before the next render', async () => {
+      const region = await openScaled()
+
+      act(() => {
+        region.dispatchEvent(new WheelEvent('wheel', { deltaY: 100, cancelable: true }))
+        region.dispatchEvent(new WheelEvent('wheel', { deltaY: 100, cancelable: true }))
+      })
+
+      await waitFor(() => expect(windowOf(region).style.transform).toBe('translateY(-200px)'))
+    })
+
+    it('lets the page behind scroll once the file is at an end', async () => {
+      const region = await openScaled()
+      const wheel = (deltaY: number): boolean =>
+        region.dispatchEvent(new WheelEvent('wheel', { deltaY, cancelable: true }))
+
+      // #then at the top, a turn up is the page's; a turn down is the file's
+      expect(wheel(-50)).toBe(true)
+      expect(wheel(50)).toBe(false)
+
+      // #when the file is at its end
+      fireEvent.keyDown(region, { key: 'End' })
+      await screen.findByText('row 29999999')
+
+      // #then a turn down is the page's, a turn up is the file's
+      expect(wheel(50)).toBe(true)
+      expect(wheel(-50)).toBe(false)
+    })
   })
 })
