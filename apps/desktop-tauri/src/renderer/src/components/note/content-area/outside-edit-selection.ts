@@ -7,8 +7,9 @@
  * and suffix, then a block diff of the middle), and each run of changed blocks gives one changed
  * range. The selection is mapped through those ranges: a caret outside every range stays in its
  * text, moved by the length changes before it, so an edit at the top and one at the bottom leave a
- * caret between them in place. Inside a range, or in a block the edit removed, it goes to the
- * nearest position after the change.
+ * caret between them in place. A block whose type or attrs changed (a paragraph made a heading, a
+ * heading's level) is compared by its text, so its caret stays too. Inside a range, or in a block
+ * the edit removed, the caret goes to the nearest position after the change.
  *
  * @module note/content-area/outside-edit-selection
  */
@@ -18,9 +19,9 @@ import type { Selection } from '@tiptap/pm/state'
 import { StepMap } from '@tiptap/pm/transform'
 
 /**
- * Past this many inserted or removed blocks the block diff stops, and the middle is one changed run
- * (its blocks paired by index when both sides have as many): the diff costs (blocks x edits) steps,
- * and its trace edits squared. 3,000 blocks map in about 10 ms either way.
+ * Past this many inserted or removed blocks the block diff stops, and the blocks of the middle pair
+ * by index: the diff costs (blocks x edits) steps, and its trace edits squared. 3,000 blocks map in
+ * about 10 ms either way.
  */
 const MAX_BLOCK_EDITS = 1000
 
@@ -54,7 +55,8 @@ function changedRanges(before: Node, after: Node): number[] {
   const posA = offsets(a, base)
   const posB = offsets(b, base)
   const ranges: number[] = []
-  for (const [fromA, toA, fromB, toB] of blockRuns(keysA, keysB)) {
+  const alike = (i: number, j: number): boolean => similarText(a.child(i), b.child(j))
+  for (const [fromA, toA, fromB, toB] of blockRuns(keysA, keysB, alike)) {
     const childrenA = Array.from({ length: toA - fromA }, (_, i) => a.child(fromA + i))
     const childrenB = Array.from({ length: toB - fromB }, (_, i) => b.child(fromB + i))
     const runA = Fragment.from(childrenA)
@@ -101,11 +103,14 @@ function offsets(blocks: Fragment, base: number): number[] {
   return pos
 }
 
+type Run = [fromA: number, toA: number, fromB: number, toB: number]
+
 /**
- * The runs of blocks that differ (`[fromA, toA, fromB, toB]`, end exclusive): the blocks of the
- * common prefix and suffix match, and Myers' diff matches those of the middle.
+ * The runs of blocks that differ (end exclusive): the blocks of the common prefix and suffix match,
+ * and Myers' diff matches those of the middle. `alike(i, j)` says whether `a[i]` and `b[j]` look
+ * like one block edited.
  */
-function blockRuns(a: number[], b: number[]): Array<[number, number, number, number]> {
+function blockRuns(a: number[], b: number[], alike: (i: number, j: number) => boolean): Run[] {
   let head = 0
   while (head < a.length && head < b.length && a[head] === b[head]) head++
   let tail = 0
@@ -119,22 +124,71 @@ function blockRuns(a: number[], b: number[]): Array<[number, number, number, num
   const endA = a.length - tail
   const endB = b.length - tail
   if (head === endA && head === endB) return []
-  const matches = middleMatches(a.slice(head, endA), b.slice(head, endB)) ?? []
-  const runs: Array<[number, number, number, number]> = []
+  const runs: Run[] = []
+  const matches = middleMatches(a.slice(head, endA), b.slice(head, endB))
+  if (!matches) {
+    runs.push(...gapRuns(a, b, [head, endA, head, endB], null))
+    return runs
+  }
   let i = head
   let j = head
   for (const [mi, mj] of [...matches.map(([x, y]) => [head + x, head + y]), [endA, endB]]) {
-    if (mi - i === mj - j) {
-      // As many blocks on both sides (one paragraph reworded, or every line reformatted): each
-      // pair is its own run, so a caret keeps its place in a block whose other text changed.
-      for (let pair = 0; pair < mi - i; pair++) {
-        if (a[i + pair] !== b[j + pair]) runs.push([i + pair, i + pair + 1, j + pair, j + pair + 1])
-      }
-    } else if (mi > i || mj > j) runs.push([i, mi, j, mj])
+    runs.push(...gapRuns(a, b, [i, mi, j, mj], alike))
     i = mi + 1
     j = mj + 1
   }
   return runs
+}
+
+/**
+ * The runs of one gap between matched blocks. Its blocks pair one to one, each pair its own run, so
+ * a caret keeps its place in a block whose other text changed: all of them when both sides have as
+ * many (one paragraph reworded, every line reformatted), else those at the gap's edges that look
+ * `alike` (a block edited beside one inserted or removed). The rest is one run. Past the edit cap
+ * (`alike` null) they pair by index, and the last pair takes the extra blocks, so a caret stays
+ * near its index.
+ */
+function gapRuns(
+  a: number[],
+  b: number[],
+  [i, toA, j, toB]: Run,
+  alike: ((i: number, j: number) => boolean) | null
+): Run[] {
+  const head: Run[] = []
+  const tail: Run[] = []
+  const changed = (x: number, y: number): boolean => a[x] !== b[y]
+  const equal = toA - i === toB - j
+  const pairs = (): boolean => equal || (alike ? alike(i, j) : toA - i > 1 && toB - j > 1)
+  while (i < toA && j < toB && pairs()) {
+    if (changed(i, j)) head.push([i, i + 1, j, j + 1])
+    i++
+    j++
+  }
+  if (alike) {
+    while (i < toA && j < toB && alike(toA - 1, toB - 1)) {
+      toA--
+      toB--
+      if (changed(toA, toB)) tail.push([toA, toA + 1, toB, toB + 1])
+    }
+  }
+  if (i < toA || j < toB) head.push([i, toA, j, toB])
+  return [...head, ...tail.toReversed()]
+}
+
+/** Whether two blocks share, at their start and end, at least half the text of the longer one. */
+function similarText(x: Node, y: Node): boolean {
+  const s = x.textContent
+  const t = y.textContent
+  let same = 0
+  while (same < s.length && same < t.length && s[same] === t[same]) same++
+  for (
+    let end = 1;
+    same < s.length && same < t.length && s[s.length - end] === t[t.length - end];
+    end++
+  ) {
+    same++
+  }
+  return 2 * same >= Math.max(s.length, t.length)
 }
 
 /**
@@ -185,6 +239,11 @@ function middleMatches(a: number[], b: number[]): Array<[number, number]> | null
   return matches.toReversed()
 }
 
+/** Whether the diff goes on inside two differing nodes: same markup, or two textblocks. */
+function comparable(a: Node, b: Node): boolean {
+  return sameMarkup(a, b) || (a.isTextblock && b.isTextblock)
+}
+
 function sameMarkup(a: Node, b: Node): boolean {
   if (a.type !== b.type || !Mark.sameSet(a.marks, b.marks)) return false
   const keys = new Set([...Object.keys(a.attrs), ...Object.keys(b.attrs)])
@@ -205,7 +264,7 @@ function diffStart(a: Fragment, b: Fragment, pos: number): number | null {
       pos += childA.nodeSize
       continue
     }
-    if (!sameMarkup(childA, childB)) return pos
+    if (!comparable(childA, childB)) return pos
     if (childA.isText && childA.text !== childB.text) {
       const textA = childA.text ?? ''
       const textB = childB.text ?? ''
@@ -236,7 +295,7 @@ function diffEnd(
       posB -= childB.nodeSize
       continue
     }
-    if (!sameMarkup(childA, childB)) return { a: posA, b: posB }
+    if (!comparable(childA, childB)) return { a: posA, b: posB }
     if (childA.isText && childA.text !== childB.text) {
       const textA = childA.text ?? ''
       const textB = childB.text ?? ''

@@ -148,8 +148,12 @@ describe('typing hold plugin', () => {
   })
 })
 
-function mountNote(texts = ['Alpha line.', 'Bravo line.', 'Charlie line.']) {
-  const mounted = mountTestEditor(texts.map((text) => para(text)))
+function mountNote(
+  blocks: Array<string | PartialBlock> = ['Alpha line.', 'Bravo line.', 'Charlie line.']
+) {
+  const mounted = mountTestEditor(
+    blocks.map((block) => (typeof block === 'string' ? para(block) : block))
+  )
   const hold = typingHoldOf(mounted.doc)
   registerEditorPlugin(mounted.editor, createTypingHoldPlugin(hold))
   return { ...mounted, hold }
@@ -212,6 +216,12 @@ function lastText(blocks: Y.XmlElement): Y.XmlText {
   while (node instanceof Y.XmlElement) node = node.get(0)
   return node
 }
+
+const heading = (text: string, level: number): PartialBlock => ({
+  type: 'heading',
+  props: { level },
+  content: text
+})
 
 function caret(view: EditorView): string {
   const { $head } = view.state.selection
@@ -299,6 +309,84 @@ describe('the outside edit frame', () => {
       para('Charlie line')
     ])
     expect(caret(view)).toBe('Charlie line @4')
+  })
+})
+
+describe('the outside edit frame, block changes', () => {
+  it('keeps a caret in a paragraph the edit turns into a heading', () => {
+    const { view, doc, hold } = mountNote(['A', 'Bravo line', 'C'])
+    placeCaret(view, 'Bravo line', 3)
+    feedOutsideEdit(doc, hold, [para('A'), heading('Bravo line', 2), para('CX')])
+    expect(view.state.selection.$head.parent.type.name).toBe('heading')
+    expect(caret(view)).toBe('Bravo line @3')
+  })
+
+  it('keeps a caret in a heading whose level the edit changes', () => {
+    const { view, doc, hold } = mountNote(['A', heading('Bravo line', 2), 'C'])
+    placeCaret(view, 'Bravo line', 3)
+    feedOutsideEdit(doc, hold, [para('A'), heading('Bravo line', 3), para('CX')])
+    expect(view.state.selection.$head.parent.attrs.level).toBe(3)
+    expect(caret(view)).toBe('Bravo line @3')
+  })
+
+  it('keeps a caret in a paragraph the edit turns into a list item and appends to', () => {
+    const { view, doc, hold } = mountNote(['A', 'Bravo line', 'C'])
+    placeCaret(view, 'Bravo line', 3)
+    feedOutsideEdit(doc, hold, [
+      para('A'),
+      { type: 'bulletListItem', content: 'Bravo line!' },
+      para('C')
+    ])
+    expect(view.state.selection.$head.parent.type.name).toBe('bulletListItem')
+    expect(caret(view)).toBe('Bravo line! @3')
+  })
+
+  it('keeps a caret in a block the edit changes when it also inserts a block above it', () => {
+    const { view, doc, hold } = mountNote(['A', 'Bravo line', 'C'])
+    placeCaret(view, 'Bravo line', 3)
+    feedOutsideEdit(doc, hold, [para('A'), para('New'), para('Bravo line!'), para('C')])
+    expect(caret(view)).toBe('Bravo line! @3')
+  })
+
+  it('keeps a caret in a block the edit changes when it also inserts a block below it', () => {
+    const { view, doc, hold } = mountNote(['A', 'Bravo line', 'C'])
+    placeCaret(view, 'Bravo line', 3)
+    feedOutsideEdit(doc, hold, [para('A'), para('So Bravo line'), para('New'), para('C')])
+    expect(caret(view)).toBe('So Bravo line @6')
+  })
+
+  it('keeps a caret in a block the edit changes when it also removes the block above it', () => {
+    const { view, doc, hold } = mountNote(['A', 'Old', 'Bravo line', 'C'])
+    placeCaret(view, 'Bravo line', 3)
+    feedOutsideEdit(doc, hold, [para('A'), para('Bravo line!'), para('C')])
+    expect(caret(view)).toBe('Bravo line! @3')
+  })
+
+  it.each([
+    [0, 0],
+    [1, 1],
+    [2, 2],
+    [3, 2],
+    [4, 3]
+  ])('maps a caret at %i of a block that loses a repeated letter to %i', (from, to) => {
+    const { view, doc, hold } = mountNote(['Alpha', 'xaab'])
+    placeCaret(view, 'xaab', from)
+    feedOutsideEdit(doc, hold, [para('Intro'), para('Alpha'), para('xab')])
+    expect(caret(view)).toBe(`xab @${to}`)
+  })
+
+  it('keeps a caret near its block past the block edit cap', () => {
+    const texts = Array.from({ length: 1100 }, (_, i) => `Block ${i}`)
+    const { view, doc, hold } = mountNote(texts)
+    placeCaret(view, 'Block 600', 2)
+    // An empty block after each: more block insertions than the diff follows.
+    feedOutsideEdit(
+      doc,
+      hold,
+      texts.flatMap((text) => [para(text), para('')])
+    )
+    // Past the cap the blocks pair by index: the caret's block 600 is the new block 600.
+    expect(caret(view)).toBe('Block 300 @2')
   })
 })
 
