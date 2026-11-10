@@ -1,6 +1,7 @@
 // The open note's BlockNote editor, read and written as Electron's editor specs do through
 // `window.__memryActiveEditor` (`renderer/src/commands/editor-target.ts`). Step 14k (#3531).
 import { createNote, getNote, NOTE_EDITOR, openFromSidebar, type NoteView } from './notes'
+import { expect } from './pw-compat/expect'
 import type { Page } from './pw-compat/page'
 
 /** The part of BlockNote's block the specs read. */
@@ -85,4 +86,37 @@ export async function noteBody(page: Page, id: string): Promise<string | null> {
  */
 export async function typeInEditor(page: Page, text: string): Promise<void> {
   for (const char of text) await page.keyboard.insertText(char)
+}
+
+/**
+ * Opens a new note whose body is one paragraph per line, once every line is on disk, as
+ * Electron's `createNoteWithBody` does.
+ */
+export async function openNoteWithLines(
+  page: Page,
+  title: string,
+  lines: string[]
+): Promise<NoteView> {
+  const note = await openNewNote(page, title, 'seed')
+  await setBlocks(page, paragraphs(lines))
+  await expect
+    .poll(async () => {
+      const body = (await noteBody(page, note.id)) ?? ''
+      return lines.every((line) => body.includes(line))
+    })
+    .toBe(true)
+  return note
+}
+
+/** Moves the pointer to `to` in `steps` moves, as Playwright's `mouse.move(x, y, { steps })`. */
+export async function glide(
+  page: Page,
+  to: { x: number; y: number },
+  steps: number
+): Promise<void> {
+  const from = { x: page.core.mouseX, y: page.core.mouseY }
+  for (let step = 1; step <= steps; step++) {
+    const t = step / steps
+    await page.mouse.move(from.x + (to.x - from.x) * t, from.y + (to.y - from.y) * t)
+  }
 }

@@ -372,19 +372,21 @@ export function memryPwInstall(win) {
   }
 
   /**
-   * The state an action waits for. `scroll` brings the element into view first. `hit` is true
-   * when the element is what sits at the centre of its box, which rules out an overlay.
+   * The state an action waits for. `scroll` brings the element into view when it is off the
+   * viewport or covered. `hit` is true when the element is what sits at the centre of its box,
+   * which rules out an overlay.
    */
   function target(spec, scroll) {
     const elements = queryAll(spec)
     if (elements.length !== 1) return { count: elements.length }
     const el = elements[0]
-    if (scroll && el.scrollIntoView) el.scrollIntoView({ block: 'center', inline: 'center' })
-    const box = boxOf(el)
-    const cx = box.x + box.width / 2
-    const cy = box.y + box.height / 2
-    const top = doc.elementFromPoint(cx, cy)
-    const hit = !!top && (top === el || el.contains(top))
+    let { box, cx, cy, top, hit } = probe(el)
+    // As Playwright, only when needed: centering an element that is already clickable scrolls its
+    // container, and a popup anchored inside that container moves under the pointer.
+    if (scroll && el.scrollIntoView && !(hit && inViewport(box))) {
+      el.scrollIntoView({ block: 'center', inline: 'center' })
+      ;({ box, cx, cy, top, hit } = probe(el))
+    }
     return {
       count: 1,
       visible: isVisible(el),
@@ -401,6 +403,21 @@ export function memryPwInstall(win) {
       y: cy
     }
   }
+
+  /** `el`'s box, its centre, and whether `el` is what sits on that centre. */
+  function probe(el) {
+    const box = boxOf(el)
+    const cx = box.x + box.width / 2
+    const cy = box.y + box.height / 2
+    const top = doc.elementFromPoint(cx, cy)
+    return { box, cx, cy, top, hit: !!top && (top === el || el.contains(top)) }
+  }
+
+  const inViewport = (box) =>
+    box.x >= 0 &&
+    box.y >= 0 &&
+    box.x + box.width <= win.innerWidth &&
+    box.y + box.height <= win.innerHeight
 
   // ---- actions that run in the page ----------------------------------------------------------
 
@@ -521,7 +538,10 @@ export function memryPwInstall(win) {
       }
       seen[event.type] = true
       if (event.type === 'mouseover') seen.overTarget = event.target
-      if (event.type === 'mousedown' && event.defaultPrevented) seen.prevented = true
+      // A real press moves focus as the default action of `mousedown`: after its handlers, before
+      // any frame or timer they start. Base UI's Select opens a frame after the press and closes
+      // when its trigger gains focus while open, as it would from the fixup after `mouseup`.
+      if (event.type === 'mousedown' && !event.isTrusted) queueMicrotask(() => pressFocus(event))
     }
     for (const type of [
       'pointerdown',
@@ -552,6 +572,26 @@ export function memryPwInstall(win) {
     }
   }
 
+  /** Focuses what a press on `el` focuses, or blurs the focus when nothing there takes it. */
+  function focusAt(el) {
+    const focusable = el.closest(FOCUSABLE)
+    if (focusable) {
+      if (doc.activeElement !== focusable) focusable.focus()
+    } else if (doc.activeElement && doc.activeElement !== doc.body) {
+      doc.activeElement.blur()
+    }
+  }
+
+  /**
+   * Runs once the driver's `mousedown` reached every handler. A cancelled press keeps focus where
+   * it is; either way the press has settled focus, and the fixup leaves it to the page.
+   */
+  function pressFocus(event) {
+    seen.pressFocused = true
+    if (event.defaultPrevented || event.button !== 0) return
+    if (doc.activeElement === seen.activeBefore) focusAt(event.target)
+  }
+
   /**
    * Some embedded drivers (macOS WKWebView) dispatch synthetic `mousedown`, `mouseup` and `click`
    * only. Add what a real click does and was not seen: pointer events, focus, `dblclick` and
@@ -574,14 +614,7 @@ export function memryPwInstall(win) {
       el.dispatchEvent(new win.PointerEvent('pointerdown', init))
       el.dispatchEvent(new win.PointerEvent('pointerup', { ...init, buttons: 0 }))
     }
-    if (button === 0 && !seen.prevented && doc.activeElement === seen.activeBefore) {
-      const focusable = el.closest(FOCUSABLE)
-      if (focusable) {
-        if (doc.activeElement !== focusable) focusable.focus()
-      } else if (doc.activeElement && doc.activeElement !== doc.body) {
-        doc.activeElement.blur()
-      }
-    }
+    if (button === 0 && !seen.pressFocused && doc.activeElement === seen.activeBefore) focusAt(el)
     if (clickCount >= 2 && !seen.dblclick) {
       el.dispatchEvent(new win.MouseEvent('dblclick', mouseInit(x, y, button, 2, 0)))
     }
