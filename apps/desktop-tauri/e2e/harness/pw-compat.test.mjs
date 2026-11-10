@@ -271,6 +271,35 @@ test('a driver without pointer events gets them ahead of its press, on what it p
   ])
 })
 
+test('a press settles focus once its mousedown handlers ran, and the click leaves it there', async () => {
+  // Base UI's Select opens a frame after mousedown, hands focus back to the editor, and closes
+  // when its trigger gains focus while open: focus from the click fixup closed the list it opened.
+  const { dom, pw } = page(
+    '<input id="field"><button id="pick">Pick</button><button id="keep">B</button>'
+  )
+  const doc = dom.window.document
+  const field = doc.getElementById('field')
+  doc.getElementById('keep').addEventListener('mousedown', (event) => event.preventDefault())
+  doc.getElementById('pick').addEventListener('click', () => field.focus())
+  const press = async (id) => {
+    field.focus()
+    pw.watch()
+    const init = { bubbles: true, cancelable: true, button: 0 }
+    doc.getElementById(id).dispatchEvent(new dom.window.MouseEvent('mousedown', init))
+    await Promise.resolve()
+    const focused = doc.activeElement.id
+    doc.elementFromPoint = () => doc.getElementById(id)
+    for (const type of ['mouseup', 'click']) {
+      doc.getElementById(id).dispatchEvent(new dom.window.MouseEvent(type, init))
+    }
+    pw.fixup(10, 10, 0, 1)
+    return [focused, doc.activeElement.id]
+  }
+
+  assert.deepEqual(await press('pick'), ['pick', 'field'])
+  assert.deepEqual(await press('keep'), ['field', 'field'])
+})
+
 test('a hover reaches its target when the real pointer moved over another element meanwhile', () => {
   // Under Xvfb the X pointer rests over the window, and WebKit sends a trusted mouseover to whatever
   // the page moves under it. That is not the driver hovering the target (#3967).
