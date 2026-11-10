@@ -14,13 +14,14 @@ type ImagePath = 'webview' | 'app'
 
 /**
  * Which writer puts the mind map's PNG on the clipboard, per OS, as observed in CI and locally.
- * WKWebView (macOS 15) takes the image `ClipboardItem` while the click's gesture is live after the
- * async export. WebKitGTK 2.50 (ubuntu-22.04) refuses it. WebView2 takes it on windows-arm64 and
- * refuses it on windows-x64 (the reason is logged). A refusal goes to `clipboard_write_image`; the
- * second test forces that path on every OS.
+ * WebKit takes the image `ClipboardItem` only while the click's gesture is live after the async
+ * export: WKWebView took it on a local macOS 15 run and refused it on the slower CI `macos-arm64`
+ * runner. WebKitGTK 2.50 (ubuntu-22.04) refuses it. WebView2 takes it on windows-arm64 and refuses
+ * it on windows-x64 ("Document is not focused"). Each refusal goes to `clipboard_write_image`,
+ * and the second test forces that path on every OS.
  */
 const IMAGE_PATH: Record<'darwin' | 'win32' | 'linux', ImagePath[]> = {
-  darwin: ['webview'],
+  darwin: ['webview', 'app'],
   win32: ['webview', 'app'],
   linux: ['app']
 }
