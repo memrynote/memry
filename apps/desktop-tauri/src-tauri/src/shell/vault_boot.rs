@@ -116,8 +116,8 @@ fn register_settings_hook(app: &AppHandle<Wry>, session: &Session) {
 /// managed for `vault_reindex`. A tag rename or a field rename an earlier run did not finish is
 /// finished once each open's walk ends (Step 13j-4, 13j-3d). The pre-sync template
 /// files import as the vault opens (Step 13l), into its activity log. The note fold starts with
-/// every open and stops with every close (Step 14h). The vault's notices follow the identity
-/// and the watcher (Step 14l).
+/// every open and stops with every close (Step 14h). The identity raises the vault's notices,
+/// the watch limit its consumer hits included (Step 14l).
 fn register_vault_watcher(app: &AppHandle<Wry>, session: &Session) {
     // Managed by the `Handlers` stage, which runs before this one.
     let Some(store) = app.try_state::<Arc<DeviceIdentityStore>>() else {
@@ -135,7 +135,6 @@ fn register_vault_watcher(app: &AppHandle<Wry>, session: &Session) {
     ));
     tier.register(session);
     notices.register(session);
-    notices.follow(tier.subscribe());
     forward_notice_changes(app.clone(), notices.subscribe());
     app.manage(notices);
     let reporter = app.clone();

@@ -1667,6 +1667,11 @@
     "watchLimitHint": "Linux tillater for få filovervåkinger for dette hvelvet, så Memry ser bare endringer utenfra når den skanner på nytt. Kjør denne kommandoen, og start deretter Memry på nytt:",
     "copyCommand": "Kopier kommando",
     "commandCopied": "Kommandoen er kopiert. Lim den inn i en terminal.",
-    "copyFailed": "Kunne ikke kopiere kommandoen. Skriv den av fra varselet i stedet."
+    "copyFailed": "Kunne ikke kopiere kommandoen. Skriv den av fra varselet i stedet.",
+    "undecidedFiles": "Noen filer ble ikke til notater",
+    "undecidedFilesHint": "Et notat eller en dagbokside med samme navn har annen tekst, eller er ikke synkronisert til denne enheten ennå. Memry lar disse filene være uendret og sjekker dem igjen neste gang dette hvelvet åpnes.",
+    "keptRemovals": "Memry beholdt notater der filene ble slettet",
+    "keptRemovalsHint": "Disse filene ble slettet utenfor Memry, men notatene deres hadde tekst filene aldri fikk. Memry beholdt notatene i stedet for å slette teksten på de andre enhetene dine.",
+    "moreUnlisted": "Andre vises ikke her."
   }
 }

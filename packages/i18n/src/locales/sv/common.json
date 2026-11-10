@@ -1667,6 +1667,11 @@
     "watchLimitHint": "Linux tillåter för få filbevakningar för det här valvet, så Memry ser ändringar utifrån först när den skannar om. Kör det här kommandot och starta sedan om Memry:",
     "copyCommand": "Kopiera kommando",
     "commandCopied": "Kommandot har kopierats. Klistra in det i en terminal.",
-    "copyFailed": "Det gick inte att kopiera kommandot. Skriv av det från meddelandet i stället."
+    "copyFailed": "Det gick inte att kopiera kommandot. Skriv av det från meddelandet i stället.",
+    "undecidedFiles": "Vissa filer blev inte anteckningar",
+    "undecidedFilesHint": "En anteckning eller dagbokssida med samma namn har annan text eller har inte synkats till den här enheten ännu. Memry lämnar filerna orörda och kontrollerar dem igen nästa gång det här valvet öppnas.",
+    "keptRemovals": "Memry behöll anteckningar vars filer raderades",
+    "keptRemovalsHint": "De här filerna raderades utanför Memry, men deras anteckningar hade text som filerna aldrig fick. Memry behöll anteckningarna i stället för att radera texten på dina andra enheter.",
+    "moreUnlisted": "Andra visas inte här."
   }
 }

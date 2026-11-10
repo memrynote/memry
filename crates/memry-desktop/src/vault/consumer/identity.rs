@@ -131,6 +131,15 @@ pub trait NoteIdentity: Send + Sync {
     /// vault from an earlier session. Its failures are its own to log.
     fn opened(&self, _ctx: &IdentityCtx<'_>) {}
 
+    /// The vault's watcher hit the Linux inotify watch limit (`WatchFailed { limit: true }`):
+    /// for the identity to show it on the vault's notices with the rest of what the user can
+    /// act on. Called by the consumer of the open whose watcher hit it, so it names that vault.
+    fn watch_limited(&self, _ctx: &IdentityCtx<'_>) {}
+
+    /// A file is at the path of the note's row, which names no text: a note kept when its file
+    /// was deleted (`Removal::Kept`) has a file again, so it is not shown as deleted any more.
+    fn file_returned(&self, _ctx: &IdentityCtx<'_>, _note_id: &str) {}
+
     /// The note of a new file. Never the id of a deleted record. Idempotent: called again for
     /// the same file after a crash, it returns the record it created then.
     fn adopt_or_create(

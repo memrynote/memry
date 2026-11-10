@@ -1667,6 +1667,11 @@
     "watchLimitHint": "Linux permite prea puține monitorizări de fișiere pentru acest seif, așa că Memry vede modificările din afară doar când scanează din nou. Rulează această comandă, apoi repornește Memry:",
     "copyCommand": "Copiază comanda",
     "commandCopied": "Comanda a fost copiată. Lipește-o într-un terminal.",
-    "copyFailed": "Comanda nu a putut fi copiată. Tasteaz-o din notificare."
+    "copyFailed": "Comanda nu a putut fi copiată. Tasteaz-o din notificare.",
+    "undecidedFiles": "Unele fișiere nu au devenit notițe",
+    "undecidedFilesHint": "O notiță sau o intrare de jurnal cu același nume are alt text sau nu a fost încă sincronizată pe acest dispozitiv. Memry lasă aceste fișiere neschimbate și le verifică din nou la următoarea deschidere a acestui seif.",
+    "keptRemovals": "Memry a păstrat notițe ale căror fișiere au fost șterse",
+    "keptRemovalsHint": "Aceste fișiere au fost șterse în afara Memry, dar notițele lor aveau text care nu a ajuns niciodată în fișiere. Memry a păstrat notițele în loc să șteargă acel text de pe celelalte dispozitive ale tale.",
+    "moreUnlisted": "Altele nu sunt afișate aici."
   }
 }

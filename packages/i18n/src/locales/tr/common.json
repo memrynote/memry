@@ -1667,6 +1667,11 @@
     "watchLimitHint": "Linux bu kasa için çok az dosya izlemeye izin veriyor, bu yüzden Memry dışarıdaki değişiklikleri yalnızca yeniden taradığında görüyor. Bu komutu çalıştır, ardından Memry'yi yeniden başlat:",
     "copyCommand": "Komutu kopyala",
     "commandCopied": "Komut kopyalandı. Bir terminale yapıştır.",
-    "copyFailed": "Komut kopyalanamadı. Bildirimdeki komutu elle yaz."
+    "copyFailed": "Komut kopyalanamadı. Bildirimdeki komutu elle yaz.",
+    "undecidedFiles": "Bazı dosyalar nota dönüşmedi",
+    "undecidedFilesHint": "Aynı adlı bir not ya da günlük sayfası farklı bir metne sahip veya henüz bu cihaza eşitlenmedi. Memry bu dosyalara dokunmaz ve bu kasayı bir sonraki açışında onları yeniden kontrol eder.",
+    "keptRemovals": "Memry, dosyaları silinen notları sakladı",
+    "keptRemovalsHint": "Bu dosyalar Memry dışında silindi, ancak notlarında dosyalara hiç yazılmamış metin vardı. Memry, bu metni diğer cihazlarında da silmek yerine notları sakladı.",
+    "moreUnlisted": "Diğerleri burada listelenmiyor."
   }
 }

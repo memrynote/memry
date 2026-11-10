@@ -1667,6 +1667,11 @@
     "watchLimitHint": "Masyadong kaunti ang pinapayagan ng Linux na file watch para sa vault na ito, kaya nakikita lang ng Memry ang mga pagbabago mula sa labas kapag nag-rescan ito. Patakbuhin ang command na ito, pagkatapos ay i-restart ang Memry:",
     "copyCommand": "Kopyahin ang command",
     "commandCopied": "Nakopya ang command. I-paste ito sa isang terminal.",
-    "copyFailed": "Hindi makopya ang command. I-type na lang ito mula sa abiso."
+    "copyFailed": "Hindi makopya ang command. I-type na lang ito mula sa abiso.",
+    "undecidedFiles": "Hindi naging tala ang ilang file",
+    "undecidedFilesHint": "May tala o entry sa talaarawan na kapareho ang pangalan pero iba ang teksto, o hindi pa ito naka-sync sa device na ito. Hinahayaan ng Memry ang mga file na ito at susuriin muli sa susunod na pagbukas nito sa vault na ito.",
+    "keptRemovals": "Itinago ng Memry ang mga talang binura ang file",
+    "keptRemovalsHint": "Binura ang mga file na ito sa labas ng Memry, pero may tekstong hindi kailanman napunta sa mga file ang kanilang mga tala. Itinago ng Memry ang mga tala sa halip na burahin ang tekstong iyon sa iba mong device.",
+    "moreUnlisted": "May iba pang hindi nakalista rito."
   }
 }

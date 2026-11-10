@@ -1667,6 +1667,11 @@
     "watchLimitHint": "Linux permite muy pocas vigilancias de archivos para esta bóveda, así que Memry solo ve los cambios externos cuando vuelve a escanear. Ejecuta este comando y reinicia Memry:",
     "copyCommand": "Copiar comando",
     "commandCopied": "Comando copiado. Pégalo en una terminal.",
-    "copyFailed": "No se pudo copiar el comando. Escríbelo a partir del aviso."
+    "copyFailed": "No se pudo copiar el comando. Escríbelo a partir del aviso.",
+    "undecidedFiles": "Algunos archivos no se convirtieron en notas",
+    "undecidedFilesHint": "Una nota o entrada del diario con el mismo nombre tiene otro texto, o aún no se ha sincronizado con este dispositivo. Memry deja estos archivos sin cambios y los vuelve a comprobar la próxima vez que abra esta bóveda.",
+    "keptRemovals": "Memry conservó notas cuyos archivos se eliminaron",
+    "keptRemovalsHint": "Estos archivos se eliminaron fuera de Memry, pero sus notas tenían texto que los archivos nunca recibieron. Memry conservó las notas en lugar de borrar ese texto en tus otros dispositivos.",
+    "moreUnlisted": "Hay otros que no aparecen aquí."
   }
 }

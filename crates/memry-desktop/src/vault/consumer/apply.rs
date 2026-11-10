@@ -111,6 +111,9 @@ impl Applier {
             other => {
                 log_watch(&other);
                 self.report(&other);
+                if matches!(other, VaultEvent::WatchFailed { limit: true, .. }) {
+                    self.identity.watch_limited(&self.ctx());
+                }
                 lane.publish(Applied::Vault(other));
                 Step::Done
             }
@@ -350,7 +353,10 @@ impl Applier {
                 // The row names no text the document holds, so the body may be one the file
                 // never had (synced, kept, owed and since pulled): the file only fills an
                 // empty body. A conflict between the two is the write-back's (12e-3, Step 17).
-                None => Write::Seed,
+                None => {
+                    self.identity.file_returned(&self.ctx(), note_id);
+                    Write::Seed
+                }
             };
             match self.write_body(note_id, path, &file, write) {
                 Body::Wrote { holds_file: true } => {

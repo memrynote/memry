@@ -1667,6 +1667,11 @@
     "watchLimitHint": "Linux dopušta premalo praćenja datoteka za ovaj trezor, pa Memry vidi vanjske promjene tek kad ponovno skenira. Pokrenite ovu naredbu, a zatim ponovno pokrenite Memry:",
     "copyCommand": "Kopiraj naredbu",
     "commandCopied": "Naredba je kopirana. Zalijepite je u terminal.",
-    "copyFailed": "Naredbu nije moguće kopirati. Prepišite je iz obavijesti."
+    "copyFailed": "Naredbu nije moguće kopirati. Prepišite je iz obavijesti.",
+    "undecidedFiles": "Neke datoteke nisu postale bilješke",
+    "undecidedFilesHint": "Bilješka ili unos u dnevnik s istim nazivom ima drugačiji tekst ili još nije sinkroniziran na ovaj uređaj. Memry ostavlja te datoteke nepromijenjenima i ponovno ih provjerava pri sljedećem otvaranju ovog trezora.",
+    "keptRemovals": "Memry je zadržao bilješke čije su datoteke izbrisane",
+    "keptRemovalsHint": "Te su datoteke izbrisane izvan Memryja, ali njihove su bilješke imale tekst koji datoteke nikad nisu dobile. Memry je zadržao bilješke umjesto da taj tekst izbriše na vašim drugim uređajima.",
+    "moreUnlisted": "Ostali ovdje nisu navedeni."
   }
 }

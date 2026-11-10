@@ -1667,6 +1667,11 @@
     "watchLimitHint": "Linux tillader for få filovervågninger til denne boks, så Memry ser kun ændringer udefra, når den scanner igen. Kør denne kommando, og genstart derefter Memry:",
     "copyCommand": "Kopiér kommando",
     "commandCopied": "Kommandoen er kopieret. Indsæt den i en terminal.",
-    "copyFailed": "Kunne ikke kopiere kommandoen. Skriv den af fra meddelelsen i stedet."
+    "copyFailed": "Kunne ikke kopiere kommandoen. Skriv den af fra meddelelsen i stedet.",
+    "undecidedFiles": "Nogle filer blev ikke til noter",
+    "undecidedFilesHint": "En note eller dagbogsside med samme navn har en anden tekst eller er ikke synkroniseret til denne enhed endnu. Memry lader filerne være uændrede og tjekker dem igen, næste gang denne boks åbnes.",
+    "keptRemovals": "Memry beholdt noter, hvis filer blev slettet",
+    "keptRemovalsHint": "Disse filer blev slettet uden for Memry, men deres noter havde tekst, som filerne aldrig fik. Memry beholdt noterne i stedet for at slette teksten på dine andre enheder.",
+    "moreUnlisted": "Andre er ikke vist her."
   }
 }

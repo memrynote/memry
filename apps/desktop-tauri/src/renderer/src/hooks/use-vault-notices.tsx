@@ -1,11 +1,11 @@
 /**
  * Shows the open vault's notices (Step 14l, #3531): a state of the vault the user can act on
  * that no screen shows otherwise. Each notice is one persistent toast with an action, updated
- * in place while it holds and taken down when it clears. A notice the user closed stays closed
+ * in place while it holds (a list notice as its list grows) and taken down when it clears. A notice the user closed stays closed
  * until it clears and is raised again; a notice of the next vault starts fresh.
  */
 
-import { useEffect } from 'react'
+import { useEffect, type ReactNode } from 'react'
 import { toast } from 'sonner'
 import { useT } from '@memry/i18n/renderer'
 import type { VaultNotice } from '../../../generated/bindings'
@@ -25,6 +25,44 @@ export const WATCH_LIMIT_COMMAND =
   'echo fs.inotify.max_user_watches=1048576 | sudo tee /etc/sysctl.d/60-memry.conf && sudo sysctl --system'
 
 type Kind = VaultNotice['kind']
+
+/** How many names a list notice spells out; the rest are counted. */
+const NAMED = 3
+
+/** A path's last part, on any platform's separators. */
+const fileName = (path: string): string => path.split(/[\\/]/).pop() || path
+
+/**
+ * A list notice's hint and the first names it lists, each isolated so a name in another
+ * script keeps its order; past [NAMED] names, a count of the rest (`+` when the vault has more
+ * than it listed). With no name left but more in the vault, `unlisted` says so instead.
+ */
+function listed(
+  hint: string,
+  items: { key: string; name: string }[],
+  more: boolean,
+  unlisted: string
+): ReactNode {
+  const rest = items.length - NAMED
+  return (
+    <>
+      {hint}
+      <span className="mt-1 block text-start">
+        {items.length === 0
+          ? unlisted
+          : items.slice(0, NAMED).map(({ key, name }, at) => (
+              <span key={key}>
+                {at > 0 && ', '}
+                <bdi>{name}</bdi>
+              </span>
+            ))}
+        {items.length > 0 && (rest > 0 || more) && (
+          <bdi dir="ltr">{` +${Math.max(rest, 0)}${more ? '+' : ''}`}</bdi>
+        )}
+      </span>
+    </>
+  )
+}
 
 const toastId = (kind: Kind): string => `vault-notice-${kind}`
 
@@ -67,6 +105,47 @@ export function useVaultNotices(): void {
                 })
               }
             }
+          })
+          return
+        case 'undecidedFiles': {
+          const [first] = notice.paths
+          toast.warning(t('vaultNotice.undecidedFiles'), {
+            ...sticky,
+            description: listed(
+              t('vaultNotice.undecidedFilesHint'),
+              notice.paths.map((path) => ({ key: path, name: fileName(path) })),
+              notice.more,
+              t('vaultNotice.moreUnlisted')
+            ),
+            action: first
+              ? {
+                  label: revealInFolder,
+                  onClick: (event) => {
+                    event.preventDefault()
+                    commands.shellRevealPath(first).catch((error: unknown) => {
+                      log.error('an undecided file could not be revealed', error)
+                      toast.error(t('fileActions.revealFailed'))
+                    })
+                  }
+                }
+              : undefined
+          })
+          return
+        }
+        // No action: the note page reads the note's file, which is gone (Electron's
+        // `getNoteById` parity), so an opened kept note would show nothing.
+        case 'keptRemovals':
+          toast.warning(t('vaultNotice.keptRemovals'), {
+            ...sticky,
+            description: listed(
+              t('vaultNotice.keptRemovalsHint'),
+              notice.notes.map((note) => ({
+                key: note.noteId,
+                name: fileName(note.path).replace(/\.md$/i, '')
+              })),
+              notice.more,
+              t('vaultNotice.moreUnlisted')
+            )
           })
           return
         case 'watchLimit':

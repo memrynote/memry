@@ -1247,6 +1247,15 @@ export type KeptNoteView = {
 	title: string,
 };
 
+/**
+ *  A note kept when its file was deleted outside the app; `path` is the deleted file's,
+ *  absolute.
+ */
+export type KeptRemoval = {
+	noteId: string,
+	path: string,
+};
+
 /**  The index scan of one session, on the channel its open passed. */
 export type LargeFileEvent = { status: "scanning"; sessionId: string; bytesScanned: number; fileBytes: number } | { status: "ready"; sessionId: string; fileBytes: number; lineCount: number } | { status: "error"; sessionId: string; message: string } | { status: "closed"; sessionId: string };
 
@@ -2524,8 +2533,16 @@ export type VaultListChangedEvent = null;
  *    (`WatchFailed { limit: true }`): changes made outside the app there arrive with the
  *    watcher's rescans, not at once, until the user raises `fs.inotify.max_user_watches` and
  *    restarts.
+ *  - `undecidedFiles`: files that have the name of a note or a journal day whose text is not
+ *    the file's, or is not on this device yet (`Deferral::Undecided`): they stay files, not
+ *    notes, and the next open asks again. `paths` are absolute, for the user to find them.
+ *  - `keptRemovals`: files deleted outside the app whose notes were kept, because the note has
+ *    text the file never had (`Removed::Undecided`), rather than deleting that text on every
+ *    device. Listed until a file is at the note's path again; every open lists them again
+ *    while their rows have no file.
+ *  - `more` says a list notice had more items than [`LISTED`].
  */
-export type VaultNotice = { kind: "configUnreadable"; path: string } | { kind: "watchLimit" };
+export type VaultNotice = { kind: "configUnreadable"; path: string } | { kind: "watchLimit" } | { kind: "undecidedFiles"; paths: string[]; more: boolean } | { kind: "keptRemovals"; notes: KeptRemoval[]; more: boolean };
 
 /**  The open vault's notices, as a window reads them. */
 export type VaultNoticeList = {
