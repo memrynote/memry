@@ -1647,6 +1647,7 @@
     "unlockFolder": "Sblocca cartella",
     "toggleFailed": "Impossibile cambiare il blocco",
     "readOnlyIndicator": "Bloccata. Sola lettura per te e per gli agenti.",
+    "excludedIndicator": "Questa nota si trova in una cartella esclusa.",
     "externalEditRestored": "“{title}” è bloccata, quindi la modifica esterna è stata annullata",
     "externalEditRestoredHint": "Il testo modificato è salvato nella cronologia versioni della nota."
   },

@@ -14,6 +14,7 @@ import { useSidebarNavigation } from '@/hooks/use-sidebar-navigation'
 import { useSyncOptional } from '@/contexts/sync-context'
 import { createLogger } from '@/lib/logger'
 import { useIsNoteLocked } from '@/lib/vault-locks-store'
+import { useIsNoteExcluded } from '@/lib/excluded-notes-store'
 import { PortalRemoveFromContext } from '../portal-flows/portal-remove-context'
 import { useAttachmentNoteId } from '../note-file-url-context'
 import { commitPortalPlan, createPortalActions } from './portal-actions'
@@ -88,7 +89,8 @@ export function PortalNoteView({
   const hostNoteId = useAttachmentNoteId()
   const ancestry = withHostFrame(usePortalAncestry(), hostNoteId)
   const { note, isLoading } = usePortalSourceNote(target.note)
-  const locked = useIsNoteLocked(target.note, note?.path ?? null)
+  const excluded = useIsNoteExcluded(note?.path)
+  const locked = useIsNoteLocked(target.note, note?.path ?? null) || excluded
   const sync = useSyncOptional()
   const { openSidebarItem } = useSidebarNavigation()
   const HiddenBlocksSlot = usePortalHiddenBlocksSlot()

@@ -1647,6 +1647,7 @@
     "unlockFolder": "Buka kunci folder",
     "toggleFailed": "Tidak dapat mengubah kunci",
     "readOnlyIndicator": "Terkunci. Hanya baca untuk Anda dan untuk agen.",
+    "excludedIndicator": "Catatan ini ada di folder yang dikecualikan.",
     "externalEditRestored": "“{title}” terkunci, sehingga editan dari luar dibatalkan",
     "externalEditRestoredHint": "Teks yang diedit tersimpan di riwayat versi catatan."
   },

@@ -1647,6 +1647,7 @@
     "unlockFolder": "שחרור התיקייה",
     "toggleFailed": "לא ניתן לשנות את הנעילה",
     "readOnlyIndicator": "נעול. לקריאה בלבד עבורך ועבור סוכנים.",
+    "excludedIndicator": "הפתק הזה נמצא בתיקייה מוחרגת.",
     "externalEditRestored": "“{title}” נעול, ולכן העריכה החיצונית שלו בוטלה",
     "externalEditRestoredHint": "הטקסט הערוך נשמר בהיסטוריית הגרסאות של הפתק."
   },
