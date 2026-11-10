@@ -946,6 +946,73 @@ describe('useJournalEntry: outside edits of the open day', () => {
       ])
     })
 
+    // The late report has a caller that waits for its write: its failure past the wait is shown
+    // once there, not sent again, and not shown a second time as a save the caller left (#4138).
+    it('shows a late report that fails past the wait once, without sending it again', async () => {
+      const hook = await mount()
+      const lateReport = hook.result.current.updateContent
+      await openDay(hook, NEXT)
+      let fail: () => void = () => {}
+      updateEntry.mockImplementationOnce(
+        // oxlint-disable-next-line typescript/no-misused-promises -- mockImplementation is typed as a void-returning callback; rejecting a Promise is what the mocked IPC method does
+        () =>
+          new Promise<JournalEntry>((_, reject) => {
+            fail = () => reject(new Error('disk'))
+          })
+      )
+      act(() => {
+        lateReport('Late')
+      })
+      await settle()
+      expect(updateEntry).toHaveBeenLastCalledWith({ date: DAY, content: 'Late' })
+
+      await act(async () => {
+        await vi.advanceTimersByTimeAsync(15_000)
+        fail()
+        for (let i = 0; i < 20; i++) await Promise.resolve()
+      })
+      await settle()
+
+      expect(toastError.mock.calls).toEqual([['disk']])
+      expect(vi.mocked(trackRendererError).mock.calls.map(([name]) => name)).toEqual([
+        'journal_pending_save_failed'
+      ])
+      expect(savesOf(DAY)).toBe(1)
+    })
+
+    // The page is gone, so no save error is rendered for the day: the failure of the text sent
+    // again reaches the user as a toast (#4138).
+    it('shows a toast when the text sent again after an unmount fails', async () => {
+      const hook = await mount()
+      let fail: () => void = () => {}
+      updateEntry.mockImplementationOnce(
+        // oxlint-disable-next-line typescript/no-misused-promises -- mockImplementation is typed as a void-returning callback; rejecting a Promise is what the mocked IPC method does
+        () =>
+          new Promise<JournalEntry>((_, reject) => {
+            fail = () => reject(new Error('disk'))
+          })
+      )
+      await startSave(hook.result, 'A')
+      await act(async () => {
+        await vi.advanceTimersByTimeAsync(10_000)
+      })
+      hook.unmount()
+      await settle()
+      expect(savesOf(DAY)).toBe(2)
+      expect(toastError).not.toHaveBeenCalled()
+
+      updateEntry.mockRejectedValueOnce(new Error('disk2'))
+      await act(async () => {
+        await vi.advanceTimersByTimeAsync(15_000)
+        fail()
+        for (let i = 0; i < 20; i++) await Promise.resolve()
+      })
+      await settle()
+
+      expect(savesOf(DAY)).toBe(3)
+      expect(toastError.mock.calls).toEqual([['disk2']])
+    })
+
     it('sends the typing again when the save running fails', async () => {
       const hook = await mount()
       let fail: () => void = () => {}
