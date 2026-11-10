@@ -597,7 +597,8 @@
         "title": "블록을 노트로 이동",
         "searchPlaceholder": "노트 검색…",
         "noResults": "일치하는 노트 없음",
-        "failed": "블록을 이동하지 못했습니다"
+        "failed": "블록을 이동하지 못했습니다",
+        "targetNotTaken": "이 노트가 너무 크거나 앱이 받아들일 수 없는 텍스트가 있어서 블록은 원래 자리에 그대로 있습니다."
       }
     },
     "attachmentPicker": {

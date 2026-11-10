@@ -597,7 +597,8 @@
         "title": "Sposta il blocco in una nota",
         "searchPlaceholder": "Cerca note…",
         "noResults": "Nessuna nota corrispondente",
-        "failed": "Impossibile spostare il blocco"
+        "failed": "Impossibile spostare il blocco",
+        "targetNotTaken": "Questa nota è troppo grande o contiene testo che l’app non riesce ad accettare, quindi i blocchi sono rimasti dove erano."
       }
     },
     "attachmentPicker": {
