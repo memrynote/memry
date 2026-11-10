@@ -22,7 +22,7 @@ struct TaskFilterSheet: View {
     @State private var isSaving = false
     @State private var pushed: Page?
 
-    private enum Page: Hashable { case due, tags, rules, saved }
+    private enum Page: Hashable { case due, tags, location, rules, saved }
 
     private var filters: TaskFilterSpec { store.state.filters }
 
@@ -34,7 +34,10 @@ struct TaskFilterSheet: View {
                     .listRowBackground(Color.clear)
                     .listRowInsets(EdgeInsets())
                 Section { TaskFilterDimensionRows(store: store, openDue: { pushed = .due }, openTags: { pushed = .tags }) }
-                Section { rulesEntry }
+                Section {
+                    locationEntry
+                    rulesEntry
+                }
                 Section { footer }
                     .listRowBackground(Color.clear)
                     .listRowInsets(EdgeInsets())
@@ -57,6 +60,12 @@ struct TaskFilterSheet: View {
                 switch page {
                 case .due: TaskFilterDueView(store: store)
                 case .tags: TaskFilterTagsView(store: store)
+                case .location:
+                    TaskFilterLocationView(store: store) { store in
+                        (store.state.filters.folderPaths, store.state.filters.noteIds)
+                    } onChange: { folders, notes in
+                        Task { await store.updateFilters { $0.folderPaths = folders; $0.noteIds = notes } }
+                    }
                 case .rules: TaskFilterRulesView(store: store)
                 case .saved: SavedFiltersPage(store: store)
                 }
@@ -87,6 +96,24 @@ struct TaskFilterSheet: View {
     }
 
     // MARK: Pieces
+
+    /// Opens the Location page; the row counts what is picked.
+    private var locationEntry: some View {
+        let picked = filters.folderPaths.count + filters.noteIds.count
+        return Button {
+            pushed = .location
+        } label: {
+            LabeledContent(
+                TasksCopy.filterLocation,
+                value: picked == 0 ? TasksCopy.filterAny : TasksCopy.filterSelectedCount(picked)
+            )
+            .foregroundStyle(Tokens.Text.primary.color)
+            .frame(minHeight: Tokens.Size.minimumHitArea)
+            .contentShape(.rect)
+        }
+        .buttonStyle(.plain)
+        .accessibilityIdentifier("tasks.filter.location")
+    }
 
     /// Opens the rule builder; once there are rules, they read back here as a sentence.
     private var rulesEntry: some View {

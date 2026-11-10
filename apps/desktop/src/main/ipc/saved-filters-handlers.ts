@@ -189,6 +189,8 @@ export function registerSavedFiltersHandlers(): void {
     createValidatedHandler(SavedFilterReorderSchema, (input) => {
       const db = requireDatabase()
       savedFiltersStore.reorderSavedFilters(db, input.ids, input.positions)
+      // Position is part of the synced record, so each moved filter pushes.
+      for (const id of input.ids) syncFilterUpdate(id)
       return { success: true }
     })
   )

@@ -55,7 +55,7 @@ Outside selection mode, a long press opens the Move menu instead of starting a d
 
 ## Filters and saved filters
 
-The filter button opens every desktop filter: search, projects, priorities, tags, due date (presets or a custom range), status, completion, repeat type and time. The quick presets are Overdue, High Priority, Due This Week, Repeating and No Due Date. Active filters show as chips under the tabs, each with its own remove button.
+The filter button opens every desktop filter: search, projects, priorities, tags, due date (presets or a custom range), status, completion, repeat type, time and location. The quick presets are Overdue, High Priority, Due This Week, Repeating and No Due Date. Active filters show as chips under the tabs, each with its own remove button.
 
 Save the current filters under a name, star the ones you want in the project picker, and rename, reorder or delete them from the same sheet. Saved filters sync with the desktop.
 
@@ -63,8 +63,11 @@ Save the current filters under a name, star the ones you want in the project pic
 [advanced filter](/user-guide/tasks/filters-sorting#advanced-filter): match all, any or none,
 groups, and negative operators such as **is none of**. Your active filters move into rules when
 you open it, the header counts the matching tasks as you edit, and the row on the filter sheet
-reads the rules back as a sentence. A saved filter keeps its rules on every device. Location
-rules made on the desktop apply on the phone, but you edit them on the desktop.
+reads the rules back as a sentence. A saved filter keeps its rules on every device.
+
+**Location** lists the folders and notes that hold tasks, as a tree with the number of tasks
+under each, and a search field. Picking a folder includes its subfolders, as on the desktop. A
+location rule in the advanced filter picks its places from the same list.
 
 ## Projects
 

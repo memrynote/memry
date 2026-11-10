@@ -41,6 +41,10 @@ struct TaskFilterSpec: Codable, Equatable, Sendable {
     var repeatType: String = "all"
     /// `all`, `with-time`, `without-time`.
     var hasTime: String = "all"
+    /// Location: tasks filed in these folders (subfolders included) or
+    /// notes. The core resolves them through the vault's notes.
+    var folderPaths: [String] = []
+    var noteIds: [String] = []
     /// The advanced filter's root group, ANDed with the chips. Runtime state
     /// only: a saved filter stores it beside `config`, not in `filters`.
     var expression: TaskFilterNode?
@@ -57,11 +61,14 @@ struct TaskFilterSpec: Codable, Equatable, Sendable {
         if completion != "active" { count += 1 }
         if repeatType != "all" { count += 1 }
         if hasTime != "all" { count += 1 }
+        if hasLocation { count += 1 }
         if expression != nil { count += 1 }
         return count
     }
 
     var isActive: Bool { activeCount > 0 }
+
+    var hasLocation: Bool { !folderPaths.isEmpty || !noteIds.isEmpty }
 
     var json: String {
         (try? JSONEncoder().encode(self)).flatMap { String(bytes: $0, encoding: .utf8) } ?? "{}"
@@ -81,6 +88,8 @@ struct TaskFilterSpec: Codable, Equatable, Sendable {
         completion = try container.decodeIfPresent(String.self, forKey: .completion) ?? "active"
         repeatType = try container.decodeIfPresent(String.self, forKey: .repeatType) ?? "all"
         hasTime = try container.decodeIfPresent(String.self, forKey: .hasTime) ?? "all"
+        folderPaths = try container.decodeIfPresent([String].self, forKey: .folderPaths) ?? []
+        noteIds = try container.decodeIfPresent([String].self, forKey: .noteIds) ?? []
         expression = try container.decodeIfPresent(TaskFilterNode.self, forKey: .expression)
     }
 }

@@ -64,6 +64,35 @@ struct TasksRulesTests {
         #expect(vault.store.state.filters.expression == rules)
     }
 
+    @Test func a_desktop_location_filter_narrows_the_page_and_survives_a_resave() async throws {
+        let vault = try TasksTestVault()
+        let project = try vault.project()
+        let writer = try vault.vault.notesWriter(store: TaskTestKeychain())
+        let workNote = try writer.create(title: "[agent] plan", folderPath: "Work/Q1")
+        let homeNote = try writer.create(title: "[agent] chores", folderPath: "Home")
+        let inWork = try vault.task("[agent] in work", project: project, linkedNotes: [workNote])
+        _ = try vault.task("[agent] at home", project: project, linkedNotes: [homeNote])
+        _ = try vault.task("[agent] unfiled", project: project)
+        await vault.store.load()
+
+        // A filter desktop saved: location chips iOS used to drop on decode.
+        let config = #"{"filters":{"search":"","projectIds":[],"priorities":[],"tags":[],"#
+            + #""dueDate":{"type":"any","customStart":null,"customEnd":null},"statusIds":[],"#
+            + #""completion":"active","folderPaths":["Work"],"noteIds":[]}}"#
+        let id = try #require(await vault.store.run {
+            try $0.createSavedFilter(name: "Work", configJson: config, expressionJson: nil)
+        })
+        let saved = try #require(vault.store.savedFilters.first { $0.id == id })
+        await vault.store.applySavedFilter(saved)
+
+        #expect(vault.store.state.filters.folderPaths == ["Work"])
+        #expect(vault.store.result?.taskIds == [inWork])
+
+        #expect(await vault.store.saveCurrentFilter(name: "Work again"))
+        let resaved = try #require(vault.store.savedFilters.first { $0.name == "Work again" })
+        #expect(SavedFilterConfig.decode(resaved.configJson).filters.folderPaths == ["Work"])
+    }
+
     @Test func editing_one_rule_leaves_the_others_untouched() throws {
         let rules = try Self.node("""
         {"match":"all","rules":[

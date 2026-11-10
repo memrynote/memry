@@ -66,7 +66,8 @@ struct TasksTestVault {
         project: String,
         due: String? = nil,
         parent: String? = nil,
-        priority: Int64 = 0
+        priority: Int64 = 0,
+        linkedNotes: [String] = []
     ) throws -> String {
         let change = try tasks.create(input: NewTaskInput(
             title: title,
@@ -81,7 +82,7 @@ struct TasksTestVault {
             repeat: nil,
             repeatFrom: nil,
             tags: [],
-            linkedNoteIds: [],
+            linkedNoteIds: linkedNotes,
             linkedCanvasIds: [],
             sourceNoteId: nil,
             position: nil

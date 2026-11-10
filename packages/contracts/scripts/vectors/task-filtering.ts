@@ -8,12 +8,15 @@
  * filter from a newer build) must leave the order untouched and yield no groups.
  * `expressions` runs advanced filter trees task by task; a rule this build
  * cannot evaluate is skipped, never matching everything or nothing.
+ * `locationOptions` records the Location filter's folder and note rows over
+ * its own small vault: counts, tree order, kept selections and search.
  *
  * Determinism: TZ pinned to UTC for the build; `now` and the week start are
  * explicit. Titles and project names order by `localeCompare` (ICU root).
  */
 import {
   applyFiltersAndSortWithContext,
+  buildTaskLocationOptions,
   countActiveFilters,
   countTaskFilterRules,
   filterByCompletion,
@@ -45,6 +48,9 @@ import {
   FILTER_NOWS,
   FILTER_PROJECTS,
   FILTER_TASKS,
+  LOCATION_CASES,
+  LOCATION_NOTES,
+  LOCATION_TASKS,
   type WireDueDateFilter,
   type WireFilters,
   type WireTask
@@ -235,6 +241,16 @@ function build() {
     })
   )
 
+  const locationIndex = new Map<string, TaskNoteInfo>(LOCATION_NOTES.map((note) => [note.id, note]))
+  const locationOptions = {
+    notes: LOCATION_NOTES,
+    tasks: LOCATION_TASKS,
+    cases: LOCATION_CASES.map((c) => ({
+      ...c,
+      expected: buildTaskLocationOptions(LOCATION_TASKS, locationIndex, c.selected, c.query)
+    }))
+  }
+
   return {
     meta: {
       spec: '004-ios-tasks-parity',
@@ -252,7 +268,8 @@ function build() {
     sorts,
     groups,
     applied,
-    expressions
+    expressions,
+    locationOptions
   }
 }
 

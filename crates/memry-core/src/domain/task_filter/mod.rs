@@ -24,6 +24,7 @@ mod config;
 mod expression;
 mod filters;
 mod grouping;
+mod location_options;
 
 pub use collation::locale_compare;
 pub use config::{
@@ -38,6 +39,7 @@ pub use filters::{
     filter_by_statuses, filter_by_tags, has_active_filters, sort_tasks_advanced,
 };
 pub use grouping::{TaskGroup, group_tasks_for_sort, task_note_id};
+pub use location_options::{LocationKind, LocationOption, location_options};
 
 use crate::domain::calendar::LocalDateTime;
 

@@ -10138,6 +10138,17 @@ public protocol TasksProtocol: AnyObject, Sendable {
     func get(id: String) throws  -> TaskItem?
     
     /**
+     * The Location filter's folders and notes, with their task counts, in
+     * tree order; flattened to the name matches for a non-blank `query`.
+     * Selected folders and notes stay listed even when they hold nothing.
+     *
+     * Desktop counts the Tasks page's rows before its chip filters. Here the
+     * rows are every live task (completed and archived ones included), so a
+     * count does not change with the tab or the other filters.
+     */
+    func locationOptions(selectedFolderPaths: [String], selectedNoteIds: [String], query: String) throws  -> [TaskLocationOption]
+    
+    /**
      * Every project with its statuses; archived ones only when asked.
      */
     func projects(includeArchived: Bool) throws  -> [ProjectItem]
@@ -11066,6 +11077,27 @@ open func get(id: String)throws  -> TaskItem?  {
     uniffi_memry_core_fn_method_tasks_get(
             self.uniffiCloneHandle(),
         FfiConverterString.lower(id),uniffiCallStatus
+    )
+})
+}
+    
+    /**
+     * The Location filter's folders and notes, with their task counts, in
+     * tree order; flattened to the name matches for a non-blank `query`.
+     * Selected folders and notes stay listed even when they hold nothing.
+     *
+     * Desktop counts the Tasks page's rows before its chip filters. Here the
+     * rows are every live task (completed and archived ones included), so a
+     * count does not change with the tab or the other filters.
+     */
+open func locationOptions(selectedFolderPaths: [String], selectedNoteIds: [String], query: String)throws  -> [TaskLocationOption]  {
+    return try  FfiConverterSequenceTypeTaskLocationOption.lift(try rustCallWithError(FfiConverterTypeStorageError_lift) {
+        uniffiCallStatus in
+    uniffi_memry_core_fn_method_tasks_location_options(
+            self.uniffiCloneHandle(),
+        FfiConverterSequenceString.lower(selectedFolderPaths),
+        FfiConverterSequenceString.lower(selectedNoteIds),
+        FfiConverterString.lower(query),uniffiCallStatus
     )
 })
 }
@@ -24557,6 +24589,110 @@ public func FfiConverterTypeTaskItem_lower(_ value: TaskItem) -> RustBuffer {
 
 
 /**
+ * One row of the Location filter's picker: a folder or a note that holds
+ * tasks (desktop's `buildTaskLocationOptions`).
+ */
+public struct TaskLocationOption: Equatable, Hashable {
+    /**
+     * `folder` or `note`.
+     */
+    public var kind: String
+    /**
+     * The folder path or note id the filter stores.
+     */
+    public var value: String
+    public var label: String
+    /**
+     * The folder a note sits in, or a folder's parent path.
+     */
+    public var context: String
+    /**
+     * Nesting below the vault root, for the tree indent; 0 while searching.
+     */
+    public var depth: UInt32
+    /**
+     * Top-level tasks the row would select.
+     */
+    public var count: UInt32
+
+    // Default memberwise initializers are never public by default, so we
+    // declare one manually.
+    public init(
+        /**
+         * `folder` or `note`.
+         */kind: String, 
+        /**
+         * The folder path or note id the filter stores.
+         */value: String, label: String, 
+        /**
+         * The folder a note sits in, or a folder's parent path.
+         */context: String, 
+        /**
+         * Nesting below the vault root, for the tree indent; 0 while searching.
+         */depth: UInt32, 
+        /**
+         * Top-level tasks the row would select.
+         */count: UInt32) {
+        self.kind = kind
+        self.value = value
+        self.label = label
+        self.context = context
+        self.depth = depth
+        self.count = count
+    }
+
+    
+
+    
+}
+
+#if compiler(>=6)
+extension TaskLocationOption: Sendable {}
+#endif
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
+public struct FfiConverterTypeTaskLocationOption: FfiConverterRustBuffer {
+    public static func read(from buf: inout (data: Data, offset: Data.Index)) throws -> TaskLocationOption {
+        return
+            try TaskLocationOption(
+                kind: FfiConverterString.read(from: &buf), 
+                value: FfiConverterString.read(from: &buf), 
+                label: FfiConverterString.read(from: &buf), 
+                context: FfiConverterString.read(from: &buf), 
+                depth: FfiConverterUInt32.read(from: &buf), 
+                count: FfiConverterUInt32.read(from: &buf)
+        )
+    }
+
+    public static func write(_ value: TaskLocationOption, into buf: inout [UInt8]) {
+        FfiConverterString.write(value.kind, into: &buf)
+        FfiConverterString.write(value.value, into: &buf)
+        FfiConverterString.write(value.label, into: &buf)
+        FfiConverterString.write(value.context, into: &buf)
+        FfiConverterUInt32.write(value.depth, into: &buf)
+        FfiConverterUInt32.write(value.count, into: &buf)
+    }
+}
+
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
+public func FfiConverterTypeTaskLocationOption_lift(_ buf: RustBuffer) throws -> TaskLocationOption {
+    return try FfiConverterTypeTaskLocationOption.lift(buf)
+}
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
+public func FfiConverterTypeTaskLocationOption_lower(_ value: TaskLocationOption) -> RustBuffer {
+    return FfiConverterTypeTaskLocationOption.lower(value)
+}
+
+
+/**
  * One row of the "Move under…" picker.
  */
 public struct TaskPlace: Equatable, Hashable {
@@ -33262,6 +33398,31 @@ fileprivate struct FfiConverterSequenceTypeTaskItem: FfiConverterRustBuffer {
 #if swift(>=5.8)
 @_documentation(visibility: private)
 #endif
+fileprivate struct FfiConverterSequenceTypeTaskLocationOption: FfiConverterRustBuffer {
+    typealias SwiftType = [TaskLocationOption]
+
+    public static func write(_ value: [TaskLocationOption], into buf: inout [UInt8]) {
+        let len = Int32(value.count)
+        writeInt(&buf, len)
+        for item in value {
+            FfiConverterTypeTaskLocationOption.write(item, into: &buf)
+        }
+    }
+
+    public static func read(from buf: inout (data: Data, offset: Data.Index)) throws -> [TaskLocationOption] {
+        let len: Int32 = try readInt(&buf)
+        var seq = [TaskLocationOption]()
+        seq.reserveCapacity(Int(len))
+        for _ in 0 ..< len {
+            seq.append(try FfiConverterTypeTaskLocationOption.read(from: &buf))
+        }
+        return seq
+    }
+}
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
 fileprivate struct FfiConverterSequenceTypeTaskPlace: FfiConverterRustBuffer {
     typealias SwiftType = [TaskPlace]
 
@@ -34110,8 +34271,9 @@ public func taskDueWindowsConformance(sectionJson: String) -> String  {
 }
 /**
  * Every section of `task-filtering.json` recomputed: `{dimensions, sorts,
- * groups, applied}` in the file's own shape (each case's `expected`), and
- * `expressions` as each case's `{expected, ruleCount}`.
+ * groups, applied}` in the file's own shape (each case's `expected`),
+ * `expressions` as each case's `{expected, ruleCount}`, and `locationOptions`
+ * as each of its cases' `expected` rows.
  */
 public func taskFilteringConformance(fileJson: String) -> String  {
     return try!  FfiConverterString.lift(try! rustCall() {
@@ -34313,7 +34475,7 @@ private let initializationResult: InitializationResult = {
     if (uniffi_memry_core_checksum_func_task_due_windows_conformance() != 7716) {
         return InitializationResult.apiChecksumMismatch
     }
-    if (uniffi_memry_core_checksum_func_task_filtering_conformance() != 8494) {
+    if (uniffi_memry_core_checksum_func_task_filtering_conformance() != 29961) {
         return InitializationResult.apiChecksumMismatch
     }
     if (uniffi_memry_core_checksum_func_is_task_time_in_progress() != 26769) {
@@ -35226,6 +35388,9 @@ private let initializationResult: InitializationResult = {
         return InitializationResult.apiChecksumMismatch
     }
     if (uniffi_memry_core_checksum_method_tasks_get() != 47980) {
+        return InitializationResult.apiChecksumMismatch
+    }
+    if (uniffi_memry_core_checksum_method_tasks_location_options() != 52199) {
         return InitializationResult.apiChecksumMismatch
     }
     if (uniffi_memry_core_checksum_method_tasks_projects() != 993) {

@@ -19,7 +19,9 @@ extension TasksCopy {
     static let rulesEmpty = "No rules yet. Add one to start filtering."
     static let rulesPick = "Pick…"
     static let rulesTitlePlaceholder = "Text in the title"
-    static let rulesLocationReadOnly = "Edit locations on desktop"
+    static let filterLocation = "Location"
+    static let filterSearchLocations = "Search folders and notes"
+    static let filterNoLocations = "No folders or notes hold tasks yet"
 
     static func rulesMatchCount(_ count: Int) -> String { count == 1 ? "1 task matches" : "\(count) tasks match" }
     static func rulesSkipped(_ count: Int) -> String { count == 1 ? "1 rule skipped" : "\(count) rules skipped" }
