@@ -14,6 +14,7 @@ use super::roots::read_link_references;
 use super::seed::{SeedEnv, prepare_fragment_seed};
 use super::serialize::BlockNoteSerializer;
 use super::{Env, apply};
+use crate::crdt::registry::OFFSET_KIND;
 use crate::markdown::bn::dom_parser::ParseError;
 use crate::markdown::bn::node_to_block::node_to_block;
 use crate::markdown::pm::{Node, Schema};
@@ -23,29 +24,42 @@ use crate::markdown::yxml::read_fragment;
 /// The `prosemirror` fragment every note body lives in.
 pub const BODY_FRAGMENT: &str = "prosemirror";
 
+/// A detached copy that counts text in UTF-16 code units, the unit of a Yjs
+/// item's clock and of every JavaScript index. Only [`detach`] makes one, so
+/// code that resolves a `StickyIndex` takes this type and can never be handed
+/// a registry document, which counts bytes ([`crate::crdt::registry::OFFSET_KIND`]):
+/// `StickyIndex::get_offset` mixes the two kinds on a non-ASCII run.
+pub struct Utf16Copy(Doc);
+
+impl std::ops::Deref for Utf16Copy {
+    type Target = Doc;
+
+    fn deref(&self) -> &Doc {
+        &self.0
+    }
+}
+
 /// `new Y.Doc()` plus `Y.applyUpdate(snapshot, Y.encodeStateAsUpdate(doc))`: a
 /// detached copy a serialization may read and mutate without touching the live
-/// document.
-///
-/// The copy counts text in UTF-16 code units, the unit of a Yjs item's clock and
-/// of every JavaScript index. The registry's documents count bytes for text
-/// edits, and `StickyIndex` mixes the two kinds on a non-ASCII run, so the
-/// writing tools resolve and place anchors on this copy only.
-pub fn detach<T: ReadTxn>(txn: &T) -> Option<Doc> {
+/// document. The writing tools resolve and place anchors on it only.
+pub fn detach<T: ReadTxn>(txn: &T) -> Option<Utf16Copy> {
     let snapshot = Doc::with_options(Options {
         offset_kind: OffsetKind::Utf16,
         ..Options::default()
     });
     let update = Update::decode_v1(&txn.encode_state_as_update_v1(&StateVector::default())).ok()?;
     snapshot.transact_mut().apply_update(update).ok()?;
-    Some(snapshot)
+    Some(Utf16Copy(snapshot))
 }
 
-/// A copy of the document with the registry's own offset kind (bytes), for a
+/// A copy of the document with the registry's own offset kind, for a
 /// rehearsal: running a write on it first shows whether the same write on the
 /// live document would fail halfway.
 pub fn rehearsal_copy<T: ReadTxn>(txn: &T) -> Option<Doc> {
-    let copy = Doc::new();
+    let copy = Doc::with_options(Options {
+        offset_kind: OFFSET_KIND,
+        ..Options::default()
+    });
     let update = Update::decode_v1(&txn.encode_state_as_update_v1(&StateVector::default())).ok()?;
     copy.transact_mut().apply_update(update).ok()?;
     Some(copy)
@@ -107,7 +121,7 @@ fn holds_block_container<F: XmlFragment, T: ReadTxn>(node: &F, txn: &T) -> bool 
 pub fn serialize_canonical<T: ReadTxn>(
     txn: &T,
     fragment: &str,
-    prepare: Option<&mut dyn FnMut(&Doc)>,
+    prepare: Option<&mut dyn FnMut(&Utf16Copy)>,
 ) -> Option<String> {
     // y-prosemirror deletes any element it cannot build. This port never does, so
     // only the writing tools, which edit what they read, need a copy; every other

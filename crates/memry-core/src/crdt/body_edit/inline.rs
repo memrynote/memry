@@ -88,7 +88,7 @@ pub(super) fn insert_inline(
             // after a marked one would inherit its mark.
             let attrs = chunk_attrs.map(|attrs| *attrs).unwrap_or_default();
             rebuilt.insert_with_attributes(txn, at, &chunk, attrs);
-            at += chunk.chars().count() as u32;
+            at += chunk.len() as u32;
         }
     }
     Ok(())
@@ -105,7 +105,9 @@ pub(super) fn element_text_len<T: ReadTxn>(txn: &T, element: &XmlElementRef) -> 
         .sum()
 }
 
-/// One run's content from `from` onward, as formatted chunks.
+/// One run's content from `from` onward, as formatted chunks. `from` is in
+/// the document's offset unit, bytes ([`crate::crdt::registry::OFFSET_KIND`]);
+/// one inside a character starts at that character.
 pub(super) fn formatted_tail(
     txn: &TransactionMut,
     run: &XmlTextRef,
@@ -115,16 +117,17 @@ pub(super) fn formatted_tail(
     let mut seen = 0u32;
     for chunk in run.diff(txn, yrs::types::text::YChange::identity) {
         let yrs::Out::Any(Any::String(value)) = &chunk.insert else {
+            // An embed takes one position in either offset kind.
+            seen += 1;
             continue;
         };
-        let length = value.chars().count() as u32;
-        let chunk_end = seen + length;
+        let chunk_end = seen + value.len() as u32;
         if chunk_end > from {
-            let skip = from.saturating_sub(seen) as usize;
-            let kept: String = value.chars().skip(skip).collect();
-            if !kept.is_empty() {
-                out.push((kept, chunk.attributes.clone()));
+            let mut skip = from.saturating_sub(seen) as usize;
+            while !value.is_char_boundary(skip) {
+                skip -= 1;
             }
+            out.push((value[skip..].to_owned(), chunk.attributes.clone()));
         }
         seen = chunk_end;
     }
