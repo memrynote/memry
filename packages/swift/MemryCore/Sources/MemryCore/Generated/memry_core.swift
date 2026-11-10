@@ -10055,6 +10055,15 @@ public protocol TasksProtocol: AnyObject, Sendable {
      */
     func convertChecklistItem(noteId: String, blockId: String, localNow: String) throws  -> String?
     
+    /**
+     * [`Tasks::convert_checklist_item`] for a line the user just typed, the
+     * conversion desktop's editor makes on its own (`analyzeTaskIntents`).
+     * With the synced `editor.convertChecklistsToTasks` off, only a line
+     * under a task line converts, as its subtask. `nil` when the line stays
+     * a checkbox.
+     */
+    func convertTypedChecklistItem(noteId: String, blockId: String, localNow: String) throws  -> String?
+    
     func deleteReminder(id: String) throws 
     
     func dismissReminder(id: String) throws 
@@ -10839,6 +10848,25 @@ open func convertChecklistItem(noteId: String, blockId: String, localNow: String
     return try  FfiConverterOptionString.lift(try rustCallWithError(FfiConverterTypeStorageError_lift) {
         uniffiCallStatus in
     uniffi_memry_core_fn_method_tasks_convert_checklist_item(
+            self.uniffiCloneHandle(),
+        FfiConverterString.lower(noteId),
+        FfiConverterString.lower(blockId),
+        FfiConverterString.lower(localNow),uniffiCallStatus
+    )
+})
+}
+    
+    /**
+     * [`Tasks::convert_checklist_item`] for a line the user just typed, the
+     * conversion desktop's editor makes on its own (`analyzeTaskIntents`).
+     * With the synced `editor.convertChecklistsToTasks` off, only a line
+     * under a task line converts, as its subtask. `nil` when the line stays
+     * a checkbox.
+     */
+open func convertTypedChecklistItem(noteId: String, blockId: String, localNow: String)throws  -> String?  {
+    return try  FfiConverterOptionString.lift(try rustCallWithError(FfiConverterTypeStorageError_lift) {
+        uniffiCallStatus in
+    uniffi_memry_core_fn_method_tasks_convert_typed_checklist_item(
             self.uniffiCloneHandle(),
         FfiConverterString.lower(noteId),
         FfiConverterString.lower(blockId),
@@ -35150,6 +35178,9 @@ private let initializationResult: InitializationResult = {
         return InitializationResult.apiChecksumMismatch
     }
     if (uniffi_memry_core_checksum_method_tasks_convert_checklist_item() != 574) {
+        return InitializationResult.apiChecksumMismatch
+    }
+    if (uniffi_memry_core_checksum_method_tasks_convert_typed_checklist_item() != 11246) {
         return InitializationResult.apiChecksumMismatch
     }
     if (uniffi_memry_core_checksum_method_tasks_delete_reminder() != 65164) {
