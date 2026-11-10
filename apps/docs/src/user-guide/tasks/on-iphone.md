@@ -59,6 +59,13 @@ The filter button opens every desktop filter: search, projects, priorities, tags
 
 Save the current filters under a name, star the ones you want in the project picker, and rename, reorder or delete them from the same sheet. Saved filters sync with the desktop.
 
+**Advanced filter**, at the bottom of the filter sheet, builds the same rules as the desktop's
+[advanced filter](/user-guide/tasks/filters-sorting#advanced-filter): match all, any or none,
+groups, and negative operators such as **is none of**. Your active filters move into rules when
+you open it, the header counts the matching tasks as you edit, and the row on the filter sheet
+reads the rules back as a sentence. A saved filter keeps its rules on every device. Location
+rules made on the desktop apply on the phone, but you edit them on the desktop.
+
 ## Projects
 
 **More → Projects** lists your projects. From there you can create a project, edit its name, icon (emoji), color, description and statuses, reorder and archive projects, and delete them. Deleting a project that has tasks asks whether to move them to the Inbox or delete them. The project page shows progress, the overview note and the project's tasks.
