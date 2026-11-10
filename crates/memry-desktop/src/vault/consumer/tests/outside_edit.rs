@@ -34,7 +34,7 @@ fn bytes_a_save_wrote_are_not_told() {
     f.write("a.md", saved);
     f.applier
         .own_files
-        .wrote(&id, &content_hash(saved), ChangeSource::Save);
+        .wrote(&id, &content_hash(saved), ChangeSource::Save, None);
     assert_eq!(f.changed(&id, "a.md"), Step::Done);
     assert!(told(&f).is_empty());
     assert!(matches!(
@@ -135,7 +135,7 @@ fn a_fed_outside_edit_and_an_own_write_are_not_recorded_for_the_write_back() {
 
     let saved = "saved\n";
     f.write("a.md", saved);
-    own.wrote(&id, &content_hash(saved), ChangeSource::Save);
+    own.wrote(&id, &content_hash(saved), ChangeSource::Save, None);
     assert_eq!(f.changed(&id, "a.md"), Step::Done);
     assert!(!own.is_outside(&id, &content_hash(saved)));
 }

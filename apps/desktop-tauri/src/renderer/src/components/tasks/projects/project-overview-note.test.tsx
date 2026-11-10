@@ -130,9 +130,9 @@ function emitUpdated(id: string, content: string): void {
   })
 }
 
-/** What each save sent; the mutation passes its context after the input. */
+/** What each save sent, but the id of the editor that sent it (#4137). */
 function saves(): unknown[] {
-  return mocks.notesUpdate.mock.calls.map(([input]) => input)
+  return mocks.notesUpdate.mock.calls.map(([input]) => ({ ...input, editor: undefined }))
 }
 
 function registeredFlush(key: string): () => Promise<void> {

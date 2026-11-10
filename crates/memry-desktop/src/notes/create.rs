@@ -240,7 +240,7 @@ impl NotesService {
         // The watcher skips this write's echo, so no read of it records the class.
         record_large_file(lane.files(), &id, large_file_class(&output).is_some());
         // The note's first save replaces this file with no version of it.
-        self.own_files.wrote(&id, &hash, ChangeSource::App);
+        self.own_files.wrote(&id, &hash, ChangeSource::App, None);
         lane.publish(Applied::Added {
             note_id: id.clone(),
             path: rel.clone(),

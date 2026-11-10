@@ -10,7 +10,7 @@ import { afterEach, describe, expect, it, vi } from 'vitest'
 import { redo, undo, yUndoPluginKey } from 'y-prosemirror'
 import * as Y from 'yjs'
 import type { PartialBlock } from '@blocknote/core'
-import { TextSelection } from '@tiptap/pm/state'
+import { Plugin, TextSelection } from '@tiptap/pm/state'
 import type { EditorView } from '@tiptap/pm/view'
 
 vi.mock('react-pdf', () => ({
@@ -24,6 +24,7 @@ vi.mock('@/lib/url-metadata', () => ({
 
 import { CRDT_FRAGMENT_NAME } from '@memry/contracts/ipc-crdt'
 import { typingHoldOf, type TypingHold } from '@/sync/typing-hold'
+import { createAnchorVisibilityPlugin } from './portal/anchor-visibility-plugin'
 import { mountTestEditor, para, unmountTestEditors } from './portal/portal-test-editor'
 import { registerEditorPlugin } from './register-editor-plugin'
 import { createTypingHoldPlugin } from './typing-hold-plugin'
@@ -148,8 +149,12 @@ describe('typing hold plugin', () => {
   })
 })
 
-function mountNote(texts = ['Alpha line.', 'Bravo line.', 'Charlie line.']) {
-  const mounted = mountTestEditor(texts.map((text) => para(text)))
+function mountNote(
+  blocks: Array<string | PartialBlock> = ['Alpha line.', 'Bravo line.', 'Charlie line.']
+) {
+  const mounted = mountTestEditor(
+    blocks.map((block) => (typeof block === 'string' ? para(block) : block))
+  )
   const hold = typingHoldOf(mounted.doc)
   registerEditorPlugin(mounted.editor, createTypingHoldPlugin(hold))
   return { ...mounted, hold }
@@ -212,6 +217,12 @@ function lastText(blocks: Y.XmlElement): Y.XmlText {
   while (node instanceof Y.XmlElement) node = node.get(0)
   return node
 }
+
+const heading = (text: string, level: number): PartialBlock => ({
+  type: 'heading',
+  props: { level },
+  content: text
+})
 
 function caret(view: EditorView): string {
   const { $head } = view.state.selection
@@ -300,6 +311,121 @@ describe('the outside edit frame', () => {
     ])
     expect(caret(view)).toBe('Charlie line @4')
   })
+})
+
+describe('the outside edit frame, block changes', () => {
+  it('keeps a caret in a paragraph the edit turns into a heading', () => {
+    const { view, doc, hold } = mountNote(['A', 'Bravo line', 'C'])
+    placeCaret(view, 'Bravo line', 3)
+    feedOutsideEdit(doc, hold, [para('A'), heading('Bravo line', 2), para('CX')])
+    expect(view.state.selection.$head.parent.type.name).toBe('heading')
+    expect(caret(view)).toBe('Bravo line @3')
+  })
+
+  it('keeps a caret in a heading whose level the edit changes', () => {
+    const { view, doc, hold } = mountNote(['A', heading('Bravo line', 2), 'C'])
+    placeCaret(view, 'Bravo line', 3)
+    feedOutsideEdit(doc, hold, [para('A'), heading('Bravo line', 3), para('CX')])
+    expect(view.state.selection.$head.parent.attrs.level).toBe(3)
+    expect(caret(view)).toBe('Bravo line @3')
+  })
+
+  it('keeps a caret in a paragraph the edit turns into a list item and appends to', () => {
+    const { view, doc, hold } = mountNote(['A', 'Bravo line', 'C'])
+    placeCaret(view, 'Bravo line', 3)
+    feedOutsideEdit(doc, hold, [
+      para('A'),
+      { type: 'bulletListItem', content: 'Bravo line!' },
+      para('C')
+    ])
+    expect(view.state.selection.$head.parent.type.name).toBe('bulletListItem')
+    expect(caret(view)).toBe('Bravo line! @3')
+  })
+
+  it('keeps a caret in a block the edit changes when it also inserts a block above it', () => {
+    const { view, doc, hold } = mountNote(['A', 'Bravo line', 'C'])
+    placeCaret(view, 'Bravo line', 3)
+    feedOutsideEdit(doc, hold, [para('A'), para('New'), para('Bravo line!'), para('C')])
+    expect(caret(view)).toBe('Bravo line! @3')
+  })
+
+  it('keeps a caret in a block the edit changes when it also inserts a block below it', () => {
+    const { view, doc, hold } = mountNote(['A', 'Bravo line', 'C'])
+    placeCaret(view, 'Bravo line', 3)
+    feedOutsideEdit(doc, hold, [para('A'), para('So Bravo line'), para('New'), para('C')])
+    expect(caret(view)).toBe('So Bravo line @6')
+  })
+
+  it('keeps a caret in a block the edit changes when it also removes the block above it', () => {
+    const { view, doc, hold } = mountNote(['A', 'Old', 'Bravo line', 'C'])
+    placeCaret(view, 'Bravo line', 3)
+    feedOutsideEdit(doc, hold, [para('A'), para('Bravo line!'), para('C')])
+    expect(caret(view)).toBe('Bravo line! @3')
+  })
+
+  it.each([
+    [0, 0],
+    [1, 1],
+    [2, 2],
+    [3, 2],
+    [4, 3]
+  ])('maps a caret at %i of a block that loses a repeated letter to %i', (from, to) => {
+    const { view, doc, hold } = mountNote(['Alpha', 'xaab'])
+    placeCaret(view, 'xaab', from)
+    feedOutsideEdit(doc, hold, [para('Intro'), para('Alpha'), para('xab')])
+    expect(caret(view)).toBe(`xab @${to}`)
+  })
+
+  it('keeps a caret in its unchanged block past the block edit cap', () => {
+    const texts = Array.from({ length: 5000 }, (_, i) => `Block number ${i}`)
+    const { view, doc, hold } = mountNote(texts)
+    placeCaret(view, 'Block number 2500', 3)
+    // An empty block after every 4th: more block insertions than the diff follows.
+    feedOutsideEdit(
+      doc,
+      hold,
+      texts.flatMap((text, i) => (i % 4 === 3 ? [para(text), para('')] : [para(text)]))
+    )
+    expect(caret(view)).toBe('Block number 2500 @3')
+  })
+})
+
+describe('the outside edit frame, with the anchor plugin', () => {
+  // The plugins in either order: ContentArea registers the anchor plugin first.
+  it.each([
+    ['anchor plugin first', true],
+    ['typing hold plugin first', false]
+  ])(
+    'lets the anchor plugin move a caret out of an anchor the edit adds (%s)',
+    (_order, anchorFirst) => {
+      const mounted = mountTestEditor([para('A'), para('Bravo line'), para('C')])
+      const { view, doc, editor } = mounted
+      const hold = typingHoldOf(doc)
+      const plugins = [createAnchorVisibilityPlugin(), createTypingHoldPlugin(hold)]
+      for (const plugin of anchorFirst ? plugins : plugins.toReversed()) {
+        registerEditorPlugin(editor, plugin)
+      }
+      // A cap on the rounds of appended transactions, so a loop between the two fails, not hangs.
+      let rounds = 0
+      registerEditorPlugin(
+        editor,
+        new Plugin({
+          appendTransaction() {
+            if (++rounds > 100) throw new Error('appended transactions do not settle')
+            return null
+          }
+        })
+      )
+      placeCaret(view, 'Bravo line', 10)
+      rounds = 0
+
+      expect(() =>
+        feedOutsideEdit(doc, hold, [para('A'), para('Bravo line ^abcd123'), para('C')])
+      ).not.toThrow()
+      expect(rounds).toBeLessThanOrEqual(100)
+      expect(caret(view)).toBe('Bravo line ^abcd123 @10')
+    }
+  )
 })
 
 describe("another window's frame", () => {

@@ -1,6 +1,7 @@
 import { act, renderHook } from '@testing-library/react'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 import { toast } from 'sonner'
+import { contentHash } from '@/lib/content-hash'
 import { useReplacedOutsideEdit } from './use-replaced-outside-edit'
 
 const kept = vi.hoisted(() => new Set<(event: { id: string }) => void>())
@@ -34,22 +35,32 @@ describe('useReplacedOutsideEdit', () => {
     expect(ids).toEqual(['outside-edit-replaced:n1', 'outside-edit-replaced:n1'])
   })
 
-  // The core alone says whether the replaced text is a version (#4110): a save sent before the
-  // editor heard of another editor's small save lands over it with none.
-  it('tells of a replaced outside edit only when the save says the core kept it', () => {
+  // The core alone says whether the replaced text is a version (#4110), and which text it is
+  // (#4137): a save sent before the editor heard of another editor's small save can land over it
+  // with none, or keep another text.
+  it('tells of a replaced outside edit only when the save says the core kept that text', () => {
     const { result } = renderHook(() => useReplacedOutsideEdit('n1', 'Alpha', vi.fn()))
     const edit = result.current
+    const tab = contentHash('saved in the tab')
 
     edit.held('n1', 'saved in the tab')
     expect(edit.saved('n1', 'typing', { success: true, note: null })).toBe(false)
     // Kept, but this save replaced no text the editor did not show.
-    expect(edit.saved('n1', 'typing', { success: true, note: null, keptReplaced: true })).toBe(
+    expect(edit.saved('n1', 'typing', { success: true, note: null, keptReplacedHash: tab })).toBe(
+      false
+    )
+    // Kept another text than the one held.
+    edit.held('n1', 'saved in the tab')
+    const other = contentHash('the text before it')
+    expect(edit.saved('n1', 'typing', { success: true, note: null, keptReplacedHash: other })).toBe(
       false
     )
     expect(toast).not.toHaveBeenCalled()
 
     edit.held('n1', 'saved in the tab')
-    expect(edit.saved('n1', 'typing', { success: true, note: null, keptReplaced: true })).toBe(true)
+    expect(edit.saved('n1', 'typing', { success: true, note: null, keptReplacedHash: tab })).toBe(
+      true
+    )
     expect(toast).toHaveBeenCalledTimes(1)
   })
 
@@ -61,7 +72,7 @@ describe('useReplacedOutsideEdit', () => {
     ): { onClick: () => void; description?: string } => {
       edit.held('n1', 'outside')
       act(() => {
-        edit.saved('n1', 'typing', { success: true, keptReplaced: true })
+        edit.saved('n1', 'typing', { success: true, keptReplacedHash: contentHash('outside') })
       })
       const [, options] = vi.mocked(toast).mock.calls.at(-1)!
       const action = options?.action as { onClick: () => void }

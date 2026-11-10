@@ -210,7 +210,7 @@ impl NotesService {
         };
         let edit = self.save_edit(open)?;
         let edited = self.order.run(&stamp.id, |turn| {
-            let save = Precondition::Save(&self.own_files);
+            let save = Precondition::Save(&self.own_files, None);
             let text = |read: &str| change.text(read);
             let mut between = || {
                 let hook = self

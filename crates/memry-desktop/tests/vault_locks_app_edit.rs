@@ -236,10 +236,15 @@ fn a_lock_taken_while_a_frontmatter_only_save_reads_refuses_it_before_the_file_i
 
     let edited = WriteOrder::default()
         .run(&plan, |turn| {
-            edit.run(turn, Precondition::Save(&own), ChangeSource::Save, |text| {
-                lock(&e, TargetKind::Note, &plan);
-                Ok::<_, NotesError>(Some(text.replace("[x]", "[y]")))
-            })
+            edit.run(
+                turn,
+                Precondition::Save(&own, None),
+                ChangeSource::Save,
+                |text| {
+                    lock(&e, TargetKind::Note, &plan);
+                    Ok::<_, NotesError>(Some(text.replace("[x]", "[y]")))
+                },
+            )
         })
         .unwrap();
 

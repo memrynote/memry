@@ -224,7 +224,7 @@ fn a_file_another_writer_of_the_app_wrote_is_no_outside_text() {
     let restored = "restored by the app\n";
     let id = f.adopt("n.md", restored);
     f.own_files
-        .wrote(&id, &content_hash(restored), ChangeSource::Save);
+        .wrote(&id, &content_hash(restored), ChangeSource::Save, None);
     f.edit_in_app(&id, "restored by the app, typed");
     let outcome = f.run(&id);
     assert!(

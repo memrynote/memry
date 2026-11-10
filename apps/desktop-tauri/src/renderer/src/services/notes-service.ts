@@ -295,14 +295,15 @@ const ported = {
   update: async (input: NoteSaveInput): Promise<NoteSaveResponse> => {
     if (input.title !== undefined) throw new NotPortedError('notes.update({ title })')
     try {
-      const { id, content, headerTags, emoji, frontmatter, keepReplaced } = input
-      const { note, tagTemplate, keptOutsideEdit, keptReplaced, savedContent } =
+      const { id, content, headerTags, emoji, frontmatter, keepReplaced, editor } = input
+      const { note, tagTemplate, keptOutsideEdit, keptReplacedHash, savedContent } =
         await commands.notesUpdate({
           id,
           content,
           headerTags,
           emoji,
           keepReplaced,
+          editor,
           // oxlint-disable-next-line typescript/no-unsafe-type-assertion -- frontmatter values are the JSON the command carries as is
           frontmatter: frontmatter as Record<string, Value> | undefined
         })
@@ -311,7 +312,7 @@ const ported = {
         note: toNote(note),
         ...(tagTemplate && { tagTemplate }),
         ...(keptOutsideEdit && { keptOutsideEdit }),
-        ...(keptReplaced && { keptReplaced }),
+        ...(keptReplacedHash && { keptReplacedHash }),
         ...(savedContent !== undefined && { savedContent })
       }
     } catch (error) {
@@ -626,18 +627,20 @@ export type PortedLargeFileMethod =
 
 /**
  * An update, and from an editor that held off an outside edit it never showed, `keepReplaced`:
- * the core keeps the file the save replaces as a version (#4088). Tauri only, so not in
- * `NoteUpdateSchema`, which Electron and the agent API share.
+ * the core keeps the file the save replaces as a version (#4088). `editor`: the saving editor's
+ * id, so a file another editor saved is kept before this one's save replaces it (#4137). Tauri
+ * only, so not in `NoteUpdateSchema`, which Electron and the agent API share.
  */
-export type NoteSaveInput = NoteUpdateInput & { keepReplaced?: boolean }
+export type NoteSaveInput = NoteUpdateInput & { keepReplaced?: boolean; editor?: string }
 
 /**
- * An update's answer, and `keptReplaced`: the file the save replaced is a version, the one
- * answer to whether an editor may say a text it replaced is in version history (#4110). Tauri
+ * An update's answer, and `keptReplacedHash`: the content hash (`contentHash`) of the body of the
+ * file the save replaced, when that file is a version. The one answer to whether an editor may
+ * say a text it replaced is in version history: only when it is that text (#4110, #4137). Tauri
  * only, as `keepReplaced` is.
  */
 export type NoteSaveResponse = NoteUpdateResponse &
-  Pick<NoteUpdateReply, 'keptOutsideEdit'> & { keptReplaced?: boolean }
+  Pick<NoteUpdateReply, 'keptOutsideEdit'> & { keptReplacedHash?: string }
 
 type NotesServiceApi = Omit<NotesClientAPI, PortedLargeFileMethod | 'update'> & {
   update: (input: NoteSaveInput) => Promise<NoteSaveResponse>
