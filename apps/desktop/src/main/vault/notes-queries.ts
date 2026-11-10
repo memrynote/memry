@@ -8,6 +8,7 @@
 
 import { createSnippet } from './frontmatter'
 import { stripMarkdownComments } from '@memry/shared/markdown-code'
+import { splitFrontmatterBlock } from '@memry/shared/frontmatter-split'
 import { dateFromJournalId } from '@memry/contracts/journal-api'
 import {
   getNoteCacheById,
@@ -191,7 +192,7 @@ export async function getNoteLinks(id: string): Promise<NoteLinksResponse> {
   // Canvas arrows between two note cards. Only note-to-note edges belong here:
   // both lists open their entries as notes. An endpoint whose note is gone from
   // the cache (deleted, or not indexed yet) is dropped rather than shown blank.
-  const canvasBacklinks: Backlink[] = []
+  const canvasBacklinks: Omit<Backlink, 'sourceTags'>[] = []
   for (const edge of getCanvasEdgesForEntity(getDatabase(), 'note', id)) {
     if (edge.sourceType !== 'note' || edge.targetType !== 'note') continue
     const via = { kind: 'canvas' as const, canvasId: edge.canvasId, canvasTitle: edge.canvasTitle }
@@ -206,13 +207,14 @@ export async function getNoteLinks(id: string): Promise<NoteLinksResponse> {
         sourceId: source.id,
         sourcePath: source.path,
         sourceTitle: source.title,
+        sourceJournalDate: source.date ?? null,
         contexts: [],
         via
       })
     }
   }
 
-  const backlinks: Backlink[] = await Promise.all(
+  const backlinks: Omit<Backlink, 'sourceTags'>[] = await Promise.all(
     incoming.map(async (ref) => {
       const sourceCache = getNoteCacheById(db, ref.sourceNoteId)
       let contexts: Backlink['contexts'] = []
@@ -233,7 +235,8 @@ export async function getNoteLinks(id: string): Promise<NoteLinksResponse> {
           }
         )
         if (content) {
-          contexts = extractAllLinkContexts(stripMarkdownComments(content), targetTitle)
+          const { body } = splitFrontmatterBlock(content)
+          contexts = extractAllLinkContexts(stripMarkdownComments(body), targetTitle)
         }
       }
 
@@ -241,11 +244,17 @@ export async function getNoteLinks(id: string): Promise<NoteLinksResponse> {
         sourceId: ref.sourceNoteId,
         sourcePath: sourceCache?.path ?? '',
         sourceTitle: sourceCache?.title ?? '',
+        sourceJournalDate: sourceCache?.date ?? null,
         contexts,
         via: ref.via
       }
     })
   )
 
-  return { outgoing: outgoingLinks, incoming: [...backlinks, ...canvasBacklinks] }
+  const sources = [...backlinks, ...canvasBacklinks]
+  const tagsOf = getTagsForNotes(db, [...new Set(sources.map((link) => link.sourceId))])
+  return {
+    outgoing: outgoingLinks,
+    incoming: sources.map((link) => ({ ...link, sourceTags: tagsOf.get(link.sourceId) ?? [] }))
+  }
 }
