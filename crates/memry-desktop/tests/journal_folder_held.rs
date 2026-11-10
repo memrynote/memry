@@ -254,6 +254,6 @@ fn a_command_reads_the_held_days_once_however_many_wait() {
         "{refused:?}"
     );
     let steps = steps.load(Ordering::Relaxed);
-    assert!(steps < 1_000 * DAYS, "{steps} steps for {DAYS} held days");
+    assert!(steps < 200 * DAYS, "{steps} steps for {DAYS} held days");
     assert!(!outbox(&e, "j2024-11-20").contains(&"delete".to_owned()));
 }
