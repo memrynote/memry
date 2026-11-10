@@ -20,10 +20,16 @@ export class TypingHold {
   private timer: ReturnType<typeof setTimeout> | null = null
   private composing = false
   private composingAtHold = false
+  private feeding = false
   private readonly compositionEnds = new Set<() => void>()
 
   get held(): boolean {
     return this.barrier !== null
+  }
+
+  /** True while an outside edit's frame applies: every editor maps its selection through it. */
+  get feedingEdit(): boolean {
+    return this.feeding
   }
 
   /**
@@ -47,6 +53,17 @@ export class TypingHold {
     if (barrier !== undefined && barrier !== this.barrier) return
     this.barrier = null
     this.clearTimer()
+  }
+
+  /** Applies an outside edit's frame: the hold ends, and `apply` runs as the edit's feed. */
+  feed(apply: () => void): void {
+    this.release()
+    this.feeding = true
+    try {
+      apply()
+    } finally {
+      this.feeding = false
+    }
   }
 
   /**
