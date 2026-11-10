@@ -16,8 +16,8 @@
 //! wiki embed (`![[…]]`), a frontmatter value, a query or fragment after the name, or a name
 //! with an apostrophe or a space keeps the file, and also when a name the extractor reads
 //! decodes to the file's. Three differences from Electron, each toward keeping the file. The
-//! scan is complete only once the open walk gave every file of the vault a row
-//! ([`RowOwner::walked`]): before, a note on disk may have none and would go unread. A body that
+//! scan is complete only once the walk gave every file it found a row ([`RowOwner::walked`]):
+//! before, a note on disk may have none and would go unread. A body that
 //! cannot be read for any reason but its absence makes the scan incomplete (Electron skipped an
 //! unreadable one as "no reference"). And the comparison is in ASCII lowercase and also reads
 //! percent-escaped names, since a volume that ignores case resolves `ABC123-Plan.PDF` to the
@@ -135,7 +135,8 @@ fn is_name_end(c: char) -> bool {
 /// Why a scan could not tell that no note names the file.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum Incomplete {
-    /// The open walk has not given every file of the vault a row yet, or it hit its caps.
+    /// The walk has not given every file it found a row yet (one waits for its retry, or an
+    /// exclude pattern's restart walks again), or it hit its caps or an unreadable folder.
     NotWalked,
     /// The rows could not be listed.
     Unlisted,
@@ -169,7 +170,7 @@ impl ReferenceScan {
 /// `findNotesReferencingAttachment`: the notes of the open vault whose body names
 /// `attachments/<owner>/<file>` ([`names_file`]), `exclude` aside. Every row is read but those of
 /// a pdf, an image, an audio or a video file. A row whose file is gone holds no reference. The
-/// scan is incomplete until the open walk of the vault ended complete (`rows`), and when a body
+/// scan is incomplete until the walk of the vault gave every file it found a row (`rows`), and when a body
 /// cannot be read for any other reason (a link out of the vault, a second hard link, a file over
 /// the size cap, a disk error) or the rows cannot be listed.
 pub fn find_references(
@@ -182,7 +183,7 @@ pub fn find_references(
     if !rows.walked(&open.vault) {
         tracing::info!(
             scope = SCOPE,
-            "reference scan before the vault's open walk ended complete; the file counts as shared"
+            "reference scan before the vault's walk gave every file a row; the file counts as shared"
         );
         return ReferenceScan::incomplete(Vec::new(), Incomplete::NotWalked);
     }

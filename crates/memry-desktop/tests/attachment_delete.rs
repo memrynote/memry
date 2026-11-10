@@ -10,6 +10,8 @@
 //! | the asking note's own ref, another file, another owner do not     | the scan's needle, `exclude` |
 //! | a note linked out of the vault, or not readable, keeps the file   | incomplete scan              |
 //! | a scan before the open walk ended, or after a capped one, keeps it | the walk gate               |
+//! | a scan while a new exclude pattern's walk runs keeps the file     | the walk gate, cleared       |
+//! | a scan while a found file waits for its retry keeps the file      | a clean walk                 |
 //! | a locked note's file stays                                        | `writable_note`              |
 //! | a name or folder that is not the note's own file is refused       | name, folder and file checks |
 //! | a note folder swapped for a link right before the move is refused | the folder recheck           |
@@ -29,11 +31,13 @@ use memry_desktop::attachments::{self, AttachmentError, DeletedAttachment};
 use memry_desktop::notes::identity::NotesIdentity;
 use memry_desktop::notes::read;
 use memry_desktop::session::OpenVault;
+use memry_desktop::vault::config::{VaultConfigPatch, config_path};
 use memry_desktop::vault::consumer::Applied;
 use memry_desktop::vault::consumer::identity::NoteIdentity;
 use vault_env::{Env, creates, env, indexed};
 
 use crate::index_support::until;
+use crate::vault_settings::update;
 
 const FILE: &str = "k3f9x2-report.pdf";
 
@@ -430,6 +434,95 @@ fn a_scan_before_the_open_walk_ended_or_after_a_capped_one_keeps_the_file() {
     let (outcome, trashed) = delete_in(&e, &open, OWNER, FILE, &mut |_| {});
     assert_eq!(outcome.unwrap(), kept_by(&[]));
     assert!(kept(&e) && trashed.is_empty());
+}
+
+/// An env of `Late.md`, whose body names `OWNER`'s [`FILE`], and that file, with the identity
+/// [`creates`] makes (and hands back).
+fn late_vault(config: Option<&str>, late_at: &str) -> (Env, Arc<vault_env::Creates>) {
+    let mut made = None;
+    let e = env(|store| {
+        let identity = creates(store);
+        made = Some(identity.clone());
+        Some(identity as Arc<dyn NoteIdentity>)
+    });
+    if let Some(config) = config {
+        fs::create_dir_all(e.vault.join(".memry")).unwrap();
+        fs::write(config_path(&e.vault), config).unwrap();
+    }
+    e.write(late_at, &format!("![r](../attachments/{OWNER}/{FILE})\n"));
+    fs::create_dir_all(e.vault.join("attachments").join(OWNER)).unwrap();
+    fs::write(e.vault.join("attachments").join(OWNER).join(FILE), b"pdf").unwrap();
+    (e, made.unwrap())
+}
+
+const OWNER: &str = "0123456789abcdef0123456789abcdef";
+
+fn late_kept(e: &Env) -> bool {
+    e.vault.join("attachments").join(OWNER).join(FILE).is_file()
+}
+
+/// An exclude pattern dropped walks the vault again: the folder it no longer drops has no rows
+/// until that walk gives them, so the earlier walk's end no longer completes the scan.
+#[test]
+fn a_scan_while_a_new_exclude_patterns_walk_runs_keeps_the_file() {
+    let (mut e, made) = late_vault(Some(r#"{"excludePatterns":["archive"]}"#), "archive/ref.md");
+    e.open();
+    let facts = e.facts_until(indexed);
+    assert!(matches!(
+        facts.last(),
+        Some(Applied::Indexed { complete: true })
+    ));
+    assert!(e.rows().is_empty());
+    made.hold();
+    let patch = VaultConfigPatch {
+        exclude_patterns: Some(Vec::new()),
+        ..VaultConfigPatch::default()
+    };
+    update(&e, patch, |_| {}).unwrap();
+    until("the new walk to offer archive/ref.md", || {
+        made.offered
+            .lock()
+            .unwrap()
+            .iter()
+            .any(|path| path == "archive/ref.md")
+    });
+    let open = e.session.current().expect("open");
+    assert!(e.rows().is_empty());
+    let (outcome, trashed) = delete_in(&e, &open, OWNER, FILE, &mut |_| {});
+    assert_eq!(outcome.unwrap(), kept_by(&[]));
+    assert!(late_kept(&e) && trashed.is_empty());
+    made.release();
+    e.facts_until(indexed);
+    let ref_id = e.rows()[0].0.clone();
+    let (outcome, _) = delete_in(&e, &open, OWNER, FILE, &mut |_| {});
+    assert_eq!(outcome.unwrap(), kept_by(&[&ref_id]));
+}
+
+/// A walk ends complete while a file it found failed to get its note: that file has no row
+/// until its retry lands, and only then does the scan read it.
+#[test]
+fn a_scan_while_a_found_file_waits_for_its_retry_keeps_the_file() {
+    let (mut e, made) = late_vault(None, "Late.md");
+    *made.failures.lock().unwrap() = 1;
+    // The retry waits; the walk's own offer fails at once.
+    made.hold();
+    e.open();
+    let facts = e.facts_until(indexed);
+    assert!(matches!(
+        facts.last(),
+        Some(Applied::Indexed { complete: true })
+    ));
+    let open = e.session.current().expect("open");
+    assert!(e.rows().is_empty());
+    let (outcome, trashed) = delete_in(&e, &open, OWNER, FILE, &mut |_| {});
+    assert_eq!(outcome.unwrap(), kept_by(&[]));
+    assert!(late_kept(&e) && trashed.is_empty());
+    made.release();
+    until("the retry to give Late.md its row", || !e.rows().is_empty());
+    let late_id = e.rows()[0].0.clone();
+    until("the scan to read Late.md", || {
+        delete_in(&e, &open, OWNER, FILE, &mut |_| {}).0.unwrap() == kept_by(&[&late_id])
+    });
 }
 
 #[cfg(unix)]

@@ -82,8 +82,10 @@ pub struct RowOwner {
     line: Line,
     applied: broadcast::Sender<Applied>,
     sessions: AtomicU64,
-    /// The vault whose open walk published `Indexed { complete: true }`: every file of it had a
-    /// row then. Apart from `state`, so a reader does not wait for the lane.
+    /// The vault whose consumer's walk ended complete, with every folder listed, and whose files
+    /// it found all have a row: none failed, or each one's retry landed. Cleared when a consumer
+    /// starts, so an exclude pattern's restart walks again first. Apart from `state`, so a reader
+    /// does not wait for the lane.
     walked: Mutex<Weak<Vault>>,
 }
 
@@ -139,8 +141,9 @@ impl RowOwner {
         }
     }
 
-    /// Whether the open walk of `vault`, the handle of the open being asked about, ended
-    /// complete. Until it does, a file on disk may have no row yet, so the rows are not the vault.
+    /// Whether the walk of `vault`, the handle of the open being asked about, gave every file it
+    /// found a row (`walked`). Until then a file on disk may have no row, so the rows are not the
+    /// vault. A file written after the walk and not yet reported by the watcher is still unseen.
     pub fn walked(&self, vault: &Arc<Vault>) -> bool {
         let walked = self.walked.lock().unwrap_or_else(PoisonError::into_inner);
         std::ptr::eq(walked.as_ptr(), Arc::as_ptr(vault))
@@ -518,14 +521,16 @@ impl Lane<'_> {
         Ok(())
     }
 
+    /// Records whether every file the consumer's walk found has a row ([`RowOwner::walked`]).
+    pub(crate) fn set_walked(&self, walked: bool) {
+        *self.walked.lock().unwrap_or_else(PoisonError::into_inner) = if walked {
+            Arc::downgrade(&self.state().vault)
+        } else {
+            Weak::new()
+        };
+    }
+
     pub(crate) fn publish(&self, fact: Applied) {
-        if let Applied::Indexed { complete } = fact {
-            *self.walked.lock().unwrap_or_else(PoisonError::into_inner) = if complete {
-                Arc::downgrade(&self.state().vault)
-            } else {
-                Weak::new()
-            };
-        }
         // No subscriber is not an error: the facts are for whoever listens.
         let _ = self.applied.send(fact);
     }

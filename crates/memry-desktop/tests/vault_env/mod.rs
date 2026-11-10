@@ -26,7 +26,7 @@ pub const WAIT: Duration = Duration::from_secs(25);
 pub const QUIET: Duration = Duration::from_millis(2500);
 
 /// Makes a note for every file it is offered, and remembers which. Fails the first
-/// `failures` offers.
+/// `failures` offers at once, held or not.
 pub struct Creates {
     pub store: Arc<dyn SecureStore>,
     pub offered: Mutex<Vec<String>>,
@@ -56,18 +56,18 @@ impl NoteIdentity for Creates {
     ) -> Result<Adoption, IdentityError> {
         self.offered.lock().unwrap().push(file.path.to_owned());
         {
-            let held = self.held.lock().unwrap();
-            let _ = self
-                .released
-                .wait_timeout_while(held, WAIT, |held| *held)
-                .unwrap();
-        }
-        {
             let mut failures = self.failures.lock().unwrap();
             if *failures > 0 {
                 *failures -= 1;
                 return Err(IdentityError::Other("not yet".into()));
             }
+        }
+        {
+            let held = self.held.lock().unwrap();
+            let _ = self
+                .released
+                .wait_timeout_while(held, WAIT, |held| *held)
+                .unwrap();
         }
         let writer = ctx
             .vault
