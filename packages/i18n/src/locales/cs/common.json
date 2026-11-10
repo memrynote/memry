@@ -1672,6 +1672,14 @@
     "undecidedFilesHint": "Poznámka nebo záznam deníku se stejným názvem má jiný text, nebo se do tohoto zařízení ještě nesynchronizoval. Memry tyto soubory ponechá beze změny a znovu je zkontroluje při příštím otevření tohoto trezoru.",
     "keptRemovals": "Memry ponechal poznámky, jejichž soubory byly smazány",
     "keptRemovalsHint": "Tyto soubory byly smazány mimo Memry, ale jejich poznámky obsahovaly text, který se do souborů nikdy nedostal. Memry poznámky ponechal, aby tento text nesmazal ani na vašich dalších zařízeních.",
-    "moreUnlisted": "Další tu nejsou uvedené."
+    "moreUnlisted": "Další tu nejsou uvedené.",
+    "journalDaysHeld": "Záznamy deníku čekají v přesunuté složce",
+    "journalDaysHeldHint": "Složka deníku byla přesunuta nebo přejmenována mimo Memry a nastavení složky deníku ji zatím nemůže následovat. Do té doby Memry nevytváří záznamy deníku ani nemění nastavení deníku a tyto složky nelze přesunout ani smazat. Dejte všechny záznamy deníku do jedné složky nebo složku přesuňte zpět. Vaše záznamy jsou v bezpečí.",
+    "journalChangeWaits": "Změna nastavení deníku nebyla dokončena",
+    "journalChangeWaitsSettingsHint": "Memry se zavřelo během přesouvání záznamů deníku kvůli změně nastavení a nemůže je vrátit, dokud nepřečte soubor .memry/config.json. Opravte soubor a pak Memry restartujte. Vaše záznamy jsou v bezpečí.",
+    "journalChangeWaitsTakenHint": "Memry se zavřelo během přesouvání záznamů deníku kvůli změně nastavení. Na místě, kam se má záznam vrátit, je jiný soubor nebo složka. Přesuňte je jinam a pak Memry restartujte. Vaše záznamy jsou v bezpečí.",
+    "journalChangeWaitsHint": "Memry se zavřelo během přesouvání záznamů deníku kvůli změně nastavení a nepodařilo se mu je vrátit. Zkusí to znovu při příštím otevření tohoto trezoru. Do té doby nelze složky deníku přesunout ani smazat. Vaše záznamy jsou v bezpečí.",
+    "movesWait": "Některé poznámky zatím nelze přesunout",
+    "movesWaitHint": "Memry se zavřelo během přesouvání nebo přejmenování těchto poznámek a nepodařilo se mu to dokončit. Dokud se to nestane, nelze je přesunout ani přejmenovat. Memry to zkusí znovu při příštím otevření tohoto trezoru."
   }
 }

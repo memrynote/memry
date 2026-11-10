@@ -597,7 +597,8 @@
         "title": "Flytta block till anteckning",
         "searchPlaceholder": "Sök anteckningar…",
         "noResults": "Inga matchande anteckningar",
-        "failed": "Det gick inte att flytta blocket"
+        "failed": "Det gick inte att flytta blocket",
+        "targetNotTaken": "Den här anteckningen är för stor eller innehåller text som appen inte kan ta emot, så blocken blev kvar där de var."
       }
     },
     "attachmentPicker": {

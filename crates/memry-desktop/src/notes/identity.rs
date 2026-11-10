@@ -304,6 +304,10 @@ impl NoteIdentity for NotesIdentity {
         self.returned(ctx.root, note_id);
     }
 
+    fn notices(&self) -> Option<Arc<VaultNotices>> {
+        Some(self.notices.clone())
+    }
+
     fn adopt_or_create(
         &self,
         ctx: &IdentityCtx<'_>,

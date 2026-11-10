@@ -2212,13 +2212,17 @@ const ContentAreaEditor = memo(function ContentAreaEditor({
         const markdown = await serializeBlocksPreservingBlanks(editor, [block] as never)
         if (!markdown.trim()) return
 
-        const result = await window.api.notes.appendBlocks({
+        const result = await notesService.appendBlocks({
           sourceNoteId: noteId,
           targetNoteId,
           markdown
         })
         if (!result?.success) {
-          throw new Error(result?.error ?? 'append failed')
+          throw new Error(
+            result?.errorCode === 'target_not_taken'
+              ? tRef.current('editor.blockMenu.moveDialog.targetNotTaken')
+              : (result?.error ?? 'append failed')
+          )
         }
 
         // The tasks moved with their lines: they belong to the target note

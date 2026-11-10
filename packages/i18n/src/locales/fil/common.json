@@ -1672,6 +1672,14 @@
     "undecidedFilesHint": "May tala o entry sa talaarawan na kapareho ang pangalan pero iba ang teksto, o hindi pa ito naka-sync sa device na ito. Hinahayaan ng Memry ang mga file na ito at susuriin muli sa susunod na pagbukas nito sa vault na ito.",
     "keptRemovals": "Itinago ng Memry ang mga talang binura ang file",
     "keptRemovalsHint": "Binura ang mga file na ito sa labas ng Memry, pero may tekstong hindi kailanman napunta sa mga file ang kanilang mga tala. Itinago ng Memry ang mga tala sa halip na burahin ang tekstong iyon sa iba mong device.",
-    "moreUnlisted": "May iba pang hindi nakalista rito."
+    "moreUnlisted": "May iba pang hindi nakalista rito.",
+    "journalDaysHeld": "May mga journal entry na naghihintay sa inilipat na folder",
+    "journalDaysHeldHint": "Inilipat o pinalitan ng pangalan ang journal folder sa labas ng Memry, at hindi pa ito masundan ng setting ng journal folder. Hanggang doon, hindi gagawa ang Memry ng mga journal entry o magbabago ng mga setting ng journal, at hindi maililipat o mabubura ang mga folder na ito. Ilagay ang lahat ng journal entry sa iisang folder, o ibalik ang folder. Ligtas ang mga entry mo.",
+    "journalChangeWaits": "Hindi natapos ang isang pagbabago sa mga setting ng journal",
+    "journalChangeWaitsSettingsHint": "Nagsara ang Memry habang inililipat ang mga journal entry para sa isang pagbabago sa setting, at hindi nito maibabalik ang mga ito hangga't hindi nito nababasa ang .memry/config.json. Ayusin ang file, pagkatapos ay i-restart ang Memry. Ligtas ang mga entry mo.",
+    "journalChangeWaitsTakenHint": "Nagsara ang Memry habang inililipat ang mga journal entry para sa isang pagbabago sa setting. May ibang file o folder sa lugar na dapat balikan ng isang entry. Alisin ito sa daan, pagkatapos ay i-restart ang Memry. Ligtas ang mga entry mo.",
+    "journalChangeWaitsHint": "Nagsara ang Memry habang inililipat ang mga journal entry para sa isang pagbabago sa setting, at hindi nito naibalik ang mga ito. Susubukan nito ulit sa susunod na pagbukas sa vault na ito. Hanggang doon, hindi maililipat o mabubura ang mga journal folder. Ligtas ang mga entry mo.",
+    "movesWait": "Hindi pa maililipat ang ilang note",
+    "movesWaitHint": "Nagsara ang Memry habang inililipat o pinapalitan ang pangalan ng mga note na ito, at hindi ito natapos. Hindi maililipat o mapapalitan ang pangalan ng mga ito hangga't hindi ito natatapos. Susubukan ulit ng Memry sa susunod na pagbukas sa vault na ito."
   }
 }

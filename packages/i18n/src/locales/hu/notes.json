@@ -597,7 +597,8 @@
         "title": "Blokk áthelyezése jegyzetbe",
         "searchPlaceholder": "Jegyzetek keresése…",
         "noResults": "Nincs egyező jegyzet",
-        "failed": "Nem sikerült áthelyezni a blokkot"
+        "failed": "Nem sikerült áthelyezni a blokkot",
+        "targetNotTaken": "Ez a jegyzet túl nagy, vagy olyan szöveget tartalmaz, amelyet az alkalmazás nem tud fogadni, ezért a blokkok a helyükön maradtak."
       }
     },
     "attachmentPicker": {

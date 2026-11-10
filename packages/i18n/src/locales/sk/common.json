@@ -1672,6 +1672,14 @@
     "undecidedFilesHint": "Poznámka alebo záznam denníka s rovnakým názvom má iný text alebo ešte nebol synchronizovaný do tohto zariadenia. Memry tieto súbory ponechá bez zmeny a znova ich skontroluje pri ďalšom otvorení tohto trezoru.",
     "keptRemovals": "Memry ponechal poznámky, ktorých súbory boli odstránené",
     "keptRemovalsHint": "Tieto súbory boli odstránené mimo Memry, ale ich poznámky obsahovali text, ktorý sa do súborov nikdy nedostal. Memry poznámky ponechal, aby tento text neodstránil ani na vašich ďalších zariadeniach.",
-    "moreUnlisted": "Ďalšie tu nie sú uvedené."
+    "moreUnlisted": "Ďalšie tu nie sú uvedené.",
+    "journalDaysHeld": "Záznamy denníka čakajú v presunutom priečinku",
+    "journalDaysHeldHint": "Priečinok denníka bol presunutý alebo premenovaný mimo Memry a nastavenie priečinka denníka ho zatiaľ nemôže nasledovať. Dovtedy Memry nevytvára záznamy denníka ani nemení nastavenia denníka a tieto priečinky nemožno presunúť ani odstrániť. Dajte všetky záznamy denníka do jedného priečinka alebo priečinok presuňte späť. Vaše záznamy sú v bezpečí.",
+    "journalChangeWaits": "Zmena nastavení denníka sa nedokončila",
+    "journalChangeWaitsSettingsHint": "Memry sa zatvorilo počas presúvania záznamov denníka pre zmenu nastavení a nemôže ich vrátiť, kým neprečíta súbor .memry/config.json. Opravte súbor a potom Memry reštartujte. Vaše záznamy sú v bezpečí.",
+    "journalChangeWaitsTakenHint": "Memry sa zatvorilo počas presúvania záznamov denníka pre zmenu nastavení. Na mieste, kam sa má záznam vrátiť, je iný súbor alebo priečinok. Presuňte ho preč a potom Memry reštartujte. Vaše záznamy sú v bezpečí.",
+    "journalChangeWaitsHint": "Memry sa zatvorilo počas presúvania záznamov denníka pre zmenu nastavení a nepodarilo sa mu ich vrátiť. Skúsi to znova pri ďalšom otvorení tohto trezoru. Dovtedy priečinky denníka nemožno presunúť ani odstrániť. Vaše záznamy sú v bezpečí.",
+    "movesWait": "Niektoré poznámky sa zatiaľ nedajú presunúť",
+    "movesWaitHint": "Memry sa zatvorilo počas presúvania alebo premenovania týchto poznámok a nepodarilo sa mu to dokončiť. Kým sa to nestane, nemožno ich presunúť ani premenovať. Memry to skúsi znova pri ďalšom otvorení tohto trezoru."
   }
 }

@@ -49,6 +49,7 @@ use super::consumer::identity::{IdentityCtx, NoteIdentity};
 use super::consumer::rows::Lane;
 use super::file_move::{FileMove, FileMoveError};
 use super::journal_format::JournalDays;
+use super::notices::Listed;
 use super::path_key::folded_key;
 use super::watch::EchoGuard;
 use crate::journal::folder_follow::followed_journal_folder;
@@ -181,7 +182,8 @@ pub(crate) fn on_disk(root: &Path, rel: &str) -> PathBuf {
 
 /// Settles each note's recorded app move, before the walk. Nothing here stops the open: a
 /// record that cannot be settled now is logged and stays for the next open, and its note
-/// does not move until then ([`memry_core::domain::notes::app_move::BeginError`]).
+/// does not move until then ([`memry_core::domain::notes::app_move::BeginError`]); the vault's
+/// notices list it meanwhile (`VaultNotice::MovesWait`).
 pub(crate) fn finish_interrupted(
     ctx: &IdentityCtx<'_>,
     writer: &NotesWriter,
@@ -199,7 +201,12 @@ pub(crate) fn finish_interrupted(
             );
         }
     };
+    let notices = identity.notices();
     for (note_id, recorded) in pending {
+        let path = match &recorded {
+            Recorded::Move(pending) => Some(pending.old_path.clone()),
+            Recorded::Unreadable(_) => None,
+        };
         let settled = match recorded {
             // Its folder's record waits, and so does it.
             Recorded::Move(pending) if deferred.iter().any(|folder| carries(folder, &pending)) => {
@@ -212,15 +219,28 @@ pub(crate) fn finish_interrupted(
         };
         match settled {
             Ok(done) => tracing::info!(scope = SCOPE, note_id, "{done}"),
-            // TODO(#3531 Step 14): tell the user, in one notice with the vault open's other
-            // unsettled state (`notes::identity`'s `tell_once`): this note cannot be renamed
-            // or moved until its interrupted move settles.
-            Err(error) => tracing::warn!(
-                scope = SCOPE,
-                note_id,
-                "an interrupted app move stays for the next open, and the note does not move \
-                 until it settles: {error}"
-            ),
+            Err(error) => {
+                tracing::warn!(
+                    scope = SCOPE,
+                    note_id,
+                    "an interrupted app move stays for the next open, and the note does not \
+                     move until it settles: {error}"
+                );
+                // Where its row is; a record this build cannot read names no path.
+                let row = lane.files().by_id(&note_id).ok().flatten();
+                let at = row.map(|row| row.path).or(path);
+                if let (Some(notices), Some(at)) = (&notices, at) {
+                    let path = on_disk(ctx.root, &at).to_string_lossy().into_owned();
+                    let note_id = &note_id;
+                    notices.add(
+                        ctx.root,
+                        Listed::Moving {
+                            note_id,
+                            path: &path,
+                        },
+                    );
+                }
+            }
         }
     }
 }
