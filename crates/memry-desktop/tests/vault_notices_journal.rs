@@ -7,8 +7,12 @@ use crate::vault_env;
 
 use std::fs;
 
+use memry_desktop::journal::folder_follow::pause_follow_after_batch;
+use memry_desktop::notes::error::NotesError;
 use memry_desktop::notes::service::NotesService;
 use memry_desktop::vault::config::config_path;
+use memry_desktop::vault::config::settings::{SettingsError, update_vault_settings_checked};
+use memry_desktop::vault::journal_rename::ChangeStep;
 use memry_desktop::vault::notices::{ChangeHold, VaultNotice, VaultNotices, WaitingMove};
 use vault_env::{Env, indexed};
 
@@ -50,6 +54,89 @@ fn journal_days_held_by_a_moved_folder_show_until_the_setting_follows() {
     try_day(&notes, &e, "2025-01-07").unwrap();
     assert_eq!(stored(&e.vault)["journalFolder"], "Diary");
     assert_eq!(shown(&notices, held), None, "{:?}", notices.list());
+}
+
+/// A held day moved back to the journal folder outside the app: the batch's follow finds
+/// nothing held, and the notice goes.
+#[test]
+fn journal_days_held_moved_back_take_the_notice_down() {
+    let (mut e, _, notices) =
+        opened_noticing(daily("journal"), &[("journal/2025-01-02.md", "A day\n")]);
+    recorded_elsewhere(&e, true);
+    moved_outside(&mut e, "journal", "Diary");
+    let held = |n: &VaultNotice| matches!(n, VaultNotice::JournalDaysHeld { .. });
+    assert!(shown(&notices, held).is_some(), "{:?}", notices.list());
+
+    moved_outside(&mut e, "Diary", "journal");
+    quiet(&mut e);
+    assert_eq!(stored(&e.vault)["journalFolder"], "journal");
+    assert_eq!(shown(&notices, held), None, "{:?}", notices.list());
+}
+
+/// A day create while the consumer's batch still holds the days of a folder moved outside is
+/// refused, and shows no notice: the follow after the batch decides, here following.
+#[test]
+fn journal_days_held_mid_batch_show_no_notice() {
+    let (mut e, store, notices) =
+        opened_noticing(daily("journal"), &[("journal/2025-01-02.md", "A day\n")]);
+    let notes = NotesService::new(e.tier.clone(), store);
+    let root = e.session.current().unwrap().path.clone();
+    let paused = pause_follow_after_batch(&root);
+    moved_outside(&mut e, "journal", "Diary");
+    let refused = try_day(&notes, &e, "2025-01-07");
+    assert!(
+        matches!(refused, Err(NotesError::JournalFolderHeld)),
+        "{refused:?}"
+    );
+    let held = |n: &VaultNotice| matches!(n, VaultNotice::JournalDaysHeld { .. });
+    assert_eq!(shown(&notices, held), None, "{:?}", notices.list());
+
+    drop(paused);
+    quiet(&mut e);
+    assert_eq!(stored(&e.vault)["journalFolder"], "Diary");
+    assert_eq!(shown(&notices, held), None, "{:?}", notices.list());
+}
+
+/// A journal setting change whose moved days cannot all go back when it is refused: the
+/// change waits, and its notice is up at once, not only at the next command or open.
+#[test]
+fn a_refused_change_whose_days_stay_moved_shows_at_once() {
+    let (e, _, notices) = opened_noticing(
+        daily("journal"),
+        &[
+            ("journal/2025-01-02.md", "A day\n"),
+            ("journal/2025-01-03.md", "Another day\n"),
+            ("Diary/2025-01-03.md", "A note\n"),
+        ],
+    );
+    let (vault, core) = (e.vault.clone(), e.core());
+    let mut blocked = false;
+    let refused = update_vault_settings_checked(
+        &e.vault,
+        Some((&core, &e.tier)),
+        folder("Diary"),
+        |_| panic!("announced"),
+        &mut |step| {
+            if step == ChangeStep::Moved && !blocked {
+                blocked = true;
+                fs::create_dir_all(vault.join("journal/2025-01-02.md")).unwrap();
+            }
+        },
+    );
+    assert!(
+        matches!(refused, Err(SettingsError::DaysNotRenamed { left: 1 })),
+        "{refused:?}"
+    );
+    assert!(e.vault.join("Diary/2025-01-02.md").is_file());
+    let waits = |n: &VaultNotice| matches!(n, VaultNotice::JournalChangeWaits { .. });
+    assert_eq!(
+        shown(&notices, waits),
+        Some(VaultNotice::JournalChangeWaits {
+            from: "journal".to_owned(),
+            to: "Diary".to_owned(),
+            holds: ChangeHold::Unknown,
+        })
+    );
 }
 
 /// A journal setting change a crash cut short, whose days cannot go back: the open shows the

@@ -139,7 +139,15 @@ fn decide(
     already: bool,
     batch: bool,
 ) -> Result<bool, IdentityError> {
-    if writer.journal_date(id)?.is_none() || journal.day_of(to).is_some() {
+    if writer.journal_date(id)?.is_none() {
+        return Ok(false);
+    }
+    if journal.day_of(to).is_some() {
+        // A held day back where the setting reads it: the batch's follow takes the hold's
+        // notice down.
+        if already && batch {
+            mark_batch(root);
+        }
         return Ok(false);
     }
     if !already && journal_folder_moved(root, journal.folder(), from, to).is_none() {

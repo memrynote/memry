@@ -120,10 +120,10 @@ pub(crate) fn finish_journal_change(
             Ok((writer, pending))
         });
     let (writer, change) = match pending {
-        Ok((_, None)) => {
-            settled();
-            return None;
-        }
+        // No notice to take down: one is raised only while a record waits, the record goes
+        // only through `settle` (or with every day back, before any notice), and the open
+        // starts with an empty board.
+        Ok((_, None)) => return None,
         Ok((writer, Some(JournalChangeRecorded::Change(change)))) => (writer, change),
         Ok((_, Some(JournalChangeRecorded::Unreadable(why)))) => {
             tracing::warn!(

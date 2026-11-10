@@ -311,7 +311,9 @@ impl VaultNotices {
     }
 
     /// `item`'s state passed: it leaves its notice, and the notice goes with its last item.
-    /// A notice that had more items than it listed stays until the next open.
+    /// A notice that had more items than it listed stays until the next open. A waiting app
+    /// move ([`Listed::Moving`]) is never removed: it settles only at an open, which empties
+    /// the board.
     pub fn remove(&self, root: &Path, item: Listed<'_>) {
         self.edit(root, |notices| {
             let Some(at) = notices
@@ -327,11 +329,6 @@ impl VaultNotices {
                     (paths.len() != before, paths.is_empty() && !*more)
                 }
                 (VaultNotice::KeptRemovals { notes, more }, Listed::Kept { note_id, .. }) => {
-                    let before = notes.len();
-                    notes.retain(|held| held.note_id != note_id);
-                    (notes.len() != before, notes.is_empty() && !*more)
-                }
-                (VaultNotice::MovesWait { notes, more }, Listed::Moving { note_id, .. }) => {
                     let before = notes.len();
                     notes.retain(|held| held.note_id != note_id);
                     (notes.len() != before, notes.is_empty() && !*more)
