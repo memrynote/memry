@@ -1263,6 +1263,7 @@
     "label": "วิธีใช้และความคิดเห็น",
     "reportBug": "รายงานข้อบกพร่อง",
     "requestFeature": "ขอฟีเจอร์",
+    "joinTestflight": "เข้าร่วม TestFlight",
     "starOnGithub": "ให้ดาวบน GitHub",
     "version": "MemryNote {version}",
     "whatsNew": "มีอะไรใหม่",
@@ -1647,5 +1648,29 @@
       "agentModel": "ค่าเริ่มต้น",
       "date": "13 ตุลาคม"
     }
+  },
+  "iosBeta": {
+    "badge": "ใหม่ · TestFlight",
+    "title": "Memry สำหรับ iPhone อยู่ในช่วงเบต้า",
+    "promptBody": "คลังข้อมูลของคุณบนโทรศัพท์ เข้ารหัสตั้งแต่ต้นทางถึงปลายทาง กรอกอีเมลของคุณ แล้ว Apple จะส่งคำเชิญ TestFlight ให้",
+    "emailPlaceholder": "you@example.com",
+    "emailLabel": "อีเมลสำหรับรับคำเชิญ TestFlight",
+    "submit": "รับคำเชิญ",
+    "sending": "กำลังส่ง…",
+    "listNote": "เราจะเพิ่มคุณในรายชื่อเบต้า iPhone เพื่อส่งข่าวการเปิดตัวด้วย ยกเลิกการรับได้ทุกเมื่อ",
+    "error": "ส่งคำเชิญ TestFlight ไม่สำเร็จ โปรดลองอีกครั้ง",
+    "sentTitle": "ตรวจสอบกล่องจดหมายของคุณ",
+    "sentBody": "Apple ส่งคำเชิญไปที่ {email} แล้ว อาจใช้เวลาสักครู่ และอาจอยู่ในโฟลเดอร์สแปม",
+    "stepInstall": "ติดตั้ง TestFlight จาก App Store",
+    "stepOpen": "เปิดคำเชิญบน iPhone ของคุณ",
+    "stepSignIn": "ลงชื่อเข้าใช้ Memry บนโทรศัพท์ของคุณ",
+    "done": "เสร็จสิ้น",
+    "dialogTitle": "เข้าร่วม Memry สำหรับ iPhone",
+    "dialogBody": "Apple จะส่งคำเชิญ TestFlight ให้คุณทางอีเมล ใช้อีเมลของ Apple ID บน iPhone ของคุณ",
+    "entryTitle": "เบต้า iPhone เปิดแล้ว",
+    "entrySubtitle": "ผ่าน TestFlight",
+    "entryJoin": "เข้าร่วมเบต้า",
+    "entrySent": "ส่งคำเชิญไปที่ {email} แล้ว",
+    "sendAgain": "ส่งอีกครั้ง"
   }
 }

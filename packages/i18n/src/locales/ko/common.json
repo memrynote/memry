@@ -1263,6 +1263,7 @@
     "label": "도움말 및 피드백",
     "reportBug": "버그 신고",
     "requestFeature": "기능 요청",
+    "joinTestflight": "TestFlight 참여하기",
     "starOnGithub": "GitHub에서 스타 주기",
     "version": "MemryNote {version}",
     "whatsNew": "새로운 기능",
@@ -1647,5 +1648,29 @@
       "agentModel": "기본",
       "date": "10월 13일"
     }
+  },
+  "iosBeta": {
+    "badge": "새 소식 · TestFlight",
+    "title": "iPhone용 Memry 베타 진행 중",
+    "promptBody": "휴대폰에서 만나는 종단 간 암호화 볼트. 이메일을 남기면 Apple이 TestFlight 초대를 보내드립니다.",
+    "emailPlaceholder": "you@example.com",
+    "emailLabel": "TestFlight 초대를 받을 이메일",
+    "submit": "초대 받기",
+    "sending": "보내는 중…",
+    "listNote": "출시 소식을 전해 드리기 위해 iPhone 베타 목록에도 추가합니다. 언제든지 수신을 거부할 수 있습니다.",
+    "error": "TestFlight 초대를 보내지 못했습니다. 다시 시도하세요.",
+    "sentTitle": "받은편지함을 확인하세요",
+    "sentBody": "Apple이 {email}(으)로 초대를 보냈습니다. 몇 분 걸릴 수 있으며 스팸함에 들어갈 수도 있습니다.",
+    "stepInstall": "App Store에서 TestFlight 설치",
+    "stepOpen": "iPhone에서 초대 열기",
+    "stepSignIn": "휴대폰에서 Memry에 로그인",
+    "done": "완료",
+    "dialogTitle": "iPhone용 Memry 참여하기",
+    "dialogBody": "Apple이 TestFlight 초대를 이메일로 보내드립니다. iPhone의 Apple ID 이메일을 입력하세요.",
+    "entryTitle": "iPhone 베타 오픈",
+    "entrySubtitle": "TestFlight로 참여",
+    "entryJoin": "베타 참여하기",
+    "entrySent": "{email}(으)로 초대를 보냈습니다",
+    "sendAgain": "다시 보내기"
   }
 }

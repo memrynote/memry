@@ -1263,6 +1263,7 @@
     "label": "Hjælp og feedback",
     "reportBug": "Rapportér en fejl",
     "requestFeature": "Foreslå en funktion",
+    "joinTestflight": "Deltag i TestFlight",
     "starOnGithub": "Giv en stjerne på GitHub",
     "version": "MemryNote {version}",
     "whatsNew": "Nyheder",
@@ -1647,5 +1648,29 @@
       "agentModel": "Standard",
       "date": "13. oktober"
     }
+  },
+  "iosBeta": {
+    "badge": "Nyt · TestFlight",
+    "title": "Memry til iPhone er i beta",
+    "promptBody": "Din boks på din telefon, end-to-end-krypteret. Skriv din mailadresse, så sender Apple dig en TestFlight-invitation.",
+    "emailPlaceholder": "you@example.com",
+    "emailLabel": "Mailadresse til TestFlight-invitationen",
+    "submit": "Få invitationen",
+    "sending": "Sender…",
+    "listNote": "Vi tilføjer dig også til iPhone-betalisten, så du får nyt om lanceringen. Du kan afmelde dig når som helst.",
+    "error": "Kunne ikke sende TestFlight-invitationen. Prøv igen.",
+    "sentTitle": "Tjek din indbakke",
+    "sentBody": "Apple har sendt invitationen til {email}. Det kan tage et par minutter, og den kan havne i spam.",
+    "stepInstall": "Installér TestFlight fra App Store",
+    "stepOpen": "Åbn invitationen på din iPhone",
+    "stepSignIn": "Log ind på Memry på din telefon",
+    "done": "Færdig",
+    "dialogTitle": "Tilmeld dig Memry til iPhone",
+    "dialogBody": "Apple sender dig en TestFlight-invitation på mail. Brug mailadressen til det Apple-ID, der er på din iPhone.",
+    "entryTitle": "iPhone-betaen er live",
+    "entrySubtitle": "Via TestFlight",
+    "entryJoin": "Deltag i betaen",
+    "entrySent": "Invitation sendt til {email}",
+    "sendAgain": "Send igen"
   }
 }

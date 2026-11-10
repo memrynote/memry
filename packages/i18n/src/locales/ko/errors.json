@@ -164,6 +164,10 @@
     "removeDeviceFailed": "기기를 제거하지 못했습니다.",
     "renameDeviceFailed": "기기 이름을 변경하지 못했습니다.",
     "initiateOAuthFailed": "OAuth를 시작하지 못했습니다.",
+    "retryOAuthFailed": "로그인용 브라우저를 다시 열지 못했습니다. 로그인을 처음부터 다시 시작하세요.",
+    "oauthExpired": "로그인이 만료되었습니다. 다시 시도하세요.",
+    "oauthInvalidResponse": "올바른 로그인 링크를 받지 못했습니다. 다시 시도하세요.",
+    "oauthCancelled": "Google 로그인이 취소되었습니다. 다시 시도하세요.",
     "setupFirstDeviceOAuthFailed": "OAuth로 첫 기기를 설정하지 못했습니다.",
     "confirmRecoveryPhraseFailed": "복구 문구를 확인하지 못했습니다."
   },

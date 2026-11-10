@@ -1110,7 +1110,16 @@
       "sending": "Lähetetään koodia…"
     },
     "oauth": {
-      "google": "Jatka Googlella"
+      "google": "Jatka Googlella",
+      "waiting": "Viimeistele Googlella kirjautuminen selaimessasi.",
+      "browserUnavailable": "Selaimen avaaminen epäonnistui.",
+      "manualInstructions": "Kopioi kirjautumislinkki ja avaa se selaimessa tällä tietokoneella. Pidä memrynote auki kirjautumisen ajan.",
+      "linkLabel": "Kirjautumislinkki",
+      "copyLink": "Kopioi kirjautumislinkki",
+      "retryBrowser": "Yritä avata selain uudelleen",
+      "copied": "Kirjautumislinkki kopioitu.",
+      "copyFailed": "Kirjautumislinkin kopioiminen epäonnistui. Valitse se yllä olevasta kentästä ja kopioi.",
+      "cancel": "Käytä toista kirjautumistapaa"
     },
     "otp": {
       "title": "Anna vahvistuskoodi",
@@ -2396,7 +2405,6 @@
   "phaseI": {
     "errors": {
       "failedToUpdateTagColor": "Tunnisteen värin päivittäminen epäonnistui",
-      "googleSignInFailed": "Google-sisäänkirjautuminen epäonnistui",
       "failedToSendVerificationCode": "Vahvistuskoodin lähettäminen epäonnistui",
       "invalidVerificationCode": "Virheellinen vahvistuskoodi",
       "accountSetupFailed": "Tilin määrittäminen epäonnistui",

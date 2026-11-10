@@ -1110,7 +1110,16 @@
       "sending": "コードを送信中…"
     },
     "oauth": {
-      "google": "Google で続行"
+      "google": "Google で続行",
+      "waiting": "ブラウザーで Google でのサインインを完了してください。",
+      "browserUnavailable": "ブラウザーを開けませんでした。",
+      "manualInstructions": "サインインリンクをコピーして、このコンピューターのブラウザーで開いてください。サインイン中は memrynote を開いたままにしてください。",
+      "linkLabel": "サインインリンク",
+      "copyLink": "サインインリンクをコピー",
+      "retryBrowser": "もう一度ブラウザーを開く",
+      "copied": "サインインリンクをコピーしました。",
+      "copyFailed": "サインインリンクをコピーできませんでした。上のフィールドで選択してコピーしてください。",
+      "cancel": "別のサインイン方法を使う"
     },
     "otp": {
       "title": "確認コードを入力してください",
@@ -2396,7 +2405,6 @@
   "phaseI": {
     "errors": {
       "failedToUpdateTagColor": "タグの色を更新できませんでした",
-      "googleSignInFailed": "Google でサインインできませんでした",
       "failedToSendVerificationCode": "確認コードを送信できませんでした",
       "invalidVerificationCode": "確認コードが無効です",
       "accountSetupFailed": "アカウントを設定できませんでした",

@@ -1263,6 +1263,7 @@
     "label": "Tulong at feedback",
     "reportBug": "Mag-ulat ng bug",
     "requestFeature": "Humiling ng feature",
+    "joinTestflight": "Sumali sa TestFlight",
     "starOnGithub": "I-star sa GitHub",
     "version": "MemryNote {version}",
     "whatsNew": "Ano ang bago",
@@ -1647,5 +1648,29 @@
       "agentModel": "Default",
       "date": "Oktubre 13"
     }
+  },
+  "iosBeta": {
+    "badge": "Bago · TestFlight",
+    "title": "Nasa beta na ang Memry para sa iPhone",
+    "promptBody": "Ang vault mo sa phone mo, end-to-end encrypted. Iwan ang email mo at padadalhan ka ng Apple ng TestFlight invite.",
+    "emailPlaceholder": "you@example.com",
+    "emailLabel": "Email para sa TestFlight invite",
+    "submit": "Kunin ang invite",
+    "sending": "Ipinapadala…",
+    "listNote": "Idinadagdag ka rin namin sa iPhone beta list para sa balita tungkol sa launch. Puwede kang mag-unsubscribe anumang oras.",
+    "error": "Hindi naipadala ang TestFlight invite. Subukan ulit.",
+    "sentTitle": "Tingnan ang inbox mo",
+    "sentBody": "Ipinadala ng Apple ang invite sa {email}. Maaaring abutin ito ng ilang minuto at puwedeng mapunta sa spam.",
+    "stepInstall": "I-install ang TestFlight mula sa App Store",
+    "stepOpen": "Buksan ang invite sa iPhone mo",
+    "stepSignIn": "Mag-sign in sa Memry sa phone mo",
+    "done": "Tapos na",
+    "dialogTitle": "Sumali sa Memry para sa iPhone",
+    "dialogBody": "Magpapadala ang Apple ng TestFlight invite sa email mo. Gamitin ang email ng Apple ID sa iPhone mo.",
+    "entryTitle": "Live na ang iPhone beta",
+    "entrySubtitle": "Sa pamamagitan ng TestFlight",
+    "entryJoin": "Sumali sa beta",
+    "entrySent": "Naipadala ang invite sa {email}",
+    "sendAgain": "Ipadala ulit"
   }
 }

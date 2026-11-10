@@ -164,6 +164,10 @@
     "removeDeviceFailed": "Не удалось отвязать устройство",
     "renameDeviceFailed": "Не удалось переименовать устройство",
     "initiateOAuthFailed": "Не удалось начать OAuth",
+    "retryOAuthFailed": "Не удалось снова открыть браузер для входа. Начните вход заново.",
+    "oauthExpired": "Время входа истекло. Попробуйте ещё раз.",
+    "oauthInvalidResponse": "Не удалось получить действительную ссылку для входа. Попробуйте ещё раз.",
+    "oauthCancelled": "Вход через Google отменён. Попробуйте ещё раз.",
     "setupFirstDeviceOAuthFailed": "Не удалось настроить первое устройство через OAuth",
     "confirmRecoveryPhraseFailed": "Не удалось подтвердить фразу восстановления"
   },
