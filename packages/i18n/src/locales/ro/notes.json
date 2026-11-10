@@ -777,6 +777,12 @@
     "viaProperty": "{property} → {title}",
     "viaPortal": "Afișat într-un portal"
   },
+  "references": {
+    "filterAll": "Toate",
+    "filterNotes": "Notițe",
+    "filterJournal": "Jurnal",
+    "filterBy": "Filtrează referințele: {filter}"
+  },
   "unlinkedMentions": {
     "title": "Mențiuni nelegate",
     "summary": "{count, plural, one {# mențiune nelegată} few {# mențiuni nelegate} other {# de mențiuni nelegate}}",

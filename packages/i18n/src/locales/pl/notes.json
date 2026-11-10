@@ -777,6 +777,12 @@
     "viaProperty": "{property} → {title}",
     "viaPortal": "Pokazane w portalu"
   },
+  "references": {
+    "filterAll": "Wszystkie",
+    "filterNotes": "Notatki",
+    "filterJournal": "Dziennik",
+    "filterBy": "Filtruj odwołania: {filter}"
+  },
   "unlinkedMentions": {
     "title": "Niepołączone wzmianki",
     "summary": "{count, plural, one {# niepołączona wzmianka} few {# niepołączone wzmianki} many {# niepołączonych wzmianek} other {# niepołączonej wzmianki}}",

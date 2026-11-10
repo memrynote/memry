@@ -777,6 +777,12 @@
     "viaProperty": "{property} → {title}",
     "viaPortal": "ポータルに表示"
   },
+  "references": {
+    "filterAll": "すべて",
+    "filterNotes": "ノート",
+    "filterJournal": "ジャーナル",
+    "filterBy": "参照を絞り込み: {filter}"
+  },
   "unlinkedMentions": {
     "title": "リンクされていない言及",
     "summary": "{count, plural, other {リンクされていない言及 # 件}}",

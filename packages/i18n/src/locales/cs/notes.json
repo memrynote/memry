@@ -777,6 +777,12 @@
     "viaProperty": "{property} → {title}",
     "viaPortal": "Zobrazeno v portálu"
   },
+  "references": {
+    "filterAll": "Vše",
+    "filterNotes": "Poznámky",
+    "filterJournal": "Deník",
+    "filterBy": "Filtrovat odkazy: {filter}"
+  },
   "unlinkedMentions": {
     "title": "Nepropojené zmínky",
     "summary": "{count, plural, one {# nepropojená zmínka} few {# nepropojené zmínky} many {# nepropojené zmínky} other {# nepropojených zmínek}}",

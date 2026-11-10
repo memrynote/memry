@@ -777,6 +777,12 @@
     "viaProperty": "{property} → {title}",
     "viaPortal": "显示在传送门中"
   },
+  "references": {
+    "filterAll": "全部",
+    "filterNotes": "笔记",
+    "filterJournal": "日记",
+    "filterBy": "筛选引用：{filter}"
+  },
   "unlinkedMentions": {
     "title": "未链接的提及",
     "summary": "{count, plural, other {# 处未链接的提及}}",

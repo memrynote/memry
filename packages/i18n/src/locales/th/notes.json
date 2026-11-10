@@ -777,6 +777,12 @@
     "viaProperty": "{property} → {title}",
     "viaPortal": "แสดงในพอร์ทัล"
   },
+  "references": {
+    "filterAll": "ทั้งหมด",
+    "filterNotes": "โน้ต",
+    "filterJournal": "บันทึกประจำวัน",
+    "filterBy": "กรองการอ้างอิง: {filter}"
+  },
   "unlinkedMentions": {
     "title": "การกล่าวถึงที่ยังไม่ลิงก์",
     "summary": "{count, plural, other {การกล่าวถึงที่ยังไม่ลิงก์ # รายการ}}",

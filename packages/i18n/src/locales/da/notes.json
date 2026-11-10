@@ -777,6 +777,12 @@
     "viaProperty": "{property} → {title}",
     "viaPortal": "Vist i en portal"
   },
+  "references": {
+    "filterAll": "Alle",
+    "filterNotes": "Noter",
+    "filterJournal": "Dagbog",
+    "filterBy": "Filtrer referencer: {filter}"
+  },
   "unlinkedMentions": {
     "title": "Ulinkede omtaler",
     "summary": "{count, plural, one {# ulinket omtale} other {# ulinkede omtaler}}",

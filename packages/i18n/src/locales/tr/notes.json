@@ -777,6 +777,12 @@
     "viaProperty": "{property} → {title}",
     "viaPortal": "Bir portalda gösteriliyor"
   },
+  "references": {
+    "filterAll": "Tümü",
+    "filterNotes": "Notlar",
+    "filterJournal": "Günlük",
+    "filterBy": "Referansları filtrele: {filter}"
+  },
   "unlinkedMentions": {
     "title": "Bağlantısız anmalar",
     "summary": "{count, plural, one {# bağlantısız anma} other {# bağlantısız anma}}",

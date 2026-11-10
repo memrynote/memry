@@ -777,6 +777,12 @@
     "viaProperty": "{property} → {title}",
     "viaPortal": "Показано в портале"
   },
+  "references": {
+    "filterAll": "Все",
+    "filterNotes": "Заметки",
+    "filterJournal": "Журнал",
+    "filterBy": "Фильтр ссылок: {filter}"
+  },
   "unlinkedMentions": {
     "title": "Упоминания без ссылок",
     "summary": "{count, plural, one {# упоминание без ссылки} few {# упоминания без ссылки} many {# упоминаний без ссылки} other {# упоминания без ссылки}}",

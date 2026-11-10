@@ -777,6 +777,12 @@
     "viaProperty": "{property} ← {title}",
     "viaPortal": "معروض في بوابة"
   },
+  "references": {
+    "filterAll": "الكل",
+    "filterNotes": "الملاحظات",
+    "filterJournal": "اليوميات",
+    "filterBy": "تصفية الإشارات: {filter}"
+  },
   "unlinkedMentions": {
     "title": "إشارات غير مرتبطة",
     "summary": "{count, plural, zero {# إشارة غير مرتبطة} one {إشارة غير مرتبطة واحدة} two {إشارتان غير مرتبطتين} few {# إشارات غير مرتبطة} many {# إشارة غير مرتبطة} other {# إشارة غير مرتبطة}}",

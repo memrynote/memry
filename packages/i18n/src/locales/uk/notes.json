@@ -777,6 +777,12 @@
     "viaProperty": "{property} → {title}",
     "viaPortal": "Показано в порталі"
   },
+  "references": {
+    "filterAll": "Усі",
+    "filterNotes": "Нотатки",
+    "filterJournal": "Щоденник",
+    "filterBy": "Фільтр посилань: {filter}"
+  },
   "unlinkedMentions": {
     "title": "Незв’язані згадки",
     "summary": "{count, plural, one {# незв’язана згадка} few {# незв’язані згадки} many {# незв’язаних згадок} other {# незв’язаної згадки}}",

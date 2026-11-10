@@ -777,6 +777,12 @@
     "viaProperty": "{property} → {title}",
     "viaPortal": "Getoond in een portaal"
   },
+  "references": {
+    "filterAll": "Alle",
+    "filterNotes": "Notities",
+    "filterJournal": "Dagboek",
+    "filterBy": "Verwijzingen filteren: {filter}"
+  },
   "unlinkedMentions": {
     "title": "Ongekoppelde vermeldingen",
     "summary": "{count, plural, one {# ongekoppelde vermelding} other {# ongekoppelde vermeldingen}}",

@@ -777,6 +777,12 @@
     "viaProperty": "{property} → {title}",
     "viaPortal": "Visas i en portal"
   },
+  "references": {
+    "filterAll": "Alla",
+    "filterNotes": "Anteckningar",
+    "filterJournal": "Dagbok",
+    "filterBy": "Filtrera referenser: {filter}"
+  },
   "unlinkedMentions": {
     "title": "Olänkade omnämnanden",
     "summary": "{count, plural, one {# olänkat omnämnande} other {# olänkade omnämnanden}}",

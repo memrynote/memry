@@ -777,6 +777,12 @@
     "viaProperty": "{property} → {title}",
     "viaPortal": "Näytetään portaalissa"
   },
+  "references": {
+    "filterAll": "Kaikki",
+    "filterNotes": "Muistiinpanot",
+    "filterJournal": "Päiväkirja",
+    "filterBy": "Suodata viittaukset: {filter}"
+  },
   "unlinkedMentions": {
     "title": "Linkittämättömät maininnat",
     "summary": "{count, plural, one {# linkittämätön maininta} other {# linkittämätöntä mainintaa}}",

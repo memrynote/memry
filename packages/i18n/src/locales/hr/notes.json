@@ -777,6 +777,12 @@
     "viaProperty": "{property} → {title}",
     "viaPortal": "Prikazano u portalu"
   },
+  "references": {
+    "filterAll": "Sve",
+    "filterNotes": "Bilješke",
+    "filterJournal": "Dnevnik",
+    "filterBy": "Filtriraj reference: {filter}"
+  },
   "unlinkedMentions": {
     "title": "Nepovezana spominjanja",
     "summary": "{count, plural, one {# nepovezano spominjanje} few {# nepovezana spominjanja} other {# nepovezanih spominjanja}}",

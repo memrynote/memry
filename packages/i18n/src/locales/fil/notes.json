@@ -777,6 +777,12 @@
     "viaProperty": "{property} → {title}",
     "viaPortal": "Ipinapakita sa isang portal"
   },
+  "references": {
+    "filterAll": "Lahat",
+    "filterNotes": "Mga tala",
+    "filterJournal": "Talaarawan",
+    "filterBy": "I-filter ang mga reference: {filter}"
+  },
   "unlinkedMentions": {
     "title": "Mga hindi naka-link na banggit",
     "summary": "{count, plural, one {# hindi naka-link na banggit} other {# hindi naka-link na banggit}}",

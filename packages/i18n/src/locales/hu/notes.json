@@ -777,6 +777,12 @@
     "viaProperty": "{property} → {title}",
     "viaPortal": "Portálban megjelenítve"
   },
+  "references": {
+    "filterAll": "Mind",
+    "filterNotes": "Jegyzetek",
+    "filterJournal": "Napló",
+    "filterBy": "Hivatkozások szűrése: {filter}"
+  },
   "unlinkedMentions": {
     "title": "Nem hivatkozott említések",
     "summary": "{count, plural, one {# nem hivatkozott említés} other {# nem hivatkozott említés}}",

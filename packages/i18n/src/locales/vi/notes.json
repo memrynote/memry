@@ -777,6 +777,12 @@
     "viaProperty": "{property} → {title}",
     "viaPortal": "Hiển thị trong một portal"
   },
+  "references": {
+    "filterAll": "Tất cả",
+    "filterNotes": "Ghi chú",
+    "filterJournal": "Nhật ký",
+    "filterBy": "Lọc tham chiếu: {filter}"
+  },
   "unlinkedMentions": {
     "title": "Đề cập chưa liên kết",
     "summary": "{count, plural, other {# đề cập chưa liên kết}}",

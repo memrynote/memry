@@ -777,6 +777,12 @@
     "viaProperty": "{property} → {title}",
     "viaPortal": "Εμφανίζεται σε πύλη"
   },
+  "references": {
+    "filterAll": "Όλες",
+    "filterNotes": "Σημειώσεις",
+    "filterJournal": "Ημερολόγιο γραφής",
+    "filterBy": "Φιλτράρισμα αναφορών: {filter}"
+  },
   "unlinkedMentions": {
     "title": "Αναφορές χωρίς σύνδεσμο",
     "summary": "{count, plural, one {# αναφορά χωρίς σύνδεσμο} other {# αναφορές χωρίς σύνδεσμο}}",

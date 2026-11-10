@@ -777,6 +777,12 @@
     "viaProperty": "{property} → {title}",
     "viaPortal": "포털에 표시됨"
   },
+  "references": {
+    "filterAll": "전체",
+    "filterNotes": "노트",
+    "filterJournal": "저널",
+    "filterBy": "참조 필터: {filter}"
+  },
   "unlinkedMentions": {
     "title": "링크되지 않은 언급",
     "summary": "{count, plural, other {링크되지 않은 언급 #개}}",

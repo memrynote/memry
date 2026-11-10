@@ -777,6 +777,12 @@
     "viaProperty": "{property} → {title}",
     "viaPortal": "Ditampilkan di portal"
   },
+  "references": {
+    "filterAll": "Semua",
+    "filterNotes": "Catatan",
+    "filterJournal": "Jurnal",
+    "filterBy": "Filter referensi: {filter}"
+  },
   "unlinkedMentions": {
     "title": "Sebutan tanpa tautan",
     "summary": "{count, plural, other {# sebutan tanpa tautan}}",

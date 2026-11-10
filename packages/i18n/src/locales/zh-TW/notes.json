@@ -777,6 +777,12 @@
     "viaProperty": "{property} → {title}",
     "viaPortal": "顯示於入口中"
   },
+  "references": {
+    "filterAll": "全部",
+    "filterNotes": "筆記",
+    "filterJournal": "日誌",
+    "filterBy": "篩選參照：{filter}"
+  },
   "unlinkedMentions": {
     "title": "未連結的提及",
     "summary": "{count, plural, other {# 則未連結的提及}}",
