@@ -177,14 +177,25 @@ describe('useYjsCollaboration', () => {
     unmount()
   })
 
-  it('fails open on a document the host did not seed, keeping a lock it reported', async () => {
+  it('fails open on an unseeded locked document and leaves the lock to the lock store', async () => {
+    // An empty note opened while locked: the markdown fallback outlives the lock, and the page's
+    // lock store (`editable={!isLocked}`) follows the unlock where the open's answer cannot.
     ipc.header = { needsSeed: true, readOnly: 'locked' }
 
     const { result } = renderHook(() => useYjsCollaboration({ noteId: 'note-unseeded' }))
 
     await waitFor(() => expect(result.current.isReady).toBe(true))
     expect(result.current.fragment).toBeNull()
-    expect(result.current.readOnly).toBe('locked')
+    expect(result.current.readOnly).toBeNull()
+  })
+
+  it('keeps an exclusion the open reported on an unseeded document', async () => {
+    ipc.header = { needsSeed: true, readOnly: 'excluded' }
+
+    const { result } = renderHook(() => useYjsCollaboration({ noteId: 'note-excluded' }))
+
+    await waitFor(() => expect(result.current.isReady).toBe(true))
+    expect(result.current.readOnly).toBe('excluded')
   })
 
   it('publishes the read-only reason of the open, and one a refused edit brings', async () => {
