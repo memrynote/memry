@@ -1647,6 +1647,7 @@
     "unlockFolder": "فتح قفل المجلد",
     "toggleFailed": "تعذّر تغيير القفل",
     "readOnlyIndicator": "مقفلة. للقراءة فقط لك وللوكلاء.",
+    "excludedIndicator": "هذه الملاحظة في مجلد مستبعد.",
     "externalEditRestored": "“{title}” مقفلة، لذا تم التراجع عن تعديلها من الخارج",
     "externalEditRestoredHint": "النص المعدَّل محفوظ في سجل إصدارات الملاحظة."
   },

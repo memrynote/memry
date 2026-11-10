@@ -55,6 +55,7 @@ import { useNoteFold } from '@/components/note/fold/use-note-fold'
 import { useInlineTagEdits, type InlineTagEdit } from '@/hooks/use-inline-tag-edits'
 import { useVaultConfig } from '@/hooks/use-vault-config'
 import { useHasOwnNoteLock, useIsNoteLocked } from '@/lib/vault-locks-store'
+import { useIsNoteExcluded } from '@/lib/excluded-notes-store'
 import { journalPathForDate } from '@/lib/journal-path'
 import { LockedNoteNotice } from '@/components/note/locked-note-notice'
 import { isOutsideAllBlocks } from '@/components/note/content-area/marquee-hit-test'
@@ -241,11 +242,11 @@ export function JournalPage({ className }: JournalPageProps): React.JSX.Element 
   const entryId = entry?.id ?? null
   const vaultConfig = useVaultConfig()
   // A journal file sits under a folder lock when the owner locked the journal
-  // folder (shown in the sidebar) or a folder above it; main refuses the write.
-  const isLocked = useIsNoteLocked(
-    entryId,
-    vaultConfig ? journalPathForDate(selectedDate, vaultConfig) : null
-  )
+  // folder (shown in the sidebar) or a folder above it, or in an excluded folder
+  // (#3530); main refuses the write.
+  const dayPath = vaultConfig ? journalPathForDate(selectedDate, vaultConfig) : null
+  const isExcluded = useIsNoteExcluded(dayPath)
+  const isLocked = useIsNoteLocked(entryId, dayPath) || isExcluded
   const hasOwnLock = useHasOwnNoteLock(entryId)
   const lockAction = hasOwnLock ? 'unlock' : entryId && !isLocked ? 'lock' : undefined
 
@@ -606,7 +607,8 @@ export function JournalPage({ className }: JournalPageProps): React.JSX.Element 
     entityId: entry?.id ?? null,
     includeExplicitType: true,
     canEdit: () => !isLocked,
-    onBlocked: () => toast.error(notesT('errors:vaultLock.noteReadOnly'))
+    onBlocked: () =>
+      toast.error(notesT(isExcluded ? 'errors:note.excluded' : 'errors:vaultLock.noteReadOnly'))
   })
 
   const [propertiesCollapsed, togglePropertiesCollapsed, setPropertiesCollapsed] =
@@ -1277,7 +1279,7 @@ export function JournalPage({ className }: JournalPageProps): React.JSX.Element 
                           className="group/metadata flex flex-col gap-2.5 pb-[15px]"
                           data-marquee-ignore
                         >
-                          {isLocked && <LockedNoteNotice />}
+                          {isLocked && <LockedNoteNotice excluded={isExcluded} />}
                           <JournalDateDisplay viewState={currentViewState} dateParts={dateParts} />
                           <NoteNamesLine
                             noteId={entryId}

@@ -30,6 +30,7 @@
   },
   "note": {
     "notFound": "Nie udało się znaleźć tej notatki. Być może została usunięta.",
+    "excluded": "Ta notatka znajduje się w wykluczonym folderze, więc nie można jej zmienić.",
     "invalidFrontmatter": "Ta notatka zawiera nieprawidłowe metadane i nie można jej odczytać.",
     "invalidTitle": "Tytuł notatki musi mieć od 1 do 200 znaków.",
     "duplicateId": "Notatka o tym identyfikatorze już istnieje.",

@@ -1647,6 +1647,7 @@
     "unlockFolder": "Ordner entsperren",
     "toggleFailed": "Die Sperre konnte nicht geändert werden",
     "readOnlyIndicator": "Gesperrt. Schreibgeschützt für dich und für Agenten.",
+    "excludedIndicator": "Diese Notiz liegt in einem ausgeschlossenen Ordner.",
     "externalEditRestored": "„{title}“ ist gesperrt, daher wurde die externe Änderung rückgängig gemacht",
     "externalEditRestoredHint": "Der bearbeitete Text ist im Versionsverlauf der Notiz gespeichert."
   },

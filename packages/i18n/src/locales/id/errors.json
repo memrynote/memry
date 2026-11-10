@@ -30,6 +30,7 @@
   },
   "note": {
     "notFound": "Catatan ini tidak dapat ditemukan. Catatan mungkin telah dihapus.",
+    "excluded": "Catatan ini ada di folder yang dikecualikan, jadi tidak bisa diubah.",
     "invalidFrontmatter": "Catatan ini memiliki metadata yang tidak valid dan tidak dapat dibaca.",
     "invalidTitle": "Judul catatan harus terdiri dari 1 hingga 200 karakter.",
     "duplicateId": "Catatan dengan ID ini sudah ada.",

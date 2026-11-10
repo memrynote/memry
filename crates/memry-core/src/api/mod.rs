@@ -17,6 +17,8 @@ pub mod crypto;
 pub mod editor;
 pub mod errors;
 #[cfg(feature = "markdown")]
+pub mod excluded_paths;
+#[cfg(feature = "markdown")]
 pub mod external_feed;
 pub mod inbox;
 pub mod inbox_conformance;

@@ -30,6 +30,7 @@
   },
   "note": {
     "notFound": "Diese Notiz konnte nicht gefunden werden. Möglicherweise wurde sie gelöscht.",
+    "excluded": "Diese Notiz liegt in einem ausgeschlossenen Ordner und kann nicht geändert werden.",
     "invalidFrontmatter": "Diese Notiz enthält ungültige Metadaten und kann nicht gelesen werden.",
     "invalidTitle": "Ein Notiztitel muss 1 bis 200 Zeichen lang sein.",
     "duplicateId": "Eine Notiz mit dieser ID ist bereits vorhanden.",

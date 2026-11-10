@@ -30,6 +30,7 @@
   },
   "note": {
     "notFound": "Cette note est introuvable. Elle a peut-être été supprimée.",
+    "excluded": "Cette note se trouve dans un dossier exclu, elle ne peut donc pas être modifiée.",
     "invalidFrontmatter": "Cette note contient des métadonnées non valides et ne peut pas être lue.",
     "invalidTitle": "Le titre d'une note doit comporter entre 1 et 200 caractères.",
     "duplicateId": "Une note avec cet ID existe déjà.",

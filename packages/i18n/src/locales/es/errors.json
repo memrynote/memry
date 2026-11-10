@@ -30,6 +30,7 @@
   },
   "note": {
     "notFound": "No se pudo encontrar esta nota. Es posible que se haya eliminado.",
+    "excluded": "Esta nota está en una carpeta excluida, así que no se puede cambiar.",
     "invalidFrontmatter": "Esta nota tiene metadatos no válidos y no se puede leer.",
     "invalidTitle": "El título de una nota debe tener entre 1 y 200 caracteres.",
     "duplicateId": "Ya existe una nota con este ID.",

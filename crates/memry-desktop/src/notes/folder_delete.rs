@@ -32,7 +32,8 @@
 //! holds or is inside either of its folders is refused too (`journal_change_waits`, as the
 //! folder move refuses it, `vault::journal_rename`): its days would go as days, or wait to go
 //! back to a folder that is gone. A folder that is locked, sits in a locked folder or holds a lock
-//! is refused (`folder_locked`, `assertFolderTreeWritable`). Not here yet: the confirmed
+//! is refused (`folder_locked`, `assertFolderTreeWritable`), and so is a folder holding a note
+//! under an exclude pattern (`note_excluded`), which is read-only. Not here yet: the confirmed
 //! permanent delete 13f offers a note the trash refuses (#3813).
 
 use std::fs;
@@ -45,7 +46,7 @@ use super::folders::{tree_filter, vault_folder};
 use super::moves::{disk_spelling, plain_folders};
 use super::service::NotesService;
 use crate::journal::folder_follow::follow_moved_journal;
-use crate::locks::Locks;
+use crate::locks::{Locks, Refused};
 use crate::session::OpenVault;
 use crate::vault::app_move::on_disk;
 use crate::vault::config::read_vault_config_strict;
@@ -100,6 +101,11 @@ impl NotesService {
             .into_iter()
             .filter(|(_, at)| within(at, &folder))
             .collect();
+        // A note under an exclude pattern is read-only (#3530): a folder holding one stays, and
+        // no delete of the note syncs.
+        if gone.iter().any(|(_, at)| open.vault.excluded().covers(at)) {
+            return Err(NotesError::Locked(Refused::Excluded));
+        }
         let ids: Vec<&str> = gone.iter().map(|(id, _)| id.as_str()).collect();
         lane.begin_folder_delete(&writer, &folder, &ids)?;
         if let Err(why) = (self.trash)(&on_disk(root, &folder)) {

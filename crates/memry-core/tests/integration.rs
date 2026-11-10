@@ -50,6 +50,10 @@ mod attachment_upload_wire;
 mod auth_session;
 #[path = "block_edit_vectors.rs"]
 mod block_edit_vectors;
+#[path = "block_refs.rs"]
+mod block_refs;
+#[path = "block_refs_untrusted.rs"]
+mod block_refs_untrusted;
 #[path = "body_edit_append.rs"]
 mod body_edit_append;
 #[path = "body_edit_columns.rs"]
@@ -60,6 +64,8 @@ mod body_edit_ops;
 mod body_edit_replace_text;
 #[path = "body_edit_restore.rs"]
 mod body_edit_restore;
+#[path = "calendar_cursor_device_local.rs"]
+mod calendar_cursor_device_local;
 #[path = "calendar_external_relation.rs"]
 mod calendar_external_relation;
 #[path = "calendar_feeds.rs"]
@@ -70,6 +76,8 @@ mod calendar_ical_vectors;
 mod calendar_provider_push;
 #[path = "calendar_settings_sync.rs"]
 mod calendar_settings_sync;
+#[path = "calendar_source_purge.rs"]
+mod calendar_source_purge;
 #[path = "calendar_vectors.rs"]
 mod calendar_vectors;
 #[path = "calendar_week_load.rs"]
@@ -196,6 +204,8 @@ mod editor_compaction;
 mod editor_concurrency;
 #[path = "editor_every_writer.rs"]
 mod editor_every_writer;
+#[path = "editor_excluded_refuses.rs"]
+mod editor_excluded_refuses;
 #[path = "editor_large_file.rs"]
 mod editor_large_file;
 #[path = "editor_locked_refuses.rs"]

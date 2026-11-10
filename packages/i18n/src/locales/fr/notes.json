@@ -1647,6 +1647,7 @@
     "unlockFolder": "Déverrouiller le dossier",
     "toggleFailed": "Impossible de modifier le verrou",
     "readOnlyIndicator": "Verrouillée. En lecture seule pour vous et pour les agents.",
+    "excludedIndicator": "Cette note se trouve dans un dossier exclu.",
     "externalEditRestored": "« {title} » est verrouillée, la modification externe a donc été annulée",
     "externalEditRestoredHint": "Le texte modifié est enregistré dans l'historique des versions de la note."
   },

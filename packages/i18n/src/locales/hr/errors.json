@@ -30,6 +30,7 @@
   },
   "note": {
     "notFound": "Ova bilješka nije pronađena. Možda je izbrisana.",
+    "excluded": "Ova se bilješka nalazi u isključenoj mapi, pa se ne može mijenjati.",
     "invalidFrontmatter": "Ova bilješka ima nevažeće metapodatke i ne može se pročitati.",
     "invalidTitle": "Naslov bilješke mora imati od 1 do 200 znakova.",
     "duplicateId": "Bilješka s ovim ID-om već postoji.",

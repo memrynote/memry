@@ -62,11 +62,15 @@ use rusqlite::{Connection, OptionalExtension as _, params};
 
 use crate::api::errors::StorageError;
 
+#[cfg(feature = "markdown")]
+pub mod block_refs;
 mod links;
 mod literal_links;
 mod maintenance;
 
 pub use links::LinkChanges;
+#[doc(hidden)]
+pub use literal_links::steps as literal_link_steps;
 
 pub use maintenance::{
     DATA_VERSION_KEY, NOTES_WATERMARK_KEY, Reindexed, STAMPS_KEY, TASKS_WATERMARK_KEY, reindex,

@@ -27,7 +27,7 @@ use super::error::{NotesError, SCOPE};
 use super::service::NotesService;
 use crate::session::OpenVault;
 use crate::templates::Templates;
-use crate::vault::app_edit::{AppEdit, Edited, Precondition};
+use crate::vault::app_edit::{AppEdit, Edited, Kept, Precondition};
 use crate::vault::consumer::ChangeSource;
 use crate::vault::hash::content_hash;
 
@@ -226,6 +226,8 @@ impl NotesService {
         })?;
         Ok(match edited {
             Edited::Wrote { .. } => UndoStatus::Restored,
+            // An excluded note is refused as every app write to it is, not passed off as stale.
+            Edited::Kept(Kept::Excluded) => return Err(NotesError::EditKept(Kept::Excluded)),
             Edited::Unchanged { .. } | Edited::Kept(_) => UndoStatus::Stale,
         })
     }

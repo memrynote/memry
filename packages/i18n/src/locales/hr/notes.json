@@ -1647,6 +1647,7 @@
     "unlockFolder": "Otključaj mapu",
     "toggleFailed": "Nije moguće promijeniti zaključavanje",
     "readOnlyIndicator": "Zaključano. Samo za čitanje za vas i za agente.",
+    "excludedIndicator": "Ova se bilješka nalazi u isključenoj mapi.",
     "externalEditRestored": "„{title}” je zaključana pa je vanjska izmjena poništena",
     "externalEditRestoredHint": "Uređeni tekst spremljen je u povijesti verzija bilješke."
   },

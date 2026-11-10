@@ -30,6 +30,7 @@
   },
   "note": {
     "notFound": "Det gick inte att hitta den här anteckningen. Den kan ha raderats.",
+    "excluded": "Den här anteckningen ligger i en undantagen mapp, så den kan inte ändras.",
     "invalidFrontmatter": "Den här anteckningen har ogiltiga metadata och kan inte läsas.",
     "invalidTitle": "En antecknings titel måste vara 1 till 200 tecken lång.",
     "duplicateId": "Det finns redan en anteckning med det här ID:t.",

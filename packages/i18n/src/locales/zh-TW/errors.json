@@ -30,6 +30,7 @@
   },
   "note": {
     "notFound": "找不到此筆記。它可能已被刪除。",
+    "excluded": "此筆記位於已排除的資料夾中，因此無法變更。",
     "invalidFrontmatter": "此筆記的中繼資料無效，無法讀取。",
     "invalidTitle": "筆記標題長度須為 1 到 200 個字元。",
     "duplicateId": "具有此 ID 的筆記已存在。",

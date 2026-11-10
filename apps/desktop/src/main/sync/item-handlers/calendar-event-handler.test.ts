@@ -430,7 +430,6 @@ describe('calendar sync handlers', () => {
         isSelected: true,
         isMemryManaged: false,
         syncStatus: 'ok',
-        syncCursor: 'cursor-1',
         createdAt: '2026-04-12T08:00:00.000Z',
         modifiedAt: '2026-04-12T08:00:00.000Z'
       },
@@ -442,7 +441,6 @@ describe('calendar sync handlers', () => {
       testDb.db.select().from(calendarSources).where(eq(calendarSources.id, 'source-1')).get()
     ).toMatchObject({
       remoteId: 'google-calendar-1',
-      syncCursor: 'cursor-1',
       isSelected: true
     })
 

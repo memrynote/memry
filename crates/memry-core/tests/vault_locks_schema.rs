@@ -1,6 +1,6 @@
-//! Migration 20 on a real `data.db` (Step 14e-1): the lock tables carry every
+//! Migration 22 on a real `data.db` (Step 14e-1): the lock tables carry every
 //! column the `vault_lock` record and the desktop lock guard need, and an
-//! existing database at version 19 gains them with its rows kept.
+//! existing database at version 21 gains them with its rows kept.
 
 use memry_core::api::vault::Vault;
 use memry_core::storage::migrations::{DATA_MIGRATIONS, latest_version, run, user_version};
@@ -91,12 +91,12 @@ fn the_lock_tables_have_every_column_and_the_target_index() {
 }
 
 #[test]
-fn a_version_19_database_gains_the_lock_tables_and_keeps_its_rows() {
+fn a_version_21_database_gains_the_lock_tables_and_keeps_its_rows() {
     let dir = scratch();
     let path = dir.path().join("data.db");
     {
         let mut conn = Connection::open(&path).expect("create");
-        assert_eq!(run(&mut conn, &DATA_MIGRATIONS[..19]).expect("to 19"), 19);
+        assert_eq!(run(&mut conn, &DATA_MIGRATIONS[..21]).expect("to 21"), 21);
         conn.execute_batch(
             "INSERT INTO notes (id, title) VALUES ('n1', 'Plan');
              INSERT INTO journal_entries (id, date) VALUES ('j2026-01-02', '2026-01-02');",

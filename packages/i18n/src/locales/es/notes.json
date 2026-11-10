@@ -1647,6 +1647,7 @@
     "unlockFolder": "Desbloquear carpeta",
     "toggleFailed": "No se pudo cambiar el bloqueo",
     "readOnlyIndicator": "Bloqueada. Solo lectura para ti y para los agentes.",
+    "excludedIndicator": "Esta nota está en una carpeta excluida.",
     "externalEditRestored": "«{title}» está bloqueada, así que se deshizo su edición externa",
     "externalEditRestoredHint": "El texto editado se guarda en el historial de versiones de la nota."
   },

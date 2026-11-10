@@ -21,6 +21,7 @@ use std::sync::Arc;
 
 use memry_core::seams::secure_store::SecureStore;
 use memry_core::storage::repositories::sync_items::{self, InboundRecord};
+use memry_desktop::error::CoreError;
 use memry_desktop::notes::identity::NotesIdentity;
 use memry_desktop::notes::service::NotesService;
 use memry_desktop::notes::tag_template::{TagTemplateOutcome, UndoStatus, UndoTagTemplateInput};
@@ -28,6 +29,8 @@ use memry_desktop::notes::update::{HeaderTagEditInput, NoteUpdateInput, Updated}
 use memry_desktop::vault::consumer::{Applied, ChangeSource};
 use serde_json::{Value, json};
 use vault_env::{Env, QUIET, env, indexed};
+
+use crate::vault_exclude_read_only::exclude;
 
 const NOW: i64 = 1_760_000_000_000;
 const MEETING_BODY: &str = "## Attendees\n\n-\n\n## Agenda\n\n1.\n2.\n3.\n\n## Notes\n\n\
@@ -334,4 +337,25 @@ fn typing_the_file_does_not_hold_yet_is_never_written_over() {
         e.body(&id)
     );
     assert!(e.read("Undo.md").ends_with(MEETING_BODY));
+}
+
+/// A note excluded since its tag filled it: the undo is refused like every app write to it
+/// (#3530 13m-7b-3b), not passed off as stale, and the body stays.
+#[test]
+fn the_undo_of_a_note_excluded_since_is_refused() {
+    let (mut e, notes) = opened(&[("archive/Sync.md", "")]);
+    schemas(&e);
+    let id = id_at(&e, "archive/Sync.md");
+    let token = applied_token(add_tag(&e, &notes, &id, "Meeting"));
+    let filled = e.read("archive/Sync.md");
+    exclude(&mut e, &["archive"]);
+
+    let open = e.session.current().unwrap();
+    let input = UndoTagTemplateInput {
+        note_id: id.clone(),
+        undo_token: token,
+    };
+    let refused = notes.undo_tag_template(&open, &input).unwrap_err();
+    assert_eq!(refused.kind_and_code().1, "note_excluded");
+    assert_eq!(e.read("archive/Sync.md"), filled);
 }

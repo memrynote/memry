@@ -30,6 +30,7 @@
   },
   "note": {
     "notFound": "This note could not be found. It may have been deleted.",
+    "excluded": "This note is in an excluded folder, so it can't be changed.",
     "invalidFrontmatter": "This note has invalid metadata and cannot be read.",
     "invalidTitle": "A note title must be 1 to 200 characters long.",
     "duplicateId": "A note with this ID already exists.",

@@ -1647,6 +1647,7 @@
     "unlockFolder": "Lås opp mappe",
     "toggleFailed": "Kunne ikke endre låsen",
     "readOnlyIndicator": "Låst. Skrivebeskyttet for deg og for agenter.",
+    "excludedIndicator": "Dette notatet ligger i en utelatt mappe.",
     "externalEditRestored": "«{title}» er låst, så redigeringen utenfra ble angret",
     "externalEditRestoredHint": "Den redigerte teksten er lagret i notatets versjonslogg."
   },
