@@ -300,6 +300,10 @@ impl NoteIdentity for NotesIdentity {
         self.watch_limit(ctx.root);
     }
 
+    fn file_returned(&self, ctx: &IdentityCtx<'_>, note_id: &str) {
+        self.returned(ctx.root, note_id);
+    }
+
     fn adopt_or_create(
         &self,
         ctx: &IdentityCtx<'_>,
@@ -420,8 +424,8 @@ impl NoteIdentity for NotesIdentity {
         }
         Ok(match writer.file_removed(note_id, path)? {
             Removed::Deleted => Removal::Deleted,
-            // A file that is truly gone leaves a note the user deleted outside the app: listed
-            // for the user to open, and again by every open's walk while the row has no file.
+            // A file that is truly gone leaves a note the user deleted outside the app: listed,
+            // and again by every open's walk while the row has no file.
             Removed::Undecided => {
                 tracing::warn!(
                     scope = SCOPE,

@@ -1671,6 +1671,7 @@
     "undecidedFiles": "Alcuni file non sono diventati note",
     "undecidedFilesHint": "Una nota o una voce del diario con lo stesso nome ha un testo diverso, oppure non è ancora sincronizzata su questo dispositivo. Memry lascia questi file invariati e li ricontrolla alla prossima apertura di questo vault.",
     "keptRemovals": "Memry ha conservato note i cui file sono stati eliminati",
-    "keptRemovalsHint": "Questi file sono stati eliminati fuori da Memry, ma le loro note contenevano testo che i file non hanno mai ricevuto. Memry ha conservato le note invece di cancellare quel testo sugli altri tuoi dispositivi."
+    "keptRemovalsHint": "Questi file sono stati eliminati fuori da Memry, ma le loro note contenevano testo che i file non hanno mai ricevuto. Memry ha conservato le note invece di cancellare quel testo sugli altri tuoi dispositivi.",
+    "moreUnlisted": "Altri non sono elencati qui."
   }
 }

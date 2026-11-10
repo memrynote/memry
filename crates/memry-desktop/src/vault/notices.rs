@@ -35,7 +35,8 @@ use crate::session::{OpenStage, Session};
 ///   notes, and the next open asks again. `paths` are absolute, for the user to find them.
 /// - `keptRemovals`: files deleted outside the app whose notes were kept, because the note has
 ///   text the file never had (`Removed::Undecided`), rather than deleting that text on every
-///   device. Every open lists them again while their rows have no file.
+///   device. Listed until a file is at the note's path again; every open lists them again
+///   while their rows have no file.
 /// - `more` says a list notice had more items than [`LISTED`].
 //
 // The variants carry no doc comments: specta would write them into a union with trailing

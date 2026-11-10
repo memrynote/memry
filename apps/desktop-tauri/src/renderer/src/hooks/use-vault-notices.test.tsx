@@ -178,6 +178,13 @@ describe('useVaultNotices (#3531 14l)', () => {
     expect(render(<>{lastOptions().description}</>).container.textContent).toContain(
       'one.md, two.md, three.md +2+'
     )
+
+    // Every listed file was named, but the vault had more than it listed: no count, no reveal.
+    await changeTo([{ kind: 'undecidedFiles', paths: [], more: true }])
+    const text = render(<>{lastOptions().description}</>).container.textContent
+    expect(text).toContain("Others aren't listed here.")
+    expect(text).not.toContain('+')
+    expect(lastOptions().action).toBeUndefined()
     await changeTo([])
   })
 

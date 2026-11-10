@@ -1671,6 +1671,7 @@
     "undecidedFiles": "Einige Dateien wurden nicht zu Notizen",
     "undecidedFilesHint": "Eine Notiz oder ein Journaleintrag mit demselben Namen hat einen anderen Text oder ist noch nicht mit diesem Gerät synchronisiert. Memry lässt diese Dateien unverändert und prüft sie erneut, wenn dieser Tresor das nächste Mal geöffnet wird.",
     "keptRemovals": "Memry hat Notizen behalten, deren Dateien gelöscht wurden",
-    "keptRemovalsHint": "Diese Dateien wurden außerhalb von Memry gelöscht, aber ihre Notizen hatten Text, den die Dateien nie bekommen haben. Memry hat die Notizen behalten, statt diesen Text auf deinen anderen Geräten zu löschen."
+    "keptRemovalsHint": "Diese Dateien wurden außerhalb von Memry gelöscht, aber ihre Notizen hatten Text, den die Dateien nie bekommen haben. Memry hat die Notizen behalten, statt diesen Text auf deinen anderen Geräten zu löschen.",
+    "moreUnlisted": "Weitere werden hier nicht aufgeführt."
   }
 }

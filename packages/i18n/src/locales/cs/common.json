@@ -1671,6 +1671,7 @@
     "undecidedFiles": "Některé soubory se nestaly poznámkami",
     "undecidedFilesHint": "Poznámka nebo záznam deníku se stejným názvem má jiný text, nebo se do tohoto zařízení ještě nesynchronizoval. Memry tyto soubory ponechá beze změny a znovu je zkontroluje při příštím otevření tohoto trezoru.",
     "keptRemovals": "Memry ponechal poznámky, jejichž soubory byly smazány",
-    "keptRemovalsHint": "Tyto soubory byly smazány mimo Memry, ale jejich poznámky obsahovaly text, který se do souborů nikdy nedostal. Memry poznámky ponechal, aby tento text nesmazal ani na vašich dalších zařízeních."
+    "keptRemovalsHint": "Tyto soubory byly smazány mimo Memry, ale jejich poznámky obsahovaly text, který se do souborů nikdy nedostal. Memry poznámky ponechal, aby tento text nesmazal ani na vašich dalších zařízeních.",
+    "moreUnlisted": "Další tu nejsou uvedené."
   }
 }

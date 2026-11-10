@@ -61,7 +61,8 @@ impl NotesIdentity {
         self.notices.remove(root, Listed::Undecided(&path));
     }
 
-    /// `note_id` is kept although its file at `path` was deleted: listed for the user to open.
+    /// `note_id` is kept although its file at `path` was deleted: listed until a file is at its
+    /// path again.
     pub(super) fn kept(&self, root: &Path, note_id: &str, path: &str) {
         let path = absolute(root, path);
         self.notices.add(
@@ -71,6 +72,12 @@ impl NotesIdentity {
                 path: &path,
             },
         );
+    }
+
+    /// A file is at the path of `note_id`'s row again: it is not listed as kept any more.
+    pub(super) fn returned(&self, root: &Path, note_id: &str) {
+        self.notices
+            .remove(root, Listed::Kept { note_id, path: "" });
     }
 
     /// The watcher of the vault at `root` hit the Linux inotify watch limit.

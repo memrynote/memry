@@ -1671,6 +1671,7 @@
     "undecidedFiles": "Alguns arquivos não se tornaram notas",
     "undecidedFilesHint": "Uma nota ou entrada do diário com o mesmo nome tem outro texto, ou ainda não foi sincronizada com este dispositivo. O Memry deixa esses arquivos como estão e os verifica de novo na próxima vez que abrir este cofre.",
     "keptRemovals": "O Memry manteve notas cujos arquivos foram excluídos",
-    "keptRemovalsHint": "Esses arquivos foram excluídos fora do Memry, mas suas notas tinham texto que os arquivos nunca receberam. O Memry manteve as notas em vez de apagar esse texto nos seus outros dispositivos."
+    "keptRemovalsHint": "Esses arquivos foram excluídos fora do Memry, mas suas notas tinham texto que os arquivos nunca receberam. O Memry manteve as notas em vez de apagar esse texto nos seus outros dispositivos.",
+    "moreUnlisted": "Há outros que não aparecem aqui."
   }
 }
