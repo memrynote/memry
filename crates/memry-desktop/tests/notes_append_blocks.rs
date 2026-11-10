@@ -9,9 +9,12 @@
 //! | a target open in a window: the window gets the blocks, the        | `feedExternalEditToCrdt` before the       |
 //! | write-back keeps them                                             | write-back                                |
 //! | a target whose document is ahead of its file is refused           | `note_edit_kept`, nothing written         |
+//! | a target whose file holds an outside edit not fed yet is refused  | `note_edit_kept`, nothing written         |
+//! | a target whose file its note never took is refused for good       | `invalid_append`, not "try again"         |
 //! | a locked or excluded target is refused                            | `note_locked`, `note_excluded`            |
 //! | a missing note, nothing to move, the source itself                | `note_not_found`, `invalid_append`        |
-//! | a write that fails refuses the move                               | the renderer keeps the source's blocks    |
+//! | a write that fails after the note took the blocks lands the move  | the write-back writes them, once          |
+//! | a write that fails before the note took the blocks refuses it     | the renderer keeps the source's blocks    |
 //!
 //! Every refusal leaves the source's file as it was: the renderer removes the blocks from the
 //! source only after a move answers.
@@ -266,10 +269,51 @@ fn a_missing_note_nothing_to_move_or_the_source_itself_is_refused() {
     }
 }
 
-/// A file the write cannot replace refuses the move: the renderer keeps the source's blocks.
+#[test]
+fn a_target_whose_file_holds_an_outside_edit_not_fed_yet_is_refused() {
+    let v = opened(&[("Source.md", SOURCE), ("Target.md", TARGET)]);
+    let source = id_at(&v.e, "Source.md");
+    let target = id_at(&v.e, "Target.md");
+    let body = v.e.body(&target);
+    // Another editor's save the watcher has not reported: the echo guard drops its event, so
+    // the row still names the old bytes and the document never took the new ones.
+    let outside = "---\nkeep: 'as is'\n---\nFrom another editor\n";
+    v.e.tier
+        .echo()
+        .will_write("Target.md", &content_hash(outside));
+    v.e.write("Target.md", outside);
+
+    let error = v.append(&source, &target, MOVED).unwrap_err();
+
+    assert_eq!(v.refused("Target.md", outside, error), "note_edit_kept");
+    assert_eq!(v.e.body(&target), body);
+}
+
+/// A note's file grown outside past the large-file class: no feed takes it, so the note owes its
+/// file body and a retry is refused the same way.
+#[test]
+fn a_target_whose_file_its_note_never_took_is_refused_for_good() {
+    let v = opened(&[("Source.md", SOURCE), ("Big.md", "Small.\n")]);
+    let target = id_at(&v.e, "Big.md");
+    let big = format!("Top\n\n{}\n", "x".repeat(130 * 1024));
+    v.e.write("Big.md", &big);
+    until("the note owes its file body", || {
+        v.e.core().note_files().owes_file_body(&target).unwrap()
+    });
+    let source = id_at(&v.e, "Source.md");
+
+    for _ in 0..2 {
+        let error = v.append(&source, &target, MOVED).unwrap_err();
+        assert!(error.to_string().contains("too large"), "{error}");
+        assert_eq!(v.refused("Big.md", &big, error), "invalid_append");
+    }
+}
+
+/// A folder that refuses the write after the document took the blocks: the move landed, and
+/// the write-back writes the blocks once the folder takes files again.
 #[cfg(unix)]
 #[test]
-fn a_write_that_fails_refuses_the_move() {
+fn a_write_that_fails_after_the_note_took_the_blocks_lands_the_move() {
     use std::os::unix::fs::PermissionsExt;
 
     let v = opened(&[("Source.md", SOURCE), ("Shut/Target.md", TARGET)]);
@@ -282,9 +326,39 @@ fn a_write_that_fails_refuses_the_move() {
     let result = v.append(&source, &target, MOVED);
 
     mode(0o755).unwrap();
+    assert_eq!(result.unwrap().target_path, "Shut/Target.md");
+    assert_eq!(v.e.read("Source.md"), SOURCE);
+    assert_eq!(v.e.read("Shut/Target.md"), TARGET, "the write failed");
+    assert_eq!(v.e.body(&target), "First line\nRelocate this line");
+    v.e.tier.schedule(&target);
+    assert!(v.e.tier.flush(WAIT), "the write-back ran");
+    until("the write-back wrote the blocks", || {
+        v.e.read("Shut/Target.md") == "---\nkeep: 'as is'\n---\nFirst line\n\nRelocate this line\n"
+    });
+}
+
+/// A write that fails when the document did not take the blocks (a new text past the
+/// large-file class) refuses the move: nothing holds the blocks but the source.
+#[cfg(unix)]
+#[test]
+fn a_write_that_fails_before_the_note_took_the_blocks_refuses_the_move() {
+    use std::os::unix::fs::PermissionsExt;
+
+    let v = opened(&[("Source.md", SOURCE), ("Shut/Target.md", TARGET)]);
+    let source = id_at(&v.e, "Source.md");
+    let target = id_at(&v.e, "Shut/Target.md");
+    let body = v.e.body(&target);
+    let folder = v.e.vault.join("Shut");
+    let mode = |bits| std::fs::set_permissions(&folder, std::fs::Permissions::from_mode(bits));
+    mode(0o555).unwrap();
+
+    let result = v.append(&source, &target, &"x".repeat(130 * 1024));
+
+    mode(0o755).unwrap();
     let error = result.unwrap_err();
     assert_eq!(
         v.refused("Shut/Target.md", TARGET, error),
         "note_file_failed"
     );
+    assert_eq!(v.e.body(&target), body);
 }
