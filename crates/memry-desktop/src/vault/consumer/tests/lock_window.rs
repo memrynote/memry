@@ -4,13 +4,15 @@
 //! file writable, and the next outside edit was reverted to the replaced text, a rollback that
 //! syncs; an unlock there had the write make the freed file read-only again with a baseline.
 
+use std::sync::atomic::{AtomicBool, Ordering};
+use std::sync::mpsc;
 use std::thread::JoinHandle;
 
 use memry_core::domain::vault_locks::TargetKind;
 
 use super::typing_wins::{note, type_in_app};
 use super::*;
-use crate::locks::{LockSet, Locks};
+use crate::locks::{AFTER_ROW, LockSet, Locks};
 use crate::notes::error::NotesError;
 use crate::vault::writeback::{Outcome, Pass};
 
@@ -99,4 +101,55 @@ fn an_unlock_during_a_write_back_leaves_the_file_free() {
     assert_eq!(baseline(&f, &id), None);
     assert!(locks.file_modes().unwrap().is_empty());
     assert_eq!(std::fs::read_to_string(f.root.join("n.md")).unwrap(), TYPED);
+}
+
+/// A lock change keeps the lane through its reconcile, not only its row write. The change is
+/// held after its row write until the pass is inside its write or waits for the lane: let go
+/// with the row, the reconcile runs inside the write and makes the file under it read-only
+/// again, so on Windows the replace is refused and the baseline stays the replaced text.
+#[test]
+fn a_lock_keeps_the_lane_through_its_reconcile() {
+    let f = fixture();
+    let (id, pass) = note(&f);
+    type_in_app(&f, &id, TYPED.trim_end());
+    let session = f.session();
+    let (paused, row_written) = mpsc::channel();
+    let (go, resume) = mpsc::channel();
+    let change = {
+        let (root, vault, rows, id) = (f.root.clone(), f.vault.clone(), f.rows.clone(), id.clone());
+        std::thread::spawn(move || {
+            AFTER_ROW.set(Some(Box::new(move || {
+                paused.send(()).unwrap();
+                resume.recv().unwrap();
+            })));
+            Locks::new(&root, &vault).set(&rows, session, TargetKind::Note, &id, true)
+        })
+    };
+    row_written.recv().unwrap();
+
+    let in_write = AtomicBool::new(false);
+    let mut read_only_in_write = false;
+    let outcome = std::thread::scope(|scope| {
+        let written = scope.spawn(|| {
+            pass.run_checked(&id, &mut || {
+                in_write.store(true, Ordering::SeqCst);
+                while !change.is_finished() {
+                    std::thread::yield_now();
+                }
+                read_only_in_write = read_only(&f);
+            })
+        });
+        while !in_write.load(Ordering::SeqCst) && f.rows.waiting() == 0 {
+            std::thread::yield_now();
+        }
+        go.send(()).unwrap();
+        written.join().unwrap()
+    });
+    assert!(change.join().unwrap().unwrap().changed);
+
+    assert!(!read_only_in_write, "the reconcile ran inside the write");
+    assert!(matches!(outcome, Outcome::Wrote { .. }), "{outcome:?}");
+    assert_eq!(std::fs::read_to_string(f.root.join("n.md")).unwrap(), TYPED);
+    assert_eq!(baseline(&f, &id).as_deref(), Some(TYPED));
+    assert!(read_only(&f), "the written file is not protected");
 }

@@ -31,6 +31,15 @@ use crate::notes::service::NotesService;
 use crate::session::OpenVault;
 use crate::tags::schema::rename::resume_after_unlock;
 use crate::vault::consumer::rows::{RowOwner, RowSession};
+use crate::vault::path_key::folded_key;
+
+#[cfg(test)]
+thread_local! {
+    /// Runs on the changing thread between the row write and the reconcile: a test holds the
+    /// change there to show the lane is kept through the reconcile.
+    pub(crate) static AFTER_ROW: std::cell::RefCell<Option<Box<dyn FnMut()>>> =
+        const { std::cell::RefCell::new(None) };
+}
 
 /// What a lock change left: every lock now, and whether the change wrote anything (the windows
 /// are told only then, and only an unlock that changed something resumes a field rename).
@@ -62,10 +71,10 @@ pub fn set(
 
 impl Locks<'_> {
     /// Locks or unlocks the note `target` (by id) or the folder `target` (vault-relative). A
-    /// note must be live and a folder must be one on disk (`folderExists`), the vault root
-    /// aside. A failure to bring the disk in line after the row is written is logged: the row
-    /// is the lock, and the next open's reconcile finishes it. Under the rows' lane of
-    /// `session`, which the caller does not hold.
+    /// note must be live; a folder locked must be one on disk (`folderExists`), the vault root
+    /// aside, and a folder unlocked must name a lock row. A failure to bring the disk in line
+    /// after the row is written is logged: the row is the lock, and the next open's reconcile
+    /// finishes it. Under the rows' lane of `session`, which the caller does not hold.
     pub(crate) fn set(
         &self,
         rows: &RowOwner,
@@ -77,7 +86,8 @@ impl Locks<'_> {
         let _lane = rows.lane_of(session)?;
         let target = match kind {
             TargetKind::Note => target.to_owned(),
-            TargetKind::Folder => self.existing_folder(target)?,
+            TargetKind::Folder if locked => self.existing_folder(target)?,
+            TargetKind::Folder => self.locked_folder(target)?,
         };
         let store = self.vault.locks();
         if locked {
@@ -89,6 +99,12 @@ impl Locks<'_> {
                 changed: false,
             });
         }
+        #[cfg(test)]
+        AFTER_ROW.with_borrow_mut(|hook| {
+            if let Some(run) = hook {
+                run();
+            }
+        });
         let reconciled = self.reconcile().and_then(|()| match kind {
             TargetKind::Folder if !locked => self.release_unlocked_folder(&target),
             _ => Ok(()),
@@ -107,9 +123,9 @@ impl Locks<'_> {
         })
     }
 
-    /// The folder as the disk spells it ([`folder_on_disk`], as create, move and delete check
-    /// it): on a case-blind volume or under another Unicode form, `archive` names `Archive`,
-    /// whose files every lock check compares by the disk's spelling.
+    /// The folder a lock names, as the disk spells it ([`folder_on_disk`], as create, move and
+    /// delete check it): on a case-blind volume or under another Unicode form, `archive` names
+    /// `Archive`, whose files every lock check compares by the disk's spelling.
     fn existing_folder(&self, target: &str) -> Result<String, NotesError> {
         let given = vault_folder(self.root, &normalize_folder_path(target))?;
         if given.is_empty() {
@@ -123,6 +139,26 @@ impl Locks<'_> {
         match self.root.join(&folder).is_dir() {
             true => Ok(folder),
             false => Err(NotesError::FolderNotFound),
+        }
+    }
+
+    /// The lock row an unlock names: the one spelled as given, else the one whose name it is in
+    /// another case or Unicode form ([`folded_key`]). Not the disk's spelling: a folder renamed
+    /// in case outside the app, or a row another build or device wrote in another spelling,
+    /// keeps its row, and only that row lifts the lock. No row, or several, is not found.
+    fn locked_folder(&self, target: &str) -> Result<String, NotesError> {
+        let given = normalize_folder_path(target);
+        let folders = self.vault.locks().list()?.folders;
+        if folders.contains(&given) {
+            return Ok(given);
+        }
+        let key = folded_key(&given);
+        let mut named = folders
+            .into_iter()
+            .filter(|folder| folded_key(folder) == key);
+        match (named.next(), named.next()) {
+            (Some(folder), None) => Ok(folder),
+            _ => Err(NotesError::FolderNotFound),
         }
     }
 

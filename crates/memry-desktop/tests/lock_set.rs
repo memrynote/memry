@@ -6,7 +6,9 @@
 //!   edit is then reverted to that text, not rolled back to an older one;
 //! - a folder unlocked frees the files an older build made read-only without a record, and
 //!   leaves those another lock covers;
-//! - a folder lock needs a folder on disk inside the vault, and names it as the disk spells it.
+//! - a folder lock needs a folder on disk inside the vault, and names it as the disk spells it;
+//! - an unlock lifts the lock row as it is spelled, whatever the disk spells now, and a name no
+//!   lock has is refused.
 
 use std::sync::Arc;
 
@@ -170,4 +172,52 @@ fn a_folder_lock_names_the_folder_as_the_disk_spells_it() {
         assert_eq!(set.state.folders, ["Archive"]);
         assert!(e.core().locks().is_note_locked(&plan, None).unwrap());
     }
+}
+
+/// An unlock names the lock row, not the disk: a row another build or device wrote as `archive`
+/// over the disk's `Archive/` is lifted by `archive`, and by any case or Unicode form of it.
+/// Respelled as the disk spells it, the unlock found no row and quietly changed nothing, and
+/// the folder stayed locked for good. A name no lock has is refused.
+#[test]
+fn an_unlock_lifts_the_lock_row_as_it_is_spelled() {
+    let nfc = "Caf\u{e9}";
+    let nfd = "Cafe\u{301}";
+    let (e, store) = guarded(&[("Archive/Plan.md", NOTE), (&format!("{nfc}/Menu.md"), NOTE)]);
+    let locks = Setter::new(&e, store);
+    let rows = e.core().locks();
+
+    for (row, given) in [("archive", "archive"), ("archive", "ARCHIVE"), (nfd, nfc)] {
+        rows.set(TargetKind::Folder, row, true).unwrap();
+        let set = locks.set(TargetKind::Folder, given, false).unwrap();
+        assert!(
+            set.changed && set.state.folders.is_empty(),
+            "{row} by {given}: {set:?}"
+        );
+    }
+    for given in ["Archive", "Missing"] {
+        let refused = locks.set(TargetKind::Folder, given, false);
+        assert!(
+            matches!(refused, Err(NotesError::FolderNotFound)),
+            "{given}: {refused:?}"
+        );
+    }
+}
+
+/// A locked folder renamed in case outside the app, on a case-blind volume: the unlock by the
+/// name it was locked under lifts the lock and frees its files under the new name.
+#[test]
+fn a_folder_renamed_in_case_outside_the_app_is_unlocked_by_its_lock_name() {
+    let (e, store) = guarded(&[("Archive/Plan.md", NOTE)]);
+    if !e.vault.join("ARCHIVE").is_dir() {
+        return;
+    }
+    let locks = Setter::new(&e, store);
+    locks.set(TargetKind::Folder, "Archive", true).unwrap();
+    assert!(read_only(&e, "Archive/Plan.md"));
+    std::fs::rename(e.vault.join("Archive"), e.vault.join("ARCHIVE")).unwrap();
+    std::thread::sleep(QUIET);
+
+    let set = locks.set(TargetKind::Folder, "Archive", false).unwrap();
+    assert!(set.changed && set.state.folders.is_empty(), "{set:?}");
+    assert!(!read_only(&e, "ARCHIVE/Plan.md"));
 }
