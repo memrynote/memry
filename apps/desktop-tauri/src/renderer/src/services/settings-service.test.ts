@@ -48,6 +48,21 @@ describe('settingsService', () => {
     expect(Object.keys(modes).length).toBeGreaterThan(1)
   })
 
+  it('reads AI as on when nothing is stored, as Electron does (#4182)', async () => {
+    mocks.commands.settingsGetLocal.mockResolvedValue(null)
+
+    await expect(settingsService.getAISettings()).resolves.toEqual({ enabled: true })
+    expect(mocks.commands.settingsGetLocal).toHaveBeenCalledWith('ai.enabled')
+  })
+
+  it("reads AI as off only for Electron's stored false", async () => {
+    mocks.commands.settingsGetLocal.mockResolvedValueOnce(false)
+    await expect(settingsService.getAISettings()).resolves.toEqual({ enabled: false })
+
+    mocks.commands.settingsGetLocal.mockResolvedValueOnce(true)
+    await expect(settingsService.getAISettings()).resolves.toEqual({ enabled: true })
+  })
+
   it('resolves a rejected write as { success: false, error } like the Electron handlers', async () => {
     mocks.commands.settingsSetGroup.mockRejectedValue({ message: 'settings_invalid_value' })
 
