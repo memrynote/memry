@@ -72,7 +72,10 @@
       "moveFailed": "Nie udało się przenieść notatki",
       "deleteFailed": "Nie udało się usunąć notatki",
       "outsideEditReplaced": "Twoje pisanie zastąpiło zmianę z zewnątrz. Jest zapisana w historii wersji.",
-      "showVersions": "Pokaż wersje"
+      "showVersions": "Pokaż wersje",
+      "notSaved": "Zmiany w tej notatce nie zostały zapisane. Pozostają w edytorze, a przy następnej edycji zapis zostanie ponowiony.",
+      "notSavedClosed": "Nie udało się zapisać ostatnich zmian w tej notatce po zamknięciu jej edytora.",
+      "readOnlyUnsaved": "Ta notatka stała się tylko do odczytu, zanim zapisano Twoje ostatnie zmiany. Pozostają w edytorze, niezapisane."
     },
     "deleteDialogTitle": "{count, plural, one {Usuń notatkę} few {Usuń # notatki} many {Usuń # notatek} other {Usuń # notatki}}",
     "itemsCount": "{count, plural, one {# element} few {# elementy} many {# elementów} other {# elementu}}",

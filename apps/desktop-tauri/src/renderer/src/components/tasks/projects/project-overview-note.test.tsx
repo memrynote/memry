@@ -1,7 +1,11 @@
 import { render, screen, fireEvent, waitFor, act } from '@testing-library/react'
-import { describe, it, expect, vi, beforeEach } from 'vitest'
+import { useState, type ReactNode } from 'react'
+import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
+import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest'
+import { toast } from 'sonner'
 import { ProjectOverviewNote } from './project-overview-note'
 import type * as VaultLocksStoreModule from '@/lib/vault-locks-store'
+import type * as NotesServiceModule from '@/services/notes-service'
 
 const mocks = vi.hoisted(() => ({
   notesGet: vi.fn(),
@@ -12,7 +16,9 @@ const mocks = vi.hoisted(() => ({
   registerPendingSave: vi.fn(),
   unregisterPendingSave: vi.fn(),
   onMarkdownChange: null as ((markdown: string) => void) | null,
-  isNoteLocked: false
+  updatedHandlers: new Set<(event: { id: string; changes: { content?: string } }) => void>(),
+  isNoteLocked: false,
+  noUnsubscribe: (): (() => void) => () => {}
 }))
 
 vi.mock('@/lib/vault-locks-store', async (importOriginal) => ({
@@ -25,15 +31,26 @@ vi.mock('@/lib/logger', () => ({
 }))
 
 vi.mock('sonner', () => ({
-  toast: { error: vi.fn(), success: vi.fn() }
+  toast: Object.assign(vi.fn(), { error: vi.fn(), success: vi.fn() })
 }))
 
-vi.mock('@/services/notes-service', () => ({
+vi.mock('@/services/notes-service', async (importOriginal) => ({
+  ...(await importOriginal<typeof NotesServiceModule>()),
   notesService: {
     get: mocks.notesGet,
     create: mocks.notesCreate,
     update: mocks.notesUpdate
-  }
+  },
+  onNoteUpdated: (handler: (event: { id: string; changes: { content?: string } }) => void) => {
+    mocks.updatedHandlers.add(handler)
+    return () => mocks.updatedHandlers.delete(handler)
+  },
+  onNoteRenamed: mocks.noUnsubscribe,
+  onNoteMoved: mocks.noUnsubscribe,
+  onNoteDeleted: mocks.noUnsubscribe,
+  onNoteExternalChange: mocks.noUnsubscribe,
+  onNoteEventsDropped: mocks.noUnsubscribe,
+  onNoteOutsideEditKept: mocks.noUnsubscribe
 }))
 
 vi.mock('@/services/tasks-service', () => ({
@@ -48,20 +65,41 @@ vi.mock('@/lib/save-registry', () => ({
   unregisterPendingSave: mocks.unregisterPendingSave
 }))
 
+// Like the real editor, it reads `initialContent` on mount and again only when
+// `externalContentRevision` moves.
+function FakeEditor({
+  initialContent,
+  externalContentRevision
+}: {
+  initialContent: string
+  externalContentRevision?: number
+}): React.JSX.Element {
+  const [shown, setShown] = useState({ revision: externalContentRevision, text: initialContent })
+  if (shown.revision !== externalContentRevision) {
+    setShown({ revision: externalContentRevision, text: initialContent })
+  }
+  return <div data-testid="editor-content">{shown.text}</div>
+}
+
 vi.mock('@/components/note', () => ({
   ContentArea: ({
     initialContent,
+    externalContentRevision,
     editable = true,
     onMarkdownChange
   }: {
     initialContent: string
+    externalContentRevision?: number
     editable?: boolean
     onMarkdownChange?: (markdown: string) => void
   }) => {
     mocks.onMarkdownChange = onMarkdownChange ?? null
     return (
       <div data-testid="content-area" data-editable={String(editable)}>
-        <div data-testid="editor-content">{initialContent}</div>
+        <FakeEditor
+          initialContent={initialContent}
+          externalContentRevision={externalContentRevision}
+        />
         <button type="button" onClick={() => onMarkdownChange?.('# Changed')}>
           Change markdown
         </button>
@@ -71,8 +109,39 @@ vi.mock('@/components/note', () => ({
 }))
 
 vi.mock('@/components/note/editor-error-boundary', () => ({
-  EditorErrorBoundary: ({ children }: { children: React.ReactNode }) => children
+  EditorErrorBoundary: ({ children }: { children: ReactNode }) => children
 }))
+
+let queryClient: QueryClient
+
+function renderOverview(homeNoteId: string | null | undefined, onHomeNoteChange = vi.fn()) {
+  const ui = (id: string | null | undefined): React.JSX.Element => (
+    <QueryClientProvider client={queryClient}>
+      <ProjectOverviewNote projectId="p1" homeNoteId={id} onHomeNoteChange={onHomeNoteChange} />
+    </QueryClientProvider>
+  )
+  const view = render(ui(homeNoteId))
+  return { ...view, rerenderWith: (id: string | null | undefined) => view.rerender(ui(id)) }
+}
+
+function emitUpdated(id: string, content: string): void {
+  act(() => {
+    for (const handler of mocks.updatedHandlers) handler({ id, changes: { content } })
+  })
+}
+
+/** What each save sent; the mutation passes its context after the input. */
+function saves(): unknown[] {
+  return mocks.notesUpdate.mock.calls.map(([input]) => input)
+}
+
+function registeredFlush(key: string): () => Promise<void> {
+  const flush = mocks.registerPendingSave.mock.calls.findLast(([k]) => k === key)?.[1] as
+    | (() => Promise<void>)
+    | undefined
+  if (!flush) throw new Error(`no flush registered under ${key}`)
+  return flush
+}
 
 const homeNote = {
   id: 'n1',
@@ -92,14 +161,20 @@ describe('ProjectOverviewNote', () => {
   beforeEach(() => {
     vi.clearAllMocks()
     mocks.onMarkdownChange = null
+    mocks.updatedHandlers.clear()
     mocks.isNoteLocked = false
+    queryClient = new QueryClient({ defaultOptions: { queries: { retry: false } } })
+  })
+  afterEach(() => {
+    vi.useRealTimers()
+    queryClient.clear()
   })
 
   it('#then opens a locked home note read-only with the lock notice (#2606)', async () => {
     mocks.notesGet.mockResolvedValue(homeNote)
     mocks.isNoteLocked = true
 
-    render(<ProjectOverviewNote projectId="p1" homeNoteId="n1" onHomeNoteChange={vi.fn()} />)
+    renderOverview('n1')
 
     expect(await screen.findByTestId('content-area')).toHaveAttribute('data-editable', 'false')
     expect(screen.getByTestId('note-locked-indicator')).toBeInTheDocument()
@@ -108,7 +183,7 @@ describe('ProjectOverviewNote', () => {
   it('#then keeps an unlocked home note editable with no lock notice', async () => {
     mocks.notesGet.mockResolvedValue(homeNote)
 
-    render(<ProjectOverviewNote projectId="p1" homeNoteId="n1" onHomeNoteChange={vi.fn()} />)
+    renderOverview('n1')
 
     expect(await screen.findByTestId('content-area')).toHaveAttribute('data-editable', 'true')
     expect(screen.queryByTestId('note-locked-indicator')).not.toBeInTheDocument()
@@ -117,14 +192,14 @@ describe('ProjectOverviewNote', () => {
   it('#then renders the inline editor when a home note exists', async () => {
     mocks.notesGet.mockResolvedValue(homeNote)
 
-    render(<ProjectOverviewNote projectId="p1" homeNoteId="n1" onHomeNoteChange={vi.fn()} />)
+    renderOverview('n1')
 
     expect(await screen.findByTestId('overview-editor')).toBeInTheDocument()
     expect(await screen.findByText('# Hi')).toBeInTheDocument()
   })
 
   it('#then shows a loading state (not the create affordance) while homeNoteId is unresolved', () => {
-    render(<ProjectOverviewNote projectId="p1" homeNoteId={undefined} onHomeNoteChange={vi.fn()} />)
+    renderOverview(undefined)
 
     expect(screen.queryByRole('button', { name: /overview note/i })).not.toBeInTheDocument()
     expect(screen.queryByTestId('overview-editor')).not.toBeInTheDocument()
@@ -138,9 +213,7 @@ describe('ProjectOverviewNote', () => {
     })
     mocks.setProjectHomeNote.mockResolvedValue({ success: true, project: null })
 
-    render(
-      <ProjectOverviewNote projectId="p1" homeNoteId={null} onHomeNoteChange={onHomeNoteChange} />
-    )
+    renderOverview(null, onHomeNoteChange)
 
     fireEvent.click(await screen.findByRole('button', { name: /overview note/i }))
 
@@ -154,7 +227,7 @@ describe('ProjectOverviewNote', () => {
     mocks.notesGet.mockResolvedValue(homeNote)
     mocks.notesUpdate.mockResolvedValue({ success: true, note: null })
 
-    render(<ProjectOverviewNote projectId="p1" homeNoteId="n1" onHomeNoteChange={vi.fn()} />)
+    renderOverview('n1')
 
     const changeButton = await screen.findByRole('button', { name: 'Change markdown' })
 
@@ -168,7 +241,7 @@ describe('ProjectOverviewNote', () => {
       })
 
       expect(mocks.notesUpdate).toHaveBeenCalledTimes(1)
-      expect(mocks.notesUpdate).toHaveBeenCalledWith({ id: 'n1', content: '# Changed' })
+      expect(saves()).toContainEqual({ id: 'n1', content: '# Changed' })
     } finally {
       vi.useRealTimers()
     }
@@ -178,9 +251,7 @@ describe('ProjectOverviewNote', () => {
     mocks.notesGet.mockResolvedValue(homeNote)
     mocks.notesUpdate.mockResolvedValue({ success: true, note: null })
 
-    const { unmount } = render(
-      <ProjectOverviewNote projectId="p1" homeNoteId="n1" onHomeNoteChange={vi.fn()} />
-    )
+    const { unmount } = renderOverview('n1')
 
     const changeButton = await screen.findByRole('button', { name: 'Change markdown' })
     fireEvent.click(changeButton)
@@ -197,11 +268,11 @@ describe('ProjectOverviewNote', () => {
     })
 
     expect(mocks.notesUpdate).toHaveBeenCalledTimes(1)
-    expect(mocks.notesUpdate).toHaveBeenCalledWith({ id: 'n1', content: '# Changed' })
+    expect(saves()).toContainEqual({ id: 'n1', content: '# Changed' })
 
     unmount()
 
-    expect(mocks.unregisterPendingSave).toHaveBeenCalledWith('project-overview:n1')
+    expect(mocks.unregisterPendingSave).toHaveBeenCalledWith('project-overview:n1', flush)
     // Already flushed above — unmount must not save the same edit again.
     expect(mocks.notesUpdate).toHaveBeenCalledTimes(1)
   })
@@ -210,9 +281,7 @@ describe('ProjectOverviewNote', () => {
     mocks.notesGet.mockResolvedValue(homeNote)
     mocks.notesUpdate.mockResolvedValue({ success: true, note: null })
 
-    const { unmount } = render(
-      <ProjectOverviewNote projectId="p1" homeNoteId="n1" onHomeNoteChange={vi.fn()} />
-    )
+    const { unmount } = renderOverview('n1')
 
     const changeButton = await screen.findByRole('button', { name: 'Change markdown' })
     fireEvent.click(changeButton)
@@ -220,9 +289,7 @@ describe('ProjectOverviewNote', () => {
 
     unmount()
 
-    await waitFor(() =>
-      expect(mocks.notesUpdate).toHaveBeenCalledWith({ id: 'n1', content: '# Changed' })
-    )
+    await waitFor(() => expect(saves()).toContainEqual({ id: 'n1', content: '# Changed' }))
     expect(mocks.notesUpdate).toHaveBeenCalledTimes(1)
   })
 
@@ -232,16 +299,14 @@ describe('ProjectOverviewNote', () => {
     mocks.notesGet.mockImplementation((id: string) => Promise.resolve({ ...homeNote, id }))
     mocks.notesUpdate.mockResolvedValue({ success: true, note: null })
 
-    const { rerender } = render(
-      <ProjectOverviewNote projectId="p1" homeNoteId="n1" onHomeNoteChange={vi.fn()} />
-    )
+    const { rerenderWith } = renderOverview('n1')
     await screen.findByRole('button', { name: 'Change markdown' })
     const reportLateEdit = mocks.onMarkdownChange!
 
-    rerender(<ProjectOverviewNote projectId="p1" homeNoteId="n2" onHomeNoteChange={vi.fn()} />)
+    rerenderWith('n2')
     reportLateEdit('# Typed in n1')
 
-    expect(mocks.notesUpdate).toHaveBeenCalledWith({ id: 'n1', content: '# Typed in n1' })
+    await vi.waitFor(() => expect(saves()).toContainEqual({ id: 'n1', content: '# Typed in n1' }))
 
     const flushN2 = mocks.registerPendingSave.mock.calls.find(
       ([key]) => key === 'project-overview:n2'
@@ -250,6 +315,78 @@ describe('ProjectOverviewNote', () => {
     await act(async () => {
       await flushN2?.()
     })
-    expect(mocks.notesUpdate).not.toHaveBeenCalledWith(expect.objectContaining({ id: 'n2' }))
+    expect(saves()).not.toContainEqual(expect.objectContaining({ id: 'n2' }))
+  })
+
+  describe('the home note open in a note tab too (#4088)', () => {
+    it('#then hands an edit the note tab saved to the overview editor', async () => {
+      mocks.notesGet.mockResolvedValue(homeNote)
+      mocks.notesUpdate.mockResolvedValue({ success: true, note: null })
+      renderOverview('n1')
+      expect(await screen.findByTestId('editor-content')).toHaveTextContent('# Hi')
+
+      emitUpdated('n1', '# Hi typed in the tab')
+
+      expect(screen.getByTestId('editor-content')).toHaveTextContent('# Hi typed in the tab')
+      // The editor reports the text it was handed: nothing new to save over the tab's edit.
+      vi.useFakeTimers()
+      act(() => mocks.onMarkdownChange?.('# Hi typed in the tab'))
+      await act(async () => {
+        await vi.advanceTimersByTimeAsync(1000)
+      })
+      expect(mocks.notesUpdate).not.toHaveBeenCalled()
+    })
+  })
+
+  describe('a refused save', () => {
+    it('#then keeps the typing for the next flush and tells the user', async () => {
+      mocks.notesGet.mockResolvedValue(homeNote)
+      mocks.notesUpdate.mockResolvedValue({ success: false, error: 'The file changed', note: null })
+      renderOverview('n1')
+      const changeButton = await screen.findByRole('button', { name: 'Change markdown' })
+
+      vi.useFakeTimers()
+      fireEvent.click(changeButton)
+      await act(async () => {
+        await vi.advanceTimersByTimeAsync(1000)
+      })
+      expect(mocks.notesUpdate).toHaveBeenCalledTimes(1)
+      expect(toast.error).toHaveBeenCalledWith(
+        'Your changes to this note were not saved. They stay in the editor, and your next edit tries again.',
+        { id: 'note-not-saved:n1' }
+      )
+
+      await act(async () => {
+        await registeredFlush('project-overview:n1')()
+      })
+      expect(mocks.notesUpdate).toHaveBeenCalledTimes(2)
+      expect(saves().at(-1)).toEqual({ id: 'n1', content: '# Changed' })
+    })
+  })
+
+  it('#then keeps typing made during a save for the unmount flush', async () => {
+    let answer: (result: { success: boolean; note: null }) => void = () => {}
+    mocks.notesGet.mockResolvedValue(homeNote)
+    mocks.notesUpdate
+      .mockImplementationOnce(() => new Promise((resolve) => (answer = resolve)))
+      .mockResolvedValue({ success: true, note: null })
+    const { unmount } = renderOverview('n1')
+    await screen.findByRole('button', { name: 'Change markdown' })
+
+    vi.useFakeTimers()
+    act(() => mocks.onMarkdownChange?.('# A'))
+    await act(async () => {
+      await vi.advanceTimersByTimeAsync(1000)
+    })
+    expect(saves()).toContainEqual({ id: 'n1', content: '# A' })
+    act(() => mocks.onMarkdownChange?.('# A and B'))
+    await act(async () => {
+      answer({ success: true, note: null })
+      await vi.advanceTimersByTimeAsync(0)
+    })
+
+    unmount()
+
+    await vi.waitFor(() => expect(saves().at(-1)).toEqual({ id: 'n1', content: '# A and B' }))
   })
 })

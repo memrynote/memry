@@ -42,6 +42,8 @@
 //!   not take) is no outside edit: those bytes carry the record already. The run's own file is
 //!   kept too when the save moves its body by ten words or more
 //!   ([`note_snapshots::is_significant`], Electron's `maybeCreateSignificantSnapshot`).
+//! - [`Precondition::SaveOver`]: [`Precondition::Save`] of typing that held off an outside edit
+//!   the editor never showed (#4088): a body it changes is kept, the run's own file too.
 //! - [`Precondition::Restore`]: [`Precondition::Save`] of a restored version
 //!   (`notes:restore-version`): the file it replaces is always kept, as the note's newest
 //!   version (`WriteBackReader::keep_restore_point`), and the feed keeps the document's body
@@ -123,81 +125,12 @@ use crate::notes::write_order::NoteTurn;
 use crate::session::OpenVault;
 
 mod own_files;
+mod terms;
 pub use own_files::OwnFiles;
+pub use terms::{Edited, Kept, Precondition};
 
 const SCOPE: &str = "app_edit";
 const BOM: char = '\u{feff}';
-
-/// What an edit may replace (see the module comment).
-#[derive(Debug, Clone, Copy)]
-pub enum Precondition<'a> {
-    /// Only a file the document holds; anything else is kept.
-    Held,
-    /// [`Precondition::Held`], for a document built while its file was at this path.
-    HeldAt(&'a str),
-    /// [`Self::Held`], and a body the edit changes kept as a version first: the edit writes over
-    /// the user's text.
-    Replace,
-    /// The user's save: whatever is there, a file that is not the run's own, or a body that
-    /// moved by ten words or more, kept as a version first.
-    Save(&'a OwnFiles),
-    /// [`Self::Save`] of a restored version: the replaced file is always kept, as the newest
-    /// version.
-    Restore(&'a OwnFiles),
-}
-
-/// What an edit came to.
-#[derive(Debug, Clone, PartialEq, Eq)]
-pub enum Edited {
-    /// The file holds the new text. `held`: the document took it too, and the row says so;
-    /// otherwise the watcher brings the file to the document as an outside edit.
-    /// `kept_outside`: a save's body went over an outside edit not fed yet, kept as a version
-    /// first; the editor had no event for it. `text`: the file as written, byte order mark
-    /// included.
-    Wrote {
-        hash: String,
-        held: bool,
-        kept_outside: bool,
-        text: String,
-    },
-    /// The closure changed nothing; `text` is the file as read.
-    Unchanged { text: String },
-    /// The file was kept as it is.
-    Kept(Kept),
-}
-
-/// Why the file was kept.
-#[derive(Debug, Clone, PartialEq, Eq)]
-pub enum Kept {
-    NoRow,
-    NotMarkdown,
-    /// The row names a file that is not there.
-    NoFile,
-    /// The row has no hash, so the document is not known to hold the file.
-    NotRead,
-    /// The file differs from its row's hash (an outside edit not fed yet), or changed while the
-    /// write ran.
-    FileChanged,
-    /// The file's frontmatter does not parse.
-    FrontmatterUnreadable,
-    /// The edit's text has a frontmatter that does not parse.
-    FrontmatterBroken,
-    /// The document holds an edit its file does not have yet.
-    BodyAhead,
-    /// The file holds an edit the document did not take.
-    FileAhead,
-    /// The note's server body has not been pulled.
-    BodyNotPulled,
-    /// The document holds what a markdown file cannot, or does not serialize.
-    NotRepresentable,
-    /// No live note or journal day by that id.
-    NoBody,
-    /// The note, or a folder above its file, is locked (Electron `assertNoteWritable`).
-    Locked,
-    /// The note's file is excluded (`ExcludedPaths`): Electron's index does not hold it, so no
-    /// edit of the app reaches it.
-    Excluded,
-}
 
 /// How an edit failed. Every failure but [`AppEditError::File`] after the feed left the file,
 /// the document and the row as they were.
@@ -333,7 +266,7 @@ impl AppEdit {
                 }
                 None
             }
-            Precondition::Save(own) | Precondition::Restore(own) => {
+            Precondition::Save(own) | Precondition::SaveOver(own) | Precondition::Restore(own) => {
                 // A row with no hash names no file the document took, so none was replaced.
                 outside =
                     row.content_hash.is_some() && !row_names_file && !own.is(note_id, &file.hash);
@@ -376,7 +309,9 @@ impl AppEdit {
         let body_moved = own.is_none() || body_changed || restore;
         let keeps = match precondition {
             Precondition::Held | Precondition::HeldAt(_) => false,
-            Precondition::Replace | Precondition::Restore(_) => body_changed,
+            Precondition::Replace | Precondition::SaveOver(_) | Precondition::Restore(_) => {
+                body_changed
+            }
             Precondition::Save(own) => {
                 let own_file = row_names_file && own.is(note_id, &file.hash);
                 body_changed && (!own_file || note_snapshots::is_significant(read_body, next_body))

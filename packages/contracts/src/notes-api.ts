@@ -602,6 +602,8 @@ export interface NoteUpdateResponse {
   success: boolean
   note: Note | null
   error?: string
+  /** The refusal's machine-readable code, when the failure carried one (`note_locked`). */
+  code?: string
   tagTemplate?: NoteTagTemplateOutcome
   /** The save went over an outside edit the editor had no event for, kept as a version. */
   keptOutsideEdit?: boolean
