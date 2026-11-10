@@ -499,7 +499,12 @@ and one replay of the original request:
   refresh and no second replay: two 401s across a fresh token mean the session
   is gone, not that the timing was unlucky;
 - if the refresh itself fails, the rejection latch of §2.10 applies and the
-  original request fails with the latch's outcome.
+  original request fails with the latch's outcome. Only a permanent latch
+  fails it with the original `401`. A latch window fails it with the wait, and
+  a refresh that failed without a `401` fails it with that failure, because
+  neither ends the session
+  (`crates/memry-core/src/protocol/http.rs:305-309`,
+  `crates/memry-core/src/protocol/auth.rs:490-493`).
 
 A `401` never enters the §0.6.1 ladder, in either direction: it is not
 retryable there, and the replay here is not an attempt there.
