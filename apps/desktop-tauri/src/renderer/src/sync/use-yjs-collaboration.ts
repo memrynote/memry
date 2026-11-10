@@ -4,6 +4,7 @@ import { CRDT_FRAGMENT_NAME } from '@memry/contracts/ipc-crdt'
 import { DocNeedsSeedError, YjsIpcProvider, type DocReadOnly } from './yjs-ipc-provider'
 import { createYjsDocRegistry, type DocEntryHandle } from './yjs-doc-registry'
 import { createLogger } from '@/lib/logger'
+import { onVaultLocksLoaded } from '@/lib/vault-locks-store'
 import { useVaultScope } from '@/contexts/vault-scope'
 import { useVaultWorkspaceLifecycle } from '@/lib/vault-workspace-lifecycle'
 import { getVaultSwitchState } from '@/lib/vault-switch-state'
@@ -133,6 +134,7 @@ const docRegistry = createYjsDocRegistry<DocEntry>((slotKey, notifyChanged) => {
     publish({ ...snapshot, readOnly: provider.readOnly })
   })
 
+  let stopWaitingForLocks: (() => void) | null = null
   provider
     .connect()
     .then(() => {
@@ -144,15 +146,23 @@ const docRegistry = createYjsDocRegistry<DocEntry>((slotKey, notifyChanged) => {
     .catch((err: unknown) => {
       if (destroyed) return
       // The editor falls back to the note's markdown. A note the host would not let this window
-      // edit stays read-only there too, except for a lock: the destroyed provider hears no unlock,
-      // so the page's lock store, which every caller's `editable` already reads, decides it.
-      const readOnly = provider.readOnly === 'locked' ? null : provider.readOnly
+      // edit stays read-only there too. A lock is left to the page's lock store, which every
+      // caller's `editable` reads and the destroyed provider's silence cannot replace; the store
+      // reads empty until it loaded once, which a failed list never does, so `locked` holds until
+      // then, or the empty locked note would take typing the host refuses to save.
+      const wasLocked = provider.readOnly === 'locked'
+      const readOnly = provider.readOnly
       if (err instanceof DocNeedsSeedError) log.info(err.message, { noteId })
       else log.error('Failed to connect collaboration', err)
       provider.destroy()
       doc.destroy()
       isRemoteUpdateRef.current = false
       publish({ fragment: null, doc: null, provider: null, isReady: true, readOnly })
+      if (wasLocked) {
+        stopWaitingForLocks = onVaultLocksLoaded(() => {
+          if (!destroyed) publish({ ...snapshot, readOnly: null })
+        })
+      }
     })
 
   return {
@@ -170,6 +180,7 @@ const docRegistry = createYjsDocRegistry<DocEntry>((slotKey, notifyChanged) => {
     resumeRebind: () => provider.resumeRebind(),
     destroy: () => {
       destroyed = true
+      stopWaitingForLocks?.()
       provider.destroy()
       doc.destroy()
       isRemoteUpdateRef.current = false

@@ -229,10 +229,7 @@ impl Reconciler {
                 self.reported.unmark_removed(&row.note_id);
             }
             Ok(_) => {}
-            Err(error) => tracing::warn!(
-                scope = "vault_watch",
-                "note_files could not be read for a new file: {error}"
-            ),
+            Err(error) => self.storage_failed(&error),
         }
         self.reported.put(Seen {
             path: path.clone(),

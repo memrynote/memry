@@ -24,6 +24,9 @@ let noteIds = new Set<string>()
 let pending: ReadonlySet<string> = new Set()
 const listeners = new Set<() => void>()
 let started = false
+// Set by the first locks the store holds, listed or broadcast; until then `EMPTY` is not an answer.
+let loaded = false
+const loadWaiters = new Set<() => void>()
 
 function notify(): void {
   for (const listener of listeners) listener()
@@ -32,7 +35,10 @@ function notify(): void {
 function publish(next: VaultLockState): void {
   state = next
   noteIds = new Set(next.notes)
+  loaded = true
   notify()
+  for (const waiter of loadWaiters) waiter()
+  loadWaiters.clear()
 }
 
 function setPending(key: string, running: boolean): void {
@@ -52,6 +58,21 @@ function start(): void {
     .vaultLocksList()
     .then(publish)
     .catch((error: unknown) => log.warn('Failed to load vault locks', error))
+}
+
+/**
+ * Runs `callback` once, when the store first holds the locks (at once if it does); starts the
+ * load. Never runs while the list fails and no lock event comes, so a caller that needs the
+ * answer stays on its closed default. The returned function cancels the wait.
+ */
+export function onVaultLocksLoaded(callback: () => void): () => void {
+  start()
+  if (loaded) {
+    callback()
+    return () => {}
+  }
+  loadWaiters.add(callback)
+  return () => loadWaiters.delete(callback)
 }
 
 function subscribe(listener: () => void): () => void {
