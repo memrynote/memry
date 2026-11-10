@@ -12,7 +12,7 @@ import type {
   JournalEntryDeletedEvent,
   JournalExternalChangeEvent
 } from '../../../preload/index.d'
-import type { GetPropertyRowsOutput } from '@memry/contracts/journal-api'
+import type { GetPropertyRowsOutput, SameDayEntry } from '@memry/contracts/journal-api'
 
 /**
  * Journal service - thin wrapper around window.api.journal
@@ -92,6 +92,11 @@ export const journalService: JournalClientAPI = {
    */
   getMonthEntries: (year: number, month: number): Promise<MonthEntryPreview[]> => {
     return window.api.journal.getMonthEntries(year, month)
+  },
+
+  /** Entries from other years shown as the same day as `date`, newest first. */
+  getSameDayEntries: (date: string): Promise<SameDayEntry[]> => {
+    return window.api.journal.getSameDayEntries(date)
   },
 
   /**

@@ -236,5 +236,21 @@
     "range": "{start} – {end}",
     "openTask": "{title}, {range}",
     "completeTask": "Complete {title}"
+  },
+  "pastYears": {
+    "title": "On this day",
+    "count": "{count, plural, one {# other year} other {# other years}}",
+    "showAll": "All years",
+    "showPreviews": "Previews",
+    "yearsAgo": "{count, plural, one {# year ago} other {# years ago}}",
+    "yearsLater": "{count, plural, one {# year later} other {# years later}}",
+    "words": "{count, plural, one {# word} other {# words}}",
+    "openDay": "Open {date}",
+    "showFull": "Show full entry",
+    "showLess": "Show less",
+    "loadError": "Couldn't load this day from other years.",
+    "previousYear": "Same day, previous year",
+    "nextYear": "Same day, next year",
+    "goToYear": "Go to this day in {year}"
   }
 }

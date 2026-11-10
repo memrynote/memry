@@ -49,6 +49,13 @@ interface JournalCommandInput {
   goPrevious: () => void
   goNext: () => void
   goToday: () => void
+  /** Null when no earlier year has an entry on this day. */
+  goPreviousYear: (() => void) | null
+  /** Whether past years show in full under the day. */
+  allYearsView: boolean
+  /** Null when no later year has an entry on this day. */
+  goNextYear: (() => void) | null
+  toggleAllYears: () => void
   isBookmarked: boolean
   toggleBookmark: () => Promise<void>
   toggleFullWidth: () => void
@@ -91,6 +98,20 @@ export function useJournalCommands(input: JournalCommandInput): {
     'journal.previous': item(t(stepLabel[viewType][0]), input.goPrevious, true),
     'journal.next': item(t(stepLabel[viewType][1]), input.goNext, true),
     'journal.today': item(t('action.goToToday'), input.goToday, !(isDay && input.isToday)),
+    'journal.previousYear': item(
+      t('pastYears.previousYear'),
+      () => input.goPreviousYear?.(),
+      isDay && input.goPreviousYear !== null
+    ),
+    'journal.nextYear': item(
+      t('pastYears.nextYear'),
+      () => input.goNextYear?.(),
+      isDay && input.goNextYear !== null
+    ),
+    'journal.toggleAllYears': item(
+      input.allYearsView ? t('pastYears.showPreviews') : t('pastYears.showAll'),
+      input.toggleAllYears
+    ),
     'journal.find': item(tNotes('editor.toolbar.find'), input.openFind),
     'journal.localGraph': item(
       input.isLocalGraphOpen

@@ -42,6 +42,10 @@ export interface JournalSettings {
   showTasks: boolean
   showAIConnections: boolean
   showStatsFooter: boolean
+  /** Show the same day from past years under a journal entry */
+  showOnThisDay: boolean
+  /** Show every year of the day in full under the entry (the Forever Journal) */
+  allYearsView: boolean
 }
 
 export interface AISettings {
