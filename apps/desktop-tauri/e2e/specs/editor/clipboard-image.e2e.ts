@@ -13,26 +13,30 @@ import { test, expect } from '../../harness/test'
 type ImagePath = 'webview' | 'app'
 
 /**
- * Which writer puts the mind map's PNG on the clipboard, per OS. The webview takes the image
- * `ClipboardItem` after the async export on WKWebView (macOS 15), WebView2 and WebKitGTK, so the
- * app's command is the fallback only; the second test forces it on every OS.
+ * Which writer puts the mind map's PNG on the clipboard, per OS, as observed in CI and locally.
+ * WKWebView (macOS 15) takes the image `ClipboardItem` while the click's gesture is live after the
+ * async export. WebKitGTK 2.50 (ubuntu-22.04) refuses it. WebView2 takes it on windows-arm64 and
+ * refuses it on windows-x64 (the reason is logged). A refusal goes to `clipboard_write_image`; the
+ * second test forces that path on every OS.
  */
-const IMAGE_PATH: Record<'darwin' | 'win32' | 'linux', ImagePath> = {
-  darwin: 'webview',
-  win32: 'webview',
-  linux: 'webview'
+const IMAGE_PATH: Record<'darwin' | 'win32' | 'linux', ImagePath[]> = {
+  darwin: ['webview'],
+  win32: ['webview', 'app'],
+  linux: ['app']
 }
 
 interface Recorded {
   /** The PNG's size as its IHDR declares it. */
   size: [number, number] | null
   webview: 'accepted' | 'refused' | null
+  /** Why the webview refused the image. */
+  error: string | null
 }
 
 /** Records the PNG the page hands the async clipboard and whether the webview took it. */
 async function recordImageWrite(page: Page, refuse: boolean): Promise<void> {
   await page.evaluate((refused) => {
-    const record: Recorded = { size: null, webview: null }
+    const record: Recorded = { size: null, webview: null, error: null }
     ;(window as unknown as { __memryImage: Recorded }).__memryImage = record
     const write = navigator.clipboard.write.bind(navigator.clipboard)
     // The write starts before anything else is awaited: WebKit refuses it once the click's
@@ -49,6 +53,7 @@ async function recordImageWrite(page: Page, refuse: boolean): Promise<void> {
         },
         (err: unknown) => {
           record.webview = 'refused'
+          record.error = err instanceof Error ? `${err.name}: ${err.message}` : String(err)
           throw err
         }
       )
@@ -98,10 +103,14 @@ for (const refuse of [false, true]) {
       await page.locator('[data-testid="mind-map-toolbar-copy-image"]').click()
       await expect.poll(async () => (await recorded(page)).webview).not.toBeNull()
       await expect.poll(async () => (await recorded(page)).size).not.toBeNull()
-      const { size, webview } = await recorded(page)
+      const { size, webview, error } = await recorded(page)
       const platform = process.platform as keyof typeof IMAGE_PATH
-      console.log(`clipboard-image on ${platform}: webview ${webview}, png ${String(size)}`)
-      expect(webview === 'accepted' ? 'webview' : 'app').toBe(refuse ? 'app' : IMAGE_PATH[platform])
+      console.log(
+        `clipboard-image on ${platform} ${process.arch}: webview ${webview} (${error ?? '-'}), png ${String(size)}`
+      )
+      const path: ImagePath = webview === 'accepted' ? 'webview' : 'app'
+      if (refuse) expect(path).toBe('app')
+      else expect(IMAGE_PATH[platform]).toContain(path)
       expect(size?.every((side) => side > 0)).toBe(true)
       await expect.poll(() => clipboardImage(app)).toEqual(size)
     }
@@ -153,6 +162,14 @@ test('clipboard_write_image takes PNG bytes only, and no HTML embed in a note re
       out.ipc.push('blocked')
     }
   }
+  const internals = window.__TAURI_INTERNALS__
+  out.invoke = typeof internals?.invoke !== 'function' ? 'none' : await Promise.race([
+    internals.invoke('clipboard_write_image', png, { headers: { 'x-memry-meta': '{}' } }).then(
+      () => 'written',
+      (err) => 'refused ' + String(err?.code ?? err)
+    ),
+    new Promise((resolve) => setTimeout(() => resolve('no answer'), 5000))
+  ])
   parent.postMessage(JSON.stringify(out), '*')
 })()</script>`
   )
@@ -184,9 +201,12 @@ test('clipboard_write_image takes PNG bytes only, and no HTML embed in a note re
     .toBeTruthy()
   const reply = JSON.parse(
     await page.evaluate(() => (window as unknown as { __embedReply: string }).__embedReply)
-  ) as { tauri: string; ipc: string[] }
+  ) as { tauri: string; ipc: string[]; invoke: string }
   console.log(`clipboard-image embed on ${process.platform}: ${JSON.stringify(reply)}`)
-  expect(reply.tauri).toBe('undefinedundefined')
+  // WebView2 runs Tauri's init scripts in every frame, so the embed sees the IPC globals there; what
+  // matters is that no call of its own reaches the command.
+  if (process.platform !== 'win32') expect(reply.tauri).toBe('undefinedundefined')
+  expect(reply.invoke).not.toBe('written')
   expect(reply.ipc.filter((outcome) => outcome === 'status 200')).toEqual([])
   // Nothing the page or the embed sent reached the clipboard.
   expect(await clipboardImage(app)).toBeNull()
