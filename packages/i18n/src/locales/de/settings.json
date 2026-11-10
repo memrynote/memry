@@ -2045,7 +2045,7 @@
       "subtitle": "Verwalte Eigenschaftsdefinitionen für alle Notizen"
     },
     "loading": "Eigenschaften werden geladen…",
-    "empty": "Noch keine Eigenschaftsdefinitionen. Füge einer Notiz eine Eigenschaft vom Typ „Status“, „Auswahl“ oder „Mehrfachauswahl“ hinzu, um loszulegen.",
+    "empty": "Noch keine Eigenschaften. Füge einer Notiz eine Eigenschaft hinzu, um loszulegen.",
     "filterPlaceholder": "Eigenschaften filtern…",
     "noMatch": "Keine Eigenschaften, die mit „{query}“ übereinstimmen",
     "summary": "{count, plural, one {# Eigenschaftsdefinition} other {# Eigenschaftsdefinitionen}}",
@@ -2085,6 +2085,14 @@
     },
     "v2": {
       "actionsAria": "Aktionen für {name}"
+    },
+    "usage": {
+      "heading": "Verwendet in",
+      "noteCount": "{count, plural, one {# Notiz} other {# Notizen}}",
+      "mismatchCount": "Werte, die nicht zu {type} passen: {count}",
+      "mismatchNote": "Passt nicht zu {type}",
+      "none": "Keine Notiz verwendet diese Eigenschaft",
+      "loadFailed": "Die Notizen mit dieser Eigenschaft konnten nicht geladen werden"
     }
   },
   "commandLine": {

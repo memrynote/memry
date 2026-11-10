@@ -22,7 +22,7 @@ import type { AppUpdateState } from '../../../../../packages/contracts/src/ipc-u
 import type { AttachmentRenameResult, AttachmentResolveResult, DownloadAttachmentFromUrlResult, InsertExistingAttachmentResult, LargeFileLinesResult, LargeFileOpenResult, LargeFileSearchResult, NoteAliasEditResponse, NoteClustersResponse, NoteLinksResponse, NoteTagSuggestionsResponse, NoteTagTemplateOutcome, SimilarNotesResponse, UnlinkedMention, VaultAttachmentEntry } from '../../../../../packages/contracts/src/notes-api'
 import type { OcrLanguagesState } from '../../../../../packages/contracts/src/ocr-languages-api'
 import type { OnboardingAgentStatus, OnboardingSources } from '../../../../../packages/contracts/src/onboarding-api'
-import type { RenamePropertyResponse, ResolvedRelationRef, SetPropertiesResponse } from '../../../../../packages/contracts/src/properties-api'
+import type { PropertyNoteUsage, PropertyUsage, RenamePropertyResponse, ResolvedRelationRef, SetPropertiesResponse } from '../../../../../packages/contracts/src/properties-api'
 import type { RecentlyOpenedItem } from '../../../../../packages/contracts/src/recents-api'
 import type { Reminder, ReminderWithTarget } from '../../../../../packages/contracts/src/reminders-api'
 import type { SavedFilter } from '../../../../../packages/contracts/src/saved-filters-api'
@@ -340,6 +340,7 @@ export interface MainIpcInvokeHandlers {
   "notes:get-local-only-count": (...args: []) => Awaited<Promise<{ count: number; }>>
   "notes:get-positions": (...args: [{ folderPath: string; }]) => Awaited<{ success: true; positions: { path: string; position: number; folderPath: string; }[]; } | { success: false; error: string }>
   "notes:get-property-definitions": (...args: []) => Awaited<Promise<{ name: string; type: string; options: string | null; defaultValue: string | null; color: string | null; createdAt: string; clock: VectorClock | null; syncedAt: string | null; }[]>>
+  "notes:get-property-usage": (...args: []) => Awaited<Promise<PropertyUsage[]>>
   "notes:get-similar": (...args: [{ noteId: string; limit?: number | undefined; }]) => Awaited<Promise<SimilarNotesResponse>>
   "notes:get-tag-suggestions": (...args: [string]) => Awaited<Promise<NoteTagSuggestionsResponse>>
   "notes:get-tags": (...args: []) => Awaited<Promise<{ tag: string; color: string; count: number; }[]>>
@@ -355,6 +356,7 @@ export interface MainIpcInvokeHandlers {
   "notes:link-mention": (...args: [{ sourceId: string; targetId: string; ordinal: number; }]) => Awaited<Promise<{ linked: boolean; }> | { success: false; error: string }>
   "notes:list": (...args: [{ folder?: string | undefined; tags?: string[] | undefined; sortBy?: "title" | "modified" | "created" | "position" | undefined; sortOrder?: "asc" | "desc" | undefined; limit?: number | undefined; offset?: number | undefined; fields?: "full" | "tree" | undefined; includeJournals?: boolean | undefined; }]) => Awaited<Promise<NoteListResponse>>
   "notes:list-attachments": (...args: [string]) => Awaited<Promise<AttachmentInfo[]>>
+  "notes:list-notes-with-property": (...args: [{ name: string; }]) => Awaited<Promise<PropertyNoteUsage[]>>
   "notes:list-vault-attachments": (...args: []) => Awaited<Promise<VaultAttachmentEntry[]>>
   "notes:move": (...args: [{ id: string; newFolder: string; }]) => Awaited<Promise<{ success: true; note: Note; }> | { success: false; error: string }>
   "notes:open-external": (...args: [string]) => Awaited<Promise<void>>

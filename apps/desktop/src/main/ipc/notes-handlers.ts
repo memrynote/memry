@@ -47,6 +47,7 @@ import {
   SetCalendarPropertyVisibilitySchema,
   ImportFilesSchema
 } from '@memry/contracts/notes-api'
+import { ListNotesWithPropertySchema } from '@memry/contracts/properties-api'
 import {
   resolveAttachment,
   revealAttachmentInFinder,
@@ -131,6 +132,8 @@ import {
   getNoteTags,
   getNoteProperties,
   getAllTagDefinitions,
+  listPropertyUsage,
+  listNotesWithProperty,
   getNotesInFolder,
   reorderNotesInFolder,
   getAllNotePositions
@@ -646,6 +649,18 @@ export function registerNotesHandlers(): void {
       const db = getDatabase()
       return listPropertyDefinitions(db)
     })
+  )
+
+  ipcMain.handle(
+    NotesChannels.invoke.GET_PROPERTY_USAGE,
+    createHandler(() => listPropertyUsage(getIndexDatabase()))
+  )
+
+  ipcMain.handle(
+    NotesChannels.invoke.LIST_NOTES_WITH_PROPERTY,
+    createValidatedHandler(ListNotesWithPropertySchema, (input) =>
+      listNotesWithProperty(getIndexDatabase(), input.name)
+    )
   )
 
   // T018: notes:create-property-definition - Create a new property definition

@@ -2045,7 +2045,7 @@
       "subtitle": "Beheer eigenschapsdefinities voor alle notities"
     },
     "loading": "Eigenschappen laden…",
-    "empty": "Nog geen eigenschapsdefinities. Voeg een eigenschap van het type Status, Selectie of Meervoudige selectie toe aan een notitie om te beginnen.",
+    "empty": "Nog geen eigenschappen. Voeg een eigenschap toe aan een notitie om te beginnen.",
     "filterPlaceholder": "Eigenschappen filteren…",
     "noMatch": "Geen eigenschappen die overeenkomen met “{query}”",
     "summary": "{count, plural, one {# eigenschapsdefinitie} other {# eigenschapsdefinities}}",
@@ -2085,6 +2085,14 @@
     },
     "v2": {
       "actionsAria": "Acties voor {name}"
+    },
+    "usage": {
+      "heading": "Gebruikt in",
+      "noteCount": "{count, plural, one {# notitie} other {# notities}}",
+      "mismatchCount": "Waarden die niet bij {type} passen: {count}",
+      "mismatchNote": "Past niet bij {type}",
+      "none": "Geen enkele notitie gebruikt deze eigenschap",
+      "loadFailed": "Kan de notities met deze eigenschap niet laden"
     }
   },
   "commandLine": {

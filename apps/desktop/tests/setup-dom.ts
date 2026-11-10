@@ -172,6 +172,8 @@ const createMockApi = () => ({
     openExternal: vi.fn().mockResolvedValue({ success: true }),
     revealInFinder: vi.fn().mockResolvedValue({ success: true }),
     getPropertyDefinitions: vi.fn().mockResolvedValue([]),
+    getPropertyUsage: vi.fn().mockResolvedValue([]),
+    listNotesWithProperty: vi.fn().mockResolvedValue([]),
     getCalendarPropertyNames: vi.fn().mockResolvedValue([]),
     createPropertyDefinition: vi.fn().mockResolvedValue({ success: true }),
     updatePropertyDefinition: vi.fn().mockResolvedValue({ success: true }),

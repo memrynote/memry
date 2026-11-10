@@ -2045,7 +2045,7 @@
       "subtitle": "Gestionați definițiile proprietăților din toate notițele"
     },
     "loading": "Se încarcă proprietățile…",
-    "empty": "Încă nu există definiții de proprietăți. Adăugați o proprietate Stare, Selecție sau Selecție multiplă la orice notiță pentru a începe.",
+    "empty": "Încă nu există proprietăți. Adăugați o proprietate la orice notiță pentru a începe.",
     "filterPlaceholder": "Filtrează proprietățile…",
     "noMatch": "Nicio proprietate care să se potrivească cu „{query}”",
     "summary": "{count, plural, one {# definiție de proprietate} few {# definiții de proprietăți} other {# de definiții de proprietăți}}",
@@ -2085,6 +2085,14 @@
     },
     "v2": {
       "actionsAria": "Acțiuni pentru {name}"
+    },
+    "usage": {
+      "heading": "Folosită în",
+      "noteCount": "{count, plural, one {# notiță} few {# notițe} other {# de notițe}}",
+      "mismatchCount": "Valori care nu corespund tipului {type}: {count}",
+      "mismatchNote": "Nu corespunde tipului {type}",
+      "none": "Nicio notiță nu folosește această proprietate",
+      "loadFailed": "Notițele care folosesc această proprietate nu au putut fi încărcate"
     }
   },
   "commandLine": {

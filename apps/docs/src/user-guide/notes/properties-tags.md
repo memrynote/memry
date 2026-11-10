@@ -151,9 +151,17 @@ another device before this note synced — still renders, in gray, rather than d
 
 Every definition lives in `.memry/properties.md` inside the vault, whatever its type: text,
 number, checkbox, URL, date, select, multi-select and status. A definition that an agent or the
-desktop API creates or edits is in that file as soon as the call returns. Older versions kept
-non-select definitions only in the app's database; the first time a vault opens after the update,
-they are copied into the file once, and entries the file already has are left as they are.
+desktop API creates or edits is in that file as soon as the call returns. A property that a note
+introduces, such as `rating: 5` in a vault you opened from Obsidian, gets its type from the value
+and lands in the file too, so it is still there after a restart. Entries the file already has are
+left as they are.
+
+A property's type is shared by every note that uses it, so `rating` on a book and `rating` on a film
+are one property. When Memry first reads a vault whose notes disagree on a new property's type
+(`rating: 5` in one note, `rating: good` in another), the property becomes Text, which fits both.
+A type you chose yourself never changes this way. A value that does not match its property's type
+stays exactly as written in the note and in the file, and
+[Settings → Properties](/user-guide/settings#properties) marks the notes that hold one.
 If one entry in the file is malformed, the others still load and the malformed entry is kept as
 written. If the file cannot be read at all, Memry leaves it untouched until you fix it,
 and refuses property definition changes with an error until then, so no edit is lost.

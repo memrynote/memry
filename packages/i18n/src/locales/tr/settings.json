@@ -2045,7 +2045,7 @@
       "subtitle": "Tüm notlardaki özellik tanımlarını yönetin"
     },
     "loading": "Özellikler yükleniyor…",
-    "empty": "Henüz özellik tanımı yok. Başlamak için herhangi bir nota Durum, Seçim veya Çoklu seçim özelliği ekleyin.",
+    "empty": "Henüz özellik yok. Başlamak için herhangi bir nota bir özellik ekleyin.",
     "filterPlaceholder": "Özellikleri filtrele…",
     "noMatch": "“{query}” ile eşleşen özellik yok",
     "summary": "{count, plural, one {# özellik tanımı} other {# özellik tanımı}}",
@@ -2085,6 +2085,14 @@
     },
     "v2": {
       "actionsAria": "{name} için eylemler"
+    },
+    "usage": {
+      "heading": "Kullanıldığı notlar",
+      "noteCount": "{count, plural, one {# not} other {# not}}",
+      "mismatchCount": "{type} türüne uymayan değerler: {count}",
+      "mismatchNote": "{type} türüne uymuyor",
+      "none": "Bu özelliği kullanan not yok",
+      "loadFailed": "Bu özelliği kullanan notlar yüklenemedi"
     }
   },
   "commandLine": {

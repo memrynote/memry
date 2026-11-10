@@ -2045,7 +2045,7 @@
       "subtitle": "Pamahalaan ang mga kahulugan ng property sa lahat ng tala"
     },
     "loading": "Nilo-load ang mga property…",
-    "empty": "Wala pang kahulugan ng property. Magdagdag ng property na Katayuan, Isang pagpipilian, o Maramihang pagpipilian sa anumang tala para makapagsimula.",
+    "empty": "Wala pang property. Magdagdag ng property sa anumang tala para makapagsimula.",
     "filterPlaceholder": "I-filter ang mga property…",
     "noMatch": "Walang property na tumutugma sa “{query}”",
     "summary": "{count, plural, one {# kahulugan ng property} other {# kahulugan ng property}}",
@@ -2085,6 +2085,14 @@
     },
     "v2": {
       "actionsAria": "Mga aksyon para sa {name}"
+    },
+    "usage": {
+      "heading": "Ginagamit sa",
+      "noteCount": "{count, plural, one {# tala} other {# tala}}",
+      "mismatchCount": "Mga value na hindi tugma sa {type}: {count}",
+      "mismatchNote": "Hindi tugma sa {type}",
+      "none": "Walang talang gumagamit ng property na ito",
+      "loadFailed": "Hindi ma-load ang mga talang gumagamit ng property na ito"
     }
   },
   "commandLine": {

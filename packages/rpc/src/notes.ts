@@ -34,6 +34,7 @@ import type {
   NoteLinksChangedEvent
 } from '../../contracts/src/notes-api.ts'
 import type { PlainChecklistsOption } from '../../contracts/src/plain-checklists.ts'
+import type { PropertyNoteUsage, PropertyUsage } from '../../contracts/src/properties-api.ts'
 import {
   defineDomain,
   defineEvent,
@@ -706,6 +707,14 @@ export const notesRpc = defineDomain({
     }),
     getPropertyDefinitions: defineMethod<() => Promise<PropertyDefinition[]>>({
       channel: NotesChannels.invoke.GET_PROPERTY_DEFINITIONS
+    }),
+    getPropertyUsage: defineMethod<() => Promise<PropertyUsage[]>>({
+      channel: NotesChannels.invoke.GET_PROPERTY_USAGE
+    }),
+    listNotesWithProperty: defineMethod<(name: string) => Promise<PropertyNoteUsage[]>>({
+      channel: NotesChannels.invoke.LIST_NOTES_WITH_PROPERTY,
+      params: ['name'],
+      invokeArgs: ['{ name }']
     }),
     createPropertyDefinition: defineMethod<
       (input: CreatePropertyDefinitionInput) => Promise<CreatePropertyDefinitionResponse>

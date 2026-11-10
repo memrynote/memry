@@ -2045,7 +2045,7 @@
       "subtitle": "すべてのノートのプロパティ定義を管理"
     },
     "loading": "プロパティを読み込み中…",
-    "empty": "プロパティ定義はまだありません。ノートにステータス、セレクト、マルチセレクトのプロパティを追加して始めましょう。",
+    "empty": "プロパティはまだありません。ノートにプロパティを追加して始めましょう。",
     "filterPlaceholder": "プロパティを絞り込み…",
     "noMatch": "「{query}」に一致するプロパティはありません",
     "summary": "{count, plural, other {# 件のプロパティ定義}}",
@@ -2085,6 +2085,14 @@
     },
     "v2": {
       "actionsAria": "{name} の操作"
+    },
+    "usage": {
+      "heading": "使用中のノート",
+      "noteCount": "{count, plural, other {# 件のノート}}",
+      "mismatchCount": "{type} に合わない値: {count}",
+      "mismatchNote": "{type} に合いません",
+      "none": "このプロパティを使っているノートはありません",
+      "loadFailed": "このプロパティを使っているノートを読み込めませんでした"
     }
   },
   "commandLine": {

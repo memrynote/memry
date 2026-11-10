@@ -607,7 +607,14 @@ A property manager for custom note fields. Supported types:
 - Checkbox
 - Status (for project workflows)
 
-Create, rename, recolor, and reorder property options.
+Every property your notes use is listed with its type and the number of notes that use it. Open a
+property to see those notes and jump to one. A warning marks a property where some notes hold a
+value that does not match its type, such as `rating: good` under a Number property, and the list
+names those notes.
+
+Create, rename, recolor, and reorder property options. Select, Multi-select, and Status properties
+can be deleted here. Other types cannot: their values live in each note's frontmatter, and a
+note that still uses one would bring it straight back.
 
 ---
 

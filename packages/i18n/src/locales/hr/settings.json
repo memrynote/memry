@@ -2045,7 +2045,7 @@
       "subtitle": "Upravljajte definicijama svojstava u svim bilješkama"
     },
     "loading": "Učitavanje svojstava…",
-    "empty": "Još nema definicija svojstava. Za početak dodajte svojstvo statusa, odabira ili višestrukog odabira bilo kojoj bilješci.",
+    "empty": "Još nema svojstava. Za početak dodajte svojstvo bilo kojoj bilješci.",
     "filterPlaceholder": "Filtriraj svojstva…",
     "noMatch": "Nema svojstava koja odgovaraju upitu „{query}”",
     "summary": "{count, plural, one {# definicija svojstva} few {# definicije svojstava} other {# definicija svojstava}}",
@@ -2085,6 +2085,14 @@
     },
     "v2": {
       "actionsAria": "Radnje za „{name}”"
+    },
+    "usage": {
+      "heading": "Koristi se u",
+      "noteCount": "{count, plural, one {# bilješka} few {# bilješke} other {# bilješki}}",
+      "mismatchCount": "Vrijednosti koje ne odgovaraju vrsti {type}: {count}",
+      "mismatchNote": "Ne odgovara vrsti {type}",
+      "none": "Nijedna bilješka ne koristi ovo svojstvo",
+      "loadFailed": "Nije moguće učitati bilješke koje koriste ovo svojstvo"
     }
   },
   "commandLine": {

@@ -115,6 +115,8 @@ export {
   ensurePropertyDefinition,
   getPropertyType,
   listNotePropertyRowsByName,
+  listPropertyUsage,
+  listNotesWithProperty,
   setNotePropertyType,
   type PropertyValue
 } from './property-queries'

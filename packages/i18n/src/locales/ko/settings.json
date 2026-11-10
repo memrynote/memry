@@ -2045,7 +2045,7 @@
       "subtitle": "모든 노트의 속성 정의 관리"
     },
     "loading": "속성 불러오는 중…",
-    "empty": "아직 속성 정의가 없습니다. 시작하려면 노트에 상태, 선택 또는 다중 선택 속성을 추가하세요.",
+    "empty": "아직 속성이 없습니다. 시작하려면 노트에 속성을 추가하세요.",
     "filterPlaceholder": "속성 필터링…",
     "noMatch": "“{query}”와(과) 일치하는 속성이 없습니다",
     "summary": "{count, plural, other {속성 정의 #개}}",
@@ -2085,6 +2085,14 @@
     },
     "v2": {
       "actionsAria": "{name} 메뉴"
+    },
+    "usage": {
+      "heading": "사용 중인 노트",
+      "noteCount": "{count, plural, other {노트 #개}}",
+      "mismatchCount": "{type}에 맞지 않는 값: {count}",
+      "mismatchNote": "{type}에 맞지 않음",
+      "none": "이 속성을 사용하는 노트가 없습니다",
+      "loadFailed": "이 속성을 사용하는 노트를 불러오지 못했습니다"
     }
   },
   "commandLine": {
