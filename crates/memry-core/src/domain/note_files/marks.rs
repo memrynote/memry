@@ -73,7 +73,10 @@ fn next(doc_id: &str) -> String {
 /// reads as the stamp's. A row behind its body by the clock keeps no mark, since the log cannot
 /// say which of its entries came after the stamp; its write-back's stamp marks it. Without this
 /// such a row is compared through its file for good (`text_moved_since_stamp` answers `None`),
-/// and a change of the file's frontmatter reads as typing (#4097). Returns how many it marked.
+/// and a change of the file's frontmatter reads as typing (#4097). A row whose body took typing
+/// in its stamp's millisecond stays unmarked too: the clock cannot place that typing before the
+/// stamp, and marked as the file's text it would lose to an outside edit. Returns how many it
+/// marked.
 pub fn mark_unmarked(conn: &Connection) -> Result<usize, StorageError> {
     let local = format!("'{LOCAL_NAMESPACE_PREFIX}' || note_files.note_id");
     conn.execute(
@@ -85,10 +88,14 @@ pub fn mark_unmarked(conn: &Connection) -> Result<usize, StorageError> {
                                  WHERE m.note_id = note_files.note_id
                                    AND m.indexed_at = note_files.indexed_at)
                 AND NOT {moved}
+                AND NOT EXISTS (SELECT 1 FROM yjs_updates u
+                                 WHERE u.doc_id = {local_doc}
+                                   AND u.created_at = note_files.indexed_at)
              ON CONFLICT(note_id) DO UPDATE SET indexed_at = excluded.indexed_at,
                server_seq = excluded.server_seq, local_seq = excluded.local_seq",
             server = next("note_files.note_id"),
             local = next(&local),
+            local_doc = local,
             moved = body_moved_after_stamp(),
         ),
         [],

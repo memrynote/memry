@@ -390,6 +390,58 @@ describe('YjsIpcProvider typing barrier', () => {
     expect(host.calls).toEqual(['open', 'apply', 'typing-sent 7'])
   })
 
+  it.each([
+    ['edit and release', ['edit', 'release']],
+    ['edit', ['edit']],
+    ['release', ['release']]
+  ])('holds nothing for a barrier whose %s came before its answer', async (_, frames) => {
+    const { doc } = await connected()
+    // A Tauri channel hands frames that arrive out of order over in one task.
+    lastChannel().onmessage(barrierFrame(BARRIER, 7))
+    for (const sent of frames) {
+      lastChannel().onmessage(
+        sent === 'edit' ? otherWindowFrame(' from disk', 2) : barrierFrame(RELEASE, 7)
+      )
+    }
+    await settle()
+
+    expect(typingHoldOf(doc).held).toBe(false)
+    expect(answered()).toEqual(['typing-sent 7'])
+  })
+
+  it('holds nothing once a composition ends after its edit and release came', async () => {
+    vi.useFakeTimers()
+    const { doc } = await connected()
+    const hold = typingHoldOf(doc)
+    hold.compositionStarted()
+    lastChannel().onmessage(barrierFrame(BARRIER, 7))
+    await vi.advanceTimersByTimeAsync(1440)
+    lastChannel().onmessage(otherWindowFrame(' from disk', 2))
+    lastChannel().onmessage(barrierFrame(RELEASE, 7))
+
+    hold.compositionEnded()
+    await vi.advanceTimersByTimeAsync(55)
+    expect(hold.held).toBe(false)
+    expect(answered()).toEqual(['typing-sent 7'])
+  })
+
+  it('lets typing go by itself 3.5 s after the barrier came, however long a composition delayed the hold', async () => {
+    vi.useFakeTimers()
+    const { doc } = await connected()
+    const hold = typingHoldOf(doc)
+    hold.compositionStarted()
+    lastChannel().onmessage(barrierFrame(BARRIER, 7))
+    await vi.advanceTimersByTimeAsync(1400)
+    hold.compositionEnded()
+    await vi.advanceTimersByTimeAsync(100)
+    expect(hold.held).toBe(true)
+
+    await vi.advanceTimersByTimeAsync(1999)
+    expect(hold.held).toBe(true)
+    await vi.advanceTimersByTimeAsync(1)
+    expect(hold.held).toBe(false)
+  })
+
   it("leaves a composition that outlasts the host's wait alone", async () => {
     vi.useFakeTimers()
     const { doc } = await connected()

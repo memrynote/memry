@@ -94,7 +94,8 @@ fn a_removed_row_takes_its_mark_with_it() {
 
 /// The open marks a markdown row an older build stamped (no mark, or a mark of an earlier stamp)
 /// while its body is not ahead of it by the clock, at the log as it is; a row whose body is ahead
-/// stays unmarked, and a marked row keeps its mark.
+/// stays unmarked, and so does a row whose body took typing in its stamp's millisecond, which may
+/// have come after the stamp; a marked row keeps its mark.
 #[test]
 fn the_open_marks_only_the_unmarked_rows_whose_body_is_not_ahead() {
     let db = Db::open_in_memory().expect("open");
@@ -108,10 +109,12 @@ fn the_open_marks_only_the_unmarked_rows_whose_body_is_not_ahead() {
                    ('old', 'old.md', 'markdown', 100),
                    ('moved', 'moved.md', 'markdown', 100),
                    ('restamped', 'restamped.md', 'markdown', 100),
+                   ('same', 'same.md', 'markdown', 100),
                    ('image', 'image.png', 'image', 100);
                  INSERT INTO note_file_marks VALUES ('restamped', 90, 7, 7);
                  INSERT INTO yjs_updates (doc_id, seq, update_blob, created_at) VALUES
-                   ('local.old', 4, x'00', 100),
+                   ('local.old', 4, x'00', 99),
+                   ('local.same', 1, x'00', 100),
                    ('old', 2, x'00', 99),
                    ('local.moved', 1, x'00', 101),
                    ('local.kept', 1, x'00', 100);",
@@ -124,12 +127,12 @@ fn the_open_marks_only_the_unmarked_rows_whose_body_is_not_ahead() {
                 kept,
                 "a mark is kept"
             );
-            ["old", "restamped", "moved", "image"]
+            ["old", "restamped", "moved", "same", "image"]
                 .iter()
                 .map(|id| note_files::stamped_mark(conn, id))
                 .collect::<Result<Vec<_>, _>>()
         })
         .expect("mark");
     let at = |server, local| Some(note_files::LogMark { server, local });
-    assert_eq!(marks, [at(3, 5), at(1, 1), None, None]);
+    assert_eq!(marks, [at(3, 5), at(1, 1), None, None, None]);
 }

@@ -49,13 +49,18 @@ export class TypingHold {
     this.clearTimer()
   }
 
+  /**
+   * A composition that begins after the one that ran at hold start ended is held like typing.
+   * That one's end does not clear `composingAtHold`: ProseMirror commits its last text after the
+   * plugin hears `compositionend`.
+   */
   compositionStarted(): void {
+    if (!this.composing) this.composingAtHold = false
     this.composing = true
   }
 
   compositionEnded(): void {
     this.composing = false
-    this.composingAtHold = false
     for (const ended of this.compositionEnds) ended()
   }
 

@@ -75,6 +75,20 @@ describe('typing hold plugin', () => {
     expect(view.state.doc.textContent).toBe('more composed first words')
   })
 
+  it('takes the text ProseMirror commits after the end of a composition that ran when the hold began', () => {
+    const { view, hold } = mount()
+    composing(view, true)
+    hold.compositionStarted()
+    hold.hold(1, 2000)
+    view.dispatch(view.state.tr.insertText('漢', 3).setMeta('composition', 1))
+
+    // The plugin hears compositionend before ProseMirror, which then commits the pending text.
+    view.dom.dispatchEvent(new CompositionEvent('compositionend'))
+    composing(view, false)
+    view.dispatch(view.state.tr.insertText('字', 4).setMeta('composition', 1))
+    expect(view.state.doc.textContent).toBe('漢字first words')
+  })
+
   it('refuses a composition that begins while held, and takes it once released', () => {
     const { view, hold } = mount()
     hold.hold(1, 2000)

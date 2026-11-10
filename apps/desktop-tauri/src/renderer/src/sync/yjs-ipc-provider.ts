@@ -43,9 +43,9 @@ const EXTERNAL_ORIGIN = 2
 /** The host waits this long for the window's answer (`BARRIER_WAIT`). */
 const BARRIER_WAIT_MS = 1500
 /**
- * A hold no release ends is let go after this long: the host's wait for the windows' answers,
- * which another window may use up, then 2 s for the host to take the vault's rows and apply the
- * edit.
+ * A hold no release ends is let go this long after its barrier came: the host's wait for the
+ * windows' answers, which another window may use up, then 2 s for the host to take the vault's
+ * rows and apply the edit.
  */
 const HOLD_MS = BARRIER_WAIT_MS + 2000
 
@@ -147,6 +147,12 @@ export class YjsIpcProvider extends Observable<string> {
   private opening: Promise<unknown> | null = null
   /** An open was sent, so the teardown closes the note. */
   private opened = false
+  /**
+   * Barriers being answered whose hold has not begun (a composition runs, or its text settles),
+   * and whether the edit each waits for already applied or the host released it: then the hold
+   * would begin after its end and refuse typing until its deadline.
+   */
+  private readonly unheld = new Map<number, boolean>()
   /** Serialises rebinds so two ready events in a row cannot interleave handshakes. */
   private rebinding: Promise<void> | null = null
   private readonly canRebind: (readyVaultPath: string | null | undefined) => boolean
@@ -391,13 +397,20 @@ export class YjsIpcProvider extends Observable<string> {
     if (this.purged || frame.byteLength < 2) return
     if (frame[0] === BARRIER_FRAME || frame[0] === RELEASE_FRAME) {
       const barrier = new DataView(frame.buffer, frame.byteOffset + 1, 4).getUint32(0, true)
-      if (frame[0] === BARRIER_FRAME) void this.answerBarrier(channel, barrier)
-      else typingHoldOf(this.doc).release(barrier)
+      if (frame[0] === BARRIER_FRAME) {
+        void this.answerBarrier(channel, barrier)
+        return
+      }
+      if (this.unheld.has(barrier)) this.unheld.set(barrier, true)
+      typingHoldOf(this.doc).release(barrier)
       return
     }
     // The outside edit a hold waits for: typing from now on lands in the blocks it makes, and
     // the editor's own changes in answer to it (a link it makes a chip of) must apply.
-    if (frame[0] === EXTERNAL_ORIGIN) typingHoldOf(this.doc).release()
+    if (frame[0] === EXTERNAL_ORIGIN) {
+      for (const barrier of this.unheld.keys()) this.unheld.set(barrier, true)
+      typingHoldOf(this.doc).release()
+    }
     // Every origin, another window's, the server's, a file edit or the app's, applies as
     // 'remote', so this provider sends none of them back.
     Y.applyUpdate(this.doc, frame.subarray(1), 'remote')
@@ -408,13 +421,18 @@ export class YjsIpcProvider extends Observable<string> {
    * in progress ends first (it is never cut), then new typing is held, the queued typing goes,
    * and the host hears the answer. The hold lasts until the edit's frame applies, or the release
    * frame that follows it: typing made before the frame would land in blocks the edit deleted.
-   * A composition that outlasts the host's wait is left alone, and the host does not wait for
-   * it.
+   * An edit or release that came before the hold would begin leaves nothing to hold for. A
+   * composition that outlasts the host's wait is left alone, and the host does not wait for it.
    */
   private async answerBarrier(channel: Channel<ArrayBuffer>, barrier: number): Promise<void> {
     const hold = typingHoldOf(this.doc)
-    if (!(await hold.whenNotComposing(BARRIER_WAIT_MS)) || channel !== this.channel) return
-    hold.hold(barrier, HOLD_MS)
+    const came = Date.now()
+    this.unheld.set(barrier, false)
+    const ended = await hold.whenNotComposing(BARRIER_WAIT_MS)
+    const landed = this.unheld.get(barrier) === true
+    this.unheld.delete(barrier)
+    if (!ended || channel !== this.channel) return
+    if (!landed) hold.hold(barrier, HOLD_MS - (Date.now() - came))
     await this.flush().catch((err: unknown) => {
       log.error('An outside edit applies over edits the host did not store', {
         noteId: this.noteId,
