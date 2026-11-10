@@ -114,10 +114,11 @@ fn a_record_that_never_takes_the_edit_lets_the_row_move_on() {
     ));
 }
 
-/// The write-back tells an outside text replaced only for the outside edit the consumer read
-/// last, never for bytes the app wrote.
+/// The write-back tells an outside text replaced only for an outside edit the body did not take
+/// (`body::outside_edit`, typing won): one the body took is its text (#4124), and bytes the app
+/// wrote are its own.
 #[test]
-fn an_outside_edit_read_is_recorded_for_the_write_back_and_an_own_write_is_not() {
+fn a_fed_outside_edit_and_an_own_write_are_not_recorded_for_the_write_back() {
     let f = fixture();
     f.write("a.md", "first\n");
     f.added("a.md");
@@ -130,7 +131,7 @@ fn an_outside_edit_read_is_recorded_for_the_write_back_and_an_own_write_is_not()
 
     f.write("a.md", "edited outside\n");
     assert_eq!(f.changed(&id, "a.md"), Step::Done);
-    assert!(own.is_outside(&id, &content_hash("edited outside\n")));
+    assert!(!own.is_outside(&id, &content_hash("edited outside\n")));
 
     let saved = "saved\n";
     f.write("a.md", saved);

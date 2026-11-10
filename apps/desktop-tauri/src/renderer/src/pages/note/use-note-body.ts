@@ -7,7 +7,8 @@ import {
   notesService,
   onNoteEventsDropped,
   onNoteUpdated,
-  type Note
+  type Note,
+  type NoteSaveResponse
 } from '@/services/notes-service'
 import { registerPendingSave, unregisterPendingSave } from '@/lib/save-registry'
 import { createLogger } from '@/lib/logger'
@@ -59,8 +60,8 @@ interface SaveWindow {
   dropped: boolean
   /** A save's reply already told the user it went over an outside edit. */
   toasted: boolean
-  /** The last save to answer. */
-  last: { markdown: string; result: NoteUpdateResponse } | null
+  /** The last save to answer whose replaced file the core kept as a version (#4110). */
+  kept: { markdown: string; result: NoteSaveResponse } | null
 }
 
 export interface NoteBodyOptions {
@@ -218,7 +219,8 @@ export function useNoteBody(noteId: string | undefined, options: NoteBodyOptions
   // The last save of a window ended. Its texts that are no save's own are outside edits, the
   // text from before the saves too (a revert); the file read again tells where they went: a
   // file that is not the newest save's text holds an edit that landed after the saves, and a
-  // file at that text means a save went over them, which the user is told once.
+  // file at that text means a save went over them, which the user is told once when a save's
+  // answer says the core kept what it replaced as a version (#4110).
   const settleSaves = useCallback(
     (window: SaveWindow) => {
       const outside = window.outside.filter((text) => !window.own.has(text))
@@ -234,9 +236,9 @@ export function useNoteBody(noteId: string | undefined, options: NoteBodyOptions
           }
           // The late echo of the save before the window is no edit to tell about.
           const last = outside.findLast((text) => text !== window.base)
-          if (last === undefined || window.toasted || !window.last) return
+          if (last === undefined || window.toasted || !window.kept) return
           outsideEdit.held(noteId, last)
-          outsideEdit.saved(noteId, window.last.markdown, window.last.result)
+          outsideEdit.saved(noteId, window.kept.markdown, window.kept.result)
         })
         .catch((readError: unknown) => log.warn('the note was not read again', readError))
     },
@@ -280,7 +282,7 @@ export function useNoteBody(noteId: string | undefined, options: NoteBodyOptions
           outside: [],
           dropped: false,
           toasted: false,
-          last: null
+          kept: null
         }
       }
       const window = saveWindowRef.current
@@ -308,7 +310,7 @@ export function useNoteBody(noteId: string | undefined, options: NoteBodyOptions
           notSaved(id, result.error, result)
         }
         window.toasted = outsideEdit.saved(id, markdown, result) || window.toasted
-        window.last = { markdown, result }
+        if (result.keptReplaced) window.kept = { markdown, result }
         answered(result)
         return result
       } finally {

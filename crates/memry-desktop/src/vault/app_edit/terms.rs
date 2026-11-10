@@ -29,12 +29,14 @@ pub enum Edited {
     /// The file holds the new text. `held`: the document took it too, and the row says so;
     /// otherwise the watcher brings the file to the document as an outside edit.
     /// `kept_outside`: a save's body went over an outside edit not fed yet, kept as a version
-    /// first; the editor had no event for it. `text`: the file as written, byte order mark
-    /// included.
+    /// first; the editor had no event for it. `kept`: the file the edit replaced is a version
+    /// (kept now, or already kept with that text), so the user can be told it is in version
+    /// history (#4110). `text`: the file as written, byte order mark included.
     Wrote {
         hash: String,
         held: bool,
         kept_outside: bool,
+        kept: bool,
         text: String,
     },
     /// The closure changed nothing; `text` is the file as read.

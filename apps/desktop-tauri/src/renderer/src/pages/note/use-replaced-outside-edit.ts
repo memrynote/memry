@@ -1,8 +1,7 @@
 import { useCallback, useEffect, useLayoutEffect, useMemo, useRef } from 'react'
 import { toast } from 'sonner'
 import { useT } from '@memry/i18n/renderer'
-import type { NoteUpdateResponse } from '@memry/contracts/notes-api'
-import { onNoteOutsideEditKept } from '@/services/notes-service'
+import { onNoteOutsideEditKept, type NoteSaveResponse } from '@/services/notes-service'
 import { useTabActionsOptional } from '@/contexts/tabs'
 
 /** A note tab's view state that asks the page to open the note's version history once. */
@@ -11,10 +10,12 @@ export const VERSION_HISTORY_REQUEST_KEY = 'versionHistory'
 /**
  * An outside edit (an agent, another editor) that arrives while typing is not
  * saved yet stays out of the editor, and the typing's save then replaces it on
- * disk. The core keeps the replaced file as a version, so the user is told once
- * that save lands, with a way into version history. A save that lands before
- * the watcher reports an outside edit leaves the editor no event to hold; the
- * save's answer says so instead (`keptOutsideEdit`). Typing the core holds and the file does
+ * disk. The user is told once that save lands, with a way into version history,
+ * when its answer says the core kept the replaced file as a version
+ * (`keptReplaced`): a save sent before the editor heard of the edit can replace it
+ * with none (#4110). A save that lands before the watcher reports an outside edit
+ * leaves the editor no event to hold; the save's answer says so instead
+ * (`keptOutsideEdit`). Typing the core holds and the file does
  * not yet wins there too, and the core says so (`notes:outside-edit-kept`). Held edits are kept
  * per note: the save the editor sends when it closes, or moves to another note, answers after
  * the next note's are held (#4088). That save answers after the editor moved on, so the toast
@@ -33,10 +34,10 @@ export function useReplacedOutsideEdit(
   /** Hands over the note's held outside edit, and holds it no more. */
   take: (noteId: string) => string | undefined
   /**
-   * The typing's save answered: tells the user when it replaced a different outside body, and
-   * answers whether it did.
+   * The typing's save answered: tells the user when it replaced a different outside body and the
+   * core kept that as a version, and answers whether it did.
    */
-  saved: (noteId: string, content: string, result: NoteUpdateResponse) => boolean
+  saved: (noteId: string, content: string, result: NoteSaveResponse) => boolean
 } {
   const { t } = useT('notes')
   const tabs = useTabActionsOptional()
@@ -111,7 +112,7 @@ export function useReplacedOutsideEdit(
         const held = heldRef.current.get(id)
         heldRef.current.delete(id)
         const replaced = held !== undefined && held !== content
-        if (!replaced && !result.keptOutsideEdit) return false
+        if (!result.keptReplaced || (!replaced && !result.keptOutsideEdit)) return false
         toastReplaced(id)
         return true
       }

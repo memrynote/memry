@@ -110,9 +110,14 @@ fn a_save_over_an_outside_edit_the_editor_never_showed_keeps_it_however_small() 
     let (e, notes, _) = opened(&[("Plan.md", PLAN)]);
     let open = e.session.current().unwrap();
     let id = id_at(&e, "Plan.md");
-    notes.update(&open, save(&id, "Second text\n")).unwrap();
+    let first = notes.update(&open, save(&id, "Second text\n")).unwrap();
+    assert!(
+        first.kept_replaced,
+        "the run's first save keeps the file it found"
+    );
     // Another editor's save of the note: the run's own, under ten words, so no version.
-    notes.update(&open, save(&id, "Third text\n")).unwrap();
+    let other = notes.update(&open, save(&id, "Third text\n")).unwrap();
+    assert!(!other.kept_replaced);
     assert_eq!(files(&e, &id), [PLAN]);
 
     // The editor that held that save off writes its typing over it (#4088).
@@ -120,10 +125,32 @@ fn a_save_over_an_outside_edit_the_editor_never_showed_keeps_it_however_small() 
         keep_replaced: true,
         ..save(&id, "Second text, typed on\n")
     };
-    notes.update(&open, over).unwrap();
+    let over = notes.update(&open, over).unwrap();
+    assert!(
+        over.kept_replaced,
+        "the reply says the replaced text is a version"
+    );
     assert_eq!(e.body(&id), "Second text, typed on");
     let third = "---\nstatus: open\n---\nThird text\n";
     assert_eq!(files(&e, &id), [third, PLAN]);
+}
+
+/// A save sent before its editor heard of another editor's save lands over it with no version
+/// (#4110): the run's own file, under ten words. Its reply says no version was kept, so the
+/// editor does not tell the user one was.
+#[test]
+fn a_save_over_the_runs_own_small_save_says_no_version_was_kept() {
+    let (e, notes, _) = opened(&[("Plan.md", PLAN)]);
+    let open = e.session.current().unwrap();
+    let id = id_at(&e, "Plan.md");
+    notes.update(&open, save(&id, "Second text\n")).unwrap();
+    // The note tab's save of a small edit, then the card's save sent before it heard of it.
+    notes.update(&open, save(&id, "Second tab text\n")).unwrap();
+    let card = notes
+        .update(&open, save(&id, "Second card text\n"))
+        .unwrap();
+    assert!(!card.kept_replaced);
+    assert_eq!(files(&e, &id), [PLAN]);
 }
 
 #[test]
@@ -259,7 +286,8 @@ fn a_save_over_the_runs_own_file_keeps_it_when_ten_words_move() {
 
     let own = e.read("Plan.md");
     let longer = "Second text, two more, then one two three four five six seven eight nine ten\n";
-    notes.update(&open, save(&id, longer)).unwrap();
+    let saved = notes.update(&open, save(&id, longer)).unwrap();
+    assert!(saved.kept_replaced);
     assert_eq!(files(&e, &id), [own.as_str(), PLAN]);
 }
 
