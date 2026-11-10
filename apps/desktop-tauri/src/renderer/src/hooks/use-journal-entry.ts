@@ -57,6 +57,26 @@ interface PendingTagsEdit {
 
 type JournalSaveInput = { date: string; content?: string } & PendingTagsEdit
 
+/** How long a write of a day waits for the day's write before it, which may never answer. */
+const DAY_WRITE_WAIT_MS = 10_000
+
+/**
+ * Ends when `previous` answers, or after `DAY_WRITE_WAIT_MS`: a write that never answers would
+ * otherwise hold the day's later writes, its reread, and the save flag every day's saves wait on.
+ */
+function afterDayWrite(previous: Promise<unknown>, day: string): Promise<unknown> {
+  let timer: ReturnType<typeof setTimeout> | undefined
+  const waited = new Promise<void>((resolve) => {
+    timer = setTimeout(() => {
+      log.warn(
+        `A write of ${day} has not answered in ${DAY_WRITE_WAIT_MS} ms; the next one goes out`
+      )
+      resolve()
+    }, DAY_WRITE_WAIT_MS)
+  })
+  return Promise.race([previous, waited]).finally(() => clearTimeout(timer))
+}
+
 /**
  * Whether two texts of a day are the same once trimmed, line ends aside: a save of one over the
  * other keeps the file's bytes (`journal/update.rs`, `FileChange::text`).
@@ -195,7 +215,8 @@ export function useJournalEntry(date: string): UseJournalEntryResult {
   // date switch sends for the day it left, and the editor's late report of a day it left.
   const queueDaySave = useCallback(<T>(day: string, write: () => Promise<T>): Promise<T> => {
     const saves = daySavesRef.current
-    const sent = (saves.get(day) ?? Promise.resolve()).then(write)
+    const previous = saves.get(day)
+    const sent = (previous ? afterDayWrite(previous, day) : Promise.resolve()).then(write)
     const done: Promise<unknown> = sent
       .catch(() => undefined)
       .finally(() => {
@@ -394,9 +415,10 @@ export function useJournalEntry(date: string): UseJournalEntryResult {
   // for every write of the day sent before it (`queueDaySave`).
   const readDayAgain = useCallback(
     (day: string) => {
+      // Taken now: a save started while the read waits for the day's writes is newer than it.
+      const asked = dayChangesRef.current
       const read = (open: string): void => {
         const queryKey = journalKeys.entry(open)
-        const asked = dayChangesRef.current
         journalService
           .getEntry(open)
           .then((fetched) => {
@@ -420,7 +442,7 @@ export function useJournalEntry(date: string): UseJournalEntryResult {
           })
       }
       const writes = daySavesRef.current.get(day)
-      if (writes) void writes.then(() => read(day))
+      if (writes) void afterDayWrite(writes, day).then(() => read(day))
       else read(day)
     },
     [queryClient]

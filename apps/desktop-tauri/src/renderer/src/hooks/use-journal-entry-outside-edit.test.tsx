@@ -609,6 +609,87 @@ describe('useJournalEntry: outside edits of the open day', () => {
       expect(hook.result.current.entry?.content).toBe('Typed. Late.')
     })
 
+    // The read of the reopened day waits for the switch save; typing saved during that wait is
+    // newer than what the read can answer. Taken as the read's start, that save would not drop
+    // it: the editor would go back to the file before it, and the next keystroke would save over
+    // the typing, of which the core keeps no version (#4088).
+    it('drops the read of the reopened day when a save started while it waited', async () => {
+      const hook = await mount()
+      const first = holdNextSave()
+      await startSave(hook.result, 'Typed.')
+      act(() => {
+        hook.result.current.updateContent('Typed. More.')
+      })
+      const sent = holdNextSave()
+      await openDay(hook, NEXT)
+      await openDay(hook, DAY)
+      files[DAY] = 'Typed.'
+      await first.finish('Typed.')
+      expect(savesOf(DAY)).toBe(2)
+
+      const again = holdNextSave()
+      act(() => {
+        hook.result.current.updateContent('Typed. More. Again.')
+      })
+      await act(async () => {
+        await vi.advanceTimersByTimeAsync(1_000)
+      })
+      expect(savesOf(DAY)).toBe(2)
+      const answerRead = holdNextRead()
+      files[DAY] = 'Typed. More.'
+      await sent.finish('Typed. More.')
+      expect(savesOf(DAY)).toBe(3)
+      files[DAY] = 'Typed. More. Again.'
+      await again.finish('Typed. More. Again.')
+      await answerRead()
+      await act(async () => {
+        await vi.advanceTimersByTimeAsync(0)
+      })
+
+      expect(hook.result.current.externalUpdateCount).toBe(0)
+      expect(hook.result.current.entry?.content).toBe('Typed. More. Again.')
+    })
+
+    // A write that never answers would hold the day's later writes, its reread, and through the
+    // save flag every other day's saves, until the app quits (#4088).
+    it('sends the later writes when a write of the day never answers', async () => {
+      const hook = await mount()
+      const first = holdNextSave()
+      await startSave(hook.result, 'Typed.')
+      act(() => {
+        hook.result.current.updateContent('Typed. More.')
+      })
+      // oxlint-disable-next-line typescript/no-misused-promises -- mockImplementation is typed as a void-returning callback; a Promise that never settles is the write that never answers
+      updateEntry.mockImplementationOnce(() => new Promise<JournalEntry>(() => {}))
+      await openDay(hook, NEXT)
+      await openDay(hook, DAY)
+      await first.finish('Typed.')
+      expect(savesOf(DAY)).toBe(2)
+
+      act(() => {
+        hook.result.current.updateContent('Typed. After.')
+      })
+      await act(async () => {
+        await vi.advanceTimersByTimeAsync(1_000)
+      })
+      expect(savesOf(DAY)).toBe(2)
+      expect(hook.result.current.isSaving).toBe(true)
+      await act(async () => {
+        await vi.advanceTimersByTimeAsync(10_000)
+      })
+
+      expect(updateEntry).toHaveBeenLastCalledWith({ date: DAY, content: 'Typed. After.' })
+      expect(hook.result.current.isSaving).toBe(false)
+      await openDay(hook, NEXT)
+      act(() => {
+        hook.result.current.updateContent('Next typed.')
+      })
+      await act(async () => {
+        await vi.advanceTimersByTimeAsync(1_000)
+      })
+      expect(updateEntry).toHaveBeenLastCalledWith({ date: NEXT, content: 'Next typed.' })
+    })
+
     it('sends the typing again when the save running fails', async () => {
       const hook = await mount()
       let fail: () => void = () => {}
