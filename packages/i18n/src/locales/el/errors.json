@@ -164,6 +164,10 @@
     "removeDeviceFailed": "Αποτυχία αφαίρεσης της συσκευής",
     "renameDeviceFailed": "Αποτυχία μετονομασίας της συσκευής",
     "initiateOAuthFailed": "Αποτυχία έναρξης του OAuth",
+    "retryOAuthFailed": "Δεν ήταν δυνατό το επανάνοιγμα του προγράμματος περιήγησης για τη σύνδεση. Ξεκινήστε ξανά τη σύνδεση.",
+    "oauthExpired": "Η σύνδεση έληξε. Δοκιμάστε ξανά.",
+    "oauthInvalidResponse": "Δεν ήταν δυνατή η λήψη έγκυρου συνδέσμου σύνδεσης. Δοκιμάστε ξανά.",
+    "oauthCancelled": "Η σύνδεση με Google ακυρώθηκε. Δοκιμάστε ξανά.",
     "setupFirstDeviceOAuthFailed": "Αποτυχία ρύθμισης της πρώτης συσκευής μέσω OAuth",
     "confirmRecoveryPhraseFailed": "Αποτυχία επιβεβαίωσης της φράσης ανάκτησης"
   },

@@ -164,6 +164,10 @@
     "removeDeviceFailed": "Das Gerät konnte nicht entfernt werden",
     "renameDeviceFailed": "Das Gerät konnte nicht umbenannt werden",
     "initiateOAuthFailed": "OAuth konnte nicht gestartet werden",
+    "retryOAuthFailed": "Der Browser für die Anmeldung konnte nicht erneut geöffnet werden. Starte die Anmeldung neu.",
+    "oauthExpired": "Die Anmeldung ist abgelaufen. Bitte versuche es erneut.",
+    "oauthInvalidResponse": "Es konnte kein gültiger Anmeldelink abgerufen werden. Bitte versuche es erneut.",
+    "oauthCancelled": "Die Anmeldung mit Google wurde abgebrochen. Bitte versuche es erneut.",
     "setupFirstDeviceOAuthFailed": "Das erste Gerät konnte nicht über OAuth eingerichtet werden",
     "confirmRecoveryPhraseFailed": "Die Wiederherstellungsphrase konnte nicht bestätigt werden"
   },

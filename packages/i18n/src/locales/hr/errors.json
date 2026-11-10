@@ -164,6 +164,10 @@
     "removeDeviceFailed": "Uklanjanje uređaja nije uspjelo",
     "renameDeviceFailed": "Preimenovanje uređaja nije uspjelo",
     "initiateOAuthFailed": "Pokretanje OAuth prijave nije uspjelo",
+    "retryOAuthFailed": "Ponovno otvaranje preglednika za prijavu nije uspjelo. Pokrenite prijavu ispočetka.",
+    "oauthExpired": "Prijava je istekla. Pokušajte ponovno.",
+    "oauthInvalidResponse": "Nije moguće dobiti valjanu poveznicu za prijavu. Pokušajte ponovno.",
+    "oauthCancelled": "Prijava putem Googlea je otkazana. Pokušajte ponovno.",
     "setupFirstDeviceOAuthFailed": "Postavljanje prvog uređaja putem OAuth-a nije uspjelo",
     "confirmRecoveryPhraseFailed": "Potvrda fraze za oporavak nije uspjela"
   },

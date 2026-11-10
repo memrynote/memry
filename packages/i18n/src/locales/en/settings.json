@@ -2405,7 +2405,6 @@
   "phaseI": {
     "errors": {
       "failedToUpdateTagColor": "Failed to update tag color",
-      "googleSignInFailed": "Google sign-in failed",
       "failedToSendVerificationCode": "Failed to send verification code",
       "invalidVerificationCode": "Invalid verification code",
       "accountSetupFailed": "Account setup failed",

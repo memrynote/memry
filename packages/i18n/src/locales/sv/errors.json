@@ -164,6 +164,10 @@
     "removeDeviceFailed": "Det gick inte att ta bort enheten",
     "renameDeviceFailed": "Det gick inte att byta namn på enheten",
     "initiateOAuthFailed": "Det gick inte att starta OAuth",
+    "retryOAuthFailed": "Det gick inte att öppna inloggningswebbläsaren igen. Starta inloggningen på nytt.",
+    "oauthExpired": "Inloggningen har gått ut. Försök igen.",
+    "oauthInvalidResponse": "Det gick inte att hämta en giltig inloggningslänk. Försök igen.",
+    "oauthCancelled": "Inloggningen med Google avbröts. Försök igen.",
     "setupFirstDeviceOAuthFailed": "Det gick inte att konfigurera den första enheten via OAuth",
     "confirmRecoveryPhraseFailed": "Det gick inte att bekräfta återställningsfrasen"
   },

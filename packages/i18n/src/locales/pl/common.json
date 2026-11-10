@@ -1263,6 +1263,7 @@
     "label": "Pomoc i opinie",
     "reportBug": "Zgłoś błąd",
     "requestFeature": "Zaproponuj funkcję",
+    "joinTestflight": "Dołącz do TestFlight",
     "starOnGithub": "Daj gwiazdkę w serwisie GitHub",
     "version": "MemryNote {version}",
     "whatsNew": "Co nowego",
@@ -1647,5 +1648,29 @@
       "agentModel": "Domyślny",
       "date": "13 października"
     }
+  },
+  "iosBeta": {
+    "badge": "Nowość · TestFlight",
+    "title": "Memry na iPhone’a jest w becie",
+    "promptBody": "Twój sejf na telefonie, szyfrowany end-to-end. Zostaw e-mail, a Apple wyśle Ci zaproszenie do TestFlight.",
+    "emailPlaceholder": "you@example.com",
+    "emailLabel": "Adres e-mail do zaproszenia TestFlight",
+    "submit": "Odbierz zaproszenie",
+    "sending": "Wysyłanie…",
+    "listNote": "Dodamy Cię też do listy bety na iPhone’a, żebyś był na bieżąco z premierą. Możesz się wypisać w dowolnej chwili.",
+    "error": "Nie udało się wysłać zaproszenia do TestFlight. Spróbuj ponownie.",
+    "sentTitle": "Sprawdź skrzynkę",
+    "sentBody": "Apple wysłało zaproszenie na {email}. Może to potrwać kilka minut, a wiadomość może trafić do spamu.",
+    "stepInstall": "Zainstaluj TestFlight z App Store",
+    "stepOpen": "Otwórz zaproszenie na iPhonie",
+    "stepSignIn": "Zaloguj się do Memry na telefonie",
+    "done": "Gotowe",
+    "dialogTitle": "Dołącz do Memry na iPhone’a",
+    "dialogBody": "Apple wyśle Ci zaproszenie do TestFlight e-mailem. Użyj adresu e-mail Apple ID z Twojego iPhone’a.",
+    "entryTitle": "Beta na iPhone’a już działa",
+    "entrySubtitle": "Przez TestFlight",
+    "entryJoin": "Dołącz do bety",
+    "entrySent": "Zaproszenie wysłano na {email}",
+    "sendAgain": "Wyślij ponownie"
   }
 }

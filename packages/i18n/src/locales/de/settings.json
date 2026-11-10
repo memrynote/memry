@@ -1110,7 +1110,16 @@
       "sending": "Code wird gesendet…"
     },
     "oauth": {
-      "google": "Weiter mit Google"
+      "google": "Weiter mit Google",
+      "waiting": "Schließe die Anmeldung mit Google in deinem Browser ab.",
+      "browserUnavailable": "Dein Browser konnte nicht geöffnet werden.",
+      "manualInstructions": "Kopiere den Anmeldelink und öffne ihn in einem Browser auf diesem Computer. Lass memrynote während der Anmeldung geöffnet.",
+      "linkLabel": "Anmeldelink",
+      "copyLink": "Anmeldelink kopieren",
+      "retryBrowser": "Browser erneut öffnen",
+      "copied": "Anmeldelink kopiert.",
+      "copyFailed": "Der Anmeldelink konnte nicht kopiert werden. Markiere ihn im Feld oben und kopiere ihn von dort.",
+      "cancel": "Andere Anmeldemethode verwenden"
     },
     "otp": {
       "title": "Bestätigungscode eingeben",
@@ -2396,7 +2405,6 @@
   "phaseI": {
     "errors": {
       "failedToUpdateTagColor": "Die Tag-Farbe konnte nicht aktualisiert werden",
-      "googleSignInFailed": "Die Google-Anmeldung ist fehlgeschlagen",
       "failedToSendVerificationCode": "Der Bestätigungscode konnte nicht gesendet werden",
       "invalidVerificationCode": "Ungültiger Bestätigungscode",
       "accountSetupFailed": "Die Kontoeinrichtung ist fehlgeschlagen",

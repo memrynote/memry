@@ -164,6 +164,10 @@
     "removeDeviceFailed": "Gagal mengalih keluar peranti",
     "renameDeviceFailed": "Gagal menamakan semula peranti",
     "initiateOAuthFailed": "Gagal memulakan OAuth",
+    "retryOAuthFailed": "Tidak dapat membuka semula pelayar untuk log masuk. Mulakan log masuk sekali lagi.",
+    "oauthExpired": "Log masuk telah tamat tempoh. Sila cuba lagi.",
+    "oauthInvalidResponse": "Tidak dapat mendapatkan pautan log masuk yang sah. Sila cuba lagi.",
+    "oauthCancelled": "Log masuk Google dibatalkan. Sila cuba lagi.",
     "setupFirstDeviceOAuthFailed": "Gagal menyediakan peranti pertama melalui OAuth",
     "confirmRecoveryPhraseFailed": "Gagal mengesahkan frasa pemulihan"
   },

@@ -164,6 +164,10 @@
     "removeDeviceFailed": "Kunne ikke fjerne enheten",
     "renameDeviceFailed": "Kunne ikke gi enheten nytt navn",
     "initiateOAuthFailed": "Kunne ikke starte OAuth",
+    "retryOAuthFailed": "Kunne ikke åpne innloggingsnettleseren på nytt. Start innloggingen på nytt.",
+    "oauthExpired": "Innloggingen har utløpt. Prøv igjen.",
+    "oauthInvalidResponse": "Kunne ikke hente en gyldig innloggingslenke. Prøv igjen.",
+    "oauthCancelled": "Google-innloggingen ble avbrutt. Prøv igjen.",
     "setupFirstDeviceOAuthFailed": "Kunne ikke sette opp den første enheten med OAuth",
     "confirmRecoveryPhraseFailed": "Kunne ikke bekrefte gjenopprettingsfrasen"
   },

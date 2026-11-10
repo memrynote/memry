@@ -1263,6 +1263,7 @@
     "label": "Súgó és visszajelzés",
     "reportBug": "Hiba bejelentése",
     "requestFeature": "Funkció kérése",
+    "joinTestflight": "Csatlakozás a TestFlighthoz",
     "starOnGithub": "Csillagozás a GitHubon",
     "version": "MemryNote {version}",
     "whatsNew": "Újdonságok",
@@ -1647,5 +1648,29 @@
       "agentModel": "Alapértelmezett",
       "date": "október 13."
     }
+  },
+  "iosBeta": {
+    "badge": "Új · TestFlight",
+    "title": "A Memry iPhone-ra béta állapotban van",
+    "promptBody": "A tárolója a telefonján, végpontok közötti titkosítással. Adja meg az e-mail-címét, és az Apple TestFlight-meghívót küld.",
+    "emailPlaceholder": "you@example.com",
+    "emailLabel": "E-mail-cím a TestFlight-meghívóhoz",
+    "submit": "Meghívó kérése",
+    "sending": "Küldés…",
+    "listNote": "Felvesszük az iPhone-os béta listájára is, hogy értesítsük az indulásról. Bármikor leiratkozhat.",
+    "error": "Nem sikerült elküldeni a TestFlight-meghívót. Próbálja újra.",
+    "sentTitle": "Nézze meg a postaládáját",
+    "sentBody": "Az Apple elküldte a meghívót ide: {email}. Néhány percig tarthat, és a levélszemét közé is kerülhet.",
+    "stepInstall": "Telepítse a TestFlightot az App Store-ból",
+    "stepOpen": "Nyissa meg a meghívót az iPhone-ján",
+    "stepSignIn": "Jelentkezzen be a Memrybe a telefonján",
+    "done": "Kész",
+    "dialogTitle": "Csatlakozzon a Memry iPhone-os verziójához",
+    "dialogBody": "Az Apple e-mailben küld TestFlight-meghívót. Az iPhone-ján használt Apple ID e-mail-címét adja meg.",
+    "entryTitle": "Elindult az iPhone-os béta",
+    "entrySubtitle": "TestFlighton keresztül",
+    "entryJoin": "Csatlakozás a bétához",
+    "entrySent": "Meghívó elküldve ide: {email}",
+    "sendAgain": "Küldés újra"
   }
 }
