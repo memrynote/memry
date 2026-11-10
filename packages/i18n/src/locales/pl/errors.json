@@ -137,7 +137,6 @@
   },
   "ai": {
     "inlineDisabled": "Edycja AI w tekście jest wyłączona",
-    "listOllamaModelsFailed": "Nie udało się pobrać listy modeli Ollama",
     "writingAssistInvalid": "Nie udało się wysłać tego żądania do modelu AI.",
     "apiKeyMissing": "Dodaj swój klucz API {provider} w Ustawieniach → AI, aby korzystać z narzędzi do pisania.",
     "apiKeyInvalid": "Twój klucz API {provider} został odrzucony. Sprawdź go w Ustawieniach → AI.",

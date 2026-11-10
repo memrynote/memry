@@ -137,7 +137,6 @@
   },
   "ai": {
     "inlineDisabled": "Tekoälyn tekstinsisäinen muokkaus on poistettu käytöstä",
-    "listOllamaModelsFailed": "Ollama-mallien luetteloiminen epäonnistui",
     "writingAssistInvalid": "Pyyntöä ei voitu lähettää tekoälymallille.",
     "apiKeyMissing": "Lisää {provider}-API-avaimesi kohdassa Asetukset → Tekoäly käyttääksesi kirjoitustyökaluja.",
     "apiKeyInvalid": "{provider}-API-avaimesi hylättiin. Tarkista se kohdassa Asetukset → Tekoäly.",

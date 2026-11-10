@@ -1158,8 +1158,7 @@ describe('settings section coverage', () => {
       }
       if (channel === 'ai-inline:get-server-port') return null
       if (channel === 'ai-inline:start-server') return { success: true, port: 59185 }
-      if (channel === 'ai-inline:list-ollama-models')
-        return { success: false, error: 'fetch failed' }
+      if (channel === 'ai-inline:list-models') return { success: false, error: 'fetch failed' }
       return null
     }) as typeof window.electron.ipcRenderer.invoke
 
@@ -1173,6 +1172,46 @@ describe('settings section coverage', () => {
       )
     )
     expect(toast.success).not.toHaveBeenCalledWith('ai.inline.connected {"port":59185}')
+  })
+
+  it('connects a custom endpoint with a typed model and no API key', async () => {
+    const invoke = vi.fn(async (channel: string, payload?: unknown) => {
+      if (channel === 'ai-inline:get-settings') {
+        return {
+          enabled: true,
+          provider: 'custom',
+          model: '',
+          apiKey: '',
+          baseUrl: 'https://openrouter.ai/api/v1'
+        }
+      }
+      if (channel === 'ai-inline:get-server-port') return null
+      if (channel === 'ai-inline:list-models') return { success: true, models: ['openai/gpt-5'] }
+      if (channel === 'ai-inline:set-settings') return { success: true, payload }
+      if (channel === 'ai-inline:start-server') return { success: true, port: 59185 }
+      return null
+    })
+    window.electron.ipcRenderer.invoke = invoke as typeof window.electron.ipcRenderer.invoke
+
+    render(<AIInlineSettings />)
+    expect(await screen.findByDisplayValue('https://openrouter.ai/api/v1')).toBeInTheDocument()
+    const modelInput = screen.getByRole('combobox', { name: 'ai.inline.model' })
+    await waitFor(() =>
+      expect(document.querySelector('datalist option[value="openai/gpt-5"]')).not.toBeNull()
+    )
+
+    fireEvent.change(modelInput, { target: { value: ' anthropic/claude-sonnet-4 ' } })
+    fireEvent.blur(modelInput)
+    await waitFor(() =>
+      expect(invoke).toHaveBeenCalledWith('ai-inline:set-settings', {
+        model: 'anthropic/claude-sonnet-4'
+      })
+    )
+
+    fireEvent.click(screen.getByText('ai.inline.test'))
+    await waitFor(() =>
+      expect(toast.success).toHaveBeenCalledWith('ai.inline.connected {"port":59185}')
+    )
   })
 
   it('loads and updates local agent provider settings', async () => {

@@ -58,12 +58,13 @@ Inline AI uses whichever provider you configured in [Settings → AI Inline](/us
 - **OpenAI** — uses GPT models via API; needs an API key
 - **Anthropic** — uses Claude models via API; needs an API key
 - **Google Gemini** — uses Gemini models via the Google AI API; needs an API key
+- **Custom** — any OpenAI-compatible endpoint, such as OpenRouter; needs a base URL and, if the endpoint requires one, an API key
 
 See [Provider Setup](/user-guide/ai/provider-setup) for configuring each.
 
 ## Privacy
 
-Requests go to whichever provider you chose. With **Ollama**, your text never leaves your machine. With **OpenAI**, **Anthropic**, or **Google Gemini**, the request goes to their API — review their data policies before sending sensitive content.
+Requests go to whichever provider you chose. With **Ollama**, your text never leaves your machine. With **OpenAI**, **Anthropic**, **Google Gemini**, or a **Custom** endpoint, the request goes to that API — review their data policies before sending sensitive content.
 
 memrynote never proxies these requests through the sync server. The connection is direct from your device to the provider.
 

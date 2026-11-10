@@ -137,7 +137,6 @@
   },
   "ai": {
     "inlineDisabled": "Editarea AI în linie este dezactivată",
-    "listOllamaModelsFailed": "Nu s-au putut lista modelele Ollama",
     "writingAssistInvalid": "Cererea nu a putut fi trimisă către modelul AI.",
     "apiKeyMissing": "Adaugă cheia API {provider} în Setări → AI pentru a folosi instrumentele de scriere.",
     "apiKeyInvalid": "Cheia API {provider} a fost respinsă. Verifică-o în Setări → AI.",

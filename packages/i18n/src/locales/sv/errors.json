@@ -137,7 +137,6 @@
   },
   "ai": {
     "inlineDisabled": "AI-redigering direkt i texten är avstängd",
-    "listOllamaModelsFailed": "Det gick inte att lista Ollama-modeller",
     "writingAssistInvalid": "Den begäran kunde inte skickas till AI-modellen.",
     "apiKeyMissing": "Lägg till din {provider}-API-nyckel i Inställningar → AI för att använda skrivverktygen.",
     "apiKeyInvalid": "Din {provider}-API-nyckel avvisades. Kontrollera den i Inställningar → AI.",
