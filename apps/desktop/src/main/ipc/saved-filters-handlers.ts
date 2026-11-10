@@ -13,7 +13,8 @@ import {
   SavedFilterUpdateSchema,
   SavedFilterDeleteSchema,
   SavedFilterReorderSchema,
-  type SavedFilter
+  type SavedFilter,
+  type SavedFilterUpdateInput
 } from '@memry/contracts/saved-filters-api'
 import { createValidatedHandler, createHandler } from './validate'
 import { requireDatabase } from '../database'
@@ -45,9 +46,39 @@ function toApiFilter(
     name: dbFilter.name,
     // oxlint-disable-next-line typescript/no-unsafe-type-assertion -- value from an untyped boundary (database, parser or runtime); the asserted shape is what its producer writes
     config: dbFilter.config as SavedFilter['config'],
+    // oxlint-disable-next-line typescript/no-unsafe-type-assertion -- stored verbatim from this build's schema or a peer's payload; the evaluator skips what it does not know
+    expression: (dbFilter.expression ?? null) as SavedFilter['expression'],
     position: dbFilter.position,
     createdAt: dbFilter.createdAt
   }
+}
+
+function isPlainObject(value: unknown): value is Record<string, unknown> {
+  return typeof value === 'object' && value !== null && !Array.isArray(value)
+}
+
+/**
+ * The stored config with an edit merged in, `config` and `config.filters` key
+ * by key, so a key this build does not model (a newer build's) survives the
+ * edit (docs/protocol §13.7.14). Writers send every key they mean to change,
+ * cleared ones included (`folderPaths: []`), so a merge never revives a value.
+ */
+function mergeSavedFilterConfig(
+  stored: unknown,
+  edit: SavedFilterUpdateInput['config'],
+  starred: boolean | undefined
+): Record<string, unknown> {
+  const base = isPlainObject(stored) ? stored : {}
+  const merged: Record<string, unknown> = { ...base }
+  if (edit) {
+    Object.assign(merged, edit)
+    merged.filters = {
+      ...(isPlainObject(base.filters) ? base.filters : {}),
+      ...edit.filters
+    }
+  }
+  if (starred !== undefined) merged.starred = starred
+  return merged
 }
 
 /**
@@ -83,6 +114,7 @@ export function registerSavedFiltersHandlers(): void {
         id,
         name: input.name,
         config: input.config,
+        expression: input.expression ?? null,
         position
       })
 
@@ -100,8 +132,8 @@ export function registerSavedFiltersHandlers(): void {
     createValidatedHandler(SavedFilterUpdateSchema, (input) => {
       const db = requireDatabase()
 
-      // Check if filter exists
-      if (!savedFiltersStore.savedFilterExists(db, input.id)) {
+      const existing = savedFiltersStore.getSavedFilterById(db, input.id)
+      if (!existing) {
         return {
           success: false,
           savedFilter: null,
@@ -109,9 +141,13 @@ export function registerSavedFiltersHandlers(): void {
         }
       }
 
-      const updates: { name?: string; config?: unknown; position?: number } = {}
+      const updates: { name?: string; config?: unknown; expression?: unknown; position?: number } =
+        {}
       if (input.name !== undefined) updates.name = input.name
-      if (input.config !== undefined) updates.config = input.config
+      if (input.config !== undefined || input.starred !== undefined) {
+        updates.config = mergeSavedFilterConfig(existing.config, input.config, input.starred)
+      }
+      if (input.expression !== undefined) updates.expression = input.expression
       if (input.position !== undefined) updates.position = input.position
 
       const filter = savedFiltersStore.updateSavedFilter(db, input.id, updates)
