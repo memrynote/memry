@@ -30,7 +30,26 @@ Sections from top to bottom:
 
 Drag any section item to reorder, or right-click for a context menu.
 
-Inside the **Notes** tree, drag a note or folder to move it. Where you drop on a row decides what happens: the top and bottom edges reorder around that row, while the middle of a folder row drops the item **into** that folder. An empty folder takes a drop the same as a full one, so a folder you just created is ready to receive notes immediately. Notes hold no children, so dropping on a note always reorders. Reordering applies while the section is in **Manual** sort — see below; dropping _into_ a folder works whatever the sort. A moved folder takes everything inside it along, subfolders included. If a folder cannot be moved, for example because a folder with the same name is already there, a message says so and the folder stays where it was.
+Inside the **Notes** tree, drag a note or folder to move it. Where you drop on a row decides what happens: the top and bottom edges reorder around that row, while the middle of a folder row drops the item **into** that folder. An empty folder takes a drop the same as a full one, so a folder you just created is ready to receive notes immediately. A note has nothing to drop into, so dropping on a note always reorders. Reordering applies while the section is in **Manual** sort — see below; dropping _into_ a folder works whatever the sort. A moved folder takes everything inside it along, subfolders included. If a folder cannot be moved, for example because a folder with the same name is already there, a message says so and the folder stays where it was.
+
+### A note and a folder with the same name
+
+When a note `Note A.md` and a folder `Note A/` sit side by side in the same
+folder, the Notes tree shows them as **one row** named "Note A". Click the
+name to open the note; click the arrow to open the folder, which can hold
+notes and folders of its own. The files on disk do not change, so the note
+and the folder stay two separate items in Finder, folder views and sync.
+
+- The names must match exactly, capitals included. Only Markdown notes pair up:
+  a PDF or image with the same name stays a separate row.
+- A note with no folder of that name, and a folder with no note of that name,
+  look the same as before.
+- **Rename** changes the folder and the note together, and so does moving the
+  row to another folder. **Delete** lists both and removes both. Dropping an
+  item on the middle of the row puts it inside the folder. If the new name is
+  already taken at the destination, nothing changes and a message says so.
+- Renaming the note from the editor title or a folder view does not rename the
+  folder, so the row splits back into a note and a folder.
 
 ### Sorting a section
 
@@ -53,6 +72,10 @@ Two things follow from picking a mode:
   derived from the items themselves, so a position you dragged would be
   re-sorted straight over. Dragging an item into a _folder_ or _project_ still
   works in every mode — that is a move, not a reorder.
+- **Notes and folders mix freely in Manual.** Drag a folder above or below a
+  note, or a note above or below a folder, and the level keeps that order. A
+  level you have not mixed keeps its two groups (folders first, or notes first
+  with **Notes before folders**).
 - **Your manual order is kept.** Switching to Name or Modified and back to
   Manual restores the arrangement you made; it is stored, not recomputed.
 
