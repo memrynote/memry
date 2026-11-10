@@ -113,7 +113,74 @@
       "noDueDate": "沒有到期日"
     },
     "repeatTypeRepeating": "重複",
-    "repeatTypeOneTime": "一次性"
+    "repeatTypeOneTime": "一次性",
+    "advanced": {
+      "entry": "進階篩選…",
+      "entryHint": "使用且、或、非的規則",
+      "title": "篩選",
+      "match": "符合",
+      "ofThese": "條件",
+      "matches": {
+        "all": "全部",
+        "any": "任一",
+        "none": "皆不"
+      },
+      "fields": {
+        "title": "標題",
+        "status": "狀態",
+        "priority": "優先順序",
+        "due": "截止日期",
+        "project": "專案",
+        "location": "地點",
+        "tags": "標籤",
+        "repeat": "重複",
+        "hasTime": "有時間"
+      },
+      "ops": {
+        "contains": "包含",
+        "notContains": "不包含",
+        "any": "是下列任一",
+        "none": "不是下列任何",
+        "all": "包含全部",
+        "empty": "為空",
+        "notEmpty": "不為空",
+        "is": "是",
+        "isNot": "不是"
+      },
+      "tagOps": {
+        "any": "包含任一",
+        "all": "包含全部",
+        "none": "不包含任何"
+      },
+      "values": {
+        "repeating": "重複",
+        "oneTime": "一次性",
+        "withTime": "有時間",
+        "withoutTime": "無時間",
+        "customRange": "自訂範圍",
+        "from": "從",
+        "to": "到",
+        "pick": "選擇…",
+        "titlePlaceholder": "標題中的文字"
+      },
+      "addRule": "新增規則",
+      "addGroup": "新增群組",
+      "clear": "清除",
+      "removeRule": "移除規則",
+      "removeGroup": "移除群組",
+      "matchCount": "{count, plural, other {# 個任務符合}}",
+      "skipped": "{count, plural, other {已略過 # 條規則}}",
+      "ruleCount": "{count, plural, other {# 條規則}}",
+      "unknownRule": "來自較新版本的規則",
+      "empty": "尚無規則。新增一條規則以開始篩選。",
+      "summary": {
+        "and": "且",
+        "or": "或",
+        "not": "非"
+      },
+      "editRules": "編輯規則",
+      "clearRules": "清除規則"
+    }
   },
   "quickAdd": {
     "label": "快速新增任務",

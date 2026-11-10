@@ -113,7 +113,74 @@
       "noDueDate": "ללא תאריך יעד"
     },
     "repeatTypeRepeating": "חוזרת",
-    "repeatTypeOneTime": "חד-פעמית"
+    "repeatTypeOneTime": "חד-פעמית",
+    "advanced": {
+      "entry": "מסנן מתקדם…",
+      "entryHint": "כללים עם וגם, או, לא",
+      "title": "מסנן",
+      "match": "התאמה ל",
+      "ofThese": "מאלה",
+      "matches": {
+        "all": "כל",
+        "any": "אחד כלשהו",
+        "none": "אף אחד"
+      },
+      "fields": {
+        "title": "כותרת",
+        "status": "סטטוס",
+        "priority": "עדיפות",
+        "due": "תאריך יעד",
+        "project": "פרויקט",
+        "location": "מיקום",
+        "tags": "תגיות",
+        "repeat": "חזרה",
+        "hasTime": "יש שעה"
+      },
+      "ops": {
+        "contains": "מכיל",
+        "notContains": "לא מכיל",
+        "any": "הוא אחד מ",
+        "none": "אינו אף אחד מ",
+        "all": "יש את כל",
+        "empty": "ריק",
+        "notEmpty": "לא ריק",
+        "is": "הוא",
+        "isNot": "אינו"
+      },
+      "tagOps": {
+        "any": "יש אחד מ",
+        "all": "יש את כל",
+        "none": "אין אף אחד מ"
+      },
+      "values": {
+        "repeating": "חוזרת",
+        "oneTime": "חד־פעמית",
+        "withTime": "עם שעה",
+        "withoutTime": "ללא שעה",
+        "customRange": "טווח מותאם",
+        "from": "מ־",
+        "to": "עד",
+        "pick": "בחירה…",
+        "titlePlaceholder": "טקסט בכותרת"
+      },
+      "addRule": "הוספת כלל",
+      "addGroup": "הוספת קבוצה",
+      "clear": "ניקוי",
+      "removeRule": "הסרת כלל",
+      "removeGroup": "הסרת קבוצה",
+      "matchCount": "{count, plural, one {משימה אחת תואמת} two {שתי משימות תואמות} other {# משימות תואמות}}",
+      "skipped": "{count, plural, one {כלל אחד דולג} two {שני כללים דולגו} other {# כללים דולגו}}",
+      "ruleCount": "{count, plural, one {כלל אחד} two {שני כללים} other {# כללים}}",
+      "unknownRule": "כלל מגרסה חדשה יותר",
+      "empty": "אין כללים עדיין. הוסיפו כלל כדי להתחיל לסנן.",
+      "summary": {
+        "and": "וגם",
+        "or": "או",
+        "not": "לא"
+      },
+      "editRules": "עריכת כללים",
+      "clearRules": "ניקוי כללים"
+    }
   },
   "quickAdd": {
     "label": "הוספה מהירה של משימה",

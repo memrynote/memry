@@ -113,7 +113,74 @@
       "noDueDate": "Bez terminu"
     },
     "repeatTypeRepeating": "Cykliczne",
-    "repeatTypeOneTime": "Jednorazowe"
+    "repeatTypeOneTime": "Jednorazowe",
+    "advanced": {
+      "entry": "Filtr zaawansowany…",
+      "entryHint": "Reguły z i, lub, nie",
+      "title": "Filtr",
+      "match": "Spełnia",
+      "ofThese": "z tych reguł",
+      "matches": {
+        "all": "wszystkie",
+        "any": "dowolną",
+        "none": "żadnej"
+      },
+      "fields": {
+        "title": "Tytuł",
+        "status": "Status",
+        "priority": "Priorytet",
+        "due": "Termin",
+        "project": "Projekt",
+        "location": "Lokalizacja",
+        "tags": "Tagi",
+        "repeat": "Powtarzanie",
+        "hasTime": "Ma godzinę"
+      },
+      "ops": {
+        "contains": "zawiera",
+        "notContains": "nie zawiera",
+        "any": "jest jednym z",
+        "none": "nie jest żadnym z",
+        "all": "ma wszystkie z",
+        "empty": "jest puste",
+        "notEmpty": "nie jest puste",
+        "is": "jest",
+        "isNot": "nie jest"
+      },
+      "tagOps": {
+        "any": "ma dowolny z",
+        "all": "ma wszystkie z",
+        "none": "nie ma żadnego z"
+      },
+      "values": {
+        "repeating": "Cykliczne",
+        "oneTime": "Jednorazowe",
+        "withTime": "Z godziną",
+        "withoutTime": "Bez godziny",
+        "customRange": "Własny zakres",
+        "from": "Od",
+        "to": "Do",
+        "pick": "Wybierz…",
+        "titlePlaceholder": "Tekst w tytule"
+      },
+      "addRule": "Dodaj regułę",
+      "addGroup": "Dodaj grupę",
+      "clear": "Wyczyść",
+      "removeRule": "Usuń regułę",
+      "removeGroup": "Usuń grupę",
+      "matchCount": "{count, plural, one {Pasuje # zadanie} few {Pasują # zadania} many {Pasuje # zadań} other {Pasuje # zadania}}",
+      "skipped": "{count, plural, one {Pominięto # regułę} few {Pominięto # reguły} many {Pominięto # reguł} other {Pominięto # reguły}}",
+      "ruleCount": "{count, plural, one {# reguła} few {# reguły} many {# reguł} other {# reguły}}",
+      "unknownRule": "Reguła z nowszej wersji",
+      "empty": "Brak reguł. Dodaj jedną, aby zacząć filtrować.",
+      "summary": {
+        "and": "i",
+        "or": "lub",
+        "not": "nie"
+      },
+      "editRules": "Edytuj reguły",
+      "clearRules": "Wyczyść reguły"
+    }
   },
   "quickAdd": {
     "label": "Szybkie dodawanie zadania",
