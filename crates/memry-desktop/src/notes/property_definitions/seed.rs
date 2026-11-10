@@ -4,14 +4,15 @@
 //! `rebuildSingleDbCache`, gives such a row no clock) and a type a device learned become
 //! definitions every device shares once that device syncs.
 //!
-//! - Each definition the file holds, parsed, whose name has no record, live or deleted, becomes a
-//!   record of the file's definition, queued as a `create` like a definition the user creates
+//! - Each definition the file holds, parsed, whose name has no record, live, deleted or one this
+//!   device cannot read, becomes a record of the file's definition, queued as a `create` like a definition the user creates
 //!   (Electron's seed pushes `create` too), which the server re-creates over a purged deletion as
 //!   it does Electron's (chapter 05 §5.12.3). The edit's turn first takes what the pull brought
 //!   into the file: a record or a delete the server sent wins over a definition only the file
 //!   holds (the core's `mirror`), as Electron's pull applies over a row with no clock and writes it
 //!   into the file. A name whose record is deleted stays deleted: a hand edit that put it back
-//!   after the file took the delete stays on this device until it is edited in the app.
+//!   after the file took the delete stays on this device until it is edited in the app. A name
+//!   that fails is logged and left for the next pass; the rest are seeded.
 //! - Each learned type ([`super::learned`]) whose name has no record, live or deleted, and no
 //!   entry in `properties.md`, a parsed one or one this build cannot parse, becomes a record
 //!   ([`memry_core::domain::property_admin::learned::promote`]). A deleted definition stays deleted,
@@ -35,6 +36,7 @@ use memry_core::domain::property_values::PROJECT_PROPERTY_KEY;
 use memry_core::sync::engine::PassSeed;
 
 use super::{DefinitionsError, Next, PropertyDefinitions, TURN};
+use crate::error::CoreError;
 use crate::vault::consumer::rows::now_ms;
 use crate::vault::properties_file::{self, PropertyDefinition, PropertyKind};
 
@@ -62,18 +64,19 @@ impl PropertyDefinitions {
         Ok(seeded)
     }
 
-    /// The file's definitions whose names have no record, each made a record in an edit's turn,
-    /// which takes a pull into the file first. Returns the names given one.
+    /// The file's definitions whose names have no record in any state, each made a record in an
+    /// edit's turn, which takes a pull into the file first. Returns the names given one.
     fn seed_file_only(&self) -> Result<Vec<String>, DefinitionsError> {
         let snapshot = self.records.snapshot()?;
         let unrecorded: Vec<String> = properties_file::read(&self.vault)?
             .definitions
             .iter()
             .map(|(name, _)| name.to_owned())
-            .filter(|name| snapshot.record(name).is_none() && !snapshot.deleted(name))
+            .filter(|name| !snapshot.known(name))
             .collect();
         let mut seeded = Vec::new();
         for name in unrecorded {
+            // The turn decides over a fresh snapshot: a pull that landed since this one wins.
             let put = self.change_renaming(&name, None, |existing, held| {
                 Ok(match existing {
                     Some(definition) if !held.recorded && !held.deleted => {
@@ -81,9 +84,16 @@ impl PropertyDefinitions {
                     }
                     _ => (Next::Keep, false),
                 })
-            })?;
-            if put {
-                seeded.push(name);
+            });
+            match put {
+                Ok(true) => seeded.push(name),
+                Ok(false) => {}
+                // The code only: the name and the message are the user's.
+                Err(error) => tracing::warn!(
+                    scope = "PropertyDefinitions",
+                    code = error.kind_and_code().1,
+                    "a definition only the file holds was not seeded; the next pass tries again"
+                ),
             }
         }
         Ok(seeded)
@@ -127,17 +137,20 @@ impl PassSeed for DefinitionsSeed {
                 what: format!("the property definitions seed did not finish: {error}"),
             })?;
         match seeded {
-            Ok(promoted) if promoted.is_empty() => Ok(()),
-            Ok(promoted) => {
+            Ok(seeded) if seeded.is_empty() => Ok(()),
+            Ok(seeded) => {
                 tracing::info!(
                     scope = "PropertyDefinitions",
-                    count = promoted.len(),
-                    "learned property types became definitions"
+                    count = seeded.len(),
+                    "file-only definitions and learned property types became definitions"
                 );
                 Ok(())
             }
             Err(error) => Err(StorageError::Failed {
-                what: format!("the learned property types were not promoted: {error}"),
+                what: format!(
+                    "the property definitions seed failed: {}",
+                    error.kind_and_code().1
+                ),
             }),
         }
     }

@@ -25,7 +25,7 @@
 //! the desktop takes it into the file and decides again, instead of sending the file's older
 //! definition over it.
 
-use std::collections::BTreeMap;
+use std::collections::{BTreeMap, BTreeSet};
 
 use rusqlite::{Connection, OptionalExtension, params};
 use serde_json::{Map, Value, json};
@@ -56,6 +56,8 @@ pub struct Pulled {
 pub struct Snapshot {
     /// By name: the record's version, its live definition, and whether this device wrote it.
     records: BTreeMap<String, Stored>,
+    /// Every name with a `sync_items` row, including one this device cannot read.
+    known: BTreeSet<String>,
     taken: Map<String, Value>,
 }
 
@@ -92,6 +94,12 @@ impl Snapshot {
         self.records
             .get(name)
             .is_some_and(|stored| stored.record.is_none())
+    }
+
+    /// Whether `name` has a record in any state: live, deleted, or one this device cannot read
+    /// (a row with no payload yet, a corrupt one, or a payload that does not parse).
+    pub fn known(&self, name: &str) -> bool {
+        self.known.contains(name)
     }
 
     fn version(&self, name: &str) -> &Value {
@@ -184,7 +192,8 @@ fn store(conn: &Connection, taken: &Map<String, Value>) -> Result<(), StorageErr
 
 /// Every `property_definition` record, live or deleted, and what the file took. A deleted one
 /// counts with no payload (a delete of an item this device never held stores none); a live one
-/// with no readable payload is left out: there is nothing in it to mirror.
+/// with no readable payload is left out of the records, with nothing in it to mirror, and only
+/// [`Snapshot::known`].
 ///
 /// A live record was written here when it carries neither a server cursor nor a signer: the pull
 /// stores the signer of every record it applies, and a `/sync/pull` item carries no `serverCursor`
@@ -194,7 +203,7 @@ pub fn snapshot(conn: &Connection) -> Result<Snapshot, StorageError> {
     let mut statement = conn
         .prepare(
             "SELECT item_id, payload, deleted_at, server_cursor, signer_device_id FROM sync_items
-              WHERE item_type = ?1 AND (payload IS NOT NULL OR deleted_at IS NOT NULL)",
+              WHERE item_type = ?1",
         )
         .map_err(failed)?;
     let rows = statement
@@ -211,9 +220,12 @@ pub fn snapshot(conn: &Connection) -> Result<Snapshot, StorageError> {
         .collect::<Result<Vec<_>, _>>()
         .map_err(failed)?;
     let mut records = BTreeMap::new();
+    let mut known = BTreeSet::new();
     for (name, payload, deleted_at, server_cursor, signer) in rows {
+        known.insert(name.clone());
         let written_here = server_cursor.is_none() && signer.is_none();
         let stored = match (payload, deleted_at) {
+            (None, None) => continue,
             (Some(payload), None) => {
                 let Ok(payload) = StoredPayload::parse(&payload) else {
                     continue;
@@ -225,7 +237,7 @@ pub fn snapshot(conn: &Connection) -> Result<Snapshot, StorageError> {
                     written_here,
                 }
             }
-            _ => Stored {
+            (_, Some(_)) => Stored {
                 version: Value::Null,
                 record: None,
                 written_here: false,
@@ -235,6 +247,7 @@ pub fn snapshot(conn: &Connection) -> Result<Snapshot, StorageError> {
     }
     Ok(Snapshot {
         records,
+        known,
         taken: taken(conn)?,
     })
 }
