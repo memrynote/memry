@@ -86,6 +86,13 @@ impl Snapshot {
             .and_then(|stored| stored.record.as_ref())
     }
 
+    /// Whether the record of `name` is deleted.
+    pub fn deleted(&self, name: &str) -> bool {
+        self.records
+            .get(name)
+            .is_some_and(|stored| stored.record.is_none())
+    }
+
     fn version(&self, name: &str) -> &Value {
         self.records
             .get(name)

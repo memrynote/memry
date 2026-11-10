@@ -21,6 +21,8 @@
     "journalUnlisted": "Günlük klasörü okunamadığı için değişiklik kaydedilmedi. Klasöre erişiminiz olduğunu kontrol edin.",
     "excludeUnwatched": "Hariç tutulan klasörler kaydedildi, ancak uygulama dışında yapılan değişiklikler kasayı yeniden açana kadar görünmeyecek.",
     "journalChangeWaits": "Önceki bir günlük klasörü veya tarih biçimi değişikliği tamamlanmadı. Tamamlanması için kasayı yeniden açın, ardından tekrar deneyin.",
+    "journalFolderHeld": "Günlük klasörü uygulamanın dışında taşındı ve günleri henüz onu oraya izleyemiyor. Klasörü geri taşı ya da kasadaki sıradan bir klasörün içine taşı, sonra tekrar dene.",
+    "journalMovesWait": "Bir notun veya klasörün taşınması tamamlanmadı. Tamamlanması için kasayı yeniden aç, sonra günlük ayarını tekrar değiştir.",
     "journalChangeUnrecorded": "Günlük değişikliği hazırlanamadı; bu yüzden hiçbir günlük günü taşınmadı ve kayıtlı ayarın korunuyor. Tekrar dene.",
     "settingsUnreadable": "Kasa ayarları dosyası (.memry/config.json) okunamadığı sürece klasörler taşınamaz. Dosyayı düzeltip yeniden deneyin.",
     "settingsUnreadableDelete": "Kasa ayarları dosyası (.memry/config.json) okunamadığı sürece klasörler silinemez. Dosyayı düzeltip yeniden deneyin.",

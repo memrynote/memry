@@ -3,8 +3,10 @@
 use memry_core::api::errors::{AuthError, StorageError};
 use serde::{Deserialize, Serialize};
 
+use super::kind::type_of;
+use super::record::options_text;
 use crate::error::{CoreError, FailureKind};
-use crate::vault::properties_file::PropertiesFileError;
+use crate::vault::properties_file::{PropertiesFileError, PropertyDefinition};
 
 /// A definition as the renderer reads it (`PropertyDefinition` of `@memry/rpc`): what Electron's
 /// `property_definitions` row holds.
@@ -112,5 +114,43 @@ impl CoreError for DefinitionsError {
             Self::Storage(error) => error.kind_and_code(),
             Self::Auth(error) => error.kind_and_code(),
         }
+    }
+}
+
+pub(super) fn named(name: &str) -> Result<&str, DefinitionsError> {
+    if name.is_empty() {
+        return Err(DefinitionsError::Invalid("a property needs a name"));
+    }
+    Ok(name)
+}
+
+/// The type a create or an update names: any but `project`.
+pub(super) fn editable(
+    wanted: Option<DefinitionType>,
+) -> Result<Option<DefinitionType>, DefinitionsError> {
+    match wanted {
+        Some(DefinitionType::Project) => Err(DefinitionsError::Invalid(
+            "the project property is managed by the app",
+        )),
+        wanted => Ok(wanted),
+    }
+}
+
+pub(super) fn filled(text: Option<String>) -> Option<String> {
+    text.filter(|text| !text.is_empty())
+}
+
+pub(super) fn view_of(
+    name: &str,
+    definition: &PropertyDefinition,
+    created_at: String,
+) -> PropertyDefinitionView {
+    PropertyDefinitionView {
+        name: name.to_owned(),
+        type_name: type_of(&definition.kind),
+        options: options_text(&definition.kind),
+        default_value: definition.default_value.clone(),
+        color: definition.color.clone(),
+        created_at,
     }
 }

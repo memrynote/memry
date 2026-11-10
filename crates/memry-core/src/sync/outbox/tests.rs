@@ -57,3 +57,36 @@ fn last_error_is_truncated() {
     let long = "x".repeat(MAX_LAST_ERROR_CHARS * 2);
     assert_eq!(truncate(&long).chars().count(), MAX_LAST_ERROR_CHARS);
 }
+
+#[test]
+fn an_upsert_over_an_unsent_create_is_sent_as_the_create() {
+    let collapsed = collapse_records(vec![
+        row(1, "property_definition", "gone", OP_CREATE),
+        row(2, "property_definition", "gone", OP_UPSERT),
+        row(3, "task", "t1", OP_CREATE),
+        row(4, "task", "t1", OP_DELETE),
+    ]);
+    assert_eq!(collapsed[0].row.op, OP_CREATE);
+    assert_eq!(collapsed[0].ids(), vec![2, 1]);
+    assert_eq!(collapsed[1].row.op, OP_DELETE, "a delete still wins");
+
+    let conn = Connection::open_in_memory().unwrap();
+    conn.execute_batch(
+        "CREATE TABLE outbox (id INTEGER PRIMARY KEY AUTOINCREMENT, item_type TEXT NOT NULL,
+           item_id TEXT NOT NULL, op TEXT NOT NULL, payload BLOB, enqueued_at INTEGER NOT NULL,
+           attempt_count INTEGER NOT NULL DEFAULT 0, last_error TEXT, next_attempt_at INTEGER);",
+    )
+    .unwrap();
+    let ops = |conn: &Connection| -> Vec<String> {
+        let mut statement = conn.prepare("SELECT op FROM outbox ORDER BY id").unwrap();
+        let ops = statement.query_map([], |row| row.get(0)).unwrap();
+        ops.collect::<Result<_, _>>().unwrap()
+    };
+    let queue = |change: Change| commit(&conn, &change, 1, |_| Ok(())).map(|_| ()).unwrap();
+    queue(Change::create("property_definition", "gone"));
+    queue(Change::upsert("property_definition", "gone"));
+    assert_eq!(ops(&conn), [OP_CREATE]);
+    queue(Change::delete("property_definition", "gone"));
+    queue(Change::upsert("property_definition", "gone"));
+    assert_eq!(ops(&conn), [OP_UPSERT]);
+}

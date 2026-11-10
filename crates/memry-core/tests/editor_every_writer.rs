@@ -501,3 +501,55 @@ fn a_window_edit_waiting_for_the_writer_lands_after_the_write_holding_it() {
         .collect();
     assert_eq!(origins, [Origin::External, Origin::Local("main".into())]);
 }
+
+/// A writer whose rows a window's edit caught up returns only once the listeners heard them:
+/// the window's thread tells them before it lets go of the documents, which the writer's own
+/// catch-up waits for. The shell lets a window type again once the outside edit's write
+/// returned (the typing barrier's release), and its frame must reach the window first (#4097).
+#[test]
+fn a_writer_whose_rows_a_window_edit_caught_up_returns_after_the_listeners_heard_them() {
+    let f = fixture();
+    let note = f.note();
+    let state = f.editor.open(&note, "main").expect("open").state;
+    let main = Replica::from_state(1, &state);
+    let outside = Replica::from_state(2, &state).type_text("edited outside");
+    let heard_external = Arc::new(std::sync::atomic::AtomicBool::new(false));
+    let sink = Arc::clone(&heard_external);
+    f.editor.subscribe(&note, move |notice| {
+        if let Notice::Update(_, Origin::External) = notice {
+            // A slow channel: the writer must not return meanwhile.
+            std::thread::sleep(Duration::from_millis(100));
+            sink.store(true, std::sync::atomic::Ordering::SeqCst);
+        }
+    });
+    let db = f.vault.db_handle();
+    let (committed, written) = mpsc::channel();
+    let id = note.clone();
+    let heard = Arc::clone(&heard_external);
+    let writer = std::thread::spawn(move || {
+        db.call_blocking(|conn| {
+            memry_core::crdt::body_writes::as_external(|| {
+                update_log::append_local_update(conn, &id, &outside, 1)
+            })
+            .map_err(|error| StorageError::Failed {
+                what: error.to_string(),
+            })?;
+            committed.send(()).unwrap();
+            // Holds the writer, its row committed and not told yet, while the edit waits for it.
+            std::thread::sleep(Duration::from_millis(300));
+            Ok(())
+        })
+        .unwrap();
+        heard.load(std::sync::atomic::Ordering::SeqCst)
+    });
+    written.recv().unwrap();
+
+    f.editor
+        .apply_update(&note, &main.type_text("typed"), "main")
+        .expect("stored");
+
+    assert!(
+        writer.join().unwrap(),
+        "the outside edit's write returned before its frame went"
+    );
+}

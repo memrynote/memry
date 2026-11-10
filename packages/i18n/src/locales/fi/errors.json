@@ -21,6 +21,8 @@
     "journalUnlisted": "Päiväkirjakansiota ei voitu lukea, joten muutosta ei tallennettu. Tarkista, että sinulla on siihen käyttöoikeus.",
     "excludeUnwatched": "Poissuljetut kansiot tallennettiin, mutta sovelluksen ulkopuolella tehdyt muutokset näkyvät vasta, kun avaat holvin uudelleen.",
     "journalChangeWaits": "Aiempi päiväkirjakansion tai päivämäärämuodon muutos jäi kesken. Avaa holvi uudelleen, jotta se valmistuu, ja yritä sitten uudelleen.",
+    "journalFolderHeld": "Päiväkirjakansio siirrettiin sovelluksen ulkopuolella, eivätkä sen päivät voi vielä seurata sitä sinne. Siirrä kansio takaisin tai yhteen tavalliseen holvin kansioon ja yritä uudelleen.",
+    "journalMovesWait": "Muistiinpanon tai kansion siirto jäi kesken. Avaa holvi uudelleen, jotta se valmistuu, ja muuta sitten päiväkirjan asetusta uudelleen.",
     "journalChangeUnrecorded": "Päiväkirjan muutosta ei voitu valmistella, joten yhtään päivää ei siirretty ja tallennettu asetus säilyy. Yritä uudelleen.",
     "settingsUnreadable": "Kansioita ei voi siirtää, kun holvin asetustiedostoa (.memry/config.json) ei voi lukea. Korjaa tiedosto ja yritä uudelleen.",
     "settingsUnreadableDelete": "Kansioita ei voi poistaa, kun holvin asetustiedostoa (.memry/config.json) ei voi lukea. Korjaa tiedosto ja yritä uudelleen.",

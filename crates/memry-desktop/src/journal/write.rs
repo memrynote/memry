@@ -54,6 +54,7 @@ use memry_core::markdown::shared::writing_tools::merge_writing_yaml;
 use serde_json::{Map, Value};
 
 use super::{JournalEntryView, SCOPE, day_path, entry, is_reserved_day_key, view_of};
+use crate::journal::folder_follow::{Follow, follow_moved_journal};
 use crate::locks::Locks;
 use crate::notes::create::{Seed, remove_file, remove_row};
 use crate::notes::error::NotesError;
@@ -116,8 +117,9 @@ impl NotesService {
         let root = open.path.as_path();
         // Before the settings' locks and the lane: the days of a journal setting change a crash
         // cut short go back (`vault::journal_rename`), and a journal folder an unfinished folder
-        // move carried takes its setting along, so the day is named where the other days are
-        // (`vault::app_move::follow_interrupted`). Settings that cannot be read do not say where
+        // move carried, or one moved outside the app, takes its setting along, so the day is
+        // named where the other days are (`vault::app_move::follow_interrupted`,
+        // `journal::folder_follow::follow_moved_journal`). Settings that cannot be read do not say where
         // the journal is: a day named under their defaults would sit where the real setting does
         // not read it, and its next move would delete it as a day.
         let at = JournalVault {
@@ -126,7 +128,11 @@ impl NotesService {
             tier: &self.tier,
         };
         finish_journal_change(at, &JournalFollow::hold());
-        follow_interrupted(root, &*open.vault.notes_writer(self.store.clone())?);
+        let writer = open.vault.notes_writer(self.store.clone())?;
+        follow_interrupted(root, &writer);
+        if let Follow::HeldWaits { .. } = follow_moved_journal(root, &writer) {
+            return Err(NotesError::JournalFolderHeld);
+        }
         read_vault_config_strict(root).map_err(NotesError::SettingsUnreadable)?;
         // The file is named in the format a change in progress saves (`vault::config::settings`).
         let _format = day_names();

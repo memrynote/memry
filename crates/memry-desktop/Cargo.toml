@@ -129,6 +129,9 @@ e2e = []
 # The test hooks of the note services (`NotesService::move_checked`, the `fail_next_*_feed`): the
 # crate's own tests turn it on (the dev-dependency on itself below); no app build does.
 test-hooks = []
+# Tests against the real sync server on miniflare: tests/sync_harness.rs. Needs node and
+# `pnpm install` (tests/sync-harness).
+harness = []
 
 [dev-dependencies]
 memry-desktop = { path = ".", features = ["test-hooks"] }
@@ -142,6 +145,8 @@ rcgen = { version = "0.14", default-features = false, features = ["ring", "pem"]
 flate2 = { workspace = true }
 # The write-back tests author another device's edit the way the core's tests do.
 yrs = { workspace = true }
+# `journal_folder_held` counts the database steps a pass over the held days takes (`hooks`).
+rusqlite = { workspace = true, features = ["hooks"] }
 
 [target.'cfg(target_os = "linux")'.dev-dependencies]
 # `shell/tray_host.rs` tests the real zbus over a socket pair, which is the `p2p` feature.
@@ -177,6 +182,10 @@ path = "tests/electron_secrets_locked.rs"
 [[test]]
 name = "extract_bench"
 path = "tests/extract_bench.rs"
+
+[[test]]
+name = "sync_harness"
+path = "tests/sync_harness.rs"
 
 [[test]]
 name = "keyring_live"

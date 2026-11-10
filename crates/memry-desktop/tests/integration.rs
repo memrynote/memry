@@ -114,6 +114,12 @@ mod journal_change_waits;
 mod journal_folder;
 #[path = "journal_folder_claim.rs"]
 mod journal_folder_claim;
+#[path = "journal_folder_held.rs"]
+mod journal_folder_held;
+#[path = "journal_folder_kept_held.rs"]
+mod journal_folder_kept_held;
+#[path = "journal_folder_outside.rs"]
+mod journal_folder_outside;
 #[path = "journal_format_vectors.rs"]
 mod journal_format_vectors;
 #[path = "journal_rename.rs"]
@@ -216,6 +222,8 @@ mod paths;
 mod properties_file;
 #[path = "property_definitions.rs"]
 mod property_definitions;
+#[path = "property_definitions_seed.rs"]
+mod property_definitions_seed;
 #[path = "property_definitions_sync.rs"]
 mod property_definitions_sync;
 #[path = "sanitize_svg_inert.rs"]

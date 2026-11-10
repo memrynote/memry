@@ -18,6 +18,9 @@ on:
     paths:
       - 'crates/**'
       - 'apps/desktop-tauri/**'
+      - 'tests/sync-harness/scripts/serve.ts'
+      - 'tests/sync-harness/src/**'
+      - 'apps/sync-server/**'
       - 'pnpm-lock.yaml'
       - 'packages/swift/**'
       - 'packages/contracts/test-vectors/**'
@@ -117,7 +120,7 @@ jobs:
         uses: ./.github/actions/paths-changed
         with:
           token: ${{ github.token }}
-          include: '^(crates/|apps/desktop-tauri/|pnpm-lock\.yaml$|packages/swift/|packages/contracts/test-vectors/|packages/article-extract/|scripts/check-line-ceilings\.mjs$|scripts/check-test-timing(\.test)?\.mjs$|\.github/workflows/rust-ci\.yml$)'
+          include: '^(crates/|apps/desktop-tauri/|tests/sync-harness/scripts/serve\.ts$|tests/sync-harness/src/|apps/sync-server/|pnpm-lock\.yaml$|packages/swift/|packages/contracts/test-vectors/|packages/article-extract/|scripts/check-line-ceilings\.mjs$|scripts/check-test-timing(\.test)?\.mjs$|\.github/workflows/rust-ci\.yml$)'
 
   lint-and-test:
     name: Rust ${{ matrix.part }}${{ matrix.partition && format(' {0}', matrix.partition) || '' }} (${{ matrix.os }})
@@ -439,6 +442,32 @@ jobs:
       - name: Test memry-cli
         if: matrix.part != 'tests' && runner.os == 'Linux'
         run: cargo nextest run -p memry-cli --no-fail-fast
+
+      # The Rust core against the real Worker (miniflare, the D1 migrations): two desktop vaults
+      # sync through the engine (crates/memry-desktop/tests/sync_harness.rs, cargo feature
+      # `harness`, served by tests/sync-harness/scripts/serve.ts). The workspace clippy above
+      # builds the file without the feature, so it is linted here.
+      - name: Setup pnpm (sync harness)
+        if: matrix.part != 'tests' && runner.os == 'Linux'
+        uses: ./.github/actions/setup-pnpm
+
+      - name: Setup Node.js (sync harness)
+        if: matrix.part != 'tests' && runner.os == 'Linux'
+        uses: actions/setup-node@v4
+        with:
+          node-version-file: .nvmrc
+          cache: pnpm
+
+      - name: Install the sync harness
+        if: matrix.part != 'tests' && runner.os == 'Linux'
+        working-directory: .
+        run: pnpm install --frozen-lockfile --filter "@memry/sync-harness..." --filter "@memry/sync-server..."
+
+      - name: Sync harness (memry-desktop)
+        if: matrix.part != 'tests' && runner.os == 'Linux'
+        run: |
+          cargo clippy -p memry-desktop --features harness --test sync_harness -- -D warnings
+          cargo nextest run -p memry-desktop --features harness --test sync_harness --no-fail-fast
 
       - name: Line ceilings
         if: matrix.part != 'tests' && runner.os == 'Linux'

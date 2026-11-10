@@ -55,7 +55,11 @@ export const commands = {
 	flushReady: () => __TAURI_INVOKE<null>("flush_ready"),
 	/**  The note or journal day folded for a reader who asked for `level`. */
 	foldRun: (noteId: string, level: FoldLevel) => __TAURI_INVOKE<FoldLayers>("fold_run", { noteId, level }),
-	/**  The day made on its first write; a day that has a file is answered as it is. */
+	/**
+	 *  The day made on its first write; a day that has a file is answered as it is. A journal
+	 *  setting that followed its folder first (moved outside the app, or by a folder move a crash
+	 *  cut short) is heard by every window ([`announce_followed`]).
+	 */
 	journalCreateEntry: (input: JournalCreateInput) => __TAURI_INVOKE<JournalEntryView>("journal_create_entry", { input }),
 	/**  `success` is whether the day had an entry to delete. */
 	journalDeleteEntry: (date: string) => __TAURI_INVOKE<JournalDeleteOutput>("journal_delete_entry", { date }),
@@ -79,7 +83,11 @@ export const commands = {
 	journalGetStreak: () => __TAURI_INVOKE<StreakView>("journal_get_streak"),
 	/**  One row per month of the year that has a live day (`journal:getYearStats`). */
 	journalGetYearStats: (year: number) => __TAURI_INVOKE<MonthStatsView[]>("journal_get_year_stats", { year }),
-	/**  The day edited: its text, tags or properties; a day with no file is made. */
+	/**
+	 *  The day edited: its text, tags or properties; a day with no file is made. A journal setting
+	 *  that followed its folder first, as a day create does, is heard by every window
+	 *  ([`announce_followed`]).
+	 */
 	journalUpdateEntry: (input: JournalUpdateInput) => __TAURI_INVOKE<JournalEntryView>("journal_update_entry", { input }),
 	localeGet: () => __TAURI_INVOKE<string>("locale_get"),
 	localeList: () => __TAURI_INVOKE<string[]>("locale_list"),
@@ -113,7 +121,8 @@ export const commands = {
 	notesCreateFolder: (path: string) => __TAURI_INVOKE<null>("notes_create_folder", { path }),
 	/**
 	 *  `notes:delete-folder`: the folder to the OS trash with everything in it, and its notes and
-	 *  records deleted (`notes::folder_delete`).
+	 *  records deleted (`notes::folder_delete`). A journal setting that followed a journal folder
+	 *  moved outside the app first is heard by every window ([`announce_followed`]).
 	 */
 	notesDeleteFolder: (path: string) => __TAURI_INVOKE<null>("notes_delete_folder", { path }),
 	/**
@@ -129,7 +138,8 @@ export const commands = {
 	 *  `notes:rename-folder`: the folder at `old_path` to `new_path`, a rename in place or a drag
 	 *  to another parent, its notes with it (`notes::folder_move`). A journal setting that follows
 	 *  the folder is heard by every window as [`VaultConfigChangedEvent`], as Electron's
-	 *  `followJournalFolder` broadcasts it.
+	 *  `followJournalFolder` broadcasts it, and so is one that followed a journal folder moved
+	 *  outside the app first ([`announce_followed`]).
 	 */
 	notesRenameFolder: (oldPath: string, newPath: string) => __TAURI_INVOKE<null>("notes_rename_folder", { oldPath, newPath }),
 	/**  `notes:reveal-folder-in-finder`: the folder itself, selected in its parent. */
@@ -476,9 +486,11 @@ export const commands = {
 	 *  and answers the settings after it, which every window hears as [`VaultConfigChangedEvent`], in
 	 *  the order the writes land. A setting not every day can take is refused as
 	 *  `journal_format_incomplete`, `journal_folder_invalid`, `journal_folder_respelled`,
-	 *  `journal_unlisted`, `journal_days_not_renamed`, `journal_change_waits` or
-	 *  `journal_change_unrecorded` (`vault::config::settings`). New exclude patterns whose watcher
-	 *  could not restart are saved and sent, and answer `vault_unwatched`.
+	 *  `journal_unlisted`, `journal_days_not_renamed`, `journal_change_waits`, `journal_moves_wait`,
+	 *  `journal_folder_held` or `journal_change_unrecorded` (`vault::config::settings`). A journal
+	 *  folder moved outside the app is followed first, and every window hears that too, whether the
+	 *  update then writes, changes nothing or is refused. New exclude patterns whose watcher could
+	 *  not restart are saved and sent, and answer `vault_unwatched`.
 	 */
 	vaultUpdateConfig: (config: VaultConfigPatch) => __TAURI_INVOKE<VaultConfig>("vault_update_config", { config }),
 	/**  Drops every retained entry, on disk too. */

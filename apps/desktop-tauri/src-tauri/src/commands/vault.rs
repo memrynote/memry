@@ -2,6 +2,7 @@
 //! its arguments, calls `Session` and maps the result; the decisions live in `memry-desktop`.
 //! The session is synchronous, so every command runs it on `spawn_blocking`.
 
+use std::cell::Cell;
 use std::path::{Path, PathBuf};
 use std::sync::Arc;
 
@@ -27,6 +28,7 @@ use tauri_plugin_opener::OpenerExt;
 
 use super::blocking;
 use super::error::{CommandError, ErrorKind, log_failure};
+use super::folders::announce_followed;
 use super::notes::open_vault;
 use crate::events::{VaultConfigChangedEvent, broadcast};
 use crate::shell::dialogs;
@@ -305,9 +307,11 @@ pub async fn vault_get_config<R: Runtime>(app: AppHandle<R>) -> Result<VaultConf
 /// and answers the settings after it, which every window hears as [`VaultConfigChangedEvent`], in
 /// the order the writes land. A setting not every day can take is refused as
 /// `journal_format_incomplete`, `journal_folder_invalid`, `journal_folder_respelled`,
-/// `journal_unlisted`, `journal_days_not_renamed`, `journal_change_waits` or
-/// `journal_change_unrecorded` (`vault::config::settings`). New exclude patterns whose watcher
-/// could not restart are saved and sent, and answer `vault_unwatched`.
+/// `journal_unlisted`, `journal_days_not_renamed`, `journal_change_waits`, `journal_moves_wait`,
+/// `journal_folder_held` or `journal_change_unrecorded` (`vault::config::settings`). A journal
+/// folder moved outside the app is followed first, and every window hears that too, whether the
+/// update then writes, changes nothing or is refused. New exclude patterns whose watcher could
+/// not restart are saved and sent, and answer `vault_unwatched`.
 #[tauri::command]
 #[specta::specta]
 pub async fn vault_update_config<R: Runtime>(
@@ -321,14 +325,17 @@ pub async fn vault_update_config<R: Runtime>(
     let announcer = app.clone();
     blocking("vault_update_config", move || {
         let days = tier.as_deref().map(|tier| (&open.vault, tier));
-        Ok(update_vault_settings(
-            &open.path,
-            days,
-            config,
-            |settings| {
-                broadcast(&announcer, VaultConfigChangedEvent(settings.clone()));
-            },
-        ))
+        let before = vault_settings(Some(&open.path));
+        let announced = Cell::new(false);
+        let updated = update_vault_settings(&open.path, days, config, |settings| {
+            announced.set(true);
+            broadcast(&announcer, VaultConfigChangedEvent(settings.clone()));
+        });
+        // A journal folder moved outside the app is followed first, whatever the update does.
+        if !announced.get() {
+            announce_followed(&announcer, &open.path, &before);
+        }
+        Ok(updated)
     })
     .await?
     .map_err(|error| settings_failed(&app, error))
@@ -340,7 +347,9 @@ const FORMAT_INCOMPLETE_KEY: &str = "errors:vault.journalFormatIncomplete";
 const FOLDER_INVALID_KEY: &str = "errors:vault.journalFolderInvalid";
 const FOLDER_RESPELLED_KEY: &str = "errors:vault.journalFolderRespelled";
 pub(crate) const CHANGE_WAITS_KEY: &str = "errors:vault.journalChangeWaits";
+pub(crate) const FOLDER_HELD_KEY: &str = "errors:vault.journalFolderHeld";
 const UNRECORDED_KEY: &str = "errors:vault.journalChangeUnrecorded";
+const MOVES_WAIT_KEY: &str = "errors:vault.journalMovesWait";
 const DAYS_NOT_RENAMED_KEY: &str = "errors:vault.journalDaysNotRenamed";
 const UNLISTED_KEY: &str = "errors:vault.journalUnlisted";
 const UNWATCHED_KEY: &str = "errors:vault.excludeUnwatched";
@@ -374,6 +383,16 @@ fn settings_failed<R: Runtime>(app: &AppHandle<R>, error: SettingsError) -> Comm
             ErrorKind::Invalid,
             "journal_change_waits",
             localized(app, CHANGE_WAITS_KEY),
+        ),
+        SettingsError::JournalFolderHeld => CommandError::new(
+            ErrorKind::Invalid,
+            "journal_folder_held",
+            localized(app, FOLDER_HELD_KEY),
+        ),
+        SettingsError::MovesWait => CommandError::new(
+            ErrorKind::Invalid,
+            "journal_moves_wait",
+            localized(app, MOVES_WAIT_KEY),
         ),
         SettingsError::Unrecorded(why) => {
             tracing::warn!(

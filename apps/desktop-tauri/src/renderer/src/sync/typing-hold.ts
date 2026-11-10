@@ -12,22 +12,33 @@ const COMPOSITION_SETTLE_MS = 50
  * edit of its file (`editor/typing.rs`): from the host's barrier until the edit's frame applies,
  * the host's release frame, or the hold's own deadline. Every editor of the document
  * in the window refuses, meanwhile, the transactions that would change it
- * (`createTypingHoldPlugin`), except a composition's, and says when a composition runs.
+ * (`createTypingHoldPlugin`), except those of a composition that ran when the hold began, and
+ * says when a composition runs.
  */
 export class TypingHold {
   private barrier: number | null = null
   private timer: ReturnType<typeof setTimeout> | null = null
   private composing = false
+  private composingAtHold = false
   private readonly compositionEnds = new Set<() => void>()
 
   get held(): boolean {
     return this.barrier !== null
   }
 
+  /**
+   * A composition that ran when the hold began goes on: it is never cut. One that begins during
+   * the hold is held like typing.
+   */
+  get takesComposition(): boolean {
+    return this.composingAtHold
+  }
+
   /** Holds typing for `barrier` until its release, or `ms` at most. */
   hold(barrier: number, ms: number): void {
     this.clearTimer()
     this.barrier = barrier
+    this.composingAtHold = this.composing
     this.timer = setTimeout(() => this.release(barrier), ms)
   }
 
@@ -38,7 +49,13 @@ export class TypingHold {
     this.clearTimer()
   }
 
+  /**
+   * A composition that begins after the one that ran at hold start ended is held like typing.
+   * That one's end does not clear `composingAtHold`: ProseMirror commits its last text after the
+   * plugin hears `compositionend`.
+   */
   compositionStarted(): void {
+    if (!this.composing) this.composingAtHold = false
     this.composing = true
   }
 
