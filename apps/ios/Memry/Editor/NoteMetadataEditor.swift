@@ -387,6 +387,21 @@ enum NoteRelationValue {
     }
 }
 
+/// The reserved `project` property's value: project **names**, a JSON array,
+/// as desktop's `ProjectEditor` stores them and its project-link projector
+/// reads them.
+enum NoteProjectValue {
+    static func names(_ json: String) -> [String] { NoteRelationValue.uris(json) }
+
+    /// Adds the name, or removes every spelling of it (case folded).
+    static func toggling(_ name: String, in names: [String]) -> [String] {
+        let carried = names.contains { $0.caseInsensitiveCompare(name) == .orderedSame }
+        return carried
+            ? names.filter { $0.caseInsensitiveCompare(name) != .orderedSame }
+            : names + [name]
+    }
+}
+
 /// The choices a property definition declares, in the order it declares
 /// them.
 ///
@@ -733,6 +748,25 @@ final class NoteMetadataViewModel {
         let unique = uris.filter { seen.insert($0).inserted }
         let json = NoteRelationValue.json(unique)
         await run { try await writer.setProperty(id: noteId, name: name, valueJson: json) }
+    }
+
+    /// Picks or unpicks a project for the note (desktop `ProjectEditor`'s
+    /// toggle), writing the whole list of names.
+    func toggleProject(_ name: String, in current: [String]) async {
+        await setProjects(NoteProjectValue.toggling(name, in: current))
+    }
+
+    /// A chip's remove control: that exact name, as desktop's `handleRemove`.
+    func removeProject(_ name: String, from current: [String]) async {
+        await setProjects(current.filter { $0 != name })
+    }
+
+    private func setProjects(_ names: [String]) async {
+        guard let writer else { return }
+        let json = NoteRelationValue.json(names)
+        await run {
+            try await writer.setProperty(id: noteId, name: NotePropertyKind.projectName, valueJson: json)
+        }
     }
 
     func dismissFailure() { status = .idle }
