@@ -7,7 +7,7 @@
 
 use std::collections::BTreeSet;
 
-use memry_desktop::attachments::{filenames, scan_steps};
+use memry_desktop::attachments::{filenames, names_file, scan_steps};
 use memry_test_kit::{
     assert_output_bounded, assert_steps_at_most, on_small_stack, output_bound, proptest_config,
 };
@@ -78,10 +78,15 @@ fn bound(input: &str) -> usize {
 
 fn assert_linear(what: &'static str, input: String) {
     on_small_stack(move || {
+        let mut out = 0;
         assert_steps_at_most(what, scan_steps, bound(&input), || {
-            let names = filenames(ID, &input);
-            let out: usize = names.iter().map(String::len).sum();
-            assert_output_bounded(what, input.len(), out);
+            out = filenames(ID, &input).iter().map(String::len).sum();
+        });
+        assert_output_bounded(what, input.len(), out);
+        // The reference scan's match runs the same extractor once, beside its substring
+        // searches (linear in std).
+        assert_steps_at_most(what, scan_steps, bound(&input), || {
+            names_file(ID, "aaaaaa-x.pdf", &input);
         });
     });
 }
@@ -91,8 +96,9 @@ const REPEATS: usize = 50_000;
 #[test]
 fn a_run_of_refs_without_an_end_is_scanned_once() {
     // Each `attachments/n1/` lies inside the name of the one before it; a scan that resumed
-    // inside a name would read the rest of the run again from each.
-    assert_linear("nested names", "attachments/n1/".repeat(REPEATS));
+    // inside a name would read the rest of the run again from each. 2,000 refs keep that
+    // regression at ~500 times the bound, failing in about a second rather than minutes.
+    assert_linear("nested names", "attachments/n1/".repeat(2_000));
 }
 
 #[test]
@@ -147,5 +153,22 @@ proptest! {
                 prop_assert!(body.contains(&after_slash) || body.contains(&after_backslash));
             }
         }
+    }
+
+    /// Electron keeps a file whose `attachments/<owner>/<file>` run is anywhere in a body, so
+    /// the scan does too, whatever surrounds it and in any case.
+    #[test]
+    fn a_body_that_holds_the_run_names_the_file(
+        before in "[a-zA-Z0-9 \\[\\]()!\"'#?|*.:/\\\\%-]{0,24}",
+        after in "[a-zA-Z0-9 \\[\\]()!\"'#?|*.:/\\\\%-]{0,24}",
+        file in "[a-zA-Z0-9 '%().-]{1,16}",
+        separators in prop_oneof![Just(("/", "/")), Just(("\\", "\\")), Just(("\\", "/"))],
+        upper in any::<bool>(),
+    ) {
+        let (a, b) = separators;
+        let run = format!("attachments{a}{ID}{b}{file}");
+        let run = if upper { run.to_ascii_uppercase() } else { run };
+        let body = [before.as_str(), &run, &after].concat();
+        prop_assert!(names_file(ID, &file, &body), "{body:?}");
     }
 }

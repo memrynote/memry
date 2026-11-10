@@ -21,7 +21,7 @@
 //! (`tests::note_files_is_written_only_through_the_lane`).
 
 use std::sync::atomic::{AtomicU64, Ordering};
-use std::sync::{Arc, Mutex, MutexGuard};
+use std::sync::{Arc, Mutex, MutexGuard, PoisonError, Weak};
 use std::time::{SystemTime, UNIX_EPOCH};
 
 use memry_core::api::errors::StorageError;
@@ -82,6 +82,9 @@ pub struct RowOwner {
     line: Line,
     applied: broadcast::Sender<Applied>,
     sessions: AtomicU64,
+    /// The vault whose open walk published `Indexed { complete: true }`: every file of it had a
+    /// row then. Apart from `state`, so a reader does not wait for the lane.
+    walked: Mutex<Weak<Vault>>,
 }
 
 impl RowOwner {
@@ -91,6 +94,7 @@ impl RowOwner {
             line: Line::default(),
             applied: broadcast::channel(APPLIED_CAPACITY).0,
             sessions: AtomicU64::new(0),
+            walked: Mutex::new(Weak::new()),
         })
     }
 
@@ -135,6 +139,13 @@ impl RowOwner {
         }
     }
 
+    /// Whether the open walk of `vault`, the handle of the open being asked about, ended
+    /// complete. Until it does, a file on disk may have no row yet, so the rows are not the vault.
+    pub fn walked(&self, vault: &Arc<Vault>) -> bool {
+        let walked = self.walked.lock().unwrap_or_else(PoisonError::into_inner);
+        std::ptr::eq(walked.as_ptr(), Arc::as_ptr(vault))
+    }
+
     fn lock(&self) -> MutexGuard<'_, Option<RowState>> {
         self.state.lock().unwrap_or_else(|e| e.into_inner())
     }
@@ -149,6 +160,7 @@ impl RowOwner {
             guard,
             _turn: turn,
             applied: &self.applied,
+            walked: &self.walked,
         })
     }
 
@@ -249,6 +261,7 @@ pub(crate) struct Lane<'a> {
     /// Dropped after `guard`: the next in line takes the rows once they are free.
     _turn: Turn<'a>,
     applied: &'a broadcast::Sender<Applied>,
+    walked: &'a Mutex<Weak<Vault>>,
 }
 
 impl Lane<'_> {
@@ -506,6 +519,13 @@ impl Lane<'_> {
     }
 
     pub(crate) fn publish(&self, fact: Applied) {
+        if let Applied::Indexed { complete } = fact {
+            *self.walked.lock().unwrap_or_else(PoisonError::into_inner) = if complete {
+                Arc::downgrade(&self.state().vault)
+            } else {
+                Weak::new()
+            };
+        }
         // No subscriber is not an error: the facts are for whoever listens.
         let _ = self.applied.send(fact);
     }

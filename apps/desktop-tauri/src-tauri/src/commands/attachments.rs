@@ -19,6 +19,7 @@ use memry_desktop::attachments::{
 };
 use memry_desktop::i18n::{self, Arg, Args};
 use memry_desktop::locale::LocaleService;
+use memry_desktop::vault::consumer::VaultTier;
 use memry_desktop::vault::trash::move_to_trash;
 use serde::Deserialize;
 use tauri::ipc::Request;
@@ -205,7 +206,7 @@ pub async fn notes_attachment_rename<R: Runtime>(
 }
 
 /// Deletes a file of the note's attachments folder, unless another note names it or the scan
-/// could not read every note: then the file stays and the answer names the notes.
+/// could not read every note (the open walk not yet ended complete among them): then the file stays and the answer names the notes.
 #[tauri::command]
 #[specta::specta]
 pub async fn notes_delete_attachment<R: Runtime>(
@@ -214,8 +215,15 @@ pub async fn notes_delete_attachment<R: Runtime>(
     filename: String,
 ) -> Result<DeletedAttachment, CommandError> {
     blocking("notes_delete_attachment", move || {
-        attachments::delete(&open_vault(&app)?, &note_id, &filename, &move_to_trash)
-            .map_err(|error| delete_error(&app, &error))
+        let rows = app.state::<Arc<VaultTier>>().rows();
+        attachments::delete(
+            &open_vault(&app)?,
+            &rows,
+            &note_id,
+            &filename,
+            &move_to_trash,
+        )
+        .map_err(|error| delete_error(&app, &error))
     })
     .await
 }

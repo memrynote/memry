@@ -104,7 +104,7 @@ export const commands = {
 	notesAttachmentRename: (noteId: string, url: string, newName: string) => __TAURI_INVOKE<RenamedAttachment>("notes_attachment_rename", { noteId, url, newName }),
 	/**
 	 *  Deletes a file of the note's attachments folder, unless another note names it or the scan
-	 *  could not read every note: then the file stays and the answer names the notes.
+	 *  could not read every note (the open walk not yet ended complete among them): then the file stays and the answer names the notes.
 	 */
 	notesDeleteAttachment: (noteId: string, filename: string) => __TAURI_INVOKE<DeletedAttachment>("notes_delete_attachment", { noteId, filename }),
 	/**  Cancels a chunked upload; its part file is deleted. */
