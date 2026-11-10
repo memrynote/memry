@@ -2045,7 +2045,7 @@
       "subtitle": "Gerencie definições de propriedades em todas as notas"
     },
     "loading": "Carregando propriedades…",
-    "empty": "Ainda não há definições de propriedade. Adicione uma propriedade Status, Seleção ou Seleção múltipla a qualquer nota para começar.",
+    "empty": "Ainda não há propriedades. Adicione uma propriedade a qualquer nota para começar.",
     "filterPlaceholder": "Filtrar propriedades…",
     "noMatch": "Nenhuma propriedade corresponde a “{query}”",
     "summary": "{count, plural, one {# definição de propriedade} other {# definições de propriedade}}",
@@ -2085,6 +2085,14 @@
     },
     "v2": {
       "actionsAria": "Ações para {name}"
+    },
+    "usage": {
+      "heading": "Usada em",
+      "noteCount": "{count, plural, one {# nota} other {# notas}}",
+      "mismatchCount": "Valores que não correspondem a {type}: {count}",
+      "mismatchNote": "Não corresponde a {type}",
+      "none": "Nenhuma nota usa esta propriedade",
+      "loadFailed": "Não foi possível carregar as notas que usam esta propriedade"
     }
   },
   "commandLine": {

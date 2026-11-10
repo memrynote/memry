@@ -2045,7 +2045,7 @@
       "subtitle": "Kelola definisi properti di semua catatan"
     },
     "loading": "Memuat properti…",
-    "empty": "Belum ada definisi properti. Tambahkan properti Status, Pilihan, atau Pilihan ganda ke catatan mana pun untuk memulai.",
+    "empty": "Belum ada properti. Tambahkan properti ke catatan mana pun untuk memulai.",
     "filterPlaceholder": "Filter properti…",
     "noMatch": "Tidak ada properti yang cocok dengan “{query}”",
     "summary": "{count, plural, other {# definisi properti}}",
@@ -2085,6 +2085,14 @@
     },
     "v2": {
       "actionsAria": "Tindakan untuk {name}"
+    },
+    "usage": {
+      "heading": "Digunakan di",
+      "noteCount": "{count, plural, other {# catatan}}",
+      "mismatchCount": "Nilai yang tidak cocok dengan {type}: {count}",
+      "mismatchNote": "Tidak cocok dengan {type}",
+      "none": "Tidak ada catatan yang menggunakan properti ini",
+      "loadFailed": "Gagal memuat catatan yang menggunakan properti ini"
     }
   },
   "commandLine": {

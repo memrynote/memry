@@ -10,8 +10,9 @@ import Observation
 // active, duplicates, stats, what filing writes. The store holds UI state.
 //
 // **Writes then sync.** A write is durable locally when the core answers; the
-// store re-reads from the core (never patches its copy), then runs one
-// debounced pull-then-push pass so the change reaches desktop. An archive
+// store re-reads from the core (never patches its copy), then asks the vault's
+// one sync scheduler (`requestVaultSync`) for a pass so the change reaches
+// desktop, and re-reads after every pass that scheduler finishes. An archive
 // removes the row at once (`hidden`) and puts it back if the write fails,
 // desktop's `archiveWithAnimation`.
 //
@@ -59,7 +60,10 @@ final class InboxStore {
     private(set) var fresh: Set<String> = []
     var toast: InboxToast?
     private(set) var failure: UserFacingError?
-    private(set) var isSyncing = false
+    /// The vault's sync scheduler (`requestVaultSync`): debounced, one pass at
+    /// a time, and an ask made mid-pass gets a pass after it. Nil in tests
+    /// and until the tasks store exists.
+    @ObservationIgnored var requestSync: (@MainActor () -> Void)?
     @ObservationIgnored private var notificationTask: Task<Void, Never>?
     /// Voice memos being transcribed in this process.
     @ObservationIgnored var transcribing: Set<String> = []
@@ -297,31 +301,23 @@ final class InboxStore {
 
     // MARK: Sync
 
-    private var syncTask: Task<Void, Never>?
-
-    /// One pull-then-push pass, coalesced: writes in quick succession share it.
+    /// Asks the vault's scheduler for a pull-then-push pass.
     func scheduleSync() {
-        guard filler != nil else { return }
-        syncTask?.cancel()
-        syncTask = Task { [weak self] in
-            try? await Task.sleep(for: .milliseconds(400))
-            guard !Task.isCancelled else { return }
-            await self?.sync()
-        }
+        requestSync?()
     }
 
-    /// Pull then push now (pull to refresh, foreground).
+    /// Pull to refresh: asks for a pass and re-reads now, without waiting for
+    /// the pass. A pass can queue behind a long pull, and the list re-reads
+    /// when it ends (``syncPassFinished()``), so the spinner never waits on it.
     func sync() async {
-        guard let filler, !isSyncing else { return }
-        isSyncing = true
-        defer { isSyncing = false }
-        do {
-            let pass = try await filler.syncNow()
-            Log.sync.info("inbox sync pass pulled", .count(Int(pass.pulled)))
-            Log.sync.info("inbox sync pass pushed", .count(Int(pass.pushed)))
-        } catch {
-            report(error)
-        }
+        scheduleSync()
+        await resurfaceDue()
+        await refresh()
+    }
+
+    /// A vault sync pass ended, whoever asked for it: it may have pulled
+    /// captures from another device.
+    func syncPassFinished() async {
         await resurfaceDue()
         await refresh()
     }

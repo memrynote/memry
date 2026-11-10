@@ -2045,7 +2045,7 @@
       "subtitle": "Administrér egenskabsdefinitioner på tværs af alle noter"
     },
     "loading": "Indlæser egenskaber…",
-    "empty": "Ingen egenskabsdefinitioner endnu. Tilføj en egenskab af typen Status, Valg eller Flervalg til en note for at komme i gang.",
+    "empty": "Ingen egenskaber endnu. Tilføj en egenskab til en note for at komme i gang.",
     "filterPlaceholder": "Filtrér egenskaber…",
     "noMatch": "Ingen egenskaber matcher »{query}«",
     "summary": "{count, plural, one {# egenskabsdefinition} other {# egenskabsdefinitioner}}",
@@ -2085,6 +2085,14 @@
     },
     "v2": {
       "actionsAria": "Handlinger for {name}"
+    },
+    "usage": {
+      "heading": "Bruges i",
+      "noteCount": "{count, plural, one {# note} other {# noter}}",
+      "mismatchCount": "Værdier, der ikke passer til {type}: {count}",
+      "mismatchNote": "Passer ikke til {type}",
+      "none": "Ingen noter bruger denne egenskab",
+      "loadFailed": "Kunne ikke indlæse noterne, der bruger denne egenskab"
     }
   },
   "commandLine": {

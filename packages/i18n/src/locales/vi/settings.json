@@ -2045,7 +2045,7 @@
       "subtitle": "Quản lý các định nghĩa thuộc tính trên tất cả các ghi chú"
     },
     "loading": "Đang tải thuộc tính…",
-    "empty": "Chưa có định nghĩa thuộc tính nào. Thêm một thuộc tính Trạng thái, Chọn một hoặc Chọn nhiều vào bất kỳ ghi chú nào để bắt đầu.",
+    "empty": "Chưa có thuộc tính nào. Thêm một thuộc tính vào bất kỳ ghi chú nào để bắt đầu.",
     "filterPlaceholder": "Lọc thuộc tính…",
     "noMatch": "Không có thuộc tính nào khớp với “{query}”",
     "summary": "{count, plural, other {# định nghĩa thuộc tính}}",
@@ -2085,6 +2085,14 @@
     },
     "v2": {
       "actionsAria": "Thao tác cho {name}"
+    },
+    "usage": {
+      "heading": "Được dùng trong",
+      "noteCount": "{count, plural, other {# ghi chú}}",
+      "mismatchCount": "Giá trị không khớp với {type}: {count}",
+      "mismatchNote": "Không khớp với {type}",
+      "none": "Không có ghi chú nào dùng thuộc tính này",
+      "loadFailed": "Không thể tải các ghi chú dùng thuộc tính này"
     }
   },
   "commandLine": {

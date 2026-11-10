@@ -2045,7 +2045,7 @@
       "subtitle": "管理所有筆記中的屬性定義"
     },
     "loading": "正在載入屬性…",
-    "empty": "目前還沒有屬性定義。為任何筆記新增「狀態」、「單選」或「多選」屬性即可開始使用。",
+    "empty": "目前還沒有屬性。為任何筆記新增屬性即可開始使用。",
     "filterPlaceholder": "篩選屬性…",
     "noMatch": "沒有符合「{query}」的屬性",
     "summary": "{count, plural, other {# 個屬性定義}}",
@@ -2085,6 +2085,14 @@
     },
     "v2": {
       "actionsAria": "「{name}」的動作"
+    },
+    "usage": {
+      "heading": "使用位置",
+      "noteCount": "{count, plural, other {# 則筆記}}",
+      "mismatchCount": "與「{type}」不符的值：{count}",
+      "mismatchNote": "與「{type}」不符",
+      "none": "沒有筆記使用此屬性",
+      "loadFailed": "無法載入使用此屬性的筆記"
     }
   },
   "commandLine": {

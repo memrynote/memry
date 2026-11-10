@@ -2045,7 +2045,7 @@
       "subtitle": "Gestisci le definizioni delle proprietà in tutte le note"
     },
     "loading": "Caricamento delle proprietà…",
-    "empty": "Ancora nessuna definizione di proprietà. Per iniziare, aggiungi una proprietà Stato, Selezione o Selezione multipla a una nota qualsiasi.",
+    "empty": "Ancora nessuna proprietà. Per iniziare, aggiungi una proprietà a una nota qualsiasi.",
     "filterPlaceholder": "Filtra proprietà…",
     "noMatch": "Nessuna proprietà corrispondente a “{query}”",
     "summary": "{count, plural, one {# definizione di proprietà} other {# definizioni di proprietà}}",
@@ -2085,6 +2085,14 @@
     },
     "v2": {
       "actionsAria": "Azioni per {name}"
+    },
+    "usage": {
+      "heading": "Usata in",
+      "noteCount": "{count, plural, one {# nota} other {# note}}",
+      "mismatchCount": "Valori non conformi al tipo {type}: {count}",
+      "mismatchNote": "Non conforme al tipo {type}",
+      "none": "Nessuna nota usa questa proprietà",
+      "loadFailed": "Impossibile caricare le note che usano questa proprietà"
     }
   },
   "commandLine": {

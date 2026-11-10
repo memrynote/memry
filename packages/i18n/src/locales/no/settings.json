@@ -2045,7 +2045,7 @@
       "subtitle": "Administrer egenskapsdefinisjoner på tvers av alle notater"
     },
     "loading": "Laster inn egenskaper …",
-    "empty": "Ingen egenskapsdefinisjoner ennå. Legg til en egenskap av typen Status, Enkeltvalg eller Flervalg i et notat for å komme i gang.",
+    "empty": "Ingen egenskaper ennå. Legg til en egenskap i et notat for å komme i gang.",
     "filterPlaceholder": "Filtrer egenskaper …",
     "noMatch": "Ingen egenskaper samsvarer med «{query}»",
     "summary": "{count, plural, one {# egenskapsdefinisjon} other {# egenskapsdefinisjoner}}",
@@ -2085,6 +2085,14 @@
     },
     "v2": {
       "actionsAria": "Handlinger for {name}"
+    },
+    "usage": {
+      "heading": "Brukes i",
+      "noteCount": "{count, plural, one {# notat} other {# notater}}",
+      "mismatchCount": "Verdier som ikke passer til {type}: {count}",
+      "mismatchNote": "Passer ikke til {type}",
+      "none": "Ingen notater bruker denne egenskapen",
+      "loadFailed": "Kunne ikke laste inn notatene som bruker denne egenskapen"
     }
   },
   "commandLine": {

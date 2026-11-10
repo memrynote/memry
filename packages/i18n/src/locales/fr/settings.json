@@ -2045,7 +2045,7 @@
       "subtitle": "Gérer les définitions de propriétés dans toutes les notes"
     },
     "loading": "Chargement des propriétés…",
-    "empty": "Aucune définition de propriété pour l'instant. Ajoutez une propriété Statut, Sélection ou Sélection multiple à n'importe quelle note pour commencer.",
+    "empty": "Aucune propriété pour l'instant. Ajoutez une propriété à n'importe quelle note pour commencer.",
     "filterPlaceholder": "Filtrer les propriétés…",
     "noMatch": "Aucune propriété ne correspond à « {query} »",
     "summary": "{count, plural, one {# définition de propriété} other {# définitions de propriétés}}",
@@ -2085,6 +2085,14 @@
     },
     "v2": {
       "actionsAria": "Actions pour {name}"
+    },
+    "usage": {
+      "heading": "Utilisée dans",
+      "noteCount": "{count, plural, one {# note} other {# notes}}",
+      "mismatchCount": "Valeurs non conformes au type {type} : {count}",
+      "mismatchNote": "Non conforme au type {type}",
+      "none": "Aucune note n'utilise cette propriété",
+      "loadFailed": "Impossible de charger les notes qui utilisent cette propriété"
     }
   },
   "commandLine": {

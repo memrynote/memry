@@ -2045,7 +2045,7 @@
       "subtitle": "管理所有笔记的属性定义"
     },
     "loading": "正在加载属性…",
-    "empty": "还没有属性定义。向任意笔记添加“状态”“单选”或“多选”属性即可开始。",
+    "empty": "还没有属性。向任意笔记添加属性即可开始。",
     "filterPlaceholder": "筛选属性…",
     "noMatch": "没有匹配“{query}”的属性",
     "summary": "{count, plural, other {# 个属性定义}}",
@@ -2085,6 +2085,14 @@
     },
     "v2": {
       "actionsAria": "{name} 的操作"
+    },
+    "usage": {
+      "heading": "使用位置",
+      "noteCount": "{count, plural, other {# 篇笔记}}",
+      "mismatchCount": "与“{type}”不符的值：{count}",
+      "mismatchNote": "与“{type}”不符",
+      "none": "没有笔记使用此属性",
+      "loadFailed": "无法加载使用此属性的笔记"
     }
   },
   "commandLine": {

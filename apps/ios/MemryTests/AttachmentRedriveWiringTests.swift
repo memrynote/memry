@@ -35,6 +35,9 @@ struct AttachmentRedriveWiringTests {
         let filler = RecordingRedrives()
         let vault = try TasksTestVault(filler: filler)
         await vault.store.sync()
+        // The redrive runs after the pass, outside it (#4155).
+        let deadline = Date().addingTimeInterval(3)
+        while filler.reachables.isEmpty, Date() < deadline { try await Task.sleep(for: .milliseconds(20)) }
         #expect(filler.reachables.count == 1)
     }
 

@@ -2045,7 +2045,7 @@
       "subtitle": "Hallitse ominaisuuksien määrityksiä kaikissa muistiinpanoissa"
     },
     "loading": "Ladataan ominaisuuksia…",
-    "empty": "Ei vielä ominaisuuksien määrityksiä. Aloita lisäämällä mihin tahansa muistiinpanoon Tila-, Valinta- tai Monivalinta-ominaisuus.",
+    "empty": "Ei vielä ominaisuuksia. Aloita lisäämällä ominaisuus mihin tahansa muistiinpanoon.",
     "filterPlaceholder": "Suodata ominaisuuksia…",
     "noMatch": "Ei ominaisuuksia haulla ”{query}”",
     "summary": "{count, plural, one {# ominaisuuden määritys} other {# ominaisuuden määritystä}}",
@@ -2085,6 +2085,14 @@
     },
     "v2": {
       "actionsAria": "Ominaisuuden {name} toiminnot"
+    },
+    "usage": {
+      "heading": "Käytössä",
+      "noteCount": "{count, plural, one {# muistiinpano} other {# muistiinpanoa}}",
+      "mismatchCount": "Arvot, jotka eivät vastaa tyyppiä {type}: {count}",
+      "mismatchNote": "Ei vastaa tyyppiä {type}",
+      "none": "Mikään muistiinpano ei käytä tätä ominaisuutta",
+      "loadFailed": "Tätä ominaisuutta käyttäviä muistiinpanoja ei voitu ladata"
     }
   },
   "commandLine": {

@@ -2045,7 +2045,7 @@
       "subtitle": "Manage property definitions across all notes"
     },
     "loading": "Loading properties...",
-    "empty": "No property definitions yet. Add a Status, Select, or Multiselect property to any note to get started.",
+    "empty": "No properties yet. Add a property to any note to get started.",
     "filterPlaceholder": "Filter properties...",
     "noMatch": "No properties matching \"{query}\"",
     "summary": "{count, plural, one {# property definition} other {# property definitions}}",
@@ -2085,6 +2085,14 @@
     },
     "v2": {
       "actionsAria": "Actions for {name}"
+    },
+    "usage": {
+      "heading": "Used in",
+      "noteCount": "{count, plural, one {# note} other {# notes}}",
+      "mismatchCount": "Values that don't match {type}: {count}",
+      "mismatchNote": "Doesn't match {type}",
+      "none": "No notes use this property",
+      "loadFailed": "Couldn't load the notes that use this property"
     }
   },
   "commandLine": {

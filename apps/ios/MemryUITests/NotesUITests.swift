@@ -160,6 +160,78 @@ final class NotesUITests: XCTestCase {
         XCTAssertTrue(row.waitForNonExistence(timeout: 10))
     }
 
+    /// #4151: a tap in the empty space under a stored note's body did
+    /// nothing when the body ended in an empty line, so a short note could
+    /// not be typed into.
+    func testTappingUnderTheBodyStartsTyping() throws {
+        try openNotes()
+        let title = "[agent] SHIP-4151-\(run) tap body"
+        app.buttons["notes.addButton"].tap()
+        let field = app.textFields["Title"]
+        XCTAssertTrue(field.waitForExistence(timeout: 10))
+        // Return leaves the body as one empty line.
+        field.typeText("\(title)\n")
+        let blocks = app.textViews.matching(NSPredicate(format: "identifier BEGINSWITH 'note.block.'"))
+        XCTAssertTrue(blocks.firstMatch.waitForExistence(timeout: 10))
+        app.buttons["BackButton"].tap()
+        // Relaunched, so the page reads the stored note.
+        app.terminate()
+        try openNotes()
+        let row = app.buttons.matching(NSPredicate(format: "label CONTAINS %@", title)).firstMatch
+        XCTAssertTrue(row.waitForExistence(timeout: 10))
+        row.tap()
+        XCTAssertTrue(blocks.firstMatch.waitForExistence(timeout: 10))
+
+        let body = blocks.allElementsBoundByIndex.map(\.frame.maxY).max() ?? 0
+        app.coordinate(withNormalizedOffset: .zero)
+            .withOffset(CGVector(dx: blocks.firstMatch.frame.midX, dy: body + 60)).tap()
+        app.typeText("tapped")
+        let typed = app.textViews.matching(NSPredicate(
+            format: "identifier BEGINSWITH 'note.block.' AND value CONTAINS 'tapped'"
+        )).firstMatch
+        XCTAssertTrue(typed.waitForExistence(timeout: 10), "the tap under the body put no caret in it")
+        XCTAssertEqual(field.value as? String, title)
+
+        deleteFromList(row)
+    }
+
+    /// #4151: a callout drew as static text, so a tap gave no caret.
+    func testACalloutsTextIsEditable() throws {
+        try openNotes()
+        let title = "[agent] SHIP-4151-\(run) callout"
+        app.buttons["notes.addButton"].tap()
+        let field = app.textFields["Title"]
+        XCTAssertTrue(field.waitForExistence(timeout: 10))
+        field.typeText("\(title)\n")
+        let block = app.textViews.matching(NSPredicate(format: "identifier BEGINSWITH 'note.block.'")).firstMatch
+        XCTAssertTrue(block.waitForExistence(timeout: 10))
+        block.tap()
+        app.typeText("/callout\n")
+        // The turn redraws the row; the caret comes back once it lands.
+        let focused = app.textViews.matching(NSPredicate(
+            format: "identifier BEGINSWITH 'note.block.' AND hasKeyboardFocus == true"
+        )).firstMatch
+        XCTAssertTrue(focused.waitForExistence(timeout: 10), "the callout took no caret")
+        app.typeText("inside")
+        let typed = app.textViews.matching(NSPredicate(
+            format: "identifier BEGINSWITH 'note.block.' AND value CONTAINS 'inside'"
+        )).firstMatch
+        XCTAssertTrue(typed.waitForExistence(timeout: 10), "the callout took no typing")
+        XCTAssertTrue(app.images["Info callout"].exists, "the block is not a callout")
+
+        app.buttons["BackButton"].tap()
+        deleteFromList(app.buttons.matching(NSPredicate(format: "label CONTAINS %@", title)).firstMatch)
+    }
+
+    private func deleteFromList(_ row: XCUIElement) {
+        if app.buttons["BackButton"].exists { app.buttons["BackButton"].tap() }
+        XCTAssertTrue(row.waitForExistence(timeout: 10))
+        row.press(forDuration: 1)
+        app.buttons["Delete note"].tap()
+        app.buttons["Delete"].firstMatch.tap()
+        XCTAssertTrue(row.waitForNonExistence(timeout: 10))
+    }
+
     /// #4154: a link picked from the `[[` menu is a chip a tap follows to its
     /// note.
     func testAPickedLinkOpensItsNote() throws {

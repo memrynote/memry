@@ -2045,7 +2045,7 @@
       "subtitle": "Spravujte definice vlastností ve všech poznámkách"
     },
     "loading": "Načítání vlastností…",
-    "empty": "Zatím žádné definice vlastností. Začněte přidáním vlastnosti Stav, Výběr nebo Vícenásobný výběr do libovolné poznámky.",
+    "empty": "Zatím žádné vlastnosti. Začněte přidáním vlastnosti do libovolné poznámky.",
     "filterPlaceholder": "Filtrovat vlastnosti…",
     "noMatch": "Žádné vlastnosti neodpovídají „{query}“",
     "summary": "{count, plural, one {# definice vlastnosti} few {# definice vlastností} other {# definic vlastností}}",
@@ -2085,6 +2085,14 @@
     },
     "v2": {
       "actionsAria": "Akce pro vlastnost {name}"
+    },
+    "usage": {
+      "heading": "Použito v",
+      "noteCount": "{count, plural, one {# poznámka} few {# poznámky} other {# poznámek}}",
+      "mismatchCount": "Hodnoty neodpovídající typu {type}: {count}",
+      "mismatchNote": "Neodpovídá typu {type}",
+      "none": "Tuto vlastnost nepoužívá žádná poznámka",
+      "loadFailed": "Poznámky s touto vlastností se nepodařilo načíst"
     }
   },
   "commandLine": {

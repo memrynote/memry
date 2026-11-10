@@ -2045,7 +2045,7 @@
       "subtitle": "Tulajdonságdefiníciók kezelése az összes jegyzetben"
     },
     "loading": "Tulajdonságok betöltése…",
-    "empty": "Még nincsenek tulajdonságdefiníciók. A kezdéshez adjon hozzá egy Állapot, Választás vagy Többszörös választás típusú tulajdonságot bármelyik jegyzethez.",
+    "empty": "Még nincsenek tulajdonságok. A kezdéshez adjon hozzá egy tulajdonságot bármelyik jegyzethez.",
     "filterPlaceholder": "Tulajdonságok szűrése…",
     "noMatch": "Nincs a(z) „{query}” keresésnek megfelelő tulajdonság",
     "summary": "{count, plural, one {# tulajdonságdefiníció} other {# tulajdonságdefiníció}}",
@@ -2085,6 +2085,14 @@
     },
     "v2": {
       "actionsAria": "Műveletek: {name}"
+    },
+    "usage": {
+      "heading": "Használja",
+      "noteCount": "{count, plural, one {# jegyzet} other {# jegyzet}}",
+      "mismatchCount": "A(z) {type} típusnak nem megfelelő értékek: {count}",
+      "mismatchNote": "Nem felel meg a(z) {type} típusnak",
+      "none": "Egyik jegyzet sem használja ezt a tulajdonságot",
+      "loadFailed": "Nem sikerült betölteni a tulajdonságot használó jegyzeteket"
     }
   },
   "commandLine": {

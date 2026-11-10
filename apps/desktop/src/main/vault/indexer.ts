@@ -35,7 +35,8 @@ import {
   ensureTagDefinitions,
   newMarkdownFileId
 } from '@main/database/queries/notes'
-import { getNoteMetadataByPath } from '@memry/storage-data'
+import { getNoteMetadataByPath, listPropertyDefinitions } from '@memry/storage-data'
+import { PropertyDefinitionsService } from './property-definitions'
 import { isSupportedPath, getFileType, getMimeType, getExtension } from '@memry/shared/file-types'
 import { createLogger } from '../lib/logger'
 import { trackMainLog } from '../telemetry/diagnostics'
@@ -337,6 +338,16 @@ async function indexNonMarkdownFile(
   }
 }
 
+/** The property names the data DB defines, or null while it is not open. */
+function definedPropertyNames(): Set<string> | null {
+  try {
+    return new Set(listPropertyDefinitions(getDatabase()).map((definition) => definition.name))
+  } catch (error) {
+    logger.warn('Data DB unavailable, scan will not settle learned property types:', error)
+    return null
+  }
+}
+
 // ============================================================================
 // Concurrency Limiter
 // ============================================================================
@@ -421,6 +432,8 @@ export async function indexVault(
     return result
   }
 
+  const definedBefore = definedPropertyNames()
+
   // Track completed count for progress reporting (thread-safe increment via closure)
   let completed = 0
   let cancelled = false
@@ -483,6 +496,17 @@ export async function indexVault(
         `${result.errors} errors, ${allFiles.length - completed} remaining`
     )
     return result
+  }
+
+  if (definedBefore) {
+    const learned = [...(definedPropertyNames() ?? [])].filter((name) => !definedBefore.has(name))
+    if (learned.length > 0) {
+      await PropertyDefinitionsService.tryGet()
+        ?.settleLearnedTypes(learned)
+        .catch((error: unknown) => {
+          logger.warn('Could not settle the property types this scan learned:', error)
+        })
+    }
   }
 
   if (options.activity) {
