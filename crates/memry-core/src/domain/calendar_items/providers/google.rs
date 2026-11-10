@@ -17,6 +17,7 @@ use crate::domain::calendar_items::write::{EventPatch, live_payload, update_even
 use crate::domain::calendar_items::zone::LocalZone;
 use crate::domain::calendar_items::{EXTERNAL_TYPE, SOURCE_TYPE};
 use crate::domain::notes::{failed, insert_local, iso, next_clock};
+use crate::domain::recreate::write_over_tombstone;
 use crate::storage::repositories::{Change, sync_items};
 use crate::sync::outbox;
 
@@ -223,8 +224,8 @@ fn upsert_mirror(
             let mut payload = fields.as_object().cloned().unwrap_or_default();
             payload.insert("id".into(), json!(id));
             payload.insert("createdAt".into(), json!(at));
-            payload.insert("clock".into(), next_clock(&Map::new(), device_id)?);
-            insert_local(tx, EXTERNAL_TYPE, &id, payload, now_ms)?;
+            // The id is the event's own, so a purge's tombstone may hold it.
+            write_over_tombstone(tx, EXTERNAL_TYPE, &id, payload, device_id, now_ms)?;
         }
     }
     outbox::enqueue(tx, &outbox::Change::upsert(EXTERNAL_TYPE, &id), now_ms)?;
@@ -433,15 +434,27 @@ pub fn connect(
             .and_then(|s| s.get("isMemryManaged"))
             .and_then(Value::as_bool)
             .unwrap_or(false);
+        // Connecting pulls the primary in full. So does reviving an archived
+        // calendar: its events were purged, and a build before the purge
+        // cleared the cursor archived it with the cursor still set (desktop
+        // `connectGoogle`, `discoverGoogleCalendarSources`).
+        let archived = existing
+            .as_ref()
+            .and_then(|s| s.get("archivedAt"))
+            .is_some_and(|at| !at.is_null());
+        let mut fields = json!({
+            "provider": GOOGLE, "kind": "calendar", "accountId": email, "remoteId": calendar.id,
+            "title": calendar.title, "timezone": calendar.timezone.clone().unwrap_or_else(|| device_zone_id.to_owned()),
+            "color": calendar.color, "isPrimary": calendar.is_primary, "isSelected": selected,
+            "isMemryManaged": managed, "archivedAt": null,
+        });
+        if archived || calendar.id == primary.id {
+            fields["syncCursor"] = Value::Null;
+        }
         upsert(
             &tx,
             &id,
-            json!({
-                "provider": GOOGLE, "kind": "calendar", "accountId": email, "remoteId": calendar.id,
-                "title": calendar.title, "timezone": calendar.timezone.clone().unwrap_or_else(|| device_zone_id.to_owned()),
-                "color": calendar.color, "isPrimary": calendar.is_primary, "isSelected": selected,
-                "isMemryManaged": managed, "archivedAt": null,
-            }),
+            fields,
             existing.as_ref().map_or(Some("pending"), |_| None),
             device_id,
             now_ms,
