@@ -46,6 +46,7 @@ import type {
   NoteLinkMention,
   NoteLinkMentionResponse,
   NoteLinksChangedEvent,
+  NoteUpdateResponse as NoteUpdateReply,
   UndoTagTemplateResponse,
   UnlinkedMention
 } from '@memry/contracts/notes-api'
@@ -291,24 +292,26 @@ const ported = {
   },
   // `title` is `notes:rename`'s: Electron's update renames the record and leaves the file, and no
   // caller sends one, so it stays refused. A failure answers as Electron's `registerCommand` does.
-  update: async (input: NoteSaveInput): Promise<NoteUpdateResponse> => {
+  update: async (input: NoteSaveInput): Promise<NoteSaveResponse> => {
     if (input.title !== undefined) throw new NotPortedError('notes.update({ title })')
     try {
       const { id, content, headerTags, emoji, frontmatter, keepReplaced } = input
-      const { note, tagTemplate, keptOutsideEdit, savedContent } = await commands.notesUpdate({
-        id,
-        content,
-        headerTags,
-        emoji,
-        keepReplaced,
-        // oxlint-disable-next-line typescript/no-unsafe-type-assertion -- frontmatter values are the JSON the command carries as is
-        frontmatter: frontmatter as Record<string, Value> | undefined
-      })
+      const { note, tagTemplate, keptOutsideEdit, keptReplaced, savedContent } =
+        await commands.notesUpdate({
+          id,
+          content,
+          headerTags,
+          emoji,
+          keepReplaced,
+          // oxlint-disable-next-line typescript/no-unsafe-type-assertion -- frontmatter values are the JSON the command carries as is
+          frontmatter: frontmatter as Record<string, Value> | undefined
+        })
       return {
         success: true,
         note: toNote(note),
         ...(tagTemplate && { tagTemplate }),
         ...(keptOutsideEdit && { keptOutsideEdit }),
+        ...(keptReplaced && { keptReplaced }),
         ...(savedContent !== undefined && { savedContent })
       }
     } catch (error) {
@@ -628,8 +631,16 @@ export type PortedLargeFileMethod =
  */
 export type NoteSaveInput = NoteUpdateInput & { keepReplaced?: boolean }
 
+/**
+ * An update's answer, and `keptReplaced`: the file the save replaced is a version, the one
+ * answer to whether an editor may say a text it replaced is in version history (#4110). Tauri
+ * only, as `keepReplaced` is.
+ */
+export type NoteSaveResponse = NoteUpdateResponse &
+  Pick<NoteUpdateReply, 'keptOutsideEdit'> & { keptReplaced?: boolean }
+
 type NotesServiceApi = Omit<NotesClientAPI, PortedLargeFileMethod | 'update'> & {
-  update: (input: NoteSaveInput) => Promise<NoteUpdateResponse>
+  update: (input: NoteSaveInput) => Promise<NoteSaveResponse>
 }
 
 export const notesService: NotesServiceApi = createWindowApiForwarder<
