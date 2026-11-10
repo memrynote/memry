@@ -99,9 +99,9 @@ struct NoteTitleEditor: View {
         // enqueue a push. Compared here as well as in the model: the model's
         // `current` reads "Untitled note" while the page reloads.
         if draft != title { rename(draft) }
-        UIApplication.shared.sendAction(
-            #selector(UIResponder.resignFirstResponder), to: nil, from: nil, for: nil
-        )
+        // Only the title's own focus: when a tap in a block ended the edit,
+        // that block is already first responder and keeps its caret.
+        focused = false
     }
 
     private func commitAndContinue() {

@@ -219,6 +219,17 @@ final class NotesUITests: XCTestCase {
         XCTAssertTrue(typed.waitForExistence(timeout: 10), "the callout took no typing")
         XCTAssertTrue(app.images["Info callout"].exists, "the block is not a callout")
 
+        // Put the caret in the title, then tap back into the callout's text.
+        // Typing that misses the callout lands in the title.
+        field.tap()
+        typed.tap()
+        app.typeText("again")
+        let retyped = app.textViews.matching(NSPredicate(
+            format: "identifier BEGINSWITH 'note.block.' AND value CONTAINS 'again'"
+        )).firstMatch
+        XCTAssertTrue(retyped.waitForExistence(timeout: 10), "a tap in the callout took no typing")
+        XCTAssertEqual(field.value as? String, title)
+
         app.buttons["BackButton"].tap()
         deleteFromList(app.buttons.matching(NSPredicate(format: "label CONTAINS %@", title)).firstMatch)
     }
@@ -333,6 +344,9 @@ final class NotesUITests: XCTestCase {
     }
 
     private func openNotes() throws {
+        // A tip's popover covers the page and takes the next tap, on the
+        // first note an install makes with "+".
+        app.launchArguments = ["-MEMRY_HIDE_TIPS", "YES"]
         app.launch()
         let name = ProcessInfo.processInfo.environment["MEMRY_UI_VAULT"] ?? "MemryNote"
         let vault = app.staticTexts[name]
