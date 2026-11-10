@@ -12,19 +12,20 @@
 //! it into the file before it reads the file or edits it. Nothing depends on a pull calling
 //! back, and a crash between the two writes repeats the same file write.
 //!
-//! A name the row does not hold (the first run of a vault Electron left, a lost or unreadable
-//! row) is decided by where its record came from. A record the server sent wins: Electron wrote
-//! every pulled record into its file as it applied it, so a file that differs missed a pull
-//! (another device's edit while this one was closed, or before this build). Only a record this
-//! device wrote and never pulled leaves the file winning ([`Pulled::file_wins`]), as Electron's
-//! reload lets the file win over its own rows.
+//! A name the row does not hold (the first run of a vault Electron left, a definition only the
+//! file holds, a lost or unreadable row) is decided by where its record came from. A record or a
+//! delete the server sent wins: Electron wrote every pulled record into its file as it applied it,
+//! and a pulled record wins over a row its file alone made (no clock), so a file that differs
+//! missed a pull (another device's edit while this one was closed, or before this build). Only a
+//! live record this device wrote and never pulled leaves the file winning ([`Pulled::file_wins`]),
+//! as Electron's reload lets the file win over its own rows (#4099).
 //!
 //! [`write`] puts an edit's record only while the record still holds what the edit was decided
 //! on: a pull that lands between the file read and the record write is [`Written::Moved`], and
 //! the desktop takes it into the file and decides again, instead of sending the file's older
 //! definition over it.
 
-use std::collections::BTreeMap;
+use std::collections::{BTreeMap, BTreeSet};
 
 use rusqlite::{Connection, OptionalExtension, params};
 use serde_json::{Map, Value, json};
@@ -45,16 +46,18 @@ pub struct Pulled {
     pub name: String,
     /// The record's definition, or `None` once it is deleted.
     pub record: Option<DefinitionRecord>,
-    /// The file never took a version of the name and the server never sent the record: what
-    /// the file lists was written apart from it, and wins.
+    /// The file never took a version of the name and the record is a live one this device wrote:
+    /// what the file lists was written apart from it, and wins.
     pub file_wins: bool,
 }
 
 /// Every record as the mirror compares it, and what the file took, read together.
 #[derive(Debug, Clone, Default)]
 pub struct Snapshot {
-    /// By name: the record's version, its live definition, and whether the server sent it.
+    /// By name: the record's version, its live definition, and whether this device wrote it.
     records: BTreeMap<String, Stored>,
+    /// Every name with a `sync_items` row, including one this device cannot read.
+    known: BTreeSet<String>,
     taken: Map<String, Value>,
 }
 
@@ -62,7 +65,7 @@ pub struct Snapshot {
 struct Stored {
     version: Value,
     record: Option<DefinitionRecord>,
-    from_server: bool,
+    written_here: bool,
 }
 
 impl Snapshot {
@@ -74,7 +77,7 @@ impl Snapshot {
             .map(|(name, stored)| Pulled {
                 name: name.clone(),
                 record: stored.record.clone(),
-                file_wins: !stored.from_server && !self.taken.contains_key(name),
+                file_wins: stored.written_here && !self.taken.contains_key(name),
             })
             .collect()
     }
@@ -91,6 +94,12 @@ impl Snapshot {
         self.records
             .get(name)
             .is_some_and(|stored| stored.record.is_none())
+    }
+
+    /// Whether `name` has a record in any state: live, deleted, or one this device cannot read
+    /// (a row with no payload yet, a corrupt one, or a payload that does not parse).
+    pub fn known(&self, name: &str) -> bool {
+        self.known.contains(name)
     }
 
     fn version(&self, name: &str) -> &Value {
@@ -183,12 +192,18 @@ fn store(conn: &Connection, taken: &Map<String, Value>) -> Result<(), StorageErr
 
 /// Every `property_definition` record, live or deleted, and what the file took. A deleted one
 /// counts with no payload (a delete of an item this device never held stores none); a live one
-/// with no readable payload is left out: there is nothing in it to mirror.
+/// with no readable payload is left out of the records, with nothing in it to mirror, and only
+/// [`Snapshot::known`].
+///
+/// A live record was written here when it carries neither a server cursor nor a signer: the pull
+/// stores the signer of every record it applies, and a `/sync/pull` item carries no `serverCursor`
+/// (chapter 05 §5.11.1). A delete is never one: this device deletes a definition only through
+/// [`write`], which records it, so one the file never took came from the server.
 pub fn snapshot(conn: &Connection) -> Result<Snapshot, StorageError> {
     let mut statement = conn
         .prepare(
-            "SELECT item_id, payload, deleted_at, server_cursor FROM sync_items
-              WHERE item_type = ?1 AND (payload IS NOT NULL OR deleted_at IS NOT NULL)",
+            "SELECT item_id, payload, deleted_at, server_cursor, signer_device_id FROM sync_items
+              WHERE item_type = ?1",
         )
         .map_err(failed)?;
     let rows = statement
@@ -198,15 +213,19 @@ pub fn snapshot(conn: &Connection) -> Result<Snapshot, StorageError> {
                 row.get::<_, Option<String>>(1)?,
                 row.get::<_, Option<i64>>(2)?,
                 row.get::<_, Option<i64>>(3)?,
+                row.get::<_, Option<String>>(4)?,
             ))
         })
         .map_err(failed)?
         .collect::<Result<Vec<_>, _>>()
         .map_err(failed)?;
     let mut records = BTreeMap::new();
-    for (name, payload, deleted_at, server_cursor) in rows {
-        let from_server = server_cursor.is_some();
+    let mut known = BTreeSet::new();
+    for (name, payload, deleted_at, server_cursor, signer) in rows {
+        known.insert(name.clone());
+        let written_here = server_cursor.is_none() && signer.is_none();
         let stored = match (payload, deleted_at) {
+            (None, None) => continue,
             (Some(payload), None) => {
                 let Ok(payload) = StoredPayload::parse(&payload) else {
                     continue;
@@ -215,19 +234,20 @@ pub fn snapshot(conn: &Connection) -> Result<Snapshot, StorageError> {
                 Stored {
                     version: version_of(fields),
                     record: Some(record_of(&name, fields)),
-                    from_server,
+                    written_here,
                 }
             }
-            _ => Stored {
+            (_, Some(_)) => Stored {
                 version: Value::Null,
                 record: None,
-                from_server,
+                written_here: false,
             },
         };
         records.insert(name, stored);
     }
     Ok(Snapshot {
         records,
+        known,
         taken: taken(conn)?,
     })
 }

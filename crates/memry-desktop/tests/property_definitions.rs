@@ -155,7 +155,9 @@ pub(crate) fn inbound(f: &Fixture, name: &str, fields: Value, deleted: bool) -> 
         item_type: "property_definition".into(),
         item_id: name.into(),
         payload_json: Value::Object(payload).to_string(),
-        server_cursor: Some(1),
+        // As the pull stores it: a `/sync/pull` item carries no `serverCursor` (chapter 05
+        // §5.11.1), only its signer.
+        server_cursor: None,
         signer_device_id: Some("peer".into()),
         updated_at: NOW,
         deleted_at: deleted.then_some(NOW),

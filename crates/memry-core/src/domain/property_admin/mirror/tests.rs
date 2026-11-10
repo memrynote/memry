@@ -20,7 +20,7 @@ fn pull(conn: &Connection, options: &str, deleted_at: Option<i64>) {
         item_type: ITEM_TYPE.into(),
         item_id: "Stage".into(),
         payload_json: json!({ "name": "Stage", "type": "select", "options": options }).to_string(),
-        server_cursor: Some(1),
+        server_cursor: None,
         signer_device_id: Some("peer".into()),
         updated_at: NOW,
         deleted_at,
@@ -106,6 +106,35 @@ fn a_write_over_a_record_that_moved_writes_nothing() {
             Written::Done
         );
         assert!(snapshot(c)?.pulled().is_empty());
+        Ok(())
+    })
+    .unwrap();
+}
+
+/// #4099: a record or a delete the pull stored wins over a file that never took the name, though a
+/// `/sync/pull` item carries no `serverCursor`. Only a live record written here lets the file win.
+#[test]
+fn a_pull_the_file_never_took_wins_and_only_a_record_written_here_lets_the_file_win() {
+    let dir = temp_dir("props-mirror-first");
+    let db = open_data(&dir.path().join("data.db")).unwrap();
+    db.call_blocking(|c| {
+        pull(c, r#"[{"value":"A","color":"sky"}]"#, None);
+        let pulled = snapshot(c)?.pulled();
+        assert_eq!(pulled.len(), 1);
+        assert!(!pulled[0].file_wins, "a pulled record");
+
+        crate::sync::store::mark_deleted(c, ITEM_TYPE, "Gone", NOW, None, NOW)?;
+        let pulled = snapshot(c)?.pulled();
+        let gone = pulled.iter().find(|p| p.name == "Gone").unwrap();
+        assert_eq!(gone.record, None);
+        assert!(!gone.file_wins, "a pulled delete of a name never held here");
+
+        let mut mine = stage("[]");
+        mine.name = "Mine".into();
+        put(c, &mine, "me", NOW)?;
+        let pulled = snapshot(c)?.pulled();
+        let mine = pulled.iter().find(|p| p.name == "Mine").unwrap();
+        assert!(mine.file_wins, "a record written here");
         Ok(())
     })
     .unwrap();
