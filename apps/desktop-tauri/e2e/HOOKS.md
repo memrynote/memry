@@ -158,7 +158,10 @@ element through the webview's own paste command (`paste:` on WKWebView, the `Pas
 command on WebKitGTK, CDP `Input.dispatchKeyEvent` with `commands: ["paste"]` on WebView2),
 because a WebDriver key is synthetic and pastes nothing. `e2e_webkitgtk_version` answers the
 linked WebKitGTK version on Linux and `null` elsewhere. `specs/editor/clipboard-blocks.e2e.ts`
-copies blocks from the block menu and pastes them back.
+copies blocks from the block menu and pastes them back. `e2e_clipboard_read_image` answers the
+`[width, height]` of the clipboard's image, `null` when it holds none;
+`specs/editor/clipboard-image.e2e.ts` checks the mind map's Copy as image with it, through the
+webview and through `clipboard_write_image`.
 
 ## Control file
 

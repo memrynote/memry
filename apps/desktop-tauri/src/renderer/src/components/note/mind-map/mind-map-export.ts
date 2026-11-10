@@ -21,12 +21,17 @@
  *   tools read pasted SVG markup, and the drawing library's own "copy as SVG"
  *   does exactly this.
  *
- * Neither path needs a main-process channel, so no IPC contract is touched.
+ * When the webview refuses the image `ClipboardItem` (an engine that wants a
+ * user gesture the async export has outlived, or one without `ClipboardItem`),
+ * the PNG goes to `clipboard_write_image`, which puts it on the OS clipboard.
+ * The command takes the PNG bytes and nothing else (`commands/clipboard.rs`).
  */
 
 import { convertToExcalidrawElements, exportToBlob, exportToSvg } from '@excalidraw/excalidraw'
 import type { ExcalidrawImperativeAPI } from '@excalidraw/excalidraw/types'
 import type { ExcalidrawElementSkeleton } from '@excalidraw/excalidraw/data/transform'
+import { invokeBinary } from '@/lib/ipc-binary'
+import { createLogger } from '@/lib/logger'
 import { mindMapSceneJson } from './mind-map-snapshot'
 import type { MindMapElement } from './mind-map-types'
 
@@ -55,6 +60,8 @@ export const toSkeleton = (elements: readonly MindMapElement[]): ExcalidrawEleme
 export function toCanvasScene(elements: readonly MindMapElement[]): string {
   return mindMapSceneJson(convertToExcalidrawElements(toSkeleton(elements)))
 }
+
+const log = createLogger('MindMapExport')
 
 /** Breathing room around the drawing, in scene units. */
 const EXPORT_PADDING = 16
@@ -89,7 +96,12 @@ export async function copySceneAsImage(source: MindMapSceneSource): Promise<void
     mimeType: 'image/png'
   })
 
-  await navigator.clipboard.write([new ClipboardItem({ 'image/png': blob })])
+  try {
+    await navigator.clipboard.write([new ClipboardItem({ 'image/png': blob })])
+  } catch (err) {
+    log.info('The webview refused the image, copying it through the app', err)
+    await invokeBinary('clipboard_write_image', new Uint8Array(await blob.arrayBuffer()), {})
+  }
 }
 
 /** The map as currently drawn, on the clipboard as SVG markup. */

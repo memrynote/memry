@@ -5,6 +5,7 @@ pub mod accelerator;
 pub mod autostart;
 pub mod bounds;
 pub mod caption;
+pub mod clipboard_image;
 pub mod close;
 pub mod crash_dumps;
 pub mod deep_link;

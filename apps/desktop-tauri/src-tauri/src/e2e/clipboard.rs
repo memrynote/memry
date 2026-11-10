@@ -51,6 +51,23 @@ pub async fn e2e_clipboard_write(text: String) -> Result<(), CommandError> {
     .map_err(|error| CommandError::new(ErrorKind::Internal, "e2e_clipboard", error.to_string()))?
 }
 
+/// The width and height of the image on the clipboard, `None` when it holds none. Reads through
+/// the clipboard plugin, as `clipboard_write_image` writes, off the main thread (`shell::clipboard`).
+#[tauri::command]
+pub async fn e2e_clipboard_read_image(
+    app: tauri::AppHandle<tauri::Wry>,
+) -> Result<Option<(u32, u32)>, CommandError> {
+    use tauri_plugin_clipboard_manager::ClipboardExt;
+    tauri::async_runtime::spawn_blocking(move || {
+        app.clipboard()
+            .read_image()
+            .ok()
+            .map(|image| (image.width(), image.height()))
+    })
+    .await
+    .map_err(|error| CommandError::new(ErrorKind::Internal, "e2e_clipboard", error.to_string()))
+}
+
 /// Pastes into the main window's focused element as Cmd/Ctrl+V does. WebDriver keys are synthetic
 /// and paste nothing, so this runs the webview's own paste command: the page's paste event then
 /// carries what the OS clipboard holds, the webview's custom types included.
