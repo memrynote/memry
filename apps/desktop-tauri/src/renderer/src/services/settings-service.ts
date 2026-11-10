@@ -1,6 +1,7 @@
 import { SIDEBAR_SORT_DEFAULTS } from '@memry/contracts/sidebar-sort'
 import type { SidebarSortMode, SidebarSortSurface } from '@memry/contracts/sidebar-sort'
 import type {
+  AISettings,
   BackupSettingsDTO,
   EditorSettingsDTO,
   GeneralSettingsDTO,
@@ -132,8 +133,8 @@ const voice = group<VoiceTranscriptionSettings>('voiceTranscription')
 
 /**
  * The `window.api.settings` functions Step 09 owns: every group and flat key core stores. The
- * rest of the Electron surface (AI, calendar providers, the voice model, the terminal command and
- * the global shortcuts) belongs to the steps that port those features.
+ * rest of the Electron surface (AI writes and models, calendar providers, the voice model, the
+ * terminal command and the global shortcuts) belongs to the steps that port those features.
  */
 export const settingsService = {
   getGeneralSettings: general.get,
@@ -176,6 +177,13 @@ export const settingsService = {
     commands.shortcutRegisterGlobalCapture(),
   setGlobalCapture: (binding: ShortcutBindingDTO | null): Promise<GlobalCaptureResult> =>
     commands.shortcutSetGlobalCapture(binding),
+  /**
+   * Electron's flat device-local key `ai.enabled` (`settings-handlers.ts` GET_AI_SETTINGS): its
+   * stored text `true`/`false` reads back as a JSON boolean, and anything but `false` is on.
+   */
+  getAISettings: async (): Promise<AISettings> => ({
+    enabled: (await commands.settingsGetLocal('ai.enabled')) !== false
+  }),
   getVoiceTranscriptionSettings: voice.get,
   setVoiceTranscriptionSettings: voice.set,
 
