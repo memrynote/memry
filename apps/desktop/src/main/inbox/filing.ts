@@ -49,6 +49,7 @@ import { upsertCalendarEvent } from '../calendar/repositories/calendar-events-re
 import { syncCalendarEventCreate } from '../calendar/runtime-effects'
 import { createReminder } from '../lib/reminders'
 import { resolveAttachmentUrl, deleteInboxAttachments } from './attachments'
+import { reuseInboxAttachmentForNote } from './attachment-sync'
 import { extractYouTubeVideoId } from '@memry/shared/youtube'
 import { extractDomain } from './metadata-utils'
 import { publishInboxUpserted, syncInboxUpdate } from './runtime-effects'
@@ -287,13 +288,29 @@ function announceFiledBinary(note: NoteListItem | null): void {
  * sync outage must not fail a filing that succeeded — but it has to stay
  * countable.
  */
-function syncFiledBinary(note: NoteListItem | null, absolutePath: string): void {
+function syncFiledBinary(
+  note: NoteListItem | null,
+  absolutePath: string,
+  attachmentId: string | null
+): void {
   if (!note) return
   try {
     // `[]` for tags mirrors the watcher: a binary has no frontmatter to seed a
     // CRDT tag array from.
     syncNoteCreate(note.id, note.title, [])
-    emitNoteAttachmentSaved(note.id, absolutePath)
+    // A capture that already synced its file hands the blob to the note instead
+    // of uploading the same bytes again (#4157).
+    if (attachmentId) {
+      reuseInboxAttachmentForNote(
+        requireDatabase(),
+        getVaultPath(),
+        note.id,
+        absolutePath,
+        attachmentId
+      )
+    } else {
+      emitNoteAttachmentSaved(note.id, absolutePath)
+    }
   } catch (error) {
     log.warn('Filed binary sync enqueue failed; the file is filed locally', error)
     trackMainError('inbox', 'filed_binary_sync_enqueue', error)
@@ -699,7 +716,7 @@ async function fileBinaryToFolder(
     // it — the watcher that would normally do the pushing never sees this file.
     const filedBinary = await indexFiledBinary(relativePath, finalPath, mergedTags)
     announceFiledBinary(filedBinary)
-    syncFiledBinary(filedBinary, finalPath)
+    syncFiledBinary(filedBinary, finalPath, item.attachmentId)
 
     // Mark inbox item as filed
     markItemAsFiled(itemId, relativePath, 'folder')
@@ -1205,8 +1222,17 @@ async function embedImageInNotes(
   const filename = getFiledBinaryFilename(item)
   const ownerNote = targetNotes[0]
 
+  // A capture whose blob is already on the server keeps the inbox file's name,
+  // which is the manifest filename: a peer places a note's download by that name
+  // in `attachments/<noteId>/`, so a renamed copy would not resolve there. A name
+  // `saveAttachment` cannot store as given falls back to a fresh upload.
+  const inboxFilename = path.basename(sourcePath)
+  const reuseBlob = !!item.attachmentId && /^[\w-][\w.-]*$/.test(inboxFilename)
+
   const data = await readFile(sourcePath)
-  const saved = await saveAttachment(ownerNote.id, data, filename)
+  const saved = reuseBlob
+    ? await saveAttachment(ownerNote.id, data, inboxFilename, { exactFilename: true })
+    : await saveAttachment(ownerNote.id, data, filename)
   if (!saved.success || !saved.path) {
     log.info('Embed refused by the attachment store, falling back to a linked file', {
       itemId,
@@ -1231,8 +1257,20 @@ async function embedImageInNotes(
   }
 
   // Uploads the blob and records the reference on the owner note, so peers get
-  // the image instead of a note pointing at a file only this device has.
-  emitNoteAttachmentSaved(ownerNote.id, path.join(vaultPath, attachmentRelativePath))
+  // the image instead of a note pointing at a file only this device has. A blob
+  // the capture already uploaded is recorded instead of uploaded again.
+  const diskPath = path.join(vaultPath, attachmentRelativePath)
+  if (reuseBlob && item.attachmentId) {
+    reuseInboxAttachmentForNote(
+      requireDatabase(),
+      vaultPath,
+      ownerNote.id,
+      diskPath,
+      item.attachmentId
+    )
+  } else {
+    emitNoteAttachmentSaved(ownerNote.id, diskPath)
+  }
 
   await deleteInboxAttachments(itemId)
   markItemAsFiled(itemId, attachmentRelativePath, 'linked')
@@ -1380,7 +1418,7 @@ async function linkBinaryToNotes(
     // it — the watcher that would normally do the pushing never sees this file.
     const filedBinary = await indexFiledBinary(relativePath, finalPath, mergedTags)
     announceFiledBinary(filedBinary)
-    syncFiledBinary(filedBinary, finalPath)
+    syncFiledBinary(filedBinary, finalPath, item.attachmentId)
 
     // Mark inbox item as filed
     markItemAsFiled(itemId, relativePath, 'linked')

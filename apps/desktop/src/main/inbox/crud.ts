@@ -7,7 +7,11 @@ import { tagIs } from '../database/queries/tag-match'
 import { generateId } from '../lib/id'
 import { deleteInboxAttachments } from './attachments'
 import { syncInboxDelete } from './runtime-effects'
+import { recordDeletedItemAssets } from '../sync/deleted-asset-release'
+import { createLogger } from '../lib/logger'
 import { trackMainError } from '../telemetry/diagnostics'
+
+const log = createLogger('Inbox:Crud')
 
 type InboxCrudLogger = {
   info: (message: string) => void
@@ -240,6 +244,14 @@ export function createInboxCrudHandlers(deps: InboxCrudHandlerDeps): InboxCrudHa
       }
 
       await deleteInboxAttachments(id)
+
+      // An unfiled item's uploaded file is freed on the server once the grace
+      // period passes. Read before the row goes; a failure only costs the freeing.
+      try {
+        recordDeletedItemAssets(db, 'inbox', id)
+      } catch (error) {
+        log.warn('Could not record a deleted inbox item for asset release', { error })
+      }
 
       db.delete(inboxItemTags).where(eq(inboxItemTags.itemId, id)).run()
 

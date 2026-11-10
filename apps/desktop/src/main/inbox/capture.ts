@@ -25,6 +25,7 @@ import {
   type VoiceMetadata
 } from '@memry/contracts/inbox-api'
 import { storeInboxAttachment, resolveAttachmentUrl } from './attachments'
+import { queueInboxAttachmentUpload, scheduleInboxAttachmentSync } from './attachment-sync'
 import { publishProjectionEvent } from '../projections'
 import { trackMainEvent } from '../telemetry/track'
 import { getVoiceRecordingReadiness } from './transcription'
@@ -265,24 +266,27 @@ export async function captureVoice(input: CaptureVoiceInput): Promise<CaptureRes
       }
     }
 
-    // Insert inbox item
-    db.insert(inboxItems)
-      .values({
-        id,
-        type: 'voice',
-        title,
-        content: null,
-        createdAt: now,
-        modifiedAt: now,
-        processingStatus: 'complete',
-        processingError,
-        metadata,
-        attachmentPath: storageResult.path,
-        transcription: null,
-        transcriptionStatus,
-        captureSource: parsed.source ?? null
-      })
-      .run()
+    // Insert inbox item, with the mark that its file is waiting for upload
+    db.transaction((tx) => {
+      tx.insert(inboxItems)
+        .values({
+          id,
+          type: 'voice',
+          title,
+          content: null,
+          createdAt: now,
+          modifiedAt: now,
+          processingStatus: 'complete',
+          processingError,
+          metadata,
+          attachmentPath: storageResult.path,
+          transcription: null,
+          transcriptionStatus,
+          captureSource: parsed.source ?? null
+        })
+        .run()
+      queueInboxAttachmentUpload(tx, id)
+    })
 
     // Insert tags if provided
     if (parsed.tags && parsed.tags.length > 0) {
@@ -313,6 +317,7 @@ export async function captureVoice(input: CaptureVoiceInput): Promise<CaptureRes
       type: 'inbox.upserted',
       itemId: id
     })
+    scheduleInboxAttachmentSync()
 
     trackMainEvent('voice_recording_completed', {
       surface: 'voice',

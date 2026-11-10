@@ -1,6 +1,6 @@
 /**
- * Frees the stored assets of a deleted note or canvas once the grace period
- * after its delete has passed (#3015).
+ * Frees the stored assets of a deleted note, canvas or unfiled inbox item once
+ * the grace period after its delete has passed (#3015, #4157).
  *
  * A delete keeps the item's images and attachments, so a restore from the OS
  * trash brings them back (#3002, #3012). This module ends that wait: 30 days
@@ -28,7 +28,13 @@
 
 import { rm } from 'node:fs/promises'
 import { and, eq, gt, inArray, isNull, lte, ne } from 'drizzle-orm'
-import { canvasAssets, canvases, deletedAssetReleases, noteMetadata } from '@memry/db-schema'
+import {
+  canvasAssets,
+  canvases,
+  deletedAssetReleases,
+  inboxItems,
+  noteMetadata
+} from '@memry/db-schema'
 import { getDatabase, type DataDb } from '../database'
 import { canvasAssetDiskPath } from '../canvas/assets/asset-service'
 import { ASSET_RELEASE_GRACE_MS } from '../canvas/assets/asset-store'
@@ -57,12 +63,21 @@ export interface AssetReleaseDeps {
  */
 export function recordDeletedItemAssets(
   db: DataDb,
-  itemType: 'note' | 'canvas',
+  itemType: 'note' | 'canvas' | 'inbox',
   itemId: string,
   now = Date.now()
 ): void {
   let attachmentIds: string[] | null = null
-  if (itemType === 'note') {
+  if (itemType === 'inbox') {
+    // A filed item's blob belongs to the note it joined, which keeps it.
+    const item = db
+      .select({ id: inboxItems.attachmentId, filedAt: inboxItems.filedAt })
+      .from(inboxItems)
+      .where(eq(inboxItems.id, itemId))
+      .get()
+    if (!item?.id || item.filedAt) return
+    attachmentIds = [item.id]
+  } else if (itemType === 'note') {
     const note = db
       .select({ refs: noteMetadata.attachmentReferences, own: noteMetadata.attachmentId })
       .from(noteMetadata)
@@ -274,7 +289,19 @@ async function releaseNote(
     .where(eq(noteMetadata.id, noteId))
     .get()
   if (live) return true
+  return releaseAttachmentIds(deps, attachmentIds, kept)
+}
 
+/**
+ * Free the server chunks of attachments no live item references. A deleted
+ * inbox item takes this path directly: it has no restore, and a note that
+ * reused its blob names the id in its references, which `kept` holds back.
+ */
+async function releaseAttachmentIds(
+  deps: AssetReleaseDeps,
+  attachmentIds: string[],
+  kept: References
+): Promise<boolean> {
   const chunkHashes: string[] = []
   for (const id of attachmentIds) {
     if (kept.attachmentIds.has(id)) continue
@@ -310,7 +337,9 @@ export async function releaseExpiredDeletedAssets(deps: AssetReleaseDeps): Promi
       const done =
         release.itemType === 'canvas'
           ? await releaseCanvas(deps, release.itemId, kept)
-          : await releaseNote(deps, release.itemId, release.attachmentIds ?? [], kept)
+          : release.itemType === 'inbox'
+            ? await releaseAttachmentIds(deps, release.attachmentIds ?? [], kept)
+            : await releaseNote(deps, release.itemId, release.attachmentIds ?? [], kept)
       if (!done) {
         log.warn("Could not free a deleted item's assets; retrying later", {
           itemType: release.itemType
