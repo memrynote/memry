@@ -597,7 +597,8 @@
         "title": "Pindahkan blok ke catatan",
         "searchPlaceholder": "Cari catatan…",
         "noResults": "Tidak ada catatan yang cocok",
-        "failed": "Tidak dapat memindahkan blok"
+        "failed": "Tidak dapat memindahkan blok",
+        "targetNotTaken": "Catatan ini terlalu besar atau berisi teks yang tidak dapat diterima aplikasi, jadi blok tetap berada di tempat semula."
       }
     },
     "attachmentPicker": {

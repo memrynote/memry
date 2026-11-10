@@ -1,6 +1,7 @@
 //! Notes-domain services of the desktop app.
 
 pub mod aliases;
+pub mod append_blocks;
 pub mod apply_template;
 pub mod create;
 pub mod delete;
