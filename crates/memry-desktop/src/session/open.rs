@@ -19,7 +19,7 @@ use super::{
     VaultOpened, lock,
 };
 use crate::registry::vaults::basename;
-use crate::vault::config::{invalidate_vault_config_cache, read_vault_config};
+use crate::vault::config::{applied_exclude_patterns, invalidate_vault_config_cache};
 use crate::vault::init::{CountLimits, count_markdown_files, init_vault, is_vault_initialized};
 use crate::vault::move_journal::sweep as sweep_moves;
 
@@ -140,7 +140,7 @@ impl Session {
             Err(error) => tracing::warn!(%error, "could not prune data.db quarantines"),
         }
 
-        let exclude = read_vault_config(path).exclude_patterns;
+        let exclude = applied_exclude_patterns(path, &vault);
         let counted = count_markdown_files(path, &exclude, CountLimits::DEFAULT);
         // Before any open hook, so before the watcher: a folder move a crash interrupted is put
         // back or shown, and its notes are never reported removed.
