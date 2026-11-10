@@ -270,6 +270,8 @@ mod untrusted_scheme_input;
 mod vault_app_move_open;
 #[path = "vault_config.rs"]
 mod vault_config;
+#[path = "vault_config_unreadable.rs"]
+mod vault_config_unreadable;
 #[path = "vault_consumer.rs"]
 mod vault_consumer;
 #[path = "vault_exclude.rs"]

@@ -1678,6 +1678,11 @@ export type NoteUpdatedView = {
 	tagTemplate?: TagTemplateOutcome | null,
 	/**  The save went over an outside edit the editor never had an event for, kept as a version. */
 	keptOutsideEdit: boolean,
+	/**
+	 *  The file the save replaced is a version: the editor tells the user a text it replaced is
+	 *  in version history only then (#4110).
+	 */
+	keptReplaced: boolean,
 	/**  The body the save left in the file; `note` is read after it and can hold a later edit. */
 	savedContent?: string | null,
 };
@@ -2533,7 +2538,8 @@ export type VaultListChangedEvent = null;
  *    notes, and the next open asks again. `paths` are absolute, for the user to find them.
  *  - `keptRemovals`: files deleted outside the app whose notes were kept, because the note has
  *    text the file never had (`Removed::Undecided`), rather than deleting that text on every
- *    device. Every open lists them again while their rows have no file.
+ *    device. Listed until a file is at the note's path again; every open lists them again
+ *    while their rows have no file.
  *  - `more` says a list notice had more items than [`LISTED`].
  */
 export type VaultNotice = { kind: "configUnreadable"; path: string } | { kind: "watchLimit" } | { kind: "undecidedFiles"; paths: string[]; more: boolean } | { kind: "keptRemovals"; notes: KeptRemoval[]; more: boolean };

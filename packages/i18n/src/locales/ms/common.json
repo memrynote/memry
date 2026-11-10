@@ -1671,6 +1671,7 @@
     "undecidedFiles": "Sesetengah fail tidak menjadi nota",
     "undecidedFilesHint": "Nota atau entri jurnal dengan nama yang sama mempunyai teks yang berbeza, atau belum disegerakkan ke peranti ini. Memry membiarkan fail ini tanpa perubahan dan menyemaknya semula apabila bilik kebal ini dibuka seterusnya.",
     "keptRemovals": "Memry menyimpan nota yang failnya telah dipadam",
-    "keptRemovalsHint": "Fail ini dipadam di luar Memry, tetapi notanya mempunyai teks yang tidak pernah masuk ke dalam fail. Memry menyimpan nota itu dan tidak memadam teks tersebut pada peranti anda yang lain."
+    "keptRemovalsHint": "Fail ini dipadam di luar Memry, tetapi notanya mempunyai teks yang tidak pernah masuk ke dalam fail. Memry menyimpan nota itu dan tidak memadam teks tersebut pada peranti anda yang lain.",
+    "moreUnlisted": "Yang lain tidak disenaraikan di sini."
   }
 }

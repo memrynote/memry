@@ -35,21 +35,30 @@ const fileName = (path: string): string => path.split(/[\\/]/).pop() || path
 /**
  * A list notice's hint and the first names it lists, each isolated so a name in another
  * script keeps its order; past [NAMED] names, a count of the rest (`+` when the vault has more
- * than it listed).
+ * than it listed). With no name left but more in the vault, `unlisted` says so instead.
  */
-function listed(hint: string, items: { key: string; name: string }[], more: boolean): ReactNode {
+function listed(
+  hint: string,
+  items: { key: string; name: string }[],
+  more: boolean,
+  unlisted: string
+): ReactNode {
   const rest = items.length - NAMED
   return (
     <>
       {hint}
       <span className="mt-1 block text-start">
-        {items.slice(0, NAMED).map(({ key, name }, at) => (
-          <span key={key}>
-            {at > 0 && ', '}
-            <bdi>{name}</bdi>
-          </span>
-        ))}
-        {(rest > 0 || more) && <bdi dir="ltr">{` +${Math.max(rest, 0)}${more ? '+' : ''}`}</bdi>}
+        {items.length === 0
+          ? unlisted
+          : items.slice(0, NAMED).map(({ key, name }, at) => (
+              <span key={key}>
+                {at > 0 && ', '}
+                <bdi>{name}</bdi>
+              </span>
+            ))}
+        {items.length > 0 && (rest > 0 || more) && (
+          <bdi dir="ltr">{` +${Math.max(rest, 0)}${more ? '+' : ''}`}</bdi>
+        )}
       </span>
     </>
   )
@@ -105,7 +114,8 @@ export function useVaultNotices(): void {
             description: listed(
               t('vaultNotice.undecidedFilesHint'),
               notice.paths.map((path) => ({ key: path, name: fileName(path) })),
-              notice.more
+              notice.more,
+              t('vaultNotice.moreUnlisted')
             ),
             action: first
               ? {
@@ -133,7 +143,8 @@ export function useVaultNotices(): void {
                 key: note.noteId,
                 name: fileName(note.path).replace(/\.md$/i, '')
               })),
-              notice.more
+              notice.more,
+              t('vaultNotice.moreUnlisted')
             )
           })
           return

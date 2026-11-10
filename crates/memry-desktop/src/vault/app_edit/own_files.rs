@@ -15,10 +15,12 @@ use crate::vault::consumer::ChangeSource;
 /// of the run's own file as its writer's (a save whose document did not take it).
 ///
 /// Apart, by note id, the hash of the outside edit the consumer read last (watcher or open
-/// walk), while the file still holds it: what a write-back that replaces it tells as an outside
-/// text replaced (`Outcome::Wrote::replaced_outside`). A file the app wrote, in this run or an
-/// earlier one, is never in it; an outside edit read in an earlier run and not replaced since
-/// is not either, and goes untold.
+/// walk) and the body did not take (typing won over it), while the file still holds it: what a
+/// write-back that replaces it tells as an outside text replaced
+/// (`Outcome::Wrote::replaced_outside`). An outside edit the body took is not in it: the body
+/// holds its text, so nothing of it is replaced (#4124). A file the app wrote, in this run or
+/// an earlier one, is never in it; an outside edit read in an earlier run and not replaced
+/// since is not either, and goes untold.
 #[derive(Debug, Default)]
 pub struct OwnFiles {
     marks: Mutex<HashMap<String, (String, ChangeSource)>>,
@@ -44,8 +46,9 @@ impl OwnFiles {
         self.writer(note_id, hash).is_some()
     }
 
-    /// An outside edit replaced the note's file with `hash` (`None`: bytes not read): bytes
-    /// equal to the run's put back later are the outside's too.
+    /// An outside edit replaced the note's file with `hash`, which the body did not take
+    /// (`None`: it took them, or the bytes were not read): bytes equal to the run's put back
+    /// later are the outside's too.
     pub(crate) fn read_outside(&self, note_id: &str, hash: Option<&str>) {
         self.marks().remove(note_id);
         let mut outside = lock(&self.outside);

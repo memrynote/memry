@@ -353,7 +353,10 @@ impl Applier {
                 // The row names no text the document holds, so the body may be one the file
                 // never had (synced, kept, owed and since pulled): the file only fills an
                 // empty body. A conflict between the two is the write-back's (12e-3, Step 17).
-                None => Write::Seed,
+                None => {
+                    self.identity.file_returned(&self.ctx(), note_id);
+                    Write::Seed
+                }
             };
             match self.write_body(note_id, path, &file, write) {
                 Body::Wrote { holds_file: true } => {
@@ -400,7 +403,8 @@ impl Applier {
         }
         // The bytes a save wrote that its document did not take (`AppEdit`, `cancel_write`)
         // are its writer's: reported as an outside edit, they would make an open editor drop
-        // what was typed since. Any other bytes replaced the app's file.
+        // what was typed since. Any other bytes replaced the app's file; the body took them, so
+        // a write-back over them replaces no outside text (#4124).
         let writer = content_hash
             .as_deref()
             .and_then(|hash| self.own_files.writer(note_id, hash));
@@ -408,8 +412,7 @@ impl Applier {
             Some(writer) if source == ChangeSource::Watcher => writer,
             Some(_) => source,
             None => {
-                self.own_files
-                    .read_outside(note_id, content_hash.as_deref());
+                self.own_files.read_outside(note_id, None);
                 source
             }
         };

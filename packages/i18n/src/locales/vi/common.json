@@ -1671,6 +1671,7 @@
     "undecidedFiles": "Một số tệp chưa trở thành ghi chú",
     "undecidedFilesHint": "Một ghi chú hoặc mục nhật ký cùng tên có nội dung khác, hoặc chưa được đồng bộ về thiết bị này. Memry giữ nguyên các tệp này và kiểm tra lại vào lần tới mở kho này.",
     "keptRemovals": "Memry đã giữ lại các ghi chú có tệp bị xóa",
-    "keptRemovalsHint": "Các tệp này đã bị xóa bên ngoài Memry, nhưng ghi chú của chúng có nội dung chưa từng được ghi vào tệp. Memry đã giữ lại các ghi chú thay vì xóa nội dung đó trên các thiết bị khác của bạn."
+    "keptRemovalsHint": "Các tệp này đã bị xóa bên ngoài Memry, nhưng ghi chú của chúng có nội dung chưa từng được ghi vào tệp. Memry đã giữ lại các ghi chú thay vì xóa nội dung đó trên các thiết bị khác của bạn.",
+    "moreUnlisted": "Còn những mục khác không được liệt kê ở đây."
   }
 }

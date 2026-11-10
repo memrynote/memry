@@ -8,12 +8,15 @@
 // file outside the app (13m-5) reaches the open day, unless the day holds typing not saved yet,
 // which stays and is saved; the app's own saves never reach it as one.
 // A tag added to the file's frontmatter outside the app joins the day's tags on its record (#3825).
+// Leaving a day with typing not saved yet saves it to that day, once, with an outside edit
+// landing during the switch kept in the file or as a version (#4088).
 import { existsSync, readFileSync, writeFileSync } from 'node:fs'
 import { join } from 'node:path'
 
 import { browser } from '@wdio/globals'
 
 import { navigateTo, waitForAppReady } from '../../harness/app-helpers'
+import { invokeTest } from '../../harness/invoke-test'
 import { restart } from '../../harness/tauri-lifecycle'
 import type { Page } from '../../harness/pw-compat/page'
 import { test, expect } from '../../harness/test'
@@ -403,4 +406,69 @@ test('text typed while the day saves stays in the day', async ({ page }) => {
   await expect(page.locator('.bn-editor').first()).toContainText(
     'First part. Second part. Third part.'
   )
+})
+
+/** How many times `part` is in `text`. */
+const timesIn = (text: string, part: string): number => text.split(part).length - 1
+
+// The day's typing, sent by the switch (and the editor's late report of it) while an outside
+// edit lands on the day's file: the typing reaches the file once, the outside text stays in the
+// file or is kept as a version, and the day reopened shows the file as it is (#4088).
+test('typing left in a day by a switch is saved once, with an outside edit made meanwhile', async ({
+  app,
+  page,
+  testVaultPath
+}) => {
+  await openJournal(page)
+  const date = await today(page)
+  const file = join(testVaultPath, 'journal', `${date}.md`)
+  await typeInDay(page, 'Written first.')
+  await pollUntil(
+    async () => ((await entry(page, date))?.content.includes('Written first.') ? true : undefined),
+    { timeoutMs: 20_000 }
+  )
+  const editor = page.locator(DAY_EDITOR).first()
+
+  for (const round of [1, 2, 3]) {
+    const typed = ` Typed ${round}.`
+    const outside = `Outside ${round}.`
+    await typeInDay(page, typed)
+    // Within the editor's 150 ms debounce and the 1 s save delay: the switch takes the typing.
+    await page.evaluate(() => {
+      const previous = document.querySelector<HTMLButtonElement>('[aria-label="Previous day"]')
+      previous?.click()
+    })
+    writeFileSync(file, `${readFileSync(file, 'utf8').trimEnd()}\n\n${outside}\n`)
+
+    const saved = await pollUntil(
+      async () => {
+        const text = readFileSync(file, 'utf8')
+        return text.includes(typed.trim()) ? text : undefined
+      },
+      { timeoutMs: 20_000 }
+    )
+    expect(saved).toBeDefined()
+    // Past the editor's debounce and the save delay: every write of the switch has landed.
+    await sleep(1_500)
+    const text = readFileSync(file, 'utf8')
+    expect(timesIn(text, typed.trim())).toBe(1)
+    expect(timesIn(text, 'Written first.')).toBe(1)
+    if (!text.includes(outside)) {
+      const versions = await invokeTest<{ content: string }[]>(app, 'e2e_debug_query', {
+        sql: `SELECT content FROM note_snapshots WHERE note_id = 'j${date}'`
+      })
+      expect(versions.some((version) => version.content.includes(outside))).toBe(true)
+    }
+
+    await page.getByRole('button', { name: 'Next day' }).first().click()
+    await expect(editor).toContainText(typed.trim())
+    const body = (await entry(page, date))?.content ?? ''
+    expect(timesIn(body, typed.trim())).toBe(1)
+    await expect.poll(async () => timesIn(await editor.innerText(), typed.trim())).toBe(1)
+    if (text.includes(outside)) await expect(editor).toContainText(outside)
+  }
+  // Nothing the reopened day showed was saved back over the file.
+  await sleep(1_500)
+  const last = readFileSync(file, 'utf8')
+  for (const round of [1, 2, 3]) expect(timesIn(last, `Typed ${round}.`)).toBe(1)
 })

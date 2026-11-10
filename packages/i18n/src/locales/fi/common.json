@@ -1671,6 +1671,7 @@
     "undecidedFiles": "Joistakin tiedostoista ei tullut muistiinpanoja",
     "undecidedFilesHint": "Samannimisellä muistiinpanolla tai päiväkirjamerkinnällä on eri teksti, tai sitä ei ole vielä synkronoitu tähän laitteeseen. Memry jättää nämä tiedostot ennalleen ja tarkistaa ne uudelleen, kun tämä holvi avataan seuraavan kerran.",
     "keptRemovals": "Memry säilytti muistiinpanot, joiden tiedostot poistettiin",
-    "keptRemovalsHint": "Nämä tiedostot poistettiin Memryn ulkopuolella, mutta niiden muistiinpanoissa oli tekstiä, jota tiedostoihin ei koskaan tallentunut. Memry säilytti muistiinpanot, jotta tekstiä ei poisteta muilta laitteiltasi."
+    "keptRemovalsHint": "Nämä tiedostot poistettiin Memryn ulkopuolella, mutta niiden muistiinpanoissa oli tekstiä, jota tiedostoihin ei koskaan tallentunut. Memry säilytti muistiinpanot, jotta tekstiä ei poisteta muilta laitteiltasi.",
+    "moreUnlisted": "Muita ei näytetä tässä."
   }
 }

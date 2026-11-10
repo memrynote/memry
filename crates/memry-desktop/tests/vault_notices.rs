@@ -175,7 +175,8 @@ fn an_undecided_file_is_listed_until_it_is_named() {
 }
 
 /// A file deleted outside the app whose note has an edit the file never got keeps its note,
-/// which is listed for the user to open, at every open while the file is gone.
+/// which is listed at every open while the file is gone, and leaves the list once a file is at
+/// its path again, while the vault is open or by the next open.
 #[test]
 fn a_kept_removal_is_listed_at_every_open_while_its_file_is_gone() {
     let (mut e, notices, store) = noticing_env_with_store();
@@ -204,7 +205,12 @@ fn a_kept_removal_is_listed_at_every_open_while_its_file_is_gone() {
     e.facts_until(indexed);
     assert_eq!(notices.list(), vec![kept]);
 
-    e.write("a.md", "Alpha again\n");
+    e.write("a.md", "Alpha back\n");
+    until("the kept removal leaves the list", || {
+        notices.list().is_empty()
+    });
+    assert_eq!(row_id(&e, "a.md"), id, "the note keeps its row");
+
     e.close();
     e.drain();
     e.open();

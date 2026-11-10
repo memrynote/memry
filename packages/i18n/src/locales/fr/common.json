@@ -1671,6 +1671,7 @@
     "undecidedFiles": "Certains fichiers ne sont pas devenus des notes",
     "undecidedFilesHint": "Une note ou une entrée de journal du même nom a un autre texte, ou n'est pas encore synchronisée sur cet appareil. Memry laisse ces fichiers tels quels et les vérifie à nouveau à la prochaine ouverture de ce coffre.",
     "keptRemovals": "Memry a conservé des notes dont les fichiers ont été supprimés",
-    "keptRemovalsHint": "Ces fichiers ont été supprimés en dehors de Memry, mais leurs notes contenaient du texte que les fichiers n'ont jamais reçu. Memry a conservé les notes plutôt que d'effacer ce texte sur vos autres appareils."
+    "keptRemovalsHint": "Ces fichiers ont été supprimés en dehors de Memry, mais leurs notes contenaient du texte que les fichiers n'ont jamais reçu. Memry a conservé les notes plutôt que d'effacer ce texte sur vos autres appareils.",
+    "moreUnlisted": "D'autres ne sont pas listés ici."
   }
 }
