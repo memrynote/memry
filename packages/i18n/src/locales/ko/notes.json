@@ -1648,6 +1648,8 @@
     "unlockNote": "노트 잠금 해제",
     "lockFolder": "폴더 잠금",
     "unlockFolder": "폴더 잠금 해제",
+    "lockingFolder": "폴더 잠그는 중…",
+    "unlockingFolder": "폴더 잠금 해제 중…",
     "toggleFailed": "잠금을 변경하지 못했습니다",
     "readOnlyIndicator": "잠겨 있습니다. 나와 에이전트 모두 읽기 전용입니다.",
     "excludedIndicator": "이 노트는 제외된 폴더에 있습니다.",

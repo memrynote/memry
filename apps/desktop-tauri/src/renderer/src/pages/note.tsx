@@ -146,6 +146,7 @@ import { useEditorSettings, EDITOR_NORMAL_CONTENT_WIDTH } from '@/hooks/use-edit
 import { extractErrorMessage } from '@/lib/ipc-error'
 import { useHasOwnNoteLock } from '@/lib/vault-locks-store'
 import { LockedNoteNotice } from '@/components/note/locked-note-notice'
+import type { DocReadOnly } from '@/sync/yjs-ipc-provider'
 import { createLogger } from '@/lib/logger'
 import { markLaunchNoteReadable } from '@/lib/launch-restore'
 import { LocalGraphPanel } from '@/components/graph/local-graph-panel'
@@ -268,6 +269,19 @@ export function NotePage({ noteId }: NotePageProps) {
   // and for every agent write path.
   const isLocked = body.locked
   const isExcluded = body.excluded
+  // The editor host's own answer (open header or a refused `note_locked`), which can come before
+  // the lock store hears of the lock: the notice shows for either. Kept per note: the page stays
+  // mounted when the tab shows another note, and a large file mounts no editor to clear it.
+  const [docReadOnlyOf, setDocReadOnlyOf] = useState<{
+    noteId: string | undefined
+    readOnly: DocReadOnly | null
+  } | null>(null)
+  const docReadOnly =
+    docReadOnlyOf && docReadOnlyOf.noteId === noteId ? docReadOnlyOf.readOnly : null
+  const handleReadOnlyChange = useCallback(
+    (readOnly: DocReadOnly | null) => setDocReadOnlyOf({ noteId, readOnly }),
+    [noteId]
+  )
   const hasOwnLock = useHasOwnNoteLock(noteId ?? null)
   const { createNote, updateNote, renameNote, deleteNote } = useNoteMutations()
   const {
@@ -1784,7 +1798,7 @@ export function NotePage({ noteId }: NotePageProps) {
           data-testid="note-metadata"
           data-marquee-ignore
         >
-          {isLocked && <LockedNoteNotice excluded={isExcluded} />}
+          {(isLocked || docReadOnly === 'locked') && <LockedNoteNotice excluded={isExcluded} />}
           <NoteTitle
             disabled={isLocked}
             noteId={note.id}
@@ -1947,6 +1961,7 @@ export function NotePage({ noteId }: NotePageProps) {
                     key={noteId}
                     noteId={noteId}
                     editable={!isLocked}
+                    onReadOnlyChange={handleReadOnlyChange}
                     notePath={note.path}
                     initialContent={review.editorInitialContent}
                     contentType="markdown"

@@ -916,9 +916,12 @@ describe('ContentArea', () => {
         isRemoteUpdateRef: { current: false }
       }
 
-      render(<ContentArea noteId="note-1" />)
+      const onReadOnlyChange = vi.fn()
+      render(<ContentArea noteId="note-1" onReadOnlyChange={onReadOnlyChange} />)
 
       expect(screen.getByTestId('blocknote-view')).toHaveAttribute('data-editable', 'false')
+      // The page shows the lock notice by it.
+      expect(onReadOnlyChange).toHaveBeenLastCalledWith(readOnly)
     }
   )
 

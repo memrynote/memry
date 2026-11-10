@@ -1648,6 +1648,8 @@
     "unlockNote": "Lås upp anteckning",
     "lockFolder": "Lås mapp",
     "unlockFolder": "Lås upp mapp",
+    "lockingFolder": "Låser mappen…",
+    "unlockingFolder": "Låser upp mappen…",
     "toggleFailed": "Det gick inte att ändra låset",
     "readOnlyIndicator": "Låst. Skrivskyddad för dig och för agenter.",
     "excludedIndicator": "Den här anteckningen ligger i en undantagen mapp.",

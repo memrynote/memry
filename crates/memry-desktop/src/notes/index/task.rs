@@ -351,8 +351,12 @@ impl Indexer {
                 }
                 owed.owe_scan();
             }
-            // The write it follows published its `Changed`.
-            Applied::OutsideEditKept { .. } | Applied::Vault(_) | Applied::JournalFollowed => {}
+            // The write it follows published its `Changed`; a lock's revert leaves the file as
+            // its row names it.
+            Applied::OutsideEditKept { .. }
+            | Applied::LockRestored { .. }
+            | Applied::Vault(_)
+            | Applied::JournalFollowed => {}
         }
     }
 

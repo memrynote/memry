@@ -1648,6 +1648,8 @@
     "unlockNote": "Déverrouiller la note",
     "lockFolder": "Verrouiller le dossier",
     "unlockFolder": "Déverrouiller le dossier",
+    "lockingFolder": "Verrouillage du dossier…",
+    "unlockingFolder": "Déverrouillage du dossier…",
     "toggleFailed": "Impossible de modifier le verrou",
     "readOnlyIndicator": "Verrouillée. En lecture seule pour vous et pour les agents.",
     "excludedIndicator": "Cette note se trouve dans un dossier exclu.",

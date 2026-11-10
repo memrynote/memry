@@ -7,6 +7,7 @@ import type { Block } from '@blocknote/core'
 import type { WritingToolsSession } from '../writing-tools/writing-tools-session'
 import type { XmlFragment } from 'yjs'
 import type { CriticMarkupMark } from '@memry/shared'
+import type { DocReadOnly } from '@/sync/yjs-ipc-provider'
 
 // =============================================================================
 // HEADING TYPES
@@ -129,6 +130,11 @@ export interface ContentAreaProps {
   placeholder?: string
   /** Whether the editor is read-only */
   editable?: boolean
+  /**
+   * Why the editor host refuses this window's edits of the note (the open header, or a refused
+   * edit), or null. The page shows the lock notice for `locked` (#3531).
+   */
+  onReadOnlyChange?: (readOnly: DocReadOnly | null) => void
   /** Whether to auto-focus the editor on mount */
   autoFocus?: boolean
   /** Whether to show sticky formatting toolbar (always visible above editor) */

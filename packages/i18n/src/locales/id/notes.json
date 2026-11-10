@@ -1648,6 +1648,8 @@
     "unlockNote": "Buka kunci catatan",
     "lockFolder": "Kunci folder",
     "unlockFolder": "Buka kunci folder",
+    "lockingFolder": "Mengunci folder…",
+    "unlockingFolder": "Membuka kunci folder…",
     "toggleFailed": "Tidak dapat mengubah kunci",
     "readOnlyIndicator": "Terkunci. Hanya baca untuk Anda dan untuk agen.",
     "excludedIndicator": "Catatan ini ada di folder yang dikecualikan.",

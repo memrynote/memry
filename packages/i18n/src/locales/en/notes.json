@@ -1648,6 +1648,8 @@
     "unlockNote": "Unlock note",
     "lockFolder": "Lock folder",
     "unlockFolder": "Unlock folder",
+    "lockingFolder": "Locking folder…",
+    "unlockingFolder": "Unlocking folder…",
     "toggleFailed": "Could not change the lock",
     "readOnlyIndicator": "Locked. Read-only for you and for agents.",
     "excludedIndicator": "This note is in an excluded folder.",
