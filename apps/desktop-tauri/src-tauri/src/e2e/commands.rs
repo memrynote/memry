@@ -18,7 +18,12 @@ macro_rules! e2e_commands {
 
 e2e_commands! {
     app => [e2e_app_info, e2e_request_quit, e2e_quit_on_page_start, e2e_emit],
-    clipboard => [e2e_clipboard_read, e2e_clipboard_write],
+    clipboard => [
+        e2e_clipboard_read,
+        e2e_clipboard_write,
+        e2e_webview_paste,
+        e2e_webkitgtk_version
+    ],
     crash => [e2e_trigger_crash, e2e_kill_page],
     debug => [e2e_debug_query, e2e_debug_index_query],
     os_drag => [e2e_os_drag],
