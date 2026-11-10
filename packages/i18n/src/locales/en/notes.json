@@ -134,6 +134,7 @@
     "actions": {
       "openInNewTab": "Open in New Tab",
       "openToTheSide": "Open to the Side",
+      "openFolderView": "Open Folder View",
       "newNote": "New Note",
       "newFolder": "New Folder",
       "showTasks": "Show Tasks",
@@ -419,6 +420,10 @@
       "savedView": "Saved view",
       "savedViewMissing": "The saved view “{name}” is gone, so this shows the default view.",
       "openAsTab": "Open as tab",
+      "newNote": "New note",
+      "newViewTitle": "New view",
+      "newViewSubtext": "A new folder beside this note, listed here",
+      "newViewFailed": "Could not create the folder for this view.",
       "empty": "Nothing matches this view yet.",
       "loadFailed": "Could not load this view. The notes themselves are untouched.",
       "folderMissing": "This folder is not in the vault any more. Pick another source.",

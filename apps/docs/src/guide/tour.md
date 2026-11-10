@@ -37,8 +37,11 @@ Inside the **Notes** tree, drag a note or folder to move it. Where you drop on a
 When a note `Note A.md` and a folder `Note A/` sit side by side in the same
 folder, the Notes tree shows them as **one row** named "Note A". Click the
 name to open the note; click the arrow to open the folder, which can hold
-notes and folders of its own. The files on disk do not change, so the note
-and the folder stay two separate items in Finder, folder views and sync.
+notes and folders of its own. To see the folder as a table, hover the row and
+click the grid button, or right-click it and choose **Open Folder View**. The
+folder view of `Note A/` lists `Note A.md` as one of its rows, beside the
+notes inside the folder. The files on disk do not change, so the note and the
+folder stay two separate items in Finder and sync.
 
 - The names must match exactly, capitals included. Only Markdown notes pair up:
   a PDF or image with the same name stays a separate row.

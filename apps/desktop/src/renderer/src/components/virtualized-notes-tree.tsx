@@ -639,7 +639,7 @@ function FolderRow({
             onDelete={() => onDeleteFolder?.(item.folder.path)}
             folderItems={
               <PairedFolderMenuItems
-                folderPath={item.folder.path}
+                folder={item.folder}
                 onCreateNote={(path) => onCreateNote?.(path)}
                 onCreateFolder={(path) => onCreateFolder?.(path)}
                 onSetSubtreeExpanded={onSetSubtreeExpanded}

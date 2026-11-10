@@ -107,6 +107,7 @@ import { journalDayTab } from '@/lib/memry-links'
 import { scrollToHeadingBlock, scrollToHeadingWhenReady } from '@/lib/scroll-to-heading'
 import { splitWikiTarget, normalizeHeading } from '@memry/shared/wiki-target'
 import { extractInlineTagsFromMarkdown } from '@memry/shared/inline-tags'
+import { JournalPastYears } from '@/components/journal/journal-past-years'
 import {
   createJournalDateLabels,
   formatDateToISO,
@@ -121,6 +122,7 @@ import {
   useJournalEntry,
   useJournalHeatmap,
   useMonthEntries,
+  useSameDayEntries,
   useYearStats
 } from '@/hooks/use-journal'
 import { useIsBookmarked } from '@/hooks/use-bookmarks'
@@ -287,7 +289,15 @@ export function JournalPage({ className }: JournalPageProps): React.JSX.Element 
   const { tags: allAvailableTags } = useNoteTagsQuery()
 
   // Journal settings
-  const { settings: journalSettings, isLoading: isJournalSettingsLoading } = useJournalSettings()
+  const {
+    settings: journalSettings,
+    isLoading: isJournalSettingsLoading,
+    updateSettings: updateJournalSettings
+  } = useJournalSettings()
+  const toggleAllYears = useCallback(
+    () => void updateJournalSettings({ allYearsView: !journalSettings.allYearsView }),
+    [updateJournalSettings, journalSettings.allYearsView]
+  )
 
   // Editor settings — width follows the global setting (Normal / Full) unless
   // the user overrides it for Journal, which applies to every journal page.
@@ -697,6 +707,19 @@ export function JournalPage({ className }: JournalPageProps): React.JSX.Element 
     navigateToDay(formatDateToISO(nextDay))
   }, [selectedDateObj, navigateToDay])
 
+  // Year jumps land only on years that have an entry on this day (newest first).
+  const { entries: sameDayEntries } = useSameDayEntries(selectedDate)
+  const previousYearDate = sameDayEntries.find((e) => e.date < selectedDate)?.date ?? null
+  const nextYearDate = sameDayEntries.findLast((e) => e.date > selectedDate)?.date ?? null
+
+  const handlePreviousYearSameDay = useCallback(() => {
+    if (previousYearDate) navigateToDay(previousYearDate)
+  }, [previousYearDate, navigateToDay])
+
+  const handleNextYearSameDay = useCallback(() => {
+    if (nextYearDate) navigateToDay(nextYearDate)
+  }, [nextYearDate, navigateToDay])
+
   const handlePreviousMonth = useCallback(() => {
     if (currentViewState.type === 'month') {
       const newMonth = currentViewState.month === 0 ? 11 : currentViewState.month - 1
@@ -1038,6 +1061,10 @@ export function JournalPage({ className }: JournalPageProps): React.JSX.Element 
     goPrevious: handleNavigationPrevious,
     goNext: handleNavigationNext,
     goToday: handleTodayClick,
+    goPreviousYear: previousYearDate ? handlePreviousYearSameDay : null,
+    goNextYear: nextYearDate ? handleNextYearSameDay : null,
+    toggleAllYears,
+    allYearsView: journalSettings.allYearsView,
     isBookmarked,
     toggleBookmark: handleBookmarkToggle,
     toggleFullWidth: toggleJournalWidth,
@@ -1248,8 +1275,13 @@ export function JournalPage({ className }: JournalPageProps): React.JSX.Element 
             <JournalBreadcrumb
               viewState={currentViewState}
               isToday={isToday}
+              today={today}
               onPreviousDay={handlePreviousDay}
               onNextDay={handleNextDay}
+              previousYearDate={previousYearDate}
+              nextYearDate={nextYearDate}
+              onPreviousYear={() => runJournal('journal.previousYear')}
+              onNextYear={() => runJournal('journal.nextYear')}
               onMonthClick={navigateToMonth}
               onYearClick={navigateToYear}
               onTodayClick={handleTodayClick}
@@ -1475,6 +1507,17 @@ export function JournalPage({ className }: JournalPageProps): React.JSX.Element 
                             />
                           )}
                         </div>
+
+                        {!isJournalSettingsLoading &&
+                          (journalSettings.showOnThisDay || journalSettings.allYearsView) && (
+                            <JournalPastYears
+                              date={selectedDate}
+                              today={today}
+                              allYears={journalSettings.allYearsView}
+                              onToggleAllYears={() => runJournal('journal.toggleAllYears')}
+                              onOpenDay={navigateToDay}
+                            />
+                          )}
 
                         {/* Excluded from marquee/focus-at-end so graph drags and
                             clicks are not hijacked by the editor's marquee zone. */}

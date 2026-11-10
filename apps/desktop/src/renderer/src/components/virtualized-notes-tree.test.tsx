@@ -1104,6 +1104,15 @@ describe('VirtualizedNotesTree', () => {
       expect(dataTransfer.setData).toHaveBeenCalledWith(MEMRY_NOTE_DRAG_MIME, 'note-page')
     })
 
+    // A label click opens the note, so the row's menu has to reach the folder view.
+    it('opens the folder view from the row menu', async () => {
+      const user = userEvent.setup()
+      renderPaired()
+
+      await user.click(screen.getByRole('button', { name: 'Open Folder View' }))
+      expect(mocks.openTab.mock.lastCall?.[0]).toMatchObject({ type: 'folder', entityId: 'Page' })
+    })
+
     it('reveals the note on its folder row', async () => {
       const actionsRef = createRef<VirtualizedTreeActions | null>()
       renderPaired({ actionsRef })

@@ -3,6 +3,7 @@ export {
   getJournalEntryByDate,
   getHeatmapData,
   getJournalMonthEntries,
+  getJournalSameDayEntries,
   getJournalYearStats,
   getJournalStreak,
   getJournalPropertyRows,

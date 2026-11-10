@@ -1,8 +1,10 @@
-import { ArrowRight, ChevronsDown, ChevronsUp, FilePlus, FolderPlus } from '@/lib/icons'
+import { ArrowRight, ChevronsDown, ChevronsUp, FilePlus, FolderPlus, LayoutGrid } from '@/lib/icons'
 import { useTree } from '@/components/kibo-ui/tree'
 import { IconPickerButton } from '@/components/icon-picker-button'
 import { ContextMenuItem, ContextMenuSeparator } from '@/components/ui/context-menu'
-import { getFileIcon } from '@/components/notes-tree-utils'
+import { getFileIcon, type FolderNode } from '@/components/notes-tree-utils'
+import { useOpenPage } from '@/hooks/use-open-target'
+import { folderTabData } from '@/lib/sidebar-tab-data'
 import type { NoteListItem } from '@/hooks/use-notes-query'
 import { cn } from '@/lib/utils'
 import { useT } from '@memry/i18n/renderer'
@@ -96,23 +98,33 @@ export function TreePairedNoteIcon({
 }
 
 interface PairedFolderMenuItemsProps {
-  folderPath: string
+  folder: FolderNode
   onCreateNote: (folderPath: string) => void
   onCreateFolder: (folderPath: string) => void
   onSetSubtreeExpanded: (folderPath: string, expanded: boolean) => void
 }
 
-/** The folder's half of the row's context menu: what goes inside it. */
+/**
+ * The folder's half of the row's context menu: its folder view, and what goes
+ * inside it. A click on the row opens the note, so the menu is the other way
+ * to the folder view besides the hover button.
+ */
 export function PairedFolderMenuItems({
-  folderPath,
+  folder,
   onCreateNote,
   onCreateFolder,
   onSetSubtreeExpanded
 }: PairedFolderMenuItemsProps): React.JSX.Element {
   const { t } = useT('notes')
+  const { openPage } = useOpenPage()
+  const folderPath = folder.path
   return (
     <>
       <ContextMenuSeparator />
+      <ContextMenuItem onClick={() => openPage(folderTabData(folderPath, folder.icon))}>
+        <LayoutGrid className="me-2 h-4 w-4" />
+        {t('tree.actions.openFolderView')}
+      </ContextMenuItem>
       <ContextMenuItem onClick={() => onCreateNote(folderPath)}>
         <FilePlus className="me-2 h-4 w-4" />
         {t('tree.actions.newNote')}

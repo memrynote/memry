@@ -371,7 +371,8 @@ const createMockApi = () => ({
       list: vi.fn().mockResolvedValue({ entries: [] }),
       getHeatmap: vi.fn().mockResolvedValue([]),
       getMonth: getMonthEntries,
-      getMonthEntries
+      getMonthEntries,
+      getSameDayEntries: vi.fn().mockResolvedValue([])
     }
   })(),
 

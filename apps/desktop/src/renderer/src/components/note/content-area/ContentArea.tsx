@@ -72,7 +72,7 @@ import { getCalloutSlashMenuItem, getCustomCalloutSlashMenuItems } from './callo
 import { useCalloutTypes } from './callout-types-store'
 import { getMathSlashMenuItem } from './math-block'
 import { getWhiteboardSlashMenuItem } from './whiteboard-block'
-import { getChartSlashMenuItem, getViewSlashMenuItem } from './view-block'
+import { getChartSlashMenuItem, getNewViewSlashMenuItem, getViewSlashMenuItem } from './view-block'
 import { createViewBlockKeysPlugin } from './view-block-keys-plugin'
 import { isFromWhiteboard } from './whiteboard-events'
 import { buildTableContent, type TableSize } from './slash-menu-utils'
@@ -3524,6 +3524,19 @@ const ContentAreaEditor = memo(function ContentAreaEditor({
                         group: t('editor.viewBlock.group'),
                         subtext: t('editor.viewBlock.subtext')
                       })
+                  // `/new view` makes a folder beside the note and a view over it.
+                  const newViewItem = inCell
+                    ? null
+                    : getNewViewSlashMenuItem(
+                        editor,
+                        {
+                          title: t('editor.viewBlock.newViewTitle'),
+                          group: t('editor.viewBlock.group'),
+                          subtext: t('editor.viewBlock.newViewSubtext'),
+                          failed: t('editor.viewBlock.newViewFailed')
+                        },
+                        fetchNotePath
+                      )
                   // `/portal` and `/search portal`: live windows onto other notes.
                   const portalItems = inCell
                     ? []
@@ -3640,6 +3653,7 @@ const ContentAreaEditor = memo(function ContentAreaEditor({
                     { ...mathItem, id: 'math' },
                     ...(whiteboardItem ? [{ ...whiteboardItem, id: 'whiteboard' }] : []),
                     ...(viewItem ? [{ ...viewItem, id: 'view' }] : []),
+                    ...(newViewItem ? [{ ...newViewItem, id: 'new_view' }] : []),
                     ...portalItems,
                     ...(chartItem ? [{ ...chartItem, id: 'chart' }] : []),
                     ...(taskItem ? [{ ...taskItem, id: 'task' }] : []),
