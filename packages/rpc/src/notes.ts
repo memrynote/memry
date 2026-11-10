@@ -19,6 +19,7 @@ import type {
   LargeFileSearchProgressEvent,
   CanvasLinkVia,
   LinkVia,
+  ReferenceSourceFacets,
   SimilarNotesResponse,
   NoteTagSuggestionsResponse,
   NoteClustersResponse,
@@ -422,7 +423,7 @@ export interface BacklinkContext {
   linkEnd: number
 }
 
-export interface Backlink {
+export interface Backlink extends ReferenceSourceFacets {
   sourceId: string
   sourcePath: string
   sourceTitle: string
