@@ -1871,18 +1871,22 @@ describe('ContentArea', () => {
     expect(await slashController.getItems('mermaid')).toEqual([])
   })
 
-  it('offers the view row under /view, and not in a table cell', async () => {
+  it('offers the view rows under /view, and not in a table cell', async () => {
     // #given
     render(<ContentArea noteId="note-1" />)
     const slashController = contentAreaMocks.suggestionControllers.find(
       (controller) => controller.triggerCharacter === '/'
     )
 
-    // #when / #then an alias finds it too
+    // #when / #then an alias finds both: a view over a source, and a new one with its own folder
     expect(await slashController.getItems('database')).toEqual([
       expect.objectContaining({
         title: 'View',
         subtext: 'A live list of notes from a folder, a tag or the whole vault'
+      }),
+      expect.objectContaining({
+        title: 'New view',
+        subtext: 'A new folder beside this note, listed here'
       })
     ])
 
