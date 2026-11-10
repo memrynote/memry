@@ -1,6 +1,5 @@
 import { act, renderHook, waitFor } from '@testing-library/react'
-import type { QueryClient } from '@tanstack/react-query'
-import { QueryClientProvider } from '@tanstack/react-query'
+import { onlineManager, QueryClient, QueryClientProvider } from '@tanstack/react-query'
 import type { ReactNode } from 'react'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 
@@ -11,6 +10,7 @@ import {
   setupHookTestEnvironment
 } from '@tests/utils/hook-test-wrapper'
 import { VaultScopeProvider } from '@/contexts/vault-scope'
+import { APP_QUERY_DEFAULT_OPTIONS } from '@/lib/query-client-options'
 import { flushAllPendingSaves } from '@/lib/save-registry'
 import { setCachedVaultStatus } from '@/lib/vault-status-cache'
 import { beginVaultSwitch, endVaultSwitch } from '@/lib/vault-switch-state'
@@ -385,6 +385,39 @@ describe('useJournalEntry dedicated hook', () => {
     // No timer advanced: the unmount flush and the save registry are both gone,
     // so a debounce parked now would be invisible to quit.
     expect(updateEntry).toHaveBeenCalledWith({ date: '2026-05-10', content: 'Typed while closing' })
+  })
+
+  // #4146: with TanStack's default mutation network mode the WebView's `offline` event paused the
+  // save in renderer memory, so the quit flush never finished and the entry was lost.
+  it('saves an entry typed on an empty day while the WebView reports offline, before quit gives up', async () => {
+    queryClient = new QueryClient({ defaultOptions: APP_QUERY_DEFAULT_OPTIONS })
+    ;(window.api.journal.getEntry as ReturnType<typeof vi.fn>).mockResolvedValue(null)
+    const updateEntry = window.api.journal.updateEntry as ReturnType<typeof vi.fn>
+    onlineManager.setOnline(false)
+    try {
+      const { result } = renderHook(() => useJournalEntry('2026-05-10'), { wrapper })
+      await waitFor(() => expect(result.current.loadedForDate).toBe('2026-05-10'))
+
+      act(() => {
+        result.current.updateContent('Typed offline')
+      })
+      await act(async () => {
+        await vi.advanceTimersByTimeAsync(1000)
+      })
+      let flushed = false
+      void flushAllPendingSaves().then(() => {
+        flushed = true
+      })
+      // Main waits FLUSH_WINDOW_TIMEOUT (2 s) for the renderer's flush at quit.
+      await act(async () => {
+        await vi.advanceTimersByTimeAsync(2000)
+      })
+
+      expect(flushed).toBe(true)
+      expect(updateEntry).toHaveBeenCalledWith({ date: '2026-05-10', content: 'Typed offline' })
+    } finally {
+      onlineManager.setOnline(true)
+    }
   })
 
   it('handles created, updated, deleted, and external journal events', async () => {

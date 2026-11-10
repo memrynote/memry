@@ -14,7 +14,16 @@ const schema = new Schema({
       group: 'block',
       atom: true,
       toDOM: () => ['div', { contenteditable: 'false' }, ['p', 'portal inner text']]
-    }
+    },
+    // A callout: a non-editable label beside the textblock's own content.
+    callout: {
+      group: 'block',
+      content: 'inline*',
+      toDOM: () => ['div', ['span', { contenteditable: 'false' }, 'Note'], ['p', 0]]
+    },
+    table: { group: 'block', content: 'row+', toDOM: () => ['table', ['tbody', 0]] },
+    row: { content: 'cell+', toDOM: () => ['tr', 0] },
+    cell: { content: 'inline*', toDOM: () => ['td', 0] }
   }
 })
 
@@ -27,6 +36,20 @@ function mount(text: string, caret: number): EditorView {
   document.body.append(place)
   view = new EditorView(place, { state })
   return view
+}
+
+function mountDoc(blocks: ReturnType<typeof schema.node>[], caret: number): EditorView {
+  const doc = schema.node('doc', null, blocks)
+  const state = EditorState.create({ doc, selection: TextSelection.create(doc, caret) })
+  const place = document.createElement('div')
+  document.body.append(place)
+  view = new EditorView(place, { state })
+  return view
+}
+
+/** A DOM-only selection from anchor to focus, in either direction. */
+function selectDomExtent(anchor: Node, anchorOffset: number, focus: Node, focusOffset: number) {
+  document.getSelection()!.setBaseAndExtent(anchor, anchorOffset, focus, focusOffset)
 }
 
 /** Selects text in the DOM only, as WebKit's right-click on a word does. */
@@ -121,6 +144,67 @@ describe('editorMenuSelection', () => {
     const selection = document.getSelection()!
     selection.removeAllRanges()
     selection.addRange(range)
+
+    expect(editorMenuSelection(editor)).toEqual({ from: 3, to: 3, empty: true })
+  })
+
+  // #4146 verify: the mirror of the case above. A check of the head alone passes every other case.
+  it('keeps the caret when the DOM selection starts inside the island and ends on outer text', () => {
+    const editor = mountWithPortal(3)
+    selectDomExtent(
+      editor.dom.querySelector('[contenteditable="false"] p')!.firstChild!,
+      4,
+      editor.dom.querySelector('p')!.firstChild!,
+      2
+    )
+
+    expect(editorMenuSelection(editor)).toEqual({ from: 3, to: 3, empty: true })
+  })
+
+  // #4146 verify: a DOM range across table cells has both ends in inline content, and Cut on it
+  // collapsed a BlockNote 2x2 table into one cell.
+  it('keeps the caret when the DOM selection crosses table cells', () => {
+    const cell = (text: string) => schema.node('cell', null, [schema.text(text)])
+    const editor = mountDoc(
+      [
+        schema.node('paragraph', null, [schema.text('outer text')]),
+        schema.node('table', null, [
+          schema.node('row', null, [cell('aaa'), cell('bbb')]),
+          schema.node('row', null, [cell('ccc'), cell('ddd')])
+        ])
+      ],
+      3
+    )
+    const cells = editor.dom.querySelectorAll('td')
+    selectDomExtent(cells[0].firstChild!, 1, cells[3].firstChild!, 2)
+
+    expect(editorMenuSelection(editor)).toEqual({ from: 3, to: 3, empty: true })
+  })
+
+  // #4146 verify: paragraph to paragraph across an image deleted the image on Cut.
+  it('keeps the caret when the DOM selection spans paragraphs around an island', () => {
+    const editor = mountWithPortal(3)
+    const paragraphs = editor.dom.querySelectorAll(':scope > p')
+    selectDomExtent(paragraphs[0].firstChild!, 6, paragraphs[1].firstChild!, 2)
+
+    expect(editorMenuSelection(editor)).toEqual({ from: 3, to: 3, empty: true })
+  })
+
+  // #4146 verify: text to a closed callout's label merged the callout into the paragraph on Cut.
+  it("keeps the caret when the DOM selection ends on a callout's label", () => {
+    const editor = mountDoc(
+      [
+        schema.node('paragraph', null, [schema.text('outer text')]),
+        schema.node('callout', null, [schema.text('inside')])
+      ],
+      3
+    )
+    selectDomExtent(
+      editor.dom.querySelector('p')!.firstChild!,
+      6,
+      editor.dom.querySelector('[contenteditable="false"]')!.firstChild!,
+      2
+    )
 
     expect(editorMenuSelection(editor)).toEqual({ from: 3, to: 3, empty: true })
   })
