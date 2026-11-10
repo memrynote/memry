@@ -148,10 +148,8 @@ describe('typing hold plugin', () => {
   })
 })
 
-const NOTE = [para('Alpha line.'), para('Bravo line.'), para('Charlie line.')]
-
-function mountNote() {
-  const mounted = mountTestEditor(NOTE)
+function mountNote(texts = ['Alpha line.', 'Bravo line.', 'Charlie line.']) {
+  const mounted = mountTestEditor(texts.map((text) => para(text)))
   const hold = typingHoldOf(mounted.doc)
   registerEditorPlugin(mounted.editor, createTypingHoldPlugin(hold))
   return { ...mounted, hold }
@@ -184,6 +182,35 @@ function placeCaret(view: EditorView, text: string, offset: number): void {
     return at === -1
   })
   view.dispatch(view.state.tr.setSelection(TextSelection.create(view.state.doc, at)))
+}
+
+/** The caret at `offset` of the text of the `index`th top-level block. */
+function placeCaretInBlock(view: EditorView, index: number, offset: number): void {
+  let at = -1
+  let seen = 0
+  view.state.doc.descendants((node, pos) => {
+    if (at === -1 && node.isTextblock && seen++ === index) at = pos + 1 + offset
+    return at === -1
+  })
+  view.dispatch(view.state.tr.setSelection(TextSelection.create(view.state.doc, at)))
+}
+
+function blockIdAtCaret(view: EditorView): unknown {
+  const { $head } = view.state.selection
+  return $head.node($head.depth - 1).attrs.id
+}
+
+/** The note's top-level blocks, as the core holds them. */
+function topBlocks(doc: Y.Doc): Y.XmlElement {
+  const group = doc.getXmlFragment(CRDT_FRAGMENT_NAME).get(0)
+  if (!(group instanceof Y.XmlElement)) throw new Error('no block group')
+  return group
+}
+
+function lastText(blocks: Y.XmlElement): Y.XmlText {
+  let node = blocks.get(blocks.length - 1)
+  while (node instanceof Y.XmlElement) node = node.get(0)
+  return node
 }
 
 function caret(view: EditorView): string {
@@ -239,5 +266,63 @@ describe('the outside edit frame', () => {
     feedOutsideEdit(doc, hold, [para('Alpha line.'), para('Charlie line.')])
     expect(view.state.doc.textContent).toBe('Alpha line.Charlie line.')
     expect(caret(view)).toBe('Charlie line. @0')
+  })
+
+  it('keeps a caret between two changes of one edit', () => {
+    const { view, doc, hold } = mountNote(['Alpha', 'Bravo line', 'Charlie line'])
+    placeCaret(view, 'Bravo line', 3)
+    feedOutsideEdit(doc, hold, [para('AlphaX'), para('Bravo line'), para('Charlie lineY')])
+    expect(view.state.doc.textContent).toBe('AlphaXBravo lineCharlie lineY')
+    expect(caret(view)).toBe('Bravo line @3')
+    const ids: unknown[] = []
+    view.state.doc.descendants((node) => {
+      if (node.type.name === 'blockContainer') ids.push(node.attrs.id)
+    })
+    expect(ids).toHaveLength(3)
+    expect(ids.every((id) => typeof id === 'string' && id !== '')).toBe(true)
+  })
+
+  it('keeps a caret in its block when the edit changes every block', () => {
+    const { view, doc, hold } = mountNote(['Alpha', 'Bravo line', 'Charlie line'])
+    placeCaret(view, 'Bravo line', 3)
+    feedOutsideEdit(doc, hold, [para('Alpha.'), para('Bravo line.'), para('Charlie line.')])
+    expect(caret(view)).toBe('Bravo line. @3')
+  })
+
+  it('keeps a caret between a block the edit inserts and one it removes', () => {
+    const { view, doc, hold } = mountNote(['Alpha', 'Bravo line', 'Charlie line', 'Delta'])
+    placeCaret(view, 'Charlie line', 4)
+    feedOutsideEdit(doc, hold, [
+      para('Intro'),
+      para('Alpha'),
+      para('Bravo line'),
+      para('Charlie line')
+    ])
+    expect(caret(view)).toBe('Charlie line @4')
+  })
+})
+
+describe("another window's frame", () => {
+  it('keeps the caret in its block, as y-prosemirror maps it, when it changes two places', () => {
+    const { view, doc } = mountNote(['Echo', 'Echo', 'Tail'])
+    placeCaretInBlock(view, 1, 2)
+    const caretBlock = blockIdAtCaret(view)
+
+    // Another window puts an `Echo` block on top and edits the last one, both in one frame. By
+    // content alone the caret's `Echo` is the first; the frame keeps it the second one.
+    const other = new Y.Doc()
+    Y.applyUpdate(other, Y.encodeStateAsUpdate(doc))
+    const before = Y.encodeStateVector(other)
+    const blocks = topBlocks(other)
+    const echo = topBlocks(mountTestEditor([para('Echo')]).doc).get(0)
+    other.transact(() => {
+      blocks.insert(0, [echo.clone()])
+      lastText(blocks).insert(4, 'Z')
+    })
+    Y.applyUpdate(doc, Y.encodeStateAsUpdate(other, before), 'remote')
+
+    expect(view.state.doc.textContent).toBe('EchoEchoEchoTailZ')
+    expect(blockIdAtCaret(view)).toBe(caretBlock)
+    expect(caret(view)).toBe('Echo @2')
   })
 })
