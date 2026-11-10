@@ -179,6 +179,16 @@ function reconcileHomeCoversNow(): void {
     .catch((error: unknown) => log.warn('Home cover reconcile skipped', { error }))
 }
 
+/**
+ * Settle inbox capture files (#4157) the same way: upload pending captures,
+ * download files a peer's items point at. Lazy for the same reason.
+ */
+function reconcileInboxAttachmentsNow(): void {
+  void import('../inbox/attachment-sync')
+    .then(({ scheduleInboxAttachmentSync }) => scheduleInboxAttachmentSync())
+    .catch((error: unknown) => log.warn('Inbox attachment reconcile skipped', { error }))
+}
+
 function getVerifiedVaultKey(db: DataDb): Promise<Uint8Array> {
   return getOrInitializeLocalVaultKey(db, getOrCreateVaultUuid(db))
 }
@@ -728,6 +738,7 @@ export async function startSyncRuntime(): Promise<SyncEngine | null> {
             .then(({ redriveAttachmentDownloads }) => redriveAttachmentDownloads())
             .catch(() => {})
           reconcileHomeCoversNow()
+          reconcileInboxAttachmentsNow()
         } else {
           noteBodyOutbox.pause()
         }
@@ -910,6 +921,7 @@ export async function startSyncRuntime(): Promise<SyncEngine | null> {
         startAttachmentDownloadRedriver()
         await redriveAttachmentDownloads()
         reconcileHomeCoversNow()
+        reconcileInboxAttachmentsNow()
       })().catch(() => {})
 
       // Full-state rows (signed-out edits, a note leaving local-only, the

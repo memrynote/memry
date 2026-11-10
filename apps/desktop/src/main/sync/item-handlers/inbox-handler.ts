@@ -13,6 +13,18 @@ import { publishProjectionEvent } from '../../projections'
 
 const log = createLogger('InboxHandler')
 
+/**
+ * Fetch the file a pulled item points at. Called after the apply transaction
+ * commits, never inside it.
+ */
+function requestAttachmentDownload(itemId: string): void {
+  // Lazy: attachment-sync reaches the IPC attachment module (electron) and the
+  // inbox effects, which import this sync layer.
+  void import('../../inbox/attachment-sync')
+    .then(({ scheduleInboxAttachmentSync }) => scheduleInboxAttachmentSync())
+    .catch((error: unknown) => log.warn('Inbox attachment download not started', { itemId, error }))
+}
+
 class InboxHandler extends BaseItemHandler<InboxSyncPayload> {
   readonly type = 'inbox' as const
   readonly schema = InboxSyncPayloadSchema
@@ -23,7 +35,8 @@ class InboxHandler extends BaseItemHandler<InboxSyncPayload> {
     data: InboxSyncPayload,
     clock: VectorClock
   ): ApplyResult {
-    return ctx.db.transaction((tx): ApplyResult => {
+    let attachmentArrived = false
+    const result = ctx.db.transaction((tx): ApplyResult => {
       const existing = tx.select().from(inboxItems).where(eq(inboxItems.id, itemId)).get()
       const remoteClock = Object.keys(clock).length > 0 ? clock : (data.clock ?? {})
       const now = utcNow()
@@ -47,11 +60,17 @@ class InboxHandler extends BaseItemHandler<InboxSyncPayload> {
         // calendar-external-event-handler.ts.
         const hasKey = (k: string): boolean => Object.prototype.hasOwnProperty.call(data, k)
 
+        // Sticky like title and type: absent and null both keep the local id, and
+        // a remote never clears it (#4157).
+        const attachmentId = data.attachmentId ?? existing.attachmentId
+        attachmentArrived = !!data.attachmentId && data.attachmentId !== existing.attachmentId
+
         tx.update(inboxItems)
           .set({
             title: data.title ?? existing.title,
             content: hasKey('content') ? (data.content ?? null) : existing.content,
             type: data.type ?? existing.type,
+            attachmentId,
             metadata: hasKey('metadata') ? (data.metadata ?? null) : existing.metadata,
             filedAt: hasKey('filedAt') ? (data.filedAt ?? null) : existing.filedAt,
             filedTo: hasKey('filedTo') ? (data.filedTo ?? null) : existing.filedTo,
@@ -100,6 +119,7 @@ class InboxHandler extends BaseItemHandler<InboxSyncPayload> {
           sourceUrl: data.sourceUrl ?? null,
           sourceTitle: data.sourceTitle ?? null,
           captureSource: data.captureSource ?? null,
+          attachmentId: data.attachmentId ?? null,
           clock: remoteClock,
           syncedAt: now,
           createdAt: data.createdAt ?? now,
@@ -107,10 +127,13 @@ class InboxHandler extends BaseItemHandler<InboxSyncPayload> {
         })
         .run()
 
+      attachmentArrived = !!data.attachmentId
       ctx.emit(InboxChannels.events.CAPTURED, { id: itemId })
       publishProjectionEvent({ type: 'inbox.upserted', itemId })
       return 'applied'
     })
+    if (attachmentArrived) requestAttachmentDownload(itemId)
+    return result
   }
 
   applyDelete(ctx: ApplyContext, itemId: string, clock?: VectorClock): 'applied' | 'skipped' {

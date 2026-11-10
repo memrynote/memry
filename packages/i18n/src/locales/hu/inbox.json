@@ -250,7 +250,8 @@
     "failedPlayAudio": "Nem sikerült lejátszani a hangot",
     "failedLoadAudio": "Nem sikerült betölteni a hangot",
     "video": "Videó",
-    "unsupportedVideo": "A böngésző nem támogatja a videó lejátszását."
+    "unsupportedVideo": "A böngésző nem támogatja a videó lejátszását.",
+    "fileOnOtherDevice": "A fájl azon az eszközön van, amely rögzítette."
   },
   "reminder": {
     "dataUnavailable": "Az emlékeztető adatai nem érhetők el.",

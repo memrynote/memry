@@ -250,7 +250,8 @@
     "failedPlayAudio": "เล่นเสียงไม่สำเร็จ",
     "failedLoadAudio": "โหลดเสียงไม่สำเร็จ",
     "video": "วิดีโอ",
-    "unsupportedVideo": "เบราว์เซอร์ไม่รองรับแท็กวิดีโอ"
+    "unsupportedVideo": "เบราว์เซอร์ไม่รองรับแท็กวิดีโอ",
+    "fileOnOtherDevice": "ไฟล์อยู่บนอุปกรณ์ที่บันทึกไว้"
   },
   "reminder": {
     "dataUnavailable": "ไม่มีข้อมูลการเตือน",

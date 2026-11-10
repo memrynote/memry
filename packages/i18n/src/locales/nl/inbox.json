@@ -250,7 +250,8 @@
     "failedPlayAudio": "Kan audio niet afspelen",
     "failedLoadAudio": "Kan audio niet laden",
     "video": "Video",
-    "unsupportedVideo": "Je browser ondersteunt de videotag niet."
+    "unsupportedVideo": "Je browser ondersteunt de videotag niet.",
+    "fileOnOtherDevice": "Het bestand staat op het apparaat dat het heeft vastgelegd."
   },
   "reminder": {
     "dataUnavailable": "Herinneringsgegevens niet beschikbaar.",

@@ -115,6 +115,11 @@ pub const DATA_MIGRATIONS: &[Migration] = &[
         name: "saved_filter_expressions",
         sql: include_str!("migrations/data/0015_saved_filter_expressions.sql"),
     },
+    Migration {
+        version: 16,
+        name: "inbox_attachments",
+        sql: include_str!("migrations/data/0016_inbox_attachments.sql"),
+    },
 ];
 
 /// `index.db`: the rebuildable search and link index.
@@ -243,7 +248,7 @@ mod tests {
         let version = db
             .call_blocking(|conn| user_version(conn))
             .expect("user_version");
-        assert_eq!(version, 15);
+        assert_eq!(version, 16);
 
         let names = table_names(&db);
         // Source of record, §A.2.
@@ -273,6 +278,8 @@ mod tests {
             "calendar_source_states",
             "calendar_sources",
             "folders",
+            "inbox_attachment_releases",
+            "inbox_attachment_uploads",
             "inbox_item_tags",
             "inbox_items",
             "journal_aliases",
@@ -355,7 +362,7 @@ mod tests {
         let version = db
             .call_blocking(|conn| run(conn, DATA_MIGRATIONS))
             .expect("step forward");
-        assert_eq!(version, 15);
+        assert_eq!(version, 16);
 
         let (count, payload): (i64, String) = db
             .call_blocking(|conn| {
@@ -471,6 +478,63 @@ mod tests {
         assert_eq!(
             rows,
             [("f1".to_owned(), r#"{"match":"all","rules":[]}"#.to_owned())]
+        );
+    }
+
+    /// 0016 recreates `inbox_view` with `attachment_id`: rows an older build
+    /// stored keep their data, a payload that carries the key exposes it, and
+    /// nothing is backfilled into the upload-pending or release tables, so a
+    /// capture from before the build never uploads.
+    #[test]
+    fn an_older_inbox_database_gains_the_attachment_id_view_column() {
+        let db = Db::open_in_memory().expect("open");
+        let rows = db
+            .call_blocking(|conn| {
+                run(conn, &DATA_MIGRATIONS[..15])?;
+                conn.execute_batch(
+                    "INSERT INTO sync_items (item_type, item_id, payload, payload_state, updated_at) VALUES
+                       ('inbox', 'i1', '{\"type\":\"image\",\"attachmentPath\":\"attachments/inbox/i1/a.png\"}', 'full', 1),
+                       ('inbox', 'i2', '{\"type\":\"image\",\"attachmentId\":\"att-2\"}', 'full', 1);
+                     INSERT INTO inbox_items (id, type, title) VALUES ('i1', 'image', 'a'), ('i2', 'image', 'b');",
+                )
+                .map_err(|err| StorageError::Failed {
+                    what: err.to_string(),
+                })?;
+                assert_eq!(run(conn, DATA_MIGRATIONS)?, 16);
+                let mut statement = conn
+                    .prepare("SELECT id, attachment_path, attachment_id FROM inbox_view ORDER BY id")
+                    .map_err(|err| StorageError::Failed {
+                        what: err.to_string(),
+                    })?;
+                let rows = statement
+                    .query_map([], |row| Ok((row.get(0)?, row.get(1)?, row.get(2)?)))
+                    .and_then(
+                        Iterator::collect::<rusqlite::Result<Vec<(String, Option<String>, Option<String>)>>>,
+                    )
+                    .map_err(|err| StorageError::Failed {
+                        what: err.to_string(),
+                    })?;
+                for table in ["inbox_attachment_uploads", "inbox_attachment_releases"] {
+                    let count: i64 = conn
+                        .query_row(&format!("SELECT count(*) FROM {table}"), [], |row| row.get(0))
+                        .map_err(|err| StorageError::Failed {
+                            what: err.to_string(),
+                        })?;
+                    assert_eq!(count, 0, "{table} is not backfilled");
+                }
+                Ok(rows)
+            })
+            .expect("migrate");
+        assert_eq!(
+            rows,
+            [
+                (
+                    "i1".to_owned(),
+                    Some("attachments/inbox/i1/a.png".to_owned()),
+                    None
+                ),
+                ("i2".to_owned(), None, Some("att-2".to_owned())),
+            ]
         );
     }
 }

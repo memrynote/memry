@@ -250,7 +250,8 @@
     "failedPlayAudio": "Não foi possível reproduzir o áudio",
     "failedLoadAudio": "Não foi possível carregar o áudio",
     "video": "Vídeo",
-    "unsupportedVideo": "Seu navegador não suporta a tag de vídeo."
+    "unsupportedVideo": "Seu navegador não suporta a tag de vídeo.",
+    "fileOnOtherDevice": "O arquivo está no dispositivo que o capturou."
   },
   "reminder": {
     "dataUnavailable": "Dados do lembrete indisponíveis.",

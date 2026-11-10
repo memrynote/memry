@@ -51,6 +51,21 @@ extension VaultFilling {
         AttachmentRedriveSummary(downloaded: 0, deferred: 0, failed: 0, remaining: 0)
     }
 
+    /// Nothing pending or missing: a fake has no Inbox files to sync.
+    func syncInboxAttachments(reachable: Reachable) async throws -> InboxAttachmentSyncSummary {
+        InboxAttachmentSyncSummary(uploaded: 0, downloaded: 0, deferred: 0, failed: 0, released: 0)
+    }
+
+    /// Refuses, for the reason ``uploadAttachment(noteId:filename:mimeType:bytes:)`` does.
+    func attachInboxFile(
+        itemId: String,
+        noteId: String,
+        filename: String,
+        mimeType: String
+    ) async throws -> InboxFileAttachment {
+        throw SyncError.Locked
+    }
+
     /// Nothing to pull and nothing pushed: a fake has no server.
     func syncNow() async throws -> SyncPassSummary {
         SyncPassSummary(pulled: 0, deleted: 0, bodies: 0, pushed: 0, rejected: 0, pending: 0)

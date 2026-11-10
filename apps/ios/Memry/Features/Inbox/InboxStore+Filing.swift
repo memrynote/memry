@@ -4,11 +4,11 @@ import MemryCore
 // IB13 / IB14 / IB15 / IB16. Filing and converting, with desktop's toasts.
 //
 // Text captures are filed by the core in one call (note, body, tags, filed
-// mark). File captures (image, voice, PDF, video) need their bytes, which only
-// the capturing device holds (§5 F3): the core makes the note, this uploads
-// the file into it as an attachment, inserts the block that shows it
-// (`attachments/<noteId>/<name>`, the path desktop resolves), then marks the
-// capture filed (§6 IB025).
+// mark). File captures (image, voice, PDF, video) need their bytes: the core
+// makes the note, then attaches the capture's file to it (reusing the blob the
+// capture already uploaded for sync, #4157), and this inserts the block that
+// shows it (`attachments/<noteId>/<name>`, the path desktop resolves), then
+// marks the capture filed (§6 IB025).
 
 /// How an image lands in the notes it is filed to (desktop's
 /// `imageFilingMode`, device-local on both platforms, §5 F11).
@@ -97,13 +97,13 @@ extension InboxStore {
             }
             // An image lands inside the first note; desktop's link mode puts a
             // file in the sidebar, which this phone cannot write (§6 IB025).
-            guard await attach(item, toNote: ownerId, notePath: nil) else {
+            guard let name = await attach(item, toNote: ownerId, notePath: nil) else {
                 trackFiled("linked", ok: false)
                 if owner.noteId == nil { await discard(ownerId) }
                 return
             }
             if imageMode == .link, item.itemType == "image" { showToast(InboxCopy.embedFellBackToLink) }
-            let path = "attachments/\(ownerId)/\(uploadName(item))"
+            let path = "attachments/\(ownerId)/\(name)"
             let marked = await writeRemoving([id]) { try $0.markFiled(id: id, filedTo: path, action: "linked") }
             trackFiled("linked", ok: marked != nil)
             if imageMode != .link || item.itemType != "image" { showToast(InboxCopy.linkedToNotes(notes.count)) }
@@ -203,7 +203,7 @@ extension InboxStore {
         guard let made = await read({ try $0.createNoteForFile(id: id, folder: folder, tags: tags, localNow: now) }),
               let noteId = made.targetId
         else { return false }
-        guard await attach(item, toNote: noteId, notePath: made.filedTo) else {
+        guard await attach(item, toNote: noteId, notePath: made.filedTo) != nil else {
             await discard(noteId)
             return false
         }
@@ -218,22 +218,26 @@ extension InboxStore {
         try? await executorRun { try writer.delete(id: noteId) }
     }
 
-    /// Uploads the capture's file into a note and shows it there.
-    private func attach(_ item: InboxItemRecord, toNote noteId: String, notePath _: String?) async -> Bool {
-        guard let filler, let writer, let file = localFile(item.attachmentPath),
-              let bytes = try? Data(contentsOf: file)
-        else {
+    /// Puts the capture's file into a note and shows it there. The core reuses
+    /// the capture's uploaded blob when it can, and the block uses the
+    /// filename it answers with, since peers place the bytes by that name.
+    /// - Returns: that filename, or `nil` when a step failed.
+    private func attach(_ item: InboxItemRecord, toNote noteId: String, notePath _: String?) async -> String? {
+        guard let filler, let writer, let file = localFile(item.attachmentPath) else {
             fail(filler == nil ? InboxErrors.offline : InboxErrors.fileElsewhere)
-            return false
+            return nil
         }
-        let name = uploadName(item)
         let mime = InboxMeta.metadata(item)["mimeType"] as? String ?? InboxFileTypes.mime(forExtension: file.pathExtension)
+        let attached: InboxFileAttachment
         do {
-            _ = try await filler.uploadAttachment(noteId: noteId, filename: name, mimeType: mime, bytes: bytes)
+            attached = try await filler.attachInboxFile(
+                itemId: item.id, noteId: noteId, filename: uploadName(item), mimeType: mime
+            )
         } catch {
             report(error)
-            return false
+            return nil
         }
+        let name = attached.filename
         let blockId = UUID().uuidString.lowercased()
         let kind = InboxFileTypes.blockKind(item.itemType)
         let edits: [BlockEdit] = [
@@ -245,9 +249,9 @@ extension InboxStore {
             try await executorRun { for edit in edits { _ = try writer.editBlock(noteId: noteId, edit: edit) } }
         } catch {
             report(error)
-            return false
+            return nil
         }
-        return true
+        return name
     }
 
     /// The name the file travels under: the capture's title plus the stored

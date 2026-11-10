@@ -822,23 +822,36 @@ out of its group; it neither matches every task nor none. A fully skipped root
 passes every task. The `expressions` section of `task-filtering.json` pins
 this, task by task, with and without the note index.
 
-### 13.7.15 `inbox` — `:66-82`
+### 13.7.15 `inbox` — `packages/contracts/src/sync-payloads.ts:67-91`
 
 `title`, `content`, `type`, `metadata`, `filedAt`, `filedTo`, `filedAction`,
 `snoozedUntil`, `snoozeReason`, `archivedAt`, `sourceUrl`, `sourceTitle`,
-`captureSource`, `clock`, `createdAt`, `modifiedAt`. No `fieldClocks`: `inbox`
-takes the document-level resolver (§13.9). Desktop's push is its whole
-`inbox_items` row serialised
-(`apps/desktop/src/main/sync/item-handlers/inbox-handler.ts:141-148`), so its
+`captureSource`, `attachmentId`, `clock`, `createdAt`, `modifiedAt`. No
+`fieldClocks`: `inbox` takes the document-level resolver (§13.9). Desktop's
+push is its whole `inbox_items` row serialised
+(`apps/desktop/src/main/sync/item-handlers/inbox-handler.ts:161-169`), so its
 local columns (`viewedAt`, `processingStatus`, `transcription`,
 `transcriptionStatus`, `attachmentPath`, `thumbnailPath`, `syncedAt`,
 `localOnly`) arrive as unmodelled keys and are preserved like any other.
 
-**Normative apply rule** (desktop's `applyUpsert`, `:48-72`): after the
+**`attachmentId` is the attachment id of the capture's file (#4157).** It is
+the §14.7 id of the bytes at the capture's `attachmentPath`, and it is absent
+until the capturing device has uploaded them
+(`packages/contracts/src/sync-payloads.ts:81-87`). `attachmentPath` stays an
+unmodelled key. §14.7.2 owns what the id means and where a receiver writes the
+file.
+
+**Normative apply rule** (desktop's `applyUpsert`, `:32-137`): after the
 document gate, a remote payload is laid **key by key** over the local one. A
 key the remote omits keeps the local value; a key it sends as `null` clears it
-(unsnooze, unarchive and unfile push explicit `null`s); `title` and `type` keep
-the local value on `null` too. `metadata` is `z.unknown()` and replaced whole.
+(unsnooze, unarchive and unfile push explicit `null`s); `title`, `type` and
+`attachmentId` keep the local value on `null` too, so a remote never clears an
+`attachmentId`: an older sender omits the key or sends `null` without knowing
+it, and a capture's file never changes once uploaded
+(`crates/memry-core/src/domain/inbox/merge.rs:35`, `:84-86`; desktop's
+`apps/desktop/src/main/sync/item-handlers/inbox-handler.ts:65` reads it as
+`data.attachmentId ?? existing.attachmentId`). A string sets it, including over
+a different known id. `metadata` is `z.unknown()` and replaced whole.
 
 ### 13.7.16 `calendar_source` — `:410-428`
 

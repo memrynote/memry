@@ -123,6 +123,7 @@ final class TasksStore {
             state = TasksViewState()
             restoredState = false
         }
+        attachments?.requestSync = { [weak self] in self?.scheduleSync() }
     }
 
     // MARK: Reading
