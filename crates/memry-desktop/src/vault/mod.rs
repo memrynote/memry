@@ -30,6 +30,7 @@ pub mod layout;
 pub mod move_dir;
 pub mod move_journal;
 pub mod note_file;
+pub mod notices;
 pub mod obsidian_copy;
 pub mod path_key;
 pub mod paths;

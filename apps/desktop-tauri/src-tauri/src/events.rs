@@ -177,6 +177,11 @@ pub struct TemplateDeletedEvent {
 #[derive(Debug, Clone, Serialize, serde::Deserialize, specta::Type, tauri_specta::Event)]
 pub struct VaultActivityChangedEvent;
 
+/// The open vault's notices changed, or a vault opened or closed. No payload; the renderer
+/// reads `vault_notices_list`.
+#[derive(Debug, Clone, Serialize, serde::Deserialize, specta::Type, tauri_specta::Event)]
+pub struct VaultNoticesChangedEvent;
+
 /// Who made a note change (`NoteEventSource`): the app, or an edit outside it.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, serde::Deserialize, specta::Type)]
 #[serde(rename_all = "camelCase")]

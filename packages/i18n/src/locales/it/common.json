@@ -1659,5 +1659,14 @@
       "agentModel": "Predefinito",
       "date": "13 ottobre"
     }
+  },
+  "vaultNotice": {
+    "configUnreadable": "Memry non riesce a leggere le impostazioni di questo vault",
+    "configUnreadableHint": "Finché .memry/config.json non sarà corretto, Memry non può trasformare i file in note né seguirne gli spostamenti. Correggi il file, poi riavvia Memry. Le tue note sono al sicuro.",
+    "watchLimit": "Le modifiche da altre app arrivano in ritardo",
+    "watchLimitHint": "Linux consente troppo pochi monitoraggi di file per questo vault, quindi Memry vede le modifiche esterne solo quando ripete la scansione. Esegui questo comando, poi riavvia Memry:",
+    "copyCommand": "Copia comando",
+    "commandCopied": "Comando copiato. Incollalo in un terminale.",
+    "copyFailed": "Impossibile copiare il comando. Ricopialo dalla notifica."
   }
 }

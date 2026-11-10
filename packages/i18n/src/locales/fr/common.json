@@ -1659,5 +1659,14 @@
       "agentModel": "Par défaut",
       "date": "13 octobre"
     }
+  },
+  "vaultNotice": {
+    "configUnreadable": "Memry ne peut pas lire les réglages de ce coffre",
+    "configUnreadableHint": "Tant que .memry/config.json n'est pas corrigé, Memry ne peut pas transformer les fichiers en notes ni suivre leurs déplacements. Corrigez le fichier, puis redémarrez Memry. Vos notes sont en sécurité.",
+    "watchLimit": "Les modifications faites dans d'autres apps arrivent en retard",
+    "watchLimitHint": "Linux autorise trop peu de surveillances de fichiers pour ce coffre, donc Memry ne voit les modifications externes que lorsqu'il analyse de nouveau. Exécutez cette commande, puis redémarrez Memry :",
+    "copyCommand": "Copier la commande",
+    "commandCopied": "Commande copiée. Collez-la dans un terminal.",
+    "copyFailed": "Impossible de copier la commande. Recopiez-la depuis la notification."
   }
 }

@@ -1659,5 +1659,14 @@
       "agentModel": "Domyślny",
       "date": "13 października"
     }
+  },
+  "vaultNotice": {
+    "configUnreadable": "Memry nie może odczytać ustawień tego sejfu",
+    "configUnreadableHint": "Dopóki plik .memry/config.json nie zostanie naprawiony, Memry nie może zamieniać plików w notatki ani śledzić ich przenoszenia. Napraw plik, a potem uruchom ponownie Memry. Twoje notatki są bezpieczne.",
+    "watchLimit": "Zmiany z innych aplikacji pojawiają się z opóźnieniem",
+    "watchLimitHint": "Linux pozwala na zbyt mało obserwacji plików dla tego sejfu, więc Memry widzi zmiany z zewnątrz tylko podczas ponownego skanowania. Uruchom to polecenie, a potem uruchom ponownie Memry:",
+    "copyCommand": "Kopiuj polecenie",
+    "commandCopied": "Skopiowano polecenie. Wklej je w terminalu.",
+    "copyFailed": "Nie udało się skopiować polecenia. Przepisz je z powiadomienia."
   }
 }

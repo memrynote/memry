@@ -86,6 +86,7 @@ import { useCalendarChangeEvents } from '@/hooks/use-calendar-change-events'
 import { useJournalChangeEvents } from '@/hooks/use-journal-change-events'
 import { useIndexRecoveryNotice } from '@/hooks/use-index-recovery-notice'
 import { useFolderMoveRecoveryNotice } from '@/hooks/use-folder-move-recovery-notice'
+import { useVaultNotices } from '@/hooks/use-vault-notices'
 import { useVaultLockRestoreNotice } from '@/hooks/use-vault-lock-restore-notice'
 import { useCloseTabsOnEntityDelete } from '@/hooks/use-close-tabs-on-entity-delete'
 import { useFlushOnQuit } from '@/hooks/use-flush-on-quit'
@@ -283,6 +284,7 @@ const AppContent = (): React.JSX.Element => {
   useInboxReviewNotifications() // Daily inbox review nudge: toast + open-inbox on click
   useIndexRecoveryNotice() // Says so when Memry repaired its own search index
   useFolderMoveRecoveryNotice() // Says what the open did with an interrupted folder move
+  useVaultNotices() // The open vault's states the user can act on (unreadable config, watch limit)
   useVaultLockRestoreNotice() // Says so when a locked note's outside edit was undone
   useFolderViewEvents() // Global cache invalidation for folder-view tabs
   useCalendarChangeEvents() // Global cache invalidation for calendar ranges in background tabs

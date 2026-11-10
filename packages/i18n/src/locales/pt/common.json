@@ -1659,5 +1659,14 @@
       "agentModel": "Padrão",
       "date": "13 de outubro"
     }
+  },
+  "vaultNotice": {
+    "configUnreadable": "O Memry não consegue ler as configurações deste cofre",
+    "configUnreadableHint": "Até que .memry/config.json seja corrigido, o Memry não consegue transformar arquivos em notas nem acompanhar movimentações. Corrija o arquivo e reinicie o Memry. Suas notas estão seguras.",
+    "watchLimit": "Alterações feitas em outros apps aparecem com atraso",
+    "watchLimitHint": "O Linux permite poucas observações de arquivos para este cofre, então o Memry só vê alterações externas quando faz uma nova varredura. Execute este comando e depois reinicie o Memry:",
+    "copyCommand": "Copiar comando",
+    "commandCopied": "Comando copiado. Cole-o em um terminal.",
+    "copyFailed": "Não foi possível copiar o comando. Digite-o a partir do aviso."
   }
 }

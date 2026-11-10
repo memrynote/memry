@@ -1659,5 +1659,14 @@
       "agentModel": "Predvolený",
       "date": "13. októbra"
     }
+  },
+  "vaultNotice": {
+    "configUnreadable": "Memry nemôže prečítať nastavenia tohto trezoru",
+    "configUnreadableHint": "Kým sa súbor .memry/config.json neopraví, Memry nemôže zo súborov vytvárať poznámky ani sledovať ich presuny. Opravte súbor a potom Memry reštartujte. Vaše poznámky sú v bezpečí.",
+    "watchLimit": "Zmeny z iných aplikácií sa zobrazujú s oneskorením",
+    "watchLimitHint": "Linux povoľuje pre tento trezor príliš málo sledovaní súborov, takže Memry vidí vonkajšie zmeny len pri opätovnom prehľadaní. Spustite tento príkaz a potom Memry reštartujte:",
+    "copyCommand": "Kopírovať príkaz",
+    "commandCopied": "Príkaz bol skopírovaný. Vložte ho do terminálu.",
+    "copyFailed": "Príkaz sa nepodarilo skopírovať. Prepíšte ho z oznámenia."
   }
 }
