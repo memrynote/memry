@@ -87,7 +87,7 @@ struct NoteReadView: View {
             initialValue: NoteAttachmentComposer(noteId: route.id, filler: filler)
         )
         _editorModel = State(
-            initialValue: NoteEditorViewModel(noteId: route.id, editor: editor)
+            initialValue: NoteEditorViewModel(noteId: route.id, editor: editor, notes: writer)
         )
         _metadataModel = State(
             initialValue: NoteMetadataViewModel(noteId: route.id, writer: metadataWriter)
@@ -132,7 +132,7 @@ struct NoteReadView: View {
             initialValue: NoteAttachmentComposer(noteId: model.route.id, filler: model.filler)
         )
         _editorModel = State(
-            initialValue: NoteEditorViewModel(noteId: model.route.id, editor: editor)
+            initialValue: NoteEditorViewModel(noteId: model.route.id, editor: editor, notes: writer)
         )
         _metadataModel = State(
             initialValue: NoteMetadataViewModel(noteId: model.route.id, writer: metadataWriter)

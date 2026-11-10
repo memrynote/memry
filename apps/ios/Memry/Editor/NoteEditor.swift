@@ -28,6 +28,8 @@ final class NoteEditorViewModel {
 
     let noteId: String
     private let editor: (any BlockEditing)?
+    /// Creates the note a `[[` menu's Create row names. `nil` creates none.
+    private let notes: (any NotesWriting)?
 
     private(set) var status: Status = .idle
 
@@ -40,9 +42,10 @@ final class NoteEditorViewModel {
     /// typed into is ahead of the document until it commits.
     private(set) var drafts: [String: String] = [:]
 
-    init(noteId: String, editor: (any BlockEditing)?) {
+    init(noteId: String, editor: (any BlockEditing)?, notes: (any NotesWriting)? = nil) {
         self.noteId = noteId
         self.editor = editor
+        self.notes = notes
     }
 
     /// Whether this note can be edited at all.
@@ -434,6 +437,20 @@ final class NoteEditorViewModel {
             text: "",
             attrs: WikiLinkAttrs.attrs(target: title, alias: alias)
         )
+    }
+
+    /// Creates the note titled `title` in the new-notes folder, for the `[[`
+    /// menu's Create row (#4154): a link to a note that exists is one a tap
+    /// can follow. A failure leaves the link broken and says so.
+    func createNote(titled title: String) async {
+        guard let notes else { return }
+        do {
+            _ = try await notes.create(title: title, folderPath: LocalSettings.shared.newNotesFolder)
+        } catch {
+            let mapped = ErrorMapping.userFacing(error)
+            Log.storage.error("a linked note could not be created", .code(mapped.code))
+            status = .failed(mapped)
+        }
     }
 
     /// A date mention (N601), in desktop's shape.
