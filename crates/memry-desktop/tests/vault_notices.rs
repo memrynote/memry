@@ -218,6 +218,45 @@ fn a_kept_removal_is_listed_at_every_open_while_its_file_is_gone() {
     assert!(notices.list().is_empty(), "{:?}", notices.list());
 }
 
+/// A kept note's file that comes back after the open listed it, and is deleted again, is
+/// listed again while the vault is open: the open's removal does not hide the note's row from
+/// the next one.
+#[test]
+fn a_returned_kept_file_deleted_again_is_listed_again() {
+    let (mut e, notices, store) = noticing_env_with_store();
+    e.write("a.md", "Alpha\n");
+    e.open();
+    e.facts_until(indexed);
+    let id = row_id(&e, "a.md");
+    std::thread::sleep(Duration::from_millis(2));
+    e.edit_in_app(&store, &id, "typed in the app");
+    fs::remove_file(e.vault.join("a.md")).unwrap();
+    let kept = VaultNotice::KeptRemovals {
+        notes: vec![KeptRemoval {
+            note_id: id.clone(),
+            path: absolute(&e, "a.md"),
+        }],
+        more: false,
+    };
+    until("the kept removal is listed", || {
+        notices.list() == vec![kept.clone()]
+    });
+    e.close();
+    e.drain();
+    e.open();
+    e.facts_until(indexed);
+    assert_eq!(notices.list(), vec![kept.clone()]);
+
+    e.write("a.md", "Alpha back\n");
+    until("the kept removal leaves the list", || {
+        notices.list().is_empty()
+    });
+    fs::remove_file(e.vault.join("a.md")).unwrap();
+    until("the kept removal is listed again", || {
+        notices.list() == vec![kept.clone()]
+    });
+}
+
 /// A list notice names at most [`LISTED`] items and says there were more; it goes with its
 /// last listed item only when it listed them all.
 #[test]

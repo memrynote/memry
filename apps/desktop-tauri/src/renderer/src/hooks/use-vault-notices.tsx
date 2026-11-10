@@ -48,7 +48,7 @@ function listed(
     <>
       {hint}
       <span className="mt-1 block text-start">
-        {items.length === 0
+        {items.length === 0 && more
           ? unlisted
           : items.slice(0, NAMED).map(({ key, name }, at) => (
               <span key={key}>
