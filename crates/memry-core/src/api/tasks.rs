@@ -111,6 +111,9 @@ pub struct TaskViewResult {
     /// everything" empty state).
     pub total_count: u32,
     pub filtered_count: u32,
+    /// The advanced rules this build evaluates in the filters' `expression`
+    /// (`countTaskFilterRules`); 0 without one.
+    pub rule_count: u32,
 }
 
 /// The tab badges.
@@ -221,6 +224,7 @@ fn view(conn: &Connection, query: &TaskViewQuery) -> Result<TaskViewResult, Stor
         &projects,
         now,
         query.week_starts_on,
+        Some(&notes),
     );
 
     let window = match query.tab.as_str() {
@@ -298,6 +302,7 @@ fn view(conn: &Connection, query: &TaskViewQuery) -> Result<TaskViewResult, Stor
 
     Ok(TaskViewResult {
         filtered_count: count(filtered.len()),
+        rule_count: task_filter::count_rules(filters.expression.as_ref()),
         total_count: count(base.len()),
         task_ids,
         groups,

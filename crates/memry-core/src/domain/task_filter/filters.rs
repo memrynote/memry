@@ -6,14 +6,15 @@
 //! exactly as the TypeScript compares `getTime()`.
 
 use std::cmp::Ordering;
-use std::collections::HashSet;
+use std::collections::{HashMap, HashSet};
 
 use super::collation::locale_compare;
 use super::config::{
     CompletionFilter, DueDateFilter, DueDateKind, HasTimeFilter, RepeatFilter, SortDirection,
     SortField, TaskFilters, TaskSort,
 };
-use super::{FilterProject, FilterTask, Priority, StatusType, find_status};
+use super::expression::{self, ExpressionContext};
+use super::{FilterProject, FilterTask, Priority, StatusType, TaskNoteInfo, find_status};
 use crate::domain::calendar::{CivilDate, LocalDateTime};
 use crate::domain::tags::fold;
 use crate::domain::task_tree::{TaskTree, TreeNode};
@@ -68,6 +69,45 @@ pub fn filter_by_tags<'a>(tasks: &[&'a FilterTask], tags: &[String]) -> Vec<&'a 
     let selected: HashSet<String> = tags.iter().map(|tag| fold(tag)).collect();
     keep(tasks, |task| {
         task.tags.iter().any(|tag| selected.contains(&fold(tag)))
+    })
+}
+
+/// `filterByLocation`: tasks touching a selected note, or a note filed in a
+/// selected folder (subfolders included). A task touches its source note and
+/// every linked note. With no selection every task passes; with no note index
+/// none does, since an unfiltered list would be the wrong answer.
+pub fn filter_by_location<'a>(
+    tasks: &[&'a FilterTask],
+    folder_paths: &[String],
+    note_ids: &[String],
+    note_index: Option<&HashMap<String, TaskNoteInfo>>,
+) -> Vec<&'a FilterTask> {
+    if folder_paths.is_empty() && note_ids.is_empty() {
+        return tasks.to_vec();
+    }
+    let Some(note_index) = note_index else {
+        return Vec::new();
+    };
+    let in_selected_folder = |folder: &str| {
+        folder_paths.iter().any(|path| {
+            folder == path
+                || folder
+                    .strip_prefix(path.as_str())
+                    .is_some_and(|rest| rest.starts_with('/'))
+        })
+    };
+    keep(tasks, |task| {
+        // An empty source id is falsy in the TypeScript and touches no note.
+        let source = task.source_note_id.as_deref().filter(|id| !id.is_empty());
+        source
+            .into_iter()
+            .chain(task.linked_note_ids.iter().map(String::as_str))
+            .any(|id| {
+                note_ids.iter().any(|selected| selected == id)
+                    || note_index
+                        .get(id)
+                        .is_some_and(|note| in_selected_folder(&note.folder_path))
+            })
     })
 }
 
@@ -218,8 +258,7 @@ fn apply_filter_chain<'a>(
     tasks: &[&'a FilterTask],
     filters: &TaskFilters,
     projects: &[FilterProject],
-    now: LocalDateTime,
-    week_starts_on: u32,
+    ctx: &ExpressionContext,
 ) -> Vec<&'a FilterTask> {
     let mut result = tasks.to_vec();
     if !filters.search.is_empty() {
@@ -228,11 +267,23 @@ fn apply_filter_chain<'a>(
     result = filter_by_projects(&result, &filters.project_ids);
     result = filter_by_priorities(&result, &filters.priorities);
     result = filter_by_tags(&result, &filters.tags);
-    result = filter_by_due_date_range(&result, &filters.due_date, now, week_starts_on);
+    result = filter_by_location(
+        &result,
+        &filters.folder_paths,
+        &filters.note_ids,
+        ctx.note_index,
+    );
+    result = filter_by_due_date_range(&result, &filters.due_date, ctx.now, ctx.week_starts_on);
     result = filter_by_statuses(&result, &filters.status_ids);
     result = filter_by_completion(&result, &filters.completion, projects);
     result = filter_by_repeat_type(&result, &filters.repeat_type);
-    filter_by_has_time(&result, &filters.has_time)
+    result = filter_by_has_time(&result, &filters.has_time);
+    match &filters.expression {
+        Some(tree) => keep(&result, |task| {
+            expression::matches_expression(task, tree, ctx)
+        }),
+        None => result,
+    }
 }
 
 /// `hasNarrowingFilter`: a filter that picks tasks by what they are, as
@@ -246,6 +297,12 @@ fn has_narrowing_filter(filters: &TaskFilters) -> bool {
         || !filters.status_ids.is_empty()
         || filters.repeat_type != RepeatFilter::All
         || filters.has_time != HasTimeFilter::All
+        || has_location(filters)
+        || expression::count_rules(filters.expression.as_ref()) > 0
+}
+
+fn has_location(filters: &TaskFilters) -> bool {
+    !filters.folder_paths.is_empty() || !filters.note_ids.is_empty()
 }
 
 impl TreeNode for FilterTask {
@@ -260,7 +317,8 @@ impl TreeNode for FilterTask {
 /// `applyFiltersAndSortWithContext`: matching top-level tasks bring their
 /// whole branch at any depth. With a narrowing filter, a deeper match also
 /// shows with its branch, and its ancestors join as context (the second
-/// value), which lists draw muted.
+/// value), which lists draw muted. `note_index` is needed for the location
+/// filter and `location` rules to match anything.
 pub fn apply_filters_and_sort_with_context<'a>(
     tasks: &'a [FilterTask],
     filters: &TaskFilters,
@@ -268,7 +326,13 @@ pub fn apply_filters_and_sort_with_context<'a>(
     projects: &[FilterProject],
     now: LocalDateTime,
     week_starts_on: u32,
+    note_index: Option<&HashMap<String, TaskNoteInfo>>,
 ) -> (Vec<&'a FilterTask>, HashSet<&'a str>) {
+    let ctx = ExpressionContext {
+        now,
+        week_starts_on,
+        note_index,
+    };
     let tree = TaskTree::build(tasks);
     let roots: Vec<&FilterTask> = tasks.iter().filter(|t| tree.is_root(&t.id)).collect();
     let mut included: HashSet<&str> = HashSet::new();
@@ -281,7 +345,7 @@ pub fn apply_filters_and_sort_with_context<'a>(
             }
         };
 
-    for root in apply_filter_chain(&roots, filters, projects, now, week_starts_on) {
+    for root in apply_filter_chain(&roots, filters, projects, &ctx) {
         include_branch(&root.id, &mut included, &mut context);
     }
 
@@ -290,7 +354,7 @@ pub fn apply_filters_and_sort_with_context<'a>(
             .iter()
             .filter(|t| !tree.is_root(&t.id) && !included.contains(t.id.as_str()))
             .collect();
-        for found in apply_filter_chain(&deeper, filters, projects, now, week_starts_on) {
+        for found in apply_filter_chain(&deeper, filters, projects, &ctx) {
             let id = found.id.as_str();
             if included.contains(id) && !context.contains(id) {
                 continue;
@@ -333,8 +397,18 @@ pub fn apply_filters_and_sort<'a>(
     projects: &[FilterProject],
     now: LocalDateTime,
     week_starts_on: u32,
+    note_index: Option<&HashMap<String, TaskNoteInfo>>,
 ) -> Vec<&'a FilterTask> {
-    apply_filters_and_sort_with_context(tasks, filters, sort, projects, now, week_starts_on).0
+    apply_filters_and_sort_with_context(
+        tasks,
+        filters,
+        sort,
+        projects,
+        now,
+        week_starts_on,
+        note_index,
+    )
+    .0
 }
 
 /// `hasActiveFilters`: anything differs from the default filter.
@@ -342,7 +416,8 @@ pub fn has_active_filters(filters: &TaskFilters) -> bool {
     count_active_filters(filters) > 0
 }
 
-/// `countActiveFilters`: how many dimensions differ from the default.
+/// `countActiveFilters`: how many dimensions differ from the default, plus one
+/// per advanced rule.
 pub fn count_active_filters(filters: &TaskFilters) -> u32 {
     [
         !filters.search.is_empty(),
@@ -354,10 +429,12 @@ pub fn count_active_filters(filters: &TaskFilters) -> u32 {
         filters.completion != CompletionFilter::Active,
         filters.repeat_type != RepeatFilter::All,
         filters.has_time != HasTimeFilter::All,
+        has_location(filters),
     ]
     .into_iter()
     .map(u32::from)
-    .sum()
+    .sum::<u32>()
+        + expression::count_rules(filters.expression.as_ref())
 }
 
 fn compare_by_field(
@@ -440,7 +517,7 @@ fn js_end_of_month(date: CivilDate) -> CivilDate {
 
 /// `String.prototype.trim`: Unicode white space and line terminators plus
 /// U+FEFF, but not U+0085 (which Rust's `trim` removes).
-fn js_trim(text: &str) -> &str {
+pub(super) fn js_trim(text: &str) -> &str {
     text.trim_matches(|c: char| (c.is_whitespace() && c != '\u{85}') || c == '\u{feff}')
 }
 

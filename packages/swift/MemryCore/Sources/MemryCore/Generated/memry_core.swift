@@ -9946,9 +9946,11 @@ public protocol TasksProtocol: AnyObject, Sendable {
     func createProject(draft: ProjectDraft) throws  -> String
     
     /**
-     * `config_json` is desktop's `{filters, sort?, starred?}`. Returns the id.
+     * `config_json` is desktop's `{filters, sort?, starred?}`;
+     * `expression_json` the advanced rules (a JSON object), written beside
+     * it. Returns the id.
      */
-    func createSavedFilter(name: String, configJson: String) throws  -> String
+    func createSavedFilter(name: String, configJson: String, expressionJson: String?) throws  -> String
     
     /**
      * Deletes a project, moving its tasks to the Inbox or deleting them.
@@ -10009,6 +10011,11 @@ public protocol TasksProtocol: AnyObject, Sendable {
     func setProjectHomeNote(id: String, noteId: String?) throws 
     
     func setProjectLinkPinned(id: String, itemId: String, pinned: Bool) throws 
+    
+    /**
+     * Replaces the advanced rules whole (a JSON object); `nil` clears them.
+     */
+    func setSavedFilterExpression(id: String, expressionJson: String?) throws 
     
     func setSavedFilterStarred(id: String, starred: Bool) throws 
     
@@ -10506,15 +10513,18 @@ open func createProject(draft: ProjectDraft)throws  -> String  {
 }
     
     /**
-     * `config_json` is desktop's `{filters, sort?, starred?}`. Returns the id.
+     * `config_json` is desktop's `{filters, sort?, starred?}`;
+     * `expression_json` the advanced rules (a JSON object), written beside
+     * it. Returns the id.
      */
-open func createSavedFilter(name: String, configJson: String)throws  -> String  {
+open func createSavedFilter(name: String, configJson: String, expressionJson: String?)throws  -> String  {
     return try  FfiConverterString.lift(try rustCallWithError(FfiConverterTypeStorageError_lift) {
         uniffiCallStatus in
     uniffi_memry_core_fn_method_tasks_create_saved_filter(
             self.uniffiCloneHandle(),
         FfiConverterString.lower(name),
-        FfiConverterString.lower(configJson),uniffiCallStatus
+        FfiConverterString.lower(configJson),
+        FfiConverterOptionString.lower(expressionJson),uniffiCallStatus
     )
 })
 }
@@ -10701,6 +10711,19 @@ open func setProjectLinkPinned(id: String, itemId: String, pinned: Bool)throws  
         FfiConverterString.lower(id),
         FfiConverterString.lower(itemId),
         FfiConverterBool.lower(pinned),uniffiCallStatus
+    )
+}
+}
+    
+    /**
+     * Replaces the advanced rules whole (a JSON object); `nil` clears them.
+     */
+open func setSavedFilterExpression(id: String, expressionJson: String?)throws   {try rustCallWithError(FfiConverterTypeStorageError_lift) {
+        uniffiCallStatus in
+    uniffi_memry_core_fn_method_tasks_set_saved_filter_expression(
+            self.uniffiCloneHandle(),
+        FfiConverterString.lower(id),
+        FfiConverterOptionString.lower(expressionJson),uniffiCallStatus
     )
 }
 }
@@ -22789,6 +22812,10 @@ public struct SavedFilterItem: Equatable, Hashable {
      * The full `config` JSON (`{filters, sort?, starred?}`), verbatim.
      */
     public var configJson: String
+    /**
+     * The advanced rules (`{match, rules}`), verbatim; `nil` when none.
+     */
+    public var expressionJson: String?
     public var starred: Bool
     public var position: Int64
 
@@ -22797,10 +22824,14 @@ public struct SavedFilterItem: Equatable, Hashable {
     public init(id: String, name: String, 
         /**
          * The full `config` JSON (`{filters, sort?, starred?}`), verbatim.
-         */configJson: String, starred: Bool, position: Int64) {
+         */configJson: String, 
+        /**
+         * The advanced rules (`{match, rules}`), verbatim; `nil` when none.
+         */expressionJson: String?, starred: Bool, position: Int64) {
         self.id = id
         self.name = name
         self.configJson = configJson
+        self.expressionJson = expressionJson
         self.starred = starred
         self.position = position
     }
@@ -22824,6 +22855,7 @@ public struct FfiConverterTypeSavedFilterItem: FfiConverterRustBuffer {
                 id: FfiConverterString.read(from: &buf), 
                 name: FfiConverterString.read(from: &buf), 
                 configJson: FfiConverterString.read(from: &buf), 
+                expressionJson: FfiConverterOptionString.read(from: &buf), 
                 starred: FfiConverterBool.read(from: &buf), 
                 position: FfiConverterInt64.read(from: &buf)
         )
@@ -22833,6 +22865,7 @@ public struct FfiConverterTypeSavedFilterItem: FfiConverterRustBuffer {
         FfiConverterString.write(value.id, into: &buf)
         FfiConverterString.write(value.name, into: &buf)
         FfiConverterString.write(value.configJson, into: &buf)
+        FfiConverterOptionString.write(value.expressionJson, into: &buf)
         FfiConverterBool.write(value.starred, into: &buf)
         FfiConverterInt64.write(value.position, into: &buf)
     }
@@ -25027,6 +25060,11 @@ public struct TaskViewResult: Equatable, Hashable {
      */
     public var totalCount: UInt32
     public var filteredCount: UInt32
+    /**
+     * The advanced rules this build evaluates in the filters' `expression`
+     * (`countTaskFilterRules`); 0 without one.
+     */
+    public var ruleCount: UInt32
 
     // Default memberwise initializers are never public by default, so we
     // declare one manually.
@@ -25052,7 +25090,11 @@ public struct TaskViewResult: Equatable, Hashable {
         /**
          * Rows before the filter bar, and after it (for the "filters hid
          * everything" empty state).
-         */totalCount: UInt32, filteredCount: UInt32) {
+         */totalCount: UInt32, filteredCount: UInt32, 
+        /**
+         * The advanced rules this build evaluates in the filters' `expression`
+         * (`countTaskFilterRules`); 0 without one.
+         */ruleCount: UInt32) {
         self.taskIds = taskIds
         self.groups = groups
         self.doneIds = doneIds
@@ -25060,6 +25102,7 @@ public struct TaskViewResult: Equatable, Hashable {
         self.counts = counts
         self.totalCount = totalCount
         self.filteredCount = filteredCount
+        self.ruleCount = ruleCount
     }
 
     
@@ -25084,7 +25127,8 @@ public struct FfiConverterTypeTaskViewResult: FfiConverterRustBuffer {
                 cardIds: FfiConverterSequenceString.read(from: &buf), 
                 counts: FfiConverterTypeTaskTabCounts.read(from: &buf), 
                 totalCount: FfiConverterUInt32.read(from: &buf), 
-                filteredCount: FfiConverterUInt32.read(from: &buf)
+                filteredCount: FfiConverterUInt32.read(from: &buf), 
+                ruleCount: FfiConverterUInt32.read(from: &buf)
         )
     }
 
@@ -25096,6 +25140,7 @@ public struct FfiConverterTypeTaskViewResult: FfiConverterRustBuffer {
         FfiConverterTypeTaskTabCounts.write(value.counts, into: &buf)
         FfiConverterUInt32.write(value.totalCount, into: &buf)
         FfiConverterUInt32.write(value.filteredCount, into: &buf)
+        FfiConverterUInt32.write(value.ruleCount, into: &buf)
     }
 }
 
@@ -34037,7 +34082,8 @@ public func taskDueWindowsConformance(sectionJson: String) -> String  {
 }
 /**
  * Every section of `task-filtering.json` recomputed: `{dimensions, sorts,
- * groups, applied}` in the file's own shape (each case's `expected`).
+ * groups, applied}` in the file's own shape (each case's `expected`), and
+ * `expressions` as each case's `{expected, ruleCount}`.
  */
 public func taskFilteringConformance(fileJson: String) -> String  {
     return try!  FfiConverterString.lift(try! rustCall() {
@@ -34239,7 +34285,7 @@ private let initializationResult: InitializationResult = {
     if (uniffi_memry_core_checksum_func_task_due_windows_conformance() != 7716) {
         return InitializationResult.apiChecksumMismatch
     }
-    if (uniffi_memry_core_checksum_func_task_filtering_conformance() != 22113) {
+    if (uniffi_memry_core_checksum_func_task_filtering_conformance() != 8494) {
         return InitializationResult.apiChecksumMismatch
     }
     if (uniffi_memry_core_checksum_func_is_task_time_in_progress() != 26769) {
@@ -35025,7 +35071,7 @@ private let initializationResult: InitializationResult = {
     if (uniffi_memry_core_checksum_method_tasks_create_project() != 54330) {
         return InitializationResult.apiChecksumMismatch
     }
-    if (uniffi_memry_core_checksum_method_tasks_create_saved_filter() != 1730) {
+    if (uniffi_memry_core_checksum_method_tasks_create_saved_filter() != 18783) {
         return InitializationResult.apiChecksumMismatch
     }
     if (uniffi_memry_core_checksum_method_tasks_delete_project() != 41673) {
@@ -35074,6 +35120,9 @@ private let initializationResult: InitializationResult = {
         return InitializationResult.apiChecksumMismatch
     }
     if (uniffi_memry_core_checksum_method_tasks_set_project_link_pinned() != 57758) {
+        return InitializationResult.apiChecksumMismatch
+    }
+    if (uniffi_memry_core_checksum_method_tasks_set_saved_filter_expression() != 51350) {
         return InitializationResult.apiChecksumMismatch
     }
     if (uniffi_memry_core_checksum_method_tasks_set_saved_filter_starred() != 19631) {

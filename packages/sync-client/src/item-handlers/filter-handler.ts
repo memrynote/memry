@@ -41,6 +41,8 @@ class FilterHandler extends BaseItemHandler<FilterSyncPayload> {
           .set({
             name: data.name ?? existing.name,
             config: data.config ?? existing.config,
+            // Absent: a build that predates the key pushed this, so keep ours.
+            expression: data.expression === undefined ? existing.expression : data.expression,
             position: data.position ?? existing.position,
             clock: resolution.mergedClock,
             syncedAt: now
@@ -57,6 +59,7 @@ class FilterHandler extends BaseItemHandler<FilterSyncPayload> {
           id: itemId,
           name: data.name ?? 'Untitled Filter',
           config: data.config ?? {},
+          expression: data.expression ?? null,
           position: data.position ?? 0,
           clock: remoteClock,
           syncedAt: now,

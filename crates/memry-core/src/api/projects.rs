@@ -50,6 +50,8 @@ pub struct SavedFilterItem {
     pub name: String,
     /// The full `config` JSON (`{filters, sort?, starred?}`), verbatim.
     pub config_json: String,
+    /// The advanced rules (`{match, rules}`), verbatim; `nil` when none.
+    pub expression_json: Option<String>,
     pub starred: bool,
     pub position: i64,
 }
@@ -106,11 +108,17 @@ fn parse_config(config_json: &str) -> Result<Value, StorageError> {
     serde_json::from_str(config_json).map_err(|error| invalid(format!("filter config: {error}")))
 }
 
+fn parse_expression(expression_json: &str) -> Result<Value, StorageError> {
+    serde_json::from_str(expression_json)
+        .map_err(|error| invalid(format!("filter expression: {error}")))
+}
+
 impl From<saved_filters::SavedFilter> for SavedFilterItem {
     fn from(filter: saved_filters::SavedFilter) -> Self {
         Self {
             starred: filter.starred(),
             config_json: filter.config.to_string(),
+            expression_json: filter.expression.map(|tree| tree.to_string()),
             id: filter.id,
             name: filter.name,
             position: filter.position,
@@ -310,19 +318,27 @@ impl Tasks {
         })
     }
 
-    /// `config_json` is desktop's `{filters, sort?, starred?}`. Returns the id.
+    /// `config_json` is desktop's `{filters, sort?, starred?}`;
+    /// `expression_json` the advanced rules (a JSON object), written beside
+    /// it. Returns the id.
     pub fn create_saved_filter(
         &self,
         name: String,
         config_json: String,
+        expression_json: Option<String>,
     ) -> Result<String, StorageError> {
         let device = self.device_id.clone();
         self.db.call_blocking(move |conn| {
             let config = parse_config(&config_json)?;
+            let expression = expression_json
+                .as_deref()
+                .map(parse_expression)
+                .transpose()?;
             let filter = NewSavedFilter {
                 id: None,
                 name: &name,
                 config: &config,
+                expression: expression.as_ref(),
             };
             Ok(saved_filters::create(conn, &filter, &device, now_ms())?
                 .acknowledge()
@@ -357,6 +373,24 @@ impl Tasks {
         let device = self.device_id.clone();
         self.db.call_blocking(move |conn| {
             saved_filters::set_starred(conn, &id, starred, &device, now_ms())?.acknowledge();
+            Ok(())
+        })
+    }
+
+    /// Replaces the advanced rules whole (a JSON object); `nil` clears them.
+    pub fn set_saved_filter_expression(
+        &self,
+        id: String,
+        expression_json: Option<String>,
+    ) -> Result<(), StorageError> {
+        let device = self.device_id.clone();
+        self.db.call_blocking(move |conn| {
+            let expression = expression_json
+                .as_deref()
+                .map(parse_expression)
+                .transpose()?;
+            saved_filters::set_expression(conn, &id, expression.as_ref(), &device, now_ms())?
+                .acknowledge();
             Ok(())
         })
     }

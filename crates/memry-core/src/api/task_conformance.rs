@@ -230,7 +230,8 @@ fn filter_project(value: &Value) -> FilterProject {
 }
 
 /// Every section of `task-filtering.json` recomputed: `{dimensions, sorts,
-/// groups, applied}` in the file's own shape (each case's `expected`).
+/// groups, applied}` in the file's own shape (each case's `expected`), and
+/// `expressions` as each case's `{expected, ruleCount}`.
 #[uniffi::export]
 pub fn task_filtering_conformance(file_json: String) -> String {
     let file = parse(&file_json);
@@ -317,7 +318,7 @@ pub fn task_filtering_conformance(file_json: String) -> String {
             let now = instant(&file["nows"][text(c, "now")]).unwrap_or(LocalDateTime::from_ms(0));
             let week = u32::try_from(c["weekStartsOn"].as_u64().unwrap_or(1)).unwrap_or(1);
             let (result, context) = task_filter::apply_filters_and_sort_with_context(
-                &tasks, &filters, &sort, &projects, now, week,
+                &tasks, &filters, &sort, &projects, now, week, None,
             );
             let mut context: Vec<&str> = context.into_iter().collect();
             context.sort_unstable();
@@ -329,6 +330,26 @@ pub fn task_filtering_conformance(file_json: String) -> String {
             })
         })
         .collect();
-    json!({"dimensions": dimensions, "sorts": sorts, "groups": groups, "applied": applied})
-        .to_string()
+    let expressions: Vec<Value> = array(&file["expressions"])
+        .iter()
+        .map(|c| {
+            let ctx = task_filter::ExpressionContext {
+                now: instant(&file["nows"][text(c, "now")]).unwrap_or(LocalDateTime::from_ms(0)),
+                week_starts_on: u32::try_from(c["weekStartsOn"].as_u64().unwrap_or(1)).unwrap_or(1),
+                note_index: c["withNotes"].as_bool().unwrap_or(false).then_some(&notes),
+            };
+            let matched: Vec<&FilterTask> = refs
+                .iter()
+                .copied()
+                .filter(|task| task_filter::matches_expression(task, &c["expression"], &ctx))
+                .collect();
+            json!({
+                "expected": ids(&matched),
+                "ruleCount": task_filter::count_rules(Some(&c["expression"])),
+            })
+        })
+        .collect();
+    json!({"dimensions": dimensions, "sorts": sorts, "groups": groups, "applied": applied,
+           "expressions": expressions})
+    .to_string()
 }
