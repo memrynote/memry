@@ -513,10 +513,10 @@ export const commands = {
 	 */
 	vaultResolveEmbeds: (refs: string[], notePath: string | null) => __TAURI_INVOKE<{ [key in string]: string }>("vault_resolve_embeds", { refs, notePath }),
 	/**
-	 *  The open vault's notices, none while no vault is open or when the launch started no vault
-	 *  tier.
+	 *  The open vault's notices and the open they belong to; none while no vault is open or when
+	 *  the launch started no vault tier.
 	 */
-	vaultNoticesList: () => __TAURI_INVOKE<VaultNotice[]>("vault_notices_list"),
+	vaultNoticesList: () => __TAURI_INVOKE<VaultNoticeList>("vault_notices_list"),
 	/**  Closes the calling window. The `CloseRequested` handlers (flush, tray) decide what follows. */
 	windowClose: () => __TAURI_INVOKE<null>("window_close"),
 	/**  Minimizes the calling window. */
@@ -2497,11 +2497,22 @@ export type VaultListChangedEvent = null;
  *  - `configUnreadable`: `.memry/config.json` is there and cannot be read, so the journal days
  *    are unknown: no file becomes a note or a day, and no move reaches its record, until it
  *    reads (`notes::identity`). `path` is the file's, for the user to fix it.
- *  - `watchLimit`: the Linux inotify watch limit stopped the vault watcher
- *    (`WatchFailed { limit: true }`): changes made outside the app arrive with the watcher's
- *    rescans, not at once, until the user raises `fs.inotify.max_user_watches` and restarts.
+ *  - `watchLimit`: the Linux inotify watch limit left part of the vault unwatched
+ *    (`WatchFailed { limit: true }`): changes made outside the app there arrive with the
+ *    watcher's rescans, not at once, until the user raises `fs.inotify.max_user_watches` and
+ *    restarts.
  */
 export type VaultNotice = { kind: "configUnreadable"; path: string } | { kind: "watchLimit" };
+
+/**  The open vault's notices, as a window reads them. */
+export type VaultNoticeList = {
+	/**
+	 *  Changes with every open, so a window forgets the notices the user closed in the vault
+	 *  before.
+	 */
+	open: number,
+	notices: VaultNotice[],
+};
 
 /**
  *  The open vault's notices changed, or a vault opened or closed. No payload; the renderer

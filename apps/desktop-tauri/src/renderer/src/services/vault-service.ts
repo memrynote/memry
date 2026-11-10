@@ -13,7 +13,7 @@ import {
   type GetVaultsResponse as WireVaultsResponse,
   type SelectVaultResponse as WireSelectResponse,
   type VaultInfo as WireVaultInfo,
-  type VaultNotice
+  type VaultNoticeList
 } from '../../../generated/bindings'
 import { createLogger } from '../lib/logger'
 
@@ -259,14 +259,14 @@ export function onVaultStatusChanged(callback: (status: VaultStatus) => void): (
  * open still gets it; an answer older than a later one is dropped.
  * Returns unsubscribe function.
  */
-export function onVaultNotices(callback: (notices: VaultNotice[]) => void): () => void {
+export function onVaultNotices(callback: (list: VaultNoticeList) => void): () => void {
   let asked = 0
   let closed = false
   const read = async (): Promise<void> => {
     const ask = ++asked
     try {
-      const notices = await commands.vaultNoticesList()
-      if (ask === asked && !closed) callback(notices)
+      const list = await commands.vaultNoticesList()
+      if (ask === asked && !closed) callback(list)
     } catch (error) {
       log.warn('vault notices read failed', error)
     }

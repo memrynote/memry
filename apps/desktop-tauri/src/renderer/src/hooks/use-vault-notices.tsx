@@ -17,17 +17,22 @@ import { onVaultNotices } from '@/services/vault-service'
 const log = createLogger('VaultNotices')
 
 /**
- * Raises the inotify watch limit now and at every boot. A shell command, never translated:
- * 524288 is the limit current distributions ship as their default.
+ * Raises the inotify watch limit now and at every boot. A shell command, never translated.
+ * Since Linux 5.11 the default scales with the machine's memory up to 1048576; this sets that
+ * ceiling.
  */
 export const WATCH_LIMIT_COMMAND =
-  'echo fs.inotify.max_user_watches=524288 | sudo tee /etc/sysctl.d/60-memry.conf && sudo sysctl --system'
+  'echo fs.inotify.max_user_watches=1048576 | sudo tee /etc/sysctl.d/60-memry.conf && sudo sysctl --system'
 
 type Kind = VaultNotice['kind']
 
 const toastId = (kind: Kind): string => `vault-notice-${kind}`
 
-/** The kinds the latest list holds, and the ones the user closed meanwhile. */
+/**
+ * The open the latest list belongs to, the kinds it holds, and the ones the user closed
+ * meanwhile in that open.
+ */
+let shownOpen: number | null = null
 const current = new Set<Kind>()
 const closed = new Set<Kind>()
 
@@ -93,7 +98,11 @@ export function useVaultNotices(): void {
       }
     }
 
-    return onVaultNotices((notices) => {
+    return onVaultNotices(({ open, notices }) => {
+      if (open !== shownOpen) {
+        shownOpen = open
+        closed.clear()
+      }
       const kinds = new Set(notices.map((notice) => notice.kind))
       for (const kind of current) {
         if (kinds.has(kind)) continue

@@ -36,5 +36,8 @@ pub use event::{EventSink, VaultEvent};
 pub use handle::{NewFiles, WatchHandle};
 #[cfg(test)]
 pub(crate) use runtime::HoldFn;
+#[cfg(feature = "test-hooks")]
+#[doc(hidden)]
+pub use runtime::hit_watch_limit;
 pub use runtime::{VaultWatcher, WatchError};
 pub use safety::Tuning;

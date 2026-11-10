@@ -4,18 +4,18 @@
 
 use std::sync::Arc;
 
-use memry_desktop::vault::notices::{VaultNotice, VaultNotices};
+use memry_desktop::vault::notices::{VaultNoticeList, VaultNotices};
 use tauri::{AppHandle, Manager, Wry};
 
 use super::error::CommandError;
 
-/// The open vault's notices, none while no vault is open or when the launch started no vault
-/// tier.
+/// The open vault's notices and the open they belong to; none while no vault is open or when
+/// the launch started no vault tier.
 #[tauri::command]
 #[specta::specta]
-pub fn vault_notices_list(app: AppHandle<Wry>) -> Result<Vec<VaultNotice>, CommandError> {
+pub fn vault_notices_list(app: AppHandle<Wry>) -> Result<VaultNoticeList, CommandError> {
     Ok(app
         .try_state::<Arc<VaultNotices>>()
-        .map(|notices| notices.list())
+        .map(|notices| notices.read())
         .unwrap_or_default())
 }

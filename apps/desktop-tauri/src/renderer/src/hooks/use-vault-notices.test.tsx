@@ -37,13 +37,16 @@ import { useVaultNotices, WATCH_LIMIT_COMMAND } from './use-vault-notices'
 const CONFIG = { kind: 'configUnreadable', path: '/v/a/.memry/config.json' }
 const LIMIT = { kind: 'watchLimit' }
 
+/** The notices of the vault's `open`th open, as `vault_notices_list` answers. */
+const listOf = (notices: unknown[], open = 1): unknown => ({ open, notices })
+
 /**
  * The vault's notices change to `notices`: the event, then the list it reads. The hook keeps
  * what the user closed until the notice clears, so every test ends with `changeTo([])`.
  */
-async function changeTo(notices: unknown[]): Promise<void> {
+async function changeTo(notices: unknown[], open = 1): Promise<void> {
   const reads = mocks.vaultNoticesList.mock.calls.length
-  mocks.vaultNoticesList.mockResolvedValue(notices)
+  mocks.vaultNoticesList.mockResolvedValue(listOf(notices, open))
   mocks.listener?.({ payload: null })
   await waitFor(() => expect(mocks.vaultNoticesList).toHaveBeenCalledTimes(reads + 1))
   await Promise.resolve()
@@ -68,7 +71,7 @@ beforeEach(() => {
 describe('useVaultNotices (#3531 14l)', () => {
   it('shows the open vault’s notice once it subscribes, and reveals the config file', async () => {
     // The open raised it before the window existed: no event reached it, the list holds it.
-    mocks.vaultNoticesList.mockResolvedValue([CONFIG])
+    mocks.vaultNoticesList.mockResolvedValue(listOf([CONFIG]))
     renderHook(() => useVaultNotices())
 
     await waitFor(() => expect(mocks.toast.warning).toHaveBeenCalledTimes(1))
@@ -92,7 +95,7 @@ describe('useVaultNotices (#3531 14l)', () => {
   it('copies the command that raises the Linux watch limit', async () => {
     const writeText = vi.fn().mockResolvedValue(undefined)
     Object.assign(navigator, { clipboard: { writeText } })
-    mocks.vaultNoticesList.mockResolvedValue([LIMIT])
+    mocks.vaultNoticesList.mockResolvedValue(listOf([LIMIT]))
     renderHook(() => useVaultNotices())
 
     await waitFor(() => expect(mocks.toast.warning).toHaveBeenCalledTimes(1))
@@ -107,7 +110,7 @@ describe('useVaultNotices (#3531 14l)', () => {
   })
 
   it('keeps a closed notice closed until it clears, and takes a cleared one down', async () => {
-    mocks.vaultNoticesList.mockResolvedValue([CONFIG])
+    mocks.vaultNoticesList.mockResolvedValue(listOf([CONFIG]))
     renderHook(() => useVaultNotices())
     await waitFor(() => expect(mocks.toast.warning).toHaveBeenCalledTimes(1))
 
@@ -129,5 +132,22 @@ describe('useVaultNotices (#3531 14l)', () => {
       expect.objectContaining({ id: 'vault-notice-configUnreadable' })
     )
     await changeTo([])
+  })
+
+  it('forgets what the user closed once another vault opens, or the same one again', async () => {
+    mocks.vaultNoticesList.mockResolvedValue(listOf([LIMIT]))
+    renderHook(() => useVaultNotices())
+    await waitFor(() => expect(mocks.toast.warning).toHaveBeenCalledTimes(1))
+    lastOptions().onDismiss?.()
+
+    // The next open raised it before the window read the list: no empty list came between.
+    await changeTo([LIMIT], 2)
+    expect(mocks.toast.warning).toHaveBeenCalledTimes(2)
+    expect(lastOptions()).toMatchObject({ id: 'vault-notice-watchLimit' })
+
+    lastOptions().onDismiss?.()
+    await changeTo([LIMIT], 2)
+    expect(mocks.toast.warning).toHaveBeenCalledTimes(2)
+    await changeTo([], 2)
   })
 })

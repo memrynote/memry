@@ -12,7 +12,7 @@ use memry_desktop::notes::identity::NotesIdentity;
 use memry_desktop::vault::config::config_path;
 use memry_desktop::vault::consumer::Applied;
 use memry_desktop::vault::notices::{VaultNotice, VaultNotices};
-use memry_desktop::vault::watch::VaultEvent;
+use memry_desktop::vault::watch::{VaultEvent, hit_watch_limit};
 use tokio::sync::broadcast;
 use vault_env::{Env, env, indexed};
 
@@ -56,7 +56,8 @@ fn an_unreadable_vault_config_shows_until_it_reads() {
     until("the notice cleared", || notices.list().is_empty());
 }
 
-/// Every open starts with an empty board and finds its notices again; a close empties it.
+/// Every open starts with an empty board and finds its notices again; a close empties it, and
+/// the next open is told apart from the last.
 #[test]
 fn a_notice_lasts_as_long_as_its_vault_is_open() {
     let (mut e, notices) = noticing_env();
@@ -64,6 +65,7 @@ fn a_notice_lasts_as_long_as_its_vault_is_open() {
     e.open();
     e.facts_until(indexed);
     assert_eq!(notices.list(), vec![unreadable(&e.vault)]);
+    let first = notices.read().open;
     e.close();
     assert!(notices.list().is_empty(), "{:?}", notices.list());
 
@@ -71,6 +73,11 @@ fn a_notice_lasts_as_long_as_its_vault_is_open() {
     e.open();
     e.facts_until(indexed);
     assert!(notices.list().is_empty(), "{:?}", notices.list());
+    assert_ne!(
+        notices.read().open,
+        first,
+        "a window would keep what it closed"
+    );
 }
 
 /// A report of a vault that is not the open one is dropped, and its late close leaves the open
@@ -105,9 +112,31 @@ fn the_watch_limit_shows_a_notice() {
         })
     };
     facts.send(failed(false)).unwrap();
+    // Taken only once the failure before it was handled.
     facts.send(Applied::Indexed { complete: true }).unwrap();
+    until("the board took both facts", || facts.is_empty());
+    assert!(notices.list().is_empty(), "{:?}", notices.list());
     facts.send(failed(true)).unwrap();
     until("the watch limit notice", || {
         notices.list() == vec![VaultNotice::WatchLimit]
     });
+}
+
+/// The Linux inotify limit hit as the vault opens: the vault still opens with its watcher,
+/// shows the notice, and an outside edit made after the open reaches its note with the rescan
+/// the limit owes (no folder is watched, so no OS event brings it).
+#[test]
+fn a_watch_limit_at_the_open_shows_and_rescans() {
+    let (mut e, notices) = noticing_env();
+    notices.follow(e.tier.subscribe());
+    e.write("a.md", "A\n");
+    hit_watch_limit(&e.vault);
+    e.open();
+    e.facts_until(indexed);
+    until("the watch limit notice", || {
+        notices.list() == vec![VaultNotice::WatchLimit]
+    });
+
+    e.write("a.md", "A, edited outside\n");
+    e.facts_until(|fact| matches!(fact, Applied::Changed { path, .. } if path == "a.md"));
 }

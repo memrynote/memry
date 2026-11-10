@@ -126,7 +126,7 @@ vi.mock('../src/generated/bindings', () => {
       vaultList: () => vault().getAll(),
       vaultGetStatus: () => vault().getStatus().then(revised),
       // The vault notices (hooks/use-vault-notices.tsx): none; its tests mock the bindings.
-      vaultNoticesList: () => Promise.resolve([]),
+      vaultNoticesList: () => Promise.resolve({ open: 0, notices: [] }),
       vaultClose: () => vault().close(),
       vaultSwitch: (path: string) => vault().switch(path),
       vaultRemove: (path: string) => vault().remove(path),

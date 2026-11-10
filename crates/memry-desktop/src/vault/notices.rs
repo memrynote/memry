@@ -27,9 +27,10 @@ use crate::vault::watch::VaultEvent;
 /// - `configUnreadable`: `.memry/config.json` is there and cannot be read, so the journal days
 ///   are unknown: no file becomes a note or a day, and no move reaches its record, until it
 ///   reads (`notes::identity`). `path` is the file's, for the user to fix it.
-/// - `watchLimit`: the Linux inotify watch limit stopped the vault watcher
-///   (`WatchFailed { limit: true }`): changes made outside the app arrive with the watcher's
-///   rescans, not at once, until the user raises `fs.inotify.max_user_watches` and restarts.
+/// - `watchLimit`: the Linux inotify watch limit left part of the vault unwatched
+///   (`WatchFailed { limit: true }`): changes made outside the app there arrive with the
+///   watcher's rescans, not at once, until the user raises `fs.inotify.max_user_watches` and
+///   restarts.
 //
 // The variants carry no doc comments: specta would write them into a union with trailing
 // whitespace in `bindings.ts`.
@@ -44,10 +45,21 @@ pub enum VaultNotice {
     WatchLimit,
 }
 
+/// The open vault's notices, as a window reads them.
+#[derive(Debug, Clone, Default, PartialEq, Eq, Serialize, specta::Type)]
+pub struct VaultNoticeList {
+    /// Changes with every open, so a window forgets the notices the user closed in the vault
+    /// before.
+    pub open: u32,
+    pub notices: Vec<VaultNotice>,
+}
+
 #[derive(Default)]
 struct Board {
     /// The open vault's root; `None` while no vault is open.
     root: Option<PathBuf>,
+    /// Counts the opens.
+    open: u32,
     notices: Vec<VaultNotice>,
 }
 
@@ -78,6 +90,15 @@ impl VaultNotices {
         self.board().notices.clone()
     }
 
+    /// [`Self::list`] with the open it belongs to.
+    pub fn read(&self) -> VaultNoticeList {
+        let board = self.board();
+        VaultNoticeList {
+            open: board.open,
+            notices: board.notices.clone(),
+        }
+    }
+
     /// Opens the board with every open and empties it with every close.
     pub fn register(self: &Arc<Self>, session: &Session) {
         let board = self.clone();
@@ -97,10 +118,13 @@ impl VaultNotices {
     }
 
     pub fn open(&self, root: &Path) {
-        *self.board() = Board {
+        let mut board = self.board();
+        *board = Board {
             root: Some(root.to_path_buf()),
+            open: board.open.wrapping_add(1),
             notices: Vec::new(),
         };
+        drop(board);
         let _ = self.changed.send(());
     }
 
@@ -108,7 +132,8 @@ impl VaultNotices {
     pub fn close(&self, root: &Path) {
         let mut board = self.board();
         if board.root.as_deref() == Some(root) {
-            *board = Board::default();
+            board.root = None;
+            board.notices.clear();
             let _ = self.changed.send(());
         }
     }
