@@ -100,7 +100,6 @@
     "src/renderer/src/hooks/use-inbox.test.tsx",
     "src/renderer/src/hooks/use-journal.test.tsx",
     "src/renderer/src/hooks/use-keyboard-shortcuts.test.ts",
-    "src/renderer/src/hooks/use-note-editor.test.tsx",
     "src/renderer/src/hooks/use-note-tree-actions.test.tsx",
     "src/renderer/src/hooks/use-notes-query.test.tsx",
     "src/renderer/src/hooks/use-properties.test.tsx",

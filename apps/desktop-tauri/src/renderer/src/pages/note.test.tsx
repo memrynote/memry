@@ -1778,6 +1778,7 @@ describe('NotePage', () => {
 
     it('keeps typing over it and says so once the typing saves', async () => {
       vi.useFakeTimers()
+      mocks.updateNote.mockResolvedValue({ success: true, keptReplaced: true })
       mocks.noteState.isFetchedAfterMount = false
       const page = renderWithProviders(<NotePage noteId="note-1" />)
       await act(async () => {
@@ -1886,7 +1887,9 @@ describe('NotePage', () => {
       await saveStarted()
 
       event('Edited outside')
-      await act(async () => finishSave({ success: true, savedContent: 'Typed' }))
+      await act(async () =>
+        finishSave({ success: true, savedContent: 'Typed', keptReplaced: true })
+      )
 
       await waitFor(() => expect(toast).toHaveBeenCalledTimes(1))
       expect(screen.getByTestId('editor-external-revision')).toHaveTextContent('0')
@@ -1898,7 +1901,9 @@ describe('NotePage', () => {
 
       event('Edited outside')
       event('Typed')
-      await act(async () => finishSave({ success: true, savedContent: 'Typed' }))
+      await act(async () =>
+        finishSave({ success: true, savedContent: 'Typed', keptReplaced: true })
+      )
 
       await waitFor(() => expect(toast).toHaveBeenCalledTimes(1))
       expect(screen.getByTestId('editor-external-revision')).toHaveTextContent('0')
@@ -1913,7 +1918,9 @@ describe('NotePage', () => {
       await waitFor(() => expect(mocks.updateNote).toHaveBeenCalled(), { timeout: 3000 })
 
       event('Edited outside')
-      await act(async () => finishSave({ success: true, savedContent: 'Typed' }))
+      await act(async () =>
+        finishSave({ success: true, savedContent: 'Typed', keptReplaced: true })
+      )
       await waitFor(() => expect(mocks.notesGet).toHaveBeenCalled())
       await act(async () => undefined)
 
@@ -1926,7 +1933,12 @@ describe('NotePage', () => {
 
       event('Edited outside')
       await act(async () =>
-        finishSave({ success: true, savedContent: 'Typed', keptOutsideEdit: true })
+        finishSave({
+          success: true,
+          savedContent: 'Typed',
+          keptOutsideEdit: true,
+          keptReplaced: true
+        })
       )
       await waitFor(() => expect(mocks.notesGet).toHaveBeenCalled())
       await act(async () => undefined)
@@ -1980,6 +1992,7 @@ describe('NotePage', () => {
       expect(screen.getByTestId('editor-external-revision')).toHaveTextContent('0')
 
       // The typing is still unsaved: the next save writes it, over the edit it held.
+      mocks.updateNote.mockResolvedValue({ success: true, keptReplaced: true })
       const flush = mocks.registerPendingSave.mock.calls.at(-1)?.[1] as () => Promise<void>
       await act(async () => flush())
       expect(mocks.updateNote).toHaveBeenLastCalledWith({
@@ -2036,7 +2049,7 @@ describe('NotePage', () => {
 
       event('Edited outside')
       await act(async () => {
-        finishFlush({ success: true, savedContent: 'Typed more' })
+        finishFlush({ success: true, savedContent: 'Typed more', keptReplaced: true })
         await flushed
       })
       await act(async () => finishSave({ success: true, savedContent: 'Typed' }))
@@ -2245,7 +2258,7 @@ describe('NotePage', () => {
       mocks.updatedHandler?.({ id: 'note-1', source: 'external', changes: { content: 'Edited' } })
     })
     await act(async () => {
-      finishFlush({ success: true, savedContent: 'Flushed' })
+      finishFlush({ success: true, savedContent: 'Flushed', keptReplaced: true })
       await flushed
     })
 
@@ -2302,6 +2315,10 @@ describe('NotePage', () => {
   })
 
   describe('typing saved over an outside edit', () => {
+    // A save over a body that changed: the core keeps the file it replaced.
+    beforeEach(() => {
+      mocks.updateNote.mockResolvedValue({ success: true, keptReplaced: true })
+    })
     const outsideEdit = (content: string) =>
       act(() => {
         mocks.updatedHandler?.({ id: 'note-1', source: 'external', changes: { content } })
@@ -2458,7 +2475,11 @@ describe('NotePage', () => {
 
     it('tells the user when the save went over an outside edit the editor had no event for', async () => {
       vi.useFakeTimers()
-      mocks.updateNote.mockResolvedValue({ success: true, keptOutsideEdit: true })
+      mocks.updateNote.mockResolvedValue({
+        success: true,
+        keptOutsideEdit: true,
+        keptReplaced: true
+      })
       renderWithProviders(<NotePage noteId="note-1" />)
       await act(async () => {
         await vi.advanceTimersByTimeAsync(0)

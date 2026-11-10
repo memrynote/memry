@@ -1678,6 +1678,11 @@ export type NoteUpdatedView = {
 	tagTemplate?: TagTemplateOutcome | null,
 	/**  The save went over an outside edit the editor never had an event for, kept as a version. */
 	keptOutsideEdit: boolean,
+	/**
+	 *  The file the save replaced is a version: the editor tells the user a text it replaced is
+	 *  in version history only then (#4110).
+	 */
+	keptReplaced: boolean,
 	/**  The body the save left in the file; `note` is read after it and can hold a later edit. */
 	savedContent?: string | null,
 };

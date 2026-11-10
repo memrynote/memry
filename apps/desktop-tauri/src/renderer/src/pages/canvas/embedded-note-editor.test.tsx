@@ -400,7 +400,7 @@ describe('EmbeddedNoteEditor', () => {
         mocks.get.mockImplementation((id: string) => Promise.resolve(makeNote({ id })))
         mocks.update
           .mockResolvedValueOnce({ success: false, code: 'note_locked', error: 'x', note: null })
-          .mockResolvedValue({ success: true, note: null })
+          .mockResolvedValue({ success: true, note: null, keptReplaced: true })
         const view = renderCard()
         await screen.findByTestId('content-area')
         vi.useFakeTimers()
@@ -421,6 +421,49 @@ describe('EmbeddedNoteEditor', () => {
           )
         )
         expect(saves().at(-1)).toEqual({ id: 'n1', content: 'edited body', keepReplaced: true })
+      }
+    )
+
+    // #4110: the note tab saved a small edit while the card's save, sent before it heard of it,
+    // ran. That save lands over the tab's text, and only the core knows whether it kept it.
+    it.each([
+      ['kept no version', false, 0],
+      ['kept a version', true, 1]
+    ])(
+      'tells of a note tab save its own save went over only when the core %s',
+      async (_, keptReplaced, toasts) => {
+        let answer: (result: unknown) => void = () => {}
+        mocks.update.mockImplementationOnce(
+          () =>
+            new Promise((resolve) => {
+              answer = resolve
+            })
+        )
+        renderCard()
+        await screen.findByTestId('content-area')
+        vi.useFakeTimers()
+        act(() => screen.getByTestId('edit').click())
+        await act(async () => {
+          await vi.advanceTimersByTimeAsync(1000)
+        })
+        emitUpdated('n1', 'saved in the tab')
+        vi.useRealTimers()
+        // The file read again once the save answers holds the card's save.
+        mocks.get.mockResolvedValue(makeNote({ content: 'edited body' }))
+        const reads = mocks.get.mock.calls.length
+
+        await act(async () => {
+          answer({ success: true, note: null, savedContent: 'edited body', keptReplaced })
+          await Promise.resolve()
+        })
+
+        await vi.waitFor(() => expect(mocks.get.mock.calls.length).toBeGreaterThan(reads))
+        await act(async () => {
+          await new Promise((resolve) => setTimeout(resolve, 0))
+        })
+        expect(
+          vi.mocked(toast).mock.calls.filter(([message]) => message === REPLACED)
+        ).toHaveLength(toasts)
       }
     )
 
