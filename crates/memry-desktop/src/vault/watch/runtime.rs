@@ -184,6 +184,8 @@ impl Drop for VaultWatcher {
 struct OsWatch {
     /// Taken by the drop.
     watcher: Option<RecommendedWatcher>,
+    /// What [`OsWatch::stop_here`] unwatches.
+    root: PathBuf,
     /// Where a test holds the stop, as a slow backend does: notify's own stop cannot be made
     /// slow on purpose, so a test runs its closure right before it.
     #[cfg(test)]
@@ -191,8 +193,20 @@ struct OsWatch {
 }
 
 impl OsWatch {
-    /// Stops the watch on this thread, for a backend whose stop is quick (inotify).
+    /// Stops the watch on this thread, for a backend whose stop is quick (inotify). The unwatch
+    /// waits for notify's loop to remove every watch of the vault; a drop only asks the loop to
+    /// shut down, and it removes them later, while the caller arms a new watch.
     fn stop_here(mut self) {
+        if let Some(watcher) = self.watcher.as_mut()
+            && let Err(error) = watcher.unwatch(&self.root)
+            && !matches!(error.kind, notify::ErrorKind::WatchNotFound)
+        {
+            tracing::warn!(
+                scope = "vault_watch",
+                kind = error_kind(&error.kind),
+                "the old OS watch did not unwatch the vault"
+            );
+        }
         if let Some(stop) = self.take_stop() {
             stop();
         }
@@ -249,23 +263,8 @@ struct Lost {
 /// rescans the vault on a timer from then on ([`SafetyNet::lost_events`]).
 fn watch(root: &Path, tx: &SyncSender<Msg>, lost: &Arc<Lost>) -> notify::Result<OsWatch> {
     let (queue, flags) = (tx.clone(), lost.clone());
-    let mut watcher = notify::recommended_watcher(move |result: notify::Result<notify::Event>| {
-        let msg = match result {
-            Ok(event) if matches!(event.kind, EventKind::Access(_)) => return,
-            Ok(event) if event.need_rescan() => Msg::Rescan,
-            Ok(event) => Msg::Paths(event.paths),
-            Err(error) if matches!(error.kind, notify::ErrorKind::MaxFilesWatch) => {
-                flags.limit.store(true, Ordering::Relaxed);
-                return;
-            }
-            Err(error) => Msg::Error(error),
-        };
-        match queue.try_send(msg) {
-            Ok(()) => {}
-            Err(TrySendError::Full(_)) => flags.overflow.store(true, Ordering::Relaxed),
-            Err(TrySendError::Disconnected(_)) => {}
-        }
-    })?;
+    let mut watcher =
+        notify::recommended_watcher(move |result| queue_event(result, &queue, &flags))?;
     let armed = match at_limit(root) {
         true => Err(notify::Error::new(notify::ErrorKind::MaxFilesWatch).add_path(root.into())),
         false => watcher.watch(root, RecursiveMode::Recursive),
@@ -279,9 +278,29 @@ fn watch(root: &Path, tx: &SyncSender<Msg>, lost: &Arc<Lost>) -> notify::Result<
     }
     Ok(OsWatch {
         watcher: Some(watcher),
+        root: root.to_path_buf(),
         #[cfg(test)]
         stop_hold: Arc::default(),
     })
+}
+
+/// The OS callback: queues what the OS reported, never blocks.
+fn queue_event(result: notify::Result<notify::Event>, queue: &SyncSender<Msg>, flags: &Lost) {
+    let msg = match result {
+        Ok(event) if matches!(event.kind, EventKind::Access(_)) => return,
+        Ok(event) if event.need_rescan() => Msg::Rescan,
+        Ok(event) => Msg::Paths(event.paths),
+        Err(error) if matches!(error.kind, notify::ErrorKind::MaxFilesWatch) => {
+            flags.limit.store(true, Ordering::Relaxed);
+            return;
+        }
+        Err(error) => Msg::Error(error),
+    };
+    match queue.try_send(msg) {
+        Ok(()) => {}
+        Err(TrySendError::Full(_)) => flags.overflow.store(true, Ordering::Relaxed),
+        Err(TrySendError::Disconnected(_)) => {}
+    }
 }
 
 /// The vault roots whose next OS watch hits the Linux inotify limit before it arms a folder:
@@ -341,6 +360,8 @@ struct Worker {
     stop_before_rewatch: bool,
     net: SafetyNet,
     last_error: Option<Instant>,
+    /// The limit notice's own throttle, so another error cannot hide it.
+    last_limit: Option<Instant>,
 }
 
 impl Worker {
@@ -367,6 +388,7 @@ impl Worker {
             stop_before_rewatch: cfg!(target_os = "linux"),
             net: SafetyNet::new(tuning, Instant::now()),
             last_error: None,
+            last_limit: None,
         }
     }
 
@@ -498,7 +520,7 @@ impl Worker {
             Err(error) => {
                 (self.sink)(VaultEvent::WatchFailed {
                     message: error.to_string(),
-                    limit: matches!(error.kind, notify::ErrorKind::MaxFilesWatch),
+                    limit: false,
                 });
                 return;
             }
@@ -523,13 +545,15 @@ impl Worker {
             notify::ErrorKind::Io(io) => Some(io.kind()),
             _ => None,
         };
-        if self
-            .last_error
-            .is_some_and(|at| now.duration_since(at) < ERROR_REPORT_EVERY)
-        {
+        let limit = matches!(error.kind, notify::ErrorKind::MaxFilesWatch);
+        let last = match limit {
+            true => &mut self.last_limit,
+            false => &mut self.last_error,
+        };
+        if last.is_some_and(|at| now.duration_since(at) < ERROR_REPORT_EVERY) {
             return;
         }
-        self.last_error = Some(now);
+        *last = Some(now);
         tracing::warn!(
             scope = "vault_watch",
             kind = error_kind(&error.kind),
@@ -539,7 +563,7 @@ impl Worker {
         );
         (self.sink)(VaultEvent::WatchFailed {
             message: error.to_string(),
-            limit: matches!(error.kind, notify::ErrorKind::MaxFilesWatch),
+            limit,
         });
     }
 

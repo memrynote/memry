@@ -296,29 +296,87 @@ fn a_burst_of_watcher_errors_logs_one_line() {
     );
 }
 
-/// Where inotify's limit counts every watch, the vault's return stops the old watch, on the
-/// worker, before it arms the new one: arming first could hit the limit only because both are up.
+/// Where inotify's limit counts every watch, the vault's return stops the old watch before it
+/// arms the new one: arming first could hit the limit only because both are up. A drop only asks
+/// notify's loop to remove the watches, later; at the arm the old watch must already be blind.
 #[test]
 fn the_vault_return_stops_the_old_watch_before_arming_a_new_one() {
     let dir = tempfile::tempdir().unwrap();
     let (tx, rx) = sync_channel(8);
     let lost = Arc::<Lost>::default();
-    let (mut worker, _log, _vault) = worker_on(dir.path(), tx.clone(), rx, lost.clone());
+    let (mut worker, _log, _vault) = worker_on(dir.path(), tx, rx, lost.clone());
     worker.stop_before_rewatch = true;
-    let old = watch(&worker.root, &tx, &lost).unwrap();
-    let (stopped, stopped_on) = std::sync::mpsc::channel();
+    let (old_tx, old_rx) = sync_channel(CHANNEL_CAPACITY);
+    let old = watch(&worker.root, &old_tx, &lost).unwrap();
+    let probe = worker.root.join("probe.txt");
+    let (seen, seen_by_old) = std::sync::mpsc::channel();
     *old.stop_hold.lock().unwrap() = Some(Box::new(move || {
-        stopped.send(std::thread::current().id()).unwrap();
+        while old_rx.try_recv().is_ok() {}
+        std::fs::write(&probe, "written after the old watch stopped").unwrap();
+        let delivered = old_rx.recv_timeout(Duration::from_secs(2)).is_ok();
+        seen.send(delivered).unwrap();
     }));
     worker.watcher = Some(old);
 
     worker.try_return();
 
-    let on = stopped_on.recv_timeout(Duration::from_secs(10)).unwrap();
-    assert_eq!(
-        on,
-        std::thread::current().id(),
-        "the old watch stopped elsewhere"
+    assert!(
+        !seen_by_old.recv_timeout(Duration::from_secs(10)).unwrap(),
+        "the old watch still delivered when the new one was armed"
     );
     assert!(worker.watcher.is_some(), "the vault is watched again");
+}
+
+/// Another OS error reported in the same tick (or the minute before) does not hide the limit
+/// notice: each has its own throttle.
+#[test]
+fn a_watch_limit_after_another_error_is_still_reported() {
+    let dir = tempfile::tempdir().unwrap();
+    let (tx, rx) = sync_channel(8);
+    let lost = Arc::<Lost>::default();
+    let (mut worker, log, _vault) = worker_on(dir.path(), tx.clone(), rx, lost.clone());
+    tx.send(Msg::Error(notify::Error::generic("inotify said no")))
+        .unwrap();
+    lost.limit.store(true, Ordering::Relaxed);
+    let stop = worker.stop.clone();
+    let thread = std::thread::spawn(move || worker.work());
+
+    let limited = |log: &Log| {
+        log.lock()
+            .unwrap()
+            .iter()
+            .any(|e| matches!(e, VaultEvent::WatchFailed { limit: true, .. }))
+    };
+    let deadline = Instant::now() + Duration::from_secs(10);
+    while !limited(&log) && Instant::now() < deadline {
+        std::thread::sleep(Duration::from_millis(50));
+    }
+    stop.store(true, Ordering::Relaxed);
+    thread.join().unwrap();
+    let events = log.lock().unwrap().clone();
+    assert!(limited(&log), "no limit notice: {events:?}");
+    assert!(
+        events
+            .iter()
+            .any(|e| matches!(e, VaultEvent::WatchFailed { limit: false, .. })),
+        "the other error is reported too: {events:?}"
+    );
+}
+
+/// The OS callback turns inotify's limit error into the flag, never into a queued message a full
+/// channel could drop.
+#[test]
+fn the_callback_flags_the_watch_limit_instead_of_queueing_it() {
+    let (tx, rx) = sync_channel(8);
+    let lost = Lost::default();
+    queue_event(
+        Err(notify::Error::new(notify::ErrorKind::MaxFilesWatch)),
+        &tx,
+        &lost,
+    );
+    assert!(
+        lost.limit.load(Ordering::Relaxed),
+        "the limit is not flagged"
+    );
+    assert!(rx.try_recv().is_err(), "the limit was queued");
 }
