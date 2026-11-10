@@ -61,8 +61,8 @@ codegen-units = 1
 strip = "debuginfo"
 
 # WebView2 runs every init script in every frame, so an HTML embed got Tauri's IPC globals on
-# Windows (#4150). This fork is wry 0.57.1 plus one commit that wraps main-frame-only scripts in
-# `if (window.top === window)`. Upstream: https://github.com/tauri-apps/wry/pull/1929. Remove when
-# wry ships it.
+# Windows (#4150). This fork is wry 0.57.1 plus one commit that starts each main-frame-only script
+# with a check that stops it outside the main frame.
+# Upstream: https://github.com/tauri-apps/wry/pull/1929. Remove when wry ships it.
 [patch.crates-io]
-wry = { git = "https://github.com/memrynote/wry", rev = "4fea20f6cce7b3328e9c5fccbc215ea68340043d" }
+wry = { git = "https://github.com/memrynote/wry", rev = "f73aedfa757b988436a4efffff37b5c0be2259e1" }

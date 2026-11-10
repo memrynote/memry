@@ -9,7 +9,8 @@
 //!   the note it named, when it named one;
 //! - a note that was reported at another path (`Renamed`) has moved: its row, still at the old
 //!   path, is stale, and the note's removal is a removal at its new path;
-//! - a note reported `Removed` is gone: its row is skipped until the row itself changes;
+//! - a note reported `Removed` is gone: its row is skipped until the row itself changes or a
+//!   file is reported at its path again;
 //! - a path whose report a consumer could not apply is owed: its entry stays, and the next look
 //!   at the file reports it again even when its bytes did not change.
 //!
@@ -192,6 +193,12 @@ impl Reported {
                 }
             }
         }
+    }
+
+    /// A file was reported at the path of `note_id`'s row after its removal: the row is no longer
+    /// hidden, so that file's going is a removal again.
+    pub fn unmark_removed(&mut self, note_id: &str) {
+        self.removed.remove(note_id);
     }
 
     /// Whether `row` is the row of a note already reported removed.

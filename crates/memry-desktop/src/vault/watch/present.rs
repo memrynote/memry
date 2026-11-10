@@ -221,6 +221,19 @@ impl Reconciler {
         stat: (u64, i64),
         hash: Option<String>,
     ) {
+        // A file at the path of a row whose note was reported removed: a consumer that kept the
+        // row gives the file to its note without changing the row, which the removal mark would
+        // then hide from this file's own removal.
+        match self.files.by_path(&path) {
+            Ok(Some(row)) if self.reported.is_removed(&row) => {
+                self.reported.unmark_removed(&row.note_id);
+            }
+            Ok(_) => {}
+            Err(error) => tracing::warn!(
+                scope = "vault_watch",
+                "note_files could not be read for a new file: {error}"
+            ),
+        }
         self.reported.put(Seen {
             path: path.clone(),
             hash: hash.clone(),
