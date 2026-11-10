@@ -2,9 +2,13 @@
  * An editor refuses its own changes of the document while the window holds typing for an outside
  * edit of the note (`sync/typing-hold.ts`): typing made before the edit's frame arrives would land
  * in blocks the edit deletes, and be lost. Updates from the document (the edit itself, another
- * window's) still apply, and a composition is never cut: its transactions pass, and the hold
- * waits for it to end before it starts. Undo and redo write the document directly, past the
- * filter, so they do nothing while held.
+ * window's) still apply, and a composition is never cut: the hold waits for it to end before it
+ * starts, and the transactions of one that still ran then pass. A composition that begins during
+ * the hold is held like typing: had its text reached the document, it would land in blocks the
+ * edit deletes. A refused transaction leaves the IME's text in the DOM and the composition
+ * running, and ProseMirror reads the block again at the composition's next change or end, so the
+ * text goes in after the release. Undo and redo write the document directly, past the filter, so
+ * they do nothing while held.
  *
  * @module note/content-area/typing-hold-plugin
  */
@@ -35,13 +39,11 @@ export function createTypingHoldPlugin(hold: TypingHold): Plugin {
       }
     },
     filterTransaction(tr) {
-      return (
-        !hold.held ||
-        !tr.docChanged ||
-        tr.getMeta(ySyncPluginKey)?.isChangeOrigin === true ||
-        tr.getMeta('composition') !== undefined ||
-        view?.composing === true
-      )
+      if (!hold.held || !tr.docChanged || tr.getMeta(ySyncPluginKey)?.isChangeOrigin === true) {
+        return true
+      }
+      const composition = tr.getMeta('composition') !== undefined || view?.composing === true
+      return composition && hold.takesComposition
     },
     props: {
       handleDOMEvents: {

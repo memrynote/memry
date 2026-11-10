@@ -11,8 +11,8 @@
 //! locked, with its own error, and not the rest of the session.
 //!
 //! **Lock order.** Core calls a listener on the thread of any write of the document, after the
-//! writer was released and with none of its locks held, and the listener takes only the
-//! subscriber map. The map is a leaf: it is held around map changes and core's subscribe or
+//! writer was released and with none of its locks held but its resident set (a window's edit
+//! telling the rows it caught up), and the listener takes only the subscriber map. The map is a leaf: it is held around map changes and core's subscribe or
 //! unsubscribe (which take only core's listener list), never while anything writes to core.
 
 use std::collections::HashMap;

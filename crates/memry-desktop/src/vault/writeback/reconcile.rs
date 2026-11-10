@@ -9,11 +9,21 @@ use crate::vault::trash::move_to_trash;
 
 const SCOPE: &str = "vault_writeback";
 
-/// Moves the files of deleted notes to the trash, then schedules a pass for every note behind
-/// its body. The consumer calls it once the open walk ended; a stop of the consumer ends the
-/// trashing between files (`stopped`).
+/// Moves the files of deleted notes to the trash, marks the rows an older build stamped whose
+/// body is not ahead of them, then schedules a pass for every note behind its body. The consumer
+/// calls it once the open walk ended; a stop of the consumer ends the trashing between files
+/// (`stopped`).
 pub(crate) fn reconcile(pass: &Pass, writeback: &WriteBack, stopped: &dyn Fn() -> bool) {
     pass.trash_deleted(&move_to_trash, stopped);
+    // An outside edit of an unmarked row is compared through its file, which reads a change of
+    // the frontmatter as typing (#4097).
+    if let Err(error) = pass.vault.note_files().mark_unmarked() {
+        tracing::error!(
+            scope = SCOPE,
+            "the rows an older build stamped were not marked, so they wait for the next open: \
+             {error}"
+        );
+    }
     match pass.vault.note_files().behind_bodies() {
         Ok(notes) => {
             if !notes.is_empty() {
