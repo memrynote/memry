@@ -136,6 +136,30 @@ final class NotesUITests: XCTestCase {
         XCTAssertTrue(row.waitForNonExistence(timeout: 10))
     }
 
+    /// #4152: Backspace at a block's start did nothing in a paragraph, so an
+    /// empty line could not be deleted and two lines could not be joined.
+    func testBackspaceDeletesAnEmptyLineAndJoinsLines() throws {
+        try openNotes()
+        let title = "[agent] SHIP-4152-\(run) backspace"
+        app.buttons["notes.addButton"].tap()
+        let field = app.textFields["Title"]
+        XCTAssertTrue(field.waitForExistence(timeout: 10))
+        field.typeText("\(title)\n")
+        let block = app.textViews.matching(NSPredicate(format: "identifier BEGINSWITH 'note.block.'")).firstMatch
+        XCTAssertTrue(block.waitForExistence(timeout: 10))
+        block.tap()
+        app.typeText("a")
+        assertBackspaceJoinsBlocks(in: app, line: "a")
+
+        app.buttons["BackButton"].tap()
+        let row = app.buttons.matching(NSPredicate(format: "label CONTAINS %@", title)).firstMatch
+        XCTAssertTrue(row.waitForExistence(timeout: 10))
+        row.press(forDuration: 1)
+        app.buttons["Delete note"].tap()
+        app.buttons["Delete"].firstMatch.tap()
+        XCTAssertTrue(row.waitForNonExistence(timeout: 10))
+    }
+
     private func openNotes() throws {
         app.launch()
         let name = ProcessInfo.processInfo.environment["MEMRY_UI_VAULT"] ?? "MemryNote"

@@ -173,35 +173,37 @@ final class NoteEditorViewModel {
         }
     }
 
-    /// Merges a block into the one above it, which is Backspace at offset 0.
+    /// Merges a block into the one above it, which is Backspace at offset 0:
+    /// its content, marks and inline nodes kept, joins the end of
+    /// `previousId`'s in one write (`BlockEdit.mergeBlocks`), so no failure
+    /// leaves the text twice or not at all.
     ///
-    /// - Returns: the offset the caret lands at in the block above — the
-    ///   length of its text before the merge — so the caret sits where the
-    ///   join happened rather than at either end.
-    ///
-    /// **The join is written before the block is removed**, for the same
-    /// reason as ``split``: a failure between the two leaves the text twice
-    /// rather than not at all.
-    @discardableResult
-    func merge(_ blockId: String, into previousId: String, text: String, previousText: String)
-        async -> Int?
-    {
+    /// - Returns: the step that undoes it, or `nil` when it did not land or a
+    ///   block could not be read first.
+    func merge(_ blockId: String, into previousId: String) async -> EditorUndoStep? {
         guard let editor else { return nil }
+        let removed = await snapshot(blockId)
+        let target = await snapshot(previousId)
         status = .saving
         do {
-            _ = try await editor.edit(
-                noteId: noteId,
-                .setText(blockId: previousId, text: previousText + text)
-            )
-            _ = try await editor.edit(noteId: noteId, .delete(blockId: blockId))
-            drafts[previousId] = previousText + text
+            _ = try await editor.edit(noteId: noteId, .mergeBlocks(blockId: blockId, intoBlockId: previousId))
+            drafts[previousId] = nil
             drafts[blockId] = nil
             status = .idle
-            return previousText.count
         } catch {
+            Log.storage.error("a block merge did not land")
             status = .failed(ErrorMapping.userFacing(error))
             return nil
         }
+        guard let removed, let target else { return nil }
+        // The removed block comes back after its sibling first, then the
+        // block it joined gets its own content back.
+        return EditorUndoStep(
+            name: "Merge",
+            backward: .restoreBlock(snapshot: removed),
+            forward: .mergeBlocks(blockId: blockId, intoBlockId: previousId),
+            backwardAfter: [.restoreBlock(snapshot: target)]
+        )
     }
 
     /// The block and everything under it, for an undo step that has to put

@@ -19,7 +19,8 @@ import { findUnlinkedMentions, linkUnlinkedMention } from '@memry/shared/unlinke
 import {
   getAliasesForNotes,
   getIncomingReferences,
-  getNoteCacheById
+  getNoteCacheById,
+  getTagsForNotes
 } from '@main/database/queries/notes'
 import { getIndexDatabase, type IndexDb } from '../database'
 import { readVaultFile } from '../lib/paths'
@@ -72,7 +73,7 @@ export async function getUnlinkedMentions(noteId: string): Promise<UnlinkedMenti
   if (!target) return []
   const linked = new Set(getIncomingReferences(db, noteId).map((ref) => ref.sourceNoteId))
 
-  const out: UnlinkedMention[] = []
+  const out: Omit<UnlinkedMention, 'sourceTags'>[] = []
   for (const sourceId of candidateIds(db, target.names)) {
     if (sourceId === noteId || linked.has(sourceId)) continue
     const source = getNoteCacheById(db, sourceId)
@@ -85,10 +86,17 @@ export async function getUnlinkedMentions(noteId: string): Promise<UnlinkedMenti
       sourceId,
       sourcePath: source.path,
       sourceTitle: source.title,
+      sourceJournalDate: source.date ?? null,
       contexts: mentions.map((mention) => snippetAround(body, mention.start, mention.end))
     })
   }
-  return out.toSorted((a, b) => a.sourceTitle.localeCompare(b.sourceTitle))
+  const tagsOf = getTagsForNotes(
+    db,
+    out.map((mention) => mention.sourceId)
+  )
+  return out
+    .map((mention) => ({ ...mention, sourceTags: tagsOf.get(mention.sourceId) ?? [] }))
+    .toSorted((a, b) => a.sourceTitle.localeCompare(b.sourceTitle))
 }
 
 /**

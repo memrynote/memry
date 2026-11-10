@@ -182,6 +182,7 @@ final class AuthStartup {
         guard state == .registered, let session else { return nil }
         let local = LocalVaultStore()
         let secureStore = Keychain(emitter: emitter, items: keychainItems)
+        let content = coreSession.map { LocalVaultContent(files: VaultFiles(emitter: emitter), session: $0, executor: executor) }
         return VaultSelectionViewModel(
             // The free path's vault joins the account here, as a vault of its
             // own, and stays listed and local while the account cannot take it.
@@ -191,7 +192,7 @@ final class AuthStartup {
                     // shows placeholders rather than failing.
                     try? Keychain(emitter: emitter, items: keychainItems).get(key: .masterKey)
                 },
-                attach: LocalVaultAttach(session: session, store: local)
+                attach: LocalVaultAttach(session: session, store: local) { try await content?.isEmpty($0) ?? false }
             ),
             opener: IdentityEnsuringOpener(
                 inner: CoreVaultOpener(files: VaultFiles(emitter: emitter), executor: executor),
