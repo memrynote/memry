@@ -129,7 +129,7 @@ fn kept_prefix(named: &str, healed: &str) -> bool {
 
 /// `Ok` when `attachments/` and `attachments/<note_id>/` are folders of the vault itself, not
 /// links (a junction on Windows) to anywhere, the vault included.
-fn plain_folder(vault: &Path, note_id: &str) -> Result<(), AttachmentError> {
+pub(super) fn plain_folder(vault: &Path, note_id: &str) -> Result<(), AttachmentError> {
     let root = vault.join(ATTACHMENTS_DIR);
     for dir in [root.join(note_id), root] {
         let kind = fs::symlink_metadata(&dir)?.file_type();
