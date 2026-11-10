@@ -1,4 +1,6 @@
 import type {
+  AppendBlocksInput,
+  AppendBlocksResponse,
   ApplyTemplateInput,
   AttachmentInfo,
   AttachmentResult,
@@ -330,6 +332,16 @@ const ported = {
       return { success: true, note: toNote(note) }
     } catch (error) {
       return { ...failure(error), note: null }
+    }
+  },
+  // The block menu's "Move to": the caller removes the blocks from the source only on
+  // `success`. A failure answers as Electron's `registerCommand` does.
+  appendBlocks: async (input: AppendBlocksInput): Promise<AppendBlocksResponse> => {
+    try {
+      const { targetPath } = await commands.notesAppendBlocks(input)
+      return { success: true, targetPath }
+    } catch (error) {
+      return failure(error)
     }
   },
   // Rejects on failure, as Electron's `notes:undo-tag-template` handler does.

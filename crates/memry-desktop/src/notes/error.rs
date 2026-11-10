@@ -91,6 +91,9 @@ pub enum NotesError {
     /// The note or folder is locked: the operation was refused before anything was written.
     #[error("{}", .0.message())]
     Locked(Refused),
+    /// `notes:append-blocks` with nothing to move, or into the note the blocks are in.
+    #[error("{0}")]
+    InvalidAppend(&'static str),
     #[error("the note has no property `{0}`")]
     PropertyNotFound(String),
     #[error("the note already has a property `{0}`")]
@@ -338,6 +341,7 @@ impl CoreError for NotesError {
             Self::EditKept(_) => (FailureKind::NotFound, "note_not_found"),
             Self::PropertyNotFound(_) => (FailureKind::NotFound, "property_not_found"),
             Self::PropertyExists(_) => (FailureKind::PropertyWrite, "property_exists"),
+            Self::InvalidAppend(_) => (FailureKind::Invalid, "invalid_append"),
             Self::TemplateNotFound(_) => (FailureKind::NotFound, "template_not_found"),
             Self::TagRenameInProgress { .. } => (FailureKind::Invalid, "tag_rename_in_progress"),
             Self::TagMergeSameTag => (FailureKind::Invalid, "tag_merge_same_tag"),

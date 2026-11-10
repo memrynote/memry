@@ -32,6 +32,7 @@ const commands = vi.hoisted(() => ({
   notesRename: vi.fn(),
   notesUpdate: vi.fn(),
   notesApplyTemplate: vi.fn(),
+  notesAppendBlocks: vi.fn(),
   notesUndoTagTemplate: vi.fn(),
   notesMove: vi.fn(),
   notesReorder: vi.fn(),
@@ -754,6 +755,28 @@ describe('notes-service', () => {
       'notes.applyTemplate({ plainChecklists }) is not ported'
     )
     expect(commands.notesApplyTemplate).not.toHaveBeenCalled()
+  })
+
+  // "Move to" removes the block from the source only on `success`: a refused move must answer
+  // `success: false` with Rust's message, never resolve as moved.
+  it('moves blocks through their command, a refusal answering not moved', async () => {
+    const input = { sourceNoteId: 'note-1', targetNoteId: 'note-2', markdown: 'Relocate this line' }
+    commands.notesAppendBlocks.mockResolvedValue({ targetPath: 'Target.md' })
+    await expect(notesService.appendBlocks(input)).resolves.toEqual({
+      success: true,
+      targetPath: 'Target.md'
+    })
+    expect(commands.notesAppendBlocks).toHaveBeenCalledWith(input)
+
+    commands.notesAppendBlocks.mockRejectedValue({
+      kind: 'Locked',
+      code: 'note_locked',
+      message: 'The owner made this note read-only.'
+    })
+    await expect(notesService.appendBlocks(input)).resolves.toEqual({
+      success: false,
+      error: 'The owner made this note read-only.'
+    })
   })
 
   it("reads, restores and deletes versions through their commands, a failure in Electron's shape", async () => {

@@ -2212,7 +2212,7 @@ const ContentAreaEditor = memo(function ContentAreaEditor({
         const markdown = await serializeBlocksPreservingBlanks(editor, [block] as never)
         if (!markdown.trim()) return
 
-        const result = await window.api.notes.appendBlocks({
+        const result = await notesService.appendBlocks({
           sourceNoteId: noteId,
           targetNoteId,
           markdown
