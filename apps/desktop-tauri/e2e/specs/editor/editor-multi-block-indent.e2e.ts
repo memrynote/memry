@@ -128,9 +128,7 @@ test('a block that cannot nest is skipped and the rest still indent', async ({ p
     .toEqual([{ text: 'First', children: flat('Second') }])
 })
 
-// Skipped until #4182: the tag suggestion list never mounts in Tauri (`getAISettings` is not
-// ported, so `aiEnabled` is false).
-test.skip('Tab completes the open tag suggestion instead of indenting', async ({ page }) => {
+test('Tab completes the open tag suggestion instead of indenting', async ({ page }) => {
   await vaultOpen(page)
   // Typed two characters short below, so the menu has exactly one match.
   const tag = `mbi${Math.random().toString(36).slice(2, 8)}`
