@@ -247,6 +247,65 @@ export function hideVaultFiles(tree: TreeStructure): TreeStructure {
   }
 }
 
+/**
+ * The tree with every note `X.md` folded into its sibling folder `X/`, so the
+ * sidebar draws the two as one row: the label opens the note, the chevron
+ * opens the folder. A sidebar view only: nothing on disk, in sync, or in the
+ * databases knows about the pair.
+ *
+ * Names match exactly, case included, so a rename of the row can keep both
+ * names identical. Only markdown notes pair: a file or a journal entry is not
+ * a page a folder can belong to. Returns new nodes; `tree` is not mutated.
+ */
+export function pairFolderNotes(tree: TreeStructure): TreeStructure {
+  const pairLevel = (
+    folders: FolderNode[],
+    notes: NoteListItem[]
+  ): { folders: FolderNode[]; notes: NoteListItem[] } => {
+    const notesByStem = new Map<string, NoteListItem>()
+    for (const note of notes) {
+      if (isVaultFile(note) || note.journalDate) continue
+      const folder = extractFolderFromPath(note.path)
+      const stem = folder ? `${folder}/${getDisplayName(note.path)}` : getDisplayName(note.path)
+      if (!notesByStem.has(stem)) notesByStem.set(stem, note)
+    }
+
+    const pairedIds = new Set<string>()
+    const pairedFolders = folders.map((folder): FolderNode => {
+      const inner = pairLevel(folder.children, folder.notes)
+      const note = notesByStem.get(folder.path)
+      if (note) pairedIds.add(note.id)
+      return { ...folder, children: inner.folders, notes: inner.notes, ...(note ? { note } : {}) }
+    })
+
+    return { folders: pairedFolders, notes: notes.filter((note) => !pairedIds.has(note.id)) }
+  }
+
+  const root = pairLevel(tree.folders, tree.rootNotes)
+  return { ...tree, folders: root.folders, rootNotes: root.notes }
+}
+
+/** Folder path to the note `pairFolderNotes` folded into it. */
+export function collectPairedNotes(tree: TreeStructure): Map<string, NoteListItem> {
+  const pairs = new Map<string, NoteListItem>()
+  const walk = (folders: FolderNode[]): void => {
+    for (const folder of folders) {
+      if (folder.note) pairs.set(folder.path, folder.note)
+      walk(folder.children)
+    }
+  }
+  walk(tree.folders)
+  return pairs
+}
+
+/** The tree row that stands for a note: its own row, or the folder it is paired with. */
+export function treeRowIdForNote(pairedNotes: Map<string, NoteListItem>, noteId: string): string {
+  for (const [folderPath, note] of pairedNotes) {
+    if (note.id === noteId) return `folder-${folderPath}`
+  }
+  return noteId
+}
+
 export function collectAllFolderIds(tree: TreeStructure): string[] {
   const ids: string[] = []
   const walk = (folders: FolderNode[]): void => {

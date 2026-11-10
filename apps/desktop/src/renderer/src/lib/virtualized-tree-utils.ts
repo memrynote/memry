@@ -23,6 +23,12 @@ export interface FolderNode {
   icon?: string | null
   children: FolderNode[]
   notes: NoteListItem[]
+  /**
+   * The sibling note `<path>.md` the sidebar shows as this folder's own page
+   * (see `pairFolderNotes`). Set only on the tree the sidebar draws; the files
+   * on disk stay a separate note and folder.
+   */
+  note?: NoteListItem
 }
 
 /**
