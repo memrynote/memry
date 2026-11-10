@@ -228,11 +228,10 @@ export class YjsIpcProvider extends Observable<string> {
     })
     // The host answers a lock only at the open and on a refused edit: once this note's lock is
     // lifted, a fresh open says whether the window may edit it again (a folder lock above it
-    // still answers `locked`).
+    // still answers `locked`). The reopen waits for an open in flight, whose answer may predate
+    // the change.
     this.locksCleanup = subscribeToEvent(events.vaultLocksChangedEvent, (locks) => {
-      if (this.readOnlyReason === 'locked' && !locks.notes.includes(this.noteId)) {
-        this.scheduleReopen()
-      }
+      if (!locks.notes.includes(this.noteId)) this.scheduleReopen()
     })
 
     const opened = await this.openDoc()
@@ -346,8 +345,10 @@ export class YjsIpcProvider extends Observable<string> {
 
   /** Reopens a note the host refused as locked, queued with the rebinds. */
   private scheduleReopen(): void {
+    const opening = this.opening
     this.rebinding = (this.rebinding ?? Promise.resolve())
       .catch(() => {})
+      .then(() => opening?.catch(() => {}))
       .then(() => this.reopenLocked())
   }
 

@@ -218,6 +218,27 @@ fn a_kept_removal_is_listed_at_every_open_while_its_file_is_gone() {
     assert!(notices.list().is_empty(), "{:?}", notices.list());
 }
 
+/// A kept note's file that comes back unreadable (not UTF-8) is still back: the note leaves
+/// the kept list though its text cannot be read.
+#[test]
+fn a_kept_removal_leaves_the_list_when_its_file_returns_unreadable() {
+    let (mut e, notices, store) = noticing_env_with_store();
+    e.write("a.md", "Alpha\n");
+    e.open();
+    e.facts_until(indexed);
+    let id = row_id(&e, "a.md");
+    // An edit stamped in the row's own millisecond is not after it.
+    std::thread::sleep(Duration::from_millis(2));
+    e.edit_in_app(&store, &id, "typed in the app");
+    fs::remove_file(e.vault.join("a.md")).unwrap();
+    until("the kept removal is listed", || !notices.list().is_empty());
+
+    fs::write(e.vault.join("a.md"), b"\xff\xfe not text\n").unwrap();
+    until("the kept removal leaves the list", || {
+        notices.list().is_empty()
+    });
+}
+
 /// A kept note's file that comes back after the open listed it, and is deleted again, is
 /// listed again while the vault is open: the open's removal does not hide the note's row from
 /// the next one.

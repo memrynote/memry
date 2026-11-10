@@ -555,6 +555,36 @@ describe('YjsIpcProvider unlock', () => {
     expect(text(host.doc)).toBe('stored typed')
   })
 
+  it('reopens a note whose first open answered locked after the unlock came', async () => {
+    host.readOnly = 'locked'
+    let answerFirst!: () => void
+    host.openGate = new Promise((resolve) => (answerFirst = resolve))
+    const doc = new Y.Doc()
+    const provider = new YjsIpcProvider({ noteId: NOTE, doc })
+    const connecting = provider.connect()
+    await settle()
+    expect(host.opens).toHaveLength(1)
+
+    // The host computed the answer under the lock; the unlock lands while it is in flight.
+    locksChanged([])
+    let answerSecond!: () => void
+    host.openGate = new Promise((resolve) => (answerSecond = resolve))
+    answerFirst()
+    await connecting
+    expect(provider.readOnly).toBe('locked')
+
+    await settle()
+    expect(host.opens).toHaveLength(2)
+    host.readOnly = null
+    answerSecond()
+    await settle()
+
+    expect(provider.readOnly).toBeNull()
+    type(doc, ' typed')
+    await settle()
+    expect(text(host.doc)).toBe('stored typed')
+  })
+
   it('stays read-only when a folder lock above the note still holds', async () => {
     host.readOnly = 'locked'
     const { provider } = await connected()

@@ -47,6 +47,9 @@ export function createTypingHoldPlugin(hold: TypingHold): Plugin {
       const composition = tr.getMeta('composition') !== undefined || view?.composing === true
       return composition && hold.takesComposition
     },
+    // Only the edit's own transaction: ProseMirror calls this again for those other plugins append
+    // to it (the anchor plugin moving a caret out of a hidden ` ^anchor`), and mapping the old
+    // selection over theirs would undo it, and they would redo it, forever.
     appendTransaction(trs, before, after) {
       if (!hold.feedingEdit || !trs.some((tr) => tr.getMeta(ySyncPluginKey)?.isChangeOrigin)) {
         return null
