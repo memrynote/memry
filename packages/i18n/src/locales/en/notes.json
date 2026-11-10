@@ -134,6 +134,7 @@
     "actions": {
       "openInNewTab": "Open in New Tab",
       "openToTheSide": "Open to the Side",
+      "openFolderView": "Open Folder View",
       "newNote": "New Note",
       "newFolder": "New Folder",
       "showTasks": "Show Tasks",

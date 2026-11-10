@@ -546,7 +546,7 @@ export const NotesTree = forwardRef<NotesTreeActions, NotesTreeProps>(function N
       onDelete={() => actions.handleDeleteFolderClick(folder.path)}
       folderItems={
         <PairedFolderMenuItems
-          folderPath={folder.path}
+          folder={folder}
           onCreateNote={(path) => void actions.handleCreateNoteInFolder(path)}
           onCreateFolder={(path) => void actions.handleCreateSubfolder(path)}
           onSetSubtreeExpanded={setSubtreeExpanded}
