@@ -1,3 +1,4 @@
+import Combine
 import MemryCore
 import Observation
 import SwiftUI
@@ -92,6 +93,10 @@ struct VaultInboxScope<Content: View>: View {
             // asked for, may have pulled captures from another device.
             .onChange(of: syncPasses) {
                 if let store { Task { await store.syncPassFinished() } }
+            }
+            // The redriver wrote files other devices captured (#4157).
+            .onReceive(NotificationCenter.default.publisher(for: AttachmentRedriver.inboxFilesDownloaded).receive(on: DispatchQueue.main)) { _ in
+                store?.inboxFilesDownloaded()
             }
             .task(id: vault.id()) { await make() }
     }
