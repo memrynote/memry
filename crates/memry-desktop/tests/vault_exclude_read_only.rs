@@ -45,7 +45,7 @@ pub(crate) fn exclude(e: &mut Env, patterns: &[&str]) {
     e.facts_until(indexed);
 }
 
-fn excluded<T: std::fmt::Debug, E: CoreError + std::fmt::Display + std::fmt::Debug>(
+pub(crate) fn excluded<T: std::fmt::Debug, E: CoreError + std::fmt::Display + std::fmt::Debug>(
     answer: Result<T, E>,
 ) {
     let error = answer.unwrap_err();

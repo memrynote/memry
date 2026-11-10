@@ -397,7 +397,8 @@ impl Applier {
         }
         // The bytes a save wrote that its document did not take (`AppEdit`, `cancel_write`)
         // are its writer's: reported as an outside edit, they would make an open editor drop
-        // what was typed since. Any other bytes replaced the app's file.
+        // what was typed since. Any other bytes replaced the app's file; the body took them, so
+        // a write-back over them replaces no outside text (#4124).
         let writer = content_hash
             .as_deref()
             .and_then(|hash| self.own_files.writer(note_id, hash));
@@ -405,8 +406,7 @@ impl Applier {
             Some(writer) if source == ChangeSource::Watcher => writer,
             Some(_) => source,
             None => {
-                self.own_files
-                    .read_outside(note_id, content_hash.as_deref());
+                self.own_files.read_outside(note_id, None);
                 source
             }
         };

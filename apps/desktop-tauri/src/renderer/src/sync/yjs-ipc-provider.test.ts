@@ -236,6 +236,19 @@ describe('YjsIpcProvider updates', () => {
     expect(host.sent).toEqual([])
   })
 
+  it("applies an outside edit's frame as the hold's feed, so the editors keep their selection", async () => {
+    const { doc } = await connected()
+    const fed: boolean[] = []
+    doc.on('update', () => fed.push(typingHoldOf(doc).feedingEdit))
+
+    lastChannel().onmessage(otherWindowFrame(' from side', 0))
+    lastChannel().onmessage(otherWindowFrame(' from disk', 2))
+    await settle()
+
+    expect(fed).toEqual([false, true])
+    expect(typingHoldOf(doc).feedingEdit).toBe(false)
+  })
+
   it('sends local edits in order, one request at a time, merging those typed meanwhile', async () => {
     const { doc } = await connected()
     let open!: () => void
