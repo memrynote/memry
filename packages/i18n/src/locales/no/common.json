@@ -1672,6 +1672,15 @@
     "undecidedFilesHint": "Et notat eller en dagbokside med samme navn har annen tekst, eller er ikke synkronisert til denne enheten ennå. Memry lar disse filene være uendret og sjekker dem igjen neste gang dette hvelvet åpnes.",
     "keptRemovals": "Memry beholdt notater der filene ble slettet",
     "keptRemovalsHint": "Disse filene ble slettet utenfor Memry, men notatene deres hadde tekst filene aldri fikk. Memry beholdt notatene i stedet for å slette teksten på de andre enhetene dine.",
-    "moreUnlisted": "Andre vises ikke her."
+    "moreUnlisted": "Andre vises ikke her.",
+    "keptReview": "Gå gjennom",
+    "keptReviewTitle": "Notater beholdt etter at filene ble slettet",
+    "keptReviewHint": "Gjenopprett et notats fil fra teksten Memry beholdt, eller slett notatet på alle enhetene dine.",
+    "keptRestore": "Gjenopprett fil",
+    "keptDelete": "Slett notat",
+    "keptDeleteConfirm": "Vil du slette dette notatet på alle enhetene dine? Teksten flyttes til papirkurven.",
+    "keptRestored": "Filen er gjenopprettet",
+    "keptDeleted": "Notatet er slettet",
+    "keptActionFailed": "Noe gikk galt. Notatet er fortsatt beholdt."
   }
 }

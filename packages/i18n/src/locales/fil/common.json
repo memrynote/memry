@@ -1672,6 +1672,15 @@
     "undecidedFilesHint": "May tala o entry sa talaarawan na kapareho ang pangalan pero iba ang teksto, o hindi pa ito naka-sync sa device na ito. Hinahayaan ng Memry ang mga file na ito at susuriin muli sa susunod na pagbukas nito sa vault na ito.",
     "keptRemovals": "Itinago ng Memry ang mga talang binura ang file",
     "keptRemovalsHint": "Binura ang mga file na ito sa labas ng Memry, pero may tekstong hindi kailanman napunta sa mga file ang kanilang mga tala. Itinago ng Memry ang mga tala sa halip na burahin ang tekstong iyon sa iba mong device.",
-    "moreUnlisted": "May iba pang hindi nakalista rito."
+    "moreUnlisted": "May iba pang hindi nakalista rito.",
+    "keptReview": "Suriin",
+    "keptReviewTitle": "Mga tala na itinago matapos burahin ang kanilang mga file",
+    "keptReviewHint": "Ibalik ang file ng tala mula sa tekstong itinago ng Memry, o burahin ang tala sa lahat ng iyong device.",
+    "keptRestore": "Ibalik ang file",
+    "keptDelete": "Burahin ang tala",
+    "keptDeleteConfirm": "Burahin ang talang ito sa lahat ng iyong device? Mapupunta sa basurahan ang teksto nito.",
+    "keptRestored": "Naibalik ang file",
+    "keptDeleted": "Nabura ang tala",
+    "keptActionFailed": "May nangyaring mali. Nakatago pa rin ang tala."
   }
 }

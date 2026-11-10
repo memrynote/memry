@@ -1672,6 +1672,15 @@
     "undecidedFilesHint": "Una nota o entrada del diario con el mismo nombre tiene otro texto, o aún no se ha sincronizado con este dispositivo. Memry deja estos archivos sin cambios y los vuelve a comprobar la próxima vez que abra esta bóveda.",
     "keptRemovals": "Memry conservó notas cuyos archivos se eliminaron",
     "keptRemovalsHint": "Estos archivos se eliminaron fuera de Memry, pero sus notas tenían texto que los archivos nunca recibieron. Memry conservó las notas en lugar de borrar ese texto en tus otros dispositivos.",
-    "moreUnlisted": "Hay otros que no aparecen aquí."
+    "moreUnlisted": "Hay otros que no aparecen aquí.",
+    "keptReview": "Revisar",
+    "keptReviewTitle": "Notas conservadas tras eliminarse sus archivos",
+    "keptReviewHint": "Restaura el archivo de una nota a partir del texto que Memry conservó, o elimina la nota en todos tus dispositivos.",
+    "keptRestore": "Restaurar archivo",
+    "keptDelete": "Eliminar nota",
+    "keptDeleteConfirm": "¿Eliminar esta nota en todos tus dispositivos? Su texto irá a la papelera.",
+    "keptRestored": "Archivo restaurado",
+    "keptDeleted": "Nota eliminada",
+    "keptActionFailed": "Algo salió mal. La nota se sigue conservando."
   }
 }

@@ -1672,6 +1672,15 @@
     "undecidedFilesHint": "Catatan atau entri jurnal dengan nama yang sama memiliki teks berbeda, atau belum disinkronkan ke perangkat ini. Memry membiarkan file ini apa adanya dan memeriksanya lagi saat brankas ini dibuka berikutnya.",
     "keptRemovals": "Memry menyimpan catatan yang filenya dihapus",
     "keptRemovalsHint": "File ini dihapus di luar Memry, tetapi catatannya berisi teks yang tidak pernah masuk ke file. Memry menyimpan catatan tersebut alih-alih menghapus teks itu di perangkat Anda yang lain.",
-    "moreUnlisted": "Yang lainnya tidak tercantum di sini."
+    "moreUnlisted": "Yang lainnya tidak tercantum di sini.",
+    "keptReview": "Tinjau",
+    "keptReviewTitle": "Catatan yang disimpan setelah filenya dihapus",
+    "keptReviewHint": "Pulihkan file catatan dari teks yang disimpan Memry, atau hapus catatan di semua perangkat Anda.",
+    "keptRestore": "Pulihkan file",
+    "keptDelete": "Hapus catatan",
+    "keptDeleteConfirm": "Hapus catatan ini di semua perangkat Anda? Teksnya akan masuk ke tempat sampah.",
+    "keptRestored": "File dipulihkan",
+    "keptDeleted": "Catatan dihapus",
+    "keptActionFailed": "Terjadi kesalahan. Catatan masih disimpan."
   }
 }

@@ -1672,6 +1672,15 @@
     "undecidedFilesHint": "Bilješka ili unos u dnevnik s istim nazivom ima drugačiji tekst ili još nije sinkroniziran na ovaj uređaj. Memry ostavlja te datoteke nepromijenjenima i ponovno ih provjerava pri sljedećem otvaranju ovog trezora.",
     "keptRemovals": "Memry je zadržao bilješke čije su datoteke izbrisane",
     "keptRemovalsHint": "Te su datoteke izbrisane izvan Memryja, ali njihove su bilješke imale tekst koji datoteke nikad nisu dobile. Memry je zadržao bilješke umjesto da taj tekst izbriše na vašim drugim uređajima.",
-    "moreUnlisted": "Ostali ovdje nisu navedeni."
+    "moreUnlisted": "Ostali ovdje nisu navedeni.",
+    "keptReview": "Pregledaj",
+    "keptReviewTitle": "Bilješke zadržane nakon brisanja njihovih datoteka",
+    "keptReviewHint": "Vratite datoteku bilješke iz teksta koji je Memry zadržao ili izbrišite bilješku na svim svojim uređajima.",
+    "keptRestore": "Vrati datoteku",
+    "keptDelete": "Izbriši bilješku",
+    "keptDeleteConfirm": "Izbrisati ovu bilješku na svim vašim uređajima? Njezin tekst ide u smeće.",
+    "keptRestored": "Datoteka vraćena",
+    "keptDeleted": "Bilješka izbrisana",
+    "keptActionFailed": "Nešto nije u redu. Bilješka je i dalje zadržana."
   }
 }

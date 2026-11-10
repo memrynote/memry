@@ -1672,6 +1672,15 @@
     "undecidedFilesHint": "En anteckning eller dagbokssida med samma namn har annan text eller har inte synkats till den här enheten ännu. Memry lämnar filerna orörda och kontrollerar dem igen nästa gång det här valvet öppnas.",
     "keptRemovals": "Memry behöll anteckningar vars filer raderades",
     "keptRemovalsHint": "De här filerna raderades utanför Memry, men deras anteckningar hade text som filerna aldrig fick. Memry behöll anteckningarna i stället för att radera texten på dina andra enheter.",
-    "moreUnlisted": "Andra visas inte här."
+    "moreUnlisted": "Andra visas inte här.",
+    "keptReview": "Granska",
+    "keptReviewTitle": "Anteckningar som behölls efter att deras filer raderats",
+    "keptReviewHint": "Återställ en antecknings fil från texten som Memry behöll, eller radera anteckningen på alla dina enheter.",
+    "keptRestore": "Återställ fil",
+    "keptDelete": "Radera anteckning",
+    "keptDeleteConfirm": "Radera den här anteckningen på alla dina enheter? Texten flyttas till papperskorgen.",
+    "keptRestored": "Filen har återställts",
+    "keptDeleted": "Anteckningen har raderats",
+    "keptActionFailed": "Något gick fel. Anteckningen finns fortfarande kvar."
   }
 }

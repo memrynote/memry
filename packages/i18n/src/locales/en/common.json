@@ -1672,6 +1672,15 @@
     "undecidedFilesHint": "A note or journal entry with the same name has different text, or hasn't synced to this device yet. Memry leaves these files unchanged and checks them again the next time it opens this vault.",
     "keptRemovals": "Memry kept notes whose files were deleted",
     "keptRemovalsHint": "These files were deleted outside Memry, but their notes had text the files never got. Memry kept the notes rather than delete that text on your other devices.",
-    "moreUnlisted": "Others aren't listed here."
+    "moreUnlisted": "Others aren't listed here.",
+    "keptReview": "Review",
+    "keptReviewTitle": "Notes kept after their files were deleted",
+    "keptReviewHint": "Restore a note's file from the text Memry kept, or delete the note on all your devices.",
+    "keptRestore": "Restore file",
+    "keptDelete": "Delete note",
+    "keptDeleteConfirm": "Delete this note on all your devices? Its text goes to the trash.",
+    "keptRestored": "File restored",
+    "keptDeleted": "Note deleted",
+    "keptActionFailed": "Something went wrong. The note is still kept."
   }
 }

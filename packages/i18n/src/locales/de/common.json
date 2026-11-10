@@ -1672,6 +1672,15 @@
     "undecidedFilesHint": "Eine Notiz oder ein Journaleintrag mit demselben Namen hat einen anderen Text oder ist noch nicht mit diesem Gerät synchronisiert. Memry lässt diese Dateien unverändert und prüft sie erneut, wenn dieser Tresor das nächste Mal geöffnet wird.",
     "keptRemovals": "Memry hat Notizen behalten, deren Dateien gelöscht wurden",
     "keptRemovalsHint": "Diese Dateien wurden außerhalb von Memry gelöscht, aber ihre Notizen hatten Text, den die Dateien nie bekommen haben. Memry hat die Notizen behalten, statt diesen Text auf deinen anderen Geräten zu löschen.",
-    "moreUnlisted": "Weitere werden hier nicht aufgeführt."
+    "moreUnlisted": "Weitere werden hier nicht aufgeführt.",
+    "keptReview": "Prüfen",
+    "keptReviewTitle": "Behaltene Notizen, deren Dateien gelöscht wurden",
+    "keptReviewHint": "Stelle die Datei einer Notiz aus dem Text wieder her, den Memry behalten hat, oder lösche die Notiz auf allen deinen Geräten.",
+    "keptRestore": "Datei wiederherstellen",
+    "keptDelete": "Notiz löschen",
+    "keptDeleteConfirm": "Diese Notiz auf allen deinen Geräten löschen? Ihr Text kommt in den Papierkorb.",
+    "keptRestored": "Datei wiederhergestellt",
+    "keptDeleted": "Notiz gelöscht",
+    "keptActionFailed": "Etwas ist schiefgelaufen. Die Notiz bleibt erhalten."
   }
 }

@@ -1672,6 +1672,15 @@
     "undecidedFilesHint": "Egy azonos nevű jegyzet vagy naplóbejegyzés szövege eltér, vagy még nem szinkronizálódott erre az eszközre. A Memry változatlanul hagyja ezeket a fájlokat, és a széf következő megnyitásakor újra ellenőrzi őket.",
     "keptRemovals": "A Memry megtartotta azokat a jegyzeteket, amelyek fájljait törölték",
     "keptRemovalsHint": "Ezeket a fájlokat a Memryn kívül törölték, de a jegyzeteikben olyan szöveg volt, amely sosem került a fájlokba. A Memry megtartotta a jegyzeteket, ahelyett hogy a többi eszközödön is törölné ezt a szöveget.",
-    "moreUnlisted": "Továbbiak nem szerepelnek itt."
+    "moreUnlisted": "Továbbiak nem szerepelnek itt.",
+    "keptReview": "Áttekintés",
+    "keptReviewTitle": "Megtartott jegyzetek, amelyek fájljait törölték",
+    "keptReviewHint": "Állítsd vissza egy jegyzet fájlját a Memry által megtartott szövegből, vagy töröld a jegyzetet az összes eszközödön.",
+    "keptRestore": "Fájl visszaállítása",
+    "keptDelete": "Jegyzet törlése",
+    "keptDeleteConfirm": "Törlöd ezt a jegyzetet az összes eszközödön? A szövege a kukába kerül.",
+    "keptRestored": "Fájl visszaállítva",
+    "keptDeleted": "Jegyzet törölve",
+    "keptActionFailed": "Hiba történt. A jegyzet továbbra is megmaradt."
   }
 }

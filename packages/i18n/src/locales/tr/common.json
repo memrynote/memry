@@ -1672,6 +1672,15 @@
     "undecidedFilesHint": "Aynı adlı bir not ya da günlük sayfası farklı bir metne sahip veya henüz bu cihaza eşitlenmedi. Memry bu dosyalara dokunmaz ve bu kasayı bir sonraki açışında onları yeniden kontrol eder.",
     "keptRemovals": "Memry, dosyaları silinen notları sakladı",
     "keptRemovalsHint": "Bu dosyalar Memry dışında silindi, ancak notlarında dosyalara hiç yazılmamış metin vardı. Memry, bu metni diğer cihazlarında da silmek yerine notları sakladı.",
-    "moreUnlisted": "Diğerleri burada listelenmiyor."
+    "moreUnlisted": "Diğerleri burada listelenmiyor.",
+    "keptReview": "İncele",
+    "keptReviewTitle": "Dosyaları silindikten sonra saklanan notlar",
+    "keptReviewHint": "Bir notun dosyasını Memry’nin sakladığı metinden geri yükleyin veya notu tüm cihazlarınızda silin.",
+    "keptRestore": "Dosyayı geri yükle",
+    "keptDelete": "Notu sil",
+    "keptDeleteConfirm": "Bu not tüm cihazlarınızda silinsin mi? Metni çöp kutusuna gider.",
+    "keptRestored": "Dosya geri yüklendi",
+    "keptDeleted": "Not silindi",
+    "keptActionFailed": "Bir şeyler ters gitti. Not hâlâ saklanıyor."
   }
 }

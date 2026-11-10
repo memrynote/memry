@@ -1672,6 +1672,15 @@
     "undecidedFilesHint": "同名的笔记或日记条目内容不同，或尚未同步到此设备。Memry 不会改动这些文件，并会在下次打开此仓库时再次检查。",
     "keptRemovals": "Memry 保留了文件已被删除的笔记",
     "keptRemovalsHint": "这些文件在 Memry 之外被删除，但它们的笔记中有从未写入文件的内容。Memry 保留了这些笔记，而不是在你的其他设备上删除这些内容。",
-    "moreUnlisted": "还有其他项目未在此列出。"
+    "moreUnlisted": "还有其他项目未在此列出。",
+    "keptReview": "查看",
+    "keptReviewTitle": "文件删除后保留的笔记",
+    "keptReviewHint": "用 Memry 保留的文本恢复笔记的文件，或在你的所有设备上删除该笔记。",
+    "keptRestore": "恢复文件",
+    "keptDelete": "删除笔记",
+    "keptDeleteConfirm": "要在你的所有设备上删除这条笔记吗？其文本将移到废纸篓。",
+    "keptRestored": "文件已恢复",
+    "keptDeleted": "笔记已删除",
+    "keptActionFailed": "出了点问题。笔记仍被保留。"
   }
 }

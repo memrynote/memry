@@ -1672,6 +1672,15 @@
     "undecidedFilesHint": "O notiță sau o intrare de jurnal cu același nume are alt text sau nu a fost încă sincronizată pe acest dispozitiv. Memry lasă aceste fișiere neschimbate și le verifică din nou la următoarea deschidere a acestui seif.",
     "keptRemovals": "Memry a păstrat notițe ale căror fișiere au fost șterse",
     "keptRemovalsHint": "Aceste fișiere au fost șterse în afara Memry, dar notițele lor aveau text care nu a ajuns niciodată în fișiere. Memry a păstrat notițele în loc să șteargă acel text de pe celelalte dispozitive ale tale.",
-    "moreUnlisted": "Altele nu sunt afișate aici."
+    "moreUnlisted": "Altele nu sunt afișate aici.",
+    "keptReview": "Revizuiește",
+    "keptReviewTitle": "Note păstrate după ștergerea fișierelor lor",
+    "keptReviewHint": "Restaurează fișierul unei note din textul păstrat de Memry sau șterge nota de pe toate dispozitivele tale.",
+    "keptRestore": "Restaurează fișierul",
+    "keptDelete": "Șterge nota",
+    "keptDeleteConfirm": "Ștergi această notă de pe toate dispozitivele tale? Textul ei va ajunge în coșul de gunoi.",
+    "keptRestored": "Fișier restaurat",
+    "keptDeleted": "Notă ștearsă",
+    "keptActionFailed": "Ceva nu a mers bine. Nota este încă păstrată."
   }
 }

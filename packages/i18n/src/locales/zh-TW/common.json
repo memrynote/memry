@@ -1672,6 +1672,15 @@
     "undecidedFilesHint": "同名的筆記或日誌項目內容不同，或尚未同步到此裝置。Memry 不會更動這些檔案，並會在下次開啟此儲存庫時再次檢查。",
     "keptRemovals": "Memry 保留了檔案已被刪除的筆記",
     "keptRemovalsHint": "這些檔案在 Memry 之外被刪除，但它們的筆記中有從未寫入檔案的內容。Memry 保留了這些筆記，而不是在你的其他裝置上刪除這些內容。",
-    "moreUnlisted": "還有其他項目未在此列出。"
+    "moreUnlisted": "還有其他項目未在此列出。",
+    "keptReview": "檢視",
+    "keptReviewTitle": "檔案刪除後保留的筆記",
+    "keptReviewHint": "用 Memry 保留的文字還原筆記的檔案，或在你的所有裝置上刪除該筆記。",
+    "keptRestore": "還原檔案",
+    "keptDelete": "刪除筆記",
+    "keptDeleteConfirm": "要在你的所有裝置上刪除這則筆記嗎？其文字將移到垃圾桶。",
+    "keptRestored": "檔案已還原",
+    "keptDeleted": "筆記已刪除",
+    "keptActionFailed": "發生問題。筆記仍會保留。"
   }
 }

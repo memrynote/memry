@@ -1672,6 +1672,15 @@
     "undecidedFilesHint": "Een notitie of dagboekpagina met dezelfde naam heeft andere tekst, of is nog niet met dit apparaat gesynchroniseerd. Memry laat deze bestanden ongewijzigd en controleert ze opnieuw wanneer deze kluis de volgende keer wordt geopend.",
     "keptRemovals": "Memry heeft notities bewaard waarvan de bestanden zijn verwijderd",
     "keptRemovalsHint": "Deze bestanden zijn buiten Memry verwijderd, maar hun notities bevatten tekst die nooit in de bestanden is beland. Memry heeft de notities bewaard in plaats van die tekst op je andere apparaten te wissen.",
-    "moreUnlisted": "Andere staan hier niet vermeld."
+    "moreUnlisted": "Andere staan hier niet vermeld.",
+    "keptReview": "Bekijken",
+    "keptReviewTitle": "Notities bewaard nadat hun bestanden zijn verwijderd",
+    "keptReviewHint": "Herstel het bestand van een notitie uit de tekst die Memry heeft bewaard, of verwijder de notitie op al je apparaten.",
+    "keptRestore": "Bestand herstellen",
+    "keptDelete": "Notitie verwijderen",
+    "keptDeleteConfirm": "Deze notitie op al je apparaten verwijderen? De tekst gaat naar de prullenbak.",
+    "keptRestored": "Bestand hersteld",
+    "keptDeleted": "Notitie verwijderd",
+    "keptActionFailed": "Er ging iets mis. De notitie is nog bewaard."
   }
 }

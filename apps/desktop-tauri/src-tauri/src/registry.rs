@@ -247,7 +247,9 @@ pub fn builder() -> Builder<Wry> {
             crate::commands::vault_locks::vault_locks_list::<Wry>,
             crate::commands::vault_locks::vault_locks_set::<Wry>,
             // vault notices
+            crate::commands::vault_notices::vault_notices_delete_kept,
             crate::commands::vault_notices::vault_notices_list,
+            crate::commands::vault_notices::vault_notices_restore_kept,
             // window
             crate::commands::shell::window_close,
             crate::commands::shell::window_minimize,

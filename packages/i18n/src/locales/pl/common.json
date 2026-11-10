@@ -1672,6 +1672,15 @@
     "undecidedFilesHint": "Notatka lub wpis w dzienniku o tej samej nazwie ma inny tekst albo nie został jeszcze zsynchronizowany z tym urządzeniem. Memry zostawia te pliki bez zmian i sprawdzi je ponownie przy następnym otwarciu tego sejfu.",
     "keptRemovals": "Memry zachował notatki, których pliki usunięto",
     "keptRemovalsHint": "Te pliki usunięto poza Memry, ale ich notatki zawierały tekst, który nigdy nie trafił do plików. Memry zachował notatki, zamiast usuwać ten tekst na Twoich innych urządzeniach.",
-    "moreUnlisted": "Pozostałe nie są tu wymienione."
+    "moreUnlisted": "Pozostałe nie są tu wymienione.",
+    "keptReview": "Przejrzyj",
+    "keptReviewTitle": "Notatki zachowane po usunięciu ich plików",
+    "keptReviewHint": "Przywróć plik notatki z tekstu zachowanego przez Memry albo usuń notatkę na wszystkich swoich urządzeniach.",
+    "keptRestore": "Przywróć plik",
+    "keptDelete": "Usuń notatkę",
+    "keptDeleteConfirm": "Usunąć tę notatkę na wszystkich Twoich urządzeniach? Jej tekst trafi do kosza.",
+    "keptRestored": "Plik przywrócony",
+    "keptDeleted": "Notatka usunięta",
+    "keptActionFailed": "Coś poszło nie tak. Notatka nadal jest zachowana."
   }
 }

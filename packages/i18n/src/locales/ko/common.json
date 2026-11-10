@@ -1672,6 +1672,15 @@
     "undecidedFilesHint": "같은 이름의 노트나 저널 항목의 텍스트가 다르거나, 아직 이 기기에 동기화되지 않았습니다. Memry는 이 파일들을 그대로 두고 다음에 이 볼트를 열 때 다시 확인합니다.",
     "keptRemovals": "Memry가 파일이 삭제된 노트를 보관했습니다",
     "keptRemovalsHint": "이 파일들은 Memry 밖에서 삭제되었지만, 노트에는 파일에 저장되지 않은 텍스트가 있었습니다. Memry는 다른 기기에서 그 텍스트가 삭제되지 않도록 노트를 보관했습니다.",
-    "moreUnlisted": "여기에 표시되지 않은 항목이 더 있습니다."
+    "moreUnlisted": "여기에 표시되지 않은 항목이 더 있습니다.",
+    "keptReview": "검토",
+    "keptReviewTitle": "파일이 삭제된 후 보관된 노트",
+    "keptReviewHint": "Memry가 보관한 텍스트로 노트 파일을 복원하거나, 모든 기기에서 노트를 삭제하세요.",
+    "keptRestore": "파일 복원",
+    "keptDelete": "노트 삭제",
+    "keptDeleteConfirm": "모든 기기에서 이 노트를 삭제할까요? 텍스트는 휴지통으로 이동합니다.",
+    "keptRestored": "파일을 복원했습니다",
+    "keptDeleted": "노트를 삭제했습니다",
+    "keptActionFailed": "문제가 발생했습니다. 노트는 계속 보관됩니다."
   }
 }
