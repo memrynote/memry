@@ -137,7 +137,6 @@
   },
   "ai": {
     "inlineDisabled": "AI のインライン編集は無効になっています",
-    "listOllamaModelsFailed": "Ollama のモデル一覧を取得できませんでした",
     "writingAssistInvalid": "このリクエストを AI モデルに送信できませんでした。",
     "apiKeyMissing": "文章ツールを使うには、設定 → AI で {provider} の API キーを追加してください。",
     "apiKeyInvalid": "{provider} の API キーが拒否されました。設定 → AI で確認してください。",

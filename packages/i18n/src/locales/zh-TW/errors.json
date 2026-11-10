@@ -137,7 +137,6 @@
   },
   "ai": {
     "inlineDisabled": "AI 行內編輯已停用",
-    "listOllamaModelsFailed": "無法列出 Ollama 模型",
     "writingAssistInvalid": "無法將該請求傳送給 AI 模型。",
     "apiKeyMissing": "請在「設定 → AI」中新增你的 {provider} API 金鑰，以使用寫作工具。",
     "apiKeyInvalid": "你的 {provider} API 金鑰遭到拒絕。請在「設定 → AI」中檢查。",

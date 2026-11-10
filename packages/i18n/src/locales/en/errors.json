@@ -137,7 +137,7 @@
   },
   "ai": {
     "inlineDisabled": "AI inline editing is disabled",
-    "listOllamaModelsFailed": "Failed to list Ollama models",
+    "listModelsFailed": "Failed to list models",
     "writingAssistInvalid": "That request could not be sent to the AI model.",
     "apiKeyMissing": "Add your {provider} API key in Settings → AI to use writing tools.",
     "apiKeyInvalid": "Your {provider} API key was rejected. Check it in Settings → AI.",

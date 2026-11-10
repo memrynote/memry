@@ -137,7 +137,6 @@
   },
   "ai": {
     "inlineDisabled": "Die KI-Inline-Bearbeitung ist deaktiviert",
-    "listOllamaModelsFailed": "Die Ollama-Modelle konnten nicht aufgelistet werden",
     "writingAssistInvalid": "Diese Anfrage konnte nicht an das KI-Modell gesendet werden.",
     "apiKeyMissing": "Füge deinen {provider}-API-Schlüssel unter Einstellungen → KI hinzu, um Schreibwerkzeuge zu nutzen.",
     "apiKeyInvalid": "Dein {provider}-API-Schlüssel wurde abgelehnt. Prüfe ihn unter Einstellungen → KI.",
