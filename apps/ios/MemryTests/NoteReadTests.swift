@@ -104,6 +104,32 @@ private final class PhaseProbeReader: NotesReading, @unchecked Sendable {
     }
 }
 
+/// Refuses work in a cancelled task, as `CoreExecutor.run` does for a read
+/// still queued when its `.task` is cancelled. `readStarted` lets the note read
+/// itself through, as the executor does for work already running.
+private struct CancellingReader: NotesReading {
+    var readStarted = false
+
+    func folders() async throws -> [FolderSummary] { throw NotScripted() }
+
+    func list() async throws -> [NoteSummary] { throw NotScripted() }
+
+    func read(id: String) async throws -> NoteDetail? {
+        if !readStarted { try Task.checkCancellation() }
+        return detail(id)
+    }
+
+    func blocks(id: String) async throws -> [Block]? {
+        try Task.checkCancellation()
+        return [Block(id: "b1", kind: "paragraph", depth: 0, props: [], inline: [])]
+    }
+
+    func metadata(id: String) async throws -> NoteMetadata? {
+        try Task.checkCancellation()
+        return NoteMetadata(tags: ["work"], properties: [], aliases: [], icon: nil, coverJson: nil, tagFields: [])
+    }
+}
+
 /// `@MainActor` because ``NoteReadViewModel`` is: a view model that a view
 /// mutates during `body` has no business being reachable from anywhere else.
 @MainActor
@@ -144,6 +170,40 @@ struct NoteReadTests {
         await model.reload()
         #expect(reader.seen.allSatisfy { $0.hasPrefix("ready/") }, "seen: \(reader.seen)")
         #expect(reader.seen.count == 1)
+    }
+
+    // MARK: Cancelled refresh (TestFlight feedback, "Cancelled. Try again")
+
+    @Test(
+        "a refresh cancelled by the next sync pass keeps the note, its blocks and its tags",
+        arguments: [false, true]
+    )
+    func aCancelledRefreshKeepsTheNote(readStarted: Bool) async {
+        let reader = CancellingReader(readStarted: readStarted)
+        let model = NoteReadViewModel(route: NoteRoute(id: "n1"), reader: reader)
+        await model.loadIfNeeded()
+        #expect(model.blocks.count == 1)
+
+        let refresh = Task { @MainActor in await model.refreshFromRemote() }
+        refresh.cancel()
+        await refresh.value
+
+        #expect(outcomeKey(model).hasPrefix("ready/"))
+        #expect(model.blocks.count == 1)
+        #expect(model.metadata?.tags == ["work"])
+    }
+
+    @Test("a first read cancelled before it ran is not an unreadable note, and the next pass shows it")
+    func aCancelledFirstReadIsNotAnError() async {
+        let model = NoteReadViewModel(route: NoteRoute(id: "n1"), reader: CancellingReader())
+
+        let open = Task { @MainActor in await model.loadIfNeeded() }
+        open.cancel()
+        await open.value
+        #expect(outcomeKey(model).hasPrefix("loading/"))
+
+        await model.refreshFromRemote()
+        #expect(outcomeKey(model).hasPrefix("ready/"))
     }
 
     // MARK: Move to (#2909)
