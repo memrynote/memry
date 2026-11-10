@@ -597,7 +597,8 @@
         "title": "Di chuyển khối sang ghi chú",
         "searchPlaceholder": "Tìm kiếm ghi chú…",
         "noResults": "Không có ghi chú phù hợp",
-        "failed": "Không thể di chuyển khối"
+        "failed": "Không thể di chuyển khối",
+        "targetNotTaken": "Ghi chú này quá lớn hoặc có văn bản mà ứng dụng không thể tiếp nhận, nên các khối vẫn ở nguyên chỗ cũ."
       }
     },
     "attachmentPicker": {
