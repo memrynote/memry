@@ -13,6 +13,7 @@ pub mod frontmatter;
 pub mod icons;
 pub mod identity;
 pub mod index;
+pub mod kept;
 pub mod link_mention;
 pub mod link_preview;
 pub mod link_rewrite;

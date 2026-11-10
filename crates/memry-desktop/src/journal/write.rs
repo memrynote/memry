@@ -337,7 +337,7 @@ impl NotesService {
             // Electron unlinks a day's file for good; one holding text the day never took goes
             // to the trash first.
             Some(row) => {
-                self.remove_file_of(&open.path, row, true)?;
+                self.remove_file_of(open, row, true)?;
                 false
             }
             None => self.trash_unnamed(&lane, &open.path, date)?,
@@ -423,13 +423,17 @@ pub(super) fn answer(
 }
 
 /// Days are written in order by date: a day's record id is known only once it is opened.
-pub(super) fn order_key(date: &str) -> String {
+pub(crate) fn order_key(date: &str) -> String {
     format!("journal:{date}")
 }
 
 /// The frontmatter of a new day file (`createJournalFrontmatter` and `writePropertiesToRoot`):
 /// `date`, `tags` when there are any, then the properties in their order.
-fn day_frontmatter(date: &str, tags: &[String], properties: &Map<String, Value>) -> YamlMap {
+pub(crate) fn day_frontmatter(
+    date: &str,
+    tags: &[String],
+    properties: &Map<String, Value>,
+) -> YamlMap {
     let mut map = YamlMap::new();
     map.insert("date".to_owned(), YamlValue::String(date.to_owned()));
     if !tags.is_empty() {
@@ -444,7 +448,7 @@ fn day_frontmatter(date: &str, tags: &[String], properties: &Map<String, Value>)
 
 /// The text `serializeJournalEntry` writes (`matter.stringify`): a note file's, except that a
 /// day with no text ends with an empty line after the block.
-fn day_file(frontmatter: &YamlMap, content: &str) -> Result<String, YamlError> {
+pub(crate) fn day_file(frontmatter: &YamlMap, content: &str) -> Result<String, YamlError> {
     let mut output = write_markdown_note(frontmatter, content)?;
     if content.is_empty() {
         output.push('\n');
