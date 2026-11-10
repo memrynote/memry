@@ -24,6 +24,7 @@ use crate::domain::calendar_items::write::live_payload;
 use crate::domain::calendar_items::zone::LocalZone;
 use crate::domain::calendar_items::{EXTERNAL_TYPE, SOURCE_TYPE};
 use crate::domain::notes::{failed, insert_local, iso, next_clock, tombstone_local};
+use crate::domain::recreate::write_over_tombstone;
 use crate::storage::repositories::instants;
 use crate::storage::repositories::{Change, sync_items};
 use crate::sync::outbox;
@@ -380,8 +381,8 @@ fn replace_object(
                 payload.insert("id".into(), json!(id));
                 payload.insert("createdAt".into(), json!(at));
                 payload.insert("modifiedAt".into(), json!(at));
-                payload.insert("clock".into(), next_clock(&Map::new(), device_id)?);
-                insert_local(tx, EXTERNAL_TYPE, &id, payload, now_ms)?;
+                // The id is the object's own, so a purge's tombstone may hold it.
+                write_over_tombstone(tx, EXTERNAL_TYPE, &id, payload, device_id, now_ms)?;
             }
         }
         outbox::enqueue(tx, &outbox::Change::upsert(EXTERNAL_TYPE, &id), now_ms)?;

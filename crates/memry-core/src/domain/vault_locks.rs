@@ -1,6 +1,6 @@
 //! Read-only locks on notes and folders (desktop Step 14e, #3531), the port of
 //! Electron's `vault-locks/{registry,store}.ts` over the `vault_locks` table
-//! (migration 20).
+//! (migration 22).
 //!
 //! A lock stops edits made on this device. A note lock is keyed by the note id,
 //! so it follows the note through a rename or move; a folder lock is keyed by
