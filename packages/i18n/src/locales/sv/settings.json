@@ -504,7 +504,8 @@
       "loading": "Läser in inställningar…"
     },
     "groups": {
-      "footer": "Sidfot"
+      "footer": "Sidfot",
+      "pastYears": "Tidigare år"
     },
     "template": {
       "label": "Mall",
@@ -562,6 +563,14 @@
     "showInSidebar": {
       "label": "Visa i sidofältet",
       "description": "Visa dagboksmappen och dess inlägg i anteckningsträdet"
+    },
+    "showOnThisDay": {
+      "label": "Visa Den här dagen",
+      "description": "Visa samma datum från tidigare år under inlägget"
+    },
+    "allYearsView": {
+      "label": "Visa alla år i sin helhet",
+      "description": "Den eviga dagboken: alla år för datumet på en sida, under inlägget"
     }
   },
   "tasks": {
@@ -1381,7 +1390,8 @@
         "ollama": "Ollama (lokal)",
         "openai": "OpenAI",
         "anthropic": "Anthropic",
-        "google": "Google Gemini"
+        "google": "Google Gemini",
+        "custom": "Anpassad (OpenAI-kompatibel)"
       },
       "model": "Modell",
       "modelDescription": "Språkmodell för att skriva om och sammanfatta",
@@ -1391,6 +1401,11 @@
       "apiKeyPlaceholder": "Ange API-nyckel för {provider}",
       "ollamaUrl": "Ollama-URL",
       "ollamaUrlDescription": "Lokal serveradress",
+      "customUrl": "Bas-URL",
+      "customUrlDescription": "Valfri OpenAI-kompatibel slutpunkt, till exempel OpenRouter",
+      "customUrlPlaceholder": "https://openrouter.ai/api/v1",
+      "customApiKeyPlaceholder": "API-nyckel (valfritt)",
+      "customModelPlaceholder": "Modell-ID",
       "connection": "Anslutning",
       "activePort": "Aktiv på port {port}",
       "notConnected": "Inte ansluten",

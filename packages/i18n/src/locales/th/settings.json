@@ -504,7 +504,8 @@
       "loading": "กำลังโหลดการตั้งค่า…"
     },
     "groups": {
-      "footer": "ส่วนท้าย"
+      "footer": "ส่วนท้าย",
+      "pastYears": "ปีที่ผ่านมา"
     },
     "template": {
       "label": "เทมเพลต",
@@ -562,6 +563,14 @@
     "showInSidebar": {
       "label": "แสดงในแถบด้านข้าง",
       "description": "แสดงโฟลเดอร์บันทึกประจำวันและรายการในแผนผังโน้ต"
+    },
+    "showOnThisDay": {
+      "label": "แสดง ในวันนี้",
+      "description": "แสดงวันที่เดียวกันจากปีที่ผ่านมาใต้บันทึก"
+    },
+    "allYearsView": {
+      "label": "แสดงทุกปีแบบเต็ม",
+      "description": "บันทึกประจำวันตลอดกาล: ทุกปีของวันที่นี้ในหน้าเดียว ใต้บันทึก"
     }
   },
   "tasks": {
@@ -1381,7 +1390,8 @@
         "ollama": "Ollama (ในเครื่อง)",
         "openai": "OpenAI",
         "anthropic": "Anthropic",
-        "google": "Google Gemini"
+        "google": "Google Gemini",
+        "custom": "กำหนดเอง (รองรับ OpenAI)"
       },
       "model": "โมเดล",
       "modelDescription": "โมเดลภาษาเพื่อเขียนใหม่และสรุป",
@@ -1391,6 +1401,11 @@
       "apiKeyPlaceholder": "กรอกคีย์ API {provider}",
       "ollamaUrl": "URL ของ Ollama",
       "ollamaUrlDescription": "ที่อยู่เซิร์ฟเวอร์ในเครื่อง",
+      "customUrl": "URL หลัก",
+      "customUrlDescription": "ปลายทางใดก็ได้ที่รองรับ OpenAI เช่น OpenRouter",
+      "customUrlPlaceholder": "https://openrouter.ai/api/v1",
+      "customApiKeyPlaceholder": "คีย์ API (ไม่บังคับ)",
+      "customModelPlaceholder": "รหัสโมเดล",
       "connection": "การเชื่อมต่อ",
       "activePort": "ใช้งานที่พอร์ต {port}",
       "notConnected": "ยังไม่ได้เชื่อมต่อ",

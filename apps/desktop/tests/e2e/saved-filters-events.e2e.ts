@@ -38,7 +38,7 @@ test.describe('Saved filter IPC events E2E', () => {
           },
           sort: { field: 'priority', direction: 'desc' },
           starred: false
-        } as Parameters<typeof api.savedFilters.create>[0]['config']
+        }
       })
       if (!createRes.success || !createRes.savedFilter) {
         throw new Error(createRes.error ?? 'create failed')

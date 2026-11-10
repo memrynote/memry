@@ -504,7 +504,8 @@
       "loading": "Ayarlar yükleniyor…"
     },
     "groups": {
-      "footer": "Alt bilgi"
+      "footer": "Alt bilgi",
+      "pastYears": "Geçmiş yıllar"
     },
     "template": {
       "label": "Şablon",
@@ -562,6 +563,14 @@
     "showInSidebar": {
       "label": "Kenar çubuğunda göster",
       "description": "Günlük klasörünü ve girdilerini not ağacında göster"
+    },
+    "showOnThisDay": {
+      "label": "Bugün geçmişte bölümünü göster",
+      "description": "Geçmiş yıllardaki aynı tarihi girdinin altında listele"
+    },
+    "allYearsView": {
+      "label": "Tüm yılları tam göster",
+      "description": "Sonsuz Günlük: tarihin her yılı tek sayfada, girdinin altında"
     }
   },
   "tasks": {
@@ -1381,7 +1390,8 @@
         "ollama": "Ollama (Yerel)",
         "openai": "OpenAI",
         "anthropic": "Anthropic",
-        "google": "Google Gemini"
+        "google": "Google Gemini",
+        "custom": "Özel (OpenAI uyumlu)"
       },
       "model": "Model",
       "modelDescription": "Yeniden yazma ve özetleme için dil modeli",
@@ -1391,6 +1401,11 @@
       "apiKeyPlaceholder": "{provider} API anahtarını girin",
       "ollamaUrl": "Ollama URL",
       "ollamaUrlDescription": "Yerel sunucu adresi",
+      "customUrl": "Temel URL",
+      "customUrlDescription": "OpenRouter gibi OpenAI uyumlu herhangi bir uç nokta",
+      "customUrlPlaceholder": "https://openrouter.ai/api/v1",
+      "customApiKeyPlaceholder": "API anahtarı (isteğe bağlı)",
+      "customModelPlaceholder": "Model kimliği",
       "connection": "Bağlantı",
       "activePort": "{port} bağlantı noktasında etkin",
       "notConnected": "Bağlı değil",

@@ -236,5 +236,21 @@
     "range": "{start} – {end}",
     "openTask": "{title}, {range}",
     "completeTask": "Dokončit {title}"
+  },
+  "pastYears": {
+    "title": "V tento den",
+    "count": "{count, plural, one {# další rok} few {# další roky} other {# dalších let}}",
+    "showAll": "Všechny roky",
+    "showPreviews": "Náhledy",
+    "yearsAgo": "{count, plural, one {před # rokem} few {před # lety} other {před # lety}}",
+    "yearsLater": "{count, plural, one {o # rok později} few {o # roky později} other {o # let později}}",
+    "words": "{count, plural, one {# slovo} few {# slova} other {# slov}}",
+    "openDay": "Otevřít {date}",
+    "showFull": "Zobrazit celý záznam",
+    "showLess": "Zobrazit méně",
+    "loadError": "Tento den z jiných let se nepodařilo načíst.",
+    "previousYear": "Stejný den, předchozí rok",
+    "nextYear": "Stejný den, následující rok",
+    "goToYear": "Přejít na tento den v roce {year}"
   }
 }

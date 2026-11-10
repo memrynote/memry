@@ -17,10 +17,6 @@ export function insertSavedFilter(
   return settingsQueries.insertSavedFilter(db, filter)
 }
 
-export function savedFilterExists(db: SavedFiltersDb, id: string) {
-  return settingsQueries.savedFilterExists(db, id)
-}
-
 export function updateSavedFilter(
   db: SavedFiltersDb,
   id: string,

@@ -137,6 +137,7 @@
   },
   "ai": {
     "inlineDisabled": "AI uređivanje u tekstu je isključeno",
+    "listModelsFailed": "Popis modela nije moguće dohvatiti",
     "writingAssistInvalid": "Taj zahtjev nije moguće poslati AI modelu.",
     "apiKeyMissing": "Dodajte svoj API ključ za {provider} u Postavke → AI da biste koristili alate za pisanje.",
     "apiKeyInvalid": "Vaš API ključ za {provider} je odbijen. Provjerite ga u Postavke → AI.",

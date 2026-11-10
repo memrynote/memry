@@ -134,6 +134,7 @@
     "actions": {
       "openInNewTab": "Deschide într-o filă nouă",
       "openToTheSide": "Deschide în lateral",
+      "openFolderView": "Deschide vizualizarea dosarului",
       "newNote": "Notiță nouă",
       "newFolder": "Dosar nou",
       "showTasks": "Afișează sarcinile",
@@ -183,7 +184,8 @@
     },
     "toast": {
       "selectionBookmarked": "Elemente adăugate la marcaje: {count}",
-      "selectionBookmarkFailed": "Elementele selectate nu au putut fi adăugate la marcaje"
+      "selectionBookmarkFailed": "Elementele selectate nu au putut fi adăugate la marcaje",
+      "pairedNoteNameTaken": "Există deja acolo o notiță numită {name}"
     }
   },
   "editor": {
@@ -418,6 +420,10 @@
       "savedView": "Vizualizare salvată",
       "savedViewMissing": "Vizualizarea salvată „{name}” nu mai există, așa că se afișează vizualizarea implicită.",
       "openAsTab": "Deschide ca filă",
+      "newNote": "Notiță nouă",
+      "newViewTitle": "Vizualizare nouă",
+      "newViewSubtext": "Un dosar nou lângă această notiță, listat aici",
+      "newViewFailed": "Dosarul pentru această vizualizare nu a putut fi creat.",
       "empty": "Încă nu există nimic care să corespundă acestei vizualizări.",
       "loadFailed": "Nu s-a putut încărca această vizualizare. Notițele în sine sunt neatinse.",
       "folderMissing": "Acest dosar nu mai există în seif. Alegeți altă sursă.",
@@ -776,6 +782,12 @@
     "more": "Încă {count}",
     "viaProperty": "{property} → {title}",
     "viaPortal": "Afișat într-un portal"
+  },
+  "references": {
+    "filterAll": "Toate",
+    "filterNotes": "Notițe",
+    "filterJournal": "Jurnal",
+    "filterBy": "Filtrează referințele: {filter}"
   },
   "unlinkedMentions": {
     "title": "Mențiuni nelegate",

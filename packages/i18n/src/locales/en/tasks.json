@@ -113,7 +113,74 @@
       "noDueDate": "No Due Date"
     },
     "repeatTypeRepeating": "Repeating",
-    "repeatTypeOneTime": "One-time"
+    "repeatTypeOneTime": "One-time",
+    "advanced": {
+      "entry": "Advanced filter…",
+      "entryHint": "Rules with and, or, not",
+      "title": "Filter",
+      "match": "Match",
+      "ofThese": "of these",
+      "matches": {
+        "all": "all",
+        "any": "any",
+        "none": "none"
+      },
+      "fields": {
+        "title": "Title",
+        "status": "Status",
+        "priority": "Priority",
+        "due": "Due date",
+        "project": "Project",
+        "location": "Location",
+        "tags": "Tags",
+        "repeat": "Repeats",
+        "hasTime": "Has time"
+      },
+      "ops": {
+        "contains": "contains",
+        "notContains": "does not contain",
+        "any": "is any of",
+        "none": "is none of",
+        "all": "has all of",
+        "empty": "is empty",
+        "notEmpty": "is not empty",
+        "is": "is",
+        "isNot": "is not"
+      },
+      "tagOps": {
+        "any": "has any of",
+        "all": "has all of",
+        "none": "has none of"
+      },
+      "values": {
+        "repeating": "Repeating",
+        "oneTime": "One-time",
+        "withTime": "With a time",
+        "withoutTime": "Without a time",
+        "customRange": "Custom range",
+        "from": "From",
+        "to": "To",
+        "pick": "Pick…",
+        "titlePlaceholder": "Text in the title"
+      },
+      "addRule": "Add rule",
+      "addGroup": "Add group",
+      "clear": "Clear",
+      "removeRule": "Remove rule",
+      "removeGroup": "Remove group",
+      "matchCount": "{count, plural, one {# task matches} other {# tasks match}}",
+      "skipped": "{count, plural, one {# rule skipped} other {# rules skipped}}",
+      "ruleCount": "{count, plural, one {# rule} other {# rules}}",
+      "unknownRule": "Rule from a newer version",
+      "empty": "No rules yet. Add one to start filtering.",
+      "summary": {
+        "and": "and",
+        "or": "or",
+        "not": "not"
+      },
+      "editRules": "Edit rules",
+      "clearRules": "Clear rules"
+    }
   },
   "quickAdd": {
     "label": "Quick add task",

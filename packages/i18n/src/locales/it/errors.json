@@ -137,6 +137,7 @@
   },
   "ai": {
     "inlineDisabled": "La modifica in linea con l'IA è disattivata",
+    "listModelsFailed": "Impossibile elencare i modelli",
     "writingAssistInvalid": "Impossibile inviare quella richiesta al modello AI.",
     "apiKeyMissing": "Aggiungi la tua chiave API {provider} in Impostazioni → AI per usare gli strumenti di scrittura.",
     "apiKeyInvalid": "La tua chiave API {provider} è stata rifiutata. Controllala in Impostazioni → AI.",

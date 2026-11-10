@@ -113,7 +113,74 @@
       "noDueDate": "Walang takdang petsa"
     },
     "repeatTypeRepeating": "Umuulit",
-    "repeatTypeOneTime": "Isang beses"
+    "repeatTypeOneTime": "Isang beses",
+    "advanced": {
+      "entry": "Advanced na filter…",
+      "entryHint": "Mga panuntunan na may at, o, hindi",
+      "title": "Filter",
+      "match": "Tumugma sa",
+      "ofThese": "sa mga ito",
+      "matches": {
+        "all": "lahat",
+        "any": "alinman",
+        "none": "wala"
+      },
+      "fields": {
+        "title": "Pamagat",
+        "status": "Status",
+        "priority": "Priyoridad",
+        "due": "Takdang petsa",
+        "project": "Proyekto",
+        "location": "Lokasyon",
+        "tags": "Mga tag",
+        "repeat": "Umuulit",
+        "hasTime": "May oras"
+      },
+      "ops": {
+        "contains": "naglalaman ng",
+        "notContains": "hindi naglalaman ng",
+        "any": "ay alinman sa",
+        "none": "ay wala sa",
+        "all": "may lahat ng",
+        "empty": "walang laman",
+        "notEmpty": "may laman",
+        "is": "ay",
+        "isNot": "ay hindi"
+      },
+      "tagOps": {
+        "any": "may alinman sa",
+        "all": "may lahat ng",
+        "none": "walang alinman sa"
+      },
+      "values": {
+        "repeating": "Umuulit",
+        "oneTime": "Isang beses",
+        "withTime": "May oras",
+        "withoutTime": "Walang oras",
+        "customRange": "Custom na saklaw",
+        "from": "Mula",
+        "to": "Hanggang",
+        "pick": "Pumili…",
+        "titlePlaceholder": "Teksto sa pamagat"
+      },
+      "addRule": "Magdagdag ng panuntunan",
+      "addGroup": "Magdagdag ng grupo",
+      "clear": "I-clear",
+      "removeRule": "Alisin ang panuntunan",
+      "removeGroup": "Alisin ang grupo",
+      "matchCount": "{count, plural, one {# gawain ang tumutugma} other {# na gawain ang tumutugma}}",
+      "skipped": "{count, plural, one {# panuntunan ang nilaktawan} other {# na panuntunan ang nilaktawan}}",
+      "ruleCount": "{count, plural, one {# panuntunan} other {# na panuntunan}}",
+      "unknownRule": "Panuntunan mula sa mas bagong bersyon",
+      "empty": "Wala pang panuntunan. Magdagdag ng isa para magsimulang mag-filter.",
+      "summary": {
+        "and": "at",
+        "or": "o",
+        "not": "hindi"
+      },
+      "editRules": "I-edit ang mga panuntunan",
+      "clearRules": "I-clear ang mga panuntunan"
+    }
   },
   "quickAdd": {
     "label": "Mabilis na magdagdag ng gawain",

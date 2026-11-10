@@ -9,6 +9,7 @@ interface FilterBarProps {
   noteIndex?: TaskNoteIndex
   onUpdateFilters: (updates: Partial<TaskFilters>) => void
   onClearFilters: () => void
+  onEditRules?: () => void
   onSaveFilter?: () => void
   isSaved?: boolean
   className?: string
@@ -20,6 +21,7 @@ export const FilterBar = ({
   noteIndex,
   onUpdateFilters,
   onClearFilters,
+  onEditRules,
   onSaveFilter,
   isSaved,
   className
@@ -35,6 +37,7 @@ export const FilterBar = ({
       noteIndex={noteIndex}
       onUpdateFilters={onUpdateFilters}
       onClearAll={onClearFilters}
+      onEditRules={onEditRules}
       onSaveFilter={onSaveFilter}
       isSaved={isSaved}
       className={className}

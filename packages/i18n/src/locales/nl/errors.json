@@ -137,6 +137,7 @@
   },
   "ai": {
     "inlineDisabled": "Inline AI-bewerking is uitgeschakeld",
+    "listModelsFailed": "Kan de modellen niet ophalen",
     "writingAssistInvalid": "Dat verzoek kon niet naar het AI-model worden verzonden.",
     "apiKeyMissing": "Voeg je {provider}-API-sleutel toe in Instellingen → AI om schrijftools te gebruiken.",
     "apiKeyInvalid": "Je {provider}-API-sleutel is geweigerd. Controleer hem in Instellingen → AI.",

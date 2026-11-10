@@ -134,6 +134,7 @@
     "actions": {
       "openInNewTab": "Відкрити в новій вкладці",
       "openToTheSide": "Відкрити збоку",
+      "openFolderView": "Відкрити вигляд папки",
       "newNote": "Нова нотатка",
       "newFolder": "Нова папка",
       "showTasks": "Показати завдання",
@@ -183,7 +184,8 @@
     },
     "toast": {
       "selectionBookmarked": "Додано до закладок: {count}",
-      "selectionBookmarkFailed": "Не вдалося додати вибрані елементи до закладок"
+      "selectionBookmarkFailed": "Не вдалося додати вибрані елементи до закладок",
+      "pairedNoteNameTaken": "Там уже є нотатка з назвою {name}"
     }
   },
   "editor": {
@@ -418,6 +420,10 @@
       "savedView": "Збережений вигляд",
       "savedViewMissing": "Збереженого вигляду «{name}» більше немає, тому показано вигляд за замовчуванням.",
       "openAsTab": "Відкрити у вкладці",
+      "newNote": "Нова нотатка",
+      "newViewTitle": "Новий вигляд",
+      "newViewSubtext": "Нова папка поруч із цією нотаткою, показана тут",
+      "newViewFailed": "Не вдалося створити папку для цього вигляду.",
       "empty": "Поки що нічого не відповідає цьому вигляду.",
       "loadFailed": "Не вдалося завантажити цей вигляд. Самі нотатки не змінено.",
       "folderMissing": "Цієї папки більше немає у сховищі. Виберіть інше джерело.",
@@ -776,6 +782,12 @@
     "more": "Ще {count}",
     "viaProperty": "{property} → {title}",
     "viaPortal": "Показано в порталі"
+  },
+  "references": {
+    "filterAll": "Усі",
+    "filterNotes": "Нотатки",
+    "filterJournal": "Щоденник",
+    "filterBy": "Фільтр посилань: {filter}"
   },
   "unlinkedMentions": {
     "title": "Незв’язані згадки",

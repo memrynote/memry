@@ -195,6 +195,9 @@ final class BlockField: NSObject, UITextViewDelegate, UIGestureRecognizerDelegat
     let textView = BlockTextView()
     /// Typed since the last commit.
     var dirty = false
+    /// Typed since the caret came in: a checklist item left with this set is
+    /// one desktop's editor would turn into a task.
+    var typed = false
     /// The text the user's typing started from: what was last drawn or
     /// committed. While `dirty`, `block` can move on under the text view (a
     /// peer's edit merging in), and a commit sends only the change from
@@ -330,6 +333,7 @@ final class BlockField: NSObject, UITextViewDelegate, UIGestureRecognizerDelegat
     /// redrew its row. Its runs are restyled for this row; the next render
     /// draws them from the core.
     private func takeOver(from old: BlockField) {
+        typed = typed || old.typed
         let source = old.textView
         if source.text != textView.text {
             let text = NSMutableAttributedString(attributedString: source.attributedText ?? NSAttributedString())
@@ -395,12 +399,20 @@ final class BlockField: NSObject, UITextViewDelegate, UIGestureRecognizerDelegat
     /// Committed when editing ends rather than per keystroke: every commit is a
     /// CRDT update and an outbox row (FR-030).
     func textViewDidEndEditing(_ textView: UITextView) {
-        session?.commit(self)
+        let blockId = blockId
+        var then: (@MainActor () async -> Void)?
+        if typed, block.kind == "checkListItem", let convert = session?.convertTypedChecklist {
+            then = { await convert(blockId) }
+        }
+        // A row a shortcut is redrawing hands `typed` on (`takeOver`).
+        if session?.shortcutField !== self { typed = false }
+        session?.commit(self, then: then)
         if session?.field === self { session?.focusChanged(to: nil) }
     }
 
     func textViewDidChange(_ textView: UITextView) {
         dirty = true
+        typed = true
         textView.invalidateIntrinsicContentSize()
         session?.selectionChanged(in: self)
     }
@@ -474,9 +486,13 @@ extension EditorSession {
             return
         }
         let next = Self.continuingKinds.contains(kind) ? kind : "paragraph"
+        // Desktop's `plainByContext`: Return in a plain checklist makes
+        // another plain checkbox, never a task.
+        let plain = kind == "checkListItem" && field.value("plain") == "true"
         commit(field) { [weak self] in
             guard let self, let model = self.model else { return }
             guard let newId = await model.insert(next, after: field.blockId) else { return }
+            if plain { await model.setProp(newId, "plain", "true") }
             self.history.record(.insert(blockId: newId, after: field.blockId, kind: next, text: ""))
             self.focus(newId)
         }

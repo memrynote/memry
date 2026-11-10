@@ -134,6 +134,7 @@
     "actions": {
       "openInNewTab": "새 탭에서 열기",
       "openToTheSide": "옆에서 열기",
+      "openFolderView": "폴더 보기 열기",
       "newNote": "새 노트",
       "newFolder": "새 폴더",
       "showTasks": "작업 표시",
@@ -183,7 +184,8 @@
     },
     "toast": {
       "selectionBookmarked": "항목 {count}개를 북마크했습니다",
-      "selectionBookmarkFailed": "선택한 항목을 북마크하지 못했습니다"
+      "selectionBookmarkFailed": "선택한 항목을 북마크하지 못했습니다",
+      "pairedNoteNameTaken": "{name}(이)라는 노트가 이미 있습니다"
     }
   },
   "editor": {
@@ -418,6 +420,10 @@
       "savedView": "저장된 보기",
       "savedViewMissing": "저장된 보기 “{name}”이(가) 없어 기본 보기를 표시합니다.",
       "openAsTab": "탭으로 열기",
+      "newNote": "새 노트",
+      "newViewTitle": "새 보기",
+      "newViewSubtext": "이 노트 옆에 만들어져 여기에 표시되는 새 폴더",
+      "newViewFailed": "이 보기의 폴더를 만들지 못했습니다.",
       "empty": "아직 이 보기와 일치하는 항목이 없습니다.",
       "loadFailed": "이 보기를 불러오지 못했습니다. 노트 자체는 변경되지 않았습니다.",
       "folderMissing": "이 폴더가 더 이상 볼트에 없습니다. 다른 소스를 선택하세요.",
@@ -776,6 +782,12 @@
     "more": "{count}개 더 보기",
     "viaProperty": "{property} → {title}",
     "viaPortal": "포털에 표시됨"
+  },
+  "references": {
+    "filterAll": "전체",
+    "filterNotes": "노트",
+    "filterJournal": "저널",
+    "filterBy": "참조 필터: {filter}"
   },
   "unlinkedMentions": {
     "title": "링크되지 않은 언급",

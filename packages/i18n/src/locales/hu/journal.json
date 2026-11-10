@@ -236,5 +236,21 @@
     "range": "{start} – {end}",
     "openTask": "{title}, {range}",
     "completeTask": "{title} befejezése"
+  },
+  "pastYears": {
+    "title": "Ezen a napon",
+    "count": "{count, plural, one {# másik év} other {# másik év}}",
+    "showAll": "Minden év",
+    "showPreviews": "Előnézetek",
+    "yearsAgo": "{count, plural, one {# éve} other {# éve}}",
+    "yearsLater": "{count, plural, one {# évvel később} other {# évvel később}}",
+    "words": "{count, plural, one {# szó} other {# szó}}",
+    "openDay": "{date} megnyitása",
+    "showFull": "Teljes bejegyzés megjelenítése",
+    "showLess": "Kevesebb megjelenítése",
+    "loadError": "Nem sikerült betölteni ezt a napot a többi évből.",
+    "previousYear": "Ugyanez a nap, előző év",
+    "nextYear": "Ugyanez a nap, következő év",
+    "goToYear": "Ugrás erre a napra: {year}"
   }
 }

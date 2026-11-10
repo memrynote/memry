@@ -1,5 +1,9 @@
-import type { Task } from '@/data/task-model'
-import type { TaskNoteIndex } from '@/lib/task-note-index'
+/**
+ * The Location filter's option list: the folders and notes that hold tasks.
+ * Desktop's filter panel and the iOS shell (through `memry-core`) both render
+ * it, and the `task-filtering` vectors record it from this function.
+ */
+import type { FilterTask, TaskNoteIndex } from './types.ts'
 
 /** One row of the Location filter panel: a folder or a note that has tasks. */
 export interface TaskLocationOption {
@@ -13,11 +17,11 @@ export interface TaskLocationOption {
   depth: number
   /** Top-level tasks the row would select. */
   count: number
-  /** A note's own icon, if set. Folder icons come from the folder config. */
-  icon?: string | null
 }
 
-const taskNoteIds = (task: Task): string[] =>
+export type LocationTask = Pick<FilterTask, 'id' | 'parentId' | 'sourceNoteId' | 'linkedNoteIds'>
+
+const taskNoteIds = (task: LocationTask): string[] =>
   task.sourceNoteId ? [task.sourceNoteId, ...task.linkedNoteIds] : task.linkedNoteIds
 
 const ancestorsOf = (folderPath: string): string[] => {
@@ -42,14 +46,16 @@ const add = (map: Map<string, Set<string>>, key: string, taskId: string): void =
 }
 
 /**
- * Folders and notes that hold at least one of `tasks`, as a tree in display
- * order. Selected entries stay listed even when nothing in `tasks` is filed
- * there any more, so they can still be unchecked.
+ * Folders and notes that hold at least one top-level task of `tasks`, as a
+ * tree in display order. A task counts for its source note and every linked
+ * note, and for every folder above them. Selected entries stay listed even
+ * when nothing in `tasks` is filed there any more, so they can still be
+ * unchecked.
  *
- * With a `query` the tree flattens to the rows whose name matches it.
+ * With a `query` the tree flattens (depth 0) to the rows whose name matches it.
  */
 export const buildTaskLocationOptions = (
-  tasks: Task[],
+  tasks: readonly LocationTask[],
   noteIndex: TaskNoteIndex,
   selected: { folderPaths: readonly string[]; noteIds: readonly string[] },
   query: string
@@ -98,7 +104,6 @@ export const buildTaskLocationOptions = (
       context: info.folderPath,
       depth: info.folderPath ? info.folderPath.split('/').length : 0,
       count: noteTasks.get(noteId)?.size ?? 0,
-      icon: info.icon,
       sortKey: noteSortKey(info.folderPath, info.title)
     })
   }

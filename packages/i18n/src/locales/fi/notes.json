@@ -134,6 +134,7 @@
     "actions": {
       "openInNewTab": "Avaa uudessa välilehdessä",
       "openToTheSide": "Avaa sivuun",
+      "openFolderView": "Avaa kansionäkymä",
       "newNote": "Uusi muistiinpano",
       "newFolder": "Uusi kansio",
       "showTasks": "Näytä tehtävät",
@@ -183,7 +184,8 @@
     },
     "toast": {
       "selectionBookmarked": "{count} kohdetta lisätty kirjanmerkkeihin",
-      "selectionBookmarkFailed": "Valittuja kohteita ei voitu lisätä kirjanmerkkeihin"
+      "selectionBookmarkFailed": "Valittuja kohteita ei voitu lisätä kirjanmerkkeihin",
+      "pairedNoteNameTaken": "Siellä on jo muistiinpano nimeltä {name}"
     }
   },
   "editor": {
@@ -418,6 +420,10 @@
       "savedView": "Tallennettu näkymä",
       "savedViewMissing": "Tallennettua näkymää ”{name}” ei enää ole, joten tässä näytetään oletusnäkymä.",
       "openAsTab": "Avaa välilehtenä",
+      "newNote": "Uusi muistiinpano",
+      "newViewTitle": "Uusi näkymä",
+      "newViewSubtext": "Uusi kansio tämän muistiinpanon viereen, listattuna tähän",
+      "newViewFailed": "Kansiota tälle näkymälle ei voitu luoda.",
       "empty": "Mikään ei vielä vastaa tätä näkymää.",
       "loadFailed": "Näkymän lataaminen epäonnistui. Itse muistiinpanoihin ei ole koskettu.",
       "folderMissing": "Kansio ei ole enää holvissa. Valitse toinen lähde.",
@@ -776,6 +782,12 @@
     "more": "vielä {count}",
     "viaProperty": "{property} → {title}",
     "viaPortal": "Näytetään portaalissa"
+  },
+  "references": {
+    "filterAll": "Kaikki",
+    "filterNotes": "Muistiinpanot",
+    "filterJournal": "Päiväkirja",
+    "filterBy": "Suodata viittaukset: {filter}"
   },
   "unlinkedMentions": {
     "title": "Linkittämättömät maininnat",
