@@ -118,8 +118,15 @@ struct TaskFilterNode: Codable, Equatable, Sendable {
         set { self["values"] = .strings(newValue) }
     }
 
-    var folderPaths: [String] { self["folderPaths"]?.strings ?? [] }
-    var noteIds: [String] { self["noteIds"]?.strings ?? [] }
+    var folderPaths: [String] {
+        get { self["folderPaths"]?.strings ?? [] }
+        set { self["folderPaths"] = .strings(newValue) }
+    }
+
+    var noteIds: [String] {
+        get { self["noteIds"]?.strings ?? [] }
+        set { self["noteIds"] = .strings(newValue) }
+    }
 
     /// A custom due range's `YYYY-MM-DD` ends.
     var dueStart: String? {
@@ -174,6 +181,14 @@ struct TaskFilterNode: Codable, Equatable, Sendable {
     }
 
     // MARK: Tree edits, by index path from the root group
+
+    /// The node at `path`, or nil when the tree no longer has one there.
+    func node(at path: [Int]) -> TaskFilterNode? {
+        guard let index = path.first else { return self }
+        let children = rules
+        guard children.indices.contains(index) else { return nil }
+        return children[index].node(at: Array(path.dropFirst()))
+    }
 
     /// The tree with the node at `path` replaced, or removed when `update` returns nil.
     func updating(at path: [Int], _ update: (TaskFilterNode) -> TaskFilterNode?) -> TaskFilterNode? {
@@ -242,6 +257,12 @@ extension TaskFilterSpec {
             rules.append(.rule("due", op: "is", values: [dueDate.type]))
         }
         if !projectIds.isEmpty { rules.append(.rule("project", op: "any", values: projectIds)) }
+        if hasLocation {
+            var location = TaskFilterNode.rule("location")
+            location.folderPaths = folderPaths
+            location.noteIds = noteIds
+            rules.append(location)
+        }
         if !tags.isEmpty { rules.append(.rule("tags", op: "any", values: tags)) }
         if repeatType != "all" { rules.append(.rule("repeat", op: "is", values: [repeatType])) }
         if hasTime != "all" { rules.append(.rule("hasTime", op: "is", values: [hasTime])) }
@@ -256,6 +277,8 @@ extension TaskFilterSpec {
         spec.dueDate = DueDateFilterSpec()
         spec.projectIds = []
         spec.tags = []
+        spec.folderPaths = []
+        spec.noteIds = []
         spec.repeatType = "all"
         spec.hasTime = "all"
         spec.expression = root.rules.isEmpty ? nil : root
