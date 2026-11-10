@@ -200,7 +200,7 @@ pub fn update_vault_settings_checked(
     // its setting follow it, so the days move from where they are.
     let follow = days.map_or(Follow::Nothing, |(vault, tier)| {
         match vault.notes_writer(tier.store()) {
-            Ok(writer) => follow_moved_journal(root, &writer),
+            Ok(writer) => follow_moved_journal(root, &writer, tier.identity().notices().as_deref()),
             Err(error) => {
                 tracing::warn!(
                     scope = SCOPE,

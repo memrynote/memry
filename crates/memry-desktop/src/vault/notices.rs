@@ -37,6 +37,17 @@ use crate::session::{OpenStage, Session};
 ///   text the file never had (`Removed::Undecided`), rather than deleting that text on every
 ///   device. Listed until a file is at the note's path again; every open lists them again
 ///   while their rows have no file.
+/// - `journalDaysHeld`: journal days a move outside the app carried wait in `folders` (absolute)
+///   for the journal setting to follow them (`journal::folder_follow::Follow::HeldWaits`): no
+///   day is made, no journal setting change moves days, and those folders neither move nor go,
+///   until the days are in one folder they can live in, or back.
+/// - `journalChangeWaits`: a journal setting change from the folder `from` to `to` (as the
+///   setting spells them) a crash cut short could not put its days back
+///   (`vault::journal_rename::finish_journal_change`); `holds` names what keeps them. Both
+///   folders neither move nor go until the next open finishes it.
+/// - `movesWait`: notes whose app move a crash cut short and the open could not finish
+///   (`vault::app_move::finish_interrupted`): they do not move or rename until it settles, which
+///   every open tries again. `path` is the note's file, absolute.
 /// - `more` says a list notice had more items than [`LISTED`].
 //
 // The variants carry no doc comments: specta would write them into a union with trailing
@@ -48,10 +59,57 @@ use crate::session::{OpenStage, Session};
     rename_all_fields = "camelCase"
 )]
 pub enum VaultNotice {
-    ConfigUnreadable { path: String },
+    ConfigUnreadable {
+        path: String,
+    },
     WatchLimit,
-    UndecidedFiles { paths: Vec<String>, more: bool },
-    KeptRemovals { notes: Vec<KeptRemoval>, more: bool },
+    UndecidedFiles {
+        paths: Vec<String>,
+        more: bool,
+    },
+    KeptRemovals {
+        notes: Vec<KeptRemoval>,
+        more: bool,
+    },
+    JournalDaysHeld {
+        folders: Vec<String>,
+    },
+    JournalChangeWaits {
+        from: String,
+        to: String,
+        holds: ChangeHold,
+    },
+    MovesWait {
+        notes: Vec<WaitingMove>,
+        more: bool,
+    },
+}
+
+/// What keeps an unfinished journal setting change's days from going back:
+/// - `settings`: the vault settings at `path` cannot be read, so the change cannot tell whether
+///   it was saved.
+/// - `taken`: a file or folder is at a day's old place, `path`.
+/// - `unknown`: anything else, logged.
+//
+// No doc comments on the variants, as on `VaultNotice`.
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize, specta::Type)]
+#[serde(
+    tag = "kind",
+    rename_all = "camelCase",
+    rename_all_fields = "camelCase"
+)]
+pub enum ChangeHold {
+    Settings { path: String },
+    Taken { path: String },
+    Unknown,
+}
+
+/// A note whose interrupted app move waits; `path` is its file's, absolute.
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize, specta::Type)]
+#[serde(rename_all = "camelCase")]
+pub struct WaitingMove {
+    pub note_id: String,
+    pub path: String,
 }
 
 /// A note kept when its file was deleted outside the app; `path` is the deleted file's,
@@ -75,6 +133,8 @@ pub enum Listed<'a> {
     Undecided(&'a str),
     /// A kept note: its id, and the deleted file's absolute path (only `add` reads it).
     Kept { note_id: &'a str, path: &'a str },
+    /// A note whose app move waits: its id, and its file's absolute path (only `add` reads it).
+    Moving { note_id: &'a str, path: &'a str },
 }
 
 /// The open vault's notices, as a window reads them.
@@ -237,6 +297,13 @@ impl VaultNotices {
                     };
                     push_listed(notes, more, note)
                 }
+                (VaultNotice::MovesWait { notes, more }, Listed::Moving { note_id, path }) => {
+                    let note = WaitingMove {
+                        note_id: note_id.to_owned(),
+                        path: path.to_owned(),
+                    };
+                    push_listed(notes, more, note)
+                }
                 _ => false,
             }
         });
@@ -264,6 +331,11 @@ impl VaultNotices {
                     notes.retain(|held| held.note_id != note_id);
                     (notes.len() != before, notes.is_empty() && !*more)
                 }
+                (VaultNotice::MovesWait { notes, more }, Listed::Moving { note_id, .. }) => {
+                    let before = notes.len();
+                    notes.retain(|held| held.note_id != note_id);
+                    (notes.len() != before, notes.is_empty() && !*more)
+                }
                 _ => (false, false),
             };
             if empty {
@@ -278,12 +350,14 @@ impl VaultNotices {
 enum ListKind {
     Undecided,
     Kept,
+    Moving,
 }
 
 fn kind_of(item: Listed<'_>) -> ListKind {
     match item {
         Listed::Undecided(_) => ListKind::Undecided,
         Listed::Kept { .. } => ListKind::Kept,
+        Listed::Moving { .. } => ListKind::Moving,
     }
 }
 
@@ -291,7 +365,11 @@ fn listed_kind(notice: &VaultNotice) -> Option<ListKind> {
     match notice {
         VaultNotice::UndecidedFiles { .. } => Some(ListKind::Undecided),
         VaultNotice::KeptRemovals { .. } => Some(ListKind::Kept),
-        VaultNotice::ConfigUnreadable { .. } | VaultNotice::WatchLimit => None,
+        VaultNotice::MovesWait { .. } => Some(ListKind::Moving),
+        VaultNotice::ConfigUnreadable { .. }
+        | VaultNotice::WatchLimit
+        | VaultNotice::JournalDaysHeld { .. }
+        | VaultNotice::JournalChangeWaits { .. } => None,
     }
 }
 
@@ -302,6 +380,10 @@ fn empty(item: Listed<'_>) -> VaultNotice {
             more: false,
         },
         Listed::Kept { .. } => VaultNotice::KeptRemovals {
+            notes: Vec::new(),
+            more: false,
+        },
+        Listed::Moving { .. } => VaultNotice::MovesWait {
             notes: Vec::new(),
             more: false,
         },

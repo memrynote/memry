@@ -1672,6 +1672,14 @@
     "undecidedFilesHint": "Bilješka ili unos u dnevnik s istim nazivom ima drugačiji tekst ili još nije sinkroniziran na ovaj uređaj. Memry ostavlja te datoteke nepromijenjenima i ponovno ih provjerava pri sljedećem otvaranju ovog trezora.",
     "keptRemovals": "Memry je zadržao bilješke čije su datoteke izbrisane",
     "keptRemovalsHint": "Te su datoteke izbrisane izvan Memryja, ali njihove su bilješke imale tekst koji datoteke nikad nisu dobile. Memry je zadržao bilješke umjesto da taj tekst izbriše na vašim drugim uređajima.",
-    "moreUnlisted": "Ostali ovdje nisu navedeni."
+    "moreUnlisted": "Ostali ovdje nisu navedeni.",
+    "journalDaysHeld": "Unosi dnevnika čekaju u premještenoj mapi",
+    "journalDaysHeldHint": "Mapa dnevnika premještena je ili preimenovana izvan Memryja, a postavka mape dnevnika još je ne može pratiti. Do tada Memry ne stvara unose dnevnika niti mijenja postavke dnevnika, a te se mape ne mogu premjestiti ni izbrisati. Stavite sve unose dnevnika u jednu mapu ili vratite mapu na staro mjesto. Vaši su unosi sigurni.",
+    "journalChangeWaits": "Promjena postavki dnevnika nije dovršena",
+    "journalChangeWaitsSettingsHint": "Memry se zatvorio dok je premještao unose dnevnika zbog promjene postavki i ne može ih vratiti dok ne pročita .memry/config.json. Popravite datoteku, a zatim ponovno pokrenite Memry. Vaši su unosi sigurni.",
+    "journalChangeWaitsTakenHint": "Memry se zatvorio dok je premještao unose dnevnika zbog promjene postavki. Na mjestu na koje se unos treba vratiti nalazi se druga datoteka ili mapa. Maknite je s puta, a zatim ponovno pokrenite Memry. Vaši su unosi sigurni.",
+    "journalChangeWaitsHint": "Memry se zatvorio dok je premještao unose dnevnika zbog promjene postavki i nije ih uspio vratiti. Pokušat će ponovno sljedeći put kad otvori ovaj trezor. Do tada se mape dnevnika ne mogu premjestiti ni izbrisati. Vaši su unosi sigurni.",
+    "movesWait": "Neke se bilješke još ne mogu premjestiti",
+    "movesWaitHint": "Memry se zatvorio dok je premještao ili preimenovao ove bilješke i nije uspio završiti. Dok to ne učini, ne mogu se premjestiti ni preimenovati. Memry će pokušati ponovno sljedeći put kad otvori ovaj trezor."
   }
 }

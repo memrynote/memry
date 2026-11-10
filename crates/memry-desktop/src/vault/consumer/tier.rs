@@ -394,7 +394,7 @@ impl VaultTier {
                 };
                 finish_journal_change(at, &JournalFollow::hold());
                 follow_interrupted(&vault.path, &writer);
-                follow_after_batch(&vault.path, &writer);
+                follow_after_batch(&vault.path, &writer, identity.notices().as_deref());
                 let mut lane = self
                     .rows
                     .lane_of(session)

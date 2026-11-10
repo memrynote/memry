@@ -15,7 +15,7 @@ use super::identity::{NotesIdentity, electron_db_beside, is_large_file, place};
 use crate::journal::folder_follow::{
     Follow, batch_held, follow_after_batch, journal_folder_moved, mark_batch,
 };
-use crate::vault::consumer::identity::{Crossed, IdentityCtx, IdentityError};
+use crate::vault::consumer::identity::{Crossed, IdentityCtx, IdentityError, NoteIdentity};
 use crate::vault::journal_format::JournalDays;
 
 const SCOPE: &str = "note_identity";
@@ -160,9 +160,9 @@ fn decide(
 /// batch that held nothing asks nothing of the database.
 pub(super) fn follow_held(identity: &NotesIdentity, ctx: &IdentityCtx<'_>) -> bool {
     batch_held(ctx.root)
-        && identity
-            .writer(ctx)
-            .is_ok_and(|writer| follow_after_batch(ctx.root, &writer) == Follow::Followed)
+        && identity.writer(ctx).is_ok_and(|writer| {
+            follow_after_batch(ctx.root, &writer, identity.notices().as_deref()) == Follow::Followed
+        })
 }
 
 /// Each owed move that changes what its file is, with its record deleted as the watcher's move
