@@ -230,8 +230,9 @@ fn filter_project(value: &Value) -> FilterProject {
 }
 
 /// Every section of `task-filtering.json` recomputed: `{dimensions, sorts,
-/// groups, applied}` in the file's own shape (each case's `expected`), and
-/// `expressions` as each case's `{expected, ruleCount}`.
+/// groups, applied}` in the file's own shape (each case's `expected`),
+/// `expressions` as each case's `{expected, ruleCount}`, and `locationOptions`
+/// as each of its cases' `expected` rows.
 #[uniffi::export]
 pub fn task_filtering_conformance(file_json: String) -> String {
     let file = parse(&file_json);
@@ -350,6 +351,44 @@ pub fn task_filtering_conformance(file_json: String) -> String {
         })
         .collect();
     json!({"dimensions": dimensions, "sorts": sorts, "groups": groups, "applied": applied,
-           "expressions": expressions})
+           "expressions": expressions, "locationOptions": location_options(&file["locationOptions"])})
     .to_string()
+}
+
+/// The `locationOptions` section: each case's rows over the section's own
+/// notes and tasks.
+fn location_options(section: &Value) -> Vec<Value> {
+    let notes: HashMap<String, TaskNoteInfo> = array(&section["notes"])
+        .iter()
+        .map(|note| {
+            let info = TaskNoteInfo {
+                id: text(note, "id"),
+                title: text(note, "title"),
+                folder_path: text(note, "folderPath"),
+            };
+            (info.id.clone(), info)
+        })
+        .collect();
+    let tasks: Vec<FilterTask> = array(&section["tasks"]).iter().map(filter_task).collect();
+    let refs: Vec<&FilterTask> = tasks.iter().collect();
+    array(&section["cases"])
+        .iter()
+        .map(|c| {
+            let rows = task_filter::location_options(
+                &refs,
+                &notes,
+                &strings(&c["selected"]["folderPaths"]),
+                &strings(&c["selected"]["noteIds"]),
+                c["query"].as_str().unwrap_or_default(),
+            );
+            Value::Array(
+                rows.into_iter()
+                    .map(|row| {
+                        json!({"kind": row.kind.name(), "value": row.value, "label": row.label,
+                               "context": row.context, "depth": row.depth, "count": row.count})
+                    })
+                    .collect(),
+            )
+        })
+        .collect()
 }

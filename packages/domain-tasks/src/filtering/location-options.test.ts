@@ -1,38 +1,23 @@
 import { describe, expect, it } from 'vitest'
 
-import type { Task } from '@/data/task-model'
-import { buildTaskNoteIndex } from './task-note-index'
-import { buildTaskLocationOptions } from './task-location-options'
+import { buildTaskLocationOptions, type LocationTask } from './location-options.ts'
+import type { TaskNoteInfo } from './types.ts'
 
-const task = (overrides: Partial<Task>): Task => ({
-  id: 'task',
-  title: 'Task',
-  description: '',
-  projectId: 'p1',
-  statusId: 's1',
-  priority: 'none',
-  dueDate: null,
-  dueTime: null,
-  isRepeating: false,
-  repeatConfig: null,
-  repeatFrom: null,
-  tags: [],
-  linkedNoteIds: [],
-  sourceNoteId: null,
+const task = (overrides: Partial<LocationTask> & { id: string }): LocationTask => ({
   parentId: null,
-  subtaskIds: [],
-  createdAt: new Date(),
-  completedAt: null,
-  archivedAt: null,
+  sourceNoteId: null,
+  linkedNoteIds: [],
   ...overrides
 })
 
-const noteIndex = buildTaskNoteIndex([
-  { id: 'roof', path: 'Infra/House/Stage 1/Roof.md', title: 'Roof' },
-  { id: 'brief', path: 'Infra/House/Brief.md', title: 'Brief' },
-  { id: 'inbox', path: 'Inbox.md', title: 'Inbox' },
-  { id: 'empty', path: 'Infra/Empty.md', title: 'Empty' }
-])
+const noteIndex = new Map<string, TaskNoteInfo>(
+  [
+    { id: 'roof', title: 'Roof', folderPath: 'Infra/House/Stage 1' },
+    { id: 'brief', title: 'Brief', folderPath: 'Infra/House' },
+    { id: 'inbox', title: 'Inbox', folderPath: '' },
+    { id: 'empty', title: 'Empty', folderPath: 'Infra' }
+  ].map((note) => [note.id, note])
+)
 
 const tasks = [
   task({ id: 't1', sourceNoteId: 'roof' }),

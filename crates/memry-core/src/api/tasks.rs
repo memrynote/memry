@@ -126,6 +126,23 @@ pub struct TaskTabCounts {
     pub next7: u32,
 }
 
+/// One row of the Location filter's picker: a folder or a note that holds
+/// tasks (desktop's `buildTaskLocationOptions`).
+#[derive(Debug, Clone, PartialEq, Eq, uniffi::Record)]
+pub struct TaskLocationOption {
+    /// `folder` or `note`.
+    pub kind: String,
+    /// The folder path or note id the filter stores.
+    pub value: String,
+    pub label: String,
+    /// The folder a note sits in, or a folder's parent path.
+    pub context: String,
+    /// Nesting below the vault root, for the tree indent; 0 while searching.
+    pub depth: u32,
+    /// Top-level tasks the row would select.
+    pub count: u32,
+}
+
 #[uniffi::export]
 impl Tasks {
     /// Every live task, archived ones included, in `position` order.
@@ -160,6 +177,45 @@ impl Tasks {
     /// One Tasks-page query, answered with desktop's rules end to end.
     pub fn view(&self, query: TaskViewQuery) -> Result<TaskViewResult, StorageError> {
         self.db.call_blocking(move |conn| view(conn, &query))
+    }
+
+    /// The Location filter's folders and notes, with their task counts, in
+    /// tree order; flattened to the name matches for a non-blank `query`.
+    /// Selected folders and notes stay listed even when they hold nothing.
+    ///
+    /// Desktop counts the Tasks page's rows before its chip filters. Here the
+    /// rows are every live task (completed and archived ones included), so a
+    /// count does not change with the tab or the other filters.
+    pub fn location_options(
+        &self,
+        selected_folder_paths: Vec<String>,
+        selected_note_ids: Vec<String>,
+        query: String,
+    ) -> Result<Vec<TaskLocationOption>, StorageError> {
+        self.db.call_blocking(move |conn| {
+            let records = task_records::all(conn)?;
+            let tasks: Vec<task_filter::FilterTask> =
+                records.iter().map(TaskRecord::filter_task).collect();
+            let refs: Vec<&task_filter::FilterTask> = tasks.iter().collect();
+            let rows = task_filter::location_options(
+                &refs,
+                &note_index(conn)?,
+                &selected_folder_paths,
+                &selected_note_ids,
+                &query,
+            );
+            Ok(rows
+                .into_iter()
+                .map(|row| TaskLocationOption {
+                    kind: row.kind.name().to_owned(),
+                    value: row.value,
+                    label: row.label,
+                    context: row.context,
+                    depth: row.depth,
+                    count: row.count,
+                })
+                .collect())
+        })
     }
 }
 
