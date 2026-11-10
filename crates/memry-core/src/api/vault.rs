@@ -177,6 +177,29 @@ impl Vault {
         &self.excluded
     }
 
+    /// The exclude patterns the shell last applied on this device, kept in `meta` (#4118); a
+    /// read. Not part of the FFI surface.
+    #[cfg(feature = "markdown")]
+    #[doc(hidden)]
+    pub fn remembered_exclude_patterns(&self) -> Result<Option<Vec<String>>, StorageError> {
+        self.db
+            .read_blocking(crate::api::excluded_paths::remembered)
+    }
+
+    /// Keeps `patterns` as the exclude patterns the shell applies now, unless they are already
+    /// kept. Not part of the FFI surface: the Rust desktop shell is its only caller.
+    #[cfg(feature = "markdown")]
+    #[doc(hidden)]
+    pub fn remember_exclude_patterns(&self, patterns: &[String]) -> Result<(), StorageError> {
+        let patterns = patterns.to_vec();
+        self.db.call_blocking(
+            move |conn| match crate::api::excluded_paths::remembered(conn) {
+                Ok(Some(kept)) if kept == patterns => Ok(()),
+                _ => crate::api::excluded_paths::remember(conn, &patterns),
+            },
+        )
+    }
+
     /// The kept versions of this vault's notes and days (desktop Step 14d).
     /// Not part of the FFI surface: iOS keeps no versions.
     #[cfg(feature = "markdown")]

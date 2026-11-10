@@ -2,15 +2,20 @@
 //! of `readVaultConfig`.
 //!
 //! Reads are tolerant: a field of the wrong type reads as its default, and a file that is
-//! missing or unusable reads as all defaults. A corrupt file is reported once per path and
-//! process, since the read runs on most vault operations. The parsed config is cached per
-//! file and checked against the file's identity, size and modification time (nanoseconds) on
-//! every read, so a read and parse happen only when the file changed, whoever changed it.
+//! missing or unusable reads as all defaults, except the exclude patterns of an unusable file
+//! (#4118). Those stay the ones last read from it, or else the ones the open vault last
+//! applied on this device ([`applied_exclude_patterns`]), so a broken file never makes the app
+//! watch, write or sync what the user excluded. Electron fell back to the default patterns. A
+//! corrupt file is reported once per path and process, since the read runs on most vault
+//! operations. The parsed config is cached per file and checked against the file's identity,
+//! size and modification time (nanoseconds) on every read, so a read and parse happen only when
+//! the file changed, whoever changed it.
 
 use std::collections::{HashMap, HashSet};
 use std::path::{Path, PathBuf};
 use std::sync::{LazyLock, Mutex};
 
+use memry_core::api::vault::Vault;
 use serde_json::{Map, Value};
 
 use super::{ConfigError, Stamp, config_path, open_config, read_object, update};
@@ -128,9 +133,17 @@ struct CacheEntry {
 
 static CACHE: LazyLock<Mutex<HashMap<PathBuf, CacheEntry>>> = LazyLock::new(Mutex::default);
 static WARNED: LazyLock<Mutex<HashSet<PathBuf>>> = LazyLock::new(Mutex::default);
+/// Per config path, the exclude patterns that stand in while the file cannot be read: the
+/// ones last read from it, or the ones [`applied_exclude_patterns`] found remembered.
+static KNOWN_EXCLUDES: LazyLock<Mutex<HashMap<PathBuf, Vec<String>>>> =
+    LazyLock::new(Mutex::default);
 
 fn cache() -> std::sync::MutexGuard<'static, HashMap<PathBuf, CacheEntry>> {
     CACHE.lock().unwrap_or_else(|e| e.into_inner())
+}
+
+fn known_excludes() -> std::sync::MutexGuard<'static, HashMap<PathBuf, Vec<String>>> {
+    KNOWN_EXCLUDES.lock().unwrap_or_else(|e| e.into_inner())
 }
 
 /// Drops every vault's cached config: the app's own lifecycle edges (vault open and close).
@@ -142,8 +155,8 @@ pub(super) fn invalidate_path(path: &Path) {
     cache().remove(path);
 }
 
-/// A corrupt or unreadable config silently reverts the journal and exclude settings to
-/// defaults, so it is reported, once per path and process. Never the content or the path.
+/// A corrupt or unreadable config silently reverts the journal settings to defaults, so it is
+/// reported, once per path and process. Never the content or the path.
 fn warn_once(path: &Path, message: &str) {
     let first = WARNED
         .lock()
@@ -153,42 +166,108 @@ fn warn_once(path: &Path, message: &str) {
         tracing::warn!(
             scope = "vault",
             action = "config_corrupt_fallback",
-            "vault config unreadable, falling back to defaults: {message}"
+            "vault config unreadable, falling back to defaults and the known exclude patterns: \
+             {message}"
         );
     }
 }
 
-/// `readVaultConfig`. Never fails: the defaults stand in for a missing or unusable file.
+enum Read {
+    Missing,
+    Parsed(VaultConfig),
+    /// Why the file cannot be used.
+    Unusable(String),
+}
+
+/// The defaults, with the exclude patterns known for the unusable file at `path`.
+fn unusable(path: &Path, message: &str) -> VaultConfig {
+    warn_once(path, message);
+    let mut config = VaultConfig::default();
+    if let Some(patterns) = known_excludes().get(path) {
+        config.exclude_patterns.clone_from(patterns);
+    }
+    config
+}
+
+/// `readVaultConfig`. Never fails: the defaults stand in for a missing or unusable file, and
+/// the known exclude patterns for an unusable one (module doc).
 pub fn read_vault_config(vault: &Path) -> VaultConfig {
-    read_vault_config_strict(vault).unwrap_or_else(|message| {
-        warn_once(&config_path(vault), &message);
-        VaultConfig::default()
-    })
+    match read(vault) {
+        Read::Missing => VaultConfig::default(),
+        Read::Parsed(config) => config,
+        Read::Unusable(message) => unusable(&config_path(vault), &message),
+    }
 }
 
 /// [`read_vault_config`] that tells an unusable file (`Err`, with why) from a missing one (the
 /// defaults), for a caller that must not act on defaults standing in for the user's settings.
 pub fn read_vault_config_strict(vault: &Path) -> Result<VaultConfig, String> {
+    match read(vault) {
+        Read::Missing => Ok(VaultConfig::default()),
+        Read::Parsed(config) => Ok(config),
+        Read::Unusable(message) => Err(message),
+    }
+}
+
+/// The exclude patterns an open of `core`'s vault applies: [`read_vault_config`]'s, and the
+/// patterns this device applies are remembered in `core` (#4118). While the file cannot be
+/// read, the remembered patterns stand in, here and in every later read, so they hold after a
+/// restart too. A missing file is the defaults and is not remembered: only a file the user's
+/// patterns were read from is.
+pub fn applied_exclude_patterns(vault: &Path, core: &Vault) -> Vec<String> {
+    let path = config_path(vault);
+    match read(vault) {
+        Read::Missing => VaultConfig::default().exclude_patterns,
+        Read::Parsed(config) => {
+            if let Err(error) = core.remember_exclude_patterns(&config.exclude_patterns) {
+                tracing::error!(
+                    scope = "vault",
+                    %error,
+                    "the exclude patterns were not remembered; an unreadable config falls back \
+                     to the ones remembered before"
+                );
+            }
+            config.exclude_patterns
+        }
+        Read::Unusable(message) => {
+            match core.remembered_exclude_patterns() {
+                Ok(Some(patterns)) => {
+                    known_excludes().insert(path.clone(), patterns);
+                }
+                Ok(None) => {}
+                Err(error) => tracing::error!(
+                    scope = "vault",
+                    %error,
+                    "the remembered exclude patterns cannot be read"
+                ),
+            }
+            unusable(&path, &message).exclude_patterns
+        }
+    }
+}
+
+fn read(vault: &Path) -> Read {
     let path = config_path(vault);
     let (file, stamp) = match open_config(vault) {
         Ok(Some(opened)) => opened,
         Ok(None) => {
             invalidate_path(&path);
-            return Ok(VaultConfig::default());
+            return Read::Missing;
         }
         Err(message) => {
             invalidate_path(&path);
-            return Err(message);
+            return Read::Unusable(message);
         }
     };
     if let Some(entry) = cache().get(&path)
         && entry.stamp == stamp
     {
-        return Ok(entry.config.clone());
+        return Read::Parsed(entry.config.clone());
     }
     match read_object(file) {
         Ok(map) => {
             let config = VaultConfig::from_map(&map);
+            known_excludes().insert(path.clone(), config.exclude_patterns.clone());
             cache().insert(
                 path,
                 CacheEntry {
@@ -196,11 +275,11 @@ pub fn read_vault_config_strict(vault: &Path) -> Result<VaultConfig, String> {
                     stamp,
                 },
             );
-            Ok(config)
+            Read::Parsed(config)
         }
         Err(message) => {
             invalidate_path(&path);
-            Err(message)
+            Read::Unusable(message)
         }
     }
 }
