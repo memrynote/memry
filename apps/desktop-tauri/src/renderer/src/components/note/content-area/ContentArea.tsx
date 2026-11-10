@@ -218,6 +218,7 @@ import {
   type EditorMenuAction
 } from '../writing-tools'
 import { pasteClipboardIntoEditor } from '../writing-tools/editor-clipboard'
+import { editorMenuSelection } from '../writing-tools/editor-menu-selection'
 import { writingToolsService } from '@/services/writing-tools-service'
 
 const log = createLogger('ContentArea')
@@ -2436,7 +2437,7 @@ const ContentAreaEditor = memo(function ContentAreaEditor({
     (x: number, y: number, spelling: EditorContextMenuSpelling | null): EditorMenuTarget | null => {
       const view = getLiveProseMirrorView(editor)
       if (!view || !writingTools) return null
-      const { from, to, empty } = view.state.selection
+      const { from, to, empty } = editorMenuSelection(view)
       const clickPos = view.posAtCoords({ left: x, top: y })?.pos ?? null
       const hasSelection =
         !empty && view.state.doc.textBetween(from, to, '\n', '\ufffc').trim().length > 0
