@@ -3551,7 +3551,8 @@ public protocol InboxProtocol: AnyObject, Sendable {
     func bulkTag(ids: [String], tags: [String]) throws  -> InboxBulkResult
     
     /**
-     * A file already stored at `attachment_path` (vault-relative). The title
+     * A file already stored at `attachment_path` (vault-relative), marked to
+     * upload on the next `VaultSync::sync_inbox_attachments`. The title
      * is the filename without its extension; `metadata_json` adds keys
      * (`width`, `height`, `format`, `pageCount`, `duration`, ...).
      */
@@ -3996,7 +3997,8 @@ open func bulkTag(ids: [String], tags: [String])throws  -> InboxBulkResult  {
 }
     
     /**
-     * A file already stored at `attachment_path` (vault-relative). The title
+     * A file already stored at `attachment_path` (vault-relative), marked to
+     * upload on the next `VaultSync::sync_inbox_attachments`. The title
      * is the filename without its extension; `metadata_json` adds keys
      * (`width`, `height`, `format`, `pageCount`, `duration`, ...).
      */
@@ -13414,6 +13416,28 @@ public protocol VaultSyncProtocol: AnyObject, Sendable {
     func uploadAttachment(noteId: String, filename: String, mimeType: String, bytes: Data) async throws  -> String
     
     /**
+     * Attaches a capture's file to a note it is being filed into.
+     *
+     * A capture whose upload is cached here is referenced from the note and
+     * not uploaded again; the returned `filename` is the manifest's, which an
+     * embed must use. Otherwise the capture's file is read and uploaded into
+     * the note as [`Self::upload_attachment`] does, under the given
+     * `filename`.
+     */
+    func attachInboxFile(itemId: String, noteId: String, filename: String, mimeType: String) async throws  -> InboxFileAttachment
+    
+    /**
+     * Uploads, downloads and releases Inbox files (#4157). `reachable` is the
+     * shell's observation: nothing is uploaded or released while offline, and
+     * downloads follow FR-045's metered policy through
+     * [`Self::fetch_attachment`].
+     *
+     * One failure never stops the pass: it is counted, and the work stays
+     * owed for the next call. Only a locked device ends it.
+     */
+    func syncInboxAttachments(reachable: Reachable) async throws  -> InboxAttachmentSyncSummary
+    
+    /**
      * One pass: pull records, pull the bodies they touched, then push.
      *
      * **`async`**: tens of round trips on a busy vault. Like every sync call
@@ -13723,6 +13747,56 @@ open func uploadAttachment(noteId: String, filename: String, mimeType: String, b
             completeFunc: ffi_memry_core_rust_future_complete_rust_buffer,
             freeFunc: ffi_memry_core_rust_future_free_rust_buffer,
             liftFunc: FfiConverterString.lift,
+            errorHandler: FfiConverterTypeSyncError_lift
+        )
+}
+    
+    /**
+     * Attaches a capture's file to a note it is being filed into.
+     *
+     * A capture whose upload is cached here is referenced from the note and
+     * not uploaded again; the returned `filename` is the manifest's, which an
+     * embed must use. Otherwise the capture's file is read and uploaded into
+     * the note as [`Self::upload_attachment`] does, under the given
+     * `filename`.
+     */
+open func attachInboxFile(itemId: String, noteId: String, filename: String, mimeType: String)async throws  -> InboxFileAttachment  {
+    return
+        try  await uniffiRustCallAsync(
+            rustFutureFunc: {
+                uniffi_memry_core_fn_method_vaultsync_attach_inbox_file(
+                        self.uniffiCloneHandle(),FfiConverterString.lower(itemId),FfiConverterString.lower(noteId),FfiConverterString.lower(filename),FfiConverterString.lower(mimeType)
+                )
+            },
+            pollFunc: ffi_memry_core_rust_future_poll_rust_buffer,
+            completeFunc: ffi_memry_core_rust_future_complete_rust_buffer,
+            freeFunc: ffi_memry_core_rust_future_free_rust_buffer,
+            liftFunc: FfiConverterTypeInboxFileAttachment_lift,
+            errorHandler: FfiConverterTypeSyncError_lift
+        )
+}
+    
+    /**
+     * Uploads, downloads and releases Inbox files (#4157). `reachable` is the
+     * shell's observation: nothing is uploaded or released while offline, and
+     * downloads follow FR-045's metered policy through
+     * [`Self::fetch_attachment`].
+     *
+     * One failure never stops the pass: it is counted, and the work stays
+     * owed for the next call. Only a locked device ends it.
+     */
+open func syncInboxAttachments(reachable: Reachable)async throws  -> InboxAttachmentSyncSummary  {
+    return
+        try  await uniffiRustCallAsync(
+            rustFutureFunc: {
+                uniffi_memry_core_fn_method_vaultsync_sync_inbox_attachments(
+                        self.uniffiCloneHandle(),FfiConverterTypeReachable_lower(reachable)
+                )
+            },
+            pollFunc: ffi_memry_core_rust_future_poll_rust_buffer,
+            completeFunc: ffi_memry_core_rust_future_complete_rust_buffer,
+            freeFunc: ffi_memry_core_rust_future_free_rust_buffer,
+            liftFunc: FfiConverterTypeInboxAttachmentSyncSummary_lift,
             errorHandler: FfiConverterTypeSyncError_lift
         )
 }
@@ -17948,6 +18022,105 @@ public func FfiConverterTypeHttpResponse_lower(_ value: HttpResponse) -> RustBuf
 
 
 /**
+ * What one pass did.
+ */
+public struct InboxAttachmentSyncSummary: Equatable, Hashable {
+    /**
+     * Files uploaded; each capture now carries its `attachmentId`.
+     */
+    public var uploaded: UInt32
+    /**
+     * Files written under `attachments/inbox/`.
+     */
+    public var downloaded: UInt32
+    /**
+     * Downloads held back by the metered policy (FR-045). Not a failure.
+     */
+    public var deferred: UInt32
+    /**
+     * Failed this time and still owed; the next pass tries again.
+     */
+    public var failed: UInt32
+    /**
+     * Deleted captures whose chunks were dereferenced.
+     */
+    public var released: UInt32
+
+    // Default memberwise initializers are never public by default, so we
+    // declare one manually.
+    public init(
+        /**
+         * Files uploaded; each capture now carries its `attachmentId`.
+         */uploaded: UInt32, 
+        /**
+         * Files written under `attachments/inbox/`.
+         */downloaded: UInt32, 
+        /**
+         * Downloads held back by the metered policy (FR-045). Not a failure.
+         */deferred: UInt32, 
+        /**
+         * Failed this time and still owed; the next pass tries again.
+         */failed: UInt32, 
+        /**
+         * Deleted captures whose chunks were dereferenced.
+         */released: UInt32) {
+        self.uploaded = uploaded
+        self.downloaded = downloaded
+        self.deferred = deferred
+        self.failed = failed
+        self.released = released
+    }
+
+    
+
+    
+}
+
+#if compiler(>=6)
+extension InboxAttachmentSyncSummary: Sendable {}
+#endif
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
+public struct FfiConverterTypeInboxAttachmentSyncSummary: FfiConverterRustBuffer {
+    public static func read(from buf: inout (data: Data, offset: Data.Index)) throws -> InboxAttachmentSyncSummary {
+        return
+            try InboxAttachmentSyncSummary(
+                uploaded: FfiConverterUInt32.read(from: &buf), 
+                downloaded: FfiConverterUInt32.read(from: &buf), 
+                deferred: FfiConverterUInt32.read(from: &buf), 
+                failed: FfiConverterUInt32.read(from: &buf), 
+                released: FfiConverterUInt32.read(from: &buf)
+        )
+    }
+
+    public static func write(_ value: InboxAttachmentSyncSummary, into buf: inout [UInt8]) {
+        FfiConverterUInt32.write(value.uploaded, into: &buf)
+        FfiConverterUInt32.write(value.downloaded, into: &buf)
+        FfiConverterUInt32.write(value.deferred, into: &buf)
+        FfiConverterUInt32.write(value.failed, into: &buf)
+        FfiConverterUInt32.write(value.released, into: &buf)
+    }
+}
+
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
+public func FfiConverterTypeInboxAttachmentSyncSummary_lift(_ buf: RustBuffer) throws -> InboxAttachmentSyncSummary {
+    return try FfiConverterTypeInboxAttachmentSyncSummary.lift(buf)
+}
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
+public func FfiConverterTypeInboxAttachmentSyncSummary_lower(_ value: InboxAttachmentSyncSummary) -> RustBuffer {
+    return FfiConverterTypeInboxAttachmentSyncSummary.lower(value)
+}
+
+
+/**
  * Desktop's `BulkResponse`.
  */
 public struct InboxBulkResult: Equatable, Hashable {
@@ -18066,6 +18239,71 @@ public func FfiConverterTypeInboxCaptureOutcome_lower(_ value: InboxCaptureOutco
 
 
 /**
+ * A capture's file, attached to a note.
+ */
+public struct InboxFileAttachment: Equatable, Hashable {
+    public var attachmentId: String
+    /**
+     * The name an embed in the note must use: peers place a note's download
+     * by its manifest filename.
+     */
+    public var filename: String
+
+    // Default memberwise initializers are never public by default, so we
+    // declare one manually.
+    public init(attachmentId: String, 
+        /**
+         * The name an embed in the note must use: peers place a note's download
+         * by its manifest filename.
+         */filename: String) {
+        self.attachmentId = attachmentId
+        self.filename = filename
+    }
+
+    
+
+    
+}
+
+#if compiler(>=6)
+extension InboxFileAttachment: Sendable {}
+#endif
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
+public struct FfiConverterTypeInboxFileAttachment: FfiConverterRustBuffer {
+    public static func read(from buf: inout (data: Data, offset: Data.Index)) throws -> InboxFileAttachment {
+        return
+            try InboxFileAttachment(
+                attachmentId: FfiConverterString.read(from: &buf), 
+                filename: FfiConverterString.read(from: &buf)
+        )
+    }
+
+    public static func write(_ value: InboxFileAttachment, into buf: inout [UInt8]) {
+        FfiConverterString.write(value.attachmentId, into: &buf)
+        FfiConverterString.write(value.filename, into: &buf)
+    }
+}
+
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
+public func FfiConverterTypeInboxFileAttachment_lift(_ buf: RustBuffer) throws -> InboxFileAttachment {
+    return try FfiConverterTypeInboxFileAttachment.lift(buf)
+}
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
+public func FfiConverterTypeInboxFileAttachment_lower(_ value: InboxFileAttachment) -> RustBuffer {
+    return FfiConverterTypeInboxFileAttachment.lower(value)
+}
+
+
+/**
  * Where a filing landed.
  */
 public struct InboxFiled: Equatable, Hashable {
@@ -18161,10 +18399,16 @@ public struct InboxItemRecord: Equatable, Hashable {
     public var transcription: String?
     public var transcriptionStatus: String?
     /**
-     * Vault-relative; the file exists only on the capturing device.
+     * Vault-relative. The file is on the capturing device, and on another once
+     * `attachment_id` names its upload and `sync_inbox_attachments` has
+     * downloaded it.
      */
     public var attachmentPath: String?
     public var thumbnailPath: String?
+    /**
+     * The uploaded file's attachment id (§14.7.2); `nil` until it is uploaded.
+     */
+    public var attachmentId: String?
     public var createdAtMs: Int64
     public var modifiedAtMs: Int64?
     public var tags: [String]
@@ -18185,8 +18429,13 @@ public struct InboxItemRecord: Equatable, Hashable {
          * or what a newer build wrote.
          */itemType: String, title: String, content: String?, metadataJson: String?, filedAtMs: Int64?, filedTo: String?, filedAction: String?, snoozedUntilMs: Int64?, snoozeReason: String?, archivedAtMs: Int64?, viewedAtMs: Int64?, sourceUrl: String?, sourceTitle: String?, captureSource: String?, processingStatus: String?, transcription: String?, transcriptionStatus: String?, 
         /**
-         * Vault-relative; the file exists only on the capturing device.
-         */attachmentPath: String?, thumbnailPath: String?, createdAtMs: Int64, modifiedAtMs: Int64?, tags: [String], 
+         * Vault-relative. The file is on the capturing device, and on another once
+         * `attachment_id` names its upload and `sync_inbox_attachments` has
+         * downloaded it.
+         */attachmentPath: String?, thumbnailPath: String?, 
+        /**
+         * The uploaded file's attachment id (§14.7.2); `nil` until it is uploaded.
+         */attachmentId: String?, createdAtMs: Int64, modifiedAtMs: Int64?, tags: [String], 
         /**
          * Desktop's `isNoteOnlyType`: no task, event or reminder.
          */isNoteOnly: Bool, 
@@ -18213,6 +18462,7 @@ public struct InboxItemRecord: Equatable, Hashable {
         self.transcriptionStatus = transcriptionStatus
         self.attachmentPath = attachmentPath
         self.thumbnailPath = thumbnailPath
+        self.attachmentId = attachmentId
         self.createdAtMs = createdAtMs
         self.modifiedAtMs = modifiedAtMs
         self.tags = tags
@@ -18256,6 +18506,7 @@ public struct FfiConverterTypeInboxItemRecord: FfiConverterRustBuffer {
                 transcriptionStatus: FfiConverterOptionString.read(from: &buf), 
                 attachmentPath: FfiConverterOptionString.read(from: &buf), 
                 thumbnailPath: FfiConverterOptionString.read(from: &buf), 
+                attachmentId: FfiConverterOptionString.read(from: &buf), 
                 createdAtMs: FfiConverterInt64.read(from: &buf), 
                 modifiedAtMs: FfiConverterOptionInt64.read(from: &buf), 
                 tags: FfiConverterSequenceString.read(from: &buf), 
@@ -18285,6 +18536,7 @@ public struct FfiConverterTypeInboxItemRecord: FfiConverterRustBuffer {
         FfiConverterOptionString.write(value.transcriptionStatus, into: &buf)
         FfiConverterOptionString.write(value.attachmentPath, into: &buf)
         FfiConverterOptionString.write(value.thumbnailPath, into: &buf)
+        FfiConverterOptionString.write(value.attachmentId, into: &buf)
         FfiConverterInt64.write(value.createdAtMs, into: &buf)
         FfiConverterOptionInt64.write(value.modifiedAtMs, into: &buf)
         FfiConverterSequenceString.write(value.tags, into: &buf)
@@ -34769,7 +35021,7 @@ private let initializationResult: InitializationResult = {
     if (uniffi_memry_core_checksum_method_inbox_bulk_tag() != 26668) {
         return InitializationResult.apiChecksumMismatch
     }
-    if (uniffi_memry_core_checksum_method_inbox_capture_file() != 58559) {
+    if (uniffi_memry_core_checksum_method_inbox_capture_file() != 6100) {
         return InitializationResult.apiChecksumMismatch
     }
     if (uniffi_memry_core_checksum_method_inbox_capture_link() != 29296) {
@@ -35184,6 +35436,12 @@ private let initializationResult: InitializationResult = {
         return InitializationResult.apiChecksumMismatch
     }
     if (uniffi_memry_core_checksum_method_vaultsync_upload_attachment() != 60438) {
+        return InitializationResult.apiChecksumMismatch
+    }
+    if (uniffi_memry_core_checksum_method_vaultsync_attach_inbox_file() != 44095) {
+        return InitializationResult.apiChecksumMismatch
+    }
+    if (uniffi_memry_core_checksum_method_vaultsync_sync_inbox_attachments() != 64358) {
         return InitializationResult.apiChecksumMismatch
     }
     if (uniffi_memry_core_checksum_method_vaultsync_sync_now() != 13576) {

@@ -30,120 +30,23 @@ impl VaultSync {
         bytes: Vec<u8>,
     ) -> Result<String, SyncError> {
         let device_id = self.session.device_id()?;
-        let master_key = Zeroizing::new(self.session.master_key()?.ok_or(SyncError::Locked)?);
-        let vault_key = Zeroizing::new(keys::derive_vault_key(&master_key)?.to_vec());
-        let signing_key = self.session.signing_secret_key()?;
-
-        // One file key for every chunk, because the manifest wraps exactly one
-        // (§14.2). Fresh per attachment, never reused.
-        let file_key = Zeroizing::new(sodium::random_bytes(32));
-        // 128 bits of libsodium randomness, hex — the same shape a note id
-        // takes, and for the same reason: the id becomes a path parameter on
-        // `/sync/attachments/:attachment_id/manifest`.
-        let attachment_id = hex_id();
-
-        let chunks = attachment_upload::frame_chunks(
-            &bytes,
-            &file_key,
-            attachment_upload::DEFAULT_CHUNK_SIZE,
-            |_| sodium::random_bytes(24),
-        )
-        .map_err(attachment_error)?;
-
-        let session = attachment_upload::initiate(
-            &self.session.http(),
-            &self.vault_id,
-            &attachment_id,
-            &filename,
-            bytes.len() as u64,
-            &chunks,
-        )
-        .await
-        .map_err(attachment_error)?;
-
-        // A failure part way leaves a session the server will expire on its
-        // own; cancelling is the tidy path and is not load-bearing.
-        let direct = match self.put_all(&session, &chunks).await {
-            Ok(direct) => direct,
-            Err(error) => {
-                let _ = attachment_upload::cancel(
-                    &self.session.http(),
-                    &self.vault_id,
-                    &session.session_id,
-                )
-                .await;
-                return Err(error);
-            }
-        };
-
-        attachment_upload::complete(
-            &self.session.http(),
-            &self.vault_id,
-            &session.session_id,
-            &direct,
-        )
-        .await
-        .map_err(attachment_error)?;
-
-        let manifest = attachment_upload::build_manifest(
-            &attachment_id,
-            &filename,
-            &mime_type,
-            &bytes,
-            &chunks,
-            attachment_upload::DEFAULT_CHUNK_SIZE,
-            now_ms(),
-        );
-        let envelope = protocol::attachment_manifest::encrypt(
-            &manifest,
-            &file_key,
-            &vault_key,
-            &sodium::random_bytes(24),
-            &sodium::random_bytes(24),
-            &signing_key,
-            // Signed as the server's id for this device, which other devices
-            // resolve to a public key; `device_id` stays the local clock id.
-            &self.session.registered_device_id()?,
-        )
-        .map_err(|error| SyncError::AttachmentCorrupt {
-            what: error.to_string(),
-        })?;
-        attachment_upload::put_manifest(
-            &self.session.http(),
-            &self.vault_id,
-            &attachment_id,
-            &envelope,
-        )
-        .await
-        .map_err(attachment_error)?;
+        let uploaded = self.upload_blob(&filename, &mime_type, &bytes).await?;
 
         // Local cache first, then the reference: the row is what a placeholder
         // reads, and the push is what tells every other device.
-        let manifest_json =
-            protocol::attachment_manifest::manifest_json(&manifest).map_err(|error| {
-                SyncError::AttachmentCorrupt {
-                    what: error.to_string(),
-                }
-            })?;
-        let manifest_text = String::from_utf8_lossy(&manifest_json).into_owned();
-        let remote_size = attachment_upload::encrypted_size(&chunks) as i64;
-        let local_path = self.write_bytes(&attachment_id, &bytes)?;
-
-        let id = attachment_id.clone();
         let note = note_id.clone();
+        let attachment_id = uploaded.attachment_id.clone();
         let now = now_ms();
         self.db
             .call(move |conn| {
-                attachments::put_manifest(
+                uploaded.cache(conn, now)?;
+                notes::add_attachment_reference(
                     conn,
-                    &id,
-                    &manifest_text,
-                    remote_size,
-                    &filename,
-                    &mime_type,
+                    &note,
+                    &uploaded.attachment_id,
+                    &device_id,
+                    now,
                 )?;
-                attachments::record_download(conn, &id, &local_path, now)?;
-                notes::add_attachment_reference(conn, &note, &id, &device_id, now)?;
                 Ok(())
             })
             .await?;
@@ -207,7 +110,151 @@ impl VaultSync {
     }
 }
 
+/// An attachment that is on the server and in the local cache's bytes, whose
+/// cache rows are not written yet.
+pub(super) struct UploadedBlob {
+    pub(super) attachment_id: String,
+    pub(super) filename: String,
+    pub(super) mime_type: String,
+    manifest_text: String,
+    remote_size: i64,
+    local_path: String,
+}
+
+impl UploadedBlob {
+    /// The manifest and the bytes' place under `images/`, so a placeholder
+    /// reads the row and the bytes need no download.
+    pub(super) fn cache(&self, conn: &rusqlite::Connection, now: i64) -> Result<(), StorageError> {
+        attachments::put_manifest(
+            conn,
+            &self.attachment_id,
+            &self.manifest_text,
+            self.remote_size,
+            &self.filename,
+            &self.mime_type,
+        )?;
+        attachments::record_download(conn, &self.attachment_id, &self.local_path, now)
+    }
+}
+
 impl VaultSync {
+    /// The upload chain of §14.2–§14.5 for one file: frame, upload the chunks,
+    /// store the signed manifest, and write the bytes under `images/`. It
+    /// references the attachment from nothing; the caller does that, after
+    /// [`UploadedBlob::cache`].
+    pub(super) async fn upload_blob(
+        &self,
+        filename: &str,
+        mime_type: &str,
+        bytes: &[u8],
+    ) -> Result<UploadedBlob, SyncError> {
+        let master_key = Zeroizing::new(self.session.master_key()?.ok_or(SyncError::Locked)?);
+        let vault_key = Zeroizing::new(keys::derive_vault_key(&master_key)?.to_vec());
+        let signing_key = self.session.signing_secret_key()?;
+
+        // One file key for every chunk, because the manifest wraps exactly one
+        // (§14.2). Fresh per attachment, never reused.
+        let file_key = Zeroizing::new(sodium::random_bytes(32));
+        // 128 bits of libsodium randomness, hex — the same shape a note id
+        // takes, and for the same reason: the id becomes a path parameter on
+        // `/sync/attachments/:attachment_id/manifest`.
+        let attachment_id = hex_id();
+
+        let chunks = attachment_upload::frame_chunks(
+            bytes,
+            &file_key,
+            attachment_upload::DEFAULT_CHUNK_SIZE,
+            |_| sodium::random_bytes(24),
+        )
+        .map_err(attachment_error)?;
+
+        let session = attachment_upload::initiate(
+            &self.session.http(),
+            &self.vault_id,
+            &attachment_id,
+            filename,
+            bytes.len() as u64,
+            &chunks,
+        )
+        .await
+        .map_err(attachment_error)?;
+
+        // A failure part way leaves a session the server will expire on its
+        // own; cancelling is the tidy path and is not load-bearing.
+        let direct = match self.put_all(&session, &chunks).await {
+            Ok(direct) => direct,
+            Err(error) => {
+                let _ = attachment_upload::cancel(
+                    &self.session.http(),
+                    &self.vault_id,
+                    &session.session_id,
+                )
+                .await;
+                return Err(error);
+            }
+        };
+
+        attachment_upload::complete(
+            &self.session.http(),
+            &self.vault_id,
+            &session.session_id,
+            &direct,
+        )
+        .await
+        .map_err(attachment_error)?;
+
+        let manifest = attachment_upload::build_manifest(
+            &attachment_id,
+            filename,
+            mime_type,
+            bytes,
+            &chunks,
+            attachment_upload::DEFAULT_CHUNK_SIZE,
+            now_ms(),
+        );
+        let envelope = protocol::attachment_manifest::encrypt(
+            &manifest,
+            &file_key,
+            &vault_key,
+            &sodium::random_bytes(24),
+            &sodium::random_bytes(24),
+            &signing_key,
+            // Signed as the server's id for this device, which other devices
+            // resolve to a public key; `device_id` stays the local clock id.
+            &self.session.registered_device_id()?,
+        )
+        .map_err(|error| SyncError::AttachmentCorrupt {
+            what: error.to_string(),
+        })?;
+        attachment_upload::put_manifest(
+            &self.session.http(),
+            &self.vault_id,
+            &attachment_id,
+            &envelope,
+        )
+        .await
+        .map_err(attachment_error)?;
+
+        let manifest_json =
+            protocol::attachment_manifest::manifest_json(&manifest).map_err(|error| {
+                SyncError::AttachmentCorrupt {
+                    what: error.to_string(),
+                }
+            })?;
+        let manifest_text = String::from_utf8_lossy(&manifest_json).into_owned();
+        let remote_size = attachment_upload::encrypted_size(&chunks) as i64;
+        let local_path = self.write_bytes(&attachment_id, bytes)?;
+
+        Ok(UploadedBlob {
+            attachment_id,
+            filename: filename.to_owned(),
+            mime_type: mime_type.to_owned(),
+            manifest_text,
+            remote_size,
+            local_path,
+        })
+    }
+
     /// Every chunk up, by whichever transfer path the session offered.
     pub(super) async fn put_all(
         &self,

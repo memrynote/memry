@@ -25,6 +25,7 @@ use crate::storage::repositories::instants;
 
 use super::notes::failed;
 
+pub mod attachments;
 pub mod convert;
 pub mod enrich;
 pub mod filing;
@@ -78,11 +79,13 @@ pub struct InboxItem {
     pub processing_status: Option<String>,
     pub transcription: Option<String>,
     pub transcription_status: Option<String>,
-    /// Vault-relative, as the capturing device stored it. The file exists only
-    /// on that device until the capture is filed (inbox attachments do not
-    /// sync, spec 006 §5 F3).
+    /// Vault-relative, as the capturing device stored it. The file reaches
+    /// another device only once `attachment_id` names its upload (§14.7.2).
     pub attachment_path: Option<String>,
     pub thumbnail_path: Option<String>,
+    /// The §14.7 id of the uploaded bytes at `attachment_path`; `None` until
+    /// the capturing device has uploaded them.
+    pub attachment_id: Option<String>,
     pub created_at: i64,
     pub modified_at: Option<i64>,
     /// Device-local tags.
@@ -111,7 +114,7 @@ impl InboxItem {
 pub(crate) const COLUMNS: &str = "id, type, title, content, metadata, filed_at, filed_to, \
      filed_action, snoozed_until, snooze_reason, archived_at, viewed_at_raw, source_url, \
      source_title, capture_source, processing_status, transcription, transcription_status, \
-     attachment_path, thumbnail_path, created_at, modified_at";
+     attachment_path, thumbnail_path, created_at, modified_at, attachment_id";
 
 /// A payload key outside the schema, read by `json_extract`: text, or `None`
 /// for anything else.
@@ -157,6 +160,7 @@ pub(crate) fn item_row(row: &Row<'_>) -> rusqlite::Result<InboxItem> {
         thumbnail_path: loose_text(row.get(19)?),
         created_at: row.get::<_, Option<i64>>(20)?.unwrap_or(0),
         modified_at: row.get(21)?,
+        attachment_id: loose_text(row.get(22)?),
         tags: Vec::new(),
     })
 }
