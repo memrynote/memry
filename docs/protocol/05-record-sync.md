@@ -1050,6 +1050,16 @@ tombstones the local record in the same transaction as the ack
 queued for it. A learned name therefore never brings back a deleted definition
 (#4025).
 
+The desktop's sync pass also makes a record of every `.memry/properties.md`
+definition whose name has no record, live or deleted, and queues it as `create`
+(`crates/memry-desktop/src/notes/property_definitions/seed.rs:67-90`, #4099), as
+Electron's `seedUnclocked` pushes the row its file rebuild leaves with no clock.
+It runs after the pull, so a record or a tombstone the pull delivered wins over
+the file's definition, as Electron's pull applies over a row with no clock
+(`crates/memry-core/src/domain/property_admin/mirror.rs:215`). Over a marker,
+which the core never pulls and the desktop MUST NOT apply to a row with no clock
+(above), the server re-creates it, as it re-creates Electron's.
+
 **Residual risks.**
 
 - A client that does not apply the marker (an old desktop, iOS until #2304, or
