@@ -120,6 +120,10 @@ fn a_folder_not_on_disk_or_a_note_not_there_is_refused_by_its_code() {
     assert_eq!(missing["code"], "folder_not_found");
     let gone = f.set("note", "no-such-note", true).unwrap_err();
     assert_eq!(gone["code"], "not_found");
+    // An unlock of a folder no locked row names (another window unlocked it): the renderer
+    // reads the list again on this code.
+    let stale = f.set("folder", "Archive", false).unwrap_err();
+    assert_eq!(stale["code"], "folder_not_found");
     assert!(f.changed.lock().unwrap().is_empty());
 }
 

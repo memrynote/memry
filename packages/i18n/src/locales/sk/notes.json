@@ -1645,6 +1645,8 @@
     "unlockNote": "Odomknúť poznámku",
     "lockFolder": "Zamknúť priečinok",
     "unlockFolder": "Odomknúť priečinok",
+    "lockingFolder": "Zamyká sa priečinok…",
+    "unlockingFolder": "Odomyká sa priečinok…",
     "toggleFailed": "Zámok sa nepodarilo zmeniť",
     "readOnlyIndicator": "Zamknuté. Iba na čítanie pre vás aj pre agentov.",
     "excludedIndicator": "Táto poznámka je vo vylúčenom priečinku.",

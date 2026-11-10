@@ -1645,6 +1645,8 @@
     "unlockNote": "Desbloquear nota",
     "lockFolder": "Bloquear carpeta",
     "unlockFolder": "Desbloquear carpeta",
+    "lockingFolder": "Bloqueando carpeta…",
+    "unlockingFolder": "Desbloqueando carpeta…",
     "toggleFailed": "No se pudo cambiar el bloqueo",
     "readOnlyIndicator": "Bloqueada. Solo lectura para ti y para los agentes.",
     "excludedIndicator": "Esta nota está en una carpeta excluida.",

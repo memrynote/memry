@@ -1645,6 +1645,8 @@
     "unlockNote": "Notiz entsperren",
     "lockFolder": "Ordner sperren",
     "unlockFolder": "Ordner entsperren",
+    "lockingFolder": "Ordner wird gesperrt…",
+    "unlockingFolder": "Ordner wird entsperrt…",
     "toggleFailed": "Die Sperre konnte nicht geändert werden",
     "readOnlyIndicator": "Gesperrt. Schreibgeschützt für dich und für Agenten.",
     "excludedIndicator": "Diese Notiz liegt in einem ausgeschlossenen Ordner.",

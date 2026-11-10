@@ -1645,6 +1645,8 @@
     "unlockNote": "Deblochează notița",
     "lockFolder": "Blochează dosarul",
     "unlockFolder": "Deblochează dosarul",
+    "lockingFolder": "Se blochează folderul…",
+    "unlockingFolder": "Se deblochează folderul…",
     "toggleFailed": "Blocarea nu a putut fi schimbată",
     "readOnlyIndicator": "Blocat. Doar citire pentru tine și pentru agenți.",
     "excludedIndicator": "Această notă se află într-un dosar exclus.",

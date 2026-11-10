@@ -1645,6 +1645,8 @@
     "unlockNote": "Lås note op",
     "lockFolder": "Lås mappe",
     "unlockFolder": "Lås mappe op",
+    "lockingFolder": "Låser mappe…",
+    "unlockingFolder": "Låser mappe op…",
     "toggleFailed": "Kunne ikke ændre låsen",
     "readOnlyIndicator": "Låst. Skrivebeskyttet for dig og for agenter.",
     "excludedIndicator": "Denne note ligger i en udelukket mappe.",

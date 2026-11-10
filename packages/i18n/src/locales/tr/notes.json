@@ -1645,6 +1645,8 @@
     "unlockNote": "Notun kilidini aç",
     "lockFolder": "Klasörü kilitle",
     "unlockFolder": "Klasörün kilidini aç",
+    "lockingFolder": "Klasör kilitleniyor…",
+    "unlockingFolder": "Klasörün kilidi açılıyor…",
     "toggleFailed": "Kilit değiştirilemedi",
     "readOnlyIndicator": "Kilitli. Sizin ve ajanlar için salt okunur.",
     "excludedIndicator": "Bu not hariç tutulan bir klasörde.",

@@ -1645,6 +1645,8 @@
     "unlockNote": "Jegyzet feloldása",
     "lockFolder": "Mappa zárolása",
     "unlockFolder": "Mappa feloldása",
+    "lockingFolder": "Mappa zárolása…",
+    "unlockingFolder": "Mappa zárolásának feloldása…",
     "toggleFailed": "Nem sikerült módosítani a zárolást",
     "readOnlyIndicator": "Zárolva. Csak olvasható Ön és az ügynökök számára.",
     "excludedIndicator": "Ez a jegyzet egy kizárt mappában van.",

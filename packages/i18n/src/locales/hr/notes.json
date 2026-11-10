@@ -1645,6 +1645,8 @@
     "unlockNote": "Otključaj bilješku",
     "lockFolder": "Zaključaj mapu",
     "unlockFolder": "Otključaj mapu",
+    "lockingFolder": "Zaključavanje mape…",
+    "unlockingFolder": "Otključavanje mape…",
     "toggleFailed": "Nije moguće promijeniti zaključavanje",
     "readOnlyIndicator": "Zaključano. Samo za čitanje za vas i za agente.",
     "excludedIndicator": "Ova se bilješka nalazi u isključenoj mapi.",

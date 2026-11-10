@@ -7,6 +7,7 @@ import {
   setVaultLock,
   useHasOwnNoteLock,
   useIsNoteLocked,
+  useIsVaultLockPending,
   useVaultLockState
 } from './vault-locks-store'
 
@@ -82,6 +83,55 @@ describe('vault-locks-store (#2606)', () => {
 
     expect(set).toHaveBeenCalledWith({ kind: 'note', target: 'note-new', locked: true })
     expect(ownLock.result.current).toBe(true)
+  })
+
+  it('an unlock of a folder no longer locked reads the locks again instead of failing', async () => {
+    // Another window unlocked it first: Rust finds no lock row of that name.
+    set.mockRejectedValueOnce({
+      kind: 'notFound',
+      code: 'folder_not_found',
+      message: 'the folder is not there anymore'
+    })
+    list.mockResolvedValueOnce({ notes: [], folders: ['Elsewhere'] })
+    const state = renderHook(() => useVaultLockState())
+
+    await act(() => setVaultLock('folder', 'Archive', false))
+
+    expect(state.result.current).toEqual({ notes: [], folders: ['Elsewhere'] })
+  })
+
+  it('a lock of a folder that is not there still fails', async () => {
+    const notFound = {
+      kind: 'notFound',
+      code: 'folder_not_found',
+      message: 'the folder is not there anymore'
+    }
+    set.mockRejectedValueOnce(notFound)
+
+    await expect(setVaultLock('folder', 'Gone', true)).rejects.toBe(notFound)
+  })
+
+  it('holds a lock change as pending until Rust answers', async () => {
+    let answer: (state: VaultLockState) => void = () => {}
+    set.mockReturnValueOnce(new Promise<VaultLockState>((resolve) => (answer = resolve)))
+    const pending = renderHook(() => useIsVaultLockPending('folder', 'Big'))
+    const other = renderHook(() => useIsVaultLockPending('folder', 'Small'))
+
+    let change: Promise<void> = Promise.resolve()
+    act(() => {
+      change = setVaultLock('folder', 'Big', true)
+    })
+    expect(pending.result.current).toBe(true)
+    expect(other.result.current).toBe(false)
+    // A second click on the same folder while it runs sends nothing more.
+    await act(() => setVaultLock('folder', 'Big', true))
+    expect(set).toHaveBeenCalledTimes(1)
+
+    await act(async () => {
+      answer({ notes: [], folders: ['Big'] })
+      await change
+    })
+    expect(pending.result.current).toBe(false)
   })
 
   it('matches folder paths whatever their slashes', () => {

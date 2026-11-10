@@ -1645,6 +1645,8 @@
     "unlockNote": "فتح قفل الملاحظة",
     "lockFolder": "قفل المجلد",
     "unlockFolder": "فتح قفل المجلد",
+    "lockingFolder": "جارٍ قفل المجلد…",
+    "unlockingFolder": "جارٍ إلغاء قفل المجلد…",
     "toggleFailed": "تعذّر تغيير القفل",
     "readOnlyIndicator": "مقفلة. للقراءة فقط لك وللوكلاء.",
     "excludedIndicator": "هذه الملاحظة في مجلد مستبعد.",

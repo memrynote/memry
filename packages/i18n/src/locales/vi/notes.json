@@ -1645,6 +1645,8 @@
     "unlockNote": "Mở khóa ghi chú",
     "lockFolder": "Khóa thư mục",
     "unlockFolder": "Mở khóa thư mục",
+    "lockingFolder": "Đang khóa thư mục…",
+    "unlockingFolder": "Đang mở khóa thư mục…",
     "toggleFailed": "Không thể thay đổi khóa",
     "readOnlyIndicator": "Đã khóa. Chỉ đọc đối với bạn và các tác nhân.",
     "excludedIndicator": "Ghi chú này nằm trong một thư mục bị loại trừ.",

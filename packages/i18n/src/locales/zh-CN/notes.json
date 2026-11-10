@@ -1645,6 +1645,8 @@
     "unlockNote": "解锁笔记",
     "lockFolder": "锁定文件夹",
     "unlockFolder": "解锁文件夹",
+    "lockingFolder": "正在锁定文件夹…",
+    "unlockingFolder": "正在解锁文件夹…",
     "toggleFailed": "无法更改锁定状态",
     "readOnlyIndicator": "已锁定。对你和智能体均为只读。",
     "excludedIndicator": "此笔记位于已排除的文件夹中。",

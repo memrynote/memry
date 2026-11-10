@@ -918,6 +918,8 @@ const createMockApi = () => ({
   onVaultStatusChanged: vi.fn().mockReturnValue(() => {}),
   onVaultIndexProgress: vi.fn().mockReturnValue(() => {}),
   onTagsProgress: vi.fn().mockReturnValue(() => {}),
+  onVaultLocksChanged: vi.fn().mockReturnValue(() => {}),
+  onVaultLockExternalEditRestored: vi.fn().mockReturnValue(() => {}),
   onVaultError: vi.fn().mockReturnValue(() => {}),
   onVaultListChanged: vi.fn().mockReturnValue(() => {}),
   onVaultConfigChanged: vi.fn().mockReturnValue(() => {}),

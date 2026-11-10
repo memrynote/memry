@@ -1645,6 +1645,8 @@
     "unlockNote": "Odemknout poznámku",
     "lockFolder": "Zamknout složku",
     "unlockFolder": "Odemknout složku",
+    "lockingFolder": "Zamykání složky…",
+    "unlockingFolder": "Odemykání složky…",
     "toggleFailed": "Zámek se nepodařilo změnit",
     "readOnlyIndicator": "Zamčeno. Jen pro čtení, pro vás i pro agenty.",
     "excludedIndicator": "Tato poznámka je ve vyloučené složce.",

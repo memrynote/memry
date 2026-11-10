@@ -1645,6 +1645,8 @@
     "unlockNote": "Desbloquear nota",
     "lockFolder": "Bloquear pasta",
     "unlockFolder": "Desbloquear pasta",
+    "lockingFolder": "Bloqueando pasta…",
+    "unlockingFolder": "Desbloqueando pasta…",
     "toggleFailed": "Não foi possível alterar o bloqueio",
     "readOnlyIndicator": "Bloqueada. Somente leitura para você e para os agentes.",
     "excludedIndicator": "Esta nota está em uma pasta excluída.",

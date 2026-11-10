@@ -1645,6 +1645,8 @@
     "unlockNote": "Avaa muistiinpanon lukitus",
     "lockFolder": "Lukitse kansio",
     "unlockFolder": "Avaa kansion lukitus",
+    "lockingFolder": "Lukitaan kansiota…",
+    "unlockingFolder": "Avataan kansion lukitusta…",
     "toggleFailed": "Lukitusta ei voitu muuttaa",
     "readOnlyIndicator": "Lukittu. Vain luku sinulle ja agenteille.",
     "excludedIndicator": "Tämä muistiinpano on poissuljetussa kansiossa.",

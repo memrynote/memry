@@ -1645,6 +1645,8 @@
     "unlockNote": "I-unlock ang tala",
     "lockFolder": "I-lock ang folder",
     "unlockFolder": "I-unlock ang folder",
+    "lockingFolder": "Nila-lock ang folder…",
+    "unlockingFolder": "Ina-unlock ang folder…",
     "toggleFailed": "Hindi mabago ang lock",
     "readOnlyIndicator": "Naka-lock. Read-only para sa iyo at sa mga agent.",
     "excludedIndicator": "Nasa isang hindi isinasamang folder ang talang ito.",
