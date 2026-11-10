@@ -1002,8 +1002,10 @@ describe('useJournalEntry dedicated hook', () => {
       act(() => {
         result.current.updateContent('First')
       })
+      // The save's delay only: running every pending timer would pass the 10 s wait on a write
+      // that does not answer, which ends the save in flight.
       await act(async () => {
-        await vi.runOnlyPendingTimersAsync()
+        await vi.advanceTimersByTimeAsync(1_000)
       })
       expect(updateEntry).toHaveBeenCalledTimes(1)
 

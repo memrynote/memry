@@ -13,6 +13,7 @@ import {
   createTestQueryClient,
   setupHookTestEnvironment
 } from '@tests/utils/hook-test-wrapper'
+import { trackRendererError } from '@/lib/telemetry-diagnostics'
 import type { JournalEntry } from '../../../preload/index.d'
 import { useJournalChangeEvents } from './use-journal-change-events'
 import { useJournalEntry } from './use-journal-entry'
@@ -27,6 +28,7 @@ vi.mock('react-i18next', () => ({
 vi.mock('@/lib/logger', () => ({
   createLogger: () => ({ error: vi.fn(), warn: vi.fn(), info: vi.fn() })
 }))
+vi.mock('@/lib/telemetry-diagnostics', () => ({ trackRendererError: vi.fn() }))
 
 const DAY = '2026-05-10'
 const NEXT = '2026-05-11'
@@ -489,6 +491,8 @@ describe('useJournalEntry: outside edits of the open day', () => {
   describe('a day switch with typing not saved yet', () => {
     const savesOf = (date: string): number =>
       updateEntry.mock.calls.filter(([input]) => (input as { date: string }).date === date).length
+    const readsOf = (date: string): number =>
+      getEntry.mock.calls.filter(([read]) => read === date).length
 
     it('saves the typing once', async () => {
       const hook = await mount()
@@ -688,6 +692,86 @@ describe('useJournalEntry: outside edits of the open day', () => {
         await vi.advanceTimersByTimeAsync(1_000)
       })
       expect(updateEntry).toHaveBeenLastCalledWith({ date: NEXT, content: 'Next typed.' })
+    })
+
+    // The day's own save never answers: the save flag it holds stops every day's saves and keeps
+    // the indicator on until the app quits, unless the wait on it ends (#4138).
+    it('sends later saves of every day when the day save itself never answers', async () => {
+      const hook = await mount()
+      // oxlint-disable-next-line typescript/no-misused-promises -- mockImplementation is typed as a void-returning callback; a Promise that never settles is the write that never answers
+      updateEntry.mockImplementationOnce(() => new Promise<JournalEntry>(() => {}))
+      await startSave(hook.result, 'Typed.')
+      act(() => {
+        hook.result.current.updateContent('Typed. More.')
+      })
+      await act(async () => {
+        await vi.advanceTimersByTimeAsync(1_000)
+      })
+      expect(savesOf(DAY)).toBe(1)
+      expect(hook.result.current.isSaving).toBe(true)
+      expect(trackRendererError).not.toHaveBeenCalled()
+
+      await act(async () => {
+        await vi.advanceTimersByTimeAsync(9_000)
+      })
+
+      expect(hook.result.current.isSaving).toBe(false)
+      expect(trackRendererError).toHaveBeenCalledWith(
+        'journal_day_write_timeout',
+        expect.objectContaining({
+          message: expect.stringMatching(new RegExp(`${DAY}.*10000 ms.*save flag`))
+        })
+      )
+      act(() => {
+        hook.result.current.updateContent('Typed. After.')
+      })
+      await act(async () => {
+        await vi.advanceTimersByTimeAsync(1_000)
+      })
+      expect(updateEntry).toHaveBeenLastCalledWith({ date: DAY, content: 'Typed. After.' })
+      expect(hook.result.current.isSaving).toBe(false)
+      await openDay(hook, NEXT)
+      act(() => {
+        hook.result.current.updateContent('Next typed.')
+      })
+      await act(async () => {
+        await vi.advanceTimersByTimeAsync(1_000)
+      })
+      expect(updateEntry).toHaveBeenLastCalledWith({ date: NEXT, content: 'Next typed.' })
+    })
+
+    // The read of a reopened day waits for the day's writes; one that never answers would keep the
+    // read, and with it an outside edit of the day, from the editor for good (#4138).
+    it('reads the reopened day 10 s on when a write of the day never answers', async () => {
+      const hook = await mount()
+      const reportLate = hook.result.current.updateContent
+      await openDay(hook, NEXT)
+      // oxlint-disable-next-line typescript/no-misused-promises -- mockImplementation is typed as a void-returning callback; a Promise that never settles is the write that never answers
+      updateEntry.mockImplementationOnce(() => new Promise<JournalEntry>(() => {}))
+      act(() => {
+        reportLate('Typed. Late.')
+      })
+      await settle()
+      expect(savesOf(DAY)).toBe(1)
+      files[DAY] = 'Rewritten outside.'
+      await openDay(hook, DAY)
+      const readsBefore = readsOf(DAY)
+      await act(async () => {
+        await vi.advanceTimersByTimeAsync(9_000)
+      })
+      expect(readsOf(DAY)).toBe(readsBefore)
+
+      await act(async () => {
+        await vi.advanceTimersByTimeAsync(1_000)
+      })
+
+      expect(readsOf(DAY)).toBe(readsBefore + 1)
+      expect(hook.result.current.externalUpdateCount).toBe(1)
+      expect(hook.result.current.entry?.content).toBe('Rewritten outside.')
+      expect(trackRendererError).toHaveBeenCalledWith(
+        'journal_day_write_timeout',
+        expect.objectContaining({ message: expect.stringContaining('the read waiting') })
+      )
     })
 
     it('sends the typing again when the save running fails', async () => {

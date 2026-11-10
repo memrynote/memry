@@ -61,20 +61,26 @@ type JournalSaveInput = { date: string; content?: string } & PendingTagsEdit
 const DAY_WRITE_WAIT_MS = 10_000
 
 /**
- * Ends when `previous` answers, or after `DAY_WRITE_WAIT_MS`: a write that never answers would
- * otherwise hold the day's later writes, its reread, and the save flag every day's saves wait on.
+ * Whether `write` answered within `DAY_WRITE_WAIT_MS` (its failure rejects): a write that never
+ * answers would otherwise hold the day's later writes, its reread, and the save flag every day's
+ * saves wait on. `waiting` names what goes on without it. Past the wait, an older write can still
+ * land after a newer one; the timeout is reported so that shows in the field (#4138).
  */
-function afterDayWrite(previous: Promise<unknown>, day: string): Promise<unknown> {
+function answeredInTime(
+  write: Promise<unknown>,
+  day: string,
+  waiting: 'next write' | 'read' | 'save flag'
+): Promise<boolean> {
   let timer: ReturnType<typeof setTimeout> | undefined
-  const waited = new Promise<void>((resolve) => {
+  const waited = new Promise<false>((resolve) => {
     timer = setTimeout(() => {
-      log.warn(
-        `A write of ${day} has not answered in ${DAY_WRITE_WAIT_MS} ms; the next one goes out`
-      )
-      resolve()
+      const message = `A write of ${day} has not answered in ${DAY_WRITE_WAIT_MS} ms; the ${waiting} waiting on it goes on`
+      log.warn(message)
+      trackRendererError('journal_day_write_timeout', new Error(message))
+      resolve(false)
     }, DAY_WRITE_WAIT_MS)
   })
-  return Promise.race([previous, waited]).finally(() => clearTimeout(timer))
+  return Promise.race([write.then(() => true as const), waited]).finally(() => clearTimeout(timer))
 }
 
 /**
@@ -216,7 +222,9 @@ export function useJournalEntry(date: string): UseJournalEntryResult {
   const queueDaySave = useCallback(<T>(day: string, write: () => Promise<T>): Promise<T> => {
     const saves = daySavesRef.current
     const previous = saves.get(day)
-    const sent = (previous ? afterDayWrite(previous, day) : Promise.resolve()).then(write)
+    const sent = (previous ? answeredInTime(previous, day, 'next write') : Promise.resolve()).then(
+      write
+    )
     const done: Promise<unknown> = sent
       .catch(() => undefined)
       .finally(() => {
@@ -442,7 +450,7 @@ export function useJournalEntry(date: string): UseJournalEntryResult {
           })
       }
       const writes = daySavesRef.current.get(day)
-      if (writes) void afterDayWrite(writes, day).then(() => read(day))
+      if (writes) void answeredInTime(writes, day, 'read').then(() => read(day))
       else read(day)
     },
     [queryClient]
@@ -471,10 +479,12 @@ export function useJournalEntry(date: string): UseJournalEntryResult {
       const updateInput: JournalSaveInput = { date: currentDate, ...tags }
       if (content !== null) updateInput.content = content
 
-      await queueDaySave(currentDate, () => updateMutation.mutateAsync(updateInput))
-      saved = true
+      // A write that never answers releases the save flag; its edits stay pending for the next save.
+      saved = await queueDaySave(currentDate, () =>
+        answeredInTime(updateMutation.mutateAsync(updateInput), currentDate, 'save flag')
+      )
 
-      if (currentDateRef.current === currentDate) {
+      if (saved && currentDateRef.current === currentDate) {
         setSaveError(null)
         // Edits made while this save was in flight are newer than what it
         // wrote; they stay pending for the next save.
