@@ -1,6 +1,7 @@
 // A lock set while two windows hold the note open (#3531 14e-3): `vault_locks_set` from one
 // window sends `VaultLocksChangedEvent` to both, so both editors stop taking edits and show the
-// lock notice; typing in the other window changes nothing; the unlock gives both back.
+// lock notice; typing in the other window changes nothing; the unlock gives both back. A note
+// opened while locked takes edits again once it is unlocked: the editor reopens it on the event.
 import { readFileSync } from 'node:fs'
 import { join } from 'node:path'
 
@@ -93,4 +94,24 @@ test('a lock set in one window makes the note read-only in both, and the unlock 
   await expectEditable(page, true)
   await windows.switchToWindow('main')
   await expectEditable(page, true)
+})
+
+test('a note opened while locked takes edits again once it is unlocked', async ({ page }) => {
+  await vaultOpen(page)
+  const note = await createNote(page, {
+    title: `Opened Locked ${Date.now().toString(36)}`,
+    content: 'Locked at open',
+    folder: 'notes'
+  })
+  await setLock(page, note.id, true)
+  await openFromSidebar(page, note)
+  await expectEditable(page, false)
+
+  await setLock(page, note.id, false)
+  await expectEditable(page, true)
+  const editor = page.locator(EDITOR).first()
+  await editor.click()
+  await page.keyboard.press('End')
+  await page.keyboard.insertText(' typed after unlock')
+  await expect(editor).toContainText('typed after unlock')
 })

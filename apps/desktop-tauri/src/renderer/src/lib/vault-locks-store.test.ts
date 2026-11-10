@@ -111,6 +111,15 @@ describe('vault-locks-store (#2606)', () => {
     await expect(setVaultLock('folder', 'Gone', true)).rejects.toBe(notFound)
   })
 
+  it('an unlock of a folder that fails for another reason still fails', async () => {
+    const noVault = { kind: 'locked', code: 'no_vault_open', message: 'No vault is open.' }
+    set.mockRejectedValueOnce(noVault)
+    list.mockClear()
+
+    await expect(setVaultLock('folder', 'Archive', false)).rejects.toBe(noVault)
+    expect(list).not.toHaveBeenCalled()
+  })
+
   it('holds a lock change as pending until Rust answers', async () => {
     let answer: (state: VaultLockState) => void = () => {}
     set.mockReturnValueOnce(new Promise<VaultLockState>((resolve) => (answer = resolve)))

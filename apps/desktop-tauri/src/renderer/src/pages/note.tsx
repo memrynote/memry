@@ -268,8 +268,18 @@ export function NotePage({ noteId }: NotePageProps) {
   const isLocked = body.locked
   const isExcluded = body.excluded
   // The editor host's own answer (open header or a refused `note_locked`), which can come before
-  // the lock store hears of the lock: the notice shows for either.
-  const [docReadOnly, setDocReadOnly] = useState<DocReadOnly | null>(null)
+  // the lock store hears of the lock: the notice shows for either. Kept per note: the page stays
+  // mounted when the tab shows another note, and a large file mounts no editor to clear it.
+  const [docReadOnlyOf, setDocReadOnlyOf] = useState<{
+    noteId: string | undefined
+    readOnly: DocReadOnly | null
+  } | null>(null)
+  const docReadOnly =
+    docReadOnlyOf && docReadOnlyOf.noteId === noteId ? docReadOnlyOf.readOnly : null
+  const handleReadOnlyChange = useCallback(
+    (readOnly: DocReadOnly | null) => setDocReadOnlyOf({ noteId, readOnly }),
+    [noteId]
+  )
   const hasOwnLock = useHasOwnNoteLock(noteId ?? null)
   const { createNote, updateNote, renameNote, deleteNote } = useNoteMutations()
   const {
@@ -1949,7 +1959,7 @@ export function NotePage({ noteId }: NotePageProps) {
                     key={noteId}
                     noteId={noteId}
                     editable={!isLocked}
-                    onReadOnlyChange={setDocReadOnly}
+                    onReadOnlyChange={handleReadOnlyChange}
                     notePath={note.path}
                     initialContent={review.editorInitialContent}
                     contentType="markdown"

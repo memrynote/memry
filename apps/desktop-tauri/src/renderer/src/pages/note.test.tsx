@@ -537,7 +537,8 @@ vi.mock('@/components/note', () => ({
     onInlineTagsChange,
     focusAtEndRef,
     review,
-    onReadOnlyChange
+    onReadOnlyChange,
+    editable
   }: {
     initialContent: string
     externalContentRevision?: number
@@ -551,6 +552,7 @@ vi.mock('@/components/note', () => ({
     focusAtEndRef: React.RefObject<(() => void) | null>
     review?: { onEditorReady?: (editor: unknown) => void }
     onReadOnlyChange?: (readOnly: 'locked' | 'large-file' | 'purged' | null) => void
+    editable?: boolean
   }) => {
     mocks.onMarkdownChange = onMarkdownChange
     mocks.onReadOnlyChange = onReadOnlyChange
@@ -580,7 +582,9 @@ vi.mock('@/components/note', () => ({
     return (
       <div>
         {/* frozen at mount — changes only when the editor is rebuilt */}
-        <div data-testid="editor-content">{content}</div>
+        <div data-testid="editor-content" data-editable={String(editable ?? true)}>
+          {content}
+        </div>
         {/* the live prop the editor re-reads when the revision moves */}
         <div data-testid="editor-live-content">{initialContent}</div>
         <div data-testid="editor-external-revision">
@@ -2778,6 +2782,46 @@ describe('NotePage', () => {
       expect(screen.getByTestId('note-locked-indicator')).toBeInTheDocument()
 
       act(() => mocks.onReadOnlyChange?.(null))
+      expect(screen.queryByTestId('note-locked-indicator')).not.toBeInTheDocument()
+    })
+
+    it('takes edits again and drops the notice once a note opened locked is unlocked', async () => {
+      // #given a note that was locked when it opened: the store and the host both say so
+      mocks.isNoteLocked = true
+      const page = renderWithProviders(<NotePage noteId="note-1" />)
+      await screen.findByTestId('info-section')
+      act(() => mocks.onReadOnlyChange?.('locked'))
+      expect(screen.getByTestId('note-locked-indicator')).toBeInTheDocument()
+      expect(screen.getByTestId('editor-content')).toHaveAttribute('data-editable', 'false')
+
+      // #when it is unlocked: the store hears it, and the provider's reopen answers unlocked
+      mocks.isNoteLocked = false
+      page.rerender(<NotePage noteId="note-1" />)
+      act(() => mocks.onReadOnlyChange?.(null))
+
+      // #then
+      expect(screen.queryByTestId('note-locked-indicator')).not.toBeInTheDocument()
+      expect(screen.getByTestId('editor-content')).toHaveAttribute('data-editable', 'true')
+    })
+
+    it("keeps one note's lock notice off the large file the tab shows next", async () => {
+      const page = renderWithProviders(<NotePage noteId="note-1" />)
+      await screen.findByTestId('info-section')
+      act(() => mocks.onReadOnlyChange?.('locked'))
+      expect(screen.getByTestId('note-locked-indicator')).toBeInTheDocument()
+
+      // A large file mounts no editor, so nothing reports its read-only state.
+      mocks.noteState.note = {
+        ...note,
+        id: 'note-2',
+        content: '',
+        contentOmitted: true,
+        sizeClass: 'large-file',
+        largeFile: { reason: 'file-bytes', fileBytes: 18_700_000, largestBlockBytes: null }
+      }
+      page.rerender(<NotePage noteId="note-2" />)
+      await screen.findByTestId('large-file-viewer')
+
       expect(screen.queryByTestId('note-locked-indicator')).not.toBeInTheDocument()
     })
 

@@ -62,7 +62,8 @@ vi.mock('../../../generated/bindings', () => ({
         return () => {}
       }
     },
-    crdtProviderReadyEvent: { listen: async () => () => {} }
+    crdtProviderReadyEvent: { listen: async () => () => {} },
+    vaultLocksChangedEvent: { listen: async () => () => {} }
   }
 }))
 

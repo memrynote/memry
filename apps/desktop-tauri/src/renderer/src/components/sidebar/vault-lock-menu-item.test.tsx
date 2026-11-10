@@ -105,4 +105,22 @@ describe('VaultLockMenuItem (#2606)', () => {
     await screen.findByRole('button', { name: 'Lock folder' })
     expect(toast.error).not.toHaveBeenCalled()
   })
+  it('says so when a folder unlock fails for any other reason', async () => {
+    act(() => {
+      for (const callback of broadcasts) callback({ notes: [], folders: ['Kept'] })
+    })
+    list.mockClear()
+    set.mockRejectedValueOnce({
+      kind: 'locked',
+      code: 'no_vault_open',
+      message: 'No vault is open.'
+    })
+    render(<VaultLockMenuItem kind="folder" target="Kept" />)
+
+    fireEvent.click(screen.getByRole('button', { name: 'Unlock folder' }))
+
+    await waitFor(() => expect(toast.error).toHaveBeenCalledWith('No vault is open.'))
+    expect(list).not.toHaveBeenCalled()
+    expect(screen.getByRole('button', { name: 'Unlock folder' })).toBeEnabled()
+  })
 })
