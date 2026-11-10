@@ -126,7 +126,7 @@ fn a_save_over_an_outside_edit_the_editor_never_showed_keeps_it_however_small() 
         Some(content_hash("First text\n")),
         "the run's first save keeps the file it found"
     );
-    // Another editor's save of the note: the run's own, under ten words, so no version.
+    // A save for no editor, over the run's own file, under ten words: no version.
     let other = notes.update(&open, save(&id, "Third text\n")).unwrap();
     assert_eq!(other.kept_replaced_hash, None);
     assert_eq!(files(&e, &id), [PLAN]);
@@ -179,6 +179,32 @@ fn a_save_over_another_editors_small_save_keeps_it() {
         .unwrap();
     assert_eq!(again.kept_replaced_hash, None);
     assert_eq!(files(&e, &id).len(), 3);
+}
+
+/// A `keepReplaced` save records its editor too: the file it wrote is not every editor's own,
+/// so another editor's next small save over it keeps a version (#4137).
+#[test]
+fn a_keep_replaced_save_records_its_editor() {
+    let (e, notes, _) = opened(&[("Plan.md", PLAN)]);
+    let open = e.session.current().unwrap();
+    let id = id_at(&e, "Plan.md");
+    notes
+        .update(&open, save_from("card", &id, "Second text\n"))
+        .unwrap();
+    let tab = NoteUpdateInput {
+        keep_replaced: true,
+        ..save_from("tab", &id, "Second tab text\n")
+    };
+    notes.update(&open, tab).unwrap();
+
+    let card = notes
+        .update(&open, save_from("card", &id, "Second card text\n"))
+        .unwrap();
+    assert_eq!(
+        card.kept_replaced_hash,
+        Some(content_hash("Second tab text\n")),
+        "the tab's text is a version, though the card's save is small"
+    );
 }
 
 /// A file the app wrote for no editor (a create) is every editor's own: its first small save

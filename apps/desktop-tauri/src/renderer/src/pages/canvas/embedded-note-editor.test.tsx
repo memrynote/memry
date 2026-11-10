@@ -477,19 +477,29 @@ describe('EmbeddedNoteEditor', () => {
 
     // #4137: two saves of the card ran while the tab's text came in. Only the save whose reply
     // names that text as the one kept tells of it: the first save kept the file before the tab's,
-    // and the second may keep the first's text (sent with `keepReplaced`).
+    // and the second may keep the first's text (sent with `keepReplaced`). The tab's text is
+    // the second's to tell of even when the second answers first, the order the first's reply
+    // would have put its own kept text last.
     it.each([
-      ['the file before the saves, and the second none', 'original body', undefined, 0],
+      ['the file before the saves, and the second none', 'original body', undefined, 0, false],
       [
         "the file before the saves, and the second the first save's",
         'original body',
         'edited body',
-        0
+        0,
+        false
       ],
-      ['the tab text', undefined, 'saved in the tab', 1]
+      ['the tab text', undefined, 'saved in the tab', 1, false],
+      [
+        'the file before the saves, and the second the tab text, answering first',
+        'original body',
+        'saved in the tab',
+        1,
+        true
+      ]
     ])(
       'tells of a note tab save two of its saves ran over only when one kept %s',
-      async (_, firstKept, secondKept, toasts) => {
+      async (_, firstKept, secondKept, toasts, secondAnswersFirst) => {
         const answers: ((result: unknown) => void)[] = []
         const pending = () =>
           new Promise((resolve) => {
@@ -514,21 +524,27 @@ describe('EmbeddedNoteEditor', () => {
         const reads = mocks.get.mock.calls.length
         const hash = (text: string | undefined) => text && { keptReplacedHash: contentHash(text) }
 
+        const answer = [
+          () =>
+            answers[0]?.({
+              success: true,
+              note: null,
+              savedContent: 'edited body',
+              ...hash(firstKept)
+            }),
+          () =>
+            answers[1]?.({
+              success: true,
+              note: null,
+              savedContent: 'edited again',
+              ...hash(secondKept)
+            })
+        ]
         await act(async () => {
-          answers[0]?.({
-            success: true,
-            note: null,
-            savedContent: 'edited body',
-            ...hash(firstKept)
-          })
-          await Promise.resolve()
-          answers[1]?.({
-            success: true,
-            note: null,
-            savedContent: 'edited again',
-            ...hash(secondKept)
-          })
-          await Promise.resolve()
+          for (const reply of secondAnswersFirst ? answer.toReversed() : answer) {
+            reply()
+            await Promise.resolve()
+          }
         })
 
         await vi.waitFor(() => expect(mocks.get.mock.calls.length).toBeGreaterThan(reads))
