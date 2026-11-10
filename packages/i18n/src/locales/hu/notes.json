@@ -1647,6 +1647,7 @@
     "unlockFolder": "Mappa feloldása",
     "toggleFailed": "Nem sikerült módosítani a zárolást",
     "readOnlyIndicator": "Zárolva. Csak olvasható Ön és az ügynökök számára.",
+    "excludedIndicator": "Ez a jegyzet egy kizárt mappában van.",
     "externalEditRestored": "A(z) „{title}” zárolva van, ezért a külső szerkesztését visszavontuk",
     "externalEditRestoredHint": "A szerkesztett szöveg a jegyzet verzióelőzményeiben van elmentve."
   },

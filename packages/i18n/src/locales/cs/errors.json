@@ -28,6 +28,7 @@
   },
   "note": {
     "notFound": "Tato poznámka nebyla nalezena. Možná byla smazána.",
+    "excluded": "Tato poznámka je ve vyloučené složce, takže ji nelze změnit.",
     "invalidFrontmatter": "Tato poznámka má neplatná metadata a nelze ji přečíst.",
     "invalidTitle": "Název poznámky musí mít 1 až 200 znaků.",
     "duplicateId": "Poznámka s tímto ID již existuje.",

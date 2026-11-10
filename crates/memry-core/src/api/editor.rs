@@ -70,6 +70,7 @@ use yrs::updates::decoder::Decode as _;
 use yrs::{ReadTxn as _, StateVector};
 
 use crate::api::errors::{AuthError, StorageError};
+use crate::api::excluded_paths::ExcludedPaths;
 use crate::api::tasks_write::now_ms;
 use crate::crdt::errors::CrdtError;
 use crate::crdt::markdown_seed::body_is_empty;
@@ -122,6 +123,8 @@ pub enum ReadOnly {
     LargeFile,
     /// The note, or a folder above its file, is locked ([`crate::domain::vault_locks`]).
     Locked,
+    /// The note's file is one the app never writes ([`ExcludedPaths`]).
+    Excluded,
 }
 
 /// A stored edit.
@@ -156,6 +159,10 @@ pub enum EditorError {
     /// agents relay it verbatim and the renderer shows it localized.
     #[error("The owner made this note read-only.")]
     Locked { note_id: String },
+    /// The note's file is excluded ([`ExcludedPaths`]): the edit was refused before anything
+    /// was written.
+    #[error("This note is in an excluded folder.")]
+    Excluded { note_id: String },
     /// The note's file is large-file class: the edit was refused before
     /// anything was written. Electron has no text for it (its renderer never
     /// mounts an editor on a large file); this one is shown to the user.
@@ -188,13 +195,19 @@ pub struct Editor {
     /// The writer's read-only state, read once: it holds for the connection's
     /// life.
     read_only: OnceLock<bool>,
+    /// The vault's, read on every open and edit.
+    excluded: ExcludedPaths,
 }
 
 impl Editor {
     /// Built by [`crate::api::vault::Vault::editor`]. The device identity is the
     /// one core-authored writes go under, as for
     /// [`crate::api::external_feed::ExternalFeed`].
-    pub(crate) fn over(db: Db, store: &Arc<dyn SecureStore>) -> Result<Self, AuthError> {
+    pub(crate) fn over(
+        db: Db,
+        store: &Arc<dyn SecureStore>,
+        excluded: ExcludedPaths,
+    ) -> Result<Self, AuthError> {
         let secret =
             store
                 .get(SecureStoreKey::DeviceSigningKey)?
@@ -213,6 +226,7 @@ impl Editor {
             grown: Mutex::default(),
             committing: Mutex::default(),
             read_only: OnceLock::new(),
+            excluded,
         })
     }
 
@@ -233,7 +247,7 @@ impl Editor {
                 .ok_or_else(|| unreadable(note_id))?;
             let document = &held.document;
             let opened = (|| {
-                let read_only = read_only(conn, note_id)?;
+                let read_only = read_only(conn, note_id, &self.excluded)?;
                 Ok(Opened {
                     state: document.encode_state()?,
                     state_vector: document.state_vector()?,
@@ -262,8 +276,8 @@ impl Editor {
     /// applies it to the resident document and hands it to the listeners as
     /// [`Origin::Local`] of `holder`. `None`: the update changed nothing, and
     /// nothing was stored or sent. A note that opens read-only refuses it
-    /// ([`EditorError::LargeFile`], [`EditorError::Locked`]) before anything is
-    /// written or applied. See the module doc for the order.
+    /// ([`EditorError::LargeFile`], [`EditorError::Locked`], [`EditorError::Excluded`]) before
+    /// anything is written or applied. See the module doc for the order.
     pub fn apply_update(
         &self,
         note_id: &str,
@@ -282,11 +296,12 @@ impl Editor {
             }
             self.on_writer(|conn| {
                 let owner = body_owner(conn, note_id)?.ok_or_else(|| not_found(note_id))?;
-                if let Some(why) = read_only(conn, note_id)? {
+                if let Some(why) = read_only(conn, note_id, &self.excluded)? {
                     let note_id = note_id.to_owned();
                     return Err(match why {
                         ReadOnly::LargeFile => EditorError::LargeFile { note_id },
                         ReadOnly::Locked => EditorError::Locked { note_id },
+                        ReadOnly::Excluded => EditorError::Excluded { note_id },
                     });
                 }
                 let document = resident
@@ -512,12 +527,24 @@ impl Editor {
 
 /// Why `note_id` opens read-only, if it does. Read on the writer, in the
 /// caller's turn: a class or a lock committed while an edit waited for the
-/// writer refuses that edit.
-fn read_only(conn: &Connection, note_id: &str) -> Result<Option<ReadOnly>, StorageError> {
+/// writer refuses that edit, as does a pattern set meanwhile.
+fn read_only(
+    conn: &Connection,
+    note_id: &str,
+    excluded: &ExcludedPaths,
+) -> Result<Option<ReadOnly>, StorageError> {
     if note_files::is_large_file(conn, note_id)? {
         return Ok(Some(ReadOnly::LargeFile));
     }
-    Ok(vault_locks::is_note_locked(conn, note_id, None)?.then_some(ReadOnly::Locked))
+    if vault_locks::is_note_locked(conn, note_id, None)? {
+        return Ok(Some(ReadOnly::Locked));
+    }
+    if excluded.is_set()
+        && note_files::by_id(conn, note_id)?.is_some_and(|file| excluded.covers(&file.path))
+    {
+        return Ok(Some(ReadOnly::Excluded));
+    }
+    Ok(None)
 }
 
 fn not_found(note_id: &str) -> EditorError {

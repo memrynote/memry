@@ -1647,6 +1647,7 @@
     "unlockFolder": "I-unlock ang folder",
     "toggleFailed": "Hindi mabago ang lock",
     "readOnlyIndicator": "Naka-lock. Read-only para sa iyo at sa mga agent.",
+    "excludedIndicator": "Nasa isang hindi isinasamang folder ang talang ito.",
     "externalEditRestored": "Naka-lock ang “{title}”, kaya binawi ang pag-edit mula sa labas",
     "externalEditRestoredHint": "Naka-save ang na-edit na teksto sa kasaysayan ng bersyon ng tala."
   },

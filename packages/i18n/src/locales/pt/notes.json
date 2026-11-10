@@ -1647,6 +1647,7 @@
     "unlockFolder": "Desbloquear pasta",
     "toggleFailed": "Não foi possível alterar o bloqueio",
     "readOnlyIndicator": "Bloqueada. Somente leitura para você e para os agentes.",
+    "excludedIndicator": "Esta nota está em uma pasta excluída.",
     "externalEditRestored": "“{title}” está bloqueada, então a edição externa foi desfeita",
     "externalEditRestoredHint": "O texto editado foi salvo no histórico de versões da nota."
   },

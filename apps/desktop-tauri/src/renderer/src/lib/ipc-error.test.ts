@@ -141,6 +141,18 @@ describe('extractErrorMessage', () => {
     )
   })
 
+  it('says a write to a note in an excluded folder was refused (#3530)', async () => {
+    await createRendererI18n({ locale: 'en' })
+    const refused = {
+      kind: 'locked',
+      code: 'note_excluded',
+      message: 'This note is in an excluded folder.'
+    }
+    expect(extractErrorMessage(refused, 'fallback')).toBe(
+      "This note is in an excluded folder, so it can't be changed."
+    )
+  })
+
   it('shows the fixed lock refusal in the user language (#2606)', async () => {
     const i18n = createInstance()
     await i18n.use(initReactI18next).init({

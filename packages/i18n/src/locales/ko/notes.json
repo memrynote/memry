@@ -1647,6 +1647,7 @@
     "unlockFolder": "폴더 잠금 해제",
     "toggleFailed": "잠금을 변경하지 못했습니다",
     "readOnlyIndicator": "잠겨 있습니다. 나와 에이전트 모두 읽기 전용입니다.",
+    "excludedIndicator": "이 노트는 제외된 폴더에 있습니다.",
     "externalEditRestored": "“{title}”이(가) 잠겨 있어 외부 편집을 되돌렸습니다",
     "externalEditRestoredHint": "편집된 텍스트는 노트의 버전 기록에 저장되어 있습니다."
   },

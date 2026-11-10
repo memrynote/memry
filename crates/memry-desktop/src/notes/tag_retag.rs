@@ -3,7 +3,8 @@
 //! tag itself, never its `/` children or a body's `#tags` (`memry_core::domain::tag_retag`).
 //!
 //! Each note and journal day carrying it (`Search::tag_holders`: its record, a note's header as
-//! the index read it) goes in its own write turn, as a rename's does (`super::tag_rename`): a
+//! the index read it), but one whose file is excluded, which keeps the tag as Electron's index
+//! does not hold it (and a removal from it alone is refused), goes in its own write turn, as a rename's does (`super::tag_rename`): a
 //! note's frontmatter `tags:` through [`AppEdit`] with [`Precondition::Held`], the body left as
 //! Electron's `editNoteHeaderTags` leaves it; then, once the file holds it, its record's `tags`
 //! and `pinnedTags` (`TagHub::retag_in`, one outbox row). A day's file is the author's (#3931):
@@ -44,8 +45,9 @@ use memry_core::markdown::frontmatter::{
 
 use super::error::{NotesError, SCOPE, kept_is_retryable};
 use super::service::NotesService;
-use super::tag_rename::{SETTLE, recorded_plan, running_change};
+use super::tag_rename::{SETTLE, not_excluded, recorded_plan, running_change};
 use super::tag_rename_unfinished::holder_title;
+use crate::locks::{Locks, Refused};
 use crate::session::OpenVault;
 use crate::vault::app_edit::{AppEdit, Edited, Kept, Precondition};
 use crate::vault::consumer::ChangeSource;
@@ -123,6 +125,9 @@ impl NotesService {
             }
             .into());
         }
+        if Locks::of(open).is_excluded(id)? {
+            return Err(NotesError::Locked(Refused::Excluded));
+        }
         let _running = self.retag_lock(open, tag)?;
         let holders = open.search.tag_holders(tag)?;
         let Some(holder) = holders.iter().find(|holder| holder.id == id) else {
@@ -156,7 +161,7 @@ impl NotesService {
             AppEdit::new(&self.tier, &self.store, open)?,
             self.tag_hub(open)?,
         );
-        let holders = open.search.tag_holders(source)?;
+        let holders = not_excluded(open, open.search.tag_holders(source)?)?;
         let mut retagged = TagRetagged {
             tasks: match target {
                 Some(target) => hub.merge_shared(source, target)?,

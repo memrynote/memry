@@ -38,6 +38,8 @@ use memry_desktop::vault::hash::content_hash;
 use serde_json::{Map, Value, json};
 use vault_env::{Env, QUIET, env, indexed};
 
+use crate::vault_exclude_read_only::exclude;
+
 const NOW: i64 = 1_760_000_000_000;
 
 fn opened(files: &[(&str, &str)]) -> (Env, Arc<NotesService>, Arc<dyn SecureStore>) {
@@ -362,4 +364,23 @@ fn a_locked_note_or_one_in_a_locked_folder_is_refused_and_keeps_its_file() {
             "{path}: no version of a refused apply"
         );
     }
+}
+
+/// A note under an exclude pattern takes no template (#3530 13m-7b-3b): refused, its file and
+/// record as they were.
+#[test]
+fn a_note_under_an_exclude_pattern_is_refused() {
+    let (mut e, notes, store) = opened(&[("archive/Plan.md", "Plan body\n")]);
+    let id = id_at(&e, "archive/Plan.md");
+    let template = brief(&e, &store);
+    exclude(&mut e, &["archive"]);
+
+    let open = e.session.current().unwrap();
+    let refused = notes
+        .apply_template(&open, input(&id, &template, TemplateMode::Full))
+        .unwrap_err();
+    assert_eq!(refused.kind_and_code().1, "note_excluded");
+    assert_eq!(e.read("archive/Plan.md"), "Plan body\n");
+    let note = read::get(&open, &id, None).unwrap().unwrap();
+    assert!(note.tags.is_empty() && note.emoji.is_none(), "{note:?}");
 }

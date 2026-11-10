@@ -8,6 +8,7 @@ import { toast } from 'sonner'
 import type * as BacklinksModule from '@/components/note/backlinks'
 
 const mocks = vi.hoisted(() => ({
+  isDayExcluded: false,
   openTab: vi.fn(),
   activeTab: {
     type: 'journal',
@@ -250,6 +251,10 @@ vi.mock('@/hooks/use-find-in-page', () => ({
 
 vi.mock('@/lib/wikilink-resolver', () => ({
   resolveWikiLink: mocks.resolveWikiLink
+}))
+
+vi.mock('@/lib/excluded-notes-store', () => ({
+  useIsNoteExcluded: () => mocks.isDayExcluded
 }))
 
 vi.mock('@/components/find-bar/find-bar', () => ({
@@ -512,6 +517,7 @@ describe('JournalPage', () => {
   beforeEach(() => {
     vi.clearAllMocks()
     scrolledInto = []
+    mocks.isDayExcluded = false
     mocks.activeTab = { type: 'journal', viewState: { date: '2026-01-15' } }
     mocks.saveError = null
     mocks.entryError = null
@@ -1024,6 +1030,15 @@ describe('JournalPage', () => {
       expect(mocks.propertySectionOptions.canEdit()).toBe(false)
       void act(() => mocks.propertySectionOptions.onBlocked('update'))
       expect(toast.error).toHaveBeenCalledWith('errors:vaultLock.noteReadOnly')
+    })
+
+    it('refuses a property edit of an excluded day with the exclusion text (#3530)', () => {
+      mocks.isDayExcluded = true
+      render(<JournalPage />)
+
+      expect(mocks.propertySectionOptions.canEdit()).toBe(false)
+      void act(() => mocks.propertySectionOptions.onBlocked('update'))
+      expect(toast.error).toHaveBeenCalledWith('errors:note.excluded')
     })
   })
 })

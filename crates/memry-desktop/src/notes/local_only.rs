@@ -5,8 +5,8 @@
 //! note's `note_files` row, `outbox::enqueue` withholds every change of a flagged note, turning
 //! the flag on drops what was queued and keeps the server's copy as it is (no tombstone, as
 //! Electron's `removePendingNoteSyncItems`), and turning it off queues the record and the whole
-//! body. This module only refuses a note that is not live or is locked, and answers with the
-//! note as the renderer reads it.
+//! body. This module only refuses a note that is not live, is locked, or whose file is excluded
+//! (which Electron's index does not hold), and answers with the note as the renderer reads it.
 //!
 //! One difference from Electron stays with the sync driver (Step 17): the core still merges a
 //! remote body update of a local-only note, where Electron's feed skips it and owes the note a
@@ -62,7 +62,8 @@ pub fn set(
     let Some(mut note) = read::get(open, note_id, telemetry)? else {
         return Err(NotesError::NotFound(note_id.to_owned()).into());
     };
-    // A sync-policy change of a locked note is a local edit too (`setNoteLocalOnlyCommand`).
+    // A sync-policy change of a locked or excluded note is a local edit too
+    // (`setNoteLocalOnlyCommand`).
     Locks::of(open).refuse_note(note_id, &note.path)?;
     match open
         .vault

@@ -144,7 +144,8 @@ impl NotesService {
             Kept::FrontmatterUnreadable
             | Kept::FrontmatterBroken
             | Kept::NotRepresentable
-            | Kept::Locked => RefsKept::Unreadable,
+            | Kept::Locked
+            | Kept::Excluded => RefsKept::Unreadable,
             Kept::NoRow
             | Kept::NotMarkdown
             | Kept::NoFile

@@ -66,6 +66,14 @@ pub fn set_source_selection(
 /// `purgeCalendarSourceMirrors`: the source's external events and the
 /// bindings on its calendar go, each with a synced tombstone; an ICS
 /// source's device-local mirror is simply dropped.
+///
+/// The sync cursor goes with them. It records how far the deleted events were
+/// pulled, so keeping it makes the next pull incremental, returning only later
+/// changes, and the purged events never come back (#4022). Like desktop's
+/// purge, the clear rides the caller's edit of the source row: every caller
+/// ticks the row's clock and queues it in the same transaction, so this adds
+/// neither. A peer's merge keeps its own cursor over the null
+/// (`SOURCE_NULL_KEEPS`).
 pub fn purge_mirrors(
     tx: &Connection,
     provider: &str,
@@ -98,6 +106,18 @@ pub fn purge_mirrors(
         [source_id],
     )
     .map_err(failed)?;
+    clear_cursor(tx, source_id, now_ms)
+}
+
+fn clear_cursor(tx: &Connection, source_id: &str, now_ms: i64) -> Result<(), StorageError> {
+    let Some(source) = live_payload(tx, SOURCE_TYPE, source_id)? else {
+        return Ok(());
+    };
+    if source.get("syncCursor").is_none_or(Value::is_null) {
+        return Ok(());
+    }
+    let changes = vec![("syncCursor", Change::Set(Value::Null))];
+    sync_items::apply_local_edit_in(tx, SOURCE_TYPE, source_id, &changes, now_ms)?;
     Ok(())
 }
 
