@@ -29,6 +29,8 @@ vi.mock('@/lib/logger', () => ({
   createLogger: () => ({ error: vi.fn(), warn: vi.fn(), info: vi.fn() })
 }))
 vi.mock('@/lib/telemetry-diagnostics', () => ({ trackRendererError: vi.fn() }))
+const { toastError } = vi.hoisted(() => ({ toastError: vi.fn() }))
+vi.mock('sonner', () => ({ toast: { error: toastError } }))
 
 const DAY = '2026-05-10'
 const NEXT = '2026-05-11'
@@ -877,6 +879,71 @@ describe('useJournalEntry: outside edits of the open day', () => {
       expect(trackRendererError).toHaveBeenCalledWith('journal_save_failed', expect.any(Error))
       expect(savesOf(DAY)).toBe(2)
       expect(files[DAY]).toBe('A')
+    })
+
+    // The resend queues behind the day's writes; text chosen when the late write answered would
+    // be older than a write queued ahead of it, here the save of the day left (#4138).
+    it('sends again the text last sent when its turn comes, not when the late write answered', async () => {
+      const hook = await mount()
+      const first = holdNextSave()
+      await startSave(hook.result, 'A')
+      await act(async () => {
+        await vi.advanceTimersByTimeAsync(10_000)
+      })
+      const second = holdNextSave()
+      await startSave(hook.result, 'A B')
+      act(() => {
+        hook.result.current.updateContent('A B C')
+      })
+      await openDay(hook, NEXT)
+
+      files[DAY] = 'A'
+      await first.finish('A')
+      files[DAY] = 'A B'
+      await second.finish('A B')
+      await act(async () => {
+        await vi.advanceTimersByTimeAsync(0)
+      })
+      await settle()
+
+      expect(files[DAY]).toBe('A B C')
+    })
+
+    // A caller that waits for its write shows the failure itself: one toast, one report.
+    it('leaves a late failure of the save of the day left to its caller', async () => {
+      const hook = await mount()
+      holdNextSave()
+      await startSave(hook.result, 'A')
+      act(() => {
+        hook.result.current.updateContent('A B')
+      })
+      let fail: () => void = () => {}
+      updateEntry.mockImplementationOnce(
+        // oxlint-disable-next-line typescript/no-misused-promises -- mockImplementation is typed as a void-returning callback; rejecting a Promise is what the mocked IPC method does
+        () =>
+          new Promise<JournalEntry>((_, reject) => {
+            fail = () => reject(new Error('disk'))
+          })
+      )
+      updateEntry.mockRejectedValueOnce(new Error('disk2'))
+      await openDay(hook, NEXT)
+      await act(async () => {
+        await vi.advanceTimersByTimeAsync(10_000)
+      })
+      expect(updateEntry).toHaveBeenLastCalledWith({ date: DAY, content: 'A B' })
+
+      await act(async () => {
+        await vi.advanceTimersByTimeAsync(15_000)
+        fail()
+        for (let i = 0; i < 20; i++) await Promise.resolve()
+      })
+      await settle()
+
+      expect(toastError.mock.calls).toEqual([['disk']])
+      expect(vi.mocked(trackRendererError).mock.calls.map(([name]) => name)).toEqual([
+        'journal_day_write_timeout',
+        'journal_pending_save_failed'
+      ])
     })
 
     it('sends the typing again when the save running fails', async () => {
