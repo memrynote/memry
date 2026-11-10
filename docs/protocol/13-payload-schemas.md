@@ -768,9 +768,9 @@ desktop write path stores the whole group
 (`apps/desktop/src/main/ipc/settings-handlers.ts`, `writeGroupSettings`), so it
 is never seeded and cannot overwrite another device's choice.
 
-### 13.7.14 `filter` — `:85-91`
+### 13.7.14 `filter` — `:86-98`
 
-`name`, `config`, `position`, `clock`, `createdAt`. No `modifiedAt` and no
+`name`, `config`, `expression`, `position`, `clock`, `createdAt`. No `modifiedAt` and no
 `fieldClocks`: `filter` takes the document-level resolver (§13.9). Desktop's
 push is its whole `saved_filters` row serialised
 (`packages/sync-client/src/item-handlers/filter-handler.ts:94-103`), so `id` and
@@ -781,6 +781,46 @@ push is its whole `saved_filters` row serialised
 **a client treats it as opaque JSON and keeps keys it does not model**, so an
 edit merges into the stored `config` rather than replacing it (§13.2 rule 3).
 Starring writes `config.starred` as a boolean, `false` included.
+
+**`expression`** holds a saved filter's advanced rules, ANDed with
+`config.filters`. It sits beside `config`, not inside it, because desktop builds
+before it rebuild `config` from the keys they model when they star a filter,
+while §13.2.1 carries an unknown top-level key through their push. Desktop
+stores it in `saved_filters.expression`
+(`apps/desktop/src/main/database/drizzle-data/0082_saved_filter_expression.sql`),
+which adopts a value a build without the column captured into
+`sync_unknown_fields`. On apply, an absent `expression` keeps the stored value
+(a writer that predates the key) and `null` clears it
+(`packages/sync-client/src/item-handlers/filter-handler.ts:45`). Desktop's IPC
+update merges `config` and `config.filters` key by key into the stored config
+and writes `starred` alone (`apps/desktop/src/main/ipc/saved-filters-handlers.ts:60-82`),
+so this build keeps the keys a newer one wrote.
+
+The value is a group, `{ match, rules }`, where `match` is `all`, `any` or
+`none` and each element of `rules` is a group or a rule. A rule is
+`{ field, op, ... }`; the shapes this build writes are
+`TaskFilterGroupSchema` (`packages/contracts/src/saved-filters-api.ts:149-206`).
+Each rule reuses the chip filter of its dimension, so a rule matches what the
+chip with the same values matches (`packages/domain-tasks/src/filtering/expression.ts`):
+
+| `field`                         | `op`                                      | value keys                                                                                  |
+| ------------------------------- | ----------------------------------------- | ------------------------------------------------------------------------------------------- |
+| `title`                         | `contains`, `notContains`                 | `values[0]`, case-folded with `toLowerCase`, title only                                     |
+| `priority`, `status`, `project` | `any`, `none`                             | `values`                                                                                    |
+| `tags`                          | `any`, `all`, `none`, `empty`, `notEmpty` | `values`, folded as the tag chip folds                                                      |
+| `due`                           | `is`, `isNot`                             | `values`: due presets, any of; `custom` reads `dueStart`/`dueEnd` (`YYYY-MM-DD` local keys) |
+| `location`                      | `any`, `none`                             | `folderPaths` (subfolders included), `noteIds`                                              |
+| `repeat`                        | `is`                                      | `values[0]`: `repeating` or `one-time`                                                      |
+| `hasTime`                       | `is`                                      | `values[0]`: `with-time` or `without-time`                                                  |
+
+**A client skips what it cannot evaluate**
+(`packages/domain-tasks/src/filtering/expression.ts:155-250`): a rule with an
+unknown `field` or `op`, with no usable value (empty or non-string `values`, a
+blank title, a `custom` range missing an end or not a date key), and a group
+with an unknown `match` or with nothing left to evaluate. A skipped node drops
+out of its group; it neither matches every task nor none. A fully skipped root
+passes every task. The `expressions` section of `task-filtering.json` pins
+this, task by task, with and without the note index.
 
 ### 13.7.15 `inbox` — `:66-82`
 

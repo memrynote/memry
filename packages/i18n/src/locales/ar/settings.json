@@ -504,7 +504,8 @@
       "loading": "جارٍ تحميل الإعدادات…"
     },
     "groups": {
-      "footer": "التذييل"
+      "footer": "التذييل",
+      "pastYears": "السنوات الماضية"
     },
     "template": {
       "label": "القالب",
@@ -562,6 +563,14 @@
     "showInSidebar": {
       "label": "عرض في الشريط الجانبي",
       "description": "عرض مجلد اليوميات ومدخلاتها في شجرة الملاحظات"
+    },
+    "showOnThisDay": {
+      "label": "إظهار «في مثل هذا اليوم»",
+      "description": "عرض التاريخ نفسه من السنوات الماضية أسفل الإدخال"
+    },
+    "allYearsView": {
+      "label": "إظهار كل السنوات كاملة",
+      "description": "اليوميات الدائمة: كل سنوات هذا التاريخ في صفحة واحدة، أسفل الإدخال"
     }
   },
   "tasks": {
@@ -1381,7 +1390,8 @@
         "ollama": "Ollama (محلي)",
         "openai": "OpenAI",
         "anthropic": "Anthropic",
-        "google": "Google Gemini"
+        "google": "Google Gemini",
+        "custom": "مخصّص (متوافق مع OpenAI)"
       },
       "model": "النموذج",
       "modelDescription": "نموذج اللغة لإعادة الكتابة والتلخيص",
@@ -1391,6 +1401,11 @@
       "apiKeyPlaceholder": "إدخال مفتاح {provider} API",
       "ollamaUrl": "عنوان URL لخادم Ollama",
       "ollamaUrlDescription": "عنوان الخادم المحلي",
+      "customUrl": "عنوان URL الأساسي",
+      "customUrlDescription": "أي نقطة نهاية متوافقة مع OpenAI، مثل OpenRouter",
+      "customUrlPlaceholder": "https://openrouter.ai/api/v1",
+      "customApiKeyPlaceholder": "مفتاح API (اختياري)",
+      "customModelPlaceholder": "معرّف النموذج",
       "connection": "الاتصال",
       "activePort": "نشط على المنفذ {port}",
       "notConnected": "غير متصل",

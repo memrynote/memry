@@ -504,7 +504,8 @@
       "loading": "Ladataan asetuksia…"
     },
     "groups": {
-      "footer": "Alatunniste"
+      "footer": "Alatunniste",
+      "pastYears": "Menneet vuodet"
     },
     "template": {
       "label": "Pohja",
@@ -562,6 +563,14 @@
     "showInSidebar": {
       "label": "Näytä sivupalkissa",
       "description": "Näytä päiväkirjakansio ja sen merkinnät muistiinpanopuussa"
+    },
+    "showOnThisDay": {
+      "label": "Näytä Tänä päivänä",
+      "description": "Listaa sama päivämäärä menneiltä vuosilta merkinnän alle"
+    },
+    "allYearsView": {
+      "label": "Näytä kaikki vuodet kokonaan",
+      "description": "Ikuinen päiväkirja: päivämäärän kaikki vuodet yhdellä sivulla merkinnän alla"
     }
   },
   "tasks": {
@@ -1381,7 +1390,8 @@
         "ollama": "Ollama (paikallinen)",
         "openai": "OpenAI",
         "anthropic": "Anthropic",
-        "google": "Google Gemini"
+        "google": "Google Gemini",
+        "custom": "Mukautettu (OpenAI-yhteensopiva)"
       },
       "model": "Malli",
       "modelDescription": "Kielimalli uudelleenkirjoitusta ja yhteenvetoa varten",
@@ -1391,6 +1401,11 @@
       "apiKeyPlaceholder": "Anna palvelun {provider} API-avain",
       "ollamaUrl": "Ollaman URL-osoite",
       "ollamaUrlDescription": "Paikallisen palvelimen osoite",
+      "customUrl": "Perus-URL",
+      "customUrlDescription": "Mikä tahansa OpenAI-yhteensopiva päätepiste, kuten OpenRouter",
+      "customUrlPlaceholder": "https://openrouter.ai/api/v1",
+      "customApiKeyPlaceholder": "API-avain (valinnainen)",
+      "customModelPlaceholder": "Mallin tunnus",
       "connection": "Yhteys",
       "activePort": "Aktiivinen portissa {port}",
       "notConnected": "Ei yhdistetty",

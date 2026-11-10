@@ -504,7 +504,8 @@
       "loading": "Einstellungen werden geladen…"
     },
     "groups": {
-      "footer": "Fußzeile"
+      "footer": "Fußzeile",
+      "pastYears": "Vergangene Jahre"
     },
     "template": {
       "label": "Vorlage",
@@ -562,6 +563,14 @@
     "showInSidebar": {
       "label": "In der Seitenleiste anzeigen",
       "description": "Journalordner und seine Einträge in der Notizenstruktur anzeigen"
+    },
+    "showOnThisDay": {
+      "label": "An diesem Tag anzeigen",
+      "description": "Dasselbe Datum aus vergangenen Jahren unter dem Eintrag auflisten"
+    },
+    "allYearsView": {
+      "label": "Alle Jahre vollständig anzeigen",
+      "description": "Das ewige Journal: alle Jahre dieses Datums auf einer Seite, unter dem Eintrag"
     }
   },
   "tasks": {
@@ -1381,7 +1390,8 @@
         "ollama": "Ollama (lokal)",
         "openai": "OpenAI",
         "anthropic": "Anthropic",
-        "google": "Google Gemini"
+        "google": "Google Gemini",
+        "custom": "Benutzerdefiniert (OpenAI-kompatibel)"
       },
       "model": "Modell",
       "modelDescription": "Sprachmodell zum Umschreiben und Zusammenfassen",
@@ -1391,6 +1401,11 @@
       "apiKeyPlaceholder": "API-Schlüssel für {provider} eingeben",
       "ollamaUrl": "Ollama-URL",
       "ollamaUrlDescription": "Lokale Serveradresse",
+      "customUrl": "Basis-URL",
+      "customUrlDescription": "Jeder OpenAI-kompatible Endpunkt, etwa OpenRouter",
+      "customUrlPlaceholder": "https://openrouter.ai/api/v1",
+      "customApiKeyPlaceholder": "API-Schlüssel (optional)",
+      "customModelPlaceholder": "Modell-ID",
       "connection": "Verbindung",
       "activePort": "Aktiv auf Port {port}",
       "notConnected": "Nicht verbunden",

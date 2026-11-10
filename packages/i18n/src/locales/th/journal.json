@@ -236,5 +236,21 @@
     "range": "{start} – {end}",
     "openTask": "{title}, {range}",
     "completeTask": "ทำ {title} เสร็จ"
+  },
+  "pastYears": {
+    "title": "ในวันนี้",
+    "count": "{count, plural, other {ปีอื่นอีก # ปี}}",
+    "showAll": "ทุกปี",
+    "showPreviews": "ตัวอย่าง",
+    "yearsAgo": "{count, plural, other {# ปีที่แล้ว}}",
+    "yearsLater": "{count, plural, other {# ปีต่อมา}}",
+    "words": "{count, plural, other {# คำ}}",
+    "openDay": "เปิด {date}",
+    "showFull": "แสดงบันทึกทั้งหมด",
+    "showLess": "แสดงน้อยลง",
+    "loadError": "โหลดวันนี้จากปีอื่นไม่สำเร็จ",
+    "previousYear": "วันเดียวกัน ปีก่อนหน้า",
+    "nextYear": "วันเดียวกัน ปีถัดไป",
+    "goToYear": "ไปที่วันนี้ในปี {year}"
   }
 }

@@ -134,6 +134,7 @@
     "actions": {
       "openInNewTab": "Otevřít na nové kartě",
       "openToTheSide": "Otevřít vedle",
+      "openFolderView": "Otevřít zobrazení složky",
       "newNote": "Nová poznámka",
       "newFolder": "Nová složka",
       "showTasks": "Zobrazit úkoly",
@@ -183,7 +184,8 @@
     },
     "toast": {
       "selectionBookmarked": "Položky přidány do záložek: {count}",
-      "selectionBookmarkFailed": "Vybrané položky nelze přidat do záložek"
+      "selectionBookmarkFailed": "Vybrané položky nelze přidat do záložek",
+      "pairedNoteNameTaken": "Poznámka s názvem {name} už tam existuje"
     }
   },
   "editor": {
@@ -418,6 +420,10 @@
       "savedView": "Uložené zobrazení",
       "savedViewMissing": "Uložené zobrazení „{name}“ už neexistuje, proto je použito výchozí zobrazení.",
       "openAsTab": "Otevřít jako kartu",
+      "newNote": "Nová poznámka",
+      "newViewTitle": "Nové zobrazení",
+      "newViewSubtext": "Nová složka vedle této poznámky, zobrazená zde",
+      "newViewFailed": "Složku pro toto zobrazení se nepodařilo vytvořit.",
       "empty": "Tomuto zobrazení zatím nic neodpovídá.",
       "loadFailed": "Toto zobrazení se nepodařilo načíst. Samotné poznámky zůstaly beze změny.",
       "folderMissing": "Tato složka už v trezoru není. Vyberte jiný zdroj.",
@@ -776,6 +782,12 @@
     "more": "{count, plural, one {# další} few {# další} other {# dalších}}",
     "viaProperty": "{property} → {title}",
     "viaPortal": "Zobrazeno v portálu"
+  },
+  "references": {
+    "filterAll": "Vše",
+    "filterNotes": "Poznámky",
+    "filterJournal": "Deník",
+    "filterBy": "Filtrovat odkazy: {filter}"
   },
   "unlinkedMentions": {
     "title": "Nepropojené zmínky",

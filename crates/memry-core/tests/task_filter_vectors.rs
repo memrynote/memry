@@ -12,12 +12,13 @@ use std::collections::HashMap;
 
 use memry_core::domain::calendar::{CivilDate, LocalDateTime};
 use memry_core::domain::task_filter::{
-    CompletionFilter, DueDateFilter, FilterProject, FilterStatus, FilterTask, HasTimeFilter,
-    Priority, RepeatFilter, SortDirection, SortField, StatusType, TaskFilters, TaskGroup,
-    TaskNoteInfo, TaskSort, apply_filters_and_sort_with_context, count_active_filters,
-    filter_by_completion, filter_by_due_date_range, filter_by_has_time, filter_by_priorities,
-    filter_by_projects, filter_by_repeat_type, filter_by_search, filter_by_statuses,
-    filter_by_tags, group_tasks_for_sort, has_active_filters, sort_tasks_advanced,
+    CompletionFilter, DueDateFilter, ExpressionContext, FilterProject, FilterStatus, FilterTask,
+    HasTimeFilter, Priority, RepeatFilter, SortDirection, SortField, StatusType, TaskFilters,
+    TaskGroup, TaskNoteInfo, TaskSort, apply_filters_and_sort_with_context, count_active_filters,
+    count_rules, filter_by_completion, filter_by_due_date_range, filter_by_has_time,
+    filter_by_priorities, filter_by_projects, filter_by_repeat_type, filter_by_search,
+    filter_by_statuses, filter_by_tags, group_tasks_for_sort, has_active_filters,
+    matches_expression, sort_tasks_advanced,
 };
 use serde_json::{Value, json};
 use support::vector_file;
@@ -350,6 +351,7 @@ fn applied() {
             &f.projects,
             f.named_now(&text(case, "now")),
             u32::try_from(week_starts_on).expect("small week start"),
+            None,
         );
         let mut context: Vec<&str> = context.into_iter().collect();
         context.sort_unstable();
@@ -361,6 +363,60 @@ fn applied() {
         });
         (case["expected"].clone(), actual)
     });
+}
+
+#[test]
+fn expressions() {
+    let f = Fixture::load();
+    check_all("expressions", f.cases("/expressions"), |case| {
+        let week_starts_on = case["weekStartsOn"].as_u64().expect("weekStartsOn");
+        let with_notes = case["withNotes"].as_bool().expect("withNotes");
+        let ctx = ExpressionContext {
+            now: f.named_now(&text(case, "now")),
+            week_starts_on: u32::try_from(week_starts_on).expect("small week start"),
+            note_index: with_notes.then_some(&f.notes),
+        };
+        let matched: Vec<&FilterTask> = f
+            .tasks
+            .iter()
+            .filter(|task| matches_expression(task, &case["expression"], &ctx))
+            .collect();
+        (
+            json!({"expected": case["expected"], "ruleCount": case["ruleCount"]}),
+            json!({"expected": ids(&matched), "ruleCount": count_rules(Some(&case["expression"]))}),
+        )
+    });
+}
+
+/// The flat location fields read from the live filters JSON narrow through
+/// the note index, and with no index match nothing (`filterByLocation`).
+#[test]
+fn location_filter_reads_folder_paths_and_note_ids() {
+    let f = Fixture::load();
+    let filters = TaskFilters::from_json(&json!({
+        "completion": "all",
+        "folderPaths": ["Acme/Planning"],
+        "noteIds": ["n-standup"],
+    }));
+    assert_eq!(count_active_filters(&filters), 2);
+    let sort = TaskSort::from_json(&json!({"field": "title", "direction": "asc"})).expect("sort");
+    let run = |notes| {
+        let (tasks, _) = apply_filters_and_sort_with_context(
+            &f.tasks,
+            &filters,
+            &sort,
+            &f.projects,
+            f.named_now("wednesday"),
+            1,
+            notes,
+        );
+        let mut ids: Vec<&str> = tasks.iter().map(|task| task.id.as_str()).collect();
+        ids.sort_unstable();
+        ids
+    };
+    // `k` and `p` ride with their root `a`.
+    assert_eq!(run(Some(&f.notes)), ["a", "c", "g", "k", "p"]);
+    assert!(run(None).is_empty());
 }
 
 /// A saved filter written by a newer build keeps its unknown values through a

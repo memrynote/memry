@@ -201,7 +201,7 @@ fn migration_14_resets_cursors_a_peer_pushed_back_once() {
     insert("i", "ics", "calendar", "etag:i");
     assert_eq!(
         migrations::run(&mut conn, DATA_MIGRATIONS).expect("to latest"),
-        14
+        migrations::latest_version(DATA_MIGRATIONS)
     );
 
     let column = |id: &str| -> Option<String> {

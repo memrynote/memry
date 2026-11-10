@@ -33,6 +33,7 @@ import type {
   GraphViewsSettingsPatch
 } from '@memry/contracts/graph-api'
 import type { SidebarSortMode, SidebarSortSurface } from '@memry/contracts/sidebar-sort'
+import type { TaskFilterGroup } from '@memry/contracts/saved-filters-api'
 import type {
   AgentEvent,
   AgentBackendId,
@@ -429,12 +430,15 @@ export interface TaskSortConfig {
 export interface SavedFilterConfig {
   filters: TaskFiltersConfig
   sort?: TaskSortConfig
+  starred?: boolean
 }
 
 export interface SavedFilter {
   id: string
   name: string
   config: SavedFilterConfig
+  /** Advanced rules beside `config`; null when the filter has none. */
+  expression: TaskFilterGroup | null
   position: number
   createdAt: string
 }
@@ -442,12 +446,16 @@ export interface SavedFilter {
 export interface SavedFilterCreateInput {
   name: string
   config: SavedFilterConfig
+  expression?: TaskFilterGroup | null
 }
 
 export interface SavedFilterUpdateInput {
   id: string
   name?: string
+  /** Merged key by key into the stored config. */
   config?: SavedFilterConfig
+  starred?: boolean
+  expression?: TaskFilterGroup | null
   position?: number
 }
 

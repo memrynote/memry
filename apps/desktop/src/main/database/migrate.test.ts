@@ -1776,3 +1776,67 @@ describe('0073_tag_schema_task_fields migration', () => {
     sqlite.close()
   })
 })
+
+describe('0082_saved_filter_expression migration', () => {
+  let tempDir: string
+  const migrationsDir = path.join(__dirname, 'drizzle-data')
+
+  beforeEach(() => {
+    tempDir = fs.mkdtempSync(path.join(os.tmpdir(), 'memry-filter-expression-'))
+  })
+
+  afterEach(() => {
+    fs.rmSync(tempDir, { recursive: true, force: true })
+  })
+
+  it('adopts the rules a pre-0082 build captured, so its first push does not clear them', () => {
+    const copy = path.join(tempDir, 'drizzle-data-pre-0082')
+    fs.cpSync(migrationsDir, copy, { recursive: true })
+    const journalPath = path.join(copy, 'meta', '_journal.json')
+    const journal = JSON.parse(fs.readFileSync(journalPath, 'utf8')) as {
+      entries: { tag: string }[]
+    }
+    const cutoff = journal.entries.findIndex((e) => e.tag === '0082_saved_filter_expression')
+    expect(cutoff).toBeGreaterThanOrEqual(0)
+    for (const entry of journal.entries.splice(cutoff)) {
+      fs.rmSync(path.join(copy, `${entry.tag}.sql`))
+    }
+    fs.writeFileSync(journalPath, JSON.stringify(journal, null, 2))
+
+    const sqlite = new Database(path.join(tempDir, 'data.db'))
+    const db = drizzle(sqlite)
+    migrate(db, { migrationsFolder: copy })
+
+    const insertFilter = sqlite.prepare(
+      `INSERT INTO saved_filters (id, name, config) VALUES (?, ?, '{"filters":{}}')`
+    )
+    const capture = sqlite.prepare(
+      'INSERT INTO sync_unknown_fields (type, item_id, fields, updated_at) VALUES (?, ?, ?, 1)'
+    )
+    for (const id of ['plain', 'captured', 'garbage', 'scalar', 'other-type']) {
+      insertFilter.run(id, `Filter ${id}`)
+    }
+    const rules = '{"match":"any","rules":[{"field":"priority","op":"any","values":["urgent"]}]}'
+    capture.run('filter', 'captured', `{"expression":${rules},"later":true}`)
+    capture.run('filter', 'garbage', '{not json')
+    capture.run('filter', 'scalar', '{"expression":"all"}')
+    capture.run('task', 'other-type', `{"expression":${rules}}`)
+
+    migrate(db, { migrationsFolder: migrationsDir })
+
+    const rows = sqlite
+      .prepare('SELECT id, name, config, expression FROM saved_filters ORDER BY id')
+      .all() as { id: string; name: string; config: string; expression: string | null }[]
+    expect(
+      rows.map((r) => [r.id, r.expression === null ? null : JSON.parse(r.expression)])
+    ).toEqual([
+      ['captured', JSON.parse(rules)],
+      ['garbage', null],
+      ['other-type', null],
+      ['plain', null],
+      ['scalar', null]
+    ])
+    expect(rows.every((r) => r.config === '{"filters":{}}')).toBe(true)
+    sqlite.close()
+  })
+})

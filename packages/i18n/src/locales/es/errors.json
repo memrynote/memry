@@ -137,6 +137,7 @@
   },
   "ai": {
     "inlineDisabled": "La edición en línea con IA está desactivada",
+    "listModelsFailed": "No se pudieron listar los modelos",
     "writingAssistInvalid": "No se pudo enviar esa solicitud al modelo de IA.",
     "apiKeyMissing": "Añade tu clave de API de {provider} en Ajustes → IA para usar las herramientas de escritura.",
     "apiKeyInvalid": "Se rechazó tu clave de API de {provider}. Compruébala en Ajustes → IA.",

@@ -51,6 +51,13 @@ import {
 } from '@/data/tasks-data'
 import { useTaskNoteIndex } from '@/hooks/use-task-note-index'
 import { hasLocationFilter } from '@/lib/task-note-index'
+import {
+  emptyExpression,
+  normalizeExpression,
+  seedExpressionFromFilters
+} from '@/lib/task-filter-rules'
+import { RuleBuilder } from '@/components/tasks/filters/advanced/rule-builder'
+import { Popover, PopoverAnchor, PopoverContent } from '@/components/ui/popover'
 import { SHOW_TASKS_LOCATION_KEY, parseShowTasksLocation } from '@/lib/tasks-location-tab'
 import { createDefaultTask, type Task, type Priority, type RepeatConfig } from '@/data/task-model'
 import {
@@ -292,6 +299,7 @@ export const TasksPage = ({
   const [addTaskPrefillProjectId, setAddTaskPrefillProjectId] = useState<string | null>(null)
 
   const [isFilterDropdownOpen, setIsFilterDropdownOpen] = useState(false)
+  const [isRuleBuilderOpen, setIsRuleBuilderOpen] = useState(false)
   // Scroll-edge state for the toolbar chrome: hairline materializes only once
   // content inside <main> has actually scrolled
   const [isScrolled, setIsScrolled] = useState(false)
@@ -397,7 +405,19 @@ export const TasksPage = ({
 
   // Also loaded while the filter menu is open: its Location panel lists folders
   // and notes from it. The query shares the sidebar tree's cache entry.
-  const noteIndex = useTaskNoteIndex(isFilterDropdownOpen || hasLocationFilter(filters))
+  const noteIndex = useTaskNoteIndex(
+    isFilterDropdownOpen || isRuleBuilderOpen || hasLocationFilter(filters)
+  )
+
+  // The builder edits the chips as rules: they move in once, when it first
+  // opens with no rules, so the list does not change under it.
+  const openRuleBuilder = useCallback(() => {
+    if (!filters.expression) {
+      const { expression, cleared } = seedExpressionFromFilters(filters)
+      if (expression.rules.length > 0) updateFiltersAndClearSaved({ ...cleared, expression })
+    }
+    setIsRuleBuilderOpen(true)
+  }, [filters, updateFiltersAndClearSaved])
 
   const handleTabChange = useCallback(
     (tab: TasksInternalTab) => {
@@ -1220,58 +1240,78 @@ export const TasksPage = ({
               focusSignal={focusQuickAddSignal}
             />
 
-            {/* Filter Button */}
-            <TooltipProvider delayDuration={0}>
-              <Tooltip>
-                <FilterDropdown
-                  open={isFilterDropdownOpen}
-                  onOpenChange={setIsFilterDropdownOpen}
-                  filters={filters}
-                  onUpdateFilters={updateFiltersAndClearSaved}
-                  onClearFilters={clearFiltersAndClearSaved}
+            {/* Filter Button; the advanced rule builder anchors to it */}
+            <Popover open={isRuleBuilderOpen} onOpenChange={setIsRuleBuilderOpen}>
+              <PopoverAnchor asChild>
+                <div className="flex shrink-0">
+                  <TooltipProvider delayDuration={0}>
+                    <Tooltip>
+                      <FilterDropdown
+                        open={isFilterDropdownOpen}
+                        onOpenChange={setIsFilterDropdownOpen}
+                        filters={filters}
+                        onUpdateFilters={updateFiltersAndClearSaved}
+                        onClearFilters={clearFiltersAndClearSaved}
+                        tasks={baseFilteredTasks}
+                        projects={projects}
+                        noteIndex={noteIndex}
+                        savedFilters={savedFilters}
+                        activeSavedFilterId={activeSavedFilterId}
+                        hasActiveFilters={filtersActive}
+                        onDeleteSavedFilter={handleDeleteSavedFilter}
+                        onApplySavedFilter={handleApplySavedFilter}
+                        onSaveFilter={(name) => handleSaveFilter(name, filters, sort)}
+                        onToggleStarFilter={toggleStarFilter}
+                        statuses={currentProjectStatuses}
+                        onOpenAdvanced={openRuleBuilder}
+                      >
+                        <TooltipTrigger asChild>
+                          <button
+                            type="button"
+                            aria-label={t('filters.filter')}
+                            className={cn(
+                              'flex items-center justify-center shrink-0 rounded-[5px] p-1.5 gap-1',
+                              'transition-all duration-150 ease-out active:scale-95',
+                              isFilterDropdownOpen || filtersActive
+                                ? 'bg-foreground/5 text-foreground/90'
+                                : 'text-muted-foreground hover:bg-surface-active/50'
+                            )}
+                          >
+                            <svg width="14" height="14" viewBox="0 0 13 13" fill="none">
+                              <path
+                                d="M2 3h9M3.5 6.5h6M5 10h3"
+                                stroke="currentColor"
+                                strokeWidth="1.1"
+                                strokeLinecap="round"
+                              />
+                            </svg>
+                            {filtersActive && (
+                              <span className="flex items-center justify-center size-[14px] rounded-full bg-foreground text-background text-[9px] font-bold">
+                                {countActiveFilters(filters)}
+                              </span>
+                            )}
+                          </button>
+                        </TooltipTrigger>
+                      </FilterDropdown>
+                      <TooltipContent side="bottom">{t('filters.filter')}</TooltipContent>
+                    </Tooltip>
+                  </TooltipProvider>
+                </div>
+              </PopoverAnchor>
+              <PopoverContent align="end" sideOffset={8} className="w-[560px] overflow-clip p-0">
+                <RuleBuilder
+                  expression={filters.expression ?? emptyExpression()}
+                  onChange={(expression) =>
+                    updateFiltersAndClearSaved({ expression: normalizeExpression(expression) })
+                  }
+                  onClear={() => updateFiltersAndClearSaved({ expression: null })}
+                  matchCount={filteredCount}
                   tasks={baseFilteredTasks}
                   projects={projects}
                   noteIndex={noteIndex}
-                  savedFilters={savedFilters}
-                  activeSavedFilterId={activeSavedFilterId}
-                  hasActiveFilters={filtersActive}
-                  onDeleteSavedFilter={handleDeleteSavedFilter}
-                  onApplySavedFilter={handleApplySavedFilter}
-                  onSaveFilter={(name) => handleSaveFilter(name, filters, sort)}
-                  onToggleStarFilter={toggleStarFilter}
-                  statuses={currentProjectStatuses}
-                >
-                  <TooltipTrigger asChild>
-                    <button
-                      type="button"
-                      aria-label={t('filters.filter')}
-                      className={cn(
-                        'flex items-center justify-center shrink-0 rounded-[5px] p-1.5 gap-1',
-                        'transition-all duration-150 ease-out active:scale-95',
-                        isFilterDropdownOpen || filtersActive
-                          ? 'bg-foreground/5 text-foreground/90'
-                          : 'text-muted-foreground hover:bg-surface-active/50'
-                      )}
-                    >
-                      <svg width="14" height="14" viewBox="0 0 13 13" fill="none">
-                        <path
-                          d="M2 3h9M3.5 6.5h6M5 10h3"
-                          stroke="currentColor"
-                          strokeWidth="1.1"
-                          strokeLinecap="round"
-                        />
-                      </svg>
-                      {filtersActive && (
-                        <span className="flex items-center justify-center size-[14px] rounded-full bg-foreground text-background text-[9px] font-bold">
-                          {countActiveFilters(filters)}
-                        </span>
-                      )}
-                    </button>
-                  </TooltipTrigger>
-                </FilterDropdown>
-                <TooltipContent side="bottom">{t('filters.filter')}</TooltipContent>
-              </Tooltip>
-            </TooltipProvider>
+                />
+              </PopoverContent>
+            </Popover>
 
             {/* Group By Button */}
             <GroupByDropdown sort={sort} onChange={updateSort} />
@@ -1401,6 +1441,7 @@ export const TasksPage = ({
               noteIndex={noteIndex}
               onUpdateFilters={updateFiltersAndClearSaved}
               onClearFilters={clearFiltersAndClearSaved}
+              onEditRules={openRuleBuilder}
               onSaveFilter={() => setIsFilterDropdownOpen(true)}
               isSaved={activeSavedFilterId !== null}
             />

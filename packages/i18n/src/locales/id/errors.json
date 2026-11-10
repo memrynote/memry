@@ -137,6 +137,7 @@
   },
   "ai": {
     "inlineDisabled": "Pengeditan sebaris AI dinonaktifkan",
+    "listModelsFailed": "Gagal menampilkan daftar model",
     "writingAssistInvalid": "Permintaan itu tidak dapat dikirim ke model AI.",
     "apiKeyMissing": "Tambahkan kunci API {provider} Anda di Pengaturan → AI untuk menggunakan alat menulis.",
     "apiKeyInvalid": "Kunci API {provider} Anda ditolak. Periksa di Pengaturan → AI.",

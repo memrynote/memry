@@ -134,6 +134,7 @@
     "actions": {
       "openInNewTab": "Apri in una nuova scheda",
       "openToTheSide": "Apri a lato",
+      "openFolderView": "Apri vista cartella",
       "newNote": "Nuova nota",
       "newFolder": "Nuova cartella",
       "showTasks": "Mostra attività",
@@ -183,7 +184,8 @@
     },
     "toast": {
       "selectionBookmarked": "{count} elementi aggiunti ai segnalibri",
-      "selectionBookmarkFailed": "Impossibile aggiungere gli elementi selezionati ai segnalibri"
+      "selectionBookmarkFailed": "Impossibile aggiungere gli elementi selezionati ai segnalibri",
+      "pairedNoteNameTaken": "Lì esiste già una nota chiamata {name}"
     }
   },
   "editor": {
@@ -418,6 +420,10 @@
       "savedView": "Vista salvata",
       "savedViewMissing": "La vista salvata “{name}” non esiste più, quindi viene mostrata la vista predefinita.",
       "openAsTab": "Apri come scheda",
+      "newNote": "Nuova nota",
+      "newViewTitle": "Nuova vista",
+      "newViewSubtext": "Una nuova cartella accanto a questa nota, elencata qui",
+      "newViewFailed": "Impossibile creare la cartella per questa vista.",
       "empty": "Per ora nessuna nota corrisponde a questa vista.",
       "loadFailed": "Impossibile caricare questa vista. Le note in sé sono intatte.",
       "folderMissing": "Questa cartella non è più nel vault. Scegli un'altra origine.",
@@ -776,6 +782,12 @@
     "more": "Altri {count}",
     "viaProperty": "{property} → {title}",
     "viaPortal": "Mostrato in un portale"
+  },
+  "references": {
+    "filterAll": "Tutte",
+    "filterNotes": "Note",
+    "filterJournal": "Diario",
+    "filterBy": "Filtra i riferimenti: {filter}"
   },
   "unlinkedMentions": {
     "title": "Menzioni non collegate",

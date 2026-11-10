@@ -134,6 +134,7 @@
     "actions": {
       "openInNewTab": "新しいタブで開く",
       "openToTheSide": "横に並べて開く",
+      "openFolderView": "フォルダビューを開く",
       "newNote": "新規ノート",
       "newFolder": "新しいフォルダー",
       "showTasks": "タスクを表示",
@@ -183,7 +184,8 @@
     },
     "toast": {
       "selectionBookmarked": "{count} 件をブックマークしました",
-      "selectionBookmarkFailed": "選択した項目をブックマークできませんでした"
+      "selectionBookmarkFailed": "選択した項目をブックマークできませんでした",
+      "pairedNoteNameTaken": "{name} という名前のノートがすでにあります"
     }
   },
   "editor": {
@@ -418,6 +420,10 @@
       "savedView": "保存済みビュー",
       "savedViewMissing": "保存済みビュー「{name}」が見つからないため、デフォルトのビューを表示しています。",
       "openAsTab": "タブとして開く",
+      "newNote": "新規ノート",
+      "newViewTitle": "新しいビュー",
+      "newViewSubtext": "このノートの隣に作成され、ここに一覧表示される新しいフォルダ",
+      "newViewFailed": "このビュー用のフォルダを作成できませんでした。",
       "empty": "このビューに該当するものはまだありません。",
       "loadFailed": "このビューを読み込めませんでした。ノート自体は変更されていません。",
       "folderMissing": "このフォルダーはもう保管庫にありません。別の表示対象を選択してください。",
@@ -776,6 +782,12 @@
     "more": "ほか {count} 件",
     "viaProperty": "{property} → {title}",
     "viaPortal": "ポータルに表示"
+  },
+  "references": {
+    "filterAll": "すべて",
+    "filterNotes": "ノート",
+    "filterJournal": "ジャーナル",
+    "filterBy": "参照を絞り込み: {filter}"
   },
   "unlinkedMentions": {
     "title": "リンクされていない言及",

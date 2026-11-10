@@ -236,5 +236,21 @@
     "range": "{start} – {end}",
     "openTask": "{title}, {range}",
     "completeTask": "Dovrši {title}"
+  },
+  "pastYears": {
+    "title": "Na današnji dan",
+    "count": "{count, plural, one {# druga godina} few {# druge godine} other {# drugih godina}}",
+    "showAll": "Sve godine",
+    "showPreviews": "Pretpregledi",
+    "yearsAgo": "{count, plural, one {prije # godinu} few {prije # godine} other {prije # godina}}",
+    "yearsLater": "{count, plural, one {# godinu kasnije} few {# godine kasnije} other {# godina kasnije}}",
+    "words": "{count, plural, one {# riječ} few {# riječi} other {# riječi}}",
+    "openDay": "Otvori {date}",
+    "showFull": "Prikaži cijeli unos",
+    "showLess": "Prikaži manje",
+    "loadError": "Ovaj dan iz drugih godina nije moguće učitati.",
+    "previousYear": "Isti dan, prethodna godina",
+    "nextYear": "Isti dan, sljedeća godina",
+    "goToYear": "Idi na ovaj dan u godini {year}"
   }
 }

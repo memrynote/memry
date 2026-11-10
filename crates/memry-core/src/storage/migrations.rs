@@ -110,6 +110,11 @@ pub const DATA_MIGRATIONS: &[Migration] = &[
         name: "calendar_foreign_cursor_reset",
         sql: include_str!("migrations/data/0014_calendar_foreign_cursor_reset.sql"),
     },
+    Migration {
+        version: 15,
+        name: "saved_filter_expressions",
+        sql: include_str!("migrations/data/0015_saved_filter_expressions.sql"),
+    },
 ];
 
 /// `index.db`: the rebuildable search and link index.
@@ -238,7 +243,7 @@ mod tests {
         let version = db
             .call_blocking(|conn| user_version(conn))
             .expect("user_version");
-        assert_eq!(version, 14);
+        assert_eq!(version, 15);
 
         let names = table_names(&db);
         // Source of record, §A.2.
@@ -279,6 +284,7 @@ mod tests {
             "projects",
             "property_definitions",
             "reminders",
+            "saved_filter_expressions",
             "saved_filters",
             "settings",
             "settings_field_clocks",
@@ -349,7 +355,7 @@ mod tests {
         let version = db
             .call_blocking(|conn| run(conn, DATA_MIGRATIONS))
             .expect("step forward");
-        assert_eq!(version, 14);
+        assert_eq!(version, 15);
 
         let (count, payload): (i64, String) = db
             .call_blocking(|conn| {
@@ -427,5 +433,44 @@ mod tests {
         let names = table_names(&db);
         assert!(names.iter().any(|n| n == "kept"));
         assert!(!names.iter().any(|n| n == "added"));
+    }
+
+    /// 0015 recovers the rules an older build stored in the verbatim payload
+    /// but never projected; only an object counts.
+    #[test]
+    fn saved_filter_expressions_backfill_from_stored_payloads() {
+        let db = Db::open_in_memory().expect("open");
+        let rows = db
+            .call_blocking(|conn| {
+                run(conn, &DATA_MIGRATIONS[..14])?;
+                conn.execute_batch(
+                    "INSERT INTO sync_items (item_type, item_id, payload, payload_state, updated_at) VALUES
+                       ('filter', 'f1', '{\"name\":\"a\",\"expression\":{\"match\":\"all\",\"rules\":[]}}', 'full', 1),
+                       ('filter', 'f2', '{\"name\":\"b\",\"expression\":null}', 'full', 1),
+                       ('filter', 'f3', NULL, 'metadata', 1),
+                       ('note', 'n1', '{\"expression\":{}}', 'full', 1);",
+                )
+                .map_err(|err| StorageError::Failed {
+                    what: err.to_string(),
+                })?;
+                run(conn, DATA_MIGRATIONS)?;
+                let mut statement = conn
+                    .prepare("SELECT filter_id, expression FROM saved_filter_expressions")
+                    .map_err(|err| StorageError::Failed {
+                        what: err.to_string(),
+                    })?;
+                let rows = statement
+                    .query_map([], |row| Ok((row.get(0)?, row.get(1)?)))
+                    .and_then(Iterator::collect::<rusqlite::Result<Vec<(String, String)>>>)
+                    .map_err(|err| StorageError::Failed {
+                        what: err.to_string(),
+                    })?;
+                Ok(rows)
+            })
+            .expect("migrate");
+        assert_eq!(
+            rows,
+            [("f1".to_owned(), r#"{"match":"all","rules":[]}"#.to_owned())]
+        );
     }
 }

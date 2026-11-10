@@ -1,4 +1,5 @@
 import type { NoteListItem } from '@memry/rpc/notes'
+import type { TaskFilterNode } from '@memry/domain-tasks/filtering'
 
 import { extractFolderFromPath, getDisplayName } from '@/components/notes-tree-utils'
 import type { Task } from '@/data/task-model'
@@ -51,6 +52,16 @@ export const buildTaskNoteIndex = (
 export const getTaskNoteId = (task: Task): string | null =>
   task.sourceNoteId ?? task.linkedNoteIds[0] ?? null
 
-/** Whether a filter narrows by folder or note, and so needs the note index. */
-export const hasLocationFilter = (filters: Pick<TaskFilters, 'folderPaths' | 'noteIds'>): boolean =>
-  (filters.folderPaths?.length ?? 0) > 0 || (filters.noteIds?.length ?? 0) > 0
+const usesLocation = (node: TaskFilterNode): boolean =>
+  'match' in node ? node.rules.some(usesLocation) : node.field === 'location'
+
+/**
+ * Whether a filter narrows by folder or note, as a chip or an advanced rule,
+ * and so needs the note index.
+ */
+export const hasLocationFilter = (
+  filters: Pick<TaskFilters, 'folderPaths' | 'noteIds' | 'expression'>
+): boolean =>
+  (filters.folderPaths?.length ?? 0) > 0 ||
+  (filters.noteIds?.length ?? 0) > 0 ||
+  (filters.expression ? usesLocation(filters.expression) : false)

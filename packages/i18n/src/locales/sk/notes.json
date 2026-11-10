@@ -134,6 +134,7 @@
     "actions": {
       "openInNewTab": "Otvoriť na novej karte",
       "openToTheSide": "Otvoriť vedľa",
+      "openFolderView": "Otvoriť zobrazenie priečinka",
       "newNote": "Nová poznámka",
       "newFolder": "Nový priečinok",
       "showTasks": "Zobraziť úlohy",
@@ -183,7 +184,8 @@
     },
     "toast": {
       "selectionBookmarked": "Pridané do záložiek: {count}",
-      "selectionBookmarkFailed": "Vybrané položky sa nepodarilo pridať do záložiek"
+      "selectionBookmarkFailed": "Vybrané položky sa nepodarilo pridať do záložiek",
+      "pairedNoteNameTaken": "Poznámka s názvom {name} tam už existuje"
     }
   },
   "editor": {
@@ -418,6 +420,10 @@
       "savedView": "Uložené zobrazenie",
       "savedViewMissing": "Uložené zobrazenie „{name}“ už neexistuje, preto sa zobrazuje predvolené zobrazenie.",
       "openAsTab": "Otvoriť ako kartu",
+      "newNote": "Nová poznámka",
+      "newViewTitle": "Nové zobrazenie",
+      "newViewSubtext": "Nový priečinok vedľa tejto poznámky, zobrazený tu",
+      "newViewFailed": "Priečinok pre toto zobrazenie sa nepodarilo vytvoriť.",
       "empty": "Tomuto zobrazeniu zatiaľ nič nezodpovedá.",
       "loadFailed": "Toto zobrazenie sa nepodarilo načítať. Samotné poznámky zostali nedotknuté.",
       "folderMissing": "Tento priečinok už v trezore nie je. Vyberte iný zdroj.",
@@ -776,6 +782,12 @@
     "more": "Ďalšie: {count}",
     "viaProperty": "{property} → {title}",
     "viaPortal": "Zobrazené v portáli"
+  },
+  "references": {
+    "filterAll": "Všetky",
+    "filterNotes": "Poznámky",
+    "filterJournal": "Denník",
+    "filterBy": "Filtrovať odkazy: {filter}"
   },
   "unlinkedMentions": {
     "title": "Neprepojené zmienky",

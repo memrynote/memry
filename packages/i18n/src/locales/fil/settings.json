@@ -504,7 +504,8 @@
       "loading": "Nilo-load ang mga setting…"
     },
     "groups": {
-      "footer": "Footer"
+      "footer": "Footer",
+      "pastYears": "Mga nakaraang taon"
     },
     "template": {
       "label": "Template",
@@ -562,6 +563,14 @@
     "showInSidebar": {
       "label": "Ipakita sa sidebar",
       "description": "Ipakita ang folder ng talaarawan at ang mga entry nito sa puno ng mga tala"
+    },
+    "showOnThisDay": {
+      "label": "Ipakita ang Sa araw na ito",
+      "description": "Ilista ang parehong petsa mula sa mga nakaraang taon sa ilalim ng entry"
+    },
+    "allYearsView": {
+      "label": "Ipakita nang buo ang lahat ng taon",
+      "description": "Ang Walang-hanggang Talaarawan: bawat taon ng petsa sa iisang pahina, sa ilalim ng entry"
     }
   },
   "tasks": {
@@ -1381,7 +1390,8 @@
         "ollama": "Ollama (Lokal)",
         "openai": "OpenAI",
         "anthropic": "Anthropic",
-        "google": "Google Gemini"
+        "google": "Google Gemini",
+        "custom": "Custom (tugma sa OpenAI)"
       },
       "model": "Modelo",
       "modelDescription": "Modelo ng wika para sa muling pagsulat at pagbubuod",
@@ -1391,6 +1401,11 @@
       "apiKeyPlaceholder": "Ilagay ang API key ng {provider}",
       "ollamaUrl": "Ollama URL",
       "ollamaUrlDescription": "Lokal na address ng server",
+      "customUrl": "Base URL",
+      "customUrlDescription": "Anumang endpoint na tugma sa OpenAI, gaya ng OpenRouter",
+      "customUrlPlaceholder": "https://openrouter.ai/api/v1",
+      "customApiKeyPlaceholder": "API key (opsyonal)",
+      "customModelPlaceholder": "Model ID",
       "connection": "Koneksyon",
       "activePort": "Aktibo sa port {port}",
       "notConnected": "Hindi nakakonekta",

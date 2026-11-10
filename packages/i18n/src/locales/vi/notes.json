@@ -134,6 +134,7 @@
     "actions": {
       "openInNewTab": "Mở trong tab mới",
       "openToTheSide": "Mở bên cạnh",
+      "openFolderView": "Mở chế độ xem thư mục",
       "newNote": "Ghi chú mới",
       "newFolder": "Thư mục mới",
       "showTasks": "Hiện công việc",
@@ -183,7 +184,8 @@
     },
     "toast": {
       "selectionBookmarked": "Đã đánh dấu {count} mục",
-      "selectionBookmarkFailed": "Không thể đánh dấu các mục đã chọn"
+      "selectionBookmarkFailed": "Không thể đánh dấu các mục đã chọn",
+      "pairedNoteNameTaken": "Đã có một ghi chú tên {name} ở đó"
     }
   },
   "editor": {
@@ -418,6 +420,10 @@
       "savedView": "Chế độ xem đã lưu",
       "savedViewMissing": "Chế độ xem đã lưu “{name}” không còn nữa, nên khối này hiển thị chế độ xem mặc định.",
       "openAsTab": "Mở dưới dạng tab",
+      "newNote": "Ghi chú mới",
+      "newViewTitle": "Chế độ xem mới",
+      "newViewSubtext": "Một thư mục mới bên cạnh ghi chú này, được liệt kê tại đây",
+      "newViewFailed": "Không thể tạo thư mục cho chế độ xem này.",
       "empty": "Chưa có gì khớp với chế độ xem này.",
       "loadFailed": "Không thể tải chế độ xem này. Các ghi chú vẫn được giữ nguyên.",
       "folderMissing": "Thư mục này không còn trong kho. Hãy chọn nguồn khác.",
@@ -776,6 +782,12 @@
     "more": "{count} mục khác",
     "viaProperty": "{property} → {title}",
     "viaPortal": "Hiển thị trong một portal"
+  },
+  "references": {
+    "filterAll": "Tất cả",
+    "filterNotes": "Ghi chú",
+    "filterJournal": "Nhật ký",
+    "filterBy": "Lọc tham chiếu: {filter}"
   },
   "unlinkedMentions": {
     "title": "Đề cập chưa liên kết",
