@@ -134,6 +134,7 @@
     "actions": {
       "openInNewTab": "Abrir em nova aba",
       "openToTheSide": "Abrir ao lado",
+      "openFolderView": "Abrir visualização da pasta",
       "newNote": "Nova nota",
       "newFolder": "Nova pasta",
       "showTasks": "Mostrar tarefas",
@@ -183,7 +184,8 @@
     },
     "toast": {
       "selectionBookmarked": "{count} itens adicionados aos favoritos",
-      "selectionBookmarkFailed": "Não foi possível adicionar os itens selecionados aos favoritos"
+      "selectionBookmarkFailed": "Não foi possível adicionar os itens selecionados aos favoritos",
+      "pairedNoteNameTaken": "Já existe uma nota chamada {name} aí"
     }
   },
   "editor": {
@@ -418,6 +420,10 @@
       "savedView": "Visualização salva",
       "savedViewMissing": "A visualização salva “{name}” não existe mais, então a visualização padrão é exibida.",
       "openAsTab": "Abrir como aba",
+      "newNote": "Nova nota",
+      "newViewTitle": "Nova visualização",
+      "newViewSubtext": "Uma nova pasta ao lado desta nota, listada aqui",
+      "newViewFailed": "Não foi possível criar a pasta para esta visualização.",
       "empty": "Nada corresponde a esta visualização ainda.",
       "loadFailed": "Não foi possível carregar esta visualização. As notas em si estão intactas.",
       "folderMissing": "Esta pasta não está mais no cofre. Escolha outra origem.",
@@ -776,6 +782,12 @@
     "more": "mais {count}",
     "viaProperty": "{property} → {title}",
     "viaPortal": "Exibido em um portal"
+  },
+  "references": {
+    "filterAll": "Todas",
+    "filterNotes": "Notas",
+    "filterJournal": "Diário",
+    "filterBy": "Filtrar referências: {filter}"
   },
   "unlinkedMentions": {
     "title": "Menções sem link",

@@ -4,12 +4,19 @@ import { cn } from '@/lib/utils'
 import { createJournalDateLabels, formatDateParts, getMonthName } from '@/lib/journal-utils'
 import type { JournalViewState } from './date-breadcrumb'
 import { useT } from '@memry/i18n/renderer'
+import { isSameDayInOtherYear } from '@memry/domain-notes/journal'
 
 interface JournalBreadcrumbProps {
   viewState: JournalViewState
   isToday: boolean
+  today: string
   onPreviousDay: () => void
   onNextDay: () => void
+  /** The nearest earlier and later years with an entry on this day, as dates, or null. */
+  previousYearDate: string | null
+  nextYearDate: string | null
+  onPreviousYear: () => void
+  onNextYear: () => void
   onMonthClick: (year: number, month: number) => void
   onYearClick: (year: number) => void
   onTodayClick: () => void
@@ -25,8 +32,13 @@ const BACK_BTN_CLASS =
 export function JournalBreadcrumb({
   viewState,
   isToday,
+  today,
   onPreviousDay,
   onNextDay,
+  previousYearDate,
+  nextYearDate,
+  onPreviousYear,
+  onNextYear,
   onMonthClick,
   onYearClick,
   onTodayClick: _onTodayClick,
@@ -78,6 +90,37 @@ export function JournalBreadcrumb({
         {isToday && (
           <span className="ms-1 text-[10px] font-semibold uppercase tracking-[0.08em] text-amber-700 dark:text-amber-400 bg-amber-500/10 rounded-full px-2 py-0.5 border border-amber-500/20">
             {t('date.relative.today')}
+          </span>
+        )}
+        {viewState.date < today && isSameDayInOtherYear(today, viewState.date) && (
+          <span className="ms-1 text-[10px] font-semibold uppercase tracking-[0.08em] text-text-secondary bg-surface rounded-full px-2 py-0.5 border border-border">
+            {t('pastYears.yearsAgo', { count: Number(today.slice(0, 4)) - dateParts.year })}
+          </span>
+        )}
+        {(previousYearDate || nextYearDate) && (
+          <span className="ms-1.5 flex h-5 items-center divide-x divide-border rounded-md border border-border">
+            {previousYearDate && (
+              <button
+                type="button"
+                onClick={onPreviousYear}
+                className={cn(BACK_BTN_CLASS, 'h-full gap-0.5 ps-1 pe-1.5 text-[11px] leading-5')}
+                aria-label={t('pastYears.goToYear', { year: previousYearDate.slice(0, 4) })}
+              >
+                <ChevronLeft className="h-3 w-3" />
+                {previousYearDate.slice(0, 4)}
+              </button>
+            )}
+            {nextYearDate && (
+              <button
+                type="button"
+                onClick={onNextYear}
+                className={cn(BACK_BTN_CLASS, 'h-full gap-0.5 ps-1.5 pe-1 text-[11px] leading-5')}
+                aria-label={t('pastYears.goToYear', { year: nextYearDate.slice(0, 4) })}
+              >
+                {nextYearDate.slice(0, 4)}
+                <ChevronRight className="h-3 w-3" />
+              </button>
+            )}
           </span>
         )}
       </nav>

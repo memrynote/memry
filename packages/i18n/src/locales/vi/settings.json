@@ -504,7 +504,8 @@
       "loading": "Đang tải cài đặt…"
     },
     "groups": {
-      "footer": "Chân trang"
+      "footer": "Chân trang",
+      "pastYears": "Những năm trước"
     },
     "template": {
       "label": "Mẫu",
@@ -562,6 +563,14 @@
     "showInSidebar": {
       "label": "Hiện trong thanh bên",
       "description": "Hiện thư mục nhật ký và các mục của nó trong cây ghi chú"
+    },
+    "showOnThisDay": {
+      "label": "Hiện Ngày này năm xưa",
+      "description": "Liệt kê cùng ngày của những năm trước bên dưới mục"
+    },
+    "allYearsView": {
+      "label": "Hiện đầy đủ tất cả các năm",
+      "description": "Nhật ký vĩnh cửu: mọi năm của ngày này trên một trang, bên dưới mục"
     }
   },
   "tasks": {
@@ -1381,7 +1390,8 @@
         "ollama": "Ollama (cục bộ)",
         "openai": "OpenAI",
         "anthropic": "Anthropic",
-        "google": "Google Gemini"
+        "google": "Google Gemini",
+        "custom": "Tùy chỉnh (tương thích OpenAI)"
       },
       "model": "Mô hình",
       "modelDescription": "Mô hình ngôn ngữ để viết lại và tóm tắt",
@@ -1391,6 +1401,11 @@
       "apiKeyPlaceholder": "Nhập khóa API {provider}",
       "ollamaUrl": "URL Ollama",
       "ollamaUrlDescription": "Địa chỉ máy chủ cục bộ",
+      "customUrl": "URL cơ sở",
+      "customUrlDescription": "Bất kỳ endpoint nào tương thích OpenAI, chẳng hạn OpenRouter",
+      "customUrlPlaceholder": "https://openrouter.ai/api/v1",
+      "customApiKeyPlaceholder": "Khóa API (không bắt buộc)",
+      "customModelPlaceholder": "ID mô hình",
       "connection": "Kết nối",
       "activePort": "Hoạt động trên cổng {port}",
       "notConnected": "Chưa kết nối",

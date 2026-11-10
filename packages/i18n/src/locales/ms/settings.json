@@ -504,7 +504,8 @@
       "loading": "Memuatkan tetapan…"
     },
     "groups": {
-      "footer": "Pengaki"
+      "footer": "Pengaki",
+      "pastYears": "Tahun lepas"
     },
     "template": {
       "label": "Templat",
@@ -562,6 +563,14 @@
     "showInSidebar": {
       "label": "Tunjukkan dalam bar sisi",
       "description": "Tunjukkan folder jurnal dan catatannya dalam pepohon nota"
+    },
+    "showOnThisDay": {
+      "label": "Tunjukkan Pada hari ini",
+      "description": "Senaraikan tarikh yang sama dari tahun lepas di bawah entri"
+    },
+    "allYearsView": {
+      "label": "Tunjukkan semua tahun sepenuhnya",
+      "description": "Jurnal Abadi: setiap tahun bagi tarikh itu dalam satu halaman, di bawah entri"
     }
   },
   "tasks": {
@@ -1381,7 +1390,8 @@
         "ollama": "Ollama (setempat)",
         "openai": "OpenAI",
         "anthropic": "Anthropic",
-        "google": "Google Gemini"
+        "google": "Google Gemini",
+        "custom": "Tersuai (serasi dengan OpenAI)"
       },
       "model": "Model",
       "modelDescription": "Model bahasa untuk menulis semula dan meringkaskan",
@@ -1391,6 +1401,11 @@
       "apiKeyPlaceholder": "Masukkan kunci API {provider}",
       "ollamaUrl": "URL Ollama",
       "ollamaUrlDescription": "Alamat pelayan setempat",
+      "customUrl": "URL asas",
+      "customUrlDescription": "Mana-mana titik akhir yang serasi dengan OpenAI, seperti OpenRouter",
+      "customUrlPlaceholder": "https://openrouter.ai/api/v1",
+      "customApiKeyPlaceholder": "Kunci API (pilihan)",
+      "customModelPlaceholder": "ID model",
       "connection": "Sambungan",
       "activePort": "Aktif pada port {port}",
       "notConnected": "Tidak disambungkan",

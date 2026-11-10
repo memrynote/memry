@@ -504,7 +504,8 @@
       "loading": "Beállítások betöltése…"
     },
     "groups": {
-      "footer": "Lábléc"
+      "footer": "Lábléc",
+      "pastYears": "Korábbi évek"
     },
     "template": {
       "label": "Sablon",
@@ -562,6 +563,14 @@
     "showInSidebar": {
       "label": "Megjelenítés az oldalsávon",
       "description": "A naplómappa és a bejegyzései megjelennek a jegyzetfában"
+    },
+    "showOnThisDay": {
+      "label": "Ezen a napon megjelenítése",
+      "description": "Ugyanez a dátum a korábbi évekből a bejegyzés alatt"
+    },
+    "allYearsView": {
+      "label": "Minden év teljes megjelenítése",
+      "description": "Az örök napló: a dátum minden éve egy oldalon, a bejegyzés alatt"
     }
   },
   "tasks": {
@@ -1381,7 +1390,8 @@
         "ollama": "Ollama (helyi)",
         "openai": "OpenAI",
         "anthropic": "Anthropic",
-        "google": "Google Gemini"
+        "google": "Google Gemini",
+        "custom": "Egyéni (OpenAI-kompatibilis)"
       },
       "model": "Modell",
       "modelDescription": "Nyelvi modell az újraíráshoz és összefoglaláshoz",
@@ -1391,6 +1401,11 @@
       "apiKeyPlaceholder": "{provider} API-kulcs megadása",
       "ollamaUrl": "Ollama URL",
       "ollamaUrlDescription": "Helyi szerver címe",
+      "customUrl": "Alap URL",
+      "customUrlDescription": "Bármely OpenAI-kompatibilis végpont, például az OpenRouter",
+      "customUrlPlaceholder": "https://openrouter.ai/api/v1",
+      "customApiKeyPlaceholder": "API-kulcs (nem kötelező)",
+      "customModelPlaceholder": "Modellazonosító",
       "connection": "Kapcsolat",
       "activePort": "Aktív, port: {port}",
       "notConnected": "Nincs csatlakoztatva",

@@ -11,7 +11,7 @@ reach, with each argument's type, whether it is required, the values it takes, a
 with the reply a running Memry gave. It is written for agents and the people who set them up, so an
 agent never has to read the app's own files to find out how to call it.
 
-**Describes Memry `2026.1109.1`.** A version ending in `+main` means the reference
+**Describes Memry `2026.1109.1+main`.** A version ending in `+main` means the reference
 was regenerated from the source after that release, and the next release ships it. The reference
 is generated from the schemas Memry checks every call against, the same schemas behind
 `vault_desktop_describe` and the `VALIDATION` errors, and is regenerated for each release.
@@ -15977,6 +15977,7 @@ Save a task filter.
 | `input.config.sort.field`          | `"dueDate" \| "priority" \| "status" \| "createdAt" \| "title" \| "project" \| "completedAt" \| "folder" \| "note"`                                                                   | yes      | `"dueDate"`, `"priority"`, `"status"`, `"createdAt"`, `"title"`, `"project"`, `"completedAt"`, `"folder"`, `"note"` |
 | `input.config.sort.direction`      | `"asc" \| "desc"`                                                                                                                                                                     | yes      | `"asc"`, `"desc"`                                                                                                   |
 | `input.config.starred`             | `boolean`                                                                                                                                                                             | no       |                                                                                                                     |
+| `input.expression`                 | `{ match: "all" \| "any" \| "none", rules: object[] } \| null`                                                                                                                        | no       |                                                                                                                     |
 
 Example call:
 
@@ -16059,6 +16060,8 @@ Change a saved task filter.
 | `input.config.sort.field`          | `"dueDate" \| "priority" \| "status" \| "createdAt" \| "title" \| "project" \| "completedAt" \| "folder" \| "note"`                                                                   | yes      | `"dueDate"`, `"priority"`, `"status"`, `"createdAt"`, `"title"`, `"project"`, `"completedAt"`, `"folder"`, `"note"` |
 | `input.config.sort.direction`      | `"asc" \| "desc"`                                                                                                                                                                     | yes      | `"asc"`, `"desc"`                                                                                                   |
 | `input.config.starred`             | `boolean`                                                                                                                                                                             | no       |                                                                                                                     |
+| `input.starred`                    | `boolean`                                                                                                                                                                             | no       |                                                                                                                     |
+| `input.expression`                 | `{ match: "all" \| "any" \| "none", rules: object[] } \| null`                                                                                                                        | no       |                                                                                                                     |
 | `input.position`                   | `integer`                                                                                                                                                                             | no       | min `0`; max `9007199254740991`                                                                                     |
 
 Example call:
@@ -17677,6 +17680,8 @@ Change journal settings.
 | `settings.showTasks`         | `boolean`                        | no       |                |
 | `settings.showAIConnections` | `boolean`                        | no       |                |
 | `settings.showStatsFooter`   | `boolean`                        | no       |                |
+| `settings.showOnThisDay`     | `boolean`                        | no       |                |
+| `settings.allYearsView`      | `boolean`                        | no       |                |
 
 Example call:
 

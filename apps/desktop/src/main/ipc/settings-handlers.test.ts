@@ -371,7 +371,9 @@ describe('settings-handlers', () => {
       showSchedule: true,
       showTasks: true,
       showAIConnections: true,
-      showStatsFooter: false
+      showStatsFooter: false,
+      showOnThisDay: true,
+      allYearsView: false
     })
 
     const setResult = await invokeHandler(SettingsChannels.invoke.SET_JOURNAL_SETTINGS, {
@@ -408,7 +410,9 @@ describe('settings-handlers', () => {
       showSchedule: true,
       showTasks: true,
       showAIConnections: true,
-      showStatsFooter: false
+      showStatsFooter: false,
+      showOnThisDay: true,
+      allYearsView: false
     })
 
     const updateResult = await invokeHandler(SettingsChannels.invoke.SET_JOURNAL_SETTINGS, {

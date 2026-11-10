@@ -137,7 +137,7 @@
   },
   "ai": {
     "inlineDisabled": "A szövegközi MI-szerkesztés ki van kapcsolva",
-    "listOllamaModelsFailed": "Nem sikerült listázni az Ollama-modelleket",
+    "listModelsFailed": "Nem sikerült lekérni a modellek listáját",
     "writingAssistInvalid": "Ezt a kérést nem lehetett elküldeni az MI-modellnek.",
     "apiKeyMissing": "Az íróeszközök használatához adja meg a(z) {provider} API-kulcsát a Beállítások → MI részben.",
     "apiKeyInvalid": "A(z) {provider} API-kulcsát elutasították. Ellenőrizze a Beállítások → MI részben.",

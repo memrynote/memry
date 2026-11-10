@@ -5,7 +5,10 @@
  * Saved filters are stored in SQLite (data.db) in the saved_filters table.
  */
 
+import type { TaskFilterGroup, TaskFilterNode } from '@memry/domain-tasks/filtering'
 import { z } from 'zod'
+
+export type { TaskFilterGroup, TaskFilterNode, TaskFilterRule } from '@memry/domain-tasks/filtering'
 
 // ============================================================================
 // Types
@@ -94,6 +97,13 @@ export interface SavedFilter {
   id: string
   name: string
   config: SavedFilterConfig
+  /**
+   * Advanced rules, ANDed with `config.filters`. Kept beside `config`, not in
+   * it: desktop builds before this field rebuild `config` from the keys they
+   * know when they star a filter, but carry an unknown top-level payload key
+   * through (docs/protocol §13.7.14). `null` when the filter has no rules.
+   */
+  expression: TaskFilterGroup | null
   position: number
   createdAt: string
 }
@@ -136,6 +146,84 @@ export const TaskFiltersSchema = z.object({
   noteIds: z.array(z.string()).optional()
 })
 
+const PrioritySchema = z.enum(['urgent', 'high', 'medium', 'low', 'none'])
+
+const TaskFilterRuleSchema = z.discriminatedUnion('field', [
+  z.object({
+    field: z.literal('title'),
+    op: z.enum(['contains', 'notContains']),
+    values: z.array(z.string())
+  }),
+  z.object({
+    field: z.literal('priority'),
+    op: z.enum(['any', 'none']),
+    values: z.array(PrioritySchema)
+  }),
+  z.object({
+    field: z.literal('status'),
+    op: z.enum(['any', 'none']),
+    values: z.array(z.string())
+  }),
+  z.object({
+    field: z.literal('project'),
+    op: z.enum(['any', 'none']),
+    values: z.array(z.string())
+  }),
+  z.object({
+    field: z.literal('tags'),
+    op: z.enum(['any', 'all', 'none', 'empty', 'notEmpty']),
+    values: z.array(z.string())
+  }),
+  z.object({
+    field: z.literal('due'),
+    op: z.enum(['is', 'isNot']),
+    values: z.array(
+      z.enum([
+        'none',
+        'overdue',
+        'today',
+        'tomorrow',
+        'this-week',
+        'next-week',
+        'this-month',
+        'custom'
+      ])
+    ),
+    dueStart: z.string().nullable().optional(),
+    dueEnd: z.string().nullable().optional()
+  }),
+  z.object({
+    field: z.literal('location'),
+    op: z.enum(['any', 'none']),
+    folderPaths: z.array(z.string()),
+    noteIds: z.array(z.string())
+  }),
+  z.object({
+    field: z.literal('repeat'),
+    op: z.literal('is'),
+    values: z.array(z.enum(['repeating', 'one-time']))
+  }),
+  z.object({
+    field: z.literal('hasTime'),
+    op: z.literal('is'),
+    values: z.array(z.enum(['with-time', 'without-time']))
+  })
+])
+
+/**
+ * The rules this build writes. Reading a stored or synced tree goes through
+ * no schema: a newer build's field or operator is skipped when evaluated
+ * (`evaluateTaskFilterRule`) and kept verbatim when the filter is saved again.
+ */
+export const TaskFilterGroupSchema: z.ZodType<TaskFilterGroup> = z.lazy(() =>
+  z.object({
+    match: z.enum(['all', 'any', 'none']),
+    rules: z.array(
+      z.union([TaskFilterGroupSchema, TaskFilterRuleSchema]) as z.ZodType<TaskFilterNode>
+    )
+  })
+)
+
 const TaskSortSchema = z.object({
   field: z.enum([
     'dueDate',
@@ -159,13 +247,21 @@ const SavedFilterConfigSchema = z.object({
 
 export const SavedFilterCreateSchema = z.object({
   name: z.string().min(1).max(100),
-  config: SavedFilterConfigSchema
+  config: SavedFilterConfigSchema,
+  expression: TaskFilterGroupSchema.nullable().optional()
 })
 
+/**
+ * `config` merges key by key into the stored config, so a key this build does
+ * not model (a newer build's) survives an edit (docs/protocol §13.7.14).
+ * `starred` alone stars or unstars without touching the rest.
+ */
 export const SavedFilterUpdateSchema = z.object({
   id: z.string(),
   name: z.string().min(1).max(100).optional(),
   config: SavedFilterConfigSchema.optional(),
+  starred: z.boolean().optional(),
+  expression: TaskFilterGroupSchema.nullable().optional(),
   position: z.number().int().min(0).optional()
 })
 

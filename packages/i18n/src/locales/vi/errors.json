@@ -137,7 +137,7 @@
   },
   "ai": {
     "inlineDisabled": "Đã tắt chỉnh sửa nội dòng bằng AI",
-    "listOllamaModelsFailed": "Không thể liệt kê các mô hình Ollama",
+    "listModelsFailed": "Không thể liệt kê các mô hình",
     "writingAssistInvalid": "Không thể gửi yêu cầu đó đến mô hình AI.",
     "apiKeyMissing": "Hãy thêm khóa API {provider} của bạn trong Cài đặt → AI để dùng công cụ viết.",
     "apiKeyInvalid": "Khóa API {provider} của bạn bị từ chối. Hãy kiểm tra trong Cài đặt → AI.",

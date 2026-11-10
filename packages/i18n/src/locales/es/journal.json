@@ -236,5 +236,21 @@
     "range": "{start} – {end}",
     "openTask": "{title}, {range}",
     "completeTask": "Completar {title}"
+  },
+  "pastYears": {
+    "title": "Tal día como hoy",
+    "count": "{count, plural, one {# año más} other {# años más}}",
+    "showAll": "Todos los años",
+    "showPreviews": "Vistas previas",
+    "yearsAgo": "{count, plural, one {hace # año} other {hace # años}}",
+    "yearsLater": "{count, plural, one {# año después} other {# años después}}",
+    "words": "{count, plural, one {# palabra} other {# palabras}}",
+    "openDay": "Abrir {date}",
+    "showFull": "Mostrar la entrada completa",
+    "showLess": "Mostrar menos",
+    "loadError": "No se pudo cargar este día de otros años.",
+    "previousYear": "Mismo día, año anterior",
+    "nextYear": "Mismo día, año siguiente",
+    "goToYear": "Ir a este día en {year}"
   }
 }

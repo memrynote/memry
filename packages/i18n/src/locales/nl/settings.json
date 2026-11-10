@@ -504,7 +504,8 @@
       "loading": "Instellingen laden…"
     },
     "groups": {
-      "footer": "Voettekst"
+      "footer": "Voettekst",
+      "pastYears": "Afgelopen jaren"
     },
     "template": {
       "label": "Sjabloon",
@@ -562,6 +563,14 @@
     "showInSidebar": {
       "label": "Tonen in zijbalk",
       "description": "Toon de dagboekmap en de bijbehorende items in de notitieboom"
+    },
+    "showOnThisDay": {
+      "label": "Op deze dag tonen",
+      "description": "Dezelfde datum uit afgelopen jaren onder het bericht tonen"
+    },
+    "allYearsView": {
+      "label": "Alle jaren volledig tonen",
+      "description": "Het eeuwige dagboek: elk jaar van de datum op één pagina, onder het bericht"
     }
   },
   "tasks": {
@@ -1381,7 +1390,8 @@
         "ollama": "Ollama (lokaal)",
         "openai": "OpenAI",
         "anthropic": "Anthropic",
-        "google": "Google Gemini"
+        "google": "Google Gemini",
+        "custom": "Aangepast (OpenAI-compatibel)"
       },
       "model": "Model",
       "modelDescription": "Taalmodel voor herschrijven en samenvatten",
@@ -1391,6 +1401,11 @@
       "apiKeyPlaceholder": "API-sleutel voor {provider} invoeren",
       "ollamaUrl": "Ollama-URL",
       "ollamaUrlDescription": "Lokaal serveradres",
+      "customUrl": "Basis-URL",
+      "customUrlDescription": "Elk OpenAI-compatibel endpoint, zoals OpenRouter",
+      "customUrlPlaceholder": "https://openrouter.ai/api/v1",
+      "customApiKeyPlaceholder": "API-sleutel (optioneel)",
+      "customModelPlaceholder": "Model-ID",
       "connection": "Verbinding",
       "activePort": "Actief op poort {port}",
       "notConnected": "Niet verbonden",

@@ -137,7 +137,7 @@
   },
   "ai": {
     "inlineDisabled": "Yapay zeka ile satır içi düzenleme devre dışı",
-    "listOllamaModelsFailed": "Ollama modelleri listelenemedi",
+    "listModelsFailed": "Modeller listelenemedi",
     "writingAssistInvalid": "Bu istek yapay zeka modeline gönderilemedi.",
     "apiKeyMissing": "Yazma araçlarını kullanmak için Ayarlar → Yapay Zeka bölümüne {provider} API anahtarını ekle.",
     "apiKeyInvalid": "{provider} API anahtarın reddedildi. Ayarlar → Yapay Zeka bölümünden kontrol et.",

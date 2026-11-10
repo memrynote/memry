@@ -17,6 +17,8 @@ export const journalApi = {
   getMonthEntries: (year: number, month: number) =>
     invoke(JournalChannels.invoke.GET_MONTH_ENTRIES, { year, month }),
   getYearStats: (year: number) => invoke(JournalChannels.invoke.GET_YEAR_STATS, { year }),
+  getSameDayEntries: (date: string) =>
+    invoke(JournalChannels.invoke.GET_SAME_DAY_ENTRIES, { date }),
 
   getDayContext: (date: string) => invoke(JournalChannels.invoke.GET_DAY_CONTEXT, { date }),
 

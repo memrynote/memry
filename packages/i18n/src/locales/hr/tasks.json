@@ -113,7 +113,74 @@
       "noDueDate": "Bez roka"
     },
     "repeatTypeRepeating": "Ponavljajući",
-    "repeatTypeOneTime": "Jednokratni"
+    "repeatTypeOneTime": "Jednokratni",
+    "advanced": {
+      "entry": "Napredni filtar…",
+      "entryHint": "Pravila s i, ili, ne",
+      "title": "Filtar",
+      "match": "Zadovolji",
+      "ofThese": "od ovih",
+      "matches": {
+        "all": "sva",
+        "any": "bilo koje",
+        "none": "nijedno"
+      },
+      "fields": {
+        "title": "Naslov",
+        "status": "Status",
+        "priority": "Prioritet",
+        "due": "Rok",
+        "project": "Projekt",
+        "location": "Lokacija",
+        "tags": "Oznake",
+        "repeat": "Ponavljanje",
+        "hasTime": "Ima vrijeme"
+      },
+      "ops": {
+        "contains": "sadrži",
+        "notContains": "ne sadrži",
+        "any": "je bilo koje od",
+        "none": "nije nijedno od",
+        "all": "ima sve od",
+        "empty": "je prazno",
+        "notEmpty": "nije prazno",
+        "is": "je",
+        "isNot": "nije"
+      },
+      "tagOps": {
+        "any": "ima bilo koju od",
+        "all": "ima sve od",
+        "none": "nema nijednu od"
+      },
+      "values": {
+        "repeating": "Ponavljajući",
+        "oneTime": "Jednokratni",
+        "withTime": "S vremenom",
+        "withoutTime": "Bez vremena",
+        "customRange": "Prilagođeni raspon",
+        "from": "Od",
+        "to": "Do",
+        "pick": "Odaberi…",
+        "titlePlaceholder": "Tekst u naslovu"
+      },
+      "addRule": "Dodaj pravilo",
+      "addGroup": "Dodaj grupu",
+      "clear": "Očisti",
+      "removeRule": "Ukloni pravilo",
+      "removeGroup": "Ukloni grupu",
+      "matchCount": "{count, plural, one {Odgovara # zadatak} few {Odgovaraju # zadatka} other {Odgovara # zadataka}}",
+      "skipped": "{count, plural, one {# pravilo preskočeno} few {# pravila preskočena} other {# pravila preskočeno}}",
+      "ruleCount": "{count, plural, one {# pravilo} few {# pravila} other {# pravila}}",
+      "unknownRule": "Pravilo iz novije verzije",
+      "empty": "Još nema pravila. Dodajte jedno za početak filtriranja.",
+      "summary": {
+        "and": "i",
+        "or": "ili",
+        "not": "ne"
+      },
+      "editRules": "Uredi pravila",
+      "clearRules": "Očisti pravila"
+    }
   },
   "quickAdd": {
     "label": "Brzo dodavanje zadatka",

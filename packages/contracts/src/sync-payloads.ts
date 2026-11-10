@@ -86,6 +86,12 @@ export const InboxSyncPayloadSchema = z.object({
 export const FilterSyncPayloadSchema = z.object({
   name: z.string().optional(),
   config: z.unknown().optional(),
+  /**
+   * Advanced rules, beside `config` so builds that rebuild `config` keep them
+   * (§13.7.14). Opaque: stored and pushed back verbatim. Absent means the
+   * writer did not know the key, so the stored value stays; `null` clears it.
+   */
+  expression: z.unknown().optional(),
   position: z.number().optional(),
   clock: VectorClockSchema.optional(),
   createdAt: z.string().optional()

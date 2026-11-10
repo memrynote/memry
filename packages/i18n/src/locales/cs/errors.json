@@ -137,7 +137,7 @@
   },
   "ai": {
     "inlineDisabled": "Úpravy pomocí AI přímo v textu jsou vypnuté",
-    "listOllamaModelsFailed": "Nepodařilo se načíst seznam modelů Ollama",
+    "listModelsFailed": "Nepodařilo se načíst seznam modelů",
     "writingAssistInvalid": "Tento požadavek se nepodařilo odeslat modelu AI.",
     "apiKeyMissing": "Pro nástroje psaní přidejte svůj klíč API {provider} v Nastavení → AI.",
     "apiKeyInvalid": "Váš klíč API {provider} byl odmítnut. Zkontrolujte jej v Nastavení → AI.",

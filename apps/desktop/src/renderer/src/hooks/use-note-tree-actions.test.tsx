@@ -160,6 +160,7 @@ const renderActions = (overrides: Partial<NoteTreeActionsDeps> = {}) => {
     selectedIds: ['folder-Work'],
     setSelectedIds: vi.fn(),
     computeTargetFolder: vi.fn().mockReturnValue('Work'),
+    pairedNotes: new Map(),
     expandFolderPath: vi.fn(),
     renameFolderPath: vi.fn(),
     ...overrides
@@ -436,6 +437,73 @@ describe('useNoteTreeActions', () => {
     expect(selected.deps.setSelectedIds).toHaveBeenCalledWith([])
 
     await waitFor(() => expect(result.current.isMoving).toBe(false))
+  })
+
+  it('interleaves a folder and a note on one level behind the mixed-order marker', async () => {
+    const { result, mutations } = renderActions({ selectedIds: [] })
+
+    await act(async () => {
+      await result.current.handleMove({
+        draggedId: 'folder-Work/Nested',
+        targetId: 'work-a',
+        position: 'after'
+      })
+    })
+    expect(notesService.reorder).toHaveBeenLastCalledWith('Work', [
+      'Work/',
+      'Work/A.md',
+      'Work/Nested',
+      'Work/B.md'
+    ])
+
+    await act(async () => {
+      await result.current.handleMove({
+        draggedId: 'root',
+        targetId: 'folder-Other',
+        position: 'before'
+      })
+    })
+    expect(notesService.reorder).toHaveBeenLastCalledWith('', ['/', 'Work', 'Root.md', 'Other'])
+    expect(notesService.renameFolder).not.toHaveBeenCalled()
+    expect(mutations.moveNote.mutateAsync).not.toHaveBeenCalled()
+  })
+
+  it('rewrites a whole mixed level when two notes swap on it', async () => {
+    const mixedTree = buildTreeFromNotes(allNotes, folders, {
+      'Work/': 0,
+      'Work/A.md': 1,
+      'Work/Nested': 2,
+      'Work/B.md': 3
+    })
+    const { result } = renderActions({ tree: mixedTree, selectedIds: [] })
+
+    await act(async () => {
+      await result.current.handleMove({
+        draggedId: 'work-b',
+        targetId: 'work-a',
+        position: 'before'
+      })
+    })
+    expect(notesService.reorder).toHaveBeenLastCalledWith('Work', [
+      'Work/',
+      'Work/B.md',
+      'Work/A.md',
+      'Work/Nested'
+    ])
+  })
+
+  it('does not reorder a multi-selection dropped beside a sibling', async () => {
+    const { result, mutations } = renderActions({ selectedIds: ['work-a', 'work-b'] })
+
+    await act(async () => {
+      await result.current.handleMove({
+        draggedId: 'work-a',
+        targetId: 'folder-Work/Nested',
+        position: 'before'
+      })
+    })
+    expect(notesService.reorder).not.toHaveBeenCalled()
+    expect(mutations.moveNote.mutateAsync).not.toHaveBeenCalled()
   })
 
   it('says so when a dropped folder cannot be moved (#2206)', async () => {
@@ -754,6 +822,104 @@ describe('useNoteTreeActions', () => {
       expect(mocks.deleteJournalEntry).toHaveBeenCalledWith('2026-10-01')
       expect(mutations.deleteNote.mutateAsync).not.toHaveBeenCalled()
       expect(result.current.journalFolder).toBe('Daily')
+    })
+  })
+  // `Note A.md` beside `Note A/` is one sidebar row: the row stands for both.
+  describe('a note paired with its folder', () => {
+    const pageA = createNote('page-a', 'Work/Note A.md')
+    const sub = createNote('sub', 'Work/Note A/Sub.md')
+    const taken = createNote('taken', 'Other/note a.md')
+    const pairedMap = new Map([...noteMap, [pageA.id, pageA], [sub.id, sub], [taken.id, taken]])
+    const pairedFolders = [...folders, { path: 'Work/Note A' }]
+    const renderPaired = (overrides: Partial<NoteTreeActionsDeps> = {}) =>
+      renderActions({
+        noteMap: pairedMap,
+        folders: pairedFolders,
+        pairedNotes: new Map([['Work/Note A', pageA]]),
+        ...overrides
+      })
+
+    it('opens the paired note when its row is selected', () => {
+      const { result } = renderPaired()
+
+      act(() => result.current.handleSelectionChange(['folder-Work/Note A']))
+      expect(mocks.openTab).toHaveBeenLastCalledWith(
+        expect.objectContaining({ type: 'note', entityId: 'page-a' })
+      )
+
+      mocks.openTab.mockClear()
+      act(() => result.current.handleSelectionChange(['folder-Work']))
+      expect(mocks.openTab).not.toHaveBeenCalled()
+    })
+
+    it('renames the note along with the folder', async () => {
+      const { result, mutations } = renderPaired()
+
+      act(() => result.current.handleRenameFolderClick('Work/Note A'))
+      act(() => result.current.setFolderRenameValue('Plans'))
+      await act(async () => {
+        await result.current.handleFolderRenameSubmit('Work/Note A')
+      })
+
+      expect(notesService.renameFolder).toHaveBeenCalledWith('Work/Note A', 'Work/Plans')
+      expect(mutations.renameNote.mutateAsync).toHaveBeenCalledWith({
+        id: 'page-a',
+        newTitle: 'Plans'
+      })
+      expect(mutations.moveNote.mutateAsync).not.toHaveBeenCalled()
+    })
+
+    it('moves the note along with the folder', async () => {
+      const { result, mutations } = renderPaired()
+
+      await act(async () => {
+        await result.current.handleMove({
+          draggedId: 'folder-Work/Note A',
+          targetId: 'folder-Work/Nested',
+          position: 'inside'
+        })
+      })
+
+      expect(notesService.renameFolder).toHaveBeenCalledWith('Work/Note A', 'Work/Nested/Note A')
+      expect(mutations.moveNote.mutateAsync).toHaveBeenCalledWith({
+        id: 'page-a',
+        newFolder: 'Work/Nested'
+      })
+      expect(mutations.renameNote.mutateAsync).not.toHaveBeenCalled()
+    })
+
+    it('touches nothing when another note already has the new name', async () => {
+      const { result, mutations } = renderPaired()
+
+      await act(async () => {
+        await result.current.handleMove({
+          draggedId: 'folder-Work/Note A',
+          targetId: 'folder-Other',
+          position: 'inside'
+        })
+      })
+
+      expect(notesService.renameFolder).not.toHaveBeenCalled()
+      expect(mutations.moveNote.mutateAsync).not.toHaveBeenCalled()
+      expect(toast.error).toHaveBeenCalledWith('tree.toast.pairedNoteNameTaken')
+    })
+
+    it('deletes the note with the folder, from the menu and from a selection', async () => {
+      const { result, mutations } = renderPaired({ selectedIds: ['folder-Work/Note A'] })
+
+      act(() => result.current.handleDeleteFolderClick('Work/Note A'))
+      expect(result.current.notesToDelete).toEqual([pageA])
+      expect(result.current.foldersToDelete).toEqual(['Work/Note A'])
+
+      act(() => result.current.handleBulkDelete())
+      expect(result.current.notesToDelete).toEqual([pageA])
+      expect(result.current.foldersToDelete).toEqual(['Work/Note A'])
+
+      await act(async () => {
+        await result.current.handleDeleteConfirm()
+      })
+      expect(mutations.deleteNote.mutateAsync).toHaveBeenCalledWith('page-a')
+      expect(notesService.deleteFolder).toHaveBeenCalledWith('Work/Note A')
     })
   })
 })

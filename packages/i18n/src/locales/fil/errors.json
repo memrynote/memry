@@ -137,7 +137,7 @@
   },
   "ai": {
     "inlineDisabled": "Naka-off ang inline na pag-edit gamit ang AI",
-    "listOllamaModelsFailed": "Hindi mailista ang mga modelo ng Ollama",
+    "listModelsFailed": "Hindi mailista ang mga model",
     "writingAssistInvalid": "Hindi maipadala ang request na iyon sa AI model.",
     "apiKeyMissing": "Idagdag ang iyong {provider} API key sa Mga setting → AI para magamit ang mga tool sa pagsusulat.",
     "apiKeyInvalid": "Tinanggihan ang iyong {provider} API key. Tingnan ito sa Mga setting → AI.",

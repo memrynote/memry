@@ -134,6 +134,7 @@
     "actions": {
       "openInNewTab": "Megnyitás új lapon",
       "openToTheSide": "Megnyitás oldalt",
+      "openFolderView": "Mappanézet megnyitása",
       "newNote": "Új jegyzet",
       "newFolder": "Új mappa",
       "showTasks": "Feladatok megjelenítése",
@@ -183,7 +184,8 @@
     },
     "toast": {
       "selectionBookmarked": "{count} elem könyvjelzőzve",
-      "selectionBookmarkFailed": "A kijelölt elemeket nem sikerült könyvjelzőzni"
+      "selectionBookmarkFailed": "A kijelölt elemeket nem sikerült könyvjelzőzni",
+      "pairedNoteNameTaken": "Már van ott egy {name} nevű jegyzet"
     }
   },
   "editor": {
@@ -418,6 +420,10 @@
       "savedView": "Mentett nézet",
       "savedViewMissing": "A(z) „{name}” mentett nézet már nem létezik, ezért az alapértelmezett nézet látható.",
       "openAsTab": "Megnyitás lapként",
+      "newNote": "Új jegyzet",
+      "newViewTitle": "Új nézet",
+      "newViewSubtext": "Új mappa a jegyzet mellett, itt listázva",
+      "newViewFailed": "Nem sikerült létrehozni a mappát ehhez a nézethez.",
       "empty": "Még semmi sem felel meg ennek a nézetnek.",
       "loadFailed": "Nem sikerült betölteni ezt a nézetet. Maguk a jegyzetek érintetlenek.",
       "folderMissing": "Ez a mappa már nincs a széfben. Válasszon másik forrást.",
@@ -776,6 +782,12 @@
     "more": "{count} további",
     "viaProperty": "{property} → {title}",
     "viaPortal": "Portálban megjelenítve"
+  },
+  "references": {
+    "filterAll": "Mind",
+    "filterNotes": "Jegyzetek",
+    "filterJournal": "Napló",
+    "filterBy": "Hivatkozások szűrése: {filter}"
   },
   "unlinkedMentions": {
     "title": "Nem hivatkozott említések",

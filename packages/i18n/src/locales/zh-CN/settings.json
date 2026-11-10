@@ -504,7 +504,8 @@
       "loading": "正在加载设置…"
     },
     "groups": {
-      "footer": "页脚"
+      "footer": "页脚",
+      "pastYears": "往年"
     },
     "template": {
       "label": "模板",
@@ -562,6 +563,14 @@
     "showInSidebar": {
       "label": "在侧边栏中显示",
       "description": "在笔记树中显示日记文件夹及其条目"
+    },
+    "showOnThisDay": {
+      "label": "显示历年今日",
+      "description": "在条目下方列出往年的同一日期"
+    },
+    "allYearsView": {
+      "label": "完整显示所有年份",
+      "description": "永恒日记：该日期的每一年都在同一页，位于条目下方"
     }
   },
   "tasks": {
@@ -1381,7 +1390,8 @@
         "ollama": "Ollama（本地）",
         "openai": "OpenAI",
         "anthropic": "Anthropic",
-        "google": "Google Gemini"
+        "google": "Google Gemini",
+        "custom": "自定义（兼容 OpenAI）"
       },
       "model": "模型",
       "modelDescription": "用于重写和总结的语言模型",
@@ -1391,6 +1401,11 @@
       "apiKeyPlaceholder": "输入 {provider} API 密钥",
       "ollamaUrl": "Ollama URL",
       "ollamaUrlDescription": "本地服务器地址",
+      "customUrl": "基础 URL",
+      "customUrlDescription": "任何兼容 OpenAI 的端点，例如 OpenRouter",
+      "customUrlPlaceholder": "https://openrouter.ai/api/v1",
+      "customApiKeyPlaceholder": "API 密钥（可选）",
+      "customModelPlaceholder": "模型 ID",
       "connection": "连接",
       "activePort": "正在端口 {port} 上运行",
       "notConnected": "未连接",
