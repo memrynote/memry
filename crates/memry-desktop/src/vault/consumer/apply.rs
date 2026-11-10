@@ -291,7 +291,7 @@ impl Applier {
                 Ok(None) => return Step::Done,
                 Err(Unread::Missing) => return Step::Retry(path.to_owned()),
                 Err(Unread::Failed { file_hash, failure }) => {
-                    if let Some(step) = self.restored_unreadable(note_id, path) {
+                    if let Some(step) = self.restored_unreadable(lane, note_id, path) {
                         return step;
                     }
                     // A kept note's file is back, read or not: it is no longer a removal.
@@ -318,7 +318,7 @@ impl Applier {
             // back: it never reaches the document or the peers (`restoreLockedNoteFile`). The
             // lock answers before the typing rule (`outside_edit`), which tells the record.
             if row.content_hash.as_deref() != Some(file.hash.as_str())
-                && let Some(step) = self.restored(note_id, path, Some(&file))
+                && let Some(step) = self.restored(lane, note_id, path, Some(&file))
             {
                 return step;
             }
@@ -443,7 +443,7 @@ impl Applier {
             }
         }
         // A locked note's file comes back instead of a delete that would reach every device.
-        if self.restored(note_id, path, None).is_some() {
+        if self.restored(lane, note_id, path, None).is_some() {
             return;
         }
         match self.identity.on_removed(&self.ctx(), note_id, path) {

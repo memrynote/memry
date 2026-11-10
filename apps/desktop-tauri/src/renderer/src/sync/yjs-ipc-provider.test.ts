@@ -29,7 +29,8 @@ const host = vi.hoisted(() => ({
   /** What reached the host, in order: `open` when an open is answered, `close` when one is sent. */
   calls: [] as string[],
   resetListeners: new Set<(event: { payload: null }) => void>(),
-  readyListeners: new Set<(event: { payload: { vaultPath: string } }) => void>()
+  readyListeners: new Set<(event: { payload: { vaultPath: string } }) => void>(),
+  locksListeners: new Set<(event: { payload: { notes: string[]; folders: string[] } }) => void>()
 }))
 
 function frame(header: unknown, ...parts: Uint8Array[]): ArrayBuffer {
@@ -107,6 +108,14 @@ vi.mock('../../../generated/bindings', () => ({
         host.readyListeners.add(handler)
         return () => host.readyListeners.delete(handler)
       }
+    },
+    vaultLocksChangedEvent: {
+      listen: async (
+        handler: (event: { payload: { notes: string[]; folders: string[] } }) => void
+      ) => {
+        host.locksListeners.add(handler)
+        return () => host.locksListeners.delete(handler)
+      }
     }
   }
 }))
@@ -177,7 +186,12 @@ beforeEach(() => {
   host.calls = []
   host.resetListeners.clear()
   host.readyListeners.clear()
+  host.locksListeners.clear()
 })
+
+function locksChanged(notes: string[], folders: string[] = []): void {
+  for (const listener of host.locksListeners) listener({ payload: { notes, folders } })
+}
 
 afterEach(() => {
   vi.useRealTimers()
@@ -513,6 +527,72 @@ describe('YjsIpcProvider read-only', () => {
     expect(provider.readOnly).toBe(reason)
     expect(heard).toEqual([reason])
     expect(host.sent).toHaveLength(1)
+  })
+})
+
+describe('YjsIpcProvider unlock', () => {
+  it('reopens a note opened locked once its lock is lifted, and takes edits again', async () => {
+    host.readOnly = 'locked'
+    const { doc, provider } = await connected()
+    const heard: unknown[] = []
+    provider.on('read-only', (value: unknown) => heard.push(value))
+    await settle()
+
+    // Still locked (another note's lock changed): no reopen.
+    locksChanged([NOTE, 'other'])
+    await settle()
+    expect(host.opens).toHaveLength(1)
+
+    host.readOnly = null
+    locksChanged([])
+    await settle()
+
+    expect(host.opens).toHaveLength(2)
+    expect(provider.readOnly).toBeNull()
+    expect(heard).toEqual([null])
+    type(doc, ' typed')
+    await settle()
+    expect(text(host.doc)).toBe('stored typed')
+  })
+
+  it('stays read-only when a folder lock above the note still holds', async () => {
+    host.readOnly = 'locked'
+    const { provider } = await connected()
+    await settle()
+
+    locksChanged([], ['projects'])
+    await settle()
+
+    expect(host.opens).toHaveLength(2)
+    expect(provider.readOnly).toBe('locked')
+  })
+
+  it('reopens a note whose edit the host refused as locked once the lock is lifted', async () => {
+    const { doc, provider } = await connected()
+    host.refuse = 'note_locked'
+    host.refuseTimes = 1
+    type(doc, ' refused')
+    await settle()
+    expect(provider.readOnly).toBe('locked')
+
+    locksChanged([])
+    await settle()
+
+    expect(provider.readOnly).toBeNull()
+    type(doc, ' typed')
+    await settle()
+    expect(text(host.doc)).toBe('stored refused typed')
+  })
+
+  it('does not reopen a note that is not read-only, or after the teardown', async () => {
+    const { provider } = await connected()
+    locksChanged([])
+    await settle()
+    expect(host.opens).toHaveLength(1)
+
+    provider.destroy()
+    await settle()
+    expect(host.locksListeners.size).toBe(0)
   })
 })
 

@@ -215,11 +215,12 @@ vi.mock('@/hooks/use-vault-config', () => ({
   useVaultConfig: () => mocks.vaultConfig
 }))
 
-// The real lock store, fed the way main feeds it: `vaultLocks.list` at the
-// first subscriber, then `vault-locks:changed` broadcasts.
+// The real lock store, fed the way Rust feeds it (through the bindings mock of
+// tests/setup-dom.ts): the list at the first subscriber, then each change event.
 const lockBroadcasts: Array<(state: VaultLockState) => void> = []
+const lockSet = vi.fn()
 Object.assign(window.api, {
-  vaultLocks: { list: vi.fn().mockResolvedValue({ notes: [], folders: [] }), set: vi.fn() },
+  vaultLocks: { list: vi.fn().mockResolvedValue({ notes: [], folders: [] }), set: lockSet },
   onVaultLocksChanged: vi.fn((callback: (state: VaultLockState) => void) => {
     lockBroadcasts.push(callback)
     return () => {}
@@ -976,7 +977,7 @@ describe('JournalPage', () => {
     })
 
     it('locks the entry itself from its menu, then unlocks it', async () => {
-      const set = vi.mocked(window.api.vaultLocks.set)
+      const set = lockSet
       set.mockResolvedValueOnce({ notes: ['j2026-01-15'], folders: [] })
       render(<JournalPage />)
 
@@ -1013,7 +1014,7 @@ describe('JournalPage', () => {
     })
 
     it('shows a failed lock change as a toast', async () => {
-      vi.mocked(window.api.vaultLocks.set).mockRejectedValueOnce(new Error('disk full'))
+      lockSet.mockRejectedValueOnce(new Error('disk full'))
       render(<JournalPage />)
 
       fireEvent.click(screen.getByText('lock entry'))

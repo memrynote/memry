@@ -3,12 +3,15 @@
  *
  * A plain module store read through `useSyncExternalStore`, like the custom
  * icon store: sidebar rows read it by the hundred. The first subscriber loads
- * the state and wires `vault-locks:changed`, which main broadcasts after every
- * local or remote lock change and at vault open.
+ * the state and wires `VaultLocksChangedEvent`, which Rust sends after every
+ * lock change and at every vault open.
  */
 
 import { useSyncExternalStore } from 'react'
 import type { VaultLockState, VaultLockTargetKind } from '@memry/contracts/vault-locks-api'
+import { commands, events } from '../../../generated/bindings'
+import { subscribeToEvent } from '@/services/tauri-event'
+import { commandErrorCode } from './ipc-error'
 import { createLogger } from './logger'
 
 const log = createLogger('VaultLocksStore')
@@ -17,23 +20,36 @@ const EMPTY: VaultLockState = { notes: [], folders: [] }
 
 let state: VaultLockState = EMPTY
 let noteIds = new Set<string>()
+// Lock changes Rust is still running (`kind:target`): a folder of 10k notes takes seconds.
+let pending: ReadonlySet<string> = new Set()
 const listeners = new Set<() => void>()
 let started = false
+
+function notify(): void {
+  for (const listener of listeners) listener()
+}
 
 function publish(next: VaultLockState): void {
   state = next
   noteIds = new Set(next.notes)
-  for (const listener of listeners) listener()
+  notify()
+}
+
+function setPending(key: string, running: boolean): void {
+  const next = new Set(pending)
+  if (running) next.add(key)
+  else next.delete(key)
+  pending = next
+  notify()
 }
 
 function start(): void {
   if (started) return
   started = true
-  const api = window.api
-  if (!api?.vaultLocks) return
-  api.onVaultLocksChanged(publish)
-  void api.vaultLocks
-    .list()
+  // App-lifetime: the locks follow the open vault, whose open sends them again.
+  subscribeToEvent(events.vaultLocksChangedEvent, publish)
+  commands
+    .vaultLocksList()
     .then(publish)
     .catch((error: unknown) => log.warn('Failed to load vault locks', error))
 }
@@ -88,10 +104,32 @@ export function useHasOwnNoteLock(noteId: string | null | undefined): boolean {
   return !!noteId && locks.notes.includes(noteId)
 }
 
+/** True while a lock change of this note or folder runs. */
+export function useIsVaultLockPending(kind: VaultLockTargetKind, target: string): boolean {
+  const key = `${kind}:${target}`
+  return useSyncExternalStore(subscribe, () => pending.has(key))
+}
+
+/**
+ * Locks or unlocks, and publishes the locks Rust answers. A second change of the same target
+ * while the first runs is dropped. An unlock of a folder no longer locked (another window
+ * unlocked it, or the list is stale) is `folder_not_found`: the list is read again instead.
+ */
 export async function setVaultLock(
   kind: VaultLockTargetKind,
   target: string,
   locked: boolean
 ): Promise<void> {
-  publish(await window.api.vaultLocks.set({ kind, target, locked }))
+  const key = `${kind}:${target}`
+  if (pending.has(key)) return
+  setPending(key, true)
+  try {
+    publish(await commands.vaultLocksSet({ kind, target, locked }))
+  } catch (error) {
+    if (locked || kind !== 'folder' || commandErrorCode(error) !== 'folder_not_found') throw error
+    log.info('Folder lock already gone; reading the locks again', target)
+    publish(await commands.vaultLocksList())
+  } finally {
+    setPending(key, false)
+  }
 }

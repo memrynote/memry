@@ -4,11 +4,21 @@ import { toast } from 'sonner'
 import type { VaultLockState } from '@memry/contracts/vault-locks-api'
 import { VaultLockMenuItem } from './vault-lock-menu-item'
 
-vi.mock('sonner', () => ({ toast: { error: vi.fn() } }))
+vi.mock('sonner', () => ({
+  toast: { error: vi.fn(), loading: vi.fn(() => 'progress'), dismiss: vi.fn() }
+}))
 
 vi.mock('@/components/ui/context-menu', () => ({
-  ContextMenuItem: ({ children, onClick }: { children: React.ReactNode; onClick: () => void }) => (
-    <button type="button" onClick={onClick}>
+  ContextMenuItem: ({
+    children,
+    onClick,
+    disabled
+  }: {
+    children: React.ReactNode
+    onClick: () => void
+    disabled?: boolean
+  }) => (
+    <button type="button" onClick={onClick} disabled={disabled}>
       {children}
     </button>
   )
@@ -16,8 +26,10 @@ vi.mock('@/components/ui/context-menu', () => ({
 
 const broadcasts: Array<(state: VaultLockState) => void> = []
 const set = vi.fn<(input: unknown) => Promise<VaultLockState>>()
+const list = vi.fn<() => Promise<VaultLockState>>()
+list.mockResolvedValue({ notes: [], folders: ['Archive'] })
 Object.assign(window.api, {
-  vaultLocks: { list: vi.fn().mockResolvedValue({ notes: [], folders: ['Archive'] }), set },
+  vaultLocks: { list, set },
   onVaultLocksChanged: (callback: (state: VaultLockState) => void) => {
     broadcasts.push(callback)
     return () => {}
@@ -56,5 +68,59 @@ describe('VaultLockMenuItem (#2606)', () => {
 
     await waitFor(() => expect(toast.error).toHaveBeenCalledWith('Folder not found: Gone'))
     expect(screen.getByRole('button', { name: 'Lock folder' })).toBeInTheDocument()
+  })
+
+  it('shows progress while a folder lock runs and takes no second click', async () => {
+    act(() => {
+      for (const callback of broadcasts) callback({ notes: [], folders: [] })
+    })
+    let answer: (state: VaultLockState) => void = () => {}
+    set.mockReturnValueOnce(new Promise<VaultLockState>((resolve) => (answer = resolve)))
+    render(<VaultLockMenuItem kind="folder" target="Big" />)
+
+    fireEvent.click(screen.getByRole('button', { name: 'Lock folder' }))
+
+    await waitFor(() => expect(toast.loading).toHaveBeenCalledWith('Locking folder…'))
+    expect(screen.getByRole('button', { name: 'Lock folder' })).toBeDisabled()
+    await act(async () => answer({ notes: [], folders: ['Big'] }))
+    expect(await screen.findByRole('button', { name: 'Unlock folder' })).toBeEnabled()
+    expect(toast.dismiss).toHaveBeenCalledWith('progress')
+    expect(toast.error).not.toHaveBeenCalled()
+  })
+
+  it('an unlock of a folder another window already unlocked shows no error', async () => {
+    act(() => {
+      for (const callback of broadcasts) callback({ notes: [], folders: ['Old'] })
+    })
+    set.mockRejectedValueOnce({
+      kind: 'notFound',
+      code: 'folder_not_found',
+      message: 'the folder is not there anymore'
+    })
+    list.mockResolvedValueOnce({ notes: [], folders: [] })
+    render(<VaultLockMenuItem kind="folder" target="Old" />)
+
+    fireEvent.click(screen.getByRole('button', { name: 'Unlock folder' }))
+
+    await screen.findByRole('button', { name: 'Lock folder' })
+    expect(toast.error).not.toHaveBeenCalled()
+  })
+  it('says so when a folder unlock fails for any other reason', async () => {
+    act(() => {
+      for (const callback of broadcasts) callback({ notes: [], folders: ['Kept'] })
+    })
+    list.mockClear()
+    set.mockRejectedValueOnce({
+      kind: 'locked',
+      code: 'no_vault_open',
+      message: 'No vault is open.'
+    })
+    render(<VaultLockMenuItem kind="folder" target="Kept" />)
+
+    fireEvent.click(screen.getByRole('button', { name: 'Unlock folder' }))
+
+    await waitFor(() => expect(toast.error).toHaveBeenCalledWith('No vault is open.'))
+    expect(list).not.toHaveBeenCalled()
+    expect(screen.getByRole('button', { name: 'Unlock folder' })).toBeEnabled()
   })
 })

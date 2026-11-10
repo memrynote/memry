@@ -1648,6 +1648,8 @@
     "unlockNote": "Lås opp notat",
     "lockFolder": "Lås mappe",
     "unlockFolder": "Lås opp mappe",
+    "lockingFolder": "Låser mappen…",
+    "unlockingFolder": "Låser opp mappen…",
     "toggleFailed": "Kunne ikke endre låsen",
     "readOnlyIndicator": "Låst. Skrivebeskyttet for deg og for agenter.",
     "excludedIndicator": "Dette notatet ligger i en utelatt mappe.",

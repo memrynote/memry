@@ -13,6 +13,7 @@ import {
   createTestQueryClient,
   setupHookTestEnvironment
 } from '@tests/utils/hook-test-wrapper'
+import { trackRendererError } from '@/lib/telemetry-diagnostics'
 import type { JournalEntry } from '../../../preload/index.d'
 import { useJournalChangeEvents } from './use-journal-change-events'
 import { useJournalEntry } from './use-journal-entry'
@@ -27,6 +28,9 @@ vi.mock('react-i18next', () => ({
 vi.mock('@/lib/logger', () => ({
   createLogger: () => ({ error: vi.fn(), warn: vi.fn(), info: vi.fn() })
 }))
+vi.mock('@/lib/telemetry-diagnostics', () => ({ trackRendererError: vi.fn() }))
+const { toastError } = vi.hoisted(() => ({ toastError: vi.fn() }))
+vi.mock('sonner', () => ({ toast: { error: toastError } }))
 
 const DAY = '2026-05-10'
 const NEXT = '2026-05-11'
@@ -489,6 +493,8 @@ describe('useJournalEntry: outside edits of the open day', () => {
   describe('a day switch with typing not saved yet', () => {
     const savesOf = (date: string): number =>
       updateEntry.mock.calls.filter(([input]) => (input as { date: string }).date === date).length
+    const readsOf = (date: string): number =>
+      getEntry.mock.calls.filter(([read]) => read === date).length
 
     it('saves the typing once', async () => {
       const hook = await mount()
@@ -688,6 +694,256 @@ describe('useJournalEntry: outside edits of the open day', () => {
         await vi.advanceTimersByTimeAsync(1_000)
       })
       expect(updateEntry).toHaveBeenLastCalledWith({ date: NEXT, content: 'Next typed.' })
+    })
+
+    // The day's own save never answers: the save flag it holds stops every day's saves and keeps
+    // the indicator on until the app quits, unless the wait on it ends (#4138).
+    it('sends later saves of every day when the day save itself never answers', async () => {
+      const hook = await mount()
+      // oxlint-disable-next-line typescript/no-misused-promises -- mockImplementation is typed as a void-returning callback; a Promise that never settles is the write that never answers
+      updateEntry.mockImplementationOnce(() => new Promise<JournalEntry>(() => {}))
+      await startSave(hook.result, 'Typed.')
+      act(() => {
+        hook.result.current.updateContent('Typed. More.')
+      })
+      await act(async () => {
+        await vi.advanceTimersByTimeAsync(1_000)
+      })
+      expect(savesOf(DAY)).toBe(1)
+      expect(hook.result.current.isSaving).toBe(true)
+      expect(trackRendererError).not.toHaveBeenCalled()
+
+      await act(async () => {
+        await vi.advanceTimersByTimeAsync(9_000)
+      })
+
+      expect(hook.result.current.isSaving).toBe(false)
+      expect(trackRendererError).toHaveBeenCalledWith(
+        'journal_day_write_timeout',
+        expect.objectContaining({ message: 'journal day write timeout: save flag' })
+      )
+      act(() => {
+        hook.result.current.updateContent('Typed. After.')
+      })
+      await act(async () => {
+        await vi.advanceTimersByTimeAsync(1_000)
+      })
+      expect(updateEntry).toHaveBeenLastCalledWith({ date: DAY, content: 'Typed. After.' })
+      expect(hook.result.current.isSaving).toBe(false)
+      await openDay(hook, NEXT)
+      act(() => {
+        hook.result.current.updateContent('Next typed.')
+      })
+      await act(async () => {
+        await vi.advanceTimersByTimeAsync(1_000)
+      })
+      expect(updateEntry).toHaveBeenLastCalledWith({ date: NEXT, content: 'Next typed.' })
+    })
+
+    // The read of a reopened day waits for the day's writes; one that never answers would keep the
+    // read, and with it an outside edit of the day, from the editor for good (#4138).
+    it('reads the reopened day 10 s on when a write of the day never answers', async () => {
+      const hook = await mount()
+      const reportLate = hook.result.current.updateContent
+      await openDay(hook, NEXT)
+      // oxlint-disable-next-line typescript/no-misused-promises -- mockImplementation is typed as a void-returning callback; a Promise that never settles is the write that never answers
+      updateEntry.mockImplementationOnce(() => new Promise<JournalEntry>(() => {}))
+      act(() => {
+        reportLate('Typed. Late.')
+      })
+      await settle()
+      expect(savesOf(DAY)).toBe(1)
+      files[DAY] = 'Rewritten outside.'
+      await openDay(hook, DAY)
+      const readsBefore = readsOf(DAY)
+      await act(async () => {
+        await vi.advanceTimersByTimeAsync(9_000)
+      })
+      expect(readsOf(DAY)).toBe(readsBefore)
+
+      await act(async () => {
+        await vi.advanceTimersByTimeAsync(1_000)
+      })
+
+      expect(readsOf(DAY)).toBe(readsBefore + 1)
+      expect(hook.result.current.externalUpdateCount).toBe(1)
+      expect(hook.result.current.entry?.content).toBe('Rewritten outside.')
+      expect(trackRendererError).toHaveBeenCalledWith(
+        'journal_day_write_timeout',
+        expect.objectContaining({ message: 'journal day write timeout: read' })
+      )
+    })
+
+    // Past the wait the next save goes out while the stalled one is still in the core, which may
+    // run it last: its older text would replace the newer one, and its event hand it to the
+    // editor (#4138).
+    it.each(['reply', 'event'] as const)(
+      'sends the newest text again when a save past the wait lands last, its %s first',
+      async (first) => {
+        const hook = await mount()
+        const stalled = holdNextSave()
+        await startSave(hook.result, 'A')
+        await act(async () => {
+          await vi.advanceTimersByTimeAsync(10_000)
+        })
+        await startSave(hook.result, 'A B')
+        await settle()
+        expect(files[DAY]).toBe('A B')
+        expect(hook.result.current.isDirty).toBe(false)
+
+        files[DAY] = 'A'
+        const ownEvent = (): void =>
+          emit('onJournalEntryUpdated', {
+            date: DAY,
+            entry: createMockJournalEntry({ date: DAY, content: 'A' })
+          })
+        if (first === 'reply') {
+          await stalled.finish('A')
+          ownEvent()
+        } else {
+          ownEvent()
+          await settle()
+          await stalled.finish('A')
+        }
+        await settle()
+
+        expect(updateEntry).toHaveBeenLastCalledWith({ date: DAY, content: 'A B' })
+        expect(files[DAY]).toBe('A B')
+        expect(hook.result.current.externalUpdateCount).toBe(0)
+      }
+    )
+
+    // A save past the wait has not saved its text: it stays pending, so the unmount flush (and a
+    // quit) sends it again (#4138).
+    it('keeps the text of a save past the wait pending for the unmount flush', async () => {
+      const hook = await mount()
+      holdNextSave()
+      await startSave(hook.result, 'A')
+      await act(async () => {
+        await vi.advanceTimersByTimeAsync(10_000)
+      })
+      expect(hook.result.current.isSaving).toBe(false)
+      expect(hook.result.current.isDirty).toBe(true)
+
+      hook.unmount()
+      await settle()
+
+      expect(savesOf(DAY)).toBe(2)
+      expect(updateEntry).toHaveBeenLastCalledWith({ date: DAY, content: 'A' })
+    })
+
+    // Telemetry groups by message: one fixed message, sent once per stalled write, whatever waits.
+    it('reports a stalled write once when both the save flag and a read wait on it', async () => {
+      const hook = await mount()
+      holdNextSave()
+      await startSave(hook.result, 'A')
+      await act(async () => {
+        await vi.advanceTimersByTimeAsync(10_000)
+      })
+      await openDay(hook, NEXT)
+      await openDay(hook, DAY)
+      await act(async () => {
+        await vi.advanceTimersByTimeAsync(10_000)
+      })
+
+      const timeouts = vi
+        .mocked(trackRendererError)
+        .mock.calls.filter(([name]) => name === 'journal_day_write_timeout')
+      expect(timeouts).toEqual([
+        ['journal_day_write_timeout', new Error('journal day write timeout: save flag')]
+      ])
+    })
+
+    // Its caller stopped waiting, so a failure past the wait has nobody to show it to (#4138).
+    it('reports a save that fails past the wait and sends its text again', async () => {
+      const hook = await mount()
+      let fail: () => void = () => {}
+      updateEntry.mockImplementationOnce(
+        // oxlint-disable-next-line typescript/no-misused-promises -- mockImplementation is typed as a void-returning callback; rejecting a Promise is what the mocked IPC method does
+        () =>
+          new Promise<JournalEntry>((_, reject) => {
+            fail = () => reject(new Error('disk'))
+          })
+      )
+      await startSave(hook.result, 'A')
+      await act(async () => {
+        await vi.advanceTimersByTimeAsync(10_000)
+      })
+      expect(trackRendererError).not.toHaveBeenCalledWith('journal_save_failed', expect.anything())
+
+      await act(async () => {
+        fail()
+        for (let i = 0; i < 20; i++) await Promise.resolve()
+      })
+
+      expect(trackRendererError).toHaveBeenCalledWith('journal_save_failed', expect.any(Error))
+      expect(savesOf(DAY)).toBe(2)
+      expect(files[DAY]).toBe('A')
+    })
+
+    // The resend queues behind the day's writes; text chosen when the late write answered would
+    // be older than a write queued ahead of it, here the save of the day left (#4138).
+    it('sends again the text last sent when its turn comes, not when the late write answered', async () => {
+      const hook = await mount()
+      const first = holdNextSave()
+      await startSave(hook.result, 'A')
+      await act(async () => {
+        await vi.advanceTimersByTimeAsync(10_000)
+      })
+      const second = holdNextSave()
+      await startSave(hook.result, 'A B')
+      act(() => {
+        hook.result.current.updateContent('A B C')
+      })
+      await openDay(hook, NEXT)
+
+      files[DAY] = 'A'
+      await first.finish('A')
+      files[DAY] = 'A B'
+      await second.finish('A B')
+      await act(async () => {
+        await vi.advanceTimersByTimeAsync(0)
+      })
+      await settle()
+
+      expect(files[DAY]).toBe('A B C')
+    })
+
+    // A caller that waits for its write shows the failure itself: one toast, one report.
+    it('leaves a late failure of the save of the day left to its caller', async () => {
+      const hook = await mount()
+      holdNextSave()
+      await startSave(hook.result, 'A')
+      act(() => {
+        hook.result.current.updateContent('A B')
+      })
+      let fail: () => void = () => {}
+      updateEntry.mockImplementationOnce(
+        // oxlint-disable-next-line typescript/no-misused-promises -- mockImplementation is typed as a void-returning callback; rejecting a Promise is what the mocked IPC method does
+        () =>
+          new Promise<JournalEntry>((_, reject) => {
+            fail = () => reject(new Error('disk'))
+          })
+      )
+      updateEntry.mockRejectedValueOnce(new Error('disk2'))
+      await openDay(hook, NEXT)
+      await act(async () => {
+        await vi.advanceTimersByTimeAsync(10_000)
+      })
+      expect(updateEntry).toHaveBeenLastCalledWith({ date: DAY, content: 'A B' })
+
+      await act(async () => {
+        await vi.advanceTimersByTimeAsync(15_000)
+        fail()
+        for (let i = 0; i < 20; i++) await Promise.resolve()
+      })
+      await settle()
+
+      expect(toastError.mock.calls).toEqual([['disk']])
+      expect(vi.mocked(trackRendererError).mock.calls.map(([name]) => name)).toEqual([
+        'journal_day_write_timeout',
+        'journal_pending_save_failed'
+      ])
     })
 
     it('sends the typing again when the save running fails', async () => {

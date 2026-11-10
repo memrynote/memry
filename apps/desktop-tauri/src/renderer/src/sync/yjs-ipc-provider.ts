@@ -121,6 +121,7 @@ export class YjsIpcProvider extends Observable<string> {
   private updateHandler: ((update: Uint8Array, origin: unknown) => void) | null = null
   private resetCleanup: (() => void) | null = null
   private readyCleanup: (() => void) | null = null
+  private locksCleanup: (() => void) | null = null
   /** The channel of the latest open; frames of an earlier one, or after the disconnect, are ignored. */
   private channel: Channel<ArrayBuffer> | null = null
   /**
@@ -225,6 +226,14 @@ export class YjsIpcProvider extends Observable<string> {
       this.readyVaultPath = payload.vaultPath
       this.scheduleRebind()
     })
+    // The host answers a lock only at the open and on a refused edit: once this note's lock is
+    // lifted, a fresh open says whether the window may edit it again (a folder lock above it
+    // still answers `locked`).
+    this.locksCleanup = subscribeToEvent(events.vaultLocksChangedEvent, (locks) => {
+      if (this.readOnlyReason === 'locked' && !locks.notes.includes(this.noteId)) {
+        this.scheduleReopen()
+      }
+    })
 
     const opened = await this.openDoc()
     if (this.destroyed) return
@@ -241,6 +250,8 @@ export class YjsIpcProvider extends Observable<string> {
     this.resetCleanup = null
     this.readyCleanup?.()
     this.readyCleanup = null
+    this.locksCleanup?.()
+    this.locksCleanup = null
     this.channel = null
     typingHoldOf(this.doc).release()
 
@@ -330,6 +341,32 @@ export class YjsIpcProvider extends Observable<string> {
     } catch (err) {
       this.stale = true
       log.error('Failed to rebind to the editor host', { noteId: this.noteId, error: err })
+    }
+  }
+
+  /** Reopens a note the host refused as locked, queued with the rebinds. */
+  private scheduleReopen(): void {
+    this.rebinding = (this.rebinding ?? Promise.resolve())
+      .catch(() => {})
+      .then(() => this.reopenLocked())
+  }
+
+  /**
+   * The open answers whether the lock still holds. When it no longer does, the handshake sends
+   * what this doc holds beyond the host's state, as a rebind does. A stale binding is left to
+   * its rebind; a failure is logged and the note stays read-only.
+   */
+  private async reopenLocked(): Promise<void> {
+    if (this.destroyed || this.purged || this.stale || this.readOnlyReason !== 'locked') return
+    try {
+      const opened = await this.openDoc()
+      if (this.destroyed) return
+      await this.finishHandshake(opened.stateVector)
+    } catch (err) {
+      log.error('Failed to reopen a note after its lock changed', {
+        noteId: this.noteId,
+        error: err
+      })
     }
   }
 
