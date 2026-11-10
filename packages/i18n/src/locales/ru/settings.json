@@ -504,7 +504,8 @@
       "loading": "Загрузка настроек…"
     },
     "groups": {
-      "footer": "Нижняя панель"
+      "footer": "Нижняя панель",
+      "pastYears": "Прошлые годы"
     },
     "template": {
       "label": "Шаблон",
@@ -562,6 +563,14 @@
     "showInSidebar": {
       "label": "Показывать на боковой панели",
       "description": "Показывать папку дневника и его записи в дереве заметок"
+    },
+    "showOnThisDay": {
+      "label": "Показывать «В этот день»",
+      "description": "Показывать ту же дату из прошлых лет под записью"
+    },
+    "allYearsView": {
+      "label": "Показывать все годы полностью",
+      "description": "Вечный журнал: все годы этой даты на одной странице под записью"
     }
   },
   "tasks": {
@@ -1381,7 +1390,8 @@
         "ollama": "Ollama (локально)",
         "openai": "OpenAI",
         "anthropic": "Anthropic",
-        "google": "Google Gemini"
+        "google": "Google Gemini",
+        "custom": "Свой (совместимый с OpenAI)"
       },
       "model": "Модель",
       "modelDescription": "Языковая модель для переписывания и краткого изложения",
@@ -1391,6 +1401,11 @@
       "apiKeyPlaceholder": "Введите API-ключ {provider}",
       "ollamaUrl": "URL Ollama",
       "ollamaUrlDescription": "Адрес локального сервера",
+      "customUrl": "Базовый URL",
+      "customUrlDescription": "Любой совместимый с OpenAI эндпоинт, например OpenRouter",
+      "customUrlPlaceholder": "https://openrouter.ai/api/v1",
+      "customApiKeyPlaceholder": "Ключ API (необязательно)",
+      "customModelPlaceholder": "ID модели",
       "connection": "Подключение",
       "activePort": "Активен на порту {port}",
       "notConnected": "Не подключено",

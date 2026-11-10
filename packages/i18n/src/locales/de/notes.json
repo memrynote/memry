@@ -134,6 +134,7 @@
     "actions": {
       "openInNewTab": "In neuem Tab öffnen",
       "openToTheSide": "Seitlich öffnen",
+      "openFolderView": "Ordneransicht öffnen",
       "newNote": "Neue Notiz",
       "newFolder": "Neuer Ordner",
       "showTasks": "Aufgaben anzeigen",
@@ -183,7 +184,8 @@
     },
     "toast": {
       "selectionBookmarked": "{count} Elemente als Lesezeichen gespeichert",
-      "selectionBookmarkFailed": "Die ausgewählten Elemente konnten nicht als Lesezeichen gespeichert werden"
+      "selectionBookmarkFailed": "Die ausgewählten Elemente konnten nicht als Lesezeichen gespeichert werden",
+      "pairedNoteNameTaken": "Dort gibt es bereits eine Notiz namens {name}"
     }
   },
   "editor": {
@@ -418,6 +420,10 @@
       "savedView": "Gespeicherte Ansicht",
       "savedViewMissing": "Die gespeicherte Ansicht „{name}“ existiert nicht mehr, daher wird die Standardansicht angezeigt.",
       "openAsTab": "Als Tab öffnen",
+      "newNote": "Neue Notiz",
+      "newViewTitle": "Neue Ansicht",
+      "newViewSubtext": "Ein neuer Ordner neben dieser Notiz, hier aufgelistet",
+      "newViewFailed": "Der Ordner für diese Ansicht konnte nicht erstellt werden.",
       "empty": "Noch passt nichts zu dieser Ansicht.",
       "loadFailed": "Diese Ansicht konnte nicht geladen werden. Die Notizen selbst bleiben unverändert.",
       "folderMissing": "Dieser Ordner ist nicht mehr im Tresor. Wähle eine andere Quelle.",
@@ -776,6 +782,12 @@
     "more": "{count} weitere",
     "viaProperty": "{property} → {title}",
     "viaPortal": "In einem Portal angezeigt"
+  },
+  "references": {
+    "filterAll": "Alle",
+    "filterNotes": "Notizen",
+    "filterJournal": "Journal",
+    "filterBy": "Verweise filtern: {filter}"
   },
   "unlinkedMentions": {
     "title": "Nicht verlinkte Erwähnungen",

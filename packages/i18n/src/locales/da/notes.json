@@ -134,6 +134,7 @@
     "actions": {
       "openInNewTab": "Åbn i ny fane",
       "openToTheSide": "Åbn ved siden af",
+      "openFolderView": "Åbn mappevisning",
       "newNote": "Ny note",
       "newFolder": "Ny mappe",
       "showTasks": "Vis opgaver",
@@ -183,7 +184,8 @@
     },
     "toast": {
       "selectionBookmarked": "{count} elementer bogmærket",
-      "selectionBookmarkFailed": "Kunne ikke bogmærke de valgte elementer"
+      "selectionBookmarkFailed": "Kunne ikke bogmærke de valgte elementer",
+      "pairedNoteNameTaken": "Der findes allerede en note med navnet {name}"
     }
   },
   "editor": {
@@ -418,6 +420,10 @@
       "savedView": "Gemt visning",
       "savedViewMissing": "Den gemte visning »{name}« findes ikke længere, så standardvisningen vises.",
       "openAsTab": "Åbn som fane",
+      "newNote": "Ny note",
+      "newViewTitle": "Ny visning",
+      "newViewSubtext": "En ny mappe ved siden af denne note, vist her",
+      "newViewFailed": "Kunne ikke oprette mappen til denne visning.",
       "empty": "Intet matcher denne visning endnu.",
       "loadFailed": "Kunne ikke indlæse denne visning. Selve noterne er uændrede.",
       "folderMissing": "Denne mappe findes ikke længere i boksen. Vælg en anden kilde.",
@@ -776,6 +782,12 @@
     "more": "{count} flere",
     "viaProperty": "{property} → {title}",
     "viaPortal": "Vist i en portal"
+  },
+  "references": {
+    "filterAll": "Alle",
+    "filterNotes": "Noter",
+    "filterJournal": "Dagbog",
+    "filterBy": "Filtrer referencer: {filter}"
   },
   "unlinkedMentions": {
     "title": "Ulinkede omtaler",

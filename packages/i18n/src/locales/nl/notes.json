@@ -134,6 +134,7 @@
     "actions": {
       "openInNewTab": "Openen in nieuw tabblad",
       "openToTheSide": "Openen aan de zijkant",
+      "openFolderView": "Mapweergave openen",
       "newNote": "Nieuwe notitie",
       "newFolder": "Nieuwe map",
       "showTasks": "Taken tonen",
@@ -183,7 +184,8 @@
     },
     "toast": {
       "selectionBookmarked": "{count} items als bladwijzer toegevoegd",
-      "selectionBookmarkFailed": "Kan de geselecteerde items niet als bladwijzer toevoegen"
+      "selectionBookmarkFailed": "Kan de geselecteerde items niet als bladwijzer toevoegen",
+      "pairedNoteNameTaken": "Daar staat al een notitie met de naam {name}"
     }
   },
   "editor": {
@@ -418,6 +420,10 @@
       "savedView": "Opgeslagen weergave",
       "savedViewMissing": "De opgeslagen weergave “{name}” bestaat niet meer, dus hier wordt de standaardweergave getoond.",
       "openAsTab": "Openen als tabblad",
+      "newNote": "Nieuwe notitie",
+      "newViewTitle": "Nieuwe weergave",
+      "newViewSubtext": "Een nieuwe map naast deze notitie, hier weergegeven",
+      "newViewFailed": "Kan de map voor deze weergave niet maken.",
       "empty": "Er komt nog niets overeen met deze weergave.",
       "loadFailed": "Kan deze weergave niet laden. De notities zelf blijven ongewijzigd.",
       "folderMissing": "Deze map staat niet meer in de kluis. Kies een andere bron.",
@@ -776,6 +782,12 @@
     "more": "Nog {count}",
     "viaProperty": "{property} → {title}",
     "viaPortal": "Getoond in een portaal"
+  },
+  "references": {
+    "filterAll": "Alle",
+    "filterNotes": "Notities",
+    "filterJournal": "Dagboek",
+    "filterBy": "Verwijzingen filteren: {filter}"
   },
   "unlinkedMentions": {
     "title": "Ongekoppelde vermeldingen",

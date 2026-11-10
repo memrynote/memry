@@ -134,6 +134,7 @@
     "actions": {
       "openInNewTab": "Buka dalam tab baharu",
       "openToTheSide": "Buka di sisi",
+      "openFolderView": "Buka Paparan Folder",
       "newNote": "Nota baharu",
       "newFolder": "Folder baharu",
       "showTasks": "Tunjukkan Tugas",
@@ -183,7 +184,8 @@
     },
     "toast": {
       "selectionBookmarked": "{count} item ditanda buku",
-      "selectionBookmarkFailed": "Tidak dapat menanda buku item yang dipilih"
+      "selectionBookmarkFailed": "Tidak dapat menanda buku item yang dipilih",
+      "pairedNoteNameTaken": "Nota bernama {name} sudah ada di situ"
     }
   },
   "editor": {
@@ -418,6 +420,10 @@
       "savedView": "Paparan tersimpan",
       "savedViewMissing": "Paparan tersimpan “{name}” sudah tiada, jadi paparan lalai ditunjukkan.",
       "openAsTab": "Buka sebagai tab",
+      "newNote": "Nota baharu",
+      "newViewTitle": "Paparan baharu",
+      "newViewSubtext": "Folder baharu di sebelah nota ini, disenaraikan di sini",
+      "newViewFailed": "Tidak dapat mencipta folder untuk paparan ini.",
       "empty": "Belum ada yang sepadan dengan paparan ini.",
       "loadFailed": "Tidak dapat memuatkan paparan ini. Nota itu sendiri tidak diubah.",
       "folderMissing": "Folder ini sudah tiada dalam bilik kebal. Pilih sumber lain.",
@@ -776,6 +782,12 @@
     "more": "{count} lagi",
     "viaProperty": "{property} → {title}",
     "viaPortal": "Ditunjukkan dalam portal"
+  },
+  "references": {
+    "filterAll": "Semua",
+    "filterNotes": "Nota",
+    "filterJournal": "Jurnal",
+    "filterBy": "Tapis rujukan: {filter}"
   },
   "unlinkedMentions": {
     "title": "Sebutan tanpa pautan",

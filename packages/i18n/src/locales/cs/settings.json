@@ -504,7 +504,8 @@
       "loading": "Načítání nastavení…"
     },
     "groups": {
-      "footer": "Zápatí"
+      "footer": "Zápatí",
+      "pastYears": "Minulé roky"
     },
     "template": {
       "label": "Šablona",
@@ -562,6 +563,14 @@
     "showInSidebar": {
       "label": "Zobrazit v bočním panelu",
       "description": "Zobrazit složku deníku a její zápisy ve stromu poznámek"
+    },
+    "showOnThisDay": {
+      "label": "Zobrazit V tento den",
+      "description": "Pod záznamem zobrazit stejné datum z minulých let"
+    },
+    "allYearsView": {
+      "label": "Zobrazit všechny roky celé",
+      "description": "Věčný deník: každý rok daného data na jedné stránce pod záznamem"
     }
   },
   "tasks": {
@@ -1381,7 +1390,8 @@
         "ollama": "Ollama (místní)",
         "openai": "OpenAI",
         "anthropic": "Anthropic",
-        "google": "Google Gemini"
+        "google": "Google Gemini",
+        "custom": "Vlastní (kompatibilní s OpenAI)"
       },
       "model": "Model",
       "modelDescription": "Jazykový model pro přepsání a shrnutí",
@@ -1391,6 +1401,11 @@
       "apiKeyPlaceholder": "Zadejte klíč API pro {provider}",
       "ollamaUrl": "URL serveru Ollama",
       "ollamaUrlDescription": "Adresa místního serveru",
+      "customUrl": "Základní URL",
+      "customUrlDescription": "Libovolný endpoint kompatibilní s OpenAI, například OpenRouter",
+      "customUrlPlaceholder": "https://openrouter.ai/api/v1",
+      "customApiKeyPlaceholder": "Klíč API (volitelné)",
+      "customModelPlaceholder": "ID modelu",
       "connection": "Připojení",
       "activePort": "Aktivní na portu {port}",
       "notConnected": "Nepřipojeno",

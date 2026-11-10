@@ -504,7 +504,8 @@
       "loading": "正在載入設定…"
     },
     "groups": {
-      "footer": "頁尾"
+      "footer": "頁尾",
+      "pastYears": "往年"
     },
     "template": {
       "label": "範本",
@@ -562,6 +563,14 @@
     "showInSidebar": {
       "label": "顯示於側邊欄",
       "description": "在筆記樹狀結構中顯示日誌資料夾及其項目"
+    },
+    "showOnThisDay": {
+      "label": "顯示歷年今日",
+      "description": "在條目下方列出往年的同一日期"
+    },
+    "allYearsView": {
+      "label": "完整顯示所有年份",
+      "description": "永恆日誌：該日期的每一年都在同一頁，位於條目下方"
     }
   },
   "tasks": {
@@ -1381,7 +1390,8 @@
         "ollama": "Ollama（本機）",
         "openai": "OpenAI",
         "anthropic": "Anthropic",
-        "google": "Google Gemini"
+        "google": "Google Gemini",
+        "custom": "自訂（相容 OpenAI）"
       },
       "model": "模型",
       "modelDescription": "用於重寫和摘要的語言模型",
@@ -1391,6 +1401,11 @@
       "apiKeyPlaceholder": "輸入 {provider} API 金鑰",
       "ollamaUrl": "Ollama URL",
       "ollamaUrlDescription": "本機伺服器位址",
+      "customUrl": "基礎 URL",
+      "customUrlDescription": "任何相容 OpenAI 的端點，例如 OpenRouter",
+      "customUrlPlaceholder": "https://openrouter.ai/api/v1",
+      "customApiKeyPlaceholder": "API 金鑰（選填）",
+      "customModelPlaceholder": "模型 ID",
       "connection": "連線",
       "activePort": "在連接埠 {port} 上執行中",
       "notConnected": "未連線",

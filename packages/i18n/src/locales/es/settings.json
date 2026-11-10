@@ -504,7 +504,8 @@
       "loading": "Cargando ajustes…"
     },
     "groups": {
-      "footer": "Pie de página"
+      "footer": "Pie de página",
+      "pastYears": "Años anteriores"
     },
     "template": {
       "label": "Plantilla",
@@ -562,6 +563,14 @@
     "showInSidebar": {
       "label": "Mostrar en la barra lateral",
       "description": "Muestra la carpeta del diario y sus entradas en el árbol de notas"
+    },
+    "showOnThisDay": {
+      "label": "Mostrar Tal día como hoy",
+      "description": "Mostrar la misma fecha de años anteriores bajo la entrada"
+    },
+    "allYearsView": {
+      "label": "Mostrar todos los años completos",
+      "description": "El diario eterno: todos los años de la fecha en una página, bajo la entrada"
     }
   },
   "tasks": {
@@ -1381,7 +1390,8 @@
         "ollama": "Ollama (local)",
         "openai": "OpenAI",
         "anthropic": "Anthropic",
-        "google": "Google Gemini"
+        "google": "Google Gemini",
+        "custom": "Personalizado (compatible con OpenAI)"
       },
       "model": "Modelo",
       "modelDescription": "Modelo de lenguaje para reescribir y resumir",
@@ -1391,6 +1401,11 @@
       "apiKeyPlaceholder": "Introducir la clave de API de {provider}",
       "ollamaUrl": "URL de Ollama",
       "ollamaUrlDescription": "Dirección del servidor local",
+      "customUrl": "URL base",
+      "customUrlDescription": "Cualquier endpoint compatible con OpenAI, como OpenRouter",
+      "customUrlPlaceholder": "https://openrouter.ai/api/v1",
+      "customApiKeyPlaceholder": "Clave de API (opcional)",
+      "customModelPlaceholder": "ID del modelo",
       "connection": "Conexión",
       "activePort": "Activo en el puerto {port}",
       "notConnected": "No conectado",

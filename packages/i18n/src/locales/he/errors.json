@@ -137,6 +137,7 @@
   },
   "ai": {
     "inlineDisabled": "עריכת AI בתוך הטקסט מושבתת",
+    "listModelsFailed": "לא ניתן היה להציג את רשימת המודלים",
     "writingAssistInvalid": "לא ניתן לשלוח את הבקשה למודל ה-AI.",
     "apiKeyMissing": "כדי להשתמש בכלי הכתיבה, יש להוסיף את מפתח ה-API של {provider} ב-הגדרות ← AI.",
     "apiKeyInvalid": "מפתח ה-API של {provider} נדחה. כדאי לבדוק אותו ב-הגדרות ← AI.",

@@ -137,6 +137,7 @@
   },
   "ai": {
     "inlineDisabled": "การแก้ไขในบรรทัดด้วย AI ปิดอยู่",
+    "listModelsFailed": "แสดงรายการโมเดลไม่สำเร็จ",
     "writingAssistInvalid": "ส่งคำขอนั้นไปยังโมเดล AI ไม่ได้",
     "apiKeyMissing": "เพิ่มคีย์ API ของ {provider} ในการตั้งค่า → AI เพื่อใช้เครื่องมือช่วยเขียน",
     "apiKeyInvalid": "คีย์ API ของ {provider} ถูกปฏิเสธ ตรวจสอบในการตั้งค่า → AI",
