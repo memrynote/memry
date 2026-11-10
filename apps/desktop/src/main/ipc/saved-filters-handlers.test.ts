@@ -57,6 +57,12 @@ vi.mock('../settings/saved-filters-store', () => ({
   getSavedFilterById: vi.fn()
 }))
 
+vi.mock('../settings/saved-filters-sync', () => ({
+  syncFilterCreate: vi.fn(),
+  syncFilterUpdate: vi.fn(),
+  syncFilterDelete: vi.fn()
+}))
+
 vi.mock('@memry/sync-client/filter-sync', () => ({
   getFilterSyncService: vi.fn().mockReturnValue(null)
 }))
@@ -67,6 +73,7 @@ import {
 } from './saved-filters-handlers'
 import { getDatabase, requireDatabase } from '../database'
 import * as savedFiltersStore from '../settings/saved-filters-store'
+import { syncFilterUpdate } from '../settings/saved-filters-sync'
 
 describe('saved-filters-handlers', () => {
   beforeEach(() => {
@@ -167,6 +174,18 @@ describe('saved-filters-handlers', () => {
     })
     expect(reorderResult).toEqual({ success: true })
     expect(savedFiltersStore.reorderSavedFilters).toHaveBeenCalledWith({}, ['sf-1', 'sf-2'], [0, 1])
+  })
+
+  it('pushes every reordered filter, so the new order reaches other devices', async () => {
+    registerSavedFiltersHandlers()
+
+    await invokeHandler(SavedFiltersChannels.invoke.REORDER, {
+      ids: ['sf-1', 'sf-2'],
+      positions: [1, 0]
+    })
+
+    expect(syncFilterUpdate).toHaveBeenCalledWith('sf-1')
+    expect(syncFilterUpdate).toHaveBeenCalledWith('sf-2')
   })
 
   it('returns errors for missing saved filters', async () => {

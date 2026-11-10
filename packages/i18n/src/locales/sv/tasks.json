@@ -113,7 +113,74 @@
       "noDueDate": "Inget förfallodatum"
     },
     "repeatTypeRepeating": "Återkommande",
-    "repeatTypeOneTime": "Engångsuppgifter"
+    "repeatTypeOneTime": "Engångsuppgifter",
+    "advanced": {
+      "entry": "Avancerat filter…",
+      "entryHint": "Regler med och, eller, inte",
+      "title": "Filter",
+      "match": "Matcha",
+      "ofThese": "av dessa",
+      "matches": {
+        "all": "alla",
+        "any": "någon",
+        "none": "ingen"
+      },
+      "fields": {
+        "title": "Titel",
+        "status": "Status",
+        "priority": "Prioritet",
+        "due": "Förfallodatum",
+        "project": "Projekt",
+        "location": "Plats",
+        "tags": "Taggar",
+        "repeat": "Upprepas",
+        "hasTime": "Har tid"
+      },
+      "ops": {
+        "contains": "innehåller",
+        "notContains": "innehåller inte",
+        "any": "är någon av",
+        "none": "är ingen av",
+        "all": "har alla",
+        "empty": "är tom",
+        "notEmpty": "är inte tom",
+        "is": "är",
+        "isNot": "är inte"
+      },
+      "tagOps": {
+        "any": "har någon av",
+        "all": "har alla",
+        "none": "har ingen av"
+      },
+      "values": {
+        "repeating": "Återkommande",
+        "oneTime": "Engångs",
+        "withTime": "Med tid",
+        "withoutTime": "Utan tid",
+        "customRange": "Anpassat intervall",
+        "from": "Från",
+        "to": "Till",
+        "pick": "Välj…",
+        "titlePlaceholder": "Text i titeln"
+      },
+      "addRule": "Lägg till regel",
+      "addGroup": "Lägg till grupp",
+      "clear": "Rensa",
+      "removeRule": "Ta bort regel",
+      "removeGroup": "Ta bort grupp",
+      "matchCount": "{count, plural, one {# uppgift matchar} other {# uppgifter matchar}}",
+      "skipped": "{count, plural, one {# regel hoppades över} other {# regler hoppades över}}",
+      "ruleCount": "{count, plural, one {# regel} other {# regler}}",
+      "unknownRule": "Regel från en nyare version",
+      "empty": "Inga regler än. Lägg till en för att börja filtrera.",
+      "summary": {
+        "and": "och",
+        "or": "eller",
+        "not": "inte"
+      },
+      "editRules": "Redigera regler",
+      "clearRules": "Rensa regler"
+    }
   },
   "quickAdd": {
     "label": "Lägg snabbt till uppgift",

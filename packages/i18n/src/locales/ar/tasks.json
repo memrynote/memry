@@ -113,7 +113,74 @@
       "noDueDate": "بلا تاريخ استحقاق"
     },
     "repeatTypeRepeating": "متكررة",
-    "repeatTypeOneTime": "لمرة واحدة"
+    "repeatTypeOneTime": "لمرة واحدة",
+    "advanced": {
+      "entry": "فلتر متقدم…",
+      "entryHint": "قواعد مع و، أو، ليس",
+      "title": "فلتر",
+      "match": "مطابقة",
+      "ofThese": "من هذه",
+      "matches": {
+        "all": "الكل",
+        "any": "أي",
+        "none": "لا شيء"
+      },
+      "fields": {
+        "title": "العنوان",
+        "status": "الحالة",
+        "priority": "الأولوية",
+        "due": "تاريخ الاستحقاق",
+        "project": "المشروع",
+        "location": "الموقع",
+        "tags": "الوسوم",
+        "repeat": "التكرار",
+        "hasTime": "له وقت"
+      },
+      "ops": {
+        "contains": "يحتوي على",
+        "notContains": "لا يحتوي على",
+        "any": "أي من",
+        "none": "ليس أيًا من",
+        "all": "يحتوي على كل",
+        "empty": "فارغ",
+        "notEmpty": "غير فارغ",
+        "is": "هو",
+        "isNot": "ليس"
+      },
+      "tagOps": {
+        "any": "يحتوي على أي من",
+        "all": "يحتوي على كل",
+        "none": "لا يحتوي على أي من"
+      },
+      "values": {
+        "repeating": "متكررة",
+        "oneTime": "لمرة واحدة",
+        "withTime": "بوقت محدد",
+        "withoutTime": "بدون وقت",
+        "customRange": "نطاق مخصص",
+        "from": "من",
+        "to": "إلى",
+        "pick": "اختر…",
+        "titlePlaceholder": "نص في العنوان"
+      },
+      "addRule": "إضافة قاعدة",
+      "addGroup": "إضافة مجموعة",
+      "clear": "مسح",
+      "removeRule": "إزالة القاعدة",
+      "removeGroup": "إزالة المجموعة",
+      "matchCount": "{count, plural, zero {لا تطابق أي مهمة} one {تطابق مهمة واحدة} two {تطابق مهمتان} few {تطابق # مهام} many {تطابق # مهمة} other {تطابق # مهمة}}",
+      "skipped": "{count, plural, zero {لم يتم تخطي أي قاعدة} one {تم تخطي قاعدة واحدة} two {تم تخطي قاعدتين} few {تم تخطي # قواعد} many {تم تخطي # قاعدة} other {تم تخطي # قاعدة}}",
+      "ruleCount": "{count, plural, zero {# قاعدة} one {قاعدة واحدة} two {قاعدتان} few {# قواعد} many {# قاعدة} other {# قاعدة}}",
+      "unknownRule": "قاعدة من إصدار أحدث",
+      "empty": "لا توجد قواعد بعد. أضف قاعدة لبدء التصفية.",
+      "summary": {
+        "and": "و",
+        "or": "أو",
+        "not": "ليس"
+      },
+      "editRules": "تعديل القواعد",
+      "clearRules": "مسح القواعد"
+    }
   },
   "quickAdd": {
     "label": "إضافة سريعة لمهمة",

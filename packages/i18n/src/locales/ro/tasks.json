@@ -113,7 +113,74 @@
       "noDueDate": "Fără termen"
     },
     "repeatTypeRepeating": "Recurente",
-    "repeatTypeOneTime": "Nerecurente"
+    "repeatTypeOneTime": "Nerecurente",
+    "advanced": {
+      "entry": "Filtru avansat…",
+      "entryHint": "Reguli cu și, sau, nu",
+      "title": "Filtru",
+      "match": "Potrivește",
+      "ofThese": "dintre acestea",
+      "matches": {
+        "all": "toate",
+        "any": "oricare",
+        "none": "niciuna"
+      },
+      "fields": {
+        "title": "Titlu",
+        "status": "Stare",
+        "priority": "Prioritate",
+        "due": "Termen",
+        "project": "Proiect",
+        "location": "Locație",
+        "tags": "Etichete",
+        "repeat": "Repetare",
+        "hasTime": "Are oră"
+      },
+      "ops": {
+        "contains": "conține",
+        "notContains": "nu conține",
+        "any": "este unul dintre",
+        "none": "nu este niciunul dintre",
+        "all": "are toate",
+        "empty": "este gol",
+        "notEmpty": "nu este gol",
+        "is": "este",
+        "isNot": "nu este"
+      },
+      "tagOps": {
+        "any": "are oricare dintre",
+        "all": "are toate",
+        "none": "nu are niciuna dintre"
+      },
+      "values": {
+        "repeating": "Recurentă",
+        "oneTime": "O singură dată",
+        "withTime": "Cu oră",
+        "withoutTime": "Fără oră",
+        "customRange": "Interval personalizat",
+        "from": "De la",
+        "to": "Până la",
+        "pick": "Alege…",
+        "titlePlaceholder": "Text în titlu"
+      },
+      "addRule": "Adaugă regulă",
+      "addGroup": "Adaugă grup",
+      "clear": "Golește",
+      "removeRule": "Elimină regula",
+      "removeGroup": "Elimină grupul",
+      "matchCount": "{count, plural, one {# sarcină se potrivește} few {# sarcini se potrivesc} other {# de sarcini se potrivesc}}",
+      "skipped": "{count, plural, one {# regulă omisă} few {# reguli omise} other {# de reguli omise}}",
+      "ruleCount": "{count, plural, one {# regulă} few {# reguli} other {# de reguli}}",
+      "unknownRule": "Regulă dintr-o versiune mai nouă",
+      "empty": "Nicio regulă încă. Adaugă una pentru a începe filtrarea.",
+      "summary": {
+        "and": "și",
+        "or": "sau",
+        "not": "nu"
+      },
+      "editRules": "Editează regulile",
+      "clearRules": "Golește regulile"
+    }
   },
   "quickAdd": {
     "label": "Adăugare rapidă de sarcini",

@@ -19236,6 +19236,261 @@
     "savedFilters.create": {
       "$id": "savedFilters.create",
       "type": "array",
+      "$defs": {
+        "__schema0": {
+          "type": "object",
+          "properties": {
+            "match": {
+              "type": "string",
+              "enum": ["all", "any", "none"]
+            },
+            "rules": {
+              "type": "array",
+              "items": {
+                "anyOf": [
+                  {
+                    "$ref": "#/$defs/__schema0"
+                  },
+                  {
+                    "oneOf": [
+                      {
+                        "type": "object",
+                        "properties": {
+                          "field": {
+                            "type": "string",
+                            "const": "title"
+                          },
+                          "op": {
+                            "type": "string",
+                            "enum": ["contains", "notContains"]
+                          },
+                          "values": {
+                            "type": "array",
+                            "items": {
+                              "type": "string"
+                            }
+                          }
+                        },
+                        "required": ["field", "op", "values"],
+                        "additionalProperties": false
+                      },
+                      {
+                        "type": "object",
+                        "properties": {
+                          "field": {
+                            "type": "string",
+                            "const": "priority"
+                          },
+                          "op": {
+                            "type": "string",
+                            "enum": ["any", "none"]
+                          },
+                          "values": {
+                            "type": "array",
+                            "items": {
+                              "type": "string",
+                              "enum": ["urgent", "high", "medium", "low", "none"]
+                            }
+                          }
+                        },
+                        "required": ["field", "op", "values"],
+                        "additionalProperties": false
+                      },
+                      {
+                        "type": "object",
+                        "properties": {
+                          "field": {
+                            "type": "string",
+                            "const": "status"
+                          },
+                          "op": {
+                            "type": "string",
+                            "enum": ["any", "none"]
+                          },
+                          "values": {
+                            "type": "array",
+                            "items": {
+                              "type": "string"
+                            }
+                          }
+                        },
+                        "required": ["field", "op", "values"],
+                        "additionalProperties": false
+                      },
+                      {
+                        "type": "object",
+                        "properties": {
+                          "field": {
+                            "type": "string",
+                            "const": "project"
+                          },
+                          "op": {
+                            "type": "string",
+                            "enum": ["any", "none"]
+                          },
+                          "values": {
+                            "type": "array",
+                            "items": {
+                              "type": "string"
+                            }
+                          }
+                        },
+                        "required": ["field", "op", "values"],
+                        "additionalProperties": false
+                      },
+                      {
+                        "type": "object",
+                        "properties": {
+                          "field": {
+                            "type": "string",
+                            "const": "tags"
+                          },
+                          "op": {
+                            "type": "string",
+                            "enum": ["any", "all", "none", "empty", "notEmpty"]
+                          },
+                          "values": {
+                            "type": "array",
+                            "items": {
+                              "type": "string"
+                            }
+                          }
+                        },
+                        "required": ["field", "op", "values"],
+                        "additionalProperties": false
+                      },
+                      {
+                        "type": "object",
+                        "properties": {
+                          "field": {
+                            "type": "string",
+                            "const": "due"
+                          },
+                          "op": {
+                            "type": "string",
+                            "enum": ["is", "isNot"]
+                          },
+                          "values": {
+                            "type": "array",
+                            "items": {
+                              "type": "string",
+                              "enum": [
+                                "none",
+                                "overdue",
+                                "today",
+                                "tomorrow",
+                                "this-week",
+                                "next-week",
+                                "this-month",
+                                "custom"
+                              ]
+                            }
+                          },
+                          "dueStart": {
+                            "anyOf": [
+                              {
+                                "type": "string"
+                              },
+                              {
+                                "type": "null"
+                              }
+                            ]
+                          },
+                          "dueEnd": {
+                            "anyOf": [
+                              {
+                                "type": "string"
+                              },
+                              {
+                                "type": "null"
+                              }
+                            ]
+                          }
+                        },
+                        "required": ["field", "op", "values"],
+                        "additionalProperties": false
+                      },
+                      {
+                        "type": "object",
+                        "properties": {
+                          "field": {
+                            "type": "string",
+                            "const": "location"
+                          },
+                          "op": {
+                            "type": "string",
+                            "enum": ["any", "none"]
+                          },
+                          "folderPaths": {
+                            "type": "array",
+                            "items": {
+                              "type": "string"
+                            }
+                          },
+                          "noteIds": {
+                            "type": "array",
+                            "items": {
+                              "type": "string"
+                            }
+                          }
+                        },
+                        "required": ["field", "op", "folderPaths", "noteIds"],
+                        "additionalProperties": false
+                      },
+                      {
+                        "type": "object",
+                        "properties": {
+                          "field": {
+                            "type": "string",
+                            "const": "repeat"
+                          },
+                          "op": {
+                            "type": "string",
+                            "const": "is"
+                          },
+                          "values": {
+                            "type": "array",
+                            "items": {
+                              "type": "string",
+                              "enum": ["repeating", "one-time"]
+                            }
+                          }
+                        },
+                        "required": ["field", "op", "values"],
+                        "additionalProperties": false
+                      },
+                      {
+                        "type": "object",
+                        "properties": {
+                          "field": {
+                            "type": "string",
+                            "const": "hasTime"
+                          },
+                          "op": {
+                            "type": "string",
+                            "const": "is"
+                          },
+                          "values": {
+                            "type": "array",
+                            "items": {
+                              "type": "string",
+                              "enum": ["with-time", "without-time"]
+                            }
+                          }
+                        },
+                        "required": ["field", "op", "values"],
+                        "additionalProperties": false
+                      }
+                    ]
+                  }
+                ]
+              }
+            }
+          },
+          "required": ["match", "rules"],
+          "additionalProperties": false
+        }
+      },
       "prefixItems": [
         {
           "type": "object",
@@ -19391,6 +19646,16 @@
               },
               "required": ["filters"],
               "additionalProperties": false
+            },
+            "expression": {
+              "anyOf": [
+                {
+                  "$ref": "#/$defs/__schema0"
+                },
+                {
+                  "type": "null"
+                }
+              ]
             }
           },
           "required": ["name", "config"],
@@ -19453,6 +19718,261 @@
     "savedFilters.update": {
       "$id": "savedFilters.update",
       "type": "array",
+      "$defs": {
+        "__schema0": {
+          "type": "object",
+          "properties": {
+            "match": {
+              "type": "string",
+              "enum": ["all", "any", "none"]
+            },
+            "rules": {
+              "type": "array",
+              "items": {
+                "anyOf": [
+                  {
+                    "$ref": "#/$defs/__schema0"
+                  },
+                  {
+                    "oneOf": [
+                      {
+                        "type": "object",
+                        "properties": {
+                          "field": {
+                            "type": "string",
+                            "const": "title"
+                          },
+                          "op": {
+                            "type": "string",
+                            "enum": ["contains", "notContains"]
+                          },
+                          "values": {
+                            "type": "array",
+                            "items": {
+                              "type": "string"
+                            }
+                          }
+                        },
+                        "required": ["field", "op", "values"],
+                        "additionalProperties": false
+                      },
+                      {
+                        "type": "object",
+                        "properties": {
+                          "field": {
+                            "type": "string",
+                            "const": "priority"
+                          },
+                          "op": {
+                            "type": "string",
+                            "enum": ["any", "none"]
+                          },
+                          "values": {
+                            "type": "array",
+                            "items": {
+                              "type": "string",
+                              "enum": ["urgent", "high", "medium", "low", "none"]
+                            }
+                          }
+                        },
+                        "required": ["field", "op", "values"],
+                        "additionalProperties": false
+                      },
+                      {
+                        "type": "object",
+                        "properties": {
+                          "field": {
+                            "type": "string",
+                            "const": "status"
+                          },
+                          "op": {
+                            "type": "string",
+                            "enum": ["any", "none"]
+                          },
+                          "values": {
+                            "type": "array",
+                            "items": {
+                              "type": "string"
+                            }
+                          }
+                        },
+                        "required": ["field", "op", "values"],
+                        "additionalProperties": false
+                      },
+                      {
+                        "type": "object",
+                        "properties": {
+                          "field": {
+                            "type": "string",
+                            "const": "project"
+                          },
+                          "op": {
+                            "type": "string",
+                            "enum": ["any", "none"]
+                          },
+                          "values": {
+                            "type": "array",
+                            "items": {
+                              "type": "string"
+                            }
+                          }
+                        },
+                        "required": ["field", "op", "values"],
+                        "additionalProperties": false
+                      },
+                      {
+                        "type": "object",
+                        "properties": {
+                          "field": {
+                            "type": "string",
+                            "const": "tags"
+                          },
+                          "op": {
+                            "type": "string",
+                            "enum": ["any", "all", "none", "empty", "notEmpty"]
+                          },
+                          "values": {
+                            "type": "array",
+                            "items": {
+                              "type": "string"
+                            }
+                          }
+                        },
+                        "required": ["field", "op", "values"],
+                        "additionalProperties": false
+                      },
+                      {
+                        "type": "object",
+                        "properties": {
+                          "field": {
+                            "type": "string",
+                            "const": "due"
+                          },
+                          "op": {
+                            "type": "string",
+                            "enum": ["is", "isNot"]
+                          },
+                          "values": {
+                            "type": "array",
+                            "items": {
+                              "type": "string",
+                              "enum": [
+                                "none",
+                                "overdue",
+                                "today",
+                                "tomorrow",
+                                "this-week",
+                                "next-week",
+                                "this-month",
+                                "custom"
+                              ]
+                            }
+                          },
+                          "dueStart": {
+                            "anyOf": [
+                              {
+                                "type": "string"
+                              },
+                              {
+                                "type": "null"
+                              }
+                            ]
+                          },
+                          "dueEnd": {
+                            "anyOf": [
+                              {
+                                "type": "string"
+                              },
+                              {
+                                "type": "null"
+                              }
+                            ]
+                          }
+                        },
+                        "required": ["field", "op", "values"],
+                        "additionalProperties": false
+                      },
+                      {
+                        "type": "object",
+                        "properties": {
+                          "field": {
+                            "type": "string",
+                            "const": "location"
+                          },
+                          "op": {
+                            "type": "string",
+                            "enum": ["any", "none"]
+                          },
+                          "folderPaths": {
+                            "type": "array",
+                            "items": {
+                              "type": "string"
+                            }
+                          },
+                          "noteIds": {
+                            "type": "array",
+                            "items": {
+                              "type": "string"
+                            }
+                          }
+                        },
+                        "required": ["field", "op", "folderPaths", "noteIds"],
+                        "additionalProperties": false
+                      },
+                      {
+                        "type": "object",
+                        "properties": {
+                          "field": {
+                            "type": "string",
+                            "const": "repeat"
+                          },
+                          "op": {
+                            "type": "string",
+                            "const": "is"
+                          },
+                          "values": {
+                            "type": "array",
+                            "items": {
+                              "type": "string",
+                              "enum": ["repeating", "one-time"]
+                            }
+                          }
+                        },
+                        "required": ["field", "op", "values"],
+                        "additionalProperties": false
+                      },
+                      {
+                        "type": "object",
+                        "properties": {
+                          "field": {
+                            "type": "string",
+                            "const": "hasTime"
+                          },
+                          "op": {
+                            "type": "string",
+                            "const": "is"
+                          },
+                          "values": {
+                            "type": "array",
+                            "items": {
+                              "type": "string",
+                              "enum": ["with-time", "without-time"]
+                            }
+                          }
+                        },
+                        "required": ["field", "op", "values"],
+                        "additionalProperties": false
+                      }
+                    ]
+                  }
+                ]
+              }
+            }
+          },
+          "required": ["match", "rules"],
+          "additionalProperties": false
+        }
+      },
       "prefixItems": [
         {
           "type": "object",
@@ -19611,6 +20131,19 @@
               },
               "required": ["filters"],
               "additionalProperties": false
+            },
+            "starred": {
+              "type": "boolean"
+            },
+            "expression": {
+              "anyOf": [
+                {
+                  "$ref": "#/$defs/__schema0"
+                },
+                {
+                  "type": "null"
+                }
+              ]
             },
             "position": {
               "type": "integer",

@@ -113,7 +113,74 @@
       "noDueDate": "Sem prazo"
     },
     "repeatTypeRepeating": "Recorrentes",
-    "repeatTypeOneTime": "Únicas"
+    "repeatTypeOneTime": "Únicas",
+    "advanced": {
+      "entry": "Filtro avançado…",
+      "entryHint": "Regras com e, ou, não",
+      "title": "Filtro",
+      "match": "Corresponder a",
+      "ofThese": "destas",
+      "matches": {
+        "all": "todas",
+        "any": "qualquer uma",
+        "none": "nenhuma"
+      },
+      "fields": {
+        "title": "Título",
+        "status": "Status",
+        "priority": "Prioridade",
+        "due": "Data de vencimento",
+        "project": "Projeto",
+        "location": "Local",
+        "tags": "Tags",
+        "repeat": "Repete",
+        "hasTime": "Tem horário"
+      },
+      "ops": {
+        "contains": "contém",
+        "notContains": "não contém",
+        "any": "é um de",
+        "none": "não é nenhum de",
+        "all": "tem todos",
+        "empty": "está vazio",
+        "notEmpty": "não está vazio",
+        "is": "é",
+        "isNot": "não é"
+      },
+      "tagOps": {
+        "any": "tem qualquer uma de",
+        "all": "tem todas",
+        "none": "não tem nenhuma de"
+      },
+      "values": {
+        "repeating": "Recorrente",
+        "oneTime": "Única",
+        "withTime": "Com horário",
+        "withoutTime": "Sem horário",
+        "customRange": "Período personalizado",
+        "from": "De",
+        "to": "Até",
+        "pick": "Escolher…",
+        "titlePlaceholder": "Texto no título"
+      },
+      "addRule": "Adicionar regra",
+      "addGroup": "Adicionar grupo",
+      "clear": "Limpar",
+      "removeRule": "Remover regra",
+      "removeGroup": "Remover grupo",
+      "matchCount": "{count, plural, one {# tarefa corresponde} other {# tarefas correspondem}}",
+      "skipped": "{count, plural, one {# regra ignorada} other {# regras ignoradas}}",
+      "ruleCount": "{count, plural, one {# regra} other {# regras}}",
+      "unknownRule": "Regra de uma versão mais recente",
+      "empty": "Nenhuma regra ainda. Adicione uma para começar a filtrar.",
+      "summary": {
+        "and": "e",
+        "or": "ou",
+        "not": "não"
+      },
+      "editRules": "Editar regras",
+      "clearRules": "Limpar regras"
+    }
   },
   "quickAdd": {
     "label": "Adicionar tarefa rapidamente",

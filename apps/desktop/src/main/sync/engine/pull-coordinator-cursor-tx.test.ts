@@ -63,6 +63,7 @@ async function mockFilterPage(
       JSON.stringify({
         name: input.id,
         config: {},
+        expression: null,
         position: 0,
         clock: CLOCK,
         createdAt: '2026-09-01T00:00:00.000Z'

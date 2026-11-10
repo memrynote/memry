@@ -3,8 +3,8 @@ import SwiftUI
 
 // One rule of the advanced filter: field and operator menus, then the value
 // editor for the field (desktop's `rule-row.tsx` and `rule-value.tsx`). A rule
-// from a newer build reads as such and can only be removed; a location rule
-// shows its places, since iOS has no location picker yet.
+// from a newer build reads as such and can only be removed. A location rule
+// picks its places on the Location page the filter sheet uses.
 
 struct TaskFilterRuleRow: View {
     let store: TasksStore
@@ -38,14 +38,9 @@ struct TaskFilterRuleRow: View {
 
     // MARK: Field and operator
 
-    /// Location is left out: iOS cannot pick folders or notes yet.
-    private var offeredFields: [String] {
-        TaskFilterRuleVocabulary.fields.filter { $0 != "location" || rule.field == "location" }
-    }
-
     private var fieldMenu: some View {
         Menu {
-            ForEach(offeredFields, id: \.self) { field in
+            ForEach(TaskFilterRuleVocabulary.fields, id: \.self) { field in
                 checkButton(TasksCopy.ruleFieldLabel(field), isOn: field == rule.field) {
                     guard field != rule.field else { return }
                     edit { _ in .rule(field) }
@@ -98,9 +93,24 @@ struct TaskFilterRuleRow: View {
                 }
                 .accessibilityIdentifier("tasks.rules.title")
         case "location":
-            Text(TasksCopy.ruleValues(rule, projects: store.projects).joined(separator: ", "))
-                .foregroundStyle(Tokens.Text.secondary.color)
-                .accessibilityHint(TasksCopy.rulesLocationReadOnly)
+            NavigationLink {
+                TaskFilterLocationView(store: store) { store in
+                    let node = store.rules.node(at: path)
+                    return (node?.folderPaths ?? [], node?.noteIds ?? [])
+                } onChange: { folders, notes in
+                    edit { node in
+                        var copy = node
+                        copy.folderPaths = folders
+                        copy.noteIds = notes
+                        return copy
+                    }
+                }
+            } label: {
+                let labels = TasksCopy.ruleValues(rule, projects: store.projects)
+                menuLabel(labels.isEmpty ? TasksCopy.rulesPick : labels.joined(separator: ", "), weight: .regular, tint: false)
+                    .lineLimit(2)
+            }
+            .accessibilityIdentifier("tasks.rules.location")
         default:
             valueMenu
             if rule.field == "due", rule.values.contains("custom") { dueRange }

@@ -113,7 +113,74 @@
       "noDueDate": "Ei eräpäivää"
     },
     "repeatTypeRepeating": "Toistuvat",
-    "repeatTypeOneTime": "Kertaluonteiset"
+    "repeatTypeOneTime": "Kertaluonteiset",
+    "advanced": {
+      "entry": "Tarkennettu suodatin…",
+      "entryHint": "Säännöt ja, tai, ei",
+      "title": "Suodatin",
+      "match": "Täytä",
+      "ofThese": "näistä",
+      "matches": {
+        "all": "kaikki",
+        "any": "mikä tahansa",
+        "none": "ei mitään"
+      },
+      "fields": {
+        "title": "Otsikko",
+        "status": "Tila",
+        "priority": "Prioriteetti",
+        "due": "Eräpäivä",
+        "project": "Projekti",
+        "location": "Sijainti",
+        "tags": "Tunnisteet",
+        "repeat": "Toistuu",
+        "hasTime": "Kellonaika"
+      },
+      "ops": {
+        "contains": "sisältää",
+        "notContains": "ei sisällä",
+        "any": "on jokin näistä",
+        "none": "ei ole mikään näistä",
+        "all": "sisältää kaikki",
+        "empty": "on tyhjä",
+        "notEmpty": "ei ole tyhjä",
+        "is": "on",
+        "isNot": "ei ole"
+      },
+      "tagOps": {
+        "any": "on jokin näistä",
+        "all": "on kaikki näistä",
+        "none": "ei ole mitään näistä"
+      },
+      "values": {
+        "repeating": "Toistuva",
+        "oneTime": "Kertaluontoinen",
+        "withTime": "Kellonajan kanssa",
+        "withoutTime": "Ilman kellonaikaa",
+        "customRange": "Mukautettu aikaväli",
+        "from": "Alkaen",
+        "to": "Asti",
+        "pick": "Valitse…",
+        "titlePlaceholder": "Teksti otsikossa"
+      },
+      "addRule": "Lisää sääntö",
+      "addGroup": "Lisää ryhmä",
+      "clear": "Tyhjennä",
+      "removeRule": "Poista sääntö",
+      "removeGroup": "Poista ryhmä",
+      "matchCount": "{count, plural, one {# tehtävä vastaa} other {# tehtävää vastaa}}",
+      "skipped": "{count, plural, one {# sääntö ohitettiin} other {# sääntöä ohitettiin}}",
+      "ruleCount": "{count, plural, one {# sääntö} other {# sääntöä}}",
+      "unknownRule": "Sääntö uudemmasta versiosta",
+      "empty": "Ei vielä sääntöjä. Lisää yksi aloittaaksesi suodatuksen.",
+      "summary": {
+        "and": "ja",
+        "or": "tai",
+        "not": "ei"
+      },
+      "editRules": "Muokkaa sääntöjä",
+      "clearRules": "Tyhjennä säännöt"
+    }
   },
   "quickAdd": {
     "label": "Tehtävän pikalisäys",

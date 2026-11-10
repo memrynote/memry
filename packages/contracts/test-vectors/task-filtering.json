@@ -10440,5 +10440,545 @@
       ],
       "ruleCount": 0
     }
-  ]
+  ],
+  "locationOptions": {
+    "notes": [
+      {
+        "id": "roof",
+        "title": "Roof",
+        "folderPath": "Infra/House/Stage 1"
+      },
+      {
+        "id": "stage-notes",
+        "title": "Stage notes",
+        "folderPath": "Infra/House/Stage 1"
+      },
+      {
+        "id": "brief",
+        "title": "Brief",
+        "folderPath": "Infra/House"
+      },
+      {
+        "id": "apple",
+        "title": "apple",
+        "folderPath": "Infra/House"
+      },
+      {
+        "id": "inbox",
+        "title": "Inbox",
+        "folderPath": ""
+      },
+      {
+        "id": "empty",
+        "title": "Empty",
+        "folderPath": "Infra"
+      },
+      {
+        "id": "zed",
+        "title": "Zed",
+        "folderPath": "infra-2"
+      },
+      {
+        "id": "old",
+        "title": "Old",
+        "folderPath": "Archive"
+      }
+    ],
+    "tasks": [
+      {
+        "id": "t1",
+        "parentId": null,
+        "sourceNoteId": "roof",
+        "linkedNoteIds": []
+      },
+      {
+        "id": "t2",
+        "parentId": null,
+        "sourceNoteId": "roof",
+        "linkedNoteIds": []
+      },
+      {
+        "id": "t3",
+        "parentId": null,
+        "sourceNoteId": "brief",
+        "linkedNoteIds": [
+          "roof"
+        ]
+      },
+      {
+        "id": "sub",
+        "parentId": "t3",
+        "sourceNoteId": "old",
+        "linkedNoteIds": []
+      },
+      {
+        "id": "t4",
+        "parentId": null,
+        "sourceNoteId": "inbox",
+        "linkedNoteIds": []
+      },
+      {
+        "id": "t5",
+        "parentId": null,
+        "sourceNoteId": null,
+        "linkedNoteIds": [
+          "apple",
+          "ghost"
+        ]
+      },
+      {
+        "id": "t6",
+        "parentId": null,
+        "sourceNoteId": "zed",
+        "linkedNoteIds": [
+          "zed"
+        ]
+      },
+      {
+        "id": "t7",
+        "parentId": null,
+        "sourceNoteId": "ghost",
+        "linkedNoteIds": []
+      }
+    ],
+    "cases": [
+      {
+        "name": "tree",
+        "selected": {
+          "folderPaths": [],
+          "noteIds": []
+        },
+        "query": "",
+        "expected": [
+          {
+            "kind": "note",
+            "value": "inbox",
+            "label": "Inbox",
+            "context": "",
+            "depth": 0,
+            "count": 1
+          },
+          {
+            "kind": "folder",
+            "value": "infra-2",
+            "label": "infra-2",
+            "context": "",
+            "depth": 0,
+            "count": 1
+          },
+          {
+            "kind": "note",
+            "value": "zed",
+            "label": "Zed",
+            "context": "infra-2",
+            "depth": 1,
+            "count": 1
+          },
+          {
+            "kind": "folder",
+            "value": "Infra",
+            "label": "Infra",
+            "context": "",
+            "depth": 0,
+            "count": 4
+          },
+          {
+            "kind": "folder",
+            "value": "Infra/House",
+            "label": "House",
+            "context": "Infra",
+            "depth": 1,
+            "count": 4
+          },
+          {
+            "kind": "note",
+            "value": "apple",
+            "label": "apple",
+            "context": "Infra/House",
+            "depth": 2,
+            "count": 1
+          },
+          {
+            "kind": "note",
+            "value": "brief",
+            "label": "Brief",
+            "context": "Infra/House",
+            "depth": 2,
+            "count": 1
+          },
+          {
+            "kind": "folder",
+            "value": "Infra/House/Stage 1",
+            "label": "Stage 1",
+            "context": "Infra/House",
+            "depth": 2,
+            "count": 3
+          },
+          {
+            "kind": "note",
+            "value": "roof",
+            "label": "Roof",
+            "context": "Infra/House/Stage 1",
+            "depth": 3,
+            "count": 3
+          }
+        ]
+      },
+      {
+        "name": "selected-kept",
+        "selected": {
+          "folderPaths": [
+            "Infra/House",
+            "Gone/Deep"
+          ],
+          "noteIds": [
+            "empty",
+            "ghost",
+            "old",
+            "stage-notes"
+          ]
+        },
+        "query": "",
+        "expected": [
+          {
+            "kind": "note",
+            "value": "inbox",
+            "label": "Inbox",
+            "context": "",
+            "depth": 0,
+            "count": 1
+          },
+          {
+            "kind": "note",
+            "value": "old",
+            "label": "Old",
+            "context": "Archive",
+            "depth": 1,
+            "count": 0
+          },
+          {
+            "kind": "folder",
+            "value": "Gone",
+            "label": "Gone",
+            "context": "",
+            "depth": 0,
+            "count": 0
+          },
+          {
+            "kind": "folder",
+            "value": "Gone/Deep",
+            "label": "Deep",
+            "context": "Gone",
+            "depth": 1,
+            "count": 0
+          },
+          {
+            "kind": "folder",
+            "value": "infra-2",
+            "label": "infra-2",
+            "context": "",
+            "depth": 0,
+            "count": 1
+          },
+          {
+            "kind": "note",
+            "value": "zed",
+            "label": "Zed",
+            "context": "infra-2",
+            "depth": 1,
+            "count": 1
+          },
+          {
+            "kind": "folder",
+            "value": "Infra",
+            "label": "Infra",
+            "context": "",
+            "depth": 0,
+            "count": 4
+          },
+          {
+            "kind": "note",
+            "value": "empty",
+            "label": "Empty",
+            "context": "Infra",
+            "depth": 1,
+            "count": 0
+          },
+          {
+            "kind": "folder",
+            "value": "Infra/House",
+            "label": "House",
+            "context": "Infra",
+            "depth": 1,
+            "count": 4
+          },
+          {
+            "kind": "note",
+            "value": "apple",
+            "label": "apple",
+            "context": "Infra/House",
+            "depth": 2,
+            "count": 1
+          },
+          {
+            "kind": "note",
+            "value": "brief",
+            "label": "Brief",
+            "context": "Infra/House",
+            "depth": 2,
+            "count": 1
+          },
+          {
+            "kind": "folder",
+            "value": "Infra/House/Stage 1",
+            "label": "Stage 1",
+            "context": "Infra/House",
+            "depth": 2,
+            "count": 3
+          },
+          {
+            "kind": "note",
+            "value": "roof",
+            "label": "Roof",
+            "context": "Infra/House/Stage 1",
+            "depth": 3,
+            "count": 3
+          },
+          {
+            "kind": "note",
+            "value": "stage-notes",
+            "label": "Stage notes",
+            "context": "Infra/House/Stage 1",
+            "depth": 3,
+            "count": 0
+          }
+        ]
+      },
+      {
+        "name": "search-folder",
+        "selected": {
+          "folderPaths": [],
+          "noteIds": []
+        },
+        "query": "stage",
+        "expected": [
+          {
+            "kind": "folder",
+            "value": "Infra/House/Stage 1",
+            "label": "Stage 1",
+            "context": "Infra/House",
+            "depth": 0,
+            "count": 3
+          }
+        ]
+      },
+      {
+        "name": "search-trimmed-folded",
+        "selected": {
+          "folderPaths": [
+            "Infra/House",
+            "Gone/Deep"
+          ],
+          "noteIds": [
+            "empty",
+            "ghost",
+            "old",
+            "stage-notes"
+          ]
+        },
+        "query": "  E ",
+        "expected": [
+          {
+            "kind": "folder",
+            "value": "Gone",
+            "label": "Gone",
+            "context": "",
+            "depth": 0,
+            "count": 0
+          },
+          {
+            "kind": "folder",
+            "value": "Gone/Deep",
+            "label": "Deep",
+            "context": "Gone",
+            "depth": 0,
+            "count": 0
+          },
+          {
+            "kind": "note",
+            "value": "zed",
+            "label": "Zed",
+            "context": "infra-2",
+            "depth": 0,
+            "count": 1
+          },
+          {
+            "kind": "note",
+            "value": "empty",
+            "label": "Empty",
+            "context": "Infra",
+            "depth": 0,
+            "count": 0
+          },
+          {
+            "kind": "folder",
+            "value": "Infra/House",
+            "label": "House",
+            "context": "Infra",
+            "depth": 0,
+            "count": 4
+          },
+          {
+            "kind": "note",
+            "value": "apple",
+            "label": "apple",
+            "context": "Infra/House",
+            "depth": 0,
+            "count": 1
+          },
+          {
+            "kind": "note",
+            "value": "brief",
+            "label": "Brief",
+            "context": "Infra/House",
+            "depth": 0,
+            "count": 1
+          },
+          {
+            "kind": "folder",
+            "value": "Infra/House/Stage 1",
+            "label": "Stage 1",
+            "context": "Infra/House",
+            "depth": 0,
+            "count": 3
+          },
+          {
+            "kind": "note",
+            "value": "stage-notes",
+            "label": "Stage notes",
+            "context": "Infra/House/Stage 1",
+            "depth": 0,
+            "count": 0
+          }
+        ]
+      },
+      {
+        "name": "search-note",
+        "selected": {
+          "folderPaths": [],
+          "noteIds": []
+        },
+        "query": "ROOF",
+        "expected": [
+          {
+            "kind": "note",
+            "value": "roof",
+            "label": "Roof",
+            "context": "Infra/House/Stage 1",
+            "depth": 0,
+            "count": 3
+          }
+        ]
+      },
+      {
+        "name": "search-blank",
+        "selected": {
+          "folderPaths": [],
+          "noteIds": []
+        },
+        "query": "   ",
+        "expected": [
+          {
+            "kind": "note",
+            "value": "inbox",
+            "label": "Inbox",
+            "context": "",
+            "depth": 0,
+            "count": 1
+          },
+          {
+            "kind": "folder",
+            "value": "infra-2",
+            "label": "infra-2",
+            "context": "",
+            "depth": 0,
+            "count": 1
+          },
+          {
+            "kind": "note",
+            "value": "zed",
+            "label": "Zed",
+            "context": "infra-2",
+            "depth": 1,
+            "count": 1
+          },
+          {
+            "kind": "folder",
+            "value": "Infra",
+            "label": "Infra",
+            "context": "",
+            "depth": 0,
+            "count": 4
+          },
+          {
+            "kind": "folder",
+            "value": "Infra/House",
+            "label": "House",
+            "context": "Infra",
+            "depth": 1,
+            "count": 4
+          },
+          {
+            "kind": "note",
+            "value": "apple",
+            "label": "apple",
+            "context": "Infra/House",
+            "depth": 2,
+            "count": 1
+          },
+          {
+            "kind": "note",
+            "value": "brief",
+            "label": "Brief",
+            "context": "Infra/House",
+            "depth": 2,
+            "count": 1
+          },
+          {
+            "kind": "folder",
+            "value": "Infra/House/Stage 1",
+            "label": "Stage 1",
+            "context": "Infra/House",
+            "depth": 2,
+            "count": 3
+          },
+          {
+            "kind": "note",
+            "value": "roof",
+            "label": "Roof",
+            "context": "Infra/House/Stage 1",
+            "depth": 3,
+            "count": 3
+          }
+        ]
+      },
+      {
+        "name": "search-miss",
+        "selected": {
+          "folderPaths": [
+            "Infra/House",
+            "Gone/Deep"
+          ],
+          "noteIds": [
+            "empty",
+            "ghost",
+            "old",
+            "stage-notes"
+          ]
+        },
+        "query": "zzz",
+        "expected": []
+      }
+    ]
+  }
 }
