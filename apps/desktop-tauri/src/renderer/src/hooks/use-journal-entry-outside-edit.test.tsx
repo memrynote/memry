@@ -517,13 +517,14 @@ describe('useJournalEntry: outside edits of the open day', () => {
 
     it('sends typing made during the save running', async () => {
       const hook = await mount()
-      holdNextSave()
+      const running = holdNextSave()
       await startSave(hook.result, 'Typed.')
       act(() => {
         hook.result.current.updateContent('Typed. And more.')
       })
 
       await openDay(hook, NEXT)
+      await running.finish()
 
       expect(updateEntry).toHaveBeenLastCalledWith({ date: DAY, content: 'Typed. And more.' })
       expect(files[DAY]).toBe('Typed. And more.')
@@ -542,6 +543,151 @@ describe('useJournalEntry: outside edits of the open day', () => {
 
       expect(savesOf(NEXT)).toBe(1)
       expect(files[NEXT]).toBe('Same.')
+    })
+
+    // Typing made during a save goes with the switch's own save. Commands run concurrently: sent
+    // at once, it could land before the first, which would leave the older text in the file; the
+    // read after the first save could answer the file from before the second wrote, put the
+    // editor back on it, and the next save would write that over the typing, the app's own
+    // text, of which the core keeps no version (#4088).
+    it('sends the switch save once the save running answered, and reads the day after it', async () => {
+      const hook = await mount()
+      const first = holdNextSave()
+      await startSave(hook.result, 'Typed.')
+      act(() => {
+        hook.result.current.updateContent('Typed. More.')
+      })
+      const sent = holdNextSave()
+      await openDay(hook, NEXT)
+      expect(savesOf(DAY)).toBe(1)
+      await openDay(hook, DAY)
+
+      files[DAY] = 'Typed.'
+      await first.finish('Typed.')
+
+      expect(savesOf(DAY)).toBe(2)
+      expect(hook.result.current.externalUpdateCount).toBe(0)
+      files[DAY] = 'Typed. More.'
+      await sent.finish('Typed. More.')
+      // The query tells its observers on a timer.
+      await act(async () => {
+        await vi.advanceTimersByTimeAsync(0)
+      })
+      expect(hook.result.current.externalUpdateCount).toBe(0)
+      expect(hook.result.current.entry?.content).toBe('Typed. More.')
+    })
+
+    // The editor's teardown reports its last edit after the page left the day (#1900), while the
+    // day's save may still run: sent at once, the older save could land last and stay in the
+    // file, and the read of the day reopened could answer the file from before it (#4088).
+    it("sends the editor's late report of the day after the day's save, and reads after it", async () => {
+      const hook = await mount()
+      const first = holdNextSave()
+      await startSave(hook.result, 'Typed.')
+      const reportLate = hook.result.current.updateContent
+      await openDay(hook, NEXT)
+      const late = holdNextSave()
+      act(() => {
+        reportLate('Typed. Late.')
+      })
+      await settle()
+      expect(savesOf(DAY)).toBe(1)
+      await openDay(hook, DAY)
+
+      await first.finish('Typed.')
+
+      expect(updateEntry).toHaveBeenLastCalledWith({ date: DAY, content: 'Typed. Late.' })
+      expect(hook.result.current.externalUpdateCount).toBe(0)
+      files[DAY] = 'Typed. Late.'
+      await late.finish('Typed. Late.')
+      await act(async () => {
+        await vi.advanceTimersByTimeAsync(0)
+      })
+      // The editor reopened on the text the switch saved; the late report reaches it as the file's.
+      expect(savesOf(DAY)).toBe(2)
+      expect(hook.result.current.externalUpdateCount).toBe(1)
+      expect(hook.result.current.entry?.content).toBe('Typed. Late.')
+    })
+
+    // The read of the reopened day waits for the switch save; typing saved during that wait is
+    // newer than what the read can answer. Taken as the read's start, that save would not drop
+    // it: the editor would go back to the file before it, and the next keystroke would save over
+    // the typing, of which the core keeps no version (#4088).
+    it('drops the read of the reopened day when a save started while it waited', async () => {
+      const hook = await mount()
+      const first = holdNextSave()
+      await startSave(hook.result, 'Typed.')
+      act(() => {
+        hook.result.current.updateContent('Typed. More.')
+      })
+      const sent = holdNextSave()
+      await openDay(hook, NEXT)
+      await openDay(hook, DAY)
+      files[DAY] = 'Typed.'
+      await first.finish('Typed.')
+      expect(savesOf(DAY)).toBe(2)
+
+      const again = holdNextSave()
+      act(() => {
+        hook.result.current.updateContent('Typed. More. Again.')
+      })
+      await act(async () => {
+        await vi.advanceTimersByTimeAsync(1_000)
+      })
+      expect(savesOf(DAY)).toBe(2)
+      const answerRead = holdNextRead()
+      files[DAY] = 'Typed. More.'
+      await sent.finish('Typed. More.')
+      expect(savesOf(DAY)).toBe(3)
+      files[DAY] = 'Typed. More. Again.'
+      await again.finish('Typed. More. Again.')
+      await answerRead()
+      await act(async () => {
+        await vi.advanceTimersByTimeAsync(0)
+      })
+
+      expect(hook.result.current.externalUpdateCount).toBe(0)
+      expect(hook.result.current.entry?.content).toBe('Typed. More. Again.')
+    })
+
+    // A write that never answers would hold the day's later writes, its reread, and through the
+    // save flag every other day's saves, until the app quits (#4088).
+    it('sends the later writes when a write of the day never answers', async () => {
+      const hook = await mount()
+      const first = holdNextSave()
+      await startSave(hook.result, 'Typed.')
+      act(() => {
+        hook.result.current.updateContent('Typed. More.')
+      })
+      // oxlint-disable-next-line typescript/no-misused-promises -- mockImplementation is typed as a void-returning callback; a Promise that never settles is the write that never answers
+      updateEntry.mockImplementationOnce(() => new Promise<JournalEntry>(() => {}))
+      await openDay(hook, NEXT)
+      await openDay(hook, DAY)
+      await first.finish('Typed.')
+      expect(savesOf(DAY)).toBe(2)
+
+      act(() => {
+        hook.result.current.updateContent('Typed. After.')
+      })
+      await act(async () => {
+        await vi.advanceTimersByTimeAsync(1_000)
+      })
+      expect(savesOf(DAY)).toBe(2)
+      expect(hook.result.current.isSaving).toBe(true)
+      await act(async () => {
+        await vi.advanceTimersByTimeAsync(10_000)
+      })
+
+      expect(updateEntry).toHaveBeenLastCalledWith({ date: DAY, content: 'Typed. After.' })
+      expect(hook.result.current.isSaving).toBe(false)
+      await openDay(hook, NEXT)
+      act(() => {
+        hook.result.current.updateContent('Next typed.')
+      })
+      await act(async () => {
+        await vi.advanceTimersByTimeAsync(1_000)
+      })
+      expect(updateEntry).toHaveBeenLastCalledWith({ date: NEXT, content: 'Next typed.' })
     })
 
     it('sends the typing again when the save running fails', async () => {

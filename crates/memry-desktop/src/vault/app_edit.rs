@@ -395,6 +395,7 @@ impl AppEdit {
                 hash,
                 held: false,
                 kept_outside: outside && keeps,
+                kept: keeps,
                 text,
             });
         }
@@ -408,6 +409,7 @@ impl AppEdit {
             hash,
             held: true,
             kept_outside: outside && keeps,
+            kept: keeps,
             text,
         })
     }
