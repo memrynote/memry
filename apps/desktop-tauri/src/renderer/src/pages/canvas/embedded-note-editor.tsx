@@ -5,104 +5,30 @@
  * echo/dupe) whenever collaboration is active. runSideEffects is left to
  * ContentArea's ownership gate.
  *
- * ContentArea's Yjs collaboration only engages once the sync context reports a
- * live status (idle/syncing/offline) — before that (e.g. no sync session yet)
- * it falls back to a local, non-collaborative BlockNote editor, exactly like
- * a note tab does. So this mirrors note.tsx's own baseline persistence path:
- * fetch the note's current content as `initialContent` (never destroy existing
- * body text) and debounce-save `onMarkdownChange` back to `notesService.update`.
+ * When the editor cannot bind the note's document it falls back to the note's
+ * markdown, exactly like a note tab does, and saves it through the note page's
+ * own body saves (`useNoteBody`): the note is read again on mount, outside
+ * edits reach the editor, and a refused save keeps the typing (#4088).
  */
-import React, { useCallback, useEffect, useRef } from 'react'
+import React, { useState } from 'react'
 import { ContentArea } from '@/components/note/content-area'
-import { useNote } from '@/hooks/use-notes-query'
-import { notesService } from '@/services/notes-service'
-import { registerPendingSave, unregisterPendingSave } from '@/lib/save-registry'
-import { createLogger } from '@/lib/logger'
-import { trackRendererError } from '@/lib/telemetry-diagnostics'
-import { useIsNoteLocked } from '@/lib/vault-locks-store'
-import { useIsNoteExcluded } from '@/lib/excluded-notes-store'
+import { VersionHistory } from '@/components/note/version-history'
 import { LockedNoteNotice } from '@/components/note/locked-note-notice'
-
-const log = createLogger('EmbeddedNoteEditor')
-
-const SAVE_DEBOUNCE_MS = 1000
+import { useNoteBody } from '@/pages/note/use-note-body'
 
 interface EmbeddedNoteEditorProps {
   noteId: string
 }
 
 export const EmbeddedNoteEditor = ({ noteId }: EmbeddedNoteEditorProps): React.JSX.Element => {
-  const { note } = useNote(noteId)
-  const isExcluded = useIsNoteExcluded(note?.path)
-  const isLocked = useIsNoteLocked(noteId, note?.path ?? null) || isExcluded
-
-  const lastSavedContentRef = useRef<string | null>(null)
-  const pendingContentRef = useRef<string | null>(null)
-  const saveTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null)
-  // The note whose save lifecycle is running, cleared once its unmount flush ran.
-  const liveNoteIdRef = useRef<string | null>(null)
-
-  useEffect(() => {
-    if (note && lastSavedContentRef.current === null) {
-      lastSavedContentRef.current = note.content
-    }
-  }, [note])
-
-  const flush = useCallback(async (): Promise<void> => {
-    if (saveTimeoutRef.current) {
-      clearTimeout(saveTimeoutRef.current)
-      saveTimeoutRef.current = null
-    }
-    const pending = pendingContentRef.current
-    if (pending === null) return
-    pendingContentRef.current = null
-    try {
-      await notesService.update({ id: noteId, content: pending })
-      lastSavedContentRef.current = pending
-    } catch (err) {
-      log.error('Failed to save note', { noteId, error: err })
-      trackRendererError('canvas_card_note_save', err)
-      // Put the unsaved text back so the next flush retries instead of
-      // dropping it — unless a newer edit already replaced it mid-await.
-      if (pendingContentRef.current === null) {
-        pendingContentRef.current = pending
-      }
-    }
-  }, [noteId])
-
-  useEffect(() => {
-    const registryKey = `canvas-card:${noteId}`
-    liveNoteIdRef.current = noteId
-    registerPendingSave(registryKey, flush)
-    return () => {
-      unregisterPendingSave(registryKey)
-      void flush()
-      liveNoteIdRef.current = null
-    }
-  }, [noteId, flush])
-
-  const handleMarkdownChange = useCallback(
-    (markdown: string) => {
-      // The editor's teardown flush reports its last edit after the flush above
-      // already ran (#1900). A timer armed now would be invisible to quit, so
-      // the edit is saved straight away, to the note it was typed in.
-      if (liveNoteIdRef.current !== noteId) {
-        notesService.update({ id: noteId, content: markdown }).catch((err: unknown) => {
-          log.error('Failed to save note after its editor closed', { noteId, error: err })
-          trackRendererError('canvas_card_note_save', err)
-        })
-        return
-      }
-      if (markdown === lastSavedContentRef.current) return
-      pendingContentRef.current = markdown
-      if (saveTimeoutRef.current) clearTimeout(saveTimeoutRef.current)
-      saveTimeoutRef.current = setTimeout(() => {
-        saveTimeoutRef.current = null
-        void flush()
-      }, SAVE_DEBOUNCE_MS)
-    },
-    [noteId, flush]
-  )
+  const [versionsOpen, setVersionsOpen] = useState(false)
+  const body = useNoteBody(noteId, {
+    surface: 'canvas-card',
+    showVersionHistory: () => setVersionsOpen(true)
+  })
+  const { note } = body.query
+  const isLocked = body.locked
+  const isExcluded = body.excluded
 
   if (!note) {
     return <div className="min-h-0 flex-1 overflow-auto" />
@@ -115,11 +41,19 @@ export const EmbeddedNoteEditor = ({ noteId }: EmbeddedNoteEditorProps): React.J
         <ContentArea
           noteId={noteId}
           editable={!isLocked}
-          initialContent={note.content}
+          initialContent={body.content}
           contentType="markdown"
-          onMarkdownChange={handleMarkdownChange}
+          externalContentRevision={body.revision}
+          onMarkdownChange={body.onMarkdownChange}
         />
       </div>
+      <VersionHistory
+        open={versionsOpen}
+        onOpenChange={setVersionsOpen}
+        noteId={noteId}
+        noteTitle={note.title}
+        onRestore={body.dropTyping}
+      />
     </div>
   )
 }

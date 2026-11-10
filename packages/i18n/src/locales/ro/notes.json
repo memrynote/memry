@@ -72,7 +72,10 @@
       "moveFailed": "Nu s-a putut muta notița",
       "deleteFailed": "Nu s-a putut șterge notița",
       "outsideEditReplaced": "Ce ai tastat a înlocuit o modificare din exterior. Este salvată în istoricul versiunilor.",
-      "showVersions": "Afișează versiunile"
+      "showVersions": "Afișează versiunile",
+      "notSaved": "Modificările tale la această notă nu au fost salvate. Rămân în editor, iar următoarea ta editare va încerca din nou.",
+      "notSavedClosed": "Ultimele tale modificări la această notă nu au putut fi salvate după închiderea editorului ei.",
+      "readOnlyUnsaved": "Această notă a devenit doar în citire înainte ca ultimele tale modificări să fie salvate. Rămân în editor, nesalvate."
     },
     "deleteDialogTitle": "{count, plural, one {Ștergeți notița} few {Ștergeți # notițe} other {Ștergeți # de notițe}}",
     "itemsCount": "{count, plural, one {# element} few {# elemente} other {# de elemente}}",

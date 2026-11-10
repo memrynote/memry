@@ -72,7 +72,10 @@
       "moveFailed": "Nem sikerült áthelyezni a jegyzetet",
       "deleteFailed": "Nem sikerült törölni a jegyzetet",
       "outsideEditReplaced": "A gépelésed felülírt egy külső módosítást. A verzióelőzményekben megtalálod.",
-      "showVersions": "Verziók megjelenítése"
+      "showVersions": "Verziók megjelenítése",
+      "notSaved": "A jegyzet módosításai nem lettek mentve. A szerkesztőben maradnak, és a következő szerkesztésed újra megpróbálja.",
+      "notSavedClosed": "A jegyzet legutóbbi módosításait nem sikerült menteni, miután a szerkesztője bezárult.",
+      "readOnlyUnsaved": "Ez a jegyzet csak olvashatóvá vált, mielőtt a legutóbbi módosításaid mentésre kerültek volna. A szerkesztőben maradnak, mentetlenül."
     },
     "deleteDialogTitle": "{count, plural, one {Jegyzet törlése} other {# jegyzet törlése}}",
     "itemsCount": "{count, plural, one {# elem} other {# elem}}",

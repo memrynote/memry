@@ -72,7 +72,10 @@
       "moveFailed": "Hindi mailipat ang tala",
       "deleteFailed": "Hindi matanggal ang tala",
       "outsideEditReplaced": "Napalitan ng iyong pag-type ang isang pagbabago mula sa labas. Naka-save ito sa kasaysayan ng bersyon.",
-      "showVersions": "Ipakita ang mga bersyon"
+      "showVersions": "Ipakita ang mga bersyon",
+      "notSaved": "Hindi na-save ang mga pagbabago mo sa note na ito. Nananatili ang mga ito sa editor, at susubukan ulit ng susunod mong edit.",
+      "notSavedClosed": "Hindi na-save ang mga huling pagbabago mo sa note na ito matapos isara ang editor nito.",
+      "readOnlyUnsaved": "Naging read-only ang note na ito bago na-save ang mga huling pagbabago mo. Nananatili ang mga ito sa editor, hindi naka-save."
     },
     "deleteDialogTitle": "{count, plural, one {Tanggalin ang tala} other {Tanggalin ang # tala}}",
     "itemsCount": "{count, plural, one {# item} other {# item}}",

@@ -1642,6 +1642,11 @@ export type NoteUpdateInput = {
 	emoji?: string | null,
 	/**  Frontmatter keys to set, a `null` one removed; the rest keep their lines. */
 	frontmatter?: { [key in string]: Value } | null,
+	/**
+	 *  The editor's typing held off an outside edit it never showed: the file the save replaces
+	 *  is kept as a version, the run's own and under ten words too (#4088).
+	 */
+	keepReplaced?: boolean,
 };
 
 /**

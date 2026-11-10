@@ -72,7 +72,10 @@
       "moveFailed": "Não foi possível mover a nota",
       "deleteFailed": "Não foi possível excluir a nota",
       "outsideEditReplaced": "O que você digitou substituiu uma alteração externa. Ela está salva no histórico de versões.",
-      "showVersions": "Mostrar versões"
+      "showVersions": "Mostrar versões",
+      "notSaved": "Suas alterações nesta nota não foram salvas. Elas continuam no editor, e sua próxima edição tentará novamente.",
+      "notSavedClosed": "Suas últimas alterações nesta nota não puderam ser salvas depois que o editor foi fechado.",
+      "readOnlyUnsaved": "Esta nota passou a ser somente leitura antes de suas últimas alterações serem salvas. Elas continuam no editor, sem salvar."
     },
     "deleteDialogTitle": "{count, plural, one {Excluir nota} other {Excluir # notas}}",
     "itemsCount": "{count, plural, =0 {Nenhum item} one {# item} many {# itens} other {# itens}}",

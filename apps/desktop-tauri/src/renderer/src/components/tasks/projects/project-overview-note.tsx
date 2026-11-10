@@ -1,19 +1,18 @@
-import { useCallback, useEffect, useRef, useState } from 'react'
+import { useCallback, useState } from 'react'
 import { toast } from 'sonner'
 import { FileText, Loader2, X } from '@/lib/icons'
 import { cn } from '@/lib/utils'
 import { ContentArea } from '@/components/note'
 import { EditorErrorBoundary } from '@/components/note/editor-error-boundary'
 import { tasksService } from '@/services/tasks-service'
-import { notesService, type Note } from '@/services/notes-service'
+import { notesService } from '@/services/notes-service'
 import { extractErrorMessage } from '@/lib/ipc-error'
 import { createLogger } from '@/lib/logger'
 import { trackRendererError } from '@/lib/telemetry-diagnostics'
-import { registerPendingSave, unregisterPendingSave } from '@/lib/save-registry'
 import { useT } from '@memry/i18n/renderer'
-import { useIsNoteLocked } from '@/lib/vault-locks-store'
-import { useIsNoteExcluded } from '@/lib/excluded-notes-store'
 import { LockedNoteNotice } from '@/components/note/locked-note-notice'
+import { VersionHistory } from '@/components/note/version-history'
+import { useNoteBody } from '@/pages/note/use-note-body'
 
 const log = createLogger('ProjectOverview')
 
@@ -42,121 +41,17 @@ export const ProjectOverviewNote = ({
   className
 }: ProjectOverviewNoteProps): React.JSX.Element => {
   const { t } = useT('tasks')
-  const [note, setNote] = useState<Note | null>(null)
-  const [isLoading, setIsLoading] = useState(false)
   const [isCreating, setIsCreating] = useState(false)
 
-  const lastSavedContentRef = useRef<string | null>(null)
-  // Markdown queued by the debounce timer but not yet confirmed saved —
-  // flushed on unmount / homeNoteId change and by the app save-registry.
-  const pendingMarkdownRef = useRef<string | null>(null)
-  const saveTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null)
-  // The home note whose save lifecycle is running, cleared once its flush ran.
-  const liveNoteIdRef = useRef<string | null>(null)
-  const isExcluded = useIsNoteExcluded(note?.path)
-  const isLocked = useIsNoteLocked(homeNoteId, note?.path ?? null) || isExcluded
-
-  useEffect(() => {
-    if (!homeNoteId) {
-      // oxlint-disable-next-line react/set-state-in-effect -- resets the loaded note when the home note id clears; the effect owns the load lifecycle (IPC)
-      setNote(null)
-      return undefined
-    }
-
-    let cancelled = false
-    setIsLoading(true)
-    notesService
-      .get(homeNoteId)
-      .then((loaded) => {
-        if (cancelled) return
-        setNote(loaded)
-        lastSavedContentRef.current = loaded?.content ?? null
-      })
-      .catch((error: unknown) => {
-        log.error(
-          'Failed to load overview note',
-          extractErrorMessage(error, t('projectHome.overview.loadError'))
-        )
-      })
-      .finally(() => {
-        if (!cancelled) setIsLoading(false)
-      })
-
-    return () => {
-      cancelled = true
-    }
-  }, [homeNoteId, t])
-
-  // Register with the app save registry + flush any pending debounced save
-  // on unmount or when homeNoteId changes away (e.g. cleared, or a new
-  // overview note is created — the editor remounts via key={homeNoteId}).
-  // Mirrors note.tsx's registerPendingSave/unregisterPendingSave pattern so
-  // app-quit (useFlushOnQuit) and tab-close don't silently drop an edit.
-  useEffect(() => {
-    if (!homeNoteId) return undefined
-
-    const registryKey = `project-overview:${homeNoteId}`
-    liveNoteIdRef.current = homeNoteId
-    const flush = async (): Promise<void> => {
-      const pending = pendingMarkdownRef.current
-      if (pending !== null) {
-        pendingMarkdownRef.current = null
-        await notesService.update({ id: homeNoteId, content: pending })
-      }
-    }
-
-    registerPendingSave(registryKey, flush)
-
-    return () => {
-      if (saveTimeoutRef.current) {
-        clearTimeout(saveTimeoutRef.current)
-        saveTimeoutRef.current = null
-      }
-      void flush()
-      unregisterPendingSave(registryKey)
-      liveNoteIdRef.current = null
-    }
-  }, [homeNoteId])
-
-  const handleMarkdownChange = useCallback(
-    (markdown: string) => {
-      if (!homeNoteId) return
-      // The editor's teardown flush reports its last edit after the flush above
-      // already ran (#1900). Queued in the refs it would ride along with the
-      // next home note's save, so it is saved now, to the note it was typed in.
-      if (liveNoteIdRef.current !== homeNoteId) {
-        notesService.update({ id: homeNoteId, content: markdown }).catch((error: unknown) => {
-          log.error(
-            'Failed to save overview note',
-            extractErrorMessage(error, t('projectHome.overview.saveError'))
-          )
-          trackRendererError('project_overview_note_save', error)
-        })
-        return
-      }
-      if (markdown === lastSavedContentRef.current) return
-
-      pendingMarkdownRef.current = markdown
-
-      if (saveTimeoutRef.current) clearTimeout(saveTimeoutRef.current)
-      saveTimeoutRef.current = setTimeout(() => {
-        void (async () => {
-          try {
-            await notesService.update({ id: homeNoteId, content: markdown })
-            lastSavedContentRef.current = markdown
-            pendingMarkdownRef.current = null
-          } catch (error) {
-            log.error(
-              'Failed to save overview note',
-              extractErrorMessage(error, t('projectHome.overview.saveError'))
-            )
-            trackRendererError('project_overview_note_save', error)
-          }
-        })()
-      }, 1000)
-    },
-    [homeNoteId, t]
-  )
+  const [versionsOpen, setVersionsOpen] = useState(false)
+  // Saves the editor's text and hands it outside edits, as the note's own page does (#4088).
+  const body = useNoteBody(homeNoteId ?? undefined, {
+    surface: 'project-overview',
+    showVersionHistory: () => setVersionsOpen(true)
+  })
+  const { note, isLoading, error: loadError } = body.query
+  const isLocked = body.locked
+  const isExcluded = body.excluded
 
   const handleCreate = useCallback(async (): Promise<void> => {
     setIsCreating(true)
@@ -262,6 +157,10 @@ export const ProjectOverviewNote = ({
           <div className="flex items-center justify-center gap-2 py-8 text-sm text-muted-foreground">
             <Loader2 className="size-4 animate-spin" aria-hidden="true" />
           </div>
+        ) : loadError ? (
+          <p className="py-8 text-center text-sm text-destructive">
+            {t('projectHome.overview.loadError')}
+          </p>
         ) : (
           <EditorErrorBoundary noteId={homeNoteId}>
             {isLocked && <LockedNoteNotice className="mb-2" excluded={isExcluded} />}
@@ -269,14 +168,24 @@ export const ProjectOverviewNote = ({
               key={homeNoteId}
               noteId={homeNoteId}
               editable={!isLocked}
-              initialContent={note?.content ?? ''}
+              initialContent={body.content}
               contentType="markdown"
+              externalContentRevision={body.revision}
               placeholder={t('projectHome.overview.placeholder')}
-              onMarkdownChange={handleMarkdownChange}
+              onMarkdownChange={body.onMarkdownChange}
             />
           </EditorErrorBoundary>
         )}
       </div>
+      {note && (
+        <VersionHistory
+          open={versionsOpen}
+          onOpenChange={setVersionsOpen}
+          noteId={note.id}
+          noteTitle={note.title}
+          onRestore={body.dropTyping}
+        />
+      )}
     </section>
   )
 }

@@ -72,7 +72,10 @@
       "moveFailed": "Nepodarilo sa presunúť poznámku",
       "deleteFailed": "Nepodarilo sa odstrániť poznámku",
       "outsideEditReplaced": "Vaše písanie nahradilo zmenu urobenú mimo aplikácie. Je uložená v histórii verzií.",
-      "showVersions": "Zobraziť verzie"
+      "showVersions": "Zobraziť verzie",
+      "notSaved": "Zmeny tejto poznámky sa neuložili. Zostávajú v editore a pri ďalšej úprave sa uloženie skúsi znova.",
+      "notSavedClosed": "Posledné zmeny tejto poznámky sa po zatvorení jej editora nepodarilo uložiť.",
+      "readOnlyUnsaved": "Táto poznámka sa stala len na čítanie skôr, ako sa uložili vaše posledné zmeny. Zostávajú v editore neuložené."
     },
     "deleteDialogTitle": "{count, plural, one {Odstrániť poznámku} few {Odstrániť # poznámky} other {Odstrániť # poznámok}}",
     "itemsCount": "{count, plural, one {# položka} few {# položky} many {# položky} other {# položiek}}",

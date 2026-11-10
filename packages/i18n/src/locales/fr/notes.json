@@ -72,7 +72,10 @@
       "moveFailed": "Impossible de déplacer la note",
       "deleteFailed": "Impossible de supprimer la note",
       "outsideEditReplaced": "Votre saisie a remplacé une modification externe. Elle est enregistrée dans l’historique des versions.",
-      "showVersions": "Voir les versions"
+      "showVersions": "Voir les versions",
+      "notSaved": "Vos modifications de cette note n’ont pas été enregistrées. Elles restent dans l’éditeur, et votre prochaine modification réessaiera.",
+      "notSavedClosed": "Vos dernières modifications de cette note n’ont pas pu être enregistrées après la fermeture de son éditeur.",
+      "readOnlyUnsaved": "Cette note est passée en lecture seule avant l’enregistrement de vos dernières modifications. Elles restent dans l’éditeur, non enregistrées."
     },
     "deleteDialogTitle": "{count, plural, one {Supprimer la note} other {Supprimer # notes}}",
     "itemsCount": "{count, plural, one {# élément} many {# éléments} other {# éléments}}",
