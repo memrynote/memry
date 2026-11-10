@@ -504,7 +504,8 @@
       "loading": "Chargement des paramètres…"
     },
     "groups": {
-      "footer": "Pied de page"
+      "footer": "Pied de page",
+      "pastYears": "Années passées"
     },
     "template": {
       "label": "Modèle",
@@ -562,6 +563,14 @@
     "showInSidebar": {
       "label": "Afficher dans la barre latérale",
       "description": "Afficher le dossier du journal et ses entrées dans l'arborescence des notes"
+    },
+    "showOnThisDay": {
+      "label": "Afficher Ce jour-là",
+      "description": "Lister la même date des années passées sous l'entrée"
+    },
+    "allYearsView": {
+      "label": "Afficher toutes les années en entier",
+      "description": "Le journal perpétuel : chaque année de la date sur une seule page, sous l'entrée"
     }
   },
   "tasks": {

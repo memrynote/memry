@@ -134,6 +134,7 @@
     "actions": {
       "openInNewTab": "Otvori u novoj kartici",
       "openToTheSide": "Otvori sa strane",
+      "openFolderView": "Otvori prikaz mape",
       "newNote": "Nova bilješka",
       "newFolder": "Nova mapa",
       "showTasks": "Prikaži zadatke",
@@ -419,6 +420,10 @@
       "savedView": "Spremljeni prikaz",
       "savedViewMissing": "Spremljeni prikaz „{name}” više ne postoji pa se prikazuje zadani prikaz.",
       "openAsTab": "Otvori kao karticu",
+      "newNote": "Nova bilješka",
+      "newViewTitle": "Novi prikaz",
+      "newViewSubtext": "Nova mapa pokraj ove bilješke, navedena ovdje",
+      "newViewFailed": "Mapu za ovaj prikaz nije moguće stvoriti.",
       "empty": "Ovom prikazu još ništa ne odgovara.",
       "loadFailed": "Nije moguće učitati ovaj prikaz. Same bilješke su netaknute.",
       "folderMissing": "Ova mapa više nije u trezoru. Odaberite drugi izvor.",

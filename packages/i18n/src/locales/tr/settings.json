@@ -504,7 +504,8 @@
       "loading": "Ayarlar yükleniyor…"
     },
     "groups": {
-      "footer": "Alt bilgi"
+      "footer": "Alt bilgi",
+      "pastYears": "Geçmiş yıllar"
     },
     "template": {
       "label": "Şablon",
@@ -562,6 +563,14 @@
     "showInSidebar": {
       "label": "Kenar çubuğunda göster",
       "description": "Günlük klasörünü ve girdilerini not ağacında göster"
+    },
+    "showOnThisDay": {
+      "label": "Bugün geçmişte bölümünü göster",
+      "description": "Geçmiş yıllardaki aynı tarihi girdinin altında listele"
+    },
+    "allYearsView": {
+      "label": "Tüm yılları tam göster",
+      "description": "Sonsuz Günlük: tarihin her yılı tek sayfada, girdinin altında"
     }
   },
   "tasks": {

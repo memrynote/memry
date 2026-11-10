@@ -236,5 +236,21 @@
     "range": "{start} – {end}",
     "openTask": "{title}, {range}",
     "completeTask": "השלמת {title}"
+  },
+  "pastYears": {
+    "title": "ביום הזה",
+    "count": "{count, plural, one {שנה אחת נוספת} other {# שנים נוספות}}",
+    "showAll": "כל השנים",
+    "showPreviews": "תצוגות מקדימות",
+    "yearsAgo": "{count, plural, one {לפני שנה} other {לפני # שנים}}",
+    "yearsLater": "{count, plural, one {שנה אחת אחר כך} other {# שנים אחר כך}}",
+    "words": "{count, plural, one {מילה אחת} other {# מילים}}",
+    "openDay": "פתיחת {date}",
+    "showFull": "הצגת הרשומה המלאה",
+    "showLess": "הצגת פחות",
+    "loadError": "לא ניתן היה לטעון את היום הזה משנים אחרות.",
+    "previousYear": "אותו יום, בשנה הקודמת",
+    "nextYear": "אותו יום, בשנה הבאה",
+    "goToYear": "מעבר ליום הזה בשנת {year}"
   }
 }

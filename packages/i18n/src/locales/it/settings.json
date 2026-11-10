@@ -504,7 +504,8 @@
       "loading": "Caricamento delle impostazioni…"
     },
     "groups": {
-      "footer": "Piè di pagina"
+      "footer": "Piè di pagina",
+      "pastYears": "Anni passati"
     },
     "template": {
       "label": "Modello",
@@ -562,6 +563,14 @@
     "showInSidebar": {
       "label": "Mostra nella barra laterale",
       "description": "Mostra la cartella del diario e le sue voci nell'albero delle note"
+    },
+    "showOnThisDay": {
+      "label": "Mostra In questo giorno",
+      "description": "Elenca la stessa data degli anni passati sotto la voce"
+    },
+    "allYearsView": {
+      "label": "Mostra tutti gli anni per intero",
+      "description": "Il diario perpetuo: ogni anno della data in una sola pagina, sotto la voce"
     }
   },
   "tasks": {

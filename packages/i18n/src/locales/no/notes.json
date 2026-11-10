@@ -134,6 +134,7 @@
     "actions": {
       "openInNewTab": "Åpne i ny fane",
       "openToTheSide": "Åpne ved siden av",
+      "openFolderView": "Åpne mappevisning",
       "newNote": "Nytt notat",
       "newFolder": "Ny mappe",
       "showTasks": "Vis oppgaver",
@@ -419,6 +420,10 @@
       "savedView": "Lagret visning",
       "savedViewMissing": "Den lagrede visningen «{name}» finnes ikke lenger, så standardvisningen vises.",
       "openAsTab": "Åpne som fane",
+      "newNote": "Nytt notat",
+      "newViewTitle": "Ny visning",
+      "newViewSubtext": "En ny mappe ved siden av dette notatet, vist her",
+      "newViewFailed": "Kunne ikke opprette mappen for denne visningen.",
       "empty": "Ingenting samsvarer med denne visningen ennå.",
       "loadFailed": "Kunne ikke laste inn denne visningen. Selve notatene er uendret.",
       "folderMissing": "Denne mappen finnes ikke lenger i hvelvet. Velg en annen kilde.",

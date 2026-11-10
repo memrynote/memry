@@ -504,7 +504,8 @@
       "loading": "Ładowanie ustawień…"
     },
     "groups": {
-      "footer": "Stopka"
+      "footer": "Stopka",
+      "pastYears": "Poprzednie lata"
     },
     "template": {
       "label": "Szablon",
@@ -562,6 +563,14 @@
     "showInSidebar": {
       "label": "Pokaż na pasku bocznym",
       "description": "Pokaż folder dziennika i jego wpisy w drzewie notatek"
+    },
+    "showOnThisDay": {
+      "label": "Pokaż Tego dnia",
+      "description": "Wyświetlaj tę samą datę z poprzednich lat pod wpisem"
+    },
+    "allYearsView": {
+      "label": "Pokaż wszystkie lata w całości",
+      "description": "Wieczny dziennik: każdy rok tej daty na jednej stronie, pod wpisem"
     }
   },
   "tasks": {

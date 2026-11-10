@@ -504,7 +504,8 @@
       "loading": "Se încarcă setările…"
     },
     "groups": {
-      "footer": "Subsol"
+      "footer": "Subsol",
+      "pastYears": "Anii trecuți"
     },
     "template": {
       "label": "Șablon",
@@ -562,6 +563,14 @@
     "showInSidebar": {
       "label": "Afișează în bara laterală",
       "description": "Afișează dosarul jurnalului și intrările sale în arborele de notițe"
+    },
+    "showOnThisDay": {
+      "label": "Afișează În această zi",
+      "description": "Listează aceeași dată din anii trecuți sub intrare"
+    },
+    "allYearsView": {
+      "label": "Afișează toți anii complet",
+      "description": "Jurnalul perpetuu: fiecare an al datei pe o singură pagină, sub intrare"
     }
   },
   "tasks": {

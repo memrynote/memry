@@ -504,7 +504,8 @@
       "loading": "Laster inn innstillinger …"
     },
     "groups": {
-      "footer": "Bunntekst"
+      "footer": "Bunntekst",
+      "pastYears": "Tidligere år"
     },
     "template": {
       "label": "Mal",
@@ -562,6 +563,14 @@
     "showInSidebar": {
       "label": "Vis i sidefeltet",
       "description": "Vis journalmappen og innleggene i notattreet"
+    },
+    "showOnThisDay": {
+      "label": "Vis På denne dagen",
+      "description": "Vis samme dato fra tidligere år under innlegget"
+    },
+    "allYearsView": {
+      "label": "Vis alle år i sin helhet",
+      "description": "Den evige dagboken: alle årene for datoen på én side, under innlegget"
     }
   },
   "tasks": {

@@ -134,6 +134,7 @@
     "actions": {
       "openInNewTab": "Megnyitás új lapon",
       "openToTheSide": "Megnyitás oldalt",
+      "openFolderView": "Mappanézet megnyitása",
       "newNote": "Új jegyzet",
       "newFolder": "Új mappa",
       "showTasks": "Feladatok megjelenítése",
@@ -419,6 +420,10 @@
       "savedView": "Mentett nézet",
       "savedViewMissing": "A(z) „{name}” mentett nézet már nem létezik, ezért az alapértelmezett nézet látható.",
       "openAsTab": "Megnyitás lapként",
+      "newNote": "Új jegyzet",
+      "newViewTitle": "Új nézet",
+      "newViewSubtext": "Új mappa a jegyzet mellett, itt listázva",
+      "newViewFailed": "Nem sikerült létrehozni a mappát ehhez a nézethez.",
       "empty": "Még semmi sem felel meg ennek a nézetnek.",
       "loadFailed": "Nem sikerült betölteni ezt a nézetet. Maguk a jegyzetek érintetlenek.",
       "folderMissing": "Ez a mappa már nincs a széfben. Válasszon másik forrást.",

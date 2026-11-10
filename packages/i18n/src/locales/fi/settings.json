@@ -504,7 +504,8 @@
       "loading": "Ladataan asetuksia…"
     },
     "groups": {
-      "footer": "Alatunniste"
+      "footer": "Alatunniste",
+      "pastYears": "Menneet vuodet"
     },
     "template": {
       "label": "Pohja",
@@ -562,6 +563,14 @@
     "showInSidebar": {
       "label": "Näytä sivupalkissa",
       "description": "Näytä päiväkirjakansio ja sen merkinnät muistiinpanopuussa"
+    },
+    "showOnThisDay": {
+      "label": "Näytä Tänä päivänä",
+      "description": "Listaa sama päivämäärä menneiltä vuosilta merkinnän alle"
+    },
+    "allYearsView": {
+      "label": "Näytä kaikki vuodet kokonaan",
+      "description": "Ikuinen päiväkirja: päivämäärän kaikki vuodet yhdellä sivulla merkinnän alla"
     }
   },
   "tasks": {

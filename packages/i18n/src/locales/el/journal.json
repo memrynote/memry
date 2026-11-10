@@ -236,5 +236,21 @@
     "range": "{start} – {end}",
     "openTask": "{title}, {range}",
     "completeTask": "Ολοκλήρωση: {title}"
+  },
+  "pastYears": {
+    "title": "Σαν σήμερα",
+    "count": "{count, plural, one {# άλλο έτος} other {# άλλα έτη}}",
+    "showAll": "Όλα τα έτη",
+    "showPreviews": "Προεπισκοπήσεις",
+    "yearsAgo": "{count, plural, one {πριν από # έτος} other {πριν από # έτη}}",
+    "yearsLater": "{count, plural, one {# έτος αργότερα} other {# έτη αργότερα}}",
+    "words": "{count, plural, one {# λέξη} other {# λέξεις}}",
+    "openDay": "Άνοιγμα {date}",
+    "showFull": "Εμφάνιση ολόκληρης της καταχώρισης",
+    "showLess": "Εμφάνιση λιγότερων",
+    "loadError": "Δεν ήταν δυνατή η φόρτωση αυτής της ημέρας από άλλα έτη.",
+    "previousYear": "Ίδια ημέρα, προηγούμενο έτος",
+    "nextYear": "Ίδια ημέρα, επόμενο έτος",
+    "goToYear": "Μετάβαση σε αυτή την ημέρα το {year}"
   }
 }

@@ -504,7 +504,8 @@
       "loading": "正在載入設定…"
     },
     "groups": {
-      "footer": "頁尾"
+      "footer": "頁尾",
+      "pastYears": "往年"
     },
     "template": {
       "label": "範本",
@@ -562,6 +563,14 @@
     "showInSidebar": {
       "label": "顯示於側邊欄",
       "description": "在筆記樹狀結構中顯示日誌資料夾及其項目"
+    },
+    "showOnThisDay": {
+      "label": "顯示歷年今日",
+      "description": "在條目下方列出往年的同一日期"
+    },
+    "allYearsView": {
+      "label": "完整顯示所有年份",
+      "description": "永恆日誌：該日期的每一年都在同一頁，位於條目下方"
     }
   },
   "tasks": {

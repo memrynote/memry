@@ -134,6 +134,7 @@
     "actions": {
       "openInNewTab": "Otevřít na nové kartě",
       "openToTheSide": "Otevřít vedle",
+      "openFolderView": "Otevřít zobrazení složky",
       "newNote": "Nová poznámka",
       "newFolder": "Nová složka",
       "showTasks": "Zobrazit úkoly",
@@ -419,6 +420,10 @@
       "savedView": "Uložené zobrazení",
       "savedViewMissing": "Uložené zobrazení „{name}“ už neexistuje, proto je použito výchozí zobrazení.",
       "openAsTab": "Otevřít jako kartu",
+      "newNote": "Nová poznámka",
+      "newViewTitle": "Nové zobrazení",
+      "newViewSubtext": "Nová složka vedle této poznámky, zobrazená zde",
+      "newViewFailed": "Složku pro toto zobrazení se nepodařilo vytvořit.",
       "empty": "Tomuto zobrazení zatím nic neodpovídá.",
       "loadFailed": "Toto zobrazení se nepodařilo načíst. Samotné poznámky zůstaly beze změny.",
       "folderMissing": "Tato složka už v trezoru není. Vyberte jiný zdroj.",

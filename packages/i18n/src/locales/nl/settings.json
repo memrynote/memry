@@ -504,7 +504,8 @@
       "loading": "Instellingen laden…"
     },
     "groups": {
-      "footer": "Voettekst"
+      "footer": "Voettekst",
+      "pastYears": "Afgelopen jaren"
     },
     "template": {
       "label": "Sjabloon",
@@ -562,6 +563,14 @@
     "showInSidebar": {
       "label": "Tonen in zijbalk",
       "description": "Toon de dagboekmap en de bijbehorende items in de notitieboom"
+    },
+    "showOnThisDay": {
+      "label": "Op deze dag tonen",
+      "description": "Dezelfde datum uit afgelopen jaren onder het bericht tonen"
+    },
+    "allYearsView": {
+      "label": "Alle jaren volledig tonen",
+      "description": "Het eeuwige dagboek: elk jaar van de datum op één pagina, onder het bericht"
     }
   },
   "tasks": {

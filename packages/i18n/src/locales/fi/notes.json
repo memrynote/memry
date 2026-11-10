@@ -134,6 +134,7 @@
     "actions": {
       "openInNewTab": "Avaa uudessa välilehdessä",
       "openToTheSide": "Avaa sivuun",
+      "openFolderView": "Avaa kansionäkymä",
       "newNote": "Uusi muistiinpano",
       "newFolder": "Uusi kansio",
       "showTasks": "Näytä tehtävät",
@@ -419,6 +420,10 @@
       "savedView": "Tallennettu näkymä",
       "savedViewMissing": "Tallennettua näkymää ”{name}” ei enää ole, joten tässä näytetään oletusnäkymä.",
       "openAsTab": "Avaa välilehtenä",
+      "newNote": "Uusi muistiinpano",
+      "newViewTitle": "Uusi näkymä",
+      "newViewSubtext": "Uusi kansio tämän muistiinpanon viereen, listattuna tähän",
+      "newViewFailed": "Kansiota tälle näkymälle ei voitu luoda.",
       "empty": "Mikään ei vielä vastaa tätä näkymää.",
       "loadFailed": "Näkymän lataaminen epäonnistui. Itse muistiinpanoihin ei ole koskettu.",
       "folderMissing": "Kansio ei ole enää holvissa. Valitse toinen lähde.",

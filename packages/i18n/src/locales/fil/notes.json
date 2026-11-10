@@ -134,6 +134,7 @@
     "actions": {
       "openInNewTab": "Buksan sa bagong tab",
       "openToTheSide": "Buksan sa gilid",
+      "openFolderView": "Buksan ang Folder View",
       "newNote": "Bagong tala",
       "newFolder": "Bagong folder",
       "showTasks": "Ipakita ang mga gawain",
@@ -419,6 +420,10 @@
       "savedView": "Naka-save na view",
       "savedViewMissing": "Wala na ang naka-save na view na “{name}”, kaya ang default na view ang ipinapakita nito.",
       "openAsTab": "Buksan bilang tab",
+      "newNote": "Bagong tala",
+      "newViewTitle": "Bagong view",
+      "newViewSubtext": "Isang bagong folder sa tabi ng talang ito, nakalista rito",
+      "newViewFailed": "Hindi magawa ang folder para sa view na ito.",
       "empty": "Wala pang tumutugma sa view na ito.",
       "loadFailed": "Hindi ma-load ang view na ito. Hindi ginalaw ang mismong mga tala.",
       "folderMissing": "Wala na sa vault ang folder na ito. Pumili ng ibang source.",

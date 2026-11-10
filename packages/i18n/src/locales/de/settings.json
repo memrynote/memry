@@ -504,7 +504,8 @@
       "loading": "Einstellungen werden geladen…"
     },
     "groups": {
-      "footer": "Fußzeile"
+      "footer": "Fußzeile",
+      "pastYears": "Vergangene Jahre"
     },
     "template": {
       "label": "Vorlage",
@@ -562,6 +563,14 @@
     "showInSidebar": {
       "label": "In der Seitenleiste anzeigen",
       "description": "Journalordner und seine Einträge in der Notizenstruktur anzeigen"
+    },
+    "showOnThisDay": {
+      "label": "An diesem Tag anzeigen",
+      "description": "Dasselbe Datum aus vergangenen Jahren unter dem Eintrag auflisten"
+    },
+    "allYearsView": {
+      "label": "Alle Jahre vollständig anzeigen",
+      "description": "Das ewige Journal: alle Jahre dieses Datums auf einer Seite, unter dem Eintrag"
     }
   },
   "tasks": {

@@ -504,7 +504,8 @@
       "loading": "正在加载设置…"
     },
     "groups": {
-      "footer": "页脚"
+      "footer": "页脚",
+      "pastYears": "往年"
     },
     "template": {
       "label": "模板",
@@ -562,6 +563,14 @@
     "showInSidebar": {
       "label": "在侧边栏中显示",
       "description": "在笔记树中显示日记文件夹及其条目"
+    },
+    "showOnThisDay": {
+      "label": "显示历年今日",
+      "description": "在条目下方列出往年的同一日期"
+    },
+    "allYearsView": {
+      "label": "完整显示所有年份",
+      "description": "永恒日记：该日期的每一年都在同一页，位于条目下方"
     }
   },
   "tasks": {

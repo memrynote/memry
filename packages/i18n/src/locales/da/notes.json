@@ -134,6 +134,7 @@
     "actions": {
       "openInNewTab": "Åbn i ny fane",
       "openToTheSide": "Åbn ved siden af",
+      "openFolderView": "Åbn mappevisning",
       "newNote": "Ny note",
       "newFolder": "Ny mappe",
       "showTasks": "Vis opgaver",
@@ -419,6 +420,10 @@
       "savedView": "Gemt visning",
       "savedViewMissing": "Den gemte visning »{name}« findes ikke længere, så standardvisningen vises.",
       "openAsTab": "Åbn som fane",
+      "newNote": "Ny note",
+      "newViewTitle": "Ny visning",
+      "newViewSubtext": "En ny mappe ved siden af denne note, vist her",
+      "newViewFailed": "Kunne ikke oprette mappen til denne visning.",
       "empty": "Intet matcher denne visning endnu.",
       "loadFailed": "Kunne ikke indlæse denne visning. Selve noterne er uændrede.",
       "folderMissing": "Denne mappe findes ikke længere i boksen. Vælg en anden kilde.",

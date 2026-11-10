@@ -504,7 +504,8 @@
       "loading": "Memuatkan tetapan…"
     },
     "groups": {
-      "footer": "Pengaki"
+      "footer": "Pengaki",
+      "pastYears": "Tahun lepas"
     },
     "template": {
       "label": "Templat",
@@ -562,6 +563,14 @@
     "showInSidebar": {
       "label": "Tunjukkan dalam bar sisi",
       "description": "Tunjukkan folder jurnal dan catatannya dalam pepohon nota"
+    },
+    "showOnThisDay": {
+      "label": "Tunjukkan Pada hari ini",
+      "description": "Senaraikan tarikh yang sama dari tahun lepas di bawah entri"
+    },
+    "allYearsView": {
+      "label": "Tunjukkan semua tahun sepenuhnya",
+      "description": "Jurnal Abadi: setiap tahun bagi tarikh itu dalam satu halaman, di bawah entri"
     }
   },
   "tasks": {

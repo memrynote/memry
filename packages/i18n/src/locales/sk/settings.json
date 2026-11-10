@@ -504,7 +504,8 @@
       "loading": "Načítavajú sa nastavenia…"
     },
     "groups": {
-      "footer": "Päta"
+      "footer": "Päta",
+      "pastYears": "Minulé roky"
     },
     "template": {
       "label": "Šablóna",
@@ -562,6 +563,14 @@
     "showInSidebar": {
       "label": "Zobraziť v bočnom paneli",
       "description": "Zobraziť priečinok denníka a jeho záznamy v strome poznámok"
+    },
+    "showOnThisDay": {
+      "label": "Zobraziť V tento deň",
+      "description": "Pod záznamom zobraziť rovnaký dátum z minulých rokov"
+    },
+    "allYearsView": {
+      "label": "Zobraziť všetky roky celé",
+      "description": "Večný denník: každý rok daného dátumu na jednej stránke pod záznamom"
     }
   },
   "tasks": {

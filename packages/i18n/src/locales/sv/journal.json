@@ -236,5 +236,21 @@
     "range": "{start} – {end}",
     "openTask": "{title}, {range}",
     "completeTask": "Slutför {title}"
+  },
+  "pastYears": {
+    "title": "Den här dagen",
+    "count": "{count, plural, one {# annat år} other {# andra år}}",
+    "showAll": "Alla år",
+    "showPreviews": "Förhandsvisningar",
+    "yearsAgo": "{count, plural, one {för # år sedan} other {för # år sedan}}",
+    "yearsLater": "{count, plural, one {# år senare} other {# år senare}}",
+    "words": "{count, plural, one {# ord} other {# ord}}",
+    "openDay": "Öppna {date}",
+    "showFull": "Visa hela inlägget",
+    "showLess": "Visa mindre",
+    "loadError": "Det gick inte att läsa in den här dagen från andra år.",
+    "previousYear": "Samma dag, föregående år",
+    "nextYear": "Samma dag, nästa år",
+    "goToYear": "Gå till den här dagen {year}"
   }
 }

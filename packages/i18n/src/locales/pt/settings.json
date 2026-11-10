@@ -504,7 +504,8 @@
       "loading": "Carregando configurações…"
     },
     "groups": {
-      "footer": "Rodapé"
+      "footer": "Rodapé",
+      "pastYears": "Anos anteriores"
     },
     "template": {
       "label": "Modelo",
@@ -562,6 +563,14 @@
     "showInSidebar": {
       "label": "Mostrar na barra lateral",
       "description": "Mostra a pasta do diário e suas entradas na árvore de notas"
+    },
+    "showOnThisDay": {
+      "label": "Mostrar Neste dia",
+      "description": "Listar a mesma data de anos anteriores abaixo da entrada"
+    },
+    "allYearsView": {
+      "label": "Mostrar todos os anos por completo",
+      "description": "O diário perpétuo: todos os anos da data numa só página, abaixo da entrada"
     }
   },
   "tasks": {

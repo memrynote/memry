@@ -504,7 +504,8 @@
       "loading": "Memuat pengaturan…"
     },
     "groups": {
-      "footer": "Footer"
+      "footer": "Footer",
+      "pastYears": "Tahun-tahun sebelumnya"
     },
     "template": {
       "label": "Templat",
@@ -562,6 +563,14 @@
     "showInSidebar": {
       "label": "Tampilkan di bilah samping",
       "description": "Tampilkan folder jurnal dan entrinya di pohon catatan"
+    },
+    "showOnThisDay": {
+      "label": "Tampilkan Pada hari ini",
+      "description": "Tampilkan tanggal yang sama dari tahun-tahun sebelumnya di bawah entri"
+    },
+    "allYearsView": {
+      "label": "Tampilkan semua tahun secara lengkap",
+      "description": "Jurnal Abadi: setiap tahun dari tanggal ini dalam satu halaman, di bawah entri"
     }
   },
   "tasks": {

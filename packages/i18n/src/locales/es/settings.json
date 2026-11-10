@@ -504,7 +504,8 @@
       "loading": "Cargando ajustes…"
     },
     "groups": {
-      "footer": "Pie de página"
+      "footer": "Pie de página",
+      "pastYears": "Años anteriores"
     },
     "template": {
       "label": "Plantilla",
@@ -562,6 +563,14 @@
     "showInSidebar": {
       "label": "Mostrar en la barra lateral",
       "description": "Muestra la carpeta del diario y sus entradas en el árbol de notas"
+    },
+    "showOnThisDay": {
+      "label": "Mostrar Tal día como hoy",
+      "description": "Mostrar la misma fecha de años anteriores bajo la entrada"
+    },
+    "allYearsView": {
+      "label": "Mostrar todos los años completos",
+      "description": "El diario eterno: todos los años de la fecha en una página, bajo la entrada"
     }
   },
   "tasks": {

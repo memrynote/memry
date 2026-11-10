@@ -504,7 +504,8 @@
       "loading": "Beállítások betöltése…"
     },
     "groups": {
-      "footer": "Lábléc"
+      "footer": "Lábléc",
+      "pastYears": "Korábbi évek"
     },
     "template": {
       "label": "Sablon",
@@ -562,6 +563,14 @@
     "showInSidebar": {
       "label": "Megjelenítés az oldalsávon",
       "description": "A naplómappa és a bejegyzései megjelennek a jegyzetfában"
+    },
+    "showOnThisDay": {
+      "label": "Ezen a napon megjelenítése",
+      "description": "Ugyanez a dátum a korábbi évekből a bejegyzés alatt"
+    },
+    "allYearsView": {
+      "label": "Minden év teljes megjelenítése",
+      "description": "Az örök napló: a dátum minden éve egy oldalon, a bejegyzés alatt"
     }
   },
   "tasks": {

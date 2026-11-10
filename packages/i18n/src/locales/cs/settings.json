@@ -504,7 +504,8 @@
       "loading": "Načítání nastavení…"
     },
     "groups": {
-      "footer": "Zápatí"
+      "footer": "Zápatí",
+      "pastYears": "Minulé roky"
     },
     "template": {
       "label": "Šablona",
@@ -562,6 +563,14 @@
     "showInSidebar": {
       "label": "Zobrazit v bočním panelu",
       "description": "Zobrazit složku deníku a její zápisy ve stromu poznámek"
+    },
+    "showOnThisDay": {
+      "label": "Zobrazit V tento den",
+      "description": "Pod záznamem zobrazit stejné datum z minulých let"
+    },
+    "allYearsView": {
+      "label": "Zobrazit všechny roky celé",
+      "description": "Věčný deník: každý rok daného data na jedné stránce pod záznamem"
     }
   },
   "tasks": {

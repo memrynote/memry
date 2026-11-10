@@ -504,7 +504,8 @@
       "loading": "Đang tải cài đặt…"
     },
     "groups": {
-      "footer": "Chân trang"
+      "footer": "Chân trang",
+      "pastYears": "Những năm trước"
     },
     "template": {
       "label": "Mẫu",
@@ -562,6 +563,14 @@
     "showInSidebar": {
       "label": "Hiện trong thanh bên",
       "description": "Hiện thư mục nhật ký và các mục của nó trong cây ghi chú"
+    },
+    "showOnThisDay": {
+      "label": "Hiện Ngày này năm xưa",
+      "description": "Liệt kê cùng ngày của những năm trước bên dưới mục"
+    },
+    "allYearsView": {
+      "label": "Hiện đầy đủ tất cả các năm",
+      "description": "Nhật ký vĩnh cửu: mọi năm của ngày này trên một trang, bên dưới mục"
     }
   },
   "tasks": {

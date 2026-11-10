@@ -504,7 +504,8 @@
       "loading": "設定を読み込み中…"
     },
     "groups": {
-      "footer": "フッター"
+      "footer": "フッター",
+      "pastYears": "過去の年"
     },
     "template": {
       "label": "テンプレート",
@@ -562,6 +563,14 @@
     "showInSidebar": {
       "label": "サイドバーに表示",
       "description": "ジャーナルフォルダーとそのエントリーをノートツリーに表示します"
+    },
+    "showOnThisDay": {
+      "label": "「この日」を表示",
+      "description": "エントリの下に過去の年の同じ日付を一覧表示します"
+    },
+    "allYearsView": {
+      "label": "すべての年を全文で表示",
+      "description": "永遠のジャーナル：その日付のすべての年を、エントリの下の 1 ページにまとめて表示します"
     }
   },
   "tasks": {

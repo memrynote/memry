@@ -134,6 +134,7 @@
     "actions": {
       "openInNewTab": "Buka di tab baru",
       "openToTheSide": "Buka di samping",
+      "openFolderView": "Buka Tampilan Folder",
       "newNote": "Catatan baru",
       "newFolder": "Folder baru",
       "showTasks": "Tampilkan Tugas",
@@ -419,6 +420,10 @@
       "savedView": "Tampilan tersimpan",
       "savedViewMissing": "Tampilan tersimpan “{name}” sudah tidak ada, jadi yang ditampilkan adalah tampilan default.",
       "openAsTab": "Buka sebagai tab",
+      "newNote": "Catatan baru",
+      "newViewTitle": "Tampilan baru",
+      "newViewSubtext": "Folder baru di samping catatan ini, tercantum di sini",
+      "newViewFailed": "Tidak dapat membuat folder untuk tampilan ini.",
       "empty": "Belum ada yang cocok dengan tampilan ini.",
       "loadFailed": "Tidak dapat memuat tampilan ini. Catatannya sendiri tidak diubah.",
       "folderMissing": "Folder ini sudah tidak ada di brankas. Pilih sumber lain.",

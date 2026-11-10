@@ -504,7 +504,8 @@
       "loading": "Indlæser indstillinger…"
     },
     "groups": {
-      "footer": "Sidefod"
+      "footer": "Sidefod",
+      "pastYears": "Tidligere år"
     },
     "template": {
       "label": "Skabelon",
@@ -562,6 +563,14 @@
     "showInSidebar": {
       "label": "Vis i sidebjælken",
       "description": "Vis dagbogsmappen og dens indlæg i notetræet"
+    },
+    "showOnThisDay": {
+      "label": "Vis På denne dag",
+      "description": "Vis samme dato fra tidligere år under indlægget"
+    },
+    "allYearsView": {
+      "label": "Vis alle år i fuld længde",
+      "description": "Den evige dagbog: alle år for datoen på én side under indlægget"
     }
   },
   "tasks": {

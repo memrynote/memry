@@ -134,6 +134,7 @@
     "actions": {
       "openInNewTab": "Yeni sekmede aç",
       "openToTheSide": "Yanda aç",
+      "openFolderView": "Klasör Görünümünü Aç",
       "newNote": "Yeni not",
       "newFolder": "Yeni klasör",
       "showTasks": "Görevleri göster",
@@ -419,6 +420,10 @@
       "savedView": "Kayıtlı görünüm",
       "savedViewMissing": "“{name}” kayıtlı görünümü artık yok, bu yüzden varsayılan görünüm gösteriliyor.",
       "openAsTab": "Sekme olarak aç",
+      "newNote": "Yeni not",
+      "newViewTitle": "Yeni görünüm",
+      "newViewSubtext": "Bu notun yanında yeni bir klasör, burada listelenir",
+      "newViewFailed": "Bu görünüm için klasör oluşturulamadı.",
       "empty": "Henüz bu görünümle eşleşen bir şey yok.",
       "loadFailed": "Bu görünüm yüklenemedi. Notların kendisine dokunulmadı.",
       "folderMissing": "Bu klasör artık kasada değil. Başka bir kaynak seçin.",
