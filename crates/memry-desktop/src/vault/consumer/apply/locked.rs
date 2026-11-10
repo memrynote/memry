@@ -1,6 +1,8 @@
 //! A locked note's file the watcher reports changed or removed: the lock answers first
 //! ([`Locks::restore`]), so its outside change reaches neither the document nor the record.
 
+use super::super::Applied;
+use super::super::rows::Lane;
 use super::{Applier, SCOPE, Step};
 use crate::locks::Locks;
 use crate::vault::note_file::{NoteFile, read_note_lossy};
@@ -11,12 +13,19 @@ impl Applier {
     /// `None` when it goes on as any file's.
     pub(super) fn restored(
         &self,
+        lane: &Lane<'_>,
         note_id: &str,
         path: &str,
         changed: Option<&NoteFile>,
     ) -> Option<Step> {
         match Locks::new(&self.root, &self.vault).restore(note_id, path, changed) {
-            Ok(true) => Some(Step::Done),
+            Ok(true) => {
+                lane.publish(Applied::LockRestored {
+                    note_id: note_id.to_owned(),
+                    path: path.to_owned(),
+                });
+                Some(Step::Done)
+            }
             Ok(false) => None,
             Err(error) => {
                 tracing::error!(
@@ -33,7 +42,12 @@ impl Applier {
     /// not UTF-8 is kept as the text Electron reads it as, then the locked text is written
     /// back. One past the read cap is left as it is: no version could hold it, and writing over
     /// it would lose it.
-    pub(super) fn restored_unreadable(&self, note_id: &str, path: &str) -> Option<Step> {
+    pub(super) fn restored_unreadable(
+        &self,
+        lane: &Lane<'_>,
+        note_id: &str,
+        path: &str,
+    ) -> Option<Step> {
         match self.vault.locks().is_note_locked(note_id, Some(path)) {
             Ok(true) => {}
             Ok(false) => return None,
@@ -43,7 +57,7 @@ impl Applier {
             }
         }
         match read_note_lossy(&self.root, path) {
-            Ok(Some(file)) => self.restored(note_id, path, Some(&file)),
+            Ok(Some(file)) => self.restored(lane, note_id, path, Some(&file)),
             Ok(None) => None,
             Err(error) => {
                 tracing::warn!(

@@ -1648,6 +1648,8 @@
     "unlockNote": "שחרור הפתק",
     "lockFolder": "נעילת התיקייה",
     "unlockFolder": "שחרור התיקייה",
+    "lockingFolder": "נועל את התיקייה…",
+    "unlockingFolder": "מבטל את נעילת התיקייה…",
     "toggleFailed": "לא ניתן לשנות את הנעילה",
     "readOnlyIndicator": "נעול. לקריאה בלבד עבורך ועבור סוכנים.",
     "excludedIndicator": "הפתק הזה נמצא בתיקייה מוחרגת.",

@@ -1648,6 +1648,8 @@
     "unlockNote": "ノートのロックを解除",
     "lockFolder": "フォルダーをロック",
     "unlockFolder": "フォルダーのロックを解除",
+    "lockingFolder": "フォルダーをロックしています…",
+    "unlockingFolder": "フォルダーのロックを解除しています…",
     "toggleFailed": "ロックを変更できませんでした",
     "readOnlyIndicator": "ロック中。自分とエージェントには読み取り専用です。",
     "excludedIndicator": "このノートは除外フォルダーにあります。",

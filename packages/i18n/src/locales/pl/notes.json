@@ -1648,6 +1648,8 @@
     "unlockNote": "Odblokuj notatkę",
     "lockFolder": "Zablokuj folder",
     "unlockFolder": "Odblokuj folder",
+    "lockingFolder": "Blokowanie folderu…",
+    "unlockingFolder": "Odblokowywanie folderu…",
     "toggleFailed": "Nie udało się zmienić blokady",
     "readOnlyIndicator": "Zablokowane. Tylko do odczytu dla Ciebie i agentów.",
     "excludedIndicator": "Ta notatka znajduje się w wykluczonym folderze.",

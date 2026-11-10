@@ -1648,6 +1648,8 @@
     "unlockNote": "解除鎖定筆記",
     "lockFolder": "鎖定資料夾",
     "unlockFolder": "解除鎖定資料夾",
+    "lockingFolder": "正在鎖定資料夾…",
+    "unlockingFolder": "正在解鎖資料夾…",
     "toggleFailed": "無法變更鎖定狀態",
     "readOnlyIndicator": "已鎖定。對你和代理皆為唯讀。",
     "excludedIndicator": "此筆記位於已排除的資料夾中。",

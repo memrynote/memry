@@ -1648,6 +1648,8 @@
     "unlockNote": "Buka kunci nota",
     "lockFolder": "Kunci folder",
     "unlockFolder": "Buka kunci folder",
+    "lockingFolder": "Mengunci folder…",
+    "unlockingFolder": "Membuka kunci folder…",
     "toggleFailed": "Tidak dapat menukar kunci",
     "readOnlyIndicator": "Dikunci. Baca sahaja untuk anda dan untuk ejen.",
     "excludedIndicator": "Nota ini berada dalam folder yang dikecualikan.",

@@ -170,6 +170,7 @@ fn register_vault_watcher(app: &AppHandle<Wry>, session: &Session) {
         Arc::new(move || broadcast(&schemas_changed, NoteTagsChangedEvent)),
     );
     crate::shell::note_events::forward(app.clone(), tier.subscribe());
+    crate::shell::lock_events::forward(app.clone(), tier.subscribe());
     crate::shell::journal_events::forward(app.clone(), tier.subscribe());
     app.manage(notes);
     app.manage(tier);
@@ -436,6 +437,9 @@ fn forward_events(app: AppHandle<Wry>, events: Receiver<SessionEvent>) {
                 SessionEvent::ListChanged => broadcast(&app, VaultListChangedEvent),
                 SessionEvent::Opened { source, path } => {
                     services::set_vault_root(&app, Some(path));
+                    if let Some(open) = app.state::<Session>().current() {
+                        crate::shell::lock_events::opened(&app, &open);
+                    }
                     // The launch's own open is not a user action.
                     if let Some(source) = source_name(source) {
                         track_vault(&app, "vault_opened", "opened", source);

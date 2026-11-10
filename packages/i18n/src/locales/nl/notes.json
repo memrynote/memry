@@ -1648,6 +1648,8 @@
     "unlockNote": "Notitie ontgrendelen",
     "lockFolder": "Map vergrendelen",
     "unlockFolder": "Map ontgrendelen",
+    "lockingFolder": "Map vergrendelen…",
+    "unlockingFolder": "Map ontgrendelen…",
     "toggleFailed": "Kan het slot niet wijzigen",
     "readOnlyIndicator": "Vergrendeld. Alleen-lezen voor jou en voor agents.",
     "excludedIndicator": "Deze notitie staat in een uitgesloten map.",
