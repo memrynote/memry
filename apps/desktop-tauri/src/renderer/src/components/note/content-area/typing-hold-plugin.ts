@@ -47,10 +47,13 @@ export function createTypingHoldPlugin(hold: TypingHold): Plugin {
       const composition = tr.getMeta('composition') !== undefined || view?.composing === true
       return composition && hold.takesComposition
     },
-    // A feed applies synchronously: the transactions it sees are y-prosemirror's of the edit and
-    // those appended to it. The one appended here changes no content, so it maps to itself.
-    appendTransaction(_trs, before, after) {
-      if (!hold.feedingEdit) return null
+    // Only the edit's own transaction: ProseMirror calls this again for those other plugins append
+    // to it (the anchor plugin moving a caret out of a hidden ` ^anchor`), and mapping the old
+    // selection over theirs would undo it, and they would redo it, forever.
+    appendTransaction(trs, before, after) {
+      if (!hold.feedingEdit || !trs.some((tr) => tr.getMeta(ySyncPluginKey)?.isChangeOrigin)) {
+        return null
+      }
       const selection = selectionThroughOutsideEdit(before.selection, before.doc, after.doc)
       if (selection.eq(after.selection)) return null
       return after.tr.setSelection(selection).setMeta('addToHistory', false)

@@ -10,7 +10,7 @@ import { afterEach, describe, expect, it, vi } from 'vitest'
 import { redo, undo, yUndoPluginKey } from 'y-prosemirror'
 import * as Y from 'yjs'
 import type { PartialBlock } from '@blocknote/core'
-import { TextSelection } from '@tiptap/pm/state'
+import { Plugin, TextSelection } from '@tiptap/pm/state'
 import type { EditorView } from '@tiptap/pm/view'
 
 vi.mock('react-pdf', () => ({
@@ -24,6 +24,7 @@ vi.mock('@/lib/url-metadata', () => ({
 
 import { CRDT_FRAGMENT_NAME } from '@memry/contracts/ipc-crdt'
 import { typingHoldOf, type TypingHold } from '@/sync/typing-hold'
+import { createAnchorVisibilityPlugin } from './portal/anchor-visibility-plugin'
 import { mountTestEditor, para, unmountTestEditors } from './portal/portal-test-editor'
 import { registerEditorPlugin } from './register-editor-plugin'
 import { createTypingHoldPlugin } from './typing-hold-plugin'
@@ -375,19 +376,56 @@ describe('the outside edit frame, block changes', () => {
     expect(caret(view)).toBe(`xab @${to}`)
   })
 
-  it('keeps a caret near its block past the block edit cap', () => {
-    const texts = Array.from({ length: 1100 }, (_, i) => `Block ${i}`)
+  it('keeps a caret in its unchanged block past the block edit cap', () => {
+    const texts = Array.from({ length: 5000 }, (_, i) => `Block number ${i}`)
     const { view, doc, hold } = mountNote(texts)
-    placeCaret(view, 'Block 600', 2)
-    // An empty block after each: more block insertions than the diff follows.
+    placeCaret(view, 'Block number 2500', 3)
+    // An empty block after every 4th: more block insertions than the diff follows.
     feedOutsideEdit(
       doc,
       hold,
-      texts.flatMap((text) => [para(text), para('')])
+      texts.flatMap((text, i) => (i % 4 === 3 ? [para(text), para('')] : [para(text)]))
     )
-    // Past the cap the blocks pair by index: the caret's block 600 is the new block 600.
-    expect(caret(view)).toBe('Block 300 @2')
+    expect(caret(view)).toBe('Block number 2500 @3')
   })
+})
+
+describe('the outside edit frame, with the anchor plugin', () => {
+  // The plugins in either order: ContentArea registers the anchor plugin first.
+  it.each([
+    ['anchor plugin first', true],
+    ['typing hold plugin first', false]
+  ])(
+    'lets the anchor plugin move a caret out of an anchor the edit adds (%s)',
+    (_order, anchorFirst) => {
+      const mounted = mountTestEditor([para('A'), para('Bravo line'), para('C')])
+      const { view, doc, editor } = mounted
+      const hold = typingHoldOf(doc)
+      const plugins = [createAnchorVisibilityPlugin(), createTypingHoldPlugin(hold)]
+      for (const plugin of anchorFirst ? plugins : plugins.toReversed()) {
+        registerEditorPlugin(editor, plugin)
+      }
+      // A cap on the rounds of appended transactions, so a loop between the two fails, not hangs.
+      let rounds = 0
+      registerEditorPlugin(
+        editor,
+        new Plugin({
+          appendTransaction() {
+            if (++rounds > 100) throw new Error('appended transactions do not settle')
+            return null
+          }
+        })
+      )
+      placeCaret(view, 'Bravo line', 10)
+      rounds = 0
+
+      expect(() =>
+        feedOutsideEdit(doc, hold, [para('A'), para('Bravo line ^abcd123'), para('C')])
+      ).not.toThrow()
+      expect(rounds).toBeLessThanOrEqual(100)
+      expect(caret(view)).toBe('Bravo line ^abcd123 @10')
+    }
+  )
 })
 
 describe("another window's frame", () => {

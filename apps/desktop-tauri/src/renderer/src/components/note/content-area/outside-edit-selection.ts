@@ -19,9 +19,9 @@ import type { Selection } from '@tiptap/pm/state'
 import { StepMap } from '@tiptap/pm/transform'
 
 /**
- * Past this many inserted or removed blocks the block diff stops, and the blocks of the middle pair
- * by index: the diff costs (blocks x edits) steps, and its trace edits squared. 3,000 blocks map in
- * about 10 ms either way.
+ * Past this many inserted or removed blocks the block diff stops, and the middle's blocks whose
+ * content is unique on both sides match instead: the diff costs (blocks x edits) steps, and its
+ * trace edits squared. 3,000 blocks map in about 10 ms either way.
  */
 const MAX_BLOCK_EDITS = 1000
 
@@ -125,11 +125,9 @@ function blockRuns(a: number[], b: number[], alike: (i: number, j: number) => bo
   const endB = b.length - tail
   if (head === endA && head === endB) return []
   const runs: Run[] = []
-  const matches = middleMatches(a.slice(head, endA), b.slice(head, endB))
-  if (!matches) {
-    runs.push(...gapRuns(a, b, [head, endA, head, endB], null))
-    return runs
-  }
+  const middleA = a.slice(head, endA)
+  const middleB = b.slice(head, endB)
+  const matches = middleMatches(middleA, middleB) ?? uniqueMatches(middleA, middleB)
   let i = head
   let j = head
   for (const [mi, mj] of [...matches.map(([x, y]) => [head + x, head + y]), [endA, endB]]) {
@@ -144,35 +142,58 @@ function blockRuns(a: number[], b: number[], alike: (i: number, j: number) => bo
  * The runs of one gap between matched blocks. Its blocks pair one to one, each pair its own run, so
  * a caret keeps its place in a block whose other text changed: all of them when both sides have as
  * many (one paragraph reworded, every line reformatted), else those at the gap's edges that look
- * `alike` (a block edited beside one inserted or removed). The rest is one run. Past the edit cap
- * (`alike` null) they pair by index, and the last pair takes the extra blocks, so a caret stays
- * near its index.
+ * `alike` (a block edited beside one inserted or removed). The rest is one run.
  */
 function gapRuns(
   a: number[],
   b: number[],
   [i, toA, j, toB]: Run,
-  alike: ((i: number, j: number) => boolean) | null
+  alike: (i: number, j: number) => boolean
 ): Run[] {
   const head: Run[] = []
   const tail: Run[] = []
   const changed = (x: number, y: number): boolean => a[x] !== b[y]
-  const equal = toA - i === toB - j
-  const pairs = (): boolean => equal || (alike ? alike(i, j) : toA - i > 1 && toB - j > 1)
-  while (i < toA && j < toB && pairs()) {
+  while (i < toA && j < toB && (toA - i === toB - j || alike(i, j))) {
     if (changed(i, j)) head.push([i, i + 1, j, j + 1])
     i++
     j++
   }
-  if (alike) {
-    while (i < toA && j < toB && alike(toA - 1, toB - 1)) {
-      toA--
-      toB--
-      if (changed(toA, toB)) tail.push([toA, toA + 1, toB, toB + 1])
-    }
+  while (i < toA && j < toB && alike(toA - 1, toB - 1)) {
+    toA--
+    toB--
+    if (changed(toA, toB)) tail.push([toA, toA + 1, toB, toB + 1])
   }
   if (i < toA || j < toB) head.push([i, toA, j, toB])
   return [...head, ...tail.toReversed()]
+}
+
+/**
+ * The index pairs, in order, of the blocks whose content occurs once in `a` and once in `b`, those
+ * that would cross an earlier pair left out. Linear: the match past the diff's edit cap, so a caret
+ * in a block the edit kept stays in it however many blocks moved around it.
+ */
+function uniqueMatches(a: number[], b: number[]): Array<[number, number]> {
+  const countsA = keyCounts(a)
+  const countsB = keyCounts(b)
+  const indexB = new Map<number, number>()
+  b.forEach((key, j) => {
+    if (countsB.get(key) === 1) indexB.set(key, j)
+  })
+  const matches: Array<[number, number]> = []
+  let last = -1
+  a.forEach((key, i) => {
+    const j = indexB.get(key)
+    if (j === undefined || countsA.get(key) !== 1 || j <= last) return
+    matches.push([i, j])
+    last = j
+  })
+  return matches
+}
+
+function keyCounts(keys: number[]): Map<number, number> {
+  const counts = new Map<number, number>()
+  for (const key of keys) counts.set(key, (counts.get(key) ?? 0) + 1)
+  return counts
 }
 
 /** Whether two blocks share, at their start and end, at least half the text of the longer one. */
