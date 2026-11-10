@@ -577,3 +577,23 @@ fn a_flat_local_key_round_trips_and_a_group_name_is_refused() {
     );
     assert_eq!(group_defaults("nope"), None);
 }
+
+/// Electron's `ai.enabled` text `false` reads as a JSON boolean for `getAISettings` (#4182).
+#[test]
+fn electrons_ai_enabled_text_reads_as_a_boolean() {
+    let (app, _dir) = open("ai-enabled");
+    assert_eq!(app.get_local("ai.enabled").expect("read"), None);
+    app.db
+        .call_blocking(|conn| {
+            conn.execute(
+                "INSERT INTO local_settings (key, value, updated_at) VALUES ('ai.enabled', 'false', 0)",
+                [],
+            )
+            .map_err(failed)
+        })
+        .expect("seed");
+    assert_eq!(
+        app.get_local("ai.enabled").expect("read"),
+        Some(json!(false))
+    );
+}
