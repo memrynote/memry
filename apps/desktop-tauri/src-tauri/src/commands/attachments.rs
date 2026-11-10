@@ -10,12 +10,15 @@
 //! `{ success: false, error }`. `notes_attachment_rename` renames a block's file
 //! (`notes:attachment-rename`) and rejects as Electron's handler does. `notes_delete_attachment`
 //! moves a file to the OS trash unless another note names it (`notes:delete-attachment`). A
-//! locked note refuses each of them with `note_locked`.
+//! locked note refuses each of them with `note_locked`. `notes_list_attachments`,
+//! `notes_attachment_resolve`, `notes_attachment_reveal_in_finder` and
+//! `notes_attachment_open_external` only read, so a lock does not refuse them.
 
 use std::sync::Arc;
 
 use memry_desktop::attachments::{
-    self, AttachmentError, DeletedAttachment, RenamedAttachment, SavedAttachment, Uploads,
+    self, AttachmentError, AttachmentInfo, AttachmentLocation, DeletedAttachment,
+    RenamedAttachment, SavedAttachment, Uploads,
 };
 use memry_desktop::i18n::{self, Arg, Args};
 use memry_desktop::locale::LocaleService;
@@ -23,12 +26,13 @@ use memry_desktop::vault::consumer::VaultTier;
 use memry_desktop::vault::trash::move_to_trash;
 use serde::Deserialize;
 use tauri::ipc::Request;
-use tauri::{AppHandle, Manager, Runtime, Webview};
+use tauri::{AppHandle, Manager, Runtime, Webview, Wry};
 
 use super::blocking;
 use super::error::{CommandError, ErrorKind, log_failure};
 use super::notes::open_vault;
 use crate::binary;
+use crate::shell::external;
 
 #[derive(Deserialize)]
 #[serde(rename_all = "camelCase")]
@@ -246,6 +250,67 @@ pub fn delete_error<R: Runtime>(app: &AppHandle<R>, error: &AttachmentError) -> 
         }
         other => attachment_error(app, "notes_delete_attachment", other),
     }
+}
+
+/// `notes:list-attachments`: the files of the note's attachments folder.
+#[tauri::command]
+#[specta::specta]
+pub async fn notes_list_attachments<R: Runtime>(
+    app: AppHandle<R>,
+    note_id: String,
+) -> Result<Vec<AttachmentInfo>, CommandError> {
+    blocking("notes_list_attachments", move || {
+        attachments::list(&open_vault(&app)?, &note_id)
+            .map_err(|error| attachment_error(&app, "notes_list_attachments", &error))
+    })
+    .await
+}
+
+/// `notes:attachment-resolve`: where a block's `url` points on this device, self-heal included.
+#[tauri::command]
+#[specta::specta]
+pub async fn notes_attachment_resolve<R: Runtime>(
+    app: AppHandle<R>,
+    note_id: String,
+    url: String,
+) -> Result<AttachmentLocation, CommandError> {
+    blocking("notes_attachment_resolve", move || {
+        attachments::locate(&open_vault(&app)?, &note_id, &url)
+            .map_err(|error| attachment_error(&app, "notes_attachment_resolve", &error))
+    })
+    .await
+}
+
+/// `notes:attachment-reveal-in-finder`: the file a block's `url` names, in the OS file manager.
+#[tauri::command]
+#[specta::specta]
+pub async fn notes_attachment_reveal_in_finder(
+    app: AppHandle<Wry>,
+    note_id: String,
+    url: String,
+) -> Result<(), CommandError> {
+    blocking("notes_attachment_reveal_in_finder", move || {
+        let path = attachments::existing(&open_vault(&app)?, &note_id, &url)
+            .map_err(|error| attachment_error(&app, "notes_attachment_reveal_in_finder", &error))?;
+        external::reveal_path(&app, &path.to_string_lossy())
+    })
+    .await
+}
+
+/// `notes:attachment-open-external`: the file a block's `url` names, in the OS's default app.
+#[tauri::command]
+#[specta::specta]
+pub async fn notes_attachment_open_external(
+    app: AppHandle<Wry>,
+    note_id: String,
+    url: String,
+) -> Result<(), CommandError> {
+    blocking("notes_attachment_open_external", move || {
+        let path = attachments::existing(&open_vault(&app)?, &note_id, &url)
+            .map_err(|error| attachment_error(&app, "notes_attachment_open_external", &error))?;
+        external::open_path(&app, &path.to_string_lossy())
+    })
+    .await
 }
 
 /// The page of window `label` reloaded or closed: its uploads end with nothing. Called on the main

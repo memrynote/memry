@@ -25,8 +25,12 @@
 
 use std::cell::Cell;
 use std::collections::BTreeSet;
+use std::fs;
+use std::io;
+use std::path::Path;
 
 use crate::session::OpenVault;
+use crate::shell::local_scheme::find_heal_candidate;
 use crate::vault::consumer::rows::RowOwner;
 use crate::vault::file_types::{FileType, extension, file_type_of_extension};
 use crate::vault::layout::ATTACHMENTS_DIR;
@@ -138,7 +142,7 @@ pub enum Incomplete {
     /// The walk has not given every file it found a row yet (one waits for its retry, or an
     /// exclude pattern's restart walks again), or it hit its caps or an unreadable folder.
     NotWalked,
-    /// The rows could not be listed.
+    /// The rows, or the attachment's folder, could not be listed.
     Unlisted,
     /// A body could not be read.
     Unreadable,
@@ -167,8 +171,43 @@ impl ReferenceScan {
     }
 }
 
+/// Whether `body` names a file of `attachments/<owner>/` that is not in the folder (`present`,
+/// lowercased) and that self-heal (`shell::file_service::heal`) could serve from `file`: the
+/// same stored prefix, or the same name past it (#4122). After a rename, a note that still names
+/// the old name shows the renamed file this way. Compared in ASCII lowercase, each name as
+/// written and decoded, and without self-heal's rule that the match be the folder's only one:
+/// each difference counts more refs, which keeps the file.
+fn heals_to(owner: &str, file: &str, present: &BTreeSet<String>, body: &str) -> bool {
+    let (owner, file) = (owner.to_ascii_lowercase(), file.to_ascii_lowercase());
+    let body = body.to_ascii_lowercase();
+    let mut heals = false;
+    each_name(&owner, &body, &mut |raw| {
+        let decoded = decode_uri_component(raw).map(|name| name.to_ascii_lowercase());
+        for name in [Some(raw), decoded.as_deref()].into_iter().flatten() {
+            heals = heals
+                || (!present.contains(name)
+                    && find_heal_candidate([file.as_str()], name) == Some(file.as_str()));
+        }
+    });
+    heals
+}
+
+/// The names of `attachments/<owner>/`, lowercased; none when the folder is gone.
+fn folder_names(vault: &Path, owner: &str) -> io::Result<BTreeSet<String>> {
+    let entries = match fs::read_dir(vault.join(ATTACHMENTS_DIR).join(owner)) {
+        Err(error) if error.kind() == io::ErrorKind::NotFound => return Ok(BTreeSet::new()),
+        other => other?,
+    };
+    let mut names = BTreeSet::new();
+    for entry in entries {
+        names.insert(entry?.file_name().to_string_lossy().to_ascii_lowercase());
+    }
+    Ok(names)
+}
+
 /// `findNotesReferencingAttachment`: the notes of the open vault whose body names
-/// `attachments/<owner>/<file>` ([`names_file`]), `exclude` aside. Every row is read but those of
+/// `attachments/<owner>/<file>` ([`names_file`]), or a missing name of that folder self-heal
+/// serves from it ([`heals_to`]; Electron did not count those), `exclude` aside. Every row is read but those of
 /// a pdf, an image, an audio or a video file. A row whose file is gone holds no reference. The
 /// scan is incomplete until the walk of the vault gave every file it found a row (`rows`), and when a body
 /// cannot be read for any other reason (a link out of the vault, a second hard link, a file over
@@ -197,6 +236,16 @@ pub fn find_references(
             return ReferenceScan::incomplete(Vec::new(), Incomplete::Unlisted);
         }
     };
+    let present = match folder_names(&open.path, owner) {
+        Ok(present) => present,
+        Err(error) => {
+            tracing::warn!(
+                scope = SCOPE,
+                "reference scan could not list the attachment's folder; the file counts as shared: {error}"
+            );
+            return ReferenceScan::incomplete(Vec::new(), Incomplete::Unlisted);
+        }
+    };
     let mut referenced_by = Vec::new();
     for (note_id, path) in rows {
         if Some(note_id.as_str()) == exclude || is_media(&path) {
@@ -210,7 +259,7 @@ pub fn find_references(
                 return ReferenceScan::incomplete(referenced_by, Incomplete::Unreadable);
             }
         };
-        if names_file(owner, file, &body) {
+        if names_file(owner, file, &body) || heals_to(owner, file, &present, &body) {
             referenced_by.push(note_id);
         }
     }

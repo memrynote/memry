@@ -44,8 +44,12 @@ mod article_standardize;
 mod article_temml;
 #[path = "article_vectors.rs"]
 mod article_vectors;
+#[path = "attachment_actions.rs"]
+mod attachment_actions;
 #[path = "attachment_delete.rs"]
 mod attachment_delete;
+#[path = "attachment_delete_healed.rs"]
+mod attachment_delete_healed;
 #[path = "attachment_locks.rs"]
 mod attachment_locks;
 #[path = "attachment_refs.rs"]

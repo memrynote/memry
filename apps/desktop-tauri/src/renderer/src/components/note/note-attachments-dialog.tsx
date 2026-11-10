@@ -11,6 +11,7 @@ import { useCallback, useEffect, useMemo, useState } from 'react'
 import { getI18n } from 'react-i18next'
 import { toast } from 'sonner'
 import { extractErrorMessage } from '@/lib/ipc-error'
+import { notesService } from '@/services/notes-service'
 import {
   Dialog,
   DialogContent,
@@ -106,7 +107,7 @@ export function NoteAttachmentsDialog({
 
   useEffect(() => {
     if (!open) return
-    window.api.notes
+    notesService
       .listAttachments(noteId)
       .then((attachments: AttachmentRow[]) => {
         setRows(attachments.toSorted((a, b) => a.filename.localeCompare(b.filename)))
@@ -129,7 +130,7 @@ export function NoteAttachmentsDialog({
 
   const reveal = useCallback(
     (row: AttachmentRow) => {
-      window.api.notes.revealAttachmentInFinder(noteId, row.path).catch((err: unknown) => {
+      notesService.revealAttachmentInFinder(noteId, row.path).catch((err: unknown) => {
         toast.error(extractErrorMessage(err, t('editor.attachmentMenu.revealFailed')))
       })
     },
@@ -138,7 +139,7 @@ export function NoteAttachmentsDialog({
 
   const openExternal = useCallback(
     (row: AttachmentRow) => {
-      window.api.notes.openAttachmentExternal(noteId, row.path).catch((err: unknown) => {
+      notesService.openAttachmentExternal(noteId, row.path).catch((err: unknown) => {
         toast.error(extractErrorMessage(err, t('editor.attachmentMenu.openFailed')))
       })
     },
