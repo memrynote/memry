@@ -9,6 +9,9 @@
 //! | an unreadable config at open keeps excluded notes excluded   | no write, no edit read, no sync   |
 //! | a config broken while open keeps the excluded folder         | hidden; nothing moves into it     |
 //! | the patterns this device applied stand in after a restart    | remembered in the vault's core    |
+//! | patterns read while open are kept with the remembered ones   | the union, never the older list   |
+//! | an exclude field that is not a list keeps the patterns       | nothing new is remembered         |
+//! | a missing config, or one without the field, keeps them       | nothing new is remembered         |
 
 #[allow(unused_imports)]
 use crate::device_key;
@@ -21,8 +24,8 @@ use memry_desktop::notes::error::NotesError;
 use memry_desktop::notes::folders;
 use memry_desktop::notes::service::NotesService;
 use memry_desktop::notes::update::NoteUpdateInput;
-use memry_desktop::vault::config::{config_path, read_vault_config};
-use serde_json::json;
+use memry_desktop::vault::config::{config_path, merge_preferences, read_vault_config};
+use serde_json::{Map, json};
 use vault_env::{Env, QUIET};
 
 use crate::journal_folder::{outbox, reopen};
@@ -38,6 +41,10 @@ fn id_of(e: &Env, path: &str) -> String {
 
 fn break_config(e: &Env) {
     fs::write(config_path(&e.vault), b"{ not json").unwrap();
+}
+
+fn remembered(e: &Env) -> Option<Vec<String>> {
+    e.core().remembered_exclude_patterns().unwrap()
 }
 
 fn shown_folders(e: &Env) -> Vec<String> {
@@ -135,4 +142,75 @@ fn the_patterns_this_device_applied_stand_in_after_a_restart() {
 
     assert!(e.core().excluded().covers(SECRET));
     stays_excluded(&mut e, &notes, &id);
+}
+
+#[test]
+fn patterns_read_while_open_are_kept_with_the_remembered_ones() {
+    let (mut e, _store) = opened_keeping(json!({}), &[(SECRET, "Secret\n"), (NOTE, "New\n")]);
+    exclude(&mut e, &["private"]);
+    // Edited outside while open: the tree reads it, the open's remembered list stays older.
+    fs::write(
+        config_path(&e.vault),
+        br#"{"excludePatterns":["private","notes"]}"#,
+    )
+    .unwrap();
+    assert!(!shown_folders(&e).contains(&"notes".to_owned()));
+    break_config(&e);
+
+    reopen(&mut e);
+
+    assert!(e.core().excluded().covers(SECRET));
+    assert!(e.core().excluded().covers(NOTE));
+    let read = read_vault_config(&e.vault).exclude_patterns;
+    assert!(read.contains(&"private".to_owned()) && read.contains(&"notes".to_owned()));
+}
+
+#[test]
+fn an_exclude_field_that_is_not_a_list_keeps_the_patterns() {
+    let (mut e, _store) = opened_keeping(json!({}), &[(SECRET, "Secret\n"), (NOTE, "New\n")]);
+    exclude(&mut e, &["private"]);
+    fs::write(
+        config_path(&e.vault),
+        br#"{"excludePatterns":"private","journalFolder":"days"}"#,
+    )
+    .unwrap();
+
+    reopen(&mut e);
+
+    assert!(e.core().excluded().covers(SECRET));
+    let read = read_vault_config(&e.vault);
+    assert_eq!(read.exclude_patterns, ["private"]);
+    assert_eq!(
+        read.journal_folder, "days",
+        "the rest of the file still reads"
+    );
+    assert_eq!(remembered(&e), Some(vec!["private".to_owned()]));
+}
+
+#[test]
+fn a_missing_config_or_one_without_the_field_keeps_the_patterns() {
+    let (mut e, _store) = opened_keeping(json!({}), &[(SECRET, "Secret\n"), (NOTE, "New\n")]);
+    exclude(&mut e, &["private"]);
+    fs::remove_file(config_path(&e.vault)).unwrap();
+
+    reopen(&mut e);
+
+    assert!(e.core().excluded().covers(SECRET));
+    assert_eq!(read_vault_config(&e.vault).exclude_patterns, ["private"]);
+    // A settings writer recreates the file without the field.
+    let mut general = Map::new();
+    general.insert("theme".to_owned(), json!("dark"));
+    merge_preferences(&e.vault, &general, &Map::new()).unwrap();
+    assert!(
+        fs::read_to_string(config_path(&e.vault))
+            .unwrap()
+            .contains("theme")
+    );
+
+    reopen(&mut e);
+
+    assert!(e.core().excluded().covers(SECRET));
+    assert_eq!(read_vault_config(&e.vault).exclude_patterns, ["private"]);
+    assert_eq!(remembered(&e), Some(vec!["private".to_owned()]));
+    assert_eq!(shown_folders(&e), ["notes"]);
 }
