@@ -74,6 +74,8 @@ struct VaultInboxScope<Content: View>: View {
     let filler: (any VaultFilling)?
     @ViewBuilder let content: () -> Content
     @Environment(\.scenePhase) private var scenePhase
+    @Environment(\.requestVaultSync) private var requestVaultSync
+    @Environment(\.vaultSyncPasses) private var syncPasses
     @State private var store: InboxStore?
 
     var body: some View {
@@ -81,6 +83,15 @@ struct VaultInboxScope<Content: View>: View {
             .environment(\.inboxStore, store)
             .onChange(of: scenePhase) { _, phase in
                 if phase == .active, let store { Task { await store.load() } }
+            }
+            // The request is nil until the tasks store exists, which can be
+            // after this store was made on a cold launch (#2910).
+            .onChange(of: requestVaultSync == nil) { store?.requestSync = requestVaultSync }
+            .onChange(of: store?.vaultId) { store?.requestSync = requestVaultSync }
+            // Every pass, including one the realtime socket or another tab
+            // asked for, may have pulled captures from another device.
+            .onChange(of: syncPasses) {
+                if let store { Task { await store.syncPassFinished() } }
             }
             .task(id: vault.id()) { await make() }
     }
@@ -101,6 +112,7 @@ struct VaultInboxScope<Content: View>: View {
                 tasks: try? vault.tasks(store: secureStore)
             )
             made.shareRoot = ShareQueue.groupRoot()
+            made.requestSync = requestVaultSync
             store = made
             await made.load()
         } catch {

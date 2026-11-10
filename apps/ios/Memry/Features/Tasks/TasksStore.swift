@@ -309,7 +309,7 @@ final class TasksStore {
             return
         }
         isSyncing = true
-        defer { isSyncing = false }
+        var reached = false
         do {
             let pass = try await filler.syncNow()
             Log.sync.info("task sync pass pulled", .count(Int(pass.pulled)))
@@ -317,13 +317,17 @@ final class TasksStore {
             if pass.rejected > 0 { Log.sync.error("task sync pass rejected", .count(Int(pass.rejected))) }
             if pass.pending > 0 { Log.sync.info("task sync pass left pending", .count(Int(pass.pending))) }
             syncFinished?(true)
-            await attachments?.redrive()
+            reached = true
         } catch {
             report(error)
             syncFinished?(false)
         }
         await refresh()
         syncPasses += 1
+        isSyncing = false
+        // Outside the pass: up to 25 downloads must not hold the next pass, or
+        // a write made now, back (#4155).
+        if reached, let attachments { Task { await attachments.redrive() } }
         if syncAgain {
             syncAgain = false
             scheduleSync()
