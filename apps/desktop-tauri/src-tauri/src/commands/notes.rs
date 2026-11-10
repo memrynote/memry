@@ -14,7 +14,8 @@
 //! A note's edit (`notes:update`, #3530 13f-3c) goes through `memry_desktop::notes::update`, a
 //! template applied to it (`notes:apply-template`, 13l-4) through
 //! `memry_desktop::notes::apply_template`, its other names (`notes:edit-aliases`, 13q-1) through
-//! `memry_desktop::notes::aliases`.
+//! `memry_desktop::notes::aliases`, and blocks moved into it from another note
+//! (`notes:append-blocks`, #4181) through `memry_desktop::notes::append_blocks`.
 
 use std::collections::BTreeMap;
 use std::sync::Arc;
@@ -22,6 +23,7 @@ use std::sync::Arc;
 use memry_desktop::i18n::{self, Args};
 use memry_desktop::locale::LocaleService;
 use memry_desktop::notes::aliases::{NoteAliasEditInput, NoteAliasesView};
+use memry_desktop::notes::append_blocks::{AppendBlocksInput, AppendedBlocks};
 use memry_desktop::notes::apply_template::ApplyTemplateInput;
 use memry_desktop::notes::create::NewNoteFile;
 use memry_desktop::notes::error::NotesError;
@@ -244,6 +246,26 @@ pub async fn notes_apply_template<R: Runtime>(
         }
         track(&app, "note_updated", "template_applied");
         Ok(applied.note)
+    })
+    .await
+}
+
+/// `notes:append-blocks`: the block menu's "Move to" appends the blocks to the end of the
+/// target's body. The renderer removes them from the source only once this answers; a refused
+/// move rejects and leaves the target as it was. Its `notes:updated` comes from its row fact.
+#[tauri::command]
+#[specta::specta]
+pub async fn notes_append_blocks<R: Runtime>(
+    app: AppHandle<R>,
+    input: AppendBlocksInput,
+) -> Result<AppendedBlocks, CommandError> {
+    blocking("notes_append_blocks", move || {
+        let open = open_vault(&app)?;
+        let appended = service(&app)?
+            .append_blocks(&open, input)
+            .map_err(|error| failed(&error))?;
+        track(&app, "note_updated", "blocks_appended");
+        Ok(appended)
     })
     .await
 }

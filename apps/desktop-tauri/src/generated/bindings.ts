@@ -226,6 +226,12 @@ export const commands = {
 	 */
 	notesApplyTemplate: (input: ApplyTemplateInput) => __TAURI_INVOKE<NoteView>("notes_apply_template", { input }),
 	/**
+	 *  `notes:append-blocks`: the block menu's "Move to" appends the blocks to the end of the
+	 *  target's body. The renderer removes them from the source only once this answers; a refused
+	 *  move rejects and leaves the target as it was. Its `notes:updated` comes from its row fact.
+	 */
+	notesAppendBlocks: (input: AppendBlocksInput) => __TAURI_INVOKE<AppendedBlocks>("notes_append_blocks", { input }),
+	/**
 	 *  `notes:undo-tag-template`: empties the body a tag's template filled, only while it is still
 	 *  what the template put there; `stale` otherwise.
 	 */
@@ -634,6 +640,19 @@ export type AppUpdateState = {
 	autoDownloadEnabled: boolean,
 	autoCheckEnabled: boolean,
 	installFailed: InstallFailed | null,
+};
+
+/**  `NoteAppendBlocksSchema`. */
+export type AppendBlocksInput = {
+	sourceNoteId: string,
+	targetNoteId: string,
+	markdown: string,
+};
+
+/**  What `notes:append-blocks` answers besides `success`. */
+export type AppendedBlocks = {
+	/**  The target's vault-relative path. */
+	targetPath: string,
 };
 
 /**  `ApplyTemplateSchema`, the fields this step reads. */

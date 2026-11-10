@@ -597,7 +597,8 @@
         "title": "Déplacer le bloc vers une note",
         "searchPlaceholder": "Rechercher des notes…",
         "noResults": "Aucune note correspondante",
-        "failed": "Impossible de déplacer le bloc"
+        "failed": "Impossible de déplacer le bloc",
+        "targetNotTaken": "Cette note est trop volumineuse ou contient du texte que l’app ne peut pas prendre en charge ; les blocs sont donc restés à leur place."
       }
     },
     "attachmentPicker": {

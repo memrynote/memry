@@ -597,7 +597,8 @@
         "title": "Premjesti blok u bilješku",
         "searchPlaceholder": "Pretraži bilješke…",
         "noResults": "Nema odgovarajućih bilješki",
-        "failed": "Nije moguće premjestiti blok"
+        "failed": "Nije moguće premjestiti blok",
+        "targetNotTaken": "Ova bilješka je prevelika ili sadrži tekst koji aplikacija ne može preuzeti, pa su blokovi ostali tamo gdje su bili."
       }
     },
     "attachmentPicker": {

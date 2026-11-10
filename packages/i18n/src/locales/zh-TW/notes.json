@@ -597,7 +597,8 @@
         "title": "將區塊移至筆記",
         "searchPlaceholder": "搜尋筆記…",
         "noResults": "沒有符合的筆記",
-        "failed": "無法移動區塊"
+        "failed": "無法移動區塊",
+        "targetNotTaken": "這則筆記過大，或含有應用程式無法接收的文字，因此這些區塊仍留在原處。"
       }
     },
     "attachmentPicker": {

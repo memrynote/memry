@@ -597,7 +597,8 @@
         "title": "Move block to note",
         "searchPlaceholder": "Search notes…",
         "noResults": "No matching notes",
-        "failed": "Could not move the block"
+        "failed": "Could not move the block",
+        "targetNotTaken": "This note is too large or has text the app can't take in, so the blocks stayed where they were."
       }
     },
     "attachmentPicker": {
