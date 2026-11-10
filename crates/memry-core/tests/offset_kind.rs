@@ -15,8 +15,9 @@ use memry_core::crdt::canonical::canonical_fragment;
 use memry_core::crdt::registry::{Document, UpdateSink};
 use yrs::updates::decoder::Decode as _;
 use yrs::{
-    Doc, OffsetKind, Options, ReadTxn as _, StateVector, Text as _, Transact as _, Update,
-    Xml as _, XmlElementPrelim, XmlFragment as _, XmlOut, XmlTextPrelim,
+    Any, Doc, OffsetKind, Options, ReadTxn as _, StateVector, Text as _, Transact as _,
+    TransactionMut, Update, Xml as _, XmlElementPrelim, XmlFragment as _, XmlOut, XmlTextPrelim,
+    XmlTextRef,
 };
 
 /// Turkish, an emoji with a skin-tone modifier, CJK, and combining marks.
@@ -136,6 +137,39 @@ fn an_inline_node_after_non_ascii_text_keeps_the_formatted_tail() {
     }
 }
 
+/// An embed in the run takes one position in either offset kind, so the tail
+/// walk steps over it as one: a mention typed after "çağrı" + embed + "çağrı"
+/// keeps the "|çağrı" that followed the cursor.
+#[test]
+fn an_inline_node_after_an_embed_and_non_ascii_text_keeps_the_formatted_tail() {
+    let sample = "çağrı";
+    let document = registry_document("device-embed");
+    let base = paragraph_body(OffsetKind::Bytes, &format!("{sample}{sample}|{sample}"));
+    insert_embed_into_run(&base, sample.len() as u32);
+    document.apply_durable_update(&state(&base)).expect("base");
+    // The embed sits at `sample.len()`, so the second copy ends one further on.
+    let cursor = (2 * sample.len() + 1) as u32;
+    apply(
+        &document,
+        &BlockEdit::InsertInline {
+            block_id: "p".to_owned(),
+            start: cursor,
+            end: cursor,
+            kind: "dateMention".to_owned(),
+            text: "yarın".to_owned(),
+            attrs: HashMap::from([("date".to_owned(), "2026-09-23".to_owned())]),
+        },
+    )
+    .expect("inline");
+
+    let runs: Vec<String> = block_p(&document)
+        .inline
+        .into_iter()
+        .map(|run| run.text)
+        .collect();
+    assert_eq!(runs.last().map(String::as_str), Some("|çağrı"), "{runs:?}");
+}
+
 /// A selection replacing non-ASCII text in the middle of a run.
 #[test]
 fn an_inline_node_replacing_a_non_ascii_range_removes_exactly_that_range() {
@@ -185,9 +219,10 @@ fn replace_text_edits_non_ascii_text_in_place() {
     }
 }
 
-/// A bytes document (the registry), a UTF-16 document (desktop's Yjs unit)
-/// and a document built the way the registry built one before #3601 edit the
-/// same non-ASCII text concurrently and converge once they swap updates.
+/// A bytes document (the registry) and a UTF-16 document (desktop's Yjs unit)
+/// edit the same non-ASCII text concurrently, and a third document edits it by
+/// bytes with the default offset kind, which is bytes too. All three converge
+/// once they swap updates. The bytes and UTF-16 pair is the evidence.
 #[test]
 fn bytes_and_utf16_documents_merge_concurrent_non_ascii_edits() {
     for sample in SAMPLES {
@@ -203,8 +238,8 @@ fn bytes_and_utf16_documents_merge_concurrent_non_ascii_edits() {
             ..Options::default()
         });
         merge(&desktop, &base);
-        let before = Doc::with_client_id(3);
-        merge(&before, &base);
+        let bytes_peer = Doc::with_client_id(3);
+        merge(&bytes_peer, &base);
 
         // Registry: bold over the second copy, by bytes.
         let second = (sample.len() + 1) as u32;
@@ -222,13 +257,13 @@ fn bytes_and_utf16_documents_merge_concurrent_non_ascii_edits() {
         // Desktop: Yjs inserts after the first copy, by UTF-16 units.
         let utf16 = sample.encode_utf16().count() as u32;
         insert_into_run(&desktop, utf16, "!");
-        // Old-style document: an insert before the second copy, by bytes.
-        insert_into_run(&before, second, "?");
+        // Default-kind document: an insert before the second copy, by bytes.
+        insert_into_run(&bytes_peer, second, "?");
 
         let updates = [
             registry.encode_state().expect("registry state"),
             state(&desktop),
-            state(&before),
+            state(&bytes_peer),
         ];
         let merged: Vec<String> = (0..3)
             .map(|index| {
@@ -266,8 +301,8 @@ fn registry_after(updates: &[Vec<u8>]) -> Arc<Document> {
     document
 }
 
-/// Inserts `text` at `index`, in `doc`'s own unit, into paragraph `p`'s run.
-fn insert_into_run(doc: &Doc, index: u32, text: &str) {
+/// Runs `edit` on paragraph `p`'s text run.
+fn with_run(doc: &Doc, edit: impl FnOnce(&mut TransactionMut, &XmlTextRef)) {
     let fragment = doc.get_or_insert_xml_fragment("prosemirror");
     let mut txn = doc.transact_mut();
     let mut node = fragment.get(&txn, 0);
@@ -280,5 +315,17 @@ fn insert_into_run(doc: &Doc, index: u32, text: &str) {
     let Some(XmlOut::Text(run)) = node else {
         panic!("no text run");
     };
-    run.insert(&mut txn, index, text);
+    edit(&mut txn, &run);
+}
+
+/// Inserts `text` at `index`, in `doc`'s own unit, into paragraph `p`'s run.
+fn insert_into_run(doc: &Doc, index: u32, text: &str) {
+    with_run(doc, |txn, run| run.insert(txn, index, text));
+}
+
+/// Inserts an embed at `index`, in `doc`'s own unit, into paragraph `p`'s run.
+fn insert_embed_into_run(doc: &Doc, index: u32) {
+    with_run(doc, |txn, run| {
+        run.insert_embed(txn, index, Any::Bool(true));
+    });
 }

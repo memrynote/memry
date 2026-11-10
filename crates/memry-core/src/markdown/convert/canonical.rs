@@ -163,7 +163,10 @@ pub fn canonical_markdown(
     note_path: Option<&str>,
     html_comments: bool,
 ) -> Option<String> {
-    let scratch = Doc::new();
+    let scratch = Doc::with_options(Options {
+        offset_kind: OFFSET_KIND,
+        ..Options::default()
+    });
     let fragment = scratch.get_or_insert_xml_fragment(BODY_FRAGMENT);
     let seed_env = SeedEnv {
         callout_types: env.callout_types,
