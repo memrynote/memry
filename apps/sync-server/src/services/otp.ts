@@ -1,4 +1,5 @@
 import { AppError, ErrorCodes } from '../lib/errors'
+import { normalizeEmail } from './user'
 
 const OTP_LENGTH = 6
 const OTP_EXPIRY_SECONDS = 600
@@ -54,8 +55,12 @@ export const storeOtp = async (
   hmacKey: string
 ): Promise<{ id: string; expiresAt: number }> => {
   const now = Math.floor(Date.now() / 1000)
+  const normalized = normalizeEmail(email)
 
-  await db.prepare('UPDATE otp_codes SET used = 1 WHERE email = ? AND used = 0').bind(email).run()
+  await db
+    .prepare('UPDATE otp_codes SET used = 1 WHERE email = ? AND used = 0')
+    .bind(normalized)
+    .run()
 
   const id = crypto.randomUUID()
   const codeHash = await hmacOtp(code, hmacKey)
@@ -65,7 +70,7 @@ export const storeOtp = async (
     .prepare(
       'INSERT INTO otp_codes (id, email, code_hash, expires_at, attempts, used, created_at) VALUES (?, ?, ?, ?, 0, 0, ?)'
     )
-    .bind(id, email, codeHash, expiresAt, now)
+    .bind(id, normalized, codeHash, expiresAt, now)
     .run()
 
   return { id, expiresAt }
@@ -83,7 +88,7 @@ export const verifyOtp = async (
     .prepare(
       'SELECT id, code_hash, attempts FROM otp_codes WHERE email = ? AND used = 0 AND expires_at > ? ORDER BY created_at DESC LIMIT 1'
     )
-    .bind(email, now)
+    .bind(normalizeEmail(email), now)
     .first<{ id: string; code_hash: string; attempts: number }>()
 
   if (!record) {
@@ -109,7 +114,7 @@ export const verifyOtp = async (
 }
 
 export const checkEmailRateLimit = async (db: D1Database, email: string): Promise<void> => {
-  const key = `otp-email:${email}`
+  const key = `otp-email:${normalizeEmail(email)}`
   const now = Math.floor(Date.now() / 1000)
   const windowStart = now - EMAIL_WINDOW_SECONDS
 
