@@ -164,6 +164,10 @@
     "removeDeviceFailed": "Kunne ikke fjerne enheden",
     "renameDeviceFailed": "Kunne ikke omdøbe enheden",
     "initiateOAuthFailed": "Kunne ikke starte OAuth",
+    "retryOAuthFailed": "Kunne ikke genåbne login-browseren. Start login forfra.",
+    "oauthExpired": "Login er udløbet. Prøv igen.",
+    "oauthInvalidResponse": "Kunne ikke hente et gyldigt login-link. Prøv igen.",
+    "oauthCancelled": "Google-login blev annulleret. Prøv igen.",
     "setupFirstDeviceOAuthFailed": "Kunne ikke opsætte den første enhed via OAuth",
     "confirmRecoveryPhraseFailed": "Kunne ikke bekræfte gendannelsessætningen"
   },

@@ -164,6 +164,10 @@
     "removeDeviceFailed": "Nepodarilo sa odstrániť zariadenie",
     "renameDeviceFailed": "Nepodarilo sa premenovať zariadenie",
     "initiateOAuthFailed": "Nepodarilo sa spustiť OAuth",
+    "retryOAuthFailed": "Prehliadač na prihlásenie sa nepodarilo znova otvoriť. Spustite prihlásenie odznova.",
+    "oauthExpired": "Platnosť prihlásenia vypršala. Skúste to znova.",
+    "oauthInvalidResponse": "Nepodarilo sa získať platný odkaz na prihlásenie. Skúste to znova.",
+    "oauthCancelled": "Prihlásenie cez Google bolo zrušené. Skúste to znova.",
     "setupFirstDeviceOAuthFailed": "Nepodarilo sa nastaviť prvé zariadenie cez OAuth",
     "confirmRecoveryPhraseFailed": "Nepodarilo sa potvrdiť obnovovaciu frázu"
   },

@@ -1263,6 +1263,7 @@
     "label": "Ajutor și feedback",
     "reportBug": "Raportează o eroare",
     "requestFeature": "Solicită o funcție",
+    "joinTestflight": "Alăturați-vă TestFlight",
     "starOnGithub": "Marchează cu stea pe GitHub",
     "version": "MemryNote {version}",
     "whatsNew": "Noutăți",
@@ -1647,5 +1648,29 @@
       "agentModel": "Implicit",
       "date": "13 octombrie"
     }
+  },
+  "iosBeta": {
+    "badge": "Nou · TestFlight",
+    "title": "Memry pentru iPhone este în beta",
+    "promptBody": "Seiful dvs. pe telefon, criptat end-to-end. Lăsați adresa de e-mail și Apple vă trimite o invitație TestFlight.",
+    "emailPlaceholder": "you@example.com",
+    "emailLabel": "E-mail pentru invitația TestFlight",
+    "submit": "Primiți invitația",
+    "sending": "Se trimite…",
+    "listNote": "Vă adăugăm și pe lista beta pentru iPhone, ca să aflați noutăți despre lansare. Vă puteți dezabona oricând.",
+    "error": "Nu s-a putut trimite invitația TestFlight. Încercați din nou.",
+    "sentTitle": "Verificați-vă inboxul",
+    "sentBody": "Apple a trimis invitația la {email}. Poate dura câteva minute și poate ajunge în spam.",
+    "stepInstall": "Instalați TestFlight din App Store",
+    "stepOpen": "Deschideți invitația pe iPhone",
+    "stepSignIn": "Conectați-vă la Memry pe telefon",
+    "done": "Gata",
+    "dialogTitle": "Alăturați-vă Memry pentru iPhone",
+    "dialogBody": "Apple vă trimite pe e-mail o invitație TestFlight. Folosiți adresa de e-mail a Apple ID-ului de pe iPhone.",
+    "entryTitle": "Beta pentru iPhone este disponibilă",
+    "entrySubtitle": "Prin TestFlight",
+    "entryJoin": "Alăturați-vă betei",
+    "entrySent": "Invitație trimisă la {email}",
+    "sendAgain": "Trimite din nou"
   }
 }

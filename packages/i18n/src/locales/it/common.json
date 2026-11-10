@@ -1263,6 +1263,7 @@
     "label": "Aiuto e feedback",
     "reportBug": "Segnala un bug",
     "requestFeature": "Richiedi una funzionalità",
+    "joinTestflight": "Unisciti a TestFlight",
     "starOnGithub": "Metti una stella su GitHub",
     "version": "MemryNote {version}",
     "whatsNew": "Novità",
@@ -1647,5 +1648,29 @@
       "agentModel": "Predefinito",
       "date": "13 ottobre"
     }
+  },
+  "iosBeta": {
+    "badge": "Novità · TestFlight",
+    "title": "Memry per iPhone è in beta",
+    "promptBody": "Il tuo vault sul telefono, con crittografia end-to-end. Lascia la tua email e Apple ti invierà un invito TestFlight.",
+    "emailPlaceholder": "you@example.com",
+    "emailLabel": "Email per l'invito TestFlight",
+    "submit": "Ricevi l'invito",
+    "sending": "Invio in corso…",
+    "listNote": "Ti aggiungiamo anche alla lista della beta per iPhone per le novità sul lancio. Puoi annullare l'iscrizione in qualsiasi momento.",
+    "error": "Impossibile inviare l'invito TestFlight. Riprova.",
+    "sentTitle": "Controlla la posta in arrivo",
+    "sentBody": "Apple ha inviato l'invito a {email}. Possono volerci alcuni minuti e potrebbe finire nello spam.",
+    "stepInstall": "Installa TestFlight dall'App Store",
+    "stepOpen": "Apri l'invito sul tuo iPhone",
+    "stepSignIn": "Accedi a Memry sul telefono",
+    "done": "Fatto",
+    "dialogTitle": "Unisciti a Memry per iPhone",
+    "dialogBody": "Apple ti invia un invito TestFlight via email. Usa l'email dell'ID Apple del tuo iPhone.",
+    "entryTitle": "La beta per iPhone è attiva",
+    "entrySubtitle": "Tramite TestFlight",
+    "entryJoin": "Unisciti alla beta",
+    "entrySent": "Invito inviato a {email}",
+    "sendAgain": "Invia di nuovo"
   }
 }

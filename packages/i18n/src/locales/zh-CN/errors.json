@@ -164,6 +164,10 @@
     "removeDeviceFailed": "移除设备失败",
     "renameDeviceFailed": "重命名设备失败",
     "initiateOAuthFailed": "发起 OAuth 失败",
+    "retryOAuthFailed": "无法重新打开登录浏览器。请重新开始登录。",
+    "oauthExpired": "登录已过期。请重试。",
+    "oauthInvalidResponse": "无法获取有效的登录链接。请重试。",
+    "oauthCancelled": "已取消 Google 登录。请重试。",
     "setupFirstDeviceOAuthFailed": "通过 OAuth 设置首台设备失败",
     "confirmRecoveryPhraseFailed": "确认恢复短语失败"
   },

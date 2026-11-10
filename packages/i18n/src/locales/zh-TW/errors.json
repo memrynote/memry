@@ -164,6 +164,10 @@
     "removeDeviceFailed": "無法移除裝置",
     "renameDeviceFailed": "無法重新命名裝置",
     "initiateOAuthFailed": "無法啟動 OAuth",
+    "retryOAuthFailed": "無法重新開啟登入瀏覽器。請重新開始登入。",
+    "oauthExpired": "登入已過期。請再試一次。",
+    "oauthInvalidResponse": "無法取得有效的登入連結。請再試一次。",
+    "oauthCancelled": "已取消 Google 登入。請再試一次。",
     "setupFirstDeviceOAuthFailed": "無法透過 OAuth 設定第一部裝置",
     "confirmRecoveryPhraseFailed": "無法確認復原片語"
   },

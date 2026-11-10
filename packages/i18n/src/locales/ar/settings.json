@@ -1110,7 +1110,16 @@
       "sending": "جارٍ إرسال الرمز…"
     },
     "oauth": {
-      "google": "المتابعة باستخدام Google"
+      "google": "المتابعة باستخدام Google",
+      "waiting": "أكمل تسجيل الدخول عبر Google في متصفحك.",
+      "browserUnavailable": "تعذّر فتح المتصفح.",
+      "manualInstructions": "انسخ رابط تسجيل الدخول وافتحه في متصفح على هذا الكمبيوتر. أبقِ memrynote مفتوحًا أثناء تسجيل الدخول.",
+      "linkLabel": "رابط تسجيل الدخول",
+      "copyLink": "نسخ رابط تسجيل الدخول",
+      "retryBrowser": "حاول فتح المتصفح مرة أخرى",
+      "copied": "تم نسخ رابط تسجيل الدخول.",
+      "copyFailed": "تعذّر نسخ رابط تسجيل الدخول. حدّده وانسخه من الحقل أعلاه.",
+      "cancel": "استخدم طريقة تسجيل دخول أخرى"
     },
     "otp": {
       "title": "أدخل رمز التحقق",
@@ -2396,7 +2405,6 @@
   "phaseI": {
     "errors": {
       "failedToUpdateTagColor": "تعذّر تحديث لون الوسم",
-      "googleSignInFailed": "فشل تسجيل الدخول باستخدام Google",
       "failedToSendVerificationCode": "تعذّر إرسال رمز التحقق",
       "invalidVerificationCode": "رمز التحقق غير صالح",
       "accountSetupFailed": "فشل إعداد الحساب",

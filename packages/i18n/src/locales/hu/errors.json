@@ -164,6 +164,10 @@
     "removeDeviceFailed": "Nem sikerült eltávolítani az eszközt",
     "renameDeviceFailed": "Nem sikerült átnevezni az eszközt",
     "initiateOAuthFailed": "Nem sikerült elindítani az OAuth-folyamatot",
+    "retryOAuthFailed": "Nem sikerült újra megnyitni a bejelentkezéshez használt böngészőt. Kezdje újra a bejelentkezést.",
+    "oauthExpired": "A bejelentkezés lejárt. Próbálja újra.",
+    "oauthInvalidResponse": "Nem sikerült érvényes bejelentkezési hivatkozást kapni. Próbálja újra.",
+    "oauthCancelled": "A Google-bejelentkezés megszakadt. Próbálja újra.",
     "setupFirstDeviceOAuthFailed": "Nem sikerült beállítani az első eszközt OAuth-tal",
     "confirmRecoveryPhraseFailed": "Nem sikerült megerősíteni a helyreállítási kifejezést"
   },

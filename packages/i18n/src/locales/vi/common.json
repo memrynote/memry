@@ -1263,6 +1263,7 @@
     "label": "Trợ giúp và phản hồi",
     "reportBug": "Báo lỗi",
     "requestFeature": "Đề xuất tính năng",
+    "joinTestflight": "Tham gia TestFlight",
     "starOnGithub": "Gắn sao trên GitHub",
     "version": "MemryNote {version}",
     "whatsNew": "Có gì mới",
@@ -1647,5 +1648,29 @@
       "agentModel": "Mặc định",
       "date": "13 tháng 10"
     }
+  },
+  "iosBeta": {
+    "badge": "Mới · TestFlight",
+    "title": "Memry cho iPhone đang trong giai đoạn beta",
+    "promptBody": "Kho của bạn trên điện thoại, được mã hóa đầu cuối. Hãy để lại email, Apple sẽ gửi cho bạn lời mời TestFlight.",
+    "emailPlaceholder": "you@example.com",
+    "emailLabel": "Email nhận lời mời TestFlight",
+    "submit": "Nhận lời mời",
+    "sending": "Đang gửi…",
+    "listNote": "Chúng tôi cũng thêm bạn vào danh sách beta iPhone để gửi tin về đợt ra mắt. Bạn có thể hủy đăng ký bất cứ lúc nào.",
+    "error": "Không thể gửi lời mời TestFlight. Vui lòng thử lại.",
+    "sentTitle": "Kiểm tra hộp thư của bạn",
+    "sentBody": "Apple đã gửi lời mời đến {email}. Có thể mất vài phút và thư có thể nằm trong thư rác.",
+    "stepInstall": "Cài TestFlight từ App Store",
+    "stepOpen": "Mở lời mời trên iPhone của bạn",
+    "stepSignIn": "Đăng nhập Memry trên điện thoại",
+    "done": "Xong",
+    "dialogTitle": "Tham gia Memry cho iPhone",
+    "dialogBody": "Apple sẽ gửi lời mời TestFlight qua email cho bạn. Hãy dùng email của Apple ID trên iPhone của bạn.",
+    "entryTitle": "Bản beta iPhone đã ra mắt",
+    "entrySubtitle": "Qua TestFlight",
+    "entryJoin": "Tham gia bản beta",
+    "entrySent": "Đã gửi lời mời đến {email}",
+    "sendAgain": "Gửi lại"
   }
 }

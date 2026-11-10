@@ -1263,6 +1263,7 @@
     "label": "ヘルプとフィードバック",
     "reportBug": "バグを報告",
     "requestFeature": "機能をリクエスト",
+    "joinTestflight": "TestFlight に参加",
     "starOnGithub": "GitHub でスターを付ける",
     "version": "MemryNote {version}",
     "whatsNew": "新機能",
@@ -1647,5 +1648,29 @@
       "agentModel": "既定",
       "date": "10月13日"
     }
+  },
+  "iosBeta": {
+    "badge": "新着 · TestFlight",
+    "title": "iPhone 版 Memry はベータ版です",
+    "promptBody": "スマートフォンで使える、エンドツーエンド暗号化の保管庫。メールアドレスを入力すると、Apple から TestFlight の招待が届きます。",
+    "emailPlaceholder": "you@example.com",
+    "emailLabel": "TestFlight 招待用のメールアドレス",
+    "submit": "招待を受け取る",
+    "sending": "送信中…",
+    "listNote": "ローンチのお知らせのため、iPhone ベータのリストにも登録します。配信はいつでも停止できます。",
+    "error": "TestFlight の招待を送信できませんでした。もう一度お試しください。",
+    "sentTitle": "受信トレイを確認してください",
+    "sentBody": "Apple が {email} に招待を送りました。届くまで数分かかることがあり、迷惑メールに入る場合もあります。",
+    "stepInstall": "App Store から TestFlight をインストール",
+    "stepOpen": "iPhone で招待を開く",
+    "stepSignIn": "スマートフォンで Memry にサインイン",
+    "done": "完了",
+    "dialogTitle": "iPhone 版 Memry に参加",
+    "dialogBody": "Apple から TestFlight の招待がメールで届きます。iPhone の Apple ID のメールアドレスを入力してください。",
+    "entryTitle": "iPhone ベータを公開中",
+    "entrySubtitle": "TestFlight 経由",
+    "entryJoin": "ベータに参加",
+    "entrySent": "{email} に招待を送信しました",
+    "sendAgain": "もう一度送信"
   }
 }
