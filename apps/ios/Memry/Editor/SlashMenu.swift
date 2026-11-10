@@ -424,7 +424,7 @@ extension EditorSession {
                 for (name, value) in props.sorted(by: { $0.key < $1.key }) {
                     await model.setProp(blockId, name, value)
                 }
-                if kind != "table" { self.pendingFocus = blockId }
+                if kind != "table" { self.focus(blockId) }
             }
             return
         }
