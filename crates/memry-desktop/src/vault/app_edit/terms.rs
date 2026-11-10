@@ -13,11 +13,12 @@ pub enum Precondition<'a> {
     /// [`Self::Held`], and a body the edit changes kept as a version first: the edit writes over
     /// the user's text.
     Replace,
-    /// The user's save: whatever is there, a file that is not the run's own, or a body that
-    /// moved by ten words or more, kept as a version first.
-    Save(&'a OwnFiles),
+    /// The user's save from an editor (`None`: for no editor): whatever is there, a file that is
+    /// not the run's own to that editor ([`OwnFiles::is_own_to`]), or a body that moved by ten
+    /// words or more, kept as a version first.
+    Save(&'a OwnFiles, Option<&'a str>),
     /// [`Self::Save`] over a file the editor never showed: a changed body is always kept.
-    SaveOver(&'a OwnFiles),
+    SaveOver(&'a OwnFiles, Option<&'a str>),
     /// [`Self::Save`] of a restored version: the replaced file is always kept, as the newest
     /// version.
     Restore(&'a OwnFiles),
@@ -29,14 +30,15 @@ pub enum Edited {
     /// The file holds the new text. `held`: the document took it too, and the row says so;
     /// otherwise the watcher brings the file to the document as an outside edit.
     /// `kept_outside`: a save's body went over an outside edit not fed yet, kept as a version
-    /// first; the editor had no event for it. `kept`: the file the edit replaced is a version
-    /// (kept now, or already kept with that text), so the user can be told it is in version
-    /// history (#4110). `text`: the file as written, byte order mark included.
+    /// first; the editor had no event for it. `kept`: the content hash of the body of the file
+    /// the edit replaced, when that file is a version (kept now, or already kept with that
+    /// text), so an editor tells the user a text is in version history only when it is that
+    /// body (#4110, #4137). `text`: the file as written, byte order mark included.
     Wrote {
         hash: String,
         held: bool,
         kept_outside: bool,
-        kept: bool,
+        kept: Option<String>,
         text: String,
     },
     /// The closure changed nothing; `text` is the file as read.

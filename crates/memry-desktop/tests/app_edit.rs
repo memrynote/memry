@@ -172,7 +172,7 @@ fn held_edit_lands_in_the_document_the_file_and_the_row_with_one_byte_order_mark
             hash: content_hash(&text),
             held: true,
             kept_outside: false,
-            kept: false,
+            kept: None,
             text: text.clone()
         }
     );
@@ -231,7 +231,7 @@ fn a_text_the_document_does_not_take_is_written_and_brought_in_by_the_watcher() 
             hash: content_hash(&big),
             held: false,
             kept_outside: false,
-            kept: false,
+            kept: None,
             text: big.clone()
         }
     );
@@ -259,7 +259,7 @@ fn a_save_whose_feed_fails_is_written_and_brought_in_by_the_watcher() {
         .run(&id, |turn| {
             edit.run_then(
                 turn,
-                Precondition::Save(&own),
+                Precondition::Save(&own, None),
                 ChangeSource::Save,
                 |_| Ok::<_, NotesError>(Some(saved.to_owned())),
                 || {
@@ -276,7 +276,7 @@ fn a_save_whose_feed_fails_is_written_and_brought_in_by_the_watcher() {
             hash: content_hash(saved),
             held: false,
             kept_outside: false,
-            kept: true,
+            kept: Some(content_hash("First text.\n")),
             text: saved.to_owned()
         }
     );
@@ -307,7 +307,7 @@ fn a_save_grown_past_the_ceiling_by_its_frontmatter_opens_read_only() {
     let done = run(
         &edit,
         &id,
-        Precondition::Save(&own),
+        Precondition::Save(&own, None),
         ChangeSource::Save,
         |_| Some(big.clone()),
     );
@@ -340,7 +340,7 @@ fn a_save_that_shrinks_a_large_file_makes_it_a_note_across_a_reopen() {
     let done = run(
         &edit,
         &id,
-        Precondition::Save(&own),
+        Precondition::Save(&own, None),
         ChangeSource::Save,
         |_| Some("small now\n".to_owned()),
     );

@@ -139,7 +139,7 @@ fn the_apps_own_write_is_fed_while_typing_is_ahead_of_it() {
     f.write("n.md", saved);
     f.applier
         .own_files
-        .wrote(&id, &content_hash(saved), ChangeSource::Save);
+        .wrote(&id, &content_hash(saved), ChangeSource::Save, None);
     assert_eq!(f.changed(&id, "n.md"), Step::Done);
     assert!(!kept_outside(&f.facts()));
     assert!(f.versions(&id).iter().all(|v| v != saved));
