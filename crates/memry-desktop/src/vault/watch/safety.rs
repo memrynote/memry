@@ -9,8 +9,8 @@
 //!   error code it stops watching the folder with a log line and sends the handler nothing. A
 //!   large checkout or copy can therefore drop events, and a dead watch looks like a quiet
 //!   vault.
-//! - A backend error (the Linux inotify limit on a new folder) leaves part of the vault
-//!   unwatched.
+//! - A backend error (the Linux inotify limit, as the vault opens or on a new folder) leaves
+//!   part of the vault unwatched.
 //!
 //! So a [`SafetyNet`] asks for a rescan when: a burst of events could have overflowed a buffer
 //! (Windows; the rescan waits until the burst has been quiet for [`SETTLE`]), every

@@ -245,6 +245,8 @@ pub fn builder() -> Builder<Wry> {
             // vault locks
             crate::commands::vault_locks::vault_locks_list::<Wry>,
             crate::commands::vault_locks::vault_locks_set::<Wry>,
+            // vault notices
+            crate::commands::vault_notices::vault_notices_list,
             // window
             crate::commands::shell::window_close,
             crate::commands::shell::window_minimize,
@@ -309,6 +311,7 @@ pub fn builder() -> Builder<Wry> {
             crate::events::VaultIndexProgressEvent,
             crate::events::VaultIndexRecoveredEvent,
             crate::events::VaultListChangedEvent,
+            crate::events::VaultNoticesChangedEvent,
             crate::events::VaultStatusChangedEvent,
             // vault locks
             crate::events::VaultLocksChangedEvent,

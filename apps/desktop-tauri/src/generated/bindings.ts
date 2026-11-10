@@ -521,6 +521,11 @@ export const commands = {
 	vaultLocksList: () => __TAURI_INVOKE<VaultLockStateView>("vault_locks_list"),
 	/**  `vault-locks:set`: locks or unlocks, brings the files in line, and tells every window. */
 	vaultLocksSet: (input: VaultLockSetInput) => __TAURI_INVOKE<VaultLockStateView>("vault_locks_set", { input }),
+	/**
+	 *  The open vault's notices and the open they belong to; none while no vault is open or when
+	 *  the launch started no vault tier.
+	 */
+	vaultNoticesList: () => __TAURI_INVOKE<VaultNoticeList>("vault_notices_list"),
 	/**  Closes the calling window. The `CloseRequested` handlers (flush, tray) decide what follows. */
 	windowClose: () => __TAURI_INVOKE<null>("window_close"),
 	/**  Minimizes the calling window. */
@@ -581,6 +586,7 @@ export const events = {
 	vaultListChangedEvent: makeEvent<VaultListChangedEvent, VaultListChangedEvent>("vault-list-changed-event"),
 	vaultLocksChangedEvent: makeEvent<VaultLocksChangedEvent, VaultLocksChangedEvent>("vault-locks-changed-event"),
 	vaultLocksExternalEditRestoredEvent: makeEvent<VaultLocksExternalEditRestoredEvent, VaultLocksExternalEditRestoredEvent>("vault-locks-external-edit-restored-event"),
+	vaultNoticesChangedEvent: makeEvent<VaultNoticesChangedEvent, VaultNoticesChangedEvent>("vault-notices-changed-event"),
 	vaultStatusChangedEvent: makeEvent<VaultStatusChangedEvent, VaultStatusChangedEvent>("vault-status-changed-event"),
 	windowCaptionHoverChangedEvent: makeEvent<WindowCaptionHoverChangedEvent, WindowCaptionHoverChangedEvent>("window-caption-hover-changed-event"),
 	windowCaptionPressedChangedEvent: makeEvent<WindowCaptionPressedChangedEvent, WindowCaptionPressedChangedEvent>("window-caption-pressed-changed-event"),
@@ -2544,6 +2550,34 @@ export type VaultLocksExternalEditRestoredEvent = {
 	path: string,
 	title: string,
 };
+
+/**
+ *  A state of the open vault the user can act on:
+ *  - `configUnreadable`: `.memry/config.json` is there and cannot be read, so the journal days
+ *    are unknown: no file becomes a note or a day, and no move reaches its record, until it
+ *    reads (`notes::identity`). `path` is the file's, for the user to fix it.
+ *  - `watchLimit`: the Linux inotify watch limit left part of the vault unwatched
+ *    (`WatchFailed { limit: true }`): changes made outside the app there arrive with the
+ *    watcher's rescans, not at once, until the user raises `fs.inotify.max_user_watches` and
+ *    restarts.
+ */
+export type VaultNotice = { kind: "configUnreadable"; path: string } | { kind: "watchLimit" };
+
+/**  The open vault's notices, as a window reads them. */
+export type VaultNoticeList = {
+	/**
+	 *  Changes with every open, so a window forgets the notices the user closed in the vault
+	 *  before.
+	 */
+	open: number,
+	notices: VaultNotice[],
+};
+
+/**
+ *  The open vault's notices changed, or a vault opened or closed. No payload; the renderer
+ *  reads `vault_notices_list`.
+ */
+export type VaultNoticesChangedEvent = null;
 
 export type VaultStatus = {
 	isOpen: boolean,

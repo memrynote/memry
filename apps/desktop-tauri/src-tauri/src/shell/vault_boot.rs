@@ -25,6 +25,7 @@ use memry_desktop::session::{OpenSource, Session, SessionEvent, StartupOutcome};
 use memry_desktop::settings::SettingsService;
 use memry_desktop::telemetry::service::Service;
 use memry_desktop::vault::consumer::VaultTier;
+use memry_desktop::vault::notices::VaultNotices;
 use memry_desktop::vault::writeback::{Failure, WriteBackFailed};
 use tauri::{AppHandle, Manager, Wry};
 use tokio::sync::broadcast::error::RecvError;
@@ -35,7 +36,7 @@ use crate::events::{
     CrdtProviderReadyEvent, CrdtProviderResetEvent, CrdtWriteBackFailedEvent,
     NoteLinksChangedEvent, NoteTagsChangedEvent, VaultActivityChangedEvent, VaultErrorEvent,
     VaultIndexProgressEvent, VaultIndexRecoveredEvent, VaultListChangedEvent,
-    WriteBackFailureReason, broadcast,
+    VaultNoticesChangedEvent, WriteBackFailureReason, broadcast,
 };
 use crate::shell::{dialogs, services};
 use crate::shutdown::ShutdownService;
@@ -115,7 +116,8 @@ fn register_settings_hook(app: &AppHandle<Wry>, session: &Session) {
 /// managed for `vault_reindex`. A tag rename or a field rename an earlier run did not finish is
 /// finished once each open's walk ends (Step 13j-4, 13j-3d). The pre-sync template
 /// files import as the vault opens (Step 13l), into its activity log. The note fold starts with
-/// every open and stops with every close (Step 14h).
+/// every open and stops with every close (Step 14h). The vault's notices follow the identity
+/// and the watcher (Step 14l).
 fn register_vault_watcher(app: &AppHandle<Wry>, session: &Session) {
     // Managed by the `Handlers` stage, which runs before this one.
     let Some(store) = app.try_state::<Arc<DeviceIdentityStore>>() else {
@@ -126,8 +128,16 @@ fn register_vault_watcher(app: &AppHandle<Wry>, session: &Session) {
         return;
     };
     let tier = VaultTier::new(store.inner().clone());
-    tier.set_identity(NotesIdentity::new(store.inner().clone()));
+    let notices = VaultNotices::new();
+    tier.set_identity(NotesIdentity::noticing(
+        store.inner().clone(),
+        notices.clone(),
+    ));
     tier.register(session);
+    notices.register(session);
+    notices.follow(tier.subscribe());
+    forward_notice_changes(app.clone(), notices.subscribe());
+    app.manage(notices);
     let reporter = app.clone();
     let announcer = app.clone();
     let lander = app.clone();
@@ -246,6 +256,14 @@ fn forward_activity_changes(
     std::thread::spawn(move || {
         while let Ok(()) | Err(RecvError::Lagged(_)) = changes.blocking_recv() {
             broadcast(&app, VaultActivityChangedEvent);
+        }
+    });
+}
+
+fn forward_notice_changes(app: AppHandle<Wry>, mut changes: tokio::sync::broadcast::Receiver<()>) {
+    std::thread::spawn(move || {
+        while let Ok(()) | Err(RecvError::Lagged(_)) = changes.blocking_recv() {
+            broadcast(&app, VaultNoticesChangedEvent);
         }
     });
 }
