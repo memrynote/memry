@@ -1647,6 +1647,7 @@
     "unlockFolder": "Avaa kansion lukitus",
     "toggleFailed": "Lukitusta ei voitu muuttaa",
     "readOnlyIndicator": "Lukittu. Vain luku sinulle ja agenteille.",
+    "excludedIndicator": "Tämä muistiinpano on poissuljetussa kansiossa.",
     "externalEditRestored": "”{title}” on lukittu, joten sen ulkopuolinen muokkaus kumottiin",
     "externalEditRestoredHint": "Muokattu teksti on tallennettu muistiinpanon versiohistoriaan."
   },

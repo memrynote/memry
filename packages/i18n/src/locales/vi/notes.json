@@ -1647,6 +1647,7 @@
     "unlockFolder": "Mở khóa thư mục",
     "toggleFailed": "Không thể thay đổi khóa",
     "readOnlyIndicator": "Đã khóa. Chỉ đọc đối với bạn và các tác nhân.",
+    "excludedIndicator": "Ghi chú này nằm trong một thư mục bị loại trừ.",
     "externalEditRestored": "“{title}” đã bị khóa, nên chỉnh sửa từ bên ngoài đã được hoàn tác",
     "externalEditRestoredHint": "Văn bản đã chỉnh sửa được lưu trong lịch sử phiên bản của ghi chú."
   },

@@ -12,6 +12,7 @@ import { trackRendererError } from '@/lib/telemetry-diagnostics'
 import { registerPendingSave, unregisterPendingSave } from '@/lib/save-registry'
 import { useT } from '@memry/i18n/renderer'
 import { useIsNoteLocked } from '@/lib/vault-locks-store'
+import { useIsNoteExcluded } from '@/lib/excluded-notes-store'
 import { LockedNoteNotice } from '@/components/note/locked-note-notice'
 
 const log = createLogger('ProjectOverview')
@@ -52,7 +53,8 @@ export const ProjectOverviewNote = ({
   const saveTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null)
   // The home note whose save lifecycle is running, cleared once its flush ran.
   const liveNoteIdRef = useRef<string | null>(null)
-  const isLocked = useIsNoteLocked(homeNoteId, note?.path ?? null)
+  const isExcluded = useIsNoteExcluded(note?.path)
+  const isLocked = useIsNoteLocked(homeNoteId, note?.path ?? null) || isExcluded
 
   useEffect(() => {
     if (!homeNoteId) {
@@ -262,7 +264,7 @@ export const ProjectOverviewNote = ({
           </div>
         ) : (
           <EditorErrorBoundary noteId={homeNoteId}>
-            {isLocked && <LockedNoteNotice className="mb-2" />}
+            {isLocked && <LockedNoteNotice className="mb-2" excluded={isExcluded} />}
             <ContentArea
               key={homeNoteId}
               noteId={homeNoteId}

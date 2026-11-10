@@ -12,7 +12,8 @@
 //!    `tag_definition` items (moved to the new name, or dropped for the one the new name has),
 //!    and the other tags' schema references;
 //! 2. each note and journal day carrying the tag (`Search::tag_rename_holders`: its record, its
-//!    body's `#tags`, its file's header as the index read it), in its own write turn, through
+//!    body's `#tags`, its file's header as the index read it; not one whose file is excluded,
+//!    which keeps the old name as Electron's index does not hold it), in its own write turn, through
 //!    [`AppEdit`] with [`Precondition::Held`]: its file's frontmatter `tags:` (a note's only: a
 //!    day's are the author's bytes and never written, decision on #3530) and its body's `#tags`
 //!    when the new name can be one; then, once the file holds them, its record's `tags` and
@@ -66,6 +67,7 @@ use super::error::{NotesError, SCOPE, kept_is_retryable};
 use super::service::NotesService;
 use super::tag_rename_unfinished::file_holds;
 use super::tag_retag::tags_edited;
+use crate::locks::Locks;
 use crate::session::{OpenStage, OpenVault, Session};
 use crate::vault::app_edit::{AppEdit, Edited, Kept, Precondition};
 use crate::vault::consumer::{Applied, ChangeSource};
@@ -135,7 +137,7 @@ impl NotesService {
             return Err(running_change(open)?);
         };
         let hub = self.tag_hub(open)?;
-        let holders = open.search.tag_rename_holders(&job.from)?;
+        let holders = not_excluded(open, open.search.tag_rename_holders(&job.from)?)?;
         if let Some(other) = hub.rename_begin(job, holders)? {
             let left = recorded_plan(open)?.map_or(0, |plan| plan.holders.len());
             return Err(NotesError::TagRenameUnfinished {
@@ -496,6 +498,23 @@ pub(super) fn recorded_plan(open: &OpenVault) -> Result<Option<RenamePlan>, Note
         Some(Recorded::Plan(plan)) => Ok(Some(plan)),
         Some(Recorded::Unreadable(what)) => Err(StorageError::Failed { what }.into()),
     }
+}
+
+/// `holders` but those whose file is excluded: a change across notes passes them by, as
+/// Electron's index-wide one does, which never sees them, so a rename's plan does not wait on
+/// them.
+pub(super) fn not_excluded(
+    open: &OpenVault,
+    holders: Vec<Holder>,
+) -> Result<Vec<Holder>, NotesError> {
+    let locks = Locks::of(open);
+    let mut kept = Vec::with_capacity(holders.len());
+    for holder in holders {
+        if !locks.is_excluded(&holder.id)? {
+            kept.push(holder);
+        }
+    }
+    Ok(kept)
 }
 
 /// Waits for the open walk's end (`Indexed`), `false` when `cancel` or the tier ends it first.

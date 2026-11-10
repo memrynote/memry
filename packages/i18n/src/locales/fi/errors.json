@@ -28,6 +28,7 @@
   },
   "note": {
     "notFound": "Tätä muistiinpanoa ei löytynyt. Se on ehkä poistettu.",
+    "excluded": "Tämä muistiinpano on poissuljetussa kansiossa, joten sitä ei voi muuttaa.",
     "invalidFrontmatter": "Tässä muistiinpanossa on virheelliset metatiedot, eikä sitä voida lukea.",
     "invalidTitle": "Muistiinpanon otsikon on oltava 1–200 merkkiä pitkä.",
     "duplicateId": "Tällä tunnuksella varustettu muistiinpano on jo olemassa.",

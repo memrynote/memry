@@ -1647,6 +1647,7 @@
     "unlockFolder": "Odblokuj folder",
     "toggleFailed": "Nie udało się zmienić blokady",
     "readOnlyIndicator": "Zablokowane. Tylko do odczytu dla Ciebie i agentów.",
+    "excludedIndicator": "Ta notatka znajduje się w wykluczonym folderze.",
     "externalEditRestored": "Notatka „{title}” jest zablokowana, więc zewnętrzna edycja została cofnięta",
     "externalEditRestoredHint": "Edytowany tekst zapisano w historii wersji notatki."
   },

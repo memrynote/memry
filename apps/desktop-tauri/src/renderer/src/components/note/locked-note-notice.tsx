@@ -2,8 +2,17 @@ import { Lock } from '@/lib/icons'
 import { cn } from '@/lib/utils'
 import { useT } from '@memry/i18n/renderer'
 
-/** Shown above every editor of a note the owner locked (#2606). */
-export function LockedNoteNotice({ className }: { className?: string }): React.JSX.Element {
+/**
+ * Shown above every editor of a note the owner locked (#2606), or of one in an excluded folder
+ * (`excluded`, #3530), which is read-only as well.
+ */
+export function LockedNoteNotice({
+  className,
+  excluded = false
+}: {
+  className?: string
+  excluded?: boolean
+}): React.JSX.Element {
   const { t } = useT('notes')
   return (
     <div
@@ -11,7 +20,7 @@ export function LockedNoteNotice({ className }: { className?: string }): React.J
       data-testid="note-locked-indicator"
     >
       <Lock className="size-3.5" aria-hidden />
-      <span>{t('vaultLock.readOnlyIndicator')}</span>
+      <span>{t(excluded ? 'vaultLock.excludedIndicator' : 'vaultLock.readOnlyIndicator')}</span>
     </div>
   )
 }

@@ -114,6 +114,9 @@ pub enum AttachmentError {
     /// `VAULT_LOCKED_NOTE_MESSAGE`.
     #[error("The owner made this note read-only.")]
     Locked,
+    /// The note's file is excluded (`ExcludedPaths`), which Electron's index does not hold.
+    #[error("This note is in an excluded folder.")]
+    Excluded,
     /// The vault has no row for the note the action names.
     #[error("Note not found: {0}")]
     NoteNotFound(String),
@@ -509,7 +512,7 @@ fn store(
     })
 }
 
-/// The note's path in the open vault once a lock is ruled out: Electron's
+/// The note's path in the open vault once a lock and an exclude pattern are ruled out: Electron's
 /// `isNoteLocked(noteId, notePath)` at the top of `saveAttachment` (`attachments.ts:427`), and
 /// `assertNoteWritable` in `deleteAttachment` and `renameAttachment`. `attachments/<noteId>/`
 /// sits outside the note's folder, so a folder lock reaches it only through the note's path.
@@ -523,6 +526,12 @@ pub fn writable_note(open: &OpenVault, note_id: &str) -> Result<Option<String>, 
         .is_note_locked(note_id, path.as_deref())?
     {
         return Err(AttachmentError::Locked);
+    }
+    if path
+        .as_deref()
+        .is_some_and(|path| open.vault.excluded().covers(path))
+    {
+        return Err(AttachmentError::Excluded);
     }
     Ok(path)
 }

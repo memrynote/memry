@@ -28,6 +28,7 @@
   },
   "note": {
     "notFound": "Không tìm thấy ghi chú này. Có thể nó đã bị xóa.",
+    "excluded": "Ghi chú này nằm trong một thư mục bị loại trừ nên không thể thay đổi.",
     "invalidFrontmatter": "Ghi chú này có siêu dữ liệu không hợp lệ và không thể đọc được.",
     "invalidTitle": "Tiêu đề ghi chú phải dài từ 1 đến 200 ký tự.",
     "duplicateId": "Đã có ghi chú với ID này.",

@@ -169,6 +169,13 @@ impl NotesService {
             {
                 return Err(NotesError::EditKept(Kept::Locked));
             }
+            if stamp
+                .path
+                .as_deref()
+                .is_some_and(|path| open.vault.excluded().covers(path))
+            {
+                return Err(NotesError::EditKept(Kept::Excluded));
+            }
             mirror_tags()?;
             return answer(open, journal, date);
         }
@@ -219,7 +226,7 @@ impl NotesService {
         })?;
         if let Edited::Kept(kept) = edited {
             return Err(match kept {
-                Kept::Locked => NotesError::EditKept(kept),
+                Kept::Locked | Kept::Excluded => NotesError::EditKept(kept),
                 kept => NotesError::DayTextUnwritable(kept_reason(&kept).to_owned()),
             });
         }
@@ -396,5 +403,6 @@ fn kept_reason(kept: &Kept) -> &'static str {
             "the day's frontmatter does not parse"
         }
         Kept::Locked => "the day is locked",
+        Kept::Excluded => "the day is in an excluded folder",
     }
 }

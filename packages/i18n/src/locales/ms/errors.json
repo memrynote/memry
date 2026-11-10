@@ -28,6 +28,7 @@
   },
   "note": {
     "notFound": "Nota ini tidak ditemui. Ia mungkin telah dipadamkan.",
+    "excluded": "Nota ini berada dalam folder yang dikecualikan, jadi ia tidak boleh diubah.",
     "invalidFrontmatter": "Nota ini mempunyai metadata tidak sah dan tidak boleh dibaca.",
     "invalidTitle": "Tajuk nota mestilah antara 1 hingga 200 aksara.",
     "duplicateId": "Nota dengan ID ini sudah wujud.",

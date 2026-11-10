@@ -1647,6 +1647,7 @@
     "unlockFolder": "Buka kunci folder",
     "toggleFailed": "Tidak dapat menukar kunci",
     "readOnlyIndicator": "Dikunci. Baca sahaja untuk anda dan untuk ejen.",
+    "excludedIndicator": "Nota ini berada dalam folder yang dikecualikan.",
     "externalEditRestored": "“{title}” dikunci, jadi suntingan luarnya dibuat asal",
     "externalEditRestoredHint": "Teks yang disunting disimpan dalam sejarah versi nota."
   },

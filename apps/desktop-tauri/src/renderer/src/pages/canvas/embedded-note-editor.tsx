@@ -20,6 +20,7 @@ import { registerPendingSave, unregisterPendingSave } from '@/lib/save-registry'
 import { createLogger } from '@/lib/logger'
 import { trackRendererError } from '@/lib/telemetry-diagnostics'
 import { useIsNoteLocked } from '@/lib/vault-locks-store'
+import { useIsNoteExcluded } from '@/lib/excluded-notes-store'
 import { LockedNoteNotice } from '@/components/note/locked-note-notice'
 
 const log = createLogger('EmbeddedNoteEditor')
@@ -32,7 +33,8 @@ interface EmbeddedNoteEditorProps {
 
 export const EmbeddedNoteEditor = ({ noteId }: EmbeddedNoteEditorProps): React.JSX.Element => {
   const { note } = useNote(noteId)
-  const isLocked = useIsNoteLocked(noteId, note?.path ?? null)
+  const isExcluded = useIsNoteExcluded(note?.path)
+  const isLocked = useIsNoteLocked(noteId, note?.path ?? null) || isExcluded
 
   const lastSavedContentRef = useRef<string | null>(null)
   const pendingContentRef = useRef<string | null>(null)
@@ -108,7 +110,7 @@ export const EmbeddedNoteEditor = ({ noteId }: EmbeddedNoteEditorProps): React.J
 
   return (
     <div className="flex min-h-0 flex-1 flex-col">
-      {isLocked && <LockedNoteNotice className="shrink-0 pb-1" />}
+      {isLocked && <LockedNoteNotice className="shrink-0 pb-1" excluded={isExcluded} />}
       <div className="min-h-0 flex-1 overflow-auto">
         <ContentArea
           noteId={noteId}
