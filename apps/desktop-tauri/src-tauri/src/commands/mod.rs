@@ -4,6 +4,7 @@
 pub mod app;
 pub mod attachment_sources;
 pub mod attachments;
+pub mod clipboard;
 pub mod custom_icons;
 pub mod diagnostics;
 pub mod drop_stage;

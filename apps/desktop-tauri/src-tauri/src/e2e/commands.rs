@@ -20,6 +20,7 @@ e2e_commands! {
     app => [e2e_app_info, e2e_request_quit, e2e_quit_on_page_start, e2e_emit],
     clipboard => [
         e2e_clipboard_read,
+        e2e_clipboard_read_image,
         e2e_clipboard_write,
         e2e_webview_paste,
         e2e_webkitgtk_version

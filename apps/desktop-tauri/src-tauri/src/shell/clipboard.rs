@@ -1,7 +1,11 @@
-//! The one reader of the clipboard: quick capture's prefill and Edit > Paste and Match Style.
+//! The app's own clipboard access: the text read of quick capture's prefill and Edit > Paste and
+//! Match Style, and the image write of `clipboard_write_image`.
 
-use tauri::{AppHandle, Wry};
+use tauri::image::Image;
+use tauri::{AppHandle, Runtime, Wry};
 use tauri_plugin_clipboard_manager::ClipboardExt;
+
+use crate::commands::error::{CommandError, ErrorKind};
 
 /// The clipboard text, or `""` when it holds none, as Electron's `clipboard.readText()` answered.
 /// Never on the main thread: on Linux that thread answers the app's own selection requests, so a
@@ -24,4 +28,19 @@ pub async fn read_text(app: &AppHandle<Wry>) -> String {
             String::new()
         }
     }
+}
+
+/// Decodes `png` and puts it on the clipboard as an image. The caller has checked the header
+/// (`memry_desktop::shell::clipboard_image`). Blocking work, never on the main thread (above).
+pub fn write_png<R: Runtime>(app: &AppHandle<R>, png: &[u8]) -> Result<(), CommandError> {
+    let image = Image::from_bytes(png).map_err(|error| {
+        CommandError::new(
+            ErrorKind::Invalid,
+            "clipboard_image_decode",
+            error.to_string(),
+        )
+    })?;
+    app.clipboard().write_image(&image).map_err(|error| {
+        CommandError::new(ErrorKind::Internal, "clipboard_write", error.to_string())
+    })
 }
