@@ -8,7 +8,8 @@
  * edit deletes. A refused transaction leaves the IME's text in the DOM and the composition
  * running, and ProseMirror reads the block again at the composition's next change or end, so the
  * text goes in after the release. Undo and redo write the document directly, past the filter, so
- * they do nothing while held.
+ * they do nothing while held. When the edit's frame applies, the editor keeps its selection where
+ * it was, mapped through the edit (`outside-edit-selection.ts`).
  *
  * @module note/content-area/typing-hold-plugin
  */
@@ -18,6 +19,7 @@ import type { EditorView } from '@tiptap/pm/view'
 import { ySyncPluginKey, yUndoPluginKey } from 'y-prosemirror'
 import type * as Y from 'yjs'
 import type { TypingHold } from '@/sync/typing-hold'
+import { selectionThroughOutsideEdit } from './outside-edit-selection'
 
 export function createTypingHoldPlugin(hold: TypingHold): Plugin {
   let view: EditorView | null = null
@@ -44,6 +46,14 @@ export function createTypingHoldPlugin(hold: TypingHold): Plugin {
       }
       const composition = tr.getMeta('composition') !== undefined || view?.composing === true
       return composition && hold.takesComposition
+    },
+    appendTransaction(trs, before, after) {
+      if (!hold.feedingEdit || !trs.some((tr) => tr.getMeta(ySyncPluginKey)?.isChangeOrigin)) {
+        return null
+      }
+      const selection = selectionThroughOutsideEdit(before.selection, before.doc, after.doc)
+      if (selection.eq(after.selection)) return null
+      return after.tr.setSelection(selection).setMeta('addToHistory', false)
     },
     props: {
       handleDOMEvents: {
