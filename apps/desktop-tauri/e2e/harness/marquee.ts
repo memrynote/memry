@@ -1,5 +1,6 @@
 // Pointer and key gestures of the editor's marquee and table specs, ported from Electron's
 // `utils/marquee-helpers.ts` and the `marquee-*.e2e.ts` drags (Step 14k, #3531).
+import { glide } from './editor'
 import type { Page } from './pw-compat/page'
 
 export const BLOCK = '.bn-block[data-id]'
@@ -10,15 +11,6 @@ export const MARQUEE_ZONE = '.marquee-zone'
 interface Point {
   x: number
   y: number
-}
-
-/** Moves the pointer to `to` in `steps` moves, as Playwright's `mouse.move(x, y, { steps })`. */
-export async function glide(page: Page, to: Point, steps: number): Promise<void> {
-  const from = { x: page.core.mouseX, y: page.core.mouseY }
-  for (let step = 1; step <= steps; step++) {
-    const t = step / steps
-    await page.mouse.move(from.x + (to.x - from.x) * t, from.y + (to.y - from.y) * t)
-  }
 }
 
 /** Presses at `from`, glides to `to` and releases there. */

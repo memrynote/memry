@@ -3,14 +3,13 @@
 // highlights the blocks it crosses, keys act on them, and drags or clicks in text never start it.
 // Blocks are seeded through the editor rather than typed: WebDriver key actions put no text into
 // WKWebView's contenteditable, and the gestures under test start once the blocks exist.
-import { openNewNote, paragraphs, setBlocks } from '../../harness/editor'
+import { glide, openNewNote, paragraphs, setBlocks } from '../../harness/editor'
 import {
   HIGHLIGHT,
   OVERLAY,
   blockBox,
   blockCount,
   drag,
-  glide,
   highlightCount,
   marqueeGutterX,
   nativeSelection,

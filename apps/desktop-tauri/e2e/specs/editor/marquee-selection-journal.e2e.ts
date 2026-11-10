@@ -3,13 +3,12 @@
 // blocks, and a drag from the day's metadata strip (`[data-marquee-ignore]`) starts none. Blocks
 // are seeded through the editor: WebDriver key actions put no text into WKWebView's editor.
 import { navigateTo } from '../../harness/app-helpers'
-import { paragraphs, setBlocks } from '../../harness/editor'
+import { glide, paragraphs, setBlocks } from '../../harness/editor'
 import {
   HIGHLIGHT,
   OVERLAY,
   blockBox,
   blockCount,
-  glide,
   highlightCount,
   marqueeGutterX,
   nativeSelection
