@@ -37,7 +37,7 @@ export async function writeFileAtomic(
     } finally {
       await handle.close()
     }
-    await renameWithRetry(tmpPath, target)
+    await renameWithRetry(tmpPath, target, filePath)
   } catch (error) {
     await fs.rm(tmpPath, { force: true })
     throw error
@@ -75,27 +75,43 @@ async function existingMode(target: string): Promise<number | undefined> {
   }
 }
 
-async function renameWithRetry(from: string, to: string): Promise<void> {
-  for (const delay of RETRY_DELAYS_MS) {
+async function renameWithRetry(from: string, to: string, filePath: string): Promise<void> {
+  for (let attempt = 0; ; attempt++) {
     try {
       await fs.rename(from, to)
       return
     } catch (error) {
       const code = errorCode(error)
       if (code === undefined || !TRANSIENT_CODES.has(code)) throw error
+      const delay = RETRY_DELAYS_MS[attempt]
+      if (delay === undefined) {
+        throw new Error(
+          `Cannot replace ${filePath} (another program holds it open: ${code}); retried ${RETRY_DELAYS_MS.length} times; the file is unchanged`,
+          { cause: error }
+        )
+      }
       await sleep(delay)
     }
   }
-  await fs.rename(from, to)
 }
 
-/** Makes the rename durable. POSIX only: Windows cannot open a folder for sync. */
+/**
+ * Makes the rename durable. POSIX only: Windows cannot open a folder for sync. The rename
+ * has landed by now, so a folder that cannot be synced (some FUSE and network volumes) is a
+ * warning, as in desktop's `sync_dir`; failing here would report a write that happened.
+ */
 async function syncDir(dir: string): Promise<void> {
   if (process.platform === 'win32') return
-  const handle = await fs.open(dir, 'r')
   try {
-    await handle.sync()
-  } finally {
-    await handle.close()
+    const handle = await fs.open(dir, 'r')
+    try {
+      await handle.sync()
+    } finally {
+      await handle.close()
+    }
+  } catch (error) {
+    process.stderr.write(
+      `Warning: could not sync the folder ${dir} (${errorCode(error) ?? String(error)}); the write is done but may not survive power loss.\n`
+    )
   }
 }

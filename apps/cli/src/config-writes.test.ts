@@ -11,6 +11,9 @@ import { runCli } from './run.ts'
 // The CLI never loses them, never rewrites the file from a read command, and replaces it
 // atomically when it does write.
 
+const COMPLETE_CONFIG =
+  '{"defaultNoteFolder":"","journalFolder":"journal","journalDateFormat":"YYYY-MM-DD","attachmentsFolder":"attachments"}'
+
 async function makeVault(config: string | null): Promise<string> {
   const root = path.join(process.cwd(), 'test-results', 'memry-cli-config-writes')
   const vaultPath = path.join(root, `vault-${process.pid}-${randomUUID()}`)
@@ -159,8 +162,7 @@ test(
   async (t) => {
     const vaultPath = await makeVault(null)
     const outside = `${vaultPath}-outside.json`
-    const content =
-      '{"defaultNoteFolder":"","journalFolder":"journal","journalDateFormat":"YYYY-MM-DD","attachmentsFolder":"attachments"}'
+    const content = COMPLETE_CONFIG
     await fs.writeFile(outside, content, 'utf-8')
     await fs.symlink(outside, getConfigPath(vaultPath))
 
@@ -173,6 +175,97 @@ test(
     assert.notEqual(JSON.parse(current.stdout.at(-1) ?? 'null'), 'de', current.stdout.join('\n'))
   }
 )
+
+test(
+  'locale set outlives a folder that cannot be synced: exit 0, file and db agree',
+  { skip: !posix },
+  async (t) => {
+    const vaultPath = await makeVault('{"journalFolder":"daily"}')
+    const vaultDir = await fs.realpath(vaultPath)
+    const open = fs.open.bind(fs)
+    // A volume that cannot fsync a folder (FUSE, SMB): the folder handle's sync fails EINVAL.
+    t.mock.method(fs, 'open', async (target: string, ...rest: [string?, number?]) => {
+      const handle = await open(target, ...rest)
+      if ((await fs.stat(target)).isDirectory()) {
+        handle.sync = async () => {
+          throw Object.assign(new Error('EINVAL: invalid argument, fsync'), { code: 'EINVAL' })
+        }
+      }
+      return handle
+    })
+
+    const result = await cli(t, vaultPath, 'locale', 'set', 'de')
+
+    assert.equal(result.code, 0, result.stderr)
+    assert.ok(result.warnings.includes(path.join(vaultDir, '.memry')), result.warnings)
+    const written = JSON.parse(await fs.readFile(getConfigPath(vaultPath), 'utf-8')) as Record<
+      string,
+      unknown
+    >
+    assert.deepEqual(written.preferences, { language: 'de' })
+    const current = await cli(t, vaultPath, 'locale', 'get')
+    assert.equal(JSON.parse(current.stdout.at(-1) ?? 'null'), 'de', current.stdout.join('\n'))
+  }
+)
+
+test(
+  'locale set refuses a dangling config.json link: exit 1, nothing created, link kept',
+  { skip: !posix },
+  async (t) => {
+    const vaultPath = await makeVault(null)
+    await fs.symlink('../missing.json', getConfigPath(vaultPath))
+
+    const result = await cli(t, vaultPath, 'locale', 'set', 'de')
+
+    assert.equal(result.code, 1, result.stdout.join('\n'))
+    assert.ok(result.stderr.includes('link to a missing file'), result.stderr)
+    assert.equal(await fs.readlink(getConfigPath(vaultPath)), '../missing.json')
+    await assert.rejects(fs.stat(path.join(vaultPath, 'missing.json')), { code: 'ENOENT' })
+    assert.deepEqual(await fs.readdir(path.join(vaultPath, '.memry')), ['config.json'])
+  }
+)
+
+test('config.json replace retries a rename that a reader blocks', async (t) => {
+  // A complete config, so opening the vault writes nothing and `locale set` is the only rename.
+  const vaultPath = await makeVault(COMPLETE_CONFIG)
+  const rename = fs.rename.bind(fs)
+  let attempts = 0
+  t.mock.method(fs, 'rename', async (from: string, to: string) => {
+    attempts += 1
+    if (attempts <= 2) throw Object.assign(new Error('EBUSY: resource busy'), { code: 'EBUSY' })
+    await rename(from, to)
+  })
+
+  const result = await cli(t, vaultPath, 'locale', 'set', 'de')
+
+  assert.equal(result.code, 0, result.stderr)
+  assert.equal(attempts, 3)
+  const written = JSON.parse(await fs.readFile(getConfigPath(vaultPath), 'utf-8')) as Record<
+    string,
+    unknown
+  >
+  assert.deepEqual(written.preferences, { language: 'de' })
+})
+
+test('a rename that stays blocked fails with a plain message and leaves the file', async (t) => {
+  const content = '{"journalFolder":"daily"}'
+  const vaultPath = await makeVault(content)
+  t.mock.method(fs, 'rename', async () => {
+    throw Object.assign(new Error('EBUSY: resource busy'), { code: 'EBUSY' })
+  })
+
+  const result = await cli(t, vaultPath, 'locale', 'set', 'de')
+
+  assert.equal(result.code, 1, result.stdout.join('\n'))
+  assert.ok(
+    result.stderr.includes(
+      `Cannot replace ${getConfigPath(vaultPath)} (another program holds it open: EBUSY); retried 3 times; the file is unchanged`
+    ),
+    result.stderr
+  )
+  assert.equal(await fs.readFile(getConfigPath(vaultPath), 'utf-8'), content)
+  assert.deepEqual(await fs.readdir(path.join(vaultPath, '.memry')), ['config.json'])
+})
 
 for (const [name, config] of [
   ['an unreadable config.json', '{ nope'],
