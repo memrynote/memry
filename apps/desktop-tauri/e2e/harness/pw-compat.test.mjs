@@ -238,6 +238,33 @@ test('a target with nothing on its point names the point and the window size', (
   assert.match(state.cover, /^nothing at \(.+\) in \d+x\d+$/)
 })
 
+test('an action scrolls its target only when it is off the viewport or covered', () => {
+  // A menu anchored inside a scroller moves with it: centering an item that is already clickable
+  // scrolled the note and put another menu item under the click.
+  const { dom, pw } = page('<button id="b">Go</button><div id="cover"></div>')
+  const doc = dom.window.document
+  const button = doc.getElementById('b')
+  let scrolls = 0
+  button.scrollIntoView = () => scrolls++
+  let rect = { x: 10, y: 10, width: 50, height: 20 }
+  button.getBoundingClientRect = () => rect
+  let onTop = button
+  doc.elementFromPoint = () => onTop
+  const spec = { steps: [{ kind: 'css', selector: '#b' }] }
+
+  assert.equal(pw.target(spec, true).hit, true)
+  assert.equal(scrolls, 0)
+
+  rect = { x: 10, y: dom.window.innerHeight + 40, width: 50, height: 20 }
+  pw.target(spec, true)
+  assert.equal(scrolls, 1)
+
+  rect = { x: 10, y: 10, width: 50, height: 20 }
+  onTop = doc.getElementById('cover')
+  pw.target(spec, true)
+  assert.equal(scrolls, 2)
+})
+
 // ---- click fixup ------------------------------------------------------------------------------
 
 test('a driver without pointer events gets them ahead of its press, on what it pressed', () => {
@@ -269,6 +296,35 @@ test('a driver without pointer events gets them ahead of its press, on what it p
     'click b',
     'mousedown outside'
   ])
+})
+
+test('a press settles focus once its mousedown handlers ran, and the click leaves it there', async () => {
+  // Base UI's Select opens a frame after mousedown, hands focus back to the editor, and closes
+  // when its trigger gains focus while open: focus from the click fixup closed the list it opened.
+  const { dom, pw } = page(
+    '<input id="field"><button id="pick">Pick</button><button id="keep">B</button>'
+  )
+  const doc = dom.window.document
+  const field = doc.getElementById('field')
+  doc.getElementById('keep').addEventListener('mousedown', (event) => event.preventDefault())
+  doc.getElementById('pick').addEventListener('click', () => field.focus())
+  const press = async (id) => {
+    field.focus()
+    pw.watch()
+    const init = { bubbles: true, cancelable: true, button: 0 }
+    doc.getElementById(id).dispatchEvent(new dom.window.MouseEvent('mousedown', init))
+    await Promise.resolve()
+    const focused = doc.activeElement.id
+    doc.elementFromPoint = () => doc.getElementById(id)
+    for (const type of ['mouseup', 'click']) {
+      doc.getElementById(id).dispatchEvent(new dom.window.MouseEvent(type, init))
+    }
+    pw.fixup(10, 10, 0, 1)
+    return [focused, doc.activeElement.id]
+  }
+
+  assert.deepEqual(await press('pick'), ['pick', 'field'])
+  assert.deepEqual(await press('keep'), ['field', 'field'])
 })
 
 test('a hover reaches its target when the real pointer moved over another element meanwhile', () => {

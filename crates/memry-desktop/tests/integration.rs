@@ -174,6 +174,8 @@ mod note_properties_outside;
 mod note_versions;
 #[path = "notes_aliases.rs"]
 mod notes_aliases;
+#[path = "notes_append_blocks.rs"]
+mod notes_append_blocks;
 #[path = "notes_apply_template.rs"]
 mod notes_apply_template;
 #[path = "notes_create_template.rs"]

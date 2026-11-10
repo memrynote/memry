@@ -597,7 +597,8 @@
         "title": "Przenieś blok do notatki",
         "searchPlaceholder": "Szukaj notatek…",
         "noResults": "Brak pasujących notatek",
-        "failed": "Nie udało się przenieść bloku"
+        "failed": "Nie udało się przenieść bloku",
+        "targetNotTaken": "Ta notatka jest zbyt duża lub zawiera tekst, którego aplikacja nie może przyjąć, więc bloki zostały tam, gdzie były."
       }
     },
     "attachmentPicker": {

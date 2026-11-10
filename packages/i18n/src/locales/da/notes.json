@@ -597,7 +597,8 @@
         "title": "Flyt blok til note",
         "searchPlaceholder": "Søg i noter…",
         "noResults": "Ingen matchende noter",
-        "failed": "Kunne ikke flytte blokken"
+        "failed": "Kunne ikke flytte blokken",
+        "targetNotTaken": "Denne note er for stor eller indeholder tekst, som appen ikke kan håndtere, så blokkene blev, hvor de var."
       }
     },
     "attachmentPicker": {
