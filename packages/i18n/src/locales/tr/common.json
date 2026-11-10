@@ -1659,5 +1659,14 @@
       "agentModel": "Varsayılan",
       "date": "13 Ekim"
     }
+  },
+  "vaultNotice": {
+    "configUnreadable": "Memry bu kasanın ayarlarını okuyamıyor",
+    "configUnreadableHint": ".memry/config.json düzeltilene kadar Memry dosyaları nota dönüştüremez ve taşımaları izleyemez. Dosyayı düzelt, ardından Memry'yi yeniden başlat. Notların güvende.",
+    "watchLimit": "Diğer uygulamalardaki değişiklikler geç görünüyor",
+    "watchLimitHint": "Linux bu kasa için çok az dosya izlemeye izin veriyor, bu yüzden Memry dışarıdaki değişiklikleri yalnızca yeniden taradığında görüyor. Bu komutu çalıştır, ardından Memry'yi yeniden başlat:",
+    "copyCommand": "Komutu kopyala",
+    "commandCopied": "Komut kopyalandı. Bir terminale yapıştır.",
+    "copyFailed": "Komut kopyalanamadı. Bildirimdeki komutu elle yaz."
   }
 }

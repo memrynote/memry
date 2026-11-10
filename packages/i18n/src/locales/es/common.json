@@ -1659,5 +1659,14 @@
       "agentModel": "Predeterminado",
       "date": "13 de octubre"
     }
+  },
+  "vaultNotice": {
+    "configUnreadable": "Memry no puede leer la configuración de esta bóveda",
+    "configUnreadableHint": "Hasta que se corrija .memry/config.json, Memry no puede convertir archivos en notas ni seguir sus movimientos. Corrige el archivo y reinicia Memry. Tus notas están a salvo.",
+    "watchLimit": "Los cambios de otras apps aparecen con retraso",
+    "watchLimitHint": "Linux permite muy pocas vigilancias de archivos para esta bóveda, así que Memry solo ve los cambios externos cuando vuelve a escanear. Ejecuta este comando y reinicia Memry:",
+    "copyCommand": "Copiar comando",
+    "commandCopied": "Comando copiado. Pégalo en una terminal.",
+    "copyFailed": "No se pudo copiar el comando. Escríbelo a partir del aviso."
   }
 }

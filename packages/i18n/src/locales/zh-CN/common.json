@@ -1659,5 +1659,14 @@
       "agentModel": "默认",
       "date": "10月13日"
     }
+  },
+  "vaultNotice": {
+    "configUnreadable": "Memry 无法读取此仓库的设置",
+    "configUnreadableHint": "在 .memry/config.json 修复之前，Memry 无法把文件变成笔记，也无法跟踪移动。请修复该文件，然后重启 Memry。你的笔记是安全的。",
+    "watchLimit": "其他应用中的更改显示较慢",
+    "watchLimitHint": "Linux 允许此仓库使用的文件监视数量太少，因此 Memry 只有在重新扫描时才能看到外部更改。请运行此命令，然后重启 Memry：",
+    "copyCommand": "复制命令",
+    "commandCopied": "命令已复制。请将其粘贴到终端中。",
+    "copyFailed": "无法复制命令。请根据通知手动输入。"
   }
 }
