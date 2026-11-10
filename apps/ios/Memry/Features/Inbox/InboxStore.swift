@@ -134,11 +134,25 @@ final class InboxStore {
 
     var nowMs: Int64 { Int64(clock().timeIntervalSince1970 * 1000) }
 
-    /// A file this device holds, or `nil` (inbox files do not sync, §5 F3).
+    /// Counts file downloads, so a view that read ``localFile(_:)`` before its
+    /// file arrived reads it again.
+    private(set) var filesDownloaded = 0
+
+    func inboxFilesDownloaded() { filesDownloaded += 1 }
+
+    /// A file this device holds, or `nil` (a capture's file arrives from the
+    /// device that captured it once it is uploaded, #4157).
     func localFile(_ relativePath: String?) -> URL? {
+        _ = filesDownloaded
         guard let relativePath, let vaultDirectory else { return nil }
         let url = vaultDirectory.appendingPathComponent(relativePath)
         return FileManager.default.fileExists(atPath: url.path) ? url : nil
+    }
+
+    /// An image row's picture: the thumbnail, else the image itself. A capture
+    /// synced from another device carries only the original file.
+    func thumbnailFile(for item: InboxItemRecord) -> URL? {
+        localFile(item.thumbnailPath) ?? localFile(item.attachmentPath)
     }
 
     // MARK: Reading

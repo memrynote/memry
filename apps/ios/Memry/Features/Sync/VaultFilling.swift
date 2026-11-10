@@ -118,6 +118,25 @@ protocol VaultFilling: Sendable {
     /// metered policy applies unchanged. Called on reconnect and after a pass.
     func redriveAttachments(reachable: Reachable) async throws -> AttachmentRedriveSummary
 
+    /// Uploads this build's pending Inbox captures, downloads the files other
+    /// devices captured, and runs the 30-day releases (#4157). The core
+    /// decides what is pending or missing; FR-045's metered policy applies to
+    /// the downloads. An upload sets the capture's `attachmentId` through a
+    /// local write, which reaches other devices only with the next sync pass.
+    func syncInboxAttachments(reachable: Reachable) async throws -> InboxAttachmentSyncSummary
+
+    /// Puts a capture's file into a note (#4157): reuses the capture's
+    /// uploaded blob when it can, otherwise uploads the file.
+    ///
+    /// - Returns: the attachment id and the **filename the note's block must
+    ///   use**, because peers place the bytes by the manifest's filename.
+    func attachInboxFile(
+        itemId: String,
+        noteId: String,
+        filename: String,
+        mimeType: String
+    ) async throws -> InboxFileAttachment
+
     /// One pull-then-push pass (spec 004 TP028a): records, the bodies they
     /// touched, then the outbox. The only way a phone write reaches another
     /// device. Awaited directly, never queued, like ``firstSync``.
@@ -216,6 +235,19 @@ struct CoreVaultFiller: VaultFilling {
 
     func redriveAttachments(reachable: Reachable) async throws -> AttachmentRedriveSummary {
         try await sync.redriveAttachments(reachable: reachable)
+    }
+
+    func syncInboxAttachments(reachable: Reachable) async throws -> InboxAttachmentSyncSummary {
+        try await sync.syncInboxAttachments(reachable: reachable)
+    }
+
+    func attachInboxFile(
+        itemId: String,
+        noteId: String,
+        filename: String,
+        mimeType: String
+    ) async throws -> InboxFileAttachment {
+        try await sync.attachInboxFile(itemId: itemId, noteId: noteId, filename: filename, mimeType: mimeType)
     }
 }
 

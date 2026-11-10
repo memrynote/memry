@@ -250,7 +250,8 @@
     "failedPlayAudio": "Audio konnte nicht abgespielt werden",
     "failedLoadAudio": "Audio konnte nicht geladen werden",
     "video": "Video",
-    "unsupportedVideo": "Dein Browser unterstützt das Video-Tag nicht."
+    "unsupportedVideo": "Dein Browser unterstützt das Video-Tag nicht.",
+    "fileOnOtherDevice": "Die Datei befindet sich auf dem Gerät, das sie erfasst hat."
   },
   "reminder": {
     "dataUnavailable": "Erinnerungsdaten nicht verfügbar.",

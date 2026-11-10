@@ -250,7 +250,8 @@
     "failedPlayAudio": "Impossible de lire l'audio",
     "failedLoadAudio": "Impossible de charger l'audio",
     "video": "Vidéo",
-    "unsupportedVideo": "Votre navigateur ne prend pas en charge la balise vidéo."
+    "unsupportedVideo": "Votre navigateur ne prend pas en charge la balise vidéo.",
+    "fileOnOtherDevice": "Le fichier se trouve sur l'appareil qui l'a capturé."
   },
   "reminder": {
     "dataUnavailable": "Données de rappel indisponibles.",

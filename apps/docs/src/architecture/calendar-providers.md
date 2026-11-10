@@ -49,6 +49,20 @@ providers made opposite choices, and both are coherent:
 enqueued. The `seedUnclocked` sweeps of the calendar source and external event handlers both
 filter on it, and a desktop test keeps the constant in step with the capability table.
 
+### All-day dates
+
+Every provider reader stores an all-day date as UTC midnight of that calendar day, with an
+exclusive end: Google `start.date`/`end.date`, ICS and CalDAV `VALUE=DATE`, and EventKit dates
+all become `YYYY-MM-DDT00:00:00.000Z`. Events created in memrynote store local midnight instead.
+
+The calendar views read every instant in local time, so a UTC-midnight date read as-is lands a
+day early west of UTC (a one-day Google event shows as two days starting the day before) and
+runs a day long east of it. The range projection (`calendar/projection.ts`) owns the
+conversion: for an all-day event or mirror row it takes the date from a UTC-midnight value, or
+the local date from any other value, and returns local midnights, the same shape it gives
+all-day tasks. Local midnight equals UTC midnight only at a zero offset, where both readings
+give the same day, so the stored shape is never ambiguous. The stored rows are unchanged.
+
 ## ICS feeds
 
 A subscribed calendar is one `calendar_sources` row (`provider = 'ics'`, `remote_id` = the
