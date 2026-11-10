@@ -236,7 +236,7 @@ fn plan(from: &str, to: &str) -> PlannedRename {
 
 #[test]
 fn plans_follow_electrons_cases() {
-    let cases: [(&[&str], &[&str], Vec<PlannedRename>); 6] = [
+    let cases: [(&[&str], &[&str], Vec<PlannedRename>); 9] = [
         (
             &["k3f9x2-scan.pdf"],
             &["k3f9x2-invoice.pdf"],
@@ -258,6 +258,22 @@ fn plans_follow_electrons_cases() {
             vec![],
         ),
         (&["scan.pdf"], &["invoice.pdf"], vec![]),
+        // A name that is not a stored name still makes its prefix ambiguous (#4122).
+        (
+            &["k3f9x2-a.png"],
+            &["k3f9x2-b.png", "k3f9x2-c.png?v=1"],
+            vec![],
+        ),
+        (
+            &["k3f9x2-a.png", "k3f9x2-z\u{200b}.png"],
+            &["k3f9x2-b.png"],
+            vec![],
+        ),
+        (
+            &["k3f9x2-a.png", "k3f9x2-sub/x.png"],
+            &["k3f9x2-b.png"],
+            vec![],
+        ),
     ];
     for (previous, next, expected) in cases {
         assert_eq!(
