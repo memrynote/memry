@@ -629,8 +629,9 @@ describe('LargeFileViewer', () => {
   it('drops pages by the bytes they hold, not by how many of them there are', async () => {
     // #given a long file of fat lines — the 69 MB shape, where 200 lines is
     // megabytes rather than kilobytes. Counting pages says 20 of these are
-    // cheap; they are the whole file.
-    const lineCount = 200_000
+    // cheap; they are the whole file. Below the scaled-scroll cap, so the
+    // virtualizer stub is what moves the viewport.
+    const lineCount = 90_000
     const fat = 'x'.repeat(8_000)
     mocks.open.mockResolvedValue({
       status: 'indexing',
@@ -1124,5 +1125,38 @@ describe('LargeFileViewer', () => {
     // counts forever against a pass that is not running
     await waitFor(() => expect(within(bar).getByText('0')).toBeInTheDocument())
     expect(screen.queryByText(/so far/)).not.toBeInTheDocument()
+  })
+
+  it('lays out a window of rows, not the file, past the scaled-scroll cap', async () => {
+    // #given a file of 30 million lines, past where a slot per line fits the WebView
+    await openReady(30_000_000)
+    await screen.findByText('row 0')
+
+    // #then — the virtualizer counts nothing and the DOM holds a bounded window
+    const region = screen.getByTestId('large-file-scaled-lines')
+    expect(region.querySelectorAll('[data-line]').length).toBeLessThan(200)
+    expect(screen.queryByText('row 1000')).not.toBeInTheDocument()
+  })
+
+  it('jumps to a hit near the end of a scaled file by its line', async () => {
+    // #given a 30-million-line file with one hit near its end
+    await openReady(30_000_000)
+    await screen.findByText('row 0')
+    mocks.search.mockResolvedValue({
+      status: 'complete',
+      query: 'row 29999990',
+      hits: [{ line: 29_999_990, ordinal: 0 }],
+      total: 1,
+      limited: false
+    } satisfies LargeFileSearchResult)
+
+    // #when
+    await findInFile('row 29999990')
+
+    // #then — the hit's line is laid out and highlighted, without scrollToIndex
+    const mark = await screen.findByText('row 29999990', { selector: 'mark' })
+    expect(mark.closest('[data-line]')?.getAttribute('data-line')).toBe('29999990')
+    expect(mocks.scrollToIndex).not.toHaveBeenCalled()
+    expect(screen.queryByText('row 0')).not.toBeInTheDocument()
   })
 })

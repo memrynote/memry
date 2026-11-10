@@ -10,6 +10,8 @@ import { FindBar } from '@/components/find-bar/find-bar'
 import { useLargeFileSession } from '@/hooks/use-large-file-session'
 import { useLargeFileSearch, type LargeFileSearch } from '@/hooks/use-large-file-search'
 import { LargeFileNotice, largeFileReasonArgs } from './large-file-notice'
+import { ScaledLines } from './large-file-scaled-lines'
+import { LARGE_FILE_SCALED_LINES } from './large-file-scroll'
 import type { NoteLargeFileReason } from '@memry/contracts/notes-api'
 
 /**
@@ -94,11 +96,15 @@ export const LargeFileViewer = memo(function LargeFileViewer({
   const search = useLargeFileSearch(sessionId)
 
   const lineCount = state.status === 'ready' ? state.lineCount : 0
+  // Past the cap, a slot per line is more than the WebView can lay out and
+  // TanStack's per-row array more than it can hold (#4048): ScaledLines takes
+  // over, and the virtualizer is left with nothing to count.
+  const scaled = lineCount > LARGE_FILE_SCALED_LINES
   // TanStack Virtual's `useVirtualizer()` returns unstable function refs, a
   // known library limitation the React Compiler can't memoize around.
   // oxlint-disable-next-line react/incompatible-library
   const virtualizer = useVirtualizer({
-    count: lineCount,
+    count: scaled ? 0 : lineCount,
     getScrollElement: () => scrollRef.current,
     estimateSize: () => LARGE_FILE_LINE_HEIGHT,
     overscan: OVERSCAN_ROWS
@@ -109,8 +115,8 @@ export const LargeFileViewer = memo(function LargeFileViewer({
   const lastRow = rows[rows.length - 1]?.index ?? 0
 
   useEffect(() => {
-    if (lineCount > 0) ensureRange(firstRow, lastRow)
-  }, [ensureRange, firstRow, lastRow, lineCount])
+    if (lineCount > 0 && !scaled) ensureRange(firstRow, lastRow)
+  }, [ensureRange, firstRow, lastRow, lineCount, scaled])
 
   const isReady = state.status === 'ready'
   const showRows = isReady && lineCount > 0
@@ -178,7 +184,7 @@ export const LargeFileViewer = memo(function LargeFileViewer({
 
   const currentHit = search.currentHit
   useEffect(() => {
-    if (!currentHit) return
+    if (!currentHit || scaled) return
     virtualizer.scrollToIndex(currentHit.line, { align: 'center' })
     // The virtualizer identity changes every render; the hit is what moves the
     // viewport.
@@ -256,7 +262,28 @@ export const LargeFileViewer = memo(function LargeFileViewer({
         <CenteredMessage text={t('page.largeFile.viewer.empty')} />
       )}
 
-      {showRows && (
+      {showRows && scaled && (
+        <ScaledLines
+          lineCount={lineCount}
+          rowHeight={LARGE_FILE_LINE_HEIGHT}
+          overscan={OVERSCAN_ROWS}
+          target={currentHit}
+          ensureRange={ensureRange}
+          renderRow={(line) => (
+            <LineRow
+              line={line}
+              text={getLine(line)}
+              truncated={isTruncated(line)}
+              truncatedLabel={t('page.largeFile.viewer.lineTruncated')}
+              showRestLabel={t('page.largeFile.viewer.showRestOfLine')}
+              query={search.isOpen ? search.query : ''}
+              activeOrdinal={currentHit?.line === line ? currentHit.ordinal : null}
+            />
+          )}
+        />
+      )}
+
+      {showRows && !scaled && (
         <div ref={scrollRef} className="min-h-0 flex-1 overflow-y-auto">
           <div className="relative w-full" style={{ height: virtualizer.getTotalSize() }}>
             {rows.map((row) => (
@@ -464,14 +491,15 @@ const LineRow = memo(function LineRow({
   measureRef
 }: {
   line: number
-  offset: number
+  /** Px from the top of the virtualizer's box; absent when the row is laid out in flow. */
+  offset?: number
   text: string | undefined
   truncated: boolean
   truncatedLabel: string
   showRestLabel: string
   query: string
   activeOrdinal: number | null
-  measureRef: (node: HTMLElement | null) => void
+  measureRef?: (node: HTMLElement | null) => void
 }) {
   const [expanded, setExpanded] = useState(false)
 
@@ -487,8 +515,8 @@ const LineRow = memo(function LineRow({
     <div
       data-index={line}
       ref={measureRef}
-      className="absolute top-0 start-0 w-full"
-      style={{ transform: `translateY(${offset}px)` }}
+      className={offset === undefined ? 'w-full' : 'absolute top-0 start-0 w-full'}
+      style={offset === undefined ? undefined : { transform: `translateY(${offset}px)` }}
     >
       {/* `whitespace-pre-wrap` keeps the file's own spacing while letting the
           line wrap; `break-words` is what lets it break at all, because a
