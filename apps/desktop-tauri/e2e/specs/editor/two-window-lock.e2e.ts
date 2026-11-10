@@ -115,3 +115,28 @@ test('a note opened while locked takes edits again once it is unlocked', async (
   await page.keyboard.insertText(' typed after unlock')
   await expect(editor).toContainText('typed after unlock')
 })
+
+// An empty note has no document body, so the editor stays on its markdown (#3531 leftover 1):
+// the unlock comes from the page's lock store, not a reopen.
+test('an empty note opened while locked takes edits again once it is unlocked', async ({
+  page,
+  testVaultPath
+}) => {
+  await vaultOpen(page)
+  const note = await createNote(page, {
+    title: `Empty Locked ${Date.now().toString(36)}`,
+    folder: 'notes'
+  })
+  await setLock(page, note.id, true)
+  await openFromSidebar(page, note)
+  await expectEditable(page, false)
+
+  await setLock(page, note.id, false)
+  await expectEditable(page, true)
+  const editor = page.locator(EDITOR).first()
+  await editor.click()
+  await page.keyboard.insertText('typed after unlock')
+  await expect(editor).toContainText('typed after unlock')
+  const file = join(testVaultPath, note.path)
+  await expect.poll(() => readFileSync(file, 'utf8')).toContain('typed after unlock')
+})

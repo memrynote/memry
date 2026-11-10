@@ -144,8 +144,9 @@ const docRegistry = createYjsDocRegistry<DocEntry>((slotKey, notifyChanged) => {
     .catch((err: unknown) => {
       if (destroyed) return
       // The editor falls back to the note's markdown. A note the host would not let this window
-      // edit stays read-only there too.
-      const readOnly = provider.readOnly
+      // edit stays read-only there too, except for a lock: the destroyed provider hears no unlock,
+      // so the page's lock store, which every caller's `editable` already reads, decides it.
+      const readOnly = provider.readOnly === 'locked' ? null : provider.readOnly
       if (err instanceof DocNeedsSeedError) log.info(err.message, { noteId })
       else log.error('Failed to connect collaboration', err)
       provider.destroy()
