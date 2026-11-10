@@ -1671,7 +1671,6 @@
     "undecidedFiles": "Sommige bestanden zijn geen notities geworden",
     "undecidedFilesHint": "Een notitie of dagboekpagina met dezelfde naam heeft andere tekst, of is nog niet met dit apparaat gesynchroniseerd. Memry laat deze bestanden ongewijzigd en controleert ze opnieuw wanneer deze kluis de volgende keer wordt geopend.",
     "keptRemovals": "Memry heeft notities bewaard waarvan de bestanden zijn verwijderd",
-    "keptRemovalsHint": "Deze bestanden zijn buiten Memry verwijderd, maar hun notities bevatten tekst die de bestanden nooit hadden. Open een notitie om die te bewaren of te verwijderen.",
-    "openNote": "Notitie openen"
+    "keptRemovalsHint": "Deze bestanden zijn buiten Memry verwijderd, maar hun notities bevatten tekst die nooit in de bestanden is beland. Memry heeft de notities bewaard in plaats van die tekst op je andere apparaten te wissen."
   }
 }

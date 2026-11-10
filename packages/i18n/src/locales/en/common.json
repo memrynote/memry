@@ -1671,7 +1671,6 @@
     "undecidedFiles": "Some files didn't become notes",
     "undecidedFilesHint": "A note or journal entry with the same name has different text, or hasn't synced to this device yet. Memry leaves these files unchanged and checks them again the next time it opens this vault.",
     "keptRemovals": "Memry kept notes whose files were deleted",
-    "keptRemovalsHint": "These files were deleted outside Memry, but their notes have text the files never had. Open a note to keep or delete it.",
-    "openNote": "Open note"
+    "keptRemovalsHint": "These files were deleted outside Memry, but their notes had text the files never got. Memry kept the notes rather than delete that text on your other devices."
   }
 }

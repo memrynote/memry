@@ -10,10 +10,8 @@ import { toast } from 'sonner'
 import { useT } from '@memry/i18n/renderer'
 import type { VaultNotice } from '../../../generated/bindings'
 import { commands } from '../../../generated/bindings'
-import { useTabs } from '@/contexts/tabs'
 import { useFileActionLabels } from '@/hooks/use-file-action-labels'
 import { createLogger } from '@/lib/logger'
-import { noteTabData } from '@/lib/sidebar-tab-data'
 import { onVaultNotices } from '@/services/vault-service'
 
 const log = createLogger('VaultNotices')
@@ -33,10 +31,6 @@ const NAMED = 3
 
 /** A path's last part, on any platform's separators. */
 const fileName = (path: string): string => path.split(/[\\/]/).pop() || path
-
-/** A journal day's note id is `j` and its date. */
-const journalDateOf = (noteId: string): string | null =>
-  /^j(\d{4}-\d{2}-\d{2})$/.exec(noteId)?.[1] ?? null
 
 /**
  * A list notice's hint and the first names it lists, each isolated so a name in another
@@ -75,7 +69,6 @@ const closed = new Set<Kind>()
 export function useVaultNotices(): void {
   const { t } = useT('common')
   const { revealInFolder } = useFileActionLabels()
-  const { openTab } = useTabs()
 
   useEffect(() => {
     const show = (notice: VaultNotice): void => {
@@ -129,8 +122,9 @@ export function useVaultNotices(): void {
           })
           return
         }
-        case 'keptRemovals': {
-          const [first] = notice.notes
+        // No action: the note page reads the note's file, which is gone (Electron's
+        // `getNoteById` parity), so an opened kept note would show nothing.
+        case 'keptRemovals':
           toast.warning(t('vaultNotice.keptRemovals'), {
             ...sticky,
             description: listed(
@@ -140,25 +134,9 @@ export function useVaultNotices(): void {
                 name: fileName(note.path).replace(/\.md$/i, '')
               })),
               notice.more
-            ),
-            action: first
-              ? {
-                  label: t('vaultNotice.openNote'),
-                  onClick: (event) => {
-                    event.preventDefault()
-                    openTab(
-                      noteTabData({
-                        id: first.noteId,
-                        path: first.path,
-                        journalDate: journalDateOf(first.noteId)
-                      })
-                    )
-                  }
-                }
-              : undefined
+            )
           })
           return
-        }
         case 'watchLimit':
           toast.warning(t('vaultNotice.watchLimit'), {
             ...sticky,
@@ -205,5 +183,5 @@ export function useVaultNotices(): void {
         if (!closed.has(notice.kind)) show(notice)
       }
     })
-  }, [t, revealInFolder, openTab])
+  }, [t, revealInFolder])
 }

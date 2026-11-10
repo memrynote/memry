@@ -1671,7 +1671,6 @@
     "undecidedFiles": "Niektoré súbory sa nestali poznámkami",
     "undecidedFilesHint": "Poznámka alebo záznam denníka s rovnakým názvom má iný text alebo ešte nebol synchronizovaný do tohto zariadenia. Memry tieto súbory ponechá bez zmeny a znova ich skontroluje pri ďalšom otvorení tohto trezoru.",
     "keptRemovals": "Memry ponechal poznámky, ktorých súbory boli odstránené",
-    "keptRemovalsHint": "Tieto súbory boli odstránené mimo Memry, ale ich poznámky obsahujú text, ktorý súbory nikdy nemali. Otvorte poznámku a ponechajte ju alebo ju odstráňte.",
-    "openNote": "Otvoriť poznámku"
+    "keptRemovalsHint": "Tieto súbory boli odstránené mimo Memry, ale ich poznámky obsahovali text, ktorý sa do súborov nikdy nedostal. Memry poznámky ponechal, aby tento text neodstránil ani na vašich ďalších zariadeniach."
   }
 }

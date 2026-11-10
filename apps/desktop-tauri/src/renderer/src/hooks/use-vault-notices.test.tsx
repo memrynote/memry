@@ -12,7 +12,6 @@ type Toast = {
 const mocks = vi.hoisted(() => ({
   vaultNoticesList: vi.fn(),
   shellRevealPath: vi.fn(),
-  openTab: vi.fn(),
   listener: null as null | ((event: { payload: null }) => void),
   toast: Object.assign(vi.fn(), {
     warning: vi.fn(),
@@ -23,8 +22,6 @@ const mocks = vi.hoisted(() => ({
 }))
 
 vi.mock('sonner', () => ({ toast: mocks.toast }))
-
-vi.mock('@/contexts/tabs', () => ({ useTabs: () => ({ openTab: mocks.openTab }) }))
 
 vi.mock('../../../generated/bindings', () => ({
   commands: {
@@ -184,7 +181,7 @@ describe('useVaultNotices (#3531 14l)', () => {
     await changeTo([])
   })
 
-  it('opens the first kept note, a journal day in the journal', async () => {
+  it('lists the kept notes by name, with no action', async () => {
     const note = { noteId: 'n1', path: '/v/a/Alpha.md' }
     const day = { noteId: 'j2025-01-02', path: '/v/a/journal/2025-01-02.md' }
     mocks.vaultNoticesList.mockResolvedValue(
@@ -196,17 +193,7 @@ describe('useVaultNotices (#3531 14l)', () => {
     expect(render(<>{lastOptions().description}</>).container.textContent).toContain(
       'Alpha, 2025-01-02'
     )
-    expect(lastOptions().action?.label).toBe('Open note')
-    click(lastOptions().action)
-    expect(mocks.openTab).toHaveBeenCalledWith(
-      expect.objectContaining({ type: 'note', path: '/notes/n1', entityId: 'n1' })
-    )
-
-    await changeTo([{ kind: 'keptRemovals', notes: [day], more: false }])
-    click(lastOptions().action)
-    expect(mocks.openTab).toHaveBeenLastCalledWith(
-      expect.objectContaining({ type: 'journal', viewState: { date: '2025-01-02' } })
-    )
+    expect(lastOptions().action).toBeUndefined()
     await changeTo([])
   })
 })

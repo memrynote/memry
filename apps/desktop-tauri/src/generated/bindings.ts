@@ -2532,8 +2532,8 @@ export type VaultListChangedEvent = null;
  *    the file's, or is not on this device yet (`Deferral::Undecided`): they stay files, not
  *    notes, and the next open asks again. `paths` are absolute, for the user to find them.
  *  - `keptRemovals`: files deleted outside the app whose notes were kept, because the note has
- *    text the file never had (`Removed::Undecided`). The user opens the note to keep or delete
- *    it.
+ *    text the file never had (`Removed::Undecided`), rather than deleting that text on every
+ *    device. Every open lists them again while their rows have no file.
  *  - `more` says a list notice had more items than [`LISTED`].
  */
 export type VaultNotice = { kind: "configUnreadable"; path: string } | { kind: "watchLimit" } | { kind: "undecidedFiles"; paths: string[]; more: boolean } | { kind: "keptRemovals"; notes: KeptRemoval[]; more: boolean };

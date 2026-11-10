@@ -1671,7 +1671,6 @@
     "undecidedFiles": "Hindi naging tala ang ilang file",
     "undecidedFilesHint": "May tala o entry sa talaarawan na kapareho ang pangalan pero iba ang teksto, o hindi pa ito naka-sync sa device na ito. Hinahayaan ng Memry ang mga file na ito at susuriin muli sa susunod na pagbukas nito sa vault na ito.",
     "keptRemovals": "Itinago ng Memry ang mga talang binura ang file",
-    "keptRemovalsHint": "Binura ang mga file na ito sa labas ng Memry, pero may tekstong wala kailanman sa mga file ang kanilang mga tala. Buksan ang isang tala para itago o burahin ito.",
-    "openNote": "Buksan ang tala"
+    "keptRemovalsHint": "Binura ang mga file na ito sa labas ng Memry, pero may tekstong hindi kailanman napunta sa mga file ang kanilang mga tala. Itinago ng Memry ang mga tala sa halip na burahin ang tekstong iyon sa iba mong device."
   }
 }
