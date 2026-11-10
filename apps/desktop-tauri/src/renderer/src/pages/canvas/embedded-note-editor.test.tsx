@@ -17,6 +17,7 @@ const mocks = vi.hoisted(() => ({
   onMarkdownChange: null as ((markdown: string) => void) | null,
   updatedHandlers: new Set<(event: { id: string; changes: { content?: string } }) => void>(),
   isNoteLocked: false,
+  isNoteExcluded: false,
   noUnsubscribe: (): (() => void) => () => {}
 }))
 
@@ -37,6 +38,9 @@ vi.mock('@/services/notes-service', async (importOriginal) => ({
 vi.mock('@/lib/vault-locks-store', async (importOriginal) => ({
   ...(await importOriginal<typeof VaultLocksStoreModule>()),
   useIsNoteLocked: () => mocks.isNoteLocked
+}))
+vi.mock('@/lib/excluded-notes-store', () => ({
+  useIsNoteExcluded: () => mocks.isNoteExcluded
 }))
 vi.mock('@/lib/logger', () => ({
   createLogger: () => ({ error: vi.fn(), warn: vi.fn(), info: vi.fn(), debug: vi.fn() })
@@ -158,6 +162,7 @@ describe('EmbeddedNoteEditor', () => {
     mocks.onMarkdownChange = null
     mocks.updatedHandlers.clear()
     mocks.isNoteLocked = false
+    mocks.isNoteExcluded = false
     queryClient = new QueryClient({ defaultOptions: { queries: { retry: false } } })
   })
   afterEach(() => {
@@ -183,6 +188,15 @@ describe('EmbeddedNoteEditor', () => {
     expect(await screen.findByTestId('content-area')).toHaveAttribute('data-editable', 'false')
     // Outside the scroller: a small card scrolls its body, the notice stays in view.
     expect(screen.getByTestId('note-locked-indicator').closest('.overflow-auto')).toBeNull()
+  })
+
+  it('opens a note in an excluded folder read-only with its notice (#3530)', async () => {
+    mocks.isNoteExcluded = true
+    renderCard()
+    expect(await screen.findByTestId('content-area')).toHaveAttribute('data-editable', 'false')
+    expect(screen.getByTestId('note-locked-indicator')).toHaveTextContent(
+      'This note is in an excluded folder.'
+    )
   })
 
   it('keeps an unlocked note editable with no lock notice', async () => {

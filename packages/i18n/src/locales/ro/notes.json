@@ -1650,6 +1650,7 @@
     "unlockFolder": "Deblochează dosarul",
     "toggleFailed": "Blocarea nu a putut fi schimbată",
     "readOnlyIndicator": "Blocat. Doar citire pentru tine și pentru agenți.",
+    "excludedIndicator": "Această notă se află într-un dosar exclus.",
     "externalEditRestored": "„{title}” este blocată, deci modificarea din exterior a fost anulată",
     "externalEditRestoredHint": "Textul modificat este salvat în istoricul versiunilor notiței."
   },

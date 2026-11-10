@@ -28,6 +28,7 @@ export const EmbeddedNoteEditor = ({ noteId }: EmbeddedNoteEditorProps): React.J
   })
   const { note } = body.query
   const isLocked = body.locked
+  const isExcluded = body.excluded
 
   if (!note) {
     return <div className="min-h-0 flex-1 overflow-auto" />
@@ -35,7 +36,7 @@ export const EmbeddedNoteEditor = ({ noteId }: EmbeddedNoteEditorProps): React.J
 
   return (
     <div className="flex min-h-0 flex-1 flex-col">
-      {isLocked && <LockedNoteNotice className="shrink-0 pb-1" />}
+      {isLocked && <LockedNoteNotice className="shrink-0 pb-1" excluded={isExcluded} />}
       <div className="min-h-0 flex-1 overflow-auto">
         <ContentArea
           noteId={noteId}

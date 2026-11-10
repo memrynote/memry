@@ -1650,6 +1650,7 @@
     "unlockFolder": "Odomknúť priečinok",
     "toggleFailed": "Zámok sa nepodarilo zmeniť",
     "readOnlyIndicator": "Zamknuté. Iba na čítanie pre vás aj pre agentov.",
+    "excludedIndicator": "Táto poznámka je vo vylúčenom priečinku.",
     "externalEditRestored": "„{title}“ je zamknutá, preto sa úprava zvonka vrátila späť",
     "externalEditRestoredHint": "Upravený text je uložený v histórii verzií poznámky."
   },

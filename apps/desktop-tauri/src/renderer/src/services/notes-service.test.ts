@@ -2,6 +2,7 @@ import { describe, it, expect, beforeEach, vi } from 'vitest'
 import { createMockApi } from '@tests/setup-dom'
 import { answer, current } from '@/lib/permanent-delete-question'
 import { getI18n } from 'react-i18next'
+import { VAULT_LOCKED_FOLDER_MESSAGE } from '@memry/contracts/vault-locks-api'
 
 const commands = vi.hoisted(() => ({
   notesCreate: vi.fn(),
@@ -567,6 +568,25 @@ describe('notes-service', () => {
     await expect(notesService.deleteFolder('Work')).resolves.toEqual({
       success: false,
       error: getI18n().t('errors:folder.deleteFailed')
+    })
+    // A refusal says why (#3530).
+    commands.notesDeleteFolder.mockRejectedValueOnce({
+      kind: 'locked',
+      code: 'note_excluded',
+      message: 'This note is in an excluded folder.'
+    })
+    await expect(notesService.deleteFolder('Work')).resolves.toEqual({
+      success: false,
+      error: getI18n().t('errors:note.excluded')
+    })
+    commands.notesDeleteFolder.mockRejectedValueOnce({
+      kind: 'locked',
+      code: 'folder_locked',
+      message: VAULT_LOCKED_FOLDER_MESSAGE
+    })
+    await expect(notesService.deleteFolder('Work')).resolves.toEqual({
+      success: false,
+      error: getI18n().t('errors:vaultLock.folderReadOnly')
     })
 
     commands.notesGetFolderConfig.mockResolvedValueOnce({

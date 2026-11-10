@@ -1650,6 +1650,7 @@
     "unlockFolder": "解除鎖定資料夾",
     "toggleFailed": "無法變更鎖定狀態",
     "readOnlyIndicator": "已鎖定。對你和代理皆為唯讀。",
+    "excludedIndicator": "此筆記位於已排除的資料夾中。",
     "externalEditRestored": "「{title}」已鎖定，因此外部的編輯已還原",
     "externalEditRestoredHint": "編輯後的文字已儲存在筆記的版本記錄中。"
   },

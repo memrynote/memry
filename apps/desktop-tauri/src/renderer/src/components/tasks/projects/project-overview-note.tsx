@@ -51,6 +51,7 @@ export const ProjectOverviewNote = ({
   })
   const { note, isLoading, error: loadError } = body.query
   const isLocked = body.locked
+  const isExcluded = body.excluded
 
   const handleCreate = useCallback(async (): Promise<void> => {
     setIsCreating(true)
@@ -162,7 +163,7 @@ export const ProjectOverviewNote = ({
           </p>
         ) : (
           <EditorErrorBoundary noteId={homeNoteId}>
-            {isLocked && <LockedNoteNotice className="mb-2" />}
+            {isLocked && <LockedNoteNotice className="mb-2" excluded={isExcluded} />}
             <ContentArea
               key={homeNoteId}
               noteId={homeNoteId}

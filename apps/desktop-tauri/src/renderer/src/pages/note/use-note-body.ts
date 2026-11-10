@@ -13,6 +13,7 @@ import { registerPendingSave, unregisterPendingSave } from '@/lib/save-registry'
 import { createLogger } from '@/lib/logger'
 import { trackRendererError } from '@/lib/telemetry-diagnostics'
 import { useIsNoteLocked } from '@/lib/vault-locks-store'
+import { useIsNoteExcluded } from '@/lib/excluded-notes-store'
 import { useReplacedOutsideEdit } from './use-replaced-outside-edit'
 
 const log = createLogger('NoteBody')
@@ -76,8 +77,13 @@ export interface NoteBodyOptions {
 export interface NoteBody {
   /** The note, read again on mount (`readOnMount`). */
   query: UseNoteResult
-  /** The owner locked the note or a folder above it (#2606): the editor takes no typing. */
+  /**
+   * The owner locked the note or a folder above it (#2606), or its file is under an exclude
+   * pattern, which the core refuses every app write to (#3530): the editor takes no typing.
+   */
   locked: boolean
+  /** The note is read-only because it is excluded, not locked. */
+  excluded: boolean
   /** The text the editor opens on: the note's, or the outside edit it was handed since. */
   content: string
   /** Bumped when `content` is an outside edit for the live editor (`externalContentRevision`). */
@@ -101,7 +107,8 @@ export function useNoteBody(noteId: string | undefined, options: NoteBodyOptions
   const { t } = useT('notes')
   const query = useNote(noteId ?? null, { readOnMount: true })
   const { note, isFetching, isFetchedAfterMount } = query
-  const locked = useIsNoteLocked(noteId ?? null, note?.path ?? null)
+  const excluded = useIsNoteExcluded(note?.path)
+  const locked = useIsNoteLocked(noteId ?? null, note?.path ?? null) || excluded
   const { updateNote } = useNoteMutations()
   const outsideEdit = useReplacedOutsideEdit(noteId, note?.title, showVersionHistory)
   const onSavedRef = useRef(options.onSaved)
@@ -134,8 +141,8 @@ export function useNoteBody(noteId: string | undefined, options: NoteBodyOptions
       log.error('The note was not saved:', { surface, noteId: id, error, closed })
       const action = SURFACES[surface]
       if (action) trackRendererError(action, error)
-      // A refusal that says why the note cannot be written is shown as that. `note_excluded`
-      // ships with #4098, which owns its text.
+      // A refusal that says why the note cannot be written is shown as that. The reply of a
+      // `note_excluded` refusal carries its text (`errors:note.excluded`, #4098).
       let why = tRef.current(closed ? 'page.toast.notSavedClosed' : 'page.toast.notSaved')
       if (refusal?.code === 'note_locked') why = tRef.current('errors:vaultLock.noteReadOnly')
       if (refusal?.code === 'note_excluded' && refusal.error) why = refusal.error
@@ -524,6 +531,7 @@ export function useNoteBody(noteId: string | undefined, options: NoteBodyOptions
   return {
     query,
     locked,
+    excluded,
     content,
     revision: externalUpdateCount,
     onMarkdownChange,

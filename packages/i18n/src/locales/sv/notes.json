@@ -1650,6 +1650,7 @@
     "unlockFolder": "Lås upp mapp",
     "toggleFailed": "Det gick inte att ändra låset",
     "readOnlyIndicator": "Låst. Skrivskyddad för dig och för agenter.",
+    "excludedIndicator": "Den här anteckningen ligger i en undantagen mapp.",
     "externalEditRestored": "”{title}” är låst, så ändringen utifrån ångrades",
     "externalEditRestoredHint": "Den ändrade texten sparas i anteckningens versionshistorik."
   },

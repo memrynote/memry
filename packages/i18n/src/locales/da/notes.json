@@ -1650,6 +1650,7 @@
     "unlockFolder": "Lås mappe op",
     "toggleFailed": "Kunne ikke ændre låsen",
     "readOnlyIndicator": "Låst. Skrivebeskyttet for dig og for agenter.",
+    "excludedIndicator": "Denne note ligger i en udelukket mappe.",
     "externalEditRestored": "»{title}« er låst, så den eksterne redigering blev fortrudt",
     "externalEditRestoredHint": "Den redigerede tekst er gemt i notens versionshistorik."
   },

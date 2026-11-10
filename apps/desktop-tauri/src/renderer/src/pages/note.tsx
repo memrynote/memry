@@ -265,6 +265,7 @@ export function NotePage({ noteId }: NotePageProps) {
   // The owner locked this note or a folder above it (#2606): read-only here
   // and for every agent write path.
   const isLocked = body.locked
+  const isExcluded = body.excluded
   const hasOwnLock = useHasOwnNoteLock(noteId ?? null)
   const { createNote, updateNote, renameNote, deleteNote } = useNoteMutations()
   const {
@@ -414,7 +415,7 @@ export function NotePage({ noteId }: NotePageProps) {
   const handlePropertyBlocked = useCallback(
     (action: PropertySectionAction) => {
       if (isLocked) {
-        toast.error(t('errors:vaultLock.noteReadOnly'))
+        toast.error(t(isExcluded ? 'errors:note.excluded' : 'errors:vaultLock.noteReadOnly'))
         return
       }
       const messages: Record<PropertySectionAction, string> = {
@@ -426,7 +427,7 @@ export function NotePage({ noteId }: NotePageProps) {
       }
       toast.error(messages[action])
     },
-    [isLocked, t]
+    [isExcluded, isLocked, t]
   )
 
   const {
@@ -1781,7 +1782,7 @@ export function NotePage({ noteId }: NotePageProps) {
           data-testid="note-metadata"
           data-marquee-ignore
         >
-          {isLocked && <LockedNoteNotice />}
+          {isLocked && <LockedNoteNotice excluded={isExcluded} />}
           <NoteTitle
             disabled={isLocked}
             noteId={note.id}

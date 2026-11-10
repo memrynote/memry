@@ -1650,6 +1650,7 @@
     "unlockFolder": "Odemknout složku",
     "toggleFailed": "Zámek se nepodařilo změnit",
     "readOnlyIndicator": "Zamčeno. Jen pro čtení, pro vás i pro agenty.",
+    "excludedIndicator": "Tato poznámka je ve vyloučené složce.",
     "externalEditRestored": "Poznámka „{title}“ je zamčená, proto byla její úprava zvenčí vrácena",
     "externalEditRestoredHint": "Upravený text je uložen v historii verzí poznámky."
   },

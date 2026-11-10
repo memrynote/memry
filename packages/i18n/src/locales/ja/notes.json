@@ -1650,6 +1650,7 @@
     "unlockFolder": "フォルダーのロックを解除",
     "toggleFailed": "ロックを変更できませんでした",
     "readOnlyIndicator": "ロック中。自分とエージェントには読み取り専用です。",
+    "excludedIndicator": "このノートは除外フォルダーにあります。",
     "externalEditRestored": "「{title}」はロックされているため、外部での編集は取り消されました",
     "externalEditRestoredHint": "編集されたテキストは、ノートのバージョン履歴に保存されています。"
   },

@@ -1650,6 +1650,7 @@
     "unlockFolder": "解锁文件夹",
     "toggleFailed": "无法更改锁定状态",
     "readOnlyIndicator": "已锁定。对你和智能体均为只读。",
+    "excludedIndicator": "此笔记位于已排除的文件夹中。",
     "externalEditRestored": "“{title}”已锁定，因此其外部编辑已被撤销",
     "externalEditRestoredHint": "编辑后的文本已保存在该笔记的版本历史中。"
   },

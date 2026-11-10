@@ -1650,6 +1650,7 @@
     "unlockFolder": "Klasörün kilidini aç",
     "toggleFailed": "Kilit değiştirilemedi",
     "readOnlyIndicator": "Kilitli. Sizin ve ajanlar için salt okunur.",
+    "excludedIndicator": "Bu not hariç tutulan bir klasörde.",
     "externalEditRestored": "“{title}” kilitli olduğundan dışarıdan yapılan düzenleme geri alındı",
     "externalEditRestoredHint": "Düzenlenen metin, notun sürüm geçmişinde kayıtlı."
   },
