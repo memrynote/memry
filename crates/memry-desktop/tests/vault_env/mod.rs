@@ -175,6 +175,17 @@ impl Env {
         }
     }
 
+    /// Waits until the open's `after_walk` (the write-back's reconcile) has run. The consumer
+    /// publishes `Indexed` and then runs it on its one thread, which applies a later fact only
+    /// after: a note written now and seen added, then removed, proves it ran and leaves no row.
+    pub fn after_reconcile(&mut self) {
+        const SCRATCH: &str = "reconcile-barrier.md";
+        self.write(SCRATCH, "barrier\n");
+        self.facts_until(|f| matches!(f, Applied::Added { path, .. } if path == SCRATCH));
+        fs::remove_file(self.vault.join(SCRATCH)).unwrap();
+        self.facts_until(|f| matches!(f, Applied::Removed { path, .. } if path == SCRATCH));
+    }
+
     pub fn drain(&mut self) -> Vec<Applied> {
         std::iter::from_fn(|| self.facts.try_recv().ok()).collect()
     }
