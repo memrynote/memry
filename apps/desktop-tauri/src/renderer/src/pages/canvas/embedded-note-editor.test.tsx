@@ -7,6 +7,7 @@ import { toast } from 'sonner'
 import { EmbeddedNoteEditor } from './embedded-note-editor'
 import { flushAllPendingSaves, hasPendingSaves } from '@/lib/save-registry'
 import { notesKeys } from '@/hooks/use-notes-query'
+import { contentHash } from '@/lib/content-hash'
 import type { Note } from '@memry/rpc/notes'
 import type * as VaultLocksStoreModule from '@/lib/vault-locks-store'
 import type * as NotesServiceModule from '@/services/notes-service'
@@ -149,9 +150,12 @@ function emitUpdated(id: string, content: string): void {
 
 const REPLACED = "An outside change was replaced by your typing. It's saved in version history."
 
-/** What each save sent; the mutation passes its context after the input. */
+/**
+ * What each save sent, but the id of the editor that sent it (its own test); the mutation passes
+ * its context after the input.
+ */
 function saves(): unknown[] {
-  return mocks.update.mock.calls.map(([input]) => input)
+  return mocks.update.mock.calls.map(([input]) => ({ ...input, editor: undefined }))
 }
 
 describe('EmbeddedNoteEditor', () => {
@@ -400,7 +404,11 @@ describe('EmbeddedNoteEditor', () => {
         mocks.get.mockImplementation((id: string) => Promise.resolve(makeNote({ id })))
         mocks.update
           .mockResolvedValueOnce({ success: false, code: 'note_locked', error: 'x', note: null })
-          .mockResolvedValue({ success: true, note: null, keptReplaced: true })
+          .mockResolvedValue({
+            success: true,
+            note: null,
+            keptReplacedHash: contentHash('written by an agent')
+          })
         const view = renderCard()
         await screen.findByTestId('content-area')
         vi.useFakeTimers()
@@ -427,11 +435,11 @@ describe('EmbeddedNoteEditor', () => {
     // #4110: the note tab saved a small edit while the card's save, sent before it heard of it,
     // ran. That save lands over the tab's text, and only the core knows whether it kept it.
     it.each([
-      ['kept no version', false, 0],
-      ['kept a version', true, 1]
+      ['kept no version', undefined, 0],
+      ['kept a version of it', contentHash('saved in the tab'), 1]
     ])(
       'tells of a note tab save its own save went over only when the core %s',
-      async (_, keptReplaced, toasts) => {
+      async (_, keptReplacedHash, toasts) => {
         let answer: (result: unknown) => void = () => {}
         mocks.update.mockImplementationOnce(
           () =>
@@ -453,8 +461,90 @@ describe('EmbeddedNoteEditor', () => {
         const reads = mocks.get.mock.calls.length
 
         await act(async () => {
-          answer({ success: true, note: null, savedContent: 'edited body', keptReplaced })
+          answer({ success: true, note: null, savedContent: 'edited body', keptReplacedHash })
           await Promise.resolve()
+        })
+
+        await vi.waitFor(() => expect(mocks.get.mock.calls.length).toBeGreaterThan(reads))
+        await act(async () => {
+          await new Promise((resolve) => setTimeout(resolve, 0))
+        })
+        expect(
+          vi.mocked(toast).mock.calls.filter(([message]) => message === REPLACED)
+        ).toHaveLength(toasts)
+      }
+    )
+
+    // #4137: two saves of the card ran while the tab's text came in. Only the save whose reply
+    // names that text as the one kept tells of it: the first save kept the file before the tab's,
+    // and the second may keep the first's text (sent with `keepReplaced`). The tab's text is
+    // the second's to tell of even when the second answers first, the order the first's reply
+    // would have put its own kept text last.
+    it.each([
+      ['the file before the saves, and the second none', 'original body', undefined, 0, false],
+      [
+        "the file before the saves, and the second the first save's",
+        'original body',
+        'edited body',
+        0,
+        false
+      ],
+      ['the tab text', undefined, 'saved in the tab', 1, false],
+      [
+        'the file before the saves, and the second the tab text, answering first',
+        'original body',
+        'saved in the tab',
+        1,
+        true
+      ]
+    ])(
+      'tells of a note tab save two of its saves ran over only when one kept %s',
+      async (_, firstKept, secondKept, toasts, secondAnswersFirst) => {
+        const answers: ((result: unknown) => void)[] = []
+        const pending = () =>
+          new Promise((resolve) => {
+            answers.push(resolve)
+          })
+        mocks.update.mockImplementationOnce(pending).mockImplementationOnce(pending)
+        renderCard()
+        await screen.findByTestId('content-area')
+        vi.useFakeTimers()
+        act(() => screen.getByTestId('edit').click())
+        await act(async () => {
+          await vi.advanceTimersByTimeAsync(1000)
+        })
+        act(() => screen.getByTestId('edit-again').click())
+        await act(async () => {
+          await vi.advanceTimersByTimeAsync(1000)
+        })
+        emitUpdated('n1', 'saved in the tab')
+        vi.useRealTimers()
+        // The file read again once the saves answer holds the card's second save.
+        mocks.get.mockResolvedValue(makeNote({ content: 'edited again' }))
+        const reads = mocks.get.mock.calls.length
+        const hash = (text: string | undefined) => text && { keptReplacedHash: contentHash(text) }
+
+        const answer = [
+          () =>
+            answers[0]?.({
+              success: true,
+              note: null,
+              savedContent: 'edited body',
+              ...hash(firstKept)
+            }),
+          () =>
+            answers[1]?.({
+              success: true,
+              note: null,
+              savedContent: 'edited again',
+              ...hash(secondKept)
+            })
+        ]
+        await act(async () => {
+          for (const reply of secondAnswersFirst ? answer.toReversed() : answer) {
+            reply()
+            await Promise.resolve()
+          }
         })
 
         await vi.waitFor(() => expect(mocks.get.mock.calls.length).toBeGreaterThan(reads))
@@ -488,6 +578,34 @@ describe('EmbeddedNoteEditor', () => {
         { id: 'n1', content: 'edited again', keepReplaced: true }
       ])
     })
+  })
+
+  // A save over a file another editor of the note saved keeps that file (#4137): every save of
+  // one card names the card, and another card names itself.
+  it('names its saves with an id of its own, the same for each of its saves', async () => {
+    mocks.update.mockResolvedValue({ success: true, note: null })
+    renderCard()
+    renderCard()
+    await vi.waitFor(() => expect(screen.getAllByTestId('content-area')).toHaveLength(2))
+    vi.useFakeTimers()
+    for (const name of ['edit', 'edit-again', 'edit']) {
+      act(() => screen.getAllByTestId(name)[0]?.click())
+      await act(async () => {
+        await vi.advanceTimersByTimeAsync(1000)
+      })
+    }
+    act(() => screen.getAllByTestId('edit')[1]?.click())
+    await act(async () => {
+      await vi.advanceTimersByTimeAsync(1000)
+    })
+    vi.useRealTimers()
+
+    const editors = mocks.update.mock.calls.map(([input]) => (input as { editor?: string }).editor)
+    expect(editors).toHaveLength(4)
+    expect(editors[0]).toEqual(expect.any(String))
+    expect(editors.slice(1, 3)).toEqual([editors[0], editors[0]])
+    expect(editors[3]).toEqual(expect.any(String))
+    expect(editors[3]).not.toBe(editors[0])
   })
 
   it('says the typing is lost when the save its closing card sent is refused', async () => {

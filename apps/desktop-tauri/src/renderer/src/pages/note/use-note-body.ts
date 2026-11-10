@@ -11,6 +11,7 @@ import {
   type NoteSaveResponse
 } from '@/services/notes-service'
 import { registerPendingSave, unregisterPendingSave } from '@/lib/save-registry'
+import { contentHash } from '@/lib/content-hash'
 import { createLogger } from '@/lib/logger'
 import { trackRendererError } from '@/lib/telemetry-diagnostics'
 import { useIsNoteLocked } from '@/lib/vault-locks-store'
@@ -60,8 +61,11 @@ interface SaveWindow {
   dropped: boolean
   /** A save's reply already told the user it went over an outside edit. */
   toasted: boolean
-  /** The last save to answer whose replaced file the core kept as a version (#4110). */
-  kept: { markdown: string; result: NoteSaveResponse } | null
+  /**
+   * The saves whose replaced file the core kept as a version, by the hash of its body
+   * (`keptReplacedHash`): only the one that kept a text may tell of it (#4110, #4137).
+   */
+  kept: Map<string, { markdown: string; result: NoteSaveResponse }>
 }
 
 export interface NoteBodyOptions {
@@ -112,6 +116,9 @@ export function useNoteBody(noteId: string | undefined, options: NoteBodyOptions
   const locked = useIsNoteLocked(noteId ?? null, note?.path ?? null) || excluded
   const { updateNote } = useNoteMutations()
   const outsideEdit = useReplacedOutsideEdit(noteId, note?.title, showVersionHistory)
+  // Names this editor's saves: a file another editor of the note saved is not this one's own,
+  // so the core keeps it before this one's save replaces it, however small (#4137).
+  const [editor] = useState(() => crypto.randomUUID())
   const onSavedRef = useRef(options.onSaved)
   // oxlint-disable-next-line react/refs -- latest-value ref (callbacks/state mirrored for stable handlers); not render output
   onSavedRef.current = options.onSaved
@@ -220,7 +227,7 @@ export function useNoteBody(noteId: string | undefined, options: NoteBodyOptions
   // text from before the saves too (a revert); the file read again tells where they went: a
   // file that is not the newest save's text holds an edit that landed after the saves, and a
   // file at that text means a save went over them, which the user is told once when a save's
-  // answer says the core kept what it replaced as a version (#4110).
+  // answer says the core kept that text as a version (#4110, #4137).
   const settleSaves = useCallback(
     (window: SaveWindow) => {
       const outside = window.outside.filter((text) => !window.own.has(text))
@@ -236,9 +243,11 @@ export function useNoteBody(noteId: string | undefined, options: NoteBodyOptions
           }
           // The late echo of the save before the window is no edit to tell about.
           const last = outside.findLast((text) => text !== window.base)
-          if (last === undefined || window.toasted || !window.kept) return
+          if (last === undefined || window.toasted) return
+          const kept = window.kept.get(contentHash(last))
+          if (!kept) return
           outsideEdit.held(noteId, last)
-          outsideEdit.saved(noteId, window.kept.markdown, window.kept.result)
+          outsideEdit.saved(noteId, kept.markdown, kept.result)
         })
         .catch((readError: unknown) => log.warn('the note was not read again', readError))
     },
@@ -282,7 +291,7 @@ export function useNoteBody(noteId: string | undefined, options: NoteBodyOptions
           outside: [],
           dropped: false,
           toasted: false,
-          kept: null
+          kept: new Map()
         }
       }
       const window = saveWindowRef.current
@@ -290,7 +299,7 @@ export function useNoteBody(noteId: string | undefined, options: NoteBodyOptions
       window.inFlight += 1
       const order = (window.started += 1)
       try {
-        const input = { id, content: markdown, ...(keepReplaced && { keepReplaced }) }
+        const input = { id, content: markdown, editor, ...(keepReplaced && { keepReplaced }) }
         const result = await updateNoteRef.current(input)
         // The page shows another note now: its baseline and typing are not this save's.
         if (liveNoteIdRef.current !== id) {
@@ -310,7 +319,7 @@ export function useNoteBody(noteId: string | undefined, options: NoteBodyOptions
           notSaved(id, result.error, result)
         }
         window.toasted = outsideEdit.saved(id, markdown, result) || window.toasted
-        if (result.keptReplaced) window.kept = { markdown, result }
+        if (result.keptReplacedHash) window.kept.set(result.keptReplacedHash, { markdown, result })
         answered(result)
         return result
       } finally {
@@ -322,7 +331,7 @@ export function useNoteBody(noteId: string | undefined, options: NoteBodyOptions
       }
     },
     // oxlint-disable-next-line react/memo-dependencies -- dependency list is intentional; the compiler trace misreads the reply handled in `try`/`finally` (`settleSaves` runs there)
-    [noteId, outsideEdit, settleSaves, notSaved, overUnseen]
+    [noteId, editor, outsideEdit, settleSaves, notSaved, overUnseen]
   )
 
   // A save after the note's save lifecycle ended: nothing is left to keep its typing if it is
@@ -336,7 +345,7 @@ export function useNoteBody(noteId: string | undefined, options: NoteBodyOptions
         notSaved(id, error, refusal, true)
       }
       updateNoteRef
-        .current({ id, content: markdown, ...(keepReplaced && { keepReplaced }) })
+        .current({ id, content: markdown, editor, ...(keepReplaced && { keepReplaced }) })
         .then((result) => {
           if (result.success) outsideEdit.saved(id, markdown, result)
           else refused(result.error, result)
@@ -344,7 +353,7 @@ export function useNoteBody(noteId: string | undefined, options: NoteBodyOptions
         })
         .catch((err: unknown) => refused(err))
     },
-    [notSaved, outsideEdit, overUnseen]
+    [editor, notSaved, outsideEdit, overUnseen]
   )
 
   // A note opened from the query's cache shows the cache's text until its read on mount

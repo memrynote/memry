@@ -11,11 +11,13 @@ use std::time::Duration;
 use memry_core::api::editor::{Notice, Origin};
 use memry_core::domain::vault_locks::TargetKind;
 use memry_desktop::editor::versions;
+use memry_desktop::notes::create::NewNoteFile;
 use memry_desktop::notes::error::NotesError;
 use memry_desktop::notes::update::{HeaderTagEditInput, NoteUpdateInput};
 use memry_desktop::shell::shutdown::{ShutdownCore, ShutdownEffects, ShutdownReason, StepFn};
 use memry_desktop::telemetry::crash::ShutdownFailure;
 use memry_desktop::vault::app_edit::Kept;
+use memry_desktop::vault::hash::content_hash;
 
 use crate::notes_link_rewrite::{id_at, opened};
 use crate::vault_env::Env;
@@ -27,6 +29,14 @@ fn save(id: &str, content: &str) -> NoteUpdateInput {
         id: id.to_owned(),
         content: Some(content.to_owned()),
         ..NoteUpdateInput::default()
+    }
+}
+
+/// [`save`] from the editor `editor` (a note tab, a canvas card).
+fn save_from(editor: &str, id: &str, content: &str) -> NoteUpdateInput {
+    NoteUpdateInput {
+        editor: Some(editor.to_owned()),
+        ..save(id, content)
     }
 }
 
@@ -111,13 +121,14 @@ fn a_save_over_an_outside_edit_the_editor_never_showed_keeps_it_however_small() 
     let open = e.session.current().unwrap();
     let id = id_at(&e, "Plan.md");
     let first = notes.update(&open, save(&id, "Second text\n")).unwrap();
-    assert!(
-        first.kept_replaced,
+    assert_eq!(
+        first.kept_replaced_hash,
+        Some(content_hash("First text\n")),
         "the run's first save keeps the file it found"
     );
-    // Another editor's save of the note: the run's own, under ten words, so no version.
+    // A save for no editor, over the run's own file, under ten words: no version.
     let other = notes.update(&open, save(&id, "Third text\n")).unwrap();
-    assert!(!other.kept_replaced);
+    assert_eq!(other.kept_replaced_hash, None);
     assert_eq!(files(&e, &id), [PLAN]);
 
     // The editor that held that save off writes its typing over it (#4088).
@@ -126,31 +137,93 @@ fn a_save_over_an_outside_edit_the_editor_never_showed_keeps_it_however_small() 
         ..save(&id, "Second text, typed on\n")
     };
     let over = notes.update(&open, over).unwrap();
-    assert!(
-        over.kept_replaced,
-        "the reply says the replaced text is a version"
+    assert_eq!(
+        over.kept_replaced_hash,
+        Some(content_hash("Third text\n")),
+        "the reply names the replaced text, a version"
     );
     assert_eq!(e.body(&id), "Second text, typed on");
     let third = "---\nstatus: open\n---\nThird text\n";
     assert_eq!(files(&e, &id), [third, PLAN]);
 }
 
-/// A save sent before its editor heard of another editor's save lands over it with no version
-/// (#4110): the run's own file, under ten words. Its reply says no version was kept, so the
-/// editor does not tell the user one was.
+/// Two editors of one note, a note tab and a canvas card, save in turn (#4137): a small save
+/// over another editor's small save keeps that text as a version, and its reply names that
+/// text, as the note's read gives it; an editor's small save over its own keeps none.
 #[test]
-fn a_save_over_the_runs_own_small_save_says_no_version_was_kept() {
+fn a_save_over_another_editors_small_save_keeps_it() {
     let (e, notes, _) = opened(&[("Plan.md", PLAN)]);
     let open = e.session.current().unwrap();
     let id = id_at(&e, "Plan.md");
-    notes.update(&open, save(&id, "Second text\n")).unwrap();
-    // The note tab's save of a small edit, then the card's save sent before it heard of it.
-    notes.update(&open, save(&id, "Second tab text\n")).unwrap();
-    let card = notes
-        .update(&open, save(&id, "Second card text\n"))
+    notes
+        .update(&open, save_from("card", &id, "Second text\n"))
         .unwrap();
-    assert!(!card.kept_replaced);
-    assert_eq!(files(&e, &id), [PLAN]);
+    // The note tab's save of a small edit, then the card's save sent before it heard of it.
+    let tab = notes
+        .update(&open, save_from("tab", &id, "Second tab text\n"))
+        .unwrap();
+    let card = notes
+        .update(&open, save_from("card", &id, "Second card text\n"))
+        .unwrap();
+    let tab_text = tab.saved_content.unwrap();
+    assert_eq!(card.kept_replaced_hash, Some(content_hash(&tab_text)));
+    let file = |body: &str| format!("---\nstatus: open\n---\n{body}");
+    let (tab_file, card_file) = (file("Second tab text\n"), file("Second text\n"));
+    assert_eq!(
+        files(&e, &id),
+        [tab_file.as_str(), card_file.as_str(), PLAN]
+    );
+
+    let again = notes
+        .update(&open, save_from("card", &id, "Second card text, on\n"))
+        .unwrap();
+    assert_eq!(again.kept_replaced_hash, None);
+    assert_eq!(files(&e, &id).len(), 3);
+}
+
+/// A `keepReplaced` save records its editor too: the file it wrote is not every editor's own,
+/// so another editor's next small save over it keeps a version (#4137).
+#[test]
+fn a_keep_replaced_save_records_its_editor() {
+    let (e, notes, _) = opened(&[("Plan.md", PLAN)]);
+    let open = e.session.current().unwrap();
+    let id = id_at(&e, "Plan.md");
+    notes
+        .update(&open, save_from("card", &id, "Second text\n"))
+        .unwrap();
+    let tab = NoteUpdateInput {
+        keep_replaced: true,
+        ..save_from("tab", &id, "Second tab text\n")
+    };
+    notes.update(&open, tab).unwrap();
+
+    let card = notes
+        .update(&open, save_from("card", &id, "Second card text\n"))
+        .unwrap();
+    assert_eq!(
+        card.kept_replaced_hash,
+        Some(content_hash("Second tab text\n")),
+        "the tab's text is a version, though the card's save is small"
+    );
+}
+
+/// A file the app wrote for no editor (a create) is every editor's own: its first small save
+/// keeps no version of it.
+#[test]
+fn an_editors_small_save_over_a_created_note_keeps_no_version() {
+    let (e, notes, _) = opened(&[("Plan.md", PLAN)]);
+    let open = e.session.current().unwrap();
+    let created = NewNoteFile {
+        title: "Fresh".to_owned(),
+        content: "Started\n".to_owned(),
+        ..NewNoteFile::default()
+    };
+    let id = notes.create(&open, created).unwrap().id;
+    let saved = notes
+        .update(&open, save_from("tab", &id, "Started here\n"))
+        .unwrap();
+    assert_eq!(saved.kept_replaced_hash, None);
+    assert_eq!(files(&e, &id), Vec::<String>::new());
 }
 
 #[test]
@@ -287,7 +360,7 @@ fn a_save_over_the_runs_own_file_keeps_it_when_ten_words_move() {
     let own = e.read("Plan.md");
     let longer = "Second text, two more, then one two three four five six seven eight nine ten\n";
     let saved = notes.update(&open, save(&id, longer)).unwrap();
-    assert!(saved.kept_replaced);
+    assert!(saved.kept_replaced_hash.is_some());
     assert_eq!(files(&e, &id), [own.as_str(), PLAN]);
 }
 

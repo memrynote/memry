@@ -11,6 +11,7 @@ import {
 } from '@/lib/permanent-delete-question'
 import { isNewNoteTitlePending, markNewNoteTitlePending } from '@/lib/new-note-title'
 import { toast } from 'sonner'
+import { contentHash } from '@/lib/content-hash'
 import { useEffect, useState } from 'react'
 import type React from 'react'
 import type * as ReactQueryModule from '@tanstack/react-query'
@@ -1007,6 +1008,9 @@ vi.mock('@/components/find-bar/find-bar', () => ({
   )
 }))
 
+/** The id the note page's editor names its saves with (#4137). */
+const EDITOR = expect.any(String)
+
 const note = {
   id: 'note-1',
   title: 'Test Note',
@@ -1306,7 +1310,11 @@ describe('NotePage', () => {
       await vi.advanceTimersByTimeAsync(1000)
     })
 
-    expect(mocks.updateNote).toHaveBeenCalledWith({ id: 'note-1', content: '# Changed' })
+    expect(mocks.updateNote).toHaveBeenCalledWith({
+      id: 'note-1',
+      content: '# Changed',
+      editor: EDITOR
+    })
     expect(mocks.invalidateQueries).toHaveBeenCalledWith({ queryKey: ['graph', 'note-1'] })
 
     fireEvent.click(screen.getByRole('button', { name: 'Sync inline tags' }))
@@ -1362,7 +1370,11 @@ describe('NotePage', () => {
       await flush?.()
     })
 
-    expect(mocks.updateNote).toHaveBeenCalledWith({ id: 'note-1', content: '# Changed' })
+    expect(mocks.updateNote).toHaveBeenCalledWith({
+      id: 'note-1',
+      content: '# Changed',
+      editor: EDITOR
+    })
     first.unmount()
     expect(mocks.unregisterPendingSave).toHaveBeenCalledWith('note-page:note-1', flush)
 
@@ -1373,7 +1385,11 @@ describe('NotePage', () => {
     fireEvent.click(await screen.findByRole('button', { name: 'Change markdown' }))
     second.unmount()
 
-    expect(mocks.updateNote).toHaveBeenCalledWith({ id: 'note-1', content: '# Changed' })
+    expect(mocks.updateNote).toHaveBeenCalledWith({
+      id: 'note-1',
+      content: '# Changed',
+      editor: EDITOR
+    })
     expect(mocks.unregisterPendingSave).toHaveBeenCalledWith(
       'note-page:note-1',
       mocks.registerPendingSave.mock.calls[0]?.[1]
@@ -1395,7 +1411,8 @@ describe('NotePage', () => {
 
     expect(mocks.updateNote).toHaveBeenCalledWith({
       id: 'note-1',
-      content: '# Typed while closing'
+      content: '# Typed while closing',
+      editor: EDITOR
     })
   })
 
@@ -1411,7 +1428,8 @@ describe('NotePage', () => {
 
     expect(mocks.updateNote).toHaveBeenCalledWith({
       id: 'note-1',
-      content: '# Typed in note one'
+      content: '# Typed in note one',
+      editor: EDITOR
     })
 
     // Quit flushes whatever note two has pending; note one's text is not it.
@@ -1788,7 +1806,10 @@ describe('NotePage', () => {
 
     it('keeps typing over it and says so once the typing saves', async () => {
       vi.useFakeTimers()
-      mocks.updateNote.mockResolvedValue({ success: true, keptReplaced: true })
+      mocks.updateNote.mockResolvedValue({
+        success: true,
+        keptReplacedHash: contentHash('Edited while closed')
+      })
       mocks.noteState.isFetchedAfterMount = false
       const page = renderWithProviders(<NotePage noteId="note-1" />)
       await act(async () => {
@@ -1805,7 +1826,8 @@ describe('NotePage', () => {
       expect(mocks.updateNote).toHaveBeenCalledWith({
         id: 'note-1',
         content: 'Typed at once',
-        keepReplaced: true
+        keepReplaced: true,
+        editor: EDITOR
       })
       expect(toast).toHaveBeenCalledTimes(1)
     })
@@ -1846,7 +1868,11 @@ describe('NotePage', () => {
       await act(async () => {
         await vi.advanceTimersByTimeAsync(1000)
       })
-      expect(mocks.updateNote).toHaveBeenCalledWith({ id: 'note-1', content: 'Typed' })
+      expect(mocks.updateNote).toHaveBeenCalledWith({
+        id: 'note-1',
+        content: 'Typed',
+        editor: EDITOR
+      })
 
       freshRead(page, 'Edited while closed')
 
@@ -1898,7 +1924,11 @@ describe('NotePage', () => {
 
       event('Edited outside')
       await act(async () =>
-        finishSave({ success: true, savedContent: 'Typed', keptReplaced: true })
+        finishSave({
+          success: true,
+          savedContent: 'Typed',
+          keptReplacedHash: contentHash('Edited outside')
+        })
       )
 
       await waitFor(() => expect(toast).toHaveBeenCalledTimes(1))
@@ -1912,7 +1942,11 @@ describe('NotePage', () => {
       event('Edited outside')
       event('Typed')
       await act(async () =>
-        finishSave({ success: true, savedContent: 'Typed', keptReplaced: true })
+        finishSave({
+          success: true,
+          savedContent: 'Typed',
+          keptReplacedHash: contentHash('Edited outside')
+        })
       )
 
       await waitFor(() => expect(toast).toHaveBeenCalledTimes(1))
@@ -1929,7 +1963,11 @@ describe('NotePage', () => {
 
       event('Edited outside')
       await act(async () =>
-        finishSave({ success: true, savedContent: 'Typed', keptReplaced: true })
+        finishSave({
+          success: true,
+          savedContent: 'Typed',
+          keptReplacedHash: contentHash('Edited outside')
+        })
       )
       await waitFor(() => expect(mocks.notesGet).toHaveBeenCalled())
       await act(async () => undefined)
@@ -1947,7 +1985,7 @@ describe('NotePage', () => {
           success: true,
           savedContent: 'Typed',
           keptOutsideEdit: true,
-          keptReplaced: true
+          keptReplacedHash: contentHash('Edited outside')
         })
       )
       await waitFor(() => expect(mocks.notesGet).toHaveBeenCalled())
@@ -2002,13 +2040,17 @@ describe('NotePage', () => {
       expect(screen.getByTestId('editor-external-revision')).toHaveTextContent('0')
 
       // The typing is still unsaved: the next save writes it, over the edit it held.
-      mocks.updateNote.mockResolvedValue({ success: true, keptReplaced: true })
+      mocks.updateNote.mockResolvedValue({
+        success: true,
+        keptReplacedHash: contentHash('Edited outside')
+      })
       const flush = mocks.registerPendingSave.mock.calls.at(-1)?.[1] as () => Promise<void>
       await act(async () => flush())
       expect(mocks.updateNote).toHaveBeenLastCalledWith({
         id: 'note-1',
         content: 'Typed',
-        keepReplaced: true
+        keepReplaced: true,
+        editor: EDITOR
       })
       expect(toast).toHaveBeenCalledTimes(1)
     })
@@ -2059,7 +2101,11 @@ describe('NotePage', () => {
 
       event('Edited outside')
       await act(async () => {
-        finishFlush({ success: true, savedContent: 'Typed more', keptReplaced: true })
+        finishFlush({
+          success: true,
+          savedContent: 'Typed more',
+          keptReplacedHash: contentHash('Edited outside')
+        })
         await flushed
       })
       await act(async () => finishSave({ success: true, savedContent: 'Typed' }))
@@ -2117,7 +2163,12 @@ describe('NotePage', () => {
         // Typing back to the older text is a change: the file holds the newer one.
         act(() => mocks.onMarkdownChange?.('Typed'))
         await waitFor(
-          () => expect(mocks.updateNote).toHaveBeenCalledWith({ id: 'note-1', content: 'Typed' }),
+          () =>
+            expect(mocks.updateNote).toHaveBeenCalledWith({
+              id: 'note-1',
+              content: 'Typed',
+              editor: EDITOR
+            }),
           { timeout: 3000 }
         )
       }
@@ -2144,7 +2195,12 @@ describe('NotePage', () => {
       // The other note's reply left this note's baseline alone.
       act(() => mocks.onMarkdownChange?.('Typed'))
       await waitFor(
-        () => expect(mocks.updateNote).toHaveBeenCalledWith({ id: 'note-2', content: 'Typed' }),
+        () =>
+          expect(mocks.updateNote).toHaveBeenCalledWith({
+            id: 'note-2',
+            content: 'Typed',
+            editor: EDITOR
+          }),
         { timeout: 3000 }
       )
     })
@@ -2169,7 +2225,12 @@ describe('NotePage', () => {
       )
       act(() => mocks.onMarkdownChange?.('Two typed'))
       await waitFor(
-        () => expect(mocks.updateNote).toHaveBeenCalledWith({ id: 'note-2', content: 'Two typed' }),
+        () =>
+          expect(mocks.updateNote).toHaveBeenCalledWith({
+            id: 'note-2',
+            content: 'Two typed',
+            editor: EDITOR
+          }),
         { timeout: 3000 }
       )
 
@@ -2268,7 +2329,11 @@ describe('NotePage', () => {
       mocks.updatedHandler?.({ id: 'note-1', source: 'external', changes: { content: 'Edited' } })
     })
     await act(async () => {
-      finishFlush({ success: true, savedContent: 'Flushed', keptReplaced: true })
+      finishFlush({
+        success: true,
+        savedContent: 'Flushed',
+        keptReplacedHash: contentHash('Edited')
+      })
       await flushed
     })
 
@@ -2299,7 +2364,11 @@ describe('NotePage', () => {
     await act(async () => flush())
 
     expect(mocks.updateNote).toHaveBeenCalledTimes(2)
-    expect(mocks.updateNote).toHaveBeenLastCalledWith({ id: 'note-1', content: 'Flushed' })
+    expect(mocks.updateNote).toHaveBeenLastCalledWith({
+      id: 'note-1',
+      content: 'Flushed',
+      editor: EDITOR
+    })
   })
 
   it('leaves typing not saved yet in the editor when an outside edit arrives, an emptied body too', async () => {
@@ -2318,7 +2387,8 @@ describe('NotePage', () => {
         expect(mocks.updateNote).toHaveBeenCalledWith({
           id: 'note-1',
           content: 'Typed, not saved',
-          keepReplaced: true
+          keepReplaced: true,
+          editor: EDITOR
         }),
       { timeout: 3000 }
     )
@@ -2327,7 +2397,10 @@ describe('NotePage', () => {
   describe('typing saved over an outside edit', () => {
     // A save over a body that changed: the core keeps the file it replaced.
     beforeEach(() => {
-      mocks.updateNote.mockResolvedValue({ success: true, keptReplaced: true })
+      mocks.updateNote.mockResolvedValue({
+        success: true,
+        keptReplacedHash: contentHash('Written by an agent')
+      })
     })
     const outsideEdit = (content: string) =>
       act(() => {
@@ -2354,7 +2427,8 @@ describe('NotePage', () => {
       expect(mocks.updateNote).toHaveBeenCalledWith({
         id: 'note-1',
         content: 'Typed, not saved',
-        keepReplaced: true
+        keepReplaced: true,
+        editor: EDITOR
       })
       expect(toast).toHaveBeenCalledTimes(1)
       const [message, options] = vi.mocked(toast).mock.calls[0] as [
@@ -2409,11 +2483,13 @@ describe('NotePage', () => {
       expect(mocks.updateNote).toHaveBeenCalledWith({
         id: 'note-1',
         content: 'Typed, not saved',
-        keepReplaced: true
+        keepReplaced: true,
+        editor: EDITOR
       })
       expect(mocks.updateNote).toHaveBeenLastCalledWith({
         id: 'note-1',
-        content: 'Typed on coming back'
+        content: 'Typed on coming back',
+        editor: EDITOR
       })
       expect(toast).toHaveBeenCalledTimes(1)
     })
@@ -2437,7 +2513,8 @@ describe('NotePage', () => {
 
       expect(mocks.updateNote).toHaveBeenLastCalledWith({
         id: 'note-1',
-        content: 'Typed on coming back'
+        content: 'Typed on coming back',
+        editor: EDITOR
       })
       expect(toast).not.toHaveBeenCalled()
     })
@@ -2508,7 +2585,7 @@ describe('NotePage', () => {
       mocks.updateNote.mockResolvedValue({
         success: true,
         keptOutsideEdit: true,
-        keptReplaced: true
+        keptReplacedHash: contentHash('A file the editor never had')
       })
       renderWithProviders(<NotePage noteId="note-1" />)
       await act(async () => {
@@ -2536,7 +2613,11 @@ describe('NotePage', () => {
       act(() => mocks.onMarkdownChange?.('Typed after it'))
       await saveLands()
 
-      expect(mocks.updateNote).toHaveBeenCalledWith({ id: 'note-1', content: 'Typed after it' })
+      expect(mocks.updateNote).toHaveBeenCalledWith({
+        id: 'note-1',
+        content: 'Typed after it',
+        editor: EDITOR
+      })
       expect(toast).not.toHaveBeenCalled()
     })
   })
@@ -2570,7 +2651,8 @@ describe('NotePage', () => {
         expect(mocks.updateNote).toHaveBeenLastCalledWith({
           id: 'note-1',
           content: 'Newer typing',
-          keepReplaced: true
+          keepReplaced: true,
+          editor: EDITOR
         }),
       { timeout: 3000 }
     )
@@ -2584,7 +2666,11 @@ describe('NotePage', () => {
     act(() => mocks.onMarkdownChange?.('Typed once'))
 
     await waitFor(() => expect(mocks.updateNote).toHaveBeenCalledTimes(2), { timeout: 4000 })
-    expect(mocks.updateNote).toHaveBeenLastCalledWith({ id: 'note-1', content: 'Typed once' })
+    expect(mocks.updateNote).toHaveBeenLastCalledWith({
+      id: 'note-1',
+      content: 'Typed once',
+      editor: EDITOR
+    })
   })
 
   it('a registry flush saves the typing once and stops its timer', async () => {
@@ -2602,7 +2688,11 @@ describe('NotePage', () => {
     })
 
     expect(mocks.updateNote).toHaveBeenCalledTimes(1)
-    expect(mocks.updateNote).toHaveBeenCalledWith({ id: 'note-1', content: 'Flushed typing' })
+    expect(mocks.updateNote).toHaveBeenCalledWith({
+      id: 'note-1',
+      content: 'Flushed typing',
+      editor: EDITOR
+    })
   })
 
   // The other direction: a local edit round-tripping through the save path must
@@ -2659,7 +2749,11 @@ describe('NotePage', () => {
       await act(async () => {
         await saveLands[path]?.()
       })
-      expect(mocks.updateNote).toHaveBeenCalledWith({ id: 'note-1', content: 'Typed body' })
+      expect(mocks.updateNote).toHaveBeenCalledWith({
+        id: 'note-1',
+        content: 'Typed body',
+        editor: EDITOR
+      })
       act(() => {
         mocks.updatedHandler?.({
           id: 'note-1',

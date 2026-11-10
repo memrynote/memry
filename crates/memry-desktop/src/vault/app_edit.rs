@@ -27,7 +27,8 @@
 //!   version of the whole file first, as a save keeps one.
 //! - [`Precondition::Save`]: the user's save (`notes:update`, Electron `writeNote`), which
 //!   replaces whatever is there. A save that moves the body first keeps a version of the whole
-//!   file unless it is the run's own ([`OwnFiles`]) and its row names it; the feed keeps the
+//!   file unless it is the run's own to the saving editor ([`OwnFiles::is_own_to`]: another
+//!   editor's small save is text this one never showed, #4137) and its row names it; the feed keeps the
 //!   document's body when it is not the body read (a merge from sync the write-back has not
 //!   written). A save that leaves the body as read (a header tag edit) feeds nothing and keeps
 //!   no version, so a document ahead of its file keeps its text; the file then counts as the
@@ -247,6 +248,10 @@ impl AppEdit {
         let mut outside = false;
         // How far the document had come when `Held` compared it; the feed refuses one past it.
         let mut compared_at = None;
+        let editor = match precondition {
+            Precondition::Save(_, editor) | Precondition::SaveOver(_, editor) => editor,
+            _ => None,
+        };
         let own = match precondition {
             Precondition::Held | Precondition::HeldAt(_) | Precondition::Replace => {
                 if row.content_hash.is_none() {
@@ -266,7 +271,9 @@ impl AppEdit {
                 }
                 None
             }
-            Precondition::Save(own) | Precondition::SaveOver(own) | Precondition::Restore(own) => {
+            Precondition::Save(own, _)
+            | Precondition::SaveOver(own, _)
+            | Precondition::Restore(own) => {
                 // A row with no hash names no file the document took, so none was replaced.
                 outside =
                     row.content_hash.is_some() && !row_names_file && !own.is(note_id, &file.hash);
@@ -309,11 +316,11 @@ impl AppEdit {
         let body_moved = own.is_none() || body_changed || restore;
         let keeps = match precondition {
             Precondition::Held | Precondition::HeldAt(_) => false,
-            Precondition::Replace | Precondition::SaveOver(_) | Precondition::Restore(_) => {
+            Precondition::Replace | Precondition::SaveOver(..) | Precondition::Restore(_) => {
                 body_changed
             }
-            Precondition::Save(own) => {
-                let own_file = row_names_file && own.is(note_id, &file.hash);
+            Precondition::Save(own, editor) => {
+                let own_file = row_names_file && own.is_own_to(note_id, &file.hash, editor);
                 body_changed && (!own_file || note_snapshots::is_significant(read_body, next_body))
             }
         };
@@ -329,6 +336,9 @@ impl AppEdit {
             }
             .map_err(AppEditError::from)?;
         }
+        // The body as the note's read and its events give it (a byte order mark with no
+        // frontmatter stays in it): the text an editor compares with what it lost.
+        let kept = keeps.then(|| content_hash(split_frontmatter_block(&file.raw).body));
         let takes = match body_moved {
             true => {
                 let read = AppRead {
@@ -369,7 +379,7 @@ impl AppEdit {
         record_large_file(lane.files(), note_id, large_file_class(&text).is_some());
         if let Some(own) = own {
             match body_moved {
-                true => own.wrote(note_id, &hash, source),
+                true => own.wrote(note_id, &hash, source, editor),
                 false => own.carried(note_id, &file.hash, &hash),
             }
         }
@@ -395,7 +405,7 @@ impl AppEdit {
                 hash,
                 held: false,
                 kept_outside: outside && keeps,
-                kept: keeps,
+                kept,
                 text,
             });
         }
@@ -409,7 +419,7 @@ impl AppEdit {
             hash,
             held: true,
             kept_outside: outside && keeps,
-            kept: keeps,
+            kept,
             text,
         })
     }

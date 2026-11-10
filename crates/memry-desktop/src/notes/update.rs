@@ -83,6 +83,12 @@ pub struct NoteUpdateInput {
     #[serde(default)]
     #[specta(optional)]
     pub keep_replaced: bool,
+    /// The editor that saves, an id it keeps while it lives: a file another editor saved is
+    /// not this one's own, so a save over it keeps it as a version (#4137). Absent: a save for
+    /// no editor.
+    #[serde(default)]
+    #[specta(optional)]
+    pub editor: Option<String>,
 }
 
 /// The frontmatter keys an update may not name, each with the edit that owns it. `writing` is
@@ -177,9 +183,10 @@ pub struct Updated {
     /// The save's body went over an outside edit the watcher had not fed yet, kept as a version
     /// first. The editor never had that edit's event, so only this tells it.
     pub kept_outside_edit: bool,
-    /// The file the save replaced is a version ([`Edited::Wrote`]'s `kept`). The one answer to
-    /// whether the editor may tell the user a text it replaced is in version history (#4110).
-    pub kept_replaced: bool,
+    /// The content hash of the body of the file the save replaced, when that file is a version
+    /// ([`Edited::Wrote`]'s `kept`). The one answer to whether the editor may tell the user a
+    /// text it replaced is in version history: only when it is that text (#4110, #4137).
+    pub kept_replaced_hash: Option<String>,
     /// The body this save left in the file, as the note's event reads it. `note` is read again
     /// after the save's turn ends, so it can hold a later edit (a tag's template, an outside
     /// edit); the editor compares events with this instead (#3967). `None` when no save ran.
@@ -191,7 +198,7 @@ struct Saved {
     tags_changed: bool,
     added: Vec<String>,
     kept_outside: bool,
-    kept: bool,
+    kept: Option<String>,
     body: String,
 }
 
@@ -203,6 +210,7 @@ struct Edit {
     emoji: Option<Option<String>>,
     frontmatter: Option<Map<String, Value>>,
     keep_replaced: bool,
+    editor: Option<String>,
 }
 
 impl NotesService {
@@ -229,6 +237,7 @@ impl NotesService {
             emoji: input.emoji,
             frontmatter: input.frontmatter,
             keep_replaced: input.keep_replaced,
+            editor: input.editor,
         };
         let managed = edit
             .frontmatter
@@ -251,7 +260,7 @@ impl NotesService {
             tags_changed,
             added,
             kept_outside: kept_outside_edit,
-            kept: kept_replaced,
+            kept: kept_replaced_hash,
             body,
         } = saved;
         // `addedInOrder`: the added tags in the order the caller asked for them.
@@ -275,7 +284,7 @@ impl NotesService {
             tags_changed,
             tag_template,
             kept_outside_edit,
-            kept_replaced,
+            kept_replaced_hash,
         })
     }
 
@@ -299,8 +308,8 @@ impl NotesService {
         let edited = app_edit.run_then(
             turn,
             match edit.keep_replaced {
-                true => Precondition::SaveOver(&self.own_files),
-                false => Precondition::Save(&self.own_files),
+                true => Precondition::SaveOver(&self.own_files, edit.editor.as_deref()),
+                false => Precondition::Save(&self.own_files, edit.editor.as_deref()),
             },
             ChangeSource::Save,
             |text| {
@@ -348,7 +357,7 @@ impl NotesService {
                 text,
                 ..
             } => (kept_outside, kept, text),
-            Edited::Unchanged { text } => (false, false, text),
+            Edited::Unchanged { text } => (false, None, text),
             Edited::Kept(kept) => {
                 tracing::info!(scope = SCOPE, note_id = id, ?kept, "a save was refused");
                 return Err(NotesError::EditKept(kept));

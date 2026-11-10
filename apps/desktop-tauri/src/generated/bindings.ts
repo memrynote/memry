@@ -1662,6 +1662,12 @@ export type NoteUpdateInput = {
 	 *  is kept as a version, the run's own and under ten words too (#4088).
 	 */
 	keepReplaced?: boolean,
+	/**
+	 *  The editor that saves, an id it keeps while it lives: a file another editor saved is
+	 *  not this one's own, so a save over it keeps it as a version (#4137). Absent: a save for
+	 *  no editor.
+	 */
+	editor?: string | null,
 };
 
 /**
@@ -1685,10 +1691,11 @@ export type NoteUpdatedView = {
 	/**  The save went over an outside edit the editor never had an event for, kept as a version. */
 	keptOutsideEdit: boolean,
 	/**
-	 *  The file the save replaced is a version: the editor tells the user a text it replaced is
-	 *  in version history only then (#4110).
+	 *  The content hash of the body of the file the save replaced, when that file is a version:
+	 *  the editor tells the user a text it replaced is in version history only when it is that
+	 *  text (#4110, #4137).
 	 */
-	keptReplaced: boolean,
+	keptReplacedHash?: string | null,
 	/**  The body the save left in the file; `note` is read after it and can hold a later edit. */
 	savedContent?: string | null,
 };

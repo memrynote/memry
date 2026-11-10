@@ -662,24 +662,25 @@ describe('notes-service', () => {
     expect(result).toMatchObject({ success: true, keptOutsideEdit: true })
   })
 
-  it('says when the core kept the file the save replaced as a version', async () => {
+  it('names the body of the file the save replaced, which the core kept as a version', async () => {
     const view = { id: 'note-1', path: 'Plan.md', created: CREATED, modified: MODIFIED }
     commands.notesUpdate.mockResolvedValue({
       note: view,
       keptOutsideEdit: false,
-      keptReplaced: true
+      keptReplacedHash: '0a1b2c3d'
     })
     const result = await notesService.update({ id: 'note-1', content: 'Typed' })
-    expect(result).toMatchObject({ success: true, keptReplaced: true })
+    expect(result).toMatchObject({ success: true, keptReplacedHash: '0a1b2c3d' })
   })
 
-  // A save over an outside edit the editor never showed asks the core to keep it as a version.
-  it('asks the core to keep the body a save replaces', async () => {
+  // A save over an outside edit the editor never showed asks the core to keep it as a version,
+  // and every save says which editor sent it (#4137).
+  it('asks the core to keep the body a save replaces, and names the editor', async () => {
     const view = { id: 'note-1', path: 'Plan.md', created: CREATED, modified: MODIFIED }
     commands.notesUpdate.mockResolvedValue({ note: view })
-    await notesService.update({ id: 'note-1', content: 'Typed', keepReplaced: true })
+    await notesService.update({ id: 'note-1', content: 'Typed', keepReplaced: true, editor: 'e1' })
     expect(commands.notesUpdate).toHaveBeenCalledWith(
-      expect.objectContaining({ id: 'note-1', content: 'Typed', keepReplaced: true })
+      expect.objectContaining({ id: 'note-1', content: 'Typed', keepReplaced: true, editor: 'e1' })
     )
   })
 
