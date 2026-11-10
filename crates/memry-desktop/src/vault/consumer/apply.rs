@@ -294,6 +294,10 @@ impl Applier {
                     if let Some(step) = self.restored_unreadable(note_id, path) {
                         return step;
                     }
+                    // A kept note's file is back, read or not: it is no longer a removal.
+                    if row.content_hash.is_none() {
+                        self.identity.file_returned(&self.ctx(), note_id);
+                    }
                     report_unread(scan, path, failure);
                     // Too large to read whole (past the read cap) is large by its size.
                     if large_by_size(size).is_some() {
