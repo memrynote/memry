@@ -75,8 +75,12 @@ final class JournalUITests: XCTestCase {
         block.coordinate(withNormalizedOffset: CGVector(dx: 0.99, dy: 0.5)).tap()
         assertBackspaceJoinsBlocks(in: app, line: line)
 
+        // On a day other than today the bar's Today button pushes the More
+        // menu into the toolbar's overflow.
         let more = app.buttons["journal.more"].firstMatch
-        XCTAssertTrue(more.waitForExistence(timeout: 10))
+        if !more.waitForExistence(timeout: 5) {
+            app.navigationBars.buttons.element(boundBy: app.navigationBars.buttons.count - 1).tap()
+        }
         more.tap()
         app.buttons["journal.more.delete"].firstMatch.tap()
         app.buttons["Delete entry"].firstMatch.tap()
@@ -168,6 +172,24 @@ final class JournalUITests: XCTestCase {
         }
         XCTAssertTrue(journalTab.waitForExistence(timeout: 5), "the vault did not open")
         journalTab.tap()
+        // A saved stack without a day (Year or Month) restores to it rather
+        // than today: back to the Year root, then down to the pinned day.
+        if !header.waitForExistence(timeout: 5) {
+            let up = app.navigationBars.buttons["BackButton"]
+            for _ in 0 ..< 3 where up.exists && up.isHittable {
+                up.tap()
+            }
+            // The restored Year can be another year: page to the pinned one.
+            let title = app.staticTexts["journal.calendar.title"].firstMatch
+            for _ in 0 ..< 100 where title.label != "2099" {
+                app.buttons["journal.year.next"].firstMatch.tap()
+            }
+            let month = Int(today.split(separator: "-")[1]) ?? 7
+            app.buttons["journal.year.month.\(month)"].firstMatch.tap()
+            let day = app.buttons["journal.month.day.\(today)"].firstMatch
+            scroll(to: day)
+            day.tap()
+        }
         XCTAssertTrue(header.waitForExistence(timeout: 20), "the Journal tab did not show a day")
     }
 
