@@ -250,7 +250,8 @@
     "failedPlayAudio": "Impossibile riprodurre l'audio",
     "failedLoadAudio": "Impossibile caricare l'audio",
     "video": "Video",
-    "unsupportedVideo": "Il tuo browser non supporta il tag video."
+    "unsupportedVideo": "Il tuo browser non supporta il tag video.",
+    "fileOnOtherDevice": "Il file si trova sul dispositivo che lo ha acquisito."
   },
   "reminder": {
     "dataUnavailable": "Dati del promemoria non disponibili.",

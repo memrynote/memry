@@ -250,7 +250,8 @@
     "failedPlayAudio": "无法播放音频",
     "failedLoadAudio": "无法加载音频",
     "video": "视频",
-    "unsupportedVideo": "浏览器不支持视频标签。"
+    "unsupportedVideo": "浏览器不支持视频标签。",
+    "fileOnOtherDevice": "该文件位于捕获它的设备上。"
   },
   "reminder": {
     "dataUnavailable": "提醒数据不可用。",
