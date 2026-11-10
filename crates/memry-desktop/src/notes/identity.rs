@@ -77,7 +77,6 @@ use memry_core::markdown::convert::api::Converter;
 use memry_core::markdown::frontmatter::split_frontmatter_block;
 use memry_core::seams::secure_store::SecureStore;
 
-use crate::vault::config::read_vault_config_strict;
 use crate::vault::consumer::converter_of;
 use crate::vault::consumer::identity::{
     Adoption, Candidate, Crossed, IdentityCtx, IdentityError, NewFile, NoteIdentity, Removal,
@@ -87,31 +86,28 @@ use crate::vault::embeds::Resolved;
 use crate::vault::file_types::FileType;
 use crate::vault::journal_format::JournalDays;
 use crate::vault::note_file::NoteFile;
+use crate::vault::notices::VaultNotices;
 
 mod file;
 mod moving;
 mod new_files;
+mod notices;
 mod properties;
 mod tags;
 
 use file::created_ms;
 pub(super) use file::{electron_db_beside, is_large_file, place};
+use notices::Notice;
 
 use super::owed_moves::{self, held, keeps_kind};
 
 const SCOPE: &str = "note_identity";
 
-/// What is told once per vault and process, not once per file.
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
-enum Notice {
-    ElectronNotImported,
-    ConfigUnreadable,
-    Undecided,
-}
-
 pub struct NotesIdentity {
     store: Arc<dyn SecureStore>,
     told: Mutex<HashSet<(Notice, PathBuf)>>,
+    /// Where the vault states the user can act on are shown.
+    notices: Arc<VaultNotices>,
     /// The vaults whose owed moves were settled since they opened, and none owed since.
     settled: Mutex<HashSet<PathBuf>>,
     /// The journal days of the last config read, kept while the config says the same.
@@ -119,10 +115,17 @@ pub struct NotesIdentity {
 }
 
 impl NotesIdentity {
+    /// With a board of its own that no session opens, so it shows nothing.
     pub fn new(store: Arc<dyn SecureStore>) -> Arc<Self> {
+        Self::noticing(store, VaultNotices::new())
+    }
+
+    /// Raises the vault states the user can act on on `notices`.
+    pub fn noticing(store: Arc<dyn SecureStore>, notices: Arc<VaultNotices>) -> Arc<Self> {
         Arc::new(Self {
             store,
             told: Mutex::default(),
+            notices,
             settled: Mutex::default(),
             days: Mutex::default(),
         })
@@ -132,57 +135,6 @@ impl NotesIdentity {
         ctx.vault
             .notes_writer(self.store.clone())
             .map_err(|error| IdentityError::Other(error.to_string()))
-    }
-
-    fn tell_once(&self, notice: Notice, root: &Path) {
-        let first = self
-            .told
-            .lock()
-            .unwrap_or_else(PoisonError::into_inner)
-            .insert((notice, root.to_path_buf()));
-        if !first {
-            return;
-        }
-        match notice {
-            // TODO(#3531 Step 14): tell the user, in one notice with this step's unreadable
-            // config, undecided files and kept removals (`on_removed`): until the import runs,
-            // this vault names no file.
-            Notice::ElectronNotImported => tracing::warn!(
-                scope = SCOPE,
-                "this vault holds the database of the previous app version, whose notes this \
-                 app did not import; its files are not made notes here, so none syncs twice"
-            ),
-            Notice::ConfigUnreadable => tracing::warn!(
-                scope = SCOPE,
-                "the vault config cannot be read, so the journal days are unknown; no file is \
-                 made a note or a day, and no move reaches its record, until it can be"
-            ),
-            Notice::Undecided => tracing::info!(
-                scope = SCOPE,
-                "a file has the name of a note or a day whose text is not the file's, or not \
-                 here yet; it is not named, and the next open asks again"
-            ),
-        }
-    }
-
-    /// Where the vault's journal days are; `None` when the vault config is there but unreadable.
-    /// Read at every ask, so a config changed while the vault is open applies to the next file
-    /// event; compiled again only when it changed.
-    fn journal(&self, root: &Path) -> Option<JournalDays> {
-        match read_vault_config_strict(root) {
-            Ok(config) => {
-                let (folder, format) = (&config.journal_folder, &config.journal_date_format);
-                let mut days = self.days.lock().unwrap_or_else(PoisonError::into_inner);
-                if !days.as_ref().is_some_and(|days| days.is_of(folder, format)) {
-                    *days = Some(JournalDays::new(folder, format));
-                }
-                days.clone()
-            }
-            Err(_) => {
-                self.tell_once(Notice::ConfigUnreadable, root);
-                None
-            }
-        }
     }
 
     /// What a file no row names is, from the core's answer.
@@ -458,8 +410,8 @@ impl NoteIdentity for NotesIdentity {
         }
         Ok(match writer.file_removed(note_id, path)? {
             Removed::Deleted => Removal::Deleted,
-            // A file that is truly gone leaves a note the user deleted outside the app: told in
-            // the Step 14 notice (TODO at `Notice::ElectronNotImported`).
+            // A file that is truly gone leaves a note the user deleted outside the app.
+            // TODO(#3531 Step 14l-2): a notice, with the undecided files (`Notice::Undecided`).
             Removed::Undecided => {
                 tracing::warn!(
                     scope = SCOPE,

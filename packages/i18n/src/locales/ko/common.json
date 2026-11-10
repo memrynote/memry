@@ -1659,5 +1659,14 @@
       "agentModel": "기본",
       "date": "10월 13일"
     }
+  },
+  "vaultNotice": {
+    "configUnreadable": "Memry가 이 볼트의 설정을 읽을 수 없습니다",
+    "configUnreadableHint": ".memry/config.json이 수정될 때까지 Memry는 파일을 노트로 만들거나 이동을 추적할 수 없습니다. 파일을 수정한 뒤 Memry를 다시 시작하세요. 노트는 안전합니다.",
+    "watchLimit": "다른 앱에서 한 변경 사항이 늦게 표시됩니다",
+    "watchLimitHint": "Linux가 이 볼트에 허용하는 파일 감시 수가 너무 적어서, Memry는 다시 검사할 때만 외부 변경 사항을 볼 수 있습니다. 이 명령을 실행한 뒤 Memry를 다시 시작하세요:",
+    "copyCommand": "명령 복사",
+    "commandCopied": "명령을 복사했습니다. 터미널에 붙여 넣으세요.",
+    "copyFailed": "명령을 복사하지 못했습니다. 알림을 보고 직접 입력하세요."
   }
 }

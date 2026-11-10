@@ -1,6 +1,12 @@
 import fs from 'node:fs/promises'
 import path from 'node:path'
-import { ATTACHMENTS_DIR, CANVAS_DIR, normalizePath, type VaultConfig } from './paths.ts'
+import {
+  ATTACHMENTS_DIR,
+  CANVAS_DIR,
+  knownExcludePatterns,
+  normalizePath,
+  type VaultConfig
+} from './paths.ts'
 
 export interface FolderRecord {
   path: string
@@ -21,7 +27,7 @@ export interface FoldersService {
  */
 function createTreeFolderFilter(config: VaultConfig): (folderPath: string) => boolean {
   const hiddenRoots = new Set(
-    [ATTACHMENTS_DIR, CANVAS_DIR, ...config.excludePatterns]
+    [ATTACHMENTS_DIR, CANVAS_DIR, ...knownExcludePatterns(config)]
       .filter(Boolean)
       .map((p) => p.replace(/\/+$/, '').split('/')[0])
   )
