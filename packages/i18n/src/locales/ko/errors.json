@@ -137,7 +137,6 @@
   },
   "ai": {
     "inlineDisabled": "AI 인라인 편집이 비활성화되어 있습니다.",
-    "listOllamaModelsFailed": "Ollama 모델 목록을 가져오지 못했습니다.",
     "writingAssistInvalid": "AI 모델에 해당 요청을 보내지 못했습니다.",
     "apiKeyMissing": "글쓰기 도구를 사용하려면 설정 → AI에서 {provider} API 키를 추가하세요.",
     "apiKeyInvalid": "{provider} API 키가 거부되었습니다. 설정 → AI에서 확인하세요.",

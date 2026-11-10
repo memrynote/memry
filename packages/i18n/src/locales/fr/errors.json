@@ -137,7 +137,6 @@
   },
   "ai": {
     "inlineDisabled": "La modification par l'IA dans l'éditeur est désactivée",
-    "listOllamaModelsFailed": "Impossible de récupérer la liste des modèles Ollama",
     "writingAssistInvalid": "Cette requête n'a pas pu être envoyée au modèle d'IA.",
     "apiKeyMissing": "Ajoutez votre clé d'API {provider} dans Paramètres → IA pour utiliser les outils d'écriture.",
     "apiKeyInvalid": "Votre clé d'API {provider} a été refusée. Vérifiez-la dans Paramètres → IA.",

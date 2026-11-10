@@ -35,6 +35,9 @@ vi.mock('../lib/logger', () => ({
   createLogger: () => ({ info: mocks.loggerInfo })
 }))
 
+import { generateText, Output } from 'ai'
+import { z } from 'zod'
+
 import { createLanguageModel } from './ai-llm-service'
 
 describe('createLanguageModel', () => {
@@ -107,6 +110,64 @@ describe('createLanguageModel', () => {
       model: 'gemini-3.8-flash',
       options: { apiKey: 'google-key' }
     })
+  })
+
+  it('sends custom provider requests to its OpenAI-compatible chat endpoint', async () => {
+    const fetchSpy = vi.spyOn(globalThis, 'fetch').mockImplementation(
+      async () =>
+        new Response(
+          JSON.stringify({
+            id: 'gen-1',
+            created: 0,
+            model: 'anthropic/claude-sonnet-4',
+            choices: [
+              {
+                index: 0,
+                message: { role: 'assistant', content: '{"ok":true}' },
+                finish_reason: 'stop'
+              }
+            ]
+          }),
+          { headers: { 'content-type': 'application/json' } }
+        )
+    )
+    const settings = {
+      enabled: true,
+      provider: 'custom' as const,
+      model: 'anthropic/claude-sonnet-4',
+      baseUrl: 'https://openrouter.ai/api/v1',
+      apiKey: 'sk-or-key'
+    }
+
+    const { output } = await generateText({
+      model: createLanguageModel(settings),
+      prompt: 'hi',
+      output: Output.object({ schema: z.object({ ok: z.boolean() }) })
+    })
+    await generateText({ model: createLanguageModel({ ...settings, apiKey: '' }), prompt: 'hi' })
+
+    expect(output).toEqual({ ok: true })
+    const [[url, keyed], [, keyless]] = fetchSpy.mock.calls
+    expect(url).toBe('https://openrouter.ai/api/v1/chat/completions')
+    expect(new Headers(keyed?.headers).get('authorization')).toBe('Bearer sk-or-key')
+    expect(JSON.parse(typeof keyed?.body === 'string' ? keyed.body : '')).toMatchObject({
+      model: 'anthropic/claude-sonnet-4',
+      response_format: { type: 'json_schema' }
+    })
+    expect(new Headers(keyless?.headers).has('authorization')).toBe(false)
+    fetchSpy.mockRestore()
+  })
+
+  it('requires a URL for the custom provider', () => {
+    expect(() =>
+      createLanguageModel({
+        enabled: true,
+        provider: 'custom',
+        model: 'm',
+        baseUrl: '',
+        apiKey: ''
+      })
+    ).toThrow('Custom provider URL required')
   })
 
   it('rejects unsupported providers', () => {

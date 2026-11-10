@@ -501,10 +501,10 @@ quick-capture voice capture.
 Inline editor AI menu (grammar, tone, length, custom prompt).
 
 - **Enable** — toggle on/off
-- **Provider** — Ollama (local), OpenAI, or Anthropic
-- **Model** — presets per provider
-- **API Key** — required for OpenAI / Anthropic
-- **Base URL** — defaults to `http://localhost:11434/v1` for Ollama
+- **Provider** — Ollama (local), OpenAI, Anthropic, Google Gemini, or Custom (OpenAI-compatible)
+- **Model** — presets per provider; Custom takes a typed model ID with suggestions from the endpoint
+- **API Key** — required for OpenAI / Anthropic / Google Gemini, optional for Custom
+- **Base URL** — defaults to `http://localhost:11434/v1` for Ollama; required for Custom
 - **Test Connection** — verifies URL + key
 
 ### Agent Permissions

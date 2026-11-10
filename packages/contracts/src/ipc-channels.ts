@@ -393,6 +393,8 @@ export const JournalChannels = {
     GET_MONTH_ENTRIES: 'journal:getMonthEntries',
     /** Get stats for all months in a year */
     GET_YEAR_STATS: 'journal:getYearStats',
+    /** Get entries from other years on the same day */
+    GET_SAME_DAY_ENTRIES: 'journal:getSameDayEntries',
 
     // Context
     /** Get tasks and events for a specific date */

@@ -100,7 +100,7 @@ export interface MainIpcInvokeHandlers {
   "agent:testLocalProvider": (...args: []) => Awaited<Promise<{ connected: boolean; modelAvailable: boolean; streamingSupported: boolean; toolCallingSupported: boolean; toolContinuationSupported: boolean; toolsEnabled: boolean; detail: string | null; }>>
   "ai-inline:get-server-port": (...args: []) => Awaited<number | null>
   "ai-inline:get-settings": (...args: []) => Awaited<AIInlineSettings>
-  "ai-inline:list-ollama-models": (...args: []) => Awaited<Promise<{ success: false; error: string; } | { success: boolean; models: string[]; }>>
+  "ai-inline:list-models": (...args: []) => Awaited<Promise<{ success: false; error: string; } | { success: boolean; models: string[]; }>>
   "ai-inline:set-settings": (...args: [Partial<AIInlineSettings>]) => Awaited<{ success: boolean; error: string; } | { success: boolean; error?: undefined; }>
   "ai-inline:start-server": (...args: []) => Awaited<Promise<{ success: false; error: string; } | { success: boolean; error: string; port?: undefined; } | { success: boolean; port: number; error?: undefined; }>>
   "ai-inline:stop-server": (...args: []) => Awaited<Promise<{ success: boolean; }>>
@@ -293,6 +293,7 @@ export interface MainIpcInvokeHandlers {
   "journal:getHeatmap": (...args: [{ year: number; }]) => Awaited<Promise<{ date: string; characterCount: number; level: 0 | 1 | 2 | 3 | 4; }[]>>
   "journal:getMonthEntries": (...args: [{ year: number; month: number; }]) => Awaited<Promise<{ date: string; preview: string; wordCount: number; characterCount: number; activityLevel: 0 | 1 | 2 | 3 | 4; tags: string[]; }[]>>
   "journal:getPropertyRows": (...args: [{ from: string; to: string; }]) => Awaited<Promise<{ rows: { id: string; date: string; path: string; title: string; properties: Record<string, unknown>; }[]; properties: { name: string; type: string; count: number; }[]; }>>
+  "journal:getSameDayEntries": (...args: [{ date: string; }]) => Awaited<Promise<{ id: string; date: string; preview: string; content: string; wordCount: number; }[]>>
   "journal:getStreak": (...args: []) => Awaited<Promise<{ currentStreak: number; longestStreak: number; lastEntryDate: string | null; }>>
   "journal:getYearStats": (...args: [{ year: number; }]) => Awaited<Promise<{ year: number; month: number; entryCount: number; totalWordCount: number; totalCharacterCount: number; averageLevel: number; }[]>>
   "journal:updateEntry": (...args: [{ date: string; content?: string | undefined; tags?: string[] | undefined; inlineTags?: { add?: string[] | undefined; remove?: string[] | undefined; } | undefined; properties?: Record<string, unknown> | undefined; }]) => Awaited<Promise<{ id: string; date: string; content: string; wordCount: number; characterCount: number; tags: string[]; createdAt: string; modifiedAt: string; aliases?: string[] | undefined; properties?: Record<string, unknown> | undefined; }>>

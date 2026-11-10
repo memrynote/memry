@@ -504,7 +504,8 @@
       "loading": "Loading settings..."
     },
     "groups": {
-      "footer": "Footer"
+      "footer": "Footer",
+      "pastYears": "Past years"
     },
     "template": {
       "label": "Template",
@@ -562,6 +563,14 @@
     "showInSidebar": {
       "label": "Show in sidebar",
       "description": "Show the journal folder and its entries in the notes tree"
+    },
+    "showOnThisDay": {
+      "label": "Show On this day",
+      "description": "List the same date from past years under the entry"
+    },
+    "allYearsView": {
+      "label": "Show all years in full",
+      "description": "The Forever Journal: every year of the date on one page, under the entry"
     }
   },
   "tasks": {
@@ -1381,7 +1390,8 @@
         "ollama": "Ollama (Local)",
         "openai": "OpenAI",
         "anthropic": "Anthropic",
-        "google": "Google Gemini"
+        "google": "Google Gemini",
+        "custom": "Custom (OpenAI-compatible)"
       },
       "model": "Model",
       "modelDescription": "Language model for rewrite and summarize",
@@ -1391,6 +1401,11 @@
       "apiKeyPlaceholder": "Enter {provider} API key",
       "ollamaUrl": "Ollama URL",
       "ollamaUrlDescription": "Local server address",
+      "customUrl": "Base URL",
+      "customUrlDescription": "Any OpenAI-compatible endpoint, such as OpenRouter",
+      "customUrlPlaceholder": "https://openrouter.ai/api/v1",
+      "customApiKeyPlaceholder": "API key (optional)",
+      "customModelPlaceholder": "Model ID",
       "connection": "Connection",
       "activePort": "Active on port {port}",
       "notConnected": "Not connected",

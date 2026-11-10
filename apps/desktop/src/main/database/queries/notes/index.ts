@@ -148,6 +148,7 @@ export {
   journalEntryExistsByDate,
   getHeatmapData,
   getJournalMonthEntries,
+  getJournalSameDayEntries,
   getJournalYearStats,
   getJournalStreak,
   listJournalEntries,

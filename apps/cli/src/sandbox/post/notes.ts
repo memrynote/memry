@@ -110,7 +110,7 @@ export async function iconsAndDates({ ctx, data }: PostContext): Promise<void> {
     await touch(note.path, created, modified < created ? created : modified)
   }
 
-  for (const entry of journalSpecs()) {
+  for (const entry of journalSpecs(clock)) {
     const date = clock.date(entry.day)
     const id = ctx.journal.get(date)!
     const written = clampToNow(
