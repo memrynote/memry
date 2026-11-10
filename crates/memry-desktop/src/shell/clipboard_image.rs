@@ -7,7 +7,9 @@
 pub const MAX_BYTES: usize = 64 * 1024 * 1024;
 /// The longest side accepted, the largest canvas side Chromium and WebKit draw.
 pub const MAX_SIDE: u32 = 32_767;
-/// The most pixels accepted: 256 MiB once decoded to RGBA.
+/// The most pixels accepted. Peak memory is above the 256 MiB of 8-bit RGBA: a 16-bit RGBA PNG of
+/// this size decodes to 512 MiB, `into_rgba8` adds a 256 MiB copy, and the body is held twice
+/// (about 1 GB in all).
 pub const MAX_PIXELS: u64 = 64 * 1024 * 1024;
 
 const SIGNATURE: [u8; 8] = [0x89, b'P', b'N', b'G', b'\r', b'\n', 0x1a, b'\n'];
