@@ -198,7 +198,9 @@ impl Reported {
     /// A file was reported at the path of `note_id`'s row after its removal: the row is no longer
     /// hidden, so that file's going is a removal again.
     pub fn unmark_removed(&mut self, note_id: &str) {
-        self.removed.remove(note_id);
+        if self.removed.remove(note_id).is_some() {
+            self.removed_order.retain(|id| id != note_id);
+        }
     }
 
     /// Whether `row` is the row of a note already reported removed.
@@ -333,6 +335,21 @@ mod tests {
         r.forget_note("n1");
         assert!(!r.is_owed("b.md"), "the entry went");
         assert!(r.owed.is_empty());
+    }
+
+    #[test]
+    fn an_unmarked_note_frees_its_place_in_the_removal_bound() {
+        let mut r = Reported::default();
+        r.mark_removed(&row("n0", "n0.md", 5));
+        r.unmark_removed("n0");
+        r.mark_removed(&row("n0", "n0.md", 5));
+        for n in 1..CAPACITY {
+            r.mark_removed(&row(&format!("n{n}"), &format!("{n}.md"), 5));
+        }
+        assert!(
+            r.is_removed(&row("n0", "n0.md", 5)),
+            "CAPACITY notes are marked: none is evicted"
+        );
     }
 
     #[test]

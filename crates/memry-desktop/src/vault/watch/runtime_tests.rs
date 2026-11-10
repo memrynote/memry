@@ -380,3 +380,53 @@ fn the_callback_flags_the_watch_limit_instead_of_queueing_it() {
     );
     assert!(rx.try_recv().is_err(), "the limit was queued");
 }
+
+/// A new file's `note_files` lookup that fails when its held add is reported is a storage
+/// failure like every other lookup of the watcher: the app is told, and the file is still
+/// reported, since only the lookup's cleanup is lost.
+#[test]
+fn a_failed_lookup_for_a_new_file_is_reported_as_a_storage_failure() {
+    let dir = tempfile::tempdir().unwrap();
+    let root = dir.path().join("vault");
+    let core = root.join(".memry/core");
+    std::fs::create_dir_all(&core).unwrap();
+    let vault =
+        Vault::open_with(core.to_string_lossy().into_owned(), OpenOptions::default()).unwrap();
+    std::fs::write(root.join("new.md"), "a new file").unwrap();
+    let log: Log = Arc::default();
+    let events = log.clone();
+    let sink: EventSink = Arc::new(move |event| events.lock().unwrap().push(event));
+    let mut reconciler = Reconciler::new(
+        root,
+        vec![],
+        vault.note_files(),
+        Arc::new(EchoGuard::default()),
+        sink,
+    );
+    let now = Instant::now();
+    reconciler.batch(vec!["new.md".into()], now);
+    assert!(log.lock().unwrap().is_empty(), "the add is held");
+
+    vault
+        .db_handle()
+        .call_blocking(|conn| {
+            conn.execute_batch("DROP TABLE note_files").unwrap();
+            Ok(())
+        })
+        .unwrap();
+    reconciler.batch(vec![], now + Duration::from_secs(1));
+
+    let events = log.lock().unwrap().clone();
+    assert!(
+        events
+            .iter()
+            .any(|e| matches!(e, VaultEvent::WatchFailed { limit: false, .. })),
+        "the failure is reported: {events:?}"
+    );
+    assert!(
+        events
+            .iter()
+            .any(|e| matches!(e, VaultEvent::Added { path, .. } if path == "new.md")),
+        "the file is reported all the same: {events:?}"
+    );
+}

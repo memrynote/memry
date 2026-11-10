@@ -53,7 +53,11 @@ vi.mock('@tauri-apps/api/core', () => ({
 }))
 
 vi.mock('../../../generated/bindings', () => ({
-  commands: { crdtCloseDoc: mockCloseDoc },
+  commands: {
+    crdtCloseDoc: mockCloseDoc,
+    // The lock store loads once per renderer: a locked note's fallback waits for it.
+    vaultLocksList: async () => ({ notes: [], folders: [] })
+  },
   events: {
     // Every provider subscribes to both rebind signals on connect.
     crdtProviderResetEvent: {
@@ -186,7 +190,7 @@ describe('useYjsCollaboration', () => {
 
     await waitFor(() => expect(result.current.isReady).toBe(true))
     expect(result.current.fragment).toBeNull()
-    expect(result.current.readOnly).toBeNull()
+    await waitFor(() => expect(result.current.readOnly).toBeNull())
   })
 
   it('keeps an exclusion the open reported on an unseeded document', async () => {
