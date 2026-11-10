@@ -172,6 +172,7 @@ fn held_edit_lands_in_the_document_the_file_and_the_row_with_one_byte_order_mark
             hash: content_hash(&text),
             held: true,
             kept_outside: false,
+            kept: false,
             text: text.clone()
         }
     );
@@ -230,6 +231,7 @@ fn a_text_the_document_does_not_take_is_written_and_brought_in_by_the_watcher() 
             hash: content_hash(&big),
             held: false,
             kept_outside: false,
+            kept: false,
             text: big.clone()
         }
     );
@@ -274,6 +276,7 @@ fn a_save_whose_feed_fails_is_written_and_brought_in_by_the_watcher() {
             hash: content_hash(saved),
             held: false,
             kept_outside: false,
+            kept: true,
             text: saved.to_owned()
         }
     );

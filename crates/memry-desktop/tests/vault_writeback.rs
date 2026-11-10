@@ -124,6 +124,23 @@ fn an_outside_edit_reaches_the_body_and_the_replaced_body_is_kept() {
     assert!(kept.iter().any(|v| v.contains("first words")), "{kept:?}");
 }
 
+/// Typing after an outside edit the body took (#4124): the write-back replaces a file whose text
+/// the body holds, so no outside text was replaced and the page is not told so.
+#[test]
+fn typing_after_a_fed_outside_edit_tells_no_outside_text_replaced() {
+    let (mut e, identity, id) = one_note();
+    e.write("n.md", "edited outside\n");
+    e.facts_until(watcher_changed(&id));
+    assert_eq!(e.body(&id), "edited outside");
+    e.edit_in_app(&identity.store, &id, "edited outside abc");
+    e.tier.schedule(&id);
+    let mut facts = e.facts_until(app_changed(&id));
+    assert_eq!(e.read("n.md"), "edited outside abc\n");
+    std::thread::sleep(QUIET);
+    facts.extend(e.drain());
+    assert!(!facts.iter().any(outside_kept(&id)), "{facts:?}");
+}
+
 /// The file is edited outside while an edit made in the app waits for its write: the app's edit
 /// wins, as unsaved typing does (#4030), and the outside edit is a version.
 #[test]
