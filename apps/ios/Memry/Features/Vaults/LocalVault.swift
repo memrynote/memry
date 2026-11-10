@@ -9,8 +9,9 @@ import MemryCore
 // chose the free path has neither, and reads as "no local vault".
 //
 // **Attaching never merges.** Signing in registers this vault on the account
-// as a vault of its own (`AuthSession.registerVault`). Until that succeeds the
-// vault stays local: listed beside the account's vaults, opened with no sync,
+// as a vault of its own (`AuthSession.registerVault`), unless it is empty and
+// the account already has vaults: then it is forgotten (#4158). Until the
+// register succeeds the vault stays local: listed beside the account's vaults, opened with no sync,
 // and kept through a sign-out.
 
 /// The local vault's id and whether the account knows it.
@@ -54,7 +55,8 @@ struct LocalVaultStore: @unchecked Sendable {
     }
 
     /// Forgets the vault. Only after its content went with an account
-    /// sign-out; an unattached vault is never forgotten.
+    /// sign-out, or when it is empty and the account has vaults of its own;
+    /// an unattached vault with content is never forgotten.
     func forget() {
         defaults.removeObject(forKey: Key.id)
         defaults.removeObject(forKey: Key.attached)
@@ -102,19 +104,63 @@ enum LocalVaultAttachOutcome: Equatable, Sendable {
     /// Nothing to attach: no local vault, or it is already on the account.
     case none
     case attached
+    /// Empty, and the account already has vaults: forgotten, never added.
+    case dropped
     /// No plan or no free vault slot. The vault stays local and nothing is lost.
     case needsPlan
     /// Anything else. The vault stays local and the next registry read retries.
     case failed(UserFacingError)
 }
 
+/// Whether a local vault holds anything.
+///
+/// Every core write commits its outbox row with the change, account or not
+/// (`Vault::seed_unsynced`), so an empty outbox is a vault nobody wrote to.
+/// Opened through `VaultFiles` and not `CoreVaultOpener`, which would repoint
+/// the open vault's attachment directory at this one.
+struct LocalVaultContent: Sendable {
+    let files: VaultFiles
+    let session: AuthSession
+    let executor: CoreExecutor
+
+    func isEmpty(_ vaultId: String) async throws -> Bool {
+        let session = session
+        return try await files.openingVault(vaultId) { directory in
+            let path = directory.path
+            return try await executor.run {
+                try Vault.open(vaultId: vaultId, directory: path).sync(session: session).pendingChanges() == 0
+            }
+        }
+    }
+}
+
 /// Registers the local vault on the account, once.
 struct LocalVaultAttach: Sendable {
     let session: any AuthSessionProtocol
     let store: LocalVaultStore
+    /// Whether the vault with this id holds nothing. Production passes
+    /// `LocalVaultContent.isEmpty`.
+    let isEmpty: @Sendable (String) async throws -> Bool
 
-    func run() async -> LocalVaultAttachOutcome {
+    /// - Parameter accountVaults: the account's vaults, read before attaching.
+    func run(accountVaults: [VaultSummary]) async -> LocalVaultAttachOutcome {
         guard let id = store.id, !store.isAttached else { return .none }
+        // An empty vault beside the account's own would only add a blank vault
+        // to every device (#4158). It is forgotten, and the list offers the
+        // account's vaults instead.
+        if accountVaults.contains(where: { $0.id != id }) {
+            do {
+                if try await isEmpty(id) {
+                    store.forget()
+                    Log.sync.notice("the empty local vault was dropped: the account already has vaults")
+                    return .dropped
+                }
+            } catch {
+                let mapped = ErrorMapping.userFacing(error)
+                Log.sync.error("could not tell whether the local vault is empty", .code(mapped.code))
+                return .failed(mapped)
+            }
+        }
         do {
             try await session.registerVault(vaultId: id, name: LocalVaultStore.name)
             store.markAttached()
@@ -138,15 +184,15 @@ struct LocalVaultAttach: Sendable {
     }
 }
 
-/// The signed-in registry: tries to attach the local vault, then lists the
-/// account's vaults with the local one beside them while it is still local.
+/// The signed-in registry: lists the account's vaults, tries to attach the
+/// local vault against them, then returns the account's vaults with the local one beside them while it is still local.
 struct AttachingVaultRegistry: VaultRegistry {
     let inner: any VaultRegistry
     let attach: LocalVaultAttach
 
     func vaults() async throws -> [VaultSummary] {
-        _ = await attach.run()
         var rows = try await inner.vaults()
+        _ = await attach.run(accountVaults: rows)
         if let local = attach.store.summary, !rows.contains(where: { $0.id == local.id }) {
             rows.append(local)
         }
