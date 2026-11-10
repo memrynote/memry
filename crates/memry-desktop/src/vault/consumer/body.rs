@@ -100,7 +100,7 @@ impl Applier {
         }
         self.vault
             .write_back()
-            .keep_replaced(note_id, &file.raw, file.split().body)
+            .keep_outside_write(note_id, &file.raw, file.split().body)
             .map_err(|error| retry("was not kept as a version", &error))?;
         let stat = RowStat {
             file_type: FileType::Markdown,

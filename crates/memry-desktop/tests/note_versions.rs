@@ -569,3 +569,39 @@ fn the_quit_keeps_no_close_version_of_a_file_that_is_not_markdown() {
     assert_eq!(versions::keep_close_versions(&open), 0);
     assert_eq!(files(&e, &id), Vec::<String>::new());
 }
+
+/// #4083 review: an app version of ten words or more on a note at the cap prunes the oldest
+/// version of any reason, so a restore point newer than every close version stays. Only an
+/// outside write prunes significant versions alone.
+#[test]
+fn an_app_version_on_a_full_note_keeps_a_newer_restore_point() {
+    let (e, notes, _) = opened(&[("Plan.md", PLAN)]);
+    let open = e.session.current().unwrap();
+    let id = id_at(&e, "Plan.md");
+    for n in 0..50 {
+        assert!(
+            e.core()
+                .versions()
+                .keep_close(&id, &format!("quit {n}\n"))
+                .unwrap()
+        );
+    }
+    let (newest, _) = listed(&e, &id).remove(0);
+    versions::restore(&notes, &open, &newest).unwrap();
+    let restored = e.read("Plan.md");
+    assert_eq!(files(&e, &id)[0], PLAN, "the restore point");
+
+    let words = "one two three four five six seven eight nine ten eleven twelve\n";
+    let saved = notes.update(&open, save(&id, words)).unwrap();
+    assert_eq!(saved.kept_replaced_hash, Some(content_hash("quit 49\n")));
+
+    let kept = files(&e, &id);
+    assert_eq!(
+        kept[..2],
+        [restored.as_str(), PLAN],
+        "the restore point stays"
+    );
+    assert_eq!(kept.len(), 50, "the cap holds");
+    assert!(kept.contains(&"quit 49\n".to_owned()));
+    assert!(!kept.contains(&"quit 1\n".to_owned()), "the oldest went");
+}

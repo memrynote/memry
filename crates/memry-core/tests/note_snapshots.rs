@@ -112,9 +112,9 @@ fn a_note_keeps_its_newest_fifty_versions_and_no_other_note_loses_one() {
     assert_eq!(rows(&f, &other), ["other's"]);
 }
 
-/// #4083: a tool rewriting a (locked) note's file keeps a significant version per write.
+/// #4083: a tool rewriting a (locked) note's file keeps an outside-write version per write.
 #[test]
-fn significant_versions_prune_only_significant_ones() {
+fn outside_write_versions_prune_only_significant_ones() {
     let f = fixture();
     let note = f.note();
     let conn = sql(&f);
@@ -124,7 +124,7 @@ fn significant_versions_prune_only_significant_ones() {
     keep("saved", Reason::Manual, T0);
     keep("quit", Reason::Close, T0 + 1);
     for n in 0..55 {
-        keep(&format!("tool write {n}"), Reason::Significant, T0 + 2 + n);
+        keep(&format!("tool write {n}"), Reason::OutsideWrite, T0 + 2 + n);
     }
 
     let kept = rows(&f, &note);
@@ -135,9 +135,9 @@ fn significant_versions_prune_only_significant_ones() {
     assert!(!kept.contains(&"tool write 6".to_owned()));
 }
 
-/// A note full of the user's versions keeps the newest significant one on top, listed.
+/// A note of 50 close versions keeps the newest outside-write one on top, listed.
 #[test]
-fn a_note_full_of_the_users_versions_holds_one_significant_version_over_the_cap() {
+fn a_note_full_of_close_versions_holds_one_outside_write_version_over_the_cap() {
     let f = fixture();
     let note = f.note();
     let conn = sql(&f);
@@ -149,7 +149,7 @@ fn a_note_full_of_the_users_versions_holds_one_significant_version_over_the_cap(
         let content = format!("tool write {n}");
         note_snapshots::keep(
             &conn,
-            version(&note, &content, Reason::Significant),
+            version(&note, &content, Reason::OutsideWrite),
             T0 + 50 + n,
         )
         .unwrap();
@@ -163,11 +163,7 @@ fn a_note_full_of_the_users_versions_holds_one_significant_version_over_the_cap(
 
     note_snapshots::keep(&conn, version(&note, "quit 50", Reason::Close), T0 + 60).unwrap();
     let kept = rows(&f, &note);
-    assert_eq!(
-        kept.len(),
-        50,
-        "the user's own version prunes back to the cap"
-    );
+    assert_eq!(kept.len(), 50, "a close version prunes back to the cap");
     assert_eq!(kept.first().map(String::as_str), Some("quit 50"));
     assert_eq!(kept.last().map(String::as_str), Some("quit 2"));
 }
