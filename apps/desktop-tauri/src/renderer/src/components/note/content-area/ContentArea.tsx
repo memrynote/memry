@@ -2218,7 +2218,11 @@ const ContentAreaEditor = memo(function ContentAreaEditor({
           markdown
         })
         if (!result?.success) {
-          throw new Error(result?.error ?? 'append failed')
+          throw new Error(
+            result?.errorCode === 'target_not_taken'
+              ? tRef.current('editor.blockMenu.moveDialog.targetNotTaken')
+              : (result?.error ?? 'append failed')
+          )
         }
 
         // The tasks moved with their lines: they belong to the target note

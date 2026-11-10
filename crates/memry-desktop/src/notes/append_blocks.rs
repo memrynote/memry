@@ -26,7 +26,7 @@
 //! written; `note_edit_kept`, the user moves again a moment later), a body not pulled from sync,
 //! a frontmatter that does not parse. A target whose file the document never took (a large
 //! file, a body this build cannot read: the note owes its file body) is refused for good
-//! (`invalid_append`): only a feed brings that file to the document, so a retry cannot land.
+//! (`target_not_taken`): only a feed brings that file to the document, so a retry cannot land.
 //! Electron appends to those files.
 //!
 //! Once the document took the blocks, the move landed whatever the file write does: a write
@@ -90,10 +90,7 @@ fn never_taken(note_id: &str) -> NotesError {
         note_id,
         "blocks were not moved: the target's file is one its note never took"
     );
-    NotesError::InvalidAppend(
-        "the target note's file is too large or holds text the app cannot take in, so the \
-         blocks stay where they are",
-    )
+    NotesError::TargetNotTaken
 }
 
 fn owes_file_body(open: &OpenVault, note_id: &str) -> bool {

@@ -597,7 +597,8 @@
         "title": "Flytt blokken til et notat",
         "searchPlaceholder": "Søk i notater …",
         "noResults": "Ingen samsvarende notater",
-        "failed": "Kunne ikke flytte blokken"
+        "failed": "Kunne ikke flytte blokken",
+        "targetNotTaken": "Dette notatet er for stort eller har tekst appen ikke kan ta imot, så blokkene ble værende der de var."
       }
     },
     "attachmentPicker": {

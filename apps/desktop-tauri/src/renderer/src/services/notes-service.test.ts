@@ -777,6 +777,17 @@ describe('notes-service', () => {
       success: false,
       error: 'The owner made this note read-only.'
     })
+
+    commands.notesAppendBlocks.mockRejectedValue({
+      kind: 'Invalid',
+      code: 'target_not_taken',
+      message: 'the target note file is too large'
+    })
+    await expect(notesService.appendBlocks(input)).resolves.toEqual({
+      success: false,
+      error: 'the target note file is too large',
+      errorCode: 'target_not_taken'
+    })
   })
 
   it("reads, restores and deletes versions through their commands, a failure in Electron's shape", async () => {

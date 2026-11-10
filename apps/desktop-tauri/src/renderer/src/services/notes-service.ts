@@ -335,13 +335,16 @@ const ported = {
     }
   },
   // The block menu's "Move to": the caller removes the blocks from the source only on
-  // `success`. A failure answers as Electron's `registerCommand` does.
-  appendBlocks: async (input: AppendBlocksInput): Promise<AppendBlocksResponse> => {
+  // `success`. A failure answers as Electron's `registerCommand` does; a target whose file its
+  // note never took also names its code, so the caller shows its own text, not Rust's English.
+  appendBlocks: async (input: AppendBlocksInput): Promise<AppendBlocksSaveResponse> => {
     try {
       const { targetPath } = await commands.notesAppendBlocks(input)
       return { success: true, targetPath }
     } catch (error) {
-      return failure(error)
+      return commandErrorCode(error) === 'target_not_taken'
+        ? { ...failure(error), errorCode: 'target_not_taken' }
+        : failure(error)
     }
   },
   // Rejects on failure, as Electron's `notes:undo-tag-template` handler does.
@@ -654,8 +657,16 @@ export type NoteSaveInput = NoteUpdateInput & { keepReplaced?: boolean; editor?:
 export type NoteSaveResponse = NoteUpdateResponse &
   Pick<NoteUpdateReply, 'keptOutsideEdit'> & { keptReplacedHash?: string }
 
-type NotesServiceApi = Omit<NotesClientAPI, PortedLargeFileMethod | 'update'> & {
+/**
+ * An append's answer, and `errorCode`: `target_not_taken` when the target's file is one its note
+ * never took (a large file, text this build cannot read), so the caller shows its own text, not
+ * Rust's English. Tauri only, as `keepReplaced` is.
+ */
+export type AppendBlocksSaveResponse = AppendBlocksResponse & { errorCode?: 'target_not_taken' }
+
+type NotesServiceApi = Omit<NotesClientAPI, PortedLargeFileMethod | 'update' | 'appendBlocks'> & {
   update: (input: NoteSaveInput) => Promise<NoteSaveResponse>
+  appendBlocks: (input: AppendBlocksInput) => Promise<AppendBlocksSaveResponse>
 }
 
 export const notesService: NotesServiceApi = createWindowApiForwarder<

@@ -10,7 +10,7 @@
 //! | write-back keeps them                                             | write-back                                |
 //! | a target whose document is ahead of its file is refused           | `note_edit_kept`, nothing written         |
 //! | a target whose file holds an outside edit not fed yet is refused  | `note_edit_kept`, nothing written         |
-//! | a target whose file its note never took is refused for good       | `invalid_append`, not "try again"         |
+//! | a target whose file its note never took is refused for good       | `target_not_taken`, not "try again"       |
 //! | a locked or excluded target is refused                            | `note_locked`, `note_excluded`            |
 //! | a missing note, nothing to move, the source itself                | `note_not_found`, `invalid_append`        |
 //! | a write that fails after the note took the blocks lands the move  | the write-back writes them, once          |
@@ -305,7 +305,7 @@ fn a_target_whose_file_its_note_never_took_is_refused_for_good() {
     for _ in 0..2 {
         let error = v.append(&source, &target, MOVED).unwrap_err();
         assert!(error.to_string().contains("too large"), "{error}");
-        assert_eq!(v.refused("Big.md", &big, error), "invalid_append");
+        assert_eq!(v.refused("Big.md", &big, error), "target_not_taken");
     }
 }
 

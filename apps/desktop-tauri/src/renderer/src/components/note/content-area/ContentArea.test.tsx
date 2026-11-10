@@ -3084,6 +3084,22 @@ describe('ContentArea', () => {
     expect(contentAreaMocks.editor.removeBlocks).not.toHaveBeenCalled()
   })
 
+  it('tells the user in their language when the target never took its file', async () => {
+    contentAreaMocks.notesService.appendBlocks.mockResolvedValue({
+      success: false,
+      error: "the target note's file is too large or holds text the app cannot take in",
+      errorCode: 'target_not_taken'
+    })
+    await moveParaToNote2()
+
+    await waitFor(() =>
+      expect(contentAreaMocks.toastError).toHaveBeenCalledWith(
+        "This note is too large or has text the app can't take in, so the blocks stayed where they were."
+      )
+    )
+    expect(contentAreaMocks.editor.removeBlocks).not.toHaveBeenCalled()
+  })
+
   it('removes the block once the target took it', async () => {
     contentAreaMocks.notesService.appendBlocks.mockResolvedValue({
       success: true,
