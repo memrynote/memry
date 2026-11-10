@@ -485,6 +485,12 @@ impl TokenProvider for TokenManager {
         match TokenManager::refresh(self, Some(stale)).await {
             Ok(token) => Ok(token),
             Err(AuthError::Api { source }) => Err(source),
+            // A latch window is a wait, not a verdict (§2.10): the session
+            // ends only when the latch turns permanent (#4156).
+            Err(AuthError::RefreshBlocked { retry_in_ms }) => Err(ApiError::RateLimited {
+                retry_after_s: Some(retry_in_ms.div_ceil(1_000)),
+                message: AuthError::RefreshBlocked { retry_in_ms }.to_string(),
+            }),
             Err(other) => Err(ApiError::Unauthorized {
                 code: "AUTH_INVALID_TOKEN".to_string(),
                 message: other.to_string(),

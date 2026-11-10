@@ -164,6 +164,10 @@
     "removeDeviceFailed": "デバイスを削除できませんでした",
     "renameDeviceFailed": "デバイスの名前を変更できませんでした",
     "initiateOAuthFailed": "OAuth を開始できませんでした",
+    "retryOAuthFailed": "サインイン用のブラウザーを再度開けませんでした。もう一度サインインを始めてください。",
+    "oauthExpired": "サインインの有効期限が切れました。もう一度お試しください。",
+    "oauthInvalidResponse": "有効なサインインリンクを取得できませんでした。もう一度お試しください。",
+    "oauthCancelled": "Google でのサインインがキャンセルされました。もう一度お試しください。",
     "setupFirstDeviceOAuthFailed": "OAuth で最初のデバイスを設定できませんでした",
     "confirmRecoveryPhraseFailed": "リカバリーフレーズを確認できませんでした"
   },

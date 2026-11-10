@@ -1142,7 +1142,9 @@ export function JournalPage({ className }: JournalPageProps): React.JSX.Element 
           linkStart: ctx.linkStart,
           linkEnd: ctx.linkEnd
         })),
-        via: bl.via
+        via: bl.via,
+        sourceJournalDate: bl.sourceJournalDate,
+        sourceTags: bl.sourceTags
       }
     })
   }, [rawBacklinks])

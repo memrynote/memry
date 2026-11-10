@@ -164,6 +164,10 @@
     "removeDeviceFailed": "تعذّر إزالة الجهاز",
     "renameDeviceFailed": "تعذّر إعادة تسمية الجهاز",
     "initiateOAuthFailed": "تعذّر بدء OAuth",
+    "retryOAuthFailed": "تعذّرت إعادة فتح متصفح تسجيل الدخول. ابدأ تسجيل الدخول من جديد.",
+    "oauthExpired": "انتهت صلاحية تسجيل الدخول. حاول مرة أخرى.",
+    "oauthInvalidResponse": "تعذّر الحصول على رابط تسجيل دخول صالح. حاول مرة أخرى.",
+    "oauthCancelled": "أُلغي تسجيل الدخول عبر Google. حاول مرة أخرى.",
     "setupFirstDeviceOAuthFailed": "تعذّر إعداد الجهاز الأول عبر OAuth",
     "confirmRecoveryPhraseFailed": "تعذّر تأكيد عبارة الاسترداد"
   },

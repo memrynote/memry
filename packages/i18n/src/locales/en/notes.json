@@ -777,6 +777,12 @@
     "viaProperty": "{property} → {title}",
     "viaPortal": "Shown in a portal"
   },
+  "references": {
+    "filterAll": "All",
+    "filterNotes": "Notes",
+    "filterJournal": "Journal",
+    "filterBy": "Filter references: {filter}"
+  },
   "unlinkedMentions": {
     "title": "Unlinked mentions",
     "summary": "{count, plural, one {# unlinked mention} other {# unlinked mentions}}",

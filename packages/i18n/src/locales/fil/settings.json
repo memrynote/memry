@@ -1110,7 +1110,16 @@
       "sending": "Nagpapadala ng code…"
     },
     "oauth": {
-      "google": "Magpatuloy gamit ang Google"
+      "google": "Magpatuloy gamit ang Google",
+      "waiting": "Tapusin ang pag-sign in gamit ang Google sa browser mo.",
+      "browserUnavailable": "Hindi mabuksan ang browser mo.",
+      "manualInstructions": "Kopyahin ang link sa pag-sign in at buksan ito sa browser sa computer na ito. Panatilihing bukas ang memrynote habang nagsa-sign in ka.",
+      "linkLabel": "Link sa pag-sign in",
+      "copyLink": "Kopyahin ang link sa pag-sign in",
+      "retryBrowser": "Subukan ulit buksan ang browser",
+      "copied": "Nakopya ang link sa pag-sign in.",
+      "copyFailed": "Hindi nakopya ang link sa pag-sign in. Piliin at kopyahin ito mula sa field sa itaas.",
+      "cancel": "Gumamit ng ibang paraan ng pag-sign in"
     },
     "otp": {
       "title": "Ilagay ang verification code",
@@ -2396,7 +2405,6 @@
   "phaseI": {
     "errors": {
       "failedToUpdateTagColor": "Hindi ma-update ang kulay ng tag",
-      "googleSignInFailed": "Nabigo ang pag-sign in sa Google",
       "failedToSendVerificationCode": "Hindi maipadala ang verification code",
       "invalidVerificationCode": "Di-wastong verification code",
       "accountSetupFailed": "Nabigo ang pag-setup ng account",

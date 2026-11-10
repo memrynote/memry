@@ -788,7 +788,9 @@ export function NotePage({ noteId }: NotePageProps) {
           linkStart: ctx.linkStart,
           linkEnd: ctx.linkEnd
         })),
-        via: bl.via
+        via: bl.via,
+        sourceJournalDate: bl.sourceJournalDate,
+        sourceTags: bl.sourceTags
       }
     })
   }, [rawBacklinks])

@@ -1263,6 +1263,7 @@
     "label": "Yardım ve geri bildirim",
     "reportBug": "Hata bildir",
     "requestFeature": "Özellik iste",
+    "joinTestflight": "TestFlight'a katılın",
     "starOnGithub": "GitHub'da yıldız ver",
     "version": "MemryNote {version}",
     "whatsNew": "Yenilikler",
@@ -1647,5 +1648,29 @@
       "agentModel": "Varsayılan",
       "date": "13 Ekim"
     }
+  },
+  "iosBeta": {
+    "badge": "Yeni · TestFlight",
+    "title": "iPhone için Memry beta aşamasında",
+    "promptBody": "Kasanız telefonunuzda, uçtan uca şifreli. E-postanızı bırakın, Apple size bir TestFlight daveti göndersin.",
+    "emailPlaceholder": "you@example.com",
+    "emailLabel": "TestFlight daveti için e-posta",
+    "submit": "Daveti al",
+    "sending": "Gönderiliyor…",
+    "listNote": "Sizi lansman haberleri için iPhone beta listesine de ekliyoruz. İstediğiniz zaman abonelikten çıkabilirsiniz.",
+    "error": "TestFlight daveti gönderilemedi. Lütfen tekrar deneyin.",
+    "sentTitle": "Gelen kutunuzu kontrol edin",
+    "sentBody": "Apple daveti {email} adresine gönderdi. Birkaç dakika sürebilir ve spam klasörüne düşebilir.",
+    "stepInstall": "TestFlight'ı App Store'dan yükleyin",
+    "stepOpen": "Daveti iPhone'unuzda açın",
+    "stepSignIn": "Telefonunuzda Memry'de giriş yapın",
+    "done": "Bitti",
+    "dialogTitle": "iPhone için Memry'ye katılın",
+    "dialogBody": "Apple size e-postayla bir TestFlight daveti gönderir. iPhone'unuzdaki Apple ID'nin e-postasını kullanın.",
+    "entryTitle": "iPhone betası yayında",
+    "entrySubtitle": "TestFlight üzerinden",
+    "entryJoin": "Beta'ya katılın",
+    "entrySent": "Davet {email} adresine gönderildi",
+    "sendAgain": "Tekrar gönder"
   }
 }

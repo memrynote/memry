@@ -1,4 +1,4 @@
-import type { LinkVia } from '@memry/contracts/notes-api'
+import type { LinkVia, ReferenceSourceFacets } from '@memry/contracts/notes-api'
 
 export interface Mention {
   id: string
@@ -7,7 +7,7 @@ export interface Mention {
   linkEnd: number
 }
 
-export interface Backlink {
+export interface Backlink extends ReferenceSourceFacets {
   id: string
   noteId: string
   noteTitle: string

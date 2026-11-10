@@ -1110,7 +1110,16 @@
       "sending": "Wysyłanie kodu…"
     },
     "oauth": {
-      "google": "Kontynuuj z Google"
+      "google": "Kontynuuj z Google",
+      "waiting": "Dokończ logowanie przez Google w przeglądarce.",
+      "browserUnavailable": "Nie udało się otworzyć przeglądarki.",
+      "manualInstructions": "Skopiuj link do logowania i otwórz go w przeglądarce na tym komputerze. Nie zamykaj memrynote, dopóki się logujesz.",
+      "linkLabel": "Link do logowania",
+      "copyLink": "Kopiuj link do logowania",
+      "retryBrowser": "Spróbuj ponownie otworzyć przeglądarkę",
+      "copied": "Skopiowano link do logowania.",
+      "copyFailed": "Nie udało się skopiować linku do logowania. Zaznacz go i skopiuj z pola powyżej.",
+      "cancel": "Użyj innej metody logowania"
     },
     "otp": {
       "title": "Wprowadź kod weryfikacyjny",
@@ -2396,7 +2405,6 @@
   "phaseI": {
     "errors": {
       "failedToUpdateTagColor": "Nie udało się zaktualizować koloru tagu",
-      "googleSignInFailed": "Logowanie przez Google nie powiodło się",
       "failedToSendVerificationCode": "Nie udało się wysłać kodu weryfikacyjnego",
       "invalidVerificationCode": "Nieprawidłowy kod weryfikacyjny",
       "accountSetupFailed": "Konfiguracja konta nie powiodła się",

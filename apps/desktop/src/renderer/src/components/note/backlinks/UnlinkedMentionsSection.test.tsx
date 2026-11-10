@@ -29,6 +29,8 @@ describe('UnlinkedMentionsSection', () => {
         sourceId: 'src',
         sourcePath: 'Standup.md',
         sourceTitle: 'Standup',
+        sourceJournalDate: null,
+        sourceTags: [],
         contexts: [
           { snippet: 'the project plan today', linkStart: 4, linkEnd: 16 },
           { snippet: 'and the roadmap', linkStart: 8, linkEnd: 15 }

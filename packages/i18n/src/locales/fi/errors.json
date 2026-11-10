@@ -164,6 +164,10 @@
     "removeDeviceFailed": "Laitteen poistaminen epäonnistui",
     "renameDeviceFailed": "Laitteen uudelleennimeäminen epäonnistui",
     "initiateOAuthFailed": "OAuth-kirjautumisen aloittaminen epäonnistui",
+    "retryOAuthFailed": "Kirjautumisselaimen avaaminen uudelleen epäonnistui. Aloita kirjautuminen alusta.",
+    "oauthExpired": "Kirjautuminen vanheni. Yritä uudelleen.",
+    "oauthInvalidResponse": "Kelvollisen kirjautumislinkin hakeminen epäonnistui. Yritä uudelleen.",
+    "oauthCancelled": "Googlella kirjautuminen peruutettiin. Yritä uudelleen.",
     "setupFirstDeviceOAuthFailed": "Ensimmäisen laitteen määrittäminen OAuth-kirjautumisella epäonnistui",
     "confirmRecoveryPhraseFailed": "Palautuslauseen vahvistaminen epäonnistui"
   },

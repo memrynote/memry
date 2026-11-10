@@ -432,6 +432,12 @@ vi.mock('@/components/onboarding-wizard/first-run-gate', () => ({
   FirstRunGate: () => <div data-testid="vault-onboarding" />
 }))
 
+// The launch prompt needs the AuthProvider that main-window-root.tsx puts above App, and
+// ios-beta-entry-points.test.tsx covers it.
+vi.mock('@/components/ios-beta/ios-beta-entry-points', () => ({
+  IosBetaLaunchPrompt: () => null
+}))
+
 describe('App', () => {
   beforeEach(() => {
     vi.clearAllMocks()

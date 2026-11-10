@@ -164,6 +164,10 @@
     "removeDeviceFailed": "Nie udało się usunąć urządzenia",
     "renameDeviceFailed": "Nie udało się zmienić nazwy urządzenia",
     "initiateOAuthFailed": "Nie udało się rozpocząć uwierzytelniania OAuth",
+    "retryOAuthFailed": "Nie udało się ponownie otworzyć przeglądarki do logowania. Zacznij logowanie od nowa.",
+    "oauthExpired": "Logowanie wygasło. Spróbuj ponownie.",
+    "oauthInvalidResponse": "Nie udało się uzyskać prawidłowego linku do logowania. Spróbuj ponownie.",
+    "oauthCancelled": "Logowanie przez Google zostało anulowane. Spróbuj ponownie.",
     "setupFirstDeviceOAuthFailed": "Nie udało się skonfigurować pierwszego urządzenia przez OAuth",
     "confirmRecoveryPhraseFailed": "Nie udało się potwierdzić frazy odzyskiwania"
   },

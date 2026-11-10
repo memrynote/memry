@@ -164,6 +164,10 @@
     "removeDeviceFailed": "Nu s-a putut elimina dispozitivul",
     "renameDeviceFailed": "Nu s-a putut redenumi dispozitivul",
     "initiateOAuthFailed": "Nu s-a putut iniția OAuth",
+    "retryOAuthFailed": "Nu s-a putut redeschide browserul pentru conectare. Reluați conectarea.",
+    "oauthExpired": "Conectarea a expirat. Încercați din nou.",
+    "oauthInvalidResponse": "Nu s-a putut obține un link de conectare valid. Încercați din nou.",
+    "oauthCancelled": "Conectarea cu Google a fost anulată. Încercați din nou.",
     "setupFirstDeviceOAuthFailed": "Nu s-a putut configura primul dispozitiv prin OAuth",
     "confirmRecoveryPhraseFailed": "Nu s-a putut confirma fraza de recuperare"
   },

@@ -1110,7 +1110,16 @@
       "sending": "שולח קוד…"
     },
     "oauth": {
-      "google": "התחברות עם Google"
+      "google": "התחברות עם Google",
+      "waiting": "סיימו להתחבר עם Google בדפדפן שלכם.",
+      "browserUnavailable": "לא ניתן היה לפתוח את הדפדפן שלך.",
+      "manualInstructions": "העתיקו את קישור ההתחברות ופתחו אותו בדפדפן במחשב הזה. השאירו את memrynote פתוח בזמן ההתחברות.",
+      "linkLabel": "קישור התחברות",
+      "copyLink": "העתקת קישור התחברות",
+      "retryBrowser": "ניסיון נוסף לפתוח את הדפדפן",
+      "copied": "קישור ההתחברות הועתק.",
+      "copyFailed": "לא ניתן היה להעתיק את קישור ההתחברות. אפשר לסמן אותו בשדה שמעל ולהעתיק.",
+      "cancel": "שימוש בשיטת התחברות אחרת"
     },
     "otp": {
       "title": "הזנת קוד אימות",
@@ -2396,7 +2405,6 @@
   "phaseI": {
     "errors": {
       "failedToUpdateTagColor": "עדכון צבע התגית נכשל",
-      "googleSignInFailed": "ההתחברות עם Google נכשלה",
       "failedToSendVerificationCode": "שליחת קוד האימות נכשלה",
       "invalidVerificationCode": "קוד אימות לא חוקי",
       "accountSetupFailed": "הגדרת החשבון נכשלה",

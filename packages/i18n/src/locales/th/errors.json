@@ -164,6 +164,10 @@
     "removeDeviceFailed": "ลบอุปกรณ์ไม่สำเร็จ",
     "renameDeviceFailed": "เปลี่ยนชื่ออุปกรณ์ไม่สำเร็จ",
     "initiateOAuthFailed": "เริ่ม OAuth ไม่สำเร็จ",
+    "retryOAuthFailed": "เปิดเบราว์เซอร์สำหรับลงชื่อเข้าใช้อีกครั้งไม่สำเร็จ โปรดเริ่มลงชื่อเข้าใช้ใหม่",
+    "oauthExpired": "การลงชื่อเข้าใช้หมดอายุ โปรดลองอีกครั้ง",
+    "oauthInvalidResponse": "ไม่สามารถรับลิงก์ลงชื่อเข้าใช้ที่ถูกต้องได้ โปรดลองอีกครั้ง",
+    "oauthCancelled": "ยกเลิกการลงชื่อเข้าใช้ด้วย Google แล้ว โปรดลองอีกครั้ง",
     "setupFirstDeviceOAuthFailed": "ตั้งค่าอุปกรณ์เครื่องแรกผ่าน OAuth ไม่สำเร็จ",
     "confirmRecoveryPhraseFailed": "ยืนยันวลีกู้คืนไม่สำเร็จ"
   },

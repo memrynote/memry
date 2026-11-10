@@ -1110,7 +1110,16 @@
       "sending": "Sender kode …"
     },
     "oauth": {
-      "google": "Fortsett med Google"
+      "google": "Fortsett med Google",
+      "waiting": "Fullfør innloggingen med Google i nettleseren din.",
+      "browserUnavailable": "Kunne ikke åpne nettleseren din.",
+      "manualInstructions": "Kopier innloggingslenken og åpne den i en nettleser på denne datamaskinen. La memrynote stå åpen mens du logger inn.",
+      "linkLabel": "Innloggingslenke",
+      "copyLink": "Kopier innloggingslenke",
+      "retryBrowser": "Prøv å åpne nettleseren på nytt",
+      "copied": "Innloggingslenken er kopiert.",
+      "copyFailed": "Kunne ikke kopiere innloggingslenken. Merk og kopier den fra feltet ovenfor.",
+      "cancel": "Bruk en annen innloggingsmetode"
     },
     "otp": {
       "title": "Skriv inn bekreftelseskode",
@@ -2396,7 +2405,6 @@
   "phaseI": {
     "errors": {
       "failedToUpdateTagColor": "Kunne ikke oppdatere taggfargen",
-      "googleSignInFailed": "Google-pålogging mislyktes",
       "failedToSendVerificationCode": "Kunne ikke sende bekreftelseskoden",
       "invalidVerificationCode": "Ugyldig bekreftelseskode",
       "accountSetupFailed": "Kontokonfigurering mislyktes",
