@@ -18,8 +18,13 @@
 mod mode;
 mod reconcile;
 mod restore;
+mod set;
 
+pub use memry_core::domain::vault_locks::{LockState, TargetKind};
 pub use restore::RestoreError;
+#[cfg(test)]
+pub(crate) use set::AFTER_ROW;
+pub use set::{LockSet, set};
 
 use std::path::Path;
 use std::sync::Arc;

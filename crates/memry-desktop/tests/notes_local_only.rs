@@ -1,6 +1,7 @@
 //! Local-only notes (Step 13n, #3530) over a vault the running tier adopted: the flag reads back
 //! on the note and the list, nothing of the note is queued while it is set, whether the edit
-//! comes from the editor or from the file, and clearing it queues the whole note.
+//! comes from the editor or from the file, and clearing it queues the whole note. A locked note's
+//! flag is not changed (`setNoteLocalOnlyCommand`'s `assertNoteWritable`).
 
 #[allow(unused_imports)]
 use crate::device_key;
@@ -10,8 +11,9 @@ use crate::vault_env;
 use std::sync::Arc;
 
 use memry_core::crdt::body_edit::BlockEdit;
+use memry_core::domain::vault_locks::TargetKind;
 use memry_core::seams::secure_store::SecureStore;
-use memry_desktop::error::CoreError;
+use memry_desktop::error::{CoreError, FailureKind};
 use memry_desktop::notes::error::NotesError;
 use memry_desktop::notes::identity::NotesIdentity;
 use memry_desktop::notes::local_only::{self, LocalOnlyError};
@@ -207,4 +209,32 @@ fn a_note_too_large_to_sync_stays_local_only_and_says_so() {
     );
     assert_eq!(queued(&e, &plan), Vec::<String>::new());
     assert_eq!(local_only::count(&open).unwrap(), 1);
+}
+
+#[test]
+fn a_locked_notes_sync_policy_is_not_changed() {
+    let (e, open, _) = opened();
+    let plan = id_of(&open, "Plan.md");
+    let other = id_of(&open, "Other.md");
+    e.core().locks().set(TargetKind::Note, &plan, true).unwrap();
+    let queued_before = queued(&e, &plan);
+
+    let refused = local_only::set(&open, &plan, true, None).unwrap_err();
+    assert_eq!(
+        refused.kind_and_code(),
+        (FailureKind::Locked, "note_locked")
+    );
+    assert_eq!(refused.to_string(), "The owner made this note read-only.");
+    assert!(!read::get(&open, &plan, None).unwrap().unwrap().local_only);
+    assert!(!listed_local_only(&open, &plan));
+    assert_eq!(
+        queued(&e, &plan),
+        queued_before,
+        "nothing queued was dropped"
+    );
+    assert!(
+        local_only::set(&open, &other, true, None)
+            .unwrap()
+            .local_only
+    );
 }

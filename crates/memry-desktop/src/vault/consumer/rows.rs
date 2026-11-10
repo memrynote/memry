@@ -3,8 +3,9 @@
 //! write-back (`vault::writeback`) holds it for a whole pass, a journal rename
 //! (`vault::journal_rename`) for each file it moves, a note's rename or move in the app
 //! (`notes::moves`) for the whole step, a folder's rename or move (`notes::folder_move`) for
-//! the whole step too, and the vault open for the app move a crash cut short
-//! (`vault::app_move`). Either way a write checks [`PathIndex`] first and keeps
+//! the whole step too, the vault open for the app move a crash cut short
+//! (`vault::app_move`), and a lock change (`locks::set`) from its row through the files it
+//! makes read-only or frees. Either way a write checks [`PathIndex`] first and keeps
 //! it in step, and the [`Applied`] fact goes out after the row is written, under the lane, so
 //! subscribers see the facts in the order the rows changed.
 //!

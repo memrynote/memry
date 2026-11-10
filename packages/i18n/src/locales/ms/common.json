@@ -1659,5 +1659,14 @@
       "agentModel": "Lalai",
       "date": "13 Oktober"
     }
+  },
+  "vaultNotice": {
+    "configUnreadable": "Memry tidak dapat membaca tetapan bilik kebal ini",
+    "configUnreadableHint": "Sehingga .memry/config.json dibetulkan, Memry tidak dapat menjadikan fail sebagai nota atau menjejak pengalihan. Betulkan fail itu, kemudian mulakan semula Memry. Nota anda selamat.",
+    "watchLimit": "Perubahan daripada apl lain muncul lewat",
+    "watchLimitHint": "Linux membenarkan terlalu sedikit pemerhatian fail untuk bilik kebal ini, jadi Memry hanya nampak perubahan dari luar apabila ia mengimbas semula. Jalankan arahan ini, kemudian mulakan semula Memry:",
+    "copyCommand": "Salin arahan",
+    "commandCopied": "Arahan disalin. Tampalkannya dalam terminal.",
+    "copyFailed": "Tidak dapat menyalin arahan. Taipkannya daripada notis ini."
   }
 }

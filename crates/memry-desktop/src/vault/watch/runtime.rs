@@ -13,7 +13,7 @@
 
 use std::path::{Path, PathBuf};
 use std::sync::Arc;
-#[cfg(test)]
+#[cfg(any(test, feature = "test-hooks"))]
 use std::sync::Mutex;
 use std::sync::atomic::{AtomicBool, Ordering};
 use std::sync::mpsc::{Receiver, RecvTimeoutError, SyncSender, TrySendError, sync_channel};
@@ -65,8 +65,8 @@ pub struct VaultWatcher {
 pub(crate) type HoldFn = Box<dyn FnOnce() + Send>;
 
 impl VaultWatcher {
-    /// Starts watching `root`. The OS watcher is set up before this returns, so a failure
-    /// (the Linux inotify limit) is the caller's error.
+    /// Starts watching `root`. The OS watcher is set up before this returns, so a failure is
+    /// the caller's error; the Linux inotify limit is not one ([`watch`]).
     ///
     /// The start rescan runs on the worker, after this returns, and always ends with a
     /// [`VaultEvent::Rescanned`], sent at the pass's deadline: when the windows it opened end
@@ -229,8 +229,11 @@ impl Drop for OsWatch {
     }
 }
 
+/// Arms the OS watch on `root`. The Linux inotify limit fails nothing: the folders armed before
+/// it keep their watch, and the error is queued for the worker, which reports it (the notice)
+/// and rescans the vault on a timer from then on ([`SafetyNet::lost_events`]).
 fn watch(root: &Path, tx: &SyncSender<Msg>, overflow: &Arc<AtomicBool>) -> notify::Result<OsWatch> {
-    let (tx, overflow) = (tx.clone(), overflow.clone());
+    let (queue, full) = (tx.clone(), overflow.clone());
     let mut watcher = notify::recommended_watcher(move |result: notify::Result<notify::Event>| {
         let msg = match result {
             Ok(event) if matches!(event.kind, EventKind::Access(_)) => return,
@@ -238,18 +241,57 @@ fn watch(root: &Path, tx: &SyncSender<Msg>, overflow: &Arc<AtomicBool>) -> notif
             Ok(event) => Msg::Paths(event.paths),
             Err(error) => Msg::Error(error),
         };
-        match tx.try_send(msg) {
+        match queue.try_send(msg) {
             Ok(()) => {}
-            Err(TrySendError::Full(_)) => overflow.store(true, Ordering::Relaxed),
+            Err(TrySendError::Full(_)) => full.store(true, Ordering::Relaxed),
             Err(TrySendError::Disconnected(_)) => {}
         }
     })?;
-    watcher.watch(root, RecursiveMode::Recursive)?;
+    let armed = match at_limit(root) {
+        true => Err(notify::Error::new(notify::ErrorKind::MaxFilesWatch).add_path(root.into())),
+        false => watcher.watch(root, RecursiveMode::Recursive),
+    };
+    match armed {
+        Ok(()) => {}
+        Err(error) if matches!(error.kind, notify::ErrorKind::MaxFilesWatch) => {
+            if tx.try_send(Msg::Error(error)).is_err() {
+                overflow.store(true, Ordering::Relaxed);
+            }
+        }
+        Err(error) => return Err(error),
+    }
     Ok(OsWatch {
         watcher: Some(watcher),
         #[cfg(test)]
         stop_hold: Arc::default(),
     })
+}
+
+/// The vault roots whose next OS watch hits the Linux inotify limit before it arms a folder:
+/// the limit on a platform that has none ([`hit_watch_limit`]).
+#[cfg(feature = "test-hooks")]
+static AT_LIMIT: Mutex<Vec<PathBuf>> = Mutex::new(Vec::new());
+
+/// The next OS watch of `root` hits the Linux inotify limit and arms nothing.
+#[cfg(feature = "test-hooks")]
+#[doc(hidden)]
+pub fn hit_watch_limit(root: &Path) {
+    AT_LIMIT
+        .lock()
+        .unwrap_or_else(|e| e.into_inner())
+        .push(root.to_path_buf());
+}
+
+#[cfg(feature = "test-hooks")]
+fn at_limit(root: &Path) -> bool {
+    let mut roots = AT_LIMIT.lock().unwrap_or_else(|e| e.into_inner());
+    let at = roots.iter().position(|held| held == root);
+    at.map(|i| roots.remove(i)).is_some()
+}
+
+#[cfg(not(feature = "test-hooks"))]
+fn at_limit(_: &Path) -> bool {
+    false
 }
 
 fn error_kind(kind: &notify::ErrorKind) -> &'static str {

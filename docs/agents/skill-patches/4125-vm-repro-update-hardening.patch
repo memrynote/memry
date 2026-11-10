@@ -1,0 +1,102 @@
+diff -ruN a/vm-repro/SKILL.md b/vm-repro/SKILL.md
+--- a/vm-repro/SKILL.md	2026-11-10 10:31:03
++++ b/vm-repro/SKILL.md	2026-11-10 10:31:11
+@@ -10,7 +10,11 @@
+ boot headless, install the user's release, sign in, drive the UI over CDP, revert again at the end.
+ 
+ Everything goes through `scripts/winvm.sh` (run from inside the memry repo:
+-`.agents/skills/vm-repro/scripts/winvm.sh`). `winvm.sh help` lists the commands.
++`.agents/skills/vm-repro/scripts/winvm.sh`). `winvm.sh help` lists the commands. `.agents` is a
++symlink in the main checkout only, so from a worktree call the script by its main-checkout path
++(`/Users/h4yfans/workspace/personal/memry/.agents/skills/vm-repro/scripts/winvm.sh`) with the
++worktree as the working directory: the repo, the default holder name and the `swap` build all come
++from the working directory.
+ 
+ ## Several sessions at once
+ 
+@@ -21,9 +25,12 @@
+ - **Windows is a pool of two VMs, one holder each.** Every VM command claims first: it takes the
+   first free VM, and every later command of the same holder acts on that VM (its IP, state,
+   tunnel port and cache are per VM). Set `WINVM_HOLDER=<your lane>` (default: the worktree dir
+-  name) and keep it the same for the whole run. When both VMs are held, the command exits 75 and
+-  puts you in a FIFO queue: do other work and retry in about 10 minutes (a waiter that stops
+-  retrying for 45 min drops out; with k VMs free, the first k waiters may claim). `winvm.sh queue`
++  name) and keep it the same for the whole run. `claim` always takes the first free VM, VM 1
++  first, and has no VM argument; a holder name acts on the one VM it holds, so a session that
++  needs VM 2 while it holds VM 1 claims again under a second holder name. When both VMs are
++  held, the command exits 75 and puts you in a FIFO queue: do other work and retry in about 10
++  minutes (a waiter that stops retrying for 45 min drops out; with k VMs free, the first k
++  waiters may claim). `winvm.sh queue`
+   shows each VM's holder and power state, and the queue. `winvm.sh rm` reverts your VM and
+   releases its lock; run it as soon as your Windows rows are done, since others are waiting.
+   Locks: VM 1 `~/vms/winvm.lock`, VM 2 `~/vms/winvm2.lock`. `WINVM_POOL` (':'-separated `.vmx`
+@@ -279,14 +286,26 @@
+ - Sleep, monitor timeout, and lock screen are off. VMware Tools installed.
+ - Snapshot `clean` taken **powered off** with MemryNote not installed and no VC++ x64 runtime.
+ - Windows Update is off in `clean` on both VMs (2026-10-29, L21: Update rebooted the VM 26 min
+-  into a 12 h soak): `wuauserv`, `UsoSvc` and `WaaSMedicSvc` `Start=4` (an SSH admin session can
+-  write all three); policy `HKLM\SOFTWARE\Policies\Microsoft\Windows\WindowsUpdate\AU`
++  into a 12 h soak): `wuauserv`, `UsoSvc`, `WaaSMedicSvc` and `InstallService` `Start=4` (an SSH
++  admin session can write them); policy `HKLM\SOFTWARE\Policies\Microsoft\Windows\WindowsUpdate\AU`
+   `NoAutoUpdate=1`, `AUOptions=1`, `NoAutoRebootWithLoggedOnUsers=1`,
+   `AlwaysAutoRebootAtScheduledTime=0`, and `SetActiveHours=1` 05-23 one level up; UX settings
+-  paused for 3650 days (`FlightSettingsMaxPauseDays=3650`, `Pause*`); the `UpdateOrchestrator` and
+-  `WindowsUpdate` scheduled tasks disabled (most only as SYSTEM, through a one-shot `schtasks /ru
+-  SYSTEM`). `winvm.sh new` ends with `winvm.sh doctor`, which fails when a service is not disabled
+-  or the two policy values are missing, so a regressed `clean` cannot pass silently.
++  paused for 3650 days (`FlightSettingsMaxPauseDays=3650`, `Pause*`); every scheduled task in
++  `\Microsoft\Windows\UpdateOrchestrator\` (Schedule Scan, Schedule Scan Static Task and
++  Schedule Work included), `\Microsoft\Windows\WindowsUpdate\`,
++  `\Microsoft\Windows\WaaSMedic\` (PerformRemediation) and
++  `\Microsoft\Windows\InstallService\` disabled (most only as SYSTEM, through a one-shot
++  `schtasks /ru SYSTEM`; a folder left Ready is a gap, 2026-11-10).
++  `Start=4` alone does not hold. On the old base something set `wuauserv`, `UsoSvc` and
++  `WaaSMedicSvc` back to enabled within about 20 s of boot (System event 7040), and the
++  idle-maintenance burst 9 to 14 min after boot flipped `wuauserv` again (`MSchedExe.exe Start`
++  reproduces it; `MaintenanceDisabled=1` does not stop it). What holds is a locked service
++  security descriptor: `sc sdset` on `wuauserv`, `UsoSvc` and `InstallService` to query-only
++  (`CCLCSWLOCRRC`) for SYSTEM (`SY`), Administrators (`BA`) and Authenticated Users (`AU`).
++  `WaaSMedicSvc` rejects `sdset`; its `Start=4` is all it gets.
++  `winvm.sh new` ends with `winvm.sh doctor`, which fails when one of the first three services is
++  not disabled or the two policy values are missing. It reads the state at boot only and cannot
++  see a flip that lands later, so it does not replace the soak check in "Changing the base".
+ - VM 2 `~/Virtual Machines.localized/Windows 11 ARM 2.vmwarevm` (2026-10-29), because `vmrun
+   clone` refuses the encrypted VM 1 ("Cannot read the virtual machine configuration file"). With
+   VM 1 off at `clean`: `cp -cR` of the bundle (APFS clone, no extra disk until the copies
+@@ -298,8 +317,7 @@
+   on first boot). Keychain: the same password under VM 2's `.vmx` path, added through
+   `security -i` so it never sits in argv. Guest renamed to `MemryNote2` (Winlogon
+   `DefaultDomainName=MEMRYNOTE2` too, or autologon breaks). Then the old `clean` deleted and a new
+-  one taken powered off; `deleteSnapshot` printed "Cannot read the virtual machine configuration
+-  file" but removed it (the disks stayed unconsolidated, which is valid), and `snapshot` reset
++  one taken powered off; the disks stay unconsolidated, which is valid, and `snapshot` resets
+   `displayName` to the path (set it back).
+ 
+ `vmrun` quirks on this setup, already handled in `winvm.sh`:
+@@ -307,14 +325,22 @@
+   window in Fusion after boot.
+ - `start ... nogui` hosts the VM inside the `vmrun` process. It is started with `nohup ... &`;
+   killing that process kills the VM.
++- `deleteSnapshot` prints "Cannot read the virtual machine configuration file" but removes the
++  snapshot; confirm with `listSnapshots`, no Fusion UI step is needed.
+ - `snapshot` on a running encrypted VM fails with "Authentication for encrypted virtual machine
+   failed". Take snapshots from the Fusion UI or with the VM off.
+ - While the Fusion window for this VM is open, `vmrun start` can fail. Close the window, keep
+   Fusion running.
+ 
+ Changing the base: hold VM 1 (`winvm.sh queue` shows you as `vm1` holder; `claim` hands out VM 1
+-when it is free), `winvm.sh rm`, boot it from Fusion, change it, shut it
+-down, delete `clean` and take a new `clean` with the VM off. Then rebuild VM 2 from it with the
+-recipe above, so both VMs start from the same base, and run `winvm.sh new` on each: it must end
+-with `doctor: OK`, or the Update hardening above was lost. Never leave MemryNote, test-account data, or
++when it is free), `winvm.sh rm`, boot it from Fusion, change it, then prove the Update hardening
++held before the snapshot, because a check at boot proves nothing (the flips land minutes later):
++soak the booted VM for at least 20 min (past the idle-maintenance burst), confirm the System log
++has no event 7040 for Windows Update, Update Orchestrator, Windows Update Medic or Install
++Service, and wait until `TiWorker` is idle. Shut it down (a servicing run at shutdown can set
++`wuauserv` back to Manual, and the snapshot would capture that), delete `clean` and take a new
++`clean` with the VM off. Then rebuild VM 2 from it with the recipe above, so both VMs start from
++the same base, and run `winvm.sh new` on each: it must end with `doctor: OK`, and the event log it
++boots into (the previous session, shutdown included) must show no 7040 for those services, or the
++Update hardening above was lost. Never leave MemryNote, test-account data, or
+ the VC++ runtime in either.

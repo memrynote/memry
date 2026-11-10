@@ -142,6 +142,8 @@ mod large_file_sessions;
 mod lock_outside_edits;
 #[path = "lock_service.rs"]
 mod lock_service;
+#[path = "lock_set.rs"]
+mod lock_set;
 #[path = "logship.rs"]
 mod logship;
 #[path = "move_dir.rs"]
@@ -278,6 +280,8 @@ mod vault_exclude_read_only;
 mod vault_init;
 #[path = "vault_locks_app_edit.rs"]
 mod vault_locks_app_edit;
+#[path = "vault_notices.rs"]
+mod vault_notices;
 #[path = "vault_pairing.rs"]
 mod vault_pairing;
 #[path = "vault_paths.rs"]

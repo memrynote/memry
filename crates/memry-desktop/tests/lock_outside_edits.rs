@@ -27,7 +27,7 @@ use crate::vault_env::{Env, QUIET, WAIT, indexed};
 
 const OUTSIDE: &str = "Written outside the app.\n";
 
-fn until(what: &str, done: impl Fn() -> bool) {
+pub(crate) fn until(what: &str, done: impl Fn() -> bool) {
     let deadline = Instant::now() + WAIT;
     while !done() {
         assert!(Instant::now() < deadline, "never: {what}");
@@ -36,7 +36,7 @@ fn until(what: &str, done: impl Fn() -> bool) {
 }
 
 /// An editor's in-place save of a read-only file: it makes the file writable first.
-fn edit_outside(e: &Env, rel: &str, text: &str) {
+pub(crate) fn edit_outside(e: &Env, rel: &str, text: &str) {
     let path = e.vault.join(rel);
     let mut permissions = fs::metadata(&path).unwrap().permissions();
     #[allow(clippy::permissions_set_readonly_false)]
