@@ -216,7 +216,7 @@ fn a_server_delete_of_a_name_never_held_here_leaves_the_file() {
     f.set_file(ELECTRON_STAGE);
     f.core
         .db_handle()
-        .call_blocking(|c| mark_deleted(c, "property_definition", "Stage", NOW, Some(2), NOW))
+        .call_blocking(|c| mark_deleted(c, "property_definition", "Stage", NOW, None, NOW))
         .unwrap();
     let error = f
         .definitions

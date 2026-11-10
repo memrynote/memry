@@ -11,16 +11,27 @@
 //! | `project` over an entry this build cannot parse is left    | #3998 review nit 7                    |
 //! | `project` with a deleted record stays deleted              | a pulled delete is never undone       |
 //! | `project` with no definition gets one while a note uses it | Electron's learner and seed           |
+//! | a definition only the file holds becomes a record, once    | `rebuildSingleDbCache`, `seedUnclocked` (#4099) |
+//! | a pulled record or delete wins over one only the file holds | Electron's pull applies over a row with no clock |
+//! | a deleted name a hand edit put back stays on this device   | a delete is never undone by the seed  |
+//! | a name whose record this device cannot read is not pushed  | never push over an unread record      |
+//! | a pull that lands during the seed wins                     | the server's word, decided again      |
+//! | a name that fails is logged, the rest are seeded           | one name never blocks the pass        |
 
 #[allow(unused_imports)]
 use crate::property_definitions;
 
+use crate::on_warning::logged;
+
 use std::collections::BTreeMap;
 
-use memry_core::storage::repositories::sync_items::InboundRecord;
+use memry_core::storage::repositories::sync_items::{
+    InboundRecord, mark_corrupt, upsert_metadata_only,
+};
 use memry_core::sync::apply::apply_inbound;
+use memry_core::sync::store::mark_deleted;
 use memry_desktop::notes::property_definitions::DefinitionType;
-use property_definitions::{Fixture, NOW, fixture, input, option, pull};
+use property_definitions::{Fixture, NOW, fixture, inbound, input, option, pull};
 use serde_json::{Value, json};
 
 const UNPARSED_RATING: &str = "---\nproperties:\n  rating:\n    type: formula\n---\n";
@@ -99,9 +110,10 @@ fn a_name_the_file_holds_is_not_promoted_parsed_or_not() {
         UNPARSED_RATING.trim_end_matches("---\n")
     ));
     let before = f.file();
-    assert!(f.definitions.seed().unwrap().is_empty());
+    // The file's `site` becomes a record of the file's type (#4099), not of the learned one.
+    assert_eq!(f.definitions.seed().unwrap(), ["site"]);
     assert_eq!(f.record("rating"), None);
-    assert_eq!(f.record("site"), None);
+    assert_eq!(f.record("site").unwrap().type_name, "text");
     assert_eq!(f.file(), before, "the file is left as it is");
     assert_eq!(listed(&f, "site").as_deref(), Some("text"));
 }
@@ -179,4 +191,192 @@ fn project_with_no_definition_gets_one_while_a_note_uses_it() {
     f.definitions.seed().unwrap();
     assert_eq!(f.record("project").unwrap().type_name, "project");
     assert_eq!(listed(&f, "project").as_deref(), Some("project"));
+}
+
+/// `mood` as a hand-written `properties.md` holds it, or a vault whose Electron install never
+/// synced: no record of it anywhere.
+const FILE_ONLY: &str = "---\nproperties:\n  mood:\n    type: select\n    options:\n      - value: Calm\n        color: sage\n  energy:\n    type: number\n---\n";
+
+fn ops(f: &Fixture) -> Vec<(String, String)> {
+    f.core
+        .db_handle()
+        .call_blocking(|c| {
+            let mut statement = c
+                .prepare("SELECT item_id, op FROM outbox ORDER BY item_id")
+                .unwrap();
+            let rows = statement
+                .query_map([], |row| Ok((row.get(0)?, row.get(1)?)))
+                .unwrap()
+                .collect::<Result<Vec<_>, _>>()
+                .unwrap();
+            Ok(rows)
+        })
+        .unwrap()
+}
+
+#[test]
+fn a_definition_only_the_file_holds_becomes_a_record_once() {
+    let f = fixture();
+    f.set_file(FILE_ONLY);
+    let before = f.file();
+
+    assert_eq!(f.definitions.seed().unwrap(), ["mood", "energy"]);
+    let mood = f.record("mood").expect("the record");
+    assert_eq!(mood.type_name, "select");
+    assert_eq!(
+        mood.options.as_deref(),
+        Some(r#"[{"value":"Calm","color":"sage"}]"#)
+    );
+    assert_eq!(f.record("energy").unwrap().type_name, "number");
+    // A user's definition: re-created over a purged deletion, as Electron's `enqueueCreate`.
+    assert_eq!(
+        ops(&f),
+        [
+            ("energy".to_owned(), "create".to_owned()),
+            ("mood".to_owned(), "create".to_owned())
+        ]
+    );
+    assert_eq!(f.file(), before, "the file is left as it is");
+
+    assert!(f.definitions.seed().unwrap().is_empty(), "seeded once");
+    assert_eq!(f.queued(), 2);
+}
+
+#[test]
+fn a_pulled_record_or_delete_wins_over_a_definition_only_the_file_holds() {
+    let f = fixture();
+    f.set_file(FILE_ONLY);
+    // Another device's `mood: text` landed before this device seeded (the #4099 repro), and the
+    // server holds `energy` deleted.
+    pull(&f, "mood", json!({"type": "text"}), false);
+    f.core
+        .db_handle()
+        .call_blocking(|c| mark_deleted(c, "property_definition", "energy", NOW, None, NOW))
+        .unwrap();
+
+    assert!(f.definitions.seed().unwrap().is_empty());
+    assert_eq!(f.queued(), 0, "nothing goes back over the server's word");
+    assert_eq!(listed(&f, "mood").as_deref(), Some("text"));
+    assert_eq!(listed(&f, "energy"), None);
+    let file = f.file().unwrap();
+    assert!(file.contains("mood:\n    type: text"), "{file}");
+    assert!(!file.contains("energy"), "{file}");
+    assert_eq!(f.record("energy"), None);
+}
+
+#[test]
+fn a_deleted_name_a_hand_edit_put_back_stays_on_this_device() {
+    let f = fixture();
+    f.definitions
+        .create(input("mood", Some(DefinitionType::Text)))
+        .unwrap();
+    f.definitions.delete("mood").unwrap();
+    f.set_file("---\nproperties:\n  mood:\n    type: number\n---\n");
+    let queued = f.queued();
+    assert!(f.definitions.seed().unwrap().is_empty());
+    assert_eq!(f.record("mood"), None);
+    assert_eq!(f.queued(), queued, "no delete is undone");
+    assert_eq!(listed(&f, "mood").as_deref(), Some("number"));
+}
+
+/// `aaa`, whose record this device holds but cannot read, before `mood` in the file.
+const UNREAD_FIRST: &str =
+    "---\nproperties:\n  aaa:\n    type: text\n  mood:\n    type: number\n---\n";
+
+const SEED: &str = "memry_desktop::notes::property_definitions::seed";
+
+/// The seed leaves `aaa` alone, without trying it, and seeds the rest.
+fn seeds_around_an_unread_record(f: &Fixture) {
+    f.set_file(UNREAD_FIRST);
+    learn(f, &[("rating", DefinitionType::Number)]);
+    let (seeded, log) = logged(SEED, || f.definitions.seed());
+    assert_eq!(seeded.unwrap(), ["mood", "rating"]);
+    assert_eq!(log, Vec::<String>::new(), "`aaa` is never tried");
+    let queued: Vec<String> = ops(f).into_iter().map(|(name, _)| name).collect();
+    assert_eq!(queued, ["mood", "rating"], "nothing goes over `aaa`");
+    assert_eq!(f.record("mood").unwrap().type_name, "number");
+    assert_eq!(f.record("rating").unwrap().type_name, "number");
+}
+
+#[test]
+fn a_name_whose_record_is_metadata_only_is_not_pushed_over() {
+    let f = fixture();
+    // The pull flagged `aaa` corrupt: a row with no payload (pull.rs `record_corrupt`).
+    f.core
+        .db_handle()
+        .call_blocking(|c| {
+            upsert_metadata_only(c, "property_definition", "aaa", NOW, None)?;
+            mark_corrupt(c, "property_definition", "aaa", "bad", NOW)
+        })
+        .unwrap();
+    seeds_around_an_unread_record(&f);
+}
+
+#[test]
+fn a_name_whose_record_does_not_parse_is_not_pushed_over() {
+    let f = fixture();
+    pull(&f, "aaa", json!({"type": "text"}), false);
+    f.core
+        .db_handle()
+        .call_blocking(|c| {
+            c.execute(
+                "UPDATE sync_items SET payload = 'not json' WHERE item_id = 'aaa'",
+                [],
+            )
+            .unwrap();
+            Ok(())
+        })
+        .unwrap();
+    seeds_around_an_unread_record(&f);
+}
+
+#[test]
+fn a_pull_that_lands_during_the_seed_wins() {
+    let f = fixture();
+    f.set_file(FILE_ONLY);
+    // Another device's `mood: text` lands between the seed's file write and its record write.
+    let core = f.core.db_handle();
+    let mut once = Some(inbound(&f, "mood", json!({"type": "text"}), false));
+    f.definitions.before_record_write(move || {
+        if let Some(record) = once.take() {
+            core.call_blocking(move |c| apply_inbound(c, &record, NOW))
+                .unwrap();
+        }
+    });
+
+    assert_eq!(f.definitions.seed().unwrap(), ["energy"]);
+    assert_eq!(
+        ops(&f),
+        [("energy".to_owned(), "create".to_owned())],
+        "nothing goes back over the pull"
+    );
+    assert_eq!(listed(&f, "mood").as_deref(), Some("text"));
+}
+
+#[test]
+fn a_name_that_fails_to_seed_is_logged_and_the_rest_are_seeded() {
+    let f = fixture();
+    f.core
+        .db_handle()
+        .call_blocking(|c| {
+            c.execute_batch(
+                "CREATE TRIGGER refuse_aaa BEFORE INSERT ON sync_items
+                 WHEN NEW.item_id = 'aaa' BEGIN SELECT RAISE(ABORT, 'refused'); END;",
+            )
+            .unwrap();
+            Ok(())
+        })
+        .unwrap();
+    f.set_file(UNREAD_FIRST);
+    learn(&f, &[("rating", DefinitionType::Number)]);
+    let (seeded, log) = logged(SEED, || f.definitions.seed());
+    assert_eq!(seeded.unwrap(), ["mood", "rating"]);
+    assert_eq!(f.record("aaa"), None);
+    // The code only: the name is the user's.
+    assert_eq!(
+        log,
+        [
+            "WARN a definition only the file holds was not seeded; the next pass tries again code=storage_failed"
+        ]
+    );
 }

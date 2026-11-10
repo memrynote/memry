@@ -8,6 +8,8 @@
 //! | a learned type reaches the other device as a definition | Electron's pull, `seedUnclocked`, push    |
 //! | a learned name whose deletion was purged stays deleted  | chapter 05 §5.8, §5.12.3                  |
 //! | a definition the user creates over a purged deletion    | chapter 05 §5.12.3 (`create`)             |
+//! | a definition only the file holds meets the server's     | `rebuildSingleDbCache`, `seedUnclocked` (#4099) |
+//! | a definition only the file holds over a purged deletion | chapter 05 §5.12.3 (`create`, #4099)      |
 //!
 //! Within it: a definition another device pushed first wins over the learned type, a deleted one
 //! stays deleted, the record has the shape Electron's seed pushes, a retry pushes nothing twice,
@@ -275,6 +277,12 @@ impl Device {
         std::fs::read_to_string(path).unwrap_or_default()
     }
 
+    /// `properties.md` as a hand edit, or an Electron install that never synced, left it.
+    fn write_file(&self, text: &str) {
+        let path = self.vault.join(".memry").join("properties.md");
+        std::fs::write(path, text).unwrap();
+    }
+
     /// The stored payload of `name`'s record: what the server delivered, on a device that pulled it.
     fn payload(&self, name: &str) -> Option<Value> {
         let name = name.to_owned();
@@ -475,6 +483,93 @@ async fn a_definition_the_user_creates_over_a_purged_deletion_is_kept_and_synced
     a.definitions.create(gone(DefinitionType::Number)).unwrap();
     let created = a.sync().await;
     assert!(created.pushed, "{created:?}");
+    assert_eq!(a.listed(), types(&[("gone", "number")]));
+    assert!(a.file().contains("gone:\n    type: number"), "{}", a.file());
+    assert_eq!(a.queued(), 0);
+
+    b.sync().await;
+    assert_eq!(b.listed(), types(&[("gone", "number")]));
+}
+
+/// #4099: B's `properties.md` holds `mood`, `energy` and `gone`, and no record of any. A pushed
+/// `mood: text` (learned) and deleted `gone` before B's first sync. B's pull wins over its file for
+/// both, as Electron's pull applies over a row with no clock, and B pushes only `energy`, which
+/// reaches A. A second pass pushes nothing.
+#[tokio::test(flavor = "multi_thread")]
+async fn a_definition_only_the_file_holds_meets_the_servers() {
+    let server = Server::start();
+    let a = Device::new(&server, 0).await;
+    let b = Device::new(&server, 1).await;
+
+    a.definitions
+        .create(DefinitionInput {
+            name: "gone".into(),
+            type_name: Some(DefinitionType::Text),
+            options: None,
+            default_value: None,
+            color: None,
+        })
+        .unwrap();
+    assert!(a.sync().await.pushed);
+    a.definitions.delete("gone").unwrap();
+    a.learn(&[("mood", DefinitionType::Text)]);
+    assert!(a.sync().await.pushed);
+
+    b.write_file(
+        "---\nproperties:\n  mood:\n    type: select\n    options:\n      - value: Calm\n        color: sage\n  energy:\n    type: number\n  gone:\n    type: text\n---\n",
+    );
+    let first = b.sync().await;
+    assert!(first.pushed, "{first:?}");
+    assert_eq!(
+        b.listed(),
+        types(&[("energy", "number"), ("mood", "text")]),
+        "A's mood and A's delete win over B's file"
+    );
+    assert!(b.file().contains("mood:\n    type: text"), "{}", b.file());
+    assert!(!b.file().contains("gone"), "{}", b.file());
+    assert_eq!(
+        b.payload("mood").expect("A's mood")["clock"],
+        json!({ a.clock_id.clone(): 1 }),
+        "B pushed nothing over it"
+    );
+    assert!(b.payload("gone").is_none(), "the delete stays");
+    assert_eq!(b.queued(), 0);
+    let again = b.sync().await;
+    assert!(!again.pushed, "{again:?}");
+
+    a.sync().await;
+    assert_eq!(a.listed(), types(&[("energy", "number"), ("mood", "text")]));
+    assert_eq!(
+        a.payload("energy").expect("B's energy")["clock"],
+        json!({ b.clock_id.clone(): 1 })
+    );
+}
+
+/// A definition only the file holds is the user's, pushed as `create` like Electron's seed, so the
+/// server re-creates it over a purged deletion that this core never pulls (§5.12.3).
+#[tokio::test(flavor = "multi_thread")]
+async fn a_definition_only_the_file_holds_over_a_purged_deletion_is_kept_and_synced() {
+    let mut server = Server::start();
+    let b = Device::new(&server, 1).await;
+    b.definitions
+        .create(DefinitionInput {
+            name: "gone".into(),
+            type_name: Some(DefinitionType::Text),
+            options: None,
+            default_value: None,
+            color: None,
+        })
+        .unwrap();
+    assert!(b.sync().await.pushed);
+    b.definitions.delete("gone").unwrap();
+    assert!(b.sync().await.pushed);
+    tokio::time::sleep(Duration::from_millis(1_100)).await;
+    assert_eq!(server.purge(), 1, "the tombstone is a marker now");
+
+    let a = Device::new(&server, 0).await;
+    a.write_file("---\nproperties:\n  gone:\n    type: number\n---\n");
+    let first = a.sync().await;
+    assert!(first.pushed, "{first:?}");
     assert_eq!(a.listed(), types(&[("gone", "number")]));
     assert!(a.file().contains("gone:\n    type: number"), "{}", a.file());
     assert_eq!(a.queued(), 0);
