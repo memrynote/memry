@@ -1,7 +1,8 @@
 import type { ReactNode } from 'react'
 import { act, renderHook, waitFor } from '@testing-library/react'
-import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
-import { beforeEach, describe, expect, it, vi } from 'vitest'
+import { onlineManager, QueryClient, QueryClientProvider } from '@tanstack/react-query'
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
+import { APP_QUERY_DEFAULT_OPTIONS } from '@/lib/query-client-options'
 import {
   notesKeys,
   useNote,
@@ -207,6 +208,22 @@ describe('use-notes-query', () => {
       mocks.handlers.deleted[0]({ id: 'n1' })
     })
     expect(queryClient.getQueryData(notesKeys.note('n1'))).toBeUndefined()
+  })
+
+  // #4146: the note is a local read. With TanStack's default network mode the WebView's `offline`
+  // event paused it, and the page showed no note and no spinner.
+  describe('while the WebView reports offline', () => {
+    afterEach(() => onlineManager.setOnline(true))
+
+    it('still reads the note with the app query defaults', async () => {
+      queryClient = new QueryClient({ defaultOptions: APP_QUERY_DEFAULT_OPTIONS })
+      onlineManager.setOnline(false)
+
+      const { result } = renderHook(() => useNote('n1'), { wrapper })
+
+      await waitFor(() => expect(result.current.note?.title).toBe('First'))
+      expect(mocks.notesService.get).toHaveBeenCalledWith('n1')
+    })
   })
 
   // A page opened again from a fresh cache, or switched to a cached note, reads the file again:

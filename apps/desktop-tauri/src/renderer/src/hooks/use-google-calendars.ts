@@ -18,7 +18,9 @@ export function useGoogleCalendars(enabled: boolean = true): UseGoogleCalendarsR
     queryFn: listGoogleCalendars,
     enabled,
     staleTime: CALENDAR_LIST_STALE_TIME,
-    gcTime: CALENDAR_LIST_GC_TIME
+    gcTime: CALENDAR_LIST_GC_TIME,
+    // Lists the account's calendars from Google, so it waits for the network.
+    networkMode: 'online'
   })
   return {
     data,

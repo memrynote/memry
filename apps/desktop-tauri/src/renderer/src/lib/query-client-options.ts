@@ -18,6 +18,10 @@ export const APP_QUERY_DEFAULT_OPTIONS: DefaultOptions = {
     // Retry failed requests once
     retry: 1,
     // Don't refetch on window focus for desktop app
-    refetchOnWindowFocus: false
+    refetchOnWindowFocus: false,
+    // Queries read the local vault over IPC, which works offline. TanStack's default ('online')
+    // pauses every query after the WebView's `offline` event, so a note opened offline never
+    // loads (#4146). A query that needs the network sets `networkMode: 'online'` itself.
+    networkMode: 'always'
   }
 }
