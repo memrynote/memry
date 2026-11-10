@@ -142,6 +142,8 @@ mod large_file_sessions;
 mod lock_outside_edits;
 #[path = "lock_service.rs"]
 mod lock_service;
+#[path = "lock_set.rs"]
+mod lock_set;
 #[path = "logship.rs"]
 mod logship;
 #[path = "move_dir.rs"]

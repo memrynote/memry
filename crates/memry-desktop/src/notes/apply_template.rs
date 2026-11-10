@@ -21,10 +21,11 @@
 //! outside edit not fed yet, an edit the document has and the file not) is refused as a save
 //! is, and the user applies again. An apply that replaces the body keeps a version of the file
 //! first, as Electron's `writeNote` keeps one before it, and as the seam keeps a save's: the
-//! user's text can be brought back.
+//! user's text can be brought back. A locked note is refused by the seam (`Kept::Locked`,
+//! `note_locked`), as Electron's `assertNoteWritable` refuses it, before anything is written.
 //!
-//! Not here, with their owners: `plainChecklists` (Step 32; the renderer refuses it), the lock
-//! check (Step 14) and a project property's task links (Step 21).
+//! Not here, with their owners: `plainChecklists` (Step 32; the renderer refuses it) and a
+//! project property's task links (Step 21).
 
 use std::cell::RefCell;
 use std::collections::{HashMap, HashSet};

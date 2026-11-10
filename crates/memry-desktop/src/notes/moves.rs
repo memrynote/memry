@@ -388,7 +388,7 @@ pub(super) fn plain_folders(root: &Path, folder: &str) -> io::Result<bool> {
 
 /// A folder path as the disk holds it ([`folder_on_disk`]).
 #[derive(Debug, PartialEq, Eq)]
-pub(super) enum OnDisk {
+pub(crate) enum OnDisk {
     /// As the disk spells it.
     Spelled(String),
     /// A segment is a link or a file.
@@ -404,7 +404,7 @@ pub(super) enum OnDisk {
 /// on every volume ([`sibling_named`], the rule `create_folder` refuses a second spelling by),
 /// unless it holds several such and none spelled as given, which names none of them; the
 /// segments not there yet stay as given.
-pub(super) fn folder_on_disk(root: &Path, folder: &str) -> io::Result<OnDisk> {
+pub(crate) fn folder_on_disk(root: &Path, folder: &str) -> io::Result<OnDisk> {
     let mut path = root.to_path_buf();
     let mut spelled = Vec::new();
     let mut segments = folder.split('/');

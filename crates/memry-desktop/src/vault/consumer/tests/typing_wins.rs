@@ -12,7 +12,7 @@ use crate::vault::writeback::{Keep, Outcome, Pass, WriteBack, reconcile};
 const OUTSIDE: &str = "edited outside\n";
 
 /// A note at `n.md` with the file read, and a pass that writes it.
-fn note(f: &Fixture) -> (String, Pass) {
+pub(super) fn note(f: &Fixture) -> (String, Pass) {
     f.write("n.md", "first words\n");
     assert_eq!(f.added("n.md"), Step::Done);
     let echo: Arc<EchoGuard> = Arc::default();
@@ -29,7 +29,7 @@ fn note(f: &Fixture) -> (String, Pass) {
 }
 
 /// The note's first block, retyped in the app's editor and stored.
-fn type_in_app(f: &Fixture, id: &str, text: &str) {
+pub(super) fn type_in_app(f: &Fixture, id: &str, text: &str) {
     let blocks = f.vault.notes().blocks(id.to_owned()).unwrap().unwrap();
     let block_id = blocks.iter().find_map(|block| block.id.clone()).unwrap();
     let edit = BlockEdit::SetText {

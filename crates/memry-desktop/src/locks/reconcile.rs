@@ -14,8 +14,8 @@ use crate::vault::paths::open_vault_file;
 impl Locks<'_> {
     /// Every locked file read-only, every locked markdown note with a baseline, every note that
     /// lost its lock writable again with its baseline dropped, and every recorded file no lock
-    /// covers any more given its recorded bits back. (Electron's pass for a folder just unlocked
-    /// comes with the lock command.)
+    /// covers any more given its recorded bits back. A folder just unlocked frees the rest of its
+    /// files in [`Locks::set`].
     pub fn reconcile(&self) -> Result<(), StorageError> {
         let store = self.vault.locks();
         let files = self.vault.note_files();
@@ -33,19 +33,27 @@ impl Locks<'_> {
                 }
             }
         }
-        for note_id in store.baseline_note_ids()? {
-            if store.is_note_locked(&note_id, None)? {
-                continue;
-            }
-            if let Some(file) = files.by_id(&note_id)? {
-                self.release(&file.path);
-            }
-            store.delete_baseline(&note_id)?;
-        }
+        self.release_unlocked_notes()?;
         for (rel, _) in store.file_modes()? {
             if !self.is_path_locked(&rel)? {
                 self.release(&rel);
             }
+        }
+        Ok(())
+    }
+
+    /// Every note that lost its lock writable again, and its baseline dropped: a baseline is
+    /// the text of a note while it is locked, and stale once it is not.
+    pub(super) fn release_unlocked_notes(&self) -> Result<(), StorageError> {
+        let store = self.vault.locks();
+        for note_id in store.baseline_note_ids()? {
+            if store.is_note_locked(&note_id, None)? {
+                continue;
+            }
+            if let Some(file) = self.vault.note_files().by_id(&note_id)? {
+                self.release(&file.path);
+            }
+            store.delete_baseline(&note_id)?;
         }
         Ok(())
     }
@@ -130,7 +138,7 @@ impl Locks<'_> {
 /// Every file under the vault folder `folder`, vault-relative with `/`, skipping hidden entries
 /// (a folder's `.folder.md` among them) and never following a link (`listFilesUnder`). A folder
 /// that cannot be read lists nothing.
-fn files_under(root: &Path, folder: &str) -> Vec<String> {
+pub(super) fn files_under(root: &Path, folder: &str) -> Vec<String> {
     let mut found = Vec::new();
     let mut pending = vec![folder.to_owned()];
     while let Some(dir) = pending.pop() {

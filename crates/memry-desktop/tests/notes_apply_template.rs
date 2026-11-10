@@ -12,6 +12,7 @@
 //! | only the body's `#tags` changed: still `notes:tags-changed`       | `hasTagChange`                          |
 //! | a note whose document is ahead of its file is kept as it is       | `note_edit_kept`; no record written     |
 //! | a template or a note that is not there                            | `NOT_FOUND`                             |
+//! | a locked note, or one in a locked folder                          | `assertNoteWritable`: `note_locked`     |
 
 #[allow(unused_imports)]
 use crate::device_key;
@@ -20,6 +21,7 @@ use crate::vault_env;
 
 use std::sync::Arc;
 
+use memry_core::domain::vault_locks::TargetKind;
 use memry_core::seams::secure_store::SecureStore;
 use memry_desktop::error::CoreError;
 use memry_desktop::notes::apply_template::{ApplyTemplateInput, TemplateMode};
@@ -338,6 +340,30 @@ fn a_template_or_a_note_that_is_not_there_is_not_found() {
             .emoji
             .is_none()
     );
+}
+
+#[test]
+fn a_locked_note_or_one_in_a_locked_folder_is_refused_and_keeps_its_file() {
+    let (e, notes, store) = opened(&[("Plan.md", PLAN), ("Archive/Old.md", PLAN)]);
+    let open = e.session.current().unwrap();
+    let template = brief(&e, &store);
+    let plan = id_at(&e, "Plan.md");
+    let old = id_at(&e, "Archive/Old.md");
+    let locks = e.core().locks();
+    locks.set(TargetKind::Note, &plan, true).unwrap();
+    locks.set(TargetKind::Folder, "Archive", true).unwrap();
+
+    for (id, path) in [(&plan, "Plan.md"), (&old, "Archive/Old.md")] {
+        let refused = notes.apply_template(&open, input(id, &template, TemplateMode::Full));
+        let error = refused.unwrap_err();
+        assert_eq!(error.kind_and_code().1, "note_locked", "{path}");
+        assert_eq!(error.to_string(), "The owner made this note read-only.");
+        assert_eq!(e.read(path), PLAN);
+        assert!(
+            e.versions(id).is_empty(),
+            "{path}: no version of a refused apply"
+        );
+    }
 }
 
 /// A note under an exclude pattern takes no template (#3530 13m-7b-3b): refused, its file and
