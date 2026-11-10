@@ -103,8 +103,10 @@ final class EditorSession {
     let history = EditorUndoStack()
 
     @ObservationIgnored weak var field: BlockField?
-    /// A block to put the caret in once it is drawn.
-    @ObservationIgnored var pendingFocus: String?
+    /// A block to put the caret in once it is drawn. Observed, so a block
+    /// already on screen takes it too: a tap under the body asks for the
+    /// last block, and no redraw follows when that block is unchanged (#4151).
+    var pendingFocus: String?
     /// The field a block shortcut fired in, held until the row its type
     /// change redraws takes the caret (`BlockField.takeOver`).
     @ObservationIgnored var shortcutField: BlockField?
