@@ -218,6 +218,12 @@ export const commands = {
 	 */
 	notesApplyTemplate: (input: ApplyTemplateInput) => __TAURI_INVOKE<NoteView>("notes_apply_template", { input }),
 	/**
+	 *  `notes:append-blocks`: the block menu's "Move to" appends the blocks to the end of the
+	 *  target's body. The renderer removes them from the source only once this answers; a refused
+	 *  move rejects and leaves the target as it was. Its `notes:updated` comes from its row fact.
+	 */
+	notesAppendBlocks: (input: AppendBlocksInput) => __TAURI_INVOKE<AppendedBlocks>("notes_append_blocks", { input }),
+	/**
 	 *  `notes:undo-tag-template`: empties the body a tag's template filled, only while it is still
 	 *  what the template put there; `stale` otherwise.
 	 */
@@ -628,6 +634,19 @@ export type AppUpdateState = {
 	installFailed: InstallFailed | null,
 };
 
+/**  `NoteAppendBlocksSchema`. */
+export type AppendBlocksInput = {
+	sourceNoteId: string,
+	targetNoteId: string,
+	markdown: string,
+};
+
+/**  What `notes:append-blocks` answers besides `success`. */
+export type AppendedBlocks = {
+	/**  The target's vault-relative path. */
+	targetPath: string,
+};
+
 /**  `ApplyTemplateSchema`, the fields this step reads. */
 export type ApplyTemplateInput = {
 	noteId: string,
@@ -681,6 +700,15 @@ export type CategoryOrderInput = {
 	id: string,
 	sortOrder: number,
 };
+
+/**
+ *  What keeps an unfinished journal setting change's days from going back:
+ *  - `settings`: the vault settings at `path` cannot be read, so the change cannot tell whether
+ *    it was saved.
+ *  - `taken`: a file or folder is at a day's old place, `path`.
+ *  - `unknown`: anything else, logged.
+ */
+export type ChangeHold = { kind: "settings"; path: string } | { kind: "taken"; path: string } | { kind: "unknown" };
 
 /**
  *  What the renderer sees when a command rejects. Tauri serializes it as JSON, the shape
@@ -2588,9 +2616,20 @@ export type VaultLocksExternalEditRestoredEvent = {
  *    text the file never had (`Removed::Undecided`), rather than deleting that text on every
  *    device. Listed until a file is at the note's path again; every open lists them again
  *    while their rows have no file.
+ *  - `journalDaysHeld`: journal days a move outside the app carried wait in `folders` (absolute)
+ *    for the journal setting to follow them (`journal::folder_follow::Follow::HeldWaits`): no
+ *    day is made, no journal setting change moves days, and those folders neither move nor go,
+ *    until the days are in one folder they can live in, or back.
+ *  - `journalChangeWaits`: a journal setting change from the folder `from` to `to` (as the
+ *    setting spells them) a crash cut short could not put its days back
+ *    (`vault::journal_rename::finish_journal_change`); `holds` names what keeps them. Both
+ *    folders neither move nor go until the next open finishes it.
+ *  - `movesWait`: notes whose app move a crash cut short and the open could not finish
+ *    (`vault::app_move::finish_interrupted`): they do not move or rename until it settles, which
+ *    every open tries again. `path` is the note's file, absolute.
  *  - `more` says a list notice had more items than [`LISTED`].
  */
-export type VaultNotice = { kind: "configUnreadable"; path: string } | { kind: "watchLimit" } | { kind: "undecidedFiles"; paths: string[]; more: boolean } | { kind: "keptRemovals"; notes: KeptRemoval[]; more: boolean };
+export type VaultNotice = { kind: "configUnreadable"; path: string } | { kind: "watchLimit" } | { kind: "undecidedFiles"; paths: string[]; more: boolean } | { kind: "keptRemovals"; notes: KeptRemoval[]; more: boolean } | { kind: "journalDaysHeld"; folders: string[] } | { kind: "journalChangeWaits"; from: string; to: string; holds: ChangeHold } | { kind: "movesWait"; notes: WaitingMove[]; more: boolean };
 
 /**  The open vault's notices, as a window reads them. */
 export type VaultNoticeList = {
@@ -2659,6 +2698,12 @@ export type VersionView = {
 	wordCount: number,
 	reason: string,
 	createdAt: string,
+};
+
+/**  A note whose interrupted app move waits; `path` is its file's, absolute. */
+export type WaitingMove = {
+	noteId: string,
+	path: string,
 };
 
 /**  `WikiLinkPreview`, with the body in place of `bodyText`. */

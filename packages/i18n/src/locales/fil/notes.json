@@ -597,7 +597,8 @@
         "title": "Ilipat ang block sa tala",
         "searchPlaceholder": "Maghanap ng mga tala…",
         "noResults": "Walang tumutugmang tala",
-        "failed": "Hindi mailipat ang block"
+        "failed": "Hindi mailipat ang block",
+        "targetNotTaken": "Masyadong malaki ang tala na ito o may teksto na hindi matanggap ng app, kaya nanatili ang mga block sa kinaroroonan nila."
       }
     },
     "attachmentPicker": {

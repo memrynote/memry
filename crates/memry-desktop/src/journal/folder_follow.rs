@@ -18,6 +18,7 @@ use crate::notes::owed_moves::{held_owed, holds, settle_followed};
 use crate::vault::config::read_vault_config_strict;
 use crate::vault::config::settings::JournalFollow;
 use crate::vault::journal_format::{JournalDays, normalize_journal_folder};
+use crate::vault::notices::{VaultNotice, VaultNotices};
 use crate::vault::path_key::folded_key;
 
 const SCOPE: &str = "journal_folder_follow";
@@ -214,27 +215,65 @@ pub(crate) fn overlaps(a: &str, b: &str) -> bool {
 /// Nothing follows while a journal setting change is recorded (it owns the days until it
 /// settles), while the settings cannot be read, while the held days name more than one folder,
 /// or into a folder the days cannot live in. The days then stay held; the failures are logged.
-pub(crate) fn follow_moved_journal(root: &Path, writer: &NotesWriter) -> Follow {
-    follow(root, writer, in_batch(root))
+///
+/// `notices` shows the days that wait ([`VaultNotice::JournalDaysHeld`]) and takes the notice
+/// down once none do. Days that wait only for the consumer's batch are not shown: the follow
+/// after it decides.
+pub(crate) fn follow_moved_journal(
+    root: &Path,
+    writer: &NotesWriter,
+    notices: Option<&VaultNotices>,
+) -> Follow {
+    follow(root, writer, in_batch(root), notices)
 }
 
 /// [`follow_moved_journal`] once the consumer's batch that held days ended, or at the open,
 /// where no batch runs yet.
-pub(crate) fn follow_after_batch(root: &Path, writer: &NotesWriter) -> Follow {
+pub(crate) fn follow_after_batch(
+    root: &Path,
+    writer: &NotesWriter,
+    notices: Option<&VaultNotices>,
+) -> Follow {
     BATCH
         .lock()
         .unwrap_or_else(PoisonError::into_inner)
         .remove(root);
-    follow(root, writer, false)
+    follow(root, writer, false, notices)
 }
 
-fn follow(root: &Path, writer: &NotesWriter, mid_batch: bool) -> Follow {
+fn follow(
+    root: &Path,
+    writer: &NotesWriter,
+    mid_batch: bool,
+    notices: Option<&VaultNotices>,
+) -> Follow {
+    let follow = decide(root, writer, mid_batch);
+    match (notices, &follow) {
+        (Some(_), Some(Follow::HeldWaits { .. })) if mid_batch => {}
+        (Some(notices), Some(Follow::HeldWaits { folders })) => {
+            let folders = folders
+                .iter()
+                .map(|folder| root.join(folder).to_string_lossy().into_owned())
+                .collect();
+            notices.raise(root, VaultNotice::JournalDaysHeld { folders });
+        }
+        (Some(notices), Some(_)) => {
+            let folders = Vec::new();
+            notices.clear(root, &VaultNotice::JournalDaysHeld { folders });
+        }
+        _ => {}
+    }
+    follow.unwrap_or(Follow::Nothing)
+}
+
+/// What [`follow`] finds; `None` when the owed moves or the held days could not be read, logged.
+fn decide(root: &Path, writer: &NotesWriter, mid_batch: bool) -> Option<Follow> {
     let owed = match writer.owed_places() {
-        Ok(owed) if owed.is_empty() => return Follow::Nothing,
+        Ok(owed) if owed.is_empty() => return Some(Follow::Nothing),
         Ok(owed) => owed,
         Err(error) => {
             tracing::error!(scope = SCOPE, "the owed moves could not be read: {error}");
-            return Follow::Nothing;
+            return None;
         }
     };
     let settings = JournalFollow::hold();
@@ -304,23 +343,22 @@ fn follow(root: &Path, writer: &NotesWriter, mid_batch: bool) -> Follow {
     })();
     match followed {
         Ok(Follow::HeldWaits { folders }) => {
-            // TODO(#3531 Step 14): tell the user the journal days wait in these folders.
             tracing::warn!(
                 scope = SCOPE,
                 ?folders,
                 mid_batch,
                 "journal days the journal folder's move carried wait for the setting to follow"
             );
-            Follow::HeldWaits { folders }
+            Some(Follow::HeldWaits { folders })
         }
-        Ok(follow) => follow,
+        Ok(follow) => Some(follow),
         Err(error) => {
             tracing::warn!(
                 scope = SCOPE,
                 "the journal setting waits to follow a journal folder moved outside the app: \
                  {error}"
             );
-            Follow::Nothing
+            None
         }
     }
 }

@@ -174,6 +174,8 @@ mod note_properties_outside;
 mod note_versions;
 #[path = "notes_aliases.rs"]
 mod notes_aliases;
+#[path = "notes_append_blocks.rs"]
+mod notes_append_blocks;
 #[path = "notes_apply_template.rs"]
 mod notes_apply_template;
 #[path = "notes_create_template.rs"]
@@ -284,6 +286,8 @@ mod vault_init;
 mod vault_locks_app_edit;
 #[path = "vault_notices.rs"]
 mod vault_notices;
+#[path = "vault_notices_journal.rs"]
+mod vault_notices_journal;
 #[path = "vault_pairing.rs"]
 mod vault_pairing;
 #[path = "vault_paths.rs"]
