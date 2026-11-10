@@ -68,6 +68,7 @@ mod metadata;
 pub mod names;
 #[cfg(feature = "markdown")]
 pub mod new_files;
+pub mod place_held;
 #[cfg(feature = "markdown")]
 pub mod removal;
 

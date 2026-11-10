@@ -422,9 +422,9 @@ pub(crate) fn remove_in(tx: &Connection, note_id: &str) -> Result<bool, StorageE
         )
         .map(|n| n > 0)
         .map_err(failed)?;
-    // The marker, the file hash, the size class, an owed move and the file's property baseline
-    // are file state of the note: they go with the row. A debt left would be the next row's of
-    // the id (a day's repeats), hiding its date.
+    // The marker, the file hash, the size class, an owed move with its hold and the file's
+    // property baseline are file state of the note: they go with the row. A debt left would be
+    // the next row's of the id (a day's repeats), hiding its date.
     crate::domain::owed_file_body::clear(tx, note_id)?;
     crate::domain::properties::forget_file_baseline(tx, note_id)?;
     write_file_hash(tx, note_id, None)?;
@@ -432,6 +432,7 @@ pub(crate) fn remove_in(tx: &Connection, note_id: &str) -> Result<bool, StorageE
     marks::forget(tx, note_id)?;
     let owed = "DELETE FROM note_place_owed WHERE note_id = ?1";
     tx.execute(owed, params![note_id]).map_err(failed)?;
+    crate::domain::notes::place_held::forget(tx, note_id)?;
     Ok(removed)
 }
 

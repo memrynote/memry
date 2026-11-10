@@ -16,6 +16,7 @@ use super::rows::{RowOwner, RowSession};
 use super::{AfterWalk, Applied, Consumer, QUEUE_CAPACITY, inbox};
 use crate::editor::EditorHost;
 use crate::editor::versions::close_step;
+use crate::journal::folder_follow::follow_after_batch;
 use crate::session::{OpenStage, OpenVault, Session};
 use crate::shell::shutdown::{StepFn, writeback_flush_timeout};
 use crate::vault::activity::ActivityLog;
@@ -393,6 +394,7 @@ impl VaultTier {
                 };
                 finish_journal_change(at, &JournalFollow::hold());
                 follow_interrupted(&vault.path, &writer);
+                follow_after_batch(&vault.path, &writer);
                 let mut lane = self
                     .rows
                     .lane_of(session)

@@ -161,6 +161,10 @@ pub enum Applied {
     /// A watcher fact that changes no row (`Unsupported`, `Unreadable`, `Unreachable`,
     /// `Reachable`, `Rescanned`, `WatchFailed`), passed on as it came.
     Vault(VaultEvent),
+    /// The journal setting followed the journal folder a move outside the app carried, after
+    /// the batch that held its days (`NoteIdentity::follow_held`): every window hears the new
+    /// setting, as Electron's `followJournalFolder` broadcasts it.
+    JournalFollowed,
     /// The write-back wrote the note's body over the outside edit the consumer read last
     /// (`Outcome::Wrote::replaced_outside`): typing won over it (#4030), and a version holds it.
     /// Published after the write's [`Applied::Changed`]; only the pages are told.

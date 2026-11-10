@@ -205,8 +205,11 @@ impl Run {
                 // next resync waits out the backoff.
                 Err(RecvTimeoutError::Timeout) if self.resync.owed && self.resync.waiting => {
                     self.resync.pass_ended(Instant::now());
+                    self.applier.follow_held();
                 }
-                Err(RecvTimeoutError::Timeout) => {}
+                // The queue went quiet, so the batch of a folder's move has ended, with the
+                // rows' lane released: the journal setting follows a folder whose days it held.
+                Err(RecvTimeoutError::Timeout) => self.applier.follow_held(),
                 Err(RecvTimeoutError::Disconnected) => return,
             }
             let now = Instant::now();

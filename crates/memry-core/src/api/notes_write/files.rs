@@ -326,6 +326,24 @@ impl NotesWriter {
         self.db.call_blocking(|conn| identity::owed_places(conn))
     }
 
+    /// The day's file moved with the whole journal folder: owed the move from `from_path` and
+    /// held, never crossed ([`identity::hold_place`]).
+    pub fn hold_place(&self, note_id: &str, from_path: &str) -> Result<(), StorageError> {
+        self.db
+            .call_blocking(move |conn| identity::hold_place(conn, note_id, from_path, now_ms()))
+    }
+
+    /// Where the move `note_id` owes is from, and whether it is held ([`identity::owed_place`]).
+    pub fn owed_place(&self, note_id: &str) -> Result<Option<(String, bool)>, StorageError> {
+        self.db
+            .call_blocking(move |conn| identity::owed_place(conn, note_id))
+    }
+
+    /// The owed moves that are held ([`identity::held_places`]).
+    pub fn held_places(&self) -> Result<Vec<OwedPlace>, StorageError> {
+        self.db.call_blocking(|conn| identity::held_places(conn))
+    }
+
     /// An app edit took the note's or journal day's file from the property values `before` to
     /// `after`: the record takes the keys it set and dropped and keeps every other
     /// ([`properties::mirror_file`]). `false` when no note or day has that id.

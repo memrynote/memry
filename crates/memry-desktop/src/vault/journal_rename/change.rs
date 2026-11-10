@@ -7,21 +7,28 @@
 //! each one's next move would delete it as a day, and the delete would sync.
 //! [`finish_journal_change`] puts them back. It runs before anything names a day or moves the
 //! days: at the vault's open before the rows' lane, the walk and the watcher
-//! (`consumer::tier`), and first in a day create, a folder move and a settings update, for a
-//! record an open could not finish.
+//! (`consumer::tier`), and first in a day create, a folder move, a folder delete and a settings
+//! update, for a record an open could not finish.
 //!
-//! First, before the settings are read, a row at its path in the new place whose file is still at
-//! its path in the old one (a crash between a day's two steps) goes back to its file. That state
-//! exists only before the save, since the save comes after every move, so it needs no setting;
-//! left to an open that cannot read the settings, its walk would pair the file with no row and
-//! delete the day. Then, when the saved setting already names the change's new place, the save
-//! landed and the record goes. Otherwise each day whose row and file are at its path in the new
-//! place goes back to its path in the old one, file first and row after, as a refused change's
-//! days go back. The folders the change made go once empty, then the record. Settings that
-//! cannot be read, or a day that cannot go back, leave the record for the next try, logged; its
-//! days stay at their new paths meanwhile, and no folder move or delete takes a folder that is,
-//! holds or is inside either of the change's folders ([`JournalChangeWaits::holds`]), since
-//! either would leave a day outside the journal the change settles to.
+//! When the saved setting already names the change's new place, the save landed and the record
+//! goes; a day's file found elsewhere since was moved by hand after the save, and the walk takes
+//! it as it takes any file moved out of the journal. Otherwise each row at its path in the new
+//! place whose file is still at its path in the old one (a crash between a day's two steps) goes
+//! back to its file, and each day whose row and file are at its path in the new place goes back
+//! to its path in the old one, file first and row after, as a refused change's days go back. The
+//! folders the change made go once empty, then the record.
+//!
+//! Settings that cannot be read do not say whether the save landed. The rows whose files never
+//! moved still go back to them: the app leaves that state only before the save, since the save
+//! comes after every move, and left to the open's walk the file would pair with no row and the
+//! day would be deleted. The rest waits for readable settings, as does a day that cannot go back,
+//! logged; its days stay at their new paths meanwhile, and no folder move or delete takes a
+//! folder that is, holds or is inside either of the change's folders
+//! ([`JournalChangeWaits::holds`]), since either would leave a day outside the journal the change
+//! settles to. A note move or rename takes no day (`notes::moves` finds only notes).
+//!
+//! TODO(#3531 Step 14): the notice of a waiting change names what holds its days (the settings
+//! file, or the file or folder at a day's old path), which the user clears outside the app.
 
 use memry_core::api::notes_write::NotesWriter;
 use memry_core::domain::notes::journal_change::{JournalChangeRecorded, PendingJournalChange};
@@ -130,12 +137,15 @@ fn settle(
     writer: &NotesWriter,
     change: &PendingJournalChange,
 ) -> Result<&'static str, String> {
-    let rows_left = put_days_back(at, writer, change, Back::RowsOnly)?;
-    let config = read_vault_config_strict(at.root)
-        .map_err(|why| format!("the settings cannot be read: {why}"))?;
-    if rows_left > 0 {
-        return Err(format!("{rows_left} journal days could not go back"));
-    }
+    let config = match read_vault_config_strict(at.root) {
+        Ok(config) => config,
+        Err(why) => {
+            let left = put_days_back(at, writer, change, Back::RowsOnly)?;
+            return Err(format!(
+                "the settings cannot be read ({left} journal days could not go back): {why}"
+            ));
+        }
+    };
     let saved = (
         normalize_journal_folder(&config.journal_folder),
         normalize_journal_date_format(&config.journal_date_format),

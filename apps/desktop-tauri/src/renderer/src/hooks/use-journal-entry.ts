@@ -1,4 +1,5 @@
 import { useState, useEffect, useCallback, useRef } from 'react'
+import { toast } from 'sonner'
 import { createLogger } from '@/lib/logger'
 import { extractErrorMessage } from '@/lib/ipc-error'
 import { trackRendererError } from '@/lib/telemetry-diagnostics'
@@ -40,6 +41,14 @@ import { getI18n } from 'react-i18next'
 import { notesService } from '@/services/notes-service'
 
 const log = createLogger('Hook:JournalEntry')
+
+/** Why the save of a day no longer open was refused (main says why, a held journal folder among them). */
+function savedElsewhereError(err: unknown): string {
+  return extractErrorMessage(
+    err,
+    getI18n().getFixedT(null, 'journal')('phaseI.errors.failedToSaveJournalEntry')
+  )
+}
 
 interface PendingTagsEdit {
   tags?: string[]
@@ -194,9 +203,10 @@ export function useJournalEntry(date: string): UseJournalEntryResult {
       if (pendingContent !== null) saveInput.content = pendingContent
       const send = (): void => {
         journalService.updateEntry(saveInput).catch((err: unknown) => {
-          // The user has already navigated away — this is silent data loss.
+          // The user has already navigated away, so the day's save error is not on screen.
           trackRendererError('journal_pending_save_failed', err)
           log.error(`Failed to save pending changes for ${oldDate}:`, err)
+          toast.error(savedElsewhereError(err))
         })
       }
 
@@ -492,6 +502,7 @@ export function useJournalEntry(date: string): UseJournalEntryResult {
         updateMutation.mutateAsync({ date, content }).catch((err: unknown) => {
           trackRendererError('journal_pending_save_failed', err)
           log.error(`Failed to save late changes for ${date}:`, err)
+          toast.error(savedElsewhereError(err))
         })
         return
       }
