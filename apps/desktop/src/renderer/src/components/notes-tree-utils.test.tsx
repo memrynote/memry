@@ -19,6 +19,7 @@ import {
   type FolderNode,
   type TreeStructure
 } from './notes-tree-utils'
+import { flattenTree } from '@/lib/virtualized-tree-utils'
 
 const baseDate = new Date(2026, 0, 1)
 
@@ -309,6 +310,32 @@ describe('buildTreeFromNotes notesFirst', () => {
     expect(on.notesFirst).toBe(true)
     expect(on.rootNotes.map((n) => n.id)).toEqual(off.rootNotes.map((n) => n.id))
     expect(on.folders.map((f) => f.path)).toEqual(['Y', 'Z'])
+  })
+})
+
+describe('buildTreeFromNotes mixed order', () => {
+  const notes = [createNote({ id: 'a', path: 'a.md', title: 'a' })]
+  const folders = [{ path: 'Z', icon: null }]
+  const positions = { '/': 0, 'a.md': 2, Z: 1 }
+  const rootIds = (tree: TreeStructure) => flattenTree(tree, new Set()).map((item) => item.id)
+
+  it('draws a marked level as one list in manual mode only', () => {
+    expect(rootIds(buildTreeFromNotes(notes, folders, positions, 'manual', true))).toEqual([
+      'folder-Z',
+      'a'
+    ])
+    expect(rootIds(buildTreeFromNotes(notes, folders, positions, 'name-asc', true))).toEqual([
+      'a',
+      'folder-Z'
+    ])
+  })
+
+  it('keeps an unmarked level grouped even when its positions interleave', () => {
+    const { '/': _marker, ...unmarked } = positions
+    expect(rootIds(buildTreeFromNotes(notes, folders, unmarked, 'manual', true))).toEqual([
+      'a',
+      'folder-Z'
+    ])
   })
 })
 

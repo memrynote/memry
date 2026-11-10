@@ -36,6 +36,12 @@ export interface TreeStructure {
    * Absent is folders first, the order the tree has always had.
    */
   notesFirst?: boolean
+  /**
+   * Manual sort only: the levels (parent path, `''` for the vault root) the
+   * user ordered with folders and notes interleaved, and the positions that
+   * order them. Every other level keeps the two groups.
+   */
+  mixedOrder?: { levels: ReadonlySet<string>; positions: Record<string, number> }
 }
 
 /** One child of a folder (or of the vault root) in display order. */
@@ -43,22 +49,37 @@ export type FolderEntry =
   | { type: 'folder'; folder: FolderNode }
   | { type: 'note'; note: NoteListItem }
 
+export function folderEntryPath(entry: FolderEntry): string {
+  return entry.type === 'folder' ? entry.folder.path : entry.note.path
+}
+
 /**
  * A level's folders and notes merged into the order the tree draws them.
  *
  * The one place the folders-vs-notes order is decided: both sidebar trees
  * render from this, keyboard navigation walks what they render, and the last
  * entry is the level's last row whichever group it came from. Each group keeps
- * the order the sort mode gave it.
+ * the order the sort mode gave it. A level in `tree.mixedOrder` is then sorted
+ * as one list by position; the sort is stable, so items with no position stay
+ * at the end in their grouped order.
  */
 export function orderFolderEntries(
+  tree: TreeStructure,
+  parentPath: string,
   folders: FolderNode[],
-  notes: NoteListItem[],
-  notesFirst = false
+  notes: NoteListItem[]
 ): FolderEntry[] {
   const folderEntries = folders.map((folder): FolderEntry => ({ type: 'folder', folder }))
   const noteEntries = notes.map((note): FolderEntry => ({ type: 'note', note }))
-  return notesFirst ? [...noteEntries, ...folderEntries] : [...folderEntries, ...noteEntries]
+  const grouped = tree.notesFirst
+    ? [...noteEntries, ...folderEntries]
+    : [...folderEntries, ...noteEntries]
+
+  const mixed = tree.mixedOrder
+  if (!mixed?.levels.has(parentPath)) return grouped
+  const at = (entry: FolderEntry): number =>
+    mixed.positions[folderEntryPath(entry)] ?? Number.MAX_SAFE_INTEGER
+  return grouped.toSorted((a, b) => at(a) - at(b))
 }
 
 /**
@@ -167,7 +188,10 @@ export function flattenTree(tree: TreeStructure, expandedIds: Set<string>): Tree
     })
 
     if (isExpanded && hasChildren) {
-      processEntries(orderFolderEntries(folder.children, folder.notes, tree.notesFirst), level + 1)
+      processEntries(
+        orderFolderEntries(tree, folder.path, folder.children, folder.notes),
+        level + 1
+      )
     }
   }
 
@@ -182,7 +206,7 @@ export function flattenTree(tree: TreeStructure, expandedIds: Set<string>): Tree
     })
   }
 
-  processEntries(orderFolderEntries(tree.folders, tree.rootNotes, tree.notesFirst), 0)
+  processEntries(orderFolderEntries(tree, '', tree.folders, tree.rootNotes), 0)
 
   return items
 }

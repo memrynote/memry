@@ -438,6 +438,73 @@ describe('useNoteTreeActions', () => {
     await waitFor(() => expect(result.current.isMoving).toBe(false))
   })
 
+  it('interleaves a folder and a note on one level behind the mixed-order marker', async () => {
+    const { result, mutations } = renderActions({ selectedIds: [] })
+
+    await act(async () => {
+      await result.current.handleMove({
+        draggedId: 'folder-Work/Nested',
+        targetId: 'work-a',
+        position: 'after'
+      })
+    })
+    expect(notesService.reorder).toHaveBeenLastCalledWith('Work', [
+      'Work/',
+      'Work/A.md',
+      'Work/Nested',
+      'Work/B.md'
+    ])
+
+    await act(async () => {
+      await result.current.handleMove({
+        draggedId: 'root',
+        targetId: 'folder-Other',
+        position: 'before'
+      })
+    })
+    expect(notesService.reorder).toHaveBeenLastCalledWith('', ['/', 'Work', 'Root.md', 'Other'])
+    expect(notesService.renameFolder).not.toHaveBeenCalled()
+    expect(mutations.moveNote.mutateAsync).not.toHaveBeenCalled()
+  })
+
+  it('rewrites a whole mixed level when two notes swap on it', async () => {
+    const mixedTree = buildTreeFromNotes(allNotes, folders, {
+      'Work/': 0,
+      'Work/A.md': 1,
+      'Work/Nested': 2,
+      'Work/B.md': 3
+    })
+    const { result } = renderActions({ tree: mixedTree, selectedIds: [] })
+
+    await act(async () => {
+      await result.current.handleMove({
+        draggedId: 'work-b',
+        targetId: 'work-a',
+        position: 'before'
+      })
+    })
+    expect(notesService.reorder).toHaveBeenLastCalledWith('Work', [
+      'Work/',
+      'Work/B.md',
+      'Work/A.md',
+      'Work/Nested'
+    ])
+  })
+
+  it('does not reorder a multi-selection dropped beside a sibling', async () => {
+    const { result, mutations } = renderActions({ selectedIds: ['work-a', 'work-b'] })
+
+    await act(async () => {
+      await result.current.handleMove({
+        draggedId: 'work-a',
+        targetId: 'folder-Work/Nested',
+        position: 'before'
+      })
+    })
+    expect(notesService.reorder).not.toHaveBeenCalled()
+    expect(mutations.moveNote.mutateAsync).not.toHaveBeenCalled()
+  })
+
   it('says so when a dropped folder cannot be moved (#2206)', async () => {
     vi.mocked(notesService.renameFolder).mockRejectedValueOnce(new Error('Failed to rename folder'))
     const { result, deps } = renderActions()
