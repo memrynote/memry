@@ -23,5 +23,10 @@ export const APP_QUERY_DEFAULT_OPTIONS: DefaultOptions = {
     // pauses every query after the WebView's `offline` event, so a note opened offline never
     // loads (#4146). A query that needs the network sets `networkMode: 'online'` itself.
     networkMode: 'always'
+  },
+  mutations: {
+    // Same reason as queries: a paused mutation waits in renderer memory, so a write made offline
+    // (a journal entry on an empty day, a note's tags) never reaches IPC and is lost at quit.
+    networkMode: 'always'
   }
 }

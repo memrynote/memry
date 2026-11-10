@@ -224,6 +224,18 @@ describe('use-notes-query', () => {
       await waitFor(() => expect(result.current.note?.title).toBe('First'))
       expect(mocks.notesService.get).toHaveBeenCalledWith('n1')
     })
+
+    it('still writes a note update with the app mutation defaults', async () => {
+      queryClient = new QueryClient({ defaultOptions: APP_QUERY_DEFAULT_OPTIONS })
+      onlineManager.setOnline(false)
+
+      const { result } = renderHook(() => useNoteMutations(), { wrapper })
+      await act(async () => {
+        await result.current.updateNote.mutateAsync({ id: 'n1', tags: ['offline'] })
+      })
+
+      expect(mocks.notesService.update.mock.calls[0][0]).toEqual({ id: 'n1', tags: ['offline'] })
+    })
   })
 
   // A page opened again from a fresh cache, or switched to a cached note, reads the file again:
