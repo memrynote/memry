@@ -191,51 +191,30 @@ struct NoteEditorTests {
         #expect(tail == "")
     }
 
-    /// Backspace at offset zero merges a block into the one above, and the
-    /// caret lands where the join happened.
+    /// Backspace at offset zero joins a block to the one above in one write
+    /// (`BlockEdit.mergeBlocks`), so no failure leaves the text twice or not
+    /// at all.
     @Test func backspace_at_the_start_merges_into_the_block_above() async {
         let editor = ScriptedEditor()
         let model = NoteEditorViewModel(noteId: "note-1", editor: editor)
 
-        let caret = await model.merge(
-            "block-2", into: "block-1", text: "second", previousText: "first "
-        )
+        _ = await model.merge("block-2", into: "block-1")
 
-        #expect(caret == 6, "the caret sits at the join, not at either end")
-
-        let edits = editor.edits.withLock { $0 }
-        #expect(edits.count == 2)
-        // The join is written before the block is removed, for the same
-        // reason the split writes the tail first.
-        guard case let .setText(joinedId, joined) = edits[0] else {
-            Issue.record("expected the join first, got \(edits[0])")
-            return
-        }
-        #expect(joinedId == "block-1")
-        #expect(joined == "first second")
-
-        guard case let .delete(deleted) = edits[1] else {
-            Issue.record("expected the delete second, got \(edits[1])")
-            return
-        }
-        #expect(deleted == "block-2")
+        #expect(editor.edits.withLock { $0 } == [.mergeBlocks(blockId: "block-2", intoBlockId: "block-1")])
+        #expect(model.status == .idle)
     }
 
-    /// A failed merge must not have deleted the block whose text failed to
-    /// move: that would be the one outcome worse than doing nothing.
-    @Test func a_failed_merge_never_reaches_the_delete() async {
+    /// A merge that did not land is reported and records no undo step.
+    @Test func a_failed_merge_is_reported_with_no_undo_step() async {
         let editor = ScriptedEditor(failure: CrdtError.DocumentBusy(docId: "d", what: "w"))
         let model = NoteEditorViewModel(noteId: "note-1", editor: editor)
 
-        let caret = await model.merge(
-            "block-2", into: "block-1", text: "second", previousText: "first "
-        )
+        let step = await model.merge("block-2", into: "block-1")
 
-        #expect(caret == nil)
-        let edits = editor.edits.withLock { $0 }
-        #expect(edits.count == 1, "the delete must not run after the join failed")
-        if case .delete = edits[0] {
-            Issue.record("the block was deleted despite the join failing")
+        #expect(step == nil)
+        guard case .failed = model.status else {
+            Issue.record("the failed merge was not reported")
+            return
         }
     }
 
