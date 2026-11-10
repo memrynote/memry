@@ -41,6 +41,11 @@
 //! - **The app's write is not an outside edit.** The pass tells the own-write record
 //!   ([`crate::vault::watch::EchoGuard`]) before it writes, records the row with the new hash,
 //!   then publishes `Applied::Changed` with `ChangeSource::App`, under the lane.
+//! - **An attachment rename the body carries reaches this device's disk.** After a write, the
+//!   names the old file gave `attachments/<noteId>/` and the new one gives are paired by their
+//!   prefix, and each pair's file is moved without replacing anything
+//!   ([`crate::attachments::reconcile_renames`]). A locked or excluded note's files keep their
+//!   names, and a kept file is no write, so it moves nothing.
 //! - **One session.** A pass names the vault session it was started in and writes nothing
 //!   once that session closed.
 //!
