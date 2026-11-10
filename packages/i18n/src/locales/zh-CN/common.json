@@ -1672,6 +1672,14 @@
     "undecidedFilesHint": "同名的笔记或日记条目内容不同，或尚未同步到此设备。Memry 不会改动这些文件，并会在下次打开此仓库时再次检查。",
     "keptRemovals": "Memry 保留了文件已被删除的笔记",
     "keptRemovalsHint": "这些文件在 Memry 之外被删除，但它们的笔记中有从未写入文件的内容。Memry 保留了这些笔记，而不是在你的其他设备上删除这些内容。",
-    "moreUnlisted": "还有其他项目未在此列出。"
+    "moreUnlisted": "还有其他项目未在此列出。",
+    "journalDaysHeld": "日记条目正在已移动的文件夹中等待",
+    "journalDaysHeldHint": "日记文件夹在 Memry 之外被移动或重命名，日记文件夹设置暂时无法跟随它。在此之前，Memry 不会创建日记条目，也不会更改日记设置，这些文件夹也无法移动或删除。请将所有日记条目放在同一个文件夹中，或将文件夹移回原处。你的条目是安全的。",
+    "journalChangeWaits": "日记设置的更改没有完成",
+    "journalChangeWaitsSettingsHint": "Memry 在为设置更改移动日记条目时关闭了，在能读取 .memry/config.json 之前无法将它们放回。请修复该文件，然后重启 Memry。你的条目是安全的。",
+    "journalChangeWaitsTakenHint": "Memry 在为设置更改移动日记条目时关闭了。某个条目需要放回的位置上有另一个文件或文件夹。请将其移开，然后重启 Memry。你的条目是安全的。",
+    "journalChangeWaitsHint": "Memry 在为设置更改移动日记条目时关闭了，未能将它们放回。下次打开此保险库时会再试一次。在此之前，日记文件夹无法移动或删除。你的条目是安全的。",
+    "movesWait": "部分笔记暂时无法移动",
+    "movesWaitHint": "Memry 在移动或重命名这些笔记时关闭了，未能完成。完成之前，这些笔记无法移动或重命名。下次打开此保险库时 Memry 会再试一次。"
   }
 }

@@ -1672,6 +1672,14 @@
     "undecidedFilesHint": "Eine Notiz oder ein Journaleintrag mit demselben Namen hat einen anderen Text oder ist noch nicht mit diesem Gerät synchronisiert. Memry lässt diese Dateien unverändert und prüft sie erneut, wenn dieser Tresor das nächste Mal geöffnet wird.",
     "keptRemovals": "Memry hat Notizen behalten, deren Dateien gelöscht wurden",
     "keptRemovalsHint": "Diese Dateien wurden außerhalb von Memry gelöscht, aber ihre Notizen hatten Text, den die Dateien nie bekommen haben. Memry hat die Notizen behalten, statt diesen Text auf deinen anderen Geräten zu löschen.",
-    "moreUnlisted": "Weitere werden hier nicht aufgeführt."
+    "moreUnlisted": "Weitere werden hier nicht aufgeführt.",
+    "journalDaysHeld": "Journaleinträge warten in einem verschobenen Ordner",
+    "journalDaysHeldHint": "Der Journalordner wurde außerhalb von Memry verschoben oder umbenannt, und die Journalordner-Einstellung kann ihm noch nicht folgen. Bis dahin erstellt Memry keine Journaleinträge und ändert keine Journaleinstellungen, und diese Ordner können nicht verschoben oder gelöscht werden. Lege alle Journaleinträge in einen Ordner oder verschiebe den Ordner zurück. Deine Einträge sind sicher.",
+    "journalChangeWaits": "Eine Änderung der Journaleinstellungen wurde nicht abgeschlossen",
+    "journalChangeWaitsSettingsHint": "Memry wurde beendet, während es Journaleinträge für eine Einstellungsänderung verschob, und kann sie erst zurücklegen, wenn es .memry/config.json lesen kann. Korrigiere die Datei und starte Memry dann neu. Deine Einträge sind sicher.",
+    "journalChangeWaitsTakenHint": "Memry wurde beendet, während es Journaleinträge für eine Einstellungsänderung verschob. Eine andere Datei oder ein anderer Ordner liegt dort, wohin ein Eintrag zurück muss. Räume sie aus dem Weg und starte Memry dann neu. Deine Einträge sind sicher.",
+    "journalChangeWaitsHint": "Memry wurde beendet, während es Journaleinträge für eine Einstellungsänderung verschob, und konnte sie nicht zurücklegen. Es versucht es erneut, wenn dieser Tresor das nächste Mal geöffnet wird. Bis dahin können die Journalordner nicht verschoben oder gelöscht werden. Deine Einträge sind sicher.",
+    "movesWait": "Einige Notizen können noch nicht verschoben werden",
+    "movesWaitHint": "Memry wurde beendet, während es diese Notizen verschob oder umbenannte, und konnte das nicht abschließen. Bis dahin können sie nicht verschoben oder umbenannt werden. Memry versucht es erneut, wenn dieser Tresor das nächste Mal geöffnet wird."
   }
 }

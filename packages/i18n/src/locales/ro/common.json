@@ -1672,6 +1672,14 @@
     "undecidedFilesHint": "O notiță sau o intrare de jurnal cu același nume are alt text sau nu a fost încă sincronizată pe acest dispozitiv. Memry lasă aceste fișiere neschimbate și le verifică din nou la următoarea deschidere a acestui seif.",
     "keptRemovals": "Memry a păstrat notițe ale căror fișiere au fost șterse",
     "keptRemovalsHint": "Aceste fișiere au fost șterse în afara Memry, dar notițele lor aveau text care nu a ajuns niciodată în fișiere. Memry a păstrat notițele în loc să șteargă acel text de pe celelalte dispozitive ale tale.",
-    "moreUnlisted": "Altele nu sunt afișate aici."
+    "moreUnlisted": "Altele nu sunt afișate aici.",
+    "journalDaysHeld": "Intrări de jurnal așteaptă într-un dosar mutat",
+    "journalDaysHeldHint": "Dosarul jurnalului a fost mutat sau redenumit în afara Memry, iar setarea dosarului jurnalului nu îl poate urma încă. Până atunci, Memry nu creează intrări de jurnal și nu modifică setările jurnalului, iar aceste dosare nu pot fi mutate sau șterse. Pune toate intrările jurnalului într-un singur dosar sau mută dosarul înapoi. Intrările tale sunt în siguranță.",
+    "journalChangeWaits": "O modificare a setărilor jurnalului nu s-a încheiat",
+    "journalChangeWaitsSettingsHint": "Memry s-a închis în timp ce muta intrări de jurnal pentru o modificare a setărilor și nu le poate pune înapoi până nu poate citi .memry/config.json. Corectează fișierul, apoi repornește Memry. Intrările tale sunt în siguranță.",
+    "journalChangeWaitsTakenHint": "Memry s-a închis în timp ce muta intrări de jurnal pentru o modificare a setărilor. Un alt fișier sau dosar se află acolo unde trebuie să revină o intrare. Mută-l din cale, apoi repornește Memry. Intrările tale sunt în siguranță.",
+    "journalChangeWaitsHint": "Memry s-a închis în timp ce muta intrări de jurnal pentru o modificare a setărilor și nu le-a putut pune înapoi. Va încerca din nou data viitoare când deschide acest seif. Până atunci, dosarele jurnalului nu pot fi mutate sau șterse. Intrările tale sunt în siguranță.",
+    "movesWait": "Unele notițe nu pot fi mutate încă",
+    "movesWaitHint": "Memry s-a închis în timp ce muta sau redenumea aceste notițe și nu a putut termina. Nu pot fi mutate sau redenumite până nu termină. Memry va încerca din nou data viitoare când deschide acest seif."
   }
 }
