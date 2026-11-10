@@ -372,19 +372,21 @@ export function memryPwInstall(win) {
   }
 
   /**
-   * The state an action waits for. `scroll` brings the element into view first. `hit` is true
-   * when the element is what sits at the centre of its box, which rules out an overlay.
+   * The state an action waits for. `scroll` brings the element into view when it is off the
+   * viewport or covered. `hit` is true when the element is what sits at the centre of its box,
+   * which rules out an overlay.
    */
   function target(spec, scroll) {
     const elements = queryAll(spec)
     if (elements.length !== 1) return { count: elements.length }
     const el = elements[0]
-    if (scroll && el.scrollIntoView) el.scrollIntoView({ block: 'center', inline: 'center' })
-    const box = boxOf(el)
-    const cx = box.x + box.width / 2
-    const cy = box.y + box.height / 2
-    const top = doc.elementFromPoint(cx, cy)
-    const hit = !!top && (top === el || el.contains(top))
+    let { box, cx, cy, top, hit } = probe(el)
+    // As Playwright, only when needed: centering an element that is already clickable scrolls its
+    // container, and a popup anchored inside that container moves under the pointer.
+    if (scroll && el.scrollIntoView && !(hit && inViewport(box))) {
+      el.scrollIntoView({ block: 'center', inline: 'center' })
+      ;({ box, cx, cy, top, hit } = probe(el))
+    }
     return {
       count: 1,
       visible: isVisible(el),
@@ -401,6 +403,21 @@ export function memryPwInstall(win) {
       y: cy
     }
   }
+
+  /** `el`'s box, its centre, and whether `el` is what sits on that centre. */
+  function probe(el) {
+    const box = boxOf(el)
+    const cx = box.x + box.width / 2
+    const cy = box.y + box.height / 2
+    const top = doc.elementFromPoint(cx, cy)
+    return { box, cx, cy, top, hit: !!top && (top === el || el.contains(top)) }
+  }
+
+  const inViewport = (box) =>
+    box.x >= 0 &&
+    box.y >= 0 &&
+    box.x + box.width <= win.innerWidth &&
+    box.y + box.height <= win.innerHeight
 
   // ---- actions that run in the page ----------------------------------------------------------
 

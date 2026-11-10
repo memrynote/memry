@@ -238,6 +238,33 @@ test('a target with nothing on its point names the point and the window size', (
   assert.match(state.cover, /^nothing at \(.+\) in \d+x\d+$/)
 })
 
+test('an action scrolls its target only when it is off the viewport or covered', () => {
+  // A menu anchored inside a scroller moves with it: centering an item that is already clickable
+  // scrolled the note and put another menu item under the click.
+  const { dom, pw } = page('<button id="b">Go</button><div id="cover"></div>')
+  const doc = dom.window.document
+  const button = doc.getElementById('b')
+  let scrolls = 0
+  button.scrollIntoView = () => scrolls++
+  let rect = { x: 10, y: 10, width: 50, height: 20 }
+  button.getBoundingClientRect = () => rect
+  let onTop = button
+  doc.elementFromPoint = () => onTop
+  const spec = { steps: [{ kind: 'css', selector: '#b' }] }
+
+  assert.equal(pw.target(spec, true).hit, true)
+  assert.equal(scrolls, 0)
+
+  rect = { x: 10, y: dom.window.innerHeight + 40, width: 50, height: 20 }
+  pw.target(spec, true)
+  assert.equal(scrolls, 1)
+
+  rect = { x: 10, y: 10, width: 50, height: 20 }
+  onTop = doc.getElementById('cover')
+  pw.target(spec, true)
+  assert.equal(scrolls, 2)
+})
+
 // ---- click fixup ------------------------------------------------------------------------------
 
 test('a driver without pointer events gets them ahead of its press, on what it pressed', () => {
