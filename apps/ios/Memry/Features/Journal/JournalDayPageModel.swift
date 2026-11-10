@@ -44,7 +44,7 @@ final class JournalDayPageModel {
             filler: context.filler,
             reachability: PathReachability.forAttachments
         )
-        editor = NoteEditorViewModel(noteId: id, editor: bridge)
+        editor = NoteEditorViewModel(noteId: id, editor: bridge, notes: context.writer)
         metadata = NoteMetadataViewModel(
             noteId: id,
             writer: JournalWriteGate.metadataWrites ? JournalMetadataWriter(bridge: bridge) : nil

@@ -271,14 +271,21 @@ final class BlockField: NSObject, UITextViewDelegate, UIGestureRecognizerDelegat
     }
 
     /// The `key` value drawn under `point`, if the point is on its glyphs.
+    /// Asks the layout for the glyph under the point: `characterRange(at:)`
+    /// answers the caret position nearest it, which misses the first half of
+    /// a chip (#4154).
     private func attribute<Value>(_ key: NSAttributedString.Key, at point: CGPoint) -> Value? {
-        guard let range = textView.characterRange(at: point) else { return nil }
-        let offset = textView.offset(from: textView.beginningOfDocument, to: range.start)
-        guard offset >= 0, offset < textView.textStorage.length,
-              let value = textView.textStorage.attribute(key, at: offset, effectiveRange: nil) as? Value,
-              textView.firstRect(for: range).insetBy(dx: -4, dy: -4).contains(point)
+        let layout = textView.layoutManager
+        let container = textView.textContainer
+        let local = CGPoint(x: point.x - textView.textContainerInset.left, y: point.y - textView.textContainerInset.top)
+        let glyph = layout.glyphIndex(for: local, in: container)
+        guard glyph < layout.numberOfGlyphs,
+              layout.boundingRect(forGlyphRange: NSRange(location: glyph, length: 1), in: container)
+                  .insetBy(dx: -4, dy: -4).contains(local)
         else { return nil }
-        return value
+        let offset = layout.characterIndexForGlyph(at: glyph)
+        guard offset < textView.textStorage.length else { return nil }
+        return textView.textStorage.attribute(key, at: offset, effectiveRange: nil) as? Value
     }
 
     /// Where the chip with `anchorId` is drawn now, in the text view's units.
@@ -432,11 +439,15 @@ final class BlockField: NSObject, UITextViewDelegate, UIGestureRecognizerDelegat
             textViewDidChange(textView)
             return false
         }
-        // Typing `]` before an autocompleted `]]` steps over it.
-        if text == "]", range.length == 0, range.location + 2 <= string.length,
-           string.substring(with: NSRange(location: range.location, length: 2)) == "]]" {
-            textView.selectedRange = NSRange(location: range.location + 2, length: 0)
-            return false
+        // Typing `]` before a `]` that closes an open `[` steps over it, one
+        // at a time as desktop's does: a typed `[[Title]]` leaves no `]`.
+        if text == "]", range.length == 0, range.location < string.length,
+           string.character(at: range.location) == 93 {
+            let before = string.substring(to: range.location)
+            if before.filter({ $0 == "[" }).count > before.filter({ $0 == "]" }).count {
+                textView.selectedRange = NSRange(location: range.location + 1, length: 0)
+                return false
+            }
         }
         // Return picks the slash menu's first row, as Enter does on desktop.
         if text == "\n", let session, case .slash = session.trigger, let first = session.suggestions.first {

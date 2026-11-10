@@ -935,7 +935,10 @@ final class EditorSession {
         suggestions = []
         withFocused { model, blockId in
             switch kind {
-            case let .note(title, alias), let .create(title, alias):
+            case let .note(title, alias):
+                await model.insertWikiLink(in: blockId, from: start, to: start, title: title, alias: alias)
+            case let .create(title, alias):
+                await model.createNote(titled: title)
                 await model.insertWikiLink(in: blockId, from: start, to: start, title: title, alias: alias)
             case let .date(value):
                 await model.insertDateMention(in: blockId, from: start, to: start, value: value)
@@ -956,7 +959,10 @@ final class EditorSession {
             // The space first, so the node lands inside a text run.
             await model.commit(shown + " ", for: blockId, current: shown, formatted: true)
             switch kind {
-            case let .note(title, alias), let .create(title, alias):
+            case let .note(title, alias):
+                await model.insertWikiLink(in: blockId, from: end, to: end, title: title, alias: alias)
+            case let .create(title, alias):
+                await model.createNote(titled: title)
                 await model.insertWikiLink(in: blockId, from: end, to: end, title: title, alias: alias)
             case let .date(value):
                 await model.insertDateMention(in: blockId, from: end, to: end, value: value)

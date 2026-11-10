@@ -160,6 +160,106 @@ final class NotesUITests: XCTestCase {
         XCTAssertTrue(row.waitForNonExistence(timeout: 10))
     }
 
+    /// #4154: a link picked from the `[[` menu is a chip a tap follows to its
+    /// note.
+    func testAPickedLinkOpensItsNote() throws {
+        try openNotes()
+        let target = "SHIP-4154-\(run)-picked"
+        let source = "SHIP-4154-\(run)-pick-source"
+        _ = makeNote(target)
+        app.buttons["BackButton"].tap()
+        makeNote(source).tap()
+        app.typeText("[[\(target)")
+        let row = app.buttons.matching(NSPredicate(format: "label BEGINSWITH %@", target)).firstMatch
+        XCTAssertTrue(row.waitForExistence(timeout: 10), "the [[ menu did not offer the note")
+        row.tap()
+        follow(to: target)
+        deleteNotes([source, target])
+    }
+
+    /// #4154: the `[[` menu's Create row linked a note it never created, so a
+    /// tap on the chip said the note does not exist.
+    func testTheCreateRowMakesTheNoteItLinks() throws {
+        try openNotes()
+        let target = "SHIP-4154-\(run)-created"
+        let source = "SHIP-4154-\(run)-create-source"
+        makeNote(source).tap()
+        app.typeText("[[\(target)")
+        let row = app.buttons.matching(NSPredicate(format: "label BEGINSWITH 'Create'")).firstMatch
+        XCTAssertTrue(row.waitForExistence(timeout: 10), "the [[ menu offered no Create row")
+        row.tap()
+        follow(to: target)
+        deleteNotes([source, target])
+    }
+
+    /// #4154: typing `[[Title]]` in full made the chip on the first `]`, and
+    /// the second `]` stayed in the text.
+    func testATypedLinkLeavesNoBracketBehind() throws {
+        try openNotes()
+        let target = "SHIP-4154-\(run)-typed"
+        let source = "SHIP-4154-\(run)-type-source"
+        _ = makeNote(target)
+        app.buttons["BackButton"].tap()
+        let block = makeNote(source)
+        block.tap()
+        app.typeText("[[\(target)]]x")
+        let typed = NSPredicate(format: "value == %@", "\u{FFFC}x")
+        XCTAssertTrue(
+            matches(typed, block),
+            "the typed link is not one chip: \(block.value as? String ?? "")"
+        )
+        follow(to: target)
+        deleteNotes([source, target])
+    }
+
+    private func matches(_ predicate: NSPredicate, _ element: XCUIElement) -> Bool {
+        let expectation = XCTNSPredicateExpectation(predicate: predicate, object: element)
+        return XCTWaiter.wait(for: [expectation], timeout: 10) == .completed
+    }
+
+    private var firstBlock: XCUIElement {
+        app.textViews.matching(NSPredicate(format: "identifier BEGINSWITH 'note.block.'")).firstMatch
+    }
+
+    /// A new note titled `title`; answers its first block.
+    @discardableResult
+    private func makeNote(_ title: String) -> XCUIElement {
+        XCTAssertTrue(app.buttons["notes.addButton"].waitForExistence(timeout: 10))
+        app.buttons["notes.addButton"].tap()
+        let field = app.textFields["Title"]
+        XCTAssertTrue(field.waitForExistence(timeout: 10))
+        field.typeText("\(title)\n")
+        XCTAssertTrue(firstBlock.waitForExistence(timeout: 10))
+        return firstBlock
+    }
+
+    /// Taps the first half of the link chip at the start of the first block
+    /// and waits for its note's page, then goes back to the list. Not the
+    /// chip's first points: the screen's edge takes a tap there while a block
+    /// edits.
+    private func follow(to target: String) {
+        let block = firstBlock
+        let chip = NSPredicate(format: "value BEGINSWITH %@", "\u{FFFC}")
+        XCTAssertTrue(matches(chip, block), "no chip: \(block.value as? String ?? "")")
+        block.coordinate(withNormalizedOffset: CGVector(dx: 0, dy: 0.5)).withOffset(CGVector(dx: 48, dy: 0)).tap()
+        XCTAssertFalse(app.alerts.firstMatch.waitForExistence(timeout: 2), "the link opened no note")
+        let page = app.textFields.matching(NSPredicate(format: "value == %@", target)).firstMatch
+        XCTAssertTrue(page.waitForExistence(timeout: 10), "the link did not open \(target)")
+        app.buttons["BackButton"].tap()
+        app.buttons["BackButton"].tap()
+    }
+
+    private func deleteNotes(_ titles: [String]) {
+        for title in titles {
+            let row = app.buttons.matching(NSPredicate(format: "label CONTAINS %@", title)).firstMatch
+            XCTAssertTrue(row.waitForExistence(timeout: 10), "no row for \(title)")
+            row.press(forDuration: 1)
+            app.buttons["Delete note"].tap()
+            app.buttons["Delete"].firstMatch.tap()
+            XCTAssertTrue(row.waitForNonExistence(timeout: 10))
+        }
+    }
+
     private func openNotes() throws {
         app.launch()
         let name = ProcessInfo.processInfo.environment["MEMRY_UI_VAULT"] ?? "MemryNote"
