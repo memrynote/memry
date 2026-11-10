@@ -113,7 +113,74 @@
       "noDueDate": "Ingen forfaldsdato"
     },
     "repeatTypeRepeating": "Tilbagevendende",
-    "repeatTypeOneTime": "Enkeltstående"
+    "repeatTypeOneTime": "Enkeltstående",
+    "advanced": {
+      "entry": "Avanceret filter…",
+      "entryHint": "Regler med og, eller, ikke",
+      "title": "Filter",
+      "match": "Match",
+      "ofThese": "af disse",
+      "matches": {
+        "all": "alle",
+        "any": "en hvilken som helst",
+        "none": "ingen"
+      },
+      "fields": {
+        "title": "Titel",
+        "status": "Status",
+        "priority": "Prioritet",
+        "due": "Forfaldsdato",
+        "project": "Projekt",
+        "location": "Placering",
+        "tags": "Tags",
+        "repeat": "Gentages",
+        "hasTime": "Har tidspunkt"
+      },
+      "ops": {
+        "contains": "indeholder",
+        "notContains": "indeholder ikke",
+        "any": "er en af",
+        "none": "er ingen af",
+        "all": "har alle",
+        "empty": "er tom",
+        "notEmpty": "er ikke tom",
+        "is": "er",
+        "isNot": "er ikke"
+      },
+      "tagOps": {
+        "any": "har en af",
+        "all": "har alle",
+        "none": "har ingen af"
+      },
+      "values": {
+        "repeating": "Gentagende",
+        "oneTime": "Engangs",
+        "withTime": "Med tidspunkt",
+        "withoutTime": "Uden tidspunkt",
+        "customRange": "Brugerdefineret interval",
+        "from": "Fra",
+        "to": "Til",
+        "pick": "Vælg…",
+        "titlePlaceholder": "Tekst i titlen"
+      },
+      "addRule": "Tilføj regel",
+      "addGroup": "Tilføj gruppe",
+      "clear": "Ryd",
+      "removeRule": "Fjern regel",
+      "removeGroup": "Fjern gruppe",
+      "matchCount": "{count, plural, one {# opgave matcher} other {# opgaver matcher}}",
+      "skipped": "{count, plural, one {# regel sprunget over} other {# regler sprunget over}}",
+      "ruleCount": "{count, plural, one {# regel} other {# regler}}",
+      "unknownRule": "Regel fra en nyere version",
+      "empty": "Ingen regler endnu. Tilføj en for at begynde at filtrere.",
+      "summary": {
+        "and": "og",
+        "or": "eller",
+        "not": "ikke"
+      },
+      "editRules": "Rediger regler",
+      "clearRules": "Ryd regler"
+    }
   },
   "quickAdd": {
     "label": "Tilføj opgave hurtigt",
