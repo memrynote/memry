@@ -688,7 +688,7 @@ export const NotesTree = forwardRef<NotesTreeActions, NotesTreeProps>(function N
         {hasChildren && (
           <TreeNodeContent>
             {renderEntries(
-              orderFolderEntries(folder.children, folder.notes, data.tree.notesFirst),
+              orderFolderEntries(data.tree, folder.path, folder.children, folder.notes),
               level + 1
             )}
           </TreeNodeContent>
@@ -790,7 +790,7 @@ export const NotesTree = forwardRef<NotesTreeActions, NotesTreeProps>(function N
           <FolderRevealHandler />
           <TreeView>
             {renderEntries(
-              orderFolderEntries(data.tree.folders, data.tree.rootNotes, data.tree.notesFirst),
+              orderFolderEntries(data.tree, '', data.tree.folders, data.tree.rootNotes),
               0,
               true
             )}

@@ -23,8 +23,7 @@ import {
   extractFolderFromPath,
   getParentFolder,
   isDescendantOrSelf,
-  getNotesInFolder,
-  getFoldersInParent,
+  planLevelReorder,
   type TreeStructure
 } from '@/components/notes-tree-utils'
 import type { MoveOperation, DropPosition } from '@/components/kibo-ui/tree'
@@ -880,89 +879,35 @@ export function useNoteTreeActions(deps: NoteTreeActionsDeps) {
   const { mode: collectionsSortMode } = useSidebarSortMode('collections')
   const reorderAllowed = isReorderable(collectionsSortMode)
 
-  const handleReorderInFolder = useCallback(
-    async (
-      folderPath: string,
-      draggedNoteId: string,
-      targetNoteId: string,
-      position: DropPosition
-    ): Promise<boolean> => {
+  /**
+   * Reorder one level when a single note or folder is dropped before or after
+   * a sibling of either kind. False when the drop is not a reorder, so the
+   * caller treats it as a move.
+   */
+  const handleReorderInLevel = useCallback(
+    async (draggedId: string, targetId: string, position: DropPosition): Promise<boolean> => {
       if (!reorderAllowed) return false
-      const folderNotes = getNotesInFolder(deps.tree, folderPath)
-      if (folderNotes.length < 2) return false
+      const pathOf = (id: string): string | undefined =>
+        id.startsWith('folder-') ? id.slice('folder-'.length) : deps.noteMap.get(id)?.path
+      const draggedPath = pathOf(draggedId)
+      const targetPath = pathOf(targetId)
+      if (!draggedPath || !targetPath) return false
 
-      const draggedNote = deps.noteMap.get(draggedNoteId)
-      const targetNote = deps.noteMap.get(targetNoteId)
-      if (!draggedNote || !targetNote) return false
+      const parentPath = getParentFolder(draggedPath)
+      if (getParentFolder(targetPath) !== parentPath) return false
 
-      const currentPaths = folderNotes.map((n) => n.path)
-      const draggedIndex = currentPaths.indexOf(draggedNote.path)
-      const targetIndex = currentPaths.indexOf(targetNote.path)
-
-      if (draggedIndex === -1 || targetIndex === -1) return false
-
-      const newPaths = [...currentPaths]
-      newPaths.splice(draggedIndex, 1)
-
-      let insertIndex = targetIndex
-      if (draggedIndex < targetIndex) insertIndex = targetIndex - 1
-      if (position === 'after') insertIndex += 1
-
-      newPaths.splice(insertIndex, 0, draggedNote.path)
-
-      if (newPaths.every((p, i) => p === currentPaths[i])) return false
+      const paths = planLevelReorder(deps.tree, parentPath, draggedPath, targetPath, position)
+      if (!paths) return false
 
       try {
-        await notesService.reorder(folderPath, newPaths)
+        await notesService.reorder(parentPath, paths)
         const result = await notesService.getAllPositions()
         if (result.success) {
           deps.setNotePositions(result.positions)
         }
         return true
       } catch (err) {
-        log.error('Failed to reorder notes', err)
-        return false
-      }
-    },
-    [deps, reorderAllowed]
-  )
-
-  const handleReorderFoldersInParent = useCallback(
-    async (
-      parentPath: string,
-      draggedFolderPath: string,
-      targetFolderPath: string,
-      position: DropPosition
-    ): Promise<boolean> => {
-      if (!reorderAllowed) return false
-      const siblingFolders = getFoldersInParent(deps.tree, parentPath)
-      if (siblingFolders.length < 2) return false
-
-      const draggedIndex = siblingFolders.indexOf(draggedFolderPath)
-      const targetIndex = siblingFolders.indexOf(targetFolderPath)
-
-      if (draggedIndex === -1 || targetIndex === -1) return false
-
-      const newPaths = [...siblingFolders]
-      newPaths.splice(draggedIndex, 1)
-
-      let insertIndex = targetIndex
-      if (draggedIndex < targetIndex) insertIndex = targetIndex - 1
-      if (position === 'after') insertIndex += 1
-
-      newPaths.splice(insertIndex, 0, draggedFolderPath)
-
-      if (newPaths.every((p, i) => p === siblingFolders[i])) return false
-
-      try {
-        await notesService.reorder(parentPath, newPaths)
-        const result = await notesService.getAllPositions()
-        if (result.success) {
-          deps.setNotePositions(result.positions)
-        }
-        return true
-      } catch (err) {
-        log.error('Failed to reorder folders', err)
+        log.error('Failed to reorder sidebar level', err)
         return false
       }
     },
@@ -1011,56 +956,14 @@ export function useNoteTreeActions(deps: NoteTreeActionsDeps) {
         if (!(await confirmJournalChange(moves))) return
 
         if (
-          foldersToMoveList.length === 1 &&
-          notesToMove.length === 0 &&
-          targetId.startsWith('folder-') &&
-          (position === 'before' || position === 'after')
+          itemsToMove.length === 1 &&
+          (await handleReorderInLevel(itemsToMove[0], targetId, position))
         ) {
-          const draggedFolderPath = foldersToMoveList[0]
-          const targetFolderPathFromId = targetId.replace('folder-', '')
-
-          const draggedParent = getParentFolder(draggedFolderPath)
-          const targetParent = getParentFolder(targetFolderPathFromId)
-
-          if (draggedParent === targetParent) {
-            const reordered = await handleReorderFoldersInParent(
-              draggedParent,
-              draggedFolderPath,
-              targetFolderPathFromId,
-              position
-            )
-            if (reordered) return
-          }
+          return
         }
 
         for (const folderPath of foldersToMoveList) {
           await handleFolderMove(folderPath, targetId, position)
-        }
-
-        if (
-          notesToMove.length === 1 &&
-          foldersToMoveList.length === 0 &&
-          !targetId.startsWith('folder-') &&
-          targetId !== 'notes-root' &&
-          (position === 'before' || position === 'after')
-        ) {
-          const draggedNote = deps.noteMap.get(notesToMove[0])
-          const targetNoteObj = deps.noteMap.get(targetId)
-
-          if (draggedNote && targetNoteObj) {
-            const draggedFolder = extractFolderFromPath(draggedNote.path)
-            const dropFolder = extractFolderFromPath(targetNoteObj.path)
-
-            if (draggedFolder === dropFolder) {
-              const reordered = await handleReorderInFolder(
-                draggedFolder,
-                notesToMove[0],
-                targetId,
-                position
-              )
-              if (reordered) return
-            }
-          }
         }
 
         for (const noteId of notesToMove) {
@@ -1079,9 +982,8 @@ export function useNoteTreeActions(deps: NoteTreeActionsDeps) {
       // oxlint-disable-next-line react/memo-dependencies -- dependency list is intentional; compiler trace misreads indirect closure
       deps,
       calculateTargetFolder,
-      handleReorderFoldersInParent,
+      handleReorderInLevel,
       handleFolderMove,
-      handleReorderInFolder,
       handleNoteMove,
       confirmJournalChange
     ]

@@ -6,9 +6,20 @@ import { useOptionalObjectIdentity } from '@/features/tag-fields/use-optional-ob
 import { PageJournalIcon } from '@/lib/icons/page-icons'
 import type { FolderInfo } from '../../../preload/index.d'
 import type { SidebarSortMode } from '@memry/contracts/sidebar-sort'
-import { compareNotes, compareFolders } from './notes-tree-sort'
+import {
+  compareNotes,
+  compareFolders,
+  mixedOrderLevels,
+  mixedOrderMarkerPath
+} from './notes-tree-sort'
 import type { NoteListItem } from '@/hooks/use-notes-query'
-import type { FolderNode, TreeStructure } from '@/lib/virtualized-tree-utils'
+import {
+  folderEntryPath,
+  orderFolderEntries,
+  type FolderNode,
+  type TreeStructure
+} from '@/lib/virtualized-tree-utils'
+import type { DropPosition } from '@/lib/tree-drop-position'
 
 export type { FolderNode, TreeStructure }
 
@@ -83,6 +94,59 @@ export function getFoldersInParent(tree: TreeStructure, parentPath: string): str
 
   const parentFolder = findFolder(tree.folders, parentPath)
   return parentFolder ? parentFolder.children.map((f) => f.path) : []
+}
+
+/**
+ * The `notesService.reorder` paths for dropping `draggedPath` before or after
+ * `targetPath`, two items of the level under `parentPath`. Null when the drop
+ * leaves the level as it is or either item is not in it.
+ *
+ * Two notes or two folders on a level that is still grouped reorder their own
+ * group only, so `sidebar.notesFirst` keeps deciding which group comes first.
+ * A drop across the kinds, or any drop on a level already mixed, writes the
+ * whole level as one list behind its mixed-order marker.
+ */
+export function planLevelReorder(
+  tree: TreeStructure,
+  parentPath: string,
+  draggedPath: string,
+  targetPath: string,
+  position: DropPosition
+): string[] | null {
+  if (position === 'inside') return null
+
+  const folder = parentPath === '' ? null : findFolderNode(tree.folders, parentPath)
+  if (parentPath !== '' && !folder) return null
+  const entries = orderFolderEntries(
+    tree,
+    parentPath,
+    folder ? folder.children : tree.folders,
+    folder ? folder.notes : tree.rootNotes
+  )
+
+  const dragged = entries.find((entry) => folderEntryPath(entry) === draggedPath)
+  const target = entries.find((entry) => folderEntryPath(entry) === targetPath)
+  if (!dragged || !target) return null
+
+  const mixed = dragged.type !== target.type || !!tree.mixedOrder?.levels.has(parentPath)
+  const currentPaths = entries
+    .filter((entry) => mixed || entry.type === dragged.type)
+    .map(folderEntryPath)
+
+  const nextPaths = currentPaths.filter((path) => path !== draggedPath)
+  const targetIndex = nextPaths.indexOf(targetPath)
+  nextPaths.splice(position === 'after' ? targetIndex + 1 : targetIndex, 0, draggedPath)
+
+  if (nextPaths.every((path, i) => path === currentPaths[i])) return null
+  return mixed ? [mixedOrderMarkerPath(parentPath), ...nextPaths] : nextPaths
+}
+
+function findFolderNode(folders: FolderNode[], path: string): FolderNode | null {
+  for (const folder of folders) {
+    if (folder.path === path) return folder
+    if (path.startsWith(`${folder.path}/`)) return findFolderNode(folder.children, path)
+  }
+  return null
 }
 
 /**
@@ -215,7 +279,10 @@ export function buildTreeFromNotes(
   return {
     folders: rootFolders,
     rootNotes,
-    notesFirst
+    notesFirst,
+    ...(sortMode === 'manual' && {
+      mixedOrder: { levels: mixedOrderLevels(positions), positions }
+    })
   }
 }
 
