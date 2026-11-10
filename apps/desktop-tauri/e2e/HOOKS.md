@@ -150,6 +150,16 @@ app's page and answers its label, `e2e-<n>`, which is also its WebDriver window 
 config (`tauri.e2e.conf.json`) gives `e2e-*` windows the main window's permissions and the
 driver's. `specs/editor/two-window-typing.e2e.ts` types in one window and reads the other.
 
+## Clipboard
+
+`e2e_clipboard_read` and `e2e_clipboard_write` read and write the OS clipboard's text
+(`src-tauri/src/e2e/clipboard.rs`). `e2e_webview_paste` pastes into the main window's focused
+element through the webview's own paste command (`paste:` on WKWebView, the `Paste` editing
+command on WebKitGTK, CDP `Input.dispatchKeyEvent` with `commands: ["paste"]` on WebView2),
+because a WebDriver key is synthetic and pastes nothing. `e2e_webkitgtk_version` answers the
+linked WebKitGTK version on Linux and `null` elsewhere. `specs/editor/clipboard-blocks.e2e.ts`
+copies blocks from the block menu and pastes them back.
+
 ## Control file
 
 Each app instance reads `<temp dir>/memry-e2e/control-<port>.json`, keyed by its own
