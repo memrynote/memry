@@ -1,6 +1,5 @@
 // Vault-level state outside the notes: the icon in `.memry/config.json`, the device-local
 // activity log, and read-only locks. Mirrors the desktop readers/writers named at each function.
-import { randomBytes } from 'node:crypto'
 import fs from 'node:fs/promises'
 import path from 'node:path'
 import { eq } from 'drizzle-orm'
@@ -9,6 +8,7 @@ import { vaultLocks } from '@memry/db-schema/schema/vault-locks'
 import type { DataDb } from './database.ts'
 import { getConfigPath, getMemryDir } from './paths.ts'
 import { errorCode } from './errno.ts'
+import { writeFileAtomic } from './write-file-atomic.ts'
 
 export interface ActivityListOptions {
   limit?: number
@@ -64,17 +64,6 @@ function isProblem(entry: VaultActivityEntry): boolean {
   const counts = entry.counts
   if (!counts) return false
   return (counts.failed ?? 0) > 0 || (counts.skipped ?? 0) > 0 || (counts.unsupported ?? 0) > 0
-}
-
-async function writeFileAtomic(filePath: string, content: string): Promise<void> {
-  const tmpPath = path.join(path.dirname(filePath), `.${randomBytes(6).toString('hex')}.tmp`)
-  try {
-    await fs.writeFile(tmpPath, content, { encoding: 'utf-8', mode: 0o600, flag: 'wx' })
-    await fs.rename(tmpPath, filePath)
-  } catch (error) {
-    await fs.rm(tmpPath, { force: true })
-    throw error
-  }
 }
 
 export function createVaultAdminService({

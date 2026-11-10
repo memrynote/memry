@@ -1,7 +1,10 @@
+import Database from 'better-sqlite3'
+import { existsSync } from 'node:fs'
 import fs from 'node:fs/promises'
 import path from 'node:path'
 import { normalizeJournalFolder } from '@memry/storage-vault'
 import { errorCode } from './errno.ts'
+import { writeFileAtomic } from './write-file-atomic.ts'
 
 export interface VaultConfig {
   excludePatterns: string[]
@@ -78,9 +81,9 @@ export function getConfigPath(vaultPath: string): string {
 }
 
 /**
- * Why each config's `excludePatterns` cannot be trusted. The desktop keeps the user's
- * patterns while config.json gives no list (#4119); the CLI has no copy of them, so
- * anything that would show excluded folders fails instead (#4121).
+ * Why each config's `excludePatterns` cannot be trusted (#4121): config.json cannot be read,
+ * or its key is not a list, or the desktop's kept list (#4119) cannot be read. Anything that
+ * would show excluded folders fails instead.
  */
 const unknownExcludePatterns = new WeakMap<VaultConfig, string>()
 
@@ -109,10 +112,10 @@ export async function updateVaultConfig(
   }
   const { excludePatterns: _inMemory, ...current } = config
   const file: Record<string, unknown> = { ...stored.value, ...current, ...updates }
-  await fs.writeFile(configPath, `${JSON.stringify(file, null, 2)}\n`, 'utf-8')
+  await writeFileAtomic(configPath, `${JSON.stringify(file, null, 2)}\n`)
   await ensureVaultFolders(vaultPath, { ...config, ...updates })
 
-  const exclude = resolveExcludePatterns(file, configPath)
+  const exclude = resolveExcludePatterns(vaultPath, file, configPath)
   Object.assign(config, updates, { excludePatterns: exclude.patterns })
   if (exclude.unknown) unknownExcludePatterns.set(config, exclude.unknown)
   else unknownExcludePatterns.delete(config)
@@ -131,7 +134,7 @@ type StoredConfig =
   | { kind: 'unreadable'; reason: string }
 
 /** A missing config.json reads as `{}`. */
-async function readVaultConfig(configPath: string): Promise<StoredConfig> {
+export async function readVaultConfig(configPath: string): Promise<StoredConfig> {
   let value: unknown
   try {
     value = JSON.parse(await fs.readFile(configPath, 'utf-8'))
@@ -149,20 +152,57 @@ async function readVaultConfig(configPath: string): Promise<StoredConfig> {
 
 /**
  * Only an `excludePatterns` array is the user's list (non-strings dropped, as on
- * desktop). A missing key reads as the defaults; any other value is unknown.
+ * desktop). A missing key reads as the defaults plus the desktop's kept list; any
+ * other value is unknown.
  */
 function resolveExcludePatterns(
+  vaultPath: string,
   file: Record<string, unknown>,
   configPath: string
 ): { patterns: string[]; unknown?: string } {
   const value = file.excludePatterns
-  if (value === undefined) return { patterns: [...defaultVaultConfig.excludePatterns] }
+  if (value === undefined) {
+    const kept = readKeptExcludePatterns(vaultPath)
+    if (typeof kept === 'string') {
+      return { patterns: [...defaultVaultConfig.excludePatterns], unknown: kept }
+    }
+    return { patterns: [...new Set([...defaultVaultConfig.excludePatterns, ...kept])] }
+  }
   if (Array.isArray(value)) {
     return { patterns: value.filter((item): item is string => typeof item === 'string') }
   }
   return {
     patterns: [...defaultVaultConfig.excludePatterns],
     unknown: `${configPath} has an excludePatterns that is not a list`
+  }
+}
+
+/**
+ * The patterns the Tauri desktop kept in its core db while config.json listed them
+ * (#4119: `meta` key `desktop.exclude_patterns`, a JSON array of strings). Read-only;
+ * no db or no row means none. Returns the reason when they cannot be read.
+ */
+function readKeptExcludePatterns(vaultPath: string): string[] | string {
+  const dbPath = path.join(getMemryDir(vaultPath), 'core', 'data.db')
+  if (!existsSync(dbPath)) return []
+  try {
+    const db = new Database(dbPath, { readonly: true, fileMustExist: true })
+    try {
+      const row = db
+        .prepare<[string], { value: string }>('SELECT value FROM meta WHERE key = ?')
+        .get('desktop.exclude_patterns')
+      if (!row) return []
+      const kept: unknown = JSON.parse(row.value)
+      if (!Array.isArray(kept) || !kept.every((item) => typeof item === 'string')) {
+        throw new Error('desktop.exclude_patterns is not a list of strings')
+      }
+      return kept
+    } finally {
+      db.close()
+    }
+  } catch (error) {
+    const reason = error instanceof Error ? error.message : String(error)
+    return `${dbPath} cannot be read (${reason})`
   }
 }
 
@@ -176,8 +216,11 @@ export async function ensureVaultLayout(vaultPath: string): Promise<VaultConfig>
   // oxlint-disable-next-line typescript/no-unsafe-type-assertion -- untyped JSON; shape fixed by the producer, a runtime parser would change accepted input
   const merged = { ...defaults, ...file } as Omit<VaultConfig, 'excludePatterns'>
   if (stored.kind === 'parsed') {
-    // Never write the default excludePatterns: the desktop would take them as the user's.
-    await fs.writeFile(configPath, `${JSON.stringify(merged, null, 2)}\n`, 'utf-8')
+    // Write only the default keys the file lacks: a read command leaves a complete file
+    // alone. Never the default excludePatterns: the desktop would take them as the user's.
+    if (Object.keys(defaults).some((key) => !(key in file))) {
+      await writeFileAtomic(configPath, `${JSON.stringify(merged, null, 2)}\n`)
+    }
   } else {
     // Leave the file alone: overwriting it would lose the user's settings.
     process.stderr.write(
@@ -185,7 +228,7 @@ export async function ensureVaultLayout(vaultPath: string): Promise<VaultConfig>
     )
   }
 
-  const exclude = resolveExcludePatterns(file, configPath)
+  const exclude = resolveExcludePatterns(vaultPath, file, configPath)
   // Same normalization as desktop's getConfig (main/vault/index.ts).
   const config: VaultConfig = {
     ...merged,
