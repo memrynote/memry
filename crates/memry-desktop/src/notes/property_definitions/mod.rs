@@ -21,12 +21,14 @@
 //!
 //! The note index types its rows by these definitions and retypes them when one changes type
 //! (`retypeIndexedProperties`). A property it reads with no definition is typed by the type it
-//! was first read with, learned on this device alone ([`learned`]; `notes::index`).
+//! was first read with, learned on this device alone ([`learned`]; `notes::index`) until a sync
+//! pass makes it a definition ([`seed`]).
 
 mod kind;
 mod learned;
 mod record;
 mod rename;
+mod seed;
 mod settle;
 mod view;
 
@@ -46,12 +48,33 @@ use crate::vault::properties_file::{
     self, PropertyDefinition, PropertyKind, SelectOption, StatusCategories,
 };
 use kind::{each_list, kind_of, new_option, option_list, options_of, type_of};
-use record::{Renamed, default_categories, definition_of, options_text, record_of};
+use record::{Renamed, default_categories, definition_of, record_of};
 use settle::settle_into;
+use view::{editable, filled, named, view_of};
+
+pub use seed::DefinitionsSeed;
 pub use view::{
     DefinitionInput, DefinitionType, DefinitionsError, EnsuredType, OptionInput,
     PropertyDefinitionView, StatusCategoryKey,
 };
+
+/// What else holds a name an edit decides on, beside the union's definition it is handed.
+#[derive(Debug, Clone, Copy)]
+struct Held {
+    /// An entry of the file this build cannot parse (a newer build's type).
+    unparsed: bool,
+    /// A live record, of any shape.
+    recorded: bool,
+    /// A deleted record.
+    deleted: bool,
+}
+
+impl Held {
+    /// A definition beside the union's: an unparsed entry, or a live record of any shape.
+    fn defined_elsewhere(self) -> bool {
+        self.unparsed || self.recorded
+    }
+}
 
 /// What an edit does to the name's definition.
 enum Next {
@@ -69,42 +92,6 @@ static TURN: Mutex<()> = Mutex::new(());
 
 /// How often an edit is decided again over a pull that landed while it ran.
 const ATTEMPTS: usize = 3;
-
-fn named(name: &str) -> Result<&str, DefinitionsError> {
-    if name.is_empty() {
-        return Err(DefinitionsError::Invalid("a property needs a name"));
-    }
-    Ok(name)
-}
-
-/// The type a create or an update names: any but `project`.
-fn editable(wanted: Option<DefinitionType>) -> Result<Option<DefinitionType>, DefinitionsError> {
-    match wanted {
-        Some(DefinitionType::Project) => Err(DefinitionsError::Invalid(
-            "the project property is managed by the app",
-        )),
-        wanted => Ok(wanted),
-    }
-}
-
-fn filled(text: Option<String>) -> Option<String> {
-    text.filter(|text| !text.is_empty())
-}
-
-fn view_of(
-    name: &str,
-    definition: &PropertyDefinition,
-    created_at: String,
-) -> PropertyDefinitionView {
-    PropertyDefinitionView {
-        name: name.to_owned(),
-        type_name: type_of(&definition.kind),
-        options: options_text(&definition.kind),
-        default_value: definition.default_value.clone(),
-        color: definition.color.clone(),
-        created_at,
-    }
-}
 
 /// The definitions of one open vault.
 pub struct PropertyDefinitions {
@@ -249,13 +236,12 @@ impl PropertyDefinitions {
     }
 
     /// [`Self::change`] of an edit that renames the option `renamed` (its old value), which
-    /// keeps its record entry. `decide` also hears whether the name has a definition this build
-    /// cannot read: a file entry it leaves unparsed, or a record of any shape.
+    /// keeps its record entry. `decide` also hears what else holds the name ([`Held`]).
     fn change_renaming<T>(
         &self,
         name: &str,
         renamed: Option<&str>,
-        mut decide: impl FnMut(Option<PropertyDefinition>, bool) -> Result<(Next, T), DefinitionsError>,
+        mut decide: impl FnMut(Option<PropertyDefinition>, Held) -> Result<(Next, T), DefinitionsError>,
     ) -> Result<T, DefinitionsError> {
         let name = named(name)?;
         let _turn = TURN.lock().unwrap_or_else(PoisonError::into_inner);
@@ -265,7 +251,11 @@ impl PropertyDefinitions {
             let prior = snapshot.record(name);
             let mut before = None;
             let (next, out) = properties_file::update_file(&self.vault, |file| {
-                let held = prior.is_some() || file.unparsed_names().any(|held| held == name);
+                let held = Held {
+                    unparsed: file.unparsed_names().any(|held| held == name),
+                    recorded: prior.is_some(),
+                    deleted: snapshot.deleted(name),
+                };
                 let definitions = &mut file.definitions;
                 settle_into(definitions, &pulled);
                 let synced = prior.and_then(definition_of);
@@ -284,7 +274,13 @@ impl PropertyDefinitions {
             let edit = match next {
                 Next::Put(definition) => {
                     let renamed: Renamed<'_> = renamed.zip(before.as_ref());
-                    Edit::Put(record_of(name, &definition, prior, renamed))
+                    Edit::Put(record_of(
+                        name,
+                        &definition,
+                        prior,
+                        before.as_ref(),
+                        renamed,
+                    ))
                 }
                 Next::Remove => Edit::Remove,
                 Next::Keep => Edit::Keep,
@@ -371,7 +367,7 @@ impl PropertyDefinitions {
             kind => kind,
         };
         self.change_renaming(&input.name, None, |existing, held| {
-            if existing.is_some() || held {
+            if existing.is_some() || held.defined_elsewhere() {
                 return Ok((Next::Keep, false));
             }
             let definition = PropertyDefinition {

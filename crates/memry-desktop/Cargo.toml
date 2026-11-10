@@ -129,6 +129,9 @@ e2e = []
 # The test hooks of the note services (`NotesService::move_checked`, the `fail_next_*_feed`): the
 # crate's own tests turn it on (the dev-dependency on itself below); no app build does.
 test-hooks = []
+# Tests against the real sync server on miniflare: tests/sync_harness.rs. Needs node and
+# `pnpm install` (tests/sync-harness).
+harness = []
 
 [dev-dependencies]
 memry-desktop = { path = ".", features = ["test-hooks"] }
@@ -177,6 +180,10 @@ path = "tests/electron_secrets_locked.rs"
 [[test]]
 name = "extract_bench"
 path = "tests/extract_bench.rs"
+
+[[test]]
+name = "sync_harness"
+path = "tests/sync_harness.rs"
 
 [[test]]
 name = "keyring_live"

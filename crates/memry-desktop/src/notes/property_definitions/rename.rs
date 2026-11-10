@@ -14,7 +14,7 @@ impl PropertyDefinitions {
             return Ok(false);
         };
         self.change_renaming(to, None, |existing, held| {
-            let next = match existing.is_some() || held {
+            let next = match existing.is_some() || held.defined_elsewhere() {
                 true => Next::Keep,
                 false => Next::Put(definition.clone()),
             };

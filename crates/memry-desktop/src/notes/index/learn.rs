@@ -4,9 +4,9 @@
 //!
 //! Electron keeps the learned type as a data DB row with no clock, which no file and no other
 //! device holds; a full sync pushes it (`seedUnclocked`). Here it is a learned type in `data.db`
-//! ([`PropertyDefinitions::learn`]), which no definitions list, `properties.md` or record holds.
-//! Not here: making it a definition once the device syncs, as Electron's push does. A type the
-//! user sets is a definition, and wins.
+//! ([`PropertyDefinitions::learn`]), which no definitions list, `properties.md` or record holds
+//! until a sync pass makes it a definition (`PropertyDefinitions::seed`, #4025). A type the user
+//! sets is a definition, and wins.
 //!
 //! **Which read is first.** A pass reads its notes in order ([`order`]): every note before
 //! every journal day, each by path. A name is learned from its first read. So a day's

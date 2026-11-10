@@ -332,6 +332,8 @@ mod portal_vectors;
 mod projector_null_tolerance;
 #[path = "push_crdt_update_cap.rs"]
 mod push_crdt_update_cap;
+#[path = "push_delete_wins.rs"]
+mod push_delete_wins;
 #[path = "push_seal.rs"]
 mod push_seal;
 #[path = "read_your_writes.rs"]
@@ -346,6 +348,8 @@ mod roundtrip_acceptance;
 mod sync_cursor_repair;
 #[path = "sync_engine.rs"]
 mod sync_engine;
+#[path = "sync_engine_seed.rs"]
+mod sync_engine_seed;
 #[path = "sync_equal_clock.rs"]
 mod sync_equal_clock;
 #[path = "sync_first_sync.rs"]

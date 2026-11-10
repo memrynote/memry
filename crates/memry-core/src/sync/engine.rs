@@ -35,7 +35,7 @@ use std::sync::Arc;
 use std::sync::Mutex;
 use std::sync::atomic::{AtomicBool, Ordering};
 
-use crate::api::errors::{ApiError, TransportError};
+use crate::api::errors::{ApiError, StorageError, TransportError};
 use crate::protocol::http::HttpClient;
 use crate::seams::reachability::{Reachability, Reachable};
 
@@ -68,6 +68,19 @@ pub trait PushWave: Send + Sync {
     async fn drain(&self) -> Result<(), ApiError>;
 }
 
+/// Local rows a pass makes syncable before it pushes: Electron's full-sync seed step
+/// (`runInitialSeed`, `full-sync-runner.ts`), whose pull, seed, push order this keeps. The
+/// desktop's learned property types are one (#4025).
+///
+/// A pass seeds only after a pull that reached the feed head, so a record another device pushed
+/// first has landed here and wins, and only when the write gate lets the push run, so nothing is
+/// seeded to sit parked while another device pushes the same record. A failed seed is logged and
+/// the push still runs; the next pass seeds again, so a seed must be idempotent.
+#[async_trait::async_trait]
+pub trait PassSeed: Send + Sync {
+    async fn seed(&self) -> Result<(), StorageError>;
+}
+
 /// What one pass did, in enough detail to assert the drawn edges.
 #[derive(Debug, Clone)]
 pub struct PassReport {
@@ -88,6 +101,8 @@ pub struct SyncEngine {
     http: Arc<HttpClient>,
     reachability: Arc<dyn Reachability>,
     push: Option<Arc<dyn PushWave>>,
+    /// Run in order between the pull and the push ([`PassSeed`]).
+    seeds: Vec<Arc<dyn PassSeed>>,
     /// The exclusive queue. Held for a whole pass.
     gate: tokio::sync::Mutex<()>,
     /// True while a [`SyncEngine::wake`] pass waits for the gate (#2290).
@@ -113,6 +128,7 @@ impl SyncEngine {
             http,
             reachability,
             push: None,
+            seeds: Vec::new(),
             gate: tokio::sync::Mutex::new(()),
             wake_queued: AtomicBool::new(false),
             state: Mutex::new(SyncState::Idle),
@@ -122,6 +138,12 @@ impl SyncEngine {
 
     pub fn with_push(mut self, push: Arc<dyn PushWave>) -> Self {
         self.push = Some(push);
+        self
+    }
+
+    /// Adds a seed every pass runs after its pull and before its push.
+    pub fn with_seed(mut self, seed: Arc<dyn PassSeed>) -> Self {
+        self.seeds.push(seed);
         self
     }
 
@@ -227,6 +249,9 @@ impl SyncEngine {
             return self.finish(trigger, trail, pull, true, false);
         }
 
+        if !pull.has_more {
+            self.seed().await;
+        }
         let pushed = self.push_wave(&mut trail).await;
         self.finish(trigger, trail, pull, false, pushed)
     }
@@ -296,6 +321,18 @@ impl SyncEngine {
         // pass resumes from the committed cursor.
         trail.enter(SyncState::Idle);
         (total, false)
+    }
+
+    /// Every [`PassSeed`], in order. A failure is logged and the push still runs.
+    async fn seed(&self) {
+        for seed in &self.seeds {
+            if let Err(error) = seed.seed().await {
+                eprintln!(
+                    "memry-core: a sync pass seed failed; pushing what is queued, the next pass \
+                     seeds again: {error}"
+                );
+            }
+        }
     }
 
     /// `Idle -> Pushing -> (Idle | ReadOnly | BlockedUpgrade | Failed)`.
