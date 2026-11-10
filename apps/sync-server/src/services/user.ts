@@ -13,6 +13,10 @@ export interface User {
   updated_at: number
 }
 
+// One address, one account: an iOS autofill of "Name@x.com" and a desktop
+// "name@x.com" are the same inbox, so they must reach the same user.
+export const normalizeEmail = (email: string): string => email.trim().toLowerCase()
+
 export const createUser = async (
   db: D1Database,
   params: {
@@ -33,7 +37,7 @@ export const createUser = async (
     )
     .bind(
       id,
-      params.email,
+      normalizeEmail(params.email),
       params.emailVerified ?? 0,
       params.authMethod,
       params.authProvider ?? null,
@@ -45,7 +49,7 @@ export const createUser = async (
 
   return {
     id,
-    email: params.email,
+    email: normalizeEmail(params.email),
     email_verified: params.emailVerified ?? 0,
     auth_method: params.authMethod,
     auth_provider: params.authProvider ?? null,
@@ -60,7 +64,16 @@ export const createUser = async (
 }
 
 export const getUserByEmail = async (db: D1Database, email: string): Promise<User | null> => {
-  return db.prepare('SELECT * FROM users WHERE email = ?').bind(email).first<User>()
+  const normalized = normalizeEmail(email)
+  // Rows written before normalization keep their original case, and a few
+  // addresses have one account per case. Prefer the lowercase row, then the
+  // oldest, so every device resolves the same account.
+  return db
+    .prepare(
+      'SELECT * FROM users WHERE lower(email) = ? ORDER BY email = ? DESC, created_at ASC LIMIT 1'
+    )
+    .bind(normalized, normalized)
+    .first<User>()
 }
 
 export const getUserById = async (db: D1Database, userId: string): Promise<User | null> => {
@@ -170,6 +183,6 @@ export async function updateUserEmail(
 ): Promise<void> {
   await db
     .prepare('UPDATE users SET email = ?, email_verified = 1, updated_at = ? WHERE id = ?')
-    .bind(newEmail, Math.floor(Date.now() / 1000), userId)
+    .bind(normalizeEmail(newEmail), Math.floor(Date.now() / 1000), userId)
     .run()
 }
