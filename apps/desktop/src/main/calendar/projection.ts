@@ -21,6 +21,7 @@ import { tasks } from '@memry/db-schema/schema/tasks'
 import { inboxItems } from '@memry/db-schema/schema/inbox'
 import { noteCache, noteProperties } from '@memry/db-schema/schema/notes-cache'
 import type { DataDb, IndexDb } from '../database'
+import { allDayDate } from './all-day-date'
 import { sourceCapabilities } from './provider/capabilities'
 
 const LOCAL_TIMEZONE = Intl.DateTimeFormat().resolvedOptions().timeZone || 'UTC'
@@ -48,16 +49,8 @@ function toLocalAllDayEnd(dateStr: string): string {
   return new Date(year, month - 1, day + 1, 0, 0, 0, 0).toISOString()
 }
 
-// Provider mirrors (Google, CalDAV, ICS, EventKit) store an all-day date as UTC
-// midnight of that day; events created in memrynote store local midnight. The
-// calendar reads every instant in local time, so a UTC-midnight date would land
-// a day early west of UTC and run a day long east of it. Local midnight equals
-// UTC midnight only at a zero offset, where both read the same day, so the shape
-// tells which reading to use.
-function allDayDate(value: string): string {
-  return /T00:00:00(\.0+)?Z$/.test(value) ? value.slice(0, 10) : toLocalDateString(new Date(value))
-}
-
+// The calendar reads every instant in local time, so a UTC-midnight all-day date
+// would land a day early west of UTC and run a day long east of it.
 function toLocalAllDaySpan(
   startAt: string,
   endAt: string | null

@@ -261,6 +261,42 @@ describe('google calendar client — push channels (Task 7)', () => {
       return captured
     }
 
+    it.each(['Europe/Istanbul', 'America/Chicago'])(
+      '#given a one-day all-day event created in memrynote in %s #when upserted #then sends that day with an exclusive next-day end',
+      async (timeZone) => {
+        const originalTz = process.env.TZ
+        process.env.TZ = timeZone
+        try {
+          const captured = captureBody()
+          // The event form saves a one-day all-day event as local midnight, end = start.
+          const localMidnight = new Date(2026, 10, 10).toISOString()
+
+          const client = createGoogleCalendarClient({ accountId: LEGACY_DEFAULT_ACCOUNT_ID })
+          await client.upsertEvent({
+            calendarId: 'primary',
+            eventId: null,
+            event: {
+              sourceType: 'event',
+              sourceId: 'local-all-day',
+              title: 'Offsite',
+              description: null,
+              location: null,
+              startAt: localMidnight,
+              endAt: localMidnight,
+              isAllDay: true,
+              timezone: timeZone,
+              recurrence: null
+            }
+          })
+
+          expect(captured.body?.start).toEqual({ date: '2026-11-10', timeZone })
+          expect(captured.body?.end).toEqual({ date: '2026-11-11', timeZone })
+        } finally {
+          process.env.TZ = originalTz
+        }
+      }
+    )
+
     it('#given an all-day recurring exception #when upserted #then emits originalStartTime as { date } (no dateTime)', async () => {
       const captured = captureBody()
 

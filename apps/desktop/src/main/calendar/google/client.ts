@@ -1,4 +1,5 @@
 import { z } from 'zod'
+import { allDayDateRange } from '../all-day-date'
 import { createLogger } from '../../lib/logger'
 import { markExpectedWarning } from '../../telemetry/expected-conditions'
 import {
@@ -258,22 +259,23 @@ function mapRemoteEvent(
 }
 
 function toGoogleEventPayload(event: GoogleCalendarUpsertEventInput): Record<string, unknown> {
+  const allDay = event.isAllDay ? allDayDateRange(event.startAt, event.endAt ?? null) : null
   const payload: Record<string, unknown> = {
     summary: event.title,
     description: event.description ?? undefined,
     location: event.location ?? undefined,
-    start: event.isAllDay
+    start: allDay
       ? {
-          date: event.startAt.slice(0, 10),
+          date: allDay.startDate,
           timeZone: event.timezone
         }
       : {
           dateTime: event.startAt,
           timeZone: event.timezone
         },
-    end: event.isAllDay
+    end: allDay
       ? {
-          date: (event.endAt ?? event.startAt).slice(0, 10),
+          date: allDay.endDate,
           timeZone: event.timezone
         }
       : {

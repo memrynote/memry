@@ -55,13 +55,20 @@ Every provider reader stores an all-day date as UTC midnight of that calendar da
 exclusive end: Google `start.date`/`end.date`, ICS and CalDAV `VALUE=DATE`, and EventKit dates
 all become `YYYY-MM-DDT00:00:00.000Z`. Events created in memrynote store local midnight instead.
 
-The calendar views read every instant in local time, so a UTC-midnight date read as-is lands a
-day early west of UTC (a one-day Google event shows as two days starting the day before) and
-runs a day long east of it. The range projection (`calendar/projection.ts`) owns the
-conversion: for an all-day event or mirror row it takes the date from a UTC-midnight value, or
-the local date from any other value, and returns local midnights, the same shape it gives
-all-day tasks. Local midnight equals UTC midnight only at a zero offset, where both readings
-give the same day, so the stored shape is never ambiguous. The stored rows are unchanged.
+`allDayDate` in `calendar/all-day-date.ts` reads the day from either shape: the date part of a
+UTC-midnight value, or the local date of any other value. Local midnight equals UTC midnight
+only at a zero offset, where both readings give the same day, so the stored shape is never
+ambiguous. The stored rows are unchanged.
+
+- **Reading.** The calendar views read every instant in local time, so a UTC-midnight date
+  read as-is lands a day early west of UTC (a one-day Google event shows as two days starting
+  the day before) and runs a day long east of it. The range projection
+  (`calendar/projection.ts`) returns all-day events and mirror rows as local midnights, the
+  same shape it gives all-day tasks.
+- **Writing.** Slicing the date off a local-midnight value sends the day before east of UTC.
+  The Google payload and the CalDAV `DTSTART`/`DTEND` take their dates from `allDayDateRange`,
+  which also turns a missing end, or one on or before the start (the event form saves a
+  one-day event with end = start), into an exclusive next-day end.
 
 ## ICS feeds
 
