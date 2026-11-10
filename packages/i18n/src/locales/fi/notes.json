@@ -183,7 +183,8 @@
     },
     "toast": {
       "selectionBookmarked": "{count} kohdetta lisätty kirjanmerkkeihin",
-      "selectionBookmarkFailed": "Valittuja kohteita ei voitu lisätä kirjanmerkkeihin"
+      "selectionBookmarkFailed": "Valittuja kohteita ei voitu lisätä kirjanmerkkeihin",
+      "pairedNoteNameTaken": "Siellä on jo muistiinpano nimeltä {name}"
     }
   },
   "editor": {

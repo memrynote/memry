@@ -183,7 +183,8 @@
     },
     "toast": {
       "selectionBookmarked": "{count} elem könyvjelzőzve",
-      "selectionBookmarkFailed": "A kijelölt elemeket nem sikerült könyvjelzőzni"
+      "selectionBookmarkFailed": "A kijelölt elemeket nem sikerült könyvjelzőzni",
+      "pairedNoteNameTaken": "Már van ott egy {name} nevű jegyzet"
     }
   },
   "editor": {

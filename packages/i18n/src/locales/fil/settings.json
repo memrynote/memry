@@ -1381,7 +1381,8 @@
         "ollama": "Ollama (Lokal)",
         "openai": "OpenAI",
         "anthropic": "Anthropic",
-        "google": "Google Gemini"
+        "google": "Google Gemini",
+        "custom": "Custom (tugma sa OpenAI)"
       },
       "model": "Modelo",
       "modelDescription": "Modelo ng wika para sa muling pagsulat at pagbubuod",
@@ -1391,6 +1392,11 @@
       "apiKeyPlaceholder": "Ilagay ang API key ng {provider}",
       "ollamaUrl": "Ollama URL",
       "ollamaUrlDescription": "Lokal na address ng server",
+      "customUrl": "Base URL",
+      "customUrlDescription": "Anumang endpoint na tugma sa OpenAI, gaya ng OpenRouter",
+      "customUrlPlaceholder": "https://openrouter.ai/api/v1",
+      "customApiKeyPlaceholder": "API key (opsyonal)",
+      "customModelPlaceholder": "Model ID",
       "connection": "Koneksyon",
       "activePort": "Aktibo sa port {port}",
       "notConnected": "Hindi nakakonekta",

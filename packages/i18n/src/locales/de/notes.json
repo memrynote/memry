@@ -183,7 +183,8 @@
     },
     "toast": {
       "selectionBookmarked": "{count} Elemente als Lesezeichen gespeichert",
-      "selectionBookmarkFailed": "Die ausgewählten Elemente konnten nicht als Lesezeichen gespeichert werden"
+      "selectionBookmarkFailed": "Die ausgewählten Elemente konnten nicht als Lesezeichen gespeichert werden",
+      "pairedNoteNameTaken": "Dort gibt es bereits eine Notiz namens {name}"
     }
   },
   "editor": {

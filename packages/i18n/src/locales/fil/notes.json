@@ -183,7 +183,8 @@
     },
     "toast": {
       "selectionBookmarked": "Na-bookmark ang {count} item",
-      "selectionBookmarkFailed": "Hindi ma-bookmark ang mga napiling item"
+      "selectionBookmarkFailed": "Hindi ma-bookmark ang mga napiling item",
+      "pairedNoteNameTaken": "May tala nang may pangalang {name} doon"
     }
   },
   "editor": {

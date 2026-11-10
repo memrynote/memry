@@ -1381,7 +1381,8 @@
         "ollama": "Ollama (τοπικό)",
         "openai": "OpenAI",
         "anthropic": "Anthropic",
-        "google": "Google Gemini"
+        "google": "Google Gemini",
+        "custom": "Προσαρμοσμένο (συμβατό με OpenAI)"
       },
       "model": "Μοντέλο",
       "modelDescription": "Γλωσσικό μοντέλο για επανεγγραφή και περίληψη",
@@ -1391,6 +1392,11 @@
       "apiKeyPlaceholder": "Κλειδί API {provider}",
       "ollamaUrl": "Διεύθυνση URL Ollama",
       "ollamaUrlDescription": "Διεύθυνση τοπικού διακομιστή",
+      "customUrl": "Βασική διεύθυνση URL",
+      "customUrlDescription": "Οποιοδήποτε endpoint συμβατό με OpenAI, όπως το OpenRouter",
+      "customUrlPlaceholder": "https://openrouter.ai/api/v1",
+      "customApiKeyPlaceholder": "Κλειδί API (προαιρετικό)",
+      "customModelPlaceholder": "Αναγνωριστικό μοντέλου",
       "connection": "Σύνδεση",
       "activePort": "Ενεργό στη θύρα {port}",
       "notConnected": "Δεν είναι συνδεδεμένο",

@@ -183,7 +183,8 @@
     },
     "toast": {
       "selectionBookmarked": "Dodano elementy do zakładek: {count}",
-      "selectionBookmarkFailed": "Nie udało się dodać zaznaczonych elementów do zakładek"
+      "selectionBookmarkFailed": "Nie udało się dodać zaznaczonych elementów do zakładek",
+      "pairedNoteNameTaken": "Notatka o nazwie {name} już tam istnieje"
     }
   },
   "editor": {

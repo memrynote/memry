@@ -183,7 +183,8 @@
     },
     "toast": {
       "selectionBookmarked": "Stavke dodane u oznake: {count}",
-      "selectionBookmarkFailed": "Odabrane stavke nije moguće dodati u oznake"
+      "selectionBookmarkFailed": "Odabrane stavke nije moguće dodati u oznake",
+      "pairedNoteNameTaken": "Bilješka s nazivom {name} već postoji tamo"
     }
   },
   "editor": {

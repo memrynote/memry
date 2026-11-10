@@ -137,6 +137,7 @@
   },
   "ai": {
     "inlineDisabled": "AI-redigering i teksten er slået fra",
+    "listModelsFailed": "Kunne ikke hente modeller",
     "writingAssistInvalid": "Den forespørgsel kunne ikke sendes til AI-modellen.",
     "apiKeyMissing": "Tilføj din {provider}-API-nøgle under Indstillinger → AI for at bruge skriveværktøjer.",
     "apiKeyInvalid": "Din {provider}-API-nøgle blev afvist. Tjek den under Indstillinger → AI.",

@@ -1381,7 +1381,8 @@
         "ollama": "Ollama(로컬)",
         "openai": "OpenAI",
         "anthropic": "Anthropic",
-        "google": "Google Gemini"
+        "google": "Google Gemini",
+        "custom": "사용자 지정(OpenAI 호환)"
       },
       "model": "모델",
       "modelDescription": "재작성 및 요약을 위한 언어 모델",
@@ -1391,6 +1392,11 @@
       "apiKeyPlaceholder": "{provider} API 키 입력",
       "ollamaUrl": "Ollama URL",
       "ollamaUrlDescription": "로컬 서버 주소",
+      "customUrl": "기본 URL",
+      "customUrlDescription": "OpenRouter 등 OpenAI 호환 엔드포인트",
+      "customUrlPlaceholder": "https://openrouter.ai/api/v1",
+      "customApiKeyPlaceholder": "API 키(선택 사항)",
+      "customModelPlaceholder": "모델 ID",
       "connection": "연결",
       "activePort": "포트 {port}에서 활성",
       "notConnected": "연결되지 않음",

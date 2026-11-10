@@ -183,7 +183,8 @@
     },
     "toast": {
       "selectionBookmarked": "Добавлено в закладки: {count}",
-      "selectionBookmarkFailed": "Не удалось добавить выбранные элементы в закладки"
+      "selectionBookmarkFailed": "Не удалось добавить выбранные элементы в закладки",
+      "pairedNoteNameTaken": "Там уже есть заметка с именем {name}"
     }
   },
   "editor": {

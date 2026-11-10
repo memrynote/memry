@@ -183,7 +183,8 @@
     },
     "toast": {
       "selectionBookmarked": "{count} 件をブックマークしました",
-      "selectionBookmarkFailed": "選択した項目をブックマークできませんでした"
+      "selectionBookmarkFailed": "選択した項目をブックマークできませんでした",
+      "pairedNoteNameTaken": "{name} という名前のノートがすでにあります"
     }
   },
   "editor": {

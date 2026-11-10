@@ -1381,7 +1381,8 @@
         "ollama": "Ollama (локально)",
         "openai": "OpenAI",
         "anthropic": "Anthropic",
-        "google": "Google Gemini"
+        "google": "Google Gemini",
+        "custom": "Власний (сумісний з OpenAI)"
       },
       "model": "Модель",
       "modelDescription": "Мовна модель для переписування та підсумовування",
@@ -1391,6 +1392,11 @@
       "apiKeyPlaceholder": "Введіть ключ API {provider}",
       "ollamaUrl": "URL Ollama",
       "ollamaUrlDescription": "Адреса локального сервера",
+      "customUrl": "Базова URL-адреса",
+      "customUrlDescription": "Будь-яка сумісна з OpenAI кінцева точка, наприклад OpenRouter",
+      "customUrlPlaceholder": "https://openrouter.ai/api/v1",
+      "customApiKeyPlaceholder": "Ключ API (необовʼязково)",
+      "customModelPlaceholder": "ID моделі",
       "connection": "З’єднання",
       "activePort": "Активне на порті {port}",
       "notConnected": "Не підключено",

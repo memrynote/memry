@@ -183,7 +183,8 @@
     },
     "toast": {
       "selectionBookmarked": "{count} objekt bokmärkta",
-      "selectionBookmarkFailed": "Det gick inte att bokmärka de markerade objekten"
+      "selectionBookmarkFailed": "Det gick inte att bokmärka de markerade objekten",
+      "pairedNoteNameTaken": "Det finns redan en anteckning med namnet {name} där"
     }
   },
   "editor": {

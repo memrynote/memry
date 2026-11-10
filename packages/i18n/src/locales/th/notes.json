@@ -183,7 +183,8 @@
     },
     "toast": {
       "selectionBookmarked": "บุ๊กมาร์ก {count} รายการแล้ว",
-      "selectionBookmarkFailed": "ไม่สามารถบุ๊กมาร์กรายการที่เลือกได้"
+      "selectionBookmarkFailed": "ไม่สามารถบุ๊กมาร์กรายการที่เลือกได้",
+      "pairedNoteNameTaken": "มีโน้ตชื่อ {name} อยู่ที่นั่นแล้ว"
     }
   },
   "editor": {

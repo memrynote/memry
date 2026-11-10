@@ -1381,7 +1381,8 @@
         "ollama": "Ollama (local)",
         "openai": "OpenAI",
         "anthropic": "Anthropic",
-        "google": "Google Gemini"
+        "google": "Google Gemini",
+        "custom": "Personalizat (compatibil OpenAI)"
       },
       "model": "Model",
       "modelDescription": "Model de limbaj pentru rescriere și rezumare",
@@ -1391,6 +1392,11 @@
       "apiKeyPlaceholder": "Introduceți cheia API {provider}",
       "ollamaUrl": "URL Ollama",
       "ollamaUrlDescription": "Adresa serverului local",
+      "customUrl": "URL de bază",
+      "customUrlDescription": "Orice endpoint compatibil OpenAI, cum ar fi OpenRouter",
+      "customUrlPlaceholder": "https://openrouter.ai/api/v1",
+      "customApiKeyPlaceholder": "Cheie API (opțional)",
+      "customModelPlaceholder": "ID model",
       "connection": "Conexiune",
       "activePort": "Activ pe portul {port}",
       "notConnected": "Nu este conectat",

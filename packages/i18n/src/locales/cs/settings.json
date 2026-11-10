@@ -1381,7 +1381,8 @@
         "ollama": "Ollama (místní)",
         "openai": "OpenAI",
         "anthropic": "Anthropic",
-        "google": "Google Gemini"
+        "google": "Google Gemini",
+        "custom": "Vlastní (kompatibilní s OpenAI)"
       },
       "model": "Model",
       "modelDescription": "Jazykový model pro přepsání a shrnutí",
@@ -1391,6 +1392,11 @@
       "apiKeyPlaceholder": "Zadejte klíč API pro {provider}",
       "ollamaUrl": "URL serveru Ollama",
       "ollamaUrlDescription": "Adresa místního serveru",
+      "customUrl": "Základní URL",
+      "customUrlDescription": "Libovolný endpoint kompatibilní s OpenAI, například OpenRouter",
+      "customUrlPlaceholder": "https://openrouter.ai/api/v1",
+      "customApiKeyPlaceholder": "Klíč API (volitelné)",
+      "customModelPlaceholder": "ID modelu",
       "connection": "Připojení",
       "activePort": "Aktivní na portu {port}",
       "notConnected": "Nepřipojeno",

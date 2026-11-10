@@ -1381,7 +1381,8 @@
         "ollama": "Ollama (lokal)",
         "openai": "OpenAI",
         "anthropic": "Anthropic",
-        "google": "Google Gemini"
+        "google": "Google Gemini",
+        "custom": "Anpassad (OpenAI-kompatibel)"
       },
       "model": "Modell",
       "modelDescription": "Språkmodell för att skriva om och sammanfatta",
@@ -1391,6 +1392,11 @@
       "apiKeyPlaceholder": "Ange API-nyckel för {provider}",
       "ollamaUrl": "Ollama-URL",
       "ollamaUrlDescription": "Lokal serveradress",
+      "customUrl": "Bas-URL",
+      "customUrlDescription": "Valfri OpenAI-kompatibel slutpunkt, till exempel OpenRouter",
+      "customUrlPlaceholder": "https://openrouter.ai/api/v1",
+      "customApiKeyPlaceholder": "API-nyckel (valfritt)",
+      "customModelPlaceholder": "Modell-ID",
       "connection": "Anslutning",
       "activePort": "Aktiv på port {port}",
       "notConnected": "Inte ansluten",

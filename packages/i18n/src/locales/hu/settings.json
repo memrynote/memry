@@ -1381,7 +1381,8 @@
         "ollama": "Ollama (helyi)",
         "openai": "OpenAI",
         "anthropic": "Anthropic",
-        "google": "Google Gemini"
+        "google": "Google Gemini",
+        "custom": "Egyéni (OpenAI-kompatibilis)"
       },
       "model": "Modell",
       "modelDescription": "Nyelvi modell az újraíráshoz és összefoglaláshoz",
@@ -1391,6 +1392,11 @@
       "apiKeyPlaceholder": "{provider} API-kulcs megadása",
       "ollamaUrl": "Ollama URL",
       "ollamaUrlDescription": "Helyi szerver címe",
+      "customUrl": "Alap URL",
+      "customUrlDescription": "Bármely OpenAI-kompatibilis végpont, például az OpenRouter",
+      "customUrlPlaceholder": "https://openrouter.ai/api/v1",
+      "customApiKeyPlaceholder": "API-kulcs (nem kötelező)",
+      "customModelPlaceholder": "Modellazonosító",
       "connection": "Kapcsolat",
       "activePort": "Aktív, port: {port}",
       "notConnected": "Nincs csatlakoztatva",

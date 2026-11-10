@@ -183,7 +183,8 @@
     },
     "toast": {
       "selectionBookmarked": "{count} elementer bogmærket",
-      "selectionBookmarkFailed": "Kunne ikke bogmærke de valgte elementer"
+      "selectionBookmarkFailed": "Kunne ikke bogmærke de valgte elementer",
+      "pairedNoteNameTaken": "Der findes allerede en note med navnet {name}"
     }
   },
   "editor": {

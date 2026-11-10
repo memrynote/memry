@@ -1381,7 +1381,8 @@
         "ollama": "Ollama（ローカル）",
         "openai": "OpenAI",
         "anthropic": "Anthropic",
-        "google": "Google Gemini"
+        "google": "Google Gemini",
+        "custom": "カスタム（OpenAI 互換）"
       },
       "model": "モデル",
       "modelDescription": "書き換えと要約のための言語モデル",
@@ -1391,6 +1392,11 @@
       "apiKeyPlaceholder": "{provider} API キーを入力してください",
       "ollamaUrl": "Ollama の URL",
       "ollamaUrlDescription": "ローカルサーバーアドレス",
+      "customUrl": "ベース URL",
+      "customUrlDescription": "OpenRouter など、OpenAI 互換の任意のエンドポイント",
+      "customUrlPlaceholder": "https://openrouter.ai/api/v1",
+      "customApiKeyPlaceholder": "API キー（任意）",
+      "customModelPlaceholder": "モデル ID",
       "connection": "接続",
       "activePort": "ポート {port} でアクティブです",
       "notConnected": "接続されていません",

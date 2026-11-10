@@ -1381,7 +1381,8 @@
         "ollama": "Ollama (מקומי)",
         "openai": "OpenAI",
         "anthropic": "Anthropic",
-        "google": "Google Gemini"
+        "google": "Google Gemini",
+        "custom": "מותאם אישית (תואם OpenAI)"
       },
       "model": "מודל",
       "modelDescription": "מודל שפה לשכתוב וסיכום",
@@ -1391,6 +1392,11 @@
       "apiKeyPlaceholder": "הזנת מפתח API של {provider}",
       "ollamaUrl": "כתובת URL של Ollama",
       "ollamaUrlDescription": "כתובת שרת מקומי",
+      "customUrl": "כתובת URL בסיסית",
+      "customUrlDescription": "כל נקודת קצה תואמת OpenAI, כמו OpenRouter",
+      "customUrlPlaceholder": "https://openrouter.ai/api/v1",
+      "customApiKeyPlaceholder": "מפתח API (אופציונלי)",
+      "customModelPlaceholder": "מזהה מודל",
       "connection": "חיבור",
       "activePort": "פעיל ביציאה {port}",
       "notConnected": "לא מחובר",

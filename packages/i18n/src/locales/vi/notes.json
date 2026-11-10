@@ -183,7 +183,8 @@
     },
     "toast": {
       "selectionBookmarked": "Đã đánh dấu {count} mục",
-      "selectionBookmarkFailed": "Không thể đánh dấu các mục đã chọn"
+      "selectionBookmarkFailed": "Không thể đánh dấu các mục đã chọn",
+      "pairedNoteNameTaken": "Đã có một ghi chú tên {name} ở đó"
     }
   },
   "editor": {

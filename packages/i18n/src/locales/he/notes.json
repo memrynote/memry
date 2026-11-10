@@ -183,7 +183,8 @@
     },
     "toast": {
       "selectionBookmarked": "{count} פריטים נוספו לסימניות",
-      "selectionBookmarkFailed": "לא ניתן להוסיף את הפריטים שנבחרו לסימניות"
+      "selectionBookmarkFailed": "לא ניתן להוסיף את הפריטים שנבחרו לסימניות",
+      "pairedNoteNameTaken": "כבר יש שם פתק בשם {name}"
     }
   },
   "editor": {

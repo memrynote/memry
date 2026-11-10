@@ -183,7 +183,8 @@
     },
     "toast": {
       "selectionBookmarked": "Pridané do záložiek: {count}",
-      "selectionBookmarkFailed": "Vybrané položky sa nepodarilo pridať do záložiek"
+      "selectionBookmarkFailed": "Vybrané položky sa nepodarilo pridať do záložiek",
+      "pairedNoteNameTaken": "Poznámka s názvom {name} tam už existuje"
     }
   },
   "editor": {

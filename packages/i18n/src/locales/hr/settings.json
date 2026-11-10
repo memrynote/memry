@@ -1381,7 +1381,8 @@
         "ollama": "Ollama (lokalno)",
         "openai": "OpenAI",
         "anthropic": "Anthropic",
-        "google": "Google Gemini"
+        "google": "Google Gemini",
+        "custom": "Prilagođeno (kompatibilno s OpenAI)"
       },
       "model": "Model",
       "modelDescription": "Jezični model za prepisivanje i sažimanje",
@@ -1391,6 +1392,11 @@
       "apiKeyPlaceholder": "Unesite API ključ za {provider}",
       "ollamaUrl": "Ollama URL",
       "ollamaUrlDescription": "Adresa lokalnog poslužitelja",
+      "customUrl": "Osnovni URL",
+      "customUrlDescription": "Bilo koja krajnja točka kompatibilna s OpenAI, npr. OpenRouter",
+      "customUrlPlaceholder": "https://openrouter.ai/api/v1",
+      "customApiKeyPlaceholder": "API ključ (neobavezno)",
+      "customModelPlaceholder": "ID modela",
       "connection": "Veza",
       "activePort": "Aktivno na priključku {port}",
       "notConnected": "Nije povezano",

@@ -183,7 +183,8 @@
     },
     "toast": {
       "selectionBookmarked": "已收藏 {count} 项",
-      "selectionBookmarkFailed": "无法收藏所选项"
+      "selectionBookmarkFailed": "无法收藏所选项",
+      "pairedNoteNameTaken": "那里已有名为 {name} 的笔记"
     }
   },
   "editor": {

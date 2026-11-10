@@ -183,7 +183,8 @@
     },
     "toast": {
       "selectionBookmarked": "Elemente adăugate la marcaje: {count}",
-      "selectionBookmarkFailed": "Elementele selectate nu au putut fi adăugate la marcaje"
+      "selectionBookmarkFailed": "Elementele selectate nu au putut fi adăugate la marcaje",
+      "pairedNoteNameTaken": "Există deja acolo o notiță numită {name}"
     }
   },
   "editor": {

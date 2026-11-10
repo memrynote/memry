@@ -1381,7 +1381,8 @@
         "ollama": "Ollama (paikallinen)",
         "openai": "OpenAI",
         "anthropic": "Anthropic",
-        "google": "Google Gemini"
+        "google": "Google Gemini",
+        "custom": "Mukautettu (OpenAI-yhteensopiva)"
       },
       "model": "Malli",
       "modelDescription": "Kielimalli uudelleenkirjoitusta ja yhteenvetoa varten",
@@ -1391,6 +1392,11 @@
       "apiKeyPlaceholder": "Anna palvelun {provider} API-avain",
       "ollamaUrl": "Ollaman URL-osoite",
       "ollamaUrlDescription": "Paikallisen palvelimen osoite",
+      "customUrl": "Perus-URL",
+      "customUrlDescription": "Mikä tahansa OpenAI-yhteensopiva päätepiste, kuten OpenRouter",
+      "customUrlPlaceholder": "https://openrouter.ai/api/v1",
+      "customApiKeyPlaceholder": "API-avain (valinnainen)",
+      "customModelPlaceholder": "Mallin tunnus",
       "connection": "Yhteys",
       "activePort": "Aktiivinen portissa {port}",
       "notConnected": "Ei yhdistetty",

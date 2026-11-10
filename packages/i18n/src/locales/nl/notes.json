@@ -183,7 +183,8 @@
     },
     "toast": {
       "selectionBookmarked": "{count} items als bladwijzer toegevoegd",
-      "selectionBookmarkFailed": "Kan de geselecteerde items niet als bladwijzer toevoegen"
+      "selectionBookmarkFailed": "Kan de geselecteerde items niet als bladwijzer toevoegen",
+      "pairedNoteNameTaken": "Daar staat al een notitie met de naam {name}"
     }
   },
   "editor": {

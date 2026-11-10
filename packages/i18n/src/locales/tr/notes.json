@@ -183,7 +183,8 @@
     },
     "toast": {
       "selectionBookmarked": "{count} öğe yer imlerine eklendi",
-      "selectionBookmarkFailed": "Seçili öğeler yer imlerine eklenemedi"
+      "selectionBookmarkFailed": "Seçili öğeler yer imlerine eklenemedi",
+      "pairedNoteNameTaken": "Orada zaten {name} adlı bir not var"
     }
   },
   "editor": {

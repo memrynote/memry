@@ -1381,7 +1381,8 @@
         "ollama": "Ollama（本機）",
         "openai": "OpenAI",
         "anthropic": "Anthropic",
-        "google": "Google Gemini"
+        "google": "Google Gemini",
+        "custom": "自訂（相容 OpenAI）"
       },
       "model": "模型",
       "modelDescription": "用於重寫和摘要的語言模型",
@@ -1391,6 +1392,11 @@
       "apiKeyPlaceholder": "輸入 {provider} API 金鑰",
       "ollamaUrl": "Ollama URL",
       "ollamaUrlDescription": "本機伺服器位址",
+      "customUrl": "基礎 URL",
+      "customUrlDescription": "任何相容 OpenAI 的端點，例如 OpenRouter",
+      "customUrlPlaceholder": "https://openrouter.ai/api/v1",
+      "customApiKeyPlaceholder": "API 金鑰（選填）",
+      "customModelPlaceholder": "模型 ID",
       "connection": "連線",
       "activePort": "在連接埠 {port} 上執行中",
       "notConnected": "未連線",

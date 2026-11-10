@@ -183,7 +183,8 @@
     },
     "toast": {
       "selectionBookmarked": "{count} elementos añadidos a marcadores",
-      "selectionBookmarkFailed": "No se pudieron añadir los elementos seleccionados a marcadores"
+      "selectionBookmarkFailed": "No se pudieron añadir los elementos seleccionados a marcadores",
+      "pairedNoteNameTaken": "Ya hay una nota llamada {name} ahí"
     }
   },
   "editor": {

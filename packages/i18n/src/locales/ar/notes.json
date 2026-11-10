@@ -183,7 +183,8 @@
     },
     "toast": {
       "selectionBookmarked": "تمت إضافة العناصر ({count}) إلى الإشارات المرجعية",
-      "selectionBookmarkFailed": "تعذّرت إضافة العناصر المحددة إلى الإشارات المرجعية"
+      "selectionBookmarkFailed": "تعذّرت إضافة العناصر المحددة إلى الإشارات المرجعية",
+      "pairedNoteNameTaken": "توجد ملاحظة باسم {name} هناك بالفعل"
     }
   },
   "editor": {

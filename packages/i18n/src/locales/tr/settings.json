@@ -1381,7 +1381,8 @@
         "ollama": "Ollama (Yerel)",
         "openai": "OpenAI",
         "anthropic": "Anthropic",
-        "google": "Google Gemini"
+        "google": "Google Gemini",
+        "custom": "Özel (OpenAI uyumlu)"
       },
       "model": "Model",
       "modelDescription": "Yeniden yazma ve özetleme için dil modeli",
@@ -1391,6 +1392,11 @@
       "apiKeyPlaceholder": "{provider} API anahtarını girin",
       "ollamaUrl": "Ollama URL",
       "ollamaUrlDescription": "Yerel sunucu adresi",
+      "customUrl": "Temel URL",
+      "customUrlDescription": "OpenRouter gibi OpenAI uyumlu herhangi bir uç nokta",
+      "customUrlPlaceholder": "https://openrouter.ai/api/v1",
+      "customApiKeyPlaceholder": "API anahtarı (isteğe bağlı)",
+      "customModelPlaceholder": "Model kimliği",
       "connection": "Bağlantı",
       "activePort": "{port} bağlantı noktasında etkin",
       "notConnected": "Bağlı değil",

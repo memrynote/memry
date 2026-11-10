@@ -1381,7 +1381,8 @@
         "ollama": "Ollama (Lokal)",
         "openai": "OpenAI",
         "anthropic": "Anthropic",
-        "google": "Google Gemini"
+        "google": "Google Gemini",
+        "custom": "Kustom (kompatibel dengan OpenAI)"
       },
       "model": "Model",
       "modelDescription": "Model bahasa untuk menulis ulang dan meringkas",
@@ -1391,6 +1392,11 @@
       "apiKeyPlaceholder": "Masukkan kunci API {provider}",
       "ollamaUrl": "URL Ollama",
       "ollamaUrlDescription": "Alamat server lokal",
+      "customUrl": "URL dasar",
+      "customUrlDescription": "Endpoint apa pun yang kompatibel dengan OpenAI, seperti OpenRouter",
+      "customUrlPlaceholder": "https://openrouter.ai/api/v1",
+      "customApiKeyPlaceholder": "Kunci API (opsional)",
+      "customModelPlaceholder": "ID model",
       "connection": "Koneksi",
       "activePort": "Aktif pada port {port}",
       "notConnected": "Tidak terhubung",

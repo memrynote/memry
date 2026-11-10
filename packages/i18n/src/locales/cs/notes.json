@@ -183,7 +183,8 @@
     },
     "toast": {
       "selectionBookmarked": "Položky přidány do záložek: {count}",
-      "selectionBookmarkFailed": "Vybrané položky nelze přidat do záložek"
+      "selectionBookmarkFailed": "Vybrané položky nelze přidat do záložek",
+      "pairedNoteNameTaken": "Poznámka s názvem {name} už tam existuje"
     }
   },
   "editor": {

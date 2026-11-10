@@ -183,7 +183,8 @@
     },
     "toast": {
       "selectionBookmarked": "{count} elementi aggiunti ai segnalibri",
-      "selectionBookmarkFailed": "Impossibile aggiungere gli elementi selezionati ai segnalibri"
+      "selectionBookmarkFailed": "Impossibile aggiungere gli elementi selezionati ai segnalibri",
+      "pairedNoteNameTaken": "Lì esiste già una nota chiamata {name}"
     }
   },
   "editor": {

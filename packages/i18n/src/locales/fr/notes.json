@@ -183,7 +183,8 @@
     },
     "toast": {
       "selectionBookmarked": "{count} éléments ajoutés aux favoris",
-      "selectionBookmarkFailed": "Impossible d'ajouter les éléments sélectionnés aux favoris"
+      "selectionBookmarkFailed": "Impossible d'ajouter les éléments sélectionnés aux favoris",
+      "pairedNoteNameTaken": "Une note nommée {name} existe déjà à cet endroit"
     }
   },
   "editor": {

@@ -183,7 +183,8 @@
     },
     "toast": {
       "selectionBookmarked": "{count} item ditandai",
-      "selectionBookmarkFailed": "Tidak dapat menandai item yang dipilih"
+      "selectionBookmarkFailed": "Tidak dapat menandai item yang dipilih",
+      "pairedNoteNameTaken": "Catatan bernama {name} sudah ada di sana"
     }
   },
   "editor": {

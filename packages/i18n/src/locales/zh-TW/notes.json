@@ -183,7 +183,8 @@
     },
     "toast": {
       "selectionBookmarked": "已將 {count} 項加入書籤",
-      "selectionBookmarkFailed": "無法將所選項目加入書籤"
+      "selectionBookmarkFailed": "無法將所選項目加入書籤",
+      "pairedNoteNameTaken": "那裡已有名為 {name} 的筆記"
     }
   },
   "editor": {
