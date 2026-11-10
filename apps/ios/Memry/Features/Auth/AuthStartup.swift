@@ -293,13 +293,15 @@ final class AuthStartup {
             let hints = emitter
             let configuration = transportConfiguration
             let items = keychainItems
+            let hold = ExchangeHold.application()
             let graph = try await executor.run {
                 try AuthComposition.makeGraph(
                     environment: environment,
                     device: descriptor,
                     emitter: hints,
                     transportConfiguration: configuration,
-                    keychainItems: items
+                    keychainItems: items,
+                    exchangeHold: hold
                 )
             }
             let session = graph.session

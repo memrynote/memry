@@ -64,7 +64,8 @@ enum AuthComposition {
             device: device,
             emitter: emitter,
             transportConfiguration: transportConfiguration,
-            keychainItems: keychainItems
+            keychainItems: keychainItems,
+            exchangeHold: .none
         ).session
     }
 
@@ -79,9 +80,14 @@ enum AuthComposition {
         device: DeviceDescriptor,
         emitter: CoreEventEmitter,
         transportConfiguration: URLSessionConfiguration = URLSessionTransport.defaultConfiguration(),
-        keychainItems: any KeychainItemStore = SystemKeychainItemStore()
+        keychainItems: any KeychainItemStore = SystemKeychainItemStore(),
+        exchangeHold: ExchangeHold
     ) throws -> AuthGraph {
-        let transport = URLSessionTransport(emitter: emitter, configuration: transportConfiguration)
+        let transport = URLSessionTransport(
+            emitter: emitter,
+            configuration: transportConfiguration,
+            exchangeHold: exchangeHold
+        )
         let store = Keychain(emitter: emitter, items: keychainItems)
         let session = try AuthSession(
             transport: transport,
