@@ -32,7 +32,20 @@ export interface NoteContextMenuItemsProps {
   onOpenExternal: NoteAction
   onRevealInFinder: NoteAction
   onDelete: NoteAction
+  /** Rows for the folder a note is paired with, placed after the open actions. */
+  folderItems?: React.ReactNode
 }
+
+/** The note actions that need nothing but the note: the same on every row a note is drawn on. */
+export type NoteMenuActions = Pick<
+  NoteContextMenuItemsProps,
+  | 'onApplyTemplate'
+  | 'onSaveAsTemplate'
+  | 'onNewNoteFromNote'
+  | 'onRemoveIcon'
+  | 'onOpenExternal'
+  | 'onRevealInFinder'
+>
 
 /** Context-menu rows for a single note in the sidebar tree. */
 export function NoteContextMenuItems({
@@ -45,7 +58,8 @@ export function NoteContextMenuItems({
   onRemoveIcon,
   onOpenExternal,
   onRevealInFinder,
-  onDelete
+  onDelete,
+  folderItems
 }: NoteContextMenuItemsProps): React.JSX.Element {
   const { t } = useT('notes')
   const { t: tCommon } = useT('common')
@@ -60,6 +74,7 @@ export function NoteContextMenuItems({
       {(note.fileType ?? 'markdown') === 'markdown' && (
         <ShowTasksMenuItem location={{ noteId: note.id }} />
       )}
+      {folderItems}
       <ContextMenuSeparator />
       <ContextMenuItem onClick={() => onRename(note)}>
         <Pencil className="me-2 h-4 w-4" />

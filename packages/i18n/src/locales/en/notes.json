@@ -183,7 +183,8 @@
     },
     "toast": {
       "selectionBookmarked": "Bookmarked {count} items",
-      "selectionBookmarkFailed": "Couldn't bookmark the selected items"
+      "selectionBookmarkFailed": "Couldn't bookmark the selected items",
+      "pairedNoteNameTaken": "A note named {name} is already there"
     }
   },
   "editor": {
