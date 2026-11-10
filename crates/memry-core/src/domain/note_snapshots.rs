@@ -8,7 +8,12 @@
 //!   pruned the only copy of a text that came back);
 //! - an [`Reason::Auto`] or [`Reason::Timer`] version needs 5 minutes since the note's last
 //!   one;
-//! - every kept version prunes the note to its newest 50, never the one just kept.
+//! - every kept version prunes the note to 50, never the one just kept, oldest first; a
+//!   [`Reason::Significant`] version prunes only significant versions (#4083). A tool that
+//!   rewrites a note's file in a loop keeps a significant version per write (a locked note's
+//!   revert, an outside edit), and must not push out the versions the user saved: those stay
+//!   even when it leaves the note one over the cap ([`MAX_LISTED`]). Electron pruned the
+//!   oldest of any reason.
 //!
 //! A version is dated now, or the note's newest date when that is later ([`dated`]): on a
 //! clock behind the note's versions, the one just kept is still the newest (a tie goes to the
@@ -30,6 +35,9 @@ use crate::storage::repositories::instants;
 
 /// `MAX_SNAPSHOTS_PER_NOTE`.
 pub const MAX_PER_NOTE: i64 = 50;
+/// The most versions a note holds: [`MAX_PER_NOTE`] the user's own, and the newest significant
+/// one, which prunes none of them.
+const MAX_LISTED: i64 = MAX_PER_NOTE + 1;
 /// `MIN_SNAPSHOT_INTERVAL_MS`: between two automatic or timer versions of a note.
 pub const MIN_INTERVAL_MS: i64 = 5 * 60 * 1000;
 /// `SIGNIFICANT_WORD_CHANGE`.
@@ -150,7 +158,7 @@ pub fn list(conn: &Connection, note_id: &str) -> Result<Vec<Listed>, StorageErro
         )
         .map_err(failed)?;
     let rows = statement
-        .query_map(params![note_id, MAX_PER_NOTE], listed)
+        .query_map(params![note_id, MAX_LISTED], listed)
         .map_err(failed)?;
     rows.collect::<Result<_, _>>().map_err(failed)
 }
@@ -219,8 +227,8 @@ fn dated(conn: &Connection, note_id: &str, now_ms: i64, past: i64) -> Result<Str
     })
 }
 
-/// Writes the row, [`dated`], then prunes the note to its newest [`MAX_PER_NOTE`]
-/// (`pruneOldSnapshots`): the new row and the newest others.
+/// Writes the row, [`dated`], then prunes the note to [`MAX_PER_NOTE`] (`pruneOldSnapshots`),
+/// the oldest others first, and only significant ones when the new row is significant.
 fn insert(
     conn: &Connection,
     version: &Version<'_>,
@@ -244,11 +252,23 @@ fn insert(
         ],
     )
     .map_err(failed)?;
+    let held: i64 = conn
+        .query_row(
+            "SELECT COUNT(*) FROM note_snapshots WHERE note_id = ?1",
+            params![version.note_id],
+            |row| row.get(0),
+        )
+        .map_err(failed)?;
+    if held <= MAX_PER_NOTE {
+        return Ok(());
+    }
+    let only = (version.reason == Reason::Significant).then_some(Reason::Significant.as_str());
     conn.execute(
-        "DELETE FROM note_snapshots WHERE note_id = ?1 AND id != ?2 AND id NOT IN (
-           SELECT id FROM note_snapshots WHERE note_id = ?1 AND id != ?2
-           ORDER BY created_at DESC, rowid DESC LIMIT ?3)",
-        params![version.note_id, id, MAX_PER_NOTE - 1],
+        "DELETE FROM note_snapshots WHERE id IN (
+           SELECT id FROM note_snapshots
+           WHERE note_id = ?1 AND id != ?2 AND (?3 IS NULL OR reason = ?3)
+           ORDER BY created_at ASC, rowid ASC LIMIT ?4)",
+        params![version.note_id, id, only, held - MAX_PER_NOTE],
     )
     .map_err(failed)?;
     Ok(())
