@@ -1381,7 +1381,8 @@
         "ollama": "Ollama (Local)",
         "openai": "OpenAI",
         "anthropic": "Anthropic",
-        "google": "Google Gemini"
+        "google": "Google Gemini",
+        "custom": "Custom (OpenAI-compatible)"
       },
       "model": "Model",
       "modelDescription": "Language model for rewrite and summarize",
@@ -1391,6 +1392,11 @@
       "apiKeyPlaceholder": "Enter {provider} API key",
       "ollamaUrl": "Ollama URL",
       "ollamaUrlDescription": "Local server address",
+      "customUrl": "Base URL",
+      "customUrlDescription": "Any OpenAI-compatible endpoint, such as OpenRouter",
+      "customUrlPlaceholder": "https://openrouter.ai/api/v1",
+      "customApiKeyPlaceholder": "API key (optional)",
+      "customModelPlaceholder": "Model ID",
       "connection": "Connection",
       "activePort": "Active on port {port}",
       "notConnected": "Not connected",

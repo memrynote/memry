@@ -137,7 +137,6 @@
   },
   "ai": {
     "inlineDisabled": "A edição inline com IA está desativada",
-    "listOllamaModelsFailed": "Não foi possível listar os modelos do Ollama",
     "writingAssistInvalid": "Não foi possível enviar essa solicitação ao modelo de IA.",
     "apiKeyMissing": "Adicione sua chave de API do {provider} em Configurações → IA para usar as ferramentas de escrita.",
     "apiKeyInvalid": "Sua chave de API do {provider} foi rejeitada. Verifique em Configurações → IA.",
