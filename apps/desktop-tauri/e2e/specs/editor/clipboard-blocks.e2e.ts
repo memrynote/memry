@@ -12,11 +12,11 @@ import { test, expect } from '../../harness/test'
 type Platform = 'darwin' | 'win32' | 'linux'
 
 /**
- * What each webview does, observed on macOS 15 WKWebView and Ubuntu 24.04 WebKitGTK 2.52.6: the
- * copy event fires, so all three flavours go on it, and a paste in the app reads them back. WebKit
- * keeps the custom type in its own pasteboard entry (`org.webkitgtk.WebKit.custom-pasteboard-data`
- * on Linux) and WebView2 in Chromium's web custom format, so the app gets the blocks and every
- * other app gets HTML and the markdown.
+ * What each webview does, observed on macOS 15 WKWebView, WebView2 131 and WebKitGTK 2.50.4 (CI)
+ * and 2.52.6 (Ubuntu 24.04): the copy event fires, so all three flavours go on it, and a paste in
+ * the app reads them back. WebKit keeps the custom type in its own pasteboard entry
+ * (`org.webkitgtk.WebKit.custom-pasteboard-data` on Linux) and WebView2 in Chromium's web custom
+ * format, so the app gets the blocks and every other app gets HTML and the markdown.
  */
 const OUTCOME: Record<Platform, { copied: string[]; pasted: string[] }> = {
   darwin: {
@@ -126,7 +126,10 @@ test('copied blocks leave markdown on the clipboard and paste back with their fo
     editor.focus()
   })
   await invokeTest(app, 'e2e_webview_paste')
-  await expect.poll(async () => (await recorded(page)).pasted).toEqual(OUTCOME[platform].pasted)
+  // WebView2 lists the pasted types in another order; the set is the contract.
+  await expect
+    .poll(async () => (await recorded(page)).pasted?.toSorted() ?? null)
+    .toEqual(OUTCOME[platform].pasted.toSorted())
   await expect
     .poll(() => blockTexts(page))
     .toEqual(['First **bold** line', 'Second line', 'First **bold** line'])
