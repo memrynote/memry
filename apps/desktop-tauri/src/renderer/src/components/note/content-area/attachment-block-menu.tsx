@@ -24,6 +24,7 @@ import {
   Pencil
 } from '@/lib/icons'
 import { extractErrorMessage } from '@/lib/ipc-error'
+import { notesService } from '@/services/notes-service'
 import { cn } from '@/lib/utils'
 import { useT } from '@memry/i18n/renderer'
 import { useFileActionLabels } from '@/hooks/use-file-action-labels'
@@ -111,7 +112,7 @@ function useAttachmentMenu(
     (open: boolean) => {
       if (!open || !noteId) return
       setResolveFailed(false)
-      window.api.notes
+      notesService
         .resolveAttachment(noteId, url)
         .then(setInfo)
         .catch(() => {
@@ -124,14 +125,14 @@ function useAttachmentMenu(
 
   const reveal = useCallback(() => {
     if (!noteId) return
-    window.api.notes.revealAttachmentInFinder(noteId, url).catch((err: unknown) => {
+    notesService.revealAttachmentInFinder(noteId, url).catch((err: unknown) => {
       toast.error(extractErrorMessage(err, t('editor.attachmentMenu.revealFailed')))
     })
   }, [noteId, url, t])
 
   const openExternal = useCallback(() => {
     if (!noteId) return
-    window.api.notes.openAttachmentExternal(noteId, url).catch((err: unknown) => {
+    notesService.openAttachmentExternal(noteId, url).catch((err: unknown) => {
       toast.error(extractErrorMessage(err, t('editor.attachmentMenu.openFailed')))
     })
   }, [noteId, url, t])
