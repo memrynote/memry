@@ -116,12 +116,18 @@ test('keeps the Turn into submenu open through a hesitation on the way to it', a
   // scroll is dispatched at the next rendering update. A loaded runner can hold that update past
   // the hover (the harness waits for a frame or 50 ms), so the handle showed and hid again, and
   // with the pointer still, never came back: the click below timed out on a missing handle
-  // (#4227). Returning on the event puts the hover after it.
+  // (#4227). Returning on the event puts the hover after it. A scroll that moves nothing fires no
+  // event, so it returns at once.
   await target.evaluate(
     (el: HTMLElement) =>
       new Promise<void>((resolve) => {
+        const ancestors: Array<[Element, number]> = []
+        for (let node = el.parentElement; node; node = node.parentElement) {
+          ancestors.push([node, node.scrollTop])
+        }
         addEventListener('scroll', () => resolve(), { capture: true, once: true })
         el.scrollIntoView({ block: 'center' })
+        if (ancestors.every(([node, top]) => node.scrollTop === top)) resolve()
       })
   )
   await target.hover()
@@ -154,6 +160,48 @@ test('keeps the Turn into submenu open through a hesitation on the way to it', a
   await expect
     .poll(async () => (await editorDocument(page)).find((b) => blockText(b) === 'Line 20')?.type)
     .toBe('heading')
+})
+
+// #4245: a menu whose block scrolled out of the note hides (`visibility: hidden`) and stays open.
+// Enter must not run the row it had focused, Delete, with nothing on screen. WebKit and Chromium
+// move focus off a hidden element, so the keys land on the body.
+test('runs no menu row from the keyboard while its block is scrolled out of view', async ({
+  page
+}) => {
+  await vaultOpen(page)
+  const lines = Array.from({ length: 60 }, (_, i) => `Line ${i + 1}`)
+  await openNoteWithLines(page, label('Drag Menu Hidden Keys'), lines)
+
+  await openDragHandleMenu(page)
+  const focusedRow = (): Promise<string | undefined> =>
+    page.evaluate(() => document.activeElement?.textContent?.trim())
+  for (let rows = 0; rows < 10 && (await focusedRow()) !== 'Delete'; rows++) {
+    await page.keyboard.press('ArrowDown')
+  }
+  expect(await focusedRow()).toBe('Delete')
+
+  // Scroll the note's scroll container until Line 1, the menu's anchor, is out of view.
+  await page
+    .locator('.bn-block-content')
+    .first()
+    .evaluate((el: HTMLElement) => {
+      for (let node = el.parentElement; node; node = node.parentElement) {
+        if (
+          node.scrollHeight > node.clientHeight &&
+          getComputedStyle(node).overflowY !== 'visible'
+        ) {
+          node.scrollTop = node.scrollHeight
+          return
+        }
+      }
+      throw new Error('no scroll container')
+    })
+  await expect(page.locator(MENU).first()).toBeHidden()
+  await page.keyboard.press('ArrowDown')
+  await page.keyboard.press('Enter')
+  await page.waitForTimeout(500)
+
+  expect((await editorDocument(page)).map(blockText)).toContain('Line 1')
 })
 
 test('duplicates a block via the menu, directly below the original', async ({ page }) => {

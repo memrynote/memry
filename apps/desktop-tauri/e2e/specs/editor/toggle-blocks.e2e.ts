@@ -5,6 +5,7 @@
 import {
   blockText,
   editorDocument,
+  expectSuggestionMenuOpen,
   noteBody,
   openNewNote,
   setBlocks,
@@ -105,7 +106,7 @@ test('a toggle inserted from the slash menu survives its first save', async ({ p
   await page.locator(NOTE_EDITOR).first().click()
 
   await typeInEditor(page, '/toggle')
-  await expect(page.getByText('Toggle List').first()).toBeVisible()
+  await expectSuggestionMenuOpen(page, 'Toggle List')
   await page.keyboard.press('Enter')
   await typeInEditor(page, 'Collapsed heading')
 
