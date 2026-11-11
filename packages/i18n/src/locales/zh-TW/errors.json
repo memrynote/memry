@@ -228,6 +228,9 @@
     "createFailed": "無法建立資料夾",
     "renameFailed": "無法重新命名資料夾",
     "deleteFailed": "無法刪除資料夾",
+    "keptNotPulled": "此資料夾中有一則筆記，其檔案已在 memrynote 之外被刪除，且其內容尚未同步到此裝置，因此無法移到垃圾桶。沒有刪除任何內容。請等待同步完成，或先單獨刪除該筆記。",
+    "keptUnwritable": "此資料夾中有一則筆記，其檔案已在 memrynote 之外被刪除，且其內容無法儲存為檔案以移到垃圾桶。沒有刪除任何內容。請先單獨刪除該筆記。",
+    "trashUnavailable": "無法將此資料夾移到垃圾桶。其中仍有的內容未被刪除。",
     "setConfigFailed": "無法設定資料夾組態"
   },
   "folderView": {

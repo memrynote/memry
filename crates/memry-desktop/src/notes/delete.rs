@@ -41,6 +41,7 @@ use super::service::NotesService;
 use crate::locks::Locks;
 use crate::session::OpenVault;
 use crate::shell::file_open::Resolution;
+use crate::vault::consumer::rows::Lane;
 use crate::vault::consumer::{Applied, ChangeSource};
 use crate::vault::file_types::FileType;
 use crate::vault::note_file::hash_file;
@@ -73,7 +74,7 @@ impl NotesService {
             return Err(NotesError::NotFound(note_id.to_owned()));
         };
         Locks::of(open).refuse_note(note_id, &row.path)?;
-        self.remove_file_of(open, &row, permanent, permanent)?;
+        self.remove_file_of(&lane, open, &row, permanent, permanent)?;
         writer.delete(note_id.to_owned())?;
         lane.remove(note_id)?;
         lane.publish(Applied::Removed {
@@ -99,6 +100,7 @@ impl NotesService {
     /// unlinks a day's file), except a kept row's copy, its only text, without `permanent`.
     pub(crate) fn remove_file_of(
         &self,
+        lane: &Lane<'_>,
         open: &OpenVault,
         row: &Row,
         permanent: bool,
@@ -106,25 +108,31 @@ impl NotesService {
     ) -> Result<(), NotesError> {
         let root = open.path.as_path();
         let echo = self.tier.echo();
-        let copied = self.copy_kept(open, row, permanent)?;
+        let copied = self.copy_kept(lane, open, row, permanent)?;
         let unlink_refused = permanent || (unlink_refused && copied.is_none());
-        let removed = if holds_unread_text(root, row) {
-            // A refusal may not last (a sync client or a scanner holding the file, a folder
-            // made writable since): a confirmed delete tries the trash again first.
-            match self.trash_file(&echo, root, &row.path) {
-                Err(NotesError::TrashUnavailable(_)) if unlink_refused => {
-                    unlink(&echo, root, &row.path).map_err(NotesError::from)
-                }
-                trashed => trashed,
+        // A confirmed delete tries the trash again first: a refusal may not last (a sync client
+        // or a scanner holding the file, a folder made writable since).
+        let trash = |rel: &str| match self.trash_file(&echo, root, rel) {
+            Err(NotesError::TrashUnavailable(_)) if unlink_refused => {
+                unlink(&echo, root, rel).map_err(NotesError::from)
             }
+            trashed => trashed,
+        };
+        let removed = if holds_unread_text(root, row) {
+            trash(&row.path)
         } else {
             unlink(&echo, root, &row.path).map_err(NotesError::from)
         };
+        // A copy beside a file at the row's path goes to the trash on its own.
+        let removed = match &copied {
+            Some(copy) if copy.at != row.path => removed.and_then(|()| trash(&copy.at)),
+            _ => removed,
+        };
         if let Some(copy) = copied {
             if removed.is_err() {
-                copy.take_back(&echo, root, row);
+                copy.take_back(&echo, root, &row.note_id);
             } else {
-                copy.remove_made_folders(&echo, root, &row.path);
+                copy.remove_made_folders(&echo, root);
             }
         }
         removed.inspect_err(|error| {

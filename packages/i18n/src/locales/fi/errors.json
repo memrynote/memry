@@ -228,6 +228,9 @@
     "createFailed": "Kansion luominen epäonnistui",
     "renameFailed": "Kansion uudelleennimeäminen epäonnistui",
     "deleteFailed": "Kansion poistaminen epäonnistui",
+    "keptNotPulled": "Tässä kansiossa on muistiinpano, jonka tiedosto poistettiin memrynote-sovelluksen ulkopuolella, eikä sen tekstiä ole vielä synkronoitu tähän laitteeseen, joten sitä ei voi siirtää roskakoriin. Mitään ei poistettu. Odota, että se synkronoituu, tai poista ensin se muistiinpano erikseen.",
+    "keptUnwritable": "Tässä kansiossa on muistiinpano, jonka tiedosto poistettiin memrynote-sovelluksen ulkopuolella, eikä sen tekstiä voi tallentaa tiedostoon roskakoria varten. Mitään ei poistettu. Poista ensin se muistiinpano erikseen.",
+    "trashUnavailable": "Tätä kansiota ei voitu siirtää roskakoriin. Mitään siinä vielä olevaa ei poistettu.",
     "setConfigFailed": "Kansion asetusten tallentaminen epäonnistui"
   },
   "folderView": {
