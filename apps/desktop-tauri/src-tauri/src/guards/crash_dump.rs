@@ -27,8 +27,7 @@ const PING_INTERVAL: Duration = Duration::from_secs(20);
 const CONNECT_ATTEMPTS: u32 = 100;
 const CONNECT_RETRY: Duration = Duration::from_millis(50);
 
-/// Held for the app's lifetime; only the e2e crash hook takes it, to detach it before it aborts.
-static HANDLER: Mutex<Option<CrashHandler>> = Mutex::new(None);
+static HANDLER: OnceLock<CrashHandler> = OnceLock::new();
 /// The write end of the monitor's stdin, held for the app's lifetime. The OS closes it however
 /// the app ends, which tells the monitor its app is gone.
 static MONITOR_STDIN: OnceLock<ChildStdin> = OnceLock::new();
@@ -214,7 +213,7 @@ fn attach(socket: &Path) {
     };
     match CrashHandler::attach(event) {
         Ok(handler) => {
-            *HANDLER.lock().unwrap_or_else(PoisonError::into_inner) = Some(handler);
+            let _ = HANDLER.set(handler);
             tracing::info!(scope = "CrashDump", "crash handler attached");
         }
         Err(error) => {
@@ -242,20 +241,21 @@ fn attach(socket: &Path) {
 /// handler to write the dump, and aborts once it is written.
 #[cfg(feature = "e2e")]
 pub fn simulate_crash() -> bool {
-    let Some(handler) = HANDLER
-        .lock()
-        .unwrap_or_else(PoisonError::into_inner)
-        .take()
-    else {
+    let Some(handler) = HANDLER.get() else {
         return false;
     };
     #[cfg(target_os = "linux")]
     let _ = handler.simulate_signal(crash_handler::Signal::Segv as u32);
     #[cfg(any(windows, target_os = "macos"))]
     let _ = handler.simulate_exception(None);
-    // The handler also answers SIGABRT: attached, it would answer the abort below with a second
-    // dump, and the crashed process stays alive while that one is written (#3967).
-    drop(handler);
+    // The abort would also hand the kernel's core dump of the whole process to the OS collector
+    // (`systemd-coredump` on Ubuntu, which `ulimit -c 0` does not stop), and the process stays
+    // alive the 10 s or more it takes to read (#3967). The monitor's dump is the one under test.
+    // SAFETY: PR_SET_DUMPABLE takes an integer and touches no memory.
+    #[cfg(target_os = "linux")]
+    unsafe {
+        libc::prctl(libc::PR_SET_DUMPABLE, 0);
+    }
     std::process::abort()
 }
 
