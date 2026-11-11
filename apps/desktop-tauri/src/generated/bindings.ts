@@ -61,8 +61,12 @@ export const commands = {
 	 *  cut short) is heard by every window ([`announce_followed`]).
 	 */
 	journalCreateEntry: (input: JournalCreateInput) => __TAURI_INVOKE<JournalEntryView>("journal_create_entry", { input }),
-	/**  `success` is whether the day had an entry to delete. */
-	journalDeleteEntry: (date: string) => __TAURI_INVOKE<JournalDeleteOutput>("journal_delete_entry", { date }),
+	/**
+	 *  `success` is whether the day had an entry to delete. A kept day's text the trash cannot take
+	 *  fails the delete with `note_trash_unavailable`, and the renderer asks the user before it
+	 *  deletes again with `permanent` (#4140).
+	 */
+	journalDeleteEntry: (date: string, permanent: boolean | null) => __TAURI_INVOKE<JournalDeleteOutput>("journal_delete_entry", { date, permanent }),
 	/**  The tasks due on `date` and the count overdue before it (`journal:getDayContext`). */
 	journalGetDayContext: (date: string) => __TAURI_INVOKE<DayContextView>("journal_get_day_context", { date }),
 	/**  The day's entry, `null` when it has no file. Browsing never makes a day. */

@@ -108,7 +108,12 @@ export function KeptRemovalsDialog(): React.JSX.Element {
                     <Button variant="outline" size="sm" onClick={() => setConfirming(null)}>
                       {t('button.cancel')}
                     </Button>
-                    <Button variant="destructive" size="sm" onClick={() => void remove(note)}>
+                    <Button
+                      variant="destructive"
+                      size="sm"
+                      disabled={busy !== null}
+                      onClick={() => void remove(note)}
+                    >
                       {t('button.delete')}
                     </Button>
                   </>

@@ -22,6 +22,7 @@ use memry_desktop::notes::service::{NotesService, Trash};
 use memry_desktop::vault::app_edit::Kept;
 use memry_desktop::vault::consumer::{Applied, ChangeSource};
 use memry_desktop::vault::hash::content_hash;
+use memry_desktop::vault::note_file::NoteFileError;
 use memry_desktop::vault::notices::{VaultNotice, VaultNotices};
 use rusqlite::OptionalExtension as _;
 use vault_env::{Env, env, indexed};
@@ -362,12 +363,10 @@ fn a_kept_journal_day_is_restored_with_its_date_and_deleted_to_the_trash() {
         notes,
         notices,
         id,
-    } = kept_by("journal/2025-01-02.md", "Morning\n", bin, |e, _, id| {
-        unread(e, id)
-    });
+    } = kept_day(bin);
     assert_eq!(id, "j2025-01-02");
     let open = e.session.current().unwrap();
-    let day = "---\ndate: '2025-01-02'\n---\nMorning\n";
+    let day = DAY;
 
     kept::restore(&notes, &notices, &open, &id).unwrap();
     assert_eq!(e.read("journal/2025-01-02.md"), day);
@@ -382,4 +381,164 @@ fn a_kept_journal_day_is_restored_with_its_date_and_deleted_to_the_trash() {
     assert!(!e.vault.join("journal/2025-01-02.md").exists());
     assert_eq!(row_hash(&e, &id), Err(()));
     assert!(!is_listed(&notices, &id), "{:?}", notices.list());
+}
+
+const DAY: &str = "---\ndate: '2025-01-02'\n---\nMorning\n";
+
+/// A journal day kept as [`kept_by`] keeps one, its row stopped naming its file's text.
+fn kept_day(trash: Trash) -> KeptNote {
+    kept_by("journal/2025-01-02.md", "Morning\n", trash, |e, _, id| {
+        unread(e, id)
+    })
+}
+
+/// Whether the day's record is tombstoned.
+fn day_deleted(e: &Env, id: &str) -> bool {
+    let id = id.to_owned();
+    e.core()
+        .db_handle()
+        .call_blocking(move |conn| {
+            Ok(conn
+                .query_row(
+                    "SELECT deleted_at IS NOT NULL FROM journal_entries WHERE id = ?1",
+                    [id],
+                    |row| row.get(0),
+                )
+                .unwrap())
+        })
+        .unwrap()
+}
+
+#[test]
+fn a_kept_day_whose_text_is_not_here_is_not_deleted_unless_confirmed() {
+    let KeptNote {
+        e,
+        _index,
+        notes,
+        notices,
+        id,
+    } = kept_day(bin);
+    let open = e.session.current().unwrap();
+    owe_body(&e, &id);
+
+    let refused = kept::delete(&notes, &notices, &open, &id, false);
+    assert!(
+        matches!(refused, Err(NotesError::TrashUnavailable(_))),
+        "{refused:?}"
+    );
+    assert!(!day_deleted(&e, &id), "the day went without its text");
+    assert!(!e.vault.join("journal/2025-01-02.md").exists());
+    assert!(!e.vault.join("journal/2025-01-02.trashed").exists());
+    assert_eq!(row_hash(&e, &id), Ok(None));
+    assert!(is_listed(&notices, &id), "{:?}", notices.list());
+
+    // The user confirmed it: deleted for good.
+    kept::delete(&notes, &notices, &open, &id, true).unwrap();
+    assert!(day_deleted(&e, &id));
+    assert_eq!(row_hash(&e, &id), Err(()));
+    assert!(!is_listed(&notices, &id), "{:?}", notices.list());
+}
+
+#[test]
+fn a_kept_day_the_trash_refuses_stays_kept_with_no_file_left() {
+    let KeptNote {
+        e,
+        _index,
+        notes,
+        notices,
+        id,
+    } = kept_day(no_trash);
+    let open = e.session.current().unwrap();
+
+    let refused = notes.delete_day(&open, "2025-01-02", false);
+    assert!(
+        matches!(refused, Err(NotesError::TrashUnavailable(_))),
+        "{refused:?}"
+    );
+    assert!(
+        !e.vault.join("journal/2025-01-02.md").exists(),
+        "the copy was left"
+    );
+    assert!(!day_deleted(&e, &id), "the day went without its text");
+    assert_eq!(row_hash(&e, &id), Ok(None));
+    // Still kept: a restore writes the text.
+    kept::restore(&notes, &notices, &open, &id).unwrap();
+    assert_eq!(e.read("journal/2025-01-02.md"), DAY);
+}
+
+#[test]
+fn a_restore_writes_the_header_tags_the_note_holds_in_the_app() {
+    let KeptNote {
+        e,
+        _index,
+        notes,
+        notices,
+        id,
+    } = kept_by("a.md", FILE, bin, |e, store, id| {
+        std::thread::sleep(Duration::from_millis(2));
+        e.edit_in_app(store, id, "typed in the app");
+        let tags = vec!["alpha".to_owned(), "beta".to_owned()];
+        let writer = e.core().notes_writer(store.clone()).unwrap();
+        writer.set_tags(id.to_owned(), tags).unwrap();
+    });
+    let open = e.session.current().unwrap();
+
+    kept::restore(&notes, &notices, &open, &id).unwrap();
+    assert_eq!(
+        e.read("a.md"),
+        "---\ntags:\n  - alpha\n  - beta\n---\ntyped in the app\n"
+    );
+}
+
+/// A trash one folder up from the file: `f/a.md` goes to `a.trashed`, leaving `f` empty.
+fn bin_up(path: &Path) -> Result<(), String> {
+    let name = path.file_stem().unwrap().to_string_lossy();
+    let up = path.parent().and_then(Path::parent).unwrap();
+    fs::rename(path, up.join(format!("{name}.trashed"))).map_err(|error| error.to_string())
+}
+
+#[test]
+fn a_kept_notes_delete_brings_back_no_folder_the_user_deleted() {
+    let KeptNote {
+        e,
+        _index,
+        notes,
+        notices,
+        id,
+    } = kept_at("f/a.md", FILE, bin_up);
+    let open = e.session.current().unwrap();
+    fs::remove_dir(e.vault.join("f")).unwrap();
+
+    kept::delete(&notes, &notices, &open, &id, false).unwrap();
+    assert_eq!(
+        e.read("a.trashed"),
+        RESTORED,
+        "the text is not in the trash"
+    );
+    assert!(!e.vault.join("f").exists(), "the deleted folder is back");
+    assert_eq!(row_hash(&e, &id), Err(()));
+}
+
+#[test]
+fn a_restore_never_writes_over_a_file_that_appears_while_it_writes() {
+    let KeptNote {
+        e,
+        _index,
+        notes,
+        notices: _,
+        id,
+    } = kept_at("a.md", FILE, bin);
+    let open = e.session.current().unwrap();
+    let path = e.vault.join("a.md");
+
+    let refused = notes.restore_kept_checked(&open, &id, &mut || {
+        if !path.exists() {
+            fs::write(&path, "Mine\n").unwrap();
+        }
+    });
+    assert!(
+        matches!(refused, Err(NotesError::File(NoteFileError::AlreadyExists))),
+        "{refused:?}"
+    );
+    assert_eq!(e.read("a.md"), "Mine\n");
 }

@@ -119,6 +119,27 @@ describe('KeptRemovalsDialog (#4140)', () => {
     await waitFor(() => expect(mocks.toast.success).toHaveBeenCalledWith('Note deleted'))
   })
 
+  it('takes no confirmed delete while another note’s action runs', async () => {
+    const user = userEvent.setup()
+    let restored = (): void => undefined
+    mocks.vaultNoticesRestoreKept.mockReturnValue(
+      new Promise((resolve) => {
+        restored = () => resolve(null)
+      })
+    )
+    await openReview()
+
+    await user.click(within(row('2025-01-02')).getByRole('button', { name: 'Delete note' }))
+    await user.click(within(row('Alpha')).getByRole('button', { name: 'Restore file' }))
+    const confirm = within(row('2025-01-02')).getByRole('button', { name: 'Delete' })
+    expect(confirm).toBeDisabled()
+    await user.click(confirm)
+    expect(mocks.vaultNoticesDeleteKept).not.toHaveBeenCalled()
+
+    await act(async () => restored())
+    await waitFor(() => expect(confirm).toBeEnabled())
+  })
+
   it('asks before a delete the trash refused goes for good, and keeps the note when told to', async () => {
     const user = userEvent.setup()
     mocks.vaultNoticesDeleteKept.mockRejectedValueOnce(trashRefused)

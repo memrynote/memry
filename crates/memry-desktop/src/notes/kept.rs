@@ -4,17 +4,19 @@
 //! ways out the user takes from the notice:
 //!
 //! - **Restore** ([`restore`]): the document's body goes to a new file at the row's path, with
-//!   the frontmatter a create writes (a day's `date` first; the header `tags` the index last
-//!   read in the note's file, since a found file's are in no record; the record's properties and
-//!   other names) and the body's `writing` data. The file is created, never
+//!   the frontmatter a create writes (a day's `date` first; the header `tags`: a note's record's,
+//!   which hold a tag edited in the app, joined with the ones the index last read in its file,
+//!   since a found file's are in no record, and a day's from that read alone; the record's
+//!   properties and other names) and the body's `writing` data. The file is created, never
 //!   written over one that stands there, told to the own-write record first; then the row names
 //!   it as the document's, stamped before the body was read, so the note reads, saves, writes
 //!   back and syncs as before. The record is not touched: a restore is a local file, nothing
 //!   syncs.
 //! - **Delete** ([`delete`]): the app's delete of the note or day, which tombstones the record
 //!   for every device. Its text goes to the OS trash first ([`NotesService::copy_kept`], called
-//!   by every app delete of a kept row, the sidebar's included), so the deleted text can be
-//!   taken back from the trash, as a deleted note's unread file can.
+//!   by every app delete of a kept row, the sidebar's and the journal's included), so the
+//!   deleted text can be taken back from the trash, as a deleted note's unread file can. A
+//!   folder that copy's write made is removed again once the copy went.
 //!
 //! **Fail closed.** A body that is not here yet (its server body not pulled), that owes a file's
 //! text the document never took, or that a file would not hold whole is not written: a restore
@@ -24,10 +26,13 @@
 //!
 //! Either way the note leaves the notice once its state passed, here and not at the next open.
 
+use std::fs;
+use std::io::ErrorKind;
 use std::path::Path;
 
 use memry_core::domain::journal::valid_date;
 use memry_core::domain::note_files::{NoteFile as Row, StampMark};
+use memry_core::domain::tags::dedupe;
 use memry_core::domain::write_back::BodyRead;
 use memry_core::markdown::convert::note_body::NoteBody;
 use memry_core::markdown::frontmatter::{YamlValue, write_markdown_note};
@@ -48,8 +53,11 @@ use crate::vault::consumer::{Applied, ChangeSource, converter_for};
 use crate::vault::embeds::Resolved;
 use crate::vault::file_types::FileType;
 use crate::vault::hash::content_hash;
-use crate::vault::note_file::{hash_file, large_file_class, record_large_file, write_new_text};
+use crate::vault::note_file::{
+    hash_file, large_file_class, record_large_file, write_new_text_checked,
+};
 use crate::vault::notices::{Listed, VaultNotices};
+use crate::vault::watch::EchoGuard;
 
 /// Restores the kept note's file from its document, and takes the note off the notice. A note
 /// that is gone leaves the notice too.
@@ -78,7 +86,7 @@ pub fn delete(
     let deleted = match notes.recorded(open, note_id)? {
         Some(Recorded {
             date: Some(date), ..
-        }) => notes.delete_day(open, &date).map(drop),
+        }) => notes.delete_day(open, &date, permanent).map(drop),
         Some(_) => notes.delete(open, note_id, permanent),
         None => Err(NotesError::NotFound(note_id.to_owned())),
     };
@@ -95,6 +103,19 @@ impl NotesService {
     /// Writes the kept note's file from its document (the module docs): a note whose row names
     /// text, or a file at its path, is not kept, and nothing is written.
     pub fn restore_kept(&self, open: &OpenVault, note_id: &str) -> Result<(), NotesError> {
+        self.restore_kept_checked(open, note_id, &mut || {})
+    }
+
+    /// [`Self::restore_kept`] with a hook that runs after the new file's text is staged and
+    /// before it is put in place, so a test can create a file there in the window a
+    /// check-then-write would lose.
+    #[doc(hidden)]
+    pub fn restore_kept_checked(
+        &self,
+        open: &OpenVault,
+        note_id: &str,
+        between: &mut dyn FnMut(),
+    ) -> Result<(), NotesError> {
         let recorded = self
             .recorded(open, note_id)?
             .ok_or_else(|| NotesError::NotFound(note_id.to_owned()))?;
@@ -104,10 +125,15 @@ impl NotesService {
             None => note_id.to_owned(),
         };
         self.order
-            .run(&key, |_| self.restore_kept_now(open, note_id))
+            .run(&key, |_| self.restore_kept_now(open, note_id, between))
     }
 
-    fn restore_kept_now(&self, open: &OpenVault, note_id: &str) -> Result<(), NotesError> {
+    fn restore_kept_now(
+        &self,
+        open: &OpenVault,
+        note_id: &str,
+        between: &mut dyn FnMut(),
+    ) -> Result<(), NotesError> {
         let root = open.path.as_path();
         let rows = self.tier.rows();
         let session = rows.session_for(&open.vault)?;
@@ -132,7 +158,7 @@ impl NotesService {
         // the note behind its body, and the next pass writes it.
         let read_at = now_ms();
         let read_mark = StampMark::At(open.vault.write_back().body_mark(note_id)?);
-        let (output, tags) = self.write_kept_file(open, &row)?;
+        let (output, tags) = self.write_kept_file(open, &row, between)?;
         let hash = content_hash(&output);
         let stat = RowStat {
             file_type: FileType::Markdown,
@@ -177,27 +203,35 @@ impl NotesService {
     }
 
     /// The first step of an app delete of `row` (`notes::delete`): a kept row's text is written
-    /// to its path for the delete to move to the trash. `Ok(true)` when it was; `Ok(false)` for a
-    /// row that is not kept, or, with `permanent`, one whose text cannot be written. Without
-    /// `permanent` that text refuses the delete as the trash would, so the user is asked.
+    /// to its path for the delete to move to the trash. `Some` when it was; `None` for a row
+    /// that is not kept, or, with `permanent` (the user confirmed the delete as one for good),
+    /// one whose text cannot be written. Without `permanent` that text refuses the delete as the
+    /// trash would, so the user is asked.
     pub(crate) fn copy_kept(
         &self,
         open: &OpenVault,
         row: &Row,
         permanent: bool,
-    ) -> Result<bool, NotesError> {
+    ) -> Result<Option<KeptCopy>, NotesError> {
         if !is_kept(&open.path, row)? {
-            return Ok(false);
+            return Ok(None);
         }
-        match self.write_kept_file(open, row) {
-            Ok(_) => Ok(true),
+        let copy = KeptCopy {
+            made: first_missing_folder(&open.path, &row.path)?,
+        };
+        let written = self.write_kept_file(open, row, &mut || {});
+        if written.is_err() {
+            copy.remove_made_folders(&self.tier.echo(), &open.path, &row.path);
+        }
+        match written {
+            Ok(_) => Ok(Some(copy)),
             Err(error) if permanent => {
                 tracing::warn!(
                     scope = SCOPE,
                     note_id = row.note_id,
                     "a kept note deleted for good left no copy in the trash: {error}"
                 );
-                Ok(false)
+                Ok(None)
             }
             Err(error) => Err(NotesError::TrashUnavailable(format!(
                 "the kept note's text could not be written for the trash: {error}"
@@ -207,11 +241,12 @@ impl NotesService {
 
     /// Creates the file of the kept note `row` from its document at the row's path, told to the
     /// own-write record first; a file there is never replaced. Answers the text written and the
-    /// tags it says.
+    /// tags it says. `between`: [`Self::restore_kept_checked`]'s.
     fn write_kept_file(
         &self,
         open: &OpenVault,
         row: &Row,
+        between: &mut dyn FnMut(),
     ) -> Result<(String, Vec<String>), NotesError> {
         let note_id = row.note_id.as_str();
         let recorded = self
@@ -237,19 +272,26 @@ impl NotesService {
                 return Err(NotesError::EditKept(Kept::NotRepresentable));
             }
         };
-        // The header tags the note's last file said, as the index measured them: a found file's
-        // are in no record (`identity::tags`). None when it never read that header.
-        let header_tags = open
+        // The ones the last file said, as the index measured them: a found file's are in no
+        // record (`identity::tags`). None when it never read that header.
+        let measured = open
             .vault
             .search()?
             .note_stats(note_id)?
             .filter(|stored| stored.stats.header_read)
             .map(|stored| stored.stats.header_tags)
             .unwrap_or_default();
+        // A note's, by the tag list's rule for a note whose file the index has not measured
+        // (`memry_core::domain::tag_reads`): the record's first, which an edit in the app writes
+        // before the file, then the measured ones. A day's are the measured ones only.
+        let header_tags = match &recorded.tags {
+            Some(record) => dedupe(record.iter().chain(&measured).cloned()),
+            None => measured,
+        };
         let output = file_text(&recorded, &header_tags, &body)?;
         let echo = self.tier.echo();
         echo.will_write(&row.path, &content_hash(&output));
-        if let Err(error) = write_new_text(&open.path, &row.path, &output) {
+        if let Err(error) = write_new_text_checked(&open.path, &row.path, &output, between) {
             echo.cancel_write(&row.path);
             return Err(error.into());
         }
@@ -257,10 +299,12 @@ impl NotesService {
     }
 }
 
-/// What a kept note's or day's record gives its file besides the body and the header tags.
+/// What a kept note's or day's record gives its file besides the body.
 struct Recorded {
     /// The day's date; `None` for a note.
     date: Option<String>,
+    /// A note's tags the record holds; `None` for a day.
+    tags: Option<Vec<String>>,
     aliases: Vec<String>,
     properties: Map<String, Value>,
 }
@@ -269,8 +313,20 @@ impl NotesService {
     /// The live note or day `note_id`'s [`Recorded`]; `None` when there is neither.
     fn recorded(&self, open: &OpenVault, note_id: &str) -> Result<Option<Recorded>, NotesError> {
         if let Some(note) = open.vault.note_files().listed_by_id(note_id)? {
+            // The listed tags add the body's: the record's own are its payload's.
+            let tags = match note.journal_date {
+                Some(_) => None,
+                None => Some(
+                    open.vault
+                        .notes()
+                        .metadata(note_id.to_owned())?
+                        .map(|meta| meta.tags)
+                        .unwrap_or_default(),
+                ),
+            };
             return Ok(Some(Recorded {
                 date: note.journal_date,
+                tags,
                 aliases: note.aliases,
                 properties: note.properties,
             }));
@@ -300,10 +356,63 @@ impl NotesService {
             .collect();
         Ok(Some(Recorded {
             date: Some(day.date),
+            tags: None,
             aliases: day.aliases,
             properties,
         }))
     }
+}
+
+/// A kept row's text written to its path for the delete's trash step ([`NotesService::copy_kept`]).
+pub(crate) struct KeptCopy {
+    /// The topmost folder the write made; `None` when the file's folder stood.
+    made: Option<String>,
+}
+
+impl KeptCopy {
+    /// Removes the folders the copy's write made for the file at `rel`, deepest first, while
+    /// each is empty: a delete brings back no folder the user deleted with the file. The
+    /// watcher is told of each removal first.
+    pub(crate) fn remove_made_folders(&self, echo: &EchoGuard, root: &Path, rel: &str) {
+        let Some(made) = self.made.as_deref() else {
+            return;
+        };
+        for folder in folders_of(rel) {
+            // `remove_dir` refuses a folder that is not empty, which is the guard wanted here.
+            if let Err(error) = echo.removing(folder, || fs::remove_dir(root.join(folder))) {
+                tracing::warn!(
+                    scope = SCOPE,
+                    "a folder made for a kept note's copy stayed: {error}"
+                );
+                return;
+            }
+            if folder == made {
+                return;
+            }
+        }
+    }
+}
+
+/// The folders that hold `rel`, deepest first: `a/b`, then `a`, for `a/b/c.md`.
+fn folders_of(rel: &str) -> impl Iterator<Item = &str> {
+    std::iter::successors(parent_of(rel), |folder| parent_of(folder))
+}
+
+fn parent_of(rel: &str) -> Option<&str> {
+    rel.rsplit_once('/').map(|(up, _)| up)
+}
+
+/// The topmost folder holding `rel` that is not on disk, which a write of `rel` makes.
+fn first_missing_folder(root: &Path, rel: &str) -> Result<Option<String>, NotesError> {
+    let mut missing = None;
+    for folder in folders_of(rel) {
+        match fs::symlink_metadata(root.join(folder)) {
+            Ok(_) => break,
+            Err(error) if error.kind() == ErrorKind::NotFound => missing = Some(folder.to_owned()),
+            Err(error) => return Err(error.into()),
+        }
+    }
+    Ok(missing)
 }
 
 /// Whether `row` is kept: a markdown note's row that names no text, whose file is gone.

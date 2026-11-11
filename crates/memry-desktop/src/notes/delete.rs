@@ -12,7 +12,8 @@
 //!    own-write record is told first, so the watcher's report of the removal is the app's.
 //!    A kept note's file is gone and its document holds its only text (`notes::kept`): that
 //!    text is written to the note's path first and goes to the trash as such a file, so a
-//!    delete never takes the last copy of it unless the user confirmed it as permanent;
+//!    delete never takes the last copy of it unless the user confirmed it as permanent, a
+//!    journal day's included; a folder that write made goes again after the trash step;
 //! 2. the record: a tombstone for every other device, none for a local-only note, which the
 //!    core reads off the row that is still there (`domain::notes::local_only`);
 //! 3. the row, then the note's slot in the sidebar order.
@@ -72,7 +73,7 @@ impl NotesService {
             return Err(NotesError::NotFound(note_id.to_owned()));
         };
         Locks::of(open).refuse_note(note_id, &row.path)?;
-        self.remove_file_of(open, &row, permanent)?;
+        self.remove_file_of(open, &row, permanent, permanent)?;
         writer.delete(note_id.to_owned())?;
         lane.remove(note_id)?;
         lane.publish(Applied::Removed {
@@ -93,20 +94,25 @@ impl NotesService {
 
     /// Step 1 of a delete, for a note's row or a journal day's: the file for good when its
     /// document took its bytes, to the trash otherwise; a kept row's text to the trash as a file.
+    /// `permanent`: the user confirmed the delete as one for good. `unlink_refused`: a file the
+    /// trash refuses is unlinked for good (a confirmed note delete; any day delete, as Electron
+    /// unlinks a day's file), except a kept row's copy, its only text, without `permanent`.
     pub(crate) fn remove_file_of(
         &self,
         open: &OpenVault,
         row: &Row,
         permanent: bool,
+        unlink_refused: bool,
     ) -> Result<(), NotesError> {
         let root = open.path.as_path();
         let echo = self.tier.echo();
         let copied = self.copy_kept(open, row, permanent)?;
+        let unlink_refused = permanent || (unlink_refused && copied.is_none());
         let removed = if holds_unread_text(root, row) {
             // A refusal may not last (a sync client or a scanner holding the file, a folder
             // made writable since): a confirmed delete tries the trash again first.
             match self.trash_file(&echo, root, &row.path) {
-                Err(NotesError::TrashUnavailable(_)) if permanent => {
+                Err(NotesError::TrashUnavailable(_)) if unlink_refused => {
                     unlink(&echo, root, &row.path).map_err(NotesError::from)
                 }
                 trashed => trashed,
@@ -114,15 +120,18 @@ impl NotesService {
         } else {
             unlink(&echo, root, &row.path).map_err(NotesError::from)
         };
-        if copied && removed.is_err() {
-            // The copy holds the document's text only: taken back, the note stays kept.
-            if let Err(error) = unlink(&echo, root, &row.path) {
-                tracing::error!(
-                    scope = SCOPE,
-                    note_id = row.note_id,
-                    "a kept note's copy stayed at its path: {error}"
-                );
+        if let Some(copy) = copied {
+            if removed.is_err() {
+                // The copy holds the document's text only: taken back, the note stays kept.
+                if let Err(error) = unlink(&echo, root, &row.path) {
+                    tracing::error!(
+                        scope = SCOPE,
+                        note_id = row.note_id,
+                        "a kept note's copy stayed at its path: {error}"
+                    );
+                }
             }
+            copy.remove_made_folders(&echo, root, &row.path);
         }
         removed.inspect_err(|error| {
             tracing::error!(

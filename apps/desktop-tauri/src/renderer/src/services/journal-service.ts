@@ -13,6 +13,9 @@ import type {
 } from '../../../preload/index.d'
 import type { DayContext, GetPropertyRowsOutput } from '@memry/contracts/journal-api'
 import { commands, events, type JournalEntryView, type Value } from '../../../generated/bindings'
+import { getI18n } from 'react-i18next'
+import { commandErrorCode } from '../lib/ipc-error'
+import { askPermanentDelete } from '../lib/permanent-delete-question'
 import { subscribeToEvent } from './tauri-event'
 import { createWindowApiForwarder } from './window-api-forwarder'
 
@@ -85,11 +88,22 @@ const ported = {
   },
 
   /**
-   * Delete a journal entry.
+   * Delete a journal entry. Where the trash refuses a kept day's text (#4140) the user is asked
+   * first, as for a note (#3813); a day the user keeps answers `success: false` with why.
    * @param date - Date in YYYY-MM-DD format
    * @returns Success status
    */
-  deleteEntry: (date: string): Promise<{ success: boolean }> => commands.journalDeleteEntry(date),
+  deleteEntry: async (date: string): Promise<{ success: boolean; error?: string }> => {
+    try {
+      return await commands.journalDeleteEntry(date, null)
+    } catch (error) {
+      if (commandErrorCode(error) !== 'note_trash_unavailable') throw error
+    }
+    if (!(await askPermanentDelete(`j${date}`, date))) {
+      return { success: false, error: getI18n().t('notes:trashUnavailable.kept') }
+    }
+    return commands.journalDeleteEntry(date, true)
+  },
 
   /** The live days of a year, oldest first. */
   getHeatmap: async (year: number): Promise<HeatmapEntry[]> =>

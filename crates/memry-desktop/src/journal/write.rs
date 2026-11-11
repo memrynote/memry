@@ -309,14 +309,27 @@ impl NotesService {
         Ok(view_of(date, &output, journal.stamp(date)?.as_ref()))
     }
 
-    /// Deletes the day's entry; `false` when it has none.
-    pub fn delete_day(&self, open: &OpenVault, date: &str) -> Result<bool, NotesError> {
+    /// Deletes the day's entry; `false` when it has none. `permanent`: the user confirmed that
+    /// a kept day's text the trash cannot take is lost (`notes::kept`); without it that delete
+    /// fails with [`NotesError::TrashUnavailable`] and the user is asked.
+    pub fn delete_day(
+        &self,
+        open: &OpenVault,
+        date: &str,
+        permanent: bool,
+    ) -> Result<bool, NotesError> {
         let date = valid_date(date)?;
-        self.order
-            .run(&order_key(date), |_| self.delete_day_now(open, date))
+        self.order.run(&order_key(date), |_| {
+            self.delete_day_now(open, date, permanent)
+        })
     }
 
-    fn delete_day_now(&self, open: &OpenVault, date: &str) -> Result<bool, NotesError> {
+    fn delete_day_now(
+        &self,
+        open: &OpenVault,
+        date: &str,
+        permanent: bool,
+    ) -> Result<bool, NotesError> {
         let rows = self.tier.rows();
         let session = rows.session_for(&open.vault)?;
         let journal = open.vault.journal(self.store.clone())?;
@@ -337,9 +350,9 @@ impl NotesService {
         }
         let trashed = match &row {
             // Electron unlinks a day's file for good; one holding text the day never took goes
-            // to the trash first.
+            // to the trash first, and a kept day's text only to the trash unless confirmed.
             Some(row) => {
-                self.remove_file_of(open, row, true)?;
+                self.remove_file_of(open, row, permanent, true)?;
                 false
             }
             None => self.trash_unnamed(&lane, &open.path, date)?,
