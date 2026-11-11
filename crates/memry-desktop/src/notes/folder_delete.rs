@@ -8,7 +8,11 @@
 //! under the rows' lane. The watcher applies what it sees through that lane too, so it finds the
 //! rows gone and reports nothing:
 //! 1. the delete is recorded in the core ([`Lane::begin_folder_delete`], one synced write);
-//! 2. the folder goes to the trash. Where the trash refuses it (a Linux mount with no usable
+//! 2. the folder goes to the trash, with the text of each kept note in it (a note whose file was
+//!    deleted outside the app, `notes::kept`) written at its path first, as a kept note's delete
+//!    does. A kept note whose text cannot be written refuses the delete with
+//!    `note_trash_unavailable` before anything goes; the notice's delete of that note asks
+//!    first. Where the trash refuses it (a Linux mount with no usable
 //!    `.Trash-<uid>`) nothing changes and the delete fails with `note_trash_unavailable`. A
 //!    trash that took part of the folder before refusing says so: the watcher reports the
 //!    notes that went as removed, as for any file that leaves the vault;
@@ -16,6 +20,10 @@
 //!    folder's `folder_config` records and its manual order go, in one core transaction that
 //!    forgets the record of step 1 ([`Lane::folder_deleted_by_app`]);
 //! 4. [`Applied::Removed`] for each note, under the lane.
+//!
+//! A crash in step 2, between the kept notes' copies and the trash, leaves the record and the
+//! copies: the next open forgets the record of the folder still there, and the watcher reads
+//! each copy as the note's file again, which undoes the delete with nothing lost.
 //!
 //! A failed step 3, or a crash between 2 and 3, leaves the record, and the next open finishes the
 //! delete when the folder is gone and forgets it when it is still there
@@ -40,9 +48,12 @@ use std::fs;
 use std::io::ErrorKind;
 use std::path::Path;
 
+use memry_core::domain::note_files::NoteFile as Row;
+
 use super::error::{NotesError, SCOPE};
 use super::folder_move::within;
 use super::folders::{tree_filter, vault_folder};
+use super::kept::KeptCopy;
 use super::moves::{disk_spelling, plain_folders};
 use super::service::NotesService;
 use crate::journal::folder_follow::follow_moved_journal;
@@ -54,6 +65,7 @@ use crate::vault::config::settings::JournalFollow;
 use crate::vault::consumer::{Applied, ChangeSource};
 use crate::vault::journal_format::normalize_journal_folder;
 use crate::vault::journal_rename::{JournalVault, finish_journal_change};
+use crate::vault::watch::EchoGuard;
 
 impl NotesService {
     pub fn delete_folder(&self, open: &OpenVault, path: &str) -> Result<(), NotesError> {
@@ -108,9 +120,29 @@ impl NotesService {
         if gone.iter().any(|(_, at)| open.vault.excluded().covers(at)) {
             return Err(NotesError::Locked(Refused::Excluded));
         }
+        // A kept note's text goes to the trash with the folder, written at its path first
+        // (`notes::kept`); one that cannot be written refuses the delete as the trash would.
+        let mut copies = Vec::new();
+        for (note_id, _) in &gone {
+            let Some(row) = lane.files().by_id(note_id)? else {
+                continue;
+            };
+            match self.copy_kept(open, &row, false) {
+                Ok(Some(copy)) => copies.push((row, copy)),
+                Ok(None) => {}
+                Err(error) => {
+                    take_back(&self.tier.echo(), root, &copies);
+                    return Err(error);
+                }
+            }
+        }
         let ids: Vec<&str> = gone.iter().map(|(id, _)| id.as_str()).collect();
-        lane.begin_folder_delete(&writer, &folder, &ids)?;
+        if let Err(error) = lane.begin_folder_delete(&writer, &folder, &ids) {
+            take_back(&self.tier.echo(), root, &copies);
+            return Err(error.into());
+        }
         if let Err(why) = (self.trash)(&on_disk(root, &folder)) {
+            take_back(&self.tier.echo(), root, &copies);
             if let Err(error) = lane.forget_folder_delete(&writer, &folder) {
                 tracing::warn!(
                     scope = SCOPE,
@@ -135,6 +167,12 @@ impl NotesService {
             }
             return Err(NotesError::TrashUnavailable(why));
         }
+        // The copies went with the folder: a file put back from the trash at a copy's path is
+        // not the app's write.
+        let echo = self.tier.echo();
+        for (row, _) in &copies {
+            echo.cancel_write(&row.path);
+        }
         // The folder is in the trash: a failure leaves the record, which the next open finishes.
         after_disk().and_then(|()| Ok(lane.folder_deleted_by_app(&writer, &folder, &ids)?))?;
         for (note_id, at) in &gone {
@@ -145,6 +183,15 @@ impl NotesService {
             });
         }
         Ok(())
+    }
+}
+
+/// Takes back the kept notes' copies a folder delete that did not happen wrote: the notes stay
+/// kept. A copy the trash took is gone already. Last written first: a copy that made a folder
+/// removes it only once the later copies in it are gone.
+fn take_back(echo: &EchoGuard, root: &Path, copies: &[(Row, KeptCopy)]) {
+    for (row, copy) in copies.iter().rev() {
+        copy.take_back(echo, root, row);
     }
 }
 
