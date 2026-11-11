@@ -37,6 +37,7 @@ use memry_desktop::vault::consumer::Applied;
 use memry_desktop::vault::consumer::identity::NoteIdentity;
 use memry_desktop::vault::watch::VaultEvent;
 use serde_json::json;
+use tokio::sync::broadcast::error::TryRecvError;
 use vault_env::{Env, QUIET, WAIT, creates, env, indexed};
 
 use crate::journal_change_crash::{change_killed, reopened};
@@ -377,11 +378,23 @@ fn a_restart_during_the_open_walk_still_writes_back_what_the_walk_owed() {
         identity.release();
         restart.join().unwrap().unwrap();
     });
+    // Not reproduced in about 300 loaded runs (#3967): a timeout says which step never came,
+    // the restart's walk end, the note's reconcile, or its pass.
+    let mut walks_ended = 0;
     let deadline = std::time::Instant::now() + WAIT;
     while !e.read("n.md").contains("Typed in the app") {
+        loop {
+            match e.facts.try_recv() {
+                Ok(Applied::Indexed { .. }) => walks_ended += 1,
+                Ok(_) | Err(TryRecvError::Lagged(_)) => {}
+                Err(_) => break,
+            }
+        }
         assert!(
             std::time::Instant::now() < deadline,
-            "the owed write-back never ran"
+            "the owed write-back never ran: walks ended {walks_ended}, behind {:?}, row {:?}",
+            e.core().note_files().behind_bodies(),
+            e.core().note_files().by_id(&id),
         );
         std::thread::sleep(std::time::Duration::from_millis(50));
     }

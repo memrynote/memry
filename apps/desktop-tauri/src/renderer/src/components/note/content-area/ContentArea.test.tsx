@@ -133,6 +133,13 @@ vi.mock('./toolbar-block-type-select', () => ({
   ToolbarBlockTypeSelect: () => <button type="button">block type</button>
 }))
 
+vi.mock('./slash-menu-controller', () => ({
+  SlashMenuController: (props: Record<string, unknown>) => {
+    contentAreaMocks.suggestionControllers.push({ ...props, triggerCharacter: '/' })
+    return <div data-testid="suggestion-/" />
+  }
+}))
+
 vi.mock('@blocknote/react', () => ({
   useCreateBlockNote: vi.fn((options) => {
     contentAreaMocks.blockNoteOptions = options
