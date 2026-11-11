@@ -298,7 +298,7 @@ fn a_delete_removes_the_file_then_tombstones_the_day() {
     notes.create_day(&open, new_day()).unwrap();
     e.drain();
 
-    assert!(notes.delete_day(&open, DAY).unwrap());
+    assert!(notes.delete_day(&open, DAY, false).unwrap());
     assert!(!e.vault.join(DAY_FILE).exists());
     assert_eq!(e.rows(), []);
     assert_eq!(record(&e, "j2025-01-17").map(|r| r.0), Some(true));
@@ -307,7 +307,7 @@ fn a_delete_removes_the_file_then_tombstones_the_day() {
     assert_eq!(read(&e, &journal), None);
     assert_eq!(outside_facts(&mut e), [], "the removal is the app's");
     assert!(
-        !notes.delete_day(&open, DAY).unwrap(),
+        !notes.delete_day(&open, DAY, false).unwrap(),
         "a day with none has nothing to delete"
     );
 
@@ -329,7 +329,7 @@ fn a_deleted_day_made_again_takes_the_new_text_and_keeps_the_old_as_a_version() 
     let (mut e, notes, _) = opened();
     let open = e.session.current().unwrap();
     notes.create_day(&open, new_day()).unwrap();
-    assert!(notes.delete_day(&open, DAY).unwrap());
+    assert!(notes.delete_day(&open, DAY, false).unwrap());
     e.drain();
 
     let fresh = NewDay {
@@ -434,7 +434,7 @@ fn a_delete_takes_a_file_no_row_names_at_the_days_path_to_the_trash() {
     let (mut e, notes, store) = opened();
     let open = e.session.current().unwrap();
     notes.create_day(&open, new_day()).unwrap();
-    assert!(notes.delete_day(&open, DAY).unwrap());
+    assert!(notes.delete_day(&open, DAY, false).unwrap());
     // Text the deleted day never held: the identity leaves the file unclaimed.
     e.write(DAY_FILE, "Written elsewhere.\n");
     std::thread::sleep(vault_env::QUIET);
@@ -443,7 +443,7 @@ fn a_delete_takes_a_file_no_row_names_at_the_days_path_to_the_trash() {
     let journal = open.vault.journal(store).unwrap();
     assert!(read(&e, &journal).is_some(), "the page shows the file");
 
-    assert!(notes.delete_day(&open, DAY).unwrap());
+    assert!(notes.delete_day(&open, DAY, false).unwrap());
     assert!(!e.vault.join(DAY_FILE).exists(), "the file is gone");
     assert_eq!(
         e.read("journal/2025-01-17.trashed"),
@@ -495,7 +495,7 @@ fn a_deleted_day_whose_text_its_body_cannot_take_is_not_made_again() {
     let (mut e, notes, _) = opened();
     let open = e.session.current().unwrap();
     notes.create_day(&open, new_day()).unwrap();
-    assert!(notes.delete_day(&open, DAY).unwrap());
+    assert!(notes.delete_day(&open, DAY, false).unwrap());
     e.drain();
 
     // Past the large-file class: the document keeps the deleted body.

@@ -332,7 +332,8 @@ pub fn write_new_text(vault: &Path, rel: &str, output: &str) -> Result<(), NoteF
     write_new_text_checked(vault, rel, output, &mut || {})
 }
 
-fn write_new_text_checked(
+/// [`write_new_text`] with [`write_new_note_checked`]'s hook.
+pub(crate) fn write_new_text_checked(
     vault: &Path,
     rel: &str,
     output: &str,

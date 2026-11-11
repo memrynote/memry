@@ -54,7 +54,7 @@ const SCOPE: &str = "journal";
 
 /// A frontmatter key that is not a day's property (`RESERVED_JOURNAL_KEYS`, `vault/journal.ts`):
 /// the core's [`RESERVED_DAY_KEYS`], and `tags` and `properties`, which no file's property is.
-fn is_reserved_day_key(name: &str) -> bool {
+pub(crate) fn is_reserved_day_key(name: &str) -> bool {
     RESERVED_DAY_KEYS.contains(&name) || matches!(name, "tags" | "properties")
 }
 
