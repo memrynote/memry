@@ -15,6 +15,7 @@
 //! | a note with no baseline is measured by the index's reading  | an older build's note                 |
 //! | a read before the tier takes an edit keeps the index's reading | the index reads the tier's bytes   |
 //! | a read while the tier retries an edit keeps the index's reading | the index reads the record's bytes |
+//! | an index row dropped during a retry is read again          | the index is not rebuildable          |
 //! | a broken frontmatter then fixed reaches the record          | the baseline is the last good reading |
 //! | an app write after an outside edit does not hide it         | the edit is taken at fact time        |
 //! | a save over an outside edit not fed yet does not hide it    | the save takes the edit first         |
@@ -432,7 +433,40 @@ fn a_read_while_the_tier_retries_an_outside_edit_keeps_the_index_reading() {
             object(json!({ "stage": "Review", "rating": 6 })),
             "{case}"
         );
+        let search = f.e.session.current().unwrap().search;
+        until("the index read the edit the retry took", || {
+            let stored = search.note_stats(&f.id).unwrap();
+            stored.and_then(|stored| stored.file_hash) == Some(content_hash(text))
+        });
     }
+}
+
+/// An index row dropped while the tier retries an outside edit is filled again with the file's
+/// reading: with no row there is no reading to keep, and the index stays rebuildable.
+#[test]
+fn a_dropped_index_row_is_read_again_while_the_tier_retries() {
+    let f = with_no_baseline();
+    exec(
+        &f.e,
+        "CREATE TRIGGER refused BEFORE INSERT ON meta \
+         WHEN NEW.key LIKE 'note.file_properties:%' \
+         BEGIN SELECT RAISE(ABORT, 'the disk is full'); END",
+    );
+    let text = "---\nstage: Draft\nrating: 6\n---\n# Plan\n\nEdited.\n";
+    f.e.write("Plan.md", text);
+    let files = f.e.core().note_files();
+    until("the tier read the edit and waits for its retry", || {
+        let row = files.by_id(&f.id).unwrap().unwrap();
+        row.file_hash == Some(content_hash(text))
+    });
+    let search = f.e.session.current().unwrap().search;
+    assert!(search.forget_note_stats(&f.id).unwrap());
+    f.index.measure(&f.id).unwrap();
+    let stored = search
+        .note_stats(&f.id)
+        .unwrap()
+        .map(|stored| stored.file_hash);
+    assert_eq!(stored, Some(Some(content_hash(text))));
 }
 
 /// Runs `sql` on the open vault's database.

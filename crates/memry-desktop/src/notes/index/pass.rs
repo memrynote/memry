@@ -358,7 +358,9 @@ impl Indexer {
     /// not applied yet, one it retries (the record or the body refused it, #4225), and one the
     /// document did not take. The row's `file_hash` moves on to those bytes already, so a move
     /// before the retry pairs on them; the index goes by it only for a note whose document
-    /// holds no text of its file (`content_hash` none).
+    /// holds no text of its file (`content_hash` none). A note with no row takes the file's
+    /// reading all the same, so a rebuilt or dropped index fills it again: no reading is
+    /// there to keep.
     /// A note under an exclude pattern or in a hidden folder keeps its reading too, through a
     /// full reindex or a retype: the tier applies no edit of its file, so neither its record nor
     /// its search sees one.
@@ -383,12 +385,25 @@ impl Indexer {
                     }
                 };
                 if taken.is_some_and(|taken| taken != file.hash) {
-                    tracing::debug!(
-                        scope = "note_index",
-                        note_id = note.note_id,
-                        "bytes the tier has not taken: left to its fact"
-                    );
-                    return Read::Skipped;
+                    match self.search.note_stats(&note.note_id) {
+                        Ok(None) => {}
+                        Ok(Some(_)) => {
+                            tracing::debug!(
+                                scope = "note_index",
+                                note_id = note.note_id,
+                                "bytes the tier has not taken: left to its fact"
+                            );
+                            return Read::Skipped;
+                        }
+                        Err(error) => {
+                            tracing::warn!(
+                                scope = "note_index",
+                                note_id = note.note_id,
+                                "the index row did not read, retried later: {error}"
+                            );
+                            return Read::Failed;
+                        }
+                    }
                 }
                 Read::File(MeasuredFile {
                     note_id: note.note_id.clone(),
