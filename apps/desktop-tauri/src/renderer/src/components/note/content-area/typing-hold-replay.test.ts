@@ -10,6 +10,7 @@ import * as Y from 'yjs'
 import type { PartialBlock } from '@blocknote/core'
 import { TextSelection } from '@tiptap/pm/state'
 import type { EditorView } from '@tiptap/pm/view'
+import { yUndoPluginKey } from 'y-prosemirror'
 
 const warn = vi.hoisted(() => vi.fn())
 vi.mock('@/lib/logger', () => {
@@ -274,6 +275,30 @@ describe('typing refused during a hold', () => {
     expect(storedText(doc)).toContain('XAlpha line.')
     expect(blockTexts(view)[0]).toBe('XAlpha line.')
     expect(warn).not.toHaveBeenCalled()
+  })
+
+  it('puts the typing it holds in as one undoable update when its plugin goes', async () => {
+    const { view, doc, hold, unregister } = mountNote()
+    placeCaret(view, 'Alpha line.', 0)
+    hold.hold(1, 2000)
+    type(view, 'X')
+    placeCaret(view, 'Charlie line.', 13)
+    type(view, '!')
+    unregister?.()
+    await Promise.resolve()
+    const undoManager = yUndoPluginKey.getState(view.state)?.undoManager
+    if (!undoManager) throw new Error('the editor has no undo manager')
+    undoManager.stopCapturing()
+    const undoable = undoManager.undoStack.length
+    let updates = 0
+    doc.on('update', () => updates++)
+
+    hold.release(1)
+    expect(blockTexts(view)).toEqual(['XAlpha line.', 'Bravo line.', 'Charlie line.!'])
+    expect(updates).toBe(1)
+    expect(undoManager.undoStack.length).toBe(undoable + 1)
+    undoManager.undo()
+    expect(blockTexts(view)).toEqual(['Alpha line.', 'Bravo line.', 'Charlie line.'])
   })
 
   it('puts the typing it holds in over the outside edit when the editor closed meanwhile', async () => {
