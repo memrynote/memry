@@ -212,6 +212,25 @@ describe('typing refused during a hold', () => {
     }
   )
 
+  it('stays one run of text through a Backspace when the edit removed the block it was typed in', () => {
+    const { view, doc, hold } = mountNote()
+    placeCaret(view, 'Bravo line.', 5)
+    hold.hold(1, 2000)
+    type(view, 'x')
+    type(view, 'y')
+    const { from } = view.state.selection
+    view.dispatch(view.state.tr.delete(from - 1, from))
+    type(view, 'z')
+
+    feedOutsideEdit(doc, hold, ['Alpha line.', 'Charlie line.'])
+    // The Backspace deleted in the block the edit removed: it is left out.
+    expect(blockTexts(view)).toEqual(['Alpha line.', 'xyz', 'Charlie line.'])
+    expect(warn).toHaveBeenCalledWith(
+      'Typing held for an outside edit touched what the edit changed',
+      { moved: 3, skipped: 1, unplaced: 0 }
+    )
+  })
+
   it('leaves out a refused deletion of text the edit changed, and keeps the edit', () => {
     const { view, doc, hold } = mountNote()
     placeCaret(view, 'Bravo line.', 11)
@@ -242,8 +261,8 @@ describe('typing refused during a hold', () => {
     })
   })
 
-  it('logs the typing it holds when its plugin goes and the editor stays', async () => {
-    const { view, hold, unregister } = mountNote()
+  it('puts the typing it holds in the document at the release when its plugin goes', async () => {
+    const { view, doc, hold, unregister } = mountNote()
     placeCaret(view, 'Alpha line.', 0)
     hold.hold(1, 2000)
     type(view, 'X')
@@ -251,9 +270,26 @@ describe('typing refused during a hold', () => {
     expect(view.isDestroyed).toBe(false)
 
     await Promise.resolve()
-    expect(warn).toHaveBeenCalledWith('Typing refused by a hold went with its editor plugin', {
-      dropped: 1
-    })
+    hold.release(1)
+    expect(storedText(doc)).toContain('XAlpha line.')
+    expect(blockTexts(view)[0]).toBe('XAlpha line.')
+    expect(warn).not.toHaveBeenCalled()
+  })
+
+  it('puts the typing it holds in over the outside edit when the editor closed meanwhile', async () => {
+    const { view, doc, hold } = mountNote()
+    placeCaret(view, 'Bravo line.', 5)
+    hold.hold(1, 2000)
+    for (const key of [' ', 'n', 'e', 'w']) type(view, key)
+    // The editor goes; the document stays until the hold ends (`YjsIpcProvider.disconnect`).
+    view.destroy()
+    await Promise.resolve()
+
+    feedOutsideEdit(doc, hold, ['Alpha EXT line.', 'Bravo line.', 'Charlie line. tail'])
+    expect(storedText(doc)).toContain('Bravo new line.')
+    expect(storedText(doc)).toContain('Alpha EXT line.')
+    expect(storedText(doc)).toContain('Charlie line. tail')
+    expect(warn).not.toHaveBeenCalled()
   })
 
   it('keeps the typing it holds when the editor reconfigures its plugins', async () => {
