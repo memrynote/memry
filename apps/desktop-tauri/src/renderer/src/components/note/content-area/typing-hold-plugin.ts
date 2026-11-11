@@ -8,7 +8,8 @@
  * edit deletes. A refused transaction leaves the IME's text in the DOM and the composition
  * running, and ProseMirror reads the block again at the composition's next change or end, so the
  * text goes in after the release. Other refused changes (keystrokes, a paste) are queued and
- * replayed once the hold ends, over the edit (`refused-typing.ts`). Undo and redo write the
+ * replayed once the hold ends, over the edit (`refused-typing.ts`); when the editor closes during
+ * the hold, they go into the document then, with no editor. Undo and redo write the
  * document directly, past the filter, so they do nothing while held. When the edit's frame applies, the editor keeps its selection where
  * it was, mapped through the edit (`outside-edit-selection.ts`).
  *
@@ -38,6 +39,7 @@ export function createTypingHoldPlugin(hold: TypingHold): Plugin {
       const undoManager: Y.UndoManager | undefined = yUndoPluginKey.getState(
         editorView.state
       )?.undoManager
+      const fragment: Y.XmlFragment | undefined = ySyncPluginKey.getState(editorView.state)?.type
       const restoreUndo = undoManager && holdUndo(undoManager, hold)
       const stopReplay = hold.onRelease(() => {
         const replay = view && refused.replay(view.state)
@@ -52,12 +54,29 @@ export function createTypingHoldPlugin(hold: TypingHold): Plugin {
           stopReplay()
           // A reconfigured state makes the plugin's view again at once, and that one replays the
           // queue. No new view means the plugin went: the editor closed, or it stays without it.
+          // The queue then goes into the document when the hold ends, which the note's binding
+          // waits for (`YjsIpcProvider.disconnect`).
           const made = views
           queueMicrotask(() => {
-            if (views !== made) return
-            const dropped = refused.clear()
-            if (dropped > 0)
-              log.warn('Typing refused by a hold went with its editor plugin', { dropped })
+            if (views !== made || refused.size === 0) return
+            if (hold.held && fragment) {
+              const stop = hold.onRelease(() => {
+                stop()
+                // A throw would skip the release's later listeners, the closing note's binding among them.
+                try {
+                  refused.writeTo(fragment)
+                } catch (error) {
+                  log.error('Typing held for an outside edit did not go in after its editor', {
+                    dropped: refused.clear(),
+                    error
+                  })
+                }
+              })
+              return
+            }
+            log.warn('Typing refused by a hold went with its editor plugin', {
+              dropped: refused.clear()
+            })
           })
         }
       }

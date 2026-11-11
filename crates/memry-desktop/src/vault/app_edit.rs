@@ -78,7 +78,8 @@
 //!   (#4030), the outside file is kept as a version, and the write-back writes the edit over it.
 //!   Neither is lost. The other order loses the edit.
 //! - **A feed that does not take the text** (an error, a large file, a refused or owed body):
-//!   the file is written anyway, the own-write record is cleared rather than told, and the row
+//!   the file is written anyway, its hash leaves the own-write record rather than joining it
+//!   (the writes still pending there stay), and the row
 //!   is left. The watcher then reports the write once the lane is free, and the consumer feeds
 //!   it as an outside edit (and retries it on an error), at once and not at the next open. A
 //!   file whose write an own-write record absorbed would wait for the next open.
@@ -363,13 +364,16 @@ impl AppEdit {
         if takes {
             self.echo.will_write(&row.path, &hash);
         } else {
-            // What the watcher sees next must reach the consumer, which feeds it.
-            self.echo.cancel_write(&row.path);
+            // What the watcher sees next must reach the consumer, which feeds it. Earlier
+            // writes still pending there stay the app's (#4222).
+            self.echo.disown(&row.path, &hash);
         }
         if let Err(error) =
             write_note_over_checked(&self.root, &row.path, &text, &file.hash, between)
         {
-            self.echo.cancel_write(&row.path);
+            if takes {
+                self.echo.cancel_write(&row.path);
+            }
             return match error {
                 NoteFileError::ChangedUnderWrite => Ok(Edited::Kept(Kept::FileChanged)),
                 error => Err(AppEditError::from(error).into()),

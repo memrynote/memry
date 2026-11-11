@@ -383,7 +383,7 @@ impl Applier {
             tracing::error!(scope = SCOPE, note_id, "the row was not recorded: {error}");
             return Step::Retry(path.to_owned());
         }
-        // The bytes a save wrote that its document did not take (`AppEdit`, `cancel_write`)
+        // The bytes a save wrote that its document did not take (`AppEdit`, `disown`)
         // are its writer's: reported as an outside edit, they would make an open editor drop
         // what was typed since. Any other bytes replaced the app's file; the body took them, so
         // a write-back over them replaces no outside text (#4124).

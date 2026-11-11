@@ -123,7 +123,8 @@ never opens one. The Rust dialog wrapper (`src-tauri/src/shell/dialogs.rs`, over
 have the note open to hold their typing, as an outside edit does before it applies
 (`EditorHost::hold_typing`), and keeps the hold `ms` long. It answers once the windows hold,
 `false` when none has the note open. `specs/notes/note-outside-edit.e2e.ts` types during it and
-then writes the file, so the edit's frame applies over the typing the editor refused.
+then writes the file, so the edit's frame applies over the typing the editor refused; one test
+closes the note first, so that typing goes in with no editor.
 
 ## Vault write-back
 

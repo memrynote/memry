@@ -61,8 +61,8 @@ export class TypingHold {
   }
 
   /**
-   * Ends any hold without a replay: the document is closing, and typing that went in now would
-   * reach no host. The editors log what they refused when they go.
+   * Ends any hold without a replay: the document's binding lets go of it, and typing that went in
+   * now would reach no host. The editors log what they refused when they go.
    */
   end(): void {
     this.barrier = null
@@ -73,6 +73,20 @@ export class TypingHold {
   onRelease(listener: () => void): () => void {
     this.releases.add(listener)
     return () => this.releases.delete(listener)
+  }
+
+  /**
+   * Resolves once no hold is on: at once, or after the release that ends this one, its replays
+   * done.
+   */
+  settled(): Promise<void> {
+    if (!this.held) return Promise.resolve()
+    return new Promise((resolve) => {
+      const stop = this.onRelease(() => {
+        stop()
+        resolve()
+      })
+    })
   }
 
   /**

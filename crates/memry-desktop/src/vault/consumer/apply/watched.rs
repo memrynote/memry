@@ -13,7 +13,7 @@ impl Applier {
     /// the rows, and dropped after the change applied, so a window hears the release after the
     /// edit. A window refuses what is typed while it holds, so a file that is already the text
     /// its row names asks no window: the app's own write, which the watcher reads as a change
-    /// once the next save's record replaced its echo, or a change applied already. Asked for
+    /// once its echo's record is gone, or a change applied already. Asked for
     /// those, a window refused the typing of every save of a note with an inline tag (#3967).
     pub(super) fn watched_change(
         &self,

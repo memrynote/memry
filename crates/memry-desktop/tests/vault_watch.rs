@@ -273,6 +273,29 @@ fn the_own_write_record_absorbs_only_the_content_the_app_wrote() {
     e.wait_for(mark, "Changed for the revert", is_changed("a.md"));
 }
 
+/// Two saves recorded before the watcher looked at the first one's file (#4222): the second
+/// record keeps the first, so neither file comes back as an outside edit, which would make the
+/// next save keep the app's own file as a version.
+#[test]
+fn a_second_save_recorded_before_the_first_is_seen_keeps_both_absorbed() {
+    let e = env();
+    e.write("a.md", "base");
+    e.index("n1", "a.md", "base");
+
+    e.echo.will_write("a.md", &content_hash("first save"));
+    e.echo.will_write("a.md", &content_hash("second save"));
+    let mark = e.mark();
+    e.write("a.md", "first save");
+    e.quiet(mark, "Changed for the first save", is_changed("a.md"));
+    e.write("a.md", "second save");
+    e.quiet(mark, "Changed for the second save", is_changed("a.md"));
+
+    // The first save's bytes back after the second's are not the app's.
+    let mark = e.mark();
+    e.write("a.md", "first save");
+    e.wait_for(mark, "Changed for the outside edit", is_changed("a.md"));
+}
+
 #[test]
 fn an_own_removal_is_absorbed_and_an_outside_one_is_reported() {
     let e = env();
