@@ -12,6 +12,7 @@
 //! that tells the user (Step 13), a note that keeps failing included.
 
 use std::path::Path;
+use std::sync::Arc;
 
 use memry_core::api::errors::StorageError;
 use memry_core::api::search::Search;
@@ -20,6 +21,7 @@ use memry_core::domain::external_feed::FirstBody;
 
 use crate::vault::file_types::FileType;
 use crate::vault::note_file::NoteFile;
+use crate::vault::notices::VaultNotices;
 
 /// What every call gets. Valid for one vault session.
 pub struct IdentityCtx<'a> {
@@ -139,6 +141,12 @@ pub trait NoteIdentity: Send + Sync {
     /// A file is at the path of the note's row, which names no text: a note kept when its file
     /// was deleted (`Removal::Kept`) has a file again, so it is not shown as deleted any more.
     fn file_returned(&self, _ctx: &IdentityCtx<'_>, _note_id: &str) {}
+
+    /// The board the vault states the user can act on are shown on, for the tier's open and
+    /// the journal's commands, which decide some of them; `None` shows nothing.
+    fn notices(&self) -> Option<Arc<VaultNotices>> {
+        None
+    }
 
     /// The note of a new file. Never the id of a deleted record. Idempotent: called again for
     /// the same file after a crash, it returns the record it created then.

@@ -73,7 +73,9 @@ impl NotesService {
         let folder = vault_folder(root, path)?;
         // A journal folder moved outside the app has its setting follow first, so the folder
         // that holds the days is refused as the journal's (`journal::folder_follow`).
-        let held = follow_moved_journal(root, &*open.vault.notes_writer(self.store.clone())?);
+        let notices = self.tier.identity().notices();
+        let writer = open.vault.notes_writer(self.store.clone())?;
+        let held = follow_moved_journal(root, &writer, notices.as_deref());
         if held.holds(&folder) {
             return Err(NotesError::JournalFolderHeld);
         }

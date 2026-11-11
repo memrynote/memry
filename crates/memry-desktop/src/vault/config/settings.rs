@@ -85,6 +85,7 @@ use crate::vault::journal_rename::{
     finish_journal_change, forget_change, is_complete_journal_format, missing_folders,
     move_journal_days_checked, revert_journal_moves_checked,
 };
+use crate::vault::notices::{ChangeHold, VaultNotice};
 use crate::vault::path_key::folded_key;
 use crate::vault::paths::safe_join;
 
@@ -200,7 +201,7 @@ pub fn update_vault_settings_checked(
     // its setting follow it, so the days move from where they are.
     let follow = days.map_or(Follow::Nothing, |(vault, tier)| {
         match vault.notes_writer(tier.store()) {
-            Ok(writer) => follow_moved_journal(root, &writer),
+            Ok(writer) => follow_moved_journal(root, &writer, tier.identity().notices().as_deref()),
             Err(error) => {
                 tracing::warn!(
                     scope = SCOPE,
@@ -300,7 +301,8 @@ struct Moved<'a> {
 impl Moved<'_> {
     /// Takes back the moves of a setting that is not saved, so each day file is at a path the
     /// setting it is read with names. The record goes once every day is back; a day that is
-    /// not keeps it, and the next open tries again.
+    /// not keeps it, the vault's notices show the change waiting, and the next command or open
+    /// tries again (`journal_rename::finish_journal_change`), naming what holds the day.
     fn put_back(&self, step: &mut dyn FnMut(ChangeStep)) {
         let folders = (
             self.change.from.folder.as_str(),
@@ -316,6 +318,14 @@ impl Moved<'_> {
                 "day files kept the paths of a journal setting that was not saved; the next open \
                  puts them back"
             );
+            if let Some(notices) = self.at.tier.identity().notices() {
+                let notice = VaultNotice::JournalChangeWaits {
+                    from: self.change.from.folder.clone(),
+                    to: self.change.to.folder.clone(),
+                    holds: ChangeHold::Unknown,
+                };
+                notices.raise(self.at.root, notice);
+            }
         }
     }
 }

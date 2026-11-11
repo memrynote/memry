@@ -1672,6 +1672,14 @@
     "undecidedFilesHint": "Aynı adlı bir not ya da günlük sayfası farklı bir metne sahip veya henüz bu cihaza eşitlenmedi. Memry bu dosyalara dokunmaz ve bu kasayı bir sonraki açışında onları yeniden kontrol eder.",
     "keptRemovals": "Memry, dosyaları silinen notları sakladı",
     "keptRemovalsHint": "Bu dosyalar Memry dışında silindi, ancak notlarında dosyalara hiç yazılmamış metin vardı. Memry, bu metni diğer cihazlarında da silmek yerine notları sakladı.",
-    "moreUnlisted": "Diğerleri burada listelenmiyor."
+    "moreUnlisted": "Diğerleri burada listelenmiyor.",
+    "journalDaysHeld": "Günlük sayfaları taşınan bir klasörde bekliyor",
+    "journalDaysHeldHint": "Günlük klasörü Memry dışında taşındı veya yeniden adlandırıldı ve günlük klasörü ayarı henüz onu izleyemiyor. İzleyebilene kadar Memry günlük sayfası oluşturmaz ve günlük ayarlarını değiştirmez; bu klasörler de taşınamaz veya silinemez. Tüm günlük sayfalarını tek bir klasöre koy ya da klasörü geri taşı. Sayfaların güvende.",
+    "journalChangeWaits": "Bir günlük ayarı değişikliği tamamlanmadı",
+    "journalChangeWaitsSettingsHint": "Memry, bir ayar değişikliği için günlük sayfalarını taşırken kapandı ve .memry/config.json okunamadığı sürece onları geri koyamıyor. Dosyayı düzelt, ardından Memry'yi yeniden başlat. Sayfaların güvende.",
+    "journalChangeWaitsTakenHint": "Memry, bir ayar değişikliği için günlük sayfalarını taşırken kapandı. Bir sayfanın geri dönmesi gereken yerde başka bir dosya veya klasör var. Onu oradan kaldır, ardından Memry'yi yeniden başlat. Sayfaların güvende.",
+    "journalChangeWaitsHint": "Memry, bir ayar değişikliği için günlük sayfalarını taşırken kapandı ve onları geri koyamadı. Bu kasayı bir sonraki açışında yeniden dener. O zamana kadar günlük klasörleri taşınamaz veya silinemez. Sayfaların güvende.",
+    "movesWait": "Bazı notlar henüz taşınamıyor",
+    "movesWaitHint": "Memry bu notları taşırken veya yeniden adlandırırken kapandı ve işlemi bitiremedi. İşlem bitene kadar bu notlar taşınamaz veya yeniden adlandırılamaz. Memry bu kasayı bir sonraki açışında yeniden dener."
   }
 }

@@ -1672,6 +1672,14 @@
     "undecidedFilesHint": "Une note ou une entrée de journal du même nom a un autre texte, ou n'est pas encore synchronisée sur cet appareil. Memry laisse ces fichiers tels quels et les vérifie à nouveau à la prochaine ouverture de ce coffre.",
     "keptRemovals": "Memry a conservé des notes dont les fichiers ont été supprimés",
     "keptRemovalsHint": "Ces fichiers ont été supprimés en dehors de Memry, mais leurs notes contenaient du texte que les fichiers n'ont jamais reçu. Memry a conservé les notes plutôt que d'effacer ce texte sur vos autres appareils.",
-    "moreUnlisted": "D'autres ne sont pas listés ici."
+    "moreUnlisted": "D'autres ne sont pas listés ici.",
+    "journalDaysHeld": "Des entrées de journal attendent dans un dossier déplacé",
+    "journalDaysHeldHint": "Le dossier du journal a été déplacé ou renommé en dehors de Memry, et le réglage du dossier du journal ne peut pas encore le suivre. D'ici là, Memry ne crée pas d'entrées de journal et ne modifie pas les réglages du journal, et ces dossiers ne peuvent être ni déplacés ni supprimés. Placez toutes les entrées du journal dans un seul dossier, ou remettez le dossier à sa place. Vos entrées sont en sécurité.",
+    "journalChangeWaits": "Une modification des réglages du journal n'a pas abouti",
+    "journalChangeWaitsSettingsHint": "Memry s'est fermé en déplaçant des entrées de journal pour une modification des réglages, et ne peut pas les remettre en place tant qu'il ne peut pas lire .memry/config.json. Corrigez le fichier, puis redémarrez Memry. Vos entrées sont en sécurité.",
+    "journalChangeWaitsTakenHint": "Memry s'est fermé en déplaçant des entrées de journal pour une modification des réglages. Un autre fichier ou dossier occupe l'emplacement où une entrée doit revenir. Déplacez-le ailleurs, puis redémarrez Memry. Vos entrées sont en sécurité.",
+    "journalChangeWaitsHint": "Memry s'est fermé en déplaçant des entrées de journal pour une modification des réglages, et n'a pas pu les remettre en place. Il réessaiera à la prochaine ouverture de ce coffre. D'ici là, les dossiers du journal ne peuvent être ni déplacés ni supprimés. Vos entrées sont en sécurité.",
+    "movesWait": "Certaines notes ne peuvent pas encore être déplacées",
+    "movesWaitHint": "Memry s'est fermé en déplaçant ou en renommant ces notes, et n'a pas pu terminer. Elles ne peuvent être ni déplacées ni renommées tant que ce n'est pas fait. Memry réessaiera à la prochaine ouverture de ce coffre."
   }
 }
