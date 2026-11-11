@@ -9,6 +9,8 @@
 //! | a ref to the name before a rename keeps the renamed file           | the healed-ref count      |
 //! | a missing name that heals by prefix or by name keeps the file      | the healed-ref count      |
 //! | a name that is on disk, or in another note's folder, does not      | presence and folder rules |
+//! | a name on disk only in another case still heals                    | exact-case presence       |
+//! | an owner folder that cannot be listed keeps the file               | incomplete scan           |
 
 use std::fs;
 
@@ -69,4 +71,39 @@ fn a_name_that_is_on_disk_or_in_another_notes_folder_does_not_keep_it() {
     assert_eq!(outcome.unwrap(), gone());
     assert_eq!(trashed.len(), 1);
     assert!(v.folder().join("zzzzzz-report.pdf").is_file());
+}
+
+/// On a volume that tells case apart (Linux), a link to `report.pdf` beside `Report.pdf` is
+/// missing, and self-heal serves it [`FILE`]. Elsewhere the link opens `Report.pdf`, and the
+/// file is kept all the same.
+#[test]
+fn a_name_on_disk_only_in_another_case_still_heals() {
+    let v = Vault::new("Other\n", &[]);
+    fs::write(v.folder().join("Report.pdf"), b"other bytes").unwrap();
+    let body = format!("![r](../attachments/{}/report.pdf)\n", v.owner);
+    fs::write(v.e.vault.join("Other.md"), body).unwrap();
+    let (outcome, trashed) = v.delete(FILE);
+    assert_eq!(outcome.unwrap(), kept_by(&[&v.other]));
+    assert!(trashed.is_empty());
+    assert!(v.folder().join(FILE).is_file());
+}
+
+/// The scan cannot tell which names of the owner's folder are missing, so it cannot rule out a
+/// healed ref: the file stays. Root reads any folder and Windows ignores the mode bits, so
+/// neither can make the listing fail this way.
+#[cfg(unix)]
+#[test]
+fn an_owner_folder_that_cannot_be_listed_keeps_the_file() {
+    use std::os::unix::fs::PermissionsExt;
+    // SAFETY: geteuid has no preconditions.
+    if unsafe { libc::geteuid() } == 0 {
+        return;
+    }
+    let v = Vault::new("Other\n", &[]);
+    fs::set_permissions(v.folder(), fs::Permissions::from_mode(0o300)).unwrap();
+    let (outcome, trashed) = v.delete(FILE);
+    fs::set_permissions(v.folder(), fs::Permissions::from_mode(0o755)).unwrap();
+    assert_eq!(outcome.unwrap(), kept_by(&[]));
+    assert!(trashed.is_empty());
+    assert!(v.folder().join(FILE).is_file());
 }

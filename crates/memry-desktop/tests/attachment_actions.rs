@@ -22,15 +22,34 @@ fn lists_the_notes_files_without_dot_files_or_folders() {
     assert_eq!(files[1].kind, AttachmentKind::File);
     assert_eq!(files[1].mime_type, "application/pdf");
     assert_eq!(files[1].size, 9);
-    assert!(files[1].path.starts_with("memry-file://local/"));
-    assert!(
-        files[1]
-            .path
-            .ends_with(&format!("/attachments/{}/{FILE}", v.owner))
-    );
+    assert_eq!(files[1].path, format!("attachments/{}/{FILE}", v.owner));
     // The listed `path` is a url the other actions take.
     let at = attachments::existing(&v.open, &v.owner, &files[1].path).unwrap();
     assert_eq!(fs::read(at).unwrap(), b"pdf bytes");
+}
+
+/// A vault folder with `#` and a name with `%` or `#`: an absolute `memry-file:` URL of either
+/// would parse as a fragment or a bad escape, and the dialog could not reveal or open the file.
+#[test]
+fn a_listed_file_resolves_under_a_folder_or_name_a_url_would_misread() {
+    let v = Vault::named("C# notes", "Other\n", &[]);
+    for name in ["k3f9x2-50%off.pdf", "ab12cd-a#b c.pdf", "zz99zz-100%25.pdf"] {
+        fs::write(v.folder().join(name), name.as_bytes()).unwrap();
+    }
+    let files = attachments::list(&v.open, &v.owner).unwrap();
+    assert_eq!(files.len(), 4);
+    for file in files {
+        let at = attachments::existing(&v.open, &v.owner, &file.path)
+            .unwrap_or_else(|error| panic!("{}: {error:?}", file.path));
+        assert_eq!(
+            at.file_name().unwrap().to_str(),
+            Some(file.filename.as_str())
+        );
+        assert_eq!(
+            fs::read(&at).unwrap(),
+            fs::read(v.folder().join(&file.filename)).unwrap()
+        );
+    }
 }
 
 #[test]

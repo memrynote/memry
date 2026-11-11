@@ -27,7 +27,7 @@ import { useFileActionLabels } from '@/hooks/use-file-action-labels'
 interface AttachmentRow {
   /** On-disk stored name (`{prefix}-{name}` scheme). */
   filename: string
-  /** Absolute `memry-file://local/…` URL, accepted by the attachment IPCs. */
+  /** Root-relative `attachments/<noteId>/<name>` url, name percent-encoded, accepted by the attachment IPCs. */
   path: string
   size: number
   mimeType: string

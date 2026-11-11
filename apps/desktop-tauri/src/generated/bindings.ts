@@ -670,8 +670,10 @@ export type AttachmentInfo = {
 	/**  The stored name, `k3f9x2-report.pdf`. */
 	filename: string,
 	/**
-	 *  The absolute `memry-file:` URL of the file on this device, which the other actions take
-	 *  as a block `url`. Nothing writes it into a note.
+	 *  The root-relative url of the file, `attachments/<noteId>/<name>` with the name
+	 *  percent-encoded, which the other actions take as a block `url`. Electron answered an
+	 *  absolute `memry-file:` URL; a vault folder or a name with `#`, `?` or `%` does not survive
+	 *  that URL's parse, and the encoded name does. Nothing writes it into a note.
 	 */
 	path: string,
 	size: number,

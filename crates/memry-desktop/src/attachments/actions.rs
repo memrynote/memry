@@ -11,8 +11,8 @@ use serde::Serialize;
 use super::{AttachmentError, AttachmentKind, is_note_id, kind_of, mime_type, resolve};
 use crate::session::OpenVault;
 use crate::shell::file_open::{Resolution, resolve_under_root};
-use crate::vault::embeds::memry_file_url;
 use crate::vault::layout::ATTACHMENTS_DIR;
+use crate::web::extract::utils::js::encode_uri_component;
 
 /// One file of a note's attachments folder: `AttachmentInfo` of `vault/attachments.ts`.
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, specta::Type)]
@@ -20,8 +20,10 @@ use crate::vault::layout::ATTACHMENTS_DIR;
 pub struct AttachmentInfo {
     /// The stored name, `k3f9x2-report.pdf`.
     pub filename: String,
-    /// The absolute `memry-file:` URL of the file on this device, which the other actions take
-    /// as a block `url`. Nothing writes it into a note.
+    /// The root-relative url of the file, `attachments/<noteId>/<name>` with the name
+    /// percent-encoded, which the other actions take as a block `url`. Electron answered an
+    /// absolute `memry-file:` URL; a vault folder or a name with `#`, `?` or `%` does not survive
+    /// that URL's parse, and the encoded name does. Nothing writes it into a note.
     pub path: String,
     pub size: i64,
     pub mime_type: &'static str,
@@ -58,7 +60,7 @@ pub fn list(open: &OpenVault, note_id: &str) -> Result<Vec<AttachmentInfo>, Atta
         }
         let size = i64::try_from(entry.metadata()?.len()).unwrap_or(i64::MAX);
         files.push(AttachmentInfo {
-            path: memry_file_url(&folder.join(&filename), cfg!(windows)),
+            path: format!("{rel}/{}", encode_uri_component(&filename)),
             size,
             mime_type: mime_type(&filename),
             kind: kind_of(&filename),

@@ -252,6 +252,32 @@ pub fn delete_error<R: Runtime>(app: &AppHandle<R>, error: &AttachmentError) -> 
     }
 }
 
+/// The answer of a command that only reads (`notes_list_attachments`, `notes_attachment_resolve`,
+/// `notes_attachment_reveal_in_finder`, `notes_attachment_open_external`) to `error`: a disk
+/// failure says the read failed, with the text its caller shows for one (the attachments
+/// dialog's `loadFailed`, the block menu's `revealFailed` and `openFailed`; the resolve's callers
+/// show none), not that a write failed. The rest as [`attachment_error`].
+pub fn read_error<R: Runtime>(
+    app: &AppHandle<R>,
+    command: &str,
+    error: &AttachmentError,
+) -> CommandError {
+    match error {
+        AttachmentError::Io(_) | AttachmentError::NotAFolder => {
+            tracing::warn!(scope = "attachments", "{command} failed on disk: {error}");
+            let key = match command {
+                "notes_attachment_reveal_in_finder" => "notes:editor.attachmentMenu.revealFailed",
+                "notes_attachment_open_external" => "notes:editor.attachmentMenu.openFailed",
+                _ => "notes:editor.attachmentsDialog.loadFailed",
+            };
+            let locale = app.state::<Arc<LocaleService>>().get();
+            let message = i18n::t(locale, key, &Args::new());
+            CommandError::new(ErrorKind::Storage, "attachment_read_failed", message)
+        }
+        other => attachment_error(app, command, other),
+    }
+}
+
 /// `notes:list-attachments`: the files of the note's attachments folder.
 #[tauri::command]
 #[specta::specta]
@@ -261,7 +287,7 @@ pub async fn notes_list_attachments<R: Runtime>(
 ) -> Result<Vec<AttachmentInfo>, CommandError> {
     blocking("notes_list_attachments", move || {
         attachments::list(&open_vault(&app)?, &note_id)
-            .map_err(|error| attachment_error(&app, "notes_list_attachments", &error))
+            .map_err(|error| read_error(&app, "notes_list_attachments", &error))
     })
     .await
 }
@@ -276,7 +302,7 @@ pub async fn notes_attachment_resolve<R: Runtime>(
 ) -> Result<AttachmentLocation, CommandError> {
     blocking("notes_attachment_resolve", move || {
         attachments::locate(&open_vault(&app)?, &note_id, &url)
-            .map_err(|error| attachment_error(&app, "notes_attachment_resolve", &error))
+            .map_err(|error| read_error(&app, "notes_attachment_resolve", &error))
     })
     .await
 }
@@ -291,7 +317,7 @@ pub async fn notes_attachment_reveal_in_finder(
 ) -> Result<(), CommandError> {
     blocking("notes_attachment_reveal_in_finder", move || {
         let path = attachments::existing(&open_vault(&app)?, &note_id, &url)
-            .map_err(|error| attachment_error(&app, "notes_attachment_reveal_in_finder", &error))?;
+            .map_err(|error| read_error(&app, "notes_attachment_reveal_in_finder", &error))?;
         external::reveal_path(&app, &path.to_string_lossy())
     })
     .await
@@ -307,7 +333,7 @@ pub async fn notes_attachment_open_external(
 ) -> Result<(), CommandError> {
     blocking("notes_attachment_open_external", move || {
         let path = attachments::existing(&open_vault(&app)?, &note_id, &url)
-            .map_err(|error| attachment_error(&app, "notes_attachment_open_external", &error))?;
+            .map_err(|error| read_error(&app, "notes_attachment_open_external", &error))?;
         external::open_path(&app, &path.to_string_lossy())
     })
     .await

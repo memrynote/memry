@@ -34,7 +34,7 @@ use memry_desktop::session::OpenVault;
 use memry_desktop::vault::config::{VaultConfigPatch, config_path};
 use memry_desktop::vault::consumer::Applied;
 use memry_desktop::vault::consumer::identity::NoteIdentity;
-use vault_env::{Env, creates, env, indexed};
+use vault_env::{Env, creates, env, env_named, indexed};
 
 use crate::index_support::until;
 use crate::vault_settings::update;
@@ -53,7 +53,12 @@ pub(crate) struct Vault {
 impl Vault {
     /// The owner and `Other.md` (with `other` as its body) indexed, plus `extra` files.
     pub(crate) fn new(other: &str, extra: &[(&str, &str)]) -> Self {
-        let mut e = env(|store| Some(NotesIdentity::new(store)));
+        Self::named("vault", other, extra)
+    }
+
+    /// [`Self::new`] with the vault in a folder called `name`.
+    pub(crate) fn named(name: &str, other: &str, extra: &[(&str, &str)]) -> Self {
+        let mut e = env_named(name, |store| Some(NotesIdentity::new(store)));
         e.write("notes/Owner.md", "Owner\n");
         e.write("Other.md", other);
         for (rel, text) in extra {

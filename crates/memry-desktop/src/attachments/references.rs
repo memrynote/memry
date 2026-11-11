@@ -27,6 +27,7 @@ use std::cell::Cell;
 use std::collections::BTreeSet;
 use std::fs;
 use std::io;
+use std::ops::Range;
 use std::path::Path;
 
 use crate::session::OpenVault;
@@ -61,15 +62,16 @@ fn step(by: usize) {
 /// takes only plain names.
 pub fn filenames(note_id: &str, markdown: &str) -> BTreeSet<String> {
     let mut out = BTreeSet::new();
-    each_name(note_id, markdown, &mut |raw| {
+    each_name(note_id, markdown, &mut |at| {
+        let raw = &markdown[at];
         // A stray `%` is not an escape: the literal name stays.
         out.insert(decode_uri_component(raw).unwrap_or_else(|| raw.to_owned()));
     });
     out
 }
 
-/// Hands `found` each name of [`filenames`] as the body spells it, in one pass.
-fn each_name(note_id: &str, markdown: &str, found: &mut dyn FnMut(&str)) {
+/// Hands `found` where each name of [`filenames`] sits in the body, in one pass.
+fn each_name(note_id: &str, markdown: &str, found: &mut dyn FnMut(Range<usize>)) {
     if note_id.is_empty() {
         return;
     }
@@ -93,7 +95,7 @@ fn each_name(note_id: &str, markdown: &str, found: &mut dyn FnMut(&str)) {
         if len == 0 {
             continue;
         }
-        found(&markdown[name_at..name_at + len]);
+        found(name_at..name_at + len);
         from = name_at + len;
     }
 }
@@ -119,7 +121,8 @@ pub fn names_file(owner: &str, file: &str, body: &str) -> bool {
         }
     }
     let mut named = false;
-    each_name(&owner, &body, &mut |raw| {
+    each_name(&owner, &body, &mut |at| {
+        let raw = &body[at];
         named = named || raw == file || decoded(raw).is_some_and(|name| name == file);
     });
     named
@@ -172,27 +175,32 @@ impl ReferenceScan {
 }
 
 /// Whether `body` names a file of `attachments/<owner>/` that is not in the folder (`present`,
-/// lowercased) and that self-heal (`shell::file_service::heal`) could serve from `file`: the
+/// the names on disk as they are) and that self-heal (`shell::file_service::heal`) could serve from `file`: the
 /// same stored prefix, or the same name past it (#4122). After a rename, a note that still names
-/// the old name shows the renamed file this way. Compared in ASCII lowercase, each name as
-/// written and decoded, and without self-heal's rule that the match be the folder's only one:
-/// each difference counts more refs, which keeps the file.
+/// the old name shows the renamed file this way. Each name as written and decoded. A name is
+/// present only in its exact case, as on a volume that tells case apart (Linux): there a link
+/// to `report.pdf` beside `Report.pdf` heals. The heal itself is compared in ASCII lowercase, and
+/// without self-heal's rule that the match be the folder's only one: each difference counts more
+/// refs, which keeps the file.
 fn heals_to(owner: &str, file: &str, present: &BTreeSet<String>, body: &str) -> bool {
     let (owner, file) = (owner.to_ascii_lowercase(), file.to_ascii_lowercase());
-    let body = body.to_ascii_lowercase();
+    // ASCII lowercase keeps every byte where it was, so a range of `lower` is one of `body`.
+    let lower = body.to_ascii_lowercase();
     let mut heals = false;
-    each_name(&owner, &body, &mut |raw| {
-        let decoded = decode_uri_component(raw).map(|name| name.to_ascii_lowercase());
+    each_name(&owner, &lower, &mut |at| {
+        let raw = &body[at];
+        let decoded = decode_uri_component(raw);
         for name in [Some(raw), decoded.as_deref()].into_iter().flatten() {
+            let name_lower = name.to_ascii_lowercase();
             heals = heals
                 || (!present.contains(name)
-                    && find_heal_candidate([file.as_str()], name) == Some(file.as_str()));
+                    && find_heal_candidate([file.as_str()], &name_lower) == Some(file.as_str()));
         }
     });
     heals
 }
 
-/// The names of `attachments/<owner>/`, lowercased; none when the folder is gone.
+/// The names of `attachments/<owner>/` as they are; none when the folder is gone.
 fn folder_names(vault: &Path, owner: &str) -> io::Result<BTreeSet<String>> {
     let entries = match fs::read_dir(vault.join(ATTACHMENTS_DIR).join(owner)) {
         Err(error) if error.kind() == io::ErrorKind::NotFound => return Ok(BTreeSet::new()),
@@ -200,7 +208,7 @@ fn folder_names(vault: &Path, owner: &str) -> io::Result<BTreeSet<String>> {
     };
     let mut names = BTreeSet::new();
     for entry in entries {
-        names.insert(entry?.file_name().to_string_lossy().to_ascii_lowercase());
+        names.insert(entry?.file_name().to_string_lossy().into_owned());
     }
     Ok(names)
 }

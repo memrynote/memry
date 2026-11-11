@@ -61,7 +61,7 @@ afterEach(() => {
 
 const ROW = {
   filename: 'abc123-report.pdf',
-  path: 'memry-file://local/vault/attachments/n1/abc123-report.pdf',
+  path: 'attachments/n1/abc123-report.pdf',
   size: 2048,
   mimeType: 'application/pdf',
   type: 'file' as const
