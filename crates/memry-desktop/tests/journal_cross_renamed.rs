@@ -14,6 +14,7 @@
 //! | a locked renamed day is not crossed                               | `refuse_note`                       |
 //! | an excluded renamed day is not crossed                            | `refuse_note`                       |
 //! | a renamed day is not crossed while a save of it waits             | the save is not undone by a revive  |
+//! | a turn into notes cut short after the delete is finished at open  | a deleted day is not held           |
 
 #[allow(unused_imports)]
 use crate::device_key;
@@ -24,7 +25,10 @@ use std::fs;
 use std::sync::Arc;
 use std::time::{Duration, Instant};
 
+use memry_core::domain::notes::identity::{Crossing, Removed};
 use memry_core::domain::vault_locks::TargetKind;
+use memry_core::markdown::frontmatter::split_frontmatter_block;
+use memry_core::seams::secure_store::SecureStore;
 use memry_desktop::journal::update::DayUpdate;
 use memry_desktop::notes::service::NotesService;
 use memry_desktop::vault::consumer::Applied;
@@ -47,6 +51,17 @@ const WAIT: Duration = Duration::from_secs(25);
 /// Two days in `journal/`, carried to `Diary/` outside the app while another build's journal
 /// change holds them, then the first renamed to `Diary/Trip.md`, a name that is no day.
 fn renamed_away() -> (Env, Arc<NotesService>, Arc<VaultNotices>) {
+    let (e, notes, notices, _) = renamed_away_keeping();
+    (e, notes, notices)
+}
+
+/// [`renamed_away`], with the vault's secure store.
+fn renamed_away_keeping() -> (
+    Env,
+    Arc<NotesService>,
+    Arc<VaultNotices>,
+    Arc<dyn SecureStore>,
+) {
     let (mut e, store, notices) = opened_noticing(
         daily("journal"),
         &[
@@ -54,11 +69,11 @@ fn renamed_away() -> (Env, Arc<NotesService>, Arc<VaultNotices>) {
             ("journal/2025-01-03.md", "Another day\n"),
         ],
     );
-    let notes = NotesService::new(e.tier.clone(), store);
+    let notes = NotesService::new(e.tier.clone(), store.clone());
     recorded_elsewhere(&e, true);
     moved_outside(&mut e, "journal", "Diary");
     renamed_outside(&mut e, "Diary/2025-01-02.md", TRIP);
-    (e, notes, notices)
+    (e, notes, notices, store)
 }
 
 /// `from` renamed to `to` outside the app: the day stays held, its row follows the file, and
@@ -267,6 +282,69 @@ fn a_renamed_day_is_not_crossed_while_a_save_of_it_waits() {
 
     assert_eq!(cross(&e, &notes), vec![DATE.to_owned()]);
     assert!(outbox(&e, DAY).contains(&"delete".to_owned()));
+}
+
+/// A Turn into notes cut short between the core's delete of the day and the drop of its row:
+/// the app killed there, made here by deleting the day as the cross does
+/// (`NotesWriter::file_crossed`) and closing the vault. The next open finishes the cross: the
+/// file, untouched and not in the trash, is a new note, the day's delete is queued once, and the
+/// day is no longer listed. Held still, the day was skipped by the open's crossings and its file
+/// trashed as a deleted day's.
+#[test]
+fn a_turn_into_notes_cut_short_after_the_delete_is_finished_by_the_next_open() {
+    let (mut e, _, notices, store) = renamed_away_keeping();
+    recorded_elsewhere(&e, false);
+    let before = fs::read(e.vault.join(TRIP)).unwrap();
+    let writer = e.core().notes_writer(store).unwrap();
+    assert_eq!(
+        writer.owed_place(DAY).unwrap(),
+        Some(("journal/2025-01-02.md".to_owned(), true))
+    );
+    let raw = e.read(TRIP);
+    let crossing = Crossing {
+        from_path: "journal/2025-01-02.md",
+        path: TRIP,
+        title: "Trip",
+        folder_path: Some("Diary"),
+        day: None,
+        body: split_frontmatter_block(&raw).body,
+        electron_db_beside: false,
+    };
+    let removed = writer.file_crossed(DAY, crossing, None, None).unwrap();
+    assert_eq!(removed, Removed::Deleted);
+    drop(writer);
+    e.close();
+    e.drain();
+
+    e.open();
+    let facts =
+        e.facts_until(|f| matches!(f, Applied::Added { path, created: true, .. } if path == TRIP));
+    let note = facts
+        .iter()
+        .find_map(|f| match f {
+            Applied::Added { note_id, path, .. } if path == TRIP => Some(note_id.clone()),
+            _ => None,
+        })
+        .unwrap();
+    assert_ne!(note, DAY);
+    assert_eq!(fs::read(e.vault.join(TRIP)).unwrap(), before);
+    assert!(e.rows().contains(&row(&note, TRIP)), "{:?}", e.rows());
+    assert!(!e.rows().iter().any(|(id, _)| id == DAY), "{:?}", e.rows());
+    assert!(e.rows().contains(&row(OTHER_DAY, "Diary/2025-01-03.md")));
+    assert_eq!(deletes(&e), 1, "{:?}", outbox(&e, DAY));
+    assert!(outbox(&e, &note).contains(&"upsert".to_owned()));
+    assert_eq!(renamed_notice(&notices), None, "{:?}", notices.list());
+
+    reopen(&mut e);
+    assert!(e.rows().contains(&row(&note, TRIP)), "{:?}", e.rows());
+    assert_eq!(fs::read(e.vault.join(TRIP)).unwrap(), before);
+    assert_eq!(deletes(&e), 1, "{:?}", outbox(&e, DAY));
+    assert_eq!(renamed_notice(&notices), None, "{:?}", notices.list());
+}
+
+/// The day's deletes queued for every device.
+fn deletes(e: &Env) -> usize {
+    outbox(e, DAY).iter().filter(|op| *op == "delete").count()
 }
 
 fn typed(content: &str) -> DayUpdate {
