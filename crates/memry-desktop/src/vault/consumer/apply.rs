@@ -80,6 +80,20 @@ impl Applier {
                 .and_then(|editor| editor.hold_typing(note_id, BARRIER_WAIT)),
             _ => None,
         };
+        // DIAG (temporary, #3967)
+        if let VaultEvent::Changed { note_id, path, content_hash, .. } = &event {
+            let row = self.rows.lane_of(self.session).ok().and_then(|lane| lane.files().by_id(note_id).ok().flatten());
+            tracing::warn!(
+                scope = SCOPE,
+                note_id,
+                path,
+                held = _typing.is_some(),
+                hash = ?content_hash,
+                row_hash = ?row.as_ref().and_then(|r| r.content_hash.clone()),
+                own = content_hash.as_deref().is_some_and(|h| self.own_files.writer(note_id, h).is_some()),
+                "DIAG-3967 changed event"
+            );
+        }
         let Ok(mut lane) = self.rows.lane_of(self.session) else {
             return Step::Done;
         };

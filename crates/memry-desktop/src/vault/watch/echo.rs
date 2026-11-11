@@ -160,7 +160,9 @@ impl EchoGuard {
         let mut state = self.lock();
         match state.by_path.get(path) {
             Some(Expected::Hash(expected)) if expected == observed => true,
-            Some(Expected::Hash(_)) => {
+            Some(Expected::Hash(expected)) => {
+                // DIAG (temporary, #3967)
+                tracing::warn!(path, expected, observed, "DIAG-3967 echo mismatch");
                 state.forget(path);
                 false
             }

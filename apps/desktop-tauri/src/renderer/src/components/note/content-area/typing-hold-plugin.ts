@@ -18,7 +18,7 @@ import { Plugin, PluginKey } from '@tiptap/pm/state'
 import type { EditorView } from '@tiptap/pm/view'
 import { ySyncPluginKey, yUndoPluginKey } from 'y-prosemirror'
 import type * as Y from 'yjs'
-import type { TypingHold } from '@/sync/typing-hold'
+import { type TypingHold, typingHoldDiag } from '@/sync/typing-hold'
 import { selectionThroughOutsideEdit } from './outside-edit-selection'
 
 export function createTypingHoldPlugin(hold: TypingHold): Plugin {
@@ -45,7 +45,9 @@ export function createTypingHoldPlugin(hold: TypingHold): Plugin {
         return true
       }
       const composition = tr.getMeta('composition') !== undefined || view?.composing === true
-      return composition && hold.takesComposition
+      const taken = composition && hold.takesComposition
+      if (!taken) typingHoldDiag.refused.push(Date.now())
+      return taken
     },
     // Only the edit's own transaction: ProseMirror calls this again for those other plugins append
     // to it (the anchor plugin moving a caret out of a hidden ` ^anchor`), and mapping the old
