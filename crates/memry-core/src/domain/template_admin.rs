@@ -204,6 +204,33 @@ pub fn list(conn: &Connection) -> Result<Vec<TemplateSummary>, StorageError> {
     Ok(out)
 }
 
+/// The `content` of every live stored template whose payload has arrived, by id, for desktop's
+/// attachment reference scan. Unlike [`list`], a row with a built-in's id counts, and a payload
+/// that does not parse gives its raw text: either way a name in it keeps the file.
+pub fn contents(conn: &Connection) -> Result<Vec<(String, String)>, StorageError> {
+    let mut statement = conn
+        .prepare(
+            "SELECT item_id, payload FROM sync_items
+              WHERE item_type = ?1 AND deleted_at IS NULL AND payload IS NOT NULL",
+        )
+        .map_err(failed)?;
+    let rows = statement
+        .query_map(params![templates::ITEM_TYPE], |row| {
+            Ok((row.get::<_, String>(0)?, row.get::<_, String>(1)?))
+        })
+        .map_err(failed)?;
+    let mut out = Vec::new();
+    for row in rows {
+        let (id, raw) = row.map_err(failed)?;
+        let content = match serde_json::from_str::<Value>(&raw) {
+            Ok(payload) => from_payload(id.clone(), &payload).content,
+            Err(_) => raw,
+        };
+        out.push((id, content));
+    }
+    Ok(out)
+}
+
 fn source_payload(conn: &Connection, id: &str) -> Result<Value, StorageError> {
     if let Some(b) = BUILT_INS.iter().find(|b| b.id == id) {
         return Ok(json!({
@@ -403,5 +430,46 @@ mod tests {
             Ok(())
         })
         .expect("crud");
+    }
+
+    /// The attachment reference scan reads every live body: a payload that does not parse by
+    /// its raw text, a deleted template not at all.
+    #[test]
+    fn contents_reads_every_live_body() {
+        let (db, _d) = vault("tpl-contents");
+        db.call_blocking(|c| {
+            let live = duplicate(c, "blank", "Live", "p", NOW)?;
+            update(
+                c,
+                &live,
+                &TemplateEdit {
+                    content: Some("![a](attachments/n1/x.png)".into()),
+                    ..Default::default()
+                },
+                "p",
+                NOW,
+            )?;
+            let gone = duplicate(c, "blank", "Gone", "p", NOW)?;
+            delete(c, &gone, "p", NOW)?;
+            c.execute(
+                "INSERT INTO sync_items (item_type, item_id, payload, payload_state, updated_at)
+                 VALUES (?1, 'torn', '{\"content\": \"attachments/n1/y.png', 'present', 0)",
+                params![templates::ITEM_TYPE],
+            )
+            .map_err(failed)?;
+            let mut got = contents(c)?;
+            got.sort();
+            let mut want = vec![
+                (live, "![a](attachments/n1/x.png)".to_owned()),
+                (
+                    "torn".to_owned(),
+                    "{\"content\": \"attachments/n1/y.png".to_owned(),
+                ),
+            ];
+            want.sort();
+            assert_eq!(got, want);
+            Ok(())
+        })
+        .expect("contents");
     }
 }

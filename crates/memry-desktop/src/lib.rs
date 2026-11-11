@@ -31,5 +31,6 @@ pub mod tags;
 pub mod telemetry;
 pub mod templates;
 pub mod updater;
+pub mod uri;
 pub mod vault;
 pub mod web;

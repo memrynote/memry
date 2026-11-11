@@ -5,14 +5,13 @@ use std::sync::LazyLock;
 
 use regex::Regex;
 
+use crate::uri::encode_uri_component;
 use crate::web::extract::error::ExtractError;
 use crate::web::extract::fetch::{FetchRequest, Fetcher};
 use crate::web::extract::utils::comments::build_content_html;
 use crate::web::extract::utils::date::iso_date_or_empty;
 use crate::web::extract::utils::dom::escape_html;
-use crate::web::extract::utils::js::{
-    WS, encode_uri_component, is_js_whitespace, trim, utf16_len, utf16_slice,
-};
+use crate::web::extract::utils::js::{WS, is_js_whitespace, trim, utf16_len, utf16_slice};
 use crate::web::extract::utils::json::{JsValue, parse};
 
 use super::base::{Cx, Extracted, Extractor, Variables, description_cut, post_title};
