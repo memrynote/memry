@@ -1,8 +1,8 @@
 // `[[Note#Heading]]` links and links made from selected text, ported from Electron's
 // `wiki-heading-links.e2e.ts` (A15, #1563; Step 14k, #3531). The scroll claim is measured in a
 // real webview because jsdom has no layout: `scrollTop` and `scrollIntoView` are inert there.
-import { typeInEditor } from '../../harness/editor'
-import { getNoteFileBodyById, openNoteByTitle } from '../../harness/note-sync-helpers'
+import { noteBody, typeInEditor } from '../../harness/editor'
+import { openNoteByTitle } from '../../harness/note-sync-helpers'
 import { createNote, NOTE_EDITOR, NOTE_TITLE, vaultOpen } from '../../harness/notes'
 import type { Page } from '../../harness/pw-compat/page'
 import { test, expect } from '../../harness/test'
@@ -84,7 +84,7 @@ test.describe('Linking selected text', () => {
     await expect(chip).toHaveText(selected)
     await expect(chip).toHaveAttribute('data-target', targetTitle)
     await expect
-      .poll(() => getNoteFileBodyById(page, source.id), { timeout: 15_000 })
+      .poll(() => noteBody(page, source.id), { timeout: 15_000 })
       .toContain(`[[${targetTitle}|${selected}]]`)
   })
 })
@@ -153,7 +153,7 @@ test.describe('Wiki heading links', () => {
     await expect(chip).toHaveAttribute('data-target', `${targetTitle}#${heading}`)
     await expect(chip).toHaveAttribute('data-alias', heading)
     await expect
-      .poll(() => getNoteFileBodyById(page, source.id), { timeout: 15_000 })
+      .poll(() => noteBody(page, source.id), { timeout: 15_000 })
       .toContain(`[[${targetTitle}#${heading}|${heading}]]`)
   })
 

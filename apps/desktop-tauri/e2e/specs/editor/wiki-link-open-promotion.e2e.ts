@@ -14,8 +14,9 @@
 import { readFileSync, writeFileSync } from 'node:fs'
 import { join } from 'node:path'
 
+import { noteBody } from '../../harness/editor'
 import { invokeTest } from '../../harness/invoke-test'
-import { getNoteFileBodyById, openNoteByTitle } from '../../harness/note-sync-helpers'
+import { openNoteByTitle } from '../../harness/note-sync-helpers'
 import { createNote, NOTE_EDITOR, NOTE_TITLE, vaultOpen } from '../../harness/notes'
 import type { Page } from '../../harness/pw-compat/page'
 import { gracefulClose } from '../../harness/tauri-lifecycle'
@@ -40,7 +41,7 @@ async function seedLinkList(page: Page): Promise<SeededLinkNote> {
   for (const title of targets) await createNote(page, { title, content: 'A target.\n' })
   const content = ['Everything to read:', '', ...targets.map((t) => `- [[${t}]]`), ''].join('\n')
   const source = await createNote(page, { title: sourceTitle, content })
-  const body = await getNoteFileBodyById(page, source.id)
+  const body = await noteBody(page, source.id)
   if (!body?.includes('[[')) throw new Error(`seeded note does not hold raw wiki links: ${body}`)
   return { id: source.id, path: source.path, sourceTitle, targets, body }
 }
@@ -135,9 +136,7 @@ test.describe('Wiki links on open', () => {
     const file = join(testVaultPath, note.path)
     const before = readFileSync(file, 'utf8')
     writeFileSync(file, `${before.trimEnd()}\n\n- [[${target}]]\n`, 'utf8')
-    await expect
-      .poll(() => getNoteFileBodyById(page, note.id), { timeout: 30_000 })
-      .toContain(`[[${target}]]`)
+    await expect.poll(() => noteBody(page, note.id), { timeout: 30_000 }).toContain(`[[${target}]]`)
 
     await openWithoutTyping(page, title)
 
@@ -146,10 +145,10 @@ test.describe('Wiki links on open', () => {
     await expect
       .poll(
         async () => ({
-          file: (await getNoteFileBodyById(page, note.id))?.includes(`[[${target}]]`) ?? false,
-          doc: (
-            await invokeTest<string>(app, 'e2e_note_body', { noteId: note.id }).catch(() => '')
-          ).includes(target),
+          file: (await noteBody(page, note.id))?.includes(`[[${target}]]`) ?? false,
+          doc: (await invokeTest<string>(app, 'e2e_note_body', { noteId: note.id })).includes(
+            target
+          ),
           chips: await chipFor(page, target).count()
         }),
         { timeout: 60_000 }
@@ -168,6 +167,6 @@ test.describe('Wiki links on open', () => {
     await openWithoutTyping(page, sourceTitle)
 
     await expect(page.locator('[data-wiki-link]')).toHaveCount(targets.length)
-    expect(await getNoteFileBodyById(page, id)).toBe(body)
+    expect(await noteBody(page, id)).toBe(body)
   })
 })
