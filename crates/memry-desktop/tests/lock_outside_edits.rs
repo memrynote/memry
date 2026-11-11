@@ -444,8 +444,10 @@ fn a_tool_rewriting_a_locked_note_pushes_out_none_of_the_users_versions() {
     for n in 0..55 {
         let text = format!("tool write {n}\n");
         edit_outside(&e, "Plan.md", &text);
+        // Read-only again too: the revert makes it so after its write, and the next write
+        // would race that.
         until("the write is kept and reverted", || {
-            e.versions(&id).contains(&text) && e.read("Plan.md") == NOTE
+            e.versions(&id).contains(&text) && e.read("Plan.md") == NOTE && read_only(&e, "Plan.md")
         });
     }
     std::thread::sleep(QUIET);
