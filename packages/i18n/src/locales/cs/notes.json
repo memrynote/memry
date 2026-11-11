@@ -192,6 +192,7 @@
   },
   "editor": {
     "bodySyncPending": "Synchronizace – obsah této poznámky možná ještě nedorazil",
+    "databaseReadOnly": "Jen pro čtení. Toto zařízení nemůže ukládat změny.",
     "taskRemoval": {
       "title": "{count, plural, one {Úkol byl z této poznámky odebrán} few {# úkoly byly z této poznámky odebrány} other {# úkolů bylo z této poznámky odebráno}}",
       "description": "{count, plural, one {Ponechat ho v úkolech, nebo ho smazat všude?} few {Ponechat je v úkolech, nebo je smazat všude?} other {Ponechat je v úkolech, nebo je smazat všude?}}",

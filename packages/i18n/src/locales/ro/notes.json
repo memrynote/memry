@@ -192,6 +192,7 @@
   },
   "editor": {
     "bodySyncPending": "Se sincronizează – conținutul notiței poate fi încă pe drum",
+    "databaseReadOnly": "Doar pentru citire. Acest dispozitiv nu poate salva modificările.",
     "taskRemoval": {
       "title": "{count, plural, one {Sarcină eliminată din această notiță} few {# sarcini eliminate din această notiță} other {# de sarcini eliminate din această notiță}}",
       "description": "{count, plural, one {O păstrați în Sarcini sau o ștergeți peste tot?} few {Le păstrați în Sarcini sau le ștergeți peste tot?} other {Le păstrați în Sarcini sau le ștergeți peste tot?}}",

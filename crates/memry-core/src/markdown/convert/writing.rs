@@ -12,10 +12,9 @@
 //! - seed: markers become sentinels before the parse, so they land in the
 //!   fragment's text; each one is read off as an anchor and deleted.
 //!
-//! Positions are UTF-16 code units, as in Yjs. The write side works on a
-//! detached UTF-16 copy of the document (`canonical::detach`); the seed side
-//! removes sentinels from the live document by byte offset (the registry's
-//! offset kind) and takes its anchors from such a copy.
+//! Positions are UTF-16 code units, as in Yjs. Every `StickyIndex` resolves
+//! on a detached UTF-16 copy (`canonical::Utf16Copy`); the seed side removes
+//! sentinels from the live document in that document's own offset kind.
 
 use yrs::branch::Branch;
 use yrs::types::text::YChange;
@@ -24,6 +23,7 @@ use yrs::{
     XmlFragment, XmlOut, XmlTextRef,
 };
 
+use super::canonical::Utf16Copy;
 use super::writing_roots::{
     AnchorId, WritingAlternative, WritingAnchor, WritingGhost, WritingOverflowItem,
 };
@@ -176,10 +176,9 @@ fn resolve_range<T: ReadTxn>(
 /// edits. Records whose range no longer resolves (its text was deleted) are
 /// left out, and so leave the file.
 ///
-/// Crate-private: positions are UTF-16 units, so `snapshot` must be a
-/// `canonical::detach` copy (the registry's own documents count bytes).
+/// Positions are UTF-16 units, which the `Utf16Copy` type guarantees.
 pub(crate) fn insert_writing_sentinels(
-    snapshot: &yrs::Doc,
+    snapshot: &Utf16Copy,
     fragment: &str,
     alternatives: &[WritingAlternative],
     ghosts: &[WritingGhost],

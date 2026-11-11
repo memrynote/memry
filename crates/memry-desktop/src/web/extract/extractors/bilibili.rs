@@ -10,11 +10,12 @@ use std::sync::LazyLock;
 use regex::Regex;
 use url::Url;
 
+use crate::uri::encode_uri_component;
 use crate::web::extract::error::ExtractError;
 use crate::web::extract::fetch::{FetchRequest, Fetcher};
 use crate::web::extract::utils::date::iso_string;
 use crate::web::extract::utils::dom::{document_title, escape_html};
-use crate::web::extract::utils::js::{WS, encode_uri_component, parse_int, to_lower, trim};
+use crate::web::extract::utils::js::{WS, parse_int, to_lower, trim};
 use crate::web::extract::utils::json::{JsValue, parse};
 use crate::web::extract::utils::transcript::{Segment, build_transcript};
 

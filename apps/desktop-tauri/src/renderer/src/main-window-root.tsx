@@ -1,5 +1,4 @@
 import App from './App'
-import { CrdtPersistenceNotice } from './components/crdt-persistence-notice'
 import { AuthProvider } from './contexts/auth-context'
 import { SyncProvider } from './contexts/sync-context'
 import { WritebackFailureNotice } from './components/writeback-failure-notice'
@@ -15,7 +14,6 @@ export function MainWindowRoot(): React.JSX.Element {
       <SyncProvider>
         <App />
         {/* After <App />, so the Toaster it renders is already mounted. */}
-        <CrdtPersistenceNotice />
         <WritebackFailureNotice />
       </SyncProvider>
     </AuthProvider>

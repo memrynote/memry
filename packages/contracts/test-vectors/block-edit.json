@@ -10,7 +10,7 @@
     "authoredBy": "@blocknote/server-util blocksToYXmlFragment, the path desktop main calls",
     "compares": "the RESULTING DOCUMENT through the canonical fragment form, never update bytes: an update encodes clientID and per-client clocks, so two ports performing the same edit legitimately differ",
     "notClaimed": "this does not pin the update a writer emits, only the document it must leave behind",
-    "caseCount": 12
+    "caseCount": 14
   },
   "cases": [
     {
@@ -175,6 +175,42 @@
       "baseCanonical": "0 element blockGroup\n1 element blockContainer id=\"tbl1\"\n2 element table textColor=\"default\"\n3 element tableRow\n4 element tableHeader backgroundColor=\"default\" colspan=1 colwidth=[180] rowspan=1 textAlignment=\"left\" textColor=\"default\"\n5 element tableParagraph\n6 text \"Name\"\n4 element tableHeader backgroundColor=\"default\" colspan=1 rowspan=1 textAlignment=\"left\" textColor=\"default\"\n5 element tableParagraph\n6 text \"Value\"\n3 element tableRow\n4 element tableCell backgroundColor=\"default\" colspan=1 colwidth=[180] rowspan=1 textAlignment=\"left\" textColor=\"default\"\n5 element tableParagraph\n6 text \"alpha\"\n4 element tableCell backgroundColor=\"default\" colspan=1 rowspan=1 textAlignment=\"left\" textColor=\"default\"\n5 element tableParagraph\n6 text \"1\"",
       "expectedUpdateHex": "012df2da95eb060007010b70726f73656d6972726f72030a626c6f636b47726f75700700f2da95eb0600030e626c6f636b436f6e7461696e65720700f2da95eb060103057461626c650700f2da95eb060203087461626c65526f770700f2da95eb0603030b7461626c654865616465720700f2da95eb0604030e7461626c655061726167726170680700f2da95eb0605060400f2da95eb0606044e616d652800f2da95eb06040974657874436f6c6f7201770764656661756c742800f2da95eb06040f6261636b67726f756e64436f6c6f7201770764656661756c742800f2da95eb06040d74657874416c69676e6d656e740177046c6566742800f2da95eb060407636f6c7370616e017d012800f2da95eb060407726f777370616e017d012800f2da95eb060408636f6c77696474680175017db40287f2da95eb0604030b7461626c654865616465720700f2da95eb0611030e7461626c655061726167726170680700f2da95eb0612060400f2da95eb06130556616c75652800f2da95eb06110974657874436f6c6f7201770764656661756c742800f2da95eb06110f6261636b67726f756e64436f6c6f7201770764656661756c742800f2da95eb06110d74657874416c69676e6d656e740177046c6566742800f2da95eb061107636f6c7370616e017d012800f2da95eb061107726f777370616e017d0187f2da95eb060303087461626c65526f770700f2da95eb061e03097461626c6543656c6c0700f2da95eb061f030e7461626c655061726167726170680700f2da95eb0620060400f2da95eb062105616c7068612800f2da95eb061f0974657874436f6c6f7201770764656661756c742800f2da95eb061f0f6261636b67726f756e64436f6c6f7201770764656661756c742800f2da95eb061f0d74657874416c69676e6d656e740177046c6566742800f2da95eb061f07636f6c7370616e017d012800f2da95eb061f07726f777370616e017d012800f2da95eb061f08636f6c77696474680175017db40287f2da95eb061f03097461626c6543656c6c0700f2da95eb062d030e7461626c655061726167726170680700f2da95eb062e060400f2da95eb062f01312800f2da95eb062d0974657874436f6c6f7201770764656661756c742800f2da95eb062d0f6261636b67726f756e64436f6c6f7201770679656c6c6f772800f2da95eb062d0d74657874416c69676e6d656e740177046c6566742800f2da95eb062d07636f6c7370616e017d012800f2da95eb062d07726f777370616e017d012800f2da95eb06020974657874436f6c6f7201770764656661756c742800f2da95eb060102696401770474626c3100",
       "expectedCanonical": "0 element blockGroup\n1 element blockContainer id=\"tbl1\"\n2 element table textColor=\"default\"\n3 element tableRow\n4 element tableHeader backgroundColor=\"default\" colspan=1 colwidth=[180] rowspan=1 textAlignment=\"left\" textColor=\"default\"\n5 element tableParagraph\n6 text \"Name\"\n4 element tableHeader backgroundColor=\"default\" colspan=1 rowspan=1 textAlignment=\"left\" textColor=\"default\"\n5 element tableParagraph\n6 text \"Value\"\n3 element tableRow\n4 element tableCell backgroundColor=\"default\" colspan=1 colwidth=[180] rowspan=1 textAlignment=\"left\" textColor=\"default\"\n5 element tableParagraph\n6 text \"alpha\"\n4 element tableCell backgroundColor=\"yellow\" colspan=1 rowspan=1 textAlignment=\"left\" textColor=\"default\"\n5 element tableParagraph\n6 text \"1\""
+    },
+    {
+      "name": "setMark over Turkish and an emoji counts bytes",
+      "pins": "a range after non-ASCII text lands on the characters it names (#3601): the core counts UTF-8 bytes, BlockNote UTF-16 units",
+      "op": {
+        "kind": "setMark",
+        "blockId": "p1",
+        "start": 9,
+        "end": 21,
+        "mark": "bold"
+      },
+      "baseUpdateHex": "0109f2da95eb060007010b70726f73656d6972726f72030a626c6f636b47726f75700700f2da95eb0600030e626c6f636b436f6e7461696e65720700f2da95eb060103097061726167726170680700f2da95eb0602060400f2da95eb060320c38761c49f72c4b120c4b1c59fc4b16b20f09f998220e6bca2e5ad972065cc812800f2da95eb06020f6261636b67726f756e64436f6c6f7201770764656661756c742800f2da95eb06020974657874436f6c6f7201770764656661756c742800f2da95eb06020d74657874416c69676e6d656e740177046c6566742800f2da95eb0601026964017702703100",
+      "baseCanonical": "0 element blockGroup\n1 element blockContainer id=\"p1\"\n2 element paragraph backgroundColor=\"default\" textAlignment=\"left\" textColor=\"default\"\n3 text \"Çağrı ışık 🙂 漢字 é\"",
+      "expectedUpdateHex": "010df2da95eb060007010b70726f73656d6972726f72030a626c6f636b47726f75700700f2da95eb0600030e626c6f636b436f6e7461696e65720700f2da95eb060103097061726167726170680700f2da95eb0602060400f2da95eb060309c38761c49f72c4b12086f2da95eb060904626f6c64027b7d84f2da95eb060a0cc4b1c59fc4b16b20f09f998286f2da95eb061104626f6c64046e756c6c84f2da95eb06120b20e6bca2e5ad972065cc812800f2da95eb06020f6261636b67726f756e64436f6c6f7201770764656661756c742800f2da95eb06020974657874436f6c6f7201770764656661756c742800f2da95eb06020d74657874416c69676e6d656e740177046c6566742800f2da95eb0601026964017702703100",
+      "expectedCanonical": "0 element blockGroup\n1 element blockContainer id=\"p1\"\n2 element paragraph backgroundColor=\"default\" textAlignment=\"left\" textColor=\"default\"\n3 text \"Çağrı \"\n3 text \"ışık 🙂\" bold={}\n3 text \" 漢字 é\""
+    },
+    {
+      "name": "insertInline after an emoji keeps the formatted CJK tail",
+      "pins": "the tail after an inline node is rebuilt in bytes with its marks (#3601); counting characters dropped text and moved the bold",
+      "op": {
+        "kind": "insertInline",
+        "blockId": "p1",
+        "start": 14,
+        "end": 14,
+        "inlineKind": "hashTag",
+        "text": "",
+        "attrs": {
+          "tag": "etiket",
+          "color": "",
+          "icon": ""
+        }
+      },
+      "baseUpdateHex": "010df2da95eb060007010b70726f73656d6972726f72030a626c6f636b47726f75700700f2da95eb0600030e626c6f636b436f6e7461696e65720700f2da95eb060103097061726167726170680700f2da95eb0602060400f2da95eb06030ec38761c49f72c4b120f09f99822086f2da95eb060c04626f6c64027b7d84f2da95eb060d06e6bca2e5ad9786f2da95eb060f04626f6c64046e756c6c84f2da95eb0610042065cc812800f2da95eb06020f6261636b67726f756e64436f6c6f7201770764656661756c742800f2da95eb06020974657874436f6c6f7201770764656661756c742800f2da95eb06020d74657874416c69676e6d656e740177046c6566742800f2da95eb0601026964017702703100",
+      "baseCanonical": "0 element blockGroup\n1 element blockContainer id=\"p1\"\n2 element paragraph backgroundColor=\"default\" textAlignment=\"left\" textColor=\"default\"\n3 text \"Çağrı 🙂 \"\n3 text \"漢字\" bold={}\n3 text \" é\"",
+      "expectedUpdateHex": "0112f2da95eb060007010b70726f73656d6972726f72030a626c6f636b47726f75700700f2da95eb0600030e626c6f636b436f6e7461696e65720700f2da95eb060103097061726167726170680700f2da95eb0602060400f2da95eb06030ec38761c49f72c4b120f09f99822087f2da95eb06030307686173685461672800f2da95eb060d037461670177066574696b65742800f2da95eb060d05636f6c6f720177002800f2da95eb060d0469636f6e01770087f2da95eb060d060600f2da95eb061104626f6c64027b7d84f2da95eb061206e6bca2e5ad9786f2da95eb061404626f6c64046e756c6c84f2da95eb0615042065cc812800f2da95eb06020f6261636b67726f756e64436f6c6f7201770764656661756c742800f2da95eb06020974657874436f6c6f7201770764656661756c742800f2da95eb06020d74657874416c69676e6d656e740177046c6566742800f2da95eb0601026964017702703100",
+      "expectedCanonical": "0 element blockGroup\n1 element blockContainer id=\"p1\"\n2 element paragraph backgroundColor=\"default\" textAlignment=\"left\" textColor=\"default\"\n3 text \"Çağrı 🙂 \"\n3 element hashTag color=\"\" icon=\"\" tag=\"etiket\"\n3 text \"漢字\" bold={}\n3 text \" é\""
     }
   ]
 }

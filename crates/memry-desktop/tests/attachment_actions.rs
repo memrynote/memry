@@ -52,6 +52,18 @@ fn a_listed_file_resolves_under_a_folder_or_name_a_url_would_misread() {
     }
 }
 
+/// A `\` is a separator to `resolve`, so a hand-copied name holding one (macOS and Linux allow
+/// it) could not be revealed or opened: it is not listed, as a dot file is not (#4204).
+#[cfg(unix)]
+#[test]
+fn a_name_with_a_backslash_is_not_listed() {
+    let v = Vault::new("Other\n", &[]);
+    fs::write(v.folder().join("ab12cd-a\\b.pdf"), b"x").unwrap();
+    let files = attachments::list(&v.open, &v.owner).unwrap();
+    let names: Vec<_> = files.iter().map(|f| f.filename.as_str()).collect();
+    assert_eq!(names, [FILE]);
+}
+
 #[test]
 fn a_note_without_a_folder_has_none_and_a_bad_id_is_refused() {
     let v = Vault::new("Other\n", &[]);

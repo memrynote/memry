@@ -182,7 +182,8 @@ const docRegistry = createYjsDocRegistry<DocEntry>((slotKey, notifyChanged) => {
       destroyed = true
       stopWaitingForLocks?.()
       provider.destroy()
-      doc.destroy()
+      // A note closed while its typing is held keeps its binding until the hold ends.
+      void provider.detached.then(() => doc.destroy())
       isRemoteUpdateRef.current = false
     }
   }

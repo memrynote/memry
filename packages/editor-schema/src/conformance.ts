@@ -1890,6 +1890,27 @@ export type BlockEditOp =
       value: string
     }
   | { kind: 'delete'; blockId: string }
+  /**
+   * `start` and `end` count UTF-8 bytes of the block's text, the unit of the
+   * core's documents (`OFFSET_KIND`, `crates/memry-core/src/crdt/registry.rs`).
+   */
+  | {
+      kind: 'setMark'
+      blockId: string
+      start: number
+      end: number
+      mark: string
+      value?: string
+    }
+  | {
+      kind: 'insertInline'
+      blockId: string
+      start: number
+      end: number
+      inlineKind: string
+      text: string
+      attrs: Record<string, string>
+    }
 
 /** Two paragraphs, the base most cases start from. */
 const TWO_PARAGRAPHS: unknown[] = [
@@ -2164,6 +2185,61 @@ export const BLOCK_EDIT_CASES: readonly BlockEditCase[] = [
       value: 'yellow'
     },
     expected: TABLE_WITH_COLOURED_CELL
+  },
+  {
+    name: 'setMark over Turkish and an emoji counts bytes',
+    pins: 'a range after non-ASCII text lands on the characters it names (#3601): the core counts UTF-8 bytes, BlockNote UTF-16 units',
+    base: [{ id: 'p1', type: 'paragraph', content: 'Çağrı ışık 🙂 漢字 e\u0301' }],
+    // "Çağrı " is 9 bytes, "ışık 🙂" 12.
+    op: { kind: 'setMark', blockId: 'p1', start: 9, end: 21, mark: 'bold' },
+    expected: [
+      {
+        id: 'p1',
+        type: 'paragraph',
+        content: [
+          { type: 'text', text: 'Çağrı ', styles: {} },
+          { type: 'text', text: 'ışık 🙂', styles: { bold: true } },
+          { type: 'text', text: ' 漢字 e\u0301', styles: {} }
+        ]
+      }
+    ]
+  },
+  {
+    name: 'insertInline after an emoji keeps the formatted CJK tail',
+    pins: 'the tail after an inline node is rebuilt in bytes with its marks (#3601); counting characters dropped text and moved the bold',
+    base: [
+      {
+        id: 'p1',
+        type: 'paragraph',
+        content: [
+          { type: 'text', text: 'Çağrı 🙂 ', styles: {} },
+          { type: 'text', text: '漢字', styles: { bold: true } },
+          { type: 'text', text: ' e\u0301', styles: {} }
+        ]
+      }
+    ],
+    // "Çağrı 🙂 " is 14 bytes.
+    op: {
+      kind: 'insertInline',
+      blockId: 'p1',
+      start: 14,
+      end: 14,
+      inlineKind: 'hashTag',
+      text: '',
+      attrs: { tag: 'etiket', color: '', icon: '' }
+    },
+    expected: [
+      {
+        id: 'p1',
+        type: 'paragraph',
+        content: [
+          { type: 'text', text: 'Çağrı 🙂 ', styles: {} },
+          { type: 'hashTag', props: { tag: 'etiket', color: '', icon: '' } },
+          { type: 'text', text: '漢字', styles: { bold: true } },
+          { type: 'text', text: ' e\u0301', styles: {} }
+        ]
+      }
+    ]
   }
 ]
 

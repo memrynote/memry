@@ -29,7 +29,10 @@ use std::sync::{Arc, Mutex};
 
 use sha2::{Digest as _, Sha256};
 use yrs::updates::decoder::Decode as _;
-use yrs::{Doc, StateVector, Subscription, Transact as _, Transaction, TransactionMut};
+use yrs::{
+    ClientID, Doc, OffsetKind, Options, StateVector, Subscription, Transact as _, Transaction,
+    TransactionMut,
+};
 use yrs::{IdSet, Origin, ReadTxn, TransactionAcqError, Update};
 
 use super::errors::CrdtError;
@@ -77,6 +80,15 @@ const ORIGIN_DURABLE: &str = "memry.durable";
 /// producing transaction is committing: it must not re-enter the document.
 pub type UpdateSink = Arc<dyn Fn(&str, &[u8]) + Send + Sync>;
 
+/// The unit every index a registry document takes or returns counts text in:
+/// UTF-8 bytes (#3601). `crdt::body_edit`, the tag rename and the writing
+/// tools' sentinel removal count bytes, and so does the shells' `BlockEdit`
+/// range (iOS `BlockText.coreOffset`). The kind never reaches the wire: an
+/// update encodes item clocks in UTF-16 whatever it is. `StickyIndex` mixes the
+/// two kinds on non-ASCII text, so anchors resolve on a UTF-16
+/// `canonical::Utf16Copy` instead.
+pub const OFFSET_KIND: OffsetKind = OffsetKind::Bytes;
+
 /// The Yjs client id for this device.
 ///
 /// Deterministic in the device id, because a fresh client id per launch grows
@@ -108,7 +120,10 @@ pub struct Document {
 impl Document {
     /// Opens a document, typing the known roots before anything is applied.
     fn open(id: &str, client_id: u64, sink: UpdateSink) -> Result<Self, CrdtError> {
-        let doc = Arc::new(Doc::with_client_id(client_id));
+        let doc = Arc::new(Doc::with_options(Options {
+            offset_kind: OFFSET_KIND,
+            ..Options::with_client_id(ClientID::new(client_id))
+        }));
 
         // Before the first `apply_update`, and each through its own
         // transaction. These panic if a transaction is already live; none is,

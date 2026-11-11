@@ -365,6 +365,14 @@ impl Vault {
     ) -> Result<crate::domain::template_store::TemplateStore, AuthError> {
         crate::domain::template_store::TemplateStore::over(self.db.clone(), &store)
     }
+
+    /// The body of every live stored template, by id, read without a device identity, for
+    /// desktop's attachment reference scan. Not part of the FFI surface.
+    #[doc(hidden)]
+    pub fn template_contents(&self) -> Result<Vec<(String, String)>, StorageError> {
+        self.db
+            .read_blocking(crate::domain::template_admin::contents)
+    }
 }
 
 #[uniffi::export]

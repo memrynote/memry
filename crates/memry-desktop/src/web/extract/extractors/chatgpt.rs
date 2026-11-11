@@ -1,8 +1,9 @@
 //! `dist/extractors/chatgpt.js`.
 
+use crate::uri::decode_uri_component;
 use crate::web::extract::dom::NodeId;
 use crate::web::extract::error::ExtractError;
-use crate::web::extract::utils::js::{decode_uri_component, is_js_whitespace, trim};
+use crate::web::extract::utils::js::{is_js_whitespace, trim};
 use url::Url;
 
 use super::base::{Cx, Extracted, Extractor, attr_of, text_of, trimmed};

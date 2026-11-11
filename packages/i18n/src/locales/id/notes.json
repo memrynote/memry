@@ -192,6 +192,7 @@
   },
   "editor": {
     "bodySyncPending": "Menyinkronkan — isi catatan ini mungkin masih dalam perjalanan",
+    "databaseReadOnly": "Hanya-baca. Perangkat ini tidak dapat menyimpan perubahan.",
     "taskRemoval": {
       "title": "{count, plural, =1 {Tugas dihapus dari catatan ini} other {# tugas dihapus dari catatan ini}}",
       "description": "{count, plural, other {Tetap simpan di daftar tugas, atau hapus dari semua tempat?}}",

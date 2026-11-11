@@ -192,6 +192,7 @@
   },
   "editor": {
     "bodySyncPending": "Đang đồng bộ — nội dung ghi chú này có thể vẫn đang được tải về",
+    "databaseReadOnly": "Chỉ đọc. Thiết bị này không thể lưu thay đổi.",
     "taskRemoval": {
       "title": "{count, plural, other {Đã gỡ # công việc khỏi ghi chú này}}",
       "description": "{count, plural, other {Giữ lại trong Công việc hay xóa ở mọi nơi?}}",

@@ -6,6 +6,7 @@ use std::sync::LazyLock;
 use regex::Regex;
 use url::Url;
 
+use crate::uri::decode_uri_component;
 use crate::web::extract::dom::NodeId;
 use crate::web::extract::error::ExtractError;
 use crate::web::extract::utils::comments::{
@@ -13,7 +14,7 @@ use crate::web::extract::utils::comments::{
 };
 use crate::web::extract::utils::date::iso_date_or_empty;
 use crate::web::extract::utils::dom::escape_html;
-use crate::web::extract::utils::js::{WS, decode_uri_component, parse_int, trim};
+use crate::web::extract::utils::js::{WS, parse_int, trim};
 
 use super::base::{
     Cx, Extracted, Extractor, Variables, attr_of, description_cut, post_title, text_of, trimmed,

@@ -7,8 +7,10 @@
  * the hold is held like typing: had its text reached the document, it would land in blocks the
  * edit deletes. A refused transaction leaves the IME's text in the DOM and the composition
  * running, and ProseMirror reads the block again at the composition's next change or end, so the
- * text goes in after the release. Undo and redo write the document directly, past the filter, so
- * they do nothing while held. When the edit's frame applies, the editor keeps its selection where
+ * text goes in after the release. Other refused changes (keystrokes, a paste) are queued and
+ * replayed once the hold ends, over the edit (`refused-typing.ts`); when the editor closes during
+ * the hold, they go into the document then, with no editor. Undo and redo write the
+ * document directly, past the filter, so they do nothing while held. When the edit's frame applies, the editor keeps its selection where
  * it was, mapped through the edit (`outside-edit-selection.ts`).
  *
  * @module note/content-area/typing-hold-plugin
@@ -19,24 +21,63 @@ import type { EditorView } from '@tiptap/pm/view'
 import { ySyncPluginKey, yUndoPluginKey } from 'y-prosemirror'
 import type * as Y from 'yjs'
 import type { TypingHold } from '@/sync/typing-hold'
+import { createLogger } from '@/lib/logger'
 import { selectionThroughOutsideEdit } from './outside-edit-selection'
+import { RefusedTyping } from './refused-typing'
+
+const log = createLogger('TypingHold')
 
 export function createTypingHoldPlugin(hold: TypingHold): Plugin {
   let view: EditorView | null = null
+  let views = 0
+  const refused = new RefusedTyping()
   return new Plugin({
     key: new PluginKey('typingHold'),
     view(editorView) {
       view = editorView
+      views++
       const undoManager: Y.UndoManager | undefined = yUndoPluginKey.getState(
         editorView.state
       )?.undoManager
+      const fragment: Y.XmlFragment | undefined = ySyncPluginKey.getState(editorView.state)?.type
       const restoreUndo = undoManager && holdUndo(undoManager, hold)
+      const stopReplay = hold.onRelease(() => {
+        const replay = view && refused.replay(view.state)
+        if (replay) view?.dispatch(replay)
+      })
       return {
         destroy() {
           // An editor that goes mid-composition must not leave the hold waiting for its end.
           if (view?.composing) hold.compositionEnded()
           view = null
           restoreUndo?.()
+          stopReplay()
+          // A reconfigured state makes the plugin's view again at once, and that one replays the
+          // queue. No new view means the plugin went: the editor closed, or it stays without it.
+          // The queue then goes into the document when the hold ends, which the note's binding
+          // waits for (`YjsIpcProvider.disconnect`).
+          const made = views
+          queueMicrotask(() => {
+            if (views !== made || refused.size === 0) return
+            if (hold.held && fragment) {
+              const stop = hold.onRelease(() => {
+                stop()
+                // A throw would skip the release's later listeners, the closing note's binding among them.
+                try {
+                  refused.writeTo(fragment)
+                } catch (error) {
+                  log.error('Typing held for an outside edit did not go in after its editor', {
+                    dropped: refused.clear(),
+                    error
+                  })
+                }
+              })
+              return
+            }
+            log.warn('Typing refused by a hold went with its editor plugin', {
+              dropped: refused.clear()
+            })
+          })
         }
       }
     },
@@ -45,7 +86,11 @@ export function createTypingHoldPlugin(hold: TypingHold): Plugin {
         return true
       }
       const composition = tr.getMeta('composition') !== undefined || view?.composing === true
-      return composition && hold.takesComposition
+      if (composition) return hold.takesComposition
+      // A change another plugin appends to an update of the document is not typing; it stays
+      // refused.
+      if (tr.getMeta('appendedTransaction') === undefined) refused.add(tr)
+      return false
     },
     // Only the edit's own transaction: ProseMirror calls this again for those other plugins append
     // to it (the anchor plugin moving a caret out of a hidden ` ^anchor`), and mapping the old

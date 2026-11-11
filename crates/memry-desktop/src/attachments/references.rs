@@ -15,13 +15,20 @@
 //! [`names_file`] answers as Electron's `body.includes("attachments/<owner>/<file>")` does, so a
 //! wiki embed (`![[…]]`), a frontmatter value, a query or fragment after the name, or a name
 //! with an apostrophe or a space keeps the file, and also when a name the extractor reads
-//! decodes to the file's. Three differences from Electron, each toward keeping the file. The
+//! decodes to the file's. Four differences from Electron, each toward keeping the file. The
 //! scan is complete only once the walk gave every file it found a row ([`RowOwner::walked`]):
 //! before, a note on disk may have none and would go unread. A body that
 //! cannot be read for any reason but its absence makes the scan incomplete (Electron skipped an
-//! unreadable one as "no reference"). And the comparison is in ASCII lowercase and also reads
-//! percent-escaped names, since a volume that ignores case resolves `ABC123-Plan.PDF` to the
-//! same file.
+//! unreadable one as "no reference"). The comparison is of folded names ([`fold`]: one Unicode
+//! form, lowercase) and also reads percent-escaped names, since macOS resolves `ABC123-Plan.PDF`,
+//! or `café.pdf` in either Unicode form, to the same file; a volume that tells them apart keeps a
+//! file that only looks named. And the bodies of the stored templates are read too: a note made
+//! from one copies its refs.
+//!
+//! A file an exclude pattern hides is not read, as in Electron. It has no row, the app neither
+//! reads nor writes it as a note, and walking what a pattern hides (often a large tree the user
+//! keeps out of the app) is the cost the pattern exists to avoid. A file only such a note names
+//! goes to the OS trash, from which the user can bring it back.
 
 use std::cell::Cell;
 use std::collections::BTreeSet;
@@ -30,14 +37,16 @@ use std::io;
 use std::ops::Range;
 use std::path::Path;
 
+use unicode_normalization::UnicodeNormalization;
+
 use crate::session::OpenVault;
 use crate::shell::local_scheme::find_heal_candidate;
+use crate::uri::decode_uri_component;
 use crate::vault::consumer::rows::RowOwner;
 use crate::vault::file_types::{FileType, extension, file_type_of_extension};
 use crate::vault::layout::ATTACHMENTS_DIR;
 use crate::vault::note_file::{NoteFileError, read_note_lossy};
 use crate::vault::paths::is_js_space;
-use crate::web::extract::utils::js::decode_uri_component;
 
 const SCOPE: &str = "attachments";
 
@@ -100,20 +109,39 @@ fn each_name(note_id: &str, markdown: &str, found: &mut dyn FnMut(Range<usize>))
     }
 }
 
-/// Whether `body` names `attachments/<owner>/<file>`, in ASCII lowercase: the run appears in it
-/// (Electron's `body.includes`) with `/` or `\` for either separator and the file's name as it is
-/// or percent-decoded, or a name [`filenames`] reads, as written or decoded, is the file's. Each
-/// search is linear (`str::contains` is a two-way search), and the extractor is one pass.
+/// A name as a volume that ignores case and Unicode form sees it, to compare two names: NFC, each
+/// character lowercased on its own (`ς` as `σ`, which `str::to_lowercase` picks by context), NFC
+/// again since a lowercase may decompose (`İ` is `i` and a combining dot). Linear in `s`.
+fn fold(s: &str) -> String {
+    s.nfc()
+        .flat_map(char::to_lowercase)
+        .map(|c| if c == 'ς' { 'σ' } else { c })
+        .nfc()
+        .collect()
+}
+
+/// Whether `body` names `attachments/<owner>/<file>`, all three ASCII-lowercased, or else all
+/// three [folded](fold): the run appears in it (Electron's `body.includes`) with `/` or `\` for
+/// either separator and the file's name as it is or percent-decoded, or a name [`filenames`]
+/// reads, as written or decoded, is the file's. The ASCII pass comes first because NFC may join
+/// the name's last letter with a mark after it (`x.png` and U+0301), so the folded pass only adds
+/// matches. Only a body that holds `attachments` in ASCII is folded (folding makes no ASCII
+/// letter of it but `k`, from the Kelvin sign). Each search is linear (`str::contains` is a
+/// two-way search), and the extractor is one pass.
 pub fn names_file(owner: &str, file: &str, body: &str) -> bool {
-    let (owner, file) = (owner.to_ascii_lowercase(), file.to_ascii_lowercase());
-    let body = body.to_ascii_lowercase();
-    // Lowercased before the decode and after it: `%41` is an `A`.
-    let decoded = |name: &str| decode_uri_component(name).map(|name| name.to_ascii_lowercase());
-    let file_decoded = decoded(&file);
-    for name in [Some(file.as_str()), file_decoded.as_deref()]
-        .into_iter()
-        .flatten()
-    {
+    let lower = body.to_ascii_lowercase();
+    let ascii = |s: &str| s.to_ascii_lowercase();
+    names_in(&ascii(owner), &ascii(file), &lower, ascii)
+        || (lower.contains(ATTACHMENTS_DIR)
+            && names_in(&fold(owner), &fold(file), &fold(body), fold))
+}
+
+/// [`names_file`] over one normal form: `owner`, `file` and `body` are already in it.
+fn names_in(owner: &str, file: &str, body: &str, norm: fn(&str) -> String) -> bool {
+    // Normalized before the decode and after it: `%41` is an `A`, `%CC%81` an accent.
+    let decoded = |name: &str| decode_uri_component(name).map(|name| norm(&name));
+    let file_decoded = decoded(file);
+    for name in [Some(file), file_decoded.as_deref()].into_iter().flatten() {
         for (a, b) in [('/', '/'), ('/', '\\'), ('\\', '/'), ('\\', '\\')] {
             if body.contains(&format!("{ATTACHMENTS_DIR}{a}{owner}{b}{name}")) {
                 return true;
@@ -121,7 +149,7 @@ pub fn names_file(owner: &str, file: &str, body: &str) -> bool {
         }
     }
     let mut named = false;
-    each_name(&owner, &body, &mut |at| {
+    each_name(owner, body, &mut |at| {
         let raw = &body[at];
         named = named || raw == file || decoded(raw).is_some_and(|name| name == file);
     });
@@ -145,7 +173,7 @@ pub enum Incomplete {
     /// The walk has not given every file it found a row yet (one waits for its retry, or an
     /// exclude pattern's restart walks again), or it hit its caps or an unreadable folder.
     NotWalked,
-    /// The rows, or the attachment's folder, could not be listed.
+    /// The rows, the attachment's folder or the templates could not be listed.
     Unlisted,
     /// A body could not be read.
     Unreadable,
@@ -155,7 +183,8 @@ pub enum Incomplete {
 /// never licenses a deletion.
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct ReferenceScan {
-    /// The ids of the notes whose body names the file, the excluded one aside, in id order.
+    /// The ids of the notes, and of the templates, whose body names the file, the excluded note
+    /// aside, in id order.
     pub referenced_by: Vec<String>,
     pub incomplete: Option<Incomplete>,
 }
@@ -179,11 +208,11 @@ impl ReferenceScan {
 /// same stored prefix, or the same name past it (#4122). After a rename, a note that still names
 /// the old name shows the renamed file this way. Each name as written and decoded. A name is
 /// present only in its exact case, as on a volume that tells case apart (Linux): there a link
-/// to `report.pdf` beside `Report.pdf` heals. The heal itself is compared in ASCII lowercase, and
-/// without self-heal's rule that the match be the folder's only one: each difference counts more
-/// refs, which keeps the file.
+/// to `report.pdf` beside `Report.pdf` heals, and so does one in another Unicode form. The heal
+/// itself is compared [folded](fold), and without self-heal's rule that the match be the folder's
+/// only one: each difference counts more refs, which keeps the file.
 fn heals_to(owner: &str, file: &str, present: &BTreeSet<String>, body: &str) -> bool {
-    let (owner, file) = (owner.to_ascii_lowercase(), file.to_ascii_lowercase());
+    let (owner, file) = (owner.to_ascii_lowercase(), fold(file));
     // ASCII lowercase keeps every byte where it was, so a range of `lower` is one of `body`.
     let lower = body.to_ascii_lowercase();
     let mut heals = false;
@@ -191,10 +220,9 @@ fn heals_to(owner: &str, file: &str, present: &BTreeSet<String>, body: &str) -> 
         let raw = &body[at];
         let decoded = decode_uri_component(raw);
         for name in [Some(raw), decoded.as_deref()].into_iter().flatten() {
-            let name_lower = name.to_ascii_lowercase();
             heals = heals
                 || (!present.contains(name)
-                    && find_heal_candidate([file.as_str()], &name_lower) == Some(file.as_str()));
+                    && find_heal_candidate([file.as_str()], &fold(name)) == Some(file.as_str()));
         }
     });
     heals
@@ -215,7 +243,8 @@ fn folder_names(vault: &Path, owner: &str) -> io::Result<BTreeSet<String>> {
 
 /// `findNotesReferencingAttachment`: the notes of the open vault whose body names
 /// `attachments/<owner>/<file>` ([`names_file`]), or a missing name of that folder self-heal
-/// serves from it ([`heals_to`]; Electron did not count those), `exclude` aside. Every row is read but those of
+/// serves from it ([`heals_to`]; Electron did not count those), `exclude` aside, and the stored
+/// templates whose body does (Electron read none). Every row is read but those of
 /// a pdf, an image, an audio or a video file. A row whose file is gone holds no reference. The
 /// scan is incomplete until the walk of the vault gave every file it found a row (`rows`), and when a body
 /// cannot be read for any other reason (a link out of the vault, a second hard link, a file over
@@ -269,6 +298,21 @@ pub fn find_references(
         };
         if names_file(owner, file, &body) || heals_to(owner, file, &present, &body) {
             referenced_by.push(note_id);
+        }
+    }
+    let templates = match open.vault.template_contents() {
+        Ok(templates) => templates,
+        Err(error) => {
+            tracing::warn!(
+                scope = SCOPE,
+                "reference scan could not read the templates; the file counts as shared: {error}"
+            );
+            return ReferenceScan::incomplete(referenced_by, Incomplete::Unlisted);
+        }
+    };
+    for (template_id, body) in templates {
+        if names_file(owner, file, &body) || heals_to(owner, file, &present, &body) {
+            referenced_by.push(template_id);
         }
     }
     referenced_by.sort();

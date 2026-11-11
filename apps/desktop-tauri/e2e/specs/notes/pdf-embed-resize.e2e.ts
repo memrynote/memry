@@ -27,6 +27,28 @@ const stamp = (): string => `${Date.now()}-${Math.random().toString(36).slice(2,
 const fileMarker = async (page: Page, noteId: string): Promise<string> =>
   /<!-- file:(\{[^}]+\}) -->/.exec((await noteBody(page, noteId)) ?? '')?.[1] ?? ''
 
+/**
+ * Waits until an unsized embed has its final geometry: the first page is painted, and the card
+ * fills the column it measured. The controls show as soon as pdf.js has the file, a few frames
+ * before that. The page's height can add the editor's scrollbar, which narrows the column, and the
+ * card follows a render later: the align buttons at its end edge move by the scrollbar's width,
+ * so a click aimed before that lands on whatever moved under it (#3967).
+ */
+async function embedSettled(page: Page): Promise<void> {
+  await expect
+    .poll(
+      () =>
+        page.evaluate(() => {
+          const wrap = document.querySelector('.pdf-preview-wrap')
+          const card = wrap?.querySelector<HTMLElement>('.pdf-preview')
+          const painted = wrap?.querySelector<HTMLCanvasElement>('.react-pdf__Page__canvas')
+          return !!card && !!painted && painted.width > 0 && card.offsetWidth === wrap?.clientWidth
+        }),
+      { timeout: 20_000 }
+    )
+    .toBe(true)
+}
+
 test('drops a sidebar PDF as an embed by path, not as an attachment copy', async ({
   page,
   testVaultPath
@@ -70,6 +92,7 @@ test('shows a resize handle and persists the new width', async ({ page }) => {
   // The handle renders once pdf.js has loaded the file.
   const slider = page.getByRole('slider')
   await expect(slider).toBeVisible({ timeout: 20_000 })
+  await embedSettled(page)
   const before = Number(await slider.getAttribute('aria-valuenow'))
   expect(before).toBeGreaterThan(0)
 
@@ -85,9 +108,12 @@ test('aligns the embed and persists the alignment', async ({ page }) => {
   await vaultOpen(page)
   const { note } = await seedNoteWithFileBlock(page, `Align Target ${stamp()}`, PDF_FILE)
 
+  await embedSettled(page)
   await page.locator('.pdf-preview').scrollIntoViewIfNeeded()
   // The control is revealed on hover and clickable at rest.
-  await page.getByRole('button', { name: 'Align center' }).click()
+  const center = page.getByRole('button', { name: 'Align center' })
+  await center.click()
+  await expect(center).toHaveAttribute('aria-pressed', 'true')
   await expect
     .poll(() => fileMarker(page, note.id), { timeout: 20_000 })
     .toContain('"align":"center"')

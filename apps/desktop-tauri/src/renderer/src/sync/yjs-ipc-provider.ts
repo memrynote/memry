@@ -15,9 +15,10 @@ const log = createLogger('YjsIpcProvider')
 
 /**
  * Why the window must not edit the note: the host's `readOnly`, the code of a refused edit, or a
- * purge, after which the host takes no edit of this copy.
+ * purge, after which the host takes no edit of this copy. `database-read-only`: the vault's
+ * database is read-only on this device, so no edit of any note can be saved (#4190).
  */
-export type DocReadOnly = 'locked' | 'large-file' | 'excluded' | 'purged'
+export type DocReadOnly = 'locked' | 'large-file' | 'excluded' | 'database-read-only' | 'purged'
 
 /** The header of `crdt_open_doc`'s framed answer (`commands/editor.rs`). */
 interface OpenedHeader {
@@ -148,6 +149,7 @@ export class YjsIpcProvider extends Observable<string> {
   private opening: Promise<unknown> | null = null
   /** An open was sent, so the teardown closes the note. */
   private opened = false
+  private detaching: Promise<void> = Promise.resolve()
   /**
    * Barriers being answered whose hold has not begun (a composition runs, or its text settles),
    * and whether the edit each waits for already applied or the host released it: then the hold
@@ -184,6 +186,14 @@ export class YjsIpcProvider extends Observable<string> {
   }
 
   /**
+   * Resolves once the teardown let go of the doc: at once, or, for a note closed while its typing
+   * was held, once the hold ended and the held typing went in (`disconnect`).
+   */
+  get detached(): Promise<void> {
+    return this.detaching
+  }
+
+  /**
    * Re-drive a rebind that `canRebind` held back, e.g. when the workspace that
    * owns this doc is shown again. A no-op unless the binding is stale.
    */
@@ -211,7 +221,12 @@ export class YjsIpcProvider extends Observable<string> {
   }
 
   async connect(): Promise<void> {
-    registerPendingSave(this.saveKey, () => this.flush())
+    // A quit or a window close waits for an outside edit's hold to end, so the typing the editors
+    // held goes in over the edit and is sent with the rest.
+    registerPendingSave(this.saveKey, async () => {
+      await typingHoldOf(this.doc).settled()
+      await this.flush()
+    })
     this.updateHandler = (update: Uint8Array, origin: unknown) => {
       if (origin === 'remote' || origin === 'ipc-provider') return
       this.queueUpdate(update)
@@ -242,25 +257,24 @@ export class YjsIpcProvider extends Observable<string> {
     await this.finishHandshake(opened.stateVector)
   }
 
+  /**
+   * Lets go of the doc and closes the note. A note closed while its typing is held for an outside
+   * edit keeps its binding until the hold ends: the edit's frame comes on the channel, and the
+   * typing its editors held goes in over it after they closed (`typing-hold-plugin.ts`) and is
+   * sent like any edit. A reopen of the note waits for the close.
+   */
   disconnect(): void {
-    if (this.updateHandler) {
-      this.doc.off('update', this.updateHandler)
-      this.updateHandler = null
-    }
-    this.resetCleanup?.()
-    this.resetCleanup = null
-    this.readyCleanup?.()
-    this.readyCleanup = null
-    this.locksCleanup?.()
-    this.locksCleanup = null
-    this.channel = null
-    typingHoldOf(this.doc).release()
+    const hold = typingHoldOf(this.doc)
+    if (hold.held) this.detaching = hold.settled().then(() => this.detach())
+    else this.detach()
 
     // The typing still queued goes to the host before the close, which would refuse it, and the
     // close goes after an open in flight, which would otherwise bind the window again.
     const noteId = this.noteId
     const opening = this.opening
+    const detached = this.detaching
     const closing = (async () => {
+      await detached
       await opening?.catch(() => {})
       await this.flush().catch((err: unknown) => {
         log.error('Closing the note with edits the host did not store', { noteId, error: err })
@@ -284,6 +298,21 @@ export class YjsIpcProvider extends Observable<string> {
     this.disconnect()
     // oxlint-disable-next-line typescript/no-deprecated -- same lib0 Observable base class as above
     super.destroy()
+  }
+
+  private detach(): void {
+    if (this.updateHandler) {
+      this.doc.off('update', this.updateHandler)
+      this.updateHandler = null
+    }
+    this.resetCleanup?.()
+    this.resetCleanup = null
+    this.readyCleanup?.()
+    this.readyCleanup = null
+    this.locksCleanup?.()
+    this.locksCleanup = null
+    this.channel = null
+    typingHoldOf(this.doc).end()
   }
 
   /**
@@ -575,6 +604,10 @@ export class YjsIpcProvider extends Observable<string> {
         case 'note_excluded':
           this.outgoing = []
           this.setReadOnly('excluded')
+          break
+        case 'database_read_only':
+          this.outgoing = []
+          this.setReadOnly('database-read-only')
           break
         case 'document_purged':
           this.markPurged()

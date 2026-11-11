@@ -83,6 +83,8 @@
   "crdt": {
     "persistenceDegradedTitle": "História úprav sa na tomto zariadení neukladá",
     "persistenceDegradedBody": "Vaše poznámky sú v bezpečí – sú uložené v trezore ako obyčajné súbory a naďalej sa normálne otvárajú aj ukladajú. Týka sa to len lokálnej histórie úprav a stavu zlučovania na tomto zariadení: uchovávajú sa iba v pamäti, takže pri každom otvorení aplikácie memrynote začínajú odznova.",
+    "databaseReadOnlyTitle": "Toto zariadenie nemôže ukladať zmeny",
+    "databaseReadOnlyBody": "memrynote nemôže zapisovať do priečinka .memry tohto trezoru ani do súborov v ňom, preto sa poznámky otvárajú len na čítanie. Povoľte do nich zápis a reštartujte memrynote.",
     "editsNotSavedTitle": "Vaše posledné úpravy tejto poznámky sa nepodarilo uložiť",
     "editsNotSavedBody": "memrynote to skúša znova, kým je poznámka otvorená. Ak ju zavriete, najprv si skopírujte, čo ste napísali.",
     "writebackFailedTitle": "Súbor poznámky na disku sa nepodarilo aktualizovať",

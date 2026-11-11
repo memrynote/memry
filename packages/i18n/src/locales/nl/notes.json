@@ -192,6 +192,7 @@
   },
   "editor": {
     "bodySyncPending": "Synchroniseren – de inhoud van deze notitie is mogelijk nog onderweg",
+    "databaseReadOnly": "Alleen-lezen. Dit apparaat kan geen wijzigingen opslaan.",
     "taskRemoval": {
       "title": "{count, plural, one {Taak uit deze notitie verwijderd} other {# taken uit deze notitie verwijderd}}",
       "description": "{count, plural, one {Wil je deze taak in Taken houden of overal verwijderen?} other {Wil je deze taken in Taken houden of overal verwijderen?}}",

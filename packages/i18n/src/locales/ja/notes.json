@@ -192,6 +192,7 @@
   },
   "editor": {
     "bodySyncPending": "同期中です。このノートの内容はまだ届いていない可能性があります",
+    "databaseReadOnly": "読み取り専用です。このデバイスでは変更を保存できません。",
     "taskRemoval": {
       "title": "{count, plural, other {このノートからタスク # 件を削除しました}}",
       "description": "{count, plural, other {タスクに残しますか？それともすべての場所から削除しますか？}}",
