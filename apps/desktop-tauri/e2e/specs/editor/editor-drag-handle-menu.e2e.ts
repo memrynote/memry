@@ -112,20 +112,28 @@ test('keeps the Turn into submenu open through a hesitation on the way to it', a
   await openNoteWithLines(page, label('Drag Menu Hesitation'), lines)
 
   const target = page.locator('.bn-block-content').filter({ hasText: /^Line 20$/ })
-  await target.evaluate((el: HTMLElement) => el.scrollIntoView({ block: 'center' }))
-  // BlockNote hides the side menu on any scroll of its ancestors and shows it again only on a
-  // pointer move. The scroll's events can land after the hover on a loaded runner (one `scroll`
-  // per scrolled ancestor, each at a later rendering update), and with the pointer still the handle
-  // never came back: the click below timed out on a missing handle (#4227, linux-x64 merge-group
-  // run 43006737328). Moving the pointer again until the handle shows outlasts any late scroll.
-  const handle = page.locator('[data-test="dragHandle"]').first()
+  // BlockNote hides the side menu on any scroll of its ancestors, and a `scroll` event is
+  // dispatched in the rendering update before that frame's animation callbacks. Resolving on the
+  // next frame keeps this scroll's event from landing after the hover below.
+  await target.evaluate(
+    (el: HTMLElement) =>
+      new Promise<void>((resolve) => {
+        el.scrollIntoView({ block: 'center' })
+        requestAnimationFrame(() => resolve())
+      })
+  )
   const line = await boxOf(target)
-  let nudge = 0
+  await page.mouse.move(line.x + line.width / 2, line.y + line.height / 2)
+  // The side menu mounts at the editor's origin, here scrolled out of view above, and moves beside
+  // the line a task later. A click in between scrolled the editor to the unplaced handle, the scroll
+  // closed the menu, and with the pointer still the handle never came back (#4227, linux-x64 runs
+  // 43006737328 and 43012776097). The click waits until the handle sits beside Line 20.
+  const handle = page.locator('[data-test="dragHandle"]').first()
   await expect
     .poll(async () => {
-      nudge = 1 - nudge
-      await page.mouse.move(line.x + line.width / 2, line.y + line.height / 2 + nudge)
-      return handle.isVisible()
+      const box = await handle.boundingBox()
+      const middle = box ? box.y + box.height / 2 : -1
+      return middle >= line.y && middle <= line.y + line.height
     })
     .toBe(true)
   await handle.click()
