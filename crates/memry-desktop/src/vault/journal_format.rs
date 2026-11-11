@@ -343,6 +343,23 @@ impl JournalDays {
         Some(date.to_string())
     }
 
+    /// Whether `path` would be the day `date` (`YYYY-MM-DD`) with the journal folder anywhere
+    /// above it: some `/`-bounded tail of it, without `.md`, parses in the format to `date`. A
+    /// held day's file that no longer does was renamed away from its day, and no follow of the
+    /// journal folder makes it the day again (`notes::owed_moves::renamed_away`).
+    pub fn names_day_anywhere(&self, path: &str, date: &str) -> bool {
+        let Some(stem) = path.strip_suffix(".md") else {
+            return false;
+        };
+        std::iter::once(0)
+            .chain(stem.match_indices('/').map(|(at, _)| at + 1))
+            .any(|at| {
+                self.format
+                    .parse(&stem[at..])
+                    .is_some_and(|day| day.to_string() == date)
+            })
+    }
+
     /// Where the file of `date` (`YYYY-MM-DD`) goes (`getJournalRelativePath`): the date in the
     /// format under the journal folder, with `.md`. With no folder configured it goes in the
     /// vault root, as Electron writes it, though [`Self::day_of`] names no day there. `None` for

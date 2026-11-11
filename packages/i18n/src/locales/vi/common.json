@@ -1679,7 +1679,11 @@
     "journalChangeWaitsSettingsHint": "Memry đã đóng khi đang di chuyển các mục nhật ký cho một thay đổi cài đặt, và không thể đưa chúng về chỗ cũ cho đến khi đọc được .memry/config.json. Hãy sửa tệp, rồi khởi động lại Memry. Các mục của bạn vẫn an toàn.",
     "journalChangeWaitsTakenHint": "Memry đã đóng khi đang di chuyển các mục nhật ký cho một thay đổi cài đặt. Có một tệp hoặc thư mục khác ở chỗ mà một mục cần quay về. Hãy chuyển nó đi chỗ khác, rồi khởi động lại Memry. Các mục của bạn vẫn an toàn.",
     "journalChangeWaitsHint": "Memry đã đóng khi đang di chuyển các mục nhật ký cho một thay đổi cài đặt, và không thể đưa chúng về chỗ cũ. Memry sẽ thử lại vào lần tới mở kho này. Cho đến lúc đó, không thể di chuyển hoặc xóa các thư mục nhật ký. Các mục của bạn vẫn an toàn.",
+    "journalChangeWaitsRefusedHint": "Memry không thể hoàn tất việc di chuyển các mục nhật ký cho một thay đổi cài đặt, và không thể đưa tất cả về chỗ cũ. Memry sẽ thử lại vào lần tới mở kho này. Cho đến lúc đó, không thể di chuyển hoặc xóa các thư mục nhật ký. Các mục của bạn vẫn an toàn.",
     "movesWait": "Một số ghi chú chưa thể di chuyển",
-    "movesWaitHint": "Memry đã đóng khi đang di chuyển hoặc đổi tên các ghi chú này, và không thể hoàn tất. Cho đến khi xong, không thể di chuyển hoặc đổi tên chúng. Memry sẽ thử lại vào lần tới mở kho này."
+    "movesWaitHint": "Memry đã đóng khi đang di chuyển hoặc đổi tên các ghi chú này, và không thể hoàn tất. Cho đến khi xong, không thể di chuyển hoặc đổi tên chúng. Memry sẽ thử lại vào lần tới mở kho này.",
+    "journalDaysRenamed": "Một số mục nhật ký không còn mang tên là ngày",
+    "journalDaysRenamedHint": "Các mục nhật ký này đã được đổi tên bên ngoài Memry trong khi thư mục của chúng chờ cài đặt thư mục nhật ký, nên tên của chúng không còn là ngày. Chúng vẫn là mục nhật ký cho đến khi bạn đổi lại tên. Chuyển một mục thành ghi chú sẽ xóa mục nhật ký đó trên mọi thiết bị của bạn và giữ nội dung của nó dưới dạng ghi chú.",
+    "turnIntoNotes": "Chuyển thành ghi chú"
   }
 }

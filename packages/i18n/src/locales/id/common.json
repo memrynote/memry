@@ -1679,7 +1679,11 @@
     "journalChangeWaitsSettingsHint": "Memry tertutup saat memindahkan entri jurnal untuk perubahan pengaturan, dan tidak bisa mengembalikannya sampai bisa membaca .memry/config.json. Perbaiki file tersebut, lalu mulai ulang Memry. Entri Anda aman.",
     "journalChangeWaitsTakenHint": "Memry tertutup saat memindahkan entri jurnal untuk perubahan pengaturan. Ada file atau folder lain di tempat sebuah entri harus kembali. Pindahkan file atau folder itu, lalu mulai ulang Memry. Entri Anda aman.",
     "journalChangeWaitsHint": "Memry tertutup saat memindahkan entri jurnal untuk perubahan pengaturan, dan tidak bisa mengembalikannya. Memry akan mencoba lagi saat brankas ini dibuka berikutnya. Sampai saat itu, folder jurnal tidak bisa dipindahkan atau dihapus. Entri Anda aman.",
+    "journalChangeWaitsRefusedHint": "Memry tidak bisa menyelesaikan pemindahan entri jurnal untuk perubahan pengaturan, dan tidak bisa mengembalikan semuanya. Memry akan mencoba lagi saat brankas ini dibuka berikutnya. Sampai saat itu, folder jurnal tidak bisa dipindahkan atau dihapus. Entri Anda aman.",
     "movesWait": "Beberapa catatan belum bisa dipindahkan",
-    "movesWaitHint": "Memry tertutup saat memindahkan atau mengganti nama catatan-catatan ini, dan tidak bisa menyelesaikannya. Catatan ini tidak bisa dipindahkan atau diganti namanya sampai selesai. Memry akan mencoba lagi saat brankas ini dibuka berikutnya."
+    "movesWaitHint": "Memry tertutup saat memindahkan atau mengganti nama catatan-catatan ini, dan tidak bisa menyelesaikannya. Catatan ini tidak bisa dipindahkan atau diganti namanya sampai selesai. Memry akan mencoba lagi saat brankas ini dibuka berikutnya.",
+    "journalDaysRenamed": "Beberapa entri jurnal tidak lagi bernama tanggal",
+    "journalDaysRenamedHint": "Entri jurnal ini diganti namanya di luar Memry saat foldernya menunggu pengaturan folder jurnal, sehingga namanya bukan tanggal lagi. Entri ini tetap menjadi entri jurnal sampai Anda mengembalikan namanya. Mengubah satu entri menjadi catatan akan menghapus entri jurnalnya di semua perangkat Anda dan menyimpan teksnya sebagai catatan.",
+    "turnIntoNotes": "Ubah menjadi catatan"
   }
 }

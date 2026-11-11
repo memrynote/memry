@@ -1679,7 +1679,11 @@
     "journalChangeWaitsSettingsHint": "Memry stängdes medan dagboksanteckningar flyttades för en inställningsändring, och kan inte flytta tillbaka dem förrän .memry/config.json går att läsa. Rätta filen och starta sedan om Memry. Dina anteckningar är säkra.",
     "journalChangeWaitsTakenHint": "Memry stängdes medan dagboksanteckningar flyttades för en inställningsändring. En annan fil eller mapp ligger där en anteckning ska tillbaka. Flytta undan den och starta sedan om Memry. Dina anteckningar är säkra.",
     "journalChangeWaitsHint": "Memry stängdes medan dagboksanteckningar flyttades för en inställningsändring, och kunde inte flytta tillbaka dem. Det försöker igen nästa gång valvet öppnas. Tills dess kan dagboksmapparna inte flyttas eller tas bort. Dina anteckningar är säkra.",
+    "journalChangeWaitsRefusedHint": "Memry kunde inte slutföra flytten av dagboksanteckningar för en inställningsändring, och kunde inte flytta tillbaka alla. Det försöker igen nästa gång valvet öppnas. Tills dess kan dagboksmapparna inte flyttas eller tas bort. Dina anteckningar är säkra.",
     "movesWait": "Vissa anteckningar kan inte flyttas än",
-    "movesWaitHint": "Memry stängdes medan de här anteckningarna flyttades eller bytte namn, och kunde inte slutföra det. De kan inte flyttas eller byta namn förrän det är klart. Memry försöker igen nästa gång valvet öppnas."
+    "movesWaitHint": "Memry stängdes medan de här anteckningarna flyttades eller bytte namn, och kunde inte slutföra det. De kan inte flyttas eller byta namn förrän det är klart. Memry försöker igen nästa gång valvet öppnas.",
+    "journalDaysRenamed": "Vissa dagboksanteckningar har inte längre ett datum som namn",
+    "journalDaysRenamedHint": "Dessa dagboksanteckningar döptes om utanför Memry medan deras mapp väntade på inställningen för dagboksmappen, så deras namn är inte längre datum. De förblir dagboksanteckningar tills du ger dem tillbaka sina namn. Görs en om till en anteckning tas dagboksanteckningen bort på alla dina enheter och texten behålls som anteckning.",
+    "turnIntoNotes": "Gör om till anteckningar"
   }
 }

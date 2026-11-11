@@ -1679,7 +1679,11 @@
     "journalChangeWaitsSettingsHint": "O Memry fechou enquanto movia entradas do diário para uma alteração de configurações, e não consegue devolvê-las até conseguir ler .memry/config.json. Corrija o arquivo e reinicie o Memry. Suas entradas estão seguras.",
     "journalChangeWaitsTakenHint": "O Memry fechou enquanto movia entradas do diário para uma alteração de configurações. Há outro arquivo ou pasta onde uma entrada precisa voltar. Tire-o do caminho e reinicie o Memry. Suas entradas estão seguras.",
     "journalChangeWaitsHint": "O Memry fechou enquanto movia entradas do diário para uma alteração de configurações, e não conseguiu devolvê-las. Ele tentará de novo na próxima vez que abrir este cofre. Até lá, as pastas do diário não podem ser movidas nem excluídas. Suas entradas estão seguras.",
+    "journalChangeWaitsRefusedHint": "O Memry não conseguiu concluir a movimentação de entradas do diário para uma alteração de configurações, nem devolver todas. Ele tentará de novo na próxima vez que abrir este cofre. Até lá, as pastas do diário não podem ser movidas nem excluídas. Suas entradas estão seguras.",
     "movesWait": "Algumas notas ainda não podem ser movidas",
-    "movesWaitHint": "O Memry fechou enquanto movia ou renomeava estas notas, e não conseguiu terminar. Elas não podem ser movidas nem renomeadas até que isso aconteça. O Memry tentará de novo na próxima vez que abrir este cofre."
+    "movesWaitHint": "O Memry fechou enquanto movia ou renomeava estas notas, e não conseguiu terminar. Elas não podem ser movidas nem renomeadas até que isso aconteça. O Memry tentará de novo na próxima vez que abrir este cofre.",
+    "journalDaysRenamed": "Algumas entradas do diário não têm mais uma data como nome",
+    "journalDaysRenamedHint": "Estas entradas do diário foram renomeadas fora do Memry enquanto a pasta delas aguardava a configuração da pasta do diário, então seus nomes não são mais datas. Elas continuam como entradas do diário até você restaurar os nomes. Converter uma em nota remove a entrada do diário em todos os seus dispositivos e mantém o texto como nota.",
+    "turnIntoNotes": "Converter em notas"
   }
 }

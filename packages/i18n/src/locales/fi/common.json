@@ -1679,7 +1679,11 @@
     "journalChangeWaitsSettingsHint": "Memry sulkeutui siirtäessään päiväkirjamerkintöjä asetusten muutosta varten, eikä voi palauttaa niitä ennen kuin se pystyy lukemaan tiedoston .memry/config.json. Korjaa tiedosto ja käynnistä Memry uudelleen. Merkintäsi ovat turvassa.",
     "journalChangeWaitsTakenHint": "Memry sulkeutui siirtäessään päiväkirjamerkintöjä asetusten muutosta varten. Toinen tiedosto tai kansio on paikassa, johon merkinnän pitää palata. Siirrä se pois tieltä ja käynnistä Memry uudelleen. Merkintäsi ovat turvassa.",
     "journalChangeWaitsHint": "Memry sulkeutui siirtäessään päiväkirjamerkintöjä asetusten muutosta varten, eikä pystynyt palauttamaan niitä. Se yrittää uudelleen, kun tämä holvi avataan seuraavan kerran. Siihen asti päiväkirjakansioita ei voi siirtää tai poistaa. Merkintäsi ovat turvassa.",
+    "journalChangeWaitsRefusedHint": "Memry ei saanut päiväkirjamerkintöjen siirtoa asetusten muutosta varten valmiiksi eikä pystynyt palauttamaan niitä kaikkia. Se yrittää uudelleen, kun tämä holvi avataan seuraavan kerran. Siihen asti päiväkirjakansioita ei voi siirtää tai poistaa. Merkintäsi ovat turvassa.",
     "movesWait": "Joitakin muistiinpanoja ei voi vielä siirtää",
-    "movesWaitHint": "Memry sulkeutui siirtäessään tai nimetessään uudelleen näitä muistiinpanoja, eikä saanut työtä valmiiksi. Niitä ei voi siirtää tai nimetä uudelleen ennen kuin se on valmis. Memry yrittää uudelleen, kun tämä holvi avataan seuraavan kerran."
+    "movesWaitHint": "Memry sulkeutui siirtäessään tai nimetessään uudelleen näitä muistiinpanoja, eikä saanut työtä valmiiksi. Niitä ei voi siirtää tai nimetä uudelleen ennen kuin se on valmis. Memry yrittää uudelleen, kun tämä holvi avataan seuraavan kerran.",
+    "journalDaysRenamed": "Joidenkin päiväkirjamerkintöjen nimi ei ole enää päivämäärä",
+    "journalDaysRenamedHint": "Nämä päiväkirjamerkinnät nimettiin uudelleen Memryn ulkopuolella, kun niiden kansio odotti päiväkirjakansion asetusta, joten niiden nimet eivät ole enää päivämääriä. Ne pysyvät päiväkirjamerkintöinä, kunnes palautat niiden nimet. Kun muutat merkinnän muistiinpanoksi, se poistuu päiväkirjasta kaikilla laitteillasi ja sen teksti säilyy muistiinpanona.",
+    "turnIntoNotes": "Muuta muistiinpanoiksi"
   }
 }

@@ -1679,7 +1679,11 @@
     "journalChangeWaitsSettingsHint": "Memry tertutup semasa mengalihkan entri jurnal untuk perubahan tetapan, dan tidak dapat meletakkannya semula sehingga ia dapat membaca .memry/config.json. Betulkan fail itu, kemudian mulakan semula Memry. Entri anda selamat.",
     "journalChangeWaitsTakenHint": "Memry tertutup semasa mengalihkan entri jurnal untuk perubahan tetapan. Fail atau folder lain berada di tempat sebuah entri perlu kembali. Alihkannya, kemudian mulakan semula Memry. Entri anda selamat.",
     "journalChangeWaitsHint": "Memry tertutup semasa mengalihkan entri jurnal untuk perubahan tetapan, dan tidak dapat meletakkannya semula. Ia akan mencuba lagi apabila membuka bilik kebal ini kali seterusnya. Sehingga itu, folder jurnal tidak boleh dialihkan atau dipadam. Entri anda selamat.",
+    "journalChangeWaitsRefusedHint": "Memry tidak dapat menyelesaikan pengalihan entri jurnal untuk perubahan tetapan, dan tidak dapat meletakkan semuanya semula. Ia akan mencuba lagi apabila membuka bilik kebal ini kali seterusnya. Sehingga itu, folder jurnal tidak boleh dialihkan atau dipadam. Entri anda selamat.",
     "movesWait": "Sesetengah nota belum boleh dialihkan",
-    "movesWaitHint": "Memry tertutup semasa mengalihkan atau menamakan semula nota ini, dan tidak dapat menyelesaikannya. Nota ini tidak boleh dialihkan atau dinamakan semula sehingga ia selesai. Memry akan mencuba lagi apabila membuka bilik kebal ini kali seterusnya."
+    "movesWaitHint": "Memry tertutup semasa mengalihkan atau menamakan semula nota ini, dan tidak dapat menyelesaikannya. Nota ini tidak boleh dialihkan atau dinamakan semula sehingga ia selesai. Memry akan mencuba lagi apabila membuka bilik kebal ini kali seterusnya.",
+    "journalDaysRenamed": "Sesetengah entri jurnal tidak lagi bernama tarikh",
+    "journalDaysRenamedHint": "Entri jurnal ini dinamakan semula di luar Memry semasa foldernya menunggu tetapan folder jurnal, jadi namanya bukan tarikh lagi. Entri ini kekal sebagai entri jurnal sehingga anda menamakannya semula seperti asal. Menukar satu entri kepada nota akan memadam entri jurnalnya pada semua peranti anda dan menyimpan teksnya sebagai nota.",
+    "turnIntoNotes": "Tukar kepada nota"
   }
 }

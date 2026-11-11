@@ -198,13 +198,12 @@ impl VaultTier {
         }
     }
 
-    /// A create reserved `rel` for its note, found a file there that it did not write, and took
-    /// the reservation back. The watcher may have looked at the file meanwhile: under the row it
-    /// saw a change of the reserved note, which no row names now, and under the own-write record
-    /// the create's bytes. Either way it would not report the file again, so it forgets what it
-    /// saw and looks once more, and the file becomes a note of its own. Nothing when `session`
-    /// is not the open one.
-    pub(crate) fn not_written(&self, session: RowSession, rel: &str) {
+    /// The file at `rel` is no longer the item the watcher reported there, and no row names it:
+    /// a create took back its reservation of a file it did not write, or a held journal day
+    /// became a note (`journal::cross`). The watcher would not report the file again, so it
+    /// forgets what it saw and looks once more, and the file becomes a note of its own. Nothing
+    /// when `session` is not the open one.
+    pub(crate) fn look_again(&self, session: RowSession, rel: &str) {
         if let Some(open) = self.current().filter(|open| open.session == session) {
             open.watch().rehome(rel.to_owned());
         }

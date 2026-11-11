@@ -1679,7 +1679,11 @@
     "journalChangeWaitsSettingsHint": "Memry sloot af terwijl het journaalitems verplaatste voor een instellingswijziging, en kan ze pas terugzetten als het .memry/config.json kan lezen. Herstel het bestand en start Memry opnieuw. Je items zijn veilig.",
     "journalChangeWaitsTakenHint": "Memry sloot af terwijl het journaalitems verplaatste voor een instellingswijziging. Er staat een ander bestand of een andere map waar een item terug moet. Haal het weg en start Memry opnieuw. Je items zijn veilig.",
     "journalChangeWaitsHint": "Memry sloot af terwijl het journaalitems verplaatste voor een instellingswijziging, en kon ze niet terugzetten. Het probeert het opnieuw wanneer deze kluis de volgende keer wordt geopend. Tot dan kunnen de journaalmappen niet worden verplaatst of verwijderd. Je items zijn veilig.",
+    "journalChangeWaitsRefusedHint": "Memry kon het verplaatsen van journaalitems voor een instellingswijziging niet afronden, en kon ze niet allemaal terugzetten. Het probeert het opnieuw wanneer deze kluis de volgende keer wordt geopend. Tot dan kunnen de journaalmappen niet worden verplaatst of verwijderd. Je items zijn veilig.",
     "movesWait": "Sommige notities kunnen nog niet worden verplaatst",
-    "movesWaitHint": "Memry sloot af terwijl het deze notities verplaatste of hernoemde, en kon dat niet afronden. Tot dat gebeurt, kunnen ze niet worden verplaatst of hernoemd. Memry probeert het opnieuw wanneer deze kluis de volgende keer wordt geopend."
+    "movesWaitHint": "Memry sloot af terwijl het deze notities verplaatste of hernoemde, en kon dat niet afronden. Tot dat gebeurt, kunnen ze niet worden verplaatst of hernoemd. Memry probeert het opnieuw wanneer deze kluis de volgende keer wordt geopend.",
+    "journalDaysRenamed": "Sommige journaalitems hebben geen datum meer als naam",
+    "journalDaysRenamedHint": "Deze journaalitems zijn buiten Memry hernoemd terwijl hun map wachtte op de instelling van de journaalmap, dus hun namen zijn geen datums meer. Ze blijven journaalitems tot je hun naam terugzet. Als je er een omzet in een notitie, verdwijnt het journaalitem op al je apparaten en blijft de tekst bewaard als notitie.",
+    "turnIntoNotes": "Omzetten in notities"
   }
 }

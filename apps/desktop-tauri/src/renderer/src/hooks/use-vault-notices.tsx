@@ -73,6 +73,8 @@ const toastId = (kind: Kind): string => `vault-notice-${kind}`
 let shownOpen: number | null = null
 const current = new Set<Kind>()
 const closed = new Set<Kind>()
+/** A click that turns renamed journal entries into notes is still being answered. */
+let crossing = false
 
 /** Listens for the open vault's notices. Should be used once in the vault shell. */
 export function useVaultNotices(): void {
@@ -205,6 +207,7 @@ export function useVaultNotices(): void {
           const hint = {
             settings: t('vaultNotice.journalChangeWaitsSettingsHint'),
             taken: t('vaultNotice.journalChangeWaitsTakenHint'),
+            refused: t('vaultNotice.journalChangeWaitsRefusedHint'),
             unknown: t('vaultNotice.journalChangeWaitsHint')
           }[holds.kind]
           toast.warning(t('vaultNotice.journalChangeWaits'), {
@@ -214,7 +217,7 @@ export function useVaultNotices(): void {
                 ? listed(hint, [{ key: holds.path, name: fileName(holds.path) }], false, '')
                 : hint,
             action:
-              holds.kind === 'unknown'
+              holds.kind === 'unknown' || holds.kind === 'refused'
                 ? undefined
                 : reveal(holds.path, 'what holds a journal change')
           })
@@ -234,6 +237,50 @@ export function useVaultNotices(): void {
               t('vaultNotice.moreUnlisted')
             ),
             action: first ? reveal(first.path, 'a note whose move waits') : undefined
+          })
+          return
+        }
+        // Electron crosses each of these into a note at the rename; here the user does.
+        case 'journalDaysRenamed': {
+          const ids = notice.days.map((day) => day.noteId)
+          const cross = (): void => {
+            if (crossing) return
+            crossing = true
+            commands
+              .journalCrossIntoNotes(ids)
+              .then(({ crossed }) => {
+                if (crossed < ids.length) toast.error(t('toast.actionFailed'))
+              })
+              .catch((error: unknown) => {
+                log.error('renamed journal entries could not be turned into notes', error)
+                toast.error(t('toast.actionFailed'))
+              })
+              .finally(() => {
+                crossing = false
+              })
+          }
+          toast.warning(t('vaultNotice.journalDaysRenamed'), {
+            ...sticky,
+            description: listed(
+              t('vaultNotice.journalDaysRenamedHint'),
+              notice.days.map((day) => ({
+                key: day.noteId,
+                name: fileName(day.path).replace(/\.md$/i, '')
+              })),
+              notice.more,
+              t('vaultNotice.moreUnlisted')
+            ),
+            action:
+              ids.length > 0
+                ? {
+                    label: t('vaultNotice.turnIntoNotes'),
+                    onClick: (event) => {
+                      // The toast goes when the notice clears.
+                      event.preventDefault()
+                      cross()
+                    }
+                  }
+                : undefined
           })
           return
         }

@@ -1679,7 +1679,11 @@
     "journalChangeWaitsSettingsHint": "Memry closed while moving journal entries for a settings change, and can't put them back until it can read .memry/config.json. Fix the file, then restart Memry. Your entries are safe.",
     "journalChangeWaitsTakenHint": "Memry closed while moving journal entries for a settings change. Another file or folder is where an entry needs to go back. Move it out of the way, then restart Memry. Your entries are safe.",
     "journalChangeWaitsHint": "Memry closed while moving journal entries for a settings change, and couldn't put them back. It tries again the next time it opens this vault. Until then, the journal folders can't be moved or deleted. Your entries are safe.",
+    "journalChangeWaitsRefusedHint": "Memry couldn't finish moving journal entries for a settings change, and couldn't move all of them back. It tries again the next time it opens this vault. Until then, the journal folders can't be moved or deleted. Your entries are safe.",
     "movesWait": "Some notes can't be moved yet",
-    "movesWaitHint": "Memry closed while moving or renaming these notes, and couldn't finish. They can't be moved or renamed until it does. Memry tries again the next time it opens this vault."
+    "movesWaitHint": "Memry closed while moving or renaming these notes, and couldn't finish. They can't be moved or renamed until it does. Memry tries again the next time it opens this vault.",
+    "journalDaysRenamed": "Some journal entries no longer have a date name",
+    "journalDaysRenamedHint": "These journal entries were renamed outside Memry while their folder waited for the journal folder setting, so their names are no longer dates. They stay journal entries until you rename them back. Turning one into a note removes its journal entry on all your devices and keeps its text as a note.",
+    "turnIntoNotes": "Turn into notes"
   }
 }

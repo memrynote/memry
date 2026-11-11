@@ -1679,7 +1679,11 @@
     "journalChangeWaitsSettingsHint": "Memry zamknął się podczas przenoszenia wpisów dziennika w ramach zmiany ustawień i nie może ich przywrócić, dopóki nie odczyta pliku .memry/config.json. Popraw plik, a następnie uruchom Memry ponownie. Twoje wpisy są bezpieczne.",
     "journalChangeWaitsTakenHint": "Memry zamknął się podczas przenoszenia wpisów dziennika w ramach zmiany ustawień. W miejscu, do którego wpis musi wrócić, jest inny plik lub folder. Usuń go z drogi, a następnie uruchom Memry ponownie. Twoje wpisy są bezpieczne.",
     "journalChangeWaitsHint": "Memry zamknął się podczas przenoszenia wpisów dziennika w ramach zmiany ustawień i nie mógł ich przywrócić. Spróbuje ponownie przy następnym otwarciu tego sejfu. Do tego czasu folderów dziennika nie można przenieść ani usunąć. Twoje wpisy są bezpieczne.",
+    "journalChangeWaitsRefusedHint": "Memry nie zdołał dokończyć przenoszenia wpisów dziennika w ramach zmiany ustawień ani przywrócić ich wszystkich. Spróbuje ponownie przy następnym otwarciu tego sejfu. Do tego czasu folderów dziennika nie można przenieść ani usunąć. Twoje wpisy są bezpieczne.",
     "movesWait": "Niektórych notatek nie można jeszcze przenieść",
-    "movesWaitHint": "Memry zamknął się podczas przenoszenia lub zmiany nazwy tych notatek i nie zdołał dokończyć. Do tego czasu nie można ich przenieść ani zmienić ich nazwy. Memry spróbuje ponownie przy następnym otwarciu tego sejfu."
+    "movesWaitHint": "Memry zamknął się podczas przenoszenia lub zmiany nazwy tych notatek i nie zdołał dokończyć. Do tego czasu nie można ich przenieść ani zmienić ich nazwy. Memry spróbuje ponownie przy następnym otwarciu tego sejfu.",
+    "journalDaysRenamed": "Niektóre wpisy dziennika nie mają już daty jako nazwy",
+    "journalDaysRenamedHint": "Nazwy tych wpisów dziennika zmieniono poza Memry, gdy ich folder czekał na ustawienie folderu dziennika, więc ich nazwy nie są już datami. Pozostaną wpisami dziennika, dopóki nie przywrócisz ich nazw. Zamiana wpisu na notatkę usuwa ten wpis dziennika na wszystkich Twoich urządzeniach, a jego tekst zachowuje jako notatkę.",
+    "turnIntoNotes": "Zamień na notatki"
   }
 }

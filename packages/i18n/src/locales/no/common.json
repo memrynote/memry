@@ -1679,7 +1679,11 @@
     "journalChangeWaitsSettingsHint": "Memry ble lukket mens dagbokoppføringer ble flyttet for en innstillingsendring, og kan ikke legge dem tilbake før .memry/config.json kan leses. Rett filen, og start deretter Memry på nytt. Oppføringene dine er trygge.",
     "journalChangeWaitsTakenHint": "Memry ble lukket mens dagbokoppføringer ble flyttet for en innstillingsendring. En annen fil eller mappe ligger der en oppføring skal tilbake. Flytt den unna, og start deretter Memry på nytt. Oppføringene dine er trygge.",
     "journalChangeWaitsHint": "Memry ble lukket mens dagbokoppføringer ble flyttet for en innstillingsendring, og kunne ikke legge dem tilbake. Den prøver igjen neste gang dette hvelvet åpnes. Inntil da kan dagbokmappene ikke flyttes eller slettes. Oppføringene dine er trygge.",
+    "journalChangeWaitsRefusedHint": "Memry fikk ikke fullført flyttingen av dagbokoppføringer for en innstillingsendring, og kunne ikke legge alle tilbake. Den prøver igjen neste gang dette hvelvet åpnes. Inntil da kan dagbokmappene ikke flyttes eller slettes. Oppføringene dine er trygge.",
     "movesWait": "Noen notater kan ikke flyttes ennå",
-    "movesWaitHint": "Memry ble lukket mens disse notatene ble flyttet eller gitt nytt navn, og kunne ikke fullføre. De kan ikke flyttes eller gis nytt navn før det er gjort. Memry prøver igjen neste gang dette hvelvet åpnes."
+    "movesWaitHint": "Memry ble lukket mens disse notatene ble flyttet eller gitt nytt navn, og kunne ikke fullføre. De kan ikke flyttes eller gis nytt navn før det er gjort. Memry prøver igjen neste gang dette hvelvet åpnes.",
+    "journalDaysRenamed": "Noen dagbokoppføringer har ikke lenger en dato som navn",
+    "journalDaysRenamedHint": "Disse dagbokoppføringene ble gitt nytt navn utenfor Memry mens mappen deres ventet på innstillingen for dagbokmappen, så navnene deres er ikke lenger datoer. De forblir dagbokoppføringer til du gir dem navnene tilbake. Gjør du en om til et notat, fjernes dagbokoppføringen på alle enhetene dine, og teksten beholdes som et notat.",
+    "turnIntoNotes": "Gjør om til notater"
   }
 }

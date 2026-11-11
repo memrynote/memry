@@ -1679,7 +1679,11 @@
     "journalChangeWaitsSettingsHint": "Memry wurde beendet, während es Journaleinträge für eine Einstellungsänderung verschob, und kann sie erst zurücklegen, wenn es .memry/config.json lesen kann. Korrigiere die Datei und starte Memry dann neu. Deine Einträge sind sicher.",
     "journalChangeWaitsTakenHint": "Memry wurde beendet, während es Journaleinträge für eine Einstellungsänderung verschob. Eine andere Datei oder ein anderer Ordner liegt dort, wohin ein Eintrag zurück muss. Räume sie aus dem Weg und starte Memry dann neu. Deine Einträge sind sicher.",
     "journalChangeWaitsHint": "Memry wurde beendet, während es Journaleinträge für eine Einstellungsänderung verschob, und konnte sie nicht zurücklegen. Es versucht es erneut, wenn dieser Tresor das nächste Mal geöffnet wird. Bis dahin können die Journalordner nicht verschoben oder gelöscht werden. Deine Einträge sind sicher.",
+    "journalChangeWaitsRefusedHint": "Memry konnte das Verschieben von Journaleinträgen für eine Einstellungsänderung nicht abschließen und nicht alle zurücklegen. Es versucht es erneut, wenn dieser Tresor das nächste Mal geöffnet wird. Bis dahin können die Journalordner nicht verschoben oder gelöscht werden. Deine Einträge sind sicher.",
     "movesWait": "Einige Notizen können noch nicht verschoben werden",
-    "movesWaitHint": "Memry wurde beendet, während es diese Notizen verschob oder umbenannte, und konnte das nicht abschließen. Bis dahin können sie nicht verschoben oder umbenannt werden. Memry versucht es erneut, wenn dieser Tresor das nächste Mal geöffnet wird."
+    "movesWaitHint": "Memry wurde beendet, während es diese Notizen verschob oder umbenannte, und konnte das nicht abschließen. Bis dahin können sie nicht verschoben oder umbenannt werden. Memry versucht es erneut, wenn dieser Tresor das nächste Mal geöffnet wird.",
+    "journalDaysRenamed": "Einige Journaleinträge haben kein Datum mehr als Namen",
+    "journalDaysRenamedHint": "Diese Journaleinträge wurden außerhalb von Memry umbenannt, während ihr Ordner auf die Einstellung des Journalordners wartete, daher sind ihre Namen keine Daten mehr. Sie bleiben Journaleinträge, bis du sie zurückbenennst. Wird einer in eine Notiz umgewandelt, wird sein Journaleintrag auf allen deinen Geräten entfernt und sein Text als Notiz behalten.",
+    "turnIntoNotes": "In Notizen umwandeln"
   }
 }

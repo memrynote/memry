@@ -22,6 +22,7 @@
 //! the folder carries is held ([`folder_follow`]).
 
 pub mod calendar;
+pub mod cross;
 pub mod day_context;
 pub mod folder_follow;
 pub mod property_rows;
