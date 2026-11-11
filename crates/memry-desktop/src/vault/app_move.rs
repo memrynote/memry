@@ -113,7 +113,9 @@ impl NoteFileMove<'_> {
             self.echo.will_write(self.new, hash);
         }
         if let Err(error) = self.file_move(&source, &target, self.old).run(self.echo) {
-            self.echo.cancel_write(self.new);
+            if self.hash.is_some() {
+                self.echo.cancel_write(self.new);
+            }
             self.forget(lane, writer, note_id);
             return Err(error.into());
         }
