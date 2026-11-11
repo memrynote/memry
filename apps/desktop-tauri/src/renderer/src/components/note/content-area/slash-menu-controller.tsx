@@ -10,11 +10,16 @@
  * query itself: the menu closes when the query and its 3 shorter prefixes all match nothing,
  * however the characters arrived.
  *
+ * And one more: Enter waits for the current query's rows. BlockNote runs the selected row of the
+ * last list that finished loading, so `/check` and Enter before the `check` lookup returned
+ * inserted Divider, the first row of `/` (#4245). Enter on a stale list is held until that query's
+ * rows load and then runs the first one; it is dropped if the query changes again first.
+ *
  * Copied from `@blocknote/react@0.54.2` (`SuggestionMenuController.tsx` and
  * `SuggestionMenuWrapper.tsx`). Re-diff against upstream on every BlockNote bump.
  */
 
-import { useCallback, useEffect, useMemo, type FC, type ReactNode } from 'react'
+import { useCallback, useEffect, useMemo, useRef, type FC, type ReactNode } from 'react'
 import { SuggestionMenu } from '@blocknote/core/extensions'
 import {
   GenericPopover,
@@ -73,7 +78,25 @@ function SlashMenuWrapper<Item>({
     [onItemClick, closeMenu, clearQuery]
   )
 
-  const { items, usedQuery, loadingState } = useLoadSuggestionMenuItems(query, getItems)
+  // The last lookup that finished, and the query of an Enter waiting for its own lookup.
+  const lastLoaded = useRef<{ query: string; items: Item[] } | undefined>(undefined)
+  const heldEnter = useRef<string | undefined>(undefined)
+  const liveQuery = useCallback(() => suggestionMenu.store.state?.query, [suggestionMenu])
+
+  const loadItems = useCallback(
+    async (lookupQuery: string) => {
+      const loaded = await getItems(lookupQuery)
+      lastLoaded.current = { query: lookupQuery, items: loaded }
+      if (heldEnter.current === lookupQuery) {
+        heldEnter.current = undefined
+        if (liveQuery() === lookupQuery && loaded[0] !== undefined) onItemClickCloseMenu(loaded[0])
+      }
+      return loaded
+    },
+    [getItems, liveQuery, onItemClickCloseMenu]
+  )
+
+  const { items, usedQuery, loadingState } = useLoadSuggestionMenuItems(query, loadItems)
 
   useEffect(() => {
     let current = true
@@ -87,12 +110,25 @@ function SlashMenuWrapper<Item>({
     }
   }, [closeMenu, getItems, items.length, usedQuery])
 
-  const { selectedIndex } = useSuggestionMenuKeyboardNavigation(
-    editor,
-    query,
-    items,
-    onItemClickCloseMenu
+  const runEnter = useCallback(
+    (item: Item) => {
+      // The extension's state, not `query`: keys typed in the frame before Enter are not rendered.
+      const current = liveQuery()
+      const loaded = lastLoaded.current
+      if (current === usedQuery) {
+        onItemClickCloseMenu(item)
+      } else if (loaded !== undefined && loaded.query === current) {
+        // Loaded but not rendered yet: its first row is the one that will show selected.
+        const first = loaded.items[0]
+        if (first !== undefined) onItemClickCloseMenu(first)
+      } else {
+        heldEnter.current = current
+      }
+    },
+    [liveQuery, usedQuery, onItemClickCloseMenu]
   )
+
+  const { selectedIndex } = useSuggestionMenuKeyboardNavigation(editor, query, items, runEnter)
 
   useEffect(() => {
     setContentEditableProps((p) => ({
