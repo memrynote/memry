@@ -35,7 +35,7 @@
 //!
 //! **A read-only note takes no window edit.** [`Opened::read_only`] says why: its
 //! file is large-file class as its last read measured it (the app shows it in
-//! the large-file viewer), or it is locked. [`Editor::apply_update`] checks on the
+//! the large-file viewer), the vault's database is read-only, or it is locked. [`Editor::apply_update`] checks on the
 //! writer and refuses before the update is applied, stored, queued or fanned out.
 //!
 //! **Every `yrs` transaction on a resident document runs under the resident
@@ -129,6 +129,10 @@ pub enum ReadOnly {
     Locked,
     /// The note's file is one the app never writes ([`ExcludedPaths`]).
     Excluded,
+    /// The vault's database opened read-only ([`Health::persistent`] is false): no edit can be
+    /// stored, so none is taken, and the file, which is written from the stored body, stays as
+    /// it is (#4190).
+    Database,
 }
 
 /// A stored edit.
@@ -172,6 +176,10 @@ pub enum EditorError {
     /// mounts an editor on a large file); this one is shown to the user.
     #[error("This note is too large to edit. It opens read-only.")]
     LargeFile { note_id: String },
+    /// The vault's database is read-only on this device ([`ReadOnly::Database`]): the edit was
+    /// refused before anything was applied.
+    #[error("This device can't save changes: its database is read-only.")]
+    DatabaseReadOnly { note_id: String },
     /// The window's copy is of a document since purged (a delete applied): it
     /// opens the document again before it edits. Nothing was written.
     #[error("{note_id} was deleted since this window opened it")]
@@ -280,8 +288,8 @@ impl Editor {
     /// applies it to the resident document and hands it to the listeners as
     /// [`Origin::Local`] of `holder`. `None`: the update changed nothing, and
     /// nothing was stored or sent. A note that opens read-only refuses it
-    /// ([`EditorError::LargeFile`], [`EditorError::Locked`], [`EditorError::Excluded`]) before
-    /// anything is written or applied. See the module doc for the order.
+    /// ([`EditorError::LargeFile`], [`EditorError::DatabaseReadOnly`], [`EditorError::Locked`],
+    /// [`EditorError::Excluded`]) before anything is written or applied. See the module doc for the order.
     pub fn apply_update(
         &self,
         note_id: &str,
@@ -306,6 +314,7 @@ impl Editor {
                         ReadOnly::LargeFile => EditorError::LargeFile { note_id },
                         ReadOnly::Locked => EditorError::Locked { note_id },
                         ReadOnly::Excluded => EditorError::Excluded { note_id },
+                        ReadOnly::Database => EditorError::DatabaseReadOnly { note_id },
                     });
                 }
                 let document = resident
@@ -543,6 +552,14 @@ fn read_only(
 ) -> Result<Option<ReadOnly>, StorageError> {
     if note_files::is_large_file(conn, note_id)? {
         return Ok(Some(ReadOnly::LargeFile));
+    }
+    let database_read_only =
+        conn.is_readonly(rusqlite::MAIN_DB)
+            .map_err(|error| StorageError::Failed {
+                what: error.to_string(),
+            })?;
+    if database_read_only {
+        return Ok(Some(ReadOnly::Database));
     }
     if vault_locks::is_note_locked(conn, note_id, None)? {
         return Ok(Some(ReadOnly::Locked));
