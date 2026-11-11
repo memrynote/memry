@@ -192,6 +192,7 @@
   },
   "editor": {
     "bodySyncPending": "Wird synchronisiert – der Inhalt dieser Notiz ist möglicherweise noch unterwegs",
+    "databaseReadOnly": "Schreibgeschützt. Dieses Gerät kann keine Änderungen speichern.",
     "taskRemoval": {
       "title": "{count, plural, one {Aufgabe aus dieser Notiz entfernt} other {# Aufgaben aus dieser Notiz entfernt}}",
       "description": "{count, plural, one {Soll sie in Aufgaben bleiben oder überall gelöscht werden?} other {Sollen sie in Aufgaben bleiben oder überall gelöscht werden?}}",

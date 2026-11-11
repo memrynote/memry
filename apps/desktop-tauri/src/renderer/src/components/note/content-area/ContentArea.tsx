@@ -63,6 +63,7 @@ import type { ContentAreaProps } from './types'
 import { WikiLinkMenu } from './wiki-link-menu'
 import { AddNameDialog } from '../names/add-name-dialog'
 import { useAddNameFlow } from '../names/use-add-name-flow'
+import { DatabaseReadOnlyNotice } from '../locked-note-notice'
 import { TagSuggestionPopover } from './tag-suggestion-popover'
 import { WikiLinkPreviewCard } from './wiki-link-preview-card'
 import { FootnoteHoverCard, useFootnotes } from './footnote-hover-card'
@@ -3888,6 +3889,7 @@ export const ContentArea = memo(function ContentArea(props: ContentAreaProps) {
 
   return (
     <TaskPrefetchProvider noteId={props.noteId}>
+      {readOnly === 'database-read-only' && <DatabaseReadOnlyNotice className="mb-2" />}
       <ContentAreaEditor
         {...props}
         // The host refuses this window's edits of a locked or large-file note: the editor takes

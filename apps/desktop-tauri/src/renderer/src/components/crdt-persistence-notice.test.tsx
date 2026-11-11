@@ -46,26 +46,17 @@ describe('CrdtPersistenceNotice', () => {
     expect(toastFn).not.toHaveBeenCalled()
   })
 
-  // One degraded launch is usually a store that quarantined itself and will be
-  // fine next time; saying anything then is noise.
-  it('stays quiet below the consecutive-session threshold', async () => {
-    getHealth.mockResolvedValue({ persistent: false, inMemorySessions: 2 })
-
-    render(<CrdtPersistenceNotice />)
-
-    await waitFor(() => expect(getHealth).toHaveBeenCalled())
-    expect(toastFn).not.toHaveBeenCalled()
-  })
-
-  it('surfaces the notice once the device has degraded for three launches', async () => {
-    getHealth.mockResolvedValue({ persistent: false, inMemorySessions: 3 })
+  // Notes open read-only while the database is read-only (#4190): the user is told on the first
+  // such launch, not the third.
+  it('says this device cannot save on the first launch over a read-only database', async () => {
+    getHealth.mockResolvedValue({ persistent: false, inMemorySessions: 1 })
 
     render(<CrdtPersistenceNotice />)
 
     await waitFor(() => expect(toastFn).toHaveBeenCalledTimes(1))
     const [title, options] = toastFn.mock.calls[0] as [string, { description: string }]
-    expect(title).toBe('crdt.persistenceDegradedTitle')
-    expect(options.description).toBe('crdt.persistenceDegradedBody')
+    expect(title).toBe('crdt.databaseReadOnlyTitle')
+    expect(options.description).toBe('crdt.databaseReadOnlyBody')
   })
 
   // The window may ask before its vault opens, when the host has no verdict yet:
@@ -76,7 +67,7 @@ describe('CrdtPersistenceNotice', () => {
     await waitFor(() => expect(getHealth).toHaveBeenCalledTimes(1))
     expect(toastFn).not.toHaveBeenCalled()
 
-    getHealth.mockResolvedValue({ persistent: false, inMemorySessions: 3 })
+    getHealth.mockResolvedValue({ persistent: false, inMemorySessions: 1 })
     ready.fire()
     await waitFor(() => expect(toastFn).toHaveBeenCalledTimes(1))
     ready.fire()

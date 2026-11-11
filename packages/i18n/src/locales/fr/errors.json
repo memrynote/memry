@@ -83,6 +83,8 @@
   "crdt": {
     "persistenceDegradedTitle": "L'historique des modifications n'est pas conservé sur cet appareil",
     "persistenceDegradedBody": "Vos notes ne risquent rien : elles sont stockées dans votre coffre sous forme de fichiers texte, et s'ouvrent et s'enregistrent toujours normalement. Seuls l'historique local des modifications et l'état de fusion de cet appareil sont conservés en mémoire : ils repartent de zéro à chaque ouverture de memrynote.",
+    "databaseReadOnlyTitle": "Cet appareil ne peut pas enregistrer les modifications",
+    "databaseReadOnlyBody": "memrynote ne peut pas écrire dans le dossier .memry de ce coffre, les notes s'ouvrent donc en lecture seule. Rendez le dossier accessible en écriture, puis redémarrez memrynote.",
     "editsNotSavedTitle": "Vos dernières modifications de cette note n'ont pas pu être enregistrées",
     "editsNotSavedBody": "memrynote continue d'essayer tant que la note reste ouverte. Si vous la fermez, copiez d'abord ce que vous avez saisi.",
     "writebackFailedTitle": "Le fichier d’une note sur le disque n’a pas pu être mis à jour",

@@ -83,6 +83,8 @@
   "crdt": {
     "persistenceDegradedTitle": "Edit history isn't being kept on this device",
     "persistenceDegradedBody": "Your notes are safe — they live in your vault as plain files, and they still open and save normally. Only this device's local edit history and merge state are running in memory, so they start fresh each time memrynote opens.",
+    "databaseReadOnlyTitle": "This device can't save changes",
+    "databaseReadOnlyBody": "memrynote can't write to this vault's .memry folder, so notes open read-only. Make the folder writable, then restart memrynote.",
     "editsNotSavedTitle": "Your latest edits to this note couldn't be saved",
     "editsNotSavedBody": "memrynote keeps trying while the note stays open. If you close it, copy what you typed first.",
     "writebackFailedTitle": "A note's file on disk couldn't be updated",

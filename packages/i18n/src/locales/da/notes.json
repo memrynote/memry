@@ -192,6 +192,7 @@
   },
   "editor": {
     "bodySyncPending": "Synkroniserer – indholdet af denne note er muligvis stadig på vej",
+    "databaseReadOnly": "Skrivebeskyttet. Denne enhed kan ikke gemme ændringer.",
     "taskRemoval": {
       "title": "{count, plural, one {Opgave fjernet fra denne note} other {# opgaver fjernet fra denne note}}",
       "description": "{count, plural, one {Vil du beholde den i Opgaver eller slette den overalt?} other {Vil du beholde dem i Opgaver eller slette dem overalt?}}",

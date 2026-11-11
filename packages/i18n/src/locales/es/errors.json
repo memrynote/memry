@@ -83,6 +83,8 @@
   "crdt": {
     "persistenceDegradedTitle": "El historial de edición no se está guardando en este dispositivo",
     "persistenceDegradedBody": "Tus notas están a salvo: se guardan en tu bóveda como archivos de texto plano y se siguen abriendo y guardando con normalidad. Solo el historial de edición local y el estado de fusión de este dispositivo se mantienen en memoria, así que empiezan de cero cada vez que se abre memrynote.",
+    "databaseReadOnlyTitle": "Este dispositivo no puede guardar cambios",
+    "databaseReadOnlyBody": "memrynote no puede escribir en la carpeta .memry de esta bóveda, así que las notas se abren en solo lectura. Haz que la carpeta admita escritura y reinicia memrynote.",
     "editsNotSavedTitle": "No se pudieron guardar tus últimos cambios en esta nota",
     "editsNotSavedBody": "memrynote sigue intentándolo mientras la nota esté abierta. Si la cierras, copia antes lo que escribiste.",
     "writebackFailedTitle": "No se pudo actualizar el archivo de una nota en el disco",

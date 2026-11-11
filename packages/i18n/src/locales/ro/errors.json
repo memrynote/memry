@@ -83,6 +83,8 @@
   "crdt": {
     "persistenceDegradedTitle": "Istoricul editărilor nu este păstrat pe acest dispozitiv",
     "persistenceDegradedBody": "Notițele sunt în siguranță – se află în seif ca fișiere simple și se deschid și se salvează în continuare normal. Doar istoricul local al editărilor și starea de îmbinare ale acestui dispozitiv sunt păstrate în memorie, așa că pornesc de la zero de fiecare dată când se deschide memrynote.",
+    "databaseReadOnlyTitle": "Acest dispozitiv nu poate salva modificările",
+    "databaseReadOnlyBody": "memrynote nu poate scrie în dosarul .memry al acestui seif, așa că notițele se deschid doar pentru citire. Permiteți scrierea în dosar, apoi reporniți memrynote.",
     "editsNotSavedTitle": "Ultimele modificări ale acestei note nu au putut fi salvate",
     "editsNotSavedBody": "memrynote continuă să încerce cât timp nota rămâne deschisă. Dacă o închizi, copiază mai întâi ce ai scris.",
     "writebackFailedTitle": "Fișierul unei notițe de pe disc nu a putut fi actualizat",

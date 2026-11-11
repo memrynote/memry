@@ -192,6 +192,7 @@
   },
   "editor": {
     "bodySyncPending": "Synchronizuje sa – obsah tejto poznámky sa možno ešte prenáša",
+    "databaseReadOnly": "Len na čítanie. Toto zariadenie nemôže ukladať zmeny.",
     "taskRemoval": {
       "title": "{count, plural, one {Úloha bola odstránená z tejto poznámky} few {# úlohy boli odstránené z tejto poznámky} other {# úloh bolo odstránených z tejto poznámky}}",
       "description": "{count, plural, one {Ponechať ju v Úlohách, alebo ju odstrániť všade?} few {Ponechať ich v Úlohách, alebo ich odstrániť všade?} other {Ponechať ich v Úlohách, alebo ich odstrániť všade?}}",

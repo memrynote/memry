@@ -192,6 +192,7 @@
   },
   "editor": {
     "bodySyncPending": "Syncing — this note's contents may still be on their way",
+    "databaseReadOnly": "Read-only. This device can't save changes.",
     "taskRemoval": {
       "title": "{count, plural, one {Task removed from this note} other {# tasks removed from this note}}",
       "description": "{count, plural, one {Keep it in Tasks, or delete it everywhere?} other {Keep them in Tasks, or delete them everywhere?}}",

@@ -192,6 +192,7 @@
   },
   "editor": {
     "bodySyncPending": "同步中——這則筆記的內容可能還在傳送中",
+    "databaseReadOnly": "唯讀。此裝置無法儲存變更。",
     "taskRemoval": {
       "title": "{count, plural, other {已從這則筆記移除 # 項任務}}",
       "description": "{count, plural, other {要保留在任務中，還是從所有地方刪除？}}",

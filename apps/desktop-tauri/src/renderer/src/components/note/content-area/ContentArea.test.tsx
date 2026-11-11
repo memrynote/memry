@@ -936,7 +936,7 @@ describe('ContentArea', () => {
     expect(contentAreaMocks.blockNoteOptions.collaboration.fragment).toBe(fragment)
   })
 
-  it.each(['locked', 'large-file', 'purged'])(
+  it.each(['locked', 'large-file', 'purged', 'database-read-only'])(
     'takes no edits of a note the host opened read-only (%s)',
     (readOnly) => {
       const doc = new Y.Doc()
@@ -957,6 +957,43 @@ describe('ContentArea', () => {
       expect(onReadOnlyChange).toHaveBeenLastCalledWith(readOnly)
     }
   )
+
+  // The page shows a lock's notice; this device-wide reason has none there, so the editor says
+  // why it takes no typing (#4190).
+  it('says this device cannot save when the host opened the note over a read-only database', () => {
+    const doc = new Y.Doc()
+    contentAreaMocks.yjsState = {
+      fragment: doc.getXmlFragment('blocks'),
+      doc,
+      provider: { doc, isSynced: true },
+      isReady: true,
+      readOnly: 'database-read-only',
+      isRemoteUpdateRef: { current: false }
+    }
+
+    render(<ContentArea noteId="note-1" />)
+
+    expect(screen.getByTestId('note-database-read-only')).toHaveTextContent(
+      "Read-only. This device can't save changes."
+    )
+    expect(screen.getByTestId('blocknote-view')).toHaveAttribute('data-editable', 'false')
+  })
+
+  it('shows no read-only notice for a lock, which the page shows', () => {
+    const doc = new Y.Doc()
+    contentAreaMocks.yjsState = {
+      fragment: doc.getXmlFragment('blocks'),
+      doc,
+      provider: { doc, isSynced: true },
+      isReady: true,
+      readOnly: 'locked',
+      isRemoteUpdateRef: { current: false }
+    }
+
+    render(<ContentArea noteId="note-1" />)
+
+    expect(screen.queryByTestId('note-database-read-only')).toBeNull()
+  })
 
   it('waits for the local Y.Doc binding with no sync session instead of opening a markdown editor', () => {
     // `useCreateBlockNote` builds its collaboration extension exactly once, so a

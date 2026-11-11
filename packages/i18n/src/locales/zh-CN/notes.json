@@ -192,6 +192,7 @@
   },
   "editor": {
     "bodySyncPending": "正在同步——此笔记的内容可能仍在传输中",
+    "databaseReadOnly": "只读。此设备无法保存更改。",
     "taskRemoval": {
       "title": "{count, plural, other {已从此笔记中移除 # 个任务}}",
       "description": "{count, plural, other {保留在任务中，还是从所有位置删除？}}",

@@ -192,6 +192,7 @@
   },
   "editor": {
     "bodySyncPending": "Sincronizando — o conteúdo desta nota ainda pode estar a caminho",
+    "databaseReadOnly": "Somente leitura. Este dispositivo não consegue salvar alterações.",
     "taskRemoval": {
       "title": "{count, plural, one {Tarefa removida desta nota} other {# tarefas removidas desta nota}}",
       "description": "{count, plural, one {Mantê-la em Tarefas ou excluí-la de todos os lugares?} other {Mantê-las em Tarefas ou excluí-las de todos os lugares?}}",
