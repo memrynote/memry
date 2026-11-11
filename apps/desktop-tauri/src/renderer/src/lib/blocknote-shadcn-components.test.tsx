@@ -2,8 +2,15 @@ import { act, fireEvent, render, screen } from '@testing-library/react'
 import { describe, expect, it } from 'vitest'
 import { blockNoteShadCNComponents } from './blocknote-shadcn-components'
 
-const { DropdownMenu, DropdownMenuTrigger, DropdownMenuContent, DropdownMenuItem } =
-  blockNoteShadCNComponents.DropdownMenu!
+const {
+  DropdownMenu,
+  DropdownMenuTrigger,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuSub,
+  DropdownMenuSubTrigger,
+  DropdownMenuSubContent
+} = blockNoteShadCNComponents.DropdownMenu!
 const { Select, SelectTrigger, SelectValue, SelectContent, SelectItem } =
   blockNoteShadCNComponents.Select!
 
@@ -40,6 +47,44 @@ describe('BlockNote dropdown trigger', () => {
     fireEvent.click(trigger, { button: 0 })
     await flushFrames()
     expect(screen.getByText('Delete')).toBeTruthy()
+  })
+})
+
+describe('BlockNote menu placement', () => {
+  // #3967: Base UI drew a menu `fixed` before its first placement, measured it
+  // so, then applied the result as `absolute` inside BlockNote's offset portal
+  // container: the first positioned frame sat one container offset away.
+  it('positions the menu and its submenu with the strategy they render with before placement', async () => {
+    const positions = new Map<Element, Set<string>>()
+    const record = (): void => {
+      for (const positioner of document.querySelectorAll('[role="presentation"]')) {
+        const position = (positioner as HTMLElement).style.position
+        if (!position) continue
+        positions.set(positioner, (positions.get(positioner) ?? new Set()).add(position))
+      }
+    }
+    const observer = new MutationObserver(record)
+    observer.observe(document.body, { subtree: true, childList: true, attributes: true })
+
+    render(
+      <DropdownMenu open modal={false}>
+        <DropdownMenuTrigger render={<button type="button">handle</button>} />
+        <DropdownMenuContent>
+          <DropdownMenuSub open>
+            <DropdownMenuSubTrigger>Turn into</DropdownMenuSubTrigger>
+            <DropdownMenuSubContent>
+              <DropdownMenuItem>Heading 1</DropdownMenuItem>
+            </DropdownMenuSubContent>
+          </DropdownMenuSub>
+        </DropdownMenuContent>
+      </DropdownMenu>
+    )
+    await flushFrames()
+    record()
+    observer.disconnect()
+
+    expect(screen.getByText('Heading 1')).toBeTruthy()
+    expect([...positions.values()].map((seen) => [...seen])).toEqual([['fixed'], ['fixed']])
   })
 })
 
