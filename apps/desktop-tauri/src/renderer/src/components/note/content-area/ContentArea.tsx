@@ -118,6 +118,7 @@ import { isMac } from '@/lib/shortcut-catalog'
 import { checkboxLineMarkdown, serializeBlocksPreservingBlanks } from './markdown-utils'
 import { registerEditorPlugin } from './register-editor-plugin'
 import { createTypingHoldPlugin } from './typing-hold-plugin'
+import { createWindowFocusPlugin } from './window-focus-plugin'
 import { createBlockDirectionPlugin } from './block-direction-plugin'
 import { createAnchorVisibilityPlugin } from './portal/anchor-visibility-plugin'
 import { createPortalTrailingParagraphPlugin } from './portal/portal-trailing-paragraph-plugin'
@@ -1215,6 +1216,14 @@ const ContentAreaEditor = memo(function ContentAreaEditor({
     }))
     return registerEditorPlugin(editor, plugin, (p, plugins) => [p, ...plugins])
   }, [editor])
+
+  // A window switch is not an editor blur: keeps the `/` menu and the other
+  // suggestion menus open across alt-tab (#3967). Prepended so it runs before
+  // TipTap's focusEvents plugin.
+  useEffect(
+    () => registerEditorPlugin(editor, createWindowFocusPlugin(), (p, plugins) => [p, ...plugins]),
+    [editor]
+  )
 
   // Arrow keys into a view block, whose definition is hidden until the caret
   // is in it and so unreachable by the browser's own caret movement (#2488).
