@@ -12,6 +12,8 @@
 //! | a renamed day with text its file lacks stays a day                | `file_crossed` keeps it             |
 //! | a renamed day is not crossed while a journal change waits         | the change owns the days            |
 //! | a locked renamed day is not crossed                               | `refuse_note`                       |
+//! | an excluded renamed day is not crossed                            | `refuse_note`                       |
+//! | a renamed day is not crossed while a save of it waits             | the save is not undone by a revive  |
 
 #[allow(unused_imports)]
 use crate::device_key;
@@ -20,8 +22,10 @@ use crate::vault_env;
 
 use std::fs;
 use std::sync::Arc;
+use std::time::{Duration, Instant};
 
 use memry_core::domain::vault_locks::TargetKind;
+use memry_desktop::journal::update::DayUpdate;
 use memry_desktop::notes::service::NotesService;
 use memry_desktop::vault::consumer::Applied;
 use memry_desktop::vault::notices::{RenamedDay, VaultNotice, VaultNotices};
@@ -31,10 +35,14 @@ use crate::journal_folder::{DAY, crossed, daily, outbox, reopen, row};
 use crate::journal_folder_held::recorded_elsewhere;
 use crate::journal_folder_outside::moved_outside;
 use crate::lock_service::lock;
+use crate::vault_exclude_read_only::exclude;
 use crate::vault_settings::opened_noticing;
 
 const TRIP: &str = "Diary/Trip.md";
 const OTHER_DAY: &str = "j2025-01-03";
+const DATE: &str = "2025-01-02";
+/// Longest a step of a test waits on another thread.
+const WAIT: Duration = Duration::from_secs(25);
 
 /// Two days in `journal/`, carried to `Diary/` outside the app while another build's journal
 /// change holds them, then the first renamed to `Diary/Trip.md`, a name that is no day.
@@ -149,6 +157,12 @@ fn a_renamed_day_turned_into_a_note_syncs_its_delete() {
         .unwrap();
     assert_ne!(note, DAY);
     assert!(outbox(&e, DAY).contains(&"delete".to_owned()));
+    // The new note's create is an `upsert` of its id.
+    assert!(
+        outbox(&e, &note).contains(&"upsert".to_owned()),
+        "{:?}",
+        outbox(&e, &note)
+    );
     assert_eq!(fs::read(e.vault.join(TRIP)).unwrap(), before);
     assert!(e.rows().contains(&row(&note, TRIP)), "{:?}", e.rows());
     assert!(!e.rows().iter().any(|(id, _)| id == DAY), "{:?}", e.rows());
@@ -205,4 +219,62 @@ fn a_locked_renamed_day_is_not_crossed() {
 
     assert!(cross(&e, &notes).is_empty());
     stays_a_day(&mut e, &notices, &before);
+}
+
+/// A day in an excluded folder is not turned into a note.
+#[test]
+fn an_excluded_renamed_day_is_not_crossed() {
+    let (mut e, notes, notices) = renamed_away();
+    recorded_elsewhere(&e, false);
+    exclude(&mut e, &["Diary"]);
+    let before = fs::read(e.vault.join(TRIP)).unwrap();
+
+    assert!(cross(&e, &notes).is_empty());
+    stays_a_day(&mut e, &notices, &before);
+}
+
+/// A save of the day the editor sent before the click that waits behind the cross for the
+/// day's turn keeps it a day: deleted first, the save would make the day again and undo its
+/// sync delete. The save lands on the day, and the day is still listed for the next click.
+#[test]
+fn a_renamed_day_is_not_crossed_while_a_save_of_it_waits() {
+    let (e, notes, notices) = renamed_away();
+    recorded_elsewhere(&e, false);
+    let mut save = None;
+    let open = e.session.current().unwrap();
+    let crossed = notes
+        .cross_renamed_days_checked(&open, &[DAY.to_owned()], &mut || {
+            let (saver, at) = (notes.clone(), open.clone());
+            save = Some(std::thread::spawn(move || {
+                saver.update_day(&at, typed("A day typed"))
+            }));
+            let waited = Instant::now();
+            while notes.day_writes(DATE) < 2 {
+                assert!(waited.elapsed() < WAIT, "the save never queued");
+                std::thread::sleep(Duration::from_millis(5));
+            }
+        })
+        .unwrap();
+    assert!(crossed.is_empty());
+    let saved = save.unwrap().join().unwrap().unwrap();
+    drop(open);
+    assert!(!saved.created, "{saved:?}");
+    assert!(!outbox(&e, DAY).contains(&"delete".to_owned()));
+    assert!(e.read(TRIP).contains("A day typed"));
+    assert!(!e.vault.join("Diary/2025-01-02.md").exists());
+    assert!(e.rows().contains(&row(DAY, TRIP)), "{:?}", e.rows());
+    assert_eq!(renamed_notice(&notices), Some(listed(&e)));
+
+    assert_eq!(cross(&e, &notes), vec![DATE.to_owned()]);
+    assert!(outbox(&e, DAY).contains(&"delete".to_owned()));
+}
+
+fn typed(content: &str) -> DayUpdate {
+    DayUpdate {
+        date: DATE.into(),
+        content: Some(content.into()),
+        tags: None,
+        inline_tags: None,
+        properties: None,
+    }
 }

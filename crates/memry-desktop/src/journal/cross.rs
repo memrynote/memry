@@ -13,8 +13,11 @@
 //! not), the row goes, and the watcher looks at the file again, which the consumer makes a new
 //! note. The file itself is never touched.
 //!
-//! Refused while a journal setting change is recorded (it owns the days until it settles), and
-//! for a locked day; a day that is no longer held and renamed away is left as it is.
+//! Refused while a journal setting change is recorded (it owns the days until it settles), for a
+//! locked or excluded day, and while a write of the day waits for its turn: an editor save sent
+//! before the click that landed after the delete would make the day again, its sync delete
+//! undone, so the day stays one and the user asks again. A day that is no longer held and
+//! renamed away is left as it is.
 
 use super::write::order_key;
 use crate::locks::Locks;
@@ -35,6 +38,18 @@ impl NotesService {
         open: &OpenVault,
         note_ids: &[String],
     ) -> Result<Vec<String>, NotesError> {
+        self.cross_renamed_days_checked(open, note_ids, &mut || {})
+    }
+
+    /// [`Self::cross_renamed_days`] with a hook that runs in each day's turn before the day's
+    /// writes waiting are counted, so a test can queue a save behind the cross.
+    #[doc(hidden)]
+    pub fn cross_renamed_days_checked(
+        &self,
+        open: &OpenVault,
+        note_ids: &[String],
+        in_turn: &mut dyn FnMut(),
+    ) -> Result<Vec<String>, NotesError> {
         let writer = open.vault.notes_writer(self.store.clone())?;
         let mut crossed = Vec::new();
         for note_id in note_ids {
@@ -42,10 +57,9 @@ impl NotesService {
                 tracing::warn!(scope = SCOPE, note_id, "a renamed day to cross is no day");
                 continue;
             };
-            match self
-                .order
-                .run(&order_key(&date), |_| self.cross_now(open, note_id))
-            {
+            match self.order.run(&order_key(&date), |_| {
+                self.cross_now(open, note_id, &date, in_turn)
+            }) {
                 Ok(true) => crossed.push(date),
                 Ok(false) => tracing::warn!(
                     scope = SCOPE,
@@ -63,7 +77,19 @@ impl NotesService {
         Ok(crossed)
     }
 
-    fn cross_now(&self, open: &OpenVault, note_id: &str) -> Result<bool, NotesError> {
+    /// How many writes of the day `date` hold or wait for its turn, for a test.
+    #[doc(hidden)]
+    pub fn day_writes(&self, date: &str) -> usize {
+        self.order.writes(&order_key(date))
+    }
+
+    fn cross_now(
+        &self,
+        open: &OpenVault,
+        note_id: &str,
+        date: &str,
+        in_turn: &mut dyn FnMut(),
+    ) -> Result<bool, NotesError> {
         let root = open.path.as_path();
         // Before the lane (`settings`'s lock order): no journal setting change or folder follow
         // moves the days meanwhile.
@@ -80,6 +106,15 @@ impl NotesService {
             return Ok(false);
         };
         Locks::of(open).refuse_note(note_id, &row.path)?;
+        in_turn();
+        if self.order.writes(&order_key(date)) > 1 {
+            tracing::warn!(
+                scope = SCOPE,
+                note_id,
+                "a renamed held day stays a day: a write of it waits"
+            );
+            return Ok(false);
+        }
         let ctx = IdentityCtx {
             root,
             vault: &open.vault,

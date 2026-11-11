@@ -12,6 +12,7 @@ import type { VaultNotice } from '../../../generated/bindings'
 import { commands } from '../../../generated/bindings'
 import { useFileActionLabels } from '@/hooks/use-file-action-labels'
 import { createLogger } from '@/lib/logger'
+import { flushAllPendingSaves } from '@/lib/save-registry'
 import { onVaultNotices } from '@/services/vault-service'
 
 const log = createLogger('VaultNotices')
@@ -94,7 +95,8 @@ export function useVaultNotices(): void {
       }
     })
 
-    const show = (notice: VaultNotice): void => {
+    /** `changeWaits`: a journal setting change waits, which owns the days until it settles. */
+    const show = (notice: VaultNotice, changeWaits: boolean): void => {
       const sticky = {
         id: toastId(notice.kind),
         duration: Infinity,
@@ -246,8 +248,10 @@ export function useVaultNotices(): void {
           const cross = (): void => {
             if (crossing) return
             crossing = true
-            commands
-              .journalCrossIntoNotes(ids)
+            // Typing not saved yet reaches the day's file first, so the note holds it, and no
+            // save of it lands after the day is deleted and makes it again.
+            flushAllPendingSaves()
+              .then(() => commands.journalCrossIntoNotes(ids))
               .then(({ crossed }) => {
                 if (crossed < ids.length) toast.error(t('toast.actionFailed'))
               })
@@ -270,8 +274,9 @@ export function useVaultNotices(): void {
               notice.more,
               t('vaultNotice.moreUnlisted')
             ),
+            // Refused while the change waits: its own notice is up.
             action:
-              ids.length > 0
+              ids.length > 0 && !changeWaits
                 ? {
                     label: t('vaultNotice.turnIntoNotes'),
                     onClick: (event) => {
@@ -299,9 +304,10 @@ export function useVaultNotices(): void {
         closed.delete(kind)
         toast.dismiss(toastId(kind))
       }
+      const changeWaits = kinds.has('journalChangeWaits')
       for (const notice of notices) {
         current.add(notice.kind)
-        if (!closed.has(notice.kind)) show(notice)
+        if (!closed.has(notice.kind)) show(notice, changeWaits)
       }
     })
   }, [t, revealInFolder])
