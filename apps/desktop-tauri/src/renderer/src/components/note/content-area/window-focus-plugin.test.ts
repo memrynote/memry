@@ -57,6 +57,17 @@ describe('window focus plugin', () => {
     expect(editor.getExtension(SuggestionMenu)!.shown()).toBe(true)
   })
 
+  // The editor took focus while the window was in the background, so no window blur came
+  // first; the window coming to the front then sends the editor a second focus (#3967).
+  it('keeps the slash menu open when the window comes to the front over a focused editor', () => {
+    const editor = editorWithOpenSlashMenu()
+    vi.spyOn(document, 'hasFocus').mockReturnValue(true)
+
+    dispatch(editor, 'focus')
+
+    expect(editor.getExtension(SuggestionMenu)!.shown()).toBe(true)
+  })
+
   it('still closes the slash menu when focus moves elsewhere in the app', () => {
     const editor = editorWithOpenSlashMenu()
     vi.spyOn(document, 'hasFocus').mockReturnValue(true)

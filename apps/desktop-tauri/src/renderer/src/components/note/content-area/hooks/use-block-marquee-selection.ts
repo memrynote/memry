@@ -580,6 +580,12 @@ export function useBlockMarqueeSelection({
       }
 
       function onUp(): void {
+        // A release before the last move's frame ran: measure that move now, or the
+        // selection stops where the previous frame saw the pointer (#3967).
+        if (isMarquee && rafId !== null) {
+          cancelRaf()
+          tick()
+        }
         teardown()
         if (isMarquee) {
           finalize()

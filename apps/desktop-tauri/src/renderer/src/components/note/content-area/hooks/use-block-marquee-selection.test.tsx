@@ -592,6 +592,43 @@ describe('useBlockMarqueeSelection', () => {
     trigger.remove()
   })
 
+  // A release in the same frame as the last move: the frame that would have measured that move
+  // never runs, and the selection has to cover where the pointer was let go, not where the
+  // previous frame saw it (#3967: one block short under a busy CI webview).
+  it('selects up to the release point when the last move has not been painted yet', () => {
+    const frames: FrameRequestCallback[] = []
+    vi.stubGlobal('requestAnimationFrame', (cb: FrameRequestCallback) => frames.push(cb))
+    vi.stubGlobal('cancelAnimationFrame', (id: number) => {
+      frames[id - 1] = () => {}
+    })
+    const runFrames = (): void => {
+      for (const frame of frames.splice(0)) frame(0)
+    }
+    const { trigger, blockContainerRef } = setupDom()
+    const editor = { prosemirrorView: { dom: { blur: vi.fn() } } }
+
+    const { result, unmount } = renderHook(() =>
+      useBlockMarqueeSelection({ editor, blockContainerRef, triggerContainerEl: trigger })
+    )
+
+    act(() => {
+      trigger.dispatchEvent(mouse('mousedown', { clientX: 0, clientY: 0 }))
+      document.dispatchEvent(mouse('mousemove', { clientX: 150, clientY: 30 }))
+      runFrames()
+      document.dispatchEvent(mouse('mousemove', { clientX: 150, clientY: 90 }))
+      document.dispatchEvent(mouse('mouseup', { clientX: 150, clientY: 90 }))
+    })
+    expect([...result.current.selectedBlockIds]).toEqual(['a', 'b', 'c'])
+    expect(result.current.highlightRects.map((rect) => rect.id)).toEqual(['a', 'b', 'c'])
+
+    // The cancelled frame stays cancelled: nothing redraws a marquee box after the release.
+    act(runFrames)
+    expect(result.current.marqueeRect).toBeNull()
+
+    unmount()
+    trigger.remove()
+  })
+
   it('clears a live marquee selection when the press lands in text, without starting a new one', () => {
     const { trigger, blockContainerRef } = setupDom()
     const editor = { prosemirrorView: { dom: { blur: vi.fn() } } }
