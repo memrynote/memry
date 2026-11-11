@@ -1688,7 +1688,11 @@
     "journalChangeWaitsSettingsHint": "Nagsara ang Memry habang inililipat ang mga journal entry para sa isang pagbabago sa setting, at hindi nito maibabalik ang mga ito hangga't hindi nito nababasa ang .memry/config.json. Ayusin ang file, pagkatapos ay i-restart ang Memry. Ligtas ang mga entry mo.",
     "journalChangeWaitsTakenHint": "Nagsara ang Memry habang inililipat ang mga journal entry para sa isang pagbabago sa setting. May ibang file o folder sa lugar na dapat balikan ng isang entry. Alisin ito sa daan, pagkatapos ay i-restart ang Memry. Ligtas ang mga entry mo.",
     "journalChangeWaitsHint": "Nagsara ang Memry habang inililipat ang mga journal entry para sa isang pagbabago sa setting, at hindi nito naibalik ang mga ito. Susubukan nito ulit sa susunod na pagbukas sa vault na ito. Hanggang doon, hindi maililipat o mabubura ang mga journal folder. Ligtas ang mga entry mo.",
+    "journalChangeWaitsRefusedHint": "Hindi natapos ng Memry ang paglilipat ng mga journal entry para sa isang pagbabago sa setting, at hindi nito naibalik ang lahat ng ito. Susubukan nito ulit sa susunod na pagbukas sa vault na ito. Hanggang doon, hindi maililipat o mabubura ang mga journal folder. Ligtas ang mga entry mo.",
     "movesWait": "Hindi pa maililipat ang ilang note",
-    "movesWaitHint": "Nagsara ang Memry habang inililipat o pinapalitan ang pangalan ng mga note na ito, at hindi ito natapos. Hindi maililipat o mapapalitan ang pangalan ng mga ito hangga't hindi ito natatapos. Susubukan ulit ng Memry sa susunod na pagbukas sa vault na ito."
+    "movesWaitHint": "Nagsara ang Memry habang inililipat o pinapalitan ang pangalan ng mga note na ito, at hindi ito natapos. Hindi maililipat o mapapalitan ang pangalan ng mga ito hangga't hindi ito natatapos. Susubukan ulit ng Memry sa susunod na pagbukas sa vault na ito.",
+    "journalDaysRenamed": "Hindi na petsa ang pangalan ng ilang journal entry",
+    "journalDaysRenamedHint": "Pinalitan ang pangalan ng mga journal entry na ito sa labas ng Memry habang naghihintay ang folder nila sa setting ng journal folder, kaya hindi na petsa ang mga pangalan nila. Mananatili silang journal entry hanggang ibalik mo ang pangalan nila. Kapag ginawang note ang isa, mabubura ang journal entry nito sa lahat ng device mo at mananatili ang teksto nito bilang note. Hindi pinananatili ang mga tag nito.",
+    "turnIntoNotes": "Gawing mga note"
   }
 }

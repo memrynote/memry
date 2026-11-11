@@ -1688,7 +1688,11 @@
     "journalChangeWaitsSettingsHint": "Memry se cerró mientras movía entradas del diario por un cambio de ajustes, y no puede devolverlas hasta que pueda leer .memry/config.json. Corrige el archivo y luego reinicia Memry. Tus entradas están a salvo.",
     "journalChangeWaitsTakenHint": "Memry se cerró mientras movía entradas del diario por un cambio de ajustes. Hay otro archivo o carpeta donde una entrada debe volver. Quítalo de en medio y luego reinicia Memry. Tus entradas están a salvo.",
     "journalChangeWaitsHint": "Memry se cerró mientras movía entradas del diario por un cambio de ajustes, y no pudo devolverlas. Lo intentará de nuevo la próxima vez que abra esta bóveda. Hasta entonces, las carpetas del diario no se pueden mover ni eliminar. Tus entradas están a salvo.",
+    "journalChangeWaitsRefusedHint": "Memry no pudo terminar de mover entradas del diario por un cambio de ajustes, ni devolverlas todas. Lo intentará de nuevo la próxima vez que abra esta bóveda. Hasta entonces, las carpetas del diario no se pueden mover ni eliminar. Tus entradas están a salvo.",
     "movesWait": "Algunas notas aún no se pueden mover",
-    "movesWaitHint": "Memry se cerró mientras movía o renombraba estas notas, y no pudo terminar. No se pueden mover ni renombrar hasta que lo haga. Memry lo intentará de nuevo la próxima vez que abra esta bóveda."
+    "movesWaitHint": "Memry se cerró mientras movía o renombraba estas notas, y no pudo terminar. No se pueden mover ni renombrar hasta que lo haga. Memry lo intentará de nuevo la próxima vez que abra esta bóveda.",
+    "journalDaysRenamed": "Algunas entradas del diario ya no tienen una fecha como nombre",
+    "journalDaysRenamedHint": "Estas entradas del diario se renombraron fuera de Memry mientras su carpeta esperaba al ajuste de la carpeta del diario, así que sus nombres ya no son fechas. Seguirán siendo entradas del diario hasta que les devuelvas su nombre. Al convertir una en nota, su entrada del diario se elimina en todos tus dispositivos y su texto se conserva como nota. Sus etiquetas no se conservan.",
+    "turnIntoNotes": "Convertir en notas"
   }
 }

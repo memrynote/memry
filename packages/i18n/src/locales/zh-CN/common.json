@@ -1688,7 +1688,11 @@
     "journalChangeWaitsSettingsHint": "Memry 在为设置更改移动日记条目时关闭了，在能读取 .memry/config.json 之前无法将它们放回。请修复该文件，然后重启 Memry。你的条目是安全的。",
     "journalChangeWaitsTakenHint": "Memry 在为设置更改移动日记条目时关闭了。某个条目需要放回的位置上有另一个文件或文件夹。请将其移开，然后重启 Memry。你的条目是安全的。",
     "journalChangeWaitsHint": "Memry 在为设置更改移动日记条目时关闭了，未能将它们放回。下次打开此保险库时会再试一次。在此之前，日记文件夹无法移动或删除。你的条目是安全的。",
+    "journalChangeWaitsRefusedHint": "Memry 未能完成为设置更改移动日记条目，也未能将它们全部放回。下次打开此保险库时会再试一次。在此之前，日记文件夹无法移动或删除。你的条目是安全的。",
     "movesWait": "部分笔记暂时无法移动",
-    "movesWaitHint": "Memry 在移动或重命名这些笔记时关闭了，未能完成。完成之前，这些笔记无法移动或重命名。下次打开此保险库时 Memry 会再试一次。"
+    "movesWaitHint": "Memry 在移动或重命名这些笔记时关闭了，未能完成。完成之前，这些笔记无法移动或重命名。下次打开此保险库时 Memry 会再试一次。",
+    "journalDaysRenamed": "部分日记条目的名称已不再是日期",
+    "journalDaysRenamedHint": "这些日记条目在其文件夹等待日记文件夹设置时，在 Memry 之外被重命名，因此名称已不再是日期。在你改回名称之前，它们仍是日记条目。将其转换为笔记会在你的所有设备上删除该日记条目，并将其文本保留为笔记。其标签不会保留。",
+    "turnIntoNotes": "转换为笔记"
   }
 }

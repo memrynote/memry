@@ -1,24 +1,19 @@
 // Insert template from the `/` menu, ported from Electron's `insert-template-slash-menu.e2e.ts`
 // (Step 14k, #3531): the template lands at the caret and the rest of the note stays.
-import { blockTexts, openNewNote, paragraphs, setBlocks, typeInEditor } from '../../harness/editor'
+import {
+  blockTexts,
+  expectSuggestionMenuOpen,
+  openNewNote,
+  paragraphs,
+  setBlocks,
+  typeInEditor
+} from '../../harness/editor'
 import { NOTE_EDITOR, vaultOpen } from '../../harness/notes'
 import type { Page } from '../../harness/pw-compat/page'
 import { test, expect } from '../../harness/test'
 import { invoke } from '../../harness/vault-commands'
 
 const label = (prefix: string): string => `${prefix} ${Date.now().toString(36)}`
-
-/**
- * Waits until the `/` menu highlights the template's row, the row Enter runs. The typed query
- * holds the template's name too, so a wait on its text alone passes before the menu opens, and
- * Enter then splits the paragraph (windows-x64, run 42916206983).
- */
-async function expectTemplateRowSelected(page: Page, name: string): Promise<void> {
-  const selected = page
-    .locator('.memry-slash-menu [role="option"][aria-selected="true"]')
-    .filter({ hasText: name })
-  await expect(selected).toHaveCount(1)
-}
 
 async function createTemplate(page: Page, name: string, content: string): Promise<void> {
   await invoke(page, 'templates_create', {
@@ -36,7 +31,7 @@ test('inserts a template at the caret and leaves the rest of the note alone', as
   await setBlocks(page, paragraphs(['Above the caret', '', 'Below the caret']), 1)
 
   await typeInEditor(page, `/${templateName}`)
-  await expectTemplateRowSelected(page, templateName)
+  await expectSuggestionMenuOpen(page, templateName)
   await page.keyboard.press('Enter')
 
   await expect
@@ -53,7 +48,7 @@ test('keeps the paragraph the caret was in when it already has text', async ({ p
   await setBlocks(page, paragraphs(['Keep me', 'Below the caret']), 0)
 
   await typeInEditor(page, ` /${templateName}`)
-  await expectTemplateRowSelected(page, templateName)
+  await expectSuggestionMenuOpen(page, templateName)
   await page.keyboard.press('Enter')
 
   await expect

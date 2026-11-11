@@ -1688,7 +1688,11 @@
     "journalChangeWaitsSettingsHint": "Memry se zatvorio dok je premještao unose dnevnika zbog promjene postavki i ne može ih vratiti dok ne pročita .memry/config.json. Popravite datoteku, a zatim ponovno pokrenite Memry. Vaši su unosi sigurni.",
     "journalChangeWaitsTakenHint": "Memry se zatvorio dok je premještao unose dnevnika zbog promjene postavki. Na mjestu na koje se unos treba vratiti nalazi se druga datoteka ili mapa. Maknite je s puta, a zatim ponovno pokrenite Memry. Vaši su unosi sigurni.",
     "journalChangeWaitsHint": "Memry se zatvorio dok je premještao unose dnevnika zbog promjene postavki i nije ih uspio vratiti. Pokušat će ponovno sljedeći put kad otvori ovaj trezor. Do tada se mape dnevnika ne mogu premjestiti ni izbrisati. Vaši su unosi sigurni.",
+    "journalChangeWaitsRefusedHint": "Memry nije uspio dovršiti premještanje unosa dnevnika zbog promjene postavki niti ih sve vratiti. Pokušat će ponovno sljedeći put kad otvori ovaj trezor. Do tada se mape dnevnika ne mogu premjestiti ni izbrisati. Vaši su unosi sigurni.",
     "movesWait": "Neke se bilješke još ne mogu premjestiti",
-    "movesWaitHint": "Memry se zatvorio dok je premještao ili preimenovao ove bilješke i nije uspio završiti. Dok to ne učini, ne mogu se premjestiti ni preimenovati. Memry će pokušati ponovno sljedeći put kad otvori ovaj trezor."
+    "movesWaitHint": "Memry se zatvorio dok je premještao ili preimenovao ove bilješke i nije uspio završiti. Dok to ne učini, ne mogu se premjestiti ni preimenovati. Memry će pokušati ponovno sljedeći put kad otvori ovaj trezor.",
+    "journalDaysRenamed": "Neki unosi dnevnika više nemaju datum kao naziv",
+    "journalDaysRenamedHint": "Ovi unosi dnevnika preimenovani su izvan Memryja dok je njihova mapa čekala postavku mape dnevnika, pa im nazivi više nisu datumi. Ostaju unosi dnevnika dok im ne vratite nazive. Pretvaranjem unosa u bilješku njegov se unos dnevnika uklanja sa svih vaših uređaja, a tekst ostaje kao bilješka. Njegove se oznake ne zadržavaju.",
+    "turnIntoNotes": "Pretvori u bilješke"
   }
 }

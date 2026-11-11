@@ -105,9 +105,14 @@ test('choosing Check List from the slash menu puts the box in the cell', async (
 
   await caretInDoneCell(page)
   await typeInEditor(page, '/check')
-  await expect(page.getByText('Check List', { exact: true }).first()).toBeVisible({
-    timeout: 10_000
-  })
+  // Enter runs the highlighted row of the last query the menu loaded, and a shorter query lists
+  // Check List too, so a wait on its text alone can let Enter run another row (windows-x64, run
+  // 42974914462).
+  await expect(
+    page
+      .locator('.memry-slash-menu [role="option"][aria-selected="true"]')
+      .filter({ hasText: 'Check List' })
+  ).toHaveCount(1, { timeout: 10_000 })
   await page.keyboard.press('Enter')
 
   await expect(cellCheckbox(page)).toBeVisible({ timeout: 15_000 })

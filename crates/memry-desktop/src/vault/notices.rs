@@ -48,6 +48,11 @@ use crate::session::{OpenStage, Session};
 /// - `movesWait`: notes whose app move a crash cut short and the open could not finish
 ///   (`vault::app_move::finish_interrupted`): they do not move or rename until it settles, which
 ///   every open tries again. `path` is the note's file, absolute.
+/// - `journalDaysRenamed`: held journal days (`notes::owed_moves::held`) whose files were renamed
+///   outside the app to a name that no longer names their day, so no follow makes them days
+///   again. Electron would have crossed each into a note; here they stay days until the user
+///   renames them back or turns them into notes (`journal::cross`). `path` is the file's,
+///   absolute.
 /// - `more` says a list notice had more items than [`LISTED`].
 //
 // The variants carry no doc comments: specta would write them into a union with trailing
@@ -83,12 +88,17 @@ pub enum VaultNotice {
         notes: Vec<WaitingMove>,
         more: bool,
     },
+    JournalDaysRenamed {
+        days: Vec<RenamedDay>,
+        more: bool,
+    },
 }
 
 /// What keeps an unfinished journal setting change's days from going back:
 /// - `settings`: the vault settings at `path` cannot be read, so the change cannot tell whether
 ///   it was saved.
 /// - `taken`: a file or folder is at a day's old place, `path`.
+/// - `refused`: the change was refused and some days it moved could not go back, logged.
 /// - `unknown`: anything else, logged.
 //
 // No doc comments on the variants, as on `VaultNotice`.
@@ -101,6 +111,7 @@ pub enum VaultNotice {
 pub enum ChangeHold {
     Settings { path: String },
     Taken { path: String },
+    Refused,
     Unknown,
 }
 
@@ -108,6 +119,14 @@ pub enum ChangeHold {
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize, specta::Type)]
 #[serde(rename_all = "camelCase")]
 pub struct WaitingMove {
+    pub note_id: String,
+    pub path: String,
+}
+
+/// A held journal day whose file no longer names its day; `path` is the file's, absolute.
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize, specta::Type)]
+#[serde(rename_all = "camelCase")]
+pub struct RenamedDay {
     pub note_id: String,
     pub path: String,
 }
@@ -135,6 +154,9 @@ pub enum Listed<'a> {
     Kept { note_id: &'a str, path: &'a str },
     /// A note whose app move waits: its id, and its file's absolute path (only `add` reads it).
     Moving { note_id: &'a str, path: &'a str },
+    /// A held day renamed away from its day: its id, and its file's absolute path (only `add`
+    /// reads it).
+    Renamed { note_id: &'a str, path: &'a str },
 }
 
 /// The open vault's notices, as a window reads them.
@@ -304,6 +326,16 @@ impl VaultNotices {
                     };
                     push_listed(notes, more, note)
                 }
+                (
+                    VaultNotice::JournalDaysRenamed { days, more },
+                    Listed::Renamed { note_id, path },
+                ) => {
+                    let day = RenamedDay {
+                        note_id: note_id.to_owned(),
+                        path: path.to_owned(),
+                    };
+                    push_listed(days, more, day)
+                }
                 _ => false,
             }
         });
@@ -333,6 +365,14 @@ impl VaultNotices {
                     notes.retain(|held| held.note_id != note_id);
                     (notes.len() != before, notes.is_empty() && !*more)
                 }
+                (
+                    VaultNotice::JournalDaysRenamed { days, more },
+                    Listed::Renamed { note_id, .. },
+                ) => {
+                    let before = days.len();
+                    days.retain(|held| held.note_id != note_id);
+                    (days.len() != before, days.is_empty() && !*more)
+                }
                 _ => (false, false),
             };
             if empty {
@@ -348,6 +388,7 @@ enum ListKind {
     Undecided,
     Kept,
     Moving,
+    Renamed,
 }
 
 fn kind_of(item: Listed<'_>) -> ListKind {
@@ -355,6 +396,7 @@ fn kind_of(item: Listed<'_>) -> ListKind {
         Listed::Undecided(_) => ListKind::Undecided,
         Listed::Kept { .. } => ListKind::Kept,
         Listed::Moving { .. } => ListKind::Moving,
+        Listed::Renamed { .. } => ListKind::Renamed,
     }
 }
 
@@ -363,6 +405,7 @@ fn listed_kind(notice: &VaultNotice) -> Option<ListKind> {
         VaultNotice::UndecidedFiles { .. } => Some(ListKind::Undecided),
         VaultNotice::KeptRemovals { .. } => Some(ListKind::Kept),
         VaultNotice::MovesWait { .. } => Some(ListKind::Moving),
+        VaultNotice::JournalDaysRenamed { .. } => Some(ListKind::Renamed),
         VaultNotice::ConfigUnreadable { .. }
         | VaultNotice::WatchLimit
         | VaultNotice::JournalDaysHeld { .. }
@@ -382,6 +425,10 @@ fn empty(item: Listed<'_>) -> VaultNotice {
         },
         Listed::Moving { .. } => VaultNotice::MovesWait {
             notes: Vec::new(),
+            more: false,
+        },
+        Listed::Renamed { .. } => VaultNotice::JournalDaysRenamed {
+            days: Vec::new(),
             more: false,
         },
     }

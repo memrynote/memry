@@ -1688,7 +1688,11 @@
     "journalChangeWaitsSettingsHint": "Memry se zavřelo během přesouvání záznamů deníku kvůli změně nastavení a nemůže je vrátit, dokud nepřečte soubor .memry/config.json. Opravte soubor a pak Memry restartujte. Vaše záznamy jsou v bezpečí.",
     "journalChangeWaitsTakenHint": "Memry se zavřelo během přesouvání záznamů deníku kvůli změně nastavení. Na místě, kam se má záznam vrátit, je jiný soubor nebo složka. Přesuňte je jinam a pak Memry restartujte. Vaše záznamy jsou v bezpečí.",
     "journalChangeWaitsHint": "Memry se zavřelo během přesouvání záznamů deníku kvůli změně nastavení a nepodařilo se mu je vrátit. Zkusí to znovu při příštím otevření tohoto trezoru. Do té doby nelze složky deníku přesunout ani smazat. Vaše záznamy jsou v bezpečí.",
+    "journalChangeWaitsRefusedHint": "Memry nedokončilo přesun záznamů deníku kvůli změně nastavení a nepodařilo se mu vrátit je všechny. Zkusí to znovu při příštím otevření tohoto trezoru. Do té doby nelze složky deníku přesunout ani smazat. Vaše záznamy jsou v bezpečí.",
     "movesWait": "Některé poznámky zatím nelze přesunout",
-    "movesWaitHint": "Memry se zavřelo během přesouvání nebo přejmenování těchto poznámek a nepodařilo se mu to dokončit. Dokud se to nestane, nelze je přesunout ani přejmenovat. Memry to zkusí znovu při příštím otevření tohoto trezoru."
+    "movesWaitHint": "Memry se zavřelo během přesouvání nebo přejmenování těchto poznámek a nepodařilo se mu to dokončit. Dokud se to nestane, nelze je přesunout ani přejmenovat. Memry to zkusí znovu při příštím otevření tohoto trezoru.",
+    "journalDaysRenamed": "Některé záznamy deníku už nemají jako název datum",
+    "journalDaysRenamedHint": "Tyto záznamy deníku byly přejmenovány mimo Memry, zatímco jejich složka čekala na nastavení složky deníku, takže jejich názvy už nejsou data. Zůstanou záznamy deníku, dokud je nepřejmenujete zpět. Převedením na poznámku se jeho záznam deníku odstraní na všech vašich zařízeních a text zůstane jako poznámka. Jeho štítky se nezachovají.",
+    "turnIntoNotes": "Převést na poznámky"
   }
 }

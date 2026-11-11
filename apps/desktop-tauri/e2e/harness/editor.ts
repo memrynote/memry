@@ -89,6 +89,34 @@ export async function typeInEditor(page: Page, text: string): Promise<void> {
 }
 
 /**
+ * Waits until the editor's suggestion menu (`/`, `[[`, `#`) is open, and with `selected`, until
+ * it points at a row whose text holds it: the row Enter runs. A visible row is not proof: a
+ * closing menu keeps rendering its last rows with no key handler attached, and Enter then splits
+ * the paragraph. The editor's `aria-expanded` and `aria-activedescendant` are set only while the
+ * menu's keyboard handler is mounted (#3967).
+ */
+export async function expectSuggestionMenuOpen(page: Page, selected?: string): Promise<void> {
+  await expect
+    .poll(() =>
+      page.evaluate(
+        ([editorSelector, rowText]: [string, string | null]) => {
+          const editor = document.querySelector(editorSelector)
+          if (editor?.getAttribute('aria-expanded') !== 'true') return false
+          if (rowText === null) return true
+          const rowId = editor.getAttribute('aria-activedescendant')
+          const row = rowId ? document.getElementById(rowId) : null
+          return (
+            row?.getAttribute('aria-selected') === 'true' &&
+            (row.textContent ?? '').includes(rowText)
+          )
+        },
+        [NOTE_EDITOR, selected ?? null]
+      )
+    )
+    .toBe(true)
+}
+
+/**
  * Opens a new note whose body is one paragraph per line, once every line is on disk, as
  * Electron's `createNoteWithBody` does.
  */

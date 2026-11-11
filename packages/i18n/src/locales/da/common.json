@@ -1688,7 +1688,11 @@
     "journalChangeWaitsSettingsHint": "Memry lukkede, mens dagbogsindlæg blev flyttet for en ændring af indstillingerne, og kan ikke lægge dem tilbage, før .memry/config.json kan læses. Ret filen, og genstart derefter Memry. Dine indlæg er i sikkerhed.",
     "journalChangeWaitsTakenHint": "Memry lukkede, mens dagbogsindlæg blev flyttet for en ændring af indstillingerne. En anden fil eller mappe ligger, hvor et indlæg skal tilbage. Flyt den af vejen, og genstart derefter Memry. Dine indlæg er i sikkerhed.",
     "journalChangeWaitsHint": "Memry lukkede, mens dagbogsindlæg blev flyttet for en ændring af indstillingerne, og kunne ikke lægge dem tilbage. Det prøver igen, næste gang denne boks åbnes. Indtil da kan dagbogsmapperne ikke flyttes eller slettes. Dine indlæg er i sikkerhed.",
+    "journalChangeWaitsRefusedHint": "Memry kunne ikke gøre flytningen af dagbogsindlæg for en ændring af indstillingerne færdig, og kunne ikke lægge dem alle tilbage. Det prøver igen, næste gang denne boks åbnes. Indtil da kan dagbogsmapperne ikke flyttes eller slettes. Dine indlæg er i sikkerhed.",
     "movesWait": "Nogle noter kan ikke flyttes endnu",
-    "movesWaitHint": "Memry lukkede, mens disse noter blev flyttet eller omdøbt, og kunne ikke gøre det færdigt. De kan ikke flyttes eller omdøbes, før det er sket. Memry prøver igen, næste gang denne boks åbnes."
+    "movesWaitHint": "Memry lukkede, mens disse noter blev flyttet eller omdøbt, og kunne ikke gøre det færdigt. De kan ikke flyttes eller omdøbes, før det er sket. Memry prøver igen, næste gang denne boks åbnes.",
+    "journalDaysRenamed": "Nogle dagbogsindlæg har ikke længere en dato som navn",
+    "journalDaysRenamedHint": "Disse dagbogsindlæg blev omdøbt uden for Memry, mens deres mappe ventede på indstillingen for dagbogsmappen, så deres navne er ikke længere datoer. De forbliver dagbogsindlæg, indtil du giver dem deres navne tilbage. Gøres et til en note, fjernes dets dagbogsindlæg på alle dine enheder, og teksten bevares som en note. Dets tags bevares ikke.",
+    "turnIntoNotes": "Gør til noter"
   }
 }

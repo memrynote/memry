@@ -12,6 +12,8 @@ type Toast = {
 const mocks = vi.hoisted(() => ({
   vaultNoticesList: vi.fn(),
   shellRevealPath: vi.fn(),
+  journalCrossIntoNotes: vi.fn(),
+  flushAllPendingSaves: vi.fn(),
   listener: null as null | ((event: { payload: null }) => void),
   toast: Object.assign(vi.fn(), {
     warning: vi.fn(),
@@ -22,11 +24,13 @@ const mocks = vi.hoisted(() => ({
 }))
 
 vi.mock('sonner', () => ({ toast: mocks.toast }))
+vi.mock('@/lib/save-registry', () => ({ flushAllPendingSaves: mocks.flushAllPendingSaves }))
 
 vi.mock('../../../generated/bindings', () => ({
   commands: {
     vaultNoticesList: mocks.vaultNoticesList,
-    shellRevealPath: mocks.shellRevealPath
+    shellRevealPath: mocks.shellRevealPath,
+    journalCrossIntoNotes: mocks.journalCrossIntoNotes
   },
   events: {
     vaultNoticesChangedEvent: {
@@ -73,6 +77,7 @@ beforeEach(() => {
   vi.clearAllMocks()
   mocks.listener = null
   mocks.shellRevealPath.mockResolvedValue(null)
+  mocks.flushAllPendingSaves.mockResolvedValue(0)
 })
 
 describe('useVaultNotices (#3531 14l)', () => {
@@ -249,6 +254,10 @@ describe('useVaultNotices (#3531 14l)', () => {
     await changeTo([{ ...change, holds: { kind: 'unknown' } }])
     expect(lastOptions().description).toContain("couldn't put them back")
     expect(lastOptions().action).toBeUndefined()
+
+    await changeTo([{ ...change, holds: { kind: 'refused' } }])
+    expect(lastOptions().description).toContain("couldn't move all of them back")
+    expect(lastOptions().action).toBeUndefined()
     await changeTo([])
   })
 
@@ -266,6 +275,97 @@ describe('useVaultNotices (#3531 14l)', () => {
     expect(text).toContain('Plan, Scan.pdf')
     click(lastOptions().action)
     expect(mocks.shellRevealPath).toHaveBeenCalledWith('/v/a/Notes/Plan.md')
+    await changeTo([])
+  })
+
+  it('lists the journal entries renamed away from their day, and turns them into notes', async () => {
+    const days = [
+      { noteId: 'j1', path: '/v/a/Diary/Trip.md' },
+      { noteId: 'j2', path: '/v/a/Diary/Ideas.md' }
+    ]
+    mocks.journalCrossIntoNotes.mockResolvedValue({ crossed: 2 })
+    mocks.vaultNoticesList.mockResolvedValue(
+      listOf([{ kind: 'journalDaysRenamed', days, more: false }])
+    )
+    renderHook(() => useVaultNotices())
+    await waitFor(() => expect(mocks.toast.warning).toHaveBeenCalledTimes(1))
+    expect(mocks.toast.warning.mock.lastCall?.[0]).toBe(
+      'Some journal entries no longer have a date name'
+    )
+    const text = render(<>{lastOptions().description}</>).container.textContent
+    expect(text).toContain('Trip, Ideas')
+    expect(lastOptions().action?.label).toBe('Turn into notes')
+    // Typing not saved yet is saved before the entries are turned into notes.
+    let flushed = (): void => undefined
+    mocks.flushAllPendingSaves.mockReturnValueOnce(
+      new Promise<number>((resolve) => {
+        flushed = () => resolve(0)
+      })
+    )
+    expect(click(lastOptions().action).defaultPrevented).toBe(true)
+    // A second click while the first is answered asks nothing more.
+    click(lastOptions().action)
+    await Promise.resolve()
+    expect(mocks.flushAllPendingSaves).toHaveBeenCalledTimes(1)
+    expect(mocks.journalCrossIntoNotes).not.toHaveBeenCalled()
+    flushed()
+    await waitFor(() => expect(mocks.journalCrossIntoNotes).toHaveBeenCalledTimes(1))
+    expect(mocks.journalCrossIntoNotes).toHaveBeenCalledWith(['j1', 'j2'])
+    await Promise.resolve()
+    expect(mocks.toast.error).not.toHaveBeenCalled()
+
+    // One stayed a day (it has text its file does not): the user hears the action failed.
+    mocks.journalCrossIntoNotes.mockResolvedValue({ crossed: 0 })
+    await changeTo([{ kind: 'journalDaysRenamed', days: days.slice(1), more: false }])
+    click(lastOptions().action)
+    await waitFor(() => expect(mocks.toast.error).toHaveBeenCalledWith('Action failed'))
+    expect(mocks.journalCrossIntoNotes).toHaveBeenLastCalledWith(['j2'])
+    await changeTo([])
+  })
+
+  it('turns nothing into notes when typing could not be saved', async () => {
+    mocks.vaultNoticesList.mockResolvedValue(
+      listOf([
+        {
+          kind: 'journalDaysRenamed',
+          days: [{ noteId: 'j1', path: '/v/a/Diary/Trip.md' }],
+          more: false
+        }
+      ])
+    )
+    renderHook(() => useVaultNotices())
+    await waitFor(() => expect(mocks.toast.warning).toHaveBeenCalledTimes(1))
+    // The day's save failed: its text is only in memory, and crossing would delete it.
+    mocks.flushAllPendingSaves.mockResolvedValueOnce(1)
+    click(lastOptions().action)
+    await waitFor(() => expect(mocks.toast.error).toHaveBeenCalledWith('Action failed'))
+    expect(mocks.journalCrossIntoNotes).not.toHaveBeenCalled()
+    await changeTo([])
+  })
+
+  it('offers no turning into notes while a journal settings change waits', async () => {
+    const renamed = {
+      kind: 'journalDaysRenamed',
+      days: [{ noteId: 'j1', path: '/v/a/Diary/Trip.md' }],
+      more: false
+    }
+    const waits = {
+      kind: 'journalChangeWaits',
+      from: 'journal',
+      to: 'Diary',
+      holds: { kind: 'unknown' }
+    }
+    const renamedToast = (): Toast | undefined =>
+      mocks.toast.warning.mock.calls.findLast(
+        ([title]) => title === 'Some journal entries no longer have a date name'
+      )?.[1] as Toast | undefined
+    mocks.vaultNoticesList.mockResolvedValue(listOf([renamed, waits]))
+    renderHook(() => useVaultNotices())
+    await waitFor(() => expect(mocks.toast.warning).toHaveBeenCalledTimes(2))
+    expect(renamedToast()?.action).toBeUndefined()
+
+    await changeTo([renamed])
+    expect(renamedToast()?.action?.label).toBe('Turn into notes')
     await changeTo([])
   })
 })
