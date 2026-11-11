@@ -206,8 +206,6 @@ describe('typing refused during a hold', () => {
 
       feedOutsideEdit(doc, hold, after)
       const texts = blockTexts(view)
-      if (_.startsWith('probe'))
-        throw new Error('GOT ' + JSON.stringify(texts) + JSON.stringify(warn.mock.calls))
       expect(texts.filter((text) => text.includes('x') || text.includes('y'))).toEqual(['xy'])
       expect(texts.filter((text) => text !== 'xy')).toEqual(after)
       expect(storedText(doc)).toContain('xy')
