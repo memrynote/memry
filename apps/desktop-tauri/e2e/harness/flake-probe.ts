@@ -16,8 +16,8 @@ export async function installProbe(page: Page): Promise<void> {
     }
     const describe = (target: EventTarget | null): string =>
       target instanceof Element
-        ? `${target.tagName.toLowerCase()}.${String(target.className).slice(0, 30)}`
-        : String(target)
+        ? `${target.tagName.toLowerCase()}.${target.className.slice(0, 30)}`
+        : 'non-element'
     window.addEventListener('blur', () => stamp('window blur'), true)
     window.addEventListener('focus', () => stamp('window focus'), true)
     document.addEventListener('focusin', (e) => stamp(`focusin ${describe(e.target)}`), true)
@@ -69,7 +69,7 @@ export async function cellState(page: Page): Promise<string> {
         selectedText: editor?.getSelectedText() ?? null,
         domSelection: String(window.getSelection()),
         hasFocus: document.hasFocus(),
-        active: active ? `${active.tagName}.${String(active.className).slice(0, 40)}` : null,
+        active: active ? `${active.tagName}.${active.className.slice(0, 40)}` : null,
         cells
       })
     })
@@ -93,7 +93,7 @@ export async function rowState(page: Page, nodeId: string): Promise<string> {
         const style = getComputedStyle(el)
         const rect = el.getBoundingClientRect()
         chain.push(
-          `${el.tagName.toLowerCase()}[${el.id || el.getAttribute('data-testid') || String(el.className).slice(0, 30)}] ` +
+          `${el.tagName.toLowerCase()}[${el.id || el.getAttribute('data-testid') || el.className.slice(0, 30)}] ` +
             `rect=${Math.round(rect.x)},${Math.round(rect.y)},${Math.round(rect.width)}x${Math.round(rect.height)} ` +
             `ovf=${style.overflowY} scroll=${el.scrollTop}/${el.scrollHeight}/${el.clientHeight} ` +
             `op=${style.opacity} tf=${style.transform === 'none' ? '' : style.transform} vis=${style.visibility} pe=${style.pointerEvents} anim=${el.getAnimations().length}`
@@ -102,7 +102,7 @@ export async function rowState(page: Page, nodeId: string): Promise<string> {
       return JSON.stringify({
         center: [Math.round(cx), Math.round(cy)],
         viewport: [window.innerWidth, window.innerHeight],
-        top: top ? `${top.tagName.toLowerCase()}.${String(top.className).slice(0, 60)}` : null,
+        top: top ? `${top.tagName.toLowerCase()}.${top.className.slice(0, 60)}` : null,
         topIsRowDescendant: top ? row.contains(top) : null,
         hasFocus: document.hasFocus(),
         chain
