@@ -272,21 +272,22 @@ impl NotesService {
                 return Err(NotesError::EditKept(Kept::NotRepresentable));
             }
         };
-        // The ones the last file said, as the index measured them: a found file's are in no
-        // record (`identity::tags`). None when it never read that header.
-        let measured = open
-            .vault
-            .search()?
-            .note_stats(note_id)?
-            .filter(|stored| stored.stats.header_read)
-            .map(|stored| stored.stats.header_tags)
-            .unwrap_or_default();
         // A note's, by the tag list's rule for a note whose file the index has not measured
         // (`memry_core::domain::tag_reads`): the record's first, which an edit in the app writes
-        // before the file, then the measured ones. A day's are the measured ones only.
-        let header_tags = match &recorded.tags {
-            Some(record) => dedupe(record.iter().chain(&measured).cloned()),
-            None => measured,
+        // before the file, then the ones the last file said, as the index measured them (a found
+        // file's are in no record, `identity::tags`; none when it never read that header). A
+        // day's record owns its tags, so a day's are the record's only.
+        let header_tags = if recorded.date.is_some() {
+            recorded.tags.clone()
+        } else {
+            let measured = open
+                .vault
+                .search()?
+                .note_stats(note_id)?
+                .filter(|stored| stored.stats.header_read)
+                .map(|stored| stored.stats.header_tags)
+                .unwrap_or_default();
+            dedupe(recorded.tags.iter().chain(&measured).cloned())
         };
         let output = file_text(&recorded, &header_tags, &body)?;
         let echo = self.tier.echo();
@@ -303,8 +304,8 @@ impl NotesService {
 struct Recorded {
     /// The day's date; `None` for a note.
     date: Option<String>,
-    /// A note's tags the record holds; `None` for a day.
-    tags: Option<Vec<String>>,
+    /// The tags the note's or day's record holds.
+    tags: Vec<String>,
     aliases: Vec<String>,
     properties: Map<String, Value>,
 }
@@ -314,16 +315,12 @@ impl NotesService {
     fn recorded(&self, open: &OpenVault, note_id: &str) -> Result<Option<Recorded>, NotesError> {
         if let Some(note) = open.vault.note_files().listed_by_id(note_id)? {
             // The listed tags add the body's: the record's own are its payload's.
-            let tags = match note.journal_date {
-                Some(_) => None,
-                None => Some(
-                    open.vault
-                        .notes()
-                        .metadata(note_id.to_owned())?
-                        .map(|meta| meta.tags)
-                        .unwrap_or_default(),
-                ),
-            };
+            let tags = open
+                .vault
+                .notes()
+                .metadata(note_id.to_owned())?
+                .map(|meta| meta.tags)
+                .unwrap_or_default();
             return Ok(Some(Recorded {
                 date: note.journal_date,
                 tags,
@@ -356,7 +353,7 @@ impl NotesService {
             .collect();
         Ok(Some(Recorded {
             date: Some(day.date),
-            tags: None,
+            tags: day.tags,
             aliases: day.aliases,
             properties,
         }))

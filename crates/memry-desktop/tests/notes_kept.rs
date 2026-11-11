@@ -113,6 +113,8 @@ fn kept_by(
     e.write(rel, text);
     e.open();
     e.facts_until(indexed);
+    // The reconcile after the walk re-stamps a row's hash: `ahead` comes after it.
+    e.after_reconcile();
     let id = row_id(&e, rel);
     let search = e.core().search().unwrap();
     until("the file's header is measured", || {
@@ -358,7 +360,7 @@ fn a_kept_note_the_trash_refuses_stays_kept_with_no_file_left() {
 #[test]
 fn a_kept_journal_day_is_restored_with_its_date_and_deleted_to_the_trash() {
     let KeptNote {
-        e,
+        mut e,
         _index,
         notes,
         notices,
@@ -372,7 +374,12 @@ fn a_kept_journal_day_is_restored_with_its_date_and_deleted_to_the_trash() {
     assert_eq!(e.read("journal/2025-01-02.md"), day);
     assert_eq!(row_hash(&e, &id), Ok(Some(content_hash(day))));
 
-    // Kept again, then deleted: its text is in the trash.
+    // Kept again, then deleted: its text is in the trash. The consumer has applied the
+    // restore, so nothing it stamps lands after the row stops naming the file's text.
+    e.facts_until(|fact| {
+        matches!(fact, Applied::Changed { note_id, source: ChangeSource::App, .. }
+            if *note_id == id)
+    });
     unread(&e, &id);
     fs::remove_file(e.vault.join("journal/2025-01-02.md")).unwrap();
     until("the day is listed again", || is_listed(&notices, &id));
@@ -464,6 +471,29 @@ fn a_kept_day_the_trash_refuses_stays_kept_with_no_file_left() {
     // Still kept: a restore writes the text.
     kept::restore(&notes, &notices, &open, &id).unwrap();
     assert_eq!(e.read("journal/2025-01-02.md"), DAY);
+}
+
+#[test]
+fn a_restore_writes_the_header_tags_the_day_holds_in_the_app() {
+    let KeptNote {
+        e,
+        _index,
+        notes,
+        notices,
+        id,
+    } = kept_by("journal/2025-01-02.md", "Morning\n", bin, |e, store, id| {
+        unread(e, id);
+        let tags = vec!["alpha".to_owned(), "beta".to_owned()];
+        let journal = e.core().journal(store.clone()).unwrap();
+        journal.set_tags("2025-01-02".to_owned(), tags).unwrap();
+    });
+    let open = e.session.current().unwrap();
+
+    kept::restore(&notes, &notices, &open, &id).unwrap();
+    assert_eq!(
+        e.read("journal/2025-01-02.md"),
+        "---\ndate: '2025-01-02'\ntags:\n  - alpha\n  - beta\n---\nMorning\n"
+    );
 }
 
 #[test]
