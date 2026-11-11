@@ -250,9 +250,18 @@ export function useVaultNotices(): void {
             crossing = true
             // Typing not saved yet reaches the day's file first, so the note holds it, and no
             // save of it lands after the day is deleted and makes it again.
+            // A save that failed keeps its text only in memory: crossing would delete the day and
+            // the text with it, so nothing is crossed.
             flushAllPendingSaves()
-              .then(() => commands.journalCrossIntoNotes(ids))
-              .then(({ crossed }) => {
+              .then(async (failed) => {
+                if (failed > 0) {
+                  log.error('renamed journal entries not turned into notes: a save failed', {
+                    failed
+                  })
+                  toast.error(t('toast.actionFailed'))
+                  return
+                }
+                const { crossed } = await commands.journalCrossIntoNotes(ids)
                 if (crossed < ids.length) toast.error(t('toast.actionFailed'))
               })
               .catch((error: unknown) => {

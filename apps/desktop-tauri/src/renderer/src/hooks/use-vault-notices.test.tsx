@@ -76,7 +76,7 @@ beforeEach(() => {
   vi.clearAllMocks()
   mocks.listener = null
   mocks.shellRevealPath.mockResolvedValue(null)
-  mocks.flushAllPendingSaves.mockResolvedValue(undefined)
+  mocks.flushAllPendingSaves.mockResolvedValue(0)
 })
 
 describe('useVaultNotices (#3531 14l)', () => {
@@ -293,8 +293,8 @@ describe('useVaultNotices (#3531 14l)', () => {
     // Typing not saved yet is saved before the entries are turned into notes.
     let flushed = (): void => undefined
     mocks.flushAllPendingSaves.mockReturnValueOnce(
-      new Promise<void>((resolve) => {
-        flushed = resolve
+      new Promise<number>((resolve) => {
+        flushed = () => resolve(0)
       })
     )
     expect(click(lastOptions().action).defaultPrevented).toBe(true)
@@ -315,6 +315,26 @@ describe('useVaultNotices (#3531 14l)', () => {
     click(lastOptions().action)
     await waitFor(() => expect(mocks.toast.error).toHaveBeenCalledWith('Action failed'))
     expect(mocks.journalCrossIntoNotes).toHaveBeenLastCalledWith(['j2'])
+    await changeTo([])
+  })
+
+  it('turns nothing into notes when typing could not be saved', async () => {
+    mocks.vaultNoticesList.mockResolvedValue(
+      listOf([
+        {
+          kind: 'journalDaysRenamed',
+          days: [{ noteId: 'j1', path: '/v/a/Diary/Trip.md' }],
+          more: false
+        }
+      ])
+    )
+    renderHook(() => useVaultNotices())
+    await waitFor(() => expect(mocks.toast.warning).toHaveBeenCalledTimes(1))
+    // The day's save failed: its text is only in memory, and crossing would delete it.
+    mocks.flushAllPendingSaves.mockResolvedValueOnce(1)
+    click(lastOptions().action)
+    await waitFor(() => expect(mocks.toast.error).toHaveBeenCalledWith('Action failed'))
+    expect(mocks.journalCrossIntoNotes).not.toHaveBeenCalled()
     await changeTo([])
   })
 
