@@ -283,6 +283,22 @@ fn a_shared_type_embed_refuses_every_snapshot_based_edit() {
     ] {
         refused(&document, &edit);
     }
+
+    // Outdent needs `b` nested, so it is indented before the embed arrives.
+    let nested = opened(&body(false), "device-embed-shared-nested");
+    edit(
+        &nested,
+        BlockEdit::Indent {
+            block_id: "b".to_owned(),
+        },
+    );
+    share_b(&nested);
+    refused(
+        &nested,
+        &BlockEdit::Outdent {
+            block_id: "b".to_owned(),
+        },
+    );
     match snapshot_block(&document, "b") {
         Err(CrdtError::Undecodable { what, .. }) => assert!(what.contains("shared type"), "{what}"),
         other => panic!("snapshot was not refused: {other:?}"),
@@ -345,11 +361,9 @@ fn a_column_unwrapped_by_a_delete_keeps_its_blocks_embed() {
     assert_eq!(run_of(&document, "b"), expected());
 }
 
-#[test]
-fn a_delete_that_would_unwrap_a_shared_type_embed_is_refused() {
-    // Built with an `Any` embed, since the setup moves `b`; the shared one
-    // goes in once `b` sits in its column.
-    let document = columns(false);
+/// Puts a shared-type embed at the start of `b`'s run, through an update as
+/// a peer would, so a setup that moves `b` runs before it is there.
+fn share_b(document: &Document) {
     let doc = Doc::new();
     doc.transact_mut()
         .apply_update(Update::decode_v1(&document.encode_state().expect("state")).expect("decode"))
@@ -365,12 +379,55 @@ fn a_delete_that_would_unwrap_a_shared_type_embed_is_refused() {
     document
         .apply_durable_update(&update)
         .expect("shared embed");
+}
 
-    let first = ids(&document)
+fn first_column_block(document: &Document) -> String {
+    ids(document)
         .into_iter()
         .find(|id| !["a", "b", "c", "list"].contains(&id.as_str()))
-        .expect("first column block");
+        .expect("first column block")
+}
+
+#[test]
+fn a_delete_that_would_unwrap_a_shared_type_embed_is_refused() {
+    let document = columns(false);
+    share_b(&document);
+    let first = first_column_block(&document);
     refused(&document, &BlockEdit::Delete { block_id: first });
+}
+
+/// Moving the first column's only block out empties its column, which
+/// unwraps the list and would rebuild `b`, whose shared-type embed a copy
+/// cannot carry. Refused with nothing changed, not left as a one-column list
+/// the next peer deletes with `b` in it.
+#[test]
+fn a_move_out_of_a_column_that_would_unwrap_a_shared_type_embed_is_refused() {
+    let document = columns(false);
+    share_b(&document);
+    let first = first_column_block(&document);
+    refused(
+        &document,
+        &BlockEdit::MoveBlock {
+            block_id: first,
+            after_block_id: Some("a".to_owned()),
+        },
+    );
+}
+
+/// Deleting `b`, the shared-type embed's own block, unwraps the list too, but
+/// only the other column is rebuilt, so nothing that cannot be copied is.
+#[test]
+fn deleting_the_shared_type_embed_block_that_empties_its_column_unwraps_the_list() {
+    let document = columns(false);
+    share_b(&document);
+    let first = first_column_block(&document);
+    edit(
+        &document,
+        BlockEdit::Delete {
+            block_id: "b".to_owned(),
+        },
+    );
+    assert_eq!(ids(&document), ["a", "c", first.as_str()]);
 }
 
 fn find_run<T: yrs::ReadTxn>(

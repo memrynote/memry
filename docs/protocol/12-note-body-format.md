@@ -477,11 +477,17 @@ nothing (`crates/memry-core/src/crdt/body_edit/inline.rs:72`, `:313`). An
 `insertInline` keeps the text, marks and embeds after its range
 (`:104-121`). A block that is copied and rebuilt (`duplicate`, `moveBlock`,
 `indent`, `outdent`, `turnInto` to a type that holds marks, `restoreBlock`, an
-append to another note, a column list unwrapped) MUST keep every embed in its
-text runs, at its position and with its marks (`:143-154`,
-`crates/memry-core/src/crdt/body_edit/structure.rs:520-548`); an embed that
-holds a shared type cannot be copied, so the operation is refused and changes
-nothing (`inline.rs:149`, `crates/memry-core/src/crdt/body_edit/columns.rs:204`).
+append to another note, a column list unwrapped) MUST keep every embed its
+text runs' diff reports, at its position and with its marks (`:143-154`,
+`crates/memry-core/src/crdt/body_edit/structure.rs:518-546`). That diff
+reports value and shared-type embeds and skips a subdocument embed (yrs 0.27.4
+`src/types/text.rs:662-676`), which a copy therefore does not carry; neither
+y-prosemirror nor the core writes one. An embed that holds a shared type
+cannot be copied, so the operation is refused and changes nothing
+(`inline.rs:149`, `crates/memry-core/src/crdt/body_edit/columns.rs:210`), and
+a block holding one cannot be snapshotted, so neither `restoreBlock` nor an
+append to another note ever receives it
+(`crates/memry-core/src/crdt/body_edit/snapshot.rs:375`).
 A `turnInto` to a type that holds plain text drops embeds along with marks
 (`crates/memry-core/src/crdt/body_edit/text.rs:429`, `:458`).
 

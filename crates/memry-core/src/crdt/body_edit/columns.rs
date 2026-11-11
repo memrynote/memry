@@ -175,32 +175,38 @@ pub(super) fn guard_column_layout(txn: &TransactionMut, edit: &BlockEdit) -> Res
 
 /// Restores `parent`'s validity after a row left it: an emptied nested
 /// `blockGroup` is dropped, an emptied `column` is removed, and a `columnList`
-/// left with one column is unwrapped (see the module docs).
-pub(super) fn settle_after_removal(txn: &mut TransactionMut, parent: &XmlElementRef) {
+/// left with one column is unwrapped (see the module docs). Fails when the
+/// unwrap cannot copy a block it rebuilds; see [`unwrap_if_single`].
+pub(super) fn settle_after_removal(
+    txn: &mut TransactionMut,
+    parent: &XmlElementRef,
+) -> Result<(), CrdtError> {
     match parent.tag().as_ref() {
         "blockGroup" => drop_if_empty(txn, parent),
         COLUMN => {
             if parent.len(txn) > 0 {
-                return;
+                return Ok(());
             }
             let Some(list) = parent_of(parent) else {
-                return;
+                return Ok(());
             };
             if let Some(index) = child_index(txn, &list, parent) {
                 list.remove_range(txn, index, 1);
             }
             if list.tag().as_ref() == COLUMN_LIST {
-                unwrap_if_single(txn, &list);
+                return unwrap_if_single(txn, &list);
             }
         }
         _ => {}
     }
+    Ok(())
 }
 
 /// Refused when removing `row` would unwrap its column list (its column's
 /// last block, in a list of two) and a block that unwrap rebuilds cannot be
 /// copied ([`snapshot_subtree`]). Checked before the removal, because a write
-/// transaction cannot take a removal back.
+/// transaction cannot take a removal back. `row`'s own column is skipped:
+/// the unwrap rebuilds only the other column, and `row` leaves.
 pub(super) fn refuse_uncopyable_unwrap(
     txn: &TransactionMut,
     row: &XmlElementRef,
@@ -218,6 +224,9 @@ pub(super) fn refuse_uncopyable_unwrap(
         let XmlOut::Element(other) = other else {
             continue;
         };
+        if other == column {
+            continue;
+        }
         for child in other.children(txn) {
             if let XmlOut::Element(block) = child {
                 snapshot_subtree(txn, &block)?;
@@ -229,7 +238,15 @@ pub(super) fn refuse_uncopyable_unwrap(
 
 /// Replaces a `columnList` holding fewer than two columns with the blocks of
 /// the one it has, in its place and in their order.
-fn unwrap_if_single(txn: &mut TransactionMut, list: &XmlElementRef) {
+///
+/// Every edit that gets here ran [`refuse_uncopyable_unwrap`] before its
+/// removal, so the copy cannot fail. Were one to skip it, the edit fails:
+/// keeping a one-column list would have the next peer delete it with every
+/// block in it (see the module docs), and rebuilding the blocks without what
+/// a copy cannot carry would drop it here. The caller's write transaction
+/// then holds a removal it cannot take back, so the document must be thrown
+/// away, as `author_with` does on an error.
+fn unwrap_if_single(txn: &mut TransactionMut, list: &XmlElementRef) -> Result<(), CrdtError> {
     let columns: Vec<XmlElementRef> = list
         .children(txn)
         .filter_map(|child| match child {
@@ -238,15 +255,15 @@ fn unwrap_if_single(txn: &mut TransactionMut, list: &XmlElementRef) {
         })
         .collect();
     if columns.len() >= 2 {
-        return;
+        return Ok(());
     }
     let Some(outer) = parent_of(list) else {
-        return;
+        return Ok(());
     };
     let Some(at) = child_index(txn, &outer, list) else {
-        return;
+        return Ok(());
     };
-    let rows: Result<Vec<Subtree>, CrdtError> = columns
+    let rows: Vec<Subtree> = columns
         .iter()
         .flat_map(|column| {
             column
@@ -257,13 +274,7 @@ fn unwrap_if_single(txn: &mut TransactionMut, list: &XmlElementRef) {
                 })
                 .collect::<Vec<_>>()
         })
-        .collect();
-    // Every edit that can get here ran `refuse_uncopyable_unwrap` before its
-    // removal. Were one to skip it, the list stays rather than its blocks
-    // being rebuilt without the content a copy cannot carry.
-    let Ok(rows) = rows else {
-        return;
-    };
+        .collect::<Result<_, _>>()?;
     outer.remove_range(txn, at, 1);
     for (offset, row) in rows.iter().enumerate() {
         restore_subtree(txn, &outer, at + offset as u32, row);
@@ -271,6 +282,7 @@ fn unwrap_if_single(txn: &mut TransactionMut, list: &XmlElementRef) {
     if rows.is_empty() {
         drop_if_empty(txn, &outer);
     }
+    Ok(())
 }
 
 /// Builds a `columnList` of `columns` equal columns, each holding one empty

@@ -559,7 +559,7 @@ fn delete(txn: &mut TransactionMut, block_id: &str) -> Result<(), CrdtError> {
             // The last child of a nested group leaves no empty group behind,
             // and the last block of a column no empty column: BlockNote's
             // schema requires both to hold a block.
-            settle_after_removal(txn, &element);
+            settle_after_removal(txn, &element)?;
         }
         _ => {
             let fragment = txn

@@ -274,8 +274,7 @@ pub(super) fn move_block(
     };
     source_parent.remove_range(txn, source_index, 1);
     restore_subtree(txn, &target_parent, adjusted, &snapshot);
-    settle_after_removal(txn, &source_parent);
-    Ok(())
+    settle_after_removal(txn, &source_parent)
 }
 
 pub(super) fn indent(txn: &mut TransactionMut, block_id: &str) -> Result<(), CrdtError> {
@@ -344,8 +343,7 @@ pub(super) fn outdent(txn: &mut TransactionMut, block_id: &str) -> Result<(), Cr
     let snapshot = snapshot_subtree(txn, &container)?;
     group.remove_range(txn, index, 1);
     restore_subtree(txn, &outer, anchor + 1, &snapshot);
-    settle_after_removal(txn, &group);
-    Ok(())
+    settle_after_removal(txn, &group)
 }
 
 /// Removes a nested `blockGroup` its last block just left. BlockNote's schema
