@@ -22,6 +22,7 @@ import {
   useEditorSelectionChange,
   useExtension
 } from '@blocknote/react'
+import { ShadCNDefaultComponents } from '@blocknote/shadcn'
 import { useT } from '@memry/i18n/renderer'
 
 import { getLiveProseMirrorView } from './live-prosemirror-view'
@@ -136,6 +137,9 @@ const SHIELD_ATTR = 'data-memry-table-resize-shield'
 
 /** Marks a menu that was moved out of the wrapper, for its layer in base.css. */
 const MENU_CLASS = 'memry-table-menu'
+
+/** The popup `Generic.Menu.Dropdown` renders, for the keyboard menu's `finalFocus`. */
+const KeyboardMenuPopup = ShadCNDefaultComponents.DropdownMenu.DropdownMenuContent
 
 /** The `openBarRef` pin for the keyboard's menu, which belongs to no bar. */
 const KEYBOARD_MENU_KEY = 'keyboard'
@@ -378,8 +382,6 @@ export const TableBorderHandles: FC<TableBorderHandlesProps> = ({ containerEl })
   const [geometry, setGeometry] = useState<Geometry | null>(null)
   const [focusRing, setFocusRing] = useState<FocusRing | null>(null)
   const keyboardTriggerRef = useRef<HTMLButtonElement | null>(null)
-  /** Whether the keyboard menu is up, for the anchor's own focus handler. */
-  const keyboardMenuOpenRef = useRef(false)
   /**
    * The bar whose menu is open, or null. While a menu is open the bars are
    * pinned to the cell it was opened from: the pointer is over the menu, which
@@ -531,7 +533,6 @@ export const TableBorderHandles: FC<TableBorderHandlesProps> = ({ containerEl })
 
   const handleKeyboardOpenChange = useCallback(
     (open: boolean): void => {
-      keyboardMenuOpenRef.current = open
       if (open) {
         // Same pin as a nub's menu: hover bookkeeping must not tear anything
         // down while this menu, portalled outside the editor, holds the pointer.
@@ -541,30 +542,38 @@ export const TableBorderHandles: FC<TableBorderHandlesProps> = ({ containerEl })
 
       tableHandles.unfreezeHandles()
       openBarRef.current = null
-      // Focus is handed back by `handleAnchorFocus`, not from here: Radix
-      // restores it to the trigger on its own schedule, and a `focus()` racing
-      // that lands nowhere.
+      // Focus is handed back by `handBackFocus`, not from here: Base UI
+      // restores it on its own schedule, and a `focus()` racing that lands
+      // nowhere.
     },
     [tableHandles]
   )
 
   /**
-   * Hand focus on from the anchor to the editor.
+   * Where the focus goes when the keyboard menu closes: the keyboard menu's
+   * `finalFocus`, which Base UI calls in its own focus-return step.
    *
-   * Radix focuses the trigger when the menu closes, however it was closed —
-   * `Escape`, an item, or a click outside. The trigger is a box over a cell, not
-   * a place a caret can live, so it passes focus straight on: the ProseMirror
-   * selection never moved, so the caret lands back in the cell the menu was
-   * opened from, which is what `Escape` has to do.
+   * By default Base UI returns the focus to the trigger, a box over a cell that
+   * no caret can live in. Passing it on from that box's `focus` event failed
+   * whenever the window did not hold the OS focus: Chromium (WebView2) holds a
+   * page's focus events until its window is focused, so the focus stayed on the
+   * box (#4213, the Windows e2e). This focuses the editor itself instead, and
+   * ProseMirror puts its caret back where the menu was opened, since the
+   * selection never moved; that is what `Escape` has to do.
    *
-   * Only while the menu is CLOSED. Radix's focus scope pulls focus back into an
-   * open menu, so bouncing it out from here turns every arrow key into a fight:
-   * focus leaves for the editor, the scope hauls it back to the menu's own box,
-   * and the highlight starts again from the first item.
+   * Only when the focus is still in the menu, on the box, or nowhere: a click
+   * that closed the menu by focusing something else keeps that focus. Returns
+   * false so Base UI focuses nothing after it.
    */
-  const handleAnchorFocus = useCallback((): void => {
-    if (keyboardMenuOpenRef.current) return
-    editor.focus()
+  const handBackFocus = useCallback((): boolean => {
+    const active = document.activeElement
+    const stranded =
+      !active ||
+      active === document.body ||
+      active === keyboardTriggerRef.current ||
+      active.closest('.memry-table-keyboard-menu') !== null
+    if (stranded) editor.focus()
+    return false
   }, [editor])
 
   /**
@@ -584,7 +593,6 @@ export const TableBorderHandles: FC<TableBorderHandlesProps> = ({ containerEl })
       pinned === KEYBOARD_MENU_KEY ? keyboardTriggerRef.current : hoveredCellRef.current
     if (anchor?.isConnected) return true
     openBarRef.current = null
-    keyboardMenuOpenRef.current = false
     tableHandles.unfreezeHandles()
     return false
   }, [tableHandles])
@@ -769,7 +777,7 @@ export const TableBorderHandles: FC<TableBorderHandlesProps> = ({ containerEl })
    */
   let keyboardMenu: ReactNode = null
   if (focusRing && menuComponents) {
-    const { Root, Trigger, Dropdown, Divider, Label } = menuComponents.Generic.Menu
+    const { Root, Trigger, Divider, Label } = menuComponents.Generic.Menu
     // 1-based: the row and column a person counts, not the array index.
     const position = { row: focusRing.rowIndex + 1, column: focusRing.colIndex + 1 }
     keyboardMenu = createPortal(
@@ -786,7 +794,6 @@ export const TableBorderHandles: FC<TableBorderHandlesProps> = ({ containerEl })
               data-col-index={focusRing.colIndex}
               contentEditable={false}
               suppressContentEditableWarning
-              onFocus={handleAnchorFocus}
               // Radix names the dropdown after its trigger, so the row and
               // column reach a screen reader as the menu's own name.
               aria-label={t('editor.table.keyboardMenuAria', position)}
@@ -798,14 +805,19 @@ export const TableBorderHandles: FC<TableBorderHandlesProps> = ({ containerEl })
               }}
             />
           </Trigger>
-          {/* `@blocknote/shadcn`'s dropdown forwards className and nothing
-            else, so the class is also what names this menu in the E2E. */}
-          <Dropdown className="bn-table-handle-menu memry-table-keyboard-menu">
+          {/* The shadcn popup itself, not BlockNote's `Generic.Menu.Dropdown`,
+            which forwards className and nothing else: `finalFocus` has to
+            reach Base UI. The class also names this menu in the E2E. */}
+          <KeyboardMenuPopup
+            container={editor.portalElement}
+            className={`bn-table-handle-menu memry-table-keyboard-menu ${MENU_CLASS}`}
+            finalFocus={handBackFocus}
+          >
             <Label>{t('editor.table.keyboardMenuTitle', position)}</Label>
             <TableLineActions cell={focusRing.cell} axis="row" />
             <Divider />
             <TableLineActions cell={focusRing.cell} axis="column" />
-          </Dropdown>
+          </KeyboardMenuPopup>
         </Root>
       </ComponentsContext.Provider>,
       focusRing.wrapper

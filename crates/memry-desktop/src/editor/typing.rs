@@ -2,12 +2,13 @@
 //! window sent the typing it had not sent yet, so the consumer's choice between the typing and
 //! the file sees every keystroke made before it.
 //!
-//! The consumer asks before it takes the rows' lane ([`EditorHost::hold_typing`]): each window
-//! with the document open gets a [`BARRIER`] frame, sends its queued edits, holds new typing and
-//! answers ([`EditorHost::typing_sent`]). The consumer waits [`BARRIER_WAIT`] at most; a window
-//! that has not answered by then counts as holding no typing. A window lets typing go as the
-//! outside edit's frame applies, since typing from then on lands in the blocks the edit made,
-//! and the editor's own answer to the edit (a link it makes a chip of) must apply. The
+//! The consumer asks, for a file that is not the text its row names, while it does not hold the
+//! rows' lane ([`EditorHost::hold_typing`]): each window with the document open gets a
+//! [`BARRIER`] frame, sends its queued edits, holds new typing and answers
+//! ([`EditorHost::typing_sent`]). The consumer waits [`BARRIER_WAIT`] at most; a window that has
+//! not answered by then counts as holding no typing. A window lets typing go as the outside
+//! edit's frame applies, since typing from then on lands in the blocks the edit made, and the
+//! editor's own answer to the edit (a link it makes a chip of) must apply. The
 //! [`TypingHold`] the consumer gets back sends each asked window a [`RELEASE`] frame once
 //! dropped, for the choice that fed nothing (the typing won); it follows any edit's frame on the
 //! same channel. A window releases itself if neither comes.

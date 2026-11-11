@@ -13,6 +13,7 @@
 //! | an index rebuilt from nothing leaves the record             | the baseline is not the index's       |
 //! | an index that dropped a note's rows takes only its changes  | the baseline is not the index's       |
 //! | a note with no baseline is measured by the index's reading  | an older build's note                 |
+//! | a read before the tier takes an edit keeps the index's reading | the index reads the tier's bytes   |
 //! | a broken frontmatter then fixed reaches the record          | the baseline is the last good reading |
 //! | an app write after an outside edit does not hide it         | the edit is taken at fact time        |
 //! | a save over an outside edit not fed yet does not hide it    | the save takes the edit first         |
@@ -343,12 +344,11 @@ fn a_day_made_outside_takes_no_reserved_journal_key() {
     assert_eq!(day_properties(), object(json!({ "mood": 2 })));
 }
 
-#[test]
-fn a_note_with_no_baseline_is_measured_against_the_index_reading() {
+/// A note of an older build, which kept no baseline, with a pulled `stage` not in its file yet.
+fn with_no_baseline() -> Fixture {
     let f = opened(&[("Plan.md", PLAN)], "Plan.md");
     // Pulled, not in the file yet: the file's `Draft` is older.
     f.set("stage", "\"Review\"");
-    // An older build kept no baseline.
     rusqlite::Connection::open(f.e.vault.join(".memry/core/data.db"))
         .unwrap()
         .execute(
@@ -356,7 +356,33 @@ fn a_note_with_no_baseline_is_measured_against_the_index_reading() {
             [],
         )
         .unwrap();
+    f
+}
+
+#[test]
+fn a_note_with_no_baseline_is_measured_against_the_index_reading() {
+    let f = with_no_baseline();
     f.outside("Plan.md", "---\nstage: Draft\nrating: 6\n---\n# Plan\n");
+    assert_eq!(
+        f.record(),
+        object(json!({ "stage": "Review", "rating": 6 }))
+    );
+}
+
+/// The index reads the file again before the tier took the outside edit (a pass retyping a
+/// learned type, or an app write's measure): its reading stays the one of the file the record
+/// took, which the edit is measured against.
+#[test]
+fn a_read_before_the_tier_takes_an_outside_edit_keeps_the_index_reading() {
+    let f = with_no_baseline();
+    let text = "---\nstage: Draft\nrating: 6\n---\n# Plan\n";
+    f.e.write("Plan.md", text);
+    f.index.measure(&f.id).unwrap();
+    let files = f.e.core().note_files();
+    until("the tier took the outside edit", || {
+        let row = files.by_id(&f.id).unwrap().unwrap();
+        row.content_hash == Some(content_hash(text))
+    });
     assert_eq!(
         f.record(),
         object(json!({ "stage": "Review", "rating": 6 }))
