@@ -6,6 +6,7 @@ import { useEffect, useState, useSyncExternalStore } from 'react'
 import { File } from '@/lib/icons'
 import { useT } from '@memry/i18n/renderer'
 import { getAttachmentRevision, subscribeToAttachmentRevisions } from '@/lib/attachment-revision'
+import { notesService } from '@/services/notes-service'
 import { HAS_SCHEME, useAttachmentNoteId } from './note-file-url-context'
 
 interface AttachmentPresence {
@@ -40,14 +41,14 @@ export function useAttachmentPresence(url: string): AttachmentPresence {
 
   useEffect(() => {
     // Only vault refs (note-relative or legacy memry-file) are checkable;
-    // http/data urls are not attachments. Surfaces without a note id (and
-    // tests without the IPC surface) just never show the card.
+    // http/data urls are not attachments. Surfaces without a note id just
+    // never show the card.
     const isVaultRef = Boolean(url) && (!HAS_SCHEME.test(url) || url.startsWith('memry-file:'))
-    if (!noteId || !isVaultRef || !window.api?.notes?.resolveAttachment) {
+    if (!noteId || !isVaultRef) {
       return undefined
     }
     let cancelled = false
-    window.api.notes
+    notesService
       .resolveAttachment(noteId, url)
       .then((info) => {
         if (cancelled) return

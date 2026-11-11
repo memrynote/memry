@@ -1,6 +1,14 @@
 import type { BlockNoteEditor } from '@blocknote/core'
 import type { EditorState, Selection } from '@tiptap/pm/state'
-import { useEffect, useRef, useState, type MouseEvent, type PointerEvent } from 'react'
+import {
+  createContext,
+  useContext,
+  useEffect,
+  useRef,
+  useState,
+  type MouseEvent,
+  type PointerEvent
+} from 'react'
 import {
   BasicTextStyleButton,
   ColorStyleButton,
@@ -31,22 +39,30 @@ interface ReviewFormattingToolbarProps {
 
 export function ReviewFormattingToolbarController(props: ReviewFormattingToolbarProps) {
   const editor = useBlockNoteEditor()
-  // The gate lives here, not in the toolbar below: BlockNote tears the toolbar
-  // down and mounts a fresh one mid-interaction, so state held there is lost
-  // exactly when it is needed. This component is mounted by ContentArea and
-  // outlives that churn.
+  // The gate lives here, not in the toolbar below: BlockNote mounts the toolbar
+  // only while it is shown, so a right-click on hidden text mounts a fresh one
+  // after the `contextmenu` event it must stay hidden for. This component is
+  // mounted by ContentArea and outlives the toolbar.
   const isContextMenuOpen = useContextMenuOpen(editor)
 
   if (isContextMenuOpen) return null
 
+  // BlockNote renders `formattingToolbar` as a component type, so it must be a
+  // module-level one: a new type per render remounts the toolbar and closes an
+  // open block type Select or menu under the click (#4184). Props reach it
+  // through context instead.
   return (
-    <FormattingToolbarController
-      // oxlint-disable-next-line react/no-unstable-nested-components -- render-prop/component closes over per-render state; its identity is held stable by the surrounding memo or state initializer
-      formattingToolbar={(toolbarProps) => (
-        <ReviewFormattingToolbar {...toolbarProps} {...props} variant="floating" />
-      )}
-    />
+    <FloatingToolbarPropsContext value={props}>
+      <FormattingToolbarController formattingToolbar={FloatingReviewFormattingToolbar} />
+    </FloatingToolbarPropsContext>
   )
+}
+
+const FloatingToolbarPropsContext = createContext<ReviewFormattingToolbarProps>({})
+
+function FloatingReviewFormattingToolbar(toolbarProps: FormattingToolbarProps) {
+  const props = useContext(FloatingToolbarPropsContext)
+  return <ReviewFormattingToolbar {...toolbarProps} {...props} variant="floating" />
 }
 
 export function ReviewFormattingToolbar({
@@ -153,9 +169,9 @@ function ToolbarDivider() {
  * listener: hidden until the next ordinary interaction. Capture on `window`
  * runs ahead of anything that might stop propagation.
  *
- * Call this from a component BlockNote does not own. Its controller remounts
- * the toolbar during the very interaction being suppressed, which resets any
- * state held below it.
+ * Call this from a component BlockNote does not own. Its controller mounts
+ * the toolbar only while it is shown, so state held below it starts fresh on
+ * the very pointer-up being suppressed.
  */
 function useContextMenuOpen(editor: BlockNoteEditor): boolean {
   const [isOpen, setIsOpen] = useState(false)

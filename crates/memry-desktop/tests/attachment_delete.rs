@@ -34,26 +34,31 @@ use memry_desktop::session::OpenVault;
 use memry_desktop::vault::config::{VaultConfigPatch, config_path};
 use memry_desktop::vault::consumer::Applied;
 use memry_desktop::vault::consumer::identity::NoteIdentity;
-use vault_env::{Env, creates, env, indexed};
+use vault_env::{Env, creates, env, env_named, indexed};
 
 use crate::index_support::until;
 use crate::vault_settings::update;
 
-const FILE: &str = "k3f9x2-report.pdf";
+pub(crate) const FILE: &str = "k3f9x2-report.pdf";
 
-struct Vault {
-    e: Env,
-    open: OpenVault,
+pub(crate) struct Vault {
+    pub(crate) e: Env,
+    pub(crate) open: OpenVault,
     /// `notes/Owner.md`, whose folder holds [`FILE`].
-    owner: String,
+    pub(crate) owner: String,
     /// `Other.md`.
-    other: String,
+    pub(crate) other: String,
 }
 
 impl Vault {
     /// The owner and `Other.md` (with `other` as its body) indexed, plus `extra` files.
-    fn new(other: &str, extra: &[(&str, &str)]) -> Self {
-        let mut e = env(|store| Some(NotesIdentity::new(store)));
+    pub(crate) fn new(other: &str, extra: &[(&str, &str)]) -> Self {
+        Self::named("vault", other, extra)
+    }
+
+    /// [`Self::new`] with the vault in a folder called `name`.
+    pub(crate) fn named(name: &str, other: &str, extra: &[(&str, &str)]) -> Self {
+        let mut e = env_named(name, |store| Some(NotesIdentity::new(store)));
         e.write("notes/Owner.md", "Owner\n");
         e.write("Other.md", other);
         for (rel, text) in extra {
@@ -80,12 +85,15 @@ impl Vault {
         v
     }
 
-    fn folder(&self) -> PathBuf {
+    pub(crate) fn folder(&self) -> PathBuf {
         self.e.vault.join("attachments").join(&self.owner)
     }
 
     /// Deletes `name` of the owner's folder; the trash is a folder of the test.
-    fn delete(&self, name: &str) -> (Result<DeletedAttachment, AttachmentError>, Vec<PathBuf>) {
+    pub(crate) fn delete(
+        &self,
+        name: &str,
+    ) -> (Result<DeletedAttachment, AttachmentError>, Vec<PathBuf>) {
         delete_in(&self.e, &self.open, &self.owner, name, &mut |_| {})
     }
 
@@ -124,14 +132,14 @@ fn delete_in(
     (outcome, trashed.into_inner())
 }
 
-fn kept_by(ids: &[&str]) -> DeletedAttachment {
+pub(crate) fn kept_by(ids: &[&str]) -> DeletedAttachment {
     DeletedAttachment {
         deleted: false,
         referenced_by: ids.iter().map(|id| (*id).to_owned()).collect(),
     }
 }
 
-fn gone() -> DeletedAttachment {
+pub(crate) fn gone() -> DeletedAttachment {
     DeletedAttachment {
         deleted: true,
         referenced_by: Vec::new(),

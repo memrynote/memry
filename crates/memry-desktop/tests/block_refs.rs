@@ -20,6 +20,7 @@ use memry_core::domain::search::block_refs::{BlockRefEdge, BlockRefKind};
 use memry_core::seams::secure_store::SecureStore;
 use memry_desktop::notes::identity::NotesIdentity;
 use memry_desktop::notes::index::NoteIndex;
+use memry_desktop::vault::consumer::Applied;
 use vault_env::{Env, env, indexed};
 
 fn id_at(e: &Env, path: &str) -> String {
@@ -73,6 +74,10 @@ fn portal_and_block_link_edges_follow_the_files_and_a_rebuilt_index() {
             "Intro\n\n```memry-portal\n{{\"v\":1,\"note\":\"{source}\",\"blocks\":[\"abc1\"]}}\n```\n"
         ),
     );
+    // The row first: a new file's note is created and seeded before its row is recorded, and
+    // a search reindex running meanwhile already indexes the seeded body, so the edge can show
+    // before the row. `Added` is published once the row is.
+    e.facts_until(|fact| matches!(fact, Applied::Added { path, .. } if path == "Host.md"));
     until("the portal's edge", || edges(&e).len() == 2);
     let host = id_at(&e, "Host.md");
     let both = vec![

@@ -27,6 +27,7 @@ e2e_commands! {
     ],
     crash => [e2e_trigger_crash, e2e_kill_page],
     debug => [e2e_debug_query, e2e_debug_index_query],
+    editor => [e2e_writeback_debug_state],
     os_drag => [e2e_os_drag],
     dialog => [e2e_dialog_queue_push, e2e_dialog_queue_clear],
     reveal => [e2e_revealed_paths, e2e_os_opens],

@@ -38,6 +38,7 @@ use crate::vault::fs_atomic::{BeforeCommit, RETRY_DELAYS_MS, WriteError, atomic_
 use crate::vault::layout::ATTACHMENTS_DIR;
 use crate::vault::paths::{is_js_space, sanitize_filename};
 
+mod actions;
 mod delete;
 mod reconcile;
 mod references;
@@ -47,6 +48,7 @@ mod resolve;
 mod shared;
 mod upload;
 
+pub use actions::{AttachmentInfo, AttachmentLocation, existing, list, locate};
 #[cfg(feature = "test-hooks")]
 pub use delete::delete_checked;
 pub use delete::{DeletedAttachment, delete};

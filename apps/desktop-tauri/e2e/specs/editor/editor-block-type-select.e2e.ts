@@ -48,7 +48,14 @@ async function drag(
   await page.mouse.up()
 }
 
-/** Clicks the editor at `from`, then selects the text from `from` to `to`, as a drag does. */
+/**
+ * Clicks the editor at `from`, then selects the text from `from` to `to`, as a drag does.
+ *
+ * The selection goes through ProseMirror, not the DOM: the click focuses the editor, and
+ * ProseMirror's focus handler writes its own (collapsed) selection back to the DOM 20 ms
+ * later unless its observer has already seen the DOM change. A raw `setBaseAndExtent`
+ * inside that window was undone about 1 run in 10 (#4184).
+ */
 async function selectBetween(
   page: Page,
   from: { x: number; y: number },
@@ -60,14 +67,13 @@ async function selectBetween(
       const start = document.caretRangeFromPoint(a.x, a.y)
       const end = document.caretRangeFromPoint(b.x, b.y)
       if (!start || !end) throw new Error('no caret at a selection end')
-      window
-        .getSelection()
-        ?.setBaseAndExtent(
-          start.startContainer,
-          start.startOffset,
-          end.startContainer,
-          end.startOffset
-        )
+      // oxlint-disable-next-line typescript/no-explicit-any -- BlockNote's editor has no type in the e2e tsconfig
+      const tiptap = (window as unknown as { __memryActiveEditor?: any }).__memryActiveEditor
+        ._tiptapEditor
+      tiptap.commands.setTextSelection({
+        from: tiptap.view.posAtDOM(start.startContainer, start.startOffset),
+        to: tiptap.view.posAtDOM(end.startContainer, end.startOffset)
+      })
     },
     { a: from, b: to }
   )
@@ -98,9 +104,7 @@ async function pickBlockType(page: Page, name: string): Promise<void> {
   await option.click()
 }
 
-// Skipped until #4184: the formatting toolbar remounts while its Select is open (an inline
-// `formattingToolbar` component), so the list closes under the option click about 1 run in 15.
-test.skip('retypes the block holding a partial text selection', async ({ page }) => {
+test('retypes the block holding a partial text selection', async ({ page }) => {
   await vaultOpen(page)
   await openNoteWithLines(page, label('Block type partial'), LINES)
   await expect.poll(() => blocks(page)).toHaveLength(4)
@@ -125,8 +129,7 @@ test.skip('retypes the block holding a partial text selection', async ({ page })
     ])
 })
 
-// Skipped until #4184, as above.
-test.skip('retypes every block in a multi-line selection', async ({ page }) => {
+test('retypes every block in a multi-line selection', async ({ page }) => {
   await vaultOpen(page)
   await openNoteWithLines(page, label('Block type multi'), LINES)
   await expect.poll(() => blocks(page)).toHaveLength(4)

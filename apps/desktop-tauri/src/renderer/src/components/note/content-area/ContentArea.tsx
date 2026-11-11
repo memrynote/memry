@@ -87,6 +87,7 @@ import {
   type SlashMenuItem
 } from './slash-menu-model'
 import { SlashMenu, SlashMenuFallbackContext, type SlashMenuFallbacks } from './slash-menu'
+import { SlashMenuController } from './slash-menu-controller'
 import { getTaskSlashMenuItem } from './task-block'
 import { TaskPrefetchProvider, useTaskPrefetch } from './task-block/task-prefetch-context'
 import { tasksService } from '@/services/tasks-service'
@@ -3344,8 +3345,7 @@ const ContentAreaEditor = memo(function ContentAreaEditor({
             />
             <LinkAddressToolbarController />
             <SlashMenuFallbackContext value={slashMenuFallbacks}>
-              <SuggestionMenuController<(query: string) => Promise<SlashMenuItem[]>>
-                triggerCharacter="/"
+              <SlashMenuController<SlashMenuItem>
                 suggestionMenuComponent={SlashMenu}
                 onItemClick={(item: SlashMenuItem) => {
                   recordSlashMenuRecent(item.id)
