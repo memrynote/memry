@@ -70,7 +70,7 @@ struct NoteReadDialogs: ViewModifier {
             ) {
                 Button("OK", role: .cancel) { brokenLink = nil }
             } message: {
-                Text("The link points at a note this vault does not hold. You can create it on your computer.")
+                Text("The link points at a note this vault does not hold. You can create it on another device.")
             }
             // TP054: a tick or a conversion that did not land. The line keeps
             // what the document says, which is the truth after a failure.

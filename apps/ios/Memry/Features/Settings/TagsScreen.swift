@@ -268,6 +268,6 @@ enum TagsCopy {
     static let icon = "Icon"
     static let iconPlaceholder = "An emoji"
     static let noIcon = "None"
-    static let iconFromDesktop = "Icon set on desktop. Type an emoji to replace it."
+    static let iconFromDesktop = "Icon set on another device. Type an emoji to replace it."
     static let iconFooter = "Shows beside the tag in notes, tasks and the tag list. Shared with your other devices."
 }

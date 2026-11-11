@@ -126,7 +126,7 @@ struct JournalDayPage: View {
             ) {
                 Button("OK", role: .cancel) { brokenLink = nil }
             } message: {
-                Text("The link points at a note this vault does not hold. You can create it on your computer.")
+                Text("The link points at a note this vault does not hold. You can create it on another device.")
             }
         } else {
             switch model.read.phase {

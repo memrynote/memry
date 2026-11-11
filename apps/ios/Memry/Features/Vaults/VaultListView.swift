@@ -118,7 +118,7 @@ struct VaultListView: View {
                     // Where a vault comes from, since this screen cannot make
                     // one: the core exports no vault creation, so the sentence
                     // stands in for a button that would not work.
-                    Text("Vaults are created in Memry on your computer. New ones appear here on their own.")
+                    Text("Vaults are created in Memry on another device. New ones appear here on their own.")
                         .font(Tokens.Typography.caption.font)
                         .foregroundStyle(Tokens.Text.secondary.color)
                         .frame(maxWidth: .infinity, alignment: .leading)
@@ -253,7 +253,7 @@ private struct EmptyVaultsNotice: View {
         ContentUnavailableView {
             Label("No vaults yet", systemImage: "tray")
         } description: {
-            Text("This account holds no vaults. Create one in Memry on your computer and it will appear here.")
+            Text("This account holds no vaults. Create one in Memry on another device and it will appear here.")
         }
         .frame(maxWidth: .infinity, alignment: .leading)
     }

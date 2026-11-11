@@ -257,6 +257,6 @@ enum InboxPanelText {
     }
 
     static func unopenable(_ type: String) -> String {
-        type == "journal" ? "Journal days open on your computer for now." : "Open it from Notes on this phone."
+        type == "journal" ? "Journal days open on another device for now." : "Open it from Notes on this phone."
     }
 }

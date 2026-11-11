@@ -58,7 +58,7 @@ struct SASConfirmView: View {
                     .font(Tokens.Typography.screenTitle.font)
                     .foregroundStyle(Tokens.Text.primary.color)
                 Text(
-                    "Your computer is showing the same six digits. If they match, approve the link there. "
+                    "Your other device is showing the same six digits. If they match, approve the link there. "
                         + "Nothing is sent to this phone until you do."
                 )
                 .font(Tokens.Typography.body.font)
@@ -114,7 +114,7 @@ struct SASConfirmView: View {
     private var waiting: some View {
         // Words rather than a bare spinner, and no promise about how long the
         // person at the computer will take.
-        ProgressView { Text("Waiting for your computer") }
+        ProgressView { Text("Waiting for your other device") }
             .progressViewStyle(.circular)
             .font(Tokens.Typography.supporting.font)
             .tint(Tokens.Text.secondary.color)
@@ -128,7 +128,7 @@ struct SASConfirmView: View {
             Label("That code has expired", systemImage: "clock")
                 .font(Tokens.Typography.sectionTitle.font)
                 .foregroundStyle(Tokens.Text.primary.color)
-            Text("Linking codes are only good for a few minutes. Show a new one on your computer and scan it.")
+            Text("Linking codes are only good for a few minutes. Show a new one on your other device and scan it.")
                 .font(Tokens.Typography.body.font)
                 .foregroundStyle(Tokens.Text.secondary.color)
             Button("Start again") { Task { await model.startOver() } }

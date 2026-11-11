@@ -152,7 +152,7 @@ private struct TrustPage: View {
                     symbol: "laptopcomputer.and.iphone",
                     tinted: false,
                     title: "Sync when you want it",
-                    detail: "Add an account any time to keep your Mac and iPhone in step."
+                    detail: "Add an account any time to keep all your devices in step."
                 )
             }
             Spacer()

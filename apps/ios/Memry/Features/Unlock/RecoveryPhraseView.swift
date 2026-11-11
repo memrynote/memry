@@ -136,7 +136,7 @@ struct RecoveryPhraseView: View {
                     .frame(maxWidth: .infinity)
                     .disabled(!model.canSubmit)
                 if let onBack {
-                    Button("Unlock with a nearby computer instead", action: onBack)
+                    Button("Unlock with a nearby device instead", action: onBack)
                         .memrySecondaryAction()
                         .frame(maxWidth: .infinity)
                 }

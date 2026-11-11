@@ -40,7 +40,7 @@ enum BillingCopy {
     // Account card
     static let onThisIPhone = "On this iPhone"
     static let localLine = "Free · Not signed in"
-    static let localDetail = "Sign in to back up your vault and keep it in step with your Mac."
+    static let localDetail = "Sign in to back up your vault and keep it in step with your other devices."
     static let signIn = "Sign in"
     static let createAccount = "Create account"
     static let freeLine = "Free plan · Sync off"
