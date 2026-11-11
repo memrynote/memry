@@ -1672,6 +1672,14 @@
     "undecidedFilesHint": "Et notat eller en dagbokside med samme navn har annen tekst, eller er ikke synkronisert til denne enheten ennå. Memry lar disse filene være uendret og sjekker dem igjen neste gang dette hvelvet åpnes.",
     "keptRemovals": "Memry beholdt notater der filene ble slettet",
     "keptRemovalsHint": "Disse filene ble slettet utenfor Memry, men notatene deres hadde tekst filene aldri fikk. Memry beholdt notatene i stedet for å slette teksten på de andre enhetene dine.",
-    "moreUnlisted": "Andre vises ikke her."
+    "moreUnlisted": "Andre vises ikke her.",
+    "journalDaysHeld": "Dagbokoppføringer venter i en flyttet mappe",
+    "journalDaysHeldHint": "Dagbokmappen ble flyttet eller gitt nytt navn utenfor Memry, og innstillingen for dagbokmappen kan ikke følge etter ennå. Inntil da oppretter ikke Memry dagbokoppføringer eller endrer dagbokinnstillinger, og disse mappene kan ikke flyttes eller slettes. Legg alle dagbokoppføringer i én mappe, eller flytt mappen tilbake. Oppføringene dine er trygge.",
+    "journalChangeWaits": "En endring i dagbokinnstillingene ble ikke fullført",
+    "journalChangeWaitsSettingsHint": "Memry ble lukket mens dagbokoppføringer ble flyttet for en innstillingsendring, og kan ikke legge dem tilbake før .memry/config.json kan leses. Rett filen, og start deretter Memry på nytt. Oppføringene dine er trygge.",
+    "journalChangeWaitsTakenHint": "Memry ble lukket mens dagbokoppføringer ble flyttet for en innstillingsendring. En annen fil eller mappe ligger der en oppføring skal tilbake. Flytt den unna, og start deretter Memry på nytt. Oppføringene dine er trygge.",
+    "journalChangeWaitsHint": "Memry ble lukket mens dagbokoppføringer ble flyttet for en innstillingsendring, og kunne ikke legge dem tilbake. Den prøver igjen neste gang dette hvelvet åpnes. Inntil da kan dagbokmappene ikke flyttes eller slettes. Oppføringene dine er trygge.",
+    "movesWait": "Noen notater kan ikke flyttes ennå",
+    "movesWaitHint": "Memry ble lukket mens disse notatene ble flyttet eller gitt nytt navn, og kunne ikke fullføre. De kan ikke flyttes eller gis nytt navn før det er gjort. Memry prøver igjen neste gang dette hvelvet åpnes."
   }
 }

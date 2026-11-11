@@ -1672,6 +1672,14 @@
     "undecidedFilesHint": "Samannimisellä muistiinpanolla tai päiväkirjamerkinnällä on eri teksti, tai sitä ei ole vielä synkronoitu tähän laitteeseen. Memry jättää nämä tiedostot ennalleen ja tarkistaa ne uudelleen, kun tämä holvi avataan seuraavan kerran.",
     "keptRemovals": "Memry säilytti muistiinpanot, joiden tiedostot poistettiin",
     "keptRemovalsHint": "Nämä tiedostot poistettiin Memryn ulkopuolella, mutta niiden muistiinpanoissa oli tekstiä, jota tiedostoihin ei koskaan tallentunut. Memry säilytti muistiinpanot, jotta tekstiä ei poisteta muilta laitteiltasi.",
-    "moreUnlisted": "Muita ei näytetä tässä."
+    "moreUnlisted": "Muita ei näytetä tässä.",
+    "journalDaysHeld": "Päiväkirjamerkinnät odottavat siirretyssä kansiossa",
+    "journalDaysHeldHint": "Päiväkirjakansio siirrettiin tai nimettiin uudelleen Memryn ulkopuolella, eikä päiväkirjakansion asetus voi vielä seurata sitä. Siihen asti Memry ei luo päiväkirjamerkintöjä eikä muuta päiväkirjan asetuksia, eikä näitä kansioita voi siirtää tai poistaa. Siirrä kaikki päiväkirjamerkinnät yhteen kansioon tai siirrä kansio takaisin. Merkintäsi ovat turvassa.",
+    "journalChangeWaits": "Päiväkirjan asetusten muutos jäi kesken",
+    "journalChangeWaitsSettingsHint": "Memry sulkeutui siirtäessään päiväkirjamerkintöjä asetusten muutosta varten, eikä voi palauttaa niitä ennen kuin se pystyy lukemaan tiedoston .memry/config.json. Korjaa tiedosto ja käynnistä Memry uudelleen. Merkintäsi ovat turvassa.",
+    "journalChangeWaitsTakenHint": "Memry sulkeutui siirtäessään päiväkirjamerkintöjä asetusten muutosta varten. Toinen tiedosto tai kansio on paikassa, johon merkinnän pitää palata. Siirrä se pois tieltä ja käynnistä Memry uudelleen. Merkintäsi ovat turvassa.",
+    "journalChangeWaitsHint": "Memry sulkeutui siirtäessään päiväkirjamerkintöjä asetusten muutosta varten, eikä pystynyt palauttamaan niitä. Se yrittää uudelleen, kun tämä holvi avataan seuraavan kerran. Siihen asti päiväkirjakansioita ei voi siirtää tai poistaa. Merkintäsi ovat turvassa.",
+    "movesWait": "Joitakin muistiinpanoja ei voi vielä siirtää",
+    "movesWaitHint": "Memry sulkeutui siirtäessään tai nimetessään uudelleen näitä muistiinpanoja, eikä saanut työtä valmiiksi. Niitä ei voi siirtää tai nimetä uudelleen ennen kuin se on valmis. Memry yrittää uudelleen, kun tämä holvi avataan seuraavan kerran."
   }
 }
