@@ -22,6 +22,21 @@ for (let i = 0; i < Number(process.env.SCRATCH_N ?? 12); i++) {
       const log: string[] = (w.__t = [])
       const rec = (s: string) => log.push(`${Math.round(performance.now() - t0)} ${s}`)
       w.__rec = rec
+      for (const type of ['pointerdown', 'click']) {
+        document.addEventListener(
+          type,
+          (e) => {
+            const t = e.target as Element | null
+            const sw = t?.closest?.('[data-test]')
+            const red = document.querySelector('[data-test="background-color-red"]')
+            const r = red?.getBoundingClientRect()
+            rec(
+              `${type} at ${Math.round((e as MouseEvent).clientX)},${Math.round((e as MouseEvent).clientY)} on ${sw?.getAttribute('data-test') ?? t?.tagName} red@${r ? `${Math.round(r.x)},${Math.round(r.y)} ${Math.round(r.width)}x${Math.round(r.height)}` : '-'}`
+            )
+          },
+          true
+        )
+      }
       let lastEd: unknown = null
       const ti = w.__TAURI_INTERNALS__
       if (ti && !ti.__wrapped) {
