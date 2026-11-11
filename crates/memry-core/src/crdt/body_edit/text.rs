@@ -423,7 +423,7 @@ pub(super) fn turn_into(
     }
 
     let source = block.tag().clone();
-    let carried = snapshot_subtree(txn, &block);
+    let carried = snapshot_subtree(txn, &block)?;
     let plain = match node_shapes::text_prop(source.as_ref()) {
         Some(name) => attribute(txn, &block, name).unwrap_or_default(),
         None => carried.plain_text(),
