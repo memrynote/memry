@@ -197,6 +197,36 @@ pub(super) fn settle_after_removal(txn: &mut TransactionMut, parent: &XmlElement
     }
 }
 
+/// Refused when removing `row` would unwrap its column list (its column's
+/// last block, in a list of two) and a block that unwrap rebuilds cannot be
+/// copied ([`snapshot_subtree`]). Checked before the removal, because a write
+/// transaction cannot take a removal back.
+pub(super) fn refuse_uncopyable_unwrap(
+    txn: &TransactionMut,
+    row: &XmlElementRef,
+) -> Result<(), CrdtError> {
+    let Some(column) = parent_of(row).filter(|column| column.tag().as_ref() == COLUMN) else {
+        return Ok(());
+    };
+    let Some(list) = parent_of(&column).filter(|list| list.tag().as_ref() == COLUMN_LIST) else {
+        return Ok(());
+    };
+    if column.len(txn) > 1 || list.len(txn) > 2 {
+        return Ok(());
+    }
+    for other in list.children(txn) {
+        let XmlOut::Element(other) = other else {
+            continue;
+        };
+        for child in other.children(txn) {
+            if let XmlOut::Element(block) = child {
+                snapshot_subtree(txn, &block)?;
+            }
+        }
+    }
+    Ok(())
+}
+
 /// Replaces a `columnList` holding fewer than two columns with the blocks of
 /// the one it has, in its place and in their order.
 fn unwrap_if_single(txn: &mut TransactionMut, list: &XmlElementRef) {
@@ -216,7 +246,7 @@ fn unwrap_if_single(txn: &mut TransactionMut, list: &XmlElementRef) {
     let Some(at) = child_index(txn, &outer, list) else {
         return;
     };
-    let rows: Vec<Subtree> = columns
+    let rows: Result<Vec<Subtree>, CrdtError> = columns
         .iter()
         .flat_map(|column| {
             column
@@ -228,6 +258,12 @@ fn unwrap_if_single(txn: &mut TransactionMut, list: &XmlElementRef) {
                 .collect::<Vec<_>>()
         })
         .collect();
+    // Every edit that can get here ran `refuse_uncopyable_unwrap` before its
+    // removal. Were one to skip it, the list stays rather than its blocks
+    // being rebuilt without the content a copy cannot carry.
+    let Ok(rows) = rows else {
+        return;
+    };
     outer.remove_range(txn, at, 1);
     for (offset, row) in rows.iter().enumerate() {
         restore_subtree(txn, &outer, at + offset as u32, row);

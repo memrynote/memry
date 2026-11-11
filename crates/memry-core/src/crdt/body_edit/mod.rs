@@ -542,6 +542,7 @@ fn missing(id: &str) -> CrdtError {
 /// left is settled ([`settle_after_removal`]).
 fn delete(txn: &mut TransactionMut, block_id: &str) -> Result<(), CrdtError> {
     let container = locate_row(txn, block_id).ok_or_else(|| missing(block_id))?;
+    refuse_uncopyable_unwrap(txn, &container)?;
     let parent = container.parent();
     match parent {
         Some(XmlOut::Element(element)) => {

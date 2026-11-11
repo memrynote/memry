@@ -67,10 +67,40 @@ struct Node {
 /// A run's formatting: mark name to its attributes.
 type Marks = Vec<(String, Value)>;
 
+/// A run with no embed is written as `Text`, the shape every build reads; only
+/// a run holding an embed is written as `Chunks` (#4262), which a build from
+/// before it refuses as unreadable rather than restoring without the embed.
 #[derive(Serialize, Deserialize)]
 enum Part {
     Text(Vec<(String, Option<Marks>)>),
     Element(Node),
+    Chunks(Vec<(ChunkValue, Option<Marks>)>),
+}
+
+#[derive(Serialize, Deserialize)]
+enum ChunkValue {
+    Text(String),
+    Embed(Value),
+}
+
+fn marks_out(attrs: &Option<Box<yrs::types::Attrs>>) -> Option<Marks> {
+    attrs.as_deref().map(|attrs| {
+        attrs
+            .iter()
+            .map(|(name, value)| (name.to_string(), Value::from(value)))
+            .collect()
+    })
+}
+
+fn marks_in(marks: &Option<Marks>) -> Option<Box<yrs::types::Attrs>> {
+    marks.as_ref().map(|marks| {
+        Box::new(
+            marks
+                .iter()
+                .map(|(name, value)| (name.as_str().into(), Any::from(value)))
+                .collect(),
+        )
+    })
 }
 
 /// An [`Any`], tagged, so a number stays a number and `undefined` stays
@@ -147,20 +177,32 @@ fn node_of(subtree: &Subtree) -> Node {
             .children
             .iter()
             .map(|piece| match piece {
-                Piece::Text(chunks) => Part::Text(
-                    chunks
+                Piece::Text(chunks) => {
+                    let texts: Option<Vec<_>> = chunks
                         .iter()
-                        .map(|(text, attrs)| {
-                            let attrs = attrs.as_deref().map(|attrs| {
-                                attrs
-                                    .iter()
-                                    .map(|(name, value)| (name.to_string(), Value::from(value)))
-                                    .collect()
-                            });
-                            (text.clone(), attrs)
+                        .map(|(chunk, attrs)| match chunk {
+                            Chunk::Text(text) => Some((text.clone(), marks_out(attrs))),
+                            Chunk::Embed(_) => None,
                         })
-                        .collect(),
-                ),
+                        .collect();
+                    match texts {
+                        Some(texts) => Part::Text(texts),
+                        None => Part::Chunks(
+                            chunks
+                                .iter()
+                                .map(|(chunk, attrs)| {
+                                    let value = match chunk {
+                                        Chunk::Text(text) => ChunkValue::Text(text.clone()),
+                                        Chunk::Embed(embed) => {
+                                            ChunkValue::Embed(Value::from(embed))
+                                        }
+                                    };
+                                    (value, marks_out(attrs))
+                                })
+                                .collect(),
+                        ),
+                    }
+                }
                 Piece::Element(child) => Part::Element(node_of(child)),
             })
             .collect(),
@@ -182,18 +224,18 @@ fn subtree_of(node: &Node) -> Subtree {
                 Part::Text(chunks) => Piece::Text(
                     chunks
                         .iter()
-                        .map(|(text, attrs)| {
-                            let attrs = attrs.as_ref().map(|attrs| {
-                                Box::new(
-                                    attrs
-                                        .iter()
-                                        .map(|(name, value)| {
-                                            (name.as_str().into(), Any::from(value))
-                                        })
-                                        .collect::<yrs::types::Attrs>(),
-                                )
-                            });
-                            (text.clone(), attrs)
+                        .map(|(text, marks)| (Chunk::Text(text.clone()), marks_in(marks)))
+                        .collect(),
+                ),
+                Part::Chunks(chunks) => Piece::Text(
+                    chunks
+                        .iter()
+                        .map(|(value, marks)| {
+                            let chunk = match value {
+                                ChunkValue::Text(text) => Chunk::Text(text.clone()),
+                                ChunkValue::Embed(embed) => Chunk::Embed(Any::from(embed)),
+                            };
+                            (chunk, marks_in(marks))
                         })
                         .collect(),
                 ),
@@ -330,7 +372,7 @@ pub(super) fn snapshot_block(txn: &TransactionMut, block_id: &str) -> Result<Str
         previous,
         column: in_column.then(|| attribute(txn, &group, "id")).flatten(),
         column_place: in_column.then(|| column_place_of(txn, &group)).flatten(),
-        container: node_of(&snapshot_subtree(txn, &container)),
+        container: node_of(&snapshot_subtree(txn, &container)?),
     };
     serde_json::to_string(&snapshot).map_err(|error| unreadable(error.to_string()))
 }
