@@ -11,6 +11,7 @@ import { toast } from 'sonner'
 import { useT } from '@memry/i18n/renderer'
 import { FileText } from '@/lib/icons'
 import { extractErrorMessage } from '@/lib/ipc-error'
+import { notesService } from '@/services/notes-service'
 import { useAttachmentNoteId } from './note-file-url-context'
 
 interface PdfLinkProps {
@@ -26,7 +27,7 @@ export function PdfLink({ url, name, menu }: PdfLinkProps) {
 
   const open = (): void => {
     if (!noteId) return
-    window.api.notes.openAttachmentExternal(noteId, url).catch((err: unknown) => {
+    notesService.openAttachmentExternal(noteId, url).catch((err: unknown) => {
       toast.error(extractErrorMessage(err, t('editor.attachmentMenu.openFailed')))
     })
   }

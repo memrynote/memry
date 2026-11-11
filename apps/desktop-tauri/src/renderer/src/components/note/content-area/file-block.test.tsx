@@ -17,16 +17,21 @@ const mocks = vi.hoisted(() => {
   return {
     syncState: { uploadProgress: emptyProgress(), downloadProgress: emptyProgress() },
     pdfPageCount: 2,
-    renameAttachment: vi.fn()
+    renameAttachment: vi.fn(),
+    resolveAttachment: vi.fn()
   }
 })
 
-// The rename reaches Rust through the generated command.
+// The rename and the resolve reach Rust through the generated commands.
 vi.mock('../../../../../generated/bindings', async (importOriginal) => {
   const actual = await importOriginal<typeof Bindings>()
   return {
     ...actual,
-    commands: { ...actual.commands, notesAttachmentRename: mocks.renameAttachment }
+    commands: {
+      ...actual.commands,
+      notesAttachmentRename: mocks.renameAttachment,
+      notesAttachmentResolve: mocks.resolveAttachment
+    }
   }
 })
 
@@ -604,13 +609,8 @@ describe('FileBlock missing attachment card (#1713)', () => {
   // the block must say which filename it expected instead of silently failing.
   const RELATIVE = '../attachments/note1/abc123-manual.pdf'
 
-  let savedNotesApi: unknown
-
   function renderWithNoteId(resolveAttachment: ReturnType<typeof vi.fn>) {
-    // The global test setup owns `window.api`; overlay the notes surface.
-    const api = window.api as unknown as Record<string, Record<string, unknown> | undefined>
-    savedNotesApi = api.notes
-    api.notes = { ...api.notes, resolveAttachment }
+    mocks.resolveAttachment.mockImplementation(resolveAttachment)
     const Render = (createFileBlock as any).render
     const block = {
       props: { url: RELATIVE, name: 'manual.pdf', size: 2048, mimeType: 'application/pdf' }
@@ -623,7 +623,7 @@ describe('FileBlock missing attachment card (#1713)', () => {
   }
 
   afterEach(() => {
-    ;(window.api as unknown as Record<string, unknown>).notes = savedNotesApi
+    mocks.resolveAttachment.mockReset()
   })
 
   it('names the expected file when the attachment is gone and unhealable', async () => {
@@ -669,23 +669,17 @@ describe('FileBlock rename (#1714)', () => {
   // A plain file card rather than a PDF: the menu button is in the card itself,
   // with no react-pdf load step in the way.
   const RELATIVE = '../attachments/note1/abc123-manual.txt'
-  let savedNotesApi: unknown
 
   afterEach(() => {
-    ;(window.api as unknown as Record<string, unknown>).notes = savedNotesApi
+    mocks.resolveAttachment.mockReset()
   })
 
   it('records the renamed url and name on the block', async () => {
-    const api = window.api as unknown as Record<string, Record<string, unknown> | undefined>
-    savedNotesApi = api.notes
-    api.notes = {
-      ...api.notes,
-      resolveAttachment: vi.fn().mockResolvedValue({
-        absolutePath: '/vault/attachments/note1/abc123-manual.txt',
-        storedFilename: 'abc123-manual.txt',
-        exists: true
-      })
-    }
+    mocks.resolveAttachment.mockResolvedValue({
+      absolutePath: '/vault/attachments/note1/abc123-manual.txt',
+      storedFilename: 'abc123-manual.txt',
+      exists: true
+    })
     mocks.renameAttachment.mockResolvedValue({
       storedFilename: 'abc123-invoice.txt',
       url: '../attachments/note1/abc123-invoice.txt',

@@ -102,8 +102,16 @@ pub struct Env {
 }
 
 pub fn env(identity: impl FnOnce(Arc<dyn SecureStore>) -> Option<Arc<dyn NoteIdentity>>) -> Env {
+    env_named("vault", identity)
+}
+
+/// [`env`] with the vault in a folder called `name`.
+pub fn env_named(
+    name: &str,
+    identity: impl FnOnce(Arc<dyn SecureStore>) -> Option<Arc<dyn NoteIdentity>>,
+) -> Env {
     let dir = tempfile::tempdir().unwrap();
-    let vault = dir.path().join("vault");
+    let vault = dir.path().join(name);
     fs::create_dir_all(&vault).unwrap();
     fs::create_dir_all(dir.path().join("app")).unwrap();
     let store = device_key::with_device_key();

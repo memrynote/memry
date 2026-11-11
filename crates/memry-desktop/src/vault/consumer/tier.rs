@@ -4,7 +4,6 @@
 //! lives across sessions (the app holds it), and is open only while a vault is.
 
 use std::sync::{Arc, Mutex, MutexGuard, Weak};
-use std::time::Duration;
 
 use memry_core::api::vault::Vault;
 use memry_core::seams::secure_store::SecureStore;
@@ -15,10 +14,8 @@ use super::identity::{DeferIdentity, IdentityCtx, NoteIdentity};
 use super::rows::{RowOwner, RowSession};
 use super::{AfterWalk, Applied, Consumer, QUEUE_CAPACITY, inbox};
 use crate::editor::EditorHost;
-use crate::editor::versions::close_step;
 use crate::journal::folder_follow::follow_after_batch;
 use crate::session::{OpenStage, OpenVault, Session};
-use crate::shell::shutdown::{StepFn, writeback_flush_timeout};
 use crate::vault::activity::ActivityLog;
 use crate::vault::app_edit::OwnFiles;
 use crate::vault::app_move::{finish_interrupted, follow_interrupted};
@@ -29,7 +26,11 @@ use crate::vault::journal_rename::{JournalVault, finish_journal_change};
 use crate::vault::watch::HoldFn;
 use crate::vault::watch::filter::WatchFilter;
 use crate::vault::watch::{EchoGuard, NewFiles, VaultWatcher, WatchHandle};
-use crate::vault::writeback::{Pass, WriteBack, WriteBackFailed, reconcile};
+use crate::vault::writeback::{Pass, WriteBack, WriteBackFailed};
+
+mod writeback;
+
+use writeback::after_walk;
 
 pub struct VaultTier {
     /// Holds the device key the feed writes under.
@@ -183,21 +184,6 @@ impl VaultTier {
         self.rows.subscribe()
     }
 
-    /// Writes the note's body to its vault file, on the write-back thread
-    /// ([`crate::vault::writeback`]). The editor (Step 14) calls it once a body edit is durable,
-    /// the sync driver (Step 17) once a page committed. Nothing happens while no vault is open.
-    pub fn schedule(&self, note_id: &str) {
-        match self.current() {
-            Some(open) => open.writeback.schedule(note_id),
-            // The next open's reconcile writes it: its body moved after its row was stamped.
-            None => tracing::warn!(
-                scope = "vault_writeback",
-                note_id,
-                "no vault is open: the file is written on the next open"
-            ),
-        }
-    }
-
     /// The file at `rel` is no longer the item the watcher reported there, and no row names it:
     /// a create took back its reservation of a file it did not write, or a held journal day
     /// became a note (`journal::cross`). The watcher would not report the file again, so it
@@ -207,48 +193,6 @@ impl VaultTier {
         if let Some(open) = self.current().filter(|open| open.session == session) {
             open.watch().rehome(rel.to_owned());
         }
-    }
-
-    /// Every note whose file could not be updated from its body, once per run of failures.
-    pub fn subscribe_failures(&self) -> broadcast::Receiver<WriteBackFailed> {
-        self.failures.subscribe()
-    }
-
-    /// Runs every scheduled write-back of the open vault now and waits, at most `timeout`, for
-    /// them. True when none is left; also when no vault is open.
-    pub fn flush(&self, timeout: Duration) -> bool {
-        self.current()
-            .is_none_or(|open| open.writeback.flush(timeout))
-    }
-
-    /// The quit steps of the vault the shell registers, by step name: `flush-writebacks`
-    /// ([`Self::flush_step`]), `flush-activity-log` and `close-snapshots`
-    /// (`editor::versions::close_step`).
-    pub fn quit_steps(self: &Arc<Self>, session: &Session) -> [(&'static str, StepFn); 3] {
-        [
-            ("flush-writebacks", self.flush_step()),
-            ("flush-activity-log", self.activity().flush_step()),
-            ("close-snapshots", close_step(session.clone())),
-        ]
-    }
-
-    /// The `flush-writebacks` shutdown step: the scheduled write-backs run within
-    /// [`writeback_flush_timeout`] of what is left, so the steps behind keep their share. Passes
-    /// still left then run in the vault close (`close-vault`), bounded only by the sequence
-    /// budget; the step itself succeeds, since a failed step would end the sequence before
-    /// that close.
-    pub fn flush_step(self: &Arc<Self>) -> StepFn {
-        let tier = self.clone();
-        Arc::new(move |_, deadline| {
-            let tier = tier.clone();
-            Box::pin(async move {
-                let timeout = writeback_flush_timeout(deadline.remaining());
-                tokio::task::spawn_blocking(move || tier.flush(timeout))
-                    .await
-                    .map(drop)
-                    .map_err(|error| error.to_string())
-            })
-        })
     }
 
     /// The identity of the next open on ([`DeferIdentity`] until one is set; the app sets the
@@ -568,12 +512,6 @@ impl VaultTier {
             }),
         );
     }
-}
-
-/// The write-back's reconcile, once a walk ended.
-fn after_walk(pass: &Arc<Pass>, writeback: &Arc<WriteBack>) -> AfterWalk {
-    let (pass, writeback) = (pass.clone(), writeback.clone());
-    Box::new(move |stopped| reconcile(&pass, &writeback, stopped))
 }
 
 fn lock<T>(slot: &Mutex<T>) -> MutexGuard<'_, T> {
