@@ -299,13 +299,16 @@ fn a_burst_of_watcher_errors_logs_one_line() {
 /// Where inotify's limit counts every watch, the vault's return stops the old watch before it
 /// arms the new one: arming first could hit the limit only because both are up. A drop only asks
 /// notify's loop to remove the watches, later; at the arm the old watch must already be blind.
+/// Linux only, as the stop is: inotify's unwatch waits for the loop's answer, while Windows'
+/// only queues the request (notify 8.2.1 `ReadDirectoryChangesWatcher::unwatch_inner`), so
+/// there the old watch still delivers for a while after it returns.
+#[cfg(target_os = "linux")]
 #[test]
 fn the_vault_return_stops_the_old_watch_before_arming_a_new_one() {
     let dir = tempfile::tempdir().unwrap();
     let (tx, rx) = sync_channel(8);
     let lost = Arc::<Lost>::default();
     let (mut worker, _log, _vault) = worker_on(dir.path(), tx, rx, lost.clone());
-    worker.stop_before_rewatch = true;
     let (old_tx, old_rx) = sync_channel(CHANNEL_CAPACITY);
     let old = watch(&worker.root, &old_tx, &lost).unwrap();
     let probe = worker.root.join("probe.txt");
