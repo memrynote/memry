@@ -248,6 +248,14 @@ pub fn simulate_crash() -> bool {
     let _ = handler.simulate_signal(crash_handler::Signal::Segv as u32);
     #[cfg(any(windows, target_os = "macos"))]
     let _ = handler.simulate_exception(None);
+    // The abort would also hand the kernel's core dump of the whole process to the OS collector
+    // (`systemd-coredump` on Ubuntu, which `ulimit -c 0` does not stop), and the process stays
+    // alive the 10 s or more it takes to read (#3967). The monitor's dump is the one under test.
+    // SAFETY: PR_SET_DUMPABLE takes an integer and touches no memory.
+    #[cfg(target_os = "linux")]
+    unsafe {
+        libc::prctl(libc::PR_SET_DUMPABLE, 0);
+    }
     std::process::abort()
 }
 
