@@ -7,13 +7,6 @@ import type * as Y from 'yjs'
  */
 const COMPOSITION_SETTLE_MS = 50
 
-// DIAG (temporary, #3967): every hold and every refused transaction, read by the e2e spec.
-export const typingHoldDiag = {
-  holds: [] as Array<{ barrier: number; at: number; end?: number }>,
-  refused: [] as number[]
-}
-;(globalThis as Record<string, unknown>).__typingHoldDiag = typingHoldDiag
-
 /**
  * This window's hold of new typing in one note's document while the host applies an outside
  * edit of its file (`editor/typing.rs`): from the host's barrier until the edit's frame applies,
@@ -51,7 +44,6 @@ export class TypingHold {
   hold(barrier: number, ms: number): void {
     this.clearTimer()
     this.barrier = barrier
-    typingHoldDiag.holds.push({ barrier, at: Date.now() })
     this.composingAtHold = this.composing
     this.timer = setTimeout(() => this.release(barrier), ms)
   }
@@ -59,8 +51,6 @@ export class TypingHold {
   /** Ends the hold of `barrier`, or any hold. The release of an earlier barrier ends none. */
   release(barrier?: number): void {
     if (barrier !== undefined && barrier !== this.barrier) return
-    const open = typingHoldDiag.holds.at(-1)
-    if (this.barrier !== null && open && open.end === undefined) open.end = Date.now()
     this.barrier = null
     this.clearTimer()
   }

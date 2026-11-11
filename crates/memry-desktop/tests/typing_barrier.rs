@@ -9,8 +9,13 @@ use std::thread::JoinHandle;
 use std::time::{Duration, Instant};
 
 use memry_core::crdt::BODY_FRAGMENT;
+use memry_core::seams::secure_store::SecureStore;
 use memry_desktop::editor::{BARRIER, EditorHost, RELEASE, Subscriber};
+use memry_desktop::notes::error::NotesError;
+use memry_desktop::notes::write_order::WriteOrder;
+use memry_desktop::vault::app_edit::{AppEdit, Edited, Precondition};
 use memry_desktop::vault::consumer::{Applied, ChangeSource};
+use memry_desktop::vault::hash::content_hash;
 use yrs::types::xml::XmlOut;
 use yrs::updates::decoder::Decode as _;
 use yrs::{Doc, ReadTxn as _, Text as _, Transact as _, Update, WriteTxn as _, XmlFragment as _};
@@ -23,6 +28,7 @@ const OUTSIDE: &str = "edited outside\n";
 
 struct Served {
     e: Env,
+    store: Arc<dyn SecureStore>,
     host: Arc<EditorHost>,
     id: String,
 }
@@ -35,7 +41,8 @@ fn served() -> Served {
         *store.lock().unwrap() = Some(made.clone());
         Some(creates(made))
     });
-    let host = EditorHost::new(store.into_inner().unwrap().unwrap(), |_| {});
+    let store = store.into_inner().unwrap().unwrap();
+    let host = EditorHost::new(store.clone(), |_| {});
     host.register(&e.session);
     e.tier.set_editor_host(&host);
     e.write("n.md", "first words\n");
@@ -44,7 +51,7 @@ fn served() -> Served {
     let id = e.rows()[0].0.clone();
     // The watcher's start settles before the test edits the file.
     std::thread::sleep(Duration::from_millis(300));
-    Served { e, host, id }
+    Served { e, store, host, id }
 }
 
 /// A window's copy of the note, and the frames its channel received.
@@ -250,4 +257,73 @@ fn a_window_hears_the_fed_outside_edit_between_its_barrier_and_its_release() {
 
     assert_eq!(s.e.body(&s.id), "edited outside");
     assert_eq!(main.kinds_once_released(), [BARRIER, 2, RELEASE]);
+}
+
+/// The app's own write that the watcher reads only once the next save recorded its bytes (a note
+/// with an inline tag: the header's tags, then the write-back of the body) comes through as a
+/// change. Its file is the text the row names, so nothing is fed, and no window is asked to hold
+/// its typing: holding, the window refuses what the user types meanwhile, and the keystrokes are
+/// gone (#3967).
+#[test]
+fn the_apps_own_write_read_as_a_change_holds_no_typing() {
+    let mut s = served();
+    let main = s.open("main");
+    // The watcher reported the file once, as it does the app's create of a note.
+    let answers = answer_every_barrier(&s, &main);
+    s.e.write("n.md", "reported words\n");
+    s.changed_by_the_watcher();
+    answers.join().unwrap();
+    main.frames.lock().unwrap().clear();
+    let indexed_at = || {
+        let row = s.e.core().note_files().by_id(&s.id).unwrap().unwrap();
+        row.indexed_at
+    };
+    let open = s.e.session.current().unwrap();
+    let edit = AppEdit::new(&s.e.tier, &s.store, &open).unwrap();
+    let tagged = "---\ntags:\n  - car\n---\nreported words\n";
+    let edited = WriteOrder::default()
+        .run(&s.id, |turn| {
+            edit.run(turn, Precondition::Held, ChangeSource::AppEdit, |_| {
+                Ok::<_, NotesError>(Some(tagged.to_owned()))
+            })
+        })
+        .unwrap();
+    assert!(
+        matches!(edited, Edited::Wrote { held: true, .. }),
+        "{edited:?}"
+    );
+    let written = indexed_at();
+    // The next save's record, before the watcher's debounce let it look at this file.
+    let next = "---\ntags:\n  - car\n---\nreported words and more\n";
+    s.e.tier.echo().will_write("n.md", &content_hash(next));
+
+    // The consumer read the file back as its row names it: the row's time moved on.
+    let deadline = Instant::now() + WAIT;
+    while indexed_at() == written {
+        assert!(Instant::now() < deadline, "the change was not read back");
+        std::thread::sleep(Duration::from_millis(5));
+    }
+    let kinds: Vec<u8> = main.frames.lock().unwrap().iter().map(|f| f[0]).collect();
+    assert_eq!(kinds, Vec::<u8>::new(), "no window is asked for its typing");
+}
+
+/// Answers each barrier the window hears at once, until an update frame came.
+fn answer_every_barrier(served: &Served, window: &Window) -> JoinHandle<()> {
+    let (host, frames) = (Arc::clone(&served.host), Arc::clone(&window.frames));
+    std::thread::spawn(move || {
+        let deadline = Instant::now() + WAIT;
+        let mut answered = 0;
+        loop {
+            let seen = frames.lock().unwrap().clone();
+            for frame in seen.iter().filter(|f| f[0] == BARRIER).skip(answered) {
+                host.typing_sent("main", u32::from_le_bytes(frame[1..5].try_into().unwrap()));
+                answered += 1;
+            }
+            if seen.iter().any(|f| f[0] == 2) {
+                return;
+            }
+            assert!(Instant::now() < deadline, "no update frame");
+            std::thread::sleep(Duration::from_millis(5));
+        }
+    })
 }

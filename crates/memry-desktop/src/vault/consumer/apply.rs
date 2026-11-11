@@ -16,7 +16,7 @@ use super::body::{Body, Write};
 use super::identity::{Adoption, Candidate, IdentityCtx, NoteIdentity, Removal, Rename};
 use super::rows::{Lane, RowOwner, RowSession, RowStat};
 use super::{Applied, ChangeSource, MAX_RETRIES, MoveKind};
-use crate::editor::{BARRIER_WAIT, EditorHost};
+use crate::editor::EditorHost;
 use crate::vault::activity::{ActivityLog, ScanActivity};
 use crate::vault::app_edit::OwnFiles;
 use crate::vault::file_types::{FileType, extension, file_type_of_extension};
@@ -28,8 +28,10 @@ use crate::vault::writeback::WriteBack;
 mod crossing;
 mod locked;
 mod read;
+mod watched;
 
 use read::Unread;
+use watched::refresh_read_back;
 
 const SCOPE: &str = "vault_consumer";
 
@@ -71,29 +73,6 @@ pub(super) struct Applier {
 
 impl Applier {
     pub(super) fn apply(&self, event: VaultEvent) -> Step {
-        // Before the lane, so a window that does not answer holds up no write of the rows; and
-        // dropped after the change applied, so a window hears the release after the edit.
-        let _typing = match &event {
-            VaultEvent::Changed { note_id, .. } => self
-                .editor
-                .upgrade()
-                .and_then(|editor| editor.hold_typing(note_id, BARRIER_WAIT)),
-            _ => None,
-        };
-        // DIAG (temporary, #3967)
-        if let VaultEvent::Changed { note_id, path, content_hash, .. } = &event {
-            let row = self.rows.lane_of(self.session).ok().and_then(|lane| lane.files().by_id(note_id).ok().flatten());
-            tracing::warn!(
-                scope = SCOPE,
-                note_id,
-                path,
-                held = _typing.is_some(),
-                hash = ?content_hash,
-                row_hash = ?row.as_ref().and_then(|r| r.content_hash.clone()),
-                own = content_hash.as_deref().is_some_and(|h| self.own_files.writer(note_id, h).is_some()),
-                "DIAG-3967 changed event"
-            );
-        }
         let Ok(mut lane) = self.rows.lane_of(self.session) else {
             return Step::Done;
         };
@@ -111,7 +90,7 @@ impl Applier {
                 size,
                 modified_ms,
                 ..
-            } => self.changed(&mut lane, &note_id, &path, size, modified_ms, None),
+            } => self.watched_change(lane, &note_id, &path, size, modified_ms),
             VaultEvent::Removed { note_id, path } => {
                 self.removed(&mut lane, &note_id, &path);
                 Step::Done
@@ -337,23 +316,8 @@ impl Applier {
                 return step;
             }
             let write = match row.content_hash.as_deref() {
-                // Read back as recorded: the row's time moves on, so the walk does not read it
-                // again, unless the body moved since (a pass a crash cut short): then the note
-                // stays behind its body for the reconcile.
                 Some(hash) if hash == file.hash => {
-                    let stat = RowStat {
-                        file_type,
-                        size,
-                        content_hash: Some(file.hash.clone()),
-                        file_hash: Some(file.hash),
-                    };
-                    if let Err(error) = lane.refresh(note_id, path, stat) {
-                        tracing::warn!(
-                            scope = SCOPE,
-                            note_id,
-                            "the row was not refreshed: {error}"
-                        );
-                    }
+                    refresh_read_back(lane, note_id, path, size, file.hash);
                     return Step::Done;
                 }
                 Some(previous) => {
