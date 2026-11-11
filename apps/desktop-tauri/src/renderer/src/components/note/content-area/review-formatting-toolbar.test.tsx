@@ -7,7 +7,7 @@ import {
 import { openWikiLinkForSelection } from './wiki-link-edit-plugin'
 
 const toolbarMocks = vi.hoisted(() => ({
-  remountKey: 0,
+  show: true,
   editor: {
     prosemirrorState: {
       selection: { empty: false, from: 2, to: 15 },
@@ -80,18 +80,14 @@ vi.mock('@blocknote/react', () => ({
   FormattingToolbar: ({ children }: { children: React.ReactNode }) => (
     <div data-testid="formatting-toolbar">{children}</div>
   ),
-  // Keyed so a test can force the remount BlockNote performs mid-interaction:
-  // the toolbar below is torn down and rebuilt while the controller stays put.
-  // Renders the prop as a component type, as BlockNote's controller does.
+  // Renders the prop as a component type, and only while shown, as BlockNote's
+  // controller does: a hidden toolbar is unmounted and the next show mounts a
+  // fresh one while the controller stays put.
   FormattingToolbarController: ({
     formattingToolbar: Toolbar
   }: {
     formattingToolbar: React.ComponentType
-  }) => (
-    <div key={toolbarMocks.remountKey}>
-      <Toolbar />
-    </div>
-  ),
+  }) => <div>{toolbarMocks.show && <Toolbar />}</div>,
   BasicTextStyleButton: ({ basicTextStyle }: { basicTextStyle: string }) => (
     <button type="button">{basicTextStyle}</button>
   ),
@@ -143,7 +139,7 @@ describe('ReviewFormattingToolbar', () => {
     toolbarMocks.editor.updateBlock.mockClear()
     ;(toolbarMocks.editor as { _tiptapEditor?: unknown })._tiptapEditor = undefined
     ;(toolbarMocks.editor as { prosemirrorView?: unknown }).prosemirrorView = undefined
-    toolbarMocks.remountKey = 0
+    toolbarMocks.show = true
     fireEvent.pointerDown(document.body, { button: 0 })
     const selection = toolbarMocks.editor.prosemirrorState.selection as Record<string, unknown>
     delete selection.$from
@@ -183,15 +179,16 @@ describe('ReviewFormattingToolbar', () => {
     })
 
     // The first attempt at this fix held the state inside the toolbar and passed
-    // its unit tests while failing in the real app: BlockNote rebuilds the
-    // toolbar during the right-click, so the state died with the old instance.
-    it('stays suppressed when BlockNote rebuilds the toolbar mid-right-click', () => {
+    // its unit tests while failing in the real app: BlockNote mounts the toolbar
+    // only while it is shown, so one it shows after the right-click starts fresh.
+    it('stays suppressed when BlockNote shows the toolbar after the right-click', () => {
       const editorDom = mountEditorDom()
+      toolbarMocks.show = false
 
       const { rerender } = render(<ReviewFormattingToolbarController onAddComment={vi.fn()} />)
       fireEvent.contextMenu(editorDom)
 
-      toolbarMocks.remountKey += 1
+      toolbarMocks.show = true
       rerender(<ReviewFormattingToolbarController onAddComment={vi.fn()} />)
 
       expect(screen.queryByTestId('formatting-toolbar')).not.toBeInTheDocument()

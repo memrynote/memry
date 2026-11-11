@@ -472,11 +472,28 @@ export function BlockSideMenuController({
     [dragHandleMenu]
   )
 
+  // BlockNote mounts the side menu at its container's origin, over the start
+  // of the first line, and hands floating-ui the hovered block only in a later
+  // effect. A press landing in between hit the invisible plus button and
+  // inserted an empty block under the line (#3967). The transition's initial
+  // phase ends in the next animation frame, whose render first runs that effect
+  // and places the menu, so the menu ignores the pointer until it is placed.
+  const placedFloatingUIOptions = useMemo(
+    () => ({
+      ...floatingUIOptions,
+      useTransitionStylesProps: {
+        initial: { opacity: 0, pointerEvents: 'none' as const },
+        ...floatingUIOptions?.useTransitionStylesProps
+      }
+    }),
+    [floatingUIOptions]
+  )
+
   // `t` is read here only so the menu re-renders on a language change; the
   // labels themselves are resolved inside each item.
   void t
 
-  return <SideMenuController sideMenu={sideMenu} floatingUIOptions={floatingUIOptions} />
+  return <SideMenuController sideMenu={sideMenu} floatingUIOptions={placedFloatingUIOptions} />
 }
 
 /**

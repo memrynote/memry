@@ -6,7 +6,7 @@ import {
   useEditorState,
   type BlockTypeSelectItem
 } from '@blocknote/react'
-import { useMemo } from 'react'
+import { useMemo, useRef } from 'react'
 import { getBlockSelection, getMarqueeSelectedBlocks } from './marquee-block-registry'
 
 type SelectedBlock = { id: string; type: string; props: Record<string, unknown> }
@@ -18,21 +18,17 @@ type SelectionEditor = {
   getTextCursorPosition: () => { block: SelectedBlock }
 }
 
-/**
- * Blocks selected when the user last pressed the block type trigger.
- *
- * BlockNote's stock `BlockTypeSelect` reads the selection at render time. Opening
- * the dropdown moves focus out of the editor and the selection collapses to the
- * cursor, so the re-rendered item handler retyped only the last line of a
- * multi-line selection. Capturing on pointer-down, before focus moves, keeps the
- * selection the user actually made. Keyed by editor, not held in component
- * state: BlockNote remounts the toolbar mid-interaction.
- */
-const pendingSelection = new WeakMap<object, SelectedBlock[]>()
-
 export function ToolbarBlockTypeSelect({ items }: { items?: BlockTypeSelectItem[] }) {
   const Components = useComponentsContext()
   const editor = useBlockNoteEditor()
+  // Blocks selected when the user last pressed the trigger. BlockNote's stock
+  // `BlockTypeSelect` reads the selection at render time, but opening the
+  // dropdown moves focus out of the editor and the selection collapses to the
+  // cursor, so the item handler retyped only the last line of a multi-line
+  // selection. Capturing on pointer-down, before focus moves, keeps the
+  // selection the user made. The open dropdown lives in this component, so the
+  // ref outlives the interaction.
+  const pendingSelection = useRef<SelectedBlock[] | null>(null)
   const selectedBlocks = useEditorState({
     editor,
     selector: ({ editor: stateEditor }) => getSelectedBlocks(stateEditor)
@@ -62,8 +58,8 @@ export function ToolbarBlockTypeSelect({ items }: { items?: BlockTypeSelectItem[
         icon: <Icon size={16} />,
         isSelected,
         onClick: () => {
-          const targets = pendingSelection.get(editor) ?? getSelectedBlocks(editor)
-          pendingSelection.delete(editor)
+          const targets = pendingSelection.current ?? getSelectedBlocks(editor)
+          pendingSelection.current = null
           editor.focus()
           editor.transact(() => {
             for (const block of targets) {
@@ -75,7 +71,7 @@ export function ToolbarBlockTypeSelect({ items }: { items?: BlockTypeSelectItem[
         }
       }
     })
-  }, [editor, items, first])
+  }, [editor, items, first, pendingSelection])
 
   if (!Components || !editor.isEditable) return null
   if (!selectItems.some((item) => item.isSelected)) return null
@@ -83,8 +79,12 @@ export function ToolbarBlockTypeSelect({ items }: { items?: BlockTypeSelectItem[
   return (
     <span
       className="memry-format-toolbar-block-type-trigger"
-      onPointerDownCapture={() => pendingSelection.set(editor, getSelectedBlocks(editor))}
-      onKeyDownCapture={() => pendingSelection.set(editor, getSelectedBlocks(editor))}
+      onPointerDownCapture={() => {
+        pendingSelection.current = getSelectedBlocks(editor)
+      }}
+      onKeyDownCapture={() => {
+        pendingSelection.current = getSelectedBlocks(editor)
+      }}
     >
       <Components.FormattingToolbar.Select className="bn-select" items={selectItems} />
     </span>

@@ -956,6 +956,14 @@
   height: 16px !important;
 }
 
+/* The shadcn theme's `.bn-shadcn svg { pointer-events: all }` kept the plus
+   and handle icons clickable while `BlockSideMenuController` holds the menu
+   at `pointer-events: none` before it is placed (#3967), so the icons follow
+   their menu instead. */
+:root .bn-side-menu svg {
+  pointer-events: inherit;
+}
+
 /* Base height = one body line box (1.5rem line-height + 1px block padding top
    and bottom). shadcn hardcodes 30px, which sat 2px below the text and drifted
    further at the S/L font sizes. Deliberately not `!important`: shadcn's more
