@@ -708,10 +708,18 @@ export type PortedNoteEvent =
   | 'onNoteMoved'
   | 'onTagsChanged'
 
-/** A note made by the app or from a file that appeared (`shell/note_events.rs`). */
-export function onNoteCreated(callback: (event: NoteCreatedEvent) => void): () => void {
-  return subscribeToEvent(events.noteCreatedEvent, ({ note, source }) =>
-    callback({ note: toListItem(note), source })
+/**
+ * A note made by the app or from a file that appeared (`shell/note_events.rs`). `onListening`
+ * runs once the events reach this page; a note made before then sends its event to nobody.
+ */
+export function onNoteCreated(
+  callback: (event: NoteCreatedEvent) => void,
+  onListening?: () => void
+): () => void {
+  return subscribeToEvent(
+    events.noteCreatedEvent,
+    ({ note, source }) => callback({ note: toListItem(note), source }),
+    onListening
   )
 }
 

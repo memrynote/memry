@@ -540,6 +540,7 @@ export class YjsIpcProvider extends Observable<string> {
       while (this.outgoing.length > 0) {
         // A stale binding is refused anyway; its edits stay in the doc for the rebind's diff.
         if (this.stale) {
+          if (this.destroyed) this.warnDropped(this.outgoing.length)
           this.outgoing = []
           return
         }
@@ -568,6 +569,14 @@ export class YjsIpcProvider extends Observable<string> {
       this.sending = null
     })
     return this.sending
+  }
+
+  /**
+   * A destroyed binding never rebinds, so the edits its stale binding drops are lost: the vault
+   * closed under a note closed mid-hold, as its held typing went in.
+   */
+  private warnDropped(dropped: number): void {
+    log.warn('Dropped edits of a closed note whose vault closed', { noteId: this.noteId, dropped })
   }
 
   private notSaved(): Error {
@@ -614,6 +623,7 @@ export class YjsIpcProvider extends Observable<string> {
           break
         case 'document_not_open':
         case 'editor_not_serving':
+          if (this.destroyed) this.warnDropped(1)
           this.markStale()
           this.scheduleRebind()
           break
