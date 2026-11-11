@@ -122,16 +122,10 @@ impl NotesService {
         };
         if let Some(copy) = copied {
             if removed.is_err() {
-                // The copy holds the document's text only: taken back, the note stays kept.
-                if let Err(error) = unlink(&echo, root, &row.path) {
-                    tracing::error!(
-                        scope = SCOPE,
-                        note_id = row.note_id,
-                        "a kept note's copy stayed at its path: {error}"
-                    );
-                }
+                copy.take_back(&echo, root, row);
+            } else {
+                copy.remove_made_folders(&echo, root, &row.path);
             }
-            copy.remove_made_folders(&echo, root, &row.path);
         }
         removed.inspect_err(|error| {
             tracing::error!(

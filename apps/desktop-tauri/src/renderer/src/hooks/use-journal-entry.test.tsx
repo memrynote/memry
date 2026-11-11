@@ -486,6 +486,47 @@ describe('useJournalEntry dedicated hook', () => {
     expect(queryClient.getQueryData(['journal', 'entries', '2026-05-10'])).toBeNull()
   })
 
+  // #4206: a Turn into notes flushes the day's typing, then deletes the day. Typing made between
+  // the two reached no file; the day's delete event must not drop it.
+  it('saves typing the day holds when the day is deleted, unless this page deleted it', async () => {
+    let deleted: ((event: { date: string }) => void) | null = null
+    ;(window.api.onJournalEntryDeleted as ReturnType<typeof vi.fn>).mockImplementation((cb) => {
+      deleted = cb
+      return vi.fn()
+    })
+    const updateEntry = window.api.journal.updateEntry as ReturnType<typeof vi.fn>
+    const { result } = renderHook(() => useJournalEntry('2026-05-10'), { wrapper })
+    await waitFor(() => expect(result.current.loadedForDate).toBe('2026-05-10'))
+
+    act(() => result.current.updateContent('Typed after the flush'))
+    await act(async () => {
+      deleted?.({ date: '2026-05-10' })
+      await Promise.resolve()
+    })
+    expect(updateEntry).toHaveBeenCalledWith({
+      date: '2026-05-10',
+      content: 'Typed after the flush'
+    })
+    await waitFor(() => expect(result.current.isDirty).toBe(false))
+
+    updateEntry.mockClear()
+    // oxlint-disable-next-line typescript/no-misused-promises -- mockImplementation is typed as a void-returning callback; resolving a Promise is what the mocked IPC method does
+    ;(window.api.journal.deleteEntry as ReturnType<typeof vi.fn>).mockImplementationOnce(() => {
+      deleted?.({ date: '2026-05-10' })
+      return Promise.resolve({ success: true })
+    })
+    act(() => result.current.updateContent('Deleted with the day'))
+    await act(async () => {
+      expect(await result.current.deleteEntry()).toEqual({ success: true })
+    })
+    await act(async () => {
+      await vi.runOnlyPendingTimersAsync()
+    })
+    expect(updateEntry).not.toHaveBeenCalled()
+    expect(result.current.isDirty).toBe(false)
+    expect(queryClient.getQueryData(['journal', 'entries', '2026-05-10'])).toBeNull()
+  })
+
   it('shows a dropped-event refetch of the open day in its editor when the text changed', async () => {
     let dropped: (() => void) | null = null
     const api = window.api as unknown as Record<string, ReturnType<typeof vi.fn>>

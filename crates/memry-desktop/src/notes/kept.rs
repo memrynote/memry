@@ -14,7 +14,8 @@
 //!   syncs.
 //! - **Delete** ([`delete`]): the app's delete of the note or day, which tombstones the record
 //!   for every device. Its text goes to the OS trash first ([`NotesService::copy_kept`], called
-//!   by every app delete of a kept row, the sidebar's and the journal's included), so the
+//!   by every app delete of a kept row, the sidebar's, the journal's and a folder delete's
+//!   included), so the
 //!   deleted text can be taken back from the trash, as a deleted note's unread file can. A
 //!   folder that copy's write made is removed again once the copy went.
 //!
@@ -40,6 +41,7 @@ use memry_core::markdown::shared::writing_tools::merge_writing_yaml;
 use serde_json::{Map, Value};
 
 use super::create::remove_file;
+use super::delete::unlink;
 use super::error::{NotesError, SCOPE};
 use super::frontmatter::new_file_frontmatter;
 use super::service::NotesService;
@@ -367,6 +369,19 @@ pub(crate) struct KeptCopy {
 }
 
 impl KeptCopy {
+    /// Takes the copy of `row` back from its path, with the folders it made: the copy holds the
+    /// document's text only, so the note stays kept.
+    pub(crate) fn take_back(&self, echo: &EchoGuard, root: &Path, row: &Row) {
+        if let Err(error) = unlink(echo, root, &row.path) {
+            tracing::error!(
+                scope = SCOPE,
+                note_id = row.note_id,
+                "a kept note's copy stayed at its path: {error}"
+            );
+        }
+        self.remove_made_folders(echo, root, &row.path);
+    }
+
     /// Removes the folders the copy's write made for the file at `rel`, deepest first, while
     /// each is empty: a delete brings back no folder the user deleted with the file. The
     /// watcher is told of each removal first.
