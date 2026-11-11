@@ -226,6 +226,9 @@
     "createFailed": "Nem sikerült létrehozni a mappát",
     "renameFailed": "Nem sikerült átnevezni a mappát",
     "deleteFailed": "Nem sikerült törölni a mappát",
+    "keptNotPulled": "Ebben a mappában van egy jegyzet, amelynek a fájlját a memrynote alkalmazáson kívül törölték, és a szövege még nem szinkronizálódott erre az eszközre, ezért nem kerülhet a kukába. Semmi sem törlődött. Várja meg a szinkronizálást, vagy előbb törölje külön azt a jegyzetet.",
+    "keptUnwritable": "Ebben a mappában van egy jegyzet, amelynek a fájlját a memrynote alkalmazáson kívül törölték, és a szövegét nem lehet fájlba menteni a kukához. Semmi sem törlődött. Előbb törölje külön azt a jegyzetet.",
+    "trashUnavailable": "Nem sikerült áthelyezni ezt a mappát a kukába. Ami még benne van, nem törlődött.",
     "setConfigFailed": "Nem sikerült menteni a mappa beállításait"
   },
   "folderView": {

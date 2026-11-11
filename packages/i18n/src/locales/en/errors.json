@@ -226,8 +226,8 @@
     "createFailed": "Failed to create folder",
     "renameFailed": "Failed to rename folder",
     "deleteFailed": "Failed to delete folder",
-    "keptNotPulled": "This folder has a note whose file was deleted outside Memry, and its text hasn't synced to this device yet, so it can't go to the trash. Nothing was deleted. Wait for it to sync, or delete that note on its own first.",
-    "keptUnwritable": "This folder has a note whose file was deleted outside Memry, and its text can't be saved to a file for the trash. Nothing was deleted. Delete that note on its own first.",
+    "keptNotPulled": "This folder has a note whose file was deleted outside memrynote, and its text hasn't synced to this device yet, so it can't go to the trash. Nothing was deleted. Wait for it to sync, or delete that note on its own first.",
+    "keptUnwritable": "This folder has a note whose file was deleted outside memrynote, and its text can't be saved to a file for the trash. Nothing was deleted. Delete that note on its own first.",
     "trashUnavailable": "This folder couldn't be moved to the trash. Anything still in it wasn't deleted.",
     "setConfigFailed": "Failed to set folder config"
   },

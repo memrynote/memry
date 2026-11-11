@@ -226,6 +226,9 @@
     "createFailed": "Kunne ikke oprette mappen",
     "renameFailed": "Kunne ikke omdøbe mappen",
     "deleteFailed": "Kunne ikke slette mappen",
+    "keptNotPulled": "Denne mappe indeholder en note, hvis fil blev slettet uden for memrynote, og dens tekst er endnu ikke synkroniseret til denne enhed, så den kan ikke flyttes til papirkurven. Intet blev slettet. Vent på, at den synkroniseres, eller slet først den note for sig selv.",
+    "keptUnwritable": "Denne mappe indeholder en note, hvis fil blev slettet uden for memrynote, og dens tekst kan ikke gemmes i en fil til papirkurven. Intet blev slettet. Slet først den note for sig selv.",
+    "trashUnavailable": "Mappen kunne ikke flyttes til papirkurven. Det, der stadig er i den, blev ikke slettet.",
     "setConfigFailed": "Kunne ikke gemme mappeindstillingerne"
   },
   "folderView": {

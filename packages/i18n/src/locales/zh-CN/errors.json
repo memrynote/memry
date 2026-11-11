@@ -226,6 +226,9 @@
     "createFailed": "创建文件夹失败",
     "renameFailed": "重命名文件夹失败",
     "deleteFailed": "删除文件夹失败",
+    "keptNotPulled": "此文件夹中有一条笔记，其文件已在 memrynote 之外被删除，且其内容尚未同步到此设备，因此无法移到废纸篓。没有删除任何内容。请等待同步完成，或先单独删除该笔记。",
+    "keptUnwritable": "此文件夹中有一条笔记，其文件已在 memrynote 之外被删除，且其内容无法保存为文件以移到废纸篓。没有删除任何内容。请先单独删除该笔记。",
+    "trashUnavailable": "无法将此文件夹移到废纸篓。其中仍有的内容未被删除。",
     "setConfigFailed": "保存文件夹配置失败"
   },
   "folderView": {

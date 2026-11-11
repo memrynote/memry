@@ -226,6 +226,9 @@
     "createFailed": "No se pudo crear la carpeta",
     "renameFailed": "No se pudo renombrar la carpeta",
     "deleteFailed": "No se pudo eliminar la carpeta",
+    "keptNotPulled": "Esta carpeta tiene una nota cuyo archivo se eliminó fuera de memrynote, y su texto aún no se ha sincronizado con este dispositivo, así que no puede ir a la papelera. No se eliminó nada. Espera a que se sincronice o elimina primero esa nota por separado.",
+    "keptUnwritable": "Esta carpeta tiene una nota cuyo archivo se eliminó fuera de memrynote, y su texto no se puede guardar en un archivo para la papelera. No se eliminó nada. Elimina primero esa nota por separado.",
+    "trashUnavailable": "No se pudo mover esta carpeta a la papelera. Lo que aún contiene no se eliminó.",
     "setConfigFailed": "No se pudo guardar la configuración de la carpeta"
   },
   "folderView": {

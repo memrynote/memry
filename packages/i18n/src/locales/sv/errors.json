@@ -226,6 +226,9 @@
     "createFailed": "Det gick inte att skapa mappen",
     "renameFailed": "Det gick inte att byta namn på mappen",
     "deleteFailed": "Det gick inte att radera mappen",
+    "keptNotPulled": "Den här mappen innehåller en anteckning vars fil raderades utanför memrynote, och dess text har ännu inte synkats till den här enheten, så den kan inte flyttas till papperskorgen. Inget raderades. Vänta tills den har synkats, eller radera den anteckningen separat först.",
+    "keptUnwritable": "Den här mappen innehåller en anteckning vars fil raderades utanför memrynote, och dess text kan inte sparas i en fil för papperskorgen. Inget raderades. Radera den anteckningen separat först.",
+    "trashUnavailable": "Mappen kunde inte flyttas till papperskorgen. Det som fortfarande finns i den raderades inte.",
     "setConfigFailed": "Det gick inte att spara mappinställningarna"
   },
   "folderView": {

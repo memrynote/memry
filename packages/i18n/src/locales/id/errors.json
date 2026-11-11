@@ -226,6 +226,9 @@
     "createFailed": "Gagal membuat folder",
     "renameFailed": "Gagal mengganti nama folder",
     "deleteFailed": "Gagal menghapus folder",
+    "keptNotPulled": "Folder ini berisi catatan yang file-nya dihapus di luar memrynote, dan teksnya belum disinkronkan ke perangkat ini, jadi catatan itu tidak dapat dipindahkan ke tempat sampah. Tidak ada yang dihapus. Tunggu hingga tersinkron, atau hapus catatan itu secara terpisah terlebih dahulu.",
+    "keptUnwritable": "Folder ini berisi catatan yang file-nya dihapus di luar memrynote, dan teksnya tidak dapat disimpan ke file untuk tempat sampah. Tidak ada yang dihapus. Hapus catatan itu secara terpisah terlebih dahulu.",
+    "trashUnavailable": "Folder ini tidak dapat dipindahkan ke tempat sampah. Apa pun yang masih ada di dalamnya tidak dihapus.",
     "setConfigFailed": "Gagal menyetel konfigurasi folder"
   },
   "folderView": {

@@ -226,6 +226,9 @@
     "createFailed": "Stvaranje mape nije uspjelo",
     "renameFailed": "Preimenovanje mape nije uspjelo",
     "deleteFailed": "Brisanje mape nije uspjelo",
+    "keptNotPulled": "Ova mapa sadrži bilješku čija je datoteka izbrisana izvan aplikacije memrynote, a njezin tekst još nije sinkroniziran na ovaj uređaj, pa se ne može premjestiti u smeće. Ništa nije izbrisano. Pričekajte da se sinkronizira ili najprije zasebno izbrišite tu bilješku.",
+    "keptUnwritable": "Ova mapa sadrži bilješku čija je datoteka izbrisana izvan aplikacije memrynote, a njezin se tekst ne može spremiti u datoteku za smeće. Ništa nije izbrisano. Najprije zasebno izbrišite tu bilješku.",
+    "trashUnavailable": "Ovu mapu nije bilo moguće premjestiti u smeće. Ono što je još u njoj nije izbrisano.",
     "setConfigFailed": "Postavljanje konfiguracije mape nije uspjelo"
   },
   "folderView": {

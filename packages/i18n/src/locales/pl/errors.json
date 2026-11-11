@@ -226,6 +226,9 @@
     "createFailed": "Nie udało się utworzyć folderu",
     "renameFailed": "Nie udało się zmienić nazwy folderu",
     "deleteFailed": "Nie udało się usunąć folderu",
+    "keptNotPulled": "Ten folder zawiera notatkę, której plik usunięto poza memrynote, a jej tekst nie został jeszcze zsynchronizowany z tym urządzeniem, więc nie może trafić do kosza. Nic nie zostało usunięte. Poczekaj na synchronizację albo najpierw usuń tę notatkę osobno.",
+    "keptUnwritable": "Ten folder zawiera notatkę, której plik usunięto poza memrynote, a jej tekstu nie można zapisać w pliku dla kosza. Nic nie zostało usunięte. Najpierw usuń tę notatkę osobno.",
+    "trashUnavailable": "Nie udało się przenieść tego folderu do kosza. To, co nadal się w nim znajduje, nie zostało usunięte.",
     "setConfigFailed": "Nie udało się zapisać konfiguracji folderu"
   },
   "folderView": {

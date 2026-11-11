@@ -226,6 +226,9 @@
     "createFailed": "Não foi possível criar a pasta",
     "renameFailed": "Não foi possível renomear a pasta",
     "deleteFailed": "Não foi possível excluir a pasta",
+    "keptNotPulled": "Esta pasta tem uma nota cujo arquivo foi excluído fora do memrynote, e o texto dela ainda não foi sincronizado com este dispositivo, por isso ela não pode ir para a lixeira. Nada foi excluído. Aguarde a sincronização ou exclua essa nota separadamente primeiro.",
+    "keptUnwritable": "Esta pasta tem uma nota cujo arquivo foi excluído fora do memrynote, e o texto dela não pode ser salvo em um arquivo para a lixeira. Nada foi excluído. Exclua essa nota separadamente primeiro.",
+    "trashUnavailable": "Não foi possível mover esta pasta para a lixeira. O que ainda está nela não foi excluído.",
     "setConfigFailed": "Não foi possível definir a configuração da pasta"
   },
   "folderView": {

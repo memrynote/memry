@@ -226,6 +226,9 @@
     "createFailed": "Nu s-a putut crea dosarul",
     "renameFailed": "Nu s-a putut redenumi dosarul",
     "deleteFailed": "Nu s-a putut șterge dosarul",
+    "keptNotPulled": "Acest dosar conține o notiță al cărei fișier a fost șters în afara memrynote, iar textul ei nu s-a sincronizat încă pe acest dispozitiv, așa că nu poate fi mutată în coșul de gunoi. Nu s-a șters nimic. Așteaptă sincronizarea sau șterge mai întâi separat acea notiță.",
+    "keptUnwritable": "Acest dosar conține o notiță al cărei fișier a fost șters în afara memrynote, iar textul ei nu poate fi salvat într-un fișier pentru coșul de gunoi. Nu s-a șters nimic. Șterge mai întâi separat acea notiță.",
+    "trashUnavailable": "Acest dosar nu a putut fi mutat în coșul de gunoi. Ce se află încă în el nu a fost șters.",
     "setConfigFailed": "Nu s-a putut seta configurația dosarului"
   },
   "folderView": {

@@ -226,6 +226,9 @@
     "createFailed": "Nepodařilo se vytvořit složku",
     "renameFailed": "Nepodařilo se přejmenovat složku",
     "deleteFailed": "Nepodařilo se smazat složku",
+    "keptNotPulled": "Tato složka obsahuje poznámku, jejíž soubor byl smazán mimo memrynote, a její text se do tohoto zařízení ještě nesynchronizoval, takže ji nelze přesunout do koše. Nic nebylo smazáno. Počkejte na synchronizaci, nebo tuto poznámku nejprve smažte samostatně.",
+    "keptUnwritable": "Tato složka obsahuje poznámku, jejíž soubor byl smazán mimo memrynote, a její text nelze uložit do souboru pro koš. Nic nebylo smazáno. Tuto poznámku nejprve smažte samostatně.",
+    "trashUnavailable": "Tuto složku nešlo přesunout do koše. Nic, co v ní ještě zůstalo, nebylo smazáno.",
     "setConfigFailed": "Nepodařilo se nastavit konfiguraci složky"
   },
   "folderView": {
