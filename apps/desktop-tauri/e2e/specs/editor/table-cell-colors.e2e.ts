@@ -75,6 +75,11 @@ test('a cell coloured from the cell menu is still coloured after a reopen', asyn
   await vaultOpen(page)
   const note = await openNewNote(page, `Table Cell Colour ${Date.now()}`, 'seed')
   await setBlocks(page, TABLE_DOC)
+  // The table reaches the file before the colour pick: on a loaded Linux runner a pick made
+  // before the save was gone from every cell.
+  await expect
+    .poll(async () => (await noteBody(page, note.id)) ?? '', { timeout: 20_000 })
+    .toContain('| Shipping')
 
   // With both colour flags off `TableCellMenu` renders nothing, so a Colors item is itself the
   // proof that they are on.

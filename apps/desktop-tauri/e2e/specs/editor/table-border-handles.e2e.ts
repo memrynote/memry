@@ -106,9 +106,15 @@ async function openGridNote(page: Page, title: string, doc: unknown[] = GRID_DOC
   await setBlocks(page, doc)
   const rows = page.locator(NOTE_EDITOR).first().locator('table tr')
   await expect(rows).toHaveCount(doc === GRID_DOC ? 3 : 2, { timeout: 15_000 })
-  // The CRDT provider rebinds a fresh note a beat after it opens, replacing the editor state
-  // wholesale, and a caret placed before that is lost. Wait for the doc identity to hold still
-  // across two polls before the first press.
+  // The seeded table reaches the file before the first press, as `openNoteWithLines` waits, so
+  // the save and what follows it are behind the gestures: on a loaded Linux runner a cell colour
+  // picked before then was gone from every cell. Then the editor state replaced a beat after a
+  // fresh note opens (a caret placed before that is lost): the doc identity holds still across
+  // two polls.
+  const lastCell = doc === GRID_DOC ? 'B3' : 'Open'
+  await expect
+    .poll(async () => (await noteBody(page, note.id)) ?? '', { timeout: 20_000 })
+    .toContain(lastCell)
   await page.waitForFunction(
     () => {
       const w = window as unknown as {
