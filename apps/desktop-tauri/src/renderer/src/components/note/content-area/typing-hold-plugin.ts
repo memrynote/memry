@@ -28,11 +28,13 @@ const log = createLogger('TypingHold')
 
 export function createTypingHoldPlugin(hold: TypingHold): Plugin {
   let view: EditorView | null = null
+  let views = 0
   const refused = new RefusedTyping()
   return new Plugin({
     key: new PluginKey('typingHold'),
     view(editorView) {
       view = editorView
+      views++
       const undoManager: Y.UndoManager | undefined = yUndoPluginKey.getState(
         editorView.state
       )?.undoManager
@@ -49,12 +51,13 @@ export function createTypingHoldPlugin(hold: TypingHold): Plugin {
           restoreUndo?.()
           stopReplay()
           // A reconfigured state makes the plugin's view again at once, and that one replays the
-          // queue; the view itself is destroyed only once its plugins' views are.
+          // queue. No new view means the plugin went: the editor closed, or it stays without it.
+          const made = views
           queueMicrotask(() => {
-            if (!editorView.isDestroyed) return
+            if (views !== made) return
             const dropped = refused.clear()
             if (dropped > 0)
-              log.warn('The editor closed with typing refused by a hold', { dropped })
+              log.warn('Typing refused by a hold went with its editor plugin', { dropped })
           })
         }
       }

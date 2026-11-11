@@ -49,8 +49,8 @@ afterEach(() => {
 function mountNote(texts: string[] = ['Alpha line.', 'Bravo line.', 'Charlie line.']) {
   const mounted = mountTestEditor(texts.map((text) => para(text)))
   const hold = typingHoldOf(mounted.doc)
-  registerEditorPlugin(mounted.editor, createTypingHoldPlugin(hold))
-  return { ...mounted, hold }
+  const unregister = registerEditorPlugin(mounted.editor, createTypingHoldPlugin(hold))
+  return { ...mounted, hold, unregister }
 }
 
 /** The outside edit as the core feeds it: the whole body replaced by the file's blocks. */
@@ -187,9 +187,32 @@ describe('typing refused during a hold', () => {
     expect(storedText(doc)).toContain('Bravo rowxy.')
     expect(warn).toHaveBeenCalledWith(
       'Typing held for an outside edit touched what the edit changed',
-      { moved: 2, skipped: 0 }
+      { moved: 2, skipped: 0, unplaced: 0 }
     )
   })
+
+  it.each([
+    ['in the middle of the note', 'Bravo line.', 5, ['Alpha line.', 'Charlie line.']],
+    ['at the start of the note', 'Alpha line.', 0, ['Bravo line.', 'Charlie line.']],
+    ['at the end of the note', 'Charlie line.', 5, ['Alpha line.', 'Bravo line.']],
+    ['after the last character', 'Charlie line.', 13, ['Alpha line.', 'Bravo line.']]
+  ])(
+    'stays one run of text when the edit removed the block it was typed in, %s',
+    (_, typedIn, offset, after) => {
+      const { view, doc, hold } = mountNote()
+      placeCaret(view, typedIn, offset)
+      hold.hold(1, 2000)
+      for (const key of ['x', 'y']) type(view, key)
+
+      feedOutsideEdit(doc, hold, after)
+      const texts = blockTexts(view)
+      if (_.startsWith('probe'))
+        throw new Error('GOT ' + JSON.stringify(texts) + JSON.stringify(warn.mock.calls))
+      expect(texts.filter((text) => text.includes('x') || text.includes('y'))).toEqual(['xy'])
+      expect(texts.filter((text) => text !== 'xy')).toEqual(after)
+      expect(storedText(doc)).toContain('xy')
+    }
+  )
 
   it('leaves out a refused deletion of text the edit changed, and keeps the edit', () => {
     const { view, doc, hold } = mountNote()
@@ -202,7 +225,7 @@ describe('typing refused during a hold', () => {
     expect(blockTexts(view)).toEqual(['Alpha line.', 'Bravo lines.', 'Charlie line.'])
     expect(warn).toHaveBeenCalledWith(
       'Typing held for an outside edit touched what the edit changed',
-      { moved: 0, skipped: 1 }
+      { moved: 0, skipped: 1, unplaced: 0 }
     )
   })
 
@@ -216,8 +239,35 @@ describe('typing refused during a hold', () => {
 
     unmountTestEditors()
     await Promise.resolve()
-    expect(warn).toHaveBeenCalledWith('The editor closed with typing refused by a hold', {
+    expect(warn).toHaveBeenCalledWith('Typing refused by a hold went with its editor plugin', {
       dropped: 1
     })
+  })
+
+  it('logs the typing it holds when its plugin goes and the editor stays', async () => {
+    const { view, hold, unregister } = mountNote()
+    placeCaret(view, 'Alpha line.', 0)
+    hold.hold(1, 2000)
+    type(view, 'X')
+    unregister?.()
+    expect(view.isDestroyed).toBe(false)
+
+    await Promise.resolve()
+    expect(warn).toHaveBeenCalledWith('Typing refused by a hold went with its editor plugin', {
+      dropped: 1
+    })
+  })
+
+  it('keeps the typing it holds when the editor reconfigures its plugins', async () => {
+    const { view, hold } = mountNote()
+    placeCaret(view, 'Alpha line.', 0)
+    hold.hold(1, 2000)
+    type(view, 'X')
+    view.updateState(view.state.reconfigure({ plugins: [...view.state.plugins] }))
+
+    await Promise.resolve()
+    hold.release(1)
+    expect(blockTexts(view)[0]).toBe('XAlpha line.')
+    expect(warn).not.toHaveBeenCalled()
   })
 })

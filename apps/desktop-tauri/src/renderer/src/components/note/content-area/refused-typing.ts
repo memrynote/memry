@@ -8,13 +8,14 @@
  * (`outsideEditMap`), since y-prosemirror replaces the whole body for every frame. A change that
  * touches text the other change touched does not apply as typed: its typed text goes in at the
  * nearest edge of that change (after it, from inside it), so it stays in the note, and the
- * deletion or formatting it carried is left out. Either outcome is logged, without the text.
+ * deletion or formatting it carried is left out. The keystrokes typed right after it go on after
+ * its text, so a run of typing stays one run. Either outcome is logged, without the text.
  *
  * @module note/content-area/refused-typing
  */
 
-import type { Node } from '@tiptap/pm/model'
-import type { EditorState, Transaction } from '@tiptap/pm/state'
+import type { Node, Slice } from '@tiptap/pm/model'
+import { type EditorState, TextSelection, type Transaction } from '@tiptap/pm/state'
 import {
   AddMarkStep,
   Mapping,
@@ -34,8 +35,10 @@ const log = createLogger('TypingHold')
 interface Outcome {
   /** Steps whose typed text went in after the other change instead of where it was typed. */
   moved: number
-  /** Steps that carried no text and were left out (a deletion, a mark, a wrap). */
+  /** Steps that typed nothing and were left out (a deletion, a mark, a wrap). */
   skipped: number
+  /** Steps whose typed content fit at no position near the other change, and were left out. */
+  unplaced: number
 }
 
 export class RefusedTyping {
@@ -102,7 +105,10 @@ function rebase(
   outside: StepMap | null,
   onto: Transform
 ): Outcome {
-  const outcome: Outcome = { moved: 0, skipped: 0 }
+  const outcome: Outcome = { moved: 0, skipped: 0, unplaced: 0 }
+  // The text of the last moved step: where it ended in its steps' document, and in `onto`'s. A
+  // step typed right after it goes on after it, so a run of keystrokes stays one run of text.
+  let run: { after: number; at: number } | null = null
   const mapping = new Mapping()
   for (let i = steps.length - 1; i >= 0; i--) mapping.appendMap(steps[i].getMap().invert())
   mapping.appendMapping(over)
@@ -117,23 +123,36 @@ function rebase(
     const mapped = clashes ? null : step.map(through)
     if (mapped && !onto.maybeStep(mapped).failed) {
       mapping.appendMap(mapped.getMap(), steps.length - 1 - i)
+      run = null
       return
     }
     const added = onto.steps.length
-    if (keepText(step, through, onto)) outcome.moved++
-    else outcome.skipped++
+    if (!(step instanceof ReplaceStep) || step.slice.size === 0) {
+      outcome.skipped++
+      run = null
+      return
+    }
+    const at =
+      run?.after === step.from ? run.at : Math.min(through.map(step.to, 1), onto.doc.content.size)
+    const end = keepText(step.slice, at, onto)
+    run = end === null ? null : { after: step.from + step.slice.size, at: end }
+    if (run) outcome.moved++
+    else outcome.unplaced++
     for (const kept of onto.steps.slice(added)) mapping.appendMap(kept.getMap())
   })
   return outcome
 }
 
-/** Puts the text `step` typed where its end maps to; false if it typed none. */
-function keepText(step: Step, through: Mapping, onto: Transform): boolean {
-  if (!(step instanceof ReplaceStep) || step.slice.size === 0) return false
-  const pos = Math.min(through.map(step.to, 1), onto.doc.content.size)
-  const before = onto.steps.length
-  onto.replace(pos, pos, step.slice)
-  return onto.steps.length > before
+/**
+ * Puts `slice` at `pos` of `onto`'s document; returns the text position right after it, where
+ * the next keystroke goes, or null if it fit nowhere there.
+ */
+function keepText(slice: Slice, pos: number, onto: Transform): number | null {
+  const added = onto.steps.length
+  onto.replace(pos, pos, slice)
+  if (onto.steps.length === added) return null
+  const end = new Mapping(onto.steps.slice(added).map((kept) => kept.getMap())).map(pos, 1)
+  return TextSelection.findFrom(onto.doc.resolve(end), -1, true)?.from ?? end
 }
 
 /** Whether a range of `map` meets `from`..`to`, its ends included. */
@@ -157,6 +176,6 @@ function rangeOf(step: Step): { from: number; to: number } | null {
   return null
 }
 
-function report(message: string, { moved, skipped }: Outcome): void {
-  if (moved + skipped > 0) log.warn(message, { moved, skipped })
+function report(message: string, { moved, skipped, unplaced }: Outcome): void {
+  if (moved + skipped + unplaced > 0) log.warn(message, { moved, skipped, unplaced })
 }
