@@ -190,6 +190,7 @@ vi.mock('@/hooks', () => ({
 }))
 
 vi.mock('@/hooks/use-folder-view-events', () => ({ useFolderViewEvents: vi.fn() }))
+vi.mock('@/hooks/use-note-metadata-events', () => ({ useNoteMetadataEvents: vi.fn() }))
 vi.mock('@/hooks/use-flush-on-quit', () => ({ useFlushOnQuit: vi.fn() }))
 vi.mock('@/hooks/use-theme-sync', () => ({
   useThemeSync: vi.fn(() => ({ reduceMotion: 'system' }))

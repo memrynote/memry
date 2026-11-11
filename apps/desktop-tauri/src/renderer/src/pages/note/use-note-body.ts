@@ -60,6 +60,12 @@ interface SaveWindow {
   outside: string[]
   /** Note events were dropped meanwhile. */
   dropped: boolean
+  /**
+   * The listeners went live meanwhile: the file is read again when the saves end. Unlike
+   * `dropped`, it does not tell a save that it went over text the editor never showed, as
+   * the events may have missed nothing.
+   */
+  startupGap: boolean
   /** A save's reply already told the user it went over an outside edit. */
   toasted: boolean
   /**
@@ -238,7 +244,7 @@ export function useNoteBody(noteId: string | undefined, options: NoteBodyOptions
   const settleSaves = useCallback(
     (window: SaveWindow) => {
       const outside = window.outside.filter((text) => !window.own.has(text))
-      if (!noteId || (!window.dropped && outside.length === 0)) return
+      if (!noteId || (!window.dropped && !window.startupGap && outside.length === 0)) return
       const saved = lastSavedContent.current
       notesService
         .get(noteId)
@@ -297,6 +303,7 @@ export function useNoteBody(noteId: string | undefined, options: NoteBodyOptions
           own: new Set(),
           outside: [],
           dropped: false,
+          startupGap: false,
           toasted: false,
           kept: new Map()
         }
@@ -451,9 +458,11 @@ export function useNoteBody(noteId: string | undefined, options: NoteBodyOptions
     // A missed event may have been an outside edit of this note: its text is read again. The
     // text the editor holds is taken when the read starts, so a save that lands during the read
     // is told apart from it.
-    const readAgain = (): void => {
-      if (saveWindowRef.current?.noteId === noteId) {
-        outsideText(null)
+    const readAgain = (cause: 'dropped' | 'startup-gap'): void => {
+      const window = saveWindowRef.current
+      if (window?.noteId === noteId) {
+        if (cause === 'dropped') outsideText(null)
+        else window.startupGap = true
         return
       }
       const shown = lastSavedContent.current
@@ -472,10 +481,13 @@ export function useNoteBody(noteId: string | undefined, options: NoteBodyOptions
     // Missed events: dropped ones, and those sent before the listeners went live, after the
     // note's first read (#4270). Before that read answers, the editor has no text to compare.
     const stop = subscribeToEvents(
-      [(live) => onNoteUpdated(onUpdated, live), (live) => onNoteEventsDropped(readAgain, live)],
+      [
+        (live) => onNoteUpdated(onUpdated, live),
+        (live) => onNoteEventsDropped(() => readAgain('dropped'), live)
+      ],
       () => {
-        if (seededRef.current?.noteId === noteId) readAgain()
-        else readAgainOnSeedRef.current = readAgain
+        if (seededRef.current?.noteId === noteId) readAgain('startup-gap')
+        else readAgainOnSeedRef.current = () => readAgain('startup-gap')
       }
     )
 

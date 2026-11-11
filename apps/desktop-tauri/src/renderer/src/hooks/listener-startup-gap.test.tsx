@@ -24,6 +24,8 @@ const tauri = vi.hoisted(() => {
     day: null as Record<string, unknown> | null,
     /** A note read waits for this before it answers. */
     noteRead: Promise.resolve(),
+    /** The saves main was asked for; none of them answers. */
+    updates: [] as Array<Record<string, unknown>>,
     /** Main's emit: only the listeners it has registered hear it. */
     emit(name: string, payload: unknown) {
       for (const handler of live.get(name) ?? []) handler({ payload })
@@ -59,8 +61,11 @@ vi.mock('@tauri-apps/api/event', () => ({
 vi.mock('../../../generated/bindings', async (importActual) => await importActual())
 
 vi.mock('@tauri-apps/api/core', () => ({
-  invoke: async (command: string) => {
+  invoke: async (command: string, args?: { input?: Record<string, unknown> }) => {
     switch (command) {
+      case 'notes_update':
+        tauri.updates.push(args?.input ?? {})
+        return new Promise(() => undefined)
       case 'notes_list':
         return { notes: tauri.notes, total: tauri.notes.length, hasMore: false }
       case 'notes_get': {
@@ -138,6 +143,7 @@ describe('a change made before the page listens', () => {
     tauri.live.clear()
     tauri.pending.length = 0
     tauri.noteRead = Promise.resolve()
+    tauri.updates.length = 0
     queryClient = new QueryClient({ defaultOptions: { queries: { retry: false } } })
   })
 
@@ -178,6 +184,32 @@ describe('a change made before the page listens', () => {
     await act(async () => answer())
     await waitFor(() => expect(result.current.content).toBe('Rewritten by another program'))
     expect(result.current.revision).toBe(1)
+  })
+
+  it('the read the listeners ask for does not tell a save in flight that it went over unseen text', async () => {
+    tauri.note = noteView('Written in the app')
+    const { result } = renderHook(
+      () => useNoteBody('n1', { surface: 'note-page', showVersionHistory: () => undefined }),
+      { wrapper }
+    )
+    await waitFor(() => expect(result.current.content).toBe('Written in the app'))
+
+    // A save of the typing is in flight when main answers the page's `listen` calls.
+    vi.useFakeTimers({ toFake: ['setTimeout', 'clearTimeout'] })
+    act(() => result.current.onMarkdownChange('First typing'))
+    await act(async () => void (await vi.advanceTimersByTimeAsync(1500)))
+    vi.useRealTimers()
+    await waitFor(() => expect(tauri.updates).toHaveLength(1))
+    await act(async () => tauri.goLive())
+
+    // The save that follows while the first still runs is no replacement of a text never shown.
+    vi.useFakeTimers({ toFake: ['setTimeout', 'clearTimeout'] })
+    act(() => result.current.onMarkdownChange('Second typing'))
+    await act(async () => void (await vi.advanceTimersByTimeAsync(1500)))
+    vi.useRealTimers()
+    await waitFor(() => expect(tauri.updates).toHaveLength(2))
+    expect(tauri.updates[1]).toMatchObject({ content: 'Second typing' })
+    expect(tauri.updates[1].keepReplaced).toBeFalsy()
   })
 
   it('an outside edit of the open day reaches its editor once the day listens', async () => {

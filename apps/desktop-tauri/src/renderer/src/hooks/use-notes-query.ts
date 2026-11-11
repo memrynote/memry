@@ -26,9 +26,7 @@ import {
   onNoteRenamed,
   onNoteMoved,
   onNoteExternalChange,
-  onNoteEventsDropped,
-  onTagsChanged,
-  onFolderConfigUpdated
+  onNoteEventsDropped
 } from '@/services/notes-service'
 import {
   onJournalEntryCreated,
@@ -66,6 +64,7 @@ export const notesKeys = {
   // Related data
   links: (id: string) => [...notesKeys.all, 'links', id] as const,
   tags: () => [...notesKeys.all, 'tags'] as const,
+  tagCategories: () => [...notesKeys.all, 'tag-categories'] as const,
   folders: () => [...notesKeys.all, 'folders'] as const
 }
 
@@ -146,7 +145,7 @@ export interface UseNotesListResult {
 const NOTE_STALE_TIME = 30_000
 
 /** 60 seconds - metadata changes less frequently */
-const METADATA_STALE_TIME = 60_000
+export const METADATA_STALE_TIME = 60_000
 
 /** 5 minutes - keep in cache for quick access */
 const NOTE_GC_TIME = 5 * 60 * 1000
@@ -362,11 +361,11 @@ export function useNotesList(options: UseNotesListOptions = {}): UseNotesListRes
 // =============================================================================
 
 /**
- * Fetch all tags with TanStack Query caching.
+ * Fetch all tags with TanStack Query caching. `useNoteMetadataEvents` (mounted once in App)
+ * owns the events that refresh it.
  */
 export function useNoteTagsQuery(options: { enabled?: boolean } = {}) {
   const { enabled = true } = options
-  const queryClient = useQueryClient()
 
   const query = useQuery({
     queryKey: notesKeys.tags(),
@@ -389,14 +388,6 @@ export function useNoteTagsQuery(options: { enabled?: boolean } = {}) {
   // Memoize tags to avoid recreating array reference
   const tags = useMemo(() => query.data ?? EMPTY_TAGS, [query.data])
 
-  useEffect(() => {
-    const invalidate = () => {
-      void queryClient.invalidateQueries({ queryKey: notesKeys.tags() })
-    }
-    // A tag changed before the listener went live sent its event to nobody: read again then.
-    return onTagsChanged(invalidate, invalidate)
-  }, [queryClient])
-
   return {
     tags,
     isLoading: query.isLoading,
@@ -410,7 +401,8 @@ export function useNoteTagsQuery(options: { enabled?: boolean } = {}) {
 // =============================================================================
 
 /**
- * Fetch all folders with TanStack Query caching.
+ * Fetch all folders with TanStack Query caching. `useNoteMetadataEvents` (mounted once in App)
+ * owns the events that refresh it.
  */
 export function useNoteFoldersQuery(options: { enabled?: boolean } = {}) {
   const { enabled = true } = options
@@ -423,24 +415,6 @@ export function useNoteFoldersQuery(options: { enabled?: boolean } = {}) {
     staleTime: METADATA_STALE_TIME,
     gcTime: NOTE_GC_TIME
   })
-
-  useEffect(() => {
-    const invalidate = () => {
-      void queryClient.invalidateQueries({ queryKey: notesKeys.folders() })
-    }
-
-    // A folder a note brought or took before the listeners went live: read again then.
-    return subscribeToEvents(
-      [
-        (live) => onNoteCreated(invalidate, live),
-        (live) => onNoteDeleted(invalidate, live),
-        (live) => onNoteMoved(invalidate, live),
-        (live) => onNoteRenamed(invalidate, live),
-        (live) => onFolderConfigUpdated(invalidate, live)
-      ],
-      invalidate
-    )
-  }, [queryClient])
 
   const createFolderMutation = useMutation({
     mutationFn: (path: string) => notesService.createFolder(path),
