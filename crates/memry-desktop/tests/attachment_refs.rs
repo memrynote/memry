@@ -72,6 +72,34 @@ fn ignores_another_notes_attachments_and_ends_names_where_the_regex_does() {
 
 /// Bytes the scan may look at for `input`: each byte once, plus the id and its separators for
 /// every `attachments` it finds.
+/// macOS stores a name in whatever Unicode form it was written in and opens it by any other,
+/// and ignores case beyond ASCII, so a link in another form or case opens the file (#4204).
+#[test]
+fn a_ref_in_another_unicode_form_or_case_names_the_file() {
+    let nfc = "caf\u{e9}-\u{c5}r.pdf";
+    let nfd = "cafe\u{301}-A\u{30a}r.pdf";
+    for (file, written) in [
+        (nfd, nfc),
+        (nfc, nfd),
+        ("\u{c9}T\u{c9}.pdf", "\u{e9}t\u{e9}.pdf"),
+        ("\u{3a3}\u{3a3}.pdf", "\u{3c3}\u{3c2}.pdf"),
+        ("\u{130}stanbul.pdf", "i\u{307}stanbul.pdf"),
+        (nfd, "caf%C3%A9-%C3%85r.pdf"),
+    ] {
+        for body in [
+            format!("![a](../attachments/{ID}/{written})"),
+            format!("see attachments/{ID}/{written} here"),
+        ] {
+            assert!(names_file(ID, file, &body), "{file:?} in {body:?}");
+        }
+    }
+    assert!(!names_file(
+        ID,
+        nfd,
+        &format!("attachments/{ID}/cafe-Ar.pdf")
+    ));
+}
+
 fn bound(input: &str) -> usize {
     2 * input.len() + 64
 }

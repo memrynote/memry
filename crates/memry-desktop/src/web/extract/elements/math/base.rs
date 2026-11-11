@@ -4,11 +4,12 @@ use std::sync::LazyLock;
 
 use regex::Regex;
 
+use crate::uri::decode_uri_component;
 use crate::web::extract::dom::{Document, NodeId};
 use crate::web::extract::elements::rule::{attr, attr_or_empty};
 use crate::web::extract::error::ExtractError;
 use crate::web::extract::utils::dom::tag_lower;
-use crate::web::extract::utils::js::{decode_uri_component, trim};
+use crate::web::extract::utils::js::trim;
 
 use super::mjx::reconstruct_mathml_from_mjx;
 
