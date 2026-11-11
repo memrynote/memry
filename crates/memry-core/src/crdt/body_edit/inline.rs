@@ -2,6 +2,7 @@
 
 #[allow(unused_imports)]
 use super::*;
+use yrs::{OffsetKind, Out};
 
 /// Replaces a range of a block's text with an inline node.
 ///
@@ -9,10 +10,13 @@ use super::*;
 /// one as an `XmlElement` beside the block's `XmlText` — so this splits the
 /// run the range falls in and puts the node between the two halves.
 ///
-/// The tail is rebuilt **with its formatting**, read back through the same
-/// `diff` the reader uses. Rebuilding it as plain text would silently strip
-/// the bold a user already had from everything after their cursor, which is
-/// the kind of loss that is only noticed much later.
+/// The tail is rebuilt **with its formatting and its embeds**, read back
+/// through the same `diff` the reader uses. Rebuilding it as plain text would
+/// silently strip the bold a user already had from everything after their
+/// cursor, which is the kind of loss that is only noticed much later.
+///
+/// An offset inside a character is refused before anything changes: yrs
+/// would split the character's bytes (#4255).
 #[allow(clippy::too_many_arguments)]
 pub(super) fn insert_inline(
     txn: &mut TransactionMut,
@@ -59,8 +63,25 @@ pub(super) fn insert_inline(
     let local_start = start - base;
     let local_end = end - base;
 
-    // The tail, with its formatting, before anything is removed.
-    let tail = formatted_tail(txn, &run, local_end);
+    // The tail, with its formatting and embeds, before anything is removed.
+    let tail = match (
+        run_tail(txn, &run, local_start),
+        run_tail(txn, &run, local_end),
+    ) {
+        (Some(_), Some(tail)) => tail,
+        _ => return Err(inside_a_character(block_id)),
+    };
+    if tail
+        .iter()
+        .any(|(content, _)| !matches!(content, Out::Any(_)))
+    {
+        // y-prosemirror never embeds a shared type in a text run; carrying
+        // one over would need a deep copy, and dropping it loses data.
+        return Err(CrdtError::Undecodable {
+            doc_id: block_id.to_owned(),
+            what: "the text after that range embeds a shared type".to_owned(),
+        });
+    }
 
     // Everything from the insertion point to the end of this run goes; the
     // tail comes back after the node.
@@ -82,13 +103,21 @@ pub(super) fn insert_inline(
 
     if !tail.is_empty() {
         let rebuilt = block.insert(txn, index + 2, XmlTextPrelim::new(""));
-        let mut at = 0u32;
-        for (chunk, chunk_attrs) in tail {
-            // An unmarked chunk gets an explicit empty set: a plain insert
-            // after a marked one would inherit its mark.
+        for (content, chunk_attrs) in tail {
+            // Appended at the run's own length, in the document's offset
+            // unit. An unmarked chunk gets an explicit empty set: a plain
+            // insert after a marked one would inherit its mark.
+            let at = rebuilt.len(txn);
             let attrs = chunk_attrs.map(|attrs| *attrs).unwrap_or_default();
-            rebuilt.insert_with_attributes(txn, at, &chunk, attrs);
-            at += chunk.len() as u32;
+            match content {
+                Out::Any(Any::String(text)) => {
+                    rebuilt.insert_with_attributes(txn, at, &text, attrs);
+                }
+                Out::Any(embed) => {
+                    rebuilt.insert_embed_with_attributes(txn, at, embed, attrs);
+                }
+                _ => unreachable!("refused above"),
+            }
         }
     }
     Ok(())
@@ -105,33 +134,89 @@ pub(super) fn element_text_len<T: ReadTxn>(txn: &T, element: &XmlElementRef) -> 
         .sum()
 }
 
-/// One run's content from `from` onward, as formatted chunks. `from` is in
-/// the document's offset unit, bytes ([`crate::crdt::registry::OFFSET_KIND`]);
-/// one inside a character starts at that character.
+/// One run's text from `from` onward, as formatted chunks. Embeds are left
+/// out, as the block snapshot has no place for them.
 pub(super) fn formatted_tail(
     txn: &TransactionMut,
     run: &XmlTextRef,
     from: u32,
 ) -> Vec<(String, Option<Box<yrs::types::Attrs>>)> {
+    run_tail(txn, run, from)
+        .unwrap_or_default()
+        .into_iter()
+        .filter_map(|(content, attrs)| match content {
+            Out::Any(Any::String(text)) => Some((text.to_string(), attrs)),
+            _ => None,
+        })
+        .collect()
+}
+
+/// One run's content from `from` onward, as `(content, attributes)` chunks:
+/// text as `Any::String`, an embed as what it holds. `from` is in the
+/// document's own offset unit, bytes in a registry document
+/// ([`crate::crdt::registry::OFFSET_KIND`]) and UTF-16 units in a Yjs-shaped
+/// one; `None` when it falls inside a character.
+fn run_tail(
+    txn: &TransactionMut,
+    run: &XmlTextRef,
+    from: u32,
+) -> Option<Vec<(Out, Option<Box<yrs::types::Attrs>>)>> {
+    let kind = txn.doc().offset_kind();
     let mut out = Vec::new();
     let mut seen = 0u32;
     for chunk in run.diff(txn, yrs::types::text::YChange::identity) {
-        let yrs::Out::Any(Any::String(value)) = &chunk.insert else {
+        let Out::Any(Any::String(value)) = &chunk.insert else {
             // An embed takes one position in either offset kind.
+            if seen >= from {
+                out.push((chunk.insert.clone(), chunk.attributes.clone()));
+            }
             seen += 1;
             continue;
         };
-        let chunk_end = seen + value.len() as u32;
+        let chunk_end = seen + units(kind, value);
         if chunk_end > from {
-            let mut skip = from.saturating_sub(seen) as usize;
-            while !value.is_char_boundary(skip) {
-                skip -= 1;
-            }
-            out.push((value[skip..].to_owned(), chunk.attributes.clone()));
+            let skip = byte_index(kind, value, from.saturating_sub(seen))?;
+            out.push((
+                Out::Any(Any::from(&value[skip..])),
+                chunk.attributes.clone(),
+            ));
         }
         seen = chunk_end;
     }
-    out
+    Some(out)
+}
+
+fn units(kind: OffsetKind, text: &str) -> u32 {
+    match kind {
+        OffsetKind::Bytes => text.len() as u32,
+        OffsetKind::Utf16 => text.encode_utf16().count() as u32,
+    }
+}
+
+/// The byte index of `offset` (in `kind`'s unit) in `text`, or `None` when
+/// it falls inside a character.
+fn byte_index(kind: OffsetKind, text: &str, offset: u32) -> Option<usize> {
+    let mut seen = 0u32;
+    for (index, ch) in text.char_indices() {
+        if seen == offset {
+            return Some(index);
+        }
+        seen += match kind {
+            OffsetKind::Bytes => ch.len_utf8(),
+            OffsetKind::Utf16 => ch.len_utf16(),
+        } as u32;
+        if seen > offset {
+            return None;
+        }
+    }
+    (seen == offset).then_some(text.len())
+}
+
+fn inside_a_character(block_id: &str) -> CrdtError {
+    CrdtError::Undecodable {
+        doc_id: block_id.to_owned(),
+        what: "that offset falls inside a character".to_owned(),
+    }
 }
 
 /// Applies or removes a mark over a range inside one block.
@@ -216,6 +301,18 @@ pub(super) fn set_mark(
         });
     }
     let end = end.min(base);
+    // Checked over every run before any is formatted, so a refusal leaves
+    // the block as it was.
+    for (run_start, run, length) in &runs {
+        for offset in [start, end] {
+            if offset > *run_start
+                && offset < run_start + length
+                && run_tail(txn, run, offset - run_start).is_none()
+            {
+                return Err(inside_a_character(block_id));
+            }
+        }
+    }
     for (run_start, run, length) in runs {
         let from = start.max(run_start);
         let to = end.min(run_start + length);

@@ -170,6 +170,105 @@ fn an_inline_node_after_an_embed_and_non_ascii_text_keeps_the_formatted_tail() {
     assert_eq!(runs.last().map(String::as_str), Some("|çağrı"), "{runs:?}");
 }
 
+/// An embed after the cursor belongs to the tail the run is split into: a
+/// mention typed before it must not delete it (#4255).
+#[test]
+fn an_inline_node_before_an_embed_keeps_the_embed_and_its_marks() {
+    let sample = "çağrı";
+    let document = registry_document("device-embed-tail");
+    let base = paragraph_body(OffsetKind::Bytes, &format!("{sample}|{sample}"));
+    insert_embed_into_run(&base, (sample.len() + 1) as u32);
+    document.apply_durable_update(&state(&base)).expect("base");
+    apply(
+        &document,
+        &BlockEdit::SetMark {
+            block_id: "p".to_owned(),
+            start: sample.len() as u32,
+            end: (2 * sample.len() + 2) as u32,
+            mark: "bold".to_owned(),
+            value: None,
+        },
+    )
+    .expect("bold");
+    apply(
+        &document,
+        &BlockEdit::InsertInline {
+            block_id: "p".to_owned(),
+            start: sample.len() as u32,
+            end: sample.len() as u32,
+            kind: "dateMention".to_owned(),
+            text: "yarın".to_owned(),
+            attrs: HashMap::from([("date".to_owned(), "2026-09-23".to_owned())]),
+        },
+    )
+    .expect("inline");
+
+    assert_eq!(
+        paragraph_children(&document),
+        ["çağrı", "<dateMention>", "*|*", "*<embed>*", "*çağrı*",]
+    );
+}
+
+/// An offset inside a character is refused, and the text is left as it was,
+/// instead of splitting the character's bytes (#4255).
+#[test]
+fn an_offset_inside_a_character_is_refused_and_changes_nothing() {
+    for (sample, inside) in [("çağrı", 1u32), ("a🙂b", 2), ("漢字", 4), ("e\u{301}", 2)] {
+        let document = registry_document("device-boundary");
+        document
+            .apply_durable_update(&state(&paragraph_body(OffsetKind::Bytes, sample)))
+            .expect("base");
+        let before = canonical(&document);
+        let len = sample.len() as u32;
+        let edits = [
+            BlockEdit::InsertInline {
+                block_id: "p".to_owned(),
+                start: inside,
+                end: inside,
+                kind: "hashTag".to_owned(),
+                text: String::new(),
+                attrs: HashMap::from([("tag".to_owned(), "x".to_owned())]),
+            },
+            BlockEdit::InsertInline {
+                block_id: "p".to_owned(),
+                start: 0,
+                end: inside,
+                kind: "hashTag".to_owned(),
+                text: String::new(),
+                attrs: HashMap::from([("tag".to_owned(), "x".to_owned())]),
+            },
+            BlockEdit::SetMark {
+                block_id: "p".to_owned(),
+                start: inside,
+                end: len,
+                mark: "bold".to_owned(),
+                value: None,
+            },
+            BlockEdit::SetMark {
+                block_id: "p".to_owned(),
+                start: 0,
+                end: inside,
+                mark: "bold".to_owned(),
+                value: None,
+            },
+            BlockEdit::RemoveMark {
+                block_id: "p".to_owned(),
+                start: inside,
+                end: len,
+                mark: "bold".to_owned(),
+            },
+        ];
+        for edit in edits {
+            let error = apply(&document, &edit).expect_err(&format!("{sample:?} {edit:?}"));
+            assert!(
+                error.to_string().contains("inside a character"),
+                "{sample:?} {edit:?}: {error}"
+            );
+            assert_eq!(canonical(&document), before, "{sample:?} {edit:?}");
+        }
+    }
+}
+
 /// A selection replacing non-ASCII text in the middle of a run.
 #[test]
 fn an_inline_node_replacing_a_non_ascii_range_removes_exactly_that_range() {
@@ -299,6 +398,49 @@ fn registry_after(updates: &[Vec<u8>]) -> Arc<Document> {
         document.apply_durable_update(update).expect("merge");
     }
     document
+}
+
+fn canonical(document: &Document) -> String {
+    canonical_fragment(document).expect("canonical")
+}
+
+/// Paragraph `p`'s children: each text chunk (`*bold*`), each embed as
+/// `<embed>`, and each inline node as `<tag>`.
+fn paragraph_children(document: &Document) -> Vec<String> {
+    let doc = Doc::new();
+    merge(&doc, &document.encode_state().expect("state"));
+    let fragment = doc.get_or_insert_xml_fragment("prosemirror");
+    let txn = doc.transact();
+    let mut node = fragment.get(&txn, 0);
+    for _ in 0..2 {
+        node = match node {
+            Some(XmlOut::Element(element)) => element.get(&txn, 0),
+            other => panic!("unexpected layout: {other:?}"),
+        };
+    }
+    let Some(XmlOut::Element(paragraph)) = node else {
+        panic!("no paragraph");
+    };
+    let mut out = Vec::new();
+    for child in paragraph.children(&txn) {
+        match child {
+            XmlOut::Text(run) => {
+                for chunk in run.diff(&txn, yrs::types::text::YChange::identity) {
+                    let shown = match &chunk.insert {
+                        yrs::Out::Any(Any::String(text)) => text.to_string(),
+                        _ => "<embed>".to_owned(),
+                    };
+                    let bold = chunk
+                        .attributes
+                        .is_some_and(|attrs| attrs.contains_key("bold"));
+                    out.push(if bold { format!("*{shown}*") } else { shown });
+                }
+            }
+            XmlOut::Element(element) => out.push(format!("<{}>", element.tag())),
+            XmlOut::Fragment(_) => {}
+        }
+    }
+    out
 }
 
 /// Runs `edit` on paragraph `p`'s text run.

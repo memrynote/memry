@@ -4,6 +4,7 @@ use super::*;
 use crate::crdt::DocumentRegistry;
 use crate::crdt::canonical::canonical_fragment;
 use crate::crdt::registry::UpdateSink;
+use yrs::{GetString as _, Transact as _};
 
 fn empty_note() -> Arc<Document> {
     let sink: UpdateSink = Arc::new(|_, _| {});
@@ -171,4 +172,42 @@ fn inserted_tables_take_cell_text_at_row_and_column() {
         canonical.contains("4 element tableHeader backgroundColor=\"default\" colspan=1 rowspan=1 textAlignment=\"left\" textColor=\"default\"\n5 element tableParagraph\n6 text \"Name\"\n"),
         "{canonical}"
     );
+}
+
+/// In a document that counts UTF-16 units (the Yjs unit), an offset between
+/// the halves of a surrogate pair is refused, and one after the pair works
+/// and keeps the tail (#4255).
+#[test]
+fn a_utf16_document_refuses_an_offset_inside_a_surrogate_pair() {
+    let doc = yrs::Doc::with_options(yrs::Options {
+        offset_kind: yrs::OffsetKind::Utf16,
+        ..yrs::Options::default()
+    });
+    let fragment = doc.get_or_insert_xml_fragment(BODY_FRAGMENT);
+    let mut txn = doc.transact_mut();
+    let group = fragment.push_back(&mut txn, XmlElementPrelim::empty("blockGroup"));
+    let container = group.push_back(&mut txn, XmlElementPrelim::empty("blockContainer"));
+    container.insert_attribute(&mut txn, "id", "p");
+    let paragraph = container.push_back(&mut txn, XmlElementPrelim::empty("paragraph"));
+    paragraph.push_back(&mut txn, XmlTextPrelim::new("a🙂b"));
+    let attrs = HashMap::from([("tag".to_owned(), "x".to_owned())]);
+
+    for refused in [
+        insert_inline(&mut txn, "p", 2, 2, "hashTag", "", &attrs),
+        set_mark(&mut txn, "p", 2, 4, "bold", None, true),
+        set_mark(&mut txn, "p", 0, 2, "bold", None, true),
+    ] {
+        let error = refused.expect_err("inside the pair");
+        assert!(error.to_string().contains("inside a character"), "{error}");
+    }
+    insert_inline(&mut txn, "p", 3, 3, "hashTag", "", &attrs).expect("after the pair");
+    let texts: Vec<String> = paragraph
+        .children(&txn)
+        .map(|child| match child {
+            XmlOut::Text(run) => run.get_string(&txn),
+            XmlOut::Element(element) => format!("<{}>", element.tag()),
+            XmlOut::Fragment(_) => String::new(),
+        })
+        .collect();
+    assert_eq!(texts, ["a🙂", "<hashTag>", "b"]);
 }
