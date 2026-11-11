@@ -288,6 +288,9 @@ describe('useVaultNotices (#3531 14l)', () => {
     expect(text).toContain('Trip, Ideas')
     expect(lastOptions().action?.label).toBe('Turn into notes')
     expect(click(lastOptions().action).defaultPrevented).toBe(true)
+    // A second click while the first is answered asks nothing more.
+    click(lastOptions().action)
+    expect(mocks.journalCrossIntoNotes).toHaveBeenCalledTimes(1)
     expect(mocks.journalCrossIntoNotes).toHaveBeenCalledWith(['j1', 'j2'])
     await Promise.resolve()
     expect(mocks.toast.error).not.toHaveBeenCalled()
