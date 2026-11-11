@@ -112,20 +112,31 @@ test('keeps the Turn into submenu open through a hesitation on the way to it', a
   await openNoteWithLines(page, label('Drag Menu Hesitation'), lines)
 
   const target = page.locator('.bn-block-content').filter({ hasText: /^Line 20$/ })
-  // BlockNote hides the side menu on any scroll of its ancestors, and the `scroll` event of this
-  // scroll is dispatched at the next rendering update. A loaded runner can hold that update past
-  // the hover (the harness waits for a frame or 50 ms), so the handle showed and hid again, and
-  // with the pointer still, never came back: the click below timed out on a missing handle
-  // (#4227). Returning on the event puts the hover after it.
+  // BlockNote hides the side menu on any scroll of its ancestors, and a `scroll` event is
+  // dispatched in the rendering update before that frame's animation callbacks. Resolving on the
+  // next frame keeps this scroll's event from landing after the hover below.
   await target.evaluate(
     (el: HTMLElement) =>
       new Promise<void>((resolve) => {
-        addEventListener('scroll', () => resolve(), { capture: true, once: true })
         el.scrollIntoView({ block: 'center' })
+        requestAnimationFrame(() => resolve())
       })
   )
-  await target.hover()
-  await page.locator('[data-test="dragHandle"]').first().click()
+  const line = await boxOf(target)
+  await page.mouse.move(line.x + line.width / 2, line.y + line.height / 2)
+  // The side menu mounts at the editor's origin, here scrolled out of view above, and moves beside
+  // the line a task later. A click in between scrolled the editor to the unplaced handle, the scroll
+  // closed the menu, and with the pointer still the handle never came back (#4227, linux-x64 runs
+  // 43006737328 and 43012776097). The click waits until the handle sits beside Line 20.
+  const handle = page.locator('[data-test="dragHandle"]').first()
+  await expect
+    .poll(async () => {
+      const box = await handle.boundingBox()
+      const middle = box ? box.y + box.height / 2 : -1
+      return middle >= line.y && middle <= line.y + line.height
+    })
+    .toBe(true)
+  await handle.click()
   const turnInto = menuItem(page, 'Turn into')
   await turnInto.hover()
   const heading1 = menuItem(page, 'Heading 1')
@@ -154,6 +165,48 @@ test('keeps the Turn into submenu open through a hesitation on the way to it', a
   await expect
     .poll(async () => (await editorDocument(page)).find((b) => blockText(b) === 'Line 20')?.type)
     .toBe('heading')
+})
+
+// #4245: a menu whose block scrolled out of the note hides (`visibility: hidden`) and stays open.
+// Enter must not run the row it had focused, Delete, with nothing on screen. WebKit and Chromium
+// move focus off a hidden element, so the keys land on the body.
+test('runs no menu row from the keyboard while its block is scrolled out of view', async ({
+  page
+}) => {
+  await vaultOpen(page)
+  const lines = Array.from({ length: 60 }, (_, i) => `Line ${i + 1}`)
+  await openNoteWithLines(page, label('Drag Menu Hidden Keys'), lines)
+
+  await openDragHandleMenu(page)
+  const focusedRow = (): Promise<string | undefined> =>
+    page.evaluate(() => document.activeElement?.textContent?.trim())
+  for (let rows = 0; rows < 10 && (await focusedRow()) !== 'Delete'; rows++) {
+    await page.keyboard.press('ArrowDown')
+  }
+  expect(await focusedRow()).toBe('Delete')
+
+  // Scroll the note's scroll container until Line 1, the menu's anchor, is out of view.
+  await page
+    .locator('.bn-block-content')
+    .first()
+    .evaluate((el: HTMLElement) => {
+      for (let node = el.parentElement; node; node = node.parentElement) {
+        if (
+          node.scrollHeight > node.clientHeight &&
+          getComputedStyle(node).overflowY !== 'visible'
+        ) {
+          node.scrollTop = node.scrollHeight
+          return
+        }
+      }
+      throw new Error('no scroll container')
+    })
+  await expect(page.locator(MENU).first()).toBeHidden()
+  await page.keyboard.press('ArrowDown')
+  await page.keyboard.press('Enter')
+  await page.waitForTimeout(500)
+
+  expect((await editorDocument(page)).map(blockText)).toContain('Line 1')
 })
 
 test('duplicates a block via the menu, directly below the original', async ({ page }) => {

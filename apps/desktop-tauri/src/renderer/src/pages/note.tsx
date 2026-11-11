@@ -168,6 +168,7 @@ import { useNoteBody } from './note/use-note-body'
 import { VERSION_HISTORY_REQUEST_KEY } from './note/use-replaced-outside-edit'
 import { useTabViewState } from '@/hooks/use-tab-view-state'
 import { useDialogState } from '@/hooks/use-dialog-state'
+import { useDatabaseReadOnly } from '@/hooks/use-database-read-only'
 import { ReviewBadgeLayer, ReviewRail, useCriticMarkupReview } from '@/components/note/review'
 import { AgentReviewSurface, useAgentBodyReview } from '@/components/note/agent-review'
 import { WritingChrome, WritingRail, useWritingTools } from '@/components/note/writing-tools'
@@ -283,7 +284,10 @@ export function NotePage({ noteId }: NotePageProps) {
     [noteId]
   )
   // This device can't save (#4268): the note's fields take no edit, as its editor takes none.
-  const databaseReadOnly = docReadOnly === 'database-read-only'
+  // The vault's own answer covers a large file, which mounts no editor, and the moment before
+  // the editor's host answers (#4271).
+  const vaultReadOnly = useDatabaseReadOnly()
+  const databaseReadOnly = docReadOnly === 'database-read-only' || vaultReadOnly
   const fieldsReadOnly = isLocked || databaseReadOnly
   const hasOwnLock = useHasOwnNoteLock(noteId ?? null)
   const { createNote, updateNote, renameNote, deleteNote } = useNoteMutations()
@@ -1427,6 +1431,7 @@ export function NotePage({ noteId }: NotePageProps) {
     note,
     isDeleted,
     isLocked,
+    fieldsReadOnly,
     hasOwnLock,
     isFullWidth,
     isLocalGraphOpen,
@@ -1645,11 +1650,15 @@ export function NotePage({ noteId }: NotePageProps) {
               value="note.rename"
               label={noteLabels['note.rename']}
               icon={<Pencil className="size-4" />}
+              disabled={fieldsReadOnly}
+              className="disabled:pointer-events-none disabled:opacity-50"
             />
             <Picker.Item
               value="note.addName"
               label={noteLabels['note.addName']}
               icon={<Type className="size-4" />}
+              disabled={fieldsReadOnly}
+              className="disabled:pointer-events-none disabled:opacity-50"
             />
             <Picker.Item
               value="note.moveToFolder"
@@ -1687,7 +1696,7 @@ export function NotePage({ noteId }: NotePageProps) {
               value="note.toggleLocalOnly"
               label={noteLabels['note.toggleLocalOnly']}
               icon={<Monitor className="size-4" />}
-              disabled={isLocked}
+              disabled={fieldsReadOnly}
               className="disabled:pointer-events-none disabled:opacity-50"
             />
             {(hasOwnLock || !isLocked) && (
@@ -1776,7 +1785,7 @@ export function NotePage({ noteId }: NotePageProps) {
             onFramingChange={(changes) => void setCoverFraming(changes)}
             repositioning={isRepositioningCover}
             onRepositioningChange={setIsRepositioningCover}
-            disabled={isDeleted}
+            disabled={isDeleted || fieldsReadOnly}
           />
         )
       }

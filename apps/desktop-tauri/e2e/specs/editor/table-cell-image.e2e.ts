@@ -5,7 +5,7 @@
 import { mkdirSync, writeFileSync } from 'node:fs'
 import { join } from 'node:path'
 
-import { typeInEditor } from '../../harness/editor'
+import { expectSuggestionMenuOpen, typeInEditor } from '../../harness/editor'
 import {
   NOTE_EDITOR,
   createNote,
@@ -134,7 +134,7 @@ test('choosing Image from the slash menu puts the picture in the cell', async ({
 
   await placeCaretInCell(page.locator(`${NOTE_EDITOR} tbody td`).nth(1))
   await typeInEditor(page, '/image')
-  await expect(page.getByText('Image', { exact: true }).first()).toBeVisible({ timeout: 10_000 })
+  await expectSuggestionMenuOpen(page, 'Image')
   await page.keyboard.press('Enter')
 
   await expect

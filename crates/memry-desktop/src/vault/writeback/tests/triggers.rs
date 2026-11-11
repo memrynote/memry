@@ -157,6 +157,37 @@ fn a_replaced_file_the_app_did_not_write_is_kept_as_a_version() {
     assert_eq!(f.versions(&id), vec![text.to_owned()], "{written}");
 }
 
+/// #4250: bytes the app did not write, kept before the write over them, are an outside write:
+/// on a note at the cap they push out none of the user's close versions.
+#[test]
+fn a_replaced_file_the_app_did_not_write_prunes_none_of_the_users_versions() {
+    let mut f = fixture();
+    let text = "written outside the app\n";
+    let id = f.adopt("n.md", text);
+    for n in 0..50 {
+        let quit = format!("quit {n}\n");
+        assert!(f.vault.versions().keep_close(&id, &quit).unwrap());
+    }
+    f.edit_in_app(&id, "typed in the app");
+    let outcome = f.run(&id);
+    assert!(
+        matches!(
+            outcome,
+            Outcome::Wrote {
+                version_kept: true,
+                replaced_outside: false,
+                ..
+            }
+        ),
+        "{outcome:?}"
+    );
+
+    let kept = f.versions(&id);
+    assert_eq!(kept.len(), 51, "one outside write over the cap");
+    assert_eq!(kept.first().map(String::as_str), Some("quit 0\n"));
+    assert_eq!(kept.last().map(String::as_str), Some(text));
+}
+
 /// Its own last write is kept too when the body moves by ten words or more (Electron's
 /// `keepVersionBeforeWriteback`), and not for less; only an outside edit the consumer read
 /// counts as an outside text replaced, which the user is told of.

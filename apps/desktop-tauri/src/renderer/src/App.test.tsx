@@ -89,7 +89,7 @@ vi.mock('@tanstack/react-query', async (importOriginal) => {
   const actual = await importOriginal<typeof ReactQuery>()
   return {
     ...actual,
-    useQueryClient: () => ({ clear: vi.fn() }),
+    useQueryClient: () => ({ clear: vi.fn(), invalidateQueries: vi.fn() }),
     // App keeps one real client per vault workspace (VaultStack); recorded so
     // tests can drive each vault's cache directly.
     QueryClient: class extends actual.QueryClient {
@@ -191,6 +191,10 @@ vi.mock('@/hooks', () => ({
 
 vi.mock('@/hooks/use-folder-view-events', () => ({
   useFolderViewEvents: vi.fn()
+}))
+
+vi.mock('@/hooks/use-note-metadata-events', () => ({
+  useNoteMetadataEvents: vi.fn()
 }))
 
 vi.mock('@/hooks/use-flush-on-quit', () => ({
