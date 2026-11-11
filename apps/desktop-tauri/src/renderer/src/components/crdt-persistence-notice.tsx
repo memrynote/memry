@@ -2,7 +2,8 @@ import { useEffect, useRef } from 'react'
 import { toast } from 'sonner'
 import { useT } from '@memry/i18n/renderer'
 import { createLogger } from '@/lib/logger'
-import { commands } from '../../../generated/bindings'
+import { subscribeToEvent } from '@/services/tauri-event'
+import { commands, events } from '../../../generated/bindings'
 
 const log = createLogger('CrdtPersistenceNotice')
 
@@ -27,25 +28,27 @@ const DEGRADED_SESSION_THRESHOLD = 3
  * vector that lets an offline device merge cleanly instead of resolving against
  * a from-scratch document.
  *
- * Renders nothing. Mounted next to the app rather than inside it, so the query
- * resolves after the app's Toaster is mounted.
+ * Renders nothing. Mounted beside the open vault's Toaster in App: sonner drops
+ * a toast sent before its Toaster mounts, and the loading screen has none.
+ *
+ * Asked once the window hears the editor's ready event, and again on each ready:
+ * the host counts the launch at the vault's open, which may finish after this
+ * mounts (#4190).
  */
 export function CrdtPersistenceNotice(): null {
   const { t } = useT('errors')
   const announced = useRef(false)
 
   useEffect(() => {
-    if (announced.current) return undefined
-    announced.current = true
-
     let cancelled = false
-    void (async () => {
+    const ask = async (): Promise<void> => {
       try {
         const health = await commands.crdtGetHealth()
-        if (cancelled) return
+        if (cancelled || announced.current) return
         if (health.persistent) return
         if (health.inMemorySessions < DEGRADED_SESSION_THRESHOLD) return
 
+        announced.current = true
         toast(t('crdt.persistenceDegradedTitle'), {
           description: t('crdt.persistenceDegradedBody'),
           duration: 15000
@@ -55,10 +58,16 @@ export function CrdtPersistenceNotice(): null {
         // telemetry already carries the failure.
         log.warn('Could not read CRDT persistence health', error)
       }
-    })()
+    }
+    const stop = subscribeToEvent(
+      events.crdtProviderReadyEvent,
+      () => void ask(),
+      () => void ask()
+    )
 
     return () => {
       cancelled = true
+      stop()
     }
   }, [t])
 

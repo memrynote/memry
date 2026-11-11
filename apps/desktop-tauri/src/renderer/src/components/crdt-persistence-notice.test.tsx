@@ -15,7 +15,20 @@ vi.mock('@/lib/logger', () => ({
 
 const getHealth = vi.hoisted(() => vi.fn())
 
-vi.mock('../../../generated/bindings', () => ({ commands: { crdtGetHealth: getHealth } }))
+const ready = vi.hoisted(() => ({ fire: () => {} }))
+
+vi.mock('../../../generated/bindings', () => ({
+  commands: { crdtGetHealth: getHealth },
+  events: { crdtProviderReadyEvent: {} }
+}))
+
+vi.mock('@/services/tauri-event', () => ({
+  subscribeToEvent: (_event: unknown, callback: () => void, onListening?: () => void) => {
+    ready.fire = callback
+    onListening?.()
+    return () => {}
+  }
+}))
 
 import { CrdtPersistenceNotice } from './crdt-persistence-notice'
 
@@ -53,6 +66,22 @@ describe('CrdtPersistenceNotice', () => {
     const [title, options] = toastFn.mock.calls[0] as [string, { description: string }]
     expect(title).toBe('crdt.persistenceDegradedTitle')
     expect(options.description).toBe('crdt.persistenceDegradedBody')
+  })
+
+  // The window may ask before its vault opens, when the host has no verdict yet:
+  // the editor's ready event asks again, and the notice still shows only once.
+  it('asks again when a vault becomes ready and announces once', async () => {
+    getHealth.mockResolvedValueOnce({ persistent: true, inMemorySessions: 0 })
+    render(<CrdtPersistenceNotice />)
+    await waitFor(() => expect(getHealth).toHaveBeenCalledTimes(1))
+    expect(toastFn).not.toHaveBeenCalled()
+
+    getHealth.mockResolvedValue({ persistent: false, inMemorySessions: 3 })
+    ready.fire()
+    await waitFor(() => expect(toastFn).toHaveBeenCalledTimes(1))
+    ready.fire()
+    await waitFor(() => expect(getHealth).toHaveBeenCalledTimes(3))
+    expect(toastFn).toHaveBeenCalledTimes(1)
   })
 
   it('stays quiet when the health query fails, rather than nagging blindly', async () => {

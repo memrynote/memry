@@ -294,6 +294,7 @@ vi.mock('@/components/ui/sidebar', () => ({
 
 vi.mock('@/components/window-controls', () => ({ WindowControls: () => <div /> }))
 vi.mock('@/components/ui/sonner', () => ({ Toaster: () => <div /> }))
+vi.mock('@/components/crdt-persistence-notice', () => ({ CrdtPersistenceNotice: () => null }))
 vi.mock('@/components/day-panel', () => ({ GlobalDayPanel: () => <div /> }))
 
 vi.mock('@/components/tasks/drag-drop', () => ({

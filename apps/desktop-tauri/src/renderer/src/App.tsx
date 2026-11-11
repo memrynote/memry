@@ -25,6 +25,7 @@ import {
 import { ThemeSyncManager, TabPersistenceManager } from '@/components/app-managers'
 import { Loader2 } from '@/lib/icons'
 import { AppSidebar } from '@/components/app-sidebar'
+import { CrdtPersistenceNotice } from '@/components/crdt-persistence-notice'
 import { SidebarInset, SidebarProvider } from '@/components/ui/sidebar'
 import { APP_RAIL_WIDTH_PX } from '@/components/sidebar/app-rail'
 import { WorkspaceDragStrip } from '@/components/sidebar/workspace-drag-strip'
@@ -971,6 +972,8 @@ function AppScreen(): React.JSX.Element {
       <PermanentDeleteConfirm />
       <UpdateInstallFailedDialog />
       <Toaster />
+      {/* Beside the open vault's Toaster: a toast sent before it mounts is lost (#4190). */}
+      <CrdtPersistenceNotice />
     </ThemeProvider>
   )
 }
