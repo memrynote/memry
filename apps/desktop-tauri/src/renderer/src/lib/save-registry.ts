@@ -19,14 +19,17 @@ export function unregisterPendingSave(key: string, flushFn?: FlushFn): void {
 // The flush still writing, if any. A registered flush clears its pending edit before it awaits
 // the write, so a second flush started meanwhile would find nothing and report done early: at a
 // Windows sign-out the quit sequence's flush follows one that may still be saving.
-let running: Promise<void> | null = null
+let running: Promise<number> | null = null
 
-/** Flushes every registered save, after any flush already running has finished. */
-export function flushAllPendingSaves(): Promise<void> {
+/**
+ * Flushes every registered save, after any flush already running has finished. Resolves with the
+ * number of flushes that failed, so a caller about to act on the saved files can refuse.
+ */
+export function flushAllPendingSaves(): Promise<number> {
   const previous = running
   const run = (async () => {
     await previous
-    await flushRegistered()
+    return flushRegistered()
   })()
   running = run
   void run.finally(() => {
@@ -35,11 +38,11 @@ export function flushAllPendingSaves(): Promise<void> {
   return run
 }
 
-async function flushRegistered(): Promise<void> {
+async function flushRegistered(): Promise<number> {
   const entries = Array.from(pendingSaves.entries())
   if (entries.length === 0) {
     log.info('flushAll: nothing registered')
-    return
+    return 0
   }
 
   const keys = entries.map(([k]) => k)
@@ -50,6 +53,7 @@ async function flushRegistered(): Promise<void> {
     log.error('flushAll: some flushes failed', { failed: failed.length })
   }
   log.info('flushAll: done', { total: entries.length, failed: failed.length })
+  return failed.length
 }
 
 export function hasPendingSaves(): boolean {

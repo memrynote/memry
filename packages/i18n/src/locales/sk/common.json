@@ -1688,7 +1688,11 @@
     "journalChangeWaitsSettingsHint": "Memry sa zatvorilo počas presúvania záznamov denníka pre zmenu nastavení a nemôže ich vrátiť, kým neprečíta súbor .memry/config.json. Opravte súbor a potom Memry reštartujte. Vaše záznamy sú v bezpečí.",
     "journalChangeWaitsTakenHint": "Memry sa zatvorilo počas presúvania záznamov denníka pre zmenu nastavení. Na mieste, kam sa má záznam vrátiť, je iný súbor alebo priečinok. Presuňte ho preč a potom Memry reštartujte. Vaše záznamy sú v bezpečí.",
     "journalChangeWaitsHint": "Memry sa zatvorilo počas presúvania záznamov denníka pre zmenu nastavení a nepodarilo sa mu ich vrátiť. Skúsi to znova pri ďalšom otvorení tohto trezoru. Dovtedy priečinky denníka nemožno presunúť ani odstrániť. Vaše záznamy sú v bezpečí.",
+    "journalChangeWaitsRefusedHint": "Memry nedokončilo presun záznamov denníka pre zmenu nastavení a nepodarilo sa mu vrátiť ich všetky. Skúsi to znova pri ďalšom otvorení tohto trezoru. Dovtedy priečinky denníka nemožno presunúť ani odstrániť. Vaše záznamy sú v bezpečí.",
     "movesWait": "Niektoré poznámky sa zatiaľ nedajú presunúť",
-    "movesWaitHint": "Memry sa zatvorilo počas presúvania alebo premenovania týchto poznámok a nepodarilo sa mu to dokončiť. Kým sa to nestane, nemožno ich presunúť ani premenovať. Memry to skúsi znova pri ďalšom otvorení tohto trezoru."
+    "movesWaitHint": "Memry sa zatvorilo počas presúvania alebo premenovania týchto poznámok a nepodarilo sa mu to dokončiť. Kým sa to nestane, nemožno ich presunúť ani premenovať. Memry to skúsi znova pri ďalšom otvorení tohto trezoru.",
+    "journalDaysRenamed": "Niektoré záznamy denníka už nemajú ako názov dátum",
+    "journalDaysRenamedHint": "Tieto záznamy denníka boli premenované mimo Memry, kým ich priečinok čakal na nastavenie priečinka denníka, takže ich názvy už nie sú dátumy. Zostanú záznamami denníka, kým ich nepremenujete späť. Prevodom na poznámku sa jeho záznam denníka odstráni na všetkých vašich zariadeniach a text zostane ako poznámka. Jeho značky sa nezachovajú.",
+    "turnIntoNotes": "Previesť na poznámky"
   }
 }

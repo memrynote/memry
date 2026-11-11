@@ -343,6 +343,23 @@ impl JournalDays {
         Some(date.to_string())
     }
 
+    /// Whether `path` would be the day `date` (`YYYY-MM-DD`) with the journal folder anywhere
+    /// above it: some `/`-bounded tail of it, without `.md`, parses in the format to `date`. A
+    /// held day's file that no longer does was renamed away from its day, and no follow of the
+    /// journal folder makes it the day again (`notes::owed_moves::renamed_away`).
+    pub fn names_day_anywhere(&self, path: &str, date: &str) -> bool {
+        let Some(stem) = path.strip_suffix(".md") else {
+            return false;
+        };
+        std::iter::once(0)
+            .chain(stem.match_indices('/').map(|(at, _)| at + 1))
+            .any(|at| {
+                self.format
+                    .parse(&stem[at..])
+                    .is_some_and(|day| day.to_string() == date)
+            })
+    }
+
     /// Where the file of `date` (`YYYY-MM-DD`) goes (`getJournalRelativePath`): the date in the
     /// format under the journal folder, with `.md`. With no folder configured it goes in the
     /// vault root, as Electron writes it, though [`Self::day_of`] names no day there. `None` for
@@ -386,4 +403,28 @@ fn clean_segments(value: &str) -> String {
         .filter(|segment| !matches!(*segment, "" | "." | ".."))
         .collect::<Vec<_>>()
         .join("/")
+}
+
+#[cfg(test)]
+mod tests {
+    use super::JournalDays;
+
+    #[test]
+    fn names_day_anywhere_reads_a_slash_bounded_tail_as_the_day() {
+        let flat = JournalDays::new("journal", "YYYY-MM-DD");
+        let date = "2025-01-02";
+        assert!(flat.names_day_anywhere("journal/2025-01-02.md", date));
+        assert!(flat.names_day_anywhere("Diary/Deep/2025-01-02.md", date));
+        assert!(flat.names_day_anywhere("2025-01-02.md", date));
+        assert!(!flat.names_day_anywhere("Diary/Trip.md", date));
+        assert!(!flat.names_day_anywhere("Diary/2025-01-03.md", date));
+        assert!(!flat.names_day_anywhere("Diary/x2025-01-02.md", date));
+        assert!(!flat.names_day_anywhere("Diary/2025-01-02.txt", date));
+        assert!(!flat.names_day_anywhere("Diary/2025-01-02", date));
+
+        let nested = JournalDays::new("journal", "YYYY/MM/DD");
+        assert!(nested.names_day_anywhere("Diary/2025/01/02.md", date));
+        assert!(!nested.names_day_anywhere("Diary/2025/01/Trip.md", date));
+        assert!(!nested.names_day_anywhere("Diary/02.md", date));
+    }
 }

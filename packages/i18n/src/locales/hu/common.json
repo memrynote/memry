@@ -1688,7 +1688,11 @@
     "journalChangeWaitsSettingsHint": "A Memry bezárult, miközben naplóbejegyzéseket helyezett át egy beállításmódosításhoz, és addig nem tudja visszatenni őket, amíg nem tudja olvasni a .memry/config.json fájlt. Javítsd ki a fájlt, majd indítsd újra a Memryt. A bejegyzéseid biztonságban vannak.",
     "journalChangeWaitsTakenHint": "A Memry bezárult, miközben naplóbejegyzéseket helyezett át egy beállításmódosításhoz. Egy másik fájl vagy mappa van ott, ahová egy bejegyzésnek vissza kell kerülnie. Tedd el az útból, majd indítsd újra a Memryt. A bejegyzéseid biztonságban vannak.",
     "journalChangeWaitsHint": "A Memry bezárult, miközben naplóbejegyzéseket helyezett át egy beállításmódosításhoz, és nem tudta visszatenni őket. A tároló következő megnyitásakor újra megpróbálja. Addig a naplómappákat nem lehet áthelyezni vagy törölni. A bejegyzéseid biztonságban vannak.",
+    "journalChangeWaitsRefusedHint": "A Memry nem tudta befejezni a naplóbejegyzések áthelyezését egy beállításmódosításhoz, és nem tudta mindet visszatenni. A tároló következő megnyitásakor újra megpróbálja. Addig a naplómappákat nem lehet áthelyezni vagy törölni. A bejegyzéseid biztonságban vannak.",
     "movesWait": "Néhány jegyzetet még nem lehet áthelyezni",
-    "movesWaitHint": "A Memry bezárult, miközben ezeket a jegyzeteket áthelyezte vagy átnevezte, és nem tudta befejezni. Addig nem lehet őket áthelyezni vagy átnevezni. A Memry a tároló következő megnyitásakor újra megpróbálja."
+    "movesWaitHint": "A Memry bezárult, miközben ezeket a jegyzeteket áthelyezte vagy átnevezte, és nem tudta befejezni. Addig nem lehet őket áthelyezni vagy átnevezni. A Memry a tároló következő megnyitásakor újra megpróbálja.",
+    "journalDaysRenamed": "Néhány naplóbejegyzés neve már nem dátum",
+    "journalDaysRenamedHint": "Ezeket a naplóbejegyzéseket a Memryn kívül nevezték át, miközben a mappájuk a naplómappa beállítására várt, így a nevük már nem dátum. Naplóbejegyzések maradnak, amíg vissza nem nevezed őket. Ha jegyzetté alakítasz egyet, a naplóbejegyzése minden eszközödről törlődik, a szövege pedig jegyzetként megmarad. A címkéi nem maradnak meg.",
+    "turnIntoNotes": "Átalakítás jegyzetekké"
   }
 }

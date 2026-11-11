@@ -51,6 +51,7 @@ pub fn builder() -> Builder<Wry> {
             crate::commands::fold::fold_run::<Wry>,
             // journal
             crate::commands::journal::journal_create_entry::<Wry>,
+            crate::commands::journal::journal_cross_into_notes::<Wry>,
             crate::commands::journal::journal_delete_entry::<Wry>,
             crate::commands::journal::journal_get_day_context::<Wry>,
             crate::commands::journal::journal_get_entry::<Wry>,

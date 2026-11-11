@@ -430,7 +430,7 @@ pub(crate) fn folder_on_disk(root: &Path, folder: &str) -> io::Result<OnDisk> {
     Ok(OnDisk::Spelled(spelled.join("/")))
 }
 
-pub(super) fn identity_failed(error: IdentityError) -> NotesError {
+pub(crate) fn identity_failed(error: IdentityError) -> NotesError {
     match error {
         IdentityError::Storage(error) => NotesError::Storage(error),
         IdentityError::Other(what) => NotesError::Storage(StorageError::Failed { what }),

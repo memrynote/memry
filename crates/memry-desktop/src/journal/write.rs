@@ -216,7 +216,7 @@ impl NotesService {
             echo.cancel_write(&rel);
             take_back_record();
             remove_row(&mut lane, &opened.id);
-            self.tier.not_written(session, &rel);
+            self.tier.look_again(session, &rel);
             return match error {
                 // A file that appeared meanwhile is the day's: the identity takes it.
                 NoteFileError::AlreadyExists => existing(lane),
