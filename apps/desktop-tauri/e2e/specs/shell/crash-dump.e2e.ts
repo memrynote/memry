@@ -26,6 +26,20 @@ function dumpsIn(dir: string): string[] {
   return readdirSync(dumps).filter((name) => name.endsWith('.dmp'))
 }
 
+/**
+ * Whether the kernel is writing the core dump of `pid` (Linux: PF_DUMPCORE in the flags field of
+ * `/proc/<pid>/stat`). Elsewhere, and for a process already gone, false.
+ */
+function inCoreDump(pid: number): boolean {
+  if (process.platform !== 'linux') return false
+  try {
+    const fields = readFileSync(`/proc/${pid}/stat`, 'utf8').split(') ')[1].split(' ')
+    return (Number(fields[6]) & 0x200) !== 0
+  } catch {
+    return false
+  }
+}
+
 // The handler attaches on its own thread once the monitor answers; the boot does not wait for it.
 // A crash before that leaves no dump, and a quit before that leaves the monitor with no client.
 async function handlerAttached(app: { dirs: { logDir: string } }): Promise<void> {
@@ -46,9 +60,17 @@ test('a native crash leaves a minidump written by the out-of-process monitor', a
   expect(written).toBe(true)
   const [name] = dumpsIn(appDataDir)
   expect(statSync(join(appDataDir, 'crash-dumps', name)).size).toBeGreaterThan(1_000)
-  expect(await pollUntil(() => !isAlive(pid) || undefined, { timeoutMs: 15_000 })).toBe(true)
-  // One crash, one dump: a second one keeps the crashed app alive while it is written.
-  expect(dumpsIn(appDataDir)).toEqual([name])
+  let coreDumped = false
+  const ended = await pollUntil(
+    () => {
+      coreDumped ||= inCoreDump(pid)
+      return !isAlive(pid) || undefined
+    },
+    { timeoutMs: 15_000 }
+  )
+  // The OS core dump of the whole app kept it alive past this wait on a loaded runner (#3967).
+  expect(coreDumped).toBe(false)
+  expect(ended).toBe(true)
 })
 
 test('the monitor runs beside the app and ends when the app quits', async ({ app }) => {
@@ -65,51 +87,3 @@ test('the monitor runs beside the app and ends when the app quits', async ({ app
   expect(await pollUntil(() => !isAlive(pid) || undefined, { timeoutMs: 15_000 })).toBe(true)
   expect(await pollUntil(() => !isAlive(monitor) || undefined, { timeoutMs: 15_000 })).toBe(true)
 })
-
-function procState(pid: number): string {
-  try {
-    const status = readFileSync(`/proc/${pid}/status`, 'utf8')
-    const stat = readFileSync(`/proc/${pid}/stat`, 'utf8').split(') ')[1]?.split(' ')
-    // stat field 9 (flags) is index 6 after the comm; PF_DUMPCORE = 0x200, PF_EXITING = 0x4.
-    const flags = Number(stat?.[6] ?? 0)
-    return `${/State:\s*(.*)/.exec(status)?.[1]} flags=0x${flags.toString(16)} dumpcore=${(flags & 0x200) !== 0} exiting=${(flags & 0x4) !== 0}`
-  } catch (error) {
-    return `gone (${(error as Error).message.slice(0, 40)})`
-  }
-}
-
-for (let round = 0; round < 6; round++) {
-  test(`PROBE #3967 crash exit timing, round ${round}`, async ({ app }) => {
-    if (process.platform !== 'linux') return
-    const { appDataDir, pid } = await appInfo(app)
-    await handlerAttached(app)
-    const corePattern = readFileSync('/proc/sys/kernel/core_pattern', 'utf8').trim()
-    const t0 = Date.now()
-    await sendTest(app, 'e2e_trigger_crash')
-    await pollUntil(() => dumpsIn(appDataDir).length > 0 || undefined, {
-      timeoutMs: 30_000,
-      intervalMs: 50
-    })
-    const tDump = Date.now() - t0
-    const samples: string[] = []
-    const died = await pollUntil(
-      () => {
-        if (!isAlive(pid)) return true
-        if (samples.length < 40) samples.push(`${Date.now() - t0}ms ${procState(pid)}`)
-        return undefined
-      },
-      { timeoutMs: 40_000, intervalMs: 250 }
-    )
-    const tDead = Date.now() - t0
-    let apport = ''
-    try {
-      apport = execFileSync('pgrep', ['-c', '-x', 'apport'], { encoding: 'utf8' }).trim()
-    } catch {
-      apport = '0'
-    }
-    console.log(
-      `PROBE crash round=${round} corePattern=${JSON.stringify(corePattern)} dumpAt=${tDump}ms died=${died} deadAt=${tDead}ms dumps=${dumpsIn(appDataDir).length} apportNow=${apport} samples=${JSON.stringify(samples.filter((_, i) => i % 4 === 0))}`
-    )
-    expect(died).toBe(true)
-  })
-}
