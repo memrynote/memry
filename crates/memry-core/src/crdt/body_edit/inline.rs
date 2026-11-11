@@ -134,18 +134,17 @@ pub(super) fn element_text_len<T: ReadTxn>(txn: &T, element: &XmlElementRef) -> 
         .sum()
 }
 
-/// One run's text from `from` onward, as formatted chunks. Embeds are left
-/// out, as the block snapshot has no place for them.
-pub(super) fn formatted_tail(
+/// One whole run's text, as formatted chunks. It takes no offset, so no
+/// caller can start it inside a character and lose the rest of the run.
+/// Embeds are left out, as the block snapshot has no place for them (#4262).
+pub(super) fn formatted_text(
     txn: &TransactionMut,
     run: &XmlTextRef,
-    from: u32,
 ) -> Vec<(String, Option<Box<yrs::types::Attrs>>)> {
-    run_tail(txn, run, from)
-        .unwrap_or_default()
+    run.diff(txn, yrs::types::text::YChange::identity)
         .into_iter()
-        .filter_map(|(content, attrs)| match content {
-            Out::Any(Any::String(text)) => Some((text.to_string(), attrs)),
+        .filter_map(|chunk| match chunk.insert {
+            Out::Any(Any::String(text)) => Some((text.to_string(), chunk.attributes)),
             _ => None,
         })
         .collect()
