@@ -68,6 +68,24 @@ for (let i = 0; i < Number(process.env.SCRATCH_N ?? 12); i++) {
             .find(([k]: any) => String(k).startsWith('y-sync'))
           const ydoc = ys?.[1]?.doc
           rec(`ysync found=${Boolean(ydoc)}`)
+          for (const pl of view.state.plugins) {
+            const spec = pl.spec
+            if (spec?.filterTransaction) {
+              const of = spec.filterTransaction
+              const name = String(spec.key?.key ?? pl.key)
+              spec.filterTransaction = function (tr: any, st: any) {
+                const ok = of.call(this, tr, st)
+                if (!ok) rec(`REFUSED by ${name} docChanged=${tr.docChanged}`)
+                return ok
+              }
+            }
+          }
+          const od = view.dispatch.bind(view)
+          view.dispatch = (tr: any) => {
+            if (tr.docChanged) rec(`dispatch docChanged steps=${tr.steps.length}`)
+            return od(tr)
+          }
+          rec(`editable=${view.editable}`)
           ydoc?.on('update', (u: Uint8Array, origin: any) => {
             const o =
               typeof origin === 'string' ? origin : (origin?.constructor?.name ?? String(origin))
