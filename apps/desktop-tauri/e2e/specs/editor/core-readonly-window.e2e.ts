@@ -67,9 +67,9 @@ test('opens a working window and takes typing in an in-memory session when the c
   }
 })
 
-// The notice waits for three launches in a row without a persistent store; the Tauri host counts
-// only the current launch, so `inMemorySessions` never passes 1 and the notice never shows (#4190).
-test.skip('tells the user once the core database has been read-only for three launches (#4190)', async ({
+// The notice waits for three launches in a row without a persistent store; the host keeps the
+// streak in the app config, since `data.db` is the store that cannot be written (#4190).
+test('tells the user once the core database has been read-only for three launches', async ({
   app,
   page,
   testVaultPath
