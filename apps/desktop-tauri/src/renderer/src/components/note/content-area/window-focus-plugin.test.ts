@@ -50,6 +50,8 @@ describe('window focus plugin', () => {
 
     dispatch(editor, 'blur')
     hasFocus.mockReturnValue(true)
+    // WebKitGTK sends two focus events when the window comes back (Linux VM, #3967).
+    dispatch(editor, 'focus')
     dispatch(editor, 'focus')
 
     expect(editor.getExtension(SuggestionMenu)!.shown()).toBe(true)
@@ -62,5 +64,18 @@ describe('window focus plugin', () => {
     dispatch(editor, 'blur')
 
     expect(editor.getExtension(SuggestionMenu)!.shown()).toBe(false)
+  })
+
+  it('handles focus normally again after a real blur that follows a window switch', () => {
+    const editor = editorWithOpenSlashMenu()
+    const hasFocus = vi.spyOn(document, 'hasFocus').mockReturnValue(false)
+    dispatch(editor, 'blur')
+    hasFocus.mockReturnValue(true)
+    dispatch(editor, 'focus')
+
+    dispatch(editor, 'blur')
+    expect(editor._tiptapEditor.isFocused).toBe(false)
+    dispatch(editor, 'focus')
+    expect(editor._tiptapEditor.isFocused).toBe(true)
   })
 })

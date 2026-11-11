@@ -11,8 +11,9 @@ import { Plugin, PluginKey } from '@tiptap/pm/state'
  *
  * Registered first (prepended) so these handlers run before TipTap's and
  * ProseMirror's own: a blur while the document has no focus is swallowed, so
- * ProseMirror still counts the editor as focused, and the focus that follows
- * on return is swallowed too. One plugin instance per editor.
+ * ProseMirror still counts the editor as focused, and every focus until the
+ * next real blur is swallowed too: WebKitGTK sends two on return (Linux VM,
+ * #3967). One plugin instance per editor.
  */
 export function createWindowFocusPlugin(): Plugin {
   let blurredByWindow = false
@@ -24,11 +25,7 @@ export function createWindowFocusPlugin(): Plugin {
           blurredByWindow = !view.dom.ownerDocument.hasFocus()
           return blurredByWindow
         },
-        focus: () => {
-          const returning = blurredByWindow
-          blurredByWindow = false
-          return returning
-        }
+        focus: () => blurredByWindow
       }
     }
   })
