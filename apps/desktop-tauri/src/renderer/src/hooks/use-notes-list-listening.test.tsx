@@ -6,6 +6,7 @@ import type { ReactNode } from 'react'
 import { act, renderHook, waitFor } from '@testing-library/react'
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
+import { useNoteMetadataEvents } from './use-note-metadata-events'
 import { useNoteFoldersQuery, useNotesList } from './use-notes-query'
 
 type Handler = (event: { payload: unknown }) => void
@@ -98,7 +99,14 @@ describe('a note made before the list listens', () => {
   })
 
   it('brings the folder it was made in into the folder list', async () => {
-    const { result } = renderHook(() => useNoteFoldersQuery(), { wrapper })
+    // The folder list's events have one owner, mounted once in App.
+    const { result } = renderHook(
+      () => {
+        useNoteMetadataEvents()
+        return useNoteFoldersQuery()
+      },
+      { wrapper }
+    )
     await waitFor(() => expect(result.current.isLoading).toBe(false))
 
     tauri.folders = [{ path: 'notes', name: 'notes', count: 1 }]

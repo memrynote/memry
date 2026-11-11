@@ -26,9 +26,7 @@ import {
   onNoteRenamed,
   onNoteMoved,
   onNoteExternalChange,
-  onNoteEventsDropped,
-  onTagsChanged,
-  onFolderConfigUpdated
+  onNoteEventsDropped
 } from '@/services/notes-service'
 import {
   onJournalEntryCreated,
@@ -36,6 +34,7 @@ import {
   onJournalEntryDeleted
 } from '@/services/journal-service'
 import { onVaultIndexProgress } from '@/services/vault-service'
+import { subscribeToEvents } from '@/services/tauri-event'
 import { unwrapIpcResult } from '@/lib/ipc-error'
 import { onCanvasCreated, onCanvasDeleted, onCanvasUpdated } from '@/services/canvas-service'
 import { tagsService } from '@/services/tags-service'
@@ -65,6 +64,7 @@ export const notesKeys = {
   // Related data
   links: (id: string) => [...notesKeys.all, 'links', id] as const,
   tags: () => [...notesKeys.all, 'tags'] as const,
+  tagCategories: () => [...notesKeys.all, 'tag-categories'] as const,
   folders: () => [...notesKeys.all, 'folders'] as const
 }
 
@@ -145,7 +145,7 @@ export interface UseNotesListResult {
 const NOTE_STALE_TIME = 30_000
 
 /** 60 seconds - metadata changes less frequently */
-const METADATA_STALE_TIME = 60_000
+export const METADATA_STALE_TIME = 60_000
 
 /** 5 minutes - keep in cache for quick access */
 const NOTE_GC_TIME = 5 * 60 * 1000
@@ -284,27 +284,19 @@ export function useNotesList(options: UseNotesListOptions = {}): UseNotesListRes
     const invalidateLists = () => {
       void queryClient.invalidateQueries({ queryKey: notesKeys.lists() })
     }
-    // The listener goes live a round trip after this effect asks for it. A note made after the
-    // list's first read and before then is in no list until the next event (#3967): read again
-    // once it listens.
-    const unsubCreated = onNoteCreated(invalidateLists, invalidateLists)
-
-    const unsubDeleted = onNoteDeleted(() => {
-      // Note removed, invalidate lists
-      void queryClient.invalidateQueries({ queryKey: notesKeys.lists() })
-    })
-
-    const unsubUpdated = onNoteUpdated(() => {
-      void queryClient.invalidateQueries({ queryKey: notesKeys.lists() })
-    })
-
-    const unsubRenamed = onNoteRenamed(() => {
-      void queryClient.invalidateQueries({ queryKey: notesKeys.lists() })
-    })
-
-    const unsubMoved = onNoteMoved(() => {
-      void queryClient.invalidateQueries({ queryKey: notesKeys.lists() })
-    })
+    // The listeners go live a round trip after this effect asks for them. A note made, renamed,
+    // moved or deleted after the list's first read and before then shows wrong until the next
+    // event (#3967, #4270): read again once they listen.
+    const unsubNotes = subscribeToEvents(
+      [
+        (live) => onNoteCreated(invalidateLists, live),
+        (live) => onNoteDeleted(invalidateLists, live),
+        (live) => onNoteUpdated(invalidateLists, live),
+        (live) => onNoteRenamed(invalidateLists, live),
+        (live) => onNoteMoved(invalidateLists, live)
+      ],
+      invalidateLists
+    )
 
     // The background index build (vault open on a not-yet-indexed vault) writes
     // notes straight into the cache without per-note events, so the list would
@@ -325,11 +317,7 @@ export function useNotesList(options: UseNotesListOptions = {}): UseNotesListRes
     })
 
     return () => {
-      unsubCreated()
-      unsubUpdated()
-      unsubDeleted()
-      unsubRenamed()
-      unsubMoved()
+      unsubNotes()
       unsubIndexProgress()
       unsubDropped()
     }
@@ -344,14 +332,14 @@ export function useNotesList(options: UseNotesListOptions = {}): UseNotesListRes
     const invalidate = () => {
       void queryClient.invalidateQueries({ queryKey: notesKeys.lists() })
     }
-    const unsubscribers = [
-      onJournalEntryCreated(invalidate),
-      onJournalEntryUpdated(invalidate),
-      onJournalEntryDeleted(invalidate)
-    ]
-    return () => {
-      for (const unsubscribe of unsubscribers) unsubscribe()
-    }
+    return subscribeToEvents(
+      [
+        (live) => onJournalEntryCreated(invalidate, live),
+        (live) => onJournalEntryUpdated(invalidate, live),
+        (live) => onJournalEntryDeleted(invalidate, live)
+      ],
+      invalidate
+    )
   }, [includeJournals, queryClient])
 
   // Memoize data to avoid recreating object reference
@@ -373,11 +361,11 @@ export function useNotesList(options: UseNotesListOptions = {}): UseNotesListRes
 // =============================================================================
 
 /**
- * Fetch all tags with TanStack Query caching.
+ * Fetch all tags with TanStack Query caching. `useNoteMetadataEvents` (mounted once in App)
+ * owns the events that refresh it.
  */
 export function useNoteTagsQuery(options: { enabled?: boolean } = {}) {
   const { enabled = true } = options
-  const queryClient = useQueryClient()
 
   const query = useQuery({
     queryKey: notesKeys.tags(),
@@ -400,14 +388,6 @@ export function useNoteTagsQuery(options: { enabled?: boolean } = {}) {
   // Memoize tags to avoid recreating array reference
   const tags = useMemo(() => query.data ?? EMPTY_TAGS, [query.data])
 
-  useEffect(() => {
-    const unsubscribe = onTagsChanged(() => {
-      void queryClient.invalidateQueries({ queryKey: notesKeys.tags() })
-    })
-
-    return unsubscribe
-  }, [queryClient])
-
   return {
     tags,
     isLoading: query.isLoading,
@@ -421,7 +401,8 @@ export function useNoteTagsQuery(options: { enabled?: boolean } = {}) {
 // =============================================================================
 
 /**
- * Fetch all folders with TanStack Query caching.
+ * Fetch all folders with TanStack Query caching. `useNoteMetadataEvents` (mounted once in App)
+ * owns the events that refresh it.
  */
 export function useNoteFoldersQuery(options: { enabled?: boolean } = {}) {
   const { enabled = true } = options
@@ -434,27 +415,6 @@ export function useNoteFoldersQuery(options: { enabled?: boolean } = {}) {
     staleTime: METADATA_STALE_TIME,
     gcTime: NOTE_GC_TIME
   })
-
-  useEffect(() => {
-    const invalidate = () => {
-      void queryClient.invalidateQueries({ queryKey: notesKeys.folders() })
-    }
-
-    // A folder a note made before the listener went live brought: read again then.
-    const unsubCreated = onNoteCreated(invalidate, invalidate)
-    const unsubDeleted = onNoteDeleted(invalidate)
-    const unsubMoved = onNoteMoved(invalidate)
-    const unsubRenamed = onNoteRenamed(invalidate)
-    const unsubFolderConfig = onFolderConfigUpdated(invalidate)
-
-    return () => {
-      unsubCreated()
-      unsubDeleted()
-      unsubMoved()
-      unsubRenamed()
-      unsubFolderConfig()
-    }
-  }, [queryClient])
 
   const createFolderMutation = useMutation({
     mutationFn: (path: string) => notesService.createFolder(path),

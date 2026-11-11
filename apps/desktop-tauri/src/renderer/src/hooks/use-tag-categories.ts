@@ -11,12 +11,13 @@ import { getI18n } from 'react-i18next'
  * exists — deleted on another device, not yet reconciled — must group under
  * "Uncategorized", never crash, never vanish. See the second test case.
  */
-import { useState, useEffect, useCallback, useMemo } from 'react'
+import { useState, useCallback, useMemo } from 'react'
+import { useQuery } from '@tanstack/react-query'
 import { toast } from 'sonner'
 import { createLogger } from '@/lib/logger'
 import { extractErrorMessage } from '@/lib/ipc-error'
-import { tagsService, onTagCategoriesChanged, type TagAssignment } from '@/services/tags-service'
-import { useNoteTagsQuery } from '@/hooks/use-notes-query'
+import { tagsService, type TagAssignment } from '@/services/tags-service'
+import { METADATA_STALE_TIME, notesKeys, useNoteTagsQuery } from '@/hooks/use-notes-query'
 
 const log = createLogger('Hook:TagCategories')
 
@@ -65,61 +66,50 @@ function sortTags(tags: HubTag[]): HubTag[] {
 }
 
 export function useTagCategories(): UseTagCategoriesResult {
-  const [categoryRows, setCategoryRows] = useState<CategoryRow[]>(EMPTY_CATEGORY_ROWS)
+  // A failed mutation's message. A load failure comes through `categoryQuery.data.error`.
+  const [actionError, setError] = useState<string | null>(null)
+
+  const { tags: noteTags, isLoading: isLoadingTags, refetch: refetchNoteTags } = useNoteTagsQuery()
+
+  // One cached read for every mounted consumer. `useNoteMetadataEvents` (App) owns the event that
+  // invalidates it, so a mount never subscribes or reads again by itself.
+  const categoryQuery = useQuery({
+    queryKey: notesKeys.tagCategories(),
+    queryFn: async (): Promise<{ rows: CategoryRow[]; error: string | null }> => {
+      try {
+        const response = await tagsService.listCategories()
+        if (!response.success) {
+          return {
+            rows: EMPTY_CATEGORY_ROWS,
+            error: extractErrorMessage(response.error, errorsT()('tagsHub.errors.loadFailed'))
+          }
+        }
+        return { rows: response.categories ?? EMPTY_CATEGORY_ROWS, error: null }
+      } catch (err) {
+        log.error('Failed to load tag categories', err)
+        return {
+          rows: EMPTY_CATEGORY_ROWS,
+          error: extractErrorMessage(err, errorsT()('tagsHub.errors.loadFailed'))
+        }
+      }
+    },
+    staleTime: METADATA_STALE_TIME
+  })
+  const { refetch: refetchCategories } = categoryQuery
+  const categoryRows = categoryQuery.data?.rows ?? EMPTY_CATEGORY_ROWS
+  const error = actionError ?? categoryQuery.data?.error ?? null
   // Tracks "have we ever loaded", not "are we fetching". Only the very first
   // load is allowed to blank the hub; every later refetch — a create, rename,
   // delete, reorder, or a tag-categories change event — resolves in the
   // background and swaps the rows underneath the rendered list. Otherwise
   // adding one tag would flip the whole page back to "Loading tags…" and
   // rebuild every category, instead of updating the section that changed.
-  const [hasLoadedCategories, setHasLoadedCategories] = useState(false)
-  const [error, setError] = useState<string | null>(null)
-
-  const { tags: noteTags, isLoading: isLoadingTags, refetch: refetchNoteTags } = useNoteTagsQuery()
+  const hasLoadedCategories = categoryQuery.isFetched
 
   const fetchCategories = useCallback(async () => {
-    try {
-      const response = await tagsService.listCategories()
-      if (!response.success) {
-        setError(extractErrorMessage(response.error, errorsT()('tagsHub.errors.loadFailed')))
-        setCategoryRows(EMPTY_CATEGORY_ROWS)
-        return
-      }
-      setError(null)
-      setCategoryRows(response.categories ?? EMPTY_CATEGORY_ROWS)
-    } catch (err) {
-      log.error('Failed to load tag categories', err)
-      setError(extractErrorMessage(err, errorsT()('tagsHub.errors.loadFailed')))
-      setCategoryRows(EMPTY_CATEGORY_ROWS)
-    } finally {
-      setHasLoadedCategories(true)
-    }
-  }, [])
-
-  // Initial load.
-  useEffect(() => {
-    let cancelled = false
-    void (async () => {
-      await fetchCategories()
-      if (cancelled) return
-    })()
-    return () => {
-      cancelled = true
-    }
-  }, [fetchCategories])
-
-  // A category created/renamed/deleted, or a reorder that reassigns a tag's
-  // categoryId, all land on this event. Refetch both the category rows and
-  // the note-tags rows (which carry each tag's categoryId) so a drag that
-  // moves a tag between categories shows up immediately rather than waiting
-  // for an unrelated tag event to invalidate useNoteTagsQuery's cache.
-  useEffect(() => {
-    const unsubscribe = onTagCategoriesChanged(() => {
-      void fetchCategories()
-      void refetchNoteTags?.()
-    })
-    return unsubscribe
-  }, [fetchCategories, refetchNoteTags])
+    await refetchCategories()
+    setError(null)
+  }, [refetchCategories])
 
   const { categories, uncategorized } = useMemo(() => {
     const categoryById = new Map(categoryRows.map((c) => [c.id, c]))

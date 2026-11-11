@@ -228,6 +228,9 @@
     "createFailed": "Nepodarilo sa vytvoriť priečinok",
     "renameFailed": "Nepodarilo sa premenovať priečinok",
     "deleteFailed": "Nepodarilo sa odstrániť priečinok",
+    "keptNotPulled": "Tento priečinok obsahuje poznámku, ktorej súbor bol odstránený mimo memrynote, a jej text sa do tohto zariadenia ešte nesynchronizoval, takže ju nemožno presunúť do koša. Nič nebolo odstránené. Počkajte na synchronizáciu alebo túto poznámku najprv odstráňte samostatne.",
+    "keptUnwritable": "Tento priečinok obsahuje poznámku, ktorej súbor bol odstránený mimo memrynote, a jej text sa nedá uložiť do súboru pre kôš. Nič nebolo odstránené. Túto poznámku najprv odstráňte samostatne.",
+    "trashUnavailable": "Tento priečinok sa nepodarilo presunúť do koša. Nič, čo v ňom ešte zostalo, nebolo odstránené.",
     "setConfigFailed": "Nepodarilo sa nastaviť konfiguráciu priečinka"
   },
   "folderView": {

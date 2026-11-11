@@ -31,6 +31,8 @@ interface NoteCommandInput {
   note: Note | null
   isDeleted: boolean
   isLocked: boolean
+  /** Locked, or this device cannot save (#4271): nothing edits the note's fields. */
+  fieldsReadOnly: boolean
   hasOwnLock: boolean
   isFullWidth: boolean
   isLocalGraphOpen: boolean
@@ -60,7 +62,16 @@ export function useNoteCommands(input: NoteCommandInput): {
   moveToFolder: (targetFolder: string) => Promise<void>
   readwise: ReadwiseBookCommands
 } {
-  const { note, isDeleted, isLocked, hasOwnLock, isFullWidth, dialog, titleInputRef } = input
+  const {
+    note,
+    isDeleted,
+    isLocked,
+    fieldsReadOnly,
+    hasOwnLock,
+    isFullWidth,
+    dialog,
+    titleInputRef
+  } = input
   const { t } = useT('notes')
   const fileLabels = useFileActionLabels()
   const createNoteFromNote = useCreateNoteFromNote()
@@ -70,7 +81,7 @@ export function useNoteCommands(input: NoteCommandInput): {
   const files = useNoteFileActions({ noteId, path: note?.path, hasOwnLock })
 
   const ready = note !== null && !isDeleted
-  const canEdit = ready && !isLocked
+  const canEdit = ready && !fieldsReadOnly
   const hasEditor = ready && note.sizeClass !== 'large-file'
   const isLocalOnly = note?.localOnly ?? false
 

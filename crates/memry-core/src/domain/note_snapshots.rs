@@ -58,8 +58,9 @@ pub enum Reason {
     /// [`SIGNIFICANT_WORDS`] words or more, and the text a restore replaces.
     Significant,
     /// Bytes the app did not write and writes over (a locked note's revert, an outside edit
-    /// under a document ahead of it, the body an outside edit replaces). Stored as
-    /// `significant`, as Electron stores it; it prunes only `significant` versions.
+    /// under a document ahead of it, the body an outside edit replaces, a file the write-back
+    /// did not write this run). Stored as `significant`, as Electron stores it; it prunes only
+    /// `significant` versions.
     OutsideWrite,
     /// The note was open as the app quit.
     Close,

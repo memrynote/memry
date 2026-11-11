@@ -56,6 +56,11 @@ pub enum NotesError {
     /// is whole; the user decides whether it goes for good (#3813).
     #[error("the note's file could not be moved to the trash: {0}")]
     TrashUnavailable(String),
+    /// A folder delete is refused before anything goes: a kept note in the folder
+    /// (`notes::kept`) has text that cannot be written for the trash, [`Kept::BodyNotPulled`]
+    /// when it has not synced to this device yet.
+    #[error("a kept note in the folder cannot go to the trash: {}", kept_message(.0))]
+    FolderKeptUnwritable(Kept),
     /// A journal day's file is past the size the journal page reads whole (Step 13m); it is
     /// never cut.
     #[error("the day's file is larger than {0} bytes, which the journal does not open")]
@@ -317,6 +322,10 @@ impl CoreError for NotesError {
             Self::MovePending(BeginError::NotANote(_)) => (FailureKind::Invalid, "invalid_folder"),
             Self::MovePending(_) => (FailureKind::Invalid, "note_move_unsettled"),
             Self::TrashUnavailable(_) => (FailureKind::Storage, "note_trash_unavailable"),
+            Self::FolderKeptUnwritable(Kept::BodyNotPulled) => {
+                (FailureKind::Invalid, "folder_kept_not_pulled")
+            }
+            Self::FolderKeptUnwritable(_) => (FailureKind::Invalid, "folder_kept_unwritable"),
             Self::TooLarge(_) => (FailureKind::Invalid, "journal_day_too_large"),
             Self::DayTextUnwritable(_) => (FailureKind::Invalid, "journal_day_unwritable"),
             Self::Crdt(error) => error.kind_and_code(),

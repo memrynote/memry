@@ -90,20 +90,41 @@ describe('BlockNote menu placement', () => {
   // #4227: a fixed menu is not clipped by the note's scroll container, so with the note scrolling
   // under an open menu it followed its anchor over the tab bar. The absolute menu was clipped away.
   it('hides the menu and its submenu while the anchor is scrolled out of the note', async () => {
-    const rects = new Map<Element, DOMRect>()
-    const rectSpy = vi
-      .spyOn(Element.prototype, 'getBoundingClientRect')
-      .mockImplementation(function (this: Element) {
-        return rects.get(this) ?? new DOMRect(0, 0, 0, 0)
-      })
-    const size = (el: Element, width: number, height: number): void => {
-      Object.defineProperty(el, 'clientWidth', { configurable: true, value: width })
-      Object.defineProperty(el, 'clientHeight', { configurable: true, value: height })
-    }
-    size(document.documentElement, 1000, 800)
+    await withScrolledNote(async (note) => {
+      expect(note.invisible()).toEqual([false, false])
 
-    // The note's scroll container below a 100 px tab bar, the editor's portal element inside it.
-    const scroller = document.createElement('div')
+      await note.scrollAnchorOut()
+      expect(note.invisible()).toEqual([true, true])
+
+      // Back in view, the menu that stayed open shows again.
+      await note.scrollAnchorIn()
+      expect(note.invisible()).toEqual([false, false])
+    })
+  })
+})
+
+type ScrolledNote = {
+  invisible: () => boolean[]
+  scrollAnchorOut: () => Promise<void>
+  scrollAnchorIn: () => Promise<void>
+}
+
+/** An open block menu and its Turn into submenu, portalled into a note scrolled under a tab bar. */
+async function withScrolledNote(run: (note: ScrolledNote) => Promise<void>): Promise<void> {
+  const rects = new Map<Element, DOMRect>()
+  const rectSpy = vi.spyOn(Element.prototype, 'getBoundingClientRect').mockImplementation(function (
+    this: Element
+  ) {
+    return rects.get(this) ?? new DOMRect(0, 0, 0, 0)
+  })
+  const size = (el: Element, width: number, height: number): void => {
+    Object.defineProperty(el, 'clientWidth', { configurable: true, value: width })
+    Object.defineProperty(el, 'clientHeight', { configurable: true, value: height })
+  }
+  // The note's scroll container below a 100 px tab bar, the editor's portal element inside it.
+  const scroller = document.createElement('div')
+  try {
+    size(document.documentElement, 1000, 800)
     scroller.style.overflow = 'auto'
     const host = document.createElement('div')
     const portal = document.createElement('div')
@@ -128,35 +149,30 @@ describe('BlockNote menu placement', () => {
     )
     await flushFrames()
     const handle = screen.getByRole('button', { name: 'handle' })
-    rects.set(handle, new DOMRect(20, 200, 18, 24))
     rects.set(screen.getByText('Turn into'), new DOMRect(40, 230, 120, 28))
-    const invisible = (): boolean[] =>
-      [...portal.querySelectorAll('[role="menu"]')].map(
-        (menu) => getComputedStyle(menu.parentElement!).visibility === 'hidden'
-      )
+    const scrollTo = async (handleTop: number): Promise<void> => {
+      rects.set(handle, new DOMRect(20, handleTop, 18, 24))
+      scroller.dispatchEvent(new Event('scroll'))
+      await flushFrames()
+    }
+    await scrollTo(200)
 
-    scroller.dispatchEvent(new Event('scroll'))
-    await flushFrames()
-    expect(invisible()).toEqual([false, false])
-
-    // The note scrolls the handle up past the container's top edge, under the tab bar.
-    rects.set(handle, new DOMRect(20, 40, 18, 24))
-    scroller.dispatchEvent(new Event('scroll'))
-    await flushFrames()
-    expect(invisible()).toEqual([true, true])
-
-    // Back in view, the menu that stayed open shows again.
-    rects.set(handle, new DOMRect(20, 200, 18, 24))
-    scroller.dispatchEvent(new Event('scroll'))
-    await flushFrames()
-    expect(invisible()).toEqual([false, false])
-
+    await run({
+      invisible: () =>
+        [...portal.querySelectorAll('[role="menu"]')].map(
+          (menu) => getComputedStyle(menu.parentElement!).visibility === 'hidden'
+        ),
+      // The note scrolls the handle up past the container's top edge, under the tab bar.
+      scrollAnchorOut: () => scrollTo(40),
+      scrollAnchorIn: () => scrollTo(200)
+    })
+  } finally {
     rectSpy.mockRestore()
     delete (document.documentElement as Partial<HTMLElement>).clientWidth
     delete (document.documentElement as Partial<HTMLElement>).clientHeight
     scroller.remove()
-  })
-})
+  }
+}
 
 describe('BlockNote select popup', () => {
   // #3400: inside the note's scroll container, opening the block-type dropdown

@@ -228,6 +228,9 @@
     "createFailed": "Impossibile creare la cartella",
     "renameFailed": "Impossibile rinominare la cartella",
     "deleteFailed": "Impossibile eliminare la cartella",
+    "keptNotPulled": "Questa cartella contiene una nota il cui file è stato eliminato fuori da memrynote, e il suo testo non è ancora stato sincronizzato su questo dispositivo, quindi non può andare nel cestino. Non è stato eliminato nulla. Attendi la sincronizzazione o elimina prima quella nota da sola.",
+    "keptUnwritable": "Questa cartella contiene una nota il cui file è stato eliminato fuori da memrynote, e il suo testo non può essere salvato in un file per il cestino. Non è stato eliminato nulla. Elimina prima quella nota da sola.",
+    "trashUnavailable": "Non è stato possibile spostare questa cartella nel cestino. Ciò che contiene ancora non è stato eliminato.",
     "setConfigFailed": "Impossibile impostare la configurazione della cartella"
   },
   "folderView": {

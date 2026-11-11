@@ -228,6 +228,9 @@
     "createFailed": "Hindi makagawa ng folder",
     "renameFailed": "Hindi mapalitan ang pangalan ng folder",
     "deleteFailed": "Hindi matanggal ang folder",
+    "keptNotPulled": "May tala sa folder na ito na ang file ay binura sa labas ng memrynote, at hindi pa naisi-sync sa device na ito ang teksto nito, kaya hindi ito mailipat sa basurahan. Walang binura. Hintaying ma-sync ito, o burahin muna nang hiwalay ang talang iyon.",
+    "keptUnwritable": "May tala sa folder na ito na ang file ay binura sa labas ng memrynote, at hindi ma-save sa isang file ang teksto nito para sa basurahan. Walang binura. Burahin muna nang hiwalay ang talang iyon.",
+    "trashUnavailable": "Hindi mailipat sa basurahan ang folder na ito. Hindi binura ang anumang nasa loob pa nito.",
     "setConfigFailed": "Hindi maitakda ang config ng folder"
   },
   "folderView": {

@@ -12,29 +12,36 @@ const log = createLogger('DatabaseReadOnly')
  *
  * Asked at mount and again on each editor ready event, since the vault's open can finish after
  * the surface mounts. An unanswered ask leaves it writable: the refused save then shows its
- * own error.
+ * own error. Only the newest ask's answer counts, so a late answer about an earlier open never
+ * overwrites a newer one, and a closed vault forgets its answer until the next open (#4271).
  */
 export function useDatabaseReadOnly(): boolean {
   const [readOnly, setReadOnly] = useState(false)
 
   useEffect(() => {
-    let cancelled = false
+    let generation = 0
     const ask = async (): Promise<void> => {
+      const asked = ++generation
       try {
         const health = await commands.crdtGetHealth()
-        if (!cancelled) setReadOnly(!health.persistent)
+        if (asked === generation) setReadOnly(!health.persistent)
       } catch (error) {
         log.warn('Could not read CRDT persistence health', error)
       }
     }
-    const stop = subscribeToEvent(
+    const stopReady = subscribeToEvent(
       events.crdtProviderReadyEvent,
       () => void ask(),
       () => void ask()
     )
+    const stopReset = subscribeToEvent(events.crdtProviderResetEvent, () => {
+      generation++
+      setReadOnly(false)
+    })
     return () => {
-      cancelled = true
-      stop()
+      generation++
+      stopReady()
+      stopReset()
     }
   }, [])
 

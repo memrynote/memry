@@ -228,6 +228,9 @@
     "createFailed": "Impossible de créer le dossier",
     "renameFailed": "Impossible de renommer le dossier",
     "deleteFailed": "Impossible de supprimer le dossier",
+    "keptNotPulled": "Ce dossier contient une note dont le fichier a été supprimé en dehors de memrynote, et son texte n'a pas encore été synchronisé sur cet appareil : elle ne peut donc pas aller dans la corbeille. Rien n'a été supprimé. Attendez la synchronisation, ou supprimez d'abord cette note séparément.",
+    "keptUnwritable": "Ce dossier contient une note dont le fichier a été supprimé en dehors de memrynote, et son texte ne peut pas être enregistré dans un fichier pour la corbeille. Rien n'a été supprimé. Supprimez d'abord cette note séparément.",
+    "trashUnavailable": "Ce dossier n'a pas pu être déplacé vers la corbeille. Ce qu'il contient encore n'a pas été supprimé.",
     "setConfigFailed": "Impossible d'enregistrer la configuration du dossier"
   },
   "folderView": {

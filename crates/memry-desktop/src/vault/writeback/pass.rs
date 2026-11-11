@@ -270,7 +270,15 @@ impl Pass {
         if ours && !note_snapshots::is_significant(body, split_frontmatter_block(output).body) {
             return Ok((false, false));
         }
-        let kept = self.vault.write_back().keep_replaced(note_id, raw, body);
+        // Bytes the run did not write are an outside edit the body took, or a file of an
+        // earlier run: kept as an outside write, they rotate only significant versions, as the
+        // consumer's and the lock's outside keeps do (#4250).
+        let write_back = self.vault.write_back();
+        let kept = if ours {
+            write_back.keep_replaced(note_id, raw, body)
+        } else {
+            write_back.keep_outside_write(note_id, raw, body)
+        };
         let outside = !ours && self.own_files.is_outside(note_id, hash);
         Ok((kept.map_err(|error| error.to_string())?, outside))
     }

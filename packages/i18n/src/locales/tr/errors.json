@@ -228,6 +228,9 @@
     "createFailed": "Klasör oluşturulamadı",
     "renameFailed": "Klasör yeniden adlandırılamadı",
     "deleteFailed": "Klasör silinemedi",
+    "keptNotPulled": "Bu klasörde, dosyası memrynote dışında silinmiş bir not var ve notun metni henüz bu cihaza eşitlenmedi, bu yüzden çöp kutusuna taşınamıyor. Hiçbir şey silinmedi. Eşitlenmesini bekleyin veya önce o notu tek başına silin.",
+    "keptUnwritable": "Bu klasörde, dosyası memrynote dışında silinmiş bir not var ve notun metni çöp kutusu için bir dosyaya kaydedilemiyor. Hiçbir şey silinmedi. Önce o notu tek başına silin.",
+    "trashUnavailable": "Bu klasör çöp kutusuna taşınamadı. İçinde kalanlar silinmedi.",
     "setConfigFailed": "Klasör yapılandırması ayarlanamadı"
   },
   "folderView": {

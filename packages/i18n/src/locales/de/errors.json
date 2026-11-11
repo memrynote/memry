@@ -228,6 +228,9 @@
     "createFailed": "Der Ordner konnte nicht erstellt werden",
     "renameFailed": "Der Ordner konnte nicht umbenannt werden",
     "deleteFailed": "Der Ordner konnte nicht gelöscht werden",
+    "keptNotPulled": "Dieser Ordner enthält eine Notiz, deren Datei außerhalb von memrynote gelöscht wurde, und ihr Text wurde noch nicht mit diesem Gerät synchronisiert. Daher kann sie nicht in den Papierkorb verschoben werden. Es wurde nichts gelöscht. Warte, bis sie synchronisiert ist, oder lösche diese Notiz zuerst einzeln.",
+    "keptUnwritable": "Dieser Ordner enthält eine Notiz, deren Datei außerhalb von memrynote gelöscht wurde, und ihr Text kann nicht für den Papierkorb in einer Datei gespeichert werden. Es wurde nichts gelöscht. Lösche diese Notiz zuerst einzeln.",
+    "trashUnavailable": "Dieser Ordner konnte nicht in den Papierkorb verschoben werden. Was noch darin ist, wurde nicht gelöscht.",
     "setConfigFailed": "Die Ordnerkonfiguration konnte nicht gespeichert werden"
   },
   "folderView": {

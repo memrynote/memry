@@ -171,6 +171,13 @@ function failure(error: unknown): { success: false; error?: string } {
  * larger one goes in parts of `UPLOAD_CHUNK_BYTES` (`attachments::CHUNK_BYTES`), up to the
  * 100 MiB attachment cap.
  */
+/** Why a folder delete was refused, by its code, for the reasons only a folder delete gives. */
+const FOLDER_DELETE_REASONS = new Map([
+  ['folder_kept_not_pulled', 'errors:folder.keptNotPulled'],
+  ['folder_kept_unwritable', 'errors:folder.keptUnwritable'],
+  ['note_trash_unavailable', 'errors:folder.trashUnavailable']
+])
+
 const MAX_UPLOAD_BODY = 16 * 1024 * 1024
 const UPLOAD_CHUNK_BYTES = 8 * 1024 * 1024
 
@@ -561,6 +568,8 @@ const ported = {
       // shared with create, rename and the note delete, so they get no text of their own here.
       log.error('Failed to delete folder', { path, error })
       const code = commandErrorCode(error)
+      const reason = code && FOLDER_DELETE_REASONS.get(code)
+      if (reason) return { success: false, error: getI18n().t(reason) }
       const refused = code === 'note_excluded' || code === 'folder_locked'
       return {
         success: false,
@@ -687,8 +696,8 @@ export const notesService: NotesServiceApi = createWindowApiForwarder<
  * Note events were dropped (`shell/note_events.rs`): whatever the app shows of notes may be
  * stale. Not an Electron channel: Electron sends every event.
  */
-export function onNoteEventsDropped(callback: () => void): () => void {
-  return subscribeToEvent(events.noteEventsDroppedEvent, () => callback())
+export function onNoteEventsDropped(callback: () => void, onListening?: () => void): () => void {
+  return subscribeToEvent(events.noteEventsDroppedEvent, () => callback(), onListening)
 }
 
 /**
@@ -709,8 +718,9 @@ export type PortedNoteEvent =
   | 'onTagsChanged'
 
 /**
- * A note made by the app or from a file that appeared (`shell/note_events.rs`). `onListening`
- * runs once the events reach this page; a note made before then sends its event to nobody.
+ * A note made by the app or from a file that appeared (`shell/note_events.rs`). Here and below,
+ * `onListening` runs once the events reach this page; a note changed before then sends its event
+ * to nobody (`subscribeToEvents`).
  */
 export function onNoteCreated(
   callback: (event: NoteCreatedEvent) => void,
@@ -727,27 +737,40 @@ export function onNoteCreated(
  * A note changed; `changes` holds the `Note` fields that may have, as the note reads now. Its
  * `modified` arrives as epoch milliseconds and is handed on as a `Date`, as every `Note` date is.
  */
-export function onNoteUpdated(callback: (event: NoteUpdatedEvent) => void): () => void {
-  return subscribeToEvent(events.noteUpdatedEvent, ({ id, changes, source }) => {
-    const { modified, ...rest } = changes
-    callback({
-      id,
-      changes: typeof modified === 'number' ? { ...rest, modified: new Date(modified) } : rest,
-      source
-    })
-  })
+export function onNoteUpdated(
+  callback: (event: NoteUpdatedEvent) => void,
+  onListening?: () => void
+): () => void {
+  return subscribeToEvent(
+    events.noteUpdatedEvent,
+    ({ id, changes, source }) => {
+      const { modified, ...rest } = changes
+      callback({
+        id,
+        changes: typeof modified === 'number' ? { ...rest, modified: new Date(modified) } : rest,
+        source
+      })
+    },
+    onListening
+  )
 }
 
-export function onNoteDeleted(callback: (event: NoteDeletedEvent) => void): () => void {
-  return subscribeToEvent(events.noteDeletedEvent, callback)
+export function onNoteDeleted(
+  callback: (event: NoteDeletedEvent) => void,
+  onListening?: () => void
+): () => void {
+  return subscribeToEvent(events.noteDeletedEvent, callback, onListening)
 }
 
 /**
  * A note renamed by the app, or its file moved outside it; a rename to a title the file name
  * already says names one path, and `newTitle` is the title the note has now.
  */
-export function onNoteRenamed(callback: (event: NoteRenamedEvent) => void): () => void {
-  return subscribeToEvent(events.noteRenamedEvent, callback)
+export function onNoteRenamed(
+  callback: (event: NoteRenamedEvent) => void,
+  onListening?: () => void
+): () => void {
+  return subscribeToEvent(events.noteRenamedEvent, callback, onListening)
 }
 
 /**
@@ -760,8 +783,11 @@ export function onNoteLinksChanged(callback: (event: NoteLinksChangedEvent) => v
 }
 
 /** The app moved a note to another folder; its title stays. */
-export function onNoteMoved(callback: (event: NoteMovedEvent) => void): () => void {
-  return subscribeToEvent(events.noteMovedEvent, callback)
+export function onNoteMoved(
+  callback: (event: NoteMovedEvent) => void,
+  onListening?: () => void
+): () => void {
+  return subscribeToEvent(events.noteMovedEvent, callback, onListening)
 }
 
 export function onNoteExternalChange(
@@ -771,13 +797,14 @@ export function onNoteExternalChange(
 }
 
 /** Something the tag list shows changed (`commands/tags.rs`); the payload is empty. */
-export function onTagsChanged(callback: () => void): () => void {
-  return subscribeToEvent(events.noteTagsChangedEvent, () => callback())
+export function onTagsChanged(callback: () => void, onListening?: () => void): () => void {
+  return subscribeToEvent(events.noteTagsChangedEvent, () => callback(), onListening)
 }
 
 /** Sync changed a folder's settings or removed the folder (`shell/folder_sync.rs`). */
 export function onFolderConfigUpdated(
-  callback: (event: FolderConfigUpdatedEvent) => void
+  callback: (event: FolderConfigUpdatedEvent) => void,
+  onListening?: () => void
 ): () => void {
-  return subscribeToEvent(events.folderConfigUpdatedEvent, callback)
+  return subscribeToEvent(events.folderConfigUpdatedEvent, callback, onListening)
 }

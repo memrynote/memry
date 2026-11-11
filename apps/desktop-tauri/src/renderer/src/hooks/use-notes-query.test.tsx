@@ -46,8 +46,6 @@ const mocks = vi.hoisted(() => ({
     linksChanged: [] as ((event: { sourceIds: string[]; targetIds: string[] }) => void)[],
     external: [] as NoteHandler[],
     dropped: [] as EmptyHandler[],
-    tagsChanged: [] as EmptyHandler[],
-    folderConfigUpdated: [] as EmptyHandler[],
     indexProgress: [] as ((progress: number) => void)[],
     journal: [] as EmptyHandler[],
     canvas: [] as EmptyHandler[]
@@ -86,14 +84,6 @@ vi.mock('@/services/notes-service', () => ({
   },
   onNoteEventsDropped: (callback: EmptyHandler) => {
     mocks.handlers.dropped.push(callback)
-    return vi.fn()
-  },
-  onTagsChanged: (callback: EmptyHandler) => {
-    mocks.handlers.tagsChanged.push(callback)
-    return vi.fn()
-  },
-  onFolderConfigUpdated: (callback: EmptyHandler) => {
-    mocks.handlers.folderConfigUpdated.push(callback)
     return vi.fn()
   }
 }))
