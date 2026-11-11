@@ -145,275 +145,57 @@ test('bold and italic applied inside a cell reach the file, in both toolbar mode
   expect(await noteBody(page, note.id)).toContain('**Shipping**')
 })
 
-test('PROBE 1 bold and italic applied inside a cell reach the file, in both toolbar modes', async ({
-  page
-}) => {
-  await vaultOpen(page)
-  const note = await openNewNote(page, `Table Cell Marks ${Date.now()}`, 'seed')
-  await setBlocks(page, TABLE_DOC)
+for (let rep = 0; rep < 40; rep++) {
+  test(`PROBE ${rep} bold and italic applied inside a cell reach the file, in both toolbar modes`, async ({
+    page
+  }) => {
+    await vaultOpen(page)
+    const note = await openNewNote(page, `Table Cell Marks ${Date.now()}`, 'seed')
+    await setBlocks(page, TABLE_DOC)
 
-  await selectWordInCell(page, page.locator(`${NOTE_EDITOR} td`).first(), 'Shipping')
-  const bold = page.locator('[data-test="bold"]').first()
-  await expect(bold).toBeVisible({ timeout: 10_000 })
-  await bold.click()
-  await expect
-    .poll(async () => (await noteBody(page, note.id)) ?? '', { timeout: 20_000 })
-    .toContain('**Shipping**')
-
-  await invoke(page, 'settings_set_group', { group: 'editor', patch: { toolbarMode: 'sticky' } })
-  await reopen(page, note)
-
-  await installProbe(page)
-  await selectWordInCell(page, page.locator(`${NOTE_EDITOR} td`).nth(1), 'Open')
-  const before = await cellState(page)
-  await page.keyboard.press('ControlOrMeta+i')
-  try {
+    await selectWordInCell(page, page.locator(`${NOTE_EDITOR} td`).first(), 'Shipping')
+    const bold = page.locator('[data-test="bold"]').first()
+    await expect(bold).toBeVisible({ timeout: 10_000 })
+    await bold.click()
     await expect
       .poll(async () => (await noteBody(page, note.id)) ?? '', { timeout: 20_000 })
-      .toContain('*Open*')
-  } catch (error) {
-    throw new Error(
-      `${String(error)}\nPROBE before=${before}\nPROBE after=${await cellState(page)}\nPROBE ${await probeLog(page)}`,
-      { cause: error }
-    )
-  }
-  expect(await noteBody(page, note.id)).toContain('**Shipping**')
-})
-test('PROBE 2 bold and italic applied inside a cell reach the file, in both toolbar modes', async ({
-  page
-}) => {
-  await vaultOpen(page)
-  const note = await openNewNote(page, `Table Cell Marks ${Date.now()}`, 'seed')
-  await setBlocks(page, TABLE_DOC)
+      .toContain('**Shipping**')
 
-  await selectWordInCell(page, page.locator(`${NOTE_EDITOR} td`).first(), 'Shipping')
-  const bold = page.locator('[data-test="bold"]').first()
-  await expect(bold).toBeVisible({ timeout: 10_000 })
-  await bold.click()
-  await expect
-    .poll(async () => (await noteBody(page, note.id)) ?? '', { timeout: 20_000 })
-    .toContain('**Shipping**')
+    await invoke(page, 'settings_set_group', { group: 'editor', patch: { toolbarMode: 'sticky' } })
+    await reopen(page, note)
 
-  await invoke(page, 'settings_set_group', { group: 'editor', patch: { toolbarMode: 'sticky' } })
-  await reopen(page, note)
+    await installProbe(page)
+    await selectWordInCell(page, page.locator(`${NOTE_EDITOR} td`).nth(1), 'Open')
+    const before = await cellState(page)
+    await page.keyboard.press('ControlOrMeta+i')
+    try {
+      await expect
+        .poll(async () => (await noteBody(page, note.id)) ?? '', { timeout: 20_000 })
+        .toContain('*Open*')
+    } catch (error) {
+      throw new Error(
+        `${String(error)}\nPROBE before=${before}\nPROBE after=${await cellState(page)}\nPROBE ${await probeLog(page)}`,
+        { cause: error }
+      )
+    }
+    expect(await noteBody(page, note.id)).toContain('**Shipping**')
+  })
+}
 
-  await installProbe(page)
-  await selectWordInCell(page, page.locator(`${NOTE_EDITOR} td`).nth(1), 'Open')
-  const before = await cellState(page)
-  await page.keyboard.press('ControlOrMeta+i')
-  try {
-    await expect
-      .poll(async () => (await noteBody(page, note.id)) ?? '', { timeout: 20_000 })
-      .toContain('*Open*')
-  } catch (error) {
-    throw new Error(
-      `${String(error)}\nPROBE before=${before}\nPROBE after=${await cellState(page)}\nPROBE ${await probeLog(page)}`,
-      { cause: error }
-    )
-  }
-  expect(await noteBody(page, note.id)).toContain('**Shipping**')
-})
-test('PROBE 3 bold and italic applied inside a cell reach the file, in both toolbar modes', async ({
-  page
-}) => {
-  await vaultOpen(page)
-  const note = await openNewNote(page, `Table Cell Marks ${Date.now()}`, 'seed')
-  await setBlocks(page, TABLE_DOC)
+for (let rep = 0; rep < 40; rep++) {
+  test(`PROBE ${rep} a table whose marker was written by hand opens coloured and is not rewritten`, async ({
+    page
+  }) => {
+    // Bytes the editor never produced, as another editor would have left them.
+    await vaultOpen(page)
+    const body = `<!-- table-colors:{"1:1":{"textColor":"blue"}} -->\n${TABLE_MD}`
+    const note = await openNewNote(page, `Table Colour Marker ${Date.now()}`, body)
 
-  await selectWordInCell(page, page.locator(`${NOTE_EDITOR} td`).first(), 'Shipping')
-  const bold = page.locator('[data-test="bold"]').first()
-  await expect(bold).toBeVisible({ timeout: 10_000 })
-  await bold.click()
-  await expect
-    .poll(async () => (await noteBody(page, note.id)) ?? '', { timeout: 20_000 })
-    .toContain('**Shipping**')
-
-  await invoke(page, 'settings_set_group', { group: 'editor', patch: { toolbarMode: 'sticky' } })
-  await reopen(page, note)
-
-  await installProbe(page)
-  await selectWordInCell(page, page.locator(`${NOTE_EDITOR} td`).nth(1), 'Open')
-  const before = await cellState(page)
-  await page.keyboard.press('ControlOrMeta+i')
-  try {
-    await expect
-      .poll(async () => (await noteBody(page, note.id)) ?? '', { timeout: 20_000 })
-      .toContain('*Open*')
-  } catch (error) {
-    throw new Error(
-      `${String(error)}\nPROBE before=${before}\nPROBE after=${await cellState(page)}\nPROBE ${await probeLog(page)}`,
-      { cause: error }
-    )
-  }
-  expect(await noteBody(page, note.id)).toContain('**Shipping**')
-})
-test('PROBE 4 bold and italic applied inside a cell reach the file, in both toolbar modes', async ({
-  page
-}) => {
-  await vaultOpen(page)
-  const note = await openNewNote(page, `Table Cell Marks ${Date.now()}`, 'seed')
-  await setBlocks(page, TABLE_DOC)
-
-  await selectWordInCell(page, page.locator(`${NOTE_EDITOR} td`).first(), 'Shipping')
-  const bold = page.locator('[data-test="bold"]').first()
-  await expect(bold).toBeVisible({ timeout: 10_000 })
-  await bold.click()
-  await expect
-    .poll(async () => (await noteBody(page, note.id)) ?? '', { timeout: 20_000 })
-    .toContain('**Shipping**')
-
-  await invoke(page, 'settings_set_group', { group: 'editor', patch: { toolbarMode: 'sticky' } })
-  await reopen(page, note)
-
-  await installProbe(page)
-  await selectWordInCell(page, page.locator(`${NOTE_EDITOR} td`).nth(1), 'Open')
-  const before = await cellState(page)
-  await page.keyboard.press('ControlOrMeta+i')
-  try {
-    await expect
-      .poll(async () => (await noteBody(page, note.id)) ?? '', { timeout: 20_000 })
-      .toContain('*Open*')
-  } catch (error) {
-    throw new Error(
-      `${String(error)}\nPROBE before=${before}\nPROBE after=${await cellState(page)}\nPROBE ${await probeLog(page)}`,
-      { cause: error }
-    )
-  }
-  expect(await noteBody(page, note.id)).toContain('**Shipping**')
-})
-test('PROBE 5 bold and italic applied inside a cell reach the file, in both toolbar modes', async ({
-  page
-}) => {
-  await vaultOpen(page)
-  const note = await openNewNote(page, `Table Cell Marks ${Date.now()}`, 'seed')
-  await setBlocks(page, TABLE_DOC)
-
-  await selectWordInCell(page, page.locator(`${NOTE_EDITOR} td`).first(), 'Shipping')
-  const bold = page.locator('[data-test="bold"]').first()
-  await expect(bold).toBeVisible({ timeout: 10_000 })
-  await bold.click()
-  await expect
-    .poll(async () => (await noteBody(page, note.id)) ?? '', { timeout: 20_000 })
-    .toContain('**Shipping**')
-
-  await invoke(page, 'settings_set_group', { group: 'editor', patch: { toolbarMode: 'sticky' } })
-  await reopen(page, note)
-
-  await installProbe(page)
-  await selectWordInCell(page, page.locator(`${NOTE_EDITOR} td`).nth(1), 'Open')
-  const before = await cellState(page)
-  await page.keyboard.press('ControlOrMeta+i')
-  try {
-    await expect
-      .poll(async () => (await noteBody(page, note.id)) ?? '', { timeout: 20_000 })
-      .toContain('*Open*')
-  } catch (error) {
-    throw new Error(
-      `${String(error)}\nPROBE before=${before}\nPROBE after=${await cellState(page)}\nPROBE ${await probeLog(page)}`,
-      { cause: error }
-    )
-  }
-  expect(await noteBody(page, note.id)).toContain('**Shipping**')
-})
-test('PROBE 6 bold and italic applied inside a cell reach the file, in both toolbar modes', async ({
-  page
-}) => {
-  await vaultOpen(page)
-  const note = await openNewNote(page, `Table Cell Marks ${Date.now()}`, 'seed')
-  await setBlocks(page, TABLE_DOC)
-
-  await selectWordInCell(page, page.locator(`${NOTE_EDITOR} td`).first(), 'Shipping')
-  const bold = page.locator('[data-test="bold"]').first()
-  await expect(bold).toBeVisible({ timeout: 10_000 })
-  await bold.click()
-  await expect
-    .poll(async () => (await noteBody(page, note.id)) ?? '', { timeout: 20_000 })
-    .toContain('**Shipping**')
-
-  await invoke(page, 'settings_set_group', { group: 'editor', patch: { toolbarMode: 'sticky' } })
-  await reopen(page, note)
-
-  await installProbe(page)
-  await selectWordInCell(page, page.locator(`${NOTE_EDITOR} td`).nth(1), 'Open')
-  const before = await cellState(page)
-  await page.keyboard.press('ControlOrMeta+i')
-  try {
-    await expect
-      .poll(async () => (await noteBody(page, note.id)) ?? '', { timeout: 20_000 })
-      .toContain('*Open*')
-  } catch (error) {
-    throw new Error(
-      `${String(error)}\nPROBE before=${before}\nPROBE after=${await cellState(page)}\nPROBE ${await probeLog(page)}`,
-      { cause: error }
-    )
-  }
-  expect(await noteBody(page, note.id)).toContain('**Shipping**')
-})
-test('PROBE 7 bold and italic applied inside a cell reach the file, in both toolbar modes', async ({
-  page
-}) => {
-  await vaultOpen(page)
-  const note = await openNewNote(page, `Table Cell Marks ${Date.now()}`, 'seed')
-  await setBlocks(page, TABLE_DOC)
-
-  await selectWordInCell(page, page.locator(`${NOTE_EDITOR} td`).first(), 'Shipping')
-  const bold = page.locator('[data-test="bold"]').first()
-  await expect(bold).toBeVisible({ timeout: 10_000 })
-  await bold.click()
-  await expect
-    .poll(async () => (await noteBody(page, note.id)) ?? '', { timeout: 20_000 })
-    .toContain('**Shipping**')
-
-  await invoke(page, 'settings_set_group', { group: 'editor', patch: { toolbarMode: 'sticky' } })
-  await reopen(page, note)
-
-  await installProbe(page)
-  await selectWordInCell(page, page.locator(`${NOTE_EDITOR} td`).nth(1), 'Open')
-  const before = await cellState(page)
-  await page.keyboard.press('ControlOrMeta+i')
-  try {
-    await expect
-      .poll(async () => (await noteBody(page, note.id)) ?? '', { timeout: 20_000 })
-      .toContain('*Open*')
-  } catch (error) {
-    throw new Error(
-      `${String(error)}\nPROBE before=${before}\nPROBE after=${await cellState(page)}\nPROBE ${await probeLog(page)}`,
-      { cause: error }
-    )
-  }
-  expect(await noteBody(page, note.id)).toContain('**Shipping**')
-})
-test('PROBE 8 bold and italic applied inside a cell reach the file, in both toolbar modes', async ({
-  page
-}) => {
-  await vaultOpen(page)
-  const note = await openNewNote(page, `Table Cell Marks ${Date.now()}`, 'seed')
-  await setBlocks(page, TABLE_DOC)
-
-  await selectWordInCell(page, page.locator(`${NOTE_EDITOR} td`).first(), 'Shipping')
-  const bold = page.locator('[data-test="bold"]').first()
-  await expect(bold).toBeVisible({ timeout: 10_000 })
-  await bold.click()
-  await expect
-    .poll(async () => (await noteBody(page, note.id)) ?? '', { timeout: 20_000 })
-    .toContain('**Shipping**')
-
-  await invoke(page, 'settings_set_group', { group: 'editor', patch: { toolbarMode: 'sticky' } })
-  await reopen(page, note)
-
-  await installProbe(page)
-  await selectWordInCell(page, page.locator(`${NOTE_EDITOR} td`).nth(1), 'Open')
-  const before = await cellState(page)
-  await page.keyboard.press('ControlOrMeta+i')
-  try {
-    await expect
-      .poll(async () => (await noteBody(page, note.id)) ?? '', { timeout: 20_000 })
-      .toContain('*Open*')
-  } catch (error) {
-    throw new Error(
-      `${String(error)}\nPROBE before=${before}\nPROBE after=${await cellState(page)}\nPROBE ${await probeLog(page)}`,
-      { cause: error }
-    )
-  }
-  expect(await noteBody(page, note.id)).toContain('**Shipping**')
-})
+    await expect.poll(async () => (await shape(page))[1][1].textColor).toBe('blue')
+    const cells = await shape(page)
+    expect(cells[1][0].textColor).not.toBe('blue')
+    // The marker line is not sitting in the note as a paragraph.
+    expect(cells[1][1].text).toBe('Open')
+    expect(await noteBody(page, note.id)).toBe(body)
+  })
+}
