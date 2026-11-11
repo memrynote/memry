@@ -34,6 +34,8 @@ Object.defineProperty(navigator, 'platform', {
 
 const mocks = vi.hoisted(() => ({
   isNoteLocked: false,
+  /** What the vault's own health ask says (`useDatabaseReadOnly`). */
+  databaseReadOnly: false,
   isNoteExcluded: false,
   /** The links hook and the backlinks panel as they ship, fed by the `notesGetLinks` binding. */
   realLinks: false,
@@ -493,6 +495,7 @@ vi.mock('@/components/note', () => ({
     stats,
     sideRail,
     overlay,
+    cover,
     marqueeZoneRef,
     onHeadingClick
   }: {
@@ -504,11 +507,13 @@ vi.mock('@/components/note', () => ({
     stats?: { wordCount?: number }
     sideRail?: React.ReactNode
     overlay?: React.ReactNode
+    cover?: React.ReactNode
     marqueeZoneRef: (element: HTMLDivElement | null) => void
     onHeadingClick: (id: string) => void
   }) => (
     <div>
       <div ref={marqueeZoneRef} data-testid="marquee-zone" />
+      {cover}
       <div data-testid="heading-count">{headings.length}</div>
       <div data-testid="word-count">{stats?.wordCount}</div>
       <button type="button" onClick={() => onHeadingClick('heading-1')}>
@@ -746,6 +751,16 @@ vi.mock('@/lib/vault-locks-store', async (importOriginal) => ({
   useIsNoteLocked: () => mocks.isNoteLocked,
   useHasOwnNoteLock: () => mocks.hasOwnNoteLock ?? mocks.isNoteLocked,
   setVaultLock: mocks.setVaultLock
+}))
+
+vi.mock('@/hooks/use-database-read-only', () => ({
+  useDatabaseReadOnly: () => mocks.databaseReadOnly
+}))
+
+vi.mock('@/components/note/note-cover', () => ({
+  NoteCover: ({ disabled }: { disabled?: boolean }) => (
+    <div data-testid="note-cover" data-disabled={String(!!disabled)} />
+  )
 }))
 
 vi.mock('@/lib/excluded-notes-store', () => ({
@@ -1055,6 +1070,7 @@ describe('NotePage', () => {
     mocks.onMarkdownChange = null
     mocks.propertyOnBlocked = null
     mocks.isNoteLocked = false
+    mocks.databaseReadOnly = false
     mocks.isNoteExcluded = false
     mocks.realLinks = false
     mocks.hasOwnNoteLock = null
@@ -2935,6 +2951,29 @@ describe('NotePage', () => {
       expect(mocks.propertyCanEdit?.()).toBe(false)
       act(() => mocks.propertyOnBlocked?.('update'))
       expect(toast.error).toHaveBeenCalledWith('editor.databaseReadOnly')
+    })
+
+    // #4271: a large file mounts no editor to report `database-read-only`, so the vault's own
+    // answer holds its fields, its cover and the commands that edit them.
+    it('keeps a large-file note read-only while the database is read-only', async () => {
+      mocks.databaseReadOnly = true
+      mocks.noteState.note = {
+        ...note,
+        content: '',
+        contentOmitted: true,
+        sizeClass: 'large-file',
+        largeFile: { reason: 'file-bytes', fileBytes: 18_700_000, largestBlockBytes: null },
+        frontmatter: { ...note.frontmatter, cover: 'wash:sage' }
+      }
+      renderWithProviders(<NotePage noteId="note-1" />)
+      await screen.findByTestId('large-file-viewer')
+
+      expect(screen.getByLabelText('Note title field')).toHaveAttribute('data-disabled', 'true')
+      expect(screen.getByTestId('info-section')).toHaveAttribute('data-disabled', 'true')
+      expect(mocks.propertyCanEdit?.()).toBe(false)
+      expect(screen.getByTestId('note-cover')).toHaveAttribute('data-disabled', 'true')
+      expect(screen.getByRole('button', { name: 'editor.toolbar.rename' })).toBeDisabled()
+      expect(screen.getByRole('button', { name: 'names.addMenu' })).toBeDisabled()
     })
 
     it("keeps one note's lock notice off the large file the tab shows next", async () => {

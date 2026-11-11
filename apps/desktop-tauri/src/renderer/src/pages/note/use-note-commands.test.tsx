@@ -24,6 +24,7 @@ interface PaneProps {
   note: Note
   dialog: DialogState<NoteDialog>
   isLocked?: boolean
+  fieldsReadOnly?: boolean
   isDeleted?: boolean
   isBookmarked?: boolean
   setLocalOnly?: (value: boolean) => Promise<void>
@@ -33,6 +34,7 @@ function NotePane({
   note,
   dialog,
   isLocked = false,
+  fieldsReadOnly = isLocked,
   isDeleted = false,
   isBookmarked = false,
   setLocalOnly = vi.fn().mockResolvedValue(undefined)
@@ -41,6 +43,7 @@ function NotePane({
     note,
     isDeleted,
     isLocked,
+    fieldsReadOnly,
     hasOwnLock: false,
     isFullWidth: false,
     isLocalGraphOpen: false,
@@ -158,6 +161,22 @@ describe('note commands', () => {
     expect(label()).toBe('Set local only')
     await runCommand('note.toggleLocalOnly', 'palette')
     expect(setLocalOnly).toHaveBeenLastCalledWith(true)
+  })
+
+  // #4271: on a read-only database the title and names take no edit, so the commands that
+  // would focus them are not offered.
+  it('offers no rename or name on a note whose fields are read-only', () => {
+    render(
+      <>
+        <Probe />
+        {inTab('t', <NotePane note={noteOf('a')} dialog={dialogSpy()} fieldsReadOnly />)}
+      </>
+    )
+    activate('t')
+    const ids = available.map((c) => c.id)
+    expect(ids).toContain('note.moveToFolder')
+    expect(ids).not.toContain('note.rename')
+    expect(ids).not.toContain('note.addName')
   })
 
   it('leaves a locked note read-only but movable, and offers nothing on a deleted one', () => {
