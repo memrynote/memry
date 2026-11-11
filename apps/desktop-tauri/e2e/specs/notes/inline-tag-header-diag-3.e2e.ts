@@ -32,12 +32,22 @@ test('joins 3 the tags row and the file header, and leaves with the text', async
     await expect(tagsRow.getByRole('option', { name: TAG })).toBeVisible()
 
     // DIAG (temporary, #3967)
-    const diag = await page.evaluate((selector: string) => {
+    const diag = await page.evaluate(async (selector: string) => {
       const d = (
         globalThis as unknown as {
           __typingHoldDiag: { holds: Array<{ at: number; end?: number }>; refused: number[] }
         }
       ).__typingHoldDiag
+      const holdsBefore = d.holds.length
+      // Waits up to 3 s for a hold to begin after the tags write, then deletes inside it.
+      const waitStart = Date.now()
+      while (Date.now() - waitStart < 3000) {
+        const last = d.holds.at(-1)
+        if (d.holds.length > holdsBefore && last && last.end === undefined) break
+        await new Promise((r) => setTimeout(r, 1))
+      }
+      const last = d.holds.at(-1)
+      const inHold = d.holds.length > holdsBefore && last !== undefined && last.end === undefined
       const body = document.querySelector(selector) as HTMLElement
       body.focus()
       const selection = getSelection() as Selection
@@ -45,20 +55,19 @@ test('joins 3 the tags row and the file header, and leaves with the text', async
       selection.collapseToEnd()
       const before = body.innerText
       const at = Date.now()
-      const holdsBefore = d.holds.length
       const refusedBefore = d.refused.length
       const results: boolean[] = []
       for (let i = 0; i < 12; i++) results.push(document.execCommand('delete'))
       return {
+        inHold,
         at,
         before,
         after: body.innerText,
         hasFocus: document.hasFocus(),
         results,
         holdsBefore,
-        refusedBefore,
-        holds: d.holds.slice(-4),
-        refused: d.refused.length
+        refusedByDeletes: d.refused.length - refusedBefore,
+        holds: d.holds.slice(-4)
       }
     }, NOTE_EDITOR)
     await page.waitForTimeout(200)
