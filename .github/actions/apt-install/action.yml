@@ -36,6 +36,7 @@ runs:
       env:
         PACKAGES: ${{ inputs.packages }}
         DEB_DIR: ${{ steps.key.outputs.dir }}
+        EXACT_HIT: ${{ steps.cache.outputs.cache-hit }}
       run: |
         # GitHub runners ship Microsoft/Azure apt repos that intermittently 403 or stall.
         sudo rm -f /etc/apt/sources.list.d/microsoft*.list /etc/apt/sources.list.d/azure-cli* 2>/dev/null || true
@@ -49,10 +50,45 @@ runs:
         # it served all 4 probed .debs (37 MB) in 1-3 s from three runners, while
         # archive.ubuntu.com and us.archive.ubuntu.com timed out or took 24-80 s for the same files.
         # Three attempts take at most ~10 min, inside the callers' 12 min step timeout.
+        #
+        # arm64 runners (ubuntu-22.04-arm) use ports.ubuntu.com, which kernel.org does not
+        # mirror (no ubuntu-ports, 404). On 11 Nov from 14:16Z ports.ubuntu.com and
+        # archive.ubuntu.com timed out for every arm64 job, so the kernel.org switch changed
+        # nothing and all three attempts failed. arm64 therefore falls back to ubuntu-ports
+        # mirrors that serve jammy arm64 with fresh jammy-updates/-security: attempt 2 uses
+        # ftp.tu-chemnitz.de, attempt 3 mirror.us.leaseweb.net. apt still verifies the signed
+        # Release files, so a mirror can serve only genuine packages.
+        #
+        # An exact-key cache hit means the same image and package list, so the cached .debs are
+        # exactly the set apt would download. Install them first without touching the network;
+        # the mirrors above are then needed only on a cold or partial cache. apt resolves the
+        # local files against each other and the installed packages, and the check below makes
+        # sure every requested package is installed. Anything else falls through to the
+        # network path, which repairs a half-applied install.
+        # shellcheck disable=SC2086
+        if [ "$EXACT_HIT" = true ] && compgen -G "$DEB_DIR/*.deb" >/dev/null &&
+          sudo apt-get "${opts[@]}" install -y --no-download "$DEB_DIR"/*.deb; then
+          missing=0
+          for pkg in $PACKAGES; do
+            [ "$(dpkg-query -W -f='${db:Status-Status}' "$pkg" 2>/dev/null)" = installed ] || missing=1
+          done
+          if [ "$missing" = 0 ]; then
+            echo "installed from the exact-key .deb cache, no network"
+            exit 0
+          fi
+        fi
+        echo "offline install not possible, using the network"
+        if [ "$(dpkg --print-architecture)" = arm64 ]; then
+          fallbacks=(http://ftp.tu-chemnitz.de/pub/linux/ubuntu-ports https://mirror.us.leaseweb.net/ubuntu-ports)
+        else
+          fallbacks=(https://mirrors.edge.kernel.org/ubuntu https://mirrors.edge.kernel.org/ubuntu)
+        fi
+        known='mirror\+file:/etc/apt/apt-mirrors\.txt|https?://(azure\.archive\.ubuntu\.com/ubuntu|ports\.ubuntu\.com/ubuntu-ports|ftp\.tu-chemnitz\.de/pub/linux/ubuntu-ports|mirror\.us\.leaseweb\.net/ubuntu-ports|mirrors\.edge\.kernel\.org/ubuntu)'
         for attempt in 1 2 3; do
-          if [ "$attempt" = 2 ]; then
-            echo "switching apt to mirrors.edge.kernel.org"
-            sudo sed -i -E 's#mirror\+file:/etc/apt/apt-mirrors\.txt#https://mirrors.edge.kernel.org/ubuntu#g; s#https?://azure\.archive\.ubuntu\.com/ubuntu#https://mirrors.edge.kernel.org/ubuntu#g' \
+          if [ "$attempt" != 1 ]; then
+            mirror=${fallbacks[attempt - 2]}
+            echo "switching apt to $mirror"
+            sudo sed -i -E "s#($known)#$mirror#g" \
               /etc/apt/sources.list /etc/apt/sources.list.d/*.sources /etc/apt/sources.list.d/*.list 2>/dev/null || true
           fi
           # The first attempt is the fast path; a cold mirror index is bigger to fetch.
