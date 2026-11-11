@@ -100,6 +100,18 @@ fn a_ref_in_another_unicode_form_or_case_names_the_file() {
     ));
 }
 
+/// NFC joins the name's last letter with a combining mark after it (`g` and U+0301 make `ǵ`),
+/// so a folded body loses a name the plain text holds: the plain comparison runs first.
+#[test]
+fn a_combining_mark_after_the_name_keeps_the_file() {
+    for body in [
+        format!("attachments/{ID}/x.png\u{301}"),
+        format!("![a](../attachments/{ID}/x.png\u{301})"),
+    ] {
+        assert!(names_file(ID, "x.png", &body), "{body:?}");
+    }
+}
+
 fn bound(input: &str) -> usize {
     2 * input.len() + 64
 }

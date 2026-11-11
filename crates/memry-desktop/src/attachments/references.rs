@@ -120,19 +120,28 @@ fn fold(s: &str) -> String {
         .collect()
 }
 
-/// Whether `body` names `attachments/<owner>/<file>`, all three [folded](fold): the run appears
-/// in it (Electron's `body.includes`) with `/` or `\` for either separator and the file's name as
-/// it is or percent-decoded, or a name [`filenames`] reads, as written or decoded, is the file's.
-/// Each search is linear (`str::contains` is a two-way search), and the extractor is one pass.
+/// Whether `body` names `attachments/<owner>/<file>`, all three ASCII-lowercased, or else all
+/// three [folded](fold): the run appears in it (Electron's `body.includes`) with `/` or `\` for
+/// either separator and the file's name as it is or percent-decoded, or a name [`filenames`]
+/// reads, as written or decoded, is the file's. The ASCII pass comes first because NFC may join
+/// the name's last letter with a mark after it (`x.png` and U+0301), so the folded pass only adds
+/// matches. Only a body that holds `attachments` in ASCII is folded (folding makes no ASCII
+/// letter of it but `k`, from the Kelvin sign). Each search is linear (`str::contains` is a
+/// two-way search), and the extractor is one pass.
 pub fn names_file(owner: &str, file: &str, body: &str) -> bool {
-    let (owner, file, body) = (fold(owner), fold(file), fold(body));
-    // Folded before the decode and after it: `%41` is an `A`, `%CC%81` an accent.
-    let decoded = |name: &str| decode_uri_component(name).map(|name| fold(&name));
-    let file_decoded = decoded(&file);
-    for name in [Some(file.as_str()), file_decoded.as_deref()]
-        .into_iter()
-        .flatten()
-    {
+    let lower = body.to_ascii_lowercase();
+    let ascii = |s: &str| s.to_ascii_lowercase();
+    names_in(&ascii(owner), &ascii(file), &lower, ascii)
+        || (lower.contains(ATTACHMENTS_DIR)
+            && names_in(&fold(owner), &fold(file), &fold(body), fold))
+}
+
+/// [`names_file`] over one normal form: `owner`, `file` and `body` are already in it.
+fn names_in(owner: &str, file: &str, body: &str, norm: fn(&str) -> String) -> bool {
+    // Normalized before the decode and after it: `%41` is an `A`, `%CC%81` an accent.
+    let decoded = |name: &str| decode_uri_component(name).map(|name| norm(&name));
+    let file_decoded = decoded(file);
+    for name in [Some(file), file_decoded.as_deref()].into_iter().flatten() {
         for (a, b) in [('/', '/'), ('/', '\\'), ('\\', '/'), ('\\', '\\')] {
             if body.contains(&format!("{ATTACHMENTS_DIR}{a}{owner}{b}{name}")) {
                 return true;
@@ -140,7 +149,7 @@ pub fn names_file(owner: &str, file: &str, body: &str) -> bool {
         }
     }
     let mut named = false;
-    each_name(&owner, &body, &mut |at| {
+    each_name(owner, body, &mut |at| {
         let raw = &body[at];
         named = named || raw == file || decoded(raw).is_some_and(|name| name == file);
     });
