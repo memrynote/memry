@@ -24,6 +24,12 @@ let running: Promise<number> | null = null
 /**
  * Flushes every registered save, after any flush already running has finished. Resolves with the
  * number of flushes that failed, so a caller about to act on the saved files can refuse.
+ *
+ * The flushes run together, and a note whose typing is held for an outside edit flushes once the
+ * hold ends: when the edit's frame or release comes, or 3.5 s after the barrier when neither does
+ * (`YjsIpcProvider.connect`). A caller that reads a note's body (a template apply, an agent body
+ * review, a tag template undo) waits that long at most, and on the held note it must: the held
+ * typing is part of the body it reads.
  */
 export function flushAllPendingSaves(): Promise<number> {
   const previous = running

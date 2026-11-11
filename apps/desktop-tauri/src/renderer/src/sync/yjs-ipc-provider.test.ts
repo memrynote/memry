@@ -123,8 +123,9 @@ vi.mock('../../../generated/bindings', () => ({
 const toast = vi.hoisted(() => ({ error: vi.fn() }))
 vi.mock('sonner', () => ({ toast }))
 
+const warn = vi.hoisted(() => vi.fn())
 vi.mock('@/lib/logger', () => ({
-  createLogger: () => ({ debug: vi.fn(), info: vi.fn(), warn: vi.fn(), error: vi.fn() })
+  createLogger: () => ({ debug: vi.fn(), info: vi.fn(), warn, error: vi.fn() })
 }))
 
 import { flushAllPendingSaves, hasPendingSaves } from '@/lib/save-registry'
@@ -549,6 +550,42 @@ describe('YjsIpcProvider typing barrier', () => {
     await flushing
     expect(text(host.doc)).toBe('stored held')
   })
+
+  it('warns with the count of held typing it drops when the vault closes under a note closed mid-hold', async () => {
+    const { doc, provider } = await connected()
+    const hold = typingHoldOf(doc)
+    lastChannel().onmessage(barrierFrame(BARRIER, 7))
+    await settle()
+    hold.onRelease(() => type(doc, ' held'))
+    reset()
+    provider.destroy()
+
+    lastChannel().onmessage(barrierFrame(RELEASE, 7))
+    await settle(60)
+    expect(host.sent).toEqual([])
+    expect(warn).toHaveBeenCalledWith('Dropped edits of a closed note whose vault closed', {
+      noteId: NOTE,
+      dropped: 1
+    })
+  })
+
+  it('warns when the host refuses the held typing of a note closed mid-hold as the vault closed', async () => {
+    const { doc, provider } = await connected()
+    const hold = typingHoldOf(doc)
+    lastChannel().onmessage(barrierFrame(BARRIER, 7))
+    await settle()
+    hold.onRelease(() => type(doc, ' held'))
+    provider.destroy()
+    host.refuse = 'editor_not_serving'
+
+    lastChannel().onmessage(barrierFrame(RELEASE, 7))
+    await settle(60)
+    expect(text(host.doc)).toBe('stored')
+    expect(warn).toHaveBeenCalledWith('Dropped edits of a closed note whose vault closed', {
+      noteId: NOTE,
+      dropped: 1
+    })
+  })
 })
 
 describe('YjsIpcProvider read-only', () => {
@@ -874,6 +911,7 @@ describe('YjsIpcProvider rebinding', () => {
     await settle()
     expect(host.sent).toEqual([])
     expect(host.opens).toHaveLength(1)
+    expect(warn).not.toHaveBeenCalled()
 
     ready()
     await settle()
