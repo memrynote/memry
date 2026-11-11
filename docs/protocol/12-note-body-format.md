@@ -472,6 +472,10 @@ block's text, the offset kind of the core's documents
 (`crates/memry-core/src/crdt/registry.rs:90`). The offset kind is local to an
 implementation: an update encodes item clocks in UTF-16 code units whatever
 the kind, so a bytes document and a Yjs document exchange updates unchanged.
+A bound that falls inside a character is refused and the operation changes
+nothing (`crates/memry-core/src/crdt/body_edit/inline.rs:72`, `:309`). An
+`insertInline` keeps the text, marks and embeds after its range
+(`:104-121`).
 
 **Two writer defects that class found on its first run, recorded so they are
 not rediscovered as surprises.** The reference core's append path put a

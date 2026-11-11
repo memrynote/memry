@@ -7,6 +7,7 @@ import { mkdirSync, writeFileSync } from 'node:fs'
 import { join } from 'node:path'
 import { createNote, openFromSidebar, vaultOpen, NOTE_EDITOR } from '../../harness/notes'
 import { invokeTest } from '../../harness/invoke-test'
+import { withOsClipboard } from '../../harness/os-clipboard'
 import type { Page } from '../../harness/pw-compat/page'
 import '../../harness/vault-commands'
 import { test, expect } from '../../harness/test'
@@ -126,24 +127,26 @@ for (const refuse of [false, true]) {
       ? 'a refused image ClipboardItem still puts the mind map on the clipboard through the app'
       : 'Copy as image puts the mind map on the OS clipboard',
     async ({ app, page }) => {
-      await invokeTest(app, 'e2e_clipboard_write', { text: 'before' })
-      expect(await clipboardImage(app)).toBeNull()
-      await openMindMap(page)
-      await recordImageWrite(page, refuse)
+      await withOsClipboard(async () => {
+        await invokeTest(app, 'e2e_clipboard_write', { text: 'before' })
+        expect(await clipboardImage(app)).toBeNull()
+        await openMindMap(page)
+        await recordImageWrite(page, refuse)
 
-      await page.locator('[data-testid="mind-map-toolbar-copy-image"]').click()
-      await expect.poll(async () => (await recorded(page)).webview).not.toBeNull()
-      await expect.poll(async () => (await recorded(page)).size).not.toBeNull()
-      const { size, webview, error } = await recorded(page)
-      const platform = process.platform as keyof typeof IMAGE_PATH
-      console.log(
-        `clipboard-image on ${platform} ${process.arch}: webview ${webview} (${error ?? '-'}), png ${String(size)}`
-      )
-      const path: ImagePath = webview === 'accepted' ? 'webview' : 'app'
-      if (refuse) expect(path).toBe('app')
-      else expect(IMAGE_PATH[platform]).toContain(path)
-      expect(size?.every((side) => side > 0)).toBe(true)
-      await expect.poll(() => clipboardImage(app)).toEqual(size)
+        await page.locator('[data-testid="mind-map-toolbar-copy-image"]').click()
+        await expect.poll(async () => (await recorded(page)).webview).not.toBeNull()
+        await expect.poll(async () => (await recorded(page)).size).not.toBeNull()
+        const { size, webview, error } = await recorded(page)
+        const platform = process.platform as keyof typeof IMAGE_PATH
+        console.log(
+          `clipboard-image on ${platform} ${process.arch}: webview ${webview} (${error ?? '-'}), png ${String(size)}`
+        )
+        const path: ImagePath = webview === 'accepted' ? 'webview' : 'app'
+        if (refuse) expect(path).toBe('app')
+        else expect(IMAGE_PATH[platform]).toContain(path)
+        expect(size?.every((side) => side > 0)).toBe(true)
+        await expect.poll(() => clipboardImage(app)).toEqual(size)
+      })
     }
   )
 }
@@ -154,6 +157,14 @@ test('clipboard_write_image takes PNG bytes only, and no HTML embed in a note re
   testVaultPath
 }) => {
   await vaultOpen(page)
+  await withOsClipboard(() => noPageWriteReachesClipboard(app, page, testVaultPath))
+})
+
+async function noPageWriteReachesClipboard(
+  app: Parameters<typeof invokeTest>[0],
+  page: Page,
+  testVaultPath: string
+): Promise<void> {
   await invokeTest(app, 'e2e_clipboard_write', { text: 'before' })
 
   // A body that names a file is not read: the command refuses it as not a PNG.
@@ -274,4 +285,4 @@ test('clipboard_write_image takes PNG bytes only, and no HTML embed in a note re
   // Nothing the page or the embed sent reached the clipboard.
   expect(await clipboardImage(app)).toBeNull()
   expect(await invokeTest<string | null>(app, 'e2e_clipboard_read')).toBe('before')
-})
+}

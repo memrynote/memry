@@ -6,6 +6,7 @@
 // paste nothing.
 import { createNote, openFromSidebar, vaultOpen, NOTE_EDITOR } from '../../harness/notes'
 import { invokeTest } from '../../harness/invoke-test'
+import { withOsClipboard } from '../../harness/os-clipboard'
 import type { Page } from '../../harness/pw-compat/page'
 import { test, expect } from '../../harness/test'
 
@@ -87,35 +88,37 @@ test('copied blocks leave markdown on the clipboard and paste back with their fo
   await expect(page.locator(NOTE_EDITOR).first()).toContainText('Second line')
   await recordClipboard(page)
 
-  await page.locator('.bn-block-content').first().hover()
-  await page.locator('[data-test="dragHandle"]').first().click()
-  await page.getByRole('menuitem', { name: 'Copy' }).first().click()
-  await expect.poll(async () => (await recorded(page)).copied).toEqual(FLAVOURS)
-  expect((await recorded(page)).fallback).toBeNull()
-  // What another app pastes: the block as the note file holds it.
-  await expect
-    .poll(() => invokeTest<string | null>(app, 'e2e_clipboard_read'))
-    .toBe('First **bold** line')
+  await withOsClipboard(async () => {
+    await page.locator('.bn-block-content').first().hover()
+    await page.locator('[data-test="dragHandle"]').first().click()
+    await page.getByRole('menuitem', { name: 'Copy' }).first().click()
+    await expect.poll(async () => (await recorded(page)).copied).toEqual(FLAVOURS)
+    expect((await recorded(page)).fallback).toBeNull()
+    // What another app pastes: the block as the note file holds it.
+    await expect
+      .poll(() => invokeTest<string | null>(app, 'e2e_clipboard_read'))
+      .toBe('First **bold** line')
 
-  await page.evaluate(() => {
-    const editor = (
-      window as unknown as {
-        __memryActiveEditor: {
-          document: unknown[]
-          setTextCursorPosition: (block: unknown, at: 'end') => void
-          focus: () => void
+    await page.evaluate(() => {
+      const editor = (
+        window as unknown as {
+          __memryActiveEditor: {
+            document: unknown[]
+            setTextCursorPosition: (block: unknown, at: 'end') => void
+            focus: () => void
+          }
         }
-      }
-    ).__memryActiveEditor
-    editor.setTextCursorPosition(editor.document.at(-1), 'end')
-    editor.focus()
+      ).__memryActiveEditor
+      editor.setTextCursorPosition(editor.document.at(-1), 'end')
+      editor.focus()
+    })
+    await invokeTest(app, 'e2e_webview_paste')
+    // WebView2 lists the pasted types in another order; the set is the contract.
+    await expect
+      .poll(async () => (await recorded(page)).pasted?.toSorted() ?? null)
+      .toEqual(FLAVOURS.toSorted())
+    await expect
+      .poll(() => blockTexts(page))
+      .toEqual(['First **bold** line', 'Second line', 'First **bold** line'])
   })
-  await invokeTest(app, 'e2e_webview_paste')
-  // WebView2 lists the pasted types in another order; the set is the contract.
-  await expect
-    .poll(async () => (await recorded(page)).pasted?.toSorted() ?? null)
-    .toEqual(FLAVOURS.toSorted())
-  await expect
-    .poll(() => blockTexts(page))
-    .toEqual(['First **bold** line', 'Second line', 'First **bold** line'])
 })

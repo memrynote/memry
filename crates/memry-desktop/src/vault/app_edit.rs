@@ -33,8 +33,13 @@
 //!   written). A save that leaves the body as read (a header tag edit) feeds nothing and keeps
 //!   no version, so a document ahead of its file keeps its text; the file then counts as the
 //!   document's (own-write record, row) only if the row named it. Only a frontmatter that does
-//!   not parse, a missing row, file or note, a file that is not markdown, and an edit that
-//!   lands during the write ([`Kept::FileChanged`]) keep the file. A file its row does not name
+//!   not parse, a missing row, file or note, a file that is not markdown, an edit that lands
+//!   during the write, and an empty file the row does not name ([`Kept::FileChanged`]) keep the
+//!   file. That empty file is an outside writer between its truncate and its write
+//!   (`fs.writeFileSync`, an editor saving in place): a save renamed over it would leave that
+//!   writer's bytes in a file no path names, kept nowhere (#4281). The save is fed and its
+//!   write refused, as for an edit that lands during the write (below); the empty file is no
+//!   outside edit the record takes, and no version. A file its row does not name
 //!   and whose bytes are not the run's own is an outside edit the consumer has not fed yet.
 //!   This save's bytes, the run's own, will never reach the consumer as one, so what that
 //!   file's frontmatter says (tags, property values) reaches the record first, through the
@@ -239,7 +244,6 @@ impl AppEdit {
         let Some(file) = read_note(&self.root, &row.path).map_err(AppEditError::from)? else {
             return Ok(Edited::Kept(Kept::NoFile));
         };
-        tracing::info!(scope = "TMP4281", note_id, file = %file.hash, row = ?row.content_hash, "app_edit start");
         let bom = file.raw.starts_with(BOM);
         let read = bare(&file.raw);
         let Ok(parsed) = parse_markdown_note(read) else {
@@ -247,6 +251,8 @@ impl AppEdit {
         };
         let read_body = split_frontmatter_block(read).body;
         let row_names_file = row.content_hash.as_deref() == Some(file.hash.as_str());
+        // An outside writer between its truncate and its write: see the module comment.
+        let mid_write = file.raw.is_empty() && !row_names_file;
         let mut outside = false;
         // How far the document had come when `Held` compared it; the feed refuses one past it.
         let mut compared_at = None;
@@ -277,8 +283,10 @@ impl AppEdit {
             | Precondition::SaveOver(own, _)
             | Precondition::Restore(own) => {
                 // A row with no hash names no file the document took, so none was replaced.
-                outside =
-                    row.content_hash.is_some() && !row_names_file && !own.is(note_id, &file.hash);
+                outside = !mid_write
+                    && row.content_hash.is_some()
+                    && !row_names_file
+                    && !own.is(note_id, &file.hash);
                 if let Some(previous) = row.content_hash.as_deref().filter(|_| outside) {
                     self.take_outside(note_id, previous, &file)
                         .map_err(AppEditError::from)?;
@@ -326,8 +334,8 @@ impl AppEdit {
                 body_changed && (!own_file || note_snapshots::is_significant(read_body, next_body))
             }
         };
-        tracing::info!(scope = "TMP4281", note_id, file = %file.hash, row = ?row.content_hash, outside, keeps, body_changed, "app_edit read");
-        if keeps {
+        // The empty file of a write in progress holds nothing to keep.
+        if keeps && !mid_write {
             let write_back = self.vault.write_back();
             match precondition {
                 Precondition::Restore(_) => {
@@ -348,7 +356,9 @@ impl AppEdit {
                     file_body: read_body,
                     compared_at,
                 };
-                match self.feed_text(note_id, &row.path, next, &edited.frontmatter, read) {
+                // Text made over an empty file says nothing of the note's writing data.
+                let frontmatter = (!mid_write).then_some(&edited.frontmatter);
+                match self.feed_text(note_id, &row.path, next, frontmatter, read) {
                     Ok(takes) => takes,
                     Err(kept) => return Ok(Edited::Kept(kept)),
                 }
@@ -362,6 +372,9 @@ impl AppEdit {
                 row_names_file
             }
         };
+        if mid_write {
+            return Ok(Edited::Kept(Kept::FileChanged));
+        }
         let hash = content_hash(&text);
         if takes {
             self.echo.will_write(&row.path, &hash);
@@ -405,7 +418,6 @@ impl AppEdit {
             lane.put_as_of(note_id, &row.path, stat, at)
                 .map_err(AppEditError::from)?;
         }
-        tracing::info!(scope = "TMP4281", note_id, wrote = %hash, takes, "app_edit wrote");
         landed()?;
         if !takes {
             return Ok(Edited::Wrote {
@@ -502,7 +514,7 @@ impl AppEdit {
         note_id: &str,
         path: &str,
         text: &str,
-        frontmatter: &YamlValue,
+        frontmatter: Option<&YamlValue>,
         read: AppRead<'_>,
     ) -> Result<bool, Kept> {
         let split = split_frontmatter_block(text);
@@ -511,7 +523,7 @@ impl AppEdit {
             note_id,
             markdown: split.body,
             note_path: Some(path),
-            writing: Some(writing_of_yaml(frontmatter)),
+            writing: frontmatter.map(writing_of_yaml),
             frontmatter: split.block,
             embeds: Some(&embeds),
         };

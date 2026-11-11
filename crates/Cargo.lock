@@ -3924,6 +3924,7 @@ dependencies = [
  "font-kit",
  "gtk",
  "keyring-core",
+ "libc",
  "libloading 0.9.0",
  "memry-core",
  "memry-desktop",

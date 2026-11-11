@@ -1,6 +1,7 @@
 // The native application menu is built from the shared command table (inv09 #8).
 import { test, expect } from '../../harness/test'
 import { invokeTest } from '../../harness/invoke-test'
+import { withOsClipboard } from '../../harness/os-clipboard'
 import { appReady } from '../../harness/app-ready'
 import { invoke } from '../../harness/vault-commands'
 import { pollUntil } from '../../harness/wait'
@@ -45,17 +46,19 @@ test('the clipboard text reads back, and Paste and Match Style inserts it as pla
 }) => {
   await appReady(page)
   const text = 'Plain <b>pasted</b> text'
-  await invokeTest(app, 'e2e_clipboard_write', { text })
-  expect(await invoke<string>(page, 'shell_clipboard_read_text')).toBe(text)
+  await withOsClipboard(async () => {
+    await invokeTest(app, 'e2e_clipboard_write', { text })
+    expect(await invoke<string>(page, 'shell_clipboard_read_text')).toBe(text)
 
-  await page.evaluate(() => {
-    const field = document.createElement('textarea')
-    field.id = 'paste-target'
-    document.body.append(field)
-    field.focus()
+    await page.evaluate(() => {
+      const field = document.createElement('textarea')
+      field.id = 'paste-target'
+      document.body.append(field)
+      field.focus()
+    })
+    await invokeTest(app, 'e2e_menu_activate', { id: 'edit.pasteAndMatchStyle' })
+    await expect(page.locator('#paste-target')).toHaveValue(text)
   })
-  await invokeTest(app, 'e2e_menu_activate', { id: 'edit.pasteAndMatchStyle' })
-  await expect(page.locator('#paste-target')).toHaveValue(text)
 })
 
 test('Linux: the menu bar is hidden after the window shows, and the first bare Alt shows it', async ({

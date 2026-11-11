@@ -29,6 +29,9 @@ async function openTagHub(page: Page): Promise<void> {
 async function addPreset(page: Page, key: string): Promise<void> {
   const card = page.locator(`${STRIP} > div.grid > div`).filter({ hasText: new RegExp(`^${key}`) })
   const add = card.getByRole('button', { name: 'Add', exact: true })
+  // The strip renders once the schema snapshot answers, after the hub opens; `isVisible` does not
+  // wait, and read before that it skipped the click.
+  await expect(card.getByRole('button', { name: /^Add(ed)?$/ })).toBeVisible()
   if (await add.isVisible()) await add.click()
   await expect(card.getByRole('button', { name: 'Added' })).toBeVisible({ timeout: 10_000 })
 }

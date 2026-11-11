@@ -133,6 +133,9 @@ gtk = "0.18.2"
 # tauri-plugin-deep-link 2.6.2 builds `ini::ParseOption` by field; 0.21.2 added fields, so it fails
 # to compile there. Drop the pin when the plugin moves to `..Default::default()`.
 rust-ini = "=0.21.1"
+# `guards/crash_dump.rs`: the e2e crash hook turns off the OS core dump before it aborts. Already
+# built for crash-handler and memry-desktop.
+libc = "0.2"
 
 # Windows and Linux only: on macOS it posts through the deprecated `NSUserNotificationCenter`,
 # which macOS refuses for a bundle id that used the modern center (`notifications/mac.rs`).
