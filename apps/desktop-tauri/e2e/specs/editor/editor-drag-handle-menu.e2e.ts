@@ -112,26 +112,23 @@ test('keeps the Turn into submenu open through a hesitation on the way to it', a
   await openNoteWithLines(page, label('Drag Menu Hesitation'), lines)
 
   const target = page.locator('.bn-block-content').filter({ hasText: /^Line 20$/ })
-  // BlockNote hides the side menu on any scroll of its ancestors, and the `scroll` event of this
-  // scroll is dispatched at the next rendering update. A loaded runner can hold that update past
-  // the hover (the harness waits for a frame or 50 ms), so the handle showed and hid again, and
-  // with the pointer still, never came back: the click below timed out on a missing handle
-  // (#4227). Returning on the event puts the hover after it. A scroll that moves nothing fires no
-  // event, so it returns at once.
-  await target.evaluate(
-    (el: HTMLElement) =>
-      new Promise<void>((resolve) => {
-        const ancestors: Array<[Element, number]> = []
-        for (let node = el.parentElement; node; node = node.parentElement) {
-          ancestors.push([node, node.scrollTop])
-        }
-        addEventListener('scroll', () => resolve(), { capture: true, once: true })
-        el.scrollIntoView({ block: 'center' })
-        if (ancestors.every(([node, top]) => node.scrollTop === top)) resolve()
-      })
-  )
-  await target.hover()
-  await page.locator('[data-test="dragHandle"]').first().click()
+  await target.evaluate((el: HTMLElement) => el.scrollIntoView({ block: 'center' }))
+  // BlockNote hides the side menu on any scroll of its ancestors and shows it again only on a
+  // pointer move. The scroll's events can land after the hover on a loaded runner (one `scroll`
+  // per scrolled ancestor, each at a later rendering update), and with the pointer still the handle
+  // never came back: the click below timed out on a missing handle (#4227, linux-x64 merge-group
+  // run 43006737328). Moving the pointer again until the handle shows outlasts any late scroll.
+  const handle = page.locator('[data-test="dragHandle"]').first()
+  const line = await boxOf(target)
+  let nudge = 0
+  await expect
+    .poll(async () => {
+      nudge = 1 - nudge
+      await page.mouse.move(line.x + line.width / 2, line.y + line.height / 2 + nudge)
+      return handle.isVisible()
+    })
+    .toBe(true)
+  await handle.click()
   const turnInto = menuItem(page, 'Turn into')
   await turnInto.hover()
   const heading1 = menuItem(page, 'Heading 1')
