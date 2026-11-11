@@ -412,3 +412,57 @@ fn a_change_that_cannot_be_kept_stays_on_disk_and_is_not_fed() {
     std::thread::sleep(QUIET);
     assert_locked_text(&e, "Plan.md", &id);
 }
+
+/// #4083: a tool rewriting a locked note's file in a loop keeps a version per write, and
+/// those push out none of the user's own versions: a manual one (as Electron kept it) and the
+/// one kept as the app quit.
+#[test]
+fn a_tool_rewriting_a_locked_note_pushes_out_none_of_the_users_versions() {
+    let (e, id) = locked(&[("Plan.md", NOTE)], "Plan.md", TargetKind::Note);
+    let note = id.clone();
+    e.core()
+        .db_handle()
+        .call_blocking(move |conn| {
+            conn.execute(
+                "INSERT INTO note_snapshots
+                   (id, note_id, content, title, word_count, content_hash, reason, created_at)
+                 VALUES ('saved', ?1, 'Saved by hand.', 'Plan', 3, 'h', 'manual',
+                         '2026-01-01T00:00:00.000Z')",
+                [note],
+            )
+            .unwrap();
+            Ok(())
+        })
+        .unwrap();
+    assert!(
+        e.core()
+            .versions()
+            .keep_close(&id, "Open as the app quit.\n")
+            .unwrap()
+    );
+
+    for n in 0..55 {
+        let text = format!("tool write {n}\n");
+        edit_outside(&e, "Plan.md", &text);
+        // Read-only again too: the revert makes it so after its write, and the next write
+        // would race that.
+        until("the write is kept and reverted", || {
+            e.versions(&id).contains(&text) && e.read("Plan.md") == NOTE && read_only(&e, "Plan.md")
+        });
+    }
+    std::thread::sleep(QUIET);
+
+    let kept = e.versions(&id);
+    assert_eq!(kept.len(), 50, "the cap holds");
+    assert!(
+        kept.contains(&"Saved by hand.".to_owned()),
+        "the manual version"
+    );
+    assert!(
+        kept.contains(&"Open as the app quit.\n".to_owned()),
+        "the close version"
+    );
+    assert!(kept.contains(&"tool write 54\n".to_owned()));
+    assert!(!kept.contains(&"tool write 0\n".to_owned()));
+    assert_eq!(e.read("Plan.md"), NOTE);
+}

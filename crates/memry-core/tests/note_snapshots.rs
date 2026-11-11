@@ -112,6 +112,62 @@ fn a_note_keeps_its_newest_fifty_versions_and_no_other_note_loses_one() {
     assert_eq!(rows(&f, &other), ["other's"]);
 }
 
+/// #4083: a tool rewriting a (locked) note's file keeps an outside-write version per write.
+#[test]
+fn outside_write_versions_prune_only_significant_ones() {
+    let f = fixture();
+    let note = f.note();
+    let conn = sql(&f);
+    let keep = |content: &str, reason, at| {
+        note_snapshots::keep(&conn, version(&note, content, reason), at).unwrap()
+    };
+    keep("saved", Reason::Manual, T0);
+    keep("quit", Reason::Close, T0 + 1);
+    for n in 0..55 {
+        keep(&format!("tool write {n}"), Reason::OutsideWrite, T0 + 2 + n);
+    }
+
+    let kept = rows(&f, &note);
+    assert_eq!(kept.len(), 50);
+    assert_eq!(contents(&f, &note), kept);
+    assert_eq!(kept.first().map(String::as_str), Some("tool write 54"));
+    assert_eq!(kept[48..], ["quit", "saved"]);
+    assert!(!kept.contains(&"tool write 6".to_owned()));
+}
+
+/// A note of 50 close versions keeps the newest outside-write one on top, listed.
+#[test]
+fn a_note_full_of_close_versions_holds_one_outside_write_version_over_the_cap() {
+    let f = fixture();
+    let note = f.note();
+    let conn = sql(&f);
+    for n in 0..50 {
+        let content = format!("quit {n}");
+        note_snapshots::keep(&conn, version(&note, &content, Reason::Close), T0 + n).unwrap();
+    }
+    for n in 0..3 {
+        let content = format!("tool write {n}");
+        note_snapshots::keep(
+            &conn,
+            version(&note, &content, Reason::OutsideWrite),
+            T0 + 50 + n,
+        )
+        .unwrap();
+    }
+
+    let kept = rows(&f, &note);
+    assert_eq!(kept.len(), 51);
+    assert_eq!(contents(&f, &note), kept);
+    assert_eq!(kept.first().map(String::as_str), Some("tool write 2"));
+    assert_eq!(kept.last().map(String::as_str), Some("quit 0"));
+
+    note_snapshots::keep(&conn, version(&note, "quit 50", Reason::Close), T0 + 60).unwrap();
+    let kept = rows(&f, &note);
+    assert_eq!(kept.len(), 50, "a close version prunes back to the cap");
+    assert_eq!(kept.first().map(String::as_str), Some("quit 50"));
+    assert_eq!(kept.last().map(String::as_str), Some("quit 2"));
+}
+
 #[test]
 fn versions_kept_in_one_millisecond_prune_the_first_written() {
     let f = fixture();
