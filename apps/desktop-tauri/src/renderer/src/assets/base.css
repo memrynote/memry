@@ -5390,7 +5390,7 @@ del.bn-inline-content {
  */
 .memry-table-handle[data-orientation='vertical'] .memry-table-handle-control:hover,
 .memry-table-handle[data-orientation='vertical'] .memry-table-handle-control:focus-visible,
-.memry-table-handle[data-orientation='vertical'] .memry-table-handle-control[data-state='open'] {
+.memry-table-handle[data-orientation='vertical'] .memry-table-handle-control[data-popup-open] {
   inline-size: calc(14px + 2 * var(--memry-table-handle-hit));
   block-size: 22px;
 }
@@ -5402,7 +5402,7 @@ del.bn-inline-content {
   .memry-table-handle-control:focus-visible
   .memry-table-handle-pill,
 .memry-table-handle[data-orientation='vertical']
-  .memry-table-handle-control[data-state='open']
+  .memry-table-handle-control[data-popup-open]
   .memry-table-handle-pill {
   inline-size: 14px;
   block-size: 22px;
@@ -5410,7 +5410,7 @@ del.bn-inline-content {
 
 .memry-table-handle[data-orientation='horizontal'] .memry-table-handle-control:hover,
 .memry-table-handle[data-orientation='horizontal'] .memry-table-handle-control:focus-visible,
-.memry-table-handle[data-orientation='horizontal'] .memry-table-handle-control[data-state='open'] {
+.memry-table-handle[data-orientation='horizontal'] .memry-table-handle-control[data-popup-open] {
   inline-size: 22px;
   block-size: calc(14px + 2 * var(--memry-table-handle-hit));
 }
@@ -5422,21 +5422,22 @@ del.bn-inline-content {
   .memry-table-handle-control:focus-visible
   .memry-table-handle-pill,
 .memry-table-handle[data-orientation='horizontal']
-  .memry-table-handle-control[data-state='open']
+  .memry-table-handle-control[data-popup-open]
   .memry-table-handle-pill {
   inline-size: 22px;
   block-size: 14px;
 }
 
 /*
- * `[data-state='open']` is the menu trigger's own state, set on the button by
- * the dropdown. Without it the nub would snap back to a hairline the moment the
+ * `[data-popup-open]` is the menu trigger's own state: Base UI, under
+ * `@blocknote/shadcn` 0.54, sets it on the button while its menu is open (not
+ * Radix's `data-state`). Without it the nub would snap back to a hairline the moment the
  * pointer moved off it onto its own open menu, leaving the menu hanging off
  * nothing.
  */
 .memry-table-handle-control:hover .memry-table-handle-pill,
 .memry-table-handle-control:focus-visible .memry-table-handle-pill,
-.memry-table-handle-control[data-state='open'] .memry-table-handle-pill {
+.memry-table-handle-control[data-popup-open] .memry-table-handle-pill {
   border-radius: 4px;
   background-color: var(--primary);
 }
@@ -5456,7 +5457,7 @@ del.bn-inline-content {
 
 .memry-table-handle-control:hover .memry-table-handle-icon,
 .memry-table-handle-control:focus-visible .memry-table-handle-icon,
-.memry-table-handle-control[data-state='open'] .memry-table-handle-icon {
+.memry-table-handle-control[data-popup-open] .memry-table-handle-icon {
   opacity: 1;
 }
 
