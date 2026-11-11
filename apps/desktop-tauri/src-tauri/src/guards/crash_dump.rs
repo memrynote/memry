@@ -242,7 +242,11 @@ fn attach(socket: &Path) {
 /// handler to write the dump, and aborts once it is written.
 #[cfg(feature = "e2e")]
 pub fn simulate_crash() -> bool {
-    let Some(handler) = HANDLER.lock().unwrap_or_else(PoisonError::into_inner).take() else {
+    let Some(handler) = HANDLER
+        .lock()
+        .unwrap_or_else(PoisonError::into_inner)
+        .take()
+    else {
         return false;
     };
     #[cfg(target_os = "linux")]
