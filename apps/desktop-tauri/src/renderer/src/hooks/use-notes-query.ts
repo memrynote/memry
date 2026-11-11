@@ -6,7 +6,7 @@
  */
 
 import { useEffect, useCallback, useMemo } from 'react'
-import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
+import { useQuery, useMutation, useQueryClient, type QueryClient } from '@tanstack/react-query'
 import type {
   FolderInfo,
   Note,
@@ -264,6 +264,23 @@ export function useNote(id: string | null, options: UseNoteOptions = {}): UseNot
 // =============================================================================
 
 /**
+ * Reads the shown lists again after a note changed. TanStack folds a refetch into a read already
+ * out while the query has no data yet (`cancelRefetch` applies only once it has), and that read
+ * may have taken the list before the change: its answer then clears the invalidation and stays
+ * fresh for the stale time, so a note made during the sidebar's first read stayed out of the
+ * tree (#3967). Cancelling that read silently, as TanStack does for a refetch over data, makes
+ * the refetch a new read; only active queries, which the invalidation refetches at once.
+ */
+function rereadLists(queryClient: QueryClient): void {
+  const lists = notesKeys.lists()
+  void queryClient.cancelQueries(
+    { queryKey: lists, type: 'active', fetchStatus: 'fetching' },
+    { silent: true, revert: false }
+  )
+  void queryClient.invalidateQueries({ queryKey: lists })
+}
+
+/**
  * Fetch notes list with TanStack Query caching.
  * Shows cached data immediately, refreshes in background if stale.
  */
@@ -281,9 +298,7 @@ export function useNotesList(options: UseNotesListOptions = {}): UseNotesListRes
 
   // Subscribe to note events for list invalidation
   useEffect(() => {
-    const invalidateLists = () => {
-      void queryClient.invalidateQueries({ queryKey: notesKeys.lists() })
-    }
+    const invalidateLists = () => rereadLists(queryClient)
     // The listeners go live a round trip after this effect asks for them. A note made, renamed,
     // moved or deleted after the list's first read and before then shows wrong until the next
     // event (#3967, #4270): read again once they listen.
@@ -312,7 +327,7 @@ export function useNotesList(options: UseNotesListOptions = {}): UseNotesListRes
 
     // Dropped events may have been any note's: the lists and the tags may be stale.
     const unsubDropped = onNoteEventsDropped(() => {
-      void queryClient.invalidateQueries({ queryKey: notesKeys.lists() })
+      invalidateLists()
       void queryClient.invalidateQueries({ queryKey: notesKeys.tags() })
     })
 
@@ -329,9 +344,7 @@ export function useNotesList(options: UseNotesListOptions = {}): UseNotesListRes
   const includeJournals = listOptions.includeJournals === true
   useEffect(() => {
     if (!includeJournals) return undefined
-    const invalidate = () => {
-      void queryClient.invalidateQueries({ queryKey: notesKeys.lists() })
-    }
+    const invalidate = () => rereadLists(queryClient)
     return subscribeToEvents(
       [
         (live) => onJournalEntryCreated(invalidate, live),

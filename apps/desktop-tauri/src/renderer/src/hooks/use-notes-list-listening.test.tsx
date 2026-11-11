@@ -19,6 +19,8 @@ const tauri = vi.hoisted(() => {
     pending,
     notes: [] as Array<Record<string, unknown>>,
     folders: [] as Array<Record<string, unknown>>,
+    /** `notes_list` answers held back, each with the notes as they were when it was called. */
+    heldLists: null as Array<() => void> | null,
     /** Main's emit: only the listeners it has registered hear it. */
     emit(name: string, payload: unknown) {
       for (const handler of live.get(name) ?? []) handler({ payload })
@@ -50,7 +52,10 @@ vi.mock('../../../generated/bindings', async (importActual) => await importActua
 vi.mock('@tauri-apps/api/core', () => ({
   invoke: async (command: string) => {
     if (command === 'notes_list') {
-      return { notes: tauri.notes, total: tauri.notes.length, hasMore: false }
+      const answer = { notes: tauri.notes, total: tauri.notes.length, hasMore: false }
+      const held = tauri.heldLists
+      if (!held) return answer
+      return new Promise((resolve) => held.push(() => resolve(answer)))
     }
     if (command === 'notes_get_folders') return tauri.folders
     throw new Error(`unexpected command ${command}`)
@@ -81,6 +86,7 @@ describe('a note made before the list listens', () => {
     tauri.pending.length = 0
     tauri.notes = [view('first', 'First.md')]
     tauri.folders = []
+    tauri.heldLists = null
     queryClient = new QueryClient({ defaultOptions: { queries: { retry: false } } })
   })
 
@@ -92,6 +98,26 @@ describe('a note made before the list listens', () => {
     tauri.notes = [made, ...tauri.notes]
     tauri.emit('note-created-event', { note: made, source: 'internal' })
     await act(async () => tauri.goLive())
+
+    await waitFor(() =>
+      expect(result.current.notes.map((note) => note.id)).toEqual(['made', 'first'])
+    )
+  })
+
+  it('is listed when it is made while the first read is still out', async () => {
+    // The first read took the list before the note was made and answers after its event and the
+    // listeners going live, as when the renderer stalls at start (#3967).
+    tauri.heldLists = []
+    const { result } = renderHook(() => useNotesList({ fields: 'tree' }), { wrapper })
+    await waitFor(() => expect(tauri.heldLists).toHaveLength(1))
+    const firstRead = tauri.heldLists[0]
+
+    const made = view('made', 'notes/made.md')
+    tauri.notes = [made, ...tauri.notes]
+    tauri.heldLists = null
+    await act(async () => tauri.goLive())
+    await act(async () => tauri.emit('note-created-event', { note: made, source: 'internal' }))
+    await act(async () => firstRead())
 
     await waitFor(() =>
       expect(result.current.notes.map((note) => note.id)).toEqual(['made', 'first'])
