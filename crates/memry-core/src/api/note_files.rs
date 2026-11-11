@@ -166,10 +166,10 @@ impl NoteFiles {
             .read_blocking(move |conn| note_files::behind_body(conn, note_id))
     }
 
-    /// The markdown rows of tombstoned notes ([`note_files::rows_of_deleted_notes`]).
-    pub fn rows_of_deleted_notes(&self, with_owed: bool) -> Result<Vec<NoteFile>, StorageError> {
-        self.db
-            .read_blocking(move |conn| note_files::rows_of_deleted_notes(conn, with_owed))
+    /// The markdown rows of tombstoned notes, each with whether its note is owed a move
+    /// ([`note_files::rows_of_deleted_notes`]).
+    pub fn rows_of_deleted_notes(&self) -> Result<Vec<(NoteFile, bool)>, StorageError> {
+        self.db.read_blocking(note_files::rows_of_deleted_notes)
     }
 
     pub fn list_paths(&self) -> Result<Vec<(String, String)>, StorageError> {

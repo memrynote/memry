@@ -457,23 +457,20 @@ pub fn list_missing_candidates(conn: &Connection) -> Result<Vec<NoteFile>, Stora
         .map_err(failed)
 }
 
-/// The markdown rows of tombstoned notes and journal days, by path: files a deletion on
+/// The markdown rows of tombstoned notes and journal days, by path, each with whether its note
+/// is owed a move ([`crate::domain::notes::identity::owed_places`]): files a deletion on
 /// another device, or one whose file operation a crash cut short, left in the vault. A note
 /// this vault has no record of is not among them: its record may not have arrived yet, and
-/// a file is not given up on an absence. Without `with_owed`, a row whose note is owed a move
-/// ([`crate::domain::notes::identity::owed_places`]) is not among them either: a crossing a
+/// a file is not given up on an absence. An owed one is the caller's to decide: a crossing a
 /// crash cut short leaves its record deleted and owed, and its file is the item the next
 /// crossing makes, not a deleted one's (#4258).
-pub fn rows_of_deleted_notes(
-    conn: &Connection,
-    with_owed: bool,
-) -> Result<Vec<NoteFile>, StorageError> {
+pub fn rows_of_deleted_notes(conn: &Connection) -> Result<Vec<(NoteFile, bool)>, StorageError> {
     let mut statement = conn
         .prepare(&format!(
-            "SELECT {COLUMNS} FROM {ROWS}
+            "SELECT {COLUMNS},
+                    EXISTS (SELECT 1 FROM note_place_owed o WHERE o.note_id = f.note_id)
+               FROM {ROWS}
               WHERE f.file_type = 'markdown'
-                AND (?1 OR NOT EXISTS (SELECT 1 FROM note_place_owed o
-                                        WHERE o.note_id = f.note_id))
                 AND (EXISTS (SELECT 1 FROM notes n
                               WHERE n.id = f.note_id AND n.deleted_at IS NOT NULL)
                   OR EXISTS (SELECT 1 FROM journal_entries j
@@ -482,7 +479,7 @@ pub fn rows_of_deleted_notes(
         ))
         .map_err(failed)?;
     statement
-        .query_map([with_owed], row_to_file)
+        .query_map([], |row| Ok((row_to_file(row)?, row.get(9)?)))
         .map_err(failed)?
         .collect::<Result<_, _>>()
         .map_err(failed)

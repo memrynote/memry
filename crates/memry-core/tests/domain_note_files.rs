@@ -378,8 +378,8 @@ fn an_entry_stored_after_the_row_in_its_millisecond_puts_the_note_behind() {
 
 /// The rows the open reconcile moves to the trash: markdown rows of a tombstoned note or
 /// journal day. A live note, a note this device has no record of (its record may not be
-/// pulled yet) and a file that is not markdown are not among them; nor, when asked, a row
-/// whose note is owed a move.
+/// pulled yet) and a file that is not markdown are not among them. A row whose note is owed a
+/// move is marked so.
 #[test]
 fn the_rows_of_deleted_notes_are_the_markdown_rows_of_tombstoned_notes_and_days() {
     let Fixture { vault, .. } = fixture();
@@ -404,16 +404,21 @@ fn the_rows_of_deleted_notes_are_the_markdown_rows_of_tombstoned_notes_and_days(
            ('j2024-01-02', '2024-01-02', 5), ('live-day', '2024-01-03', NULL);",
     );
 
-    let ids = |with_owed| -> Vec<String> {
+    let ids = || -> Vec<(String, bool)> {
         files
-            .rows_of_deleted_notes(with_owed)
+            .rows_of_deleted_notes()
             .unwrap()
             .into_iter()
-            .map(|row| row.note_id)
+            .map(|(row, owed)| (row.note_id, owed))
             .collect()
     };
-    assert_eq!(ids(true), ["deleted", "j2024-01-02"]);
-    assert_eq!(ids(false), ["deleted", "j2024-01-02"]);
+    assert_eq!(
+        ids(),
+        [
+            ("deleted".to_owned(), false),
+            ("j2024-01-02".to_owned(), false)
+        ]
+    );
 
     // A crossing cut short: the day deleted, owed its move, its row still there (#4258).
     exec(
@@ -421,8 +426,13 @@ fn the_rows_of_deleted_notes_are_the_markdown_rows_of_tombstoned_notes_and_days(
         "INSERT INTO note_place_owed (note_id, from_path, marked_at)
            VALUES ('j2024-01-02', 'journal/2024-01-01.md', 5);",
     );
-    assert_eq!(ids(true), ["deleted", "j2024-01-02"]);
-    assert_eq!(ids(false), ["deleted"]);
+    assert_eq!(
+        ids(),
+        [
+            ("deleted".to_owned(), false),
+            ("j2024-01-02".to_owned(), true)
+        ]
+    );
 }
 
 /// One stamp, one meaning (`NoteFile::indexed_at`): a refresh re-read the file and found the

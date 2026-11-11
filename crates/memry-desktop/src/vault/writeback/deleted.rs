@@ -5,10 +5,10 @@
 //! whose frontmatter does not parse counts as read once its text was taken (#3750): it goes to
 //! the trash with its block, which the note never held.
 
+use std::collections::BTreeSet;
 use std::path::Path;
 
 use super::Pass;
-use crate::vault::config::read_vault_config_strict;
 use crate::vault::consumer::{Applied, ChangeSource};
 use crate::vault::note_file::read_note;
 
@@ -31,28 +31,20 @@ pub enum Leftover {
 
 impl Pass {
     /// Moves the file of every tombstoned note whose bytes are still those its row read to
-    /// the trash through `trash`, and removes the row. Each row holds the rows' lane from its
+    /// the trash through `trash`, and removes the row. A note owed a move is among them only
+    /// when the open's crossings left its file its own (`theirs`): a crossing a crash cut short
+    /// leaves its record deleted and owed, with its row, and its file is the item the next
+    /// crossing makes, not a deleted note's (#4258). Each row holds the rows' lane from its
     /// check to its removal, so no feed reads a file it moves; between rows the lane is free
     /// for the app, and a `stopped` consumer or a closed session ends the run, leaving the
     /// rest for the next open.
     pub fn trash_deleted(
         &self,
+        theirs: &BTreeSet<String>,
         trash: &dyn Fn(&Path) -> Result<(), String>,
         stopped: &dyn Fn() -> bool,
     ) -> Vec<(String, Leftover)> {
-        // A crossing a crash cut short leaves its record deleted and owed the move, with its
-        // row: the open's crossings make its file the new item once the journal days are known
-        // (`NoteIdentity::settle_crossings`). Unknown, they made nothing, and the file is not a
-        // deleted note's to trash (#4258).
-        let with_owed = read_vault_config_strict(&self.root).is_ok();
-        if !with_owed {
-            tracing::warn!(
-                scope = SCOPE,
-                "the vault config cannot be read, so the files of deleted notes owed a move stay \
-                 until it can be"
-            );
-        }
-        let rows = match self.vault.note_files().rows_of_deleted_notes(with_owed) {
+        let listed = match self.vault.note_files().rows_of_deleted_notes() {
             Ok(rows) => rows,
             Err(error) => {
                 tracing::error!(
@@ -62,8 +54,18 @@ impl Pass {
                 return Vec::new();
             }
         };
+        let (rows, unsettled): (Vec<_>, Vec<_>) = listed
+            .into_iter()
+            .partition(|(row, owed)| !owed || theirs.contains(&row.note_id));
+        if !unsettled.is_empty() {
+            tracing::warn!(
+                scope = SCOPE,
+                count = unsettled.len(),
+                "files of deleted notes owed a move the open did not settle stay, for a later open"
+            );
+        }
         let mut done = Vec::with_capacity(rows.len());
-        for row in rows {
+        for (row, _) in rows {
             if stopped() {
                 break;
             }

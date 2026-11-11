@@ -23,7 +23,7 @@ use crate::device_key;
 use crate::vault_env;
 
 use std::fs;
-use std::sync::Arc;
+use std::sync::{Arc, Mutex};
 use std::time::{Duration, Instant};
 
 use memry_core::domain::notes::identity::{Crossing, Removed};
@@ -31,8 +31,15 @@ use memry_core::domain::vault_locks::TargetKind;
 use memry_core::markdown::frontmatter::split_frontmatter_block;
 use memry_core::seams::secure_store::SecureStore;
 use memry_desktop::journal::update::DayUpdate;
+use memry_desktop::notes::identity::NotesIdentity;
 use memry_desktop::notes::service::NotesService;
+use memry_desktop::vault::config::config_path;
 use memry_desktop::vault::consumer::Applied;
+use memry_desktop::vault::consumer::identity::{
+    Adoption, Candidate, IdentityCtx, IdentityError, NewFile, NoteIdentity, Removal, Rename,
+    Settled,
+};
+use memry_desktop::vault::note_file::NoteFile;
 use memry_desktop::vault::notices::{RenamedDay, VaultNotice, VaultNotices};
 use vault_env::{Env, QUIET, indexed};
 
@@ -41,7 +48,7 @@ use crate::journal_folder_held::recorded_elsewhere;
 use crate::journal_folder_outside::moved_outside;
 use crate::lock_service::lock;
 use crate::vault_exclude_read_only::exclude;
-use crate::vault_settings::opened_noticing;
+use crate::vault_settings::opened_through;
 
 const TRIP: &str = "Diary/Trip.md";
 const OTHER_DAY: &str = "j2025-01-03";
@@ -63,12 +70,25 @@ fn renamed_away_keeping() -> (
     Arc<VaultNotices>,
     Arc<dyn SecureStore>,
 ) {
-    let (mut e, store, notices) = opened_noticing(
+    renamed_away_through(|identity| identity)
+}
+
+/// [`renamed_away_keeping`], the app's identity seen through `wrap`.
+fn renamed_away_through(
+    wrap: impl FnOnce(Arc<NotesIdentity>) -> Arc<dyn NoteIdentity>,
+) -> (
+    Env,
+    Arc<NotesService>,
+    Arc<VaultNotices>,
+    Arc<dyn SecureStore>,
+) {
+    let (mut e, store, notices) = opened_through(
         daily("journal"),
         &[
             ("journal/2025-01-02.md", "A day\n"),
             ("journal/2025-01-03.md", "Another day\n"),
         ],
+        wrap,
     );
     let notes = NotesService::new(e.tier.clone(), store.clone());
     recorded_elsewhere(&e, true);
@@ -285,9 +305,9 @@ fn a_renamed_day_is_not_crossed_while_a_save_of_it_waits() {
     assert!(outbox(&e, DAY).contains(&"delete".to_owned()));
 }
 
-/// A Turn into notes cut short ([`cut_short`]). The next open finishes the cross: the file, untouched and not in the trash, is a new note, the day's delete is queued once, and the
-/// day is no longer listed. Held still, the day was skipped by the open's crossings and its file
-/// trashed as a deleted day's.
+/// A Turn into notes cut short ([`cut_short`]). The next open finishes the cross
+/// ([`finished_by_the_open`]). Held still, the day was skipped by the open's crossings and its
+/// file trashed as a deleted day's.
 #[test]
 fn a_turn_into_notes_cut_short_after_the_delete_is_finished_by_the_next_open() {
     let (mut e, _, notices, store) = renamed_away_keeping();
@@ -296,6 +316,51 @@ fn a_turn_into_notes_cut_short_after_the_delete_is_finished_by_the_next_open() {
     e.drain();
 
     e.open();
+    finished_by_the_open(&mut e, &notices, &before);
+}
+
+/// #4258 L2 through the open: the vault config unreadable when the open's crossings ran, and
+/// readable again before its trash pass. The crossings made nothing, so the file, the item the
+/// crossing makes, is not a deleted day's: it stays, untouched and not in the trash, and the
+/// next open finishes the cross.
+#[test]
+fn a_turn_into_notes_cut_short_keeps_its_file_when_the_config_reads_only_after_the_crossings() {
+    let restore = Arc::new(Mutex::new(None));
+    let put_back = restore.clone();
+    let (mut e, _, notices, store) = renamed_away_through(move |inner| {
+        Arc::new(ConfigBackAfterCrossings {
+            inner,
+            config: put_back,
+        })
+    });
+    let before = cut_short(&mut e, store);
+    e.close();
+    e.drain();
+    let config = config_path(&e.vault);
+    *restore.lock().unwrap() = Some(fs::read(&config).unwrap());
+    fs::write(&config, "{ not json").unwrap();
+
+    e.open();
+    e.facts_until(indexed);
+    e.after_reconcile();
+    assert!(
+        restore.lock().unwrap().is_none(),
+        "the crossings did not run"
+    );
+    assert_eq!(fs::read(e.vault.join(TRIP)).unwrap(), before);
+    assert!(e.rows().contains(&row(DAY, TRIP)), "{:?}", e.rows());
+    assert_eq!(deletes(&e), 1, "{:?}", outbox(&e, DAY));
+    e.close();
+    e.drain();
+
+    e.open();
+    finished_by_the_open(&mut e, &notices, &before);
+}
+
+/// The open just started finishes the cross [`cut_short`] left: the file, untouched and not in
+/// the trash, is a new note, the day's delete is queued once, and the day is no longer listed;
+/// the open after changes nothing.
+fn finished_by_the_open(e: &mut Env, notices: &VaultNotices, before: &[u8]) {
     let facts =
         e.facts_until(|f| matches!(f, Applied::Added { path, created: true, .. } if path == TRIP));
     let note = facts
@@ -310,15 +375,15 @@ fn a_turn_into_notes_cut_short_after_the_delete_is_finished_by_the_next_open() {
     assert!(e.rows().contains(&row(&note, TRIP)), "{:?}", e.rows());
     assert!(!e.rows().iter().any(|(id, _)| id == DAY), "{:?}", e.rows());
     assert!(e.rows().contains(&row(OTHER_DAY, "Diary/2025-01-03.md")));
-    assert_eq!(deletes(&e), 1, "{:?}", outbox(&e, DAY));
-    assert!(outbox(&e, &note).contains(&"upsert".to_owned()));
-    assert_eq!(renamed_notice(&notices), None, "{:?}", notices.list());
+    assert_eq!(deletes(e), 1, "{:?}", outbox(e, DAY));
+    assert!(outbox(e, &note).contains(&"upsert".to_owned()));
+    assert_eq!(renamed_notice(notices), None, "{:?}", notices.list());
 
-    reopen(&mut e);
+    reopen(e);
     assert!(e.rows().contains(&row(&note, TRIP)), "{:?}", e.rows());
     assert_eq!(fs::read(e.vault.join(TRIP)).unwrap(), before);
-    assert_eq!(deletes(&e), 1, "{:?}", outbox(&e, DAY));
-    assert_eq!(renamed_notice(&notices), None, "{:?}", notices.list());
+    assert_eq!(deletes(e), 1, "{:?}", outbox(e, DAY));
+    assert_eq!(renamed_notice(notices), None, "{:?}", notices.list());
 }
 
 /// A Turn into notes cut short between the core's delete of the day and the drop of its row:
@@ -349,12 +414,13 @@ fn cut_short(e: &mut Env, store: Arc<dyn SecureStore>) -> Vec<u8> {
 
 /// #4258 L3: a pulled edit revives the day after a Turn into notes cut short, before the next
 /// open (made here by its stored outcome: the day live again, its body moved after its row's
-/// stamp). The open's crossing keeps the day, as deleting it would take the pulled text from
-/// every device, and lists its file as undecided rather than leaving it waiting unseen.
+/// stamp). The open's crossing keeps the day and its text, as deleting it would take the
+/// pulled text from every device, leaves its file as it was, and lists the file as undecided
+/// rather than leaving it waiting unseen.
 #[test]
 fn a_day_revived_after_a_turn_into_notes_cut_short_is_listed_at_the_next_open() {
     let (mut e, _, notices, store) = renamed_away_keeping();
-    cut_short(&mut e, store);
+    let before = cut_short(&mut e, store);
     e.core()
         .db_handle()
         .call_blocking(|conn| {
@@ -368,14 +434,20 @@ fn a_day_revived_after_a_turn_into_notes_cut_short_is_listed_at_the_next_open() 
             Ok(())
         })
         .unwrap();
+    let pulled = e.body(DAY);
+    assert_eq!(pulled, "A day");
     e.close();
     e.drain();
 
     e.open();
     let facts = e.facts_until(indexed);
     assert!(!crossed(&facts), "{facts:?}");
+    e.after_reconcile();
+    std::thread::sleep(QUIET);
     assert!(e.rows().contains(&row(DAY, TRIP)), "{:?}", e.rows());
     assert_eq!(deletes(&e), 1, "{:?}", outbox(&e, DAY));
+    assert_eq!(e.body(DAY), pulled);
+    assert_eq!(fs::read(e.vault.join(TRIP)).unwrap(), before);
     let trip = e.vault.join(TRIP).to_string_lossy().into_owned();
     assert!(
         notices.list().iter().any(
@@ -398,5 +470,117 @@ fn typed(content: &str) -> DayUpdate {
         tags: None,
         inline_tags: None,
         properties: None,
+    }
+}
+
+/// The app's identity, which puts the vault config `config` back once the open's crossings ran
+/// without it: the open's later passes read it.
+struct ConfigBackAfterCrossings {
+    inner: Arc<NotesIdentity>,
+    config: Arc<Mutex<Option<Vec<u8>>>>,
+}
+
+impl NoteIdentity for ConfigBackAfterCrossings {
+    fn adopts(&self) -> bool {
+        self.inner.adopts()
+    }
+
+    fn leaves_vault(&self, ctx: &IdentityCtx<'_>) -> bool {
+        self.inner.leaves_vault(ctx)
+    }
+
+    fn opened(&self, ctx: &IdentityCtx<'_>) {
+        self.inner.opened(ctx);
+    }
+
+    fn watch_limited(&self, ctx: &IdentityCtx<'_>) {
+        self.inner.watch_limited(ctx);
+    }
+
+    fn file_returned(&self, ctx: &IdentityCtx<'_>, note_id: &str) {
+        self.inner.file_returned(ctx, note_id);
+    }
+
+    fn notices(&self) -> Option<Arc<VaultNotices>> {
+        self.inner.notices()
+    }
+
+    fn adopt_or_create(
+        &self,
+        ctx: &IdentityCtx<'_>,
+        file: &Candidate<'_>,
+    ) -> Result<Adoption, IdentityError> {
+        self.inner.adopt_or_create(ctx, file)
+    }
+
+    fn may_be_new(&self, ctx: &IdentityCtx<'_>, files: &[Candidate<'_>]) -> Vec<bool> {
+        self.inner.may_be_new(ctx, files)
+    }
+
+    fn adopt_new_files(
+        &self,
+        ctx: &IdentityCtx<'_>,
+        files: &[NewFile<'_>],
+    ) -> Result<Vec<bool>, IdentityError> {
+        self.inner.adopt_new_files(ctx, files)
+    }
+
+    fn on_removed(
+        &self,
+        ctx: &IdentityCtx<'_>,
+        note_id: &str,
+        path: &str,
+    ) -> Result<Removal, IdentityError> {
+        self.inner.on_removed(ctx, note_id, path)
+    }
+
+    fn on_renamed(
+        &self,
+        ctx: &IdentityCtx<'_>,
+        note_id: &str,
+        old_path: &str,
+        new_path: &str,
+    ) -> Result<Rename, IdentityError> {
+        self.inner.on_renamed(ctx, note_id, old_path, new_path)
+    }
+
+    fn follow_held(&self, ctx: &IdentityCtx<'_>) -> bool {
+        self.inner.follow_held(ctx)
+    }
+
+    fn cross_renamed_day(
+        &self,
+        ctx: &IdentityCtx<'_>,
+        note_id: &str,
+        path: &str,
+    ) -> Result<bool, IdentityError> {
+        self.inner.cross_renamed_day(ctx, note_id, path)
+    }
+
+    fn settle_crossings(&self, ctx: &IdentityCtx<'_>) -> Settled {
+        let settled = self.inner.settle_crossings(ctx);
+        if let Some(config) = self.config.lock().unwrap().take() {
+            fs::write(config_path(ctx.root), config).unwrap();
+        }
+        settled
+    }
+
+    fn on_changed(
+        &self,
+        ctx: &IdentityCtx<'_>,
+        note_id: &str,
+        previous: &str,
+        file: &NoteFile,
+    ) -> Result<(), IdentityError> {
+        self.inner.on_changed(ctx, note_id, previous, file)
+    }
+
+    fn keeps_kind(
+        &self,
+        ctx: &IdentityCtx<'_>,
+        note_id: &str,
+        new_path: &str,
+    ) -> Result<bool, IdentityError> {
+        self.inner.keeps_kind(ctx, note_id, new_path)
     }
 }

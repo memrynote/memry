@@ -2,6 +2,7 @@
 //! trash"), through a trash that is a folder of the test: the real OS trash is the crash
 //! test's (`tests/writeback_crash.rs`).
 
+use std::collections::BTreeSet;
 use std::path::{Path, PathBuf};
 use std::sync::{Mutex, mpsc};
 use std::time::Duration;
@@ -40,7 +41,8 @@ impl Bin {
 }
 
 fn trash(f: &Fixture, bin: &Bin) -> Vec<(String, Leftover)> {
-    f.pass.trash_deleted(&|path| bin.take(path), &|| false)
+    f.pass
+        .trash_deleted(&BTreeSet::new(), &|path| bin.take(path), &|| false)
 }
 
 /// Whether another thread gets the rows' lane within a while.
@@ -73,10 +75,12 @@ fn the_lane_is_free_for_the_app_between_two_files() {
     let (a, b) = two_deleted(&mut f);
     let bin = Bin::new();
     let free = Mutex::new(Vec::new());
-    let done = f.pass.trash_deleted(&|path| bin.take(path), &|| {
-        free.lock().unwrap().push(lane_free(&f));
-        false
-    });
+    let done = f
+        .pass
+        .trash_deleted(&BTreeSet::new(), &|path| bin.take(path), &|| {
+            free.lock().unwrap().push(lane_free(&f));
+            false
+        });
     assert_eq!(done, [(a, Leftover::Trashed), (b, Leftover::Trashed)]);
     assert_eq!(*free.lock().unwrap(), [true, true]);
 }
@@ -88,9 +92,11 @@ fn a_stop_ends_the_run_between_files_and_leaves_the_rest_for_the_next_open() {
     let mut f = fixture();
     let (a, b) = two_deleted(&mut f);
     let bin = Bin::new();
-    let done = f.pass.trash_deleted(&|path| bin.take(path), &|| {
-        !bin.got.lock().unwrap().is_empty()
-    });
+    let done = f
+        .pass
+        .trash_deleted(&BTreeSet::new(), &|path| bin.take(path), &|| {
+            !bin.got.lock().unwrap().is_empty()
+        });
     assert_eq!(done, [(a, Leftover::Trashed)]);
     assert_eq!(f.read("b.md"), "second\n");
     assert!(f.vault.note_files().by_id(&b).unwrap().is_some());
@@ -104,12 +110,14 @@ fn a_closed_session_ends_the_run_between_files() {
     let (a, b) = two_deleted(&mut f);
     let session = f.rows.session_for(&f.vault).unwrap();
     let bin = Bin::new();
-    let done = f.pass.trash_deleted(&|path| bin.take(path), &|| {
-        if !bin.got.lock().unwrap().is_empty() {
-            f.rows.close_session(session);
-        }
-        false
-    });
+    let done = f
+        .pass
+        .trash_deleted(&BTreeSet::new(), &|path| bin.take(path), &|| {
+            if !bin.got.lock().unwrap().is_empty() {
+                f.rows.close_session(session);
+            }
+            false
+        });
     assert_eq!(done, [(a, Leftover::Trashed)]);
     assert_eq!(f.read("b.md"), "second\n");
     assert!(f.vault.note_files().by_id(&b).unwrap().is_some());
@@ -167,23 +175,25 @@ fn a_deleted_notes_file_with_bytes_the_note_did_not_hold_stays_with_its_row() {
 }
 
 /// #4258 L2: a crossing a crash cut short leaves the record deleted and owed its move, with
-/// its row. While the vault config cannot be read the open's crossings make nothing, and the
-/// file, the item the crossing makes, stays; once it reads, the deleted note's file goes.
+/// its row. Unless the open's crossings left the file the note's own (the move keeps what it
+/// is, or the day is held), the file, the item the crossing makes, stays with its row.
 #[test]
-fn a_deleted_notes_file_owed_a_move_stays_while_the_vault_config_cannot_be_read() {
+fn a_deleted_notes_file_owed_a_move_goes_only_when_the_crossings_left_it_the_notes() {
     let mut f = fixture();
     let id = f.adopt("Trip.md", "the day's text\n");
     f.writer.owe_place(&id, "journal/2025-01-02.md").unwrap();
     f.writer.delete(id.clone()).unwrap();
-    f.write(".memry/config.json", "{ not json");
     let bin = Bin::new();
     assert_eq!(trash(&f, &bin), []);
     assert!(bin.got.lock().unwrap().is_empty());
     assert_eq!(f.read("Trip.md"), "the day's text\n");
     assert!(f.vault.note_files().by_id(&id).unwrap().is_some());
 
-    f.write(".memry/config.json", "{}");
-    assert_eq!(trash(&f, &bin), [(id, Leftover::Trashed)]);
+    let theirs = BTreeSet::from([id.clone()]);
+    let done = f
+        .pass
+        .trash_deleted(&theirs, &|path| bin.take(path), &|| false);
+    assert_eq!(done, [(id, Leftover::Trashed)]);
 }
 
 #[test]

@@ -14,6 +14,7 @@
 //! resync reads and reports no file without a row except one that can be a moved note
 //! (`NewFiles::PairOnly`), so such files cannot flood it.
 
+use std::collections::BTreeSet;
 use std::path::PathBuf;
 use std::sync::Arc;
 use std::sync::atomic::{AtomicBool, Ordering};
@@ -76,9 +77,10 @@ pub struct Consumer {
     thread: Option<JoinHandle<()>>,
 }
 
-/// The work an open runs once its walk ended (the write-back's reconcile), given whether the
-/// consumer was stopped since, so a close does not wait for all of it.
-pub(crate) type AfterWalk = Box<dyn FnOnce(&dyn Fn() -> bool) + Send>;
+/// The work an open runs once its walk ended (the write-back's reconcile), given the owed notes
+/// whose file the open's crossings left theirs ([`super::identity::Settled::theirs`]) and
+/// whether the consumer was stopped since, so a close does not wait for all of it.
+pub(crate) type AfterWalk = Box<dyn FnOnce(&BTreeSet<String>, &dyn Fn() -> bool) + Send>;
 
 impl Consumer {
     pub(super) fn start(
@@ -347,7 +349,7 @@ impl Run {
     /// a close stops tells nothing, and so does one in a vault the identity leaves as it is (an
     /// Electron vault not imported yet).
     fn walk(&mut self) {
-        self.applier.settle_crossings();
+        let theirs = self.applier.settle_crossings();
         let root = self.applier.root.clone();
         let walk = walk_vault_with(&root, &self.exclude, Limits::DEFAULT);
         let complete = walk.truncated.is_none() && walk.too_deep == 0;
@@ -422,7 +424,7 @@ impl Run {
             lane.publish(Applied::Indexed { complete });
         }
         if let Some(after_walk) = self.after_walk.take() {
-            after_walk(&|| self.stopped());
+            after_walk(&theirs, &|| self.stopped());
         }
     }
 }
