@@ -112,7 +112,18 @@ test('keeps the Turn into submenu open through a hesitation on the way to it', a
   await openNoteWithLines(page, label('Drag Menu Hesitation'), lines)
 
   const target = page.locator('.bn-block-content').filter({ hasText: /^Line 20$/ })
-  await target.evaluate((el: HTMLElement) => el.scrollIntoView({ block: 'center' }))
+  // BlockNote hides the side menu on any scroll of its ancestors, and the `scroll` event of this
+  // scroll is dispatched at the next rendering update. A loaded runner can hold that update past
+  // the hover (the harness waits for a frame or 50 ms), so the handle showed and hid again, and
+  // with the pointer still, never came back: the click below timed out on a missing handle
+  // (#4227). Returning on the event puts the hover after it.
+  await target.evaluate(
+    (el: HTMLElement) =>
+      new Promise<void>((resolve) => {
+        addEventListener('scroll', () => resolve(), { capture: true, once: true })
+        el.scrollIntoView({ block: 'center' })
+      })
+  )
   await target.hover()
   await page.locator('[data-test="dragHandle"]').first().click()
   const turnInto = menuItem(page, 'Turn into')

@@ -950,17 +950,14 @@
    size={24}. The bundled @blocknote/shadcn/style.css reverts svg width/height
    to that attribute via `svg:not([class*=size-]){width:revert}`, and is
    JS-imported (loads after this file), so `!important` is required to win —
-   same reason as the block-group rule above. ponytail: bump to resize. */
-:root .bn-side-menu svg {
-  width: 16px !important;
-  height: 16px !important;
-}
-
-/* The shadcn theme's `.bn-shadcn svg { pointer-events: all }` kept the plus
+   same reason as the block-group rule above. ponytail: bump to resize.
+   The shadcn theme's `.bn-shadcn svg { pointer-events: all }` kept the plus
    and handle icons clickable while `BlockSideMenuController` holds the menu
    at `pointer-events: none` before it is placed (#3967), so the icons follow
    their menu instead. */
 :root .bn-side-menu svg {
+  width: 16px !important;
+  height: 16px !important;
   pointer-events: inherit;
 }
 
