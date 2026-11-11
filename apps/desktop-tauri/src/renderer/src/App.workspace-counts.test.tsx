@@ -115,7 +115,7 @@ const openSettings = vi.fn()
 const createNote = vi.fn()
 
 vi.mock('@tanstack/react-query', () => ({
-  useQueryClient: () => ({ clear: vi.fn() }),
+  useQueryClient: () => ({ clear: vi.fn(), invalidateQueries: vi.fn() }),
   // App keeps one client per vault workspace (VaultStack).
   QueryClient: class {
     clear = vi.fn()
@@ -190,6 +190,7 @@ vi.mock('@/hooks', () => ({
 }))
 
 vi.mock('@/hooks/use-folder-view-events', () => ({ useFolderViewEvents: vi.fn() }))
+vi.mock('@/hooks/use-note-metadata-events', () => ({ useNoteMetadataEvents: vi.fn() }))
 vi.mock('@/hooks/use-flush-on-quit', () => ({ useFlushOnQuit: vi.fn() }))
 vi.mock('@/hooks/use-theme-sync', () => ({
   useThemeSync: vi.fn(() => ({ reduceMotion: 'system' }))

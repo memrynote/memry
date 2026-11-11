@@ -12,7 +12,13 @@ import { getVaultSwitchState } from '@/lib/vault-switch-state'
 import { getCachedVaultStatus } from '@/lib/vault-status-cache'
 import { useVaultScope } from '@/contexts/vault-scope'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
-import type { JournalEntry } from '../../../preload/index.d'
+import type {
+  JournalEntry,
+  JournalEntryCreatedEvent,
+  JournalEntryDeletedEvent,
+  JournalEntryUpdatedEvent,
+  JournalExternalChangeEvent
+} from '../../../preload/index.d'
 import {
   journalService,
   onJournalEntryUpdated,
@@ -21,6 +27,7 @@ import {
   onJournalEntryCreated,
   onJournalEventsDropped
 } from '@/services/journal-service'
+import { subscribeToEvents } from '@/services/tauri-event'
 import { getTemplate, type Template } from '@/services/templates-service'
 import { addDays, formatDateToISO, parseISODate } from '@/lib/journal-utils'
 import { resolveJournalTemplateId } from '@/lib/journal-template-resolution'
@@ -833,13 +840,13 @@ export function useJournalEntry(date: string): UseJournalEntryResult {
 
   // External update subscriptions
   useEffect(() => {
-    const unsubscribeCreated = onJournalEntryCreated((event) => {
+    const onCreated = (event: JournalEntryCreatedEvent): void => {
       if (event.date === currentDateRef.current) {
         queryClient.setQueryData(journalKeys.entry(event.date), event.entry)
       }
-    })
+    }
 
-    const unsubscribeUpdated = onJournalEntryUpdated((event) => {
+    const onUpdated = (event: JournalEntryUpdatedEvent): void => {
       // oxlint-disable-next-line typescript/no-unsafe-type-assertion -- journal event payload carries an optional source tag outside the declared event type
       const isExternal = (event as { source?: string }).source === 'external'
 
@@ -872,9 +879,9 @@ export function useJournalEntry(date: string): UseJournalEntryResult {
           }
         }
       }
-    })
+    }
 
-    const unsubscribeDeleted = onJournalEntryDeleted((event) => {
+    const onDeleted = (event: JournalEntryDeletedEvent): void => {
       if (event.date !== currentDateRef.current) return
       // Typing not saved yet is newer than the delete: a Turn into notes that deleted the day
       // after its flush (`use-vault-notices`), or a delete from another device. Its save makes
@@ -889,9 +896,9 @@ export function useJournalEntry(date: string): UseJournalEntryResult {
       setIsDirty(false)
       pendingContentRef.current = null
       pendingTagsRef.current = null
-    })
+    }
 
-    const unsubscribeExternal = onJournalExternalChange((event) => {
+    const onExternal = (event: JournalExternalChangeEvent): void => {
       if (event.date === currentDateRef.current) {
         if (event.type === 'deleted') {
           queryClient.setQueryData(journalKeys.entry(event.date), null)
@@ -900,13 +907,13 @@ export function useJournalEntry(date: string): UseJournalEntryResult {
           void queryClient.invalidateQueries({ queryKey: journalKeys.entry(event.date) })
         }
       }
-    })
+    }
 
     // A missed event may have changed the open day: read again once a running save ends, and
     // not while it holds unsaved text, which its save keeps, as for `modified`. New text reaches
     // the editor as an outside edit's does; the same text leaves the editor (and its cursor) as
     // it is.
-    const unsubscribeDropped = onJournalEventsDropped(() => {
+    const missed = (): void => {
       const open = currentDateRef.current
       if (!open) return
       if (isSavingRef.current && savingRef.current?.date === open) {
@@ -915,15 +922,22 @@ export function useJournalEntry(date: string): UseJournalEntryResult {
       }
       if (isDirtyRef.current) return
       readDayAgain(open)
-    })
-
-    return () => {
-      unsubscribeCreated()
-      unsubscribeUpdated()
-      unsubscribeDeleted()
-      unsubscribeExternal()
-      unsubscribeDropped()
     }
+
+    // Missed events: dropped ones, and those sent before the listeners went live, after the day
+    // was read (#4270). A day whose editor has not opened yet is read when it opens, after this.
+    return subscribeToEvents(
+      [
+        (live) => onJournalEntryCreated(onCreated, live),
+        (live) => onJournalEntryUpdated(onUpdated, live),
+        (live) => onJournalEntryDeleted(onDeleted, live),
+        (live) => onJournalExternalChange(onExternal, live),
+        (live) => onJournalEventsDropped(missed, live)
+      ],
+      () => {
+        if (editorTextRef.current?.date === currentDateRef.current) missed()
+      }
+    )
   }, [queryClient, readDayAgain])
 
   const loadedForDateResult = isLoading || isSeedingFromTemplate ? null : date

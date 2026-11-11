@@ -1,6 +1,8 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest'
 import { renderHook, waitFor } from '@testing-library/react'
 import { useTagCategories } from './use-tag-categories'
+import { createElement, type ReactNode } from 'react'
+import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 
 const listCategories = vi.fn()
 const updateTagColor = vi.fn()
@@ -20,6 +22,8 @@ vi.mock('@/services/tags-service', () => ({
 }))
 
 vi.mock('@/hooks/use-notes-query', () => ({
+  METADATA_STALE_TIME: 60_000,
+  notesKeys: { tagCategories: () => ['notes', 'tag-categories'] },
   useNoteTagsQuery: () => ({
     tags: [
       { tag: 'meetings', count: 12, color: 'blue', icon: null, categoryId: 'cat-1', sortOrder: 0 },
@@ -41,9 +45,17 @@ beforeEach(() => {
   refetchNoteTags.mockReset()
 })
 
+function renderCategories() {
+  const client = new QueryClient({ defaultOptions: { queries: { retry: false } } })
+  return renderHook(() => useTagCategories(), {
+    wrapper: ({ children }: { children: ReactNode }) =>
+      createElement(QueryClientProvider, { client }, children)
+  })
+}
+
 describe('useTagCategories', () => {
   it('groups tags under their category and leaves the rest uncategorized', async () => {
-    const { result } = renderHook(() => useTagCategories())
+    const { result } = renderCategories()
 
     await waitFor(() => expect(result.current.isLoading).toBe(false))
 
@@ -53,7 +65,7 @@ describe('useTagCategories', () => {
   })
 
   it('never returns to the loading state once loaded, so a create updates in place', async () => {
-    const { result } = renderHook(() => useTagCategories())
+    const { result } = renderCategories()
     await waitFor(() => expect(result.current.isLoading).toBe(false))
 
     // Hold the post-create refetch open, so if the hook flipped isLoading
@@ -89,7 +101,7 @@ describe('useTagCategories', () => {
   it('treats a tag pointing at a missing category as uncategorized', async () => {
     listCategories.mockResolvedValue({ success: true, categories: [] })
 
-    const { result } = renderHook(() => useTagCategories())
+    const { result } = renderCategories()
     await waitFor(() => expect(result.current.isLoading).toBe(false))
 
     expect(result.current.categories).toHaveLength(0)
@@ -99,7 +111,7 @@ describe('useTagCategories', () => {
   it('surfaces a failed load as an error string', async () => {
     listCategories.mockResolvedValue({ success: false, error: 'boom' })
 
-    const { result } = renderHook(() => useTagCategories())
+    const { result } = renderCategories()
     await waitFor(() => expect(result.current.error).toBe('boom'))
   })
 
@@ -107,7 +119,7 @@ describe('useTagCategories', () => {
     updateTagColor.mockResolvedValue({ success: true })
     reorder.mockResolvedValue({ success: false, error: 'boom' })
 
-    const { result } = renderHook(() => useTagCategories())
+    const { result } = renderCategories()
     await waitFor(() => expect(result.current.isLoading).toBe(false))
 
     const listCategoriesCallsBefore = listCategories.mock.calls.length
@@ -128,7 +140,7 @@ describe('useTagCategories', () => {
     updateTagColor.mockResolvedValue({ success: true })
     reorder.mockResolvedValue({ success: true })
 
-    const { result } = renderHook(() => useTagCategories())
+    const { result } = renderCategories()
     await waitFor(() => expect(result.current.isLoading).toBe(false))
 
     await result.current.createTag('Reading', 'emerald', null)
@@ -144,7 +156,7 @@ describe('useTagCategories', () => {
   it('surfaces a failed tag create instead of swallowing it', async () => {
     updateTagColor.mockResolvedValue({ success: false, error: 'disk is full' })
 
-    const { result } = renderHook(() => useTagCategories())
+    const { result } = renderCategories()
     await waitFor(() => expect(result.current.isLoading).toBe(false))
 
     await result.current.createTag('Reading', 'emerald', null)
