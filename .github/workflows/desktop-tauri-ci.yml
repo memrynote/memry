@@ -18,6 +18,7 @@ on:
       - 'pnpm-lock.yaml'
       - 'oxlint.config.mts'
       - '.github/workflows/desktop-tauri-ci.yml'
+      - '.github/actions/apt-install/**'
       - 'scripts/check-renderer-no-sync-host*.mjs'
       - 'scripts/release/**'
       - 'scripts/rehearsal/**'
@@ -115,7 +116,7 @@ jobs:
         uses: ./.github/actions/paths-changed
         with:
           token: ${{ github.token }}
-          include: '^(apps/desktop-tauri/|crates/|packages/|pnpm-lock\.yaml$|oxlint\.config\.mts$|\.github/workflows/desktop-tauri-ci\.yml$|scripts/check-renderer-no-sync-host(\.test)?\.mjs$|scripts/(release|rehearsal)/)'
+          include: '^(apps/desktop-tauri/|crates/|packages/|pnpm-lock\.yaml$|oxlint\.config\.mts$|\.github/workflows/desktop-tauri-ci\.yml$|\.github/actions/apt-install/|scripts/check-renderer-no-sync-host(\.test)?\.mjs$|scripts/(release|rehearsal)/)'
 
   static:
     name: Static checks
