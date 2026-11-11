@@ -1,6 +1,6 @@
 import { render, screen } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
-import { beforeEach, describe, expect, it, vi } from 'vitest'
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import { BlockSideMenuController } from './block-side-menu'
 import { registerCheckboxTaskActions } from './checkbox-task-actions'
 import { copyBlocksFromMenu } from './block-clipboard'
@@ -9,7 +9,8 @@ const state = vi.hoisted(() => ({
   block: undefined as
     | { id: string; type: string; content?: unknown; props?: object; children?: unknown[] }
     | undefined,
-  editor: { schema: { blockSchema: { paragraph: {} } } } as Record<string, unknown>
+  editor: { schema: { blockSchema: { paragraph: {} } } } as Record<string, unknown>,
+  popoverPhase: 'open' as 'initial' | 'open'
 }))
 
 vi.mock('@memry/i18n/renderer', () => ({
@@ -53,8 +54,29 @@ vi.mock('@blocknote/react', () => ({
   SideMenu: ({ dragHandleMenu: DragHandleMenu }: { dragHandleMenu: React.FC }) => (
     <DragHandleMenu />
   ),
-  SideMenuController: ({ sideMenu: SideMenuComponent }: { sideMenu: React.FC }) => (
-    <SideMenuComponent />
+  // Renders the side menu the way BlockNote's popover does: in the transition's
+  // initial phase, before floating-ui places it, wrapped in the initial styles.
+  SideMenuController: ({
+    sideMenu: SideMenuComponent,
+    floatingUIOptions
+  }: {
+    sideMenu: React.FC
+    floatingUIOptions?: {
+      useFloatingOptions?: unknown
+      useTransitionStylesProps?: { initial?: React.CSSProperties }
+    }
+  }) => (
+    <div
+      data-testid="side-menu-popover"
+      data-floating-options={JSON.stringify(floatingUIOptions?.useFloatingOptions ?? null)}
+      style={
+        state.popoverPhase === 'initial'
+          ? (floatingUIOptions?.useTransitionStylesProps?.initial ?? { opacity: 0 })
+          : undefined
+      }
+    >
+      <SideMenuComponent />
+    </div>
   ),
   useBlockNoteEditor: () => state.editor,
   useComponentsContext: () => ({
@@ -80,6 +102,37 @@ vi.mock('@blocknote/react', () => ({
 function menuItemNames(): string[] {
   return screen.getAllByRole('menuitem').map((item) => item.textContent?.trim() ?? '')
 }
+
+describe('BlockSideMenuController placement', () => {
+  beforeEach(() => {
+    state.block = { id: 'block-1', type: 'paragraph', content: [] }
+  })
+  afterEach(() => {
+    state.popoverPhase = 'open'
+  })
+
+  // #3967: BlockNote mounts the menu over the first line before it places it,
+  // and a press there inserted an empty block through the invisible plus.
+  it('takes no pointer press before BlockNote has placed the menu', async () => {
+    state.popoverPhase = 'initial'
+    render(<BlockSideMenuController />)
+    await expect(userEvent.click(screen.getByRole('menuitem', { name: 'Copy' }))).rejects.toThrow(
+      /pointer-events: none/
+    )
+    expect(copyBlocksFromMenu).not.toHaveBeenCalled()
+  })
+
+  it('keeps the placement the caller passes', () => {
+    render(
+      <BlockSideMenuController
+        floatingUIOptions={{ useFloatingOptions: { placement: 'right-start' } }}
+      />
+    )
+    expect(screen.getByTestId('side-menu-popover').dataset.floatingOptions).toBe(
+      JSON.stringify({ placement: 'right-start' })
+    )
+  })
+})
 
 describe('BlockSideMenuController insert template item', () => {
   beforeEach(() => {

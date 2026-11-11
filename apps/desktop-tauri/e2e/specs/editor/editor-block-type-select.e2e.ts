@@ -187,6 +187,27 @@ test('Turn into from the block menu converts every marquee-selected text block',
   await expect.poll(() => types(page)).toEqual(['heading', 'heading', 'table', 'paragraph'])
 })
 
+test('sticky toolbar block type select retypes every marquee-selected block', async ({ page }) => {
+  await vaultOpen(page)
+  await page.evaluate(() => window.api.settings.setEditorSettings({ toolbarMode: 'sticky' }))
+  await openNoteWithLines(page, label('Marquee block type'), ['One', 'Two', 'Three', 'Last line'])
+  await expect.poll(() => blocks(page)).toHaveLength(4)
+
+  // The option's press lands outside the marquee zone and clears the marquee before the option's
+  // click handler runs, so only the blocks captured on the trigger's press can be retyped.
+  await marquee(page, 2)
+  await pickBlockType(page, 'Heading 1')
+
+  await expect
+    .poll(() => blocks(page))
+    .toEqual([
+      { type: 'heading', level: 1, text: 'One' },
+      { type: 'heading', level: 1, text: 'Two' },
+      { type: 'heading', level: 1, text: 'Three' },
+      { type: 'paragraph', text: 'Last line' }
+    ])
+})
+
 test('sticky toolbar retypes marquee-selected blocks, not the last line', async ({ page }) => {
   await vaultOpen(page)
   await page.evaluate(() => window.api.settings.setEditorSettings({ toolbarMode: 'sticky' }))

@@ -245,7 +245,7 @@ fn a_locked_journal_day_is_not_deleted() {
     lock(&e, TargetKind::Note, &id);
     let text = e.read("journal/2026-01-05.md");
 
-    assert_refused(notes.delete_day(&open, "2026-01-05"), "note_locked");
+    assert_refused(notes.delete_day(&open, "2026-01-05", false), "note_locked");
     assert_eq!(e.read("journal/2026-01-05.md"), text);
     assert_eq!(id_at(&e, "journal/2026-01-05.md"), id);
 }

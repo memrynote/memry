@@ -11,6 +11,7 @@ import { useT } from '@memry/i18n/renderer'
 import type { VaultNotice } from '../../../generated/bindings'
 import { commands } from '../../../generated/bindings'
 import { useFileActionLabels } from '@/hooks/use-file-action-labels'
+import { keptName, setReviewOpen } from '@/lib/kept-removals-review'
 import { createLogger } from '@/lib/logger'
 import { onVaultNotices } from '@/services/vault-service'
 
@@ -144,20 +145,24 @@ export function useVaultNotices(): void {
           })
           return
         }
-        // No action: the note page reads the note's file, which is gone (Electron's
-        // `getNoteById` parity), so an opened kept note would show nothing.
+        // Not "open note": the note page reads the note's file, which is gone (Electron's
+        // `getNoteById` parity). The review restores the file or deletes the note (#4140).
         case 'keptRemovals':
           toast.warning(t('vaultNotice.keptRemovals'), {
             ...sticky,
             description: listed(
               t('vaultNotice.keptRemovalsHint'),
-              notice.notes.map((note) => ({
-                key: note.noteId,
-                name: fileName(note.path).replace(/\.md$/i, '')
-              })),
+              notice.notes.map((note) => ({ key: note.noteId, name: keptName(note.path) })),
               notice.more,
               t('vaultNotice.moreUnlisted')
-            )
+            ),
+            action: {
+              label: t('vaultNotice.keptReview'),
+              onClick: (event) => {
+                event.preventDefault()
+                setReviewOpen(true)
+              }
+            }
           })
           return
         case 'watchLimit':
