@@ -1672,6 +1672,14 @@
     "undecidedFilesHint": "Catatan atau entri jurnal dengan nama yang sama memiliki teks berbeda, atau belum disinkronkan ke perangkat ini. Memry membiarkan file ini apa adanya dan memeriksanya lagi saat brankas ini dibuka berikutnya.",
     "keptRemovals": "Memry menyimpan catatan yang filenya dihapus",
     "keptRemovalsHint": "File ini dihapus di luar Memry, tetapi catatannya berisi teks yang tidak pernah masuk ke file. Memry menyimpan catatan tersebut alih-alih menghapus teks itu di perangkat Anda yang lain.",
-    "moreUnlisted": "Yang lainnya tidak tercantum di sini."
+    "moreUnlisted": "Yang lainnya tidak tercantum di sini.",
+    "journalDaysHeld": "Entri jurnal menunggu di folder yang dipindahkan",
+    "journalDaysHeldHint": "Folder jurnal dipindahkan atau diganti namanya di luar Memry, dan pengaturan folder jurnal belum bisa mengikutinya. Sampai saat itu, Memry tidak membuat entri jurnal atau mengubah pengaturan jurnal, dan folder-folder ini tidak bisa dipindahkan atau dihapus. Taruh semua entri jurnal di satu folder, atau pindahkan foldernya kembali. Entri Anda aman.",
+    "journalChangeWaits": "Perubahan pengaturan jurnal tidak selesai",
+    "journalChangeWaitsSettingsHint": "Memry tertutup saat memindahkan entri jurnal untuk perubahan pengaturan, dan tidak bisa mengembalikannya sampai bisa membaca .memry/config.json. Perbaiki file tersebut, lalu mulai ulang Memry. Entri Anda aman.",
+    "journalChangeWaitsTakenHint": "Memry tertutup saat memindahkan entri jurnal untuk perubahan pengaturan. Ada file atau folder lain di tempat sebuah entri harus kembali. Pindahkan file atau folder itu, lalu mulai ulang Memry. Entri Anda aman.",
+    "journalChangeWaitsHint": "Memry tertutup saat memindahkan entri jurnal untuk perubahan pengaturan, dan tidak bisa mengembalikannya. Memry akan mencoba lagi saat brankas ini dibuka berikutnya. Sampai saat itu, folder jurnal tidak bisa dipindahkan atau dihapus. Entri Anda aman.",
+    "movesWait": "Beberapa catatan belum bisa dipindahkan",
+    "movesWaitHint": "Memry tertutup saat memindahkan atau mengganti nama catatan-catatan ini, dan tidak bisa menyelesaikannya. Catatan ini tidak bisa dipindahkan atau diganti namanya sampai selesai. Memry akan mencoba lagi saat brankas ini dibuka berikutnya."
   }
 }

@@ -130,7 +130,9 @@ impl NotesService {
         finish_journal_change(at, &JournalFollow::hold());
         let writer = open.vault.notes_writer(self.store.clone())?;
         follow_interrupted(root, &writer);
-        if let Follow::HeldWaits { .. } = follow_moved_journal(root, &writer) {
+        if let Follow::HeldWaits { .. } =
+            follow_moved_journal(root, &writer, self.tier.identity().notices().as_deref())
+        {
             return Err(NotesError::JournalFolderHeld);
         }
         read_vault_config_strict(root).map_err(NotesError::SettingsUnreadable)?;
