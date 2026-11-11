@@ -70,6 +70,7 @@ test('a no-match query that arrives in one input still hands off to note search'
   await expect(menu(page).getByText('No blocks match “zqxv”')).toBeVisible()
   await page.keyboard.press('Enter')
 
+  await expect(menu(page)).toBeHidden()
   await expect(page.locator('.wiki-link-menu')).toBeVisible()
   await expect(page.locator(NOTE_EDITOR).first()).toContainText('[[zqxv')
 })

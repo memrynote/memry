@@ -9,6 +9,9 @@
  * split the paragraph instead of handing `zqxv` to note search (#4205). Here the rule reads the
  * query itself: the menu closes when the query and its 3 shorter prefixes all match nothing,
  * however the characters arrived.
+ *
+ * Copied from `@blocknote/react@0.54.2` (`SuggestionMenuController.tsx` and
+ * `SuggestionMenuWrapper.tsx`). Re-diff against upstream on every BlockNote bump.
  */
 
 import { useCallback, useEffect, useMemo, type FC, type ReactNode } from 'react'
@@ -33,7 +36,7 @@ const TRIGGER = '/'
 const NO_MATCH_CHARACTERS_BEFORE_CLOSE = 3
 
 /** True when the query and its shorter prefixes, back to 3 characters, all match nothing. */
-export async function isDeadEndQuery<Item>(
+async function isDeadEndQuery<Item>(
   query: string,
   getItems: (query: string) => Promise<Item[]>
 ): Promise<boolean> {
