@@ -223,14 +223,19 @@ fn a_row_with_no_mark_compares_the_body_through_the_file() {
 fn the_open_marks_an_older_builds_row_so_an_outside_edit_of_its_frontmatter_applies() {
     let mut f = fixture();
     let (id, pass) = note(&f);
-    // As an older build left it: no mark, and the body not ahead of the stamp.
+    // As an older build left it: no mark, and the body not ahead of the stamp. The stamp is a
+    // millisecond past the body's last entry: one in the stamp's millisecond keeps the row
+    // unmarked (`mark_unmarked`), and the seed lands there on a fast run (#3967).
     f.vault
         .db_handle()
         .call_blocking(|conn| {
-            conn.execute_batch("DELETE FROM note_file_marks;")
-                .map_err(|error| memry_core::api::errors::StorageError::Failed {
-                    what: error.to_string(),
-                })
+            conn.execute_batch(
+                "DELETE FROM note_file_marks;
+                 UPDATE note_files SET indexed_at = indexed_at + 1;",
+            )
+            .map_err(|error| memry_core::api::errors::StorageError::Failed {
+                what: error.to_string(),
+            })
         })
         .unwrap();
     let pass = Arc::new(pass);
