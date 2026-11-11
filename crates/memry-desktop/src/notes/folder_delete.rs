@@ -21,6 +21,10 @@
 //!    forgets the record of step 1 ([`Lane::folder_deleted_by_app`]);
 //! 4. [`Applied::Removed`] for each note, under the lane.
 //!
+//! A crash in step 2, between the kept notes' copies and the trash, leaves the record and the
+//! copies: the next open forgets the record of the folder still there, and the watcher reads
+//! each copy as the note's file again, which undoes the delete with nothing lost.
+//!
 //! A failed step 3, or a crash between 2 and 3, leaves the record, and the next open finishes the
 //! delete when the folder is gone and forgets it when it is still there
 //! ([`crate::vault::app_move::finish_interrupted`]); until then the folder's delete is held back
@@ -163,6 +167,12 @@ impl NotesService {
             }
             return Err(NotesError::TrashUnavailable(why));
         }
+        // The copies went with the folder: a file put back from the trash at a copy's path is
+        // not the app's write.
+        let echo = self.tier.echo();
+        for (row, _) in &copies {
+            echo.cancel_write(&row.path);
+        }
         // The folder is in the trash: a failure leaves the record, which the next open finishes.
         after_disk().and_then(|()| Ok(lane.folder_deleted_by_app(&writer, &folder, &ids)?))?;
         for (note_id, at) in &gone {
@@ -177,9 +187,10 @@ impl NotesService {
 }
 
 /// Takes back the kept notes' copies a folder delete that did not happen wrote: the notes stay
-/// kept. A copy the trash took is gone already.
+/// kept. A copy the trash took is gone already. Last written first: a copy that made a folder
+/// removes it only once the later copies in it are gone.
 fn take_back(echo: &EchoGuard, root: &Path, copies: &[(Row, KeptCopy)]) {
-    for (row, copy) in copies {
+    for (row, copy) in copies.iter().rev() {
         copy.take_back(echo, root, row);
     }
 }

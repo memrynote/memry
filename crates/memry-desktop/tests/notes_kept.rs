@@ -713,3 +713,73 @@ fn a_folder_holding_a_kept_note_whose_text_is_not_here_stays() {
     assert_eq!(record(&e, &id), pushed, "the note went");
     assert!(is_listed(&notices, &id), "{:?}", notices.list());
 }
+
+#[test]
+fn a_kept_note_put_back_from_the_trash_with_its_folder_gets_its_row_back() {
+    let KeptNote {
+        mut e,
+        _index,
+        notes,
+        notices: _,
+        id: _,
+    } = kept_edited("f/g/a.md", "f/g", bin_beside);
+    let open = e.session.current().unwrap();
+    notes.delete_folder(&open, "f").unwrap();
+    assert!(!e.vault.join("f").exists());
+
+    // Put Back from the trash, with a file no app write ever touched beside it.
+    fs::rename(
+        e.vault.with_extension("trashed").join("f"),
+        e.vault.join("f"),
+    )
+    .unwrap();
+    e.write("f/b.md", "Control\n");
+    e.facts_until(|f| matches!(f, Applied::Added { path, .. } if path == "f/b.md"));
+    until("the kept note's file has a row again", || {
+        e.rows().iter().any(|(_, path)| path == "f/g/a.md")
+    });
+}
+
+#[test]
+fn a_refused_folder_delete_takes_back_two_kept_copies_and_the_folders_they_made() {
+    let KeptNote {
+        e,
+        _index,
+        notes,
+        notices,
+        id,
+    } = kept_removing("f/g/a.md", "f/g", FILE, no_trash, |e, store, id| {
+        e.write("f/g/b.md", FILE);
+        let search = e.core().search().unwrap();
+        until("the second file is measured", || {
+            e.rows().iter().any(|(_, path)| path == "f/g/b.md")
+                && search
+                    .note_stats(&row_id(e, "f/g/b.md"))
+                    .unwrap()
+                    .is_some_and(|stored| stored.stats.header_read)
+        });
+        std::thread::sleep(Duration::from_millis(2));
+        e.edit_in_app(store, id, "typed in the app");
+        e.edit_in_app(store, &row_id(e, "f/g/b.md"), "typed in the app");
+    });
+    let second = row_id(&e, "f/g/b.md");
+    until("the second kept removal is listed", || {
+        is_listed(&notices, &second)
+    });
+    let open = e.session.current().unwrap();
+
+    let refused = notes.delete_folder(&open, "f");
+    assert!(
+        matches!(refused, Err(NotesError::TrashUnavailable(_))),
+        "{refused:?}"
+    );
+    assert!(
+        !e.vault.join("f/g").exists(),
+        "a copy or the folder the copies made was left"
+    );
+    assert!(e.vault.join("f").is_dir());
+    for kept in [&id, &second] {
+        assert_eq!(row_hash(&e, kept), Ok(None));
+        assert!(is_listed(&notices, kept), "{:?}", notices.list());
+    }
+}
