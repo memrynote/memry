@@ -117,6 +117,14 @@ never opens one. The Rust dialog wrapper (`src-tauri/src/shell/dialogs.rs`, over
 - `e2e_forget_spelled_word` takes an added word back out of the macOS dictionary; elsewhere it
   does nothing, and the spec adds a fresh word per attempt.
 
+## Typing hold
+
+`e2e_editor_hold_typing { noteId, ms }` (`src-tauri/src/e2e/editor.rs`) asks the windows that
+have the note open to hold their typing, as an outside edit does before it applies
+(`EditorHost::hold_typing`), and keeps the hold `ms` long. It answers once the windows hold,
+`false` when none has the note open. `specs/notes/note-outside-edit.e2e.ts` types during it and
+then writes the file, so the edit's frame applies over the typing the editor refused.
+
 ## Vault write-back
 
 The app makes every markdown file outside the journal folder a note (Step 13d, #3530). Until

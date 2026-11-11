@@ -512,7 +512,8 @@ describe('YjsIpcProvider read-only', () => {
   it.each([
     ['note_locked', 'locked'],
     ['note_large_file', 'large-file'],
-    ['note_excluded', 'excluded']
+    ['note_excluded', 'excluded'],
+    ['database_read_only', 'database-read-only']
   ])('turns read-only when the host refuses an edit with %s', async (code, reason) => {
     const { doc, provider } = await connected()
     const heard: unknown[] = []

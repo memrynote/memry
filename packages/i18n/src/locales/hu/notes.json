@@ -192,6 +192,7 @@
   },
   "editor": {
     "bodySyncPending": "Szinkronizálás – előfordulhat, hogy a jegyzet tartalma még nem érkezett meg",
+    "databaseReadOnly": "Írásvédett. Ez az eszköz nem tud változásokat menteni.",
     "taskRemoval": {
       "title": "{count, plural, one {Feladat eltávolítva ebből a jegyzetből} other {# feladat eltávolítva ebből a jegyzetből}}",
       "description": "{count, plural, one {Megtartja a Feladatokban, vagy mindenhonnan törli?} other {Megtartja őket a Feladatokban, vagy mindenhonnan törli őket?}}",

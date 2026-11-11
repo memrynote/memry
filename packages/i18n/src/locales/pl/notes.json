@@ -192,6 +192,7 @@
   },
   "editor": {
     "bodySyncPending": "Synchronizowanie – treść tej notatki może być jeszcze w drodze",
+    "databaseReadOnly": "Tylko do odczytu. To urządzenie nie może zapisywać zmian.",
     "taskRemoval": {
       "title": "{count, plural, one {Usunięto zadanie z tej notatki} few {Usunięto # zadania z tej notatki} many {Usunięto # zadań z tej notatki} other {Usunięto # zadania z tej notatki}}",
       "description": "{count, plural, one {Zachować je w Zadaniach czy usunąć wszędzie?} few {Zachować je w Zadaniach czy usunąć wszędzie?} many {Zachować je w Zadaniach czy usunąć wszędzie?} other {Zachować je w Zadaniach czy usunąć wszędzie?}}",

@@ -15,7 +15,7 @@
 //! need the definitions it owns.
 //!
 //! The rows are derived: [`unindexed`] lists every markdown note whose row is missing, names
-//! other bytes than its file's or another journal day than its record's, and the desktop
+//! other bytes than the tier took or another journal day than its record's, and the desktop
 //! indexer measures those files again. A row's journal day is the one its record says
 //! ([`journal_day::file_date`]), never one read from the path here: the vault tier decided
 //! which day the file is when it named it, and a day owed a move of its file has none.
@@ -410,10 +410,12 @@ pub fn undated_header_tags(index: &Connection) -> Result<Vec<(String, Vec<String
 }
 
 /// Every live markdown note with a file whose row is missing, names other bytes than the
-/// file's last read (`note_files.file_hash`), or another journal day than its record says now
-/// ([`journal_day::file_date`]): a day whose move became owed, or was applied, since its row
-/// was stored, a fact for it lost or not. A file the tier never read has no hash to compare,
-/// so its bytes do not list it. `all` lists every such note (a reindex).
+/// tier took, or another journal day than its record says now ([`journal_day::file_date`]):
+/// a day whose move became owed, or was applied, since its row was stored, a fact for it lost
+/// or not. The bytes the tier took are the rule the index's read keeps: the text the note's
+/// document holds (`note_files.content_hash`), else the file's last read
+/// (`note_file_hashes.file_hash`). A file the tier never read has no hash to compare, so its
+/// bytes do not list it. `all` lists every such note (a reindex).
 pub fn unindexed(
     data: &Connection,
     index: &Connection,
@@ -432,7 +434,7 @@ pub fn unindexed(
     }
     let mut statement = data
         .prepare(
-            "SELECT f.note_id, f.path, f.file_size, h.file_hash
+            "SELECT f.note_id, f.path, f.file_size, COALESCE(f.content_hash, h.file_hash)
              FROM note_files f
              LEFT JOIN note_file_hashes h ON h.note_id = f.note_id
              WHERE f.file_type = 'markdown'

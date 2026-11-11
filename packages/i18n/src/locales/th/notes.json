@@ -192,6 +192,7 @@
   },
   "editor": {
     "bodySyncPending": "กำลังซิงค์ เนื้อหาของโน้ตนี้อาจยังมาไม่ครบ",
+    "databaseReadOnly": "อ่านอย่างเดียว อุปกรณ์นี้บันทึกการเปลี่ยนแปลงไม่ได้",
     "taskRemoval": {
       "title": "{count, plural, other {นำงาน # รายการออกจากโน้ตนี้แล้ว}}",
       "description": "{count, plural, other {เก็บไว้ในหน้างาน หรือลบออกจากทุกที่?}}",

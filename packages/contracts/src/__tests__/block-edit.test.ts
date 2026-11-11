@@ -17,13 +17,10 @@ import { describe, expect, it } from 'vitest'
 
 import { canonicalFragment } from '../../scripts/fragment-canonical'
 import { extractBlocks } from '../../scripts/extract-blocks'
+import type { BlockEditOp } from '@memry/editor-schema/conformance'
 import { fromHex, loadVectorFile } from './vector-loader'
 
-type Op =
-  | { kind: 'setText'; blockId: string; text: string }
-  | { kind: 'setProp'; blockId: string; name: string; value: string }
-  | { kind: 'insertParagraph'; afterBlockId?: string; text: string; newBlockId: string }
-  | { kind: 'delete'; blockId: string }
+type Op = BlockEditOp
 
 interface Case {
   name: string

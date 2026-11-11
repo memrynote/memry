@@ -52,7 +52,7 @@ use crate::storage::Db;
 use crate::sync::{body_debt, note_body_feed};
 
 use super::errors::CrdtError;
-use super::registry::Document;
+use super::registry::{Document, OFFSET_KIND};
 use super::update_log::{self, Namespace};
 
 pub use super::snapshot_cadence::{SNAPSHOT_MAX_WAIT_MS, SNAPSHOT_QUIET_MS, snapshot_is_due};
@@ -459,7 +459,10 @@ fn holds_every_logged_update(
         return Ok(true);
     }
     let resident = document.read(|txn| txn.snapshot())?;
-    let replayed = yrs::Doc::new();
+    let replayed = yrs::Doc::with_options(yrs::Options {
+        offset_kind: OFFSET_KIND,
+        ..yrs::Options::default()
+    });
     {
         let mut txn = replayed.transact_mut();
         for blob in std::iter::once(document.encode_state()?.as_slice()).chain(plan.blobs()) {

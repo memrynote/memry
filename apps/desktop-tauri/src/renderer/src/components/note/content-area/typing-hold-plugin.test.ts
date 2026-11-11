@@ -58,8 +58,8 @@ describe('typing hold plugin', () => {
     expect(view.state.doc.textContent).toBe('first words')
 
     hold.release(1)
-    view.dispatch(view.state.tr.insertText('typed ', 3))
-    expect(view.state.doc.textContent).toBe('typed first words')
+    view.dispatch(view.state.tr.insertText('more ', 3))
+    expect(view.state.doc.textContent).toBe('more typed first words')
   })
 
   it('takes the document changing under it while held', () => {

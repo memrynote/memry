@@ -5,7 +5,7 @@
 use yrs::ReadTxn;
 
 use super::Env;
-use super::canonical::serialize_canonical;
+use super::canonical::{Utf16Copy, serialize_canonical};
 use super::restore::{SerializeOptions, SourceRestoreOutcome, doc_to_markdown};
 use super::roots::read_critic_marks;
 use super::writing::{EncodedWritingRanges, insert_writing_sentinels, writing_frontmatter_for};
@@ -54,7 +54,7 @@ pub fn doc_to_markdown_with_writing_ranges<T: ReadTxn>(
         return WritingRanged::NotApplicable;
     }
     let mut encoded: Option<EncodedWritingRanges> = None;
-    let mut prepare = |snapshot: &yrs::Doc| {
+    let mut prepare = |snapshot: &Utf16Copy| {
         encoded = Some(insert_writing_sentinels(
             snapshot,
             fragment,

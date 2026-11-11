@@ -22,6 +22,7 @@ export class TypingHold {
   private composingAtHold = false
   private feeding = false
   private readonly compositionEnds = new Set<() => void>()
+  private readonly releases = new Set<() => void>()
 
   get held(): boolean {
     return this.barrier !== null
@@ -48,22 +49,49 @@ export class TypingHold {
     this.timer = setTimeout(() => this.release(barrier), ms)
   }
 
-  /** Ends the hold of `barrier`, or any hold. The release of an earlier barrier ends none. */
+  /**
+   * Ends the hold of `barrier`, or any hold, and tells the editors, which replay the typing they
+   * refused. The release of an earlier barrier ends none.
+   */
   release(barrier?: number): void {
     if (barrier !== undefined && barrier !== this.barrier) return
+    const held = this.held
+    this.end()
+    if (held) this.released()
+  }
+
+  /**
+   * Ends any hold without a replay: the document is closing, and typing that went in now would
+   * reach no host. The editors log what they refused when they go.
+   */
+  end(): void {
     this.barrier = null
     this.clearTimer()
   }
 
-  /** Applies an outside edit's frame: the hold ends, and `apply` runs as the edit's feed. */
+  /** Runs `listener` after each release, the edit's frame applied first. */
+  onRelease(listener: () => void): () => void {
+    this.releases.add(listener)
+    return () => this.releases.delete(listener)
+  }
+
+  /**
+   * Applies an outside edit's frame: the hold ends, `apply` runs as the edit's feed, and then the
+   * editors replay their refused typing over the edit.
+   */
   feed(apply: () => void): void {
-    this.release()
+    this.end()
     this.feeding = true
     try {
       apply()
     } finally {
       this.feeding = false
     }
+    this.released()
+  }
+
+  private released(): void {
+    for (const listener of this.releases) listener()
   }
 
   /**

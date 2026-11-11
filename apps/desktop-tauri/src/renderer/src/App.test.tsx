@@ -376,6 +376,7 @@ vi.mock('@/components/window-controls', () => ({
 vi.mock('@/components/ui/sonner', () => ({
   Toaster: () => <div data-testid="toaster" />
 }))
+vi.mock('@/components/crdt-persistence-notice', () => ({ CrdtPersistenceNotice: () => null }))
 
 vi.mock('@/components/day-panel', () => ({
   GlobalDayPanel: () => <div data-testid="global-day-panel" />

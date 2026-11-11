@@ -192,6 +192,7 @@
   },
   "editor": {
     "bodySyncPending": "Synkroniserar – innehållet i anteckningen kan fortfarande vara på väg",
+    "databaseReadOnly": "Skrivskyddad. Den här enheten kan inte spara ändringar.",
     "taskRemoval": {
       "title": "{count, plural, one {Uppgift borttagen från anteckningen} other {# uppgifter borttagna från anteckningen}}",
       "description": "{count, plural, one {Vill du behålla den i Uppgifter eller radera den överallt?} other {Vill du behålla dem i Uppgifter eller radera dem överallt?}}",

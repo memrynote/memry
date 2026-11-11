@@ -322,6 +322,8 @@ mod note_stats_store;
 mod note_stats_vectors;
 #[path = "offline_reconnect.rs"]
 mod offline_reconnect;
+#[path = "offset_kind.rs"]
+mod offset_kind;
 #[path = "outbox_crdt_batch_cap.rs"]
 mod outbox_crdt_batch_cap;
 #[path = "pack_vectors.rs"]

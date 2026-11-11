@@ -11,8 +11,8 @@ use serde::Serialize;
 use super::{AttachmentError, AttachmentKind, is_note_id, kind_of, mime_type, resolve};
 use crate::session::OpenVault;
 use crate::shell::file_open::{Resolution, resolve_under_root};
+use crate::uri::encode_uri_component;
 use crate::vault::layout::ATTACHMENTS_DIR;
-use crate::web::extract::utils::js::encode_uri_component;
 
 /// One file of a note's attachments folder: `AttachmentInfo` of `vault/attachments.ts`.
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, specta::Type)]
@@ -31,8 +31,8 @@ pub struct AttachmentInfo {
     pub kind: AttachmentKind,
 }
 
-/// `listNoteAttachments`: the regular files of `attachments/<note_id>/`, dot files aside, in no
-/// order. A note without the folder has none. Electron answered an unreadable folder with an
+/// `listNoteAttachments`: the regular files of `attachments/<note_id>/`, dot files and names
+/// with a `\` aside, in no order. A note without the folder has none. Electron answered an unreadable folder with an
 /// empty list; this fails, so the dialog says the list did not load. A folder that resolves out
 /// of the vault is refused.
 pub fn list(open: &OpenVault, note_id: &str) -> Result<Vec<AttachmentInfo>, AttachmentError> {
@@ -56,6 +56,11 @@ pub fn list(open: &OpenVault, note_id: &str) -> Result<Vec<AttachmentInfo>, Atta
         };
         // OS droppings (`.DS_Store` and friends) are not attachments.
         if filename.starts_with('.') {
+            continue;
+        }
+        // A `\` is a separator to `resolve`, so such a name (only macOS and Linux allow one)
+        // could not be revealed or opened from the list.
+        if filename.contains('\\') {
             continue;
         }
         let size = i64::try_from(entry.metadata()?.len()).unwrap_or(i64::MAX);

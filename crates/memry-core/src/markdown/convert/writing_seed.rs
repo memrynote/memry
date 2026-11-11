@@ -3,9 +3,10 @@
 //! [`super::writing`] for the write half and the position conventions.
 
 use yrs::branch::{Branch, BranchID};
+use yrs::types::text::YChange;
 use yrs::{
-    Assoc, IndexScope, ReadTxn, StickyIndex, Text as _, Transact as _, TransactionMut,
-    XmlFragmentRef,
+    Any, Assoc, IndexScope, OffsetKind, Out, ReadTxn, StickyIndex, Text as _, Transact as _,
+    TransactionMut, XmlFragmentRef, XmlTextRef,
 };
 
 use super::canonical::detach;
@@ -107,19 +108,19 @@ fn extract_writing_ranges(
     if runs.len() != snap_runs.len() {
         return None;
     }
-    // (byte index, byte width, UTF-16 index, UTF-16 width) of every sentinel, per run.
-    let mut hits: Vec<Vec<(usize, usize, usize, usize)>> = vec![Vec::new(); live_runs.len()];
+    // (UTF-16 index, UTF-16 width) of every sentinel, per run.
+    let mut hits: Vec<Vec<(usize, usize)>> = vec![Vec::new(); live_runs.len()];
     for run_number in 0..live_runs.len() {
         let mut removed = 0usize;
         let text = String::from_utf16_lossy(&live_runs[run_number].plain);
         let mut unit = 0usize;
-        for (byte, ch) in text.char_indices() {
+        for ch in text.chars() {
             let units = ch.len_utf16();
             let Some(marker) = sentinels.get(&ch) else {
                 unit += units;
                 continue;
             };
-            hits[run_number].push((byte, ch.len_utf8(), unit, units));
+            hits[run_number].push((unit, units));
             let at = match found.iter().position(|f| f.key == marker.key) {
                 Some(at) => at,
                 None => {
@@ -150,7 +151,7 @@ fn extract_writing_ranges(
     {
         let mut snap_txn = snap_doc.transact_mut();
         for (run_number, run_hits) in hits.iter().enumerate() {
-            for (_, _, unit, units) in run_hits.iter().rev() {
+            for (unit, units) in run_hits.iter().rev() {
                 snap_runs[run_number]
                     .text
                     .remove_range(&mut snap_txn, *unit as u32, *units as u32);
@@ -229,13 +230,45 @@ fn extract_writing_ranges(
     drop(snap_txn);
     // Every anchor exists: now the live document loses its sentinels.
     for (run_number, run_hits) in hits.iter().enumerate() {
-        for (byte, width, _, _) in run_hits.iter().rev() {
-            live_runs[run_number]
-                .text
-                .remove_range(txn, *byte as u32, *width as u32);
+        if run_hits.is_empty() {
+            continue;
+        }
+        let run = &live_runs[run_number].text;
+        for (at, width) in sentinel_offsets(txn, run, sentinels).into_iter().rev() {
+            run.remove_range(txn, at, width);
         }
     }
     Some(ranges)
+}
+
+/// Where each sentinel sits in `run`, in the offset kind of the document that
+/// holds it: a registry document counts bytes, and an embed is one position
+/// in either kind (`plain_text_of` spells it U+FFFC, three bytes).
+fn sentinel_offsets(
+    txn: &TransactionMut,
+    run: &XmlTextRef,
+    sentinels: &WritingSentinelMap,
+) -> Vec<(u32, u32)> {
+    let kind = txn.doc().offset_kind();
+    let mut at = 0u32;
+    let mut out = Vec::new();
+    for chunk in run.diff(txn, YChange::identity) {
+        let Out::Any(Any::String(text)) = &chunk.insert else {
+            at += 1;
+            continue;
+        };
+        for ch in text.chars() {
+            let width = match kind {
+                OffsetKind::Bytes => ch.len_utf8(),
+                OffsetKind::Utf16 => ch.len_utf16(),
+            } as u32;
+            if sentinels.contains_key(&ch) {
+                out.push((at, width));
+            }
+            at += width;
+        }
+    }
+    out
 }
 
 fn unique_id(preferred: String, taken: &mut Vec<String>) -> String {
@@ -380,4 +413,92 @@ pub fn apply_writing_seed(
         .collect();
     write_writing_overflow(txn, &overflow);
     true
+}
+
+#[cfg(test)]
+mod tests {
+    use yrs::{
+        Any, Doc, GetString as _, ReadTxn as _, Text as _, Transact as _, XmlElementPrelim,
+        XmlFragment as _, XmlOut, XmlTextPrelim,
+    };
+
+    use super::super::canonical::detach;
+    use super::super::writing::insert_writing_sentinels;
+    use super::super::writing_roots::read_writing_ghosts;
+    use super::apply_writing_seed;
+    use crate::markdown::shared::writing_tools::{
+        WritingMarker, WritingMarkerKind, WritingSentinelMap, create_sentinel_allocator,
+    };
+
+    fn run_text(doc: &Doc) -> String {
+        let txn = doc.transact();
+        let fragment = txn.get_xml_fragment("prosemirror").expect("fragment");
+        let Some(XmlOut::Element(paragraph)) = fragment.get(&txn, 0) else {
+            panic!("no paragraph");
+        };
+        let Some(XmlOut::Text(run)) = paragraph.get(&txn, 0) else {
+            panic!("no run");
+        };
+        run.get_string(&txn)
+    }
+
+    /// A ghost range after an embed, over Turkish, emoji, CJK and combining
+    /// marks: the seed removes exactly its two sentinels from a bytes
+    /// document, and the anchors it records resolve back around the same text.
+    #[test]
+    fn sentinels_after_an_embed_leave_a_bytes_document_exactly() {
+        for ranged in ["ışık", "🙂👍🏽", "漢字", "e\u{301}a\u{308}"] {
+            let mut allocate = create_sentinel_allocator("");
+            let (open, close) = (allocate().expect("open"), allocate().expect("close"));
+            let marker = |open| WritingMarker {
+                kind: WritingMarkerKind::Ghost,
+                key: "g0".to_owned(),
+                open,
+            };
+            let sentinels: WritingSentinelMap = [(open, marker(true)), (close, marker(false))]
+                .into_iter()
+                .collect();
+
+            let doc = Doc::with_client_id(1);
+            let fragment = doc.get_or_insert_xml_fragment("prosemirror");
+            {
+                let mut txn = doc.transact_mut();
+                let paragraph = fragment.push_back(&mut txn, XmlElementPrelim::empty("paragraph"));
+                let run = paragraph.push_back(&mut txn, XmlTextPrelim::new("çağ"));
+                let end = run.len(&txn);
+                let embed = Any::from(std::collections::HashMap::from([(
+                    "image".to_owned(),
+                    Any::from("a.png"),
+                )]));
+                run.insert_embed(&mut txn, end, embed);
+                let tail = format!("ı{open}{ranged}{close}son");
+                let end = run.len(&txn);
+                run.insert(&mut txn, end, &tail);
+            }
+            let before = run_text(&doc);
+            assert!(
+                apply_writing_seed(&mut doc.transact_mut(), &fragment, &sentinels, None),
+                "{ranged:?}"
+            );
+            assert_eq!(
+                run_text(&doc),
+                before.replace([open, close], ""),
+                "{ranged:?}: the seed removed something other than its sentinels"
+            );
+
+            let ghosts = read_writing_ghosts(&doc.transact());
+            assert_eq!(ghosts.len(), 1, "{ranged:?}");
+            let copy = detach(&doc.transact()).expect("detach");
+            let encoded = insert_writing_sentinels(&copy, "prosemirror", &[], &ghosts);
+            let (open, close) = {
+                let mut keys = encoded.sentinels.keys().copied();
+                (keys.next().expect("open"), keys.next().expect("close"))
+            };
+            assert!(
+                run_text(&copy).contains(&format!("{open}{ranged}{close}")),
+                "{ranged:?}: the anchors moved: {:?}",
+                run_text(&copy)
+            );
+        }
+    }
 }
