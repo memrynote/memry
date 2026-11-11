@@ -60,7 +60,7 @@ async function typeInDay(page: Page, text: string): Promise<void> {
   await driver.elementSendKeys(Object.values(editor)[0], text)
 }
 const timesIn = (text: string, part: string): number => text.split(part).length - 1
-const GAP = 1500
+const GAP = 300
 const ROUNDS = 6
 
 test('zz4281 hold over the switch', async ({ app, page, testVaultPath }) => {
