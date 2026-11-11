@@ -117,7 +117,8 @@ test('a drag from the margin beside the day selects blocks', async ({ page }) =>
   await page.mouse.down()
   await glide(page, { x: first.x + 2, y: last.y + last.height - 4 }, 14)
   await expect(page.locator(OVERLAY)).toBeVisible({ timeout: 2000 })
-  expect(await highlightCount(page)).toBeGreaterThanOrEqual(2)
+  // The highlights are painted a frame after the overlay.
+  await expect.poll(() => highlightCount(page), { timeout: 2000 }).toBeGreaterThan(1)
 
   await page.mouse.up()
   await expect(page.locator(OVERLAY)).toHaveCount(0)

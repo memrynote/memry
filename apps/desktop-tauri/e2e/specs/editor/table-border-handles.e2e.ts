@@ -68,7 +68,8 @@ async function hoverIn(page: Page, cell: Locator): Promise<void> {
 /**
  * Puts the caret at the end of `cell`'s text and waits until ProseMirror's selection is there. A
  * click through the driver leaves ProseMirror's caret where it was in WKWebView, so the DOM caret
- * is set and ProseMirror takes it from `selectionchange`.
+ * is set and ProseMirror takes it from `selectionchange`, which WebKitGTK delivers to the view only
+ * while it holds the focus.
  */
 async function caretIn(page: Page, cell: Locator): Promise<void> {
   const text = (await cell.textContent()) ?? ''
@@ -76,6 +77,7 @@ async function caretIn(page: Page, cell: Locator): Promise<void> {
     .poll(
       async () => {
         await cell.evaluate((element: HTMLElement) => {
+          element.closest<HTMLElement>('[contenteditable="true"]')?.focus()
           const node = document.createTreeWalker(element, NodeFilter.SHOW_TEXT).nextNode()
           if (node) window.getSelection()?.collapse(node, node.textContent?.length ?? 0)
         })
@@ -454,11 +456,17 @@ test('each nub opens the menu for its own row, column and cell', async ({ page }
   await colorsItem.click()
   await page.locator('[data-test="background-color-red"]').first().click()
 
-  await expect.poll(async () => (await tableShape(page))?.[1][0].backgroundColor).toBe('red')
-  const coloured = await tableShape(page)
-  expect(coloured?.[1][1].backgroundColor).not.toBe('red')
-  expect(coloured?.[0][0].backgroundColor).not.toBe('red')
-  expect(coloured?.[2][0].backgroundColor).not.toBe('red')
+  await expect
+    .poll(async () =>
+      ((await tableShape(page)) ?? []).map((row) =>
+        row.map((value) => value.backgroundColor === 'red')
+      )
+    )
+    .toEqual([
+      [false, false, false],
+      [true, false, false],
+      [false, false, false]
+    ])
 
   // The saved note names that one cell, `row:column`, and only it.
   await expect
