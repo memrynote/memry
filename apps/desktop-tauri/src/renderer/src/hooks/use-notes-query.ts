@@ -281,10 +281,13 @@ export function useNotesList(options: UseNotesListOptions = {}): UseNotesListRes
 
   // Subscribe to note events for list invalidation
   useEffect(() => {
-    const unsubCreated = onNoteCreated(() => {
-      // New note added, invalidate lists
+    const invalidateLists = () => {
       void queryClient.invalidateQueries({ queryKey: notesKeys.lists() })
-    })
+    }
+    // The listener goes live a round trip after this effect asks for it. A note made after the
+    // list's first read and before then is in no list until the next event (#3967): read again
+    // once it listens.
+    const unsubCreated = onNoteCreated(invalidateLists, invalidateLists)
 
     const unsubDeleted = onNoteDeleted(() => {
       // Note removed, invalidate lists
@@ -437,7 +440,8 @@ export function useNoteFoldersQuery(options: { enabled?: boolean } = {}) {
       void queryClient.invalidateQueries({ queryKey: notesKeys.folders() })
     }
 
-    const unsubCreated = onNoteCreated(invalidate)
+    // A folder a note made before the listener went live brought: read again then.
+    const unsubCreated = onNoteCreated(invalidate, invalidate)
     const unsubDeleted = onNoteDeleted(invalidate)
     const unsubMoved = onNoteMoved(invalidate)
     const unsubRenamed = onNoteRenamed(invalidate)
