@@ -282,6 +282,9 @@ export function NotePage({ noteId }: NotePageProps) {
     (readOnly: DocReadOnly | null) => setDocReadOnlyOf({ noteId, readOnly }),
     [noteId]
   )
+  // This device can't save (#4268): the note's fields take no edit, as its editor takes none.
+  const databaseReadOnly = docReadOnly === 'database-read-only'
+  const fieldsReadOnly = isLocked || databaseReadOnly
   const hasOwnLock = useHasOwnNoteLock(noteId ?? null)
   const { createNote, updateNote, renameNote, deleteNote } = useNoteMutations()
   const {
@@ -434,6 +437,10 @@ export function NotePage({ noteId }: NotePageProps) {
         toast.error(t(isExcluded ? 'errors:note.excluded' : 'errors:vaultLock.noteReadOnly'))
         return
       }
+      if (databaseReadOnly) {
+        toast.error(t('editor.databaseReadOnly'))
+        return
+      }
       const messages: Record<PropertySectionAction, string> = {
         update: 'Cannot update property - this note was deleted',
         add: 'Cannot add property - this note was deleted',
@@ -443,7 +450,7 @@ export function NotePage({ noteId }: NotePageProps) {
       }
       toast.error(messages[action])
     },
-    [isExcluded, isLocked, t]
+    [databaseReadOnly, isExcluded, isLocked, t]
   )
 
   const {
@@ -458,7 +465,7 @@ export function NotePage({ noteId }: NotePageProps) {
     handlePropertyOrderChange
   } = usePropertySection({
     entityId: noteId ?? null,
-    canEdit: () => !isDeleted && !isLocked,
+    canEdit: () => !isDeleted && !fieldsReadOnly,
     onBlocked: handlePropertyBlocked,
     includeExplicitType: true
   })
@@ -998,7 +1005,7 @@ export function NotePage({ noteId }: NotePageProps) {
     const own = new Set(fieldGroups.rest.map((entry) => entry.name))
     return properties.filter((property) => own.has(property.name))
   }, [fieldGroups.rest, properties])
-  const fieldFill = useNoteFieldFill(noteId ?? null, isDeleted || isLocked)
+  const fieldFill = useNoteFieldFill(noteId ?? null, isDeleted || fieldsReadOnly)
   const fieldSlotCount = fieldGroups.groups.reduce((sum, group) => sum + group.slots.length, 0)
   const noteBodyEmpty = !(note?.content ?? '').trim()
   const tagFieldHints = useMemo(
@@ -1800,7 +1807,7 @@ export function NotePage({ noteId }: NotePageProps) {
         >
           {(isLocked || docReadOnly === 'locked') && <LockedNoteNotice excluded={isExcluded} />}
           <NoteTitle
-            disabled={isLocked}
+            disabled={fieldsReadOnly}
             noteId={note.id}
             emoji={note.emoji ?? null}
             title={note.title}
@@ -1815,7 +1822,7 @@ export function NotePage({ noteId }: NotePageProps) {
             noteId={note.id}
             title={note.title}
             aliases={note.aliases ?? []}
-            disabled={isDeleted || isLocked}
+            disabled={isDeleted || fieldsReadOnly}
           />
 
           {/* Tags: visible when tags exist */}
@@ -1838,7 +1845,7 @@ export function NotePage({ noteId }: NotePageProps) {
               })
             }
             hideWhenEmpty
-            disabled={isLocked}
+            disabled={fieldsReadOnly}
           />
 
           {(ownProperties.length > 0 || fieldGroups.groups.length > 0) && (
@@ -1860,7 +1867,7 @@ export function NotePage({ noteId }: NotePageProps) {
                         color: tag.color
                       })
                     }
-                    disabled={isDeleted || isLocked}
+                    disabled={isDeleted || fieldsReadOnly}
                   />
                 ) : undefined
               }
@@ -1872,7 +1879,7 @@ export function NotePage({ noteId }: NotePageProps) {
               onPropertyOrderChange={handlePropertyOrderChange}
               onAddProperty={handleAddPropertyWithExpand}
               onDeleteProperty={handleDeleteProperty}
-              disabled={isDeleted || isLocked}
+              disabled={isDeleted || fieldsReadOnly}
               variant="embedded"
             />
           )}
@@ -1885,7 +1892,7 @@ export function NotePage({ noteId }: NotePageProps) {
             notePath={note.path}
             headerTags={note.headerTags}
             getEditor={getAttachmentsEditor}
-            disabled={isDeleted || isLocked}
+            disabled={isDeleted || fieldsReadOnly}
           />
 
           <GhostAffordanceRow
@@ -1901,7 +1908,7 @@ export function NotePage({ noteId }: NotePageProps) {
             hideAddTag={headerTags.length > 0}
             onAddCover={cover ? undefined : setCoverPickerAnchor}
             onAddName={note.aliases?.length ? undefined : () => requestNoteNameInput(note.id)}
-            disabled={isDeleted || isLocked}
+            disabled={isDeleted || fieldsReadOnly}
           />
         </div>
 

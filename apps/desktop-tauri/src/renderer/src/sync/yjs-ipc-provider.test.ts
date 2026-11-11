@@ -123,8 +123,9 @@ vi.mock('../../../generated/bindings', () => ({
 const toast = vi.hoisted(() => ({ error: vi.fn() }))
 vi.mock('sonner', () => ({ toast }))
 
+const warn = vi.hoisted(() => vi.fn())
 vi.mock('@/lib/logger', () => ({
-  createLogger: () => ({ debug: vi.fn(), info: vi.fn(), warn: vi.fn(), error: vi.fn() })
+  createLogger: () => ({ debug: vi.fn(), info: vi.fn(), warn, error: vi.fn() })
 }))
 
 import { flushAllPendingSaves, hasPendingSaves } from '@/lib/save-registry'
@@ -162,8 +163,12 @@ const reset = (): void => host.resetListeners.forEach((listen) => listen({ paylo
 const ready = (vaultPath = '/vault'): void =>
   host.readyListeners.forEach((listen) => listen({ payload: { vaultPath } }))
 
+/** The docs of the tests' providers; a hold one leaves on would hold up later flushes. */
+const connectedDocs: Y.Doc[] = []
+
 async function connected(config: Partial<ConstructorParameters<typeof YjsIpcProvider>[0]> = {}) {
   const doc = new Y.Doc()
+  connectedDocs.push(doc)
   const provider = new YjsIpcProvider({ noteId: NOTE, doc, ...config })
   await provider.connect()
   return { doc, provider }
@@ -194,6 +199,7 @@ function locksChanged(notes: string[], folders: string[] = []): void {
 }
 
 afterEach(() => {
+  for (const doc of connectedDocs.splice(0)) typingHoldOf(doc).release()
   vi.useRealTimers()
   vi.clearAllMocks()
 })
@@ -483,14 +489,102 @@ describe('YjsIpcProvider typing barrier', () => {
     expect(answered()).toEqual([])
   })
 
-  it('stops holding once the note closes', async () => {
+  it('keeps a note closed mid-hold bound until the edit applied and the held typing was sent', async () => {
     const { doc, provider } = await connected()
+    const hold = typingHoldOf(doc)
     lastChannel().onmessage(barrierFrame(BARRIER, 7))
     await settle()
-    expect(typingHoldOf(doc).held).toBe(true)
-
+    // What an editor that closed during the hold does at its end (`typing-hold-plugin.ts`).
+    hold.onRelease(() => type(doc, ' held'))
     provider.destroy()
-    expect(typingHoldOf(doc).held).toBe(false)
+    let detached = false
+    void provider.detached.then(() => (detached = true))
+    await settle()
+    expect(hold.held).toBe(true)
+    expect(detached).toBe(false)
+    expect(host.calls).toEqual(['open', 'typing-sent 7'])
+
+    lastChannel().onmessage(otherWindowFrame(' from disk', 2))
+    await settle(60)
+    expect(hold.held).toBe(false)
+    expect(detached).toBe(true)
+    expect(text(host.doc)).toBe('stored from disk held')
+    expect(host.calls).toEqual(['open', 'typing-sent 7', 'apply', 'close'])
+
+    type(doc, ' late')
+    lastChannel().onmessage(otherWindowFrame(' later', 2))
+    await settle()
+    expect(host.sent).toHaveLength(1)
+    expect(text(doc)).toBe('stored from disk held late')
+  })
+
+  it('closes a note closed mid-hold once the hold runs out, its held typing sent', async () => {
+    vi.useFakeTimers()
+    const { doc, provider } = await connected()
+    const hold = typingHoldOf(doc)
+    lastChannel().onmessage(barrierFrame(BARRIER, 7))
+    await vi.advanceTimersByTimeAsync(0)
+    hold.onRelease(() => type(doc, ' held'))
+    provider.destroy()
+
+    await vi.advanceTimersByTimeAsync(3499)
+    expect(host.calls).toEqual(['open', 'typing-sent 7'])
+    await vi.advanceTimersByTimeAsync(1)
+    expect(text(host.doc)).toBe('stored held')
+    expect(host.calls).toEqual(['open', 'typing-sent 7', 'apply', 'close'])
+  })
+
+  it('makes a flush of every pending save wait for the hold, so a quit sends the held typing', async () => {
+    const { doc } = await connected()
+    const hold = typingHoldOf(doc)
+    lastChannel().onmessage(barrierFrame(BARRIER, 7))
+    await settle()
+    // What a live editor does at the release: it replays the typing it refused.
+    hold.onRelease(() => type(doc, ' held'))
+    let flushed = false
+    const flushing = flushAllPendingSaves().then(() => (flushed = true))
+    await settle()
+    expect(flushed).toBe(false)
+
+    lastChannel().onmessage(barrierFrame(RELEASE, 7))
+    await flushing
+    expect(text(host.doc)).toBe('stored held')
+  })
+
+  it('warns with the count of held typing it drops when the vault closes under a note closed mid-hold', async () => {
+    const { doc, provider } = await connected()
+    const hold = typingHoldOf(doc)
+    lastChannel().onmessage(barrierFrame(BARRIER, 7))
+    await settle()
+    hold.onRelease(() => type(doc, ' held'))
+    reset()
+    provider.destroy()
+
+    lastChannel().onmessage(barrierFrame(RELEASE, 7))
+    await settle(60)
+    expect(host.sent).toEqual([])
+    expect(warn).toHaveBeenCalledWith('Dropped edits of a closed note whose vault closed', {
+      noteId: NOTE,
+      dropped: 1
+    })
+  })
+
+  it('warns when the host refuses the held typing of a note closed mid-hold as the vault closed', async () => {
+    const { doc, provider } = await connected()
+    const hold = typingHoldOf(doc)
+    lastChannel().onmessage(barrierFrame(BARRIER, 7))
+    await settle()
+    hold.onRelease(() => type(doc, ' held'))
+    provider.destroy()
+    host.refuse = 'editor_not_serving'
+
+    lastChannel().onmessage(barrierFrame(RELEASE, 7))
+    await settle(60)
+    expect(text(host.doc)).toBe('stored')
+    expect(warn).toHaveBeenCalledWith('Dropped edits of a closed note whose vault closed', {
+      noteId: NOTE,
+      dropped: 1
+    })
   })
 })
 
@@ -817,6 +911,7 @@ describe('YjsIpcProvider rebinding', () => {
     await settle()
     expect(host.sent).toEqual([])
     expect(host.opens).toHaveLength(1)
+    expect(warn).not.toHaveBeenCalled()
 
     ready()
     await settle()

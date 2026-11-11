@@ -292,6 +292,47 @@ fn a_save_whose_feed_fails_is_written_and_brought_in_by_the_watcher() {
     });
 }
 
+/// A save whose feed fails toggles the file back to an earlier save that is still pending in the
+/// own-write record, with a later save pending after it (#4222): only the toggled save's hash
+/// leaves the record, so the watcher reports the file and the consumer feeds it. Ending the
+/// newest pending write instead left the earlier one to absorb the file, and the document kept
+/// the later save's text.
+#[test]
+fn a_failed_feed_back_to_an_earlier_pending_save_is_brought_in_by_the_watcher() {
+    let (e, _, store) = opened(&[("Plan.md", "First text.\n")]);
+    let open = e.session.current().unwrap();
+    let id = id_at(&e, "Plan.md");
+    let first = "First text.\n";
+    let second = "Second text.\n";
+    e.write("Plan.md", second);
+    until("the watcher fed the second text", || {
+        e.body(&id) == "Second text." && row_hash(&e, &id) == Some(content_hash(second))
+    });
+    // Two saves recorded and not seen yet, the first save's then the second's.
+    let echo = e.tier.echo();
+    echo.will_write("Plan.md", &content_hash(first));
+    echo.will_write("Plan.md", &content_hash(second));
+
+    let edit = AppEdit::new(&e.tier, &store, &open).unwrap();
+    edit.fail_next_feed();
+    let own = OwnFiles::default();
+    let done = run(
+        &edit,
+        &id,
+        Precondition::Save(&own, None),
+        ChangeSource::Save,
+        |_| Some(first.to_owned()),
+    );
+    assert!(
+        matches!(done, Edited::Wrote { held: false, .. }),
+        "{done:?}"
+    );
+    assert_eq!(e.read("Plan.md"), first);
+    until("the watcher fed the file back", || {
+        e.body(&id) == "First text." && row_hash(&e, &id) == Some(content_hash(first))
+    });
+}
+
 /// The app's own write records its file's class (#3531 14c-2): the watcher skips the echo, so
 /// no read of it would. A save grown past the ceiling by its frontmatter alone opens read-only
 /// at once.

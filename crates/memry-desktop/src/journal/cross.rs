@@ -126,8 +126,8 @@ impl NotesService {
         {
             return Ok(false);
         }
-        // A row that does not go keeps the deleted record's debt, and the next open makes the
-        // file anew, as for the consumer's crossing.
+        // A row that does not go keeps the deleted record's debt, its hold gone with the delete,
+        // and the next open makes the file anew, as for the consumer's crossing.
         lane.remove(note_id)?;
         lane.publish(Applied::Removed {
             note_id: note_id.to_owned(),

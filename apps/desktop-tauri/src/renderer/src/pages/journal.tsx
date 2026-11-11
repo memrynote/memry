@@ -54,10 +54,11 @@ import { FoldSurface } from '@/components/note/fold/fold-surface'
 import { useNoteFold } from '@/components/note/fold/use-note-fold'
 import { useInlineTagEdits, type InlineTagEdit } from '@/hooks/use-inline-tag-edits'
 import { useVaultConfig } from '@/hooks/use-vault-config'
+import { useDatabaseReadOnly } from '@/hooks/use-database-read-only'
 import { useHasOwnNoteLock, useIsNoteLocked } from '@/lib/vault-locks-store'
 import { useIsNoteExcluded } from '@/lib/excluded-notes-store'
 import { journalPathForDate } from '@/lib/journal-path'
-import { LockedNoteNotice } from '@/components/note/locked-note-notice'
+import { DatabaseReadOnlyNotice, LockedNoteNotice } from '@/components/note/locked-note-notice'
 import { isOutsideAllBlocks } from '@/components/note/content-area/marquee-hit-test'
 import type { WikiLinkOpenTarget } from '@/components/note/content-area/types'
 import { useOpenTarget } from '@/hooks/use-open-target'
@@ -247,6 +248,9 @@ export function JournalPage({ className }: JournalPageProps): React.JSX.Element 
   const dayPath = vaultConfig ? journalPathForDate(selectedDate, vaultConfig) : null
   const isExcluded = useIsNoteExcluded(dayPath)
   const isLocked = useIsNoteLocked(entryId, dayPath) || isExcluded
+  // This device can't save (#4268). A day with no note yet has no editor host to say so.
+  const databaseReadOnly = useDatabaseReadOnly()
+  const fieldsReadOnly = isLocked || databaseReadOnly
   const hasOwnLock = useHasOwnNoteLock(entryId)
   const lockAction = hasOwnLock ? 'unlock' : entryId && !isLocked ? 'lock' : undefined
 
@@ -606,9 +610,17 @@ export function JournalPage({ className }: JournalPageProps): React.JSX.Element 
   } = usePropertySection({
     entityId: entry?.id ?? null,
     includeExplicitType: true,
-    canEdit: () => !isLocked,
+    canEdit: () => !fieldsReadOnly,
     onBlocked: () =>
-      toast.error(notesT(isExcluded ? 'errors:note.excluded' : 'errors:vaultLock.noteReadOnly'))
+      toast.error(
+        notesT(
+          isLocked
+            ? isExcluded
+              ? 'errors:note.excluded'
+              : 'errors:vaultLock.noteReadOnly'
+            : 'editor.databaseReadOnly'
+        )
+      )
   })
 
   const [propertiesCollapsed, togglePropertiesCollapsed, setPropertiesCollapsed] =
@@ -1285,7 +1297,7 @@ export function JournalPage({ className }: JournalPageProps): React.JSX.Element 
                             noteId={entryId}
                             title={selectedDate}
                             aliases={entry?.aliases ?? []}
-                            disabled={isLocked}
+                            disabled={fieldsReadOnly}
                           />
                           <TagsRow
                             tags={journalTags}
@@ -1296,7 +1308,7 @@ export function JournalPage({ className }: JournalPageProps): React.JSX.Element 
                             onRemoveTag={handleRemoveTag}
                             className="mb-0"
                             hideWhenEmpty
-                            disabled={isLocked}
+                            disabled={fieldsReadOnly}
                           />
                           {properties.length > 0 && (
                             <InfoSection
@@ -1310,7 +1322,7 @@ export function JournalPage({ className }: JournalPageProps): React.JSX.Element 
                               onPropertyOrderChange={handlePropertyOrderChange}
                               onAddProperty={handleAddPropertyWithExpand}
                               onDeleteProperty={handleDeleteProperty}
-                              disabled={isLocked}
+                              disabled={fieldsReadOnly}
                               renderPropertyAction={renderPropertyHistory}
                             />
                           )}
@@ -1331,7 +1343,7 @@ export function JournalPage({ className }: JournalPageProps): React.JSX.Element 
                                 ? () => requestNoteNameInput(entryId)
                                 : undefined
                             }
-                            disabled={isLocked}
+                            disabled={fieldsReadOnly}
                           />
                         </div>
 
@@ -1353,6 +1365,10 @@ export function JournalPage({ className }: JournalPageProps): React.JSX.Element 
                               {/* Hidden, never unmounted, while an agent edit is under
                               review: the editor keeps its Y.Doc binding and undo
                               history until the review is settled. */}
+                              {/* A bound editor shows its own notice. */}
+                              {databaseReadOnly && !entryId && (
+                                <DatabaseReadOnlyNotice className="mb-2" />
+                              )}
                               <FoldSurface fold={fold}>
                                 <div
                                   className={cn(agentReview && 'hidden')}
@@ -1364,7 +1380,7 @@ export function JournalPage({ className }: JournalPageProps): React.JSX.Element 
                                     // The editor shown while the day loads is replaced once it
                                     // has: what it took would be dropped, or saved and then
                                     // overwritten by the next save from the new one.
-                                    editable={!isLocked && editorLoadState === 'loaded'}
+                                    editable={!fieldsReadOnly && editorLoadState === 'loaded'}
                                     initialContent={review.editorInitialContent}
                                     contentType="markdown"
                                     externalContentRevision={externalUpdateCount}

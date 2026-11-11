@@ -198,6 +198,8 @@ export function useJournalEntry(date: string): UseJournalEntryResult {
   // The day an outside edit or a dropped-events signal reached while its save ran: the save may
   // have written before that edit or after it, so the day is read again once it ends (#3967).
   const outsideDuringSaveRef = useRef<string | null>(null)
+  // The day this page's `deleteEntry` is deleting: its delete event takes the typing with it.
+  const deletingRef = useRef<string | null>(null)
   // The text the open day's editor holds: what it loaded, what it reported, or the outside text
   // it was handed. Not the query's data, which the app-level listener (`useJournalChangeEvents`)
   // refetches ahead of the editor. `null` until the day has loaded.
@@ -755,6 +757,7 @@ export function useJournalEntry(date: string): UseJournalEntryResult {
   }, [date, refetch])
 
   const deleteEntry = useCallback(async (): Promise<{ success: boolean; error?: string }> => {
+    deletingRef.current = date
     try {
       const result = await deleteMutation.mutateAsync(date)
       if (result.success) {
@@ -767,6 +770,8 @@ export function useJournalEntry(date: string): UseJournalEntryResult {
       trackRendererError('journal_delete_failed', err)
       log.error('Failed to delete journal entry:', err)
       return { success: false }
+    } finally {
+      deletingRef.current = null
     }
   }, [date, deleteMutation])
 
@@ -877,12 +882,20 @@ export function useJournalEntry(date: string): UseJournalEntryResult {
     }
 
     const onDeleted = (event: JournalEntryDeletedEvent): void => {
-      if (event.date === currentDateRef.current) {
-        queryClient.setQueryData(journalKeys.entry(event.date), null)
-        setIsDirty(false)
-        pendingContentRef.current = null
-        pendingTagsRef.current = null
+      if (event.date !== currentDateRef.current) return
+      // Typing not saved yet is newer than the delete: a Turn into notes that deleted the day
+      // after its flush (`use-vault-notices`), or a delete from another device. Its save makes
+      // the day again with the editor's text rather than drop it. A delete this page asked for
+      // takes the typing with it.
+      const typed = pendingContentRef.current !== null || pendingTagsRef.current !== null
+      if (typed && deletingRef.current !== event.date) {
+        void performSaveRef.current()
+        return
       }
+      queryClient.setQueryData(journalKeys.entry(event.date), null)
+      setIsDirty(false)
+      pendingContentRef.current = null
+      pendingTagsRef.current = null
     }
 
     const onExternal = (event: JournalExternalChangeEvent): void => {

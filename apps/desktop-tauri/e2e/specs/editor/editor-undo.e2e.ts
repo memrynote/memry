@@ -2,7 +2,7 @@
 // (Step 14k, #3531): undo right after opening keeps the seeded body, undo reverts a local edit,
 // and the Edit menu's Undo reverts it too.
 import { navigateTo, SHORTCUTS } from '../../harness/app-helpers'
-import { noteBody, typeInEditor } from '../../harness/editor'
+import { noteBody } from '../../harness/editor'
 import { invokeTest } from '../../harness/invoke-test'
 import { expectNoteBody, normalizeBodyText } from '../../harness/note-sync-helpers'
 import { createNote, NOTE_EDITOR, openFromSidebar, vaultOpen } from '../../harness/notes'
@@ -81,6 +81,14 @@ async function focusEditorEnd(page: Page): Promise<void> {
   })
 }
 
+/**
+ * Types `text` as one input, so one undo removes all of it. The editor's undo manager starts a new
+ * step after 500 ms without edits (`Y.UndoManager` `captureTimeout`), and a busy runner can pause
+ * that long between two per-character inserts: one undo then removes only the last part (#3967).
+ */
+const insertAsOneUndoStep = (page: Page, text: string): Promise<void> =>
+  page.keyboard.insertText(text)
+
 test.describe('Editor undo history', () => {
   test('note first-open undo preserves the seeded body', async ({ page }) => {
     const body = `Undo seed line ${Date.now()}\n\nSecond seeded line`
@@ -99,7 +107,7 @@ test.describe('Editor undo history', () => {
     await openSeededNote(page, `Undo Editable Note ${Date.now()}`, body)
 
     await focusEditorEnd(page)
-    await typeInEditor(page, typed)
+    await insertAsOneUndoStep(page, typed)
     await expectNoteBody(page, `${body}\n\n${typed}`)
 
     await page.keyboard.press(SHORTCUTS.undo)
@@ -114,7 +122,7 @@ test.describe('Editor undo history', () => {
     await openSeededJournal(page, body)
 
     await focusEditorEnd(page)
-    await typeInEditor(page, typed)
+    await insertAsOneUndoStep(page, typed)
     await expectNoteBody(page, `${body}\n\n${typed}`)
 
     await invokeTest(app, 'e2e_menu_activate', { id: 'editor.undo' })

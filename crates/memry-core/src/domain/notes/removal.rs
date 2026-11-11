@@ -8,6 +8,7 @@ use super::identity::{
     Removed, live_place, mints_beside_electron, owe_in, settle_place, unfiled_notes,
 };
 use super::journal_day::{DayEntry, day_entry};
+use super::place_held;
 use super::{ITEM_TYPE, failed, tombstone_local};
 use crate::api::errors::StorageError;
 use crate::crdt::errors::CrdtError;
@@ -67,7 +68,11 @@ pub struct Crossing<'a> {
 /// not delete is only owed the move, as before, and so is one whose file the tier would put
 /// off as the new item ([`put_off`]): the delete would leave the record's text in a file no
 /// item names, and push it to every device. `converter` and `embeds` read a day entry's body,
-/// as [`super::journal_day::adopt_day`] reads it; `embeds` must not read this database.
+/// as [`super::journal_day::adopt_day`] reads it; `embeds` must not read this database. A held
+/// day ([`super::place_held`]) the user turned into a note (desktop's Turn into notes) forgets
+/// its hold with the delete: an open that finds its row still there, the app stopped before
+/// dropping it, crosses it as any other, where held it would skip it and trash its file as a
+/// deleted day's.
 pub fn crossed(
     conn: &Connection,
     converter: Option<&Converter>,
@@ -85,6 +90,9 @@ pub fn crossed(
         return Ok(Removed::Undecided);
     }
     let removed = delete_in(&tx, note_id, device_id, now_ms)?;
+    if removed == Removed::Deleted {
+        place_held::forget(&tx, note_id)?;
+    }
     tx.commit().map_err(failed)?;
     Ok(removed)
 }
