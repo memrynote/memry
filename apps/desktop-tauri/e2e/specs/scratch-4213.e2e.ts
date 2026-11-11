@@ -12,7 +12,7 @@ const TABLE_DOC = [
 ]
 const IN_CELL = { x: 20, y: 20 }
 
-for (let i = 0; i < Number(process.env.SCRATCH_N ?? 12); i++) {
+for (let i = 0; i < Number(process.env.SCRATCH_N ?? 8); i++) {
   test(`pick right after create #${i}`, async ({ page }) => {
     await vaultOpen(page)
     const note = await openNewNote(page, `Scratch ${i} ${Date.now()}`, 'seed')
@@ -171,22 +171,36 @@ for (let i = 0; i < Number(process.env.SCRATCH_N ?? 12); i++) {
     await cellHandle.click()
     await page.evaluate(() => (window as any).__rec('nub clicked'))
     await page.getByText('Colors', { exact: true }).first().click()
-    if (process.env.SCRATCH_SAMPLE) {
+    {
       const samples = await page.evaluate(
         () =>
           new Promise<string[]>((resolve) => {
             const out: string[] = []
             const t0 = performance.now()
+            const rect = (el: Element | null | undefined) => {
+              const r = el?.getBoundingClientRect()
+              return r
+                ? `${Math.round(r.x)},${Math.round(r.y)} ${Math.round(r.width)}x${Math.round(r.height)}`
+                : '-'
+            }
+            let last = ''
             const step = () => {
               const red = document.querySelector('[data-test="background-color-red"]')
-              const dd = red?.closest(
-                '.bn-color-picker-dropdown, [data-slot]'
-              ) as HTMLElement | null
-              const r = red?.getBoundingClientRect()
-              out.push(
-                `${Math.round(performance.now() - t0)} red=${r ? `${Math.round(r.x)},${Math.round(r.y)} ${Math.round(r.width)}x${Math.round(r.height)}` : '-'} anim=${dd ? getComputedStyle(dd).transform + ' ' + getComputedStyle(dd).opacity : '-'}`
-              )
-              if (performance.now() - t0 < 600) requestAnimationFrame(step)
+              const popups = [
+                ...document.querySelectorAll(
+                  '[data-slot="dropdown-menu-content"], [data-slot="dropdown-menu-sub-content"]'
+                )
+              ]
+              const scrolled = [...document.querySelectorAll('*')]
+                .filter((el) => el.scrollTop !== 0)
+                .map(
+                  (el) => `${el.tagName}.${el.getAttribute('class')?.split(' ')[0]}=${el.scrollTop}`
+                )
+              const table = document.querySelector('.bn-editor table')
+              const line = `red=${rect(red)} popups=${popups.map((p) => `${p.getAttribute('data-slot')?.slice(-11)}@${rect(p)}${p.hasAttribute('data-starting-style') ? 'S' : ''}${p.hasAttribute('data-open') ? 'O' : ''}`).join('|')} table=${rect(table)} scroll=${scrolled.join(',')} active=${document.activeElement?.tagName}.${document.activeElement?.getAttribute('data-test') ?? ''} vh=${innerHeight}`
+              if (line !== last) out.push(`${Math.round(performance.now() - t0)} ${line}`)
+              last = line
+              if (performance.now() - t0 < 1500) requestAnimationFrame(step)
               else resolve(out)
             }
             step()
