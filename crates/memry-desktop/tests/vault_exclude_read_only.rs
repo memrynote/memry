@@ -189,7 +189,7 @@ fn every_write_to_an_excluded_day_is_refused() {
     };
     excluded(notes.update_day(&open, day(Some("Changed"), None)));
     excluded(notes.update_day(&open, day(None, Some(vec!["idea".into()]))));
-    excluded(notes.delete_day(&open, "2025-01-02"));
+    excluded(notes.delete_day(&open, "2025-01-02", false));
     excluded(try_day(&notes, &e, "2025-01-03"));
     drop(open);
     reopen(&mut e);

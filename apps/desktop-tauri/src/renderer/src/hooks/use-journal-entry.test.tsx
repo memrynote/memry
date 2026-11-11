@@ -254,7 +254,7 @@ describe('useJournalEntry dedicated hook', () => {
       new Error('delete failed')
     )
     await act(async () => {
-      expect(await result.current.deleteEntry()).toBe(false)
+      expect(await result.current.deleteEntry()).toEqual({ success: false })
     })
 
     act(() => {
