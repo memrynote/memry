@@ -1688,7 +1688,11 @@
     "journalChangeWaitsSettingsHint": "Memry si è chiuso mentre spostava voci del diario per una modifica alle impostazioni, e non può rimetterle a posto finché non riesce a leggere .memry/config.json. Correggi il file, poi riavvia Memry. Le tue voci sono al sicuro.",
     "journalChangeWaitsTakenHint": "Memry si è chiuso mentre spostava voci del diario per una modifica alle impostazioni. Un altro file o cartella occupa il posto in cui una voce deve tornare. Spostalo altrove, poi riavvia Memry. Le tue voci sono al sicuro.",
     "journalChangeWaitsHint": "Memry si è chiuso mentre spostava voci del diario per una modifica alle impostazioni, e non è riuscito a rimetterle a posto. Riproverà alla prossima apertura di questa cassaforte. Fino ad allora, le cartelle del diario non possono essere spostate né eliminate. Le tue voci sono al sicuro.",
+    "journalChangeWaitsRefusedHint": "Memry non è riuscito a completare lo spostamento di voci del diario per una modifica alle impostazioni, né a rimetterle tutte a posto. Riproverà alla prossima apertura di questa cassaforte. Fino ad allora, le cartelle del diario non possono essere spostate né eliminate. Le tue voci sono al sicuro.",
     "movesWait": "Alcune note non possono ancora essere spostate",
-    "movesWaitHint": "Memry si è chiuso mentre spostava o rinominava queste note, e non è riuscito a finire. Non possono essere spostate né rinominate finché non lo fa. Memry riproverà alla prossima apertura di questa cassaforte."
+    "movesWaitHint": "Memry si è chiuso mentre spostava o rinominava queste note, e non è riuscito a finire. Non possono essere spostate né rinominate finché non lo fa. Memry riproverà alla prossima apertura di questa cassaforte.",
+    "journalDaysRenamed": "Alcune voci del diario non hanno più una data come nome",
+    "journalDaysRenamedHint": "Queste voci del diario sono state rinominate fuori da Memry mentre la loro cartella attendeva l'impostazione della cartella del diario, quindi i loro nomi non sono più date. Restano voci del diario finché non ripristini i loro nomi. Convertirne una in nota elimina la sua voce del diario su tutti i tuoi dispositivi e ne conserva il testo come nota. I suoi tag non vengono conservati.",
+    "turnIntoNotes": "Converti in note"
   }
 }

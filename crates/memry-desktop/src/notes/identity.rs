@@ -77,6 +77,7 @@ use memry_core::markdown::convert::api::Converter;
 use memry_core::markdown::frontmatter::split_frontmatter_block;
 use memry_core::seams::secure_store::SecureStore;
 
+use crate::vault::app_move::on_disk;
 use crate::vault::consumer::converter_of;
 use crate::vault::consumer::identity::{
     Adoption, Candidate, Crossed, IdentityCtx, IdentityError, NewFile, NoteIdentity, Removal,
@@ -86,7 +87,7 @@ use crate::vault::embeds::Resolved;
 use crate::vault::file_types::FileType;
 use crate::vault::journal_format::JournalDays;
 use crate::vault::note_file::NoteFile;
-use crate::vault::notices::VaultNotices;
+use crate::vault::notices::{Listed, VaultNotices};
 
 mod file;
 mod moving;
@@ -426,6 +427,12 @@ impl NoteIdentity for NotesIdentity {
             // finished move carries them and the file's later edits and removal reach the note.
             return Err(moving::waits());
         }
+        let path_on_disk = on_disk(ctx.root, path).to_string_lossy().into_owned();
+        let renamed = Listed::Renamed {
+            note_id,
+            path: &path_on_disk,
+        };
+        self.notices.remove(ctx.root, renamed);
         Ok(match writer.file_removed(note_id, path)? {
             Removed::Deleted => Removal::Deleted,
             // A file that is truly gone leaves a note the user deleted outside the app: listed,
@@ -484,7 +491,14 @@ impl NoteIdentity for NotesIdentity {
             self.unsettle(ctx.root);
             return Ok(Rename::Followed);
         };
-        if held(ctx.root, &journal, &writer, note_id, old_path, new_path)? {
+        let notices = Some(&*self.notices);
+        if held(
+            ctx.root,
+            &journal,
+            &writer,
+            notices,
+            (note_id, old_path, new_path),
+        )? {
             tracing::info!(
                 scope = SCOPE,
                 note_id,
@@ -520,6 +534,20 @@ impl NoteIdentity for NotesIdentity {
         };
         writer.file_moved(note_id, moved)?;
         Ok(Rename::Followed)
+    }
+
+    /// [`owed_moves::cross_renamed`].
+    fn cross_renamed_day(
+        &self,
+        ctx: &IdentityCtx<'_>,
+        note_id: &str,
+        path: &str,
+    ) -> Result<bool, IdentityError> {
+        let Some(journal) = self.journal(ctx.root) else {
+            return Err(IdentityError::Other("the journal days are unknown".into()));
+        };
+        let writer = self.writer(ctx)?;
+        owed_moves::cross_renamed(self, ctx, &journal, &writer, (note_id, path))
     }
 
     /// [`owed_moves::follow_held`].

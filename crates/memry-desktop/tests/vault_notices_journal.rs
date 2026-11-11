@@ -139,7 +139,7 @@ fn a_refused_change_whose_days_stay_moved_shows_at_once() {
         Some(VaultNotice::JournalChangeWaits {
             from: "journal".to_owned(),
             to: "Diary".to_owned(),
-            holds: ChangeHold::Unknown,
+            holds: ChangeHold::Refused,
         })
     );
 }

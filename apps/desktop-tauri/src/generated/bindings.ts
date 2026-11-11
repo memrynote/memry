@@ -62,6 +62,12 @@ export const commands = {
 	 */
 	journalCreateEntry: (input: JournalCreateInput) => __TAURI_INVOKE<JournalEntryView>("journal_create_entry", { input }),
 	/**
+	 *  Turns the held journal days `note_ids`, renamed outside the app away from their day, into
+	 *  notes (`VaultNotice::JournalDaysRenamed`, `memry_desktop::journal::cross`), as Electron's
+	 *  watcher crosses such a file at the rename. Each day that went sends `journal:entryDeleted`.
+	 */
+	journalCrossIntoNotes: (noteIds: string[]) => __TAURI_INVOKE<JournalCrossOutput>("journal_cross_into_notes", { noteIds }),
+	/**
 	 *  `success` is whether the day had an entry to delete. A kept day's text the trash cannot take
 	 *  fails the delete with `note_trash_unavailable`, and the renderer asks the user before it
 	 *  deletes again with `permanent` (#4140).
@@ -755,9 +761,10 @@ export type CategoryOrderInput = {
  *  - `settings`: the vault settings at `path` cannot be read, so the change cannot tell whether
  *    it was saved.
  *  - `taken`: a file or folder is at a day's old place, `path`.
+ *  - `refused`: the change was refused and some days it moved could not go back, logged.
  *  - `unknown`: anything else, logged.
  */
-export type ChangeHold = { kind: "settings"; path: string } | { kind: "taken"; path: string } | { kind: "unknown" };
+export type ChangeHold = { kind: "settings"; path: string } | { kind: "taken"; path: string } | { kind: "refused" } | { kind: "unknown" };
 
 /**
  *  What the renderer sees when a command rejects. Tauri serializes it as JSON, the shape
@@ -1221,6 +1228,12 @@ export type JournalCreateInput = {
 	content?: string | null,
 	tags?: string[] | null,
 	properties?: { [key in string]: Value } | null,
+};
+
+/**  What `journal_cross_into_notes` did. */
+export type JournalCrossOutput = {
+	/**  How many of the days asked about became notes. */
+	crossed: number,
 };
 
 /**  `DeleteEntryOutputSchema`. */
@@ -1976,6 +1989,12 @@ export type RenamedAttachment = {
 	name: string,
 };
 
+/**  A held journal day whose file no longer names its day; `path` is the file's, absolute. */
+export type RenamedDay = {
+	noteId: string,
+	path: string,
+};
+
 /**  `tags:reorder`'s payload. */
 export type ReorderInput = {
 	tags?: TagAssignmentInput[] | null,
@@ -2676,9 +2695,14 @@ export type VaultLocksExternalEditRestoredEvent = {
  *  - `movesWait`: notes whose app move a crash cut short and the open could not finish
  *    (`vault::app_move::finish_interrupted`): they do not move or rename until it settles, which
  *    every open tries again. `path` is the note's file, absolute.
+ *  - `journalDaysRenamed`: held journal days (`notes::owed_moves::held`) whose files were renamed
+ *    outside the app to a name that no longer names their day, so no follow makes them days
+ *    again. Electron would have crossed each into a note; here they stay days until the user
+ *    renames them back or turns them into notes (`journal::cross`). `path` is the file's,
+ *    absolute.
  *  - `more` says a list notice had more items than [`LISTED`].
  */
-export type VaultNotice = { kind: "configUnreadable"; path: string } | { kind: "watchLimit" } | { kind: "undecidedFiles"; paths: string[]; more: boolean } | { kind: "keptRemovals"; notes: KeptRemoval[]; more: boolean } | { kind: "journalDaysHeld"; folders: string[] } | { kind: "journalChangeWaits"; from: string; to: string; holds: ChangeHold } | { kind: "movesWait"; notes: WaitingMove[]; more: boolean };
+export type VaultNotice = { kind: "configUnreadable"; path: string } | { kind: "watchLimit" } | { kind: "undecidedFiles"; paths: string[]; more: boolean } | { kind: "keptRemovals"; notes: KeptRemoval[]; more: boolean } | { kind: "journalDaysHeld"; folders: string[] } | { kind: "journalChangeWaits"; from: string; to: string; holds: ChangeHold } | { kind: "movesWait"; notes: WaitingMove[]; more: boolean } | { kind: "journalDaysRenamed"; days: RenamedDay[]; more: boolean };
 
 /**  The open vault's notices, as a window reads them. */
 export type VaultNoticeList = {

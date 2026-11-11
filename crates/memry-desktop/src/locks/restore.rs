@@ -56,7 +56,7 @@ impl Locks<'_> {
             }
             self.vault
                 .write_back()
-                .keep_replaced(note_id, &file.raw, file.split().body)
+                .keep_outside_write(note_id, &file.raw, file.split().body)
                 .map_err(RestoreError::Unkept)?;
         }
         // Only over the bytes just kept, or into the path while it is free: a newer outside

@@ -23,6 +23,7 @@ use crate::crdt::BODY_FRAGMENT;
 use crate::crdt::errors::CrdtError;
 use crate::crdt::update_log::{Namespace, next_local_seq};
 use crate::domain::note_files::LogMark;
+use crate::domain::note_snapshots::Reason;
 use crate::domain::notes::journal_day::body_owner;
 use crate::domain::{note_snapshots, owed_file_body, reads};
 use crate::markdown::convert::EmbedResolver;
@@ -113,7 +114,23 @@ pub fn keep_replaced(
     now_ms: i64,
 ) -> Result<bool, StorageError> {
     let title = live_title(conn, note_id)?;
-    note_snapshots::keep(conn, significant(note_id, content, body, &title), now_ms)
+    let version = version(note_id, content, body, &title, Reason::Significant);
+    note_snapshots::keep(conn, version, now_ms)
+}
+
+/// [`keep_replaced`] for bytes the app did not write and is about to write over (a locked
+/// note's revert, an outside edit under a document ahead of it): an
+/// [`Reason::OutsideWrite`] version, which prunes only significant ones.
+pub fn keep_outside_write(
+    conn: &Connection,
+    note_id: &str,
+    content: &str,
+    body: &str,
+    now_ms: i64,
+) -> Result<bool, StorageError> {
+    let title = live_title(conn, note_id)?;
+    let version = version(note_id, content, body, &title, Reason::OutsideWrite);
+    note_snapshots::keep(conn, version, now_ms)
 }
 
 /// Keeps `content`, the whole file a restore is about to replace, as the note's newest
@@ -126,21 +143,23 @@ pub fn keep_restore_point(
     now_ms: i64,
 ) -> Result<(), StorageError> {
     let title = live_title(conn, note_id)?;
-    note_snapshots::keep_always(conn, significant(note_id, content, body, &title), now_ms)
+    let version = version(note_id, content, body, &title, Reason::Significant);
+    note_snapshots::keep_always(conn, version, now_ms)
 }
 
-fn significant<'a>(
+fn version<'a>(
     note_id: &'a str,
     content: &'a str,
     body: &'a str,
     title: &'a str,
+    reason: Reason,
 ) -> note_snapshots::Version<'a> {
     note_snapshots::Version {
         note_id,
         content,
         body,
         title,
-        reason: note_snapshots::Reason::Significant,
+        reason,
     }
 }
 

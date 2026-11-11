@@ -433,3 +433,43 @@ fn a_failed_lookup_for_a_new_file_is_reported_as_a_storage_failure() {
         "the file is reported all the same: {events:?}"
     );
 }
+
+/// A rescan for an identity that adopts nothing (`NewFiles::PairOnly`) reports no new file
+/// that cannot be a moved note, so the consumer's resync after a flood of such files does not
+/// flood it again. With `NewFiles::Report` the same pass reports each one.
+#[test]
+fn a_resync_that_adopts_no_new_file_reports_none() {
+    for (new_files, reported) in [(NewFiles::PairOnly, 0), (NewFiles::Report, 3)] {
+        let dir = tempfile::tempdir().unwrap();
+        let root = dir.path().join("vault");
+        let core = root.join(".memry/core");
+        std::fs::create_dir_all(&core).unwrap();
+        let vault =
+            Vault::open_with(core.to_string_lossy().into_owned(), OpenOptions::default()).unwrap();
+        for n in 0..3 {
+            std::fs::write(root.join(format!("n{n}.md")), format!("file {n}")).unwrap();
+        }
+        let log: Log = Arc::default();
+        let events = log.clone();
+        let sink: EventSink = Arc::new(move |event| events.lock().unwrap().push(event));
+        let mut reconciler = Reconciler::new(
+            root,
+            vec![],
+            vault.note_files(),
+            Arc::new(EchoGuard::default()),
+            sink,
+        )
+        .with_new_files(new_files);
+        let now = Instant::now();
+        reconciler
+            .rescan(true, now, &AtomicBool::new(false))
+            .unwrap();
+        reconciler.batch(vec![], now + Duration::from_secs(60));
+        let events = log.lock().unwrap().clone();
+        let added = events
+            .iter()
+            .filter(|e| matches!(e, VaultEvent::Added { .. }))
+            .count();
+        assert_eq!(added, reported, "{new_files:?}: {events:?}");
+    }
+}

@@ -1,5 +1,5 @@
 import { act, fireEvent, render, screen } from '@testing-library/react'
-import { describe, expect, it } from 'vitest'
+import { describe, expect, it, vi } from 'vitest'
 import { blockNoteShadCNComponents } from './blocknote-shadcn-components'
 
 const {
@@ -85,6 +85,76 @@ describe('BlockNote menu placement', () => {
 
     expect(screen.getByText('Heading 1')).toBeTruthy()
     expect([...positions.values()].map((seen) => [...seen])).toEqual([['fixed'], ['fixed']])
+  })
+
+  // #4227: a fixed menu is not clipped by the note's scroll container, so with the note scrolling
+  // under an open menu it followed its anchor over the tab bar. The absolute menu was clipped away.
+  it('hides the menu and its submenu while the anchor is scrolled out of the note', async () => {
+    const rects = new Map<Element, DOMRect>()
+    const rectSpy = vi
+      .spyOn(Element.prototype, 'getBoundingClientRect')
+      .mockImplementation(function (this: Element) {
+        return rects.get(this) ?? new DOMRect(0, 0, 0, 0)
+      })
+    const size = (el: Element, width: number, height: number): void => {
+      Object.defineProperty(el, 'clientWidth', { configurable: true, value: width })
+      Object.defineProperty(el, 'clientHeight', { configurable: true, value: height })
+    }
+    size(document.documentElement, 1000, 800)
+
+    // The note's scroll container below a 100 px tab bar, the editor's portal element inside it.
+    const scroller = document.createElement('div')
+    scroller.style.overflow = 'auto'
+    const host = document.createElement('div')
+    const portal = document.createElement('div')
+    scroller.append(host, portal)
+    document.body.appendChild(scroller)
+    rects.set(scroller, new DOMRect(0, 100, 600, 500))
+    size(scroller, 600, 500)
+
+    render(
+      <DropdownMenu open modal={false}>
+        <DropdownMenuTrigger render={<button type="button">handle</button>} />
+        <DropdownMenuContent container={portal}>
+          <DropdownMenuSub open>
+            <DropdownMenuSubTrigger>Turn into</DropdownMenuSubTrigger>
+            <DropdownMenuSubContent container={portal}>
+              <DropdownMenuItem>Heading 1</DropdownMenuItem>
+            </DropdownMenuSubContent>
+          </DropdownMenuSub>
+        </DropdownMenuContent>
+      </DropdownMenu>,
+      { container: host }
+    )
+    await flushFrames()
+    const handle = screen.getByRole('button', { name: 'handle' })
+    rects.set(handle, new DOMRect(20, 200, 18, 24))
+    rects.set(screen.getByText('Turn into'), new DOMRect(40, 230, 120, 28))
+    const invisible = (): boolean[] =>
+      [...portal.querySelectorAll('[role="menu"]')].map(
+        (menu) => getComputedStyle(menu.parentElement!).visibility === 'hidden'
+      )
+
+    scroller.dispatchEvent(new Event('scroll'))
+    await flushFrames()
+    expect(invisible()).toEqual([false, false])
+
+    // The note scrolls the handle up past the container's top edge, under the tab bar.
+    rects.set(handle, new DOMRect(20, 40, 18, 24))
+    scroller.dispatchEvent(new Event('scroll'))
+    await flushFrames()
+    expect(invisible()).toEqual([true, true])
+
+    // Back in view, the menu that stayed open shows again.
+    rects.set(handle, new DOMRect(20, 200, 18, 24))
+    scroller.dispatchEvent(new Event('scroll'))
+    await flushFrames()
+    expect(invisible()).toEqual([false, false])
+
+    rectSpy.mockRestore()
+    delete (document.documentElement as Partial<HTMLElement>).clientWidth
+    delete (document.documentElement as Partial<HTMLElement>).clientHeight
+    scroller.remove()
   })
 })
 

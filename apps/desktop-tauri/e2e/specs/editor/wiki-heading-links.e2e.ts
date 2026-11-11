@@ -1,7 +1,7 @@
 // `[[Note#Heading]]` links and links made from selected text, ported from Electron's
 // `wiki-heading-links.e2e.ts` (A15, #1563; Step 14k, #3531). The scroll claim is measured in a
 // real webview because jsdom has no layout: `scrollTop` and `scrollIntoView` are inert there.
-import { noteBody, typeInEditor } from '../../harness/editor'
+import { expectSuggestionMenuOpen, noteBody, typeInEditor } from '../../harness/editor'
 import { openNoteByTitle } from '../../harness/note-sync-helpers'
 import { createNote, NOTE_EDITOR, NOTE_TITLE, vaultOpen } from '../../harness/notes'
 import type { Page } from '../../harness/pw-compat/page'
@@ -91,6 +91,7 @@ test.describe('Linking selected text', () => {
     await typeInEditor(page, targetTitle)
     const noteRow = page.locator('.wiki-link-menu [role="option"]').first()
     await expect(noteRow).toHaveText(targetTitle)
+    await expectSuggestionMenuOpen(page)
     await noteRow.click()
 
     const chip = firstChip(page)
@@ -159,6 +160,8 @@ test.describe('Wiki heading links', () => {
 
     const headingRow = page.locator('.wiki-link-menu [role="option"]').first()
     await expect(headingRow).toHaveText(heading)
+    // A closing menu keeps its last rows on screen with no handlers: a click there does nothing.
+    await expectSuggestionMenuOpen(page)
     await headingRow.click()
 
     const chip = firstChip(page)

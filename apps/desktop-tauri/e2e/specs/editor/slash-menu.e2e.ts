@@ -1,7 +1,12 @@
 // The `/` menu, ported from Electron's `slash-menu.e2e.ts` (Step 14k, #3531). Memry's own rows
 // (`slash-menu.tsx`) on BlockNote's suggestion plumbing: BlockNote mounts it, the no-match
 // fallback hands the query to `[[`, and a used row comes back under Recent.
-import { editorDocument, openNewNote, typeInEditor } from '../../harness/editor'
+import {
+  editorDocument,
+  expectSuggestionMenuOpen,
+  openNewNote,
+  typeInEditor
+} from '../../harness/editor'
 import { NOTE_EDITOR, vaultOpen } from '../../harness/notes'
 import type { Page } from '../../harness/pw-compat/page'
 import { test, expect } from '../../harness/test'
@@ -33,6 +38,7 @@ test('a used row comes back under Recent', async ({ page }) => {
   await openFreshNote(page, `Slash Recent ${Date.now()}`)
 
   await typeInEditor(page, '/quote')
+  await expectSuggestionMenuOpen(page, 'Quote')
   await page.keyboard.press('Enter')
   await expect.poll(async () => (await editorDocument(page))[0]?.type).toBe('quote')
   await page.keyboard.press('Enter')
@@ -50,6 +56,7 @@ test('no match hands the query to note search', async ({ page }) => {
   // because `/z` matches (`slash-menu-controller.tsx`, #4205; windows-x64, run 42932052609).
   await typeInEditor(page, '/zqxv')
   await expect(menu(page).getByText('No blocks match “zqxv”')).toBeVisible()
+  await expectSuggestionMenuOpen(page)
   await page.keyboard.press('Enter')
 
   await expect(menu(page)).toBeHidden()
@@ -68,6 +75,7 @@ test('a no-match query that arrives in one input still hands off to note search'
   await expect(menu(page)).toBeVisible()
   await page.keyboard.insertText('zqxv')
   await expect(menu(page).getByText('No blocks match “zqxv”')).toBeVisible()
+  await expectSuggestionMenuOpen(page)
   await page.keyboard.press('Enter')
 
   await expect(menu(page)).toBeHidden()

@@ -76,8 +76,7 @@ impl WriteOrder {
     }
 
     /// How many writes of `note_id` hold or wait for its turn.
-    #[cfg(test)]
-    fn writes(&self, note_id: &str) -> usize {
+    pub fn writes(&self, note_id: &str) -> usize {
         self.notes().get(note_id).map_or(0, |turn| turn.writes)
     }
 }

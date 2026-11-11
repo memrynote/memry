@@ -406,7 +406,11 @@ fn author(
             ),
             body: &previous.markdown,
             title: &owner.title,
-            reason: note_snapshots::Reason::Significant,
+            // An outside edit writes over the body; the app's own edit keeps the old rule.
+            reason: match read {
+                None => note_snapshots::Reason::OutsideWrite,
+                Some(_) => note_snapshots::Reason::Significant,
+            },
         };
         note_snapshots::keep(&tx, version, now_ms)?;
     }
