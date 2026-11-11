@@ -72,7 +72,21 @@ test.describe('Linking selected text', () => {
 
     const linkButton = page.locator('[data-test="link-to-note"]').first()
     await expect(linkButton).toBeEnabled()
-    await linkButton.click()
+    // The button acts on press and opens the link menu at the caret, which can open under the
+    // pointer. A real click then goes to the element the press and the release share; the
+    // driver's synthetic click goes to whatever is under the point, a menu row here, which picks
+    // it and undoes the link. So the whole click is dispatched on the button.
+    await linkButton.evaluate((button: HTMLElement) => {
+      const { left, top, width, height } = button.getBoundingClientRect()
+      const at = { bubbles: true, cancelable: true, composed: true, button: 0 }
+      const point = { ...at, clientX: left + width / 2, clientY: top + height / 2 }
+      const pointer = { ...point, pointerId: 1, pointerType: 'mouse', isPrimary: true }
+      button.dispatchEvent(new PointerEvent('pointerdown', { ...pointer, buttons: 1 }))
+      button.dispatchEvent(new MouseEvent('mousedown', { ...point, buttons: 1, detail: 1 }))
+      button.dispatchEvent(new PointerEvent('pointerup', pointer))
+      button.dispatchEvent(new MouseEvent('mouseup', { ...point, detail: 1 }))
+      button.dispatchEvent(new MouseEvent('click', { ...point, detail: 1 }))
+    })
 
     await typeInEditor(page, targetTitle)
     const noteRow = page.locator('.wiki-link-menu [role="option"]').first()

@@ -119,7 +119,6 @@ test.describe('Wiki links on open', () => {
   // editor is created over text that is already there and gets no change event to promote from.
   test('links written into the file from outside are chips when the note is reopened', async ({
     page,
-    app,
     testVaultPath
   }) => {
     await vaultOpen(page)
@@ -140,20 +139,19 @@ test.describe('Wiki links on open', () => {
 
     await openWithoutTyping(page, title)
 
-    // All three layers in one read, so a failure names the one that gave way: the file is what
-    // the other program wrote, the document is what the app made of it, the chip is the editor.
+    // Both ends in one read, so a failure names the one that gave way: the file is what the other
+    // program wrote, the chip is what the editor made of the document. The document itself has no
+    // markdown probe yet (`e2e_crdt_doc_markdown`); `e2e_note_body` reads run text only, and a
+    // promoted wikiLink node carries its target outside the text.
     await expect
       .poll(
         async () => ({
           file: (await noteBody(page, note.id))?.includes(`[[${target}]]`) ?? false,
-          doc: (await invokeTest<string>(app, 'e2e_note_body', { noteId: note.id })).includes(
-            target
-          ),
           chips: await chipFor(page, target).count()
         }),
         { timeout: 60_000 }
       )
-      .toEqual({ file: true, doc: true, chips: 1 })
+      .toEqual({ file: true, chips: 1 })
   })
 
   test('the chips survive a reload, and the second open rewrites nothing', async ({ page }) => {
