@@ -6,7 +6,7 @@ use std::sync::atomic::{AtomicUsize, Ordering};
 use std::time::{Duration, Instant};
 
 use super::*;
-use crate::vault::consumer::run::{Consumer, inbox};
+use crate::vault::consumer::run::{Consumer, Inbox, inbox};
 use crate::vault::watch::{EventSink, NewFiles, VaultWatcher};
 
 const FILES: usize = 200;
@@ -20,8 +20,13 @@ pub(super) struct Running {
 }
 
 pub(super) fn run(f: &Fixture, capacity: usize) -> Running {
-    let adopts = f.identity.adopts();
     let (sink, inbox) = inbox(capacity);
+    run_on(f, sink, inbox)
+}
+
+/// [`run`] on a queue the test made, so it can offer the consumer facts as the watcher does.
+fn run_on(f: &Fixture, sink: EventSink, inbox: Inbox) -> Running {
+    let adopts = f.identity.adopts();
     let added = Arc::new(AtomicUsize::new(0));
     let counted: EventSink = {
         let added = added.clone();
@@ -56,6 +61,17 @@ pub(super) fn run(f: &Fixture, capacity: usize) -> Running {
     }
 }
 
+/// The fact the watcher reports for the new file `rel` of `text`.
+fn added(rel: &str, text: &str) -> VaultEvent {
+    VaultEvent::Added {
+        path: rel.into(),
+        file_type: FileType::Markdown,
+        size: text.len() as u64,
+        modified_ms: 0,
+        content_hash: None,
+    }
+}
+
 fn rescans(facts: &[Applied]) -> usize {
     facts
         .iter()
@@ -77,37 +93,45 @@ impl Fixture {
         }
     }
 
-    /// Writes the files while the lane is held, so the consumer is stuck on the first fact and
-    /// the queue overflows.
-    fn flood(&self) {
+    /// Writes the files when `write`, and offers their facts as the watcher does while the lane
+    /// is held, so the consumer is stuck on the first fact and the queue overflows. The facts
+    /// are offered, not left to the OS: a loaded machine's FSEvents delivered a fresh watch's
+    /// first event 50 s late, sometimes not in two minutes, and writes made before the watch
+    /// (#3967). The overflow is what these tests are about.
+    fn flood(&self, sink: &EventSink, write: bool) {
         let held = self.rows.lane().unwrap();
         for n in 0..FILES {
-            self.write(&format!("flood/n{n}.md"), &format!("file {n}\n"));
+            let (rel, text) = (format!("flood/n{n}.md"), format!("file {n}\n"));
+            if write {
+                self.write(&rel, &text);
+            }
+            sink(added(&rel, &text));
         }
-        std::thread::sleep(Duration::from_millis(2500));
         drop(held);
     }
 }
 
-/// Nothing adopts new files: the resync after the overflow does not report them again, so
-/// there is no next overflow, and no loop.
+/// Nothing adopts new files: the resync after the overflow does not report them again
+/// (`a_resync_that_adopts_no_new_file_reports_none`), so there is no next overflow, and no
+/// loop. The facts name no file on disk: a file written for them would reach the watcher
+/// through the OS whenever FSEvents gets to it, and be reported live as any new file is.
 #[test]
 fn a_flood_of_files_nothing_adopts_costs_one_resync_and_no_second_report() {
     let mut f = fixture();
     f.identity.adopts.store(false, Ordering::SeqCst);
-    let running = run(&f, 8);
+    let (sink, inbox) = inbox(8);
+    let running = run_on(&f, sink.clone(), inbox);
     let mut seen = Vec::new();
     f.collect_until(&mut seen, |_, s| {
         s.iter().any(|f| matches!(f, Applied::Indexed { .. }))
     });
-    f.flood();
+    f.flood(&sink, false);
     f.collect_until(&mut seen, |_, s| rescans(s) >= 2);
-    let reported = running.added.load(Ordering::SeqCst);
-    assert!(reported <= FILES, "a file was reported twice: {reported}");
+    // An absence: a repeated resync would come a second after this one's pass.
     std::thread::sleep(Duration::from_secs(5));
     seen.extend(f.facts());
     assert_eq!(rescans(&seen), 2, "the resync repeated: {seen:?}");
-    assert_eq!(running.added.load(Ordering::SeqCst), reported);
+    assert_eq!(running.added.load(Ordering::SeqCst), 0);
     assert!(f.adopted().is_empty());
 }
 
@@ -116,12 +140,13 @@ fn a_flood_of_files_nothing_adopts_costs_one_resync_and_no_second_report() {
 #[test]
 fn a_flood_of_new_files_ends_with_one_note_each() {
     let mut f = fixture();
-    let _running = run(&f, 64);
+    let (sink, inbox) = inbox(64);
+    let _running = run_on(&f, sink.clone(), inbox);
     let mut seen = Vec::new();
     f.collect_until(&mut seen, |_, s| {
         s.iter().any(|f| matches!(f, Applied::Indexed { .. }))
     });
-    f.flood();
+    f.flood(&sink, true);
     f.collect_until(&mut seen, |f, _| {
         f.vault.note_files().list_paths().unwrap().len() == FILES
     });
@@ -134,19 +159,23 @@ fn a_flood_of_new_files_ends_with_one_note_each() {
 }
 
 /// The open walk applies the facts that arrive while it runs, between its files, so a long
-/// walk does not leave the queue to fill up behind it.
+/// walk does not leave the queue to fill up behind it. The fact arrives while the walk applies
+/// its first file, offered as the watcher offers it: the walk can apply only a fact it was
+/// given, and when the OS delivers one is not up to the walk ([`Fixture::flood`]).
 #[test]
 fn facts_that_arrive_during_the_open_walk_are_applied_before_it_ends() {
     let mut f = fixture();
     for n in 0..3 {
         f.write(&format!("before/n{n}.md"), &format!("there before {n}\n"));
     }
-    let root = f.root.clone();
+    let (sink, inbox) = inbox(1024);
+    let (offer, root) = (sink.clone(), f.root.clone());
     *f.identity.during_adopt.lock().unwrap() = Some(Box::new(move || {
-        std::fs::write(root.join("live.md"), "written during the walk\n").unwrap();
-        std::thread::sleep(Duration::from_millis(2500));
+        let text = "written during the walk\n";
+        std::fs::write(root.join("live.md"), text).unwrap();
+        offer(added("live.md", text));
     }));
-    let _running = run(&f, 1024);
+    let _running = run_on(&f, sink, inbox);
     let mut seen = Vec::new();
     f.collect_until(&mut seen, |_, s| {
         s.iter().any(|f| matches!(f, Applied::Indexed { .. }))
