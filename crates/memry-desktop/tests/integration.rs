@@ -78,6 +78,9 @@ mod e2e;
 mod editor_compaction;
 #[path = "editor_host.rs"]
 mod editor_host;
+#[cfg(unix)]
+#[path = "editor_readonly.rs"]
+mod editor_readonly;
 #[path = "embeds.rs"]
 mod embeds;
 #[path = "file_open.rs"]
