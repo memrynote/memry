@@ -1683,7 +1683,7 @@
     "movesWait": "Hindi pa maililipat ang ilang note",
     "movesWaitHint": "Nagsara ang Memry habang inililipat o pinapalitan ang pangalan ng mga note na ito, at hindi ito natapos. Hindi maililipat o mapapalitan ang pangalan ng mga ito hangga't hindi ito natatapos. Susubukan ulit ng Memry sa susunod na pagbukas sa vault na ito.",
     "journalDaysRenamed": "Hindi na petsa ang pangalan ng ilang journal entry",
-    "journalDaysRenamedHint": "Pinalitan ang pangalan ng mga journal entry na ito sa labas ng Memry habang naghihintay ang folder nila sa setting ng journal folder, kaya hindi na petsa ang mga pangalan nila. Mananatili silang journal entry hanggang ibalik mo ang pangalan nila. Kapag ginawang note ang isa, mabubura ang journal entry nito sa lahat ng device mo at mananatili ang teksto nito bilang note.",
+    "journalDaysRenamedHint": "Pinalitan ang pangalan ng mga journal entry na ito sa labas ng Memry habang naghihintay ang folder nila sa setting ng journal folder, kaya hindi na petsa ang mga pangalan nila. Mananatili silang journal entry hanggang ibalik mo ang pangalan nila. Kapag ginawang note ang isa, mabubura ang journal entry nito sa lahat ng device mo at mananatili ang teksto nito bilang note. Hindi pinananatili ang mga tag nito.",
     "turnIntoNotes": "Gawing mga note"
   }
 }

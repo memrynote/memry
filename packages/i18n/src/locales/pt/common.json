@@ -1683,7 +1683,7 @@
     "movesWait": "Algumas notas ainda não podem ser movidas",
     "movesWaitHint": "O Memry fechou enquanto movia ou renomeava estas notas, e não conseguiu terminar. Elas não podem ser movidas nem renomeadas até que isso aconteça. O Memry tentará de novo na próxima vez que abrir este cofre.",
     "journalDaysRenamed": "Algumas entradas do diário não têm mais uma data como nome",
-    "journalDaysRenamedHint": "Estas entradas do diário foram renomeadas fora do Memry enquanto a pasta delas aguardava a configuração da pasta do diário, então seus nomes não são mais datas. Elas continuam como entradas do diário até você restaurar os nomes. Converter uma em nota remove a entrada do diário em todos os seus dispositivos e mantém o texto como nota.",
+    "journalDaysRenamedHint": "Estas entradas do diário foram renomeadas fora do Memry enquanto a pasta delas aguardava a configuração da pasta do diário, então seus nomes não são mais datas. Elas continuam como entradas do diário até você restaurar os nomes. Converter uma em nota remove a entrada do diário em todos os seus dispositivos e mantém o texto como nota. As tags dela não são mantidas.",
     "turnIntoNotes": "Converter em notas"
   }
 }

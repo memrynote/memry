@@ -1683,7 +1683,7 @@
     "movesWait": "Joitakin muistiinpanoja ei voi vielä siirtää",
     "movesWaitHint": "Memry sulkeutui siirtäessään tai nimetessään uudelleen näitä muistiinpanoja, eikä saanut työtä valmiiksi. Niitä ei voi siirtää tai nimetä uudelleen ennen kuin se on valmis. Memry yrittää uudelleen, kun tämä holvi avataan seuraavan kerran.",
     "journalDaysRenamed": "Joidenkin päiväkirjamerkintöjen nimi ei ole enää päivämäärä",
-    "journalDaysRenamedHint": "Nämä päiväkirjamerkinnät nimettiin uudelleen Memryn ulkopuolella, kun niiden kansio odotti päiväkirjakansion asetusta, joten niiden nimet eivät ole enää päivämääriä. Ne pysyvät päiväkirjamerkintöinä, kunnes palautat niiden nimet. Kun muutat merkinnän muistiinpanoksi, se poistuu päiväkirjasta kaikilla laitteillasi ja sen teksti säilyy muistiinpanona.",
+    "journalDaysRenamedHint": "Nämä päiväkirjamerkinnät nimettiin uudelleen Memryn ulkopuolella, kun niiden kansio odotti päiväkirjakansion asetusta, joten niiden nimet eivät ole enää päivämääriä. Ne pysyvät päiväkirjamerkintöinä, kunnes palautat niiden nimet. Kun muutat merkinnän muistiinpanoksi, se poistuu päiväkirjasta kaikilla laitteillasi ja sen teksti säilyy muistiinpanona. Sen tunnisteita ei säilytetä.",
     "turnIntoNotes": "Muuta muistiinpanoiksi"
   }
 }

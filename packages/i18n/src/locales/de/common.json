@@ -1683,7 +1683,7 @@
     "movesWait": "Einige Notizen können noch nicht verschoben werden",
     "movesWaitHint": "Memry wurde beendet, während es diese Notizen verschob oder umbenannte, und konnte das nicht abschließen. Bis dahin können sie nicht verschoben oder umbenannt werden. Memry versucht es erneut, wenn dieser Tresor das nächste Mal geöffnet wird.",
     "journalDaysRenamed": "Einige Journaleinträge haben kein Datum mehr als Namen",
-    "journalDaysRenamedHint": "Diese Journaleinträge wurden außerhalb von Memry umbenannt, während ihr Ordner auf die Einstellung des Journalordners wartete, daher sind ihre Namen keine Daten mehr. Sie bleiben Journaleinträge, bis du sie zurückbenennst. Wird einer in eine Notiz umgewandelt, wird sein Journaleintrag auf allen deinen Geräten entfernt und sein Text als Notiz behalten.",
+    "journalDaysRenamedHint": "Diese Journaleinträge wurden außerhalb von Memry umbenannt, während ihr Ordner auf die Einstellung des Journalordners wartete, daher sind ihre Namen keine Daten mehr. Sie bleiben Journaleinträge, bis du sie zurückbenennst. Wird einer in eine Notiz umgewandelt, wird sein Journaleintrag auf allen deinen Geräten entfernt und sein Text als Notiz behalten. Seine Tags bleiben nicht erhalten.",
     "turnIntoNotes": "In Notizen umwandeln"
   }
 }

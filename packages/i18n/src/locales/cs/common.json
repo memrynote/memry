@@ -1683,7 +1683,7 @@
     "movesWait": "Některé poznámky zatím nelze přesunout",
     "movesWaitHint": "Memry se zavřelo během přesouvání nebo přejmenování těchto poznámek a nepodařilo se mu to dokončit. Dokud se to nestane, nelze je přesunout ani přejmenovat. Memry to zkusí znovu při příštím otevření tohoto trezoru.",
     "journalDaysRenamed": "Některé záznamy deníku už nemají jako název datum",
-    "journalDaysRenamedHint": "Tyto záznamy deníku byly přejmenovány mimo Memry, zatímco jejich složka čekala na nastavení složky deníku, takže jejich názvy už nejsou data. Zůstanou záznamy deníku, dokud je nepřejmenujete zpět. Převedením na poznámku se jeho záznam deníku odstraní na všech vašich zařízeních a text zůstane jako poznámka.",
+    "journalDaysRenamedHint": "Tyto záznamy deníku byly přejmenovány mimo Memry, zatímco jejich složka čekala na nastavení složky deníku, takže jejich názvy už nejsou data. Zůstanou záznamy deníku, dokud je nepřejmenujete zpět. Převedením na poznámku se jeho záznam deníku odstraní na všech vašich zařízeních a text zůstane jako poznámka. Jeho štítky se nezachovají.",
     "turnIntoNotes": "Převést na poznámky"
   }
 }

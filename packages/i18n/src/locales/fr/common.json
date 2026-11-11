@@ -1683,7 +1683,7 @@
     "movesWait": "Certaines notes ne peuvent pas encore être déplacées",
     "movesWaitHint": "Memry s'est fermé en déplaçant ou en renommant ces notes, et n'a pas pu terminer. Elles ne peuvent être ni déplacées ni renommées tant que ce n'est pas fait. Memry réessaiera à la prochaine ouverture de ce coffre.",
     "journalDaysRenamed": "Certaines entrées de journal n'ont plus une date pour nom",
-    "journalDaysRenamedHint": "Ces entrées de journal ont été renommées en dehors de Memry pendant que leur dossier attendait le réglage du dossier du journal : leurs noms ne sont donc plus des dates. Elles restent des entrées de journal tant que vous ne leur rendez pas leur nom. Convertir l'une d'elles en note supprime son entrée de journal sur tous vos appareils et conserve son texte sous forme de note.",
+    "journalDaysRenamedHint": "Ces entrées de journal ont été renommées en dehors de Memry pendant que leur dossier attendait le réglage du dossier du journal : leurs noms ne sont donc plus des dates. Elles restent des entrées de journal tant que vous ne leur rendez pas leur nom. Convertir l'une d'elles en note supprime son entrée de journal sur tous vos appareils et conserve son texte sous forme de note. Ses tags ne sont pas conservés.",
     "turnIntoNotes": "Convertir en notes"
   }
 }

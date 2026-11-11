@@ -1683,7 +1683,7 @@
     "movesWait": "Alcune note non possono ancora essere spostate",
     "movesWaitHint": "Memry si è chiuso mentre spostava o rinominava queste note, e non è riuscito a finire. Non possono essere spostate né rinominate finché non lo fa. Memry riproverà alla prossima apertura di questa cassaforte.",
     "journalDaysRenamed": "Alcune voci del diario non hanno più una data come nome",
-    "journalDaysRenamedHint": "Queste voci del diario sono state rinominate fuori da Memry mentre la loro cartella attendeva l'impostazione della cartella del diario, quindi i loro nomi non sono più date. Restano voci del diario finché non ripristini i loro nomi. Convertirne una in nota elimina la sua voce del diario su tutti i tuoi dispositivi e ne conserva il testo come nota.",
+    "journalDaysRenamedHint": "Queste voci del diario sono state rinominate fuori da Memry mentre la loro cartella attendeva l'impostazione della cartella del diario, quindi i loro nomi non sono più date. Restano voci del diario finché non ripristini i loro nomi. Convertirne una in nota elimina la sua voce del diario su tutti i tuoi dispositivi e ne conserva il testo come nota. I suoi tag non vengono conservati.",
     "turnIntoNotes": "Converti in note"
   }
 }

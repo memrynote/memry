@@ -1683,7 +1683,7 @@
     "movesWait": "Neke se bilješke još ne mogu premjestiti",
     "movesWaitHint": "Memry se zatvorio dok je premještao ili preimenovao ove bilješke i nije uspio završiti. Dok to ne učini, ne mogu se premjestiti ni preimenovati. Memry će pokušati ponovno sljedeći put kad otvori ovaj trezor.",
     "journalDaysRenamed": "Neki unosi dnevnika više nemaju datum kao naziv",
-    "journalDaysRenamedHint": "Ovi unosi dnevnika preimenovani su izvan Memryja dok je njihova mapa čekala postavku mape dnevnika, pa im nazivi više nisu datumi. Ostaju unosi dnevnika dok im ne vratite nazive. Pretvaranjem unosa u bilješku njegov se unos dnevnika uklanja sa svih vaših uređaja, a tekst ostaje kao bilješka.",
+    "journalDaysRenamedHint": "Ovi unosi dnevnika preimenovani su izvan Memryja dok je njihova mapa čekala postavku mape dnevnika, pa im nazivi više nisu datumi. Ostaju unosi dnevnika dok im ne vratite nazive. Pretvaranjem unosa u bilješku njegov se unos dnevnika uklanja sa svih vaših uređaja, a tekst ostaje kao bilješka. Njegove se oznake ne zadržavaju.",
     "turnIntoNotes": "Pretvori u bilješke"
   }
 }

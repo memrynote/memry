@@ -1683,7 +1683,7 @@
     "movesWait": "Niektoré poznámky sa zatiaľ nedajú presunúť",
     "movesWaitHint": "Memry sa zatvorilo počas presúvania alebo premenovania týchto poznámok a nepodarilo sa mu to dokončiť. Kým sa to nestane, nemožno ich presunúť ani premenovať. Memry to skúsi znova pri ďalšom otvorení tohto trezoru.",
     "journalDaysRenamed": "Niektoré záznamy denníka už nemajú ako názov dátum",
-    "journalDaysRenamedHint": "Tieto záznamy denníka boli premenované mimo Memry, kým ich priečinok čakal na nastavenie priečinka denníka, takže ich názvy už nie sú dátumy. Zostanú záznamami denníka, kým ich nepremenujete späť. Prevodom na poznámku sa jeho záznam denníka odstráni na všetkých vašich zariadeniach a text zostane ako poznámka.",
+    "journalDaysRenamedHint": "Tieto záznamy denníka boli premenované mimo Memry, kým ich priečinok čakal na nastavenie priečinka denníka, takže ich názvy už nie sú dátumy. Zostanú záznamami denníka, kým ich nepremenujete späť. Prevodom na poznámku sa jeho záznam denníka odstráni na všetkých vašich zariadeniach a text zostane ako poznámka. Jeho značky sa nezachovajú.",
     "turnIntoNotes": "Previesť na poznámky"
   }
 }

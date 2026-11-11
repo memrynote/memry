@@ -1683,7 +1683,7 @@
     "movesWait": "Unele notițe nu pot fi mutate încă",
     "movesWaitHint": "Memry s-a închis în timp ce muta sau redenumea aceste notițe și nu a putut termina. Nu pot fi mutate sau redenumite până nu termină. Memry va încerca din nou data viitoare când deschide acest seif.",
     "journalDaysRenamed": "Unele intrări de jurnal nu mai au o dată ca nume",
-    "journalDaysRenamedHint": "Aceste intrări de jurnal au fost redenumite în afara Memry în timp ce dosarul lor aștepta setarea dosarului jurnalului, așa că numele lor nu mai sunt date. Rămân intrări de jurnal până când le redai numele. Transformarea uneia în notiță îi șterge intrarea de jurnal de pe toate dispozitivele tale și îi păstrează textul ca notiță.",
+    "journalDaysRenamedHint": "Aceste intrări de jurnal au fost redenumite în afara Memry în timp ce dosarul lor aștepta setarea dosarului jurnalului, așa că numele lor nu mai sunt date. Rămân intrări de jurnal până când le redai numele. Transformarea uneia în notiță îi șterge intrarea de jurnal de pe toate dispozitivele tale și îi păstrează textul ca notiță. Etichetele ei nu se păstrează.",
     "turnIntoNotes": "Transformă în notițe"
   }
 }

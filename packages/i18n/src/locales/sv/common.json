@@ -1683,7 +1683,7 @@
     "movesWait": "Vissa anteckningar kan inte flyttas än",
     "movesWaitHint": "Memry stängdes medan de här anteckningarna flyttades eller bytte namn, och kunde inte slutföra det. De kan inte flyttas eller byta namn förrän det är klart. Memry försöker igen nästa gång valvet öppnas.",
     "journalDaysRenamed": "Vissa dagboksanteckningar har inte längre ett datum som namn",
-    "journalDaysRenamedHint": "Dessa dagboksanteckningar döptes om utanför Memry medan deras mapp väntade på inställningen för dagboksmappen, så deras namn är inte längre datum. De förblir dagboksanteckningar tills du ger dem tillbaka sina namn. Görs en om till en anteckning tas dagboksanteckningen bort på alla dina enheter och texten behålls som anteckning.",
+    "journalDaysRenamedHint": "Dessa dagboksanteckningar döptes om utanför Memry medan deras mapp väntade på inställningen för dagboksmappen, så deras namn är inte längre datum. De förblir dagboksanteckningar tills du ger dem tillbaka sina namn. Görs en om till en anteckning tas dagboksanteckningen bort på alla dina enheter och texten behålls som anteckning. Dess taggar behålls inte.",
     "turnIntoNotes": "Gör om till anteckningar"
   }
 }

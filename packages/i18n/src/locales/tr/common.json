@@ -1683,7 +1683,7 @@
     "movesWait": "Bazı notlar henüz taşınamıyor",
     "movesWaitHint": "Memry bu notları taşırken veya yeniden adlandırırken kapandı ve işlemi bitiremedi. İşlem bitene kadar bu notlar taşınamaz veya yeniden adlandırılamaz. Memry bu kasayı bir sonraki açışında yeniden dener.",
     "journalDaysRenamed": "Bazı günlük sayfalarının adı artık tarih değil",
-    "journalDaysRenamedHint": "Bu günlük sayfaları, klasörleri günlük klasörü ayarını beklerken Memry dışında yeniden adlandırıldı, bu yüzden adları artık tarih değil. Adlarını geri verene kadar günlük sayfası olarak kalırlar. Birini nota dönüştürmek, günlük sayfasını tüm cihazlarından kaldırır ve metnini not olarak saklar.",
+    "journalDaysRenamedHint": "Bu günlük sayfaları, klasörleri günlük klasörü ayarını beklerken Memry dışında yeniden adlandırıldı, bu yüzden adları artık tarih değil. Adlarını geri verene kadar günlük sayfası olarak kalırlar. Birini nota dönüştürmek, günlük sayfasını tüm cihazlarından kaldırır ve metnini not olarak saklar. Etiketleri korunmaz.",
     "turnIntoNotes": "Nota dönüştür"
   }
 }

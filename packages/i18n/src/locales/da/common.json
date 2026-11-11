@@ -1683,7 +1683,7 @@
     "movesWait": "Nogle noter kan ikke flyttes endnu",
     "movesWaitHint": "Memry lukkede, mens disse noter blev flyttet eller omdøbt, og kunne ikke gøre det færdigt. De kan ikke flyttes eller omdøbes, før det er sket. Memry prøver igen, næste gang denne boks åbnes.",
     "journalDaysRenamed": "Nogle dagbogsindlæg har ikke længere en dato som navn",
-    "journalDaysRenamedHint": "Disse dagbogsindlæg blev omdøbt uden for Memry, mens deres mappe ventede på indstillingen for dagbogsmappen, så deres navne er ikke længere datoer. De forbliver dagbogsindlæg, indtil du giver dem deres navne tilbage. Gøres et til en note, fjernes dets dagbogsindlæg på alle dine enheder, og teksten bevares som en note.",
+    "journalDaysRenamedHint": "Disse dagbogsindlæg blev omdøbt uden for Memry, mens deres mappe ventede på indstillingen for dagbogsmappen, så deres navne er ikke længere datoer. De forbliver dagbogsindlæg, indtil du giver dem deres navne tilbage. Gøres et til en note, fjernes dets dagbogsindlæg på alle dine enheder, og teksten bevares som en note. Dets tags bevares ikke.",
     "turnIntoNotes": "Gør til noter"
   }
 }

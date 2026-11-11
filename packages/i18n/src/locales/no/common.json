@@ -1683,7 +1683,7 @@
     "movesWait": "Noen notater kan ikke flyttes ennå",
     "movesWaitHint": "Memry ble lukket mens disse notatene ble flyttet eller gitt nytt navn, og kunne ikke fullføre. De kan ikke flyttes eller gis nytt navn før det er gjort. Memry prøver igjen neste gang dette hvelvet åpnes.",
     "journalDaysRenamed": "Noen dagbokoppføringer har ikke lenger en dato som navn",
-    "journalDaysRenamedHint": "Disse dagbokoppføringene ble gitt nytt navn utenfor Memry mens mappen deres ventet på innstillingen for dagbokmappen, så navnene deres er ikke lenger datoer. De forblir dagbokoppføringer til du gir dem navnene tilbake. Gjør du en om til et notat, fjernes dagbokoppføringen på alle enhetene dine, og teksten beholdes som et notat.",
+    "journalDaysRenamedHint": "Disse dagbokoppføringene ble gitt nytt navn utenfor Memry mens mappen deres ventet på innstillingen for dagbokmappen, så navnene deres er ikke lenger datoer. De forblir dagbokoppføringer til du gir dem navnene tilbake. Gjør du en om til et notat, fjernes dagbokoppføringen på alle enhetene dine, og teksten beholdes som et notat. Taggene beholdes ikke.",
     "turnIntoNotes": "Gjør om til notater"
   }
 }

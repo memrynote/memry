@@ -1683,7 +1683,7 @@
     "movesWait": "Some notes can't be moved yet",
     "movesWaitHint": "Memry closed while moving or renaming these notes, and couldn't finish. They can't be moved or renamed until it does. Memry tries again the next time it opens this vault.",
     "journalDaysRenamed": "Some journal entries no longer have a date name",
-    "journalDaysRenamedHint": "These journal entries were renamed outside Memry while their folder waited for the journal folder setting, so their names are no longer dates. They stay journal entries until you rename them back. Turning one into a note removes its journal entry on all your devices and keeps its text as a note.",
+    "journalDaysRenamedHint": "These journal entries were renamed outside Memry while their folder waited for the journal folder setting, so their names are no longer dates. They stay journal entries until you rename them back. Turning one into a note removes its journal entry on all your devices and keeps its text as a note. Its tags aren't kept.",
     "turnIntoNotes": "Turn into notes"
   }
 }

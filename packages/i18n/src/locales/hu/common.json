@@ -1683,7 +1683,7 @@
     "movesWait": "Néhány jegyzetet még nem lehet áthelyezni",
     "movesWaitHint": "A Memry bezárult, miközben ezeket a jegyzeteket áthelyezte vagy átnevezte, és nem tudta befejezni. Addig nem lehet őket áthelyezni vagy átnevezni. A Memry a tároló következő megnyitásakor újra megpróbálja.",
     "journalDaysRenamed": "Néhány naplóbejegyzés neve már nem dátum",
-    "journalDaysRenamedHint": "Ezeket a naplóbejegyzéseket a Memryn kívül nevezték át, miközben a mappájuk a naplómappa beállítására várt, így a nevük már nem dátum. Naplóbejegyzések maradnak, amíg vissza nem nevezed őket. Ha jegyzetté alakítasz egyet, a naplóbejegyzése minden eszközödről törlődik, a szövege pedig jegyzetként megmarad.",
+    "journalDaysRenamedHint": "Ezeket a naplóbejegyzéseket a Memryn kívül nevezték át, miközben a mappájuk a naplómappa beállítására várt, így a nevük már nem dátum. Naplóbejegyzések maradnak, amíg vissza nem nevezed őket. Ha jegyzetté alakítasz egyet, a naplóbejegyzése minden eszközödről törlődik, a szövege pedig jegyzetként megmarad. A címkéi nem maradnak meg.",
     "turnIntoNotes": "Átalakítás jegyzetekké"
   }
 }

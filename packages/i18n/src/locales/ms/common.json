@@ -1683,7 +1683,7 @@
     "movesWait": "Sesetengah nota belum boleh dialihkan",
     "movesWaitHint": "Memry tertutup semasa mengalihkan atau menamakan semula nota ini, dan tidak dapat menyelesaikannya. Nota ini tidak boleh dialihkan atau dinamakan semula sehingga ia selesai. Memry akan mencuba lagi apabila membuka bilik kebal ini kali seterusnya.",
     "journalDaysRenamed": "Sesetengah entri jurnal tidak lagi bernama tarikh",
-    "journalDaysRenamedHint": "Entri jurnal ini dinamakan semula di luar Memry semasa foldernya menunggu tetapan folder jurnal, jadi namanya bukan tarikh lagi. Entri ini kekal sebagai entri jurnal sehingga anda menamakannya semula seperti asal. Menukar satu entri kepada nota akan memadam entri jurnalnya pada semua peranti anda dan menyimpan teksnya sebagai nota.",
+    "journalDaysRenamedHint": "Entri jurnal ini dinamakan semula di luar Memry semasa foldernya menunggu tetapan folder jurnal, jadi namanya bukan tarikh lagi. Entri ini kekal sebagai entri jurnal sehingga anda menamakannya semula seperti asal. Menukar satu entri kepada nota akan memadam entri jurnalnya pada semua peranti anda dan menyimpan teksnya sebagai nota. Tegnya tidak dikekalkan.",
     "turnIntoNotes": "Tukar kepada nota"
   }
 }

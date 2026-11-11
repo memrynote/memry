@@ -1683,7 +1683,7 @@
     "movesWait": "Beberapa catatan belum bisa dipindahkan",
     "movesWaitHint": "Memry tertutup saat memindahkan atau mengganti nama catatan-catatan ini, dan tidak bisa menyelesaikannya. Catatan ini tidak bisa dipindahkan atau diganti namanya sampai selesai. Memry akan mencoba lagi saat brankas ini dibuka berikutnya.",
     "journalDaysRenamed": "Beberapa entri jurnal tidak lagi bernama tanggal",
-    "journalDaysRenamedHint": "Entri jurnal ini diganti namanya di luar Memry saat foldernya menunggu pengaturan folder jurnal, sehingga namanya bukan tanggal lagi. Entri ini tetap menjadi entri jurnal sampai Anda mengembalikan namanya. Mengubah satu entri menjadi catatan akan menghapus entri jurnalnya di semua perangkat Anda dan menyimpan teksnya sebagai catatan.",
+    "journalDaysRenamedHint": "Entri jurnal ini diganti namanya di luar Memry saat foldernya menunggu pengaturan folder jurnal, sehingga namanya bukan tanggal lagi. Entri ini tetap menjadi entri jurnal sampai Anda mengembalikan namanya. Mengubah satu entri menjadi catatan akan menghapus entri jurnalnya di semua perangkat Anda dan menyimpan teksnya sebagai catatan. Tag-nya tidak dipertahankan.",
     "turnIntoNotes": "Ubah menjadi catatan"
   }
 }

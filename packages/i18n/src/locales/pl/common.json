@@ -1683,7 +1683,7 @@
     "movesWait": "Niektórych notatek nie można jeszcze przenieść",
     "movesWaitHint": "Memry zamknął się podczas przenoszenia lub zmiany nazwy tych notatek i nie zdołał dokończyć. Do tego czasu nie można ich przenieść ani zmienić ich nazwy. Memry spróbuje ponownie przy następnym otwarciu tego sejfu.",
     "journalDaysRenamed": "Niektóre wpisy dziennika nie mają już daty jako nazwy",
-    "journalDaysRenamedHint": "Nazwy tych wpisów dziennika zmieniono poza Memry, gdy ich folder czekał na ustawienie folderu dziennika, więc ich nazwy nie są już datami. Pozostaną wpisami dziennika, dopóki nie przywrócisz ich nazw. Zamiana wpisu na notatkę usuwa ten wpis dziennika na wszystkich Twoich urządzeniach, a jego tekst zachowuje jako notatkę.",
+    "journalDaysRenamedHint": "Nazwy tych wpisów dziennika zmieniono poza Memry, gdy ich folder czekał na ustawienie folderu dziennika, więc ich nazwy nie są już datami. Pozostaną wpisami dziennika, dopóki nie przywrócisz ich nazw. Zamiana wpisu na notatkę usuwa ten wpis dziennika na wszystkich Twoich urządzeniach, a jego tekst zachowuje jako notatkę. Jego tagi nie są zachowywane.",
     "turnIntoNotes": "Zamień na notatki"
   }
 }

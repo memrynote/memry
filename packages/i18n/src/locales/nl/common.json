@@ -1683,7 +1683,7 @@
     "movesWait": "Sommige notities kunnen nog niet worden verplaatst",
     "movesWaitHint": "Memry sloot af terwijl het deze notities verplaatste of hernoemde, en kon dat niet afronden. Tot dat gebeurt, kunnen ze niet worden verplaatst of hernoemd. Memry probeert het opnieuw wanneer deze kluis de volgende keer wordt geopend.",
     "journalDaysRenamed": "Sommige journaalitems hebben geen datum meer als naam",
-    "journalDaysRenamedHint": "Deze journaalitems zijn buiten Memry hernoemd terwijl hun map wachtte op de instelling van de journaalmap, dus hun namen zijn geen datums meer. Ze blijven journaalitems tot je hun naam terugzet. Als je er een omzet in een notitie, verdwijnt het journaalitem op al je apparaten en blijft de tekst bewaard als notitie.",
+    "journalDaysRenamedHint": "Deze journaalitems zijn buiten Memry hernoemd terwijl hun map wachtte op de instelling van de journaalmap, dus hun namen zijn geen datums meer. Ze blijven journaalitems tot je hun naam terugzet. Als je er een omzet in een notitie, verdwijnt het journaalitem op al je apparaten en blijft de tekst bewaard als notitie. De tags worden niet bewaard.",
     "turnIntoNotes": "Omzetten in notities"
   }
 }

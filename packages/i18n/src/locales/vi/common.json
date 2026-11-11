@@ -1683,7 +1683,7 @@
     "movesWait": "Một số ghi chú chưa thể di chuyển",
     "movesWaitHint": "Memry đã đóng khi đang di chuyển hoặc đổi tên các ghi chú này, và không thể hoàn tất. Cho đến khi xong, không thể di chuyển hoặc đổi tên chúng. Memry sẽ thử lại vào lần tới mở kho này.",
     "journalDaysRenamed": "Một số mục nhật ký không còn mang tên là ngày",
-    "journalDaysRenamedHint": "Các mục nhật ký này đã được đổi tên bên ngoài Memry trong khi thư mục của chúng chờ cài đặt thư mục nhật ký, nên tên của chúng không còn là ngày. Chúng vẫn là mục nhật ký cho đến khi bạn đổi lại tên. Chuyển một mục thành ghi chú sẽ xóa mục nhật ký đó trên mọi thiết bị của bạn và giữ nội dung của nó dưới dạng ghi chú.",
+    "journalDaysRenamedHint": "Các mục nhật ký này đã được đổi tên bên ngoài Memry trong khi thư mục của chúng chờ cài đặt thư mục nhật ký, nên tên của chúng không còn là ngày. Chúng vẫn là mục nhật ký cho đến khi bạn đổi lại tên. Chuyển một mục thành ghi chú sẽ xóa mục nhật ký đó trên mọi thiết bị của bạn và giữ nội dung của nó dưới dạng ghi chú. Thẻ của mục đó không được giữ lại.",
     "turnIntoNotes": "Chuyển thành ghi chú"
   }
 }
