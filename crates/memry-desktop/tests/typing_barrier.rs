@@ -15,7 +15,7 @@ use memry_desktop::notes::error::NotesError;
 use memry_desktop::notes::write_order::WriteOrder;
 use memry_desktop::vault::app_edit::{AppEdit, Edited, Precondition};
 use memry_desktop::vault::consumer::{Applied, ChangeSource};
-use memry_desktop::vault::hash::content_hash;
+use memry_desktop::vault::watch::echo::CAPACITY;
 use yrs::types::xml::XmlOut;
 use yrs::updates::decoder::Decode as _;
 use yrs::{Doc, ReadTxn as _, Text as _, Transact as _, Update, WriteTxn as _, XmlFragment as _};
@@ -259,11 +259,11 @@ fn a_window_hears_the_fed_outside_edit_between_its_barrier_and_its_release() {
     assert_eq!(main.kinds_once_released(), [BARRIER, 2, RELEASE]);
 }
 
-/// The app's own write that the watcher reads only once the next save recorded its bytes (a note
-/// with an inline tag: the header's tags, then the write-back of the body) comes through as a
-/// change. Its file is the text the row names, so nothing is fed, and no window is asked to hold
-/// its typing: holding, the window refuses what the user types meanwhile, and the keystrokes are
-/// gone (#3967).
+/// The app's own write that the watcher reads once its record is gone (evicted past the echo
+/// guard's capacity) comes through as a change. Its file is the text the row names, so nothing
+/// is fed, and no window is asked to hold its typing: holding, the window refuses what the user
+/// types meanwhile (#3967). A next save recorded before the watcher looked no longer ends the
+/// record (#4222, `vault_watch`).
 #[test]
 fn the_apps_own_write_read_as_a_change_holds_no_typing() {
     let mut s = served();
@@ -293,9 +293,10 @@ fn the_apps_own_write_read_as_a_change_holds_no_typing() {
         "{edited:?}"
     );
     let written = indexed_at();
-    // The next save's record, before the watcher's debounce let it look at this file.
-    let next = "---\ntags:\n  - car\n---\nreported words and more\n";
-    s.e.tier.echo().will_write("n.md", &content_hash(next));
+    // The record goes before the watcher's debounce let it look at this file.
+    for n in 0..CAPACITY {
+        s.e.tier.echo().will_write(&format!("other-{n}.md"), "h");
+    }
 
     // The consumer read the file back as its row names it: the row's time moved on.
     let deadline = Instant::now() + WAIT;

@@ -2,10 +2,13 @@
 //!
 //! A writer (12e's write-back, a rename, a delete) records what it is about to put on disk
 //! before it does. When the watcher sees that path it compares the file's hash with the
-//! recorded one and drops the event on a match. There is no time window: a recorded entry stays
-//! until the file is seen with other content (an outside edit, which then passes and clears the
-//! entry) or until it is evicted, oldest first, past [`CAPACITY`]. An evicted entry costs one
-//! redundant event, which the consumer's own hash check settles.
+//! recorded ones and drops the event on a match. A path keeps every write recorded and not yet
+//! seen (up to [`PENDING_PER_PATH`]): a second save recorded before the watcher looked at the
+//! first one's file must not turn that file into an outside edit (#4222). Seeing one write's
+//! bytes ends the writes recorded before it, which it replaced. There is no time window: a
+//! recorded entry stays until the file is seen with other content (an outside edit, which then
+//! passes and clears the entry) or until it is evicted, oldest first, past [`CAPACITY`]. An
+//! evicted entry costs one redundant event, which the consumer's own hash check settles.
 //!
 //! A folder the app moves away whole is one record for the folder and everything below it
 //! ([`EchoGuard::will_remove_tree`]): an entry-wise move (#2206) reports each entry's going, and
@@ -25,10 +28,15 @@ use std::io;
 use std::sync::Mutex;
 
 pub const CAPACITY: usize = 4096;
+/// The writes of one path recorded and not yet seen; past it the oldest goes. Writes of one note
+/// are serialized, so more than a couple pending means the watcher fell far behind, and a write
+/// dropped here costs one redundant event, as an evicted entry does.
+pub const PENDING_PER_PATH: usize = 16;
 
 #[derive(Debug, Clone, PartialEq, Eq)]
 enum Expected {
-    Hash(String),
+    /// The hashes of the app's writes not yet seen, oldest first; never empty.
+    Hashes(VecDeque<String>),
     Gone,
     /// The path and everything below it; `settled` once the mover saw it go.
     GoneTree {
@@ -82,17 +90,30 @@ impl EchoGuard {
         self.state.lock().unwrap_or_else(|e| e.into_inner())
     }
 
-    /// The app is about to write `path` with bytes whose hash is `hash`.
+    /// The app is about to write `path` with bytes whose hash is `hash`. The writes recorded
+    /// before it and not yet seen stay recorded.
     pub fn will_write(&self, path: &str, hash: &str) {
-        self.lock().put(path, Expected::Hash(hash.to_owned()));
+        let mut state = self.lock();
+        if let Some(Expected::Hashes(hashes)) = state.by_path.get_mut(path) {
+            hashes.retain(|pending| pending != hash);
+            hashes.push_back(hash.to_owned());
+            while hashes.len() > PENDING_PER_PATH {
+                hashes.pop_front();
+            }
+            return;
+        }
+        state.put(path, Expected::Hashes(VecDeque::from([hash.to_owned()])));
     }
 
-    /// The write told with [`Self::will_write`] did not happen (a file was there first): what
-    /// is seen at `path` from now on is not the app's, the same bytes included.
+    /// The write told last with [`Self::will_write`] did not happen (a file was there first):
+    /// its bytes seen at `path` from now on are not the app's. Writes recorded before it stay.
     pub fn cancel_write(&self, path: &str) {
         let mut state = self.lock();
-        if matches!(state.by_path.get(path), Some(Expected::Hash(_))) {
-            state.forget(path);
+        if let Some(Expected::Hashes(hashes)) = state.by_path.get_mut(path) {
+            hashes.pop_back();
+            if hashes.is_empty() {
+                state.forget(path);
+            }
         }
     }
 
@@ -144,28 +165,29 @@ impl EchoGuard {
         })
     }
 
-    /// The hash the app last wrote at `path`, when one is recorded. The watcher hashes the
-    /// file only then.
+    /// The hash the app last recorded a write of at `path`, when one is recorded.
     pub fn expected_hash(&self, path: &str) -> Option<String> {
         match self.lock().by_path.get(path) {
-            Some(Expected::Hash(hash)) => Some(hash.clone()),
+            Some(Expected::Hashes(hashes)) => hashes.back().cloned(),
             _ => None,
         }
     }
 
-    /// `path` was seen with `observed`. True when that is the app's own write, which stays
-    /// recorded; any other content is an outside edit and clears the record. A removal's
+    /// `path` was seen with `observed`. True when that is one of the app's own writes recorded
+    /// there: it stays recorded, with the writes after it, and those before it end, since it
+    /// replaced them. Any other content is an outside edit and clears the record. A removal's
     /// record is [`Self::seen_file`]'s to end.
     pub fn absorbs_write(&self, path: &str, observed: &str) -> bool {
         let mut state = self.lock();
-        match state.by_path.get(path) {
-            Some(Expected::Hash(expected)) if expected == observed => true,
-            Some(Expected::Hash(_)) => {
-                state.forget(path);
-                false
-            }
-            Some(Expected::Gone | Expected::GoneTree { .. }) | None => false,
+        let Some(Expected::Hashes(hashes)) = state.by_path.get_mut(path) else {
+            return false;
+        };
+        if let Some(at) = hashes.iter().position(|hash| hash == observed) {
+            hashes.drain(..at);
+            return true;
         }
+        state.forget(path);
+        false
     }
 
     /// The file at `path` was seen present. The app's removal of it is over if `there` (a look
@@ -384,6 +406,43 @@ mod tests {
         );
         echo.removing("b.md", || Ok(())).unwrap();
         assert!(echo.absorbs_removal("b.md"));
+    }
+
+    #[test]
+    fn every_write_recorded_before_the_file_is_seen_is_absorbed_in_turn() {
+        let echo = EchoGuard::default();
+        echo.will_write("a.md", "h1");
+        echo.will_write("a.md", "h2");
+        assert!(echo.absorbs_write("a.md", "h1"), "the first save's file");
+        assert!(echo.absorbs_write("a.md", "h2"), "the second save's file");
+        assert!(
+            !echo.absorbs_write("a.md", "h1"),
+            "the first save's bytes back after the second's are an edit"
+        );
+    }
+
+    #[test]
+    fn a_cancelled_write_keeps_the_writes_recorded_before_it() {
+        let echo = EchoGuard::default();
+        echo.will_write("a.md", "h1");
+        echo.will_write("a.md", "h2");
+        echo.cancel_write("a.md");
+        assert_eq!(echo.expected_hash("a.md").as_deref(), Some("h1"));
+        echo.cancel_write("a.md");
+        assert!(!echo.absorbs_write("a.md", "h1"));
+    }
+
+    #[test]
+    fn the_writes_pending_at_one_path_are_bounded() {
+        let echo = EchoGuard::default();
+        for n in 0..=PENDING_PER_PATH {
+            echo.will_write("a.md", &format!("h{n}"));
+        }
+        assert!(!echo.absorbs_write("a.md", "h0"), "the oldest went");
+        for n in 0..=PENDING_PER_PATH {
+            echo.will_write("a.md", &format!("h{n}"));
+        }
+        assert!(echo.absorbs_write("a.md", "h1"));
     }
 
     #[test]

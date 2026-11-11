@@ -171,7 +171,8 @@ impl Applier {
         let source = walk_or_watcher(scan.as_deref());
         match lane.row_at(path) {
             Ok(Some(row)) => {
-                return self.changed(lane, &row.note_id, path, size, modified_ms, scan);
+                let stat = (size, modified_ms);
+                return self.changed(lane, &row.note_id, path, stat, scan, None);
             }
             Ok(None) => {}
             Err(error) => {
@@ -252,15 +253,16 @@ impl Applier {
         Step::Done
     }
 
-    /// The note's file at `path` differs from its row.
+    /// The note's file at `path` differs from its row. `read` is the file when the caller read
+    /// it already (`watched_change`), else it is read here.
     fn changed(
         &self,
         lane: &mut Lane<'_>,
         note_id: &str,
         path: &str,
-        size: u64,
-        modified_ms: i64,
+        (size, modified_ms): (u64, i64),
         scan: Option<&mut ScanActivity>,
+        read: Option<NoteFile>,
     ) -> Step {
         let source = walk_or_watcher(scan.as_deref());
         let Some(file_type) = file_type_of_extension(&extension(path)) else {
@@ -279,7 +281,11 @@ impl Applier {
             }
         };
         let content_hash = if file_type == FileType::Markdown {
-            let file = match self.read(path, file_type) {
+            let read = match read {
+                Some(file) => Ok(Some(file)),
+                None => self.read(path, file_type),
+            };
+            let file = match read {
                 Ok(Some(file)) => file,
                 Ok(None) => return Step::Done,
                 Err(Unread::Missing) => return Step::Retry(path.to_owned()),
