@@ -171,6 +171,29 @@ for (let i = 0; i < Number(process.env.SCRATCH_N ?? 12); i++) {
     await cellHandle.click()
     await page.evaluate(() => (window as any).__rec('nub clicked'))
     await page.getByText('Colors', { exact: true }).first().click()
+    if (process.env.SCRATCH_SAMPLE) {
+      const samples = await page.evaluate(
+        () =>
+          new Promise<string[]>((resolve) => {
+            const out: string[] = []
+            const t0 = performance.now()
+            const step = () => {
+              const red = document.querySelector('[data-test="background-color-red"]')
+              const dd = red?.closest(
+                '.bn-color-picker-dropdown, [data-slot]'
+              ) as HTMLElement | null
+              const r = red?.getBoundingClientRect()
+              out.push(
+                `${Math.round(performance.now() - t0)} red=${r ? `${Math.round(r.x)},${Math.round(r.y)} ${Math.round(r.width)}x${Math.round(r.height)}` : '-'} anim=${dd ? getComputedStyle(dd).transform + ' ' + getComputedStyle(dd).opacity : '-'}`
+              )
+              if (performance.now() - t0 < 600) requestAnimationFrame(step)
+              else resolve(out)
+            }
+            step()
+          })
+      )
+      console.log(`SAMPLES\n${samples.join('\n')}`)
+    }
     await page.evaluate(() => (window as any).__rec('colors clicked'))
     await page.locator('[data-test="background-color-red"]').first().click()
     await page.evaluate(() => (window as any).__rec('red clicked'))
