@@ -65,7 +65,11 @@ struct EditableBlockView: UIViewRepresentable {
         let traits = view.traitCollection
         let changed = field.block != block || field.style.font != Self.font(for: role) || field.alignment != alignment
             || field.style.ink.resolvedColor(with: traits) != nextInk.resolvedColor(with: traits)
+        let moved = field.block.id != block.id
         field.block = block
+        // Rows are drawn by position: a block inserted or removed above hands
+        // this text view the next block, which `focus` must find it under.
+        if moved { session.drawn(field) }
         field.session = session
         field.alignment = alignment
         field.style = BlockText.Style(font: Self.font(for: role), ink: nextInk, titleExists: session.titleExists, tagColors: session.tagColors)

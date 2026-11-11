@@ -292,12 +292,16 @@ final class EditorSession {
     /// Puts the caret at the end of `blockId`: now when its row is on
     /// screen, else once it is drawn (`pendingFocus`). A row the page drew
     /// before the request (a reload that raced the write) never reads
-    /// `pendingFocus` again.
+    /// `pendingFocus` again. A field that has since moved on to another
+    /// block is not this block's.
     func focus(_ blockId: String) {
-        guard let textView = drawnFields.object(forKey: blockId as NSString)?.textView, textView.window != nil else {
+        guard let field = drawnFields.object(forKey: blockId as NSString), field.blockId == blockId,
+              field.textView.window != nil
+        else {
             pendingFocus = blockId
             return
         }
+        let textView = field.textView
         textView.becomeFirstResponder()
         textView.selectedRange = NSRange(location: textView.textStorage.length, length: 0)
     }

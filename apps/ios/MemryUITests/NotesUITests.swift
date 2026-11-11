@@ -160,6 +160,43 @@ final class NotesUITests: XCTestCase {
         XCTAssertTrue(row.waitForNonExistence(timeout: 10))
     }
 
+    /// #4152: after one join, the lines below it are drawn by the rows above
+    /// them. A second Backspace further down put the caret in the row that
+    /// then went away, so the caret and the keyboard went with it.
+    func testBackspaceKeepsTheCaretAfterAnEarlierJoin() throws {
+        try openNotes()
+        let title = "[agent] SHIP-4152-\(run) second join"
+        makeNote(title).tap()
+        let blocks = app.textViews.matching(NSPredicate(format: "identifier BEGINSWITH 'note.block.'"))
+        let newLine = blocks.matching(NSPredicate(format: "hasKeyboardFocus == true AND value == ''")).firstMatch
+        for line in ["one", "two", "three"] {
+            app.typeText(line + "\n")
+            XCTAssertTrue(newLine.waitForExistence(timeout: 10), "Return made no block")
+        }
+        app.typeText("four")
+        func line(_ text: String) -> XCUIElement {
+            blocks.matching(NSPredicate(format: "value == %@", text)).firstMatch
+        }
+        func backspace(atStartOf text: String) {
+            let block = line(text)
+            XCTAssertTrue(block.waitForExistence(timeout: 10), "no line \(text)")
+            block.coordinate(withNormalizedOffset: CGVector(dx: 0, dy: 0.5)).withOffset(CGVector(dx: 1, dy: 0)).tap()
+            app.typeText(XCUIKeyboardKey.delete.rawValue)
+        }
+        backspace(atStartOf: "two")
+        XCTAssertTrue(line("onetwo").waitForExistence(timeout: 10), "the first join did not land")
+        backspace(atStartOf: "four")
+        XCTAssertTrue(line("threefour").waitForExistence(timeout: 10), "the second join did not land")
+        let joined = blocks.matching(NSPredicate(format: "hasKeyboardFocus == true AND value == 'threefour'"))
+            .firstMatch
+        XCTAssertTrue(joined.waitForExistence(timeout: 10), "the caret did not stay in the joined line")
+        app.typeText("X")
+        XCTAssertTrue(line("threeXfour").waitForExistence(timeout: 10), "the caret is not at the join")
+
+        app.buttons["BackButton"].tap()
+        deleteFromList(app.buttons.matching(NSPredicate(format: "label CONTAINS %@", title)).firstMatch)
+    }
+
     /// #4151: a tap in the empty space under a stored note's body did
     /// nothing when the body ended in an empty line, so a short note could
     /// not be typed into.
