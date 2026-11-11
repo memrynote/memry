@@ -118,16 +118,19 @@ impl NotesService {
             }
             trashed => trashed,
         };
-        let removed = if holds_unread_text(root, row) {
-            trash(&row.path)
-        } else {
-            unlink(&echo, root, &row.path).map_err(NotesError::from)
-        };
-        // A copy beside a file at the row's path goes to the trash on its own.
+        // A copy beside a file at the row's path goes to the trash on its own, first: a refusal
+        // of it leaves that file where it was (#4272).
         let removed = match &copied {
-            Some(copy) if copy.at != row.path => removed.and_then(|()| trash(&copy.at)),
-            _ => removed,
+            Some(copy) if copy.at != row.path => trash(&copy.at),
+            _ => Ok(()),
         };
+        let removed = removed.and_then(|()| {
+            if holds_unread_text(root, row) {
+                trash(&row.path)
+            } else {
+                unlink(&echo, root, &row.path).map_err(NotesError::from)
+            }
+        });
         if let Some(copy) = copied {
             if removed.is_err() {
                 copy.take_back(&echo, root, &row.note_id);

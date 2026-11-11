@@ -61,9 +61,6 @@ use crate::vault::note_file::{
 use crate::vault::notices::{Listed, VaultNotices};
 use crate::vault::watch::EchoGuard;
 
-/// The names a kept note's copy tries ([`NotesService::write_kept_copy`]), as a create's.
-const MAX_CANDIDATES: usize = 10_000;
-
 /// Restores the kept note's file from its document, and takes the note off the notice. A note
 /// that is gone leaves the notice too.
 pub fn restore(
@@ -238,10 +235,12 @@ impl NotesService {
 
     /// Writes the text of the kept row `row` (a markdown note's row that names no text) from its
     /// document, for a delete to move to the trash; `None` for a row that is not kept. The copy
-    /// goes at the row's path, or beside it as `<name> 1.md` (as a create names a note) when
-    /// anything stands there: a file the watcher has not taken yet, or one another case of the
-    /// name reaches on a case-blind disk, which the delete then trashes without the note's text.
-    /// A file there that the document owes its text to (`FileAhead`) is the note's own: no copy.
+    /// goes at the row's path, or under the same name in a new hidden folder beside it
+    /// ([`staged`]) when anything stands there: a file the watcher has not taken yet, or one
+    /// another case of the name reaches on a case-blind disk, which the delete then trashes
+    /// without the note's text. The open walk and the watcher skip hidden folders, so a copy a
+    /// crash left there is never taken as a new note (#4272); its text stays on disk. A file at
+    /// the path that the document owes its text to (`FileAhead`) is the note's own: no copy.
     pub(crate) fn write_kept_copy(
         &self,
         lane: &Lane<'_>,
@@ -261,20 +260,15 @@ impl NotesService {
             Err(NotesError::EditKept(Kept::FileAhead)) if taken(&row.path) => return Ok(None),
             Err(error) => return Err(error),
         };
-        let mut copy = KeptCopy {
-            at: row.path.clone(),
-            made: first_missing_folder(root, &row.path)?,
-        };
-        for at in beside(&row.path).take(MAX_CANDIDATES) {
-            if taken(&at) {
-                continue;
-            }
-            match self.create_kept_file(root, &at, &output, &mut || {}) {
-                Ok(()) => {
-                    copy.at = at;
-                    return Ok(Some(copy));
-                }
-                // Taken since the look: the next name.
+        let free = Some(row.path.clone()).filter(|at| !taken(at));
+        for at in free.into_iter().chain([staged(&row.path)]) {
+            let copy = KeptCopy {
+                made: first_missing_folder(root, &at)?,
+                at,
+            };
+            match self.create_kept_file(root, &copy.at, &output, &mut || {}) {
+                Ok(()) => return Ok(Some(copy)),
+                // Taken since the look: the hidden folder.
                 Err(NotesError::File(NoteFileError::AlreadyExists)) => {}
                 Err(error) => {
                     copy.remove_made_folders(&self.tier.echo(), root);
@@ -412,7 +406,7 @@ impl NotesService {
 
 /// A kept row's text written for the delete's trash step ([`NotesService::write_kept_copy`]).
 pub(crate) struct KeptCopy {
-    /// Where the copy is: the row's path, or a free name beside it.
+    /// Where the copy is: the row's path, or its name in a hidden folder beside it.
     pub(crate) at: String,
     /// The topmost folder the write made; `None` when the file's folder stood.
     made: Option<String>,
@@ -451,16 +445,13 @@ impl KeptCopy {
     }
 }
 
-/// `rel`, then `<name> 1<ext>`, `<name> 2<ext>`, ... in its folder.
-fn beside(rel: &str) -> impl Iterator<Item = String> + '_ {
-    let (folder, name) = match rel.rsplit_once('/') {
-        Some((folder, name)) => (format!("{folder}/"), name),
-        None => (String::new(), rel),
-    };
-    let dot = name.rfind('.').filter(|&dot| dot > 0).unwrap_or(name.len());
-    let (stem, ext) = name.split_at(dot);
-    std::iter::once(rel.to_owned())
-        .chain((1..).map(move |counter| format!("{folder}{stem} {counter}{ext}")))
+/// `rel`'s name in a new hidden folder beside it: `f/.memry-kept-<12 hex>/a.md` for `f/a.md`.
+fn staged(rel: &str) -> String {
+    let id = uuid::Uuid::new_v4().simple().to_string();
+    match rel.rsplit_once('/') {
+        Some((folder, name)) => format!("{folder}/.memry-kept-{}/{name}", &id[..12]),
+        None => format!(".memry-kept-{}/{rel}", &id[..12]),
+    }
 }
 
 /// The folders that hold `rel`, deepest first: `a/b`, then `a`, for `a/b/c.md`.

@@ -591,7 +591,8 @@ fn a_restore_never_writes_over_a_file_that_appears_while_it_writes() {
     assert_eq!(e.read("a.md"), "Mine\n");
 }
 
-/// A trash beside the vault: the file moves to `<vault>.trashed/<name>`, outside every folder.
+/// A trash beside the vault: the file moves to `<vault>.trashed/<name>`, outside every folder,
+/// as `<name> 2` when that is taken, as an OS trash names it.
 fn bin_beside(path: &Path) -> Result<(), String> {
     let mut vault = path;
     while vault.file_name().is_none_or(|name| name != "vault") {
@@ -599,7 +600,15 @@ fn bin_beside(path: &Path) -> Result<(), String> {
     }
     let bin = vault.with_extension("trashed");
     fs::create_dir_all(&bin).map_err(|error| error.to_string())?;
-    fs::rename(path, bin.join(path.file_name().unwrap())).map_err(|error| error.to_string())
+    let mut to = bin.join(path.file_name().unwrap());
+    if to.exists() {
+        let stem = to.file_stem().unwrap().to_string_lossy().into_owned();
+        to.set_file_name(match path.extension() {
+            Some(ext) => format!("{stem} 2.{}", ext.to_string_lossy()),
+            None => format!("{stem} 2"),
+        });
+    }
+    fs::rename(path, to).map_err(|error| error.to_string())
 }
 
 #[test]
@@ -807,13 +816,13 @@ fn a_folder_delete_takes_a_kept_notes_text_to_the_trash_beside_a_file_at_its_pat
     e.write("f/a.md", MINE);
 
     notes.delete_folder(&open, "f").unwrap();
-    let trashed = e.vault.with_extension("trashed").join("f");
+    let trashed = e.vault.with_extension("trashed");
     assert_eq!(
-        fs::read_to_string(trashed.join("a 1.md")).ok().as_deref(),
+        fs::read_to_string(trashed.join("a.md")).ok().as_deref(),
         Some(RESTORED),
-        "the kept text is not in the trash"
+        "the kept text is not in the trash under its name"
     );
-    assert_eq!(fs::read_to_string(trashed.join("a.md")).unwrap(), MINE);
+    assert_eq!(fs::read_to_string(trashed.join("f/a.md")).unwrap(), MINE);
     let (deleted, ops) = record(&e, &id);
     assert!(deleted);
     assert_eq!(ops.last().map(String::as_str), Some("delete"));
@@ -828,20 +837,19 @@ fn a_kept_notes_delete_trashes_its_text_beside_a_file_at_its_path() {
         notes,
         notices,
         id,
-    } = kept_at("a.md", FILE, bin);
+    } = kept_at("a.md", FILE, bin_beside);
     let open = e.session.current().unwrap();
     e.write("a.md", MINE);
 
     kept::delete(&notes, &notices, &open, &id, false).unwrap();
+    let trashed = e.vault.with_extension("trashed");
     assert_eq!(
-        fs::read_to_string(e.vault.join("a 1.trashed"))
-            .ok()
-            .as_deref(),
+        fs::read_to_string(trashed.join("a.md")).ok().as_deref(),
         Some(RESTORED),
-        "the kept text is not in the trash"
+        "the kept text is not in the trash under its name"
     );
-    assert_eq!(e.read("a.trashed"), MINE);
-    assert!(!e.vault.join("a.md").exists() && !e.vault.join("a 1.md").exists());
+    assert_eq!(fs::read_to_string(trashed.join("a 2.md")).unwrap(), MINE);
+    assert_eq!(left_in(&e.vault), Vec::<String>::new());
     assert_eq!(row_hash(&e, &id), Err(()));
 }
 
@@ -869,7 +877,7 @@ fn a_refused_delete_takes_back_the_copy_beside_and_leaves_the_file_at_the_path()
         "{refused:?}"
     );
     assert_eq!(e.read("f/a.md"), MINE);
-    assert!(!e.vault.join("f/a 1.md").exists(), "the copy was left");
+    assert_eq!(left_in(&e.vault.join("f")), ["a.md"], "the copy was left");
     assert_eq!(record(&e, &id), pushed, "the note went");
     assert_eq!(row_hash(&e, &id), Ok(None));
 }
@@ -904,18 +912,12 @@ fn a_folder_delete_takes_a_kept_notes_text_to_the_trash_past_another_case_of_its
     });
 
     notes.delete_folder(&open, "f").unwrap();
-    let trashed = e.vault.with_extension("trashed").join("f");
-    let texts: Vec<String> = fs::read_dir(&trashed)
-        .unwrap()
-        .map(|entry| fs::read_to_string(entry.unwrap().path()).unwrap())
-        .collect();
+    let trashed = e.vault.with_extension("trashed");
     assert!(
-        texts
-            .iter()
-            .any(|text| text.ends_with("typed in the app\n")),
-        "the kept text is not in the trash: {texts:?}"
+        !holding(&trashed, RESTORED).is_empty(),
+        "the kept text is not in the trash"
     );
-    assert!(texts.iter().any(|text| text == MINE), "{texts:?}");
+    assert!(!holding(&trashed, MINE).is_empty());
     assert!(record(&e, &id).0);
 }
 
@@ -950,4 +952,108 @@ fn a_large_notes_delete_trashes_its_file_and_writes_no_copy() {
         .collect();
     assert_eq!(left, ["big.trashed"], "a copy was written");
     assert_eq!(row_hash(&e, &id), Err(()));
+}
+
+/// The files and hidden folders in `dir`, other than the app's `.memry` folder.
+fn left_in(dir: &Path) -> Vec<String> {
+    let mut names: Vec<String> = fs::read_dir(dir)
+        .unwrap()
+        .map(Result::unwrap)
+        .filter(|entry| {
+            entry.path().is_file() || entry.file_name().to_string_lossy().starts_with('.')
+        })
+        .map(|entry| entry.file_name().to_string_lossy().into_owned())
+        .filter(|name| name != ".memry")
+        .collect();
+    names.sort();
+    names
+}
+
+/// A trash that takes `vault/a.md` and refuses every other file, as a trash that cannot take
+/// one file in a folder does.
+fn bin_only_a(path: &Path) -> Result<(), String> {
+    if path.parent().is_some_and(|dir| dir.ends_with("vault")) && path.ends_with("a.md") {
+        bin_beside(path)
+    } else {
+        Err("this file cannot go to the trash".into())
+    }
+}
+
+#[test]
+fn a_kept_notes_delete_refused_for_its_copy_leaves_the_file_at_its_path() {
+    let KeptNote {
+        e,
+        _index,
+        notes,
+        notices,
+        id,
+    } = kept_at("a.md", FILE, bin_only_a);
+    let open = e.session.current().unwrap();
+    e.write("a.md", MINE);
+    let pushed = record(&e, &id);
+
+    let refused = kept::delete(&notes, &notices, &open, &id, false);
+    assert!(
+        matches!(refused, Err(NotesError::TrashUnavailable(_))),
+        "{refused:?}"
+    );
+    assert_eq!(e.read("a.md"), MINE, "the other file at the path went");
+    assert_eq!(left_in(&e.vault), ["a.md"], "the copy was left");
+    assert_eq!(record(&e, &id), pushed, "the note went");
+    assert!(is_listed(&notices, &id), "{:?}", notices.list());
+}
+
+/// A process killed at its first trash call: the files it wrote so far stay on disk.
+fn crash(_: &Path) -> Result<(), String> {
+    panic!("killed before the trash took the file");
+}
+
+/// The vault files under `dir` holding `text`, hidden folders included.
+fn holding(dir: &Path, text: &str) -> Vec<std::path::PathBuf> {
+    let mut found = Vec::new();
+    for entry in fs::read_dir(dir).unwrap() {
+        let path = entry.unwrap().path();
+        if path.is_dir() {
+            found.extend(holding(&path, text));
+        } else if fs::read_to_string(&path).is_ok_and(|read| read == text) {
+            found.push(path);
+        }
+    }
+    found
+}
+
+#[test]
+fn a_crash_after_a_copy_beside_a_file_at_its_path_adds_no_note_and_keeps_the_text() {
+    let KeptNote {
+        mut e,
+        _index,
+        notes,
+        notices,
+        id,
+    } = kept_at("a.md", FILE, crash);
+    let open = e.session.current().unwrap();
+    e.write("a.md", MINE);
+
+    let killed = std::panic::catch_unwind(std::panic::AssertUnwindSafe(|| {
+        kept::delete(&notes, &notices, &open, &id, false)
+    }));
+    assert!(killed.is_err(), "the trash was never called");
+    drop(open);
+    e.close();
+    e.drain();
+    e.open();
+    e.facts_until(indexed);
+    e.after_reconcile();
+
+    let paths: Vec<String> = e.rows().into_iter().map(|(_, path)| path).collect();
+    assert!(
+        paths.iter().all(|path| path == "a.md"),
+        "the copy was taken as a new note: {paths:?}"
+    );
+    assert_eq!(e.read("a.md"), MINE);
+    assert_eq!(
+        holding(&e.vault, RESTORED).len(),
+        1,
+        "the kept text is gone"
+    );
 }

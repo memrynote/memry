@@ -24,7 +24,9 @@
 //!
 //! A crash in step 2, between the kept notes' copies and the trash, leaves the record and the
 //! copies: the next open forgets the record of the folder still there, and the watcher reads
-//! each copy as the note's file again, which undoes the delete with nothing lost.
+//! each copy at its note's path as the note's file again, which undoes the delete with nothing
+//! lost. A copy written beside a file at its note's path sits in a hidden folder that no walk
+//! reads, so it is no new note; its text stays there.
 //!
 //! A failed step 3, or a crash between 2 and 3, leaves the record, and the next open finishes the
 //! delete when the folder is gone and forgets it when it is still there
@@ -145,7 +147,14 @@ impl NotesService {
             take_back(&self.tier.echo(), root, &copies);
             return Err(error.into());
         }
-        if let Err(why) = (self.trash)(&on_disk(root, &folder)) {
+        // A copy in a hidden folder (one beside a file at its note's path) goes on its own
+        // first, so the trash shows it.
+        let trashed = copies
+            .iter()
+            .filter(|(row, copy)| copy.at != row.path)
+            .try_for_each(|(_, copy)| (self.trash)(&on_disk(root, &copy.at)))
+            .and_then(|()| (self.trash)(&on_disk(root, &folder)));
+        if let Err(why) = trashed {
             take_back(&self.tier.echo(), root, &copies);
             if let Err(error) = lane.forget_folder_delete(&writer, &folder) {
                 tracing::warn!(
