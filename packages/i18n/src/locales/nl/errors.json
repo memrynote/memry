@@ -84,7 +84,7 @@
     "persistenceDegradedTitle": "De bewerkingsgeschiedenis wordt niet bewaard op dit apparaat",
     "persistenceDegradedBody": "Je notities zijn veilig – ze staan als gewone bestanden in je kluis, en openen en opslaan werkt gewoon. Alleen de lokale bewerkingsgeschiedenis en samenvoegstatus van dit apparaat worden in het geheugen bijgehouden, dus die beginnen elke keer dat memrynote opent opnieuw.",
     "databaseReadOnlyTitle": "Dit apparaat kan geen wijzigingen opslaan",
-    "databaseReadOnlyBody": "memrynote kan niet schrijven naar de .memry-map van deze kluis, dus notities openen alleen-lezen. Maak de map schrijfbaar en start memrynote daarna opnieuw.",
+    "databaseReadOnlyBody": "memrynote kan niet schrijven naar de .memry-map van deze kluis of de bestanden erin, dus notities openen alleen-lezen. Maak ze schrijfbaar en start memrynote daarna opnieuw.",
     "editsNotSavedTitle": "Je laatste wijzigingen in deze notitie konden niet worden opgeslagen",
     "editsNotSavedBody": "memrynote blijft het proberen zolang de notitie open is. Sluit je hem, kopieer dan eerst wat je hebt getypt.",
     "writebackFailedTitle": "Het bestand van een notitie op de schijf kon niet worden bijgewerkt",

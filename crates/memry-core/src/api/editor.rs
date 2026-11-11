@@ -35,8 +35,9 @@
 //!
 //! **A read-only note takes no window edit.** [`Opened::read_only`] says why: its
 //! file is large-file class as its last read measured it (the app shows it in
-//! the large-file viewer), the vault's database is read-only, or it is locked. [`Editor::apply_update`] checks on the
-//! writer and refuses before the update is applied, stored, queued or fanned out.
+//! the large-file viewer), the vault's database is read-only, or it is locked.
+//! [`Editor::apply_update`] checks on the writer and refuses before the update is
+//! applied, stored, queued or fanned out.
 //!
 //! **Every `yrs` transaction on a resident document runs under the resident
 //! lock**, reads included ([`Editor::with_document`]). `yrs` does not wait for a
@@ -289,7 +290,8 @@ impl Editor {
     /// [`Origin::Local`] of `holder`. `None`: the update changed nothing, and
     /// nothing was stored or sent. A note that opens read-only refuses it
     /// ([`EditorError::LargeFile`], [`EditorError::DatabaseReadOnly`], [`EditorError::Locked`],
-    /// [`EditorError::Excluded`]) before anything is written or applied. See the module doc for the order.
+    /// [`EditorError::Excluded`]) before anything is written or applied. See the module doc for
+    /// the order.
     pub fn apply_update(
         &self,
         note_id: &str,
@@ -553,12 +555,7 @@ fn read_only(
     if note_files::is_large_file(conn, note_id)? {
         return Ok(Some(ReadOnly::LargeFile));
     }
-    let database_read_only =
-        conn.is_readonly(rusqlite::MAIN_DB)
-            .map_err(|error| StorageError::Failed {
-                what: error.to_string(),
-            })?;
-    if database_read_only {
+    if conn.is_readonly(rusqlite::MAIN_DB).map_err(storage_error)? {
         return Ok(Some(ReadOnly::Database));
     }
     if vault_locks::is_note_locked(conn, note_id, None)? {
@@ -584,11 +581,14 @@ fn unreadable(note_id: &str) -> EditorError {
     }
 }
 
-fn storage_crdt(error: rusqlite::Error) -> CrdtError {
+fn storage_error(error: rusqlite::Error) -> StorageError {
     StorageError::Failed {
         what: error.to_string(),
     }
-    .into()
+}
+
+fn storage_crdt(error: rusqlite::Error) -> CrdtError {
+    storage_error(error).into()
 }
 
 fn storage(error: rusqlite::Error) -> EditorError {

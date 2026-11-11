@@ -18,7 +18,7 @@
 use std::collections::HashMap;
 use std::collections::hash_map::Entry;
 use std::path::{Path, PathBuf};
-use std::sync::{Arc, Mutex, OnceLock, Weak};
+use std::sync::{Arc, Mutex, Weak};
 use std::time::Duration;
 
 use memry_core::api::editor::{Editor, ListenerId, Notice, Opened, Origin};
@@ -28,7 +28,6 @@ use memry_core::seams::secure_store::SecureStore;
 use super::compaction::{COMPACT_EVERY, compact_due};
 use super::typing::Barriers;
 use super::{Deliver, EditorHostError, Subscriber, frame};
-use crate::registry::AppConfig;
 use crate::session::projection::CancelToken;
 use crate::session::{OpenStage, OpenVault, Session, canonical, lock};
 
@@ -53,9 +52,8 @@ pub enum HostEvent {
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub struct EditorHealth {
     pub persistent: bool,
-    /// Launches in a row, this one included, whose edits were not stored: kept in the app
-    /// config, counted once per launch by the first vault served
-    /// ([`AppConfig::record_crdt_persistence`]).
+    /// Launches in a row, this one included, whose edits were not stored. The streak across
+    /// launches is not kept yet, so it counts this launch only.
     pub in_memory_sessions: u32,
 }
 
@@ -72,7 +70,6 @@ struct Served {
     vault: Weak<Vault>,
     path: PathBuf,
     docs: Arc<Docs>,
-    config: Arc<AppConfig>,
 }
 
 /// The open vault's editor for one call.
@@ -80,15 +77,12 @@ struct Live {
     editor: Arc<Editor>,
     path: PathBuf,
     docs: Arc<Docs>,
-    config: Arc<AppConfig>,
 }
 
 pub struct EditorHost {
     store: Arc<dyn SecureStore>,
     notify: Box<dyn Fn(HostEvent) + Send + Sync>,
     served: Mutex<Option<Served>>,
-    /// This launch's place in the in-memory streak, recorded once.
-    streak: OnceLock<u32>,
     pub(super) barriers: Barriers,
 }
 
@@ -101,7 +95,6 @@ impl EditorHost {
             store,
             notify: Box::new(notify),
             served: Mutex::new(None),
-            streak: OnceLock::new(),
             barriers: Barriers::default(),
         })
     }
@@ -111,7 +104,6 @@ impl EditorHost {
     /// [`COMPACT_EVERY`].
     pub fn register(self: &Arc<Self>, session: &Session) {
         let host = Arc::clone(self);
-        let config = Arc::clone(session.registry().config());
         session.on_open(
             "editor-host",
             OpenStage::Defaults,
@@ -120,7 +112,6 @@ impl EditorHost {
                     vault: Arc::downgrade(&view.vault),
                     path: canonical(&view.path),
                     docs: Arc::default(),
-                    config: Arc::clone(&config),
                 });
                 Ok(())
             }),
@@ -131,11 +122,6 @@ impl EditorHost {
             OpenStage::SyncStart,
             Arc::new(move |view| {
                 if host.serves(view) {
-                    // Counted at the open, as Electron counts its store's open: a window may
-                    // ask for the health before any vault serves, and that answer counts nothing.
-                    if let Err(error) = host.health() {
-                        tracing::warn!(scope = "editor", "the editor's health is unknown: {error}");
-                    }
                     (host.notify)(HostEvent::Ready {
                         vault_path: view.path.to_string_lossy().into_owned(),
                     });
@@ -288,24 +274,7 @@ impl EditorHost {
         let persistent = live.editor.health()?.persistent;
         Ok(EditorHealth {
             persistent,
-            in_memory_sessions: self.launch_streak(&live.config, persistent),
-        })
-    }
-
-    /// The streak with this launch counted, once per launch however many vaults it opens
-    /// (Electron's `recordSessionPersistenceOutcome`): the first verdict is the launch's.
-    fn launch_streak(&self, config: &AppConfig, persistent: bool) -> u32 {
-        *self.streak.get_or_init(|| {
-            config
-                .record_crdt_persistence(persistent)
-                .unwrap_or_else(|error| {
-                    // The count only decides a notice; the editor serves on without it.
-                    tracing::warn!(
-                        scope = "editor",
-                        "the in-memory streak was not kept: {error}"
-                    );
-                    u32::from(!persistent)
-                })
+            in_memory_sessions: u32::from(!persistent),
         })
     }
 
@@ -321,7 +290,6 @@ impl EditorHost {
             editor,
             path: served.path,
             docs: served.docs,
-            config: served.config,
         })
     }
 

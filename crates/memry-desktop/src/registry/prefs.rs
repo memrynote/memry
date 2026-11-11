@@ -169,35 +169,6 @@ impl AppConfig {
         })
     }
 
-    /// Records whether this launch stored its edits and answers `crdtStore.inMemorySessions`:
-    /// the launches in a row, this one included, that did not (Electron's
-    /// `recordCrdtPersistenceOutcome`, `store.ts`). A persistent launch ends the streak and drops
-    /// Electron's preflight keys with it; an install that never lost persistence writes nothing.
-    /// Kept here and not in the vault's database, which is the store that failed.
-    pub fn record_crdt_persistence(&self, persistent: bool) -> Result<u32, ConfigError> {
-        self.update(|map| {
-            let previous = object(map, "crdtStore")
-                .and_then(|store| store.get("inMemorySessions"))
-                .and_then(Value::as_u64)
-                .map_or(0, |n| u32::try_from(n).unwrap_or(u32::MAX));
-            if !persistent {
-                let next = previous.saturating_add(1);
-                set_in(map, "crdtStore", "inMemorySessions", Some(next.into()));
-                return Ok(next);
-            }
-            let stamped = object(map, "crdtStore").is_some_and(|store| {
-                store.contains_key("inMemoryAppVersion")
-                    || store.contains_key("inMemoryPreflightFailedAt")
-            });
-            if previous > 0 || stamped {
-                set_in(map, "crdtStore", "inMemorySessions", Some(0.into()));
-                set_in(map, "crdtStore", "inMemoryAppVersion", None);
-                set_in(map, "crdtStore", "inMemoryPreflightFailedAt", None);
-            }
-            Ok(0)
-        })
-    }
-
     pub fn set_ocr_languages(&self, languages: &[String]) -> Result<(), ConfigError> {
         self.update(|map| {
             map.insert(
@@ -258,42 +229,6 @@ mod tests {
             .set_agent_field("disclosureAccepted", Some(true.into()))
             .expect("write");
         assert!(config.agent().disclosure_accepted);
-    }
-
-    #[test]
-    fn the_in_memory_streak_counts_launches_in_a_row_and_a_persistent_launch_ends_it() {
-        let (config, dir) = config(r#"{"crdtStore":{"pendingRenames":{"a":"b"}}}"#);
-        let file = dir.path().join("memry-config.json");
-        let untouched = std::fs::read(&file).expect("read");
-        assert_eq!(config.record_crdt_persistence(true).expect("write"), 0);
-        assert_eq!(
-            std::fs::read(&file).expect("read"),
-            untouched,
-            "a healthy launch writes nothing"
-        );
-
-        let streak: Vec<u32> = (0..3)
-            .map(|_| config.record_crdt_persistence(false).expect("write"))
-            .collect();
-        assert_eq!(streak, [1, 2, 3]);
-        // Kept in the file: the next launch reads it from there.
-        let reloaded = AppConfig::load(file.clone());
-        assert_eq!(reloaded.record_crdt_persistence(false).expect("write"), 4);
-
-        assert_eq!(reloaded.record_crdt_persistence(true).expect("write"), 0);
-        assert_eq!(reloaded.record_crdt_persistence(false).expect("write"), 1);
-        let renames = reloaded.read(|m| m["crdtStore"]["pendingRenames"].clone());
-        assert_eq!(renames, serde_json::json!({"a": "b"}));
-    }
-
-    #[test]
-    fn a_persistent_launch_drops_the_preflight_stamps_electron_left() {
-        let (config, _dir) = config(
-            r#"{"crdtStore":{"inMemorySessions":5,"inMemoryAppVersion":"1.0","inMemoryPreflightFailedAt":7}}"#,
-        );
-        assert_eq!(config.record_crdt_persistence(true).expect("write"), 0);
-        let store = config.read(|m| m["crdtStore"].clone());
-        assert_eq!(store, serde_json::json!({"inMemorySessions": 0}));
     }
 
     #[test]

@@ -84,7 +84,7 @@
     "persistenceDegradedTitle": "Redigeringshistoriken sparas inte på den här enheten",
     "persistenceDegradedBody": "Dina anteckningar är säkra – de finns i ditt valv som vanliga filer och öppnas och sparas som vanligt. Det är bara den här enhetens lokala redigeringshistorik och sammanslagningsstatus som hålls i minnet, så de börjar om från början varje gång memrynote öppnas.",
     "databaseReadOnlyTitle": "Den här enheten kan inte spara ändringar",
-    "databaseReadOnlyBody": "memrynote kan inte skriva till valvets .memry-mapp, så anteckningar öppnas skrivskyddade. Gör mappen skrivbar och starta sedan om memrynote.",
+    "databaseReadOnlyBody": "memrynote kan inte skriva till valvets .memry-mapp eller filerna i den, så anteckningar öppnas skrivskyddade. Gör dem skrivbara och starta sedan om memrynote.",
     "editsNotSavedTitle": "Dina senaste ändringar i den här anteckningen kunde inte sparas",
     "editsNotSavedBody": "memrynote fortsätter att försöka så länge anteckningen är öppen. Om du stänger den, kopiera först det du har skrivit.",
     "writebackFailedTitle": "En antecknings fil på disken kunde inte uppdateras",

@@ -84,7 +84,7 @@
     "persistenceDegradedTitle": "這部裝置目前未保留編輯記錄",
     "persistenceDegradedBody": "筆記很安全——它們以純文字檔案存放在儲存庫中，仍可正常開啟與儲存。只有這部裝置的本機編輯記錄與合併狀態暫存在記憶體中，因此每次開啟 memrynote 時都會重新開始。",
     "databaseReadOnlyTitle": "此裝置無法儲存變更",
-    "databaseReadOnlyBody": "memrynote 無法寫入此儲存庫的 .memry 資料夾，因此筆記以唯讀方式開啟。請讓該資料夾可寫入，然後重新啟動 memrynote。",
+    "databaseReadOnlyBody": "memrynote 無法寫入此儲存庫的 .memry 資料夾或其中的檔案，因此筆記以唯讀方式開啟。請讓它們可寫入，然後重新啟動 memrynote。",
     "editsNotSavedTitle": "無法儲存你對這則筆記的最新編輯",
     "editsNotSavedBody": "只要筆記保持開啟，memrynote 就會繼續嘗試。如果要關閉它，請先複製你輸入的內容。",
     "writebackFailedTitle": "無法更新磁碟上的筆記檔案",

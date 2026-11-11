@@ -84,7 +84,7 @@
     "persistenceDegradedTitle": "Redigeringsloggen lagres ikke på denne enheten",
     "persistenceDegradedBody": "Notatene dine er trygge – de ligger i hvelvet ditt som vanlige filer, og de åpnes og lagres fortsatt som normalt. Bare den lokale redigeringsloggen og flettetilstanden på denne enheten ligger i minnet, så de starter på nytt hver gang memrynote åpnes.",
     "databaseReadOnlyTitle": "Denne enheten kan ikke lagre endringer",
-    "databaseReadOnlyBody": "memrynote kan ikke skrive til .memry-mappen i dette hvelvet, så notater åpnes skrivebeskyttet. Gjør mappen skrivbar, og start deretter memrynote på nytt.",
+    "databaseReadOnlyBody": "memrynote kan ikke skrive til .memry-mappen i dette hvelvet eller filene i den, så notater åpnes skrivebeskyttet. Gjør dem skrivbare, og start deretter memrynote på nytt.",
     "editsNotSavedTitle": "De siste endringene dine i dette notatet kunne ikke lagres",
     "editsNotSavedBody": "memrynote fortsetter å prøve så lenge notatet er åpent. Hvis du lukker det, kopier først det du har skrevet.",
     "writebackFailedTitle": "Filen til et notat på disken kunne ikke oppdateres",

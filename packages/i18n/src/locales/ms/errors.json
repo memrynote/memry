@@ -84,7 +84,7 @@
     "persistenceDegradedTitle": "Sejarah edit tidak disimpan pada peranti ini",
     "persistenceDegradedBody": "Nota anda selamat — nota disimpan dalam bilik kebal anda sebagai fail biasa, dan masih dibuka serta disimpan seperti biasa. Hanya sejarah edit setempat dan keadaan gabungan peranti ini yang dijalankan dalam memori, jadi kedua-duanya bermula semula setiap kali memrynote dibuka.",
     "databaseReadOnlyTitle": "Peranti ini tidak dapat menyimpan perubahan",
-    "databaseReadOnlyBody": "memrynote tidak dapat menulis ke folder .memry bilik kebal ini, jadi nota dibuka baca sahaja. Jadikan folder boleh ditulis, kemudian mulakan semula memrynote.",
+    "databaseReadOnlyBody": "memrynote tidak dapat menulis ke folder .memry bilik kebal ini atau fail di dalamnya, jadi nota dibuka baca sahaja. Jadikan semuanya boleh ditulis, kemudian mulakan semula memrynote.",
     "editsNotSavedTitle": "Suntingan terkini anda pada nota ini tidak dapat disimpan",
     "editsNotSavedBody": "memrynote terus mencuba selagi nota kekal dibuka. Jika anda menutupnya, salin dahulu apa yang anda taip.",
     "writebackFailedTitle": "Fail nota pada cakera tidak dapat dikemas kini",

@@ -84,7 +84,7 @@
     "persistenceDegradedTitle": "Redigeringshistorikken gemmes ikke på denne enhed",
     "persistenceDegradedBody": "Dine noter er i sikkerhed – de ligger i din boks som almindelige filer og kan stadig åbnes og gemmes som normalt. Kun denne enheds lokale redigeringshistorik og flettetilstand kører i hukommelsen, så de starter forfra, hver gang memrynote åbnes.",
     "databaseReadOnlyTitle": "Denne enhed kan ikke gemme ændringer",
-    "databaseReadOnlyBody": "memrynote kan ikke skrive til denne boks' .memry-mappe, så noter åbnes skrivebeskyttet. Gør mappen skrivbar, og genstart derefter memrynote.",
+    "databaseReadOnlyBody": "memrynote kan ikke skrive til denne boks' .memry-mappe eller filerne i den, så noter åbnes skrivebeskyttet. Gør dem skrivbare, og genstart derefter memrynote.",
     "editsNotSavedTitle": "Dine seneste ændringer i denne note kunne ikke gemmes",
     "editsNotSavedBody": "memrynote bliver ved med at prøve, mens noten er åben. Hvis du lukker den, så kopiér først det, du har skrevet.",
     "writebackFailedTitle": "En notes fil på disken kunne ikke opdateres",

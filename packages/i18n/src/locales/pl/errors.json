@@ -84,7 +84,7 @@
     "persistenceDegradedTitle": "Historia edycji nie jest przechowywana na tym urządzeniu",
     "persistenceDegradedBody": "Twoje notatki są bezpieczne – znajdują się w sejfie jako zwykłe pliki i nadal normalnie się otwierają i zapisują. Tylko lokalna historia edycji i stan scalania na tym urządzeniu są przechowywane w pamięci operacyjnej, więc zaczynają się od nowa przy każdym uruchomieniu aplikacji memrynote.",
     "databaseReadOnlyTitle": "To urządzenie nie może zapisywać zmian",
-    "databaseReadOnlyBody": "memrynote nie może zapisywać w folderze .memry tego sejfu, więc notatki otwierają się tylko do odczytu. Zezwól na zapis w folderze, a potem uruchom ponownie memrynote.",
+    "databaseReadOnlyBody": "memrynote nie może zapisywać w folderze .memry tego sejfu ani w plikach w nim, więc notatki otwierają się tylko do odczytu. Zezwól na zapis w nich, a potem uruchom ponownie memrynote.",
     "editsNotSavedTitle": "Nie udało się zapisać ostatnich zmian w tej notatce",
     "editsNotSavedBody": "memrynote ponawia próby, dopóki notatka jest otwarta. Jeśli ją zamkniesz, najpierw skopiuj wpisany tekst.",
     "writebackFailedTitle": "Nie udało się zaktualizować pliku notatki na dysku",
