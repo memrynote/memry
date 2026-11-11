@@ -414,6 +414,69 @@ fn a_save_over_a_file_an_outside_writer_has_just_emptied_wins_and_keeps_that_tex
     );
 }
 
+/// The same race, with a save the feed does not take: the document never holds its text and
+/// the file never gets it, so the save keeps it as a version before it refuses the write.
+#[test]
+fn a_save_the_feed_does_not_take_over_a_file_being_written_keeps_its_text_as_a_version() {
+    let (mut e, notes, _) = opened();
+    made(&mut e, &notes);
+    let open = e.session.current().unwrap();
+    let outside = format!("{}\n\nWritten outside.\n", e.read(DAY_FILE).trim_end());
+
+    let mut writer = OpenOptions::new()
+        .write(true)
+        .truncate(true)
+        .open(e.vault.join(DAY_FILE))
+        .unwrap();
+    notes.fail_next_save_feed();
+    let saved = notes.update_day(
+        &open,
+        DayUpdate {
+            content: Some("Morning pages.\n\nTyped in the app.".into()),
+            ..update(DAY)
+        },
+    );
+    writer.write_all(outside.as_bytes()).unwrap();
+    drop(writer);
+
+    assert!(
+        matches!(saved, Err(NotesError::DayTextUnwritable(_))),
+        "{saved:?}"
+    );
+    outside_facts(&mut e);
+    assert!(e.read(DAY_FILE).contains("Written outside."));
+    assert!(
+        e.versions(ID)
+            .iter()
+            .any(|version| version.contains("Typed in the app.")),
+        "the typing was lost: {:?}",
+        e.versions(ID)
+    );
+}
+
+/// A row with no hash (a removal the identity kept) names no file, so an empty file at its path
+/// is no write in progress: every save writes over it.
+#[test]
+fn every_save_writes_over_an_empty_file_under_a_row_that_names_none() {
+    let (mut e, notes, _) = opened();
+    made(&mut e, &notes);
+    let open = e.session.current().unwrap();
+    fs::write(e.vault.join(DAY_FILE), "").unwrap();
+    e.core().note_files().set_hash(ID, None).unwrap();
+
+    for typed in ["One.", "Two.", "Three."] {
+        let saved = notes.update_day(
+            &open,
+            DayUpdate {
+                content: Some(typed.into()),
+                ..update(DAY)
+            },
+        );
+        assert!(saved.is_ok(), "{typed} {saved:?}");
+        assert!(e.read(DAY_FILE).contains(typed), "{}", e.read(DAY_FILE));
+    }
+}
+
 #[test]
 fn a_properties_save_never_puts_the_files_old_body_over_a_document_ahead() {
     let (mut e, notes, store) = opened();

@@ -34,12 +34,16 @@
 //!   no version, so a document ahead of its file keeps its text; the file then counts as the
 //!   document's (own-write record, row) only if the row named it. Only a frontmatter that does
 //!   not parse, a missing row, file or note, a file that is not markdown, an edit that lands
-//!   during the write, and an empty file the row does not name ([`Kept::FileChanged`]) keep the
-//!   file. That empty file is an outside writer between its truncate and its write
-//!   (`fs.writeFileSync`, an editor saving in place): a save renamed over it would leave that
-//!   writer's bytes in a file no path names, kept nowhere (#4281). The save is fed and its
-//!   write refused, as for an edit that lands during the write (below); the empty file is no
-//!   outside edit the record takes, and no version. A file its row does not name
+//!   during the write, and an empty file that replaced the one its row names
+//!   ([`Kept::FileChanged`]) keep the file. That empty file is an outside writer between its
+//!   truncate and its write (`fs.writeFileSync`, an editor saving in place): a save renamed
+//!   over it would leave that writer's bytes in a file no path names, kept nowhere (#4281). The
+//!   save is fed and its write refused, as for an edit that lands during the write (below);
+//!   the empty file is no outside edit the record takes, and no version. A save the feed does
+//!   not take is kept as a version instead, the one place its text then is. A row with no hash
+//!   names no file, so an empty file under it is no write in progress and a save writes over
+//!   it. A restore over that empty file is refused before it feeds anything, so its text never
+//!   lands later without the restore point it keeps. A file its row does not name
 //!   and whose bytes are not the run's own is an outside edit the consumer has not fed yet.
 //!   This save's bytes, the run's own, will never reach the consumer as one, so what that
 //!   file's frontmatter says (tags, property values) reaches the record first, through the
@@ -252,7 +256,10 @@ impl AppEdit {
         let read_body = split_frontmatter_block(read).body;
         let row_names_file = row.content_hash.as_deref() == Some(file.hash.as_str());
         // An outside writer between its truncate and its write: see the module comment.
-        let mid_write = file.raw.is_empty() && !row_names_file;
+        let mid_write = file.raw.is_empty() && row.content_hash.is_some() && !row_names_file;
+        if mid_write && matches!(precondition, Precondition::Restore(_)) {
+            return Ok(Edited::Kept(Kept::FileChanged));
+        }
         let mut outside = false;
         // How far the document had come when `Held` compared it; the feed refuses one past it.
         let mut compared_at = None;
@@ -373,6 +380,12 @@ impl AppEdit {
             }
         };
         if mid_write {
+            if !takes {
+                self.vault
+                    .write_back()
+                    .keep_replaced(note_id, &text, next_body)
+                    .map_err(AppEditError::from)?;
+            }
             return Ok(Edited::Kept(Kept::FileChanged));
         }
         let hash = content_hash(&text);
