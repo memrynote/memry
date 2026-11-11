@@ -36,6 +36,7 @@ import {
   onJournalEntryDeleted
 } from '@/services/journal-service'
 import { onVaultIndexProgress } from '@/services/vault-service'
+import { subscribeToEvents } from '@/services/tauri-event'
 import { unwrapIpcResult } from '@/lib/ipc-error'
 import { onCanvasCreated, onCanvasDeleted, onCanvasUpdated } from '@/services/canvas-service'
 import { tagsService } from '@/services/tags-service'
@@ -284,27 +285,19 @@ export function useNotesList(options: UseNotesListOptions = {}): UseNotesListRes
     const invalidateLists = () => {
       void queryClient.invalidateQueries({ queryKey: notesKeys.lists() })
     }
-    // The listener goes live a round trip after this effect asks for it. A note made after the
-    // list's first read and before then is in no list until the next event (#3967): read again
-    // once it listens.
-    const unsubCreated = onNoteCreated(invalidateLists, invalidateLists)
-
-    const unsubDeleted = onNoteDeleted(() => {
-      // Note removed, invalidate lists
-      void queryClient.invalidateQueries({ queryKey: notesKeys.lists() })
-    })
-
-    const unsubUpdated = onNoteUpdated(() => {
-      void queryClient.invalidateQueries({ queryKey: notesKeys.lists() })
-    })
-
-    const unsubRenamed = onNoteRenamed(() => {
-      void queryClient.invalidateQueries({ queryKey: notesKeys.lists() })
-    })
-
-    const unsubMoved = onNoteMoved(() => {
-      void queryClient.invalidateQueries({ queryKey: notesKeys.lists() })
-    })
+    // The listeners go live a round trip after this effect asks for them. A note made, renamed,
+    // moved or deleted after the list's first read and before then shows wrong until the next
+    // event (#3967, #4270): read again once they listen.
+    const unsubNotes = subscribeToEvents(
+      [
+        (live) => onNoteCreated(invalidateLists, live),
+        (live) => onNoteDeleted(invalidateLists, live),
+        (live) => onNoteUpdated(invalidateLists, live),
+        (live) => onNoteRenamed(invalidateLists, live),
+        (live) => onNoteMoved(invalidateLists, live)
+      ],
+      invalidateLists
+    )
 
     // The background index build (vault open on a not-yet-indexed vault) writes
     // notes straight into the cache without per-note events, so the list would
@@ -325,11 +318,7 @@ export function useNotesList(options: UseNotesListOptions = {}): UseNotesListRes
     })
 
     return () => {
-      unsubCreated()
-      unsubUpdated()
-      unsubDeleted()
-      unsubRenamed()
-      unsubMoved()
+      unsubNotes()
       unsubIndexProgress()
       unsubDropped()
     }
@@ -344,14 +333,14 @@ export function useNotesList(options: UseNotesListOptions = {}): UseNotesListRes
     const invalidate = () => {
       void queryClient.invalidateQueries({ queryKey: notesKeys.lists() })
     }
-    const unsubscribers = [
-      onJournalEntryCreated(invalidate),
-      onJournalEntryUpdated(invalidate),
-      onJournalEntryDeleted(invalidate)
-    ]
-    return () => {
-      for (const unsubscribe of unsubscribers) unsubscribe()
-    }
+    return subscribeToEvents(
+      [
+        (live) => onJournalEntryCreated(invalidate, live),
+        (live) => onJournalEntryUpdated(invalidate, live),
+        (live) => onJournalEntryDeleted(invalidate, live)
+      ],
+      invalidate
+    )
   }, [includeJournals, queryClient])
 
   // Memoize data to avoid recreating object reference
@@ -401,11 +390,11 @@ export function useNoteTagsQuery(options: { enabled?: boolean } = {}) {
   const tags = useMemo(() => query.data ?? EMPTY_TAGS, [query.data])
 
   useEffect(() => {
-    const unsubscribe = onTagsChanged(() => {
+    const invalidate = () => {
       void queryClient.invalidateQueries({ queryKey: notesKeys.tags() })
-    })
-
-    return unsubscribe
+    }
+    // A tag changed before the listener went live sent its event to nobody: read again then.
+    return onTagsChanged(invalidate, invalidate)
   }, [queryClient])
 
   return {
@@ -440,20 +429,17 @@ export function useNoteFoldersQuery(options: { enabled?: boolean } = {}) {
       void queryClient.invalidateQueries({ queryKey: notesKeys.folders() })
     }
 
-    // A folder a note made before the listener went live brought: read again then.
-    const unsubCreated = onNoteCreated(invalidate, invalidate)
-    const unsubDeleted = onNoteDeleted(invalidate)
-    const unsubMoved = onNoteMoved(invalidate)
-    const unsubRenamed = onNoteRenamed(invalidate)
-    const unsubFolderConfig = onFolderConfigUpdated(invalidate)
-
-    return () => {
-      unsubCreated()
-      unsubDeleted()
-      unsubMoved()
-      unsubRenamed()
-      unsubFolderConfig()
-    }
+    // A folder a note brought or took before the listeners went live: read again then.
+    return subscribeToEvents(
+      [
+        (live) => onNoteCreated(invalidate, live),
+        (live) => onNoteDeleted(invalidate, live),
+        (live) => onNoteMoved(invalidate, live),
+        (live) => onNoteRenamed(invalidate, live),
+        (live) => onFolderConfigUpdated(invalidate, live)
+      ],
+      invalidate
+    )
   }, [queryClient])
 
   const createFolderMutation = useMutation({

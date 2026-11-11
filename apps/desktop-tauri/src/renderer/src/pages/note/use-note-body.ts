@@ -10,6 +10,7 @@ import {
   type Note,
   type NoteSaveResponse
 } from '@/services/notes-service'
+import { subscribeToEvents } from '@/services/tauri-event'
 import { registerPendingSave, unregisterPendingSave } from '@/lib/save-registry'
 import { contentHash } from '@/lib/content-hash'
 import { createLogger } from '@/lib/logger'
@@ -179,6 +180,9 @@ export function useNoteBody(noteId: string | undefined, options: NoteBodyOptions
   // edit whose event has not arrived yet; taken here, that event would read as text the
   // editor already shows and be dropped, and the next save would write over it (#3967).
   const seededRef = useRef<{ noteId: string; content: string } | null>(null)
+  // The note's events went live before its first read answered: the read again they ask for waits
+  // for that answer, which is the baseline it compares with.
+  const readAgainOnSeedRef = useRef<(() => void) | null>(null)
   const loadedNoteId = note?.id
   const noteContentForLastSaved = note?.content
   useEffect(() => {
@@ -186,6 +190,9 @@ export function useNoteBody(noteId: string | undefined, options: NoteBodyOptions
     if (seededRef.current?.noteId === loadedNoteId) return
     seededRef.current = { noteId: loadedNoteId, content: noteContentForLastSaved }
     lastSavedContent.current = noteContentForLastSaved
+    const readAgain = readAgainOnSeedRef.current
+    readAgainOnSeedRef.current = null
+    readAgain?.()
   }, [loadedNoteId, noteContentForLastSaved])
 
   // While saves of the editor's text run, a save cannot tell its own echo from an outside edit:
@@ -427,26 +434,24 @@ export function useNoteBody(noteId: string | undefined, options: NoteBodyOptions
   useEffect(() => {
     if (!noteId) return undefined
 
-    const unsubUpdated = onNoteUpdated(
-      (event: { id: string; changes: Partial<Note>; source?: string }) => {
-        if (event.id !== noteId) return
+    const onUpdated = (event: { id: string; changes: Partial<Note>; source?: string }): void => {
+      if (event.id !== noteId) return
 
-        // `sync` means the CRDT write-back rewrote the file from the Y.Doc. The
-        // IPC CRDT provider has already applied those bytes to this editor, so a
-        // remount here would add nothing — and write-back also fires for local
-        // typing (500ms debounce, ahead of the 1000ms save), where it would blow
-        // away the editor mid-keystroke.
-        if (event.source === 'sync') return
+      // `sync` means the CRDT write-back rewrote the file from the Y.Doc. The
+      // IPC CRDT provider has already applied those bytes to this editor, so a
+      // remount here would add nothing — and write-back also fires for local
+      // typing (500ms debounce, ahead of the 1000ms save), where it would blow
+      // away the editor mid-keystroke.
+      if (event.source === 'sync') return
 
-        if (typeof event.changes.content !== 'string') return
-        outsideText(event.changes.content)
-      }
-    )
+      if (typeof event.changes.content !== 'string') return
+      outsideText(event.changes.content)
+    }
 
-    // A dropped event may have been an outside edit of this note: its text is read again. The
-    // text the editor holds is taken when the signal arrives, so a save that lands during the
-    // read is told apart from it.
-    const unsubDropped = onNoteEventsDropped(() => {
+    // A missed event may have been an outside edit of this note: its text is read again. The
+    // text the editor holds is taken when the read starts, so a save that lands during the read
+    // is told apart from it.
+    const readAgain = (): void => {
       if (saveWindowRef.current?.noteId === noteId) {
         outsideText(null)
         return
@@ -462,11 +467,21 @@ export function useNoteBody(noteId: string | undefined, options: NoteBodyOptions
           takeContent(fresh.content)
         })
         .catch((readError: unknown) => log.warn('the note was not read again', readError))
-    })
+    }
+
+    // Missed events: dropped ones, and those sent before the listeners went live, after the
+    // note's first read (#4270). Before that read answers, the editor has no text to compare.
+    const stop = subscribeToEvents(
+      [(live) => onNoteUpdated(onUpdated, live), (live) => onNoteEventsDropped(readAgain, live)],
+      () => {
+        if (seededRef.current?.noteId === noteId) readAgain()
+        else readAgainOnSeedRef.current = readAgain
+      }
+    )
 
     return () => {
-      unsubUpdated()
-      unsubDropped()
+      stop()
+      readAgainOnSeedRef.current = null
     }
   }, [noteId, takeContent, outsideText])
 

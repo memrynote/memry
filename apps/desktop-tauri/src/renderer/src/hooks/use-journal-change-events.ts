@@ -7,6 +7,7 @@ import {
   onJournalExternalChange,
   onJournalEventsDropped
 } from '@/services/journal-service'
+import { subscribeToEvents } from '@/services/tauri-event'
 import { journalKeys } from './journal-query-keys'
 
 const ISO_DATE = /^\d{4}-\d{2}-\d{2}$/
@@ -46,20 +47,21 @@ export function useJournalChangeEvents(): void {
       void queryClient.invalidateQueries({ queryKey: journalKeys.propertyRows() })
     }
 
-    const unsubscribeCreated = onJournalEntryCreated((event) => invalidate(event.date))
-    const unsubscribeUpdated = onJournalEntryUpdated((event) => invalidate(event.date))
-    const unsubscribeDeleted = onJournalEntryDeleted((event) => invalidate(event.date))
-    const unsubscribeExternal = onJournalExternalChange((event) => invalidate(event.date))
-    const unsubscribeDropped = onJournalEventsDropped(() => {
+    const invalidateAll = (): void => {
       void queryClient.invalidateQueries({ queryKey: journalKeys.all })
-    })
-
-    return () => {
-      unsubscribeCreated()
-      unsubscribeUpdated()
-      unsubscribeDeleted()
-      unsubscribeExternal()
-      unsubscribeDropped()
     }
+
+    // Missed events may have been any day's: dropped ones, and those sent before the listeners
+    // went live, after the pages mounted with them read their days (#4270).
+    return subscribeToEvents(
+      [
+        (live) => onJournalEntryCreated((event) => invalidate(event.date), live),
+        (live) => onJournalEntryUpdated((event) => invalidate(event.date), live),
+        (live) => onJournalEntryDeleted((event) => invalidate(event.date), live),
+        (live) => onJournalExternalChange((event) => invalidate(event.date), live),
+        (live) => onJournalEventsDropped(invalidateAll, live)
+      ],
+      invalidateAll
+    )
   }, [queryClient])
 }

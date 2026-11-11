@@ -26,3 +26,25 @@ export function subscribeToEvent<T>(
     void registered.then((unlisten) => unlisten()).catch(() => undefined)
   }
 }
+
+/**
+ * Subscribes a group of events and runs `onListening` once every one of them reaches this page.
+ * A Tauri listener goes live only when main answers its `listen` call, and an event main sends
+ * before then reaches nobody (Electron's `ipcRenderer.on` was live at once). A page that read
+ * what these events change before they went live reads it again in `onListening` (#4270).
+ */
+export function subscribeToEvents(
+  subscriptions: ReadonlyArray<(onListening: () => void) => () => void>,
+  onListening: () => void
+): () => void {
+  let waiting = subscriptions.length
+  const stops = subscriptions.map((subscribe) =>
+    subscribe(() => {
+      waiting -= 1
+      if (waiting === 0) onListening()
+    })
+  )
+  return () => {
+    for (const stop of stops) stop()
+  }
+}

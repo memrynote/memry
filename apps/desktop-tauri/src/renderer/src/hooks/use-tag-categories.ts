@@ -113,12 +113,13 @@ export function useTagCategories(): UseTagCategoriesResult {
   // the note-tags rows (which carry each tag's categoryId) so a drag that
   // moves a tag between categories shows up immediately rather than waiting
   // for an unrelated tag event to invalidate useNoteTagsQuery's cache.
+  // A change before the listener went live sent its event to nobody: read again then.
   useEffect(() => {
-    const unsubscribe = onTagCategoriesChanged(() => {
+    const refetch = () => {
       void fetchCategories()
       void refetchNoteTags?.()
-    })
-    return unsubscribe
+    }
+    return onTagCategoriesChanged(refetch, refetch)
   }, [fetchCategories, refetchNoteTags])
 
   const { categories, uncategorized } = useMemo(() => {

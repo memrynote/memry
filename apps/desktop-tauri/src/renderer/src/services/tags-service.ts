@@ -285,11 +285,12 @@ export function onPropertyDefinitionChanged(
 }
 
 /**
- * Subscribe to tag category changed events (create/rename/delete/reorder).
+ * Subscribe to tag category changed events (create/rename/delete/reorder). `onListening` runs
+ * once they reach this page; a change before then sends its event to nobody.
  * @returns Unsubscribe function
  */
-export function onTagCategoriesChanged(callback: () => void): () => void {
-  return subscribeToEvent(events.tagCategoriesChangedEvent, () => callback())
+export function onTagCategoriesChanged(callback: () => void, onListening?: () => void): () => void {
+  return subscribeToEvent(events.tagCategoriesChangedEvent, () => callback(), onListening)
 }
 
 /** The subscriptions above that Rust events serve; `window.api` is typed without them. */
