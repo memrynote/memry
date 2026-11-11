@@ -1,4 +1,4 @@
-import type { ComponentProps } from 'react'
+import { createContext, useContext, useMemo, type ComponentProps } from 'react'
 import { Menu as MenuPrimitive } from '@base-ui/react/menu'
 import { ShadCNDefaultComponents, type ShadCNComponents } from '@blocknote/shadcn'
 import { cn } from './utils'
@@ -37,6 +37,9 @@ type MenuContentProps = ComponentProps<
   typeof ShadCNDefaultComponents.DropdownMenu.DropdownMenuContent
 >
 
+/** Whether an enclosing menu is hidden, so its submenus hide with it. */
+const MenuHiddenContext = createContext(false)
+
 /**
  * BlockNote's shadcn menu content with `positionMethod="fixed"`. Base UI renders
  * a menu `fixed` until its first placement but computes that placement with the
@@ -48,8 +51,19 @@ type MenuContentProps = ComponentProps<
  * hit the editor and changed nothing (#3967, #4213). Fixed keeps the measured
  * and the rendered strategy the same. A fixed menu is not clipped by the note's
  * scroll container, so the container's clipping ancestors stay its collision
- * boundary and the menu opens where the absolute one did. The markup is
- * shadcn's `dropdown-menu`, which forwards no positioner props.
+ * boundary and the menu opens where the absolute one did.
+ *
+ * Unclipped, the menu would follow its anchor out of the scroll container and
+ * draw over the tab bar while the note scrolls under it (BlockNote opens menus
+ * with `modal={false}`, so the note keeps scrolling). It goes invisible once
+ * its anchor is scrolled out of view (Base UI's `data-anchor-hidden`), and a
+ * submenu with it, where the absolute menu was clipped away. It stays open, as
+ * it did, and shows again when the anchor scrolls back.
+ *
+ * Copied from `@blocknote/shadcn` 0.54.2 `src/components/ui/dropdown-menu.tsx`,
+ * which forwards no positioner props. `@base-ui/react` must resolve to the one
+ * copy BlockNote uses, or the menu parts lose their shared context; the
+ * placement test in `blocknote-shadcn-components.test.tsx` guards both.
  */
 function DropdownMenuContent({
   align = 'start',
@@ -60,12 +74,29 @@ function DropdownMenuContent({
   container,
   ...props
 }: MenuContentProps): React.JSX.Element {
+  const parentHidden = useContext(MenuHiddenContext)
+  const collisionBoundary = useMemo(() => clippingAncestors(container), [container])
   return (
     <MenuPrimitive.Portal container={container}>
       <MenuPrimitive.Positioner
         className="isolate z-50 outline-none"
+        render={(positionerProps, { anchorHidden }) => {
+          const hidden = parentHidden || anchorHidden
+          return (
+            <MenuHiddenContext.Provider value={hidden}>
+              <div
+                {...positionerProps}
+                style={
+                  hidden
+                    ? { ...positionerProps.style, visibility: 'hidden' }
+                    : positionerProps.style
+                }
+              />
+            </MenuHiddenContext.Provider>
+          )
+        }}
         positionMethod="fixed"
-        collisionBoundary={clippingAncestors(container)}
+        collisionBoundary={collisionBoundary}
         align={align}
         alignOffset={alignOffset}
         side={side}
