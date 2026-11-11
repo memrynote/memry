@@ -1,6 +1,14 @@
 import type { BlockNoteEditor } from '@blocknote/core'
 import type { EditorState, Selection } from '@tiptap/pm/state'
-import { useEffect, useRef, useState, type MouseEvent, type PointerEvent } from 'react'
+import {
+  createContext,
+  useContext,
+  useEffect,
+  useRef,
+  useState,
+  type MouseEvent,
+  type PointerEvent
+} from 'react'
 import {
   BasicTextStyleButton,
   ColorStyleButton,
@@ -39,14 +47,22 @@ export function ReviewFormattingToolbarController(props: ReviewFormattingToolbar
 
   if (isContextMenuOpen) return null
 
+  // BlockNote renders `formattingToolbar` as a component type, so it must be a
+  // module-level one: a new type per render remounts the toolbar and closes an
+  // open block type Select or menu under the click (#4184). Props reach it
+  // through context instead.
   return (
-    <FormattingToolbarController
-      // oxlint-disable-next-line react/no-unstable-nested-components -- render-prop/component closes over per-render state; its identity is held stable by the surrounding memo or state initializer
-      formattingToolbar={(toolbarProps) => (
-        <ReviewFormattingToolbar {...toolbarProps} {...props} variant="floating" />
-      )}
-    />
+    <FloatingToolbarPropsContext value={props}>
+      <FormattingToolbarController formattingToolbar={FloatingReviewFormattingToolbar} />
+    </FloatingToolbarPropsContext>
   )
+}
+
+const FloatingToolbarPropsContext = createContext<ReviewFormattingToolbarProps>({})
+
+function FloatingReviewFormattingToolbar(toolbarProps: FormattingToolbarProps) {
+  const props = useContext(FloatingToolbarPropsContext)
+  return <ReviewFormattingToolbar {...toolbarProps} {...props} variant="floating" />
 }
 
 export function ReviewFormattingToolbar({

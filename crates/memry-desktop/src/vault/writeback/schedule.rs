@@ -110,6 +110,8 @@ struct Queue {
     stopping: bool,
     /// The thread ended.
     closed: bool,
+    #[cfg(feature = "e2e")]
+    debug: super::debug::Book,
 }
 
 impl Queue {
@@ -178,6 +180,8 @@ impl WriteBack {
             due_at(now, queue.cost.get(note_id).copied())
         };
         queue.due.insert(note_id.to_owned(), at);
+        #[cfg(feature = "e2e")]
+        queue.debug.scheduled(note_id);
         drop(queue);
         self.shared.changed.notify_all();
     }
@@ -204,6 +208,13 @@ impl WriteBack {
             );
         }
         done
+    }
+
+    /// What the write-back did for the note in this session (e2e build).
+    #[cfg(feature = "e2e")]
+    pub fn debug(&self, note_id: &str) -> Option<super::debug::WriteBackDebug> {
+        let queue = self.shared.lock();
+        queue.debug.of(note_id, queue.due.contains_key(note_id))
     }
 
     /// Runs every scheduled pass now and returns once the thread ended. Any number of callers
@@ -262,6 +273,8 @@ fn work(shared: &Shared, runner: &impl Runner, failures: &broadcast::Sender<Writ
                 // Taken off before the pass, so a schedule during it gives one more.
                 queue.due.remove(&note_id);
                 queue.running = true;
+                #[cfg(feature = "e2e")]
+                queue.debug.started(&note_id);
                 drop(queue);
                 let started = Instant::now();
                 let outcome = std::panic::catch_unwind(AssertUnwindSafe(|| runner.run(&note_id)))
@@ -275,6 +288,8 @@ fn work(shared: &Shared, runner: &impl Runner, failures: &broadcast::Sender<Writ
                 let tell = {
                     let mut queue = shared.lock();
                     queue.cost.insert(note_id.clone(), cost);
+                    #[cfg(feature = "e2e")]
+                    queue.debug.finished(&note_id, &outcome);
                     // A schedule taken during the pass knew only the cost before it.
                     if let Some(at) = queue.due.get_mut(&note_id) {
                         *at = (*at).max(cooled(cost));

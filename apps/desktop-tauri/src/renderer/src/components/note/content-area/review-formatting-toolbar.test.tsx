@@ -82,11 +82,16 @@ vi.mock('@blocknote/react', () => ({
   ),
   // Keyed so a test can force the remount BlockNote performs mid-interaction:
   // the toolbar below is torn down and rebuilt while the controller stays put.
+  // Renders the prop as a component type, as BlockNote's controller does.
   FormattingToolbarController: ({
-    formattingToolbar
+    formattingToolbar: Toolbar
   }: {
-    formattingToolbar: (props: Record<string, unknown>) => React.ReactNode
-  }) => <div key={toolbarMocks.remountKey}>{formattingToolbar({})}</div>,
+    formattingToolbar: React.ComponentType
+  }) => (
+    <div key={toolbarMocks.remountKey}>
+      <Toolbar />
+    </div>
+  ),
   BasicTextStyleButton: ({ basicTextStyle }: { basicTextStyle: string }) => (
     <button type="button">{basicTextStyle}</button>
   ),
@@ -213,6 +218,17 @@ describe('ReviewFormattingToolbar', () => {
 
       editorDom.remove()
     })
+  })
+
+  // #4184: an open block type Select, overflow menu or colour picker lives in
+  // the toolbar subtree, so a remount on re-render closed it under the click.
+  it('keeps the same toolbar instance when the controller re-renders', () => {
+    const { rerender } = render(<ReviewFormattingToolbarController onAddComment={vi.fn()} />)
+    const toolbar = screen.getByTestId('formatting-toolbar')
+
+    rerender(<ReviewFormattingToolbarController onAddComment={vi.fn()} onStickyChange={vi.fn()} />)
+
+    expect(screen.getByTestId('formatting-toolbar')).toBe(toolbar)
   })
 
   it('offers Link to note only once a single-block selection exists', () => {
