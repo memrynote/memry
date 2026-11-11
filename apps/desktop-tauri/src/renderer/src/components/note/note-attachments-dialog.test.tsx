@@ -6,6 +6,7 @@
 
 import { fireEvent, render, screen } from '@testing-library/react'
 import { afterEach, describe, expect, it, vi } from 'vitest'
+import type * as Bindings from '../../../../generated/bindings'
 import {
   NoteAttachmentsDialog,
   collectOriginalNames,
@@ -32,22 +33,25 @@ vi.mock('react-i18next', () => ({
   getI18n: () => ({ getFixedT: () => (key: string) => key })
 }))
 
-const listAttachments = vi.fn()
-const revealAttachmentInFinder = vi.fn().mockResolvedValue(undefined)
-const openAttachmentExternal = vi.fn().mockResolvedValue(undefined)
+const { listAttachments, revealAttachmentInFinder, openAttachmentExternal } = vi.hoisted(() => ({
+  listAttachments: vi.fn(),
+  revealAttachmentInFinder: vi.fn().mockResolvedValue(undefined),
+  openAttachmentExternal: vi.fn().mockResolvedValue(undefined)
+}))
 
-// The global test setup owns `window.api`; tests overlay their own notes
-// surface on it rather than replacing the object (same pattern as
-// attachment-block-menu.test.tsx).
-function setupApi(): void {
-  const api = window.api as unknown as Record<string, unknown>
-  api.notes = {
-    ...(api.notes as Record<string, unknown> | undefined),
-    listAttachments,
-    revealAttachmentInFinder,
-    openAttachmentExternal
+// The actions reach Rust through their generated commands.
+vi.mock('../../../../generated/bindings', async (importOriginal) => {
+  const actual = await importOriginal<typeof Bindings>()
+  return {
+    ...actual,
+    commands: {
+      ...actual.commands,
+      notesListAttachments: listAttachments,
+      notesAttachmentRevealInFinder: revealAttachmentInFinder,
+      notesAttachmentOpenExternal: openAttachmentExternal
+    }
   }
-}
+})
 
 afterEach(() => {
   listAttachments.mockReset()
@@ -57,14 +61,13 @@ afterEach(() => {
 
 const ROW = {
   filename: 'abc123-report.pdf',
-  path: 'memry-file://local/vault/attachments/n1/abc123-report.pdf',
+  path: 'attachments/n1/abc123-report.pdf',
   size: 2048,
   mimeType: 'application/pdf',
   type: 'file' as const
 }
 
 function renderDialog(names = new Map<string, string>()): void {
-  setupApi()
   render(
     <NoteAttachmentsDialog open onOpenChange={vi.fn()} noteId="n1" getOriginalNames={() => names} />
   )

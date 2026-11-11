@@ -109,16 +109,24 @@ export const commands = {
 	notesInsertExistingAttachment: (noteId: string, ownerNoteId: string, filename: string) => __TAURI_INVOKE<InsertedAttachment>("notes_insert_existing_attachment", { noteId, ownerNoteId, filename }),
 	/**  Every attachment the vault stores, newest first, for the pickers. */
 	notesListVaultAttachments: () => __TAURI_INVOKE<VaultAttachmentEntry[]>("notes_list_vault_attachments"),
+	/**  `notes:attachment-open-external`: the file a block's `url` names, in the OS's default app. */
+	notesAttachmentOpenExternal: (noteId: string, url: string) => __TAURI_INVOKE<null>("notes_attachment_open_external", { noteId, url }),
 	/**
 	 *  Renames the file a block's `url` names in the note's attachments folder to `new_name`, keeping
 	 *  its prefix and extension, and answers the block's new `url` and `name`.
 	 */
 	notesAttachmentRename: (noteId: string, url: string, newName: string) => __TAURI_INVOKE<RenamedAttachment>("notes_attachment_rename", { noteId, url, newName }),
+	/**  `notes:attachment-resolve`: where a block's `url` points on this device, self-heal included. */
+	notesAttachmentResolve: (noteId: string, url: string) => __TAURI_INVOKE<AttachmentLocation>("notes_attachment_resolve", { noteId, url }),
+	/**  `notes:attachment-reveal-in-finder`: the file a block's `url` names, in the OS file manager. */
+	notesAttachmentRevealInFinder: (noteId: string, url: string) => __TAURI_INVOKE<null>("notes_attachment_reveal_in_finder", { noteId, url }),
 	/**
 	 *  Deletes a file of the note's attachments folder, unless another note names it or the scan
 	 *  could not read every note (the open walk not yet ended complete among them): then the file stays and the answer names the notes.
 	 */
 	notesDeleteAttachment: (noteId: string, filename: string) => __TAURI_INVOKE<DeletedAttachment>("notes_delete_attachment", { noteId, filename }),
+	/**  `notes:list-attachments`: the files of the note's attachments folder. */
+	notesListAttachments: (noteId: string) => __TAURI_INVOKE<AttachmentInfo[]>("notes_list_attachments", { noteId }),
 	/**  Cancels a chunked upload; its part file is deleted. */
 	notesUploadAttachmentAbort: (id: string) => __TAURI_INVOKE<null>("notes_upload_attachment_abort", { id }),
 	/**
@@ -672,8 +680,34 @@ export type ApplyTemplateInput = {
 /**  The kinds of a note whose file is not markdown. */
 export type AttachedFileType = "pdf" | "image" | "audio" | "video";
 
+/**  One file of a note's attachments folder: `AttachmentInfo` of `vault/attachments.ts`. */
+export type AttachmentInfo = {
+	/**  The stored name, `k3f9x2-report.pdf`. */
+	filename: string,
+	/**
+	 *  The root-relative url of the file, `attachments/<noteId>/<name>` with the name
+	 *  percent-encoded, which the other actions take as a block `url`. Electron answered an
+	 *  absolute `memry-file:` URL; a vault folder or a name with `#`, `?` or `%` does not survive
+	 *  that URL's parse, and the encoded name does. Nothing writes it into a note.
+	 */
+	path: string,
+	size: number,
+	mimeType: string,
+	type: AttachmentKind,
+};
+
 /**  `image` or `file`; a video stays `file`, which older clients read as a file block (#2190). */
 export type AttachmentKind = "image" | "file";
+
+/**  `AttachmentResolveResult`: where a block's `url` points on this device. */
+export type AttachmentLocation = {
+	/**  The file's path, or the one it would have, inside this vault. */
+	absolutePath: string,
+	/**  The name on disk, `k3f9x2-report.pdf`; the healed file's when self-heal found it. */
+	storedFilename: string,
+	/**  False while the file is not on this device (not synced yet, or gone). */
+	exists: boolean,
+};
 
 /**  A link's text in the linking note (`BacklinkContext`); offsets are UTF-16 units. */
 export type BacklinkContextView = {

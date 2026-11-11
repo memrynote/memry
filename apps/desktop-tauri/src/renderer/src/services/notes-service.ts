@@ -616,6 +616,15 @@ const ported = {
     commands.notesAttachmentRename(noteId, url, newName),
   // These two reject on failure, as Electron's handlers do.
   listVaultAttachments: () => commands.notesListVaultAttachments(),
+  // These four reject on failure, as Electron's handlers do.
+  listAttachments: (noteId: string) => commands.notesListAttachments(noteId),
+  resolveAttachment: (noteId: string, url: string) => commands.notesAttachmentResolve(noteId, url),
+  revealAttachmentInFinder: async (noteId: string, url: string): Promise<void> => {
+    await commands.notesAttachmentRevealInFinder(noteId, url)
+  },
+  openAttachmentExternal: async (noteId: string, url: string): Promise<void> => {
+    await commands.notesAttachmentOpenExternal(noteId, url)
+  },
   insertExistingAttachment: (noteId: string, ownerNoteId: string, filename: string) =>
     commands.notesInsertExistingAttachment(noteId, ownerNoteId, filename),
   // Answers why nothing was saved, as Electron's `notes:download-attachment-from-url` does.
