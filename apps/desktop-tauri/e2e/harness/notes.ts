@@ -48,6 +48,8 @@ export interface ListedNote {
   id: string
   path: string
   title: string
+  /** `markdown`, or the kind of a file item such as `image` or `pdf`. */
+  fileType?: string
 }
 
 /** Every note the vault lists. */
