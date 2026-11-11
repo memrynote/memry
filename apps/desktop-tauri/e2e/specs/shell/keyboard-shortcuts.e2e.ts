@@ -146,6 +146,21 @@ test('a rebind moves the menu shortcut and the page chord', async ({ app, page }
   expect(await dispatcherTakes(page, { ...MOD_KEY, key: '=' })).toBe(false)
 })
 
+/**
+ * Presses a chord that reloads the page. The reload starts on the key-down, and the driver then
+ * sends the key-up (and the modifier-ups) to `document.activeElement`, which is null once the old
+ * document is going away: Safari's driver answers `null is not an object (evaluating
+ * 'activeEl.dispatchEvent')`. That failure is the reload the chord asked for, so the caller
+ * checks for the reload itself, and any other driver error still throws.
+ */
+async function pressReloadChord(page: Page, chord: string): Promise<void> {
+  try {
+    await page.keyboard.press(chord)
+  } catch (error) {
+    if (!String(error).includes('activeEl.dispatchEvent')) throw error
+  }
+}
+
 // `build:e2e` is a debug build, so it has the developer keys (`windows/scripts/dev-keys.js`). The
 // evidence pass on a release build shows they do nothing there.
 test('a debug build reloads the page on Cmd/Ctrl+R and on F5', async ({ page }) => {
@@ -154,7 +169,7 @@ test('a debug build reloads the page on Cmd/Ctrl+R and on F5', async ({ page }) 
     await page.evaluate(() => {
       ;(window as unknown as { __beforeReload?: boolean }).__beforeReload = true
     })
-    await page.keyboard.press(chord)
+    await pressReloadChord(page, chord)
     // The page is gone while it reloads, so a failed read counts as the old page.
     await expect
       .poll(() =>
