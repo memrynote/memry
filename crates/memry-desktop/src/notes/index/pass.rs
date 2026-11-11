@@ -350,6 +350,18 @@ impl Indexer {
         }
     }
 
+    /// The note's file measured, when it holds the bytes the vault tier took. The row's reading
+    /// is what an outside edit of a note with no baseline is measured against
+    /// (`identity::properties::edited`, whose `previous` is the row's `content_hash`), so it
+    /// stays the reading of the text the note's document and record took. Any other bytes are
+    /// skipped, and the tier's own fact queues the note again once it took them: an edit it has
+    /// not applied yet, one it retries (the record or the body refused it, #4225), and one the
+    /// document did not take. The row's `file_hash` moves on to those bytes already, so a move
+    /// before the retry pairs on them; the index goes by it only for a note whose document
+    /// holds no text of its file (`content_hash` none).
+    /// A note under an exclude pattern or in a hidden folder keeps its reading too, through a
+    /// full reindex or a retype: the tier applies no edit of its file, so neither its record nor
+    /// its search sees one.
     fn read(&self, note: &Unindexed, types: &HashMap<String, String>) -> Read {
         if large_by_size(note.file_size.unwrap_or_default().max(0) as u64).is_some() {
             return large(note);
@@ -357,39 +369,34 @@ impl Indexer {
         match read_note(&self.root, &note.path) {
             // The file grew past the class since its row was written.
             Ok(Some(file)) if large_file_class(&file.raw).is_some() => large(note),
-            // An outside edit the tier has not taken: the row stays the reading of the bytes the
-            // tier names, which an edit of a note with no baseline is measured against
-            // (`identity::properties::edited`), and the tier's own fact queues the note again.
-            // A tier that knows no bytes takes any reading.
-            Ok(Some(file)) => match self.vault.note_files().by_id(&note.note_id) {
-                Ok(row)
-                    if row
-                        .as_ref()
-                        .and_then(|row| row.file_hash.as_deref())
-                        .is_some_and(|taken| taken != file.hash) =>
-                {
+            Ok(Some(file)) => {
+                // A tier that knows no bytes takes any reading.
+                let taken = match self.vault.note_files().by_id(&note.note_id) {
+                    Ok(row) => row.and_then(|row| row.content_hash.or(row.file_hash)),
+                    Err(error) => {
+                        tracing::warn!(
+                            scope = "note_index",
+                            note_id = note.note_id,
+                            "the row's bytes did not read, retried later: {error}"
+                        );
+                        return Read::Failed;
+                    }
+                };
+                if taken.is_some_and(|taken| taken != file.hash) {
                     tracing::debug!(
                         scope = "note_index",
                         note_id = note.note_id,
                         "bytes the tier has not taken: left to its fact"
                     );
-                    Read::Skipped
+                    return Read::Skipped;
                 }
-                Ok(_) => Read::File(MeasuredFile {
+                Read::File(MeasuredFile {
                     note_id: note.note_id.clone(),
                     properties: file_properties(&file, types).unwrap_or_default(),
                     file_hash: file.hash,
                     text: file.raw,
-                }),
-                Err(error) => {
-                    tracing::warn!(
-                        scope = "note_index",
-                        note_id = note.note_id,
-                        "the row's bytes did not read, retried later: {error}"
-                    );
-                    Read::Failed
-                }
-            },
+                })
+            }
             // Gone: its `Removed` fact, or the next scan's prune, drops the row.
             Ok(None) => Read::Skipped,
             Err(NoteFileError::TooLarge) => large(note),
