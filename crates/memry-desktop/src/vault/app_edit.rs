@@ -239,6 +239,7 @@ impl AppEdit {
         let Some(file) = read_note(&self.root, &row.path).map_err(AppEditError::from)? else {
             return Ok(Edited::Kept(Kept::NoFile));
         };
+        tracing::info!(scope = "TMP4281", note_id, file = %file.hash, row = ?row.content_hash, "app_edit start");
         let bom = file.raw.starts_with(BOM);
         let read = bare(&file.raw);
         let Ok(parsed) = parse_markdown_note(read) else {
@@ -325,6 +326,7 @@ impl AppEdit {
                 body_changed && (!own_file || note_snapshots::is_significant(read_body, next_body))
             }
         };
+        tracing::info!(scope = "TMP4281", note_id, file = %file.hash, row = ?row.content_hash, outside, keeps, body_changed, "app_edit read");
         if keeps {
             let write_back = self.vault.write_back();
             match precondition {
@@ -403,6 +405,7 @@ impl AppEdit {
             lane.put_as_of(note_id, &row.path, stat, at)
                 .map_err(AppEditError::from)?;
         }
+        tracing::info!(scope = "TMP4281", note_id, wrote = %hash, takes, "app_edit wrote");
         landed()?;
         if !takes {
             return Ok(Edited::Wrote {

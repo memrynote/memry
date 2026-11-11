@@ -340,6 +340,7 @@ impl Applier {
                     Write::Seed
                 }
             };
+            tracing::info!(scope = "TMP4281", note_id, file = %file.hash, row = ?row.content_hash, "consumer feeds");
             match self.write_body(note_id, path, &file, write) {
                 Body::Wrote { holds_file: true } => {
                     // An outside edit of the file the row named (a seed's row names none):

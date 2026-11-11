@@ -24,8 +24,10 @@ impl Applier {
         modified_ms: i64,
     ) -> Step {
         if self.read_back(&mut lane, note_id, path, size) {
+            tracing::info!(scope = "TMP4281", note_id, "watched read back");
             return Step::Done;
         }
+        tracing::info!(scope = "TMP4281", note_id, size, "watched change");
         drop(lane);
         let _typing = self
             .editor

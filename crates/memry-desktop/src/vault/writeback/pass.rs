@@ -151,6 +151,7 @@ impl Pass {
             Ok(None) => return Outcome::Kept(Keep::NoFile),
             Err(error) => return Outcome::Failed(format!("the file could not be read: {error}")),
         };
+        tracing::info!(scope = "TMP4281", note_id, file = %file.hash, row = %row_hash, "writeback read");
         if file.hash != row_hash {
             return Outcome::Kept(Keep::FileChanged);
         }
@@ -187,6 +188,7 @@ impl Pass {
                 ));
             }
         };
+        tracing::info!(scope = "TMP4281", note_id, file = %file.hash, wrote = %hash, ?version_kept, "writeback");
         self.echo.will_write(&row.path, &hash);
         // A locked note's document takes only another device's edits (the core refuses local
         // ones), so its write-back goes through the lock, and its text becomes the baseline.

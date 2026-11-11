@@ -89,6 +89,7 @@ impl Applier {
             .note_files()
             .behind_body(note_id)
             .map_err(|error| retry("met no body to compare", &error))?;
+        tracing::info!(scope = "TMP4281", note_id, file = %file.hash, previous, ahead, writer = ?self.own_files.writer(note_id, &file.hash), "consumer outside_edit");
         if !ahead
             || self.own_files.writer(note_id, &file.hash).is_some()
             || !self.text_moved(note_id, path, previous, file)
@@ -185,6 +186,7 @@ impl Applier {
             Write::Seed => feed.seed_body_if_empty(&converter, input),
             Write::Replace(mark) => feed.feed_since(&converter, input, mark),
         };
+        tracing::info!(scope = "TMP4281", note_id, file = %file.hash, outcome = ?outcome.as_ref().map_err(|e| e.to_string()), "consumer feed outcome");
         match outcome {
             // Typing stored since the body was compared: the retry finds the body ahead.
             Ok(FeedOutcome::Changed) => Body::Failed,

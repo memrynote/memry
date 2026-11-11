@@ -439,6 +439,7 @@ test('typing left in a day by a switch is saved once, with an outside edit made 
       previous?.click()
     })
     writeFileSync(file, `${readFileSync(file, 'utf8').trimEnd()}\n\n${outside}\n`)
+    console.log('TMP4281 wrote', round, Date.now())
 
     const saved = await pollUntil(
       async () => {
@@ -453,10 +454,13 @@ test('typing left in a day by a switch is saved once, with an outside edit made 
     const text = readFileSync(file, 'utf8')
     expect(timesIn(text, typed.trim())).toBe(1)
     expect(timesIn(text, 'Written first.')).toBe(1)
+    console.log('TMP4281 round', round, Date.now(), text.includes(outside))
     if (!text.includes(outside)) {
       const versions = await invokeTest<{ content: string }[]>(app, 'e2e_debug_query', {
         sql: `SELECT content FROM note_snapshots WHERE note_id = 'j${date}'`
       })
+      if (!versions.some((version) => version.content.includes(outside)))
+        console.log('TMP4281', round, JSON.stringify(text), JSON.stringify(versions))
       expect(versions.some((version) => version.content.includes(outside))).toBe(true)
     }
 
