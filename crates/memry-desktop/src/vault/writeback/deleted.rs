@@ -8,6 +8,7 @@
 use std::path::Path;
 
 use super::Pass;
+use crate::vault::config::read_vault_config_strict;
 use crate::vault::consumer::{Applied, ChangeSource};
 use crate::vault::note_file::read_note;
 
@@ -39,7 +40,19 @@ impl Pass {
         trash: &dyn Fn(&Path) -> Result<(), String>,
         stopped: &dyn Fn() -> bool,
     ) -> Vec<(String, Leftover)> {
-        let rows = match self.vault.note_files().rows_of_deleted_notes() {
+        // A crossing a crash cut short leaves its record deleted and owed the move, with its
+        // row: the open's crossings make its file the new item once the journal days are known
+        // (`NoteIdentity::settle_crossings`). Unknown, they made nothing, and the file is not a
+        // deleted note's to trash (#4258).
+        let with_owed = read_vault_config_strict(&self.root).is_ok();
+        if !with_owed {
+            tracing::warn!(
+                scope = SCOPE,
+                "the vault config cannot be read, so the files of deleted notes owed a move stay \
+                 until it can be"
+            );
+        }
+        let rows = match self.vault.note_files().rows_of_deleted_notes(with_owed) {
             Ok(rows) => rows,
             Err(error) => {
                 tracing::error!(

@@ -277,8 +277,9 @@ pub(super) fn follow_held(identity: &NotesIdentity, ctx: &IdentityCtx<'_>) -> bo
 }
 
 /// Each owed move that changes what its file is, with its record deleted as the watcher's move
-/// deletes it ([`NotesWriter::file_crossed`]); one whose record stays is left owed, and a held
-/// day is never crossed ([`held`]). The held days renamed away are listed ([`list_renamed`]).
+/// deletes it ([`NotesWriter::file_crossed`]); one whose record stays is left owed, its file
+/// listed as undecided, and a held day is never crossed ([`held`]). The held days renamed away
+/// are listed ([`list_renamed`]).
 pub(super) fn crossings(
     identity: &NotesIdentity,
     ctx: &IdentityCtx<'_>,
@@ -319,6 +320,12 @@ pub(super) fn crossings(
                 note_id: owed.note_id,
                 path: owed.path,
             }),
+            // Kept by the core (its record has text the file lacks: a day a pulled edit
+            // revived after a crossing a crash cut short, #4258): the file is not the item it
+            // names, listed as a file put off is, until a crossing makes it.
+            Ok(Some(Removed::Undecided)) if root.join(&owed.path).is_file() => {
+                identity.undecided(root, &owed.path);
+            }
             Ok(_) => {}
             Err(error) => tracing::error!(
                 scope = SCOPE,

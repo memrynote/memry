@@ -15,6 +15,7 @@
 //! | an excluded renamed day is not crossed                            | `refuse_note`                       |
 //! | a renamed day is not crossed while a save of it waits             | the save is not undone by a revive  |
 //! | a turn into notes cut short after the delete is finished at open  | a deleted day is not held           |
+//! | a day revived after a turn into notes cut short is listed         | `crossings` lists what it keeps     |
 
 #[allow(unused_imports)]
 use crate::device_key;
@@ -33,7 +34,7 @@ use memry_desktop::journal::update::DayUpdate;
 use memry_desktop::notes::service::NotesService;
 use memry_desktop::vault::consumer::Applied;
 use memry_desktop::vault::notices::{RenamedDay, VaultNotice, VaultNotices};
-use vault_env::{Env, QUIET};
+use vault_env::{Env, QUIET, indexed};
 
 use crate::journal_folder::{DAY, crossed, daily, outbox, reopen, row};
 use crate::journal_folder_held::recorded_elsewhere;
@@ -284,35 +285,13 @@ fn a_renamed_day_is_not_crossed_while_a_save_of_it_waits() {
     assert!(outbox(&e, DAY).contains(&"delete".to_owned()));
 }
 
-/// A Turn into notes cut short between the core's delete of the day and the drop of its row:
-/// the app killed there, made here by deleting the day as the cross does
-/// (`NotesWriter::file_crossed`) and closing the vault. The next open finishes the cross: the
-/// file, untouched and not in the trash, is a new note, the day's delete is queued once, and the
+/// A Turn into notes cut short ([`cut_short`]). The next open finishes the cross: the file, untouched and not in the trash, is a new note, the day's delete is queued once, and the
 /// day is no longer listed. Held still, the day was skipped by the open's crossings and its file
 /// trashed as a deleted day's.
 #[test]
 fn a_turn_into_notes_cut_short_after_the_delete_is_finished_by_the_next_open() {
     let (mut e, _, notices, store) = renamed_away_keeping();
-    recorded_elsewhere(&e, false);
-    let before = fs::read(e.vault.join(TRIP)).unwrap();
-    let writer = e.core().notes_writer(store).unwrap();
-    assert_eq!(
-        writer.owed_place(DAY).unwrap(),
-        Some(("journal/2025-01-02.md".to_owned(), true))
-    );
-    let raw = e.read(TRIP);
-    let crossing = Crossing {
-        from_path: "journal/2025-01-02.md",
-        path: TRIP,
-        title: "Trip",
-        folder_path: Some("Diary"),
-        day: None,
-        body: split_frontmatter_block(&raw).body,
-        electron_db_beside: false,
-    };
-    let removed = writer.file_crossed(DAY, crossing, None, None).unwrap();
-    assert_eq!(removed, Removed::Deleted);
-    drop(writer);
+    let before = cut_short(&mut e, store);
     e.close();
     e.drain();
 
@@ -340,6 +319,71 @@ fn a_turn_into_notes_cut_short_after_the_delete_is_finished_by_the_next_open() {
     assert_eq!(fs::read(e.vault.join(TRIP)).unwrap(), before);
     assert_eq!(deletes(&e), 1, "{:?}", outbox(&e, DAY));
     assert_eq!(renamed_notice(&notices), None, "{:?}", notices.list());
+}
+
+/// A Turn into notes cut short between the core's delete of the day and the drop of its row:
+/// the app killed there, made here by deleting the day as the cross does
+/// (`NotesWriter::file_crossed`); the caller closes the vault. Answers the file's bytes.
+fn cut_short(e: &mut Env, store: Arc<dyn SecureStore>) -> Vec<u8> {
+    recorded_elsewhere(e, false);
+    let before = fs::read(e.vault.join(TRIP)).unwrap();
+    let writer = e.core().notes_writer(store).unwrap();
+    assert_eq!(
+        writer.owed_place(DAY).unwrap(),
+        Some(("journal/2025-01-02.md".to_owned(), true))
+    );
+    let raw = e.read(TRIP);
+    let crossing = Crossing {
+        from_path: "journal/2025-01-02.md",
+        path: TRIP,
+        title: "Trip",
+        folder_path: Some("Diary"),
+        day: None,
+        body: split_frontmatter_block(&raw).body,
+        electron_db_beside: false,
+    };
+    let removed = writer.file_crossed(DAY, crossing, None, None).unwrap();
+    assert_eq!(removed, Removed::Deleted);
+    before
+}
+
+/// #4258 L3: a pulled edit revives the day after a Turn into notes cut short, before the next
+/// open (made here by its stored outcome: the day live again, its body moved after its row's
+/// stamp). The open's crossing keeps the day, as deleting it would take the pulled text from
+/// every device, and lists its file as undecided rather than leaving it waiting unseen.
+#[test]
+fn a_day_revived_after_a_turn_into_notes_cut_short_is_listed_at_the_next_open() {
+    let (mut e, _, notices, store) = renamed_away_keeping();
+    cut_short(&mut e, store);
+    e.core()
+        .db_handle()
+        .call_blocking(|conn| {
+            conn.execute_batch(&format!(
+                "UPDATE sync_items SET deleted_at = NULL
+                  WHERE item_type = 'journal' AND item_id = '{DAY}';
+                 UPDATE journal_entries SET deleted_at = NULL WHERE id = '{DAY}';
+                 UPDATE note_files SET indexed_at = 0 WHERE note_id = '{DAY}';"
+            ))
+            .unwrap();
+            Ok(())
+        })
+        .unwrap();
+    e.close();
+    e.drain();
+
+    e.open();
+    let facts = e.facts_until(indexed);
+    assert!(!crossed(&facts), "{facts:?}");
+    assert!(e.rows().contains(&row(DAY, TRIP)), "{:?}", e.rows());
+    assert_eq!(deletes(&e), 1, "{:?}", outbox(&e, DAY));
+    let trip = e.vault.join(TRIP).to_string_lossy().into_owned();
+    assert!(
+        notices.list().iter().any(
+            |n| matches!(n, VaultNotice::UndecidedFiles { paths, .. } if paths.contains(&trip))
+        ),
+        "{:?}",
+        notices.list()
+    );
 }
 
 /// The day's deletes queued for every device.

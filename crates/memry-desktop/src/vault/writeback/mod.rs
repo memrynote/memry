@@ -106,7 +106,8 @@
 //!   parse is one the document took once its text was fed (#3750), so it goes to the trash
 //!   too, its block with it, and can be put back from there. A row whose file is gone is
 //!   removed. A note with no record here is not a deleted one: its record may not have
-//!   arrived yet. A file the trash refuses stays, with its row, for the next open. Each file
+//!   arrived yet. Nor, while the vault config cannot be read, is a note owed a move: a
+//!   crossing a crash cut short left it deleted, and its file is the next crossing's. A file the trash refuses stays, with its row, for the next open. Each file
 //!   holds the rows' lane from its check to its row's removal, and a stop or a close ends the
 //!   run between files. The check and the move are two steps: an outside edit that lands
 //!   between them goes to the trash with the file, from which it can be put back. The trash
