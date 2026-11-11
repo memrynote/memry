@@ -1014,8 +1014,8 @@ export function JournalPage({ className }: JournalPageProps): React.JSX.Element 
     setIsDeleting(true)
     try {
       const deleted = await deleteEntry()
-      if (!deleted) {
-        toast.error(t('toast.deleteFailed'))
+      if (!deleted.success) {
+        toast.error(deleted.error ?? t('toast.deleteFailed'))
         return
       }
       dialog.close()

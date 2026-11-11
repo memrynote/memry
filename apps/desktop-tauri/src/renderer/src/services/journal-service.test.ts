@@ -1,5 +1,6 @@
 import { describe, it, expect, beforeEach, vi } from 'vitest'
 import { createMockApi } from '@tests/setup-dom'
+import { answer, current } from '@/lib/permanent-delete-question'
 
 const commands = vi.hoisted(() => ({
   journalGetEntry: vi.fn(),
@@ -112,7 +113,42 @@ describe('journal-service', () => {
 
     commands.journalDeleteEntry.mockResolvedValue({ success: true })
     expect(await journalService.deleteEntry('2025-01-01')).toEqual({ success: true })
-    expect(commands.journalDeleteEntry).toHaveBeenCalledWith('2025-01-01')
+    expect(commands.journalDeleteEntry).toHaveBeenCalledWith('2025-01-01', null)
+  })
+
+  it('asks before a delete the trash refused a kept day for goes for good, and deletes only on yes', async () => {
+    const refused = { kind: 'storage', code: 'note_trash_unavailable', message: 'no trash' }
+    const ask = async (permanent: boolean) => {
+      commands.journalDeleteEntry.mockReset()
+      commands.journalDeleteEntry
+        .mockRejectedValueOnce(refused)
+        .mockResolvedValueOnce({ success: true })
+      const deleting = journalService.deleteEntry('2025-01-02')
+      await vi.waitFor(() =>
+        expect(current()).toMatchObject({ noteId: 'j2025-01-02', title: '2025-01-02' })
+      )
+      answer(current(), permanent)
+      return deleting
+    }
+
+    expect(await ask(true)).toEqual({ success: true })
+    expect(commands.journalDeleteEntry.mock.calls).toEqual([
+      ['2025-01-02', null],
+      ['2025-01-02', true]
+    ])
+
+    const kept = await ask(false)
+    expect(kept.success).toBe(false)
+    expect(kept.error).toEqual(expect.any(String))
+    expect(commands.journalDeleteEntry.mock.calls).toEqual([['2025-01-02', null]])
+
+    // Any other failure is thrown at once, with no question.
+    commands.journalDeleteEntry.mockReset()
+    commands.journalDeleteEntry.mockRejectedValueOnce({ ...refused, code: 'note_file_failed' })
+    await expect(journalService.deleteEntry('2025-01-02')).rejects.toMatchObject({
+      code: 'note_file_failed'
+    })
+    expect(current()).toBeNull()
   })
 
   it('reads the calendar through the Rust commands, a level as the contract types it', async () => {

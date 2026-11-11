@@ -147,7 +147,8 @@ export interface UseJournalEntryResult {
   saveNow: () => Promise<void>
   reload: () => Promise<void>
   forceReload: () => Promise<void>
-  deleteEntry: () => Promise<boolean>
+  /** `error`: why the day stayed, when it says. */
+  deleteEntry: () => Promise<{ success: boolean; error?: string }>
   retrySave: () => Promise<void>
   dismissSaveError: () => void
 }
@@ -513,7 +514,9 @@ export function useJournalEntry(date: string): UseJournalEntryResult {
     mutationFn: async (dateToDelete: string) => {
       return journalService.deleteEntry(dateToDelete)
     },
-    onSuccess: (_, dateToDelete) => {
+    onSuccess: (result, dateToDelete) => {
+      // A day the user kept (`deleteEntry`) is still there.
+      if (!result.success) return
       queryClient.setQueryData(journalKeys.entry(dateToDelete), null)
       const year = parseInt(dateToDelete.slice(0, 4), 10)
       void queryClient.invalidateQueries({ queryKey: journalKeys.heatmap(year) })
@@ -744,7 +747,7 @@ export function useJournalEntry(date: string): UseJournalEntryResult {
     if (currentDateRef.current === date) editorTextRef.current = { date, text: data?.content ?? '' }
   }, [date, refetch])
 
-  const deleteEntry = useCallback(async (): Promise<boolean> => {
+  const deleteEntry = useCallback(async (): Promise<{ success: boolean; error?: string }> => {
     try {
       const result = await deleteMutation.mutateAsync(date)
       if (result.success) {
@@ -752,11 +755,11 @@ export function useJournalEntry(date: string): UseJournalEntryResult {
         pendingContentRef.current = null
         pendingTagsRef.current = null
       }
-      return result.success
+      return result
     } catch (err) {
       trackRendererError('journal_delete_failed', err)
       log.error('Failed to delete journal entry:', err)
-      return false
+      return { success: false }
     }
   }, [date, deleteMutation])
 

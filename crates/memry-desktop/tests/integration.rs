@@ -199,6 +199,8 @@ mod notes_folders;
 mod notes_frontmatter;
 #[path = "notes_identity.rs"]
 mod notes_identity;
+#[path = "notes_kept.rs"]
+mod notes_kept;
 #[path = "notes_link_rewrite.rs"]
 mod notes_link_rewrite;
 #[path = "notes_local_only.rs"]

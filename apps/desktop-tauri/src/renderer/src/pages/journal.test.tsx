@@ -895,7 +895,7 @@ describe('JournalPage', () => {
   })
 
   it('deletes the entry after confirmation and remounts the editor', async () => {
-    mocks.deleteEntry.mockResolvedValue(true)
+    mocks.deleteEntry.mockResolvedValue({ success: true })
     render(<JournalPage />)
     const mountsBefore = mocks.contentAreaMounts
 
