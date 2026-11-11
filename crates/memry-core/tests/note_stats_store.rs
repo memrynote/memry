@@ -138,6 +138,24 @@ fn the_stored_hash_against_the_file_hash_decides_what_is_listed() {
     assert_eq!(listed(&search, true), ["same", "moved-on", "unread"]);
 }
 
+/// The bytes the tier took are the text the document holds, else the file's last read: the
+/// rule the index's read keeps, so a reading of a file the tier retries is not listed again.
+#[test]
+fn the_text_the_document_holds_is_compared_before_the_file_read() {
+    let dir = scratch();
+    let (vault, search) = open(dir.path());
+    for id in ["kept", "file", "none"] {
+        row(&vault, id, &format!("{id}.md"), "markdown", 10, None);
+        let files = vault.note_files();
+        files.set_hash(id, Some("h-text")).expect("content hash");
+        files.set_file_hash(id, Some("h-file")).expect("file hash");
+    }
+    let files = vec![measured("kept", "h-text"), measured("file", "h-file")];
+    search.index_note_files(files).expect("write");
+
+    assert_eq!(listed(&search, false), ["file", "none"]);
+}
+
 /// A row's journal day is its record's, never one read from its path: a day's row takes the
 /// day, a note at a day's path none. A day owed a move of its file has none, so its row is
 /// listed again though the hashes agree, and measured again it keeps no day.

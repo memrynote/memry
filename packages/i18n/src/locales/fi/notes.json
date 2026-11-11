@@ -192,6 +192,7 @@
   },
   "editor": {
     "bodySyncPending": "Synkronoidaan – muistiinpanon sisältö voi olla vielä tulossa",
+    "databaseReadOnly": "Vain luku. Tämä laite ei voi tallentaa muutoksia.",
     "taskRemoval": {
       "title": "{count, plural, one {Tehtävä poistettu tästä muistiinpanosta} other {# tehtävää poistettu tästä muistiinpanosta}}",
       "description": "{count, plural, one {Säilytetäänkö se Tehtävissä vai poistetaanko se kaikkialta?} other {Säilytetäänkö ne Tehtävissä vai poistetaanko ne kaikkialta?}}",

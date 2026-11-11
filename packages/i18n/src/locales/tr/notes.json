@@ -192,6 +192,7 @@
   },
   "editor": {
     "bodySyncPending": "Eşitleniyor — bu notun içeriği hâlâ yolda olabilir",
+    "databaseReadOnly": "Salt okunur. Bu cihaz değişiklikleri kaydedemiyor.",
     "taskRemoval": {
       "title": "{count, plural, one {Görev bu nottan kaldırıldı} other {# görev bu nottan kaldırıldı}}",
       "description": "{count, plural, one {Görevler sayfasında kalsın mı, yoksa her yerden silinsin mi?} other {Görevler sayfasında kalsınlar mı, yoksa her yerden silinsinler mi?}}",

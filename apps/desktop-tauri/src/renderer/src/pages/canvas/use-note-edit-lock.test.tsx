@@ -47,6 +47,7 @@ vi.mock('@/sync/yjs-ipc-provider', () => ({
     destroy(): void {
       /* intentional no-op */
     }
+    readonly detached = Promise.resolve()
     resumeRebind(): void {
       /* intentional no-op */
     }

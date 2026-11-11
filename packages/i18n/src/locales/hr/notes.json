@@ -192,6 +192,7 @@
   },
   "editor": {
     "bodySyncPending": "Sinkronizacija – sadržaj ove bilješke možda još stiže",
+    "databaseReadOnly": "Samo za čitanje. Ovaj uređaj ne može spremati promjene.",
     "taskRemoval": {
       "title": "{count, plural, =1 {Zadatak uklonjen iz ove bilješke} one {# zadatak uklonjen iz ove bilješke} few {# zadatka uklonjena iz ove bilješke} other {# zadataka uklonjeno iz ove bilješke}}",
       "description": "{count, plural, =1 {Zadržati ga u Zadacima ili ga izbrisati posvuda?} one {Zadržati ih u Zadacima ili ih izbrisati posvuda?} few {Zadržati ih u Zadacima ili ih izbrisati posvuda?} other {Zadržati ih u Zadacima ili ih izbrisati posvuda?}}",

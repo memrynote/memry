@@ -14,6 +14,8 @@
 //! | an index that dropped a note's rows takes only its changes  | the baseline is not the index's       |
 //! | a note with no baseline is measured by the index's reading  | an older build's note                 |
 //! | a read before the tier takes an edit keeps the index's reading | the index reads the tier's bytes   |
+//! | a read while the tier retries an edit keeps the index's reading | the index reads the record's bytes |
+//! | an index row dropped during a retry is read again          | the index is not rebuildable          |
 //! | a broken frontmatter then fixed reaches the record          | the baseline is the last good reading |
 //! | an app write after an outside edit does not hide it         | the edit is taken at fact time        |
 //! | a save over an outside edit not fed yet does not hide it    | the save takes the edit first         |
@@ -32,6 +34,7 @@ use crate::vault_env;
 use std::sync::Arc;
 
 use index_support::until;
+use memry_core::api::errors::StorageError;
 use memry_core::seams::secure_store::SecureStore;
 use memry_desktop::journal::update::{DayUpdate, InlineTags};
 use memry_desktop::notes::apply_template::{ApplyTemplateInput, TemplateMode};
@@ -387,6 +390,96 @@ fn a_read_before_the_tier_takes_an_outside_edit_keeps_the_index_reading() {
         f.record(),
         object(json!({ "stage": "Review", "rating": 6 }))
     );
+}
+
+/// The tier read an outside edit, but the record (#4225) or the body did not take it: its row
+/// pairs a move on the new bytes while the fact waits for its retry. An index read in between
+/// keeps the reading of the file the record took, which the retried edit is measured against.
+#[test]
+fn a_read_while_the_tier_retries_an_outside_edit_keeps_the_index_reading() {
+    for (case, refusal) in [
+        (
+            "the record refused the edit",
+            "CREATE TRIGGER refused BEFORE INSERT ON meta \
+             WHEN NEW.key LIKE 'note.file_properties:%' \
+             BEGIN SELECT RAISE(ABORT, 'the disk is full'); END",
+        ),
+        (
+            "the body refused the edit",
+            "CREATE TRIGGER refused BEFORE INSERT ON yjs_updates \
+             BEGIN SELECT RAISE(ABORT, 'the disk is full'); END",
+        ),
+    ] {
+        let f = with_no_baseline();
+        exec(&f.e, refusal);
+        // The body changes too, so the document has an edit to store.
+        let text = "---\nstage: Draft\nrating: 6\n---\n# Plan\n\nEdited.\n";
+        f.e.write("Plan.md", text);
+        let files = f.e.core().note_files();
+        until("the tier read the edit and waits for its retry", || {
+            let row = files.by_id(&f.id).unwrap().unwrap();
+            row.file_hash == Some(content_hash(text))
+        });
+        let row = files.by_id(&f.id).unwrap().unwrap();
+        assert_eq!(row.content_hash, Some(content_hash(PLAN)), "{case}");
+        f.index.measure(&f.id).unwrap();
+        exec(&f.e, "DROP TRIGGER refused");
+        until("the retry took the edit", || {
+            let row = files.by_id(&f.id).unwrap().unwrap();
+            row.content_hash == Some(content_hash(text))
+        });
+        assert_eq!(
+            f.record(),
+            object(json!({ "stage": "Review", "rating": 6 })),
+            "{case}"
+        );
+        let search = f.e.session.current().unwrap().search;
+        until("the index read the edit the retry took", || {
+            let stored = search.note_stats(&f.id).unwrap();
+            stored.and_then(|stored| stored.file_hash) == Some(content_hash(text))
+        });
+    }
+}
+
+/// An index row dropped while the tier retries an outside edit is filled again with the file's
+/// reading: with no row there is no reading to keep, and the index stays rebuildable.
+#[test]
+fn a_dropped_index_row_is_read_again_while_the_tier_retries() {
+    let f = with_no_baseline();
+    exec(
+        &f.e,
+        "CREATE TRIGGER refused BEFORE INSERT ON meta \
+         WHEN NEW.key LIKE 'note.file_properties:%' \
+         BEGIN SELECT RAISE(ABORT, 'the disk is full'); END",
+    );
+    let text = "---\nstage: Draft\nrating: 6\n---\n# Plan\n\nEdited.\n";
+    f.e.write("Plan.md", text);
+    let files = f.e.core().note_files();
+    until("the tier read the edit and waits for its retry", || {
+        let row = files.by_id(&f.id).unwrap().unwrap();
+        row.file_hash == Some(content_hash(text))
+    });
+    let search = f.e.session.current().unwrap().search;
+    assert!(search.forget_note_stats(&f.id).unwrap());
+    f.index.measure(&f.id).unwrap();
+    let stored = search
+        .note_stats(&f.id)
+        .unwrap()
+        .map(|stored| stored.file_hash);
+    assert_eq!(stored, Some(Some(content_hash(text))));
+}
+
+/// Runs `sql` on the open vault's database.
+fn exec(e: &Env, sql: &'static str) {
+    e.core()
+        .db_handle()
+        .call_blocking(move |conn| {
+            conn.execute_batch(sql)
+                .map_err(|error| StorageError::Failed {
+                    what: error.to_string(),
+                })
+        })
+        .unwrap();
 }
 
 /// The editor's save replaces whatever is there, the outside edit's frontmatter kept.

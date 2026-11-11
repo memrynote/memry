@@ -83,6 +83,8 @@
   "crdt": {
     "persistenceDegradedTitle": "A szerkesztési előzmények nem maradnak meg ezen az eszközön",
     "persistenceDegradedBody": "A jegyzetei biztonságban vannak – egyszerű fájlokként vannak a széfben, és továbbra is a szokásos módon nyílnak meg és mentődnek. Csak az eszköz helyi szerkesztési előzményei és egyesítési állapota fut a memóriában, ezért ezek a memrynote minden megnyitásakor elölről kezdődnek.",
+    "databaseReadOnlyTitle": "Ez az eszköz nem tud változásokat menteni",
+    "databaseReadOnlyBody": "A memrynote nem tud írni a széf .memry mappájába, sem a benne lévő fájlokba, ezért a jegyzetek írásvédetten nyílnak meg. Tegye őket írhatóvá, majd indítsa újra a memrynote-ot.",
     "editsNotSavedTitle": "A jegyzet legutóbbi módosításait nem sikerült menteni",
     "editsNotSavedBody": "A memrynote addig próbálkozik, amíg a jegyzet nyitva van. Ha bezárod, előbb másold ki, amit beírtál.",
     "writebackFailedTitle": "Egy jegyzet fájlját nem sikerült frissíteni a lemezen",

@@ -192,6 +192,7 @@
   },
   "editor": {
     "bodySyncPending": "Sincronizzazione in corso: il contenuto di questa nota potrebbe non essere ancora arrivato",
+    "databaseReadOnly": "Sola lettura. Questo dispositivo non può salvare le modifiche.",
     "taskRemoval": {
       "title": "{count, plural, one {Attività rimossa da questa nota} other {# attività rimosse da questa nota}}",
       "description": "{count, plural, one {Vuoi mantenerla in Attività o eliminarla ovunque?} other {Vuoi mantenerle in Attività o eliminarle ovunque?}}",

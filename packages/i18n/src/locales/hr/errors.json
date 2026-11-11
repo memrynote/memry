@@ -83,6 +83,8 @@
   "crdt": {
     "persistenceDegradedTitle": "Povijest uređivanja ne sprema se na ovom uređaju",
     "persistenceDegradedBody": "Vaše bilješke su sigurne – nalaze se u trezoru kao obične datoteke i i dalje se normalno otvaraju i spremaju. Samo se lokalna povijest uređivanja i stanje spajanja ovog uređaja drže u memoriji pa počinju ispočetka svaki put kad se aplikacija memrynote otvori.",
+    "databaseReadOnlyTitle": "Ovaj uređaj ne može spremati promjene",
+    "databaseReadOnlyBody": "memrynote ne može pisati u mapu .memry ovog trezora ni u datoteke u njoj, pa se bilješke otvaraju samo za čitanje. Omogućite pisanje u njih, zatim ponovno pokrenite memrynote.",
     "editsNotSavedTitle": "Vaše posljednje izmjene ove bilješke nije bilo moguće spremiti",
     "editsNotSavedBody": "memrynote nastavlja pokušavati dok je bilješka otvorena. Ako je zatvorite, najprije kopirajte ono što ste upisali.",
     "writebackFailedTitle": "Datoteku bilješke na disku nije bilo moguće ažurirati",

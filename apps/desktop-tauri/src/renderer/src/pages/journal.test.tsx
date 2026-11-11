@@ -9,6 +9,7 @@ import type * as BacklinksModule from '@/components/note/backlinks'
 
 const mocks = vi.hoisted(() => ({
   isDayExcluded: false,
+  databaseReadOnly: false,
   openTab: vi.fn(),
   activeTab: {
     type: 'journal',
@@ -209,6 +210,10 @@ vi.mock('@/hooks/use-property-section', () => ({
       handlePropertyOrderChange: mocks.handlePropertyOrderChange
     }
   }
+}))
+
+vi.mock('@/hooks/use-database-read-only', () => ({
+  useDatabaseReadOnly: () => mocks.databaseReadOnly
 }))
 
 vi.mock('@/hooks/use-vault-config', () => ({
@@ -519,6 +524,7 @@ describe('JournalPage', () => {
     vi.clearAllMocks()
     scrolledInto = []
     mocks.isDayExcluded = false
+    mocks.databaseReadOnly = false
     mocks.activeTab = { type: 'journal', viewState: { date: '2026-01-15' } }
     mocks.saveError = null
     mocks.entryError = null
@@ -916,6 +922,41 @@ describe('JournalPage', () => {
     mocks.loadedForDate = undefined
     rerender(<JournalPage />)
     expect(mocks.contentAreaProps.editable).toBe(true)
+  })
+
+  // This device can't save (#4268). An empty day's editor is bound to no note, so no editor host
+  // says so: the page asks, and takes no typing and no field edit.
+  describe('a read-only database', () => {
+    it('keeps an empty day from taking input and says why', () => {
+      mocks.entry = null
+      mocks.databaseReadOnly = true
+      render(<JournalPage />)
+
+      expect(screen.getByTestId('note-database-read-only')).toBeInTheDocument()
+      expect(mocks.contentAreaProps.editable).toBe(false)
+      expect(screen.getByTestId('tags-row')).toHaveAttribute('data-disabled', 'true')
+      expect(screen.getByTestId('ghost-row')).toHaveAttribute('data-disabled', 'true')
+      expect(mocks.propertySectionOptions.canEdit()).toBe(false)
+      void act(() => mocks.propertySectionOptions.onBlocked('update'))
+      expect(toast.error).toHaveBeenCalledWith('editor.databaseReadOnly')
+    })
+
+    it("leaves a day with a note to its editor's own notice", () => {
+      mocks.databaseReadOnly = true
+      render(<JournalPage />)
+
+      expect(screen.queryByTestId('note-database-read-only')).not.toBeInTheDocument()
+      expect(mocks.contentAreaProps.editable).toBe(false)
+      expect(screen.getByTestId('info-section')).toHaveAttribute('data-disabled', 'true')
+    })
+
+    it('takes input on an empty day while the database is writable', () => {
+      mocks.entry = null
+      render(<JournalPage />)
+
+      expect(screen.queryByTestId('note-database-read-only')).not.toBeInTheDocument()
+      expect(mocks.contentAreaProps.editable).toBe(true)
+    })
   })
 
   describe('a journal entry under a lock (#2606)', () => {
