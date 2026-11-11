@@ -60,10 +60,10 @@ async function typeInDay(page: Page, text: string): Promise<void> {
   await driver.elementSendKeys(Object.values(editor)[0], text)
 }
 const timesIn = (text: string, part: string): number => text.split(part).length - 1
-const GAP = 150
-const ROUNDS = 8
+const GAP = 1500
+const ROUNDS = 6
 
-test('zz4281 gap 150 loop', async ({ app, page, testVaultPath }) => {
+test('zz4281 hold over the switch', async ({ app, page, testVaultPath }) => {
   await openJournal(page)
   const date = await today(page)
   const file = join(testVaultPath, 'journal', `${date}.md`)
@@ -78,12 +78,13 @@ test('zz4281 gap 150 loop', async ({ app, page, testVaultPath }) => {
     const typed = ` Typed ${round}.`
     const outside = `Outside ${round}.`
     await typeInDay(page, typed)
+    // The outside writer truncates before the switch and writes after its saves ran.
+    const next = `${readFileSync(file, 'utf8').trimEnd()}\n\n${outside}\n`
+    const fd = openSync(file, 'w')
     await page.evaluate(() => {
       document.querySelector<HTMLButtonElement>('[aria-label="Previous day"]')?.click()
     })
-    const next = `${readFileSync(file, 'utf8').trimEnd()}\n\n${outside}\n`
-    const fd = openSync(file, 'w')
-    if (GAP > 0) await sleep(GAP)
+    await sleep(GAP)
     writeSync(fd, next)
     const orphan = fstatSync(fd).ino !== statSync(file).ino
     closeSync(fd)
