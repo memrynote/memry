@@ -106,30 +106,6 @@ async function openGridNote(page: Page, title: string, doc: unknown[] = GRID_DOC
   await setBlocks(page, doc)
   const rows = page.locator(NOTE_EDITOR).first().locator('table tr')
   await expect(rows).toHaveCount(doc === GRID_DOC ? 3 : 2, { timeout: 15_000 })
-  // The seeded table reaches the file before the first press, as `openNoteWithLines` waits, so
-  // the save and what follows it are behind the gestures: on a loaded Linux runner a cell colour
-  // picked before then was gone from every cell. Then the editor state replaced a beat after a
-  // fresh note opens (a caret placed before that is lost): the doc identity holds still across
-  // two polls.
-  const lastCell = doc === GRID_DOC ? 'B3' : 'Open'
-  await expect
-    .poll(async () => (await noteBody(page, note.id)) ?? '', { timeout: 20_000 })
-    .toContain(lastCell)
-  await page.waitForFunction(
-    () => {
-      const w = window as unknown as {
-        __memryActiveEditor?: { prosemirrorView?: { state: { doc: unknown } } }
-        __docProbe?: unknown
-      }
-      const current = w.__memryActiveEditor?.prosemirrorView?.state.doc
-      if (!current) return false
-      const settled = w.__docProbe === current
-      w.__docProbe = current
-      return settled
-    },
-    undefined,
-    { timeout: 15_000, polling: 500 }
-  )
   return { note, rows }
 }
 
@@ -224,11 +200,57 @@ test('every bar lands on the cell border it claims', async ({ page }) => {
   })
 })
 
-// A hovered or opened bar becomes Notion's button: the row pill 14 wide x 22 tall and still
-// centred on the table's inline-start line, the column pill 22x14. WebDriver pointer moves set no
-// CSS `:hover` in WKWebView, and the open-menu rule that would show the same box never matches
-// (#4200: BlockNote 0.54's Base UI trigger sets `data-popup-open`, not `data-state="open"`).
-test.skip("an opened bar holds Notion's 14x22 button box on its border line", async () => {})
+// An opened bar is Notion's button: the row pill 14 wide x 22 tall and still centred on the
+// table's inline-start line, the column pill 22x14 on its block-start line. Asserted through the
+// open menu, which holds the box while the pointer is over the menu (#4200); WebDriver pointer
+// moves set no CSS `:hover` in WKWebView, so the hover morph is not asserted here.
+test("an opened bar holds Notion's 14x22 button box on its border line", async ({ page }) => {
+  const { rows } = await openGridNote(page, 'Table Nub Open')
+  const middleCell = rows.nth(1).locator('td').nth(1)
+  const tableBox = await box(page.locator(NOTE_EDITOR).first().locator('table').first())
+  const border = await middleCell.evaluate((element: HTMLElement) =>
+    parseFloat(getComputedStyle(element).borderInlineStartWidth)
+  )
+
+  for (const { kind, size } of [
+    { kind: 'row', size: '14x22' },
+    { kind: 'column', size: '22x14' }
+  ]) {
+    // Bars follow `pointerover`: from outside the table, so the second pass raises them again.
+    await page.mouse.move(5, 5)
+    await hoverIn(page, middleCell)
+    const control = page.locator(`[data-memry-table-handle="${kind}"]`)
+    await expect(control).toBeVisible({ timeout: 10_000 })
+    await control.click()
+    await expect(control).toHaveAttribute('aria-expanded', 'true', { timeout: 10_000 })
+
+    const pill = control.locator('.memry-table-handle-pill')
+    await expect
+      .poll(
+        async () => {
+          const grown = await pill.boundingBox()
+          return grown ? `${Math.round(grown.width)}x${Math.round(grown.height)}` : 'gone'
+        },
+        { timeout: 5_000 }
+      )
+      .toBe(size)
+
+    // Still centred on the border line it rests on.
+    const grown = await box(pill)
+    if (kind === 'row') {
+      expect(
+        Math.abs(grown.x + grown.width / 2 - lineFrom(tableBox.x, border))
+      ).toBeLessThanOrEqual(TOLERANCE)
+    } else {
+      expect(
+        Math.abs(grown.y + grown.height / 2 - lineFrom(tableBox.y, border))
+      ).toBeLessThanOrEqual(TOLERANCE)
+    }
+
+    await page.keyboard.press('Escape')
+    await expect(page.locator('[data-memry-table-handles]')).toHaveCount(0, { timeout: 10_000 })
+  }
+})
 
 test('the nub reaches past the line it paints, and survives the resize shield', async ({
   page
