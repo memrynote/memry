@@ -210,6 +210,12 @@ impl VaultTier {
         }
     }
 
+    /// What the open vault's write-back did for the note (e2e build), `None` before any schedule.
+    #[cfg(feature = "e2e")]
+    pub fn writeback_debug(&self, id: &str) -> Option<crate::vault::writeback::WriteBackDebug> {
+        self.current()?.writeback.debug(id)
+    }
+
     /// Every note whose file could not be updated from its body, once per run of failures.
     pub fn subscribe_failures(&self) -> broadcast::Receiver<WriteBackFailed> {
         self.failures.subscribe()

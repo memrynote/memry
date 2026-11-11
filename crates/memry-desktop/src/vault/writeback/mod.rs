@@ -123,6 +123,8 @@
 //! frontmatter, in place, and never writes the day's tags (`journal`). A file the note has no
 //! row or no file for is not created: the note records create files (Step 13).
 
+#[cfg(feature = "e2e")]
+mod debug;
 mod deleted;
 pub(crate) mod journal;
 mod pass;
@@ -131,6 +133,8 @@ mod schedule;
 #[cfg(test)]
 mod tests;
 
+#[cfg(feature = "e2e")]
+pub use debug::WriteBackDebug;
 pub use deleted::Leftover;
 pub(crate) use pass::output_over;
 pub use pass::{Keep, Outcome, Pass};

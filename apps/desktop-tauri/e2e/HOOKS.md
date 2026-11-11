@@ -143,6 +143,22 @@ Step 14 (#3531) edits notes, these commands drive the write-back
   `e2e_flush_after_browser_exit` (Windows) ends the WebView2 browser process, asks its page to
   flush with the main thread held, so WebView2 cannot report the death first, then quits.
 
+## Editor write-back
+
+`e2e_writeback_debug_state` (`src-tauri/src/e2e/editor.rs`, over
+`VaultTier::writeback_debug`) answers what the open vault's write-back did for a note this
+session, `null` before its first schedule: `pending` (scheduled or passing now),
+`scheduledCount`, `performedCount` (passes that wrote the body or found the file already
+holding it) and `lastError` (a failed pass, a frontmatter that does not parse, or a body that
+would lose content; cleared by the next schedule or a pass that does not fail). A pass that keeps
+the file for another reason (`Keep`) counts neither. `lastMarkdown` and `sourceRestore` are
+always `null`: read the file with `e2e_vault_read_file` or `fs`. The bookkeeping exists only in
+the e2e build (`memry-desktop/e2e`). `specs/editor/toggle-writeback-byte-stability.e2e.ts` waits
+on it before it asserts a file's bytes.
+
+Electron's `getNoteFileBodyById` is the `content` of `notes_get`, which reads the note's file,
+so it needs no command; `harness/editor.ts` `noteBody` reads it.
+
 ## Editor windows
 
 `e2e_create_secondary_window` (`src-tauri/src/e2e/window.rs`) opens a second app window on the

@@ -29,7 +29,7 @@ fn store(app: &AppHandle<Wry>) -> Result<Arc<DeviceIdentityStore>, CommandError>
     Ok(store.inner().clone())
 }
 
-fn tier(app: &AppHandle<Wry>) -> Result<Arc<VaultTier>, CommandError> {
+pub(super) fn tier(app: &AppHandle<Wry>) -> Result<Arc<VaultTier>, CommandError> {
     let tier = app
         .try_state::<Arc<VaultTier>>()
         .ok_or_else(|| failed("e2e_no_vault_tier", "the vault tier is not running"))?;
