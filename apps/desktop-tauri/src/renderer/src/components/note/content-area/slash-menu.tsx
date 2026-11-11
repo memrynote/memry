@@ -1,6 +1,6 @@
 /**
  * The `/` menu. BlockNote still owns opening, filtering input, arrow keys and
- * Enter (through `SuggestionMenuController`); this renders the rows and adds
+ * Enter (through `SlashMenuController`); this renders the rows and adds
  * keys BlockNote does not have: Tab to accept the highlighted row, ⌘/Ctrl+Enter for a row's secondary action,
  * and Up/Down/Enter over the fallback rows when nothing matches.
  */
