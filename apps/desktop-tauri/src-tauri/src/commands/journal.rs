@@ -247,6 +247,42 @@ pub async fn journal_delete_entry<R: Runtime>(
     .await
 }
 
+/// What `journal_cross_into_notes` did.
+#[derive(Debug, Clone, Serialize, specta::Type)]
+pub struct JournalCrossOutput {
+    /// How many of the days asked about became notes.
+    pub crossed: u32,
+}
+
+/// Turns the held journal days `note_ids`, renamed outside the app away from their day, into
+/// notes (`VaultNotice::JournalDaysRenamed`, `memry_desktop::journal::cross`), as Electron's
+/// watcher crosses such a file at the rename. Each day that went sends `journal:entryDeleted`.
+#[tauri::command]
+#[specta::specta]
+pub async fn journal_cross_into_notes<R: Runtime>(
+    app: AppHandle<R>,
+    note_ids: Vec<String>,
+) -> Result<JournalCrossOutput, CommandError> {
+    blocking("journal_cross_into_notes", move || {
+        let open = notes::open_vault(&app)?;
+        let dates = notes::service(&app)?
+            .cross_renamed_days(&open, &note_ids)
+            .map_err(|error| failed(&error))?;
+        let crossed = u32::try_from(dates.len()).unwrap_or(u32::MAX);
+        for date in dates {
+            announce(
+                &app,
+                Landed::Deleted {
+                    date,
+                    success: true,
+                },
+            );
+        }
+        Ok(JournalCrossOutput { crossed })
+    })
+    .await
+}
+
 /// The live days of the year the calendar shows (`journal:getHeatmap`), oldest first.
 #[tauri::command]
 #[specta::specta]

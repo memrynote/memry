@@ -2,7 +2,10 @@
 //! what the file is ([`keeps_kind`]) is made at the next open's walk ([`crossings`]), the
 //! record deleted for the consumer to make the file anew, as Electron does
 //! (`renameKeepsJournalDate`, `vault/watcher.ts`). A day the whole journal folder carried is
-//! held, never crossed, and stays held whatever is on disk later ([`held`]).
+//! held, never crossed, and stays held whatever is on disk later ([`held`]). A held day renamed
+//! outside to a name that no longer names its day is listed on the vault's notices
+//! ([`renamed_away`]) for the user to turn into a note ([`cross_renamed`]), as Electron crosses
+//! it at the rename.
 
 use std::collections::BTreeSet;
 use std::path::Path;
@@ -15,8 +18,10 @@ use super::identity::{NotesIdentity, electron_db_beside, is_large_file, place};
 use crate::journal::folder_follow::{
     Follow, batch_held, follow_after_batch, journal_folder_moved, mark_batch,
 };
+use crate::vault::app_move::on_disk;
 use crate::vault::consumer::identity::{Crossed, IdentityCtx, IdentityError, NoteIdentity};
 use crate::vault::journal_format::JournalDays;
+use crate::vault::notices::{LISTED, Listed, RenamedDay, VaultNotice, VaultNotices};
 
 const SCOPE: &str = "note_identity";
 
@@ -84,20 +89,118 @@ pub(crate) fn settle_followed(
 /// kept ([`NotesWriter::hold_place`]): the old folder made again later (a folder or note create,
 /// or by hand) never turns a held day into a crossing. A day at a path the setting reads as a day
 /// is not held. The consumer's batch is marked before the hold is kept, so a command that sees
-/// the hold waits for the batch's follow ([`mark_batch`]).
+/// the hold waits for the batch's follow ([`mark_batch`]). `notices` lists the day while it is
+/// held and [`renamed_away`], and takes it off otherwise.
 pub(crate) fn held(
     root: &Path,
     journal: &JournalDays,
     writer: &NotesWriter,
-    id: &str,
-    from: &str,
-    to: &str,
+    notices: Option<&VaultNotices>,
+    (id, from, to): (&str, &str, &str),
 ) -> Result<bool, IdentityError> {
     let (from, already) = match writer.owed_place(id)? {
         Some((first, already)) => (first, already),
         None => (from.to_owned(), false),
     };
-    decide(root, journal, writer, id, (&from, to), already, true)
+    let held = decide(root, journal, writer, id, (&from, to), already, true)?;
+    if let Some(notices) = notices {
+        let path = on_disk(root, to).to_string_lossy().into_owned();
+        let item = Listed::Renamed {
+            note_id: id,
+            path: &path,
+        };
+        if held && renamed_away(journal, writer, id, to)? {
+            notices.add(root, item);
+        } else {
+            notices.remove(root, item);
+        }
+    }
+    Ok(held)
+}
+
+/// Whether the held day `id` at `path` was renamed away from its day: no follow of the journal
+/// folder reads `path` as that day ([`JournalDays::names_day_anywhere`]), so it waits for good
+/// unless renamed back. Electron crosses such a file into a note at the rename
+/// (`renameKeepsJournalDate`); here the user decides ([`cross_renamed`]).
+fn renamed_away(
+    journal: &JournalDays,
+    writer: &NotesWriter,
+    id: &str,
+    path: &str,
+) -> Result<bool, IdentityError> {
+    Ok(writer
+        .journal_date(id)?
+        .is_some_and(|date| !journal.names_day_anywhere(path, &date)))
+}
+
+/// Lists every held day [`renamed_away`] on `notices`, in place of what it listed, or takes the
+/// notice down when there is none: at the open, and after the user turned some into notes.
+pub(crate) fn list_renamed(
+    notices: &VaultNotices,
+    root: &Path,
+    journal: &JournalDays,
+    writer: &NotesWriter,
+) -> Result<(), IdentityError> {
+    let mut days = Vec::new();
+    for held in writer.held_places()? {
+        if renamed_away(journal, writer, &held.note_id, &held.path)? {
+            days.push(RenamedDay {
+                path: on_disk(root, &held.path).to_string_lossy().into_owned(),
+                note_id: held.note_id,
+            });
+        }
+    }
+    if days.is_empty() {
+        let more = false;
+        notices.clear(root, &VaultNotice::JournalDaysRenamed { days, more });
+        return Ok(());
+    }
+    let more = days.len() > LISTED;
+    days.truncate(LISTED);
+    notices.raise(root, VaultNotice::JournalDaysRenamed { days, more });
+    Ok(())
+}
+
+/// The user turns the held day `id`, its row at `path` and [`renamed_away`], into a note, as
+/// Electron's watcher crosses it at the rename: its record is deleted and the delete synced
+/// ([`cross`]), for the caller to drop its row and have the file made anew. `false`, nothing
+/// changed, for a day not held or not renamed away (renamed back, moved, settled meanwhile),
+/// and for one the core keeps (`Removed::Undecided`: the day has text its file does not, or a
+/// note claims the path). A crossed day leaves the notice; otherwise the notice is listed anew.
+/// The held place of a crossed day goes only with its row, so listing anew would keep it.
+pub(crate) fn cross_renamed(
+    identity: &NotesIdentity,
+    ctx: &IdentityCtx<'_>,
+    journal: &JournalDays,
+    writer: &NotesWriter,
+    (id, path): (&str, &str),
+) -> Result<bool, IdentityError> {
+    let crossed = cross_if_renamed(identity, ctx, journal, writer, (id, path))?;
+    if let Some(notices) = identity.notices() {
+        if crossed {
+            notices.remove(ctx.root, Listed::Renamed { note_id: id, path });
+        } else {
+            list_renamed(&notices, ctx.root, journal, writer)?;
+        }
+    }
+    Ok(crossed)
+}
+
+fn cross_if_renamed(
+    identity: &NotesIdentity,
+    ctx: &IdentityCtx<'_>,
+    journal: &JournalDays,
+    writer: &NotesWriter,
+    (id, path): (&str, &str),
+) -> Result<bool, IdentityError> {
+    let Some((from, true)) = writer.owed_place(id)? else {
+        return Ok(false);
+    };
+    if !renamed_away(journal, writer, id, path)? {
+        return Ok(false);
+    }
+    let removed = cross(identity, ctx, writer, journal, id, &from, path)?;
+    Ok(removed == Removed::Deleted)
 }
 
 /// The days held already, read once for a pass over every owed move ([`held_owed`]).
@@ -175,7 +278,7 @@ pub(super) fn follow_held(identity: &NotesIdentity, ctx: &IdentityCtx<'_>) -> bo
 
 /// Each owed move that changes what its file is, with its record deleted as the watcher's move
 /// deletes it ([`NotesWriter::file_crossed`]); one whose record stays is left owed, and a held
-/// day is never crossed ([`held`]).
+/// day is never crossed ([`held`]). The held days renamed away are listed ([`list_renamed`]).
 pub(super) fn crossings(
     identity: &NotesIdentity,
     ctx: &IdentityCtx<'_>,
@@ -223,6 +326,14 @@ pub(super) fn crossings(
                 "an owed move between note and journal day was not made: {error}"
             ),
         }
+    }
+    if let Some(notices) = identity.notices()
+        && let Err(error) = list_renamed(&notices, root, journal, writer)
+    {
+        tracing::error!(
+            scope = SCOPE,
+            "the renamed held days could not be listed: {error}"
+        );
     }
     crossed
 }

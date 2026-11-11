@@ -212,6 +212,19 @@ pub trait NoteIdentity: Send + Sync {
         false
     }
 
+    /// The user turns the held journal day `note_id`, its row at `path`, whose file no longer
+    /// names its day, into a note (`journal::cross`): `true` when its record was deleted and the
+    /// delete queued, for the caller, holding the rows' lane, to drop the row and have the file
+    /// made anew. `false` changed nothing (not such a day any more, or one the core keeps).
+    fn cross_renamed_day(
+        &self,
+        _ctx: &IdentityCtx<'_>,
+        _note_id: &str,
+        _path: &str,
+    ) -> Result<bool, IdentityError> {
+        Ok(false)
+    }
+
     /// Before the open walk: deletes the records of the owed moves that changed what their
     /// file is and returns them, whose rows the consumer drops and whose files it asks about
     /// as new ([`Rename::Crossed`]). Its failures are its own to log.

@@ -1688,7 +1688,11 @@
     "journalChangeWaitsSettingsHint": "Memry 在為設定變更移動日記項目時關閉了，在能讀取 .memry/config.json 之前無法將它們放回。請修正該檔案，然後重新啟動 Memry。你的項目是安全的。",
     "journalChangeWaitsTakenHint": "Memry 在為設定變更移動日記項目時關閉了。某個項目需要放回的位置上有另一個檔案或資料夾。請將其移開，然後重新啟動 Memry。你的項目是安全的。",
     "journalChangeWaitsHint": "Memry 在為設定變更移動日記項目時關閉了，未能將它們放回。下次開啟此保險庫時會再試一次。在此之前，日記資料夾無法移動或刪除。你的項目是安全的。",
+    "journalChangeWaitsRefusedHint": "Memry 未能完成為設定變更移動日記項目，也未能將它們全部放回。下次開啟此保險庫時會再試一次。在此之前，日記資料夾無法移動或刪除。你的項目是安全的。",
     "movesWait": "部分筆記暫時無法移動",
-    "movesWaitHint": "Memry 在移動或重新命名這些筆記時關閉了，未能完成。完成之前，這些筆記無法移動或重新命名。下次開啟此保險庫時 Memry 會再試一次。"
+    "movesWaitHint": "Memry 在移動或重新命名這些筆記時關閉了，未能完成。完成之前，這些筆記無法移動或重新命名。下次開啟此保險庫時 Memry 會再試一次。",
+    "journalDaysRenamed": "部分日記項目的名稱已不再是日期",
+    "journalDaysRenamedHint": "這些日記項目在其資料夾等待日記資料夾設定時，在 Memry 之外被重新命名，因此名稱已不再是日期。在你改回名稱之前，它們仍是日記項目。將其轉換為筆記會在你的所有裝置上刪除該日記項目，並將其文字保留為筆記。其標籤不會保留。",
+    "turnIntoNotes": "轉換為筆記"
   }
 }

@@ -51,7 +51,7 @@ describe('save-registry', () => {
     registerPendingSave('a', fn1)
     registerPendingSave('b', fn2)
 
-    await flushAllPendingSaves()
+    expect(await flushAllPendingSaves()).toBe(1)
 
     expect(fn1).toHaveBeenCalledOnce()
     expect(fn2).toHaveBeenCalledOnce()
@@ -87,7 +87,7 @@ describe('save-registry', () => {
   })
 
   it('flushAll is a no-op when nothing is registered', async () => {
-    await expect(flushAllPendingSaves()).resolves.toBeUndefined()
+    await expect(flushAllPendingSaves()).resolves.toBe(0)
   })
 
   it('later registration with same key overwrites previous', async () => {

@@ -790,6 +790,10 @@ export function useJournalEntry(date: string): UseJournalEntryResult {
         return
       }
       await performSaveRef.current()
+      // A failed save keeps its text pending; the caller must not act as if it were on disk.
+      if (pendingContentRef.current !== null || pendingTagsRef.current !== null) {
+        throw new Error(`journal edits for ${date} are still unsaved`)
+      }
     }
     registerPendingSave(registryKey, flush)
 
@@ -810,7 +814,9 @@ export function useJournalEntry(date: string): UseJournalEntryResult {
         } else {
           // Registered until it ends, so a quit waits for it. The same day opened again
           // meanwhile registers its own flush under this key.
-          void flush(true).finally(() => unregisterPendingSave(registryKey, flush))
+          void flush(true)
+            .catch((error: unknown) => log.warn(`Journal edits for ${date} stay unsaved`, error))
+            .finally(() => unregisterPendingSave(registryKey, flush))
           liveDateRef.current = null
           return
         }

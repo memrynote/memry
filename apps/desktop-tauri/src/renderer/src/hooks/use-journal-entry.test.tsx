@@ -217,6 +217,15 @@ describe('useJournalEntry dedicated hook', () => {
       await vi.runOnlyPendingTimersAsync()
     })
     await waitFor(() => expect(result.current.saveError).toBe('Unable to save: disk may be full'))
+    // A flush whose save fails again reports it: the text is still only in memory.
+    ;(window.api.journal.updateEntry as ReturnType<typeof vi.fn>).mockRejectedValueOnce(
+      new Error('ENOSPC write failed')
+    )
+    let failed = 0
+    await act(async () => {
+      failed = await flushAllPendingSaves()
+    })
+    expect(failed).toBe(1)
     ;(window.api.journal.updateEntry as ReturnType<typeof vi.fn>).mockResolvedValueOnce(
       createMockJournalEntry({ date: '2026-05-11', content: 'Recovered' })
     )

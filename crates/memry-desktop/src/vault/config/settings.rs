@@ -322,7 +322,7 @@ impl Moved<'_> {
                 let notice = VaultNotice::JournalChangeWaits {
                     from: self.change.from.folder.clone(),
                     to: self.change.to.folder.clone(),
-                    holds: ChangeHold::Unknown,
+                    holds: ChangeHold::Refused,
                 };
                 notices.raise(self.at.root, notice);
             }
