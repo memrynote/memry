@@ -85,7 +85,7 @@ pub(super) struct Pass {
 
 enum Read {
     File(MeasuredFile),
-    /// Gone, or not text: nothing to measure.
+    /// Gone, not text, or bytes the vault tier has not taken yet: nothing to measure.
     Skipped,
     /// In the large-file class: not measured, and its property rows go.
     Large,
@@ -357,12 +357,39 @@ impl Indexer {
         match read_note(&self.root, &note.path) {
             // The file grew past the class since its row was written.
             Ok(Some(file)) if large_file_class(&file.raw).is_some() => large(note),
-            Ok(Some(file)) => Read::File(MeasuredFile {
-                note_id: note.note_id.clone(),
-                properties: file_properties(&file, types).unwrap_or_default(),
-                file_hash: file.hash,
-                text: file.raw,
-            }),
+            // An outside edit the tier has not taken: the row stays the reading of the bytes the
+            // tier names, which an edit of a note with no baseline is measured against
+            // (`identity::properties::edited`), and the tier's own fact queues the note again.
+            // A tier that knows no bytes takes any reading.
+            Ok(Some(file)) => match self.vault.note_files().by_id(&note.note_id) {
+                Ok(row)
+                    if row
+                        .as_ref()
+                        .and_then(|row| row.file_hash.as_deref())
+                        .is_some_and(|taken| taken != file.hash) =>
+                {
+                    tracing::debug!(
+                        scope = "note_index",
+                        note_id = note.note_id,
+                        "bytes the tier has not taken: left to its fact"
+                    );
+                    Read::Skipped
+                }
+                Ok(_) => Read::File(MeasuredFile {
+                    note_id: note.note_id.clone(),
+                    properties: file_properties(&file, types).unwrap_or_default(),
+                    file_hash: file.hash,
+                    text: file.raw,
+                }),
+                Err(error) => {
+                    tracing::warn!(
+                        scope = "note_index",
+                        note_id = note.note_id,
+                        "the row's bytes did not read, retried later: {error}"
+                    );
+                    Read::Failed
+                }
+            },
             // Gone: its `Removed` fact, or the next scan's prune, drops the row.
             Ok(None) => Read::Skipped,
             Err(NoteFileError::TooLarge) => large(note),
