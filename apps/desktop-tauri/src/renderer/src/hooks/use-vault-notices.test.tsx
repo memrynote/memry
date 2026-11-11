@@ -208,4 +208,64 @@ describe('useVaultNotices (#3531 14l)', () => {
     setReviewOpen(false)
     await changeTo([])
   })
+
+  it('names the folders journal days wait in, and reveals the first', async () => {
+    const folders = ['/v/a/Diary', '/v/a/Archive/Days']
+    mocks.vaultNoticesList.mockResolvedValue(listOf([{ kind: 'journalDaysHeld', folders }]))
+    renderHook(() => useVaultNotices())
+    await waitFor(() => expect(mocks.toast.warning).toHaveBeenCalledTimes(1))
+    expect(mocks.toast.warning.mock.lastCall?.[0]).toBe(
+      'Journal entries are waiting in a moved folder'
+    )
+    expect(lastOptions().id).toBe('vault-notice-journalDaysHeld')
+    const text = render(<>{lastOptions().description}</>).container.textContent
+    expect(text).toContain("the journal folder setting can't follow it yet")
+    expect(text).toContain('Diary, Days')
+    expect(click(lastOptions().action).defaultPrevented).toBe(true)
+    expect(mocks.shellRevealPath).toHaveBeenCalledWith('/v/a/Diary')
+    await changeTo([])
+    expect(mocks.toast.dismiss).toHaveBeenCalledWith('vault-notice-journalDaysHeld')
+  })
+
+  it('says what holds an unfinished journal change, and reveals it', async () => {
+    const change = { kind: 'journalChangeWaits', from: 'journal', to: 'Box/Diary' }
+    const taken = { kind: 'taken', path: '/v/a/journal/2025-01-02.md' }
+    mocks.vaultNoticesList.mockResolvedValue(listOf([{ ...change, holds: taken }]))
+    renderHook(() => useVaultNotices())
+    await waitFor(() => expect(mocks.toast.warning).toHaveBeenCalledTimes(1))
+    expect(mocks.toast.warning.mock.lastCall?.[0]).toBe("A journal settings change didn't finish")
+    const text = render(<>{lastOptions().description}</>).container.textContent
+    expect(text).toContain('Another file or folder is where an entry needs to go back.')
+    expect(text).toContain('2025-01-02.md')
+    click(lastOptions().action)
+    expect(mocks.shellRevealPath).toHaveBeenCalledWith('/v/a/journal/2025-01-02.md')
+
+    const settings = { kind: 'settings', path: '/v/a/.memry/config.json' }
+    await changeTo([{ ...change, holds: settings }])
+    expect(lastOptions().description).toContain('until it can read .memry/config.json')
+    click(lastOptions().action)
+    expect(mocks.shellRevealPath).toHaveBeenLastCalledWith('/v/a/.memry/config.json')
+
+    await changeTo([{ ...change, holds: { kind: 'unknown' } }])
+    expect(lastOptions().description).toContain("couldn't put them back")
+    expect(lastOptions().action).toBeUndefined()
+    await changeTo([])
+  })
+
+  it('lists the notes whose interrupted move waits, and reveals the first', async () => {
+    const notes = [
+      { noteId: 'n1', path: '/v/a/Notes/Plan.md' },
+      { noteId: 'n2', path: '/v/a/Scan.pdf' }
+    ]
+    mocks.vaultNoticesList.mockResolvedValue(listOf([{ kind: 'movesWait', notes, more: false }]))
+    renderHook(() => useVaultNotices())
+    await waitFor(() => expect(mocks.toast.warning).toHaveBeenCalledTimes(1))
+    expect(mocks.toast.warning.mock.lastCall?.[0]).toBe("Some notes can't be moved yet")
+    const text = render(<>{lastOptions().description}</>).container.textContent
+    expect(text).toContain("They can't be moved or renamed until it does.")
+    expect(text).toContain('Plan, Scan.pdf')
+    click(lastOptions().action)
+    expect(mocks.shellRevealPath).toHaveBeenCalledWith('/v/a/Notes/Plan.md')
+    await changeTo([])
+  })
 })

@@ -23,6 +23,7 @@ use memry_desktop::vault::config::settings::{
 use memry_desktop::vault::config::{VaultConfig, VaultConfigPatch, config_path};
 use memry_desktop::vault::consumer::Applied;
 use memry_desktop::vault::journal_rename::ChangeStep;
+use memry_desktop::vault::notices::VaultNotices;
 use serde_json::{Value, json};
 use vault_env::{Env, QUIET, env, indexed};
 
@@ -34,11 +35,23 @@ pub(crate) fn opened(config: Value, files: &[(&str, &str)]) -> Env {
 
 /// [`opened`], with the store a `NotesService` of it needs.
 pub(crate) fn opened_keeping(config: Value, files: &[(&str, &str)]) -> (Env, Arc<dyn SecureStore>) {
+    let (e, store, _) = opened_noticing(config, files);
+    (e, store)
+}
+
+/// [`opened_keeping`], with the vault's notices board the identity raises them on.
+pub(crate) fn opened_noticing(
+    config: Value,
+    files: &[(&str, &str)],
+) -> (Env, Arc<dyn SecureStore>, Arc<VaultNotices>) {
     let mut kept: Option<Arc<dyn SecureStore>> = None;
+    let notices = VaultNotices::new();
+    let board = notices.clone();
     let mut e = env(|store| {
         kept = Some(store.clone());
-        Some(NotesIdentity::new(store))
+        Some(NotesIdentity::noticing(store, board))
     });
+    notices.register(&e.session);
     fs::create_dir_all(e.vault.join(".memry")).unwrap();
     fs::write(
         config_path(&e.vault),
@@ -50,7 +63,7 @@ pub(crate) fn opened_keeping(config: Value, files: &[(&str, &str)]) -> (Env, Arc
     }
     e.open();
     e.facts_until(indexed);
-    (e, kept.expect("the store"))
+    (e, kept.expect("the store"), notices)
 }
 
 pub(crate) fn update(

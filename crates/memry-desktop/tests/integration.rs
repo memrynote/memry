@@ -288,6 +288,8 @@ mod vault_init;
 mod vault_locks_app_edit;
 #[path = "vault_notices.rs"]
 mod vault_notices;
+#[path = "vault_notices_journal.rs"]
+mod vault_notices_journal;
 #[path = "vault_pairing.rs"]
 mod vault_pairing;
 #[path = "vault_paths.rs"]

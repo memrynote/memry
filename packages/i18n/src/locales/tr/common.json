@@ -1681,6 +1681,14 @@
     "keptDeleteConfirm": "Bu not tüm cihazlarınızda silinsin mi? Metni çöp kutusuna gider.",
     "keptRestored": "Dosya geri yüklendi",
     "keptDeleted": "Not silindi",
-    "keptActionFailed": "Bir şeyler ters gitti. Not hâlâ saklanıyor."
+    "keptActionFailed": "Bir şeyler ters gitti. Not hâlâ saklanıyor.",
+    "journalDaysHeld": "Günlük sayfaları taşınan bir klasörde bekliyor",
+    "journalDaysHeldHint": "Günlük klasörü Memry dışında taşındı veya yeniden adlandırıldı ve günlük klasörü ayarı henüz onu izleyemiyor. İzleyebilene kadar Memry günlük sayfası oluşturmaz ve günlük ayarlarını değiştirmez; bu klasörler de taşınamaz veya silinemez. Tüm günlük sayfalarını tek bir klasöre koy ya da klasörü geri taşı. Sayfaların güvende.",
+    "journalChangeWaits": "Bir günlük ayarı değişikliği tamamlanmadı",
+    "journalChangeWaitsSettingsHint": "Memry, bir ayar değişikliği için günlük sayfalarını taşırken kapandı ve .memry/config.json okunamadığı sürece onları geri koyamıyor. Dosyayı düzelt, ardından Memry'yi yeniden başlat. Sayfaların güvende.",
+    "journalChangeWaitsTakenHint": "Memry, bir ayar değişikliği için günlük sayfalarını taşırken kapandı. Bir sayfanın geri dönmesi gereken yerde başka bir dosya veya klasör var. Onu oradan kaldır, ardından Memry'yi yeniden başlat. Sayfaların güvende.",
+    "journalChangeWaitsHint": "Memry, bir ayar değişikliği için günlük sayfalarını taşırken kapandı ve onları geri koyamadı. Bu kasayı bir sonraki açışında yeniden dener. O zamana kadar günlük klasörleri taşınamaz veya silinemez. Sayfaların güvende.",
+    "movesWait": "Bazı notlar henüz taşınamıyor",
+    "movesWaitHint": "Memry bu notları taşırken veya yeniden adlandırırken kapandı ve işlemi bitiremedi. İşlem bitene kadar bu notlar taşınamaz veya yeniden adlandırılamaz. Memry bu kasayı bir sonraki açışında yeniden dener."
   }
 }

@@ -81,6 +81,18 @@ export function useVaultNotices(): void {
   const { revealInFolder } = useFileActionLabels()
 
   useEffect(() => {
+    /** Reveals `path` in the file manager, logging `what` when it cannot. */
+    const reveal = (path: string, what: string) => ({
+      label: revealInFolder,
+      onClick: (event: { preventDefault: () => void }) => {
+        event.preventDefault()
+        commands.shellRevealPath(path).catch((error: unknown) => {
+          log.error(`${what} could not be revealed`, error)
+          toast.error(t('fileActions.revealFailed'))
+        })
+      }
+    })
+
     const show = (notice: VaultNotice): void => {
       const sticky = {
         id: toastId(notice.kind),
@@ -179,6 +191,57 @@ export function useVaultNotices(): void {
             }
           })
           return
+        case 'journalDaysHeld': {
+          const [first] = notice.folders
+          toast.warning(t('vaultNotice.journalDaysHeld'), {
+            ...sticky,
+            description: listed(
+              t('vaultNotice.journalDaysHeldHint'),
+              notice.folders.map((folder) => ({ key: folder, name: fileName(folder) })),
+              false,
+              t('vaultNotice.moreUnlisted')
+            ),
+            action: first ? reveal(first, 'a held journal folder') : undefined
+          })
+          return
+        }
+        case 'journalChangeWaits': {
+          const { holds } = notice
+          const hint = {
+            settings: t('vaultNotice.journalChangeWaitsSettingsHint'),
+            taken: t('vaultNotice.journalChangeWaitsTakenHint'),
+            unknown: t('vaultNotice.journalChangeWaitsHint')
+          }[holds.kind]
+          toast.warning(t('vaultNotice.journalChangeWaits'), {
+            ...sticky,
+            description:
+              holds.kind === 'taken'
+                ? listed(hint, [{ key: holds.path, name: fileName(holds.path) }], false, '')
+                : hint,
+            action:
+              holds.kind === 'unknown'
+                ? undefined
+                : reveal(holds.path, 'what holds a journal change')
+          })
+          return
+        }
+        case 'movesWait': {
+          const [first] = notice.notes
+          toast.warning(t('vaultNotice.movesWait'), {
+            ...sticky,
+            description: listed(
+              t('vaultNotice.movesWaitHint'),
+              notice.notes.map((note) => ({
+                key: note.noteId,
+                name: fileName(note.path).replace(/\.md$/i, '')
+              })),
+              notice.more,
+              t('vaultNotice.moreUnlisted')
+            ),
+            action: first ? reveal(first.path, 'a note whose move waits') : undefined
+          })
+          return
+        }
       }
     }
 

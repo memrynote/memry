@@ -1681,6 +1681,14 @@
     "keptDeleteConfirm": "Excluir esta nota em todos os seus dispositivos? O texto dela irá para a lixeira.",
     "keptRestored": "Arquivo restaurado",
     "keptDeleted": "Nota excluída",
-    "keptActionFailed": "Algo deu errado. A nota continua mantida."
+    "keptActionFailed": "Algo deu errado. A nota continua mantida.",
+    "journalDaysHeld": "Entradas do diário estão aguardando em uma pasta movida",
+    "journalDaysHeldHint": "A pasta do diário foi movida ou renomeada fora do Memry, e a configuração da pasta do diário ainda não consegue acompanhá-la. Até lá, o Memry não cria entradas do diário nem altera as configurações do diário, e essas pastas não podem ser movidas nem excluídas. Coloque todas as entradas do diário em uma única pasta ou mova a pasta de volta. Suas entradas estão seguras.",
+    "journalChangeWaits": "Uma alteração nas configurações do diário não foi concluída",
+    "journalChangeWaitsSettingsHint": "O Memry fechou enquanto movia entradas do diário para uma alteração de configurações, e não consegue devolvê-las até conseguir ler .memry/config.json. Corrija o arquivo e reinicie o Memry. Suas entradas estão seguras.",
+    "journalChangeWaitsTakenHint": "O Memry fechou enquanto movia entradas do diário para uma alteração de configurações. Há outro arquivo ou pasta onde uma entrada precisa voltar. Tire-o do caminho e reinicie o Memry. Suas entradas estão seguras.",
+    "journalChangeWaitsHint": "O Memry fechou enquanto movia entradas do diário para uma alteração de configurações, e não conseguiu devolvê-las. Ele tentará de novo na próxima vez que abrir este cofre. Até lá, as pastas do diário não podem ser movidas nem excluídas. Suas entradas estão seguras.",
+    "movesWait": "Algumas notas ainda não podem ser movidas",
+    "movesWaitHint": "O Memry fechou enquanto movia ou renomeava estas notas, e não conseguiu terminar. Elas não podem ser movidas nem renomeadas até que isso aconteça. O Memry tentará de novo na próxima vez que abrir este cofre."
   }
 }

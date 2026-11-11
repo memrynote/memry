@@ -1681,6 +1681,14 @@
     "keptDeleteConfirm": "Deze notitie op al je apparaten verwijderen? De tekst gaat naar de prullenbak.",
     "keptRestored": "Bestand hersteld",
     "keptDeleted": "Notitie verwijderd",
-    "keptActionFailed": "Er ging iets mis. De notitie is nog bewaard."
+    "keptActionFailed": "Er ging iets mis. De notitie is nog bewaard.",
+    "journalDaysHeld": "Journaalitems wachten in een verplaatste map",
+    "journalDaysHeldHint": "De journaalmap is buiten Memry verplaatst of hernoemd, en de instelling voor de journaalmap kan die nog niet volgen. Tot dan maakt Memry geen journaalitems en wijzigt het geen journaalinstellingen, en kunnen deze mappen niet worden verplaatst of verwijderd. Zet alle journaalitems in één map, of zet de map terug. Je items zijn veilig.",
+    "journalChangeWaits": "Een wijziging van de journaalinstellingen is niet voltooid",
+    "journalChangeWaitsSettingsHint": "Memry sloot af terwijl het journaalitems verplaatste voor een instellingswijziging, en kan ze pas terugzetten als het .memry/config.json kan lezen. Herstel het bestand en start Memry opnieuw. Je items zijn veilig.",
+    "journalChangeWaitsTakenHint": "Memry sloot af terwijl het journaalitems verplaatste voor een instellingswijziging. Er staat een ander bestand of een andere map waar een item terug moet. Haal het weg en start Memry opnieuw. Je items zijn veilig.",
+    "journalChangeWaitsHint": "Memry sloot af terwijl het journaalitems verplaatste voor een instellingswijziging, en kon ze niet terugzetten. Het probeert het opnieuw wanneer deze kluis de volgende keer wordt geopend. Tot dan kunnen de journaalmappen niet worden verplaatst of verwijderd. Je items zijn veilig.",
+    "movesWait": "Sommige notities kunnen nog niet worden verplaatst",
+    "movesWaitHint": "Memry sloot af terwijl het deze notities verplaatste of hernoemde, en kon dat niet afronden. Tot dat gebeurt, kunnen ze niet worden verplaatst of hernoemd. Memry probeert het opnieuw wanneer deze kluis de volgende keer wordt geopend."
   }
 }

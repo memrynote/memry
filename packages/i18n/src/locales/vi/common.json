@@ -1681,6 +1681,14 @@
     "keptDeleteConfirm": "Xóa ghi chú này trên tất cả thiết bị của bạn? Văn bản của nó sẽ chuyển vào thùng rác.",
     "keptRestored": "Đã khôi phục tệp",
     "keptDeleted": "Đã xóa ghi chú",
-    "keptActionFailed": "Đã xảy ra lỗi. Ghi chú vẫn được giữ lại."
+    "keptActionFailed": "Đã xảy ra lỗi. Ghi chú vẫn được giữ lại.",
+    "journalDaysHeld": "Các mục nhật ký đang chờ trong một thư mục đã bị di chuyển",
+    "journalDaysHeldHint": "Thư mục nhật ký đã bị di chuyển hoặc đổi tên bên ngoài Memry, và cài đặt thư mục nhật ký chưa thể theo kịp. Cho đến lúc đó, Memry sẽ không tạo mục nhật ký hay thay đổi cài đặt nhật ký, và không thể di chuyển hoặc xóa các thư mục này. Hãy đặt tất cả mục nhật ký vào một thư mục, hoặc chuyển thư mục về chỗ cũ. Các mục của bạn vẫn an toàn.",
+    "journalChangeWaits": "Một thay đổi cài đặt nhật ký chưa hoàn tất",
+    "journalChangeWaitsSettingsHint": "Memry đã đóng khi đang di chuyển các mục nhật ký cho một thay đổi cài đặt, và không thể đưa chúng về chỗ cũ cho đến khi đọc được .memry/config.json. Hãy sửa tệp, rồi khởi động lại Memry. Các mục của bạn vẫn an toàn.",
+    "journalChangeWaitsTakenHint": "Memry đã đóng khi đang di chuyển các mục nhật ký cho một thay đổi cài đặt. Có một tệp hoặc thư mục khác ở chỗ mà một mục cần quay về. Hãy chuyển nó đi chỗ khác, rồi khởi động lại Memry. Các mục của bạn vẫn an toàn.",
+    "journalChangeWaitsHint": "Memry đã đóng khi đang di chuyển các mục nhật ký cho một thay đổi cài đặt, và không thể đưa chúng về chỗ cũ. Memry sẽ thử lại vào lần tới mở kho này. Cho đến lúc đó, không thể di chuyển hoặc xóa các thư mục nhật ký. Các mục của bạn vẫn an toàn.",
+    "movesWait": "Một số ghi chú chưa thể di chuyển",
+    "movesWaitHint": "Memry đã đóng khi đang di chuyển hoặc đổi tên các ghi chú này, và không thể hoàn tất. Cho đến khi xong, không thể di chuyển hoặc đổi tên chúng. Memry sẽ thử lại vào lần tới mở kho này."
   }
 }

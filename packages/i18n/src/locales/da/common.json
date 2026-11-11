@@ -1681,6 +1681,14 @@
     "keptDeleteConfirm": "Vil du slette denne note på alle dine enheder? Teksten flyttes til papirkurven.",
     "keptRestored": "Filen er gendannet",
     "keptDeleted": "Noten er slettet",
-    "keptActionFailed": "Noget gik galt. Noten er stadig bevaret."
+    "keptActionFailed": "Noget gik galt. Noten er stadig bevaret.",
+    "journalDaysHeld": "Dagbogsindlæg venter i en flyttet mappe",
+    "journalDaysHeldHint": "Dagbogsmappen blev flyttet eller omdøbt uden for Memry, og indstillingen for dagbogsmappen kan ikke følge med endnu. Indtil da opretter Memry ikke dagbogsindlæg og ændrer ikke dagbogsindstillinger, og disse mapper kan ikke flyttes eller slettes. Læg alle dagbogsindlæg i én mappe, eller flyt mappen tilbage. Dine indlæg er i sikkerhed.",
+    "journalChangeWaits": "En ændring af dagbogsindstillingerne blev ikke færdig",
+    "journalChangeWaitsSettingsHint": "Memry lukkede, mens dagbogsindlæg blev flyttet for en ændring af indstillingerne, og kan ikke lægge dem tilbage, før .memry/config.json kan læses. Ret filen, og genstart derefter Memry. Dine indlæg er i sikkerhed.",
+    "journalChangeWaitsTakenHint": "Memry lukkede, mens dagbogsindlæg blev flyttet for en ændring af indstillingerne. En anden fil eller mappe ligger, hvor et indlæg skal tilbage. Flyt den af vejen, og genstart derefter Memry. Dine indlæg er i sikkerhed.",
+    "journalChangeWaitsHint": "Memry lukkede, mens dagbogsindlæg blev flyttet for en ændring af indstillingerne, og kunne ikke lægge dem tilbage. Det prøver igen, næste gang denne boks åbnes. Indtil da kan dagbogsmapperne ikke flyttes eller slettes. Dine indlæg er i sikkerhed.",
+    "movesWait": "Nogle noter kan ikke flyttes endnu",
+    "movesWaitHint": "Memry lukkede, mens disse noter blev flyttet eller omdøbt, og kunne ikke gøre det færdigt. De kan ikke flyttes eller omdøbes, før det er sket. Memry prøver igen, næste gang denne boks åbnes."
   }
 }

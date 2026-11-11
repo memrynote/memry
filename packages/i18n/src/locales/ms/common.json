@@ -1681,6 +1681,14 @@
     "keptDeleteConfirm": "Padam nota ini pada semua peranti anda? Teksnya akan dihantar ke tong sampah.",
     "keptRestored": "Fail dipulihkan",
     "keptDeleted": "Nota dipadam",
-    "keptActionFailed": "Sesuatu tidak kena. Nota masih disimpan."
+    "keptActionFailed": "Sesuatu tidak kena. Nota masih disimpan.",
+    "journalDaysHeld": "Entri jurnal sedang menunggu dalam folder yang dialihkan",
+    "journalDaysHeldHint": "Folder jurnal telah dialihkan atau dinamakan semula di luar Memry, dan tetapan folder jurnal belum dapat mengikutinya. Sehingga itu, Memry tidak akan mencipta entri jurnal atau menukar tetapan jurnal, dan folder ini tidak boleh dialihkan atau dipadam. Letakkan semua entri jurnal dalam satu folder, atau alihkan folder itu kembali. Entri anda selamat.",
+    "journalChangeWaits": "Perubahan tetapan jurnal tidak selesai",
+    "journalChangeWaitsSettingsHint": "Memry tertutup semasa mengalihkan entri jurnal untuk perubahan tetapan, dan tidak dapat meletakkannya semula sehingga ia dapat membaca .memry/config.json. Betulkan fail itu, kemudian mulakan semula Memry. Entri anda selamat.",
+    "journalChangeWaitsTakenHint": "Memry tertutup semasa mengalihkan entri jurnal untuk perubahan tetapan. Fail atau folder lain berada di tempat sebuah entri perlu kembali. Alihkannya, kemudian mulakan semula Memry. Entri anda selamat.",
+    "journalChangeWaitsHint": "Memry tertutup semasa mengalihkan entri jurnal untuk perubahan tetapan, dan tidak dapat meletakkannya semula. Ia akan mencuba lagi apabila membuka bilik kebal ini kali seterusnya. Sehingga itu, folder jurnal tidak boleh dialihkan atau dipadam. Entri anda selamat.",
+    "movesWait": "Sesetengah nota belum boleh dialihkan",
+    "movesWaitHint": "Memry tertutup semasa mengalihkan atau menamakan semula nota ini, dan tidak dapat menyelesaikannya. Nota ini tidak boleh dialihkan atau dinamakan semula sehingga ia selesai. Memry akan mencuba lagi apabila membuka bilik kebal ini kali seterusnya."
   }
 }

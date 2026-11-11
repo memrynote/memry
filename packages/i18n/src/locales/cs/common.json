@@ -1681,6 +1681,14 @@
     "keptDeleteConfirm": "Smazat tuto poznámku na všech vašich zařízeních? Její text se přesune do koše.",
     "keptRestored": "Soubor obnoven",
     "keptDeleted": "Poznámka smazána",
-    "keptActionFailed": "Něco se pokazilo. Poznámka zůstává zachována."
+    "keptActionFailed": "Něco se pokazilo. Poznámka zůstává zachována.",
+    "journalDaysHeld": "Záznamy deníku čekají v přesunuté složce",
+    "journalDaysHeldHint": "Složka deníku byla přesunuta nebo přejmenována mimo Memry a nastavení složky deníku ji zatím nemůže následovat. Do té doby Memry nevytváří záznamy deníku ani nemění nastavení deníku a tyto složky nelze přesunout ani smazat. Dejte všechny záznamy deníku do jedné složky nebo složku přesuňte zpět. Vaše záznamy jsou v bezpečí.",
+    "journalChangeWaits": "Změna nastavení deníku nebyla dokončena",
+    "journalChangeWaitsSettingsHint": "Memry se zavřelo během přesouvání záznamů deníku kvůli změně nastavení a nemůže je vrátit, dokud nepřečte soubor .memry/config.json. Opravte soubor a pak Memry restartujte. Vaše záznamy jsou v bezpečí.",
+    "journalChangeWaitsTakenHint": "Memry se zavřelo během přesouvání záznamů deníku kvůli změně nastavení. Na místě, kam se má záznam vrátit, je jiný soubor nebo složka. Přesuňte je jinam a pak Memry restartujte. Vaše záznamy jsou v bezpečí.",
+    "journalChangeWaitsHint": "Memry se zavřelo během přesouvání záznamů deníku kvůli změně nastavení a nepodařilo se mu je vrátit. Zkusí to znovu při příštím otevření tohoto trezoru. Do té doby nelze složky deníku přesunout ani smazat. Vaše záznamy jsou v bezpečí.",
+    "movesWait": "Některé poznámky zatím nelze přesunout",
+    "movesWaitHint": "Memry se zavřelo během přesouvání nebo přejmenování těchto poznámek a nepodařilo se mu to dokončit. Dokud se to nestane, nelze je přesunout ani přejmenovat. Memry to zkusí znovu při příštím otevření tohoto trezoru."
   }
 }

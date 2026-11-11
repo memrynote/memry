@@ -1681,6 +1681,14 @@
     "keptDeleteConfirm": "Usunąć tę notatkę na wszystkich Twoich urządzeniach? Jej tekst trafi do kosza.",
     "keptRestored": "Plik przywrócony",
     "keptDeleted": "Notatka usunięta",
-    "keptActionFailed": "Coś poszło nie tak. Notatka nadal jest zachowana."
+    "keptActionFailed": "Coś poszło nie tak. Notatka nadal jest zachowana.",
+    "journalDaysHeld": "Wpisy dziennika czekają w przeniesionym folderze",
+    "journalDaysHeldHint": "Folder dziennika został przeniesiony lub zmienił nazwę poza Memry, a ustawienie folderu dziennika nie może jeszcze za nim podążyć. Do tego czasu Memry nie tworzy wpisów dziennika ani nie zmienia ustawień dziennika, a tych folderów nie można przenieść ani usunąć. Umieść wszystkie wpisy dziennika w jednym folderze albo przenieś folder z powrotem. Twoje wpisy są bezpieczne.",
+    "journalChangeWaits": "Zmiana ustawień dziennika nie została dokończona",
+    "journalChangeWaitsSettingsHint": "Memry zamknął się podczas przenoszenia wpisów dziennika w ramach zmiany ustawień i nie może ich przywrócić, dopóki nie odczyta pliku .memry/config.json. Popraw plik, a następnie uruchom Memry ponownie. Twoje wpisy są bezpieczne.",
+    "journalChangeWaitsTakenHint": "Memry zamknął się podczas przenoszenia wpisów dziennika w ramach zmiany ustawień. W miejscu, do którego wpis musi wrócić, jest inny plik lub folder. Usuń go z drogi, a następnie uruchom Memry ponownie. Twoje wpisy są bezpieczne.",
+    "journalChangeWaitsHint": "Memry zamknął się podczas przenoszenia wpisów dziennika w ramach zmiany ustawień i nie mógł ich przywrócić. Spróbuje ponownie przy następnym otwarciu tego sejfu. Do tego czasu folderów dziennika nie można przenieść ani usunąć. Twoje wpisy są bezpieczne.",
+    "movesWait": "Niektórych notatek nie można jeszcze przenieść",
+    "movesWaitHint": "Memry zamknął się podczas przenoszenia lub zmiany nazwy tych notatek i nie zdołał dokończyć. Do tego czasu nie można ich przenieść ani zmienić ich nazwy. Memry spróbuje ponownie przy następnym otwarciu tego sejfu."
   }
 }

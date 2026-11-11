@@ -1681,6 +1681,14 @@
     "keptDeleteConfirm": "Eliminare questa nota su tutti i tuoi dispositivi? Il suo testo andrà nel cestino.",
     "keptRestored": "File ripristinato",
     "keptDeleted": "Nota eliminata",
-    "keptActionFailed": "Si è verificato un problema. La nota è ancora conservata."
+    "keptActionFailed": "Si è verificato un problema. La nota è ancora conservata.",
+    "journalDaysHeld": "Alcune voci del diario attendono in una cartella spostata",
+    "journalDaysHeldHint": "La cartella del diario è stata spostata o rinominata fuori da Memry, e l'impostazione della cartella del diario non può ancora seguirla. Fino ad allora Memry non crea voci del diario né cambia le impostazioni del diario, e queste cartelle non possono essere spostate né eliminate. Metti tutte le voci del diario in un'unica cartella, oppure riporta la cartella dov'era. Le tue voci sono al sicuro.",
+    "journalChangeWaits": "Una modifica alle impostazioni del diario non è stata completata",
+    "journalChangeWaitsSettingsHint": "Memry si è chiuso mentre spostava voci del diario per una modifica alle impostazioni, e non può rimetterle a posto finché non riesce a leggere .memry/config.json. Correggi il file, poi riavvia Memry. Le tue voci sono al sicuro.",
+    "journalChangeWaitsTakenHint": "Memry si è chiuso mentre spostava voci del diario per una modifica alle impostazioni. Un altro file o cartella occupa il posto in cui una voce deve tornare. Spostalo altrove, poi riavvia Memry. Le tue voci sono al sicuro.",
+    "journalChangeWaitsHint": "Memry si è chiuso mentre spostava voci del diario per una modifica alle impostazioni, e non è riuscito a rimetterle a posto. Riproverà alla prossima apertura di questa cassaforte. Fino ad allora, le cartelle del diario non possono essere spostate né eliminate. Le tue voci sono al sicuro.",
+    "movesWait": "Alcune note non possono ancora essere spostate",
+    "movesWaitHint": "Memry si è chiuso mentre spostava o rinominava queste note, e non è riuscito a finire. Non possono essere spostate né rinominate finché non lo fa. Memry riproverà alla prossima apertura di questa cassaforte."
   }
 }
