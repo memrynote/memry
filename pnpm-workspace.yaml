@@ -58,6 +58,11 @@ overrides:
   undici: '>=7.28.0 <8'
   flatted: '>=3.4.2'
   lodash: '>=4.18.1'
+  # tesseract.js's OCR worker requires wasm-feature-detect's CJS build, and
+  # 1.10.0 added `import.source()`, which Electron 43 cannot parse. The Windows
+  # package's hoisted legacy deploy re-resolves ranges past the lockfile, so
+  # only an override keeps it on 1.9.0.
+  wasm-feature-detect: 1.9.0
   path-to-regexp: '>=8.4.2'
   picomatch: '>=4.0.4'
   vite: ^7.3.7

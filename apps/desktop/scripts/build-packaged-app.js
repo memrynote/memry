@@ -376,20 +376,7 @@ function main() {
   const runtimeEnv = readRuntimeEnv()
   const targetArch = resolveTargetArch(args)
 
-  // Not --legacy: a legacy deploy re-resolves every semver range from the
-  // registry once node-linker differs from the lockfile's, so Windows shipped
-  // versions newer than the lockfile (wasm-feature-detect 1.10.0 broke OCR).
-  // --ignore-scripts: this deploy would run desktop's own postinstall, which
-  // needs the repo, and the native installs it skips are redone for Electron
-  // by the electron-rebuild below.
-  const deployArgs = [
-    '--filter',
-    '@memry/desktop',
-    'deploy',
-    '--prod',
-    '--ignore-scripts',
-    '--config.inject-workspace-packages=true'
-  ]
+  const deployArgs = ['--filter', '@memry/desktop', 'deploy', '--legacy', '--prod']
   runPnpm([...deployArgs, ...getNodeLinkerArgs(args), getPnpmDeployTarget()], {
     cwd: repoRoot,
     env: {

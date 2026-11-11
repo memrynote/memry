@@ -77,12 +77,13 @@ Those load only through `await import()`: the markdown converter through
 Rationale and measurements: `docs/auto-update-slow-restart-investigation.md`
 in the repo root.
 
-`apps/desktop/scripts/build-packaged-app.js` stages those modules with the
-lockfile-based `pnpm deploy` (`inject-workspace-packages`), never `--legacy`.
-The Windows build deploys with `node-linker=hoisted`, and a legacy deploy with
-a linker that differs from the lockfile's re-resolves every semver range from
-the registry. Windows then shipped newer versions than macOS and Linux, and
-`wasm-feature-detect` 1.10.0 broke packaged OCR on Windows.
+`apps/desktop/scripts/build-packaged-app.js` stages those modules with
+`pnpm deploy --legacy`. The Windows build adds `node-linker=hoisted`, and with
+a linker that differs from the lockfile's, the legacy deploy re-resolves every
+semver range from the registry. The Windows package can therefore ship
+transitive versions newer than the lockfile. A release that breaks Electron
+needs an exact pin in the `overrides` of `pnpm-workspace.yaml`, as
+`wasm-feature-detect` 1.9.0 has: 1.10.0 broke packaged OCR on Windows.
 
 ## Cross-Cutting Scripts
 
