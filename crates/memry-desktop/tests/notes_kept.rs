@@ -12,7 +12,9 @@ use std::path::Path;
 use std::sync::Arc;
 use std::time::{Duration, Instant};
 
+use memry_core::markdown::shared::markdown_class::NOTE_MAX_BLOCK_BYTES;
 use memry_core::seams::secure_store::SecureStore;
+use memry_desktop::notes::create::NewNoteFile;
 use memry_desktop::notes::error::NotesError;
 use memry_desktop::notes::identity::NotesIdentity;
 use memry_desktop::notes::index::NoteIndex;
@@ -699,9 +701,13 @@ fn a_folder_holding_a_kept_note_whose_text_is_not_here_stays() {
     owe_body(&e, &id);
     let pushed = record(&e, &id);
 
+    // Refused naming why: the text has not synced to this device, not that the trash refused.
     let refused = notes.delete_folder(&open, "f");
     assert!(
-        matches!(refused, Err(NotesError::TrashUnavailable(_))),
+        matches!(
+            refused,
+            Err(NotesError::FolderKeptUnwritable(Kept::BodyNotPulled))
+        ),
         "{refused:?}"
     );
     assert!(e.vault.join("f").is_dir(), "the folder went");
@@ -782,4 +788,166 @@ fn a_refused_folder_delete_takes_back_two_kept_copies_and_the_folders_they_made(
         assert_eq!(row_hash(&e, kept), Ok(None));
         assert!(is_listed(&notices, kept), "{:?}", notices.list());
     }
+}
+
+/// The kept note `f/a.md` with a file the user wrote at its path since, which holds other text.
+const MINE: &str = "Mine\n";
+
+#[test]
+fn a_folder_delete_takes_a_kept_notes_text_to_the_trash_beside_a_file_at_its_path() {
+    let KeptNote {
+        e,
+        _index,
+        notes,
+        notices: _,
+        id,
+    } = kept_edited("f/a.md", "f/a.md", bin_beside);
+    let open = e.session.current().unwrap();
+    // Taken by the watcher or not yet, the row still names no text: the document holds it.
+    e.write("f/a.md", MINE);
+
+    notes.delete_folder(&open, "f").unwrap();
+    let trashed = e.vault.with_extension("trashed").join("f");
+    assert_eq!(
+        fs::read_to_string(trashed.join("a 1.md")).ok().as_deref(),
+        Some(RESTORED),
+        "the kept text is not in the trash"
+    );
+    assert_eq!(fs::read_to_string(trashed.join("a.md")).unwrap(), MINE);
+    let (deleted, ops) = record(&e, &id);
+    assert!(deleted);
+    assert_eq!(ops.last().map(String::as_str), Some("delete"));
+    assert_eq!(row_hash(&e, &id), Err(()));
+}
+
+#[test]
+fn a_kept_notes_delete_trashes_its_text_beside_a_file_at_its_path() {
+    let KeptNote {
+        e,
+        _index,
+        notes,
+        notices,
+        id,
+    } = kept_at("a.md", FILE, bin);
+    let open = e.session.current().unwrap();
+    e.write("a.md", MINE);
+
+    kept::delete(&notes, &notices, &open, &id, false).unwrap();
+    assert_eq!(
+        fs::read_to_string(e.vault.join("a 1.trashed"))
+            .ok()
+            .as_deref(),
+        Some(RESTORED),
+        "the kept text is not in the trash"
+    );
+    assert_eq!(e.read("a.trashed"), MINE);
+    assert!(!e.vault.join("a.md").exists() && !e.vault.join("a 1.md").exists());
+    assert_eq!(row_hash(&e, &id), Err(()));
+}
+
+#[test]
+fn a_refused_delete_takes_back_the_copy_beside_and_leaves_the_file_at_the_path() {
+    let KeptNote {
+        e,
+        _index,
+        notes,
+        notices,
+        id,
+    } = kept_edited("f/a.md", "f/a.md", no_trash);
+    let open = e.session.current().unwrap();
+    e.write("f/a.md", MINE);
+    let pushed = record(&e, &id);
+
+    let refused = notes.delete_folder(&open, "f");
+    assert!(
+        matches!(refused, Err(NotesError::TrashUnavailable(_))),
+        "{refused:?}"
+    );
+    let refused = kept::delete(&notes, &notices, &open, &id, false);
+    assert!(
+        matches!(refused, Err(NotesError::TrashUnavailable(_))),
+        "{refused:?}"
+    );
+    assert_eq!(e.read("f/a.md"), MINE);
+    assert!(!e.vault.join("f/a 1.md").exists(), "the copy was left");
+    assert_eq!(record(&e, &id), pushed, "the note went");
+    assert_eq!(row_hash(&e, &id), Ok(None));
+}
+
+/// Whether the disk under `dir` answers a name in another case (APFS and NTFS by default).
+fn case_blind(dir: &Path) -> bool {
+    let probe = dir.join("case-probe");
+    fs::write(&probe, "").unwrap();
+    let blind = dir.join("CASE-PROBE").exists();
+    fs::remove_file(probe).unwrap();
+    blind
+}
+
+#[test]
+fn a_folder_delete_takes_a_kept_notes_text_to_the_trash_past_another_case_of_its_name() {
+    let KeptNote {
+        e,
+        _index,
+        notes,
+        notices: _,
+        id,
+    } = kept_edited("f/a.md", "f/a.md", bin_beside);
+    // A case-sensitive disk keeps `f/A.md` apart: the kept note's path is free there, which the
+    // tests above cover.
+    if !case_blind(&e.vault) {
+        return;
+    }
+    let open = e.session.current().unwrap();
+    e.write("f/A.md", MINE);
+    until("the watcher took the other case", || {
+        e.rows().iter().any(|(_, path)| path == "f/A.md")
+    });
+
+    notes.delete_folder(&open, "f").unwrap();
+    let trashed = e.vault.with_extension("trashed").join("f");
+    let texts: Vec<String> = fs::read_dir(&trashed)
+        .unwrap()
+        .map(|entry| fs::read_to_string(entry.unwrap().path()).unwrap())
+        .collect();
+    assert!(
+        texts
+            .iter()
+            .any(|text| text.ends_with("typed in the app\n")),
+        "the kept text is not in the trash: {texts:?}"
+    );
+    assert!(texts.iter().any(|text| text == MINE), "{texts:?}");
+    assert!(record(&e, &id).0);
+}
+
+#[test]
+fn a_large_notes_delete_trashes_its_file_and_writes_no_copy() {
+    let mut store = None;
+    let mut e = env(|kept| {
+        store = Some(kept.clone());
+        Some(NotesIdentity::noticing(kept, VaultNotices::new()))
+    });
+    e.open();
+    let notes = NotesService::with_trash(e.tier.clone(), store.unwrap(), bin);
+    let open = e.session.current().unwrap();
+    let big = "a".repeat(NOTE_MAX_BLOCK_BYTES + 1);
+    let note = NewNoteFile {
+        title: "big".into(),
+        content: big.clone(),
+        ..NewNoteFile::default()
+    };
+    let id = notes.create(&open, note).unwrap().id;
+    // The document never took the file's text, so the row names none, as a kept note's does.
+    assert_eq!(row_hash(&e, &id), Ok(None));
+    let written = e.read("big.md");
+
+    notes.delete(&open, &id, false).unwrap();
+    assert_eq!(e.read("big.trashed"), written);
+    assert!(written.contains(&big));
+    let left: Vec<_> = fs::read_dir(&e.vault)
+        .unwrap()
+        .map(|entry| entry.unwrap().file_name())
+        .filter(|name| name.to_string_lossy().starts_with("big"))
+        .collect();
+    assert_eq!(left, ["big.trashed"], "a copy was written");
+    assert_eq!(row_hash(&e, &id), Err(()));
 }

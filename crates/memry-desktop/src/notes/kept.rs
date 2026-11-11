@@ -50,16 +50,19 @@ use crate::journal::write::{day_file, day_frontmatter, order_key};
 use crate::locks::Locks;
 use crate::session::OpenVault;
 use crate::vault::app_edit::Kept;
-use crate::vault::consumer::rows::{RowStat, now_ms};
+use crate::vault::consumer::rows::{Lane, RowStat, now_ms};
 use crate::vault::consumer::{Applied, ChangeSource, converter_for};
 use crate::vault::embeds::Resolved;
 use crate::vault::file_types::FileType;
 use crate::vault::hash::content_hash;
 use crate::vault::note_file::{
-    hash_file, large_file_class, record_large_file, write_new_text_checked,
+    NoteFileError, hash_file, large_file_class, record_large_file, write_new_text_checked,
 };
 use crate::vault::notices::{Listed, VaultNotices};
 use crate::vault::watch::EchoGuard;
+
+/// The names a kept note's copy tries ([`NotesService::write_kept_copy`]), as a create's.
+const MAX_CANDIDATES: usize = 10_000;
 
 /// Restores the kept note's file from its document, and takes the note off the notice. A note
 /// that is gone leaves the notice too.
@@ -160,7 +163,8 @@ impl NotesService {
         // the note behind its body, and the next pass writes it.
         let read_at = now_ms();
         let read_mark = StampMark::At(open.vault.write_back().body_mark(note_id)?);
-        let (output, tags) = self.write_kept_file(open, &row, between)?;
+        let (output, tags) = self.kept_text(open, &row)?;
+        self.create_kept_file(root, &row.path, &output, between)?;
         let hash = content_hash(&output);
         let stat = RowStat {
             file_type: FileType::Markdown,
@@ -205,28 +209,19 @@ impl NotesService {
     }
 
     /// The first step of an app delete of `row` (`notes::delete`): a kept row's text is written
-    /// to its path for the delete to move to the trash. `Some` when it was; `None` for a row
-    /// that is not kept, or, with `permanent` (the user confirmed the delete as one for good),
-    /// one whose text cannot be written. Without `permanent` that text refuses the delete as the
-    /// trash would, so the user is asked.
+    /// for the delete to move to the trash ([`Self::write_kept_copy`]). `Some` when it was;
+    /// `None` for a row that is not kept, or, with `permanent` (the user confirmed the delete as
+    /// one for good), one whose text cannot be written. Without `permanent` that text refuses the
+    /// delete as the trash would, so the user is asked.
     pub(crate) fn copy_kept(
         &self,
+        lane: &Lane<'_>,
         open: &OpenVault,
         row: &Row,
         permanent: bool,
     ) -> Result<Option<KeptCopy>, NotesError> {
-        if !is_kept(&open.path, row)? {
-            return Ok(None);
-        }
-        let copy = KeptCopy {
-            made: first_missing_folder(&open.path, &row.path)?,
-        };
-        let written = self.write_kept_file(open, row, &mut || {});
-        if written.is_err() {
-            copy.remove_made_folders(&self.tier.echo(), &open.path, &row.path);
-        }
-        match written {
-            Ok(_) => Ok(Some(copy)),
+        match self.write_kept_copy(lane, open, row) {
+            Ok(copy) => Ok(copy),
             Err(error) if permanent => {
                 tracing::warn!(
                     scope = SCOPE,
@@ -241,15 +236,74 @@ impl NotesService {
         }
     }
 
-    /// Creates the file of the kept note `row` from its document at the row's path, told to the
-    /// own-write record first; a file there is never replaced. Answers the text written and the
-    /// tags it says. `between`: [`Self::restore_kept_checked`]'s.
-    fn write_kept_file(
+    /// Writes the text of the kept row `row` (a markdown note's row that names no text) from its
+    /// document, for a delete to move to the trash; `None` for a row that is not kept. The copy
+    /// goes at the row's path, or beside it as `<name> 1.md` (as a create names a note) when
+    /// anything stands there: a file the watcher has not taken yet, or one another case of the
+    /// name reaches on a case-blind disk, which the delete then trashes without the note's text.
+    /// A file there that the document owes its text to (`FileAhead`) is the note's own: no copy.
+    pub(crate) fn write_kept_copy(
         &self,
+        lane: &Lane<'_>,
         open: &OpenVault,
         row: &Row,
+    ) -> Result<Option<KeptCopy>, NotesError> {
+        if row.file_type != FileType::Markdown.as_str() || row.content_hash.is_some() {
+            return Ok(None);
+        }
+        let root = open.path.as_path();
+        // Another note's name, or anything on disk at it, in any case the disk folds.
+        let taken = |rel: &str| {
+            lane.check(&row.note_id, rel).is_err() || fs::symlink_metadata(root.join(rel)).is_ok()
+        };
+        let output = match self.kept_text(open, row) {
+            Ok((output, _)) => output,
+            Err(NotesError::EditKept(Kept::FileAhead)) if taken(&row.path) => return Ok(None),
+            Err(error) => return Err(error),
+        };
+        let mut copy = KeptCopy {
+            at: row.path.clone(),
+            made: first_missing_folder(root, &row.path)?,
+        };
+        for at in beside(&row.path).take(MAX_CANDIDATES) {
+            if taken(&at) {
+                continue;
+            }
+            match self.create_kept_file(root, &at, &output, &mut || {}) {
+                Ok(()) => {
+                    copy.at = at;
+                    return Ok(Some(copy));
+                }
+                // Taken since the look: the next name.
+                Err(NotesError::File(NoteFileError::AlreadyExists)) => {}
+                Err(error) => {
+                    copy.remove_made_folders(&self.tier.echo(), root);
+                    return Err(error);
+                }
+            }
+        }
+        Err(NotesError::NameConflict)
+    }
+
+    /// Creates the file `at` holding `output`, told to the own-write record first; a file there
+    /// is never replaced. `between`: [`Self::restore_kept_checked`]'s.
+    fn create_kept_file(
+        &self,
+        root: &Path,
+        at: &str,
+        output: &str,
         between: &mut dyn FnMut(),
-    ) -> Result<(String, Vec<String>), NotesError> {
+    ) -> Result<(), NotesError> {
+        let echo = self.tier.echo();
+        echo.will_write(at, &content_hash(output));
+        write_new_text_checked(root, at, output, between).map_err(|error| {
+            echo.cancel_write(at);
+            error.into()
+        })
+    }
+
+    /// The file text of the kept note `row` from its document, and the tags it says.
+    fn kept_text(&self, open: &OpenVault, row: &Row) -> Result<(String, Vec<String>), NotesError> {
         let note_id = row.note_id.as_str();
         let recorded = self
             .recorded(open, note_id)?
@@ -292,12 +346,6 @@ impl NotesService {
             dedupe(recorded.tags.iter().chain(&measured).cloned())
         };
         let output = file_text(&recorded, &header_tags, &body)?;
-        let echo = self.tier.echo();
-        echo.will_write(&row.path, &content_hash(&output));
-        if let Err(error) = write_new_text_checked(&open.path, &row.path, &output, between) {
-            echo.cancel_write(&row.path);
-            return Err(error.into());
-        }
         Ok((output, header_tags))
     }
 }
@@ -362,34 +410,32 @@ impl NotesService {
     }
 }
 
-/// A kept row's text written to its path for the delete's trash step ([`NotesService::copy_kept`]).
+/// A kept row's text written for the delete's trash step ([`NotesService::write_kept_copy`]).
 pub(crate) struct KeptCopy {
+    /// Where the copy is: the row's path, or a free name beside it.
+    pub(crate) at: String,
     /// The topmost folder the write made; `None` when the file's folder stood.
     made: Option<String>,
 }
 
 impl KeptCopy {
-    /// Takes the copy of `row` back from its path, with the folders it made: the copy holds the
-    /// document's text only, so the note stays kept.
-    pub(crate) fn take_back(&self, echo: &EchoGuard, root: &Path, row: &Row) {
-        if let Err(error) = unlink(echo, root, &row.path) {
-            tracing::error!(
-                scope = SCOPE,
-                note_id = row.note_id,
-                "a kept note's copy stayed at its path: {error}"
-            );
+    /// Takes the copy back, with the folders it made: the copy holds the document's text only,
+    /// so the note stays kept.
+    pub(crate) fn take_back(&self, echo: &EchoGuard, root: &Path, note_id: &str) {
+        if let Err(error) = unlink(echo, root, &self.at) {
+            tracing::error!(scope = SCOPE, note_id, "a kept note's copy stayed: {error}");
         }
-        self.remove_made_folders(echo, root, &row.path);
+        self.remove_made_folders(echo, root);
     }
 
-    /// Removes the folders the copy's write made for the file at `rel`, deepest first, while
-    /// each is empty: a delete brings back no folder the user deleted with the file. The
-    /// watcher is told of each removal first.
-    pub(crate) fn remove_made_folders(&self, echo: &EchoGuard, root: &Path, rel: &str) {
+    /// Removes the folders the copy's write made, deepest first, while each is empty: a delete
+    /// brings back no folder the user deleted with the file. The watcher is told of each
+    /// removal first.
+    pub(crate) fn remove_made_folders(&self, echo: &EchoGuard, root: &Path) {
         let Some(made) = self.made.as_deref() else {
             return;
         };
-        for folder in folders_of(rel) {
+        for folder in folders_of(&self.at) {
             // `remove_dir` refuses a folder that is not empty, which is the guard wanted here.
             if let Err(error) = echo.removing(folder, || fs::remove_dir(root.join(folder))) {
                 tracing::warn!(
@@ -403,6 +449,18 @@ impl KeptCopy {
             }
         }
     }
+}
+
+/// `rel`, then `<name> 1<ext>`, `<name> 2<ext>`, ... in its folder.
+fn beside(rel: &str) -> impl Iterator<Item = String> + '_ {
+    let (folder, name) = match rel.rsplit_once('/') {
+        Some((folder, name)) => (format!("{folder}/"), name),
+        None => (String::new(), rel),
+    };
+    let dot = name.rfind('.').filter(|&dot| dot > 0).unwrap_or(name.len());
+    let (stem, ext) = name.split_at(dot);
+    std::iter::once(rel.to_owned())
+        .chain((1..).map(move |counter| format!("{folder}{stem} {counter}{ext}")))
 }
 
 /// The folders that hold `rel`, deepest first: `a/b`, then `a`, for `a/b/c.md`.
@@ -425,13 +483,6 @@ fn first_missing_folder(root: &Path, rel: &str) -> Result<Option<String>, NotesE
         }
     }
     Ok(missing)
-}
-
-/// Whether `row` is kept: a markdown note's row that names no text, whose file is gone.
-fn is_kept(root: &Path, row: &Row) -> Result<bool, NotesError> {
-    Ok(row.file_type == FileType::Markdown.as_str()
-        && row.content_hash.is_none()
-        && hash_file(root, &row.path)?.is_none())
 }
 
 /// The file of `recorded` holding `body`: the frontmatter a create writes, of `tags` and the
