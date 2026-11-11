@@ -59,6 +59,7 @@ pub fn read_only_name(reason: ReadOnly) -> &'static str {
         ReadOnly::Locked => "locked",
         ReadOnly::LargeFile => "large-file",
         ReadOnly::Excluded => "excluded",
+        ReadOnly::Database => "database-read-only",
     }
 }
 
@@ -111,6 +112,9 @@ impl CoreError for EditorHostError {
             Self::Editor(EditorError::Excluded { .. }) => (FailureKind::Locked, "note_excluded"),
             Self::Editor(EditorError::LargeFile { .. }) => {
                 (FailureKind::Invalid, "note_large_file")
+            }
+            Self::Editor(EditorError::DatabaseReadOnly { .. }) => {
+                (FailureKind::Storage, "database_read_only")
             }
             Self::Editor(EditorError::Crdt(error)) => error.kind_and_code(),
         }

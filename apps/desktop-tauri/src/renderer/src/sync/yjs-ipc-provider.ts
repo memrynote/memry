@@ -15,9 +15,10 @@ const log = createLogger('YjsIpcProvider')
 
 /**
  * Why the window must not edit the note: the host's `readOnly`, the code of a refused edit, or a
- * purge, after which the host takes no edit of this copy.
+ * purge, after which the host takes no edit of this copy. `database-read-only`: the vault's
+ * database is read-only on this device, so no edit of any note can be saved (#4190).
  */
-export type DocReadOnly = 'locked' | 'large-file' | 'excluded' | 'purged'
+export type DocReadOnly = 'locked' | 'large-file' | 'excluded' | 'database-read-only' | 'purged'
 
 /** The header of `crdt_open_doc`'s framed answer (`commands/editor.rs`). */
 interface OpenedHeader {
@@ -575,6 +576,10 @@ export class YjsIpcProvider extends Observable<string> {
         case 'note_excluded':
           this.outgoing = []
           this.setReadOnly('excluded')
+          break
+        case 'database_read_only':
+          this.outgoing = []
+          this.setReadOnly('database-read-only')
           break
         case 'document_purged':
           this.markPurged()

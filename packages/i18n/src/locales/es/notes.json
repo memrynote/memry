@@ -192,6 +192,7 @@
   },
   "editor": {
     "bodySyncPending": "Sincronizando: puede que el contenido de esta nota aún esté llegando",
+    "databaseReadOnly": "Solo lectura. Este dispositivo no puede guardar cambios.",
     "taskRemoval": {
       "title": "{count, plural, one {Tarea quitada de esta nota} other {# tareas quitadas de esta nota}}",
       "description": "{count, plural, one {¿Mantenerla en Tareas o eliminarla en todas partes?} other {¿Mantenerlas en Tareas o eliminarlas en todas partes?}}",
