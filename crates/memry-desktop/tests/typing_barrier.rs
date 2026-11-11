@@ -13,7 +13,7 @@ use memry_core::seams::secure_store::SecureStore;
 use memry_desktop::editor::{BARRIER, EditorHost, RELEASE, Subscriber};
 use memry_desktop::notes::error::NotesError;
 use memry_desktop::notes::write_order::WriteOrder;
-use memry_desktop::vault::app_edit::{AppEdit, Edited, Precondition};
+use memry_desktop::vault::app_edit::{AppEdit, Edited, OwnFiles, Precondition};
 use memry_desktop::vault::consumer::{Applied, ChangeSource};
 use memry_desktop::vault::watch::echo::CAPACITY;
 use yrs::types::xml::XmlOut;
@@ -114,6 +114,20 @@ impl Window {
                 return kinds;
             }
             assert!(Instant::now() < deadline, "the frames are {kinds:?}");
+            std::thread::sleep(Duration::from_millis(5));
+        }
+    }
+
+    /// The first frame of `kind` the window received.
+    fn wait_for(&self, kind: u8) -> Vec<u8> {
+        let deadline = Instant::now() + WAIT;
+        loop {
+            let frames = self.frames.lock().unwrap();
+            if let Some(frame) = frames.iter().find(|f| f.first() == Some(&kind)) {
+                return frame.clone();
+            }
+            drop(frames);
+            assert!(Instant::now() < deadline, "no frame of kind {kind}");
             std::thread::sleep(Duration::from_millis(5));
         }
     }
@@ -306,6 +320,49 @@ fn the_apps_own_write_read_as_a_change_holds_no_typing() {
     }
     let kinds: Vec<u8> = main.frames.lock().unwrap().iter().map(|f| f[0]).collect();
     assert_eq!(kinds, Vec::<u8>::new(), "no window is asked for its typing");
+}
+
+/// The window sends its typing at the barrier and saves it before it answers (#4222): the file
+/// the watcher reported is replaced while the consumer waits. The change reads the file after
+/// the wait, finds the save its row names, and the typing stays. A copy read before the wait
+/// would feed the outside text over the save, and the save's echo, absorbed, would never put
+/// it back.
+#[test]
+fn a_save_while_the_consumer_waits_for_the_typing_keeps_the_typing() {
+    let s = served();
+    let main = s.open("main");
+    let typed = main.type_text(" and more");
+    let open = s.e.session.current().unwrap();
+    let edit = AppEdit::new(&s.e.tier, &s.store, &open).unwrap();
+    let saved = "first words and more\n";
+    std::thread::scope(|scope| {
+        let answered = scope.spawn(|| {
+            let barrier = main.wait_for(BARRIER);
+            let barrier = u32::from_le_bytes(barrier[1..5].try_into().unwrap());
+            s.host.apply_update(&s.id, &typed, "main").unwrap();
+            let own = OwnFiles::default();
+            let done = WriteOrder::default()
+                .run(&s.id, |turn| {
+                    edit.run(
+                        turn,
+                        Precondition::Save(&own, None),
+                        ChangeSource::Save,
+                        |_| Ok::<_, NotesError>(Some(saved.to_owned())),
+                    )
+                })
+                .unwrap();
+            s.host.typing_sent("main", barrier);
+            done
+        });
+        s.e.write("n.md", OUTSIDE);
+        let done = answered.join().unwrap();
+        assert!(matches!(done, Edited::Wrote { held: true, .. }), "{done:?}");
+    });
+    // The hold drops once the change applied.
+    main.wait_for(RELEASE);
+
+    assert_eq!(s.e.body(&s.id), "first words and more");
+    assert_eq!(s.e.read("n.md"), saved);
 }
 
 /// Answers each barrier the window hears at once, until an update frame came.

@@ -171,8 +171,7 @@ impl Applier {
         let source = walk_or_watcher(scan.as_deref());
         match lane.row_at(path) {
             Ok(Some(row)) => {
-                let stat = (size, modified_ms);
-                return self.changed(lane, &row.note_id, path, stat, scan, None);
+                return self.changed(lane, &row.note_id, path, size, modified_ms, scan);
             }
             Ok(None) => {}
             Err(error) => {
@@ -253,16 +252,15 @@ impl Applier {
         Step::Done
     }
 
-    /// The note's file at `path` differs from its row. `read` is the file when the caller read
-    /// it already (`watched_change`), else it is read here.
+    /// The note's file at `path` differs from its row.
     fn changed(
         &self,
         lane: &mut Lane<'_>,
         note_id: &str,
         path: &str,
-        (size, modified_ms): (u64, i64),
+        size: u64,
+        modified_ms: i64,
         scan: Option<&mut ScanActivity>,
-        read: Option<NoteFile>,
     ) -> Step {
         let source = walk_or_watcher(scan.as_deref());
         let Some(file_type) = file_type_of_extension(&extension(path)) else {
@@ -281,11 +279,7 @@ impl Applier {
             }
         };
         let content_hash = if file_type == FileType::Markdown {
-            let read = match read {
-                Some(file) => Ok(Some(file)),
-                None => self.read(path, file_type),
-            };
-            let file = match read {
+            let file = match self.read(path, file_type) {
                 Ok(Some(file)) => file,
                 Ok(None) => return Step::Done,
                 Err(Unread::Missing) => return Step::Retry(path.to_owned()),
@@ -389,7 +383,7 @@ impl Applier {
             tracing::error!(scope = SCOPE, note_id, "the row was not recorded: {error}");
             return Step::Retry(path.to_owned());
         }
-        // The bytes a save wrote that its document did not take (`AppEdit`, `cancel_write`)
+        // The bytes a save wrote that its document did not take (`AppEdit`, `disown`)
         // are its writer's: reported as an outside edit, they would make an open editor drop
         // what was typed since. Any other bytes replaced the app's file; the body took them, so
         // a write-back over them replaces no outside text (#4124).

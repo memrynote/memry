@@ -10,6 +10,11 @@
 //! passes and clears the entry) or until it is evicted, oldest first, past [`CAPACITY`]. An
 //! evicted entry costs one redundant event, which the consumer's own hash check settles.
 //!
+//! A file put back from outside to the bytes of an earlier app write still pending at its path
+//! (a revert within one debounce of the later save) is absorbed as that write: the watcher
+//! cannot tell the two apart by content, so the revert is not reported as an outside edit and
+//! the document keeps the later save's text.
+//!
 //! A folder the app moves away whole is one record for the folder and everything below it
 //! ([`EchoGuard::will_remove_tree`]): an entry-wise move (#2206) reports each entry's going, and
 //! one record per note would crowd out the oldest entries past [`CAPACITY`]. Until the mover says
@@ -29,8 +34,10 @@ use std::sync::Mutex;
 
 pub const CAPACITY: usize = 4096;
 /// The writes of one path recorded and not yet seen; past it the oldest goes. Writes of one note
-/// are serialized, so more than a couple pending means the watcher fell far behind, and a write
-/// dropped here costs one redundant event, as an evicted entry does.
+/// are serialized, so more than a couple pending means the watcher fell far behind. A dropped
+/// write's bytes, seen later, are an outside edit to [`EchoGuard::absorbs_write`], which clears
+/// the path's whole record: that event and the echo of every write still pending there reach
+/// the consumer, whose hash check settles each one the row names.
 pub const PENDING_PER_PATH: usize = 16;
 
 #[derive(Debug, Clone, PartialEq, Eq)]
@@ -107,10 +114,23 @@ impl EchoGuard {
 
     /// The write told last with [`Self::will_write`] did not happen (a file was there first):
     /// its bytes seen at `path` from now on are not the app's. Writes recorded before it stay.
+    /// Only right after that `will_write`: a write told for no record is [`Self::disown`]'s.
     pub fn cancel_write(&self, path: &str) {
         let mut state = self.lock();
         if let Some(Expected::Hashes(hashes)) = state.by_path.get_mut(path) {
             hashes.pop_back();
+            if hashes.is_empty() {
+                state.forget(path);
+            }
+        }
+    }
+
+    /// The app is about to write bytes hashed `hash` to `path` that the watcher must report:
+    /// that hash is no longer the app's there. The other writes recorded stay.
+    pub fn disown(&self, path: &str, hash: &str) {
+        let mut state = self.lock();
+        if let Some(Expected::Hashes(hashes)) = state.by_path.get_mut(path) {
+            hashes.retain(|pending| pending != hash);
             if hashes.is_empty() {
                 state.forget(path);
             }
@@ -430,6 +450,25 @@ mod tests {
         assert_eq!(echo.expected_hash("a.md").as_deref(), Some("h1"));
         echo.cancel_write("a.md");
         assert!(!echo.absorbs_write("a.md", "h1"));
+    }
+
+    /// A write the app leaves for the watcher to report (`AppEdit`, a feed that did not take
+    /// the text) toggles back to an earlier save still pending: only that save's hash goes.
+    #[test]
+    fn a_disowned_write_ends_only_its_own_hash() {
+        let echo = EchoGuard::default();
+        echo.will_write("a.md", "h0");
+        echo.will_write("a.md", "h1");
+        echo.disown("a.md", "h0");
+        assert!(!echo.absorbs_write("a.md", "h0"), "the disowned bytes pass");
+        echo.will_write("a.md", "h0");
+        echo.will_write("a.md", "h1");
+        echo.disown("a.md", "h2");
+        assert!(echo.absorbs_write("a.md", "h0"), "a hash never recorded");
+        echo.disown("a.md", "h0");
+        assert!(echo.absorbs_write("a.md", "h1"), "a later save stays");
+        echo.disown("a.md", "h1");
+        assert_eq!(echo.expected_hash("a.md"), None);
     }
 
     #[test]
