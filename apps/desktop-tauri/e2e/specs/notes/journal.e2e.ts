@@ -325,23 +325,32 @@ test('typing not saved yet stays in the day over an outside edit, and is saved',
   })
 
   await typeInDay(page, ' Kept typing')
-  // Past the editor's 150 ms debounce: the page holds the typing as unsaved.
+  // A save that lands before the watcher reads the outside edit takes it as a version, and the
+  // page hears no outside edit. Each key restarts the 1 s save delay, so the page types on its
+  // own: keys sent over WebDriver came more than 1 s apart on a loaded runner (#3967). Every
+  // 400 ms is past the editor's 150 ms debounce, so the page holds each key as unsaved typing.
+  await page.evaluate(() => {
+    const target = window as unknown as { __keepTyping: ReturnType<typeof setInterval> }
+    target.__keepTyping = setInterval(() => document.execCommand('insertText', false, '.'), 400)
+  })
   await new Promise((resolve) => setTimeout(resolve, 400))
   writeFileSync(
     file,
     readFileSync(file, 'utf8').replace('Written in the app.', 'Rewritten outside.')
   )
-  // Each key restarts the 1 s save delay, so the outside edit reaches the page while the typing
-  // is still unsaved.
   const reached = await pollUntil(
     async () => {
-      await typeInDay(page, '.')
       const seen = await page.evaluate(
         () => (window as unknown as { __outsideEdits: string[] }).__outsideEdits
       )
       return seen.some((content) => content.includes('Rewritten outside.')) ? true : undefined
     },
     { timeoutMs: 20_000, intervalMs: 200 }
+  )
+  await page.evaluate(() =>
+    clearInterval(
+      (window as unknown as { __keepTyping: ReturnType<typeof setInterval> }).__keepTyping
+    )
   )
   expect(reached).toBe(true)
 
