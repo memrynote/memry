@@ -119,7 +119,8 @@ pub fn keep_replaced(
 }
 
 /// [`keep_replaced`] for bytes the app did not write and is about to write over (a locked
-/// note's revert, an outside edit under a document ahead of it): an
+/// note's revert, an outside edit under a document ahead of it, a file the write-back did not
+/// write this run): an
 /// [`Reason::OutsideWrite`] version, which prunes only significant ones.
 pub fn keep_outside_write(
     conn: &Connection,

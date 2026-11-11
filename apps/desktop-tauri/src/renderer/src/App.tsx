@@ -83,6 +83,7 @@ import { SettingsModalProvider, useSettingsModal } from '@/contexts/settings-mod
 import { useFolderNoteShortcutsRuntime } from '@/hooks/use-folder-note-shortcuts'
 import { onOpenSettingsRequested } from '@/lib/settings-navigation'
 import { useFolderViewEvents } from '@/hooks/use-folder-view-events'
+import { useNoteMetadataEvents } from '@/hooks/use-note-metadata-events'
 import { useCalendarChangeEvents } from '@/hooks/use-calendar-change-events'
 import { useJournalChangeEvents } from '@/hooks/use-journal-change-events'
 import { useIndexRecoveryNotice } from '@/hooks/use-index-recovery-notice'
@@ -289,6 +290,7 @@ const AppContent = (): React.JSX.Element => {
   useVaultNotices() // The open vault's states the user can act on (unreadable config, watch limit)
   useVaultLockRestoreNotice() // Says so when a locked note's outside edit was undone
   useFolderViewEvents() // Global cache invalidation for folder-view tabs
+  useNoteMetadataEvents() // The one owner of the tag, folder and tag-category list refreshes
   useCalendarChangeEvents() // Global cache invalidation for calendar ranges in background tabs
   useJournalChangeEvents() // Global cache invalidation for journal entries/heatmaps in background tabs
   useCloseTabsOnEntityDelete() // A deleted canvas takes its tabs with it, in every group

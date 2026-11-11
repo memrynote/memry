@@ -23,6 +23,7 @@ import {
   onNoteRenamed,
   onNoteExternalChange
 } from '@/services/notes-service'
+import { subscribeToEvents } from '@/services/tauri-event'
 import { folderViewKeys } from './use-folder-view'
 import { journalKeys } from './journal-query-keys'
 
@@ -75,20 +76,23 @@ export function useFolderViewEvents(): void {
       updateTimer = setTimeout(invalidate, NOTE_UPDATE_INVALIDATE_DELAY_MS)
     }
 
-    const unsubMoved = onNoteMoved(invalidate)
-    const unsubDeleted = onNoteDeleted(invalidate)
-    const unsubCreated = onNoteCreated(invalidate)
-    const unsubUpdated = onNoteUpdated(invalidateAfterUpdateBurst)
-    const unsubRenamed = onNoteRenamed(invalidate)
+    // A folder view the app opened with read its notes before these listeners went live, and a
+    // note changed in between sent its event to nobody (#4270): read again once they listen.
+    const unsubNotes = subscribeToEvents(
+      [
+        (live) => onNoteMoved(invalidate, live),
+        (live) => onNoteDeleted(invalidate, live),
+        (live) => onNoteCreated(invalidate, live),
+        (live) => onNoteUpdated(invalidateAfterUpdateBurst, live),
+        (live) => onNoteRenamed(invalidate, live)
+      ],
+      invalidate
+    )
     const unsubExternal = onNoteExternalChange(invalidate)
 
     return () => {
       if (updateTimer) clearTimeout(updateTimer)
-      unsubMoved()
-      unsubDeleted()
-      unsubCreated()
-      unsubUpdated()
-      unsubRenamed()
+      unsubNotes()
       unsubExternal()
     }
   }, [queryClient])

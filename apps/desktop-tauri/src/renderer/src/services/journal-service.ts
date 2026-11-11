@@ -158,15 +158,19 @@ export type PortedJournalEvent =
   | 'onJournalExternalChange'
 
 /**
- * Subscribe to journal entry created events.
+ * Subscribe to journal entry created events. Here and below, `onListening` runs once the events
+ * reach this page; a day changed before then sends its event to nobody (`subscribeToEvents`).
  * @param callback - Callback function
  * @returns Unsubscribe function
  */
 export function onJournalEntryCreated(
-  callback: (event: JournalEntryCreatedEvent) => void
+  callback: (event: JournalEntryCreatedEvent) => void,
+  onListening?: () => void
 ): () => void {
-  return subscribeToEvent(events.journalEntryCreatedEvent, ({ date, entry }) =>
-    callback({ date, entry: toEntry(entry) })
+  return subscribeToEvent(
+    events.journalEntryCreatedEvent,
+    ({ date, entry }) => callback({ date, entry: toEntry(entry) }),
+    onListening
   )
 }
 
@@ -176,12 +180,15 @@ export function onJournalEntryCreated(
  * @returns Unsubscribe function
  */
 export function onJournalEntryUpdated(
-  callback: (event: JournalEntryUpdatedEvent) => void
+  callback: (event: JournalEntryUpdatedEvent) => void,
+  onListening?: () => void
 ): () => void {
   // The rest of the payload rides along: an outside edit's `source: 'external'` makes an open
   // editor take the file's text.
-  return subscribeToEvent(events.journalEntryUpdatedEvent, (event) =>
-    callback({ ...event, entry: toEntry(event.entry) })
+  return subscribeToEvent(
+    events.journalEntryUpdatedEvent,
+    (event) => callback({ ...event, entry: toEntry(event.entry) }),
+    onListening
   )
 }
 
@@ -191,9 +198,10 @@ export function onJournalEntryUpdated(
  * @returns Unsubscribe function
  */
 export function onJournalEntryDeleted(
-  callback: (event: JournalEntryDeletedEvent) => void
+  callback: (event: JournalEntryDeletedEvent) => void,
+  onListening?: () => void
 ): () => void {
-  return subscribeToEvent(events.journalEntryDeletedEvent, callback)
+  return subscribeToEvent(events.journalEntryDeletedEvent, callback, onListening)
 }
 
 /**
@@ -202,17 +210,18 @@ export function onJournalEntryDeleted(
  * @returns Unsubscribe function
  */
 export function onJournalExternalChange(
-  callback: (event: JournalExternalChangeEvent) => void
+  callback: (event: JournalExternalChangeEvent) => void,
+  onListening?: () => void
 ): () => void {
-  return subscribeToEvent(events.journalExternalChangeEvent, callback)
+  return subscribeToEvent(events.journalExternalChangeEvent, callback, onListening)
 }
 
 /**
  * Journal events were dropped (`shell/journal_events.rs`): whatever the app shows of the
  * journal may be stale. Not an Electron channel: Electron sends every event.
  */
-export function onJournalEventsDropped(callback: () => void): () => void {
-  return subscribeToEvent(events.journalEventsDroppedEvent, () => callback())
+export function onJournalEventsDropped(callback: () => void, onListening?: () => void): () => void {
+  return subscribeToEvent(events.journalEventsDroppedEvent, () => callback(), onListening)
 }
 
 // ============================================================================
