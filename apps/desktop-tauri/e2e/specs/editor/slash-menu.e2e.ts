@@ -46,17 +46,15 @@ test('a used row comes back under Recent', async ({ page }) => {
 test('no match hands the query to note search', async ({ page }) => {
   await openFreshNote(page, `Slash Fallback ${Date.now()}`)
 
-  // Three characters, not Electron's four: BlockNote closes a menu whose query runs more than
-  // three characters past the last query that loaded rows (`useCloseSuggestionMenuNoItems`). When
-  // `/z` is still loading as the next character lands, its rows never load, so `zqxv` closes the
-  // menu and Enter splits the paragraph (windows-x64, run 42932052609).
-  await typeInEditor(page, '/zqx')
-  await expect(menu(page).getByText('No blocks match “zqx”')).toBeVisible()
+  // Four characters: when `/z` is still loading as the next character lands, the menu stays open
+  // because `/z` matches (`slash-menu-controller.tsx`, #4205; windows-x64, run 42932052609).
+  await typeInEditor(page, '/zqxv')
+  await expect(menu(page).getByText('No blocks match “zqxv”')).toBeVisible()
   await page.keyboard.press('Enter')
 
   await expect(menu(page)).toBeHidden()
   await expect(page.locator('.wiki-link-menu')).toBeVisible()
-  await expect(page.locator(NOTE_EDITOR).first()).toContainText('[[zqx')
+  await expect(page.locator(NOTE_EDITOR).first()).toContainText('[[zqxv')
 })
 
 // The query reaches the menu as `zqxv` in one step, so `/z` (which matches Divider) is never
