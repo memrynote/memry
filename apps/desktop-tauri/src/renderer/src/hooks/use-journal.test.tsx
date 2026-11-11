@@ -325,12 +325,12 @@ describe('useJournalEntry', () => {
         expect(result.current.isLoading).toBe(false)
       })
 
-      let deleted = false
+      let deleted: { success: boolean; error?: string } = { success: false }
       await act(async () => {
         deleted = await result.current.deleteEntry()
       })
 
-      expect(deleted).toBe(true)
+      expect(deleted).toEqual({ success: true })
       expect(window.api.journal.delete).toHaveBeenCalledWith('2026-01-03')
     })
 

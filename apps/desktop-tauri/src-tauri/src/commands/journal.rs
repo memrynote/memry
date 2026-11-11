@@ -226,17 +226,20 @@ pub async fn journal_update_entry<R: Runtime>(
     .await
 }
 
-/// `success` is whether the day had an entry to delete.
+/// `success` is whether the day had an entry to delete. A kept day's text the trash cannot take
+/// fails the delete with `note_trash_unavailable`, and the renderer asks the user before it
+/// deletes again with `permanent` (#4140).
 #[tauri::command]
 #[specta::specta]
 pub async fn journal_delete_entry<R: Runtime>(
     app: AppHandle<R>,
     date: String,
+    permanent: Option<bool>,
 ) -> Result<JournalDeleteOutput, CommandError> {
     blocking("journal_delete_entry", move || {
         let open = notes::open_vault(&app)?;
         let success = notes::service(&app)?
-            .delete_day(&open, &date)
+            .delete_day(&open, &date, permanent.unwrap_or(false))
             .map_err(|error| failed(&error))?;
         announce(&app, Landed::Deleted { date, success });
         Ok(JournalDeleteOutput { success })
