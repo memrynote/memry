@@ -536,7 +536,7 @@ impl NoteIdentity for NotesIdentity {
         Ok(Rename::Followed)
     }
 
-    /// [`owed_moves::cross_renamed`], then the renamed held days listed again.
+    /// [`owed_moves::cross_renamed`].
     fn cross_renamed_day(
         &self,
         ctx: &IdentityCtx<'_>,
@@ -547,9 +547,7 @@ impl NoteIdentity for NotesIdentity {
             return Err(IdentityError::Other("the journal days are unknown".into()));
         };
         let writer = self.writer(ctx)?;
-        let crossed = owed_moves::cross_renamed(self, ctx, &journal, &writer, (note_id, path))?;
-        owed_moves::list_renamed(&self.notices, ctx.root, &journal, &writer)?;
-        Ok(crossed)
+        owed_moves::cross_renamed(self, ctx, &journal, &writer, (note_id, path))
     }
 
     /// [`owed_moves::follow_held`].

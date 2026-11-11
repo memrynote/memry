@@ -404,3 +404,27 @@ fn clean_segments(value: &str) -> String {
         .collect::<Vec<_>>()
         .join("/")
 }
+
+#[cfg(test)]
+mod tests {
+    use super::JournalDays;
+
+    #[test]
+    fn names_day_anywhere_reads_a_slash_bounded_tail_as_the_day() {
+        let flat = JournalDays::new("journal", "YYYY-MM-DD");
+        let date = "2025-01-02";
+        assert!(flat.names_day_anywhere("journal/2025-01-02.md", date));
+        assert!(flat.names_day_anywhere("Diary/Deep/2025-01-02.md", date));
+        assert!(flat.names_day_anywhere("2025-01-02.md", date));
+        assert!(!flat.names_day_anywhere("Diary/Trip.md", date));
+        assert!(!flat.names_day_anywhere("Diary/2025-01-03.md", date));
+        assert!(!flat.names_day_anywhere("Diary/x2025-01-02.md", date));
+        assert!(!flat.names_day_anywhere("Diary/2025-01-02.txt", date));
+        assert!(!flat.names_day_anywhere("Diary/2025-01-02", date));
+
+        let nested = JournalDays::new("journal", "YYYY/MM/DD");
+        assert!(nested.names_day_anywhere("Diary/2025/01/02.md", date));
+        assert!(!nested.names_day_anywhere("Diary/2025/01/Trip.md", date));
+        assert!(!nested.names_day_anywhere("Diary/02.md", date));
+    }
+}

@@ -114,6 +114,8 @@ mod journal_change;
 mod journal_change_crash;
 #[path = "journal_change_waits.rs"]
 mod journal_change_waits;
+#[path = "journal_cross_renamed.rs"]
+mod journal_cross_renamed;
 #[path = "journal_folder.rs"]
 mod journal_folder;
 #[path = "journal_folder_claim.rs"]

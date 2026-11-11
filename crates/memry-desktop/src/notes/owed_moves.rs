@@ -161,12 +161,32 @@ pub(crate) fn list_renamed(
     Ok(())
 }
 
-/// The user turns the held day `id`, its row at `path` and [`renamed_away`], into a note, as Electron's watcher
-/// crosses it at the rename: its record is deleted and the delete synced ([`cross`]), for the
-/// caller to drop its row and have the file made anew. `false`, nothing changed, for a day not
-/// held or not renamed away (renamed back, moved, settled meanwhile), and for one the core keeps
-/// (`Removed::Undecided`: the day has text its file does not, or a note claims the path).
+/// The user turns the held day `id`, its row at `path` and [`renamed_away`], into a note, as
+/// Electron's watcher crosses it at the rename: its record is deleted and the delete synced
+/// ([`cross`]), for the caller to drop its row and have the file made anew. `false`, nothing
+/// changed, for a day not held or not renamed away (renamed back, moved, settled meanwhile),
+/// and for one the core keeps (`Removed::Undecided`: the day has text its file does not, or a
+/// note claims the path). A crossed day leaves the notice; otherwise the notice is listed anew.
+/// The held place of a crossed day goes only with its row, so listing anew would keep it.
 pub(crate) fn cross_renamed(
+    identity: &NotesIdentity,
+    ctx: &IdentityCtx<'_>,
+    journal: &JournalDays,
+    writer: &NotesWriter,
+    (id, path): (&str, &str),
+) -> Result<bool, IdentityError> {
+    let crossed = cross_if_renamed(identity, ctx, journal, writer, (id, path))?;
+    if let Some(notices) = identity.notices() {
+        if crossed {
+            notices.remove(ctx.root, Listed::Renamed { note_id: id, path });
+        } else {
+            list_renamed(&notices, ctx.root, journal, writer)?;
+        }
+    }
+    Ok(crossed)
+}
+
+fn cross_if_renamed(
     identity: &NotesIdentity,
     ctx: &IdentityCtx<'_>,
     journal: &JournalDays,
