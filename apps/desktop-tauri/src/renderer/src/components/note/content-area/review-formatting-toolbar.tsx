@@ -39,10 +39,10 @@ interface ReviewFormattingToolbarProps {
 
 export function ReviewFormattingToolbarController(props: ReviewFormattingToolbarProps) {
   const editor = useBlockNoteEditor()
-  // The gate lives here, not in the toolbar below: BlockNote tears the toolbar
-  // down and mounts a fresh one mid-interaction, so state held there is lost
-  // exactly when it is needed. This component is mounted by ContentArea and
-  // outlives that churn.
+  // The gate lives here, not in the toolbar below: BlockNote mounts the toolbar
+  // only while it is shown, so a right-click on hidden text mounts a fresh one
+  // after the `contextmenu` event it must stay hidden for. This component is
+  // mounted by ContentArea and outlives the toolbar.
   const isContextMenuOpen = useContextMenuOpen(editor)
 
   if (isContextMenuOpen) return null
@@ -169,9 +169,9 @@ function ToolbarDivider() {
  * listener: hidden until the next ordinary interaction. Capture on `window`
  * runs ahead of anything that might stop propagation.
  *
- * Call this from a component BlockNote does not own. Its controller remounts
- * the toolbar during the very interaction being suppressed, which resets any
- * state held below it.
+ * Call this from a component BlockNote does not own. Its controller mounts
+ * the toolbar only while it is shown, so state held below it starts fresh on
+ * the very pointer-up being suppressed.
  */
 function useContextMenuOpen(editor: BlockNoteEditor): boolean {
   const [isOpen, setIsOpen] = useState(false)
