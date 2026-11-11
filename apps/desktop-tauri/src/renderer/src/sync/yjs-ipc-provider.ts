@@ -254,7 +254,7 @@ export class YjsIpcProvider extends Observable<string> {
     this.locksCleanup?.()
     this.locksCleanup = null
     this.channel = null
-    typingHoldOf(this.doc).release()
+    typingHoldOf(this.doc).end()
 
     // The typing still queued goes to the host before the close, which would refuse it, and the
     // close goes after an open in flight, which would otherwise bind the window again.

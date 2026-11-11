@@ -30,7 +30,12 @@ export function selectionThroughOutsideEdit(
   before: Node,
   after: Node
 ): Selection {
-  return selection.map(after, new StepMap(changedRanges(before, after)))
+  return selection.map(after, outsideEditMap(before, after))
+}
+
+/** The map of positions from `before` to `after`, through the ranges the edit changed. */
+export function outsideEditMap(before: Node, after: Node): StepMap {
+  return new StepMap(changedRanges(before, after))
 }
 
 /** The StepMap ranges (`[start, oldSize, newSize]`, in `before`'s positions) of the edit. */
