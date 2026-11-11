@@ -1672,6 +1672,14 @@
     "undecidedFilesHint": "Nota atau entri jurnal dengan nama yang sama mempunyai teks yang berbeza, atau belum disegerakkan ke peranti ini. Memry membiarkan fail ini tanpa perubahan dan menyemaknya semula apabila bilik kebal ini dibuka seterusnya.",
     "keptRemovals": "Memry menyimpan nota yang failnya telah dipadam",
     "keptRemovalsHint": "Fail ini dipadam di luar Memry, tetapi notanya mempunyai teks yang tidak pernah masuk ke dalam fail. Memry menyimpan nota itu dan tidak memadam teks tersebut pada peranti anda yang lain.",
-    "moreUnlisted": "Yang lain tidak disenaraikan di sini."
+    "moreUnlisted": "Yang lain tidak disenaraikan di sini.",
+    "journalDaysHeld": "Entri jurnal sedang menunggu dalam folder yang dialihkan",
+    "journalDaysHeldHint": "Folder jurnal telah dialihkan atau dinamakan semula di luar Memry, dan tetapan folder jurnal belum dapat mengikutinya. Sehingga itu, Memry tidak akan mencipta entri jurnal atau menukar tetapan jurnal, dan folder ini tidak boleh dialihkan atau dipadam. Letakkan semua entri jurnal dalam satu folder, atau alihkan folder itu kembali. Entri anda selamat.",
+    "journalChangeWaits": "Perubahan tetapan jurnal tidak selesai",
+    "journalChangeWaitsSettingsHint": "Memry tertutup semasa mengalihkan entri jurnal untuk perubahan tetapan, dan tidak dapat meletakkannya semula sehingga ia dapat membaca .memry/config.json. Betulkan fail itu, kemudian mulakan semula Memry. Entri anda selamat.",
+    "journalChangeWaitsTakenHint": "Memry tertutup semasa mengalihkan entri jurnal untuk perubahan tetapan. Fail atau folder lain berada di tempat sebuah entri perlu kembali. Alihkannya, kemudian mulakan semula Memry. Entri anda selamat.",
+    "journalChangeWaitsHint": "Memry tertutup semasa mengalihkan entri jurnal untuk perubahan tetapan, dan tidak dapat meletakkannya semula. Ia akan mencuba lagi apabila membuka bilik kebal ini kali seterusnya. Sehingga itu, folder jurnal tidak boleh dialihkan atau dipadam. Entri anda selamat.",
+    "movesWait": "Sesetengah nota belum boleh dialihkan",
+    "movesWaitHint": "Memry tertutup semasa mengalihkan atau menamakan semula nota ini, dan tidak dapat menyelesaikannya. Nota ini tidak boleh dialihkan atau dinamakan semula sehingga ia selesai. Memry akan mencuba lagi apabila membuka bilik kebal ini kali seterusnya."
   }
 }

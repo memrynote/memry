@@ -1672,6 +1672,14 @@
     "undecidedFilesHint": "En anteckning eller dagbokssida med samma namn har annan text eller har inte synkats till den här enheten ännu. Memry lämnar filerna orörda och kontrollerar dem igen nästa gång det här valvet öppnas.",
     "keptRemovals": "Memry behöll anteckningar vars filer raderades",
     "keptRemovalsHint": "De här filerna raderades utanför Memry, men deras anteckningar hade text som filerna aldrig fick. Memry behöll anteckningarna i stället för att radera texten på dina andra enheter.",
-    "moreUnlisted": "Andra visas inte här."
+    "moreUnlisted": "Andra visas inte här.",
+    "journalDaysHeld": "Dagboksanteckningar väntar i en flyttad mapp",
+    "journalDaysHeldHint": "Dagboksmappen flyttades eller bytte namn utanför Memry, och inställningen för dagboksmappen kan inte följa efter än. Tills dess skapar Memry inga dagboksanteckningar och ändrar inga dagboksinställningar, och de här mapparna kan inte flyttas eller tas bort. Lägg alla dagboksanteckningar i en mapp, eller flytta tillbaka mappen. Dina anteckningar är säkra.",
+    "journalChangeWaits": "En ändring av dagboksinställningarna slutfördes inte",
+    "journalChangeWaitsSettingsHint": "Memry stängdes medan dagboksanteckningar flyttades för en inställningsändring, och kan inte flytta tillbaka dem förrän .memry/config.json går att läsa. Rätta filen och starta sedan om Memry. Dina anteckningar är säkra.",
+    "journalChangeWaitsTakenHint": "Memry stängdes medan dagboksanteckningar flyttades för en inställningsändring. En annan fil eller mapp ligger där en anteckning ska tillbaka. Flytta undan den och starta sedan om Memry. Dina anteckningar är säkra.",
+    "journalChangeWaitsHint": "Memry stängdes medan dagboksanteckningar flyttades för en inställningsändring, och kunde inte flytta tillbaka dem. Det försöker igen nästa gång valvet öppnas. Tills dess kan dagboksmapparna inte flyttas eller tas bort. Dina anteckningar är säkra.",
+    "movesWait": "Vissa anteckningar kan inte flyttas än",
+    "movesWaitHint": "Memry stängdes medan de här anteckningarna flyttades eller bytte namn, och kunde inte slutföra det. De kan inte flyttas eller byta namn förrän det är klart. Memry försöker igen nästa gång valvet öppnas."
   }
 }

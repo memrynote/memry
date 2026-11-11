@@ -1672,6 +1672,14 @@
     "undecidedFilesHint": "A note or journal entry with the same name has different text, or hasn't synced to this device yet. Memry leaves these files unchanged and checks them again the next time it opens this vault.",
     "keptRemovals": "Memry kept notes whose files were deleted",
     "keptRemovalsHint": "These files were deleted outside Memry, but their notes had text the files never got. Memry kept the notes rather than delete that text on your other devices.",
-    "moreUnlisted": "Others aren't listed here."
+    "moreUnlisted": "Others aren't listed here.",
+    "journalDaysHeld": "Journal entries are waiting in a moved folder",
+    "journalDaysHeldHint": "The journal folder was moved or renamed outside Memry, and the journal folder setting can't follow it yet. Until it can, Memry won't create journal entries or change journal settings, and these folders can't be moved or deleted. Put all journal entries in one folder, or move the folder back. Your entries are safe.",
+    "journalChangeWaits": "A journal settings change didn't finish",
+    "journalChangeWaitsSettingsHint": "Memry closed while moving journal entries for a settings change, and can't put them back until it can read .memry/config.json. Fix the file, then restart Memry. Your entries are safe.",
+    "journalChangeWaitsTakenHint": "Memry closed while moving journal entries for a settings change. Another file or folder is where an entry needs to go back. Move it out of the way, then restart Memry. Your entries are safe.",
+    "journalChangeWaitsHint": "Memry closed while moving journal entries for a settings change, and couldn't put them back. It tries again the next time it opens this vault. Until then, the journal folders can't be moved or deleted. Your entries are safe.",
+    "movesWait": "Some notes can't be moved yet",
+    "movesWaitHint": "Memry closed while moving or renaming these notes, and couldn't finish. They can't be moved or renamed until it does. Memry tries again the next time it opens this vault."
   }
 }

@@ -1672,6 +1672,14 @@
     "undecidedFilesHint": "Egy azonos nevű jegyzet vagy naplóbejegyzés szövege eltér, vagy még nem szinkronizálódott erre az eszközre. A Memry változatlanul hagyja ezeket a fájlokat, és a széf következő megnyitásakor újra ellenőrzi őket.",
     "keptRemovals": "A Memry megtartotta azokat a jegyzeteket, amelyek fájljait törölték",
     "keptRemovalsHint": "Ezeket a fájlokat a Memryn kívül törölték, de a jegyzeteikben olyan szöveg volt, amely sosem került a fájlokba. A Memry megtartotta a jegyzeteket, ahelyett hogy a többi eszközödön is törölné ezt a szöveget.",
-    "moreUnlisted": "Továbbiak nem szerepelnek itt."
+    "moreUnlisted": "Továbbiak nem szerepelnek itt.",
+    "journalDaysHeld": "Naplóbejegyzések várakoznak egy áthelyezett mappában",
+    "journalDaysHeldHint": "A naplómappát a Memryn kívül áthelyezték vagy átnevezték, és a naplómappa beállítása még nem tudja követni. Addig a Memry nem hoz létre naplóbejegyzéseket és nem módosítja a napló beállításait, ezeket a mappákat pedig nem lehet áthelyezni vagy törölni. Tedd az összes naplóbejegyzést egy mappába, vagy helyezd vissza a mappát. A bejegyzéseid biztonságban vannak.",
+    "journalChangeWaits": "Egy naplóbeállítás-módosítás nem fejeződött be",
+    "journalChangeWaitsSettingsHint": "A Memry bezárult, miközben naplóbejegyzéseket helyezett át egy beállításmódosításhoz, és addig nem tudja visszatenni őket, amíg nem tudja olvasni a .memry/config.json fájlt. Javítsd ki a fájlt, majd indítsd újra a Memryt. A bejegyzéseid biztonságban vannak.",
+    "journalChangeWaitsTakenHint": "A Memry bezárult, miközben naplóbejegyzéseket helyezett át egy beállításmódosításhoz. Egy másik fájl vagy mappa van ott, ahová egy bejegyzésnek vissza kell kerülnie. Tedd el az útból, majd indítsd újra a Memryt. A bejegyzéseid biztonságban vannak.",
+    "journalChangeWaitsHint": "A Memry bezárult, miközben naplóbejegyzéseket helyezett át egy beállításmódosításhoz, és nem tudta visszatenni őket. A tároló következő megnyitásakor újra megpróbálja. Addig a naplómappákat nem lehet áthelyezni vagy törölni. A bejegyzéseid biztonságban vannak.",
+    "movesWait": "Néhány jegyzetet még nem lehet áthelyezni",
+    "movesWaitHint": "A Memry bezárult, miközben ezeket a jegyzeteket áthelyezte vagy átnevezte, és nem tudta befejezni. Addig nem lehet őket áthelyezni vagy átnevezni. A Memry a tároló következő megnyitásakor újra megpróbálja."
   }
 }
