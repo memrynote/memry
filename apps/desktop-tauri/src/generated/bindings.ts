@@ -67,8 +67,12 @@ export const commands = {
 	 *  watcher crosses such a file at the rename. Each day that went sends `journal:entryDeleted`.
 	 */
 	journalCrossIntoNotes: (noteIds: string[]) => __TAURI_INVOKE<JournalCrossOutput>("journal_cross_into_notes", { noteIds }),
-	/**  `success` is whether the day had an entry to delete. */
-	journalDeleteEntry: (date: string) => __TAURI_INVOKE<JournalDeleteOutput>("journal_delete_entry", { date }),
+	/**
+	 *  `success` is whether the day had an entry to delete. A kept day's text the trash cannot take
+	 *  fails the delete with `note_trash_unavailable`, and the renderer asks the user before it
+	 *  deletes again with `permanent` (#4140).
+	 */
+	journalDeleteEntry: (date: string, permanent: boolean | null) => __TAURI_INVOKE<JournalDeleteOutput>("journal_delete_entry", { date, permanent }),
 	/**  The tasks due on `date` and the count overdue before it (`journal:getDayContext`). */
 	journalGetDayContext: (date: string) => __TAURI_INVOKE<DayContextView>("journal_get_day_context", { date }),
 	/**  The day's entry, `null` when it has no file. Browsing never makes a day. */
@@ -542,10 +546,21 @@ export const commands = {
 	/**  `vault-locks:set`: locks or unlocks, brings the files in line, and tells every window. */
 	vaultLocksSet: (input: VaultLockSetInput) => __TAURI_INVOKE<VaultLockStateView>("vault_locks_set", { input }),
 	/**
+	 *  Deletes a kept note, its text to the OS trash first. Where that copy cannot be made it fails
+	 *  with `note_trash_unavailable`, and the renderer asks before it deletes with `permanent`
+	 *  (#3813).
+	 */
+	vaultNoticesDeleteKept: (noteId: string, permanent: boolean | null) => __TAURI_INVOKE<null>("vault_notices_delete_kept", { noteId, permanent }),
+	/**
 	 *  The open vault's notices and the open they belong to; none while no vault is open or when
 	 *  the launch started no vault tier.
 	 */
 	vaultNoticesList: () => __TAURI_INVOKE<VaultNoticeList>("vault_notices_list"),
+	/**
+	 *  Writes a kept note's file back from its document. Refused with a file at its path or a body
+	 *  that is not here (the note stays kept).
+	 */
+	vaultNoticesRestoreKept: (noteId: string) => __TAURI_INVOKE<null>("vault_notices_restore_kept", { noteId }),
 	/**  Closes the calling window. The `CloseRequested` handlers (flush, tray) decide what follows. */
 	windowClose: () => __TAURI_INVOKE<null>("window_close"),
 	/**  Minimizes the calling window. */

@@ -42,6 +42,7 @@ vi.mock('../../../generated/bindings', () => ({
   }
 }))
 
+import { isReviewOpen, setReviewOpen } from '@/lib/kept-removals-review'
 import { useVaultNotices, WATCH_LIMIT_COMMAND } from './use-vault-notices'
 
 const CONFIG = { kind: 'configUnreadable', path: '/v/a/.memry/config.json' }
@@ -193,7 +194,7 @@ describe('useVaultNotices (#3531 14l)', () => {
     await changeTo([])
   })
 
-  it('lists the kept notes by name, with no action', async () => {
+  it('lists the kept notes by name, and opens their review', async () => {
     const note = { noteId: 'n1', path: '/v/a/Alpha.md' }
     const day = { noteId: 'j2025-01-02', path: '/v/a/journal/2025-01-02.md' }
     mocks.vaultNoticesList.mockResolvedValue(
@@ -205,7 +206,11 @@ describe('useVaultNotices (#3531 14l)', () => {
     expect(render(<>{lastOptions().description}</>).container.textContent).toContain(
       'Alpha, 2025-01-02'
     )
-    expect(lastOptions().action).toBeUndefined()
+    expect(lastOptions().action?.label).toBe('Review')
+    expect(isReviewOpen()).toBe(false)
+    expect(click(lastOptions().action).defaultPrevented).toBe(true)
+    expect(isReviewOpen()).toBe(true)
+    setReviewOpen(false)
     await changeTo([])
   })
 

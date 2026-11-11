@@ -656,7 +656,10 @@ export function useNoteTreeActions(deps: NoteTreeActionsDeps) {
           // `note` tombstone for the journal's id.
           if (note.journalDate) {
             const result = await journalService.deleteEntry(note.journalDate)
-            if (!result.success) everyDeleteSucceeded = false
+            if (!result.success) {
+              everyDeleteSucceeded = false
+              if (result.error) toast.error(result.error)
+            }
             continue
           }
           const result = await deps.mutations.deleteNote.mutateAsync(note.id)

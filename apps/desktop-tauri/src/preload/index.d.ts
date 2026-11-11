@@ -599,7 +599,7 @@ export interface JournalClientAPI {
     inlineTags?: { add?: string[]; remove?: string[] }
     properties?: Record<string, unknown>
   }): Promise<JournalEntry>
-  deleteEntry(date: string): Promise<{ success: boolean }>
+  deleteEntry(date: string): Promise<{ success: boolean; error?: string }>
 
   // Calendar & Views
   getHeatmap(year: number): Promise<HeatmapEntry[]>
