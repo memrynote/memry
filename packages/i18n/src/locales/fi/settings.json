@@ -2484,7 +2484,17 @@
       "running": "Käynnissä",
       "tokenHint": "Vain tämä käynnistyskerta",
       "copy": "Kopioi",
-      "rotate": "Vaihda"
+      "rotate": "Vaihda",
+      "clientConfig": {
+        "label": "Asiakasohjelman määritys",
+        "hint": "Kopioidaan tämän käynnistyksen URL-osoitteella ja tunnuksella",
+        "copy": "Kopioi {client}-määritys"
+      },
+      "notes": {
+        "readOnly": "Ulkoiset asiakasohjelmat voivat vain lukea. Kirjoitustyökalut palauttavat PERMISSION_DENIED, joten kirjoita Agent Chatin tai memrynote-komentorivin kautta.",
+        "restart": "URL ja tunnus vaihtuvat, kun memrynote käynnistyy uudelleen, vaihtaa holvia tai uusii tunnuksen. Päivitä silloin asiakasohjelman määritys ja käynnistä se uudelleen.",
+        "docs": "Käyttöönotto-opas"
+      }
     }
   },
   "agentProviders": {

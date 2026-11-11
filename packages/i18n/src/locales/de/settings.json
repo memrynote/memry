@@ -2484,7 +2484,17 @@
       "running": "Läuft",
       "tokenHint": "Nur für diesen Start",
       "copy": "Kopieren",
-      "rotate": "Erneuern"
+      "rotate": "Erneuern",
+      "clientConfig": {
+        "label": "Client-Konfiguration",
+        "hint": "Mit URL und Token dieses Starts kopiert",
+        "copy": "{client}-Konfiguration kopieren"
+      },
+      "notes": {
+        "readOnly": "Externe Clients können nur lesen. Schreib-Tools liefern PERMISSION_DENIED, also schreibe über Agent Chat oder die memrynote-Befehlszeile.",
+        "restart": "URL und Token ändern sich, wenn memrynote neu startet, den Tresor wechselt oder das Token erneuert. Aktualisiere dann die Client-Konfiguration und starte den Client neu.",
+        "docs": "Einrichtungsanleitung"
+      }
     }
   },
   "agentProviders": {

@@ -2484,7 +2484,17 @@
       "running": "正在运行",
       "tokenHint": "仅限本次启动",
       "copy": "复制",
-      "rotate": "轮换"
+      "rotate": "轮换",
+      "clientConfig": {
+        "label": "客户端配置",
+        "hint": "使用本次启动的 URL 和令牌复制",
+        "copy": "复制 {client} 配置"
+      },
+      "notes": {
+        "readOnly": "外部客户端只能读取。写入工具会返回 PERMISSION_DENIED，请通过 Agent Chat 或 memrynote 命令行写入。",
+        "restart": "memrynote 重启、切换仓库或轮换令牌时，URL 和令牌都会改变。每次都需更新客户端配置，然后重启客户端。",
+        "docs": "设置指南"
+      }
     }
   },
   "agentProviders": {

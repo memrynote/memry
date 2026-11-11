@@ -2484,7 +2484,17 @@
       "running": "Rulează",
       "tokenHint": "Doar pentru această lansare",
       "copy": "Copiază",
-      "rotate": "Rotește"
+      "rotate": "Rotește",
+      "clientConfig": {
+        "label": "Configurație client",
+        "hint": "Se copiază cu URL-ul și tokenul acestei lansări",
+        "copy": "Copiază configurația {client}"
+      },
+      "notes": {
+        "readOnly": "Clienții externi pot doar citi. Instrumentele de scriere returnează PERMISSION_DENIED, așa că scrie prin Agent Chat sau linia de comandă memrynote.",
+        "restart": "URL-ul și tokenul se schimbă când memrynote repornește, schimbă seiful sau reînnoiește tokenul. Actualizează de fiecare dată configurația clientului, apoi repornește clientul.",
+        "docs": "Ghid de configurare"
+      }
     }
   },
   "agentProviders": {

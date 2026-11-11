@@ -2484,7 +2484,17 @@
       "running": "Kjører",
       "tokenHint": "Bare for denne oppstarten",
       "copy": "Kopier",
-      "rotate": "Roter"
+      "rotate": "Roter",
+      "clientConfig": {
+        "label": "Klientkonfigurasjon",
+        "hint": "Kopieres med URL og token for denne oppstarten",
+        "copy": "Kopier {client}-konfigurasjon"
+      },
+      "notes": {
+        "readOnly": "Eksterne klienter kan bare lese. Skriveverktøy returnerer PERMISSION_DENIED, så skriv via Agent Chat eller memrynote-kommandolinjen.",
+        "restart": "URL og token endres når memrynote starter på nytt, bytter hvelv eller fornyer token. Oppdater da klientkonfigurasjonen og start klienten på nytt.",
+        "docs": "Oppsettsveiledning"
+      }
     }
   },
   "agentProviders": {

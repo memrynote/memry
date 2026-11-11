@@ -2484,7 +2484,17 @@
       "running": "Çalışıyor",
       "tokenHint": "Yalnızca bu oturum için",
       "copy": "Kopyala",
-      "rotate": "Yenile"
+      "rotate": "Yenile",
+      "clientConfig": {
+        "label": "İstemci yapılandırması",
+        "hint": "Bu oturumun URL'si ve token'ı ile kopyalanır",
+        "copy": "{client} yapılandırmasını kopyala"
+      },
+      "notes": {
+        "readOnly": "Harici istemciler yalnızca okuyabilir. Yazma araçları PERMISSION_DENIED döndürür; yazmak için Agent Chat'i veya memrynote komut satırını kullanın.",
+        "restart": "memrynote yeniden başladığında, kasa değiştiğinde veya token yenilendiğinde URL ve token değişir. Her seferinde istemci yapılandırmasını güncelleyip istemciyi yeniden başlatın.",
+        "docs": "Kurulum kılavuzu"
+      }
     }
   },
   "agentProviders": {

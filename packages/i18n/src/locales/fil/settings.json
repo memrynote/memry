@@ -2484,7 +2484,17 @@
       "running": "Tumatakbo",
       "tokenHint": "Para sa pagbukas na ito lang",
       "copy": "Kopyahin",
-      "rotate": "I-rotate"
+      "rotate": "I-rotate",
+      "clientConfig": {
+        "label": "Config ng client",
+        "hint": "Kinokopya kasama ang URL at token ng launch na ito",
+        "copy": "Kopyahin ang config ng {client}"
+      },
+      "notes": {
+        "readOnly": "Pagbasa lang ang kaya ng mga external client. Nagbabalik ng PERMISSION_DENIED ang mga write tool, kaya magsulat sa pamamagitan ng Agent Chat o ng memrynote command line.",
+        "restart": "Nagbabago ang URL at token kapag nag-restart ang memrynote, nagpalit ng vault, o nag-rotate ng token. I-update ang config ng client sa bawat pagkakataon, saka i-restart ang client.",
+        "docs": "Gabay sa pag-setup"
+      }
     }
   },
   "agentProviders": {

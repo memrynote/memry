@@ -2484,7 +2484,17 @@
       "running": "Działa",
       "tokenHint": "Tylko dla tego uruchomienia",
       "copy": "Kopiuj",
-      "rotate": "Odnów"
+      "rotate": "Odnów",
+      "clientConfig": {
+        "label": "Konfiguracja klienta",
+        "hint": "Kopiowana z adresem URL i tokenem tego uruchomienia",
+        "copy": "Kopiuj konfigurację {client}"
+      },
+      "notes": {
+        "readOnly": "Klienci zewnętrzni mogą tylko czytać. Narzędzia zapisu zwracają PERMISSION_DENIED, więc zapisuj przez Agent Chat lub wiersz poleceń memrynote.",
+        "restart": "Adres URL i token zmieniają się, gdy memrynote uruchamia się ponownie, zmienia sejf lub odnawia token. Za każdym razem zaktualizuj konfigurację klienta i uruchom go ponownie.",
+        "docs": "Przewodnik konfiguracji"
+      }
     }
   },
   "agentProviders": {

@@ -2484,7 +2484,17 @@
       "running": "Körs",
       "tokenHint": "Gäller bara den här appstarten",
       "copy": "Kopiera",
-      "rotate": "Rotera"
+      "rotate": "Rotera",
+      "clientConfig": {
+        "label": "Klientkonfiguration",
+        "hint": "Kopieras med URL och token för den här starten",
+        "copy": "Kopiera {client}-konfiguration"
+      },
+      "notes": {
+        "readOnly": "Externa klienter kan bara läsa. Skrivverktyg returnerar PERMISSION_DENIED, så skriv via Agent Chat eller memrynotes kommandorad.",
+        "restart": "URL och token ändras när memrynote startar om, byter valv eller förnyar token. Uppdatera då klientens konfiguration och starta om klienten.",
+        "docs": "Installationsguide"
+      }
     }
   },
   "agentProviders": {

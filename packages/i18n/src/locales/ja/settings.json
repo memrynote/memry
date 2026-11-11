@@ -2484,7 +2484,17 @@
       "running": "実行中",
       "tokenHint": "今回の起動時のみ",
       "copy": "コピー",
-      "rotate": "再生成"
+      "rotate": "再生成",
+      "clientConfig": {
+        "label": "クライアント設定",
+        "hint": "今回の起動時の URL とトークンでコピーされます",
+        "copy": "{client} の設定をコピー"
+      },
+      "notes": {
+        "readOnly": "外部クライアントは読み取りのみ可能です。書き込みツールは PERMISSION_DENIED を返すため、書き込みは Agent Chat または memrynote コマンドラインで行ってください。",
+        "restart": "memrynote の再起動、保管庫の切り替え、トークンの再生成のたびに URL とトークンが変わります。その都度クライアントの設定を更新し、クライアントを再起動してください。",
+        "docs": "セットアップガイド"
+      }
     }
   },
   "agentProviders": {

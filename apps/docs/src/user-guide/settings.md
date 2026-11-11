@@ -546,10 +546,17 @@ not-fully-local acknowledgement because prompts and tool results are sent to tha
 
 Local MCP server controls are also collapsed inside AI Assistant for external desktop AI clients.
 
-- **Server URL** — localhost endpoint copied into an MCP client
+- **Server URL** — localhost endpoint, ending in `/mcp`, copied into an MCP client
 - **Bearer Token** — per-launch in-memory token copied as an authorization header
 - **Rotate Token** — immediately invalidates the previous token
 - **Registered Tools** — count of exposed vault tools
+- **Client config** — copies a ready-to-paste setup with the current URL and token filled in:
+  **Claude Desktop** copies the `claude_desktop_config.json` entry that bridges through
+  `mcp-remote`, and **Claude Code** copies the `claude mcp add` command. See
+  [Agent Backends](/user-guide/ai/agent-backends#read-through-the-mcp-server).
+
+The URL and token change when memrynote restarts, switches vault, or rotates the token, so copy the
+config again and restart the client after any of those.
 
 Agent Chat backends use this same server for vault tools. Read tools do not prompt. Create, update
 and delete tools require active Agent Chat context and, by default, pause for inline approval with a

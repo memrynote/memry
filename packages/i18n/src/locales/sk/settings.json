@@ -2484,7 +2484,17 @@
       "running": "Beží",
       "tokenHint": "Len pre toto spustenie",
       "copy": "Kopírovať",
-      "rotate": "Obnoviť"
+      "rotate": "Obnoviť",
+      "clientConfig": {
+        "label": "Konfigurácia klienta",
+        "hint": "Kopíruje sa s URL a tokenom tohto spustenia",
+        "copy": "Kopírovať konfiguráciu {client}"
+      },
+      "notes": {
+        "readOnly": "Externí klienti môžu iba čítať. Zapisovacie nástroje vracajú PERMISSION_DENIED, preto zapisujte cez Agent Chat alebo príkazový riadok memrynote.",
+        "restart": "URL a token sa menia, keď sa memrynote reštartuje, prepne trezor alebo obnoví token. Zakaždým aktualizujte konfiguráciu klienta a klienta reštartujte.",
+        "docs": "Sprievodca nastavením"
+      }
     }
   },
   "agentProviders": {

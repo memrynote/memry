@@ -2484,7 +2484,17 @@
       "running": "執行中",
       "tokenHint": "僅限本次啟動",
       "copy": "複製",
-      "rotate": "輪替"
+      "rotate": "輪替",
+      "clientConfig": {
+        "label": "用戶端設定",
+        "hint": "以本次啟動的 URL 和權杖複製",
+        "copy": "複製 {client} 設定"
+      },
+      "notes": {
+        "readOnly": "外部用戶端只能讀取。寫入工具會回傳 PERMISSION_DENIED，請透過 Agent Chat 或 memrynote 命令列寫入。",
+        "restart": "memrynote 重新啟動、切換儲存庫或輪替權杖時，URL 和權杖都會改變。每次都需更新用戶端設定，然後重新啟動用戶端。",
+        "docs": "設定指南"
+      }
     }
   },
   "agentProviders": {

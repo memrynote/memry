@@ -2484,7 +2484,17 @@
       "running": "Pokrenuto",
       "tokenHint": "Samo za ovo pokretanje",
       "copy": "Kopiraj",
-      "rotate": "Zamijeni"
+      "rotate": "Zamijeni",
+      "clientConfig": {
+        "label": "Konfiguracija klijenta",
+        "hint": "Kopira se s URL-om i tokenom ovog pokretanja",
+        "copy": "Kopiraj konfiguraciju za {client}"
+      },
+      "notes": {
+        "readOnly": "Vanjski klijenti mogu samo čitati. Alati za pisanje vraćaju PERMISSION_DENIED, pa pišite putem Agent Chata ili memrynote naredbenog retka.",
+        "restart": "URL i token mijenjaju se kad se memrynote ponovno pokrene, promijeni trezor ili obnovi token. Svaki put ažurirajte konfiguraciju klijenta i ponovno ga pokrenite.",
+        "docs": "Vodič za postavljanje"
+      }
     }
   },
   "agentProviders": {

@@ -94,6 +94,9 @@ bearer_token_env_var = "MEMRYNOTE_MCP_TOKEN"
 
 Then set `MEMRYNOTE_MCP_TOKEN` to the token in the shell that runs `codex`.
 
+The **Claude Desktop** and **Claude Code** buttons in that panel copy these snippets with the URL
+and token already filled in.
+
 Claude Desktop starts local MCP servers as commands, so it reaches the HTTP endpoint through the
 [`mcp-remote`](https://www.npmjs.com/package/mcp-remote) bridge, which needs Node.js. Add this to
 `claude_desktop_config.json` (on macOS, `~/Library/Application Support/Claude/`; on Windows,

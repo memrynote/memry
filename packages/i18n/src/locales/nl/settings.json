@@ -2484,7 +2484,17 @@
       "running": "Actief",
       "tokenHint": "Alleen voor deze sessie",
       "copy": "Kopiëren",
-      "rotate": "Vernieuwen"
+      "rotate": "Vernieuwen",
+      "clientConfig": {
+        "label": "Clientconfiguratie",
+        "hint": "Gekopieerd met de URL en het token van deze start",
+        "copy": "{client}-configuratie kopiëren"
+      },
+      "notes": {
+        "readOnly": "Externe clients kunnen alleen lezen. Schrijftools geven PERMISSION_DENIED terug; schrijf via Agent Chat of de memrynote-opdrachtregel.",
+        "restart": "De URL en het token veranderen wanneer memrynote herstart, van kluis wisselt of het token vernieuwt. Werk dan de clientconfiguratie bij en herstart de client.",
+        "docs": "Installatiehandleiding"
+      }
     }
   },
   "agentProviders": {

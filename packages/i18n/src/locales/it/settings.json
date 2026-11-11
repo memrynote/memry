@@ -2484,7 +2484,17 @@
       "running": "In esecuzione",
       "tokenHint": "Solo per questo avvio",
       "copy": "Copia",
-      "rotate": "Ruota"
+      "rotate": "Ruota",
+      "clientConfig": {
+        "label": "Configurazione client",
+        "hint": "Copiata con URL e token di questo avvio",
+        "copy": "Copia configurazione {client}"
+      },
+      "notes": {
+        "readOnly": "I client esterni possono solo leggere. Gli strumenti di scrittura restituiscono PERMISSION_DENIED: scrivi tramite Agent Chat o la riga di comando memrynote.",
+        "restart": "URL e token cambiano quando memrynote si riavvia, cambia vault o rinnova il token. Aggiorna ogni volta la configurazione del client, poi riavvialo.",
+        "docs": "Guida alla configurazione"
+      }
     }
   },
   "agentProviders": {

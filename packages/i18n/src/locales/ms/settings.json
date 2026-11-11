@@ -2484,7 +2484,17 @@
       "running": "Sedang berjalan",
       "tokenHint": "Pelancaran ini sahaja",
       "copy": "Salin",
-      "rotate": "Tukar"
+      "rotate": "Tukar",
+      "clientConfig": {
+        "label": "Konfigurasi klien",
+        "hint": "Disalin dengan URL dan token pelancaran ini",
+        "copy": "Salin konfigurasi {client}"
+      },
+      "notes": {
+        "readOnly": "Klien luaran hanya boleh membaca. Alat tulis memulangkan PERMISSION_DENIED, jadi tulis melalui Agent Chat atau baris arahan memrynote.",
+        "restart": "URL dan token berubah apabila memrynote dimulakan semula, menukar bilik kebal atau memperbaharui token. Kemas kini konfigurasi klien setiap kali, kemudian mulakan semula klien.",
+        "docs": "Panduan persediaan"
+      }
     }
   },
   "agentProviders": {

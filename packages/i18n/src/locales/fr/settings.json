@@ -2484,7 +2484,17 @@
       "running": "Actif",
       "tokenHint": "Pour ce lancement uniquement",
       "copy": "Copier",
-      "rotate": "Renouveler"
+      "rotate": "Renouveler",
+      "clientConfig": {
+        "label": "Configuration du client",
+        "hint": "Copiée avec l'URL et le jeton de ce lancement",
+        "copy": "Copier la configuration {client}"
+      },
+      "notes": {
+        "readOnly": "Les clients externes peuvent seulement lire. Les outils d'écriture renvoient PERMISSION_DENIED : écrivez via Agent Chat ou la ligne de commande memrynote.",
+        "restart": "L'URL et le jeton changent quand memrynote redémarre, change de coffre ou renouvelle le jeton. Mettez alors à jour la configuration du client, puis redémarrez-le.",
+        "docs": "Guide de configuration"
+      }
     }
   },
   "agentProviders": {

@@ -2484,7 +2484,17 @@
       "running": "Đang chạy",
       "tokenHint": "Chỉ lần khởi chạy này",
       "copy": "Sao chép",
-      "rotate": "Tạo lại"
+      "rotate": "Tạo lại",
+      "clientConfig": {
+        "label": "Cấu hình máy khách",
+        "hint": "Sao chép với URL và token của lần khởi động này",
+        "copy": "Sao chép cấu hình {client}"
+      },
+      "notes": {
+        "readOnly": "Máy khách bên ngoài chỉ có thể đọc. Công cụ ghi trả về PERMISSION_DENIED, vì vậy hãy ghi qua Agent Chat hoặc dòng lệnh memrynote.",
+        "restart": "URL và token thay đổi khi memrynote khởi động lại, chuyển kho hoặc xoay vòng token. Mỗi lần như vậy, hãy cập nhật cấu hình máy khách rồi khởi động lại máy khách.",
+        "docs": "Hướng dẫn thiết lập"
+      }
     }
   },
   "agentProviders": {

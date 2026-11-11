@@ -2484,7 +2484,17 @@
       "running": "Fut",
       "tokenHint": "Csak ehhez az indításhoz",
       "copy": "Másolás",
-      "rotate": "Csere"
+      "rotate": "Csere",
+      "clientConfig": {
+        "label": "Kliens konfiguráció",
+        "hint": "Az aktuális indítás URL-jével és tokenjével másolódik",
+        "copy": "{client} konfiguráció másolása"
+      },
+      "notes": {
+        "readOnly": "A külső kliensek csak olvasni tudnak. Az írási eszközök PERMISSION_DENIED hibát adnak, ezért írj az Agent Chaten vagy a memrynote parancssoron keresztül.",
+        "restart": "Az URL és a token megváltozik, amikor a memrynote újraindul, széfet vált vagy megújítja a tokent. Ilyenkor frissítsd a kliens konfigurációját, majd indítsd újra a klienst.",
+        "docs": "Beállítási útmutató"
+      }
     }
   },
   "agentProviders": {
