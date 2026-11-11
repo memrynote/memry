@@ -80,8 +80,8 @@ use memry_core::seams::secure_store::SecureStore;
 use crate::vault::app_move::on_disk;
 use crate::vault::consumer::converter_of;
 use crate::vault::consumer::identity::{
-    Adoption, Candidate, Crossed, IdentityCtx, IdentityError, NewFile, NoteIdentity, Removal,
-    Rename,
+    Adoption, Candidate, IdentityCtx, IdentityError, NewFile, NoteIdentity, Removal, Rename,
+    Settled,
 };
 use crate::vault::embeds::Resolved;
 use crate::vault::file_types::FileType;
@@ -511,8 +511,8 @@ impl NoteIdentity for NotesIdentity {
             return match owed_moves::cross(
                 self, ctx, &writer, &journal, note_id, old_path, new_path,
             )? {
-                Removed::Deleted => Ok(Rename::Crossed),
-                Removed::Undecided => {
+                Some(Removed::Deleted) => Ok(Rename::Crossed),
+                Some(Removed::Undecided) | None => {
                     tracing::warn!(
                         scope = SCOPE,
                         note_id,
@@ -557,15 +557,15 @@ impl NoteIdentity for NotesIdentity {
 
     /// The owed moves that change what their file is, now that the journal days are known
     /// ([`owed_moves::crossings`]).
-    fn settle_crossings(&self, ctx: &IdentityCtx<'_>) -> Vec<Crossed> {
+    fn settle_crossings(&self, ctx: &IdentityCtx<'_>) -> Settled {
         let Some(journal) = self.journal(ctx.root) else {
-            return Vec::new();
+            return Settled::default();
         };
         match self.writer(ctx) {
             Ok(writer) => owed_moves::crossings(self, ctx, &journal, &writer),
             Err(error) => {
                 tracing::error!(scope = SCOPE, "the owed moves could not be read: {error}");
-                Vec::new()
+                Settled::default()
             }
         }
     }

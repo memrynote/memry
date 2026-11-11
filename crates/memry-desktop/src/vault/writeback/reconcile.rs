@@ -4,17 +4,25 @@
 //! derives the same notes from the body stamps instead, so it also finds an edit made in the
 //! app whose pass never ran.
 
+use std::collections::BTreeSet;
+
 use super::{Pass, WriteBack};
 use crate::vault::trash::move_to_trash;
 
 const SCOPE: &str = "vault_writeback";
 
-/// Moves the files of deleted notes to the trash, marks the rows an older build stamped whose
-/// body is not ahead of them, then schedules a pass for every note behind its body. The consumer
+/// Moves the files of deleted notes to the trash, those owed a move only when the open's
+/// crossings left the file theirs (`theirs`), marks the rows an older build stamped whose body
+/// is not ahead of them, then schedules a pass for every note behind its body. The consumer
 /// calls it once the open walk ended; a stop of the consumer ends the trashing between files
 /// (`stopped`).
-pub(crate) fn reconcile(pass: &Pass, writeback: &WriteBack, stopped: &dyn Fn() -> bool) {
-    pass.trash_deleted(&move_to_trash, stopped);
+pub(crate) fn reconcile(
+    pass: &Pass,
+    writeback: &WriteBack,
+    theirs: &BTreeSet<String>,
+    stopped: &dyn Fn() -> bool,
+) {
+    pass.trash_deleted(theirs, &move_to_trash, stopped);
     // An outside edit of an unmarked row is compared through its file, which reads a change of
     // the frontmatter as typing (#4097).
     if let Err(error) = pass.vault.note_files().mark_unmarked() {

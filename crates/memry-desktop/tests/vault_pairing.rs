@@ -18,7 +18,7 @@ use memry_core::markdown::convert::api::Converter;
 use memry_core::markdown::schema::callout_types::CalloutTypes;
 use memry_desktop::vault::consumer::Applied;
 use memry_desktop::vault::consumer::identity::{
-    Adoption, Candidate, Crossed, IdentityCtx, IdentityError, NoteIdentity, Removal, Rename,
+    Adoption, Candidate, IdentityCtx, IdentityError, NoteIdentity, Removal, Rename, Settled,
 };
 use memry_desktop::vault::hash::content_hash;
 use vault_env::{Creates, Env, creates, env, indexed};
@@ -73,7 +73,7 @@ impl NoteIdentity for WithBody {
         self.0.on_renamed(ctx, id, old_path, new_path)
     }
 
-    fn settle_crossings(&self, ctx: &IdentityCtx<'_>) -> Vec<Crossed> {
+    fn settle_crossings(&self, ctx: &IdentityCtx<'_>) -> Settled {
         self.0.settle_crossings(ctx)
     }
 }

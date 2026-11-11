@@ -11,6 +11,7 @@
 //! consumer has no user-facing surface: the implementation knows when it failed and is the one
 //! that tells the user (Step 13), a note that keeps failing included.
 
+use std::collections::BTreeSet;
 use std::path::Path;
 use std::sync::Arc;
 
@@ -104,6 +105,17 @@ pub struct Crossed {
     pub note_id: String,
     /// Where the note's row and its file are.
     pub path: String,
+}
+
+/// What the open's crossings settled ([`NoteIdentity::settle_crossings`]).
+#[derive(Debug, Default)]
+pub struct Settled {
+    /// The records deleted, whose files are made anew.
+    pub crossed: Vec<Crossed>,
+    /// The notes owed a move whose file is still theirs: the move keeps what the file is, or
+    /// the day is held. Every other note owed a move has a file the crossings did not settle,
+    /// which the open's trash pass leaves where it is, its record deleted or not (#4258).
+    pub theirs: BTreeSet<String>,
 }
 
 #[derive(Debug, thiserror::Error)]
@@ -227,9 +239,10 @@ pub trait NoteIdentity: Send + Sync {
 
     /// Before the open walk: deletes the records of the owed moves that changed what their
     /// file is and returns them, whose rows the consumer drops and whose files it asks about
-    /// as new ([`Rename::Crossed`]). Its failures are its own to log.
-    fn settle_crossings(&self, _ctx: &IdentityCtx<'_>) -> Vec<Crossed> {
-        Vec::new()
+    /// as new ([`Rename::Crossed`]), with the owed notes whose file is still theirs. Its
+    /// failures are its own to log.
+    fn settle_crossings(&self, _ctx: &IdentityCtx<'_>) -> Settled {
+        Settled::default()
     }
 
     /// An edit outside the app replaced the note's file, and its document took the file's text
