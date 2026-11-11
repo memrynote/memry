@@ -20,6 +20,7 @@ import type * as VaultLocksStoreModule from '@/lib/vault-locks-store'
 import type * as BacklinksModule from '@/components/note/backlinks'
 import type * as UseNotesQueryModule from '@/hooks/use-notes-query'
 import type * as NotesServiceModule from '@/services/notes-service'
+import type { DocReadOnly } from '@/sync/yjs-ipc-provider'
 
 // The reveal action's label branches on platform. Pin macOS so these
 // assertions read the Finder wording whatever host the suite runs on.
@@ -82,9 +83,7 @@ const mocks = vi.hoisted(() => ({
   pickerOnValueChange: null as ((value: string) => void) | null,
   /** The newest `onMarkdownChange` the editor was handed, kept for late calls. */
   onMarkdownChange: null as ((markdown: string) => void) | null,
-  onReadOnlyChange: undefined as
-    | ((readOnly: 'locked' | 'large-file' | 'purged' | null) => void)
-    | undefined,
+  onReadOnlyChange: undefined as ((readOnly: DocReadOnly | null) => void) | undefined,
   contentAreaMounts: 0,
   /** What the tab would persist; the mind-map toggle lives in here. */
   tabViewState: {} as Record<string, unknown>,
@@ -552,7 +551,7 @@ vi.mock('@/components/note', () => ({
     onInlineTagsChange: (tags: string[], origin: 'load' | 'edit') => void
     focusAtEndRef: React.RefObject<(() => void) | null>
     review?: { onEditorReady?: (editor: unknown) => void }
-    onReadOnlyChange?: (readOnly: 'locked' | 'large-file' | 'purged' | null) => void
+    onReadOnlyChange?: (readOnly: DocReadOnly | null) => void
     editable?: boolean
   }) => {
     mocks.onMarkdownChange = onMarkdownChange
@@ -651,8 +650,10 @@ vi.mock('@/components/note/note-title', () => ({
     placeholder,
     inputRef,
     fresh,
-    onFreshEnd
+    onFreshEnd,
+    disabled
   }: {
+    disabled?: boolean
     title: string
     onTitleChange: (title: string) => void
     placeholder?: string
@@ -668,6 +669,7 @@ vi.mock('@/components/note/note-title', () => ({
         }}
         placeholder={placeholder}
         data-fresh={fresh ? 'true' : 'false'}
+        data-disabled={String(!!disabled)}
         onBlur={() => onFreshEnd?.()}
         readOnly
       />
@@ -2916,6 +2918,23 @@ describe('NotePage', () => {
       // #then
       expect(screen.queryByTestId('note-locked-indicator')).not.toBeInTheDocument()
       expect(screen.getByTestId('editor-content')).toHaveAttribute('data-editable', 'true')
+    })
+
+    // The editor host opened the note `database-read-only` (#4268): the editor shows the
+    // notice and takes no typing, and the title and properties take no edit either.
+    it('makes the title and properties read-only while the database is read-only', async () => {
+      renderWithProviders(<NotePage noteId="note-1" />)
+      await screen.findByTestId('info-section')
+      expect(screen.getByLabelText('Note title field')).toHaveAttribute('data-disabled', 'false')
+      expect(mocks.propertyCanEdit?.()).toBe(true)
+
+      act(() => mocks.onReadOnlyChange?.('database-read-only'))
+
+      expect(screen.getByLabelText('Note title field')).toHaveAttribute('data-disabled', 'true')
+      expect(screen.getByTestId('info-section')).toHaveAttribute('data-disabled', 'true')
+      expect(mocks.propertyCanEdit?.()).toBe(false)
+      act(() => mocks.propertyOnBlocked?.('update'))
+      expect(toast.error).toHaveBeenCalledWith('editor.databaseReadOnly')
     })
 
     it("keeps one note's lock notice off the large file the tab shows next", async () => {
