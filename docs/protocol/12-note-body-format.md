@@ -467,6 +467,12 @@ a writer held to its own idea of the shape cannot catch a node its peer will
 delete. Its expectations are compared through the canonical rendering below
 rather than through update bytes.
 
+A range in an operation (`setMark`, `insertInline`) counts UTF-8 bytes of the
+block's text, the offset kind of the core's documents
+(`crates/memry-core/src/crdt/registry.rs:90`). The offset kind is local to an
+implementation: an update encodes item clocks in UTF-16 code units whatever
+the kind, so a bytes document and a Yjs document exchange updates unchanged.
+
 **Two writer defects that class found on its first run, recorded so they are
 not rediscovered as surprises.** The reference core's append path put a
 `blockContainer` beside the existing `blockGroup` as a second top-level child

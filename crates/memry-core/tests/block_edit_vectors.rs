@@ -93,6 +93,26 @@ fn operation(case_name: &str, op: &Json) -> BlockEdit {
         "delete" => BlockEdit::Delete {
             block_id: text("blockId"),
         },
+        "setMark" => BlockEdit::SetMark {
+            block_id: text("blockId"),
+            start: number(case_name, op, "start"),
+            end: number(case_name, op, "end"),
+            mark: text("mark"),
+            value: op["value"].as_str().map(str::to_owned),
+        },
+        "insertInline" => BlockEdit::InsertInline {
+            block_id: text("blockId"),
+            start: number(case_name, op, "start"),
+            end: number(case_name, op, "end"),
+            kind: text("inlineKind"),
+            text: text("text"),
+            attrs: op["attrs"]
+                .as_object()
+                .unwrap_or_else(|| panic!("{case_name}: `attrs` is not an object: {op}"))
+                .iter()
+                .map(|(name, value)| (name.clone(), value.as_str().unwrap_or_default().to_owned()))
+                .collect(),
+        },
         other => panic!("{case_name}: unknown operation kind {other}"),
     }
 }
