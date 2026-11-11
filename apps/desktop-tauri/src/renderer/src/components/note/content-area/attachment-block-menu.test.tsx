@@ -46,12 +46,18 @@ const mocks = vi.hoisted(() => ({
   clipboardWriteText: vi.fn()
 }))
 
-// The rename reaches Rust through the generated command; the other actions are not ported yet.
+// Every action reaches Rust through its generated command.
 vi.mock('../../../../../generated/bindings', async (importOriginal) => {
   const actual = await importOriginal<typeof Bindings>()
   return {
     ...actual,
-    commands: { ...actual.commands, notesAttachmentRename: mocks.renameAttachment }
+    commands: {
+      ...actual.commands,
+      notesAttachmentRename: mocks.renameAttachment,
+      notesAttachmentResolve: mocks.resolveAttachment,
+      notesAttachmentRevealInFinder: mocks.revealAttachmentInFinder,
+      notesAttachmentOpenExternal: mocks.openAttachmentExternal
+    }
   }
 })
 
@@ -74,13 +80,6 @@ beforeEach(() => {
   })
   mocks.clipboardWriteText.mockReset().mockResolvedValue(undefined)
 
-  const api = window.api as unknown as Record<string, unknown>
-  api.notes = {
-    ...(api.notes as Record<string, unknown> | undefined),
-    resolveAttachment: mocks.resolveAttachment,
-    revealAttachmentInFinder: mocks.revealAttachmentInFinder,
-    openAttachmentExternal: mocks.openAttachmentExternal
-  }
   Object.defineProperty(navigator, 'clipboard', {
     value: { writeText: mocks.clipboardWriteText },
     configurable: true

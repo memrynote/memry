@@ -1,5 +1,6 @@
 //! `attachment_error`, the answer and log line an attachment command gives a refused or failed
-//! write (#3531 14f-2b-b), and `delete_error`, the delete's (14f-3a). A mock app test lives here, not in the lib's unit tests: the lib test
+//! write (#3531 14f-2b-b), `delete_error`, the delete's (14f-3a), and `read_error`, a read
+//! command's (14f-3c). A mock app test lives here, not in the lib's unit tests: the lib test
 //! exe has no Common Controls v6 manifest on Windows (#3842).
 
 use std::io::Write;
@@ -7,7 +8,7 @@ use std::sync::{Arc, Mutex};
 
 use memry_desktop::attachments::AttachmentError;
 use memry_desktop::locale::LocaleService;
-use memry_tauri::commands::attachments::{attachment_error, delete_error};
+use memry_tauri::commands::attachments::{attachment_error, delete_error, read_error};
 use tauri::Manager;
 use tauri::test::mock_app;
 use tracing_subscriber::fmt::MakeWriter;
@@ -80,4 +81,29 @@ fn a_failed_delete_says_so_and_a_locked_one_names_the_lock() {
     let answer = delete_error(app.handle(), &AttachmentError::Locked);
     assert_eq!(answer.code, "note_locked");
     assert_eq!(answer.message, "The owner made this note read-only.");
+}
+
+/// A read that fails on disk says the read failed, in the text its caller shows: the attachments
+/// dialog's "Failed to load attachments", not the upload's "Failed to save".
+#[test]
+fn a_failed_read_says_the_load_failed() {
+    let app = mock_app();
+    app.manage(Arc::new(LocaleService::new("en")));
+    let unreadable = || AttachmentError::Io(std::io::Error::other("permission denied"));
+    for (command, text) in [
+        ("notes_list_attachments", "Failed to load attachments"),
+        ("notes_attachment_resolve", "Failed to load attachments"),
+        ("notes_attachment_reveal_in_finder", "Failed to reveal file"),
+        ("notes_attachment_open_external", "Failed to open file"),
+    ] {
+        let answer = read_error(app.handle(), command, &unreadable());
+        assert_eq!(answer.code, "attachment_read_failed", "{command}");
+        assert_eq!(answer.message, text, "{command}");
+    }
+    let answer = read_error(
+        app.handle(),
+        "notes_list_attachments",
+        &AttachmentError::InvalidNote,
+    );
+    assert_eq!(answer.code, "attachment_invalid_note");
 }

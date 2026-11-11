@@ -25,8 +25,13 @@
 
 use std::cell::Cell;
 use std::collections::BTreeSet;
+use std::fs;
+use std::io;
+use std::ops::Range;
+use std::path::Path;
 
 use crate::session::OpenVault;
+use crate::shell::local_scheme::find_heal_candidate;
 use crate::vault::consumer::rows::RowOwner;
 use crate::vault::file_types::{FileType, extension, file_type_of_extension};
 use crate::vault::layout::ATTACHMENTS_DIR;
@@ -57,15 +62,16 @@ fn step(by: usize) {
 /// takes only plain names.
 pub fn filenames(note_id: &str, markdown: &str) -> BTreeSet<String> {
     let mut out = BTreeSet::new();
-    each_name(note_id, markdown, &mut |raw| {
+    each_name(note_id, markdown, &mut |at| {
+        let raw = &markdown[at];
         // A stray `%` is not an escape: the literal name stays.
         out.insert(decode_uri_component(raw).unwrap_or_else(|| raw.to_owned()));
     });
     out
 }
 
-/// Hands `found` each name of [`filenames`] as the body spells it, in one pass.
-fn each_name(note_id: &str, markdown: &str, found: &mut dyn FnMut(&str)) {
+/// Hands `found` where each name of [`filenames`] sits in the body, in one pass.
+fn each_name(note_id: &str, markdown: &str, found: &mut dyn FnMut(Range<usize>)) {
     if note_id.is_empty() {
         return;
     }
@@ -89,7 +95,7 @@ fn each_name(note_id: &str, markdown: &str, found: &mut dyn FnMut(&str)) {
         if len == 0 {
             continue;
         }
-        found(&markdown[name_at..name_at + len]);
+        found(name_at..name_at + len);
         from = name_at + len;
     }
 }
@@ -115,7 +121,8 @@ pub fn names_file(owner: &str, file: &str, body: &str) -> bool {
         }
     }
     let mut named = false;
-    each_name(&owner, &body, &mut |raw| {
+    each_name(&owner, &body, &mut |at| {
+        let raw = &body[at];
         named = named || raw == file || decoded(raw).is_some_and(|name| name == file);
     });
     named
@@ -138,7 +145,7 @@ pub enum Incomplete {
     /// The walk has not given every file it found a row yet (one waits for its retry, or an
     /// exclude pattern's restart walks again), or it hit its caps or an unreadable folder.
     NotWalked,
-    /// The rows could not be listed.
+    /// The rows, or the attachment's folder, could not be listed.
     Unlisted,
     /// A body could not be read.
     Unreadable,
@@ -167,8 +174,48 @@ impl ReferenceScan {
     }
 }
 
+/// Whether `body` names a file of `attachments/<owner>/` that is not in the folder (`present`,
+/// the names on disk as they are) and that self-heal (`shell::file_service::heal`) could serve from `file`: the
+/// same stored prefix, or the same name past it (#4122). After a rename, a note that still names
+/// the old name shows the renamed file this way. Each name as written and decoded. A name is
+/// present only in its exact case, as on a volume that tells case apart (Linux): there a link
+/// to `report.pdf` beside `Report.pdf` heals. The heal itself is compared in ASCII lowercase, and
+/// without self-heal's rule that the match be the folder's only one: each difference counts more
+/// refs, which keeps the file.
+fn heals_to(owner: &str, file: &str, present: &BTreeSet<String>, body: &str) -> bool {
+    let (owner, file) = (owner.to_ascii_lowercase(), file.to_ascii_lowercase());
+    // ASCII lowercase keeps every byte where it was, so a range of `lower` is one of `body`.
+    let lower = body.to_ascii_lowercase();
+    let mut heals = false;
+    each_name(&owner, &lower, &mut |at| {
+        let raw = &body[at];
+        let decoded = decode_uri_component(raw);
+        for name in [Some(raw), decoded.as_deref()].into_iter().flatten() {
+            let name_lower = name.to_ascii_lowercase();
+            heals = heals
+                || (!present.contains(name)
+                    && find_heal_candidate([file.as_str()], &name_lower) == Some(file.as_str()));
+        }
+    });
+    heals
+}
+
+/// The names of `attachments/<owner>/` as they are; none when the folder is gone.
+fn folder_names(vault: &Path, owner: &str) -> io::Result<BTreeSet<String>> {
+    let entries = match fs::read_dir(vault.join(ATTACHMENTS_DIR).join(owner)) {
+        Err(error) if error.kind() == io::ErrorKind::NotFound => return Ok(BTreeSet::new()),
+        other => other?,
+    };
+    let mut names = BTreeSet::new();
+    for entry in entries {
+        names.insert(entry?.file_name().to_string_lossy().into_owned());
+    }
+    Ok(names)
+}
+
 /// `findNotesReferencingAttachment`: the notes of the open vault whose body names
-/// `attachments/<owner>/<file>` ([`names_file`]), `exclude` aside. Every row is read but those of
+/// `attachments/<owner>/<file>` ([`names_file`]), or a missing name of that folder self-heal
+/// serves from it ([`heals_to`]; Electron did not count those), `exclude` aside. Every row is read but those of
 /// a pdf, an image, an audio or a video file. A row whose file is gone holds no reference. The
 /// scan is incomplete until the walk of the vault gave every file it found a row (`rows`), and when a body
 /// cannot be read for any other reason (a link out of the vault, a second hard link, a file over
@@ -197,6 +244,16 @@ pub fn find_references(
             return ReferenceScan::incomplete(Vec::new(), Incomplete::Unlisted);
         }
     };
+    let present = match folder_names(&open.path, owner) {
+        Ok(present) => present,
+        Err(error) => {
+            tracing::warn!(
+                scope = SCOPE,
+                "reference scan could not list the attachment's folder; the file counts as shared: {error}"
+            );
+            return ReferenceScan::incomplete(Vec::new(), Incomplete::Unlisted);
+        }
+    };
     let mut referenced_by = Vec::new();
     for (note_id, path) in rows {
         if Some(note_id.as_str()) == exclude || is_media(&path) {
@@ -210,7 +267,7 @@ pub fn find_references(
                 return ReferenceScan::incomplete(referenced_by, Incomplete::Unreadable);
             }
         };
-        if names_file(owner, file, &body) {
+        if names_file(owner, file, &body) || heals_to(owner, file, &present, &body) {
             referenced_by.push(note_id);
         }
     }

@@ -2,10 +2,9 @@
 // Electron's `note-menu-actions.e2e.ts`. Electron only checked that the OS items were there;
 // the e2e build records what the app hands the OS (`e2e_os_opens`), so here they are clicked
 // and the file shown or opened is read back, as are the move and the delete.
-import { existsSync, realpathSync } from 'node:fs'
+import { existsSync } from 'node:fs'
 import { join } from 'node:path'
 
-import { invokeTest } from '../../harness/invoke-test'
 import {
   NOTE_TITLE,
   type NoteView,
@@ -16,10 +15,9 @@ import {
   openFromSidebar,
   vaultOpen
 } from '../../harness/notes'
+import { osOpens, realFile } from '../../harness/os-opens'
 import type { Page } from '../../harness/pw-compat/page'
 import { test, expect } from '../../harness/test'
-
-type App = Parameters<typeof invokeTest>[0]
 
 // The reveal item is named for the host's file manager.
 const REVEAL_LABEL =
@@ -48,22 +46,6 @@ async function seedAndOpen(page: Page, title: string): Promise<NoteView> {
   await openFromSidebar(page, note)
   return note
 }
-
-/**
- * What the app handed the OS, as `reveal <file>` or `path <file>`, each file named by its real
- * path. The app hands over a canonical path, which is `\\?\`-prefixed on Windows and under
- * `/private` on macOS.
- */
-async function osOpens(app: App): Promise<string[]> {
-  const opens = await invokeTest<string[]>(app, 'e2e_os_opens')
-  return opens.map((entry) => {
-    const [kind, ...rest] = entry.split(' ')
-    return `${kind} ${realFile(rest.join(' ').replace(/^\\\\\?\\/, ''))}`
-  })
-}
-
-const realFile = (path: string): string =>
-  existsSync(path) ? realpathSync.native(path) : `missing ${path}`
 
 test('the menu offers every file action', async ({ page }) => {
   await seedAndOpen(page, `Menu Items ${stamp()}`)
