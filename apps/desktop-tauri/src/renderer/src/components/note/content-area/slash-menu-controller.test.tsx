@@ -12,6 +12,8 @@ import type { ReactNode } from 'react'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 
 import { SlashMenuController } from './slash-menu-controller'
+import { SlashMenu, SlashMenuFallbackContext } from './slash-menu'
+import type { SlashMenuItem } from './slash-menu-model'
 
 type Item = { title: string; aliases: string[] }
 
@@ -58,6 +60,8 @@ function typeInOneRender(editor: BlockNoteEditor, text: string): void {
     for (const char of text) editor.transact((tr) => tr.insertText(char))
   })
 }
+
+const FALLBACKS = { linkToNote: vi.fn(), askAI: null }
 
 const menuShown = (editor: BlockNoteEditor): boolean => editor.getExtension(SuggestionMenu)!.shown()
 
@@ -145,6 +149,72 @@ describe('SlashMenuController', () => {
     typeInOneRender(editor, 'b')
     await act(async () => releaseCheck())
     await screen.findByText('Check List')
+
+    expect(onItemClick).not.toHaveBeenCalled()
+  })
+
+  // The held Enter's lookup matched nothing: Enter used to vanish, with no fallback and no split.
+  it('hands a held Enter to the no-match fallback when its query matches nothing', async () => {
+    const rows: SlashMenuItem[] = [
+      { id: 'divider', title: 'Divider', group: 'Blocks', onItemClick: vi.fn() }
+    ]
+    const lookup = async (query: string): Promise<SlashMenuItem[]> =>
+      rows.filter((row) => row.title.toLowerCase().includes(query))
+    const editor = BlockNoteEditor.create()
+    render(
+      <SlashMenuFallbackContext.Provider value={FALLBACKS}>
+        <BlockNoteView editor={editor} slashMenu={false}>
+          <SlashMenuController
+            getItems={lookup}
+            suggestionMenuComponent={SlashMenu}
+            onItemClick={vi.fn()}
+          />
+        </BlockNoteView>
+      </SlashMenuFallbackContext.Provider>
+    )
+    act(() => editor.getExtension(SuggestionMenu)!.openSuggestionMenu('/'))
+    await screen.findByText('Divider')
+
+    typeInOneRender(editor, 'zqxv')
+    act(() => {
+      editor.prosemirrorView.dom.dispatchEvent(
+        new KeyboardEvent('keydown', { key: 'Enter', bubbles: true, cancelable: true })
+      )
+    })
+    expect(FALLBACKS.linkToNote).not.toHaveBeenCalled()
+
+    await waitFor(() => expect(FALLBACKS.linkToNote).toHaveBeenCalledWith('zqxv'))
+    expect(FALLBACKS.linkToNote).toHaveBeenCalledTimes(1)
+  })
+
+  // The Enter was pressed on `check`; the user then changed the query. Backspacing to `check`
+  // later is a new query with no key pressed on it.
+  it('does not run a row for a held Enter after another query rendered', async () => {
+    const onItemClick = vi.fn()
+    const lookup = async (query: string): Promise<Item[]> => {
+      // `check` loads only after the user left it and came back.
+      if (query === 'check' && lookups.check++ === 0) await new Promise(() => {})
+      return getItems(query)
+    }
+    const lookups = { check: 0 }
+    const editor = renderSlashMenu(lookup, onItemClick)
+    act(() => editor.getExtension(SuggestionMenu)!.openSuggestionMenu('/'))
+    await screen.findByText('Check List')
+
+    typeInOneRender(editor, 'check')
+    act(() => {
+      editor.prosemirrorView.dom.dispatchEvent(
+        new KeyboardEvent('keydown', { key: 'Enter', bubbles: true, cancelable: true })
+      )
+    })
+    typeInOneRender(editor, 'b')
+    await act(async () => {})
+    act(() => {
+      editor.transact((tr) => tr.delete(tr.selection.from - 1, tr.selection.from))
+    })
+    await act(async () => {
+      await new Promise((resolve) => setTimeout(resolve, 20))
+    })
 
     expect(onItemClick).not.toHaveBeenCalled()
   })

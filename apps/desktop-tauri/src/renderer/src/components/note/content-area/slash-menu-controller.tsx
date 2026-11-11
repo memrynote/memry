@@ -13,7 +13,8 @@
  * And one more: Enter waits for the current query's rows. BlockNote runs the selected row of the
  * last list that finished loading, so `/check` and Enter before the `check` lookup returned
  * inserted Divider, the first row of `/` (#4245). Enter on a stale list is held until that query's
- * rows load and then runs the first one; it is dropped if the query changes again first.
+ * rows load and then runs the first one; it is dropped if the query changes again first. When the
+ * held query matches nothing, the Enter goes to the no-match fallback rows once they render.
  *
  * Copied from `@blocknote/react@0.54.2` (`SuggestionMenuController.tsx` and
  * `SuggestionMenuWrapper.tsx`). Re-diff against upstream on every BlockNote bump.
@@ -78,9 +79,11 @@ function SlashMenuWrapper<Item>({
     [onItemClick, closeMenu, clearQuery]
   )
 
-  // The last lookup that finished, and the query of an Enter waiting for its own lookup.
+  // The last lookup that finished, the query of an Enter waiting for its own lookup, and the query
+  // of a held Enter whose lookup came back empty and waits for the fallback rows to render.
   const lastLoaded = useRef<{ query: string; items: Item[] } | undefined>(undefined)
   const heldEnter = useRef<string | undefined>(undefined)
+  const emptyEnter = useRef<string | undefined>(undefined)
   const liveQuery = useCallback(() => suggestionMenu.store.state?.query, [suggestionMenu])
 
   const loadItems = useCallback(
@@ -89,7 +92,10 @@ function SlashMenuWrapper<Item>({
       lastLoaded.current = { query: lookupQuery, items: loaded }
       if (heldEnter.current === lookupQuery) {
         heldEnter.current = undefined
-        if (liveQuery() === lookupQuery && loaded[0] !== undefined) onItemClickCloseMenu(loaded[0])
+        if (liveQuery() === lookupQuery) {
+          if (loaded[0] !== undefined) onItemClickCloseMenu(loaded[0])
+          else emptyEnter.current = lookupQuery
+        }
       }
       return loaded
     },
@@ -97,6 +103,24 @@ function SlashMenuWrapper<Item>({
   )
 
   const { items, usedQuery, loadingState } = useLoadSuggestionMenuItems(query, loadItems)
+
+  // A held Enter belongs to the query it was pressed on. When another query renders first, the
+  // user moved on; backspacing to the held query later must not run a row nobody pressed Enter on.
+  useEffect(() => {
+    if (heldEnter.current !== query) heldEnter.current = undefined
+    if (emptyEnter.current !== query) emptyEnter.current = undefined
+  }, [query])
+
+  // The no-match fallback rows take Enter from the editor's keydown capture listener, so the held
+  // Enter is replayed there once the empty list is on screen.
+  useEffect(() => {
+    if (emptyEnter.current === undefined || emptyEnter.current !== usedQuery) return
+    if (loadingState !== 'loaded' || items.length > 0) return
+    emptyEnter.current = undefined
+    editor.domElement?.dispatchEvent(
+      new KeyboardEvent('keydown', { key: 'Enter', bubbles: true, cancelable: true })
+    )
+  }, [editor, items.length, loadingState, usedQuery])
 
   useEffect(() => {
     let current = true
