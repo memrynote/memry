@@ -47,6 +47,8 @@ test('a native crash leaves a minidump written by the out-of-process monitor', a
   const [name] = dumpsIn(appDataDir)
   expect(statSync(join(appDataDir, 'crash-dumps', name)).size).toBeGreaterThan(1_000)
   expect(await pollUntil(() => !isAlive(pid) || undefined, { timeoutMs: 15_000 })).toBe(true)
+  // One crash, one dump: a second one keeps the crashed app alive while it is written.
+  expect(dumpsIn(appDataDir)).toEqual([name])
 })
 
 test('the monitor runs beside the app and ends when the app quits', async ({ app }) => {

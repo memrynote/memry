@@ -118,28 +118,103 @@ test('a table whose marker was written by hand opens coloured and is not rewritt
   expect(await noteBody(page, note.id)).toBe(body)
 })
 
-test('bold and italic applied inside a cell reach the file, in both toolbar modes', async ({
-  page
-}) => {
-  await vaultOpen(page)
-  const note = await openNewNote(page, `Table Cell Marks ${Date.now()}`, 'seed')
-  await setBlocks(page, TABLE_DOC)
+const PROBE_INSTALL = () => {
+  const w = window as unknown as Record<string, any>
+  const log: unknown[] = []
+  const t0 = performance.now()
+  const at = () => Math.round(performance.now() - t0)
+  const desc = (n: unknown) => {
+    const e = n as HTMLElement | null
+    if (!e || !e.tagName) return String(n)
+    return `${e.tagName.toLowerCase()}.${String(e.className).slice(0, 40)}`
+  }
+  w.__probe = { log, at }
+  const ed = w.__memryActiveEditor
+  w.__probeEditor = ed
+  for (const type of ['focusin', 'focusout']) {
+    window.addEventListener(type, (e) => log.push([at(), type, desc(e.target)]), true)
+  }
+  window.addEventListener('blur', () => log.push([at(), 'win-blur']), true)
+  window.addEventListener('focus', () => log.push([at(), 'win-focus']), true)
+  window.addEventListener(
+    'keydown',
+    (e) =>
+      log.push([at(), 'kd-cap', e.key, e.ctrlKey, e.metaKey, desc(e.target), document.hasFocus()]),
+    true
+  )
+  window.addEventListener('keydown', (e) => log.push([at(), 'kd-bub', e.key, e.defaultPrevented]))
+  const tip = ed?._tiptapEditor
+  tip?.on('transaction', ({ transaction }: any) =>
+    log.push([
+      at(),
+      'tr',
+      transaction.docChanged,
+      transaction.selection.from,
+      transaction.selection.to,
+      Object.keys(transaction.meta ?? {}).join(',')
+    ])
+  )
+  return Boolean(tip)
+}
 
-  await selectWordInCell(page, page.locator(`${NOTE_EDITOR} td`).first(), 'Shipping')
-  const bold = page.locator('[data-test="bold"]').first()
-  await expect(bold).toBeVisible({ timeout: 10_000 })
-  await bold.click()
-  await expect
-    .poll(async () => (await noteBody(page, note.id)) ?? '', { timeout: 20_000 })
-    .toContain('**Shipping**')
+const PROBE_STATE = () => {
+  const w = window as unknown as Record<string, any>
+  const ed = w.__memryActiveEditor
+  const view = ed?._tiptapEditor?.view
+  const sel = view?.state.selection
+  return {
+    t: w.__probe?.at(),
+    sameEditor: ed === w.__probeEditor,
+    active: `${document.activeElement?.tagName}.${String(document.activeElement?.className).slice(0, 40)}`,
+    docFocus: document.hasFocus(),
+    viewFocus: view?.hasFocus(),
+    sel: sel ? [sel.from, sel.to, sel.constructor.name] : null,
+    text: ed?.getSelectedText(),
+    domSel: String(window.getSelection()),
+    sticky: Boolean(document.querySelector('.sticky-toolbar-enabled')),
+    editors: document.querySelectorAll('.ProseMirror').length
+  }
+}
 
-  await invoke(page, 'settings_set_group', { group: 'editor', patch: { toolbarMode: 'sticky' } })
-  await reopen(page, note)
+for (let round = 0; round < 8; round++) {
+  test(`PROBE #3967 italic in a cell after a reopen in sticky mode, round ${round}`, async ({
+    page
+  }) => {
+    await vaultOpen(page)
+    await invoke(page, 'settings_set_group', {
+      group: 'editor',
+      patch: { toolbarMode: 'floating' }
+    })
+    const note = await openNewNote(page, `Table Cell Marks ${round} ${Date.now()}`, 'seed')
+    await setBlocks(page, TABLE_DOC)
+    await selectWordInCell(page, page.locator(`${NOTE_EDITOR} td`).first(), 'Shipping')
+    const bold = page.locator('[data-test="bold"]').first()
+    await expect(bold).toBeVisible({ timeout: 10_000 })
+    await bold.click()
+    await expect
+      .poll(async () => (await noteBody(page, note.id)) ?? '', { timeout: 20_000 })
+      .toContain('**Shipping**')
 
-  await selectWordInCell(page, page.locator(`${NOTE_EDITOR} td`).nth(1), 'Open')
-  await page.keyboard.press('ControlOrMeta+i')
-  await expect
-    .poll(async () => (await noteBody(page, note.id)) ?? '', { timeout: 20_000 })
-    .toContain('*Open*')
-  expect(await noteBody(page, note.id)).toContain('**Shipping**')
-})
+    await invoke(page, 'settings_set_group', { group: 'editor', patch: { toolbarMode: 'sticky' } })
+    await reopen(page, note)
+    const installed = await page.evaluate(PROBE_INSTALL)
+    await selectWordInCell(page, page.locator(`${NOTE_EDITOR} td`).nth(1), 'Open')
+    const before = await page.evaluate(PROBE_STATE)
+    await page.keyboard.press('ControlOrMeta+i')
+    const after = await page.evaluate(PROBE_STATE)
+    let ok = true
+    try {
+      await expect
+        .poll(async () => (await noteBody(page, note.id)) ?? '', { timeout: 10_000 })
+        .toContain('*Open*')
+    } catch {
+      ok = false
+    }
+    const later = await page.evaluate(PROBE_STATE)
+    const log = await page.evaluate(() => (window as any).__probe?.log)
+    console.log(
+      `PROBE round=${round} ok=${ok} installed=${installed} ${JSON.stringify({ before, after, later, log, body: await noteBody(page, note.id) })}`
+    )
+    expect(ok).toBe(true)
+  })
+}
