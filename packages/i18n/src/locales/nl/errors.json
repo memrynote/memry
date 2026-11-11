@@ -228,6 +228,9 @@
     "createFailed": "Kan de map niet maken",
     "renameFailed": "Kan de naam van de map niet wijzigen",
     "deleteFailed": "Kan de map niet verwijderen",
+    "keptNotPulled": "Deze map bevat een notitie waarvan het bestand buiten memrynote is verwijderd, en de tekst ervan is nog niet met dit apparaat gesynchroniseerd, dus de notitie kan niet naar de prullenbak. Er is niets verwijderd. Wacht tot ze is gesynchroniseerd, of verwijder die notitie eerst afzonderlijk.",
+    "keptUnwritable": "Deze map bevat een notitie waarvan het bestand buiten memrynote is verwijderd, en de tekst ervan kan niet in een bestand voor de prullenbak worden opgeslagen. Er is niets verwijderd. Verwijder die notitie eerst afzonderlijk.",
+    "trashUnavailable": "Deze map kon niet naar de prullenbak worden verplaatst. Wat er nog in zit, is niet verwijderd.",
     "setConfigFailed": "Kan de mapinstellingen niet opslaan"
   },
   "folderView": {

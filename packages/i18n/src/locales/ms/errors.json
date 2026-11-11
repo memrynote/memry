@@ -228,6 +228,9 @@
     "createFailed": "Gagal membuat folder",
     "renameFailed": "Gagal menamakan semula folder",
     "deleteFailed": "Gagal memadamkan folder",
+    "keptNotPulled": "Folder ini mengandungi nota yang failnya dipadam di luar memrynote, dan teksnya belum disegerakkan ke peranti ini, jadi nota itu tidak boleh dialihkan ke tong sampah. Tiada apa-apa yang dipadam. Tunggu sehingga ia disegerakkan, atau padam nota itu secara berasingan terlebih dahulu.",
+    "keptUnwritable": "Folder ini mengandungi nota yang failnya dipadam di luar memrynote, dan teksnya tidak dapat disimpan ke fail untuk tong sampah. Tiada apa-apa yang dipadam. Padam nota itu secara berasingan terlebih dahulu.",
+    "trashUnavailable": "Folder ini tidak dapat dialihkan ke tong sampah. Apa-apa yang masih ada di dalamnya tidak dipadam.",
     "setConfigFailed": "Gagal menetapkan konfigurasi folder"
   },
   "folderView": {

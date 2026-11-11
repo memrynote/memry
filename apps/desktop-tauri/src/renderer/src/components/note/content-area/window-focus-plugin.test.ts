@@ -78,4 +78,53 @@ describe('window focus plugin', () => {
     dispatch(editor, 'focus')
     expect(editor._tiptapEditor.isFocused).toBe(true)
   })
+
+  // #4244: a dialog that closes while the app is in the background moves focus with `.focus()`.
+  // The editor, blurred by the window switch, sees no second blur, and kept the menu open.
+  it('closes the slash menu when focus moved elsewhere while the window was in the background', async () => {
+    const editor = editorWithOpenSlashMenu()
+    const hasFocus = vi.spyOn(document, 'hasFocus').mockReturnValue(false)
+    dispatch(editor, 'blur')
+    const input = document.createElement('input')
+    document.body.appendChild(input)
+    cleanups.push(() => input.remove())
+    input.focus()
+
+    hasFocus.mockReturnValue(true)
+    window.dispatchEvent(new FocusEvent('focus'))
+    await nextFrame()
+
+    expect(editor.getExtension(SuggestionMenu)!.shown()).toBe(false)
+    expect(editor._tiptapEditor.isFocused).toBe(false)
+  })
+
+  it('keeps the slash menu open when the window comes back with the editor focused', async () => {
+    const editor = editorWithOpenSlashMenu()
+    const hasFocus = vi.spyOn(document, 'hasFocus').mockReturnValue(false)
+    dispatch(editor, 'blur')
+
+    hasFocus.mockReturnValue(true)
+    window.dispatchEvent(new FocusEvent('focus'))
+    await nextFrame()
+
+    expect(editor.getExtension(SuggestionMenu)!.shown()).toBe(true)
+  })
+
+  // #4244: focus moving into an embed's iframe can blur the editor while the document reports no
+  // focus yet; once it does, the blur was a move inside the app.
+  it('closes the slash menu when the document has focus again a frame after the blur', async () => {
+    const editor = editorWithOpenSlashMenu()
+    const hasFocus = vi.spyOn(document, 'hasFocus').mockReturnValue(false)
+    const iframe = document.createElement('iframe')
+    document.body.appendChild(iframe)
+    cleanups.push(() => iframe.remove())
+    iframe.focus()
+    hasFocus.mockReturnValue(true)
+    await nextFrame()
+
+    expect(editor.getExtension(SuggestionMenu)!.shown()).toBe(false)
+  })
 })
+
+const nextFrame = (): Promise<void> =>
+  new Promise((resolve) => requestAnimationFrame(() => setTimeout(resolve, 0)))

@@ -352,7 +352,7 @@ impl NotesService {
             // Electron unlinks a day's file for good; one holding text the day never took goes
             // to the trash first, and a kept day's text only to the trash unless confirmed.
             Some(row) => {
-                self.remove_file_of(open, row, permanent, true)?;
+                self.remove_file_of(&lane, open, row, permanent, true)?;
                 false
             }
             None => self.trash_unnamed(&lane, &open.path, date)?,

@@ -560,16 +560,27 @@ describe('notes-service', () => {
     commands.notesDeleteFolder.mockResolvedValueOnce(null)
     await expect(notesService.deleteFolder('Work')).resolves.toEqual({ success: true })
     expect(commands.notesDeleteFolder).toHaveBeenCalledWith('Work')
-    // Electron's text for any failed folder delete; the command's reason stays in the log.
+    // Electron's text for any other failed folder delete; the command's reason stays in the log.
     commands.notesDeleteFolder.mockRejectedValueOnce({
       kind: 'storage',
-      code: 'note_trash_unavailable',
-      message: 'no bin'
+      code: 'note_file_failed',
+      message: 'disk full'
     })
     await expect(notesService.deleteFolder('Work')).resolves.toEqual({
       success: false,
       error: getI18n().t('errors:folder.deleteFailed')
     })
+    // A refusal only a folder delete gives names its cause (#4254).
+    for (const [code, key] of [
+      ['folder_kept_not_pulled', 'errors:folder.keptNotPulled'],
+      ['folder_kept_unwritable', 'errors:folder.keptUnwritable'],
+      ['note_trash_unavailable', 'errors:folder.trashUnavailable']
+    ]) {
+      commands.notesDeleteFolder.mockRejectedValueOnce({ kind: 'invalid', code, message: 'no' })
+      const refused = await notesService.deleteFolder('Work')
+      expect(refused).toEqual({ success: false, error: getI18n().t(key) })
+      expect(refused.error).not.toBe(key)
+    }
     // A refusal says why (#3530).
     commands.notesDeleteFolder.mockRejectedValueOnce({
       kind: 'locked',

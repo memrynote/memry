@@ -228,6 +228,9 @@
     "createFailed": "Không thể tạo thư mục",
     "renameFailed": "Không thể đổi tên thư mục",
     "deleteFailed": "Không thể xóa thư mục",
+    "keptNotPulled": "Thư mục này có một ghi chú mà tệp của nó đã bị xóa bên ngoài memrynote, và nội dung của ghi chú chưa được đồng bộ về thiết bị này, nên không thể chuyển vào thùng rác. Không có gì bị xóa. Hãy chờ đồng bộ xong, hoặc xóa riêng ghi chú đó trước.",
+    "keptUnwritable": "Thư mục này có một ghi chú mà tệp của nó đã bị xóa bên ngoài memrynote, và không thể lưu nội dung của ghi chú vào tệp để đưa vào thùng rác. Không có gì bị xóa. Hãy xóa riêng ghi chú đó trước.",
+    "trashUnavailable": "Không thể chuyển thư mục này vào thùng rác. Những gì còn trong thư mục chưa bị xóa.",
     "setConfigFailed": "Không thể đặt cấu hình thư mục"
   },
   "folderView": {

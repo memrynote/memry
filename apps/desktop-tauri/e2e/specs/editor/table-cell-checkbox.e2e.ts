@@ -3,7 +3,7 @@
 // unreachable: the `[ ] ` input rule never fired, `/check` put a checklist after the table, and
 // the toolbar did nothing. The inline checkbox node fixes each; this drives the real editor, a
 // click on the `contenteditable="false"` atom, and the write-back to the vault file.
-import { typeInEditor } from '../../harness/editor'
+import { expectSuggestionMenuOpen, typeInEditor } from '../../harness/editor'
 import { NOTE_EDITOR, vaultOpen } from '../../harness/notes'
 import type { Page } from '../../harness/pw-compat/page'
 import { blockTypes, openTableNote, tableLines, vaultBody } from '../../harness/table'
@@ -105,14 +105,7 @@ test('choosing Check List from the slash menu puts the box in the cell', async (
 
   await caretInDoneCell(page)
   await typeInEditor(page, '/check')
-  // Enter runs the highlighted row of the last query the menu loaded, and a shorter query lists
-  // Check List too, so a wait on its text alone can let Enter run another row (windows-x64, run
-  // 42974914462).
-  await expect(
-    page
-      .locator('.memry-slash-menu [role="option"][aria-selected="true"]')
-      .filter({ hasText: 'Check List' })
-  ).toHaveCount(1, { timeout: 10_000 })
+  await expectSuggestionMenuOpen(page, 'Check List')
   await page.keyboard.press('Enter')
 
   await expect(cellCheckbox(page)).toBeVisible({ timeout: 15_000 })

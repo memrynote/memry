@@ -171,6 +171,13 @@ function failure(error: unknown): { success: false; error?: string } {
  * larger one goes in parts of `UPLOAD_CHUNK_BYTES` (`attachments::CHUNK_BYTES`), up to the
  * 100 MiB attachment cap.
  */
+/** Why a folder delete was refused, by its code, for the reasons only a folder delete gives. */
+const FOLDER_DELETE_REASONS = new Map([
+  ['folder_kept_not_pulled', 'errors:folder.keptNotPulled'],
+  ['folder_kept_unwritable', 'errors:folder.keptUnwritable'],
+  ['note_trash_unavailable', 'errors:folder.trashUnavailable']
+])
+
 const MAX_UPLOAD_BODY = 16 * 1024 * 1024
 const UPLOAD_CHUNK_BYTES = 8 * 1024 * 1024
 
@@ -561,6 +568,8 @@ const ported = {
       // shared with create, rename and the note delete, so they get no text of their own here.
       log.error('Failed to delete folder', { path, error })
       const code = commandErrorCode(error)
+      const reason = code && FOLDER_DELETE_REASONS.get(code)
+      if (reason) return { success: false, error: getI18n().t(reason) }
       const refused = code === 'note_excluded' || code === 'folder_locked'
       return {
         success: false,

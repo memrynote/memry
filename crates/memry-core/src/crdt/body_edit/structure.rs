@@ -468,7 +468,7 @@ pub(super) fn snapshot_subtree(txn: &TransactionMut, element: &XmlElementRef) ->
     let children = element
         .children(txn)
         .filter_map(|child| match child {
-            XmlOut::Text(run) => Some(Piece::Text(super::inline::formatted_tail(txn, &run, 0))),
+            XmlOut::Text(run) => Some(Piece::Text(super::inline::formatted_text(txn, &run))),
             XmlOut::Element(inner) => Some(Piece::Element(snapshot_subtree(txn, &inner))),
             XmlOut::Fragment(_) => None,
         })
