@@ -7,6 +7,7 @@ import {
   openNewNote,
   typeInEditor
 } from '../../harness/editor'
+import { installProbe, probeLog } from '../../harness/flake-probe'
 import { NOTE_EDITOR, vaultOpen } from '../../harness/notes'
 import type { Page } from '../../harness/pw-compat/page'
 import { test, expect } from '../../harness/test'
@@ -81,4 +82,30 @@ test('a no-match query that arrives in one input still hands off to note search'
   await expect(menu(page)).toBeHidden()
   await expect(page.locator('.wiki-link-menu')).toBeVisible()
   await expect(page.locator(NOTE_EDITOR).first()).toContainText('[[zqxv')
+})
+
+// PROBE (#3967 FLAKE-6B): the Recent open, repeated in one app while other workers open windows.
+test('PROBE recent menu stays open', async ({ page }) => {
+  await openFreshNote(page, `Slash Probe ${Date.now()}`)
+  await installProbe(page)
+  await typeInEditor(page, '/quote')
+  await expectSuggestionMenuOpen(page, 'Quote')
+  await page.keyboard.press('Enter')
+  await expect.poll(async () => (await editorDocument(page))[0]?.type).toBe('quote')
+  await page.keyboard.press('Enter')
+  await page.keyboard.press('Enter')
+  for (let round = 0; round < 150; round++) {
+    try {
+      await typeInEditor(page, '/')
+      await expect(menu(page).getByRole('option').first()).toHaveText(/Quote/, { timeout: 8_000 })
+      await expectSuggestionMenuOpen(page, 'Quote')
+    } catch (error) {
+      throw new Error(`round ${round}: ${String(error)}\nPROBE ${await probeLog(page)}`, {
+        cause: error
+      })
+    }
+    await page.keyboard.press('Escape')
+    await expect(menu(page)).toBeHidden()
+    await page.keyboard.press('Backspace')
+  }
 })

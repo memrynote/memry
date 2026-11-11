@@ -2,6 +2,7 @@
 // commands the renderer calls, and a note opened from the Collections tree as a user opens one.
 import { HarnessError } from './errors'
 import { expect } from './pw-compat/expect'
+import { rowState } from './flake-probe'
 import type { Page } from './pw-compat/page'
 import { invoke, vaultStatus } from './vault-commands'
 import { pollUntil } from './wait'
@@ -126,7 +127,13 @@ export async function openFromSidebar(
     const expand = row.getByRole('button', { name: 'Expand folder' })
     if (await expand.isVisible()) await expand.click()
   }
-  await treeRow(page, note.id).click()
+  try {
+    await treeRow(page, note.id).click()
+  } catch (error) {
+    throw new Error(`${String(error)}\nPROBE row ${await rowState(page, note.id)}`, {
+      cause: error
+    })
+  }
   await expect(page.locator(NOTE_TITLE).first()).toHaveValue(note.title)
 }
 
