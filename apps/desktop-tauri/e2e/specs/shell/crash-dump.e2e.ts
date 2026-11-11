@@ -1,5 +1,5 @@
 import { execFileSync } from 'node:child_process'
-import { existsSync, readdirSync, statSync } from 'node:fs'
+import { existsSync, readFileSync, readdirSync, statSync } from 'node:fs'
 import { join } from 'node:path'
 
 import { test, expect } from '../../harness/test'
@@ -65,3 +65,51 @@ test('the monitor runs beside the app and ends when the app quits', async ({ app
   expect(await pollUntil(() => !isAlive(pid) || undefined, { timeoutMs: 15_000 })).toBe(true)
   expect(await pollUntil(() => !isAlive(monitor) || undefined, { timeoutMs: 15_000 })).toBe(true)
 })
+
+function procState(pid: number): string {
+  try {
+    const status = readFileSync(`/proc/${pid}/status`, 'utf8')
+    const stat = readFileSync(`/proc/${pid}/stat`, 'utf8').split(') ')[1]?.split(' ')
+    // stat field 9 (flags) is index 6 after the comm; PF_DUMPCORE = 0x200, PF_EXITING = 0x4.
+    const flags = Number(stat?.[6] ?? 0)
+    return `${/State:\s*(.*)/.exec(status)?.[1]} flags=0x${flags.toString(16)} dumpcore=${(flags & 0x200) !== 0} exiting=${(flags & 0x4) !== 0}`
+  } catch (error) {
+    return `gone (${(error as Error).message.slice(0, 40)})`
+  }
+}
+
+for (let round = 0; round < 6; round++) {
+  test(`PROBE #3967 crash exit timing, round ${round}`, async ({ app }) => {
+    if (process.platform !== 'linux') return
+    const { appDataDir, pid } = await appInfo(app)
+    await handlerAttached(app)
+    const corePattern = readFileSync('/proc/sys/kernel/core_pattern', 'utf8').trim()
+    const t0 = Date.now()
+    await sendTest(app, 'e2e_trigger_crash')
+    await pollUntil(() => dumpsIn(appDataDir).length > 0 || undefined, {
+      timeoutMs: 30_000,
+      intervalMs: 50
+    })
+    const tDump = Date.now() - t0
+    const samples: string[] = []
+    const died = await pollUntil(
+      () => {
+        if (!isAlive(pid)) return true
+        if (samples.length < 40) samples.push(`${Date.now() - t0}ms ${procState(pid)}`)
+        return undefined
+      },
+      { timeoutMs: 40_000, intervalMs: 250 }
+    )
+    const tDead = Date.now() - t0
+    let apport = ''
+    try {
+      apport = execFileSync('pgrep', ['-c', '-x', 'apport'], { encoding: 'utf8' }).trim()
+    } catch {
+      apport = '0'
+    }
+    console.log(
+      `PROBE crash round=${round} corePattern=${JSON.stringify(corePattern)} dumpAt=${tDump}ms died=${died} deadAt=${tDead}ms dumps=${dumpsIn(appDataDir).length} apportNow=${apport} samples=${JSON.stringify(samples.filter((_, i) => i % 4 === 0))}`
+    )
+    expect(died).toBe(true)
+  })
+}
