@@ -209,6 +209,45 @@ fn an_inline_node_before_an_embed_keeps_the_embed_and_its_marks() {
     );
 }
 
+/// An unmarked embed after a marked chunk stays unmarked in the rebuilt tail:
+/// a plain insert after a marked chunk would inherit its mark (#4262).
+#[test]
+fn an_unmarked_embed_after_a_marked_chunk_stays_unmarked_in_the_tail() {
+    let sample = "çağrı";
+    let document = registry_document("device-embed-unmarked");
+    let base = paragraph_body(OffsetKind::Bytes, &format!("{sample}|{sample}"));
+    insert_embed_into_run(&base, (2 * sample.len() + 1) as u32);
+    document.apply_durable_update(&state(&base)).expect("base");
+    apply(
+        &document,
+        &BlockEdit::SetMark {
+            block_id: "p".to_owned(),
+            start: sample.len() as u32,
+            end: (2 * sample.len() + 1) as u32,
+            mark: "bold".to_owned(),
+            value: None,
+        },
+    )
+    .expect("bold");
+    apply(
+        &document,
+        &BlockEdit::InsertInline {
+            block_id: "p".to_owned(),
+            start: sample.len() as u32,
+            end: sample.len() as u32,
+            kind: "dateMention".to_owned(),
+            text: "yarın".to_owned(),
+            attrs: HashMap::from([("date".to_owned(), "2026-09-23".to_owned())]),
+        },
+    )
+    .expect("inline");
+
+    assert_eq!(
+        paragraph_children(&document),
+        ["çağrı", "<dateMention>", "*|çağrı*", "<embed>"]
+    );
+}
+
 /// An offset inside a character is refused, and the text is left as it was,
 /// instead of splitting the character's bytes (#4255).
 #[test]
