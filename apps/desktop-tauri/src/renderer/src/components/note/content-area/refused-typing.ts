@@ -9,7 +9,8 @@
  * touches text the other change touched does not apply as typed: its typed text goes in at the
  * nearest edge of that change (after it, from inside it), so it stays in the note, and the
  * deletion or formatting it carried is left out. The keystrokes typed right after it go on after
- * its text, so a run of typing stays one run. Either outcome is logged, without the text.
+ * its text, so a run of typing stays one run. Either outcome is logged, without the text. When
+ * the editor closed during the hold, the queue goes into the document itself (`writeTo`).
  *
  * @module note/content-area/refused-typing
  */
@@ -26,6 +27,8 @@ import {
   type StepMap,
   Transform
 } from '@tiptap/pm/transform'
+import { initProseMirrorDoc, updateYFragment } from 'y-prosemirror'
+import type * as Y from 'yjs'
 import { createLogger } from '@/lib/logger'
 import { outsideEditMap } from './outside-edit-selection'
 
@@ -63,12 +66,23 @@ export class RefusedTyping {
 
   /** The transaction that applies the queue to `state`'s document, or null; empties the queue. */
   replay(state: EditorState): Transaction | null {
-    if (this.base === null) return null
-    this.moveTo(state.doc)
     const tr = state.tr
-    for (const step of this.steps) tr.step(step)
-    this.clear()
+    this.applyTo(tr)
     return tr.docChanged ? tr : null
+  }
+
+  /**
+   * Applies the queue to `fragment`, which no editor shows any more (the note closed during the
+   * hold), as the editor's sync would have written it; empties the queue.
+   */
+  writeTo(fragment: Y.XmlFragment): void {
+    const base = this.base
+    const ydoc = fragment.doc
+    if (base === null || ydoc === null) return
+    const { doc, meta } = initProseMirrorDoc(fragment, base.type.schema)
+    const tr = new Transform(doc)
+    this.applyTo(tr)
+    if (tr.docChanged) updateYFragment(ydoc, fragment, tr.doc, meta)
   }
 
   /** Empties the queue; returns how many steps it held. */
@@ -77,6 +91,13 @@ export class RefusedTyping {
     this.base = null
     this.steps = []
     return size
+  }
+
+  private applyTo(tr: Transform): void {
+    if (this.base === null) return
+    this.moveTo(tr.doc)
+    for (const step of this.steps) tr.step(step)
+    this.clear()
   }
 
   /** Moves the queue onto `doc`, the document its base became. */
@@ -129,7 +150,12 @@ function rebase(
     const added = onto.steps.length
     if (!(step instanceof ReplaceStep) || step.slice.size === 0) {
       outcome.skipped++
-      run = null
+      // A deletion (a Backspace) is left out, and the keystrokes after it still go on after the
+      // run's text: the editor never showed the run, so its caret stayed where the run began.
+      run =
+        run !== null && step instanceof ReplaceStep
+          ? { after: step.getMap().map(run.after), at: run.at }
+          : null
       return
     }
     const at =
