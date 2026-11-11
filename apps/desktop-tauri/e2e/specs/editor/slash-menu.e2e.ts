@@ -54,3 +54,20 @@ test('no match hands the query to note search', async ({ page }) => {
   await expect(page.locator('.wiki-link-menu')).toBeVisible()
   await expect(page.locator(NOTE_EDITOR).first()).toContainText('[[zqxv')
 })
+
+// The query reaches the menu as `zqxv` in one step, so `/z` (which matches Divider) is never
+// looked up, as when typing outruns the lookup. The menu still offers note search (#4205).
+test('a no-match query that arrives in one input still hands off to note search', async ({
+  page
+}) => {
+  await openFreshNote(page, `Slash Fast ${Date.now()}`)
+
+  await typeInEditor(page, '/')
+  await expect(menu(page)).toBeVisible()
+  await page.keyboard.insertText('zqxv')
+  await expect(menu(page).getByText('No blocks match “zqxv”')).toBeVisible()
+  await page.keyboard.press('Enter')
+
+  await expect(page.locator('.wiki-link-menu')).toBeVisible()
+  await expect(page.locator(NOTE_EDITOR).first()).toContainText('[[zqxv')
+})
