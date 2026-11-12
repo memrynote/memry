@@ -165,7 +165,7 @@
     "apiKeyInvalid": "{provider}-API-avaimesi hylättiin. Tarkista se kohdassa Asetukset → Tekoäly.",
     "ollamaUnreachable": "Ollama ei ole käynnissä. Käynnistä se komennolla ”ollama serve” tai valitse toinen tarjoaja kohdassa Asetukset → Tekoäly.",
     "providerUnreachable": "Palveluun {provider} ei saatu yhteyttä. Tarkista internetyhteytesi ja yritä uudelleen.",
-    "keychainUnavailable": "Memry ei saa yhteyttä järjestelmän avainnippuun, joten tekoälyn API-avainta ei luettu eikä tallennettu. Avaa avainnippu ja yritä uudelleen."
+    "keychainUnavailable": "memrynote ei saa yhteyttä järjestelmän avainnippuun, joten tekoälyn API-avainta ei luettu eikä tallennettu. Avaa avainnippu ja yritä uudelleen."
   },
   "auth": {
     "notAuthenticated": "Et ole kirjautunut sisään",

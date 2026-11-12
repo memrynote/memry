@@ -42,7 +42,18 @@ struct ModelEntry {
     id: Option<String>,
 }
 
-/// `GET <base>/models` with the provider's authentication. The body of a 2xx is returned.
+/// The client of every probe: `builder` (the shared TLS stack) with redirects off. reqwest keeps
+/// `x-api-key` and `x-goog-api-key` across a cross-host redirect, so a redirect is reported as
+/// the provider's answer and never followed.
+pub fn probe_client(builder: reqwest::ClientBuilder) -> reqwest::Client {
+    builder
+        .redirect(reqwest::redirect::Policy::none())
+        .build()
+        .expect("the probe HTTP client needs a process default rustls crypto provider")
+}
+
+/// `GET <base>/models` with the provider's authentication, on a [`probe_client`]. The body of a
+/// 2xx is returned.
 pub async fn probe(
     client: &reqwest::Client,
     provider: AiProvider,

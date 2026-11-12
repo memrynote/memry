@@ -165,7 +165,7 @@
     "apiKeyInvalid": "Twój klucz API {provider} został odrzucony. Sprawdź go w Ustawieniach → AI.",
     "ollamaUnreachable": "Ollama nie jest uruchomiona. Uruchom ją poleceniem „ollama serve” albo wybierz innego dostawcę w Ustawieniach → AI.",
     "providerUnreachable": "Nie udało się połączyć z {provider}. Sprawdź połączenie z internetem i spróbuj ponownie.",
-    "keychainUnavailable": "Memry nie ma dostępu do pęku kluczy systemu, więc klucz API AI nie został odczytany ani zapisany. Odblokuj pęk kluczy i spróbuj ponownie."
+    "keychainUnavailable": "memrynote nie ma dostępu do pęku kluczy systemu, więc klucz API AI nie został odczytany ani zapisany. Odblokuj pęk kluczy i spróbuj ponownie."
   },
   "auth": {
     "notAuthenticated": "Brak uwierzytelnienia",

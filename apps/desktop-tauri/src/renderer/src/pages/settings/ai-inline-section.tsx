@@ -116,28 +116,32 @@ export function AIInlineSettings(): React.JSX.Element {
   const [connected, setConnected] = useState(false)
 
   useEffect(() => {
+    let cancelled = false
     async function load(): Promise<void> {
       try {
         const result = await commands.aiInlineGetSettings()
+        if (cancelled) return
         setSettings(result)
         // A local Ollama is cheap to ask, so the status reflects it on open. A cloud
         // provider is asked only by the Test button.
         if (result.enabled && result.provider === 'ollama') {
-          setConnected(
-            await commands.aiInlineListOllamaModels().then(
-              () => true,
-              () => false
-            )
+          const reachable = await commands.aiInlineListOllamaModels().then(
+            () => true,
+            () => false
           )
+          if (!cancelled) setConnected(reachable)
         }
       } catch (error) {
         log.error('Failed to load AI inline settings:', error)
-        toast.error(extractErrorMessage(error, t('ai.inline.updateFailed')))
+        if (!cancelled) toast.error(extractErrorMessage(error, t('ai.inline.updateFailed')))
       } finally {
-        setIsLoading(false)
+        if (!cancelled) setIsLoading(false)
       }
     }
     void load()
+    return () => {
+      cancelled = true
+    }
   }, [t])
 
   const ollamaModels = useOllamaModels(settings.provider, settings.baseUrl)

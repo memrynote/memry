@@ -165,7 +165,7 @@
     "apiKeyInvalid": "A(z) {provider} API-kulcsát elutasították. Ellenőrizze a Beállítások → MI részben.",
     "ollamaUnreachable": "Az Ollama nem fut. Indítsa el az „ollama serve” paranccsal, vagy válasszon másik szolgáltatót a Beállítások → MI részben.",
     "providerUnreachable": "Nem sikerült elérni a(z) {provider} szolgáltatót. Ellenőrizze az internetkapcsolatot, és próbálja újra.",
-    "keychainUnavailable": "A Memry nem éri el a rendszer kulcskarikáját, ezért az AI API-kulcsát nem olvasta be és nem mentette. Oldja fel a kulcskarikát, és próbálja újra."
+    "keychainUnavailable": "A memrynote nem éri el a rendszer kulcskarikáját, ezért az AI API-kulcsát nem olvasta be és nem mentette. Oldja fel a kulcskarikát, és próbálja újra."
   },
   "auth": {
     "notAuthenticated": "Nincs bejelentkezve",

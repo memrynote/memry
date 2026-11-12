@@ -17,10 +17,7 @@ const WAIT: Duration = Duration::from_secs(10);
 
 fn client() -> reqwest::Client {
     let _ = rustls::crypto::ring::default_provider().install_default();
-    memry_desktop::http::builder()
-        .no_proxy()
-        .build()
-        .expect("client")
+    memry_desktop::ai::catalog::probe_client(memry_desktop::http::builder().no_proxy())
 }
 
 /// A provider at `127.0.0.1:<port>` whose `/models` answers `status` with `body` and records the
@@ -89,6 +86,44 @@ async fn each_provider_sends_only_its_own_auth_header() {
             version.is_some(),
             provider_id == AiProvider::Anthropic,
             "{provider_id:?}"
+        );
+    }
+}
+
+/// A provider whose `/models` redirects to `target`.
+async fn redirecting_to(target: String) -> String {
+    let app = Router::new().route(
+        "/v1/models",
+        get(move || {
+            let target = target.clone();
+            async move { (StatusCode::FOUND, [(axum::http::header::LOCATION, target)]) }
+        }),
+    );
+    let listener = TcpListener::bind("127.0.0.1:0").await.expect("bind");
+    let port = listener.local_addr().expect("addr").port();
+    tokio::spawn(async move { axum::serve(listener, app).await });
+    format!("http://127.0.0.1:{port}/v1")
+}
+
+#[tokio::test]
+async fn a_redirect_never_carries_the_key_to_another_host() {
+    for provider_id in [
+        AiProvider::Openai,
+        AiProvider::Anthropic,
+        AiProvider::Google,
+    ] {
+        let (elsewhere, seen) = provider(StatusCode::OK, r#"{"data":[]}"#).await;
+        let base = redirecting_to(format!("{elsewhere}/models")).await;
+        let failure = probe(&client(), provider_id, &base, Some("sk-1"), WAIT)
+            .await
+            .expect_err("a redirect is not an answer");
+        assert!(
+            matches!(&failure, ProbeFailure::Other(text) if text.contains("302")),
+            "{provider_id:?}: {failure:?}"
+        );
+        assert!(
+            seen.lock().unwrap().is_empty(),
+            "{provider_id:?} followed the redirect"
         );
     }
 }

@@ -165,7 +165,7 @@
     "apiKeyInvalid": "Din {provider}-API-nøgle blev afvist. Tjek den under Indstillinger → AI.",
     "ollamaUnreachable": "Ollama kører ikke. Start den med \"ollama serve\", eller vælg en anden udbyder under Indstillinger → AI.",
     "providerUnreachable": "Kunne ikke nå {provider}. Tjek din internetforbindelse, og prøv igen.",
-    "keychainUnavailable": "Memry kan ikke nå systemets nøglering, så AI-API-nøglen blev hverken læst eller gemt. Lås din nøglering op, og prøv igen."
+    "keychainUnavailable": "memrynote kan ikke nå systemets nøglering, så AI-API-nøglen blev hverken læst eller gemt. Lås din nøglering op, og prøv igen."
   },
   "auth": {
     "notAuthenticated": "Ikke logget ind",

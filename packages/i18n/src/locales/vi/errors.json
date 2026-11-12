@@ -165,7 +165,7 @@
     "apiKeyInvalid": "Khóa API {provider} của bạn bị từ chối. Hãy kiểm tra trong Cài đặt → AI.",
     "ollamaUnreachable": "Ollama không chạy. Hãy khởi động bằng \"ollama serve\", hoặc chọn nhà cung cấp khác trong Cài đặt → AI.",
     "providerUnreachable": "Không thể kết nối đến {provider}. Hãy kiểm tra kết nối internet và thử lại.",
-    "keychainUnavailable": "Memry không thể truy cập chuỗi khóa của hệ thống nên khóa API AI chưa được đọc hoặc lưu. Hãy mở khóa chuỗi khóa và thử lại."
+    "keychainUnavailable": "memrynote không thể truy cập chuỗi khóa của hệ thống nên khóa API AI chưa được đọc hoặc lưu. Hãy mở khóa chuỗi khóa và thử lại."
   },
   "auth": {
     "notAuthenticated": "Chưa xác thực",

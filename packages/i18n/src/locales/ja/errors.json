@@ -165,7 +165,7 @@
     "apiKeyInvalid": "{provider} の API キーが拒否されました。設定 → AI で確認してください。",
     "ollamaUnreachable": "Ollama が起動していません。\"ollama serve\" で起動するか、設定 → AI で別のプロバイダーを選んでください。",
     "providerUnreachable": "{provider} に接続できませんでした。インターネット接続を確認して、もう一度お試しください。",
-    "keychainUnavailable": "Memry がシステムのキーチェーンにアクセスできないため、AI の API キーを読み込みも保存もできませんでした。キーリングのロックを解除して、もう一度お試しください。"
+    "keychainUnavailable": "memrynote がシステムのキーチェーンにアクセスできないため、AI の API キーを読み込みも保存もできませんでした。キーリングのロックを解除して、もう一度お試しください。"
   },
   "auth": {
     "notAuthenticated": "認証されていません",

@@ -47,7 +47,7 @@ use memry_core::api::errors::SecureStoreError;
 use memry_core::seams::secure_store::{SecureStore, SecureStoreKey};
 use zeroize::Zeroizing;
 
-pub use account::{KEYS, SERVICE, STORE_KEYS, account};
+pub use account::{KEYS, SERVICE, STORE_KEYS, account, device_account};
 pub use device_identity::{
     DeviceIdentityStore, device_identity_missing, is_device_identity_missing,
 };

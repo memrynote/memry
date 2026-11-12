@@ -42,14 +42,19 @@ impl SecureStore for DeviceKeys {
     }
 }
 
-/// The keychain: an in-memory map that can be locked, can drop writes (a false-absent read) and
-/// counts reads.
+/// Runs inside `set_secret`, before the write lands: another writer acting mid-migration.
+type OnSet = Box<dyn Fn() + Send + Sync>;
+
+/// The keychain: an in-memory map that can be locked, can refuse only writes, can drop writes (a
+/// false-absent read) and counts reads.
 #[derive(Default)]
 struct Keychain {
     items: Mutex<HashMap<(String, String), Vec<u8>>>,
     locked: AtomicBool,
+    set_fails: AtomicBool,
     drops_writes: AtomicBool,
     gets: AtomicUsize,
+    on_set: Mutex<Option<OnSet>>,
 }
 
 impl Keychain {
@@ -86,6 +91,14 @@ impl GenericSecrets for Keychain {
         value: &[u8],
     ) -> Result<(), SecureStoreError> {
         self.check()?;
+        if self.set_fails.load(Ordering::SeqCst) {
+            return Err(SecureStoreError::Failed {
+                what: "the keychain refused the write".to_owned(),
+            });
+        }
+        if let Some(on_set) = self.on_set.lock().unwrap().as_ref() {
+            on_set();
+        }
         if !self.drops_writes.load(Ordering::SeqCst) {
             let key = (service.to_owned(), account.to_owned());
             self.items.lock().unwrap().insert(key, value.to_vec());
@@ -161,21 +174,36 @@ impl World {
 
     /// A row as Electron (or an import of it) left it: the key in plaintext.
     fn seed_plaintext(&self, key: &str) {
-        memry_core::api::auth::ensure_device_identity(self.device_keys.clone()).expect("identity");
-        let settings = self
-            .vault
-            .vault
-            .app_settings(self.device_keys.clone())
-            .expect("app settings");
         let patch = json!({"provider": "openai", "model": "gpt-4.1", "apiKey": key});
-        settings
-            .set_group("ai-inline", patch.as_object().cloned().unwrap())
-            .expect("seed");
+        write_row(&self.vault, &self.device_keys, patch);
     }
 
     fn account(&self) -> String {
         format!("api-key:{}", self.vault.vault_id)
     }
+
+    /// A cloud provider with `key` in the keychain, and the cached copy dropped (a new session).
+    fn cloud_with_key(&self, key: &str) {
+        let updates = InlineAiUpdates {
+            provider: Some(AiProvider::Openai),
+            model: Some("gpt-4.1".to_owned()),
+            ..key_update(key)
+        };
+        self.store.write(Some(&self.vault), updates).expect("write");
+        self.store.forget();
+    }
+}
+
+/// Writes the `ai-inline` row through the core, around the store.
+fn write_row(vault: &OpenVault, device_keys: &Arc<DeviceKeys>, patch: Value) {
+    memry_core::api::auth::ensure_device_identity(device_keys.clone()).expect("identity");
+    let settings = vault
+        .vault
+        .app_settings(device_keys.clone())
+        .expect("app settings");
+    settings
+        .set_group("ai-inline", patch.as_object().cloned().unwrap())
+        .expect("row write");
 }
 
 fn key_update(key: &str) -> InlineAiUpdates {
@@ -297,12 +325,112 @@ fn a_locked_keychain_refuses_a_key_write_and_writes_nothing() {
 }
 
 #[test]
+fn a_failed_key_write_leaves_the_row_and_the_cached_key_alone() {
+    let w = world();
+    w.cloud_with_key("sk-old");
+    assert_eq!(
+        w.store.read(Some(&w.vault)).expect("read").api_key,
+        "sk-old"
+    );
+    w.keychain.set_fails.store(true, Ordering::SeqCst);
+
+    let mut updates = key_update("sk-new");
+    updates.model = Some("gpt-4o".to_owned());
+    let error = w
+        .store
+        .write(Some(&w.vault), updates)
+        .expect_err("set fails");
+    assert!(matches!(
+        error,
+        AiSettingsError::Keychain(SecureStoreError::Failed { .. })
+    ));
+    assert_eq!(w.row()["model"], json!("gpt-4.1"));
+    assert_eq!(w.keychain.item(&w.account()).as_deref(), Some("sk-old"));
+    let gets = w.keychain.gets.load(Ordering::SeqCst);
+    assert_eq!(
+        w.store.read(Some(&w.vault)).expect("read").api_key,
+        "sk-old"
+    );
+    assert_eq!(
+        w.keychain.gets.load(Ordering::SeqCst),
+        gets,
+        "served from the cache"
+    );
+}
+
+#[test]
+fn a_locked_keychain_masks_an_unknown_key_and_takes_non_key_edits() {
+    let w = world();
+    w.cloud_with_key("sk-old");
+    w.keychain.locked.store(true, Ordering::SeqCst);
+
+    // Unknown, not absent: masked, so the renderer echoing it back leaves the key alone.
+    let masked = w.store.masked(Some(&w.vault)).expect("masked read");
+    assert_eq!(masked.api_key, MASKED_KEY);
+
+    let updates = InlineAiUpdates {
+        model: Some("gpt-4o".to_owned()),
+        ..key_update(MASKED_KEY)
+    };
+    let written = w
+        .store
+        .write(Some(&w.vault), updates)
+        .expect("non-key write");
+    assert_eq!(written.model, "gpt-4o");
+    assert_eq!(written.api_key, MASKED_KEY);
+    assert_eq!(w.row()["model"], json!("gpt-4o"));
+
+    // The key itself is still needed for a cloud call: that fails.
+    assert!(matches!(
+        w.store.read(Some(&w.vault)),
+        Err(AiSettingsError::Keychain(SecureStoreError::Locked))
+    ));
+    w.keychain.locked.store(false, Ordering::SeqCst);
+    assert_eq!(
+        w.store.read(Some(&w.vault)).expect("read").api_key,
+        "sk-old"
+    );
+}
+
+#[test]
+fn ollama_works_with_a_locked_keychain() {
+    let w = world();
+    w.keychain.locked.store(true, Ordering::SeqCst);
+
+    // The model list and the connection test read the settings with `read`.
+    let read = w.store.read(Some(&w.vault)).expect("ollama read");
+    assert_eq!(read.provider, AiProvider::Ollama);
+    assert_eq!(read.api_key, "");
+    assert_eq!(w.keychain.gets.load(Ordering::SeqCst), 0);
+    w.store.masked(Some(&w.vault)).expect("ollama masked read");
+    let updates = InlineAiUpdates {
+        base_url: Some("http://localhost:11435/v1".to_owned()),
+        ..InlineAiUpdates::default()
+    };
+    let written = w
+        .store
+        .write(Some(&w.vault), updates)
+        .expect("ollama write");
+    assert_eq!(written.base_url, "http://localhost:11435/v1");
+}
+
+#[test]
+fn a_migration_never_empties_a_row_that_changed_under_it() {
+    let w = world();
+    w.seed_plaintext("sk-electron");
+    let (vault, device_keys) = (w.vault.clone(), w.device_keys.clone());
+    *w.keychain.on_set.lock().unwrap() = Some(Box::new(move || {
+        write_row(&vault, &device_keys, json!({"apiKey": "sk-other"}));
+    }));
+
+    w.store.read(Some(&w.vault)).expect("read");
+    assert_eq!(w.row()["apiKey"], json!("sk-other"));
+}
+
+#[test]
 fn the_key_is_read_from_the_keychain_once_per_session() {
     let w = world();
-    w.store
-        .write(Some(&w.vault), key_update("sk-new"))
-        .expect("write");
-    w.store.forget();
+    w.cloud_with_key("sk-new");
     let before = w.keychain.gets.load(Ordering::SeqCst);
     for _ in 0..3 {
         assert_eq!(
@@ -327,21 +455,21 @@ fn without_a_vault_reads_are_the_defaults_and_writes_say_so() {
 }
 
 #[test]
-fn the_account_names_the_vault_and_the_device() {
+fn the_account_names_the_vault_and_the_device_as_the_sync_entries_do() {
     let w = world_with(Some("a"));
-    assert_eq!(
-        w.store.account(&w.vault.vault_id),
-        format!("api-key:{}:a", w.vault.vault_id)
-    );
+    let id = &w.vault.vault_id;
+    assert_eq!(w.store.account(id), format!("api-key:{id}-a"));
     w.store
         .write(Some(&w.vault), key_update("sk-a"))
         .expect("write");
     assert_eq!(
-        w.keychain
-            .item(&format!("api-key:{}:a", w.vault.vault_id))
-            .as_deref(),
+        w.keychain.item(&format!("api-key:{id}-a")).as_deref(),
         Some("sk-a")
     );
+
+    let worktree = world_with(Some("dev-0123abcd"));
+    let id = &worktree.vault.vault_id;
+    assert_eq!(worktree.store.account(id), format!("api-key:{id}-dev"));
 }
 
 /// The OS credential store, as keyring-core's in-memory mock.

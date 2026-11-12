@@ -102,7 +102,7 @@ API keys are stored in your operating system's keychain (Keychain on macOS, Cred
 - Never appear in the vault's files, its settings database, or sync items
 - Are read only by the app's native process, which adds them to requests to the provider; the window that shows the settings sees a masked value
 
-A key that an older version of memrynote saved in the settings database moves into the keychain the first time the AI settings are read. If the keychain is locked at that moment, the key stays where it was and memrynote tries again on the next read.
+After you move from an older version of memrynote, enter your API key again: the key the older version saved does not carry over. If the keychain is locked, the AI settings still open and save, and Ollama keeps working; saving a new key and testing a cloud provider wait until you unlock it.
 
 Rotating a key in the provider's dashboard requires updating it here too.
 

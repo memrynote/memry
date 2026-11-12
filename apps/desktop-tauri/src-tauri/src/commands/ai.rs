@@ -112,31 +112,34 @@ pub async fn ai_inline_list_ollama_models(
         let app = app.clone();
         blocking("ai_inline_list_ollama_models", move || read(&app)).await?
     };
-    catalog::list_ollama_models(&memry_desktop::http::client(), &settings.base_url)
-        .await
-        .map_err(|failure| {
-            let locale = locale(&app);
-            let error = match failure {
-                ProbeFailure::Unreachable => {
-                    tracing::info!(scope = "AIInline", "Ollama is not running");
-                    return CommandError::new(
-                        ErrorKind::Transport,
-                        "ai.ollamaUnreachable",
-                        i18n::t(locale, "errors:ai.ollamaUnreachable", &Args::new()),
-                    );
-                }
-                other => CommandError::new(
+    catalog::list_ollama_models(
+        &catalog::probe_client(memry_desktop::http::builder()),
+        &settings.base_url,
+    )
+    .await
+    .map_err(|failure| {
+        let locale = locale(&app);
+        let error = match failure {
+            ProbeFailure::Unreachable => {
+                tracing::info!(scope = "AIInline", "Ollama is not running");
+                return CommandError::new(
                     ErrorKind::Transport,
-                    "ai.listOllamaModelsFailed",
-                    format!(
-                        "{}: {other}",
-                        i18n::t(locale, "errors:ai.listOllamaModelsFailed", &Args::new())
-                    ),
+                    "ai.ollamaUnreachable",
+                    i18n::t(locale, "errors:ai.ollamaUnreachable", &Args::new()),
+                );
+            }
+            other => CommandError::new(
+                ErrorKind::Transport,
+                "ai.listOllamaModelsFailed",
+                format!(
+                    "{}: {other}",
+                    i18n::t(locale, "errors:ai.listOllamaModelsFailed", &Args::new())
                 ),
-            };
-            log_failure("ai_inline_list_ollama_models", &error);
-            error
-        })
+            ),
+        };
+        log_failure("ai_inline_list_ollama_models", &error);
+        error
+    })
 }
 
 /// Whether the configured provider answers with the stored key: Ollama lists its models, the
@@ -158,7 +161,11 @@ pub async fn ai_inline_test_connection(
             detail: Some(i18n::t(locale, "errors:ai.inlineDisabled", &Args::new())),
         });
     }
-    let outcome = catalog::test_connection(&memry_desktop::http::client(), &settings).await;
+    let outcome = catalog::test_connection(
+        &catalog::probe_client(memry_desktop::http::builder()),
+        &settings,
+    )
+    .await;
     let detail = match outcome {
         Ok(()) => None,
         Err(ProbeFailure::KeyMissing) => Some(text(locale, "errors:ai.apiKeyMissing", provider)),

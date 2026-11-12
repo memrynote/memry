@@ -50,7 +50,11 @@ fn is_worktree_device(suffix: &str) -> bool {
 
 /// The account of `key` for `device_suffix` (the `MEMRY_DEVICE` value): bare without a device.
 pub fn account(key: SecureStoreKey, device_suffix: Option<&str>) -> String {
-    let base = base_account(key);
+    device_account(base_account(key), device_suffix)
+}
+
+/// `base` with the device suffix rule of [`account`], for the generic secrets' accounts.
+pub fn device_account(base: &str, device_suffix: Option<&str>) -> String {
     match device_suffix {
         None | Some("") => base.to_owned(),
         Some(suffix) if is_worktree_device(suffix) => format!("{base}-dev"),
