@@ -12,6 +12,9 @@ struct JournalDayHeader: View {
     let today: String
     /// The hour the fog is tinted for (desktop's buckets).
     let hour: Int
+    /// How far the fog reaches up past the heading: to the window top, so
+    /// it lines up with the day screen's fog under the toolbar.
+    let fogReach: CGFloat
 
     @Environment(\.accessibilityReduceTransparency) private var reduceTransparency
 
@@ -63,10 +66,42 @@ struct JournalDayHeader: View {
             )
     }
 
-    /// Two static radial blobs behind the heading (Paper "Morning fog"),
-    /// bleeding past the column. No animation; absent under Reduce
-    /// Transparency.
+    /// The fog bleeding past the column and up to the window top.
     private var fog: some View {
+        JournalFog(hour: hour)
+            .padding(-Tokens.Space.screenInline)
+            .padding(.top, Tokens.Space.screenInline - fogReach)
+    }
+}
+
+/// Where the shown day's fog sits in the window. The day page clips its fog
+/// at the toolbar, so the day screen draws the same fog under the toolbar.
+struct JournalFogPlacement: Equatable {
+    /// The heading's frame in the global space.
+    let header: CGRect
+    /// The heading's distance from the window top when not scrolled.
+    let reach: CGFloat
+    let hour: Int
+
+    /// The fog's frame in the global space: the heading plus the overhang,
+    /// reaching up to the window top when not scrolled.
+    var frame: CGRect {
+        let inline = Tokens.Space.screenInline
+        return CGRect(
+            x: header.minX - inline,
+            y: header.minY - reach,
+            width: header.width + inline * 2,
+            height: reach + header.height + inline
+        )
+    }
+}
+
+/// Two static radial blobs behind the heading (Paper "Morning fog"). No
+/// animation; absent under Reduce Transparency.
+struct JournalFog: View {
+    let hour: Int
+
+    var body: some View {
         let tint = Tokens.Journal.fog(hour: hour).color
         let alpha = Tokens.Journal.fogAlpha
         return ZStack {
@@ -81,7 +116,6 @@ struct JournalDayHeader: View {
                 endRadiusFraction: 0.45
             )
         }
-        .padding(-Tokens.Space.screenInline)
         .allowsHitTesting(false)
         .accessibilityHidden(true)
     }

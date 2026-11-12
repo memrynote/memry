@@ -16,9 +16,11 @@ struct JournalDayScreen: View {
 
     @Environment(JournalRouter.self) private var router
     @Environment(\.accessibilityReduceMotion) private var reduceMotion
+    @Environment(\.accessibilityReduceTransparency) private var reduceTransparency
     @State private var selection: String
     @State private var pages = JournalDayPages()
     @State private var titleCollapsed = false
+    @State private var fog: JournalFogPlacement?
 
     /// Days kept either side of the shown one (desktop `PREFETCH_DAYS`).
     static let prefetchDays = 1
@@ -52,7 +54,8 @@ struct JournalDayScreen: View {
                     model: pages.model(for: day),
                     isShown: day == selection,
                     open: open,
-                    titleCollapsed: $titleCollapsed
+                    titleCollapsed: $titleCollapsed,
+                    fog: $fog
                 )
                 .tag(day)
                 .task { await pages.build(day, store: store) }
@@ -60,7 +63,13 @@ struct JournalDayScreen: View {
         }
         .tabViewStyle(.page(indexDisplayMode: .never))
         .safeAreaInset(edge: .top) { JournalFailureBanner(store: store) }
-        .background(Tokens.Canvas.background.color.ignoresSafeArea())
+        .background {
+            ZStack(alignment: .topLeading) {
+                Tokens.Canvas.background.color
+                if let fog, !reduceTransparency { barFog(fog) }
+            }
+            .ignoresSafeArea()
+        }
         .onChange(of: selection) { _, day in
             if day != date { show(day) }
         }
@@ -112,6 +121,17 @@ struct JournalDayScreen: View {
             )
         }
         GlobalSearchToolbarItem()
+    }
+
+    /// The shown day's fog, drawn again behind the toolbar where the pager
+    /// clips the page's own copy. Same frame, so the two meet seamlessly.
+    private func barFog(_ fog: JournalFogPlacement) -> some View {
+        GeometryReader { proxy in
+            let origin = proxy.frame(in: .global).origin
+            JournalFog(hour: fog.hour)
+                .frame(width: fog.frame.width, height: fog.frame.height)
+                .offset(x: fog.frame.minX - origin.x, y: fog.frame.minY - origin.y)
+        }
     }
 
     /// Desktop's day keys (`pages/journal.tsx` keydown): ← / → change the

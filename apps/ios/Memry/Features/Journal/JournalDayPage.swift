@@ -18,10 +18,18 @@ struct JournalDayPage: View {
     /// Pushes a note, or shows a day for a journal id.
     let open: (NoteRoute) -> Void
     @Binding var titleCollapsed: Bool
+    /// The shown page's fog, which the day screen continues under the toolbar.
+    @Binding var fog: JournalFogPlacement?
 
     @Environment(TasksRouter.self) private var tasksRouter: TasksRouter?
     @Environment(\.requestVaultSync) private var requestVaultSync
     @State private var brokenLink: String?
+    @State private var headerFrame: CGRect = .zero
+    @State private var scrollY: CGFloat = 0
+
+    private var fogPlacement: JournalFogPlacement {
+        JournalFogPlacement(header: headerFrame, reach: headerFrame.minY + scrollY, hour: hour)
+    }
 
     private var hour: Int {
         JournalDates.calendar.component(.hour, from: store.clock.instant())
@@ -30,7 +38,8 @@ struct JournalDayPage: View {
     var body: some View {
         ScrollView {
             VStack(alignment: .leading, spacing: Tokens.Space.section) {
-                JournalDayHeader(date: date, today: store.clock.today, hour: hour)
+                JournalDayHeader(date: date, today: store.clock.today, hour: hour, fogReach: fogPlacement.reach)
+                    .onGeometryChange(for: CGRect.self) { $0.frame(in: .global) } action: { headerFrame = $0 }
                 if let model {
                     content(model)
                 } else {
@@ -53,6 +62,14 @@ struct JournalDayPage: View {
             geometry.contentOffset.y + geometry.contentInsets.top > Tokens.Size.minimumHitArea * 2
         } action: { _, collapsed in
             if isShown { titleCollapsed = collapsed }
+        }
+        .onScrollGeometryChange(for: CGFloat.self) { geometry in
+            geometry.contentOffset.y + geometry.contentInsets.top
+        } action: { _, offset in
+            scrollY = offset
+        }
+        .onChange(of: isShown ? fogPlacement : nil, initial: true) { _, placement in
+            if let placement { fog = placement }
         }
         .safeAreaInset(edge: .top) {
             if let model, model.finding { findPanel(model) }
