@@ -186,12 +186,17 @@ struct LocalVaultAttach: Sendable {
 
 /// The signed-in registry: lists the account's vaults, tries to attach the
 /// local vault against them, then returns the account's vaults with the local one beside them while it is still local.
+///
+/// An account with no vaults gets a local vault, as desktop's own vault joins
+/// an empty account: the phone always has a vault to write in, and the attach
+/// registers it (or keeps it local without a plan).
 struct AttachingVaultRegistry: VaultRegistry {
     let inner: any VaultRegistry
     let attach: LocalVaultAttach
 
     func vaults() async throws -> [VaultSummary] {
         var rows = try await inner.vaults()
+        if rows.isEmpty { attach.store.create() }
         _ = await attach.run(accountVaults: rows)
         if let local = attach.store.summary, !rows.contains(where: { $0.id == local.id }) {
             rows.append(local)
