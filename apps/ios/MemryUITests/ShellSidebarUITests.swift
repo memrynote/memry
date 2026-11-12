@@ -39,10 +39,10 @@ final class ShellSidebarUITests: XCTestCase {
     // MARK: Helpers
 
     /// A sidebar row by its title. The sidebar is the collection view that
-    /// holds the Search row.
+    /// holds the Search row; a badge adds its count to the row's label.
     private func row(_ title: String) -> XCUIElement {
         app.collectionViews.containing(.any, identifier: "magnifyingglass").firstMatch
-            .descendants(matching: .any).matching(NSPredicate(format: "label == %@", title)).firstMatch
+            .cells.matching(NSPredicate(format: "label BEGINSWITH %@", title)).firstMatch
     }
 
     private func openVault() throws {
