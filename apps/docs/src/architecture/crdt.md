@@ -44,6 +44,8 @@ uuid it would resolve is still the outgoing vault's.
 
 The **main process** owns Y.Doc instances, persists them to disk via y-leveldb, and exposes them to the renderer through an IPC provider.
 
+This describes the Electron app, as does most of this page. The Tauri app keeps its documents in the Rust core instead; see [The Tauri editor](#the-tauri-editor).
+
 ```
 renderer  ──Yjs IPC provider──▶  main (Y.Doc)  ──y-leveldb──▶  disk
                                        │
@@ -1717,6 +1719,123 @@ write-back → reopen on the collaborative and non-collaborative paths alike. A 
 damaged into a bare `[!info]` line with its body directly below heals into a callout on
 parse (only the original four types heal; a bare `[!note]` line is text someone typed); a lone marker, a marker mid-paragraph, or a body the schema could not reproduce stays
 the author's text.
+
+## The Tauri editor
+
+The Tauri app (`apps/desktop-tauri`) has no JavaScript in its backend, so the Rust core owns the documents editor windows type into. The pieces:
+
+- `crates/memry-core/src/api/editor.rs` (`Editor`): opens a note's or journal day's document for a window, stores each window edit, and hands every committed update to the document's listeners.
+- `crates/memry-core/src/crdt/resident.rs` (`Resident`): which documents are in memory and which windows hold each one.
+- `crates/memry-desktop/src/editor/`: `EditorHost` serves the editor to windows over Tauri channels (`host.rs`), holds typing while an outside edit lands (`typing.rs`), compacts logs on a timer (`compaction.rs`), and lists, restores and keeps versions (`versions.rs`).
+- `crates/memry-desktop/src/vault/`: the consumer that feeds outside edits into documents, the write-back that writes bodies out to files, and the late-write watch. [Vault Files (Tauri)](/architecture/vault-files) covers the consumer and the write-back.
+- `crates/memry-desktop/src/locks/`: read-only locks on disk.
+
+There is no separate y-leveldb store. A document is the replay of its update log in the vault's `data.db`, so the documents in memory are a cache that can always be rebuilt from the log.
+
+### Documents in memory
+
+A window opens a document and receives its whole state in one frame (`crdt_open_doc`). Each window that opens a document is a named holder, so a window that opens a note twice holds it once, and a closed window lets go of everything it held (`EditorHost::forget_window`).
+
+Up to 32 documents stay in memory. A document no window holds leaves 30 seconds after its last holder let go, and the host sweeps for those every 15 seconds. A held document is never evicted, so more than 32 open notes stay in memory. Electron kept up to 32 unheld documents with no timer. Here, coming back to a note replays its log from SQLite, which costs a read instead of memory.
+
+A log that does not replay leaves the document `Unreadable`. The window gets an error, never a half-built document, and the core does not try the same log again on every request.
+
+### A window edit
+
+`Editor::apply_update` takes one Yjs update from a window:
+
+1. It applies the update to the resident document first. An update `yrs` refuses writes nothing. An update that changes nothing, such as a resend, is not stored, queued or sent on.
+2. It writes the update row and its outbox row in one transaction. A local-only note gets the update row and no outbox row. The bytes are stored exactly as the window sent them (protocol chapter 12 §12.5.0).
+3. Only after the commit does it hand the update to the listeners. When the rows or the commit fail, it drops the resident document, and the next access replays it from the log. A document in memory therefore never holds an edit the log does not.
+
+The host then schedules the note's write-back, which writes the file once the note is quiet.
+
+**Read-only notes take no window edit.** The open's answer says why a document is read-only: the note or a folder above it is locked, the file is large-file class, the file is in an excluded folder, or the vault's database opened read-only. `apply_update` checks again under the writer and refuses before it applies, stores, queues or sends anything.
+
+### Fan-out and origins
+
+Every update reaches each listener with its origin (`crates/memry-core/src/crdt/body_writes.rs`):
+
+| Origin     | Byte | Written by                                        |
+| ---------- | ---- | ------------------------------------------------- |
+| `Local`    | 0    | a window's edit; it names the window that sent it |
+| `Remote`   | 1    | a merge from the server                           |
+| `External` | 2    | an edit to the vault file made outside the app    |
+| `System`   | 3    | the app itself: a command, a repair, a restore    |
+
+`EditorHost` sends each update to every window that has the document open, except the window that sent it. A channel message is the origin byte followed by the update bytes (`editor/mod.rs`). The renderer applies every origin as `'remote'`, so its provider never sends an update back. Byte 4 alone means the document was purged by a delete; the window drops its copy and opens the document again. Bytes 5 and 6 are the typing barrier, described in [Vault Files (Tauri)](/architecture/vault-files#the-consumer).
+
+Every other writer of a body log reaches the open documents too: a sync merge, an outside edit fed from the file, a note or journal command, a version restore. The editor observes its vault's database. After any write that touched the log of a document in memory, it reads back the rows that write committed, applies them, and passes each one that added something to the listeners with the writer's origin (`api/editor/catch_up.rs`). A write that rolled back adds nothing.
+
+A window subscribes before the core opens the document for it. An update committed while the open runs then arrives either in the state the window receives or on its channel. Yjs ignores the copy it gets twice. The renderer's sync step 1 after the open closes the same gap a second way.
+
+### Offsets count UTF-8 bytes
+
+Every index a core document takes or returns counts text in UTF-8 bytes (`OFFSET_KIND` in `crates/memry-core/src/crdt/registry.rs`, #3601). Block edits, the tag rename and the writing-tools sentinel removal all count bytes, as does the iOS `BlockEdit` range. #4194 made every index write agree on this for non-ASCII text, with the cases in `crates/memry-core/tests/offset_kind.rs`.
+
+The offset kind never reaches the wire: an update encodes item clocks in UTF-16 whatever the document counts in, so Electron and the Rust core exchange the same updates. `StickyIndex` mixes the two units on non-ASCII text, so writing-tools anchors resolve on a UTF-16 copy of the text instead.
+
+### Seeding, compaction and quit
+
+The vault consumer seeds a new note's body from its file. The open's answer carries `needsSeed` when a document's body is still empty and no server body is owed. A note that is owed its server body is never seeded from the file, because a seed shares no Yjs items with that body and the merge would hold both (#2536). The renderer does not bind an editor to such a document. It keeps the editor on the note's markdown, and the first save seeds the document.
+
+The host compacts logs every 60 seconds (`editor/compaction.rs`). A document whose log grew by 512 KiB since its last compaction is folded. The fold rewrites the log, never a window's copy, so an open window keeps typing through it and receives nothing.
+
+On quit, `flush-writebacks` writes every waiting note to its file, and `close-snapshots` then keeps the file of every note a window still holds as a `close` version. See [Quit and Shutdown](/architecture/shutdown).
+
+### Versions
+
+A version is a whole note file kept in the `note_snapshots` table of `data.db`. Versions never sync. One function writes them, `keep` in `crates/memry-core/src/domain/note_snapshots.rs`, with these rules:
+
+- **Deduplicated by hash.** A text the note already holds as a version is not kept twice. The existing version is moved up to the newest instead, so a text that comes back is not the next one pruned. Electron left it where it was.
+- **5 minutes between automatic versions.** An `auto` or `timer` version is skipped when the note's last version is less than 5 minutes old.
+- **Significant means 10 words or bytes the app did not write.** A replaced body that the app wrote is kept when the word count moved by 10 or more (`is_significant`). Bytes the app did not write, such as an outside edit or a peer's merge the file never held, are always kept.
+- **50 per note.** Each kept version prunes the note to 50, oldest first, never the version just kept. A version kept because the app wrote over outside bytes (`OutsideWrite`, stored as `significant`) prunes only `significant` versions (#4195). A tool that rewrites a locked note's file in a loop therefore rotates the significant versions and never pushes out a `close`, `manual`, `auto` or `timer` one, even when that leaves the note at 51. Electron pruned the oldest of any reason.
+- **Dated never behind the newest.** A version is dated now, or just after the note's newest version when the clock is behind it, so the version just kept is always the newest.
+
+The callers decide when a version is kept:
+
+| When                                                                                                                   | Reason                         | Code                                            |
+| ---------------------------------------------------------------------------------------------------------------------- | ------------------------------ | ----------------------------------------------- |
+| The write-back replaces the file and moves the body by 10 words or more                                                | `significant`                  | `vault/writeback/pass.rs`                       |
+| The write-back replaces a file the app did not write                                                                   | `significant` (`OutsideWrite`) | `vault/writeback/pass.rs`                       |
+| An outside edit replaces the body                                                                                      | `significant` (`OutsideWrite`) | `crates/memry-core/src/domain/external_feed.rs` |
+| An outside edit meets typing the file does not have yet; the typing wins and the outside file is kept                  | `significant` (`OutsideWrite`) | `vault/consumer/body.rs`                        |
+| A save replaces a file the app did not write, or moves the body by 10 words or more; a template apply changes the body | `significant`                  | `vault/app_edit.rs`                             |
+| A restore replaces the body; always kept, even when a version already holds that text                                  | `significant`                  | `vault/app_edit.rs` (`keep_restore_point`)      |
+| An outside change to a locked note is reverted                                                                         | `significant` (`OutsideWrite`) | `locks/restore.rs`                              |
+| An outside writer writes into a file the app just replaced                                                             | `significant` (`OutsideWrite`) | `vault/late_writes.rs`                          |
+| The note is open as the app quits                                                                                      | `close`                        | `editor/versions.rs`                            |
+
+The `auto`, `timer` and `manual` reasons are kept for files written by other builds; the Tauri app writes none of them.
+
+**Restore** (`notes_restore_version`) replaces the note's body with the version's body in the note's write turn. It keeps the file it replaces as the newest version first, and the feed keeps the document's body when that body is ahead of the file, so the text the user had can be restored in turn. Windows receive the restored body as a `System` update. The note's frontmatter stays as it is, because it carries the note's id, tags and properties, which change only through their own edits. Electron wrote the version's whole file, frontmatter included. A locked note refuses the restore.
+
+### Outside writers in the middle of a save
+
+An editor that saves in place truncates the file, then writes it. Two guards keep its text when the app's own write lands in between.
+
+**An emptied file waits 2 seconds.** A note file that reads empty over a row that names other bytes, and that the app did not write, is not taken as the note's new body until it has stayed empty for 2 seconds (`EMPTIED_SETTLE` in `vault/consumer/body.rs`). A writer's truncate and its write are moments apart, so the refilled file arrives first and is fed as one outside edit. A save that meets the empty file in the meantime goes into the document, but its file write is refused, so the app never renames over the writer's file (#4281).
+
+**Late writes are kept as versions.** A writer that stalled longer still holds the file the app's atomic rename took off its path, and on Unix its writes land in that file, which no path names any more. When a write replaces a file the app did not write, and that file was modified within the last 10 seconds, the app keeps the replaced file open for 10 seconds and keeps each text the writer puts in it as a version (`vault/late_writes.rs`). The app's text stays on disk. At most 32 files are watched at once.
+
+The replaced file is held open only on local volumes whose type is known to keep an open file across a rename: APFS, HFS+, exFAT and FAT on macOS, and ext2/3/4, btrfs, XFS, tmpfs, F2FS, ZFS, bcachefs and overlayfs on Linux. Windows and network volumes are never held, because a rename over an open file can fail there (Windows, SMB) or leave a `.nfs*` file in the vault (NFS). Text a writer adds after its vault closed is not kept, and the close logs it.
+
+### Locks
+
+A lock is a row in the `vault_locks` table of `data.db` (migration 22, `crates/memry-core/src/domain/vault_locks.rs`). A note lock is keyed by note id, so it follows the note through a rename. A folder lock is keyed by the folder's vault-relative path and covers everything under it. Two device-local tables sit beside it and never sync: `vault_lock_baselines` (the locked text of each locked markdown note) and `vault_lock_file_modes` (each locked file's permission bits before the lock). Lock rows get no outbox row yet; the Tauri app keeps locks on the device.
+
+The core refuses body and record edits to a locked note, such as a window's update and the note commands, and the app edit refuses a restore. `crates/memry-desktop/src/locks/` refuses what moves, creates or removes files, before anything is written, with the fixed texts "The owner made this note read-only." and "The owner made this folder read-only.".
+
+On disk, locking records a file's permission bits and clears its write bits; on Windows it sets the read-only attribute (`locks/mode.rs`). The record names one file by its identity: the inode on Unix or the file index on Windows, plus the birth time. A file replaced from outside therefore gets its own bits back on unlock, never more than it had. Every vault open brings the disk in line with the locks (`locks/reconcile.rs`).
+
+**An outside edit to a locked note is reverted and kept.** The consumer asks `Locks::restore` (`locks/restore.rs`) before it feeds an outside edit of a note or deletes the note of a removed file. For a locked note whose file no longer holds its baseline:
+
+1. The changed text is kept as an `OutsideWrite` version.
+2. The baseline is written back over exactly the bytes just kept, or into the path while it is free when the file was removed. A newer outside edit is the watcher's next report, and is kept before it is written over.
+3. The window shows a toast, "“{title}” is locked, so its outside edit was undone", from the `VaultLocksExternalEditRestored` event.
+
+Nothing reaches the document, the record or other devices. When the version cannot be kept, the file is left as it is, nothing is fed, and the consumer tries again later; Electron fed the change in that case. Changes made while the app was closed take the same path: the watcher's first rescan reports removals, and the open walk reports edits. The app's own writes to a locked file go through `Locks::write_through`, which records what it wrote as the new baseline, so they are never reverted.
 
 ## The Rust markdown converter
 

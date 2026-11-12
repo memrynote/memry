@@ -1,54 +1,76 @@
 # Version History
 
-Browse prior versions of a note and restore one if needed.
-
-<!-- screenshot: version history panel showing a timeline -->
+A version is a saved copy of a note from an earlier moment: its whole text, kept on this device.
+When a note loses text you wanted, by your own edit, a template, or another program writing to its
+file, you can find the earlier text in version history and bring it back.
 
 ## Opening History
 
-From the note menu, choose **Version history**. A side panel opens with a timeline of versions.
+In a note, open the **⋯** menu at the top of the page and choose **Version history**. A journal
+day has the same item in its menu. The list shows the note's versions, newest first, with the date,
+time and word count of each.
 
-## What's Captured
+## When a Version Is Made
 
-A version is a point-in-time snapshot of the note. memrynote creates a version:
+Memry keeps a version of a note's text before something replaces it:
 
-- On significant pauses in editing (debounced)
-- Before major automated actions (e.g. template apply)
-- On a regular cadence during long writing sessions
-- Before the editor or sync replaces text that the agent or another app wrote into the note, however small the change
+- when your edits add or remove 10 words or more since the file was last written,
+- when you apply a template that changes the note,
+- when you restore an older version (the text you had is kept first),
+- when another program, an AI agent, or a sync from another device changes text that Memry is
+  about to write over, however small the change,
+- when another program changes a [locked note](./read-only-locks) and Memry puts the locked text
+  back,
+- when you quit Memry with the note open.
 
-Versions store the full note content; they aren't diffs.
+Memry does not keep the same text twice. If a version already holds it, that version moves to the
+top of the list instead.
+
+When an outside change arrives while you are typing, your typing wins and the outside text is kept
+as a version. A message then says **"An outside change was replaced by your typing. It's saved in
+version history."**, with a **Show versions** button that opens the list.
 
 ## Browsing Versions
 
-Each entry shows:
-
-- A relative timestamp ("2 hours ago", "yesterday")
-- An exact timestamp on hover
-- A short preview (first 1–2 lines)
-
-Selecting a version shows it in a **read-only** preview pane. The current note remains unchanged.
+Select a version to preview it. The preview is read-only and the note does not change. **Hide
+Preview** and **Show Preview** toggle the preview pane.
 
 ## Restoring
 
-Click **Restore** on a selected version to replace the current note content with that version.
+Select a version and choose **Restore**, then confirm. The note's text is replaced with the
+version's text.
 
-The previous state is **itself recorded as a new version** — restore is non-destructive.
+Restoring never loses your current text. Memry keeps it as the newest version first, so you can
+restore it again if you change your mind. If the note is open, the editor shows the restored text
+in place; you don't need to close and reopen the note.
 
-If the note is open in a tab, the restored content swaps into the editor in place. You don't need to close and reopen the note to see it.
+A [locked note](./read-only-locks) cannot be restored. Unlock it first.
 
-## Diff View
+## Deleting a Version
 
-Toggle a diff view to compare the selected version against the current. Adds, deletes, and modifications are color-coded.
+Select a version and choose the delete button, then confirm. Only that version is removed; the note
+and its other versions stay.
 
-## Retention
+## How Many Versions Are Kept
 
-memrynote keeps a rolling history of recent saves locally. Older versions are pruned automatically to keep storage bounded. The retention window favors a dense recent history (last day) and thinning older points (last week, last month).
+Each note keeps up to 50 versions. When a new version would make 51, the oldest one is removed.
 
-## Per-Device Retention
+## Versions Stay on This Device
 
-Version history is local to the device — versions don't currently sync. If you write on Device A and Device B doesn't have the same version timeline, that's expected.
+Versions are stored in the vault's `.memry` folder on this device. They don't sync: another device
+has its own version history for the same note.
 
-## Privacy
+## In the Tauri Desktop App
 
-Version content lives in the data DB and is encrypted at rest along with everything else.
+The desktop app built on Tauri, the replacement for the current Electron app, keeps versions by the
+same rules, with these differences:
+
+- **Restore changes only the text.** The note's properties and tags in its frontmatter stay as they
+  are. The Electron app also put back the version's frontmatter.
+- **Outside changes don't push out your own versions.** A version kept because another program
+  changed the note only replaces other versions kept for text changes, never the versions kept when
+  you quit Memry. A program that rewrites a note's file over and over cannot wipe out its history.
+- **Text written while Memry saves is kept.** If another program writes to a note's file at the
+  moment Memry saves it, Memry's text stays in the file and the other program's text is kept as a
+  version. This works for vaults on a local disk on macOS and Linux, not on Windows or network
+  drives.
