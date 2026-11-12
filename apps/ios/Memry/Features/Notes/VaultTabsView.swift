@@ -5,6 +5,15 @@ import SwiftUI
 // desktop rail order, and Menu for Settings and the pages that did not fit
 // (`VaultTabLayout`). A tab that is not built yet says so.
 //
+// **Regular width is a sidebar** (`DESIGN.md` › Tablet, Q1/D1/D2): the same
+// `TabView` with `.sidebarAdaptable`, every shown page its own row, Settings
+// last in Menu's place, a Search row on top and the vault header above it.
+// The Menu tab and its sheet exist only at compact width. Each tab keeps its
+// value across a size-class change, and every page's stack lives on a router
+// here (Notes keeps its own, and its tab never moves), so the selected page
+// and its stack survive the switch. No `tabViewCustomization`: the order is
+// desktop's synced rail, and the iPad writes no competing one.
+//
 // **Menu is a tab that opens a sheet.** Tapping it lists the pages behind it
 // and Settings; the pick shows under the Menu tab. `router.selectedTab` stays
 // the page itself, so every existing "open the Journal" route keeps working
@@ -32,6 +41,9 @@ struct VaultTabsView<Notes: View, Tasks: View, Journal: View, More: View>: View 
     /// Home's switch. `nil` when the account holds one vault and there is
     /// nothing to switch to.
     let switchVault: (() -> Void)?
+    /// The sidebar header's vault name and sync status (regular width).
+    let vaultName: String
+    let settings: SettingsContext?
     @ViewBuilder let notes: () -> Notes
     /// The Tasks tab (spec 004 TP031), built by the caller that holds the
     /// vault, keychain and sync.
@@ -58,29 +70,50 @@ struct VaultTabsView<Notes: View, Tasks: View, Journal: View, More: View>: View 
     @State private var order = VaultTabOrder.shared
     @State private var showsMenu = false
     @State private var showsSearch = false
+    @Environment(\.horizontalSizeClass) private var horizontalSizeClass
+    @Environment(\.verticalSizeClass) private var verticalSizeClass
     @Environment(\.vaultBrowse) private var browse
     /// Reminder notification taps (TP053), handed over by the app delegate.
     private let reminderTaps = ReminderTaps.shared
 
     var body: some View {
         // Read here so the layout follows a module toggle and a synced order.
-        let layout = VaultTabLayout(savedOrder: order.saved) { $0.isShown }
+        let width = VaultTabLayout.Width(horizontal: horizontalSizeClass, vertical: verticalSizeClass)
+        let layout = VaultTabLayout(savedOrder: order.saved, width: width) { $0.isShown }
         TabView(selection: Binding(
-            get: { layout.barSelection(for: router.selectedTab) },
-            // Menu never becomes the selection by a tap: it opens the sheet,
-            // which also catches a second tap on an already selected Menu.
+            get: { ShellTab.page(layout.barSelection(for: router.selectedTab)) },
+            // Neither Menu nor Search becomes the selection by a tap: each
+            // opens its sheet, which also catches a second tap on Menu.
+            // Settings in the sidebar is a page like any other.
             set: { tab in
-                if tab == .more { showsMenu = true } else { router.selectedTab = tab }
-            }
-        )) {
-            ForEach(layout.bar, id: \.self) { page in
-                Tab(page.title, systemImage: page.symbol, value: page) {
-                    content(page)
+                switch tab {
+                case .search: showsSearch = true
+                case .page(.more) where width == .compact: showsMenu = true
+                case let .page(page): router.selectedTab = page
                 }
             }
-            Tab(VaultTab.more.title, systemImage: VaultTab.more.symbol, value: VaultTab.more) {
+        )) {
+            if width == .regular {
+                Tab(value: ShellTab.search, role: .search) { Color.clear }
+            }
+            ForEach(layout.bar, id: \.self) { page in
+                Tab(page.title, systemImage: page.symbol, value: ShellTab.page(page)) {
+                    content(page)
+                }
+                .badge(width == .regular && page == .inbox ? inboxStore?.toProcess ?? 0 : 0)
+            }
+            Tab(
+                width == .regular ? SettingsCopy.title : VaultTab.more.title,
+                systemImage: width == .regular ? "gearshape" : VaultTab.more.symbol,
+                value: ShellTab.page(.more)
+            ) {
                 content(layout.menuContent(for: router.selectedTab))
             }
+        }
+        .tabViewStyle(.sidebarAdaptable)
+        .defaultAdaptableTabBarPlacement(.sidebar)
+        .tabViewSidebarHeader {
+            VaultSidebarHeader(name: vaultName, context: settings, switchVault: switchVault)
         }
         .sheet(isPresented: $showsMenu) {
             VaultMenuSheet(pages: layout.menu) { page in
@@ -172,6 +205,13 @@ struct VaultTabsView<Notes: View, Tasks: View, Journal: View, More: View>: View 
         case .more: more().environment(\.shellPage, .more)
         }
     }
+}
+
+/// A tab's value: a page, or the sidebar's Search row, which opens search
+/// instead of becoming the selection.
+private enum ShellTab: Hashable {
+    case page(VaultTab)
+    case search
 }
 
 /// Menu's sheet: the pages that did not fit the bar, then Settings. A pick
