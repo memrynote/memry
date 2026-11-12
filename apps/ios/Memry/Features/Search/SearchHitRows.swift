@@ -39,29 +39,42 @@ struct SearchHitRow: View {
     }
 }
 
-/// One hit. The kind is named because a journal has no title of its own — its
-/// calendar date is what names it.
+/// One note or journal hit: the note's emoji and title over its folder, or
+/// the journal's relative day over "Journal" (#4323), then the snippet.
 struct SearchHitLabel: View {
     let hit: SearchResult
 
-    private var title: String {
-        if let date = hit.journalDate, !date.isEmpty { return date }
-        return hit.title.isEmpty ? "Untitled note" : hit.title
-    }
-
     var body: some View {
+        let text = SearchRowText(hit: hit)
         VStack(alignment: .leading, spacing: Tokens.Space.tight) {
-            Text(title)
+            Text(text.title)
                 .font(Tokens.Typography.body.font)
                 .foregroundStyle(Tokens.Text.primary.color)
-            if hit.kind == "journal" {
-                Text("Journal")
-                    .font(Tokens.Typography.caption.font)
-                    .foregroundStyle(Tokens.Text.secondary.color)
+                .lineLimit(1)
+            switch text.caption {
+            case .folder(let path):
+                ViewThatFits(in: .horizontal) {
+                    ForEach(SearchFolderPath.candidates(path), id: \.self) { candidate in
+                        caption(candidate).truncationMode(.head)
+                    }
+                }
+            case .journal:
+                caption("Journal")
+            case nil:
+                EmptyView()
             }
             SearchSnippetText(segments: hit.snippet)
         }
         .frame(maxWidth: .infinity, alignment: .leading)
+        .accessibilityElement(children: .ignore)
+        .accessibilityLabel(text.accessibilityLabel)
+    }
+
+    private func caption(_ line: String) -> some View {
+        Text(line)
+            .font(Tokens.Typography.caption.font)
+            .foregroundStyle(Tokens.Text.secondary.color)
+            .lineLimit(1)
     }
 }
 
@@ -70,13 +83,14 @@ struct TaskSearchHitLabel: View {
     let hit: SearchResult
 
     var body: some View {
+        let text = SearchRowText(hit: hit)
         HStack(alignment: .firstTextBaseline, spacing: Tokens.Space.small) {
             Image(systemName: "checkmark.circle")
                 .font(Tokens.Typography.body.font)
                 .foregroundStyle(Tokens.Text.secondary.color)
                 .accessibilityHidden(true)
             VStack(alignment: .leading, spacing: Tokens.Space.tight) {
-                Text(hit.title.isEmpty ? TasksCopy.untitledTask : hit.title)
+                Text(text.title)
                     .font(Tokens.Typography.body.font)
                     .foregroundStyle(Tokens.Text.primary.color)
                 SearchSnippetText(segments: hit.snippet)
@@ -85,6 +99,7 @@ struct TaskSearchHitLabel: View {
         }
         .frame(maxWidth: .infinity, minHeight: Tokens.Size.minimumHitArea, alignment: .leading)
         .contentShape(.rect)
-        .accessibilityElement(children: .combine)
+        .accessibilityElement(children: .ignore)
+        .accessibilityLabel(text.accessibilityLabel)
     }
 }

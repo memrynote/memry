@@ -81,7 +81,13 @@ pub const TASKS_RANK: &str = "bm25(fts_tasks, 0.0, 2.0, 1.0, 1.0)";
 /// What a hit is.
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub enum HitKind {
-    Note,
+    /// The row metadata comes from the note's `notes` row in `data.db`, read
+    /// in the same per-hit lookup that drops tombstones (#4323). An empty
+    /// string reads as `None`.
+    Note {
+        emoji: Option<String>,
+        folder_path: Option<String>,
+    },
     /// Journals live in `fts_notes` beside notes and are told apart by the
     /// `date` on their `journal_entries` row (§A.5), which is the only place
     /// that date exists — `journal_entries` has no `title` column.
@@ -186,11 +192,32 @@ pub fn match_expression(query: &str) -> Option<String> {
     (!terms.is_empty()).then(|| terms.join(" AND "))
 }
 
-/// `Note`, or `Journal` with its date, or `None` when `data.db` says the item
-/// is gone and the index has not caught up.
+/// `Note` with its emoji and folder, or `Journal` with its date, or `None`
+/// when `data.db` says the item is gone and the index has not caught up.
 fn note_kind(data: &Connection, id: &str) -> Result<Option<HitKind>, StorageError> {
     if !is_live(data, "journal", id)? {
-        return Ok(is_live(data, "note", id)?.then_some(HitKind::Note));
+        if !is_live(data, "note", id)? {
+            return Ok(None);
+        }
+        let (emoji, folder_path) = data
+            .query_row(
+                "SELECT emoji, folder_path FROM notes WHERE id = ?1",
+                params![id],
+                |row| {
+                    Ok((
+                        row.get::<_, Option<String>>(0)?,
+                        row.get::<_, Option<String>>(1)?,
+                    ))
+                },
+            )
+            .optional()
+            .map_err(failed)?
+            .unwrap_or_default();
+        let present = |value: Option<String>| value.filter(|value| !value.is_empty());
+        return Ok(Some(HitKind::Note {
+            emoji: present(emoji),
+            folder_path: present(folder_path),
+        }));
     }
     let date = data
         .query_row(
