@@ -13,11 +13,10 @@ import {
 import { Loader2, Eye, EyeOff } from '@/lib/icons'
 import { toast } from 'sonner'
 import { extractErrorMessage } from '@/lib/ipc-error'
-import { friendlyError } from '@/hooks/use-ai-inline'
 import { createLogger } from '@/lib/logger'
 import { cn } from '@/lib/utils'
-import type { AIInlineSettings } from '@memry/contracts/ai-inline-channels'
 import { AI_INLINE_SETTINGS_DEFAULTS } from '@memry/contracts/ai-inline-channels'
+import { commands, type InlineAiSettings as AIInlineSettings } from '../../../../generated/bindings'
 import {
   SettingsGroup,
   SettingRow,
@@ -78,15 +77,11 @@ function useOllamaModels(provider: AIInlineSettings['provider'], baseUrl: string
     let cancelled = false
     void (async () => {
       try {
-        // oxlint-disable-next-line typescript/no-unsafe-type-assertion -- untyped ipcRenderer.invoke channel; the shape is the main-process handler's return type
-        const res = (await window.electron.ipcRenderer.invoke('ai-inline:list-ollama-models')) as {
-          success: boolean
-          models?: string[]
-        }
+        const listed = await commands.aiInlineListOllamaModels()
         // The provider or endpoint may have changed while the probe was in
         // flight, in which case this late answer describes the old one.
         if (cancelled) return
-        if (res.success && res.models?.length) setModels(res.models)
+        if (listed.length) setModels(listed)
       } catch {
         // unreachable Ollama → keep preset fallback
       }
@@ -94,7 +89,7 @@ function useOllamaModels(provider: AIInlineSettings['provider'], baseUrl: string
     return () => {
       cancelled = true
     }
-    // oxlint-disable-next-line react/exhaustive-effect-dependencies -- provider and baseUrl are the re-probe triggers; the probe reads them through the main process
+    // oxlint-disable-next-line react/exhaustive-effect-dependencies -- provider and baseUrl are the re-probe triggers; the probe reads them in Rust
   }, [provider, baseUrl])
 
   return models
@@ -118,56 +113,41 @@ export function AIInlineSettings(): React.JSX.Element {
   const [isLoading, setIsLoading] = useState(true)
   const [isTesting, setIsTesting] = useState(false)
   const [showApiKey, setShowApiKey] = useState(false)
-  const [serverPort, setServerPort] = useState<number | null>(null)
+  const [connected, setConnected] = useState(false)
 
   useEffect(() => {
     async function load(): Promise<void> {
       try {
-        const [result, port] = await Promise.all([
-          // oxlint-disable-next-line typescript/no-unsafe-type-assertion -- untyped ipcRenderer.invoke channel; the shape is the main-process handler's return type
-          window.electron.ipcRenderer.invoke('ai-inline:get-settings') as Promise<AIInlineSettings>,
-          // oxlint-disable-next-line typescript/no-unsafe-type-assertion -- untyped ipcRenderer.invoke channel; the shape is the main-process handler's return type
-          window.electron.ipcRenderer.invoke('ai-inline:get-server-port') as Promise<number | null>
-        ])
+        const result = await commands.aiInlineGetSettings()
         setSettings(result)
-        // A running proxy port does not prove Ollama is reachable; probe it the
-        // same way the Test button does so the status reflects reality on open.
-        if (port && result.enabled && result.provider === 'ollama') {
-          // oxlint-disable-next-line typescript/no-unsafe-type-assertion -- untyped ipcRenderer.invoke channel; the shape is the main-process handler's return type
-          const probe = (await window.electron.ipcRenderer.invoke(
-            'ai-inline:list-ollama-models'
-          )) as { success: boolean }
-          setServerPort(probe.success ? port : null)
-        } else {
-          setServerPort(result.provider === 'ollama' || result.apiKey ? port : null)
+        // A local Ollama is cheap to ask, so the status reflects it on open. A cloud
+        // provider is asked only by the Test button.
+        if (result.enabled && result.provider === 'ollama') {
+          setConnected(
+            await commands.aiInlineListOllamaModels().then(
+              () => true,
+              () => false
+            )
+          )
         }
       } catch (error) {
         log.error('Failed to load AI inline settings:', error)
+        toast.error(extractErrorMessage(error, t('ai.inline.updateFailed')))
       } finally {
         setIsLoading(false)
       }
     }
     void load()
-  }, [])
+  }, [t])
 
   const ollamaModels = useOllamaModels(settings.provider, settings.baseUrl)
 
   const updateSetting = useCallback(
     async (updates: Partial<AIInlineSettings>) => {
       try {
-        // oxlint-disable-next-line typescript/no-unsafe-type-assertion -- untyped ipcRenderer.invoke channel; the shape is the main-process handler's return type
-        const result = (await window.electron.ipcRenderer.invoke(
-          'ai-inline:set-settings',
-          updates
-        )) as {
-          success: boolean
-          error?: string
-        }
-        if (result.success) {
-          setSettings((prev) => ({ ...prev, ...updates }))
-        } else {
-          toast.error(extractErrorMessage(result.error, t('ai.inline.updateFailed')))
-        }
+        // Rust answers with the key masked: the typed key does not stay in renderer state.
+        setSettings(await commands.aiInlineSetSettings(updates))
+        setConnected(false)
       } catch (error) {
         toast.error(extractErrorMessage(error, t('ai.inline.updateFailed')))
       }
@@ -195,37 +175,15 @@ export function AIInlineSettings(): React.JSX.Element {
   const handleTestConnection = useCallback(async () => {
     setIsTesting(true)
     try {
-      // No stop-first: startChatServer reuses the running port when settings are
-      // unchanged, so the proxy port stays stable instead of incrementing each test.
-      // oxlint-disable-next-line typescript/no-unsafe-type-assertion -- untyped ipcRenderer.invoke channel; the shape is the main-process handler's return type
-      const startResult = (await window.electron.ipcRenderer.invoke('ai-inline:start-server')) as {
-        success: boolean
-        port?: number
-        error?: string
+      const result = await commands.aiInlineTestConnection()
+      setConnected(result.ok)
+      if (result.ok) {
+        toast.success(
+          t('ai.inline.connectedProvider', { provider: t(PROVIDER_LABEL_KEYS[settings.provider]) })
+        )
+      } else {
+        toast.error(result.detail ?? t('ai.inline.connectFailed'))
       }
-
-      if (!startResult.success || !startResult.port) {
-        setServerPort(null)
-        toast.error(extractErrorMessage(startResult.error, t('ai.inline.connectFailed')))
-        return
-      }
-
-      // The proxy starts without ever contacting the provider, so a running port does
-      // not prove Ollama is reachable. Probe it for real before showing "connected".
-      if (settings.provider === 'ollama') {
-        // oxlint-disable-next-line typescript/no-unsafe-type-assertion -- untyped ipcRenderer.invoke channel; the shape is the main-process handler's return type
-        const probe = (await window.electron.ipcRenderer.invoke(
-          'ai-inline:list-ollama-models'
-        )) as { success: boolean; error?: string }
-        if (!probe.success) {
-          setServerPort(null)
-          toast.error(friendlyError(probe.error ?? t('ai.inline.connectFailed'), 'ollama'))
-          return
-        }
-      }
-
-      setServerPort(startResult.port)
-      toast.success(t('ai.inline.connected', { port: startResult.port }))
     } catch (error) {
       toast.error(extractErrorMessage(error, t('ai.inline.testFailed')))
     } finally {
@@ -247,19 +205,16 @@ export function AIInlineSettings(): React.JSX.Element {
 
   const connectionControls = (
     <>
-      <span
-        title={serverPort ? t('ai.inline.activePort', { port: serverPort }) : undefined}
-        className="inline-flex w-24 items-center gap-1.5 text-xs/4 text-muted-foreground"
-      >
+      <span className="inline-flex w-24 items-center gap-1.5 text-xs/4 text-muted-foreground">
         <span
           aria-hidden
           className={cn(
             'size-1.5 shrink-0 rounded-full',
-            serverPort ? 'bg-emerald-500' : 'border border-muted-foreground/60'
+            connected ? 'bg-emerald-500' : 'border border-muted-foreground/60'
           )}
         />
         <span className="sr-only">{t('ai.inline.connection')}</span>
-        {serverPort ? t('ai.v2.connected') : t('ai.inline.notConnected')}
+        {connected ? t('ai.v2.connected') : t('ai.inline.notConnected')}
       </span>
       <button
         type="button"

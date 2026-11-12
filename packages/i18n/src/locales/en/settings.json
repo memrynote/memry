@@ -1386,6 +1386,7 @@
       "notConnected": "Not connected",
       "test": "Test",
       "connected": "Connected! Server running on port {port}",
+      "connectedProvider": "Connected to {provider}",
       "connectFailed": "Failed to connect",
       "testFailed": "Connection test failed",
       "updateFailed": "Failed to update setting"

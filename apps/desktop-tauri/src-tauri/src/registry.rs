@@ -20,6 +20,11 @@ pub fn builder() -> Builder<Wry> {
         // One type per struct: the renderer reads `StartupState` and never writes it.
         .disable_serde_phases()
         .commands(collect_commands![
+            // ai
+            crate::commands::ai::ai_inline_get_settings,
+            crate::commands::ai::ai_inline_list_ollama_models,
+            crate::commands::ai::ai_inline_set_settings,
+            crate::commands::ai::ai_inline_test_connection,
             // app
             crate::commands::app::app_info,
             // crdt (`crdt_open_doc`, `crdt_apply_update` and the sync steps are binary commands)
@@ -262,6 +267,8 @@ pub fn builder() -> Builder<Wry> {
             crate::commands::shell::window_toggle_maximize,
         ])
         .events(collect_events![
+            // ai
+            crate::events::AiInlineSettingsChangedEvent,
             // app
             crate::events::AppNavigationRequestedEvent,
             // crdt

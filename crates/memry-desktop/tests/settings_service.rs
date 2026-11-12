@@ -283,3 +283,32 @@ fn a_missing_device_identity_is_its_own_error_for_reads_and_writes() {
         Err(SettingsError::DeviceIdentityMissing)
     ));
 }
+
+/// The inline AI group may still hold a plaintext key (Electron's rows): only its owner,
+/// `ai::settings::InlineAiStore`, reads or writes it.
+#[test]
+fn the_inline_ai_group_is_closed_to_the_generic_reads_and_writes() {
+    let w = world();
+    let vault = w.open("v");
+    assert!(matches!(
+        w.service.read_group(Some(&vault), "ai-inline"),
+        Err(SettingsError::Invalid(_))
+    ));
+    assert!(matches!(
+        w.service.read_group(None, "ai-inline"),
+        Err(SettingsError::Invalid(_))
+    ));
+    assert!(matches!(
+        w.service.get_path(&vault, "ai-inline.apiKey"),
+        Err(SettingsError::Invalid(_))
+    ));
+    assert!(matches!(
+        w.service
+            .write_group(Some(&vault), "ai-inline", patch(json!({"apiKey": "sk"}))),
+        Err(SettingsError::Invalid(_))
+    ));
+    assert!(matches!(
+        w.service.reset_group(Some(&vault), "ai-inline"),
+        Err(SettingsError::Invalid(_))
+    ));
+}

@@ -7,6 +7,7 @@ use std::sync::atomic::{AtomicBool, Ordering};
 use std::sync::{Arc, Mutex, PoisonError};
 use std::time::Duration;
 
+use memry_desktop::ai::settings::InlineAiStore;
 use memry_desktop::config::{Compiled, MemryEnv, RuntimeConfig};
 use memry_desktop::e2e::E2eGate;
 use memry_desktop::launch_env::LaunchEnv;
@@ -277,11 +278,17 @@ fn manage_settings(app: &AppHandle<Wry>) -> Result<(), CommandError> {
             E2eGate::from_env(&env),
         )
     };
-    let keychain = Arc::new(KeyringStore::new(device, gate, &data_dir));
+    let keychain = Arc::new(KeyringStore::new(device.clone(), gate, &data_dir));
     let identity = Arc::new(DeviceIdentityStore::new(keychain.clone(), &data_dir));
+    let settings = SettingsService::new(identity.clone(), config);
+    app.manage(Arc::new(InlineAiStore::new(
+        settings.clone(),
+        keychain.clone(),
+        device,
+    )));
     app.manage(keychain);
-    app.manage(identity.clone());
-    app.manage(SettingsService::new(identity, config));
+    app.manage(identity);
+    app.manage(settings);
     Ok(())
 }
 

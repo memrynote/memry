@@ -5,6 +5,24 @@ import * as __TAURI_EVENT from "@tauri-apps/api/event";
 
 /** Commands */
 export const commands = {
+	/**  The settings with the key masked (`ai-inline:get-settings`). */
+	aiInlineGetSettings: () => __TAURI_INVOKE<InlineAiSettings>("ai_inline_get_settings"),
+	/**
+	 *  The models of the configured Ollama (`ai-inline:list-ollama-models`). Nothing listening is
+	 *  the normal "Ollama is not running": `Transport` with code `ai.ollamaUnreachable`, logged at
+	 *  info.
+	 */
+	aiInlineListOllamaModels: () => __TAURI_INVOKE<string[]>("ai_inline_list_ollama_models"),
+	/**
+	 *  Writes a partial update (`ai-inline:set-settings`) and returns the masked result. A masked
+	 *  key is left alone, an empty key is deleted, any other key goes to the keychain.
+	 */
+	aiInlineSetSettings: (updates: InlineAiUpdates) => __TAURI_INVOKE<InlineAiSettings>("ai_inline_set_settings", { updates }),
+	/**
+	 *  Whether the configured provider answers with the stored key: Ollama lists its models, the
+	 *  others answer `GET /models`. A refusal is an answer, not a failed call.
+	 */
+	aiInlineTestConnection: () => __TAURI_INVOKE<TestConnectionResult>("ai_inline_test_connection"),
 	appInfo: () => __TAURI_INVOKE<AppInfo>("app_info"),
 	/**  The calling window closed its editor of `note_id`. */
 	crdtCloseDoc: (noteId: string) => __TAURI_INVOKE<null>("crdt_close_doc", { noteId }),
@@ -576,6 +594,7 @@ export const commands = {
 
 /** Events */
 export const events = {
+	aiInlineSettingsChangedEvent: makeEvent<AiInlineSettingsChangedEvent, AiInlineSettingsChangedEvent>("ai-inline-settings-changed-event"),
 	appNavigationRequestedEvent: makeEvent<AppNavigationRequestedEvent, AppNavigationRequestedEvent>("app-navigation-requested-event"),
 	crdtProviderReadyEvent: makeEvent<CrdtProviderReadyEvent, CrdtProviderReadyEvent>("crdt-provider-ready-event"),
 	crdtProviderResetEvent: makeEvent<CrdtProviderResetEvent, CrdtProviderResetEvent>("crdt-provider-reset-event"),
@@ -629,6 +648,17 @@ export const events = {
 };
 
 /* Types */
+/**
+ *  The inline AI settings were written (replaces Electron's `ai-inline:server-ready` as the
+ *  settings refresh). The key is masked.
+ */
+export type AiInlineSettingsChangedEvent = {
+	settings: InlineAiSettings,
+};
+
+/**  `AIInlineSettings['provider']` of `@memry/contracts/ai-inline-channels`. */
+export type AiProvider = "ollama" | "openai" | "anthropic" | "google";
+
 export type AppInfo = {
 	version: string,
 	platform: string,
@@ -1200,6 +1230,30 @@ export type InboxOpenItemEvent = {
 export type InheritedFieldsView = {
 	from: string,
 	fields: ResolvedFieldView[],
+};
+
+/**
+ *  `AIInlineSettings` of `@memry/contracts/ai-inline-channels`. Outside Rust `api_key` is
+ *  always [`MASKED_KEY`] or empty.
+ */
+export type InlineAiSettings = {
+	enabled: boolean,
+	provider: AiProvider,
+	model: string,
+	apiKey: string,
+	baseUrl: string,
+};
+
+/**
+ *  A partial write (`Partial<AIInlineSettings>`). An `api_key` of [`MASKED_KEY`] is ignored,
+ *  the empty string deletes the stored key, any other value replaces it.
+ */
+export type InlineAiUpdates = {
+	enabled?: boolean | null,
+	provider?: AiProvider | null,
+	model?: string | null,
+	apiKey?: string | null,
+	baseUrl?: string | null,
 };
 
 /**  The block props that embed an attachment another note stores: `InsertExistingAttachmentResult`. */
@@ -2405,6 +2459,15 @@ export type TemplateView = {
 	content: string,
 	createdAt: string,
 	modifiedAt: string,
+};
+
+/**
+ *  The outcome of the settings screen's Test button. `detail` is the translated reason of a
+ *  failure, `None` when `ok`.
+ */
+export type TestConnectionResult = {
+	ok: boolean,
+	detail: string | null,
 };
 
 /**  One entry of `WikiLinkTitleResolutions`. */

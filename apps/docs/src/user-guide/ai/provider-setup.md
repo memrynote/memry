@@ -46,7 +46,7 @@ Best when you want privacy, no metering, and don't mind running an extra backgro
 
 ### Notes
 
-- Keys are stored locally in the vault (encrypted at rest).
+- Keys are stored in your operating system's keychain on this device.
 - Keys are never sent to the memrynote sync server.
 - Each AI call hits OpenAI directly from your device.
 
@@ -97,11 +97,12 @@ memrynote keeps one local inline-AI bridge running for the active provider setti
 
 ## Where Keys Live
 
-API keys are stored **locally**, in the vault, encrypted with the vault key. They:
+API keys are stored in your operating system's keychain (Keychain on macOS, Credential Manager on Windows, Secret Service on Linux), one entry per vault. They:
 
-- Never leave the device unencrypted
-- Never appear in sync items
-- Are accessible to memrynote's main process only (renderer reads via IPC)
+- Never appear in the vault's files, its settings database, or sync items
+- Are read only by the app's native process, which adds them to requests to the provider; the window that shows the settings sees a masked value
+
+A key that an older version of memrynote saved in the settings database moves into the keychain the first time the AI settings are read. If the keychain is locked at that moment, the key stays where it was and memrynote tries again on the next read.
 
 Rotating a key in the provider's dashboard requires updating it here too.
 
