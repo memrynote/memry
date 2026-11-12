@@ -69,10 +69,13 @@ function pushWords(text: string, tokens: Token[]): void {
   }
 }
 
-/** Splits on `"` pairs first, then on whitespace. A `"` with no partner is a separator. */
+/**
+ * Splits on `"` pairs first, then on whitespace. A `"` with no partner is a
+ * separator. Curly quotes count as `"`, since smart punctuation types `“…”`.
+ */
 function tokenize(input: string): Token[] {
   const tokens: Token[] = []
-  let rest = input
+  let rest = input.replace(/[\u201C\u201D]/g, '"')
   for (;;) {
     const open = rest.indexOf('"')
     const close = open === -1 ? -1 : rest.indexOf('"', open + 1)

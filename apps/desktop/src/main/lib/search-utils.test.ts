@@ -95,6 +95,7 @@ describe('parseSearchQuery', () => {
     ['he said "hello', '"he"* "said"* "hello"*', '"he said hello"*'],
     ['a"b c"d', '"a"* "b c" "d"*', ''],
     ['(chapter OR twelve)', '"chapter"* OR "twelve"*', ''],
+    ['\u201Cmeeting notes\u201D', '"meeting notes"', ''],
     ['şifre café', '"şifre"* "café"*', '"şifre café"*']
   ]
 

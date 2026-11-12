@@ -134,10 +134,12 @@ pub fn parse(query: &str) -> Option<FtsQuery> {
 }
 
 /// Splits on `"` pairs first, then on whitespace. A `"` with no partner is a
-/// separator.
+/// separator. Curly quotes count as `"`: iOS Smart Punctuation types `“…”`
+/// when the user presses the quote key.
 fn tokenize(query: &str) -> Vec<Token> {
+    let query = query.replace(['\u{201C}', '\u{201D}'], "\"");
     let mut tokens = Vec::new();
-    let mut rest = query;
+    let mut rest = query.as_str();
     while let Some(open) = rest.find('"') {
         let Some(length) = rest[open + 1..].find('"') else {
             break;
@@ -224,6 +226,7 @@ mod tests {
         ),
         ("a\"b c\"d", "\"a\"* \"b c\" \"d\"*", None),
         ("(chapter OR twelve)", "\"chapter\"* OR \"twelve\"*", None),
+        ("\u{201C}meeting notes\u{201D}", "\"meeting notes\"", None),
         (
             "şifre café",
             "\"şifre\"* \"café\"*",
