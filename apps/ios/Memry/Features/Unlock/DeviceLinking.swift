@@ -84,6 +84,10 @@ final class DeviceLinkingViewModel {
     private(set) var error: UserFacingError?
     /// Set only once the master key is in the secure store.
     private(set) var isLinked = false
+    /// Set while the camera is paused mid-scan (#4344): another app shares
+    /// the screen or holds the camera. The scan keeps running and picks up
+    /// when the camera is back; the screen says why and offers the code field.
+    private(set) var cameraInterruption: CameraInterruption?
     /// What the user pastes when the camera cannot be used. First-class: the
     /// simulator and CI have no camera at all (research R13).
     var typedPayload = ""
@@ -93,6 +97,7 @@ final class DeviceLinkingViewModel {
     private let secureStore: any SecureStore
     private let executor: CoreExecutor
     private let now: @Sendable () -> Date
+    private let notifications: NotificationCenter
     private var pollTask: Task<Void, Never>?
 
     init(
@@ -100,8 +105,10 @@ final class DeviceLinkingViewModel {
         capture: any CodeCapture,
         secureStore: any SecureStore,
         executor: CoreExecutor,
-        now: @escaping @Sendable () -> Date = { Date() }
+        now: @escaping @Sendable () -> Date = { Date() },
+        notifications: NotificationCenter = .default
     ) {
+        self.notifications = notifications
         self.link = link
         self.capture = capture
         self.secureStore = secureStore
@@ -186,11 +193,18 @@ final class DeviceLinkingViewModel {
         case .denied, .notAsked: return record(CaptureError.NotPermitted, phase: .idle)
         }
         phase = .scanning
+        let observers = CameraInterruption.observe(in: notifications) { [weak self] in self?.cameraInterruption = $0 }
+        let scanned: Result<String, any Error>
         do {
-            let payload = try await capture.scan()
-            await submit(payload)
+            scanned = .success(try await capture.scan())
         } catch {
-            record(error, phase: .idle)
+            scanned = .failure(error)
+        }
+        observers.forEach(notifications.removeObserver)
+        cameraInterruption = nil
+        switch scanned {
+        case let .success(payload): await submit(payload)
+        case let .failure(error): record(error, phase: .idle)
         }
     }
 
