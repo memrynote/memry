@@ -14,7 +14,9 @@ afterEach(() => {
   vi.restoreAllMocks()
 })
 
-function editorWithOpenSlashMenu(): BlockNoteEditor {
+// `focusEventSeen: false`: DOM focus moved while another app's window held OS focus, which sends
+// no `focus` event (FLAKE-7C, #3967).
+function editorWithOpenSlashMenu({ focusEventSeen = true } = {}): BlockNoteEditor {
   // The menu view positions itself from the trigger's rect; jsdom's has no `toJSON`.
   vi.spyOn(Element.prototype, 'getBoundingClientRect').mockReturnValue(
     Object.assign(new DOMRect(), { toJSON: () => ({}) })
@@ -32,7 +34,10 @@ function editorWithOpenSlashMenu(): BlockNoteEditor {
 
   const menu = editor.getExtension(SuggestionMenu)!
   menu.addSuggestionMenu({ triggerCharacter: '/' })
+  const swallow = (event: Event): void => event.stopPropagation()
+  if (!focusEventSeen) document.addEventListener('focus', swallow, true)
   editor.prosemirrorView.dom.focus()
+  document.removeEventListener('focus', swallow, true)
   menu.openSuggestionMenu('/', { deleteTriggerCharacter: true })
   editor.insertInlineContent('tabl')
   expect(menu.shown()).toBe(true)
@@ -63,6 +68,27 @@ describe('window focus plugin', () => {
     const editor = editorWithOpenSlashMenu()
     vi.spyOn(document, 'hasFocus').mockReturnValue(true)
 
+    dispatch(editor, 'focus')
+
+    expect(editor.getExtension(SuggestionMenu)!.shown()).toBe(true)
+  })
+
+  it('keeps the slash menu open when the window comes to the front over an editor that got focus in the background', () => {
+    const editor = editorWithOpenSlashMenu({ focusEventSeen: false })
+    vi.spyOn(document, 'hasFocus').mockReturnValue(true)
+
+    window.dispatchEvent(new FocusEvent('focus'))
+    dispatch(editor, 'focus')
+
+    expect(editor.getExtension(SuggestionMenu)!.shown()).toBe(true)
+  })
+
+  it('keeps the slash menu open on the first focus after typing in a background window', () => {
+    const editor = editorWithOpenSlashMenu({ focusEventSeen: false })
+    const hasFocus = vi.spyOn(document, 'hasFocus').mockReturnValue(false)
+
+    editor.prosemirrorView.dom.dispatchEvent(new InputEvent('beforeinput', { bubbles: true }))
+    hasFocus.mockReturnValue(true)
     dispatch(editor, 'focus')
 
     expect(editor.getExtension(SuggestionMenu)!.shown()).toBe(true)
