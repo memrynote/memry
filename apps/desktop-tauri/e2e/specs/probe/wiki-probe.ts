@@ -7,7 +7,7 @@ import { expect, test } from '../../harness/test'
 
 const unique = (label: string): string => `${label} ${Math.random().toString(36).slice(2, 8)}`
 
-export type Variant = 'click3' | 'stub-fixup' | 'raw'
+export type Variant = 'click3' | 'stub-fixup' | 'raw' | 'notrans'
 
 export function install(page: Page, stubFixup: boolean): Promise<void> {
   return page.evaluate((stub: boolean) => {
@@ -77,7 +77,9 @@ export function install(page: Page, stubFixup: boolean): Promise<void> {
         (e) =>
           (!/^(mouse|pointer)(move|over|out|enter|leave)$/.test(ev) || e.isTrusted) &&
           push(ev, [
-            (e.target as HTMLElement)?.nodeName,
+            ev.startsWith('transition')
+              ? `${(e.target as HTMLElement)?.nodeName}.${String((e.target as HTMLElement)?.className).slice(0, 70)}|${(e as TransitionEvent).propertyName}|${(e.target as HTMLElement)?.getAttribute?.('data-test') ?? ''}`
+              : (e.target as HTMLElement)?.nodeName,
             e.isTrusted ? 'T' : 'syn',
             (e as MouseEvent).detail
           ]),
@@ -287,6 +289,14 @@ export function wikiLoop(group: number, count: number, variant: Variant): void {
       await editor.click()
       const text = editor.getByText(selected, { exact: false }).first()
       await install(page, variant === 'stub-fixup')
+      if (variant === 'notrans') {
+        await page.evaluate(() => {
+          const style = document.createElement('style')
+          style.textContent =
+            '*, *::before, *::after { transition: none !important; animation: none !important; }'
+          document.head.append(style)
+        })
+      }
       if (variant === 'raw') {
         const box = await text.boundingBox()
         if (!box) throw new Error('PROBE-WIKI no box')
