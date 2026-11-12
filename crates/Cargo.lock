@@ -3944,6 +3944,7 @@ dependencies = [
  "specta",
  "specta-typescript",
  "sys-locale",
+ "tao",
  "tauri",
  "tauri-build",
  "tauri-plugin-autostart",
@@ -6628,8 +6629,7 @@ dependencies = [
 [[package]]
 name = "tao"
 version = "0.37.2"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "d5777b06fe6435126ae8d816eba269e050e1e10d302cf5461e9c49eccabc3548"
+source = "git+https://github.com/memrynote/tao?rev=317b55792617af0cb7a4aab908c04df0008040b1#317b55792617af0cb7a4aab908c04df0008040b1"
 dependencies = [
  "bitflags 2.13.2",
  "block2",
@@ -6668,8 +6668,7 @@ dependencies = [
 [[package]]
 name = "tao-macros"
 version = "0.1.4"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "5f7eeb6d99155545da6150a1795945f16ac9c178deb2a5f2e74d776107bd5849"
+source = "git+https://github.com/memrynote/tao?rev=317b55792617af0cb7a4aab908c04df0008040b1#317b55792617af0cb7a4aab908c04df0008040b1"
 dependencies = [
  "proc-macro2",
  "quote",

@@ -66,3 +66,11 @@ strip = "debuginfo"
 # Upstream: https://github.com/tauri-apps/wry/pull/1929. Remove when wry ships it.
 [patch.crates-io]
 wry = { git = "https://github.com/memrynote/wry", rev = "f73aedfa757b988436a4efffff37b5c0be2259e1" }
+# Tauri clones and drops tao's `EventLoopWindowTarget` on worker threads, and on Windows upstream
+# tao counts the event loop runner it holds with a non-atomic `Rc`: lost updates freed the runner
+# under the running loop and the app died with 0xC0000005 (#3967). This fork is tao 0.37.2 plus
+# one commit that makes the count an `Arc`; tao-macros comes from the same tree so only one copy
+# builds. `memry-tauri`'s `tests/event_loop_runner.rs` is red without it.
+# Upstream: https://github.com/tauri-apps/tauri/issues/15408. Remove when tao ships it.
+tao = { git = "https://github.com/memrynote/tao", rev = "317b55792617af0cb7a4aab908c04df0008040b1" }
+tao-macros = { git = "https://github.com/memrynote/tao", rev = "317b55792617af0cb7a4aab908c04df0008040b1" }
