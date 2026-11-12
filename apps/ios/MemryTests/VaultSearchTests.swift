@@ -50,7 +50,7 @@ struct VaultSearchTests {
     }
 
     private func hit(_ id: String, _ title: String, kind: String = "note") -> SearchResult {
-        SearchResult(id: id, title: title, kind: kind, journalDate: nil, score: -1, snippet: [])
+        SearchResult(id: id, title: title, kind: kind, journalDate: nil, emoji: nil, folderPath: nil, score: -1, snippet: [])
     }
 
     /// A model with no debounce, so a test waits for the work rather than for

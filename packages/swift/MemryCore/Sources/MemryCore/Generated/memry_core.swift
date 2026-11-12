@@ -23204,7 +23204,8 @@ public func FfiConverterTypeSavedFilterItem_lower(_ value: SavedFilterItem) -> R
  *
  * Flattened from [`SearchHit`] because uniffi has no enum-with-payload that
  * reads well in Swift here: `journal_date` is `Some` exactly when `kind` is
- * `journal`, and nothing else distinguishes the two.
+ * `journal`, and `emoji` and `folder_path` are `None` for anything but a
+ * note.
  */
 public struct SearchResult: Equatable, Hashable {
     public var id: String
@@ -23218,6 +23219,16 @@ public struct SearchResult: Equatable, Hashable {
      * entry has no title of its own (§A.5), so this is what names it.
      */
     public var journalDate: String?
+    /**
+     * The note's stored icon value verbatim (an emoji, or a desktop icon
+     * reference the shell may not draw), and `None` for everything else.
+     */
+    public var emoji: String?
+    /**
+     * The note's vault folder (`Work/Accounts`), `None` at the vault root and
+     * for everything that is not a note.
+     */
+    public var folderPath: String?
     /**
      * The bm25 score: negative, and more negative is a better match. Carried
      * so a shell can show relevance if it wants to, never re-sorted — the
@@ -23242,6 +23253,14 @@ public struct SearchResult: Equatable, Hashable {
          * entry has no title of its own (§A.5), so this is what names it.
          */journalDate: String?, 
         /**
+         * The note's stored icon value verbatim (an emoji, or a desktop icon
+         * reference the shell may not draw), and `None` for everything else.
+         */emoji: String?, 
+        /**
+         * The note's vault folder (`Work/Accounts`), `None` at the vault root and
+         * for everything that is not a note.
+         */folderPath: String?, 
+        /**
          * The bm25 score: negative, and more negative is a better match. Carried
          * so a shell can show relevance if it wants to, never re-sorted — the
          * order returned is already the ranking.
@@ -23255,6 +23274,8 @@ public struct SearchResult: Equatable, Hashable {
         self.title = title
         self.kind = kind
         self.journalDate = journalDate
+        self.emoji = emoji
+        self.folderPath = folderPath
         self.score = score
         self.snippet = snippet
     }
@@ -23279,6 +23300,8 @@ public struct FfiConverterTypeSearchResult: FfiConverterRustBuffer {
                 title: FfiConverterString.read(from: &buf), 
                 kind: FfiConverterString.read(from: &buf), 
                 journalDate: FfiConverterOptionString.read(from: &buf), 
+                emoji: FfiConverterOptionString.read(from: &buf), 
+                folderPath: FfiConverterOptionString.read(from: &buf), 
                 score: FfiConverterDouble.read(from: &buf), 
                 snippet: FfiConverterSequenceTypeSnippetSegment.read(from: &buf)
         )
@@ -23289,6 +23312,8 @@ public struct FfiConverterTypeSearchResult: FfiConverterRustBuffer {
         FfiConverterString.write(value.title, into: &buf)
         FfiConverterString.write(value.kind, into: &buf)
         FfiConverterOptionString.write(value.journalDate, into: &buf)
+        FfiConverterOptionString.write(value.emoji, into: &buf)
+        FfiConverterOptionString.write(value.folderPath, into: &buf)
         FfiConverterDouble.write(value.score, into: &buf)
         FfiConverterSequenceTypeSnippetSegment.write(value.snippet, into: &buf)
     }
