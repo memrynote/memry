@@ -3,6 +3,7 @@
     "copyFailed": "Không thể sao chép portal",
     "hiddenCount": "{count} đã ẩn",
     "windowFailed": "Không thể mở portal này. Hãy mở ghi chú nguồn thay thế.",
+    "unreadable": "Không thể đọc cổng này. Hãy xóa khối và thêm một cổng mới.",
     "search": {
       "editQuery": "Sửa truy vấn",
       "count": "{count, plural, other {# khối}}",

@@ -426,7 +426,8 @@
       "newViewFailed": "Kunne ikke opprette mappen for denne visningen.",
       "empty": "Ingenting samsvarer med denne visningen ennå.",
       "loadFailed": "Kunne ikke laste inn denne visningen. Selve notatene er uendret.",
-      "folderMissing": "Denne mappen finnes ikke lenger i hvelvet. Velg en annen kilde."
+      "folderMissing": "Denne mappen finnes ikke lenger i hvelvet. Velg en annen kilde.",
+      "unreadable": "Denne visningen kan ikke leses. Velg en kilde ovenfor, eller fjern blokken."
     },
     "chart": {
       "title": "Diagram",

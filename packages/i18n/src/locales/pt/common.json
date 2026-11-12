@@ -3,6 +3,7 @@
     "copyFailed": "Não foi possível copiar o portal",
     "hiddenCount": "{count} oculto(s)",
     "windowFailed": "Não foi possível abrir este portal. Abra a nota de origem.",
+    "unreadable": "Não é possível ler este portal. Remova o bloco e adicione um novo portal.",
     "search": {
       "editQuery": "Editar consulta",
       "count": "{count, plural, one {# bloco} other {# blocos}}",

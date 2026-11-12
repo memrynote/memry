@@ -3,6 +3,7 @@
     "copyFailed": "Nem sikerült átmásolni a portált",
     "hiddenCount": "{count} rejtett",
     "windowFailed": "Ezt a portált nem sikerült megnyitni. Nyissa meg inkább a forrásjegyzetet.",
+    "unreadable": "Ez a portál nem olvasható. Távolítsa el a blokkot, és adjon hozzá új portált.",
     "search": {
       "editQuery": "Lekérdezés szerkesztése",
       "count": "{count, plural, one {# blokk} other {# blokk}}",

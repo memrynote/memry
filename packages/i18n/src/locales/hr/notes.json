@@ -426,7 +426,8 @@
       "newViewFailed": "Mapu za ovaj prikaz nije moguće stvoriti.",
       "empty": "Ovom prikazu još ništa ne odgovara.",
       "loadFailed": "Nije moguće učitati ovaj prikaz. Same bilješke su netaknute.",
-      "folderMissing": "Ova mapa više nije u trezoru. Odaberite drugi izvor."
+      "folderMissing": "Ova mapa više nije u trezoru. Odaberite drugi izvor.",
+      "unreadable": "Ovaj prikaz nije moguće pročitati. Odaberite izvor iznad ili uklonite blok."
     },
     "chart": {
       "title": "Grafikon",
