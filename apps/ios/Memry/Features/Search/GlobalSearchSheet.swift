@@ -36,6 +36,8 @@ enum GlobalSearchCopy {
     static let prompt = "Search notes, journal and tasks"
     static let unavailable = "Search is not available"
     static let unavailableDetail = "This vault's search index could not be opened on this iPhone."
+    static let stale = "Search may be out of date"
+    static let retry = "Retry"
 }
 
 struct GlobalSearchSheet: View {
@@ -49,6 +51,7 @@ struct GlobalSearchSheet: View {
     @State private var query = ""
     @FocusState private var isFocused: Bool
     @Environment(\.dismiss) private var dismiss
+    @Environment(\.vaultSearchIndex) private var searchIndex
 
     var body: some View {
         NavigationStack {
@@ -72,14 +75,13 @@ struct GlobalSearchSheet: View {
         }
         .task {
             if model == nil, let searcher = browse?.searcher {
-                model = VaultSearchViewModel(search: searcher)
+                model = VaultSearchViewModel(search: searcher, index: searchIndex)
             }
             if recents == nil, let store = browse?.recents {
                 recents = SearchRecentsViewModel(store: store)
             }
             isFocused = true
             await recents?.load()
-            await model?.prepare()
         }
     }
 
@@ -88,6 +90,17 @@ struct GlobalSearchSheet: View {
             ContentUnavailableView(GlobalSearchCopy.unavailable, systemImage: "magnifyingglass", description: Text(GlobalSearchCopy.unavailableDetail))
         } else {
             List {
+                if let model, model.isIndexStale {
+                    Section {
+                        HStack {
+                            Text(GlobalSearchCopy.stale)
+                                .foregroundStyle(Tokens.Text.secondary.color)
+                            Spacer()
+                            Button(GlobalSearchCopy.retry) { Task { await model.retryIndex() } }
+                                .accessibilityIdentifier("search.stale.retry")
+                        }
+                    }
+                }
                 switch model?.phase {
                 case let .results(hits) where !hits.isEmpty || !(model?.taskHits.isEmpty ?? true):
                     ForEach(hits, id: \.id) { hit in

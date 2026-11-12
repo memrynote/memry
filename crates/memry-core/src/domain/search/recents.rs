@@ -98,6 +98,7 @@ pub fn list(data: &Connection) -> Result<Vec<Recent>, StorageError> {
                 title,
                 kind,
                 score: 0.0,
+                snippet: Vec::new(),
             },
             query,
             visited_at,
@@ -141,6 +142,7 @@ mod tests {
             title: format!("title {id}"),
             kind,
             score: -1.5,
+            snippet: Vec::new(),
         }
     }
 

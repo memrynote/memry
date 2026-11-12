@@ -76,12 +76,7 @@ struct JournalTabContent: View {
         .onChange(of: store?.vaultId) { store?.requestSync = requestVaultSync }
         .onChange(of: isSyncing) { _, syncing in
             if !syncing, let store {
-                Task {
-                    // Backlinks and link resolution read the search index,
-                    // which only a reindex brings up to date (incremental).
-                    await Self.reindex(store)
-                    await store.syncFinished()
-                }
+                Task { await store.syncFinished() }
             }
         }
         .onChange(of: scenePhase) { _, phase in
@@ -109,7 +104,6 @@ struct JournalTabContent: View {
             made.requestSync = requestVaultSync
             made.context = Self.context(vault: vault, secureStore: secureStore, filler: filler)
             store = made
-            Task { await Self.reindex(made) }
             // A route that arrived first (a reminder tap on a cold start) wins
             // over the saved stack; with neither, the tab opens on today.
             let savedStack = LaunchSnapshot.shared.stack("journal").map { String(decoding: $0, as: UTF8.self) } ?? ""
@@ -123,16 +117,6 @@ struct JournalTabContent: View {
 }
 
 extension JournalTabContent {
-    /// Brings the search index up to date; a failure leaves a stale index,
-    /// which still answers.
-    static func reindex(_ store: JournalStore) async {
-        do {
-            try await store.context?.search?.reindex()
-        } catch {
-            Log.storage.error("the search index could not be brought up to date")
-        }
-    }
-
     /// The note page's dependencies, built as `VaultBrowseViewModel` builds
     /// them for the Notes tab.
     static func context(

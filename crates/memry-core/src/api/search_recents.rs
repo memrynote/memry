@@ -55,6 +55,7 @@ impl SearchRecents {
             title: result.title,
             kind,
             score: result.score,
+            snippet: Vec::new(),
         };
         self.data
             .call_blocking(move |data| recents::record(data, &hit, &query, now_ms()))
