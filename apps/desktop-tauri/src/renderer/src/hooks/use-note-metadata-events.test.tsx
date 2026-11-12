@@ -100,4 +100,42 @@ describe('useNoteMetadataEvents', () => {
     await act(async () => mocks.handlers.categories[0]())
     await waitFor(() => expect(mocks.getAllWithCounts).toHaveBeenCalledTimes(3))
   })
+
+  it('reads the tags again when the first read of the list was out before the change', async () => {
+    // The first read took the list before the tag changed and answers after the listener went
+    // live: its answer must not stand for the change (#4295).
+    let answerFirst: (value: { tags: unknown[] }) => void = () => {}
+    mocks.getAllWithCounts.mockReset()
+    mocks.getAllWithCounts.mockImplementationOnce(
+      () => new Promise((resolve) => (answerFirst = resolve))
+    )
+    mocks.getAllWithCounts.mockResolvedValue({ tags: [{ name: 'fresh', count: 1 }] })
+    const queryClient = new QueryClient({ defaultOptions: { queries: { retry: false } } })
+    const wrapper = ({ children }: { children: ReactNode }): React.JSX.Element => (
+      <QueryClientProvider client={queryClient}>{children}</QueryClientProvider>
+    )
+    const { result } = renderHook(() => useNoteTagsQuery(), { wrapper })
+    renderHook(() => useNoteMetadataEvents(), { wrapper })
+    await settle()
+    await act(async () => answerFirst({ tags: [{ name: 'stale', count: 1 }] }))
+
+    await waitFor(() => expect(result.current.tags.map((tag) => tag.tag)).toEqual(['fresh']))
+  })
+
+  it('reads the folders again when the first read of the list was out before the change', async () => {
+    let answerFirst: (value: string[]) => void = () => {}
+    mocks.getFolders.mockReset()
+    mocks.getFolders.mockImplementationOnce(() => new Promise((resolve) => (answerFirst = resolve)))
+    mocks.getFolders.mockResolvedValue(['fresh'])
+    const queryClient = new QueryClient({ defaultOptions: { queries: { retry: false } } })
+    const wrapper = ({ children }: { children: ReactNode }): React.JSX.Element => (
+      <QueryClientProvider client={queryClient}>{children}</QueryClientProvider>
+    )
+    const { result } = renderHook(() => useNoteFoldersQuery(), { wrapper })
+    renderHook(() => useNoteMetadataEvents(), { wrapper })
+    await settle()
+    await act(async () => answerFirst(['stale']))
+
+    await waitFor(() => expect(result.current.folders).toEqual(['fresh']))
+  })
 })

@@ -297,6 +297,26 @@ describe('use-notes-query', () => {
     expect(result.current.isFetching).toBe(false)
   })
 
+  it('#4295: a move while the first read is out reads the note again', async () => {
+    // The first read began before the move and has no data to patch: its answer is the old path.
+    let answerStale: (value: Note) => void = () => {}
+    mocks.notesService.get.mockImplementationOnce(
+      () => new Promise<Note>((resolve) => (answerStale = resolve))
+    )
+    mocks.notesService.get.mockResolvedValue({ ...note('n1', 'First'), path: 'Archive/First.md' })
+    const { result } = renderHook(() => useNote('n1'), { wrapper })
+    await waitFor(() => expect(mocks.handlers.moved.length).toBeGreaterThan(0))
+
+    await act(async () => {
+      for (const handler of mocks.handlers.moved) {
+        handler({ id: 'n1', oldPath: 'notes/First.md', newPath: 'Archive/First.md' })
+      }
+    })
+    await act(async () => answerStale(note('n1', 'First')))
+
+    await waitFor(() => expect(result.current.note?.path).toBe('Archive/First.md'))
+  })
+
   it('fetches note lists and invalidates them on create, rename, move, update, and delete events', async () => {
     const { result } = renderHook(() => useNotesList({ folder: 'Work' }), { wrapper })
 

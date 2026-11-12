@@ -24,6 +24,11 @@ interface ScaledLinesProps {
   /** Names the scroll region for assistive tech. */
   label: string
   ensureRange: (startLine: number, endLine: number) => void
+  /**
+   * Whether this is the surface the keyboard belongs to. A viewer in a background tab stays
+   * mounted, and one key press must not move two of them.
+   */
+  active: boolean
   renderRow: (line: number) => ReactNode
 }
 
@@ -45,6 +50,7 @@ export function ScaledLines({
   target,
   label,
   ensureRange,
+  active,
   renderRow
 }: ScaledLinesProps): React.JSX.Element {
   const scrollRef = useRef<HTMLElement>(null)
@@ -145,8 +151,10 @@ export function ScaledLines({
   })
 
   const geometryRef = useRef({ lineCount, visibleRows, rowHeight, height: size.height })
+  const activeRef = useRef(active)
   useEffect(() => {
     geometryRef.current = { lineCount, visibleRows, rowHeight, height: size.height }
+    activeRef.current = active
   })
 
   // Wheel, trackpad and keys move by px from where the viewport is now; the
@@ -225,13 +233,24 @@ export function ScaledLines({
       )
     }
 
+    // With nothing focused (the find bar closed, a click on the page's margin) a key press is
+    // left to the browser, which scrolls this region's scaled bar by hundreds of lines per
+    // arrow. A key aimed at nothing in particular is the viewer's.
+    const onBodyKeyDown = (event: KeyboardEvent): void => {
+      if (!activeRef.current || event.defaultPrevented) return
+      if (event.target !== document.body && event.target !== document.documentElement) return
+      onKeyDown(event)
+    }
+
     element.addEventListener('wheel', onWheel, { passive: false })
     element.addEventListener('keydown', onKeyDown)
     element.addEventListener('scroll', onScroll)
+    window.addEventListener('keydown', onBodyKeyDown)
     return () => {
       element.removeEventListener('wheel', onWheel)
       element.removeEventListener('keydown', onKeyDown)
       element.removeEventListener('scroll', onScroll)
+      window.removeEventListener('keydown', onBodyKeyDown)
     }
   }, [])
 

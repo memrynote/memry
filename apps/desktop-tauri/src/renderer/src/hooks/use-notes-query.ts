@@ -6,7 +6,13 @@
  */
 
 import { useEffect, useCallback, useMemo } from 'react'
-import { useQuery, useMutation, useQueryClient, type QueryClient } from '@tanstack/react-query'
+import {
+  useQuery,
+  useMutation,
+  useQueryClient,
+  type QueryClient,
+  type QueryKey
+} from '@tanstack/react-query'
 import type {
   FolderInfo,
   Note,
@@ -216,9 +222,7 @@ export function useNote(id: string | null, options: UseNoteOptions = {}): UseNot
         cached ? { ...cached, path: event.newPath } : cached
       )
       // A read in flight began before the move and would answer the old path: read again.
-      if (queryClient.isFetching({ queryKey: key }) > 0) {
-        void queryClient.invalidateQueries({ queryKey: key })
-      }
+      if (queryClient.isFetching({ queryKey: key }) > 0) rereadQueries(queryClient, key)
     })
 
     const unsubDeleted = onNoteDeleted((event) => {
@@ -264,28 +268,27 @@ export function useNote(id: string | null, options: UseNoteOptions = {}): UseNot
 // =============================================================================
 
 /**
- * Reads the shown lists again after a note changed. TanStack folds a refetch into a read already
- * out while the query has no data yet (`cancelRefetch` applies only once it has), and that read
- * may have taken the list before the change: its answer then clears the invalidation and stays
- * fresh for the stale time, so a note made during the sidebar's first read stayed out of the
- * tree (#3967). Cancelling that read silently, as TanStack does for a refetch over data, makes
- * the refetch a new read; only active queries, which the invalidation refetches at once. Only a
- * list with no data yet is cancelled: once it has answered, TanStack already restarts its read,
- * and cancelling on every event of a burst (a sync pull, a bulk import) would keep a large
- * vault's read from ever landing.
+ * Reads the queries under `queryKey` again after what they show changed. TanStack folds a refetch
+ * into a read already out while the query has no data yet (`cancelRefetch` applies only once it
+ * has), and that read may have taken its answer before the change: its answer then clears the
+ * invalidation and stays fresh for the stale time, so a note made during the sidebar's first
+ * read stayed out of the tree (#3967). Cancelling that read silently, as TanStack does for a
+ * refetch over data, makes the refetch a new read; only active queries, which the invalidation
+ * refetches at once. Only a query with no data yet is cancelled: once it has answered, TanStack
+ * already restarts its read, and cancelling on every event of a burst (a sync pull, a bulk
+ * import) would keep a large vault's read from ever landing.
  */
-function rereadLists(queryClient: QueryClient): void {
-  const lists = notesKeys.lists()
+export function rereadQueries(queryClient: QueryClient, queryKey: QueryKey): void {
   void queryClient.cancelQueries(
     {
-      queryKey: lists,
+      queryKey,
       type: 'active',
       fetchStatus: 'fetching',
       predicate: (query) => query.state.data === undefined
     },
     { silent: true, revert: false }
   )
-  void queryClient.invalidateQueries({ queryKey: lists })
+  void queryClient.invalidateQueries({ queryKey })
 }
 
 /**
@@ -306,7 +309,7 @@ export function useNotesList(options: UseNotesListOptions = {}): UseNotesListRes
 
   // Subscribe to note events for list invalidation
   useEffect(() => {
-    const invalidateLists = () => rereadLists(queryClient)
+    const invalidateLists = () => rereadQueries(queryClient, notesKeys.lists())
     // The listeners go live a round trip after this effect asks for them. A note made, renamed,
     // moved or deleted after the list's first read and before then shows wrong until the next
     // event (#3967, #4270): read again once they listen.
@@ -352,7 +355,7 @@ export function useNotesList(options: UseNotesListOptions = {}): UseNotesListRes
   const includeJournals = listOptions.includeJournals === true
   useEffect(() => {
     if (!includeJournals) return undefined
-    const invalidate = () => rereadLists(queryClient)
+    const invalidate = () => rereadQueries(queryClient, notesKeys.lists())
     return subscribeToEvents(
       [
         (live) => onJournalEntryCreated(invalidate, live),

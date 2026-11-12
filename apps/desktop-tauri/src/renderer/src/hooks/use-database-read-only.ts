@@ -29,6 +29,8 @@ export function useDatabaseReadOnly(): boolean {
         log.warn('Could not read CRDT persistence health', error)
       }
     }
+    // The event's `vault_path` is ignored on purpose: the host opens one vault at a time
+    // (`editor/host.rs`), so any ready event is about the vault this page shows.
     const stopReady = subscribeToEvent(
       events.crdtProviderReadyEvent,
       () => void ask(),

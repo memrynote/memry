@@ -284,8 +284,9 @@ export function NotePage({ noteId }: NotePageProps) {
     [noteId]
   )
   // This device can't save (#4268): the note's fields take no edit, as its editor takes none.
-  // The vault's own answer covers a large file, which mounts no editor, and the moment before
-  // the editor's host answers (#4271).
+  // The vault's own answer covers a large file, which mounts no editor. It also covers the moment
+  // before the editor's host answers, once its first health ask has returned: until then the
+  // fields still take an edit, and a refused save shows its own error (#4271).
   const vaultReadOnly = useDatabaseReadOnly()
   const databaseReadOnly = docReadOnly === 'database-read-only' || vaultReadOnly
   const fieldsReadOnly = isLocked || databaseReadOnly
@@ -347,6 +348,8 @@ export function NotePage({ noteId }: NotePageProps) {
   const [pendingWikiLinkCreate, setPendingWikiLinkCreate] = useState<string | null>(null)
   const [moreMenuOpen, setMoreMenuOpen] = useState(false)
   const [coverPickerAnchor, setCoverPickerAnchor] = useState<CoverPickerAnchor | null>(null)
+  // A picker opened before the database turned read-only would fail on pick: close it.
+  if (fieldsReadOnly && coverPickerAnchor) setCoverPickerAnchor(null)
   const { vaultPath } = useVault()
   const uploadFailedMessage = t('cover.picker.uploadFailed')
   // `noteId` is always set by the time the picker renders; hooks run before the

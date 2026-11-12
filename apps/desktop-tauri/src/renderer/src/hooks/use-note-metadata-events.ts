@@ -20,22 +20,20 @@ import {
 } from '@/services/notes-service'
 import { onTagCategoriesChanged } from '@/services/tags-service'
 import { subscribeToEvents } from '@/services/tauri-event'
-import { notesKeys } from './use-notes-query'
+import { notesKeys, rereadQueries } from './use-notes-query'
 
 export function useNoteMetadataEvents(): void {
   const queryClient = useQueryClient()
 
   useEffect(() => {
-    const invalidateTags = () => {
-      void queryClient.invalidateQueries({ queryKey: notesKeys.tags() })
-    }
-    const invalidateFolders = () => {
-      void queryClient.invalidateQueries({ queryKey: notesKeys.folders() })
-    }
+    // A list's first read may still be out when its change lands: `rereadQueries` makes the
+    // re-read a new read instead of folding it into the one that began before the change.
+    const invalidateTags = () => rereadQueries(queryClient, notesKeys.tags())
+    const invalidateFolders = () => rereadQueries(queryClient, notesKeys.folders())
     // The category rows and the tags' `categoryId` change together: a drag that moves a tag
     // between categories must show without waiting for an unrelated tag event.
     const invalidateCategories = () => {
-      void queryClient.invalidateQueries({ queryKey: notesKeys.tagCategories() })
+      rereadQueries(queryClient, notesKeys.tagCategories())
       invalidateTags()
     }
 
