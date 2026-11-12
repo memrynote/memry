@@ -29,6 +29,15 @@ Results are grouped by type. Each group shows its first five results; the last r
 
 Typing several words finds notes that contain all of them, anywhere and in any order. Notes and journal entries that contain the words side by side, as you typed them, come first. The last word can still be unfinished, so `this is rough` already puts a note with "this is roughly" on top. A search with one word, or with quotes, `AND`, `OR` or `NOT`, keeps its usual order.
 
+### Search syntax
+
+- **Words match as prefixes.** `pass` finds "password", so results appear while you type.
+- **Quotes match a phrase.** `"meeting notes"` finds the words side by side in that order. Curly quotes (`“meeting notes”`), which a phone keyboard types, work the same.
+- **`AND`, `OR` and `NOT` are operators only in capitals.** `black and white` searches for all three words, while `notes OR journal` matches either word and `meeting NOT personal` leaves out anything that contains "personal". Operators keep the order you typed them, so `foo OR "a b"` matches either side.
+- **A `NOT` or `OR` with nothing before or after it is ignored**, so a half-typed query never shows an error.
+- **A typo can still find a title.** When a type has fewer than three matches, search adds notes, journal entries, tasks and inbox items whose title is close, such as "Password list" for `pasword`. A search with quotes or operators skips this, because it asked for exact words.
+- **Aliases count.** A note is found by any of its aliases, and the row shows which one matched.
+
 ## Preview
 
 The result you have selected is previewed beside the list. The preview never takes focus, so the arrow keys keep moving through results.
@@ -75,6 +84,16 @@ The bar at the bottom names what <kbd>Enter</kbd> does for the selected row (Ope
 A note opens in the editor, and a PDF or image filed as a note opens in the file viewer. A journal entry opens on its day, a task opens in its project's detail drawer, and an inbox item opens in the Inbox with the item highlighted.
 
 While the search index is being built, the bottom bar shows its progress, and results may be incomplete until it finishes.
+
+## On iPhone
+
+The magnifier at the top of every main screen opens the same search over the whole vault, with the same syntax as above.
+
+- Results come in Notes, Journal, Tasks and Inbox groups. A note row shows its emoji and folder. A journal row shows the day (Today, Yesterday, or a date), and every row shows a line of matching text with your words in bold.
+- The bar under the search field limits results to one type. The filter button at the bottom narrows them to Today, This week or This month, or to one or more tags. The week starts on the first day your iPhone's region uses.
+- Opening a note or a journal day from search opens Find with your query already in it and scrolls to the first match.
+- With an empty field, **Recent** lists the items you last opened from search, each with the query that found it. **Clear** empties the list. The list stays on this iPhone and does not sync.
+- Search keeps up with sync. A note edited on another device shows up in results that are already open once the change arrives. If the index could not be updated, a **Search may be out of date** row with **Retry** appears at the top.
 
 ## Semantic Search
 
