@@ -65,6 +65,7 @@ use crate::api::errors::StorageError;
 mod links;
 mod literal_links;
 mod maintenance;
+pub mod recents;
 mod snippet;
 
 pub use maintenance::{
