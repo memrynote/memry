@@ -16,6 +16,7 @@ use crate::domain::notes::identity::{
 };
 use crate::domain::notes::journal_change::{self, JournalChangeRecorded, PendingJournalChange};
 use crate::domain::notes::journal_day::{self, FileDay};
+use crate::domain::notes::large_file;
 use crate::domain::notes::new_files::{self, NewFileNote};
 use crate::domain::notes::{self, NewNote};
 use crate::domain::properties;
@@ -88,6 +89,23 @@ impl NotesWriter {
                     conn,
                     converter,
                     embeds,
+                    &file,
+                    &Self::new_id(),
+                    &device_id,
+                    now_ms(),
+                ))
+            })
+            .map_err(CrdtError::from)?
+    }
+
+    /// The note of a large-file class file no row names, never queued
+    /// ([`large_file::adopt_large`]).
+    pub fn adopt_large_file(&self, file: FileNote<'_>) -> Result<Adopted, CrdtError> {
+        let device_id = self.device_id.clone();
+        self.db
+            .call_blocking(move |conn| {
+                Ok(large_file::adopt_large(
+                    conn,
                     &file,
                     &Self::new_id(),
                     &device_id,

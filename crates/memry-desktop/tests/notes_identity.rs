@@ -18,14 +18,18 @@ use std::sync::Arc;
 use std::time::Duration;
 
 use flate2::read::GzDecoder;
+use memry_core::api::editor::ReadOnly;
 use memry_core::crdt::update_log::LOCAL_NAMESPACE_PREFIX;
 use memry_core::domain::note_positions;
 use memry_core::domain::notes::identity::VAULT_ORIGIN_META_KEY;
 use memry_core::markdown::convert::api::Converter;
 use memry_core::markdown::schema::callout_types::CalloutTypes;
+use memry_core::markdown::shared::markdown_class::NOTE_MAX_BYTES;
 use memry_core::seams::secure_store::SecureStore;
 use memry_core::storage::repositories::sync_items::{self, InboundRecord};
 use memry_desktop::notes::identity::NotesIdentity;
+use memry_desktop::notes::read;
+use memry_desktop::notes::view::{NoteListOptions, SizeClass};
 use memry_desktop::vault::consumer::{Applied, ChangeSource};
 use memry_desktop::vault::hash::content_hash;
 use rusqlite::OptionalExtension as _;
@@ -261,12 +265,12 @@ fn the_vaults_files_become_notes_and_days_and_a_reopen_names_none_again() {
     e.write("journal/b.md", "Beta\n");
     e.write("journal/2025-01-01.md", "A day\n");
     fs::write(e.vault.join("pic.png"), [0x89, b'P', b'N', b'G']).unwrap();
-    // Large-file class: one block over 128 KiB. Electron never syncs it.
+    // Large-file class: one block over 128 KiB. Electron lists it and never syncs it.
     e.write("big.md", &"x".repeat(200 * 1024));
     e.open();
     let facts = e.facts_until(indexed);
     assert_eq!(origin(&e).as_deref(), Some("native"));
-    for path in ["a.md", "journal/b.md", "journal/2025-01-01.md"] {
+    for path in ["a.md", "journal/b.md", "journal/2025-01-01.md", "big.md"] {
         assert!(
             facts
                 .iter()
@@ -274,18 +278,20 @@ fn the_vaults_files_become_notes_and_days_and_a_reopen_names_none_again() {
             "{path}: {facts:?}"
         );
     }
-    let (a, b) = (
+    let (a, b, big) = (
         row_id(&e, "a.md").unwrap(),
         row_id(&e, "journal/b.md").unwrap(),
+        row_id(&e, "big.md").unwrap(),
     );
     assert_eq!(
         row_id(&e, "journal/2025-01-01.md").as_deref(),
         Some("j2025-01-01")
     );
-    assert_eq!(e.rows().len(), 3, "{:?}", e.rows());
+    assert_eq!(e.rows().len(), 4, "{:?}", e.rows());
     let mut want = vec![
         (a.clone(), "a".to_owned(), None, false),
         (b.clone(), "b".to_owned(), Some("journal".to_owned()), false),
+        (big.clone(), "big".to_owned(), None, false),
     ];
     want.sort();
     assert_eq!(records(&e), want);
@@ -294,6 +300,9 @@ fn the_vaults_files_become_notes_and_days_and_a_reopen_names_none_again() {
     assert_eq!(e.body(&a), "Alpha");
     assert_eq!(e.body(&b), "Beta");
     assert_eq!(e.body("j2025-01-01"), "A day");
+    assert_eq!(e.body(&big), "");
+    assert!(e.core().note_files().is_large_file(&big).unwrap());
+    assert!(!outbox(&e).iter().any(|(_, item)| *item == big));
 
     let facts = reopen(&mut e);
     assert!(
@@ -639,6 +648,57 @@ fn an_open_records_a_missing_origin_from_what_is_beside_it() {
     assert_eq!(origin(&e).as_deref(), Some("electron"));
     assert!(row_id(&e, "a.md").is_some());
     assert_eq!(row_id(&e, "b.md"), None);
+}
+
+/// A markdown file over 1 MiB that enters the open vault is a read-only note of this device, as
+/// Electron lists it (#4311): listed, read as a large file in the viewer, its editor read-only,
+/// its text never fed to a document, and nothing queued for it, at its creation or at a reopen.
+#[test]
+fn a_file_past_the_byte_ceiling_entering_the_vault_is_a_read_only_note_never_pushed() {
+    let (mut e, store) = notes_env_with_store();
+    e.open();
+    e.facts_until(indexed);
+    e.write("logs/dump.md", &"word\n\n".repeat(NOTE_MAX_BYTES / 6 + 1));
+    let facts = e.facts_until(added("logs/dump.md"));
+    assert!(
+        facts.iter().any(
+            |f| matches!(f, Applied::Added { path, created: true, .. } if path == "logs/dump.md")
+        ),
+        "{facts:?}"
+    );
+    let id = row_id(&e, "logs/dump.md").expect("the file is listed");
+    let live = vec![(
+        id.clone(),
+        "dump".to_owned(),
+        Some("logs".to_owned()),
+        false,
+    )];
+    assert_eq!(records(&e), live);
+    until("the large text owes the file body", || {
+        owes_file_body(&e, &id)
+    });
+    assert_eq!(e.body(&id), "");
+    assert!(e.core().note_files().is_large_file(&id).unwrap());
+    let editor = e.core().editor(store).unwrap();
+    assert_eq!(
+        editor.open(&id, "main").unwrap().read_only,
+        Some(ReadOnly::LargeFile)
+    );
+    let open = e.session.current().expect("open");
+    let listed = read::list(&open, &NoteListOptions::default()).unwrap();
+    assert!(listed.notes.iter().any(|note| note.id == id), "not listed");
+    let note = read::get(&open, &id, None).unwrap().expect("the note");
+    assert_eq!(note.size_class, SizeClass::LargeFile);
+    assert!(!outbox(&e).iter().any(|(_, item)| *item == id), "pushed");
+    drop((open, editor));
+
+    let facts = reopen(&mut e);
+    assert!(
+        !facts.iter().any(|f| matches!(f, Applied::Added { .. })),
+        "{facts:?}"
+    );
+    assert_eq!(records(&e), live);
+    assert!(!outbox(&e).iter().any(|(_, item)| *item == id), "pushed");
 }
 
 /// Pinned: a note that grows into the large-file class after it was named stays a note. Its
