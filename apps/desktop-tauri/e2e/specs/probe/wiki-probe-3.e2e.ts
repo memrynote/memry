@@ -1,3 +1,3 @@
 import { wikiLoop } from './wiki-probe'
 
-wikiLoop(3, 25)
+wikiLoop(3, 30, 'stub-fixup')

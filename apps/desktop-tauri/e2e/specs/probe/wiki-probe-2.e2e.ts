@@ -1,3 +1,3 @@
 import { wikiLoop } from './wiki-probe'
 
-wikiLoop(2, 25)
+wikiLoop(2, 30, 'click3')

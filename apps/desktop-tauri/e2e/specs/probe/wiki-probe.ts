@@ -7,8 +7,10 @@ import { expect, test } from '../../harness/test'
 
 const unique = (label: string): string => `${label} ${Math.random().toString(36).slice(2, 8)}`
 
-export function install(page: Page): Promise<void> {
-  return page.evaluate(() => {
+export type Variant = 'click3' | 'stub-fixup' | 'raw'
+
+export function install(page: Page, stubFixup: boolean): Promise<void> {
+  return page.evaluate((stub: boolean) => {
     const w = window as unknown as { __probe: unknown[] }
     const t0 = performance.now()
     const log: unknown[] = (w.__probe = [])
@@ -24,22 +26,84 @@ export function install(page: Page): Promise<void> {
         x: extra
       })
     }
+    const stack = (): string =>
+      (new Error().stack ?? '')
+        .split('\n')
+        .slice(2, 6)
+        .map((l) => l.trim().slice(0, 90))
+        .join(' < ')
     for (const ev of [
       'focus',
       'blur',
+      'focusin',
+      'focusout',
       'pointerdown',
       'mousedown',
       'pointerup',
+      'mouseup',
       'click',
+      'dblclick',
+      'selectstart',
       'keydown'
     ]) {
-      window.addEventListener(ev, (e) => push(ev, (e.target as HTMLElement)?.tagName), true)
+      window.addEventListener(
+        ev,
+        (e) =>
+          push(ev, [
+            (e.target as HTMLElement)?.tagName,
+            e.isTrusted ? 'T' : 'syn',
+            (e as MouseEvent).detail
+          ]),
+        true
+      )
     }
     document.addEventListener('visibilitychange', () => push('vis'))
     document.addEventListener('selectionchange', () => {
       const s = getSelection()
-      push('sel', [s?.anchorOffset, s?.focusOffset, s?.isCollapsed])
+      push('sel', [s?.anchorOffset, s?.focusOffset, s?.isCollapsed, s?.toString().length])
     })
+    const wrap = (target: unknown, name: string, live?: (self: unknown) => boolean): void => {
+      const proto = target as Record<string, unknown>
+      const orig = proto[name] as (...a: unknown[]) => unknown
+      proto[name] = function (this: unknown, ...args: unknown[]) {
+        if (!live || live(this)) push(`call:${name}`, stack())
+        return orig.apply(this, args)
+      }
+    }
+    const liveRange = (self: unknown): boolean => {
+      const s = getSelection()
+      return !!s && s.rangeCount > 0 && s.getRangeAt(0) === self
+    }
+    wrap(HTMLElement.prototype, 'focus')
+    wrap(HTMLElement.prototype, 'blur')
+    for (const m of ['setStart', 'setEnd', 'collapse', 'selectNode', 'selectNodeContents']) {
+      wrap(Range.prototype, m, liveRange)
+    }
+    for (const m of [
+      'collapse',
+      'collapseToStart',
+      'collapseToEnd',
+      'removeAllRanges',
+      'empty',
+      'addRange',
+      'setBaseAndExtent',
+      'extend',
+      'selectAllChildren',
+      'modify'
+    ]) {
+      wrap(Selection.prototype, m)
+    }
+    const pw = (window as unknown as { __memryPw?: Record<string, (...a: unknown[]) => unknown> })
+      .__memryPw
+    if (pw) {
+      const realFixup = pw.fixup
+      pw.fixup = (...args: unknown[]) => {
+        push('fixup-in', args)
+        const result = stub ? true : realFixup(...args)
+        push('fixup-out', stub ? 'stub' : 'real')
+        return result
+      }
+    }
     const editor = document.querySelector(
       '[aria-label="Rich text editor"] [contenteditable="true"]'
     )
@@ -50,7 +114,7 @@ export function install(page: Page): Promise<void> {
       )
     }
     push('installed')
-  })
+  }, stubFixup)
 }
 
 export function dump(page: Page): Promise<string> {
@@ -63,14 +127,23 @@ export function dump(page: Page): Promise<string> {
       expanded: editor?.getAttribute('aria-expanded'),
       menu: document.querySelector('.wiki-link-menu')?.textContent?.slice(0, 80),
       text: document.querySelector('.bn-editor')?.textContent?.slice(0, 120),
-      log: w.__probe.slice(0, 90)
+      log: w.__probe.slice(0, 160)
     })
   })
 }
 
-export function wikiLoop(group: number, count: number, fixed = false): void {
+export function mark(page: Page, label: string): Promise<void> {
+  return page.evaluate((k: string) => {
+    const w = window as unknown as { __probe: unknown[]; __probeStop?: boolean }
+    const s = getSelection()
+    if (!w.__probeStop)
+      w.__probe.push({ k: `MARK:${k}`, x: [s?.anchorOffset, s?.focusOffset, s?.isCollapsed] })
+  }, label)
+}
+
+export function wikiLoop(group: number, count: number, variant: Variant): void {
   for (let i = 0; i < count; i++) {
-    test(`probe ${group}.${i}`, async ({ page }) => {
+    test(`probe ${variant} ${group}.${i}`, async ({ page }) => {
       await vaultOpen(page)
       const targetTitle = unique('Continent')
       const sourceTitle = unique('Selection Source')
@@ -78,27 +151,28 @@ export function wikiLoop(group: number, count: number, fixed = false): void {
       await createNote(page, { title: targetTitle, content: 'Bir kıta.\n' })
       await createNote(page, { title: sourceTitle, content: `${selected}\n` })
       await openNoteByTitle(page, sourceTitle)
-      await install(page)
       const editor = page.locator(NOTE_EDITOR).first()
-      if (!fixed) await editor.click()
-      await editor.getByText(selected, { exact: false }).first().click({ clickCount: 3 })
-      if (fixed) {
-        try {
-          await expect
-            .poll(() => page.evaluate(() => getSelection()?.toString() ?? ''), { timeout: 8000 })
-            .toBe(selected)
-        } catch (error) {
-          throw new Error(
-            `PROBE-WIKI-FIXED-SEL ${(error as Error).message.slice(0, 100)} ${await dump(page)}`,
-            {
-              cause: error
-            }
-          )
+      await editor.click()
+      const text = editor.getByText(selected, { exact: false }).first()
+      await install(page, variant === 'stub-fixup')
+      if (variant === 'raw') {
+        const box = await text.boundingBox()
+        if (!box) throw new Error('PROBE-WIKI no box')
+        const x = box.x + box.width / 2
+        const y = box.y + box.height / 2
+        await page.mouse.move(x, y)
+        for (let n = 0; n < 3; n++) {
+          await page.mouse.down()
+          await page.mouse.up()
         }
+      } else {
+        await text.click({ clickCount: 3 })
       }
+      await mark(page, 'afterClick')
       await new Promise((resolve) => setTimeout(resolve, Math.floor(Math.random() * 400)))
       const linkButton = page.locator('[data-test="link-to-note"]').first()
       await expect(linkButton).toBeEnabled()
+      await mark(page, 'beforeButton')
       await linkButton.evaluate((button: HTMLElement) => {
         const { left, top, width, height } = button.getBoundingClientRect()
         const at = { bubbles: true, cancelable: true, composed: true, button: 0 }
@@ -132,7 +206,7 @@ export function wikiLoop(group: number, count: number, fixed = false): void {
           .toBe(true)
       } catch (error) {
         throw new Error(
-          `PROBE-WIKI ${(error as Error).message.slice(0, 120)} ${await dump(page)}`,
+          `PROBE-WIKI-${variant} ${(error as Error).message.slice(0, 120)} ${await dump(page)}`,
           { cause: error }
         )
       }
