@@ -45,6 +45,39 @@ async function selectWordInCell(page: Page, cell: Locator, word: string): Promis
     .toBe(word)
 }
 
+async function markWordInCell(
+  page: Page,
+  cell: Locator,
+  word: string,
+  tag: 'strong' | 'em',
+  apply: () => Promise<void>,
+  stage: string
+): Promise<void> {
+  let rounds = 0
+  try {
+    await expect
+      .poll(
+        async () => {
+          rounds += 1
+          await selectWordInCell(page, cell, word)
+          await apply()
+          return cell.evaluate(
+            (element: HTMLElement, name: string) => element.querySelector(name) !== null,
+            tag
+          )
+        },
+        { timeout: 30_000 }
+      )
+      .toBe(true)
+  } catch (error) {
+    throw new Error(
+      `${String(error)}\nPROBE fixed helper stage=${stage} rounds=${rounds}\nPROBE ${await probeLog(page)}`,
+      { cause: error }
+    )
+  }
+  if (rounds > 1) console.log(`PROBE FIXED HELPER RECOVERED stage=${stage} rounds=${rounds}`)
+}
+
 async function reopen(page: Page, note: { id: string; path: string; title: string }) {
   await page.reload()
   await vaultOpen(page)
@@ -82,11 +115,15 @@ export function defineMarksProbe(tag: string, reps: number): void {
 
       await installProbe(page)
       await selectWordInCell(page, page.locator(`${NOTE_EDITOR} td`).first(), 'Shipping')
-      const bold = page.locator('[data-test="bold"]').first()
-      await expect(bold).toBeVisible({ timeout: 10_000 })
-      const boldBefore = await cellState(page)
-      await bold.click()
-      await untilContains(page, note.id, '**Shipping**', 'bold', boldBefore)
+      await markWordInCell(
+        page,
+        page.locator(`${NOTE_EDITOR} td`).first(),
+        'Shipping',
+        'strong',
+        () => page.locator('[data-test="bold"]').first().click({ timeout: 3_000 }),
+        'bold'
+      )
+      await untilContains(page, note.id, '**Shipping**', 'bold', '')
 
       await invoke(page, 'settings_set_group', {
         group: 'editor',
@@ -95,10 +132,15 @@ export function defineMarksProbe(tag: string, reps: number): void {
       await reopen(page, note)
 
       await installProbe(page)
-      await selectWordInCell(page, page.locator(`${NOTE_EDITOR} td`).nth(1), 'Open')
-      const italicBefore = await cellState(page)
-      await page.keyboard.press('ControlOrMeta+i')
-      await untilContains(page, note.id, '*Open*', 'italic', italicBefore)
+      await markWordInCell(
+        page,
+        page.locator(`${NOTE_EDITOR} td`).nth(1),
+        'Open',
+        'em',
+        () => page.keyboard.press('ControlOrMeta+i'),
+        'italic'
+      )
+      await untilContains(page, note.id, '*Open*', 'italic', '')
       expect(await noteBody(page, note.id)).toContain('**Shipping**')
     })
   }

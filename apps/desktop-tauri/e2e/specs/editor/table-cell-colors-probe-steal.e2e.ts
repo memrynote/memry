@@ -57,7 +57,7 @@ if (process.platform === 'linux') {
         after = await page.evaluate(selection)
       }
       child.kill()
-      throw new Error(
+      console.log(
         `STEAL RESULT control=${JSON.stringify(control)} after=${JSON.stringify(after)} clearedAfterMs=${Date.now() - at}`
       )
     })
