@@ -1,3 +1,3 @@
 import { wikiLoop } from './wiki-probe'
 
-wikiLoop(8, 25)
+wikiLoop(8, 25, true)

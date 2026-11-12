@@ -13,6 +13,7 @@ export function install(page: Page): Promise<void> {
     const t0 = performance.now()
     const log: unknown[] = (w.__probe = [])
     const push = (k: string, extra?: unknown): void => {
+      if ((window as unknown as { __probeStop?: boolean }).__probeStop) return
       const ae = document.activeElement
       log.push({
         t: Math.round(performance.now() - t0),
@@ -62,12 +63,12 @@ export function dump(page: Page): Promise<string> {
       expanded: editor?.getAttribute('aria-expanded'),
       menu: document.querySelector('.wiki-link-menu')?.textContent?.slice(0, 80),
       text: document.querySelector('.bn-editor')?.textContent?.slice(0, 120),
-      log: w.__probe.slice(-60)
+      log: w.__probe.slice(0, 90)
     })
   })
 }
 
-export function wikiLoop(group: number, count: number): void {
+export function wikiLoop(group: number, count: number, fixed = false): void {
   for (let i = 0; i < count; i++) {
     test(`probe ${group}.${i}`, async ({ page }) => {
       await vaultOpen(page)
@@ -79,8 +80,22 @@ export function wikiLoop(group: number, count: number): void {
       await openNoteByTitle(page, sourceTitle)
       await install(page)
       const editor = page.locator(NOTE_EDITOR).first()
-      await editor.click()
+      if (!fixed) await editor.click()
       await editor.getByText(selected, { exact: false }).first().click({ clickCount: 3 })
+      if (fixed) {
+        try {
+          await expect
+            .poll(() => page.evaluate(() => getSelection()?.toString() ?? ''), { timeout: 8000 })
+            .toBe(selected)
+        } catch (error) {
+          throw new Error(
+            `PROBE-WIKI-FIXED-SEL ${(error as Error).message.slice(0, 100)} ${await dump(page)}`,
+            {
+              cause: error
+            }
+          )
+        }
+      }
       await new Promise((resolve) => setTimeout(resolve, Math.floor(Math.random() * 400)))
       const linkButton = page.locator('[data-test="link-to-note"]').first()
       await expect(linkButton).toBeEnabled()
@@ -94,6 +109,9 @@ export function wikiLoop(group: number, count: number): void {
         button.dispatchEvent(new PointerEvent('pointerup', pointer))
         button.dispatchEvent(new MouseEvent('mouseup', { ...point, detail: 1 }))
         button.dispatchEvent(new MouseEvent('click', { ...point, detail: 1 }))
+      })
+      await page.evaluate(() => {
+        ;(window as unknown as { __probeStop?: boolean }).__probeStop = true
       })
       await typeInEditor(page, targetTitle)
       try {
