@@ -26,7 +26,8 @@
 //! copies: the next open forgets the record of the folder still there, and the watcher reads
 //! each copy at its note's path as the note's file again, which undoes the delete with nothing
 //! lost. A copy written beside a file at its note's path sits in a hidden folder that no walk
-//! reads, so it is no new note; its text stays there.
+//! reads, so it is no new note while its note is kept; the open shows it once no kept note
+//! owns it (`vault::kept_copies`).
 //!
 //! A failed step 3, or a crash between 2 and 3, leaves the record, and the next open finishes the
 //! delete when the folder is gone and forgets it when it is still there

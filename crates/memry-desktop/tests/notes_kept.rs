@@ -24,6 +24,7 @@ use memry_desktop::notes::service::{NotesService, Trash};
 use memry_desktop::vault::app_edit::Kept;
 use memry_desktop::vault::consumer::{Applied, ChangeSource};
 use memry_desktop::vault::hash::content_hash;
+use memry_desktop::vault::kept_copies::is_kept_name;
 use memry_desktop::vault::note_file::NoteFileError;
 use memry_desktop::vault::notices::{VaultNotice, VaultNotices};
 use rusqlite::OptionalExtension as _;
@@ -997,7 +998,11 @@ fn a_kept_notes_delete_refused_for_its_copy_leaves_the_file_at_its_path() {
         matches!(refused, Err(NotesError::TrashUnavailable(_))),
         "{refused:?}"
     );
-    assert_eq!(e.read("a.md"), MINE, "the other file at the path went");
+    assert_eq!(
+        fs::read_to_string(e.vault.join("a.md")).ok().as_deref(),
+        Some(MINE),
+        "the other file at the path went"
+    );
     assert_eq!(left_in(&e.vault), ["a.md"], "the copy was left");
     assert_eq!(record(&e, &id), pushed, "the note went");
     assert!(is_listed(&notices, &id), "{:?}", notices.list());
@@ -1051,9 +1056,61 @@ fn a_crash_after_a_copy_beside_a_file_at_its_path_adds_no_note_and_keeps_the_tex
         "the copy was taken as a new note: {paths:?}"
     );
     assert_eq!(e.read("a.md"), MINE);
-    assert_eq!(
-        holding(&e.vault, RESTORED).len(),
-        1,
-        "the kept text is gone"
+    // The note is still kept, so its copy stays hidden: the open never shows it.
+    let held = holding(&e.vault, RESTORED);
+    assert_eq!(held.len(), 1, "the kept text is gone");
+    let folder = held[0].parent().unwrap().file_name().unwrap();
+    assert!(
+        is_kept_name(&folder.to_string_lossy()),
+        "the owned copy was moved: {held:?}"
     );
+}
+
+/// The Windows Recycle Bin and the Linux trash put a file back into the folder it left: a
+/// kept note's copy deleted from a hidden folder comes back there.
+#[test]
+fn a_kept_copy_put_back_into_its_hidden_folder_is_shown_at_the_next_open() {
+    let KeptNote {
+        mut e,
+        _index,
+        notes,
+        notices,
+        id,
+    } = kept_at("a.md", FILE, bin_beside);
+    let open = e.session.current().unwrap();
+    e.write("a.md", MINE);
+    kept::delete(&notes, &notices, &open, &id, false).unwrap();
+    let trashed = e.vault.with_extension("trashed").join("a.md");
+    let restored = e.vault.join(".memry-kept-0123456789ab/a.md");
+    // A name off by one character is no copy's folder, and stays.
+    let foreign = e.vault.join(".memry-kept-0123456789abc/b.md");
+    for at in [&restored, &foreign] {
+        fs::create_dir_all(at.parent().unwrap()).unwrap();
+    }
+    fs::rename(&trashed, &restored).unwrap();
+    fs::write(&foreign, RESTORED).unwrap();
+    drop(open);
+    e.close();
+    e.drain();
+    e.open();
+    e.facts_until(indexed);
+    e.after_reconcile();
+
+    assert_eq!(
+        fs::read_to_string(e.vault.join("a (incomplete delete).md"))
+            .ok()
+            .as_deref(),
+        Some(RESTORED),
+        "the put back copy is not in sight"
+    );
+    assert!(
+        !restored.parent().unwrap().exists(),
+        "the hidden folder stayed"
+    );
+    assert_eq!(fs::read_to_string(&foreign).ok().as_deref(), Some(RESTORED));
+    until("the shown copy is a note", || {
+        e.rows()
+            .iter()
+            .any(|(_, path)| path == "a (incomplete delete).md")
+    });
 }

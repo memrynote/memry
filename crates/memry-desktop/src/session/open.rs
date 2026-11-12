@@ -21,6 +21,7 @@ use super::{
 use crate::registry::vaults::basename;
 use crate::vault::config::{applied_exclude_patterns, invalidate_vault_config_cache};
 use crate::vault::init::{CountLimits, count_markdown_files, init_vault, is_vault_initialized};
+use crate::vault::kept_copies::show_ownerless as show_kept_copies;
 use crate::vault::move_journal::sweep as sweep_moves;
 
 /// Settled `data.db.corrupt-*` quarantines kept. Core decides which are settled
@@ -162,7 +163,14 @@ impl Session {
                 shown_folders: count(swept.shown.len()),
             }
         });
-        let note_count = if moves_recovered.is_some() {
+        // Before the watcher too: a kept note's copy no kept note owns is shown
+        // (`vault::kept_copies`); a store that cannot tell keeps it hidden.
+        let shown_kept = show_kept_copies(path, &counted.kept, &mut |note| {
+            vault.note_files().by_path(note).map_or(true, |row| {
+                row.is_some_and(|row| row.content_hash.is_none())
+            })
+        });
+        let note_count = if moves_recovered.is_some() || !shown_kept.is_empty() {
             count_markdown_files(path, &exclude, CountLimits::DEFAULT).count
         } else {
             counted.count

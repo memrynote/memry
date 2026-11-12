@@ -120,8 +120,9 @@ impl NotesService {
         };
         // A copy beside a file at the row's path goes to the trash on its own, first: a refusal
         // of it leaves that file where it was (#4272).
+        let mut copy_trashed = false;
         let removed = match &copied {
-            Some(copy) if copy.at != row.path => trash(&copy.at),
+            Some(copy) if copy.at != row.path => trash(&copy.at).inspect(|()| copy_trashed = true),
             _ => Ok(()),
         };
         let removed = removed.and_then(|()| {
@@ -132,7 +133,8 @@ impl NotesService {
             }
         });
         if let Some(copy) = copied {
-            if removed.is_err() {
+            // A copy in the trash stays there: it repeats the still kept note's text.
+            if removed.is_err() && !copy_trashed {
                 copy.take_back(&echo, root, &row.note_id);
             } else {
                 copy.remove_made_folders(&echo, root);

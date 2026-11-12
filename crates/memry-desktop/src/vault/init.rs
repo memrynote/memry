@@ -12,6 +12,7 @@ use std::io::{self, Write};
 use std::path::{Path, PathBuf};
 
 use super::config::{VaultConfig, config_path};
+use super::kept_copies::is_kept_name;
 use super::layout::MEMRY_DIR;
 use super::move_journal::is_staging_name;
 
@@ -95,6 +96,9 @@ pub struct MarkdownCount {
     /// hidden folder or one named exactly like a pattern, and never through a link. A folder a
     /// pattern only prefixes is searched for them uncounted: the watcher matches whole names.
     pub staging: Vec<PathBuf>,
+    /// The hidden folders of kept notes' copies the walk passed, for the open's sweep
+    /// ([`is_kept_name`]), found as `staging` is.
+    pub kept: Vec<PathBuf>,
 }
 
 /// `countMarkdownFiles`: every regular `.md` file under `vault`, links not followed. An entry
@@ -111,6 +115,7 @@ pub fn count_markdown_files(
         visited: 0,
         truncated: false,
         staging: Vec::new(),
+        kept: Vec::new(),
     };
     // Each folder with whether it is in a hidden one, and whether its notes are counted.
     let mut stack = vec![(vault.to_path_buf(), 0usize, false, true)];
@@ -134,6 +139,9 @@ pub fn count_markdown_files(
                 && entry.file_type().is_ok_and(|kind| kind.is_dir())
             {
                 result.staging.push(entry.path());
+            }
+            if !hidden && is_kept_name(&name) && entry.file_type().is_ok_and(|kind| kind.is_dir()) {
+                result.kept.push(entry.path());
             }
             let prefixed = exclude.iter().any(|p| name.starts_with(p.as_str()));
             let hides = hidden || name.starts_with('.');

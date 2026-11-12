@@ -26,6 +26,7 @@ pub mod import_copy;
 pub mod init;
 pub mod journal_format;
 pub mod journal_rename;
+pub mod kept_copies;
 pub mod late_writes;
 pub mod layout;
 pub mod move_dir;

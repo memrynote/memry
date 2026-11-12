@@ -55,6 +55,7 @@ use crate::vault::consumer::{Applied, ChangeSource, converter_for};
 use crate::vault::embeds::Resolved;
 use crate::vault::file_types::FileType;
 use crate::vault::hash::content_hash;
+use crate::vault::kept_copies::hidden_copy_path;
 use crate::vault::note_file::{
     NoteFileError, hash_file, large_file_class, record_large_file, write_new_text_checked,
 };
@@ -236,11 +237,13 @@ impl NotesService {
     /// Writes the text of the kept row `row` (a markdown note's row that names no text) from its
     /// document, for a delete to move to the trash; `None` for a row that is not kept. The copy
     /// goes at the row's path, or under the same name in a new hidden folder beside it
-    /// ([`staged`]) when anything stands there: a file the watcher has not taken yet, or one
-    /// another case of the name reaches on a case-blind disk, which the delete then trashes
-    /// without the note's text. The open walk and the watcher skip hidden folders, so a copy a
-    /// crash left there is never taken as a new note (#4272); its text stays on disk. A file at
-    /// the path that the document owes its text to (`FileAhead`) is the note's own: no copy.
+    /// ([`hidden_copy_path`]) when anything stands there: a file the watcher has not taken yet,
+    /// or one another case of the name reaches on a case-blind disk, which the delete then
+    /// trashes without the note's text. The open walk and the watcher skip hidden folders, so a
+    /// copy a crash left there is never taken as a new note (#4272): it only repeats text the
+    /// still kept note's document holds, so it is never swept or deleted, and the open shows it
+    /// once no kept note owns it (`vault::kept_copies`). A file at the path that the document
+    /// owes its text to (`FileAhead`) is the note's own: no copy.
     pub(crate) fn write_kept_copy(
         &self,
         lane: &Lane<'_>,
@@ -261,7 +264,7 @@ impl NotesService {
             Err(error) => return Err(error),
         };
         let free = Some(row.path.clone()).filter(|at| !taken(at));
-        for at in free.into_iter().chain([staged(&row.path)]) {
+        for at in free.into_iter().chain([hidden_copy_path(&row.path)]) {
             let copy = KeptCopy {
                 made: first_missing_folder(root, &at)?,
                 at,
@@ -431,7 +434,12 @@ impl KeptCopy {
         };
         for folder in folders_of(&self.at) {
             // `remove_dir` refuses a folder that is not empty, which is the guard wanted here.
-            if let Err(error) = echo.removing(folder, || fs::remove_dir(root.join(folder))) {
+            // One already gone (a folder delete's trash took part of the folder) is removed.
+            let removed = echo.removing(folder, || match fs::remove_dir(root.join(folder)) {
+                Err(error) if error.kind() == ErrorKind::NotFound => Ok(()),
+                other => other,
+            });
+            if let Err(error) = removed {
                 tracing::warn!(
                     scope = SCOPE,
                     "a folder made for a kept note's copy stayed: {error}"
@@ -442,15 +450,6 @@ impl KeptCopy {
                 return;
             }
         }
-    }
-}
-
-/// `rel`'s name in a new hidden folder beside it: `f/.memry-kept-<12 hex>/a.md` for `f/a.md`.
-fn staged(rel: &str) -> String {
-    let id = uuid::Uuid::new_v4().simple().to_string();
-    match rel.rsplit_once('/') {
-        Some((folder, name)) => format!("{folder}/.memry-kept-{}/{name}", &id[..12]),
-        None => format!(".memry-kept-{}/{rel}", &id[..12]),
     }
 }
 
