@@ -45,6 +45,7 @@ struct SignOutBar: View {
             }
             if canSignOut { control }
         }
+        .measuredColumn(Tokens.Size.form)
         .padding(.horizontal, Tokens.Space.screenInline)
         .padding(.vertical, Tokens.Space.medium)
         .calmAnimation(.fast, value: model.isWorking)

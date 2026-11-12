@@ -123,6 +123,7 @@ private struct PhraseScreen: View {
             Button("I have written them down", action: onWrittenDown)
                 .memryPrimaryAction()
         }
+        .measuredColumn(Tokens.Size.form)
         .padding(.horizontal, Tokens.Space.screenInline)
         .padding(.vertical, Tokens.Space.inset)
     }
@@ -208,6 +209,7 @@ private struct ConfirmWordsScreen: View {
                 .tint(Tokens.Text.primary.color)
                 .frame(maxWidth: .infinity, minHeight: Tokens.Size.minimumHitArea)
         }
+        .measuredColumn(Tokens.Size.form)
         .padding(.horizontal, Tokens.Space.screenInline)
         .padding(.vertical, Tokens.Space.inset)
         .task { focused = model.confirmationIndices.first }
