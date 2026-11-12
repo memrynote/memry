@@ -22,6 +22,7 @@ use memry_desktop::vault::config::settings::{
 };
 use memry_desktop::vault::config::{VaultConfig, VaultConfigPatch, config_path};
 use memry_desktop::vault::consumer::Applied;
+use memry_desktop::vault::consumer::identity::NoteIdentity;
 use memry_desktop::vault::journal_rename::ChangeStep;
 use memry_desktop::vault::notices::VaultNotices;
 use serde_json::{Value, json};
@@ -44,12 +45,21 @@ pub(crate) fn opened_noticing(
     config: Value,
     files: &[(&str, &str)],
 ) -> (Env, Arc<dyn SecureStore>, Arc<VaultNotices>) {
+    opened_through(config, files, |identity| identity)
+}
+
+/// [`opened_noticing`], the app's identity seen through `wrap`.
+pub(crate) fn opened_through(
+    config: Value,
+    files: &[(&str, &str)],
+    wrap: impl FnOnce(Arc<NotesIdentity>) -> Arc<dyn NoteIdentity>,
+) -> (Env, Arc<dyn SecureStore>, Arc<VaultNotices>) {
     let mut kept: Option<Arc<dyn SecureStore>> = None;
     let notices = VaultNotices::new();
     let board = notices.clone();
     let mut e = env(|store| {
         kept = Some(store.clone());
-        Some(NotesIdentity::noticing(store, board))
+        Some(wrap(NotesIdentity::noticing(store, board)))
     });
     notices.register(&e.session);
     fs::create_dir_all(e.vault.join(".memry")).unwrap();

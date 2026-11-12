@@ -42,7 +42,7 @@ impl NotesIdentity {
 
     /// The file at `path` has the name of a note or a day whose text is not the file's, or not
     /// here yet: it is listed until an ask names it, or the next open asks again.
-    pub(super) fn undecided(&self, root: &Path, path: &str) {
+    pub(in crate::notes) fn undecided(&self, root: &Path, path: &str) {
         if self
             .notices
             .add(root, Listed::Undecided(&absolute(root, path)))

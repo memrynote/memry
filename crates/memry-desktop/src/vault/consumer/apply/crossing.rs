@@ -2,6 +2,9 @@
 //! identity deleted goes, and the file is made anew as the item it now is. A move out of a
 //! place the exclude patterns cover never crosses: the file is new, and the record stays.
 
+use std::collections::BTreeSet;
+
+use super::super::identity::Settled;
 use super::super::rows::Lane;
 use super::super::{Applied, ChangeSource};
 use super::{Applier, SCOPE, Step};
@@ -11,15 +14,16 @@ use crate::vault::watch::reconcile::modified_ms;
 impl Applier {
     /// The owed moves that changed what their file is, whose records the identity deleted
     /// (`NoteIdentity::settle_crossings`): each file is made anew. Before the open walk, which
-    /// then finds them named.
-    pub(in crate::vault::consumer) fn settle_crossings(&self) {
-        let crossed = self.identity.settle_crossings(&self.ctx());
-        let Ok(mut lane) = self.rows.lane_of(self.session) else {
-            return;
-        };
-        for crossed in crossed {
-            self.recreate(&mut lane, &crossed.note_id, &crossed.path, &crossed.path);
+    /// then finds them named. Answers the owed notes whose file is still theirs
+    /// ([`Settled::theirs`]).
+    pub(in crate::vault::consumer) fn settle_crossings(&self) -> BTreeSet<String> {
+        let Settled { crossed, theirs } = self.identity.settle_crossings(&self.ctx());
+        if let Ok(mut lane) = self.rows.lane_of(self.session) {
+            for crossed in crossed {
+                self.recreate(&mut lane, &crossed.note_id, &crossed.path, &crossed.path);
+            }
         }
+        theirs
     }
 
     /// Once the queue went quiet after a batch of facts: the journal setting follows a journal folder whose days the

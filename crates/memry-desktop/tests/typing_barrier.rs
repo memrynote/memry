@@ -296,22 +296,33 @@ fn the_apps_own_write_read_as_a_change_holds_no_typing() {
     let open = s.e.session.current().unwrap();
     let edit = AppEdit::new(&s.e.tier, &s.store, &open).unwrap();
     let tagged = "---\ntags:\n  - car\n---\nreported words\n";
+    // The app records its write, then `between` runs with the new file not yet at the note's
+    // path, so the watcher cannot have looked at it: the record goes there, past the echo
+    // guard's capacity, and the row's time is read before the read-back moves it.
+    let mut written = None;
+    let mut evict = || {
+        written = Some(indexed_at());
+        for n in 0..CAPACITY {
+            s.e.tier.echo().will_write(&format!("other-{n}.md"), "h");
+        }
+    };
     let edited = WriteOrder::default()
         .run(&s.id, |turn| {
-            edit.run(turn, Precondition::Held, ChangeSource::AppEdit, |_| {
-                Ok::<_, NotesError>(Some(tagged.to_owned()))
-            })
+            edit.run_then(
+                turn,
+                Precondition::Held,
+                ChangeSource::AppEdit,
+                |_| Ok::<_, NotesError>(Some(tagged.to_owned())),
+                || Ok(false),
+                &mut evict,
+            )
         })
         .unwrap();
     assert!(
         matches!(edited, Edited::Wrote { held: true, .. }),
         "{edited:?}"
     );
-    let written = indexed_at();
-    // The record goes before the watcher's debounce let it look at this file.
-    for n in 0..CAPACITY {
-        s.e.tier.echo().will_write(&format!("other-{n}.md"), "h");
-    }
+    let written = written.expect("the write ran its hook");
 
     // The consumer read the file back as its row names it: the row's time moved on.
     let deadline = Instant::now() + WAIT;

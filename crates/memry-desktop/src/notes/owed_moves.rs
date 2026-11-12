@@ -19,7 +19,9 @@ use crate::journal::folder_follow::{
     Follow, batch_held, follow_after_batch, journal_folder_moved, mark_batch,
 };
 use crate::vault::app_move::on_disk;
-use crate::vault::consumer::identity::{Crossed, IdentityCtx, IdentityError, NoteIdentity};
+use crate::vault::consumer::identity::{
+    Crossed, IdentityCtx, IdentityError, NoteIdentity, Settled,
+};
 use crate::vault::journal_format::JournalDays;
 use crate::vault::notices::{LISTED, Listed, RenamedDay, VaultNotice, VaultNotices};
 
@@ -200,7 +202,7 @@ fn cross_if_renamed(
         return Ok(false);
     }
     let removed = cross(identity, ctx, writer, journal, id, &from, path)?;
-    Ok(removed == Removed::Deleted)
+    Ok(removed == Some(Removed::Deleted))
 }
 
 /// The days held already, read once for a pass over every owed move ([`held_owed`]).
@@ -277,49 +279,54 @@ pub(super) fn follow_held(identity: &NotesIdentity, ctx: &IdentityCtx<'_>) -> bo
 }
 
 /// Each owed move that changes what its file is, with its record deleted as the watcher's move
-/// deletes it ([`NotesWriter::file_crossed`]); one whose record stays is left owed, and a held
-/// day is never crossed ([`held`]). The held days renamed away are listed ([`list_renamed`]).
+/// deletes it ([`NotesWriter::file_crossed`]); one whose record the core keeps is left owed,
+/// its file listed as undecided, and a held day is never crossed ([`held`]). A move that keeps
+/// what the file is, or of a held day, leaves the file the record's ([`Settled::theirs`]). The
+/// held days renamed away are listed ([`list_renamed`]).
 pub(super) fn crossings(
     identity: &NotesIdentity,
     ctx: &IdentityCtx<'_>,
     journal: &JournalDays,
     writer: &NotesWriter,
-) -> Vec<Crossed> {
+) -> Settled {
     let root = ctx.root;
+    let mut settled = Settled::default();
     let owed = match writer.owed_places() {
         Ok(owed) => owed,
         Err(error) => {
             tracing::error!(scope = SCOPE, "the owed moves could not be read: {error}");
-            return Vec::new();
+            return settled;
         }
     };
     let holds = match holds(writer) {
         Ok(holds) => holds,
         Err(error) => {
             tracing::error!(scope = SCOPE, "the held days could not be read: {error}");
-            return Vec::new();
+            return settled;
         }
     };
-    let mut crossed = Vec::new();
     for owed in owed {
-        let removed = keeps_kind(journal, writer, &owed.note_id, &owed.path).and_then(|keeps| {
-            if keeps {
-                return Ok(None);
-            }
-            if held_owed(root, journal, writer, &holds, &owed)? {
+        let made = keeps_kind(journal, writer, &owed.note_id, &owed.path).and_then(|keeps| {
+            if keeps || held_owed(root, journal, writer, &holds, &owed)? {
                 return Ok(None);
             }
             let (id, from) = (&owed.note_id, &owed.from_path);
-            Ok(Some(cross(
-                identity, ctx, writer, journal, id, from, &owed.path,
-            )?))
+            cross(identity, ctx, writer, journal, id, from, &owed.path).map(Some)
         });
-        match removed {
-            Ok(Some(Removed::Deleted)) => crossed.push(Crossed {
+        match made {
+            Ok(None) => {
+                settled.theirs.insert(owed.note_id);
+            }
+            Ok(Some(Some(Removed::Deleted))) => settled.crossed.push(Crossed {
                 note_id: owed.note_id,
                 path: owed.path,
             }),
-            Ok(_) => {}
+            // Read, and kept by the core (its record has text the file lacks: a day a pulled
+            // edit revived after a crossing a crash cut short, #4258): the file is not the
+            // item it names, listed as a file put off is, until a crossing makes it.
+            Ok(Some(Some(Removed::Undecided))) => identity.undecided(root, &owed.path),
+            // Not read, or of the large-file class: only owed.
+            Ok(Some(None)) => {}
             Err(error) => tracing::error!(
                 scope = SCOPE,
                 note_id = owed.note_id,
@@ -335,12 +342,13 @@ pub(super) fn crossings(
             "the renamed held days could not be listed: {error}"
         );
     }
-    crossed
+    settled
 }
 
 /// Makes the crossing of the record `id`'s file from `from` to `to` as the core decides
 /// ([`NotesWriter::file_crossed`]), with what the file says there. A file not read, or of the
-/// large-file class, which the tier would not make a note or a day, is only owed the move.
+/// large-file class, which the tier would not make a note or a day, is only owed the move:
+/// `None`.
 pub(super) fn cross(
     identity: &NotesIdentity,
     ctx: &IdentityCtx<'_>,
@@ -349,12 +357,12 @@ pub(super) fn cross(
     id: &str,
     from: &str,
     to: &str,
-) -> Result<Removed, IdentityError> {
+) -> Result<Option<Removed>, IdentityError> {
     let raw = match std::fs::read_to_string(ctx.root.join(to)) {
         Ok(raw) if !is_large_file(u64::try_from(raw.len()).unwrap_or(u64::MAX), &raw) => raw,
         _ => {
             writer.owe_place(id, from)?;
-            return Ok(Removed::Undecided);
+            return Ok(None);
         }
     };
     let body = split_frontmatter_block(&raw).body;
@@ -372,5 +380,6 @@ pub(super) fn cross(
     let (converter, embeds) = identity.reader(ctx, to, body)?;
     writer
         .file_crossed(id, crossing, Some(&converter), Some(&embeds))
+        .map(Some)
         .map_err(|error| IdentityError::Other(error.to_string()))
 }

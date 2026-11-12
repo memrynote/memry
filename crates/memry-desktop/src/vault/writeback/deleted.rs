@@ -5,6 +5,7 @@
 //! whose frontmatter does not parse counts as read once its text was taken (#3750): it goes to
 //! the trash with its block, which the note never held.
 
+use std::collections::BTreeSet;
 use std::path::Path;
 
 use super::Pass;
@@ -30,16 +31,20 @@ pub enum Leftover {
 
 impl Pass {
     /// Moves the file of every tombstoned note whose bytes are still those its row read to
-    /// the trash through `trash`, and removes the row. Each row holds the rows' lane from its
+    /// the trash through `trash`, and removes the row. A note owed a move is among them only
+    /// when the open's crossings left its file its own (`theirs`): a crossing a crash cut short
+    /// leaves its record deleted and owed, with its row, and its file is the item the next
+    /// crossing makes, not a deleted note's (#4258). Each row holds the rows' lane from its
     /// check to its removal, so no feed reads a file it moves; between rows the lane is free
     /// for the app, and a `stopped` consumer or a closed session ends the run, leaving the
     /// rest for the next open.
     pub fn trash_deleted(
         &self,
+        theirs: &BTreeSet<String>,
         trash: &dyn Fn(&Path) -> Result<(), String>,
         stopped: &dyn Fn() -> bool,
     ) -> Vec<(String, Leftover)> {
-        let rows = match self.vault.note_files().rows_of_deleted_notes() {
+        let listed = match self.vault.note_files().rows_of_deleted_notes() {
             Ok(rows) => rows,
             Err(error) => {
                 tracing::error!(
@@ -49,8 +54,18 @@ impl Pass {
                 return Vec::new();
             }
         };
+        let (rows, unsettled): (Vec<_>, Vec<_>) = listed
+            .into_iter()
+            .partition(|(row, owed)| !owed || theirs.contains(&row.note_id));
+        if !unsettled.is_empty() {
+            tracing::warn!(
+                scope = SCOPE,
+                count = unsettled.len(),
+                "files of deleted notes owed a move the open did not settle stay, for a later open"
+            );
+        }
         let mut done = Vec::with_capacity(rows.len());
-        for row in rows {
+        for (row, _) in rows {
             if stopped() {
                 break;
             }
