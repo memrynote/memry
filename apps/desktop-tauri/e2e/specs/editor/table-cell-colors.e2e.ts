@@ -64,6 +64,36 @@ async function selectWordInCell(page: Page, cell: Locator, word: string): Promis
     .toBe(word)
 }
 
+/**
+ * Applies a text mark to the word a cell holds and waits until the cell's document carries it
+ * (`tag`, the mark's element). The word can stop being selected between the check above and
+ * `apply`: on Linux every worker's app shares one X server, and another app taking the PRIMARY
+ * selection clears this page's selection, with no focus or blur event (FLAKE-7D, #3967). The
+ * toolbar then closes or the mark lands on a caret, and the document is unchanged, so selecting
+ * the word again and applying again cannot toggle the mark off.
+ */
+async function markWordInCell(
+  page: Page,
+  cell: Locator,
+  word: string,
+  tag: 'strong' | 'em',
+  apply: () => Promise<void>
+): Promise<void> {
+  await expect
+    .poll(
+      async () => {
+        await selectWordInCell(page, cell, word)
+        await apply()
+        return cell.evaluate(
+          (element: HTMLElement, name: string) => element.querySelector(name) !== null,
+          tag
+        )
+      },
+      { timeout: 30_000 }
+    )
+    .toBe(true)
+}
+
 async function reopen(page: Page, note: { id: string; path: string; title: string }) {
   await page.reload()
   await vaultOpen(page)
@@ -125,10 +155,9 @@ test('bold and italic applied inside a cell reach the file, in both toolbar mode
   const note = await openNewNote(page, `Table Cell Marks ${Date.now()}`, 'seed')
   await setBlocks(page, TABLE_DOC)
 
-  await selectWordInCell(page, page.locator(`${NOTE_EDITOR} td`).first(), 'Shipping')
-  const bold = page.locator('[data-test="bold"]').first()
-  await expect(bold).toBeVisible({ timeout: 10_000 })
-  await bold.click()
+  await markWordInCell(page, page.locator(`${NOTE_EDITOR} td`).first(), 'Shipping', 'strong', () =>
+    page.locator('[data-test="bold"]').first().click({ timeout: 3_000 })
+  )
   await expect
     .poll(async () => (await noteBody(page, note.id)) ?? '', { timeout: 20_000 })
     .toContain('**Shipping**')
@@ -136,8 +165,9 @@ test('bold and italic applied inside a cell reach the file, in both toolbar mode
   await invoke(page, 'settings_set_group', { group: 'editor', patch: { toolbarMode: 'sticky' } })
   await reopen(page, note)
 
-  await selectWordInCell(page, page.locator(`${NOTE_EDITOR} td`).nth(1), 'Open')
-  await page.keyboard.press('ControlOrMeta+i')
+  await markWordInCell(page, page.locator(`${NOTE_EDITOR} td`).nth(1), 'Open', 'em', () =>
+    page.keyboard.press('ControlOrMeta+i')
+  )
   await expect
     .poll(async () => (await noteBody(page, note.id)) ?? '', { timeout: 20_000 })
     .toContain('*Open*')
