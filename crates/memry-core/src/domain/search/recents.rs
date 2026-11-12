@@ -8,7 +8,7 @@
 
 use rusqlite::{Connection, params};
 
-use super::{HitKind, SearchHit, failed, is_live, note_kind};
+use super::{HitKind, MatchKind, SearchHit, failed, is_live, note_kind};
 use crate::api::errors::StorageError;
 
 /// How many recents a vault keeps, newest first.
@@ -99,6 +99,8 @@ pub fn list(data: &Connection) -> Result<Vec<Recent>, StorageError> {
                 kind,
                 score: 0.0,
                 snippet: Vec::new(),
+                match_kind: MatchKind::Body,
+                matched_name: None,
             },
             query,
             visited_at,
@@ -148,6 +150,8 @@ mod tests {
             kind,
             score: -1.5,
             snippet: Vec::new(),
+            match_kind: MatchKind::Body,
+            matched_name: None,
         }
     }
 
