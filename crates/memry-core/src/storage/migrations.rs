@@ -144,6 +144,11 @@ pub const INDEX_MIGRATIONS: &[Migration] = &[
         name: "link_target_keys",
         sql: include_str!("migrations/index/0002_link_target_keys.sql"),
     },
+    Migration {
+        version: 3,
+        name: "fts_inbox",
+        sql: include_str!("migrations/index/0003_fts_inbox.sql"),
+    },
 ];
 
 /// The version a fully migrated database sits at. Zero for an empty list.
@@ -318,10 +323,11 @@ mod tests {
         let version = db
             .call_blocking(|conn| user_version(conn))
             .expect("user_version");
-        assert_eq!(version, 2);
+        assert_eq!(version, 3);
 
         let names = table_names(&db);
         for expected in [
+            "fts_inbox",
             "fts_notes",
             "fts_tasks",
             "index_meta",

@@ -41,6 +41,7 @@ pub fn record(
         HitKind::Note { .. } => "note",
         HitKind::Journal { .. } => "journal",
         HitKind::Task => "task",
+        HitKind::Inbox => "inbox",
     };
     data.execute(
         "INSERT INTO search_recents (item_type, item_id, title, query, visited_at)
@@ -84,10 +85,10 @@ pub fn list(data: &Connection) -> Result<Vec<Recent>, StorageError> {
 
     let mut recents = Vec::new();
     for (item_type, id, title, query, visited_at) in rows {
-        let kind = if item_type == "task" {
-            is_live(data, "task", &id)?.then_some(HitKind::Task)
-        } else {
-            note_kind(data, &id)?
+        let kind = match item_type.as_str() {
+            "task" => is_live(data, "task", &id)?.then_some(HitKind::Task),
+            "inbox" => is_live(data, "inbox", &id)?.then_some(HitKind::Inbox),
+            _ => note_kind(data, &id)?,
         };
         let Some(kind) = kind else {
             continue;

@@ -5,8 +5,8 @@ import SwiftUI
 // the same top trailing slot. One sheet over the whole shell, so a query
 // reads the same whichever page it started on.
 //
-// **Where a hit opens.** A note opens on the Notes page, a task in Tasks and a
-// journal hit on its day in Journal, each closing the sheet first, wherever
+// **Where a hit opens.** A note opens on the Notes page, a task in Tasks, an
+// inbox capture in Inbox and a journal hit on its day in Journal, each closing the sheet first, wherever
 // those pages sit in the bar. A note or journal hit hands its page the query
 // (`SearchFindRequests`), which opens find on the first matching block.
 
@@ -34,7 +34,7 @@ struct GlobalSearchToolbarItem: ToolbarContent {
 
 enum GlobalSearchCopy {
     static let open = "Search"
-    static let prompt = "Search notes, journal and tasks"
+    static let prompt = "Search notes, tasks, journal, inbox"
     static let unavailable = "Search is not available"
     static let unavailableDetail = "This vault's search index could not be opened on this iPhone."
     static let stale = "Search may be out of date"
@@ -45,6 +45,7 @@ struct GlobalSearchSheet: View {
     let browse: VaultBrowseViewModel?
     let openNote: (String) -> Void
     let openTask: (String) -> Void
+    let openInboxItem: (String) -> Void
     let openJournalDay: (String) -> Void
 
     @State private var model: VaultSearchViewModel?
@@ -104,7 +105,8 @@ struct GlobalSearchSheet: View {
                     }
                 }
                 switch model?.phase {
-                case let .results(hits) where !hits.isEmpty || !(model?.taskHits.isEmpty ?? true):
+                case let .results(hits) where !hits.isEmpty || !(model?.taskHits.isEmpty ?? true)
+                    || !(model?.inboxHits.isEmpty ?? true):
                     ForEach(hits, id: \.id) { hit in
                         if hit.kind == "journal" {
                             SearchHitRow(hit: hit)
@@ -145,6 +147,11 @@ struct GlobalSearchSheet: View {
                                 .accessibilityAddTraits(.isHeader)
                         }
                     }
+                    SearchInboxSection(hits: model?.inboxHits ?? []) { hit in
+                        record(hit)
+                        dismiss()
+                        openInboxItem(hit.id)
+                    }
                 case .results:
                     ContentUnavailableView.search(text: query)
                         .listRowSeparator(.hidden)
@@ -160,7 +167,8 @@ struct GlobalSearchSheet: View {
                         SearchRecentsSection(
                             model: recents,
                             openNote: { dismiss(); openNote($0) },
-                            openTask: { dismiss(); openTask($0) }
+                            openTask: { dismiss(); openTask($0) },
+                            openInboxItem: { dismiss(); openInboxItem($0) }
                         )
                     }
                 }

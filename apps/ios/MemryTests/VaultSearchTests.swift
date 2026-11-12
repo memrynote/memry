@@ -24,6 +24,8 @@ struct VaultSearchTests {
         /// TP056. No task hits: the task half of a query is asserted in
         /// `TasksNotesTests` against a real index.
         func tasks(query: String, limit: UInt32) async throws -> [SearchResult] { [] }
+        /// #4320. Asserted against a real index in `SearchInboxTests`.
+        func inbox(query: String, limit: UInt32) async throws -> [SearchResult] { [] }
 
         let queries = Mutex([String]())
         let reindexes = Mutex(0)

@@ -21,8 +21,9 @@
 //! and an insert of the same bytes, so the safe direction costs nothing.
 //!
 //! A missing watermark, or an `index_meta` `data.user_version` that does not
-//! match `data.db`, forces a full rebuild: both FTS tables are emptied and
-//! every live row is re-indexed.
+//! match `data.db`, forces a full rebuild: every FTS table is emptied and
+//! every live row is re-indexed. `fts_inbox` is [`super::inbox`]'s, called
+//! from here with its own watermark.
 
 use std::collections::BTreeSet;
 
@@ -66,6 +67,8 @@ pub struct Reindexed {
     pub notes_removed: usize,
     pub tasks_indexed: usize,
     pub tasks_removed: usize,
+    pub inbox_indexed: usize,
+    pub inbox_removed: usize,
     /// Rows the apply path had already flagged corrupt. Not an error here.
     pub corrupt_skipped: usize,
 }
@@ -120,6 +123,7 @@ pub fn reindex(
     for id in &task_ids {
         index_task(data, &transaction, id, &mut done)?;
     }
+    super::inbox::reindex(data, &transaction, full, &mut done)?;
 
     meta_set(&transaction, DATA_VERSION_KEY, &version.to_string())?;
     meta_set(&transaction, STAMPS_KEY, &STAMPS_VERSION.to_string())?;
@@ -177,7 +181,7 @@ fn task_candidates(
     )
 }
 
-fn candidates(
+pub(super) fn candidates(
     data: &Connection,
     sql: &str,
     bound: &[&dyn rusqlite::ToSql],
@@ -385,7 +389,7 @@ fn read_payload(
     })
 }
 
-fn meta_number(index: &Connection, key: &str) -> Result<Option<i64>, StorageError> {
+pub(super) fn meta_number(index: &Connection, key: &str) -> Result<Option<i64>, StorageError> {
     let raw: Option<Option<String>> = index
         .query_row(
             "SELECT value FROM index_meta WHERE key = ?1",
@@ -403,7 +407,7 @@ fn meta_number(index: &Connection, key: &str) -> Result<Option<i64>, StorageErro
     }
 }
 
-fn meta_set(index: &Connection, key: &str, value: &str) -> Result<(), StorageError> {
+pub(super) fn meta_set(index: &Connection, key: &str, value: &str) -> Result<(), StorageError> {
     index
         .execute(
             "INSERT INTO index_meta (key, value) VALUES (?1, ?2)

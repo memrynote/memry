@@ -257,6 +257,8 @@ private struct TaskSearchFake: VaultSearching {
         return tasks
     }
 
+    func inbox(query: String, limit: UInt32) async throws -> [SearchResult] { [] }
+
     func reindex() async throws {}
 
     func backlinks(noteId: String, order: BacklinkOrder) async throws -> [Backlink] { [] }
