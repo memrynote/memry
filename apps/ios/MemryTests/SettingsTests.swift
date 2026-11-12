@@ -132,6 +132,19 @@ struct SettingsTests {
         #expect(AccentColor.normalized("#12") == nil)
     }
 
+    // #4375: an iPad draws as an iPad once it reports its form factor. A device
+    // listed with none, from before the field or an older server, falls back
+    // to its platform.
+    @Test func a_device_symbol_follows_the_form_factor_then_the_platform() {
+        func device(_ platform: String, _ formFactor: DeviceFormFactor?) -> AccountDevice {
+            AccountDevice(id: "d", name: "d", platform: platform, formFactor: formFactor, appVersion: nil,
+                          lastSyncAt: nil, createdAt: nil, isCurrent: false)
+        }
+        #expect(DevicesScreen.symbol(device("ios", .tablet)) == "ipad")
+        #expect(DevicesScreen.symbol(device("ios", .phone)) == "iphone")
+        #expect(DevicesScreen.symbol(device("ios", nil)) == "iphone")
+        #expect(DevicesScreen.symbol(device("macos", nil)) == "laptopcomputer")
+    }
 }
 
 /// A core that refuses every write, for the revert path.
