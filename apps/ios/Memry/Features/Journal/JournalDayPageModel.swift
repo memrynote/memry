@@ -92,14 +92,14 @@ final class JournalDayPageModel {
     /// so the sync pass (which pulls bodies of records it applied) never
     /// fetches it; a note page does the same on open. Offline or not yet
     /// synced is not an error here: the local body stays on screen.
-    func pullRemoteBody(store: JournalStore) async {
+    func pullRemoteBody(store: JournalStore, index: VaultSearchIndex?) async {
         guard let filler = store.context?.filler, store.cachedDay(date) != nil else { return }
         do {
             let summary = try await filler.fetchNoteBody(noteId: read.route.id)
             guard summary.updates > 0 || summary.baselines > 0 else { return }
-            // The pulled body may carry new links: index it, then let every
-            // page re-read (generation), which also refreshes backlinks.
-            await JournalTabContent.reindex(store)
+            // The pulled body may carry new links and words: the index owner
+            // catches up, and backlinks re-read when it has.
+            index?.schedule()
             await store.refresh()
         } catch {
             Log.sync.debug("a journal day body could not be pulled")
