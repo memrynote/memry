@@ -3,7 +3,8 @@ import { mkdirSync, mkdtempSync, rmSync, writeFileSync } from 'node:fs'
 import { release, tmpdir } from 'node:os'
 import { join } from 'node:path'
 
-import { driverReady, forceKill, isAlive, spawnApp } from './app-process'
+import { type AppExit, crashEvidence, describeExit } from './app-exit'
+import { APP_OUTPUT_DIR, driverReady, forceKill, isAlive, spawnApp } from './app-process'
 import { GRACEFUL_CLOSE_MS, SCRIPT_TIMEOUT_MS } from './budgets'
 import { HarnessError } from './errors'
 import { removeDir } from './remove-dir'
@@ -207,12 +208,43 @@ async function stopRunningApp(executor: AppBrowser, port: number): Promise<void>
   }
 }
 
+/** How long a failed WebDriver call waits for the app's exit: the socket closes before Node hears. */
+const EXIT_REPORT_MS = 3_000
+
 async function start(
   executor: AppBrowser,
   base: Omit<TauriApp, 'executor' | 'pid' | 'exited'>
 ): Promise<TauriApp> {
   const child = await spawnApp(base.port)
-  const exited = new Promise<number | null>((resolve) => child.once('exit', resolve))
+  let exit: AppExit | undefined
+  const exited = new Promise<number | null>((resolve) =>
+    child.once('exit', (code, signal) => {
+      exit = { code, signal }
+      resolve(code)
+    })
+  )
+  try {
+    return await connect(executor, base, exited)
+  } catch (error) {
+    await pollUntil(() => exit !== undefined, { timeoutMs: EXIT_REPORT_MS, intervalMs: 50 })
+    if (!exit || !child.pid) throw error
+    const evidence = await crashEvidence(
+      { appDataDir: base.dirs.appDataDir, pid: child.pid, exit },
+      APP_OUTPUT_DIR,
+      `app-${base.port}-${child.pid}`
+    )
+    throw new HarnessError(
+      `the app (pid ${child.pid}) exited with ${describeExit(exit)} while the harness waited for it: ${String(error)}\n${evidence}`,
+      { cause: error }
+    )
+  }
+}
+
+async function connect(
+  executor: AppBrowser,
+  base: Omit<TauriApp, 'executor' | 'pid' | 'exited'>,
+  exited: Promise<number | null>
+): Promise<TauriApp> {
   await executor.reloadSession()
   await executor.setTimeout({ script: SCRIPT_TIMEOUT_MS })
   const info = await waitForApp(executor)
