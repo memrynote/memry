@@ -49,8 +49,9 @@ fn served() -> Served {
     e.open();
     e.facts_until(indexed);
     let id = e.rows()[0].0.clone();
-    // The watcher's start settles before the test edits the file.
-    std::thread::sleep(Duration::from_millis(300));
+    // The watcher is live, and the OS's reports from before its watch are read, before the test
+    // edits the file.
+    e.watcher_live();
     Served { e, store, host, id }
 }
 
