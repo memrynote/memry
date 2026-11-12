@@ -36,7 +36,9 @@
 //! A type (notes, journals, tasks, inbox) with fewer than three hits also gets the
 //! titles [`fuzzy`] matches, after its body hits and without a snippet, as
 //! desktop's fallback adds them. Notes and journals then take their alias
-//! matches ([`names`]). Each hit says which of the three found it.
+//! matches ([`names`]). Each hit says which of the three found it. A query
+//! with an operator or a quoted phrase gets neither fallback: `NOT` excludes
+//! by body text a title match cannot see, and a phrase asks for exact words.
 //!
 //! ## Groups and filters
 //!
@@ -191,7 +193,8 @@ pub fn search(
 
 /// One group: the index's hits the filter keeps, then fuzzy title matches
 /// when fewer than three are left, then, for notes and journals, alias
-/// matches.
+/// matches. A query with operators or a quoted phrase takes the index's hits
+/// alone.
 fn search_type(
     data: &Connection,
     index: &Connection,
@@ -206,6 +209,9 @@ fn search_type(
     let mut hits = body_hits(data, index, query, kind, filter.fetch_limit(limit))?;
     hits.retain(|hit| keeps(&hit.id));
     hits.truncate(limit);
+    if query.explicit {
+        return Ok(hits);
+    }
     if hits.len() < FUZZY_FALLBACK_BELOW {
         let live = live_ids(data, item_type(kind))?;
         let candidates: Vec<_> = titles(index, table(kind))?

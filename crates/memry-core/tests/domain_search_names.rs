@@ -170,3 +170,25 @@ fn an_alias_finds_its_note_and_names_itself() {
         ]
     );
 }
+
+#[test]
+fn an_excluded_title_stays_out_of_the_fuzzy_and_alias_fallbacks() {
+    let (data, index) = databases();
+    note(&data, "agenda", "Meeting agenda");
+    put(
+        &data,
+        "note",
+        "personal",
+        r#"{"title":"Meeting notes personal","aliases":["Meeting not personal"]}"#,
+    );
+
+    assert_eq!(
+        listed(&notes(&data, &index, "meeting NOT personal")),
+        [("agenda", MatchKind::Body, None)]
+    );
+    assert_eq!(
+        listed(&notes(&data, &index, "\"meeting agenda\"")),
+        [("agenda", MatchKind::Body, None)],
+        "a quoted phrase asks for those words, not titles that look like them"
+    );
+}

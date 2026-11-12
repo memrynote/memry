@@ -66,6 +66,7 @@ struct GlobalSearchSheet: View {
                 }
                 .searchFocused($isFocused)
                 .onChange(of: query) { _, query in model?.run(query) }
+                .onChange(of: searchIndex?.completed) { model?.rerun() }
                 .toolbar {
                     ToolbarItem(placement: .cancellationAction) {
                         Button(role: .close) { dismiss() }

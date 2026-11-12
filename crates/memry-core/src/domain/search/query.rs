@@ -37,6 +37,10 @@ pub struct FtsQuery {
     /// matching it sort first; `None` for a single word or a query with
     /// operators or quotes, which keep plain bm25 order.
     pub phrase: Option<String>,
+    /// The user typed an operator or a quoted phrase. Such a query is answered
+    /// by the index alone: a title fallback cannot honour `NOT`, which
+    /// excludes rows by their body, and cannot tell a phrase from loose words.
+    pub explicit: bool,
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
@@ -122,6 +126,9 @@ pub fn parse(query: &str) -> Option<FtsQuery> {
         })
         .collect::<Option<_>>()
         .unwrap_or_default();
+    let explicit = tokens
+        .iter()
+        .any(|token| matches!(token, Token::Phrase(_) | Token::Operator(_)));
     let phrase = (terms.len() > 1).then(|| {
         let words: Vec<&str> = terms
             .iter()
@@ -130,7 +137,11 @@ pub fn parse(query: &str) -> Option<FtsQuery> {
             .collect();
         format!("\"{}\"*", words.join(" "))
     });
-    Some(FtsQuery { expression, phrase })
+    Some(FtsQuery {
+        expression,
+        phrase,
+        explicit,
+    })
 }
 
 /// Splits on `"` pairs first, then on whitespace. A `"` with no partner is a

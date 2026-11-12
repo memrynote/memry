@@ -130,7 +130,7 @@ struct VaultSearchTests {
         #expect(model.phase == .results([hit("n1", "Dune")]))
     }
 
-    @Test("a burst of sync passes reindexes once and runs the query on screen again")
+    @Test("a burst of sync passes reindexes once, and the screen runs the query on it again")
     func syncPassesReindexAndRequery() async {
         // #4324: a sync landing while the sheet is open used to stay invisible
         // until the sheet was reopened.
@@ -144,12 +144,34 @@ struct VaultSearchTests {
         index.schedule()
         index.schedule()
         await index.settle()
+        #expect(index.completed == 1)
+        model.rerun()
         await model.settle()
 
         #expect(search.reindexes.withLock { $0 } == 1, "the burst is debounced into one reindex")
-        #expect(search.queries.withLock { $0 } == ["dune", "dune"], "the finished reindex re-ran the query")
+        #expect(search.queries.withLock { $0 } == ["dune", "dune"], "the screen re-ran the query")
         #expect(model.phase == .results([hit("n1", "Dune")]))
         #expect(!model.isIndexStale)
+    }
+
+    @Test("a model whose sheet is gone runs no query when a reindex finishes")
+    func aDismissedModelStaysQuiet() async {
+        // SwiftUI keeps a dismissed sheet's toolbar, and with it the model,
+        // alive. A model that followed the index itself re-ran its last query
+        // on every sync pass for each sheet opened since launch.
+        let search = ScriptedSearch(hits: [hit("n1", "Dune")])
+        let index = VaultSearchIndex(search: search, debounce: .zero)
+        let model = VaultSearchViewModel(search: search, index: index, debounce: .zero)
+        model.run("dune")
+        await model.settle()
+
+        index.schedule()
+        await index.settle()
+        for _ in 0..<10 { await Task.yield() }
+        await model.settle()
+
+        #expect(search.reindexes.withLock { $0 } == 1)
+        #expect(search.queries.withLock { $0 } == ["dune"], "only the screen re-runs a query")
     }
 
     @Test("a failed reindex says search may be out of date, and Retry clears it")
@@ -169,10 +191,9 @@ struct VaultSearchTests {
 
         search.reindexFailure.withLock { $0 = nil }
         await model.retryIndex()
-        await model.settle()
 
         #expect(!model.isIndexStale)
         #expect(search.reindexes.withLock { $0 } == 2)
-        #expect(search.queries.withLock { $0 } == ["dune", "dune"])
+        #expect(index.completed == 1, "the screen re-runs the query when this moves")
     }
 }
