@@ -10,21 +10,15 @@ import Testing
 private let utc = TimeZone(identifier: "UTC")!
 private let english = Locale(identifier: "en_US")
 
-private func calendar(_ identifier: Calendar.Identifier = .gregorian, firstWeekday: Int = 1) -> Calendar {
+private func calendar(_ identifier: Calendar.Identifier = .gregorian) -> Calendar {
     var calendar = Calendar(identifier: identifier)
     calendar.timeZone = utc
     calendar.locale = english
-    calendar.firstWeekday = firstWeekday
     return calendar
 }
 
-/// Noon UTC on a Gregorian day.
-private func noon(_ year: Int, _ month: Int, _ day: Int) -> Date {
-    calendar().date(from: DateComponents(year: year, month: month, day: day, hour: 12))!
-}
-
-/// Thursday.
-private let thursday = noon(2026, 11, 12)
+/// Noon UTC on Thursday 2026-11-12.
+private let thursday = calendar().date(from: DateComponents(year: 2026, month: 11, day: 12, hour: 12))!
 
 private func hit(
     kind: String, title: String, journalDate: String? = nil, emoji: String? = nil,
@@ -73,7 +67,7 @@ struct SearchRowTextTests {
             kind: "journal", title: "2026-11-10", journalDate: "2026-11-10", snippet: "the router password"
         ))
 
-        #expect(text.title == "Tue")
+        #expect(text.title == "Nov 10")
         #expect(text.caption == .journal)
         #expect(text.accessibilityLabel == "Journal, Tuesday, November 10, the router password")
     }
@@ -89,9 +83,8 @@ struct SearchRowTextTests {
 
 @Suite("Search day label")
 struct SearchDayLabelTests {
-    private func label(_ day: String, now: Date = thursday, calendar: Calendar = calendar(),
-                       locale: Locale = english) -> String {
-        SearchDayLabel.text(day, now: now, calendar: calendar, locale: locale)
+    private func label(_ day: String, calendar: Calendar = calendar(), locale: Locale = english) -> String {
+        SearchDayLabel.text(day, now: thursday, calendar: calendar, locale: locale)
     }
 
     @Test func today_and_its_neighbours_are_named() {
@@ -101,19 +94,16 @@ struct SearchDayLabelTests {
         #expect(label("2026-11-12", locale: Locale(identifier: "tr_TR")) == "Bugün")
     }
 
-    @Test func a_day_earlier_this_week_is_its_weekday() {
-        #expect(label("2026-11-10") == "Tue")
+    @Test func a_day_two_to_six_days_ahead_is_its_weekday() {
+        #expect(label("2026-11-15") == "Sun")
+        #expect(label("2026-11-18") == "Wed")
+        #expect(label("2026-11-19") == "Nov 19")
     }
 
-    @Test func an_older_day_is_month_and_day_with_the_year_only_when_it_differs() {
+    @Test func a_past_day_beyond_yesterday_is_month_and_day_with_the_year_only_when_it_differs() {
+        #expect(label("2026-11-10") == "Nov 10")
         #expect(label("2026-07-21") == "Jul 21")
         #expect(label("2025-07-21") == "Jul 21, 2025")
-    }
-
-    @Test func the_week_starts_where_the_calendar_says() {
-        let sunday = noon(2026, 11, 15)
-        #expect(label("2026-11-09", now: sunday, calendar: calendar(firstWeekday: 2)) == "Mon")
-        #expect(label("2026-11-09", now: sunday, calendar: calendar(firstWeekday: 1)) == "Nov 9")
     }
 
     @Test func a_non_gregorian_calendar_counts_its_own_years() {

@@ -61,16 +61,15 @@ enum SearchFolderPath {
 }
 
 /// Desktop's `dayLabel` (`search-format.ts`) in the user's locale and
-/// calendar: "Today", "Yesterday" or "Tomorrow", a weekday in the current
-/// week, else "Jul 21", with the year when it is not this year's.
+/// calendar: "Yesterday", "Today" or "Tomorrow", the short weekday for two to
+/// six days ahead, else "Jul 21", with the year when it is not this year's.
 enum SearchDayLabel {
     static func text(_ isoDay: String, now: Date, calendar: Calendar, locale: Locale) -> String {
         guard let day = date(isoDay, calendar: calendar) else { return isoDay }
-        if let relative = relative(day, now: now, calendar: calendar, locale: locale) { return relative }
+        let offset = days(from: now, to: day, calendar: calendar)
+        if (-1...1).contains(offset) { return relative(offset, calendar: calendar, locale: locale) }
         let style = Date.FormatStyle(locale: locale, calendar: calendar, timeZone: calendar.timeZone)
-        if calendar.isDate(day, equalTo: now, toGranularity: .weekOfYear) {
-            return day.formatted(style.weekday(.abbreviated))
-        }
+        if (2...6).contains(offset) { return day.formatted(style.weekday(.abbreviated)) }
         let monthDay = style.month(.abbreviated).day()
         return day.formatted(calendar.isDate(day, equalTo: now, toGranularity: .year) ? monthDay : monthDay.year())
     }
@@ -78,16 +77,18 @@ enum SearchDayLabel {
     /// The same day for VoiceOver: the relative word, else the full date.
     static func spoken(_ isoDay: String, now: Date, calendar: Calendar, locale: Locale) -> String {
         guard let day = date(isoDay, calendar: calendar) else { return isoDay }
-        if let relative = relative(day, now: now, calendar: calendar, locale: locale) { return relative }
+        let offset = days(from: now, to: day, calendar: calendar)
+        if (-1...1).contains(offset) { return relative(offset, calendar: calendar, locale: locale) }
         let style = Date.FormatStyle(locale: locale, calendar: calendar, timeZone: calendar.timeZone)
             .weekday(.wide).month(.wide).day()
         return day.formatted(calendar.isDate(day, equalTo: now, toGranularity: .year) ? style : style.year())
     }
 
-    private static func relative(_ day: Date, now: Date, calendar: Calendar, locale: Locale) -> String? {
-        guard let offset = calendar.dateComponents(
-            [.day], from: calendar.startOfDay(for: now), to: calendar.startOfDay(for: day)
-        ).day, (-1...1).contains(offset) else { return nil }
+    private static func days(from now: Date, to day: Date, calendar: Calendar) -> Int {
+        calendar.dateComponents([.day], from: calendar.startOfDay(for: now), to: calendar.startOfDay(for: day)).day ?? 0
+    }
+
+    private static func relative(_ offset: Int, calendar: Calendar, locale: Locale) -> String {
         let formatter = RelativeDateTimeFormatter()
         formatter.locale = locale
         formatter.calendar = calendar
