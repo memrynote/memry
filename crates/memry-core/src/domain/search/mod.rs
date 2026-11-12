@@ -21,27 +21,15 @@
 //! indexes markdown and this core indexes `extract_text` output (§A.5), and
 //! those are not the same bytes.
 //!
-//! ## A user string is not an FTS5 query
+//! ## The query grammar
 //!
-//! A raw string handed to `MATCH` is parsed as an FTS5 expression, so a lone
-//! `"`, a bare `*`, a `-`, a `:`, `NEAR`, `OR` or a `(` either changes the
-//! query the user meant or raises a SQL error that reaches the caller as a
-//! failed search. [`match_expression`] therefore **never** passes user text
-//! through. It splits the string on every non-alphanumeric character — which
-//! is what the `unicode61` tokenizer does to the indexed side anyway, so no
-//! term is lost that the index could have matched — wraps each surviving run
-//! in double quotes, and joins them with an explicit `AND`.
-//!
-//! That is safe by construction rather than by escaping: an FTS5 string
-//! literal ends at its closing quote, every syntax character FTS5 recognises is
-//! ASCII punctuation, and a run of alphanumerics contains none of them. So no
-//! input can close the quote, and `OR` arrives as the word "or" rather than as
-//! an operator. A string with no alphanumeric run at all yields `None` and the
-//! search returns no hits without touching SQL.
-//!
-//! Prefix (`*`), `NEAR`, `OR` and column filters are deliberately not exposed.
-//! Nothing in FR-053 asks for them and each one is a second syntax to keep
-//! parity on.
+//! [`query::parse`] turns the search box text into the `MATCH` expression:
+//! prefix words, `"exact phrases"` and uppercase `AND` / `OR` / `NOT`, as
+//! desktop does. It builds the expression from parsed tokens and never passes
+//! user text through, so no input raises an FTS5 syntax error. A string with no
+//! searchable term returns no hits without touching SQL. A plain multi-word
+//! query on notes and journals also sorts the rows holding its words side by
+//! side first, then by bm25.
 //!
 //! ## Nothing is dropped quietly
 //!
@@ -58,13 +46,14 @@
 //! core's only document-to-text operation; this module writes no second
 //! extractor.
 
-use rusqlite::{Connection, OptionalExtension as _, params};
+use rusqlite::{Connection, OptionalExtension as _, ToSql, params};
 
 use crate::api::errors::StorageError;
 
 mod links;
 mod literal_links;
 mod maintenance;
+mod query;
 mod snippet;
 
 pub use maintenance::{
@@ -114,16 +103,29 @@ pub fn search_notes(
     query: &str,
     limit: usize,
 ) -> Result<Vec<SearchHit>, StorageError> {
-    let Some(expression) = match_expression(query) else {
+    let Some(query) = query::parse(query) else {
         return Ok(Vec::new());
+    };
+    // Rows holding the words side by side first. This only reorders the
+    // matching rows; which rows match is the expression's alone.
+    let phrase_first = if query.phrase.is_some() {
+        "id NOT IN (SELECT id FROM fts_notes WHERE fts_notes MATCH ?3),"
+    } else {
+        ""
     };
     let sql = format!(
         "SELECT id, title, {NOTES_RANK} AS score, {}
-         FROM fts_notes WHERE fts_notes MATCH ?1 ORDER BY score LIMIT ?2",
+         FROM fts_notes WHERE fts_notes MATCH ?1 ORDER BY {phrase_first} score LIMIT ?2",
         snippet::snippet_sql("fts_notes", 2)
     );
     let mut hits = Vec::new();
-    for (id, title, score, snippet) in scored(index, &sql, &expression, limit)? {
+    for (id, title, score, snippet) in scored(
+        index,
+        &sql,
+        &query.expression,
+        query.phrase.as_deref(),
+        limit,
+    )? {
         let Some(kind) = note_kind(data, &id)? else {
             continue;
         };
@@ -149,7 +151,7 @@ pub fn search_tasks(
     query: &str,
     limit: usize,
 ) -> Result<Vec<SearchHit>, StorageError> {
-    let Some(expression) = match_expression(query) else {
+    let Some(query) = query::parse(query) else {
         return Ok(Vec::new());
     };
     let sql = format!(
@@ -158,7 +160,7 @@ pub fn search_tasks(
         snippet::snippet_sql("fts_tasks", 2)
     );
     let mut hits = Vec::new();
-    for (id, title, score, snippet) in scored(index, &sql, &expression, limit)? {
+    for (id, title, score, snippet) in scored(index, &sql, &query.expression, None, limit)? {
         if !is_live(data, "task", &id)? {
             continue;
         }
@@ -171,18 +173,6 @@ pub fn search_tasks(
         });
     }
     Ok(hits)
-}
-
-/// Turns a user string into an FTS5 `MATCH` expression, or `None` when it
-/// carries no searchable term. See the module documentation for why this is a
-/// rewrite and not an escape.
-pub fn match_expression(query: &str) -> Option<String> {
-    let terms: Vec<String> = query
-        .split(|character: char| !character.is_alphanumeric())
-        .filter(|term| !term.is_empty())
-        .map(|term| format!("\"{term}\""))
-        .collect();
-    (!terms.is_empty()).then(|| terms.join(" AND "))
 }
 
 /// `Note`, or `Journal` with its date, or `None` when `data.db` says the item
@@ -219,17 +209,24 @@ fn is_live(data: &Connection, item_type: &str, item_id: &str) -> Result<bool, St
 /// One ranked row: id, title, bm25 score, snippet.
 type Scored = (String, String, f64, Vec<SnippetSegment>);
 
-/// One ranked page. Every row is collected through `?`: a row that will not
-/// read stops the search rather than vanishing from the results.
+/// One ranked page. `?1` is the expression, `?2` the limit and `?3`, when
+/// given, the phrase. Every row is collected through `?`: a row that
+/// will not read stops the search rather than vanishing from the results.
 fn scored(
     index: &Connection,
     sql: &str,
     expression: &str,
+    phrase: Option<&str>,
     limit: usize,
 ) -> Result<Vec<Scored>, StorageError> {
     let mut statement = index.prepare(sql).map_err(failed)?;
+    let limit = limit as i64;
+    let mut parameters: Vec<&dyn ToSql> = vec![&expression, &limit];
+    if let Some(phrase) = &phrase {
+        parameters.push(phrase);
+    }
     let rows = statement
-        .query_map(params![expression, limit as i64], |row| {
+        .query_map(parameters.as_slice(), |row| {
             // The title is read null-tolerantly. Nothing this module inserts
             // writes a NULL there, but an index written by another build might,
             // and a NULL title is a hit with no label rather than a lost note.
@@ -254,63 +251,6 @@ pub(super) fn failed(error: rusqlite::Error) -> StorageError {
 #[cfg(test)]
 mod tests {
     use super::*;
-
-    #[test]
-    fn a_plain_query_becomes_quoted_terms_joined_by_and() {
-        assert_eq!(
-            match_expression("protocol chapter").as_deref(),
-            Some("\"protocol\" AND \"chapter\"")
-        );
-    }
-
-    #[test]
-    fn every_fts5_metacharacter_leaves_as_a_separator_or_not_at_all() {
-        // An unbalanced quote, a bare star, a column filter, a negation, a
-        // parenthesis and a caret: none of them can reach the parser.
-        for hostile in [
-            "he said \"hello",
-            "*",
-            "title:foo",
-            "-bar",
-            "(a OR b)",
-            "^start",
-            "a AND NOT b",
-            "NEAR(a b, 2)",
-            "\"\"\"",
-        ] {
-            let Some(expression) = match_expression(hostile) else {
-                continue;
-            };
-            let terms = expression.split(" AND ").count();
-            assert_eq!(
-                expression.matches('"').count(),
-                terms * 2,
-                "{hostile} produced unbalanced quotes: {expression}"
-            );
-            for term in expression.split(" AND ") {
-                let inner = term.trim_matches('"');
-                assert!(
-                    inner.chars().all(char::is_alphanumeric),
-                    "{hostile} produced a term with syntax in it: {term}"
-                );
-            }
-        }
-    }
-
-    #[test]
-    fn an_operator_typed_as_a_word_is_searched_for_as_a_word() {
-        assert_eq!(
-            match_expression("a OR b").as_deref(),
-            Some("\"a\" AND \"OR\" AND \"b\"")
-        );
-    }
-
-    #[test]
-    fn a_query_with_no_searchable_term_never_reaches_sql() {
-        for empty in ["", "   ", "***", "--", "\"", "()"] {
-            assert_eq!(match_expression(empty), None);
-        }
-    }
 
     #[test]
     fn the_weights_are_the_ones_the_chapter_names() {

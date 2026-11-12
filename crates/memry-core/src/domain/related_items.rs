@@ -288,7 +288,7 @@ fn tier(note: &RelatedItem, needle: &str, terms: &[String]) -> Option<u8> {
 }
 
 /// Splits on every non-alphanumeric character, as the FTS `unicode61`
-/// tokenizer and `search::match_expression` do.
+/// tokenizer and the search query parser do.
 fn words(text: &str) -> Vec<String> {
     text.split(|character: char| !character.is_alphanumeric())
         .filter(|word| !word.is_empty())

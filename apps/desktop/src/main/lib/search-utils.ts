@@ -3,35 +3,10 @@ import type { SearchResultItem } from '@memry/contracts/search-api'
 /**
  * Search Utilities
  *
- * Score normalization for cross-type ranking,
- * FTS5 query escaping, and prefix query building.
+ * Score normalization for cross-type ranking and the search query parser.
  *
  * @module lib/search-utils
  */
-
-const FTS5_SPECIAL_CHARS = /[*"(){}[\]:^~\\]/g
-
-export function escapeSearchQuery(query: string): string {
-  return query.replace(FTS5_SPECIAL_CHARS, ' ').trim()
-}
-
-export function buildPrefixQuery(query: string): string {
-  const escaped = escapeSearchQuery(query)
-  if (!escaped) return ''
-
-  const terms = escaped.split(/\s+/).filter(Boolean)
-  return terms.map((term) => `"${term}"*`).join(' ')
-}
-
-/**
- * Adjacent-words form of a plain multi-word query (`"this is roughly"*`, the
- * last word still a prefix). Empty for a single word, where adjacency means
- * nothing.
- */
-export function buildPhraseQuery(query: string): string {
-  const terms = escapeSearchQuery(query).split(/\s+/).filter(Boolean)
-  return terms.length < 2 ? '' : `"${terms.join(' ')}"*`
-}
 
 export function normalizeScores(results: SearchResultItem[]): SearchResultItem[] {
   if (results.length === 0) return results
@@ -55,57 +30,98 @@ export function truncateQuery(query: string, maxLength = 500): string {
   return query.length > maxLength ? query.slice(0, maxLength) : query
 }
 
-export function parseSearchQuery(input: string): string {
-  const trimmed = input.trim()
-  if (!trimmed) return ''
+/** The `MATCH` expressions for one query. */
+export interface FtsQuery {
+  /** Which rows match; empty when the query has no searchable term. */
+  match: string
+  /**
+   * The words of a plain multi-word query as one prefixed phrase
+   * (`"this is rough"*`). Rows matching it sort first. Empty for a single word
+   * or a query with operators or quotes, which keep plain bm25 order.
+   */
+  phrase: string
+}
 
-  const tokens: string[] = []
-  let remaining = trimmed
+type Operator = 'AND' | 'OR' | 'NOT'
+type Token =
+  | { kind: 'term'; runs: string[] }
+  | { kind: 'phrase'; runs: string[] }
+  | { kind: 'operator'; operator: Operator }
 
-  const phrasePattern = /"([^"]+)"/g
-  let match: RegExpExecArray | null
+const OPERATORS: readonly Operator[] = ['AND', 'OR', 'NOT']
+// What Rust's `char::is_alphanumeric` keeps, so this and the core's
+// `domain/search/query.rs` split a word the same way.
+const NON_ALPHANUMERIC = /[^\p{Alphabetic}\p{N}]+/u
 
-  const phrases: string[] = []
-  while ((match = phrasePattern.exec(remaining)) !== null) {
-    phrases.push(match[1])
-  }
-  remaining = remaining.replace(/"[^"]*"/g, ' ')
+function runs(text: string): string[] {
+  return text.split(NON_ALPHANUMERIC).filter(Boolean)
+}
 
-  for (const phrase of phrases) {
-    const escaped = escapeSearchQuery(phrase)
-    if (escaped) tokens.push(`"${escaped}"`)
-  }
-
-  const words = remaining.split(/\s+/).filter(Boolean)
-  let i = 0
-  while (i < words.length) {
-    const word = words[i].toUpperCase()
-
-    if (word === 'NOT' && i + 1 < words.length) {
-      const next = escapeSearchQuery(words[i + 1])
-      if (next) tokens.push(`NOT "${next}"*`)
-      i += 2
+function pushWords(text: string, tokens: Token[]): void {
+  for (const word of text.split(/[\s"]+/u)) {
+    const operator = OPERATORS.find((candidate) => candidate === word)
+    if (operator) {
+      tokens.push({ kind: 'operator', operator })
       continue
     }
+    const wordRuns = runs(word)
+    if (wordRuns.length > 0) tokens.push({ kind: 'term', runs: wordRuns })
+  }
+}
 
-    if (word === 'AND' || word === 'OR') {
-      if (tokens.length > 0 && i + 1 < words.length) {
-        const next = escapeSearchQuery(words[i + 1])
-        if (next) {
-          tokens.push(word)
-          tokens.push(`"${next}"*`)
-          i += 2
-          continue
-        }
-      }
-      i++
+/** Splits on `"` pairs first, then on whitespace. A `"` with no partner is a separator. */
+function tokenize(input: string): Token[] {
+  const tokens: Token[] = []
+  let rest = input
+  for (;;) {
+    const open = rest.indexOf('"')
+    const close = open === -1 ? -1 : rest.indexOf('"', open + 1)
+    if (close === -1) break
+    pushWords(rest.slice(0, open), tokens)
+    const inner = runs(rest.slice(open + 1, close))
+    if (inner.length > 0) tokens.push({ kind: 'phrase', runs: inner })
+    rest = rest.slice(close + 1)
+  }
+  pushWords(rest, tokens)
+  return tokens
+}
+
+/**
+ * Turns the search box text into FTS5 `MATCH` expressions. A plain word is a
+ * prefix (`pass` finds "password"), words side by side are AND-ed, `"…"` is an
+ * exact phrase, and uppercase `AND`, `OR` and `NOT` are operators kept in the
+ * order typed. An operator with nothing before or after it is dropped, and of
+ * two in a row the second wins: FTS5 raises a syntax error on each of those.
+ *
+ * The expression is built from parsed tokens, never from user text: every
+ * operand is alphanumeric runs inside double quotes, so no input can close a
+ * quote or add syntax. `crates/memry-core/src/domain/search/query.rs` is the
+ * same parser, and the two test tables hold the same cases.
+ */
+export function parseSearchQuery(input: string): FtsQuery {
+  const tokens = tokenize(input)
+
+  let match = ''
+  let pending: Operator | null = null
+  for (const token of tokens) {
+    if (token.kind === 'operator') {
+      if (match) pending = token.operator
       continue
     }
-
-    const escaped = escapeSearchQuery(words[i])
-    if (escaped) tokens.push(`"${escaped}"*`)
-    i++
+    const operand =
+      token.kind === 'term' ? `"${token.runs.join(' ')}"*` : `"${token.runs.join(' ')}"`
+    if (match) {
+      match += pending ? ` ${pending} ` : ' '
+      pending = null
+    }
+    match += operand
   }
+  if (!match) return { match: '', phrase: '' }
 
-  return tokens.join(' ')
+  const plain = tokens.every((token) => token.kind === 'term')
+  const phrase =
+    plain && tokens.length > 1
+      ? `"${tokens.flatMap((token) => (token.kind === 'term' ? token.runs : [])).join(' ')}"*`
+      : ''
+  return { match, phrase }
 }
