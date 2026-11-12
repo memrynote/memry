@@ -326,7 +326,11 @@ pub(super) fn crossings(
             // item it names, listed as a file put off is, until a crossing makes it.
             Ok(Some(Some(Removed::Undecided))) => identity.undecided(root, &owed.path),
             // Not read, or of the large-file class: only owed.
-            Ok(Some(None)) => {}
+            Ok(Some(None)) => tracing::info!(
+                scope = SCOPE,
+                note_id = owed.note_id,
+                "an owed move between note and journal day stays owed: its file was not read, or is large"
+            ),
             Err(error) => tracing::error!(
                 scope = SCOPE,
                 note_id = owed.note_id,

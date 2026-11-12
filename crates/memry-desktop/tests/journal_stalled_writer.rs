@@ -14,6 +14,7 @@ use memry_core::seams::secure_store::SecureStore;
 use memry_desktop::journal::update::DayUpdate;
 use memry_desktop::notes::service::NotesService;
 use memry_desktop::vault::hash::content_hash;
+use serde_json::json;
 
 use crate::index_support::until;
 use crate::journal_update::{DAY, DAY_FILE, ID, made, opened, record, row_hash, update};
@@ -162,6 +163,41 @@ fn an_empty_file_that_stays_empty_is_taken_once_it_settled() {
         e.read(DAY_FILE).contains("Typed in the app."),
         "{}",
         e.read(DAY_FILE)
+    );
+}
+
+/// A save over a stalled writer's empty file is refused after the feed took its body, so a
+/// property the save set is in neither the file nor the document: the save's whole text is
+/// kept as a version.
+#[test]
+fn a_refused_save_over_an_emptied_file_keeps_the_property_it_set() {
+    let (mut e, notes, _) = opened();
+    made(&mut e, &notes);
+    let open = e.session.current().unwrap();
+    let outside = outside_text(&e);
+
+    let mut writer = truncated(&e);
+    let saved = notes.update_day(
+        &open,
+        DayUpdate {
+            content: Some(TYPED.into()),
+            properties: Some(json!({ "mood": "tired" }).as_object().unwrap().clone()),
+            ..update(DAY)
+        },
+    );
+    writer.write_all(outside.as_bytes()).unwrap();
+    drop(writer);
+
+    assert!(saved.is_err(), "{saved:?}");
+    until("the typing written", || {
+        e.read(DAY_FILE).contains("Typed in the app.")
+    });
+    let versions = e.versions(ID);
+    assert!(
+        versions
+            .iter()
+            .any(|v| v.contains("mood: tired") && v.contains("Typed in the app.")),
+        "the save's text was lost: {versions:?}"
     );
 }
 

@@ -40,7 +40,8 @@
 //!   over it would leave that writer's bytes in a file no path names, kept nowhere (#4281). The
 //!   save is fed and its write refused, as for an edit that lands during the write (below);
 //!   the empty file is no outside edit the record takes, and no version. A save the feed does
-//!   not take is kept as a version instead, the one place its text then is. A row with no hash
+//!   not take, or one with a frontmatter (a property it set), which the document does not hold,
+//!   is kept as a version instead, the one place its text then is. A row with no hash
 //!   names no file, so an empty file under it is no write in progress and a save writes over
 //!   it. A restore over that empty file is refused before it feeds anything, so its text never
 //!   lands later without the restore point it keeps. A file its row does not name
@@ -382,7 +383,7 @@ impl AppEdit {
             }
         };
         if mid_write {
-            if !takes {
+            if !takes || edited.frontmatter != parsed.frontmatter {
                 self.vault
                     .write_back()
                     .keep_replaced(note_id, &text, next_body)

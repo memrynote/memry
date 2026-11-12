@@ -9,7 +9,10 @@ use std::sync::Arc;
 
 use memry_core::crdt::body_edit::{BlockEdit, append_snapshot, apply, snapshot_block};
 use memry_core::crdt::registry::{Document, UpdateSink};
-use memry_core::crdt::{CrdtError, DocumentRegistry};
+use memry_core::crdt::{CrdtError, DocumentRegistry, update_log};
+use memry_core::domain::body_write;
+use memry_core::domain::notes::{self, NewNote};
+use memry_core::storage::open_data;
 use yrs::updates::decoder::Decode as _;
 use yrs::{
     Any, Doc, GetString as _, Out, ReadTxn as _, StateVector, Text as _, TextPrelim, Transact as _,
@@ -394,6 +397,69 @@ fn a_delete_that_would_unwrap_a_shared_type_embed_is_refused() {
     share_b(&document);
     let first = first_column_block(&document);
     refused(&document, &BlockEdit::Delete { block_id: first });
+}
+
+/// The same refusal through the database (`body_write::edit_block`): the edit
+/// stores no update row and queues no outbox row, and the body replays as it
+/// was. The edit's document is thrown away on an error, so this holds for an
+/// error the unwrap itself raises after its removal too.
+#[test]
+fn a_refused_unwrap_stores_nothing() {
+    const NOTE: &str = "abc123def456";
+    let document = columns(false);
+    share_b(&document);
+    let first = first_column_block(&document);
+    let state = document.encode_state().expect("state");
+    let dir = tempfile::Builder::new()
+        .prefix("memry-refused-unwrap-")
+        .tempdir()
+        .expect("scratch");
+    let db = open_data(&dir.path().join("data.db")).expect("open data.db");
+    // Every stored update of the body, and the note's queued rows.
+    let rows = |conn: &rusqlite::Connection| -> (Vec<Vec<u8>>, i64) {
+        let mut updates = conn
+            .prepare("SELECT update_blob FROM yjs_updates WHERE doc_id = ?1 ORDER BY seq")
+            .expect("prepare");
+        let updates = updates
+            .query_map([NOTE], |row| row.get(0))
+            .expect("query")
+            .collect::<Result<_, _>>()
+            .expect("rows");
+        let queued = conn
+            .query_row(
+                "SELECT COUNT(*) FROM outbox WHERE item_id = ?1",
+                [NOTE],
+                |row| row.get(0),
+            )
+            .expect("count");
+        (updates, queued)
+    };
+    db.call_blocking(move |conn| {
+        notes::create(
+            conn,
+            &NewNote {
+                id: NOTE,
+                title: "Columns",
+                folder_path: None,
+                content: "",
+                tags: &[],
+                properties: None,
+                emoji: None,
+            },
+            "device-col",
+            1,
+        )?;
+        update_log::append_local_update(conn, NOTE, &state, 2).expect("the body");
+        let before = rows(conn);
+        let edit = BlockEdit::Delete { block_id: first };
+        match body_write::edit_block(conn, NOTE, &edit, "device-col", 3) {
+            Err(CrdtError::Undecodable { what, .. }) => assert!(what.contains("shared type")),
+            other => panic!("the unwrap was not refused: {other:?}"),
+        }
+        assert_eq!(rows(conn), before);
+        Ok(())
+    })
+    .expect("the edit");
 }
 
 /// Moving the first column's only block out empties its column, which
