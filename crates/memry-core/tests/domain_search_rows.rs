@@ -48,7 +48,15 @@ fn a_note_hit_carries_its_emoji_and_folder() {
     put(&data, "note", "n3", r#"{"title":"Password bare"}"#);
     search::reindex(&data, &index, NOW).expect("reindex");
 
-    let hits = search::search_notes(&data, &index, "password", 20).expect("search");
+    let hits = search::search(
+        &data,
+        &index,
+        "password",
+        &search::SearchFilter::default(),
+        20,
+    )
+    .map(|groups| [groups.notes, groups.journals].concat())
+    .expect("search");
     let kind = |id: &str| {
         hits.iter()
             .find(|hit| hit.id == id)
@@ -98,18 +106,32 @@ fn journal_and_task_hits_carry_no_emoji_or_folder() {
     search::reindex(&data, &index, NOW).expect("reindex");
 
     let journal = SearchResult::from(
-        search::search_notes(&data, &index, "router", 20)
-            .expect("notes")
-            .remove(0),
+        search::search(
+            &data,
+            &index,
+            "router",
+            &search::SearchFilter::default(),
+            20,
+        )
+        .map(|groups| [groups.notes, groups.journals].concat())
+        .expect("notes")
+        .remove(0),
     );
     assert_eq!(journal.kind, "journal");
     assert_eq!(journal.journal_date.as_deref(), Some("2026-11-10"));
     assert_eq!((journal.emoji, journal.folder_path), (None, None));
 
     let task = SearchResult::from(
-        search::search_tasks(&data, &index, "router", 20)
-            .expect("tasks")
-            .remove(0),
+        search::search(
+            &data,
+            &index,
+            "router",
+            &search::SearchFilter::default(),
+            20,
+        )
+        .map(|groups| groups.tasks)
+        .expect("tasks")
+        .remove(0),
     );
     assert_eq!(task.kind, "task");
     assert_eq!((task.emoji, task.folder_path), (None, None));

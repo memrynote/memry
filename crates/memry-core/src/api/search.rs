@@ -24,7 +24,7 @@ use rusqlite::OptionalExtension as _;
 
 use crate::api::errors::StorageError;
 use crate::domain::journal_ops::links::{self, BacklinkRow, OutgoingLink};
-use crate::domain::search::{self, HitKind, MatchKind, SearchHit, SnippetSegment};
+use crate::domain::search::{self, HitKind, MatchKind, SearchFilter, SearchHit, SnippetSegment};
 use crate::domain::unlinked_mentions::{self, UnlinkedMention};
 use crate::domain::wiki_target;
 use crate::storage::{Db, open_index};
@@ -87,6 +87,17 @@ impl From<SearchHit> for SearchResult {
             matched_name: hit.matched_name,
         }
     }
+}
+
+/// One search's results by type. Each group is ranked on its own, because a
+/// bm25 score is relative to the table it was computed over.
+#[derive(Debug, Clone, PartialEq, uniffi::Record)]
+pub struct SearchGroups {
+    pub notes: Vec<SearchResult>,
+    pub journals: Vec<SearchResult>,
+    pub tasks: Vec<SearchResult>,
+    /// Captures in every state: filed, archived and snoozed ones too (#4320).
+    pub inbox: Vec<SearchResult>,
 }
 
 /// What a reindex did.
@@ -310,52 +321,32 @@ impl Search {
         })
     }
 
-    /// Notes and journals matching `query`, best first.
+    /// Everything matching `query`, in desktop's four groups, each best
+    /// first and at most `limit` long. `filter` narrows the types, the
+    /// modified date and the tags; `None` narrows nothing.
     ///
     /// A query carrying no searchable term returns **empty, not everything**:
     /// an empty search box is not a request for the whole vault.
-    pub fn notes(&self, query: String, limit: u32) -> Result<Vec<SearchResult>, StorageError> {
+    pub fn search(
+        &self,
+        query: String,
+        filter: Option<SearchFilter>,
+        limit: u32,
+    ) -> Result<SearchGroups, StorageError> {
         let index = self.index.clone();
+        let filter = filter.unwrap_or_default();
         let limit = limit as usize;
         self.data.call_blocking(move |data| {
             index.call_blocking(|index| {
-                Ok(search::search_notes(data, index, &query, limit)?
-                    .into_iter()
-                    .map(SearchResult::from)
-                    .collect())
-            })
-        })
-    }
-
-    /// Tasks matching `query`, best first.
-    ///
-    /// Its own list rather than one merged with the notes: a bm25 score is
-    /// relative to the table it was computed over, so interleaving the two
-    /// would be inventing an order neither ranking supports.
-    pub fn tasks(&self, query: String, limit: u32) -> Result<Vec<SearchResult>, StorageError> {
-        let index = self.index.clone();
-        let limit = limit as usize;
-        self.data.call_blocking(move |data| {
-            index.call_blocking(|index| {
-                Ok(search::search_tasks(data, index, &query, limit)?
-                    .into_iter()
-                    .map(SearchResult::from)
-                    .collect())
-            })
-        })
-    }
-
-    /// Inbox captures matching `query`, best first, in every state: filed,
-    /// archived and snoozed ones too (#4320). Its own ranking, like tasks.
-    pub fn inbox(&self, query: String, limit: u32) -> Result<Vec<SearchResult>, StorageError> {
-        let index = self.index.clone();
-        let limit = limit as usize;
-        self.data.call_blocking(move |data| {
-            index.call_blocking(|index| {
-                Ok(search::search_inbox(data, index, &query, limit)?
-                    .into_iter()
-                    .map(SearchResult::from)
-                    .collect())
+                let groups = search::search(data, index, &query, &filter, limit)?;
+                let results =
+                    |hits: Vec<SearchHit>| hits.into_iter().map(SearchResult::from).collect();
+                Ok(SearchGroups {
+                    notes: results(groups.notes),
+                    journals: results(groups.journals),
+                    tasks: results(groups.tasks),
+                    inbox: results(groups.inbox),
+                })
             })
         })
     }

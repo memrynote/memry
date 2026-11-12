@@ -13,7 +13,7 @@ use std::collections::{HashMap, HashSet};
 
 use rusqlite::{Connection, OptionalExtension as _, params};
 
-use super::{HitKind, MatchKind, SearchHit, failed, note_kind};
+use super::{MatchKind, SearchHit, SearchType, failed, hit_kind};
 use crate::api::errors::StorageError;
 use crate::domain::notes::names::{name_key, parse_stored};
 
@@ -23,19 +23,21 @@ struct AliasHit {
     exact: bool,
 }
 
-/// `hits` with the alias matches merged in, at most `limit` notes and
-/// `limit` journals.
+/// One group's `hits` (notes or journals) with that group's alias matches
+/// `keeps` passes merged in, at most `limit`.
 pub(super) fn merge_aliases(
     data: &Connection,
     index: &Connection,
     query: &str,
     hits: Vec<SearchHit>,
+    kind: SearchType,
     limit: usize,
+    keeps: &dyn Fn(&str) -> bool,
 ) -> Result<Vec<SearchHit>, StorageError> {
     let Some(key) = name_key(query) else {
         return Ok(hits);
     };
-    let aliases = alias_hits(data, index, &key, limit)?;
+    let aliases = alias_hits(data, index, &key, kind, limit, keeps)?;
     if aliases.is_empty() {
         return Ok(hits);
     }
@@ -73,28 +75,22 @@ pub(super) fn merge_aliases(
         .map(|alias| alias.hit)
         .collect();
 
-    let (mut notes, mut journals) = (0, 0);
     let mut merged: Vec<SearchHit> = exact.into_iter().chain(found).chain(prefix).collect();
-    merged.retain(|hit| {
-        let count = match hit.kind {
-            HitKind::Journal { .. } => &mut journals,
-            _ => &mut notes,
-        };
-        *count += 1;
-        *count <= limit
-    });
+    merged.truncate(limit);
     Ok(merged)
 }
 
-/// Every live note and journal day with an alias starting with `key`: exact
-/// first, then the shortest alias, then by id, one hit per item, from the
-/// first `limit` aliases. An item the index has no row for yet is left out,
-/// as desktop's join over its index leaves it out.
+/// Every live item of `kind` (a note or a journal day) that `keeps` passes,
+/// with an alias starting with `key`: exact first, then the shortest alias,
+/// then by id, one hit per item, at most `limit`. An item the index has no row
+/// for yet is left out, as desktop's join over its index leaves it out.
 fn alias_hits(
     data: &Connection,
     index: &Connection,
     key: &str,
+    kind: SearchType,
     limit: usize,
+    keeps: &dyn Fn(&str) -> bool,
 ) -> Result<Vec<AliasHit>, StorageError> {
     let mut named: Vec<(bool, usize, String, String)> = Vec::new();
     for (id, aliases) in stored_aliases(data)? {
@@ -113,15 +109,17 @@ fn alias_hits(
         }
     }
     named.sort_by(|a, b| (!a.0, a.1, &a.2).cmp(&(!b.0, b.1, &b.2)));
-    named.truncate(limit);
 
     let mut seen = HashSet::new();
     let mut hits = Vec::new();
     for (exact, _, id, alias) in named {
-        if !seen.insert(id.clone()) {
+        if hits.len() >= limit {
+            break;
+        }
+        if !keeps(&id) || !seen.insert(id.clone()) {
             continue;
         }
-        let Some(kind) = note_kind(data, &id)? else {
+        let Some(kind) = hit_kind(data, kind, &id)? else {
             continue;
         };
         let title: Option<Option<String>> = index

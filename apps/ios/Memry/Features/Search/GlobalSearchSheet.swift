@@ -61,12 +61,22 @@ struct GlobalSearchSheet: View {
                 .navigationTitle(GlobalSearchCopy.open)
                 .navigationBarTitleDisplayMode(.inline)
                 .searchable(text: $query, placement: .navigationBarDrawer(displayMode: .always), prompt: GlobalSearchCopy.prompt)
+                // Keeps the filter menu in the bar while the field is active.
+                .searchPresentationToolbarBehavior(.avoidHidingContent)
+                .searchScopes(scope) {
+                    ForEach(SearchScope.allCases, id: \.self) { Text($0.title).tag($0) }
+                }
                 .searchFocused($isFocused)
                 .onChange(of: query) { _, query in model?.run(query) }
                 .toolbar {
                     ToolbarItem(placement: .cancellationAction) {
                         Button(role: .close) { dismiss() }
                             .accessibilityIdentifier("search.close")
+                    }
+                    if let model {
+                        ToolbarItem(placement: .topBarTrailing) {
+                            SearchFilterMenu(filters: model.filters, apply: model.apply)
+                        }
                     }
                 }
         }
@@ -176,6 +186,19 @@ struct GlobalSearchSheet: View {
             .listStyle(.plain)
             .accessibilityIdentifier("search.results")
         }
+    }
+
+    /// The scope picker's selection, held by the model with the menu's
+    /// filters.
+    private var scope: Binding<SearchScope> {
+        Binding(
+            get: { model?.filters.scope ?? .all },
+            set: { scope in
+                guard var filters = model?.filters else { return }
+                filters.scope = scope
+                model?.apply(filters)
+            }
+        )
     }
 
     private func record(_ hit: SearchResult) {

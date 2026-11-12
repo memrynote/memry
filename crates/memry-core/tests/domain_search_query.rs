@@ -40,7 +40,8 @@ fn vault(titles: &[(&str, &str)]) -> (Connection, Connection) {
 }
 
 fn ids(data: &Connection, index: &Connection, query: &str) -> Vec<String> {
-    search::search_notes(data, index, query, 20)
+    search::search(data, index, query, &search::SearchFilter::default(), 20)
+        .map(|groups| [groups.notes, groups.journals].concat())
         .unwrap_or_else(|error| panic!("{query:?} failed: {error:?}"))
         .into_iter()
         .map(|hit: SearchHit| hit.id)
@@ -76,7 +77,8 @@ fn no_typed_text_raises_an_fts5_error() {
         "🙂",
         "",
     ] {
-        let found = search::search_notes(&data, &index, hostile, 20);
+        let found = search::search(&data, &index, hostile, &search::SearchFilter::default(), 20)
+            .map(|groups| [groups.notes, groups.journals].concat());
         assert!(found.is_ok(), "{hostile:?} raised {:?}", found.err());
     }
     assert_eq!(

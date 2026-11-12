@@ -21,13 +21,9 @@ struct VaultSearchTests {
         func backlinks(noteId: String, order: BacklinkOrder) async throws -> [Backlink] { [] }
         func linksTo(targetId: String, order: BacklinkOrder) async throws -> [BacklinkRow] { [] }
         func unlinkedMentions(targetId: String) async throws -> [UnlinkedMention] { [] }
-        /// TP056. No task hits: the task half of a query is asserted in
-        /// `TasksNotesTests` against a real index.
-        func tasks(query: String, limit: UInt32) async throws -> [SearchResult] { [] }
-        /// #4320. Asserted against a real index in `SearchInboxTests`.
-        func inbox(query: String, limit: UInt32) async throws -> [SearchResult] { [] }
 
         let queries = Mutex([String]())
+        let filters = Mutex([SearchFilter?]())
         let reindexes = Mutex(0)
         private let hits: [SearchResult]
         private let failure: (any Error)?
@@ -39,10 +35,13 @@ struct VaultSearchTests {
             self.reindexFailure = Mutex(reindexFailure)
         }
 
-        func notes(query: String, limit: UInt32) async throws -> [SearchResult] {
+        /// Note hits only: the task and inbox groups are asserted against a
+        /// real index in `TasksNotesTests` and `SearchInboxTests`.
+        func search(query: String, filter: SearchFilter?, limit: UInt32) async throws -> SearchGroups {
             queries.withLock { $0.append(query) }
+            filters.withLock { $0.append(filter) }
             if let failure { throw failure }
-            return hits
+            return SearchGroups(notes: hits, journals: [], tasks: [], inbox: [])
         }
 
         func reindex() async throws {
@@ -110,6 +109,24 @@ struct VaultSearchTests {
         await model.settle()
 
         #expect(search.queries.withLock { $0 } == ["dune"], "the debounced first query never ran")
+        #expect(model.phase == .results([hit("n1", "Dune")]))
+    }
+
+    @Test("a filter change runs the query on screen again with the scope and menu filters")
+    func filtersReachTheSearch() async {
+        let search = ScriptedSearch(hits: [hit("n1", "Dune")])
+        let model = model(search)
+        model.run("dune")
+        await model.settle()
+
+        var filters = model.filters
+        filters.scope = .journal
+        filters.toggle(tag: "searchtest")
+        model.apply(filters)
+        await model.settle()
+
+        #expect(search.queries.withLock { $0 } == ["dune", "dune"])
+        #expect(search.filters.withLock { $0 } == [nil, SearchFilter(types: [.journal], modified: nil, tags: ["searchtest"])])
         #expect(model.phase == .results([hit("n1", "Dune")]))
     }
 

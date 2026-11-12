@@ -38,6 +38,13 @@
 //! desktop's fallback adds them. Notes and journals then take their alias
 //! matches ([`names`]). Each hit says which of the three found it.
 //!
+//! ## Groups and filters
+//!
+//! [`search`] answers in desktop's four groups (notes, journals, tasks,
+//! inbox), each capped at the limit on its own. [`SearchFilter`] narrows the
+//! types, the modified date and the tags ([`filter`]), and every hit of a group
+//! passes it, fuzzy and alias hits included.
+//!
 //! ## Nothing is dropped quietly
 //!
 //! A row whose payload will not parse is a **hard error**, never a skipped
@@ -60,6 +67,7 @@ use rusqlite::{Connection, OptionalExtension as _, ToSql, params};
 use crate::api::errors::StorageError;
 
 mod body_cache;
+mod filter;
 mod fuzzy;
 mod inbox;
 mod links;
@@ -71,7 +79,8 @@ pub mod recents;
 mod snippet;
 
 pub(crate) use body_cache::body_version;
-pub use inbox::{INBOX_RANK, INBOX_WATERMARK_KEY, search_inbox};
+pub use filter::{ModifiedRange, SearchFilter, SearchType};
+pub use inbox::{INBOX_RANK, INBOX_WATERMARK_KEY};
 pub use maintenance::{
     DATA_VERSION_KEY, NOTES_WATERMARK_KEY, Reindexed, STAMPS_KEY, TASKS_WATERMARK_KEY, reindex,
 };
@@ -137,44 +146,144 @@ pub struct SearchHit {
     pub matched_name: Option<String>,
 }
 
-/// Searches notes and journals.
+/// The four result groups of one search. Each is ranked on its own: a bm25
+/// score is relative to the table it was computed over, so a note score and a
+/// task score are not comparable and the groups are never interleaved.
+#[derive(Debug, Clone, Default, PartialEq)]
+pub struct Groups {
+    pub notes: Vec<SearchHit>,
+    pub journals: Vec<SearchHit>,
+    pub tasks: Vec<SearchHit>,
+    pub inbox: Vec<SearchHit>,
+}
+
+/// Searches every type `filter` wants, at most `limit` hits per group, as
+/// desktop's `searchAll` does.
 ///
 /// `data` is consulted for every hit, so a tombstone applied since the last
 /// [`reindex`] cannot surface: the index is allowed to be stale, the answer is
 /// not. That can return fewer than `limit` hits, which is the correct trade.
-/// `limit` holds per type, as desktop's groups hold it, so the list can carry
-/// up to `limit` notes and `limit` journals.
-pub fn search_notes(
+pub fn search(
     data: &Connection,
     index: &Connection,
     query: &str,
+    filter: &SearchFilter,
+    limit: usize,
+) -> Result<Groups, StorageError> {
+    let mut groups = Groups::default();
+    let Some(parsed) = query::parse(query) else {
+        return Ok(groups);
+    };
+    for kind in SearchType::ALL
+        .into_iter()
+        .filter(|kind| filter.wants(*kind))
+    {
+        let hits = search_type(data, index, query, &parsed, filter, kind, limit)?;
+        *match kind {
+            SearchType::Note => &mut groups.notes,
+            SearchType::Journal => &mut groups.journals,
+            SearchType::Task => &mut groups.tasks,
+            SearchType::Inbox => &mut groups.inbox,
+        } = hits;
+    }
+    Ok(groups)
+}
+
+/// One group: the index's hits the filter keeps, then fuzzy title matches
+/// when fewer than three are left, then, for notes and journals, alias
+/// matches.
+fn search_type(
+    data: &Connection,
+    index: &Connection,
+    raw: &str,
+    query: &query::FtsQuery,
+    filter: &SearchFilter,
+    kind: SearchType,
     limit: usize,
 ) -> Result<Vec<SearchHit>, StorageError> {
-    let raw = query;
-    let Some(query) = query::parse(raw) else {
-        return Ok(Vec::new());
+    let kept = filter.kept(data, kind)?;
+    let keeps = |id: &str| kept.as_ref().is_none_or(|kept| kept.contains(id));
+    let mut hits = body_hits(data, index, query, kind, filter.fetch_limit(limit))?;
+    hits.retain(|hit| keeps(&hit.id));
+    hits.truncate(limit);
+    if hits.len() < FUZZY_FALLBACK_BELOW {
+        let live = live_ids(data, item_type(kind))?;
+        let candidates: Vec<_> = titles(index, table(kind))?
+            .into_iter()
+            .filter(|(id, _)| live.contains(id) && keeps(id))
+            .collect();
+        append_fuzzy(data, &mut hits, raw, limit, &candidates, kind)?;
+    }
+    match kind {
+        SearchType::Note | SearchType::Journal => {
+            names::merge_aliases(data, index, raw, hits, kind, limit, &keeps)
+        }
+        SearchType::Task | SearchType::Inbox => Ok(hits),
+    }
+}
+
+/// The FTS table holding `kind`. Journals live in `fts_notes` beside notes.
+fn table(kind: SearchType) -> &'static str {
+    match kind {
+        SearchType::Note | SearchType::Journal => "fts_notes",
+        SearchType::Task => "fts_tasks",
+        SearchType::Inbox => "fts_inbox",
+    }
+}
+
+/// `kind`'s `sync_items.item_type`.
+fn item_type(kind: SearchType) -> &'static str {
+    match kind {
+        SearchType::Note => "note",
+        SearchType::Journal => "journal",
+        SearchType::Task => "task",
+        SearchType::Inbox => "inbox",
+    }
+}
+
+/// The index's best `limit` hits of `kind` that `data.db` holds live.
+fn body_hits(
+    data: &Connection,
+    index: &Connection,
+    query: &query::FtsQuery,
+    kind: SearchType,
+    limit: usize,
+) -> Result<Vec<SearchHit>, StorageError> {
+    let table = table(kind);
+    let rank = match kind {
+        SearchType::Note | SearchType::Journal => NOTES_RANK,
+        SearchType::Task => TASKS_RANK,
+        SearchType::Inbox => INBOX_RANK,
     };
-    // Rows holding the words side by side first. This only reorders the
-    // matching rows; which rows match is the expression's alone.
-    let phrase_first = if query.phrase.is_some() {
-        "id NOT IN (SELECT id FROM fts_notes WHERE fts_notes MATCH ?3),"
-    } else {
-        ""
-    };
+    let limit = limit as i64;
+    let mut parameters: Vec<&dyn ToSql> = vec![&query.expression, &limit];
+    let journals;
+    let (mut only, mut phrase_first) = (String::new(), "");
+    if matches!(kind, SearchType::Note | SearchType::Journal) {
+        // `fts_notes` holds both, told apart by the live journal days.
+        journals = serde_json::to_string(&live_ids(data, "journal")?).map_err(|error| {
+            StorageError::Failed {
+                what: error.to_string(),
+            }
+        })?;
+        parameters.push(&journals);
+        let not = if kind == SearchType::Note { "NOT" } else { "" };
+        only = format!(" AND id {not} IN (SELECT value FROM json_each(?3))");
+        // Rows holding the words side by side first. This only reorders the
+        // matching rows; which rows match is the expression's alone.
+        if let Some(phrase) = &query.phrase {
+            parameters.push(phrase);
+            phrase_first = "id NOT IN (SELECT id FROM fts_notes WHERE fts_notes MATCH ?4),";
+        }
+    }
     let sql = format!(
-        "SELECT id, title, {NOTES_RANK} AS score, {}
-         FROM fts_notes WHERE fts_notes MATCH ?1 ORDER BY {phrase_first} score LIMIT ?2",
-        snippet::snippet_sql("fts_notes", 2)
+        "SELECT id, title, {rank} AS score, {}
+         FROM {table} WHERE {table} MATCH ?1{only} ORDER BY {phrase_first} score LIMIT ?2",
+        snippet::snippet_sql(table, 2)
     );
     let mut hits = Vec::new();
-    for (id, title, score, snippet) in scored(
-        index,
-        &sql,
-        &query.expression,
-        query.phrase.as_deref(),
-        limit,
-    )? {
-        let Some(kind) = note_kind(data, &id)? else {
+    for (id, title, score, snippet) in scored(index, &sql, &parameters)? {
+        let Some(kind) = hit_kind(data, kind, &id)? else {
             continue;
         };
         hits.push(SearchHit {
@@ -187,93 +296,34 @@ pub fn search_notes(
             matched_name: None,
         });
     }
-    let is_note = |kind: &HitKind| matches!(kind, HitKind::Note { .. });
-    let is_journal = |kind: &HitKind| matches!(kind, HitKind::Journal { .. });
-    let short = |is_type: &dyn Fn(&HitKind) -> bool| {
-        hits.iter().filter(|hit| is_type(&hit.kind)).count() < FUZZY_FALLBACK_BELOW
-    };
-    let (notes_short, journals_short) = (short(&is_note), short(&is_journal));
-    if notes_short || journals_short {
-        let journals = live_ids(data, "journal")?;
-        let notes = live_ids(data, "note")?;
-        let (journal_titles, note_titles): (Vec<_>, Vec<_>) = titles(index, "fts_notes")?
-            .into_iter()
-            .partition(|(id, _)| journals.contains(id));
-        let note_titles: Vec<_> = note_titles
-            .into_iter()
-            .filter(|(id, _)| notes.contains(id))
-            .collect();
-        let kind = |id: &str| note_kind(data, id);
-        if notes_short {
-            append_fuzzy(&mut hits, raw, limit, &note_titles, &is_note, &kind)?;
-        }
-        if journals_short {
-            append_fuzzy(&mut hits, raw, limit, &journal_titles, &is_journal, &kind)?;
-        }
-    }
-    names::merge_aliases(data, index, raw, hits, limit)
-}
-
-/// Searches tasks.
-///
-/// Two corpora cannot share one ranking: a bm25 score is relative to the table
-/// it was computed over, so a note score and a task score are not comparable
-/// and this returns its own ranked list rather than inventing an interleaving.
-pub fn search_tasks(
-    data: &Connection,
-    index: &Connection,
-    query: &str,
-    limit: usize,
-) -> Result<Vec<SearchHit>, StorageError> {
-    let raw = query;
-    let Some(query) = query::parse(raw) else {
-        return Ok(Vec::new());
-    };
-    let sql = format!(
-        "SELECT id, title, {TASKS_RANK} AS score, {}
-         FROM fts_tasks WHERE fts_tasks MATCH ?1 ORDER BY score LIMIT ?2",
-        snippet::snippet_sql("fts_tasks", 2)
-    );
-    let mut hits = Vec::new();
-    for (id, title, score, snippet) in scored(index, &sql, &query.expression, None, limit)? {
-        if !is_live(data, "task", &id)? {
-            continue;
-        }
-        hits.push(SearchHit {
-            id,
-            title,
-            kind: HitKind::Task,
-            score,
-            snippet,
-            match_kind: MatchKind::Body,
-            matched_name: None,
-        });
-    }
-    if hits.len() < FUZZY_FALLBACK_BELOW {
-        let tasks = live_ids(data, "task")?;
-        let candidates: Vec<_> = titles(index, "fts_tasks")?
-            .into_iter()
-            .filter(|(id, _)| tasks.contains(id))
-            .collect();
-        append_fuzzy(&mut hits, raw, limit, &candidates, &|_| true, &|_| {
-            Ok(Some(HitKind::Task))
-        })?;
-    }
     Ok(hits)
 }
 
-/// Desktop's fuzzy fallback for one type: the best `limit` title matches over
-/// `candidates`, less the hits already listed, appended until the type holds
+/// The hit's kind when `data.db` holds it live as a `kind`, else `None`.
+fn hit_kind(
+    data: &Connection,
+    kind: SearchType,
+    id: &str,
+) -> Result<Option<HitKind>, StorageError> {
+    Ok(match kind {
+        SearchType::Note | SearchType::Journal => note_kind(data, id)?
+            .filter(|hit| matches!(hit, HitKind::Journal { .. }) == (kind == SearchType::Journal)),
+        SearchType::Task => is_live(data, "task", id)?.then_some(HitKind::Task),
+        SearchType::Inbox => is_live(data, "inbox", id)?.then_some(HitKind::Inbox),
+    })
+}
+
+/// Desktop's fuzzy fallback for one group: the best `limit` title matches over
+/// `candidates`, less the hits already listed, appended until the group holds
 /// `limit`.
 fn append_fuzzy(
+    data: &Connection,
     hits: &mut Vec<SearchHit>,
     query: &str,
     limit: usize,
     candidates: &[(String, String)],
-    is_type: &dyn Fn(&HitKind) -> bool,
-    kind: &dyn Fn(&str) -> Result<Option<HitKind>, StorageError>,
+    kind: SearchType,
 ) -> Result<(), StorageError> {
-    let mut room = limit.saturating_sub(hits.iter().filter(|hit| is_type(&hit.kind)).count());
     let ranked = fuzzy::rank(
         query,
         candidates.iter().map(|(_, title)| title.as_str()),
@@ -281,13 +331,13 @@ fn append_fuzzy(
     );
     for (at, _) in ranked {
         let (id, title) = &candidates[at];
-        if room == 0 {
+        if hits.len() >= limit {
             break;
         }
         if hits.iter().any(|hit| &hit.id == id) {
             continue;
         }
-        let Some(kind) = kind(id)? else {
+        let Some(kind) = hit_kind(data, kind, id)? else {
             continue;
         };
         hits.push(SearchHit {
@@ -299,7 +349,6 @@ fn append_fuzzy(
             match_kind: MatchKind::Fuzzy,
             matched_name: None,
         });
-        room -= 1;
     }
     Ok(())
 }
@@ -386,24 +435,17 @@ fn is_live(data: &Connection, item_type: &str, item_id: &str) -> Result<bool, St
 /// One ranked row: id, title, bm25 score, snippet.
 type Scored = (String, String, f64, Vec<SnippetSegment>);
 
-/// One ranked page. `?1` is the expression, `?2` the limit and `?3`, when
-/// given, the phrase. Every row is collected through `?`: a row that
-/// will not read stops the search rather than vanishing from the results.
+/// One ranked page from `sql` and its `parameters`. Every row is collected
+/// through `?`: a row that will not read stops the search rather than
+/// vanishing from the results.
 fn scored(
     index: &Connection,
     sql: &str,
-    expression: &str,
-    phrase: Option<&str>,
-    limit: usize,
+    parameters: &[&dyn ToSql],
 ) -> Result<Vec<Scored>, StorageError> {
     let mut statement = index.prepare(sql).map_err(failed)?;
-    let limit = limit as i64;
-    let mut parameters: Vec<&dyn ToSql> = vec![&expression, &limit];
-    if let Some(phrase) = &phrase {
-        parameters.push(phrase);
-    }
     let rows = statement
-        .query_map(parameters.as_slice(), |row| {
+        .query_map(parameters, |row| {
             // The title is read null-tolerantly. Nothing this module inserts
             // writes a NULL there, but an index written by another build might,
             // and a NULL title is a hit with no label rather than a lost note.

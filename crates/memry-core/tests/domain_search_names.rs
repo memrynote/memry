@@ -37,7 +37,9 @@ fn note(data: &Connection, id: &str, title: &str) {
 
 fn notes(data: &Connection, index: &Connection, query: &str) -> Vec<SearchHit> {
     search::reindex(data, index, NOW).expect("reindex");
-    search::search_notes(data, index, query, 20).expect("search")
+    search::search(data, index, query, &search::SearchFilter::default(), 20)
+        .map(|groups| [groups.notes, groups.journals].concat())
+        .expect("search")
 }
 
 fn listed(hits: &[SearchHit]) -> Vec<(&str, MatchKind, Option<&str>)> {
@@ -106,7 +108,15 @@ fn each_type_falls_back_on_its_own_count() {
     );
 
     let hits = notes(&data, &index, "pasword");
-    let tasks = search::search_tasks(&data, &index, "pasword", 20).expect("tasks");
+    let tasks = search::search(
+        &data,
+        &index,
+        "pasword",
+        &search::SearchFilter::default(),
+        20,
+    )
+    .map(|groups| groups.tasks)
+    .expect("tasks");
 
     let ids: Vec<&str> = hits.iter().map(|hit| hit.id.as_str()).collect();
     assert!(

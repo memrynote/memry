@@ -198,19 +198,6 @@ struct TasksNotesTests {
         #expect(model.phase == .results([]))
     }
 
-    @Test func a_failed_task_search_leaves_the_note_results_standing() async {
-        let note = SearchResult(id: "n1", title: "Dune", kind: "note", journalDate: nil, emoji: nil, folderPath: nil, score: -1, snippet: [], matchKind: .body, matchedName: nil)
-        let model = VaultSearchViewModel(
-            search: TaskSearchFake(notes: [note], taskFailure: true), debounce: .zero
-        )
-
-        model.run("dune")
-        await model.settle()
-
-        #expect(model.phase == .results([note]))
-        #expect(model.taskHits.isEmpty)
-    }
-
     @Test func clearing_the_query_clears_the_task_hits() async {
         let task = SearchResult(id: "t1", title: "[agent] dune", kind: "task", journalDate: nil, emoji: nil, folderPath: nil, score: -1, snippet: [], matchKind: .body, matchedName: nil)
         let model = VaultSearchViewModel(search: TaskSearchFake(tasks: [task]), debounce: .zero)
@@ -244,20 +231,13 @@ private struct FailingNoteTasks: NoteTaskWriting {
     }
 }
 
-/// Scripted notes and task hits.
+/// Scripted task hits.
 private struct TaskSearchFake: VaultSearching {
-    var notes: [SearchResult] = []
     var tasks: [SearchResult] = []
-    var taskFailure = false
 
-    func notes(query: String, limit: UInt32) async throws -> [SearchResult] { notes }
-
-    func tasks(query: String, limit: UInt32) async throws -> [SearchResult] {
-        if taskFailure { throw StorageError.Failed(what: "the task index is locked") }
-        return tasks
+    func search(query: String, filter: SearchFilter?, limit: UInt32) async throws -> SearchGroups {
+        SearchGroups(notes: [], journals: [], tasks: tasks, inbox: [])
     }
-
-    func inbox(query: String, limit: UInt32) async throws -> [SearchResult] { [] }
 
     func reindex() async throws {}
 

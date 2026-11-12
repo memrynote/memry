@@ -72,7 +72,11 @@ fn only_hit(hits: Vec<SearchHit>) -> SearchHit {
 
 fn note_hit(data: &Connection, index: &Connection, query: &str) -> SearchHit {
     search::reindex(data, index, NOW).expect("reindex");
-    only_hit(search::search_notes(data, index, query, 20).expect("search notes"))
+    only_hit(
+        search::search(data, index, query, &search::SearchFilter::default(), 20)
+            .map(|groups| [groups.notes, groups.journals].concat())
+            .expect("search notes"),
+    )
 }
 
 fn highlighted(snippet: &[SnippetSegment]) -> Vec<&str> {
@@ -167,7 +171,17 @@ fn a_task_snippet_comes_from_its_description() {
     );
     search::reindex(&data, &index, NOW).expect("reindex");
 
-    let hit = only_hit(search::search_tasks(&data, &index, "zephyrquartz", 20).expect("tasks"));
+    let hit = only_hit(
+        search::search(
+            &data,
+            &index,
+            "zephyrquartz",
+            &search::SearchFilter::default(),
+            20,
+        )
+        .map(|groups| groups.tasks)
+        .expect("tasks"),
+    );
     assert_eq!(highlighted(&hit.snippet), vec!["zephyrquartz"]);
     assert_eq!(text(&hit.snippet), "ask about the zephyrquartz card");
 }

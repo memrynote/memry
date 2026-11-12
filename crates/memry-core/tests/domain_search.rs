@@ -60,7 +60,9 @@ fn ids(hits: &[SearchHit]) -> Vec<&str> {
 }
 
 fn notes(data: &Connection, index: &Connection, query: &str) -> Vec<SearchHit> {
-    search::search_notes(data, index, query, 20).expect("search notes")
+    search::search(data, index, query, &search::SearchFilter::default(), 20)
+        .map(|groups| [groups.notes, groups.journals].concat())
+        .expect("search notes")
 }
 
 fn reindex(data: &Connection, index: &Connection, at: i64) -> Reindexed {
@@ -317,7 +319,15 @@ fn a_dropped_index_rebuilds_to_the_same_answers() {
     assert_eq!((rebuilt.notes_indexed, rebuilt.tasks_indexed), (2, 1));
     assert_eq!(notes(&data, &fresh, "Protocol"), before);
     assert_eq!(
-        ids(&search::search_tasks(&data, &fresh, "Protocol", 20).expect("tasks")),
+        ids(&search::search(
+            &data,
+            &fresh,
+            "Protocol",
+            &search::SearchFilter::default(),
+            20
+        )
+        .map(|groups| groups.tasks)
+        .expect("tasks")),
         vec!["t1"]
     );
 }
@@ -413,11 +423,21 @@ fn tasks_rank_in_their_own_corpus() {
     put(&data, "note", "n1", r#"{"title":"Ferry notes"}"#, NOW);
     reindex(&data, &index, NOW);
 
-    let hits = search::search_tasks(&data, &index, "ferry", 20).expect("tasks");
+    let hits = search::search(&data, &index, "ferry", &search::SearchFilter::default(), 20)
+        .map(|groups| groups.tasks)
+        .expect("tasks");
     assert_eq!(ids(&hits), vec!["t1", "t2"], "title outranks description");
     assert!(hits.iter().all(|hit| hit.kind == HitKind::Task));
     assert_eq!(
-        ids(&search::search_tasks(&data, &index, "travel", 20).expect("tags")),
+        ids(&search::search(
+            &data,
+            &index,
+            "travel",
+            &search::SearchFilter::default(),
+            20
+        )
+        .map(|groups| groups.tasks)
+        .expect("tags")),
         vec!["t2"],
         "the tags column is indexed"
     );
