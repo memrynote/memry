@@ -139,7 +139,6 @@
     "src/renderer/src/pages/settings/ai-section.test.tsx",
     "src/renderer/src/pages/settings/general-section.i18n.test.tsx",
     "src/renderer/src/pages/settings/properties-section.test.tsx",
-    "src/renderer/src/pages/settings/setup-wizard.test.tsx",
     "src/renderer/src/pages/settings/shortcuts-section.test.tsx",
     "src/renderer/src/pages/tags-hub.test.tsx",
     "src/renderer/src/pages/template-editor.test.tsx",

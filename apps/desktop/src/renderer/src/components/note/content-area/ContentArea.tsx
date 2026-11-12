@@ -72,8 +72,7 @@ import { getCalloutSlashMenuItem, getCustomCalloutSlashMenuItems } from './callo
 import { useCalloutTypes } from './callout-types-store'
 import { getMathSlashMenuItem } from './math-block'
 import { getWhiteboardSlashMenuItem } from './whiteboard-block'
-import { getChartSlashMenuItem, getViewSlashMenuItem } from './view-block'
-import { createViewBlockKeysPlugin } from './view-block-keys-plugin'
+import { getChartSlashMenuItem, getNewViewSlashMenuItem, getViewSlashMenuItem } from './view-block'
 import { isFromWhiteboard } from './whiteboard-events'
 import { buildTableContent, type TableSize } from './slash-menu-utils'
 import { TableSizePicker } from './table-size-picker'
@@ -351,26 +350,6 @@ function rewriteInlineContent(
   })
 
   return matched ? { ...content, rows } : null
-}
-
-function rewriteBlockWithLinkMention(
-  blocks: any[],
-  url: string,
-  rewrite: (inline: any[], index: number) => any[]
-): { block: any; content: any } | null {
-  for (const block of blocks) {
-    const content = rewriteInlineContent(
-      block.content,
-      (c: any) => c?.type === 'linkMention' && c.props?.url === url,
-      rewrite
-    )
-    if (content !== null) return { block, content }
-    if (block.children?.length) {
-      const found = rewriteBlockWithLinkMention(block.children, url, rewrite)
-      if (found) return found
-    }
-  }
-  return null
 }
 
 function findBookmarkBlock(blocks: any[], url: string): any {
@@ -948,25 +927,8 @@ const ContentAreaEditor = memo(function ContentAreaEditor({
           return next
         })
         if (newContent === null) return
+        // The editor's change handler fills in the title and favicon.
         editor.updateBlock(block, { content: newContent })
-
-        fetchLinkPreview(url)
-          .then((metadata) => {
-            const found = rewriteBlockWithLinkMention(editor.document, url, (inline, index) => {
-              const updated = [...inline]
-              updated[index] = createLinkMentionContent(
-                url,
-                metadata.domain || domain,
-                metadata.title,
-                metadata.favicon,
-                metadata.siteName
-              )
-              return updated
-            })
-            if (!found) return
-            editor.updateBlock(found.block, { content: found.content })
-          })
-          .catch(() => {})
         return
       }
 
@@ -1053,8 +1015,7 @@ const ContentAreaEditor = memo(function ContentAreaEditor({
   }, [dateMentionState.anchorId])
 
   // Walk the (nested) block tree — a pill can live inside a list item's
-  // children[], so recurse like rewriteBlockWithLinkMention does — find the
-  // dateMention with `anchorId`, and write back the content `mutate` returns.
+  // children[] — find the dateMention with `anchorId`, and write back the content `mutate` returns.
   // Stops at the first match.
   const mutateDateMention = useCallback(
     (anchorId: string, mutate: (content: any[], index: number) => any[]) => {
@@ -1198,10 +1159,6 @@ const ContentAreaEditor = memo(function ContentAreaEditor({
     }))
     return registerEditorPlugin(editor, plugin, (p, plugins) => [p, ...plugins])
   }, [editor])
-
-  // Arrow keys into a view block, whose definition is hidden until the caret
-  // is in it and so unreachable by the browser's own caret movement (#2488).
-  useEffect(() => registerEditorPlugin(editor, createViewBlockKeysPlugin()), [editor])
 
   // Inline `@`-date ghost text + Tab completion. Prepend the plugin so its Tab
   // handler wins over block-indent keymaps while a date mention is active.
@@ -1528,7 +1485,11 @@ const ContentAreaEditor = memo(function ContentAreaEditor({
   // exists at this point, and a block left on `taskId: ''` can never find it.
   const completeConverted = useCallback(async (taskId: string, completedAt: string | null) => {
     try {
-      await tasksService.complete({ id: taskId, ...(completedAt ? { completedAt } : {}) })
+      await tasksService.complete({
+        id: taskId,
+        ...(completedAt ? { completedAt } : {}),
+        recordOnly: true
+      })
     } catch (err) {
       toast.error(extractErrorMessage(err, tRef.current('editor.obsidianTask.completeFailed')))
     }
@@ -3306,11 +3267,13 @@ const ContentAreaEditor = memo(function ContentAreaEditor({
                 variant="sticky"
                 onAddComment={review?.onAddComment}
                 onStickyChange={onStickyToolbarChange}
+                aiAvailable={aiEnabled && aiReady}
               />
             ) : (
               <ReviewFormattingToolbarController
                 onAddComment={review?.onAddComment}
                 onStickyChange={onStickyToolbarChange}
+                aiAvailable={aiEnabled && aiReady}
               />
             )}
             {/* Memry's block menu: BlockNote's stock drag-handle menu carries
@@ -3564,6 +3527,19 @@ const ContentAreaEditor = memo(function ContentAreaEditor({
                         group: t('editor.viewBlock.group'),
                         subtext: t('editor.viewBlock.subtext')
                       })
+                  // `/new view` makes a folder beside the note and a view over it.
+                  const newViewItem = inCell
+                    ? null
+                    : getNewViewSlashMenuItem(
+                        editor,
+                        {
+                          title: t('editor.viewBlock.newViewTitle'),
+                          group: t('editor.viewBlock.group'),
+                          subtext: t('editor.viewBlock.newViewSubtext'),
+                          failed: t('editor.viewBlock.newViewFailed')
+                        },
+                        fetchNotePath
+                      )
                   // `/portal` and `/search portal`: live windows onto other notes.
                   const portalItems = inCell
                     ? []
@@ -3680,6 +3656,7 @@ const ContentAreaEditor = memo(function ContentAreaEditor({
                     { ...mathItem, id: 'math' },
                     ...(whiteboardItem ? [{ ...whiteboardItem, id: 'whiteboard' }] : []),
                     ...(viewItem ? [{ ...viewItem, id: 'view' }] : []),
+                    ...(newViewItem ? [{ ...newViewItem, id: 'new_view' }] : []),
                     ...portalItems,
                     ...(chartItem ? [{ ...chartItem, id: 'chart' }] : []),
                     ...(taskItem ? [{ ...taskItem, id: 'task' }] : []),

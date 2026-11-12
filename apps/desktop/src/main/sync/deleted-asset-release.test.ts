@@ -12,7 +12,7 @@ import fs from 'node:fs'
 import os from 'node:os'
 import path from 'node:path'
 import { eq } from 'drizzle-orm'
-import { canvasAssets, deletedAssetReleases, noteMetadata } from '@memry/db-schema'
+import { canvasAssets, deletedAssetReleases, inboxItems, noteMetadata } from '@memry/db-schema'
 import { createTestDataDb, type TestDataDb } from '../../test/helpers/test-data-db'
 import { createCanvas, deleteCanvas, updateCanvas } from '../canvas/store'
 import {
@@ -342,5 +342,51 @@ describe('deleted note attachments', () => {
     advance(31)
     expect(await release()).toBe(1)
     expect(dereferenced).toEqual([])
+  })
+})
+
+describe('deleted inbox item attachments (#4157)', () => {
+  function insertInboxItem(id: string, values: Partial<typeof inboxItems.$inferInsert> = {}): void {
+    db.insert(inboxItems)
+      .values({ id, type: 'image', title: id, ...values })
+      .run()
+  }
+
+  it('frees the blob of an unfiled item 30 days after its permanent delete', async () => {
+    insertInboxItem('photo', { attachmentId: 'att-photo' })
+    recordDeletedItemAssets(db, 'inbox', 'photo', now)
+    db.delete(inboxItems).where(eq(inboxItems.id, 'photo')).run()
+
+    advance(29)
+    expect(await release()).toBe(0)
+    expect(dereferenced).toEqual([])
+
+    advance(2)
+    expect(await release()).toBe(1)
+    expect(dereferenced).toEqual([['chunk-of-att-photo']])
+    expect(releaseRows()).toEqual([])
+  })
+
+  it('keeps the blob when a note reused it', async () => {
+    insertInboxItem('photo', { attachmentId: 'att-photo' })
+    recordDeletedItemAssets(db, 'inbox', 'photo', now)
+    db.delete(inboxItems).where(eq(inboxItems.id, 'photo')).run()
+    insertNote('note-with-photo', ['att-photo'])
+
+    advance(31)
+    expect(await release()).toBe(1)
+
+    expect(dereferenced).toEqual([])
+    expect(chunkLookups).toEqual([])
+  })
+
+  it('records nothing for a filed item or one that never uploaded', () => {
+    insertInboxItem('filed', { attachmentId: 'att-1', filedAt: '2026-01-01T00:00:00.000Z' })
+    insertInboxItem('local')
+
+    recordDeletedItemAssets(db, 'inbox', 'filed', now)
+    recordDeletedItemAssets(db, 'inbox', 'local', now)
+
+    expect(releaseRows()).toEqual([])
   })
 })

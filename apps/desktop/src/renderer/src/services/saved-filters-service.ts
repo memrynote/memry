@@ -5,6 +5,8 @@
  * @module services/saved-filters-service
  */
 
+import type { TaskFilterGroup } from '@memry/domain-tasks/filtering'
+
 // ============================================================================
 // Types
 // ============================================================================
@@ -64,6 +66,8 @@ export interface SavedFilter {
   id: string
   name: string
   config: SavedFilterConfig
+  /** Advanced rules beside `config`; null when the filter has none. */
+  expression: TaskFilterGroup | null
   position: number
   createdAt: string
 }
@@ -71,12 +75,16 @@ export interface SavedFilter {
 export interface SavedFilterCreateInput {
   name: string
   config: SavedFilterConfig
+  expression?: TaskFilterGroup | null
 }
 
 export interface SavedFilterUpdateInput {
   id: string
   name?: string
+  /** Merged key by key into the stored config, so keys a newer build wrote survive. */
   config?: SavedFilterConfig
+  starred?: boolean
+  expression?: TaskFilterGroup | null
   position?: number
 }
 

@@ -63,6 +63,16 @@ Columns reflect statuses. Drag cards across columns to update status.
 - Status-focused workflows (Todo / In Progress / Done)
 - Per-project standups
 
+## Done Status and Completion
+
+A task is done when it sits in a **done** status of its project, and completed when it has a completion time. memrynote keeps the two together, wherever you change them:
+
+- Completing a task (checkbox, calendar, journal, a note, or bulk complete) moves it to the project's done status.
+- Picking a done status, or dropping a card in a done column, completes the task.
+- Reopening a task, or picking any other status, moves it out of the done status and clears its completion time.
+
+A task is therefore faded, struck through, and out of the overdue count on the calendar and the timeline whenever the tasks list shows it as done. A task already stored with a done status but no completion time (from an older version) is fixed the next time you complete or reopen it.
+
 ## Scope Dropdown
 
 The first control in the tasks toolbar scopes the list by due date, without changing filters:

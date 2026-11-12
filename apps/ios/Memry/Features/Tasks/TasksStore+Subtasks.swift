@@ -243,6 +243,9 @@ extension TasksStore {
             return completion
         }
         guard let completion else { return }
+        var counted = completion.change
+        counted.changed.removeAll { restoring.contains($0.taskId) }
+        TasksTelemetry.track(counted)
         let message = completionMessage(completion, cascaded: !open.isEmpty && !keepSubtasksOpen)
         undoable = TasksUndo(message: message, change: completion.change)
         toast = message

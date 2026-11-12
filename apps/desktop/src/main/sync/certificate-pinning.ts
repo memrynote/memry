@@ -1,7 +1,7 @@
 import https from 'node:https'
 import tls from 'node:tls'
 import crypto from 'node:crypto'
-import { app } from 'electron'
+import { app, type Certificate } from 'electron'
 import { createLogger } from '../lib/logger'
 import {
   getConfiguredPinnedCertificateHashes,
@@ -50,31 +50,146 @@ export function isPinningDisabled(): boolean {
   }
 }
 
+function spkiHashOf(x509: crypto.X509Certificate): string {
+  const spkiDer = x509.publicKey.export({ type: 'spki', format: 'der' })
+  return `sha256/${crypto.createHash('sha256').update(spkiDer).digest('base64')}`
+}
+
 export function computeSpkiHash(cert: tls.PeerCertificate): string {
   if (!cert.raw || cert.raw.length === 0) {
     throw new CertificatePinningError('Certificate missing raw DER data', '', [
       ...getConfiguredPinnedCertificateHashes()
     ])
   }
-  const x509 = new crypto.X509Certificate(cert.raw)
-  const spkiDer = x509.publicKey.export({ type: 'spki', format: 'der' })
-  const hash = crypto.createHash('sha256').update(spkiDer).digest('base64')
-  return `sha256/${hash}`
+  return spkiHashOf(new crypto.X509Certificate(cert.raw))
 }
 
 export function computeSpkiHashFromPem(pemData: string): string {
-  const x509 = new crypto.X509Certificate(pemData)
-  const spkiDer = x509.publicKey.export({ type: 'spki', format: 'der' })
-  const hash = crypto.createHash('sha256').update(spkiDer).digest('base64')
-  return `sha256/${hash}`
+  return spkiHashOf(new crypto.X509Certificate(pemData))
+}
+
+// Real sync chains hold three certificates. A longer one is malformed or hostile.
+const MAX_CHAIN_DEPTH = 8
+
+/**
+ * A pin matches the SPKI of any certificate on the path from the leaf up, so a
+ * pin on the issuing intermediate or root survives leaf renewals (a leaf pin
+ * broke at every renewal: the staging leaf renewed on 2026-10-13 and every
+ * packaged build pointed at staging refused it).
+ *
+ * `pool` holds the certificates the peer or Chromium handed over, leaf first.
+ * Their links and order are not trusted: a peer holding any publicly trusted
+ * certificate for the host could append a fake parent that carries a pinned
+ * SPKI. So the path is built from the leaf upward, and a certificate joins it
+ * only when it is a CA (`checkIssued` does not look at basicConstraints, so any
+ * DV certificate under a pinned intermediate would otherwise pass as an issuer),
+ * names the one below it as its issuer, and its key signed that one.
+ *
+ * That is all this checks: not validity dates, pathLen, name constraints or
+ * revocation. Validating the chain is Chromium's job on the session path (the
+ * handler answers -3) and Node's on the WebSocket path (`rejectUnauthorized`).
+ * The pin only proves that the pinned key sits on a signed path from this leaf,
+ * so keep those two checks in front of it.
+ *
+ * Every valid issuer in the pool is tried, not the first match: the same CA name
+ * and key can appear twice (self-signed R4 and its cross-certificate), and the
+ * first copy may lead nowhere.
+ */
+function isChainPinned(pool: readonly crypto.X509Certificate[], pins: readonly string[]): boolean {
+  // Keyed by raw bytes, so a duplicate copy of a certificate is the same node. It is never
+  // un-visited and ignores depth: a certificate that failed to reach a pin fails again from
+  // any other child or depth (depth only shrinks the remaining budget), and the memo keeps
+  // the search linear in the pool size and finite on cyclic chains.
+  const visited = new Set<string>()
+  const reachesPin = (child: crypto.X509Certificate, depth: number): boolean => {
+    if (pins.includes(spkiHashOf(child))) return true
+    visited.add(child.raw.toString('base64'))
+    if (depth + 1 >= MAX_CHAIN_DEPTH) return false
+    return pool.some(
+      (parent) =>
+        !visited.has(parent.raw.toString('base64')) &&
+        parent.ca &&
+        child.checkIssued(parent) &&
+        child.verify(parent.publicKey) &&
+        reachesPin(parent, depth + 1)
+    )
+  }
+  return pool.length > 0 && reachesPin(pool[0], 0)
+}
+
+function nodePeerChain(
+  leaf: tls.PeerCertificate | tls.DetailedPeerCertificate
+): crypto.X509Certificate[] {
+  const chain: crypto.X509Certificate[] = []
+  let current: tls.PeerCertificate | tls.DetailedPeerCertificate | undefined = leaf
+  while (current?.raw?.length && chain.length < MAX_CHAIN_DEPTH) {
+    chain.push(new crypto.X509Certificate(current.raw))
+    const next: tls.DetailedPeerCertificate | undefined =
+      'issuerCertificate' in current ? current.issuerCertificate : undefined
+    if (!next || next === current || next.raw?.equals(current.raw)) break
+    current = next
+  }
+  return chain
+}
+
+function electronChain(leaf: Certificate | undefined): crypto.X509Certificate[] {
+  const chain: crypto.X509Certificate[] = []
+  let current: Certificate | undefined = leaf
+  while (current?.data && chain.length < MAX_CHAIN_DEPTH) {
+    chain.push(new crypto.X509Certificate(current.data))
+    const next: Certificate | undefined = current.issuerCert
+    if (!next || next === current) break
+    current = next
+  }
+  return chain
+}
+
+/** The two chains Chromium reports for one connection to the session verifier. */
+export interface SessionCertificates {
+  /** The chain as the server sent it. */
+  certificate: Certificate
+  /** The chain Chromium verified. The platform verifier may leave the trust anchor out. */
+  validatedCertificate?: Certificate
+}
+
+/**
+ * Both chains feed one pool. `validatedCertificate` is the chain Chromium built
+ * to a trusted root, so the issuing intermediate is there whatever order or
+ * extras the server sends. It does not always carry the root: on macOS it holds
+ * the leaf and WE1 only, so a pin on GTS Root R4 matches only while the server
+ * still sends the R4 cross-certificate (valid to 2028-01-28). The WE1 pin does not
+ * depend on that.
+ */
+function sessionPool({ certificate, validatedCertificate }: SessionCertificates) {
+  const byRaw = new Map<string, crypto.X509Certificate>()
+  for (const cert of [...electronChain(validatedCertificate), ...electronChain(certificate)]) {
+    byRaw.set(cert.raw.toString('base64'), cert)
+  }
+  return [...byRaw.values()]
 }
 
 export function verifyCertificatePin(
   cert: tls.PeerCertificate,
   pins: string[] = [...getConfiguredPinnedCertificateHashes()]
 ): boolean {
-  const spkiHash = computeSpkiHash(cert)
-  return pins.some((pin) => pin === spkiHash)
+  return isChainPinned(nodePeerChain(cert), pins)
+}
+
+/** The session verifier's counterpart to `verifyCertificatePin`. */
+export function verifySessionCertificatePin(
+  certs: SessionCertificates,
+  pins: readonly string[]
+): boolean {
+  return isChainPinned(sessionPool(certs), pins)
+}
+
+/** SPKI hash of every certificate the peer or Chromium reported, for mismatch logs. */
+export function peerChainHashes(cert: tls.PeerCertificate): string[] {
+  return nodePeerChain(cert).map(spkiHashOf)
+}
+
+export function sessionChainHashes(certs: SessionCertificates): string[] {
+  return sessionPool(certs).map(spkiHashOf)
 }
 
 /**
@@ -146,7 +261,7 @@ export function createPinnedAgent(pins?: string[]): https.Agent {
       }
 
       const spkiHash = computeSpkiHash(cert)
-      if (!effectivePins.some((pin) => pin === spkiHash)) {
+      if (!verifyCertificatePin(cert, effectivePins)) {
         const err = new CertificatePinningError(
           `Certificate pin mismatch for ${hostname}`,
           spkiHash,
@@ -155,6 +270,7 @@ export function createPinnedAgent(pins?: string[]): https.Agent {
         log.error('Certificate pin verification failed', {
           hostname,
           actualHash: spkiHash,
+          chainHashes: peerChainHashes(cert),
           pinnedCount: effectivePins.length
         })
         return err

@@ -81,7 +81,12 @@ export interface GoogleCalendarClient {
     syncCursor?: string | null
     timeMin?: string | null
     timeMax?: string | null
-  }): Promise<{ events: GoogleCalendarRemoteEvent[]; nextSyncCursor: string | null }>
+  }): Promise<{
+    events: GoogleCalendarRemoteEvent[]
+    nextSyncCursor: string | null
+    /** Google answered 410 Gone: it refused the sync token that was sent. */
+    cursorGone?: boolean
+  }>
   getEvent(input: { calendarId: string; eventId: string }): Promise<GoogleCalendarRemoteEvent>
   upsertEvent(input: {
     calendarId: string

@@ -14,6 +14,7 @@ import {
   DropdownMenuTrigger
 } from '@/components/ui/dropdown-menu'
 import { DockButton } from '@/components/sidebar/footer-dock'
+import { AppleGlyph, IosBetaDialog } from '@/components/ios-beta/ios-beta-join'
 import {
   Dialog,
   DialogContent,
@@ -63,6 +64,8 @@ function openExternal(url: string): void {
  * bug / feature issue templates, community channels, and the repo star link. The open-source ask
  * lives here because the user opened the menu themselves.
  *
+ * "Join TestFlight" opens the iPhone beta invite dialog (`components/ios-beta`).
+ *
  * "Send feedback" opens a lightweight feedback dialog. Message is required; email is optional and
  * auto-filled (hidden) when the user is signed in. Submissions are emailed to
  * the team with the sender as Reply-To. See main `feedback-handlers.ts`.
@@ -75,6 +78,7 @@ export function SidebarFeedbackButton() {
   const appVersion = useAppUpdaterSelector((state) => state.currentVersion)
 
   const [open, setOpen] = useState(false)
+  const [iosBetaOpen, setIosBetaOpen] = useState(false)
   const [message, setMessage] = useState('')
   const [email, setEmail] = useState('')
   const [submitting, setSubmitting] = useState(false)
@@ -137,6 +141,10 @@ export function SidebarFeedbackButton() {
             <span className="flex-1">{t('sidebarHelp.requestFeature')}</span>
             <ArrowUpRight aria-hidden="true" className="text-text-tertiary" />
           </DropdownMenuItem>
+          <DropdownMenuItem onSelect={() => setIosBetaOpen(true)}>
+            <AppleGlyph />
+            {t('sidebarHelp.joinTestflight')}
+          </DropdownMenuItem>
           <DropdownMenuSeparator />
           {COMMUNITY_ITEMS.map((item) => (
             <DropdownMenuItem key={item.key} onSelect={() => openExternal(item.href)}>
@@ -166,6 +174,8 @@ export function SidebarFeedbackButton() {
           </div>
         </DropdownMenuContent>
       </DropdownMenu>
+
+      <IosBetaDialog open={iosBetaOpen} onOpenChange={setIosBetaOpen} source="help_menu" />
 
       <Dialog open={open} onOpenChange={setOpen}>
         <DialogContent className="sm:max-w-md">

@@ -402,11 +402,12 @@ const SPECS: TypeSpec[] = [
       sourceUrl: 'https://example.com/agent/1',
       sourceTitle: null,
       captureSource: 'inline',
+      attachmentId: '0123456789abcdef0123456789abcdef',
       clock: CLOCK,
       createdAt: '2026-04-16T00:00:00.000Z',
       modifiedAt: '2026-04-16T00:00:00.000Z'
     },
-    boundary: { title: '', content: null, metadata: null, clock: {} },
+    boundary: { title: '', content: null, metadata: null, attachmentId: null, clock: {} },
     unknownKey: 'transcription',
     unknownValue: 'Pick up the cable before Friday.'
   },

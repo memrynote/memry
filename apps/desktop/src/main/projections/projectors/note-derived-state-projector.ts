@@ -125,6 +125,10 @@ export function projectNoteNames(db: IndexDb, change: NoteNamesChange): void {
 /** Task ids of the body's task lines, in document order. */
 const scanTaskIds = (markdown: string): string[] => [...scanTaskCheckboxStates(markdown).keys()]
 
+/** Checkbox state of each task line: the task reconciler's acknowledged state. */
+const scanTaskChecks = (markdown: string): Record<string, boolean> =>
+  Object.fromEntries(scanTaskCheckboxStates(markdown))
+
 /** Older than any file mtime, so every freshness check re-reads the body. */
 const BODY_UNREAD = new Date(0).toISOString()
 
@@ -156,6 +160,7 @@ function persistMarkdownNote(note: Extract<NoteProjectionRecord, { kind: 'markdo
             emoji: note.emoji,
             cover: note.cover,
             taskIds: scanTaskIds(note.parsedContent ?? ''),
+            taskChecks: scanTaskChecks(note.parsedContent ?? ''),
             localOnly: note.localOnly,
             contentHash: note.contentHash,
             wordCount: note.wordCount,
@@ -172,6 +177,7 @@ function persistMarkdownNote(note: Extract<NoteProjectionRecord, { kind: 'markdo
       emoji: note.emoji,
       cover: note.cover ?? null,
       taskIds: note.parsedContent === null ? null : scanTaskIds(note.parsedContent),
+      taskChecks: note.parsedContent === null ? null : scanTaskChecks(note.parsedContent),
       localOnly: note.localOnly,
       fileType: 'markdown',
       fileSize: note.fileSize ?? null,

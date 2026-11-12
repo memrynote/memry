@@ -35,22 +35,23 @@ export function NumberEditor({
     setDraftValue(e.target.value)
   }, [])
 
-  const handleBlur = useCallback(() => {
-    const num = inputValue ? parseFloat(inputValue) : null
-    onChange(num !== null && !isNaN(num) ? num : null)
+  // Leaving the field without typing writes nothing. A value that is not a
+  // number (`rating: good`) would otherwise parse to null and be deleted.
+  const commit = useCallback(() => {
+    if (draftValue !== null) {
+      const num = draftValue ? parseFloat(draftValue) : null
+      onChange(num !== null && !isNaN(num) ? num : null)
+    }
     setDraftValue(null)
     onBlur?.()
-  }, [inputValue, onChange, onBlur])
+  }, [draftValue, onChange, onBlur])
 
   const handleKeyDown = useCallback(
     (e: React.KeyboardEvent<HTMLInputElement>) => {
       // Handle Enter - save value
       if (e.key === 'Enter') {
         e.preventDefault()
-        const num = inputValue ? parseFloat(inputValue) : null
-        onChange(num !== null && !isNaN(num) ? num : null)
-        setDraftValue(null)
-        onBlur?.()
+        commit()
         return
       }
 
@@ -91,7 +92,7 @@ export function NumberEditor({
       // Block everything else (letters, special characters, etc.)
       e.preventDefault()
     },
-    [inputValue, onChange, onBlur]
+    [inputValue, commit, onBlur]
   )
 
   return (
@@ -100,7 +101,7 @@ export function NumberEditor({
       type="number"
       value={inputValue}
       onChange={handleChange}
-      onBlur={handleBlur}
+      onBlur={commit}
       onKeyDown={handleKeyDown}
       placeholder={placeholder ?? t('properties.empty')}
       aria-label={t('properties.types.number')}

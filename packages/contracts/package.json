@@ -30,6 +30,7 @@
     "./delete-attestation": "./src/delete-attestation.ts",
     "./diagnostics-api": "./src/diagnostics-api.ts",
     "./feedback-api": "./src/feedback-api.ts",
+    "./ios-beta-api": "./src/ios-beta-api.ts",
     "./feature-flags": "./src/feature-flags.ts",
     "./folder-view-api": "./src/folder-view-api.ts",
     "./font-size": "./src/font-size.ts",

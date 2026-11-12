@@ -5,6 +5,7 @@
     "create": "Maken"
   },
   "wikiLinkPreview": {
+    "journalUnwritten": "Het dagboekbericht voor {date} is nog niet geschreven. Klik om de dag te openen",
     "notFound": "Niet gevonden – klik om “{title}” te maken"
   },
   "wikiLinkMenu": {
@@ -138,6 +139,7 @@
     "actions": {
       "openInNewTab": "Openen in nieuw tabblad",
       "openToTheSide": "Openen aan de zijkant",
+      "openFolderView": "Mapweergave openen",
       "newNote": "Nieuwe notitie",
       "newFolder": "Nieuwe map",
       "showTasks": "Taken tonen",
@@ -187,7 +189,8 @@
     },
     "toast": {
       "selectionBookmarked": "{count} items als bladwijzer toegevoegd",
-      "selectionBookmarkFailed": "Kan de geselecteerde items niet als bladwijzer toevoegen"
+      "selectionBookmarkFailed": "Kan de geselecteerde items niet als bladwijzer toevoegen",
+      "pairedNoteNameTaken": "Daar staat al een notitie met de naam {name}"
     }
   },
   "editor": {
@@ -423,9 +426,14 @@
       "savedView": "Opgeslagen weergave",
       "savedViewMissing": "De opgeslagen weergave “{name}” bestaat niet meer, dus hier wordt de standaardweergave getoond.",
       "openAsTab": "Openen als tabblad",
+      "newNote": "Nieuwe notitie",
+      "newViewTitle": "Nieuwe weergave",
+      "newViewSubtext": "Een nieuwe map naast deze notitie, hier weergegeven",
+      "newViewFailed": "Kan de map voor deze weergave niet maken.",
       "empty": "Er komt nog niets overeen met deze weergave.",
       "loadFailed": "Kan deze weergave niet laden. De notities zelf blijven ongewijzigd.",
       "folderMissing": "Deze map staat niet meer in de kluis. Kies een andere bron.",
+      "unreadable": "Deze weergave kan niet worden gelezen. Kies hierboven een bron of verwijder het blok.",
       "invalidJson": "De definitie van deze weergave is geen geldige JSON. Herstel die hieronder of verwijder het blok.",
       "invalidShape": "De definitie van deze weergave heeft geen bron. Kies er hierboven een of herstel de definitie hieronder.",
       "definition": "Definitie"
@@ -668,6 +676,8 @@
   },
   "menus": {
     "wiki": {
+      "journalDay": "Dagboek · {date}",
+      "journalDayUnwritten": "Dagboek · nog niet geschreven",
       "aria": "Notitiesuggesties",
       "loading": "Notities laden…",
       "empty": "Geen notities gevonden",
@@ -782,6 +792,12 @@
     "viaProperty": "{property} → {title}",
     "viaPortal": "Getoond in een portaal"
   },
+  "references": {
+    "filterAll": "Alle",
+    "filterNotes": "Notities",
+    "filterJournal": "Dagboek",
+    "filterBy": "Verwijzingen filteren: {filter}"
+  },
   "unlinkedMentions": {
     "title": "Ongekoppelde vermeldingen",
     "summary": "{count, plural, one {# ongekoppelde vermelding} other {# ongekoppelde vermeldingen}}",
@@ -886,6 +902,7 @@
     "showOnCalendar": "Tonen in agenda",
     "showingOnCalendar": "Wordt getoond in agenda",
     "relation": {
+      "unwrittenDay": "Nog niet geschreven",
       "deleted": "Verwijderd",
       "removeAria": "{title} verwijderen",
       "addAria": "Relatie toevoegen",

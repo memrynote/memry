@@ -28,9 +28,9 @@ const SHUTDOWN_TIMEOUT_MS = 1_500
 
 /**
  * onnxruntime takes every core by default, so a vault-wide re-embed pinned the
- * whole machine. Half the cores leaves the rest for the user.
+ * whole machine. Use at most two threads, and leave headroom on small machines.
  */
-const INFERENCE_THREADS = Math.max(1, Math.floor(os.availableParallelism() / 2))
+const INFERENCE_THREADS = Math.min(2, Math.max(1, Math.floor(os.availableParallelism() / 2)))
 
 interface ModelProgress {
   status: string

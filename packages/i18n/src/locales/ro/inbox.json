@@ -250,7 +250,8 @@
     "failedPlayAudio": "Nu s-a putut reda înregistrarea audio",
     "failedLoadAudio": "Nu s-a putut încărca înregistrarea audio",
     "video": "Videoclip",
-    "unsupportedVideo": "Browserul nu acceptă elementul video."
+    "unsupportedVideo": "Browserul nu acceptă elementul video.",
+    "fileOnOtherDevice": "Fișierul se află pe dispozitivul care l-a capturat."
   },
   "reminder": {
     "dataUnavailable": "Datele de memento nu sunt disponibile.",

@@ -198,8 +198,10 @@ Wherever the note lands, the sidebar opens that folder and scrolls the new note 
 
 ### Privacy
 
-**Telemetry** opts in or out of anonymous usage analytics. Off by default. Only enum-like event
-metadata is sent — never note content, search text, tag names, or file paths.
+**Telemetry** opts in or out of anonymous usage analytics. On by default in the installed app, so
+turn it off here if you don't want it. The same switch also stops redacted warning and error log
+lines from being sent. Only enum-like event metadata is sent — never note content, search text,
+tag names, or file paths.
 
 **Automatically Send Error Reports** controls what happens when an error screen appears. On by
 default: Memry sends a redacted diagnostic report (technical logs only, never note content) in the
@@ -223,6 +225,30 @@ dialog lists exactly what is sent so nothing is collected out of sight:
   account on the server rather than sent by the app; signed-out feedback carries no plan.
 
 Note content, titles, tags and file paths are never included.
+
+---
+
+## Join the iPhone Beta
+
+The iPhone app is in beta on TestFlight. Enter your email and Apple sends you a TestFlight invite.
+Use the email of the Apple ID on your iPhone. You can join from three places:
+
+- A one-time announcement that opens on launch. Close it and it does not come back.
+- The **iPhone beta is live** card at the bottom of the Settings sidebar, on every settings page.
+  After you join it shows where the invite went, and **Send again** lets you use another address.
+- **Join TestFlight** in the Help and feedback menu at the foot of the rail.
+
+What is sent when you join:
+
+- **Your email**, to add you to the TestFlight group and to the iPhone beta mailing list for launch
+  news. You can unsubscribe from the list at any time.
+- **App version and operating system**, and which of the three places you joined from.
+- **An anonymous install ID**, only while usage analytics is on. The server stores a one-way hash
+  of it next to your email on the mailing list, and analytics records that this install joined.
+  Analytics never receives your email.
+
+Once Apple's email arrives, install TestFlight from the App Store, open the invite on your iPhone,
+and sign in to memrynote on the phone.
 
 ---
 
@@ -486,9 +512,9 @@ quick-capture voice capture.
 
 ### Embedding Model
 
-- Status: loaded, loading, or not downloaded
+- Status: not downloaded, downloaded, loading, or loaded. The model unloads from memory a short while after the last embedding, so a downloaded model reads **Downloaded** until it is used again
 - Dimensions and current embedding count
-- **Download / Load** button
+- **Download & Load Model** button before the first download, **Load Model** once the model is on disk
 - **Rebuild Index** — re-embed all notes; shows progress
 
 ### AI Inline
@@ -496,10 +522,10 @@ quick-capture voice capture.
 Inline editor AI menu (grammar, tone, length, custom prompt).
 
 - **Enable** — toggle on/off
-- **Provider** — Ollama (local), OpenAI, or Anthropic
-- **Model** — presets per provider
-- **API Key** — required for OpenAI / Anthropic
-- **Base URL** — defaults to `http://localhost:11434/v1` for Ollama
+- **Provider** — Ollama (local), OpenAI, Anthropic, Google Gemini, or Custom (OpenAI-compatible)
+- **Model** — presets per provider; Custom takes a typed model ID with suggestions from the endpoint
+- **API Key** — required for OpenAI / Anthropic / Google Gemini, optional for Custom
+- **Base URL** — defaults to `http://localhost:11434/v1` for Ollama; required for Custom
 - **Test Connection** — verifies URL + key
 
 ### Agent Permissions
@@ -541,10 +567,17 @@ not-fully-local acknowledgement because prompts and tool results are sent to tha
 
 Local MCP server controls are also collapsed inside AI Assistant for external desktop AI clients.
 
-- **Server URL** — localhost endpoint copied into an MCP client
+- **Server URL** — localhost endpoint, ending in `/mcp`, copied into an MCP client
 - **Bearer Token** — per-launch in-memory token copied as an authorization header
 - **Rotate Token** — immediately invalidates the previous token
 - **Registered Tools** — count of exposed vault tools
+- **Client config** — copies a ready-to-paste setup with the current URL and token filled in:
+  **Claude Desktop** copies the `claude_desktop_config.json` entry that bridges through
+  `mcp-remote`, and **Claude Code** copies the `claude mcp add` command. See
+  [Agent Backends](/user-guide/ai/agent-backends#read-through-the-mcp-server).
+
+The URL and token change when memrynote restarts, switches vault, or rotates the token, so copy the
+config again and restart the client after any of those.
 
 Agent Chat backends use this same server for vault tools. Read tools do not prompt. Create, update
 and delete tools require active Agent Chat context and, by default, pause for inline approval with a
@@ -602,7 +635,14 @@ A property manager for custom note fields. Supported types:
 - Checkbox
 - Status (for project workflows)
 
-Create, rename, recolor, and reorder property options.
+Every property your notes use is listed with its type and the number of notes that use it. Open a
+property to see those notes and jump to one. A warning marks a property where some notes hold a
+value that does not match its type, such as `rating: good` under a Number property, and the list
+names those notes.
+
+Create, rename, recolor, and reorder property options. Select, Multi-select, and Status properties
+can be deleted here. Other types cannot: their values live in each note's frontmatter, and a
+note that still uses one would bring it straight back.
 
 ---
 

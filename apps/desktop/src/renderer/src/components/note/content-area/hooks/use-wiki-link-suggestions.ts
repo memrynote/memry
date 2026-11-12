@@ -15,7 +15,15 @@ import {
 } from '@/lib/note-name-rank'
 import { toMemryFileUrl } from '@/lib/memry-file-url'
 import { notesService, onNoteLinksChanged } from '@/services/notes-service'
+import {
+  journalService,
+  onJournalEntryCreated,
+  onJournalEntryUpdated,
+  onJournalEntryDeleted,
+  onJournalExternalChange
+} from '@/services/journal-service'
 import { listTitledCanvases } from '@/lib/canvas-lookup'
+import { isJournalDayPrefix, journalDayOf } from '@/lib/journal-link-days'
 import { createWikiLinkInlineContent } from '../wiki-link'
 import { parseWikiLinkQuery, pickAlias } from '../wiki-link-utils'
 import { activeRunWikiLink, replaceActiveRunWithWikiLink } from '../wiki-link-edit-plugin'
@@ -67,6 +75,18 @@ function aliasRow(target: string, alias: string): WikiLinkSuggestionItem {
   }
 }
 
+const JOURNAL_DAY_ROWS = 5
+
+function journalDayRow(
+  date: string,
+  exists: boolean,
+  alias: string,
+  heading: string | null = null
+): WikiLinkSuggestionItem {
+  const target = heading ? `${date}#${heading}` : date
+  return { id: `journal:${date}`, title: date, target, alias, exists, type: 'journal' }
+}
+
 function createAudioFileBlockContent(props: {
   url: string
   name: string
@@ -94,6 +114,35 @@ export function useWikiLinkSuggestions(editor: any, onAddName?: (name: string) =
   const headingsCacheRef = useRef(
     new Map<string, { headings: MarkdownHeading[]; fetchedAt: number }>()
   )
+
+  // The note list leaves journal days out, so a date reads them from the
+  // journal's own per-year index. Same 5s window as the note list.
+  const journalYearsRef = useRef(new Map<string, { dates: string[]; fetchedAt: number }>())
+
+  useEffect(() => {
+    const invalidate = () => journalYearsRef.current.clear()
+    const unsubscribe = [
+      onJournalEntryCreated(invalidate),
+      onJournalEntryUpdated(invalidate),
+      onJournalEntryDeleted(invalidate),
+      onJournalExternalChange(invalidate)
+    ]
+    return () => unsubscribe.forEach((off) => off())
+  }, [])
+
+  const loadJournalDays = useCallback(async (year: string, now: number): Promise<string[]> => {
+    const cached = journalYearsRef.current.get(year)
+    if (cached && now - cached.fetchedAt <= CACHE_TTL_MS) return cached.dates
+
+    let dates: string[] = []
+    try {
+      dates = (await journalService.getHeatmap(Number(year))).map((entry) => entry.date)
+    } catch (error) {
+      log.error('Failed to load journal days for wiki link suggestions', error)
+    }
+    journalYearsRef.current.set(year, { dates, fetchedAt: now })
+    return dates
+  }, [])
 
   const loadHeadings = useCallback(
     async (note: NoteSuggestion, now: number): Promise<MarkdownHeading[]> => {
@@ -202,17 +251,29 @@ export function useWikiLinkSuggestions(editor: any, onAddName?: (name: string) =
 
       const ranked = rankNoteNames(search, notes)
 
+      // A date links its journal day, written or not. An unwritten day is
+      // offered as a ghost row instead of "Create new note", which would mint a
+      // note that takes the day's name away from the journal.
+      const day = journalDayOf(notePart)
+      const dayPrefix = heading === null && isJournalDayPrefix(search) ? search.trim() : null
+      const journalYear = (day ?? dayPrefix)?.slice(0, 4)
+      const journalDays = journalYear ? await loadJournalDays(journalYear, now) : []
       // Canvases are vault items the same way notes are, and the menu is the
       // only place a writer discovers one while writing (#1983). Untitled ones
       // are left out: they have no target a link could carry.
       const canvases = await listTitledCanvases()
-      const filteredCanvases = search ? fuzzySearch(canvases, search, ['title']) : canvases
+      const canvasSearch = day && heading !== null ? notePart : search
+      const filteredCanvases = canvasSearch
+        ? fuzzySearch(canvases, canvasSearch, ['title'])
+        : canvases
 
       const exactNote = search
         ? ranked.find((match) => isExactMatch(search, match))?.note
         : undefined
-      const exactCanvas = search
-        ? filteredCanvases.find((canvas) => canvas.title.toLowerCase() === search.toLowerCase())
+      const exactCanvas = canvasSearch
+        ? filteredCanvases.find(
+            (canvas) => canvas.title.toLowerCase() === canvasSearch.toLowerCase()
+          )
         : undefined
       if (alias && exactNote) {
         return [aliasRow(targetOf(exactNote), alias)]
@@ -221,14 +282,31 @@ export function useWikiLinkSuggestions(editor: any, onAddName?: (name: string) =
         return [aliasRow(exactCanvas.title, alias)]
       }
 
+      if (alias && day && !exactNote && !exactCanvas) {
+        return [aliasRow(heading ? `${day}#${heading}` : day, alias)]
+      }
+
+      const dayRows: WikiLinkSuggestionItem[] = []
+      if (day && !exactNote && !exactCanvas) {
+        dayRows.push(journalDayRow(day, journalDays.includes(day), alias, heading))
+      }
+      if (dayPrefix) {
+        for (const date of journalDays.toReversed()) {
+          if (dayRows.length >= JOURNAL_DAY_ROWS) break
+          if (date.startsWith(dayPrefix) && date !== day) {
+            dayRows.push(journalDayRow(date, true, alias))
+          }
+        }
+      }
+
       // Notes keep the top of the list — they are what the grammar has always
       // been for, and the resolver reads them first too. A few slots are held
       // back for canvases, so a vault whose notes fill the menu on their own
       // does not hide every canvas the query matched.
       const canvasSlots = Math.min(filteredCanvases.length, 3)
-      const sorted = ranked.slice(0, 10 - canvasSlots)
+      const sorted = ranked.slice(0, 10 - canvasSlots - dayRows.length)
 
-      const suggestions: WikiLinkSuggestionItem[] = sorted.map(({ note, name }) => {
+      const noteRows: WikiLinkSuggestionItem[] = sorted.map(({ note, name }) => {
         const shared =
           name === null
             ? sharedTitles.has(note.title.toLowerCase())
@@ -250,6 +328,7 @@ export function useWikiLinkSuggestions(editor: any, onAddName?: (name: string) =
           ...(note.fileSize != null ? { fileSize: note.fileSize } : {})
         }
       })
+      const suggestions = [...dayRows, ...noteRows]
 
       for (const canvas of filteredCanvases.slice(0, Math.max(0, 10 - suggestions.length))) {
         suggestions.push({
@@ -262,7 +341,7 @@ export function useWikiLinkSuggestions(editor: any, onAddName?: (name: string) =
         })
       }
 
-      const hasExactMatch = search ? Boolean(exactNote ?? exactCanvas) : true
+      const hasExactMatch = search ? Boolean(exactNote ?? exactCanvas ?? day) : true
 
       if (search && !hasExactMatch) {
         // The row names the note that will actually be created, which is the
@@ -295,7 +374,7 @@ export function useWikiLinkSuggestions(editor: any, onAddName?: (name: string) =
 
       return suggestions
     },
-    [loadHeadings, onAddName]
+    [loadHeadings, loadJournalDays, onAddName]
   )
 
   const insertWikiLink = useCallback(

@@ -91,7 +91,7 @@ final class VaultBrowseViewModel {
         self.editor = editor
         self.metadataWriter = metadataWriter
         self.searcher = search
-        self.search = search.map { VaultSearchViewModel(search: $0) }
+        self.search = search.map { VaultSearchViewModel(search: $0, source: "notes_list") }
     }
 
     /// The production initializer. `AuthRootView` -> `VaultListView` ->

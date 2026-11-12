@@ -178,9 +178,9 @@ struct TaskDetailPills: View {
             removeDate: { Task { await store.detailRequestDue(task, date: nil, time: nil) } },
             pickDateTime: { sheet = .when },
             setRule: { rule in Task { await store.detailRequestRule(task, rule: rule) } },
-            addReminder: { date in
+            addReminder: { preset in
                 Task {
-                    await store.addReminder(to: task.id, at: date, note: nil)
+                    await store.addReminder(to: task.id, at: preset.date, note: nil, origin: .preset(preset.id))
                     reminderVersion += 1
                 }
             }
@@ -296,9 +296,9 @@ struct TaskDetailPills: View {
             }
             .presentationDetents([.medium, .large])
         case .reminder:
-            TaskReminderPickerSheet(mode: .add, now: store.clock()) { date, note in
+            TaskReminderPickerSheet(mode: .add, now: store.clock()) { date, note, origin in
                 self.sheet = nil
-                Task { await store.addReminder(to: current.id, at: date, note: note) }
+                Task { await store.addReminder(to: current.id, at: date, note: note, origin: origin) }
             }
         }
     }

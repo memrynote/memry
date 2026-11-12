@@ -5,7 +5,9 @@ import {
   setNoteProperties,
   getNoteProperties,
   getPropertyType,
-  insertPropertyDefinition
+  insertPropertyDefinition,
+  listPropertyUsage,
+  listNotesWithProperty
 } from './property-queries'
 import { insertNoteCache } from './note-crud'
 import { extractProperties, parseNote } from '../../../vault/frontmatter'
@@ -175,6 +177,73 @@ describe('unquoted YAML date typing (BBF-43)', () => {
 
     expect(indexFile('note-1', '---\ndue: 2026-10-07\n---\n')).toEqual([
       { name: 'due', value: '2026-10-07', type: 'select' }
+    ])
+  })
+})
+
+describe('property usage across notes', () => {
+  let dbResult: TestDatabaseResult
+  let db: TestDb
+
+  const indexFile = (id: string, title: string, file: string) => {
+    insertNoteCache(db, {
+      id,
+      path: `notes/${id}.md`,
+      title,
+      emoji: null,
+      contentHash: `hash-${id}`,
+      wordCount: 1,
+      characterCount: 1,
+      date: null,
+      createdAt: '2026-01-10T00:00:00.000Z',
+      modifiedAt: '2026-01-12T00:00:00.000Z'
+    })
+    const { frontmatter } = parseNote(file, `notes/${id}.md`)
+    setNoteProperties(db, id, extractProperties(frontmatter), (name, value) =>
+      getPropertyType(db, name, value, inferPropertyType)
+    )
+  }
+
+  beforeEach(() => {
+    dbResult = createTestIndexDb()
+    db = dbResult.db
+  })
+
+  afterEach(() => {
+    dbResult.close()
+  })
+
+  it('counts one property shared by unrelated notes and flags the value its type cannot show', () => {
+    indexFile('book', 'Dune', '---\nrating: 5\nauthor: Frank Herbert\n---\n')
+    indexFile('movie', 'Arrival', '---\nrating: good\n---\n')
+    indexFile('empty', 'Draft', '---\nrating:\n---\n')
+
+    expect(listPropertyUsage(db)).toEqual(
+      expect.arrayContaining([
+        { name: 'rating', noteCount: 3, mismatchCount: 1 },
+        { name: 'author', noteCount: 1, mismatchCount: 0 }
+      ])
+    )
+    expect(listNotesWithProperty(db, 'rating')).toEqual([
+      { id: 'movie', title: 'Arrival', path: 'notes/movie.md', emoji: null, mismatch: true },
+      { id: 'empty', title: 'Draft', path: 'notes/empty.md', emoji: null, mismatch: false },
+      { id: 'book', title: 'Dune', path: 'notes/book.md', emoji: null, mismatch: false }
+    ])
+  })
+
+  it('reads a value its type cannot show as the text the file holds', () => {
+    indexFile('book', 'Dune', '---\nrating: 5\ndone: true\n---\n')
+    indexFile('movie', 'Arrival', '---\nrating: good\ndone: yes\n---\n')
+
+    // Coerced, these read as NaN and false, and the next whole-record write
+    // put that into the file in place of the user's value.
+    expect(getNoteProperties(db, 'movie')).toEqual([
+      { name: 'rating', type: 'number', value: 'good' },
+      { name: 'done', type: 'checkbox', value: 'yes' }
+    ])
+    expect(getNoteProperties(db, 'book')).toEqual([
+      { name: 'rating', type: 'number', value: 5 },
+      { name: 'done', type: 'checkbox', value: true }
     ])
   })
 })

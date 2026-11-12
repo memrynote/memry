@@ -1,8 +1,7 @@
-//! Data migration numbering (#4052): main shipped `calendar_cursor_reset` and
-//! `calendar_foreign_cursor_reset` as 13 and 14, while feat/tauri-v2 builds had used 13..22
-//! for their own. Files written under either numbering open through [`open_data`], the real
-//! entry point, and end with the schema of a fresh database, every row and the calendar cursors
-//! reset.
+//! Data migration numbering (#4052): main shipped 13..16, while feat/tauri-v2 builds had used
+//! 13..22, then 15..24, for their own. Files written under any numbering open through
+//! [`open_data`], the real entry point, and end with the schema of a fresh database, every row
+//! and the calendar cursors reset.
 
 use std::path::{Path, PathBuf};
 
@@ -12,7 +11,7 @@ use super::*;
 use crate::storage::open_data;
 use crate::storage::test_support::{TempDir, temp_dir};
 
-/// feat/tauri-v2's own data migrations, in the order its earlier builds numbered them 13..22.
+/// feat/tauri-v2's own data migrations, in the order every numbering gave them.
 const FEAT_OWN: [&str; 10] = [
     "note_snapshots",
     "local_settings",
@@ -34,38 +33,30 @@ fn copy(migration: &Migration, version: u32) -> Migration {
     }
 }
 
-fn shared() -> impl Iterator<Item = Migration> {
-    DATA_MIGRATIONS[..12].iter().map(|m| copy(m, m.version))
+fn shared(count: usize) -> impl Iterator<Item = Migration> {
+    DATA_MIGRATIONS[..count].iter().map(|m| copy(m, m.version))
 }
 
-/// The list a feat/tauri-v2 build before #4052 ran: 1..12 as main, then its own at 13..22.
-fn earlier_feat_list() -> Vec<Migration> {
-    let own = FEAT_OWN.iter().zip(13..).map(|(name, version)| {
+/// The version an earlier feat/tauri-v2 build gave its first own migration: 13 before #4052,
+/// 15 until main's 15 and 16 were merged.
+const EARLIER_FEAT_FIRSTS: [u32; 2] = [13, 15];
+
+/// The list an earlier feat/tauri-v2 build ran: main's up to `first - 1`, then its own from
+/// `first`.
+fn earlier_feat_list(first: u32) -> Vec<Migration> {
+    let own = FEAT_OWN.iter().zip(first..).map(|(name, version)| {
         let migration = DATA_MIGRATIONS
             .iter()
             .find(|m| m.name == *name)
             .unwrap_or_else(|| panic!("no data migration named {name}"));
         copy(migration, version)
     });
-    shared().chain(own).collect()
+    shared(first as usize - 1).chain(own).collect()
 }
 
-/// The list main shipped (v2026-11-06): 1..12, then the two calendar cursor resets.
+/// The list main shipped (v2026-11-11): 1..16.
 fn main_list() -> Vec<Migration> {
-    shared()
-        .chain([
-            Migration {
-                version: 13,
-                name: "calendar_cursor_reset",
-                sql: include_str!("data/0013_calendar_cursor_reset.sql"),
-            },
-            Migration {
-                version: 14,
-                name: "calendar_foreign_cursor_reset",
-                sql: include_str!("data/0014_calendar_foreign_cursor_reset.sql"),
-            },
-        ])
-        .collect()
+    shared(16).collect()
 }
 
 fn has_table(conn: &Connection, name: &str) -> bool {
@@ -229,41 +220,50 @@ fn reopen_keeps_a_later_cursor(path: &Path, conn: Connection, what: &str) {
 }
 
 /// Test machines hold files an earlier feat/tauri-v2 build migrated under its own numbering:
-/// `note_snapshots` at 13 and on to `note_file_marks` at 22. They keep every row, gain what
-/// they lack, and get main's calendar cursor resets.
+/// `note_snapshots` at 13 (or 15) and on to `note_file_marks` at 22 (or 24). They keep every
+/// row, gain what they lack, and get the main migrations their numbers took. A file numbered
+/// from 13 never ran main's calendar cursor resets, so its cursors end reset; one numbered
+/// from 15 ran them before its cursor was stored, so its cursor stays.
 #[test]
-fn a_file_numbered_by_an_earlier_feat_build_is_renumbered_once_and_gets_mains_resets() {
-    let list = earlier_feat_list();
-    for version in 13..=22 {
-        for crashed in [false, true] {
-            let what = format!("earlier feat numbering at {version}, crash window {crashed}");
-            let (_dir, path, seeded) = file_at(&list, version);
-            // From old 17 on the hashes are kept apart from `note_files`, so a hash with no
-            // `note_file_hashes` row stays without one. Re-running `note_file_hashes` would
-            // backfill it: the file must land past the migrations it ran, not one short.
-            let hashes_owned = version >= 17;
-            if hashes_owned {
-                let conn = Connection::open(&path).expect("open");
-                conn.execute_batch("UPDATE note_files SET content_hash = 'h-1'")
-                    .expect("a hash");
+fn a_file_numbered_by_an_earlier_feat_build_is_renumbered_once_and_gets_mains_migrations() {
+    for first in EARLIER_FEAT_FIRSTS {
+        let list = earlier_feat_list(first);
+        for version in first..first + 10 {
+            for crashed in [false, true] {
+                earlier_feat_file_opens(&list, first, version, crashed);
             }
-            if crashed && let Some(next) = list.get(version as usize) {
-                let conn = Connection::open(&path).expect("open");
-                conn.execute_batch(next.sql)
-                    .expect("the next migration commits");
-            }
-
-            let conn = open_and_check(&path, &seeded, &what);
-            assert_eq!(cursors(&conn), (None, None), "{what}: cursors not reset");
-            if hashes_owned {
-                assert!(
-                    !file_hash_backfilled(&conn),
-                    "{what}: an old migration ran again"
-                );
-            }
-            reopen_keeps_a_later_cursor(&path, conn, &what);
         }
     }
+}
+
+fn earlier_feat_file_opens(list: &[Migration], first: u32, version: u32, crashed: bool) {
+    let what = format!("feat numbering from {first} at {version}, crash window {crashed}");
+    let (_dir, path, seeded) = file_at(list, version);
+    // From `note_file_hashes` on the hashes are kept apart from `note_files`, so a hash
+    // with no `note_file_hashes` row stays without one. Re-running `note_file_hashes`
+    // would backfill it: the file must land past the migrations it ran, not one short.
+    let hashes_owned = version >= first + 4;
+    if hashes_owned {
+        let conn = Connection::open(&path).expect("open");
+        conn.execute_batch("UPDATE note_files SET content_hash = 'h-1'")
+            .expect("a hash");
+    }
+    if crashed && let Some(next) = list.get(version as usize) {
+        let conn = Connection::open(&path).expect("open");
+        conn.execute_batch(next.sql)
+            .expect("the next migration commits");
+    }
+
+    let conn = open_and_check(&path, &seeded, &what);
+    let cursor = (first > 14).then(|| "tok-1".to_owned());
+    assert_eq!(cursors(&conn), (cursor.clone(), cursor), "{what}: cursors");
+    if hashes_owned {
+        assert!(
+            !file_hash_backfilled(&conn),
+            "{what}: an old migration ran again"
+        );
+    }
+    reopen_keeps_a_later_cursor(&path, conn, &what);
 }
 
 fn file_hash_backfilled(conn: &Connection) -> bool {
@@ -279,22 +279,27 @@ fn file_hash_backfilled(conn: &Connection) -> bool {
 /// from an earlier build, whatever its counter says. It is refused and left as found.
 #[test]
 fn an_old_numbered_file_missing_an_earlier_table_is_refused_untouched() {
-    let list = earlier_feat_list();
-    let (_dir, path, _) = file_at(&list, 17);
-    let conn = Connection::open(&path).expect("open");
-    conn.execute_batch("DROP TABLE local_settings")
-        .expect("drop old 14's table");
-    drop(conn);
+    for first in EARLIER_FEAT_FIRSTS {
+        let version = first + 4;
+        let (_dir, path, _) = file_at(&earlier_feat_list(first), version);
+        let conn = Connection::open(&path).expect("open");
+        conn.execute_batch("DROP TABLE local_settings")
+            .expect("drop the old local_settings");
+        drop(conn);
+        refused_untouched(&path, version);
+    }
+}
 
-    let err = open_data(&path)
+fn refused_untouched(path: &Path, version: u32) {
+    let err = open_data(path)
         .err()
         .expect("a file missing local_settings must not open");
     assert!(
         matches!(&err, StorageError::Migration { what, .. } if what.contains("local_settings")),
         "{err:?}"
     );
-    let conn = Connection::open(&path).expect("a reader");
-    assert_eq!(user_version(&conn).expect("version"), 17);
+    let conn = Connection::open(path).expect("a reader");
+    assert_eq!(user_version(&conn).expect("version"), version);
     assert_eq!(
         cursors(&conn),
         (Some("tok-1".to_owned()), Some("tok-1".to_owned()))
@@ -302,13 +307,14 @@ fn an_old_numbered_file_missing_an_earlier_table_is_refused_untouched() {
     assert!(!has_table(&conn, "local_settings"), "no migration ran");
 }
 
-/// iOS and the CLI on main leave `data.db` at 13 or 14; a desktop build opening it adds the
-/// tables main does not have. A file at 13 still owes 14's reset; a file at 14 owes none, so
+/// iOS and the CLI on main leave `data.db` at 13..16; a desktop build opening it adds the
+/// tables main does not have. A file at 13 still owes 14's reset; a later file owes none, so
 /// the cursor its device pulled since stays.
 #[test]
-fn a_file_main_left_at_13_or_14_gains_the_desktop_tables() {
+fn a_file_main_left_at_13_to_16_gains_the_desktop_tables() {
     let list = main_list();
-    for (version, cursor) in [(13, None), (14, Some("tok-1".to_owned()))] {
+    for version in 13..=16 {
+        let cursor = (version > 13).then(|| "tok-1".to_owned());
         let what = format!("main at {version}");
         let (_dir, path, seeded) = file_at(&list, version);
         assert_eq!(seeded, ["meta"], "main has none of the desktop tables");

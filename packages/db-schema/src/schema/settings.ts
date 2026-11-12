@@ -14,6 +14,12 @@ export const savedFilters = sqliteTable('saved_filters', {
   id: text('id').primaryKey(),
   name: text('name').notNull(),
   config: text('config', { mode: 'json' }).notNull(),
+  /**
+   * Advanced rules (`TaskFilterGroup`), synced as a top-level payload key
+   * beside `config`. Null when the filter has none. Opaque here: a newer
+   * build's tree is stored and pushed back verbatim.
+   */
+  expression: text('expression', { mode: 'json' }).$type<unknown>(),
   position: integer('position').notNull().default(0),
   createdAt: text('created_at')
     .notNull()

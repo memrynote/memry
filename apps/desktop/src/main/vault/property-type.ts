@@ -7,6 +7,7 @@
 
 import { PROJECT_PROPERTY_KEY, type PropertyType } from '@memry/contracts/property-types'
 import { isRelationValue } from '@memry/contracts/relation-uri'
+import { parseYamlDate } from './yaml-dates'
 
 /**
  * Check if a string is a valid ISO 8601 date.
@@ -89,6 +90,28 @@ export function inferPropertyType(name: string, value: unknown): PropertyType {
 
   // Default to text for unknown types
   return 'text'
+}
+
+/**
+ * Whether an indexed value, as `serializeValue` stored it, can be shown as its
+ * type. The type is vault-wide, so one note's `rating: good` can sit under the
+ * number type another note's `rating: 5` gave it. Empty values fit every type,
+ * and text-like types fit every value.
+ */
+export function valueFitsType(type: string, value: string | null): boolean {
+  if (value === null || value === '') return true
+  switch (type) {
+    case 'number':
+      return Number.isFinite(Number(value))
+    case 'checkbox':
+      return value === 'true' || value === 'false'
+    case 'date':
+      return isISODate(value) || parseYamlDate(value) !== null
+    case 'url':
+      return isURL(value)
+    default:
+      return true
+  }
 }
 
 /**

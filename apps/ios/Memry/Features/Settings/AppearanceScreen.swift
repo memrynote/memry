@@ -208,7 +208,9 @@ struct AboutScreen: View {
             }
             Section(SettingsCopy.loveMemry) {
                 link(SettingsCopy.starGitHub, "star", "https://github.com/memrynote/memry")
-                link(SettingsCopy.feedback, "bubble.left", "https://github.com/memrynote/memry/issues?q=sort%3Aupdated-desc+is%3Aissue+is%3Aopen+")
+                // The subject matches desktop's feedback mail, so both land under
+                // the same Gmail filter.
+                link(SettingsCopy.feedback, "bubble.left", "mailto:kaan@memrynote.com?subject=MemryNote%20feedback%20from%20iOS%20\(Self.version)%20(\(Self.build))")
             }
             Section {
                 link(SettingsCopy.privacyPolicy, "hand.raised", "https://memrynote.com/privacy")

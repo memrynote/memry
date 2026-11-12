@@ -116,6 +116,17 @@ blocked for that long; the monitor logs `main thread stalled` at `warn` under th
 reached, or `startup` before the first one) and `count`. At most 20 stalls are reported per run.
 Ticks between `powerMonitor` `suspend` and `resume` never report, so system sleep is not a stall.
 
+`phase` stays on the last launch phase for the rest of the run, so it cannot tell a stall during
+editing from one at launch. Each line also carries `suspects`: the last three units of work the
+main process started (`src/main/main-activity.ts`), each with its start relative to the last
+on-time tick, for example `projection:search:note.upserted@-120ms`. The loop is single-threaded, so
+the unit that blocked it is almost always the last one started; one with a large negative offset
+only ran alongside. Units are marked at four boundaries: every `ipcMain.handle` invocation
+(`ipc:<channel>`), each projector event (`projection:<projector>:<event type>`), each reconcile
+pass (`reconcile:<projector>`), and each post-reveal startup task (`startup:<name>`). Work that
+starts outside them, such as a timer, leaves the stall attributed to an earlier unit, which the
+offset gives away. Names are code-defined labels, never user data.
+
 The main window logs `main window renderer unresponsive` when Electron emits `unresponsive`, and
 `main window renderer responsive again` with `durationMs` when it recovers. Together the two say
 whether a frozen window was the main process or the renderer.
@@ -167,6 +178,20 @@ Users can turn it off via [Settings → General → Privacy](/user-guide/setting
 The build channel comes from `MEMRY_ENV` when set (dev/staging profiles) and otherwise from
 `app.isPackaged`, so packaged installs report `production`. A telemetry choice the user has
 already saved always wins over the channel default.
+
+The iOS app reports through the same `/telemetry/batch` endpoint with `platform: 'ios'`. The
+sync-server labels those events `$lib = memry-ios` (desktop is `memry-desktop`), so PostHog can
+split or filter by app while a signed-in user's desktop and iPhone resolve to one person. The
+server must accept `ios` before an iOS build sends it: a server on older contracts rejects the
+whole batch with a 400.
+
+On iOS (`apps/ios/Memry/Core/Telemetry/`), the shell builds and queues the batch on disk and the
+Rust core sends it (`AuthSession.sendTelemetry`), so the access token never leaves the core. Only
+Release builds report by default; a Debug build opts in with the `--telemetry` launch argument,
+and the unit-test host never reports. The user's switch is Settings → General → Share Anonymous
+Usage Metrics. Error- and fault-level `Log` lines become `app_error_seen`, and MetricKit's crash
+diagnostics become `app_crashed` on the next launch, coded by Mach exception and signal
+(`EXC_BAD_ACCESS:SIGSEGV`). Symbolicated stacks stay in TestFlight and Xcode Organizer.
 
 ### What Ships
 
@@ -539,6 +564,16 @@ version), which is what Error Tracking's `library` filter matches on. Server-sid
 to the same capture API, tagged `surface: 'server'`, so one PostHog project holds every event from
 both desktop and server.
 
+The desktop iPhone beta invite (`POST /ios-beta/join`, `routes/ios-beta.ts`) adds one more
+server-side event, `ios_beta_joined`, with `source` (`launch_prompt`, `settings`, `help_menu`),
+`app_version`, `platform`, and the person property `ios_beta_joined: true`. It lands on the same
+distinct id as the install's other events (`resolveDistinctId`), and only when the desktop sent its
+install id, which it does only while telemetry is on. The email never reaches PostHog. It goes to App
+Store Connect (the TestFlight invite) and to the Resend iOS beta segment, where the contact carries
+`signup_source: desktop` and `install_hash` (the same HMAC). An email can be traced to its PostHog
+person through Resend, never the other way. Landing `/ios-beta` signups carry neither property, so
+`signup_source` separates desktop signups from web ones.
+
 Errors additionally become `$exception` events for PostHog Error Tracking (`exceptionEvent` in
 `services/posthog-transform.ts`), fingerprinted on our own `errorCode` when one is present so
 grouping follows the app's own error taxonomy rather than PostHog's pattern-hash default. They
@@ -815,7 +850,7 @@ app updating itself, and counting it as a download swamps the number that matter
 | ----------------- | -------------------------------------------------------------------------------------------------------------------------------------- |
 | `update_metadata` | Polled on every update check: electron-builder `latest*.yml` and `.blockmap`, Velopack `releases.<channel>.json` and legacy `RELEASES` |
 | `update_package`  | Downloaded when an update applies: Velopack `.nupkg`, and the macOS `.zip` Squirrel.Mac installs from                                  |
-| `installer`       | Everything else: `.dmg`, `-setup.exe`, `MemryNote-win-Setup.exe`, `.AppImage`, `.deb`, the portable `-win.zip`                         |
+| `installer`       | Everything else: `.dmg`, `-setup.exe`, the Velopack `Setup.exe`, `.AppImage`, `.deb`, the portable `-win.zip`                          |
 
 Filter to `asset_kind = 'installer'` for real downloads. Two caveats remain. `-setup.exe` and
 `.AppImage` are also fetched by electron-updater on NSIS and AppImage installs, and the filename
@@ -913,6 +948,12 @@ only trusted when it looks like an enum token (`^[A-Za-z][A-Za-z0-9_.:-]{0,63}$`
 path, an email, a URL, free-form prose — is **rejected outright** and the class name is used
 instead, because a character-substituted path (`_Users_kaan_secret.md`) still leaks its structure.
 The class name itself still passes through the safe-token rules (no `@`, `://`, `/`, `\`, ≤64 chars).
+
+A `ZodError` reports `ZodError:<first issue code>:<path>[:<call site>]`, for example
+`ZodError:too_big:title:tasks:create`, so Error Tracking splits contract failures by field and by
+IPC channel instead of merging them under one `ZodError` issue. Array indices in the path become
+`N`, and a path key ships only when it is an identifier-shaped field name (anything else, such as a
+`z.record` key that may be user content, becomes `K`). Issue messages never ship.
 
 An **unhandled rejection** can carry any value as its reason — a string, a plain object, or a
 cross-realm `Error` that fails `instanceof Error` — and those carry no stack, which previously
@@ -1215,7 +1256,7 @@ detail (stacks, operational messages) that a PostHog _event_ deliberately omits.
   invisible.
 - **NSIS to Velopack hand-off**: a Windows install made by the older NSIS installer keeps
   electron-updater for checking and downloading. Once the NSIS `setup.exe` is on disk,
-  `apps/desktop/src/main/installer-handoff.ts` looks for `MemryNote-win-Setup.exe` on the same
+  `apps/desktop/src/main/installer-handoff.ts` looks for `MemryNote-Setup-win-x64.exe` on the same
   release tag (`HEAD`, then a streamed download into `userData/installer-handoff/`, folded into the
   `downloading` state) and verifies it with `Get-AuthenticodeSignature`: status `Valid` and a signer
   subject containing `CN=Open Source Developer Kaan Karaca`, or the file is deleted and never run.
@@ -1226,7 +1267,7 @@ detail (stacks, operational messages) that a PostHog _event_ deliberately omits.
   app's PID to exit (a `powershell.exe` process wait that fails closed, with `PSModulePath` cleared: the
   script runs in a console-less `cmd.exe`, where `tasklist | find` hangs), runs a copy of `Uninstall MemryNote.exe /S _?=INSTALLDIR` (no `--updated`,
   so the tolerant removal path runs, and the copy blocks until the old install, its shortcuts and
-  its uninstall key are gone), runs `MemryNote-win-Setup.exe --silent --verbose --log userData/logs/velopack-setup.log`,
+  its uninstall key are gone), runs `MemryNote-Setup-win-x64.exe --silent --verbose --log userData/logs/velopack-setup.log`,
   starts the new app itself (`--silent` stops Setup from starting it, and it does not set
   `VELOPACK_FIRSTRUN`), and falls back to the already-downloaded NSIS installer if Setup exited non-zero
   or no Velopack `Memrynote.exe` exists afterwards (with no NSIS installer left, it starts the old
@@ -1243,7 +1284,10 @@ detail (stacks, operational messages) that a PostHog _event_ deliberately omits.
   version running from the Velopack layout (`..\Update.exe` next to the app) is
   `app_update_installed` with `action: migrated` and `source: velopack-handoff`; a new version
   still running from an NSIS layout is `INSTALLER_HANDOFF_DID_NOT_APPLY`, meaning the update
-  arrived but the migration did not. `Memrynote.exe --cli migrate-installer path\to\MemryNote-win-Setup.exe`
+  arrived but the migration did not. Builds v2026-09-12 to v2026-10-25 look for
+  `MemryNote-win-Setup.exe` and run a script whose `tasklist | find` wait hangs, so no release
+  after v2026-10-25 carries that name: those builds get a `404`, decline, and update through NSIS
+  to a build with the fixed script. `Memrynote.exe --cli migrate-installer path\to\MemryNote-Setup-win-x64.exe`
   drives the same verify-then-hand-off path against a local file (exit 0 when scheduled, 1
   otherwise, Windows only), which is what the `migrate` job in
   `.github/workflows/velopack-smoke.yml` runs on a real NSIS install.

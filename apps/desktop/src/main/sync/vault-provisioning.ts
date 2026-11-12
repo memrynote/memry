@@ -1,4 +1,8 @@
-import { getDatabase, initDatabase } from '../database/client'
+import fs from 'fs'
+import path from 'path'
+import Database from 'better-sqlite3'
+import { drizzle } from 'drizzle-orm/better-sqlite3'
+import * as dataSchema from '@memry/db-schema/data-schema'
 import { runMigrations } from '../database/migrate'
 import { getDataDbPath, initVault } from '../vault/init'
 import { createVaultInfo } from '../vault'
@@ -13,23 +17,50 @@ export function dormantVaultFolderName(vaultUuid: string): string {
   return `memry-vault-${vaultUuid.slice(0, 8)}`
 }
 
-/**
- * Create a local vault at `folderPath`, adopt `serverVaultUuid` into its
- * vault_metadata, and register it in the store — WITHOUT opening it as the
- * current vault or starting its sync runtime. Used to provision the "dormant"
- * vaults a user chose to pull during multi-vault linking; they sync only once
- * the user switches to them (reusing the account master key + registered device).
- *
- * NOTE: this transiently points the shared data.db singleton at `folderPath`.
- * Callers MUST open the intended primary vault (via selectVault) afterward so
- * the singleton ends on the correct current vault.
- */
+/** Provision and register a vault without replacing the active vault's database or runtime. */
 export function createDormantVault(folderPath: string, serverVaultUuid: string): void {
-  initVault(folderPath)
-  const dataDbPath = getDataDbPath(folderPath)
-  runMigrations(dataDbPath)
-  initDatabase(dataDbPath)
-  adoptVaultLocally(getDatabase(), serverVaultUuid)
-  upsertVault(createVaultInfo(folderPath))
+  // Loading the native adapter can fail on Linux before SQLite opens any file.
+  new Database(':memory:').close()
+
+  const firstCreated = fs.mkdirSync(folderPath, { recursive: true })
+  try {
+    initVault(folderPath)
+    const dataDbPath = getDataDbPath(folderPath)
+    runMigrations(dataDbPath)
+    const sqlite = new Database(dataDbPath)
+    try {
+      adoptVaultLocally(drizzle(sqlite, { schema: dataSchema }), serverVaultUuid)
+    } finally {
+      sqlite.close()
+    }
+    upsertVault({ ...createVaultInfo(folderPath), vaultUuid: serverVaultUuid })
+  } catch (error) {
+    if (firstCreated) {
+      const stop = path.dirname(path.resolve(firstCreated))
+      let directory = path.join(path.resolve(folderPath), '.memry')
+      while (directory !== stop) {
+        try {
+          fs.rmdirSync(directory)
+        } catch (cleanupError) {
+          if (
+            cleanupError instanceof Error &&
+            'code' in cleanupError &&
+            cleanupError.code === 'ENOENT'
+          ) {
+            directory = path.dirname(directory)
+            continue
+          }
+          logger.warn('Incomplete vault directory kept after provisioning failed', {
+            folderPath,
+            directory,
+            error: cleanupError
+          })
+          break
+        }
+        directory = path.dirname(directory)
+      }
+    }
+    throw error
+  }
   logger.info('Provisioned dormant vault', { folderPath, serverVaultUuid })
 }

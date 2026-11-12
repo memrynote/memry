@@ -198,14 +198,14 @@ final class VaultSelectionViewModel {
         }
         snapshot.prune(keeping: Set(summaries.map(\.id)))
         guard summaries.count > 1 else {
-            await open(first)
+            await open(first, source: "auto")
             return
         }
         // The vault open when the app was last used opens again without
         // asking. "Switch vault" clears it, so the list still shows then.
         if let last = snapshot.lastVault,
            let summary = summaries.first(where: { $0.id == last }) {
-            await open(summary)
+            await open(summary, source: "auto")
             return
         }
         phase = .choosing(summaries)
@@ -215,7 +215,7 @@ final class VaultSelectionViewModel {
 
     /// Opens one vault through `VaultFiles.openingVault`, which is the whole
     /// security half of this task. See `VaultOpening.swift`.
-    func open(_ summary: VaultSummary) async {
+    func open(_ summary: VaultSummary, source: StaticString = "select") async {
         phase = .opening(summary)
         do {
             let opened = try await opener.open(summary.id)
@@ -230,6 +230,8 @@ final class VaultSelectionViewModel {
             vault = opened
             phase = .opened(summary)
             Log.storage.notice("a vault was opened")
+            Telemetry.shared.track(.vaultOpened, surface: .vault, action: "opened", source: source, result: .success)
+            SyncTelemetry.vaultOpened(syncs: filler != nil)
         } catch {
             let mapped = ErrorMapping.userFacing(error)
             Log.storage.error("a vault could not be opened", .code(mapped.code))

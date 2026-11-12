@@ -61,8 +61,8 @@ struct UnlockRouteView: View {
                 VStack(spacing: Tokens.Space.medium) {
                     ChoiceRow(
                         symbol: "qrcode.viewfinder",
-                        title: "Scan your computer",
-                        detail: "Fastest if Memry is already unlocked on a computer nearby.",
+                        title: "Scan another device",
+                        detail: "Fastest if Memry is already unlocked on a device nearby.",
                         tinted: true
                     ) { route = .link }
                     ChoiceRow(

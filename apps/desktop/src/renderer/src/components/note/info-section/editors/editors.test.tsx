@@ -163,6 +163,23 @@ describe('note info property editors', () => {
     open.mockRestore()
   })
 
+  it('leaves a number field holding text untouched when it loses focus unedited', () => {
+    const onChange = vi.fn()
+    // A number property can hold `rating: good`; parsing it on the way out
+    // gave null and deleted the value.
+    // oxlint-disable-next-line typescript/no-unsafe-type-assertion -- the row passes whatever the note holds, text included
+    render(
+      <NumberEditor value={'good' as unknown as number} onChange={onChange} autoFocus={false} />
+    )
+
+    // A number input shows text as empty; the value is still the note's.
+    const input = screen.getByLabelText('properties.types.number')
+    fireEvent.blur(input)
+    fireEvent.keyDown(input, { key: 'Enter' })
+
+    expect(onChange).not.toHaveBeenCalled()
+  })
+
   it('toggles checkbox and rating values with mouse and keyboard', () => {
     const onCheck = vi.fn()
     const onRating = vi.fn()

@@ -2,7 +2,9 @@
   "mcpServers": {
     "paddle-sandbox": {
       "url": "https://sandbox-mcp.paddle.com/mcp",
-      "headers": { "Authorization": "Bearer ${PADDLE_SANDBOX_API_KEY}" }
+      "headers": {
+        "Authorization": "Bearer ${PADDLE_SANDBOX_API_KEY}"
+      }
     },
     "paper": {
       "command": "~/.paper/bin/paper",
@@ -30,11 +32,11 @@
     "posthog": {
       "url": "https://mcp.posthog.com/mcp"
     },
-    "vercel": {
-      "url": "https://mcp.vercel.com"
-    },
     "cloudflare-api": {
       "url": "https://mcp.cloudflare.com/mcp"
+    },
+    "vercel": {
+      "url": "https://mcp.vercel.com"
     }
   }
 }

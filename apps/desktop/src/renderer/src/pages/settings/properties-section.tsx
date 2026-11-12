@@ -17,7 +17,16 @@ import {
   AlertDialogTitle
 } from '@/components/ui/alert-dialog'
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog'
-import { Search, MoreHorizontal, Pencil, Trash2, ChevronDown, ChevronUp, Plus } from '@/lib/icons'
+import {
+  Search,
+  MoreHorizontal,
+  Pencil,
+  Trash2,
+  ChevronDown,
+  ChevronUp,
+  Plus,
+  AlertTriangle
+} from '@/lib/icons'
 import { toast } from 'sonner'
 import { usePropertyDefinitions } from '@/hooks/use-property-definitions'
 import { notesService } from '@/services/notes-service'
@@ -35,6 +44,7 @@ import { getStatusCategoryLabel } from '@/lib/contract-display-names'
 import { SettingsHeader, SETTINGS_CARD } from '@/components/settings/settings-primitives'
 import { PROPERTY_TYPE_CONFIG } from '@/components/note/info-section/types'
 import { useT } from '@memry/i18n/renderer'
+import { PropertyNotesList, usePropertyUsage } from './property-notes-list'
 import type {
   SelectOption,
   StatusCategories,
@@ -42,6 +52,10 @@ import type {
 } from '@memry/contracts/property-types'
 
 const STATUS_CATEGORY_ORDER: StatusCategoryKey[] = ['todo', 'in_progress', 'done']
+
+// Only these carry options to manage. Deleting any other definition removes
+// nothing from the notes, and the next index pass infers it straight back.
+const OPTION_TYPES = new Set(['status', 'select', 'multiselect'])
 
 // Malformed options JSON in the index DB silently renders as "no options" —
 // report once per session so stored-data corruption is at least countable.
@@ -94,6 +108,7 @@ function PropertyManager() {
   const { t } = useT('settings')
   const { t: tCommon } = useT('common')
   const { definitions, isLoading, error, refresh } = usePropertyDefinitions()
+  const usage = usePropertyUsage()
   const [search, setSearch] = useState('')
   const [expandedDef, setExpandedDef] = useState<string | null>(null)
   const [deleteTarget, setDeleteTarget] = useState<string | null>(null)
@@ -131,13 +146,8 @@ function PropertyManager() {
     }
   }, [addingOption, addingStatusOption])
 
-  const selectDefs = useMemo(
-    () =>
-      definitions.filter(
-        (d) =>
-          (d.type === 'status' || d.type === 'select' || d.type === 'multiselect') &&
-          d.name.toLowerCase().includes(search.toLowerCase())
-      ),
+  const visibleDefs = useMemo(
+    () => definitions.filter((d) => d.name.toLowerCase().includes(search.toLowerCase())),
     [definitions, search]
   )
 
@@ -209,7 +219,8 @@ function PropertyManager() {
   const handleAddOption = useCallback(
     async (propertyName: string) => {
       if (!newOptionName.trim()) return
-      const color = COLOR_NAMES[((selectDefs.length + Math.random() * 10) % COLOR_NAMES.length) | 0]
+      const color =
+        COLOR_NAMES[((visibleDefs.length + Math.random() * 10) % COLOR_NAMES.length) | 0]
       try {
         await notesService.addPropertyOption(propertyName, {
           value: newOptionName.trim(),
@@ -223,13 +234,14 @@ function PropertyManager() {
       }
       setAddingOption(null)
     },
-    [newOptionName, selectDefs.length, refresh, t]
+    [newOptionName, visibleDefs.length, refresh, t]
   )
 
   const handleAddStatusOption = useCallback(
     async (propertyName: string, categoryKey: StatusCategoryKey) => {
       if (!newOptionName.trim()) return
-      const color = COLOR_NAMES[((selectDefs.length + Math.random() * 10) % COLOR_NAMES.length) | 0]
+      const color =
+        COLOR_NAMES[((visibleDefs.length + Math.random() * 10) % COLOR_NAMES.length) | 0]
       try {
         await notesService.addStatusOption(propertyName, categoryKey, {
           value: newOptionName.trim(),
@@ -243,7 +255,7 @@ function PropertyManager() {
       }
       setAddingStatusOption(null)
     },
-    [newOptionName, selectDefs.length, refresh, t]
+    [newOptionName, visibleDefs.length, refresh, t]
   )
 
   if (isLoading) {
@@ -271,13 +283,15 @@ function PropertyManager() {
       </div>
 
       <div className={cn(SETTINGS_CARD, 'max-h-[60vh] overflow-y-auto')}>
-        {selectDefs.length === 0 && (
+        {visibleDefs.length === 0 && (
           <p className="text-xs/4 text-muted-foreground py-4 text-center">
             {t('properties.noMatch', { query: search })}
           </p>
         )}
-        {selectDefs.map((def) => {
+        {visibleDefs.map((def) => {
           const isExpanded = expandedDef === def.name
+          const hasOptions = OPTION_TYPES.has(def.type)
+          const used = usage.get(def.name)
           // oxlint-disable-next-line typescript/no-unsafe-type-assertion -- def.type is a string in the IPC DTO; unknown types fall through to the undefined config handled below
           const config = PROPERTY_TYPE_CONFIG[def.type as keyof typeof PROPERTY_TYPE_CONFIG]
           const options = parseOptions(def.options)
@@ -288,6 +302,9 @@ function PropertyManager() {
                 0
               )
             : options.length
+          const typeLabel = t(`properties.types.${def.type}`, {
+            defaultValue: config?.label ?? def.type
+          })
 
           return (
             <div key={def.name}>
@@ -303,37 +320,58 @@ function PropertyManager() {
                     <ChevronDown className="w-3 h-3 text-muted-foreground shrink-0" />
                   )}
                   <span className="text-[13px]/4 text-foreground truncate">{def.name}</span>
-                  <span className="text-xs/4 text-muted-foreground shrink-0">
-                    {t(`properties.types.${def.type}`, {
-                      defaultValue: config?.label ?? def.type
-                    })}
-                  </span>
+                  <span className="text-xs/4 text-muted-foreground shrink-0">{typeLabel}</span>
                 </div>
                 <div className="flex items-center gap-2 shrink-0 ms-4">
+                  {used && used.mismatchCount > 0 && (
+                    <span
+                      className="flex text-amber-600 dark:text-amber-400"
+                      title={t('properties.usage.mismatchCount', {
+                        count: used.mismatchCount,
+                        type: typeLabel
+                      })}
+                    >
+                      <AlertTriangle className="size-3.5" aria-hidden="true" />
+                      <span className="sr-only">
+                        {t('properties.usage.mismatchCount', {
+                          count: used.mismatchCount,
+                          type: typeLabel
+                        })}
+                      </span>
+                    </span>
+                  )}
+                  {hasOptions && (
+                    <span className="text-xs/4 text-muted-foreground tabular-nums">
+                      {t('properties.optionCount', { count: optionCount })}
+                    </span>
+                  )}
                   <span className="text-xs/4 text-muted-foreground tabular-nums">
-                    {t('properties.optionCount', { count: optionCount })}
+                    {t('properties.usage.noteCount', { count: used?.noteCount ?? 0 })}
                   </span>
-                  <DropdownMenu>
-                    <DropdownMenuTrigger asChild>
-                      <button
-                        type="button"
-                        onClick={(e) => e.stopPropagation()}
-                        aria-label={t('properties.v2.actionsAria', { name: def.name })}
-                        className="p-1 rounded text-muted-foreground opacity-0 group-hover:opacity-100 focus-visible:opacity-100 data-[state=open]:opacity-100 hover:text-foreground transition-all"
-                      >
-                        <MoreHorizontal className="w-3.5 h-3.5" />
-                      </button>
-                    </DropdownMenuTrigger>
-                    <DropdownMenuContent align="end">
-                      <DropdownMenuItem
-                        onClick={() => setDeleteTarget(def.name)}
-                        className="text-destructive focus:text-destructive"
-                      >
-                        <Trash2 className="w-4 h-4 me-2" />
-                        {t('properties.actions.deleteProperty')}
-                      </DropdownMenuItem>
-                    </DropdownMenuContent>
-                  </DropdownMenu>
+                  {!hasOptions && <span className="size-5.5" aria-hidden="true" />}
+                  {hasOptions && (
+                    <DropdownMenu>
+                      <DropdownMenuTrigger asChild>
+                        <button
+                          type="button"
+                          onClick={(e) => e.stopPropagation()}
+                          aria-label={t('properties.v2.actionsAria', { name: def.name })}
+                          className="p-1 rounded text-muted-foreground opacity-0 group-hover:opacity-100 focus-visible:opacity-100 data-[state=open]:opacity-100 hover:text-foreground transition-all"
+                        >
+                          <MoreHorizontal className="w-3.5 h-3.5" />
+                        </button>
+                      </DropdownMenuTrigger>
+                      <DropdownMenuContent align="end">
+                        <DropdownMenuItem
+                          onClick={() => setDeleteTarget(def.name)}
+                          className="text-destructive focus:text-destructive"
+                        >
+                          <Trash2 className="w-4 h-4 me-2" />
+                          {t('properties.actions.deleteProperty')}
+                        </DropdownMenuItem>
+                      </DropdownMenuContent>
+                    </DropdownMenu>
+                  )}
                 </div>
               </div>
 
@@ -445,7 +483,7 @@ function PropertyManager() {
                           }
                         />
                       ))}
-                  {def.type !== 'status' && (
+                  {hasOptions && def.type !== 'status' && (
                     <>
                       {addingOption === def.name ? (
                         <div className="flex items-center gap-2 ps-5 py-1">
@@ -479,6 +517,10 @@ function PropertyManager() {
                       )}
                     </>
                   )}
+                  <p className="pt-2 pb-1 text-xs/4 text-muted-foreground">
+                    {t('properties.usage.heading')}
+                  </p>
+                  <PropertyNotesList name={def.name} typeLabel={typeLabel} />
                 </div>
               )}
             </div>
@@ -487,7 +529,7 @@ function PropertyManager() {
       </div>
 
       <p className="text-xs/4 text-muted-foreground pt-2">
-        {t('properties.summary', { count: selectDefs.length })}
+        {t('properties.summary', { count: visibleDefs.length })}
       </p>
 
       <AlertDialog open={!!deleteTarget} onOpenChange={(open) => !open && setDeleteTarget(null)}>

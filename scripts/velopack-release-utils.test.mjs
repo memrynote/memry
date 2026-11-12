@@ -24,6 +24,7 @@ import {
   selectPreviousPublishedRelease
 } from './velopack-release-utils.mjs'
 import { RETIRED_SETUP_NAME } from './release/vpk-args.mjs'
+import { VELOPACK_SETUP_ASSET_NAME } from '../apps/desktop/src/main/installer-handoff-script.ts'
 
 const ciAssetNames = [
   'Memry-2026.508.1-arm64.dmg',
@@ -524,7 +525,14 @@ describe('upload assets', () => {
   })
 
   // Shipped Electron builds up to v2026-10-25 HEAD vpk's Setup name and, on a 200, arm a hand-off
-  // that hangs.
+  // that hangs. The published name must differ from it and be the one the desktop app reads.
+  it("publishes the Setup under the name the app hands off to, never vpk's", () => {
+    const { setup } = buildVelopackAssetNames('2026.508.1')
+
+    assert.notEqual(setup, RETIRED_SETUP_NAME)
+    assert.equal(setup, VELOPACK_SETUP_ASSET_NAME)
+  })
+
   it("never uploads a Setup left under vpk's name", () => {
     const { assets, missing } = collectUploadAssets({
       appVersion: '2026.508.1',

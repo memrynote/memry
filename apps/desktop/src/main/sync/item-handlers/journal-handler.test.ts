@@ -192,6 +192,48 @@ describe('journalHandler', () => {
     })
   })
 
+  // A fresh device writes the day's row from an update record (`content: null`,
+  // an empty file) and then pulls the body. A row that read as edited since its
+  // sync owed that empty file to the doc, which replaced the server body and
+  // deleted it on every device.
+  it.each([
+    {
+      when: 'the parse stamps a new row after the apply time',
+      existing: undefined,
+      remoteModifiedAt: undefined,
+      parsedAt: '2999-01-01T00:00:00.001Z'
+    },
+    {
+      when: 'the sender clock runs ahead',
+      existing: { id: 'j2026-05-10', journalDate: '2026-05-10', clock: { 'device-a': 1 } },
+      remoteModifiedAt: '2999-01-01T00:00:00.002Z',
+      parsedAt: '2026-05-10T10:00:00.000Z'
+    }
+  ])('writes a pulled day that reads as synced when $when', (input) => {
+    mockGetNoteMetadataById.mockReturnValue(input.existing)
+    mockBuildJournalEntryWrite.mockReturnValueOnce({
+      absolutePath: '/vault/journals/2026-05-10.md',
+      entry: {
+        date: '2026-05-10',
+        content: '',
+        createdAt: input.parsedAt,
+        modifiedAt: input.parsedAt
+      },
+      fileContent: '---\n---\n',
+      frontmatter: {}
+    })
+
+    journalHandler.applyUpsert(
+      makeCtx(),
+      'j2026-05-10',
+      { date: '2026-05-10', content: null, modifiedAt: input.remoteModifiedAt },
+      { 'device-a': 2 }
+    )
+
+    const row = mockSaveCanonicalNote.mock.calls[0][1] as { modifiedAt: string; syncedAt: string }
+    expect(row.modifiedAt <= row.syncedAt).toBe(true)
+  })
+
   it('skips an upsert with no date instead of writing an undefined day', async () => {
     // `date` is optional in the schema only so delete tombstones can omit it.
     // A create/update without one has no day to write to, so the handler has to

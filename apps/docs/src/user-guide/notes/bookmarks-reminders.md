@@ -107,6 +107,8 @@ Reminders are stored in the data DB and sync end-to-end encrypted. If memrynote 
 
 Reminders sync across devices: set one on your laptop and it shows up on your other devices too. Dismissing or snoozing a reminder on one device carries over everywhere else, so a reminder you've already handled won't nag you again elsewhere. Each device still shows its own toast locally when the reminder's time arrives — sync keeps the reminder's state in agreement, not the notification itself.
 
+A reminder that already fired on a device stays fired there when another device's copy syncs in. Only rescheduling it, snoozing it, or dismissing it changes its state, so it doesn't fire a second time and add a duplicate inbox item.
+
 ## See Also
 
 - [Snooze & Reminders](/user-guide/snooze-reminders) — the cross-cutting view including inbox snooze

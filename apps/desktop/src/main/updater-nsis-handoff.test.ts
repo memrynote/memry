@@ -155,7 +155,7 @@ vi.mock('./updater-install-health', () => ({
 import { markUpdateInstallStarted } from './telemetry/update-install-marker'
 
 const SETUP_URL =
-  'https://github.com/memrynote/memry/releases/download/v2026-09-11.1/MemryNote-win-Setup.exe'
+  'https://github.com/memrynote/memry/releases/download/v2026-09-11.1/MemryNote-Setup-win-x64.exe'
 const VALID_SIGNATURE = JSON.stringify({
   Status: 0,
   SignerCertificate: { Subject: 'CN=Open Source Developer Kaan Karaca, C=TR' }

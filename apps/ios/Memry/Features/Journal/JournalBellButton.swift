@@ -100,7 +100,10 @@ struct JournalBellButton: View {
     private func choose(_ presetId: String) {
         let now = store.clock.instant()
         guard let preset = JournalReminderPresets.all(now: now).first(where: { $0.id == presetId }) else { return }
-        Task { await store.setReminder(on: date, at: preset.date, note: nil, tasks: tasks) }
+        Task {
+            guard await store.setReminder(on: date, at: preset.date, note: nil, tasks: tasks) != nil else { return }
+            Telemetry.shared.track(.reminderCreated, surface: .journal, action: "created", source: "preset", dimension: (.value, preset.id))
+        }
     }
 }
 
@@ -134,7 +137,10 @@ struct JournalBellSheetContent: View {
                 now: store.clock.instant()
             ) { instant, note in
                 close()
-                Task { await store.setReminder(on: date, at: instant, note: note, tasks: tasks) }
+                Task {
+                    guard await store.setReminder(on: date, at: instant, note: note, tasks: tasks) != nil else { return }
+                    Telemetry.shared.track(.reminderCreated, surface: .journal, action: "created", source: "custom")
+                }
             }
         case .manage:
             JournalReminderSheet(store: store, date: date, tasks: tasks)

@@ -22,6 +22,10 @@ protocol NoteTaskWriting: Sendable {
     /// checklist item (no text, already a task, or no project to file it in).
     func convertChecklistItem(noteId: String, blockId: String, localNow: String) async throws
         -> String?
+    /// The conversion desktop's editor makes as a line is typed, held to its
+    /// `convertChecklistsToTasks` setting; `nil` when the line stays a checkbox.
+    func convertTypedChecklistItem(noteId: String, blockId: String, localNow: String) async throws
+        -> String?
     /// Rewrites a task's linked notes, dropping `unlink` and adding `link`,
     /// for a task line moved to another note (desktop's `relinkTaskNotes`).
     func relinkNotes(taskId: String, unlink: String, link: String) async throws
@@ -52,17 +56,32 @@ struct CoreNoteTasks: NoteTaskWriting {
     }
 
     func complete(taskId: String, localNow: String) async throws {
-        _ = try await executor.run { try tasks().complete(id: taskId, localNow: localNow) }
+        let completion = try await executor.run { try tasks().complete(id: taskId, localNow: localNow) }
+        TasksTelemetry.track(completion.change)
     }
 
     func uncomplete(taskId: String) async throws {
-        _ = try await executor.run { try tasks().uncomplete(id: taskId) }
+        TasksTelemetry.track(try await executor.run { try tasks().uncomplete(id: taskId) })
     }
 
     func convertChecklistItem(noteId: String, blockId: String, localNow: String) async throws -> String? {
-        try await executor.run {
+        let id = try await executor.run {
             try tasks().convertChecklistItem(noteId: noteId, blockId: blockId, localNow: localNow)
         }
+        if id != nil {
+            Telemetry.shared.track(.taskCreated, surface: .tasks, action: "created", objectType: "task", result: .success)
+        }
+        return id
+    }
+
+    func convertTypedChecklistItem(noteId: String, blockId: String, localNow: String) async throws -> String? {
+        let id = try await executor.run {
+            try tasks().convertTypedChecklistItem(noteId: noteId, blockId: blockId, localNow: localNow)
+        }
+        if id != nil {
+            Telemetry.shared.track(.taskCreated, surface: .tasks, action: "created", objectType: "task", result: .success)
+        }
+        return id
     }
 
     /// One read and one write, as desktop's: a task that is gone, or whose
@@ -73,7 +92,7 @@ struct CoreNoteTasks: NoteTaskWriting {
             guard let task = try tasks.get(id: taskId) else { return }
             let current = task.linkedNoteIds
             let next = NoteTaskLinks.relinked(current, unlink: unlink, link: link)
-            if next != current { _ = try tasks.setLinkedNoteIds(id: taskId, ids: next) }
+            if next != current { TasksTelemetry.track(try tasks.setLinkedNoteIds(id: taskId, ids: next)) }
         }
     }
 }
@@ -155,6 +174,25 @@ final class NoteTaskActions {
         }
     }
 
+    /// Converts a checklist line the user typed and left, as desktop's editor
+    /// does on its own. A line that stays a checkbox is no failure: `false`
+    /// and nothing shown.
+    func convertTyped(blockId: String) async -> Bool {
+        guard let tasks, !inFlight.contains(blockId) else { return false }
+        inFlight.insert(blockId)
+        defer { inFlight.remove(blockId) }
+        do {
+            let id = try await tasks.convertTypedChecklistItem(
+                noteId: noteId, blockId: blockId, localNow: TaskDates.localInstant(clock())
+            )
+            if id != nil { Log.core.info("a typed checklist item became a task", .count(1)) }
+            return id != nil
+        } catch {
+            report(error)
+            return false
+        }
+    }
+
     /// Points a moved task line's task at the note it moved to. Best effort,
     /// as desktop's: the block already moved, so a failure is logged rather
     /// than shown.
@@ -195,6 +233,9 @@ struct NoteTaskBridge {
     var open: ((String) -> Void)?
     /// Turns a checklist item into a task, by block id.
     var convert: ((String) -> Void)?
+    /// Turns a checklist item the user typed and left into a task, when
+    /// desktop's editor would, by block id.
+    var convertTyped: ((String) async -> Void)?
     /// Nests a block under the one above it (desktop's Tab), by block id.
     var indent: ((String) -> Void)?
     /// Lifts a block one level (Shift-Tab), by block id.
@@ -233,6 +274,9 @@ extension NoteTaskBridge {
                 Task { @MainActor in
                     if await tasks.convert(blockId: blockId) != nil { await didChange() }
                 }
+            }
+            bridge.convertTyped = { blockId in
+                if await tasks.convertTyped(blockId: blockId) { await didChange() }
             }
         }
         if editor.canEdit {

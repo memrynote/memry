@@ -52,7 +52,9 @@ export function useJournalSettings(): UseJournalSettingsReturn {
     showSchedule: true,
     showTasks: true,
     showAIConnections: true,
-    showStatsFooter: false
+    showStatsFooter: false,
+    showOnThisDay: true,
+    allYearsView: false
   })
   const [isLoading, setIsLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)

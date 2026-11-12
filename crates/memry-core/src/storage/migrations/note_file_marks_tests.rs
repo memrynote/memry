@@ -1,4 +1,4 @@
-//! Data migration 0024, `note_file_marks`: kept apart from `tests.rs` for its line ceiling.
+//! Data migration 0026, `note_file_marks`: kept apart from `tests.rs` for its line ceiling.
 
 use super::*;
 use crate::domain::note_files::{self, NoteFileStat};
@@ -29,8 +29,8 @@ fn stat(note_id: &str, indexed_at: i64) -> NoteFileStat {
 #[test]
 fn the_marks_migration_keeps_rows_reruns_and_leaves_the_file_readable_to_older_builds() {
     let db = Db::open_in_memory().expect("open");
-    // Migration 24: the builds before it ran the first 23.
-    let before = 23;
+    // Migration 26: the builds before it ran the first 25.
+    let before = 25;
     db.call_blocking(|conn| run(conn, &DATA_MIGRATIONS[..before]))
         .expect("a database as the last build left it");
     db.call_blocking(|conn| {

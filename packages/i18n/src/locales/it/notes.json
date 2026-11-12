@@ -5,6 +5,7 @@
     "create": "Crea"
   },
   "wikiLinkPreview": {
+    "journalUnwritten": "La voce del {date} non è ancora stata scritta. Fai clic per aprire il giorno",
     "notFound": "Non trovata: fai clic per creare “{title}”"
   },
   "wikiLinkMenu": {
@@ -138,6 +139,7 @@
     "actions": {
       "openInNewTab": "Apri in una nuova scheda",
       "openToTheSide": "Apri a lato",
+      "openFolderView": "Apri vista cartella",
       "newNote": "Nuova nota",
       "newFolder": "Nuova cartella",
       "showTasks": "Mostra attività",
@@ -187,7 +189,8 @@
     },
     "toast": {
       "selectionBookmarked": "{count} elementi aggiunti ai segnalibri",
-      "selectionBookmarkFailed": "Impossibile aggiungere gli elementi selezionati ai segnalibri"
+      "selectionBookmarkFailed": "Impossibile aggiungere gli elementi selezionati ai segnalibri",
+      "pairedNoteNameTaken": "Lì esiste già una nota chiamata {name}"
     }
   },
   "editor": {
@@ -423,9 +426,14 @@
       "savedView": "Vista salvata",
       "savedViewMissing": "La vista salvata “{name}” non esiste più, quindi viene mostrata la vista predefinita.",
       "openAsTab": "Apri come scheda",
+      "newNote": "Nuova nota",
+      "newViewTitle": "Nuova vista",
+      "newViewSubtext": "Una nuova cartella accanto a questa nota, elencata qui",
+      "newViewFailed": "Impossibile creare la cartella per questa vista.",
       "empty": "Per ora nessuna nota corrisponde a questa vista.",
       "loadFailed": "Impossibile caricare questa vista. Le note in sé sono intatte.",
       "folderMissing": "Questa cartella non è più nel vault. Scegli un'altra origine.",
+      "unreadable": "Questa vista non può essere letta. Scegli una sorgente qui sopra oppure rimuovi il blocco.",
       "invalidJson": "La definizione di questa vista non è un JSON valido. Correggila qui sotto o rimuovi il blocco.",
       "invalidShape": "La definizione di questa vista non ha un'origine. Sceglila qui sopra o correggi la definizione qui sotto.",
       "definition": "Definizione"
@@ -668,6 +676,8 @@
   },
   "menus": {
     "wiki": {
+      "journalDay": "Diario · {date}",
+      "journalDayUnwritten": "Diario · non ancora scritto",
       "aria": "Suggerimenti di note",
       "loading": "Caricamento delle note…",
       "empty": "Nessuna nota trovata",
@@ -782,6 +792,12 @@
     "viaProperty": "{property} → {title}",
     "viaPortal": "Mostrato in un portale"
   },
+  "references": {
+    "filterAll": "Tutte",
+    "filterNotes": "Note",
+    "filterJournal": "Diario",
+    "filterBy": "Filtra i riferimenti: {filter}"
+  },
   "unlinkedMentions": {
     "title": "Menzioni non collegate",
     "summary": "{count, plural, one {# menzione non collegata} other {# menzioni non collegate}}",
@@ -886,6 +902,7 @@
     "showOnCalendar": "Mostra sul calendario",
     "showingOnCalendar": "Visibile sul calendario",
     "relation": {
+      "unwrittenDay": "Non ancora scritto",
       "deleted": "Eliminato",
       "removeAria": "Rimuovi {title}",
       "addAria": "Aggiungi relazione",

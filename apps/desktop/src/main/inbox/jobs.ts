@@ -13,6 +13,7 @@ import { createLogger } from '../lib/logger'
 import { broadcastToAllWindows } from '../lib/window-broadcast'
 import { generateId } from '../lib/id'
 import { getItemAttachmentsDir } from './attachments'
+import { syncInboxUpdate } from './runtime-effects'
 import { isBotPageTitle, titleFromUrl } from './metadata-utils'
 import { transcribeAudio } from './transcription'
 import { publishProjectionEvent } from '../projections'
@@ -262,6 +263,9 @@ async function processMetadataJob(db: DataDb, job: JobRow): Promise<void> {
       .where(eq(inboxItems.id, job.itemId))
       .run()
 
+    // The capture pushed as `pending`; without this push other devices show
+    // it as fetching until this desktop relaunches (#4155).
+    syncInboxUpdate(job.itemId)
     emitUpdated(job.itemId, { processingStatus: 'complete', processingError: null, thumbnailPath })
     emitInboxEvent(InboxChannels.events.METADATA_COMPLETE, {
       id: job.itemId,
@@ -302,6 +306,7 @@ async function processMetadataJob(db: DataDb, job: JobRow): Promise<void> {
       .where(eq(inboxItems.id, job.itemId))
       .run()
 
+    syncInboxUpdate(job.itemId)
     emitUpdated(job.itemId, { processingStatus: 'failed', processingError: message })
     emitInboxEvent(InboxChannels.events.PROCESSING_ERROR, {
       id: job.itemId,

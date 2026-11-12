@@ -146,7 +146,7 @@ enum JournalCopy {
     static let changeReminder = "Change reminder"
     static let remindMe = "Remind me"
     static let oneReminderRule =
-        "A day keeps one reminder, as on desktop: saving moves the scheduled one. "
+        "A day keeps one reminder, as on your other devices: saving moves the scheduled one. "
         + "The notification shows the date only, never what you wrote."
 
     /// D8: the notification never carries entry text.
@@ -182,5 +182,5 @@ enum JournalCopy {
     /// D5, gate G0: why the tag and property rows cannot be edited here yet.
     static let metadataReadOnly =
         "Tags and properties on a journal day are read-only on iPhone for now. "
-        + "Edit them in Memry on your computer."
+        + "Edit them in Memry on another device."
 }

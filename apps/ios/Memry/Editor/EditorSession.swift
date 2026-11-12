@@ -48,6 +48,10 @@ final class EditorSession {
     @ObservationIgnored var blocks: () -> [Block] = { [] }
     /// Points a moved task line's task at its new note: task id, target note.
     @ObservationIgnored var relinkTask: ((String, String) async -> Void)?
+    /// Turns a checklist item the user typed and left into a task, as
+    /// desktop's editor does (`textViewDidEndEditing`). `nil` on a page that
+    /// cannot write tasks.
+    @ObservationIgnored var convertTypedChecklist: ((String) async -> Void)?
     /// Opens a tag's notes, for a tap on a `#tag` in a block. `nil` leaves the
     /// tap to place the caret, as on a page with no stack to push onto.
     @ObservationIgnored var openTag: ((String) -> Void)?
@@ -105,6 +109,9 @@ final class EditorSession {
     @ObservationIgnored weak var field: BlockField?
     /// A block to put the caret in once it is drawn.
     @ObservationIgnored var pendingFocus: String?
+    /// Each drawn block's field by block id, so the caret can move into a
+    /// block whose row does not redraw (`focus`).
+    @ObservationIgnored private let drawnFields = NSMapTable<NSString, BlockField>.strongToWeakObjects()
     /// The field a block shortcut fired in, held until the row its type
     /// change redraws takes the caret (`BlockField.takeOver`).
     @ObservationIgnored var shortcutField: BlockField?
@@ -277,6 +284,27 @@ final class EditorSession {
     }
 
     // MARK: Focus and selection
+
+    func drawn(_ field: BlockField) {
+        drawnFields.setObject(field, forKey: field.blockId as NSString)
+    }
+
+    /// Puts the caret at the end of `blockId`: now when its row is on
+    /// screen, else once it is drawn (`pendingFocus`). A row the page drew
+    /// before the request (a reload that raced the write) never reads
+    /// `pendingFocus` again. A field that has since moved on to another
+    /// block is not this block's.
+    func focus(_ blockId: String) {
+        guard let field = drawnFields.object(forKey: blockId as NSString), field.blockId == blockId,
+              field.textView.window != nil
+        else {
+            pendingFocus = blockId
+            return
+        }
+        let textView = field.textView
+        textView.becomeFirstResponder()
+        textView.selectedRange = NSRange(location: textView.textStorage.length, length: 0)
+    }
 
     func focusChanged(to field: BlockField?) {
         focusedBlockId = field?.blockId
@@ -915,7 +943,10 @@ final class EditorSession {
         suggestions = []
         withFocused { model, blockId in
             switch kind {
-            case let .note(title, alias), let .create(title, alias):
+            case let .note(title, alias):
+                await model.insertWikiLink(in: blockId, from: start, to: start, title: title, alias: alias)
+            case let .create(title, alias):
+                await model.createNote(titled: title)
                 await model.insertWikiLink(in: blockId, from: start, to: start, title: title, alias: alias)
             case let .date(value):
                 await model.insertDateMention(in: blockId, from: start, to: start, value: value)
@@ -936,7 +967,10 @@ final class EditorSession {
             // The space first, so the node lands inside a text run.
             await model.commit(shown + " ", for: blockId, current: shown, formatted: true)
             switch kind {
-            case let .note(title, alias), let .create(title, alias):
+            case let .note(title, alias):
+                await model.insertWikiLink(in: blockId, from: end, to: end, title: title, alias: alias)
+            case let .create(title, alias):
+                await model.createNote(titled: title)
                 await model.insertWikiLink(in: blockId, from: end, to: end, title: title, alias: alias)
             case let .date(value):
                 await model.insertDateMention(in: blockId, from: end, to: end, value: value)
@@ -960,7 +994,7 @@ final class EditorSession {
             return
         }
         guard let step = history.popUndo() else { return }
-        replay([step.backward])
+        replay([step.backward] + step.backwardAfter)
     }
 
     func redo() {

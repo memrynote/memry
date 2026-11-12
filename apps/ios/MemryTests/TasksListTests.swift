@@ -284,7 +284,7 @@ struct TasksListTests {
         var config = SavedFilterConfig()
         config.filters.priorities = ["high"]
         let json = config.json
-        let id = try #require(await vault.store.run { try $0.createSavedFilter(name: "High", configJson: json) })
+        let id = try #require(await vault.store.run { try $0.createSavedFilter(name: "High", configJson: json, expressionJson: nil) })
         let filter = try #require(vault.store.savedFilters.first { $0.id == id })
 
         await vault.store.applyStarredFilter(filter)

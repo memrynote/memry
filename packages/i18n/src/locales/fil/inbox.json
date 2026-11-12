@@ -250,7 +250,8 @@
     "failedPlayAudio": "Hindi ma-play ang audio",
     "failedLoadAudio": "Hindi ma-load ang audio",
     "video": "Video",
-    "unsupportedVideo": "Hindi sinusuportahan ng iyong browser ang video tag."
+    "unsupportedVideo": "Hindi sinusuportahan ng iyong browser ang video tag.",
+    "fileOnOtherDevice": "Nasa device na kumuha nito ang file."
   },
   "reminder": {
     "dataUnavailable": "Hindi available ang data ng paalala.",

@@ -236,5 +236,21 @@
     "range": "{start} – {end}",
     "openTask": "{title}, {range}",
     "completeTask": "Завершити «{title}»"
+  },
+  "pastYears": {
+    "title": "Цього дня",
+    "count": "{count, plural, one {ще # рік} few {ще # роки} many {ще # років} other {ще # року}}",
+    "showAll": "Усі роки",
+    "showPreviews": "Попередній перегляд",
+    "yearsAgo": "{count, plural, one {# рік тому} few {# роки тому} many {# років тому} other {# року тому}}",
+    "yearsLater": "{count, plural, one {через # рік} few {через # роки} many {через # років} other {через # року}}",
+    "words": "{count, plural, one {# слово} few {# слова} many {# слів} other {# слова}}",
+    "openDay": "Відкрити {date}",
+    "showFull": "Показати запис повністю",
+    "showLess": "Згорнути",
+    "loadError": "Не вдалося завантажити цей день з інших років.",
+    "previousYear": "Той самий день, попередній рік",
+    "nextYear": "Той самий день, наступний рік",
+    "goToYear": "Перейти до цього дня в {year} році"
   }
 }

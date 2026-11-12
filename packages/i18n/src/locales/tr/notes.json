@@ -5,6 +5,7 @@
     "create": "Oluştur"
   },
   "wikiLinkPreview": {
+    "journalUnwritten": "{date} için henüz yazılmadı. Günü açmak için tıklayın",
     "notFound": "Bulunamadı — “{title}” notunu oluşturmak için tıklayın"
   },
   "wikiLinkMenu": {
@@ -138,6 +139,7 @@
     "actions": {
       "openInNewTab": "Yeni sekmede aç",
       "openToTheSide": "Yanda aç",
+      "openFolderView": "Klasör Görünümünü Aç",
       "newNote": "Yeni not",
       "newFolder": "Yeni klasör",
       "showTasks": "Görevleri göster",
@@ -187,7 +189,8 @@
     },
     "toast": {
       "selectionBookmarked": "{count} öğe yer imlerine eklendi",
-      "selectionBookmarkFailed": "Seçili öğeler yer imlerine eklenemedi"
+      "selectionBookmarkFailed": "Seçili öğeler yer imlerine eklenemedi",
+      "pairedNoteNameTaken": "Orada zaten {name} adlı bir not var"
     }
   },
   "editor": {
@@ -423,9 +426,14 @@
       "savedView": "Kayıtlı görünüm",
       "savedViewMissing": "“{name}” kayıtlı görünümü artık yok, bu yüzden varsayılan görünüm gösteriliyor.",
       "openAsTab": "Sekme olarak aç",
+      "newNote": "Yeni not",
+      "newViewTitle": "Yeni görünüm",
+      "newViewSubtext": "Bu notun yanında yeni bir klasör, burada listelenir",
+      "newViewFailed": "Bu görünüm için klasör oluşturulamadı.",
       "empty": "Henüz bu görünümle eşleşen bir şey yok.",
       "loadFailed": "Bu görünüm yüklenemedi. Notların kendisine dokunulmadı.",
       "folderMissing": "Bu klasör artık kasada değil. Başka bir kaynak seçin.",
+      "unreadable": "Bu görünüm okunamıyor. Yukarıdan bir kaynak seçin veya bloğu kaldırın.",
       "invalidJson": "Bu görünümün tanımı geçerli bir JSON değil. Aşağıdan düzeltin veya bloğu kaldırın.",
       "invalidShape": "Bu görünümün tanımında kaynak yok. Yukarıdan birini seçin veya aşağıdan düzeltin.",
       "definition": "Tanım"
@@ -668,6 +676,8 @@
   },
   "menus": {
     "wiki": {
+      "journalDay": "Günlük · {date}",
+      "journalDayUnwritten": "Günlük · henüz yazılmadı",
       "aria": "Not önerileri",
       "loading": "Notlar yükleniyor…",
       "empty": "Hiçbir not bulunamadı",
@@ -782,6 +792,12 @@
     "viaProperty": "{property} → {title}",
     "viaPortal": "Bir portalda gösteriliyor"
   },
+  "references": {
+    "filterAll": "Tümü",
+    "filterNotes": "Notlar",
+    "filterJournal": "Günlük",
+    "filterBy": "Referansları filtrele: {filter}"
+  },
   "unlinkedMentions": {
     "title": "Bağlantısız anmalar",
     "summary": "{count, plural, one {# bağlantısız anma} other {# bağlantısız anma}}",
@@ -886,6 +902,7 @@
     "showOnCalendar": "Takvimde göster",
     "showingOnCalendar": "Takvimde gösteriliyor",
     "relation": {
+      "unwrittenDay": "Henüz yazılmadı",
       "deleted": "Silindi",
       "removeAria": "Kaldır: {title}",
       "addAria": "İlişki ekle",

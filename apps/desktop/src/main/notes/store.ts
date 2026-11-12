@@ -7,6 +7,8 @@ export {
   getNoteCacheById,
   getNoteProperties,
   getPropertiesForNotes,
+  listPropertyUsage,
+  listNotesWithProperty,
   getJournalEntryByDate
 } from '@main/database/queries/notes'
 export type { PropertyValue } from '@main/database/queries/notes'

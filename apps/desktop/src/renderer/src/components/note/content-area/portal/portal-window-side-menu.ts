@@ -73,8 +73,9 @@ function distanceTo(rect: DOMRect, { clientX, clientY }: Point, reach = 0): numb
   return Math.hypot(dx, dy)
 }
 
-function innermostClosestEditor(view: ViewWithPluginViews, coords: Point): ClosestEditor | null {
-  const editors = Array.from(view.root.querySelectorAll('.bn-editor'))
+/** The editor BlockNote's patched scan picks for a point: the closest, innermost on a tie. */
+export function closestEditorAt(root: Document | ShadowRoot, coords: Point): ClosestEditor | null {
+  const editors = Array.from(root.querySelectorAll('.bn-editor'))
   let closest: ClosestEditor | null = null
   for (const element of editors) {
     const group = element.querySelector('.bn-block-group')
@@ -104,7 +105,7 @@ export function innermostEditorWins(view: EditorView): void {
       continue
     }
     patched.add(pluginView)
-    pluginView.findClosestEditorElement = (coords) => innermostClosestEditor(withViews, coords)
+    pluginView.findClosestEditorElement = (coords) => closestEditorAt(withViews.root, coords)
   }
 }
 

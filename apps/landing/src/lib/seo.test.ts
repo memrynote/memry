@@ -136,6 +136,32 @@ describe('landing SEO signals', () => {
     assert.equal(article.mainEntityOfPage['@id'], 'https://memrynote.com/blog/test-article-slug')
   })
 
+  it('adds a FAQPage next to the Article when a blog post has FAQs', () => {
+    const graph = JSON.parse(
+      getArticleJsonLd({
+        slug: 'test-article-slug',
+        title: 'Test Article Title',
+        description: 'Test article description for SEO.',
+        datePublished: '2026-08-31T08:00:00.000Z',
+        author: { name: 'Kaan Karaca' },
+        faqs: [{ question: 'Is it encrypted?', answer: 'Yes, on your device.' }]
+      })
+    )
+
+    assert.equal(graph['@context'], 'https://schema.org')
+    const [article, faqPage] = graph['@graph']
+    assert.equal(article['@type'], 'Article')
+    assert.equal(article.headline, 'Test Article Title')
+    assert.equal(faqPage['@type'], 'FAQPage')
+    assert.deepEqual(faqPage.mainEntity, [
+      {
+        '@type': 'Question',
+        name: 'Is it encrypted?',
+        acceptedAnswer: { '@type': 'Answer', text: 'Yes, on your device.' }
+      }
+    ])
+  })
+
   it('emits CollectionPage JSON-LD for the blog index', () => {
     const collection = JSON.parse(
       getBlogIndexJsonLd([

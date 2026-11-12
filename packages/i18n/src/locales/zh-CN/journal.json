@@ -236,5 +236,21 @@
     "range": "{start} – {end}",
     "openTask": "{title}，{range}",
     "completeTask": "完成 {title}"
+  },
+  "pastYears": {
+    "title": "历年今日",
+    "count": "{count, plural, other {其他 # 年}}",
+    "showAll": "所有年份",
+    "showPreviews": "预览",
+    "yearsAgo": "{count, plural, other {# 年前}}",
+    "yearsLater": "{count, plural, other {# 年后}}",
+    "words": "{count, plural, other {# 字}}",
+    "openDay": "打开 {date}",
+    "showFull": "显示完整条目",
+    "showLess": "收起",
+    "loadError": "无法加载其他年份的这一天。",
+    "previousYear": "同一天，上一年",
+    "nextYear": "同一天，下一年",
+    "goToYear": "前往 {year} 年的这一天"
   }
 }

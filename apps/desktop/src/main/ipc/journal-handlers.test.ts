@@ -95,6 +95,7 @@ vi.mock('@main/database/queries/notes', () => ({
   getJournalEntryByDate: vi.fn(),
   getHeatmapData: vi.fn(),
   getJournalMonthEntries: vi.fn(),
+  getJournalSameDayEntries: vi.fn(),
   getJournalYearStats: vi.fn(),
   getJournalStreak: vi.fn(),
   setNoteTags: vi.fn(),
@@ -556,6 +557,34 @@ describe('journal-handlers', () => {
         preview: 'Preview text',
         tags: ['focus']
       })
+    ])
+  })
+
+  it('lists the same day in other years with their text, skipping empty days', async () => {
+    registerJournalHandlers()
+    ;(notesQueries.getJournalSameDayEntries as Mock).mockReturnValue([
+      { id: 'j2025-11-10', date: '2025-11-10' },
+      { id: 'j2024-11-10', date: '2024-11-10' }
+    ])
+    ;(journalVault.readJournalEntry as Mock).mockImplementation(async (date: string) =>
+      date === '2025-11-10'
+        ? { ...baseEntry, date, content: 'Ran along the coast', wordCount: 4 }
+        : { ...baseEntry, date, content: '  \n', wordCount: 0 }
+    )
+    ;(journalVault.extractPreview as Mock).mockReturnValue('Ran along the coast')
+
+    const result = await invokeHandler(JournalChannels.invoke.GET_SAME_DAY_ENTRIES, {
+      date: '2026-11-10'
+    })
+
+    expect(result).toEqual([
+      {
+        id: 'j2025-01-01',
+        date: '2025-11-10',
+        preview: 'Ran along the coast',
+        content: 'Ran along the coast',
+        wordCount: 4
+      }
     ])
   })
 

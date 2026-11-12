@@ -1,12 +1,17 @@
 //! `filter`: saved task filters (`FilterSyncPayloadSchema`,
 //! `packages/contracts/src/sync-payloads.ts`, migration `0003`).
 //!
-//! Five fields and no `modifiedAt`: desktop's `saved_filters` row has none,
+//! Six fields and no `modifiedAt`: desktop's `saved_filters` row has none,
 //! and its push payload is that row serialised. `config` is `z.unknown()` on
 //! the wire, so it is read as [`Kind::Any`] and cached as JSON text; its shape
 //! (`{filters, sort?, starred?}`) is the domain's to interpret, through
 //! [`crate::domain::task_filter::TaskFilters::from_json`], never the
 //! projector's to refuse.
+//!
+//! `expression` (§13.7.14) is opaque the same way and lands in
+//! `saved_filter_expressions`: the payload's object replaces the row, and a
+//! payload without one (absent, `null`, or not an object) removes it, so the
+//! row always mirrors the stored payload.
 //!
 //! Null tolerance in the field table below follows [`super`]'s rule: an
 //! optional field is `opt_null`, because a projector substitutes and never
@@ -22,6 +27,7 @@ use super::{ItemContext, clock_text, failed, instant, json, number_or_default, t
 const FILTER_FIELDS: &[Field] = &[
     Field::opt_null("name", Kind::Text),
     Field::opt_null("config", Kind::Any),
+    Field::opt_null("expression", Kind::Any),
     Field::opt_null("position", Kind::Number),
     Field::opt_null("clock", Kind::Clock),
     Field::opt_null("createdAt", Kind::Text),
@@ -62,6 +68,18 @@ pub fn project_filter(
             item.deleted_at,
         ],
     )
+    .map_err(failed)?;
+    match view.get("expression").filter(|tree| tree.is_object()) {
+        Some(_) => conn.execute(
+            "INSERT INTO saved_filter_expressions (filter_id, expression) VALUES (?1, ?2)
+             ON CONFLICT(filter_id) DO UPDATE SET expression = excluded.expression",
+            params![item.item_id, json(view, "expression")],
+        ),
+        None => conn.execute(
+            "DELETE FROM saved_filter_expressions WHERE filter_id = ?1",
+            params![item.item_id],
+        ),
+    }
     .map_err(failed)?;
     Ok(())
 }

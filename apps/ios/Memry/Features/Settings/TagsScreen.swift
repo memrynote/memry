@@ -94,20 +94,20 @@ struct TagsScreen: View {
         let old = tag.name, new = draft.trimmingCharacters(in: .whitespaces)
         renaming = nil
         guard !new.isEmpty, new != old else { return }
-        await finish(await context.run { try $0.renameTag(oldName: old, newName: new) }) { TagsCopy.renamed(old, new, $0) }
+        await finish(await context.run { try $0.renameTag(oldName: old, newName: new) }, .tagRenamed, "renamed") { TagsCopy.renamed(old, new, $0) }
     }
 
     private func delete(_ tag: TagItem?) async {
         guard let tag else { return }
         deleting = nil
         let name = tag.name
-        await finish(await context.run { try $0.deleteTag(tag: name) }) { TagsCopy.deleted(name, $0) }
+        await finish(await context.run { try $0.deleteTag(tag: name) }, .tagDeleted, "deleted") { TagsCopy.deleted(name, $0) }
     }
 
     private func merge(_ source: TagItem, into target: String) async {
         merging = nil
         let from = source.name
-        await finish(await context.run { try $0.mergeTag(source: from, target: target) }) { TagsCopy.merged(from, target, $0) }
+        await finish(await context.run { try $0.mergeTag(source: from, target: target) }, .tagMerged, "merged") { TagsCopy.merged(from, target, $0) }
     }
 
     private func style(_ tag: TagItem, color: String?, icon: String?) async {
@@ -122,12 +122,17 @@ struct TagsScreen: View {
         await load()
     }
 
-    private func finish(_ result: Result<UInt32, UserFacingError>, _ message: (Int) -> String) async {
+    private func finish(
+        _ result: Result<UInt32, UserFacingError>, _ event: TelemetryEventName, _ action: StaticString, _ message: (Int) -> String
+    ) async {
         switch result {
         case let .success(count):
+            Telemetry.shared.track(event, surface: .tags, action: action, objectType: "tag", result: .success, metrics: TelemetryMetrics(itemCount: Double(count)))
             failure = nil
             notice = message(Int(count))
-        case let .failure(error): failure = error
+        case let .failure(error):
+            Telemetry.shared.track(event, surface: .tags, action: action, objectType: "tag", result: .failed, errorCode: error.code)
+            failure = error
         }
         await load()
     }
@@ -263,6 +268,6 @@ enum TagsCopy {
     static let icon = "Icon"
     static let iconPlaceholder = "An emoji"
     static let noIcon = "None"
-    static let iconFromDesktop = "Icon set on desktop. Type an emoji to replace it."
+    static let iconFromDesktop = "Icon set on another device. Type an emoji to replace it."
     static let iconFooter = "Shows beside the tag in notes, tasks and the tag list. Shared with your other devices."
 }

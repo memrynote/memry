@@ -46,6 +46,7 @@ import {
 } from './settings/settings-search'
 import { useSettingsModal, type SettingsSection } from '@/contexts/settings-modal-context'
 import { useT } from '@memry/i18n/renderer'
+import { IosBetaSettingsEntry } from '@/components/ios-beta/ios-beta-entry-points'
 
 const ICON = 'size-4'
 
@@ -195,6 +196,7 @@ export function SettingsNav() {
           </>
         )}
       </div>
+      <IosBetaSettingsEntry />
     </nav>
   )
 }

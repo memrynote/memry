@@ -561,6 +561,34 @@
       "when": 1791581374087,
       "tag": "0079_readwise_highlights",
       "breakpoints": true
+    },
+    {
+      "idx": 80,
+      "version": "6",
+      "when": 1791581375087,
+      "tag": "0080_google_calendar_cursor_reset",
+      "breakpoints": true
+    },
+    {
+      "idx": 81,
+      "version": "6",
+      "when": 1793979291237,
+      "tag": "0081_calendar_foreign_cursor_reset",
+      "breakpoints": true
+    },
+    {
+      "idx": 82,
+      "version": "6",
+      "when": 1794065691237,
+      "tag": "0082_saved_filter_expression",
+      "breakpoints": true
+    },
+    {
+      "idx": 83,
+      "version": "6",
+      "when": 1794152091237,
+      "tag": "0083_inbox_attachment_id",
+      "breakpoints": true
     }
   ]
 }

@@ -250,7 +250,8 @@
     "failedPlayAudio": "הפעלת האודיו נכשלה",
     "failedLoadAudio": "טעינת האודיו נכשלה",
     "video": "וידאו",
-    "unsupportedVideo": "הדפדפן שלך אינו תומך בתג הווידאו."
+    "unsupportedVideo": "הדפדפן שלך אינו תומך בתג הווידאו.",
+    "fileOnOtherDevice": "הקובץ נמצא במכשיר שלכד אותו."
   },
   "reminder": {
     "dataUnavailable": "נתוני תזכורת אינם זמינים.",

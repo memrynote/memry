@@ -59,6 +59,10 @@ export const NotesChannels = {
     REVEAL_FOLDER_IN_FINDER: 'notes:reveal-folder-in-finder',
     /** Get all property definitions (T017) */
     GET_PROPERTY_DEFINITIONS: 'notes:get-property-definitions',
+    /** Count the notes that use each property, and those whose value its type cannot show */
+    GET_PROPERTY_USAGE: 'notes:get-property-usage',
+    /** List the notes that use one property */
+    LIST_NOTES_WITH_PROPERTY: 'notes:list-notes-with-property',
     /** Create a property definition (T018) */
     CREATE_PROPERTY_DEFINITION: 'notes:create-property-definition',
     /** Update a property definition */

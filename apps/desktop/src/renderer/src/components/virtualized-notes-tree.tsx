@@ -58,6 +58,8 @@ import { FolderIconButton } from '@/components/folder-icon-button'
 import { IconPickerButton } from '@/components/icon-picker-button'
 import {
   collectFolderSubtreeIds,
+  collectPairedNotes,
+  treeRowIdForNote,
   extractFolderFromPath,
   getDisplayName,
   getFileIcon,
@@ -71,6 +73,8 @@ import {
   type TreeSelectionActions
 } from '@/components/sidebar/tree-selection-menu-items'
 import { VaultLockMenuItem } from '@/components/sidebar/vault-lock-menu-item'
+import { PairedFolderMenuItems, PairedNoteIcon } from '@/components/sidebar/paired-note-row'
+import { NoteContextMenuItems, type NoteMenuActions } from '@/components/notes-tree-note-menu'
 import { OpenTargetMenuItems } from '@/components/sidebar/open-target-menu-items'
 import { ShowTasksMenuItem } from '@/components/sidebar/show-tasks-menu-item'
 import { noteTabData, folderTabData } from '@/lib/sidebar-tab-data'
@@ -328,6 +332,10 @@ interface FolderRowProps {
   onDragLeave: (e: React.DragEvent) => void
   onDrop: (e: React.DragEvent) => void
   folderTemplateName?: string
+  /** Opens the note paired onto this row (Enter). */
+  onOpenNote: (note: NoteListItem) => void
+  onSetNoteIcon?: (noteId: string, icon: string | null) => void
+  pairedNoteMenu: NoteMenuActions
 }
 
 function FolderRow({
@@ -366,7 +374,10 @@ function FolderRow({
   onDragOver,
   onDragLeave,
   onDrop,
-  folderTemplateName
+  folderTemplateName,
+  onOpenNote,
+  onSetNoteIcon,
+  pairedNoteMenu
 }: FolderRowProps) {
   const { t } = useT('notes')
   const { t: tCommon } = useT('common')
@@ -375,6 +386,9 @@ function FolderRow({
   const rowRef = useRef<HTMLDivElement>(null)
   const showBulkActions = isSelected && selectedCount > 1
   const showSelectionBadge = showBulkActions && isLastSelected
+  // A paired note makes this row a page: a click opens the note, and only the
+  // chevron opens the folder.
+  const pairedNote = item.folder.note
 
   const handleClick = useCallback(
     (e: React.MouseEvent) => {
@@ -386,7 +400,7 @@ function FolderRow({
       // whole subtree along: closed opens everything below, open closes it.
       if (e.altKey) {
         onSetSubtreeExpanded(item.folder.path, !item.isExpanded)
-      } else {
+      } else if (!pairedNote) {
         onToggleExpand(item.id)
       }
       onSelect(item.id, e)
@@ -396,6 +410,7 @@ function FolderRow({
       item.id,
       item.folder.path,
       item.isExpanded,
+      pairedNote,
       onSelect,
       onToggleExpand,
       onSetSubtreeExpanded
@@ -408,9 +423,12 @@ function FolderRow({
     (e: React.MouseEvent) => {
       if (e.button !== 1 || isBeingRenamed) return
       e.preventDefault()
-      openInNewTab(folderTabData(item.folder.path, item.folder.icon), { background: true })
+      openInNewTab(
+        pairedNote ? noteTabData(pairedNote) : folderTabData(item.folder.path, item.folder.icon),
+        { background: true }
+      )
     },
-    [isBeingRenamed, item.folder.path, item.folder.icon, openInNewTab]
+    [isBeingRenamed, item.folder.path, item.folder.icon, pairedNote, openInNewTab]
   )
 
   const _handleExpandClick = useCallback(
@@ -423,12 +441,15 @@ function FolderRow({
 
   const handleKeyDown = useCallback(
     (e: React.KeyboardEvent) => {
-      if (e.key === 'Enter' || e.key === ' ') {
+      if (e.key === 'Enter' && pairedNote) {
+        e.preventDefault()
+        onOpenNote(pairedNote)
+      } else if (e.key === 'Enter' || e.key === ' ') {
         e.preventDefault()
         onToggleExpand(item.id)
       }
     },
-    [item.id, onToggleExpand]
+    [item.id, pairedNote, onOpenNote, onToggleExpand]
   )
 
   // A context-menu click does not focus the row on its own, so the arrows had
@@ -524,15 +545,31 @@ function FolderRow({
           )}
 
           {/* Folder icon — shows chevron on hover for expand/collapse */}
-          <FolderIconButton
-            icon={item.folder.icon ?? null}
-            isExpanded={item.isExpanded}
-            hasChildren={item.hasChildren}
-            onIconChange={(icon) => onSetFolderIcon?.(item.folder.path, icon)}
-            onToggleExpand={() => onToggleExpand(item.id)}
-            pickerOpen={iconPickerFolderPath === item.folder.path}
-            onPickerOpenChange={(open) => onIconPickerOpenChange?.(open ? item.folder.path : null)}
-          />
+          {pairedNote ? (
+            <PairedNoteIcon
+              note={pairedNote}
+              isExpanded={item.isExpanded}
+              hasChildren={item.hasChildren}
+              onToggleExpand={() => onToggleExpand(item.id)}
+              onIconChange={(icon) => onSetNoteIcon?.(pairedNote.id, icon)}
+              pickerOpen={iconPickerFolderPath === item.folder.path}
+              onPickerOpenChange={(open) =>
+                onIconPickerOpenChange?.(open ? item.folder.path : null)
+              }
+            />
+          ) : (
+            <FolderIconButton
+              icon={item.folder.icon ?? null}
+              isExpanded={item.isExpanded}
+              hasChildren={item.hasChildren}
+              onIconChange={(icon) => onSetFolderIcon?.(item.folder.path, icon)}
+              onToggleExpand={() => onToggleExpand(item.id)}
+              pickerOpen={iconPickerFolderPath === item.folder.path}
+              onPickerOpenChange={(open) =>
+                onIconPickerOpenChange?.(open ? item.folder.path : null)
+              }
+            />
+          )}
 
           {isBeingRenamed ? (
             <input
@@ -591,6 +628,24 @@ function FolderRow({
       <ContextMenuContent>
         {showBulkActions ? (
           <TreeSelectionMenuItems count={selectedCount} actions={selectionActions} />
+        ) : pairedNote ? (
+          // The note's actions, with the folder's "inside" actions beside them.
+          // Rename and delete take both along.
+          <NoteContextMenuItems
+            note={pairedNote}
+            {...pairedNoteMenu}
+            onRename={() => onRenameFolder?.(item.folder.path)}
+            onSetIcon={() => onIconPickerOpenChange?.(item.folder.path)}
+            onDelete={() => onDeleteFolder?.(item.folder.path)}
+            folderItems={
+              <PairedFolderMenuItems
+                folder={item.folder}
+                onCreateNote={(path) => onCreateNote?.(path)}
+                onCreateFolder={(path) => onCreateFolder?.(path)}
+                onSetSubtreeExpanded={onSetSubtreeExpanded}
+              />
+            }
+          />
         ) : (
           // Single item actions
           <>
@@ -1141,6 +1196,8 @@ export function VirtualizedNotesTree({
     return flattenTree(tree, expandedIds)
   }, [tree, expandedIds])
 
+  const pairedNotes = useMemo(() => collectPairedNotes(tree), [tree])
+
   useLayoutEffect(() => {
     if (!scrollContainerRef?.current || !parentRef.current) {
       setScrollMargin(0)
@@ -1297,10 +1354,11 @@ export function VirtualizedNotesTree({
       revealNote: (noteId: string) => {
         const note = noteMap.get(noteId)
         if (!note) return
-        revealRow(noteId, note.path)
+        // A paired note sits beside its folder, so its row has the same parents.
+        revealRow(treeRowIdForNote(pairedNotes, noteId), note.path)
       }
     }),
-    [tree, noteMap, revealRow]
+    [tree, noteMap, pairedNotes, revealRow]
   )
 
   // Toggle folder expand/collapse
@@ -1391,22 +1449,24 @@ export function VirtualizedNotesTree({
 
       e.dataTransfer.effectAllowed = 'copyMove'
       e.dataTransfer.setData('text/plain', itemId)
-      if (!isFolder(itemId)) {
+      // A folder row carries the note paired onto it, if any, outside the tree.
+      const noteId = isFolder(itemId) ? pairedNotes.get(itemId.slice('folder-'.length))?.id : itemId
+      if (noteId) {
         // Tag every note/file item so drop targets (note editor embed, sidebar
         // project link) can resolve it by id. getFile(id) later discriminates
         // a file (non-markdown, embeddable) from a plain note (returns null).
-        e.dataTransfer.setData(MEMRY_NOTE_DRAG_MIME, itemId)
+        e.dataTransfer.setData(MEMRY_NOTE_DRAG_MIME, noteId)
         // Every non-folder item is a note entity — tag it so the spatial canvas
         // can create a referencing card on drop (markdown notes set no other MIME).
-        e.dataTransfer.setData(CANVAS_ITEM_DRAG_MIME, canvasDragPayload('note', itemId))
+        e.dataTransfer.setData(CANVAS_ITEM_DRAG_MIME, canvasDragPayload('note', noteId))
         // What a click would open, so a pane's split zones can open it where
         // it is dropped and the editor can link it.
-        const note = noteMap.get(itemId)
+        const note = noteMap.get(noteId)
         if (note) setTabDragData(e.dataTransfer, noteTabData(note))
       }
       setDragState({ draggedId: itemId })
     },
-    [isDragDisabled, setDragState, noteMap]
+    [isDragDisabled, setDragState, noteMap, pairedNotes]
   )
 
   const handleDragEnd = useCallback(() => {
@@ -1572,6 +1632,25 @@ export function VirtualizedNotesTree({
     [selectedIds, onBulkDelete, navRows, handleToggleExpand, onSelectionChange, focusRow]
   )
 
+  const pairedNoteMenu = useMemo<NoteMenuActions>(
+    () => ({
+      onApplyTemplate: (note) => onApplyTemplateToNote?.(note),
+      onSaveAsTemplate: (note) => onSaveNoteAsTemplate?.(note),
+      onNewNoteFromNote: (note) => onNewNoteFromNote?.(note),
+      onRemoveIcon: (note) => onSetNoteIcon?.(note.id, null),
+      onOpenExternal: (note) => onOpenExternal?.(note),
+      onRevealInFinder: (note) => onRevealInFinder?.(note)
+    }),
+    [
+      onApplyTemplateToNote,
+      onSaveNoteAsTemplate,
+      onNewNoteFromNote,
+      onSetNoteIcon,
+      onOpenExternal,
+      onRevealInFinder
+    ]
+  )
+
   const virtualItems = virtualizer.getVirtualItems()
   const draggable = !isDragDisabled
   const selectedCount = selectedIds.length
@@ -1656,6 +1735,9 @@ export function VirtualizedNotesTree({
                   onDragLeave={handleDragLeave}
                   onDrop={handleDrop}
                   folderTemplateName={folderTemplateNames?.get(item.folder.path)}
+                  onOpenNote={handleNoteDoubleClick}
+                  onSetNoteIcon={onSetNoteIcon}
+                  pairedNoteMenu={pairedNoteMenu}
                 />
               ) : (
                 <NoteRow

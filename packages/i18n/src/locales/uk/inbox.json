@@ -250,7 +250,8 @@
     "failedPlayAudio": "Не вдалося відтворити аудіо",
     "failedLoadAudio": "Не вдалося завантажити аудіо",
     "video": "Відео",
-    "unsupportedVideo": "Ваш браузер не підтримує тег відео."
+    "unsupportedVideo": "Ваш браузер не підтримує тег відео.",
+    "fileOnOtherDevice": "Файл на пристрої, з якого його додано."
   },
   "reminder": {
     "dataUnavailable": "Дані нагадування недоступні.",

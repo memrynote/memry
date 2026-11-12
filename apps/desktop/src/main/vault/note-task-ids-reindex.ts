@@ -1,10 +1,11 @@
 /**
- * One-time, per-vault fill of `note_cache.task_ids`.
+ * One-time, per-vault fill of `note_cache.task_ids` and `note_cache.task_checks`.
  *
- * The column is new, and the indexer skips notes it already knows, so a note
- * indexed before this build would keep a null task order until it is edited
- * again, and Tasks grouped by note would not follow its body. This pass reads
- * each markdown note once and writes the task ids in document order.
+ * The columns are new, and the indexer skips notes it already knows, so a note
+ * indexed before them would keep null values until it is edited again: Tasks
+ * grouped by note would not follow its body, and the task reconciler would have
+ * no acknowledged checkbox state for it. This pass reads each markdown note
+ * once and writes the task ids in document order and their checkbox states.
  *
  * Runs in the background after the open-time index walk. The marker is written
  * only when the pass finishes, so a close or switch mid-pass resumes on the
@@ -17,11 +18,12 @@ import { createLogger } from '../lib/logger'
 import { readVaultFile } from '../lib/paths'
 import { trackMainError } from '../telemetry/diagnostics'
 import { scanTaskCheckboxStates } from '@memry/shared/task-block'
+import { generateContentHash } from './frontmatter'
 import type { DataDb, IndexDb } from '../database'
 
 const logger = createLogger('NoteTaskIdsReindex')
 
-export const NOTE_TASK_IDS_REINDEX_KEY = 'noteTaskIdsReindexV1'
+export const NOTE_TASK_IDS_REINDEX_KEY = 'noteTaskIdsReindexV2'
 const DONE = 'done'
 
 export interface NoteTaskIdsReindexInput {
@@ -59,7 +61,8 @@ async function writeNoteTaskIds(input: NoteTaskIdsReindexInput): Promise<number 
     if (shouldStop()) return null
 
     const before = getNoteCacheById(indexDb, noteId)
-    if (before?.fileType !== 'markdown' || before.taskIds !== null) continue
+    if (before?.fileType !== 'markdown') continue
+    if (before.taskIds !== null && before.taskChecks !== null) continue
 
     let raw: string | null
     try {
@@ -75,10 +78,17 @@ async function writeNoteTaskIds(input: NoteTaskIdsReindexInput): Promise<number 
     const after = getNoteCacheById(indexDb, noteId)
     if (!after || after.path !== before.path || after.indexedAt !== before.indexedAt) continue
 
+    const states = scanTaskCheckboxStates(raw)
     // Keeps `indexed_at`: it says when the body was last read, and search
     // reconcile trusts it.
     updateNoteCache(indexDb, noteId, {
-      taskIds: [...scanTaskCheckboxStates(raw).keys()],
+      taskIds: [...states.keys()],
+      // Acknowledged only when these are the bytes the index already holds. A
+      // file edited while Memry was closed keeps no state, so its edited lines
+      // still reach the reconciler when the note opens.
+      ...(generateContentHash(raw) === after.contentHash
+        ? { taskChecks: Object.fromEntries(states) }
+        : {}),
       indexedAt: after.indexedAt
     })
     written++

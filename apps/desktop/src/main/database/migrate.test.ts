@@ -195,6 +195,66 @@ describe('0035_spatial_canvas migration', () => {
     sqlite.close()
   })
 
+  /** A copy of the migrations folder that stops before `tag`. */
+  function migrationsBefore(tag: string): string {
+    const copy = path.join(tempDir, `drizzle-data-before-${tag}`)
+    fs.cpSync(migrationsDir, copy, { recursive: true })
+    const journalPath = path.join(copy, 'meta', '_journal.json')
+    const journal = JSON.parse(fs.readFileSync(journalPath, 'utf8')) as {
+      entries: { tag: string }[]
+    }
+    const cutoff = journal.entries.findIndex((e) => e.tag === tag)
+    expect(cutoff).toBeGreaterThanOrEqual(0)
+    for (const entry of journal.entries.splice(cutoff)) {
+      fs.rmSync(path.join(copy, `${entry.tag}.sql`))
+    }
+    fs.writeFileSync(journalPath, JSON.stringify(journal, null, 2))
+    return copy
+  }
+
+  /** Cursors after migrating a vault that held them from `before` up to `upTo`. */
+  function cursorsAcross(before: string, upTo: string): unknown[] {
+    const sqlite = new Database(path.join(tempDir, 'data.db'))
+    const db = drizzle(sqlite)
+    migrate(db, { migrationsFolder: migrationsBefore(before) })
+    const insert = sqlite.prepare(
+      `INSERT INTO calendar_sources (id, provider, kind, remote_id, title, sync_cursor, created_at, modified_at)
+       VALUES (?, ?, ?, ?, 'x', ?, '2026-11-01T00:00:00.000Z', '2026-11-01T00:00:00.000Z')`
+    )
+    insert.run('google-calendar:work', 'google', 'calendar', 'work', 'google-token')
+    insert.run('google-account:work', 'google', 'account', 'work', 'account-cursor')
+    insert.run('caldav-calendar:home', 'caldav', 'calendar', 'home', 'sync-token:1')
+    insert.run('ics-calendar:feed', 'ics', 'calendar', 'feed', 'etag-1')
+
+    migrate(db, { migrationsFolder: upTo })
+    const rows = sqlite.prepare('SELECT id, sync_cursor FROM calendar_sources ORDER BY id').all()
+    sqlite.close()
+    return rows
+  }
+
+  it('resets only Google calendar cursors so their purged events are pulled again', () => {
+    expect(
+      cursorsAcross(
+        '0080_google_calendar_cursor_reset',
+        migrationsBefore('0081_calendar_foreign_cursor_reset')
+      )
+    ).toEqual([
+      { id: 'caldav-calendar:home', sync_cursor: 'sync-token:1' },
+      { id: 'google-account:work', sync_cursor: 'account-cursor' },
+      { id: 'google-calendar:work', sync_cursor: null },
+      { id: 'ics-calendar:feed', sync_cursor: 'etag-1' }
+    ])
+  })
+
+  it("resets Google and CalDAV calendar cursors that may be another device's", () => {
+    expect(cursorsAcross('0081_calendar_foreign_cursor_reset', migrationsDir)).toEqual([
+      { id: 'caldav-calendar:home', sync_cursor: null },
+      { id: 'google-account:work', sync_cursor: 'account-cursor' },
+      { id: 'google-calendar:work', sync_cursor: null },
+      { id: 'ics-calendar:feed', sync_cursor: 'etag-1' }
+    ])
+  })
+
   it('raw SQL statements are idempotent when executed twice', () => {
     const dbPath = path.join(tempDir, 'data.db')
     runMigrations(dbPath)
@@ -1713,6 +1773,70 @@ describe('0073_tag_schema_task_fields migration', () => {
     expect(sqlite.prepare('SELECT schema FROM tag_definitions').get()).toEqual({
       schema: '{"t":1}'
     })
+    sqlite.close()
+  })
+})
+
+describe('0082_saved_filter_expression migration', () => {
+  let tempDir: string
+  const migrationsDir = path.join(__dirname, 'drizzle-data')
+
+  beforeEach(() => {
+    tempDir = fs.mkdtempSync(path.join(os.tmpdir(), 'memry-filter-expression-'))
+  })
+
+  afterEach(() => {
+    fs.rmSync(tempDir, { recursive: true, force: true })
+  })
+
+  it('adopts the rules a pre-0082 build captured, so its first push does not clear them', () => {
+    const copy = path.join(tempDir, 'drizzle-data-pre-0082')
+    fs.cpSync(migrationsDir, copy, { recursive: true })
+    const journalPath = path.join(copy, 'meta', '_journal.json')
+    const journal = JSON.parse(fs.readFileSync(journalPath, 'utf8')) as {
+      entries: { tag: string }[]
+    }
+    const cutoff = journal.entries.findIndex((e) => e.tag === '0082_saved_filter_expression')
+    expect(cutoff).toBeGreaterThanOrEqual(0)
+    for (const entry of journal.entries.splice(cutoff)) {
+      fs.rmSync(path.join(copy, `${entry.tag}.sql`))
+    }
+    fs.writeFileSync(journalPath, JSON.stringify(journal, null, 2))
+
+    const sqlite = new Database(path.join(tempDir, 'data.db'))
+    const db = drizzle(sqlite)
+    migrate(db, { migrationsFolder: copy })
+
+    const insertFilter = sqlite.prepare(
+      `INSERT INTO saved_filters (id, name, config) VALUES (?, ?, '{"filters":{}}')`
+    )
+    const capture = sqlite.prepare(
+      'INSERT INTO sync_unknown_fields (type, item_id, fields, updated_at) VALUES (?, ?, ?, 1)'
+    )
+    for (const id of ['plain', 'captured', 'garbage', 'scalar', 'other-type']) {
+      insertFilter.run(id, `Filter ${id}`)
+    }
+    const rules = '{"match":"any","rules":[{"field":"priority","op":"any","values":["urgent"]}]}'
+    capture.run('filter', 'captured', `{"expression":${rules},"later":true}`)
+    capture.run('filter', 'garbage', '{not json')
+    capture.run('filter', 'scalar', '{"expression":"all"}')
+    capture.run('task', 'other-type', `{"expression":${rules}}`)
+
+    migrate(db, { migrationsFolder: migrationsDir })
+
+    const rows = sqlite
+      .prepare('SELECT id, name, config, expression FROM saved_filters ORDER BY id')
+      .all() as { id: string; name: string; config: string; expression: string | null }[]
+    expect(
+      rows.map((r) => [r.id, r.expression === null ? null : JSON.parse(r.expression)])
+    ).toEqual([
+      ['captured', JSON.parse(rules)],
+      ['garbage', null],
+      ['other-type', null],
+      ['plain', null],
+      ['scalar', null]
+    ])
+    expect(rows.every((r) => r.config === '{"filters":{}}')).toBe(true)
     sqlite.close()
   })
 })

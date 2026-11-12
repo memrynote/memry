@@ -102,28 +102,22 @@ import type { EmitToWindows } from './item-handlers'
 import { getIndexDatabase } from '../database/client'
 import { noteCache } from '@memry/db-schema/schema/notes-cache'
 import { getDeviceSigningKey } from './device-keys'
-import { getCrdtProvider, resetCrdtProvider } from './crdt-provider'
+import { getCrdtProvider, resetCrdtProvider, type SnapshotBatchPushFn } from './crdt-provider'
 import { pushFinalSnapshots, type StopSyncRuntimeOptions } from './final-snapshot-push'
-import {
-  NoteBodyCredentialsMissingError,
-  NoteBodyFlushDeferredError,
-  NoteBodyOutbox,
-  importLegacyPendingCrdtNotes
-} from './note-body-outbox'
+import { NoteBodyOutbox, importLegacyPendingCrdtNotes } from './note-body-outbox'
 import { recordNoteBodyPush } from './note-body-push-record'
 import { readMergedFullState } from './full-state-read'
 import { CrdtSnapshotScheduler } from '@memry/sync-client/crdt-snapshot-scheduler'
-import { planCrdtUpdatePush } from '@memry/sync-client/crdt-payload'
+import { createNoteBodyPush } from './note-body-push'
 import { recoverDirtyItems } from './dirty-recovery'
 import {
   markSyncEligible,
   markSyncIneligible,
   resetSyncDecision
 } from '@memry/sync-client/sync-eligibility'
-import { encryptCrdtUpdate } from './crdt-encrypt'
 import { createCrdtSnapshotBatchPush } from './crdt-snapshot-batch'
 import { createCrdtSnapshotPush } from './crdt-snapshot-push'
-import { postToServer, SyncServerError } from './http-client'
+import { RateLimitError, SyncServerError } from './http-client'
 import { classifyError } from './sync-errors'
 import {
   EVENT_CHANNELS,
@@ -136,8 +130,7 @@ import {
   isKeyMaterialActivityRecent,
   keyMaterialActivityRemainingMs
 } from './key-verification'
-import { withRetry } from '@memry/sync-client/retry'
-import { withAuthRetry, type AuthRetryDeps } from './auth-retry'
+import type { AuthRetryDeps } from './auth-retry'
 import {
   getValidAccessToken,
   refreshAccessToken,
@@ -184,6 +177,16 @@ function reconcileHomeCoversNow(): void {
       reconcileHomeCovers({ db: getDatabase(), vaultPath: requireVaultPath() })
     )
     .catch((error: unknown) => log.warn('Home cover reconcile skipped', { error }))
+}
+
+/**
+ * Settle inbox capture files (#4157) the same way: upload pending captures,
+ * download files a peer's items point at. Lazy for the same reason.
+ */
+function reconcileInboxAttachmentsNow(): void {
+  void import('../inbox/attachment-sync')
+    .then(({ scheduleInboxAttachmentSync }) => scheduleInboxAttachmentSync())
+    .catch((error: unknown) => log.warn('Inbox attachment reconcile skipped', { error }))
 }
 
 function getVerifiedVaultKey(db: DataDb): Promise<Uint8Array> {
@@ -583,74 +586,18 @@ export async function startSyncRuntime(): Promise<SyncEngine | null> {
       const snapshotScheduler = new CrdtSnapshotScheduler((noteIds) =>
         crdtProvider.pushSnapshotsForNotes(noteIds, { skipSeed: true })
       )
-      // Durable CRDT body outbox (#2298): note_body rows in sync_queue, pushed
-      // through this fn, which keeps the CRDT route's own 429 gate and window.
-      const pushNoteBody = async (noteId: string, updates: Uint8Array[]): Promise<void> => {
-        let token = await getValidAccessToken()
-        const vaultKey = await getOptionalRuntimeVaultKey(db, 'crdt update batch')
-        const signingSecretKey = await retrieveKey(KEYCHAIN_ENTRIES.DEVICE_SIGNING_KEY)
-        if (!token || !vaultKey || !signingSecretKey) {
-          if (vaultKey) secureCleanup(vaultKey)
-          if (signingSecretKey) secureCleanup(signingSecretKey)
-          // Throwing keeps the rows queued; returning would ack them. The
-          // outbox pauses on this error until a token refresh or sign-in:
-          // ~14 minutes into an outage, or once the session is dead, the
-          // access token cannot be refreshed and getValidAccessToken returns null.
-          throw new NoteBodyCredentialsMissingError('Missing credentials for CRDT update push')
-        }
-
-        try {
-          const b64Updates = updates.map((raw) => {
-            const encrypted = encryptCrdtUpdate(raw, vaultKey, noteId, signingSecretKey)
-            return Buffer.from(encrypted).toString('base64')
-          })
-
-          const { requests, oversized } = planCrdtUpdatePush(b64Updates)
-
-          for (const batch of requests) {
-            await withRetry(
-              () =>
-                withAuthRetry(
-                  (authToken) =>
-                    postToServer('/sync/crdt/updates', { noteId, updates: batch }, authToken),
-                  token!,
-                  crdtAuthRetryDeps,
-                  (fresh) => {
-                    token = fresh
-                  }
-                ),
-              { maxRetries: 3, baseDelayMs: 2000 }
-            )
-          }
-
-          if (oversized.length > 0) {
-            // One update this large cannot ride the incremental path at all: the
-            // server stores each update as a D1 blob. The operations are already
-            // in the local doc, so push the whole document to the R2-backed
-            // snapshot endpoint — an existing payload shape every client version
-            // pulls — instead of dropping the user's edit.
-            log.warn('CRDT update too large for the incremental path, pushing a snapshot instead', {
-              noteId,
-              oversizedCount: oversized.length,
-              largestChars: Math.max(...oversized.map((update) => update.length))
-            })
-            const pushed = await crdtProvider.pushSnapshotForNote(noteId)
-            if (!pushed) {
-              // Throwing keeps the rows queued, so the next flush retries the
-              // snapshot. Returning here would ack them, the silent drop this
-              // path exists to remove; snapshotPushFn already surfaced it.
-              log.error('CRDT snapshot fallback for an oversized update failed', { noteId })
-              throw new NoteBodyFlushDeferredError('CRDT snapshot fallback failed')
-            }
-            // The snapshot is itself the compaction point, so no scheduled one.
-            return
-          }
-
-          // The incremental batch is already durable on the server; the full
-          // snapshot is only a compaction point, so it rides a long debounce
-          // instead of re-encoding the whole document every flush.
-          snapshotScheduler.request(noteId)
-        } catch (err) {
+      // Captured by this runtime's background work, never read back from the
+      // module slot that a replacement session can refill during teardown.
+      const runtimeAbort = (runtimeAbortController = new AbortController())
+      const pushNoteBody = createNoteBodyPush({
+        signal: runtimeAbort.signal,
+        getAccessToken: () => getValidAccessToken(),
+        getVaultKey: () => getOptionalRuntimeVaultKey(db, 'crdt update batch'),
+        getSigningKey: () => retrieveKey(KEYCHAIN_ENTRIES.DEVICE_SIGNING_KEY),
+        authRetryDeps: crdtAuthRetryDeps,
+        pushSnapshot: (noteId) => crdtProvider.pushSnapshotForNote(noteId),
+        requestSnapshot: (noteId) => snapshotScheduler.request(noteId),
+        onError: (noteId, err) => {
           if (err instanceof SyncServerError && err.statusCode === 401) {
             // withAuthRetry already attempted a refresh. Pause so the queued
             // rows wait for the next successful refresh (setOnTokenRefreshed
@@ -668,12 +615,8 @@ export async function startSyncRuntime(): Promise<SyncEngine | null> {
               emitNoteTooLarge(noteId)
             }
           }
-          throw err
-        } finally {
-          secureCleanup(vaultKey)
-          secureCleanup(signingSecretKey)
         }
-      }
+      })
       // The user's pause holds note bodies as well as records (#3382). The
       // engine owns it; until the engine exists, nothing may leave.
       let pauseOwner: SyncEngine | null = null
@@ -699,6 +642,7 @@ export async function startSyncRuntime(): Promise<SyncEngine | null> {
         onPushed: (noteId, pushed) => getCrdtProvider().recordPushedSnapshot(noteId, pushed),
         onStored: (noteId) => recordNoteBodyPush(noteId, 'snapshot', Date.now(), db),
         onError: (noteId, err) => {
+          if (err instanceof RateLimitError) snapshotScheduler.request(noteId)
           if (err instanceof SyncServerError && err.statusCode === 401) {
             // withAuthRetry already attempted a refresh — see the update-batch
             // handler above. The caller keeps pendingSnapshotBytes, so the
@@ -723,7 +667,7 @@ export async function startSyncRuntime(): Promise<SyncEngine | null> {
       // not allowed to carry — a note whose server state this device has not
       // merged, and every note on a server too old to have the endpoint — so
       // the destructive-endpoint reasoning above still has exactly one owner.
-      const snapshotBatchPushFn = createCrdtSnapshotBatchPush({
+      const sendSnapshotBatch = createCrdtSnapshotBatchPush({
         pushSingle: snapshotPushFn,
         hasUnmergedRemoteState: (noteId) => engine.hasUnmergedRemoteCrdtState(noteId),
         getAccessToken: () => getValidAccessToken(),
@@ -754,17 +698,21 @@ export async function startSyncRuntime(): Promise<SyncEngine | null> {
         }
       })
 
+      // Every caller (scheduler, creates and fallbacks) re-drives refused
+      // snapshots. Keeping pending bytes alone cannot wake a drained bulk.
+      const snapshotBatchPushFn: SnapshotBatchPushFn = async (entries) => {
+        const results = await sendSnapshotBatch(entries)
+        for (const { noteId } of entries) {
+          if (results.get(noteId) !== true) snapshotScheduler.request(noteId)
+        }
+        return results
+      }
+
       const crdtProvider = getCrdtProvider()
       crdtProvider.setSyncPaused(isSyncPaused)
       await crdtProvider.init(noteBodyOutbox, snapshotPushFn, snapshotBatchPushFn)
       // Once, then the pre-#2298 file is gone: its notes become full-state rows.
       importLegacyPendingCrdtNotes(queue, app.getPath('userData'))
-
-      // Created before anything can flush a full-state row. Held in a local as
-      // well as the module slot, and the closure below reads the LOCAL:
-      // `stopSyncRuntime` nulls the slot up front and a new session may fill
-      // it, while this runtime's flush can still be in flight.
-      const runtimeAbort = (runtimeAbortController = new AbortController())
 
       const workerBridge = new SyncWorkerBridge()
       try {
@@ -790,6 +738,7 @@ export async function startSyncRuntime(): Promise<SyncEngine | null> {
             .then(({ redriveAttachmentDownloads }) => redriveAttachmentDownloads())
             .catch(() => {})
           reconcileHomeCoversNow()
+          reconcileInboxAttachmentsNow()
         } else {
           noteBodyOutbox.pause()
         }
@@ -972,6 +921,7 @@ export async function startSyncRuntime(): Promise<SyncEngine | null> {
         startAttachmentDownloadRedriver()
         await redriveAttachmentDownloads()
         reconcileHomeCoversNow()
+        reconcileInboxAttachmentsNow()
       })().catch(() => {})
 
       // Full-state rows (signed-out edits, a note leaving local-only, the
@@ -1007,6 +957,9 @@ export async function startSyncRuntime(): Promise<SyncEngine | null> {
 
       return engine
     } catch (error) {
+      // Stop credential waits and HTTP attempts before awaiting teardown.
+      runtimeAbortController?.abort()
+      runtimeAbortController = null
       if (pendingRuntime) {
         getCrdtProvider().setSnapshotDeferral(null)
         pendingRuntime.snapshotScheduler.stop()
@@ -1020,10 +973,6 @@ export async function startSyncRuntime(): Promise<SyncEngine | null> {
         await pendingRuntime.workerBridge.stop().catch(() => {})
         await pendingRuntime.engine.stop().catch(() => {})
       }
-      // Same reason as the teardown path: this branch destroys the provider, and
-      // a full-state outbox flush may be in flight. It must not merge into it.
-      runtimeAbortController?.abort()
-      runtimeAbortController = null
       await getCrdtProvider()
         .destroy()
         .catch((err: unknown) => {
@@ -1080,14 +1029,14 @@ export async function stopSyncRuntime(options?: StopSyncRuntimeOptions): Promise
   // that would open a note on a provider with no persistence left.
   runtimeAbortController?.abort()
   runtimeAbortController = null
+  const active = getActiveRuntime()
+  active?.noteBodyOutbox.stop()
   // After the in-flight start settled, so its hold cannot land after this.
   resetVaultBindingState()
   if (seedPromise) {
     await seedPromise.catch(() => {})
     seedPromise = null
   }
-
-  const active = getActiveRuntime()
 
   // Cancel deferred snapshots before the shutdown flush: pushAllSnapshots()
   // covers every note with pending bytes, so a timer firing mid-teardown would
@@ -1130,7 +1079,6 @@ export async function stopSyncRuntime(options?: StopSyncRuntimeOptions): Promise
     log.error('Failed to stop sync engine cleanly', error)
   }
 
-  active.noteBodyOutbox.stop()
   await active.workerBridge.stop().catch((err: unknown) => {
     log.error('Failed to stop sync worker', err)
   })

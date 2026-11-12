@@ -75,6 +75,23 @@ describe('registerTitleBarOverlayIpc', () => {
     expect(setTitleBarOverlay).not.toHaveBeenCalled()
   })
 
+  it('resizes the caption buttons to the zoomed title row', () => {
+    registerOn('win32')
+    const handler = ipcHandlers.get(AppChannels.send.TITLE_BAR_ZOOM_FACTOR)
+    if (!handler) throw new Error('handler not registered')
+
+    handler({ sender: {} }, 0.8)
+    expect(setTitleBarOverlay).toHaveBeenLastCalledWith({ height: 29 })
+    handler({ sender: {} }, 1.5)
+    expect(setTitleBarOverlay).toHaveBeenLastCalledWith({ height: 54 })
+    handler({ sender: {} }, 0.1)
+    expect(setTitleBarOverlay).toHaveBeenLastCalledWith({ height: 18 })
+
+    setTitleBarOverlay.mockClear()
+    handler({ sender: {} }, '0.8')
+    expect(setTitleBarOverlay).not.toHaveBeenCalled()
+  })
+
   it('does not listen outside Windows', () => {
     registerOn('darwin')
     expect(ipcHandlers.size).toBe(0)

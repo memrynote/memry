@@ -31,9 +31,13 @@ pub struct InboxItemRecord {
     pub processing_status: Option<String>,
     pub transcription: Option<String>,
     pub transcription_status: Option<String>,
-    /// Vault-relative; the file exists only on the capturing device.
+    /// Vault-relative. The file is on the capturing device, and on another once
+    /// `attachment_id` names its upload and `sync_inbox_attachments` has
+    /// downloaded it.
     pub attachment_path: Option<String>,
     pub thumbnail_path: Option<String>,
+    /// The uploaded file's attachment id (§14.7.2); `nil` until it is uploaded.
+    pub attachment_id: Option<String>,
     pub created_at_ms: i64,
     pub modified_at_ms: Option<i64>,
     pub tags: Vec<String>,
@@ -68,6 +72,7 @@ impl From<InboxItem> for InboxItemRecord {
             transcription_status: item.transcription_status,
             attachment_path: item.attachment_path,
             thumbnail_path: item.thumbnail_path,
+            attachment_id: item.attachment_id,
             created_at_ms: item.created_at,
             modified_at_ms: item.modified_at,
             tags: item.tags,

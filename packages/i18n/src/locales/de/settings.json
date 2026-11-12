@@ -504,7 +504,8 @@
       "loading": "Einstellungen werden geladen…"
     },
     "groups": {
-      "footer": "Fußzeile"
+      "footer": "Fußzeile",
+      "pastYears": "Vergangene Jahre"
     },
     "template": {
       "label": "Vorlage",
@@ -562,6 +563,14 @@
     "showInSidebar": {
       "label": "In der Seitenleiste anzeigen",
       "description": "Journalordner und seine Einträge in der Notizenstruktur anzeigen"
+    },
+    "showOnThisDay": {
+      "label": "An diesem Tag anzeigen",
+      "description": "Dasselbe Datum aus vergangenen Jahren unter dem Eintrag auflisten"
+    },
+    "allYearsView": {
+      "label": "Alle Jahre vollständig anzeigen",
+      "description": "Das ewige Journal: alle Jahre dieses Datums auf einer Seite, unter dem Eintrag"
     }
   },
   "tasks": {
@@ -1110,7 +1119,16 @@
       "sending": "Code wird gesendet…"
     },
     "oauth": {
-      "google": "Weiter mit Google"
+      "google": "Weiter mit Google",
+      "waiting": "Schließe die Anmeldung mit Google in deinem Browser ab.",
+      "browserUnavailable": "Dein Browser konnte nicht geöffnet werden.",
+      "manualInstructions": "Kopiere den Anmeldelink und öffne ihn in einem Browser auf diesem Computer. Lass memrynote während der Anmeldung geöffnet.",
+      "linkLabel": "Anmeldelink",
+      "copyLink": "Anmeldelink kopieren",
+      "retryBrowser": "Browser erneut öffnen",
+      "copied": "Anmeldelink kopiert.",
+      "copyFailed": "Der Anmeldelink konnte nicht kopiert werden. Markiere ihn im Feld oben und kopiere ihn von dort.",
+      "cancel": "Andere Anmeldemethode verwenden"
     },
     "otp": {
       "title": "Bestätigungscode eingeben",
@@ -1347,6 +1365,7 @@
       "keySaveError": "Der OpenAI-Schlüssel konnte nicht gespeichert werden"
     },
     "embedding": {
+      "load": "Modell laden",
       "loaded": "Geladen",
       "loading": "Wird geladen",
       "downloadLoad": "Modell herunterladen und laden",
@@ -1371,7 +1390,8 @@
         "ollama": "Ollama (lokal)",
         "openai": "OpenAI",
         "anthropic": "Anthropic",
-        "google": "Google Gemini"
+        "google": "Google Gemini",
+        "custom": "Benutzerdefiniert (OpenAI-kompatibel)"
       },
       "model": "Modell",
       "modelDescription": "Sprachmodell zum Umschreiben und Zusammenfassen",
@@ -1381,6 +1401,11 @@
       "apiKeyPlaceholder": "API-Schlüssel für {provider} eingeben",
       "ollamaUrl": "Ollama-URL",
       "ollamaUrlDescription": "Lokale Serveradresse",
+      "customUrl": "Basis-URL",
+      "customUrlDescription": "Jeder OpenAI-kompatible Endpunkt, etwa OpenRouter",
+      "customUrlPlaceholder": "https://openrouter.ai/api/v1",
+      "customApiKeyPlaceholder": "API-Schlüssel (optional)",
+      "customModelPlaceholder": "Modell-ID",
       "connection": "Verbindung",
       "activePort": "Aktiv auf Port {port}",
       "notConnected": "Nicht verbunden",
@@ -2032,7 +2057,7 @@
       "subtitle": "Verwalte Eigenschaftsdefinitionen für alle Notizen"
     },
     "loading": "Eigenschaften werden geladen…",
-    "empty": "Noch keine Eigenschaftsdefinitionen. Füge einer Notiz eine Eigenschaft vom Typ „Status“, „Auswahl“ oder „Mehrfachauswahl“ hinzu, um loszulegen.",
+    "empty": "Noch keine Eigenschaften. Füge einer Notiz eine Eigenschaft hinzu, um loszulegen.",
     "filterPlaceholder": "Eigenschaften filtern…",
     "noMatch": "Keine Eigenschaften, die mit „{query}“ übereinstimmen",
     "summary": "{count, plural, one {# Eigenschaftsdefinition} other {# Eigenschaftsdefinitionen}}",
@@ -2072,6 +2097,14 @@
     },
     "v2": {
       "actionsAria": "Aktionen für {name}"
+    },
+    "usage": {
+      "heading": "Verwendet in",
+      "noteCount": "{count, plural, one {# Notiz} other {# Notizen}}",
+      "mismatchCount": "Werte, die nicht zu {type} passen: {count}",
+      "mismatchNote": "Passt nicht zu {type}",
+      "none": "Keine Notiz verwendet diese Eigenschaft",
+      "loadFailed": "Die Notizen mit dieser Eigenschaft konnten nicht geladen werden"
     }
   },
   "commandLine": {
@@ -2407,7 +2440,6 @@
   "phaseI": {
     "errors": {
       "failedToUpdateTagColor": "Die Tag-Farbe konnte nicht aktualisiert werden",
-      "googleSignInFailed": "Die Google-Anmeldung ist fehlgeschlagen",
       "failedToSendVerificationCode": "Der Bestätigungscode konnte nicht gesendet werden",
       "invalidVerificationCode": "Ungültiger Bestätigungscode",
       "accountSetupFailed": "Die Kontoeinrichtung ist fehlgeschlagen",
@@ -2434,7 +2466,8 @@
       "failedToCloseVault": "Der Tresor konnte nicht geschlossen werden",
       "failedToSwitchVault": "Der Tresor konnte nicht gewechselt werden",
       "failedToUpdateConfig": "Konfiguration konnte nicht aktualisiert werden",
-      "failedToReindex": "Neuindizierung fehlgeschlagen"
+      "failedToReindex": "Neuindizierung fehlgeschlagen",
+      "googleSignInFailed": "Die Google-Anmeldung ist fehlgeschlagen"
     }
   },
   "agentMcp": {
@@ -2464,7 +2497,17 @@
       "running": "Läuft",
       "tokenHint": "Nur für diesen Start",
       "copy": "Kopieren",
-      "rotate": "Erneuern"
+      "rotate": "Erneuern",
+      "clientConfig": {
+        "label": "Client-Konfiguration",
+        "hint": "Mit URL und Token dieses Starts kopiert",
+        "copy": "{client}-Konfiguration kopieren"
+      },
+      "notes": {
+        "readOnly": "Externe Clients können nur lesen. Schreib-Tools liefern PERMISSION_DENIED, also schreibe über Agent Chat oder die memrynote-Befehlszeile.",
+        "restart": "URL und Token ändern sich, wenn memrynote neu startet, den Tresor wechselt oder das Token erneuert. Aktualisiere dann die Client-Konfiguration und starte den Client neu.",
+        "docs": "Einrichtungsanleitung"
+      }
     }
   },
   "agentProviders": {

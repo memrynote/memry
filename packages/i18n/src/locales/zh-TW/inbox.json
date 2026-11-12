@@ -250,7 +250,8 @@
     "failedPlayAudio": "無法播放音訊",
     "failedLoadAudio": "無法載入音訊",
     "video": "影片",
-    "unsupportedVideo": "瀏覽器不支援播放此影片。"
+    "unsupportedVideo": "瀏覽器不支援播放此影片。",
+    "fileOnOtherDevice": "該檔案位於擷取它的裝置上。"
   },
   "reminder": {
     "dataUnavailable": "提醒資料無法取得。",

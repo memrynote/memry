@@ -33,6 +33,7 @@ use crate::crdt::{BODY_FRAGMENT, Document};
 
 mod columns;
 mod inline;
+mod merge;
 mod snapshot;
 mod structure;
 mod tables;
@@ -40,6 +41,7 @@ mod text;
 
 use columns::*;
 use inline::*;
+use merge::*;
 use snapshot::*;
 use structure::*;
 use tables::*;
@@ -290,12 +292,17 @@ pub enum BlockEdit {
     ///
     /// `new_block_id` becomes the `columnList`'s own `id`; the core mints the
     /// ids of each column and of each column's paragraph container.
-    ///
-    /// Last in the enum so the variants before it keep their FFI indices.
     InsertColumnList {
         after_block_id: Option<String>,
         columns: u32,
         new_block_id: String,
+    },
+    /// Backspace at a block's start: appends `block_id`'s inline content, marks
+    /// and inline nodes kept, to `into_block_id`'s, then removes `block_id`. A
+    /// block with nested blocks is refused. Last, to keep earlier FFI indices.
+    MergeBlocks {
+        block_id: String,
+        into_block_id: String,
     },
 }
 
@@ -403,6 +410,10 @@ fn apply_in(txn: &mut TransactionMut, edit: &BlockEdit) -> Result<(), CrdtError>
         } => set_mark(txn, block_id, *start, *end, mark, None, false),
         BlockEdit::Delete { block_id } => delete(txn, block_id),
         BlockEdit::RestoreBlock { snapshot } => restore_block(txn, snapshot),
+        BlockEdit::MergeBlocks {
+            block_id,
+            into_block_id,
+        } => merge_blocks(txn, block_id, into_block_id),
     }
 }
 

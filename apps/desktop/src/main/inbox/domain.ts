@@ -58,6 +58,7 @@ import { createInboxBatchHandlers, type InboxBatchHandlers } from './batch'
 import { createInboxCrudHandlers, type InboxCrudHandlers } from './crud'
 import { createInboxQueryHandlers, type InboxQueryHandlers } from './queries'
 import { publishInboxUpserted, syncInboxCreate, syncInboxUpdate } from './runtime-effects'
+import { queueInboxAttachmentUpload, scheduleInboxAttachmentSync } from './attachment-sync'
 
 const logger = createLogger('Inbox:Domain')
 
@@ -192,6 +193,7 @@ export function insertItemWithTags(
 
   return db.transaction((tx) => {
     tx.insert(inboxItems).values(values).run()
+    if (values.attachmentPath && !values.localOnly) queueInboxAttachmentUpload(tx, values.id)
 
     if (resolvedTags.length > 0) {
       tx.insert(inboxItemTags)
@@ -220,6 +222,7 @@ export function emitCapturedAndSync(
   const item = toInboxItem(row, tags)
   emitInboxEvent(InboxChannels.events.CAPTURED, { item: toListItem(row, tags) })
   syncInboxCreate(row.id)
+  if (row.attachmentPath) scheduleInboxAttachmentSync()
   return item
 }
 

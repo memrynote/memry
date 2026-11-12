@@ -6,6 +6,7 @@ use serde_json::Value as Json;
 use super::body::BodyParser;
 use super::{BlockSerializer, ConvertError, EmbedResolver};
 use crate::markdown::schema::callout_types::CalloutTypes;
+use crate::markdown::schema::link_mention_normalize::normalize_link_mentions;
 use crate::markdown::shared::critic_markup::{CriticMarkupMark, parse_critic_markup};
 use crate::markdown::shared::link_references::{
     LinkReferenceDefinition, LinkReferenceUsage, inline_link_references,
@@ -69,7 +70,10 @@ pub fn prepare_fragment_seed(
         serializer: env.serializer,
         html_comments: env.html_comments,
     };
-    let blocks = parser.markdown_to_blocks(&source, note_path)?;
+    let mut blocks = parser.markdown_to_blocks(&source, note_path)?;
+    // `((mention:…))` becomes a `linkMention` node here, once, in the doc every
+    // device receives (#3871).
+    normalize_link_mentions(&mut blocks);
     // Upgrade `- [ ] … {task:id}` checkboxes into taskBlock nodes, and lines
     // ending in the plain-checkbox marker into checkboxes with `plain: true`.
     let (mut normalized, _) = normalize_task_blocks(&blocks, Some(&source));

@@ -236,5 +236,21 @@
     "range": "{start} – {end}",
     "openTask": "{title}, {range}",
     "completeTask": "Terminer {title}"
+  },
+  "pastYears": {
+    "title": "Ce jour-là",
+    "count": "{count, plural, one {# autre année} other {# autres années}}",
+    "showAll": "Toutes les années",
+    "showPreviews": "Aperçus",
+    "yearsAgo": "{count, plural, one {il y a # an} other {il y a # ans}}",
+    "yearsLater": "{count, plural, one {# an plus tard} other {# ans plus tard}}",
+    "words": "{count, plural, one {# mot} other {# mots}}",
+    "openDay": "Ouvrir {date}",
+    "showFull": "Afficher l'entrée complète",
+    "showLess": "Afficher moins",
+    "loadError": "Impossible de charger ce jour des autres années.",
+    "previousYear": "Même jour, année précédente",
+    "nextYear": "Même jour, année suivante",
+    "goToYear": "Aller à ce jour en {year}"
   }
 }

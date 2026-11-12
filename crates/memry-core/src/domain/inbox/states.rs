@@ -10,8 +10,8 @@ use crate::domain::notes::{failed, iso};
 use crate::storage::repositories::Change;
 use crate::sync::outbox::{self, Durable};
 
-use super::write::{edit, edit_in, require_live};
-use super::{ITEM_TYPE, InboxItem, queries};
+use super::write::{edit, edit_in, read_back, require_live};
+use super::{ITEM_TYPE, InboxItem, attachments, queries};
 
 /// `handleMarkViewed`.
 pub fn mark_viewed(
@@ -147,15 +147,16 @@ pub fn unarchive(
     edit(conn, item_id, clear(&["archivedAt"]), device_id, now_ms)
 }
 
-/// `handleDeletePermanent`: a tombstone (desktop's delete push) and the local
-/// tags. The shell removes `attachments/inbox/{id}/`.
+/// `handleDeletePermanent`: a tombstone (desktop's delete push), the local
+/// tags, and the upload bookkeeping of [`attachments::forget_deleted`]. The
+/// shell removes `attachments/inbox/{id}/`.
 pub fn delete_permanent(
     conn: &Connection,
     item_id: &str,
     device_id: &str,
     now_ms: i64,
 ) -> Result<Durable<()>, StorageError> {
-    require_live(conn, item_id)?;
+    let item = require_live(conn, item_id)?;
     outbox::commit(
         conn,
         &outbox::Change::delete(ITEM_TYPE, item_id),
@@ -180,12 +181,13 @@ pub fn delete_permanent(
                 params![item_id],
             )
             .map_err(failed)?;
-            Ok(())
+            attachments::forget_deleted(tx, &item, now_ms)
         },
     )
 }
 
-/// `markItemAsFiled`: filed, and any snooze cleared.
+/// `markItemAsFiled`: filed, any snooze cleared, and no upload left pending
+/// (a filed capture's file belongs to its note).
 pub fn mark_filed(
     conn: &Connection,
     item_id: &str,
@@ -195,18 +197,22 @@ pub fn mark_filed(
     now_ms: i64,
 ) -> Result<Durable<InboxItem>, StorageError> {
     let at = iso(now_ms)?;
-    edit(
+    let changes = vec![
+        ("filedAt", Change::set(at)),
+        ("filedTo", Change::set(filed_to)),
+        ("filedAction", Change::set(filed_action)),
+        ("snoozedUntil", Change::Set(Value::Null)),
+        ("snoozeReason", Change::Set(Value::Null)),
+    ];
+    outbox::commit(
         conn,
-        item_id,
-        vec![
-            ("filedAt", Change::set(at)),
-            ("filedTo", Change::set(filed_to)),
-            ("filedAction", Change::set(filed_action)),
-            ("snoozedUntil", Change::Set(Value::Null)),
-            ("snoozeReason", Change::Set(Value::Null)),
-        ],
-        device_id,
+        &outbox::Change::upsert(ITEM_TYPE, item_id),
         now_ms,
+        |tx| {
+            edit_in(tx, item_id, changes, device_id, now_ms)?;
+            attachments::clear_pending(tx, item_id)?;
+            read_back(tx, item_id)
+        },
     )
 }
 

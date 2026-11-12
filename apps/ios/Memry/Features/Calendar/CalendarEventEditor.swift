@@ -182,6 +182,7 @@ struct CalendarEventEditor: View {
                 color: draft.color.map { .set(value: $0) } ?? .clear
             )
             record = await store.write { try $0.updateEvent(id: id, changes: changes) }
+            if record != nil { CalendarTelemetry.eventUpdated(changes) }
         } else {
             let create = CalendarEventDraft(
                 title: title, description: notes.isEmpty ? nil : notes, location: nil,
@@ -189,6 +190,7 @@ struct CalendarEventEditor: View {
                 isAllDay: draft.isAllDay, targetCalendarId: draft.targetCalendarId, color: draft.color
             )
             record = await store.write { try $0.createEvent(draft: create) }
+            if record != nil { CalendarTelemetry.eventCreated() }
         }
         guard let record else {
             error = draft.eventId == nil ? CalendarCopy.couldNotCreate : CalendarCopy.couldNotSave

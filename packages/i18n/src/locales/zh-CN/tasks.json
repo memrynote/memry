@@ -113,7 +113,74 @@
       "noDueDate": "无截止日期"
     },
     "repeatTypeRepeating": "重复",
-    "repeatTypeOneTime": "一次性"
+    "repeatTypeOneTime": "一次性",
+    "advanced": {
+      "entry": "高级筛选…",
+      "entryHint": "使用与、或、非的规则",
+      "title": "筛选",
+      "match": "匹配",
+      "ofThese": "条件",
+      "matches": {
+        "all": "全部",
+        "any": "任一",
+        "none": "均不"
+      },
+      "fields": {
+        "title": "标题",
+        "status": "状态",
+        "priority": "优先级",
+        "due": "截止日期",
+        "project": "项目",
+        "location": "地点",
+        "tags": "标签",
+        "repeat": "重复",
+        "hasTime": "有时间"
+      },
+      "ops": {
+        "contains": "包含",
+        "notContains": "不包含",
+        "any": "是以下任一",
+        "none": "不是以下任何",
+        "all": "包含全部",
+        "empty": "为空",
+        "notEmpty": "不为空",
+        "is": "是",
+        "isNot": "不是"
+      },
+      "tagOps": {
+        "any": "包含任一",
+        "all": "包含全部",
+        "none": "不包含任何"
+      },
+      "values": {
+        "repeating": "重复",
+        "oneTime": "一次性",
+        "withTime": "有时间",
+        "withoutTime": "无时间",
+        "customRange": "自定义范围",
+        "from": "从",
+        "to": "到",
+        "pick": "选择…",
+        "titlePlaceholder": "标题中的文本"
+      },
+      "addRule": "添加规则",
+      "addGroup": "添加分组",
+      "clear": "清除",
+      "removeRule": "移除规则",
+      "removeGroup": "移除分组",
+      "matchCount": "{count, plural, other {# 个任务匹配}}",
+      "skipped": "{count, plural, other {已跳过 # 条规则}}",
+      "ruleCount": "{count, plural, other {# 条规则}}",
+      "unknownRule": "来自较新版本的规则",
+      "empty": "暂无规则。添加一条规则开始筛选。",
+      "summary": {
+        "and": "且",
+        "or": "或",
+        "not": "非"
+      },
+      "editRules": "编辑规则",
+      "clearRules": "清除规则"
+    }
   },
   "quickAdd": {
     "label": "快速添加任务",

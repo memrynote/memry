@@ -261,9 +261,9 @@ export function applyMemrynoteIdentity(dirs?: { legacyDir?: string; newDir?: str
     const pin = readPin(sourceDir)
 
     // Linux keyrings key the safeStorage item by app name and keytar cannot
-    // write Chromium's libsecret schema, so an install with a store keeps the
-    // legacy identity outright — unchanged from the shipped behaviour.
-    if (process.platform === 'linux' && storeHasCiphertexts(sourceDir)) {
+    // write Chromium's libsecret schema. Unpinned stores keep the legacy
+    // identity; a pin records which identity this profile already chose.
+    if (!pin && process.platform === 'linux' && storeHasCiphertexts(sourceDir)) {
       logger.warn('safeStorage store present on Linux; keeping the legacy app identity')
       return
     }
@@ -299,7 +299,7 @@ export function applyMemrynoteIdentity(dirs?: { legacyDir?: string; newDir?: str
       // derivation above would no longer see the legacy evidence. Write it into
       // the directory that is about to be renamed so it travels with it, and
       // refuse to move at all if it will not stick.
-      if (!writePin(legacyDir, { version: 1, appName, flipped: false })) {
+      if (!writePin(legacyDir, { version: 1, appName, flipped: pin?.flipped === true })) {
         logger.error('Could not pin the app identity; keeping the legacy identity this launch')
         trackMainError('app_identity', 'identity_pin_failed', new Error(reason))
         return

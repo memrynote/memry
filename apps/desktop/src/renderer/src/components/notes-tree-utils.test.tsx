@@ -11,7 +11,10 @@ import {
   buildTreeFromNotes,
   collectAllFolderIds,
   collectFolderSubtreeIds,
+  collectPairedNotes,
   hideVaultFiles,
+  pairFolderNotes,
+  treeRowIdForNote,
   isVaultFile,
   setFoldersExpanded,
   getFileIcon,
@@ -19,6 +22,7 @@ import {
   type FolderNode,
   type TreeStructure
 } from './notes-tree-utils'
+import { flattenTree } from '@/lib/virtualized-tree-utils'
 
 const baseDate = new Date(2026, 0, 1)
 
@@ -312,6 +316,32 @@ describe('buildTreeFromNotes notesFirst', () => {
   })
 })
 
+describe('buildTreeFromNotes mixed order', () => {
+  const notes = [createNote({ id: 'a', path: 'a.md', title: 'a' })]
+  const folders = [{ path: 'Z', icon: null }]
+  const positions = { '/': 0, 'a.md': 2, Z: 1 }
+  const rootIds = (tree: TreeStructure) => flattenTree(tree, new Set()).map((item) => item.id)
+
+  it('draws a marked level as one list in manual mode only', () => {
+    expect(rootIds(buildTreeFromNotes(notes, folders, positions, 'manual', true))).toEqual([
+      'folder-Z',
+      'a'
+    ])
+    expect(rootIds(buildTreeFromNotes(notes, folders, positions, 'name-asc', true))).toEqual([
+      'a',
+      'folder-Z'
+    ])
+  })
+
+  it('keeps an unmarked level grouped even when its positions interleave', () => {
+    const { '/': _marker, ...unmarked } = positions
+    expect(rootIds(buildTreeFromNotes(notes, folders, unmarked, 'manual', true))).toEqual([
+      'a',
+      'folder-Z'
+    ])
+  })
+})
+
 describe('hideVaultFiles', () => {
   const md = createNote({ id: 'md', path: 'Docs/readme.md', fileType: 'markdown' })
   const legacy = createNote({ id: 'legacy', path: 'Docs/old.md' })
@@ -341,6 +371,70 @@ describe('hideVaultFiles', () => {
 
     expect(full.rootNotes.map((n) => n.id)).toEqual(['png'])
     expect(full.folders[0].notes.map((n) => n.id).toSorted()).toEqual(['md', 'pdf'])
+  })
+})
+
+describe('pairFolderNotes', () => {
+  // The shape from the feedback: a page `Note A` whose subpages live in `Note A/`.
+  const noteA = createNote({ id: 'a', path: 'Note A.md' })
+  const database = createNote({ id: 'db', path: 'Note A/Database.md' })
+  const note1 = createNote({ id: 'n1', path: 'Note A/Database/Note 1.md' })
+  const loose = createNote({ id: 'loose', path: 'Loose.md' })
+  const lonelyFolderNote = createNote({ id: 'inside', path: 'Empty Page/inside.md' })
+  const caseMismatch = createNote({ id: 'case', path: 'projects.md' })
+  const pdf = createNote({ id: 'pdf', path: 'Scans.pdf', fileType: 'pdf' })
+  const journal = createNote({ id: 'j', path: '2026-01-01.md', journalDate: '2026-01-01' })
+  const folders = [
+    { path: 'Note A', icon: null },
+    { path: 'Note A/Database', icon: null },
+    { path: 'Empty Page', icon: null },
+    { path: 'Projects', icon: null },
+    { path: 'Scans', icon: null },
+    { path: '2026-01-01', icon: null }
+  ]
+  const tree = buildTreeFromNotes(
+    [noteA, database, note1, loose, lonelyFolderNote, caseMismatch, pdf, journal],
+    folders,
+    {},
+    'name-asc'
+  )
+
+  it('folds a note into its same-named sibling folder at every depth', () => {
+    const paired = pairFolderNotes(tree)
+    const top = paired.folders.find((f) => f.path === 'Note A')
+
+    expect(top?.note?.id).toBe('a')
+    expect(top?.notes).toEqual([])
+    expect(top?.children[0].note?.id).toBe('db')
+    expect(top?.children[0].notes.map((n) => n.id)).toEqual(['n1'])
+    expect(paired.rootNotes.map((n) => n.id)).not.toContain('a')
+  })
+
+  it('leaves a note without a folder, a folder without a note, and near misses alone', () => {
+    const paired = pairFolderNotes(tree)
+
+    expect(paired.rootNotes.map((n) => n.id).toSorted()).toEqual(['case', 'j', 'loose', 'pdf'])
+    for (const path of ['Empty Page', 'Projects', 'Scans', '2026-01-01']) {
+      expect(paired.folders.find((f) => f.path === path)?.note).toBeUndefined()
+    }
+  })
+
+  it('maps folders to their notes and notes to the row they are drawn on', () => {
+    const pairs = collectPairedNotes(pairFolderNotes(tree))
+
+    expect([...pairs].map(([path, note]) => [path, note.id])).toEqual([
+      ['Note A', 'a'],
+      ['Note A/Database', 'db']
+    ])
+    expect(treeRowIdForNote(pairs, 'db')).toBe('folder-Note A/Database')
+    expect(treeRowIdForNote(pairs, 'loose')).toBe('loose')
+  })
+
+  it('leaves the tree it was given untouched', () => {
+    pairFolderNotes(tree)
+
+    expect(tree.rootNotes.map((n) => n.id)).toContain('a')
+    expect(tree.folders.find((f) => f.path === 'Note A')?.note).toBeUndefined()
   })
 })
 

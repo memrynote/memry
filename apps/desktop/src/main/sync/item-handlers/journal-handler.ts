@@ -26,6 +26,7 @@ import { flushProjectionEvents } from '../../projections'
 import { createLogger } from '../../lib/logger'
 import { BaseItemHandler } from '@memry/sync-client/item-handlers/base-handler'
 import { belongsToOtherType } from './note-row-type'
+import { pulledRowSyncedAt } from './pulled-row-synced-at'
 import { remoteAliases } from './note-handler-frontmatter'
 import { extractAliases } from '../../vault/frontmatter'
 import { seedSkipsDeletedNote } from '../pending-deletes'
@@ -136,6 +137,7 @@ class JournalHandler extends BaseItemHandler<JournalSyncPayload> {
     const { absolutePath, entry, fileContent, frontmatter } = write
     const path = getJournalRelativePath(entry.date)
     const modifiedAt = existing ? (data.modifiedAt ?? entry.modifiedAt) : entry.modifiedAt
+    const syncedAt = pulledRowSyncedAt(modifiedAt, now)
 
     saveCanonicalNote(ctx.db, {
       id: itemId,
@@ -143,7 +145,7 @@ class JournalHandler extends BaseItemHandler<JournalSyncPayload> {
       title: entry.date,
       journalDate: entry.date,
       clock: mergedClock,
-      syncedAt: now,
+      syncedAt,
       createdAt: entry.createdAt,
       modifiedAt,
       properties: data.properties

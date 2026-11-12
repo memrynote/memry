@@ -401,6 +401,8 @@ function main() {
   removePath(path.join(stageDir, 'electron-builder.env'))
   runElectronRebuild([
     '--force',
+    // --force alone still accepts prebuilds compiled against newer Linux libraries.
+    ...(process.platform === 'linux' ? ['--build-from-source'] : []),
     '--only',
     nativeModules.join(','),
     '--module-dir',

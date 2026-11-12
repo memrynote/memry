@@ -11,6 +11,7 @@ import {
 const mockFetchUrlMetadata = vi.hoisted(() => vi.fn())
 const mockDownloadImage = vi.hoisted(() => vi.fn())
 const mockTranscribeAudio = vi.hoisted(() => vi.fn())
+const mockSyncInboxUpdate = vi.hoisted(() => vi.fn())
 
 vi.mock('electron', () => ({
   BrowserWindow: {
@@ -39,6 +40,10 @@ vi.mock('./attachments', () => ({
 
 vi.mock('./transcription', () => ({
   transcribeAudio: mockTranscribeAudio
+}))
+
+vi.mock('./runtime-effects', () => ({
+  syncInboxUpdate: mockSyncInboxUpdate
 }))
 
 import { getDatabase, requireDatabase } from '../database'
@@ -129,6 +134,8 @@ describe('inbox jobs', () => {
     expect(item?.title).toBe('Resolved title')
     expect(job?.status).toBe('complete')
     expect(window.webContents.send).toHaveBeenCalled()
+    // #4155: the result reaches other devices, which saw the capture as pending.
+    expect(mockSyncInboxUpdate).toHaveBeenCalledWith('item-1')
   })
 
   it('queues metadata jobs, upserts existing rows, filters listings, and detects due work', () => {
@@ -242,6 +249,7 @@ describe('inbox jobs', () => {
       attempts: 1,
       lastError: 'temporary outage'
     })
+    expect(mockSyncInboxUpdate).not.toHaveBeenCalled()
 
     testDb.db
       .insert(inboxItems)
@@ -284,6 +292,7 @@ describe('inbox jobs', () => {
       attempts: 1,
       lastError: 'blocked'
     })
+    expect(mockSyncInboxUpdate).toHaveBeenCalledWith('terminal-item')
   })
 
   it('processes transcription jobs and fails missing attachment paths', async () => {
