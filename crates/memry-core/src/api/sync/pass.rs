@@ -31,7 +31,6 @@ use crate::api::errors::{StorageError, SyncError};
 use crate::crdt::SnapshotPusher;
 use crate::crypto::keys;
 use crate::protocol::account::{AccountSealer, DeviceSigner};
-use crate::protocol::types::Declaration;
 use crate::sync::body_pull::BodyPull;
 use crate::sync::body_step;
 use crate::sync::journal_day_merge;
@@ -114,7 +113,7 @@ impl VaultSync {
         let pulled = PullLoop::new(
             Arc::clone(&http),
             self.db.clone(),
-            Declaration::subscribed(),
+            self.declaration.clone(),
             cipher.clone(),
         )
         .with_vault(&self.vault_id)
@@ -128,7 +127,7 @@ impl VaultSync {
         let body_pull = BodyPull::new(
             Arc::clone(&http),
             self.db.clone(),
-            Declaration::subscribed(),
+            self.declaration.clone(),
             cipher,
         )
         .with_vault(&self.vault_id);
@@ -157,7 +156,7 @@ impl VaultSync {
                 Arc::clone(&http),
                 self.db.clone(),
                 sealer.clone(),
-                Declaration::subscribed(),
+                self.declaration.clone(),
             )
             .with_single_attempt()
             .with_vault(&self.vault_id),
@@ -169,7 +168,7 @@ impl VaultSync {
                 && pulled.dropped_pages == 0,
             purged_documents: pulled.purged_documents.clone(),
         };
-        let push = PushCoordinator::new(http, self.db.clone(), Declaration::subscribed(), sealer)
+        let push = PushCoordinator::new(http, self.db.clone(), self.declaration.clone(), sealer)
             .with_vault(&self.vault_id)
             .with_snapshot_fallback(Arc::new(snapshots));
         let report = push.drain_wave().await?;

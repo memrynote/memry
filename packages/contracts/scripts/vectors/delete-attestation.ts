@@ -138,6 +138,20 @@ const ELIGIBILITY: EligibilitySpec[] = [
     input: { id: 't', type: 'task', operation: 'delete', clock: { d: 1 }, deletedAt: 5 }
   },
   {
+    name: 'a vault_lock delete (a desktop-only type that requires a clock)',
+    input: {
+      id: 'note:abc123def456',
+      type: 'vault_lock',
+      operation: 'delete',
+      clock: { d: 2 },
+      deletedAt: 5
+    }
+  },
+  {
+    name: 'a sticky_draft delete (a desktop-only type that requires a clock)',
+    input: { id: 's', type: 'sticky_draft', operation: 'delete', clock: { d: 3 }, deletedAt: 5 }
+  },
+  {
     name: 'an update',
     input: { id: 't', type: 'task', operation: 'update', clock: { d: 1 }, deletedAt: 5 }
   },

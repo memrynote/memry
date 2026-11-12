@@ -23,7 +23,7 @@ use ciborium::value::Value;
 use crate::crypto::cbor::{self, field_order};
 use crate::crypto::sodium;
 use crate::protocol::envelope::{EnvelopeError, SyncOperation};
-use crate::protocol::types::{SUBSCRIBED_ITEM_TYPES, UNSUBSCRIBED_RECORD_ITEM_TYPES};
+use crate::protocol::types::is_record_item_type;
 use crate::sync::clock::VectorClock;
 
 /// The literal `purpose` value, versioned so a v2 cannot collide with v1.
@@ -43,9 +43,7 @@ pub struct DeleteClaim<'a> {
 
 /// `RECORD_CLOCK_REQUIRED_ITEM_TYPES`: every record type except `settings`.
 fn is_clock_required(item_type: &str) -> bool {
-    item_type != CLOCK_EXEMPT_ITEM_TYPE
-        && (SUBSCRIBED_ITEM_TYPES.contains(&item_type)
-            || UNSUBSCRIBED_RECORD_ITEM_TYPES.contains(&item_type))
+    item_type != CLOCK_EXEMPT_ITEM_TYPE && is_record_item_type(item_type)
 }
 
 /// The claim a write attests, or `None` when it attests nothing.
@@ -143,6 +141,15 @@ mod tests {
         assert!(claim_of("task", "t", delete, Some(&empty), Some(5)).is_none());
         assert!(claim_of("task", "t", delete, Some(&clock), None).is_none());
         assert!(claim_of("task", "t", delete, Some(&clock), Some(-1)).is_none());
+    }
+
+    #[test]
+    fn a_delete_of_every_desktop_only_type_attests() {
+        let clock = clock();
+        for item_type in crate::protocol::types::DESKTOP_ONLY_RECORD_ITEM_TYPES {
+            let claim = claim_of(item_type, "x", SyncOperation::Delete, Some(&clock), Some(5));
+            assert!(claim.is_some(), "{item_type}");
+        }
     }
 
     #[test]

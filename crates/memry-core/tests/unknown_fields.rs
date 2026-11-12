@@ -35,7 +35,7 @@ use http_fakes::{FakeTransport, response};
 use memry_core::domain::notes;
 use memry_core::protocol::envelope::{EnvelopeError, RecordEnvelope};
 use memry_core::protocol::http::{ClientIdentity, HttpClient};
-use memry_core::protocol::types::{Declaration, UNSUBSCRIBED_RECORD_ITEM_TYPES};
+use memry_core::protocol::types::{DESKTOP_ONLY_RECORD_ITEM_TYPES, Declaration};
 use memry_core::storage::repositories::sync_items::{self, PAYLOAD_STATE_METADATA_ONLY};
 use memry_core::storage::{Db, open_data};
 use memry_core::sync::pull::{PullLoop, PullReport, RecordCipher};
@@ -391,12 +391,12 @@ async fn a_newer_desktop_payload_survives_an_edit_cycle_with_its_unmodelled_keys
 /// dropped the item would satisfy "does not fail the page" and lose the item
 /// for ever, which is the `GET /sync/vaults` bug in another place.
 ///
-/// `canvas_folder` is one of the four recognised types this client does not
+/// `canvas_folder` is one of the six recognised types the iOS declaration does not
 /// subscribe to (chapter 13 §13.1), asserted below rather than assumed.
 #[tokio::test]
 async fn an_unsubscribed_type_is_recorded_against_its_id_rather_than_dropped_from_the_page() {
     assert!(
-        UNSUBSCRIBED_RECORD_ITEM_TYPES.contains(&"canvas_folder"),
+        DESKTOP_ONLY_RECORD_ITEM_TYPES.contains(&"canvas_folder"),
         "this test is about a recognised type this client does not declare"
     );
     let db = scratch_db("unsubscribed-type");
