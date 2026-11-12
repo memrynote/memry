@@ -35,8 +35,14 @@ fn walk(f: &Fixture) -> Walking {
     )
     .unwrap();
     let applier = applier(&f.root, &f.vault, &f.store, &f.rows, f.identity.clone());
-    let consumer =
-        Consumer::start(applier, inbox, watcher.handle(), vec![], Box::new(|_| {})).unwrap();
+    let consumer = Consumer::start(
+        applier,
+        inbox,
+        watcher.handle(),
+        vec![],
+        Box::new(|_, _| {}),
+    )
+    .unwrap();
     Walking {
         consumer,
         _watcher: watcher,

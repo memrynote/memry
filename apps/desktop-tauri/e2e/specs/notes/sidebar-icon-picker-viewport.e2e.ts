@@ -45,12 +45,21 @@ test('the sidebar icon picker stays on screen in a short window, its tabs reacha
   const picker = page.getByRole('dialog', { name: PICKER })
   await expect(picker).toBeVisible({ timeout: 10_000 })
 
-  const box = await picker.boundingBox()
-  expect(box).not.toBeNull()
-  const viewportHeight = await page.evaluate(() => window.innerHeight)
-  // The regression: a shifted panel reports a negative top.
-  expect(box!.y).toBeGreaterThanOrEqual(0)
-  expect(box!.y + box!.height).toBeLessThanOrEqual(viewportHeight + 1)
+  // On the first open Radix places the popover while the lazy picker is still loading, so the
+  // full panel shows up once at the unshifted spot (top at its row, bottom ~250px past the window)
+  // and Radix moves it a ResizeObserver tick later. The rect is read until it settles; a panel
+  // that stays out of the window still fails. The regression: a shifted panel's negative top.
+  await expect
+    .poll(async () => {
+      const box = await picker.boundingBox()
+      const viewportHeight = await page.evaluate(() => window.innerHeight)
+      if (!box) return 'no box'
+      return {
+        aboveTop: Math.max(0, -box.y),
+        belowBottom: Math.max(0, box.y + box.height - (viewportHeight + 1))
+      }
+    })
+    .toEqual({ aboveTop: 0, belowBottom: 0 })
 
   // The tabs are what the reporter could not reach; they must click.
   const iconsTab = picker.getByRole('button', { name: 'Icons' })

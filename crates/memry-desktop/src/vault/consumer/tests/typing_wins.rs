@@ -3,6 +3,8 @@
 //! writes the typing over it. An outside edit after the typing was written is a later edit, and
 //! wins. One test per order of the typing's write and the outside edit.
 
+use std::collections::BTreeSet;
+
 use memry_core::crdt::body_edit::BlockEdit;
 
 use super::*;
@@ -240,7 +242,7 @@ fn the_open_marks_an_older_builds_row_so_an_outside_edit_of_its_frontmatter_appl
         .unwrap();
     let pass = Arc::new(pass);
     let writeback = WriteBack::start(pass.clone(), broadcast::channel(16).0).unwrap();
-    reconcile(&pass, &writeback, &|| false);
+    reconcile(&pass, &writeback, &BTreeSet::new(), &|| false);
     // Later than the stamp by the clock too, so the row is behind its body.
     std::thread::sleep(std::time::Duration::from_millis(3));
     type_in_app(&f, &id, "typed in the app");

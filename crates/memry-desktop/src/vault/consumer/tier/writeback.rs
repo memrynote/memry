@@ -81,5 +81,5 @@ impl VaultTier {
 /// The write-back's reconcile, once a walk ended.
 pub(super) fn after_walk(pass: &Arc<Pass>, writeback: &Arc<WriteBack>) -> AfterWalk {
     let (pass, writeback) = (pass.clone(), writeback.clone());
-    Box::new(move |stopped| reconcile(&pass, &writeback, stopped))
+    Box::new(move |theirs, stopped| reconcile(&pass, &writeback, theirs, stopped))
 }

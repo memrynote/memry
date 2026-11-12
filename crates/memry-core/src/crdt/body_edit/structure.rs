@@ -183,7 +183,7 @@ pub(super) fn duplicate(
     // The whole container, not its plain text and not only its block: the
     // original's props (a duplicate of a red heading is a red heading), its
     // marks, its inline nodes, and every block nested under it.
-    let mut copy = snapshot_subtree(txn, &container);
+    let mut copy = snapshot_subtree(txn, &container)?;
     // Every container in the copy needs an id of its own: two blocks sharing
     // one are two blocks no edit can tell apart.
     copy.set_prop("id", Any::String(new_block_id.into()));
@@ -233,7 +233,8 @@ pub(super) fn move_block(
 
     // A block, or a whole `columnList`.
     let container = locate_row(txn, block_id).ok_or_else(|| missing(block_id))?;
-    let snapshot = snapshot_subtree(txn, &container);
+    let snapshot = snapshot_subtree(txn, &container)?;
+    refuse_uncopyable_unwrap(txn, &container)?;
 
     let (target_parent, target_index) = match after_block_id {
         Some(id) => {
@@ -273,8 +274,7 @@ pub(super) fn move_block(
     };
     source_parent.remove_range(txn, source_index, 1);
     restore_subtree(txn, &target_parent, adjusted, &snapshot);
-    settle_after_removal(txn, &source_parent);
-    Ok(())
+    settle_after_removal(txn, &source_parent)
 }
 
 pub(super) fn indent(txn: &mut TransactionMut, block_id: &str) -> Result<(), CrdtError> {
@@ -301,12 +301,13 @@ pub(super) fn indent(txn: &mut TransactionMut, block_id: &str) -> Result<(), Crd
             "a block cannot be indented under a column list",
         ));
     }
+    // Read before the group below is created, so a refusal changes nothing.
+    let snapshot = snapshot_subtree(txn, &container)?;
     // The sibling's own block is its first non-group child; the group of its
     // children is where this block goes.
     let group = child_block_group(txn, &previous)
         .unwrap_or_else(|| previous.push_back(txn, XmlElementPrelim::empty("blockGroup")));
 
-    let snapshot = snapshot_subtree(txn, &container);
     parent.remove_range(txn, index, 1);
     let at = group.len(txn);
     restore_subtree(txn, &group, at, &snapshot);
@@ -339,11 +340,10 @@ pub(super) fn outdent(txn: &mut TransactionMut, block_id: &str) -> Result<(), Cr
     let anchor = child_index(txn, &outer, &grandparent).ok_or_else(|| missing(block_id))?;
 
     let index = child_index(txn, &group, &container).ok_or_else(|| missing(block_id))?;
-    let snapshot = snapshot_subtree(txn, &container);
+    let snapshot = snapshot_subtree(txn, &container)?;
     group.remove_range(txn, index, 1);
     restore_subtree(txn, &outer, anchor + 1, &snapshot);
-    settle_after_removal(txn, &group);
-    Ok(())
+    settle_after_removal(txn, &group)
 }
 
 /// Removes a nested `blockGroup` its last block just left. BlockNote's schema
@@ -446,15 +446,28 @@ impl Subtree {
 
 #[derive(Debug, Clone)]
 pub(super) enum Piece {
-    /// One `XmlText`, as `(text, attributes)` chunks.
-    Text(Vec<(String, Option<Box<yrs::types::Attrs>>)>),
+    Text(Run),
     Element(Subtree),
+}
+
+/// One `XmlText`, as `(content, attributes)` chunks.
+pub(super) type Run = Vec<(Chunk, Option<Box<yrs::types::Attrs>>)>;
+
+/// One chunk of a run: text, or an embed holding a plain value (#4262).
+#[derive(Debug, Clone)]
+pub(super) enum Chunk {
+    Text(String),
+    Embed(Any),
 }
 
 impl Piece {
     fn push_plain_text(&self, out: &mut String) {
         match self {
-            Piece::Text(chunks) => chunks.iter().for_each(|(chunk, _)| out.push_str(chunk)),
+            Piece::Text(chunks) => chunks.iter().for_each(|(chunk, _)| {
+                if let Chunk::Text(text) = chunk {
+                    out.push_str(text);
+                }
+            }),
             Piece::Element(child) => child
                 .children
                 .iter()
@@ -463,24 +476,29 @@ impl Piece {
     }
 }
 
-pub(super) fn snapshot_subtree(txn: &TransactionMut, element: &XmlElementRef) -> Subtree {
+/// Refused when a run under `element` embeds a shared type, which a copy
+/// cannot carry ([`super::inline::formatted_text`]).
+pub(super) fn snapshot_subtree(
+    txn: &TransactionMut,
+    element: &XmlElementRef,
+) -> Result<Subtree, CrdtError> {
     let tag = element.tag().clone();
     let children = element
         .children(txn)
         .filter_map(|child| match child {
-            XmlOut::Text(run) => Some(Piece::Text(super::inline::formatted_text(txn, &run))),
-            XmlOut::Element(inner) => Some(Piece::Element(snapshot_subtree(txn, &inner))),
+            XmlOut::Text(run) => Some(super::inline::formatted_text(txn, &run).map(Piece::Text)),
+            XmlOut::Element(inner) => Some(snapshot_subtree(txn, &inner).map(Piece::Element)),
             XmlOut::Fragment(_) => None,
         })
-        .collect();
-    Subtree {
+        .collect::<Result<_, _>>()?;
+    Ok(Subtree {
         tag: tag.as_ref().to_owned(),
         props: element
             .attributes(txn)
             .map(|(name, value)| (name.to_owned(), any_of(value, txn)))
             .collect(),
         children,
-    }
+    })
 }
 
 pub(super) fn restore_subtree(
@@ -514,7 +532,12 @@ pub(super) fn restore_pieces(txn: &mut TransactionMut, element: &XmlElementRef, 
                     // a plain insert would inherit the mark of the chunk
                     // before it.
                     let attrs = attrs.as_deref().cloned().unwrap_or_default();
-                    run.insert_with_attributes(txn, end, chunk, attrs);
+                    match chunk {
+                        Chunk::Text(text) => run.insert_with_attributes(txn, end, text, attrs),
+                        Chunk::Embed(embed) => {
+                            run.insert_embed_with_attributes(txn, end, embed.clone(), attrs);
+                        }
+                    }
                 }
             }
             Piece::Element(child) => restore_subtree(txn, element, at, child),
