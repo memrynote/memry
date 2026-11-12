@@ -294,7 +294,7 @@ enum ErrorMapping {
         // a fresh sign-in, not "Finish setup".
         case .DeviceLimitReached:
             copy("api.deviceLimitReached", "Your account is signed in on too many devices.",
-                 "Revoke a device you no longer use (Settings → Account → Devices on a signed-in computer). Then sign in again on this phone.")
+                 "Revoke a device you no longer use (Settings → Account → Devices on a signed-in device). Then sign in again on this phone.")
         // spec-defect 111. The old second sentence promised that "syncing will
         // resume on its own", and the screen this error is met on most often is
         // the sign-in screen, where there is no sync to resume and nothing
@@ -344,7 +344,7 @@ enum ErrorMapping {
                  "Manage an App Store subscription in Settings \u{203A} Apple Account \u{203A} Subscriptions on this iPhone.")
         case .NoMasterKey:
             copy("api.noMasterKey", "This phone is not unlocked for your account yet.",
-                 "Enter your recovery phrase, or link this phone from your computer, then try again.", .retry)
+                 "Enter your recovery phrase, or link this phone from another device, then try again.", .retry)
         }
     }
 
@@ -574,45 +574,45 @@ extension ErrorMapping {
         switch error {
         case .InvalidQrPayload:
             copy("linking.invalidQrPayload", "That is not a Memry linking code.",
-                 "Scan the code your computer is showing, or paste it exactly as it appears.", .retry)
+                 "Scan the code your other device is showing, or paste it exactly as it appears.", .retry)
         // §3.3: the decoded `linkingSecret` must be exactly 32 bytes, and the
         // server's schema is only `min(1)`, so this is the client's refusal of
         // a code that looked well-formed and was not.
         case .InvalidLength:
             copy("linking.invalidLength", "That linking code is not the right size.",
-                 "Part of it is missing or was altered. Show a new code on your computer and scan it.", .retry)
+                 "Part of it is missing or was altered. Show a new code on your other device and scan it.", .retry)
         case .InvalidBase64:
             copy("linking.invalidBase64", "Memry could not read part of that linking code.",
-                 "It may have been copied incompletely. Show a new code on your computer and scan it.", .retry)
+                 "It may have been copied incompletely. Show a new code on your other device and scan it.", .retry)
         // §3.12's `LINKING_SECRET_INVALID`: the QR was wrong.
         case .ScanMacInvalid:
-            copy("linking.scanMacInvalid", "That code is not the one your computer is showing.",
-                 "Show a new code on your computer and scan it.", .retry)
+            copy("linking.scanMacInvalid", "That code is not the one your other device is showing.",
+                 "Show a new code on your other device and scan it.", .retry)
         // §3.9: raised before the master key is touched, so nothing was
         // decrypted and nothing was stored. Never described as a retry of the
         // same code, which cannot work.
         case .ConfirmMacInvalid:
-            copy("linking.confirmMacInvalid", "Memry could not verify that computer.",
+            copy("linking.confirmMacInvalid", "Memry could not verify that device.",
                  "The two devices did not agree on a key, so nothing was transferred. " +
-                 "Start the link again on your computer.")
+                 "Start the link again on another device.")
         // §3.10 makes this block hard-fail, and it came from the peer rather
         // than from the camera, so it is not "scan more carefully".
         case .InvalidVaultTransfer:
-            copy("linking.invalidVaultTransfer", "Your computer's vault list did not arrive intact.",
-                 "Nothing was unlocked on this phone. Start the link again on your computer.")
+            copy("linking.invalidVaultTransfer", "Your other device's vault list did not arrive intact.",
+                 "Nothing was unlocked on this phone. Start the link again on another device.")
         // §3.4: 300 s, absolute, and neither the scan nor the approval extends
         // it. The duration is not rendered — the recourse is a new code.
         case .SessionExpired:
             copy("linking.sessionExpired", "That linking code has expired.",
-                 "Codes are only good for a few minutes. Show a new one on your computer and scan it.", .retry)
+                 "Codes are only good for a few minutes. Show a new one on your other device and scan it.", .retry)
         case .NotScanned:
             copy("linking.notScanned", "Memry has no linking code to check yet.",
-                 "Scan the code your computer is showing to start.", .retry)
+                 "Scan the code your other device is showing to start.", .retry)
         // Refused rather than silently replacing the first session: a client
         // that dropped its own would be reporting the wrong one.
         case .AlreadyScanned:
             copy("linking.alreadyScanned", "Memry is already linking with a code you scanned.",
-                 "Finish that link on your computer, or stop it here and scan a new code.")
+                 "Finish that link on another device, or stop it here and scan a new code.")
         // §3.4's budget, refused **before** a request is spent. Transient by
         // construction: the core says how long to wait and the poll resumes.
         // No duration in the copy (`DESIGN.md`).

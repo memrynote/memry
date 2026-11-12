@@ -73,6 +73,11 @@ export interface TaskMoveInput {
 export interface TaskCompleteInput {
   id: string
   completedAt?: string
+  /**
+   * Records a completion that happened elsewhere (an import, a converted
+   * checked item): the task closes without rolling its repeat series.
+   */
+  recordOnly?: boolean
 }
 
 export interface ProjectCreateInput {

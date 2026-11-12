@@ -78,6 +78,13 @@ export const InboxSyncPayloadSchema = z.object({
   sourceUrl: z.string().nullable().optional(),
   sourceTitle: z.string().nullable().optional(),
   captureSource: z.string().nullable().optional(),
+  /**
+   * The uploaded file's attachment id (§14.7), the manifest id of the bytes at
+   * the capture's `attachmentPath`. Absent or `null` never clears a known id
+   * (§13.7.15): an older sender does not know the key, and a capture's file
+   * never changes once uploaded.
+   */
+  attachmentId: z.string().nullable().optional(),
   clock: VectorClockSchema.optional(),
   createdAt: z.string().optional(),
   modifiedAt: z.string().optional()
@@ -86,6 +93,12 @@ export const InboxSyncPayloadSchema = z.object({
 export const FilterSyncPayloadSchema = z.object({
   name: z.string().optional(),
   config: z.unknown().optional(),
+  /**
+   * Advanced rules, beside `config` so builds that rebuild `config` keep them
+   * (§13.7.14). Opaque: stored and pushed back verbatim. Absent means the
+   * writer did not know the key, so the stored value stays; `null` clears it.
+   */
+  expression: z.unknown().optional(),
   position: z.number().optional(),
   clock: VectorClockSchema.optional(),
   createdAt: z.string().optional()

@@ -146,6 +146,7 @@
     "requestTimedOut": "同步請求逾時，請檢查網路連線。"
   },
   "googleCalendar": {
+    "requestRejected": "Google 拒絕了此項目。請檢查其日期和時間，然後再試一次。",
     "connectFailed": "無法連結 Google Calendar，請稍後再試一次。",
     "reconnectNeeded": "Google Calendar 連線已過期，請中斷連結後重新連結。",
     "misconfigured": "Google Calendar 的設定不正確。若持續發生，請聯絡支援團隊。",
@@ -159,7 +160,7 @@
   },
   "ai": {
     "inlineDisabled": "AI 行內編輯已停用",
-    "listOllamaModelsFailed": "無法列出 Ollama 模型",
+    "listModelsFailed": "無法列出模型",
     "writingAssistInvalid": "無法將該請求傳送給 AI 模型。",
     "apiKeyMissing": "請在「設定 → AI」中新增你的 {provider} API 金鑰，以使用寫作工具。",
     "apiKeyInvalid": "你的 {provider} API 金鑰遭到拒絕。請在「設定 → AI」中檢查。",
@@ -186,6 +187,10 @@
     "removeDeviceFailed": "無法移除裝置",
     "renameDeviceFailed": "無法重新命名裝置",
     "initiateOAuthFailed": "無法啟動 OAuth",
+    "retryOAuthFailed": "無法重新開啟登入瀏覽器。請重新開始登入。",
+    "oauthExpired": "登入已過期。請再試一次。",
+    "oauthInvalidResponse": "無法取得有效的登入連結。請再試一次。",
+    "oauthCancelled": "已取消 Google 登入。請再試一次。",
     "setupFirstDeviceOAuthFailed": "無法透過 OAuth 設定第一部裝置",
     "confirmRecoveryPhraseFailed": "無法確認復原片語"
   },

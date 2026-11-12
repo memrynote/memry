@@ -1,4 +1,5 @@
 import { z } from 'zod'
+import { allDayDateRange } from '../all-day-date'
 import { createLogger } from '../../lib/logger'
 import { markExpectedWarning } from '../../telemetry/expected-conditions'
 import {
@@ -65,7 +66,9 @@ const GoogleRemindersSchema = z.object({
 })
 
 const GoogleConferenceEntryPointSchema = z.object({
-  entryPointType: z.string(),
+  // Google omits this on some third-party conference entries. Requiring it failed the whole
+  // events page, so mapRemoteEvent drops untyped entries instead.
+  entryPointType: z.string().optional(),
   uri: z.string().optional(),
   label: z.string().optional(),
   pin: z.string().optional(),
@@ -106,10 +109,18 @@ const GoogleEventSchema = z.object({
   originalStartTime: GoogleEventDateSchema.optional()
 })
 
+// Items stay unknown at the page level and are parsed one by one in listEvents, so a single
+// malformed event cannot fail the whole page (and with it the whole calendar's sync).
 const GoogleEventsListSchema = z.object({
-  items: z.array(GoogleEventSchema).default([]),
+  items: z.array(z.unknown()).default([]),
   nextPageToken: z.string().optional(),
   nextSyncToken: z.string().optional()
+})
+
+// What a deletion needs even when the rest of the event is malformed.
+const GoogleCancelledEventStubSchema = z.object({
+  id: z.string().min(1),
+  status: z.literal('cancelled')
 })
 
 const GoogleTokenRefreshSchema = z.object({
@@ -135,6 +146,11 @@ function resolveGoogleClientId(): string {
 
 function resolveGoogleClientSecret(): string | undefined {
   return process.env.GOOGLE_CALENDAR_CLIENT_SECRET?.trim() || undefined
+}
+
+function eventIdOf(item: unknown): string | null {
+  const id = z.object({ id: z.string() }).safeParse(item)
+  return id.success ? id.data.id : null
 }
 
 function mapCalendar(item: z.infer<typeof GoogleCalendarListItemSchema>): GoogleCalendarDescriptor {
@@ -199,15 +215,21 @@ function mapRemoteEvent(
             }
           : null,
         entryPoints:
-          raw.conferenceData.entryPoints?.map((ep) => ({
-            entryPointType: ep.entryPointType,
-            uri: ep.uri ?? null,
-            label: ep.label ?? null,
-            pin: ep.pin ?? null,
-            meetingCode: ep.meetingCode ?? null,
-            passcode: ep.passcode ?? null,
-            regionCode: ep.regionCode ?? null
-          })) ?? [],
+          raw.conferenceData.entryPoints?.flatMap((ep) =>
+            ep.entryPointType
+              ? [
+                  {
+                    entryPointType: ep.entryPointType,
+                    uri: ep.uri ?? null,
+                    label: ep.label ?? null,
+                    pin: ep.pin ?? null,
+                    meetingCode: ep.meetingCode ?? null,
+                    passcode: ep.passcode ?? null,
+                    regionCode: ep.regionCode ?? null
+                  }
+                ]
+              : []
+          ) ?? [],
         notes: raw.conferenceData.notes ?? null
       }
     : null
@@ -237,22 +259,23 @@ function mapRemoteEvent(
 }
 
 function toGoogleEventPayload(event: GoogleCalendarUpsertEventInput): Record<string, unknown> {
+  const allDay = event.isAllDay ? allDayDateRange(event.startAt, event.endAt ?? null) : null
   const payload: Record<string, unknown> = {
     summary: event.title,
     description: event.description ?? undefined,
     location: event.location ?? undefined,
-    start: event.isAllDay
+    start: allDay
       ? {
-          date: event.startAt.slice(0, 10),
+          date: allDay.startDate,
           timeZone: event.timezone
         }
       : {
           dateTime: event.startAt,
           timeZone: event.timezone
         },
-    end: event.isAllDay
+    end: allDay
       ? {
-          date: (event.endAt ?? event.startAt).slice(0, 10),
+          date: allDay.endDate,
           timeZone: event.timezone
         }
       : {
@@ -395,31 +418,43 @@ async function refreshAccessToken(accountId: string): Promise<string> {
   return promise
 }
 
-async function throwCalendarApiFailure(response: Response, operation: string): Promise<never> {
+async function throwCalendarApiFailure(
+  response: Response,
+  operation: string,
+  requestContext?: Record<string, unknown>
+): Promise<never> {
   const raw = await response.text().catch(() => '')
   let apiStatus: string | undefined
   let apiMessage: string | undefined
+  let apiReason: string | undefined
   try {
-    const parsed: { error?: { status?: string; message?: string } } = JSON.parse(raw)
+    const parsed: {
+      error?: { status?: string; message?: string; errors?: Array<{ reason?: string }> }
+    } = JSON.parse(raw)
     apiStatus = parsed.error?.status
     apiMessage = parsed.error?.message
+    apiReason = parsed.error?.errors?.[0]?.reason
   } catch {
     // raw body may be empty or plain text
   }
   log.error(`Failed to ${operation}`, {
     status: response.status,
     apiStatus,
+    apiReason,
     apiMessage,
-    body: raw.slice(0, 500)
+    body: raw.slice(0, 500),
+    ...requestContext
   })
   const error = new Error(
     userMessageForCalendarApiError({ status: response.status, apiStatus })
   ) as Error & {
     status?: number
     apiStatus?: string
+    apiReason?: string
   }
   error.status = response.status
   error.apiStatus = apiStatus
+  error.apiReason = apiReason
   throw error
 }
 
@@ -507,6 +542,7 @@ export function createGoogleCalendarClient(
     async listEvents(input): Promise<{
       events: GoogleCalendarRemoteEvent[]
       nextSyncCursor: string | null
+      cursorGone?: boolean
     }> {
       const syncToken = input.syncCursor ?? undefined
       const baseQuery: Record<string, string | undefined | null> = syncToken
@@ -539,10 +575,14 @@ export function createGoogleCalendarClient(
         })
 
         // A 410 anywhere in the traversal invalidates the whole run — the pages already
-        // collected came from a token Google has since expired. Drop them and report a null
-        // cursor so the caller re-syncs from scratch, exactly as on a first-page 410.
+        // collected came from a token Google has since expired. Drop them and report the
+        // cursor as gone so the caller re-syncs from scratch, exactly as on a first-page 410.
         if (response.status === 410) {
-          return { events: [], nextSyncCursor: null }
+          log.info('Google refused the sync token (410 Gone)', {
+            calendarId: input.calendarId,
+            page
+          })
+          return { events: [], nextSyncCursor: null, cursorGone: true }
         }
 
         if (!response.ok) {
@@ -551,10 +591,39 @@ export function createGoogleCalendarClient(
 
         const parsed = GoogleEventsListSchema.parse(await response.json())
         for (const item of parsed.items) {
-          events.push(mapRemoteEvent(input.calendarId, item))
+          const event = GoogleEventSchema.safeParse(item)
+          if (event.success) {
+            events.push(mapRemoteEvent(input.calendarId, event.data))
+            continue
+          }
+          // The cursor advances past a skipped event, so an incremental sync never sends it
+          // again until Google changes it. A cancelled one is still applied as a deletion,
+          // so a malformed tombstone cannot leave the event visible locally.
+          const stub = GoogleCancelledEventStubSchema.safeParse(item)
+          log.warn('Skipping malformed Google Calendar event', {
+            calendarId: input.calendarId,
+            eventId: stub.success ? stub.data.id : eventIdOf(item),
+            issuePaths: event.error.issues.map((issue) => issue.path.join('.')),
+            keptAsCancelled: stub.success
+          })
+          if (stub.success) {
+            events.push(
+              mapRemoteEvent(input.calendarId, {
+                id: stub.data.id,
+                status: 'cancelled',
+                start: { date: '1970-01-01' }
+              })
+            )
+          }
         }
 
         if (!parsed.nextPageToken) {
+          if (!parsed.nextSyncToken) {
+            log.info('Google returned no nextSyncToken on the last page', {
+              calendarId: input.calendarId,
+              incremental: Boolean(syncToken)
+            })
+          }
           return { events, nextSyncCursor: parsed.nextSyncToken ?? null }
         }
         pageToken = parsed.nextPageToken
@@ -604,7 +673,15 @@ export function createGoogleCalendarClient(
       })
 
       if (!response.ok) {
-        await throwCalendarApiFailure(response, 'upsert Google calendar event')
+        // A 400 is Google refusing the values we sent, and its message does not
+        // say which. start/end carry no title or description.
+        await throwCalendarApiFailure(
+          response,
+          'upsert Google calendar event',
+          response.status === 400
+            ? { requestStart: payload.start, requestEnd: payload.end }
+            : undefined
+        )
       }
 
       return mapRemoteEvent(input.calendarId, GoogleEventSchema.parse(await response.json()))

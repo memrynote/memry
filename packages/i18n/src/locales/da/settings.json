@@ -504,7 +504,8 @@
       "loading": "Indlæser indstillinger…"
     },
     "groups": {
-      "footer": "Sidefod"
+      "footer": "Sidefod",
+      "pastYears": "Tidligere år"
     },
     "template": {
       "label": "Skabelon",
@@ -562,6 +563,14 @@
     "showInSidebar": {
       "label": "Vis i sidebjælken",
       "description": "Vis dagbogsmappen og dens indlæg i notetræet"
+    },
+    "showOnThisDay": {
+      "label": "Vis På denne dag",
+      "description": "Vis samme dato fra tidligere år under indlægget"
+    },
+    "allYearsView": {
+      "label": "Vis alle år i fuld længde",
+      "description": "Den evige dagbog: alle år for datoen på én side under indlægget"
     }
   },
   "tasks": {
@@ -1110,7 +1119,16 @@
       "sending": "Sender kode…"
     },
     "oauth": {
-      "google": "Fortsæt med Google"
+      "google": "Fortsæt med Google",
+      "waiting": "Gennemfør login med Google i din browser.",
+      "browserUnavailable": "Kunne ikke åbne din browser.",
+      "manualInstructions": "Kopiér login-linket, og åbn det i en browser på denne computer. Lad memrynote være åben, mens du logger ind.",
+      "linkLabel": "Login-link",
+      "copyLink": "Kopiér login-link",
+      "retryBrowser": "Prøv at åbne browseren igen",
+      "copied": "Login-link kopieret.",
+      "copyFailed": "Kunne ikke kopiere login-linket. Markér og kopiér det fra feltet ovenfor.",
+      "cancel": "Brug en anden loginmetode"
     },
     "otp": {
       "title": "Indtast bekræftelseskode",
@@ -1347,6 +1365,7 @@
       "keySaveError": "Kunne ikke gemme OpenAI-nøglen"
     },
     "embedding": {
+      "load": "Indlæs model",
       "loaded": "Indlæst",
       "loading": "Indlæser",
       "downloadLoad": "Hent og indlæs model",
@@ -1371,7 +1390,8 @@
         "ollama": "Ollama (lokal)",
         "openai": "OpenAI",
         "anthropic": "Anthropic",
-        "google": "Google Gemini"
+        "google": "Google Gemini",
+        "custom": "Brugerdefineret (OpenAI-kompatibel)"
       },
       "model": "Model",
       "modelDescription": "Sprogmodel til omskrivning og opsummering",
@@ -1381,6 +1401,11 @@
       "apiKeyPlaceholder": "Indtast API-nøgle til {provider}",
       "ollamaUrl": "Ollama-URL",
       "ollamaUrlDescription": "Lokal serveradresse",
+      "customUrl": "Basis-URL",
+      "customUrlDescription": "Ethvert OpenAI-kompatibelt endpoint, f.eks. OpenRouter",
+      "customUrlPlaceholder": "https://openrouter.ai/api/v1",
+      "customApiKeyPlaceholder": "API-nøgle (valgfri)",
+      "customModelPlaceholder": "Model-ID",
       "connection": "Forbindelse",
       "activePort": "Aktiv på port {port}",
       "notConnected": "Ikke forbundet",
@@ -2032,7 +2057,7 @@
       "subtitle": "Administrér egenskabsdefinitioner på tværs af alle noter"
     },
     "loading": "Indlæser egenskaber…",
-    "empty": "Ingen egenskabsdefinitioner endnu. Tilføj en egenskab af typen Status, Valg eller Flervalg til en note for at komme i gang.",
+    "empty": "Ingen egenskaber endnu. Tilføj en egenskab til en note for at komme i gang.",
     "filterPlaceholder": "Filtrér egenskaber…",
     "noMatch": "Ingen egenskaber matcher »{query}«",
     "summary": "{count, plural, one {# egenskabsdefinition} other {# egenskabsdefinitioner}}",
@@ -2072,6 +2097,14 @@
     },
     "v2": {
       "actionsAria": "Handlinger for {name}"
+    },
+    "usage": {
+      "heading": "Bruges i",
+      "noteCount": "{count, plural, one {# note} other {# noter}}",
+      "mismatchCount": "Værdier, der ikke passer til {type}: {count}",
+      "mismatchNote": "Passer ikke til {type}",
+      "none": "Ingen noter bruger denne egenskab",
+      "loadFailed": "Kunne ikke indlæse noterne, der bruger denne egenskab"
     }
   },
   "commandLine": {
@@ -2407,7 +2440,6 @@
   "phaseI": {
     "errors": {
       "failedToUpdateTagColor": "Kunne ikke opdatere tagfarven",
-      "googleSignInFailed": "Google-login mislykkedes",
       "failedToSendVerificationCode": "Kunne ikke sende bekræftelseskoden",
       "invalidVerificationCode": "Ugyldig bekræftelseskode",
       "accountSetupFailed": "Kontoopsætning mislykkedes",
@@ -2464,7 +2496,17 @@
       "running": "Kører",
       "tokenHint": "Kun denne opstart",
       "copy": "Kopiér",
-      "rotate": "Rotér"
+      "rotate": "Rotér",
+      "clientConfig": {
+        "label": "Klientkonfiguration",
+        "hint": "Kopieres med URL og token for denne start",
+        "copy": "Kopiér {client}-konfiguration"
+      },
+      "notes": {
+        "readOnly": "Eksterne klienter kan kun læse. Skriveværktøjer returnerer PERMISSION_DENIED, så skriv via Agent Chat eller memrynote-kommandolinjen.",
+        "restart": "URL og token ændres, når memrynote genstarter, skifter boks eller fornyer token. Opdater da klientens konfiguration, og genstart klienten.",
+        "docs": "Opsætningsguide"
+      }
     }
   },
   "agentProviders": {

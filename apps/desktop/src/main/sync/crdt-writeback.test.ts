@@ -71,6 +71,7 @@ vi.mock('./crdt-provider', () => ({
 }))
 
 vi.mock('./blocknote-converter', () => ({
+  setVaultEmbedResolver: () => {},
   yDocToMarkdown: (...args: unknown[]) => mocks.yDocToMarkdown(...args),
   findUnrepresentableNodes: (...args: unknown[]) => mocks.findUnrepresentableNodes(...args)
 }))
@@ -292,6 +293,86 @@ describe('crdt writeback', () => {
       performedCount: 1,
       lastMarkdown: 'updated markdown'
     })
+  })
+
+  it('runs one pass per note at a time, so no pass takes the last one for an outside edit', async () => {
+    // #given a file and an index row that move together, as the real ones do
+    let disk = '---\ntitle: Existing\n---\nold markdown'
+    let rowHash = `hash:${disk}`
+    mocks.safeRead.mockImplementation(async () => disk)
+    mocks.atomicWrite.mockImplementation(async (_path: string, content: string) => {
+      disk = content
+    })
+    mocks.syncNoteToCache.mockImplementation((_db: unknown, row: { fileContent: string }) => {
+      rowHash = `hash:${row.fileContent}`
+    })
+    mocks.getNoteCacheById.mockImplementation(() => ({
+      id: 'note-1',
+      path: 'notes/Existing.md',
+      title: 'Existing',
+      contentHash: rowHash
+    }))
+    // and a first conversion that takes a while, as a cold one on the worker does
+    let finishFirst: (markdown: string) => void = () => {}
+    mocks.yDocToMarkdown.mockImplementationOnce(
+      () => new Promise<string>((resolve) => (finishFirst = resolve))
+    )
+    mocks.yDocToMarkdown.mockResolvedValue('second edit')
+    scheduleWriteback('note-1', makeDoc(), 'local')
+    await vi.advanceTimersByTimeAsync(500)
+
+    // #when the user keeps typing while it converts
+    scheduleWriteback('note-1', makeDoc(), 'local')
+    await vi.advanceTimersByTimeAsync(5000)
+    expect(mocks.yDocToMarkdown).toHaveBeenCalledTimes(1)
+    expect(hasPendingWriteback('note-1')).toBe(true)
+    finishFirst('first edit')
+    await vi.advanceTimersByTimeAsync(5000)
+
+    // #then both passes write, in order, and nothing is fed back from the file
+    expect(mocks.atomicWrite).toHaveBeenCalledTimes(2)
+    expect(disk).toContain('second edit')
+    expect(hasPendingWriteback('note-1')).toBe(false)
+  })
+
+  it('does not write back a note deleted while its pass converts', async () => {
+    let finish: (markdown: string) => void = () => {}
+    mocks.yDocToMarkdown.mockImplementationOnce(
+      () => new Promise<string>((resolve) => (finish = resolve))
+    )
+    scheduleWriteback('note-1', makeDoc(), 'local')
+    await vi.advanceTimersByTimeAsync(500)
+
+    // #when the note is deleted mid-conversion
+    cancelWriteback('note-1')
+    finish('typed before the delete')
+    await vi.advanceTimersByTimeAsync(0)
+
+    // #then the pass leaves the deleted file deleted
+    expect(mocks.atomicWrite).not.toHaveBeenCalled()
+  })
+
+  it('waits for a running pass when the app quits', async () => {
+    let finish: (markdown: string) => void = () => {}
+    mocks.yDocToMarkdown.mockImplementationOnce(
+      () => new Promise<string>((resolve) => (finish = resolve))
+    )
+    scheduleWriteback('note-1', makeDoc(), 'local')
+    await vi.advanceTimersByTimeAsync(500)
+
+    // #when the quit flush runs while the pass converts
+    let flushed = false
+    const flush = flushPendingWritebacks().then(() => (flushed = true))
+    await vi.advanceTimersByTimeAsync(0)
+    expect(flushed).toBe(false)
+    finish('typed before quit')
+    await flush
+
+    // #then the flush resolved only after the pass wrote
+    expect(mocks.atomicWrite).toHaveBeenCalledWith(
+      '/vault/notes/Existing.md',
+      expect.stringContaining('typed before quit')
+    )
   })
 
   /**

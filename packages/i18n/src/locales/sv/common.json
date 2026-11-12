@@ -3,9 +3,7 @@
     "copyFailed": "Det gick inte att kopiera portalen",
     "hiddenCount": "{count} dolda",
     "windowFailed": "Den här portalen kunde inte öppnas. Öppna källanteckningen i stället.",
-    "noTarget": "Den här portalen har inget mål ännu. Lägg till en anteckning i definitionen eller ta bort blocket.",
-    "invalidJson": "Portalens definition är inte giltig JSON. Åtgärda den nedan eller ta bort blocket.",
-    "invalidShape": "Portalens definition har ingen anteckning eller sökning. Åtgärda den nedan eller ta bort blocket.",
+    "unreadable": "Den här portalen kan inte läsas. Ta bort blocket och lägg till en ny portal.",
     "search": {
       "editQuery": "Redigera fråga",
       "count": "{count, plural, one {# block} other {# block}}",
@@ -1276,6 +1274,7 @@
     "label": "Hjälp och feedback",
     "reportBug": "Rapportera en bugg",
     "requestFeature": "Föreslå en funktion",
+    "joinTestflight": "Gå med i TestFlight",
     "starOnGithub": "Stjärnmärk på GitHub",
     "version": "MemryNote {version}",
     "whatsNew": "Nyheter",
@@ -1695,5 +1694,29 @@
     "journalDaysRenamed": "Vissa dagboksanteckningar har inte längre ett datum som namn",
     "journalDaysRenamedHint": "Dessa dagboksanteckningar döptes om utanför Memry medan deras mapp väntade på inställningen för dagboksmappen, så deras namn är inte längre datum. De förblir dagboksanteckningar tills du ger dem tillbaka sina namn. Görs en om till en anteckning tas dagboksanteckningen bort på alla dina enheter och texten behålls som anteckning. Dess taggar behålls inte.",
     "turnIntoNotes": "Gör om till anteckningar"
+  },
+  "iosBeta": {
+    "badge": "Nytt · TestFlight",
+    "title": "Memry för iPhone är i beta",
+    "promptBody": "Ditt valv på din telefon, med end-to-end-kryptering. Lämna din e-postadress så skickar Apple en TestFlight-inbjudan till dig.",
+    "emailPlaceholder": "you@example.com",
+    "emailLabel": "E-postadress för TestFlight-inbjudan",
+    "submit": "Få inbjudan",
+    "sending": "Skickar…",
+    "listNote": "Vi lägger även till dig på iPhone-betans lista för nyheter om lanseringen. Du kan avsluta prenumerationen när som helst.",
+    "error": "Det gick inte att skicka TestFlight-inbjudan. Försök igen.",
+    "sentTitle": "Kolla din inkorg",
+    "sentBody": "Apple har skickat inbjudan till {email}. Det kan ta några minuter och mejlet kan hamna i skräpposten.",
+    "stepInstall": "Installera TestFlight från App Store",
+    "stepOpen": "Öppna inbjudan på din iPhone",
+    "stepSignIn": "Logga in på Memry på din telefon",
+    "done": "Klar",
+    "dialogTitle": "Gå med i Memry för iPhone",
+    "dialogBody": "Apple mejlar en TestFlight-inbjudan till dig. Använd e-postadressen för Apple-ID:t på din iPhone.",
+    "entryTitle": "iPhone-betan är live",
+    "entrySubtitle": "Via TestFlight",
+    "entryJoin": "Gå med i betan",
+    "entrySent": "Inbjudan skickad till {email}",
+    "sendAgain": "Skicka igen"
   }
 }

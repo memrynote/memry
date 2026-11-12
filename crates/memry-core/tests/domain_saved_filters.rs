@@ -11,6 +11,7 @@
 //! | star and unstar write `config.starred`                 | desktop `toggleStar`          |
 //! | a delete tombstones, ticks the clock, queues a delete  | desktop `enqueueDelete`       |
 //! | a reorder rewrites only the filters that moved         | desktop `reorderSavedFilters` |
+//! | `expression` is replaced whole and survives other edits | §13.7.14                     |
 
 use memry_core::domain::saved_filters::{self, NewSavedFilter};
 use memry_core::domain::task_filter::{CompletionFilter, SortDirection, SortField};
@@ -116,6 +117,7 @@ fn create(conn: &Connection, id: &str, name: &str) -> saved_filters::SavedFilter
             id: Some(id),
             name,
             config: &config(),
+            expression: None,
         },
         DEVICE,
         NOW,
@@ -217,6 +219,7 @@ fn a_create_writes_desktops_payload_shape_and_queues_it() {
                 id: None,
                 name: "Second",
                 config: &config(),
+                expression: None,
             },
             DEVICE,
             NOW,
@@ -232,6 +235,7 @@ fn a_create_writes_desktops_payload_shape_and_queues_it() {
             json!({
                 "name": "Urgent",
                 "config": config(),
+                "expression": null,
                 "position": 0,
                 "clock": { "device-a": 1 },
                 "createdAt": "2025-10-09T08:53:20.000Z",
@@ -262,6 +266,7 @@ fn a_create_writes_desktops_payload_shape_and_queues_it() {
                     id: Some("f1"),
                     name: "Again",
                     config: &config(),
+                    expression: None,
                 },
                 DEVICE,
                 NOW,
@@ -275,6 +280,7 @@ fn a_create_writes_desktops_payload_shape_and_queues_it() {
                     id: Some("f9"),
                     name: "",
                     config: &config(),
+                    expression: None,
                 },
                 DEVICE,
                 NOW,
@@ -442,4 +448,94 @@ fn a_reorder_rewrites_only_the_filters_that_moved() {
         Ok(())
     })
     .expect("the reorder");
+}
+
+#[test]
+fn the_expression_is_replaced_whole_and_survives_other_edits() {
+    let db = open("expression");
+    db.call_blocking(|conn| {
+        let first = json!({
+            "match": "all",
+            "rules": [
+                { "field": "priority", "op": "any", "values": ["high"] },
+                { "field": "estimate", "op": "atMost", "values": ["2h"] },
+            ],
+        });
+        let made = saved_filters::create(
+            conn,
+            &NewSavedFilter {
+                id: Some("f1"),
+                name: "Rules",
+                config: &config(),
+                expression: Some(&first),
+            },
+            DEVICE,
+            NOW,
+        )?
+        .acknowledge();
+        assert_eq!(made.expression.as_ref(), Some(&first));
+        assert_eq!(payload_of(conn, "f1")["expression"], first);
+
+        // Replaced, not merged: no rule of the first tree survives.
+        let second = json!({ "match": "any", "rules": [] });
+        let replaced =
+            saved_filters::set_expression(conn, "f1", Some(&second), DEVICE, NOW)?.acknowledge();
+        assert_eq!(replaced.expression.as_ref(), Some(&second));
+        assert_eq!(payload_of(conn, "f1")["expression"], second);
+
+        // A rename and a star leave it untouched; it is beside `config`.
+        saved_filters::update(conn, "f1", Some("Renamed"), None, DEVICE, NOW)?;
+        saved_filters::set_starred(conn, "f1", true, DEVICE, NOW)?;
+        let payload = payload_of(conn, "f1");
+        assert_eq!(payload["expression"], second);
+        assert!(payload["config"].get("expression").is_none());
+        assert_eq!(
+            saved_filters::get(conn, "f1")?.expect("live").expression,
+            Some(second)
+        );
+
+        // `None` is the explicit clear.
+        let cleared = saved_filters::set_expression(conn, "f1", None, DEVICE, NOW)?.acknowledge();
+        assert!(cleared.expression.is_none());
+        let payload = payload_of(conn, "f1");
+        assert!(
+            payload
+                .as_object()
+                .expect("object")
+                .contains_key("expression")
+        );
+        assert_eq!(payload["expression"], Value::Null);
+
+        // Only an object is a rule tree.
+        assert!(saved_filters::set_expression(conn, "f1", Some(&json!([])), DEVICE, NOW).is_err());
+        assert!(saved_filters::set_expression(conn, "missing", None, DEVICE, NOW).is_err());
+        Ok(())
+    })
+    .expect("the expression edits");
+}
+
+#[test]
+fn an_inbound_expression_projects_and_a_later_payload_without_one_clears_it() {
+    let db = open("inbound-expression");
+    db.call_blocking(|conn| {
+        let mut payload = desktop_payload(json!({ "device-desktop": 1 }));
+        payload["expression"] = json!({ "match": "none", "rules": [] });
+        apply_inbound(conn, &inbound("f1", &payload, None), NOW)?;
+        assert_eq!(
+            saved_filters::get(conn, "f1")?.expect("live").expression,
+            Some(payload["expression"].clone())
+        );
+
+        let mut cleared = desktop_payload(json!({ "device-desktop": 2 }));
+        cleared["expression"] = Value::Null;
+        apply_inbound(conn, &inbound("f1", &cleared, None), NOW)?;
+        assert!(
+            saved_filters::get(conn, "f1")?
+                .expect("live")
+                .expression
+                .is_none()
+        );
+        Ok(())
+    })
+    .expect("the inbound expression");
 }

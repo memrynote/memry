@@ -9,6 +9,7 @@ import { calendarChannels } from './routes/calendar-channels'
 import { devices } from './routes/devices'
 import { diagnostics } from './routes/diagnostics'
 import { feedback } from './routes/feedback'
+import { iosBeta } from './routes/ios-beta'
 import { linking } from './routes/linking'
 import { ocr } from './routes/ocr'
 import { sync } from './routes/sync'
@@ -239,6 +240,7 @@ app.route('/sync/bootstrap', bootstrap)
 app.route('/telemetry', telemetry)
 app.route('/diagnostics', diagnostics)
 app.route('/feedback', feedback)
+app.route('/ios-beta', iosBeta)
 app.route('/webhooks', webhooks)
 app.route('/calendar/channels', calendarChannels)
 app.route('/ocr', ocr)

@@ -243,6 +243,7 @@ vi.mock('@blocknote/shadcn', () => ({
 
 vi.mock('@blocknote/xl-ai', () => ({
   AIMenuController: () => <div data-testid="ai-menu" />,
+  AIToolbarButton: () => <button type="button">ask ai</button>,
   getAISlashMenuItems: vi.fn(() => [{ title: 'AI Write', aliases: ['ai'] }])
 }))
 
@@ -1399,15 +1400,9 @@ describe('ContentArea', () => {
         content: [expect.objectContaining({ type: 'linkMention' })]
       })
     )
-
-    await waitFor(() =>
-      expect(contentAreaMocks.createLinkMentionContent).toHaveBeenCalledWith(
-        'https://youtu.be/video-1',
-        'youtu.be',
-        'Video',
-        'icon.png',
-        'YouTube'
-      )
+    expect(contentAreaMocks.createLinkMentionContent).toHaveBeenCalledWith(
+      'https://youtu.be/video-1',
+      'youtu.be'
     )
 
     contentAreaMocks.pasteSelect?.('embed', 'https://youtu.be/video-1')
@@ -1427,7 +1422,7 @@ describe('ContentArea', () => {
     })
     contentAreaMocks.editor.getTextCursorPosition.mockReturnValueOnce({ block: plainBlock })
     contentAreaMocks.pasteSelect?.('mention', 'https://example.com')
-    expect(contentAreaMocks.createLinkMentionContent).toHaveBeenCalledTimes(2)
+    expect(contentAreaMocks.createLinkMentionContent).toHaveBeenCalledTimes(1)
 
     contentAreaMocks.editor.getTextCursorPosition.mockReturnValueOnce({ block: plainBlock })
     contentAreaMocks.pasteSelect?.('embed', 'https://example.com')
@@ -1462,23 +1457,6 @@ describe('ContentArea', () => {
         }
       }
     )
-
-    // The preview fetch re-finds the mention by walking the document, which
-    // also has to see into the table, and enriches it in place.
-    await waitFor(() =>
-      expect(contentAreaMocks.createLinkMentionContent).toHaveBeenCalledWith(
-        'https://youtu.be/video-1',
-        'youtu.be',
-        'Video',
-        'icon.png',
-        'YouTube'
-      )
-    )
-    expect(tableBlock.content.rows[1].cells[0][0]).toMatchObject({
-      type: 'linkMention',
-      props: { title: 'Video' }
-    })
-    expect(tableBlock.content.rows[0].cells[0]).toEqual(textCell('Docs'))
   })
 
   it('drops the URL from its table cell and puts the embed or bookmark after the table', async () => {
@@ -1904,18 +1882,22 @@ describe('ContentArea', () => {
     expect(await slashController.getItems('mermaid')).toEqual([])
   })
 
-  it('offers the view row under /view, and not in a table cell', async () => {
+  it('offers the view rows under /view, and not in a table cell', async () => {
     // #given
     render(<ContentArea noteId="note-1" />)
     const slashController = contentAreaMocks.suggestionControllers.find(
       (controller) => controller.triggerCharacter === '/'
     )
 
-    // #when / #then an alias finds it too
+    // #when / #then an alias finds both: a view over a source, and a new one with its own folder
     expect(await slashController.getItems('database')).toEqual([
       expect.objectContaining({
         title: 'View',
         subtext: 'A live list of notes from a folder, a tag or the whole vault'
+      }),
+      expect.objectContaining({
+        title: 'New view',
+        subtext: 'A new folder beside this note, listed here'
       })
     ])
 
@@ -2290,7 +2272,9 @@ describe('ContentArea', () => {
     expect(contentAreaMocks.tasksService.complete).toHaveBeenCalledWith({
       id: 'created-task',
       // The plugin wrote a calendar date, so the instant is local midnight on it.
-      completedAt: new Date(2026, 0, 7).toISOString()
+      completedAt: new Date(2026, 0, 7).toISOString(),
+      // The note already holds the done line; a repeat must not roll again.
+      recordOnly: true
     })
     // The plugin fields left the block, so the markdown line the `{task:<id>}`
     // suffix lands on is the description alone.

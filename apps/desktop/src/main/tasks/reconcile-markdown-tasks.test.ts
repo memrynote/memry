@@ -1,17 +1,33 @@
 import { describe, expect, it, vi } from 'vitest'
 import {
-  reconcileTaskCheckboxesFromMarkdown,
-  type ReconcileTaskCheckboxesDeps
+  reconcileTaskCheckboxesFromMarkdown as reconcileSource,
+  type ReconcileTaskCheckboxesDeps,
+  type TaskCheckboxSource
 } from './reconcile-markdown-tasks'
 
-type Row = { completedAt: string | null }
+type Row = { completedAt: string | null; modifiedAt?: string }
+
+const TASK_MODIFIED = '2026-08-01T00:00:00.000Z'
+
+/** A file with no acknowledged state, newer than every task row. */
+const reconcileTaskCheckboxesFromMarkdown = (
+  markdown: string,
+  deps: ReconcileTaskCheckboxesDeps | null
+): Promise<number> =>
+  reconcileSource(
+    { markdown, acknowledged: null, fileModifiedAt: new Date('2026-09-01T00:00:00.000Z') },
+    deps
+  )
 
 function makeDeps(rows: Record<string, Row | undefined>) {
   const complete = vi.fn(async () => ({ success: true }))
   const uncomplete = vi.fn(async () => ({ success: true }))
   const deps: ReconcileTaskCheckboxesDeps = {
     db: {} as ReconcileTaskCheckboxesDeps['db'],
-    getTask: (_db, id) => rows[id],
+    getTask: (_db, id) => {
+      const row = rows[id]
+      return row && { completedAt: row.completedAt, modifiedAt: row.modifiedAt ?? TASK_MODIFIED }
+    },
     complete: (_db, id) => complete(id),
     uncomplete: (_db, id) => uncomplete(id)
   }
@@ -122,5 +138,51 @@ describe('reconcileTaskCheckboxesFromMarkdown', () => {
 
   it('does nothing without a database', async () => {
     expect(await reconcileTaskCheckboxesFromMarkdown('- [x] Buy milk {task:a1}', null)).toBe(0)
+  })
+
+  describe('a done task the note still lists as open', () => {
+    // The task was completed from the Tasks view or on a synced peer. Nothing
+    // rewrites the note, so its line still says `[ ]`.
+    const done = {
+      a1: { completedAt: '2026-09-02T00:00:00.000Z', modifiedAt: '2026-09-02T00:00:00.000Z' }
+    }
+    const source = (overrides: Partial<TaskCheckboxSource>): TaskCheckboxSource => ({
+      markdown: '- [ ] Ship it {task:a1}\n- [ ] Edited line',
+      acknowledged: { a1: false },
+      fileModifiedAt: new Date('2026-09-03T00:00:00.000Z'),
+      ...overrides
+    })
+
+    it('stays done when an outside edit touches another line', async () => {
+      const { deps, uncomplete } = makeDeps(done)
+
+      expect(await reconcileSource(source({}), deps)).toBe(0)
+      expect(uncomplete).not.toHaveBeenCalled()
+    })
+
+    it('reopens when the outside edit unticks the line itself', async () => {
+      const { deps, uncomplete } = makeDeps(done)
+
+      expect(await reconcileSource(source({ acknowledged: { a1: true } }), deps)).toBe(1)
+      expect(uncomplete).toHaveBeenCalledWith('a1')
+    })
+
+    it('stays done when the file has no acknowledged state and predates the completion', async () => {
+      const { deps, uncomplete } = makeDeps(done)
+
+      const stale = source({
+        acknowledged: null,
+        fileModifiedAt: new Date('2026-09-01T00:00:00.000Z')
+      })
+      expect(await reconcileSource(stale, deps)).toBe(0)
+      expect(uncomplete).not.toHaveBeenCalled()
+    })
+
+    it('reopens when the file has no acknowledged state and is newer than the completion', async () => {
+      const { deps, uncomplete } = makeDeps(done)
+
+      expect(await reconcileSource(source({ acknowledged: {} }), deps)).toBe(1)
+      expect(uncomplete).toHaveBeenCalledWith('a1')
+    })
   })
 })

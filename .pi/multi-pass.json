@@ -1,3 +1,10 @@
 {
-  "allowedSubs": ["anthropic", "anthropic-memry", "openai-codex", "openai-codex-2", "llamacpp"]
+  "allowedSubs": [
+    "anthropic",
+    "anthropic-memry",
+    "anthropic-2",
+    "openai-codex",
+    "openai-codex-2",
+    "llamacpp"
+  ]
 }

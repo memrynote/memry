@@ -154,7 +154,7 @@ struct TaskListScreen: View {
     }
 
     private var filterButton: some View {
-        let count = store.state.filters.activeCount
+        let count = store.activeFilterCount
         return Button {
             showsFilters = true
         } label: {

@@ -23,6 +23,18 @@ brew install --cask memrynote/tap/memry
 
 After installing, head to [First Run & Vault Setup](./first-run) to create your encrypted vault.
 
+## Linux requirements and troubleshooting
+
+Linux builds target Ubuntu 22.04 or later on x86-64. Other distributions need compatible desktop libraries and glibc 2.35 or later. Run MemryNote in a graphical desktop session with an available Secret Service keyring, such as GNOME Keyring or KWallet.
+
+If an AppImage cannot mount, check that your system has FUSE support. A container is not required to run on Ubuntu 22.04. Containers need their own display, browser, and keyring integration and are not equivalent to a desktop installation.
+
+MemryNote refuses Electron's `basic_text` storage backend rather than writing secrets with that backend. It uses the OS keyring instead. If the keyring is locked, unlock it in your desktop's keyring application and restart MemryNote. If the keyring was reset, keep your vault and application profile intact. Do not delete the remaining keys or `secure-secrets.json` to troubleshoot a decryption failure.
+
+The AppImage desktop shortcut does not disable the Chromium sandbox unconditionally. Its launcher uses the sandbox when the system permits it, but retains a compatibility fallback without the sandbox when its user-namespace check fails. On a managed computer, ask your administrator about the namespace policy rather than disabling AppArmor globally.
+
+A database compatibility error names the library requirement in the reported error. If it persists on a supported system, include the relevant error lines from `~/.config/memrynote/logs/main.log` in your report. Remove personal paths and account details first. Never send a recovery phrase, keyring export, or `secure-secrets.json`.
+
 ## Automatic Updates
 
 memrynote checks for updates in the background and prompts you to restart when one is

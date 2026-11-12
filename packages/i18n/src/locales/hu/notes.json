@@ -5,6 +5,7 @@
     "create": "Létrehozás"
   },
   "wikiLinkPreview": {
+    "journalUnwritten": "A bejegyzés még nincs megírva erre a napra: {date}. Kattintson a nap megnyitásához",
     "notFound": "Nem található – kattintson a(z) „{title}” jegyzet létrehozásához"
   },
   "wikiLinkMenu": {
@@ -138,6 +139,7 @@
     "actions": {
       "openInNewTab": "Megnyitás új lapon",
       "openToTheSide": "Megnyitás oldalt",
+      "openFolderView": "Mappanézet megnyitása",
       "newNote": "Új jegyzet",
       "newFolder": "Új mappa",
       "showTasks": "Feladatok megjelenítése",
@@ -187,7 +189,8 @@
     },
     "toast": {
       "selectionBookmarked": "{count} elem könyvjelzőzve",
-      "selectionBookmarkFailed": "A kijelölt elemeket nem sikerült könyvjelzőzni"
+      "selectionBookmarkFailed": "A kijelölt elemeket nem sikerült könyvjelzőzni",
+      "pairedNoteNameTaken": "Már van ott egy {name} nevű jegyzet"
     }
   },
   "editor": {
@@ -423,12 +426,14 @@
       "savedView": "Mentett nézet",
       "savedViewMissing": "A(z) „{name}” mentett nézet már nem létezik, ezért az alapértelmezett nézet látható.",
       "openAsTab": "Megnyitás lapként",
+      "newNote": "Új jegyzet",
+      "newViewTitle": "Új nézet",
+      "newViewSubtext": "Új mappa a jegyzet mellett, itt listázva",
+      "newViewFailed": "Nem sikerült létrehozni a mappát ehhez a nézethez.",
       "empty": "Még semmi sem felel meg ennek a nézetnek.",
       "loadFailed": "Nem sikerült betölteni ezt a nézetet. Maguk a jegyzetek érintetlenek.",
       "folderMissing": "Ez a mappa már nincs a széfben. Válasszon másik forrást.",
-      "invalidJson": "A nézet definíciója nem érvényes JSON. Javítsa ki lent, vagy távolítsa el a blokkot.",
-      "invalidShape": "A nézet definíciójában nincs forrás. Válasszon egyet fent, vagy javítsa ki lent.",
-      "definition": "Definíció"
+      "unreadable": "Ez a nézet nem olvasható. Válasszon forrást fent, vagy távolítsa el a blokkot."
     },
     "chart": {
       "title": "Diagram",
@@ -668,6 +673,8 @@
   },
   "menus": {
     "wiki": {
+      "journalDay": "Napló · {date}",
+      "journalDayUnwritten": "Napló · még nincs megírva",
       "aria": "Jegyzetjavaslatok",
       "loading": "Jegyzetek betöltése…",
       "empty": "Nem található jegyzet",
@@ -782,6 +789,12 @@
     "viaProperty": "{property} → {title}",
     "viaPortal": "Portálban megjelenítve"
   },
+  "references": {
+    "filterAll": "Mind",
+    "filterNotes": "Jegyzetek",
+    "filterJournal": "Napló",
+    "filterBy": "Hivatkozások szűrése: {filter}"
+  },
   "unlinkedMentions": {
     "title": "Nem hivatkozott említések",
     "summary": "{count, plural, one {# nem hivatkozott említés} other {# nem hivatkozott említés}}",
@@ -886,6 +899,7 @@
     "showOnCalendar": "Megjelenítés a naptárban",
     "showingOnCalendar": "Megjelenik a naptárban",
     "relation": {
+      "unwrittenDay": "Még nincs megírva",
       "deleted": "Törölve",
       "removeAria": "{title} eltávolítása",
       "addAria": "Kapcsolat hozzáadása",

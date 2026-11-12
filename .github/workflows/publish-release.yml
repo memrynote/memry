@@ -477,8 +477,13 @@ jobs:
   build-linux:
     name: Build Linux x64
     needs: setup-release
-    runs-on: ubuntu-latest
+    # Native binaries must run on the oldest supported distribution.
+    runs-on: ubuntu-22.04
     timeout-minutes: 90
+    env:
+      CC: clang-15
+      CXX: clang++-15
+      CXXFLAGS: -std=c++20
 
     steps:
       - name: Checkout
@@ -503,7 +508,7 @@ jobs:
           # ("no longer signed") and break apt-get update. We don't need them.
           sudo rm -f /etc/apt/sources.list.d/microsoft*.list /etc/apt/sources.list.d/azure-cli* 2>/dev/null || true
           sudo apt-get update
-          sudo apt-get install -y libsecret-1-dev
+          sudo apt-get install -y libsecret-1-dev clang-15 binutils
 
       - name: Install dependencies
         shell: bash
@@ -582,6 +587,9 @@ jobs:
           set -euo pipefail
           pnpm --filter @memry/desktop build:release
           node apps/desktop/scripts/build-packaged-app.js --linux --x64 --publish never
+
+      - name: Check packaged runtime on Ubuntu 22.04
+        run: node apps/desktop/scripts/check-packaged-runtime-deps.js apps/desktop/dist/linux-unpacked
 
       - name: Stage Linux assets
         id: assets

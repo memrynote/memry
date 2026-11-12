@@ -5,6 +5,7 @@
     "create": "Creează"
   },
   "wikiLinkPreview": {
+    "journalUnwritten": "Însemnarea pentru {date} nu a fost încă scrisă. Faceți clic pentru a deschide ziua",
     "notFound": "Nu a fost găsită – faceți clic pentru a crea „{title}”"
   },
   "wikiLinkMenu": {
@@ -138,6 +139,7 @@
     "actions": {
       "openInNewTab": "Deschide într-o filă nouă",
       "openToTheSide": "Deschide în lateral",
+      "openFolderView": "Deschide vizualizarea dosarului",
       "newNote": "Notiță nouă",
       "newFolder": "Dosar nou",
       "showTasks": "Afișează sarcinile",
@@ -187,7 +189,8 @@
     },
     "toast": {
       "selectionBookmarked": "Elemente adăugate la marcaje: {count}",
-      "selectionBookmarkFailed": "Elementele selectate nu au putut fi adăugate la marcaje"
+      "selectionBookmarkFailed": "Elementele selectate nu au putut fi adăugate la marcaje",
+      "pairedNoteNameTaken": "Există deja acolo o notiță numită {name}"
     }
   },
   "editor": {
@@ -423,12 +426,14 @@
       "savedView": "Vizualizare salvată",
       "savedViewMissing": "Vizualizarea salvată „{name}” nu mai există, așa că se afișează vizualizarea implicită.",
       "openAsTab": "Deschide ca filă",
+      "newNote": "Notiță nouă",
+      "newViewTitle": "Vizualizare nouă",
+      "newViewSubtext": "Un dosar nou lângă această notiță, listat aici",
+      "newViewFailed": "Dosarul pentru această vizualizare nu a putut fi creat.",
       "empty": "Încă nu există nimic care să corespundă acestei vizualizări.",
       "loadFailed": "Nu s-a putut încărca această vizualizare. Notițele în sine sunt neatinse.",
       "folderMissing": "Acest dosar nu mai există în seif. Alegeți altă sursă.",
-      "invalidJson": "Definiția acestei vizualizări nu este un JSON valid. Corectați-o mai jos sau eliminați blocul.",
-      "invalidShape": "Definiția acestei vizualizări nu are o sursă. Alegeți una mai sus sau corectați definiția mai jos.",
-      "definition": "Definiție"
+      "unreadable": "Această vizualizare nu poate fi citită. Alege o sursă mai sus sau elimină blocul."
     },
     "chart": {
       "title": "Grafic",
@@ -668,6 +673,8 @@
   },
   "menus": {
     "wiki": {
+      "journalDay": "Jurnal · {date}",
+      "journalDayUnwritten": "Jurnal · încă nescris",
       "aria": "Sugestii de notițe",
       "loading": "Se încarcă notițele…",
       "empty": "Nicio notiță găsită",
@@ -782,6 +789,12 @@
     "viaProperty": "{property} → {title}",
     "viaPortal": "Afișat într-un portal"
   },
+  "references": {
+    "filterAll": "Toate",
+    "filterNotes": "Notițe",
+    "filterJournal": "Jurnal",
+    "filterBy": "Filtrează referințele: {filter}"
+  },
   "unlinkedMentions": {
     "title": "Mențiuni nelegate",
     "summary": "{count, plural, one {# mențiune nelegată} few {# mențiuni nelegate} other {# de mențiuni nelegate}}",
@@ -886,6 +899,7 @@
     "showOnCalendar": "Arată în calendar",
     "showingOnCalendar": "Se afișează în calendar",
     "relation": {
+      "unwrittenDay": "Încă nescris",
       "deleted": "Șters",
       "removeAria": "Elimină {title}",
       "addAria": "Adaugă o relație",

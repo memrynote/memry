@@ -114,11 +114,22 @@ pub enum DevicePlatform {
     Web,
 }
 
+/// Chapter 02 §2.3.4: tells an iPad from an iPhone, which `platform` cannot.
+/// Absent means unknown, and a reader falls back to `platform`.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, uniffi::Enum)]
+#[serde(rename_all = "lowercase")]
+pub enum DeviceFormFactor {
+    Phone,
+    Tablet,
+}
+
 #[derive(Debug, Clone, Serialize)]
 #[serde(rename_all = "camelCase")]
 pub struct DeviceRegisterRequest {
     pub name: String,
     pub platform: DevicePlatform,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub form_factor: Option<DeviceFormFactor>,
     #[serde(skip_serializing_if = "Option::is_none")]
     pub os_version: Option<String>,
     pub app_version: String,
@@ -485,6 +496,12 @@ impl TokenProvider for TokenManager {
         match TokenManager::refresh(self, Some(stale)).await {
             Ok(token) => Ok(token),
             Err(AuthError::Api { source }) => Err(source),
+            // A latch window is a wait, not a verdict (§2.10): the session
+            // ends only when the latch turns permanent (#4156).
+            Err(AuthError::RefreshBlocked { retry_in_ms }) => Err(ApiError::RateLimited {
+                retry_after_s: Some(retry_in_ms.div_ceil(1_000)),
+                message: AuthError::RefreshBlocked { retry_in_ms }.to_string(),
+            }),
             Err(other) => Err(ApiError::Unauthorized {
                 code: "AUTH_INVALID_TOKEN".to_string(),
                 message: other.to_string(),

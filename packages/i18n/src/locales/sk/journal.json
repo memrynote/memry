@@ -236,5 +236,21 @@
     "range": "{start} – {end}",
     "openTask": "{title}, {range}",
     "completeTask": "Dokončiť {title}"
+  },
+  "pastYears": {
+    "title": "V tento deň",
+    "count": "{count, plural, one {# ďalší rok} few {# ďalšie roky} other {# ďalších rokov}}",
+    "showAll": "Všetky roky",
+    "showPreviews": "Náhľady",
+    "yearsAgo": "{count, plural, one {pred # rokom} few {pred # rokmi} other {pred # rokmi}}",
+    "yearsLater": "{count, plural, one {o # rok neskôr} few {o # roky neskôr} other {o # rokov neskôr}}",
+    "words": "{count, plural, one {# slovo} few {# slová} other {# slov}}",
+    "openDay": "Otvoriť {date}",
+    "showFull": "Zobraziť celý záznam",
+    "showLess": "Zobraziť menej",
+    "loadError": "Tento deň z iných rokov sa nepodarilo načítať.",
+    "previousYear": "Rovnaký deň, predchádzajúci rok",
+    "nextYear": "Rovnaký deň, nasledujúci rok",
+    "goToYear": "Prejsť na tento deň v roku {year}"
   }
 }

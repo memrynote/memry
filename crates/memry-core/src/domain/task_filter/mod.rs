@@ -21,21 +21,25 @@
 
 mod collation;
 mod config;
+mod expression;
 mod filters;
 mod grouping;
+mod location_options;
 
 pub use collation::locale_compare;
 pub use config::{
     CompletionFilter, DueDateFilter, DueDateKind, HasTimeFilter, RepeatFilter, SortDirection,
     SortField, TaskFilters, TaskSort,
 };
+pub use expression::{ExpressionContext, count_rules, matches_expression};
 pub use filters::{
     apply_filters_and_sort, apply_filters_and_sort_with_context, count_active_filters,
-    filter_by_completion, filter_by_due_date_range, filter_by_has_time, filter_by_priorities,
-    filter_by_projects, filter_by_repeat_type, filter_by_search, filter_by_statuses,
-    filter_by_tags, has_active_filters, sort_tasks_advanced,
+    filter_by_completion, filter_by_due_date_range, filter_by_has_time, filter_by_location,
+    filter_by_priorities, filter_by_projects, filter_by_repeat_type, filter_by_search,
+    filter_by_statuses, filter_by_tags, has_active_filters, sort_tasks_advanced,
 };
 pub use grouping::{TaskGroup, group_tasks_for_sort, task_note_id};
+pub use location_options::{LocationKind, LocationOption, location_options};
 
 use crate::domain::calendar::LocalDateTime;
 

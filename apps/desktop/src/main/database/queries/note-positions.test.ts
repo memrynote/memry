@@ -620,4 +620,38 @@ describe('note-positions queries', () => {
       expect(getNotePosition(testDb.db, 'Workspace/a.md')).toBeDefined()
     })
   })
+
+  // =========================================================================
+  // Mixed-order marker: the sidebar writes `<folder>/` beside a level it
+  // ordered with folders and notes interleaved (`mixedOrderMarkerPath`).
+  // =========================================================================
+  describe('mixed-order marker row', () => {
+    beforeEach(() => {
+      reorderNotesInFolder(testDb.db, 'Work', ['Work/', 'Work/a.md', 'Work/Sub', 'Work/b.md'])
+    })
+
+    it('follows its folder through a rename', () => {
+      carryFolderPositions(testDb.db, 'Work', 'Projects')
+
+      expect(getNotesInFolder(testDb.db, 'Projects').map((r) => r.path)).toEqual([
+        'Projects/',
+        'Projects/a.md',
+        'Projects/Sub',
+        'Projects/b.md'
+      ])
+      expect(getNotesInFolder(testDb.db, 'Work')).toEqual([])
+    })
+
+    it('goes away with its folder', () => {
+      dropFolderPositions(testDb.db, 'Work')
+
+      expect(getAllNotePositions(testDb.db)).toEqual([])
+    })
+
+    it('still lets a new item open at the top of the level', () => {
+      placeNewItemAtTop(testDb.db, 'Work/new.md', 'Work')
+
+      expect(getNotesInFolder(testDb.db, 'Work')[0].path).toBe('Work/new.md')
+    })
+  })
 })

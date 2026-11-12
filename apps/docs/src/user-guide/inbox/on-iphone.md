@@ -58,11 +58,16 @@ Choose **Select** from the row menu or the **…** menu, tap rows, then **File**
 
 The phone notifies you once a day to review the inbox and again when a snoozed capture is due. Notifications carry counts only, never capture text, because iOS keeps notification text outside your vault's encryption. Tapping one opens the Inbox tab.
 
+## Files on your other devices
+
+A photo, voice memo, video or PDF you capture syncs with the item, encrypted like note attachments, and your other devices download it to show it. The file counts toward your storage plan. If your storage is full, the item still syncs but its file stays on the device that captured it. Items captured before this version also keep their files there. Another device then shows "The file is on the device that captured it." and you can file the item from the device that holds the file.
+
+Filing a synced capture into a note reuses the uploaded file instead of uploading it again. Archived items keep their file. When you delete an item permanently, its file is removed from the server 30 days later, unless you filed it into a note.
+
 ## Differences from the desktop
 
 - **Suggestions.** The phone shows your recent folders instead of AI filing suggestions, and select mode has no cluster suggestion.
 - **Events.** Convert offers Task and Reminder. Converting to a calendar event is desktop-only.
-- **Files from other devices.** A photo, voice memo or file captured on another device shows as being on that device; the phone does not download it.
 - **Tags.** Inbox tags stay on the device where you add them.
 - **Reminders for notes and journal days.** These are listed under Snoozed & reminders but do not open from there yet.
 - **Shared items.** Sharing to Memry has no field for a note of your own.

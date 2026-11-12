@@ -1,5 +1,6 @@
 import type { PropertyType } from '@memry/db-schema/schema/notes-cache'
 import { spellYamlDate } from '@main/vault/yaml-dates'
+import { valueFitsType } from '@main/vault/property-type'
 
 // ============================================================================
 // Activity Level
@@ -44,6 +45,12 @@ export function serializeValue(value: unknown): string | null {
 export function deserializeValue(value: string | null, type: PropertyType): unknown {
   if (value === null) {
     return null
+  }
+  // `rating: good` under a number type stays the text it is. Coerced, it read
+  // as NaN (or `yes` as false), and the next whole-record properties write
+  // put that back into the file in place of the user's value.
+  if (!valueFitsType(type, value)) {
+    return value
   }
 
   switch (type) {

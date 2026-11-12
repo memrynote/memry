@@ -20,6 +20,33 @@ function positionOf(positions: Record<string, number>, path: string): number {
 }
 
 /**
+ * `note_positions` key of the marker that says a level is ordered as one list.
+ *
+ * By default a level draws its folders and its notes as two groups
+ * (`sidebar.notesFirst` picks which comes first). Once the user drops a folder
+ * among notes, or a note among folders, the level's positions are rewritten as
+ * one sequence and this row is added beside them. Root is `/`. No real item
+ * path ends in `/`, so the key never collides with a note or a folder.
+ *
+ * Persisted format: the row lives in the local-only data DB and never syncs.
+ * Older builds read it as the position of a path no item has and ignore it.
+ * Main re-keys and drops it with its folder, since it sits under the folder's
+ * `<path>/` prefix (`carryFolderPositions`, `dropFolderPositions`).
+ */
+export function mixedOrderMarkerPath(parentPath: string): string {
+  return `${parentPath}/`
+}
+
+/** Parent paths of every level that carries a mixed-order marker. */
+export function mixedOrderLevels(positions: Record<string, number>): Set<string> {
+  const levels = new Set<string>()
+  for (const key of Object.keys(positions)) {
+    if (key.endsWith('/')) levels.add(key.slice(0, -1))
+  }
+  return levels
+}
+
+/**
  * Note comparator for a sort mode.
  *
  * `manual` falls back to newest-first for notes with no stored position, which

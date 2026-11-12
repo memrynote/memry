@@ -146,6 +146,7 @@
     "requestTimedOut": "La solicitud de sincronización tardó demasiado. Comprueba tu conexión a internet."
   },
   "googleCalendar": {
+    "requestRejected": "Google ha rechazado este elemento. Comprueba su fecha y hora y vuelve a intentarlo.",
     "connectFailed": "No se pudo conectar con Google Calendar. Inténtalo de nuevo en un momento.",
     "reconnectNeeded": "Tu conexión con Google Calendar ha caducado. Desconéctala y vuelve a conectarla.",
     "misconfigured": "Google Calendar no está configurado correctamente. Contacta con soporte si esto sigue ocurriendo.",
@@ -159,7 +160,7 @@
   },
   "ai": {
     "inlineDisabled": "La edición en línea con IA está desactivada",
-    "listOllamaModelsFailed": "No se pudieron listar los modelos de Ollama",
+    "listModelsFailed": "No se pudieron listar los modelos",
     "writingAssistInvalid": "No se pudo enviar esa solicitud al modelo de IA.",
     "apiKeyMissing": "Añade tu clave de API de {provider} en Ajustes → IA para usar las herramientas de escritura.",
     "apiKeyInvalid": "Se rechazó tu clave de API de {provider}. Compruébala en Ajustes → IA.",
@@ -186,6 +187,10 @@
     "removeDeviceFailed": "No se pudo quitar el dispositivo",
     "renameDeviceFailed": "No se pudo renombrar el dispositivo",
     "initiateOAuthFailed": "No se pudo iniciar OAuth",
+    "retryOAuthFailed": "No se pudo volver a abrir el navegador de inicio de sesión. Empieza de nuevo el inicio de sesión.",
+    "oauthExpired": "El inicio de sesión ha caducado. Inténtalo de nuevo.",
+    "oauthInvalidResponse": "No se pudo obtener un enlace de inicio de sesión válido. Inténtalo de nuevo.",
+    "oauthCancelled": "Se canceló el inicio de sesión con Google. Inténtalo de nuevo.",
     "setupFirstDeviceOAuthFailed": "No se pudo configurar el primer dispositivo mediante OAuth",
     "confirmRecoveryPhraseFailed": "No se pudo confirmar la frase de recuperación"
   },

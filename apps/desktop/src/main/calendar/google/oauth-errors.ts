@@ -44,6 +44,9 @@ export function userMessageForCalendarApiError(args: {
   if (args.status === 403 || args.apiStatus === 'PERMISSION_DENIED') {
     return t('googleCalendar.scopeMissing')
   }
+  if (args.status === 400) {
+    return t('googleCalendar.requestRejected')
+  }
   if (args.status >= 500) {
     return t('googleCalendar.temporarilyUnavailable')
   }

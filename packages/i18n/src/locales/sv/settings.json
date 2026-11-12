@@ -504,7 +504,8 @@
       "loading": "Läser in inställningar…"
     },
     "groups": {
-      "footer": "Sidfot"
+      "footer": "Sidfot",
+      "pastYears": "Tidigare år"
     },
     "template": {
       "label": "Mall",
@@ -562,6 +563,14 @@
     "showInSidebar": {
       "label": "Visa i sidofältet",
       "description": "Visa dagboksmappen och dess inlägg i anteckningsträdet"
+    },
+    "showOnThisDay": {
+      "label": "Visa Den här dagen",
+      "description": "Visa samma datum från tidigare år under inlägget"
+    },
+    "allYearsView": {
+      "label": "Visa alla år i sin helhet",
+      "description": "Den eviga dagboken: alla år för datumet på en sida, under inlägget"
     }
   },
   "tasks": {
@@ -1110,7 +1119,16 @@
       "sending": "Skickar kod…"
     },
     "oauth": {
-      "google": "Fortsätt med Google"
+      "google": "Fortsätt med Google",
+      "waiting": "Slutför inloggningen med Google i din webbläsare.",
+      "browserUnavailable": "Det gick inte att öppna webbläsaren.",
+      "manualInstructions": "Kopiera inloggningslänken och öppna den i en webbläsare på den här datorn. Låt memrynote vara öppet medan du loggar in.",
+      "linkLabel": "Inloggningslänk",
+      "copyLink": "Kopiera inloggningslänk",
+      "retryBrowser": "Försök öppna webbläsaren igen",
+      "copied": "Inloggningslänken kopierades.",
+      "copyFailed": "Det gick inte att kopiera inloggningslänken. Markera och kopiera den från fältet ovan.",
+      "cancel": "Använd en annan inloggningsmetod"
     },
     "otp": {
       "title": "Ange verifieringskod",
@@ -1347,6 +1365,7 @@
       "keySaveError": "Det gick inte att spara OpenAI-nyckeln"
     },
     "embedding": {
+      "load": "Läs in modell",
       "loaded": "Inläst",
       "loading": "Läser in",
       "downloadLoad": "Ladda ner och läs in modell",
@@ -1371,7 +1390,8 @@
         "ollama": "Ollama (lokal)",
         "openai": "OpenAI",
         "anthropic": "Anthropic",
-        "google": "Google Gemini"
+        "google": "Google Gemini",
+        "custom": "Anpassad (OpenAI-kompatibel)"
       },
       "model": "Modell",
       "modelDescription": "Språkmodell för att skriva om och sammanfatta",
@@ -1381,6 +1401,11 @@
       "apiKeyPlaceholder": "Ange API-nyckel för {provider}",
       "ollamaUrl": "Ollama-URL",
       "ollamaUrlDescription": "Lokal serveradress",
+      "customUrl": "Bas-URL",
+      "customUrlDescription": "Valfri OpenAI-kompatibel slutpunkt, till exempel OpenRouter",
+      "customUrlPlaceholder": "https://openrouter.ai/api/v1",
+      "customApiKeyPlaceholder": "API-nyckel (valfritt)",
+      "customModelPlaceholder": "Modell-ID",
       "connection": "Anslutning",
       "activePort": "Aktiv på port {port}",
       "notConnected": "Inte ansluten",
@@ -2032,7 +2057,7 @@
       "subtitle": "Hantera egenskapsdefinitioner för alla anteckningar"
     },
     "loading": "Läser in egenskaper…",
-    "empty": "Inga egenskapsdefinitioner än. Lägg till en egenskap av typen Status, Enkelval eller Flerval i en anteckning för att komma igång.",
+    "empty": "Inga egenskaper än. Lägg till en egenskap i en anteckning för att komma igång.",
     "filterPlaceholder": "Filtrera egenskaper…",
     "noMatch": "Inga egenskaper matchar ”{query}”",
     "summary": "{count, plural, one {# egenskapsdefinition} other {# egenskapsdefinitioner}}",
@@ -2072,6 +2097,14 @@
     },
     "v2": {
       "actionsAria": "Åtgärder för {name}"
+    },
+    "usage": {
+      "heading": "Används i",
+      "noteCount": "{count, plural, one {# anteckning} other {# anteckningar}}",
+      "mismatchCount": "Värden som inte passar {type}: {count}",
+      "mismatchNote": "Passar inte {type}",
+      "none": "Inga anteckningar använder den här egenskapen",
+      "loadFailed": "Det gick inte att läsa in anteckningarna som använder den här egenskapen"
     }
   },
   "commandLine": {
@@ -2407,7 +2440,6 @@
   "phaseI": {
     "errors": {
       "failedToUpdateTagColor": "Det gick inte att uppdatera taggfärgen",
-      "googleSignInFailed": "Google-inloggning misslyckades",
       "failedToSendVerificationCode": "Det gick inte att skicka verifieringskoden",
       "invalidVerificationCode": "Ogiltig verifieringskod",
       "accountSetupFailed": "Det gick inte att konfigurera kontot",
@@ -2464,7 +2496,17 @@
       "running": "Körs",
       "tokenHint": "Gäller bara den här appstarten",
       "copy": "Kopiera",
-      "rotate": "Rotera"
+      "rotate": "Rotera",
+      "clientConfig": {
+        "label": "Klientkonfiguration",
+        "hint": "Kopieras med URL och token för den här starten",
+        "copy": "Kopiera {client}-konfiguration"
+      },
+      "notes": {
+        "readOnly": "Externa klienter kan bara läsa. Skrivverktyg returnerar PERMISSION_DENIED, så skriv via Agent Chat eller memrynotes kommandorad.",
+        "restart": "URL och token ändras när memrynote startar om, byter valv eller förnyar token. Uppdatera då klientens konfiguration och starta om klienten.",
+        "docs": "Installationsguide"
+      }
     }
   },
   "agentProviders": {

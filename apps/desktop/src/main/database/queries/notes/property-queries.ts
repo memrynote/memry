@@ -9,10 +9,11 @@ import {
   type NewPropertyDefinition,
   type PropertyType
 } from '@memry/db-schema/schema/notes-cache'
+import type { PropertyNoteUsage, PropertyUsage } from '@memry/contracts/properties-api'
 import type { IndexDb } from '../../types'
 import { serializeValue, deserializeValue } from './query-helpers'
 import { setPropertyRefs } from './property-ref-queries'
-import { resolvePropertyType } from '@main/vault/property-type'
+import { resolvePropertyType, valueFitsType } from '@main/vault/property-type'
 
 // ============================================================================
 // Property Value Operations
@@ -55,9 +56,13 @@ export function setNoteProperties(
 export function listNotePropertyRowsByName(
   db: IndexDb,
   name: string
-): Array<{ noteId: string; type: string }> {
+): Array<{ noteId: string; type: string; value: string | null }> {
   return db
-    .select({ noteId: noteProperties.noteId, type: noteProperties.type })
+    .select({
+      noteId: noteProperties.noteId,
+      type: noteProperties.type,
+      value: noteProperties.value
+    })
     .from(noteProperties)
     .where(eq(noteProperties.name, name))
     .all()
@@ -135,6 +140,45 @@ export function getPropertiesForNotes(
   }
 
   return propsMap
+}
+
+/** Every property name in the index, with its note count and mismatched values. */
+export function listPropertyUsage(db: IndexDb): PropertyUsage[] {
+  const usage = new Map<string, PropertyUsage>()
+  const rows = db
+    .select({ name: noteProperties.name, type: noteProperties.type, value: noteProperties.value })
+    .from(noteProperties)
+    .all()
+  for (const row of rows) {
+    const entry = usage.get(row.name) ?? { name: row.name, noteCount: 0, mismatchCount: 0 }
+    entry.noteCount++
+    if (!valueFitsType(row.type, row.value)) entry.mismatchCount++
+    usage.set(row.name, entry)
+  }
+  return [...usage.values()]
+}
+
+/** The notes that use one property, by title. */
+export function listNotesWithProperty(db: IndexDb, name: string): PropertyNoteUsage[] {
+  return db
+    .select({
+      id: noteCache.id,
+      title: noteCache.title,
+      path: noteCache.path,
+      emoji: noteCache.emoji,
+      type: noteProperties.type,
+      value: noteProperties.value
+    })
+    .from(noteProperties)
+    .innerJoin(noteCache, eq(noteCache.id, noteProperties.noteId))
+    .where(eq(noteProperties.name, name))
+    .orderBy(sql`${noteCache.title} COLLATE NOCASE`)
+    .all()
+    .map(({ type, value, ...note }) => ({
+      ...note,
+      emoji: note.emoji ?? null,
+      mismatch: !valueFitsType(type, value)
+    }))
 }
 
 export function deleteNoteProperties(db: IndexDb, noteId: string): void {

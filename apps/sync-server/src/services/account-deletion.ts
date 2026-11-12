@@ -1,4 +1,5 @@
 import { deleteByPrefix } from './blob'
+import { normalizeEmail } from './user'
 
 /**
  * Irreversibly delete all data for a user across R2 (encrypted payloads) and
@@ -37,7 +38,7 @@ export async function deleteUserData(
     db.prepare('DELETE FROM devices WHERE user_id = ?').bind(userId),
     db.prepare('DELETE FROM user_identities WHERE user_id = ?').bind(userId),
     // otp_codes is keyed by email, no FK
-    db.prepare('DELETE FROM otp_codes WHERE email = ?').bind(email),
+    db.prepare('DELETE FROM otp_codes WHERE email = ?').bind(normalizeEmail(email)),
     // users row last (parent)
     db.prepare('DELETE FROM users WHERE id = ?').bind(userId)
   ])

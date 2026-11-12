@@ -5,6 +5,7 @@
     "create": "Vytvoriť"
   },
   "wikiLinkPreview": {
+    "journalUnwritten": "Záznam pre {date} ešte nie je napísaný. Kliknutím otvoríte tento deň",
     "notFound": "Nenájdené – kliknutím vytvoríte „{title}“"
   },
   "wikiLinkMenu": {
@@ -138,6 +139,7 @@
     "actions": {
       "openInNewTab": "Otvoriť na novej karte",
       "openToTheSide": "Otvoriť vedľa",
+      "openFolderView": "Otvoriť zobrazenie priečinka",
       "newNote": "Nová poznámka",
       "newFolder": "Nový priečinok",
       "showTasks": "Zobraziť úlohy",
@@ -187,7 +189,8 @@
     },
     "toast": {
       "selectionBookmarked": "Pridané do záložiek: {count}",
-      "selectionBookmarkFailed": "Vybrané položky sa nepodarilo pridať do záložiek"
+      "selectionBookmarkFailed": "Vybrané položky sa nepodarilo pridať do záložiek",
+      "pairedNoteNameTaken": "Poznámka s názvom {name} tam už existuje"
     }
   },
   "editor": {
@@ -423,12 +426,14 @@
       "savedView": "Uložené zobrazenie",
       "savedViewMissing": "Uložené zobrazenie „{name}“ už neexistuje, preto sa zobrazuje predvolené zobrazenie.",
       "openAsTab": "Otvoriť ako kartu",
+      "newNote": "Nová poznámka",
+      "newViewTitle": "Nové zobrazenie",
+      "newViewSubtext": "Nový priečinok vedľa tejto poznámky, zobrazený tu",
+      "newViewFailed": "Priečinok pre toto zobrazenie sa nepodarilo vytvoriť.",
       "empty": "Tomuto zobrazeniu zatiaľ nič nezodpovedá.",
       "loadFailed": "Toto zobrazenie sa nepodarilo načítať. Samotné poznámky zostali nedotknuté.",
       "folderMissing": "Tento priečinok už v trezore nie je. Vyberte iný zdroj.",
-      "invalidJson": "Definícia tohto zobrazenia nie je platný JSON. Opravte ju nižšie alebo odstráňte blok.",
-      "invalidShape": "Definícia tohto zobrazenia nemá zdroj. Vyberte ho vyššie alebo definíciu opravte nižšie.",
-      "definition": "Definícia"
+      "unreadable": "Toto zobrazenie sa nedá prečítať. Vyberte vyššie zdroj alebo blok odstráňte."
     },
     "chart": {
       "title": "Diagram",
@@ -668,6 +673,8 @@
   },
   "menus": {
     "wiki": {
+      "journalDay": "Denník · {date}",
+      "journalDayUnwritten": "Denník · ešte nenapísané",
       "aria": "Návrhy poznámok",
       "loading": "Načítavajú sa poznámky…",
       "empty": "Nenašli sa žiadne poznámky",
@@ -782,6 +789,12 @@
     "viaProperty": "{property} → {title}",
     "viaPortal": "Zobrazené v portáli"
   },
+  "references": {
+    "filterAll": "Všetky",
+    "filterNotes": "Poznámky",
+    "filterJournal": "Denník",
+    "filterBy": "Filtrovať odkazy: {filter}"
+  },
   "unlinkedMentions": {
     "title": "Neprepojené zmienky",
     "summary": "{count, plural, one {# neprepojená zmienka} few {# neprepojené zmienky} other {# neprepojených zmienok}}",
@@ -886,6 +899,7 @@
     "showOnCalendar": "Zobraziť v kalendári",
     "showingOnCalendar": "Zobrazuje sa v kalendári",
     "relation": {
+      "unwrittenDay": "Ešte nenapísané",
       "deleted": "Odstránené",
       "removeAria": "Odstrániť „{title}“",
       "addAria": "Pridať vzťah",

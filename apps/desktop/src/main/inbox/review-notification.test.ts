@@ -30,27 +30,9 @@ vi.mock('../lib/main-i18n', () => ({
 }))
 
 import { InboxChannels } from '@memry/contracts/inbox-channels'
+import type { BrowserWindow } from 'electron'
 import { sendTestReviewNotification, showReviewNotification } from './review-notification'
-
-/**
- * Real Electron throws 'Object has been destroyed' on any access to a destroyed
- * window, and getAllWindows() can still list one (splash, quick capture,
- * print/export).
- */
-function makeDestroyedWindow(): unknown {
-  return {
-    isDestroyed: () => true,
-    isMinimized(): never {
-      throw new Error('Object has been destroyed')
-    },
-    focus(): never {
-      throw new Error('Object has been destroyed')
-    },
-    get webContents(): never {
-      throw new Error('Object has been destroyed')
-    }
-  }
-}
+import { setMainWindow } from '../main-window'
 
 function makeLiveWindow(): {
   win: unknown
@@ -113,18 +95,19 @@ describe('review-notification', () => {
     )
   })
 
-  it('routes the click past a destroyed window to the first live one', () => {
-    const live = makeLiveWindow()
+  it('routes the click to the app window, not another window listed before it', () => {
+    const sticky = makeLiveWindow()
+    const app = makeLiveWindow()
+    windowsRef.value = [sticky.win, app.win]
+    // oxlint-disable-next-line typescript/no-unsafe-type-assertion -- the fake covers every member the click handler touches
+    setMainWindow(app.win as BrowserWindow)
     showReviewNotification(1)
 
     const clickHandler = on.mock.calls.find(([event]) => event === 'click')?.[1] as () => void
-    expect(clickHandler).toBeTypeOf('function')
+    clickHandler()
 
-    // The window dies between the banner being shown and the user clicking it.
-    windowsRef.value = [makeDestroyedWindow(), live.win]
-
-    expect(() => clickHandler()).not.toThrow()
-    expect(live.focus).toHaveBeenCalled()
-    expect(live.send).toHaveBeenCalledWith(InboxChannels.events.REVIEW_OPEN, {})
+    expect(sticky.send).not.toHaveBeenCalled()
+    expect(app.focus).toHaveBeenCalled()
+    expect(app.send).toHaveBeenCalledWith(InboxChannels.events.REVIEW_OPEN, {})
   })
 })

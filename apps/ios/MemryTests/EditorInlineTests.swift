@@ -21,6 +21,12 @@ struct InlineTriggerTests {
         #expect(trigger == .wiki(range: NSRange(location: 4, length: 6), query: "Du"))
     }
 
+    @Test func a_half_typed_closer_is_not_part_of_the_query() {
+        // "[[Du]]" with the caret between the two closing brackets (#4154).
+        let trigger = InlineTrigger.active(in: "[[Du]]", caret: 5)
+        #expect(trigger == .wiki(range: NSRange(location: 0, length: 6), query: "Du"))
+    }
+
     @Test func a_closed_wiki_link_is_not_a_trigger() {
         #expect(InlineTrigger.active(in: "[[Dune]] and", caret: 12) == nil)
     }

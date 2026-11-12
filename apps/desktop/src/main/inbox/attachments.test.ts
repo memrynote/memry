@@ -343,12 +343,21 @@ describe('Inbox Attachment Management', () => {
       expect(resolveAttachmentUrl(null)).toBeNull()
     })
 
-    it('should return memry-file:// URL for valid path', () => {
-      const relativePath = 'attachments/inbox/item-123/file.png'
-      const url = resolveAttachmentUrl(relativePath)
+    it('should return memry-file:// URL for a file on disk', async () => {
+      const stored = await storeInboxAttachment(
+        'item-123',
+        Buffer.from('data'),
+        'file.png',
+        'image/png'
+      )
+      const url = resolveAttachmentUrl(stored.path ?? null)
 
-      expect(url).toBeDefined()
+      expect(url).toContain('memry-file://')
       expect(toMemryFileUrl).toHaveBeenCalled()
+    })
+
+    it('should return null when the file is not on disk (synced item, bytes not downloaded)', () => {
+      expect(resolveAttachmentUrl('attachments/inbox/item-123/file.png')).toBeNull()
     })
 
     it('should return null when no vault is open', () => {

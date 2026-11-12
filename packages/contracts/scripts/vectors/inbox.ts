@@ -37,7 +37,14 @@ const NULLABLE = [
   'sourceTitle',
   'captureSource'
 ] as const
-const ROW_KEYS = ['type', 'title', ...NULLABLE, 'createdAt'] as const
+/**
+ * Keys a `null` never clears. `title` and `type` are `data.x ?? existing.x` in
+ * desktop's handler; `attachmentId` is read the same way (§13.7.15), because an
+ * older sender omits or nulls a key it does not know and a capture's upload
+ * never un-happens.
+ */
+const STICKY = ['title', 'type', 'attachmentId'] as const
+const ROW_KEYS = ['type', 'title', ...NULLABLE, 'attachmentId', 'createdAt'] as const
 const DAY = 86_400_000
 
 function compare(a: Clock, b: Clock): 'after' | 'before' | 'equal' | 'concurrent' {
@@ -72,7 +79,7 @@ function applyDesktop(existing: Row | null, raw: Row, deleted: boolean): Row | n
   }
   if (!existing) {
     const row: Row = { type: data.type ?? 'note', title: data.title ?? 'Untitled', clock }
-    for (const key of NULLABLE) row[key] = data[key] ?? null
+    for (const key of [...NULLABLE, 'attachmentId']) row[key] = data[key] ?? null
     row.createdAt = data.createdAt ?? null
     return row
   }
@@ -80,11 +87,8 @@ function applyDesktop(existing: Row | null, raw: Row, deleted: boolean): Row | n
   const cmp = compare((existing.clock ?? {}) as Clock, clock)
   if (cmp === 'after') return existing
   const hasKey = (k: string): boolean => Object.prototype.hasOwnProperty.call(data, k)
-  const next: Row = {
-    ...existing,
-    title: data.title ?? existing.title,
-    type: data.type ?? existing.type
-  }
+  const next: Row = { ...existing }
+  for (const key of STICKY) next[key] = data[key] ?? existing[key] ?? null
   for (const key of NULLABLE) next[key] = hasKey(key) ? (data[key] ?? null) : existing[key]
   return next
 }

@@ -9,6 +9,14 @@
  * Only lines whose task id resolves to a real row are touched, and only when
  * the two actually disagree, so re-indexing an unchanged vault is a no-op.
  *
+ * A disagreement alone is not intent. Nothing rewrites a note when its task is
+ * completed somewhere else (the Tasks view, a synced peer, the CLI), so a note
+ * can say `[ ]` for a done task for as long as nobody opens it. Following such
+ * a line reopened the task, and sync spread the reopen to every device. So a
+ * line follows the file only when it was edited: its checkbox differs from the
+ * state the app last acknowledged for the note (`note_cache.task_checks`), or,
+ * for a line the app has no state for, the file is newer than the task row.
+ *
  * @module tasks/reconcile-markdown-tasks
  */
 
@@ -25,7 +33,10 @@ const log = createLogger('ReconcileMarkdownTasks')
 
 export interface ReconcileTaskCheckboxesDeps {
   db: DataDb
-  getTask: (db: DataDb, id: string) => { completedAt: string | null } | undefined
+  getTask: (
+    db: DataDb,
+    id: string
+  ) => { completedAt: string | null; modifiedAt: string } | undefined
   complete: (db: DataDb, id: string) => Promise<unknown>
   uncomplete: (db: DataDb, id: string) => Promise<unknown>
 }
@@ -42,17 +53,25 @@ function defaultDeps(): ReconcileTaskCheckboxesDeps | null {
   }
 }
 
+export interface TaskCheckboxSource {
+  markdown: string
+  /** Checkbox states of the bytes the app last acknowledged for the note; null when it has none. */
+  acknowledged: Record<string, boolean> | null
+  /** The file's mtime, which decides a line the app has no acknowledged state for. */
+  fileModifiedAt: Date
+}
+
 /**
- * Apply a note body's checkbox states to the task rows it references.
+ * Apply a note body's edited checkbox states to the task rows it references.
  * Returns the number of tasks whose completion state changed.
  */
 export async function reconcileTaskCheckboxesFromMarkdown(
-  markdown: string,
+  source: TaskCheckboxSource,
   deps: ReconcileTaskCheckboxesDeps | null = defaultDeps()
 ): Promise<number> {
   if (!deps) return 0
 
-  const states = scanTaskCheckboxStates(markdown)
+  const states = scanTaskCheckboxStates(source.markdown)
   if (states.size === 0) return 0
 
   let changed = 0
@@ -62,6 +81,12 @@ export async function reconcileTaskCheckboxesFromMarkdown(
     // another vault). Nothing to reconcile — the ghost-task UI handles it.
     if (!task) continue
     if (!!task.completedAt === checked) continue
+
+    const edited =
+      source.acknowledged !== null && Object.hasOwn(source.acknowledged, taskId)
+        ? source.acknowledged[taskId] !== checked
+        : source.fileModifiedAt.getTime() > Date.parse(task.modifiedAt)
+    if (!edited) continue
 
     try {
       if (checked) {

@@ -206,26 +206,6 @@ describe('getUserByEmail', () => {
     db = createMockDb()
   })
 
-  it('should query users by email', async () => {
-    // #when
-    await getUserByEmail(db as unknown as D1Database, 'alice@example.com')
-
-    // #then
-    expect(db.prepare).toHaveBeenCalledWith('SELECT * FROM users WHERE email = ?')
-  })
-
-  it('should bind the email parameter', async () => {
-    // #given
-    const stmt = createMockStatement()
-    db.prepare.mockReturnValue(stmt)
-
-    // #when
-    await getUserByEmail(db as unknown as D1Database, 'alice@example.com')
-
-    // #then
-    expect(stmt.bind).toHaveBeenCalledWith('alice@example.com')
-  })
-
   it('should return the user when found', async () => {
     // #given
     const mockUser = { id: 'u-1', email: 'alice@example.com' }

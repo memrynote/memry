@@ -6,6 +6,7 @@
  * shapes are structural so the renderer's own types flow through unchanged.
  */
 import type { Priority, StatusType } from '../parsing/types.ts'
+import type { TaskFilterGroup } from './expression.ts'
 
 export type DueDateFilterType =
   | 'any'
@@ -45,6 +46,11 @@ export interface TaskFilters {
   folderPaths?: string[]
   /** Notes whose tasks match. Optional for the same reason as `folderPaths`. */
   noteIds?: string[]
+  /**
+   * Advanced rules, ANDed with every field above. A saved filter carries them
+   * beside `config`, not inside it (docs/protocol §13.7.14).
+   */
+  expression?: TaskFilterGroup | null
 }
 
 /**

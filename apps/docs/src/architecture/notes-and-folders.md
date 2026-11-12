@@ -36,7 +36,7 @@ Four rules keep the parts in step:
 - A move that changes what a file is (a note moved to a day's path, or a day moved out of the journal folder) deletes the record, and the file is made anew as the other kind. The watcher does this when it sees the move. A move the app makes, or one the identity could not settle, waits for the next open's walk (`notes/owed_moves.rs`).
 - An app move the core still records (a folder move whose records did not follow, or that waits on unreadable settings) owns both of its paths until the next open finishes it (`notes/identity/moving.rs`). A file at the new path is never made a new note or day. The note's row stays at the old path: the file's absence there is never taken for the note's removal, and a move the watcher pairs from there waits.
 
-The core tables are additive migrations of `data.db`: `note_files` (`0017_note_files.sql`), `note_file_hashes` (`0019`), `note_place_owed` (`0020_note_identity.sql`) and `wiki_name_keys` (`0021`). The sidebar's manual order is `note_positions` (`0018_notes_device_tables.sql`). All of them stay on the device.
+The core tables are additive migrations of `data.db`: `note_files` (`0019_note_files.sql`), `note_file_hashes` (`0021`), `note_place_owed` (`0022_note_identity.sql`) and `wiki_name_keys` (`0023`). The sidebar's manual order is `note_positions` (`0020_notes_device_tables.sql`). All of them stay on the device.
 
 ## Create, delete, rename and move
 

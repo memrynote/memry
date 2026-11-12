@@ -9,6 +9,7 @@ export const AUTH_CHANNELS = {
   AUTH_VERIFY_OTP: 'auth:verify-otp',
   AUTH_RESEND_OTP: 'auth:resend-otp',
   AUTH_INIT_OAUTH: 'auth:init-oauth',
+  AUTH_RETRY_OAUTH: 'auth:retry-oauth',
   AUTH_REFRESH_TOKEN: 'auth:refresh-token',
   SETUP_FIRST_DEVICE: 'sync:setup-first-device',
   SETUP_NEW_ACCOUNT: 'sync:setup-new-account',
@@ -71,6 +72,12 @@ export interface InitOAuthInput {
 
 export interface InitOAuthResult {
   state: string
+  authorizationUrl: string
+  browserOpened: boolean
+}
+
+export interface RetryOAuthResult {
+  browserOpened: boolean
 }
 
 export interface RefreshTokenResult {
@@ -123,6 +130,10 @@ export const ResendOtpSchema = z.object({
 
 export const InitOAuthSchema = z.object({
   provider: z.literal('google')
+})
+
+export const RetryOAuthSchema = z.object({
+  state: z.string().min(1)
 })
 
 export const SetupFirstDeviceSchema = z.object({

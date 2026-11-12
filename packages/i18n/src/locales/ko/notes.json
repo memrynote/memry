@@ -5,6 +5,7 @@
     "create": "만들기"
   },
   "wikiLinkPreview": {
+    "journalUnwritten": "{date} 저널은 아직 작성되지 않았습니다. 클릭하여 해당 날짜 열기",
     "notFound": "찾을 수 없음 — 클릭하여 “{title}” 만들기"
   },
   "wikiLinkMenu": {
@@ -138,6 +139,7 @@
     "actions": {
       "openInNewTab": "새 탭에서 열기",
       "openToTheSide": "옆에서 열기",
+      "openFolderView": "폴더 보기 열기",
       "newNote": "새 노트",
       "newFolder": "새 폴더",
       "showTasks": "작업 표시",
@@ -187,7 +189,8 @@
     },
     "toast": {
       "selectionBookmarked": "항목 {count}개를 북마크했습니다",
-      "selectionBookmarkFailed": "선택한 항목을 북마크하지 못했습니다"
+      "selectionBookmarkFailed": "선택한 항목을 북마크하지 못했습니다",
+      "pairedNoteNameTaken": "{name}(이)라는 노트가 이미 있습니다"
     }
   },
   "editor": {
@@ -423,12 +426,14 @@
       "savedView": "저장된 보기",
       "savedViewMissing": "저장된 보기 “{name}”이(가) 없어 기본 보기를 표시합니다.",
       "openAsTab": "탭으로 열기",
+      "newNote": "새 노트",
+      "newViewTitle": "새 보기",
+      "newViewSubtext": "이 노트 옆에 만들어져 여기에 표시되는 새 폴더",
+      "newViewFailed": "이 보기의 폴더를 만들지 못했습니다.",
       "empty": "아직 이 보기와 일치하는 항목이 없습니다.",
       "loadFailed": "이 보기를 불러오지 못했습니다. 노트 자체는 변경되지 않았습니다.",
       "folderMissing": "이 폴더가 더 이상 볼트에 없습니다. 다른 소스를 선택하세요.",
-      "invalidJson": "이 보기의 정의가 올바른 JSON이 아닙니다. 아래에서 수정하거나 블록을 제거하세요.",
-      "invalidShape": "이 보기의 정의에 소스가 없습니다. 위에서 선택하거나 아래에서 수정하세요.",
-      "definition": "정의"
+      "unreadable": "이 보기를 읽을 수 없습니다. 위에서 소스를 선택하거나 블록을 제거하세요."
     },
     "chart": {
       "title": "차트",
@@ -668,6 +673,8 @@
   },
   "menus": {
     "wiki": {
+      "journalDay": "저널 · {date}",
+      "journalDayUnwritten": "저널 · 아직 작성되지 않음",
       "aria": "노트 제안",
       "loading": "노트 불러오는 중…",
       "empty": "노트를 찾을 수 없습니다",
@@ -782,6 +789,12 @@
     "viaProperty": "{property} → {title}",
     "viaPortal": "포털에 표시됨"
   },
+  "references": {
+    "filterAll": "전체",
+    "filterNotes": "노트",
+    "filterJournal": "저널",
+    "filterBy": "참조 필터: {filter}"
+  },
   "unlinkedMentions": {
     "title": "링크되지 않은 언급",
     "summary": "{count, plural, other {링크되지 않은 언급 #개}}",
@@ -886,6 +899,7 @@
     "showOnCalendar": "캘린더에 표시",
     "showingOnCalendar": "캘린더에 표시 중",
     "relation": {
+      "unwrittenDay": "아직 작성되지 않음",
       "deleted": "삭제됨",
       "removeAria": "{title} 제거",
       "addAria": "관계 추가",

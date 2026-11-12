@@ -250,7 +250,8 @@
     "failedPlayAudio": "تعذّر تشغيل الصوت",
     "failedLoadAudio": "تعذّر تحميل الصوت",
     "video": "فيديو",
-    "unsupportedVideo": "متصفحك لا يدعم تشغيل الفيديو."
+    "unsupportedVideo": "متصفحك لا يدعم تشغيل الفيديو.",
+    "fileOnOtherDevice": "الملف موجود على الجهاز الذي التقطه."
   },
   "reminder": {
     "dataUnavailable": "بيانات التذكير غير متاحة.",

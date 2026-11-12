@@ -3,9 +3,7 @@
     "copyFailed": "Portaalia ei voitu kopioida",
     "hiddenCount": "{count} piilotettu",
     "windowFailed": "Tätä portaalia ei voitu avata. Avaa sen sijaan lähdemuistiinpano.",
-    "noTarget": "Tällä portaalilla ei ole vielä kohdetta. Lisää määritykseen muistiinpano tai poista lohko.",
-    "invalidJson": "Tämän portaalin määritys ei ole kelvollista JSONia. Korjaa se alla tai poista lohko.",
-    "invalidShape": "Tämän portaalin määrityksessä ei ole muistiinpanoa tai hakua. Korjaa se alla tai poista lohko.",
+    "unreadable": "Tätä portaalia ei voi lukea. Poista lohko ja lisää uusi portaali.",
     "search": {
       "editQuery": "Muokkaa hakua",
       "count": "{count, plural, one {# lohko} other {# lohkoa}}",
@@ -1276,6 +1274,7 @@
     "label": "Ohje ja palaute",
     "reportBug": "Ilmoita virheestä",
     "requestFeature": "Ehdota toimintoa",
+    "joinTestflight": "Liity TestFlightiin",
     "starOnGithub": "Anna tähti GitHubissa",
     "version": "MemryNote {version}",
     "whatsNew": "Mitä uutta",
@@ -1695,5 +1694,29 @@
     "journalDaysRenamed": "Joidenkin päiväkirjamerkintöjen nimi ei ole enää päivämäärä",
     "journalDaysRenamedHint": "Nämä päiväkirjamerkinnät nimettiin uudelleen Memryn ulkopuolella, kun niiden kansio odotti päiväkirjakansion asetusta, joten niiden nimet eivät ole enää päivämääriä. Ne pysyvät päiväkirjamerkintöinä, kunnes palautat niiden nimet. Kun muutat merkinnän muistiinpanoksi, se poistuu päiväkirjasta kaikilla laitteillasi ja sen teksti säilyy muistiinpanona. Sen tunnisteita ei säilytetä.",
     "turnIntoNotes": "Muuta muistiinpanoiksi"
+  },
+  "iosBeta": {
+    "badge": "Uutta · TestFlight",
+    "title": "Memry iPhonelle on betassa",
+    "promptBody": "Holvisi puhelimessa, päästä päähän salattuna. Jätä sähköpostiosoitteesi, niin Apple lähettää sinulle TestFlight-kutsun.",
+    "emailPlaceholder": "you@example.com",
+    "emailLabel": "Sähköposti TestFlight-kutsua varten",
+    "submit": "Hae kutsu",
+    "sending": "Lähetetään…",
+    "listNote": "Lisäämme sinut myös iPhone-betan postituslistalle julkaisuuutisia varten. Voit perua tilauksen milloin tahansa.",
+    "error": "TestFlight-kutsun lähettäminen epäonnistui. Yritä uudelleen.",
+    "sentTitle": "Tarkista saapuneet",
+    "sentBody": "Apple lähetti kutsun osoitteeseen {email}. Perillemeno voi kestää muutaman minuutin, ja viesti voi päätyä roskapostiin.",
+    "stepInstall": "Asenna TestFlight App Storesta",
+    "stepOpen": "Avaa kutsu iPhonessasi",
+    "stepSignIn": "Kirjaudu Memryyn puhelimellasi",
+    "done": "Valmis",
+    "dialogTitle": "Liity Memryn iPhone-betaan",
+    "dialogBody": "Apple lähettää sinulle TestFlight-kutsun sähköpostitse. Käytä iPhonesi Apple ID:n sähköpostiosoitetta.",
+    "entryTitle": "iPhone-beta on avattu",
+    "entrySubtitle": "TestFlightin kautta",
+    "entryJoin": "Liity betaan",
+    "entrySent": "Kutsu lähetetty osoitteeseen {email}",
+    "sendAgain": "Lähetä uudelleen"
   }
 }

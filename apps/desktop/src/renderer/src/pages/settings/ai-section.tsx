@@ -44,6 +44,7 @@ interface AIModelStatus {
   name: string
   dimension: number
   loaded: boolean
+  downloaded: boolean
   loading: boolean
   error: string | null
   embeddingCount?: number
@@ -504,6 +505,8 @@ export function AISettings({
                       <StatusIndicator tone="ready" label={t('ai.embedding.loaded')} />
                     ) : modelStatus?.loading || isLoadingModel ? (
                       <StatusIndicator tone="progress" label={t('ai.embedding.loading')} />
+                    ) : modelStatus?.downloaded ? (
+                      <StatusIndicator tone="ready" label={t('ai.voice.status.downloaded')} />
                     ) : (
                       <StatusIndicator tone="idle" label={t('ai.voice.status.notDownloaded')} />
                     )
@@ -526,7 +529,9 @@ export function AISettings({
                         onClick={() => void handleLoadModel()}
                         className={ROW_PRIMARY_ACTION}
                       >
-                        {t('ai.embedding.downloadLoad')}
+                        {modelStatus?.downloaded
+                          ? t('ai.embedding.load')
+                          : t('ai.embedding.downloadLoad')}
                       </Button>
                     ) : null
                   }

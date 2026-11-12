@@ -17,6 +17,7 @@
 use serde_json::Value as Json;
 
 use crate::api::errors::ApiError;
+use crate::protocol::auth::DeviceFormFactor;
 use crate::protocol::http::{ApiRequest, Auth, HttpClient};
 
 /// `deviceName`'s server bound (`RenameDeviceSchema`, 1..=100).
@@ -27,6 +28,10 @@ pub struct AccountDevice {
     pub id: String,
     pub name: String,
     pub platform: String,
+    /// Chapter 02 §2.3.4. `None` is unknown: an older server, a device
+    /// registered before the field, or a value this build does not know. The
+    /// shell then falls back to `platform`.
+    pub form_factor: Option<DeviceFormFactor>,
     pub app_version: Option<String>,
     /// Epoch seconds, as the server stores it.
     pub last_sync_at: Option<i64>,
@@ -114,6 +119,11 @@ pub(crate) fn read_devices(body: &Json, current: &str) -> Option<Vec<AccountDevi
                 is_current: id == current,
                 name: text(row, "name").unwrap_or_default(),
                 platform: text(row, "platform").unwrap_or_default(),
+                form_factor: match text(row, "formFactor").as_deref() {
+                    Some("phone") => Some(DeviceFormFactor::Phone),
+                    Some("tablet") => Some(DeviceFormFactor::Tablet),
+                    _ => None,
+                },
                 app_version: text(row, "appVersion"),
                 last_sync_at: int(row, "lastSyncAt"),
                 created_at: int(row, "createdAt"),
@@ -235,6 +245,29 @@ mod tests {
         assert_eq!(rows[0].last_sync_at, Some(10));
         assert_eq!(rows[1].last_sync_at, None);
         assert!(read_devices(&json!({"devices":[{"name":"x"}]}), "b").is_none());
+        // #4375: an older server sends no formFactor, so both rows are unknown.
+        assert_eq!((rows[0].form_factor, rows[1].form_factor), (None, None));
+    }
+
+    #[test]
+    fn devices_carry_the_form_factor_and_read_an_unknown_one_as_none() {
+        let body = json!({"devices":[
+            {"id":"a","name":"iPad","platform":"ios","formFactor":"tablet"},
+            {"id":"b","name":"iPhone","platform":"ios","formFactor":"phone"},
+            {"id":"c","name":"Old","platform":"ios","formFactor":null},
+            {"id":"d","name":"Next","platform":"ios","formFactor":"watch"}
+        ]});
+        let rows = read_devices(&body, "a").expect("rows");
+        let factors: Vec<_> = rows.iter().map(|row| row.form_factor).collect();
+        assert_eq!(
+            factors,
+            [
+                Some(DeviceFormFactor::Tablet),
+                Some(DeviceFormFactor::Phone),
+                None,
+                None
+            ]
+        );
         assert!(read_devices(&json!({}), "b").is_none());
     }
 

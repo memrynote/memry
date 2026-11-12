@@ -3,9 +3,7 @@
     "copyFailed": "Nije moguće kopirati portal",
     "hiddenCount": "Skriveno: {count}",
     "windowFailed": "Ovaj portal nije moguće otvoriti. Umjesto toga otvorite izvornu bilješku.",
-    "noTarget": "Ovaj portal još nema cilj. Dodajte bilješku u definiciju ili uklonite blok.",
-    "invalidJson": "Definicija ovog portala nije valjani JSON. Ispravite je u nastavku ili uklonite blok.",
-    "invalidShape": "Definicija ovog portala nema bilješku ni pretraživanje. Ispravite je u nastavku ili uklonite blok.",
+    "unreadable": "Ovaj portal nije moguće pročitati. Uklonite blok i dodajte novi portal.",
     "search": {
       "editQuery": "Uredi upit",
       "count": "{count, plural, one {# blok} few {# bloka} other {# blokova}}",
@@ -1276,6 +1274,7 @@
     "label": "Pomoć i povratne informacije",
     "reportBug": "Prijavi pogrešku",
     "requestFeature": "Predloži značajku",
+    "joinTestflight": "Pridruži se TestFlightu",
     "starOnGithub": "Dodaj zvjezdicu na GitHubu",
     "version": "MemryNote {version}",
     "whatsNew": "Novosti",
@@ -1695,5 +1694,29 @@
     "journalDaysRenamed": "Neki unosi dnevnika više nemaju datum kao naziv",
     "journalDaysRenamedHint": "Ovi unosi dnevnika preimenovani su izvan Memryja dok je njihova mapa čekala postavku mape dnevnika, pa im nazivi više nisu datumi. Ostaju unosi dnevnika dok im ne vratite nazive. Pretvaranjem unosa u bilješku njegov se unos dnevnika uklanja sa svih vaših uređaja, a tekst ostaje kao bilješka. Njegove se oznake ne zadržavaju.",
     "turnIntoNotes": "Pretvori u bilješke"
+  },
+  "iosBeta": {
+    "badge": "Novo · TestFlight",
+    "title": "Memry za iPhone je u beta fazi",
+    "promptBody": "Vaš trezor na telefonu, end-to-end šifriran. Ostavite e-adresu i Apple će vam poslati TestFlight pozivnicu.",
+    "emailPlaceholder": "you@example.com",
+    "emailLabel": "E-adresa za TestFlight pozivnicu",
+    "submit": "Primi pozivnicu",
+    "sending": "Slanje…",
+    "listNote": "Dodajemo vas i na popis za iPhone betu radi novosti o lansiranju. Odjava je moguća bilo kada.",
+    "error": "Slanje TestFlight pozivnice nije uspjelo. Pokušajte ponovno.",
+    "sentTitle": "Provjerite pristiglu poštu",
+    "sentBody": "Apple je poslao pozivnicu na {email}. Može potrajati nekoliko minuta i možda završi u neželjenoj pošti.",
+    "stepInstall": "Instalirajte TestFlight iz App Storea",
+    "stepOpen": "Otvorite pozivnicu na svom iPhoneu",
+    "stepSignIn": "Prijavite se u Memry na telefonu",
+    "done": "Gotovo",
+    "dialogTitle": "Pridružite se aplikaciji Memry za iPhone",
+    "dialogBody": "Apple vam e-poštom šalje TestFlight pozivnicu. Upotrijebite e-adresu Apple ID-ja na svom iPhoneu.",
+    "entryTitle": "iPhone beta je dostupna",
+    "entrySubtitle": "Putem TestFlighta",
+    "entryJoin": "Pridruži se betai",
+    "entrySent": "Pozivnica poslana na {email}",
+    "sendAgain": "Pošalji ponovno"
   }
 }

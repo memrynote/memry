@@ -81,11 +81,13 @@ use crate::sync::socket_run::TerminalLatch;
 
 mod attachment_fetch;
 mod attachments_io;
+mod inbox_attachments;
 mod pass;
 mod realtime;
 mod snapshot_fallback;
 
 pub use attachment_fetch::AttachmentRedriveSummary;
+pub use inbox_attachments::{InboxAttachmentSyncSummary, InboxFileAttachment};
 pub use pass::SyncPassSummary;
 pub use realtime::{RealtimeListener, VaultRealtime};
 

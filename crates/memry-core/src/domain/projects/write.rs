@@ -24,6 +24,8 @@ use super::{ITEM_TYPE, equivalent_status, inbox, links, require_live};
 
 /// `ProjectCreateSchema`'s colour default (`packages/contracts/src/tasks-api.ts:137`).
 pub const DEFAULT_PROJECT_COLOR: &str = "#6366f1";
+/// Desktop's seeded Inbox id, shared by every device.
+pub const INBOX_ID: &str = "inbox";
 /// `ProjectCreateSchema` / `ProjectUpdateSchema` bounds.
 pub const MAX_PROJECT_NAME_CHARS: usize = 100;
 pub const MAX_PROJECT_DESCRIPTION_CHARS: usize = 500;
@@ -83,6 +85,16 @@ pub fn create(
     device_id: &str,
     now_ms: i64,
 ) -> Result<Durable<String>, StorageError> {
+    insert(conn, project, false, device_id, now_ms)
+}
+
+fn insert(
+    conn: &Connection,
+    project: &NewProject<'_>,
+    is_inbox: bool,
+    device_id: &str,
+    now_ms: i64,
+) -> Result<Durable<String>, StorageError> {
     let id = match project.id {
         Some(id) => tasks::valid_item_id(id)?.to_owned(),
         None => mint_id(),
@@ -111,7 +123,7 @@ pub fn create(
                 "name": project.name,
                 "color": color,
                 "position": next_position(tx)?,
-                "isInbox": false,
+                "isInbox": is_inbox,
                 "statuses": statuses,
                 "links": [],
                 "clock": clock,
@@ -129,6 +141,41 @@ pub fn create(
             Ok(id.clone())
         },
     )
+}
+
+/// The Inbox (desktop's `ensureDefaultTaskProject`,
+/// `apps/desktop/src/main/database/defaults.ts`): id `inbox`, desktop's
+/// name, colour and icon, the default three statuses. Written only when no
+/// Inbox record exists, tombstones included, so a vault that never synced
+/// (or a phone whose first sync has not reached it) still has somewhere to
+/// file a task.
+///
+/// Every device seeds the same id, as desktop does, and pushes it like any
+/// create (desktop's `seedUnclocked` pushes its seed on the first sync), so
+/// concurrent seeds meet as one record under the field merge (§6.8).
+/// Returns whether it wrote one.
+pub fn ensure_inbox(conn: &Connection, device_id: &str, now_ms: i64) -> Result<bool, StorageError> {
+    let exists: bool = conn
+        .query_row(
+            "SELECT EXISTS(SELECT 1 FROM projects WHERE id = ?1 OR is_inbox = 1)
+                 OR EXISTS(SELECT 1 FROM sync_items WHERE item_type = ?2 AND item_id = ?1)",
+            params![INBOX_ID, ITEM_TYPE],
+            |row| row.get(0),
+        )
+        .map_err(failed)?;
+    if exists {
+        return Ok(false);
+    }
+    let inbox = NewProject {
+        id: Some(INBOX_ID),
+        name: "Inbox",
+        description: Some("Quick capture for tasks"),
+        color: None,
+        icon: Some("📥"),
+        statuses: None,
+    };
+    insert(conn, &inbox, true, device_id, now_ms)?.acknowledge();
+    Ok(true)
 }
 
 /// Edits name, description, colour, icon and statuses in one write

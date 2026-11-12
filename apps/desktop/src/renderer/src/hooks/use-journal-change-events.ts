@@ -6,6 +6,7 @@ import {
   onJournalEntryDeleted,
   onJournalExternalChange
 } from '@/services/journal-service'
+import { isSameDayInOtherYear } from '@memry/domain-notes/journal'
 import { journalKeys } from './journal-query-keys'
 
 const ISO_DATE = /^\d{4}-\d{2}-\d{2}$/
@@ -43,6 +44,14 @@ export function useJournalChangeEvents(): void {
         queryKey: journalKeys.heatmap(Number(date.slice(0, 4)))
       })
       void queryClient.invalidateQueries({ queryKey: journalKeys.propertyRows() })
+      // Every open day that shows this date as the same day in another year.
+      void queryClient.invalidateQueries({
+        queryKey: journalKeys.sameDay(),
+        predicate: (query) => {
+          const shownDate = query.queryKey[journalKeys.sameDay().length]
+          return typeof shownDate === 'string' && isSameDayInOtherYear(shownDate, date)
+        }
+      })
     }
 
     const unsubscribeCreated = onJournalEntryCreated((event) => invalidate(event.date))

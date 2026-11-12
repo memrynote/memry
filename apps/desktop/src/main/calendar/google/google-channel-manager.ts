@@ -5,6 +5,19 @@ const log = createLogger('Calendar:GoogleChannelManager')
 
 type GoogleChannelClient = Pick<GoogleCalendarClient, 'watchCalendar' | 'stopChannel'>
 
+// Google answers events.watch with this reason for calendars that never push,
+// such as holiday calendars. Retrying cannot succeed, and polling covers them.
+const PUSH_NOT_SUPPORTED_REASON = 'pushNotSupportedForRequestedResource'
+
+function isPushNotSupportedError(err: unknown): boolean {
+  return (
+    typeof err === 'object' &&
+    err !== null &&
+    'apiReason' in err &&
+    err.apiReason === PUSH_NOT_SUPPORTED_REASON
+  )
+}
+
 export interface GoogleChannelManagerDeps {
   client: GoogleChannelClient
   resolveClient?(input: { sourceId: string; calendarId: string }): GoogleChannelClient
@@ -19,6 +32,9 @@ export interface GoogleChannelManagerDeps {
   }): Promise<void>
   attachResourceId(input: { channelId: string; resourceId: string }): Promise<void>
   deleteOnServer(input: { channelId: string }): Promise<void>
+  /** Whether Google refused a channel for this source on an earlier run. */
+  isPushUnsupported?(sourceId: string): boolean
+  markPushUnsupported?(sourceId: string): void
   generateToken(): string
   generateChannelId(): string
   webhookUrl: string
@@ -53,7 +69,7 @@ export function createGoogleChannelManager(deps: GoogleChannelManagerDeps): Goog
     deps.onActiveCountChange?.(states.size)
   }
 
-  async function registerFresh(sourceId: string, calendarId: string): Promise<ChannelState> {
+  async function registerFresh(sourceId: string, calendarId: string): Promise<ChannelState | null> {
     const channelId = deps.generateChannelId()
     const plaintextToken = deps.generateToken()
     const nowMs = (deps.now ?? Date.now)()
@@ -63,13 +79,28 @@ export function createGoogleChannelManager(deps: GoogleChannelManagerDeps): Goog
 
     await deps.registerOnServer({ channelId, sourceId, token: plaintextToken, expiresAt })
 
-    const watchResult = await client.watchCalendar({
-      calendarId,
-      channelId,
-      token: plaintextToken,
-      webhookUrl: deps.webhookUrl,
-      ttlSeconds: deps.ttlSeconds
-    })
+    let watchResult: Awaited<ReturnType<GoogleChannelClient['watchCalendar']>>
+    try {
+      watchResult = await client.watchCalendar({
+        calendarId,
+        channelId,
+        token: plaintextToken,
+        webhookUrl: deps.webhookUrl,
+        ttlSeconds: deps.ttlSeconds
+      })
+    } catch (err) {
+      if (!isPushNotSupportedError(err)) throw err
+      deps.markPushUnsupported?.(sourceId)
+      log.info('Google calendar does not support push; polling covers it', { sourceId })
+      await deps.deleteOnServer({ channelId }).catch((deleteErr: unknown) => {
+        log.warn('deleteOnServer failed (ignoring; cron will reap)', {
+          sourceId,
+          channelId,
+          err: deleteErr
+        })
+      })
+      return null
+    }
 
     await deps.attachResourceId({ channelId, resourceId: watchResult.resourceId })
 
@@ -107,7 +138,7 @@ export function createGoogleChannelManager(deps: GoogleChannelManagerDeps): Goog
     }
     try {
       const fresh = await registerFresh(sourceId, prev.calendarId)
-      states.set(sourceId, fresh)
+      if (fresh) states.set(sourceId, fresh)
       emitCount()
     } catch (err) {
       log.error('Rotation: failed to register fresh channel', { sourceId, err })
@@ -158,8 +189,10 @@ export function createGoogleChannelManager(deps: GoogleChannelManagerDeps): Goog
   }): Promise<void> {
     if (!deps.featureEnabled) return
     if (states.has(input.sourceId)) return
+    if (deps.isPushUnsupported?.(input.sourceId)) return
 
     const state = await registerFresh(input.sourceId, input.calendarId)
+    if (!state) return
     states.set(input.sourceId, state)
     emitCount()
   }

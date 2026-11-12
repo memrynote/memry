@@ -3,6 +3,7 @@ import MemryCore
 import Security
 import Synchronization
 import Testing
+import UIKit
 
 @testable import Memry
 
@@ -251,6 +252,11 @@ struct SignInWiringTests {
         // Chapter 02 §2.3: absent means the server's `default`. Picking one is
         // T155's, after registration.
         #expect(descriptor.vaultId == nil)
+        // Chapter 02 §2.3.4 (#4375): an iPad says so, since `platform` is `ios`
+        // for both.
+        #expect(AuthComposition.formFactor(.pad) == .tablet)
+        #expect(AuthComposition.formFactor(.phone) == .phone)
+        #expect(descriptor.formFactor == AuthComposition.formFactor(UIDevice.current.userInterfaceIdiom))
         // Chapter 11 §11.2's list, not chapter 02 §2.12's. They coincide for a
         // phone and are different enums.
         #expect(AuthComposition.clientPlatform == "ios")

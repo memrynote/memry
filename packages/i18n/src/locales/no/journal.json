@@ -236,5 +236,21 @@
     "range": "{start} – {end}",
     "openTask": "{title}, {range}",
     "completeTask": "Fullfør {title}"
+  },
+  "pastYears": {
+    "title": "På denne dagen",
+    "count": "{count, plural, one {# annet år} other {# andre år}}",
+    "showAll": "Alle år",
+    "showPreviews": "Forhåndsvisninger",
+    "yearsAgo": "{count, plural, one {for # år siden} other {for # år siden}}",
+    "yearsLater": "{count, plural, one {# år senere} other {# år senere}}",
+    "words": "{count, plural, one {# ord} other {# ord}}",
+    "openDay": "Åpne {date}",
+    "showFull": "Vis hele innlegget",
+    "showLess": "Vis mindre",
+    "loadError": "Kunne ikke laste inn denne dagen fra andre år.",
+    "previousYear": "Samme dag, forrige år",
+    "nextYear": "Samme dag, neste år",
+    "goToYear": "Gå til denne dagen i {year}"
   }
 }

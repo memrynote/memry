@@ -504,7 +504,8 @@
       "loading": "جارٍ تحميل الإعدادات…"
     },
     "groups": {
-      "footer": "التذييل"
+      "footer": "التذييل",
+      "pastYears": "السنوات الماضية"
     },
     "template": {
       "label": "القالب",
@@ -562,6 +563,14 @@
     "showInSidebar": {
       "label": "عرض في الشريط الجانبي",
       "description": "عرض مجلد اليوميات ومدخلاتها في شجرة الملاحظات"
+    },
+    "showOnThisDay": {
+      "label": "إظهار «في مثل هذا اليوم»",
+      "description": "عرض التاريخ نفسه من السنوات الماضية أسفل الإدخال"
+    },
+    "allYearsView": {
+      "label": "إظهار كل السنوات كاملة",
+      "description": "اليوميات الدائمة: كل سنوات هذا التاريخ في صفحة واحدة، أسفل الإدخال"
     }
   },
   "tasks": {
@@ -1110,7 +1119,16 @@
       "sending": "جارٍ إرسال الرمز…"
     },
     "oauth": {
-      "google": "المتابعة باستخدام Google"
+      "google": "المتابعة باستخدام Google",
+      "waiting": "أكمل تسجيل الدخول عبر Google في متصفحك.",
+      "browserUnavailable": "تعذّر فتح المتصفح.",
+      "manualInstructions": "انسخ رابط تسجيل الدخول وافتحه في متصفح على هذا الكمبيوتر. أبقِ memrynote مفتوحًا أثناء تسجيل الدخول.",
+      "linkLabel": "رابط تسجيل الدخول",
+      "copyLink": "نسخ رابط تسجيل الدخول",
+      "retryBrowser": "حاول فتح المتصفح مرة أخرى",
+      "copied": "تم نسخ رابط تسجيل الدخول.",
+      "copyFailed": "تعذّر نسخ رابط تسجيل الدخول. حدّده وانسخه من الحقل أعلاه.",
+      "cancel": "استخدم طريقة تسجيل دخول أخرى"
     },
     "otp": {
       "title": "أدخل رمز التحقق",
@@ -1347,6 +1365,7 @@
       "keySaveError": "تعذّر حفظ مفتاح OpenAI"
     },
     "embedding": {
+      "load": "تحميل النموذج",
       "loaded": "تم التحميل",
       "loading": "جارٍ التحميل",
       "downloadLoad": "تنزيل النموذج وتحميله",
@@ -1371,7 +1390,8 @@
         "ollama": "Ollama (محلي)",
         "openai": "OpenAI",
         "anthropic": "Anthropic",
-        "google": "Google Gemini"
+        "google": "Google Gemini",
+        "custom": "مخصّص (متوافق مع OpenAI)"
       },
       "model": "النموذج",
       "modelDescription": "نموذج اللغة لإعادة الكتابة والتلخيص",
@@ -1381,6 +1401,11 @@
       "apiKeyPlaceholder": "إدخال مفتاح {provider} API",
       "ollamaUrl": "عنوان URL لخادم Ollama",
       "ollamaUrlDescription": "عنوان الخادم المحلي",
+      "customUrl": "عنوان URL الأساسي",
+      "customUrlDescription": "أي نقطة نهاية متوافقة مع OpenAI، مثل OpenRouter",
+      "customUrlPlaceholder": "https://openrouter.ai/api/v1",
+      "customApiKeyPlaceholder": "مفتاح API (اختياري)",
+      "customModelPlaceholder": "معرّف النموذج",
       "connection": "الاتصال",
       "activePort": "نشط على المنفذ {port}",
       "notConnected": "غير متصل",
@@ -2032,7 +2057,7 @@
       "subtitle": "إدارة تعريفات الخصائص في جميع الملاحظات"
     },
     "loading": "جارٍ تحميل الخصائص…",
-    "empty": "لا توجد تعريفات خصائص بعد. أضف خاصية من نوع «الحالة» أو «اختيار» أو «اختيار متعدد» إلى أي ملاحظة للبدء.",
+    "empty": "لا توجد خصائص بعد. أضف خاصية إلى أي ملاحظة للبدء.",
     "filterPlaceholder": "تصفية الخصائص…",
     "noMatch": "لا توجد خصائص تطابق «{query}»",
     "summary": "{count, plural, zero {تعريفات الخصائص: #} one {تعريفات الخصائص: #} two {تعريفات الخصائص: #} few {تعريفات الخصائص: #} many {تعريفات الخصائص: #} other {تعريفات الخصائص: #}}",
@@ -2072,6 +2097,14 @@
     },
     "v2": {
       "actionsAria": "إجراءات {name}"
+    },
+    "usage": {
+      "heading": "مستخدمة في",
+      "noteCount": "{count, plural, zero {لا توجد ملاحظات} one {ملاحظة واحدة} two {ملاحظتان} few {# ملاحظات} many {# ملاحظة} other {# ملاحظة}}",
+      "mismatchCount": "قيم لا تطابق {type}: {count}",
+      "mismatchNote": "لا تطابق {type}",
+      "none": "لا توجد ملاحظات تستخدم هذه الخاصية",
+      "loadFailed": "تعذّر تحميل الملاحظات التي تستخدم هذه الخاصية"
     }
   },
   "commandLine": {
@@ -2407,7 +2440,6 @@
   "phaseI": {
     "errors": {
       "failedToUpdateTagColor": "تعذّر تحديث لون الوسم",
-      "googleSignInFailed": "فشل تسجيل الدخول باستخدام Google",
       "failedToSendVerificationCode": "تعذّر إرسال رمز التحقق",
       "invalidVerificationCode": "رمز التحقق غير صالح",
       "accountSetupFailed": "فشل إعداد الحساب",
@@ -2464,7 +2496,17 @@
       "running": "قيد التشغيل",
       "tokenHint": "لهذا التشغيل فقط",
       "copy": "نسخ",
-      "rotate": "تدوير"
+      "rotate": "تدوير",
+      "clientConfig": {
+        "label": "إعداد العميل",
+        "hint": "يُنسخ مع عنوان URL والرمز المميز لهذا التشغيل",
+        "copy": "نسخ إعداد {client}"
+      },
+      "notes": {
+        "readOnly": "يمكن للعملاء الخارجيين القراءة فقط. تُرجع أدوات الكتابة PERMISSION_DENIED، لذا اكتب عبر Agent Chat أو سطر أوامر memrynote.",
+        "restart": "يتغير عنوان URL والرمز المميز عند إعادة تشغيل memrynote أو تبديل الخزنة أو تجديد الرمز. حدّث إعداد العميل في كل مرة، ثم أعد تشغيل العميل.",
+        "docs": "دليل الإعداد"
+      }
     }
   },
   "agentProviders": {

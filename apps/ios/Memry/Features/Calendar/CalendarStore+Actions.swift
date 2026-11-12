@@ -31,13 +31,16 @@ extension CalendarStore {
             let id = item.sourceId
             let changes = Self.timeChanges(start: newStart, end: newEnd)
             guard await write({ try $0.updateEvent(id: id, changes: changes) }) != nil else { return }
+            CalendarTelemetry.eventUpdated(changes)
             let startDate = CalendarDates.date(newStart) ?? item.startDate
             let message = endMinute == nil
                 ? CalendarCopy.movedTo(CalendarItemStyle.time(startDate))
                 : CalendarCopy.resizedTo(CalendarItemStyle.time(startDate), newEnd.flatMap(CalendarDates.date).map(CalendarItemStyle.time) ?? "")
             showToast(message) { [weak self] in
                 let revert = Self.timeChanges(start: oldStart, end: oldEnd)
-                await self?.write { try $0.updateEvent(id: id, changes: revert) }
+                if await self?.write({ try $0.updateEvent(id: id, changes: revert) }) != nil {
+                    CalendarTelemetry.eventUpdated(revert)
+                }
             }
         case "task":
             let time = String(format: "%02d:%02d", start / 60, start % 60)
@@ -83,6 +86,7 @@ extension CalendarStore {
     func promote(_ item: CalendarItem, dontAskAgain: Bool = false) async -> String? {
         let id = item.sourceId
         let eventId = await write { try $0.promote(externalEventId: id) }
+        if eventId != nil { CalendarTelemetry.eventPromoted(provider: item.source.provider) }
         if eventId != nil, dontAskAgain {
             await write { try $0.setSetting(path: "calendar.google.promoteConfirmDismissed", valueJson: "true") }
         }
@@ -110,12 +114,13 @@ extension CalendarStore {
         guard let tasks else { return }
         let core = tasks.core
         guard let change = await read({ try work(core, id) }) else { return }
+        TasksTelemetry.track(change)
         await tasks.refresh()
         await refreshAllWindows()
         scheduleSync()
         guard let message else { return }
         showToast(message) { [weak self] in
-            _ = await self?.read { try core.undo(change: change) }
+            if let undone = await self?.read({ try core.undo(change: change) }) { TasksTelemetry.track(undone) }
             await tasks.refresh()
             await self?.refreshAllWindows()
             self?.scheduleSync()

@@ -46,6 +46,24 @@ describe('getIncomingReferences', () => {
     )
   })
 
+  it('gives a journal entry the relations that name its day, even ones set before it was written', () => {
+    insertTestNote(db, 'nte_obs')
+    setPropertyRefs(db, 'nte_obs', { related: ['memry://journal/2026-11-08'] })
+    insertNoteCache(db, {
+      id: 'j2026-11-08',
+      path: 'journal/2026-11-08.md',
+      title: '2026-11-08',
+      date: '2026-11-08',
+      createdAt: '2026-11-08T00:00:00.000Z',
+      modifiedAt: '2026-11-08T00:00:00.000Z'
+    })
+
+    expect(getIncomingReferences(db, 'j2026-11-08')).toContainEqual({
+      sourceNoteId: 'nte_obs',
+      via: { kind: 'property', propertyName: 'related' }
+    })
+  })
+
   it('still includes wiki links', () => {
     insertTestNote(db, 'nte_dad')
     insertTestNote(db, 'nte_note')

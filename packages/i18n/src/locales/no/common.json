@@ -3,9 +3,7 @@
     "copyFailed": "Kunne ikke kopiere portalen",
     "hiddenCount": "{count} skjult",
     "windowFailed": "Portalen kunne ikke åpnes. Åpne kildenotatet i stedet.",
-    "noTarget": "Denne portalen har ikke noe mål ennå. Legg til et notat i definisjonen, eller fjern blokken.",
-    "invalidJson": "Definisjonen til denne portalen er ikke gyldig JSON. Rett den under, eller fjern blokken.",
-    "invalidShape": "Definisjonen til denne portalen har verken notat eller søk. Rett den under, eller fjern blokken.",
+    "unreadable": "Denne portalen kan ikke leses. Fjern blokken og legg til en ny portal.",
     "search": {
       "editQuery": "Rediger søket",
       "count": "{count, plural, one {# blokk} other {# blokker}}",
@@ -1276,6 +1274,7 @@
     "label": "Hjelp og tilbakemelding",
     "reportBug": "Rapporter en feil",
     "requestFeature": "Foreslå en funksjon",
+    "joinTestflight": "Bli med i TestFlight",
     "starOnGithub": "Gi en stjerne på GitHub",
     "version": "MemryNote {version}",
     "whatsNew": "Nyheter",
@@ -1695,5 +1694,29 @@
     "journalDaysRenamed": "Noen dagbokoppføringer har ikke lenger en dato som navn",
     "journalDaysRenamedHint": "Disse dagbokoppføringene ble gitt nytt navn utenfor Memry mens mappen deres ventet på innstillingen for dagbokmappen, så navnene deres er ikke lenger datoer. De forblir dagbokoppføringer til du gir dem navnene tilbake. Gjør du en om til et notat, fjernes dagbokoppføringen på alle enhetene dine, og teksten beholdes som et notat. Taggene beholdes ikke.",
     "turnIntoNotes": "Gjør om til notater"
+  },
+  "iosBeta": {
+    "badge": "Nytt · TestFlight",
+    "title": "Memry for iPhone er i beta",
+    "promptBody": "Hvelvet ditt på telefonen, ende-til-ende-kryptert. Legg igjen e-postadressen din, så sender Apple deg en TestFlight-invitasjon.",
+    "emailPlaceholder": "you@example.com",
+    "emailLabel": "E-post for TestFlight-invitasjonen",
+    "submit": "Få invitasjonen",
+    "sending": "Sender …",
+    "listNote": "Vi legger deg også til i betalisten for iPhone, slik at du får nyheter om lanseringen. Du kan melde deg av når som helst.",
+    "error": "Kunne ikke sende TestFlight-invitasjonen. Prøv igjen.",
+    "sentTitle": "Sjekk innboksen din",
+    "sentBody": "Apple har sendt invitasjonen til {email}. Det kan ta noen minutter, og den kan havne i søppelpost.",
+    "stepInstall": "Installer TestFlight fra App Store",
+    "stepOpen": "Åpne invitasjonen på iPhonen din",
+    "stepSignIn": "Logg inn på Memry på telefonen din",
+    "done": "Ferdig",
+    "dialogTitle": "Bli med i Memry for iPhone",
+    "dialogBody": "Apple sender deg en TestFlight-invitasjon på e-post. Bruk e-postadressen til Apple-ID-en på iPhonen din.",
+    "entryTitle": "iPhone-betaen er i gang",
+    "entrySubtitle": "Via TestFlight",
+    "entryJoin": "Bli med i betaen",
+    "entrySent": "Invitasjon sendt til {email}",
+    "sendAgain": "Send på nytt"
   }
 }

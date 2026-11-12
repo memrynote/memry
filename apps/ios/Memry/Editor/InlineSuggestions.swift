@@ -109,11 +109,15 @@ enum InlineTrigger: Equatable {
             if character == 93, string.character(at: index - 1) == 93 { return nil } // "]]"
             if character == 91, string.character(at: index - 1) == 91 { // "[["
                 let start = index - 1
-                let query = string.substring(with: NSRange(location: index + 1, length: caret - index - 1))
+                var query = string.substring(with: NSRange(location: index + 1, length: caret - index - 1))
                 var length = caret - start
                 if caret + 2 <= string.length,
                    string.substring(with: NSRange(location: caret, length: 2)) == "]]" {
                     length += 2
+                } else if query.hasSuffix("]"), caret < string.length, string.character(at: caret) == 93 {
+                    // Half way through typing the closing `]]`.
+                    query.removeLast()
+                    length += 1
                 }
                 return .wiki(range: NSRange(location: start, length: length), query: query)
             }

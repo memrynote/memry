@@ -5,6 +5,7 @@
     "create": "Vytvořit"
   },
   "wikiLinkPreview": {
+    "journalUnwritten": "Zápis pro {date} ještě není napsán. Kliknutím otevřete tento den",
     "notFound": "Nenalezeno – kliknutím vytvoříte „{title}“"
   },
   "wikiLinkMenu": {
@@ -138,6 +139,7 @@
     "actions": {
       "openInNewTab": "Otevřít na nové kartě",
       "openToTheSide": "Otevřít vedle",
+      "openFolderView": "Otevřít zobrazení složky",
       "newNote": "Nová poznámka",
       "newFolder": "Nová složka",
       "showTasks": "Zobrazit úkoly",
@@ -187,7 +189,8 @@
     },
     "toast": {
       "selectionBookmarked": "Položky přidány do záložek: {count}",
-      "selectionBookmarkFailed": "Vybrané položky nelze přidat do záložek"
+      "selectionBookmarkFailed": "Vybrané položky nelze přidat do záložek",
+      "pairedNoteNameTaken": "Poznámka s názvem {name} už tam existuje"
     }
   },
   "editor": {
@@ -423,12 +426,14 @@
       "savedView": "Uložené zobrazení",
       "savedViewMissing": "Uložené zobrazení „{name}“ už neexistuje, proto je použito výchozí zobrazení.",
       "openAsTab": "Otevřít jako kartu",
+      "newNote": "Nová poznámka",
+      "newViewTitle": "Nové zobrazení",
+      "newViewSubtext": "Nová složka vedle této poznámky, zobrazená zde",
+      "newViewFailed": "Složku pro toto zobrazení se nepodařilo vytvořit.",
       "empty": "Tomuto zobrazení zatím nic neodpovídá.",
       "loadFailed": "Toto zobrazení se nepodařilo načíst. Samotné poznámky zůstaly beze změny.",
       "folderMissing": "Tato složka už v trezoru není. Vyberte jiný zdroj.",
-      "invalidJson": "Definice tohoto zobrazení není platný JSON. Opravte ji níže, nebo blok odeberte.",
-      "invalidShape": "Definice tohoto zobrazení nemá zdroj. Vyberte ho výše, nebo definici opravte níže.",
-      "definition": "Definice"
+      "unreadable": "Toto zobrazení nelze přečíst. Vyberte výše zdroj nebo blok odeberte."
     },
     "chart": {
       "title": "Graf",
@@ -668,6 +673,8 @@
   },
   "menus": {
     "wiki": {
+      "journalDay": "Deník · {date}",
+      "journalDayUnwritten": "Deník · ještě nenapsáno",
       "aria": "Návrhy poznámek",
       "loading": "Načítání poznámek…",
       "empty": "Nebyly nalezeny žádné poznámky",
@@ -782,6 +789,12 @@
     "viaProperty": "{property} → {title}",
     "viaPortal": "Zobrazeno v portálu"
   },
+  "references": {
+    "filterAll": "Vše",
+    "filterNotes": "Poznámky",
+    "filterJournal": "Deník",
+    "filterBy": "Filtrovat odkazy: {filter}"
+  },
   "unlinkedMentions": {
     "title": "Nepropojené zmínky",
     "summary": "{count, plural, one {# nepropojená zmínka} few {# nepropojené zmínky} many {# nepropojené zmínky} other {# nepropojených zmínek}}",
@@ -886,6 +899,7 @@
     "showOnCalendar": "Zobrazit v kalendáři",
     "showingOnCalendar": "Zobrazuje se v kalendáři",
     "relation": {
+      "unwrittenDay": "Ještě nenapsáno",
       "deleted": "Smazáno",
       "removeAria": "Odebrat {title}",
       "addAria": "Přidat relaci",

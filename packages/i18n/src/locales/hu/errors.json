@@ -146,6 +146,7 @@
     "requestTimedOut": "A szinkronizálási kérés túllépte az időkorlátot. Ellenőrizze az internetkapcsolatát."
   },
   "googleCalendar": {
+    "requestRejected": "A Google elutasította ezt az elemet. Ellenőrizze a dátumát és az időpontját, majd próbálja újra.",
     "connectFailed": "Nem sikerült csatlakozni a Google Calendarhoz. Próbálja újra egy pillanat múlva.",
     "reconnectNeeded": "A Google Calendar-kapcsolata lejárt. Válassza le, majd csatlakoztassa újra.",
     "misconfigured": "A Google Calendar nincs helyesen beállítva. Ha ez továbbra is előfordul, forduljon az ügyfélszolgálathoz.",
@@ -159,7 +160,7 @@
   },
   "ai": {
     "inlineDisabled": "A szövegközi MI-szerkesztés ki van kapcsolva",
-    "listOllamaModelsFailed": "Nem sikerült listázni az Ollama-modelleket",
+    "listModelsFailed": "Nem sikerült lekérni a modellek listáját",
     "writingAssistInvalid": "Ezt a kérést nem lehetett elküldeni az MI-modellnek.",
     "apiKeyMissing": "Az íróeszközök használatához adja meg a(z) {provider} API-kulcsát a Beállítások → MI részben.",
     "apiKeyInvalid": "A(z) {provider} API-kulcsát elutasították. Ellenőrizze a Beállítások → MI részben.",
@@ -186,6 +187,10 @@
     "removeDeviceFailed": "Nem sikerült eltávolítani az eszközt",
     "renameDeviceFailed": "Nem sikerült átnevezni az eszközt",
     "initiateOAuthFailed": "Nem sikerült elindítani az OAuth-folyamatot",
+    "retryOAuthFailed": "Nem sikerült újra megnyitni a bejelentkezéshez használt böngészőt. Kezdje újra a bejelentkezést.",
+    "oauthExpired": "A bejelentkezés lejárt. Próbálja újra.",
+    "oauthInvalidResponse": "Nem sikerült érvényes bejelentkezési hivatkozást kapni. Próbálja újra.",
+    "oauthCancelled": "A Google-bejelentkezés megszakadt. Próbálja újra.",
     "setupFirstDeviceOAuthFailed": "Nem sikerült beállítani az első eszközt OAuth-tal",
     "confirmRecoveryPhraseFailed": "Nem sikerült megerősíteni a helyreállítási kifejezést"
   },

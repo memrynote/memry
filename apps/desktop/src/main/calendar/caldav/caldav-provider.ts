@@ -9,11 +9,7 @@ import type { DataDb } from '../../database'
 import { createLogger } from '../../lib/logger'
 import { mapCalendarSource } from '../calendar-source-record'
 import { emitCalendarChanged } from '../change-events'
-import {
-  getCalendarSourceById,
-  upsertCalendarSource
-} from '../repositories/calendar-sources-repository'
-import { syncCalendarSourceUpdate } from '../runtime-effects'
+import { getCalendarSourceById } from '../repositories/calendar-sources-repository'
 import { PROVIDER_CAPABILITIES } from '../provider/capabilities'
 import type { ProviderDefinition } from '../provider/registry'
 import { purgeCalendarSourceMirrors } from '../provider/source-mirrors'
@@ -162,16 +158,6 @@ export const caldavCalendarProvider: ProviderDefinition = {
     // does for Google; ticking pulls straight away.
     if (!after.isSelected) {
       purgeCalendarSourceMirrors(db, before.provider, [before])
-      // The events are gone, so the cursor that covered them is too: turning
-      // the calendar back on must pull it in full.
-      if (after.syncCursor) {
-        upsertCalendarSource(db, {
-          ...after,
-          syncCursor: null,
-          modifiedAt: new Date().toISOString()
-        })
-        syncCalendarSourceUpdate(after.id)
-      }
       dropStaleDefaultWriteTarget(db)
       return
     }

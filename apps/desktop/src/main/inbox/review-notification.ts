@@ -12,23 +12,17 @@
  * @module main/inbox/review-notification
  */
 
-import { BrowserWindow, Notification } from 'electron'
+import { Notification } from 'electron'
 import { getMainI18n } from '../lib/main-i18n'
+import { getMainWindow } from '../main-window'
 import { InboxChannels } from '@memry/contracts/inbox-channels'
 import { createLogger } from '../lib/logger'
 
 const logger = createLogger('InboxReview')
 
-/**
- * Focus the app and route it to the inbox — the review notification's click action.
- *
- * Takes the first *live* window rather than `getAllWindows()[0]`: short-lived
- * windows (splash, quick capture, print/export) can still be listed after
- * destruction, and any access to one throws "Object has been destroyed" — which
- * would kill the click handler with nothing focused and nothing navigated.
- */
+/** Focus the app and route it to the inbox — the review notification's click action. */
 function openInboxOnClick(): void {
-  const win = BrowserWindow.getAllWindows().find((candidate) => !candidate.isDestroyed())
+  const win = getMainWindow()
   if (!win) return
   if (win.isMinimized()) win.restore()
   win.focus()

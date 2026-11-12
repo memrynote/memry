@@ -146,6 +146,7 @@
     "requestTimedOut": "La requête de synchronisation a expiré. Vérifiez votre connexion Internet."
   },
   "googleCalendar": {
+    "requestRejected": "Google a refusé cet élément. Vérifiez sa date et son heure, puis réessayez.",
     "connectFailed": "Impossible de se connecter à Google Calendar. Réessayez dans un instant.",
     "reconnectNeeded": "Votre connexion à Google Calendar a expiré. Déconnectez Google Calendar, puis connectez-le à nouveau.",
     "misconfigured": "Google Calendar n'est pas configuré correctement. Contactez l'assistance si cela se reproduit.",
@@ -159,7 +160,7 @@
   },
   "ai": {
     "inlineDisabled": "La modification par l'IA dans l'éditeur est désactivée",
-    "listOllamaModelsFailed": "Impossible de récupérer la liste des modèles Ollama",
+    "listModelsFailed": "Impossible de lister les modèles",
     "writingAssistInvalid": "Cette requête n'a pas pu être envoyée au modèle d'IA.",
     "apiKeyMissing": "Ajoutez votre clé d'API {provider} dans Paramètres → IA pour utiliser les outils d'écriture.",
     "apiKeyInvalid": "Votre clé d'API {provider} a été refusée. Vérifiez-la dans Paramètres → IA.",
@@ -186,6 +187,10 @@
     "removeDeviceFailed": "Impossible de retirer l'appareil",
     "renameDeviceFailed": "Impossible de renommer l'appareil",
     "initiateOAuthFailed": "Impossible de lancer l'authentification OAuth",
+    "retryOAuthFailed": "Impossible de rouvrir le navigateur de connexion. Relancez la connexion.",
+    "oauthExpired": "La connexion a expiré. Veuillez réessayer.",
+    "oauthInvalidResponse": "Impossible d'obtenir un lien de connexion valide. Veuillez réessayer.",
+    "oauthCancelled": "La connexion avec Google a été annulée. Veuillez réessayer.",
     "setupFirstDeviceOAuthFailed": "Impossible de configurer le premier appareil via OAuth",
     "confirmRecoveryPhraseFailed": "Impossible de confirmer la phrase de récupération"
   },

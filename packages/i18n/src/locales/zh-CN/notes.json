@@ -5,6 +5,7 @@
     "create": "创建"
   },
   "wikiLinkPreview": {
+    "journalUnwritten": "{date}的日记尚未撰写。点击打开该日",
     "notFound": "未找到——点击创建“{title}”"
   },
   "wikiLinkMenu": {
@@ -138,6 +139,7 @@
     "actions": {
       "openInNewTab": "在新标签页中打开",
       "openToTheSide": "在侧边打开",
+      "openFolderView": "打开文件夹视图",
       "newNote": "新建笔记",
       "newFolder": "新建文件夹",
       "showTasks": "显示任务",
@@ -187,7 +189,8 @@
     },
     "toast": {
       "selectionBookmarked": "已收藏 {count} 项",
-      "selectionBookmarkFailed": "无法收藏所选项"
+      "selectionBookmarkFailed": "无法收藏所选项",
+      "pairedNoteNameTaken": "那里已有名为 {name} 的笔记"
     }
   },
   "editor": {
@@ -423,12 +426,14 @@
       "savedView": "已保存的视图",
       "savedViewMissing": "已保存的视图“{name}”已不存在，因此此处显示默认视图。",
       "openAsTab": "作为标签页打开",
+      "newNote": "新建笔记",
+      "newViewTitle": "新建视图",
+      "newViewSubtext": "在此笔记旁新建的文件夹，列在这里",
+      "newViewFailed": "无法为此视图创建文件夹。",
       "empty": "还没有符合此视图的内容。",
       "loadFailed": "无法加载此视图。笔记本身未被改动。",
       "folderMissing": "此文件夹已不在仓库中。请选择其他来源。",
-      "invalidJson": "此视图的定义不是有效的 JSON。请在下方修正，或移除此块。",
-      "invalidShape": "此视图的定义没有来源。请在上方选择一个，或在下方修正。",
-      "definition": "定义"
+      "unreadable": "无法读取此视图。请在上方选择来源，或移除该块。"
     },
     "chart": {
       "title": "图表",
@@ -668,6 +673,8 @@
   },
   "menus": {
     "wiki": {
+      "journalDay": "日记 · {date}",
+      "journalDayUnwritten": "日记 · 尚未撰写",
       "aria": "笔记建议",
       "loading": "正在加载笔记…",
       "empty": "未找到笔记",
@@ -782,6 +789,12 @@
     "viaProperty": "{property} → {title}",
     "viaPortal": "显示在传送门中"
   },
+  "references": {
+    "filterAll": "全部",
+    "filterNotes": "笔记",
+    "filterJournal": "日记",
+    "filterBy": "筛选引用：{filter}"
+  },
   "unlinkedMentions": {
     "title": "未链接的提及",
     "summary": "{count, plural, other {# 处未链接的提及}}",
@@ -886,6 +899,7 @@
     "showOnCalendar": "在日历上显示",
     "showingOnCalendar": "已在日历上显示",
     "relation": {
+      "unwrittenDay": "尚未撰写",
       "deleted": "已删除",
       "removeAria": "移除 {title}",
       "addAria": "添加关联",

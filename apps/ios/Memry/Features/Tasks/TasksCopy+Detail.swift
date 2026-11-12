@@ -99,7 +99,7 @@ extension TasksCopy {
         static let noRelatedAvailable = "No items available"
         static let noRelatedItems = "No related items yet"
         static let relatedItemMissing = "That related item is no longer in this vault."
-        static let relatedCanvasElsewhere = "A canvas. Canvases open on your computer."
+        static let relatedCanvasElsewhere = "A canvas. Canvases open on another device."
         static let relatedItemFallback = "item"
 
         static func removeRelatedItem(_ title: String) -> String { "Remove related item \(title)" }

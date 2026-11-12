@@ -27,8 +27,12 @@ export const FIREFOX_ADDONS_URL =
   'https://addons.mozilla.org/en-US/firefox/addon/memrynote-web-clipper/'
 export const CHECKOUT_RELEASE_TIMING = 'Coming soon'
 
+/** Columns of the header Features sheet, in display order: grouped by the job each feature does. */
+export const FEATURE_NAV_GROUPS = ['Capture', 'Write', 'Plan', 'Ask'] as const
+
 type LandingDropdownItemBase = {
   label: string
+  group: (typeof FEATURE_NAV_GROUPS)[number]
   description: string
   href: string
   disabled?: boolean
@@ -50,6 +54,7 @@ export type LandingDropdownItem =
 export const FEATURE_NAV_ITEMS: readonly LandingDropdownItem[] = [
   {
     label: 'Inbox',
+    group: 'Capture',
     description: 'Capture links, files, voice',
     href: '/features/inbox',
     icon: '/mascots/inbox.webp',
@@ -57,6 +62,7 @@ export const FEATURE_NAV_ITEMS: readonly LandingDropdownItem[] = [
   },
   {
     label: 'Journal',
+    group: 'Write',
     description: 'Daily writing with context',
     href: '/features/journal',
     icon: '/mascots/journal.webp',
@@ -64,6 +70,7 @@ export const FEATURE_NAV_ITEMS: readonly LandingDropdownItem[] = [
   },
   {
     label: 'Notes',
+    group: 'Write',
     description: 'Markdown, backlinks, properties',
     href: '/features/notes',
     icon: '/mascots/notes.webp',
@@ -71,6 +78,7 @@ export const FEATURE_NAV_ITEMS: readonly LandingDropdownItem[] = [
   },
   {
     label: 'Tasks',
+    group: 'Plan',
     description: 'Projects, kanban, recurring work',
     href: '/features/tasks',
     icon: '/mascots/tasks.webp',
@@ -78,6 +86,7 @@ export const FEATURE_NAV_ITEMS: readonly LandingDropdownItem[] = [
   },
   {
     label: 'Calendar',
+    group: 'Plan',
     description: 'Schedule, deadlines, day view',
     href: '/features/calendar',
     icon: '/mascots/calendar.webp',
@@ -85,6 +94,7 @@ export const FEATURE_NAV_ITEMS: readonly LandingDropdownItem[] = [
   },
   {
     label: 'AI Agent',
+    group: 'Ask',
     description: 'Optional. Turn AI on or off anytime.',
     href: '/features/ai-agent',
     icon: '/mascots/ai-agent.webp',

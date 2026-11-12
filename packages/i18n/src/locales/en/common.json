@@ -3,9 +3,7 @@
     "copyFailed": "Could not copy the portal",
     "hiddenCount": "{count} hidden",
     "windowFailed": "This portal could not be opened. Open the source note instead.",
-    "noTarget": "This portal has no target yet. Add a note to the definition, or remove the block.",
-    "invalidJson": "This portal’s definition is not valid JSON. Fix it below, or remove the block.",
-    "invalidShape": "This portal’s definition has no note or search. Fix it below, or remove the block.",
+    "unreadable": "This portal can’t be read. Remove the block and add a new portal.",
     "search": {
       "editQuery": "Edit query",
       "count": "{count, plural, one {# block} other {# blocks}}",
@@ -1276,6 +1274,7 @@
     "label": "Help and feedback",
     "reportBug": "Report a bug",
     "requestFeature": "Request a feature",
+    "joinTestflight": "Join TestFlight",
     "starOnGithub": "Star on GitHub",
     "version": "MemryNote {version}",
     "whatsNew": "What's new",
@@ -1695,5 +1694,29 @@
     "journalDaysRenamed": "Some journal entries no longer have a date name",
     "journalDaysRenamedHint": "These journal entries were renamed outside Memry while their folder waited for the journal folder setting, so their names are no longer dates. They stay journal entries until you rename them back. Turning one into a note removes its journal entry on all your devices and keeps its text as a note. Its tags aren't kept.",
     "turnIntoNotes": "Turn into notes"
+  },
+  "iosBeta": {
+    "badge": "New · TestFlight",
+    "title": "Memry for iPhone is in beta",
+    "promptBody": "Your vault on your phone, end-to-end encrypted. Leave your email and Apple sends you a TestFlight invite.",
+    "emailPlaceholder": "you@example.com",
+    "emailLabel": "Email for the TestFlight invite",
+    "submit": "Get the invite",
+    "sending": "Sending…",
+    "listNote": "We also add you to the iPhone beta list for launch news. Unsubscribe any time.",
+    "error": "Could not send the TestFlight invite. Please try again.",
+    "sentTitle": "Check your inbox",
+    "sentBody": "Apple sent the invite to {email}. It can take a few minutes and may land in spam.",
+    "stepInstall": "Install TestFlight from the App Store",
+    "stepOpen": "Open the invite on your iPhone",
+    "stepSignIn": "Sign in to Memry on your phone",
+    "done": "Done",
+    "dialogTitle": "Join Memry for iPhone",
+    "dialogBody": "Apple emails you a TestFlight invite. Use the email of the Apple ID on your iPhone.",
+    "entryTitle": "iPhone beta is live",
+    "entrySubtitle": "Via TestFlight",
+    "entryJoin": "Join the beta",
+    "entrySent": "Invite sent to {email}",
+    "sendAgain": "Send again"
   }
 }

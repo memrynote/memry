@@ -9,6 +9,7 @@
  */
 
 import { useMemo } from 'react'
+import type { EditorView } from '@tiptap/pm/view'
 import {
   PORTAL_BLOCK_LANGUAGE,
   parsePortalDefinition,
@@ -42,6 +43,8 @@ export interface PortalEditorLike {
   getBlock: (id: string) => { content?: unknown } | undefined
   updateBlock: (id: string, update: { content: string }) => unknown
   removeBlocks: (ids: string[]) => unknown
+  /** BlockNote's view of the document; unset before the editor mounts. */
+  prosemirrorView?: EditorView
 }
 
 /**

@@ -5,6 +5,7 @@
     "create": "Gumawa"
   },
   "wikiLinkPreview": {
+    "journalUnwritten": "Wala pang naisusulat para sa {date}. I-click para buksan ang araw na iyon",
     "notFound": "Hindi nahanap — i-click para gawin ang “{title}”"
   },
   "wikiLinkMenu": {
@@ -138,6 +139,7 @@
     "actions": {
       "openInNewTab": "Buksan sa bagong tab",
       "openToTheSide": "Buksan sa gilid",
+      "openFolderView": "Buksan ang Folder View",
       "newNote": "Bagong tala",
       "newFolder": "Bagong folder",
       "showTasks": "Ipakita ang mga gawain",
@@ -187,7 +189,8 @@
     },
     "toast": {
       "selectionBookmarked": "Na-bookmark ang {count} item",
-      "selectionBookmarkFailed": "Hindi ma-bookmark ang mga napiling item"
+      "selectionBookmarkFailed": "Hindi ma-bookmark ang mga napiling item",
+      "pairedNoteNameTaken": "May tala nang may pangalang {name} doon"
     }
   },
   "editor": {
@@ -423,12 +426,14 @@
       "savedView": "Naka-save na view",
       "savedViewMissing": "Wala na ang naka-save na view na “{name}”, kaya ang default na view ang ipinapakita nito.",
       "openAsTab": "Buksan bilang tab",
+      "newNote": "Bagong tala",
+      "newViewTitle": "Bagong view",
+      "newViewSubtext": "Isang bagong folder sa tabi ng talang ito, nakalista rito",
+      "newViewFailed": "Hindi magawa ang folder para sa view na ito.",
       "empty": "Wala pang tumutugma sa view na ito.",
       "loadFailed": "Hindi ma-load ang view na ito. Hindi ginalaw ang mismong mga tala.",
       "folderMissing": "Wala na sa vault ang folder na ito. Pumili ng ibang source.",
-      "invalidJson": "Hindi valid na JSON ang depinisyon ng view na ito. Ayusin ito sa ibaba, o alisin ang block.",
-      "invalidShape": "Walang source ang depinisyon ng view na ito. Pumili ng isa sa itaas, o ayusin ito sa ibaba.",
-      "definition": "Depinisyon"
+      "unreadable": "Hindi mabasa ang view na ito. Pumili ng source sa itaas, o alisin ang block."
     },
     "chart": {
       "title": "Chart",
@@ -668,6 +673,8 @@
   },
   "menus": {
     "wiki": {
+      "journalDay": "Talaarawan · {date}",
+      "journalDayUnwritten": "Talaarawan · wala pang naisusulat",
       "aria": "Mga mungkahing tala",
       "loading": "Nilo-load ang mga tala…",
       "empty": "Walang nakitang tala",
@@ -782,6 +789,12 @@
     "viaProperty": "{property} → {title}",
     "viaPortal": "Ipinapakita sa isang portal"
   },
+  "references": {
+    "filterAll": "Lahat",
+    "filterNotes": "Mga tala",
+    "filterJournal": "Talaarawan",
+    "filterBy": "I-filter ang mga reference: {filter}"
+  },
   "unlinkedMentions": {
     "title": "Mga hindi naka-link na banggit",
     "summary": "{count, plural, one {# hindi naka-link na banggit} other {# hindi naka-link na banggit}}",
@@ -886,6 +899,7 @@
     "showOnCalendar": "Ipakita sa kalendaryo",
     "showingOnCalendar": "Ipinapakita sa kalendaryo",
     "relation": {
+      "unwrittenDay": "Wala pang naisusulat",
       "deleted": "Tinanggal",
       "removeAria": "Alisin ang {title}",
       "addAria": "Magdagdag ng kaugnayan",

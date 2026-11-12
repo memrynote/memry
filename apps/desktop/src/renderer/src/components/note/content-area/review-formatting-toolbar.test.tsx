@@ -72,6 +72,10 @@ vi.mock('@/lib/icons', () => ({
   ListChecks: () => <span data-testid="checklist-icon" />
 }))
 
+vi.mock('@blocknote/xl-ai', () => ({
+  AIToolbarButton: () => <button type="button">ask ai</button>
+}))
+
 vi.mock('./toolbar-block-type-select', () => ({
   ToolbarBlockTypeSelect: () => <button type="button">block type</button>
 }))
@@ -306,6 +310,21 @@ describe('ReviewFormattingToolbar', () => {
 
     expect(sticky.toSorted()).toEqual(floating.toSorted())
     expect(screen.getByText('more')).toHaveAttribute('data-pinned', 'true')
+  })
+
+  // Inline AI was reachable only through `/ai` and Cmd+J, so users who enabled
+  // it saw nothing when they selected text.
+  it('offers AI on the selection once the AI extension is available', () => {
+    const { unmount } = render(<ReviewFormattingToolbar onAddComment={vi.fn()} />)
+    expect(screen.queryByText('ask ai')).not.toBeInTheDocument()
+    unmount()
+
+    const floating = render(<ReviewFormattingToolbar onAddComment={vi.fn()} aiAvailable />)
+    expect(screen.getByText('ask ai')).toBeInTheDocument()
+    floating.unmount()
+
+    render(<ReviewFormattingToolbar variant="sticky" onAddComment={vi.fn()} aiAvailable />)
+    expect(screen.getByText('ask ai')).toBeInTheDocument()
   })
 
   it('offers the list toggles in the sticky toolbar too', () => {

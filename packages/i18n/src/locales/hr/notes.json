@@ -5,6 +5,7 @@
     "create": "Stvori"
   },
   "wikiLinkPreview": {
+    "journalUnwritten": "Zapis za {date} još nije napisan. Kliknite za otvaranje tog dana",
     "notFound": "Nije pronađeno – kliknite da biste stvorili „{title}”"
   },
   "wikiLinkMenu": {
@@ -138,6 +139,7 @@
     "actions": {
       "openInNewTab": "Otvori u novoj kartici",
       "openToTheSide": "Otvori sa strane",
+      "openFolderView": "Otvori prikaz mape",
       "newNote": "Nova bilješka",
       "newFolder": "Nova mapa",
       "showTasks": "Prikaži zadatke",
@@ -187,7 +189,8 @@
     },
     "toast": {
       "selectionBookmarked": "Stavke dodane u oznake: {count}",
-      "selectionBookmarkFailed": "Odabrane stavke nije moguće dodati u oznake"
+      "selectionBookmarkFailed": "Odabrane stavke nije moguće dodati u oznake",
+      "pairedNoteNameTaken": "Bilješka s nazivom {name} već postoji tamo"
     }
   },
   "editor": {
@@ -423,12 +426,14 @@
       "savedView": "Spremljeni prikaz",
       "savedViewMissing": "Spremljeni prikaz „{name}” više ne postoji pa se prikazuje zadani prikaz.",
       "openAsTab": "Otvori kao karticu",
+      "newNote": "Nova bilješka",
+      "newViewTitle": "Novi prikaz",
+      "newViewSubtext": "Nova mapa pokraj ove bilješke, navedena ovdje",
+      "newViewFailed": "Mapu za ovaj prikaz nije moguće stvoriti.",
       "empty": "Ovom prikazu još ništa ne odgovara.",
       "loadFailed": "Nije moguće učitati ovaj prikaz. Same bilješke su netaknute.",
       "folderMissing": "Ova mapa više nije u trezoru. Odaberite drugi izvor.",
-      "invalidJson": "Definicija ovog prikaza nije valjani JSON. Ispravite je u nastavku ili uklonite blok.",
-      "invalidShape": "Definicija ovog prikaza nema izvor. Odaberite ga gore ili ispravite definiciju u nastavku.",
-      "definition": "Definicija"
+      "unreadable": "Ovaj prikaz nije moguće pročitati. Odaberite izvor iznad ili uklonite blok."
     },
     "chart": {
       "title": "Grafikon",
@@ -668,6 +673,8 @@
   },
   "menus": {
     "wiki": {
+      "journalDay": "Dnevnik · {date}",
+      "journalDayUnwritten": "Dnevnik · još nije napisano",
       "aria": "Prijedlozi bilješki",
       "loading": "Učitavanje bilješki…",
       "empty": "Nisu pronađene bilješke",
@@ -782,6 +789,12 @@
     "viaProperty": "{property} → {title}",
     "viaPortal": "Prikazano u portalu"
   },
+  "references": {
+    "filterAll": "Sve",
+    "filterNotes": "Bilješke",
+    "filterJournal": "Dnevnik",
+    "filterBy": "Filtriraj reference: {filter}"
+  },
   "unlinkedMentions": {
     "title": "Nepovezana spominjanja",
     "summary": "{count, plural, one {# nepovezano spominjanje} few {# nepovezana spominjanja} other {# nepovezanih spominjanja}}",
@@ -886,6 +899,7 @@
     "showOnCalendar": "Prikaži u kalendaru",
     "showingOnCalendar": "Prikazuje se u kalendaru",
     "relation": {
+      "unwrittenDay": "Još nije napisano",
       "deleted": "Izbrisano",
       "removeAria": "Ukloni „{title}”",
       "addAria": "Dodaj relaciju",

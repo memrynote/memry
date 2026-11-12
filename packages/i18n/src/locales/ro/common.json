@@ -3,9 +3,7 @@
     "copyFailed": "Nu s-a putut copia portalul",
     "hiddenCount": "{count} ascunse",
     "windowFailed": "Acest portal nu a putut fi deschis. Deschide în schimb notița sursă.",
-    "noTarget": "Acest portal nu are încă o țintă. Adaugă o notiță în definiție sau elimină blocul.",
-    "invalidJson": "Definiția acestui portal nu este JSON valid. Corectează-o mai jos sau elimină blocul.",
-    "invalidShape": "Definiția acestui portal nu conține nicio notiță sau căutare. Corectează-o mai jos sau elimină blocul.",
+    "unreadable": "Acest portal nu poate fi citit. Elimină blocul și adaugă un portal nou.",
     "search": {
       "editQuery": "Editează interogarea",
       "count": "{count, plural, one {# bloc} few {# blocuri} other {# de blocuri}}",
@@ -1276,6 +1274,7 @@
     "label": "Ajutor și feedback",
     "reportBug": "Raportează o eroare",
     "requestFeature": "Solicită o funcție",
+    "joinTestflight": "Alăturați-vă TestFlight",
     "starOnGithub": "Marchează cu stea pe GitHub",
     "version": "MemryNote {version}",
     "whatsNew": "Noutăți",
@@ -1695,5 +1694,29 @@
     "journalDaysRenamed": "Unele intrări de jurnal nu mai au o dată ca nume",
     "journalDaysRenamedHint": "Aceste intrări de jurnal au fost redenumite în afara Memry în timp ce dosarul lor aștepta setarea dosarului jurnalului, așa că numele lor nu mai sunt date. Rămân intrări de jurnal până când le redai numele. Transformarea uneia în notiță îi șterge intrarea de jurnal de pe toate dispozitivele tale și îi păstrează textul ca notiță. Etichetele ei nu se păstrează.",
     "turnIntoNotes": "Transformă în notițe"
+  },
+  "iosBeta": {
+    "badge": "Nou · TestFlight",
+    "title": "Memry pentru iPhone este în beta",
+    "promptBody": "Seiful dvs. pe telefon, criptat end-to-end. Lăsați adresa de e-mail și Apple vă trimite o invitație TestFlight.",
+    "emailPlaceholder": "you@example.com",
+    "emailLabel": "E-mail pentru invitația TestFlight",
+    "submit": "Primiți invitația",
+    "sending": "Se trimite…",
+    "listNote": "Vă adăugăm și pe lista beta pentru iPhone, ca să aflați noutăți despre lansare. Vă puteți dezabona oricând.",
+    "error": "Nu s-a putut trimite invitația TestFlight. Încercați din nou.",
+    "sentTitle": "Verificați-vă inboxul",
+    "sentBody": "Apple a trimis invitația la {email}. Poate dura câteva minute și poate ajunge în spam.",
+    "stepInstall": "Instalați TestFlight din App Store",
+    "stepOpen": "Deschideți invitația pe iPhone",
+    "stepSignIn": "Conectați-vă la Memry pe telefon",
+    "done": "Gata",
+    "dialogTitle": "Alăturați-vă Memry pentru iPhone",
+    "dialogBody": "Apple vă trimite pe e-mail o invitație TestFlight. Folosiți adresa de e-mail a Apple ID-ului de pe iPhone.",
+    "entryTitle": "Beta pentru iPhone este disponibilă",
+    "entrySubtitle": "Prin TestFlight",
+    "entryJoin": "Alăturați-vă betei",
+    "entrySent": "Invitație trimisă la {email}",
+    "sendAgain": "Trimite din nou"
   }
 }

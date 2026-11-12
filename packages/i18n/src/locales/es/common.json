@@ -3,9 +3,7 @@
     "copyFailed": "No se pudo copiar el portal",
     "hiddenCount": "{count} ocultos",
     "windowFailed": "No se pudo abrir este portal. Abre la nota de origen en su lugar.",
-    "noTarget": "Este portal aún no tiene destino. Añade una nota a la definición o quita el bloque.",
-    "invalidJson": "La definición de este portal no es un JSON válido. Corrígela abajo o quita el bloque.",
-    "invalidShape": "La definición de este portal no tiene ninguna nota ni búsqueda. Corrígela abajo o quita el bloque.",
+    "unreadable": "No se puede leer este portal. Elimina el bloque y añade un portal nuevo.",
     "search": {
       "editQuery": "Editar consulta",
       "count": "{count, plural, one {# bloque} other {# bloques}}",
@@ -1276,6 +1274,7 @@
     "label": "Ayuda y comentarios",
     "reportBug": "Informar de un error",
     "requestFeature": "Solicitar una función",
+    "joinTestflight": "Unirse a TestFlight",
     "starOnGithub": "Dar una estrella en GitHub",
     "version": "MemryNote {version}",
     "whatsNew": "Novedades",
@@ -1695,5 +1694,29 @@
     "journalDaysRenamed": "Algunas entradas del diario ya no tienen una fecha como nombre",
     "journalDaysRenamedHint": "Estas entradas del diario se renombraron fuera de Memry mientras su carpeta esperaba al ajuste de la carpeta del diario, así que sus nombres ya no son fechas. Seguirán siendo entradas del diario hasta que les devuelvas su nombre. Al convertir una en nota, su entrada del diario se elimina en todos tus dispositivos y su texto se conserva como nota. Sus etiquetas no se conservan.",
     "turnIntoNotes": "Convertir en notas"
+  },
+  "iosBeta": {
+    "badge": "Nuevo · TestFlight",
+    "title": "Memry para iPhone está en beta",
+    "promptBody": "Tu bóveda en el teléfono, con cifrado de extremo a extremo. Deja tu correo y Apple te enviará una invitación de TestFlight.",
+    "emailPlaceholder": "you@example.com",
+    "emailLabel": "Correo para la invitación de TestFlight",
+    "submit": "Recibir la invitación",
+    "sending": "Enviando…",
+    "listNote": "También te añadimos a la lista de la beta para iPhone para avisarte del lanzamiento. Puedes darte de baja cuando quieras.",
+    "error": "No se pudo enviar la invitación de TestFlight. Inténtalo de nuevo.",
+    "sentTitle": "Revisa tu bandeja de entrada",
+    "sentBody": "Apple ha enviado la invitación a {email}. Puede tardar unos minutos y llegar a la carpeta de spam.",
+    "stepInstall": "Instala TestFlight desde la App Store",
+    "stepOpen": "Abre la invitación en tu iPhone",
+    "stepSignIn": "Inicia sesión en Memry en tu teléfono",
+    "done": "Listo",
+    "dialogTitle": "Únete a Memry para iPhone",
+    "dialogBody": "Apple te envía una invitación de TestFlight por correo. Usa el correo del ID de Apple de tu iPhone.",
+    "entryTitle": "La beta para iPhone ya está disponible",
+    "entrySubtitle": "Con TestFlight",
+    "entryJoin": "Unirme a la beta",
+    "entrySent": "Invitación enviada a {email}",
+    "sendAgain": "Enviar de nuevo"
   }
 }

@@ -170,6 +170,13 @@ pub struct TaskFilters {
     pub completion: CompletionFilter,
     pub repeat_type: RepeatFilter,
     pub has_time: HasTimeFilter,
+    /// Vault-relative folders whose notes' tasks match, subfolders included.
+    pub folder_paths: Vec<String>,
+    /// Notes whose tasks match.
+    pub note_ids: Vec<String>,
+    /// The advanced rules (a `{match, rules}` group), ANDed with the rest.
+    /// Kept as JSON: a rule from a newer build is skipped, not refused.
+    pub expression: Option<Value>,
 }
 
 impl Default for TaskFilters {
@@ -184,6 +191,9 @@ impl Default for TaskFilters {
             completion: CompletionFilter::Active,
             repeat_type: RepeatFilter::All,
             has_time: HasTimeFilter::All,
+            folder_paths: Vec::new(),
+            note_ids: Vec::new(),
+            expression: None,
         }
     }
 }
@@ -207,12 +217,19 @@ impl TaskFilters {
                 .map_or(CompletionFilter::Active, CompletionFilter::from_name),
             repeat_type: name("repeatType").map_or(RepeatFilter::All, RepeatFilter::from_name),
             has_time: name("hasTime").map_or(HasTimeFilter::All, HasTimeFilter::from_name),
+            folder_paths: string_array(value, "folderPaths"),
+            note_ids: string_array(value, "noteIds"),
+            expression: value
+                .get("expression")
+                .filter(|tree| tree.is_object())
+                .cloned(),
         }
     }
 
-    /// Desktop's write (`frontendToDbConfig`): every field present.
+    /// Desktop's write (`frontendToDbConfig`): every field present, and the
+    /// optional location and expression fields only when set.
     pub fn to_json(&self) -> Value {
-        json!({
+        let mut out = json!({
             "search": self.search,
             "projectIds": self.project_ids,
             "priorities": self.priorities,
@@ -222,7 +239,17 @@ impl TaskFilters {
             "completion": self.completion.name(),
             "repeatType": self.repeat_type.name(),
             "hasTime": self.has_time.name(),
-        })
+        });
+        if !self.folder_paths.is_empty() {
+            out["folderPaths"] = json!(self.folder_paths);
+        }
+        if !self.note_ids.is_empty() {
+            out["noteIds"] = json!(self.note_ids);
+        }
+        if let Some(expression) = &self.expression {
+            out["expression"] = expression.clone();
+        }
+        out
     }
 }
 

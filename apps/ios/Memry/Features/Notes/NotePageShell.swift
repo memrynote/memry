@@ -295,7 +295,9 @@ final class NotePageActions {
     func delete() async {
         guard let writer else { return }
         await run { try await writer.delete(id: noteId) }
-        if status == .idle { deleted = true }
+        guard status == .idle else { return }
+        deleted = true
+        NotesTelemetry.noteDeleted()
     }
 
     func loadFavorite() async {

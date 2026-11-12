@@ -209,6 +209,12 @@ describe('productEvent', () => {
     expect(result.properties.$lib_version).toBe('2026.7.1')
   })
 
+  it('labels iOS batches memry-ios and keeps platform ios on the event', () => {
+    const result = productEvent(batchFixture({ platform: 'ios' }), eventFixture(), ctx)
+    expect(result.properties.$lib).toBe('memry-ios')
+    expect(result.properties.platform).toBe('ios')
+  })
+
   it('renames page_viewed to $pageview', () => {
     const result = productEvent(batchFixture(), eventFixture({ name: 'page_viewed' }), ctx)
     expect(result.event).toBe('$pageview')
@@ -440,6 +446,15 @@ describe('exceptionEvent', () => {
     expect(result?.properties.$session_id).toBe('22222222-2222-4222-8222-222222222222')
     expect(result?.properties.$lib).toBe('memry-desktop')
     expect(result?.properties.$lib_version).toBe('2026.7.1')
+  })
+
+  it('labels iOS exceptions memry-ios', () => {
+    const result = exceptionEvent(
+      batchFixture({ platform: 'ios' }),
+      eventFixture({ errorCode: 'BOOM' }),
+      ctx
+    )
+    expect(result?.properties.$lib).toBe('memry-ios')
   })
 
   it('returns null for an event with no error signal', () => {

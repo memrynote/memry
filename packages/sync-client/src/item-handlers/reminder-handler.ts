@@ -77,12 +77,24 @@ class ReminderHandler extends BaseItemHandler<ReminderSyncPayload> {
         const nextAnchorId = data.anchorId !== undefined ? data.anchorId : existing.anchorId
         const localRemindAt =
           (data.targetType ?? existing.targetType) === 'note_date' && !!nextAnchorId
+        const nextRemindAt = localRemindAt
+          ? existing.remindAt
+          : (data.remindAt ?? existing.remindAt)
+        // `triggered` never goes out (it is sent as `pending`), so a peer's copy
+        // of a reminder this device already fired always reads "not fired yet".
+        // Applying that status would un-fire it, and the next minute tick would
+        // file a second inbox item for the same reminder. Only a new remindAt, a
+        // snooze or a dismiss is real user intent that can reopen it.
+        const firedHere =
+          existing.status === 'triggered' &&
+          data.status === 'pending' &&
+          nextRemindAt === existing.remindAt
         // triggeredAt is deliberately absent from this set — device-local.
         tx.update(reminders)
           .set({
             targetType: data.targetType ?? existing.targetType,
             targetId: data.targetId ?? existing.targetId,
-            remindAt: localRemindAt ? existing.remindAt : (data.remindAt ?? existing.remindAt),
+            remindAt: nextRemindAt,
             anchorId: nextAnchorId,
             highlightText:
               data.highlightText !== undefined ? data.highlightText : existing.highlightText,
@@ -92,7 +104,7 @@ class ReminderHandler extends BaseItemHandler<ReminderSyncPayload> {
               data.highlightEnd !== undefined ? data.highlightEnd : existing.highlightEnd,
             title: data.title !== undefined ? data.title : existing.title,
             note: data.note !== undefined ? data.note : existing.note,
-            status: data.status ?? existing.status,
+            status: firedHere ? existing.status : (data.status ?? existing.status),
             dismissedAt: data.dismissedAt !== undefined ? data.dismissedAt : existing.dismissedAt,
             snoozedUntil:
               data.snoozedUntil !== undefined ? data.snoozedUntil : existing.snoozedUntil,

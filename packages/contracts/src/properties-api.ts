@@ -73,6 +73,11 @@ export const RenamePropertySchema = z.object({
   newName: z.string().min(1, 'New property name is required')
 })
 
+/** Schema for listing the notes that use one property. */
+export const ListNotesWithPropertySchema = z.object({
+  name: z.string().min(1, 'Property name is required')
+})
+
 /**
  * Schema for resolving relation property URIs to display data.
  */
@@ -97,6 +102,26 @@ export type SetPropertiesResponse =
  * Response from rename property operation.
  */
 export type RenamePropertyResponse = { success: true } | { success: false; error: string }
+
+/**
+ * How many notes use a property. A property's type is vault-wide, so a note
+ * can hold a value that type cannot show (`rating: good` under a number
+ * property); `mismatchCount` counts those notes.
+ */
+export interface PropertyUsage {
+  name: string
+  noteCount: number
+  mismatchCount: number
+}
+
+/** A note that uses a property. `mismatch` marks a value the property's type cannot show. */
+export interface PropertyNoteUsage {
+  id: string
+  title: string
+  path: string
+  emoji: string | null
+  mismatch: boolean
+}
 
 /**
  * A relation property URI resolved to display data for a chip: a title to

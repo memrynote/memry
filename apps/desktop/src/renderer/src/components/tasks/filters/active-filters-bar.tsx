@@ -9,6 +9,7 @@ import { getActiveLocale } from '@/lib/active-locale'
 import { useT } from '@memry/i18n/renderer'
 import type { TaskNoteIndex } from '@/lib/task-note-index'
 import { LocationIcon } from './filter-panels/location-panel'
+import { RuleSummaryPill } from './advanced/rule-summary'
 
 interface ActiveFiltersBarProps {
   filters: TaskFilters
@@ -17,6 +18,8 @@ interface ActiveFiltersBarProps {
   noteIndex?: TaskNoteIndex
   onUpdateFilters: (updates: Partial<TaskFilters>) => void
   onClearAll: () => void
+  /** Opens the advanced filter, from the rules pill. */
+  onEditRules?: () => void
   onSaveFilter?: () => void
   isSaved?: boolean
   className?: string
@@ -69,6 +72,7 @@ export const ActiveFiltersBar = ({
   noteIndex,
   onUpdateFilters,
   onClearAll,
+  onEditRules,
   onSaveFilter,
   isSaved = false,
   className
@@ -76,6 +80,19 @@ export const ActiveFiltersBar = ({
   const { t: tPhaseF } = useT('tasks')
   const pills = useMemo(() => {
     const result: React.ReactNode[] = []
+
+    if (filters.expression) {
+      result.push(
+        <RuleSummaryPill
+          key="rules"
+          expression={filters.expression}
+          projects={projects}
+          noteIndex={noteIndex}
+          onEdit={onEditRules}
+          onClear={() => onUpdateFilters({ expression: null })}
+        />
+      )
+    }
 
     if (filters.priorities.length > 0) {
       const values = filters.priorities.map((p) => priorityConfig[p]?.label ?? p).join(', ')
@@ -325,6 +342,8 @@ export const ActiveFiltersBar = ({
 
     return result
   }, [
+    filters.expression,
+    onEditRules,
     filters.priorities,
     filters.tags,
     filters.statusIds,

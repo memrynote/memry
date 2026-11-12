@@ -236,5 +236,21 @@
     "range": "{start} – {end}",
     "openTask": "{title}, {range}",
     "completeTask": "{title} görevini tamamla"
+  },
+  "pastYears": {
+    "title": "Bugün geçmişte",
+    "count": "{count, plural, one {# diğer yıl} other {# diğer yıl}}",
+    "showAll": "Tüm yıllar",
+    "showPreviews": "Önizlemeler",
+    "yearsAgo": "{count, plural, one {# yıl önce} other {# yıl önce}}",
+    "yearsLater": "{count, plural, one {# yıl sonra} other {# yıl sonra}}",
+    "words": "{count, plural, one {# kelime} other {# kelime}}",
+    "openDay": "{date} tarihini aç",
+    "showFull": "Girdinin tamamını göster",
+    "showLess": "Daha az göster",
+    "loadError": "Diğer yıllardaki bu gün yüklenemedi.",
+    "previousYear": "Aynı gün, önceki yıl",
+    "nextYear": "Aynı gün, sonraki yıl",
+    "goToYear": "{year} yılında bu güne git"
   }
 }

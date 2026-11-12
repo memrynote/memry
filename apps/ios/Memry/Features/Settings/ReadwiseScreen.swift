@@ -16,8 +16,8 @@ enum ReadwiseCopy {
     static let noChangeYet = "No changes yet"
     static let notConnected = "Not connected"
     static let errorTitle = "Readwise needs attention"
-    static let footer = "Readwise is pulled by one desktop. Change settings or sync from that device."
-    static let notConnectedFooter = "Connect Readwise in memry on a desktop. Its notes then arrive here."
+    static let footer = "Readwise is pulled by one device. Change settings or sync from that device."
+    static let notConnectedFooter = "Connect Readwise in memry on another device. Its notes then arrive here."
     static let anotherDevice = "another device"
     static func syncsOn(_ device: String) -> String { "Syncs on \(device)" }
     static func rejected(_ device: String) -> String {

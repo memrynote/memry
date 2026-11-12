@@ -13,10 +13,10 @@ import SwiftUI
 // roles, and reduce-motion is branched inside `calmAnimation` on every
 // evaluation rather than read once into a flag.
 //
-// **Empty and unreadable are two screens**, because they are two facts. An
-// account with no vaults gets an empty state that says what is absent; a
-// registry that would not load gets an error with a retry. Rendering the
-// second as the first is the bug the core's reader already had once.
+// **An account never reads as having no vault.** The signed-in registry gives
+// an empty account the local vault, as desktop does. A registry that would not
+// load gets an error with a retry, never an empty list: that is the bug the
+// core's reader already had once.
 
 struct VaultListView: View {
     let model: VaultSelectionViewModel
@@ -115,15 +115,12 @@ struct VaultListView: View {
                     VaultChoiceList(summaries: summaries) { summary in
                         Task { await model.open(summary) }
                     }
-                    // Where a vault comes from, since this screen cannot make
-                    // one: the core exports no vault creation, so the sentence
-                    // stands in for a button that would not work.
-                    Text("Vaults are created in Memry on your computer. New ones appear here on their own.")
-                        .font(Tokens.Typography.caption.font)
-                        .foregroundStyle(Tokens.Text.secondary.color)
-                        .frame(maxWidth: .infinity, alignment: .leading)
                 case .empty:
-                    EmptyVaultsNotice()
+                    // Unreachable in production: both registries list the
+                    // local vault, which the signed-in one creates for an
+                    // empty account. A retry reads the registry again.
+                    header("Your vault could not be opened", nil)
+                    retry("Try again")
                 case let .unreadable(error):
                     header("Your vaults could not be loaded", nil)
                     ErrorNotice(error: error, code: nil)
@@ -240,22 +237,6 @@ private struct VaultRowLabel: View {
         // A plain button hit-tests only what it draws; without this the gap
         // between the name and the chevron ignored taps.
         .contentShape(.rect)
-    }
-}
-
-/// An account that really holds no vault.
-///
-/// It says what is absent and where a vault comes from, and it promises no
-/// mechanism this screen has: there is no "create a vault" on iOS, so it does
-/// not offer one (`DESIGN.md` §"Error copy, in detail", spec-defect 111).
-private struct EmptyVaultsNotice: View {
-    var body: some View {
-        ContentUnavailableView {
-            Label("No vaults yet", systemImage: "tray")
-        } description: {
-            Text("This account holds no vaults. Create one in Memry on your computer and it will appear here.")
-        }
-        .frame(maxWidth: .infinity, alignment: .leading)
     }
 }
 

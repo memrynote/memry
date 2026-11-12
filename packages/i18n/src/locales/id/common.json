@@ -3,9 +3,7 @@
     "copyFailed": "Tidak dapat menyalin portal",
     "hiddenCount": "{count} disembunyikan",
     "windowFailed": "Portal ini tidak dapat dibuka. Buka catatan sumbernya.",
-    "noTarget": "Portal ini belum memiliki target. Tambahkan catatan ke definisinya, atau hapus blok ini.",
-    "invalidJson": "Definisi portal ini bukan JSON yang valid. Perbaiki di bawah, atau hapus blok ini.",
-    "invalidShape": "Definisi portal ini tidak memiliki catatan atau pencarian. Perbaiki di bawah, atau hapus blok ini.",
+    "unreadable": "Portal ini tidak dapat dibaca. Hapus blok dan tambahkan portal baru.",
     "search": {
       "editQuery": "Edit kueri",
       "count": "{count, plural, other {# blok}}",
@@ -1276,6 +1274,7 @@
     "label": "Bantuan dan masukan",
     "reportBug": "Laporkan bug",
     "requestFeature": "Minta fitur",
+    "joinTestflight": "Gabung TestFlight",
     "starOnGithub": "Beri bintang di GitHub",
     "version": "MemryNote {version}",
     "whatsNew": "Yang baru",
@@ -1695,5 +1694,29 @@
     "journalDaysRenamed": "Beberapa entri jurnal tidak lagi bernama tanggal",
     "journalDaysRenamedHint": "Entri jurnal ini diganti namanya di luar Memry saat foldernya menunggu pengaturan folder jurnal, sehingga namanya bukan tanggal lagi. Entri ini tetap menjadi entri jurnal sampai Anda mengembalikan namanya. Mengubah satu entri menjadi catatan akan menghapus entri jurnalnya di semua perangkat Anda dan menyimpan teksnya sebagai catatan. Tag-nya tidak dipertahankan.",
     "turnIntoNotes": "Ubah menjadi catatan"
+  },
+  "iosBeta": {
+    "badge": "Baru · TestFlight",
+    "title": "Memry untuk iPhone sedang dalam beta",
+    "promptBody": "Vault Anda di ponsel, terenkripsi end-to-end. Tinggalkan email Anda dan Apple akan mengirimkan undangan TestFlight.",
+    "emailPlaceholder": "you@example.com",
+    "emailLabel": "Email untuk undangan TestFlight",
+    "submit": "Dapatkan undangan",
+    "sending": "Mengirim…",
+    "listNote": "Kami juga menambahkan Anda ke daftar beta iPhone untuk kabar peluncuran. Anda bisa berhenti berlangganan kapan saja.",
+    "error": "Tidak dapat mengirim undangan TestFlight. Silakan coba lagi.",
+    "sentTitle": "Periksa kotak masuk Anda",
+    "sentBody": "Apple mengirim undangan ke {email}. Mungkin perlu beberapa menit dan bisa masuk ke spam.",
+    "stepInstall": "Instal TestFlight dari App Store",
+    "stepOpen": "Buka undangan di iPhone Anda",
+    "stepSignIn": "Masuk ke Memry di ponsel Anda",
+    "done": "Selesai",
+    "dialogTitle": "Bergabung dengan Memry untuk iPhone",
+    "dialogBody": "Apple mengirimkan undangan TestFlight lewat email. Gunakan email Apple ID di iPhone Anda.",
+    "entryTitle": "Beta iPhone sudah tersedia",
+    "entrySubtitle": "Lewat TestFlight",
+    "entryJoin": "Gabung beta",
+    "entrySent": "Undangan dikirim ke {email}",
+    "sendAgain": "Kirim lagi"
   }
 }

@@ -14,7 +14,7 @@ import Testing
 struct TasksComposerTests {
     @Test func typed_tokens_fill_the_chips() async throws {
         let vault = try TasksTestVault()
-        let project = try vault.project("Agent Test Launch")
+        _ = try vault.project("Agent Test Launch")
         await vault.store.load()
         let text = "[agent] Call the bank @tomorrow 10am !high #money"
         let parse = await vault.store.parseQuickAdd(text)
@@ -25,8 +25,9 @@ struct TasksComposerTests {
         #expect(values.dueTime == "10:00")
         #expect(values.priority == 3)
         #expect(values.tags == ["money"])
-        // No `+project` typed: the store's chain (here the one live project).
-        #expect(values.projectId == project)
+        // No `+project` typed: the store's chain, which reaches the Inbox
+        // `load` seeded before any other project.
+        #expect(values.projectId == "inbox")
     }
 
     @Test func a_chip_set_by_hand_wins_over_the_text() async throws {

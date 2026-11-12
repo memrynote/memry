@@ -5,6 +5,7 @@
     "create": "建立"
   },
   "wikiLinkPreview": {
+    "journalUnwritten": "{date}的日誌尚未撰寫。按一下以開啟當日",
     "notFound": "找不到——按一下以建立「{title}」"
   },
   "wikiLinkMenu": {
@@ -138,6 +139,7 @@
     "actions": {
       "openInNewTab": "在新分頁中開啟",
       "openToTheSide": "在側邊開啟",
+      "openFolderView": "開啟資料夾檢視",
       "newNote": "新增筆記",
       "newFolder": "新增資料夾",
       "showTasks": "顯示任務",
@@ -187,7 +189,8 @@
     },
     "toast": {
       "selectionBookmarked": "已將 {count} 項加入書籤",
-      "selectionBookmarkFailed": "無法將所選項目加入書籤"
+      "selectionBookmarkFailed": "無法將所選項目加入書籤",
+      "pairedNoteNameTaken": "那裡已有名為 {name} 的筆記"
     }
   },
   "editor": {
@@ -423,12 +426,14 @@
       "savedView": "已儲存的檢視",
       "savedViewMissing": "已儲存的檢視「{name}」已不存在，因此改為顯示預設檢視。",
       "openAsTab": "以分頁開啟",
+      "newNote": "新增筆記",
+      "newViewTitle": "新檢視",
+      "newViewSubtext": "在此筆記旁新增的資料夾，列在這裡",
+      "newViewFailed": "無法為此檢視建立資料夾。",
       "empty": "目前沒有符合這個檢視的內容。",
       "loadFailed": "無法載入這個檢視。筆記本身不受影響。",
       "folderMissing": "這個資料夾已不在儲存庫中。請選擇其他來源。",
-      "invalidJson": "這個檢視的定義不是有效的 JSON。請在下方修正，或移除這個區塊。",
-      "invalidShape": "這個檢視的定義沒有來源。請在上方選擇一個，或在下方修正。",
-      "definition": "定義"
+      "unreadable": "無法讀取此檢視。請在上方選擇來源，或移除該區塊。"
     },
     "chart": {
       "title": "圖表",
@@ -668,6 +673,8 @@
   },
   "menus": {
     "wiki": {
+      "journalDay": "日誌 · {date}",
+      "journalDayUnwritten": "日誌 · 尚未撰寫",
       "aria": "筆記建議",
       "loading": "正在載入筆記…",
       "empty": "找不到筆記",
@@ -782,6 +789,12 @@
     "viaProperty": "{property} → {title}",
     "viaPortal": "顯示於入口中"
   },
+  "references": {
+    "filterAll": "全部",
+    "filterNotes": "筆記",
+    "filterJournal": "日誌",
+    "filterBy": "篩選參照：{filter}"
+  },
   "unlinkedMentions": {
     "title": "未連結的提及",
     "summary": "{count, plural, other {# 則未連結的提及}}",
@@ -886,6 +899,7 @@
     "showOnCalendar": "顯示於行事曆",
     "showingOnCalendar": "已在行事曆中顯示",
     "relation": {
+      "unwrittenDay": "尚未撰寫",
       "deleted": "已刪除",
       "removeAria": "移除「{title}」",
       "addAria": "新增關聯",

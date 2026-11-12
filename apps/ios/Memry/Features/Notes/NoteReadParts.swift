@@ -123,6 +123,31 @@ extension NoteReadViewModel {
         return JournalLink.date(fromWikiTarget: title).map(JournalLink.route(forDay:))
     }
 
+    /// Every folder the notes-list tree shows, for the Move to sheet (N808,
+    /// #2909): configured folders plus the ones `VaultOutline` derives from
+    /// note paths, sorted by path. A failed `folders()` read leaves only the
+    /// vault root; a failed `list()` read degrades to the configured folders.
+    /// Both are logged.
+    func moveDestinations() async -> [FolderSummary] {
+        let configured: [FolderSummary]
+        do {
+            configured = try await reader.folders()
+        } catch {
+            let mapped = ErrorMapping.userFacing(error)
+            Log.storage.error("this vault's folders could not be read for a move", .code(mapped.code))
+            return []
+        }
+        let notes: [NoteSummary]
+        do {
+            notes = try await reader.list()
+        } catch {
+            let mapped = ErrorMapping.userFacing(error)
+            Log.storage.error("this vault's notes could not be read for a move", .code(mapped.code))
+            notes = []
+        }
+        return VaultOutline.destinations(configured: configured, notes: notes)
+    }
+
     /// The body, or `nil` in every phase that has no note.
     var preview: NoteBodyPreview? {
         guard case let .ready(detail) = phase else { return nil }
@@ -208,6 +233,7 @@ extension NoteReadViewModel {
                 )
                 if summary.downloaded { landed = true }
             } catch {
+                if Task.isCancelled { return }
                 let mapped = ErrorMapping.userFacing(error)
                 Log.sync.error("an attachment could not be fetched", .code(mapped.code))
             }

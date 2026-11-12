@@ -17,7 +17,7 @@ const plan: InstallerHandoffPlan = {
   installDir: String.raw`C:\Users\kaan\AppData\Local\Programs\MemryNote`,
   uninstallerPath: String.raw`C:\Users\kaan\AppData\Local\Programs\MemryNote\Uninstall MemryNote.exe`,
   workDir: String.raw`C:\Users\kaan\AppData\Local\Temp\memry-installer-handoff-1234`,
-  setupExePath: String.raw`C:\Users\kaan\AppData\Roaming\memrynote\installer-handoff\MemryNote-win-Setup.exe`,
+  setupExePath: String.raw`C:\Users\kaan\AppData\Roaming\memrynote\installer-handoff\MemryNote-Setup-win-x64.exe`,
   setupLogPath: String.raw`C:\Users\kaan\AppData\Roaming\memrynote\logs\velopack-setup.log`,
   handoffLogPath: String.raw`C:\Users\kaan\AppData\Roaming\memrynote\logs\installer-handoff.log`,
   nsisInstallerPath: String.raw`C:\Users\kaan\AppData\Local\memrynote-updater\pending\MemryNote-2026.911.1-setup.exe`
@@ -281,7 +281,7 @@ describe('resolveReleaseTag', () => {
 describe('velopackSetupUrl', () => {
   it('points at the Velopack Setup.exe of the release tag', () => {
     expect(velopackSetupUrl('v2026-09-11.1')).toBe(
-      'https://github.com/memrynote/memry/releases/download/v2026-09-11.1/MemryNote-win-Setup.exe'
+      'https://github.com/memrynote/memry/releases/download/v2026-09-11.1/MemryNote-Setup-win-x64.exe'
     )
   })
 })

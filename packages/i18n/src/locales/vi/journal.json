@@ -236,5 +236,21 @@
     "range": "{start} – {end}",
     "openTask": "{title}, {range}",
     "completeTask": "Hoàn thành {title}"
+  },
+  "pastYears": {
+    "title": "Ngày này năm xưa",
+    "count": "{count, plural, other {# năm khác}}",
+    "showAll": "Tất cả các năm",
+    "showPreviews": "Xem trước",
+    "yearsAgo": "{count, plural, other {# năm trước}}",
+    "yearsLater": "{count, plural, other {# năm sau}}",
+    "words": "{count, plural, other {# từ}}",
+    "openDay": "Mở {date}",
+    "showFull": "Hiện toàn bộ mục",
+    "showLess": "Thu gọn",
+    "loadError": "Không thể tải ngày này từ các năm khác.",
+    "previousYear": "Cùng ngày, năm trước",
+    "nextYear": "Cùng ngày, năm sau",
+    "goToYear": "Đến ngày này năm {year}"
   }
 }

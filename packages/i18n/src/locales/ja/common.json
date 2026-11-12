@@ -3,9 +3,7 @@
     "copyFailed": "ポータルをコピーできませんでした",
     "hiddenCount": "{count} 件非表示",
     "windowFailed": "このポータルを開けませんでした。代わりに元のノートを開いてください。",
-    "noTarget": "このポータルにはまだ対象がありません。定義にノートを追加するか、ブロックを削除してください。",
-    "invalidJson": "このポータルの定義は有効な JSON ではありません。下で修正するか、ブロックを削除してください。",
-    "invalidShape": "このポータルの定義にノートも検索もありません。下で修正するか、ブロックを削除してください。",
+    "unreadable": "このポータルを読み取れません。ブロックを削除して、新しいポータルを追加してください。",
     "search": {
       "editQuery": "クエリを編集",
       "count": "{count, plural, other {# 個のブロック}}",
@@ -1276,6 +1274,7 @@
     "label": "ヘルプとフィードバック",
     "reportBug": "バグを報告",
     "requestFeature": "機能をリクエスト",
+    "joinTestflight": "TestFlight に参加",
     "starOnGithub": "GitHub でスターを付ける",
     "version": "MemryNote {version}",
     "whatsNew": "新機能",
@@ -1695,5 +1694,29 @@
     "journalDaysRenamed": "一部のジャーナルの項目の名前が日付ではなくなりました",
     "journalDaysRenamedHint": "これらのジャーナルの項目は、フォルダがジャーナルフォルダの設定を待っている間に Memry の外で名前が変更されたため、名前が日付ではなくなりました。名前を元に戻すまで、ジャーナルの項目のままです。ノートに変換すると、そのジャーナルの項目はすべてのデバイスから削除され、本文はノートとして残ります。タグは保持されません。",
     "turnIntoNotes": "ノートに変換"
+  },
+  "iosBeta": {
+    "badge": "新着 · TestFlight",
+    "title": "iPhone 版 Memry はベータ版です",
+    "promptBody": "スマートフォンで使える、エンドツーエンド暗号化の保管庫。メールアドレスを入力すると、Apple から TestFlight の招待が届きます。",
+    "emailPlaceholder": "you@example.com",
+    "emailLabel": "TestFlight 招待用のメールアドレス",
+    "submit": "招待を受け取る",
+    "sending": "送信中…",
+    "listNote": "ローンチのお知らせのため、iPhone ベータのリストにも登録します。配信はいつでも停止できます。",
+    "error": "TestFlight の招待を送信できませんでした。もう一度お試しください。",
+    "sentTitle": "受信トレイを確認してください",
+    "sentBody": "Apple が {email} に招待を送りました。届くまで数分かかることがあり、迷惑メールに入る場合もあります。",
+    "stepInstall": "App Store から TestFlight をインストール",
+    "stepOpen": "iPhone で招待を開く",
+    "stepSignIn": "スマートフォンで Memry にサインイン",
+    "done": "完了",
+    "dialogTitle": "iPhone 版 Memry に参加",
+    "dialogBody": "Apple から TestFlight の招待がメールで届きます。iPhone の Apple ID のメールアドレスを入力してください。",
+    "entryTitle": "iPhone ベータを公開中",
+    "entrySubtitle": "TestFlight 経由",
+    "entryJoin": "ベータに参加",
+    "entrySent": "{email} に招待を送信しました",
+    "sendAgain": "もう一度送信"
   }
 }

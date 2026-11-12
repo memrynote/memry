@@ -236,5 +236,21 @@
     "range": "{start} – {end}",
     "openTask": "{title}, {range}",
     "completeTask": "Выполнить: {title}"
+  },
+  "pastYears": {
+    "title": "В этот день",
+    "count": "{count, plural, one {ещё # год} few {ещё # года} many {ещё # лет} other {ещё # года}}",
+    "showAll": "Все годы",
+    "showPreviews": "Превью",
+    "yearsAgo": "{count, plural, one {# год назад} few {# года назад} many {# лет назад} other {# года назад}}",
+    "yearsLater": "{count, plural, one {через # год} few {через # года} many {через # лет} other {через # года}}",
+    "words": "{count, plural, one {# слово} few {# слова} many {# слов} other {# слова}}",
+    "openDay": "Открыть {date}",
+    "showFull": "Показать запись полностью",
+    "showLess": "Свернуть",
+    "loadError": "Не удалось загрузить этот день из других лет.",
+    "previousYear": "Тот же день, прошлый год",
+    "nextYear": "Тот же день, следующий год",
+    "goToYear": "Перейти к этому дню в {year} году"
   }
 }

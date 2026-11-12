@@ -5,6 +5,7 @@
     "create": "Opprett"
   },
   "wikiLinkPreview": {
+    "journalUnwritten": "Det er ikke skrevet noe for {date} ennå. Klikk for å åpne dagen",
     "notFound": "Ikke funnet – klikk for å opprette «{title}»"
   },
   "wikiLinkMenu": {
@@ -138,6 +139,7 @@
     "actions": {
       "openInNewTab": "Åpne i ny fane",
       "openToTheSide": "Åpne ved siden av",
+      "openFolderView": "Åpne mappevisning",
       "newNote": "Nytt notat",
       "newFolder": "Ny mappe",
       "showTasks": "Vis oppgaver",
@@ -187,7 +189,8 @@
     },
     "toast": {
       "selectionBookmarked": "{count} elementer bokmerket",
-      "selectionBookmarkFailed": "Kunne ikke bokmerke de valgte elementene"
+      "selectionBookmarkFailed": "Kunne ikke bokmerke de valgte elementene",
+      "pairedNoteNameTaken": "Det finnes allerede et notat med navnet {name} der"
     }
   },
   "editor": {
@@ -423,12 +426,14 @@
       "savedView": "Lagret visning",
       "savedViewMissing": "Den lagrede visningen «{name}» finnes ikke lenger, så standardvisningen vises.",
       "openAsTab": "Åpne som fane",
+      "newNote": "Nytt notat",
+      "newViewTitle": "Ny visning",
+      "newViewSubtext": "En ny mappe ved siden av dette notatet, vist her",
+      "newViewFailed": "Kunne ikke opprette mappen for denne visningen.",
       "empty": "Ingenting samsvarer med denne visningen ennå.",
       "loadFailed": "Kunne ikke laste inn denne visningen. Selve notatene er uendret.",
       "folderMissing": "Denne mappen finnes ikke lenger i hvelvet. Velg en annen kilde.",
-      "invalidJson": "Definisjonen av denne visningen er ikke gyldig JSON. Rett den nedenfor, eller fjern blokken.",
-      "invalidShape": "Definisjonen av denne visningen mangler kilde. Velg en ovenfor, eller rett den nedenfor.",
-      "definition": "Definisjon"
+      "unreadable": "Denne visningen kan ikke leses. Velg en kilde ovenfor, eller fjern blokken."
     },
     "chart": {
       "title": "Diagram",
@@ -668,6 +673,8 @@
   },
   "menus": {
     "wiki": {
+      "journalDay": "Dagbok · {date}",
+      "journalDayUnwritten": "Dagbok · ikke skrevet ennå",
       "aria": "Notatforslag",
       "loading": "Laster inn notater …",
       "empty": "Ingen notater funnet",
@@ -782,6 +789,12 @@
     "viaProperty": "{property} → {title}",
     "viaPortal": "Vist i en portal"
   },
+  "references": {
+    "filterAll": "Alle",
+    "filterNotes": "Notater",
+    "filterJournal": "Dagbok",
+    "filterBy": "Filtrer referanser: {filter}"
+  },
   "unlinkedMentions": {
     "title": "Ulenkede omtaler",
     "summary": "{count, plural, one {# ulenket omtale} other {# ulenkede omtaler}}",
@@ -886,6 +899,7 @@
     "showOnCalendar": "Vis i kalender",
     "showingOnCalendar": "Vises i kalender",
     "relation": {
+      "unwrittenDay": "Ikke skrevet ennå",
       "deleted": "Slettet",
       "removeAria": "Fjern {title}",
       "addAria": "Legg til relasjon",

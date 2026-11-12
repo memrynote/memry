@@ -250,7 +250,8 @@
     "failedPlayAudio": "Gagal memainkan audio",
     "failedLoadAudio": "Gagal memuatkan audio",
     "video": "Video",
-    "unsupportedVideo": "Penyemak imbas anda tidak menyokong teg video."
+    "unsupportedVideo": "Penyemak imbas anda tidak menyokong teg video.",
+    "fileOnOtherDevice": "Fail berada pada peranti yang menangkapnya."
   },
   "reminder": {
     "dataUnavailable": "Data peringatan tidak tersedia.",

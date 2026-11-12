@@ -5,6 +5,7 @@
     "create": "Créer"
   },
   "wikiLinkPreview": {
+    "journalUnwritten": "L'entrée du {date} n'est pas encore écrite. Cliquez pour ouvrir la journée",
     "notFound": "Introuvable – cliquez pour créer « {title} »"
   },
   "wikiLinkMenu": {
@@ -138,6 +139,7 @@
     "actions": {
       "openInNewTab": "Ouvrir dans un nouvel onglet",
       "openToTheSide": "Ouvrir sur le côté",
+      "openFolderView": "Ouvrir la vue du dossier",
       "newNote": "Nouvelle note",
       "newFolder": "Nouveau dossier",
       "showTasks": "Afficher les tâches",
@@ -187,7 +189,8 @@
     },
     "toast": {
       "selectionBookmarked": "{count} éléments ajoutés aux favoris",
-      "selectionBookmarkFailed": "Impossible d'ajouter les éléments sélectionnés aux favoris"
+      "selectionBookmarkFailed": "Impossible d'ajouter les éléments sélectionnés aux favoris",
+      "pairedNoteNameTaken": "Une note nommée {name} existe déjà à cet endroit"
     }
   },
   "editor": {
@@ -423,12 +426,14 @@
       "savedView": "Vue enregistrée",
       "savedViewMissing": "La vue enregistrée « {name} » n'existe plus : la vue par défaut est affichée.",
       "openAsTab": "Ouvrir dans un onglet",
+      "newNote": "Nouvelle note",
+      "newViewTitle": "Nouvelle vue",
+      "newViewSubtext": "Un nouveau dossier à côté de cette note, listé ici",
+      "newViewFailed": "Impossible de créer le dossier de cette vue.",
       "empty": "Rien ne correspond encore à cette vue.",
       "loadFailed": "Impossible de charger cette vue. Les notes elles-mêmes sont intactes.",
       "folderMissing": "Ce dossier n'est plus dans le coffre. Choisissez une autre source.",
-      "invalidJson": "La définition de cette vue n'est pas du JSON valide. Corrigez-la ci-dessous ou retirez le bloc.",
-      "invalidShape": "La définition de cette vue n'a pas de source. Choisissez-en une ci-dessus ou corrigez-la ci-dessous.",
-      "definition": "Définition"
+      "unreadable": "Cette vue est illisible. Choisissez une source ci-dessus ou supprimez le bloc."
     },
     "chart": {
       "title": "Graphique",
@@ -668,6 +673,8 @@
   },
   "menus": {
     "wiki": {
+      "journalDay": "Journal · {date}",
+      "journalDayUnwritten": "Journal · pas encore écrit",
       "aria": "Suggestions de notes",
       "loading": "Chargement des notes…",
       "empty": "Aucune note trouvée",
@@ -782,6 +789,12 @@
     "viaProperty": "{property} → {title}",
     "viaPortal": "Affiché dans un portail"
   },
+  "references": {
+    "filterAll": "Toutes",
+    "filterNotes": "Notes",
+    "filterJournal": "Journal",
+    "filterBy": "Filtrer les références : {filter}"
+  },
   "unlinkedMentions": {
     "title": "Mentions non liées",
     "summary": "{count, plural, one {# mention non liée} other {# mentions non liées}}",
@@ -886,6 +899,7 @@
     "showOnCalendar": "Afficher sur le calendrier",
     "showingOnCalendar": "Affiché sur le calendrier",
     "relation": {
+      "unwrittenDay": "Pas encore écrit",
       "deleted": "Supprimé",
       "removeAria": "Retirer « {title} »",
       "addAria": "Ajouter une relation",

@@ -113,7 +113,74 @@
       "noDueDate": "Son tarih yok"
     },
     "repeatTypeRepeating": "Tekrarlanan",
-    "repeatTypeOneTime": "Tek seferlik"
+    "repeatTypeOneTime": "Tek seferlik",
+    "advanced": {
+      "entry": "Gelişmiş filtre…",
+      "entryHint": "ve, veya, değil içeren kurallar",
+      "title": "Filtre",
+      "match": "Eşleşme:",
+      "ofThese": "kural",
+      "matches": {
+        "all": "tümü",
+        "any": "herhangi biri",
+        "none": "hiçbiri"
+      },
+      "fields": {
+        "title": "Başlık",
+        "status": "Durum",
+        "priority": "Öncelik",
+        "due": "Bitiş tarihi",
+        "project": "Proje",
+        "location": "Konum",
+        "tags": "Etiketler",
+        "repeat": "Tekrar",
+        "hasTime": "Saati var"
+      },
+      "ops": {
+        "contains": "içerir",
+        "notContains": "içermez",
+        "any": "şunlardan biri",
+        "none": "şunlardan hiçbiri",
+        "all": "şunların tümü",
+        "empty": "boş",
+        "notEmpty": "boş değil",
+        "is": "eşittir",
+        "isNot": "eşit değil"
+      },
+      "tagOps": {
+        "any": "şunlardan birine sahip",
+        "all": "şunların tümüne sahip",
+        "none": "şunların hiçbirine sahip değil"
+      },
+      "values": {
+        "repeating": "Tekrarlanan",
+        "oneTime": "Tek seferlik",
+        "withTime": "Saatli",
+        "withoutTime": "Saatsiz",
+        "customRange": "Özel aralık",
+        "from": "Başlangıç",
+        "to": "Bitiş",
+        "pick": "Seç…",
+        "titlePlaceholder": "Başlıktaki metin"
+      },
+      "addRule": "Kural ekle",
+      "addGroup": "Grup ekle",
+      "clear": "Temizle",
+      "removeRule": "Kuralı kaldır",
+      "removeGroup": "Grubu kaldır",
+      "matchCount": "{count, plural, one {# görev eşleşiyor} other {# görev eşleşiyor}}",
+      "skipped": "{count, plural, one {# kural atlandı} other {# kural atlandı}}",
+      "ruleCount": "{count, plural, one {# kural} other {# kural}}",
+      "unknownRule": "Daha yeni bir sürümden kural",
+      "empty": "Henüz kural yok. Filtrelemeye başlamak için bir kural ekle.",
+      "summary": {
+        "and": "ve",
+        "or": "veya",
+        "not": "değil"
+      },
+      "editRules": "Kuralları düzenle",
+      "clearRules": "Kuralları temizle"
+    }
   },
   "quickAdd": {
     "label": "Hızlı görev ekle",

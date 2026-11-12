@@ -504,7 +504,8 @@
       "loading": "正在載入設定…"
     },
     "groups": {
-      "footer": "頁尾"
+      "footer": "頁尾",
+      "pastYears": "往年"
     },
     "template": {
       "label": "範本",
@@ -562,6 +563,14 @@
     "showInSidebar": {
       "label": "顯示於側邊欄",
       "description": "在筆記樹狀結構中顯示日誌資料夾及其項目"
+    },
+    "showOnThisDay": {
+      "label": "顯示歷年今日",
+      "description": "在條目下方列出往年的同一日期"
+    },
+    "allYearsView": {
+      "label": "完整顯示所有年份",
+      "description": "永恆日誌：該日期的每一年都在同一頁，位於條目下方"
     }
   },
   "tasks": {
@@ -1110,7 +1119,16 @@
       "sending": "正在傳送驗證碼…"
     },
     "oauth": {
-      "google": "使用 Google 帳號繼續"
+      "google": "使用 Google 帳號繼續",
+      "waiting": "請在瀏覽器中完成 Google 登入。",
+      "browserUnavailable": "無法開啟你的瀏覽器。",
+      "manualInstructions": "複製登入連結，並在這台電腦的瀏覽器中開啟。登入期間請保持 memrynote 開啟。",
+      "linkLabel": "登入連結",
+      "copyLink": "複製登入連結",
+      "retryBrowser": "重新嘗試開啟瀏覽器",
+      "copied": "已複製登入連結。",
+      "copyFailed": "無法複製登入連結。請從上方欄位選取並複製。",
+      "cancel": "使用其他登入方式"
     },
     "otp": {
       "title": "輸入驗證碼",
@@ -1347,6 +1365,7 @@
       "keySaveError": "無法儲存 OpenAI 金鑰"
     },
     "embedding": {
+      "load": "載入模型",
       "loaded": "已載入",
       "loading": "載入中",
       "downloadLoad": "下載並載入模型",
@@ -1371,7 +1390,8 @@
         "ollama": "Ollama（本機）",
         "openai": "OpenAI",
         "anthropic": "Anthropic",
-        "google": "Google Gemini"
+        "google": "Google Gemini",
+        "custom": "自訂（相容 OpenAI）"
       },
       "model": "模型",
       "modelDescription": "用於重寫和摘要的語言模型",
@@ -1381,6 +1401,11 @@
       "apiKeyPlaceholder": "輸入 {provider} API 金鑰",
       "ollamaUrl": "Ollama URL",
       "ollamaUrlDescription": "本機伺服器位址",
+      "customUrl": "基礎 URL",
+      "customUrlDescription": "任何相容 OpenAI 的端點，例如 OpenRouter",
+      "customUrlPlaceholder": "https://openrouter.ai/api/v1",
+      "customApiKeyPlaceholder": "API 金鑰（選填）",
+      "customModelPlaceholder": "模型 ID",
       "connection": "連線",
       "activePort": "在連接埠 {port} 上執行中",
       "notConnected": "未連線",
@@ -2032,7 +2057,7 @@
       "subtitle": "管理所有筆記中的屬性定義"
     },
     "loading": "正在載入屬性…",
-    "empty": "目前還沒有屬性定義。為任何筆記新增「狀態」、「單選」或「多選」屬性即可開始使用。",
+    "empty": "目前還沒有屬性。為任何筆記新增屬性即可開始使用。",
     "filterPlaceholder": "篩選屬性…",
     "noMatch": "沒有符合「{query}」的屬性",
     "summary": "{count, plural, other {# 個屬性定義}}",
@@ -2072,6 +2097,14 @@
     },
     "v2": {
       "actionsAria": "「{name}」的動作"
+    },
+    "usage": {
+      "heading": "使用位置",
+      "noteCount": "{count, plural, other {# 則筆記}}",
+      "mismatchCount": "與「{type}」不符的值：{count}",
+      "mismatchNote": "與「{type}」不符",
+      "none": "沒有筆記使用此屬性",
+      "loadFailed": "無法載入使用此屬性的筆記"
     }
   },
   "commandLine": {
@@ -2407,7 +2440,6 @@
   "phaseI": {
     "errors": {
       "failedToUpdateTagColor": "無法更新標籤顏色",
-      "googleSignInFailed": "Google 登入失敗",
       "failedToSendVerificationCode": "無法傳送驗證碼",
       "invalidVerificationCode": "驗證碼無效",
       "accountSetupFailed": "帳號設定失敗",
@@ -2464,7 +2496,17 @@
       "running": "執行中",
       "tokenHint": "僅限本次啟動",
       "copy": "複製",
-      "rotate": "輪替"
+      "rotate": "輪替",
+      "clientConfig": {
+        "label": "用戶端設定",
+        "hint": "以本次啟動的 URL 和權杖複製",
+        "copy": "複製 {client} 設定"
+      },
+      "notes": {
+        "readOnly": "外部用戶端只能讀取。寫入工具會回傳 PERMISSION_DENIED，請透過 Agent Chat 或 memrynote 命令列寫入。",
+        "restart": "memrynote 重新啟動、切換儲存庫或輪替權杖時，URL 和權杖都會改變。每次都需更新用戶端設定，然後重新啟動用戶端。",
+        "docs": "設定指南"
+      }
     }
   },
   "agentProviders": {

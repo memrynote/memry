@@ -509,6 +509,29 @@ struct NotePropertyEditingTests {
             .property("Related", "[]"),
         ])
     }
+
+    /// Desktop `ProjectEditor`: the reserved `project` property holds project
+    /// names as a JSON array, toggled case-insensitively (#4153).
+    @Test func picking_a_project_writes_its_name_into_the_project_list() async {
+        let writer = ScriptedMetadataWriter()
+        let model = NoteMetadataViewModel(noteId: "note-1", writer: writer)
+
+        await model.toggleProject("Name", in: NoteProjectValue.names("[]"))
+        await model.toggleProject("name", in: ["Name", "Other"])
+        await model.removeProject("Other", from: ["Other"])
+
+        #expect(writer.all == [
+            .property("project", #"["Name"]"#),
+            .property("project", #"["Other"]"#),
+            .property("project", "[]"),
+        ])
+    }
+
+    @Test func a_project_value_reads_as_names_whatever_was_stored() {
+        #expect(NoteProjectValue.names(#"["Alpha","Beta"]"#) == ["Alpha", "Beta"])
+        #expect(NoteProjectValue.names("null").isEmpty)
+        #expect(NoteProjectValue.names("[]").isEmpty)
+    }
 }
 
 @Suite("Note property types and values, as desktop resolves them")

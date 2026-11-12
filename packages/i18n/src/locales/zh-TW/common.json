@@ -3,9 +3,7 @@
     "copyFailed": "無法複製傳送門",
     "hiddenCount": "已隱藏 {count} 個",
     "windowFailed": "無法開啟此傳送門。請改為開啟來源筆記。",
-    "noTarget": "此傳送門尚未指定目標。請在定義中加入筆記，或移除此區塊。",
-    "invalidJson": "此傳送門的定義不是有效的 JSON。請在下方修正，或移除此區塊。",
-    "invalidShape": "此傳送門的定義中沒有筆記或搜尋。請在下方修正，或移除此區塊。",
+    "unreadable": "無法讀取此傳送門。請移除該區塊並新增傳送門。",
     "search": {
       "editQuery": "編輯查詢",
       "count": "{count, plural, other {# 個區塊}}",
@@ -1276,6 +1274,7 @@
     "label": "說明與意見回饋",
     "reportBug": "回報錯誤",
     "requestFeature": "提出功能建議",
+    "joinTestflight": "加入 TestFlight",
     "starOnGithub": "在 GitHub 上加星號",
     "version": "MemryNote {version}",
     "whatsNew": "新功能",
@@ -1695,5 +1694,29 @@
     "journalDaysRenamed": "部分日記項目的名稱已不再是日期",
     "journalDaysRenamedHint": "這些日記項目在其資料夾等待日記資料夾設定時，在 Memry 之外被重新命名，因此名稱已不再是日期。在你改回名稱之前，它們仍是日記項目。將其轉換為筆記會在你的所有裝置上刪除該日記項目，並將其文字保留為筆記。其標籤不會保留。",
     "turnIntoNotes": "轉換為筆記"
+  },
+  "iosBeta": {
+    "badge": "新 · TestFlight",
+    "title": "Memry iPhone 版處於測試階段",
+    "promptBody": "你的儲存庫隨身攜帶，並採用端對端加密。留下你的電子郵件，Apple 就會寄送 TestFlight 邀請給你。",
+    "emailPlaceholder": "you@example.com",
+    "emailLabel": "接收 TestFlight 邀請的電子郵件",
+    "submit": "取得邀請",
+    "sending": "正在寄送…",
+    "listNote": "我們也會將你加入 iPhone 測試版名單，用於寄送上線消息。你可以隨時取消訂閱。",
+    "error": "無法寄送 TestFlight 邀請。請再試一次。",
+    "sentTitle": "請查看你的收件匣",
+    "sentBody": "Apple 已將邀請寄送至 {email}。可能需要幾分鐘，也可能被歸入垃圾郵件。",
+    "stepInstall": "從 App Store 安裝 TestFlight",
+    "stepOpen": "在 iPhone 上開啟邀請",
+    "stepSignIn": "在手機上登入 Memry",
+    "done": "完成",
+    "dialogTitle": "加入 Memry iPhone 版",
+    "dialogBody": "Apple 會透過電子郵件寄送 TestFlight 邀請給你。請使用 iPhone 上 Apple ID 的電子郵件。",
+    "entryTitle": "iPhone 測試版已上線",
+    "entrySubtitle": "透過 TestFlight",
+    "entryJoin": "加入測試",
+    "entrySent": "邀請已寄送至 {email}",
+    "sendAgain": "重新寄送"
   }
 }

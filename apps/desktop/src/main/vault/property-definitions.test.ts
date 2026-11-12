@@ -690,22 +690,28 @@ describe('PropertyDefinitionsService', () => {
     expect(enqueueDeleteMock).not.toHaveBeenCalled()
   })
 
-  it('clears memory and DB caches when properties.md is missing', async () => {
+  it('keeps the database definitions and writes them back when properties.md is missing', async () => {
+    // A vault opened from another app has no properties.md, and the types its
+    // notes taught live only in the data DB. Clearing them here emptied the
+    // Settings list on every launch.
     const service = PropertyDefinitionsService.init('/vault')
     await service.upsert({
       name: 'Stage',
       type: 'select',
       options: [{ value: 'Idea', color: 'sky' }]
     })
+    atomicWriteMock.mockClear()
 
     safeReadMock.mockResolvedValueOnce(null)
     await service.reload()
 
-    expect(service.getAll()).toEqual([])
-    expect(dataDb.deleteRun).toHaveBeenCalledTimes(2)
-    expect(indexDb.deleteRun).toHaveBeenCalledTimes(2)
-    expect(dataDb.rows).toEqual([])
-    expect(indexDb.rows).toEqual([])
+    expect(service.getAll().map((definition) => definition.name)).toEqual(['Stage'])
+    expect(dataDb.rows.map((row) => row.name)).toEqual(['Stage'])
+    expect(indexDb.rows.map((row) => row.name)).toEqual(['Stage'])
+    expect(atomicWriteMock).toHaveBeenCalledWith(
+      '/vault/.memry/properties.md',
+      expect.stringContaining('Stage')
+    )
   })
 
   it('persists upsert and remove changes back to properties.md', async () => {

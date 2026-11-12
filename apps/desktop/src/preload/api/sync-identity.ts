@@ -8,6 +8,7 @@ export const syncAuth = {
     invoke(SYNC_CHANNELS.AUTH_VERIFY_OTP, input),
   resendOtp: (input: { email: string }) => invoke(SYNC_CHANNELS.AUTH_RESEND_OTP, input),
   initOAuth: (input: { provider: 'google' }) => invoke(SYNC_CHANNELS.AUTH_INIT_OAUTH, input),
+  retryOAuth: (input: { state: string }) => invoke(SYNC_CHANNELS.AUTH_RETRY_OAUTH, input),
   refreshToken: () => invoke(SYNC_CHANNELS.AUTH_REFRESH_TOKEN),
   logout: () => invoke(SYNC_CHANNELS.AUTH_LOGOUT)
 }
