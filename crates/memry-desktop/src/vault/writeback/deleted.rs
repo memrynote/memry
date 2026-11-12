@@ -58,9 +58,14 @@ impl Pass {
             .into_iter()
             .partition(|(row, owed)| !owed || theirs.contains(&row.note_id));
         if !unsettled.is_empty() {
+            let note_ids: Vec<&str> = unsettled
+                .iter()
+                .map(|(row, _)| row.note_id.as_str())
+                .collect();
             tracing::warn!(
                 scope = SCOPE,
                 count = unsettled.len(),
+                ?note_ids,
                 "files of deleted notes owed a move the open did not settle stay, for a later open"
             );
         }
