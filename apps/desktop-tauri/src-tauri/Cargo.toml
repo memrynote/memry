@@ -167,3 +167,7 @@ tempfile = "3"
 # A test reads what a command logged.
 tracing-subscriber = { version = "0.3.23", default-features = false, features = ["std", "fmt"] }
 yrs = { workspace = true }
+
+[target.'cfg(windows)'.dev-dependencies]
+# `tests/event_loop_runner.rs` drives the event loop Tauri runs on; the version Tauri resolves.
+tao = "0.37"
