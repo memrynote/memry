@@ -9,10 +9,12 @@
 //! text that lands after its vault closed is not kept, and the close logs it.
 //!
 //! The replaced file is held only where holding it cannot fail the rename
-//! ([`holds_across_rename`]). On Windows it is not: a rename over a file another handle holds
-//! open fails on a volume without POSIX rename semantics, so the save would never land. On a
-//! network volume it is not either: an SMB server may refuse the rename while a handle is open,
-//! and NFS renames the open file to a `.nfs*` file left in the vault's folder until it closes.
+//! ([`holds_across_rename`]): a local volume of a type known to keep an open file across a
+//! rename. On Windows it is not: a rename over a file another handle holds open fails on a volume
+//! without POSIX rename semantics, so the save would never land. On a network volume it is not
+//! either: an SMB server may refuse the rename while a handle is open, and NFS renames the open
+//! file to a `.nfs*` file left in the vault's folder until it closes. A volume of any other type
+//! is not held, so one this module does not know never risks the rename.
 
 use std::fs::File;
 use std::io::{Read, Seek, SeekFrom};
@@ -97,8 +99,8 @@ impl Replaced {
     }
 }
 
-/// Whether the file the app replaces can stay open across the rename: a local volume on a Unix
-/// that names its type. See the module comment for Windows and network volumes.
+/// Whether the file the app replaces can stay open across the rename: a known local volume on a
+/// Unix that names its type. See the module comment for Windows and other volumes.
 pub(super) fn holds_across_rename(file: &File) -> bool {
     #[cfg(any(target_os = "macos", target_os = "linux"))]
     {
@@ -110,7 +112,7 @@ pub(super) fn holds_across_rename(file: &File) -> bool {
         }
         // SAFETY: `fstatfs` returned 0, so `stat` is initialized.
         let stat = unsafe { stat.assume_init() };
-        !is_network(&stat)
+        is_local(&stat)
     }
     #[cfg(not(any(target_os = "macos", target_os = "linux")))]
     {
@@ -120,45 +122,43 @@ pub(super) fn holds_across_rename(file: &File) -> bool {
 }
 
 #[cfg(target_os = "macos")]
-fn is_network(stat: &libc::statfs) -> bool {
+fn is_local(stat: &libc::statfs) -> bool {
     let name: Vec<u8> = stat
         .f_fstypename
         .iter()
         .take_while(|&&c| c != 0)
         .map(|&c| c as u8)
         .collect();
-    is_network_type(&String::from_utf8_lossy(&name))
+    is_local_type(&String::from_utf8_lossy(&name))
 }
 
-/// Network and FUSE volumes by `f_fstypename`: a FUSE volume may be a network one (sshfs), and
-/// renames over an open file to a hidden one.
+/// Local volumes by `f_fstypename`: APFS, HFS+, exFAT, FAT. Network, FUSE and FSKit volumes are
+/// not among them.
 #[cfg(any(target_os = "macos", test))]
-fn is_network_type(name: &str) -> bool {
-    matches!(name, "smbfs" | "nfs" | "afpfs" | "webdav" | "cifs" | "ftp") || name.contains("fuse")
+fn is_local_type(name: &str) -> bool {
+    matches!(name, "apfs" | "hfs" | "exfat" | "msdos")
 }
 
 #[cfg(target_os = "linux")]
-fn is_network(stat: &libc::statfs) -> bool {
+fn is_local(stat: &libc::statfs) -> bool {
     // `f_type` is signed and 64 bits wide on some targets; the magic numbers are its low 32 bits.
-    is_network_magic(stat.f_type as u32)
+    is_local_magic(stat.f_type as u32)
 }
 
-/// Network and FUSE volumes by `f_type` (`linux/magic.h`): NFS, SMB, CIFS, SMB2, FUSE, AFS,
-/// Coda, NCP, 9P, Ceph.
+/// Local volumes by `f_type` (`linux/magic.h`): ext2/3/4, btrfs, XFS, tmpfs, F2FS, ZFS,
+/// bcachefs, overlayfs.
 #[cfg(any(target_os = "linux", test))]
-fn is_network_magic(magic: u32) -> bool {
+fn is_local_magic(magic: u32) -> bool {
     matches!(
         magic,
-        0x6969
-            | 0x517B
-            | 0xFF53_4D42
-            | 0xFE53_4D42
-            | 0x6573_5546
-            | 0x5346_414F
-            | 0x7375_7245
-            | 0x564C
-            | 0x0102_1997
-            | 0x00C3_6400
+        0xEF53
+            | 0x9123_683E
+            | 0x5846_5342
+            | 0x0102_1994
+            | 0xF2F5_2010
+            | 0x2FC1_2FC1
+            | 0xCA45_1A4E
+            | 0x794C_7630
     )
 }
 
@@ -318,17 +318,24 @@ mod tests {
     #[test]
     fn network_and_fuse_volumes_are_not_held() {
         for name in ["smbfs", "nfs", "afpfs", "webdav", "macfuse", "osxfuse"] {
-            assert!(is_network_type(name), "{name}");
+            assert!(!is_local_type(name), "{name}");
         }
         for name in ["apfs", "hfs", "exfat", "msdos"] {
-            assert!(!is_network_type(name), "{name}");
+            assert!(is_local_type(name), "{name}");
         }
         for magic in [0x6969, 0xFF53_4D42, 0xFE53_4D42, 0x6573_5546] {
-            assert!(is_network_magic(magic), "{magic:#x}");
+            assert!(!is_local_magic(magic), "{magic:#x}");
         }
         // ext4, xfs, btrfs, tmpfs.
         for magic in [0xEF53, 0x5846_5342, 0x9123_683E, 0x0102_1994] {
-            assert!(!is_network_magic(magic), "{magic:#x}");
+            assert!(is_local_magic(magic), "{magic:#x}");
         }
+    }
+
+    #[test]
+    fn a_volume_of_an_unknown_type_is_not_held() {
+        // An FSKit name and Linux vboxsf: a type this module does not know fails closed.
+        assert!(!is_local_type("fskit-unknown"));
+        assert!(!is_local_magic(0x786F_4256));
     }
 }
