@@ -12,15 +12,12 @@
 //!   folder it is in (`extractTitleFromPath`, `vault/frontmatter.ts`). Other
 //!   files are not named here yet: core creates markdown notes only, and a file
 //!   note (PDF, image, audio, video) comes with its attachment bytes.
-//! - A large-file class markdown file (over 1 MiB, or a block over 128 KiB) is
-//!   not named: Electron never syncs it, and a note here would push an empty
-//!   body for it. Electron does list it, as a read-only note of this device
-//!   (`syncLargeFileBodyToCache`, `vault/note-sync.ts`); here it is not listed
-//!   until the large-file viewer is ported (Step 14, #3531). A note that grows
-//!   into the class after it was named stays a note: its record was synced, so a
-//!   move still edits it, as Electron's `processRename`
-//!   (`vault/rename-tracker.ts`) does. Its removal keeps it (below), where
-//!   Electron deletes it.
+//! - A large-file class markdown file (over 1 MiB, or a block over 128 KiB) is a
+//!   read-only note of this device, as Electron lists it (`syncLargeFileBodyToCache`,
+//!   `vault/note-sync.ts`), never pushed until it shrinks and deleted with its file
+//!   ([`large`]). A note that grows into the class after it was named stays a note:
+//!   its record was synced, so a move still edits it, as Electron's `processRename`
+//!   does, and its removal keeps it (below), where Electron deletes it.
 //! - A file whose path names a day is that day's journal entry, `j<YYYY-MM-DD>`
 //!   on every device: it is under the journal folder and its path below it,
 //!   without `.md`, parses in the journal date format (`extractDateFromPath`,
@@ -90,6 +87,7 @@ use crate::vault::note_file::NoteFile;
 use crate::vault::notices::{Listed, VaultNotices};
 
 mod file;
+mod large;
 mod moving;
 mod new_files;
 mod notices;
@@ -320,13 +318,6 @@ impl NoteIdentity for NotesIdentity {
         let Some(text) = file.file else {
             return Ok(Adoption::Defer);
         };
-        if is_large_file(file.size, &text.raw) {
-            tracing::debug!(
-                scope = SCOPE,
-                "a large-file class markdown file is not a note"
-            );
-            return Ok(Adoption::Defer);
-        }
         let Some(journal) = self.journal(ctx.root) else {
             return Ok(Adoption::Defer);
         };
@@ -340,6 +331,9 @@ impl NoteIdentity for NotesIdentity {
             return Ok(Adoption::Defer);
         }
         self.settle_owed(ctx.root, &writer, &journal, None);
+        if is_large_file(file.size, &text.raw) {
+            return large::adopt(self, ctx, &writer, &journal, file);
+        }
         let split = split_frontmatter_block(&text.raw);
         let body = split.body;
         let created_ms = created_ms(&ctx.root.join(file.path)).unwrap_or(file.modified_ms);
@@ -462,6 +456,16 @@ impl NoteIdentity for NotesIdentity {
         let writer = self.writer(ctx)?;
         tags::edited(&writer, ctx.search, note_id, previous, file)?;
         properties::edited(&writer, ctx, self.store.clone(), note_id, previous, file)
+    }
+
+    /// [`large::left`].
+    fn left_large_class(
+        &self,
+        ctx: &IdentityCtx<'_>,
+        note_id: &str,
+        file: &NoteFile,
+    ) -> Result<(), IdentityError> {
+        large::left(self, ctx, note_id, file)
     }
 
     /// A move that keeps what the file is reaches the record (`renameKeepsJournalDate`). One

@@ -16,6 +16,7 @@ use crate::domain::notes::identity::{
 };
 use crate::domain::notes::journal_change::{self, JournalChangeRecorded, PendingJournalChange};
 use crate::domain::notes::journal_day::{self, FileDay};
+use crate::domain::notes::large_file;
 use crate::domain::notes::new_files::{self, NewFileNote};
 use crate::domain::notes::{self, NewNote};
 use crate::domain::properties;
@@ -95,6 +96,31 @@ impl NotesWriter {
                 ))
             })
             .map_err(CrdtError::from)?
+    }
+
+    /// The note of a large-file class file no row names, never queued
+    /// ([`large_file::adopt_large`]).
+    pub fn adopt_large_file(&self, file: FileNote<'_>) -> Result<Adopted, CrdtError> {
+        let device_id = self.device_id.clone();
+        self.db
+            .call_blocking(move |conn| {
+                Ok(large_file::adopt_large(
+                    conn,
+                    &file,
+                    &Self::new_id(),
+                    &device_id,
+                    now_ms(),
+                ))
+            })
+            .map_err(CrdtError::from)?
+    }
+
+    /// The note's file left the large-file class: its record is queued ahead of its body
+    /// ([`large_file::left_class`]).
+    pub fn large_file_left(&self, note_id: &str) -> Result<(), StorageError> {
+        let note_id = note_id.to_owned();
+        self.db
+            .call_blocking(move |conn| large_file::left_class(conn, &note_id, now_ms()))
     }
 
     /// The id a note created by [`Self::adopt_new_files`] is to get, minted before its body is

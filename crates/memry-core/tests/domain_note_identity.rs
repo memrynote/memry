@@ -25,6 +25,7 @@ use std::collections::HashMap;
 use memry_core::domain::notes::identity::{
     self, Adopted, Deferral, ELECTRON_IMPORT_META_KEY, FileNote, Origin, VAULT_ORIGIN_META_KEY,
 };
+use memry_core::domain::notes::large_file;
 use memry_core::sync::body_debt;
 use note_identity_support::{
     Embeds, adopt, adopt_with, clear_outbox, create, file, give_body, give_body_with, give_row,
@@ -328,6 +329,67 @@ fn an_electron_vault_the_core_did_not_import_mints_nothing() {
     // Once the import marked the vault, a new file is a new note.
     set_meta(&db, ELECTRON_IMPORT_META_KEY, "{\"version\":1}");
     assert_eq!(adopt(&db, plan, "minted"), created("minted"));
+}
+
+/// A large-file class file is a new record that is never queued, as Electron never syncs it
+/// (#4311). Its body is never read, so a note it may be defers, and a vault Electron left
+/// beside the core mints nothing for it either.
+#[test]
+fn a_large_file_is_a_record_never_queued_and_defers_where_only_a_body_could_tell() {
+    let db = note_identity_support::open("large");
+    let adopt_large = |file, id: &str| {
+        run(&db, |conn| {
+            Ok(large_file::adopt_large(conn, &file, id, "dev", 1))
+        })
+        .expect("an answer")
+    };
+    assert_eq!(
+        adopt_large(file("Logs/dump.md", "unread"), "big"),
+        created("big")
+    );
+    let stored = payload(&db, "big");
+    assert_eq!(stored["title"], json!("dump"));
+    assert_eq!(stored["folderPath"], json!("Logs"));
+    assert_eq!(stored["content"], json!(""));
+    assert!(outbox(&db).is_empty());
+
+    pulled(&db, "pulled", &record("Plan", None, "Buy milk\n"));
+    assert_eq!(
+        adopt_large(file("Plan.md", "Buy milk\n"), "minted"),
+        UNDECIDED
+    );
+    let other = beside_electron(file("Other.md", "x"));
+    assert_eq!(adopt_large(other, "minted"), WITHHELD);
+    assert_eq!(note_count(&db), 2);
+    assert!(outbox(&db).is_empty());
+}
+
+/// A crash between a large file's create and its row leaves a note with no text anywhere: the
+/// file asked again is that note, never a second one (#4326). So is a pulled record with no
+/// text; one whose body is owed a pull may have some, and defers.
+#[test]
+fn a_large_file_asked_again_is_the_bare_note_it_made() {
+    let db = note_identity_support::open("large-again");
+    let adopt_large = |file, id: &str| {
+        run(&db, |conn| {
+            Ok(large_file::adopt_large(conn, &file, id, "dev", 1))
+        })
+        .expect("an answer")
+    };
+    let dump = || file("Logs/dump.md", "unread");
+    assert_eq!(adopt_large(dump(), "big"), created("big"));
+    assert_eq!(adopt_large(dump(), "minted"), existing("big"));
+
+    pulled(&db, "pulled", &record("Plan", None, ""));
+    run(&db, |conn| body_debt::owe(conn, "pulled"));
+    assert_eq!(adopt_large(file("Plan.md", "x"), "minted"), UNDECIDED);
+    run(&db, |conn| body_debt::settle(conn, "pulled"));
+    assert_eq!(
+        adopt_large(file("Plan.md", "x"), "minted"),
+        existing("pulled")
+    );
+    assert_eq!(note_count(&db), 2);
+    assert!(outbox(&db).is_empty());
 }
 
 #[test]

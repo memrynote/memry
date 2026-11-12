@@ -8,8 +8,8 @@ use super::identity::{
     Removed, live_place, mints_beside_electron, owe_in, settle_place, unfiled_notes,
 };
 use super::journal_day::{DayEntry, day_entry};
-use super::place_held;
 use super::{ITEM_TYPE, failed, tombstone_local};
+use super::{large_file, place_held};
 use crate::api::errors::StorageError;
 use crate::crdt::errors::CrdtError;
 use crate::domain::{journal, note_files, note_positions, owed_file_body};
@@ -30,7 +30,7 @@ pub fn removed(
     now_ms: i64,
 ) -> Result<Removed, StorageError> {
     let tx = conn.unchecked_transaction().map_err(failed)?;
-    let removed = delete_in(&tx, note_id, device_id, now_ms)?;
+    let removed = delete_in(&tx, note_id, (device_id, now_ms), true)?;
     if removed == Removed::Undecided {
         return Ok(removed);
     }
@@ -89,7 +89,7 @@ pub fn crossed(
         tx.commit().map_err(failed)?;
         return Ok(Removed::Undecided);
     }
-    let removed = delete_in(&tx, note_id, device_id, now_ms)?;
+    let removed = delete_in(&tx, note_id, (device_id, now_ms), false)?;
     if removed == Removed::Deleted {
         place_held::forget(&tx, note_id)?;
     }
@@ -136,11 +136,12 @@ fn put_off(
 }
 
 /// The live note or day deleted when the removal may delete it, with its delete queued.
+/// With `bare_goes`, so does a large file's note with no text anywhere ([`bare_large`]).
 fn delete_in(
     tx: &Connection,
     note_id: &str,
-    device_id: &str,
-    now_ms: i64,
+    (device_id, now_ms): (&str, i64),
+    bare_goes: bool,
 ) -> Result<Removed, StorageError> {
     let live = if live_place(tx, note_id)?.is_some() {
         ITEM_TYPE
@@ -149,7 +150,7 @@ fn delete_in(
     } else {
         return Ok(Removed::Deleted);
     };
-    if !removal_deletes(tx, note_id)? {
+    if !removal_deletes(tx, note_id)? && !(bare_goes && bare_large(tx, note_id)?) {
         return Ok(Removed::Undecided);
     }
     tombstone_local(tx, live, note_id, device_id, now_ms)?;
@@ -177,6 +178,18 @@ fn removal_deletes(conn: &Connection, note_id: &str) -> Result<bool, StorageErro
         && !owed_file_body::owes(conn, note_id)?
         && !note_files::behind_body(conn, note_id)?
         && !body_debt::is_owed(conn, note_id)?)
+}
+
+/// Whether the note is a large file's that has no text anywhere ([`large_file::is_bare`]): its
+/// file had all of it, so the removal of the file deletes the note, as Electron deletes it,
+/// and a later file at its path is a new note, not this one's text.
+fn bare_large(conn: &Connection, note_id: &str) -> Result<bool, StorageError> {
+    if !note_files::is_large_file(conn, note_id)? {
+        return Ok(false);
+    }
+    large_file::is_bare(conn, note_id).map_err(|error| StorageError::Failed {
+        what: error.to_string(),
+    })
 }
 
 /// Whether `id` is a live journal day's record.

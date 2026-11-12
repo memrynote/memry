@@ -62,6 +62,8 @@ pub mod identity;
 pub mod journal_change;
 #[cfg(feature = "markdown")]
 pub mod journal_day;
+#[cfg(feature = "markdown")]
+pub mod large_file;
 pub mod link_rewrite;
 pub mod local_only;
 mod metadata;

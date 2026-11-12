@@ -83,6 +83,19 @@ pub(super) fn create_new(
     device_id: &str,
     now_ms: i64,
 ) -> Result<(), CrdtError> {
+    create_unqueued(tx, file, id, device_id, now_ms)?;
+    outbox::enqueue(tx, &outbox::Change::upsert(ITEM_TYPE, id), now_ms)?;
+    Ok(())
+}
+
+/// [`create_new`] without the outbox row.
+pub(super) fn create_unqueued(
+    tx: &Connection,
+    file: &FileNote<'_>,
+    id: &str,
+    device_id: &str,
+    now_ms: i64,
+) -> Result<(), CrdtError> {
     let note = NewNote {
         id,
         title: file.title,
@@ -102,6 +115,5 @@ pub(super) fn create_new(
         now_ms,
         (carried(file.created_ms), carried(file.modified_ms)),
     )?;
-    outbox::enqueue(tx, &outbox::Change::upsert(ITEM_TYPE, id), now_ms)?;
     Ok(())
 }

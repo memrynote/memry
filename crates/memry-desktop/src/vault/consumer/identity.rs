@@ -261,6 +261,19 @@ pub trait NoteIdentity: Send + Sync {
         Ok(())
     }
 
+    /// The note's file, whose row names no text the document holds, was large-file class and is
+    /// not any more (`file`), before the consumer feeds it: a large file's note never queued its
+    /// record nor took its frontmatter, which a new note's file gives it. An `Err` retries the
+    /// fact, which asks again, so an implementation is idempotent.
+    fn left_large_class(
+        &self,
+        _ctx: &IdentityCtx<'_>,
+        _note_id: &str,
+        _file: &NoteFile,
+    ) -> Result<(), IdentityError> {
+        Ok(())
+    }
+
     /// Whether the app's own move of the note's file to `new_path` keeps what the file is, so
     /// its record may follow (Step 13g). `false` when it changes that, or when that is not
     /// known: the record then stays as it was and is owed the move, as for

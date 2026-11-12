@@ -324,7 +324,7 @@ pub(super) fn body_says(
 }
 
 /// The `content` of the record's stored payload: the text it was created with.
-fn created_content(
+pub(super) fn created_content(
     conn: &Connection,
     item_type: &str,
     note_id: &str,
