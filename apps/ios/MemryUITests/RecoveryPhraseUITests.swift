@@ -42,7 +42,7 @@ final class RecoveryPhraseUITests: XCTestCase {
         XCTAssertTrue(unlock.isHittable)
         unlock.tap()
         XCTAssertFalse(
-            app.staticTexts["Sign out of Memry on this phone?"].waitForExistence(timeout: 2),
+            app.staticTexts["Sign out of Memry on this \(UIDevice.current.userInterfaceIdiom == .pad ? "iPad" : "iPhone")?"].waitForExistence(timeout: 2),
             "tapping Unlock opened the sign-out dialog"
         )
     }

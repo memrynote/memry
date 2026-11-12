@@ -76,6 +76,50 @@ struct FreeLocalVaultTests {
         #expect(rows.map(\.id) == [id])
     }
 
+    @Test("a new local vault is named for the device that created it; an older one keeps \"iPhone\"")
+    func vaultNameFollowsDevice() async throws {
+        let defaults = UserDefaults(suiteName: "local-vault-\(UUID().uuidString)")!
+        let pad = LocalVaultStore(defaults: defaults, deviceNoun: "iPad")
+        let id = pad.create()
+        #expect(pad.name == "iPad")
+        #expect(LocalVaultStore(defaults: defaults, deviceNoun: "iPhone").name == "iPad")
+
+        let session = FakeAuthSession(from: .registered)
+        _ = await LocalVaultAttach(session: session, store: pad, isEmpty: { _ in false }).run(accountVaults: [])
+        #expect(session.calls.contains(.registerVault(id, "iPad")))
+
+        // A vault an older build created stored only its id.
+        let older = UserDefaults(suiteName: "local-vault-\(UUID().uuidString)")!
+        older.set("v-old", forKey: "localVault.id")
+        let read = LocalVaultStore(defaults: older, deviceNoun: "iPad")
+        #expect(read.name == "iPhone")
+        #expect(try await LocalVaultRegistry(store: read).vaults().map(\.name) == ["iPhone"])
+        #expect(read.create() == "v-old")
+        #expect(read.name == "iPhone")
+        #expect(older.string(forKey: "localVault.name") == nil)
+    }
+
+    @Test("the name is stored before the id, so anything that sees the id reads the name")
+    func nameLandsBeforeId() {
+        let defaults = UserDefaults(suiteName: "local-vault-\(UUID().uuidString)")!
+        let store = LocalVaultStore(defaults: defaults, deviceNoun: "iPad")
+        final class Seen: @unchecked Sendable { var names: [String?] = [] }
+        let seen = Seen()
+        let token = NotificationCenter.default.addObserver(
+            forName: UserDefaults.didChangeNotification, object: defaults, queue: nil
+        ) { _ in
+            if defaults.string(forKey: "localVault.id") != nil {
+                seen.names.append(defaults.string(forKey: "localVault.name"))
+            }
+        }
+        defer { NotificationCenter.default.removeObserver(token) }
+
+        store.create()
+
+        #expect(!seen.names.isEmpty)
+        #expect(seen.names.allSatisfy { $0 == "iPad" })
+    }
+
     // MARK: - Attach
 
     @Test("signing in registers the local vault once, then lists it from the account")
@@ -93,7 +137,7 @@ struct FreeLocalVaultTests {
         let second = try await registry.vaults()
 
         #expect(session.calls.filter { if case .registerVault = $0 { true } else { false } }
-            == [.registerVault(id, LocalVaultStore.name)])
+            == [.registerVault(id, store.name)])
         #expect(store.isAttached)
         #expect(first.map(\.id) == [id])
         #expect(second.map(\.id) == [id])
@@ -116,7 +160,7 @@ struct FreeLocalVaultTests {
         let id = try #require(store.id)
         #expect(rows.map(\.id) == [id])
         #expect(session.calls.filter { if case .registerVault = $0 { true } else { false } }
-            == [.registerVault(id, LocalVaultStore.name)])
+            == [.registerVault(id, store.name)])
         #expect(store.isAttached == hasPlan)
     }
 
@@ -166,7 +210,7 @@ struct FreeLocalVaultTests {
 
         #expect(await attach.run(accountVaults: [other]) == .attached)
         #expect(session.calls.filter { if case .registerVault = $0 { true } else { false } }
-            == [.registerVault(id, LocalVaultStore.name)])
+            == [.registerVault(id, store.name)])
     }
 
     @Test("PaymentRequired nested in AuthError still reads as needing a plan")

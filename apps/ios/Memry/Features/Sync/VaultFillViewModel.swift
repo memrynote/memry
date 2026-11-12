@@ -69,7 +69,7 @@ final class VaultFillViewModel {
         guard let summary, summary.metadataCorrupt > 0 || summary.bodiesStopped > 0 else {
             return nil
         }
-        return "Some of this vault could not be opened on this phone. Memry will try those again next time it syncs."
+        return "Some of this vault could not be opened on this \(ThisDevice.noun). Memry will try those again next time it syncs."
     }
 
     /// The entry gate, and the reason `isFirstSyncComplete()` exists.

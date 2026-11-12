@@ -155,7 +155,7 @@ struct QRLinkView: View {
 private struct AlreadyLinkedNotice: View {
     var body: some View {
         ContentUnavailableView {
-            Label("This phone is already linked", systemImage: "checkmark.seal")
+            Label("This \(ThisDevice.noun) is already linked", systemImage: "checkmark.seal")
         } description: {
             Text("It already holds this account's key, so there is nothing to scan. Your vaults are ready.")
         }

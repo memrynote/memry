@@ -183,7 +183,7 @@ struct CalendarProvider: Identifiable, Equatable {
         CalendarProvider(id: "google", title: "Google Calendar", symbol: "g.circle"),
         CalendarProvider(id: "caldav", title: "CalDAV", symbol: "server.rack"),
         CalendarProvider(id: "ics", title: "Subscribed calendars", symbol: "link"),
-        CalendarProvider(id: "apple-eventkit", title: "This iPhone", symbol: "iphone")
+        CalendarProvider(id: "apple-eventkit", title: "This \(ThisDevice.noun)", symbol: ThisDevice.symbol)
     ]
 
     static func named(_ id: String) -> CalendarProvider {
@@ -211,8 +211,8 @@ extension CalendarCopy {
     static let monday = "Monday"
     static let showNotesOnCalendar = "Show notes on calendar"
     static let showNotesFooter = "Shows every note as an all-day item on the day it was created."
-    static let dateProperties = "Date properties on this iPhone"
-    static let datePropertiesFooter = "Notes with these date properties appear on that day. This choice stays on this iPhone, as on your other devices."
+    static let dateProperties = "Date properties on this \(ThisDevice.noun)"
+    static let datePropertiesFooter = "Notes with these date properties appear on that day. This choice stays on this \(ThisDevice.noun), as on your other devices."
     static let notConnected = "Not connected"
     static let notAllowedYet = "Not allowed yet"
     static let signInHere = "Connected on another device · sign in here"
