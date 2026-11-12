@@ -36,6 +36,14 @@ struct VaultTabLayout: Equatable {
         }
     }
 
+    /// Where a regular window puts its pages. Landscape pins the sidebar. A
+    /// portrait sidebar is an overlay over the page, and SwiftUI cannot close
+    /// it, so a link that routes (`memry://calendar`) would select a page
+    /// under it; portrait starts on the tab bar with the sidebar a tap away.
+    static func placement(for size: CGSize) -> AdaptableTabBarPlacement {
+        size.width > size.height ? .sidebar : .automatic
+    }
+
     static let pinned: [VaultTab] = [.home, .notes]
     static let orderedSlots = 2
     static let defaultOrder: [VaultTab] = [.tasks, .journal, .inbox, .calendar]
@@ -74,7 +82,9 @@ struct VaultTabLayout: Equatable {
     private static func railOrder(_ savedOrder: [String]) -> [VaultTab] {
         var result: [VaultTab] = []
         for id in savedOrder {
-            guard let page = VaultTab(rawValue: id), railDefault.contains(page), !result.contains(page) else { continue }
+            guard let page = VaultTab(rawValue: id), railDefault.contains(page), !result.contains(page) else {
+                continue
+            }
             result.append(page)
         }
         for (index, page) in railDefault.enumerated() where !result.contains(page) {

@@ -85,4 +85,11 @@ struct VaultTabLayoutTests {
         #expect(VaultTabLayout.Width(horizontal: .regular, vertical: .compact) == .compact, "large iPhone in landscape")
         #expect(VaultTabLayout.Width(horizontal: nil, vertical: nil) == .compact)
     }
+
+    /// A portrait window would open with the sidebar over the page, and a
+    /// link that routes there (`memry://calendar`) cannot close it.
+    @Test func the_sidebar_is_pinned_only_in_a_landscape_window() {
+        #expect(VaultTabLayout.placement(for: CGSize(width: 1376, height: 1032)) == .sidebar)
+        #expect(VaultTabLayout.placement(for: CGSize(width: 1032, height: 1376)) == .automatic)
+    }
 }

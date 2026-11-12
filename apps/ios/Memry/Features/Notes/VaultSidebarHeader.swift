@@ -35,7 +35,7 @@ struct VaultSidebarHeader: View {
                     Text(status.line)
                         .font(Tokens.Typography.supporting.font)
                         .foregroundStyle(Tokens.Text.secondary.color)
-                        }
+                }
             }
         }
         .frame(maxWidth: .infinity, alignment: .leading)

@@ -10,8 +10,9 @@ import SwiftUI
 // last in Menu's place, a Search row on top and the vault header above it.
 // The Menu tab and its sheet exist only at compact width. Each tab keeps its
 // value across a size-class change, and every page's stack lives on a router
-// here (Notes keeps its own, and its tab never moves), so the selected page
-// and its stack survive the switch. No `tabViewCustomization`: the order is
+// here (Notes keeps its own, and its tab's id keeps that stack where the tab
+// moves), so the selected page and its stack survive the switch. A portrait
+// window starts on the tab bar instead (`VaultTabLayout.placement`). No `tabViewCustomization`: the order is
 // desktop's synced rail, and the iPad writes no competing one.
 //
 // **Menu is a tab that opens a sheet.** Tapping it lists the pages behind it
@@ -80,40 +81,44 @@ struct VaultTabsView<Notes: View, Tasks: View, Journal: View, More: View>: View 
         // Read here so the layout follows a module toggle and a synced order.
         let width = VaultTabLayout.Width(horizontal: horizontalSizeClass, vertical: verticalSizeClass)
         let layout = VaultTabLayout(savedOrder: order.saved, width: width) { $0.isShown }
-        TabView(selection: Binding(
-            get: { ShellTab.page(layout.barSelection(for: router.selectedTab)) },
-            // Neither Menu nor Search becomes the selection by a tap: each
-            // opens its sheet, which also catches a second tap on Menu.
-            // Settings in the sidebar is a page like any other.
-            set: { tab in
-                switch tab {
-                case .search: showsSearch = true
-                case .page(.more) where width == .compact: showsMenu = true
-                case let .page(page): router.selectedTab = page
+        GeometryReader { proxy in
+            TabView(selection: Binding(
+                get: { ShellTab.page(layout.barSelection(for: router.selectedTab)) },
+                // Neither Menu nor Search becomes the selection by a tap: each
+                // opens its sheet, which also catches a second tap on Menu.
+                // Settings in the sidebar is a page like any other.
+                set: { tab in
+                    switch tab {
+                    case .search: showsSearch = true
+                    case .page(.more) where width == .compact: showsMenu = true
+                    case let .page(page): router.selectedTab = page
+                    }
+                }
+            )) {
+                if width == .regular {
+                    Tab(value: ShellTab.search, role: .search) { Color.clear }
+                }
+                ForEach(layout.bar, id: \.self) { page in
+                    Tab(page.title, systemImage: page.symbol, value: ShellTab.page(page)) {
+                        content(page)
+                    }
+                    .badge(width == .regular && page == .inbox ? inboxStore?.badgeCount ?? 0 : 0)
+                }
+                Tab(
+                    width == .regular ? SettingsCopy.title : VaultTab.more.title,
+                    systemImage: width == .regular ? "gearshape" : VaultTab.more.symbol,
+                    value: ShellTab.page(.more)
+                ) {
+                    content(layout.menuContent(for: router.selectedTab))
                 }
             }
-        )) {
-            if width == .regular {
-                Tab(value: ShellTab.search, role: .search) { Color.clear }
+            .tabViewStyle(.sidebarAdaptable)
+            // Read before the first frame: a placement set after it does not
+            // close a sidebar already shown.
+            .defaultAdaptableTabBarPlacement(VaultTabLayout.placement(for: proxy.size))
+            .tabViewSidebarHeader {
+                VaultSidebarHeader(name: vaultName, context: settings, switchVault: switchVault)
             }
-            ForEach(layout.bar, id: \.self) { page in
-                Tab(page.title, systemImage: page.symbol, value: ShellTab.page(page)) {
-                    content(page)
-                }
-                .badge(width == .regular && page == .inbox ? inboxStore?.toProcess ?? 0 : 0)
-            }
-            Tab(
-                width == .regular ? SettingsCopy.title : VaultTab.more.title,
-                systemImage: width == .regular ? "gearshape" : VaultTab.more.symbol,
-                value: ShellTab.page(.more)
-            ) {
-                content(layout.menuContent(for: router.selectedTab))
-            }
-        }
-        .tabViewStyle(.sidebarAdaptable)
-        .defaultAdaptableTabBarPlacement(.sidebar)
-        .tabViewSidebarHeader {
-            VaultSidebarHeader(name: vaultName, context: settings, switchVault: switchVault)
         }
         .sheet(isPresented: $showsMenu) {
             VaultMenuSheet(pages: layout.menu) { page in
@@ -122,6 +127,9 @@ struct VaultTabsView<Notes: View, Tasks: View, Journal: View, More: View>: View 
             }
             .presentationDetents([.medium])
         }
+        // The Menu sheet is compact-only: a window resized to regular width
+        // drops it rather than show it with the sidebar's empty menu.
+        .onChange(of: width) { showsMenu = false }
         .sheet(isPresented: $showsSearch) {
             GlobalSearchSheet(
                 browse: browse,
