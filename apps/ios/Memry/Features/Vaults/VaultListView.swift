@@ -71,6 +71,8 @@ struct VaultListView: View {
                 VaultSettingsScope(vault: vault, model: model, tasks: tasksStore) { settings, browse in
                     VaultTabsView(
                         switchVault: model.isSwitchable ? { Task { await model.chooseAgain() } } : nil,
+                        vaultName: VaultLabel(summary).text,
+                        settings: settings,
                         notes: {
                         NotesListView(
                             vault: vault,
