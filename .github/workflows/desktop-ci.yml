@@ -204,6 +204,10 @@ jobs:
       - name: Check note fold vectors against the Electron oracle
         run: pnpm --filter @memry/desktop vectors:note-fold:check
 
+      # The embedding input vectors come from Electron's embedding-input.ts the same way.
+      - name: Check embedding input vectors against the Electron oracle
+        run: pnpm --filter @memry/desktop vectors:embedding-input:check
+
       # oxlint, type-aware, over the whole repo. Rules with a backlog are warnings held
       # by the ratchet in scripts/lint-baseline.json; new violations show as annotations.
       # --ignore-scripts skipped the extension's postinstall, and its tsconfig extends the

@@ -5,7 +5,7 @@ import { beforeEach, describe, expect, it, vi } from 'vitest'
 import { commands } from '../../../../../generated/bindings'
 import * as Y from 'yjs'
 import { getDefaultReactSlashMenuItems } from '@blocknote/react'
-import { serializeCriticMarkup } from '@memry/shared'
+import { serializeCriticMarkup, type CriticMarkupMark } from '@memry/shared'
 import { WIKI_LINK_EDIT_PLUGIN_KEY } from './wiki-link-edit-plugin'
 import type * as AttachmentPickerDialogModule from './attachment-picker-dialog'
 import type * as BlockSideMenuModule from './block-side-menu'
@@ -1136,6 +1136,59 @@ describe('ContentArea', () => {
         })
       ])
     )
+  })
+
+  // #3967: the observer set a "skip the next write" flag on every array event,
+  // the echo of this editor's own write included. The echo changed no marks, so
+  // nothing cleared the flag, and the next local change (deleting a comment)
+  // never reached the doc. The deleted comment stayed in the CRDT and came back
+  // on the next apply from the doc, here and on every other device.
+  it('writes a deleted comment out of the Y.Doc, so the doc cannot bring it back', async () => {
+    const doc = new Y.Doc()
+    contentAreaMocks.useSyncState = { status: 'idle' }
+    contentAreaMocks.yjsState = {
+      fragment: doc.getXmlFragment('blocks'),
+      doc,
+      provider: { doc, isSynced: true },
+      isReady: true,
+      isRemoteUpdateRef: { current: false }
+    }
+    const comment: CriticMarkupMark = {
+      id: 'c-1',
+      kind: 'comment',
+      visibleText: 'x',
+      start: 5,
+      end: 6,
+      body: 'b'
+    }
+    const remoteComment: CriticMarkupMark = { ...comment, id: 'c-2', start: 7, end: 8 }
+    const marksArray = doc.getArray<CriticMarkupMark>('criticMarkupMarks')
+    // The review owner re-renders only when the doc's marks differ from its
+    // own (`useCriticMarkupReview.replaceMarksFromYjs`), so the echo of this
+    // editor's write renders nothing.
+    const replaceMarksFromYjs = vi.fn()
+    const renderMarks = (marks: CriticMarkupMark[]) => (
+      <ContentArea
+        noteId="note-1"
+        review={{
+          plainMarkdown: '',
+          marks,
+          hoveredMarkId: null,
+          onReplaceMarksFromYjs: replaceMarksFromYjs
+        }}
+      />
+    )
+    const { rerender } = render(renderMarks([]))
+
+    rerender(renderMarks([comment]))
+    await waitFor(() => expect(marksArray.toArray().map((mark) => mark.id)).toEqual(['c-1']))
+    rerender(renderMarks([]))
+    await waitFor(() => expect(marksArray.toArray()).toEqual([]))
+
+    // Another device adds a comment: the doc hands the review its marks, and
+    // the deleted one is not among them.
+    act(() => doc.transact(() => marksArray.push([remoteComment]), 'remote'))
+    expect(replaceMarksFromYjs).toHaveBeenLastCalledWith([remoteComment])
   })
 
   // The note is open on two devices. The checkbox typed on one reaches the
