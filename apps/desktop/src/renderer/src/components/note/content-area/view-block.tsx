@@ -1,13 +1,5 @@
 import { foldTag } from '@memry/shared/tag-fold'
-import React, {
-  useCallback,
-  useEffect,
-  useLayoutEffect,
-  useMemo,
-  useRef,
-  useState,
-  useSyncExternalStore
-} from 'react'
+import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { insertOrUpdateBlockForSlashMenu } from '@blocknote/core'
 import { createReactBlockSpec } from '@blocknote/react'
 import { useQueryClient } from '@tanstack/react-query'
@@ -52,9 +44,9 @@ import { sidebarItemForRow } from '@/lib/folder-row-navigation'
 import { Check, ChevronDown } from '@/lib/icons'
 import { createLogger } from '@/lib/logger'
 import { sortNotes } from '@/lib/sort-notes'
-import { cn } from '@/lib/utils'
 import type { EditorSchema } from './editor-schema'
 import { createUntitledViewFolder } from './new-view-folder'
+import { usePortalKeysPlugin, type PortalKeysEditor } from './portal/portal-keys-plugin'
 import { JournalChartBody, ViewBlockChartArea } from './view-block-chart'
 import {
   NewNoteButton,
@@ -79,9 +71,9 @@ const log = createLogger('ViewBlock')
  * main process, the phone and any older build hold the block as the code
  * block it is on disk, and nothing but this renderer has to know it exists.
  *
- * The definition text stays in the document as the node's content. It is
- * shown, and editable as JSON, while the caret is in the block; otherwise the
- * header's controls rewrite it and the reader never sees it.
+ * The definition text stays in the document as the node's content, never on
+ * screen: the header's controls rewrite it, and the keys plugin keeps the caret
+ * out of it by selecting the block whole.
  */
 
 /** Rows a view block will page through before it stops asking for more. */
@@ -122,12 +114,9 @@ interface ViewBlockNode {
   content?: unknown
 }
 
-interface ViewBlockEditor {
+interface ViewBlockEditor extends PortalKeysEditor {
   isEditable: boolean
-  focus: () => void
   updateBlock: (block: string, update: { content: string }) => unknown
-  getTextCursorPosition: () => { block: { id: string } }
-  onSelectionChange: (callback: () => void) => () => void
 }
 
 /** The block's plain text: its runs, joined. */
@@ -140,35 +129,6 @@ export function viewBlockText(content: unknown): string {
         : ''
     )
     .join('')
-}
-
-function useCaretInBlock(editor: ViewBlockEditor, blockId: string): boolean {
-  const read = useCallback((): boolean => {
-    try {
-      return editor.getTextCursorPosition().block.id === blockId
-    } catch {
-      return false
-    }
-  }, [editor, blockId])
-  const subscribe = useCallback(
-    (onChange: () => void) => editor.onSelectionChange(onChange),
-    [editor]
-  )
-  const inside = useSyncExternalStore(subscribe, read)
-
-  // The caret moves in while the definition is still `display: none`, so the
-  // DOM selection ProseMirror set in the same transaction has nowhere to go and
-  // the typed key would land nowhere. Once the definition is on screen, have
-  // ProseMirror write the selection to the DOM again. Only on the way in: a
-  // block that mounts with the caret already inside (a tab switch) must not
-  // take focus from wherever it is.
-  const wasInside = useRef(inside)
-  useLayoutEffect(() => {
-    if (inside && !wasInside.current) editor.focus()
-    wasInside.current = inside
-  }, [editor, inside])
-
-  return inside
 }
 
 type FolderViewResult = ReturnType<typeof useFolderView>
@@ -527,27 +487,9 @@ function useClaimPresses(frameRef: React.RefObject<HTMLDivElement | null>): void
   }, [frameRef])
 }
 
-/**
- * The last definition that parsed, so hand-editing the JSON does not blank the
- * list on every half-typed keystroke.
- */
-function useLastGoodDefinition(parsed: ParsedViewBlock): ViewBlockDefinition | null {
-  const [lastGood, setLastGood] = useState<ViewBlockDefinition | null>(
-    parsed.ok ? parsed.definition : null
-  )
-  const [lastParsed, setLastParsed] = useState(parsed)
-  if (lastParsed !== parsed) {
-    setLastParsed(parsed)
-    if (parsed.ok) setLastGood(parsed.definition)
-  }
-  return lastGood
-}
-
 function problemMessage(parsed: ParsedViewBlock, t: (key: string) => string): string | null {
   if (parsed.ok || parsed.reason === 'empty') return null
-  return parsed.reason === 'json'
-    ? t('editor.viewBlock.invalidJson')
-    : t('editor.viewBlock.invalidShape')
+  return t('editor.viewBlock.unreadable')
 }
 
 export function ViewBlockRenderer({
@@ -562,7 +504,6 @@ export function ViewBlockRenderer({
   const { t } = useT('notes')
   const text = viewBlockText(block.content)
   const parsed = useMemo(() => parseViewBlockDefinition(text), [text])
-  const caretInside = useCaretInBlock(editor, block.id)
   const editable = editor.isEditable
   const [sourceMenuOpen] = useState(() => freshViewBlocks.has(block.id))
   const [chartSettingsOpen] = useState(() => freshChartBlocks.has(block.id))
@@ -578,8 +519,7 @@ export function ViewBlockRenderer({
   }, [block.id, queryClient])
 
   useClaimPresses(frameRef)
-
-  const lastGood = useLastGoodDefinition(parsed)
+  usePortalKeysPlugin(editor)
 
   const write = useCallback(
     (patch: Partial<Record<keyof ViewBlockDefinition, unknown>>) => {
@@ -603,9 +543,8 @@ export function ViewBlockRenderer({
     )
   }
 
-  const definition = parsed.ok ? parsed.definition : caretInside ? lastGood : null
+  const definition = parsed.ok ? parsed.definition : null
   const problem = problemMessage(parsed, t)
-  const showSource = caretInside || problem !== null
 
   return (
     <div className="memry-view-block my-1 w-full" data-memry-view="">
@@ -630,14 +569,9 @@ export function ViewBlockRenderer({
         )}
         {problem ? <ViewBlockNotice body={problem} destructive /> : null}
       </div>
-      <div className={cn('memry-view-block-source mt-1.5', !showSource && 'hidden')}>
-        <div contentEditable={false} className="pb-1 text-[11px] text-muted-foreground">
-          {t('editor.viewBlock.definition')}
-        </div>
-        <pre className="overflow-x-auto rounded-md bg-muted px-3 py-2 font-mono text-[0.8125rem]">
-          <code ref={contentRef} />
-        </pre>
-      </div>
+      <pre hidden>
+        <code ref={contentRef} />
+      </pre>
     </div>
   )
 }

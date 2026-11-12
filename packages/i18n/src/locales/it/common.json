@@ -3,9 +3,6 @@
     "copyFailed": "Impossibile copiare il portale",
     "hiddenCount": "{count} nascosti",
     "windowFailed": "Impossibile aprire questo portale. Apri invece la nota di origine.",
-    "noTarget": "Questo portale non ha ancora una destinazione. Aggiungi una nota alla definizione oppure rimuovi il blocco.",
-    "invalidJson": "La definizione di questo portale non è un JSON valido. Correggila qui sotto oppure rimuovi il blocco.",
-    "invalidShape": "La definizione di questo portale non contiene né una nota né una ricerca. Correggila qui sotto oppure rimuovi il blocco.",
     "search": {
       "editQuery": "Modifica query",
       "count": "{count, plural, one {# blocco} other {# blocchi}}",

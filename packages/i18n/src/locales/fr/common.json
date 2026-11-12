@@ -3,9 +3,6 @@
     "copyFailed": "Impossible de copier le portail",
     "hiddenCount": "{count} masqués",
     "windowFailed": "Impossible d'ouvrir ce portail. Ouvrez plutôt la note source.",
-    "noTarget": "Ce portail n'a pas encore de cible. Ajoutez une note à la définition, ou supprimez le bloc.",
-    "invalidJson": "La définition de ce portail n'est pas un JSON valide. Corrigez-la ci-dessous, ou supprimez le bloc.",
-    "invalidShape": "La définition de ce portail ne contient ni note ni recherche. Corrigez-la ci-dessous, ou supprimez le bloc.",
     "search": {
       "editQuery": "Modifier la requête",
       "count": "{count, plural, one {# bloc} other {# blocs}}",

@@ -426,10 +426,7 @@
       "newViewFailed": "Impossibile creare la cartella per questa vista.",
       "empty": "Per ora nessuna nota corrisponde a questa vista.",
       "loadFailed": "Impossibile caricare questa vista. Le note in sé sono intatte.",
-      "folderMissing": "Questa cartella non è più nel vault. Scegli un'altra origine.",
-      "invalidJson": "La definizione di questa vista non è un JSON valido. Correggila qui sotto o rimuovi il blocco.",
-      "invalidShape": "La definizione di questa vista non ha un'origine. Sceglila qui sopra o correggi la definizione qui sotto.",
-      "definition": "Definizione"
+      "folderMissing": "Questa cartella non è più nel vault. Scegli un'altra origine."
     },
     "chart": {
       "title": "Grafico",

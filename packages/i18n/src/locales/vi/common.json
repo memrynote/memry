@@ -3,9 +3,6 @@
     "copyFailed": "Không thể sao chép portal",
     "hiddenCount": "{count} đã ẩn",
     "windowFailed": "Không thể mở portal này. Hãy mở ghi chú nguồn thay thế.",
-    "noTarget": "Portal này chưa có đích. Hãy thêm một ghi chú vào định nghĩa, hoặc xóa khối này.",
-    "invalidJson": "Định nghĩa của portal này không phải JSON hợp lệ. Hãy sửa bên dưới, hoặc xóa khối này.",
-    "invalidShape": "Định nghĩa của portal này không có ghi chú hoặc tìm kiếm. Hãy sửa bên dưới, hoặc xóa khối này.",
     "search": {
       "editQuery": "Sửa truy vấn",
       "count": "{count, plural, other {# khối}}",

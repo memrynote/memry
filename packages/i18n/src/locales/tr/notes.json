@@ -426,10 +426,7 @@
       "newViewFailed": "Bu görünüm için klasör oluşturulamadı.",
       "empty": "Henüz bu görünümle eşleşen bir şey yok.",
       "loadFailed": "Bu görünüm yüklenemedi. Notların kendisine dokunulmadı.",
-      "folderMissing": "Bu klasör artık kasada değil. Başka bir kaynak seçin.",
-      "invalidJson": "Bu görünümün tanımı geçerli bir JSON değil. Aşağıdan düzeltin veya bloğu kaldırın.",
-      "invalidShape": "Bu görünümün tanımında kaynak yok. Yukarıdan birini seçin veya aşağıdan düzeltin.",
-      "definition": "Tanım"
+      "folderMissing": "Bu klasör artık kasada değil. Başka bir kaynak seçin."
     },
     "chart": {
       "title": "Çizelge",

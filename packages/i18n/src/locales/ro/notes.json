@@ -426,10 +426,7 @@
       "newViewFailed": "Dosarul pentru această vizualizare nu a putut fi creat.",
       "empty": "Încă nu există nimic care să corespundă acestei vizualizări.",
       "loadFailed": "Nu s-a putut încărca această vizualizare. Notițele în sine sunt neatinse.",
-      "folderMissing": "Acest dosar nu mai există în seif. Alegeți altă sursă.",
-      "invalidJson": "Definiția acestei vizualizări nu este un JSON valid. Corectați-o mai jos sau eliminați blocul.",
-      "invalidShape": "Definiția acestei vizualizări nu are o sursă. Alegeți una mai sus sau corectați definiția mai jos.",
-      "definition": "Definiție"
+      "folderMissing": "Acest dosar nu mai există în seif. Alegeți altă sursă."
     },
     "chart": {
       "title": "Grafic",

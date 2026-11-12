@@ -426,10 +426,7 @@
       "newViewFailed": "Der Ordner für diese Ansicht konnte nicht erstellt werden.",
       "empty": "Noch passt nichts zu dieser Ansicht.",
       "loadFailed": "Diese Ansicht konnte nicht geladen werden. Die Notizen selbst bleiben unverändert.",
-      "folderMissing": "Dieser Ordner ist nicht mehr im Tresor. Wähle eine andere Quelle.",
-      "invalidJson": "Die Definition dieser Ansicht ist kein gültiges JSON. Korrigiere sie unten oder entferne den Block.",
-      "invalidShape": "Die Definition dieser Ansicht hat keine Quelle. Wähle oben eine aus oder korrigiere sie unten.",
-      "definition": "Definition"
+      "folderMissing": "Dieser Ordner ist nicht mehr im Tresor. Wähle eine andere Quelle."
     },
     "chart": {
       "title": "Diagramm",

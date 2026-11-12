@@ -426,10 +426,7 @@
       "newViewFailed": "Kunne ikke opprette mappen for denne visningen.",
       "empty": "Ingenting samsvarer med denne visningen ennå.",
       "loadFailed": "Kunne ikke laste inn denne visningen. Selve notatene er uendret.",
-      "folderMissing": "Denne mappen finnes ikke lenger i hvelvet. Velg en annen kilde.",
-      "invalidJson": "Definisjonen av denne visningen er ikke gyldig JSON. Rett den nedenfor, eller fjern blokken.",
-      "invalidShape": "Definisjonen av denne visningen mangler kilde. Velg en ovenfor, eller rett den nedenfor.",
-      "definition": "Definisjon"
+      "folderMissing": "Denne mappen finnes ikke lenger i hvelvet. Velg en annen kilde."
     },
     "chart": {
       "title": "Diagram",

@@ -427,9 +427,7 @@
       "empty": "Nothing matches this view yet.",
       "loadFailed": "Could not load this view. The notes themselves are untouched.",
       "folderMissing": "This folder is not in the vault any more. Pick another source.",
-      "invalidJson": "This view’s definition is not valid JSON. Fix it below, or remove the block.",
-      "invalidShape": "This view’s definition has no source. Pick one above, or fix it below.",
-      "definition": "Definition"
+      "unreadable": "This view can’t be read. Pick a source above, or remove the block."
     },
     "chart": {
       "title": "Chart",

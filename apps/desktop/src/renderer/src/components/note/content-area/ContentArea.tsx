@@ -73,7 +73,6 @@ import { useCalloutTypes } from './callout-types-store'
 import { getMathSlashMenuItem } from './math-block'
 import { getWhiteboardSlashMenuItem } from './whiteboard-block'
 import { getChartSlashMenuItem, getNewViewSlashMenuItem, getViewSlashMenuItem } from './view-block'
-import { createViewBlockKeysPlugin } from './view-block-keys-plugin'
 import { isFromWhiteboard } from './whiteboard-events'
 import { buildTableContent, type TableSize } from './slash-menu-utils'
 import { TableSizePicker } from './table-size-picker'
@@ -1152,10 +1151,6 @@ const ContentAreaEditor = memo(function ContentAreaEditor({
     }))
     return registerEditorPlugin(editor, plugin, (p, plugins) => [p, ...plugins])
   }, [editor])
-
-  // Arrow keys into a view block, whose definition is hidden until the caret
-  // is in it and so unreachable by the browser's own caret movement (#2488).
-  useEffect(() => registerEditorPlugin(editor, createViewBlockKeysPlugin()), [editor])
 
   // Inline `@`-date ghost text + Tab completion. Prepend the plugin so its Tab
   // handler wins over block-indent keymaps while a date mention is active.

@@ -11,7 +11,7 @@
  * reads entries by day range instead, stubbed at the journal service.
  */
 
-import { act, fireEvent, render, screen } from '@testing-library/react'
+import { fireEvent, render, screen } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { BlockNoteEditor } from '@blocknote/core'
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
@@ -112,22 +112,14 @@ function row(id: string, overrides: Partial<NoteWithProperties> = {}): NoteWithP
   }
 }
 
-function fakeEditor(overrides: { caretBlockId?: string; isEditable?: boolean } = {}) {
-  let caret = overrides.caretBlockId ?? 'elsewhere'
-  const listeners = new Set<() => void>()
+function fakeEditor(overrides: { isEditable?: boolean } = {}) {
   return {
     isEditable: overrides.isEditable ?? true,
-    focus: vi.fn(),
     updateBlock: vi.fn(),
-    getTextCursorPosition: () => ({ block: { id: caret } }),
-    onSelectionChange: (listener: () => void) => {
-      listeners.add(listener)
-      return () => listeners.delete(listener)
-    },
-    moveCaret: (id: string) => {
-      caret = id
-      for (const listener of listeners) listener()
-    }
+    nestBlock: vi.fn(),
+    unnestBlock: vi.fn(),
+    insertBlocks: vi.fn(),
+    setTextCursorPosition: vi.fn()
   }
 }
 
@@ -269,46 +261,24 @@ describe('ViewBlockRenderer', () => {
     )
   })
 
-  it('shows the definition to fix when its JSON is broken', () => {
-    renderBlock('{"source": ')
-
-    expect(screen.getByText(/not valid JSON/)).toBeInTheDocument()
-    expect(screen.getByText('Definition').parentElement).not.toHaveClass('hidden')
-  })
-
-  it('keeps the definition hidden until the caret is in the block', () => {
+  it('never shows its definition JSON', () => {
     renderBlock(JSON.stringify({ source: { kind: 'vault' } }))
-    expect(screen.getByText('Definition').parentElement).toHaveClass('hidden')
+    expect(screen.queryByText('Definition')).toBeNull()
   })
 
-  it('shows the definition while the caret is in the block', () => {
-    renderBlock(
-      JSON.stringify({ source: { kind: 'vault' } }),
-      fakeEditor({ caretBlockId: 'view-1' })
-    )
-    expect(screen.getByText('Definition').parentElement).not.toHaveClass('hidden')
-  })
+  it('offers a source in place of a definition it cannot read', async () => {
+    // #given a definition whose JSON is broken
+    const editor = renderBlock('{"source": ')
+    expect(screen.getByText(/can’t be read/)).toBeInTheDocument()
 
-  it('shows the definition and re-focuses the editor when the caret moves in', () => {
-    // #given the caret elsewhere
-    const editor = renderBlock(JSON.stringify({ source: { kind: 'vault' } }))
-    expect(screen.getByText('Definition').parentElement).toHaveClass('hidden')
+    // #when a source is picked
+    await userEvent.click(screen.getByTestId('view-block-source'))
+    await userEvent.click(await screen.findByRole('menuitem', { name: /vault|all notes/i }))
 
-    // #when it moves into the block
-    act(() => editor.moveCaret('view-1'))
-
-    // #then the definition shows, and the DOM selection is written again now
-    // that there is a visible element to hold it
-    expect(screen.getByText('Definition').parentElement).not.toHaveClass('hidden')
-    expect(editor.focus).toHaveBeenCalledTimes(1)
-  })
-
-  it('does not take focus when it mounts with the caret already inside', () => {
-    const editor = renderBlock(
-      JSON.stringify({ source: { kind: 'vault' } }),
-      fakeEditor({ caretBlockId: 'view-1' })
-    )
-    expect(editor.focus).not.toHaveBeenCalled()
+    // #then the block is rewritten over it
+    expect(editor.updateBlock).toHaveBeenCalledWith('view-1', {
+      content: expect.stringContaining('"kind": "vault"')
+    })
   })
 
   it('offers no controls in a read-only editor', () => {

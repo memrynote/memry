@@ -426,10 +426,7 @@
       "newViewFailed": "Nem sikerült létrehozni a mappát ehhez a nézethez.",
       "empty": "Még semmi sem felel meg ennek a nézetnek.",
       "loadFailed": "Nem sikerült betölteni ezt a nézetet. Maguk a jegyzetek érintetlenek.",
-      "folderMissing": "Ez a mappa már nincs a széfben. Válasszon másik forrást.",
-      "invalidJson": "A nézet definíciója nem érvényes JSON. Javítsa ki lent, vagy távolítsa el a blokkot.",
-      "invalidShape": "A nézet definíciójában nincs forrás. Válasszon egyet fent, vagy javítsa ki lent.",
-      "definition": "Definíció"
+      "folderMissing": "Ez a mappa már nincs a széfben. Válasszon másik forrást."
     },
     "chart": {
       "title": "Diagram",

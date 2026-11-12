@@ -3,9 +3,6 @@
     "copyFailed": "Nije moguće kopirati portal",
     "hiddenCount": "Skriveno: {count}",
     "windowFailed": "Ovaj portal nije moguće otvoriti. Umjesto toga otvorite izvornu bilješku.",
-    "noTarget": "Ovaj portal još nema cilj. Dodajte bilješku u definiciju ili uklonite blok.",
-    "invalidJson": "Definicija ovog portala nije valjani JSON. Ispravite je u nastavku ili uklonite blok.",
-    "invalidShape": "Definicija ovog portala nema bilješku ni pretraživanje. Ispravite je u nastavku ili uklonite blok.",
     "search": {
       "editQuery": "Uredi upit",
       "count": "{count, plural, one {# blok} few {# bloka} other {# blokova}}",

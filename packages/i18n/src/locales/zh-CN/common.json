@@ -3,9 +3,6 @@
     "copyFailed": "无法复制传送门",
     "hiddenCount": "已隐藏 {count} 个",
     "windowFailed": "无法打开此传送门。请改为打开源笔记。",
-    "noTarget": "此传送门还没有目标。请在定义中添加一篇笔记，或移除该块。",
-    "invalidJson": "此传送门的定义不是有效的 JSON。请在下方修复，或移除该块。",
-    "invalidShape": "此传送门的定义中没有笔记或搜索。请在下方修复，或移除该块。",
     "search": {
       "editQuery": "编辑查询",
       "count": "{count, plural, other {# 个块}}",

@@ -426,10 +426,7 @@
       "newViewFailed": "Složku pro toto zobrazení se nepodařilo vytvořit.",
       "empty": "Tomuto zobrazení zatím nic neodpovídá.",
       "loadFailed": "Toto zobrazení se nepodařilo načíst. Samotné poznámky zůstaly beze změny.",
-      "folderMissing": "Tato složka už v trezoru není. Vyberte jiný zdroj.",
-      "invalidJson": "Definice tohoto zobrazení není platný JSON. Opravte ji níže, nebo blok odeberte.",
-      "invalidShape": "Definice tohoto zobrazení nemá zdroj. Vyberte ho výše, nebo definici opravte níže.",
-      "definition": "Definice"
+      "folderMissing": "Tato složka už v trezoru není. Vyberte jiný zdroj."
     },
     "chart": {
       "title": "Graf",

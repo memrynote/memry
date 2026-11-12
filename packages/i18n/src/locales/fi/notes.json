@@ -426,10 +426,7 @@
       "newViewFailed": "Kansiota tälle näkymälle ei voitu luoda.",
       "empty": "Mikään ei vielä vastaa tätä näkymää.",
       "loadFailed": "Näkymän lataaminen epäonnistui. Itse muistiinpanoihin ei ole koskettu.",
-      "folderMissing": "Kansio ei ole enää holvissa. Valitse toinen lähde.",
-      "invalidJson": "Näkymän määritys ei ole kelvollista JSONia. Korjaa se alla tai poista lohko.",
-      "invalidShape": "Näkymän määrityksessä ei ole lähdettä. Valitse lähde yllä tai korjaa määritys alla.",
-      "definition": "Määritys"
+      "folderMissing": "Kansio ei ole enää holvissa. Valitse toinen lähde."
     },
     "chart": {
       "title": "Kuvaaja",

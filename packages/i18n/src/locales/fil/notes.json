@@ -426,10 +426,7 @@
       "newViewFailed": "Hindi magawa ang folder para sa view na ito.",
       "empty": "Wala pang tumutugma sa view na ito.",
       "loadFailed": "Hindi ma-load ang view na ito. Hindi ginalaw ang mismong mga tala.",
-      "folderMissing": "Wala na sa vault ang folder na ito. Pumili ng ibang source.",
-      "invalidJson": "Hindi valid na JSON ang depinisyon ng view na ito. Ayusin ito sa ibaba, o alisin ang block.",
-      "invalidShape": "Walang source ang depinisyon ng view na ito. Pumili ng isa sa itaas, o ayusin ito sa ibaba.",
-      "definition": "Depinisyon"
+      "folderMissing": "Wala na sa vault ang folder na ito. Pumili ng ibang source."
     },
     "chart": {
       "title": "Chart",

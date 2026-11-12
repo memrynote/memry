@@ -426,10 +426,7 @@
       "newViewFailed": "Tidak dapat mencipta folder untuk paparan ini.",
       "empty": "Belum ada yang sepadan dengan paparan ini.",
       "loadFailed": "Tidak dapat memuatkan paparan ini. Nota itu sendiri tidak diubah.",
-      "folderMissing": "Folder ini sudah tiada dalam bilik kebal. Pilih sumber lain.",
-      "invalidJson": "Definisi paparan ini bukan JSON yang sah. Betulkannya di bawah, atau alih keluar blok ini.",
-      "invalidShape": "Definisi paparan ini tiada sumber. Pilih satu di atas, atau betulkannya di bawah.",
-      "definition": "Definisi"
+      "folderMissing": "Folder ini sudah tiada dalam bilik kebal. Pilih sumber lain."
     },
     "chart": {
       "title": "Carta",

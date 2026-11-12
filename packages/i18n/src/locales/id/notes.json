@@ -426,10 +426,7 @@
       "newViewFailed": "Tidak dapat membuat folder untuk tampilan ini.",
       "empty": "Belum ada yang cocok dengan tampilan ini.",
       "loadFailed": "Tidak dapat memuat tampilan ini. Catatannya sendiri tidak diubah.",
-      "folderMissing": "Folder ini sudah tidak ada di brankas. Pilih sumber lain.",
-      "invalidJson": "Definisi tampilan ini bukan JSON yang valid. Perbaiki di bawah, atau hapus bloknya.",
-      "invalidShape": "Definisi tampilan ini tidak memiliki sumber. Pilih sumber di atas, atau perbaiki di bawah.",
-      "definition": "Definisi"
+      "folderMissing": "Folder ini sudah tidak ada di brankas. Pilih sumber lain."
     },
     "chart": {
       "title": "Bagan",

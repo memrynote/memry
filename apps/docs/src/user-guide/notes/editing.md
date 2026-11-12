@@ -206,11 +206,10 @@ the view shows as a few lines of JSON:
 ```
 ````
 
-Move the cursor into the block with the arrow keys, from the line above or below,
-to see that text under the list and edit it by hand; the list follows as you
-type. Clicking the list itself never moves the cursor into it, so a click on a
-row or a menu cannot type into the text by accident. If the text stops being valid, the block says so
-and keeps the text visible until it is fixed. Obsidian, GitHub, the phone and
+The app never shows that text; the header's controls rewrite it. Arrow keys from
+the line above or below select the whole view, so typing then starts a new line
+under it and <kbd>Backspace</kbd> removes it. If the text in the file stops being
+valid, the block says so and offers the source menu to start over. Obsidian, GitHub, the phone and
 older versions of memrynote show the fence as an ordinary code block and leave it
 as it is.
 
