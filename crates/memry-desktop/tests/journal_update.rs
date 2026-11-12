@@ -11,9 +11,11 @@ use crate::device_key;
 #[allow(unused_imports)]
 use crate::vault_env;
 
-use std::fs;
+use std::fs::{self, OpenOptions};
+use std::io::Write;
 use std::sync::Arc;
 
+use crate::index_support::until;
 use memry_core::crdt::body_edit::BlockEdit;
 use memry_core::seams::secure_store::SecureStore;
 use memry_desktop::journal::update::{DayUpdate, InlineTags};
@@ -361,6 +363,118 @@ fn a_save_over_an_outside_edit_keeps_that_edit_as_a_version() {
         "{:?}",
         e.versions(ID)
     );
+}
+
+/// An outside writer between its truncate and its write (`fs.writeFileSync`, an editor saving
+/// in place) leaves the day's file empty. A save renamed over it then would leave the writer's
+/// text in a file no path names, and in no version (#4281). The save's write is refused
+/// instead, and its text, which only the save carried, reaches the day's document and wins over
+/// the outside text, which is kept as a version.
+#[test]
+fn a_save_over_a_file_an_outside_writer_has_just_emptied_wins_and_keeps_that_text() {
+    let (mut e, notes, _) = opened();
+    made(&mut e, &notes);
+    let open = e.session.current().unwrap();
+    let outside = format!("{}\n\nWritten outside.\n", e.read(DAY_FILE).trim_end());
+
+    let mut writer = OpenOptions::new()
+        .write(true)
+        .truncate(true)
+        .open(e.vault.join(DAY_FILE))
+        .unwrap();
+    let saved = notes.update_day(
+        &open,
+        DayUpdate {
+            content: Some("Morning pages.\n\n- [ ] call Ann\n\nTyped in the app.".into()),
+            ..update(DAY)
+        },
+    );
+    writer.write_all(outside.as_bytes()).unwrap();
+    drop(writer);
+
+    until("the typing written over the outside text", || {
+        e.read(DAY_FILE).contains("Typed in the app.")
+    });
+    let versions = e.versions(ID);
+    assert!(
+        e.read(DAY_FILE).contains("Written outside.")
+            || versions
+                .iter()
+                .any(|version| version.contains("Written outside.")),
+        "the outside text was lost: {versions:?}"
+    );
+    assert!(
+        matches!(saved, Err(NotesError::DayTextUnwritable(_))),
+        "{saved:?}"
+    );
+    assert_eq!(
+        record(&e).0,
+        r#"["work","Ideas"]"#,
+        "the empty file named no tags"
+    );
+}
+
+/// The same race, with a save the feed does not take: the document never holds its text and
+/// the file never gets it, so the save keeps it as a version before it refuses the write.
+#[test]
+fn a_save_the_feed_does_not_take_over_a_file_being_written_keeps_its_text_as_a_version() {
+    let (mut e, notes, _) = opened();
+    made(&mut e, &notes);
+    let open = e.session.current().unwrap();
+    let outside = format!("{}\n\nWritten outside.\n", e.read(DAY_FILE).trim_end());
+
+    let mut writer = OpenOptions::new()
+        .write(true)
+        .truncate(true)
+        .open(e.vault.join(DAY_FILE))
+        .unwrap();
+    notes.fail_next_save_feed();
+    let saved = notes.update_day(
+        &open,
+        DayUpdate {
+            content: Some("Morning pages.\n\nTyped in the app.".into()),
+            ..update(DAY)
+        },
+    );
+    writer.write_all(outside.as_bytes()).unwrap();
+    drop(writer);
+
+    assert!(
+        matches!(saved, Err(NotesError::DayTextUnwritable(_))),
+        "{saved:?}"
+    );
+    outside_facts(&mut e);
+    assert!(e.read(DAY_FILE).contains("Written outside."));
+    assert!(
+        e.versions(ID)
+            .iter()
+            .any(|version| version.contains("Typed in the app.")),
+        "the typing was lost: {:?}",
+        e.versions(ID)
+    );
+}
+
+/// A row with no hash (a removal the identity kept) names no file, so an empty file at its path
+/// is no write in progress: every save writes over it.
+#[test]
+fn every_save_writes_over_an_empty_file_under_a_row_that_names_none() {
+    let (mut e, notes, _) = opened();
+    made(&mut e, &notes);
+    let open = e.session.current().unwrap();
+    fs::write(e.vault.join(DAY_FILE), "").unwrap();
+    e.core().note_files().set_hash(ID, None).unwrap();
+
+    for typed in ["One.", "Two.", "Three."] {
+        let saved = notes.update_day(
+            &open,
+            DayUpdate {
+                content: Some(typed.into()),
+                ..update(DAY)
+            },
+        );
+        assert!(saved.is_ok(), "{typed} {saved:?}");
+        assert!(e.read(DAY_FILE).contains(typed), "{}", e.read(DAY_FILE));
+    }
 }
 
 #[test]

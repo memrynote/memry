@@ -5,6 +5,7 @@
 //! changes nothing; a delete takes one version alone; the quit keeps a close version of every
 //! open note.
 
+use std::fs::OpenOptions;
 use std::sync::{Arc, Mutex};
 use std::time::Duration;
 
@@ -113,6 +114,29 @@ fn a_restore_replaces_the_body_and_keeps_the_text_it_replaced_as_the_newest_vers
     versions::restore(&notes, &open, &back).unwrap();
     assert_eq!(e.read("Plan.md"), current);
     assert_eq!(files(&e, &id), [file, current.as_str(), PLAN]);
+}
+
+/// An outside writer between its truncate and its write (#4281): the restore is refused before
+/// it feeds the version's body, which would otherwise land later with no restore point.
+#[test]
+fn a_restore_over_a_file_an_outside_writer_has_just_emptied_feeds_nothing() {
+    let (e, notes, _) = opened(&[("Plan.md", PLAN)]);
+    let open = e.session.current().unwrap();
+    let id = id_at(&e, "Plan.md");
+    let old = keep(&e, &id, "Old text\n");
+
+    let writer = OpenOptions::new()
+        .write(true)
+        .truncate(true)
+        .open(e.vault.join("Plan.md"))
+        .unwrap();
+    let refused = versions::restore(&notes, &open, &old);
+    assert!(
+        matches!(refused, Err(NotesError::EditKept(Kept::FileChanged))),
+        "{refused:?}"
+    );
+    assert_eq!(e.body(&id), "First text");
+    drop(writer);
 }
 
 #[test]
