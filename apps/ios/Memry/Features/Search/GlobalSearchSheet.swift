@@ -7,7 +7,8 @@ import SwiftUI
 //
 // **Where a hit opens.** A note opens on the Notes page, a task in Tasks and a
 // journal hit on its day in Journal, each closing the sheet first, wherever
-// those pages sit in the bar.
+// those pages sit in the bar. A note or journal hit hands its page the query
+// (`SearchFindRequests`), which opens find on the first matching block.
 
 extension EnvironmentValues {
     /// Opens the vault-wide search sheet. `nil` outside the vault shell.
@@ -66,6 +67,7 @@ struct GlobalSearchSheet: View {
         }
         // A journal hit (`SearchHitRow`) opens its day through this.
         .environment(\.openJournalDay) { date in
+            SearchFindRequests.shared.open(.journalDay(date), query: query)
             dismiss()
             openJournalDay(date)
         }
@@ -91,6 +93,7 @@ struct GlobalSearchSheet: View {
                         } else {
                             Button {
                                 Telemetry.shared.track(.searchResultOpened, surface: .search, action: "opened", objectType: "note")
+                                SearchFindRequests.shared.open(.note(hit.id), query: query)
                                 dismiss()
                                 openNote(hit.id)
                             } label: {

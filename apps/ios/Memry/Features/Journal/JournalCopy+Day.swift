@@ -67,7 +67,6 @@ extension JournalCopy {
     // MARK: Navigation (J10)
 
     static let backToMonth = "Back to month"
-    static let closeFind = "Close find"
 
     // MARK: Stats footer (journal.json `stats.*`, `count.*`)
 
