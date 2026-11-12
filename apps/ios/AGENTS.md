@@ -38,6 +38,20 @@ Run the narrowest of the three plans that covers the change:
 - `TestPlans/Conformance.xctestplan` runs `MemryConformanceTests`, which hold iOS to the same protocol and domain behavior as desktop through the shared vectors. A failure here means iOS diverged, not that the test is wrong.
 - `TestPlans/UI.xctestplan` runs `MemryUITests`.
 
+The plans run on iPad as well: pass `name=iPad Air 13-inch (M4)` or `name=iPad mini (A17 Pro)` as the destination. On iPad the tab bar sits at the top and XCUITest finds no `tabBars` element, so a UI test finds a tab as `app.buttons["<title>"]`.
+
+The layout verification matrix comes from one script. It runs `TabletLayoutUITests`, which opens each main screen (Home, Notes, a note, Inbox, an Inbox item, Tasks, a task, the Journal day, Calendar, Settings) and attaches a screenshot in portrait and in landscape:
+
+```bash
+node apps/ios/scripts/screenshot-matrix.mjs                       # iPad Air 13-inch (M4), iPad mini (A17 Pro), iPhone 17
+node apps/ios/scripts/screenshot-matrix.mjs --test testNote 'iPad Air 13-inch (M4) <tag>' 'iPhone 17 <tag>'
+```
+
+- It writes `<out>/<simulator>/<variant>/<screen>-<orientation>.png`, by default under `apps/ios/build/screenshots/<timestamp>`. `--out` picks the folder, and each `--test` limits the run to one test method.
+- Every simulator gets a light pass at the default text size. The first one also gets a dark pass and a pass at the largest Dynamic Type size, then gets its own settings back.
+- Each simulator must be signed in to the staging test account first. The script fails when a test skips or fails, and the run's `xcodebuild.log` and `result.xcresult` sit next to its screenshots.
+- XCUITest cannot resize the app's window, so Split View and Stage Manager widths stay a manual check.
+
 Test gotchas:
 
 - The Unit plan runs inside the app on the shared simulator, and its sign-out tests wipe the app's keychain. Anything that needs a signed-in app, such as the UI plan or a manual check, comes after a fresh sign-in, never straight after a Unit run.
