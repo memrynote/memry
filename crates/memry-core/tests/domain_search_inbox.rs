@@ -53,7 +53,9 @@ fn reindex(data: &Connection, index: &Connection, at: i64) -> Reindexed {
 }
 
 fn inbox(data: &Connection, index: &Connection, query: &str) -> Vec<SearchHit> {
-    search::search_inbox(data, index, query, 20).expect("search inbox")
+    search::search(data, index, query, &search::SearchFilter::default(), 20)
+        .map(|groups| groups.inbox)
+        .expect("search inbox")
 }
 
 fn ids(hits: &[SearchHit]) -> Vec<&str> {

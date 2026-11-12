@@ -1,4 +1,5 @@
-//! Inbox captures in search (#4320): `fts_inbox` and its query.
+//! Inbox captures in search (#4320): `fts_inbox`. [`super::search`] queries
+//! it as the inbox group.
 //!
 //! Desktop indexes every capture in `fts_inbox` (`fts-inbox.ts`) and ranks it
 //! with `bm25(fts_inbox, 0.0, 3.0, 1.0, 1.0, 0.5)`. This does the same over
@@ -16,11 +17,8 @@ use rusqlite::{Connection, OptionalExtension as _, params};
 
 use crate::api::errors::StorageError;
 
+use super::failed;
 use super::maintenance::{Reindexed, candidates, meta_number, meta_set};
-use super::{
-    FUZZY_FALLBACK_BELOW, HitKind, MatchKind, SearchHit, append_fuzzy, failed, is_live, live_ids,
-    query, scored, snippet, titles,
-};
 
 /// `index_meta` key: the `fts_inbox` watermark.
 pub const INBOX_WATERMARK_KEY: &str = "watermark.fts_inbox";
@@ -134,51 +132,4 @@ fn index_item(
         .map_err(failed)?;
     done.inbox_indexed += 1;
     Ok(())
-}
-
-/// Searches inbox captures in every state, best first.
-///
-/// The snippet is the `content` window. Like tasks, every hit is checked
-/// against `data.db`, and fewer than three hits add fuzzy title matches.
-pub fn search_inbox(
-    data: &Connection,
-    index: &Connection,
-    query: &str,
-    limit: usize,
-) -> Result<Vec<SearchHit>, StorageError> {
-    let raw = query;
-    let Some(query) = query::parse(raw) else {
-        return Ok(Vec::new());
-    };
-    let sql = format!(
-        "SELECT id, title, {INBOX_RANK} AS score, {}
-         FROM fts_inbox WHERE fts_inbox MATCH ?1 ORDER BY score LIMIT ?2",
-        snippet::snippet_sql("fts_inbox", 2)
-    );
-    let mut hits = Vec::new();
-    for (id, title, score, snippet) in scored(index, &sql, &query.expression, None, limit)? {
-        if !is_live(data, "inbox", &id)? {
-            continue;
-        }
-        hits.push(SearchHit {
-            id,
-            title,
-            kind: HitKind::Inbox,
-            score,
-            snippet,
-            match_kind: MatchKind::Body,
-            matched_name: None,
-        });
-    }
-    if hits.len() < FUZZY_FALLBACK_BELOW {
-        let live = live_ids(data, "inbox")?;
-        let candidates: Vec<_> = titles(index, "fts_inbox")?
-            .into_iter()
-            .filter(|(id, _)| live.contains(id))
-            .collect();
-        append_fuzzy(&mut hits, raw, limit, &candidates, &|_| true, &|_| {
-            Ok(Some(HitKind::Inbox))
-        })?;
-    }
-    Ok(hits)
 }

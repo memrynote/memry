@@ -74,7 +74,8 @@ fn day_with_empty_first_update(data: &Connection) -> Vec<u8> {
 }
 
 fn hits(data: &Connection, index: &Connection) -> Vec<String> {
-    search::search_notes(data, index, WORD, 20)
+    search::search(data, index, WORD, &search::SearchFilter::default(), 20)
+        .map(|groups| [groups.notes, groups.journals].concat())
         .expect("search")
         .into_iter()
         .map(|hit| hit.id)

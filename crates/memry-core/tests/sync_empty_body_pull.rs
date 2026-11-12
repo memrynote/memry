@@ -165,7 +165,8 @@ fn reindexed_hits(dir: &Path, query: &str) -> Vec<String> {
     let mut index = Connection::open(dir.join("index.db")).expect("index.db");
     migrations::run(&mut index, INDEX_MIGRATIONS).expect("index migrations");
     search::reindex(&data, &index, now_ms()).expect("reindex");
-    search::search_notes(&data, &index, query, 20)
+    search::search(&data, &index, query, &search::SearchFilter::default(), 20)
+        .map(|groups| [groups.notes, groups.journals].concat())
         .expect("search")
         .into_iter()
         .map(|hit| hit.id)
