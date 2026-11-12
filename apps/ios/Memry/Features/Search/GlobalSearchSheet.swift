@@ -61,8 +61,6 @@ struct GlobalSearchSheet: View {
                 .navigationTitle(GlobalSearchCopy.open)
                 .navigationBarTitleDisplayMode(.inline)
                 .searchable(text: $query, placement: .navigationBarDrawer(displayMode: .always), prompt: GlobalSearchCopy.prompt)
-                // Keeps the filter menu in the bar while the field is active.
-                .searchPresentationToolbarBehavior(.avoidHidingContent)
                 .searchScopes(scope) {
                     ForEach(SearchScope.allCases, id: \.self) { Text($0.title).tag($0) }
                 }
@@ -73,8 +71,10 @@ struct GlobalSearchSheet: View {
                         Button(role: .close) { dismiss() }
                             .accessibilityIdentifier("search.close")
                     }
+                    // The bottom bar stays while the search is active; the top
+                    // bar's trailing items do not.
                     if let model {
-                        ToolbarItem(placement: .topBarTrailing) {
+                        ToolbarItem(placement: .bottomBar) {
                             SearchFilterMenu(filters: model.filters, apply: model.apply)
                         }
                     }
