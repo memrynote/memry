@@ -78,6 +78,7 @@ pub(crate) mod tests;
 mod tier;
 mod walked;
 
+pub use body::EMPTIED_SETTLE;
 pub(crate) use converter::{converter_for, converter_of};
 pub use run::{FIRST_RETRY, MAX_RETRIES, QUEUE_CAPACITY};
 #[cfg(test)]

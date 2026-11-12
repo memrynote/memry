@@ -1,6 +1,9 @@
 //! A file's text into its note's body: the feed the consumer seeds or replaces a document
 //! with, and what that came to. Split from `apply`, whose invariants it keeps.
 
+use std::sync::PoisonError;
+use std::time::{Duration, Instant};
+
 use memry_core::domain::external_feed::{FeedInput, FeedOutcome};
 use memry_core::domain::note_files::LogMark;
 use memry_core::domain::note_files::StampMark;
@@ -16,6 +19,10 @@ use crate::vault::note_file::NoteFile;
 use crate::vault::writeback::output_over;
 
 const SCOPE: &str = "vault_consumer";
+
+/// How long a note's file stays empty over a row that names other bytes before the consumer
+/// takes it ([`Applier::emptying`]).
+pub const EMPTIED_SETTLE: Duration = Duration::from_secs(2);
 
 /// Whether the note's document now holds the file's text: only then does the row record the
 /// file's hash. `BodyPresent` is not: a seed answers it before it compares any text, so the
@@ -56,6 +63,38 @@ pub(super) enum Write {
 }
 
 impl Applier {
+    /// Whether the note's file is an outside writer's between its truncate and its write
+    /// (`fs.writeFileSync`, an editor saving in place): empty, over a row that names other bytes,
+    /// for less than [`EMPTIED_SETTLE`] since the consumer first read it so. The fact is retried
+    /// and the row keeps naming the file it named, so no save and no write-back renames over the
+    /// file the writer holds open: its write would land in a file no path names (#4289). Taken as
+    /// the file, the empty bytes would also reach the record as a frontmatter with no tags, and a
+    /// body ahead of them would be written with none. The writer's write is the watcher's next
+    /// report; a file that stays empty is the user's, and is taken once it settled.
+    pub(super) fn emptying(&self, note_id: &str, row_hash: Option<&str>, file: &NoteFile) -> bool {
+        let mut emptied = self.emptied.lock().unwrap_or_else(PoisonError::into_inner);
+        let writing = file.raw.is_empty()
+            && row_hash.is_some_and(|hash| hash != file.hash)
+            && self.own_files.writer(note_id, &file.hash).is_none();
+        if !writing {
+            emptied.remove(note_id);
+            return false;
+        }
+        let since = *emptied
+            .entry(note_id.to_owned())
+            .or_insert_with(Instant::now);
+        if since.elapsed() < EMPTIED_SETTLE {
+            tracing::info!(
+                scope = SCOPE,
+                note_id,
+                "a file read empty waits for its writer"
+            );
+            return true;
+        }
+        emptied.remove(note_id);
+        false
+    }
+
     /// An outside edit of the note's file, which replaced the file the row named
     /// (`previous`, the row stamped `stamp`). A body ahead of that file (typing, or a merge, the
     /// write-back has not written yet) wins over it, as unsaved typing does in the editor

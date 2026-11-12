@@ -530,6 +530,7 @@ pub(super) fn applier(
         watch: None,
         filter: WatchFilter::new(Vec::new()),
         untaken: Mutex::default(),
+        emptied: Mutex::default(),
         writeback: None,
     }
 }

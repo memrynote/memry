@@ -194,7 +194,11 @@ impl Pass {
             write_note_over_checked(&self.root, &row.path, &output, &file.hash, between)
         });
         match written {
-            Ok(()) => {}
+            // A writer of bytes the run did not write may still be writing the file replaced.
+            Ok(replaced) if !self.ours(note_id, &file.hash) => {
+                replaced.keep_late_writes(&self.vault, note_id);
+            }
+            Ok(_) => {}
             Err(NoteFileError::ChangedUnderWrite) => return Outcome::Kept(Keep::FileChanged),
             Err(error) => return Outcome::Failed(format!("the file was not written: {error}")),
         }
@@ -241,6 +245,17 @@ impl Pass {
         }
     }
 
+    /// Whether `hash` is the bytes this run wrote last for the note: this write-back, or
+    /// another writer of the app ([`OwnFiles`]).
+    fn ours(&self, note_id: &str, hash: &str) -> bool {
+        self.last_written
+            .lock()
+            .unwrap_or_else(|e| e.into_inner())
+            .get(note_id)
+            .is_some_and(|last| last == hash)
+            || self.own_files.writer(note_id, hash).is_some()
+    }
+
     /// Keeps the file a write replaces when the write changes bytes the document does not hold
     /// ([`replaces_unheld_bytes`]) and the file is not what this run wrote last for the note
     /// (this write-back, or another writer of the app: [`OwnFiles`]), or, when it is, when the
@@ -259,13 +274,7 @@ impl Pass {
         if !replaces_unheld_bytes(raw, output) {
             return Ok((false, false));
         }
-        let ours = self
-            .last_written
-            .lock()
-            .unwrap_or_else(|e| e.into_inner())
-            .get(note_id)
-            .is_some_and(|last| last == hash)
-            || self.own_files.writer(note_id, hash).is_some();
+        let ours = self.ours(note_id, hash);
         let body = split_frontmatter_block(raw).body;
         if ours && !note_snapshots::is_significant(body, split_frontmatter_block(output).body) {
             return Ok((false, false));

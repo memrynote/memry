@@ -396,16 +396,22 @@ impl AppEdit {
             // writes still pending there stay the app's (#4222).
             self.echo.disown(&row.path, &hash);
         }
-        if let Err(error) =
-            write_note_over_checked(&self.root, &row.path, &text, &file.hash, between)
-        {
-            if takes {
-                self.echo.cancel_write(&row.path);
-            }
-            return match error {
-                NoteFileError::ChangedUnderWrite => Ok(Edited::Kept(Kept::FileChanged)),
-                error => Err(AppEditError::from(error).into()),
+        let replaced =
+            match write_note_over_checked(&self.root, &row.path, &text, &file.hash, between) {
+                Ok(replaced) => replaced,
+                Err(error) => {
+                    if takes {
+                        self.echo.cancel_write(&row.path);
+                    }
+                    return match error {
+                        NoteFileError::ChangedUnderWrite => Ok(Edited::Kept(Kept::FileChanged)),
+                        error => Err(AppEditError::from(error).into()),
+                    };
+                }
             };
+        // A writer of bytes the run did not write may still be writing the file replaced.
+        if !own.is_some_and(|own| own.is(note_id, &file.hash)) {
+            replaced.keep_late_writes(&self.vault, note_id);
         }
         // The watcher may skip this write's echo, so no read of it would record the class.
         record_large_file(lane.files(), note_id, large_file_class(&text).is_some());

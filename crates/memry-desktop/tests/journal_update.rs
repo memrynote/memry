@@ -29,11 +29,11 @@ use serde_json::json;
 use vault_env::{Env, env, indexed};
 
 const NEW_FILE: &str = include_str!("fixtures/electron-journal/new.md");
-const DAY: &str = "2025-01-17";
-const ID: &str = "j2025-01-17";
-const DAY_FILE: &str = "journal/2025-01-17.md";
+pub(crate) const DAY: &str = "2025-01-17";
+pub(crate) const ID: &str = "j2025-01-17";
+pub(crate) const DAY_FILE: &str = "journal/2025-01-17.md";
 
-fn opened() -> (Env, Arc<NotesService>, Arc<dyn SecureStore>) {
+pub(crate) fn opened() -> (Env, Arc<NotesService>, Arc<dyn SecureStore>) {
     let mut kept: Option<Arc<dyn SecureStore>> = None;
     let mut e = env(|store| {
         kept = Some(store.clone());
@@ -47,7 +47,7 @@ fn opened() -> (Env, Arc<NotesService>, Arc<dyn SecureStore>) {
 }
 
 /// The day `new.md` holds: tags `work`, `Ideas`; properties `mood`, `rating`.
-fn made(e: &mut Env, notes: &NotesService) {
+pub(crate) fn made(e: &mut Env, notes: &NotesService) {
     let open = e.session.current().unwrap();
     let day = NewDay {
         date: DAY.into(),
@@ -63,7 +63,7 @@ fn made(e: &mut Env, notes: &NotesService) {
     e.drain();
 }
 
-fn update(date: &str) -> DayUpdate {
+pub(crate) fn update(date: &str) -> DayUpdate {
     DayUpdate {
         date: date.into(),
         ..DayUpdate::default()
@@ -71,7 +71,7 @@ fn update(date: &str) -> DayUpdate {
 }
 
 /// `(tags, properties)` of the day's record.
-fn record(e: &Env) -> (String, Option<String>) {
+pub(crate) fn record(e: &Env) -> (String, Option<String>) {
     e.core()
         .db_handle()
         .call_blocking(|conn| {
@@ -103,7 +103,7 @@ fn queued(e: &Env) -> Vec<String> {
         .unwrap()
 }
 
-fn row_hash(e: &Env) -> Option<String> {
+pub(crate) fn row_hash(e: &Env) -> Option<String> {
     e.core()
         .note_files()
         .by_id(ID)

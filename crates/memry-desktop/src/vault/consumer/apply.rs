@@ -5,6 +5,7 @@
 use std::collections::HashMap;
 use std::path::PathBuf;
 use std::sync::{Arc, Mutex, PoisonError, Weak};
+use std::time::Instant;
 
 use memry_core::api::external_feed::ExternalFeed;
 use memry_core::api::search::Search;
@@ -66,6 +67,9 @@ pub(super) struct Applier {
     pub(super) filter: WatchFilter,
     /// By note id, how many times in a row an outside edit did not reach its record.
     pub(super) untaken: Mutex<HashMap<String, u32>>,
+    /// By note id, when its file was first read empty over a row that names other bytes
+    /// ([`Applier::emptying`]).
+    pub(super) emptied: Mutex<HashMap<String, Instant>>,
     /// The open's write-back, which writes a body that won over an outside edit; `None` in a
     /// test that runs none.
     pub(super) writeback: Option<Arc<WriteBack>>,
@@ -307,6 +311,9 @@ impl Applier {
             };
             // Before the feed: whatever it does with the text, the file is what it is.
             record_large_file(lane.files(), note_id, large_file_class(&file.raw).is_some());
+            if self.emptying(note_id, row.content_hash.as_deref(), &file) {
+                return Step::Retry(path.to_owned());
+            }
             // A locked note's outside edit is kept as a version and its locked text written
             // back: it never reaches the document or the peers (`restoreLockedNoteFile`). The
             // lock answers before the typing rule (`outside_edit`), which tells the record.
