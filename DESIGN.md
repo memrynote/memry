@@ -267,17 +267,76 @@ Every object aligns to a shared edge, baseline, grid track, or deliberate optica
 
 #### Mobile and future platform mapping
 
-Mobile does not reproduce the desktop sidebar, tab strip, hover states, or multi-pane geometry. It carries the same information hierarchy through native structures:
+At compact width (every iPhone, and iPad windows narrow enough to be compact), mobile does not reproduce the desktop sidebar, tab strip, hover states, or multi-pane geometry. At regular width, an iPad follows [Tablet (iPad, regular width)](#tablet-ipad-regular-width) instead. Both widths carry the same information hierarchy through native structures:
 
 - Use stack titles, native tabs, sheets, menus, safe-area handling, and system back behavior.
-- Keep primary content on the screen and move secondary desktop rails or inspectors into a pushed screen or sheet.
-- Replace hover with pressed, selected, focus, and long-press states. Add haptics only when they confirm a real action.
+- At compact width, keep primary content on the screen and move secondary desktop rails or inspectors into a pushed screen or sheet.
+- On touch, replace hover with pressed, selected, focus, and long-press states. When a pointer is present, hover effects are allowed as well, as the tablet subsection describes. Hover never carries the only path to an action. Add haptics only when they confirm a real action.
+- Reading and composing surfaces keep the `720pt` reading measure at every width, iPhone landscape included.
 - Keep touch targets at least `44pt`. Density may reduce visual padding, but not the hit area.
 - Let platform controls remain native when they preserve Memry's semantic color, hierarchy, and copy.
 - Use SwiftUI's native controls. Use `List` or a lazy stack for large data sets.
 - Account for top and bottom safe areas, the keyboard, larger text, and system gestures.
 
 A future watch app starts from the same semantics, not from a scaled-down phone screen. It keeps Memry's color roles, status meanings, typography character, copy, and restraint while reducing each view to glanceable information and one clear action.
+
+#### Tablet (iPad, regular width)
+
+At regular width, an iPad carries desktop's information architecture with native controls. It has desktop's structure (a sidebar of pages, list and detail splits, side rails, and keyboard shortcuts), but it does not copy desktop's pixels or web components.
+
+**Size class decides.** The system horizontal size class picks the layout, not the device model. Compact width keeps the phone mapping above unchanged. This covers every iPhone, including iPhone landscape on most models, and iPad windows narrow enough to be compact. A change at compact width needs a reason of its own, not tablet work. The iPad app is not offered on Apple silicon Macs or Vision Pro. Memry opens one window. Two notes side by side happen inside that window (see below).
+
+**Root navigation.** The root is a `TabView` with `.sidebarAdaptable`. The sidebar lists pages only:
+
+| Position | Row                                                                 |
+| -------- | ------------------------------------------------------------------- |
+| Header   | Vault name and sync status. A tap opens the vault switcher (`⇧⌘O`). |
+| Top      | **Search**, which opens the search palette                          |
+| Pages    | Home, Inbox (with its count badge), Journal, Calendar, Tasks, Notes |
+| Last     | Settings                                                            |
+
+The pages follow desktop's rail order, then Notes. Graph is absent until it exists on iOS. A page turned off in Settings › Features disappears from the sidebar. `⌘1`–`⌘9` follow the visible order, so `⌘1`–`⌘5` match desktop. The notes tree, bookmarks, and tags live in the Notes split view, not in the root sidebar. Home shows its limitation screen with device-neutral copy until the Home board ships.
+
+**Search.** `⌘K` or the Search row opens a palette centered near the top of the window, about `600pt` wide. Arrow keys move the selection, and Return opens the result in the detail column. The `⌘P` command palette belongs to the same visual family.
+
+**Lists and details.**
+
+- Notes picks its column count automatically: three columns (tree, list, note) in 13-inch landscape, and two in portrait and on smaller iPads.
+- Inbox, Tasks, and Settings split into a list and a detail column.
+- An empty detail column follows the empty-state rules. Notes restores the last opened note, or offers "New note" when no note was opened before. Inbox selects its first item. Tasks shows a plain empty state.
+- The floating "+" moves into the list column's toolbar as `square.and.pencil`. A tap creates, and a long press opens the create menu. Compact width keeps the floating "+". The "Hold + for more" tip anchors to whichever control is shown.
+- Two notes can open side by side, as with desktop's `⌘\` split. A draggable divider starts at 50/50. Each pane is at least `320pt` wide, and the ratio is saved per device.
+- Calendar remembers the last view. The first open shows Week.
+
+**Side rails.** A rail reserves real space, as on desktop. Content never slides underneath a rail.
+
+- The note inspector is a system `.inspector`. It is hidden by default, and its open state is saved per device and never synced.
+- The Day Panel (`⇧⌘B`) is a rail about `320pt` wide, matching desktop's default.
+- Journal's rail holds a mini month calendar (a tap jumps to that day, and days with content are marked), the day's tasks and events through the Day Panel component, and "On this day" entries from past years. It shows no statistics and no AI connections.
+- Desktop hides its review rail once the content and the rail no longer fit (around `920px`). The iPad equivalent keeps the rail and collapses the list column instead: when the window cannot hold the `720pt` note column plus the rail, the list column collapses, and it returns when the rail closes. The measure is a cap, not a minimum. If the window is still narrower than the column plus the rail, the note column narrows.
+- A width that cannot hold two rails shows one at a time.
+
+**Measures.** Reading and composing surfaces cap at the `720pt` reading measure. Settings caps its detail column at the same measure. Desktop uses a `15rem` rail and a `48rem` column. Sign-in, onboarding, and other forms sit on a plain background in a centered `560pt` column (`Tokens.Size.form`), with no card or panel. Tables, whiteboards, covers, calendars, and kanban boards use the full pane. Full-width editing follows desktop's per-device editor width, per-note `fullWidth` frontmatter, and per-device journal override.
+
+**Editor tools.** The note toolbar at the top carries the editor tools: Aa (formatting), checklist, table, insert (+), attach, undo and redo, and more. They stay visible with a hardware keyboard. With the software keyboard, the bottom accessory bar also stays, capped at the reading measure. The hide-keyboard button disappears while a hardware keyboard is attached. Drawing uses the system `PKToolPicker`. Pencil and finger drawings in notes and journal days are stored as Excalidraw `freedraw` elements in the existing whiteboard and canvas format.
+
+**Pointer and keyboard.** When a pointer is present, hover effects are allowed. Every hover-revealed action also stays reachable by touch, through a context menu, swipe, or long press, and through keyboard focus. Touch targets stay at least `44pt`, even when a pointer is present. Shortcuts start from desktop's defaults in the command catalog (`packages/contracts/src/commands/`). Keys that iPadOS reserves get a substitute:
+
+| Command                      | iPad binding                                                   |
+| ---------------------------- | -------------------------------------------------------------- |
+| Search                       | `⌘K` everywhere, including the editor                          |
+| Insert or edit a link        | `⇧⌘K` in the editor                                            |
+| Bold                         | `⌘B` in the editor                                             |
+| Toggle the sidebar           | `⌘B` outside the editor. The system `⌃⌘S` also works.          |
+| Previous or next journal day | `←` or `→` when no text view has focus. `⌥⌘←` or `⌥⌘→` always. |
+| Quick capture                | `⇧⌘N`                                                          |
+| New task                     | `⌥⌘N`                                                          |
+| Today's journal              | `⌘T`                                                           |
+| Command palette              | `⌘P`                                                           |
+| Day Panel                    | `⇧⌘B`                                                          |
+| Vault switcher               | `⇧⌘O`                                                          |
+
+**Copy.** In the app, copy names the device ("this iPad" or "this iPhone"). `Info.plist` strings say "this device".
 
 ### Spacing and density
 
@@ -399,7 +458,7 @@ Mobile reuses the shared views in `apps/ios/Memry/Design/`. A mobile component f
 
 - Variants keep the same intent as desktop even when the native control shape differs.
 - Sizes come from mobile theme tokens. Interactive controls keep a `44pt` hit area.
-- Pressed feedback replaces hover. Disabled and loading states remain explicit.
+- On touch, pressed feedback replaces hover. When a pointer is present, hover may accompany it. Disabled and loading states remain explicit.
 - Bottom sheets replace many desktop dialogs and popovers. Destructive confirmation still names the affected item and consequence.
 - Use native SwiftUI switches, segmented controls, pickers, menus, and sheets before building a custom control.
 - Callers may change layout without changing a component's visual identity.
