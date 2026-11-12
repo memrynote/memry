@@ -290,6 +290,7 @@ impl Indexer {
                     if !changed.is_empty() {
                         announce(changed);
                     }
+                    self.define_tags();
                 }
                 None => pass.stopped = true,
             }
@@ -301,6 +302,32 @@ impl Indexer {
             self.search.set_properties_typed_with(record)?;
         }
         Ok(pass)
+    }
+
+    /// A definition for every tag the notes use that has none (#4418, Electron's
+    /// `ensureTagDefinitions`), once the search reindex brought the body tags up to date. Every
+    /// open's pass does it, which defines the tags of a vault an older build indexed. A failure
+    /// is logged and the next pass that reindexes tries again.
+    fn define_tags(&self) {
+        let defined = self.search.used_tags().and_then(|tags| {
+            let hub =
+                self.vault
+                    .tag_hub(self.store.clone())
+                    .map_err(|error| StorageError::Failed {
+                        what: format!("no device identity: {error}"),
+                    })?;
+            hub.define_used(&tags)
+        });
+        match defined {
+            Ok(0) => {}
+            Ok(created) => tracing::info!(scope = "note_index", created, "tags defined"),
+            Err(error) => {
+                tracing::warn!(
+                    scope = "note_index",
+                    "tags not defined, retried later: {error}"
+                );
+            }
+        }
     }
 
     fn write(

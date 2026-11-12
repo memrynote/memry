@@ -13,6 +13,7 @@ use crate::vault_env;
 use std::sync::Arc;
 
 use index_support::{all_indexed, until, with_task};
+use memry_core::domain::tag_admin::definitions;
 use memry_core::seams::secure_store::SecureStore;
 use memry_core::storage::repositories::sync_items::{self, InboundRecord};
 use memry_desktop::error::{CoreError, FailureKind};
@@ -47,6 +48,11 @@ fn opened() -> (Env, OpenVault, Arc<dyn SecureStore>) {
     with_task(&open, receiver, |_| {
         sender.send(Applied::Indexed { complete: true }).unwrap();
         until("every file measured", || all_indexed(&e));
+        // The index defines Ada's tags as Electron's does (#4418): `idea` rose, `person` pink.
+        until("the tags defined", || {
+            let defined = e.core().db_handle().read_blocking(definitions).unwrap();
+            defined.contains_key("idea") && defined.contains_key("person")
+        });
     });
     (e, open, kept.expect("the store"))
 }
@@ -82,7 +88,8 @@ fn a_vault_with_no_schemas_offers_every_ready_made_tag_in_the_ui_language() {
     assert_eq!(
         offers,
         [
-            ("person", "person", PresetState::Add, vec!["company"]),
+            // Ada carries `Person`: Electron's strip says "Already on 1 note".
+            ("person", "person", PresetState::AddFields, vec!["company"]),
             ("company", "company", PresetState::Add, vec![]),
             (
                 "meeting",
@@ -170,7 +177,8 @@ fn adding_a_preset_writes_its_fields_definitions_template_and_appearance_and_mak
     );
     assert_eq!(
         (person.color.as_str(), person.icon.as_deref()),
-        ("sky", Some("icon:UserIcon"))
+        // `person` was defined by the index: Electron's `addPreset` paints only a new one.
+        ("pink", Some("icon:UserIcon"))
     );
     assert_eq!(person.own_preset, Some(PresetKey::Person));
     let template = person.template.as_ref().expect("a template");

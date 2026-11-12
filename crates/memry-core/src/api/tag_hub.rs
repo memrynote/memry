@@ -13,6 +13,7 @@ use crate::domain::body_tags;
 use crate::domain::notes::failed;
 use crate::domain::tag_admin;
 use crate::domain::tag_categories::{self, TagAssignment, TagCategory};
+use crate::domain::tag_mint;
 use crate::domain::tag_rename::{self, Holder, RenameJob, Started};
 use crate::domain::tag_retag;
 use crate::domain::tags;
@@ -37,6 +38,13 @@ impl TagHub {
     pub fn set_color(&self, tag: &str, color: &str) -> Result<(), StorageError> {
         self.db
             .call_blocking(|conn| tag_admin::set_color(conn, tag, color, &self.device_id, now_ms()))
+    }
+
+    /// A definition for each of `tags` that has none ([`tag_mint::define_used`]); how many it
+    /// created.
+    pub fn define_used(&self, tags: &[String]) -> Result<usize, StorageError> {
+        self.db
+            .call_blocking(|conn| tag_mint::define_used(conn, tags, &self.device_id, now_ms()))
     }
 
     /// An emoji or `icon:Name`; `None` clears it.

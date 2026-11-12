@@ -25,7 +25,7 @@
 //! files only and the note list lists only those. A task counts with its own tags. Each item
 //! counts once per tag, whatever spellings it carries.
 
-use std::collections::{BTreeMap, HashMap};
+use std::collections::{BTreeMap, BTreeSet, HashMap};
 
 use rusqlite::{Connection, params_from_iter};
 
@@ -119,6 +119,19 @@ fn filed(
     files: &HashMap<String, FileTags>,
     only: Option<&str>,
 ) -> Result<Vec<WithPins>, StorageError> {
+    Ok(filed_read(data, files, only)?
+        .into_iter()
+        .map(|(note, _)| note)
+        .collect())
+}
+
+/// [`filed`], each note with whether its tags are the ones on disk now: a day's, which its
+/// record owns, or a note's whose bytes the index measured.
+fn filed_read(
+    data: &Connection,
+    files: &HashMap<String, FileTags>,
+    only: Option<&str>,
+) -> Result<Vec<(WithPins, bool)>, StorageError> {
     let args: Vec<&str> = only.into_iter().collect();
     let (one_file, one_row, one_body) = match only {
         Some(_) => (
@@ -213,7 +226,8 @@ fn filed(
         .into_iter()
         .map(|(id, entry)| {
             let header = files.get(&id).map_or(&[][..], |file| &file.header_tags);
-            entry.into_tagged(header)
+            let settled = entry.day || entry.current;
+            (entry.into_tagged(header), settled)
         })
         .collect())
 }
@@ -230,6 +244,30 @@ pub fn of_note(
     let files = HashMap::from([(id.to_owned(), file)]);
     let mut filed = filed(data, &files, Some(id))?;
     Ok(filed.pop().map(|(note, _)| note.tags))
+}
+
+/// Every tag a filed journal day, or a note whose bytes on disk the index measured, carries, one
+/// spelling per tag, in the order Electron's open walk reads them (`findVaultFiles`: each
+/// folder's entries by name, a folder's notes where its name sorts), each file's as [`of_note`]
+/// lists them. A note whose file changed since is left to the pass that measures it, as Electron
+/// takes a file's tags when it reads it: the header last measured may hold a tag a rename or a
+/// delete just took out of the file.
+pub fn used(
+    data: &Connection,
+    files: &HashMap<String, FileTags>,
+) -> Result<Vec<String>, StorageError> {
+    let mut notes: Vec<TaggedNote> = filed_read(data, files, None)?
+        .into_iter()
+        .filter(|(_, settled)| *settled)
+        .map(|((note, _), _)| note)
+        .collect();
+    notes.sort_by(|a, b| a.path.split('/').cmp(b.path.split('/')));
+    let mut seen = BTreeSet::new();
+    Ok(notes
+        .into_iter()
+        .flat_map(|note| note.tags)
+        .filter(|tag| seen.insert(tag_key(tag)))
+        .collect())
 }
 
 /// Each live task's tags, one spelling per tag.
