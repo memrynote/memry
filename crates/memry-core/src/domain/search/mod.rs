@@ -66,11 +66,13 @@ mod body_cache;
 mod links;
 mod literal_links;
 mod maintenance;
+mod snippet;
 
 pub(crate) use body_cache::body_version;
 pub use maintenance::{
     DATA_VERSION_KEY, NOTES_WATERMARK_KEY, Reindexed, STAMPS_KEY, TASKS_WATERMARK_KEY, reindex,
 };
+pub use snippet::SnippetSegment;
 
 /// The `fts_notes` ranking expression. Part of the contract (§A.5).
 pub const NOTES_RANK: &str = "bm25(fts_notes, 0.0, 2.0, 1.0, 1.0)";
@@ -80,7 +82,13 @@ pub const TASKS_RANK: &str = "bm25(fts_tasks, 0.0, 2.0, 1.0, 1.0)";
 /// What a hit is.
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub enum HitKind {
-    Note,
+    /// The row metadata comes from the note's `notes` row in `data.db`, read
+    /// in the same per-hit lookup that drops tombstones (#4323). An empty
+    /// string reads as `None`.
+    Note {
+        emoji: Option<String>,
+        folder_path: Option<String>,
+    },
     /// Journals live in `fts_notes` beside notes and are told apart by the
     /// `date` on their `journal_entries` row (§A.5), which is the only place
     /// that date exists — `journal_entries` has no `title` column.
@@ -98,6 +106,9 @@ pub struct SearchHit {
     pub kind: HitKind,
     /// The bm25 score. Negative; more negative is a better match.
     pub score: f64,
+    /// The body window around the match (`content` for notes and journals,
+    /// `description` for tasks), empty when that column is.
+    pub snippet: Vec<SnippetSegment>,
 }
 
 /// Searches notes and journals.
@@ -115,11 +126,12 @@ pub fn search_notes(
         return Ok(Vec::new());
     };
     let sql = format!(
-        "SELECT id, title, {NOTES_RANK} AS score
-         FROM fts_notes WHERE fts_notes MATCH ?1 ORDER BY score LIMIT ?2"
+        "SELECT id, title, {NOTES_RANK} AS score, {}
+         FROM fts_notes WHERE fts_notes MATCH ?1 ORDER BY score LIMIT ?2",
+        snippet::snippet_sql("fts_notes", 2)
     );
     let mut hits = Vec::new();
-    for (id, title, score) in scored(index, &sql, &expression, limit)? {
+    for (id, title, score, snippet) in scored(index, &sql, &expression, limit)? {
         let Some(kind) = note_kind(data, &id)? else {
             continue;
         };
@@ -128,6 +140,7 @@ pub fn search_notes(
             title,
             kind,
             score,
+            snippet,
         });
     }
     Ok(hits)
@@ -148,11 +161,12 @@ pub fn search_tasks(
         return Ok(Vec::new());
     };
     let sql = format!(
-        "SELECT id, title, {TASKS_RANK} AS score
-         FROM fts_tasks WHERE fts_tasks MATCH ?1 ORDER BY score LIMIT ?2"
+        "SELECT id, title, {TASKS_RANK} AS score, {}
+         FROM fts_tasks WHERE fts_tasks MATCH ?1 ORDER BY score LIMIT ?2",
+        snippet::snippet_sql("fts_tasks", 2)
     );
     let mut hits = Vec::new();
-    for (id, title, score) in scored(index, &sql, &expression, limit)? {
+    for (id, title, score, snippet) in scored(index, &sql, &expression, limit)? {
         if !is_live(data, "task", &id)? {
             continue;
         }
@@ -161,6 +175,7 @@ pub fn search_tasks(
             title,
             kind: HitKind::Task,
             score,
+            snippet,
         });
     }
     Ok(hits)
@@ -178,11 +193,32 @@ pub fn match_expression(query: &str) -> Option<String> {
     (!terms.is_empty()).then(|| terms.join(" AND "))
 }
 
-/// `Note`, or `Journal` with its date, or `None` when `data.db` says the item
-/// is gone and the index has not caught up.
+/// `Note` with its emoji and folder, or `Journal` with its date, or `None`
+/// when `data.db` says the item is gone and the index has not caught up.
 fn note_kind(data: &Connection, id: &str) -> Result<Option<HitKind>, StorageError> {
     if !is_live(data, "journal", id)? {
-        return Ok(is_live(data, "note", id)?.then_some(HitKind::Note));
+        if !is_live(data, "note", id)? {
+            return Ok(None);
+        }
+        let (emoji, folder_path) = data
+            .query_row(
+                "SELECT emoji, folder_path FROM notes WHERE id = ?1",
+                params![id],
+                |row| {
+                    Ok((
+                        row.get::<_, Option<String>>(0)?,
+                        row.get::<_, Option<String>>(1)?,
+                    ))
+                },
+            )
+            .optional()
+            .map_err(failed)?
+            .unwrap_or_default();
+        let present = |value: Option<String>| value.filter(|value| !value.is_empty());
+        return Ok(Some(HitKind::Note {
+            emoji: present(emoji),
+            folder_path: present(folder_path),
+        }));
     }
     let date = data
         .query_row(
@@ -209,6 +245,9 @@ fn is_live(data: &Connection, item_type: &str, item_id: &str) -> Result<bool, St
     .map(|row| row.is_some())
 }
 
+/// One ranked row: id, title, bm25 score, snippet.
+type Scored = (String, String, f64, Vec<SnippetSegment>);
+
 /// One ranked page. Every row is collected through `?`: a row that will not
 /// read stops the search rather than vanishing from the results.
 fn scored(
@@ -216,7 +255,7 @@ fn scored(
     sql: &str,
     expression: &str,
     limit: usize,
-) -> Result<Vec<(String, String, f64)>, StorageError> {
+) -> Result<Vec<Scored>, StorageError> {
     let mut statement = index.prepare(sql).map_err(failed)?;
     let rows = statement
         .query_map(params![expression, limit as i64], |row| {
@@ -227,6 +266,7 @@ fn scored(
                 row.get::<_, String>(0)?,
                 row.get::<_, Option<String>>(1)?.unwrap_or_default(),
                 row.get::<_, f64>(2)?,
+                snippet::segments(&row.get::<_, Option<String>>(3)?.unwrap_or_default()),
             ))
         })
         .map_err(failed)?;

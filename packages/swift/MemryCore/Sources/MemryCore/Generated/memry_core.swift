@@ -23204,7 +23204,8 @@ public func FfiConverterTypeSavedFilterItem_lower(_ value: SavedFilterItem) -> R
  *
  * Flattened from [`SearchHit`] because uniffi has no enum-with-payload that
  * reads well in Swift here: `journal_date` is `Some` exactly when `kind` is
- * `journal`, and nothing else distinguishes the two.
+ * `journal`, and `emoji` and `folder_path` are `None` for anything but a
+ * note.
  */
 public struct SearchResult: Equatable, Hashable {
     public var id: String
@@ -23219,11 +23220,27 @@ public struct SearchResult: Equatable, Hashable {
      */
     public var journalDate: String?
     /**
+     * The note's stored icon value verbatim (an emoji, or a desktop icon
+     * reference the shell may not draw), and `None` for everything else.
+     */
+    public var emoji: String?
+    /**
+     * The note's vault folder (`Work/Accounts`), `None` at the vault root and
+     * for everything that is not a note.
+     */
+    public var folderPath: String?
+    /**
      * The bm25 score: negative, and more negative is a better match. Carried
      * so a shell can show relevance if it wants to, never re-sorted — the
      * order returned is already the ranking.
      */
     public var score: Double
+    /**
+     * The body text around the match, highlighted runs marked (#4316). Plain
+     * runs only when the hit matched its title alone; empty when the body
+     * (a task's description) is.
+     */
+    public var snippet: [SnippetSegment]
 
     // Default memberwise initializers are never public by default, so we
     // declare one manually.
@@ -23236,15 +23253,31 @@ public struct SearchResult: Equatable, Hashable {
          * entry has no title of its own (§A.5), so this is what names it.
          */journalDate: String?, 
         /**
+         * The note's stored icon value verbatim (an emoji, or a desktop icon
+         * reference the shell may not draw), and `None` for everything else.
+         */emoji: String?, 
+        /**
+         * The note's vault folder (`Work/Accounts`), `None` at the vault root and
+         * for everything that is not a note.
+         */folderPath: String?, 
+        /**
          * The bm25 score: negative, and more negative is a better match. Carried
          * so a shell can show relevance if it wants to, never re-sorted — the
          * order returned is already the ranking.
-         */score: Double) {
+         */score: Double, 
+        /**
+         * The body text around the match, highlighted runs marked (#4316). Plain
+         * runs only when the hit matched its title alone; empty when the body
+         * (a task's description) is.
+         */snippet: [SnippetSegment]) {
         self.id = id
         self.title = title
         self.kind = kind
         self.journalDate = journalDate
+        self.emoji = emoji
+        self.folderPath = folderPath
         self.score = score
+        self.snippet = snippet
     }
 
     
@@ -23267,7 +23300,10 @@ public struct FfiConverterTypeSearchResult: FfiConverterRustBuffer {
                 title: FfiConverterString.read(from: &buf), 
                 kind: FfiConverterString.read(from: &buf), 
                 journalDate: FfiConverterOptionString.read(from: &buf), 
-                score: FfiConverterDouble.read(from: &buf)
+                emoji: FfiConverterOptionString.read(from: &buf), 
+                folderPath: FfiConverterOptionString.read(from: &buf), 
+                score: FfiConverterDouble.read(from: &buf), 
+                snippet: FfiConverterSequenceTypeSnippetSegment.read(from: &buf)
         )
     }
 
@@ -23276,7 +23312,10 @@ public struct FfiConverterTypeSearchResult: FfiConverterRustBuffer {
         FfiConverterString.write(value.title, into: &buf)
         FfiConverterString.write(value.kind, into: &buf)
         FfiConverterOptionString.write(value.journalDate, into: &buf)
+        FfiConverterOptionString.write(value.emoji, into: &buf)
+        FfiConverterOptionString.write(value.folderPath, into: &buf)
         FfiConverterDouble.write(value.score, into: &buf)
+        FfiConverterSequenceTypeSnippetSegment.write(value.snippet, into: &buf)
     }
 }
 
@@ -23293,6 +23332,63 @@ public func FfiConverterTypeSearchResult_lift(_ buf: RustBuffer) throws -> Searc
 #endif
 public func FfiConverterTypeSearchResult_lower(_ value: SearchResult) -> RustBuffer {
     return FfiConverterTypeSearchResult.lower(value)
+}
+
+
+/**
+ * One run of snippet text. `highlighted` runs are the query's matches.
+ */
+public struct SnippetSegment: Equatable, Hashable {
+    public var text: String
+    public var highlighted: Bool
+
+    // Default memberwise initializers are never public by default, so we
+    // declare one manually.
+    public init(text: String, highlighted: Bool) {
+        self.text = text
+        self.highlighted = highlighted
+    }
+
+    
+
+    
+}
+
+#if compiler(>=6)
+extension SnippetSegment: Sendable {}
+#endif
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
+public struct FfiConverterTypeSnippetSegment: FfiConverterRustBuffer {
+    public static func read(from buf: inout (data: Data, offset: Data.Index)) throws -> SnippetSegment {
+        return
+            try SnippetSegment(
+                text: FfiConverterString.read(from: &buf), 
+                highlighted: FfiConverterBool.read(from: &buf)
+        )
+    }
+
+    public static func write(_ value: SnippetSegment, into buf: inout [UInt8]) {
+        FfiConverterString.write(value.text, into: &buf)
+        FfiConverterBool.write(value.highlighted, into: &buf)
+    }
+}
+
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
+public func FfiConverterTypeSnippetSegment_lift(_ buf: RustBuffer) throws -> SnippetSegment {
+    return try FfiConverterTypeSnippetSegment.lift(buf)
+}
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
+public func FfiConverterTypeSnippetSegment_lower(_ value: SnippetSegment) -> RustBuffer {
+    return FfiConverterTypeSnippetSegment.lower(value)
 }
 
 
@@ -33392,6 +33488,31 @@ fileprivate struct FfiConverterSequenceTypeSearchResult: FfiConverterRustBuffer 
         seq.reserveCapacity(Int(len))
         for _ in 0 ..< len {
             seq.append(try FfiConverterTypeSearchResult.read(from: &buf))
+        }
+        return seq
+    }
+}
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
+fileprivate struct FfiConverterSequenceTypeSnippetSegment: FfiConverterRustBuffer {
+    typealias SwiftType = [SnippetSegment]
+
+    public static func write(_ value: [SnippetSegment], into buf: inout [UInt8]) {
+        let len = Int32(value.count)
+        writeInt(&buf, len)
+        for item in value {
+            FfiConverterTypeSnippetSegment.write(item, into: &buf)
+        }
+    }
+
+    public static func read(from buf: inout (data: Data, offset: Data.Index)) throws -> [SnippetSegment] {
+        let len: Int32 = try readInt(&buf)
+        var seq = [SnippetSegment]()
+        seq.reserveCapacity(Int(len))
+        for _ in 0 ..< len {
+            seq.append(try FfiConverterTypeSnippetSegment.read(from: &buf))
         }
         return seq
     }
