@@ -13690,6 +13690,12 @@ public struct AccountDevice: Equatable, Hashable {
     public var id: String
     public var name: String
     public var platform: String
+    /**
+     * Chapter 02 §2.3.4. `None` is unknown: an older server, a device
+     * registered before the field, or a value this build does not know. The
+     * shell then falls back to `platform`.
+     */
+    public var formFactor: DeviceFormFactor?
     public var appVersion: String?
     /**
      * Epoch seconds, as the server stores it.
@@ -13703,7 +13709,12 @@ public struct AccountDevice: Equatable, Hashable {
 
     // Default memberwise initializers are never public by default, so we
     // declare one manually.
-    public init(id: String, name: String, platform: String, appVersion: String?, 
+    public init(id: String, name: String, platform: String, 
+        /**
+         * Chapter 02 §2.3.4. `None` is unknown: an older server, a device
+         * registered before the field, or a value this build does not know. The
+         * shell then falls back to `platform`.
+         */formFactor: DeviceFormFactor?, appVersion: String?, 
         /**
          * Epoch seconds, as the server stores it.
          */lastSyncAt: Int64?, createdAt: Int64?, 
@@ -13713,6 +13724,7 @@ public struct AccountDevice: Equatable, Hashable {
         self.id = id
         self.name = name
         self.platform = platform
+        self.formFactor = formFactor
         self.appVersion = appVersion
         self.lastSyncAt = lastSyncAt
         self.createdAt = createdAt
@@ -13738,6 +13750,7 @@ public struct FfiConverterTypeAccountDevice: FfiConverterRustBuffer {
                 id: FfiConverterString.read(from: &buf), 
                 name: FfiConverterString.read(from: &buf), 
                 platform: FfiConverterString.read(from: &buf), 
+                formFactor: FfiConverterOptionTypeDeviceFormFactor.read(from: &buf), 
                 appVersion: FfiConverterOptionString.read(from: &buf), 
                 lastSyncAt: FfiConverterOptionInt64.read(from: &buf), 
                 createdAt: FfiConverterOptionInt64.read(from: &buf), 
@@ -13749,6 +13762,7 @@ public struct FfiConverterTypeAccountDevice: FfiConverterRustBuffer {
         FfiConverterString.write(value.id, into: &buf)
         FfiConverterString.write(value.name, into: &buf)
         FfiConverterString.write(value.platform, into: &buf)
+        FfiConverterOptionTypeDeviceFormFactor.write(value.formFactor, into: &buf)
         FfiConverterOptionString.write(value.appVersion, into: &buf)
         FfiConverterOptionInt64.write(value.lastSyncAt, into: &buf)
         FfiConverterOptionInt64.write(value.createdAt, into: &buf)
@@ -17192,6 +17206,10 @@ public struct DeviceDescriptor: Equatable, Hashable {
      * Chapter 02 §2.12: the registration enum, not `CLIENT_PLATFORMS`.
      */
     public var platform: DevicePlatform
+    /**
+     * Chapter 02 §2.3.4; `None` sends nothing, as an older build did.
+     */
+    public var formFactor: DeviceFormFactor?
     public var osVersion: String?
     public var appVersion: String
     /**
@@ -17207,12 +17225,16 @@ public struct DeviceDescriptor: Equatable, Hashable {
          */name: String, 
         /**
          * Chapter 02 §2.12: the registration enum, not `CLIENT_PLATFORMS`.
-         */platform: DevicePlatform, osVersion: String?, appVersion: String, 
+         */platform: DevicePlatform, 
+        /**
+         * Chapter 02 §2.3.4; `None` sends nothing, as an older build did.
+         */formFactor: DeviceFormFactor? = nil, osVersion: String?, appVersion: String, 
         /**
          * Defaults to `default` server-side when absent.
          */vaultId: String?) {
         self.name = name
         self.platform = platform
+        self.formFactor = formFactor
         self.osVersion = osVersion
         self.appVersion = appVersion
         self.vaultId = vaultId
@@ -17236,6 +17258,7 @@ public struct FfiConverterTypeDeviceDescriptor: FfiConverterRustBuffer {
             try DeviceDescriptor(
                 name: FfiConverterString.read(from: &buf), 
                 platform: FfiConverterTypeDevicePlatform.read(from: &buf), 
+                formFactor: FfiConverterOptionTypeDeviceFormFactor.read(from: &buf), 
                 osVersion: FfiConverterOptionString.read(from: &buf), 
                 appVersion: FfiConverterString.read(from: &buf), 
                 vaultId: FfiConverterOptionString.read(from: &buf)
@@ -17245,6 +17268,7 @@ public struct FfiConverterTypeDeviceDescriptor: FfiConverterRustBuffer {
     public static func write(_ value: DeviceDescriptor, into buf: inout [UInt8]) {
         FfiConverterString.write(value.name, into: &buf)
         FfiConverterTypeDevicePlatform.write(value.platform, into: &buf)
+        FfiConverterOptionTypeDeviceFormFactor.write(value.formFactor, into: &buf)
         FfiConverterOptionString.write(value.osVersion, into: &buf)
         FfiConverterString.write(value.appVersion, into: &buf)
         FfiConverterOptionString.write(value.vaultId, into: &buf)
@@ -28395,6 +28419,76 @@ public func FfiConverterTypeCryptoError_lower(_ value: CryptoError) -> RustBuffe
 
 
 /**
+ * Chapter 02 §2.3.4: tells an iPad from an iPhone, which `platform` cannot.
+ * Absent means unknown, and a reader falls back to `platform`.
+ */
+
+public enum DeviceFormFactor: Equatable, Hashable {
+    
+    case phone
+    case tablet
+
+
+
+
+
+}
+
+#if compiler(>=6)
+extension DeviceFormFactor: Sendable {}
+#endif
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
+public struct FfiConverterTypeDeviceFormFactor: FfiConverterRustBuffer {
+    typealias SwiftType = DeviceFormFactor
+
+    public static func read(from buf: inout (data: Data, offset: Data.Index)) throws -> DeviceFormFactor {
+        let variant: Int32 = try readInt(&buf)
+        switch variant {
+        
+        case 1: return .phone
+        
+        case 2: return .tablet
+        
+        default: throw UniffiInternalError.unexpectedEnumCase
+        }
+    }
+
+    public static func write(_ value: DeviceFormFactor, into buf: inout [UInt8]) {
+        switch value {
+        
+        
+        case .phone:
+            writeInt(&buf, Int32(1))
+        
+        
+        case .tablet:
+            writeInt(&buf, Int32(2))
+        
+        }
+    }
+}
+
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
+public func FfiConverterTypeDeviceFormFactor_lift(_ buf: RustBuffer) throws -> DeviceFormFactor {
+    return try FfiConverterTypeDeviceFormFactor.lift(buf)
+}
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
+public func FfiConverterTypeDeviceFormFactor_lower(_ value: DeviceFormFactor) -> RustBuffer {
+    return FfiConverterTypeDeviceFormFactor.lower(value)
+}
+
+
+
+/**
  * Chapter 02 §2.12: **not** `CLIENT_PLATFORMS`. A desktop registers as
  * `macos`, `windows` or `linux` here and identifies itself as `desktop` in
  * `x-memry-client`.
@@ -31321,6 +31415,30 @@ fileprivate struct FfiConverterOptionTypeWikiTargetMatch: FfiConverterRustBuffer
         switch try readInt(&buf) as Int8 {
         case 0: return nil
         case 1: return try FfiConverterTypeWikiTargetMatch.read(from: &buf)
+        default: throw UniffiInternalError.unexpectedOptionalTag
+        }
+    }
+}
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
+fileprivate struct FfiConverterOptionTypeDeviceFormFactor: FfiConverterRustBuffer {
+    typealias SwiftType = DeviceFormFactor?
+
+    public static func write(_ value: SwiftType, into buf: inout [UInt8]) {
+        guard let value = value else {
+            writeInt(&buf, Int8(0))
+            return
+        }
+        writeInt(&buf, Int8(1))
+        FfiConverterTypeDeviceFormFactor.write(value, into: &buf)
+    }
+
+    public static func read(from buf: inout (data: Data, offset: Data.Index)) throws -> SwiftType {
+        switch try readInt(&buf) as Int8 {
+        case 0: return nil
+        case 1: return try FfiConverterTypeDeviceFormFactor.read(from: &buf)
         default: throw UniffiInternalError.unexpectedOptionalTag
         }
     }
