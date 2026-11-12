@@ -701,6 +701,66 @@ fn a_file_past_the_byte_ceiling_entering_the_vault_is_a_read_only_note_never_pus
     assert!(!outbox(&e).iter().any(|(_, item)| *item == id), "pushed");
 }
 
+/// A large file's note whose file shrinks under the class is a new note's file (#4326): its
+/// record is queued ahead of the body its document takes, as Electron syncs a new small note,
+/// and takes the file's property values.
+#[test]
+fn a_large_files_note_that_shrinks_queues_its_record_before_its_body() {
+    let mut e = notes_env();
+    e.open();
+    e.facts_until(indexed);
+    e.write("logs/dump.md", &"word\n\n".repeat(NOTE_MAX_BYTES / 6 + 1));
+    e.facts_until(added("logs/dump.md"));
+    let id = row_id(&e, "logs/dump.md").expect("the file is listed");
+    until("the large text owes the file body", || {
+        owes_file_body(&e, &id)
+    });
+
+    e.write("logs/dump.md", "---\nowner: Kaan\n---\nSmall now\n");
+    until("the document took the shrunk file", || {
+        e.body(&id) == "Small now"
+    });
+    let queued: Vec<String> = outbox(&e)
+        .into_iter()
+        .filter_map(|(op, item)| (item == id).then_some(op))
+        .collect();
+    assert_eq!(
+        queued.first().map(String::as_str),
+        Some("upsert"),
+        "{queued:?}"
+    );
+    assert!(queued.iter().any(|op| op == "crdt-update"), "{queued:?}");
+    let listed = e.core().note_files().listed_by_id(&id).unwrap().unwrap();
+    assert_eq!(listed.properties.get("owner"), Some(&Value::from("Kaan")));
+    assert!(!e.core().note_files().is_large_file(&id).unwrap());
+}
+
+/// The outside removal of a large file's note with no text anywhere deletes it, as Electron
+/// does (#4326): a later file at its path is a new note, never the gone note's text.
+#[test]
+fn a_removed_large_files_note_is_deleted_and_its_path_is_free() {
+    let mut e = notes_env();
+    e.open();
+    e.facts_until(indexed);
+    e.write("dump.md", &"x".repeat(200 * 1024));
+    e.facts_until(added("dump.md"));
+    let id = row_id(&e, "dump.md").expect("the file is listed");
+
+    fs::remove_file(e.vault.join("dump.md")).unwrap();
+    e.facts_until(removed("dump.md"));
+    assert_eq!(
+        records(&e),
+        vec![(id.clone(), "dump".to_owned(), None, true)]
+    );
+    assert_eq!(row_id(&e, "dump.md"), None);
+
+    e.write("dump.md", "Another\n");
+    e.facts_until(added("dump.md"));
+    let other = row_id(&e, "dump.md").expect("the new file is listed");
+    assert_ne!(other, id);
+    assert_eq!(e.body(&other), "Another");
+}
+
 /// Pinned: a note that grows into the large-file class after it was named stays a note. Its
 /// record was synced, so a move still edits it, as Electron's `processRename` does, live or
 /// while the app is closed (paired on the bytes, #3744). Its file is ahead of its document, so

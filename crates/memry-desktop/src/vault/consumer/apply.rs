@@ -14,7 +14,9 @@ use memry_core::domain::app_settings::AppSettings;
 
 use super::activity::report_unread;
 use super::body::{Body, Emptied, Write};
-use super::identity::{Adoption, Candidate, IdentityCtx, NoteIdentity, Removal, Rename};
+use super::identity::{
+    Adoption, Candidate, IdentityCtx, IdentityError, NoteIdentity, Removal, Rename,
+};
 use super::rows::{Lane, RowOwner, RowSession, RowStat};
 use super::{Applied, ChangeSource, MAX_RETRIES, MoveKind};
 use crate::editor::EditorHost;
@@ -165,6 +167,19 @@ impl Applier {
         true
     }
 
+    /// The identity's [`NoteIdentity::left_large_class`], when the note's file was large.
+    fn left_large(
+        &self,
+        lane: &Lane<'_>,
+        note_id: &str,
+        file: &NoteFile,
+    ) -> Result<(), IdentityError> {
+        if !lane.files().is_large_file(note_id)? {
+            return Ok(());
+        }
+        self.identity.left_large_class(&self.ctx(), note_id, file)
+    }
+
     /// A file at `path`. A row there makes it a change of that row's note; otherwise the
     /// identity names its note. `scan` is the open walk's, `None` for a watcher's fact.
     pub(super) fn found(
@@ -313,8 +328,17 @@ impl Applier {
                     return Step::Retry(path.to_owned());
                 }
             };
-            // Before the feed: whatever it does with the text, the file is what it is.
-            record_large_file(lane.files(), note_id, large_file_class(&file.raw).is_some());
+            // Before the feed: whatever it does with the text, the file is what it is. A large
+            // file's note that shrank queues its record ahead of the body it is about to get.
+            let large = large_file_class(&file.raw).is_some();
+            if row.content_hash.is_none()
+                && !large
+                && let Err(error) = self.left_large(lane, note_id, &file)
+            {
+                tracing::error!(scope = SCOPE, note_id, "a shrunk large file waits: {error}");
+                return Step::Retry(path.to_owned());
+            }
+            record_large_file(lane.files(), note_id, large);
             if let Some(until) = self.emptying(note_id, row.content_hash.as_deref(), &file) {
                 return Step::Wait(path.to_owned(), until);
             }

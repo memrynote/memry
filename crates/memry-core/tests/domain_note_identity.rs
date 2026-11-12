@@ -364,6 +364,34 @@ fn a_large_file_is_a_record_never_queued_and_defers_where_only_a_body_could_tell
     assert!(outbox(&db).is_empty());
 }
 
+/// A crash between a large file's create and its row leaves a note with no text anywhere: the
+/// file asked again is that note, never a second one (#4326). So is a pulled record with no
+/// text; one whose body is owed a pull may have some, and defers.
+#[test]
+fn a_large_file_asked_again_is_the_bare_note_it_made() {
+    let db = note_identity_support::open("large-again");
+    let adopt_large = |file, id: &str| {
+        run(&db, |conn| {
+            Ok(large_file::adopt_large(conn, &file, id, "dev", 1))
+        })
+        .expect("an answer")
+    };
+    let dump = || file("Logs/dump.md", "unread");
+    assert_eq!(adopt_large(dump(), "big"), created("big"));
+    assert_eq!(adopt_large(dump(), "minted"), existing("big"));
+
+    pulled(&db, "pulled", &record("Plan", None, ""));
+    run(&db, |conn| body_debt::owe(conn, "pulled"));
+    assert_eq!(adopt_large(file("Plan.md", "x"), "minted"), UNDECIDED);
+    run(&db, |conn| body_debt::settle(conn, "pulled"));
+    assert_eq!(
+        adopt_large(file("Plan.md", "x"), "minted"),
+        existing("pulled")
+    );
+    assert_eq!(note_count(&db), 2);
+    assert!(outbox(&db).is_empty());
+}
+
 #[test]
 fn a_native_core_mints_beside_a_database_electron_added_later() {
     let db = note_identity_support::open("native");

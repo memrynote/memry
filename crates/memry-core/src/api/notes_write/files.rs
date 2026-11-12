@@ -115,6 +115,14 @@ impl NotesWriter {
             .map_err(CrdtError::from)?
     }
 
+    /// The note's file left the large-file class: its record is queued ahead of its body
+    /// ([`large_file::left_class`]).
+    pub fn large_file_left(&self, note_id: &str) -> Result<(), StorageError> {
+        let note_id = note_id.to_owned();
+        self.db
+            .call_blocking(move |conn| large_file::left_class(conn, &note_id, now_ms()))
+    }
+
     /// The id a note created by [`Self::adopt_new_files`] is to get, minted before its body is
     /// authored for it ([`crate::api::external_feed::ExternalFeed::first_body`]).
     pub fn new_note_id() -> String {

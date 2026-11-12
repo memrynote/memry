@@ -5,15 +5,19 @@
 //! the class. The app opens it in the large-file viewer (`notes::read`). Its body is never
 //! parsed: no tags or properties reach the record, as Electron keeps none for it.
 //!
+//! Once its file shrinks under the class, it is a new note's file ([`left`]). Its file's
+//! removal deletes it while it has no text anywhere (`large_file::is_bare`).
+//!
 //! A day's path stays unnamed for now (Electron lists it as that day's entry): a day's record
 //! is made from its body (`adopt_day`), which this never reads.
 
 use memry_core::api::notes_write::NotesWriter;
 use memry_core::domain::notes::identity::FileNote;
 
-use super::{NotesIdentity, SCOPE, created_ms, electron_db_beside, place};
+use super::{NotesIdentity, SCOPE, created_ms, electron_db_beside, place, properties};
 use crate::vault::consumer::identity::{Adoption, Candidate, IdentityCtx, IdentityError};
 use crate::vault::journal_format::JournalDays;
+use crate::vault::note_file::NoteFile;
 
 pub(super) fn adopt(
     identity: &NotesIdentity,
@@ -43,4 +47,18 @@ pub(super) fn adopt(
         .adopt_large_file(note)
         .map_err(|error| IdentityError::Other(error.to_string()))?;
     Ok(identity.adoption(adopted, ctx.root, file.path))
+}
+
+/// The note's file left the class: its record is queued ahead of the body the feed gives it
+/// next, and takes the file's property values, as a new note's file gives them
+/// ([`properties::found`]).
+pub(super) fn left(
+    identity: &NotesIdentity,
+    ctx: &IdentityCtx<'_>,
+    note_id: &str,
+    file: &NoteFile,
+) -> Result<(), IdentityError> {
+    let writer = identity.writer(ctx)?;
+    writer.large_file_left(note_id)?;
+    properties::found(&writer, ctx, identity.store.clone(), note_id, file)
 }

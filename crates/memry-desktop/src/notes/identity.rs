@@ -13,13 +13,11 @@
 //!   files are not named here yet: core creates markdown notes only, and a file
 //!   note (PDF, image, audio, video) comes with its attachment bytes.
 //! - A large-file class markdown file (over 1 MiB, or a block over 128 KiB) is a
-//!   read-only note of this device, as Electron lists it
-//!   (`syncLargeFileBodyToCache`, `vault/note-sync.ts`): its record is created
-//!   with no body and no push, since Electron never syncs it ([`large`]). A note
-//!   that grows into the class after it was named stays a note: its record was
-//!   synced, so a move still edits it, as Electron's `processRename`
-//!   (`vault/rename-tracker.ts`) does. Either one's removal keeps it (below),
-//!   where Electron deletes it.
+//!   read-only note of this device, as Electron lists it (`syncLargeFileBodyToCache`,
+//!   `vault/note-sync.ts`), never pushed until it shrinks and deleted with its file
+//!   ([`large`]). A note that grows into the class after it was named stays a note:
+//!   its record was synced, so a move still edits it, as Electron's `processRename`
+//!   does, and its removal keeps it (below), where Electron deletes it.
 //! - A file whose path names a day is that day's journal entry, `j<YYYY-MM-DD>`
 //!   on every device: it is under the journal folder and its path below it,
 //!   without `.md`, parses in the journal date format (`extractDateFromPath`,
@@ -458,6 +456,16 @@ impl NoteIdentity for NotesIdentity {
         let writer = self.writer(ctx)?;
         tags::edited(&writer, ctx.search, note_id, previous, file)?;
         properties::edited(&writer, ctx, self.store.clone(), note_id, previous, file)
+    }
+
+    /// [`large::left`].
+    fn left_large_class(
+        &self,
+        ctx: &IdentityCtx<'_>,
+        note_id: &str,
+        file: &NoteFile,
+    ) -> Result<(), IdentityError> {
+        large::left(self, ctx, note_id, file)
     }
 
     /// A move that keeps what the file is reaches the record (`renameKeepsJournalDate`). One
