@@ -25,7 +25,7 @@ struct SearchRecentsTests {
 
     private func hit(_ title: String) throws -> SearchResult {
         let id = try vault.task(title, project: project)
-        return SearchResult(id: id, title: title, kind: "task", journalDate: nil, emoji: nil, folderPath: nil, score: -1, snippet: [])
+        return SearchResult(id: id, title: title, kind: "task", journalDate: nil, emoji: nil, folderPath: nil, score: -1, snippet: [], matchKind: .body, matchedName: nil)
     }
 
     private var listed: [String] {

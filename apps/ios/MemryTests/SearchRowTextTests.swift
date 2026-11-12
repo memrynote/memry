@@ -22,11 +22,12 @@ private let thursday = calendar().date(from: DateComponents(year: 2026, month: 1
 
 private func hit(
     kind: String, title: String, journalDate: String? = nil, emoji: String? = nil,
-    folder: String? = nil, snippet: String = ""
+    folder: String? = nil, snippet: String = "", alias: String? = nil
 ) -> SearchResult {
     SearchResult(
         id: "id", title: title, kind: kind, journalDate: journalDate, emoji: emoji, folderPath: folder,
-        score: -1, snippet: snippet.isEmpty ? [] : [SnippetSegment(text: snippet, highlighted: false)]
+        score: -1, snippet: snippet.isEmpty ? [] : [SnippetSegment(text: snippet, highlighted: false)],
+        matchKind: alias == nil ? .body : .alias, matchedName: alias
     )
 }
 
@@ -45,6 +46,16 @@ struct SearchRowTextTests {
         #expect(text.title == "🔑 Password list")
         #expect(text.caption == .folder("Work/Accounts"))
         #expect(text.accessibilityLabel == "🔑, Password list, Folder Work/Accounts, Bank password rotates monthly.")
+    }
+
+    @Test func a_note_an_alias_found_says_also_and_voiceover_reads_it() {
+        let text = row(hit(
+            kind: "note", title: "Password list", emoji: "🔑", folder: "Work/Accounts", alias: "Creds"
+        ))
+
+        #expect(text.also == "also: Creds")
+        #expect(text.caption == .folder("Work/Accounts"))
+        #expect(text.accessibilityLabel == "🔑, Password list, also Creds, Folder Work/Accounts")
     }
 
     @Test func a_note_without_an_emoji_or_folder_is_its_title_alone() {

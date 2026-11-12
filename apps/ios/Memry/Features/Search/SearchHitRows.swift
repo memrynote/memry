@@ -40,7 +40,8 @@ struct SearchHitRow: View {
 }
 
 /// One note or journal hit: the note's emoji and title over its folder, or
-/// the journal's relative day over "Journal" (#4323), then the snippet.
+/// the journal's relative day over "Journal" (#4323), with "also: <alias>"
+/// leading that line when an alias matched (#4319), then the snippet.
 struct SearchHitLabel: View {
     let hit: SearchResult
 
@@ -51,17 +52,24 @@ struct SearchHitLabel: View {
                 .font(Tokens.Typography.body.font)
                 .foregroundStyle(Tokens.Text.primary.color)
                 .lineLimit(1)
-            switch text.caption {
-            case .folder(let path):
-                ViewThatFits(in: .horizontal) {
-                    ForEach(SearchFolderPath.candidates(path), id: \.self) { candidate in
-                        caption(candidate).truncationMode(.head)
+            if text.also != nil || text.caption != nil {
+                HStack(spacing: Tokens.Space.small) {
+                    if let also = text.also {
+                        caption(also).layoutPriority(1)
+                    }
+                    switch text.caption {
+                    case .folder(let path):
+                        ViewThatFits(in: .horizontal) {
+                            ForEach(SearchFolderPath.candidates(path), id: \.self) { candidate in
+                                caption(candidate).truncationMode(.head)
+                            }
+                        }
+                    case .journal:
+                        caption("Journal")
+                    case nil:
+                        EmptyView()
                     }
                 }
-            case .journal:
-                caption("Journal")
-            case nil:
-                EmptyView()
             }
             SearchSnippetText(segments: hit.snippet)
         }
