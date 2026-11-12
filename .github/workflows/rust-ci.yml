@@ -435,9 +435,10 @@ jobs:
       # The editor host's time budgets (#3531): open, apply_update, sync step 1 and the quit's
       # write-back on a 2 KB, a 12 KB and a 5000-block note, release build as above. Linux only:
       # one runner type keeps the factor meaningful, and the macOS pool is the scarcest. The factor
-      # covers a shared runner against the M1 Pro the budgets were measured on.
+      # covers a shared runner against the M5 Pro the budgets were measured on.
       - name: Editor host budgets (memry-desktop, release)
         if: matrix.part != 'tests' && matrix.os == 'ubuntu-22.04'
+        timeout-minutes: 10
         env:
           CARGO_PROFILE_RELEASE_LTO: 'false'
           CARGO_PROFILE_RELEASE_CODEGEN_UNITS: '16'

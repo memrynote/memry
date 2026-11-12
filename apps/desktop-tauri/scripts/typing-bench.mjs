@@ -32,14 +32,16 @@ const REPO = resolve(fileURLToPath(new URL('../../..', import.meta.url)))
 const PORT = 9222
 const CHUNK = 50
 const LONG_BLOCKS = 5000
+const EVALUATE_TIMEOUT_MS = 180_000
 
 export const NOTES = [
   { file: 'typing-bench-plain', title: 'Typing bench plain', blocks: 3 },
   { file: 'typing-bench-long', title: 'Typing bench long', blocks: LONG_BLOCKS }
 ]
 
-// Each app gives the note its own id (Tauri does not take a frontmatter id), so the bench asks
-// the app's read-only debug query for the id of the note's path.
+// Neither app reads a frontmatter `id`: the file path is the note's identity, and each app
+// indexes it under its own id. So the bench asks the app's read-only debug query for the id of
+// the note's path.
 const APPS = {
   tauri: {
     script: join(REPO, 'apps/desktop-tauri/scripts/agent-app.mjs'),
@@ -91,6 +93,19 @@ function makeVault() {
   return vault
 }
 
+/**
+ * Throws when `agent-app.mjs status` reports a live sandbox. `start` exits 0 with "Already
+ * running" and the bench's `stop` would then end another session's app and its vault.
+ */
+export function assertNoRunningSandbox(app, statusOutput) {
+  const text = statusOutput.trim()
+  if (!text.startsWith('{')) return
+  const state = JSON.parse(text)
+  if (state.alive) {
+    throw new Error(`${app} agent-app already runs (pid ${state.pid}); stop it before the bench`)
+  }
+}
+
 function agent(app, args, env = {}) {
   const command = args[0]
   const run = spawnSync(process.execPath, [APPS[app].script, ...args], {
@@ -120,6 +135,14 @@ async function noteId(app, path) {
 /** `evaluate(fnSource, arg)` runs `(fnSource)(arg)` in the Tauri page and resolves its result. */
 async function connectWebDriver() {
   const state = JSON.parse(readFileSync(join(tmpdir(), 'memry-agent-app-tauri.json'), 'utf8'))
+  // The port and session id come from agent-app's state file and end up in a request to
+  // localhost; check their shape so a changed file cannot steer the request elsewhere.
+  if (!Number.isInteger(state.port) || state.port < 1 || state.port > 65_535) {
+    throw new Error('agent-app state file has no valid port')
+  }
+  if (state.sessionId !== undefined && !/^[\w-]+$/.test(state.sessionId)) {
+    throw new Error('agent-app state file has no valid session id')
+  }
   const client = createClient(`http://127.0.0.1:${state.port}`)
   const session = state.sessionId ?? (await client.newSession())
   await fetch(`${client.baseUrl}/session/${session}/timeouts`, {
@@ -142,7 +165,9 @@ async function connectWebDriver() {
 }
 
 async function connectCdp() {
-  const targets = await (await fetch(`http://127.0.0.1:${PORT}/json/list`)).json()
+  const list = await fetch(`http://127.0.0.1:${PORT}/json/list`)
+  if (!list.ok) throw new Error(`CDP /json/list answered ${list.status}`)
+  const targets = await list.json()
   const page = targets.find((t) => t.type === 'page' && !t.url.startsWith('devtools://'))
   if (!page) throw new Error('no renderer page on CDP')
   const socket = new WebSocket(page.webSocketDebuggerUrl)
@@ -154,14 +179,32 @@ async function connectCdp() {
   const pending = new Map()
   socket.addEventListener('message', (message) => {
     const reply = JSON.parse(message.data)
-    pending.get(reply.id)?.(reply)
+    const settle = pending.get(reply.id)
     pending.delete(reply.id)
+    if (typeof settle?.resolve === 'function') settle.resolve(reply)
+  })
+  socket.addEventListener('close', () => {
+    for (const settle of pending.values()) settle.reject(new Error('the CDP socket closed'))
+    pending.clear()
   })
   return {
     async evaluate(fn, arg) {
       const id = ++next
-      const reply = await new Promise((done) => {
-        pending.set(id, done)
+      const reply = await new Promise((succeed, fail) => {
+        const timer = setTimeout(() => {
+          pending.delete(id)
+          fail(new Error(`CDP evaluate timed out after ${EVALUATE_TIMEOUT_MS} ms`))
+        }, EVALUATE_TIMEOUT_MS)
+        pending.set(id, {
+          resolve: (value) => {
+            clearTimeout(timer)
+            succeed(value)
+          },
+          reject: (error) => {
+            clearTimeout(timer)
+            fail(error instanceof Error ? error : new Error(String(error)))
+          }
+        })
         socket.send(
           JSON.stringify({
             id,
@@ -267,10 +310,12 @@ const TYPE_KEYS = String(async ({ count, gap, first }) => {
 })
 
 async function benchApp(app, vault, keys, gap) {
-  agent(app, ['start'], { MEMRY_AGENT_VAULT_TEMPLATE: vault })
-  const page = await APPS[app].connect()
+  assertNoRunningSandbox(app, agent(app, ['status']))
+  let page
   const results = {}
   try {
+    agent(app, ['start'], { MEMRY_AGENT_VAULT_TEMPLATE: vault })
+    page = await APPS[app].connect()
     for (const note of NOTES) {
       const first = block(0)
       const id = await noteId(app, `notes/${note.file}.md`)
@@ -295,7 +340,7 @@ async function benchApp(app, vault, keys, gap) {
       }
     }
   } finally {
-    page.close()
+    page?.close()
     agent(app, ['stop'])
   }
   return results

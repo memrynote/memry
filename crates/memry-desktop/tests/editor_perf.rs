@@ -16,7 +16,9 @@
 //! a 2 KB note 8, `apply_update` of a 200-byte update 2. The others are about 3x the worst p95 of
 //! five runs on an Apple M5 Pro (the numbers are in the PR of slice 14z): open of the long note
 //! 100 (measured 31), sync step 1 of a current window 2 (0.4) and of an empty one 10 (3), the
-//! write-back 1000 (p50 160, p95 up to 570 under disk load). Edits are a keystroke apart
+//! write-back 1000 (p50 157-247, p95 243-1130 under disk load; the budget is one
+//! second, and CI's quiet disk measured 496). The slow rows take 40 samples, so p95 is the
+//! second-largest and not the maximum. Edits are a keystroke apart
 //! ([`KEYSTROKE`]); `apply_update`'s p95 is its commit's WAL write, which a busy disk stretches.
 //! The test prints p50 and p95 and only reports a miss; `MEMRY_PERF_ENFORCE=1` turns a miss into
 //! a failure, and `MEMRY_PERF_FACTOR` scales every budget (a shared CI runner is slower).
@@ -262,7 +264,7 @@ fn editor_perf_budget() {
     for (file, label, iterations, budget) in [
         ("small.md", "2 KB", 100, 8.0),
         ("medium.md", "12 KB", 100, 25.0),
-        ("long.md", "5000 blocks", 20, 100.0),
+        ("long.md", "5000 blocks", 40, 100.0),
     ] {
         let note = bench.id(file);
         // Warms the statement cache and the allocator; not measured.
@@ -315,7 +317,7 @@ fn editor_perf_budget() {
         report.row(label, samples, budget);
     }
 
-    let samples = (0..20)
+    let samples = (0..40)
         .map(|_| {
             let update = window.type_text(TYPED);
             bench.host.apply_update(&note, &update, WINDOW).unwrap();
