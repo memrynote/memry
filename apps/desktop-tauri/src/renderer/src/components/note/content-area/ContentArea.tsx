@@ -223,6 +223,7 @@ import {
 import { pasteClipboardIntoEditor } from '../writing-tools/editor-clipboard'
 import { editorMenuSelection } from '../writing-tools/editor-menu-selection'
 import { writingToolsService } from '@/services/writing-tools-service'
+const f7fLog = createLogger('F7F')
 
 const log = createLogger('ContentArea')
 
@@ -842,6 +843,14 @@ const ContentAreaEditor = memo(function ContentAreaEditor({
       onReplaceMarksFromYjs?.(readCriticMarkupMarksFromYDoc(yjsDoc))
     }
     const onArrayChange = (event: Y.YArrayEvent<unknown>): void => {
+      f7fLog.warn(
+        '[F7F] yarray event own=',
+        event.transaction.origin === origin,
+        'origin=',
+        String(event.transaction.origin),
+        'local=',
+        event.transaction.local
+      )
       if (event.transaction.origin !== origin) applyYjsMarks()
     }
 
@@ -867,6 +876,12 @@ const ContentAreaEditor = memo(function ContentAreaEditor({
     // as read, so a mark field this build does not know is not stripped by a
     // rewrite of the array.
     const next = marks ?? []
+    f7fLog.warn(
+      '[F7F] write effect',
+      JSON.stringify(next.map((m) => m.id)),
+      'doc=',
+      JSON.stringify(readCriticMarkupMarksFromYDoc(yjsDoc).map((m) => m.id))
+    )
     if (JSON.stringify(readCriticMarkupMarksFromYDoc(yjsDoc)) === JSON.stringify(next)) return
     yjsDoc.transact(
       () => writeCriticMarkupMarksToYDoc(yjsDoc, next),

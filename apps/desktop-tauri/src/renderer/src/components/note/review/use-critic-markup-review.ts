@@ -21,6 +21,8 @@ import {
   proseMirrorDocPosToEditorOffset,
   proseMirrorVisibleText
 } from '../content-area/critic-markup-offset-map'
+import { createLogger as createF7fLogger } from '@/lib/logger'
+const f7fLog = createF7fLogger('F7F')
 
 interface UseCriticMarkupReviewParams {
   markdown: string
@@ -139,6 +141,7 @@ export function useCriticMarkupReview({
     plainMarkdownRef.current = parsed.plainText
     marksRef.current = parsed.marks
     /* oxlint-disable react-you-might-not-need-an-effect/no-pass-data-to-parent, react-you-might-not-need-an-effect/no-derived-state, react-you-might-not-need-an-effect/no-adjust-state-on-prop-change -- genuine external sync: resync local review state from incoming CRDT markdown only when it differs from what we last emitted (guarded above), while also resetting the undo stack and mirror refs; this cannot be computed during render */
+    f7fLog.warn('[F7F] resync from markdown ->', JSON.stringify(parsed.marks.map((m) => m.id)))
     setPlainMarkdown(parsed.plainText)
     setMarks(parsed.marks)
     setHoveredMarkId(null)
@@ -148,6 +151,7 @@ export function useCriticMarkupReview({
 
   const persist = useCallback(
     (nextPlainMarkdown: string, nextMarks: CriticMarkupMark[]) => {
+      f7fLog.warn('[F7F] persist', JSON.stringify(nextMarks.map((m) => m.id)))
       const serialized = serializeCriticMarkup(nextPlainMarkdown, nextMarks)
       plainMarkdownRef.current = nextPlainMarkdown
       marksRef.current = nextMarks
@@ -355,6 +359,7 @@ export function useCriticMarkupReview({
 
   const deleteMark = useCallback(
     (id: string) => {
+      f7fLog.warn('[F7F] deleteMark', id, JSON.stringify(marksRef.current.map((m) => m.id)))
       if (!marksRef.current.some((item) => item.id === id)) return
       const before = snapshotReviewState(plainMarkdownRef.current, marksRef.current)
       const result = deleteCriticMark(plainMarkdownRef.current, marksRef.current, id)
@@ -414,6 +419,12 @@ export function useCriticMarkupReview({
   }, [])
 
   const replaceMarksFromYjs = useCallback((nextMarks: CriticMarkupMark[]) => {
+    f7fLog.warn(
+      '[F7F] replaceFromYjs',
+      JSON.stringify(marksRef.current.map((m) => m.id)),
+      '->',
+      JSON.stringify(nextMarks.map((m) => m.id))
+    )
     if (areCriticMarkupMarksEqual(marksRef.current, nextMarks)) return
     marksRef.current = nextMarks
     setMarks(nextMarks)
