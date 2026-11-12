@@ -39,7 +39,10 @@ impl SearchRecents {
     /// Records that `result` was opened from a search for `query`.
     pub fn record(&self, result: SearchResult, query: String) -> Result<(), StorageError> {
         let kind = match (result.kind.as_str(), result.journal_date) {
-            ("note", _) => HitKind::Note,
+            ("note", _) => HitKind::Note {
+                emoji: result.emoji,
+                folder_path: result.folder_path,
+            },
             ("task", _) => HitKind::Task,
             ("journal", date) => HitKind::Journal {
                 date: date.unwrap_or_default(),

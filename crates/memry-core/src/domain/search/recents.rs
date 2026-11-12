@@ -38,7 +38,7 @@ pub fn record(
     now_ms: i64,
 ) -> Result<(), StorageError> {
     let item_type = match hit.kind {
-        HitKind::Note => "note",
+        HitKind::Note { .. } => "note",
         HitKind::Journal { .. } => "journal",
         HitKind::Task => "task",
     };
@@ -136,6 +136,11 @@ mod tests {
         .expect("insert");
     }
 
+    const NOTE: HitKind = HitKind::Note {
+        emoji: None,
+        folder_path: None,
+    };
+
     fn hit(kind: HitKind, id: &str) -> SearchHit {
         SearchHit {
             id: id.to_owned(),
@@ -166,7 +171,7 @@ mod tests {
                 )
                 .map_err(failed)?;
                 live(conn, "task", "t1");
-                record(conn, &hit(HitKind::Note, "n1"), "alpha", 1)?;
+                record(conn, &hit(NOTE, "n1"), "alpha", 1)?;
                 let journal = HitKind::Journal {
                     date: "2026-01-14".to_owned(),
                 };
@@ -175,7 +180,7 @@ mod tests {
 
                 let recents = list(conn)?;
                 let kinds: Vec<_> = recents.iter().map(|r| r.hit.kind.clone()).collect();
-                assert_eq!(kinds, [HitKind::Task, journal, HitKind::Note]);
+                assert_eq!(kinds, [HitKind::Task, journal, NOTE]);
                 assert_eq!(recents[2].hit.title, "title n1");
                 assert_eq!(recents[2].query, "alpha");
                 Ok(())
@@ -189,9 +194,9 @@ mod tests {
             .call_blocking(|conn| {
                 live(conn, "note", "n1");
                 live(conn, "note", "n2");
-                record(conn, &hit(HitKind::Note, "n1"), "first", 1)?;
-                record(conn, &hit(HitKind::Note, "n2"), "other", 2)?;
-                record(conn, &hit(HitKind::Note, "n1"), "second", 3)?;
+                record(conn, &hit(NOTE, "n1"), "first", 1)?;
+                record(conn, &hit(NOTE, "n2"), "other", 2)?;
+                record(conn, &hit(NOTE, "n1"), "second", 3)?;
                 assert_eq!(
                     listed(conn),
                     [
@@ -210,8 +215,8 @@ mod tests {
             .call_blocking(|conn| {
                 live(conn, "note", "n1");
                 live(conn, "note", "n2");
-                record(conn, &hit(HitKind::Note, "n1"), "q", 7)?;
-                record(conn, &hit(HitKind::Note, "n2"), "q", 7)?;
+                record(conn, &hit(NOTE, "n1"), "q", 7)?;
+                record(conn, &hit(NOTE, "n2"), "q", 7)?;
                 let ids: Vec<_> = listed(conn).into_iter().map(|(id, _, _)| id).collect();
                 assert_eq!(ids, ["n2", "n1"]);
                 Ok(())
@@ -226,7 +231,7 @@ mod tests {
                 for index in 0..12 {
                     let id = format!("n{index:02}");
                     live(conn, "note", &id);
-                    record(conn, &hit(HitKind::Note, &id), "q", index)?;
+                    record(conn, &hit(NOTE, &id), "q", index)?;
                 }
                 let count: i64 = conn
                     .query_row("SELECT count(*) FROM search_recents", [], |row| row.get(0))
@@ -245,7 +250,7 @@ mod tests {
         migrated()
             .call_blocking(|conn| {
                 live(conn, "note", "n1");
-                record(conn, &hit(HitKind::Note, "n1"), "q", 1)?;
+                record(conn, &hit(NOTE, "n1"), "q", 1)?;
                 clear(conn)?;
                 assert!(list(conn)?.is_empty());
                 Ok(())
@@ -259,9 +264,9 @@ mod tests {
             .call_blocking(|conn| {
                 live(conn, "note", "n1");
                 live(conn, "task", "t1");
-                record(conn, &hit(HitKind::Note, "n1"), "q", 1)?;
+                record(conn, &hit(NOTE, "n1"), "q", 1)?;
                 record(conn, &hit(HitKind::Task, "t1"), "q", 2)?;
-                record(conn, &hit(HitKind::Note, "never-synced"), "q", 3)?;
+                record(conn, &hit(NOTE, "never-synced"), "q", 3)?;
                 conn.execute(
                     "UPDATE sync_items SET deleted_at = 5 WHERE item_id = 't1'",
                     [],
@@ -283,7 +288,7 @@ mod tests {
             live(conn, "note", "n1");
             assert_eq!(run(conn, DATA_MIGRATIONS)?, 17);
             assert!(list(conn)?.is_empty());
-            record(conn, &hit(HitKind::Note, "n1"), "q", 1)?;
+            record(conn, &hit(NOTE, "n1"), "q", 1)?;
             assert_eq!(listed(conn), [("n1".to_owned(), "q".to_owned(), 1)]);
             Ok(())
         })
