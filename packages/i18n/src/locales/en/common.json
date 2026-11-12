@@ -1269,7 +1269,8 @@
     "resetIcon": "Reset icon",
     "iconButton": "Change the icon of {name}",
     "leaveSandbox": "Back to {name}",
-    "iconFailed": "Could not change the vault icon"
+    "iconFailed": "Could not change the vault icon",
+    "iconPickerFailed": "Could not load the icon picker"
   },
   "sidebarHelp": {
     "label": "Help and feedback",

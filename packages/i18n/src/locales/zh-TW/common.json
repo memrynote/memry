@@ -1269,7 +1269,8 @@
     "resetIcon": "重設圖示",
     "iconButton": "變更 {name} 的圖示",
     "leaveSandbox": "返回 {name}",
-    "iconFailed": "無法變更儲存庫圖示"
+    "iconFailed": "無法變更儲存庫圖示",
+    "iconPickerFailed": "無法載入圖示選擇器"
   },
   "sidebarHelp": {
     "label": "說明與意見回饋",

@@ -1269,7 +1269,8 @@
     "resetIcon": "Palauta oletuskuvake",
     "iconButton": "Vaihda holvin {name} kuvake",
     "leaveSandbox": "Takaisin holviin {name}",
-    "iconFailed": "Holvin kuvakkeen vaihtaminen epäonnistui"
+    "iconFailed": "Holvin kuvakkeen vaihtaminen epäonnistui",
+    "iconPickerFailed": "Kuvakevalitsimen lataaminen epäonnistui"
   },
   "sidebarHelp": {
     "label": "Ohje ja palaute",

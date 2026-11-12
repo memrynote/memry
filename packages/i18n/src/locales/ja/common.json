@@ -1269,7 +1269,8 @@
     "resetIcon": "アイコンをリセット",
     "iconButton": "{name} のアイコンを変更",
     "leaveSandbox": "{name} に戻る",
-    "iconFailed": "保管庫のアイコンを変更できませんでした"
+    "iconFailed": "保管庫のアイコンを変更できませんでした",
+    "iconPickerFailed": "アイコンピッカーを読み込めませんでした"
   },
   "sidebarHelp": {
     "label": "ヘルプとフィードバック",

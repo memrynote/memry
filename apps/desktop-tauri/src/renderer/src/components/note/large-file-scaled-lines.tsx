@@ -7,6 +7,7 @@ import {
   settle,
   type ScrollAnchor
 } from './large-file-scroll'
+import { chordPendingRef } from '@/hooks/chord-pending-ref'
 
 /** Px one arrow key press moves, as the browser's own keyboard scroll does. */
 const ARROW_STEP_PX = 40
@@ -241,8 +242,8 @@ export function ScaledLines({
       if (event.target !== document.body && event.target !== document.documentElement) return
       // Shift+Arrow is the second key of the pane chord (⌘K, then Shift+Arrow). The chord's own
       // listener may run after this one, when a restored tab mounted this viewer first, and
-      // would find the key already taken here.
-      if (event.shiftKey && event.key.startsWith('Arrow')) return
+      // would find the key already taken here. With no chord pending it is an ordinary key.
+      if (chordPendingRef.current && event.shiftKey && event.key.startsWith('Arrow')) return
       onKeyDown(event)
     }
 

@@ -1269,7 +1269,8 @@
     "resetIcon": "Đặt lại biểu tượng",
     "iconButton": "Đổi biểu tượng của {name}",
     "leaveSandbox": "Quay lại {name}",
-    "iconFailed": "Không thể đổi biểu tượng kho"
+    "iconFailed": "Không thể đổi biểu tượng kho",
+    "iconPickerFailed": "Không thể tải bộ chọn biểu tượng"
   },
   "sidebarHelp": {
     "label": "Trợ giúp và phản hồi",

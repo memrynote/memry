@@ -1269,7 +1269,8 @@
     "resetIcon": "Obnovit výchozí ikonu",
     "iconButton": "Změnit ikonu trezoru {name}",
     "leaveSandbox": "Zpět do {name}",
-    "iconFailed": "Ikonu trezoru se nepodařilo změnit"
+    "iconFailed": "Ikonu trezoru se nepodařilo změnit",
+    "iconPickerFailed": "Nepodařilo se načíst výběr ikon"
   },
   "sidebarHelp": {
     "label": "Nápověda a zpětná vazba",

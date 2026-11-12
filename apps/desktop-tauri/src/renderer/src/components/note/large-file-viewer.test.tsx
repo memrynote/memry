@@ -85,6 +85,7 @@ vi.mock('@tanstack/react-virtual', () => ({
 }))
 
 import { LargeFileViewer } from './large-file-viewer'
+import { chordPendingRef } from '@/hooks/chord-pending-ref'
 
 /**
  * A ResizeObserver the test drives.
@@ -1045,6 +1046,32 @@ describe('LargeFileViewer', () => {
     expect(mocks.scrollToIndex.mock.calls.length).toBe(jumped)
   })
 
+  it('does not re-center the hit when a scrollbar drag comes back past its row', async () => {
+    await openReady(4000)
+    mocks.search.mockResolvedValue({
+      status: 'complete',
+      query: 'row 7',
+      hits: [
+        { line: 7, ordinal: 0 },
+        { line: 20, ordinal: 0 }
+      ],
+      total: 2,
+      limited: false
+    } satisfies LargeFileSearchResult)
+    const input = await findInFile('row 7')
+    expect(await screen.findByText('1/2')).toBeInTheDocument()
+    await userEvent.type(input, '{Enter}')
+    await waitFor(() => expect(mocks.scrollToIndex).toHaveBeenCalledWith(20, expect.anything()))
+    const jumped = mocks.scrollToIndex.mock.calls.length
+
+    // #when the drag takes the hit's row out of the window and carries on back over it
+    await scrollTo(2000, 4000)
+    await scrollTo(0, 4000)
+
+    // #then the row coming back into the window does not pull the viewport to it
+    expect(mocks.scrollToIndex.mock.calls.length).toBe(jumped)
+  })
+
   it('wraps backwards from the first hit rather than stopping at it', async () => {
     // #given
     await openReady(400)
@@ -1343,16 +1370,28 @@ describe('LargeFileViewer', () => {
       await waitFor(() => expect(windowOf(region).style.transform).toBe('translateY(-360px)'))
     })
 
-    it('leaves Shift+Arrow on the body to the pane chord instead of moving a line', async () => {
+    it('leaves Shift+Arrow on the body to the pane chord while one is pending', async () => {
       const region = await openScaled()
       region.blur()
+      chordPendingRef.current = true
 
       // #when the second key of ⌘K, Shift+Arrow lands on the page's body
       const notPrevented = fireEvent.keyDown(document.body, { key: 'ArrowDown', shiftKey: true })
+      chordPendingRef.current = false
 
       // #then the viewer does not take it
       expect(notPrevented).toBe(true)
       expect(windowOf(region).style.transform).toBe('translateY(0px)')
+    })
+
+    it('moves a line on Shift+Arrow on the body when no chord is pending', async () => {
+      const region = await openScaled()
+      region.blur()
+
+      const notPrevented = fireEvent.keyDown(document.body, { key: 'ArrowDown', shiftKey: true })
+
+      expect(notPrevented).toBe(false)
+      await waitFor(() => expect(windowOf(region).style.transform).toBe('translateY(-40px)'))
     })
 
     it('leaves a key typed in another field to that field', async () => {

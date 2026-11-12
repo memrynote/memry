@@ -1269,7 +1269,8 @@
     "resetIcon": "Simgeyi sıfırla",
     "iconButton": "{name} kasasının simgesini değiştir",
     "leaveSandbox": "{name} kasasına dön",
-    "iconFailed": "Kasa simgesi değiştirilemedi"
+    "iconFailed": "Kasa simgesi değiştirilemedi",
+    "iconPickerFailed": "Simge seçici yüklenemedi"
   },
   "sidebarHelp": {
     "label": "Yardım ve geri bildirim",

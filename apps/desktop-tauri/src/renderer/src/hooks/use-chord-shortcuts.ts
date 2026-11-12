@@ -8,6 +8,7 @@ import { useTabs } from '@/contexts/tabs'
 import { isMac, isShortcutRecording } from './use-keyboard-shortcuts-base'
 import { calculateGroupPositions, type GroupPosition } from './use-pane-navigation'
 import { hintModeActiveRef } from '@/contexts/hint-mode'
+import { chordPendingRef } from './chord-pending-ref'
 import { createLogger } from '@/lib/logger'
 
 const log = createLogger('Hook:ChordShortcuts')
@@ -272,6 +273,13 @@ export const useChordShortcuts = (): boolean => {
   useEffect(() => {
     handleKeyDownRef.current = handleKeyDown
   })
+
+  useEffect(() => {
+    chordPendingRef.current = chord.isActive
+    return () => {
+      chordPendingRef.current = false
+    }
+  }, [chord.isActive])
 
   // Event listener for chord keys
   useEffect(() => {

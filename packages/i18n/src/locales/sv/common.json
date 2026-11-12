@@ -1269,7 +1269,8 @@
     "resetIcon": "Återställ ikon",
     "iconButton": "Byt ikon för {name}",
     "leaveSandbox": "Tillbaka till {name}",
-    "iconFailed": "Det gick inte att byta valvets ikon"
+    "iconFailed": "Det gick inte att byta valvets ikon",
+    "iconPickerFailed": "Det gick inte att läsa in ikonväljaren"
   },
   "sidebarHelp": {
     "label": "Hjälp och feedback",

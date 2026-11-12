@@ -1269,7 +1269,8 @@
     "resetIcon": "Symbol zurücksetzen",
     "iconButton": "Symbol von {name} ändern",
     "leaveSandbox": "Zurück zu {name}",
-    "iconFailed": "Tresorsymbol konnte nicht geändert werden"
+    "iconFailed": "Tresorsymbol konnte nicht geändert werden",
+    "iconPickerFailed": "Symbolauswahl konnte nicht geladen werden"
   },
   "sidebarHelp": {
     "label": "Hilfe und Feedback",

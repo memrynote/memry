@@ -1269,7 +1269,8 @@
     "resetIcon": "Resetuj ikonę",
     "iconButton": "Zmień ikonę sejfu: {name}",
     "leaveSandbox": "Wróć do: {name}",
-    "iconFailed": "Nie udało się zmienić ikony sejfu"
+    "iconFailed": "Nie udało się zmienić ikony sejfu",
+    "iconPickerFailed": "Nie udało się wczytać selektora ikon"
   },
   "sidebarHelp": {
     "label": "Pomoc i opinie",

@@ -1269,7 +1269,8 @@
     "resetIcon": "Atur ulang ikon",
     "iconButton": "Ubah ikon {name}",
     "leaveSandbox": "Kembali ke {name}",
-    "iconFailed": "Tidak dapat mengubah ikon brankas"
+    "iconFailed": "Tidak dapat mengubah ikon brankas",
+    "iconPickerFailed": "Tidak dapat memuat pemilih ikon"
   },
   "sidebarHelp": {
     "label": "Bantuan dan masukan",

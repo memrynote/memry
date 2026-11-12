@@ -1269,7 +1269,8 @@
     "resetIcon": "重置图标",
     "iconButton": "更改 {name} 的图标",
     "leaveSandbox": "返回 {name}",
-    "iconFailed": "无法更改仓库图标"
+    "iconFailed": "无法更改仓库图标",
+    "iconPickerFailed": "无法加载图标选择器"
   },
   "sidebarHelp": {
     "label": "帮助与反馈",

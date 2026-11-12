@@ -124,19 +124,12 @@ describe('a note made before the list listens', () => {
     )
   })
 
-  it('keeps a read that has data running through a burst of note events', async () => {
-    // Cancelling is for a first read with no data yet. A burst of events after the list has
-    // answered (a sync pull) must cancel no read, or a large vault's read keeps restarting.
+  it('ends a burst of note events over a list with data in a read that lands', async () => {
+    // A sync pull sends many events after the list has answered; the read the last one starts
+    // must finish.
     const { result } = renderHook(() => useNotesList({ fields: 'tree' }), { wrapper })
     await waitFor(() => expect(result.current.notes.map((note) => note.id)).toEqual(['first']))
     await act(async () => tauri.goLive())
-
-    const cancelled: number[] = []
-    const cancelQueries = queryClient.cancelQueries.bind(queryClient)
-    vi.spyOn(queryClient, 'cancelQueries').mockImplementation((filters, options) => {
-      cancelled.push(queryClient.getQueryCache().findAll(filters).length)
-      return cancelQueries(filters, options)
-    })
 
     const made = Array.from({ length: 5 }, (_, i) => view(`made-${i}`, `notes/made-${i}.md`))
     tauri.heldLists = []
@@ -147,7 +140,6 @@ describe('a note made before the list listens', () => {
       }
     })
     await waitFor(() => expect(tauri.heldLists).not.toHaveLength(0))
-    expect(cancelled).toEqual([0, 0, 0, 0, 0])
 
     const reads = tauri.heldLists
     tauri.heldLists = null

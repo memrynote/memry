@@ -1269,7 +1269,8 @@
     "resetIcon": "아이콘 초기화",
     "iconButton": "{name} 아이콘 변경",
     "leaveSandbox": "{name}(으)로 돌아가기",
-    "iconFailed": "볼트 아이콘을 변경하지 못했습니다"
+    "iconFailed": "볼트 아이콘을 변경하지 못했습니다",
+    "iconPickerFailed": "아이콘 선택기를 불러오지 못했습니다"
   },
   "sidebarHelp": {
     "label": "도움말 및 피드백",

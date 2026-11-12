@@ -1269,7 +1269,8 @@
     "resetIcon": "Tetapkan semula ikon",
     "iconButton": "Tukar ikon {name}",
     "leaveSandbox": "Kembali ke {name}",
-    "iconFailed": "Tidak dapat menukar ikon bilik kebal"
+    "iconFailed": "Tidak dapat menukar ikon bilik kebal",
+    "iconPickerFailed": "Tidak dapat memuatkan pemilih ikon"
   },
   "sidebarHelp": {
     "label": "Bantuan dan maklum balas",
