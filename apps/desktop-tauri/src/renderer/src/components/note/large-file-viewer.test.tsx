@@ -1019,6 +1019,32 @@ describe('LargeFileViewer', () => {
     expect(mocks.scrollToIndex.mock.calls.length).toBe(jumped)
   })
 
+  it('does not snap back to the hit after a scrollbar drag takes its row out of the window', async () => {
+    // #given a hit that Next has jumped to
+    await openReady(4000)
+    mocks.search.mockResolvedValue({
+      status: 'complete',
+      query: 'row 7',
+      hits: [
+        { line: 7, ordinal: 0 },
+        { line: 20, ordinal: 0 }
+      ],
+      total: 2,
+      limited: false
+    } satisfies LargeFileSearchResult)
+    const input = await findInFile('row 7')
+    expect(await screen.findByText('1/2')).toBeInTheDocument()
+    await userEvent.type(input, '{Enter}')
+    await waitFor(() => expect(mocks.scrollToIndex).toHaveBeenCalledWith(20, expect.anything()))
+    const jumped = mocks.scrollToIndex.mock.calls.length
+
+    // #when the scrollbar is dragged far away, with no wheel, touch, pointer or key event
+    await scrollTo(2000, 4000)
+
+    // #then the viewport stays where the drag put it
+    expect(mocks.scrollToIndex.mock.calls.length).toBe(jumped)
+  })
+
   it('wraps backwards from the first hit rather than stopping at it', async () => {
     // #given
     await openReady(400)
@@ -1315,6 +1341,18 @@ describe('LargeFileViewer', () => {
       // #then the scaled bar is not scrolled by it: the anchor moves a page
       expect(notPrevented).toBe(false)
       await waitFor(() => expect(windowOf(region).style.transform).toBe('translateY(-360px)'))
+    })
+
+    it('leaves Shift+Arrow on the body to the pane chord instead of moving a line', async () => {
+      const region = await openScaled()
+      region.blur()
+
+      // #when the second key of ⌘K, Shift+Arrow lands on the page's body
+      const notPrevented = fireEvent.keyDown(document.body, { key: 'ArrowDown', shiftKey: true })
+
+      // #then the viewer does not take it
+      expect(notPrevented).toBe(true)
+      expect(windowOf(region).style.transform).toBe('translateY(0px)')
     })
 
     it('leaves a key typed in another field to that field', async () => {

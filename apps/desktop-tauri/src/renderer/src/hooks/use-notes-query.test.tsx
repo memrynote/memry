@@ -341,6 +341,34 @@ describe('use-notes-query', () => {
     expect(result.current.notes[0]?.title).toBe('Second')
   })
 
+  // #4300: a burst of events over a list that already has data (a sync pull, a bulk import) ends in
+  // a read that lands: `rereadQueries` cancels only a query with no data yet.
+  it('lets the read that follows a burst of events over a list with data land', async () => {
+    const { result } = renderHook(() => useNotesList(), { wrapper })
+    await waitFor(() => expect(result.current.notes[0]?.title).toBe('First'))
+
+    const answers: Array<(value: NoteListResponse) => void> = []
+    mocks.notesService.list.mockImplementation(
+      () => new Promise<NoteListResponse>((resolve) => answers.push(resolve))
+    )
+    await act(async () => {
+      mocks.handlers.created[0]()
+      mocks.handlers.created[0]()
+      mocks.handlers.created[0]()
+    })
+    await waitFor(() => expect(answers.length).toBeGreaterThan(0))
+    await act(async () =>
+      answers[answers.length - 1]({
+        notes: [listItem('n2', 'Second')],
+        total: 1,
+        hasMore: false
+      })
+    )
+
+    await waitFor(() => expect(result.current.notes[0]?.title).toBe('Second'))
+    expect(result.current.isFetching).toBe(false)
+  })
+
   it('refetches a list that includes journal entries on journal events, and only that one', async () => {
     renderHook(() => useNotesList({ fields: 'tree' }), { wrapper })
     await waitFor(() => expect(mocks.notesService.list).toHaveBeenCalledTimes(1))

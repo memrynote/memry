@@ -89,6 +89,8 @@ const mocks = vi.hoisted(() => ({
   contentAreaMounts: 0,
   /** What the tab would persist; the mind-map toggle lives in here. */
   tabViewState: {} as Record<string, unknown>,
+  /** The focused tab of the focused group, as the tabs context reports it. */
+  focusedTab: { tabId: '/notes/note-1', groupId: 'group-1' },
   spatialCanvasEnabled: true,
   direction: 'ltr' as 'ltr' | 'rtl',
   /** Blocks the mocked editor reports as its live document. */
@@ -338,6 +340,8 @@ vi.mock('@/contexts/tabs', () => {
     // useOpenPage (wiki/backlink navigation preference) reads openTab from here.
     useTabActions: () => ({ openTab: mocks.openTab }),
     useTabActionsOptional: () => tabActions,
+    useIsTabActive: (tabId: string, groupId?: string) =>
+      tabId === mocks.focusedTab.tabId && groupId === mocks.focusedTab.groupId,
     useActiveTab: () => ({
       id: '/notes/note-1',
       entityId: 'note-1',
@@ -1090,6 +1094,7 @@ describe('NotePage', () => {
     mocks.propertyCanEdit = null
     mocks.contentAreaMounts = 0
     mocks.tabViewState = {}
+    mocks.focusedTab = { tabId: '/notes/note-1', groupId: 'group-1' }
     mocks.spatialCanvasEnabled = true
     mocks.direction = 'ltr'
     mocks.editorInstances = []
@@ -3325,6 +3330,19 @@ describe('NotePage', () => {
       expect(mocks.contentAreaMounts).toBe(1)
       // ...and find still walks the editor, which is where the text is
       expect(mocks.findInPageEnabled).toBe(true)
+    })
+
+    it('leaves the keyboard to the other split group when the same note is open in both', async () => {
+      // #given the same note in two groups, with focus in the other one: the focused tab's
+      // entity is this note, but it is not this page's tab
+      mocks.focusedTab = { tabId: '/notes/note-1-other', groupId: 'group-2' }
+
+      // #when
+      renderWithProviders(<NotePage noteId="note-1" />)
+      await screen.findByTestId('editor-content')
+
+      // #then this page does not answer find
+      expect(mocks.findInPageEnabled).toBe(false)
     })
   })
 
