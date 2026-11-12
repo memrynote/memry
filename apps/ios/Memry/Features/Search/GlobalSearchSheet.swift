@@ -45,6 +45,7 @@ struct GlobalSearchSheet: View {
     let openJournalDay: (String) -> Void
 
     @State private var model: VaultSearchViewModel?
+    @State private var recents: SearchRecentsViewModel?
     @State private var query = ""
     @FocusState private var isFocused: Bool
     @Environment(\.dismiss) private var dismiss
@@ -73,7 +74,11 @@ struct GlobalSearchSheet: View {
             if model == nil, let searcher = browse?.searcher {
                 model = VaultSearchViewModel(search: searcher)
             }
+            if recents == nil, let store = browse?.recents {
+                recents = SearchRecentsViewModel(store: store)
+            }
             isFocused = true
+            await recents?.load()
             await model?.prepare()
         }
     }
@@ -88,8 +93,10 @@ struct GlobalSearchSheet: View {
                     ForEach(hits, id: \.id) { hit in
                         if hit.kind == "journal" {
                             SearchHitRow(hit: hit)
+                                .simultaneousGesture(TapGesture().onEnded { record(hit) })
                         } else {
                             Button {
+                                record(hit)
                                 Telemetry.shared.track(.searchResultOpened, surface: .search, action: "opened", objectType: "note")
                                 dismiss()
                                 openNote(hit.id)
@@ -106,6 +113,7 @@ struct GlobalSearchSheet: View {
                         Section {
                             ForEach(tasks, id: \.id) { hit in
                                 Button {
+                                    record(hit)
                                     Telemetry.shared.track(.searchResultOpened, surface: .search, action: "opened", objectType: "task")
                                     dismiss()
                                     openTask(hit.id)
@@ -132,11 +140,22 @@ struct GlobalSearchSheet: View {
                         .frame(maxWidth: .infinity)
                         .listRowSeparator(.hidden)
                 case .idle, .none:
-                    EmptyView()
+                    if let recents {
+                        SearchRecentsSection(
+                            model: recents,
+                            openNote: { dismiss(); openNote($0) },
+                            openTask: { dismiss(); openTask($0) }
+                        )
+                    }
                 }
             }
             .listStyle(.plain)
             .accessibilityIdentifier("search.results")
         }
+    }
+
+    private func record(_ hit: SearchResult) {
+        guard let recents else { return }
+        Task { await recents.record(hit, query: query) }
     }
 }
