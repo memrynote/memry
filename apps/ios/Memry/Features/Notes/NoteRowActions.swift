@@ -82,7 +82,9 @@ struct NoteRowActions: ViewModifier {
                         Task { await model.setNoteIcon(id: note.id, to: chosen) }
                     }
                 }
-                .sheet(item: $sharedCopy) { copy in
+                // A popover on the row in regular width; compact width
+                // adapts it to the same sheet as before.
+                .popover(item: $sharedCopy) { copy in
                     ActivityShareSheet(text: copy.export.contents)
                         .presentationDetents([.medium, .large])
                         .ignoresSafeArea()
