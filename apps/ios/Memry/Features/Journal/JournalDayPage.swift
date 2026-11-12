@@ -72,9 +72,11 @@ struct JournalDayPage: View {
         .onChange(of: isShown ? fogPlacement : nil, initial: true) { _, placement in
             if let placement { fog = placement }
         }
-        .safeAreaInset(edge: .top) {
-            if let model, model.finding { findPanel(model) }
-        }
+        .modifier(NoteFindScroll(
+            target: .journalDay(date),
+            blocks: model?.read.blocks ?? [],
+            finding: Binding(get: { model?.finding ?? false }, set: { model?.finding = $0 })
+        ))
         .task(id: model == nil) {
             guard let model else { return }
             await model.read.loadIfNeeded()
@@ -185,32 +187,6 @@ struct JournalDayPage: View {
             requestVaultSync?()
             await model.read.reload()
             await model.linkedTasks.load()
-        }
-    }
-
-    private func findPanel(_ model: JournalDayPageModel) -> some View {
-        VStack(alignment: .leading, spacing: Tokens.Space.small) {
-            HStack {
-                Spacer()
-                Button {
-                    model.finding = false
-                } label: {
-                    Image(systemName: "xmark")
-                        .frame(width: Tokens.Size.minimumHitArea, height: Tokens.Size.minimumHitArea)
-                        .contentShape(.rect)
-                }
-                .accessibilityLabel(JournalCopy.closeFind)
-                .accessibilityIdentifier("journal.day.find.close")
-            }
-            NoteFindView(blocks: model.read.blocks)
-        }
-        .padding(.horizontal, Tokens.Space.screenInline)
-        .padding(.bottom, Tokens.Space.small)
-        .background(Tokens.Canvas.background.color)
-        .overlay(alignment: .bottom) {
-            Rectangle()
-                .fill(Tokens.Line.border.color)
-                .frame(height: Tokens.Size.hairline)
         }
     }
 }

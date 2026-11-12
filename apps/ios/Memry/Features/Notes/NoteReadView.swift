@@ -322,11 +322,7 @@ struct NoteReadView: View {
         .onGeometryChange(for: CGFloat.self) { $0.safeAreaInsets.top } action: { topInset = $0 }
         // A cover runs under the navigation bar; the edge blur would smear it.
         .scrollEdgeEffectHidden(hasCover, for: .top)
-        .safeAreaInset(edge: .top) {
-            if finding {
-                NoteFindPanel(blocks: model.blocks) { finding = false }
-            }
-        }
+        .modifier(NoteFindScroll(target: .note(model.route.id), blocks: model.blocks, finding: $finding))
         // The keyboard accessory is floating glass: paint the page colour under
         // it and drop the bottom edge blur, or the strip behind the toolbar reads
         // as a black band with a shadow over it.
