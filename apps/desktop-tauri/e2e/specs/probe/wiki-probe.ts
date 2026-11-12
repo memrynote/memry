@@ -7,7 +7,16 @@ import { expect, test } from '../../harness/test'
 
 const unique = (label: string): string => `${label} ${Math.random().toString(36).slice(2, 8)}`
 
-export type Variant = 'click3' | 'stub-fixup' | 'raw' | 'notrans' | 'idle' | 'prog' | 'nospell'
+export type Variant =
+  | 'click3'
+  | 'stub-fixup'
+  | 'raw'
+  | 'notrans'
+  | 'idle'
+  | 'prog'
+  | 'nospell'
+  | 'static'
+  | 'nopm'
 
 export function install(page: Page, stubFixup: boolean): Promise<void> {
   return page.evaluate((stub: boolean) => {
@@ -302,7 +311,23 @@ export function wikiLoop(group: number, count: number, variant: Variant): void {
           document.querySelector('.bn-editor')?.setAttribute('spellcheck', 'false')
         })
       }
-      if (variant === 'prog') {
+      if (variant === 'nopm') {
+        await page.evaluate(() => {
+          window.addEventListener('selectionchange', (e) => e.stopImmediatePropagation(), true)
+        })
+      }
+      if (variant === 'static') {
+        await page.evaluate((needle: string) => {
+          const el = document.createElement('div')
+          el.id = 'probe-static'
+          el.style.cssText =
+            'position:fixed;top:4px;left:4px;z-index:99999;background:#fff;color:#000'
+          el.textContent = needle
+          document.body.append(el)
+          const node = el.firstChild as Text
+          getSelection()?.setBaseAndExtent(node, 0, node, needle.length)
+        }, selected)
+      } else if (variant === 'prog' || variant === 'nopm') {
         await page.evaluate((needle: string) => {
           const walker = document.createTreeWalker(
             document.querySelector('.bn-editor') as Node,
@@ -330,7 +355,7 @@ export function wikiLoop(group: number, count: number, variant: Variant): void {
         await text.click({ clickCount: 3 })
       }
       await mark(page, 'afterClick')
-      if (variant === 'idle' || variant === 'prog') {
+      if (variant === 'idle' || variant === 'prog' || variant === 'static' || variant === 'nopm') {
         const held = await page.evaluate(
           () =>
             new Promise<string>((resolve) => {
