@@ -124,6 +124,7 @@ import {
   Settings01Icon,
   SlidersHorizontalIcon,
   SmartPhone01Icon,
+  Tablet01Icon,
   SmileIcon,
   SparklesIcon,
   SquareIcon,
@@ -580,6 +581,7 @@ export const CloudSavingDone = createIcon(CloudSavingDone01Icon)
 export const Wifi = createIcon(Wifi01Icon)
 export const Globe = createIcon(GlobeIcon)
 export const Smartphone = createIcon(SmartPhone01Icon)
+export const Tablet = createIcon(Tablet01Icon)
 export const Monitor = createIcon(ComputerIcon)
 export const Cpu = createIcon(CpuIcon)
 export const HardDrive = createIcon(HardDriveIcon)
