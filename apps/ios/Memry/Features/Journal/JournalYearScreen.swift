@@ -2,7 +2,8 @@ import MemryCore
 import SwiftUI
 
 // JP044. The Year screen, the root of the Journal stack (Paper J06, desktop
-// `journal-year-view.tsx`): twelve month cards in three columns, the year's
+// `journal-year-view.tsx`): twelve month cards in three columns (four at
+// regular width, #4351), the year's
 // totals (days with entries, characters written), the streak and the best
 // streak under the title, ‹ › for the neighbouring years, and a tap that
 // opens the month. Reads only (D2).
@@ -12,6 +13,7 @@ struct JournalYearScreen: View {
 
     @Environment(JournalRouter.self) private var router
     @Environment(\.dynamicTypeSize) private var dynamicTypeSize
+    @Environment(\.horizontalSizeClass) private var horizontalSizeClass
     @State private var titleCollapsed = false
 
     var body: some View {
@@ -64,11 +66,19 @@ struct JournalYearScreen: View {
         store.years[Int64(year)]
     }
 
-    /// Three columns (Paper J06); two at accessibility sizes so names and
-    /// counts keep their room (JP057).
     private var columns: [GridItem] {
-        let count = dynamicTypeSize.isAccessibilitySize ? 2 : 3
+        let count = Self.columnCount(
+            regularWidth: horizontalSizeClass == .regular,
+            accessibilitySize: dynamicTypeSize.isAccessibilitySize
+        )
         return Array(repeating: GridItem(.flexible(), spacing: Tokens.Space.small), count: count)
+    }
+
+    /// Three columns (Paper J06), four at regular width (#4351, desktop's
+    /// `sm:grid-cols-4`); one fewer at accessibility sizes so names and
+    /// counts keep their room (JP057).
+    static func columnCount(regularWidth: Bool, accessibilitySize: Bool) -> Int {
+        (regularWidth ? 4 : 3) - (accessibilitySize ? 1 : 0)
     }
 
     private func cards(_ record: JournalYearRecord) -> [JournalYearCardModel] {

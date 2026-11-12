@@ -87,6 +87,44 @@ final class JournalUITests: XCTestCase {
         XCTAssertTrue(field.waitForExistence(timeout: 10), "the day was not deleted")
     }
 
+    /// #4351: with a hardware keyboard, ← in the editor moves the caret and
+    /// leaves the day alone; ⌥⌘← / ⌥⌘→ change the day from inside it.
+    func testArrowKeysInTheEditorMoveTheCaretNotTheDay() throws {
+        try openJournal(today: Self.randomDay())
+        let field = app.descendants(matching: .any)["journal.day.firstLine"].firstMatch
+        for _ in 0 ..< 10 where !field.waitForExistence(timeout: 3) {
+            app.buttons["journal.day.next"].firstMatch.tap()
+        }
+        XCTAssertTrue(field.exists, "no empty day within ten days")
+        let day = try XCTUnwrap(shownDate())
+        let line = "[agent] SHIP-4351 ab"
+        field.tap()
+        field.typeText(line + "\n")
+        let block = app.textViews.matching(NSPredicate(format: "value == %@", line)).firstMatch
+        XCTAssertTrue(block.waitForExistence(timeout: 10), "the typed line did not become a block")
+        block.coordinate(withNormalizedOffset: CGVector(dx: 0.99, dy: 0.5)).tap()
+
+        app.typeKey(.leftArrow, modifierFlags: [])
+        app.typeKey("X", modifierFlags: [])
+        let moved = app.textViews.matching(NSPredicate(format: "value == %@", "[agent] SHIP-4351 aXb")).firstMatch
+        XCTAssertTrue(moved.waitForExistence(timeout: 5), "← did not move the caret")
+        XCTAssertEqual(shownDate(), day, "← in the editor changed the day")
+
+        app.typeKey(.leftArrow, modifierFlags: [.option, .command])
+        XCTAssertTrue(waitUntil { self.shownDate() == Self.shift(day, by: -1) }, header.label)
+        app.typeKey(.rightArrow, modifierFlags: [.option, .command])
+        XCTAssertTrue(waitUntil { self.shownDate() == day }, header.label)
+
+        let more = app.buttons["journal.more"].firstMatch
+        if !more.waitForExistence(timeout: 5) {
+            app.navigationBars.buttons.element(boundBy: app.navigationBars.buttons.count - 1).tap()
+        }
+        more.tap()
+        app.buttons["journal.more.delete"].firstMatch.tap()
+        app.buttons["Delete entry"].firstMatch.tap()
+        XCTAssertTrue(field.waitForExistence(timeout: 10), "the day was not deleted")
+    }
+
     func testMonthAndYearDrillDownAndBack() throws {
         let today = Self.randomDay()
         try openJournal(today: today)

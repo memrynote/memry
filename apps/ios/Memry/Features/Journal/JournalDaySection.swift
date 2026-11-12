@@ -17,9 +17,11 @@ struct JournalDaySection: View {
     let date: String
 
     @Environment(\.journalTasks) private var tasks
+    @Environment(\.journalRailShown) private var railShown
 
     var body: some View {
-        if let tasks {
+        // At regular width the rail shows the day's tasks (`JournalDayAgenda`).
+        if let tasks, !railShown {
             JournalDueTasks(tasks: tasks, date: date, today: store.clock.today)
         }
     }
@@ -57,8 +59,9 @@ enum JournalDayTasks {
     }
 }
 
-/// The section over a present tasks store.
-private struct JournalDueTasks: View {
+/// The tasks due on a day, over a present tasks store: the Day section on
+/// a phone, the rail's agenda at regular width.
+struct JournalDueTasks: View {
     let tasks: TasksStore
     let date: String
     let today: String
