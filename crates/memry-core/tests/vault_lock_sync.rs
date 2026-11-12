@@ -76,6 +76,7 @@ async fn a_pass_pushes_a_lock_written_before_step_16() {
             DeviceDescriptor {
                 name: "Desk".to_string(),
                 platform: DevicePlatform::Macos,
+                form_factor: None,
                 os_version: None,
                 app_version: "1.0.0".to_string(),
                 vault_id: None,
