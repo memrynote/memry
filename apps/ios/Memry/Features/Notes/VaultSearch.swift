@@ -30,6 +30,9 @@ protocol VaultSearching: Sendable {
     /// Tasks matching `query`, best first (TP056). Its own ranking: a bm25
     /// score is relative to its table, so the two lists are never merged.
     func tasks(query: String, limit: UInt32) async throws -> [SearchResult]
+    /// Inbox captures matching `query` in every state, best first (#4320).
+    /// Its own ranking, like tasks.
+    func inbox(query: String, limit: UInt32) async throws -> [SearchResult]
     /// Brings the index up to date. Idempotent, and safe on any schedule.
     func reindex() async throws
     /// Every note linking to this one (N800).
@@ -65,6 +68,11 @@ struct CoreVaultSearch: VaultSearching {
     func tasks(query: String, limit: UInt32) async throws -> [SearchResult] {
         let search = search
         return try await executor.run { try search.tasks(query: query, limit: limit) }
+    }
+
+    func inbox(query: String, limit: UInt32) async throws -> [SearchResult] {
+        let search = search
+        return try await executor.run { try search.inbox(query: query, limit: limit) }
     }
 
     func reindex() async throws {
@@ -109,6 +117,9 @@ final class VaultSearchViewModel {
     /// The tasks the same query matched (TP056), shown in their own section.
     /// Empty while idle, searching or after a failure.
     private(set) var taskHits: [SearchResult] = []
+    /// The inbox captures the same query matched (#4320), in their own
+    /// section after the tasks. Empty whenever ``taskHits`` is.
+    private(set) var inboxHits: [SearchResult] = []
 
     private let search: any VaultSearching
     /// How long a keystroke waits before it becomes a query.
@@ -186,6 +197,7 @@ final class VaultSearchViewModel {
         guard !trimmed.isEmpty else {
             phase = .idle
             taskHits = []
+            inboxHits = []
             return
         }
         // Desktop counts a search as opened once the user types into an
@@ -206,10 +218,13 @@ final class VaultSearchViewModel {
                 let started = ContinuousClock.now
                 let hits = try await search.notes(query: trimmed, limit: 50)
                 let tasks = await taskMatches(trimmed)
+                let inbox = await inboxMatches(trimmed)
                 guard !Task.isCancelled else { return }
-                Log.storage.info("searched this vault", .count(hits.count + tasks.count))
-                if let source { Self.trackPerformed(source: source, count: hits.count + tasks.count, since: started) }
+                let count = hits.count + tasks.count + inbox.count
+                Log.storage.info("searched this vault", .count(count))
+                if let source { Self.trackPerformed(source: source, count: count, since: started) }
                 taskHits = tasks
+                inboxHits = inbox
                 phase = .results(hits)
             } catch is CancellationError {
                 // A newer query owns the screen now.
@@ -224,6 +239,7 @@ final class VaultSearchViewModel {
                     )
                 }
                 taskHits = []
+                inboxHits = []
                 phase = .failed(mapped)
             }
         }
@@ -252,6 +268,19 @@ final class VaultSearchViewModel {
         } catch {
             let mapped = ErrorMapping.userFacing(error)
             Log.storage.error("this vault's tasks could not be searched", .code(mapped.code))
+            return []
+        }
+    }
+
+    /// The inbox half of a query, failing the way ``taskMatches`` does.
+    private func inboxMatches(_ query: String) async -> [SearchResult] {
+        do {
+            return try await search.inbox(query: query, limit: 20)
+        } catch is CancellationError {
+            return []
+        } catch {
+            let mapped = ErrorMapping.userFacing(error)
+            Log.storage.error("this vault's inbox could not be searched", .code(mapped.code))
             return []
         }
     }

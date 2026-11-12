@@ -8182,6 +8182,12 @@ public protocol SearchProtocol: AnyObject, Sendable {
     func backlinks(noteId: String, order: BacklinkOrder) throws  -> [Backlink]
     
     /**
+     * Inbox captures matching `query`, best first, in every state: filed,
+     * archived and snoozed ones too (#4320). Its own ranking, like tasks.
+     */
+    func inbox(query: String, limit: UInt32) throws  -> [SearchResult]
+    
+    /**
      * Every link a note or journal day makes, resolved now: to a note, a
      * journal day, or nothing (a broken link).
      */
@@ -8307,6 +8313,21 @@ open func backlinks(noteId: String, order: BacklinkOrder)throws  -> [Backlink]  
             self.uniffiCloneHandle(),
         FfiConverterString.lower(noteId),
         FfiConverterTypeBacklinkOrder_lower(order),uniffiCallStatus
+    )
+})
+}
+    
+    /**
+     * Inbox captures matching `query`, best first, in every state: filed,
+     * archived and snoozed ones too (#4320). Its own ranking, like tasks.
+     */
+open func inbox(query: String, limit: UInt32)throws  -> [SearchResult]  {
+    return try  FfiConverterSequenceTypeSearchResult.lift(try rustCallWithError(FfiConverterTypeStorageError_lift) {
+        uniffiCallStatus in
+    uniffi_memry_core_fn_method_search_inbox(
+            self.uniffiCloneHandle(),
+        FfiConverterString.lower(query),
+        FfiConverterUInt32.lower(limit),uniffiCallStatus
     )
 })
 }
@@ -23470,7 +23491,7 @@ public struct SearchResult: Equatable, Hashable {
     public var id: String
     public var title: String
     /**
-     * `note`, `journal` or `task`.
+     * `note`, `journal`, `task` or `inbox`.
      */
     public var kind: String
     /**
@@ -23515,7 +23536,7 @@ public struct SearchResult: Equatable, Hashable {
     // declare one manually.
     public init(id: String, title: String, 
         /**
-         * `note`, `journal` or `task`.
+         * `note`, `journal`, `task` or `inbox`.
          */kind: String, 
         /**
          * The journal's calendar date, and `None` for everything else. A journal
@@ -35870,6 +35891,9 @@ private let initializationResult: InitializationResult = {
         return InitializationResult.apiChecksumMismatch
     }
     if (uniffi_memry_core_checksum_method_search_backlinks() != 60571) {
+        return InitializationResult.apiChecksumMismatch
+    }
+    if (uniffi_memry_core_checksum_method_search_inbox() != 24322) {
         return InitializationResult.apiChecksumMismatch
     }
     if (uniffi_memry_core_checksum_method_search_links_from() != 32512) {

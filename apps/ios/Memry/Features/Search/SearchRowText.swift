@@ -36,6 +36,10 @@ struct SearchRowText: Equatable {
             title = hit.title.isEmpty ? TasksCopy.untitledTask : hit.title
             caption = nil
             accessibilityLabel = Self.joined([title, snippet])
+        case "inbox":
+            title = hit.title.isEmpty ? InboxCopy.untitled : hit.title
+            caption = nil
+            accessibilityLabel = Self.joined([InboxCopy.title, title, snippet])
         default:
             let name = hit.title.isEmpty ? "Untitled note" : hit.title
             let emoji = ProjectIconValue.emoji(hit.emoji)
