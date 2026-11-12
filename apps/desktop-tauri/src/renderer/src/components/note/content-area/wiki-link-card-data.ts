@@ -17,6 +17,7 @@ import {
   onNoteRenamed,
   onNoteUpdated
 } from '@/services/notes-service'
+import { subscribeToEvents } from '@/services/tauri-event'
 import { vaultService } from '@/services/vault-service'
 import { wikiLinkCardContent, type WikiLinkCardContent } from './wiki-link-card-content'
 
@@ -87,9 +88,16 @@ function subscribeToNoteChanges(fill: Fill): void {
     refreshTimer = setTimeout(() => refreshAll(fill), REFRESH_DEBOUNCE_MS)
   }
   // Held for the life of the window: cards exist in every note, and the
-  // subscription costs one debounced timer.
-  onNoteCreated(schedule)
-  onNoteRenamed(schedule)
-  onNoteDeleted(schedule)
-  onNoteUpdated(schedule)
+  // subscription costs one debounced timer. The first card was read before
+  // these listeners went live, and a note changed in between sent its event to
+  // nobody: refill once they listen.
+  subscribeToEvents(
+    [
+      (live) => onNoteCreated(schedule, live),
+      (live) => onNoteRenamed(schedule, live),
+      (live) => onNoteDeleted(schedule, live),
+      (live) => onNoteUpdated(schedule, live)
+    ],
+    schedule
+  )
 }

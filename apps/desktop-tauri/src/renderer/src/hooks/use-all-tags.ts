@@ -7,10 +7,10 @@
  */
 
 import { foldTag } from '@memry/shared/tag-fold'
-import { useMemo, useCallback, useEffect } from 'react'
+import { useMemo, useCallback } from 'react'
 import { useQuery } from '@tanstack/react-query'
-import { notesService, onTagsChanged } from '@/services/notes-service'
 import { inboxService } from '@/services/inbox-service'
+import { useNoteTagsQuery } from './use-notes-query'
 
 // =============================================================================
 // Types
@@ -52,7 +52,6 @@ export interface UseAllTagsResult {
 
 const allTagsKeys = {
   all: ['all-tags'] as const,
-  notes: () => [...allTagsKeys.all, 'notes'] as const,
   inbox: () => [...allTagsKeys.all, 'inbox'] as const
 }
 
@@ -65,12 +64,8 @@ const allTagsKeys = {
  * Combines tags from both sources and provides search/filter capabilities.
  */
 export function useAllTags(): UseAllTagsResult {
-  // Fetch notes tags
-  const notesQuery = useQuery({
-    queryKey: allTagsKeys.notes(),
-    queryFn: () => notesService.getTags(),
-    staleTime: 60 * 1000 // 1 minute
-  })
+  // The one cached tag list, whose refreshes `useNoteMetadataEvents` (App) owns
+  const notesQuery = useNoteTagsQuery()
 
   // Fetch inbox tags
   const inboxQuery = useQuery({
@@ -79,34 +74,19 @@ export function useAllTags(): UseAllTagsResult {
     staleTime: 60 * 1000 // 1 minute
   })
 
-  // `notesQuery` is a new object on every render, so depending on it re-subscribed
-  // the IPC listener per keystroke in tag-autocomplete. `refetch` is stable and
-  // always refetches the current query, so it cannot go stale.
-  const refetchNotes = notesQuery.refetch
-
-  useEffect(() => {
-    const unsubscribe = onTagsChanged(() => {
-      void refetchNotes()
-    })
-
-    return unsubscribe
-  }, [refetchNotes])
-
   // Combine and deduplicate tags from both sources
   const combinedTags = useMemo((): TagWithMeta[] => {
     const tagMap = new Map<string, TagWithMeta>()
 
     // Keyed by lowercase (case-insensitive identity); name keeps stored casing
-    if (notesQuery.data) {
-      for (const tag of notesQuery.data) {
-        const key = foldTag(tag.tag)
-        tagMap.set(key, {
-          name: tag.tag,
-          count: tag.count,
-          color: tag.color,
-          source: 'notes'
-        })
-      }
+    for (const tag of notesQuery.tags) {
+      const key = foldTag(tag.tag)
+      tagMap.set(key, {
+        name: tag.tag,
+        count: tag.count,
+        color: tag.color,
+        source: 'notes'
+      })
     }
 
     // Add inbox tags (merge counts if tag exists)
@@ -133,7 +113,7 @@ export function useAllTags(): UseAllTagsResult {
 
     // Convert to array and sort by count (descending)
     return Array.from(tagMap.values()).toSorted((a, b) => b.count - a.count)
-  }, [notesQuery.data, inboxQuery.data])
+  }, [notesQuery.tags, inboxQuery.data])
 
   // Search tags with fuzzy matching
   const searchTags = useCallback(

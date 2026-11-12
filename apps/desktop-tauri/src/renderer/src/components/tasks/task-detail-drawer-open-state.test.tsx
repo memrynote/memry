@@ -28,8 +28,8 @@ vi.mock('@/services/notes-service', () => ({
   }
 }))
 
-// Pulls in the whole tag-sync chain (use-all-tags -> window.api listeners),
-// none of which the open/closed contract depends on.
+// Pulls in the whole tag chain (use-all-tags -> note and inbox tag reads and their event
+// listeners), none of which the open/closed contract depends on.
 vi.mock('@/components/filing/tag-autocomplete', () => ({
   TagAutocomplete: () => null
 }))

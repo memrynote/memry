@@ -19,9 +19,15 @@ import {
   onNoteRenamed,
   onNoteUpdated
 } from '@/services/notes-service'
+import { subscribeToEvents } from '@/services/tauri-event'
 
 export function usePortalSourceNote(noteId: string): Pick<UseNoteResult, 'note' | 'isLoading'> {
-  const { note, isLoading, refetch } = useNote(noteId)
+  // The first read waits for the listeners below: a delete between the read and the listeners
+  // going live sent its event to nobody, and reading again to cover that would open the note
+  // twice (`notes_get` counts one `note_opened` per read), once per portal on the page.
+  const [listeningId, setListeningId] = useState<string | null>(null)
+  const listening = listeningId === noteId
+  const { note, isLoading, refetch } = useNote(noteId, { enabled: listening })
   const [deletedId, setDeletedId] = useState<string | null>(null)
 
   const deletedRef = useRef(false)
@@ -39,21 +45,22 @@ export function usePortalSourceNote(noteId: string): Pick<UseNoteResult, 'note' 
       setDeletedId(null)
       refetchRef.current()
     }
-    const unsubscribers = [
-      onNoteDeleted((event) => {
-        if (event.id !== noteId) return
-        deletedRef.current = true
-        setDeletedId(noteId)
-      }),
-      onNoteCreated((event) => comesBack(event.note.id)),
-      onNoteUpdated((event) => comesBack(event.id)),
-      onNoteRenamed((event) => comesBack(event.id)),
-      onNoteMoved((event) => comesBack(event.id))
-    ]
-    return () => {
-      for (const unsubscribe of unsubscribers) unsubscribe()
-    }
+    return subscribeToEvents(
+      [
+        (live) =>
+          onNoteDeleted((event) => {
+            if (event.id !== noteId) return
+            deletedRef.current = true
+            setDeletedId(noteId)
+          }, live),
+        (live) => onNoteCreated((event) => comesBack(event.note.id), live),
+        (live) => onNoteUpdated((event) => comesBack(event.id), live),
+        (live) => onNoteRenamed((event) => comesBack(event.id), live),
+        (live) => onNoteMoved((event) => comesBack(event.id), live)
+      ],
+      () => setListeningId(noteId)
+    )
   }, [noteId])
 
-  return { note: deletedId === noteId ? null : note, isLoading }
+  return { note: deletedId === noteId ? null : note, isLoading: isLoading || !listening }
 }

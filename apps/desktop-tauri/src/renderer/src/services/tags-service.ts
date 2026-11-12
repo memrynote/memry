@@ -270,8 +270,11 @@ export function onTagDeleted(callback: (event: TagDeletedEvent) => void): () => 
  * Subscribe to tag notes changed events (pin, unpin, removed; Rust sends no add yet).
  * @returns Unsubscribe function
  */
-export function onTagNotesChanged(callback: (event: TagNotesChangedEvent) => void): () => void {
-  return subscribeToEvent(events.tagNotesChangedEvent, callback)
+export function onTagNotesChanged(
+  callback: (event: TagNotesChangedEvent) => void,
+  onListening?: () => void
+): () => void {
+  return subscribeToEvent(events.tagNotesChangedEvent, callback, onListening)
 }
 
 /**

@@ -1,12 +1,9 @@
-import { useState, useCallback, useEffect, useRef } from 'react'
-import { createLogger } from '@/lib/logger'
+import { useCallback, useMemo } from 'react'
 import { fuzzySearch } from '@/lib/fuzzy-search'
 import { extractErrorMessage } from '@/lib/ipc-error'
 import { getI18n } from 'react-i18next'
-import { onTagsChanged } from '@/services/notes-service'
-import { onTagDeleted, onTagRenamed, tagsService } from '@/services/tags-service'
-
-const log = createLogger('Hook:Tags')
+import { tagsService } from '@/services/tags-service'
+import { useNoteTagsQuery } from './use-notes-query'
 
 export interface Tag {
   name: string
@@ -15,45 +12,23 @@ export interface Tag {
   icon?: string | null
 }
 
+/**
+ * The tag list with search helpers. It reads the one cached tag list, whose refreshes
+ * `useNoteMetadataEvents` (App) owns: a renamed or deleted tag also sends the tag-list event.
+ */
 export function useTags() {
-  const [tags, setTags] = useState<Tag[]>([])
-  const [isLoading, setIsLoading] = useState(true)
-  const [error, setError] = useState<string | null>(null)
-  const mountedRef = useRef(true)
-
-  const fetchTags = useCallback(async () => {
-    try {
-      const result = await tagsService.getAllWithCounts()
-      if (!mountedRef.current) return
-      setTags(result.tags)
-      setError(null)
-    } catch (err) {
-      if (!mountedRef.current) return
-      const message = extractErrorMessage(
-        err,
+  const tagsQuery = useNoteTagsQuery()
+  const tags = useMemo(
+    (): Tag[] =>
+      tagsQuery.tags.map(({ tag, count, color, icon }) => ({ name: tag, count, color, icon })),
+    [tagsQuery.tags]
+  )
+  const error = tagsQuery.error
+    ? extractErrorMessage(
+        tagsQuery.error,
         getI18n().getFixedT(null, 'settings')('phaseI.errors.failedToLoadTags')
       )
-      log.error('Failed to fetch tags:', err)
-      setError(message)
-    } finally {
-      if (mountedRef.current) setIsLoading(false)
-    }
-  }, [])
-
-  useEffect(() => {
-    mountedRef.current = true
-    // oxlint-disable-next-line react/set-state-in-effect -- effect syncs with an external system (IPC fetch/subscription); state set is the result of that sync
-    void fetchTags()
-    return () => {
-      mountedRef.current = false
-    }
-  }, [fetchTags])
-
-  useEffect(() => {
-    const refetch = () => void fetchTags()
-    const unsubs = [onTagsChanged(refetch), onTagRenamed(refetch), onTagDeleted(refetch)]
-    return () => unsubs.forEach((unsub) => unsub())
-  }, [fetchTags])
+    : null
 
   const searchTags = useCallback(
     (query: string): Tag[] => {
@@ -108,11 +83,11 @@ export function useTags() {
     return tagsService.deleteTag(tag)
   }, [])
 
-  const refetch = fetchTags
+  const refetch = tagsQuery.refetch
 
   return {
     tags,
-    isLoading,
+    isLoading: tagsQuery.isLoading,
     error,
     searchTags,
     getPopularTags,

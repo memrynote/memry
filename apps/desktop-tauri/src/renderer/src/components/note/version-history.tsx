@@ -355,7 +355,9 @@ function VersionHistorySession({
                         key={version.id}
                         onClick={() => void handleSelectVersion(version.id)}
                         className={cn(
-                          'w-full text-start px-3 py-2.5 rounded-md transition-colors',
+                          // `block`: as an inline-block, WebKit lines each row up on a text
+                          // baseline and adds 8px above it that Chromium does not.
+                          'block w-full text-start px-3 py-2.5 rounded-md transition-colors',
                           'hover:bg-muted/50 focus-visible:outline-none',
                           isSelected && 'bg-muted'
                         )}

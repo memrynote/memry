@@ -318,6 +318,8 @@ describe('LinkedHereSection', () => {
     renderWithClient(<LinkedHereSection noteId="person-1" />)
     expect(await screen.findByText('Note 1')).toBeInTheDocument()
     await waitFor(() => expect(api.onLinksChanged).toHaveBeenCalled())
+    // Once its listeners are live the section reads the groups again, for a change made before.
+    await new Promise((resolve) => setTimeout(resolve, 400))
     const emit = (targetIds: string[]): void =>
       api.onLinksChanged.mock.calls.forEach(([cb]) =>
         (cb as (event: unknown) => void)({ sourceIds: ['n9'], targetIds })

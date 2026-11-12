@@ -13,12 +13,25 @@ vi.mock('@/hooks/use-sidebar-navigation', () => ({
   useSidebarNavigation: () => ({ openSidebarItem: mocks.openSidebarItem })
 }))
 vi.mock('@/services/notes-service', () => ({
-  onNoteCreated: () => () => {},
-  onNoteDeleted: () => () => {},
-  onNoteRenamed: () => () => {},
-  onNoteMoved: () => () => {},
-  onNoteUpdated: (callback: () => void) => {
+  onNoteCreated: (_callback: () => void, live?: () => void) => {
+    live?.()
+    return () => {}
+  },
+  onNoteDeleted: (_callback: () => void, live?: () => void) => {
+    live?.()
+    return () => {}
+  },
+  onNoteRenamed: (_callback: () => void, live?: () => void) => {
+    live?.()
+    return () => {}
+  },
+  onNoteMoved: (_callback: () => void, live?: () => void) => {
+    live?.()
+    return () => {}
+  },
+  onNoteUpdated: (callback: () => void, live?: () => void) => {
     mocks.noteUpdated = callback
+    live?.()
     return () => {}
   }
 }))
