@@ -2622,9 +2622,16 @@ div.react-sigma {
     font-family: var(--font-sans);
     color: var(--text-primary);
     line-height: 1.5;
-    text-wrap: pretty;
+    /* Plain wrapping where WebView is WebKit (macOS, Linux): WebKit applies `pretty` to every
+       line and breaks earlier than Electron's Chromium, which only balances the last lines. */
+    text-wrap: wrap;
     user-select: none;
     -webkit-font-smoothing: auto;
+  }
+
+  /* WebView2 is Chromium, so Windows keeps Electron's `pretty`. */
+  :root[data-platform='win32'] body {
+    text-wrap: pretty;
   }
 
   /* Serif font utility for content titles */
