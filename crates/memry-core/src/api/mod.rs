@@ -31,6 +31,7 @@ pub mod notes_write;
 pub mod projects;
 pub mod runtime;
 pub mod search;
+pub mod search_recents;
 pub mod settings;
 pub mod sync;
 pub mod task_conformance;

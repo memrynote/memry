@@ -8460,6 +8460,169 @@ public func FfiConverterTypeSearch_lower(_ value: Search) -> UInt64 {
 
 
 /**
+ * Recents over one opened vault.
+ */
+public protocol SearchRecentsProtocol: AnyObject, Sendable {
+    
+    /**
+     * Forgets every recent.
+     */
+    func clear() throws 
+    
+    /**
+     * The recents whose items still exist, newest first, at most ten.
+     */
+    func list() throws  -> [SearchRecent]
+    
+    /**
+     * Records that `result` was opened from a search for `query`.
+     */
+    func record(result: SearchResult, query: String) throws 
+    
+}
+/**
+ * Recents over one opened vault.
+ */
+open class SearchRecents: SearchRecentsProtocol, @unchecked Sendable {
+    fileprivate let handle: UInt64
+
+    /// Used to instantiate a [FFIObject] without an actual handle, for fakes in tests, mostly.
+#if swift(>=5.8)
+    @_documentation(visibility: private)
+#endif
+    public struct NoHandle {
+        public init() {}
+    }
+
+    // TODO: We'd like this to be `private` but for Swifty reasons,
+    // we can't implement `FfiConverter` without making this `required` and we can't
+    // make it `required` without making it `public`.
+#if swift(>=5.8)
+    @_documentation(visibility: private)
+#endif
+    required public init(unsafeFromHandle handle: UInt64) {
+        self.handle = handle
+    }
+
+    // This constructor can be used to instantiate a fake object.
+    // - Parameter noHandle: Placeholder value so we can have a constructor separate from the default empty one that may be implemented for classes extending [FFIObject].
+    //
+    // - Warning:
+    //     Any object instantiated with this constructor cannot be passed to an actual Rust-backed object. Since there isn't a backing handle the FFI lower functions will crash.
+#if swift(>=5.8)
+    @_documentation(visibility: private)
+#endif
+    public init(noHandle: NoHandle) {
+        self.handle = 0
+    }
+
+#if swift(>=5.8)
+    @_documentation(visibility: private)
+#endif
+    public func uniffiCloneHandle() -> UInt64 {
+        return try! rustCall { uniffi_memry_core_fn_clone_searchrecents(self.handle, $0) }
+    }
+    // No primary constructor declared for this class.
+
+    deinit {
+        if handle == 0 {
+            // Mock objects have handle=0 don't try to free them
+            return
+        }
+
+        try! rustCall { uniffi_memry_core_fn_free_searchrecents(handle, $0) }
+    }
+
+    
+
+    
+    /**
+     * Forgets every recent.
+     */
+open func clear()throws   {try rustCallWithError(FfiConverterTypeStorageError_lift) {
+        uniffiCallStatus in
+    uniffi_memry_core_fn_method_searchrecents_clear(
+            self.uniffiCloneHandle(),uniffiCallStatus
+    )
+}
+}
+    
+    /**
+     * The recents whose items still exist, newest first, at most ten.
+     */
+open func list()throws  -> [SearchRecent]  {
+    return try  FfiConverterSequenceTypeSearchRecent.lift(try rustCallWithError(FfiConverterTypeStorageError_lift) {
+        uniffiCallStatus in
+    uniffi_memry_core_fn_method_searchrecents_list(
+            self.uniffiCloneHandle(),uniffiCallStatus
+    )
+})
+}
+    
+    /**
+     * Records that `result` was opened from a search for `query`.
+     */
+open func record(result: SearchResult, query: String)throws   {try rustCallWithError(FfiConverterTypeStorageError_lift) {
+        uniffiCallStatus in
+    uniffi_memry_core_fn_method_searchrecents_record(
+            self.uniffiCloneHandle(),
+        FfiConverterTypeSearchResult_lower(result),
+        FfiConverterString.lower(query),uniffiCallStatus
+    )
+}
+}
+    
+
+    
+}
+
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
+public struct FfiConverterTypeSearchRecents: FfiConverter {
+    typealias FfiType = UInt64
+    typealias SwiftType = SearchRecents
+
+    public static func lift(_ handle: UInt64) throws -> SearchRecents {
+        return SearchRecents(unsafeFromHandle: handle)
+    }
+
+    public static func lower(_ value: SearchRecents) -> UInt64 {
+        return value.uniffiCloneHandle()
+    }
+
+    public static func read(from buf: inout (data: Data, offset: Data.Index)) throws -> SearchRecents {
+        let handle: UInt64 = try readInt(&buf)
+        return try lift(handle)
+    }
+
+    public static func write(_ value: SearchRecents, into buf: inout [UInt8]) {
+        writeInt(&buf, lower(value))
+    }
+}
+
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
+public func FfiConverterTypeSearchRecents_lift(_ handle: UInt64) throws -> SearchRecents {
+    return try FfiConverterTypeSearchRecents.lift(handle)
+}
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
+public func FfiConverterTypeSearchRecents_lower(_ value: SearchRecents) -> UInt64 {
+    return FfiConverterTypeSearchRecents.lower(value)
+}
+
+
+
+
+
+
+/**
  * Platform secure storage.
  *
  * The core specifies the access policy and the shell applies it: after first
@@ -11944,6 +12107,11 @@ public protocol VaultProtocol: AnyObject, Sendable {
     func search() throws  -> Search
     
     /**
+     * The search sheet's recently opened results, device-local (#4322).
+     */
+    func searchRecents()  -> SearchRecents
+    
+    /**
      * Queues every record this vault has never pushed, before its first sync
      * to an account (desktop's `seedUnclocked`,
      * `apps/desktop/src/main/sync/initial-seed.ts`). Returns how many it
@@ -12193,6 +12361,18 @@ open func search()throws  -> Search  {
     return try  FfiConverterTypeSearch_lift(try rustCallWithError(FfiConverterTypeStorageError_lift) {
         uniffiCallStatus in
     uniffi_memry_core_fn_method_vault_search(
+            self.uniffiCloneHandle(),uniffiCallStatus
+    )
+})
+}
+    
+    /**
+     * The search sheet's recently opened results, device-local (#4322).
+     */
+open func searchRecents() -> SearchRecents  {
+    return try!  FfiConverterTypeSearchRecents_lift(try! rustCall() {
+        uniffiCallStatus in
+    uniffi_memry_core_fn_method_vault_search_recents(
             self.uniffiCloneHandle(),uniffiCallStatus
     )
 })
@@ -23200,6 +23380,85 @@ public func FfiConverterTypeSavedFilterItem_lower(_ value: SavedFilterItem) -> R
 
 
 /**
+ * One recently opened result.
+ */
+public struct SearchRecent: Equatable, Hashable {
+    /**
+     * The item, shaped like a hit so the shell opens it the same way.
+     */
+    public var result: SearchResult
+    /**
+     * The query that found it.
+     */
+    public var query: String
+    /**
+     * Epoch milliseconds.
+     */
+    public var visitedAt: Int64
+
+    // Default memberwise initializers are never public by default, so we
+    // declare one manually.
+    public init(
+        /**
+         * The item, shaped like a hit so the shell opens it the same way.
+         */result: SearchResult, 
+        /**
+         * The query that found it.
+         */query: String, 
+        /**
+         * Epoch milliseconds.
+         */visitedAt: Int64) {
+        self.result = result
+        self.query = query
+        self.visitedAt = visitedAt
+    }
+
+    
+
+    
+}
+
+#if compiler(>=6)
+extension SearchRecent: Sendable {}
+#endif
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
+public struct FfiConverterTypeSearchRecent: FfiConverterRustBuffer {
+    public static func read(from buf: inout (data: Data, offset: Data.Index)) throws -> SearchRecent {
+        return
+            try SearchRecent(
+                result: FfiConverterTypeSearchResult.read(from: &buf), 
+                query: FfiConverterString.read(from: &buf), 
+                visitedAt: FfiConverterInt64.read(from: &buf)
+        )
+    }
+
+    public static func write(_ value: SearchRecent, into buf: inout [UInt8]) {
+        FfiConverterTypeSearchResult.write(value.result, into: &buf)
+        FfiConverterString.write(value.query, into: &buf)
+        FfiConverterInt64.write(value.visitedAt, into: &buf)
+    }
+}
+
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
+public func FfiConverterTypeSearchRecent_lift(_ buf: RustBuffer) throws -> SearchRecent {
+    return try FfiConverterTypeSearchRecent.lift(buf)
+}
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
+public func FfiConverterTypeSearchRecent_lower(_ value: SearchRecent) -> RustBuffer {
+    return FfiConverterTypeSearchRecent.lower(value)
+}
+
+
+/**
  * One search result.
  *
  * Flattened from [`SearchHit`] because uniffi has no enum-with-payload that
@@ -33375,6 +33634,31 @@ fileprivate struct FfiConverterSequenceTypeSavedFilterItem: FfiConverterRustBuff
 #if swift(>=5.8)
 @_documentation(visibility: private)
 #endif
+fileprivate struct FfiConverterSequenceTypeSearchRecent: FfiConverterRustBuffer {
+    typealias SwiftType = [SearchRecent]
+
+    public static func write(_ value: [SearchRecent], into buf: inout [UInt8]) {
+        let len = Int32(value.count)
+        writeInt(&buf, len)
+        for item in value {
+            FfiConverterTypeSearchRecent.write(item, into: &buf)
+        }
+    }
+
+    public static func read(from buf: inout (data: Data, offset: Data.Index)) throws -> [SearchRecent] {
+        let len: Int32 = try readInt(&buf)
+        var seq = [SearchRecent]()
+        seq.reserveCapacity(Int(len))
+        for _ in 0 ..< len {
+            seq.append(try FfiConverterTypeSearchRecent.read(from: &buf))
+        }
+        return seq
+    }
+}
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
 fileprivate struct FfiConverterSequenceTypeSearchResult: FfiConverterRustBuffer {
     typealias SwiftType = [SearchResult]
 
@@ -35375,6 +35659,15 @@ private let initializationResult: InitializationResult = {
     if (uniffi_memry_core_checksum_method_search_unlinked_mentions() != 24332) {
         return InitializationResult.apiChecksumMismatch
     }
+    if (uniffi_memry_core_checksum_method_searchrecents_clear() != 45558) {
+        return InitializationResult.apiChecksumMismatch
+    }
+    if (uniffi_memry_core_checksum_method_searchrecents_list() != 46811) {
+        return InitializationResult.apiChecksumMismatch
+    }
+    if (uniffi_memry_core_checksum_method_searchrecents_record() != 39039) {
+        return InitializationResult.apiChecksumMismatch
+    }
     if (uniffi_memry_core_checksum_method_settings_clear() != 25310) {
         return InitializationResult.apiChecksumMismatch
     }
@@ -35778,6 +36071,9 @@ private let initializationResult: InitializationResult = {
         return InitializationResult.apiChecksumMismatch
     }
     if (uniffi_memry_core_checksum_method_vault_search() != 52313) {
+        return InitializationResult.apiChecksumMismatch
+    }
+    if (uniffi_memry_core_checksum_method_vault_search_recents() != 42539) {
         return InitializationResult.apiChecksumMismatch
     }
     if (uniffi_memry_core_checksum_method_vault_seed_unsynced() != 58536) {
