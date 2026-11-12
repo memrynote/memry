@@ -6,8 +6,9 @@ import SwiftUI
 //
 // **Bookmarks are desktop's, read only.** The core resolves each one the way
 // desktop's sidebar does and drops the ones whose item is gone, so every row
-// here opens something. A note, folder or tag pushes onto the Notes stack; a
-// journal day and a task open in their own tabs.
+// here opens something. A note, folder or tag pushes onto the Notes stack (in
+// the split view: the detail or the list column); a journal day and a task
+// open in their own tabs.
 //
 // **Tags are chips, most used first**, in the colour desktop draws them. A
 // tap pushes the tag's notes, which is desktop's folder view scoped to a tag.
@@ -73,12 +74,12 @@ struct ShortcutsTitleRow: View {
 }
 
 /// The "Show all" row under a capped section.
-private struct ShowAllRow<Route: Hashable>: View {
+private struct ShowAllRow<Route: NotesSplitRoute>: View {
     let title: String
     let route: Route
 
     var body: some View {
-        NavigationLink(value: route) {
+        NotesLink(value: route) {
             HStack(spacing: Tokens.Space.small) {
                 Text(title)
                     .font(Tokens.Typography.supporting.font)
@@ -160,13 +161,13 @@ struct BookmarkRow: View {
         Group {
             switch bookmark.itemType {
             case "note":
-                NavigationLink(value: NoteRoute(id: bookmark.itemId)) { label }
+                NotesLink(value: NoteRoute(id: bookmark.itemId)) { label }
                     .navigationLinkIndicatorVisibility(.hidden)
             case "folder":
-                NavigationLink(value: FolderRoute(path: bookmark.itemId)) { label }
+                NotesLink(value: FolderRoute(path: bookmark.itemId)) { label }
                     .navigationLinkIndicatorVisibility(.hidden)
             case "tag":
-                NavigationLink(value: TagRoute(name: bookmark.itemId)) { label }
+                NotesLink(value: TagRoute(name: bookmark.itemId)) { label }
                     .navigationLinkIndicatorVisibility(.hidden)
             case "journal":
                 Button { if let date = bookmark.journalDate { openJournalDay?(date) } } label: { label }

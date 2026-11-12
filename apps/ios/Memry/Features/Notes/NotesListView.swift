@@ -51,9 +51,11 @@ struct NotesListView: View {
     /// Persisted like desktop's Collections sort mode. The raw values are
     /// desktop's mode ids.
     @AppStorage("notes.browseSort") private var sort: BrowseSort = .modifiedNewest
-    @State private var isNamingFolder = false
-    @State private var draftFolderName = ""
-    @State private var isPickingTemplate = false
+    /// What the split view shows at regular width. The phone stack reports
+    /// the notes it shows to it, so the last one survives a switch of width.
+    @State private var router = NotesSplitRouter.restored()
+    @Environment(\.horizontalSizeClass) private var horizontalSizeClass
+    @Environment(\.verticalSizeClass) private var verticalSizeClass
     private let notesLinks = NotesLinks.shared
     @Environment(\.requestVaultSync) private var requestVaultSync
 
@@ -80,129 +82,114 @@ struct NotesListView: View {
         _model = State(initialValue: model)
     }
 
+    /// The shell's own rule: a sidebar needs regular width and height.
+    private var width: VaultTabLayout.Width {
+        VaultTabLayout.Width(horizontal: horizontalSizeClass, vertical: verticalSizeClass)
+    }
+
     var body: some View {
-        NavigationStack(path: $path) {
-            VaultBrowseScreen(
-                model: model,
-                expanded: $expanded,
-                selectedFolder: $selectedFolder,
-                sort: sort,
-                openFolder: { path.append(FolderRoute(path: $0)) },
-                openNote: { path.append(NoteRoute(id: $0)) },
-                openTag: { path.append(TagRoute(name: $0)) }
-            )
-                .navigationDestination(for: FolderRoute.self) { route in
-                    FolderScreen(
-                        route: route,
+        Group {
+            if width == .regular {
+                NotesSplitView(model: model, router: router, sort: $sort)
+            } else {
+                NavigationStack(path: $path) {
+                    VaultBrowseScreen(
                         model: model,
+                        expanded: $expanded,
+                        selectedFolder: $selectedFolder,
+                        sort: sort,
                         openFolder: { path.append(FolderRoute(path: $0)) },
-                        openNote: { path.append(NoteRoute(id: $0)) }
+                        openNote: { path.append(NoteRoute(id: $0)) },
+                        openTag: { path.append(TagRoute(name: $0)) }
                     )
+                        .navigationDestination(for: FolderRoute.self) { route in
+                            FolderScreen(
+                                route: route,
+                                model: model,
+                                openFolder: { path.append(FolderRoute(path: $0)) },
+                                openNote: { path.append(NoteRoute(id: $0)) }
+                            )
+                            .onAppear { router.show(.folder(route.path)) }
+                        }
+                        // T157, and the **second and last** registration in this
+                        // stack. It is here, on the stack's root content, and not in
+                        // `NoteRowsView` — whose lazy stack is exactly the container
+                        // research R15's rule is about. A note row is realised lazily
+                        // and appears in two different screens; a destination declared
+                        // beside it would be registered only once one of those rows
+                        // had been drawn, so a restored path pointing at a note would
+                        // resolve against a stack that had never heard of the route
+                        // and would silently do nothing.
+                        .navigationDestination(for: NoteRoute.self) { route in
+                            // T237. The filler travels with the reader, so a note
+                            // whose body the thirty-day window left behind has a way
+                            // to fetch it rather than rendering as an empty note.
+                            // A wiki link inside a note pushes through this same
+                            // registration rather than declaring one of its own: the
+                            // rule above is exactly why the read screen is handed a
+                            // push instead of owning a destination.
+                            NoteReadView(
+                                route: route,
+                                reader: model.reader,
+                                filler: model.filler,
+                                editor: model.editor,
+                                metadataWriter: model.metadataWriter,
+                                writer: model.writer,
+                                search: model.searcher,
+                                open: { path.append($0) },
+                                openTag: { path.append(TagRoute(name: $0)) },
+                                noteTasks: model.noteTasks
+                            )
+                            .onAppear { router.shown(route) }
+                        }
+                        // N600, registered on the root for the same reason the two
+                        // above are: a `#tag` tapped deep in a note, and a restored
+                        // path pointing at a tag, both resolve here.
+                        .navigationDestination(for: TagRoute.self) { route in
+                            TaggedNotesView(tag: route.name, browse: model, open: { path.append($0) })
+                        }
+                        .navigationDestination(for: TagListRoute.self) { _ in
+                            TagListView(browse: model)
+                        }
+                        .navigationDestination(for: BookmarkListRoute.self) { _ in
+                            BookmarkListView(browse: model)
+                        }
+                        .toolbar {
+                            ToolbarItem(placement: .topBarTrailing) {
+                                // Its own view, and not inline: `body` must stay free
+                                // of every iterating container, because that is the
+                                // rule the destination registrations above depend on
+                                // and a source check enforces it literally.
+                                SortMenu(sort: $sort)
+                            }
+                            GlobalSearchToolbarItem()
+                        }
+                        // The page's "+": tap for a note, hold for a folder. Shown
+                        // only where a write can actually happen, and only on the
+                        // root: a folder's screen carries its own.
+                        .notesCreate(model, in: nil, place: "At the top of this vault.") {
+                            path.append(NoteRoute(id: $0))
+                        }
+                        // A search hit or a capture's "View" opens its note here.
+                        .onChange(of: notesLinks.pending, initial: true) {
+                            if let id = notesLinks.take() { path = NavigationPath([NoteRoute(id: id)]) }
+                        }
+                        .task { await model.loadIfNeeded() }
+                        // Not a one-off in `.task`: Notes is the first tab, and on a
+                        // cold launch the vault's sync request is still nil until the
+                        // tasks store exists.
+                        .onChange(of: requestVaultSync == nil, initial: true) {
+                            model.requestSync = requestVaultSync
+                        }
+                        .onChange(of: path) { _, path in LaunchSnapshot.shared.setPath("notes", path) }
+                        .onAppear { Task { await model.refresh() } }
+                        .writeFailureAlert(model)
                 }
-                // T157, and the **second and last** registration in this
-                // stack. It is here, on the stack's root content, and not in
-                // `NoteRowsView` — whose lazy stack is exactly the container
-                // research R15's rule is about. A note row is realised lazily
-                // and appears in two different screens; a destination declared
-                // beside it would be registered only once one of those rows
-                // had been drawn, so a restored path pointing at a note would
-                // resolve against a stack that had never heard of the route
-                // and would silently do nothing.
-                .navigationDestination(for: NoteRoute.self) { route in
-                    // T237. The filler travels with the reader, so a note
-                    // whose body the thirty-day window left behind has a way
-                    // to fetch it rather than rendering as an empty note.
-                    // A wiki link inside a note pushes through this same
-                    // registration rather than declaring one of its own: the
-                    // rule above is exactly why the read screen is handed a
-                    // push instead of owning a destination.
-                    NoteReadView(
-                        route: route,
-                        reader: model.reader,
-                        filler: model.filler,
-                        editor: model.editor,
-                        metadataWriter: model.metadataWriter,
-                        writer: model.writer,
-                        search: model.searcher,
-                        open: { path.append($0) },
-                        openTag: { path.append(TagRoute(name: $0)) },
-                        noteTasks: model.noteTasks
-                    )
-                }
-                // N600, registered on the root for the same reason the two
-                // above are: a `#tag` tapped deep in a note, and a restored
-                // path pointing at a tag, both resolve here.
-                .navigationDestination(for: TagRoute.self) { route in
-                    TaggedNotesView(tag: route.name, browse: model, open: { path.append($0) })
-                }
-                .navigationDestination(for: TagListRoute.self) { _ in
-                    TagListView(browse: model)
-                }
-                .navigationDestination(for: BookmarkListRoute.self) { _ in
-                    BookmarkListView(browse: model)
-                }
-                .toolbar {
-                    ToolbarItem(placement: .topBarTrailing) {
-                        // Its own view, and not inline: `body` must stay free
-                        // of every iterating container, because that is the
-                        // rule the destination registrations above depend on
-                        // and a source check enforces it literally.
-                        SortMenu(sort: $sort)
-                    }
-                    GlobalSearchToolbarItem()
-                }
-                // The page's "+", in the bottom trailing slot every page's
-                // "+" uses: tap for a note, hold for a folder. Shown only
-                // where a write can actually happen, and only on the root:
-                // a folder's screen carries its own.
-                .overlay(alignment: .bottomTrailing) {
-                    if model.writer != nil {
-                        NotesCreateButton(
-                            newNote: {
-                                Task {
-                                    // Straight into the note that was just
-                                    // made: a create that leaves the user
-                                    // hunting for the row did half a job.
-                                    if let id = await model.createNote(in: nil) { path.append(NoteRoute(id: id)) }
-                                }
-                            },
-                            newFolder: {
-                                draftFolderName = ""
-                                isNamingFolder = true
-                            },
-                            fromTemplate: { isPickingTemplate = true }
-                        )
-                        .padding(.horizontal, Tokens.Space.inset)
-                        .padding(.bottom, Tokens.Space.medium)
-                    }
-                }
-                .fromTemplateSheet(isPresented: $isPickingTemplate, browse: model, folderPath: nil) {
-                    path.append(NoteRoute(id: $0))
-                }
-                .alert("New folder", isPresented: $isNamingFolder) {
-                    TextField("Name", text: $draftFolderName)
-                    Button("Create") {
-                        let name = draftFolderName
-                        Task { await model.createFolder(named: name, in: nil) }
-                    }
-                    Button("Cancel", role: .cancel) {}
-                } message: {
-                    Text("At the top of this vault.")
-                }
-                // A search hit or a capture's "View" opens its note here.
-                .onChange(of: notesLinks.pending, initial: true) {
-                    if let id = notesLinks.take() { path = NavigationPath([NoteRoute(id: id)]) }
-                }
-                .task { await model.loadIfNeeded() }
-                // Not a one-off in `.task`: Notes is the first tab, and on a
-                // cold launch the vault's sync request is still nil until the
-                // tasks store exists.
-                .onChange(of: requestVaultSync == nil, initial: true) {
-                    model.requestSync = requestVaultSync
-                }
-                .onChange(of: path) { _, path in LaunchSnapshot.shared.setPath("notes", path) }
-                .onAppear { Task { await model.refresh() } }
-                .writeFailureAlert(model)
+            }
+        }
+        // A window that narrows to compact width keeps its place (#4344).
+        .onChange(of: width) { _, width in
+            if width == .compact { path = router.compactPath() }
         }
     }
 }
@@ -229,151 +216,5 @@ extension View {
                 Text(guidance)
             }
         }
-    }
-}
-
-/// The sort control. Lifted out of `NotesListView.body` on purpose — see the
-/// toolbar comment there.
-private struct SortMenu: View {
-    @Binding var sort: BrowseSort
-
-    var body: some View {
-        Menu {
-            Section("Folders stay A \u{2192} Z under every time mode.") {
-                Picker("Sort notes", selection: $sort) {
-                    ForEach(BrowseSort.allCases) { option in
-                        Text(option.label).tag(option)
-                    }
-                }
-            }
-        } label: {
-            Label("Sort by", systemImage: "arrow.up.arrow.down")
-        }
-    }
-}
-
-/// The root of the stack. Every phase is a distinct render.
-private struct VaultBrowseScreen: View {
-    let model: VaultBrowseViewModel
-    @Binding var expanded: Set<String>
-    @Binding var selectedFolder: String?
-    let sort: BrowseSort
-    let openFolder: (String) -> Void
-    let openNote: (String) -> Void
-    let openTag: (String) -> Void
-
-    var body: some View {
-        Group {
-            switch model.phase {
-            case .loading:
-                // Words, never a bare spinner, and never a duration.
-                ProgressView { Text("Reading this vault") }
-                    .progressViewStyle(.circular)
-                    .font(Tokens.Typography.supporting.font)
-                    .tint(Tokens.Text.secondary.color)
-                    .frame(maxWidth: .infinity, maxHeight: .infinity)
-            case .empty:
-                EmptyVaultNotice()
-            case let .unreadable(error):
-                VStack(alignment: .leading, spacing: Tokens.Space.medium) {
-                    ErrorNotice(error: error, code: nil)
-                    Button("Try again") { Task { await model.reload() } }
-                        .memrySecondaryAction()
-                }
-                .padding(.horizontal, Tokens.Space.screenInline)
-                .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .top)
-            case let .ready(outline):
-                VaultOutlineList(
-                    outline: outline,
-                    expanded: $expanded,
-                    selectedFolder: $selectedFolder,
-                    sort: sort,
-                    model: model,
-                    openFolder: openFolder,
-                    openNote: openNote,
-                    openTag: openTag
-                )
-            }
-        }
-        .background(Tokens.Canvas.background.color)
-        .calmAnimation(.normal, value: model.phase)
-    }
-}
-
-/// The hierarchy itself, as one flat platform list.
-private struct VaultOutlineList: View {
-    let outline: VaultOutline
-    @Binding var expanded: Set<String>
-    @Binding var selectedFolder: String?
-    let sort: BrowseSort
-    /// Carried down for the row actions. The rows are where a rename, a move
-    /// or a delete starts, and each one needs the writer behind them.
-    let model: VaultBrowseViewModel
-    let openFolder: (String) -> Void
-    let openNote: (String) -> Void
-    let openTag: (String) -> Void
-    /// Folded from its title, like Bookmarks and Tags. Only foldable when
-    /// those exist: alone, the tree has no title to tap.
-    @AppStorage("notes.section.collections.collapsed") private var collectionsCollapsed = false
-
-    private var hasShortcuts: Bool { !model.bookmarks.isEmpty || !model.tags.isEmpty }
-
-    var body: some View {
-        List {
-            // Named only beside the sections under it, as desktop's sidebar
-            // names Collections beside Bookmarks and Tags. A vault with
-            // neither keeps the tree unlabelled.
-            if hasShortcuts {
-                ShortcutsTitleRow(title: "Collections", isCollapsed: $collectionsCollapsed)
-            }
-            if !hasShortcuts || !collectionsCollapsed {
-                treeRows
-            }
-            if !outline.unplacedNotes.isEmpty, !hasShortcuts || !collectionsCollapsed {
-                // Kaan's spec-defect 124 decision, named on screen rather
-                // than papered over. These notes are real; their folder
-                // carries no `folder_config` row, so the tree above cannot
-                // contain them.
-                Section {
-                    ForEach(outline.unplacedRows(sort: sort)) { row in
-                        BrowseRowView(row: row, toggle: toggle, model: model)
-                    }
-                } header: {
-                    Text("Outside the folder list")
-                } footer: {
-                    Text("These notes are in folders this vault has no folder record for.")
-                }
-            }
-            BookmarksSection(bookmarks: model.bookmarks)
-            TagsSection(tags: model.tags, openTag: openTag)
-        }
-        .listStyle(.plain)
-        .scrollContentBackground(.hidden)
-        .restoresScroll("notes.root")
-        .environment(\.defaultMinListRowHeight, Tokens.Size.minimumHitArea)
-        .calmAnimation(.fast, value: expanded)
-    }
-
-    private var treeRows: some View {
-        ForEach(outline.browseRows(expanded: expanded, sort: sort)) { row in
-            BrowseRowView(
-                row: row,
-                toggle: toggle,
-                model: model,
-                selectedFolder: selectedFolder,
-                openFolder: openFolder,
-                openNote: openNote,
-                setExpanded: setExpanded
-            )
-        }
-    }
-
-    private func toggle(_ path: String) {
-        if expanded.contains(path) { expanded.remove(path) } else { expanded.insert(path) }
-        selectedFolder = path
-    }
-
-    private func setExpanded(_ paths: [String], _ isOpen: Bool) {
-        if isOpen { expanded.formUnion(paths) } else { expanded.subtract(paths) }
     }
 }

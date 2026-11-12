@@ -17,6 +17,9 @@ struct NotesCreateButton: View {
     let newFolder: () -> Void
     /// `nil` hides "From template" (no templates, or no way to write one).
     var fromTemplate: (() -> Void)?
+    /// In the split view's list column toolbar (`DESIGN.md` › Tablet, D4):
+    /// `square.and.pencil`, drawn by the toolbar rather than as a glass disc.
+    var inToolbar = false
 
     private let tip = NotesCreateTip()
 
@@ -31,17 +34,19 @@ struct NotesCreateButton: View {
                     .accessibilityIdentifier("notes.create.template")
             }
         } label: {
-            Image(systemName: "plus")
-                .font(Tokens.Typography.sectionTitle.font)
-                .foregroundStyle(Tokens.Text.primary.color)
-                .padding(Tokens.Space.small)
+            if inToolbar {
+                Image(systemName: "square.and.pencil")
+            } else {
+                Image(systemName: "plus")
+                    .font(Tokens.Typography.sectionTitle.font)
+                    .foregroundStyle(Tokens.Text.primary.color)
+                    .padding(Tokens.Space.small)
+            }
         } primaryAction: {
             newNote()
             Task { await NotesCreateTip.madeNote.donate() }
         }
-        .menuStyle(.button)
-        .buttonStyle(.glass)
-        .buttonBorderShape(.circle)
+        .modifier(FloatingCreateStyle(isOn: !inToolbar))
         .popoverTip(tip, arrowEdge: .bottom)
         .accessibilityLabel(NotesCreateCopy.newNote)
         .accessibilityHint(NotesCreateCopy.holdHint)
@@ -58,6 +63,97 @@ struct NotesCreateButton: View {
     private func usedMenu(_ action: () -> Void) {
         tip.invalidate(reason: .actionPerformed)
         action()
+    }
+}
+
+/// The floating disc's look, which a toolbar button leaves to the toolbar.
+private struct FloatingCreateStyle: ViewModifier {
+    let isOn: Bool
+
+    func body(content: Content) -> some View {
+        if isOn {
+            content
+                .menuStyle(.button)
+                .buttonStyle(.glass)
+                .buttonBorderShape(.circle)
+        } else {
+            content
+        }
+    }
+}
+
+extension View {
+    /// A Notes list's create control and the dialogs behind it: the floating
+    /// "+" at compact width, the list column's toolbar button inside the split
+    /// view (D4). Hidden when the device has no identity to write under.
+    /// `folderPath` is where a new note or folder goes (`nil`: the vault root),
+    /// `place` names it in the new-folder dialog, and `open` shows what a
+    /// create made.
+    func notesCreate(
+        _ model: VaultBrowseViewModel,
+        in folderPath: String?,
+        place: String,
+        open: @escaping (String) -> Void
+    ) -> some View {
+        modifier(NotesCreateControl(model: model, folderPath: folderPath, place: place, open: open))
+    }
+}
+
+private struct NotesCreateControl: ViewModifier {
+    let model: VaultBrowseViewModel
+    let folderPath: String?
+    let place: String
+    let open: (String) -> Void
+    @Environment(NotesSplitRouter.self) private var split: NotesSplitRouter?
+    @State private var isNamingFolder = false
+    @State private var draftFolderName = ""
+    @State private var isPickingTemplate = false
+
+    func body(content: Content) -> some View {
+        content
+            .toolbar {
+                if split != nil, model.writer != nil {
+                    ToolbarItem(placement: .topBarTrailing) { button(inToolbar: true) }
+                }
+            }
+            // The page's "+", in the bottom trailing slot every page's "+"
+            // uses: tap for a note, hold for a folder.
+            .overlay(alignment: .bottomTrailing) {
+                if split == nil, model.writer != nil {
+                    button(inToolbar: false)
+                        .padding(.horizontal, Tokens.Space.inset)
+                        .padding(.bottom, Tokens.Space.medium)
+                }
+            }
+            .fromTemplateSheet(isPresented: $isPickingTemplate, browse: model, folderPath: folderPath, open: open)
+            .alert("New folder", isPresented: $isNamingFolder) {
+                TextField("Name", text: $draftFolderName)
+                Button("Create") {
+                    let name = draftFolderName
+                    Task { await model.createFolder(named: name, in: folderPath) }
+                }
+                Button("Cancel", role: .cancel) {}
+            } message: {
+                Text(place)
+            }
+    }
+
+    private func button(inToolbar: Bool) -> some View {
+        NotesCreateButton(
+            newNote: {
+                Task {
+                    // Straight into the note that was just made: a create
+                    // that leaves the user hunting for the row did half a job.
+                    if let id = await model.createNote(in: folderPath) { open(id) }
+                }
+            },
+            newFolder: {
+                draftFolderName = ""
+                isNamingFolder = true
+            },
+            fromTemplate: { isPickingTemplate = true },
+            inToolbar: inToolbar
+        )
     }
 }
 
