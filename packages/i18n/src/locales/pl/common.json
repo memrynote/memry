@@ -3,6 +3,7 @@
     "copyFailed": "Nie udało się skopiować portalu",
     "hiddenCount": "Ukryte: {count}",
     "windowFailed": "Nie udało się otworzyć tego portalu. Otwórz zamiast tego notatkę źródłową.",
+    "unreadable": "Nie można odczytać tego portalu. Usuń blok i dodaj nowy portal.",
     "search": {
       "editQuery": "Edytuj zapytanie",
       "count": "{count, plural, one {# blok} few {# bloki} many {# bloków} other {# bloku}}",

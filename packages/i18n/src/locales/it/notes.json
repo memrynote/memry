@@ -426,7 +426,8 @@
       "newViewFailed": "Impossibile creare la cartella per questa vista.",
       "empty": "Per ora nessuna nota corrisponde a questa vista.",
       "loadFailed": "Impossibile caricare questa vista. Le note in sé sono intatte.",
-      "folderMissing": "Questa cartella non è più nel vault. Scegli un'altra origine."
+      "folderMissing": "Questa cartella non è più nel vault. Scegli un'altra origine.",
+      "unreadable": "Questa vista non può essere letta. Scegli una sorgente qui sopra oppure rimuovi il blocco."
     },
     "chart": {
       "title": "Grafico",

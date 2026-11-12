@@ -3,6 +3,7 @@
     "copyFailed": "Impossible de copier le portail",
     "hiddenCount": "{count} masqués",
     "windowFailed": "Impossible d'ouvrir ce portail. Ouvrez plutôt la note source.",
+    "unreadable": "Ce portail est illisible. Supprimez le bloc et ajoutez un nouveau portail.",
     "search": {
       "editQuery": "Modifier la requête",
       "count": "{count, plural, one {# bloc} other {# blocs}}",

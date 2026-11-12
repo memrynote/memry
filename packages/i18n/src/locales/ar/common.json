@@ -3,6 +3,7 @@
     "copyFailed": "تعذّر نسخ البوابة",
     "hiddenCount": "{count} مخفية",
     "windowFailed": "تعذّر فتح هذه البوابة. افتح الملاحظة المصدر بدلًا من ذلك.",
+    "unreadable": "لا يمكن قراءة هذه البوابة. أزل الكتلة وأضف بوابة جديدة.",
     "search": {
       "editQuery": "تحرير الاستعلام",
       "count": "{count, plural, zero {# كتلة} one {كتلة واحدة} two {كتلتان} few {# كتل} many {# كتلة} other {# كتلة}}",

@@ -426,7 +426,8 @@
       "newViewFailed": "Tidak dapat membuat folder untuk tampilan ini.",
       "empty": "Belum ada yang cocok dengan tampilan ini.",
       "loadFailed": "Tidak dapat memuat tampilan ini. Catatannya sendiri tidak diubah.",
-      "folderMissing": "Folder ini sudah tidak ada di brankas. Pilih sumber lain."
+      "folderMissing": "Folder ini sudah tidak ada di brankas. Pilih sumber lain.",
+      "unreadable": "Tampilan ini tidak dapat dibaca. Pilih sumber di atas, atau hapus blok."
     },
     "chart": {
       "title": "Bagan",
