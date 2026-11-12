@@ -73,6 +73,7 @@ vi.mock('../vault/frontmatter', () => ({
   serializeParsedNote: vi.fn()
 }))
 vi.mock('./blocknote-converter', () => ({
+  setVaultEmbedResolver: () => {},
   markdownToYFragment: vi.fn(),
   repairEmptyBlockIds: vi.fn(() => 0)
 }))

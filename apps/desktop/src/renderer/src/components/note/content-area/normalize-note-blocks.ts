@@ -17,7 +17,7 @@
 
 import type { Block } from '@blocknote/core'
 import { normalizeWikiLinks } from './wiki-link-utils'
-import { normalizeLinkMentions } from './link-mention-utils'
+import { normalizeLinkMentions } from '@memry/editor-schema/inline'
 import { normalizeDateMentions } from './date-mention-utils'
 import { normalizeInlineCheckboxes } from './inline-checkbox-utils'
 import { normalizeTaskBlocks } from './task-block/task-block-utils'

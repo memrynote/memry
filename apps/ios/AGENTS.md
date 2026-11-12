@@ -14,6 +14,7 @@ This directory owns the native iOS app, a SwiftUI shell over the Rust core in [c
 
 - After a core change, run `crates/memry-core/build-xcframework.sh` before building, or Swift links against a stale core. `pnpm dev:mobile` does this first.
 - Agents build, test, and install only on `-destination 'platform=iOS Simulator,name=iPhone 17'`. `iPhone 17 Pro` runs Kaan's `pnpm dev:mobile` session, and any `xcodebuild test` or `simctl install` there kills his running app. Never touch it.
+- For iPad, agents use `iPad Air 13-inch (M4)` (large) and `iPad mini (A17 Pro)` (small).
 - There is no pnpm entry point for tests. Use `xcodebuild` with the `Memry` scheme:
 
 ```bash
@@ -60,6 +61,16 @@ Test gotchas:
 
 - Read `DESIGN.md` before any UI change. iOS adapts the desktop reference through system navigation and controls, and keeps desktop's vocabulary and semantics for every shared concept.
 - Dynamic Type, VoiceOver labels, reduced motion, and WCAG AA contrast are baseline requirements.
+
+## iPad
+
+The app is one Universal build. iPad layouts adapt the iPhone app, not replace it.
+
+- Branch layout on the horizontal size class, or on the width the view actually gets. Never branch on the device: an iPad in Split View or a narrow Stage Manager window is compact.
+- Compact width keeps the iPhone layout and behavior exactly. Every layout change shows an iPhone screenshot proving it.
+- `userInterfaceIdiom` picks only copy and symbols, such as "iPhone" versus "iPad" in a sentence.
+- The app has a single scene (`UIApplicationSupportsMultipleScenes = false`). The `static let shared` singletons assume one window.
+- A layout change attaches screenshots of: iPhone portrait (plus landscape where relevant), iPad 13" portrait and landscape, iPad 13" at about half width (Split View or Stage Manager, set by hand), iPad mini portrait, one at the largest Dynamic Type size, and one in dark mode. Inspect each one.
 
 ## Data
 

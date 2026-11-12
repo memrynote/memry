@@ -151,6 +151,39 @@ describe('filterHandler', () => {
     })
   })
 
+  it('keeps the stored expression when a build that predates the key pushes, and clears it on null', () => {
+    const expression = {
+      match: 'all',
+      rules: [{ field: 'priority', op: 'any', values: ['urgent'] }]
+    }
+    filterHandler.applyUpsert(ctx(), 'filter-1', { name: 'Rules', expression }, { deviceA: 1 })
+    expect(rowOf('filter-1')?.expression).toEqual(expression)
+
+    // A push from a build without the key: no `expression` at all.
+    filterHandler.applyUpsert(ctx(), 'filter-1', { name: 'Renamed' }, { deviceA: 2 })
+    expect(rowOf('filter-1')).toMatchObject({ name: 'Renamed', expression })
+
+    filterHandler.applyUpsert(ctx(), 'filter-1', { expression: null }, { deviceA: 3 })
+    expect(rowOf('filter-1')?.expression).toBeNull()
+  })
+
+  it('pushes the expression beside config, verbatim', () => {
+    const expression = {
+      match: 'any',
+      rules: [{ field: 'estimate', op: 'atLeast', values: ['2'] }]
+    }
+    filterHandler.applyUpsert(
+      ctx(),
+      'filter-1',
+      { name: 'Newer rule', config: { filters: {} }, expression },
+      { deviceA: 1 }
+    )
+
+    const payload = JSON.parse(filterHandler.buildPushPayload(db, 'filter-1', 'dev', 'update')!)
+    expect(payload.expression).toEqual(expression)
+    expect(payload.config).toEqual({ filters: {} })
+  })
+
   it('never overwrites an existing name with the Untitled Filter insert default', () => {
     filterHandler.applyUpsert(ctx(), 'filter-1', { name: 'Kept' }, { deviceA: 1 })
 

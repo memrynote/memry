@@ -164,7 +164,7 @@ export function createCrdtSnapshotBatchPush(deps: CrdtSnapshotBatchDeps): Snapsh
                   token = fresh
                 }
               ),
-            { maxRetries: 3, baseDelayMs: 2000 }
+            { maxRetries: 3, baseDelayMs: 2000, retryOn429: false }
           )
 
           for (const result of response.value.results ?? []) {

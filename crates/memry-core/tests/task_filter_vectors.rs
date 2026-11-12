@@ -13,12 +13,13 @@ use std::collections::HashMap;
 
 use memry_core::domain::calendar::{CivilDate, LocalDateTime};
 use memry_core::domain::task_filter::{
-    CompletionFilter, DueDateFilter, FilterProject, FilterStatus, FilterTask, HasTimeFilter,
-    Priority, RepeatFilter, SortDirection, SortField, StatusType, TaskFilters, TaskGroup,
-    TaskNoteInfo, TaskSort, apply_filters_and_sort_with_context, count_active_filters,
-    filter_by_completion, filter_by_due_date_range, filter_by_has_time, filter_by_priorities,
-    filter_by_projects, filter_by_repeat_type, filter_by_search, filter_by_statuses,
-    filter_by_tags, group_tasks_for_sort, has_active_filters, sort_tasks_advanced,
+    CompletionFilter, DueDateFilter, ExpressionContext, FilterProject, FilterStatus, FilterTask,
+    HasTimeFilter, Priority, RepeatFilter, SortDirection, SortField, StatusType, TaskFilters,
+    TaskGroup, TaskNoteInfo, TaskSort, apply_filters_and_sort_with_context, count_active_filters,
+    count_rules, filter_by_completion, filter_by_due_date_range, filter_by_has_time,
+    filter_by_priorities, filter_by_projects, filter_by_repeat_type, filter_by_search,
+    filter_by_statuses, filter_by_tags, group_tasks_for_sort, has_active_filters, location_options,
+    matches_expression, sort_tasks_advanced,
 };
 use serde_json::{Value, json};
 use support::vector_file;
@@ -351,6 +352,7 @@ fn applied() {
             &f.projects,
             f.named_now(&text(case, "now")),
             u32::try_from(week_starts_on).expect("small week start"),
+            None,
         );
         let mut context: Vec<&str> = context.into_iter().collect();
         context.sort_unstable();
@@ -361,6 +363,120 @@ fn applied() {
             "countActiveFilters": count_active_filters(&filters),
         });
         (case["expected"].clone(), actual)
+    });
+}
+
+#[test]
+fn expressions() {
+    let f = Fixture::load();
+    check_all("expressions", f.cases("/expressions"), |case| {
+        let week_starts_on = case["weekStartsOn"].as_u64().expect("weekStartsOn");
+        let with_notes = case["withNotes"].as_bool().expect("withNotes");
+        let ctx = ExpressionContext {
+            now: f.named_now(&text(case, "now")),
+            week_starts_on: u32::try_from(week_starts_on).expect("small week start"),
+            note_index: with_notes.then_some(&f.notes),
+        };
+        let matched: Vec<&FilterTask> = f
+            .tasks
+            .iter()
+            .filter(|task| matches_expression(task, &case["expression"], &ctx))
+            .collect();
+        (
+            json!({"expected": case["expected"], "ruleCount": case["ruleCount"]}),
+            json!({"expected": ids(&matched), "ruleCount": count_rules(Some(&case["expression"]))}),
+        )
+    });
+}
+
+/// The flat location fields read from the live filters JSON narrow through
+/// the note index, and with no index match nothing (`filterByLocation`).
+#[test]
+fn location_filter_reads_folder_paths_and_note_ids() {
+    let f = Fixture::load();
+    let filters = TaskFilters::from_json(&json!({
+        "completion": "all",
+        "folderPaths": ["Acme/Planning"],
+        "noteIds": ["n-standup"],
+    }));
+    assert_eq!(count_active_filters(&filters), 2);
+    let sort = TaskSort::from_json(&json!({"field": "title", "direction": "asc"})).expect("sort");
+    let run = |notes| {
+        let (tasks, _) = apply_filters_and_sort_with_context(
+            &f.tasks,
+            &filters,
+            &sort,
+            &f.projects,
+            f.named_now("wednesday"),
+            1,
+            notes,
+        );
+        let mut ids: Vec<&str> = tasks.iter().map(|task| task.id.as_str()).collect();
+        ids.sort_unstable();
+        ids
+    };
+    // `k` and `p` ride with their root `a`.
+    assert_eq!(run(Some(&f.notes)), ["a", "c", "g", "k", "p"]);
+    assert!(run(None).is_empty());
+}
+
+/// `locationOptions` runs over its own small vault: only a task's id, parent
+/// and notes matter, so every other field is a placeholder.
+#[test]
+fn location_options_match_desktop() {
+    let f = Fixture::load();
+    let section = &f.vectors["locationOptions"];
+    let notes: HashMap<String, TaskNoteInfo> = list(&section["notes"])
+        .iter()
+        .map(|note| {
+            let info = TaskNoteInfo {
+                id: text(note, "id"),
+                title: text(note, "title"),
+                folder_path: text(note, "folderPath"),
+            };
+            (info.id.clone(), info)
+        })
+        .collect();
+    let tasks: Vec<FilterTask> = list(&section["tasks"])
+        .iter()
+        .map(|value| FilterTask {
+            id: text(value, "id"),
+            title: String::new(),
+            description: None,
+            project_id: String::new(),
+            status_id: String::new(),
+            parent_id: optional_text(value, "parentId"),
+            priority: Priority::None,
+            due_date: None,
+            due_time: None,
+            created_at: LocalDateTime::from_ms(0),
+            completed_at: None,
+            archived_at: None,
+            is_repeating: false,
+            tags: Vec::new(),
+            source_note_id: optional_text(value, "sourceNoteId"),
+            linked_note_ids: strings(&value["linkedNoteIds"]),
+        })
+        .collect();
+    let refs: Vec<&FilterTask> = tasks.iter().collect();
+    let cases = list(&section["cases"]);
+    assert!(!cases.is_empty(), "no locationOptions cases");
+    check_all("locationOptions", cases, |case| {
+        let rows = location_options(
+            &refs,
+            &notes,
+            &strings(&case["selected"]["folderPaths"]),
+            &strings(&case["selected"]["noteIds"]),
+            case["query"].as_str().expect("query"),
+        );
+        let actual = rows
+            .iter()
+            .map(|row| {
+                json!({"kind": row.kind.name(), "value": row.value, "label": row.label,
+                       "context": row.context, "depth": row.depth, "count": row.count})
+            })
+            .collect();
+        (case["expected"].clone(), Value::Array(actual))
     });
 }
 

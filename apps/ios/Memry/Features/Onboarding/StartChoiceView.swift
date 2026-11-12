@@ -47,7 +47,7 @@ struct StartChoiceView: View {
                             symbol: "laptopcomputer.and.iphone",
                             title: "Sign in and sync",
                             badge: nil,
-                            detail: "Pick up where you left off on your Mac. End-to-end encrypted.",
+                            detail: "Pick up where you left off on your other devices. End-to-end encrypted.",
                             isSelected: choice == .sync
                         ) { choice = .sync }
                     }

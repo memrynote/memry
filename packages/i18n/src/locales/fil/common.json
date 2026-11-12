@@ -6,6 +6,7 @@
     "noTarget": "Wala pang target ang portal na ito. Magdagdag ng tala sa definition, o alisin ang block.",
     "invalidJson": "Hindi valid na JSON ang definition ng portal na ito. Ayusin ito sa ibaba, o alisin ang block.",
     "invalidShape": "Walang tala o paghahanap ang definition ng portal na ito. Ayusin ito sa ibaba, o alisin ang block.",
+    "unreadable": "Hindi mabasa ang portal na ito. Alisin ang block at magdagdag ng bagong portal.",
     "search": {
       "editQuery": "I-edit ang query",
       "count": "{count, plural, one {# block} other {# block}}",
@@ -1276,6 +1277,7 @@
     "label": "Tulong at feedback",
     "reportBug": "Mag-ulat ng bug",
     "requestFeature": "Humiling ng feature",
+    "joinTestflight": "Sumali sa TestFlight",
     "starOnGithub": "I-star sa GitHub",
     "version": "MemryNote {version}",
     "whatsNew": "Ano ang bago",
@@ -1695,5 +1697,29 @@
     "journalDaysRenamed": "Hindi na petsa ang pangalan ng ilang journal entry",
     "journalDaysRenamedHint": "Pinalitan ang pangalan ng mga journal entry na ito sa labas ng Memry habang naghihintay ang folder nila sa setting ng journal folder, kaya hindi na petsa ang mga pangalan nila. Mananatili silang journal entry hanggang ibalik mo ang pangalan nila. Kapag ginawang note ang isa, mabubura ang journal entry nito sa lahat ng device mo at mananatili ang teksto nito bilang note. Hindi pinananatili ang mga tag nito.",
     "turnIntoNotes": "Gawing mga note"
+  },
+  "iosBeta": {
+    "badge": "Bago · TestFlight",
+    "title": "Nasa beta na ang Memry para sa iPhone",
+    "promptBody": "Ang vault mo sa phone mo, end-to-end encrypted. Iwan ang email mo at padadalhan ka ng Apple ng TestFlight invite.",
+    "emailPlaceholder": "you@example.com",
+    "emailLabel": "Email para sa TestFlight invite",
+    "submit": "Kunin ang invite",
+    "sending": "Ipinapadala…",
+    "listNote": "Idinadagdag ka rin namin sa iPhone beta list para sa balita tungkol sa launch. Puwede kang mag-unsubscribe anumang oras.",
+    "error": "Hindi naipadala ang TestFlight invite. Subukan ulit.",
+    "sentTitle": "Tingnan ang inbox mo",
+    "sentBody": "Ipinadala ng Apple ang invite sa {email}. Maaaring abutin ito ng ilang minuto at puwedeng mapunta sa spam.",
+    "stepInstall": "I-install ang TestFlight mula sa App Store",
+    "stepOpen": "Buksan ang invite sa iPhone mo",
+    "stepSignIn": "Mag-sign in sa Memry sa phone mo",
+    "done": "Tapos na",
+    "dialogTitle": "Sumali sa Memry para sa iPhone",
+    "dialogBody": "Magpapadala ang Apple ng TestFlight invite sa email mo. Gamitin ang email ng Apple ID sa iPhone mo.",
+    "entryTitle": "Live na ang iPhone beta",
+    "entrySubtitle": "Sa pamamagitan ng TestFlight",
+    "entryJoin": "Sumali sa beta",
+    "entrySent": "Naipadala ang invite sa {email}",
+    "sendAgain": "Ipadala ulit"
   }
 }

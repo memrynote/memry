@@ -135,6 +135,7 @@ export const GhostAffordanceRow = memo(function GhostAffordanceRow({
           {onAddCover && (
             <DropdownMenuItem
               onSelect={() => {
+                popupPendingRef.current = true
                 const rect = triggerRef.current?.getBoundingClientRect()
                 if (rect) onAddCover({ x: rect.left + rect.width / 2, y: rect.bottom })
               }}

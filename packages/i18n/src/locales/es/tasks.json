@@ -113,7 +113,74 @@
       "noDueDate": "Sin fecha de vencimiento"
     },
     "repeatTypeRepeating": "Recurrentes",
-    "repeatTypeOneTime": "Únicas"
+    "repeatTypeOneTime": "Únicas",
+    "advanced": {
+      "entry": "Filtro avanzado…",
+      "entryHint": "Reglas con y, o, no",
+      "title": "Filtro",
+      "match": "Cumplir",
+      "ofThese": "de estas",
+      "matches": {
+        "all": "todas",
+        "any": "cualquiera",
+        "none": "ninguna"
+      },
+      "fields": {
+        "title": "Título",
+        "status": "Estado",
+        "priority": "Prioridad",
+        "due": "Fecha de vencimiento",
+        "project": "Proyecto",
+        "location": "Ubicación",
+        "tags": "Etiquetas",
+        "repeat": "Se repite",
+        "hasTime": "Tiene hora"
+      },
+      "ops": {
+        "contains": "contiene",
+        "notContains": "no contiene",
+        "any": "es alguno de",
+        "none": "no es ninguno de",
+        "all": "tiene todos",
+        "empty": "está vacío",
+        "notEmpty": "no está vacío",
+        "is": "es",
+        "isNot": "no es"
+      },
+      "tagOps": {
+        "any": "tiene alguna de",
+        "all": "tiene todas",
+        "none": "no tiene ninguna de"
+      },
+      "values": {
+        "repeating": "Recurrente",
+        "oneTime": "Única",
+        "withTime": "Con hora",
+        "withoutTime": "Sin hora",
+        "customRange": "Rango personalizado",
+        "from": "Desde",
+        "to": "Hasta",
+        "pick": "Elegir…",
+        "titlePlaceholder": "Texto en el título"
+      },
+      "addRule": "Añadir regla",
+      "addGroup": "Añadir grupo",
+      "clear": "Borrar",
+      "removeRule": "Quitar regla",
+      "removeGroup": "Quitar grupo",
+      "matchCount": "{count, plural, one {# tarea coincide} other {# tareas coinciden}}",
+      "skipped": "{count, plural, one {# regla omitida} other {# reglas omitidas}}",
+      "ruleCount": "{count, plural, one {# regla} other {# reglas}}",
+      "unknownRule": "Regla de una versión más reciente",
+      "empty": "Aún no hay reglas. Añade una para empezar a filtrar.",
+      "summary": {
+        "and": "y",
+        "or": "o",
+        "not": "no"
+      },
+      "editRules": "Editar reglas",
+      "clearRules": "Borrar reglas"
+    }
   },
   "quickAdd": {
     "label": "Añadir tarea rápidamente",

@@ -74,7 +74,7 @@ struct NoteRowActions: ViewModifier {
                 } message: {
                     // What actually happens, and where it happens: the note
                     // leaves every device on the account, not just this phone.
-                    Text("It leaves every device on this account. Your computer keeps no copy of it either.")
+                    Text("It leaves every device on this account. Your other devices keep no copy of it either.")
                 }
                 .sheet(isPresented: $isPickingIcon) {
                     EmojiPickerSheet(current: note.emoji) { chosen in

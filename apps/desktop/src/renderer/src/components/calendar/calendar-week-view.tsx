@@ -10,6 +10,7 @@ import {
   isMultiDaySpan,
   isToday,
   isWeekend,
+  parseLocalDate,
   spanEndDateKey,
   spanStartDateKey,
   toLocalDateKey
@@ -323,7 +324,7 @@ export function CalendarWeekView({
               const date = dateForDayIndex(vi.index)
               const isCurrent = isToday(date)
               const dayNum = parseInt(date.slice(-2), 10)
-              const dayOfWeek = new Date(date).getDay()
+              const dayOfWeek = parseLocalDate(date).getDay()
               return (
                 <div
                   key={vi.key}

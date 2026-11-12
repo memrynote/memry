@@ -7,9 +7,45 @@ import { useT } from '@memry/i18n/renderer'
 const QUIET_ACTION =
   'shrink-0 rounded-sm text-xs/4 text-muted-foreground transition-colors hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring disabled:pointer-events-none disabled:opacity-50'
 
+const SETUP_DOCS_URL =
+  'https://docs.memrynote.com/user-guide/ai/agent-backends#read-through-the-mcp-server'
+
 function maskToken(token: string): string {
   return token.length > 8 ? `${token.slice(0, 4)}••••••••${token.slice(-4)}` : '••••••••'
 }
+
+/** Matches the snippets in apps/docs/src/user-guide/ai/agent-backends.md. */
+const CLIENT_CONFIGS = [
+  {
+    client: 'Claude Desktop',
+    build: (endpoint: string, token: string) =>
+      JSON.stringify(
+        {
+          mcpServers: {
+            memrynote: {
+              command: 'npx',
+              args: [
+                '-y',
+                'mcp-remote',
+                endpoint,
+                '--allow-http',
+                '--header',
+                'Authorization:${MEMRYNOTE_AUTH}'
+              ],
+              env: { MEMRYNOTE_AUTH: `Bearer ${token}` }
+            }
+          }
+        },
+        null,
+        2
+      )
+  },
+  {
+    client: 'Claude Code',
+    build: (endpoint: string, token: string) =>
+      `claude mcp add --transport http memrynote ${endpoint} --header "Authorization: Bearer ${token}"`
+  }
+] as const
 
 export function AgentMcpSection({ embedded = false }: { embedded?: boolean }) {
   const { t } = useT('settings')
@@ -40,7 +76,9 @@ export function AgentMcpSection({ embedded = false }: { embedded?: boolean }) {
   const toolCount = status?.toolCount ?? 0
   const running = Boolean(status?.url)
   const unavailable = t('agentMcp.notRunning')
-  const url = status?.url ?? unavailable
+  // The server answers only on /mcp; a bare base URL makes clients 404.
+  const endpoint = status?.url ? `${status.url}/mcp` : null
+  const url = endpoint ?? unavailable
   const bearer = status?.token ?? unavailable
   const urlLabel = t('agentMcp.fields.url.label')
   const bearerLabel = t('agentMcp.fields.bearer.label')
@@ -103,6 +141,47 @@ export function AgentMcpSection({ embedded = false }: { embedded?: boolean }) {
               {t('agentMcp.v2.rotate')}
             </button>
           </div>
+        </div>
+        <div className="flex min-h-14 items-center justify-between gap-4 py-2.5">
+          <div className="flex shrink-0 flex-col gap-0.5">
+            <span className="text-[13px]/4 text-foreground">
+              {t('agentMcp.v2.clientConfig.label')}
+            </span>
+            <span className="text-xs/4 text-muted-foreground">
+              {t('agentMcp.v2.clientConfig.hint')}
+            </span>
+          </div>
+          <div className="flex min-w-0 flex-wrap items-center justify-end gap-3">
+            {CLIENT_CONFIGS.map(({ client, build }) => (
+              <button
+                key={client}
+                type="button"
+                className={QUIET_ACTION}
+                aria-label={t('agentMcp.v2.clientConfig.copy', { client })}
+                title={t('agentMcp.v2.clientConfig.copy', { client })}
+                disabled={!endpoint || !status?.token}
+                onClick={() => {
+                  if (endpoint && status?.token) {
+                    void navigator.clipboard.writeText(build(endpoint, status.token))
+                  }
+                }}
+              >
+                {client}
+              </button>
+            ))}
+          </div>
+        </div>
+        <div className="flex flex-col gap-1.5 py-2.5 text-xs/4 text-muted-foreground">
+          <p>{t('agentMcp.v2.notes.readOnly')}</p>
+          <p>{t('agentMcp.v2.notes.restart')}</p>
+          <a
+            href={SETUP_DOCS_URL}
+            target="_blank"
+            rel="noopener noreferrer"
+            className="self-start rounded-sm font-medium text-[var(--tint)] underline-offset-2 hover:underline focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring"
+          >
+            {t('agentMcp.v2.notes.docs')}
+          </a>
         </div>
       </SettingsGroup>
     </div>

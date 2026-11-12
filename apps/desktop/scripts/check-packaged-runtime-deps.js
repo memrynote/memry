@@ -42,12 +42,50 @@ function getPackagedElectronExecutable(resourcesPath) {
   const executable =
     process.platform === 'win32'
       ? path.join(contentsPath, `${productName}.exe`)
-      : path.join(contentsPath, 'MacOS', productName)
+      : process.platform === 'linux'
+        ? path.join(contentsPath, 'memrynote')
+        : path.join(contentsPath, 'MacOS', productName)
   if (!fs.existsSync(executable)) {
     throw new Error(`Missing packaged Electron executable: ${executable}`)
   }
 
+  assertLinuxElfCompatibility(executable)
   return executable
+}
+
+function assertLinuxElfCompatibility(binaryPath) {
+  if (process.platform !== 'linux') return
+
+  const result = spawnSync('readelf', ['--version-info', '--wide', binaryPath], {
+    encoding: 'utf8'
+  })
+  if (result.status !== 0) {
+    throw new Error(`Cannot inspect Linux binary ${binaryPath}: ${result.error || result.stderr}`)
+  }
+
+  // Ubuntu 22.04's glibc and libstdc++ symbol ceilings.
+  const ceilings = { GLIBC: '2.35', GLIBCXX: '3.4.30' }
+  const maxima = new Map()
+  for (const match of result.stdout.matchAll(/Name: (GLIBC|GLIBCXX)_([\d.]+)/g)) {
+    const [, library, version] = match
+    if (
+      !maxima.has(library) ||
+      version.localeCompare(maxima.get(library), 'en', { numeric: true }) > 0
+    ) {
+      maxima.set(library, version)
+    }
+    if (version.localeCompare(ceilings[library], 'en', { numeric: true }) > 0) {
+      fail(
+        `${binaryPath} requires ${library}_${version}; Ubuntu 22.04 supports ${library}_${ceilings[library]}`
+      )
+    }
+  }
+  if (result.stdout.includes('GLIBC_ABI_DT_RELR')) {
+    fail(`${binaryPath} requires GLIBC_ABI_DT_RELR, unavailable on Ubuntu 22.04`)
+  }
+  console.log(
+    `Linux ELF ${binaryPath}: ${[...maxima].map(([name, version]) => `${name}_${version}`).join(', ')}`
+  )
 }
 
 function fail(message) {
@@ -180,7 +218,19 @@ const path = require('node:path')
 
 const packagedRequire = createRequire(process.env.MEMRY_PACKAGED_MAIN)
 const Database = require(packagedRequire.resolve('better-sqlite3'))
-const database = new Database(':memory:')
+const sqlitePath = path.join(process.env.MEMRY_SMOKE_TEMP, 'sqlite.db')
+let database = new Database(sqlitePath)
+database.pragma('journal_mode = WAL')
+database.exec('CREATE TABLE probe (answer INTEGER); INSERT INTO probe VALUES (42)')
+database.close()
+database = new Database(sqlitePath)
+if (database.prepare('SELECT answer FROM probe').get().answer !== 42) {
+  throw new Error('Packaged SQLite lost its write across reopen')
+}
+database.exec("CREATE VIRTUAL TABLE search USING fts5(body); INSERT INTO search VALUES ('heron')")
+if (database.prepare("SELECT count(*) AS count FROM search WHERE search MATCH 'heron'").get().count !== 1) {
+  throw new Error('Packaged SQLite FTS5 query failed')
+}
 database.close()
 require(packagedRequire.resolve('keytar'))
 
@@ -202,11 +252,13 @@ const timer = setTimeout(() => {
 }, 30000)
 
 ;(async () => {
-  const persistence = new LeveldbPersistence(levelDbPath)
+  let persistence = new LeveldbPersistence(levelDbPath)
   const doc = new Y.Doc()
   doc.getMap('probe').set('ok', true)
   await persistence.storeUpdate(PROBE_DOC, Y.encodeStateAsUpdate(doc))
   doc.destroy()
+  await persistence.destroy()
+  persistence = new LeveldbPersistence(levelDbPath)
 
   const loaded = await persistence.getYDoc(PROBE_DOC)
   const value = loaded.getMap('probe').get('ok')
@@ -236,7 +288,7 @@ const timer = setTimeout(() => {
   }
 
   clearTimeout(timer)
-  console.log(\`Electron native runtime ABI \${process.versions.modules}, packaged OCR reads text\`)
+  console.log(\`Electron native runtime ABI \${process.versions.modules}, SQLite and CRDT persist across reopen, packaged OCR reads text\`)
 })().catch((error) => {
   console.error(error)
   process.exit(1)
@@ -247,9 +299,11 @@ const timer = setTimeout(() => {
   try {
     const result = spawnSync(electronExecutable, [smokeScriptPath], {
       encoding: 'utf8',
+      timeout: 60000,
       env: {
         ...process.env,
         ELECTRON_RUN_AS_NODE: '1',
+        MEMRY_SMOKE_TEMP: tempDir,
         MEMRY_PACKAGED_MAIN: appMainPath,
         MEMRY_PACKAGED_TESSDATA: path.join(
           resourcesPath,
@@ -264,7 +318,10 @@ const timer = setTimeout(() => {
     })
 
     if (result.status !== 0) {
-      const output = [result.stdout, result.stderr].filter(Boolean).join('\n').trim()
+      const output = [result.stdout, result.stderr, result.error?.message]
+        .filter(Boolean)
+        .join('\n')
+        .trim()
       fail(`Packaged native modules do not load under Electron:\n${output}`)
       return
     }
@@ -302,6 +359,7 @@ function assertNativeModuleArch(moduleName, resolvedPath, expectedArch) {
     }
 
     const binaryPath = path.join(releaseDir, entry)
+    assertLinuxElfCompatibility(binaryPath)
     const archs = runLipoArchs(binaryPath)
     if (archs.length > 0 && !archListIncludes(archs, expectedArch)) {
       fail(
@@ -345,6 +403,10 @@ function assertCrdtClassicLevelBuiltFromSource(yLeveldbEntry) {
   const builtBinaries = fs.existsSync(releaseDir)
     ? fs.readdirSync(releaseDir).filter((entry) => entry.endsWith('.node'))
     : []
+
+  for (const binary of builtBinaries) {
+    assertLinuxElfCompatibility(path.join(releaseDir, binary))
+  }
 
   if (builtBinaries.length === 0) {
     fail(

@@ -113,7 +113,74 @@
       "noDueDate": "Без срока"
     },
     "repeatTypeRepeating": "Повторяющиеся",
-    "repeatTypeOneTime": "Разовые"
+    "repeatTypeOneTime": "Разовые",
+    "advanced": {
+      "entry": "Расширенный фильтр…",
+      "entryHint": "Правила с и, или, не",
+      "title": "Фильтр",
+      "match": "Соответствие",
+      "ofThese": "из этих правил",
+      "matches": {
+        "all": "всем",
+        "any": "любому",
+        "none": "ни одному"
+      },
+      "fields": {
+        "title": "Название",
+        "status": "Статус",
+        "priority": "Приоритет",
+        "due": "Срок",
+        "project": "Проект",
+        "location": "Место",
+        "tags": "Теги",
+        "repeat": "Повтор",
+        "hasTime": "Есть время"
+      },
+      "ops": {
+        "contains": "содержит",
+        "notContains": "не содержит",
+        "any": "одно из",
+        "none": "ни одно из",
+        "all": "имеет все",
+        "empty": "пусто",
+        "notEmpty": "не пусто",
+        "is": "равно",
+        "isNot": "не равно"
+      },
+      "tagOps": {
+        "any": "имеет любой из",
+        "all": "имеет все",
+        "none": "не имеет ни одного из"
+      },
+      "values": {
+        "repeating": "Повторяющаяся",
+        "oneTime": "Разовая",
+        "withTime": "Со временем",
+        "withoutTime": "Без времени",
+        "customRange": "Свой диапазон",
+        "from": "С",
+        "to": "По",
+        "pick": "Выбрать…",
+        "titlePlaceholder": "Текст в названии"
+      },
+      "addRule": "Добавить правило",
+      "addGroup": "Добавить группу",
+      "clear": "Очистить",
+      "removeRule": "Удалить правило",
+      "removeGroup": "Удалить группу",
+      "matchCount": "{count, plural, one {Подходит # задача} few {Подходят # задачи} many {Подходят # задач} other {Подходит # задачи}}",
+      "skipped": "{count, plural, one {Пропущено # правило} few {Пропущено # правила} many {Пропущено # правил} other {Пропущено # правила}}",
+      "ruleCount": "{count, plural, one {# правило} few {# правила} many {# правил} other {# правила}}",
+      "unknownRule": "Правило из более новой версии",
+      "empty": "Правил пока нет. Добавьте правило, чтобы начать фильтрацию.",
+      "summary": {
+        "and": "и",
+        "or": "или",
+        "not": "не"
+      },
+      "editRules": "Изменить правила",
+      "clearRules": "Очистить правила"
+    }
   },
   "quickAdd": {
     "label": "Быстрое добавление задачи",

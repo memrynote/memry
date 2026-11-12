@@ -7845,6 +7845,3140 @@
         "hasActiveFilters": true,
         "countActiveFilters": 1
       }
+    },
+    {
+      "name": "expression-or-group-and-not",
+      "now": "wednesday",
+      "weekStartsOn": 1,
+      "filters": {
+        "search": "",
+        "projectIds": [],
+        "priorities": [],
+        "tags": [],
+        "dueDate": {
+          "type": "any",
+          "customStart": null,
+          "customEnd": null
+        },
+        "statusIds": [],
+        "completion": "active",
+        "repeatType": "all",
+        "hasTime": "all",
+        "expression": {
+          "match": "all",
+          "rules": [
+            {
+              "match": "any",
+              "rules": [
+                {
+                  "field": "priority",
+                  "op": "any",
+                  "values": [
+                    "urgent"
+                  ]
+                },
+                {
+                  "field": "due",
+                  "op": "is",
+                  "values": [
+                    "overdue"
+                  ]
+                }
+              ]
+            },
+            {
+              "field": "tags",
+              "op": "none",
+              "values": [
+                "home"
+              ]
+            }
+          ]
+        }
+      },
+      "sort": {
+        "field": "title",
+        "direction": "asc"
+      },
+      "expected": {
+        "taskIds": [
+          "c",
+          "p",
+          "k",
+          "a"
+        ],
+        "contextIds": [
+          "a"
+        ],
+        "hasActiveFilters": true,
+        "countActiveFilters": 3
+      }
+    },
+    {
+      "name": "expression-with-chips-reaches-deeper",
+      "now": "wednesday",
+      "weekStartsOn": 1,
+      "filters": {
+        "search": "",
+        "projectIds": [
+          "p1"
+        ],
+        "priorities": [],
+        "tags": [],
+        "dueDate": {
+          "type": "any",
+          "customStart": null,
+          "customEnd": null
+        },
+        "statusIds": [],
+        "completion": "active",
+        "repeatType": "all",
+        "hasTime": "all",
+        "expression": {
+          "match": "all",
+          "rules": [
+            {
+              "field": "tags",
+              "op": "any",
+              "values": [
+                "deep"
+              ]
+            }
+          ]
+        }
+      },
+      "sort": {
+        "field": "title",
+        "direction": "asc"
+      },
+      "expected": {
+        "taskIds": [
+          "p",
+          "q",
+          "r",
+          "k",
+          "a"
+        ],
+        "contextIds": [
+          "a",
+          "k",
+          "q"
+        ],
+        "hasActiveFilters": true,
+        "countActiveFilters": 2
+      }
+    },
+    {
+      "name": "expression-only-skipped-rules",
+      "now": "wednesday",
+      "weekStartsOn": 1,
+      "filters": {
+        "search": "",
+        "projectIds": [],
+        "priorities": [],
+        "tags": [],
+        "dueDate": {
+          "type": "any",
+          "customStart": null,
+          "customEnd": null
+        },
+        "statusIds": [],
+        "completion": "active",
+        "repeatType": "all",
+        "hasTime": "all",
+        "expression": {
+          "match": "all",
+          "rules": [
+            {
+              "field": "priority",
+              "op": "any",
+              "values": []
+            },
+            {
+              "field": "bogus",
+              "op": "any",
+              "values": [
+                "x"
+              ]
+            }
+          ]
+        }
+      },
+      "sort": {
+        "field": "title",
+        "direction": "asc"
+      },
+      "expected": {
+        "taskIds": [
+          "c",
+          "b",
+          "e",
+          "d",
+          "f",
+          "p",
+          "q",
+          "r",
+          "m",
+          "n",
+          "i",
+          "k",
+          "l",
+          "j",
+          "o",
+          "a"
+        ],
+        "contextIds": [],
+        "hasActiveFilters": false,
+        "countActiveFilters": 0
+      }
     }
-  ]
+  ],
+  "expressions": [
+    {
+      "name": "title-contains",
+      "now": "wednesday",
+      "weekStartsOn": 1,
+      "expression": {
+        "match": "all",
+        "rules": [
+          {
+            "field": "title",
+            "op": "contains",
+            "values": [
+              "REPORT"
+            ]
+          }
+        ]
+      },
+      "withNotes": true,
+      "expected": [
+        "a",
+        "k",
+        "p",
+        "o"
+      ],
+      "ruleCount": 1
+    },
+    {
+      "name": "title-contains",
+      "now": "wednesday",
+      "weekStartsOn": 1,
+      "expression": {
+        "match": "all",
+        "rules": [
+          {
+            "field": "title",
+            "op": "contains",
+            "values": [
+              "REPORT"
+            ]
+          }
+        ]
+      },
+      "withNotes": false,
+      "expected": [
+        "a",
+        "k",
+        "p",
+        "o"
+      ],
+      "ruleCount": 1
+    },
+    {
+      "name": "title-not-contains",
+      "now": "wednesday",
+      "weekStartsOn": 1,
+      "expression": {
+        "match": "all",
+        "rules": [
+          {
+            "field": "title",
+            "op": "notContains",
+            "values": [
+              "report"
+            ]
+          }
+        ]
+      },
+      "withNotes": true,
+      "expected": [
+        "b",
+        "c",
+        "d",
+        "e",
+        "f",
+        "g",
+        "h",
+        "i",
+        "j",
+        "l",
+        "q",
+        "r",
+        "m",
+        "n"
+      ],
+      "ruleCount": 1
+    },
+    {
+      "name": "title-not-contains",
+      "now": "wednesday",
+      "weekStartsOn": 1,
+      "expression": {
+        "match": "all",
+        "rules": [
+          {
+            "field": "title",
+            "op": "notContains",
+            "values": [
+              "report"
+            ]
+          }
+        ]
+      },
+      "withNotes": false,
+      "expected": [
+        "b",
+        "c",
+        "d",
+        "e",
+        "f",
+        "g",
+        "h",
+        "i",
+        "j",
+        "l",
+        "q",
+        "r",
+        "m",
+        "n"
+      ],
+      "ruleCount": 1
+    },
+    {
+      "name": "title-blank-skipped",
+      "now": "wednesday",
+      "weekStartsOn": 1,
+      "expression": {
+        "match": "all",
+        "rules": [
+          {
+            "field": "title",
+            "op": "contains",
+            "values": [
+              "  "
+            ]
+          }
+        ]
+      },
+      "withNotes": true,
+      "expected": [
+        "a",
+        "b",
+        "c",
+        "d",
+        "e",
+        "f",
+        "g",
+        "h",
+        "i",
+        "j",
+        "k",
+        "l",
+        "p",
+        "q",
+        "r",
+        "m",
+        "n",
+        "o"
+      ],
+      "ruleCount": 0
+    },
+    {
+      "name": "title-blank-skipped",
+      "now": "wednesday",
+      "weekStartsOn": 1,
+      "expression": {
+        "match": "all",
+        "rules": [
+          {
+            "field": "title",
+            "op": "contains",
+            "values": [
+              "  "
+            ]
+          }
+        ]
+      },
+      "withNotes": false,
+      "expected": [
+        "a",
+        "b",
+        "c",
+        "d",
+        "e",
+        "f",
+        "g",
+        "h",
+        "i",
+        "j",
+        "k",
+        "l",
+        "p",
+        "q",
+        "r",
+        "m",
+        "n",
+        "o"
+      ],
+      "ruleCount": 0
+    },
+    {
+      "name": "priority-any",
+      "now": "wednesday",
+      "weekStartsOn": 1,
+      "expression": {
+        "match": "all",
+        "rules": [
+          {
+            "field": "priority",
+            "op": "any",
+            "values": [
+              "urgent",
+              "high"
+            ]
+          }
+        ]
+      },
+      "withNotes": true,
+      "expected": [
+        "a",
+        "c",
+        "f",
+        "k",
+        "o"
+      ],
+      "ruleCount": 1
+    },
+    {
+      "name": "priority-any",
+      "now": "wednesday",
+      "weekStartsOn": 1,
+      "expression": {
+        "match": "all",
+        "rules": [
+          {
+            "field": "priority",
+            "op": "any",
+            "values": [
+              "urgent",
+              "high"
+            ]
+          }
+        ]
+      },
+      "withNotes": false,
+      "expected": [
+        "a",
+        "c",
+        "f",
+        "k",
+        "o"
+      ],
+      "ruleCount": 1
+    },
+    {
+      "name": "priority-none",
+      "now": "wednesday",
+      "weekStartsOn": 1,
+      "expression": {
+        "match": "all",
+        "rules": [
+          {
+            "field": "priority",
+            "op": "none",
+            "values": [
+              "none",
+              "low"
+            ]
+          }
+        ]
+      },
+      "withNotes": true,
+      "expected": [
+        "a",
+        "c",
+        "d",
+        "f",
+        "k",
+        "m",
+        "o"
+      ],
+      "ruleCount": 1
+    },
+    {
+      "name": "priority-none",
+      "now": "wednesday",
+      "weekStartsOn": 1,
+      "expression": {
+        "match": "all",
+        "rules": [
+          {
+            "field": "priority",
+            "op": "none",
+            "values": [
+              "none",
+              "low"
+            ]
+          }
+        ]
+      },
+      "withNotes": false,
+      "expected": [
+        "a",
+        "c",
+        "d",
+        "f",
+        "k",
+        "m",
+        "o"
+      ],
+      "ruleCount": 1
+    },
+    {
+      "name": "status-any",
+      "now": "wednesday",
+      "weekStartsOn": 1,
+      "expression": {
+        "match": "all",
+        "rules": [
+          {
+            "field": "status",
+            "op": "any",
+            "values": [
+              "p1-doing",
+              "p2-todo"
+            ]
+          }
+        ]
+      },
+      "withNotes": true,
+      "expected": [
+        "b",
+        "c",
+        "l"
+      ],
+      "ruleCount": 1
+    },
+    {
+      "name": "status-any",
+      "now": "wednesday",
+      "weekStartsOn": 1,
+      "expression": {
+        "match": "all",
+        "rules": [
+          {
+            "field": "status",
+            "op": "any",
+            "values": [
+              "p1-doing",
+              "p2-todo"
+            ]
+          }
+        ]
+      },
+      "withNotes": false,
+      "expected": [
+        "b",
+        "c",
+        "l"
+      ],
+      "ruleCount": 1
+    },
+    {
+      "name": "status-none",
+      "now": "wednesday",
+      "weekStartsOn": 1,
+      "expression": {
+        "match": "all",
+        "rules": [
+          {
+            "field": "status",
+            "op": "none",
+            "values": [
+              "p1-todo"
+            ]
+          }
+        ]
+      },
+      "withNotes": true,
+      "expected": [
+        "b",
+        "c",
+        "d",
+        "e",
+        "g",
+        "h",
+        "i",
+        "j",
+        "l"
+      ],
+      "ruleCount": 1
+    },
+    {
+      "name": "status-none",
+      "now": "wednesday",
+      "weekStartsOn": 1,
+      "expression": {
+        "match": "all",
+        "rules": [
+          {
+            "field": "status",
+            "op": "none",
+            "values": [
+              "p1-todo"
+            ]
+          }
+        ]
+      },
+      "withNotes": false,
+      "expected": [
+        "b",
+        "c",
+        "d",
+        "e",
+        "g",
+        "h",
+        "i",
+        "j",
+        "l"
+      ],
+      "ruleCount": 1
+    },
+    {
+      "name": "project-any",
+      "now": "wednesday",
+      "weekStartsOn": 1,
+      "expression": {
+        "match": "all",
+        "rules": [
+          {
+            "field": "project",
+            "op": "any",
+            "values": [
+              "p2",
+              "p3"
+            ]
+          }
+        ]
+      },
+      "withNotes": true,
+      "expected": [
+        "b",
+        "e",
+        "l"
+      ],
+      "ruleCount": 1
+    },
+    {
+      "name": "project-any",
+      "now": "wednesday",
+      "weekStartsOn": 1,
+      "expression": {
+        "match": "all",
+        "rules": [
+          {
+            "field": "project",
+            "op": "any",
+            "values": [
+              "p2",
+              "p3"
+            ]
+          }
+        ]
+      },
+      "withNotes": false,
+      "expected": [
+        "b",
+        "e",
+        "l"
+      ],
+      "ruleCount": 1
+    },
+    {
+      "name": "project-none",
+      "now": "wednesday",
+      "weekStartsOn": 1,
+      "expression": {
+        "match": "all",
+        "rules": [
+          {
+            "field": "project",
+            "op": "none",
+            "values": [
+              "p1"
+            ]
+          }
+        ]
+      },
+      "withNotes": true,
+      "expected": [
+        "b",
+        "e",
+        "j",
+        "l"
+      ],
+      "ruleCount": 1
+    },
+    {
+      "name": "project-none",
+      "now": "wednesday",
+      "weekStartsOn": 1,
+      "expression": {
+        "match": "all",
+        "rules": [
+          {
+            "field": "project",
+            "op": "none",
+            "values": [
+              "p1"
+            ]
+          }
+        ]
+      },
+      "withNotes": false,
+      "expected": [
+        "b",
+        "e",
+        "j",
+        "l"
+      ],
+      "ruleCount": 1
+    },
+    {
+      "name": "tags-any-folded",
+      "now": "wednesday",
+      "weekStartsOn": 1,
+      "expression": {
+        "match": "all",
+        "rules": [
+          {
+            "field": "tags",
+            "op": "any",
+            "values": [
+              "WORK",
+              "iş"
+            ]
+          }
+        ]
+      },
+      "withNotes": true,
+      "expected": [
+        "a",
+        "b",
+        "d"
+      ],
+      "ruleCount": 1
+    },
+    {
+      "name": "tags-any-folded",
+      "now": "wednesday",
+      "weekStartsOn": 1,
+      "expression": {
+        "match": "all",
+        "rules": [
+          {
+            "field": "tags",
+            "op": "any",
+            "values": [
+              "WORK",
+              "iş"
+            ]
+          }
+        ]
+      },
+      "withNotes": false,
+      "expected": [
+        "a",
+        "b",
+        "d"
+      ],
+      "ruleCount": 1
+    },
+    {
+      "name": "tags-all",
+      "now": "wednesday",
+      "weekStartsOn": 1,
+      "expression": {
+        "match": "all",
+        "rules": [
+          {
+            "field": "tags",
+            "op": "all",
+            "values": [
+              "work",
+              "writing"
+            ]
+          }
+        ]
+      },
+      "withNotes": true,
+      "expected": [
+        "a"
+      ],
+      "ruleCount": 1
+    },
+    {
+      "name": "tags-all",
+      "now": "wednesday",
+      "weekStartsOn": 1,
+      "expression": {
+        "match": "all",
+        "rules": [
+          {
+            "field": "tags",
+            "op": "all",
+            "values": [
+              "work",
+              "writing"
+            ]
+          }
+        ]
+      },
+      "withNotes": false,
+      "expected": [
+        "a"
+      ],
+      "ruleCount": 1
+    },
+    {
+      "name": "tags-none",
+      "now": "wednesday",
+      "weekStartsOn": 1,
+      "expression": {
+        "match": "all",
+        "rules": [
+          {
+            "field": "tags",
+            "op": "none",
+            "values": [
+              "work"
+            ]
+          }
+        ]
+      },
+      "withNotes": true,
+      "expected": [
+        "b",
+        "c",
+        "e",
+        "f",
+        "g",
+        "h",
+        "i",
+        "j",
+        "k",
+        "l",
+        "p",
+        "q",
+        "r",
+        "m",
+        "n",
+        "o"
+      ],
+      "ruleCount": 1
+    },
+    {
+      "name": "tags-none",
+      "now": "wednesday",
+      "weekStartsOn": 1,
+      "expression": {
+        "match": "all",
+        "rules": [
+          {
+            "field": "tags",
+            "op": "none",
+            "values": [
+              "work"
+            ]
+          }
+        ]
+      },
+      "withNotes": false,
+      "expected": [
+        "b",
+        "c",
+        "e",
+        "f",
+        "g",
+        "h",
+        "i",
+        "j",
+        "k",
+        "l",
+        "p",
+        "q",
+        "r",
+        "m",
+        "n",
+        "o"
+      ],
+      "ruleCount": 1
+    },
+    {
+      "name": "tags-empty",
+      "now": "wednesday",
+      "weekStartsOn": 1,
+      "expression": {
+        "match": "all",
+        "rules": [
+          {
+            "field": "tags",
+            "op": "empty",
+            "values": []
+          }
+        ]
+      },
+      "withNotes": true,
+      "expected": [
+        "e",
+        "f",
+        "g",
+        "h",
+        "i",
+        "j",
+        "k",
+        "l",
+        "q",
+        "m",
+        "n",
+        "o"
+      ],
+      "ruleCount": 1
+    },
+    {
+      "name": "tags-empty",
+      "now": "wednesday",
+      "weekStartsOn": 1,
+      "expression": {
+        "match": "all",
+        "rules": [
+          {
+            "field": "tags",
+            "op": "empty",
+            "values": []
+          }
+        ]
+      },
+      "withNotes": false,
+      "expected": [
+        "e",
+        "f",
+        "g",
+        "h",
+        "i",
+        "j",
+        "k",
+        "l",
+        "q",
+        "m",
+        "n",
+        "o"
+      ],
+      "ruleCount": 1
+    },
+    {
+      "name": "tags-not-empty",
+      "now": "wednesday",
+      "weekStartsOn": 1,
+      "expression": {
+        "match": "all",
+        "rules": [
+          {
+            "field": "tags",
+            "op": "notEmpty",
+            "values": []
+          }
+        ]
+      },
+      "withNotes": true,
+      "expected": [
+        "a",
+        "b",
+        "c",
+        "d",
+        "p",
+        "r"
+      ],
+      "ruleCount": 1
+    },
+    {
+      "name": "tags-not-empty",
+      "now": "wednesday",
+      "weekStartsOn": 1,
+      "expression": {
+        "match": "all",
+        "rules": [
+          {
+            "field": "tags",
+            "op": "notEmpty",
+            "values": []
+          }
+        ]
+      },
+      "withNotes": false,
+      "expected": [
+        "a",
+        "b",
+        "c",
+        "d",
+        "p",
+        "r"
+      ],
+      "ruleCount": 1
+    },
+    {
+      "name": "due-is-multi",
+      "now": "wednesday",
+      "weekStartsOn": 1,
+      "expression": {
+        "match": "all",
+        "rules": [
+          {
+            "field": "due",
+            "op": "is",
+            "values": [
+              "overdue",
+              "today"
+            ]
+          }
+        ]
+      },
+      "withNotes": true,
+      "expected": [
+        "a",
+        "b",
+        "c",
+        "k",
+        "o"
+      ],
+      "ruleCount": 1
+    },
+    {
+      "name": "due-is-multi",
+      "now": "wednesday",
+      "weekStartsOn": 1,
+      "expression": {
+        "match": "all",
+        "rules": [
+          {
+            "field": "due",
+            "op": "is",
+            "values": [
+              "overdue",
+              "today"
+            ]
+          }
+        ]
+      },
+      "withNotes": false,
+      "expected": [
+        "a",
+        "b",
+        "c",
+        "k",
+        "o"
+      ],
+      "ruleCount": 1
+    },
+    {
+      "name": "due-is-not-none",
+      "now": "wednesday",
+      "weekStartsOn": 1,
+      "expression": {
+        "match": "all",
+        "rules": [
+          {
+            "field": "due",
+            "op": "isNot",
+            "values": [
+              "none"
+            ]
+          }
+        ]
+      },
+      "withNotes": true,
+      "expected": [
+        "a",
+        "b",
+        "c",
+        "d",
+        "e",
+        "f",
+        "g",
+        "h",
+        "i",
+        "k",
+        "q",
+        "m",
+        "n",
+        "o"
+      ],
+      "ruleCount": 1
+    },
+    {
+      "name": "due-is-not-none",
+      "now": "wednesday",
+      "weekStartsOn": 1,
+      "expression": {
+        "match": "all",
+        "rules": [
+          {
+            "field": "due",
+            "op": "isNot",
+            "values": [
+              "none"
+            ]
+          }
+        ]
+      },
+      "withNotes": false,
+      "expected": [
+        "a",
+        "b",
+        "c",
+        "d",
+        "e",
+        "f",
+        "g",
+        "h",
+        "i",
+        "k",
+        "q",
+        "m",
+        "n",
+        "o"
+      ],
+      "ruleCount": 1
+    },
+    {
+      "name": "due-custom",
+      "now": "wednesday",
+      "weekStartsOn": 1,
+      "expression": {
+        "match": "all",
+        "rules": [
+          {
+            "field": "due",
+            "op": "is",
+            "values": [
+              "custom"
+            ],
+            "dueStart": "2026-01-13",
+            "dueEnd": "2026-01-15"
+          }
+        ]
+      },
+      "withNotes": true,
+      "expected": [
+        "a",
+        "c",
+        "d",
+        "g",
+        "k",
+        "o"
+      ],
+      "ruleCount": 1
+    },
+    {
+      "name": "due-custom",
+      "now": "wednesday",
+      "weekStartsOn": 1,
+      "expression": {
+        "match": "all",
+        "rules": [
+          {
+            "field": "due",
+            "op": "is",
+            "values": [
+              "custom"
+            ],
+            "dueStart": "2026-01-13",
+            "dueEnd": "2026-01-15"
+          }
+        ]
+      },
+      "withNotes": false,
+      "expected": [
+        "a",
+        "c",
+        "d",
+        "g",
+        "k",
+        "o"
+      ],
+      "ruleCount": 1
+    },
+    {
+      "name": "due-custom-missing-end-skipped",
+      "now": "wednesday",
+      "weekStartsOn": 1,
+      "expression": {
+        "match": "all",
+        "rules": [
+          {
+            "field": "due",
+            "op": "is",
+            "values": [
+              "custom"
+            ],
+            "dueStart": "2026-01-13",
+            "dueEnd": null
+          }
+        ]
+      },
+      "withNotes": true,
+      "expected": [
+        "a",
+        "b",
+        "c",
+        "d",
+        "e",
+        "f",
+        "g",
+        "h",
+        "i",
+        "j",
+        "k",
+        "l",
+        "p",
+        "q",
+        "r",
+        "m",
+        "n",
+        "o"
+      ],
+      "ruleCount": 0
+    },
+    {
+      "name": "due-custom-missing-end-skipped",
+      "now": "wednesday",
+      "weekStartsOn": 1,
+      "expression": {
+        "match": "all",
+        "rules": [
+          {
+            "field": "due",
+            "op": "is",
+            "values": [
+              "custom"
+            ],
+            "dueStart": "2026-01-13",
+            "dueEnd": null
+          }
+        ]
+      },
+      "withNotes": false,
+      "expected": [
+        "a",
+        "b",
+        "c",
+        "d",
+        "e",
+        "f",
+        "g",
+        "h",
+        "i",
+        "j",
+        "k",
+        "l",
+        "p",
+        "q",
+        "r",
+        "m",
+        "n",
+        "o"
+      ],
+      "ruleCount": 0
+    },
+    {
+      "name": "due-custom-bad-key-skipped",
+      "now": "wednesday",
+      "weekStartsOn": 1,
+      "expression": {
+        "match": "all",
+        "rules": [
+          {
+            "field": "due",
+            "op": "is",
+            "values": [
+              "custom"
+            ],
+            "dueStart": "soon",
+            "dueEnd": "2026-01-15"
+          }
+        ]
+      },
+      "withNotes": true,
+      "expected": [
+        "a",
+        "b",
+        "c",
+        "d",
+        "e",
+        "f",
+        "g",
+        "h",
+        "i",
+        "j",
+        "k",
+        "l",
+        "p",
+        "q",
+        "r",
+        "m",
+        "n",
+        "o"
+      ],
+      "ruleCount": 0
+    },
+    {
+      "name": "due-custom-bad-key-skipped",
+      "now": "wednesday",
+      "weekStartsOn": 1,
+      "expression": {
+        "match": "all",
+        "rules": [
+          {
+            "field": "due",
+            "op": "is",
+            "values": [
+              "custom"
+            ],
+            "dueStart": "soon",
+            "dueEnd": "2026-01-15"
+          }
+        ]
+      },
+      "withNotes": false,
+      "expected": [
+        "a",
+        "b",
+        "c",
+        "d",
+        "e",
+        "f",
+        "g",
+        "h",
+        "i",
+        "j",
+        "k",
+        "l",
+        "p",
+        "q",
+        "r",
+        "m",
+        "n",
+        "o"
+      ],
+      "ruleCount": 0
+    },
+    {
+      "name": "due-unknown-preset-skipped",
+      "now": "wednesday",
+      "weekStartsOn": 1,
+      "expression": {
+        "match": "all",
+        "rules": [
+          {
+            "field": "due",
+            "op": "is",
+            "values": [
+              "someday"
+            ]
+          }
+        ]
+      },
+      "withNotes": true,
+      "expected": [
+        "a",
+        "b",
+        "c",
+        "d",
+        "e",
+        "f",
+        "g",
+        "h",
+        "i",
+        "j",
+        "k",
+        "l",
+        "p",
+        "q",
+        "r",
+        "m",
+        "n",
+        "o"
+      ],
+      "ruleCount": 0
+    },
+    {
+      "name": "due-unknown-preset-skipped",
+      "now": "wednesday",
+      "weekStartsOn": 1,
+      "expression": {
+        "match": "all",
+        "rules": [
+          {
+            "field": "due",
+            "op": "is",
+            "values": [
+              "someday"
+            ]
+          }
+        ]
+      },
+      "withNotes": false,
+      "expected": [
+        "a",
+        "b",
+        "c",
+        "d",
+        "e",
+        "f",
+        "g",
+        "h",
+        "i",
+        "j",
+        "k",
+        "l",
+        "p",
+        "q",
+        "r",
+        "m",
+        "n",
+        "o"
+      ],
+      "ruleCount": 0
+    },
+    {
+      "name": "location-folder",
+      "now": "wednesday",
+      "weekStartsOn": 1,
+      "expression": {
+        "match": "all",
+        "rules": [
+          {
+            "field": "location",
+            "op": "any",
+            "folderPaths": [
+              "Acme"
+            ],
+            "noteIds": []
+          }
+        ]
+      },
+      "withNotes": true,
+      "expected": [
+        "a",
+        "c",
+        "g"
+      ],
+      "ruleCount": 1
+    },
+    {
+      "name": "location-folder",
+      "now": "wednesday",
+      "weekStartsOn": 1,
+      "expression": {
+        "match": "all",
+        "rules": [
+          {
+            "field": "location",
+            "op": "any",
+            "folderPaths": [
+              "Acme"
+            ],
+            "noteIds": []
+          }
+        ]
+      },
+      "withNotes": false,
+      "expected": [],
+      "ruleCount": 1
+    },
+    {
+      "name": "location-note-none",
+      "now": "wednesday",
+      "weekStartsOn": 1,
+      "expression": {
+        "match": "all",
+        "rules": [
+          {
+            "field": "location",
+            "op": "none",
+            "folderPaths": [],
+            "noteIds": [
+              "n-roadmap"
+            ]
+          }
+        ]
+      },
+      "withNotes": true,
+      "expected": [
+        "b",
+        "d",
+        "e",
+        "f",
+        "g",
+        "h",
+        "i",
+        "j",
+        "k",
+        "l",
+        "p",
+        "q",
+        "r",
+        "m",
+        "n",
+        "o"
+      ],
+      "ruleCount": 1
+    },
+    {
+      "name": "location-note-none",
+      "now": "wednesday",
+      "weekStartsOn": 1,
+      "expression": {
+        "match": "all",
+        "rules": [
+          {
+            "field": "location",
+            "op": "none",
+            "folderPaths": [],
+            "noteIds": [
+              "n-roadmap"
+            ]
+          }
+        ]
+      },
+      "withNotes": false,
+      "expected": [
+        "a",
+        "b",
+        "c",
+        "d",
+        "e",
+        "f",
+        "g",
+        "h",
+        "i",
+        "j",
+        "k",
+        "l",
+        "p",
+        "q",
+        "r",
+        "m",
+        "n",
+        "o"
+      ],
+      "ruleCount": 1
+    },
+    {
+      "name": "location-empty-skipped",
+      "now": "wednesday",
+      "weekStartsOn": 1,
+      "expression": {
+        "match": "all",
+        "rules": [
+          {
+            "field": "location",
+            "op": "any",
+            "folderPaths": [],
+            "noteIds": []
+          }
+        ]
+      },
+      "withNotes": true,
+      "expected": [
+        "a",
+        "b",
+        "c",
+        "d",
+        "e",
+        "f",
+        "g",
+        "h",
+        "i",
+        "j",
+        "k",
+        "l",
+        "p",
+        "q",
+        "r",
+        "m",
+        "n",
+        "o"
+      ],
+      "ruleCount": 0
+    },
+    {
+      "name": "location-empty-skipped",
+      "now": "wednesday",
+      "weekStartsOn": 1,
+      "expression": {
+        "match": "all",
+        "rules": [
+          {
+            "field": "location",
+            "op": "any",
+            "folderPaths": [],
+            "noteIds": []
+          }
+        ]
+      },
+      "withNotes": false,
+      "expected": [
+        "a",
+        "b",
+        "c",
+        "d",
+        "e",
+        "f",
+        "g",
+        "h",
+        "i",
+        "j",
+        "k",
+        "l",
+        "p",
+        "q",
+        "r",
+        "m",
+        "n",
+        "o"
+      ],
+      "ruleCount": 0
+    },
+    {
+      "name": "repeat-repeating",
+      "now": "wednesday",
+      "weekStartsOn": 1,
+      "expression": {
+        "match": "all",
+        "rules": [
+          {
+            "field": "repeat",
+            "op": "is",
+            "values": [
+              "repeating"
+            ]
+          }
+        ]
+      },
+      "withNotes": true,
+      "expected": [
+        "d",
+        "m"
+      ],
+      "ruleCount": 1
+    },
+    {
+      "name": "repeat-repeating",
+      "now": "wednesday",
+      "weekStartsOn": 1,
+      "expression": {
+        "match": "all",
+        "rules": [
+          {
+            "field": "repeat",
+            "op": "is",
+            "values": [
+              "repeating"
+            ]
+          }
+        ]
+      },
+      "withNotes": false,
+      "expected": [
+        "d",
+        "m"
+      ],
+      "ruleCount": 1
+    },
+    {
+      "name": "repeat-one-time",
+      "now": "wednesday",
+      "weekStartsOn": 1,
+      "expression": {
+        "match": "all",
+        "rules": [
+          {
+            "field": "repeat",
+            "op": "is",
+            "values": [
+              "one-time"
+            ]
+          }
+        ]
+      },
+      "withNotes": true,
+      "expected": [
+        "a",
+        "b",
+        "c",
+        "e",
+        "f",
+        "g",
+        "h",
+        "i",
+        "j",
+        "k",
+        "l",
+        "p",
+        "q",
+        "r",
+        "n",
+        "o"
+      ],
+      "ruleCount": 1
+    },
+    {
+      "name": "repeat-one-time",
+      "now": "wednesday",
+      "weekStartsOn": 1,
+      "expression": {
+        "match": "all",
+        "rules": [
+          {
+            "field": "repeat",
+            "op": "is",
+            "values": [
+              "one-time"
+            ]
+          }
+        ]
+      },
+      "withNotes": false,
+      "expected": [
+        "a",
+        "b",
+        "c",
+        "e",
+        "f",
+        "g",
+        "h",
+        "i",
+        "j",
+        "k",
+        "l",
+        "p",
+        "q",
+        "r",
+        "n",
+        "o"
+      ],
+      "ruleCount": 1
+    },
+    {
+      "name": "has-time-with",
+      "now": "wednesday",
+      "weekStartsOn": 1,
+      "expression": {
+        "match": "all",
+        "rules": [
+          {
+            "field": "hasTime",
+            "op": "is",
+            "values": [
+              "with-time"
+            ]
+          }
+        ]
+      },
+      "withNotes": true,
+      "expected": [
+        "a",
+        "c",
+        "f",
+        "n",
+        "o"
+      ],
+      "ruleCount": 1
+    },
+    {
+      "name": "has-time-with",
+      "now": "wednesday",
+      "weekStartsOn": 1,
+      "expression": {
+        "match": "all",
+        "rules": [
+          {
+            "field": "hasTime",
+            "op": "is",
+            "values": [
+              "with-time"
+            ]
+          }
+        ]
+      },
+      "withNotes": false,
+      "expected": [
+        "a",
+        "c",
+        "f",
+        "n",
+        "o"
+      ],
+      "ruleCount": 1
+    },
+    {
+      "name": "has-time-without",
+      "now": "wednesday",
+      "weekStartsOn": 1,
+      "expression": {
+        "match": "all",
+        "rules": [
+          {
+            "field": "hasTime",
+            "op": "is",
+            "values": [
+              "without-time"
+            ]
+          }
+        ]
+      },
+      "withNotes": true,
+      "expected": [
+        "b",
+        "d",
+        "e",
+        "g",
+        "h",
+        "i",
+        "j",
+        "k",
+        "l",
+        "p",
+        "q",
+        "r",
+        "m"
+      ],
+      "ruleCount": 1
+    },
+    {
+      "name": "has-time-without",
+      "now": "wednesday",
+      "weekStartsOn": 1,
+      "expression": {
+        "match": "all",
+        "rules": [
+          {
+            "field": "hasTime",
+            "op": "is",
+            "values": [
+              "without-time"
+            ]
+          }
+        ]
+      },
+      "withNotes": false,
+      "expected": [
+        "b",
+        "d",
+        "e",
+        "g",
+        "h",
+        "i",
+        "j",
+        "k",
+        "l",
+        "p",
+        "q",
+        "r",
+        "m"
+      ],
+      "ruleCount": 1
+    },
+    {
+      "name": "unknown-field-skipped",
+      "now": "wednesday",
+      "weekStartsOn": 1,
+      "expression": {
+        "match": "all",
+        "rules": [
+          {
+            "field": "estimate",
+            "op": "any",
+            "values": [
+              "x"
+            ]
+          }
+        ]
+      },
+      "withNotes": true,
+      "expected": [
+        "a",
+        "b",
+        "c",
+        "d",
+        "e",
+        "f",
+        "g",
+        "h",
+        "i",
+        "j",
+        "k",
+        "l",
+        "p",
+        "q",
+        "r",
+        "m",
+        "n",
+        "o"
+      ],
+      "ruleCount": 0
+    },
+    {
+      "name": "unknown-field-skipped",
+      "now": "wednesday",
+      "weekStartsOn": 1,
+      "expression": {
+        "match": "all",
+        "rules": [
+          {
+            "field": "estimate",
+            "op": "any",
+            "values": [
+              "x"
+            ]
+          }
+        ]
+      },
+      "withNotes": false,
+      "expected": [
+        "a",
+        "b",
+        "c",
+        "d",
+        "e",
+        "f",
+        "g",
+        "h",
+        "i",
+        "j",
+        "k",
+        "l",
+        "p",
+        "q",
+        "r",
+        "m",
+        "n",
+        "o"
+      ],
+      "ruleCount": 0
+    },
+    {
+      "name": "unknown-op-skipped",
+      "now": "wednesday",
+      "weekStartsOn": 1,
+      "expression": {
+        "match": "all",
+        "rules": [
+          {
+            "field": "priority",
+            "op": "atLeast",
+            "values": [
+              "high"
+            ]
+          }
+        ]
+      },
+      "withNotes": true,
+      "expected": [
+        "a",
+        "b",
+        "c",
+        "d",
+        "e",
+        "f",
+        "g",
+        "h",
+        "i",
+        "j",
+        "k",
+        "l",
+        "p",
+        "q",
+        "r",
+        "m",
+        "n",
+        "o"
+      ],
+      "ruleCount": 0
+    },
+    {
+      "name": "unknown-op-skipped",
+      "now": "wednesday",
+      "weekStartsOn": 1,
+      "expression": {
+        "match": "all",
+        "rules": [
+          {
+            "field": "priority",
+            "op": "atLeast",
+            "values": [
+              "high"
+            ]
+          }
+        ]
+      },
+      "withNotes": false,
+      "expected": [
+        "a",
+        "b",
+        "c",
+        "d",
+        "e",
+        "f",
+        "g",
+        "h",
+        "i",
+        "j",
+        "k",
+        "l",
+        "p",
+        "q",
+        "r",
+        "m",
+        "n",
+        "o"
+      ],
+      "ruleCount": 0
+    },
+    {
+      "name": "values-not-strings-skipped",
+      "now": "wednesday",
+      "weekStartsOn": 1,
+      "expression": {
+        "match": "all",
+        "rules": [
+          {
+            "field": "project",
+            "op": "any",
+            "values": [
+              1,
+              null
+            ]
+          }
+        ]
+      },
+      "withNotes": true,
+      "expected": [
+        "a",
+        "b",
+        "c",
+        "d",
+        "e",
+        "f",
+        "g",
+        "h",
+        "i",
+        "j",
+        "k",
+        "l",
+        "p",
+        "q",
+        "r",
+        "m",
+        "n",
+        "o"
+      ],
+      "ruleCount": 0
+    },
+    {
+      "name": "values-not-strings-skipped",
+      "now": "wednesday",
+      "weekStartsOn": 1,
+      "expression": {
+        "match": "all",
+        "rules": [
+          {
+            "field": "project",
+            "op": "any",
+            "values": [
+              1,
+              null
+            ]
+          }
+        ]
+      },
+      "withNotes": false,
+      "expected": [
+        "a",
+        "b",
+        "c",
+        "d",
+        "e",
+        "f",
+        "g",
+        "h",
+        "i",
+        "j",
+        "k",
+        "l",
+        "p",
+        "q",
+        "r",
+        "m",
+        "n",
+        "o"
+      ],
+      "ruleCount": 0
+    },
+    {
+      "name": "match-any",
+      "now": "wednesday",
+      "weekStartsOn": 1,
+      "expression": {
+        "match": "any",
+        "rules": [
+          {
+            "field": "priority",
+            "op": "any",
+            "values": [
+              "urgent"
+            ]
+          },
+          {
+            "field": "repeat",
+            "op": "is",
+            "values": [
+              "repeating"
+            ]
+          }
+        ]
+      },
+      "withNotes": true,
+      "expected": [
+        "c",
+        "d",
+        "k",
+        "m"
+      ],
+      "ruleCount": 2
+    },
+    {
+      "name": "match-any",
+      "now": "wednesday",
+      "weekStartsOn": 1,
+      "expression": {
+        "match": "any",
+        "rules": [
+          {
+            "field": "priority",
+            "op": "any",
+            "values": [
+              "urgent"
+            ]
+          },
+          {
+            "field": "repeat",
+            "op": "is",
+            "values": [
+              "repeating"
+            ]
+          }
+        ]
+      },
+      "withNotes": false,
+      "expected": [
+        "c",
+        "d",
+        "k",
+        "m"
+      ],
+      "ruleCount": 2
+    },
+    {
+      "name": "match-none",
+      "now": "wednesday",
+      "weekStartsOn": 1,
+      "expression": {
+        "match": "none",
+        "rules": [
+          {
+            "field": "project",
+            "op": "any",
+            "values": [
+              "p1"
+            ]
+          },
+          {
+            "field": "tags",
+            "op": "empty",
+            "values": []
+          }
+        ]
+      },
+      "withNotes": true,
+      "expected": [
+        "b"
+      ],
+      "ruleCount": 2
+    },
+    {
+      "name": "match-none",
+      "now": "wednesday",
+      "weekStartsOn": 1,
+      "expression": {
+        "match": "none",
+        "rules": [
+          {
+            "field": "project",
+            "op": "any",
+            "values": [
+              "p1"
+            ]
+          },
+          {
+            "field": "tags",
+            "op": "empty",
+            "values": []
+          }
+        ]
+      },
+      "withNotes": false,
+      "expected": [
+        "b"
+      ],
+      "ruleCount": 2
+    },
+    {
+      "name": "nested-groups",
+      "now": "sunday",
+      "weekStartsOn": 0,
+      "expression": {
+        "match": "all",
+        "rules": [
+          {
+            "field": "due",
+            "op": "isNot",
+            "values": [
+              "none"
+            ]
+          },
+          {
+            "match": "any",
+            "rules": [
+              {
+                "field": "due",
+                "op": "is",
+                "values": [
+                  "this-week"
+                ]
+              },
+              {
+                "match": "none",
+                "rules": [
+                  {
+                    "field": "priority",
+                    "op": "any",
+                    "values": [
+                      "none",
+                      "low",
+                      "medium"
+                    ]
+                  }
+                ]
+              }
+            ]
+          }
+        ]
+      },
+      "withNotes": true,
+      "expected": [
+        "a",
+        "c",
+        "e",
+        "f",
+        "k",
+        "o"
+      ],
+      "ruleCount": 3
+    },
+    {
+      "name": "nested-groups",
+      "now": "sunday",
+      "weekStartsOn": 0,
+      "expression": {
+        "match": "all",
+        "rules": [
+          {
+            "field": "due",
+            "op": "isNot",
+            "values": [
+              "none"
+            ]
+          },
+          {
+            "match": "any",
+            "rules": [
+              {
+                "field": "due",
+                "op": "is",
+                "values": [
+                  "this-week"
+                ]
+              },
+              {
+                "match": "none",
+                "rules": [
+                  {
+                    "field": "priority",
+                    "op": "any",
+                    "values": [
+                      "none",
+                      "low",
+                      "medium"
+                    ]
+                  }
+                ]
+              }
+            ]
+          }
+        ]
+      },
+      "withNotes": false,
+      "expected": [
+        "a",
+        "c",
+        "e",
+        "f",
+        "k",
+        "o"
+      ],
+      "ruleCount": 3
+    },
+    {
+      "name": "skipped-group-drops-out",
+      "now": "wednesday",
+      "weekStartsOn": 1,
+      "expression": {
+        "match": "all",
+        "rules": [
+          {
+            "field": "priority",
+            "op": "any",
+            "values": [
+              "high"
+            ]
+          },
+          {
+            "match": "none",
+            "rules": [
+              {
+                "field": "status",
+                "op": "any",
+                "values": []
+              }
+            ]
+          }
+        ]
+      },
+      "withNotes": true,
+      "expected": [
+        "a",
+        "f",
+        "o"
+      ],
+      "ruleCount": 1
+    },
+    {
+      "name": "skipped-group-drops-out",
+      "now": "wednesday",
+      "weekStartsOn": 1,
+      "expression": {
+        "match": "all",
+        "rules": [
+          {
+            "field": "priority",
+            "op": "any",
+            "values": [
+              "high"
+            ]
+          },
+          {
+            "match": "none",
+            "rules": [
+              {
+                "field": "status",
+                "op": "any",
+                "values": []
+              }
+            ]
+          }
+        ]
+      },
+      "withNotes": false,
+      "expected": [
+        "a",
+        "f",
+        "o"
+      ],
+      "ruleCount": 1
+    },
+    {
+      "name": "unknown-match-skipped",
+      "now": "wednesday",
+      "weekStartsOn": 1,
+      "expression": {
+        "match": "all",
+        "rules": [
+          {
+            "field": "priority",
+            "op": "any",
+            "values": [
+              "high"
+            ]
+          },
+          {
+            "match": "most",
+            "rules": [
+              {
+                "field": "priority",
+                "op": "any",
+                "values": [
+                  "low"
+                ]
+              }
+            ]
+          }
+        ]
+      },
+      "withNotes": true,
+      "expected": [
+        "a",
+        "f",
+        "o"
+      ],
+      "ruleCount": 1
+    },
+    {
+      "name": "unknown-match-skipped",
+      "now": "wednesday",
+      "weekStartsOn": 1,
+      "expression": {
+        "match": "all",
+        "rules": [
+          {
+            "field": "priority",
+            "op": "any",
+            "values": [
+              "high"
+            ]
+          },
+          {
+            "match": "most",
+            "rules": [
+              {
+                "field": "priority",
+                "op": "any",
+                "values": [
+                  "low"
+                ]
+              }
+            ]
+          }
+        ]
+      },
+      "withNotes": false,
+      "expected": [
+        "a",
+        "f",
+        "o"
+      ],
+      "ruleCount": 1
+    },
+    {
+      "name": "empty-root",
+      "now": "wednesday",
+      "weekStartsOn": 1,
+      "expression": {
+        "match": "all",
+        "rules": []
+      },
+      "withNotes": true,
+      "expected": [
+        "a",
+        "b",
+        "c",
+        "d",
+        "e",
+        "f",
+        "g",
+        "h",
+        "i",
+        "j",
+        "k",
+        "l",
+        "p",
+        "q",
+        "r",
+        "m",
+        "n",
+        "o"
+      ],
+      "ruleCount": 0
+    },
+    {
+      "name": "empty-root",
+      "now": "wednesday",
+      "weekStartsOn": 1,
+      "expression": {
+        "match": "all",
+        "rules": []
+      },
+      "withNotes": false,
+      "expected": [
+        "a",
+        "b",
+        "c",
+        "d",
+        "e",
+        "f",
+        "g",
+        "h",
+        "i",
+        "j",
+        "k",
+        "l",
+        "p",
+        "q",
+        "r",
+        "m",
+        "n",
+        "o"
+      ],
+      "ruleCount": 0
+    },
+    {
+      "name": "unknown-root-match",
+      "now": "wednesday",
+      "weekStartsOn": 1,
+      "expression": {
+        "match": "most",
+        "rules": [
+          {
+            "field": "priority",
+            "op": "any",
+            "values": [
+              "high"
+            ]
+          }
+        ]
+      },
+      "withNotes": true,
+      "expected": [
+        "a",
+        "b",
+        "c",
+        "d",
+        "e",
+        "f",
+        "g",
+        "h",
+        "i",
+        "j",
+        "k",
+        "l",
+        "p",
+        "q",
+        "r",
+        "m",
+        "n",
+        "o"
+      ],
+      "ruleCount": 0
+    },
+    {
+      "name": "unknown-root-match",
+      "now": "wednesday",
+      "weekStartsOn": 1,
+      "expression": {
+        "match": "most",
+        "rules": [
+          {
+            "field": "priority",
+            "op": "any",
+            "values": [
+              "high"
+            ]
+          }
+        ]
+      },
+      "withNotes": false,
+      "expected": [
+        "a",
+        "b",
+        "c",
+        "d",
+        "e",
+        "f",
+        "g",
+        "h",
+        "i",
+        "j",
+        "k",
+        "l",
+        "p",
+        "q",
+        "r",
+        "m",
+        "n",
+        "o"
+      ],
+      "ruleCount": 0
+    }
+  ],
+  "locationOptions": {
+    "notes": [
+      {
+        "id": "roof",
+        "title": "Roof",
+        "folderPath": "Infra/House/Stage 1"
+      },
+      {
+        "id": "stage-notes",
+        "title": "Stage notes",
+        "folderPath": "Infra/House/Stage 1"
+      },
+      {
+        "id": "brief",
+        "title": "Brief",
+        "folderPath": "Infra/House"
+      },
+      {
+        "id": "apple",
+        "title": "apple",
+        "folderPath": "Infra/House"
+      },
+      {
+        "id": "inbox",
+        "title": "Inbox",
+        "folderPath": ""
+      },
+      {
+        "id": "empty",
+        "title": "Empty",
+        "folderPath": "Infra"
+      },
+      {
+        "id": "zed",
+        "title": "Zed",
+        "folderPath": "infra-2"
+      },
+      {
+        "id": "old",
+        "title": "Old",
+        "folderPath": "Archive"
+      }
+    ],
+    "tasks": [
+      {
+        "id": "t1",
+        "parentId": null,
+        "sourceNoteId": "roof",
+        "linkedNoteIds": []
+      },
+      {
+        "id": "t2",
+        "parentId": null,
+        "sourceNoteId": "roof",
+        "linkedNoteIds": []
+      },
+      {
+        "id": "t3",
+        "parentId": null,
+        "sourceNoteId": "brief",
+        "linkedNoteIds": [
+          "roof"
+        ]
+      },
+      {
+        "id": "sub",
+        "parentId": "t3",
+        "sourceNoteId": "old",
+        "linkedNoteIds": []
+      },
+      {
+        "id": "t4",
+        "parentId": null,
+        "sourceNoteId": "inbox",
+        "linkedNoteIds": []
+      },
+      {
+        "id": "t5",
+        "parentId": null,
+        "sourceNoteId": null,
+        "linkedNoteIds": [
+          "apple",
+          "ghost"
+        ]
+      },
+      {
+        "id": "t6",
+        "parentId": null,
+        "sourceNoteId": "zed",
+        "linkedNoteIds": [
+          "zed"
+        ]
+      },
+      {
+        "id": "t7",
+        "parentId": null,
+        "sourceNoteId": "ghost",
+        "linkedNoteIds": []
+      }
+    ],
+    "cases": [
+      {
+        "name": "tree",
+        "selected": {
+          "folderPaths": [],
+          "noteIds": []
+        },
+        "query": "",
+        "expected": [
+          {
+            "kind": "note",
+            "value": "inbox",
+            "label": "Inbox",
+            "context": "",
+            "depth": 0,
+            "count": 1
+          },
+          {
+            "kind": "folder",
+            "value": "infra-2",
+            "label": "infra-2",
+            "context": "",
+            "depth": 0,
+            "count": 1
+          },
+          {
+            "kind": "note",
+            "value": "zed",
+            "label": "Zed",
+            "context": "infra-2",
+            "depth": 1,
+            "count": 1
+          },
+          {
+            "kind": "folder",
+            "value": "Infra",
+            "label": "Infra",
+            "context": "",
+            "depth": 0,
+            "count": 4
+          },
+          {
+            "kind": "folder",
+            "value": "Infra/House",
+            "label": "House",
+            "context": "Infra",
+            "depth": 1,
+            "count": 4
+          },
+          {
+            "kind": "note",
+            "value": "apple",
+            "label": "apple",
+            "context": "Infra/House",
+            "depth": 2,
+            "count": 1
+          },
+          {
+            "kind": "note",
+            "value": "brief",
+            "label": "Brief",
+            "context": "Infra/House",
+            "depth": 2,
+            "count": 1
+          },
+          {
+            "kind": "folder",
+            "value": "Infra/House/Stage 1",
+            "label": "Stage 1",
+            "context": "Infra/House",
+            "depth": 2,
+            "count": 3
+          },
+          {
+            "kind": "note",
+            "value": "roof",
+            "label": "Roof",
+            "context": "Infra/House/Stage 1",
+            "depth": 3,
+            "count": 3
+          }
+        ]
+      },
+      {
+        "name": "selected-kept",
+        "selected": {
+          "folderPaths": [
+            "Infra/House",
+            "Gone/Deep"
+          ],
+          "noteIds": [
+            "empty",
+            "ghost",
+            "old",
+            "stage-notes"
+          ]
+        },
+        "query": "",
+        "expected": [
+          {
+            "kind": "note",
+            "value": "inbox",
+            "label": "Inbox",
+            "context": "",
+            "depth": 0,
+            "count": 1
+          },
+          {
+            "kind": "note",
+            "value": "old",
+            "label": "Old",
+            "context": "Archive",
+            "depth": 1,
+            "count": 0
+          },
+          {
+            "kind": "folder",
+            "value": "Gone",
+            "label": "Gone",
+            "context": "",
+            "depth": 0,
+            "count": 0
+          },
+          {
+            "kind": "folder",
+            "value": "Gone/Deep",
+            "label": "Deep",
+            "context": "Gone",
+            "depth": 1,
+            "count": 0
+          },
+          {
+            "kind": "folder",
+            "value": "infra-2",
+            "label": "infra-2",
+            "context": "",
+            "depth": 0,
+            "count": 1
+          },
+          {
+            "kind": "note",
+            "value": "zed",
+            "label": "Zed",
+            "context": "infra-2",
+            "depth": 1,
+            "count": 1
+          },
+          {
+            "kind": "folder",
+            "value": "Infra",
+            "label": "Infra",
+            "context": "",
+            "depth": 0,
+            "count": 4
+          },
+          {
+            "kind": "note",
+            "value": "empty",
+            "label": "Empty",
+            "context": "Infra",
+            "depth": 1,
+            "count": 0
+          },
+          {
+            "kind": "folder",
+            "value": "Infra/House",
+            "label": "House",
+            "context": "Infra",
+            "depth": 1,
+            "count": 4
+          },
+          {
+            "kind": "note",
+            "value": "apple",
+            "label": "apple",
+            "context": "Infra/House",
+            "depth": 2,
+            "count": 1
+          },
+          {
+            "kind": "note",
+            "value": "brief",
+            "label": "Brief",
+            "context": "Infra/House",
+            "depth": 2,
+            "count": 1
+          },
+          {
+            "kind": "folder",
+            "value": "Infra/House/Stage 1",
+            "label": "Stage 1",
+            "context": "Infra/House",
+            "depth": 2,
+            "count": 3
+          },
+          {
+            "kind": "note",
+            "value": "roof",
+            "label": "Roof",
+            "context": "Infra/House/Stage 1",
+            "depth": 3,
+            "count": 3
+          },
+          {
+            "kind": "note",
+            "value": "stage-notes",
+            "label": "Stage notes",
+            "context": "Infra/House/Stage 1",
+            "depth": 3,
+            "count": 0
+          }
+        ]
+      },
+      {
+        "name": "search-folder",
+        "selected": {
+          "folderPaths": [],
+          "noteIds": []
+        },
+        "query": "stage",
+        "expected": [
+          {
+            "kind": "folder",
+            "value": "Infra/House/Stage 1",
+            "label": "Stage 1",
+            "context": "Infra/House",
+            "depth": 0,
+            "count": 3
+          }
+        ]
+      },
+      {
+        "name": "search-trimmed-folded",
+        "selected": {
+          "folderPaths": [
+            "Infra/House",
+            "Gone/Deep"
+          ],
+          "noteIds": [
+            "empty",
+            "ghost",
+            "old",
+            "stage-notes"
+          ]
+        },
+        "query": "  E ",
+        "expected": [
+          {
+            "kind": "folder",
+            "value": "Gone",
+            "label": "Gone",
+            "context": "",
+            "depth": 0,
+            "count": 0
+          },
+          {
+            "kind": "folder",
+            "value": "Gone/Deep",
+            "label": "Deep",
+            "context": "Gone",
+            "depth": 0,
+            "count": 0
+          },
+          {
+            "kind": "note",
+            "value": "zed",
+            "label": "Zed",
+            "context": "infra-2",
+            "depth": 0,
+            "count": 1
+          },
+          {
+            "kind": "note",
+            "value": "empty",
+            "label": "Empty",
+            "context": "Infra",
+            "depth": 0,
+            "count": 0
+          },
+          {
+            "kind": "folder",
+            "value": "Infra/House",
+            "label": "House",
+            "context": "Infra",
+            "depth": 0,
+            "count": 4
+          },
+          {
+            "kind": "note",
+            "value": "apple",
+            "label": "apple",
+            "context": "Infra/House",
+            "depth": 0,
+            "count": 1
+          },
+          {
+            "kind": "note",
+            "value": "brief",
+            "label": "Brief",
+            "context": "Infra/House",
+            "depth": 0,
+            "count": 1
+          },
+          {
+            "kind": "folder",
+            "value": "Infra/House/Stage 1",
+            "label": "Stage 1",
+            "context": "Infra/House",
+            "depth": 0,
+            "count": 3
+          },
+          {
+            "kind": "note",
+            "value": "stage-notes",
+            "label": "Stage notes",
+            "context": "Infra/House/Stage 1",
+            "depth": 0,
+            "count": 0
+          }
+        ]
+      },
+      {
+        "name": "search-note",
+        "selected": {
+          "folderPaths": [],
+          "noteIds": []
+        },
+        "query": "ROOF",
+        "expected": [
+          {
+            "kind": "note",
+            "value": "roof",
+            "label": "Roof",
+            "context": "Infra/House/Stage 1",
+            "depth": 0,
+            "count": 3
+          }
+        ]
+      },
+      {
+        "name": "search-blank",
+        "selected": {
+          "folderPaths": [],
+          "noteIds": []
+        },
+        "query": "   ",
+        "expected": [
+          {
+            "kind": "note",
+            "value": "inbox",
+            "label": "Inbox",
+            "context": "",
+            "depth": 0,
+            "count": 1
+          },
+          {
+            "kind": "folder",
+            "value": "infra-2",
+            "label": "infra-2",
+            "context": "",
+            "depth": 0,
+            "count": 1
+          },
+          {
+            "kind": "note",
+            "value": "zed",
+            "label": "Zed",
+            "context": "infra-2",
+            "depth": 1,
+            "count": 1
+          },
+          {
+            "kind": "folder",
+            "value": "Infra",
+            "label": "Infra",
+            "context": "",
+            "depth": 0,
+            "count": 4
+          },
+          {
+            "kind": "folder",
+            "value": "Infra/House",
+            "label": "House",
+            "context": "Infra",
+            "depth": 1,
+            "count": 4
+          },
+          {
+            "kind": "note",
+            "value": "apple",
+            "label": "apple",
+            "context": "Infra/House",
+            "depth": 2,
+            "count": 1
+          },
+          {
+            "kind": "note",
+            "value": "brief",
+            "label": "Brief",
+            "context": "Infra/House",
+            "depth": 2,
+            "count": 1
+          },
+          {
+            "kind": "folder",
+            "value": "Infra/House/Stage 1",
+            "label": "Stage 1",
+            "context": "Infra/House",
+            "depth": 2,
+            "count": 3
+          },
+          {
+            "kind": "note",
+            "value": "roof",
+            "label": "Roof",
+            "context": "Infra/House/Stage 1",
+            "depth": 3,
+            "count": 3
+          }
+        ]
+      },
+      {
+        "name": "search-miss",
+        "selected": {
+          "folderPaths": [
+            "Infra/House",
+            "Gone/Deep"
+          ],
+          "noteIds": [
+            "empty",
+            "ghost",
+            "old",
+            "stage-notes"
+          ]
+        },
+        "query": "zzz",
+        "expected": []
+      }
+    ]
+  }
 }

@@ -168,9 +168,10 @@ struct CalloutKind {
     }
 }
 
-struct CalloutRow: View {
+/// A callout's chrome around its text, read-only or editable.
+struct CalloutRow<Content: View>: View {
     let type: String
-    let text: AttributedString
+    @ViewBuilder let content: () -> Content
 
     private var kind: CalloutKind { CalloutKind.named(type) }
 
@@ -187,8 +188,8 @@ struct CalloutRow: View {
             Image(systemName: kind.symbol)
                 .font(Tokens.Typography.body.font)
                 .foregroundStyle(ink)
-                .accessibilityHidden(true)
-            Text(text)
+                .accessibilityLabel("\(kind.name) callout")
+            content()
         }
         .padding(Tokens.Space.inset)
         .frame(maxWidth: .infinity, alignment: .leading)
@@ -197,8 +198,6 @@ struct CalloutRow: View {
             Rectangle().fill(ink).frame(width: 3).accessibilityHidden(true)
         }
         .clipShape(.rect(cornerRadius: Tokens.Radius.control))
-        .accessibilityElement(children: .combine)
-        .accessibilityLabel("\(kind.name) callout")
     }
 }
 

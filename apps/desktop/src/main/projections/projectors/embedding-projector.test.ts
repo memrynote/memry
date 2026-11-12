@@ -72,6 +72,7 @@ import { createProjectionRuntime } from '../runtime'
 /** Stands in for better-sqlite3: transactions run inline and unmocked reads find nothing. */
 function mockRawDb(db: { prepare: (statement: string) => object }): void {
   getRawIndexDatabase.mockReturnValue({
+    open: true,
     prepare: (statement: string) => ({ get: () => undefined, ...db.prepare(statement) }),
     transaction: (fn: () => void) => fn
   })
@@ -82,6 +83,8 @@ describe('embedding projector', () => {
     vi.clearAllMocks()
     getAllWindows.mockReturnValue([])
     getDatabase.mockReturnValue({})
+    getIndexDatabase.mockReturnValue({ all: () => [] })
+    mockRawDb({ prepare: () => ({ run: vi.fn(), all: () => [] }) })
     getSetting.mockReturnValue('true')
     isModelLoaded.mockReturnValue(true)
     initEmbeddingModel.mockResolvedValue(true)
@@ -187,9 +190,12 @@ describe('embedding projector', () => {
 
   it('retains deferred ids when the model fails to load, then embeds them on a later reconcile', async () => {
     const run = vi.fn()
-    // note-1 already has a (stale) vector, so it is only in the work list because
-    // it was deferred — the missing-vector filter alone would not re-catch it.
-    const prepare = vi.fn(() => ({ run, all: () => [{ note_id: 'note-1' }] }))
+    // The existing vector remains searchable, but its dirty state is not current.
+    // Durable dirty-state writes are covered against SQLite in the recovery suite.
+    const prepare = vi.fn((statement: string) => ({
+      run,
+      all: () => (statement.includes('WHERE input_version = ?') ? [] : [{ note_id: 'note-1' }])
+    }))
     mockRawDb({ prepare })
     getIndexDatabase.mockReturnValue({
       all: vi.fn(() => [{ id: 'note-1', path: 'notes/one.md', title: 'One' }])
@@ -344,9 +350,10 @@ describe('embedding projector', () => {
     expect(readFile).not.toHaveBeenCalled()
   })
 
-  it('deletes stale embeddings when AI is disabled, content is short, or generation fails', async () => {
+  it('removes too-short content but keeps disabled or failed work owed', async () => {
     const run = vi.fn()
-    mockRawDb({ prepare: vi.fn(() => ({ run })) })
+    const prepare = vi.fn(() => ({ run }))
+    mockRawDb({ prepare })
 
     const projector = createEmbeddingProjector(() => '/vault')
 
@@ -355,11 +362,13 @@ describe('embedding projector', () => {
       note: { kind: 'markdown', noteId: 'short-note', parsedContent: 'short' }
     } as never)
 
+    prepare.mockClear()
     getSetting.mockReturnValue('false')
     await projector.project({
       type: 'note.upserted',
       note: { kind: 'markdown', noteId: 'disabled-note', parsedContent: 'long enough content' }
     } as never)
+    expect(prepare).not.toHaveBeenCalledWith('DELETE FROM vec_notes WHERE note_id = ?')
 
     getSetting.mockReturnValue('true')
     generateEmbedding.mockResolvedValueOnce(null)
@@ -394,16 +403,17 @@ describe('embedding projector', () => {
     const projector = createEmbeddingProjector(() => '/vault')
 
     await expect(projector.rebuild()).resolves.toEqual({
-      success: true,
+      success: false,
       computed: 1,
-      skipped: 1
+      skipped: 1,
+      error: 'Embedding pass incomplete'
     })
     expect(initEmbeddingModel).toHaveBeenCalled()
     expect(readFile).toHaveBeenCalledWith('/vault/notes/one.md', 'utf-8')
-    expect(prepare).toHaveBeenCalledWith('DELETE FROM vec_notes')
-    expect(send).toHaveBeenCalledWith(
+    expect(prepare).not.toHaveBeenCalledWith('DELETE FROM vec_notes')
+    expect(send).not.toHaveBeenCalledWith(
       'settings:embeddingProgress',
-      expect.objectContaining({ phase: 'complete', current: 2, total: 2 })
+      expect.objectContaining({ phase: 'complete' })
     )
   })
 
@@ -436,7 +446,7 @@ describe('embedding projector', () => {
 
     await projector.reconcile(controller.signal)
 
-    expect(generateEmbedding).toHaveBeenCalledTimes(2)
+    expect(generateEmbedding).toHaveBeenCalledTimes(1)
     expect(readFile).toHaveBeenCalledWith('/vault/notes/one.md', 'utf-8')
     // The notes past the abort were never read, so nothing from this vault can
     // land in whatever index database the next vault installs.
@@ -506,14 +516,14 @@ describe('embedding projector', () => {
 
     // Old vectors keep serving search and similarity meanwhile.
     expect([...vectors].toSorted()).toEqual(['note-1', 'note-2', 'note-3'])
-    expect([...state.keys()]).toEqual(['note-1'])
+    expect([...state.keys()]).toEqual([])
 
-    // The next launch re-embeds only the notes the first pass never reached.
+    // No partial vector is committed. The next launch resumes all still-owed notes.
     generateEmbedding.mockResolvedValue(new Float32Array([0.1, 0.2]))
     await createEmbeddingProjector(() => '/vault').reconcile()
 
-    expect(generateEmbedding).toHaveBeenCalledTimes(6)
-    expect(readFile.mock.calls.filter(([path]) => path === '/vault/notes/one.md')).toHaveLength(1)
+    expect(generateEmbedding).toHaveBeenCalledTimes(7)
+    expect(readFile.mock.calls.filter(([path]) => path === '/vault/notes/one.md')).toHaveLength(2)
     expect([...vectors].toSorted()).toEqual(['note-1', 'note-2', 'note-3'])
     expect([...state.values()]).toEqual([
       EMBEDDING_INPUT_VERSION,
@@ -599,6 +609,9 @@ describe('embedding projector', () => {
 
     isModelLoaded.mockReturnValue(false)
     initEmbeddingModel.mockResolvedValue(false)
+    getIndexDatabase.mockReturnValue({
+      all: () => [{ id: 'note-1', path: 'notes/one.md', title: 'One' }]
+    })
 
     await expect(createEmbeddingProjector(() => '/vault').rebuild()).resolves.toEqual({
       success: false,

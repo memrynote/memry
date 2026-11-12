@@ -325,6 +325,76 @@ describe('folder-view-handlers', () => {
     expect(suggestionResult.suggestions).toHaveLength(1)
   })
 
+  it("lists the folder's own note X.md beside X/, the way the sidebar pairs them", async () => {
+    registerFolderViewHandlers()
+    ;(folderFiles.readFolderConfig as Mock).mockResolvedValue(null)
+
+    const now = new Date().toISOString()
+    const insertNote = (
+      id: string,
+      path: string,
+      extra: { fileType?: 'markdown' | 'pdf'; date?: string } = {}
+    ): void => {
+      indexDb.db
+        .insert(noteCache)
+        .values({ id, path, title: id, createdAt: now, modifiedAt: now, ...extra })
+        .run()
+    }
+    insertNote('inside', 'work/Projects/inside.md')
+    insertNote('inside-2', 'work/Projects/sub/inside-2.md')
+    insertNote('own', 'work/Projects.md')
+    insertNote('other-case', 'work/projects.md')
+    insertNote('longer-stem', 'work/Projects.v2.md')
+    insertNote('file', 'work/Projects.pdf', { fileType: 'pdf' })
+    insertNote('journal', 'work/Projects.MD', { date: '2026-01-01' })
+    indexDb.db
+      .insert(noteProperties)
+      .values({ noteId: 'own', name: 'owner', value: 'kaan', type: 'text' })
+      .run()
+
+    const scope = { kind: 'folder', path: 'work/Projects' }
+    const all = await invokeHandler(FolderViewChannels.invoke.LIST_WITH_PROPERTIES, {
+      scope,
+      limit: 10,
+      offset: 0
+    })
+    expect(all.notes.map((n: { id: string }) => n.id).toSorted()).toEqual([
+      'inside',
+      'inside-2',
+      'own'
+    ])
+    expect(all.total).toBe(3)
+    expect(all.notes.find((n: { id: string }) => n.id === 'own')).toMatchObject({
+      folder: '/',
+      properties: { owner: 'kaan' }
+    })
+
+    // Paged, it rides on the last page, so offsets taken from row counts line up.
+    const first = await invokeHandler(FolderViewChannels.invoke.LIST_WITH_PROPERTIES, {
+      scope,
+      limit: 1,
+      offset: 0
+    })
+    expect(first.notes).toHaveLength(1)
+    expect(first.notes[0].id).not.toBe('own')
+    expect(first.hasMore).toBe(true)
+    const last = await invokeHandler(FolderViewChannels.invoke.LIST_WITH_PROPERTIES, {
+      scope,
+      limit: 1,
+      offset: 1
+    })
+    expect(last.notes.map((n: { id: string }) => n.id)).toEqual([
+      first.notes[0].id === 'inside' ? 'inside-2' : 'inside',
+      'own'
+    ])
+    expect(last.hasMore).toBe(false)
+
+    const props = await invokeHandler(FolderViewChannels.invoke.GET_AVAILABLE_PROPERTIES, {
+      scope
+    })
+    expect(props.properties).toEqual([expect.objectContaining({ name: 'owner' })])
+  })
+
   describe('list-with-properties under tag scope', () => {
     let dataDb: TestDatabaseResult
 

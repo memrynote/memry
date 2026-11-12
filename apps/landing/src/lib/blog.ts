@@ -24,14 +24,34 @@ export interface BlogComparisonTable {
   rows: Array<[string, string, string]>
 }
 
+export interface BlogFact {
+  label: string
+  value: string
+}
+
 export interface BlogSection {
   heading: string
+  // Rendered as the section's id, so in-page links (#slug) can target it.
   slug?: string
   paragraphs: string[]
+  facts?: readonly BlogFact[]
   bullets?: string[]
   callout?: BlogCallout
   code?: BlogCodeBlock
   table?: BlogComparisonTable
+}
+
+// One row of a "The short answer" table: a situation and the app to pick for it.
+// `anchor` is the slug of the section that covers the pick.
+export interface BlogShortAnswerRow {
+  situation: string
+  pick: string
+  anchor: string
+}
+
+export interface BlogFaq {
+  question: string
+  answer: string
 }
 
 export interface BlogPost {
@@ -43,13 +63,17 @@ export interface BlogPost {
   datePublished: string
   dateModified: string
   author: BlogAuthor
+  // Shown at the top of the post in place of the author's full name and role.
+  byline?: string
   readingTime: string
   category: string
   heroTint: HeroTint
   tags: readonly string[]
   featured?: boolean
   lead: string
+  shortAnswer?: readonly BlogShortAnswerRow[]
   sections: readonly BlogSection[]
+  faqs?: readonly BlogFaq[]
   takeaways: readonly string[]
   relatedFeature: {
     label: string
@@ -542,89 +566,435 @@ Referenced in [[Q3 Roadmap]] and [[Security Whitepaper]].`
   {
     slug: 'best-end-to-end-encrypted-notes-apps',
     pageKey: 'blogBestE2EENotes',
-    title: 'The best end-to-end encrypted notes apps in 2026, and how to pick one',
+    title: 'The best end-to-end encrypted notes apps in 2026',
     description:
-      'How to choose an end-to-end encrypted notes app: who holds the keys, where notes live on disk, and what works offline. memrynote and four others compared.',
+      'Joplin, Anytype, Notesnook, Standard Notes, Obsidian, Proton Docs, and MemryNote compared: what the server can see, offline use, price, and where each falls short.',
     summary:
-      'Three questions that separate real end-to-end encryption from marketing copy, how memrynote answers them, and where Standard Notes, Notesnook, Joplin, and Obsidian land.',
+      'Seven end-to-end encrypted notes apps, each checked the same way: how it encrypts, what the server can still see, whether it works offline, what it costs, and where it falls short.',
     datePublished: '2026-10-13T08:00:00.000Z',
-    dateModified: '2026-10-13T08:00:00.000Z',
+    dateModified: '2026-10-30T08:00:00.000Z',
     author: DEFAULT_AUTHOR,
-    readingTime: '8 min read',
+    byline: 'Kaan, founder of MemryNote',
+    readingTime: '12 min read',
     category: 'Security & Cryptography',
     heroTint: 'mint',
     tags: ['E2EE', 'Privacy', 'Comparison', 'Local-First'],
     featured: false,
-    lead: 'Most note apps say they are encrypted. Far fewer are end-to-end encrypted, where only your devices can read your notes and the company running the server cannot. Even among those, the apps differ in where your notes live, whether they work without a connection, and what you can still open if the company is gone. This guide gives you three questions to ask any app, then shows how memrynote and four other end-to-end encrypted options answer them.',
+    lead: 'An end-to-end encrypted notes app encrypts your notes on your own devices, so the company running the sync server cannot read them. The seven apps below all do that, and they differ in where your notes live, whether they work offline, and what they cost. We make MemryNote, one of the apps on this list. Every entry has the same parts, including where the app falls short, ours too, and the last section explains how we made the list.',
+    shortAnswer: [
+      {
+        situation:
+          'Want free, open-source notes you can sync through Dropbox, OneDrive, Nextcloud, or your own server',
+        pick: 'Joplin',
+        anchor: 'joplin'
+      },
+      {
+        situation:
+          'Think in objects and relations and want local-first sync with no readable copy on any server',
+        pick: 'Anytype',
+        anchor: 'anytype'
+      },
+      {
+        situation:
+          'Want a free encrypted notes app on every platform, including Android and the web',
+        pick: 'Notesnook',
+        anchor: 'notesnook'
+      },
+      {
+        situation:
+          'Want a focused encrypted notes app with a long track record, now part of Proton',
+        pick: 'Standard Notes',
+        anchor: 'standard-notes'
+      },
+      {
+        situation: 'Want plain Markdown files on your disk and enjoy building your own setup',
+        pick: 'Obsidian with an encrypted sync plugin',
+        anchor: 'obsidian'
+      },
+      {
+        situation: 'Already pay for Proton and want documents in the same encrypted account',
+        pick: 'Proton Docs',
+        anchor: 'proton'
+      },
+      {
+        situation:
+          'Want notes, tasks, journal and calendar in one calm app, end-to-end encrypted and offline-first',
+        pick: 'MemryNote',
+        anchor: 'memrynote'
+      }
+    ],
     sections: [
       {
-        heading: 'Three questions that decide whether an app is private',
+        heading: 'We make MemryNote. Here is where it falls short.',
+        slug: 'where-memrynote-falls-short',
         paragraphs: [
-          'Encryption claims are easy to write and hard to check. These three questions cut through most of them, and each one has a short, factual answer for any app you are evaluating.',
-          'First: who holds the keys? If the company can reset your password and give you your notes back, it holds a key that can read them. In a zero-knowledge design, keys are derived on your device and the server stores only ciphertext. Losing your recovery phrase is then a real risk, and that tradeoff is the price of the guarantee.',
-          'Second: where do your notes live when you are not syncing? Some encrypted apps keep notes in their own local database, so the readable copy only exists inside the app. Others keep notes as ordinary files on your disk, which you can open, back up, and search with any tool.',
-          'Third: what happens offline and without an account? A private app should open, edit, and search your notes with no network and, ideally, no sign-up. Sync should be something you add, not a requirement for reading your own writing.'
+          'MemryNote is our app, so read this list knowing that. It is on the list because it is what we recommend to people who want their notes, tasks, journal, and calendar in one encrypted place. It is not the right pick for everyone. These are its gaps today:'
+        ],
+        bullets: [
+          'It is a desktop app first. MemryNote runs on macOS, Windows, and Linux. The iPhone app is in TestFlight beta, and there is no Android app, iPad layout, or web app yet.',
+          'It is in beta. The app is young and built by one founder, so expect rough edges and frequent releases.',
+          'AI features are early. Agent Chat is available in the desktop app, while AI search and suggestions are still listed as coming soon.',
+          'There is no sharing or collaboration. A vault syncs across your own devices only. Shared vaults and publishing are on the roadmap.',
+          'You cannot choose your own sync backend. Sync runs through our hosted, end-to-end encrypted service. A self-hosted sync server is planned, not available. Joplin and Obsidian cover Dropbox, WebDAV, or your own server today.',
+          'Sync is paid. The local app is free, and syncing between devices starts at $5 a month.',
+          'If you lose your recovery phrase, we cannot restore your synced data, because we never hold your keys. The Markdown files on your disk stay readable.'
+        ]
+      },
+      {
+        heading: 'What to check in an encrypted notes app',
+        slug: 'what-to-check',
+        paragraphs: [
+          '"Encrypted" is a broad word. Most note apps encrypt traffic and disks and still hold the keys, so they can read your notes. End-to-end encryption is narrower: notes are encrypted on your device with keys the company never has. Every app on this list does that, at least as an option. Four questions separate them.',
+          'What can the server still see? No sync service is blind. It needs your account email, and it usually sees how many items you have, how large they are, and when they changed. A good app also encrypts titles, tags, and folder names, not only note bodies.',
+          'Where do your notes live? Some apps keep notes in their own encrypted database, which only that app can open. Others keep plain files on your disk that any editor can read.',
+          'Does it work offline? You should be able to open, edit, and search everything with no connection, and sync should catch up later.',
+          'Can you leave? Check for a full export to an open format, such as Markdown, before you put years of writing into an app.'
         ],
         callout: {
           type: 'tip',
           title: 'A quick test',
-          text: 'Ask support whether they can recover your notes if you forget your password. If the answer is yes, the service can read them.'
+          text: 'Ask support whether they can recover your notes if you forget your password. If they can, the service holds a key that can read them.'
         }
       },
       {
-        heading: 'memrynote: encrypted sync over plain Markdown files',
+        heading: 'Joplin',
+        slug: 'joplin',
         paragraphs: [
-          'memrynote is a local-first workspace for notes, tasks, a calendar, and a daily journal. Your vault is a folder you choose. Notes are plain Markdown files with YAML frontmatter, so they open in any text editor and stay readable without memrynote installed.',
-          'When you turn on sync, every note, task, and journal entry is encrypted on your device with XChaCha20-Poly1305 before upload. Keys are derived on your machine with Argon2id, each device signs its changes with its own Ed25519 key, and the sync server stores only ciphertext. memrynote cannot read your notes and cannot hand them to anyone else.',
-          'The app works fully offline with no account. Local use is free; hosted sync starts at $5 a month. memrynote is open source under AGPL-3.0, so the encryption code is public. It runs on macOS, Windows, and Linux today, with mobile apps planned.',
-          'Moving in is straightforward. memrynote imports Markdown folders (including Obsidian vaults), Notion, Evernote, Apple Notes, Bear, Google Keep, and more, and the same vault holds your tasks and journal instead of spreading them across separate apps.'
-        ]
-      },
-      {
-        heading: 'How the other end-to-end encrypted apps compare',
-        paragraphs: [
-          'Each app below offers end-to-end encryption in some form. The differences are in where notes live, which platforms are covered, and how much of your day the app handles beyond notes.',
-          'Standard Notes and Notesnook are encrypted note apps with mobile and web clients. Both keep notes in their own encrypted storage and offer exports. Joplin is open source and can encrypt notes before syncing them to Joplin Cloud, Dropbox, OneDrive, or WebDAV; encryption is a setting you turn on. Obsidian stores notes as local Markdown files and encrypts them end to end when you use its paid Obsidian Sync add-on.',
-          'If you mainly need encrypted notes on your phone today, the apps with mobile clients cover that. If you want your notes as plain files you own, with tasks, a calendar, and a journal in the same encrypted vault, that is the gap memrynote is built for.'
+          'Joplin is a free, open-source notes app with Markdown notes, notebooks, tags, to-dos, and a web clipper. It runs on Windows, macOS, Linux, iOS, Android, and in a terminal.',
+          'Its sync is the most flexible on this list: Joplin Cloud, Dropbox, OneDrive, Nextcloud, WebDAV, S3, or a local folder. End-to-end encryption works with all of them, but it is off by default. You turn it on in the encryption settings and set a master password, which Joplin cannot recover.'
         ],
-        table: {
-          headers: ['App', 'Where your notes live', 'Encryption'],
-          rows: [
-            [
-              'memrynote',
-              'Plain Markdown files in a folder you choose',
-              'Zero-knowledge E2EE sync, included'
-            ],
-            ['Standard Notes', 'Encrypted storage inside the app', 'E2EE by default'],
-            ['Notesnook', 'Encrypted storage inside the app', 'E2EE by default'],
-            ['Joplin', 'Local app database, Markdown on export', 'Optional E2EE'],
-            [
-              'Obsidian',
-              'Plain Markdown files in a folder you choose',
-              'E2EE with paid Obsidian Sync'
-            ]
-          ]
-        }
+        facts: [
+          {
+            label: 'Encryption',
+            value:
+              'Optional end-to-end encryption for notes, notebooks, tags, and attachments, with a master password. Off until you enable it.'
+          },
+          {
+            label: 'What the server sees',
+            value:
+              'With encryption on, the sync target holds encrypted items and can see how many there are, their sizes, and when they change. With encryption off, it holds readable notes.'
+          },
+          {
+            label: 'Local-first',
+            value:
+              'Yes. Notes live in a local database and the app works fully offline. Markdown files come from export, not from the working copy.'
+          },
+          {
+            label: 'Price',
+            value: 'Free. Joplin Cloud starts at €2.99 a month, or €2.40 a month billed yearly.'
+          },
+          {
+            label: 'Best for',
+            value:
+              'People who want a free, open-source app and want to choose where their encrypted notes sync.'
+          },
+          {
+            label: 'Where it falls short',
+            value:
+              'You must remember to turn encryption on, on your first device, before you rely on sync. The interface feels dated next to newer apps, and there is no calendar or task manager beyond to-do notes.'
+          }
+        ]
       },
       {
-        heading: 'Which one should you pick?',
+        heading: 'Anytype',
+        slug: 'anytype',
         paragraphs: [
-          'Start from the question that matters most to you. If it is who can read your notes, any app in the table qualifies once encryption is on. If it is whether your notes outlive the app, look for plain files on disk. If it is having one place for notes, tasks, and reflection, count how many separate apps you would otherwise need.',
-          'memrynote answers all three the same way: encryption on your device, Markdown files in your folder, and one workspace for the whole day. You can try it with your existing notes for free, without an account, and turn on sync only when you want it.'
+          'Anytype is a local-first workspace built on objects, types, and relations, with a block editor and sets that work like simple databases. It runs on macOS, Windows, Linux, iOS, and Android.',
+          'Your keys are generated on your device and never sent to Anytype. Changes sync through the Anytype network, and you can run your own network instead if you want sync data off their servers.'
+        ],
+        facts: [
+          {
+            label: 'Encryption',
+            value:
+              'End-to-end by default. Objects are encrypted on your device with keys only you hold.'
+          },
+          {
+            label: 'What the server sees',
+            value:
+              'Encrypted objects and the metadata needed to route them. Anytype also collects anonymized product usage data, kept separate from your content.'
+          },
+          {
+            label: 'Local-first',
+            value:
+              "Yes. Everything works offline, stored on your device in Anytype's own encrypted object format."
+          },
+          {
+            label: 'Price',
+            value:
+              'Free with 100 MB of remote storage. Plus ($4 a month), Pro ($8), and Ultra ($16) add storage.'
+          },
+          {
+            label: 'Best for',
+            value:
+              'People who like building structured systems from objects and relations, and want no readable copy on any server.'
+          },
+          {
+            label: 'Where it falls short',
+            value:
+              'Your notes are not plain files. Only Anytype reads the working format, and Markdown is an export. The object model takes time to learn, and the code is source-available rather than open source.'
+          }
         ]
+      },
+      {
+        heading: 'Notesnook',
+        slug: 'notesnook',
+        paragraphs: [
+          'Notesnook is an open-source notes app that encrypts everything by default. It runs on Windows, macOS, Linux, iOS, Android, and the web, with notebooks, tags, reminders, and a rich-text editor.',
+          'Its free plan is generous: unlimited notes on unlimited devices, end-to-end encrypted, with 50 MB of attachment uploads a month. Paid plans add attachment storage and larger files.'
+        ],
+        facts: [
+          {
+            label: 'Encryption',
+            value:
+              'End-to-end by default for every note, with XChaCha20-Poly1305 and keys derived from your password.'
+          },
+          {
+            label: 'What the server sees',
+            value:
+              'Encrypted notes, your account email, and sync metadata such as item sizes and change times.'
+          },
+          {
+            label: 'Local-first',
+            value:
+              'Partly. Each app keeps a local copy you can read and edit offline, but the app is built around a Notesnook account and its sync.'
+          },
+          {
+            label: 'Price',
+            value:
+              'Free. Essential is $19.99 a year, Pro $69.99 a year, and Believer $89.99 a year.'
+          },
+          {
+            label: 'Best for',
+            value:
+              'People who want encrypted notes on every device, including Android and a browser, without paying.'
+          },
+          {
+            label: 'Where it falls short',
+            value:
+              "Notes live in the app's own database, so you get files only through export. There is no task manager, calendar, or journal beyond notes and reminders."
+          }
+        ]
+      },
+      {
+        heading: 'Standard Notes',
+        slug: 'standard-notes',
+        paragraphs: [
+          'Standard Notes launched in 2017 and has focused on encrypted notes ever since. In 2024 it joined Proton, the company behind Proton Mail. It runs on the web, desktop, iOS, and Android.',
+          'The free plan syncs notes across unlimited devices. Paid plans add the Super note type for Markdown and rich text, folders, Daily Notebooks for journaling, longer revision history, and, on Professional, 100 GB of encrypted file storage.'
+        ],
+        facts: [
+          {
+            label: 'Encryption',
+            value:
+              'End-to-end by default. Notes and tags are encrypted on your device with XChaCha20-Poly1305.'
+          },
+          {
+            label: 'What the server sees',
+            value:
+              'Encrypted items, your account email, and sync metadata such as item types and change times.'
+          },
+          {
+            label: 'Local-first',
+            value:
+              'Partly. The apps keep an encrypted local copy and work offline, and sync needs a Standard Notes account.'
+          },
+          {
+            label: 'Price',
+            value:
+              'Free Standard plan. Productivity and Professional are paid plans; check the Standard Notes plans page for current prices.'
+          },
+          {
+            label: 'Best for',
+            value:
+              "People who want a simple, long-running encrypted notes app and value Proton's backing."
+          },
+          {
+            label: 'Where it falls short',
+            value:
+              "The better editors and journaling are on paid plans. Notes live in the app's storage, and plain files come from export. There is no task manager or calendar."
+          }
+        ]
+      },
+      {
+        heading: 'Obsidian, with an encrypted sync plugin',
+        slug: 'obsidian',
+        paragraphs: [
+          'Obsidian stores notes as plain Markdown files in a folder on your disk. The app is free, runs on macOS, Windows, Linux, iOS, and Android, and has thousands of community plugins. On its own it does not sync, so the encryption question is about how you sync.',
+          'Obsidian Sync, the official add-on, encrypts your remote vault end to end by default with a password only you know. The community plugin Self-hosted LiveSync is the main alternative: it supports end-to-end encryption and syncs through a CouchDB server or object storage that you run.'
+        ],
+        facts: [
+          {
+            label: 'Encryption',
+            value:
+              "End-to-end with Obsidian Sync (AES-256, the default for new remote vaults) or with Self-hosted LiveSync's encryption option. The vault on your disk is not encrypted."
+          },
+          {
+            label: 'What the server sees',
+            value:
+              'With end-to-end encrypted Obsidian Sync, encrypted files and sync metadata. If you pick standard encryption instead, Obsidian holds the key. With LiveSync, the server is yours.'
+          },
+          {
+            label: 'Local-first',
+            value: 'Yes. Notes are plain Markdown files and everything works offline.'
+          },
+          {
+            label: 'Price',
+            value:
+              'Free app. Obsidian Sync is $4 a month (Standard) or $8 a month (Plus), billed yearly. Self-hosted LiveSync is free, plus the cost of your server.'
+          },
+          {
+            label: 'Best for',
+            value:
+              'People who want plain files they fully control and enjoy assembling their own setup.'
+          },
+          {
+            label: 'Where it falls short',
+            value:
+              'Privacy depends on choices you make: choose standard encryption or misconfigure a plugin, and your notes are readable on the server. Community plugins run with full access to your vault. Tasks, calendars, and journals come from plugins you maintain, and the app is not open source.'
+          }
+        ]
+      },
+      {
+        heading: 'Proton Docs and other encrypted cloud suites',
+        slug: 'proton',
+        paragraphs: [
+          'Some people do not want a separate notes app. They want their writing in the encrypted account they already use for email. Proton Docs is the clearest example: an end-to-end encrypted, collaborative document editor inside Proton Drive, next to Proton Mail, Calendar, and Pass.',
+          "This is a cloud-first model. Documents live in Proton Drive and you edit them through Proton's apps, much like Google Docs, but encrypted. It suits long documents and shared work better than quick, linked, everyday notes. If you want a notes app from Proton specifically, that is Standard Notes."
+        ],
+        facts: [
+          {
+            label: 'Encryption',
+            value: 'End-to-end by default for documents and file names in Proton Drive.'
+          },
+          {
+            label: 'What the server sees',
+            value:
+              'Encrypted documents, your account details, and file metadata such as sizes and modification times.'
+          },
+          {
+            label: 'Local-first',
+            value: "No. Documents live in Proton Drive and open through Proton's apps."
+          },
+          {
+            label: 'Price',
+            value:
+              'Free with 5 GB of Proton Drive storage. Drive Plus is $3.99 a month billed yearly, or $4.99 monthly, and Proton bundles cover the whole suite.'
+          },
+          {
+            label: 'Best for',
+            value:
+              'People who already use Proton and want encrypted documents they can share and edit together.'
+          },
+          {
+            label: 'Where it falls short',
+            value:
+              "It is a document editor, not a notes system, so there are no backlinks, tags, or daily notes. Your documents are not files on your disk, and you depend on Proton's apps to open them."
+          }
+        ]
+      },
+      {
+        heading: 'MemryNote',
+        slug: 'memrynote',
+        paragraphs: [
+          'MemryNote is our app: one local-first workspace for notes, tasks, a daily journal, a calendar, and a capture inbox. Your vault is a folder you choose. Notes and journal entries are plain Markdown files with YAML frontmatter, so any editor can open them, with or without MemryNote installed.',
+          'When you turn on sync, every note, task, journal entry, and attachment is encrypted on your device with XChaCha20-Poly1305 before upload. Keys are derived on your machine with Argon2id, and each device signs its changes with its own Ed25519 key, so the server cannot forge or quietly alter what it stores. The code is open source under AGPL-3.0.',
+          'It works fully offline with no account. It imports Markdown folders, including Obsidian vaults, plus Notion, Evernote, Apple Notes, Bear, Google Keep, Todoist, and more.'
+        ],
+        facts: [
+          {
+            label: 'Encryption',
+            value:
+              'End-to-end, always on for sync: XChaCha20-Poly1305 for content, Argon2id for key derivation, and an Ed25519 signature on every synced item.'
+          },
+          {
+            label: 'What the server sees',
+            value:
+              'Your account email, your devices, and for each item an ID, its type, its size, and when it changed. Titles, bodies, properties, task fields, and attachments are ciphertext.'
+          },
+          {
+            label: 'Local-first',
+            value:
+              'Yes. Markdown files plus a local SQLite index. Everything works offline with no account, and sync catches up later.'
+          },
+          {
+            label: 'Price',
+            value:
+              'Free for local use. Encrypted sync is $5 a month or $48 a year (Plus), $10 a month (Pro), or $500 once (Believer).'
+          },
+          {
+            label: 'Best for',
+            value:
+              'People who want notes, tasks, journal, and calendar in one calm, encrypted app on their computer.'
+          },
+          {
+            label: 'Where it falls short',
+            value:
+              'The iPhone app is in TestFlight beta, and there is no Android, iPad, or web app. The whole app is in beta, there is no sharing or self-hosted sync, and AI features are early. The full list is at the top of this page.'
+          }
+        ]
+      },
+      {
+        heading: 'How we made this list',
+        slug: 'how-we-made-this-list',
+        paragraphs: [
+          'We make MemryNote, and it is on this list because it is what we recommend for an encrypted workspace that covers your whole day, not only your notes. Every other app here is one we would point a friend to for the situation in its row of the short answer. An app had to meet four criteria:'
+        ],
+        bullets: [
+          'Zero-knowledge: notes can be encrypted on your device with keys the company never holds. Apps that only encrypt traffic and disks, such as Notion and Evernote, are not on the list.',
+          'Offline: you can open and edit your notes with no connection. Proton Docs is the exception, a cloud editor included because many people asking this question already use Proton.',
+          'Export: you can take every note out at once.',
+          'Open formats: the export, or the working copy, is something other tools read, such as Markdown, HTML, or plain text.'
+        ],
+        callout: {
+          type: 'note',
+          title: 'How we checked',
+          text: "We read each app's pricing page, security documentation, and help center in October 2026, and used what each company says is encrypted rather than third-party reviews. MemryNote's claims were checked against its source code and published sync protocol. Prices are in US dollars unless the app charges in euros, and prices change, so check before you buy. The date at the top is the last full review. If something is wrong, email support@memrynote.com and we will fix it."
+        }
+      }
+    ],
+    faqs: [
+      {
+        question: 'What is the most secure end-to-end encrypted notes app?',
+        answer:
+          'Every app on this list encrypts notes on your device so the provider cannot read them, so the real differences are defaults and metadata. Notesnook, Standard Notes, Anytype, Proton Docs, and MemryNote encrypt by default. Joplin needs encryption turned on, and Obsidian notes are only protected on the server when you sync with an end-to-end encrypted option. Pick the app whose defaults you will not have to remember.'
+      },
+      {
+        question: 'Which end-to-end encrypted notes apps work offline?',
+        answer:
+          'Joplin, Anytype, Obsidian, and MemryNote are local-first, so everything works without a connection. Notesnook and Standard Notes keep a local copy and work offline, but are built around their accounts. Proton Docs is a cloud editor.'
+      },
+      {
+        question: 'Which encrypted notes app keeps notes as plain Markdown files?',
+        answer:
+          'Obsidian and MemryNote keep notes as plain Markdown files in a folder you choose. Joplin, Notesnook, Standard Notes, and Anytype keep notes in their own storage and offer exports.'
+      },
+      {
+        question: 'Is there a free end-to-end encrypted notes app?',
+        answer:
+          "Yes. Joplin is free when you sync through your own Dropbox, OneDrive, or server. Notesnook's free plan syncs unlimited notes across unlimited devices. Standard Notes and Anytype have free plans. Obsidian and MemryNote are free to use locally; their encrypted sync is paid, unless you run Self-hosted LiveSync for Obsidian."
+      },
+      {
+        question: 'Is MemryNote end-to-end encrypted?',
+        answer:
+          'Yes. MemryNote sync is always end-to-end encrypted. Notes, tasks, journal entries, and attachments are encrypted on your device with XChaCha20-Poly1305, and the server stores only ciphertext plus the metadata it needs to route it. Local use needs no account.'
+      },
+      {
+        question: 'Does MemryNote have a mobile app?',
+        answer:
+          'The iPhone app is in TestFlight beta. MemryNote runs on macOS, Windows, and Linux today. There is no Android, iPad, or web app yet.'
       }
     ],
     takeaways: [
       'End-to-end encryption means only your devices hold the keys. If support can recover your notes, the service can read them.',
-      'Encrypted apps differ in where notes live: inside an app database or as plain files you can open anywhere.',
-      'memrynote combines zero-knowledge encrypted sync with plain Markdown files, offline use, and no required account.',
-      'Pick by the question that matters most to you: who can read your notes, whether they outlive the app, or how many apps you need.'
+      'Check the defaults: Joplin needs encryption turned on, and Obsidian is only encrypted on the server when you sync with an encrypted option.',
+      'Obsidian and MemryNote keep plain Markdown files on your disk. The others keep their own storage and offer exports.',
+      'MemryNote fits if you want notes, tasks, journal, and calendar in one encrypted desktop app, and can live with a beta and an iPhone app still in TestFlight.'
     ],
     relatedFeature: {
       label: 'Read the Security Architecture',
       href: '/security',
       description:
-        'How memrynote derives keys, encrypts every item, and keeps the sync server blind to your content.'
+        'How MemryNote derives keys, encrypts every item, and keeps the sync server blind to your content.'
     }
   },
   {

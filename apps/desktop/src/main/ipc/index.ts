@@ -42,6 +42,7 @@ import { registerAccountHandlers, unregisterAccountHandlers } from './account-ha
 import { registerCrdtIpcHandlers } from './crdt-handlers'
 import { registerTelemetryHandlers, unregisterTelemetryHandlers } from './telemetry-handlers'
 import { registerFeedbackHandlers, unregisterFeedbackHandlers } from './feedback-handlers'
+import { registerIosBetaHandlers, unregisterIosBetaHandlers } from './ios-beta-handlers'
 import { registerDiagnosticsHandlers, unregisterDiagnosticsHandlers } from './diagnostics-handlers'
 import { registerUnsplashHandlers, unregisterUnsplashHandlers } from './unsplash-handlers'
 import {
@@ -193,6 +194,9 @@ export function registerAllHandlers(deps?: IpcDeps): void {
   // Register feedback handlers (anonymous-safe, no auth required)
   registerFeedbackHandlers()
 
+  // Register iPhone beta invite handlers (anonymous-safe, no auth required)
+  registerIosBetaHandlers()
+
   // Register diagnostics handlers (anonymous-safe, no auth required)
   registerDiagnosticsHandlers()
 
@@ -260,6 +264,7 @@ export function unregisterAllHandlers(): void {
   unregisterUpdaterHandlers()
   unregisterTelemetryHandlers()
   unregisterFeedbackHandlers()
+  unregisterIosBetaHandlers()
   unregisterDiagnosticsHandlers()
   unregisterUnsplashHandlers()
   unregisterWritingToolsHandlers()

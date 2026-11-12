@@ -6,6 +6,7 @@ import https from 'node:https'
 import { KEYCHAIN_ENTRIES } from '@memry/contracts/crypto'
 import {
   InitOAuthSchema,
+  RetryOAuthSchema,
   SetupFirstDeviceSchema,
   ConfirmRecoveryPhraseSchema
 } from '@memry/contracts/ipc-auth'
@@ -23,9 +24,9 @@ import { teardownSession } from '../sync/session-teardown'
 import { hasSessionEnded, refreshAccessToken, storeToken } from '../sync/token-manager'
 import { getSetupDevicePublicKey } from '../sync/setup-token'
 import { createLogger } from '../lib/logger'
+import { getMainI18n } from '../lib/main-i18n'
 import { registerCommand } from './lib/register-command'
 import {
-  OAUTH_SESSION_TIMEOUT_MS,
   cleanExpiredOAuthSessions,
   consumeOAuthSession,
   oauthSessions,
@@ -79,6 +80,17 @@ const startLoopbackServer = (): Promise<{ server: http.Server; port: number }> =
 // Handler Registration
 // ============================================================================
 
+async function openOAuthBrowser(authorizationUrl: string): Promise<boolean> {
+  try {
+    await shell.openExternal(authorizationUrl)
+    return true
+  } catch {
+    // The platform error may include the sign-in URL and its state.
+    logger.warn('Could not open the sign-in browser')
+    return false
+  }
+}
+
 export function registerAuthOAuthHandlers(): void {
   // --- OAuth Initiation with Loopback Redirect (T072, T072a) ---
 
@@ -86,11 +98,16 @@ export function registerAuthOAuthHandlers(): void {
     SYNC_CHANNELS.AUTH_INIT_OAUTH,
     InitOAuthSchema,
     async () => {
-      cleanExpiredOAuthSessions()
       shutdownLoopbackServer()
+      oauthSessions.clear()
 
       const { server, port } = await startLoopbackServer()
-      setActiveLoopbackServer(server)
+      setActiveLoopbackServer(server, () => {
+        oauthSessions.clear()
+        broadcastToAllWindows(SYNC_EVENTS.OAUTH_ERROR, {
+          error: getMainI18n().t('errors:auth.oauthExpired')
+        })
+      })
 
       const redirectUri = `http://127.0.0.1:${port}/callback`
 
@@ -116,14 +133,25 @@ export function registerAuthOAuthHandlers(): void {
         })
       })
 
-      const parsedUrl = new URL(googleUrl)
+      let parsedUrl: URL
+      try {
+        parsedUrl = new URL(googleUrl)
+      } catch {
+        shutdownLoopbackServer()
+        throw new Error(getMainI18n().t('errors:auth.oauthInvalidResponse'))
+      }
+      if (parsedUrl.protocol !== 'https:') {
+        shutdownLoopbackServer()
+        throw new Error(getMainI18n().t('errors:auth.oauthInvalidResponse'))
+      }
       const state = parsedUrl.searchParams.get('state')
       if (!state) {
         shutdownLoopbackServer()
         throw new Error('Missing state in OAuth URL')
       }
 
-      oauthSessions.set(state, { state, redirectUri, createdAt: Date.now() })
+      const authorizationUrl = parsedUrl.toString()
+      oauthSessions.set(state, { state, redirectUri, authorizationUrl, createdAt: Date.now() })
 
       server.on('request', (req, res) => {
         const reqUrl = new URL(req.url ?? '/', `http://127.0.0.1:${port}`)
@@ -133,40 +161,60 @@ export function registerAuthOAuthHandlers(): void {
           return
         }
 
+        const cbState = reqUrl.searchParams.get('state')
+        if (cbState !== state || !oauthSessions.get(state)?.authorizationUrl) {
+          res.writeHead(400)
+          res.end(ERROR_HTML)
+          return
+        }
+
         const oauthError = reqUrl.searchParams.get('error')
         if (oauthError) {
           res.writeHead(200, { 'Content-Type': 'text/html; charset=utf-8' })
           res.end(ERROR_HTML)
 
-          const cbState = reqUrl.searchParams.get('state')
-          if (cbState) oauthSessions.delete(cbState)
-
-          broadcastToAllWindows(SYNC_EVENTS.OAUTH_ERROR, { error: oauthError })
+          oauthSessions.delete(state)
+          broadcastToAllWindows(SYNC_EVENTS.OAUTH_ERROR, {
+            error: getMainI18n().t('errors:auth.oauthCancelled')
+          })
 
           shutdownLoopbackServer()
           return
         }
 
         const code = reqUrl.searchParams.get('code')
-        const cbState = reqUrl.searchParams.get('state')
+        if (!code) {
+          res.writeHead(400)
+          res.end(ERROR_HTML)
+          return
+        }
+        // Keep the session for the single-use exchange, but retire browser retries.
+        const session = oauthSessions.get(state)
+        if (session) session.authorizationUrl = null
 
         res.writeHead(200, { 'Content-Type': 'text/html; charset=utf-8' })
         res.end(SUCCESS_HTML)
 
-        if (code && cbState) {
-          broadcastToAllWindows(SYNC_EVENTS.OAUTH_CALLBACK, { code, state: cbState })
-        }
-
+        broadcastToAllWindows(SYNC_EVENTS.OAUTH_CALLBACK, { code, state })
         shutdownLoopbackServer()
       })
 
-      setTimeout(shutdownLoopbackServer, OAUTH_SESSION_TIMEOUT_MS)
-
-      await shell.openExternal(parsedUrl.toString())
-
-      return { state }
+      const browserOpened = await openOAuthBrowser(authorizationUrl)
+      return { state, authorizationUrl, browserOpened }
     },
     'errors:auth.initiateOAuthFailed'
+  )
+
+  registerCommand(
+    SYNC_CHANNELS.AUTH_RETRY_OAUTH,
+    RetryOAuthSchema,
+    async ({ state }) => {
+      cleanExpiredOAuthSessions()
+      const session = oauthSessions.get(state)
+      if (!session?.authorizationUrl) throw new Error(getMainI18n().t('errors:auth.oauthExpired'))
+      return { browserOpened: await openOAuthBrowser(session.authorizationUrl) }
+    },
+    'errors:auth.retryOAuthFailed'
   )
 
   // --- Token Refresh (T073, T073a, T073c) ---
@@ -275,6 +323,7 @@ export function registerAuthOAuthHandlers(): void {
 
 export function unregisterAuthOAuthHandlers(): void {
   ipcMain.removeHandler(SYNC_CHANNELS.AUTH_INIT_OAUTH)
+  ipcMain.removeHandler(SYNC_CHANNELS.AUTH_RETRY_OAUTH)
   ipcMain.removeHandler(SYNC_CHANNELS.AUTH_REFRESH_TOKEN)
   ipcMain.removeHandler(SYNC_CHANNELS.SETUP_FIRST_DEVICE)
   ipcMain.removeHandler(SYNC_CHANNELS.CONFIRM_RECOVERY_PHRASE)

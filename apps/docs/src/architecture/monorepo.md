@@ -60,7 +60,7 @@ jsdom, y-leveldb, yjs, libsodium-wrappers-sumo, @huggingface/transformers,
 pure JS but unbundleable: its entry selects the main/renderer/node
 implementation through runtime `require()` branches, and bundling hoists all
 three — including an unconditional `require('electron')` that crashes
-worker_threads (the sync, image-processing, and voice-transcription workers)
+worker_threads (the sync, image-processing, voice-transcription, and converter workers)
 in packaged builds. The exact set is asserted by
 `apps/desktop/src/main/runtime-dependencies.test.ts` and re-verified against
 the packaged app by `apps/desktop/scripts/check-packaged-runtime-deps.js`;
@@ -76,6 +76,14 @@ Those load only through `await import()`: the markdown converter through
 `import/_shared/lazy-jsdom.ts`.
 Rationale and measurements: `docs/auto-update-slow-restart-investigation.md`
 in the repo root.
+
+`apps/desktop/scripts/build-packaged-app.js` stages those modules with
+`pnpm deploy --legacy`. The Windows build adds `node-linker=hoisted`, and with
+a linker that differs from the lockfile's, the legacy deploy re-resolves every
+semver range from the registry. The Windows package can therefore ship
+transitive versions newer than the lockfile. A release that breaks Electron
+needs an exact pin in the `overrides` of `pnpm-workspace.yaml`, as
+`wasm-feature-detect` 1.9.0 has: 1.10.0 broke packaged OCR on Windows.
 
 ## Cross-Cutting Scripts
 

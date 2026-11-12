@@ -29,13 +29,22 @@ async function blocks(page: Page): Promise<BlockSummary[]> {
 /** Drag-select `text` inside the editor with the real mouse. */
 async function dragSelect(page: Page, text: string, fromRatio = 0.2, toRatio = 0.7): Promise<void> {
   const target = page.locator(SELECTORS.noteEditor).getByText(text, { exact: true }).first()
-  const box = await target.boundingBox()
-  if (!box) throw new Error(`no box for ${text}`)
+  const box = await target.evaluate((element) => {
+    const range = document.createRange()
+    range.selectNodeContents(element)
+    const { x, y, width, height } = range.getBoundingClientRect()
+    return { x, y, width, height }
+  })
   const y = box.y + box.height / 2
   await page.mouse.move(box.x + box.width * fromRatio, y)
   await page.mouse.down()
   await page.mouse.move(box.x + box.width * toRatio, y, { steps: 8 })
   await page.mouse.up()
+
+  const selectedText = await page.evaluate(() => window.getSelection()?.toString() ?? '')
+  expect(selectedText.trim()).not.toBe('')
+  expect(text).toContain(selectedText)
+  expect(selectedText).not.toBe(text)
 }
 
 async function pickBlockType(page: Page, name: string): Promise<void> {

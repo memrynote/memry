@@ -1,3 +1,5 @@
+import { shiftJournalYear } from '@memry/domain-notes/journal'
+import type { Clock } from '../clock.ts'
 import type { JournalSpec } from '../specs.ts'
 import { reviewDay } from './dates.ts'
 
@@ -234,7 +236,44 @@ const eveningLines: string[] = [
   'Evening: wrote the week down here instead of thinking about it in bed.'
 ]
 
-export function journalSpecs(): JournalSpec[] {
+// The same week in earlier years, so On this day and the All years view have
+// something to show. Keyed by years ago, then by day offset within this week.
+const pastYears: Record<number, Record<number, string>> = {
+  1: {
+    0: `Last day before the Aurora kickoff. Spent the morning cleaning up the research folder so the team starts from one place instead of five.
+
+Evening: ran along the river for the first time in weeks. Slow, but I did not stop.
+`,
+    [-1]: 'Sketched the reader layout on the train. Three columns felt wrong; two felt calm.\n',
+    [-2]: 'Jonah talked me into the Teton trip "next summer". Writing it down so it happens.\n',
+    [-4]: 'Market, soup, two chapters of a Mars book. A quiet good Saturday.\n',
+    [-6]: 'First draft of the essay idea: what the Apollo checklists say about the people who wrote them.\n'
+  },
+  2: {
+    0: `Moved into the new flat. Boxes everywhere, no curtains, one working lamp. Ines brought dinner and we ate it on the floor.
+
+I want to remember how quiet the street is at night.
+`,
+    [-1]: 'Signed the lease. Scary number, good light.\n',
+    [-3]: 'Started keeping this journal properly. One line a day is the deal.\n'
+  },
+  3: {
+    0: `Last week at the agency. Mum called to ask if I am sure. I am not, but I am going anyway.
+`
+  }
+}
+
+const utcDay = (iso: string): number =>
+  Date.UTC(+iso.slice(0, 4), +iso.slice(5, 7) - 1, +iso.slice(8))
+
+/** Days from today back to the same day `years` years ago, as a clock offset. */
+function yearsAgoOffset(clock: Clock, day: number, years: number): number {
+  const date = clock.date(day)
+  const then = shiftJournalYear(date, -years)
+  return day + Math.round((utcDay(then) - utcDay(date)) / 86_400_000)
+}
+
+export function journalSpecs(clock: Clock): JournalSpec[] {
   const specs: JournalSpec[] = []
   let index = 0
   for (let day = FIRST_DAY; day <= 0; day++) {
@@ -260,5 +299,11 @@ export function journalSpecs(): JournalSpec[] {
     properties: {},
     body: () => `Plan: library at 17:30 for [[Hidden Figures]], then write the loop section.\n`
   })
+  for (const [years, days] of Object.entries(pastYears)) {
+    for (const [day, text] of Object.entries(days)) {
+      const offset = yearsAgoOffset(clock, Number(day), Number(years))
+      specs.push({ day: offset, tags: [], properties: trackers(offset), body: () => text })
+    }
+  }
   return specs
 }

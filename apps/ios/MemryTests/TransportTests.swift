@@ -1,5 +1,6 @@
 import Foundation
 import MemryCore
+import os
 import Synchronization
 import Testing
 
@@ -330,6 +331,32 @@ struct TransportHTTPTests {
     func noPathIsOffline() async throws {
         StubURLProtocol.script(.fail(.notConnectedToInternet))
         #expect(await kind { try await transport().send(request: request()) } == .offline)
+    }
+
+    /// #4156. A refresh the server committed while the app was suspended
+    /// leaves the keychain holding a retired refresh token, and spending it
+    /// later revokes the device. Each exchange holds the app awake from before
+    /// the request leaves until its answer, or failure, is back.
+    @Test("every exchange holds the app awake until it is answered or fails", arguments: [
+        StubOutcome.respond(status: 200, headers: [:], body: Data(), chunks: 1),
+        StubOutcome.fail(.notConnectedToInternet)
+    ])
+    func exchangeIsHeldAwake(outcome: StubOutcome) async throws {
+        StubURLProtocol.script(outcome)
+        let requestsSeen = OSAllocatedUnfairLock<[String]>(initialState: [])
+        let hold = ExchangeHold {
+            requestsSeen.withLock { $0.append("begin after \(StubURLProtocol.captured.withLock(\.count))") }
+            return { requestsSeen.withLock { $0.append("end after \(StubURLProtocol.captured.withLock(\.count))") } }
+        }
+        let configuration = URLSessionTransport.defaultConfiguration()
+        configuration.protocolClasses = [StubURLProtocol.self]
+        let held = URLSessionTransport(
+            emitter: hub.emitter, configuration: configuration, spillDirectory: spillDirectory, exchangeHold: hold
+        )
+
+        _ = await kind { try await held.send(request: request()) }
+
+        #expect(requestsSeen.withLock { $0 } == ["begin after 0", "end after 1"])
     }
 
     @Test("an unparseable URL fails without a request ever being made")

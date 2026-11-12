@@ -136,7 +136,254 @@ final class NotesUITests: XCTestCase {
         XCTAssertTrue(row.waitForNonExistence(timeout: 10))
     }
 
+    /// #4152: Backspace at a block's start did nothing in a paragraph, so an
+    /// empty line could not be deleted and two lines could not be joined.
+    func testBackspaceDeletesAnEmptyLineAndJoinsLines() throws {
+        try openNotes()
+        let title = "[agent] SHIP-4152-\(run) backspace"
+        app.buttons["notes.addButton"].tap()
+        let field = app.textFields["Title"]
+        XCTAssertTrue(field.waitForExistence(timeout: 10))
+        field.typeText("\(title)\n")
+        let block = app.textViews.matching(NSPredicate(format: "identifier BEGINSWITH 'note.block.'")).firstMatch
+        XCTAssertTrue(block.waitForExistence(timeout: 10))
+        block.tap()
+        app.typeText("a")
+        assertBackspaceJoinsBlocks(in: app, line: "a")
+
+        app.buttons["BackButton"].tap()
+        let row = app.buttons.matching(NSPredicate(format: "label CONTAINS %@", title)).firstMatch
+        XCTAssertTrue(row.waitForExistence(timeout: 10))
+        row.press(forDuration: 1)
+        app.buttons["Delete note"].tap()
+        app.buttons["Delete"].firstMatch.tap()
+        XCTAssertTrue(row.waitForNonExistence(timeout: 10))
+    }
+
+    /// #4152: after one join, the lines below it are drawn by the rows above
+    /// them. A second Backspace further down put the caret in the row that
+    /// then went away, so the caret and the keyboard went with it.
+    func testBackspaceKeepsTheCaretAfterAnEarlierJoin() throws {
+        try openNotes()
+        let title = "[agent] SHIP-4152-\(run) second join"
+        makeNote(title).tap()
+        let blocks = app.textViews.matching(NSPredicate(format: "identifier BEGINSWITH 'note.block.'"))
+        let newLine = blocks.matching(NSPredicate(format: "hasKeyboardFocus == true AND value == ''")).firstMatch
+        for line in ["one", "two", "three"] {
+            app.typeText(line + "\n")
+            XCTAssertTrue(newLine.waitForExistence(timeout: 10), "Return made no block")
+        }
+        app.typeText("four")
+        func line(_ text: String) -> XCUIElement {
+            blocks.matching(NSPredicate(format: "value == %@", text)).firstMatch
+        }
+        func backspace(atStartOf text: String) {
+            let block = line(text)
+            XCTAssertTrue(block.waitForExistence(timeout: 10), "no line \(text)")
+            block.coordinate(withNormalizedOffset: CGVector(dx: 0, dy: 0.5)).withOffset(CGVector(dx: 1, dy: 0)).tap()
+            app.typeText(XCUIKeyboardKey.delete.rawValue)
+        }
+        backspace(atStartOf: "two")
+        XCTAssertTrue(line("onetwo").waitForExistence(timeout: 10), "the first join did not land")
+        backspace(atStartOf: "four")
+        XCTAssertTrue(line("threefour").waitForExistence(timeout: 10), "the second join did not land")
+        let joined = blocks.matching(NSPredicate(format: "hasKeyboardFocus == true AND value == 'threefour'"))
+            .firstMatch
+        XCTAssertTrue(joined.waitForExistence(timeout: 10), "the caret did not stay in the joined line")
+        app.typeText("X")
+        XCTAssertTrue(line("threeXfour").waitForExistence(timeout: 10), "the caret is not at the join")
+
+        app.buttons["BackButton"].tap()
+        deleteFromList(app.buttons.matching(NSPredicate(format: "label CONTAINS %@", title)).firstMatch)
+    }
+
+    /// #4151: a tap in the empty space under a stored note's body did
+    /// nothing when the body ended in an empty line, so a short note could
+    /// not be typed into.
+    func testTappingUnderTheBodyStartsTyping() throws {
+        try openNotes()
+        let title = "[agent] SHIP-4151-\(run) tap body"
+        app.buttons["notes.addButton"].tap()
+        let field = app.textFields["Title"]
+        XCTAssertTrue(field.waitForExistence(timeout: 10))
+        // Return leaves the body as one empty line.
+        field.typeText("\(title)\n")
+        let blocks = app.textViews.matching(NSPredicate(format: "identifier BEGINSWITH 'note.block.'"))
+        XCTAssertTrue(blocks.firstMatch.waitForExistence(timeout: 10))
+        app.buttons["BackButton"].tap()
+        // Relaunched, so the page reads the stored note.
+        app.terminate()
+        try openNotes()
+        let row = app.buttons.matching(NSPredicate(format: "label CONTAINS %@", title)).firstMatch
+        XCTAssertTrue(row.waitForExistence(timeout: 10))
+        row.tap()
+        XCTAssertTrue(blocks.firstMatch.waitForExistence(timeout: 10))
+
+        let body = blocks.allElementsBoundByIndex.map(\.frame.maxY).max() ?? 0
+        app.coordinate(withNormalizedOffset: .zero)
+            .withOffset(CGVector(dx: blocks.firstMatch.frame.midX, dy: body + 60)).tap()
+        app.typeText("tapped")
+        let typed = app.textViews.matching(NSPredicate(
+            format: "identifier BEGINSWITH 'note.block.' AND value CONTAINS 'tapped'"
+        )).firstMatch
+        XCTAssertTrue(typed.waitForExistence(timeout: 10), "the tap under the body put no caret in it")
+        XCTAssertEqual(field.value as? String, title)
+
+        deleteFromList(row)
+    }
+
+    /// #4151: a callout drew as static text, so a tap gave no caret.
+    func testACalloutsTextIsEditable() throws {
+        try openNotes()
+        let title = "[agent] SHIP-4151-\(run) callout"
+        app.buttons["notes.addButton"].tap()
+        let field = app.textFields["Title"]
+        XCTAssertTrue(field.waitForExistence(timeout: 10))
+        field.typeText("\(title)\n")
+        let block = app.textViews.matching(NSPredicate(format: "identifier BEGINSWITH 'note.block.'")).firstMatch
+        XCTAssertTrue(block.waitForExistence(timeout: 10))
+        block.tap()
+        app.typeText("/callout\n")
+        // The turn redraws the row; the caret comes back once it lands.
+        let focused = app.textViews.matching(NSPredicate(
+            format: "identifier BEGINSWITH 'note.block.' AND hasKeyboardFocus == true"
+        )).firstMatch
+        XCTAssertTrue(focused.waitForExistence(timeout: 10), "the callout took no caret")
+        app.typeText("inside")
+        let typed = app.textViews.matching(NSPredicate(
+            format: "identifier BEGINSWITH 'note.block.' AND value CONTAINS 'inside'"
+        )).firstMatch
+        XCTAssertTrue(typed.waitForExistence(timeout: 10), "the callout took no typing")
+        XCTAssertTrue(app.images["Info callout"].exists, "the block is not a callout")
+
+        // Put the caret in the title, then tap back into the callout's text.
+        // Typing that misses the callout lands in the title.
+        field.tap()
+        typed.tap()
+        app.typeText("again")
+        let retyped = app.textViews.matching(NSPredicate(
+            format: "identifier BEGINSWITH 'note.block.' AND value CONTAINS 'again'"
+        )).firstMatch
+        XCTAssertTrue(retyped.waitForExistence(timeout: 10), "a tap in the callout took no typing")
+        XCTAssertEqual(field.value as? String, title)
+
+        app.buttons["BackButton"].tap()
+        deleteFromList(app.buttons.matching(NSPredicate(format: "label CONTAINS %@", title)).firstMatch)
+    }
+
+    private func deleteFromList(_ row: XCUIElement) {
+        if app.buttons["BackButton"].exists { app.buttons["BackButton"].tap() }
+        XCTAssertTrue(row.waitForExistence(timeout: 10))
+        row.press(forDuration: 1)
+        app.buttons["Delete note"].tap()
+        app.buttons["Delete"].firstMatch.tap()
+        XCTAssertTrue(row.waitForNonExistence(timeout: 10))
+    }
+
+    /// #4154: a link picked from the `[[` menu is a chip a tap follows to its
+    /// note.
+    func testAPickedLinkOpensItsNote() throws {
+        try openNotes()
+        let target = "SHIP-4154-\(run)-picked"
+        let source = "SHIP-4154-\(run)-pick-source"
+        _ = makeNote(target)
+        app.buttons["BackButton"].tap()
+        makeNote(source).tap()
+        app.typeText("[[\(target)")
+        let row = app.buttons.matching(NSPredicate(format: "label BEGINSWITH %@", target)).firstMatch
+        XCTAssertTrue(row.waitForExistence(timeout: 10), "the [[ menu did not offer the note")
+        row.tap()
+        follow(to: target)
+        deleteNotes([source, target])
+    }
+
+    /// #4154: the `[[` menu's Create row linked a note it never created, so a
+    /// tap on the chip said the note does not exist.
+    func testTheCreateRowMakesTheNoteItLinks() throws {
+        try openNotes()
+        let target = "SHIP-4154-\(run)-created"
+        let source = "SHIP-4154-\(run)-create-source"
+        makeNote(source).tap()
+        app.typeText("[[\(target)")
+        let row = app.buttons.matching(NSPredicate(format: "label BEGINSWITH 'Create'")).firstMatch
+        XCTAssertTrue(row.waitForExistence(timeout: 10), "the [[ menu offered no Create row")
+        row.tap()
+        follow(to: target)
+        deleteNotes([source, target])
+    }
+
+    /// #4154: typing `[[Title]]` in full made the chip on the first `]`, and
+    /// the second `]` stayed in the text.
+    func testATypedLinkLeavesNoBracketBehind() throws {
+        try openNotes()
+        let target = "SHIP-4154-\(run)-typed"
+        let source = "SHIP-4154-\(run)-type-source"
+        _ = makeNote(target)
+        app.buttons["BackButton"].tap()
+        let block = makeNote(source)
+        block.tap()
+        app.typeText("[[\(target)]]x")
+        let typed = NSPredicate(format: "value == %@", "\u{FFFC}x")
+        XCTAssertTrue(
+            matches(typed, block),
+            "the typed link is not one chip: \(block.value as? String ?? "")"
+        )
+        follow(to: target)
+        deleteNotes([source, target])
+    }
+
+    private func matches(_ predicate: NSPredicate, _ element: XCUIElement) -> Bool {
+        let expectation = XCTNSPredicateExpectation(predicate: predicate, object: element)
+        return XCTWaiter.wait(for: [expectation], timeout: 10) == .completed
+    }
+
+    private var firstBlock: XCUIElement {
+        app.textViews.matching(NSPredicate(format: "identifier BEGINSWITH 'note.block.'")).firstMatch
+    }
+
+    /// A new note titled `title`; answers its first block.
+    @discardableResult
+    private func makeNote(_ title: String) -> XCUIElement {
+        XCTAssertTrue(app.buttons["notes.addButton"].waitForExistence(timeout: 10))
+        app.buttons["notes.addButton"].tap()
+        let field = app.textFields["Title"]
+        XCTAssertTrue(field.waitForExistence(timeout: 10))
+        field.typeText("\(title)\n")
+        XCTAssertTrue(firstBlock.waitForExistence(timeout: 10))
+        return firstBlock
+    }
+
+    /// Taps the first half of the link chip at the start of the first block
+    /// and waits for its note's page, then goes back to the list. Not the
+    /// chip's first points: the screen's edge takes a tap there while a block
+    /// edits.
+    private func follow(to target: String) {
+        let block = firstBlock
+        let chip = NSPredicate(format: "value BEGINSWITH %@", "\u{FFFC}")
+        XCTAssertTrue(matches(chip, block), "no chip: \(block.value as? String ?? "")")
+        block.coordinate(withNormalizedOffset: CGVector(dx: 0, dy: 0.5)).withOffset(CGVector(dx: 48, dy: 0)).tap()
+        XCTAssertFalse(app.alerts.firstMatch.waitForExistence(timeout: 2), "the link opened no note")
+        let page = app.textFields.matching(NSPredicate(format: "value == %@", target)).firstMatch
+        XCTAssertTrue(page.waitForExistence(timeout: 10), "the link did not open \(target)")
+        app.buttons["BackButton"].tap()
+        app.buttons["BackButton"].tap()
+    }
+
+    private func deleteNotes(_ titles: [String]) {
+        for title in titles {
+            let row = app.buttons.matching(NSPredicate(format: "label CONTAINS %@", title)).firstMatch
+            XCTAssertTrue(row.waitForExistence(timeout: 10), "no row for \(title)")
+            row.press(forDuration: 1)
+            app.buttons["Delete note"].tap()
+            app.buttons["Delete"].firstMatch.tap()
+            XCTAssertTrue(row.waitForNonExistence(timeout: 10))
+        }
+    }
+
     private func openNotes() throws {
+        // A tip's popover covers the page and takes the next tap, on the
+        // first note an install makes with "+".
+        app.launchArguments = ["-MEMRY_HIDE_TIPS", "YES"]
         app.launch()
         let name = ProcessInfo.processInfo.environment["MEMRY_UI_VAULT"] ?? "MemryNote"
         let vault = app.staticTexts[name]

@@ -161,6 +161,40 @@ describe('google calendar client — push channels (Task 7)', () => {
     })
   })
 
+  describe('watchCalendar push-unsupported calendars (#4020)', () => {
+    it('exposes the Google error reason so callers can tell a calendar that cannot push', async () => {
+      fetchMock.mockResolvedValue(
+        new Response(
+          JSON.stringify({
+            error: {
+              code: 400,
+              message: 'Push notifications are not supported by this resource.',
+              errors: [
+                {
+                  domain: 'global',
+                  reason: 'pushNotSupportedForRequestedResource',
+                  message: 'Push notifications are not supported by this resource.'
+                }
+              ]
+            }
+          }),
+          { status: 400 }
+        )
+      )
+
+      const client = createGoogleCalendarClient({ accountId: LEGACY_DEFAULT_ACCOUNT_ID })
+      await expect(
+        client.watchCalendar({
+          calendarId: 'holidays',
+          channelId: 'c1',
+          token: 't1',
+          webhookUrl: 'https://sync.memry.io/webhooks/google-calendar',
+          ttlSeconds: 3600
+        })
+      ).rejects.toMatchObject({ status: 400, apiReason: 'pushNotSupportedForRequestedResource' })
+    })
+  })
+
   describe('stopChannel', () => {
     it('POSTs channels.stop with {id, resourceId} and resolves on 204', async () => {
       fetchMock.mockImplementation(async (input, init) => {
@@ -226,6 +260,42 @@ describe('google calendar client — push channels (Task 7)', () => {
       })
       return captured
     }
+
+    it.each(['Europe/Istanbul', 'America/Chicago'])(
+      '#given a one-day all-day event created in memrynote in %s #when upserted #then sends that day with an exclusive next-day end',
+      async (timeZone) => {
+        const originalTz = process.env.TZ
+        process.env.TZ = timeZone
+        try {
+          const captured = captureBody()
+          // The event form saves a one-day all-day event as local midnight, end = start.
+          const localMidnight = new Date(2026, 10, 10).toISOString()
+
+          const client = createGoogleCalendarClient({ accountId: LEGACY_DEFAULT_ACCOUNT_ID })
+          await client.upsertEvent({
+            calendarId: 'primary',
+            eventId: null,
+            event: {
+              sourceType: 'event',
+              sourceId: 'local-all-day',
+              title: 'Offsite',
+              description: null,
+              location: null,
+              startAt: localMidnight,
+              endAt: localMidnight,
+              isAllDay: true,
+              timezone: timeZone,
+              recurrence: null
+            }
+          })
+
+          expect(captured.body?.start).toEqual({ date: '2026-11-10', timeZone })
+          expect(captured.body?.end).toEqual({ date: '2026-11-11', timeZone })
+        } finally {
+          process.env.TZ = originalTz
+        }
+      }
+    )
 
     it('#given an all-day recurring exception #when upserted #then emits originalStartTime as { date } (no dateTime)', async () => {
       const captured = captureBody()
@@ -567,6 +637,85 @@ describe('google calendar client — push channels (Task 7)', () => {
       ).resolves.toEqual({ events: [], nextSyncCursor: 'cursor-3' })
     })
 
+    it('keeps syncing when Google returns a conference entry point without entryPointType', async () => {
+      fetchMock.mockResolvedValueOnce(
+        new Response(
+          JSON.stringify({
+            nextSyncToken: 'cursor-2',
+            items: [
+              {
+                id: 'event-1',
+                start: { dateTime: '2026-05-10T10:00:00.000Z' },
+                conferenceData: {
+                  entryPoints: [
+                    { entryPointType: 'video', uri: 'https://zoom.us/j/123' },
+                    { uri: 'https://zoom.us/skype/123', label: 'Skype' }
+                  ]
+                }
+              }
+            ]
+          }),
+          { status: 200, headers: { 'Content-Type': 'application/json' } }
+        )
+      )
+
+      const client = createGoogleCalendarClient({ accountId: LEGACY_DEFAULT_ACCOUNT_ID })
+      const result = await client.listEvents({ calendarId: 'primary', syncCursor: null })
+
+      expect(result.nextSyncCursor).toBe('cursor-2')
+      expect(result.events[0].conferenceData?.entryPoints).toEqual([
+        expect.objectContaining({ entryPointType: 'video', uri: 'https://zoom.us/j/123' })
+      ])
+    })
+
+    it('skips a malformed event, logs it without content, and syncs the rest of the page', async () => {
+      loggerMock.warn.mockClear()
+      fetchMock.mockResolvedValueOnce(
+        new Response(
+          JSON.stringify({
+            nextSyncToken: 'cursor-2',
+            items: [
+              { id: 'good-1', start: { dateTime: '2026-05-10T10:00:00.000Z' } },
+              {
+                id: 'bad-1',
+                summary: 'Secret title',
+                start: { dateTime: '2026-05-10T10:00:00.000Z' },
+                attendees: [{ displayName: 'No email' }]
+              },
+              { summary: 'No id at all' },
+              {
+                id: 'gone-1',
+                status: 'cancelled',
+                summary: 'Deleted with odd shape',
+                attendees: [{ displayName: 'No email' }]
+              },
+              { id: 'good-2', start: { date: '2026-05-11' } }
+            ]
+          }),
+          { status: 200, headers: { 'Content-Type': 'application/json' } }
+        )
+      )
+
+      const client = createGoogleCalendarClient({ accountId: LEGACY_DEFAULT_ACCOUNT_ID })
+      const result = await client.listEvents({ calendarId: 'primary', syncCursor: 'cursor-1' })
+
+      expect(result.nextSyncCursor).toBe('cursor-2')
+      expect(result.events.map((event) => [event.id, event.status])).toEqual([
+        ['good-1', 'confirmed'],
+        ['gone-1', 'cancelled'],
+        ['good-2', 'confirmed']
+      ])
+      expect(loggerMock.warn).toHaveBeenCalledWith(
+        'Skipping malformed Google Calendar event',
+        expect.objectContaining({
+          calendarId: 'primary',
+          eventId: 'bad-1',
+          issuePaths: ['attendees.0.email']
+        })
+      )
+      expect(JSON.stringify(loggerMock.warn.mock.calls)).not.toContain('Secret title')
+    })
+
     it('resets a stale sync cursor on HTTP 410 and fetches individual timed events', async () => {
       fetchMock.mockResolvedValueOnce(new Response('gone', { status: 410 })).mockResolvedValueOnce(
         new Response(
@@ -584,7 +733,11 @@ describe('google calendar client — push channels (Task 7)', () => {
       const client = createGoogleCalendarClient({ accountId: LEGACY_DEFAULT_ACCOUNT_ID })
       await expect(
         client.listEvents({ calendarId: 'primary', syncCursor: 'stale-cursor' })
-      ).resolves.toEqual({ events: [], nextSyncCursor: null })
+      ).resolves.toEqual({ events: [], nextSyncCursor: null, cursorGone: true })
+      expect(loggerMock.info).toHaveBeenCalledWith(
+        expect.stringContaining('410'),
+        expect.objectContaining({ calendarId: 'primary', page: 0 })
+      )
       await expect(
         client.getEvent({ calendarId: 'primary', eventId: 'event-2' })
       ).resolves.toMatchObject({
@@ -736,8 +889,31 @@ describe('google calendar client — push channels (Task 7)', () => {
       const client = createGoogleCalendarClient({ accountId: LEGACY_DEFAULT_ACCOUNT_ID })
       await expect(
         client.listEvents({ calendarId: 'primary', syncCursor: 'stale-cursor' })
-      ).resolves.toEqual({ events: [], nextSyncCursor: null })
+      ).resolves.toEqual({ events: [], nextSyncCursor: null, cursorGone: true })
       expect(fetchMock).toHaveBeenCalledTimes(2)
+    })
+
+    it('reports a last page without nextSyncToken as no cursor, not as a gone one', async () => {
+      fetchMock.mockImplementationOnce(
+        async () =>
+          new Response(
+            JSON.stringify({
+              items: [{ id: 'delta-1', start: { dateTime: '2026-05-05T09:00:00.000Z' } }]
+            }),
+            { status: 200, headers: { 'Content-Type': 'application/json' } }
+          )
+      )
+
+      const client = createGoogleCalendarClient({ accountId: LEGACY_DEFAULT_ACCOUNT_ID })
+      const result = await client.listEvents({ calendarId: 'primary', syncCursor: 'cursor-1' })
+
+      expect(result.nextSyncCursor).toBeNull()
+      expect(result.cursorGone).toBeUndefined()
+      expect(result.events.map((event) => event.id)).toEqual(['delta-1'])
+      expect(loggerMock.info).toHaveBeenCalledWith(
+        expect.stringContaining('no nextSyncToken'),
+        expect.objectContaining({ calendarId: 'primary', incremental: true })
+      )
     })
 
     it('sends PATCH headers and optional rich event fields on update', async () => {
@@ -861,6 +1037,77 @@ describe('google calendar client — push channels (Task 7)', () => {
 
       expect(bodies[0]).toHaveProperty('colorId', null)
       expect(bodies[1]).not.toHaveProperty('colorId')
+    })
+
+    it('#given Google answers an upsert with 400 #when it fails #then logs only the request start/end and throws the rejected-item message', async () => {
+      fetchMock.mockResolvedValueOnce(
+        new Response(
+          JSON.stringify({
+            error: { code: 400, message: 'Invalid start time.', status: 'INVALID_ARGUMENT' }
+          }),
+          { status: 400, headers: { 'Content-Type': 'application/json' } }
+        )
+      )
+
+      const client = createGoogleCalendarClient({ accountId: LEGACY_DEFAULT_ACCOUNT_ID })
+      await expect(
+        client.upsertEvent({
+          calendarId: 'primary',
+          eventId: null,
+          event: {
+            sourceType: 'task',
+            sourceId: 'task-1',
+            title: 'Private title',
+            description: 'Private description',
+            location: null,
+            startAt: '2026-05-10T10:00:00.000Z',
+            endAt: null,
+            isAllDay: false,
+            timezone: 'UTC',
+            recurrence: null
+          }
+        })
+      ).rejects.toMatchObject({ message: 'googleCalendar.requestRejected', status: 400 })
+
+      const errorCall = loggerMock.error.mock.calls.find(
+        ([message]) => message === 'Failed to upsert Google calendar event'
+      )
+      expect(errorCall?.[1]).toMatchObject({
+        status: 400,
+        apiMessage: 'Invalid start time.',
+        requestStart: { dateTime: '2026-05-10T10:00:00.000Z', timeZone: 'UTC' },
+        requestEnd: { dateTime: '2026-05-10T10:00:00.000Z', timeZone: 'UTC' }
+      })
+      expect(JSON.stringify(errorCall)).not.toContain('Private')
+    })
+
+    it('#given a non-400 upsert failure #when it fails #then the request start/end is not logged', async () => {
+      fetchMock.mockResolvedValueOnce(new Response('nope', { status: 500 }))
+
+      const client = createGoogleCalendarClient({ accountId: LEGACY_DEFAULT_ACCOUNT_ID })
+      await expect(
+        client.upsertEvent({
+          calendarId: 'primary',
+          eventId: null,
+          event: {
+            sourceType: 'task',
+            sourceId: 'task-1',
+            title: 'T',
+            description: null,
+            location: null,
+            startAt: '2026-05-10T10:00:00.000Z',
+            endAt: null,
+            isAllDay: false,
+            timezone: 'UTC',
+            recurrence: null
+          }
+        })
+      ).rejects.toMatchObject({ status: 500 })
+
+      const errorCall = loggerMock.error.mock.calls.find(
+        ([message]) => message === 'Failed to upsert Google calendar event'
+      )
+      expect(errorCall?.[1]).not.toHaveProperty('requestStart')
     })
 
     it('covers delete tolerances and watch expiration fallback', async () => {

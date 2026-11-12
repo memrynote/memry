@@ -31,13 +31,13 @@ describe('AgentMcpSection', () => {
     })
     render(<AgentMcpSection />)
 
-    expect(await screen.findByText('http://127.0.0.1:1234')).toBeInTheDocument()
+    expect(await screen.findByText('http://127.0.0.1:1234/mcp')).toBeInTheDocument()
     expect(screen.queryByText('local-token-placeholder')).not.toBeInTheDocument()
     expect(screen.getByText('loca••••••••lder')).toBeInTheDocument()
     expect(screen.getByText('20 tools')).toBeInTheDocument()
 
     await user.click(screen.getByRole('button', { name: 'Copy URL' }))
-    expect(writeTextMock).toHaveBeenCalledWith('http://127.0.0.1:1234')
+    expect(writeTextMock).toHaveBeenCalledWith('http://127.0.0.1:1234/mcp')
 
     await user.click(screen.getByRole('button', { name: 'Copy Bearer token' }))
     expect(writeTextMock).toHaveBeenCalledWith('local-token-placeholder')
@@ -50,5 +50,40 @@ describe('AgentMcpSection', () => {
     expect(await screen.findByText('rota••••••••lder')).toBeInTheDocument()
     await user.click(screen.getByRole('button', { name: 'Copy Bearer token' }))
     expect(writeTextMock).toHaveBeenLastCalledWith('rotated-local-token-placeholder')
+  })
+
+  it('copies client configs with the /mcp endpoint and live token filled in', async () => {
+    const user = userEvent.setup()
+    Object.defineProperty(navigator, 'clipboard', {
+      configurable: true,
+      value: { writeText: writeTextMock }
+    })
+    render(<AgentMcpSection />)
+
+    await user.click(await screen.findByRole('button', { name: 'Copy Claude Desktop config' }))
+    expect(JSON.parse(writeTextMock.mock.lastCall?.[0] as string)).toEqual({
+      mcpServers: {
+        memrynote: {
+          command: 'npx',
+          args: [
+            '-y',
+            'mcp-remote',
+            'http://127.0.0.1:1234/mcp',
+            '--allow-http',
+            '--header',
+            'Authorization:${MEMRYNOTE_AUTH}'
+          ],
+          env: { MEMRYNOTE_AUTH: 'Bearer local-token-placeholder' }
+        }
+      }
+    })
+
+    await user.click(screen.getByRole('button', { name: 'Copy Claude Code config' }))
+    expect(writeTextMock).toHaveBeenLastCalledWith(
+      'claude mcp add --transport http memrynote http://127.0.0.1:1234/mcp --header "Authorization: Bearer local-token-placeholder"'
+    )
+
+    expect(screen.getByText(/PERMISSION_DENIED/)).toBeInTheDocument()
+    expect(screen.getByText(/URL and token change when memrynote restarts/)).toBeInTheDocument()
   })
 })

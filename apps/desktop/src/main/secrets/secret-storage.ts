@@ -481,7 +481,6 @@ export async function getSecret(
  * Names only Electron constants, never secret material.
  */
 function describeUnreadableCause(safeStorageUsable: boolean): string {
-  if (safeStorageUsable) return 'stored ciphertext did not decrypt'
   let backend = 'n/a'
   let encryptionAvailable = false
   try {
@@ -495,7 +494,8 @@ function describeUnreadableCause(safeStorageUsable: boolean): string {
   } catch {
     /* diagnostic only */
   }
-  return `safeStorage unavailable: encryptionAvailable=${encryptionAvailable} backend=${backend}`
+  const cause = safeStorageUsable ? 'stored ciphertext did not decrypt' : 'safeStorage unavailable'
+  return `${cause}: encryptionAvailable=${encryptionAvailable} backend=${backend}`
 }
 
 export async function setSecret(service: string, account: string, value: string): Promise<void> {

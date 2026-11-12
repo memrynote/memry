@@ -5,6 +5,7 @@
     "create": "สร้าง"
   },
   "wikiLinkPreview": {
+    "journalUnwritten": "ยังไม่ได้เขียนบันทึกสำหรับ {date} คลิกเพื่อเปิดวันนั้น",
     "notFound": "ไม่พบโน้ต คลิกเพื่อสร้าง “{title}”"
   },
   "wikiLinkMenu": {
@@ -138,6 +139,7 @@
     "actions": {
       "openInNewTab": "เปิดในแท็บใหม่",
       "openToTheSide": "เปิดด้านข้าง",
+      "openFolderView": "เปิดมุมมองโฟลเดอร์",
       "newNote": "โน้ตใหม่",
       "newFolder": "โฟลเดอร์ใหม่",
       "showTasks": "แสดงงาน",
@@ -187,7 +189,8 @@
     },
     "toast": {
       "selectionBookmarked": "บุ๊กมาร์ก {count} รายการแล้ว",
-      "selectionBookmarkFailed": "ไม่สามารถบุ๊กมาร์กรายการที่เลือกได้"
+      "selectionBookmarkFailed": "ไม่สามารถบุ๊กมาร์กรายการที่เลือกได้",
+      "pairedNoteNameTaken": "มีโน้ตชื่อ {name} อยู่ที่นั่นแล้ว"
     }
   },
   "editor": {
@@ -423,9 +426,14 @@
       "savedView": "มุมมองที่บันทึกไว้",
       "savedViewMissing": "ไม่มีมุมมองที่บันทึกไว้ “{name}” แล้ว จึงแสดงมุมมองเริ่มต้นแทน",
       "openAsTab": "เปิดเป็นแท็บ",
+      "newNote": "โน้ตใหม่",
+      "newViewTitle": "มุมมองใหม่",
+      "newViewSubtext": "โฟลเดอร์ใหม่ข้างโน้ตนี้ ซึ่งแสดงรายการไว้ที่นี่",
+      "newViewFailed": "สร้างโฟลเดอร์สำหรับมุมมองนี้ไม่สำเร็จ",
       "empty": "ยังไม่มีรายการที่ตรงกับมุมมองนี้",
       "loadFailed": "โหลดมุมมองนี้ไม่สำเร็จ ตัวโน้ตยังคงเหมือนเดิม",
       "folderMissing": "โฟลเดอร์นี้ไม่อยู่ในคลังข้อมูลแล้ว เลือกแหล่งที่มาอื่น",
+      "unreadable": "อ่านมุมมองนี้ไม่ได้ เลือกแหล่งที่มาด้านบน หรือลบบล็อก",
       "invalidJson": "คำจำกัดความของมุมมองนี้ไม่ใช่ JSON ที่ถูกต้อง แก้ไขด้านล่าง หรือนำบล็อกนี้ออก",
       "invalidShape": "คำจำกัดความของมุมมองนี้ไม่มีแหล่งที่มา เลือกแหล่งที่มาด้านบน หรือแก้ไขด้านล่าง",
       "definition": "คำจำกัดความ"
@@ -668,6 +676,8 @@
   },
   "menus": {
     "wiki": {
+      "journalDay": "บันทึกประจำวัน · {date}",
+      "journalDayUnwritten": "บันทึกประจำวัน · ยังไม่ได้เขียน",
       "aria": "คำแนะนำโน้ต",
       "loading": "กำลังโหลดโน้ต…",
       "empty": "ไม่พบโน้ต",
@@ -782,6 +792,12 @@
     "viaProperty": "{property} → {title}",
     "viaPortal": "แสดงในพอร์ทัล"
   },
+  "references": {
+    "filterAll": "ทั้งหมด",
+    "filterNotes": "โน้ต",
+    "filterJournal": "บันทึกประจำวัน",
+    "filterBy": "กรองการอ้างอิง: {filter}"
+  },
   "unlinkedMentions": {
     "title": "การกล่าวถึงที่ยังไม่ลิงก์",
     "summary": "{count, plural, other {การกล่าวถึงที่ยังไม่ลิงก์ # รายการ}}",
@@ -886,6 +902,7 @@
     "showOnCalendar": "แสดงบนปฏิทิน",
     "showingOnCalendar": "กำลังแสดงบนปฏิทิน",
     "relation": {
+      "unwrittenDay": "ยังไม่ได้เขียน",
       "deleted": "ลบแล้ว",
       "removeAria": "นำ {title} ออก",
       "addAria": "เพิ่มความสัมพันธ์",

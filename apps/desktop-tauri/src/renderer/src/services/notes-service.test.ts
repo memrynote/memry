@@ -200,7 +200,10 @@ describe('notes-service', () => {
     })
     commands.notesResolveWikiTarget.mockResolvedValue({ ...plan, heading: 'Goals' })
 
-    expect(await notesService.getLinks('note-1')).toEqual(links)
+    expect(await notesService.getLinks('note-1')).toEqual({
+      ...links,
+      incoming: links.incoming.map((link) => ({ ...link, sourceJournalDate: null, sourceTags: [] }))
+    })
     expect(commands.notesGetLinks).toHaveBeenCalledWith('note-1')
     expect(await notesService.resolveByTitle('plan')).toEqual(plan)
     expect(commands.notesResolveByTitle).toHaveBeenCalledWith('plan')
@@ -242,7 +245,9 @@ describe('notes-service', () => {
       .mockResolvedValueOnce({ ...card, description: 'Why', body: null })
       .mockResolvedValueOnce(null)
 
-    expect(await notesService.getUnlinkedMentions('note-1')).toEqual([mention])
+    expect(await notesService.getUnlinkedMentions('note-1')).toEqual([
+      { ...mention, sourceJournalDate: null, sourceTags: [] }
+    ])
     expect(commands.notesGetUnlinkedMentions).toHaveBeenCalledWith('note-1')
     expect(await notesService.previewByTitle('Roadmap')).toEqual({
       ...card,

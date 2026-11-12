@@ -3913,11 +3913,32 @@ describe('a link mention through the main serializer', () => {
     expect(markdown).toMatch(/^See \(\(mention:[A-Za-z0-9.%-]+\)\) here\.$/)
   })
 
+  it('seeds a mention as a linkMention node, so no device promotes it on its own (#3871)', async () => {
+    // #given
+    const url = 'https://x.test/a?b=c'
+    const doc = new Y.Doc()
+
+    // #when
+    await markdownToYFragment(
+      `See ${serializeLinkMentionToken(url)} here.`,
+      doc.getXmlFragment(CRDT_FRAGMENT_NAME)
+    )
+
+    // #then
+    const blocks = await yFragmentToBlocks(doc.getXmlFragment(CRDT_FRAGMENT_NAME))
+    expect(blocks?.[0]?.content).toEqual([
+      { type: 'text', text: 'See ', styles: {} },
+      {
+        type: 'linkMention',
+        props: { url, domain: 'x.test', title: '', favicon: '', siteName: '' }
+      },
+      { type: 'text', text: ' here.', styles: {} }
+    ])
+  })
+
   it('leaves a token it reads out of a vault file byte-identical', async () => {
-    // #given main has no promoter — the token stays plain text through the
-    // seed, which is exactly why it must not be rewritten in passing. Two `*`
-    // URLs on one line is the shape that used to pair up into an emphasis run
-    // and rewrite the whole paragraph.
+    // #given two `*` URLs on one line, the shape that used to pair up into an
+    // emphasis run and rewrite the whole paragraph.
     const markdown = `See ${serializeLinkMentionToken("https://x.test/a*b_c'd")} and ${serializeLinkMentionToken('https://x.test/e*f~g')} here.`
     const doc = new Y.Doc()
     await markdownToYFragment(markdown, doc.getXmlFragment(CRDT_FRAGMENT_NAME))

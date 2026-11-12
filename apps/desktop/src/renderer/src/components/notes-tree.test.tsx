@@ -86,13 +86,15 @@ vi.mock('@/lib/ipc-error', () => ({
   extractErrorMessage: (err: unknown, fallback: string) => fallback
 }))
 
+const tabMocks = vi.hoisted(() => ({ openTab: vi.fn() }))
+
 vi.mock('@/contexts/tabs', () => ({
   useTabs: () => ({
     openTab: vi.fn(),
     closeTab: vi.fn()
   }),
   useTabActions: () => ({
-    openTab: vi.fn(),
+    openTab: tabMocks.openTab,
     closeTab: vi.fn(),
     updateTabTitleByEntityId: vi.fn()
   })
@@ -707,6 +709,70 @@ describe('NotesTree - one folder subtree, view options', () => {
     expect(info).toHaveBeenCalledTimes(1)
     expect(screen.queryByText('Personal Summary')).not.toBeInTheDocument()
     info.mockRestore()
+  })
+})
+
+// `Note A.md` beside `Note A/` is one row: the label opens the note, the
+// chevron opens the folder (Note A > Database > Note 1).
+describe('NotesTree - a note paired with its folder', () => {
+  const pairedNotes: NoteListItem[] = [
+    createNote('page-a', 'Note A.md'),
+    createNote('database', 'Note A/Database.md'),
+    createNote('note-1', 'Note A/Database/Note 1.md'),
+    createNote('loose', 'Loose.md')
+  ]
+  const pairedFolders: FolderInfo[] = [
+    { path: 'Note A', icon: null },
+    { path: 'Note A/Database', icon: null },
+    { path: 'Empty', icon: null }
+  ]
+  const row = (id: string) => document.querySelector<HTMLElement>(`[data-tree-node-id="${id}"]`)!
+
+  beforeEach(() => {
+    vi.clearAllMocks()
+    localStorage.clear()
+    patchTemplatesMock()
+    setupMocks(pairedNotes, pairedFolders)
+  })
+
+  it('draws one row per pair and leaves unpaired notes and folders as they were', () => {
+    renderWithProviders(<NotesTree />)
+
+    expect(screen.getAllByText('Note A')).toHaveLength(1)
+    expect(row('folder-Note A')).not.toBeNull()
+    expect(row('page-a')).toBeNull()
+    expect(row('loose')).not.toBeNull()
+    expect(row('folder-Empty')).not.toBeNull()
+  })
+
+  it('opens the note from the label and the folder from the chevron', async () => {
+    const user = userEvent.setup()
+    renderWithProviders(<NotesTree />)
+
+    await user.click(screen.getByText('Note A'))
+    expect(tabMocks.openTab.mock.lastCall?.[0]).toMatchObject({ type: 'note', entityId: 'page-a' })
+    expect(screen.queryByText('Database')).not.toBeInTheDocument()
+
+    tabMocks.openTab.mockClear()
+    await user.click(within(row('folder-Note A')).getByRole('button', { name: /expand folder/i }))
+    expect(screen.getByText('Database')).toBeInTheDocument()
+    expect(tabMocks.openTab).not.toHaveBeenCalled()
+
+    await user.click(
+      within(row('folder-Note A/Database')).getByRole('button', { name: /expand folder/i })
+    )
+    expect(screen.getByText('Note 1')).toBeInTheDocument()
+  })
+
+  it('asks to delete the note and the folder together', async () => {
+    const user = userEvent.setup()
+    renderWithProviders(<NotesTree />)
+
+    await user.pointer({ target: screen.getByText('Note A'), keys: '[MouseRight]' })
+    await user.click(await screen.findByRole('menuitem', { name: /delete/i }))
+
+    const dialog = await screen.findByRole('alertdialog')
+    expect(within(dialog).getAllByText(/Note A/)).toHaveLength(2)
   })
 })
 

@@ -1,0 +1,14 @@
+-- Pull every Google calendar in full once.
+--
+-- Before this release, turning a Google calendar off or disconnecting its
+-- account deleted the calendar's events but kept its sync cursor. Turning it
+-- back on or reconnecting then pulled incrementally from that cursor, which
+-- returns only events changed since, so the deleted events never came back:
+-- a reconnected calendar showed one new event out of hundreds. Those vaults
+-- are still missing the events, and nothing tells an affected cursor apart.
+--
+-- Data-only and row-preserving: the cursor is a cache of pull progress, not
+-- user data. The next pass pulls each calendar's window again and upserts the
+-- events by id, so the events already present are rewritten, not duplicated.
+-- Hand-written (project switched off Drizzle generator after 0020).
+UPDATE `calendar_sources` SET `sync_cursor` = NULL WHERE `provider` = 'google' AND `kind` = 'calendar';

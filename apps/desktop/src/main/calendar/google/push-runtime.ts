@@ -8,12 +8,30 @@ import { resolveDefaultGoogleAccountId } from './oauth'
 import { requireDatabase } from '../../database'
 import { createGoogleChannelManager, type GoogleChannelManager } from './google-channel-manager'
 import { getCalendarSourceById } from '../repositories/calendar-sources-repository'
+import { getSetting, setSetting } from '../../settings/settings-store'
 
 const log = createLogger('Calendar:GooglePushRuntime')
 
 const WEBHOOK_PATH = '/webhooks/google-calendar'
 const TTL_SECONDS = 7 * 24 * 60 * 60
 const ROTATION_MARGIN_SECONDS = 60 * 60
+
+// Device-local, never synced: the dot after `calendar.google` keeps it out of
+// the calendar settings mirror (calendar-settings-sync.ts groupLeaves). Holds a
+// JSON array of source ids whose calendar Google refuses push channels for.
+const PUSH_UNSUPPORTED_SETTING_KEY = 'calendar.google.pushUnsupportedSources'
+
+function readPushUnsupportedSources(): string[] {
+  const raw = getSetting(requireDatabase(), PUSH_UNSUPPORTED_SETTING_KEY)
+  if (!raw) return []
+  try {
+    const parsed: unknown = JSON.parse(raw)
+    return Array.isArray(parsed) ? parsed.filter((id): id is string => typeof id === 'string') : []
+  } catch (err) {
+    log.warn('Ignoring unreadable push-unsupported source list', { err })
+    return []
+  }
+}
 
 export interface CalendarSourceLite {
   id: string
@@ -143,6 +161,16 @@ function buildProductionChannelManager(
         () => {
           // Server-side cleanup cron will reap orphans; best-effort delete.
         }
+      )
+    },
+    isPushUnsupported: (sourceId) => readPushUnsupportedSources().includes(sourceId),
+    markPushUnsupported: (sourceId) => {
+      const sources = readPushUnsupportedSources()
+      if (sources.includes(sourceId)) return
+      setSetting(
+        requireDatabase(),
+        PUSH_UNSUPPORTED_SETTING_KEY,
+        JSON.stringify([...sources, sourceId])
       )
     },
     generateToken: () => randomBytes(32).toString('hex'),

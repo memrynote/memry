@@ -311,7 +311,6 @@ describe('AI hooks', () => {
   it('initializes AI inline from disabled, healthy, failed, and retry states', async () => {
     const invoke = vi.fn()
     window.electron.ipcRenderer.invoke = invoke
-    globalThis.fetch = vi.fn().mockResolvedValue({ ok: true }) as never
 
     const globallyDisabled = renderHook(() => useAIInline(false))
     await waitFor(() => expect(globallyDisabled.result.current.loading).toBe(false))
@@ -329,22 +328,43 @@ describe('AI hooks', () => {
     expect(disabled.result.current.port).toBeNull()
     disabled.unmount()
 
-    invoke.mockResolvedValueOnce({ enabled: true, provider: 'ollama' }).mockResolvedValueOnce(3210)
+    invoke
+      .mockResolvedValueOnce({ enabled: true, provider: 'ollama' })
+      .mockResolvedValueOnce({ success: true, port: 3210 })
     const healthy = renderHook(() => useAIInline())
     await waitFor(() => expect(healthy.result.current.port).toBe(3210))
     healthy.unmount()
 
     invoke
       .mockResolvedValueOnce({ enabled: true, provider: 'ollama' })
-      .mockResolvedValueOnce(null)
       .mockResolvedValueOnce({ success: false, error: 'ECONNREFUSED' })
       .mockResolvedValueOnce({ enabled: true, provider: 'openai' })
-      .mockResolvedValueOnce(null)
       .mockResolvedValueOnce({ success: false, error: '401 api key' })
     const failed = renderHook(() => useAIInline())
     await waitFor(() => expect(failed.result.current.error).toContain('Ollama is not running'))
     act(() => failed.result.current.retry())
     await waitFor(() => expect(failed.result.current.error).toContain('Invalid API key for openai'))
+  })
+
+  it('starts AI inline when it is turned on in settings, without a restart', async () => {
+    const invoke = vi.fn()
+    window.electron.ipcRenderer.invoke = invoke
+    let settingsChanged: (() => void) | undefined
+    window.electron.ipcRenderer.on = vi.fn((channel: string, listener: () => void) => {
+      if (channel === 'ai-inline:server-ready') settingsChanged = listener
+      return () => {}
+    }) as never
+
+    invoke.mockResolvedValueOnce({ enabled: false, provider: 'anthropic' })
+    const hook = renderHook(() => useAIInline())
+    await waitFor(() => expect(hook.result.current.loading).toBe(false))
+    expect(hook.result.current.port).toBeNull()
+
+    invoke
+      .mockResolvedValueOnce({ enabled: true, provider: 'anthropic' })
+      .mockResolvedValueOnce({ success: true, port: 4321 })
+    act(() => settingsChanged?.())
+    await waitFor(() => expect(hook.result.current.port).toBe(4321))
   })
 })
 

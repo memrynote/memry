@@ -250,7 +250,8 @@
     "failedPlayAudio": "Failed to play audio",
     "failedLoadAudio": "Failed to load audio",
     "video": "Video",
-    "unsupportedVideo": "Your browser does not support the video tag."
+    "unsupportedVideo": "Your browser does not support the video tag.",
+    "fileOnOtherDevice": "The file is on the device that captured it."
   },
   "reminder": {
     "dataUnavailable": "Reminder data unavailable.",

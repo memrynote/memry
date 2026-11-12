@@ -1,4 +1,4 @@
-import { beforeEach, describe, expect, it, vi } from 'vitest'
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import Database from 'better-sqlite3'
 import { drizzle } from 'drizzle-orm/better-sqlite3'
 import { NEGOTIABLE_SYNC_TYPES, RECORD_SYNC_ITEM_TYPES } from '@memry/contracts/sync-api'
@@ -39,6 +39,7 @@ import {
   postToServer,
   getFromServer,
   deleteFromServer,
+  patchToServer,
   pushCrdtFullUpdate,
   pushCrdtSnapshot,
   pushCrdtSnapshotBatch,
@@ -100,14 +101,22 @@ const lastRequestHeaders = (): Record<string, string> => {
 
 describe('http-client', () => {
   let vault: ReturnType<typeof createVaultDb>
+  let clock = Date.now()
 
   beforeEach(() => {
+    vi.useFakeTimers({ toFake: ['Date'] })
+    clock += 1000
+    vi.setSystemTime(clock)
     vi.clearAllMocks()
     // The vault identity is cached per DataDb handle for the process lifetime,
     // so without this a test could read a previous test's cached value.
     resetVaultUuidCache()
     vault = createVaultDb('vault-1')
     mockGetDatabase.mockReturnValue(vault.db)
+  })
+
+  afterEach(() => {
+    vi.useRealTimers()
   })
 
   describe('syncFetch', () => {
@@ -282,6 +291,45 @@ describe('http-client', () => {
       await expect(syncFetch('GET', '/api/test')).rejects.toThrow('errors:sync.serverUnreachable')
     })
 
+    it('treats an ok response with no body as success (#4020)', async () => {
+      // #given the 204 that PATCH /calendar/channels/:id answers
+      mockFetch.mockImplementation(async () => new Response(null, { status: 204 }))
+
+      // #when / #then
+      await expect(
+        patchToServer('/calendar/channels/channel-1', { resourceId: 'resource-1' }, 'token-1')
+      ).resolves.toBeUndefined()
+      await expect(
+        deleteFromServer('/calendar/channels/channel-1', 'token-1')
+      ).resolves.toBeUndefined()
+    })
+
+    it('treats an ok response with content-length 0 as success (#4020)', async () => {
+      // #given
+      mockFetch.mockImplementation(
+        async () => new Response('', { status: 200, headers: { 'content-length': '0' } })
+      )
+
+      // #when / #then
+      await expect(syncFetch('PUT', '/api/thing', {}, 'token-1')).resolves.toBeUndefined()
+    })
+
+    it('still rejects an ok response whose body is not JSON', async () => {
+      // #given
+      mockFetch.mockImplementation(async () => new Response('<html>oops</html>', { status: 200 }))
+
+      // #when / #then
+      await expect(syncFetch('GET', '/api/thing')).rejects.toThrow('Invalid response body')
+    })
+
+    it('still rejects an error status with no body', async () => {
+      // #given
+      mockFetch.mockImplementation(async () => new Response(null, { status: 502 }))
+
+      // #when / #then
+      await expect(syncFetch('GET', '/api/thing')).rejects.toThrow('Server returned 502')
+    })
+
     it('throws RateLimitError on 429 response', async () => {
       // #given
       mockFetch.mockResolvedValue(
@@ -437,6 +485,7 @@ describe('http-client', () => {
         coversThrough: 50,
         baseRevision: 'rev-7'
       })
+      vi.setSystemTime(Date.now() + 250)
       await pushCrdtSnapshot('note-1', new Uint8Array([1]), 'token-1')
 
       const bodies = mockFetch.mock.calls.map((call) =>

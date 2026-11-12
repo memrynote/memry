@@ -204,7 +204,12 @@ describe('CommandPalette opening results', () => {
         path: 'journal/2026-06-10.md',
         tags: []
       }),
-      tab: { type: 'journal', path: '/journal/2026-06-10' }
+      // The journal page reads its day from `viewState.date`; without it the tab shows today.
+      tab: {
+        type: 'journal',
+        path: '/journal/2026-06-10',
+        viewState: { date: '2026-06-10' }
+      }
     },
     {
       // The tasks page reads `openTaskId`; archived hits used to land on an empty overview.

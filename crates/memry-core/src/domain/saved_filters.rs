@@ -5,8 +5,8 @@
 //! `packages/sync-client/src/filter-sync.ts`,
 //! `packages/sync-client/src/item-handlers/filter-handler.ts`):
 //!
-//! - the payload is `{name, config, position, clock, createdAt}` and nothing
-//!   else: no `modifiedAt`, no `fieldClocks`. `filter` is resolved
+//! - the payload is `{name, config, expression, position, clock, createdAt}`
+//!   and nothing else: no `modifiedAt`, no `fieldClocks`. `filter` is resolved
 //!   document-level (§6.8's fourth row), so a local edit ticks the document
 //!   clock and only that;
 //! - `config` is `{filters, sort?, starred?}` on desktop and `z.unknown()` on
@@ -16,7 +16,9 @@
 //!   reads go through [`TaskFilters::from_json`] and [`TaskSort::from_json`];
 //! - a new filter goes to `max(position) + 1` (`getNextSavedFilterPosition`);
 //! - star and unstar write `config.starred` as a boolean, `false` included
-//!   (`use-task-filters.ts` `toggleStar`).
+//!   (`use-task-filters.ts` `toggleStar`);
+//! - `expression`, the advanced rules (§13.7.14), sits beside `config`, is
+//!   opaque JSON like it, and an edit replaces it whole ([`set_expression`]).
 //!
 //! Every write is one transaction with its outbox row(s), through
 //! [`outbox::commit`] or [`outbox::enqueue`] inside one transaction.
@@ -53,6 +55,9 @@ pub struct SavedFilter {
     pub name: String,
     /// The payload's `config`, verbatim; `{}` when the payload carries none.
     pub config: Value,
+    /// The payload's top-level `expression` object, verbatim; `None` when it
+    /// carries none.
+    pub expression: Option<Value>,
     pub position: i64,
     /// Epoch milliseconds, or `None` when the payload carried no readable
     /// `createdAt`.
@@ -87,14 +92,17 @@ pub struct NewSavedFilter<'a> {
     pub name: &'a str,
     /// `{filters, sort?, starred?}`; stored as given, unknown keys included.
     pub config: &'a Value,
+    /// The advanced rules, a `{match, rules}` object; `None` writes `null`.
+    pub expression: Option<&'a Value>,
 }
 
 /// Every live saved filter, in `position` order with `id` as the tiebreak.
 pub fn list(conn: &Connection) -> Result<Vec<SavedFilter>, StorageError> {
     let mut statement = conn
         .prepare(
-            "SELECT id, name, config, position, created_at
+            "SELECT id, name, config, position, created_at, e.expression
                FROM saved_filters
+               LEFT JOIN saved_filter_expressions e ON e.filter_id = id
               WHERE deleted_at IS NULL
               ORDER BY position, id",
         )
@@ -110,8 +118,9 @@ pub fn list(conn: &Connection) -> Result<Vec<SavedFilter>, StorageError> {
 /// One live saved filter by id.
 pub fn get(conn: &Connection, filter_id: &str) -> Result<Option<SavedFilter>, StorageError> {
     conn.query_row(
-        "SELECT id, name, config, position, created_at
+        "SELECT id, name, config, position, created_at, e.expression
            FROM saved_filters
+           LEFT JOIN saved_filter_expressions e ON e.filter_id = id
           WHERE id = ?1 AND deleted_at IS NULL",
         params![filter_id],
         read_row,
@@ -131,6 +140,7 @@ pub fn create(
 ) -> Result<Durable<SavedFilter>, StorageError> {
     valid_name(filter.name)?;
     let config = valid_config(filter.config)?;
+    let expression = filter.expression.map(valid_expression).transpose()?;
     if !config.get("filters").is_some_and(Value::is_object) {
         return Err(StorageError::Invalid {
             what: "a saved filter's config needs a `filters` object".to_owned(),
@@ -148,6 +158,7 @@ pub fn create(
             let payload = object(json!({
                 "name": filter.name,
                 "config": config,
+                "expression": expression,
                 "position": next_position(tx)?,
                 "clock": next_clock(&Object::new(), device_id)?,
                 "createdAt": iso(now_ms)?,
@@ -211,6 +222,37 @@ pub fn set_starred(
         Some(&json!({ "starred": starred })),
         device_id,
         now_ms,
+    )
+}
+
+/// Replaces the payload's top-level `expression` whole; `None` writes `null`,
+/// the explicit clear. Unlike [`update`] there is no merge: a rule tree is
+/// one value, and merging two would combine rules neither side wrote.
+pub fn set_expression(
+    conn: &Connection,
+    filter_id: &str,
+    expression: Option<&Value>,
+    device_id: &str,
+    now_ms: i64,
+) -> Result<Durable<SavedFilter>, StorageError> {
+    let expression = expression.map(valid_expression).transpose()?;
+    outbox::commit(
+        conn,
+        &outbox::Change::upsert(ITEM_TYPE, filter_id),
+        now_ms,
+        |tx| {
+            let stored = live_payload(tx, filter_id)?;
+            let value = expression.cloned().unwrap_or(Value::Null);
+            edit_in(
+                tx,
+                filter_id,
+                &stored,
+                vec![("expression", Change::Set(value))],
+                device_id,
+                now_ms,
+            )?;
+            read_back(tx, filter_id)
+        },
     )
 }
 
@@ -373,6 +415,15 @@ fn valid_name(name: &str) -> Result<(), StorageError> {
     Ok(())
 }
 
+fn valid_expression(expression: &Value) -> Result<&Value, StorageError> {
+    if !expression.is_object() {
+        return Err(StorageError::Invalid {
+            what: "a saved filter's expression is a JSON object".to_owned(),
+        });
+    }
+    Ok(expression)
+}
+
 fn valid_config(config: &Value) -> Result<&Value, StorageError> {
     if !config.is_object() {
         return Err(StorageError::Invalid {
@@ -391,7 +442,14 @@ pub(crate) fn mint_id() -> String {
         .collect()
 }
 
-type RawRow = (String, String, Option<String>, i64, Option<i64>);
+type RawRow = (
+    String,
+    String,
+    Option<String>,
+    i64,
+    Option<i64>,
+    Option<String>,
+);
 
 fn read_row(row: &Row<'_>) -> rusqlite::Result<RawRow> {
     Ok((
@@ -400,22 +458,30 @@ fn read_row(row: &Row<'_>) -> rusqlite::Result<RawRow> {
         row.get(2)?,
         row.get(3)?,
         row.get(4)?,
+        row.get(5)?,
     ))
 }
 
 fn finish(
-    (id, name, config, position, created_at_ms): RawRow,
+    (id, name, config, position, created_at_ms, expression): RawRow,
 ) -> Result<SavedFilter, StorageError> {
+    let parse = |text: &str, what: &str| {
+        serde_json::from_str(text).map_err(|error| StorageError::Failed {
+            what: format!("saved filter {id}: cached {what} is not JSON: {error}"),
+        })
+    };
     let config = match config {
         None => Value::Object(Object::new()),
-        Some(text) => serde_json::from_str(&text).map_err(|error| StorageError::Failed {
-            what: format!("saved filter {id}: cached config is not JSON: {error}"),
-        })?,
+        Some(text) => parse(&text, "config")?,
     };
+    let expression = expression
+        .map(|text| parse(&text, "expression"))
+        .transpose()?;
     Ok(SavedFilter {
         id,
         name,
         config,
+        expression,
         position,
         created_at_ms,
     })

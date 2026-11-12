@@ -250,6 +250,23 @@ describe('ContentSection', () => {
     expect(screen.getByText('1.0 KB')).toBeInTheDocument()
   })
 
+  it.each(['image', 'voice', 'video', 'pdf'] as const)(
+    'tells the user a synced %s capture has its file on the device that captured it (#4157)',
+    (type) => {
+      render(<ContentSection item={baseItem(type, { attachmentUrl: null })} />)
+
+      expect(screen.getByRole('status')).toHaveTextContent(
+        'The file is on the device that captured it.'
+      )
+    }
+  )
+
+  it('shows no placeholder while the file is on disk', () => {
+    render(<ContentSection item={baseItem('image', { attachmentUrl: 'memry-file://image.png' })} />)
+
+    expect(screen.queryByRole('status')).not.toBeInTheDocument()
+  })
+
   it('drives voice audio playback, waveform seeking, transcription copy, and error states', async () => {
     const user = userEvent.setup()
     const play = vi.spyOn(window.HTMLMediaElement.prototype, 'play').mockResolvedValue(undefined)

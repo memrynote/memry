@@ -635,7 +635,9 @@ export const AGENT_DESKTOP_OPERATION_PARAMS = {
       showSchedule: z.boolean().optional(),
       showTasks: z.boolean().optional(),
       showAIConnections: z.boolean().optional(),
-      showStatsFooter: z.boolean().optional()
+      showStatsFooter: z.boolean().optional(),
+      showOnThisDay: z.boolean().optional(),
+      allYearsView: z.boolean().optional()
     })
   },
   'settings.setAISettings': { settings: z.object({ enabled: z.boolean().optional() }) },

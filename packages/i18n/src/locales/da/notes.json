@@ -5,6 +5,7 @@
     "create": "Opret"
   },
   "wikiLinkPreview": {
+    "journalUnwritten": "Der er endnu ikke skrevet noget for {date}. Klik for at åbne dagen",
     "notFound": "Ikke fundet – klik for at oprette »{title}«"
   },
   "wikiLinkMenu": {
@@ -138,6 +139,7 @@
     "actions": {
       "openInNewTab": "Åbn i ny fane",
       "openToTheSide": "Åbn ved siden af",
+      "openFolderView": "Åbn mappevisning",
       "newNote": "Ny note",
       "newFolder": "Ny mappe",
       "showTasks": "Vis opgaver",
@@ -187,7 +189,8 @@
     },
     "toast": {
       "selectionBookmarked": "{count} elementer bogmærket",
-      "selectionBookmarkFailed": "Kunne ikke bogmærke de valgte elementer"
+      "selectionBookmarkFailed": "Kunne ikke bogmærke de valgte elementer",
+      "pairedNoteNameTaken": "Der findes allerede en note med navnet {name}"
     }
   },
   "editor": {
@@ -423,9 +426,14 @@
       "savedView": "Gemt visning",
       "savedViewMissing": "Den gemte visning »{name}« findes ikke længere, så standardvisningen vises.",
       "openAsTab": "Åbn som fane",
+      "newNote": "Ny note",
+      "newViewTitle": "Ny visning",
+      "newViewSubtext": "En ny mappe ved siden af denne note, vist her",
+      "newViewFailed": "Kunne ikke oprette mappen til denne visning.",
       "empty": "Intet matcher denne visning endnu.",
       "loadFailed": "Kunne ikke indlæse denne visning. Selve noterne er uændrede.",
       "folderMissing": "Denne mappe findes ikke længere i boksen. Vælg en anden kilde.",
+      "unreadable": "Denne visning kan ikke læses. Vælg en kilde ovenfor, eller fjern blokken.",
       "invalidJson": "Denne visnings definition er ikke gyldig JSON. Ret den nedenfor, eller fjern blokken.",
       "invalidShape": "Denne visnings definition har ingen kilde. Vælg en ovenfor, eller ret den nedenfor.",
       "definition": "Definition"
@@ -668,6 +676,8 @@
   },
   "menus": {
     "wiki": {
+      "journalDay": "Dagbog · {date}",
+      "journalDayUnwritten": "Dagbog · ikke skrevet endnu",
       "aria": "Noteforslag",
       "loading": "Indlæser noter…",
       "empty": "Ingen noter fundet",
@@ -782,6 +792,12 @@
     "viaProperty": "{property} → {title}",
     "viaPortal": "Vist i en portal"
   },
+  "references": {
+    "filterAll": "Alle",
+    "filterNotes": "Noter",
+    "filterJournal": "Dagbog",
+    "filterBy": "Filtrer referencer: {filter}"
+  },
   "unlinkedMentions": {
     "title": "Ulinkede omtaler",
     "summary": "{count, plural, one {# ulinket omtale} other {# ulinkede omtaler}}",
@@ -886,6 +902,7 @@
     "showOnCalendar": "Vis i kalenderen",
     "showingOnCalendar": "Vises i kalenderen",
     "relation": {
+      "unwrittenDay": "Ikke skrevet endnu",
       "deleted": "Slettet",
       "removeAria": "Fjern {title}",
       "addAria": "Tilføj relation",

@@ -82,7 +82,7 @@ export interface NotePlanTaskDeps {
     parentId: string | null
     sourceNoteId: string
   }): Promise<{ success: boolean; task?: { id: string } | null }>
-  completeTask(a: { id: string; completedAt?: string }): Promise<unknown>
+  completeTask(a: { id: string; completedAt?: string; recordOnly?: boolean }): Promise<unknown>
   archiveTask(id: string): Promise<unknown>
   getInboxProjectId(): string | undefined
   /** The `tasks.nestedSubtasks` setting: whether a subtask may parent a task. */
@@ -232,7 +232,11 @@ async function createTasks(
     // resolves. Report it and move on with the task open instead.
     try {
       if (task.state === 'done') {
-        await deps.completeTask({ id, completedAt: task.completedAt ?? undefined })
+        await deps.completeTask({
+          id,
+          completedAt: task.completedAt ?? undefined,
+          recordOnly: true
+        })
       } else if (task.state === 'cancelled') {
         // Memry has no cancelled state; archiving is what the TickTick importer
         // does with the same concept.

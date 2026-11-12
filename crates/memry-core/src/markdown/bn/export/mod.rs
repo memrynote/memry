@@ -7,7 +7,7 @@
 //! `data-language`): style attributes, classes and `data-*` carry no markdown.
 
 mod blocks;
-mod inline;
+pub(crate) mod inline;
 mod table;
 
 use serde_json::Value as Json;

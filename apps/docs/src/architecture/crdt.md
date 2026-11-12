@@ -339,6 +339,14 @@ instead, and after a complete merge the pull takes it
 left to the merge, because its file may be the item record's copy of a body the
 server has since moved past.
 
+A row that a pull writes is synced by definition, so the note and journal
+record applies stamp `syncedAt` no earlier than the `modifiedAt` they write
+(`pulledRowSyncedAt`). The parse that builds a journal day's file stamps
+`modifiedAt` a few milliseconds after the apply time, and a sender whose clock
+runs ahead sends a later one. Read as edited, a fresh device's day owed its
+file, which an update record leaves empty, and the take replaced the server
+body with nothing and synced the deletes to every device.
+
 The file is taken only after a complete server merge into the live document,
 and every other pass leaves the file alone while the marker stands. The
 full-state flush and an editor open merge the server body first and then
@@ -705,6 +713,26 @@ is described in [Vault Files (Tauri)](/architecture/vault-files).
   landed in the meantime. A note that is genuinely gone from the map — closed and not
   reopened, or LRU-evicted — still has its pending pass written from the captured doc, so
   no edit is dropped.
+- **The conversion runs off the main thread** — turning the doc into its file body loads
+  BlockNote and jsdom on first use and walks the whole document. On the main thread the
+  first edit after launch blocked the event loop for 12 s and more on Windows after a
+  reboot, and the window went "Not Responding" mid-typing. The converter worker
+  (`converter-worker`, bridged by `converter-worker-bridge.ts`) runs the same
+  `convertForWriteback` against a copy of the doc built from its state update, and calls
+  back to main for the two things that need the vault: the note's current file body and
+  embed lookups. The pass awaits the worker's ready signal before it reads the note row, so
+  the load no longer sits between the row and the write. A note runs one pass at a time: a
+  pass armed while another converts waits for it, because one that started early would read
+  the row from before the first pass's write, take that write for an outside edit and feed
+  it back into the doc over what the user typed since. The quit flush waits for running
+  passes too. That flush converts on main unless the worker is already up, because a worker
+  starting cold would spend the shutdown budget, and a quit that runs out of it loses the
+  edit. A note deleted while its pass converts is not written back. One worker serves every pass and
+  every seed of a note from its file, and exits after 3 minutes
+  idle. A job the worker cannot finish (a crash, a refused spawn, no answer in 2 minutes)
+  converts on main instead, as every job did before, and after three worker failures the
+  session stops trying it (`worker_disabled`). Custom callout types reach the worker with
+  each job, because the parser reads them from a per-process registry.
 - **Per-vault bookkeeping** — write-back tracks self-written files and recent inbound
   network updates in short-TTL maps. Entries are evicted in an amortized pass (at most one
   sweep per TTL window) rather than scanned on every watcher event, and
@@ -822,6 +850,19 @@ is described in [Vault Files (Tauri)](/architecture/vault-files).
 While a write-back is queued or mid-write the `.md` file is knowingly behind the Y.Doc, so
 markdown-as-truth readers (task checkbox reconciliation) stand down for that window. Search
 results and the file on disk catch up when the pass runs.
+
+A note's file can say `- [ ]` for a task completed from the Tasks view or on a synced peer,
+because nothing rewrites the note until it is open in an editor. Reconciling from those bytes
+reopened the done task, and sync spread the reopen to every device. So a line follows the
+file only when it was edited (`src/main/tasks/reconcile-markdown-tasks.ts`):
+
+- `note_cache.task_checks` holds each task line's checkbox in the bytes the app last
+  acknowledged: what it wrote, indexed or reconciled. The watcher, and a note open whose
+  file hash differs from `content_hash`, apply only lines whose checkbox moved away from it.
+- A line with no acknowledged state, in a file the indexer or the ingest backfill reads for
+  the first time or a row older than the column, follows the file only when the file's mtime
+  is newer than the task's `modifiedAt`. A stale copy synced or restored into the vault
+  cannot reopen tasks completed since.
 
 ## Hybrid Sync Model
 
@@ -1671,13 +1712,21 @@ the canvas's own `.excalidraw` file, and the note holds one
 `<img>` like `bookmark`; a whiteboard with no `canvasId` writes nothing rather than a marker
 that would re-open as a plain image.
 
-Main is also the parser. A note's Y.Doc is seeded from its vault file in the main process
+Main is also the parser. A note's Y.Doc is seeded from its vault file by the main process
 (`crdt-provider.ts`), and the renderer does not parse markdown when a Yjs fragment is
 present — so the `<!-- file:… -->`, `![embed](…)`, `![bookmark](…)` and
 `![whiteboard](memry://canvas/…)` marker lines are recognised there, using the same rules
 the renderer uses on its own save path. Markers
 inside a code fence are the author's text and stay text; the fence tracker follows
 CommonMark, so a longer fence quoting a shorter one is not mistaken for a closing one.
+
+The parse itself runs on the converter worker, not on main's event loop, because the first
+one of a launch loads BlockNote and jsdom: an unseeded note opened after a reboot froze the
+window for seconds. The worker seeds a copy of the doc and returns only what the seed
+added, as an update main applies over the same state, so the source record and the marks
+the seed replaces are replaced on the live doc too. A fragment that filled while the worker
+parsed (a remote body, another open) keeps what it has, and the seed is dropped rather than
+put in beside it.
 
 A YouTube embed is claimed from any whole `![alt](url)` line whose URL is a YouTube video,
 not only Memry's own `![embed](…)`. Obsidian embeds a video from an image line with any alt
@@ -1689,15 +1738,27 @@ into embeds when the note opens (`normalizeYoutubeImages`, called from `use-edit
 This is byte-neutral: the embed writes the same line the image did.
 
 Some inline nodes have no `parse` rule that could recognise their markdown form, because
-that form is ordinary text: `[[wiki link]]`, a table cell's `[ ]`, a link mention's
-`((mention:…))` and a date pill's `((date:…))` all reach the shared doc as plain text runs.
-Hash tags are the exception that stays text, because they need the note's tag list and
-colour map, which only the editor has. The renderer promotes the rest
-back into nodes when the note opens (`use-editor-sync.ts`), which is the only thing that
-turns a saved mention back into a chip — without it a mention lives only as long as its
-Y.Doc and comes back as literal text after a restart or a vault switch. Every promoter has
-to be idempotent: the promoted node serialises back to the exact token it was built from,
-so `((mention:` is gone from the document and the second open writes no CRDT update at all.
+that form is ordinary text: `[[wiki link]]`, a table cell's `[ ]` and a date pill's
+`((date:…))` all reach the shared doc as plain text runs. Hash tags are the exception that
+stays text, because they need the note's tag list and colour map, which only the editor has.
+The renderer promotes the rest back into nodes when the note opens (`use-editor-sync.ts`).
+Every promoter has to be idempotent: the promoted node serialises back to the exact token
+it was built from, so the second open writes no CRDT update at all.
+
+A link mention's `((mention:…))` is promoted by main instead, when it builds the doc from
+markdown (`prepareFragmentSeed` in `blocknote-converter.ts`, which both the first seed and
+every external edit, restore and file-watcher feed go through). Promoting in each editor is
+not merge-safe. Two devices that open the same seeded note before they sync each replace the
+same text with their own node, and Yjs keeps both: every mention shows up twice (#3871). The
+renderer still promotes what main leaves as text: tokens in a doc an older build seeded, and
+tokens an older build wrote with `_ * ! ~ '` raw, which main skips because re-encoding them
+would change the file's bytes.
+
+The token carries only the URL, so a mention built from it has a domain and no title or
+favicon. The editor fills those in from a link preview, on open and on every change, and
+asks once per URL (`hydrateLinkMentions` in `use-editor-sync.ts`). It writes them as the
+node's attributes, off the undo stack, so the write merges with the same write from another
+device instead of adding a node, and Cmd+Z does not strip a chip.
 
 That in turn constrains the token: its payload alphabet is closed to `[A-Za-z0-9.%-]`, so
 nothing in it can be reinterpreted as markdown. `encodeURIComponent` alone is not enough —
@@ -1823,7 +1884,7 @@ The replaced file is held open only on local volumes whose type is known to keep
 
 ### Locks
 
-A lock is a row in the `vault_locks` table of `data.db` (migration 22, `crates/memry-core/src/domain/vault_locks.rs`). A note lock is keyed by note id, so it follows the note through a rename. A folder lock is keyed by the folder's vault-relative path and covers everything under it. Two device-local tables sit beside it and never sync: `vault_lock_baselines` (the locked text of each locked markdown note) and `vault_lock_file_modes` (each locked file's permission bits before the lock). Lock rows get no outbox row yet; the Tauri app keeps locks on the device.
+A lock is a row in the `vault_locks` table of `data.db` (migration 24, `crates/memry-core/src/domain/vault_locks.rs`). A note lock is keyed by note id, so it follows the note through a rename. A folder lock is keyed by the folder's vault-relative path and covers everything under it. Two device-local tables sit beside it and never sync: `vault_lock_baselines` (the locked text of each locked markdown note) and `vault_lock_file_modes` (each locked file's permission bits before the lock). Lock rows get no outbox row yet; the Tauri app keeps locks on the device.
 
 The core refuses body and record edits to a locked note, such as a window's update and the note commands, and the app edit refuses a restore. `crates/memry-desktop/src/locks/` refuses what moves, creates or removes files, before anything is written, with the fixed texts "The owner made this note read-only." and "The owner made this folder read-only.".
 

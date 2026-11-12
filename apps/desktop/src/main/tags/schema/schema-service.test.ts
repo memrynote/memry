@@ -50,7 +50,7 @@ beforeEach(async () => {
   queue = new SyncQueueManager(asSyncDb(data.db))
   initTagDefinitionSyncService({ queue, db: asSyncDb(data.db), getDeviceId: () => 'device-a' })
   PropertyDefinitionsService.init(vault.path)
-  await PropertyDefinitionsService.get().reloadOnOpen()
+  await PropertyDefinitionsService.get().reload()
 })
 
 afterEach(() => {

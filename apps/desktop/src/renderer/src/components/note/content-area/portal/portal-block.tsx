@@ -9,29 +9,19 @@
  * renders as code. Main, the phone and an older build hold it as the code
  * block it is on disk.
  *
- * The definition stays in the document as the node's content. It is shown, and
- * editable as JSON, while the caret is in the block or the definition cannot
- * be read; otherwise the portal's own controls (toolbar, fold chevrons, hidden
- * counts) rewrite it.
+ * The definition stays in the document as the node's content, never on screen:
+ * the portal's own controls (toolbar, fold chevrons, hidden counts) rewrite it,
+ * and the keys plugin keeps the caret out of it.
  *
  * @module note/content-area/portal/portal-block
  */
 
-import React, {
-  useCallback,
-  useEffect,
-  useId,
-  useLayoutEffect,
-  useMemo,
-  useRef,
-  useSyncExternalStore
-} from 'react'
+import React, { useCallback, useEffect, useId, useMemo, useRef, useSyncExternalStore } from 'react'
 import { createReactBlockSpec } from '@blocknote/react'
 import { NodeSelection } from '@tiptap/pm/state'
 import { memryCodeBlockOptions } from '@memry/editor-schema/code-block'
-import { PORTAL_BLOCK_LANGUAGE, type ParsedPortal } from '@memry/shared/portal-block'
+import { PORTAL_BLOCK_LANGUAGE } from '@memry/shared/portal-block'
 import { useT } from '@memry/i18n/renderer'
-import { cn } from '@/lib/utils'
 import { PortalInstanceContext } from './portal-context'
 import { usePortalKeysPlugin, type PortalKeysEditor } from './portal-keys-plugin'
 import { PortalNoteView } from './portal-note-view'
@@ -46,16 +36,13 @@ interface PortalBlockNode {
 }
 
 interface PortalBlockEditor extends PortalEditorLike, PortalKeysEditor {
-  focus: () => void
-  getTextCursorPosition: () => { block: { id: string } }
   onSelectionChange: (callback: () => void) => () => void
   _tiptapEditor?: { state: { selection: unknown } }
 }
 
 /**
  * The portal is selected as one block (Backspace at the start of its first
- * root selects it, so the next Backspace removes it whole). BlockNote then
- * also reports the caret as inside the block, so this is read first.
+ * root selects it, so the next Backspace removes it whole).
  */
 function useSelectedAsBlock(editor: PortalBlockEditor, blockId: string): boolean {
   const read = useCallback((): boolean => {
@@ -67,34 +54,6 @@ function useSelectedAsBlock(editor: PortalBlockEditor, blockId: string): boolean
     [editor]
   )
   return useSyncExternalStore(subscribe, read)
-}
-
-function useCaretInBlock(editor: PortalBlockEditor, blockId: string): boolean {
-  const read = useCallback((): boolean => {
-    try {
-      return editor.getTextCursorPosition().block.id === blockId
-    } catch {
-      return false
-    }
-  }, [editor, blockId])
-  const subscribe = useCallback(
-    (onChange: () => void) => editor.onSelectionChange(onChange),
-    [editor]
-  )
-  const inside = useSyncExternalStore(subscribe, read)
-
-  // The caret moves in while the definition is still hidden, so the DOM
-  // selection ProseMirror set in the same transaction has nowhere to go. Once
-  // the definition is on screen, write the selection to the DOM again. Only on
-  // the way in: a block that mounts with the caret inside (a tab switch) must
-  // not take focus from wherever it is.
-  const wasInside = useRef(inside)
-  useLayoutEffect(() => {
-    if (inside && !wasInside.current) editor.focus()
-    wasInside.current = inside
-  }, [editor, inside])
-
-  return inside
 }
 
 /**
@@ -117,12 +76,6 @@ function useClaimPresses(frameRef: React.RefObject<HTMLDivElement | null>): void
   }, [frameRef])
 }
 
-function problemMessage(parsed: ParsedPortal, t: (key: string) => string): string | null {
-  if (parsed.ok) return null
-  if (parsed.reason === 'empty') return t('portalBlock.noTarget')
-  return parsed.reason === 'json' ? t('portalBlock.invalidJson') : t('portalBlock.invalidShape')
-}
-
 export function PortalBlockRenderer({
   block,
   editor,
@@ -135,7 +88,6 @@ export function PortalBlockRenderer({
   const { t } = useT('common')
   const parsed = usePortalDefinition(block.content)
   const selected = useSelectedAsBlock(editor, block.id)
-  const caretInside = useCaretInBlock(editor, block.id) && !selected
   const frameRef = useRef<HTMLDivElement>(null)
   useClaimPresses(frameRef)
   usePortalKeysPlugin(editor)
@@ -176,25 +128,20 @@ export function PortalBlockRenderer({
     )
   }
 
-  const problem = problemMessage(parsed, t)
-  const showSource = caretInside || problem !== null
-
   return (
     <PortalInstanceContext.Provider value={instanceId}>
       <div className="memry-portal-block my-1 w-full" data-memry-portal="">
         <div ref={frameRef} contentEditable={false}>
           {body}
-          {problem ? (
+          {parsed.ok ? null : (
             <p className="pb-1 text-xs text-destructive" role="alert">
-              {problem}
+              {t('portalBlock.unreadable')}
             </p>
-          ) : null}
+          )}
         </div>
-        <div className={cn('memry-portal-block-source mt-1.5', !showSource && 'hidden')}>
-          <pre className="overflow-x-auto rounded-md bg-muted px-3 py-2 font-mono text-[0.8125rem]">
-            <code ref={contentRef} />
-          </pre>
-        </div>
+        <pre hidden>
+          <code ref={contentRef} />
+        </pre>
       </div>
     </PortalInstanceContext.Provider>
   )

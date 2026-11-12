@@ -7,18 +7,23 @@ const RELEASE_DOWNLOAD_PREFIX = 'https://github.com/memrynote/memry/releases/dow
 // ponytail: release asset filenames embed the version (MemryNote-<ver>-arm64.dmg, ...),
 // so a static latest/download/<file> link is impossible and CSP blocks a browser-side
 // GitHub API fetch — this endpoint resolves the versioned asset server-side and 302s to it.
-// ponytail: a release carries two Windows installers. `MemryNote-win-Setup.exe` is the
-// Velopack one, Authenticode-signed on the release Mac; the electron-builder
-// `-setup.exe` comes straight off the CI runner with no certificate, so SmartScreen
-// refuses to unblock it. Prefer the signed one; the unsigned fallback exists only for
-// tags published before the Velopack switchover, which carry no Velopack asset at all.
-export const VELOPACK_WINDOWS_SETUP_ASSET = 'MemryNote-win-Setup.exe'
+// ponytail: a release carries two Windows installers. The Velopack Setup is the one new
+// installs get; the electron-builder `-setup.exe` keeps NSIS installs updating, and tags
+// published before the Velopack switchover carry only that one. Tags up to v2026-10-25
+// name the Velopack Setup `MemryNote-win-Setup.exe`; later tags drop that name
+// (scripts/velopack-release-utils.mjs, vpkSetupName).
+export const VELOPACK_WINDOWS_SETUP_ASSET = 'MemryNote-Setup-win-x64.exe'
+export const LEGACY_VELOPACK_WINDOWS_SETUP_ASSET = 'MemryNote-win-Setup.exe'
 
 // Matchers are ordered by preference: the first one that hits an asset wins.
 const ASSET_MATCHERS: Record<string, ReadonlyArray<(name: string) => boolean>> = {
   'mac-arm64': [(name) => name.endsWith('-arm64.dmg')],
   'mac-x64': [(name) => name.endsWith('-x64.dmg')],
-  windows: [(name) => name === VELOPACK_WINDOWS_SETUP_ASSET, (name) => name.endsWith('-setup.exe')],
+  windows: [
+    (name) => name === VELOPACK_WINDOWS_SETUP_ASSET,
+    (name) => name === LEGACY_VELOPACK_WINDOWS_SETUP_ASSET,
+    (name) => name.endsWith('-setup.exe')
+  ],
   linux: [(name) => name.endsWith('.AppImage')],
   'linux-deb': [(name) => name.endsWith('.deb')]
 }

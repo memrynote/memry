@@ -14,7 +14,13 @@ import type { IndexDb } from '../../types'
 import { type ActivityLevel, calculateActivityLevel } from './query-helpers'
 import { getJournalConfig } from '@main/vault/journal-config'
 import { generateNoteId } from '@main/lib/id'
-import { computeJournalStreak, utcDateKey, yearMonthStats } from '@memry/domain-notes/journal'
+import {
+  computeJournalStreak,
+  isSameDayInOtherYear,
+  sameDayMonthDays,
+  utcDateKey,
+  yearMonthStats
+} from '@memry/domain-notes/journal'
 import { getPropertiesForNotes } from './property-queries'
 
 // ============================================================================
@@ -128,6 +134,26 @@ export function getJournalMonthEntries(db: IndexDb, year: number, month: number)
     .where(and(sql`${noteCache.date} IS NOT NULL`, like(noteCache.date, `${monthPrefix}%`)))
     .orderBy(desc(noteCache.date))
     .all()
+}
+
+/** Entries from other years that show as the same day as `date`, newest first. */
+export function getJournalSameDayEntries(db: IndexDb, date: string): NoteCache[] {
+  const monthDays = sameDayMonthDays(date)
+  return db
+    .select()
+    .from(noteCache)
+    .where(
+      and(
+        sql`${noteCache.date} IS NOT NULL`,
+        sql`substr(${noteCache.date}, 6) IN (${sql.join(
+          monthDays.map((monthDay) => sql`${monthDay}`),
+          sql`, `
+        )})`
+      )
+    )
+    .orderBy(desc(noteCache.date))
+    .all()
+    .filter((row) => isSameDayInOtherYear(date, row.date!))
 }
 
 export function getJournalYearStats(

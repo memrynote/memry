@@ -208,6 +208,13 @@ struct TaskFilteringConformanceTests {
             let expected = cases(file[section]).map { $0["expected"] as Any }
             #expect(same(actual[section], expected), "\(section)")
         }
+        let expressions = cases(file["expressions"])
+        #expect(!expressions.isEmpty)
+        let expected = expressions.map { ["expected": $0["expected"] as Any, "ruleCount": $0["ruleCount"] as Any] }
+        #expect(same(actual["expressions"], expected), "expressions")
+        let locations = cases((file["locationOptions"] as? [String: Any])?["cases"])
+        #expect(!locations.isEmpty)
+        #expect(same(actual["locationOptions"], locations.map { $0["expected"] as Any }), "locationOptions")
     }
 }
 

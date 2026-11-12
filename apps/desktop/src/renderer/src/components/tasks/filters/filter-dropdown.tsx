@@ -42,6 +42,8 @@ interface FilterDropdownProps {
   onSaveFilter: (name: string) => void
   onToggleStarFilter: (filterId: string) => void
   statuses?: Status[]
+  /** Opens the advanced rule builder; the menu closes first. */
+  onOpenAdvanced?: () => void
   children: React.ReactNode
 }
 
@@ -133,6 +135,7 @@ export const FilterDropdown = ({
   onSaveFilter,
   onToggleStarFilter,
   statuses: statusesProp = NO_STATUSES,
+  onOpenAdvanced,
   children
 }: FilterDropdownProps): React.JSX.Element => {
   const { t: tPhaseF } = useT('tasks')
@@ -300,6 +303,24 @@ export const FilterDropdown = ({
                 </button>
               ))}
             </Picker.List>
+            {onOpenAdvanced && !searchQuery && (
+              <div className="border-t border-border p-1">
+                <button
+                  type="button"
+                  data-testid="open-advanced-filter"
+                  onClick={() => {
+                    handleOpenChange(false)
+                    onOpenAdvanced()
+                  }}
+                  className="flex w-full flex-col items-start rounded-[5px] px-2 py-1.5 text-start transition-colors hover:bg-accent"
+                >
+                  <span className="text-foreground">{tPhaseF('filters.advanced.entry')}</span>
+                  <span className="text-[11px] text-muted-foreground">
+                    {tPhaseF('filters.advanced.entryHint')}
+                  </span>
+                </button>
+              </div>
+            )}
             <SavedFiltersSection
               savedFilters={savedFilters}
               activeSavedFilterId={activeSavedFilterId}

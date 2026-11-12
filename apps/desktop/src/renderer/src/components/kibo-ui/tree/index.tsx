@@ -639,6 +639,12 @@ export type TreeNodeTriggerProps = ComponentProps<typeof m.div> & {
    * + click opens or closes all of them together instead of just this row.
    */
   getSubtreeNodeIds?: () => string[]
+  /**
+   * False when a click opens what the row stands for instead of expanding it,
+   * as on a folder drawn as its paired note. The row's own chevron and the
+   * arrow keys still expand it.
+   */
+  toggleOnClick?: boolean
 }
 
 export const TreeNodeTrigger = ({
@@ -649,6 +655,7 @@ export const TreeNodeTrigger = ({
   showIconMenu = true,
   expandOnly = false,
   getSubtreeNodeIds,
+  toggleOnClick = true,
   ...props
 }: TreeNodeTriggerProps) => {
   const { t: tPhaseF } = useT('common')
@@ -914,7 +921,7 @@ export const TreeNodeTrigger = ({
                 // The whole subtree follows this row: closed opens everything
                 // below it, open closes everything below it.
                 setNodesExpanded(getSubtreeNodeIds(), !expandedIds.has(nodeId))
-              } else if (!expandOnly || !hasModifier) {
+              } else if (toggleOnClick && (!expandOnly || !hasModifier)) {
                 toggleExpanded(nodeId)
               }
               if (!expandOnly || hasModifier) {

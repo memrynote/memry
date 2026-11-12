@@ -131,13 +131,15 @@ export function registerAIInlineHandlers(): void {
   })
 
   ipcMain.handle(
-    AIInlineChannels.invoke.LIST_OLLAMA_MODELS,
+    AIInlineChannels.invoke.LIST_MODELS,
     withErrorHandler(async () => {
-      const { baseUrl } = readAIInlineSettings()
+      const { provider, baseUrl, apiKey } = readAIInlineSettings()
       const url = `${(baseUrl || 'http://localhost:11434/v1').replace(/\/$/, '')}/models`
       let res: Response
       try {
-        res = await fetch(url)
+        res = await fetch(url, {
+          headers: provider === 'custom' && apiKey ? { Authorization: `Bearer ${apiKey}` } : {}
+        })
       } catch (error) {
         // Nothing listening on the port = Ollama is simply not running. That is
         // a normal state, not a fault: the UI still shows the failure, but it
@@ -146,12 +148,12 @@ export function registerAIInlineHandlers(): void {
         if (isConnectionRefusedError(error)) markExpectedCondition(error)
         throw error
       }
-      if (!res.ok) throw new Error(`Ollama responded ${res.status}`)
+      if (!res.ok) throw new Error(`Model list responded ${res.status}`)
       // oxlint-disable-next-line typescript/no-unsafe-type-assertion -- untyped external object narrowed to a loose record; members are checked before use
       const json = (await res.json()) as { data?: Array<{ id?: string }> }
       const models = (json.data ?? []).map((m) => m.id).filter((id): id is string => Boolean(id))
       return { success: true, models }
-    }, 'errors:ai.listOllamaModelsFailed')
+    }, 'errors:ai.listModelsFailed')
   )
 }
 
@@ -161,6 +163,6 @@ export function unregisterAIInlineHandlers(): void {
   ipcMain.removeHandler(AIInlineChannels.invoke.GET_SERVER_PORT)
   ipcMain.removeHandler(AIInlineChannels.invoke.START_SERVER)
   ipcMain.removeHandler(AIInlineChannels.invoke.STOP_SERVER)
-  ipcMain.removeHandler(AIInlineChannels.invoke.LIST_OLLAMA_MODELS)
+  ipcMain.removeHandler(AIInlineChannels.invoke.LIST_MODELS)
   logger.info('Unregistered')
 }

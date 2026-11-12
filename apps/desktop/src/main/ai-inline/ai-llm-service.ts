@@ -1,5 +1,6 @@
 import { createOpenAI } from '@ai-sdk/openai'
 import { createAnthropic } from '@ai-sdk/anthropic'
+import { createOpenAICompatible } from '@ai-sdk/openai-compatible'
 import { createGoogleGenerativeAI } from '@ai-sdk/google'
 import type { LanguageModel } from 'ai'
 
@@ -30,6 +31,17 @@ export function createLanguageModel(settings: AIInlineSettings): LanguageModel {
     case 'google':
       if (!settings.apiKey) throw markExpectedCondition(new Error('Google API key required'))
       return createGoogleGenerativeAI({ apiKey: settings.apiKey })(settings.model)
+
+    case 'custom':
+      if (!settings.baseUrl) throw markExpectedCondition(new Error('Custom provider URL required'))
+      return createOpenAICompatible({
+        name: 'custom',
+        baseURL: settings.baseUrl,
+        apiKey: settings.apiKey || undefined,
+        // Writing assist and field fill ask for JSON matching a schema. Without
+        // this flag the request carries no schema and the model guesses the shape.
+        supportsStructuredOutputs: true
+      })(settings.model)
 
     default:
       throw new Error(`Unsupported provider: ${settings.provider}`)

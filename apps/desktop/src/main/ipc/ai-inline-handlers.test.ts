@@ -202,16 +202,41 @@ describe('AI inline IPC handlers', () => {
       json: async () => ({ data: [{ id: 'gemma3:latest' }, { id: 'llama3.2' }, {}] })
     } as Response)
 
-    await expect(invoke(AIInlineChannels.invoke.LIST_OLLAMA_MODELS)).resolves.toEqual({
+    await expect(invoke(AIInlineChannels.invoke.LIST_MODELS)).resolves.toEqual({
       success: true,
       models: ['gemma3:latest', 'llama3.2']
     })
-    expect(fetchSpy).toHaveBeenCalledWith('http://localhost:11434/v1/models')
+    expect(fetchSpy).toHaveBeenCalledWith('http://localhost:11434/v1/models', { headers: {} })
 
     fetchSpy.mockResolvedValue({ ok: false, status: 500 } as Response)
-    await expect(invoke(AIInlineChannels.invoke.LIST_OLLAMA_MODELS)).resolves.toEqual({
+    await expect(invoke(AIInlineChannels.invoke.LIST_MODELS)).resolves.toEqual({
       success: false,
-      error: 'Ollama responded 500'
+      error: 'Model list responded 500'
+    })
+    fetchSpy.mockRestore()
+  })
+
+  it('lists a custom endpoint models with its API key', async () => {
+    mocks.getSetting.mockReturnValue(
+      JSON.stringify({
+        enabled: true,
+        provider: 'custom',
+        apiKey: 'sk-or-key',
+        baseUrl: 'https://openrouter.ai/api/v1/'
+      })
+    )
+    registerAIInlineHandlers()
+    const fetchSpy = vi.spyOn(global, 'fetch').mockResolvedValue({
+      ok: true,
+      json: async () => ({ data: [{ id: 'openai/gpt-5' }] })
+    } as Response)
+
+    await expect(invoke(AIInlineChannels.invoke.LIST_MODELS)).resolves.toEqual({
+      success: true,
+      models: ['openai/gpt-5']
+    })
+    expect(fetchSpy).toHaveBeenCalledWith('https://openrouter.ai/api/v1/models', {
+      headers: { Authorization: 'Bearer sk-or-key' }
     })
     fetchSpy.mockRestore()
   })
@@ -237,7 +262,7 @@ describe('Ollama listing telemetry: suppress "not running", report real faults',
     const fetchSpy = vi.spyOn(global, 'fetch').mockRejectedValue(refused)
 
     // #when the renderer asks for the model list
-    const result = await invoke(AIInlineChannels.invoke.LIST_OLLAMA_MODELS)
+    const result = await invoke(AIInlineChannels.invoke.LIST_MODELS)
 
     // #then the UI still learns it failed, it is marked as an expected condition,
     // and — asserted at the SINK — it never reaches error telemetry. Fails on
@@ -260,7 +285,7 @@ describe('Ollama listing telemetry: suppress "not running", report real faults',
     const fetchSpy = vi.spyOn(global, 'fetch').mockRejectedValue(dnsFailure)
 
     // #when the fetch fails for a reason other than connection-refused
-    await invoke(AIInlineChannels.invoke.LIST_OLLAMA_MODELS)
+    await invoke(AIInlineChannels.invoke.LIST_MODELS)
 
     // #then it is not marked, and it reaches error telemetry — the integration
     // check that a real Ollama fault still reports. (The per-fix regression guard
@@ -269,7 +294,7 @@ describe('Ollama listing telemetry: suppress "not running", report real faults',
     expect(isExpectedConditionError(dnsFailure)).toBe(false)
     expect(mocks.trackMainError).toHaveBeenCalledWith(
       'ipc',
-      'errors:ai.listOllamaModelsFailed',
+      'errors:ai.listModelsFailed',
       dnsFailure
     )
     fetchSpy.mockRestore()

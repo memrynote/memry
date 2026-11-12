@@ -409,7 +409,42 @@ h6 {
   letter-spacing: -0.02em;
 }
 
-/* Translucent chrome — floating layers (nav pill, dropdowns, mobile menu).
+/* Header ink (Header.tsx). The bar has no chrome at the top of a page and takes a
+   frosted surface once content scrolls under it. Its colours follow the section
+   beneath it: Header sets data-ink="dark" while a .zone-dark section sits under the
+   bar's midline. An open Features sheet is always light, so the dark ink yields to it. */
+.site-nav {
+  --nav-ink: var(--color-ink);
+  --nav-body: #57534e;
+  --nav-rule: rgb(31 41 55 / 0.14);
+  --nav-surface: rgb(255 255 255 / 0.8);
+  --nav-hairline: rgb(31 41 55 / 0.08);
+}
+
+.site-nav[data-ink='dark']:not(:has(.nav-features:hover, .nav-features:focus-within)) {
+  --nav-ink: var(--color-ink-inverted);
+  --nav-body: #b8ada5;
+  --nav-rule: rgb(245 240 234 / 0.16);
+  --nav-surface: rgb(20 18 16 / 0.78);
+  --nav-hairline: rgb(245 240 234 / 0.1);
+}
+
+.site-nav:has(.nav-features:hover, .nav-features:focus-within) .nav-surface {
+  opacity: 1;
+  background-color: var(--color-paper);
+}
+
+@media (prefers-reduced-transparency: reduce) {
+  .site-nav {
+    --nav-surface: var(--color-paper);
+  }
+
+  .site-nav[data-ink='dark']:not(:has(.nav-features:hover, .nav-features:focus-within)) {
+    --nav-surface: var(--color-dark);
+  }
+}
+
+/* Translucent chrome — floating layers (dropdowns, mobile menu).
    Content scrolls under; degrades to solid paper for reduced-transparency/contrast. */
 .material-chrome {
   background: color-mix(in srgb, var(--color-paper) 85%, transparent);

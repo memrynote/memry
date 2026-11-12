@@ -23,8 +23,12 @@ export function tasksEventSyncIntents(event: TasksDomainEvent): SyncIntent[] {
           args: [event.payload.changedFields]
         }
       ]
-    case 'taskCompleted':
-      return [{ type: 'task', itemId: event.payload.id, op: 'update', args: [['completedAt']] }]
+    case 'taskCompleted': {
+      // `previous` names the status only when the completion moved it too.
+      const moved = event.payload.previous !== undefined && 'statusId' in event.payload.previous
+      const changedFields = moved ? ['completedAt', 'statusId'] : ['completedAt']
+      return [{ type: 'task', itemId: event.payload.id, op: 'update', args: [changedFields] }]
+    }
     case 'taskDeleted': {
       const { id, snapshot } = event.payload
       return snapshot

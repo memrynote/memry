@@ -5,6 +5,7 @@
     "create": "יצירה"
   },
   "wikiLinkPreview": {
+    "journalUnwritten": "הרשומה של {date} עדיין לא נכתבה. יש ללחוץ כדי לפתוח את היום",
     "notFound": "לא נמצא — יש ללחוץ כדי ליצור את \"{title}\""
   },
   "wikiLinkMenu": {
@@ -138,6 +139,7 @@
     "actions": {
       "openInNewTab": "פתיחה בכרטיסייה חדשה",
       "openToTheSide": "פתיחה בצד",
+      "openFolderView": "פתיחת תצוגת תיקייה",
       "newNote": "פתק חדש",
       "newFolder": "תיקייה חדשה",
       "showTasks": "הצגת משימות",
@@ -187,7 +189,8 @@
     },
     "toast": {
       "selectionBookmarked": "{count} פריטים נוספו לסימניות",
-      "selectionBookmarkFailed": "לא ניתן להוסיף את הפריטים שנבחרו לסימניות"
+      "selectionBookmarkFailed": "לא ניתן להוסיף את הפריטים שנבחרו לסימניות",
+      "pairedNoteNameTaken": "כבר יש שם פתק בשם {name}"
     }
   },
   "editor": {
@@ -423,9 +426,14 @@
       "savedView": "תצוגה שמורה",
       "savedViewMissing": "התצוגה השמורה \"{name}\" כבר לא קיימת, ולכן מוצגת תצוגת ברירת המחדל.",
       "openAsTab": "פתיחה ככרטיסייה",
+      "newNote": "פתק חדש",
+      "newViewTitle": "תצוגה חדשה",
+      "newViewSubtext": "תיקייה חדשה לצד הפתק הזה, שמוצגת כאן",
+      "newViewFailed": "לא ניתן היה ליצור את התיקייה לתצוגה הזו.",
       "empty": "עדיין אין פריטים שתואמים לתצוגה הזו.",
       "loadFailed": "טעינת התצוגה נכשלה. הפתקים עצמם לא שונו.",
       "folderMissing": "התיקייה הזו כבר לא נמצאת בכספת. אפשר לבחור מקור אחר.",
+      "unreadable": "לא ניתן לקרוא את התצוגה הזו. בחרו מקור למעלה, או הסירו את הבלוק.",
       "invalidJson": "ההגדרה של התצוגה הזו אינה JSON תקין. אפשר לתקן אותה למטה, או להסיר את הבלוק.",
       "invalidShape": "בהגדרה של התצוגה הזו אין מקור. אפשר לבחור מקור למעלה, או לתקן את ההגדרה למטה.",
       "definition": "הגדרה"
@@ -668,6 +676,8 @@
   },
   "menus": {
     "wiki": {
+      "journalDay": "יומן · {date}",
+      "journalDayUnwritten": "יומן · עדיין לא נכתב",
       "aria": "הצעות לפתקים",
       "loading": "טוען פתקים…",
       "empty": "לא נמצאו פתקים",
@@ -782,6 +792,12 @@
     "viaProperty": "{property} ← {title}",
     "viaPortal": "מוצג בפורטל"
   },
+  "references": {
+    "filterAll": "הכול",
+    "filterNotes": "פתקים",
+    "filterJournal": "יומן",
+    "filterBy": "סינון הפניות: {filter}"
+  },
   "unlinkedMentions": {
     "title": "אזכורים ללא קישור",
     "summary": "{count, plural, one {אזכור אחד ללא קישור} other {# אזכורים ללא קישור}}",
@@ -886,6 +902,7 @@
     "showOnCalendar": "הצגה בלוח השנה",
     "showingOnCalendar": "מוצג בלוח השנה",
     "relation": {
+      "unwrittenDay": "עדיין לא נכתב",
       "deleted": "נמחק",
       "removeAria": "הסרת {title}",
       "addAria": "הוספת קשר",

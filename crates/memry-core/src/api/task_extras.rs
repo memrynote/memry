@@ -15,6 +15,7 @@ use crate::domain::projects;
 use crate::domain::recurrence;
 use crate::domain::related_items::{self, LinkState, LinkedField, RelatedItem, RelatedKind};
 use crate::domain::reminders::{self, NewTaskReminder, Reminder, ReminderUpdate};
+use crate::domain::settings;
 use crate::domain::task_activity::{self, ActivityQuery};
 use crate::domain::task_parse::{completion, natural_date, quick_add};
 use crate::domain::task_records;
@@ -546,5 +547,41 @@ impl Tasks {
             return Err(error);
         }
         Ok(Some(task_id))
+    }
+
+    /// [`Tasks::convert_checklist_item`] for a line the user just typed, the
+    /// conversion desktop's editor makes on its own (`analyzeTaskIntents`).
+    /// With the synced `editor.convertChecklistsToTasks` off, only a line
+    /// under a task line converts, as its subtask. `nil` when the line stays
+    /// a checkbox.
+    pub fn convert_typed_checklist_item(
+        &self,
+        note_id: String,
+        block_id: String,
+        local_now: String,
+    ) -> Result<Option<String>, StorageError> {
+        let converts = self.db.call_blocking({
+            let note_id = note_id.clone();
+            let block_id = block_id.clone();
+            move |conn| {
+                let off = settings::read(conn, "editor.convertChecklistsToTasks")?
+                    == Some(serde_json::Value::Bool(false));
+                if !off {
+                    return Ok(true);
+                }
+                let candidates = note_tasks::read_conversion_candidates(conn, &note_id)
+                    .map_err(|error| StorageError::Failed {
+                        what: error.to_string(),
+                    })?
+                    .unwrap_or_default();
+                Ok(candidates.iter().any(|candidate| {
+                    candidate.block_id == block_id && candidate.parent_task_id.is_some()
+                }))
+            }
+        })?;
+        if !converts {
+            return Ok(None);
+        }
+        self.convert_checklist_item(note_id, block_id, local_now)
     }
 }

@@ -1,13 +1,12 @@
 import { useState, useEffect, useCallback } from 'react'
 import { createLogger } from '@/lib/logger'
-import type { AIInlineSettings } from '@memry/contracts/ai-inline-channels'
+import { AIInlineChannels, type AIInlineSettings } from '@memry/contracts/ai-inline-channels'
 
 const log = createLogger('Hook:AIInline')
 
-const AI_GET_SETTINGS_CHANNEL = 'ai-inline:get-settings'
-const AI_GET_PORT_CHANNEL = 'ai-inline:get-server-port'
-const AI_START_CHANNEL = 'ai-inline:start-server'
-const AI_STOP_CHANNEL = 'ai-inline:stop-server'
+const AI_GET_SETTINGS_CHANNEL = AIInlineChannels.invoke.GET_SETTINGS
+const AI_START_CHANNEL = AIInlineChannels.invoke.START_SERVER
+const AI_STOP_CHANNEL = AIInlineChannels.invoke.STOP_SERVER
 
 export interface AIInlineState {
   port: number | null
@@ -43,6 +42,16 @@ export function useAIInline(aiEnabled = true): AIInlineState {
     setAttempt((n) => n + 1)
   }, [])
 
+  // Main broadcasts this on every inline settings write. Without it, turning
+  // inline AI on or switching model in Settings took effect only after a restart.
+  useEffect(
+    () =>
+      window.electron.ipcRenderer.on(AIInlineChannels.events.SERVER_READY, () => {
+        setAttempt((n) => n + 1)
+      }),
+    []
+  )
+
   useEffect(() => {
     let cancelled = false
 
@@ -70,31 +79,14 @@ export function useAIInline(aiEnabled = true): AIInlineState {
         if (!settings.enabled) {
           if (!cancelled) {
             setPort(null)
+            setError(null)
             setLoading(false)
           }
           return
         }
 
-        // oxlint-disable-next-line typescript/no-unsafe-type-assertion -- IPC invoke resolves to any; the payload shape is fixed by the main-process handler for this channel
-        const existingPort = (await window.electron.ipcRenderer.invoke(AI_GET_PORT_CHANNEL)) as
-          | number
-          | null
-        if (existingPort) {
-          try {
-            const health = await fetch(`http://127.0.0.1:${existingPort}/api/ai/chat`, {
-              method: 'OPTIONS'
-            })
-            if (health.ok && !cancelled) {
-              setPort(existingPort)
-              setLoading(false)
-              log.info('AI server verified on port', existingPort)
-              return
-            }
-          } catch {
-            log.warn('Stale port detected, restarting server')
-          }
-        }
-
+        // Start reuses the running server when its settings match and restarts it
+        // when they changed, so the port always serves the current model.
         // oxlint-disable-next-line typescript/no-unsafe-type-assertion -- IPC invoke resolves to any; the payload shape is fixed by the main-process handler for this channel
         const result = (await window.electron.ipcRenderer.invoke(AI_START_CHANNEL)) as {
           success: boolean
@@ -105,8 +97,10 @@ export function useAIInline(aiEnabled = true): AIInlineState {
         if (cancelled) return
 
         if (result.success && result.port) {
+          setError(null)
           setPort(result.port)
         } else {
+          setPort(null)
           const msg = friendlyError(result.error ?? 'Failed to start AI server', settings.provider)
           setError(msg)
           log.warn('AI server start failed:', msg)

@@ -5,6 +5,7 @@
     "create": "Tạo"
   },
   "wikiLinkPreview": {
+    "journalUnwritten": "Chưa viết nhật ký cho ngày {date}. Bấm để mở ngày đó",
     "notFound": "Không tìm thấy — bấm để tạo “{title}”"
   },
   "wikiLinkMenu": {
@@ -138,6 +139,7 @@
     "actions": {
       "openInNewTab": "Mở trong tab mới",
       "openToTheSide": "Mở bên cạnh",
+      "openFolderView": "Mở chế độ xem thư mục",
       "newNote": "Ghi chú mới",
       "newFolder": "Thư mục mới",
       "showTasks": "Hiện công việc",
@@ -187,7 +189,8 @@
     },
     "toast": {
       "selectionBookmarked": "Đã đánh dấu {count} mục",
-      "selectionBookmarkFailed": "Không thể đánh dấu các mục đã chọn"
+      "selectionBookmarkFailed": "Không thể đánh dấu các mục đã chọn",
+      "pairedNoteNameTaken": "Đã có một ghi chú tên {name} ở đó"
     }
   },
   "editor": {
@@ -423,9 +426,14 @@
       "savedView": "Chế độ xem đã lưu",
       "savedViewMissing": "Chế độ xem đã lưu “{name}” không còn nữa, nên khối này hiển thị chế độ xem mặc định.",
       "openAsTab": "Mở dưới dạng tab",
+      "newNote": "Ghi chú mới",
+      "newViewTitle": "Chế độ xem mới",
+      "newViewSubtext": "Một thư mục mới bên cạnh ghi chú này, được liệt kê tại đây",
+      "newViewFailed": "Không thể tạo thư mục cho chế độ xem này.",
       "empty": "Chưa có gì khớp với chế độ xem này.",
       "loadFailed": "Không thể tải chế độ xem này. Các ghi chú vẫn được giữ nguyên.",
       "folderMissing": "Thư mục này không còn trong kho. Hãy chọn nguồn khác.",
+      "unreadable": "Không thể đọc chế độ xem này. Hãy chọn một nguồn ở trên, hoặc xóa khối.",
       "invalidJson": "Định nghĩa của chế độ xem này không phải JSON hợp lệ. Hãy sửa bên dưới hoặc gỡ khối này.",
       "invalidShape": "Định nghĩa của chế độ xem này không có nguồn. Hãy chọn nguồn ở trên hoặc sửa bên dưới.",
       "definition": "Định nghĩa"
@@ -668,6 +676,8 @@
   },
   "menus": {
     "wiki": {
+      "journalDay": "Nhật ký · {date}",
+      "journalDayUnwritten": "Nhật ký · chưa viết",
       "aria": "Gợi ý ghi chú",
       "loading": "Đang tải ghi chú…",
       "empty": "Không tìm thấy ghi chú nào",
@@ -782,6 +792,12 @@
     "viaProperty": "{property} → {title}",
     "viaPortal": "Hiển thị trong một portal"
   },
+  "references": {
+    "filterAll": "Tất cả",
+    "filterNotes": "Ghi chú",
+    "filterJournal": "Nhật ký",
+    "filterBy": "Lọc tham chiếu: {filter}"
+  },
   "unlinkedMentions": {
     "title": "Đề cập chưa liên kết",
     "summary": "{count, plural, other {# đề cập chưa liên kết}}",
@@ -886,6 +902,7 @@
     "showOnCalendar": "Hiện trên lịch",
     "showingOnCalendar": "Đang hiện trên lịch",
     "relation": {
+      "unwrittenDay": "Chưa viết",
       "deleted": "Đã xóa",
       "removeAria": "Gỡ {title}",
       "addAria": "Thêm quan hệ",

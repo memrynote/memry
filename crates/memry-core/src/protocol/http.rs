@@ -291,9 +291,10 @@ impl HttpClient {
                 // A 401 on an ordinary call is demand-driven refresh, not a
                 // retry: chapter 02 §2.10's storm came from callers that
                 // re-entered refresh, so this happens **once** per request and
-                // does not touch the retry budget. If the refresh fails the
-                // caller still gets its own 401 — the session machine, which
-                // the provider owns, is where the refusal surfaces.
+                // does not touch the retry budget. A refused refresh returns
+                // the call's own 401. Any other refresh failure is returned as
+                // itself (#4156): the session is still good, and the stale 401
+                // would tell the user they were signed out (chapter 02 §2.10).
                 Outcome::RefreshAndReplay(error) => {
                     let (Some(tokens), Some(stale), false) =
                         (self.tokens.as_ref(), sent_token, refreshed)
@@ -301,8 +302,10 @@ impl HttpClient {
                         return Err(error);
                     };
                     refreshed = true;
-                    if tokens.refresh(&stale).await.is_err() {
-                        return Err(error);
+                    match tokens.refresh(&stale).await {
+                        Ok(_) => {}
+                        Err(ApiError::Unauthorized { .. }) => return Err(error),
+                        Err(refresh_error) => return Err(refresh_error),
                     }
                 }
 

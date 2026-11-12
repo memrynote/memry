@@ -43,7 +43,7 @@ enum PortalCopy {
         case .invalid:
             String(localized: "This portal’s definition could not be read. It is kept as written.")
         case let .search(text, tag):
-            String(localized: "Search portal: \(searchQuery(text: text, tag: tag)). Shown on desktop.")
+            String(localized: "Search portal: \(searchQuery(text: text, tag: tag)). Shown on your other devices.")
         case .failed:
             String(localized: "This portal could not be opened. Open the source note instead.")
         }

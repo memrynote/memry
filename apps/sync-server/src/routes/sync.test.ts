@@ -83,7 +83,8 @@ vi.mock('../services/entitlements', () => ({
     .fn()
     .mockResolvedValue({ plan: 'pro', status: 'active', expires_at: null }),
   isPaidSyncEntitlementActive: vi.fn().mockReturnValue(true),
-  ensureSyncVaultAllowed: vi.fn().mockResolvedValue(undefined)
+  ensureSyncVaultAllowed: vi.fn().mockResolvedValue(undefined),
+  ensureLocalAdminPaidSyncAccessForUser: vi.fn().mockResolvedValue(undefined)
 }))
 
 vi.mock('../services/vault-deletion', () => ({

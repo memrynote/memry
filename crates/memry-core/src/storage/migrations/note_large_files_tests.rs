@@ -1,4 +1,4 @@
-//! Data migration 0023, `note_large_files`: kept apart from `tests.rs` for its line ceiling.
+//! Data migration 0025, `note_large_files`: kept apart from `tests.rs` for its line ceiling.
 
 use super::*;
 use crate::domain::note_files;
@@ -15,8 +15,8 @@ fn failed(err: rusqlite::Error) -> StorageError {
 #[test]
 fn the_large_files_migration_keeps_rows_reruns_and_leaves_the_file_readable_to_older_builds() {
     let db = Db::open_in_memory().expect("open");
-    // Migration 23: the builds before it ran the first 22.
-    let before = 22;
+    // Migration 25: the builds before it ran the first 24.
+    let before = 24;
     db.call_blocking(|conn| run(conn, &DATA_MIGRATIONS[..before]))
         .expect("a database as the last build left it");
     db.call_blocking(|conn| {

@@ -504,7 +504,8 @@
       "loading": "Ayarlar yükleniyor…"
     },
     "groups": {
-      "footer": "Alt bilgi"
+      "footer": "Alt bilgi",
+      "pastYears": "Geçmiş yıllar"
     },
     "template": {
       "label": "Şablon",
@@ -562,6 +563,14 @@
     "showInSidebar": {
       "label": "Kenar çubuğunda göster",
       "description": "Günlük klasörünü ve girdilerini not ağacında göster"
+    },
+    "showOnThisDay": {
+      "label": "Bugün geçmişte bölümünü göster",
+      "description": "Geçmiş yıllardaki aynı tarihi girdinin altında listele"
+    },
+    "allYearsView": {
+      "label": "Tüm yılları tam göster",
+      "description": "Sonsuz Günlük: tarihin her yılı tek sayfada, girdinin altında"
     }
   },
   "tasks": {
@@ -1110,7 +1119,16 @@
       "sending": "Kod gönderiliyor…"
     },
     "oauth": {
-      "google": "Google ile devam et"
+      "google": "Google ile devam et",
+      "waiting": "Tarayıcınızda Google ile girişi tamamlayın.",
+      "browserUnavailable": "Tarayıcınız açılamadı.",
+      "manualInstructions": "Giriş bağlantısını kopyalayın ve bu bilgisayardaki bir tarayıcıda açın. Giriş yaparken memrynote açık kalsın.",
+      "linkLabel": "Giriş bağlantısı",
+      "copyLink": "Giriş bağlantısını kopyala",
+      "retryBrowser": "Tarayıcıyı tekrar açmayı dene",
+      "copied": "Giriş bağlantısı kopyalandı.",
+      "copyFailed": "Giriş bağlantısı kopyalanamadı. Yukarıdaki alandan seçip kopyalayın.",
+      "cancel": "Başka bir giriş yöntemi kullan"
     },
     "otp": {
       "title": "Doğrulama kodunu girin",
@@ -1347,6 +1365,7 @@
       "keySaveError": "OpenAI anahtarı kaydedilemedi"
     },
     "embedding": {
+      "load": "Modeli yükle",
       "loaded": "Yüklendi",
       "loading": "Yükleniyor",
       "downloadLoad": "Modeli indir ve yükle",
@@ -1371,7 +1390,8 @@
         "ollama": "Ollama (Yerel)",
         "openai": "OpenAI",
         "anthropic": "Anthropic",
-        "google": "Google Gemini"
+        "google": "Google Gemini",
+        "custom": "Özel (OpenAI uyumlu)"
       },
       "model": "Model",
       "modelDescription": "Yeniden yazma ve özetleme için dil modeli",
@@ -1381,6 +1401,11 @@
       "apiKeyPlaceholder": "{provider} API anahtarını girin",
       "ollamaUrl": "Ollama URL",
       "ollamaUrlDescription": "Yerel sunucu adresi",
+      "customUrl": "Temel URL",
+      "customUrlDescription": "OpenRouter gibi OpenAI uyumlu herhangi bir uç nokta",
+      "customUrlPlaceholder": "https://openrouter.ai/api/v1",
+      "customApiKeyPlaceholder": "API anahtarı (isteğe bağlı)",
+      "customModelPlaceholder": "Model kimliği",
       "connection": "Bağlantı",
       "activePort": "{port} bağlantı noktasında etkin",
       "notConnected": "Bağlı değil",
@@ -2032,7 +2057,7 @@
       "subtitle": "Tüm notlardaki özellik tanımlarını yönetin"
     },
     "loading": "Özellikler yükleniyor…",
-    "empty": "Henüz özellik tanımı yok. Başlamak için herhangi bir nota Durum, Seçim veya Çoklu seçim özelliği ekleyin.",
+    "empty": "Henüz özellik yok. Başlamak için herhangi bir nota bir özellik ekleyin.",
     "filterPlaceholder": "Özellikleri filtrele…",
     "noMatch": "“{query}” ile eşleşen özellik yok",
     "summary": "{count, plural, one {# özellik tanımı} other {# özellik tanımı}}",
@@ -2072,6 +2097,14 @@
     },
     "v2": {
       "actionsAria": "{name} için eylemler"
+    },
+    "usage": {
+      "heading": "Kullanıldığı notlar",
+      "noteCount": "{count, plural, one {# not} other {# not}}",
+      "mismatchCount": "{type} türüne uymayan değerler: {count}",
+      "mismatchNote": "{type} türüne uymuyor",
+      "none": "Bu özelliği kullanan not yok",
+      "loadFailed": "Bu özelliği kullanan notlar yüklenemedi"
     }
   },
   "commandLine": {
@@ -2407,7 +2440,6 @@
   "phaseI": {
     "errors": {
       "failedToUpdateTagColor": "Etiket rengi güncellenemedi",
-      "googleSignInFailed": "Google ile oturum açılamadı",
       "failedToSendVerificationCode": "Doğrulama kodu gönderilemedi",
       "invalidVerificationCode": "Geçersiz doğrulama kodu",
       "accountSetupFailed": "Hesap kurulamadı",
@@ -2434,7 +2466,8 @@
       "failedToCloseVault": "Kasa kapatılamadı",
       "failedToSwitchVault": "Kasa değiştirilemedi",
       "failedToUpdateConfig": "Yapılandırma güncellenemedi",
-      "failedToReindex": "Yeniden dizinlenemedi"
+      "failedToReindex": "Yeniden dizinlenemedi",
+      "googleSignInFailed": "Google ile oturum açılamadı"
     }
   },
   "agentMcp": {
@@ -2464,7 +2497,17 @@
       "running": "Çalışıyor",
       "tokenHint": "Yalnızca bu oturum için",
       "copy": "Kopyala",
-      "rotate": "Yenile"
+      "rotate": "Yenile",
+      "clientConfig": {
+        "label": "İstemci yapılandırması",
+        "hint": "Bu oturumun URL'si ve token'ı ile kopyalanır",
+        "copy": "{client} yapılandırmasını kopyala"
+      },
+      "notes": {
+        "readOnly": "Harici istemciler yalnızca okuyabilir. Yazma araçları PERMISSION_DENIED döndürür; yazmak için Agent Chat'i veya memrynote komut satırını kullanın.",
+        "restart": "memrynote yeniden başladığında, kasa değiştiğinde veya token yenilendiğinde URL ve token değişir. Her seferinde istemci yapılandırmasını güncelleyip istemciyi yeniden başlatın.",
+        "docs": "Kurulum kılavuzu"
+      }
     }
   },
   "agentProviders": {

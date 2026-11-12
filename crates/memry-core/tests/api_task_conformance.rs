@@ -50,4 +50,17 @@ fn filtering_through_the_seam_matches_the_file() {
             .collect();
         assert_eq!(got, expected, "{section}");
     }
+    let expected: Vec<&Value> = file["locationOptions"]["cases"]
+        .as_array()
+        .expect("cases")
+        .iter()
+        .map(|c| &c["expected"])
+        .collect();
+    let got: Vec<&Value> = actual["locationOptions"]
+        .as_array()
+        .expect("computed")
+        .iter()
+        .collect();
+    assert!(!expected.is_empty());
+    assert_eq!(got, expected, "locationOptions");
 }

@@ -9,7 +9,7 @@ export function PrivacyPage() {
         eyebrow="Legal · Privacy"
         title="Privacy Policy"
         intro="memrynote is built on a simple promise: your notes belong to you, and we cannot read them."
-        lastUpdated="October 15, 2026"
+        lastUpdated="November 9, 2026"
       >
         <h2>Summary in 30 seconds</h2>
         <ul>
@@ -203,7 +203,8 @@ export function PrivacyPage() {
         <ul>
           <li>
             <strong>Cloudflare</strong> — hosts the Sync API, stores encrypted blobs in R2, and runs
-            the marketing website&apos;s edge.
+            the marketing website&apos;s edge. Its Turnstile bot check on the iPhone beta form
+            receives your IP address and browser signals to tell people from bots.
           </li>
           <li>
             <strong>PostHog</strong> — receives anonymous desktop product usage metrics and crash
