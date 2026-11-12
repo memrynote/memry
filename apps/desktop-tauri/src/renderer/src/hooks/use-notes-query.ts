@@ -518,26 +518,32 @@ export function useNoteLinksQuery(noteId: string | null, options: { enabled?: bo
   useEffect(() => {
     if (!noteId) return undefined
 
-    const refresh = () => {
-      void queryClient.invalidateQueries({ queryKey: notesKeys.links(noteId) })
-    }
+    const refresh = () => rereadQueries(queryClient, notesKeys.links(noteId))
 
-    // Only refresh on content changes, not all updates
-    const unsubUpdated = onNoteUpdated((event) => {
-      // Refresh if this note or any linked note changed
-      if (event.id === noteId || event.changes.content !== undefined) {
-        refresh()
-      }
-    })
-
-    // The index wrote links that touch this note. A note event comes before the index has
-    // written the edit's links, so this is what shows them.
-    const unsubLinks = onNoteLinksChanged(({ sourceIds, targetIds }) => {
-      if (sourceIds.includes(noteId) || targetIds.includes(noteId)) refresh()
-    })
-    // A created note resolves any outgoing link that named its title.
-    const unsubCreated = onNoteCreated(refresh)
-    const unsubDeleted = onNoteDeleted(refresh)
+    // The links were read before these listeners went live, and a change in between sent its
+    // event to nobody: read them again once they listen.
+    const unsubNotes = subscribeToEvents(
+      [
+        // Only refresh on content changes, not all updates
+        (live) =>
+          onNoteUpdated((event) => {
+            // Refresh if this note or any linked note changed
+            if (event.id === noteId || event.changes.content !== undefined) {
+              refresh()
+            }
+          }, live),
+        // The index wrote links that touch this note. A note event comes before the index has
+        // written the edit's links, so this is what shows them.
+        (live) =>
+          onNoteLinksChanged(({ sourceIds, targetIds }) => {
+            if (sourceIds.includes(noteId) || targetIds.includes(noteId)) refresh()
+          }, live),
+        // A created note resolves any outgoing link that named its title.
+        (live) => onNoteCreated(refresh, live),
+        (live) => onNoteDeleted(refresh, live)
+      ],
+      refresh
+    )
     // An arrow drawn or removed on any canvas can add or drop a connection, and
     // a canvas arriving by sync (or as a conflict copy) can bring its own.
     const unsubCanvasCreated = onCanvasCreated(refresh)
@@ -545,10 +551,7 @@ export function useNoteLinksQuery(noteId: string | null, options: { enabled?: bo
     const unsubCanvasDeleted = onCanvasDeleted(refresh)
 
     return () => {
-      unsubUpdated()
-      unsubLinks()
-      unsubCreated()
-      unsubDeleted()
+      unsubNotes()
       unsubCanvasCreated()
       unsubCanvasUpdated()
       unsubCanvasDeleted()

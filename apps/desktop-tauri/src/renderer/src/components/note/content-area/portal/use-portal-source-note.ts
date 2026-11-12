@@ -19,6 +19,7 @@ import {
   onNoteRenamed,
   onNoteUpdated
 } from '@/services/notes-service'
+import { subscribeToEvents } from '@/services/tauri-event'
 
 export function usePortalSourceNote(noteId: string): Pick<UseNoteResult, 'note' | 'isLoading'> {
   const { note, isLoading, refetch } = useNote(noteId)
@@ -39,20 +40,23 @@ export function usePortalSourceNote(noteId: string): Pick<UseNoteResult, 'note' 
       setDeletedId(null)
       refetchRef.current()
     }
-    const unsubscribers = [
-      onNoteDeleted((event) => {
-        if (event.id !== noteId) return
-        deletedRef.current = true
-        setDeletedId(noteId)
-      }),
-      onNoteCreated((event) => comesBack(event.note.id)),
-      onNoteUpdated((event) => comesBack(event.id)),
-      onNoteRenamed((event) => comesBack(event.id)),
-      onNoteMoved((event) => comesBack(event.id))
-    ]
-    return () => {
-      for (const unsubscribe of unsubscribers) unsubscribe()
-    }
+    // The note was read before these listeners went live, and a delete in between sent its
+    // event to nobody: read it again once they listen.
+    return subscribeToEvents(
+      [
+        (live) =>
+          onNoteDeleted((event) => {
+            if (event.id !== noteId) return
+            deletedRef.current = true
+            setDeletedId(noteId)
+          }, live),
+        (live) => onNoteCreated((event) => comesBack(event.note.id), live),
+        (live) => onNoteUpdated((event) => comesBack(event.id), live),
+        (live) => onNoteRenamed((event) => comesBack(event.id), live),
+        (live) => onNoteMoved((event) => comesBack(event.id), live)
+      ],
+      () => refetchRef.current()
+    )
   }, [noteId])
 
   return { note: deletedId === noteId ? null : note, isLoading }

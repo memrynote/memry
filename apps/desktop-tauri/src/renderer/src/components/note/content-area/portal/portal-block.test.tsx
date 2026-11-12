@@ -40,7 +40,8 @@ vi.mock('@/hooks/use-sidebar-navigation', () => ({
 vi.mock('@/hooks/use-notes-query', () => ({
   useNote: (id: string | null) => ({
     note: (id && mocks.notes.get(id)) || null,
-    isLoading: mocks.loading
+    isLoading: mocks.loading,
+    refetch: () => undefined
   })
 }))
 vi.mock('@/lib/vault-locks-store', () => ({ useIsNoteLocked: () => mocks.locked }))

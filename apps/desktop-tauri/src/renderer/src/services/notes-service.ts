@@ -778,8 +778,11 @@ export function onNoteRenamed(
  * every note that gained or lost a link to it (`targetIds`). It comes after the rows are written,
  * where a note event comes before, so a links read on it sees the edit.
  */
-export function onNoteLinksChanged(callback: (event: NoteLinksChangedEvent) => void): () => void {
-  return subscribeToEvent(events.noteLinksChangedEvent, callback)
+export function onNoteLinksChanged(
+  callback: (event: NoteLinksChangedEvent) => void,
+  onListening?: () => void
+): () => void {
+  return subscribeToEvent(events.noteLinksChangedEvent, callback, onListening)
 }
 
 /** The app moved a note to another folder; its title stays. */

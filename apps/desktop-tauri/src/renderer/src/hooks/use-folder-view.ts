@@ -33,6 +33,8 @@ import { getColumnLabel } from '@/lib/contract-display-names'
 import { propertiesService } from '@/services/properties-service'
 import { notesService, onTagsChanged } from '@/services/notes-service'
 import { onTagNotesChanged } from '@/services/tags-service'
+import { subscribeToEvents } from '@/services/tauri-event'
+import { rereadQueries } from './use-notes-query'
 
 const log = createLogger('Hook:FolderView')
 
@@ -1185,28 +1187,29 @@ export function useFolderView({
   // unconditionally.
   //
   // Callers pass an object literal for `scope`, a new reference every
-  // render, so the effects depend on `scopeKey(scope)` (stable per logical
+  // render, so the effect depends on `scopeKey(scope)` (stable per logical
   // scope) instead of `scope` itself to avoid resubscribing on every render.
   useEffect(() => {
     if (scope.kind !== 'tag') return undefined
     const currentTag = scope.tag
-    const unsubscribe = onTagNotesChanged((event) => {
-      if (foldTag(event.tag) === foldTag(currentTag)) {
-        void queryClient.invalidateQueries({ queryKey: folderViewKeys.notes(scope) })
-      }
-    })
-    return unsubscribe
-    // oxlint-disable-next-line react/exhaustive-deps
-  }, [scopeKey(scope), queryClient])
-
-  useEffect(() => {
-    if (scope.kind !== 'tag') return undefined
-    const unsubscribe = onTagsChanged(() => {
-      void queryClient.invalidateQueries({ queryKey: folderViewKeys.views(scope) })
-      void queryClient.invalidateQueries({ queryKey: folderViewKeys.availableProperties(scope) })
-      void queryClient.invalidateQueries({ queryKey: folderViewKeys.notes(scope) })
-    })
-    return unsubscribe
+    const rereadNotes = () => rereadQueries(queryClient, folderViewKeys.notes(scope))
+    const rereadAll = () => {
+      rereadQueries(queryClient, folderViewKeys.views(scope))
+      rereadQueries(queryClient, folderViewKeys.availableProperties(scope))
+      rereadNotes()
+    }
+    // The view was read before these listeners went live, and a change in between sent its
+    // event to nobody: read it again once they listen.
+    return subscribeToEvents(
+      [
+        (live) =>
+          onTagNotesChanged((event) => {
+            if (foldTag(event.tag) === foldTag(currentTag)) rereadNotes()
+          }, live),
+        (live) => onTagsChanged(rereadAll, live)
+      ],
+      rereadAll
+    )
     // oxlint-disable-next-line react/exhaustive-deps
   }, [scopeKey(scope), queryClient])
 

@@ -29,6 +29,7 @@ import {
   onProjectDeleted
 } from '@/services/tasks-service'
 import { calendarService, onCalendarChanged } from '@/services/calendar-service'
+import { subscribeToEvents } from '@/services/tauri-event'
 import { createLogger } from '@/lib/logger'
 import { trackRendererError } from '@/lib/telemetry-diagnostics'
 import { entityKey, type CanvasCardRef } from './canvas-cards'
@@ -300,14 +301,30 @@ export function useCanvasEntities(visibleRefs: readonly CanvasCardRef[]): Entity
       refresh('file', id)
     }
 
+    // The cards were read before these listeners went live, and a note changed in between sent
+    // its event to nobody: read every held note and file card again once they listen.
+    const refreshNotesAndFiles = (): void => {
+      for (const ref of wantedRef.current.values()) {
+        if (ref.entityType === 'note' || ref.entityType === 'file') {
+          refresh(ref.entityType, ref.entityId)
+        }
+      }
+    }
+
     const unsubscribes = [
-      onNoteUpdated((event) => refreshNoteOrFile(event.id)),
-      onNoteRenamed((event) => refreshNoteOrFile(event.id)),
-      onNoteMoved((event) => refresh('file', event.id)),
-      onNoteDeleted((event) => {
-        markDangling('note', event.id)
-        markDangling('file', event.id)
-      }),
+      subscribeToEvents(
+        [
+          (live) => onNoteUpdated((event) => refreshNoteOrFile(event.id), live),
+          (live) => onNoteRenamed((event) => refreshNoteOrFile(event.id), live),
+          (live) => onNoteMoved((event) => refresh('file', event.id), live),
+          (live) =>
+            onNoteDeleted((event) => {
+              markDangling('note', event.id)
+              markDangling('file', event.id)
+            }, live)
+        ],
+        refreshNotesAndFiles
+      ),
       onTaskCreated(refreshProjects),
       onTaskUpdated((event) => {
         refresh('task', event.id)

@@ -13,6 +13,7 @@ import { useEffect } from 'react'
 import { useQuery, useQueryClient } from '@tanstack/react-query'
 import { useT } from '@memry/i18n/renderer'
 import { stripAnchor, type PortalDefinition, type PortalTarget } from '@memry/shared/portal-block'
+import { rereadQueries } from '@/hooks/use-notes-query'
 import { useSidebarNavigation } from '@/hooks/use-sidebar-navigation'
 import { FileText, Search } from '@/lib/icons'
 import {
@@ -22,6 +23,7 @@ import {
   onNoteRenamed,
   onNoteUpdated
 } from '@/services/notes-service'
+import { subscribeToEvents } from '@/services/tauri-event'
 import {
   PortalActionButton,
   PortalActions,
@@ -50,19 +52,24 @@ function useSearchPortalRefresh(): void {
       if (timer) clearTimeout(timer)
       timer = setTimeout(() => {
         timer = null
-        void queryClient.invalidateQueries({ queryKey: [SEARCH_KEY] })
+        rereadQueries(queryClient, [SEARCH_KEY])
       }, REFRESH_DEBOUNCE_MS)
     }
-    const unsubscribers = [
-      onNoteCreated(refresh),
-      onNoteUpdated(refresh),
-      onNoteDeleted(refresh),
-      onNoteRenamed(refresh),
-      onNoteMoved(refresh)
-    ]
+    // The search ran before these listeners went live, and a note changed in between sent its
+    // event to nobody: run it again once they listen.
+    const unsubscribe = subscribeToEvents(
+      [
+        (live) => onNoteCreated(refresh, live),
+        (live) => onNoteUpdated(refresh, live),
+        (live) => onNoteDeleted(refresh, live),
+        (live) => onNoteRenamed(refresh, live),
+        (live) => onNoteMoved(refresh, live)
+      ],
+      refresh
+    )
     return () => {
       if (timer) clearTimeout(timer)
-      for (const unsubscribe of unsubscribers) unsubscribe()
+      unsubscribe()
     }
   }, [queryClient])
 }
