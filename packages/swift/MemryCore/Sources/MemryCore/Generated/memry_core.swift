@@ -11819,7 +11819,10 @@ public protocol VaultProtocol: AnyObject, Sendable {
      * queued.
      *
      * **Always 0 here, by construction.** Desktop needs the seed because its
-     * items predate sync and carry no clock. Every core write commits its
+     * items predate sync and carry no clock. The one exception is a lock row
+     * written before Step 16, which has no outbox row; the sync pass seeds
+     * those itself at its start (`VaultSync::seed_vault_locks`), not here.
+     * Every core write commits its
      * outbox row in the same transaction as the row it changes
      * (`sync::outbox`, FR-030), whether or not an account exists, and an
      * outbox row leaves only when the server acknowledges it or it is retired
@@ -12074,7 +12077,10 @@ open func search()throws  -> Search  {
      * queued.
      *
      * **Always 0 here, by construction.** Desktop needs the seed because its
-     * items predate sync and carry no clock. Every core write commits its
+     * items predate sync and carry no clock. The one exception is a lock row
+     * written before Step 16, which has no outbox row; the sync pass seeds
+     * those itself at its start (`VaultSync::seed_vault_locks`), not here.
+     * Every core write commits its
      * outbox row in the same transaction as the row it changes
      * (`sync::outbox`, FR-030), whether or not an account exists, and an
      * outbox row leaves only when the server acknowledges it or it is retired
@@ -13141,8 +13147,10 @@ public func FfiConverterTypeVaultRealtime_lower(_ value: VaultRealtime) -> UInt6
 /**
  * The read-only sync over one opened vault.
  *
- * Built by [`crate::api::vault::Vault::sync`], which is the only way: a
- * `VaultSync` over a database nobody opened is a sync into the wrong vault.
+ * Built by [`crate::api::vault::Vault::sync`] or, under another declaration,
+ * [`crate::api::vault::Vault::sync_with_declaration`], which are the only
+ * ways: a `VaultSync` over a database nobody opened is a sync into the wrong
+ * vault.
  */
 public protocol VaultSyncProtocol: AnyObject, Sendable {
     
@@ -13306,8 +13314,10 @@ public protocol VaultSyncProtocol: AnyObject, Sendable {
 /**
  * The read-only sync over one opened vault.
  *
- * Built by [`crate::api::vault::Vault::sync`], which is the only way: a
- * `VaultSync` over a database nobody opened is a sync into the wrong vault.
+ * Built by [`crate::api::vault::Vault::sync`] or, under another declaration,
+ * [`crate::api::vault::Vault::sync_with_declaration`], which are the only
+ * ways: a `VaultSync` over a database nobody opened is a sync into the wrong
+ * vault.
  */
 open class VaultSync: VaultSyncProtocol, @unchecked Sendable {
     fileprivate let handle: UInt64
@@ -35156,7 +35166,7 @@ private let initializationResult: InitializationResult = {
     if (uniffi_memry_core_checksum_method_vault_search() != 52313) {
         return InitializationResult.apiChecksumMismatch
     }
-    if (uniffi_memry_core_checksum_method_vault_seed_unsynced() != 58536) {
+    if (uniffi_memry_core_checksum_method_vault_seed_unsynced() != 5083) {
         return InitializationResult.apiChecksumMismatch
     }
     if (uniffi_memry_core_checksum_method_vault_settings() != 29573) {
