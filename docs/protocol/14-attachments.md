@@ -232,9 +232,9 @@ shared attachment queues (`apps/desktop/src/main/home/cover-service.ts:291`,
 `:311`) and settles both directions in one idempotent pass
 (`apps/desktop/src/main/home/cover-service.ts:324`).
 
-The Rust core does not subscribe to `home_page`
-(`crates/memry-core/src/protocol/types.rs:77`), so it never meets a board
-cover.
+The iOS declaration (`Declaration::subscribed`) omits `home_page`
+(`crates/memry-core/src/protocol/types.rs:77`), so an iOS client never meets a
+board cover.
 
 ## 14.8 Quota, and never dereferencing — Q14.3
 

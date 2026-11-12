@@ -1119,7 +1119,7 @@ names the documents whose log grew.
     dies, or a window pull that stops, leaves the document owed for the body
     step. A first sync and a pass hold the same per-vault lock
     (`crates/memry-core/src/api/sync/mod.rs:392`,
-    `crates/memry-core/src/api/sync/pass.rs:107`), so neither settles a debt
+    `crates/memry-core/src/api/sync/pass.rs:127`), so neither settles a debt
     the other is still writing. A document that is not owed
     holds its server body, and the desktop external feed writes file text only
     into such a document (`crates/memry-core/src/domain/external_feed.rs:191`).
