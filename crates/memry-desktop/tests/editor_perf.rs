@@ -8,12 +8,14 @@
 //!
 //! Each row is a window's call as the Tauri commands make it: `open` of a note nobody holds
 //! (the document loads from `data.db` and its state is encoded), `apply_update` of a typed edit
-//! (stored with its outbox row, committed, fanned out), sync step 1 (`state_diff` and the state
+//! (stored with its outbox row, committed, fanned out), the bridge (a window's `apply_update` until
+//! the other window's channel receives the edit), sync step 1 (`state_diff` and the state
 //! vector) and the quit's `flush-writebacks` of an edited note (the body serialized and the file
 //! written). The notes are a 2 KB and a 12 KB note and a long note of 5000 blocks.
 //!
 //! Budgets are p95 in milliseconds, release build. The issue's own: open of a 12 KB note 25, of
-//! a 2 KB note 8, `apply_update` of a 200-byte update 2. The others are about 3x the worst p95 of
+//! a 2 KB note 8, `apply_update` of a 200-byte update 2, and the bridge's p99 5 (its p50 budget,
+//! 1, is under the p95 of `apply_update`, which the bridge includes). The others are about 3x the worst p95 of
 //! five runs on an Apple M5 Pro (the numbers are in the PR of slice 14z): open of the long note
 //! 100 (measured 31), sync step 1 of a current window 2 (0.4) and of an empty one 10 (3), the
 //! write-back 1000 (p50 157-247, p95 243-1130 under disk load; the budget is one
@@ -24,23 +26,24 @@
 //! a failure, and `MEMRY_PERF_FACTOR` scales every budget (a shared CI runner is slower).
 
 mod device_key;
+mod editor_window;
 mod vault_env;
 
 use std::path::Path;
 use std::sync::{Arc, Mutex};
 use std::time::{Duration, Instant};
 
-use memry_core::crdt::BODY_FRAGMENT;
+use editor_window::Window;
 use memry_core::seams::secure_store::SecureStore;
 use memry_desktop::editor::{EditorHost, Subscriber};
 use vault_env::{Env, creates, env, indexed};
-use yrs::updates::decoder::Decode as _;
 use yrs::updates::encoder::Encode as _;
-use yrs::{
-    Doc, ReadTxn as _, Text as _, Transact as _, Update, XmlFragment as _, XmlOut, XmlTextRef,
-};
 
 const WINDOW: &str = "main";
+/// A second window with the note open, which receives the first window's edits.
+const OTHER_WINDOW: &str = "second";
+/// Watchdog on one delivery, not a budget.
+const DELIVERY_WAIT: Duration = Duration::from_secs(25);
 
 /// The time between two typed edits: a fast typist's keystroke. Edits sent back to back would
 /// measure a burst no window sends.
@@ -80,58 +83,13 @@ fn note_of_bytes(bytes: usize) -> String {
     out
 }
 
-fn percentiles(mut samples: Vec<Duration>) -> (Duration, Duration) {
+/// p50 and the `quantile`th percentile.
+fn percentiles(mut samples: Vec<Duration>, quantile: usize) -> (Duration, Duration) {
     samples.sort();
     (
         samples[samples.len() / 2],
-        samples[samples.len() * 95 / 100],
+        samples[samples.len() * quantile / 100],
     )
-}
-
-/// The window's copy of the document, as the renderer's editor holds it.
-struct Window(Doc);
-
-impl Window {
-    fn from_state(state: &[u8]) -> Self {
-        let doc = Doc::new();
-        doc.transact_mut()
-            .apply_update(Update::decode_v1(state).unwrap())
-            .unwrap();
-        Self(doc)
-    }
-
-    /// Types `text` at the start of the first block's text and returns the update the editor
-    /// sends.
-    fn type_text(&self, text: &str) -> Vec<u8> {
-        let fragment = self.0.get_or_insert_xml_fragment(BODY_FRAGMENT);
-        let before = self.0.transact().state_vector();
-        let mut txn = self.0.transact_mut();
-        let first = (0..fragment.len(&txn))
-            .find_map(|i| {
-                fragment
-                    .get(&txn, i)
-                    .and_then(|node| first_text(&txn, node))
-            })
-            .expect("a block with text");
-        first.insert(&mut txn, 0, text);
-        drop(txn);
-        self.0.transact().encode_diff_v1(&before)
-    }
-
-    fn state_vector(&self) -> Vec<u8> {
-        self.0.transact().state_vector().encode_v1()
-    }
-}
-
-/// The first text node under `node`, depth first: blocks nest (group, container, content).
-fn first_text(txn: &impl yrs::ReadTxn, node: XmlOut) -> Option<XmlTextRef> {
-    match node {
-        XmlOut::Text(text) => Some(text),
-        XmlOut::Element(element) => {
-            (0..element.len(txn)).find_map(|i| element.get(txn, i).and_then(|n| first_text(txn, n)))
-        }
-        XmlOut::Fragment(_) => None,
-    }
 }
 
 fn subscriber() -> Subscriber {
@@ -223,13 +181,20 @@ impl Report {
     }
 
     fn row(&mut self, what: &str, samples: Vec<Duration>, budget_ms: f64) {
+        self.row_at(what, samples, 95, budget_ms);
+    }
+
+    /// A row whose budget holds the `quantile`th percentile.
+    fn row_at(&mut self, what: &str, samples: Vec<Duration>, quantile: usize, budget_ms: f64) {
         let count = samples.len();
-        let (p50, p95) = percentiles(samples);
+        let (p50, at) = percentiles(samples, quantile);
         let factor = self.factor;
-        println!("{what}: p50 {p50:?}, p95 {p95:?}, n {count} (budget {budget_ms} ms x {factor})");
-        if p95.as_secs_f64() * 1000.0 > budget_ms * factor {
+        println!(
+            "{what}: p50 {p50:?}, p{quantile} {at:?}, n {count} (budget {budget_ms} ms x {factor})"
+        );
+        if at.as_secs_f64() * 1000.0 > budget_ms * factor {
             self.failures.push(format!(
-                "{what}: p95 {p95:?} over {budget_ms} ms x {factor}"
+                "{what}: p{quantile} {at:?} over {budget_ms} ms x {factor}"
             ));
         }
     }
@@ -298,6 +263,46 @@ fn editor_perf_budget() {
         report.row(&format!("apply_update 200 B, {label}"), samples, budget);
         bench.host.close(&note, WINDOW);
     }
+
+    let note = bench.id("medium.md");
+    let window = bench.open(&note);
+    let arrivals = Arc::new(Mutex::new(Vec::new()));
+    let other = Subscriber {
+        window_label: OTHER_WINDOW.to_owned(),
+        channel: {
+            let arrivals = Arc::clone(&arrivals);
+            Arc::new(move |_| {
+                arrivals.lock().unwrap().push(Instant::now());
+                true
+            })
+        },
+    };
+    bench
+        .host
+        .open(&note, Some(&bench.env.vault), other)
+        .unwrap();
+    let samples = (0..200)
+        .map(|i| {
+            std::thread::sleep(KEYSTROKE);
+            let update = window.type_text(TYPED);
+            let sent = Instant::now();
+            bench.host.apply_update(&note, &update, WINDOW).unwrap();
+            loop {
+                if let Some(at) = arrivals.lock().unwrap().get(i) {
+                    break *at - sent;
+                }
+                assert!(
+                    sent.elapsed() < DELIVERY_WAIT,
+                    "edit {i} never reached the other window"
+                );
+                std::thread::yield_now();
+            }
+        })
+        .collect();
+    report.row_at("bridge to the other window, 200 B, 12 KB", samples, 99, 5.0);
+    assert_eq!(arrivals.lock().unwrap().len(), 200, "one delivery per edit");
+    bench.host.close(&note, WINDOW);
+    bench.host.close(&note, OTHER_WINDOW);
 
     let note = bench.id("long.md");
     let window = bench.open(&note);

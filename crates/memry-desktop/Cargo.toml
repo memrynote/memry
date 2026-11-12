@@ -184,6 +184,10 @@ name = "editor_perf"
 path = "tests/editor_perf.rs"
 
 [[test]]
+name = "editor_flush_quit"
+path = "tests/editor_flush_quit.rs"
+
+[[test]]
 name = "extract_bench"
 path = "tests/extract_bench.rs"
 
