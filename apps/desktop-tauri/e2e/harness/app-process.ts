@@ -7,6 +7,7 @@ import { fileURLToPath } from 'node:url'
 
 import { HarnessError } from './errors.ts'
 import { pollUntil } from './wait.ts'
+import { type AppDisplay, DISPLAY_PER_APP_ENV, startAppDisplay } from './x-display.ts'
 
 const crateTarget = fileURLToPath(new URL('../../../../crates/target/debug', import.meta.url))
 
@@ -123,9 +124,19 @@ export async function spawnApp(port: number): Promise<ChildProcess> {
   const output = join(APP_OUTPUT_DIR, `app-${port}-${Date.now()}.log`)
   // A file, not a pipe: it keeps what the app wrote after this process stopped reading.
   const fd = openSync(output, 'a')
+  let screen: AppDisplay | undefined
+  try {
+    if (process.platform === 'linux' && process.env[DISPLAY_PER_APP_ENV] === '1') {
+      screen = await startAppDisplay(fd)
+    }
+  } catch (error) {
+    closeSync(fd)
+    throw error
+  }
   const child = spawn(binaryPath(), [], {
     env: {
       ...process.env,
+      ...(screen && { DISPLAY: screen.display }),
       MEMRY_E2E: '1',
       TAURI_WEBDRIVER_PORT: String(port),
       ENCHANT_CONFIG_DIR: enchantDir
@@ -136,6 +147,10 @@ export async function spawnApp(port: number): Promise<ChildProcess> {
   spawned.add(child)
   child.once('exit', () => spawned.delete(child))
   child.once('error', () => spawned.delete(child))
+  if (screen) {
+    child.once('exit', screen.stop)
+    child.once('error', screen.stop)
+  }
   try {
     await waitForDriver(port, child)
   } catch (error) {
