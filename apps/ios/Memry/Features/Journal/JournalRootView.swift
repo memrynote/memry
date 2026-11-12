@@ -171,7 +171,7 @@ struct JournalRootView: View {
                     case .settings:
                         // A Settings page, opened from Settings › Journal.
                         JournalSettingsScreen(store: store)
-                            .measuredScrollContent(Tokens.Size.reading)
+                            .settingsPage()
                     case let .note(id):
                         if let context = store.context {
                             NoteReadView(

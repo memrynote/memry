@@ -11,6 +11,12 @@ extension EnvironmentValues {
     /// Nothing sets it yet. #4376 sets it from desktop's per-device editor
     /// width, a note's `fullWidth` frontmatter, and the journal override.
     @Entry var fullWidthReading = false
+
+    /// A wide block breaks out of the reading measure to the full pane.
+    ///
+    /// Off inside a block's own box, such as a column or an embedded note,
+    /// where the pane is not the block's to take.
+    @Entry var paneBreakout = true
 }
 
 /// The reading measure, lifted when the surface is full width.
@@ -36,6 +42,26 @@ private struct MeasuredScrollContent: ViewModifier {
     }
 }
 
+/// A block drawn across the pane, its gutters kept, while the reading
+/// column around it stays at its measure. The frame after the pane width
+/// reports the column's own width to the column and centres the wider block
+/// on it, so the column's other blocks do not move.
+private struct PaneBreakout: ViewModifier {
+    @Environment(\.paneBreakout) private var breaksOut
+
+    func body(content: Content) -> some View {
+        if breaksOut {
+            content
+                .containerRelativeFrame(.horizontal) { length, _ in
+                    max(0, length - 2 * Tokens.Space.screenInline)
+                }
+                .frame(minWidth: 0, maxWidth: .infinity)
+        } else {
+            content
+        }
+    }
+}
+
 extension View {
     /// Caps the column at `measure` and centres it in the width it is
     /// offered. Narrower than `measure`, the column takes all of it.
@@ -51,6 +77,17 @@ extension View {
     /// a swipe and a different colour from the list.
     func measuredScrollContent(_ measure: CGFloat) -> some View {
         modifier(MeasuredScrollContent(measure: measure))
+    }
+
+    /// A Settings page: the list capped at the reading measure.
+    func settingsPage() -> some View {
+        measuredScrollContent(Tokens.Size.reading)
+    }
+
+    /// A table or whiteboard in a note or journal day: the full pane, not
+    /// the reading measure (DESIGN.md › Tablet › Measures, Q3).
+    func paneBreakout() -> some View {
+        modifier(PaneBreakout())
     }
 
     /// A note or journal day's column: the reading measure, unless the
