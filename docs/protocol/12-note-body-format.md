@@ -29,7 +29,7 @@ The directions:
 
 | Direction              | Mechanism                                                                                                                                                                                                                                                                            |
 | ---------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
-| markdown to document   | `Converter::seed_body` (`crates/memry-core/src/markdown/convert/api.rs:102`), the port of `markdownToYFragment` (`apps/desktop/src/main/sync/blocknote-converter.ts:548`) with the repairs of §12.1.1; in the iOS build, `markdown_seed` for the two writes of §12.1.0 and no others |
+| markdown to document   | `Converter::seed_body` (`crates/memry-core/src/markdown/convert/api.rs:113`), the port of `markdownToYFragment` (`apps/desktop/src/main/sync/blocknote-converter.ts:548`) with the repairs of §12.1.1; in the iOS build, `markdown_seed` for the two writes of §12.1.0 and no others |
 | document to markdown   | `Converter::serialize_note_body` (`crates/memry-core/src/markdown/convert/api.rs:152`), the port of the vault write-back's `serializeNoteBody` (`apps/desktop/src/main/sync/crdt-writeback.ts:603`)                                                                                  |
 | document to plain text | `extract_text`, a plain-text walk of the `prosemirror` fragment that keeps headings and list markers, drops everything else, and claims no markdown fidelity (§12.1.3)                                                                                                               |
 
@@ -90,8 +90,13 @@ markdown parse and export.
   which writes the blocks and those side channels, then `recordMarkdownSourceInYDoc` (`:690`).
   `prepareFragmentSeed` turns each `((mention:…))` token that serializes back to its own bytes
   into a `linkMention` node with only `url` and `domain` set (`:610`). A token an older build
-  wrote with `_ * ! ~ '` raw stays text, and the editor promotes it on open. The core's seed
-  keeps a line holding a token as literal text (§12.1.0).
+  wrote with `_ * ! ~ '` raw stays text, and the editor promotes it on open. The Rust converter's
+  `prepare_fragment_seed` does the same (`crates/memry-core/src/markdown/convert/seed.rs:76`,
+  `crates/memry-core/src/markdown/schema/link_mention_normalize.rs:37`, `:135`). A build from
+  before this reads the node as the `linkMention` its schema already holds and writes it back with
+  `serializeLinkMentionToken`, which gives the token's own bytes, because only a token that
+  serializes to itself is promoted. The core's `markdown_seed` keeps a line holding a token as
+  literal text (§12.1.0).
 - **Outbound**, the vault write-back calls `serializeNoteBody`
   (`apps/desktop/src/main/sync/crdt-writeback.ts:603`,
   `apps/desktop/src/main/sync/writing-markdown.ts:430`). It runs `yDocToMarkdown`

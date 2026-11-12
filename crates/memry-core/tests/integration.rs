@@ -298,6 +298,8 @@ mod markdown_layer_blocks_vectors;
 mod markdown_layer_critic_vectors;
 #[path = "markdown_layer_markers_vectors.rs"]
 mod markdown_layer_markers_vectors;
+#[path = "markdown_link_mention_seed.rs"]
+mod markdown_link_mention_seed;
 #[path = "markdown_md_to_html_vectors.rs"]
 mod markdown_md_to_html_vectors;
 #[path = "markdown_memry_parse_vectors.rs"]
