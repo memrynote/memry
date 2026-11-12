@@ -4,7 +4,6 @@
 //! | Test                                              | Rule                          |
 //! | ------------------------------------------------- | ----------------------------- |
 //! | the title weight outranks the content weight      | the bm25 vector is a contract |
-//! | hostile query text never reaches the FTS5 parser  | FTS5 input is user input      |
 //! | the body column is `extract_text` output          | §A.3, chapter 12 §12.1        |
 //! | a second pass touches only what moved             | §A.5 watermarks, FR-053       |
 //! | a body update alone re-indexes the note           | the log is a watermark source |
@@ -133,50 +132,6 @@ fn the_title_weight_outranks_the_content_weight() {
     );
     assert!(hits[0].score < 0.0, "bm25 scores are negative");
     assert!(hits[0].score < hits[1].score, "better matches score lower");
-}
-
-#[test]
-fn hostile_query_text_never_reaches_the_fts5_parser() {
-    let (data, index) = databases();
-    put(&data, "note", "n1", r#"{"title":"Chapter twelve"}"#, NOW);
-    reindex(&data, &index, NOW);
-
-    for hostile in [
-        "he said \"hello",
-        "*",
-        "chapter*",
-        "title:chapter",
-        "-chapter",
-        "(chapter OR twelve)",
-        "^chapter",
-        "NEAR(chapter twelve, 2)",
-        "chapter AND NOT twelve",
-        "\"\"\"",
-        "",
-        "   ",
-        "🙂",
-    ] {
-        let found = search::search_notes(&data, &index, hostile, 20);
-        assert!(
-            found.is_ok(),
-            "{hostile:?} reached the parser: {:?}",
-            found.err()
-        );
-    }
-
-    // The words survive the rewrite; only the syntax is gone.
-    assert_eq!(ids(&notes(&data, &index, "(chapter twelve)")), vec!["n1"]);
-    assert_eq!(ids(&notes(&data, &index, "chapter:")), vec!["n1"]);
-    assert!(notes(&data, &index, "*").is_empty());
-    assert!(
-        notes(&data, &index, "chapter zebra").is_empty(),
-        "terms AND"
-    );
-    assert!(
-        notes(&data, &index, "chapter OR zebra").is_empty(),
-        "`OR` is searched for as the word `or`, not honoured as an operator, \
-         so this is three ANDed terms and matches nothing"
-    );
 }
 
 #[test]

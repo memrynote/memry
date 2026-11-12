@@ -1,12 +1,5 @@
 import { describe, it, expect } from 'vitest'
-import {
-  escapeSearchQuery,
-  buildPhraseQuery,
-  buildPrefixQuery,
-  normalizeScores,
-  truncateQuery,
-  parseSearchQuery
-} from './search-utils'
+import { normalizeScores, truncateQuery, parseSearchQuery } from './search-utils'
 import type { SearchResultItem } from '@memry/contracts/search-api'
 
 function makeItem(overrides: Partial<SearchResultItem>): SearchResultItem {
@@ -23,56 +16,6 @@ function makeItem(overrides: Partial<SearchResultItem>): SearchResultItem {
     ...overrides
   }
 }
-
-describe('escapeSearchQuery', () => {
-  it('strips FTS5 special characters', () => {
-    // #given
-    const input = 'hello*world"test()'
-
-    // #when
-    const result = escapeSearchQuery(input)
-
-    // #then
-    expect(result).toBe('hello world test')
-  })
-
-  it('trims whitespace', () => {
-    expect(escapeSearchQuery('  hello  ')).toBe('hello')
-  })
-
-  it('returns empty string for special-chars-only input', () => {
-    expect(escapeSearchQuery('***""()')).toBe('')
-  })
-
-  it('passes through normal text unchanged', () => {
-    expect(escapeSearchQuery('meeting notes')).toBe('meeting notes')
-  })
-})
-
-describe('buildPrefixQuery', () => {
-  it('adds wildcard suffix to each term', () => {
-    // #given
-    const query = 'hello world'
-
-    // #when
-    const result = buildPrefixQuery(query)
-
-    // #then
-    expect(result).toBe('"hello"* "world"*')
-  })
-
-  it('returns empty string for empty input', () => {
-    expect(buildPrefixQuery('')).toBe('')
-  })
-
-  it('returns empty string for special-chars-only input', () => {
-    expect(buildPrefixQuery('***')).toBe('')
-  })
-
-  it('handles single term', () => {
-    expect(buildPrefixQuery('meet')).toBe('"meet"*')
-  })
-})
 
 describe('normalizeScores', () => {
   it('normalizes scores to 0-1 range', () => {
@@ -129,58 +72,41 @@ describe('truncateQuery', () => {
 })
 
 describe('parseSearchQuery', () => {
-  it('returns empty string for empty input', () => {
-    expect(parseSearchQuery('')).toBe('')
-    expect(parseSearchQuery('   ')).toBe('')
+  // Query, match, phrase. The same rows as the table in
+  // crates/memry-core/src/domain/search/query.rs.
+  const cases: [string, string, string][] = [
+    ['pass', '"pass"*', ''],
+    ['hello world', '"hello"* "world"*', '"hello world"*'],
+    ['"meeting notes"', '"meeting notes"', ''],
+    ['meeting NOT personal', '"meeting"* NOT "personal"*', ''],
+    ['meeting AND notes', '"meeting"* AND "notes"*', ''],
+    ['meeting OR notes', '"meeting"* OR "notes"*', ''],
+    ['foo OR "a b"', '"foo"* OR "a b"', ''],
+    ['"exact phrase" AND other', '"exact phrase" AND "other"*', ''],
+    ['a or not b', '"a"* "or"* "not"* "b"*', '"a or not b"*'],
+    ['NOT foo', '"foo"*', ''],
+    ['OR foo', '"foo"*', ''],
+    ['foo NOT', '"foo"*', ''],
+    ['foo OR', '"foo"*', ''],
+    ['a OR NOT b', '"a"* NOT "b"*', ''],
+    ['a AND OR b', '"a"* OR "b"*', ''],
+    ['title:foo', '"title foo"*', ''],
+    ['wi-fi router', '"wi fi"* "router"*', '"wi fi router"*'],
+    ['he said "hello', '"he"* "said"* "hello"*', '"he said hello"*'],
+    ['a"b c"d', '"a"* "b c" "d"*', ''],
+    ['(chapter OR twelve)', '"chapter"* OR "twelve"*', ''],
+    ['\u201Cmeeting notes\u201D', '"meeting notes"', ''],
+    ['şifre café', '"şifre"* "café"*', '"şifre café"*']
+  ]
+
+  it.each(cases)('%s', (query, match, phrase) => {
+    expect(parseSearchQuery(query)).toEqual({ match, phrase })
   })
 
-  it('wraps plain terms with prefix wildcard', () => {
-    const result = parseSearchQuery('hello world')
-    expect(result).toContain('"hello"*')
-    expect(result).toContain('"world"*')
-  })
-
-  it('preserves quoted phrases', () => {
-    const result = parseSearchQuery('"meeting notes"')
-    expect(result).toContain('"meeting notes"')
-  })
-
-  it('handles NOT operator', () => {
-    const result = parseSearchQuery('meeting NOT personal')
-    expect(result).toContain('NOT "personal"*')
-  })
-
-  it('handles AND operator', () => {
-    const result = parseSearchQuery('meeting AND notes')
-    expect(result).toContain('AND')
-    expect(result).toContain('"notes"*')
-  })
-
-  it('handles OR operator', () => {
-    const result = parseSearchQuery('meeting OR notes')
-    expect(result).toContain('OR')
-  })
-
-  it('ignores dangling operators', () => {
-    const result = parseSearchQuery('AND')
-    expect(result).toBe('')
-  })
-
-  it('combines phrases with operators', () => {
-    const result = parseSearchQuery('"exact phrase" AND other')
-    expect(result).toContain('"exact phrase"')
-    expect(result).toContain('AND')
-    expect(result).toContain('"other"*')
-  })
-})
-
-describe('buildPhraseQuery', () => {
-  it('quotes a multi-word query as one prefixed phrase', () => {
-    expect(buildPhraseQuery('this is rough')).toBe('"this is rough"*')
-  })
-
-  it('is empty for a single word or nothing searchable', () => {
-    expect(buildPhraseQuery('meet')).toBe('')
-    expect(buildPhraseQuery('***')).toBe('')
-  })
+  it.each(['', '   ', '"', '""', '*', ':', '()', '--', 'AND', 'OR', 'NOT', 'NOT OR AND'])(
+    'builds nothing from %j',
+    (query) => {
+      expect(parseSearchQuery(query)).toEqual({ match: '', phrase: '' })
+    }
+  )
 })
