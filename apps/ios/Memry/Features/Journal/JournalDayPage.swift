@@ -40,16 +40,19 @@ struct JournalDayPage: View {
             VStack(alignment: .leading, spacing: Tokens.Space.section) {
                 JournalDayHeader(date: date, today: store.clock.today, hour: hour, fogReach: fogPlacement.reach)
                     .onGeometryChange(for: CGRect.self) { $0.frame(in: .global) } action: { headerFrame = $0 }
-                if let model {
-                    content(model)
-                } else {
-                    loading
+                VStack(alignment: .leading, spacing: Tokens.Space.section) {
+                    if let model {
+                        content(model)
+                    } else {
+                        loading
+                    }
+                    JournalDaySection(store: store, date: date)
+                    JournalStatsFooter(day: store.cachedDay(date), vaultId: store.vaultId)
                 }
-                JournalDaySection(store: store, date: date)
-                JournalStatsFooter(day: store.cachedDay(date), vaultId: store.vaultId)
+                .frame(maxWidth: .infinity, alignment: .leading)
+                .readingColumn()
             }
             .frame(maxWidth: .infinity, alignment: .leading)
-            .readingColumn()
             .padding(.horizontal, Tokens.Space.screenInline)
             .padding(.vertical, Tokens.Space.medium)
         }
