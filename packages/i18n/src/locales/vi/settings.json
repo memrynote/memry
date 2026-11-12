@@ -1386,6 +1386,7 @@
       "notConnected": "Chưa kết nối",
       "test": "Kiểm tra",
       "connected": "Đã kết nối! Máy chủ đang chạy trên cổng {port}",
+      "connectedProvider": "Đã kết nối với {provider}",
       "connectFailed": "Không thể kết nối",
       "testFailed": "Kiểm tra kết nối không thành công",
       "updateFailed": "Không thể cập nhật cài đặt"

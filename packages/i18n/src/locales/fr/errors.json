@@ -164,7 +164,8 @@
     "apiKeyMissing": "Ajoutez votre clé d'API {provider} dans Paramètres → IA pour utiliser les outils d'écriture.",
     "apiKeyInvalid": "Votre clé d'API {provider} a été refusée. Vérifiez-la dans Paramètres → IA.",
     "ollamaUnreachable": "Ollama n'est pas en cours d'exécution. Lancez-le avec « ollama serve », ou choisissez un autre fournisseur dans Paramètres → IA.",
-    "providerUnreachable": "Impossible de joindre {provider}. Vérifiez votre connexion Internet et réessayez."
+    "providerUnreachable": "Impossible de joindre {provider}. Vérifiez votre connexion Internet et réessayez.",
+    "keychainUnavailable": "Memry ne peut pas accéder au trousseau du système : la clé API de l’IA n’a été ni lue ni enregistrée. Déverrouillez votre trousseau et réessayez."
   },
   "auth": {
     "notAuthenticated": "Non authentifié",

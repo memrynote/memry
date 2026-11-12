@@ -1386,6 +1386,7 @@
       "notConnected": "Nepřipojeno",
       "test": "Otestovat",
       "connected": "Připojeno! Server běží na portu {port}",
+      "connectedProvider": "Připojeno k {provider}",
       "connectFailed": "Připojení se nezdařilo",
       "testFailed": "Test připojení se nezdařil",
       "updateFailed": "Nastavení se nepodařilo aktualizovat"

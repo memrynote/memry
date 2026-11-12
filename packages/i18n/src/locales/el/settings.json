@@ -1386,6 +1386,7 @@
       "notConnected": "Δεν είναι συνδεδεμένο",
       "test": "Δοκιμή",
       "connected": "Συνδέθηκε! Ο διακομιστής εκτελείται στη θύρα {port}",
+      "connectedProvider": "Συνδέθηκε με {provider}",
       "connectFailed": "Αποτυχία σύνδεσης",
       "testFailed": "Η δοκιμή σύνδεσης απέτυχε",
       "updateFailed": "Αποτυχία ενημέρωσης ρύθμισης"

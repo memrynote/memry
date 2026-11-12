@@ -164,7 +164,8 @@
     "apiKeyMissing": "Tambah kunci API {provider} anda dalam Tetapan → AI untuk menggunakan alat penulisan.",
     "apiKeyInvalid": "Kunci API {provider} anda ditolak. Semaknya dalam Tetapan → AI.",
     "ollamaUnreachable": "Ollama tidak berjalan. Mulakannya dengan \"ollama serve\", atau pilih penyedia lain dalam Tetapan → AI.",
-    "providerUnreachable": "Tidak dapat menghubungi {provider}. Semak sambungan internet anda dan cuba lagi."
+    "providerUnreachable": "Tidak dapat menghubungi {provider}. Semak sambungan internet anda dan cuba lagi.",
+    "keychainUnavailable": "Memry tidak dapat mencapai keychain sistem anda, jadi kunci API AI tidak dibaca atau disimpan. Buka kunci keyring anda dan cuba lagi."
   },
   "auth": {
     "notAuthenticated": "Tidak disahkan",

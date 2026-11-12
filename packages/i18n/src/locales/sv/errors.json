@@ -164,7 +164,8 @@
     "apiKeyMissing": "Lägg till din {provider}-API-nyckel i Inställningar → AI för att använda skrivverktygen.",
     "apiKeyInvalid": "Din {provider}-API-nyckel avvisades. Kontrollera den i Inställningar → AI.",
     "ollamaUnreachable": "Ollama körs inte. Starta det med ”ollama serve” eller välj en annan leverantör i Inställningar → AI.",
-    "providerUnreachable": "Det gick inte att nå {provider}. Kontrollera internetanslutningen och försök igen."
+    "providerUnreachable": "Det gick inte att nå {provider}. Kontrollera internetanslutningen och försök igen.",
+    "keychainUnavailable": "Memry kommer inte åt systemets nyckelring, så AI-API-nyckeln lästes inte och sparades inte. Lås upp nyckelringen och försök igen."
   },
   "auth": {
     "notAuthenticated": "Inte inloggad",

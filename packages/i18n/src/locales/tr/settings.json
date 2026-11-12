@@ -1386,6 +1386,7 @@
       "notConnected": "Bağlı değil",
       "test": "Test et",
       "connected": "Bağlandı! Sunucu {port} bağlantı noktasında çalışıyor",
+      "connectedProvider": "{provider} sağlayıcısına bağlandı",
       "connectFailed": "Bağlanılamadı",
       "testFailed": "Bağlantı testi başarısız oldu",
       "updateFailed": "Ayar güncellenemedi"

@@ -1386,6 +1386,7 @@
       "notConnected": "Tidak disambungkan",
       "test": "Uji",
       "connected": "Disambungkan! Pelayan berjalan pada port {port}",
+      "connectedProvider": "Disambungkan ke {provider}",
       "connectFailed": "Gagal menyambung",
       "testFailed": "Ujian sambungan gagal",
       "updateFailed": "Gagal mengemas kini tetapan"

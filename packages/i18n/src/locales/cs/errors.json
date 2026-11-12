@@ -164,7 +164,8 @@
     "apiKeyMissing": "Pro nástroje psaní přidejte svůj klíč API {provider} v Nastavení → AI.",
     "apiKeyInvalid": "Váš klíč API {provider} byl odmítnut. Zkontrolujte jej v Nastavení → AI.",
     "ollamaUnreachable": "Ollama neběží. Spusťte ji příkazem „ollama serve“ nebo v Nastavení → AI zvolte jiného poskytovatele.",
-    "providerUnreachable": "Poskytovatele {provider} se nepodařilo kontaktovat. Zkontrolujte připojení k internetu a zkuste to znovu."
+    "providerUnreachable": "Poskytovatele {provider} se nepodařilo kontaktovat. Zkontrolujte připojení k internetu a zkuste to znovu.",
+    "keychainUnavailable": "Memry nemá přístup ke klíčence systému, takže klíč API pro AI nebyl načten ani uložen. Odemkněte klíčenku a zkuste to znovu."
   },
   "auth": {
     "notAuthenticated": "Nejste přihlášeni",

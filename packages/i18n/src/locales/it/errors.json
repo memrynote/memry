@@ -164,7 +164,8 @@
     "apiKeyMissing": "Aggiungi la tua chiave API {provider} in Impostazioni → AI per usare gli strumenti di scrittura.",
     "apiKeyInvalid": "La tua chiave API {provider} è stata rifiutata. Controllala in Impostazioni → AI.",
     "ollamaUnreachable": "Ollama non è in esecuzione. Avvialo con \"ollama serve\" oppure scegli un altro provider in Impostazioni → AI.",
-    "providerUnreachable": "Impossibile raggiungere {provider}. Controlla la connessione a internet e riprova."
+    "providerUnreachable": "Impossibile raggiungere {provider}. Controlla la connessione a internet e riprova.",
+    "keychainUnavailable": "Memry non riesce ad accedere al portachiavi di sistema, quindi la chiave API dell’IA non è stata letta né salvata. Sblocca il portachiavi e riprova."
   },
   "auth": {
     "notAuthenticated": "Non autenticato",

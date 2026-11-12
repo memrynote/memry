@@ -1386,6 +1386,7 @@
       "notConnected": "Ikke forbundet",
       "test": "Test",
       "connected": "Forbundet! Serveren kører på port {port}",
+      "connectedProvider": "Forbundet til {provider}",
       "connectFailed": "Kunne ikke oprette forbindelse",
       "testFailed": "Forbindelsestest mislykkedes",
       "updateFailed": "Kunne ikke opdatere indstillingen"

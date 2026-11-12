@@ -1386,6 +1386,7 @@
       "notConnected": "Nicht verbunden",
       "test": "Testen",
       "connected": "Verbunden! Server läuft auf Port {port}",
+      "connectedProvider": "Verbunden mit {provider}",
       "connectFailed": "Verbindung konnte nicht hergestellt werden",
       "testFailed": "Verbindungstest fehlgeschlagen",
       "updateFailed": "Die Einstellung konnte nicht aktualisiert werden"

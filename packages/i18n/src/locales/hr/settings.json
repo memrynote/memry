@@ -1386,6 +1386,7 @@
       "notConnected": "Nije povezano",
       "test": "Testiraj",
       "connected": "Povezano! Poslužitelj radi na priključku {port}",
+      "connectedProvider": "Povezano s {provider}",
       "connectFailed": "Povezivanje nije uspjelo",
       "testFailed": "Test veze nije uspio",
       "updateFailed": "Ažuriranje postavke nije uspjelo"

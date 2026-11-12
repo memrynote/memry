@@ -164,7 +164,8 @@
     "apiKeyMissing": "Adicione sua chave de API do {provider} em Configurações → IA para usar as ferramentas de escrita.",
     "apiKeyInvalid": "Sua chave de API do {provider} foi rejeitada. Verifique em Configurações → IA.",
     "ollamaUnreachable": "O Ollama não está em execução. Inicie-o com \"ollama serve\" ou escolha outro provedor em Configurações → IA.",
-    "providerUnreachable": "Não foi possível acessar {provider}. Verifique sua conexão com a internet e tente novamente."
+    "providerUnreachable": "Não foi possível acessar {provider}. Verifique sua conexão com a internet e tente novamente.",
+    "keychainUnavailable": "O Memry não consegue acessar as chaves do sistema, então a chave de API da IA não foi lida nem salva. Desbloqueie suas chaves e tente novamente."
   },
   "auth": {
     "notAuthenticated": "Não autenticado",

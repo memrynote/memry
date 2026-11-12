@@ -164,7 +164,8 @@
     "apiKeyMissing": "Añade tu clave de API de {provider} en Ajustes → IA para usar las herramientas de escritura.",
     "apiKeyInvalid": "Se rechazó tu clave de API de {provider}. Compruébala en Ajustes → IA.",
     "ollamaUnreachable": "Ollama no se está ejecutando. Inícialo con \"ollama serve\" o elige otro proveedor en Ajustes → IA.",
-    "providerUnreachable": "No se pudo conectar con {provider}. Comprueba tu conexión a internet e inténtalo de nuevo."
+    "providerUnreachable": "No se pudo conectar con {provider}. Comprueba tu conexión a internet e inténtalo de nuevo.",
+    "keychainUnavailable": "Memry no puede acceder al llavero del sistema, así que la clave de API de IA no se leyó ni se guardó. Desbloquea tu llavero e inténtalo de nuevo."
   },
   "auth": {
     "notAuthenticated": "No has iniciado sesión",

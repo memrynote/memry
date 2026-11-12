@@ -1386,6 +1386,7 @@
       "notConnected": "No conectado",
       "test": "Probar",
       "connected": "¡Conectado! Servidor ejecutándose en el puerto {port}",
+      "connectedProvider": "Conectado a {provider}",
       "connectFailed": "No se pudo conectar",
       "testFailed": "La prueba de conexión falló",
       "updateFailed": "No se pudo actualizar el ajuste"
