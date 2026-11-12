@@ -902,7 +902,12 @@ fn a_save_of_a_locked_day_is_refused_as_note_locked_and_changes_nothing() {
     let open = e.session.current().unwrap();
     e.core()
         .locks()
-        .set(memry_core::domain::vault_locks::TargetKind::Note, ID, true)
+        .set(
+            memry_core::domain::vault_locks::TargetKind::Note,
+            ID,
+            true,
+            "device-a",
+        )
         .unwrap();
     let before = queued(&e).len();
 
@@ -962,7 +967,12 @@ fn a_tags_only_update_of_a_locked_day_is_refused_and_keeps_its_tags() {
     let open = e.session.current().unwrap();
     e.core()
         .locks()
-        .set(memry_core::domain::vault_locks::TargetKind::Note, ID, true)
+        .set(
+            memry_core::domain::vault_locks::TargetKind::Note,
+            ID,
+            true,
+            "device-a",
+        )
         .unwrap();
     let before = record(&e);
 

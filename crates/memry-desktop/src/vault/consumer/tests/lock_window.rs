@@ -28,7 +28,7 @@ fn set_lock(
     let (root, vault, rows) = (f.root.clone(), f.vault.clone(), f.rows.clone());
     let id = id.to_owned();
     std::thread::spawn(move || {
-        Locks::new(&root, &vault).set(&rows, session, TargetKind::Note, &id, locked)
+        Locks::new(&root, &vault).set(&rows, session, TargetKind::Note, &id, locked, "device-a")
     })
 }
 
@@ -89,7 +89,14 @@ fn an_unlock_during_a_write_back_leaves_the_file_free() {
     let (id, pass) = note(&f);
     type_in_app(&f, &id, TYPED.trim_end());
     Locks::new(&f.root, &f.vault)
-        .set(&f.rows, f.session(), TargetKind::Note, &id, true)
+        .set(
+            &f.rows,
+            f.session(),
+            TargetKind::Note,
+            &id,
+            true,
+            "device-a",
+        )
         .unwrap();
     assert!(read_only(&f));
 
@@ -122,7 +129,7 @@ fn a_lock_keeps_the_lane_through_its_reconcile() {
                 paused.send(()).unwrap();
                 resume.recv().unwrap();
             })));
-            Locks::new(&root, &vault).set(&rows, session, TargetKind::Note, &id, true)
+            Locks::new(&root, &vault).set(&rows, session, TargetKind::Note, &id, true, "device-a")
         })
     };
     row_written.recv().unwrap();

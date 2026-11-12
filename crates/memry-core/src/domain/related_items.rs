@@ -15,8 +15,9 @@
 //! only tells the shell which icon to draw. Inline attachments (the
 //! `attachments` table) are not linkable on desktop and are not offered here.
 //!
-//! **Canvases cannot be listed on this device.** The core does not subscribe to
-//! `canvas` (chapter 13 §13.1, `protocol::types::UNSUBSCRIBED_RECORD_ITEM_TYPES`),
+//! **Canvases cannot be listed on this device.** `canvas` is subscribed
+//! (chapter 13 §13.1, `protocol::types::SUBSCRIBED_ITEM_TYPES`, not one of
+//! `DESKTOP_ONLY_RECORD_ITEM_TYPES`), but this module reads no canvas rows yet,
 //! so [`search`] returns no canvases and [`resolve`] answers a linked canvas id
 //! with [`LinkState::NotOnDevice`] — never [`LinkState::Missing`], because this
 //! device cannot tell whether the canvas exists.

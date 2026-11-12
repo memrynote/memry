@@ -29,8 +29,8 @@ added for the phone's whiteboard block and is appended last.
 
 Six more **record types** are served by the server and **not** subscribed to
 here: `agent_conversation`, `agent_message`, `canvas_folder`, `home_page`,
-`vault_lock` (desktop read-only locks, #2606), `sticky_draft` (unsent desktop
-sticky text, §13.13).
+`vault_lock` (desktop read-only locks, #2606, §13.7.22), `sticky_draft`
+(unsent desktop sticky text, §13.13).
 **A conforming client omits them from the header and never sees them**
 (chapter 05 §5.3.1).
 
@@ -1008,6 +1008,48 @@ when its local clock is strictly after the tombstone's (#2198,
 copy is the one push an apply writes, and it does not contradict §6.5.2 P3: it
 is a new item, not a re-push of the merged one.
 
+### 13.7.22 `vault_lock` — `:464-471`
+
+`targetKind`, `target`, `locked`, `clock`, `createdAt`, `updatedAt`, every one
+optional on the wire. `vault_lock` is desktop only: the iOS declaration leaves
+it out (§13.1), and `payload-schemas.json` lists it under
+`meta.desktopOnlyTypes`, not `meta.subscribedTypes`. `targetKind` is `note`
+(`target` is the note id) or `folder` (`target` is the vault-relative path)
+(`packages/contracts/src/vault-locks-api.ts:13`), and the id is
+`<targetKind>:<target>` (`:21-23`), so two devices locking one target share one
+record. Unlocking writes `locked: false` on the same record
+(`packages/contracts/src/sync-payloads.ts:455-458`). `targetKind` is a
+free-form string, so a kind a newer build adds still parses (`:460-462`).
+Desktop's push states all six keys
+(`apps/desktop/src/main/sync/item-handlers/vault-lock-handler.ts:119-136`).
+Its seed of a lock made before sync pushes the whole `vault_locks` row
+(`:143-157`), so `id` and `syncedAt` also arrive as unmodelled keys and are
+preserved (§13.2).
+
+**Normative**, the apply rule (`vault-lock-handler.ts:28-95`). It is the
+document-level resolver (§13.9) with four additions:
+
+1. a `targetKind` that is present and not a known kind is skipped, and a local
+   record stays as it is (`:37-40`). An absent `targetKind` is not unknown;
+2. a create (no live local record) that lacks a non-empty `targetKind`, a
+   non-empty `target` or a boolean `locked` is skipped (`:72-76`);
+3. a concurrent clock is last-writer-wins: the remote applies under the merged
+   clock (`:48-55`);
+4. over a local record, the local `targetKind`, `target` and `createdAt` stay,
+   and an absent `locked` keeps the local value (`:56-63`). An absent
+   `updatedAt` reads as the apply time (`:62`).
+
+The Rust core follows the same rule
+(`crates/memry-core/src/domain/vault_locks/merge.rs:39-74`).
+
+A delete follows chapter 05 §5.8 unchanged and unlocks the target: the lock
+survives a tombstone only when its local clock is strictly after the
+tombstone's (`vault-lock-handler.ts:97-113`). The type is not in
+`RECREATABLE_AFTER_PURGE_ITEM_TYPES` (`packages/contracts/src/sync-api.ts:217-228`).
+A client that locks a target whose record it holds as a tombstone writes the
+new record with a clock past the tombstone's
+(`crates/memry-core/src/domain/vault_locks/mod.rs:176`).
+
 ## 13.8 `attachment` is not a record type
 
 **Normative.** `attachment` is in `SYNC_ITEM_TYPES`
@@ -1026,6 +1068,7 @@ is a new item, not a re-push of the merged one.
 | `calendar_event`            | field-level                                              | yes (`:405`)                                       |
 | `settings`                  | dotted-path field clocks                                 | yes, its own key space                             |
 | `canvas`                    | document-level resolver, plus a conflict copy (§13.7.21) | no                                                 |
+| `vault_lock`                | document-level resolver, keeping local keys (§13.7.22)   | no                                                 |
 | every other subscribed type | document-level resolver                                  | no                                                 |
 
 **`task.fields` and `tag_definition.schema` are versioned values** joined by

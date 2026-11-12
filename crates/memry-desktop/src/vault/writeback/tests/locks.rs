@@ -20,7 +20,10 @@ fn read_only(f: &super::Fixture, rel: &str) -> bool {
 fn another_devices_edit_of_a_locked_note_reaches_its_read_only_file_and_its_baseline() {
     let mut f = fixture();
     let id = f.adopt("Plan.md", "Locked text.\n");
-    f.vault.locks().set(TargetKind::Note, &id, true).unwrap();
+    f.vault
+        .locks()
+        .set(TargetKind::Note, &id, true, "device-a")
+        .unwrap();
     Locks::new(&f.root, &f.vault).reconcile().unwrap();
     assert!(read_only(&f, "Plan.md"));
 

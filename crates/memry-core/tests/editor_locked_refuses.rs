@@ -34,7 +34,7 @@ fn a_locked_note_opens_read_only_and_refuses_an_edit_before_anything_is_written(
 
     f.vault
         .locks()
-        .set(TargetKind::Note, &note, true)
+        .set(TargetKind::Note, &note, true, "device-a")
         .expect("lock");
     assert_eq!(
         f.editor.open(&note, "main").expect("reopen").read_only,
@@ -65,7 +65,7 @@ fn a_locked_note_opens_read_only_and_refuses_an_edit_before_anything_is_written(
     );
     f.vault
         .locks()
-        .set(TargetKind::Note, &note, false)
+        .set(TargetKind::Note, &note, false, "device-a")
         .expect("unlock");
     assert_eq!(f.editor.open(&note, "main").expect("open").read_only, None);
     f.editor
@@ -85,7 +85,7 @@ fn a_folder_lock_makes_the_notes_filed_under_it_read_only() {
     f.file(&note, "Archive/2025/old.md");
     f.vault
         .locks()
-        .set(TargetKind::Folder, "Archive", true)
+        .set(TargetKind::Folder, "Archive", true, "device-a")
         .expect("lock the folder");
 
     let opened = f.editor.open(&note, "main").expect("open");
@@ -116,7 +116,7 @@ fn a_lock_taken_while_an_edit_waits_for_the_writer_refuses_it() {
             holding.send(()).expect("signal");
             // The edit asks for the writer while this closure holds it.
             std::thread::sleep(Duration::from_millis(300));
-            vault_locks::set(conn, TargetKind::Note, &id, true, 1)?;
+            vault_locks::set(conn, TargetKind::Note, &id, true, "device-a", 1)?;
             Ok::<_, StorageError>(())
         })
         .expect("the lock");
@@ -147,7 +147,7 @@ async fn a_pulled_snapshot_still_reaches_a_locked_open_note_as_remote() {
     let note = f.note();
     f.vault
         .locks()
-        .set(TargetKind::Note, &note, true)
+        .set(TargetKind::Note, &note, true, "device-a")
         .expect("lock");
     let opened = f.editor.open(&note, "main").expect("open");
     assert_eq!(opened.read_only, Some(ReadOnly::Locked));

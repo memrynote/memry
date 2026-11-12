@@ -18,16 +18,19 @@ impl LockStore {
         Self { db }
     }
 
-    /// [`vault_locks::set`].
+    /// [`vault_locks::set`]. `device_id` is this device's clock id
+    /// (`NotesWriter::device_id`), which the record's clock ticks.
     pub fn set(
         &self,
         kind: TargetKind,
         target: &str,
         locked: bool,
+        device_id: &str,
     ) -> Result<SetOutcome, StorageError> {
-        let target = target.to_owned();
-        self.db
-            .call_blocking(move |conn| vault_locks::set(conn, kind, &target, locked, now_ms()))
+        let (target, device_id) = (target.to_owned(), device_id.to_owned());
+        self.db.call_blocking(move |conn| {
+            vault_locks::set(conn, kind, &target, locked, &device_id, now_ms())
+        })
     }
 
     /// [`vault_locks::list`].

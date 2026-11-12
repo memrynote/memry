@@ -51,6 +51,9 @@ use crate::crdt::update_log;
 use crate::domain::task_merge::{self, Gate};
 use crate::domain::tasks::Inbound;
 use crate::domain::{calendar_items, canvas, inbox, journal, projects, settings, tasks};
+// Desktop only, like the locks themselves: iOS never declares `vault_lock`.
+#[cfg(feature = "markdown")]
+use crate::domain::vault_locks;
 use crate::storage::repositories::projectors;
 use crate::storage::repositories::sync_items::{self, ApplyOutcome, InboundRecord};
 
@@ -410,8 +413,9 @@ pub fn apply_inbound(
 ///   ([`apply_document`]). It is *not* an unconditional wholesale store: a
 ///   stale remote `note` record used to overwrite a newer local one, and a
 ///   rename made on this device vanished the moment a peer that had not seen
-///   it pushed anything. `inbox`, the calendar types and `canvas` are named
-///   because each runs its desktop handler's rule instead.
+///   it pushed anything. `inbox`, the calendar types, `canvas` and
+///   `vault_lock` are named because each runs its desktop handler's rule
+///   instead.
 ///
 /// `clock_device` is this device's clock id, which a diverged `canvas` needs
 /// for its conflict copy. Without one, that canvas is recorded corrupt rather
@@ -440,6 +444,9 @@ pub fn apply_inbound_on(
         }
         // Whole-document LWW plus desktop's conflict copy (canvas-handler.ts).
         canvas::ITEM_TYPE => canvas::merge::apply_remote(conn, record, now_ms, clock_device),
+        // Whole-row LWW, Electron's guards (vault-lock-handler.ts).
+        #[cfg(feature = "markdown")]
+        vault_locks::ITEM_TYPE => vault_locks::merge::apply_remote(conn, record, now_ms),
         // §6.3.1's document gate, then §6.11's join of the versioned `schema`.
         t if t == TAG_SCHEMA.item_type => {
             apply_versioned(conn, record, &TAG_SCHEMA, now_ms, clock_device)

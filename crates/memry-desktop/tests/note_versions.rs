@@ -311,7 +311,10 @@ fn a_locked_note_or_an_unknown_version_is_not_restored_and_nothing_changes() {
 
     let unknown = versions::restore(&notes, &open, "no-such-version").unwrap_err();
     assert!(matches!(unknown, NotesError::NotFound(_)), "{unknown:?}");
-    e.core().locks().set(TargetKind::Note, &id, true).unwrap();
+    e.core()
+        .locks()
+        .set(TargetKind::Note, &id, true, "device-a")
+        .unwrap();
     let locked = versions::restore(&notes, &open, &first).unwrap_err();
     assert!(
         matches!(locked, NotesError::EditKept(Kept::Locked)),
