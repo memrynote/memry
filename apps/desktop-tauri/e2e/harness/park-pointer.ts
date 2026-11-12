@@ -1,6 +1,6 @@
 import { execFileSync } from 'node:child_process'
 
-import { HarnessError } from './errors'
+import { HarnessError } from './errors.ts'
 
 // Moves the pointer to the screen's bottom-right pixel through libX11 (ctypes), where no app
 // window reaches: the harness places windows at 0,0 at 1440x900, and the default rect is centred.
@@ -35,9 +35,12 @@ if ($now -ne $at) { throw "the cursor is at $($now.X),$($now.Y), not $($at.X),$(
 "$($at.X),$($at.Y) on a $($screen.Width)x$($screen.Height) screen"
 `
 
-function park(): string | null {
-  if (process.platform === 'linux' && process.env.DISPLAY) {
-    return execFileSync('python3', ['-c', X11_PARK_SCRIPT], { encoding: 'utf8' })
+function park(display: string | undefined): string | null {
+  if (process.platform === 'linux' && display) {
+    return execFileSync('python3', ['-c', X11_PARK_SCRIPT], {
+      encoding: 'utf8',
+      env: { ...process.env, DISPLAY: display }
+    })
   }
   if (process.platform === 'win32') {
     return execFileSync(
@@ -59,11 +62,12 @@ function park(): string | null {
  * - The Windows runner starts it at the screen centre too. A table inserted above it moved the
  *   editor's trailing block under it, and that trusted `pointerover` could land after the spec's
  *   hover and take the table's handles down (`table-border-handles.e2e.ts`, #3967).
- * Elsewhere (macOS) this does nothing.
+ * Elsewhere (macOS) this does nothing. On Linux `display` is the X display to park on; it
+ * defaults to the run's own, and each app's private display passes its own (`x-display.ts`).
  */
-export function parkPointer(): void {
+export function parkPointer(display: string | undefined = process.env.DISPLAY): void {
   try {
-    const at = park()
+    const at = park(display)
     if (at !== null) console.log(`[e2e] parked the pointer at ${at.trim()}`)
   } catch (error) {
     throw new HarnessError(`could not park the pointer off the app windows: ${String(error)}`)

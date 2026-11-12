@@ -464,6 +464,10 @@ jobs:
           MEMRY_E2E_BINARY: ${{ github.workspace }}/${{ steps.binary.outputs.path }}
           # One app per vCPU. The 48 specs hold ~15 minutes of app time; two workers took ~10.
           MEMRY_E2E_WORKERS: '4'
+          # Every app gets an Xvfb of its own with the X input focus, as a user's window has.
+          # On the shared display no window is focused and `document.hasFocus()` is false, and
+          # WebKitGTK then collapses a contenteditable selection (#3967).
+          MEMRY_E2E_DISPLAY_PER_APP: '1'
           SHARD: ${{ matrix.shard && format('--shard={0}/2', matrix.shard) || '' }}
         run: |
           specs="pnpm --filter @memry/desktop-tauri test:e2e${SHARD:+ $SHARD}"
