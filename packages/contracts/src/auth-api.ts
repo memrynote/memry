@@ -19,9 +19,19 @@ export const ResendOtpRequestSchema = z.object({
   email: z.email()
 })
 
+/**
+ * Chapter 02 §2.3.4. Only iOS sends it. Absent or null means unknown, and a
+ * reader falls back to `platform`. It is a separate field because older
+ * clients parse `platform` strictly.
+ */
+export const DeviceFormFactorSchema = z.enum(['phone', 'tablet'])
+
 export const DeviceRegisterRequestSchema = z.object({
   name: z.string().min(1).max(255),
   platform: z.enum(['macos', 'windows', 'linux', 'ios', 'android', 'web']),
+  // A value from a newer client that this server does not know reads as
+  // absent, so display metadata can never fail a registration.
+  formFactor: DeviceFormFactorSchema.optional().catch(undefined),
   osVersion: z.string().optional(),
   appVersion: z.string().min(1),
   authPublicKey: z.string().min(1),
@@ -102,6 +112,22 @@ export const DeviceRegisterResponseSchema = z.object({
   error: z.string().optional()
 })
 
+/** `GET /devices`, the account's live devices (chapter 02 §2.1.1). */
+export const DeviceListResponseSchema = z.object({
+  devices: z.array(
+    z.object({
+      id: z.string(),
+      name: z.string(),
+      platform: z.string(),
+      formFactor: DeviceFormFactorSchema.nullable().optional(),
+      appVersion: z.string().nullable().optional(),
+      lastSyncAt: z.number().nullable(),
+      createdAt: z.number(),
+      updatedAt: z.number()
+    })
+  )
+})
+
 export const OAuthCallbackResponseSchema = z.object({
   success: z.boolean(),
   isNewUser: z.boolean().optional(),
@@ -149,6 +175,8 @@ export type OAuthCallback = z.infer<typeof OAuthCallbackSchema>
 export type RequestOtpResponse = z.infer<typeof RequestOtpResponseSchema>
 export type VerifyOtpResponse = z.infer<typeof VerifyOtpResponseSchema>
 export type DeviceRegisterResponse = z.infer<typeof DeviceRegisterResponseSchema>
+export type DeviceFormFactor = z.infer<typeof DeviceFormFactorSchema>
+export type DeviceListResponse = z.infer<typeof DeviceListResponseSchema>
 export type OAuthCallbackResponse = z.infer<typeof OAuthCallbackResponseSchema>
 export type RecoveryDataResponse = z.infer<typeof RecoveryDataResponseSchema>
 export type RefreshTokenResponse = z.infer<typeof RefreshTokenResponseSchema>
