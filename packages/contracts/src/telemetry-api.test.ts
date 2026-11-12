@@ -1,4 +1,5 @@
 import { describe, expect, it } from 'vitest'
+import { z } from 'zod'
 
 import {
   TELEMETRY_DIMENSION_KEYS,
@@ -554,6 +555,47 @@ describe('canvas rollout telemetry', () => {
 })
 
 describe('toErrorCode', () => {
+  describe('ZodError', () => {
+    const parseError = (schema: z.ZodType, input: unknown): unknown => {
+      const result = schema.safeParse(input)
+      if (result.success) throw new Error('expected a parse failure')
+      return result.error
+    }
+    const Title = z.object({ title: z.string().min(1).max(500) })
+
+    it('splits unrelated failures by issue code and path, with the call site', () => {
+      const tooBig = parseError(Title, { title: 'x'.repeat(501) })
+      const tooSmall = parseError(Title, { title: '' })
+      const missing = parseError(Title, 'nope')
+
+      expect(toErrorCode(tooBig, 'tasks:create')).toBe('ZodError:too_big:title:tasks:create')
+      expect(toErrorCode(tooSmall, 'tasks:create')).toBe('ZodError:too_small:title:tasks:create')
+      expect(toErrorCode(missing)).toBe('ZodError:invalid_type:root')
+    })
+
+    it('collapses array indices so one field is one issue', () => {
+      const schema = z.object({ items: z.array(z.object({ id: z.string() })) })
+      const a = parseError(schema, { items: [{ id: 1 }] })
+      const b = parseError(schema, { items: [{ id: 'ok' }, { id: 2 }] })
+
+      expect(toErrorCode(a)).toBe('ZodError:invalid_type:items.N.id')
+      expect(toErrorCode(b)).toBe(toErrorCode(a))
+    })
+
+    it('never ships a user-controlled record key, and stays within 64 chars', () => {
+      const error = parseError(z.record(z.string(), z.number()), { 'Secret note title': 'x' })
+      const long = parseError(
+        z.object({
+          aVeryLongFieldNameNumberOne: z.object({ aVeryLongFieldNameNumberTwo: z.string() })
+        }),
+        { aVeryLongFieldNameNumberOne: { aVeryLongFieldNameNumberTwo: 1 } }
+      )
+
+      expect(toErrorCode(error, 'tasks:create')).toBe('ZodError:invalid_type:K:tasks:create')
+      expect(toErrorCode(long, 'calendar:get-events').length).toBeLessThanOrEqual(64)
+    })
+  })
+
   it('prefers a typed code over the class name for NoteError-shaped errors', () => {
     // #given a NoteError carrying one of the 7 typed NoteErrorCode values
     const error = Object.assign(new Error('could not write /Users/kaan/note.md'), {

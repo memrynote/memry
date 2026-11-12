@@ -21,6 +21,7 @@ import { tasks } from '@memry/db-schema/schema/tasks'
 import { inboxItems } from '@memry/db-schema/schema/inbox'
 import { noteCache, noteProperties } from '@memry/db-schema/schema/notes-cache'
 import type { DataDb, IndexDb } from '../database'
+import { allDayDate } from './all-day-date'
 import { sourceCapabilities } from './provider/capabilities'
 
 const LOCAL_TIMEZONE = Intl.DateTimeFormat().resolvedOptions().timeZone || 'UTC'
@@ -46,6 +47,27 @@ function toLocalInstant(dateStr: string, timeStr: string | null): string {
 function toLocalAllDayEnd(dateStr: string): string {
   const [year, month, day] = dateStr.split('-').map(Number)
   return new Date(year, month - 1, day + 1, 0, 0, 0, 0).toISOString()
+}
+
+// The calendar reads every instant in local time, so a UTC-midnight all-day date
+// would land a day early west of UTC and run a day long east of it.
+function toLocalAllDaySpan(
+  startAt: string,
+  endAt: string | null
+): { startAt: string; endAt: string | null } {
+  return {
+    startAt: toLocalInstant(allDayDate(startAt), null),
+    endAt: endAt ? toLocalInstant(allDayDate(endAt), null) : null
+  }
+}
+
+// The SQL range filter compares stored instants, so it can admit an all-day
+// item from the neighbouring day; drop it once the span is in local midnights.
+function overlapsRange(item: CalendarProjectionItem, input: GetCalendarRangeInput): boolean {
+  if (!item.isAllDay) return true
+  const startsInRange = item.startAt >= input.startAt
+  const endsInRange = item.endAt !== null && item.endAt > input.startAt
+  return item.startAt < input.endAt && (startsInRange || endsInRange)
 }
 
 function getLocalDueDateRange(
@@ -162,14 +184,15 @@ function loadMemryEvents(db: DataDb, input: GetCalendarRangeInput): CalendarProj
     canDelete: true
   }
 
-  return rows.map((row) => ({
+  const items: CalendarProjectionItem[] = rows.map((row) => ({
     projectionId: `event:${row.id}`,
     sourceType: 'event',
     sourceId: row.id,
     title: row.title,
     descriptionPreview: getDescriptionPreview(row.description),
-    startAt: row.startAt,
-    endAt: row.endAt ?? null,
+    ...(row.isAllDay
+      ? toLocalAllDaySpan(row.startAt, row.endAt ?? null)
+      : { startAt: row.startAt, endAt: row.endAt ?? null }),
     isAllDay: row.isAllDay,
     timezone: row.timezone,
     visualType: 'event',
@@ -182,6 +205,7 @@ function loadMemryEvents(db: DataDb, input: GetCalendarRangeInput): CalendarProj
       calendarColors.get(bindings.get(row.id)?.remoteCalendarId ?? row.targetCalendarId ?? '')
     )
   }))
+  return items.filter((item) => overlapsRange(item, input))
 }
 
 /**
@@ -521,14 +545,15 @@ function loadExternalEvents(db: DataDb, input: GetCalendarRangeInput): CalendarP
     canDelete: false
   }
 
-  return rows.map(({ event, source }) => ({
+  const items: CalendarProjectionItem[] = rows.map(({ event, source }) => ({
     projectionId: `external_event:${event.id}`,
     sourceType: 'external_event',
     sourceId: event.id,
     title: event.title,
     descriptionPreview: getDescriptionPreview(event.description),
-    startAt: event.startAt,
-    endAt: event.endAt ?? null,
+    ...(event.isAllDay
+      ? toLocalAllDaySpan(event.startAt, event.endAt ?? null)
+      : { startAt: event.startAt, endAt: event.endAt ?? null }),
     isAllDay: event.isAllDay,
     timezone: event.timezone ?? source.timezone ?? LOCAL_TIMEZONE,
     visualType: 'external_event',
@@ -538,6 +563,7 @@ function loadExternalEvents(db: DataDb, input: GetCalendarRangeInput): CalendarP
     snoozeOffsetMinutes: null,
     ...eventColors(event.colorId ?? null, calendarDisplayHex(source.color))
   }))
+  return items.filter((item) => overlapsRange(item, input))
 }
 
 // Date-property values are usually full ISO instants (the date editor stores

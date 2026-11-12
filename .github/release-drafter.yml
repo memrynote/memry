@@ -1,5 +1,6 @@
 name-template: 'Memry next release'
 tag-template: 'vnext'
+commitish: main
 categories:
   - title: '🚀 Features and Improvements'
     labels:

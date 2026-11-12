@@ -79,7 +79,7 @@ struct DevicesScreen: View {
     private func row(_ device: AccountDevice) -> some View {
         SettingsRowLabel(
             title: device.name,
-            symbol: Self.symbol(device.platform),
+            symbol: Self.symbol(device),
             detail: detail(device)
         )
         .contentShape(.rect)
@@ -115,10 +115,17 @@ struct DevicesScreen: View {
         }
     }
 
-    static func symbol(_ platform: String) -> String {
-        switch platform.lowercased() {
-        case "ios", "android": "iphone"
-        default: "laptopcomputer"
+    /// Chapter 02 §2.3.4: the form factor when the device reported one, else
+    /// `platform`, which draws every iPad registered before #4375 as a phone.
+    static func symbol(_ device: AccountDevice) -> String {
+        switch device.formFactor {
+        case .tablet: "ipad"
+        case .phone: "iphone"
+        case nil:
+            switch device.platform.lowercased() {
+            case "ios", "android": "iphone"
+            default: "laptopcomputer"
+            }
         }
     }
 

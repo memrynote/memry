@@ -8,15 +8,20 @@
 //
 // - An edit made in the app reaches the file: the pass writes a body that differs from a file
 //   its row still describes.
-// - A later outside save wins: it lands before the pass (the pass keeps the changed file and
-//   the feed brings its text into the body) or after it (the feed does). The app's edit is kept
-//   as a version, which this soak does not read.
+// - A later outside save lands after the pass and wins: the feed brings its text into the
+//   body. One that lands while the app's edit still waits for its pass meets a body ahead of
+//   its file: the body wins and the outside file is kept as a version
+//   (`vault/consumer/body.rs`, Step 14), which the soak reads back. Either way no text is lost.
 // - A save of the bytes the row already holds is no edit: the feed skips it, so an app edit
 //   still waiting for its pass reaches the file.
 // - A pass for a note whose file already says its body writes nothing: no new bytes, no new
 //   modified time (Step 17 schedules every note of a pulled page).
 // - A quit writes what was scheduled before it, on every way the app quits.
 // - Nothing rewrites a file nobody edited, across steps and relaunches.
+// - A rename or a move (`notes_rename`, `notes_move`, Step 13) carries the file's bytes to the
+//   new path and leaves nothing at the old one, also while an app edit waits for its pass or an
+//   outside save is still on its way to the feed: that text reaches the file at the new path.
+// - No file appears that no note was made for: the soak folder holds exactly its notes.
 //
 // After each step every note is read twice, 3 s apart: the touched note must hold its
 // expected text in both file and body, and every other note must be exactly as before the
@@ -26,7 +31,7 @@
 // names the seed, the round, the step and the last rounds; the same seed draws the same steps,
 // notes and timings, and only the quits come by the clock.
 import type { Executor } from '../harness/invoke-test'
-import { invokeTest } from '../harness/invoke-test'
+import { invokeTest, sendTest } from '../harness/invoke-test'
 
 /** How the soak reaches the app. */
 export interface SoakDriver {
@@ -66,6 +71,8 @@ const STEPS = [
   'race',
   'same-bytes-save',
   'schedule-unchanged',
+  'rename',
+  'move',
   'quit'
 ] as const
 type Step = (typeof STEPS)[number]
@@ -91,6 +98,34 @@ const TRANSPORT =
 /** Reconnects in a row within one round before the soak gives up on the connection. */
 const MAX_RECOVERIES = 5
 
+const SOAK_FOLDER = 'soak'
+/** Where `move` takes a note from the soak folder, and back. */
+const MOVED_FOLDER = `${SOAK_FOLDER}/moved`
+
+// Not `error`: WebDriver reads a script result with an `error` key as a failed command.
+const COMMAND_SCRIPT = `
+  const [name, args, done] = arguments;
+  window.__TAURI__.core.invoke(name, args).then(
+    (value) => done({ ok: true, value: value === undefined ? null : value }),
+    (failure) => done({ ok: false, failure })
+  );
+`
+
+/** Calls one of the app's own commands as the renderer does (`invokeTest` calls only `e2e_*`). */
+export async function appCommand<T>(
+  executor: Executor,
+  name: string,
+  args: Record<string, unknown> = {}
+): Promise<T> {
+  const outcome = (await executor.executeAsync(COMMAND_SCRIPT, name, args)) as {
+    ok: boolean
+    value?: unknown
+    failure?: unknown
+  }
+  if (!outcome.ok) throw new Error(`${name} failed: ${JSON.stringify(outcome.failure)}`)
+  return outcome.value as T
+}
+
 /** A failure of the soak's rules, already named with its seed, round and step. */
 class SoakError extends Error {}
 
@@ -102,6 +137,12 @@ interface Current {
   touched: string | null
   /** Every text the step has asked the app or a program to write so far. */
   candidates: string[]
+  /** The touched note's path before a rename or move. */
+  from?: string
+  /** An app edit that may win over the outside save `kept`, which is then a version. */
+  bodyWins?: { text: string; kept: string }
+  /** Set once the app edit won and the outside save was read back as a version. */
+  bodyWon?: boolean
 }
 
 const sleep = (ms: number): Promise<void> => new Promise((done) => setTimeout(done, ms))
@@ -240,8 +281,9 @@ export async function soak(driver: SoakDriver, options: SoakOptions): Promise<So
   const notes: NoteFile[] = []
   const expected = new Map<string, string>()
   const adopt = async (): Promise<void> => {
+    await appCommand(driver.executor(), 'notes_create_folder', { path: MOVED_FOLDER })
     for (let i = 0; i < options.notes; i += 1) {
-      const path = `soak/n${i}.md`
+      const path = `${SOAK_FOLDER}/n${i}.md`
       await save(path, `n${i} start\n`, false)
       const note = await until(`${path} became a note`, async () =>
         (await rows()).find((row) => row.path === path && row.contentHash !== null)
@@ -258,8 +300,20 @@ export async function soak(driver: SoakDriver, options: SoakOptions): Promise<So
   }
   await guarded(adopt, adopt)
 
-  /** Every note as `expected` says, in file and body. */
+  /** Each note's path as its row says: a rename or move cut short may have moved it. */
+  async function follow(): Promise<void> {
+    const listed = new Map((await rows()).map((row) => [row.noteId, row.path]))
+    for (const note of notes) note.path = listed.get(note.noteId) ?? note.path
+  }
+
+  /** Every note as `expected` says, in file and body, and no other note in the soak folder. */
   async function checkAll(): Promise<void> {
+    await follow()
+    const strays = (await rows()).filter(
+      (row) =>
+        row.path.startsWith(`${SOAK_FOLDER}/`) && !notes.some((note) => note.noteId === row.noteId)
+    )
+    if (strays.length > 0) fail(`files no note was made for: ${show(strays)}`)
     const seen = await snapshot(notes)
     for (const note of notes) {
       const want = expected.get(note.noteId) as string
@@ -291,6 +345,23 @@ export async function soak(driver: SoakDriver, options: SoakOptions): Promise<So
   const quits = Object.fromEntries(options.quits.map((kind) => [kind, 0])) as Record<Quit, number>
   let quitCount = 0
   let conclusive = 0
+  let bodyWon = 0
+
+  /** Whether one of the note's newest versions is the file `text` (a one-line body). */
+  async function keptAsVersion(noteId: string, text: string): Promise<boolean> {
+    const versions = await appCommand<{ id: string }[]>(driver.executor(), 'notes_get_versions', {
+      noteId
+    })
+    for (const version of versions.slice(0, 5)) {
+      const detail = await appCommand<{ fileContent: string } | null>(
+        driver.executor(),
+        'notes_get_version',
+        { snapshotId: version.id }
+      )
+      if (detail?.fileContent === `${text}\n`) return true
+    }
+    return false
+  }
   let recoveries = 0
   const others = STEPS.filter((kind) => kind !== 'quit')
 
@@ -335,11 +406,13 @@ export async function soak(driver: SoakDriver, options: SoakOptions): Promise<So
         break
       case 'race': {
         // The outside save lands around the debounce: before the pass, during it or after it.
-        await edit(note.noteId, `${tag} typed in the app`)
+        const typed = `${tag} typed in the app`
+        await edit(note.noteId, typed)
         const delay = Math.max(0, Math.round(DEBOUNCE_MS + (draw() + draw() - 1) * 350))
         await sleep(delay)
         want = `${tag} saved by another program`
         await save(note.path, `${want}\n`, draw() < 0.5)
+        round_.bodyWins = { text: typed, kept: want }
         extra.delayMs = delay
         break
       }
@@ -374,6 +447,33 @@ export async function soak(driver: SoakDriver, options: SoakOptions): Promise<So
         await sleep(PASS_DUE_MS)
         break
       }
+      case 'rename':
+      case 'move': {
+        // The new name while the text before it is still on its way: an app edit waiting for
+        // its pass, or an outside save the feed has not taken yet.
+        if (draw() < 0.5) {
+          want = `${tag} typed before the ${step}`
+          await edit(note.noteId, want)
+        } else {
+          want = `${tag} saved before the ${step}`
+          await save(note.path, `${want}\n`, draw() < 0.5)
+        }
+        const delay = Math.floor(draw() * 2 * DEBOUNCE_MS)
+        await sleep(delay)
+        const from = note.path
+        if (step === 'rename') {
+          const title = `${tag} ${note.noteId.slice(0, 8)}`
+          await appCommand(driver.executor(), 'notes_rename', { id: note.noteId, newTitle: title })
+        } else {
+          const to = from.startsWith(`${MOVED_FOLDER}/`) ? SOAK_FOLDER : MOVED_FOLDER
+          await appCommand(driver.executor(), 'notes_move', { id: note.noteId, newFolder: to })
+        }
+        await follow()
+        if (note.path === from) fail(`${from} kept its path after the ${step}`)
+        round_.from = from
+        Object.assign(extra, { delayMs: delay, from, to: note.path })
+        break
+      }
       case 'quit': {
         const quit = options.quits[quitCount % options.quits.length]
         want = `${tag} typed before the ${quit}`
@@ -381,7 +481,7 @@ export async function soak(driver: SoakDriver, options: SoakOptions): Promise<So
         // The app may be gone before the reply.
         await (
           quit === 'request-quit'
-            ? call('e2e_request_quit')
+            ? sendTest({ executor: driver.executor() }, 'e2e_request_quit')
             : call('e2e_send_session_end', { target: 'main', killWebview: true })
         ).catch(() => undefined)
         await driver.relaunch()
@@ -397,7 +497,7 @@ export async function soak(driver: SoakDriver, options: SoakOptions): Promise<So
 
     await verify(round_, want)
     steps[step] += 1
-    return { ...extra, want }
+    return { ...extra, want, ...(round_.bodyWon ? { bodyWon: true } : {}) }
   }
 
   /**
@@ -406,15 +506,28 @@ export async function soak(driver: SoakDriver, options: SoakOptions): Promise<So
    * same in file, body and row hash.
    */
   async function verify(c: Current, want: string | null): Promise<void> {
+    await follow()
+    if (c.from !== undefined && c.from !== c.note.path && (await read(c.from)) !== null) {
+      fail(`${c.from} is still on disk after the note moved to ${c.note.path}`)
+    }
     if (c.touched !== null) {
       const id = c.touched
       const allowed =
         want !== null ? [want] : [expected.get(id) as string, ...new Set(c.candidates)]
       if (want === null) await sleep(PASS_DUE_MS)
+      if (c.bodyWins) allowed.push(c.bodyWins.text)
       const held = await until(`${c.note.path} held one of ${show(allowed)}`, async () => {
         const seen = (await snapshot([c.note])).get(id)
         return allowed.find((text) => holds(seen, text))
       })
+      if (held === c.bodyWins?.text && want !== null) {
+        const kept = c.bodyWins.kept
+        await until(`${show(kept)}, written over, kept as a version`, async () =>
+          (await keptAsVersion(id, kept)) ? true : undefined
+        )
+        bodyWon += 1
+        c.bodyWon = true
+      }
       expected.set(id, held)
     } else if (want === null) {
       await sleep(PASS_DUE_MS)
@@ -503,6 +616,7 @@ export async function soak(driver: SoakDriver, options: SoakOptions): Promise<So
         steps,
         quits,
         conclusive,
+        bodyWon,
         recoveries,
         leftMin: Math.round((end - Date.now()) / 60_000)
       })
@@ -517,6 +631,6 @@ export async function soak(driver: SoakDriver, options: SoakOptions): Promise<So
   ]
   if (missing.length > 0) fail(`never took ${missing.join(', ')}`)
   if (conclusive === 0) fail('no same-bytes save was conclusive')
-  log('soak passed', { rounds: round, steps, quits, conclusive, recoveries })
+  log('soak passed', { rounds: round, steps, quits, conclusive, bodyWon, recoveries })
   return { rounds: round, steps }
 }

@@ -27,6 +27,17 @@ describe('landing CSP', () => {
     }
   })
 
+  // The /ios-beta form loads the Cloudflare Turnstile script, which renders its challenge in an
+  // iframe; without both hosts the widget never issues a token and no one can join the beta.
+  it('allows the Turnstile script and challenge frame', () => {
+    for (const directive of ['script-src', 'frame-src']) {
+      assert.ok(
+        getDirective(directive).includes('https://challenges.cloudflare.com'),
+        `${directive} is missing https://challenges.cloudflare.com`
+      )
+    }
+  })
+
   // libsodium (the `crypto` chunk) compiles a WebAssembly module; without this
   // keyword the browser refuses and the bundle aborts on every page.
   it('lets WebAssembly compile without widening script-src to eval', () => {

@@ -47,7 +47,7 @@ private func record(
         filedAtMs: nil, filedTo: nil, filedAction: nil, snoozedUntilMs: nil, snoozeReason: nil,
         archivedAtMs: nil, viewedAtMs: nil, sourceUrl: sourceUrl, sourceTitle: nil, captureSource: nil,
         processingStatus: nil, transcription: transcription, transcriptionStatus: transcriptionStatus,
-        attachmentPath: nil, thumbnailPath: nil, createdAtMs: Int64(created.timeIntervalSince1970 * 1000),
+        attachmentPath: nil, thumbnailPath: nil, attachmentId: nil, createdAtMs: Int64(created.timeIntervalSince1970 * 1000),
         modifiedAtMs: nil, tags: [], isNoteOnly: false, isBinary: false
     )
 }

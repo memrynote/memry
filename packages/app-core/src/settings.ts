@@ -61,6 +61,8 @@ const settingsKeys = {
   journalShowTasks: 'journal.showTasks',
   journalShowAiConnections: 'journal.showAIConnections',
   journalShowStatsFooter: 'journal.showStatsFooter',
+  journalShowOnThisDay: 'journal.showOnThisDay',
+  journalAllYearsView: 'journal.allYearsView',
   tabRestoreSessionOnStart: 'tabs.restoreSessionOnStart',
   tabCloseButton: 'tabs.tabCloseButton',
   noteEditorToolbarMode: 'noteEditor.toolbarMode'
@@ -142,7 +144,9 @@ const settingsGroupDefaults: Record<SettingsGroupName, Record<string, unknown>> 
     showSchedule: true,
     showTasks: true,
     showAIConnections: true,
-    showStatsFooter: false
+    showStatsFooter: false,
+    showOnThisDay: true,
+    allYearsView: false
   },
   tabs: {
     restoreSessionOnStart: true,
@@ -305,7 +309,9 @@ export function createSettingsService(dataDb: DataDb): SettingsService {
           showTasks: readRawSetting(dataDb, settingsKeys.journalShowTasks) !== 'false',
           showAIConnections:
             readRawSetting(dataDb, settingsKeys.journalShowAiConnections) !== 'false',
-          showStatsFooter: readRawSetting(dataDb, settingsKeys.journalShowStatsFooter) === 'true'
+          showStatsFooter: readRawSetting(dataDb, settingsKeys.journalShowStatsFooter) === 'true',
+          showOnThisDay: readRawSetting(dataDb, settingsKeys.journalShowOnThisDay) !== 'false',
+          allYearsView: readRawSetting(dataDb, settingsKeys.journalAllYearsView) === 'true'
         }
       case 'tabs': {
         const restoreSessionOnStart = readRawSetting(dataDb, settingsKeys.tabRestoreSessionOnStart)
@@ -394,6 +400,20 @@ export function createSettingsService(dataDb: DataDb): SettingsService {
             dataDb,
             settingsKeys.journalShowStatsFooter,
             updates.showStatsFooter ? 'true' : 'false'
+          )
+        }
+        if (typeof updates.showOnThisDay === 'boolean') {
+          writeRawSetting(
+            dataDb,
+            settingsKeys.journalShowOnThisDay,
+            updates.showOnThisDay ? 'true' : 'false'
+          )
+        }
+        if (typeof updates.allYearsView === 'boolean') {
+          writeRawSetting(
+            dataDb,
+            settingsKeys.journalAllYearsView,
+            updates.allYearsView ? 'true' : 'false'
           )
         }
         return true

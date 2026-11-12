@@ -458,5 +458,28 @@ async function readFirstStreamChunk(body: ReadableStream<Uint8Array>): Promise<b
 }
 
 export function errorMessage(error: unknown): string {
-  return error instanceof Error ? error.message : String(error)
+  if (!(error instanceof Error)) return String(error)
+  return 'responseBody' in error && typeof error.responseBody === 'string'
+    ? withResponseReason(error.message, error.responseBody)
+    : error.message
+}
+
+// An AI SDK API call error (`responseBody`) from the Ollama provider has the HTTP status
+// text ("Bad Request") as its message and keeps the server's reason, such as
+// `{"error":"model does not support tools"}`, only in the body. OpenAI-style bodies
+// (`{"error":{"message":...}}`) already reach the message, so they pass through.
+function withResponseReason(message: string, responseBody: string): string {
+  let reason = responseBody.trim()
+  if (!reason) return message
+  try {
+    const parsed: unknown = JSON.parse(reason)
+    const field =
+      parsed && typeof parsed === 'object' ? (parsed as { error?: unknown }).error : null
+    if (typeof field !== 'string') return message
+    reason = field
+  } catch {
+    // A non-JSON body is shown as-is.
+  }
+  const clipped = reason.length > 500 ? `${reason.slice(0, 500)}...` : reason
+  return message.includes(clipped) ? message : `${message}: ${clipped}`
 }

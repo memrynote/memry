@@ -26,8 +26,9 @@ enum TaskReminderPickerMode: Identifiable, Equatable {
 struct TaskReminderPickerSheet: View {
     let mode: TaskReminderPickerMode
     let now: Date
-    /// The chosen instant and the note (nil when empty or when editing).
-    let onChoose: (Date, String?) -> Void
+    /// The chosen instant, the note (nil when empty or when editing) and
+    /// how the time was picked.
+    let onChoose: (Date, String?, TaskReminderOrigin) -> Void
 
     @State private var custom = false
     @State private var date = Date()
@@ -53,7 +54,7 @@ struct TaskReminderPickerSheet: View {
                 if custom || isEditing {
                     ToolbarItem(placement: .confirmationAction) {
                         SheetConfirmButton(label: isEditing ? TasksCopy.reminderSave : TasksCopy.reminderSet) {
-                            onChoose(date, isEditing ? nil : note)
+                            onChoose(date, isEditing ? nil : note, .custom)
                         }
                         .disabled(date <= now)
                         .accessibilityIdentifier("tasks.reminders.confirm")
@@ -75,7 +76,7 @@ struct TaskReminderPickerSheet: View {
             Section(TasksCopy.reminderRemindMe) {
                 ForEach(TaskReminderPresets.standard(now: now)) { preset in
                     Button {
-                        onChoose(preset.date, note)
+                        onChoose(preset.date, note, .preset(preset.id))
                     } label: {
                         HStack {
                             Text(preset.label)

@@ -504,7 +504,8 @@
       "loading": "設定を読み込み中…"
     },
     "groups": {
-      "footer": "フッター"
+      "footer": "フッター",
+      "pastYears": "過去の年"
     },
     "template": {
       "label": "テンプレート",
@@ -562,6 +563,14 @@
     "showInSidebar": {
       "label": "サイドバーに表示",
       "description": "ジャーナルフォルダーとそのエントリーをノートツリーに表示します"
+    },
+    "showOnThisDay": {
+      "label": "「この日」を表示",
+      "description": "エントリの下に過去の年の同じ日付を一覧表示します"
+    },
+    "allYearsView": {
+      "label": "すべての年を全文で表示",
+      "description": "永遠のジャーナル：その日付のすべての年を、エントリの下の 1 ページにまとめて表示します"
     }
   },
   "tasks": {
@@ -1110,7 +1119,16 @@
       "sending": "コードを送信中…"
     },
     "oauth": {
-      "google": "Google で続行"
+      "google": "Google で続行",
+      "waiting": "ブラウザーで Google でのサインインを完了してください。",
+      "browserUnavailable": "ブラウザーを開けませんでした。",
+      "manualInstructions": "サインインリンクをコピーして、このコンピューターのブラウザーで開いてください。サインイン中は memrynote を開いたままにしてください。",
+      "linkLabel": "サインインリンク",
+      "copyLink": "サインインリンクをコピー",
+      "retryBrowser": "もう一度ブラウザーを開く",
+      "copied": "サインインリンクをコピーしました。",
+      "copyFailed": "サインインリンクをコピーできませんでした。上のフィールドで選択してコピーしてください。",
+      "cancel": "別のサインイン方法を使う"
     },
     "otp": {
       "title": "確認コードを入力してください",
@@ -1347,6 +1365,7 @@
       "keySaveError": "OpenAI キーを保存できませんでした"
     },
     "embedding": {
+      "load": "モデルを読み込む",
       "loaded": "読み込み済み",
       "loading": "読み込み中",
       "downloadLoad": "モデルをダウンロードして読み込む",
@@ -1371,7 +1390,8 @@
         "ollama": "Ollama（ローカル）",
         "openai": "OpenAI",
         "anthropic": "Anthropic",
-        "google": "Google Gemini"
+        "google": "Google Gemini",
+        "custom": "カスタム（OpenAI 互換）"
       },
       "model": "モデル",
       "modelDescription": "書き換えと要約のための言語モデル",
@@ -1381,6 +1401,11 @@
       "apiKeyPlaceholder": "{provider} API キーを入力してください",
       "ollamaUrl": "Ollama の URL",
       "ollamaUrlDescription": "ローカルサーバーアドレス",
+      "customUrl": "ベース URL",
+      "customUrlDescription": "OpenRouter など、OpenAI 互換の任意のエンドポイント",
+      "customUrlPlaceholder": "https://openrouter.ai/api/v1",
+      "customApiKeyPlaceholder": "API キー（任意）",
+      "customModelPlaceholder": "モデル ID",
       "connection": "接続",
       "activePort": "ポート {port} でアクティブです",
       "notConnected": "接続されていません",
@@ -2032,7 +2057,7 @@
       "subtitle": "すべてのノートのプロパティ定義を管理"
     },
     "loading": "プロパティを読み込み中…",
-    "empty": "プロパティ定義はまだありません。ノートにステータス、セレクト、マルチセレクトのプロパティを追加して始めましょう。",
+    "empty": "プロパティはまだありません。ノートにプロパティを追加して始めましょう。",
     "filterPlaceholder": "プロパティを絞り込み…",
     "noMatch": "「{query}」に一致するプロパティはありません",
     "summary": "{count, plural, other {# 件のプロパティ定義}}",
@@ -2072,6 +2097,14 @@
     },
     "v2": {
       "actionsAria": "{name} の操作"
+    },
+    "usage": {
+      "heading": "使用中のノート",
+      "noteCount": "{count, plural, other {# 件のノート}}",
+      "mismatchCount": "{type} に合わない値: {count}",
+      "mismatchNote": "{type} に合いません",
+      "none": "このプロパティを使っているノートはありません",
+      "loadFailed": "このプロパティを使っているノートを読み込めませんでした"
     }
   },
   "commandLine": {
@@ -2407,7 +2440,6 @@
   "phaseI": {
     "errors": {
       "failedToUpdateTagColor": "タグの色を更新できませんでした",
-      "googleSignInFailed": "Google でサインインできませんでした",
       "failedToSendVerificationCode": "確認コードを送信できませんでした",
       "invalidVerificationCode": "確認コードが無効です",
       "accountSetupFailed": "アカウントを設定できませんでした",
@@ -2434,7 +2466,8 @@
       "failedToCloseVault": "保管庫を閉じられませんでした",
       "failedToSwitchVault": "保管庫を切り替えられませんでした",
       "failedToUpdateConfig": "設定を更新できませんでした",
-      "failedToReindex": "インデックスを再作成できませんでした"
+      "failedToReindex": "インデックスを再作成できませんでした",
+      "googleSignInFailed": "Google でサインインできませんでした"
     }
   },
   "agentMcp": {
@@ -2464,7 +2497,17 @@
       "running": "実行中",
       "tokenHint": "今回の起動時のみ",
       "copy": "コピー",
-      "rotate": "再生成"
+      "rotate": "再生成",
+      "clientConfig": {
+        "label": "クライアント設定",
+        "hint": "今回の起動時の URL とトークンでコピーされます",
+        "copy": "{client} の設定をコピー"
+      },
+      "notes": {
+        "readOnly": "外部クライアントは読み取りのみ可能です。書き込みツールは PERMISSION_DENIED を返すため、書き込みは Agent Chat または memrynote コマンドラインで行ってください。",
+        "restart": "memrynote の再起動、保管庫の切り替え、トークンの再生成のたびに URL とトークンが変わります。その都度クライアントの設定を更新し、クライアントを再起動してください。",
+        "docs": "セットアップガイド"
+      }
     }
   },
   "agentProviders": {

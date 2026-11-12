@@ -4,7 +4,7 @@ import { createLogger } from '../lib/logger'
 import { atomicWrite, safeRead } from './file-ops'
 import { getMemryDir } from './init'
 import { getDatabase, getIndexDatabase, type DataDb, type IndexDb } from '../database'
-import { getSetting, setSetting } from '../database/queries/settings'
+import { listNotePropertyRowsByName } from '../database/queries/notes'
 import {
   type PropertyDefinition,
   type PropertyDefinitionsFileData,
@@ -21,14 +21,13 @@ import {
   enqueuePropertyDefinitionUpsert,
   readPropertyDefinitionRow
 } from './property-definition-sync-effects'
-import { eq, isNotNull } from 'drizzle-orm'
+import { eq } from 'drizzle-orm'
 import { retypeIndexedProperties } from './property-type-reindex'
+import { valueFitsType } from './property-type'
 
 const logger = createLogger('PropertyDefinitions')
 
 const PROPERTIES_FILE = 'properties.md'
-
-const FILE_BACKFILL_SETTING = 'propertyDefinitionsFileBackfillV1'
 
 type WriteTask = () => Promise<void>
 
@@ -73,30 +72,10 @@ export class PropertyDefinitionsService {
   }
 
   /**
-   * The vault-open reload. The first one after an update also writes every
-   * definition that exists only in the data DB to the file, once per vault.
-   * It retries on the next open while the file cannot be parsed.
-   */
-  async reloadOnOpen(): Promise<void> {
-    const db = getDatabase()
-    if (getSetting(db, FILE_BACKFILL_SETTING) === 'done') {
-      await this.reload()
-      return
-    }
-    if (await this.reload({ includeUnclocked: true })) setSetting(db, FILE_BACKFILL_SETTING, 'done')
-  }
-
-  /**
    * Resolves true once the file's state is applied, false when the file could
    * not be parsed and the cache was left as it was.
-   *
-   * `includeUnclocked` also folds in rows that never synced. Older builds
-   * wrote non-select definitions to the data DB only, and the rebuild below
-   * deletes any row the cache lacks, so this has to run in the reload itself.
    */
-  async reload({
-    includeUnclocked = false
-  }: { includeUnclocked?: boolean } = {}): Promise<boolean> {
+  async reload(): Promise<boolean> {
     const raw = await safeRead(this.filePath)
     if (!raw) {
       // No file yet is the normal state of a device that has just been linked,
@@ -105,7 +84,7 @@ export class PropertyDefinitionsService {
       this.cache.clear()
       this.unparsed.clear()
       this.fileUnreadable = false
-      const gained = this.mergeDatabaseDefinitions(includeUnclocked)
+      const gained = this.mergeDatabaseDefinitions()
       await this.rebuildDbCache()
       if (gained) await this.persistToFile()
       return true
@@ -129,7 +108,7 @@ export class PropertyDefinitionsService {
       this.unparsed = parsed.unparsed
       this.applyParsedData({ properties: parsed.valid })
       const healed = parsed.healed
-      const gained = this.mergeDatabaseDefinitions(includeUnclocked)
+      const gained = this.mergeDatabaseDefinitions()
       await this.rebuildDbCache()
       // A definition that arrived over sync exists only as a data DB row until
       // this write. `applyParsedData` above clears the cache from the file, so
@@ -145,20 +124,21 @@ export class PropertyDefinitionsService {
   }
 
   /**
-   * Fold the clocked data DB rows, or every row when `includeUnclocked`, into
-   * the cache, and report whether the file is now out of date.
+   * Fold every data DB row the cache lacks into it, and report whether the
+   * file is now out of date.
+   *
+   * Rows reach the data DB without the file in two ways: a pull lands a synced
+   * definition, and note indexing learns the type of a property no definition
+   * names yet. The rebuild deletes every row the cache lacks, so a learned row
+   * left out here was gone by the next launch, and Settings lost the property.
    *
    * Union only. The file wins for any name it already covers — it is what a
    * human edits, and the pull path has already resolved that name's clock.
    */
-  private mergeDatabaseDefinitions(includeUnclocked: boolean): boolean {
+  private mergeDatabaseDefinitions(): boolean {
     let gained = false
     try {
-      const rows = getDatabase()
-        .select()
-        .from(propertyDefinitionsTable)
-        .where(includeUnclocked ? undefined : isNotNull(propertyDefinitionsTable.clock))
-        .all()
+      const rows = getDatabase().select().from(propertyDefinitionsTable).all()
       for (const row of rows) {
         if (this.cache.has(row.name)) continue
         const definition = definitionFromRow(row)
@@ -224,6 +204,34 @@ export class PropertyDefinitionsService {
     return { filePath: this.filePath, content: this.serializeFile() }
   }
 
+  /**
+   * Settle the types a vault scan learned. Each note teaches the type of its
+   * own value, so with `rating: 5` in one note and `rating: good` in another
+   * the type was whichever file the scan reached first. A learned type that
+   * some note's value does not fit becomes text, which fits every value. The
+   * rebuild also brings the index's own learned type and its rows in line.
+   * `names` holds only what this scan learned, never a type the user chose.
+   */
+  async settleLearnedTypes(names: readonly string[]): Promise<void> {
+    await this.enqueueLocalWrite(async () => {
+      this.assertFileWritable()
+      const indexDb = getIndexDatabase()
+      const widened = names.filter((name) => {
+        const learned = this.cache.get(name)
+        return (
+          learned !== undefined &&
+          !listNotePropertyRowsByName(indexDb, name).every((row) =>
+            valueFitsType(learned.type, row.value)
+          )
+        )
+      })
+      for (const name of widened) this.cache.set(name, { name, type: 'text', options: [] })
+      await this.persistToFile()
+      await this.rebuildDbCache()
+      for (const name of widened) enqueuePropertyDefinitionUpsert(name)
+    })
+  }
+
   getAll(): PropertyDefinition[] {
     return Array.from(this.cache.values())
   }
@@ -250,7 +258,7 @@ export class PropertyDefinitionsService {
 
   async upsert(definition: PropertyDefinition): Promise<void> {
     const normalized = normalizeDefinition(definition)
-    await this.enqueueWrite(async () => {
+    await this.enqueueLocalWrite(async () => {
       this.assertFileWritable()
       this.cache.set(normalized.name, normalized)
       await this.persistToFile()
@@ -261,7 +269,7 @@ export class PropertyDefinitionsService {
 
   async remove(name: string): Promise<void> {
     const snapshot = readPropertyDefinitionRow(name)
-    await this.enqueueWrite(async () => {
+    await this.enqueueLocalWrite(async () => {
       this.assertFileWritable()
       this.cache.delete(name)
       await this.persistToFile()
@@ -274,7 +282,7 @@ export class PropertyDefinitionsService {
   }
 
   async setShowOnCalendar(name: string, show: boolean): Promise<void> {
-    await this.enqueueWrite(async () => {
+    await this.enqueueLocalWrite(async () => {
       this.assertFileWritable()
       const existing = this.cache.get(name)
       if (show) {
@@ -537,6 +545,19 @@ export class PropertyDefinitionsService {
         })
         .run()
     }
+  }
+
+  /**
+   * A local write ends in a rebuild that deletes every row the cache lacks,
+   * so it first takes in what note indexing learned since the last reload.
+   * Pulled writes skip this: their handler has just deleted or replaced the
+   * row, and the merge would read a peer's delete straight back in.
+   */
+  private enqueueLocalWrite(task: WriteTask): Promise<void> {
+    return this.enqueueWrite(async () => {
+      this.mergeDatabaseDefinitions()
+      await task()
+    })
   }
 
   private async enqueueWrite(task: WriteTask): Promise<void> {

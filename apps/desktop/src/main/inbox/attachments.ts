@@ -469,8 +469,12 @@ export async function moveAttachmentsToNote(itemId: string, noteId: string): Pro
 /**
  * Resolve a relative attachment path to a full file:// URL for the renderer
  *
+ * A file that is not on disk has no URL: a capture synced from another device
+ * has its row before its bytes (#4157), and the renderer shows a placeholder
+ * rather than a broken image.
+ *
  * @param relativePath - Path relative to vault root
- * @returns Full file URL or memry-file:// protocol URL
+ * @returns memry-file:// protocol URL, or null when there is no file to show
  */
 export function resolveAttachmentUrl(relativePath: string | null): string | null {
   if (!relativePath) return null
@@ -478,6 +482,7 @@ export function resolveAttachmentUrl(relativePath: string | null): string | null
   try {
     const vaultPath = requireVaultPath()
     const fullPath = path.join(vaultPath, relativePath)
+    if (!existsSync(fullPath)) return null
 
     // Use custom protocol for security
     const url = toMemryFileUrl(fullPath)

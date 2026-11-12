@@ -182,6 +182,7 @@ final class AuthStartup {
         guard state == .registered, let session else { return nil }
         let local = LocalVaultStore()
         let secureStore = Keychain(emitter: emitter, items: keychainItems)
+        let content = coreSession.map { LocalVaultContent(files: VaultFiles(emitter: emitter), session: $0, executor: executor) }
         return VaultSelectionViewModel(
             // The free path's vault joins the account here, as a vault of its
             // own, and stays listed and local while the account cannot take it.
@@ -191,7 +192,7 @@ final class AuthStartup {
                     // shows placeholders rather than failing.
                     try? Keychain(emitter: emitter, items: keychainItems).get(key: .masterKey)
                 },
-                attach: LocalVaultAttach(session: session, store: local)
+                attach: LocalVaultAttach(session: session, store: local) { try await content?.isEmpty($0) ?? false }
             ),
             opener: IdentityEnsuringOpener(
                 inner: CoreVaultOpener(files: VaultFiles(emitter: emitter), executor: executor),
@@ -259,6 +260,8 @@ final class AuthStartup {
     /// after launch is published, so there is one path and not two.
     private func publish(_ state: AuthState) {
         guard let session else { return }
+        let telemetryState = TelemetryAuthState(state)
+        Task { await Telemetry.shared.setAuthState(telemetryState) }
         phase = .ready(SignInViewModel(session: session, executor: executor, state: state, google: google))
     }
 
@@ -291,19 +294,23 @@ final class AuthStartup {
             let hints = emitter
             let configuration = transportConfiguration
             let items = keychainItems
+            let hold = ExchangeHold.application()
             let graph = try await executor.run {
                 try AuthComposition.makeGraph(
                     environment: environment,
                     device: descriptor,
                     emitter: hints,
                     transportConfiguration: configuration,
-                    keychainItems: items
+                    keychainItems: items,
+                    exchangeHold: hold
                 )
             }
             let session = graph.session
             self.session = session
             // T237. The unwrapped session, for `Vault.sync(session:)`.
             coreSession = session
+            // Telemetry sends through the core so the token stays there.
+            await Telemetry.shared.attach(sender: session)
             deviceLink = graph.deviceLink
             // **T165, spec-defect 121.** `AuthSession::new` builds the machine
             // in `SignedOut` whatever the keychain holds, so before this line a

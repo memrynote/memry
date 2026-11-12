@@ -1,3 +1,4 @@
+import { markMainActivity } from '../main-activity'
 import { DEFAULT_PROJECTION_QUEUE_LIMIT, ProjectionBus } from './bus'
 import type { ProjectionEvent, ProjectionLogger, ProjectionProjector } from './types'
 
@@ -147,6 +148,7 @@ export function createProjectionRuntime(options: ProjectionRuntimeOptions): Proj
       }
 
       try {
+        markMainActivity(`reconcile:${projector.name}`)
         results[projector.name] = await projector.reconcile(controller.signal)
       } catch (error) {
         // Isolated on purpose: the projectors are independent repairs, and one
@@ -180,6 +182,7 @@ export function createProjectionRuntime(options: ProjectionRuntimeOptions): Proj
     }
 
     try {
+      markMainActivity(`projection:${lane.projector.name}:${event.type}`)
       await lane.projector.project(event)
     } catch (error) {
       logger?.error?.('Projection projector failed', {

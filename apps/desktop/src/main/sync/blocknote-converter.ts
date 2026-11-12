@@ -3,7 +3,7 @@ import { ServerBlockNoteEditor } from '@blocknote/server-util'
 import { type Block, type PartialBlock } from '@blocknote/core'
 import { createMemrySchema } from '@memry/editor-schema'
 import { memryCodeBlockOptions } from '@memry/editor-schema/code-block'
-import { writeHtmlCommentTokens } from '@memry/editor-schema/inline'
+import { normalizeLinkMentions, writeHtmlCommentTokens } from '@memry/editor-schema/inline'
 import {
   BOOKMARK_LINE_REGEX,
   FILE_BLOCK_LINE_REGEX,
@@ -99,7 +99,6 @@ import {
 import { maskHtmlComments } from '@memry/shared/html-comments'
 import { NOTE_SYNC_MAX_BYTES } from '@memry/sync-client/note-size'
 import { createLogger } from '../lib/logger'
-import { resolveVaultEmbeds } from '../vault/resolve-embed'
 import {
   applyWritingSeed,
   insertWritingSentinels,
@@ -603,7 +602,14 @@ export async function prepareFragmentSeed(
   // binds the custom block on first paint instead of a raw checkbox. Lines
   // ending in the plain-checkbox marker become checkboxes with `plain: true`,
   // which the editor never converts.
-  const normalized = normalizePlainCheckboxes(normalizeTaskBlocks(blocks, source).blocks).blocks
+  // `((mention:…))` becomes a `linkMention` node here, once, in the doc every
+  // device receives. Left as text, each device's editor promoted it on open,
+  // and two devices doing that before they synced merged into two chips per
+  // mention (#3871).
+  const normalized = normalizePlainCheckboxes(
+    normalizeTaskBlocks(normalizeLinkMentions(blocks, { byteNeutralOnly: true }).blocks, source)
+      .blocks
+  ).blocks
   return {
     blocks: normalized,
     marks: critic.marks,
@@ -928,17 +934,40 @@ async function serializeCalloutWithChildren(
   return serializeCalloutBlock(props.type, inner.trim(), props.fold)
 }
 
+/** Resolves Obsidian image embed refs against the open vault: ref to markdown link target. */
+export type VaultEmbedResolver = (
+  refs: string[],
+  notePath?: string
+) => Record<string, string> | Promise<Record<string, string>>
+
+// Set by whoever loads this module: main's loader passes the direct vault
+// lookup (blocknote-converter-loader.ts), the converter worker a call back to
+// main (converter-worker.ts). Injected rather than imported because the
+// lookup reads the index database, which the worker cannot open.
+let vaultEmbedResolver: VaultEmbedResolver | null = null
+
+export function setVaultEmbedResolver(resolver: VaultEmbedResolver): void {
+  vaultEmbedResolver = resolver
+}
+
 /**
  * Main-process twin of the renderer's embed resolution: same rewrite, but the
  * vault lookup is a direct call instead of an IPC round trip. A closed vault or
  * an unreadable index resolves nothing, which leaves every embed as written.
  */
-function resolveWikiImageEmbedsInMarkdown(markdown: string, notePath?: string): string {
+async function resolveWikiImageEmbedsInMarkdown(
+  markdown: string,
+  notePath?: string
+): Promise<string> {
   const refs = extractWikiImageEmbedRefs(markdown)
   if (refs.length === 0) return markdown
+  if (!vaultEmbedResolver) {
+    log.warn('No vault embed resolver set, leaving embeds as written', { notePath })
+    return markdown
+  }
 
   try {
-    const resolved = resolveVaultEmbeds(refs, notePath)
+    const resolved = await vaultEmbedResolver(refs, notePath)
     return rewriteWikiImageEmbeds(markdown, (ref) => resolved[ref])
   } catch (err) {
     log.warn('Embed resolution failed, leaving embeds as written', { notePath, error: err })
@@ -953,7 +982,7 @@ async function markdownToBlocksPreserving(
 ): Promise<Block[]> {
   // Obsidian image embeds become `![alt](memry-file://…)` first, so the same
   // note renders identically here and in the editor (see normalize-note-blocks).
-  const withEmbeds = resolveWikiImageEmbedsInMarkdown(markdown, notePath)
+  const withEmbeds = await resolveWikiImageEmbedsInMarkdown(markdown, notePath)
   // Inline color spans are masked into markdown-inert tokens before parsing
   // (BlockNote strips raw spans), then re-applied as styles on the parsed runs.
   const { text, spans } = maskInlineColorSpans(separateBlockImages(withEmbeds))

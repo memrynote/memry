@@ -8,6 +8,7 @@
     ".": "./src/index.ts",
     "./utc": "./src/utc.ts",
     "./file-types": "./src/file-types.ts",
+    "./folder-note": "./src/folder-note.ts",
     "./empty-lines": "./src/empty-lines.ts",
     "./hard-breaks": "./src/hard-breaks.ts",
     "./block-colors": "./src/block-colors.ts",

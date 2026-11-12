@@ -132,7 +132,16 @@ const runtimeMocks = vi.hoisted(() => {
     reset: vi.fn()
   })
 
+  const state: {
+    engineStartGate: { resolve: () => void } | null
+    currentDevice: { id: string; signingPublicKey: string | null } | null
+  } = {
+    engineStartGate: null,
+    currentDevice: { id: 'device-1', signingPublicKey: null }
+  }
+
   return {
+    ...state,
     SyncServerError,
     SyncQueueManager,
     NoteBodyOutbox,
@@ -167,11 +176,8 @@ const runtimeMocks = vi.hoisted(() => {
     fullStateNoteIds: [] as string[],
     engineStartError: null as Error | null,
     workerStartError: null as Error | null,
-    /** When set, the mocked engine's start parks here until `resolve` fires. */
-    engineStartGate: null as null | { resolve: () => void },
     db: null as any,
     indexRows: [] as Array<{ id: string; title: string; date: string | null }>,
-    currentDevice: { id: 'device-1', signingPublicKey: null as string | null },
     getDatabase: vi.fn(),
     getIndexDatabase: vi.fn(),
     retrieveToken: vi.fn(),
@@ -215,7 +221,7 @@ const runtimeMocks = vi.hoisted(() => {
     syncGoogleCalendarSource: vi.fn(),
     crdtProvider: {
       recordPushedSnapshot: vi.fn(async () => {}),
-      isNoteLocalOnly: vi.fn(() => false),
+      isNoteLocalOnly: vi.fn<(noteId: string) => boolean>(() => false),
       isNoteSyncable: vi.fn(() => true),
       init: vi.fn(),
       setSnapshotCoverage: vi.fn(),
@@ -859,7 +865,10 @@ describe('sync runtime', () => {
     expect(runtimeMocks.postToServer).toHaveBeenCalledWith(
       '/sync/crdt/updates',
       { noteId: 'note-1', updates: [Buffer.from(new Uint8Array([10, 11])).toString('base64')] },
-      'access-token'
+      'access-token',
+      undefined,
+      undefined,
+      expect.any(AbortSignal)
     )
     // The snapshot is deferred, not skipped — see the debounce test below.
     expect(runtimeMocks.crdtProvider.pushSnapshotForNote).not.toHaveBeenCalled()
@@ -937,7 +946,8 @@ describe('sync runtime', () => {
     // includes the engine's entire initial fullSync — before any abort fired,
     // so closing seconds into a fresh-vault pull stalled teardown for minutes.
     const runtime = await loadRuntime()
-    runtimeMocks.engineStartGate = {}
+    const startGate = { resolve: vi.fn<() => void>() }
+    runtimeMocks.engineStartGate = startGate
     void runtime.startSyncRuntime()
 
     // The engine is reachable while its start is still running: the runtime
@@ -959,7 +969,7 @@ describe('sync runtime', () => {
     // pages and the await only covers the safe teardown of dead work.
     expect(engine.requestCancel).toHaveBeenCalledTimes(1)
 
-    runtimeMocks.engineStartGate.resolve?.()
+    startGate.resolve()
     await stopPromise
 
     expect(runtimeMocks.crdtProvider.destroy).toHaveBeenCalled()
@@ -1032,7 +1042,10 @@ describe('sync runtime', () => {
     expect(runtimeMocks.postToServer).toHaveBeenLastCalledWith(
       '/sync/crdt/updates',
       expect.objectContaining({ noteId: 'note-1' }),
-      'fresh-token'
+      'fresh-token',
+      undefined,
+      undefined,
+      expect.any(AbortSignal)
     )
     expect(queue.pause).not.toHaveBeenCalled()
     expect(runtimeMocks.emitSessionExpired).not.toHaveBeenCalled()
@@ -1107,7 +1120,10 @@ describe('sync runtime', () => {
     expect(runtimeMocks.postToServer).toHaveBeenCalledWith(
       '/sync/crdt/updates',
       expect.objectContaining({ noteId: 'note-too-large' }),
-      'access-token'
+      'access-token',
+      undefined,
+      undefined,
+      expect.any(AbortSignal)
     )
     const sentBody = runtimeMocks.postToServer.mock.calls[0][1] as { updates: string[] }
     expect(sentBody.updates).toHaveLength(2)

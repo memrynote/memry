@@ -236,5 +236,21 @@
     "range": "{start} – {end}",
     "openTask": "{title}、{range}",
     "completeTask": "{title} を完了"
+  },
+  "pastYears": {
+    "title": "この日",
+    "count": "{count, plural, other {ほかの年 # 件}}",
+    "showAll": "すべての年",
+    "showPreviews": "プレビュー",
+    "yearsAgo": "{count, plural, other {# 年前}}",
+    "yearsLater": "{count, plural, other {# 年後}}",
+    "words": "{count, plural, other {# 語}}",
+    "openDay": "{date} を開く",
+    "showFull": "エントリ全体を表示",
+    "showLess": "表示を減らす",
+    "loadError": "ほかの年のこの日を読み込めませんでした。",
+    "previousYear": "前年の同じ日",
+    "nextYear": "翌年の同じ日",
+    "goToYear": "{year} 年のこの日へ移動"
   }
 }

@@ -113,7 +113,74 @@
       "noDueDate": "Không có ngày đến hạn"
     },
     "repeatTypeRepeating": "Định kỳ",
-    "repeatTypeOneTime": "Một lần"
+    "repeatTypeOneTime": "Một lần",
+    "advanced": {
+      "entry": "Bộ lọc nâng cao…",
+      "entryHint": "Quy tắc với và, hoặc, không",
+      "title": "Bộ lọc",
+      "match": "Khớp",
+      "ofThese": "trong số này",
+      "matches": {
+        "all": "tất cả",
+        "any": "bất kỳ",
+        "none": "không cái nào"
+      },
+      "fields": {
+        "title": "Tiêu đề",
+        "status": "Trạng thái",
+        "priority": "Mức ưu tiên",
+        "due": "Ngày đến hạn",
+        "project": "Dự án",
+        "location": "Địa điểm",
+        "tags": "Thẻ",
+        "repeat": "Lặp lại",
+        "hasTime": "Có giờ"
+      },
+      "ops": {
+        "contains": "chứa",
+        "notContains": "không chứa",
+        "any": "là một trong",
+        "none": "không là cái nào trong",
+        "all": "có tất cả",
+        "empty": "trống",
+        "notEmpty": "không trống",
+        "is": "là",
+        "isNot": "không là"
+      },
+      "tagOps": {
+        "any": "có bất kỳ",
+        "all": "có tất cả",
+        "none": "không có cái nào"
+      },
+      "values": {
+        "repeating": "Lặp lại",
+        "oneTime": "Một lần",
+        "withTime": "Có giờ",
+        "withoutTime": "Không có giờ",
+        "customRange": "Khoảng tùy chỉnh",
+        "from": "Từ",
+        "to": "Đến",
+        "pick": "Chọn…",
+        "titlePlaceholder": "Văn bản trong tiêu đề"
+      },
+      "addRule": "Thêm quy tắc",
+      "addGroup": "Thêm nhóm",
+      "clear": "Xóa",
+      "removeRule": "Gỡ quy tắc",
+      "removeGroup": "Gỡ nhóm",
+      "matchCount": "{count, plural, other {# công việc khớp}}",
+      "skipped": "{count, plural, other {Đã bỏ qua # quy tắc}}",
+      "ruleCount": "{count, plural, other {# quy tắc}}",
+      "unknownRule": "Quy tắc từ phiên bản mới hơn",
+      "empty": "Chưa có quy tắc nào. Thêm một quy tắc để bắt đầu lọc.",
+      "summary": {
+        "and": "và",
+        "or": "hoặc",
+        "not": "không"
+      },
+      "editRules": "Sửa quy tắc",
+      "clearRules": "Xóa quy tắc"
+    }
   },
   "quickAdd": {
     "label": "Thêm nhanh công việc",

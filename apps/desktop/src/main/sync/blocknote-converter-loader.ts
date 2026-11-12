@@ -11,15 +11,25 @@ let converterLoad: Promise<typeof BlockNoteConverter> | null = null
  * launch that opens no unseeded note and writes nothing back never converts.
  * Every caller shares one load promise, so concurrent first conversions load
  * the module once. `scripts/check-main-startup-set.mjs` keeps it off the
- * startup path.
+ * startup path. The load wires main's direct vault lookup in as the embed
+ * resolver, so every main-process conversion resolves embeds the same way.
  */
 export function loadBlockNoteConverter(): Promise<typeof BlockNoteConverter> {
   if (!converterLoad) {
-    converterLoad = import('./blocknote-converter').catch((error: unknown) => {
-      // A failed load is not cached, so the next conversion retries it.
-      converterLoad = null
-      throw error
-    })
+    converterLoad = import('./blocknote-converter')
+      .then((converter) => {
+        // Its graph reaches the vault watcher; loaded only by a note with embeds.
+        converter.setVaultEmbedResolver(async (refs, notePath) => {
+          const { resolveVaultEmbeds } = await import('../vault/resolve-embed')
+          return resolveVaultEmbeds(refs, notePath)
+        })
+        return converter
+      })
+      .catch((error: unknown) => {
+        // A failed load is not cached, so the next conversion retries it.
+        converterLoad = null
+        throw error
+      })
   }
   return converterLoad
 }

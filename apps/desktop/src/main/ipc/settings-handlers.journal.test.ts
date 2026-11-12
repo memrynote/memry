@@ -148,6 +148,17 @@ describe('journal template settings handler', () => {
     })
   })
 
+  it('shows On this day and the day view for a vault that never set the past-years settings', () => {
+    expect(getJournalSettings()).toMatchObject({ showOnThisDay: true, allYearsView: false })
+  })
+
+  it('keeps the past-years settings local and reads them back', () => {
+    writeJournalSettings({ showOnThisDay: false, allYearsView: true })
+
+    expect(getJournalSettings()).toMatchObject({ showOnThisDay: false, allYearsView: true })
+    expect(updateField).not.toHaveBeenCalled()
+  })
+
   it('merges a one-day patch into the stored map instead of replacing it', () => {
     writeJournalSettings({ weekdayTemplates: { '1': 'daily-standup' } })
     writeJournalSettings({ weekdayTemplates: { '3': 'weekly-review' } })

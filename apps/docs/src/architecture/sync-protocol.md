@@ -37,13 +37,19 @@ former is an entitlement statement.
 A request with no `X-Memry-Vault-Id` header resolves to an existing vault and never creates a second
 one: an account with no vaults (or one that already holds the legacy `default` vault) is served
 `default` as before, an account with exactly one vault is served that vault, and an account with
-several is answered `400 VALIDATION_ERROR` rather than guessing and consuming a vault slot.
+several is answered `400 VALIDATION_ERROR` rather than guessing and consuming a vault slot. The vault
+id a device registered with plays no part, since iOS registers with none and the server stores that
+as `default`. `GET /sync/storage` is account-wide and sits outside this gate entirely: it takes no
+vault header and never creates a vault, and it still answers `SYNC_PAYMENT_REQUIRED` without an active
+plan.
 
 The desktop client mirrors this gate locally to avoid pointless round-trips that can only return 402. Handlers for paid-only endpoints check the cached entitlement first and return their empty
 value (`GET_STATUS` → `local_only`, `GET_STORAGE_BREAKDOWN` → `null`) when the cache says the user
 is on the free plan. Only a **known-unpaid** entitlement is gated — an unknown/uncached
 entitlement (fresh install, before the first status call) still calls the server, so the gate can
-never lock a paying user out on stale local state. The server-side gate remains authoritative.
+never lock a paying user out on stale local state. The iOS app gates its storage read the same way:
+an account whose billing status is free or not active is not asked. The server-side gate remains
+authoritative.
 
 The sync runtime's own gate additionally expires that negative: a cached "not paid" older than one
 hour (or written without a timestamp) is re-fetched from `GET /auth/billing` at startup rather than

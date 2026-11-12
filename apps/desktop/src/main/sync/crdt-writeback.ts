@@ -8,8 +8,8 @@ import { registerCrdtWritebackPort } from './crdt-writeback-port'
 import { networkUpdateCount, resetNetworkUpdateState, sweepExpired } from './crdt-network-update'
 import { owesFileBody } from './crdt-owed-file-body'
 import type { SourceRestoreOutcome } from './blocknote-converter'
-import { serializeNoteBody, type NoteBody } from './writing-markdown'
-import { loadBlockNoteConverter } from './blocknote-converter-loader'
+import type { NoteBody } from './writing-markdown'
+import { readyWritebackConverter } from './converter-worker-bridge'
 import { emitNoteUpdated } from '@memry/sync-client/note-events'
 import {
   isWritingFrontmatterValue,
@@ -116,7 +116,15 @@ interface WritebackCost {
 
 const lastWritebackCost = new Map<string, WritebackCost>()
 const pendingTimers = new Map<string, PendingWriteback>()
-const inFlightWritebacks = new Set<string>()
+/** The pass running, or queued behind a running one, for each note. */
+const runningPasses = new Map<string, Promise<void>>()
+/**
+ * Bumped by `cancelWriteback`. A pass that was already converting when its
+ * note was deleted sees the change and does not write the file back.
+ */
+const cancelGenerations = new Map<string, number>()
+/** True while a flush runs before a quit or a vault close. */
+let flushing = false
 /** Notes whose last pass failed and whose user has been told so. */
 const failingWritebacks = new Set<string>()
 const ignoredWrites = new Map<string, number>()
@@ -130,7 +138,7 @@ const lastWrittenHash = new Map<string, string>()
  * window, or they would "restore" state the user just changed in the app.
  */
 export function hasPendingWriteback(noteId: string): boolean {
-  return pendingTimers.has(noteId) || inFlightWritebacks.has(noteId)
+  return pendingTimers.has(noteId) || runningPasses.has(noteId)
 }
 
 interface WritebackDebugState {
@@ -295,8 +303,36 @@ function laterEditTime(a: number | undefined, b: number | undefined): number | u
   return Math.max(a, b)
 }
 
-/** Runs a pass and records what it cost, which is what paces the next one. */
+/**
+ * Runs a pass once the note's previous pass has finished.
+ *
+ * One pass per note at a time. A pass reads the note's row, converts on the
+ * converter worker (seconds on a cold start), then writes and records the new
+ * hash. A second pass that started meanwhile read the row from before that
+ * write, took the first pass's own file for an edit made outside the app, and
+ * fed it back into the doc, losing what the user typed in between.
+ */
 async function runWriteback(
+  noteId: string,
+  doc: Y.Doc,
+  local: boolean,
+  remoteEditedAtMs: number | undefined
+): Promise<void> {
+  const previous = runningPasses.get(noteId)
+  const pass = (previous ?? Promise.resolve())
+    // The previous pass reported its own failure; this one runs regardless.
+    .catch(() => {})
+    .then(() => runPass(noteId, doc, local, remoteEditedAtMs))
+  runningPasses.set(noteId, pass)
+  try {
+    await pass
+  } finally {
+    if (runningPasses.get(noteId) === pass) runningPasses.delete(noteId)
+  }
+}
+
+/** Runs a pass and records what it cost, which is what paces the next one. */
+async function runPass(
   noteId: string,
   doc: Y.Doc,
   local: boolean,
@@ -337,12 +373,9 @@ export function scheduleWriteback(
 
   const timer = setTimeout(() => {
     pendingTimers.delete(noteId)
-    inFlightWritebacks.add(noteId)
-    runWriteback(noteId, doc, local, pendingRemoteEditedAtMs)
-      .catch((err: unknown) => reportWritebackFailure(noteId, err))
-      .finally(() => {
-        inFlightWritebacks.delete(noteId)
-      })
+    runWriteback(noteId, doc, local, pendingRemoteEditedAtMs).catch((err: unknown) =>
+      reportWritebackFailure(noteId, err)
+    )
   }, writebackDelayMs(noteId))
 
   pendingTimers.set(noteId, { timer, doc, local, remoteEditedAtMs: pendingRemoteEditedAtMs })
@@ -392,6 +425,7 @@ export function cancelWriteback(noteId: string): void {
     clearTimeout(pending.timer)
     pendingTimers.delete(noteId)
   }
+  cancelGenerations.set(noteId, (cancelGenerations.get(noteId) ?? 0) + 1)
   lastWritebackCost.delete(noteId)
   lastWrittenHash.delete(noteId)
   debugState.delete(noteId)
@@ -409,12 +443,7 @@ export async function writebackNow(noteId: string, doc: Y.Doc): Promise<void> {
     clearTimeout(pending.timer)
     pendingTimers.delete(noteId)
   }
-  inFlightWritebacks.add(noteId)
-  try {
-    await runWriteback(noteId, doc, pending?.local === true, pending?.remoteEditedAtMs)
-  } finally {
-    inFlightWritebacks.delete(noteId)
-  }
+  await runWriteback(noteId, doc, pending?.local === true, pending?.remoteEditedAtMs)
 }
 
 /**
@@ -471,22 +500,36 @@ export function resetWritebackState(): void {
   ignoredWrites.clear()
   resetNetworkUpdateState()
   lastWrittenHash.clear()
+  cancelGenerations.clear()
   debugState.clear()
   failingWritebacks.clear()
   ignoredWritesSweptAt = 0
 }
 
 export async function flushPendingWritebacks(): Promise<void> {
+  flushing = true
+  try {
+    await flushAll()
+  } finally {
+    flushing = false
+  }
+}
+
+async function flushAll(): Promise<void> {
   const pending = Array.from(pendingTimers.entries())
   pendingTimers.clear()
   for (const [, { timer }] of pending) clearTimeout(timer)
-  await Promise.all(
-    pending.map(([noteId, { doc, local, remoteEditedAtMs }]) =>
+  // Passes already running are awaited too: one converting on the worker is
+  // seconds from its write, and a quit that skipped it would lose that edit.
+  const running = Array.from(runningPasses.values(), (pass) => pass.catch(() => {}))
+  await Promise.all([
+    ...running,
+    ...pending.map(([noteId, { doc, local, remoteEditedAtMs }]) =>
       runWriteback(noteId, doc, local, remoteEditedAtMs).catch((err: unknown) => {
         log.error('Write-back failed during shutdown flush', { noteId, error: err })
       })
     )
-  )
+  ])
 }
 
 /**
@@ -523,10 +566,12 @@ async function performWriteback(
   local: boolean,
   remoteEditedAtMs: number | undefined
 ): Promise<void> {
-  // Loaded before the note row is read, so the row below is as fresh as it
+  // Ready before the note row is read, so the row below is as fresh as it
   // was before the converter became lazy: past this line nothing awaits until
-  // the serialization itself.
-  const converter = await loadBlockNoteConverter()
+  // the serialization itself. The conversion runs on the write-back worker,
+  // off the main thread (converter-worker-bridge.ts).
+  const convert = await readyWritebackConverter({ mainUnlessReady: flushing })
+  const generation = cancelGenerations.get(noteId)
   // A doc with no note row is never turned into a note. Its record may not
   // have arrived yet, or it may be a tombstone this device has not pulled (a
   // packed body applied before the first record pull), and both look the
@@ -549,9 +594,18 @@ async function performWriteback(
   // would make the loss the file's permanent content, and the next index pass
   // would push it to every other device. Keeping the file costs the user a
   // stale body until a build that knows the type runs; writing costs them the
-  // content. Checked before serializing, since the answer decides nothing else.
-  const unrepresentable = converter.findUnrepresentableNodes(doc)
-  if (unrepresentable.length > 0) {
+  // content.
+  const conversion = await convert(doc, cached.path, async () => {
+    const raw = await readVaultFile(getVaultRoot(), cached.path)
+    return raw === null ? null : splitFrontmatterBlock(raw).body
+  })
+  if (cancelGenerations.get(noteId) !== generation) {
+    updateDebugState(noteId, { pending: false })
+    log.debug('Write-back dropped: the note was cancelled while it converted', { noteId })
+    return
+  }
+  if (conversion.kind === 'unrepresentable') {
+    const unrepresentable = conversion.nodes
     updateDebugState(noteId, {
       pending: false,
       lastError: `unrepresentable: ${unrepresentable.join(',')}`
@@ -570,22 +624,9 @@ async function performWriteback(
     return
   }
 
-  const restore: { outcome: SourceRestoreOutcome | null } = { outcome: null }
-  const body = await serializeNoteBody(
-    doc,
-    {
-      notePath: cached.path,
-      readFileBody: async () => {
-        const raw = await readVaultFile(getVaultRoot(), cached.path)
-        return raw === null ? null : splitFrontmatterBlock(raw).body
-      },
-      onSourceRestore: (sourceRestore) => {
-        restore.outcome = sourceRestore
-        updateDebugState(noteId, { sourceRestore })
-      }
-    },
-    converter
-  )
+  const { body, sourceRestore } = conversion
+  if (sourceRestore) updateDebugState(noteId, { sourceRestore })
+  const restore = { outcome: sourceRestore }
   // The file is kept, and the pass fails the way a failed read does: the
   // failure telemetry hears of it, the user gets one notice for the note
   // (`reportWritebackFailure`), and the next update retries.

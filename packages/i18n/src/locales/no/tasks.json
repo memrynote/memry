@@ -113,7 +113,74 @@
       "noDueDate": "Ingen forfallsdato"
     },
     "repeatTypeRepeating": "Gjentakende",
-    "repeatTypeOneTime": "Enkeltstående"
+    "repeatTypeOneTime": "Enkeltstående",
+    "advanced": {
+      "entry": "Avansert filter…",
+      "entryHint": "Regler med og, eller, ikke",
+      "title": "Filter",
+      "match": "Samsvar med",
+      "ofThese": "av disse",
+      "matches": {
+        "all": "alle",
+        "any": "hvilken som helst",
+        "none": "ingen"
+      },
+      "fields": {
+        "title": "Tittel",
+        "status": "Status",
+        "priority": "Prioritet",
+        "due": "Forfallsdato",
+        "project": "Prosjekt",
+        "location": "Sted",
+        "tags": "Tagger",
+        "repeat": "Gjentas",
+        "hasTime": "Har klokkeslett"
+      },
+      "ops": {
+        "contains": "inneholder",
+        "notContains": "inneholder ikke",
+        "any": "er en av",
+        "none": "er ingen av",
+        "all": "har alle",
+        "empty": "er tom",
+        "notEmpty": "er ikke tom",
+        "is": "er",
+        "isNot": "er ikke"
+      },
+      "tagOps": {
+        "any": "har en av",
+        "all": "har alle",
+        "none": "har ingen av"
+      },
+      "values": {
+        "repeating": "Gjentakende",
+        "oneTime": "Engangs",
+        "withTime": "Med klokkeslett",
+        "withoutTime": "Uten klokkeslett",
+        "customRange": "Egendefinert periode",
+        "from": "Fra",
+        "to": "Til",
+        "pick": "Velg…",
+        "titlePlaceholder": "Tekst i tittelen"
+      },
+      "addRule": "Legg til regel",
+      "addGroup": "Legg til gruppe",
+      "clear": "Tøm",
+      "removeRule": "Fjern regel",
+      "removeGroup": "Fjern gruppe",
+      "matchCount": "{count, plural, one {# oppgave samsvarer} other {# oppgaver samsvarer}}",
+      "skipped": "{count, plural, one {# regel hoppet over} other {# regler hoppet over}}",
+      "ruleCount": "{count, plural, one {# regel} other {# regler}}",
+      "unknownRule": "Regel fra en nyere versjon",
+      "empty": "Ingen regler ennå. Legg til en for å begynne å filtrere.",
+      "summary": {
+        "and": "og",
+        "or": "eller",
+        "not": "ikke"
+      },
+      "editRules": "Rediger regler",
+      "clearRules": "Tøm regler"
+    }
   },
   "quickAdd": {
     "label": "Legg til oppgave raskt",

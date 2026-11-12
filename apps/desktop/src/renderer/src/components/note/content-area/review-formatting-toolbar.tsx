@@ -13,6 +13,7 @@ import {
   type FormattingToolbarProps
 } from '@blocknote/react'
 import { SuggestionMenu } from '@blocknote/core/extensions'
+import { AIToolbarButton } from '@blocknote/xl-ai'
 import { Link2, MessageCircle } from '@/lib/icons'
 import { getLiveProseMirrorView } from './live-prosemirror-view'
 import type { ReviewSelection } from './types'
@@ -27,6 +28,8 @@ interface ReviewFormattingToolbarProps {
   onAddComment?: (selection: ReviewSelection) => void
   /** Pin/unpin from the overflow menu. Omitted: the menu item hides. */
   onStickyChange?: (sticky: boolean) => void
+  /** The AI extension is registered; `AIToolbarButton` throws without it. */
+  aiAvailable?: boolean
 }
 
 export function ReviewFormattingToolbarController(props: ReviewFormattingToolbarProps) {
@@ -53,6 +56,7 @@ export function ReviewFormattingToolbar({
   variant = 'floating',
   onAddComment,
   onStickyChange,
+  aiAvailable = false,
   ...toolbarProps
 }: FormattingToolbarProps & ReviewFormattingToolbarProps) {
   const editor = useBlockNoteEditor()
@@ -90,6 +94,7 @@ export function ReviewFormattingToolbar({
         <div className="memry-format-toolbar" data-variant="floating">
           {blockType}
           <div className="memry-format-toolbar-grid">
+            {aiAvailable && <AIToolbarButton />}
             <ToolbarActions />
             {more}
           </div>
@@ -105,6 +110,7 @@ export function ReviewFormattingToolbar({
       <div className="memry-format-toolbar" data-variant={variant}>
         {blockType}
         <ToolbarDivider />
+        {aiAvailable && <AIToolbarButton />}
         <ToolbarActions divided />
         {onAddComment && <ToolbarDivider />}
         {comment}

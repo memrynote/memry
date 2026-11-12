@@ -136,6 +136,7 @@ struct CalendarComposer: View {
             timezone: TimeZone.current.identifier, isAllDay: request.isAllDay, targetCalendarId: target, color: nil
         )
         if await store.write({ try $0.createEvent(draft: draft) }) != nil {
+            CalendarTelemetry.eventCreated()
             close()
         } else {
             error = CalendarCopy.couldNotCreate

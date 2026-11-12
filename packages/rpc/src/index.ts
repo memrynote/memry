@@ -10,6 +10,8 @@ import type { FeedbackClientAPI } from './feedback.ts'
 import { feedbackRpc } from './feedback.ts'
 import type { InboxClientAPI, InboxSubscriptions } from './inbox.ts'
 import { inboxRpc } from './inbox.ts'
+import type { IosBetaClientAPI } from './ios-beta.ts'
+import { iosBetaRpc } from './ios-beta.ts'
 import type { NotesClientAPI, NotesSubscriptions } from './notes.ts'
 import { notesRpc } from './notes.ts'
 import type { SettingsClientAPI, SettingsSubscriptions } from './settings.ts'
@@ -41,6 +43,7 @@ export { canvasRpc } from './canvas.ts'
 export { canvasFolderRpc } from './canvas-folder.ts'
 export { telemetryRpc } from './telemetry.ts'
 export { feedbackRpc } from './feedback.ts'
+export { iosBetaRpc } from './ios-beta.ts'
 export { diagnosticsRpc } from './diagnostics.ts'
 export { unsplashRpc } from './unsplash.ts'
 export { writingToolsRpc } from './writing-tools.ts'
@@ -54,6 +57,7 @@ export type { CanvasClientAPI, CanvasSubscriptions } from './canvas.ts'
 export type { CanvasFolderClientAPI, CanvasFolderSubscriptions } from './canvas-folder.ts'
 export type { TelemetryClientAPI, TelemetrySettings } from './telemetry.ts'
 export type { FeedbackClientAPI } from './feedback.ts'
+export type { IosBetaClientAPI } from './ios-beta.ts'
 export type { DiagnosticsClientAPI } from './diagnostics.ts'
 export type { UnsplashClientAPI } from './unsplash.ts'
 export type { WritingToolsClientAPI, WritingToolsSubscriptions } from './writing-tools.ts'
@@ -68,6 +72,7 @@ export const rpcDomains = [
   canvasFolderRpc,
   telemetryRpc,
   feedbackRpc,
+  iosBetaRpc,
   diagnosticsRpc,
   unsplashRpc,
   writingToolsRpc
@@ -92,6 +97,7 @@ export interface GeneratedRpcApi
   canvasFolder: CanvasFolderClientAPI
   telemetry: TelemetryClientAPI
   feedback: FeedbackClientAPI
+  iosBeta: IosBetaClientAPI
   diagnostics: DiagnosticsClientAPI
   unsplash: UnsplashClientAPI
   writingTools: WritingToolsClientAPI

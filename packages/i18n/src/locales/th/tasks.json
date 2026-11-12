@@ -113,7 +113,74 @@
       "noDueDate": "ไม่มีวันครบกำหนด"
     },
     "repeatTypeRepeating": "งานที่ทำซ้ำ",
-    "repeatTypeOneTime": "ครั้งเดียว"
+    "repeatTypeOneTime": "ครั้งเดียว",
+    "advanced": {
+      "entry": "ตัวกรองขั้นสูง…",
+      "entryHint": "กฎด้วย และ, หรือ, ไม่",
+      "title": "ตัวกรอง",
+      "match": "ตรงกับ",
+      "ofThese": "ของกฎเหล่านี้",
+      "matches": {
+        "all": "ทั้งหมด",
+        "any": "ข้อใดก็ได้",
+        "none": "ไม่มีข้อใด"
+      },
+      "fields": {
+        "title": "ชื่อ",
+        "status": "สถานะ",
+        "priority": "ลำดับความสำคัญ",
+        "due": "วันครบกำหนด",
+        "project": "โปรเจกต์",
+        "location": "สถานที่",
+        "tags": "แท็ก",
+        "repeat": "ทำซ้ำ",
+        "hasTime": "มีเวลา"
+      },
+      "ops": {
+        "contains": "มีคำว่า",
+        "notContains": "ไม่มีคำว่า",
+        "any": "เป็นข้อใดข้อหนึ่งของ",
+        "none": "ไม่ใช่ข้อใดเลยของ",
+        "all": "มีทั้งหมดของ",
+        "empty": "ว่างเปล่า",
+        "notEmpty": "ไม่ว่าง",
+        "is": "เป็น",
+        "isNot": "ไม่ใช่"
+      },
+      "tagOps": {
+        "any": "มีข้อใดข้อหนึ่งของ",
+        "all": "มีทั้งหมดของ",
+        "none": "ไม่มีข้อใดเลยของ"
+      },
+      "values": {
+        "repeating": "ทำซ้ำ",
+        "oneTime": "ครั้งเดียว",
+        "withTime": "มีเวลา",
+        "withoutTime": "ไม่มีเวลา",
+        "customRange": "ช่วงที่กำหนดเอง",
+        "from": "จาก",
+        "to": "ถึง",
+        "pick": "เลือก…",
+        "titlePlaceholder": "ข้อความในชื่อ"
+      },
+      "addRule": "เพิ่มกฎ",
+      "addGroup": "เพิ่มกลุ่ม",
+      "clear": "ล้าง",
+      "removeRule": "ลบกฎ",
+      "removeGroup": "ลบกลุ่ม",
+      "matchCount": "{count, plural, other {ตรงกัน # งาน}}",
+      "skipped": "{count, plural, other {ข้าม # กฎ}}",
+      "ruleCount": "{count, plural, other {# กฎ}}",
+      "unknownRule": "กฎจากเวอร์ชันที่ใหม่กว่า",
+      "empty": "ยังไม่มีกฎ เพิ่มกฎเพื่อเริ่มกรอง",
+      "summary": {
+        "and": "และ",
+        "or": "หรือ",
+        "not": "ไม่"
+      },
+      "editRules": "แก้ไขกฎ",
+      "clearRules": "ล้างกฎ"
+    }
   },
   "quickAdd": {
     "label": "เพิ่มงานอย่างรวดเร็ว",

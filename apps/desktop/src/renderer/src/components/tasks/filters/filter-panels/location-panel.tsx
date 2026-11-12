@@ -5,11 +5,11 @@ import { CheckMark } from '@/components/ui/check-mark'
 import { FilterSearchHeader } from '@/components/ui/filter-search-header'
 import type { Task } from '@/data/task-model'
 import type { TaskNoteIndex } from '@/lib/task-note-index'
-import { buildTaskLocationOptions } from '@/lib/task-location-options'
 import { useNoteFoldersQuery } from '@/hooks/use-notes-query'
 import { NoteIconDisplay } from '@/lib/render-note-icon'
 import { BackButton } from './priority-panel'
 import { useT } from '@memry/i18n/renderer'
+import { buildTaskLocationOptions } from '@memry/domain-tasks/filtering'
 
 interface LocationPanelProps {
   searchQuery: string
@@ -118,7 +118,10 @@ export function LocationPanel({
           </span>
         )}
         {options.map((option) => {
-          const customIcon = option.kind === 'note' ? option.icon : folderIcons.get(option.value)
+          const customIcon =
+            option.kind === 'note'
+              ? noteIndex?.get(option.value)?.icon
+              : folderIcons.get(option.value)
           const checked =
             option.kind === 'folder'
               ? selectedFolderPaths.includes(option.value)

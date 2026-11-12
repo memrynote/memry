@@ -9102,7 +9102,22 @@
                 "content": [
                   {
                     "styles": {},
-                    "text": "Intro ((mention:https%3A%2F%2Fexample.com%2Fa%5Fb%5Fc)) outro.",
+                    "text": "Intro ",
+                    "type": "text"
+                  },
+                  {
+                    "props": {
+                      "domain": "example.com",
+                      "favicon": "",
+                      "siteName": "",
+                      "title": "",
+                      "url": "https://example.com/a_b_c"
+                    },
+                    "type": "linkMention"
+                  },
+                  {
+                    "styles": {},
+                    "text": " outro.",
                     "type": "text"
                   }
                 ],
@@ -9139,7 +9154,22 @@
                 "content": [
                   {
                     "styles": {},
-                    "text": "Intro ((mention:https%3A%2F%2Fexample.com%2Fa%2Ab%2Ac)) outro.",
+                    "text": "Intro ",
+                    "type": "text"
+                  },
+                  {
+                    "props": {
+                      "domain": "example.com",
+                      "favicon": "",
+                      "siteName": "",
+                      "title": "",
+                      "url": "https://example.com/a*b*c"
+                    },
+                    "type": "linkMention"
+                  },
+                  {
+                    "styles": {},
+                    "text": " outro.",
                     "type": "text"
                   }
                 ],
@@ -9176,7 +9206,22 @@
                 "content": [
                   {
                     "styles": {},
-                    "text": "Intro ((mention:https%3A%2F%2Fexample.com%2Fa%21b)) outro.",
+                    "text": "Intro ",
+                    "type": "text"
+                  },
+                  {
+                    "props": {
+                      "domain": "example.com",
+                      "favicon": "",
+                      "siteName": "",
+                      "title": "",
+                      "url": "https://example.com/a!b"
+                    },
+                    "type": "linkMention"
+                  },
+                  {
+                    "styles": {},
+                    "text": " outro.",
                     "type": "text"
                   }
                 ],
@@ -9213,7 +9258,22 @@
                 "content": [
                   {
                     "styles": {},
-                    "text": "Intro ((mention:https%3A%2F%2Fexample.com%2F%7Euser)) outro.",
+                    "text": "Intro ",
+                    "type": "text"
+                  },
+                  {
+                    "props": {
+                      "domain": "example.com",
+                      "favicon": "",
+                      "siteName": "",
+                      "title": "",
+                      "url": "https://example.com/~user"
+                    },
+                    "type": "linkMention"
+                  },
+                  {
+                    "styles": {},
+                    "text": " outro.",
                     "type": "text"
                   }
                 ],
@@ -9250,7 +9310,22 @@
                 "content": [
                   {
                     "styles": {},
-                    "text": "Intro ((mention:https%3A%2F%2Fexample.com%2Fit%27s)) outro.",
+                    "text": "Intro ",
+                    "type": "text"
+                  },
+                  {
+                    "props": {
+                      "domain": "example.com",
+                      "favicon": "",
+                      "siteName": "",
+                      "title": "",
+                      "url": "https://example.com/it's"
+                    },
+                    "type": "linkMention"
+                  },
+                  {
+                    "styles": {},
+                    "text": " outro.",
                     "type": "text"
                   }
                 ],
@@ -9287,7 +9362,22 @@
                 "content": [
                   {
                     "styles": {},
-                    "text": "Intro ((mention:https%3A%2F%2Fen.wikipedia.org%2Fwiki%2FRust%5F%28programming%5Flanguage%29)) outro.",
+                    "text": "Intro ",
+                    "type": "text"
+                  },
+                  {
+                    "props": {
+                      "domain": "en.wikipedia.org",
+                      "favicon": "",
+                      "siteName": "",
+                      "title": "",
+                      "url": "https://en.wikipedia.org/wiki/Rust_(programming_language)"
+                    },
+                    "type": "linkMention"
+                  },
+                  {
+                    "styles": {},
+                    "text": " outro.",
                     "type": "text"
                   }
                 ],
@@ -9324,7 +9414,22 @@
                 "content": [
                   {
                     "styles": {},
-                    "text": "Intro ((mention:https%3A%2F%2Fexample.com%2F100%2525)) outro.",
+                    "text": "Intro ",
+                    "type": "text"
+                  },
+                  {
+                    "props": {
+                      "domain": "example.com",
+                      "favicon": "",
+                      "siteName": "",
+                      "title": "",
+                      "url": "https://example.com/100%25"
+                    },
+                    "type": "linkMention"
+                  },
+                  {
+                    "styles": {},
+                    "text": " outro.",
                     "type": "text"
                   }
                 ],
@@ -9361,7 +9466,22 @@
                 "content": [
                   {
                     "styles": {},
-                    "text": "Intro ((mention:https%3A%2F%2Fexample.com%2F%3Fa%3D1%26b%3D2%26c%3Dx%5Fy)) outro.",
+                    "text": "Intro ",
+                    "type": "text"
+                  },
+                  {
+                    "props": {
+                      "domain": "example.com",
+                      "favicon": "",
+                      "siteName": "",
+                      "title": "",
+                      "url": "https://example.com/?a=1&b=2&c=x_y"
+                    },
+                    "type": "linkMention"
+                  },
+                  {
+                    "styles": {},
+                    "text": " outro.",
                     "type": "text"
                   }
                 ],
@@ -9398,7 +9518,22 @@
                 "content": [
                   {
                     "styles": {},
-                    "text": "Intro ((mention:https%3A%2F%2Fexample.com%2Fpage%23section)) outro.",
+                    "text": "Intro ",
+                    "type": "text"
+                  },
+                  {
+                    "props": {
+                      "domain": "example.com",
+                      "favicon": "",
+                      "siteName": "",
+                      "title": "",
+                      "url": "https://example.com/page#section"
+                    },
+                    "type": "linkMention"
+                  },
+                  {
+                    "styles": {},
+                    "text": " outro.",
                     "type": "text"
                   }
                 ],
@@ -9435,7 +9570,22 @@
                 "content": [
                   {
                     "styles": {},
-                    "text": "Intro ((mention:https%3A%2F%2Fexample.com%2Fa%20b)) outro.",
+                    "text": "Intro ",
+                    "type": "text"
+                  },
+                  {
+                    "props": {
+                      "domain": "example.com",
+                      "favicon": "",
+                      "siteName": "",
+                      "title": "",
+                      "url": "https://example.com/a b"
+                    },
+                    "type": "linkMention"
+                  },
+                  {
+                    "styles": {},
+                    "text": " outro.",
                     "type": "text"
                   }
                 ],
@@ -9472,7 +9622,22 @@
                 "content": [
                   {
                     "styles": {},
-                    "text": "Intro ((mention:https%3A%2F%2Fexample.com%2F%E6%97%A5%E6%9C%AC%E8%AA%9E%2F%C3%BCn%C3%AFcode)) outro.",
+                    "text": "Intro ",
+                    "type": "text"
+                  },
+                  {
+                    "props": {
+                      "domain": "example.com",
+                      "favicon": "",
+                      "siteName": "",
+                      "title": "",
+                      "url": "https://example.com/日本語/ünïcode"
+                    },
+                    "type": "linkMention"
+                  },
+                  {
+                    "styles": {},
+                    "text": " outro.",
                     "type": "text"
                   }
                 ],
@@ -9509,7 +9674,22 @@
                 "content": [
                   {
                     "styles": {},
-                    "text": "Intro ((mention:https%3A%2F%2Fexample.com%2Fx%5F%28y%29%2Az%21%7E%27%26%3D%23%2520%20end%29)) outro.",
+                    "text": "Intro ",
+                    "type": "text"
+                  },
+                  {
+                    "props": {
+                      "domain": "example.com",
+                      "favicon": "",
+                      "siteName": "",
+                      "title": "",
+                      "url": "https://example.com/x_(y)*z!~'&=#%20 end)"
+                    },
+                    "type": "linkMention"
+                  },
+                  {
+                    "styles": {},
+                    "text": " outro.",
                     "type": "text"
                   }
                 ],
@@ -9546,7 +9726,22 @@
                 "content": [
                   {
                     "styles": {},
-                    "text": "Intro ((mention:https%3A%2F%2Fexample.com%2F%21%5Fbang%2Fx.y%5F%7Ez)) outro.",
+                    "text": "Intro ",
+                    "type": "text"
+                  },
+                  {
+                    "props": {
+                      "domain": "example.com",
+                      "favicon": "",
+                      "siteName": "",
+                      "title": "",
+                      "url": "https://example.com/!_bang/x.y_~z"
+                    },
+                    "type": "linkMention"
+                  },
+                  {
+                    "styles": {},
+                    "text": " outro.",
                     "type": "text"
                   }
                 ],
@@ -13111,9 +13306,14 @@
                         {
                           "content": [
                             {
-                              "styles": {},
-                              "text": "((mention:https%3A%2F%2Fexample.com%2Fplain))",
-                              "type": "text"
+                              "props": {
+                                "domain": "example.com",
+                                "favicon": "",
+                                "siteName": "",
+                                "title": "",
+                                "url": "https://example.com/plain"
+                              },
+                              "type": "linkMention"
                             }
                           ],
                           "props": {
@@ -13666,9 +13866,14 @@
                 },
                 "content": [
                   {
-                    "styles": {},
-                    "text": "((mention:https%3A%2F%2Fexample.com%2Fplain))",
-                    "type": "text"
+                    "props": {
+                      "domain": "example.com",
+                      "favicon": "",
+                      "siteName": "",
+                      "title": "",
+                      "url": "https://example.com/plain"
+                    },
+                    "type": "linkMention"
                   }
                 ],
                 "children": []
@@ -13732,8 +13937,18 @@
                     },
                     "content": [
                       {
+                        "props": {
+                          "domain": "example.com",
+                          "favicon": "",
+                          "siteName": "",
+                          "title": "",
+                          "url": "https://example.com/plain"
+                        },
+                        "type": "linkMention"
+                      },
+                      {
                         "styles": {},
-                        "text": "((mention:https%3A%2F%2Fexample.com%2Fplain)) and ((date:eyJhbmNob3JJZCI6ImExIiwiZGF0ZUlTTyI6IjIwMjYtMDgtMTRUMDk6MDA6MDAuMDAwWiIsImhhc1RpbWUiOnRydWUsImRhdGVGb3JtYXQiOiJyZWxhdGl2ZSIsInJlbWluZCI6Im5vbmUiLCJ0aW1lRm9ybWF0Ijoic3lzdGVtIn0))",
+                        "text": " and ((date:eyJhbmNob3JJZCI6ImExIiwiZGF0ZUlTTyI6IjIwMjYtMDgtMTRUMDk6MDA6MDAuMDAwWiIsImhhc1RpbWUiOnRydWUsImRhdGVGb3JtYXQiOiJyZWxhdGl2ZSIsInJlbWluZCI6Im5vbmUiLCJ0aW1lRm9ybWF0Ijoic3lzdGVtIn0))",
                         "type": "text"
                       }
                     ],
@@ -13772,7 +13987,22 @@
                 "content": [
                   {
                     "styles": {},
-                    "text": "See [[Roadmap]] and #tag and ((mention:https%3A%2F%2Fx.com)) inline.",
+                    "text": "See [[Roadmap]] and #tag and ",
+                    "type": "text"
+                  },
+                  {
+                    "props": {
+                      "domain": "x.com",
+                      "favicon": "",
+                      "siteName": "",
+                      "title": "",
+                      "url": "https://x.com"
+                    },
+                    "type": "linkMention"
+                  },
+                  {
+                    "styles": {},
+                    "text": " inline.",
                     "type": "text"
                   }
                 ],
@@ -23030,7 +23260,22 @@
                 "content": [
                   {
                     "styles": {},
-                    "text": "Fuzz ((mention:https%3A%2F%2Ffuzz.example%2F%E6%97%A5%299%7E%2310%26%2Az)) tail.",
+                    "text": "Fuzz ",
+                    "type": "text"
+                  },
+                  {
+                    "props": {
+                      "domain": "fuzz.example",
+                      "favicon": "",
+                      "siteName": "",
+                      "title": "",
+                      "url": "https://fuzz.example/日)9~#10&*z"
+                    },
+                    "type": "linkMention"
+                  },
+                  {
+                    "styles": {},
+                    "text": " tail.",
                     "type": "text"
                   }
                 ],
@@ -23067,7 +23312,22 @@
                 "content": [
                   {
                     "styles": {},
-                    "text": "Fuzz ((mention:https%3A%2F%2Ffuzz.example%2F%20%E6%97%A5%20%26z%21%E6%97%A50b%20%21%5F%C3%A9%5F)) tail.",
+                    "text": "Fuzz ",
+                    "type": "text"
+                  },
+                  {
+                    "props": {
+                      "domain": "fuzz.example",
+                      "favicon": "",
+                      "siteName": "",
+                      "title": "",
+                      "url": "https://fuzz.example/ 日 &z!日0b !_é_"
+                    },
+                    "type": "linkMention"
+                  },
+                  {
+                    "styles": {},
+                    "text": " tail.",
                     "type": "text"
                   }
                 ],
@@ -23104,7 +23364,22 @@
                 "content": [
                   {
                     "styles": {},
-                    "text": "Fuzz ((mention:https%3A%2F%2Ffuzz.example%2F%20z1z101%250%3D%7E)) tail.",
+                    "text": "Fuzz ",
+                    "type": "text"
+                  },
+                  {
+                    "props": {
+                      "domain": "fuzz.example",
+                      "favicon": "",
+                      "siteName": "",
+                      "title": "",
+                      "url": "https://fuzz.example/ z1z101%0=~"
+                    },
+                    "type": "linkMention"
+                  },
+                  {
+                    "styles": {},
+                    "text": " tail.",
                     "type": "text"
                   }
                 ],
@@ -23141,7 +23416,22 @@
                 "content": [
                   {
                     "styles": {},
-                    "text": "Fuzz ((mention:https%3A%2F%2Ffuzz.example%2F%28)) tail.",
+                    "text": "Fuzz ",
+                    "type": "text"
+                  },
+                  {
+                    "props": {
+                      "domain": "fuzz.example",
+                      "favicon": "",
+                      "siteName": "",
+                      "title": "",
+                      "url": "https://fuzz.example/("
+                    },
+                    "type": "linkMention"
+                  },
+                  {
+                    "styles": {},
+                    "text": " tail.",
                     "type": "text"
                   }
                 ],
@@ -23178,7 +23468,22 @@
                 "content": [
                   {
                     "styles": {},
-                    "text": "Fuzz ((mention:https%3A%2F%2Ffuzz.example%2F%26%5F%28%7E%E6%97%A5c%3D%25%20%21%23z%210%5F%2A%28)) tail.",
+                    "text": "Fuzz ",
+                    "type": "text"
+                  },
+                  {
+                    "props": {
+                      "domain": "fuzz.example",
+                      "favicon": "",
+                      "siteName": "",
+                      "title": "",
+                      "url": "https://fuzz.example/&_(~日c=% !#z!0_*("
+                    },
+                    "type": "linkMention"
+                  },
+                  {
+                    "styles": {},
+                    "text": " tail.",
                     "type": "text"
                   }
                 ],
@@ -23215,7 +23520,22 @@
                 "content": [
                   {
                     "styles": {},
-                    "text": "Fuzz ((mention:https%3A%2F%2Ffuzz.example%2F%2A%26%C3%A9%7E%20%C3%A9%C3%A99%28%29a)) tail.",
+                    "text": "Fuzz ",
+                    "type": "text"
+                  },
+                  {
+                    "props": {
+                      "domain": "fuzz.example",
+                      "favicon": "",
+                      "siteName": "",
+                      "title": "",
+                      "url": "https://fuzz.example/*&é~ éé9()a"
+                    },
+                    "type": "linkMention"
+                  },
+                  {
+                    "styles": {},
+                    "text": " tail.",
                     "type": "text"
                   }
                 ],
@@ -23252,7 +23572,22 @@
                 "content": [
                   {
                     "styles": {},
-                    "text": "Fuzz ((mention:https%3A%2F%2Ffuzz.example%2Fz%23%26%E6%97%A51%C3%A9%3Db%25%28%230%C3%A9%28)) tail.",
+                    "text": "Fuzz ",
+                    "type": "text"
+                  },
+                  {
+                    "props": {
+                      "domain": "fuzz.example",
+                      "favicon": "",
+                      "siteName": "",
+                      "title": "",
+                      "url": "https://fuzz.example/z#&日1é=b%(#0é("
+                    },
+                    "type": "linkMention"
+                  },
+                  {
+                    "styles": {},
+                    "text": " tail.",
                     "type": "text"
                   }
                 ],
@@ -23289,7 +23624,22 @@
                 "content": [
                   {
                     "styles": {},
-                    "text": "Fuzz ((mention:https%3A%2F%2Ffuzz.example%2F%209%2A%271%25%5F%27%28a%29z%C3%A9%28%23%3Dc)) tail.",
+                    "text": "Fuzz ",
+                    "type": "text"
+                  },
+                  {
+                    "props": {
+                      "domain": "fuzz.example",
+                      "favicon": "",
+                      "siteName": "",
+                      "title": "",
+                      "url": "https://fuzz.example/ 9*'1%_'(a)zé(#=c"
+                    },
+                    "type": "linkMention"
+                  },
+                  {
+                    "styles": {},
+                    "text": " tail.",
                     "type": "text"
                   }
                 ],
@@ -23326,7 +23676,22 @@
                 "content": [
                   {
                     "styles": {},
-                    "text": "Fuzz ((mention:https%3A%2F%2Ffuzz.example%2F%5F%21a%28%2Ac11%5F%25a%C3%A9%29a)) tail.",
+                    "text": "Fuzz ",
+                    "type": "text"
+                  },
+                  {
+                    "props": {
+                      "domain": "fuzz.example",
+                      "favicon": "",
+                      "siteName": "",
+                      "title": "",
+                      "url": "https://fuzz.example/_!a(*c11_%aé)a"
+                    },
+                    "type": "linkMention"
+                  },
+                  {
+                    "styles": {},
+                    "text": " tail.",
                     "type": "text"
                   }
                 ],
@@ -23363,7 +23728,22 @@
                 "content": [
                   {
                     "styles": {},
-                    "text": "Fuzz ((mention:https%3A%2F%2Ffuzz.example%2F1%25%2Azzc)) tail.",
+                    "text": "Fuzz ",
+                    "type": "text"
+                  },
+                  {
+                    "props": {
+                      "domain": "fuzz.example",
+                      "favicon": "",
+                      "siteName": "",
+                      "title": "",
+                      "url": "https://fuzz.example/1%*zzc"
+                    },
+                    "type": "linkMention"
+                  },
+                  {
+                    "styles": {},
+                    "text": " tail.",
                     "type": "text"
                   }
                 ],
@@ -23400,7 +23780,22 @@
                 "content": [
                   {
                     "styles": {},
-                    "text": "Fuzz ((mention:https%3A%2F%2Ffuzz.example%2F9aa%26%21%231z9%3D%25%20%3D%C3%A9%25%7Ebb)) tail.",
+                    "text": "Fuzz ",
+                    "type": "text"
+                  },
+                  {
+                    "props": {
+                      "domain": "fuzz.example",
+                      "favicon": "",
+                      "siteName": "",
+                      "title": "",
+                      "url": "https://fuzz.example/9aa&!#1z9=% =é%~bb"
+                    },
+                    "type": "linkMention"
+                  },
+                  {
+                    "styles": {},
+                    "text": " tail.",
                     "type": "text"
                   }
                 ],
@@ -23437,7 +23832,22 @@
                 "content": [
                   {
                     "styles": {},
-                    "text": "Fuzz ((mention:https%3A%2F%2Ffuzz.example%2Fa%C3%A9%29a%21%27%7E)) tail.",
+                    "text": "Fuzz ",
+                    "type": "text"
+                  },
+                  {
+                    "props": {
+                      "domain": "fuzz.example",
+                      "favicon": "",
+                      "siteName": "",
+                      "title": "",
+                      "url": "https://fuzz.example/aé)a!'~"
+                    },
+                    "type": "linkMention"
+                  },
+                  {
+                    "styles": {},
+                    "text": " tail.",
                     "type": "text"
                   }
                 ],
@@ -23474,7 +23884,22 @@
                 "content": [
                   {
                     "styles": {},
-                    "text": "Fuzz ((mention:https%3A%2F%2Ffuzz.example%2Fc%2A%20%3D%5F0)) tail.",
+                    "text": "Fuzz ",
+                    "type": "text"
+                  },
+                  {
+                    "props": {
+                      "domain": "fuzz.example",
+                      "favicon": "",
+                      "siteName": "",
+                      "title": "",
+                      "url": "https://fuzz.example/c* =_0"
+                    },
+                    "type": "linkMention"
+                  },
+                  {
+                    "styles": {},
+                    "text": " tail.",
                     "type": "text"
                   }
                 ],
@@ -23511,7 +23936,22 @@
                 "content": [
                   {
                     "styles": {},
-                    "text": "Fuzz ((mention:https%3A%2F%2Ffuzz.example%2Fac9bbcb%25z1)) tail.",
+                    "text": "Fuzz ",
+                    "type": "text"
+                  },
+                  {
+                    "props": {
+                      "domain": "fuzz.example",
+                      "favicon": "",
+                      "siteName": "",
+                      "title": "",
+                      "url": "https://fuzz.example/ac9bbcb%z1"
+                    },
+                    "type": "linkMention"
+                  },
+                  {
+                    "styles": {},
+                    "text": " tail.",
                     "type": "text"
                   }
                 ],
@@ -23548,7 +23988,22 @@
                 "content": [
                   {
                     "styles": {},
-                    "text": "Fuzz ((mention:https%3A%2F%2Ffuzz.example%2F%3D%25%C3%A99%27zz%26%2A1%C3%A9%7E%27%5F%C3%A99%2700)) tail.",
+                    "text": "Fuzz ",
+                    "type": "text"
+                  },
+                  {
+                    "props": {
+                      "domain": "fuzz.example",
+                      "favicon": "",
+                      "siteName": "",
+                      "title": "",
+                      "url": "https://fuzz.example/=%é9'zz&*1é~'_é9'00"
+                    },
+                    "type": "linkMention"
+                  },
+                  {
+                    "styles": {},
+                    "text": " tail.",
                     "type": "text"
                   }
                 ],
@@ -23585,7 +24040,22 @@
                 "content": [
                   {
                     "styles": {},
-                    "text": "Fuzz ((mention:https%3A%2F%2Ffuzz.example%2F%27za%20)) tail.",
+                    "text": "Fuzz ",
+                    "type": "text"
+                  },
+                  {
+                    "props": {
+                      "domain": "fuzz.example",
+                      "favicon": "",
+                      "siteName": "",
+                      "title": "",
+                      "url": "https://fuzz.example/'za "
+                    },
+                    "type": "linkMention"
+                  },
+                  {
+                    "styles": {},
+                    "text": " tail.",
                     "type": "text"
                   }
                 ],
@@ -23622,7 +24092,22 @@
                 "content": [
                   {
                     "styles": {},
-                    "text": "Fuzz ((mention:https%3A%2F%2Ffuzz.example%2Fz%27%5F)) tail.",
+                    "text": "Fuzz ",
+                    "type": "text"
+                  },
+                  {
+                    "props": {
+                      "domain": "fuzz.example",
+                      "favicon": "",
+                      "siteName": "",
+                      "title": "",
+                      "url": "https://fuzz.example/z'_"
+                    },
+                    "type": "linkMention"
+                  },
+                  {
+                    "styles": {},
+                    "text": " tail.",
                     "type": "text"
                   }
                 ],
@@ -23659,7 +24144,22 @@
                 "content": [
                   {
                     "styles": {},
-                    "text": "Fuzz ((mention:https%3A%2F%2Ffuzz.example%2F%3D%20%3Daz%7E%20%27%28%25%289%20%29%3D1b%26ab%2A%25)) tail.",
+                    "text": "Fuzz ",
+                    "type": "text"
+                  },
+                  {
+                    "props": {
+                      "domain": "fuzz.example",
+                      "favicon": "",
+                      "siteName": "",
+                      "title": "",
+                      "url": "https://fuzz.example/= =az~ '(%(9 )=1b&ab*%"
+                    },
+                    "type": "linkMention"
+                  },
+                  {
+                    "styles": {},
+                    "text": " tail.",
                     "type": "text"
                   }
                 ],
@@ -23696,7 +24196,22 @@
                 "content": [
                   {
                     "styles": {},
-                    "text": "Fuzz ((mention:https%3A%2F%2Ffuzz.example%2Fz%26%289z%C3%A9%5F%20%2A%21)) tail.",
+                    "text": "Fuzz ",
+                    "type": "text"
+                  },
+                  {
+                    "props": {
+                      "domain": "fuzz.example",
+                      "favicon": "",
+                      "siteName": "",
+                      "title": "",
+                      "url": "https://fuzz.example/z&(9zé_ *!"
+                    },
+                    "type": "linkMention"
+                  },
+                  {
+                    "styles": {},
+                    "text": " tail.",
                     "type": "text"
                   }
                 ],
@@ -23733,7 +24248,22 @@
                 "content": [
                   {
                     "styles": {},
-                    "text": "Fuzz ((mention:https%3A%2F%2Ffuzz.example%2F%21%27%259%5Fa190b%25%27%209c%20%C3%A9%20%3D%5F%2A9)) tail.",
+                    "text": "Fuzz ",
+                    "type": "text"
+                  },
+                  {
+                    "props": {
+                      "domain": "fuzz.example",
+                      "favicon": "",
+                      "siteName": "",
+                      "title": "",
+                      "url": "https://fuzz.example/!'%9_a190b%' 9c é =_*9"
+                    },
+                    "type": "linkMention"
+                  },
+                  {
+                    "styles": {},
+                    "text": " tail.",
                     "type": "text"
                   }
                 ],
@@ -23770,7 +24300,22 @@
                 "content": [
                   {
                     "styles": {},
-                    "text": "Fuzz ((mention:https%3A%2F%2Ffuzz.example%2F%211%2A%29z90%29%C3%A9%219%21a%29%20)) tail.",
+                    "text": "Fuzz ",
+                    "type": "text"
+                  },
+                  {
+                    "props": {
+                      "domain": "fuzz.example",
+                      "favicon": "",
+                      "siteName": "",
+                      "title": "",
+                      "url": "https://fuzz.example/!1*)z90)é!9!a) "
+                    },
+                    "type": "linkMention"
+                  },
+                  {
+                    "styles": {},
+                    "text": " tail.",
                     "type": "text"
                   }
                 ],
@@ -23807,7 +24352,22 @@
                 "content": [
                   {
                     "styles": {},
-                    "text": "Fuzz ((mention:https%3A%2F%2Ffuzz.example%2F%23%3D%23)) tail.",
+                    "text": "Fuzz ",
+                    "type": "text"
+                  },
+                  {
+                    "props": {
+                      "domain": "fuzz.example",
+                      "favicon": "",
+                      "siteName": "",
+                      "title": "",
+                      "url": "https://fuzz.example/#=#"
+                    },
+                    "type": "linkMention"
+                  },
+                  {
+                    "styles": {},
+                    "text": " tail.",
                     "type": "text"
                   }
                 ],
@@ -23844,7 +24404,22 @@
                 "content": [
                   {
                     "styles": {},
-                    "text": "Fuzz ((mention:https%3A%2F%2Ffuzz.example%2F%27%27%27%5F0%3D%3Dc90%5F09b0c%261%29%29)) tail.",
+                    "text": "Fuzz ",
+                    "type": "text"
+                  },
+                  {
+                    "props": {
+                      "domain": "fuzz.example",
+                      "favicon": "",
+                      "siteName": "",
+                      "title": "",
+                      "url": "https://fuzz.example/'''_0==c90_09b0c&1))"
+                    },
+                    "type": "linkMention"
+                  },
+                  {
+                    "styles": {},
+                    "text": " tail.",
                     "type": "text"
                   }
                 ],
@@ -23881,7 +24456,22 @@
                 "content": [
                   {
                     "styles": {},
-                    "text": "Fuzz ((mention:https%3A%2F%2Ffuzz.example%2F%20%3D1b%23%25%2A)) tail.",
+                    "text": "Fuzz ",
+                    "type": "text"
+                  },
+                  {
+                    "props": {
+                      "domain": "fuzz.example",
+                      "favicon": "",
+                      "siteName": "",
+                      "title": "",
+                      "url": "https://fuzz.example/ =1b#%*"
+                    },
+                    "type": "linkMention"
+                  },
+                  {
+                    "styles": {},
+                    "text": " tail.",
                     "type": "text"
                   }
                 ],
@@ -23918,7 +24508,22 @@
                 "content": [
                   {
                     "styles": {},
-                    "text": "Fuzz ((mention:https%3A%2F%2Ffuzz.example%2F%E6%97%A5%26%26%25%201%3D%7E%7E%28)) tail.",
+                    "text": "Fuzz ",
+                    "type": "text"
+                  },
+                  {
+                    "props": {
+                      "domain": "fuzz.example",
+                      "favicon": "",
+                      "siteName": "",
+                      "title": "",
+                      "url": "https://fuzz.example/日&&% 1=~~("
+                    },
+                    "type": "linkMention"
+                  },
+                  {
+                    "styles": {},
+                    "text": " tail.",
                     "type": "text"
                   }
                 ],
@@ -23955,7 +24560,22 @@
                 "content": [
                   {
                     "styles": {},
-                    "text": "Fuzz ((mention:https%3A%2F%2Ffuzz.example%2F0)) tail.",
+                    "text": "Fuzz ",
+                    "type": "text"
+                  },
+                  {
+                    "props": {
+                      "domain": "fuzz.example",
+                      "favicon": "",
+                      "siteName": "",
+                      "title": "",
+                      "url": "https://fuzz.example/0"
+                    },
+                    "type": "linkMention"
+                  },
+                  {
+                    "styles": {},
+                    "text": " tail.",
                     "type": "text"
                   }
                 ],
@@ -23992,7 +24612,22 @@
                 "content": [
                   {
                     "styles": {},
-                    "text": "Fuzz ((mention:https%3A%2F%2Ffuzz.example%2F%26b%5F9z0z%5Fz%2A9%2Aa%28a)) tail.",
+                    "text": "Fuzz ",
+                    "type": "text"
+                  },
+                  {
+                    "props": {
+                      "domain": "fuzz.example",
+                      "favicon": "",
+                      "siteName": "",
+                      "title": "",
+                      "url": "https://fuzz.example/&b_9z0z_z*9*a(a"
+                    },
+                    "type": "linkMention"
+                  },
+                  {
+                    "styles": {},
+                    "text": " tail.",
                     "type": "text"
                   }
                 ],
@@ -24029,7 +24664,22 @@
                 "content": [
                   {
                     "styles": {},
-                    "text": "Fuzz ((mention:https%3A%2F%2Ffuzz.example%2Fbb1%25a%28%2A%7E0%21%21ccb%28c%23a%26%25%29%26%29%21)) tail.",
+                    "text": "Fuzz ",
+                    "type": "text"
+                  },
+                  {
+                    "props": {
+                      "domain": "fuzz.example",
+                      "favicon": "",
+                      "siteName": "",
+                      "title": "",
+                      "url": "https://fuzz.example/bb1%a(*~0!!ccb(c#a&%)&)!"
+                    },
+                    "type": "linkMention"
+                  },
+                  {
+                    "styles": {},
+                    "text": " tail.",
                     "type": "text"
                   }
                 ],
@@ -24066,7 +24716,22 @@
                 "content": [
                   {
                     "styles": {},
-                    "text": "Fuzz ((mention:https%3A%2F%2Ffuzz.example%2F%27%21%28%21%5F%20%2A%3D0z%3D)) tail.",
+                    "text": "Fuzz ",
+                    "type": "text"
+                  },
+                  {
+                    "props": {
+                      "domain": "fuzz.example",
+                      "favicon": "",
+                      "siteName": "",
+                      "title": "",
+                      "url": "https://fuzz.example/'!(!_ *=0z="
+                    },
+                    "type": "linkMention"
+                  },
+                  {
+                    "styles": {},
+                    "text": " tail.",
                     "type": "text"
                   }
                 ],
@@ -24103,7 +24768,22 @@
                 "content": [
                   {
                     "styles": {},
-                    "text": "Fuzz ((mention:https%3A%2F%2Ffuzz.example%2Fc%3D%2A%E6%97%A5%7E%27%250%27a%7E%23b%C3%A9%26%20%C3%A9%7E)) tail.",
+                    "text": "Fuzz ",
+                    "type": "text"
+                  },
+                  {
+                    "props": {
+                      "domain": "fuzz.example",
+                      "favicon": "",
+                      "siteName": "",
+                      "title": "",
+                      "url": "https://fuzz.example/c=*日~'%0'a~#bé& é~"
+                    },
+                    "type": "linkMention"
+                  },
+                  {
+                    "styles": {},
+                    "text": " tail.",
                     "type": "text"
                   }
                 ],
@@ -24140,7 +24820,22 @@
                 "content": [
                   {
                     "styles": {},
-                    "text": "Fuzz ((mention:https%3A%2F%2Ffuzz.example%2F1z%27%20%2A%7E%271%29%5F%270aacbza)) tail.",
+                    "text": "Fuzz ",
+                    "type": "text"
+                  },
+                  {
+                    "props": {
+                      "domain": "fuzz.example",
+                      "favicon": "",
+                      "siteName": "",
+                      "title": "",
+                      "url": "https://fuzz.example/1z' *~'1)_'0aacbza"
+                    },
+                    "type": "linkMention"
+                  },
+                  {
+                    "styles": {},
+                    "text": " tail.",
                     "type": "text"
                   }
                 ],
@@ -24177,7 +24872,22 @@
                 "content": [
                   {
                     "styles": {},
-                    "text": "Fuzz ((mention:https%3A%2F%2Ffuzz.example%2F%29)) tail.",
+                    "text": "Fuzz ",
+                    "type": "text"
+                  },
+                  {
+                    "props": {
+                      "domain": "fuzz.example",
+                      "favicon": "",
+                      "siteName": "",
+                      "title": "",
+                      "url": "https://fuzz.example/)"
+                    },
+                    "type": "linkMention"
+                  },
+                  {
+                    "styles": {},
+                    "text": " tail.",
                     "type": "text"
                   }
                 ],
@@ -24214,7 +24924,22 @@
                 "content": [
                   {
                     "styles": {},
-                    "text": "Fuzz ((mention:https%3A%2F%2Ffuzz.example%2Fa%2A%5F%25%20%7E%269%26c9z0c%C3%A9)) tail.",
+                    "text": "Fuzz ",
+                    "type": "text"
+                  },
+                  {
+                    "props": {
+                      "domain": "fuzz.example",
+                      "favicon": "",
+                      "siteName": "",
+                      "title": "",
+                      "url": "https://fuzz.example/a*_% ~&9&c9z0cé"
+                    },
+                    "type": "linkMention"
+                  },
+                  {
+                    "styles": {},
+                    "text": " tail.",
                     "type": "text"
                   }
                 ],
@@ -24251,7 +24976,22 @@
                 "content": [
                   {
                     "styles": {},
-                    "text": "Fuzz ((mention:https%3A%2F%2Ffuzz.example%2F%5F%3Dz%2A%289%2Ab%29%23%E6%97%A5%2A%C3%A9%7E%28%5Fa%28ac%27)) tail.",
+                    "text": "Fuzz ",
+                    "type": "text"
+                  },
+                  {
+                    "props": {
+                      "domain": "fuzz.example",
+                      "favicon": "",
+                      "siteName": "",
+                      "title": "",
+                      "url": "https://fuzz.example/_=z*(9*b)#日*é~(_a(ac'"
+                    },
+                    "type": "linkMention"
+                  },
+                  {
+                    "styles": {},
+                    "text": " tail.",
                     "type": "text"
                   }
                 ],
@@ -24288,7 +25028,22 @@
                 "content": [
                   {
                     "styles": {},
-                    "text": "Fuzz ((mention:https%3A%2F%2Ffuzz.example%2F%7E%7E%28%E6%97%A5%2Ab%26)) tail.",
+                    "text": "Fuzz ",
+                    "type": "text"
+                  },
+                  {
+                    "props": {
+                      "domain": "fuzz.example",
+                      "favicon": "",
+                      "siteName": "",
+                      "title": "",
+                      "url": "https://fuzz.example/~~(日*b&"
+                    },
+                    "type": "linkMention"
+                  },
+                  {
+                    "styles": {},
+                    "text": " tail.",
                     "type": "text"
                   }
                 ],
@@ -24325,7 +25080,22 @@
                 "content": [
                   {
                     "styles": {},
-                    "text": "Fuzz ((mention:https%3A%2F%2Ffuzz.example%2Fc%28%7E0%2Ab%5F%26%E6%97%A5%20%7E)) tail.",
+                    "text": "Fuzz ",
+                    "type": "text"
+                  },
+                  {
+                    "props": {
+                      "domain": "fuzz.example",
+                      "favicon": "",
+                      "siteName": "",
+                      "title": "",
+                      "url": "https://fuzz.example/c(~0*b_&日 ~"
+                    },
+                    "type": "linkMention"
+                  },
+                  {
+                    "styles": {},
+                    "text": " tail.",
                     "type": "text"
                   }
                 ],
@@ -24362,7 +25132,22 @@
                 "content": [
                   {
                     "styles": {},
-                    "text": "Fuzz ((mention:https%3A%2F%2Ffuzz.example%2F%28%29%27%5F%25%21%219%21c%2A%3D0cc)) tail.",
+                    "text": "Fuzz ",
+                    "type": "text"
+                  },
+                  {
+                    "props": {
+                      "domain": "fuzz.example",
+                      "favicon": "",
+                      "siteName": "",
+                      "title": "",
+                      "url": "https://fuzz.example/()'_%!!9!c*=0cc"
+                    },
+                    "type": "linkMention"
+                  },
+                  {
+                    "styles": {},
+                    "text": " tail.",
                     "type": "text"
                   }
                 ],
@@ -24399,7 +25184,22 @@
                 "content": [
                   {
                     "styles": {},
-                    "text": "Fuzz ((mention:https%3A%2F%2Ffuzz.example%2F%3D%7E%3D%26)) tail.",
+                    "text": "Fuzz ",
+                    "type": "text"
+                  },
+                  {
+                    "props": {
+                      "domain": "fuzz.example",
+                      "favicon": "",
+                      "siteName": "",
+                      "title": "",
+                      "url": "https://fuzz.example/=~=&"
+                    },
+                    "type": "linkMention"
+                  },
+                  {
+                    "styles": {},
+                    "text": " tail.",
                     "type": "text"
                   }
                 ],
@@ -24436,7 +25236,22 @@
                 "content": [
                   {
                     "styles": {},
-                    "text": "Fuzz ((mention:https%3A%2F%2Ffuzz.example%2F%279a%23%21%2900%210%26%28%21%2A%2A%2A)) tail.",
+                    "text": "Fuzz ",
+                    "type": "text"
+                  },
+                  {
+                    "props": {
+                      "domain": "fuzz.example",
+                      "favicon": "",
+                      "siteName": "",
+                      "title": "",
+                      "url": "https://fuzz.example/'9a#!)00!0&(!***"
+                    },
+                    "type": "linkMention"
+                  },
+                  {
+                    "styles": {},
+                    "text": " tail.",
                     "type": "text"
                   }
                 ],
@@ -24473,7 +25288,22 @@
                 "content": [
                   {
                     "styles": {},
-                    "text": "Fuzz ((mention:https%3A%2F%2Ffuzz.example%2F%2A%27b%21%28%20%26%29z%21%E6%97%A5%26%E6%97%A5%27%250)) tail.",
+                    "text": "Fuzz ",
+                    "type": "text"
+                  },
+                  {
+                    "props": {
+                      "domain": "fuzz.example",
+                      "favicon": "",
+                      "siteName": "",
+                      "title": "",
+                      "url": "https://fuzz.example/*'b!( &)z!日&日'%0"
+                    },
+                    "type": "linkMention"
+                  },
+                  {
+                    "styles": {},
+                    "text": " tail.",
                     "type": "text"
                   }
                 ],
@@ -24510,7 +25340,22 @@
                 "content": [
                   {
                     "styles": {},
-                    "text": "Fuzz ((mention:https%3A%2F%2Ffuzz.example%2F9%E6%97%A51%20%27%C3%A9%299%3Daa%26%21)) tail.",
+                    "text": "Fuzz ",
+                    "type": "text"
+                  },
+                  {
+                    "props": {
+                      "domain": "fuzz.example",
+                      "favicon": "",
+                      "siteName": "",
+                      "title": "",
+                      "url": "https://fuzz.example/9日1 'é)9=aa&!"
+                    },
+                    "type": "linkMention"
+                  },
+                  {
+                    "styles": {},
+                    "text": " tail.",
                     "type": "text"
                   }
                 ],
@@ -24547,7 +25392,22 @@
                 "content": [
                   {
                     "styles": {},
-                    "text": "Fuzz ((mention:https%3A%2F%2Ffuzz.example%2F00%5F%2A%20%E6%97%A5a%5F%3D%E6%97%A5%7E%27%21)) tail.",
+                    "text": "Fuzz ",
+                    "type": "text"
+                  },
+                  {
+                    "props": {
+                      "domain": "fuzz.example",
+                      "favicon": "",
+                      "siteName": "",
+                      "title": "",
+                      "url": "https://fuzz.example/00_* 日a_=日~'!"
+                    },
+                    "type": "linkMention"
+                  },
+                  {
+                    "styles": {},
+                    "text": " tail.",
                     "type": "text"
                   }
                 ],
@@ -24584,7 +25444,22 @@
                 "content": [
                   {
                     "styles": {},
-                    "text": "Fuzz ((mention:https%3A%2F%2Ffuzz.example%2F19%C3%A9%21%21c%27%E6%97%A5%E6%97%A5%26099%20%C3%A9%3D%3D1z%3D%C3%A9%21)) tail.",
+                    "text": "Fuzz ",
+                    "type": "text"
+                  },
+                  {
+                    "props": {
+                      "domain": "fuzz.example",
+                      "favicon": "",
+                      "siteName": "",
+                      "title": "",
+                      "url": "https://fuzz.example/19é!!c'日日&099 é==1z=é!"
+                    },
+                    "type": "linkMention"
+                  },
+                  {
+                    "styles": {},
+                    "text": " tail.",
                     "type": "text"
                   }
                 ],
@@ -24621,7 +25496,22 @@
                 "content": [
                   {
                     "styles": {},
-                    "text": "Fuzz ((mention:https%3A%2F%2Ffuzz.example%2F%2A99%25b9c%28%7E%20%26%23)) tail.",
+                    "text": "Fuzz ",
+                    "type": "text"
+                  },
+                  {
+                    "props": {
+                      "domain": "fuzz.example",
+                      "favicon": "",
+                      "siteName": "",
+                      "title": "",
+                      "url": "https://fuzz.example/*99%b9c(~ &#"
+                    },
+                    "type": "linkMention"
+                  },
+                  {
+                    "styles": {},
+                    "text": " tail.",
                     "type": "text"
                   }
                 ],
@@ -24658,7 +25548,22 @@
                 "content": [
                   {
                     "styles": {},
-                    "text": "Fuzz ((mention:https%3A%2F%2Ffuzz.example%2F1%7E%C3%A9%28%26%5F%3Dcc%3D%3D%C3%A9%26%25c%3D1za%2091)) tail.",
+                    "text": "Fuzz ",
+                    "type": "text"
+                  },
+                  {
+                    "props": {
+                      "domain": "fuzz.example",
+                      "favicon": "",
+                      "siteName": "",
+                      "title": "",
+                      "url": "https://fuzz.example/1~é(&_=cc==é&%c=1za 91"
+                    },
+                    "type": "linkMention"
+                  },
+                  {
+                    "styles": {},
+                    "text": " tail.",
                     "type": "text"
                   }
                 ],
@@ -24695,7 +25600,22 @@
                 "content": [
                   {
                     "styles": {},
-                    "text": "Fuzz ((mention:https%3A%2F%2Ffuzz.example%2F%5F%27%2Aab%209z%2A1%28%26%C3%A9%29b%7E%26%3D%5Fb%29%21)) tail.",
+                    "text": "Fuzz ",
+                    "type": "text"
+                  },
+                  {
+                    "props": {
+                      "domain": "fuzz.example",
+                      "favicon": "",
+                      "siteName": "",
+                      "title": "",
+                      "url": "https://fuzz.example/_'*ab 9z*1(&é)b~&=_b)!"
+                    },
+                    "type": "linkMention"
+                  },
+                  {
+                    "styles": {},
+                    "text": " tail.",
                     "type": "text"
                   }
                 ],
@@ -24732,7 +25652,22 @@
                 "content": [
                   {
                     "styles": {},
-                    "text": "Fuzz ((mention:https%3A%2F%2Ffuzz.example%2Fa%E6%97%A5%26%25%27%25%20%21z%25%25%2A%29%E6%97%A5)) tail.",
+                    "text": "Fuzz ",
+                    "type": "text"
+                  },
+                  {
+                    "props": {
+                      "domain": "fuzz.example",
+                      "favicon": "",
+                      "siteName": "",
+                      "title": "",
+                      "url": "https://fuzz.example/a日&%'% !z%%*)日"
+                    },
+                    "type": "linkMention"
+                  },
+                  {
+                    "styles": {},
+                    "text": " tail.",
                     "type": "text"
                   }
                 ],
@@ -24769,7 +25704,22 @@
                 "content": [
                   {
                     "styles": {},
-                    "text": "Fuzz ((mention:https%3A%2F%2Ffuzz.example%2Faa%20)) tail.",
+                    "text": "Fuzz ",
+                    "type": "text"
+                  },
+                  {
+                    "props": {
+                      "domain": "fuzz.example",
+                      "favicon": "",
+                      "siteName": "",
+                      "title": "",
+                      "url": "https://fuzz.example/aa "
+                    },
+                    "type": "linkMention"
+                  },
+                  {
+                    "styles": {},
+                    "text": " tail.",
                     "type": "text"
                   }
                 ],
@@ -32210,7 +33160,22 @@
                 "content": [
                   {
                     "styles": {},
-                    "text": "1 !c0c0z0;z? a,;?1, ((mention:https%3A%2F%2Ffuzz.example%2F%E6%97%A5ca%C3%A910)) 日b?;é !c z",
+                    "text": "1 !c0c0z0;z? a,;?1, ",
+                    "type": "text"
+                  },
+                  {
+                    "props": {
+                      "domain": "fuzz.example",
+                      "favicon": "",
+                      "siteName": "",
+                      "title": "",
+                      "url": "https://fuzz.example/日caé10"
+                    },
+                    "type": "linkMention"
+                  },
+                  {
+                    "styles": {},
+                    "text": " 日b?;é !c z",
                     "type": "text"
                   }
                 ],
@@ -32232,7 +33197,22 @@
                 "content": [
                   {
                     "styles": {},
-                    "text": "!日é0,:a,c!; ((mention:https%3A%2F%2Ffuzz.example%2F910%28%E6%97%A5)) 0é?b:,!z日,:é19.0;1.,",
+                    "text": "!日é0,:a,c!; ",
+                    "type": "text"
+                  },
+                  {
+                    "props": {
+                      "domain": "fuzz.example",
+                      "favicon": "",
+                      "siteName": "",
+                      "title": "",
+                      "url": "https://fuzz.example/910(日"
+                    },
+                    "type": "linkMention"
+                  },
+                  {
+                    "styles": {},
+                    "text": " 0é?b:,!z日,:é19.0;1.,",
                     "type": "text"
                   }
                 ],
@@ -32290,7 +33270,22 @@
                 "content": [
                   {
                     "styles": {},
-                    "text": "!0c0?;é?é ((mention:https%3A%2F%2Ffuzz.example%2F1bcb%28zaa%28)) bb0aé:a . zb9!",
+                    "text": "!0c0?;é?é ",
+                    "type": "text"
+                  },
+                  {
+                    "props": {
+                      "domain": "fuzz.example",
+                      "favicon": "",
+                      "siteName": "",
+                      "title": "",
+                      "url": "https://fuzz.example/1bcb(zaa("
+                    },
+                    "type": "linkMention"
+                  },
+                  {
+                    "styles": {},
+                    "text": " bb0aé:a . zb9!",
                     "type": "text"
                   }
                 ],
@@ -32423,7 +33418,22 @@
                 "content": [
                   {
                     "styles": {},
-                    "text": ".:01a01zb ((mention:https%3A%2F%2Ffuzz.example%2F%20zc%E6%97%A50%C3%A901%C3%A9)) .é0béé!?190, 0",
+                    "text": ".:01a01zb ",
+                    "type": "text"
+                  },
+                  {
+                    "props": {
+                      "domain": "fuzz.example",
+                      "favicon": "",
+                      "siteName": "",
+                      "title": "",
+                      "url": "https://fuzz.example/ zc日0é01é"
+                    },
+                    "type": "linkMention"
+                  },
+                  {
+                    "styles": {},
+                    "text": " .é0béé!?190, 0",
                     "type": "text"
                   }
                 ],
@@ -32482,7 +33492,22 @@
                 "content": [
                   {
                     "styles": {},
-                    "text": "0::0!?0b!;99日;; ((mention:https%3A%2F%2Ffuzz.example%2F%29bzc0czacb)) é0? .,az,?b11cz",
+                    "text": "0::0!?0b!;99日;; ",
+                    "type": "text"
+                  },
+                  {
+                    "props": {
+                      "domain": "fuzz.example",
+                      "favicon": "",
+                      "siteName": "",
+                      "title": "",
+                      "url": "https://fuzz.example/)bzc0czacb"
+                    },
+                    "type": "linkMention"
+                  },
+                  {
+                    "styles": {},
+                    "text": " é0? .,az,?b11cz",
                     "type": "text"
                   }
                 ],
@@ -32504,7 +33529,22 @@
                 "content": [
                   {
                     "styles": {},
-                    "text": "a日ab0;a,9.z ((mention:https%3A%2F%2Ffuzz.example%2Fb0z0a)) cb,",
+                    "text": "a日ab0;a,9.z ",
+                    "type": "text"
+                  },
+                  {
+                    "props": {
+                      "domain": "fuzz.example",
+                      "favicon": "",
+                      "siteName": "",
+                      "title": "",
+                      "url": "https://fuzz.example/b0z0a"
+                    },
+                    "type": "linkMention"
+                  },
+                  {
+                    "styles": {},
+                    "text": " cb,",
                     "type": "text"
                   }
                 ],
@@ -32750,7 +33790,22 @@
                 "content": [
                   {
                     "styles": {},
-                    "text": "1 c9?zbcc? ((mention:https%3A%2F%2Ffuzz.example%2F%E6%97%A5%C3%A99%20%20%2090%281)) ??:.0a? :z",
+                    "text": "1 c9?zbcc? ",
+                    "type": "text"
+                  },
+                  {
+                    "props": {
+                      "domain": "fuzz.example",
+                      "favicon": "",
+                      "siteName": "",
+                      "title": "",
+                      "url": "https://fuzz.example/日é9   90(1"
+                    },
+                    "type": "linkMention"
+                  },
+                  {
+                    "styles": {},
+                    "text": " ??:.0a? :z",
                     "type": "text"
                   }
                 ],
@@ -32772,7 +33827,22 @@
                 "content": [
                   {
                     "styles": {},
-                    "text": ":9.b ,!?: ((mention:https%3A%2F%2Ffuzz.example%2Fc%28%20100)) 日;日",
+                    "text": ":9.b ,!?: ",
+                    "type": "text"
+                  },
+                  {
+                    "props": {
+                      "domain": "fuzz.example",
+                      "favicon": "",
+                      "siteName": "",
+                      "title": "",
+                      "url": "https://fuzz.example/c( 100"
+                    },
+                    "type": "linkMention"
+                  },
+                  {
+                    "styles": {},
+                    "text": " 日;日",
                     "type": "text"
                   }
                 ],
@@ -33039,7 +34109,22 @@
                 "content": [
                   {
                     "styles": {},
-                    "text": "b!z ?日;0 .!a ,! ? ((mention:https%3A%2F%2Ffuzz.example%2F%20z%20c%C3%A911)) 0b,z19 !ca.! 0,:?a",
+                    "text": "b!z ?日;0 .!a ,! ? ",
+                    "type": "text"
+                  },
+                  {
+                    "props": {
+                      "domain": "fuzz.example",
+                      "favicon": "",
+                      "siteName": "",
+                      "title": "",
+                      "url": "https://fuzz.example/ z cé11"
+                    },
+                    "type": "linkMention"
+                  },
+                  {
+                    "styles": {},
+                    "text": " 0b,z19 !ca.! 0,:?a",
                     "type": "text"
                   }
                 ],
@@ -33400,7 +34485,22 @@
                 "content": [
                   {
                     "styles": {},
-                    "text": "!z!a91! ((mention:https%3A%2F%2Ffuzz.example%2F%20c%281aa0ca%29)) ab01:1é...日 b, .?;",
+                    "text": "!z!a91! ",
+                    "type": "text"
+                  },
+                  {
+                    "props": {
+                      "domain": "fuzz.example",
+                      "favicon": "",
+                      "siteName": "",
+                      "title": "",
+                      "url": "https://fuzz.example/ c(1aa0ca)"
+                    },
+                    "type": "linkMention"
+                  },
+                  {
+                    "styles": {},
+                    "text": " ab01:1é...日 b, .?;",
                     "type": "text"
                   }
                 ],
@@ -33504,7 +34604,22 @@
                 "content": [
                   {
                     "styles": {},
-                    "text": "a01zz 0!c.cc?1;1 ((mention:https%3A%2F%2Ffuzz.example%2F9c%29ccz%29b%E6%97%A5zb)) z,:;a?.1b a;0bzc;0 ;",
+                    "text": "a01zz 0!c.cc?1;1 ",
+                    "type": "text"
+                  },
+                  {
+                    "props": {
+                      "domain": "fuzz.example",
+                      "favicon": "",
+                      "siteName": "",
+                      "title": "",
+                      "url": "https://fuzz.example/9c)ccz)b日zb"
+                    },
+                    "type": "linkMention"
+                  },
+                  {
+                    "styles": {},
+                    "text": " z,:;a?.1b a;0bzc;0 ;",
                     "type": "text"
                   }
                 ],
@@ -33799,7 +34914,22 @@
                 "content": [
                   {
                     "styles": {},
-                    "text": "..1,,!:: ((mention:https%3A%2F%2Ffuzz.example%2F90%2900%20a%20c191)) 1,?ca日0?ba;b",
+                    "text": "..1,,!:: ",
+                    "type": "text"
+                  },
+                  {
+                    "props": {
+                      "domain": "fuzz.example",
+                      "favicon": "",
+                      "siteName": "",
+                      "title": "",
+                      "url": "https://fuzz.example/90)00 a c191"
+                    },
+                    "type": "linkMention"
+                  },
+                  {
+                    "styles": {},
+                    "text": " 1,?ca日0?ba;b",
                     "type": "text"
                   }
                 ],
@@ -34200,7 +35330,22 @@
                 "content": [
                   {
                     "styles": {},
-                    "text": "0.c?ébb.;0.cb90 191 ((mention:https%3A%2F%2Ffuzz.example%2F%E6%97%A5%299c%E6%97%A5aa%20%20a)) 1:0 bz1 ,:0z:b",
+                    "text": "0.c?ébb.;0.cb90 191 ",
+                    "type": "text"
+                  },
+                  {
+                    "props": {
+                      "domain": "fuzz.example",
+                      "favicon": "",
+                      "siteName": "",
+                      "title": "",
+                      "url": "https://fuzz.example/日)9c日aa  a"
+                    },
+                    "type": "linkMention"
+                  },
+                  {
+                    "styles": {},
+                    "text": " 1:0 bz1 ,:0z:b",
                     "type": "text"
                   }
                 ],
@@ -34363,7 +35508,22 @@
                 "content": [
                   {
                     "styles": {},
-                    "text": "z z:!z9b? ((mention:https%3A%2F%2Ffuzz.example%2F1)) !c0?b. :;:0z",
+                    "text": "z z:!z9b? ",
+                    "type": "text"
+                  },
+                  {
+                    "props": {
+                      "domain": "fuzz.example",
+                      "favicon": "",
+                      "siteName": "",
+                      "title": "",
+                      "url": "https://fuzz.example/1"
+                    },
+                    "type": "linkMention"
+                  },
+                  {
+                    "styles": {},
+                    "text": " !c0?b. :;:0z",
                     "type": "text"
                   }
                 ],
@@ -34557,7 +35717,22 @@
                 "content": [
                   {
                     "styles": {},
-                    "text": "..日,a!9zb,1z!,!?é9 ((mention:https%3A%2F%2Ffuzz.example%2F%E6%97%A59%20ba%29)) é...ézbz1.z0b c",
+                    "text": "..日,a!9zb,1z!,!?é9 ",
+                    "type": "text"
+                  },
+                  {
+                    "props": {
+                      "domain": "fuzz.example",
+                      "favicon": "",
+                      "siteName": "",
+                      "title": "",
+                      "url": "https://fuzz.example/日9 ba)"
+                    },
+                    "type": "linkMention"
+                  },
+                  {
+                    "styles": {},
+                    "text": " é...ézbz1.z0b c",
                     "type": "text"
                   }
                 ],
@@ -34579,7 +35754,22 @@
                 "content": [
                   {
                     "styles": {},
-                    "text": "日bcc ((mention:https%3A%2F%2Ffuzz.example%2F1%20%20)) a:?c:!?éb,c1",
+                    "text": "日bcc ",
+                    "type": "text"
+                  },
+                  {
+                    "props": {
+                      "domain": "fuzz.example",
+                      "favicon": "",
+                      "siteName": "",
+                      "title": "",
+                      "url": "https://fuzz.example/1  "
+                    },
+                    "type": "linkMention"
+                  },
+                  {
+                    "styles": {},
+                    "text": " a:?c:!?éb,c1",
                     "type": "text"
                   }
                 ],
@@ -34692,7 +35882,22 @@
                 "content": [
                   {
                     "styles": {},
-                    "text": "? ((mention:https%3A%2F%2Ffuzz.example%2Fc91%E6%97%A5%E6%97%A5c)) ;b!?0日",
+                    "text": "? ",
+                    "type": "text"
+                  },
+                  {
+                    "props": {
+                      "domain": "fuzz.example",
+                      "favicon": "",
+                      "siteName": "",
+                      "title": "",
+                      "url": "https://fuzz.example/c91日日c"
+                    },
+                    "type": "linkMention"
+                  },
+                  {
+                    "styles": {},
+                    "text": " ;b!?0日",
                     "type": "text"
                   }
                 ],
@@ -34729,7 +35934,22 @@
                 "content": [
                   {
                     "styles": {},
-                    "text": "!1ac日; ((mention:https%3A%2F%2Ffuzz.example%2F%28zzc%C3%A9%E6%97%A5a)) 9.,",
+                    "text": "!1ac日; ",
+                    "type": "text"
+                  },
+                  {
+                    "props": {
+                      "domain": "fuzz.example",
+                      "favicon": "",
+                      "siteName": "",
+                      "title": "",
+                      "url": "https://fuzz.example/(zzcé日a"
+                    },
+                    "type": "linkMention"
+                  },
+                  {
+                    "styles": {},
+                    "text": " 9.,",
                     "type": "text"
                   }
                 ],
@@ -34924,7 +36144,22 @@
                 "content": [
                   {
                     "styles": {},
-                    "text": "日;!, b,日0,c,z?z!0 ((mention:https%3A%2F%2Ffuzz.example%2F0%2800b0%C3%A9ba9%C3%A90)) z?ba: b;.c ?ba.",
+                    "text": "日;!, b,日0,c,z?z!0 ",
+                    "type": "text"
+                  },
+                  {
+                    "props": {
+                      "domain": "fuzz.example",
+                      "favicon": "",
+                      "siteName": "",
+                      "title": "",
+                      "url": "https://fuzz.example/0(00b0éba9é0"
+                    },
+                    "type": "linkMention"
+                  },
+                  {
+                    "styles": {},
+                    "text": " z?ba: b;.c ?ba.",
                     "type": "text"
                   }
                 ],
@@ -34946,7 +36181,22 @@
                 "content": [
                   {
                     "styles": {},
-                    "text": "日z!:.?.:;bz? .z日:9 ((mention:https%3A%2F%2Ffuzz.example%2Fz%28a%C3%A9%C3%A9z%28%200%29b)) ?a9",
+                    "text": "日z!:.?.:;bz? .z日:9 ",
+                    "type": "text"
+                  },
+                  {
+                    "props": {
+                      "domain": "fuzz.example",
+                      "favicon": "",
+                      "siteName": "",
+                      "title": "",
+                      "url": "https://fuzz.example/z(aééz( 0)b"
+                    },
+                    "type": "linkMention"
+                  },
+                  {
+                    "styles": {},
+                    "text": " ?a9",
                     "type": "text"
                   }
                 ],
@@ -35027,7 +36277,22 @@
                 "content": [
                   {
                     "styles": {},
-                    "text": "c::z1;9日9.;.日a!é;;? ((mention:https%3A%2F%2Ffuzz.example%2Fb9%C3%A9%E6%97%A5cc)) bb!é日:;日!",
+                    "text": "c::z1;9日9.;.日a!é;;? ",
+                    "type": "text"
+                  },
+                  {
+                    "props": {
+                      "domain": "fuzz.example",
+                      "favicon": "",
+                      "siteName": "",
+                      "title": "",
+                      "url": "https://fuzz.example/b9é日cc"
+                    },
+                    "type": "linkMention"
+                  },
+                  {
+                    "styles": {},
+                    "text": " bb!é日:;日!",
                     "type": "text"
                   }
                 ],
@@ -35049,7 +36314,22 @@
                 "content": [
                   {
                     "styles": {},
-                    "text": "b,::bb; ((mention:https%3A%2F%2Ffuzz.example%2Fb1c%E6%97%A5c%28%20%28z)) 0!1,é0.z c; c ,0?日0日",
+                    "text": "b,::bb; ",
+                    "type": "text"
+                  },
+                  {
+                    "props": {
+                      "domain": "fuzz.example",
+                      "favicon": "",
+                      "siteName": "",
+                      "title": "",
+                      "url": "https://fuzz.example/b1c日c( (z"
+                    },
+                    "type": "linkMention"
+                  },
+                  {
+                    "styles": {},
+                    "text": " 0!1,é0.z c; c ,0?日0日",
                     "type": "text"
                   }
                 ],
@@ -35246,7 +36526,22 @@
                 "content": [
                   {
                     "styles": {},
-                    "text": "日zbc.zb.. ((mention:https%3A%2F%2Ffuzz.example%2Fc%280c%29%28c01)) : é;日 z0 1c日9é,",
+                    "text": "日zbc.zb.. ",
+                    "type": "text"
+                  },
+                  {
+                    "props": {
+                      "domain": "fuzz.example",
+                      "favicon": "",
+                      "siteName": "",
+                      "title": "",
+                      "url": "https://fuzz.example/c(0c)(c01"
+                    },
+                    "type": "linkMention"
+                  },
+                  {
+                    "styles": {},
+                    "text": " : é;日 z0 1c日9é,",
                     "type": "text"
                   }
                 ],
@@ -35268,7 +36563,22 @@
                 "content": [
                   {
                     "styles": {},
-                    "text": "0,cbz!.日a9,? ((mention:https%3A%2F%2Ffuzz.example%2F9c%C3%A99%20a01)) z0;.b9,a?",
+                    "text": "0,cbz!.日a9,? ",
+                    "type": "text"
+                  },
+                  {
+                    "props": {
+                      "domain": "fuzz.example",
+                      "favicon": "",
+                      "siteName": "",
+                      "title": "",
+                      "url": "https://fuzz.example/9cé9 a01"
+                    },
+                    "type": "linkMention"
+                  },
+                  {
+                    "styles": {},
+                    "text": " z0;.b9,a?",
                     "type": "text"
                   }
                 ],
@@ -35422,7 +36732,22 @@
                 "content": [
                   {
                     "styles": {},
-                    "text": "0 日;::1ab z1z1.b日?a ((mention:https%3A%2F%2Ffuzz.example%2F0%C3%A9%20c)) b日日cb!",
+                    "text": "0 日;::1ab z1z1.b日?a ",
+                    "type": "text"
+                  },
+                  {
+                    "props": {
+                      "domain": "fuzz.example",
+                      "favicon": "",
+                      "siteName": "",
+                      "title": "",
+                      "url": "https://fuzz.example/0é c"
+                    },
+                    "type": "linkMention"
+                  },
+                  {
+                    "styles": {},
+                    "text": " b日日cb!",
                     "type": "text"
                   }
                 ],
@@ -35627,7 +36952,22 @@
                 "content": [
                   {
                     "styles": {},
-                    "text": "é ((mention:https%3A%2F%2Ffuzz.example%2F%C3%A9z%C3%A9z%29)) 0bb?日,z.,9",
+                    "text": "é ",
+                    "type": "text"
+                  },
+                  {
+                    "props": {
+                      "domain": "fuzz.example",
+                      "favicon": "",
+                      "siteName": "",
+                      "title": "",
+                      "url": "https://fuzz.example/ézéz)"
+                    },
+                    "type": "linkMention"
+                  },
+                  {
+                    "styles": {},
+                    "text": " 0bb?日,z.,9",
                     "type": "text"
                   }
                 ],
@@ -35795,7 +37135,22 @@
                 "content": [
                   {
                     "styles": {},
-                    "text": "0191,:zz0zé901 ((mention:https%3A%2F%2Ffuzz.example%2F%20%E6%97%A5c%20a%E6%97%A5%2999)) 19 日:9 c.?.z,:?:?é0",
+                    "text": "0191,:zz0zé901 ",
+                    "type": "text"
+                  },
+                  {
+                    "props": {
+                      "domain": "fuzz.example",
+                      "favicon": "",
+                      "siteName": "",
+                      "title": "",
+                      "url": "https://fuzz.example/ 日c a日)99"
+                    },
+                    "type": "linkMention"
+                  },
+                  {
+                    "styles": {},
+                    "text": " 19 日:9 c.?.z,:?:?é0",
                     "type": "text"
                   }
                 ],
@@ -35817,7 +37172,22 @@
                 "content": [
                   {
                     "styles": {},
-                    "text": ",é91.; ((mention:https%3A%2F%2Ffuzz.example%2F%29%28%20)) c.0:;a;9日c..é;",
+                    "text": ",é91.; ",
+                    "type": "text"
+                  },
+                  {
+                    "props": {
+                      "domain": "fuzz.example",
+                      "favicon": "",
+                      "siteName": "",
+                      "title": "",
+                      "url": "https://fuzz.example/)( "
+                    },
+                    "type": "linkMention"
+                  },
+                  {
+                    "styles": {},
+                    "text": " c.0:;a;9日c..é;",
                     "type": "text"
                   }
                 ],
@@ -35892,7 +37262,22 @@
                 "content": [
                   {
                     "styles": {},
-                    "text": "ccc!bb ;9,日!z1:00 0 ((mention:https%3A%2F%2Ffuzz.example%2F%28%28%C3%A919a)) 日zbé1bé日日!é!ab;z",
+                    "text": "ccc!bb ;9,日!z1:00 0 ",
+                    "type": "text"
+                  },
+                  {
+                    "props": {
+                      "domain": "fuzz.example",
+                      "favicon": "",
+                      "siteName": "",
+                      "title": "",
+                      "url": "https://fuzz.example/((é19a"
+                    },
+                    "type": "linkMention"
+                  },
+                  {
+                    "styles": {},
+                    "text": " 日zbé1bé日日!é!ab;z",
                     "type": "text"
                   }
                 ],
@@ -36186,7 +37571,22 @@
                 "content": [
                   {
                     "styles": {},
-                    "text": "!:9aa!a1b0 ?,?zz;!a ((mention:https%3A%2F%2Ffuzz.example%2F%E6%97%A5%29%29%29c%28%C3%A9%28%C3%A90%20)) b. ;,?",
+                    "text": "!:9aa!a1b0 ?,?zz;!a ",
+                    "type": "text"
+                  },
+                  {
+                    "props": {
+                      "domain": "fuzz.example",
+                      "favicon": "",
+                      "siteName": "",
+                      "title": "",
+                      "url": "https://fuzz.example/日)))c(é(é0 "
+                    },
+                    "type": "linkMention"
+                  },
+                  {
+                    "styles": {},
+                    "text": " b. ;,?",
                     "type": "text"
                   }
                 ],
@@ -36377,7 +37777,22 @@
                 "content": [
                   {
                     "styles": {},
-                    "text": ".aa1 ((mention:https%3A%2F%2Ffuzz.example%2F%28b%29zaa1a%2009z)) 日.0!baé0c?!é.?!.!ab",
+                    "text": ".aa1 ",
+                    "type": "text"
+                  },
+                  {
+                    "props": {
+                      "domain": "fuzz.example",
+                      "favicon": "",
+                      "siteName": "",
+                      "title": "",
+                      "url": "https://fuzz.example/(b)zaa1a 09z"
+                    },
+                    "type": "linkMention"
+                  },
+                  {
+                    "styles": {},
+                    "text": " 日.0!baé0c?!é.?!.!ab",
                     "type": "text"
                   }
                 ],
@@ -36715,7 +38130,22 @@
                 "content": [
                   {
                     "styles": {},
-                    "text": ".,a日cc:.bc.,c?,é0 ((mention:https%3A%2F%2Ffuzz.example%2Fc%28%29z0b%29%28)) 1z,",
+                    "text": ".,a日cc:.bc.,c?,é0 ",
+                    "type": "text"
+                  },
+                  {
+                    "props": {
+                      "domain": "fuzz.example",
+                      "favicon": "",
+                      "siteName": "",
+                      "title": "",
+                      "url": "https://fuzz.example/c()z0b)("
+                    },
+                    "type": "linkMention"
+                  },
+                  {
+                    "styles": {},
+                    "text": " 1z,",
                     "type": "text"
                   }
                 ],
@@ -36737,7 +38167,22 @@
                 "content": [
                   {
                     "styles": {},
-                    "text": "éb0ca!b!9.c?.,? ((mention:https%3A%2F%2Ffuzz.example%2Fa9a%28%C3%A9)) 0!é!é日 日?z日,?.01z?1.",
+                    "text": "éb0ca!b!9.c?.,? ",
+                    "type": "text"
+                  },
+                  {
+                    "props": {
+                      "domain": "fuzz.example",
+                      "favicon": "",
+                      "siteName": "",
+                      "title": "",
+                      "url": "https://fuzz.example/a9a(é"
+                    },
+                    "type": "linkMention"
+                  },
+                  {
+                    "styles": {},
+                    "text": " 0!é!é日 日?z日,?.01z?1.",
                     "type": "text"
                   }
                 ],
@@ -36774,7 +38219,22 @@
                 "content": [
                   {
                     "styles": {},
-                    "text": "a9,.;é1!日éé?cab.00a ((mention:https%3A%2F%2Ffuzz.example%2Fzc%C3%A9z%E6%97%A519b0%29)) ?日.:?ca.!009?0.",
+                    "text": "a9,.;é1!日éé?cab.00a ",
+                    "type": "text"
+                  },
+                  {
+                    "props": {
+                      "domain": "fuzz.example",
+                      "favicon": "",
+                      "siteName": "",
+                      "title": "",
+                      "url": "https://fuzz.example/zcéz日19b0)"
+                    },
+                    "type": "linkMention"
+                  },
+                  {
+                    "styles": {},
+                    "text": " ?日.:?ca.!009?0.",
                     "type": "text"
                   }
                 ],
@@ -36911,7 +38371,22 @@
                 "content": [
                   {
                     "styles": {},
-                    "text": "; .a a1日b?.. ((mention:https%3A%2F%2Ffuzz.example%2F1)) b.;é:!z,!b日;ab",
+                    "text": "; .a a1日b?.. ",
+                    "type": "text"
+                  },
+                  {
+                    "props": {
+                      "domain": "fuzz.example",
+                      "favicon": "",
+                      "siteName": "",
+                      "title": "",
+                      "url": "https://fuzz.example/1"
+                    },
+                    "type": "linkMention"
+                  },
+                  {
+                    "styles": {},
+                    "text": " b.;é:!z,!b日;ab",
                     "type": "text"
                   }
                 ],

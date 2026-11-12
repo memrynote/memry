@@ -250,7 +250,8 @@
     "failedPlayAudio": "Ses çalınamadı",
     "failedLoadAudio": "Ses yüklenemedi",
     "video": "Video",
-    "unsupportedVideo": "Tarayıcınız video etiketini desteklemiyor."
+    "unsupportedVideo": "Tarayıcınız video etiketini desteklemiyor.",
+    "fileOnOtherDevice": "Dosya, onu yakalayan cihazda."
   },
   "reminder": {
     "dataUnavailable": "Hatırlatma verileri kullanılamıyor.",

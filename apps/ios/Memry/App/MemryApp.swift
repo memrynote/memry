@@ -13,6 +13,7 @@ struct MemryApp: App {
                 // `memry://calendar?...` (spec 007 CL022). Held until the vault
                 // shell exists, which may be after sign-in or unlock.
                 .onOpenURL { url in
+                    DeepLinkTelemetry.opened(url)
                     if let link = CalendarLink(url: url) { CalendarLinks.shared.request(link) }
                 }
         }
@@ -28,7 +29,13 @@ final class MemryAppDelegate: NSObject, UIApplicationDelegate {
     ) -> Bool {
         UNUserNotificationCenter.current().delegate = ReminderNotificationDelegate.shared
         CalendarBackgroundRefresh.register()
+        TelemetryLaunch.start()
         // One-time hints (the Notes "+" hold). A failure only means no tips.
+        #if DEBUG
+        // UI tests pass `-MEMRY_HIDE_TIPS YES`: a tip's popover takes the
+        // next tap, so a test's tap would land on it on a fresh install.
+        if UserDefaults.standard.bool(forKey: "MEMRY_HIDE_TIPS") { Tips.hideAllTipsForTesting() }
+        #endif
         do {
             try Tips.configure()
         } catch {
@@ -77,6 +84,9 @@ struct RootView: View {
             .task { await shell.consume() }
             .onChange(of: scenePhase, initial: true) { _, phase in
                 shell.scenePhaseChanged(to: phase)
+                // `.inactive` is a pulled-down Control Center as often as a
+                // departure, so only the two ends move telemetry.
+                if phase != .inactive { TelemetryLaunch.scenePhaseChanged(active: phase == .active) }
                 // Scroll offsets are held in memory; leaving the foreground
                 // comes before any kill, so write them now.
                 if phase != .active { LaunchSnapshot.shared.flush() }

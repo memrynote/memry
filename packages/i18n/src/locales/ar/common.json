@@ -6,6 +6,7 @@
     "noTarget": "ليس لهذه البوابة هدف بعد. أضف ملاحظة إلى التعريف، أو أزل الكتلة.",
     "invalidJson": "تعريف هذه البوابة ليس JSON صالحًا. أصلحه أدناه، أو أزل الكتلة.",
     "invalidShape": "لا يحتوي تعريف هذه البوابة على ملاحظة أو بحث. أصلحه أدناه، أو أزل الكتلة.",
+    "unreadable": "لا يمكن قراءة هذه البوابة. أزل الكتلة وأضف بوابة جديدة.",
     "search": {
       "editQuery": "تحرير الاستعلام",
       "count": "{count, plural, zero {# كتلة} one {كتلة واحدة} two {كتلتان} few {# كتل} many {# كتلة} other {# كتلة}}",
@@ -1276,6 +1277,7 @@
     "label": "المساعدة والآراء",
     "reportBug": "الإبلاغ عن خطأ",
     "requestFeature": "طلب ميزة",
+    "joinTestflight": "انضم إلى TestFlight",
     "starOnGithub": "منح نجمة على GitHub",
     "version": "MemryNote {version}",
     "whatsNew": "ما الجديد",
@@ -1695,5 +1697,29 @@
     "journalDaysRenamed": "بعض إدخالات اليوميات لم تعد أسماؤها تواريخ",
     "journalDaysRenamedHint": "أُعيدت تسمية إدخالات اليوميات هذه خارج Memry بينما كان مجلدها ينتظر إعداد مجلد اليوميات، فلم تعد أسماؤها تواريخ. تبقى إدخالات يوميات إلى أن تعيد تسميتها كما كانت. تحويل أحدها إلى ملاحظة يحذف إدخال اليوميات الخاص به على جميع أجهزتك ويحتفظ بنصه كملاحظة. لا تُحفظ وسومه.",
     "turnIntoNotes": "تحويل إلى ملاحظات"
+  },
+  "iosBeta": {
+    "badge": "جديد · TestFlight",
+    "title": "Memry لـ iPhone في مرحلة تجريبية",
+    "promptBody": "خزنتك على هاتفك، بتشفير شامل. اترك بريدك الإلكتروني وسترسل لك Apple دعوة TestFlight.",
+    "emailPlaceholder": "you@example.com",
+    "emailLabel": "البريد الإلكتروني لدعوة TestFlight",
+    "submit": "احصل على الدعوة",
+    "sending": "جارٍ الإرسال…",
+    "listNote": "نضيفك أيضًا إلى القائمة البريدية للنسخة التجريبية لـ iPhone لإبلاغك بأخبار الإطلاق. يمكنك إلغاء الاشتراك في أي وقت.",
+    "error": "تعذّر إرسال دعوة TestFlight. حاول مرة أخرى.",
+    "sentTitle": "تحقق من بريدك الوارد",
+    "sentBody": "أرسلت Apple الدعوة إلى {email}. قد يستغرق ذلك بضع دقائق وقد تصل إلى البريد العشوائي.",
+    "stepInstall": "ثبّت TestFlight من App Store",
+    "stepOpen": "افتح الدعوة على iPhone",
+    "stepSignIn": "سجّل الدخول إلى Memry على هاتفك",
+    "done": "تم",
+    "dialogTitle": "انضم إلى Memry لـ iPhone",
+    "dialogBody": "ترسل لك Apple دعوة TestFlight عبر البريد الإلكتروني. استخدم البريد الإلكتروني الخاص بمعرّف Apple ID على iPhone.",
+    "entryTitle": "النسخة التجريبية لـ iPhone متاحة الآن",
+    "entrySubtitle": "عبر TestFlight",
+    "entryJoin": "انضم إلى النسخة التجريبية",
+    "entrySent": "تم إرسال الدعوة إلى {email}",
+    "sendAgain": "إعادة الإرسال"
   }
 }

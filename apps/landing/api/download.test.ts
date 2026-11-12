@@ -1,7 +1,11 @@
 import assert from 'node:assert/strict'
 import { describe, it } from 'node:test'
 
-import handler, { VELOPACK_WINDOWS_SETUP_ASSET, resolveAssetUrl } from './download.ts'
+import handler, {
+  LEGACY_VELOPACK_WINDOWS_SETUP_ASSET,
+  VELOPACK_WINDOWS_SETUP_ASSET,
+  resolveAssetUrl
+} from './download.ts'
 
 const DOWNLOAD_BASE = 'https://github.com/memrynote/memry/releases/download/v1.2.3'
 
@@ -81,6 +85,15 @@ describe('download asset resolution', () => {
     assert.equal(
       resolveAssetUrl('windows', ASSETS),
       `${DOWNLOAD_BASE}/${VELOPACK_WINDOWS_SETUP_ASSET}`
+    )
+  })
+
+  // v2026-10-25 and older: the Velopack Setup under vpk's own name.
+  it('serves the Velopack installer of a tag that still uses the old name', () => {
+    const oldNameAssets = [...LEGACY_ASSETS, asset(LEGACY_VELOPACK_WINDOWS_SETUP_ASSET)]
+    assert.equal(
+      resolveAssetUrl('windows', oldNameAssets),
+      `${DOWNLOAD_BASE}/${LEGACY_VELOPACK_WINDOWS_SETUP_ASSET}`
     )
   })
 

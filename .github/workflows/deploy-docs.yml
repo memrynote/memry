@@ -45,6 +45,13 @@ jobs:
 
       # Vercel runs the build remotely, so the root vercel.json still supplies
       # installCommand (SKIP_ELECTRON_REBUILD=1) and ignoreCommand.
+      # Each upload counts toward Vercel deployment storage, so the docs deploy leaves out apps/landing (17 MB of public assets).
+      # Keep its package.json: the workspace install validates the lockfile
+      # against every importer.
+      - name: Skip the other site's files in the upload
+        run: |
+          printf '\n/apps/landing/*\n!/apps/landing/package.json\n' >> .vercelignore
+
       - name: Deploy to production
         run: |
           npx --yes vercel@latest deploy --prod --yes \

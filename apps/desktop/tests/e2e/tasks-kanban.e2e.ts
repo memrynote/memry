@@ -107,7 +107,7 @@ test.describe('Tasks and Kanban E2E', () => {
             },
             sort: { field: 'priority', direction: 'desc' },
             starred: true
-          } as Parameters<typeof api.savedFilters.create>[0]['config']
+          }
         })
         if (!savedFilter.success || !savedFilter.savedFilter) {
           throw new Error(savedFilter.error ?? 'saved filter create failed')

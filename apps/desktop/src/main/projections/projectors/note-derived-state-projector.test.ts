@@ -346,6 +346,10 @@ describe('note derived state projector', () => {
       indexDb.db.all<{ task_ids: string | null }>(
         sql`SELECT task_ids FROM note_cache WHERE id = 'build-note'`
       )[0]?.task_ids
+    const taskChecksOf = (): string | null | undefined =>
+      indexDb.db.all<{ task_checks: string | null }>(
+        sql`SELECT task_checks FROM note_cache WHERE id = 'build-note'`
+      )[0]?.task_checks
     const upsert = (parsedContent: string | null) => {
       const event = upsertMarkdown('build-note', 'Carport/Build.md', [])
       return { ...event, note: { ...event.note, parsedContent } }
@@ -357,11 +361,15 @@ describe('note derived state projector', () => {
       )
     )
     expect(taskIdsOf()).toBe('["t-start","t-pour","t-check"]')
+    const checks = '{"t-start":true,"t-pour":false,"t-check":false}'
+    expect(taskChecksOf()).toBe(checks)
 
     await projector.project(upsert(null))
     expect(taskIdsOf()).toBe('["t-start","t-pour","t-check"]')
+    expect(taskChecksOf()).toBe(checks)
 
     await projector.project(upsert('No tasks left.'))
     expect(taskIdsOf()).toBe('[]')
+    expect(taskChecksOf()).toBe('{}')
   })
 })

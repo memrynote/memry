@@ -261,7 +261,9 @@ extension CalendarStore {
             let calendars = try await GoogleCalendarAPI(email: email, secrets: secrets).calendars()
             guard let primary = calendars.first(where: \.isPrimary) ?? calendars.first else { return .failed("no_calendars") }
             let zoneId = TimeZone.current.identifier
-            _ = await write { try $0.googleConnect(email: email, name: name, primary: primary, calendars: calendars, deviceZoneId: zoneId) }
+            if await write({ try $0.googleConnect(email: email, name: name, primary: primary, calendars: calendars, deviceZoneId: zoneId) }) != nil {
+                CalendarTelemetry.googleConnected()
+            }
             await sync()
             return outcome
         } catch {
@@ -271,7 +273,7 @@ extension CalendarStore {
 
     func disconnectGoogle(_ email: String) async {
         await GoogleCalendarSignIn.revoke(email, secrets: secrets)
-        _ = await write { try $0.googleDisconnect(email: email) }
+        if await write({ try $0.googleDisconnect(email: email) }) != nil { CalendarTelemetry.googleDisconnected() }
     }
 
     /// One shown Google calendar's pull; a 410 starts it over from the window.

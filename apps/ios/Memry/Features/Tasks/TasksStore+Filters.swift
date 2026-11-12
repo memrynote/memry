@@ -131,8 +131,11 @@ extension TasksStore {
             return
         }
         let config = SavedFilterConfig.decode(filter.configJson)
+        // The rules sit beside `config` (docs/protocol §13.7.14).
+        let expression = FilterJSON.decode(filter.expressionJson).flatMap { $0.object == nil ? nil : TaskFilterNode(json: $0) }
         await update { state in
             state.filters = config.filters
+            state.filters.expression = expression
             if let sort = config.sort { state.sort = sort }
         }
         scratch[Self.activeSavedFilterKey] = filter.id
@@ -146,8 +149,13 @@ extension TasksStore {
     func saveCurrentFilter(name: String) async -> Bool {
         let trimmed = name.trimmingCharacters(in: .whitespacesAndNewlines)
         guard TaskFilterOptions.isValidSavedFilterName(trimmed) else { return false }
-        let json = SavedFilterConfig(filters: state.filters, sort: state.sort, starred: false).json
-        guard let id = await run({ try $0.createSavedFilter(name: trimmed, configJson: json) }) else { return false }
+        var filters = state.filters
+        let expressionJson = filters.expression?.json.json
+        filters.expression = nil
+        let json = SavedFilterConfig(filters: filters, sort: state.sort, starred: false).json
+        guard let id = await run({
+            try $0.createSavedFilter(name: trimmed, configJson: json, expressionJson: expressionJson)
+        }) else { return false }
         scratch[Self.activeSavedFilterKey] = id
         showFilterToast(TasksCopy.filterSaved)
         return true

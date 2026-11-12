@@ -6,7 +6,7 @@
     "class": "inbox",
     "chapter": "docs/protocol/13-payload-schemas.md §13.7.15",
     "reference": "apps/desktop/src/main/sync/item-handlers/inbox-handler.ts, apps/desktop/src/main/inbox/{queries,snooze,stats}.ts",
-    "caseCount": 8
+    "caseCount": 11
   },
   "apply": [
     {
@@ -67,6 +67,7 @@
         "sourceUrl": "https://example.com/agent/1",
         "sourceTitle": null,
         "captureSource": "inline",
+        "attachmentId": null,
         "createdAt": "2026-04-16T08:53:20.000Z"
       }
     },
@@ -138,6 +139,7 @@
         "sourceUrl": "https://example.com/agent/1",
         "sourceTitle": null,
         "captureSource": "inline",
+        "attachmentId": null,
         "createdAt": "2026-04-16T08:53:20.000Z"
       }
     },
@@ -212,6 +214,7 @@
         "sourceUrl": "https://example.com/agent/1",
         "sourceTitle": null,
         "captureSource": "inline",
+        "attachmentId": null,
         "createdAt": "2026-04-16T08:53:20.000Z"
       }
     },
@@ -281,7 +284,189 @@
         "sourceUrl": "https://example.com/agent/1",
         "sourceTitle": null,
         "captureSource": "inline",
+        "attachmentId": null,
         "createdAt": "2026-04-16T08:53:20.000Z"
+      }
+    },
+    {
+      "name": "a capture with its uploaded file carries the attachment id",
+      "steps": [
+        {
+          "payload": {
+            "id": "inbox-1",
+            "type": "image",
+            "title": "How Linear builds product",
+            "content": "Small teams, short cycles.",
+            "createdAt": "2026-04-16T08:53:20.000Z",
+            "modifiedAt": "2026-04-16T09:00:00.000Z",
+            "filedAt": null,
+            "filedTo": null,
+            "filedAction": null,
+            "snoozedUntil": "2026-04-17T09:00:00.000Z",
+            "snoozeReason": "later",
+            "viewedAt": null,
+            "processingStatus": "complete",
+            "processingError": null,
+            "metadata": {
+              "url": "https://example.com/agent/1",
+              "fetchStatus": "complete",
+              "siteName": "Linear"
+            },
+            "attachmentPath": "attachments/inbox/inbox-1/photo.png",
+            "thumbnailPath": "attachments/inbox/inbox-1/thumbnail.jpg",
+            "transcription": null,
+            "transcriptionStatus": null,
+            "sourceUrl": "https://example.com/agent/1",
+            "sourceTitle": null,
+            "captureSource": "inline",
+            "archivedAt": null,
+            "clock": {
+              "desktop": 1
+            },
+            "syncedAt": null,
+            "localOnly": false,
+            "attachmentId": "0123456789abcdef0123456789abcdef"
+          }
+        }
+      ],
+      "expected": {
+        "type": "image",
+        "title": "How Linear builds product",
+        "content": "Small teams, short cycles.",
+        "metadata": {
+          "url": "https://example.com/agent/1",
+          "fetchStatus": "complete",
+          "siteName": "Linear"
+        },
+        "filedAt": null,
+        "filedTo": null,
+        "filedAction": null,
+        "snoozedUntil": "2026-04-17T09:00:00.000Z",
+        "snoozeReason": "later",
+        "archivedAt": null,
+        "sourceUrl": "https://example.com/agent/1",
+        "sourceTitle": null,
+        "captureSource": "inline",
+        "attachmentId": "0123456789abcdef0123456789abcdef",
+        "createdAt": "2026-04-16T08:53:20.000Z"
+      }
+    },
+    {
+      "name": "an older payload without the attachment id and an explicit null both keep it",
+      "steps": [
+        {
+          "payload": {
+            "id": "inbox-1",
+            "type": "image",
+            "title": "How Linear builds product",
+            "content": "Small teams, short cycles.",
+            "createdAt": "2026-04-16T08:53:20.000Z",
+            "modifiedAt": "2026-04-16T09:00:00.000Z",
+            "filedAt": null,
+            "filedTo": null,
+            "filedAction": null,
+            "snoozedUntil": "2026-04-17T09:00:00.000Z",
+            "snoozeReason": "later",
+            "viewedAt": null,
+            "processingStatus": "complete",
+            "processingError": null,
+            "metadata": {
+              "url": "https://example.com/agent/1",
+              "fetchStatus": "complete",
+              "siteName": "Linear"
+            },
+            "attachmentPath": "attachments/inbox/inbox-1/photo.png",
+            "thumbnailPath": "attachments/inbox/inbox-1/thumbnail.jpg",
+            "transcription": null,
+            "transcriptionStatus": null,
+            "sourceUrl": "https://example.com/agent/1",
+            "sourceTitle": null,
+            "captureSource": "inline",
+            "archivedAt": null,
+            "clock": {
+              "desktop": 1
+            },
+            "syncedAt": null,
+            "localOnly": false,
+            "attachmentId": "0123456789abcdef0123456789abcdef"
+          }
+        },
+        {
+          "payload": {
+            "title": "Renamed",
+            "clock": {
+              "desktop": 2
+            }
+          }
+        },
+        {
+          "payload": {
+            "attachmentId": null,
+            "content": "caption",
+            "clock": {
+              "desktop": 3
+            }
+          }
+        }
+      ],
+      "expected": {
+        "type": "image",
+        "title": "Renamed",
+        "content": "caption",
+        "metadata": {
+          "url": "https://example.com/agent/1",
+          "fetchStatus": "complete",
+          "siteName": "Linear"
+        },
+        "filedAt": null,
+        "filedTo": null,
+        "filedAction": null,
+        "snoozedUntil": "2026-04-17T09:00:00.000Z",
+        "snoozeReason": "later",
+        "archivedAt": null,
+        "sourceUrl": "https://example.com/agent/1",
+        "sourceTitle": null,
+        "captureSource": "inline",
+        "attachmentId": "0123456789abcdef0123456789abcdef",
+        "createdAt": "2026-04-16T08:53:20.000Z"
+      }
+    },
+    {
+      "name": "a later string replaces the attachment id",
+      "steps": [
+        {
+          "payload": {
+            "attachmentId": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+            "clock": {
+              "desktop": 1
+            }
+          }
+        },
+        {
+          "payload": {
+            "attachmentId": "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
+            "clock": {
+              "desktop": 2
+            }
+          }
+        }
+      ],
+      "expected": {
+        "type": "note",
+        "title": "Untitled",
+        "content": null,
+        "metadata": null,
+        "filedAt": null,
+        "filedTo": null,
+        "filedAction": null,
+        "snoozedUntil": null,
+        "snoozeReason": null,
+        "archivedAt": null,
+        "sourceUrl": null,
+        "sourceTitle": null,
+        "captureSource": null,
+        "attachmentId": "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
+        "createdAt": null
       }
     },
     {
@@ -350,6 +535,7 @@
         "sourceUrl": "https://example.com/agent/1",
         "sourceTitle": null,
         "captureSource": "inline",
+        "attachmentId": null,
         "createdAt": "2026-04-16T08:53:20.000Z"
       }
     },
@@ -378,6 +564,7 @@
         "sourceUrl": null,
         "sourceTitle": null,
         "captureSource": null,
+        "attachmentId": null,
         "createdAt": null
       }
     },

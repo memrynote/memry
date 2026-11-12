@@ -27,6 +27,7 @@ import { generateNoteId } from '../lib/id'
 import { normalizeRelativePath } from '../lib/paths'
 import { syncNoteToCache, syncFileToCache, findCanonicalNoteByPath } from './note-sync'
 import { flushProjectionEvents } from '../projections'
+import { reconcileTaskCheckboxesLazily } from '../tasks/reconcile-markdown-tasks-lazy'
 import {
   getNoteCacheByPath,
   countNotes,
@@ -34,7 +35,8 @@ import {
   ensureTagDefinitions,
   newMarkdownFileId
 } from '@main/database/queries/notes'
-import { getNoteMetadataByPath } from '@memry/storage-data'
+import { getNoteMetadataByPath, listPropertyDefinitions } from '@memry/storage-data'
+import { PropertyDefinitionsService } from './property-definitions'
 import { isSupportedPath, getFileType, getMimeType, getExtension } from '@memry/shared/file-types'
 import { createLogger } from '../lib/logger'
 import { trackMainLog } from '../telemetry/diagnostics'
@@ -254,6 +256,14 @@ async function indexMarkdownFile(
       { isNew: true }
     )
     await flushProjectionEvents()
+    // The index has no acknowledged checkbox state for a body it reads for the
+    // first time, so a line follows the file only where the file is newer than
+    // the task (a note edited, or copied in, while Memry was closed).
+    reconcileTaskCheckboxesLazily(noteId, {
+      markdown: parsed.content,
+      acknowledged: null,
+      fileModifiedAt: stats?.mtime ?? new Date(0)
+    })
     logger.debug(`Indexed: ${relativePath}${result.date ? ` (journal: ${result.date})` : ''}`)
     if (result.tags.length > 0) {
       ensureTagDefinitions(getDatabase(), result.tags)
@@ -325,6 +335,16 @@ async function indexNonMarkdownFile(
   } catch (error) {
     logger.error(`Error indexing file ${relativePath}:`, error)
     return { reason: 'index-failed', message: errorText(error) }
+  }
+}
+
+/** The property names the data DB defines, or null while it is not open. */
+function definedPropertyNames(): Set<string> | null {
+  try {
+    return new Set(listPropertyDefinitions(getDatabase()).map((definition) => definition.name))
+  } catch (error) {
+    logger.warn('Data DB unavailable, scan will not settle learned property types:', error)
+    return null
   }
 }
 
@@ -412,6 +432,8 @@ export async function indexVault(
     return result
   }
 
+  const definedBefore = definedPropertyNames()
+
   // Track completed count for progress reporting (thread-safe increment via closure)
   let completed = 0
   let cancelled = false
@@ -474,6 +496,17 @@ export async function indexVault(
         `${result.errors} errors, ${allFiles.length - completed} remaining`
     )
     return result
+  }
+
+  if (definedBefore) {
+    const learned = [...(definedPropertyNames() ?? [])].filter((name) => !definedBefore.has(name))
+    if (learned.length > 0) {
+      await PropertyDefinitionsService.tryGet()
+        ?.settleLearnedTypes(learned)
+        .catch((error: unknown) => {
+          logger.warn('Could not settle the property types this scan learned:', error)
+        })
+    }
   }
 
   if (options.activity) {

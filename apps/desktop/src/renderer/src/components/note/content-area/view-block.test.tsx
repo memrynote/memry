@@ -11,13 +11,14 @@
  * reads entries by day range instead, stubbed at the journal service.
  */
 
-import { act, fireEvent, render, screen } from '@testing-library/react'
+import { fireEvent, render, screen } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { BlockNoteEditor } from '@blocknote/core'
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import type { GetPropertyRowsOutput } from '@memry/contracts/journal-api'
 import type { NoteWithProperties } from '@/hooks/use-folder-view'
+import { NEW_NOTE_TITLE } from '@/lib/new-note-title'
 import { addDays, localDayKey } from '@/lib/property-chart/chart-model'
 
 const mocks = vi.hoisted(() => {
@@ -27,7 +28,16 @@ const mocks = vi.hoisted(() => {
     scope: unknown
     initialViewName: string | undefined
   } = { rows: [], properties: [], scope: null, initialViewName: undefined }
-  return { openSidebarItem: vi.fn(), getPropertyRows: vi.fn(), folderView }
+  return {
+    openSidebarItem: vi.fn(),
+    getPropertyRows: vi.fn(),
+    createNote: vi.fn(),
+    openPage: vi.fn(),
+    getFolders: vi.fn(),
+    createFolder: vi.fn(),
+    toastError: vi.fn(),
+    folderView
+  }
 })
 
 // pdf.js touches `DOMMatrix` at import time, which jsdom has none of. The rest
@@ -41,9 +51,16 @@ vi.mock('@/hooks/use-sidebar-navigation', () => ({
   useSidebarNavigation: () => ({ openSidebarItem: mocks.openSidebarItem })
 }))
 vi.mock('@/hooks/use-notes-query', () => ({
+  notesKeys: { folders: () => ['notes', 'folders'] },
   useNoteTagsQuery: () => ({ tags: [] }),
-  useNoteFoldersQuery: () => ({ folders: [{ path: 'Projects' }] })
+  useNoteFoldersQuery: () => ({ folders: [{ path: 'Projects' }] }),
+  useNoteMutations: () => ({ createNote: { mutateAsync: mocks.createNote } })
 }))
+vi.mock('@/hooks/use-open-target', () => ({ useOpenPage: () => ({ openPage: mocks.openPage }) }))
+vi.mock('@/services/notes-service', () => ({
+  notesService: { getFolders: mocks.getFolders, createFolder: mocks.createFolder }
+}))
+vi.mock('sonner', () => ({ toast: { error: mocks.toastError } }))
 vi.mock('@/services/journal-service', () => ({
   journalService: { getPropertyRows: mocks.getPropertyRows }
 }))
@@ -72,7 +89,12 @@ vi.mock('@/hooks/use-folder-view', () => ({
 }))
 
 import { editorSchema } from './editor-schema'
-import { getChartSlashMenuItem, getViewSlashMenuItem, ViewBlockRenderer } from './view-block'
+import {
+  getChartSlashMenuItem,
+  getNewViewSlashMenuItem,
+  getViewSlashMenuItem,
+  ViewBlockRenderer
+} from './view-block'
 
 function row(id: string, overrides: Partial<NoteWithProperties> = {}): NoteWithProperties {
   return {
@@ -90,22 +112,14 @@ function row(id: string, overrides: Partial<NoteWithProperties> = {}): NoteWithP
   }
 }
 
-function fakeEditor(overrides: { caretBlockId?: string; isEditable?: boolean } = {}) {
-  let caret = overrides.caretBlockId ?? 'elsewhere'
-  const listeners = new Set<() => void>()
+function fakeEditor(overrides: { isEditable?: boolean } = {}) {
   return {
     isEditable: overrides.isEditable ?? true,
-    focus: vi.fn(),
     updateBlock: vi.fn(),
-    getTextCursorPosition: () => ({ block: { id: caret } }),
-    onSelectionChange: (listener: () => void) => {
-      listeners.add(listener)
-      return () => listeners.delete(listener)
-    },
-    moveCaret: (id: string) => {
-      caret = id
-      for (const listener of listeners) listener()
-    }
+    nestBlock: vi.fn(),
+    unnestBlock: vi.fn(),
+    insertBlocks: vi.fn(),
+    setTextCursorPosition: vi.fn()
   }
 }
 
@@ -229,46 +243,42 @@ describe('ViewBlockRenderer', () => {
     )
   })
 
-  it('shows the definition to fix when its JSON is broken', () => {
-    renderBlock('{"source": ')
+  it('creates a note in the source folder and opens it', async () => {
+    // #given
+    mocks.createNote.mockResolvedValue({
+      success: true,
+      note: { id: 'n1', title: 'Untitled', emoji: null }
+    })
+    renderBlock(JSON.stringify({ source: { kind: 'folder', path: 'Work/Specs' } }))
 
-    expect(screen.getByText(/not valid JSON/)).toBeInTheDocument()
-    expect(screen.getByText('Definition').parentElement).not.toHaveClass('hidden')
+    // #when
+    await userEvent.click(screen.getByRole('button', { name: 'New note' }))
+
+    // #then it lands where the block lists it, and opens like the folder page's
+    expect(mocks.createNote).toHaveBeenCalledWith({ title: NEW_NOTE_TITLE, folder: 'Work/Specs' })
+    expect(mocks.openPage).toHaveBeenCalledWith(
+      expect.objectContaining({ type: 'note', entityId: 'n1' })
+    )
   })
 
-  it('keeps the definition hidden until the caret is in the block', () => {
+  it('never shows its definition JSON', () => {
     renderBlock(JSON.stringify({ source: { kind: 'vault' } }))
-    expect(screen.getByText('Definition').parentElement).toHaveClass('hidden')
+    expect(screen.queryByText('Definition')).toBeNull()
   })
 
-  it('shows the definition while the caret is in the block', () => {
-    renderBlock(
-      JSON.stringify({ source: { kind: 'vault' } }),
-      fakeEditor({ caretBlockId: 'view-1' })
-    )
-    expect(screen.getByText('Definition').parentElement).not.toHaveClass('hidden')
-  })
+  it('offers a source in place of a definition it cannot read', async () => {
+    // #given a definition whose JSON is broken
+    const editor = renderBlock('{"source": ')
+    expect(screen.getByText(/can’t be read/)).toBeInTheDocument()
 
-  it('shows the definition and re-focuses the editor when the caret moves in', () => {
-    // #given the caret elsewhere
-    const editor = renderBlock(JSON.stringify({ source: { kind: 'vault' } }))
-    expect(screen.getByText('Definition').parentElement).toHaveClass('hidden')
+    // #when a source is picked
+    await userEvent.click(screen.getByTestId('view-block-source'))
+    await userEvent.click(await screen.findByRole('menuitem', { name: /vault|all notes/i }))
 
-    // #when it moves into the block
-    act(() => editor.moveCaret('view-1'))
-
-    // #then the definition shows, and the DOM selection is written again now
-    // that there is a visible element to hold it
-    expect(screen.getByText('Definition').parentElement).not.toHaveClass('hidden')
-    expect(editor.focus).toHaveBeenCalledTimes(1)
-  })
-
-  it('does not take focus when it mounts with the caret already inside', () => {
-    const editor = renderBlock(
-      JSON.stringify({ source: { kind: 'vault' } }),
-      fakeEditor({ caretBlockId: 'view-1' })
-    )
-    expect(editor.focus).not.toHaveBeenCalled()
+    // #then the block is rewritten over it
+    expect(editor.updateBlock).toHaveBeenCalledWith('view-1', {
+      content: expect.stringContaining('"kind": "vault"')
+    })
   })
 
   it('offers no controls in a read-only editor', () => {
@@ -396,6 +406,19 @@ describe('ViewBlockRenderer chart over a tag', () => {
 describe('/view', () => {
   const mounted: Array<{ editor: BlockNoteEditor; element: HTMLElement }> = []
 
+  function mountEditor() {
+    const editor = BlockNoteEditor.create({ schema: editorSchema })
+    const element = document.createElement('div')
+    document.body.appendChild(element)
+    editor.mount(element)
+    mounted.push({ editor: editor as unknown as BlockNoteEditor, element })
+    editor.replaceBlocks(editor.document, [{ type: 'paragraph' }])
+    editor.setTextCursorPosition(editor.document[0], 'end')
+    return editor
+  }
+
+  const newViewLabels = { title: 'New view', group: 'Insert', subtext: '', failed: 'Failed' }
+
   afterEach(() => {
     for (const { editor, element } of mounted.splice(0)) {
       editor._tiptapEditor.destroy()
@@ -457,5 +480,38 @@ describe('/view', () => {
       layout: 'chart',
       chart: {}
     })
+  })
+
+  it('/new view makes a numbered Untitled View beside the note and lists it', async () => {
+    // #given the note's folder already holds an Untitled View
+    mocks.getFolders.mockResolvedValue([{ path: 'Projects' }, { path: 'Projects/Untitled View' }])
+    mocks.createFolder.mockResolvedValue({ success: true })
+    const editor = mountEditor()
+
+    // #when
+    getNewViewSlashMenuItem(editor, newViewLabels, async () => 'Projects/Plan.md').onItemClick()
+
+    // #then the next free name is created, and the block lists that folder
+    await vi.waitFor(() => expect(editor.document[0].type).toBe('codeBlock'))
+    expect(mocks.createFolder).toHaveBeenCalledWith('Projects/Untitled View 2')
+    const [view] = editor.document
+    const text = (view.content as Array<{ text: string }>).map((run) => run.text).join('')
+    expect(JSON.parse(text)).toEqual({
+      source: { kind: 'folder', path: 'Projects/Untitled View 2' },
+      layout: 'list',
+      order: [{ property: 'modified', direction: 'desc' }]
+    })
+  })
+
+  it('/new view inserts nothing and says so when the folder cannot be made', async () => {
+    mocks.getFolders.mockResolvedValue([])
+    mocks.createFolder.mockResolvedValue({ success: false, error: 'Folder is locked' })
+    const editor = mountEditor()
+
+    getNewViewSlashMenuItem(editor, newViewLabels, async () => 'Plan.md').onItemClick()
+
+    await vi.waitFor(() => expect(mocks.toastError).toHaveBeenCalledWith('Folder is locked'))
+    expect(mocks.createFolder).toHaveBeenCalledWith('Untitled View')
+    expect(editor.document.map((block) => block.type)).toEqual(['paragraph'])
   })
 })

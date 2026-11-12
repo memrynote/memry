@@ -250,7 +250,8 @@
     "failedPlayAudio": "Kunne ikke spille av lyd",
     "failedLoadAudio": "Kunne ikke laste inn lyd",
     "video": "Video",
-    "unsupportedVideo": "Nettleseren din støtter ikke videoelementet."
+    "unsupportedVideo": "Nettleseren din støtter ikke videoelementet.",
+    "fileOnOtherDevice": "Filen ligger på enheten som fanget den."
   },
   "reminder": {
     "dataUnavailable": "Påminnelsesdata er utilgjengelige.",

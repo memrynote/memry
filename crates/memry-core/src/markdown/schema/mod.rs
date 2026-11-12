@@ -9,6 +9,7 @@ pub mod html_comment;
 pub mod lift_images;
 pub mod link_code_spans;
 pub mod link_destinations;
+pub mod link_mention_normalize;
 pub mod parse_markdown;
 pub mod quote;
 pub mod token_masking;

@@ -109,6 +109,7 @@ pub fn build_embedding_input(
     let Some((title, content)) = trimmed_parts(title, content) else {
         return String::new();
     };
+    let content = head(&content, MAX_EMBEDDING_INPUT_LENGTH);
     let input = match task {
         EmbeddingTask::Similarity => {
             let newline = if title.is_empty() {
@@ -116,7 +117,7 @@ pub fn build_embedding_input(
             } else {
                 &[0x0a][..]
             };
-            concat(&[&units(SIMILARITY_PREFIX), &title, newline, &content])
+            concat(&[&units(SIMILARITY_PREFIX), &title, newline, content])
         }
         EmbeddingTask::Document => {
             let title = if title.is_empty() {
@@ -124,7 +125,7 @@ pub fn build_embedding_input(
             } else {
                 title
             };
-            concat(&[&units("title: "), &title, &units(" | text: "), &content])
+            concat(&[&units("title: "), &title, &units(" | text: "), content])
         }
     };
     lossy(head(&input, MAX_EMBEDDING_INPUT_LENGTH))

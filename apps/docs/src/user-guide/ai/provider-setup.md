@@ -6,14 +6,15 @@ Configure the LLM provider used by the inline AI menu in the editor. Open from [
 
 ## Supported Providers
 
-| Provider          | Runs                    | Needs                        |
-| ----------------- | ----------------------- | ---------------------------- |
-| **Ollama**        | Locally on your machine | Ollama installed and running |
-| **OpenAI**        | OpenAI cloud            | API key                      |
-| **Anthropic**     | Anthropic cloud         | API key                      |
-| **Google Gemini** | Google AI cloud         | API key                      |
+| Provider          | Runs                           | Needs                                          |
+| ----------------- | ------------------------------ | ---------------------------------------------- |
+| **Ollama**        | Locally on your machine        | Ollama installed and running                   |
+| **OpenAI**        | OpenAI cloud                   | API key                                        |
+| **Anthropic**     | Anthropic cloud                | API key                                        |
+| **Google Gemini** | Google AI cloud                | API key                                        |
+| **Custom**        | Any OpenAI-compatible endpoint | Base URL; API key if the endpoint requires one |
 
-Each provider has its own model presets in the dropdown.
+Each built-in provider has its own model presets in the dropdown.
 
 ## Ollama (Local)
 
@@ -41,7 +42,7 @@ Best when you want privacy, no metering, and don't mind running an extra backgro
 1. Get an API key from [platform.openai.com](https://platform.openai.com/).
 2. **Provider: OpenAI**
 3. Paste the API key into the input. Toggle visibility with the eye icon.
-4. **Model**: pick from presets (e.g. `gpt-4o-mini`, `gpt-4o`).
+4. **Model**: pick from presets (e.g. `gpt-6.1-sol`, `gpt-6-luna`).
 5. Click **Test Connection**.
 
 ### Notes
@@ -57,7 +58,7 @@ Best when you want privacy, no metering, and don't mind running an extra backgro
 1. Get an API key from [console.anthropic.com](https://console.anthropic.com/).
 2. **Provider: Anthropic**
 3. Paste the API key.
-4. **Model**: pick a Claude preset (e.g. `claude-sonnet-5`).
+4. **Model**: pick a Claude preset (e.g. `claude-sonnet-5-5`).
 5. Click **Test Connection**.
 
 ### Notes
@@ -79,6 +80,25 @@ Same key-storage and privacy properties as OpenAI.
 - Uses the Gemini API directly with your key; it is not tied to a Gemini CLI or Code Assist subscription.
 - Same key-storage and privacy properties as OpenAI.
 
+## Custom (OpenAI-compatible)
+
+Connect any service that speaks the OpenAI chat completions API, such as OpenRouter, Together, Groq, or a self-hosted vLLM or LM Studio server.
+
+### Setup
+
+1. **Provider: Custom (OpenAI-compatible)**
+2. **Base URL**: the endpoint root that serves `/chat/completions`, for example `https://openrouter.ai/api/v1`.
+3. **API Key**: paste it if the endpoint requires one. Leave it empty for an endpoint without auth.
+4. **Model**: type the model ID, for example `openai/gpt-4o-mini` on OpenRouter. When the endpoint answers `/models`, its catalogue appears as suggestions while you type.
+5. Click **Test Connection**.
+
+### Notes
+
+- The model must support tool calling and JSON schema output. The inline menu edits through tool calls, and writing tools ask for structured answers. On OpenRouter, check the model's supported parameters for `tools` and `structured_outputs`.
+- Errors name the endpoint's host, for example "Your openrouter.ai API key was rejected".
+- Same key-storage and privacy properties as OpenAI. Requests go from your device to the endpoint you entered.
+- **Test Connection** starts the local bridge but does not call the endpoint. A wrong key shows up on the first AI request.
+
 ## Test Connection
 
 The button verifies:
@@ -93,7 +113,7 @@ A status indicator (green / yellow / red) shows the most recent test result.
 
 You can change provider at any time. Memory of past prompts is local — switching doesn't carry conversation state.
 
-memrynote keeps one local inline-AI bridge running for the active provider settings. Re-opening the editor or another window reuses that bridge when settings are unchanged; changing provider, model, base URL, or API key restarts it with the new configuration.
+memrynote keeps one local inline-AI bridge running for the active provider settings. Re-opening the editor or another window reuses that bridge when settings are unchanged; changing provider, model, base URL, or API key restarts it with the new configuration. Open notes pick up the change, including turning inline AI on, without restarting the app.
 
 ## Where Keys Live
 

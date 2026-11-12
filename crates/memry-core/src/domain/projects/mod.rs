@@ -68,8 +68,8 @@ use super::tasks::Inbound;
 pub use links::{LinkItemType, ProjectLink, link, links, set_link_pinned, unlink};
 pub use status_list::{StatusInput, StatusType};
 pub use write::{
-    DEFAULT_PROJECT_COLOR, NewProject, ProjectEdit, TaskDisposition, create, delete, reorder,
-    set_archived, set_home_note, update,
+    DEFAULT_PROJECT_COLOR, INBOX_ID, NewProject, ProjectEdit, TaskDisposition, create, delete,
+    ensure_inbox, reorder, set_archived, set_home_note, update,
 };
 
 /// The `(type, _)` half of every key this module reads and writes.
@@ -182,9 +182,9 @@ pub fn get(conn: &Connection, project_id: &str) -> Result<Option<Project>, Stora
 
 /// The Inbox, or `None` when no project carries the flag.
 ///
-/// `None` is a real state on a phone whose first sync has not reached the
-/// project yet, and it is reported rather than substituted: inventing an
-/// Inbox id would push a `projectId` no vault has.
+/// [`ensure_inbox`] seeds one when a vault opens, so `None` means a newer
+/// build or a remote record removed it; it is reported rather than
+/// substituted.
 pub fn inbox(conn: &Connection) -> Result<Option<Project>, StorageError> {
     conn.query_row(
         "SELECT id, name, description, color, icon, position, is_inbox, archived_at,

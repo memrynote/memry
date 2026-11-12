@@ -56,7 +56,7 @@ export function VaultStep({ dispatch }: StepProps): React.JSX.Element {
         {heading}
         <div className="flex flex-col items-center gap-3 pt-6">
           <p role="alert" className="text-xs text-destructive">
-            {t(`${K}.loadFailed`)}
+            {load.message || t(`${K}.loadFailed`)}
           </p>
           <Button variant="outline" size="sm" onClick={reload}>
             {t(`${K}.retry`)}
@@ -124,7 +124,7 @@ export function VaultStep({ dispatch }: StepProps): React.JSX.Element {
         />
         {(openError || pickError) && (
           <p role="alert" className="max-w-[420px] text-center text-xs text-destructive">
-            {openError ? t(`${K}.openFailed`) : pickError}
+            {openError || pickError}
           </p>
         )}
         <p className="max-w-[420px] text-center text-xs leading-[17px] text-text-tertiary">

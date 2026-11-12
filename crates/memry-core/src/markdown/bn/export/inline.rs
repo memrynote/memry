@@ -279,7 +279,7 @@ const TOKEN_UNSAFE: &[(char, &str)] = &[
 ];
 
 /// `serializeLinkMentionToken`.
-fn link_mention_token(url: &str) -> String {
+pub(crate) fn link_mention_token(url: &str) -> String {
     let mut out = String::new();
     for c in encode_uri_component(url).chars() {
         match TOKEN_UNSAFE.iter().find(|(u, _)| *u == c) {

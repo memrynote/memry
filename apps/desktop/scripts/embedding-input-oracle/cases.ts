@@ -1,11 +1,11 @@
 /**
- * The 60 inputs of `embedding-input.json`: notes (title and body), typed
+ * The 61 inputs of `embedding-input.json`: notes (title and body), typed
  * queries and interleaved page text. Built from fixed sentence pools, so the
  * file is the same on every machine. The long inputs sit on the window
  * boundaries of `embedding-input.ts`: the 4000-unit window, the chunk budget
  * after the title header, a separator just inside or outside the second half,
- * a surrogate pair cut in two, the 16-window cap, and the slivers under the
- * 10-unit minimum.
+ * a surrogate pair or a decomposed letter cut in two, the 16-window cap, and
+ * the slivers under the 10-unit minimum.
  */
 export type NoteCase = {
   kind: 'note'
@@ -94,6 +94,11 @@ const NOTES: NoteCase[] = [
     'surrogate pair cut at the input slice',
     null,
     `${'z'.repeat(3999 - 'title: none | text: '.length)}😀 more`
+  ),
+  note(
+    'decomposed letters cut at the budget',
+    'T',
+    `${'x'.repeat(BUDGET_T - 1)}e\u0301${'i\u0307 '.repeat(1500)}`
   ),
   note('body of exactly the budget', 'T', exact(BUDGET_T)),
   note('body of budget plus one', 'T', exact(BUDGET_T + 1)),

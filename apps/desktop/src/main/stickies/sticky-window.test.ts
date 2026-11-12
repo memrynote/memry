@@ -1,12 +1,14 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest'
+import type { BrowserWindow } from 'electron'
 import { StickyChannels } from '@memry/contracts/sticky-api'
+import { setMainWindow } from '../main-window'
 
 type Handler = (...args: unknown[]) => void
 
 interface FakeWindow {
   options: Record<string, unknown>
   destroyed: boolean
-  webContents: Record<'send' | 'on' | 'loadURL' | 'loadFile', ReturnType<typeof vi.fn>>
+  webContents: Record<'send' | 'on' | 'once' | 'loadURL' | 'loadFile', ReturnType<typeof vi.fn>>
   [method: string]: unknown
 }
 
@@ -17,7 +19,15 @@ const electron = vi.hoisted(() => {
     const window = {
       options,
       destroyed: false,
-      webContents: { send: vi.fn(), on: vi.fn(), loadURL: vi.fn(), loadFile: vi.fn() },
+      webContents: {
+        send: vi.fn(),
+        on: vi.fn(),
+        once: vi.fn((event: string, handler: Handler) =>
+          handlers.set(`webContents:${event}`, handler)
+        ),
+        loadURL: vi.fn(),
+        loadFile: vi.fn()
+      },
       on: vi.fn((event: string, handler: Handler) => handlers.set(event, handler)),
       once: vi.fn((event: string, handler: Handler) => handlers.set(event, handler)),
       show: vi.fn(),
@@ -144,11 +154,13 @@ describe('sticky window', () => {
     expect(() => onFail({}, -3, 'aborted')).not.toThrow()
   })
 
-  it('shows once ready, clamps resizes, and lets the edge tab follow tucking', () => {
+  it('shows once loaded, clamps resizes, and lets the edge tab follow tucking', () => {
     showStickyWindow(null)
     const sticky = getStickyWindow()!
-    sticky.emit('ready-to-show')
+    // Windows never emits ready-to-show for a hidden transparent window.
+    sticky.emit('webContents:did-finish-load')
     expect(sticky.show).toHaveBeenCalled()
+    expect(sticky.focus).toHaveBeenCalled()
 
     resizeStickyWindow(2000)
     expect(sticky.setSize).toHaveBeenLastCalledWith(360, 560)
@@ -163,12 +175,17 @@ describe('sticky window', () => {
   })
 
   it('reveals the app window for a send target, then tucks the sticky', () => {
+    // Quick Capture, listed before the app window.
+    const quickCapture = electron.makeWindow()
     const mainWindow = electron.makeWindow()
+    // oxlint-disable-next-line typescript/no-unsafe-type-assertion -- the fake covers every member sticky-window touches
+    setMainWindow(mainWindow as unknown as BrowserWindow)
     mainWindow.isMinimized.mockReturnValueOnce(true)
     mainWindow.isVisible.mockReturnValueOnce(false)
 
     showStickyWindow(null)
     openStickyTargetInMainWindow({ kind: 'task', targetId: 'task-1' })
+    expect(quickCapture.webContents.send).not.toHaveBeenCalled()
     expect(mainWindow.restore).toHaveBeenCalled()
     expect(mainWindow.show).toHaveBeenCalled()
     expect(mainWindow.webContents.send).toHaveBeenCalledWith(

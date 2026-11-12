@@ -6,12 +6,14 @@ import type http from 'node:http'
 interface OAuthSession {
   state: string
   redirectUri: string
+  authorizationUrl: string | null
   createdAt: number
 }
 
 export const oauthSessions = new Map<string, OAuthSession>()
 export const OAUTH_SESSION_TIMEOUT_MS = 10 * 60 * 1000
 let activeLoopbackServer: http.Server | null = null
+let loopbackTimeout: ReturnType<typeof setTimeout> | null = null
 
 export const cleanExpiredOAuthSessions = (): void => {
   const now = Date.now()
@@ -36,19 +38,27 @@ export const consumeOAuthSession = (state: string): OAuthSession => {
 }
 
 export const shutdownLoopbackServer = (): void => {
+  if (loopbackTimeout) {
+    clearTimeout(loopbackTimeout)
+    loopbackTimeout = null
+  }
   if (activeLoopbackServer) {
     activeLoopbackServer.close()
     activeLoopbackServer = null
   }
 }
 
-export const setActiveLoopbackServer = (server: http.Server): void => {
+export const setActiveLoopbackServer = (server: http.Server, onExpire: () => void): void => {
   activeLoopbackServer = server
+  loopbackTimeout = setTimeout(() => {
+    shutdownLoopbackServer()
+    onExpire()
+  }, OAUTH_SESSION_TIMEOUT_MS)
 }
 
 // Test seam — let tests inject an OAuth state without hitting Google
 export function seedOAuthSession(state: string, redirectUri: string): void {
-  oauthSessions.set(state, { state, redirectUri, createdAt: Date.now() })
+  oauthSessions.set(state, { state, redirectUri, authorizationUrl: null, createdAt: Date.now() })
 }
 
 // State cleanup (composed by clearInMemoryAuthState)

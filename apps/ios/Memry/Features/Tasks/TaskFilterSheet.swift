@@ -22,7 +22,7 @@ struct TaskFilterSheet: View {
     @State private var isSaving = false
     @State private var pushed: Page?
 
-    private enum Page: Hashable { case due, tags, saved }
+    private enum Page: Hashable { case due, tags, location, rules, saved }
 
     private var filters: TaskFilterSpec { store.state.filters }
 
@@ -34,6 +34,10 @@ struct TaskFilterSheet: View {
                     .listRowBackground(Color.clear)
                     .listRowInsets(EdgeInsets())
                 Section { TaskFilterDimensionRows(store: store, openDue: { pushed = .due }, openTags: { pushed = .tags }) }
+                Section {
+                    locationEntry
+                    rulesEntry
+                }
                 Section { footer }
                     .listRowBackground(Color.clear)
                     .listRowInsets(EdgeInsets())
@@ -56,6 +60,13 @@ struct TaskFilterSheet: View {
                 switch page {
                 case .due: TaskFilterDueView(store: store)
                 case .tags: TaskFilterTagsView(store: store)
+                case .location:
+                    TaskFilterLocationView(store: store) { store in
+                        (store.state.filters.folderPaths, store.state.filters.noteIds)
+                    } onChange: { folders, notes in
+                        Task { await store.updateFilters { $0.folderPaths = folders; $0.noteIds = notes } }
+                    }
+                case .rules: TaskFilterRulesView(store: store)
                 case .saved: SavedFiltersPage(store: store)
                 }
             }
@@ -85,6 +96,58 @@ struct TaskFilterSheet: View {
     }
 
     // MARK: Pieces
+
+    /// Opens the Location page; the row counts what is picked.
+    private var locationEntry: some View {
+        let picked = filters.folderPaths.count + filters.noteIds.count
+        return Button {
+            pushed = .location
+        } label: {
+            LabeledContent(
+                TasksCopy.filterLocation,
+                value: picked == 0 ? TasksCopy.filterAny : TasksCopy.filterSelectedCount(picked)
+            )
+            .foregroundStyle(Tokens.Text.primary.color)
+            .frame(minHeight: Tokens.Size.minimumHitArea)
+            .contentShape(.rect)
+        }
+        .buttonStyle(.plain)
+        .accessibilityIdentifier("tasks.filter.location")
+    }
+
+    /// Opens the rule builder; once there are rules, they read back here as a sentence.
+    private var rulesEntry: some View {
+        let summary = filters.expression.map { TasksCopy.rulesSummary($0, projects: store.projects) } ?? ""
+        return Button {
+            pushed = .rules
+        } label: {
+            HStack(spacing: Tokens.Space.small) {
+                VStack(alignment: .leading, spacing: Tokens.Space.tight) {
+                    Text(TasksCopy.rulesEntry)
+                        .foregroundStyle(Tokens.Text.primary.color)
+                    Text(summary.isEmpty ? TasksCopy.rulesEntryHint : summary)
+                        .font(Tokens.Typography.supporting.font)
+                        .foregroundStyle(Tokens.Text.secondary.color)
+                        .lineLimit(3)
+                }
+                Spacer(minLength: Tokens.Space.small)
+                if store.ruleCount > 0 {
+                    Text(TasksCopy.rulesCount(store.ruleCount))
+                        .font(Tokens.Typography.supporting.font)
+                        .foregroundStyle(Tokens.Text.tertiary.color)
+                        .monospacedDigit()
+                }
+                Image(systemName: "chevron.forward")
+                    .font(Tokens.Typography.caption.font)
+                    .foregroundStyle(Tokens.Text.tertiary.color)
+                    .accessibilityHidden(true)
+            }
+            .frame(minHeight: Tokens.Size.minimumHitArea)
+            .contentShape(.rect)
+        }
+        .buttonStyle(.plain)
+        .accessibilityIdentifier("tasks.filter.rules")
+    }
 
     private var searchField: some View {
         HStack(spacing: Tokens.Space.small) {

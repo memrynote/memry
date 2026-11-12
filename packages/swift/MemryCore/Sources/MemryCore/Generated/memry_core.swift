@@ -932,6 +932,12 @@ public protocol AuthSessionProtocol: AnyObject, Sendable {
      */
     func deviceApprover()  -> DeviceApprover
     
+    /**
+     * Sends one telemetry batch, already serialised by the shell. Never
+     * retries on its own: the shell's flush timer is the retry.
+     */
+    func sendTelemetry(batchJson: Data) async  -> TelemetryDelivery
+    
 }
 /**
  * The session. One per account on the device.
@@ -1644,6 +1650,27 @@ open func deviceApprover() -> DeviceApprover  {
             self.uniffiCloneHandle(),uniffiCallStatus
     )
 })
+}
+    
+    /**
+     * Sends one telemetry batch, already serialised by the shell. Never
+     * retries on its own: the shell's flush timer is the retry.
+     */
+open func sendTelemetry(batchJson: Data)async  -> TelemetryDelivery  {
+    return
+        try!  await uniffiRustCallAsync(
+            rustFutureFunc: {
+                uniffi_memry_core_fn_method_authsession_send_telemetry(
+                        self.uniffiCloneHandle(),FfiConverterData.lower(batchJson)
+                )
+            },
+            pollFunc: ffi_memry_core_rust_future_poll_rust_buffer,
+            completeFunc: ffi_memry_core_rust_future_complete_rust_buffer,
+            freeFunc: ffi_memry_core_rust_future_free_rust_buffer,
+            liftFunc: FfiConverterTypeTelemetryDelivery_lift,
+            errorHandler: nil
+            
+        )
 }
     
 
@@ -3524,7 +3551,8 @@ public protocol InboxProtocol: AnyObject, Sendable {
     func bulkTag(ids: [String], tags: [String]) throws  -> InboxBulkResult
     
     /**
-     * A file already stored at `attachment_path` (vault-relative). The title
+     * A file already stored at `attachment_path` (vault-relative), marked to
+     * upload on the next `VaultSync::sync_inbox_attachments`. The title
      * is the filename without its extension; `metadata_json` adds keys
      * (`width`, `height`, `format`, `pageCount`, `duration`, ...).
      */
@@ -3969,7 +3997,8 @@ open func bulkTag(ids: [String], tags: [String])throws  -> InboxBulkResult  {
 }
     
     /**
-     * A file already stored at `attachment_path` (vault-relative). The title
+     * A file already stored at `attachment_path` (vault-relative), marked to
+     * upload on the next `VaultSync::sync_inbox_attachments`. The title
      * is the filename without its extension; `metadata_json` adds keys
      * (`width`, `height`, `format`, `pageCount`, `duration`, ...).
      */
@@ -9919,9 +9948,11 @@ public protocol TasksProtocol: AnyObject, Sendable {
     func createProject(draft: ProjectDraft) throws  -> String
     
     /**
-     * `config_json` is desktop's `{filters, sort?, starred?}`. Returns the id.
+     * `config_json` is desktop's `{filters, sort?, starred?}`;
+     * `expression_json` the advanced rules (a JSON object), written beside
+     * it. Returns the id.
      */
-    func createSavedFilter(name: String, configJson: String) throws  -> String
+    func createSavedFilter(name: String, configJson: String, expressionJson: String?) throws  -> String
     
     /**
      * Deletes a project, moving its tasks to the Inbox or deleting them.
@@ -9929,6 +9960,12 @@ public protocol TasksProtocol: AnyObject, Sendable {
     func deleteProject(id: String, moveTasksToInbox: Bool) throws 
     
     func deleteSavedFilter(id: String) throws 
+    
+    /**
+     * Seeds the Inbox when the vault has none, so a new task always has a
+     * project to land in. Returns whether it wrote one.
+     */
+    func ensureInbox() throws  -> Bool
     
     /**
      * `item_type` is `note`, `calendar_event` or `file`.
@@ -9977,6 +10014,11 @@ public protocol TasksProtocol: AnyObject, Sendable {
     
     func setProjectLinkPinned(id: String, itemId: String, pinned: Bool) throws 
     
+    /**
+     * Replaces the advanced rules whole (a JSON object); `nil` clears them.
+     */
+    func setSavedFilterExpression(id: String, expressionJson: String?) throws 
+    
     func setSavedFilterStarred(id: String, starred: Bool) throws 
     
     func setStaleInboxDays(days: Int64) throws  -> TaskSettingsItem
@@ -10014,6 +10056,15 @@ public protocol TasksProtocol: AnyObject, Sendable {
      * checkbox.
      */
     func convertChecklistItem(noteId: String, blockId: String, localNow: String) throws  -> String?
+    
+    /**
+     * [`Tasks::convert_checklist_item`] for a line the user just typed, the
+     * conversion desktop's editor makes on its own (`analyzeTaskIntents`).
+     * With the synced `editor.convertChecklistsToTasks` off, only a line
+     * under a task line converts, as its subtask. `nil` when the line stays
+     * a checkbox.
+     */
+    func convertTypedChecklistItem(noteId: String, blockId: String, localNow: String) throws  -> String?
     
     func deleteReminder(id: String) throws 
     
@@ -10087,6 +10138,17 @@ public protocol TasksProtocol: AnyObject, Sendable {
      * elsewhere, or not pulled yet).
      */
     func get(id: String) throws  -> TaskItem?
+    
+    /**
+     * The Location filter's folders and notes, with their task counts, in
+     * tree order; flattened to the name matches for a non-blank `query`.
+     * Selected folders and notes stay listed even when they hold nothing.
+     *
+     * Desktop counts the Tasks page's rows before its chip filters. Here the
+     * rows are every live task (completed and archived ones included), so a
+     * count does not change with the tab or the other filters.
+     */
+    func locationOptions(selectedFolderPaths: [String], selectedNoteIds: [String], query: String) throws  -> [TaskLocationOption]
     
     /**
      * Every project with its statuses; archived ones only when asked.
@@ -10473,15 +10535,18 @@ open func createProject(draft: ProjectDraft)throws  -> String  {
 }
     
     /**
-     * `config_json` is desktop's `{filters, sort?, starred?}`. Returns the id.
+     * `config_json` is desktop's `{filters, sort?, starred?}`;
+     * `expression_json` the advanced rules (a JSON object), written beside
+     * it. Returns the id.
      */
-open func createSavedFilter(name: String, configJson: String)throws  -> String  {
+open func createSavedFilter(name: String, configJson: String, expressionJson: String?)throws  -> String  {
     return try  FfiConverterString.lift(try rustCallWithError(FfiConverterTypeStorageError_lift) {
         uniffiCallStatus in
     uniffi_memry_core_fn_method_tasks_create_saved_filter(
             self.uniffiCloneHandle(),
         FfiConverterString.lower(name),
-        FfiConverterString.lower(configJson),uniffiCallStatus
+        FfiConverterString.lower(configJson),
+        FfiConverterOptionString.lower(expressionJson),uniffiCallStatus
     )
 })
 }
@@ -10506,6 +10571,19 @@ open func deleteSavedFilter(id: String)throws   {try rustCallWithError(FfiConver
         FfiConverterString.lower(id),uniffiCallStatus
     )
 }
+}
+    
+    /**
+     * Seeds the Inbox when the vault has none, so a new task always has a
+     * project to land in. Returns whether it wrote one.
+     */
+open func ensureInbox()throws  -> Bool  {
+    return try  FfiConverterBool.lift(try rustCallWithError(FfiConverterTypeStorageError_lift) {
+        uniffiCallStatus in
+    uniffi_memry_core_fn_method_tasks_ensure_inbox(
+            self.uniffiCloneHandle(),uniffiCallStatus
+    )
+})
 }
     
     /**
@@ -10659,6 +10737,19 @@ open func setProjectLinkPinned(id: String, itemId: String, pinned: Bool)throws  
 }
 }
     
+    /**
+     * Replaces the advanced rules whole (a JSON object); `nil` clears them.
+     */
+open func setSavedFilterExpression(id: String, expressionJson: String?)throws   {try rustCallWithError(FfiConverterTypeStorageError_lift) {
+        uniffiCallStatus in
+    uniffi_memry_core_fn_method_tasks_set_saved_filter_expression(
+            self.uniffiCloneHandle(),
+        FfiConverterString.lower(id),
+        FfiConverterOptionString.lower(expressionJson),uniffiCallStatus
+    )
+}
+}
+    
 open func setSavedFilterStarred(id: String, starred: Bool)throws   {try rustCallWithError(FfiConverterTypeStorageError_lift) {
         uniffiCallStatus in
     uniffi_memry_core_fn_method_tasks_set_saved_filter_starred(
@@ -10770,6 +10861,25 @@ open func convertChecklistItem(noteId: String, blockId: String, localNow: String
     return try  FfiConverterOptionString.lift(try rustCallWithError(FfiConverterTypeStorageError_lift) {
         uniffiCallStatus in
     uniffi_memry_core_fn_method_tasks_convert_checklist_item(
+            self.uniffiCloneHandle(),
+        FfiConverterString.lower(noteId),
+        FfiConverterString.lower(blockId),
+        FfiConverterString.lower(localNow),uniffiCallStatus
+    )
+})
+}
+    
+    /**
+     * [`Tasks::convert_checklist_item`] for a line the user just typed, the
+     * conversion desktop's editor makes on its own (`analyzeTaskIntents`).
+     * With the synced `editor.convertChecklistsToTasks` off, only a line
+     * under a task line converts, as its subtask. `nil` when the line stays
+     * a checkbox.
+     */
+open func convertTypedChecklistItem(noteId: String, blockId: String, localNow: String)throws  -> String?  {
+    return try  FfiConverterOptionString.lift(try rustCallWithError(FfiConverterTypeStorageError_lift) {
+        uniffiCallStatus in
+    uniffi_memry_core_fn_method_tasks_convert_typed_checklist_item(
             self.uniffiCloneHandle(),
         FfiConverterString.lower(noteId),
         FfiConverterString.lower(blockId),
@@ -10969,6 +11079,27 @@ open func get(id: String)throws  -> TaskItem?  {
     uniffi_memry_core_fn_method_tasks_get(
             self.uniffiCloneHandle(),
         FfiConverterString.lower(id),uniffiCallStatus
+    )
+})
+}
+    
+    /**
+     * The Location filter's folders and notes, with their task counts, in
+     * tree order; flattened to the name matches for a non-blank `query`.
+     * Selected folders and notes stay listed even when they hold nothing.
+     *
+     * Desktop counts the Tasks page's rows before its chip filters. Here the
+     * rows are every live task (completed and archived ones included), so a
+     * count does not change with the tab or the other filters.
+     */
+open func locationOptions(selectedFolderPaths: [String], selectedNoteIds: [String], query: String)throws  -> [TaskLocationOption]  {
+    return try  FfiConverterSequenceTypeTaskLocationOption.lift(try rustCallWithError(FfiConverterTypeStorageError_lift) {
+        uniffiCallStatus in
+    uniffi_memry_core_fn_method_tasks_location_options(
+            self.uniffiCloneHandle(),
+        FfiConverterSequenceString.lower(selectedFolderPaths),
+        FfiConverterSequenceString.lower(selectedNoteIds),
+        FfiConverterString.lower(query),uniffiCallStatus
     )
 })
 }
@@ -13285,6 +13416,28 @@ public protocol VaultSyncProtocol: AnyObject, Sendable {
     func uploadAttachment(noteId: String, filename: String, mimeType: String, bytes: Data) async throws  -> String
     
     /**
+     * Attaches a capture's file to a note it is being filed into.
+     *
+     * A capture whose upload is cached here is referenced from the note and
+     * not uploaded again; the returned `filename` is the manifest's, which an
+     * embed must use. Otherwise the capture's file is read and uploaded into
+     * the note as [`Self::upload_attachment`] does, under the given
+     * `filename`.
+     */
+    func attachInboxFile(itemId: String, noteId: String, filename: String, mimeType: String) async throws  -> InboxFileAttachment
+    
+    /**
+     * Uploads, downloads and releases Inbox files (#4157). `reachable` is the
+     * shell's observation: nothing is uploaded or released while offline, and
+     * downloads follow FR-045's metered policy through
+     * [`Self::fetch_attachment`].
+     *
+     * One failure never stops the pass: it is counted, and the work stays
+     * owed for the next call. Only a locked device ends it.
+     */
+    func syncInboxAttachments(reachable: Reachable) async throws  -> InboxAttachmentSyncSummary
+    
+    /**
      * One pass: pull records, pull the bodies they touched, then push.
      *
      * **`async`**: tens of round trips on a busy vault. Like every sync call
@@ -13599,6 +13752,56 @@ open func uploadAttachment(noteId: String, filename: String, mimeType: String, b
 }
     
     /**
+     * Attaches a capture's file to a note it is being filed into.
+     *
+     * A capture whose upload is cached here is referenced from the note and
+     * not uploaded again; the returned `filename` is the manifest's, which an
+     * embed must use. Otherwise the capture's file is read and uploaded into
+     * the note as [`Self::upload_attachment`] does, under the given
+     * `filename`.
+     */
+open func attachInboxFile(itemId: String, noteId: String, filename: String, mimeType: String)async throws  -> InboxFileAttachment  {
+    return
+        try  await uniffiRustCallAsync(
+            rustFutureFunc: {
+                uniffi_memry_core_fn_method_vaultsync_attach_inbox_file(
+                        self.uniffiCloneHandle(),FfiConverterString.lower(itemId),FfiConverterString.lower(noteId),FfiConverterString.lower(filename),FfiConverterString.lower(mimeType)
+                )
+            },
+            pollFunc: ffi_memry_core_rust_future_poll_rust_buffer,
+            completeFunc: ffi_memry_core_rust_future_complete_rust_buffer,
+            freeFunc: ffi_memry_core_rust_future_free_rust_buffer,
+            liftFunc: FfiConverterTypeInboxFileAttachment_lift,
+            errorHandler: FfiConverterTypeSyncError_lift
+        )
+}
+    
+    /**
+     * Uploads, downloads and releases Inbox files (#4157). `reachable` is the
+     * shell's observation: nothing is uploaded or released while offline, and
+     * downloads follow FR-045's metered policy through
+     * [`Self::fetch_attachment`].
+     *
+     * One failure never stops the pass: it is counted, and the work stays
+     * owed for the next call. Only a locked device ends it.
+     */
+open func syncInboxAttachments(reachable: Reachable)async throws  -> InboxAttachmentSyncSummary  {
+    return
+        try  await uniffiRustCallAsync(
+            rustFutureFunc: {
+                uniffi_memry_core_fn_method_vaultsync_sync_inbox_attachments(
+                        self.uniffiCloneHandle(),FfiConverterTypeReachable_lower(reachable)
+                )
+            },
+            pollFunc: ffi_memry_core_rust_future_poll_rust_buffer,
+            completeFunc: ffi_memry_core_rust_future_complete_rust_buffer,
+            freeFunc: ffi_memry_core_rust_future_free_rust_buffer,
+            liftFunc: FfiConverterTypeInboxAttachmentSyncSummary_lift,
+            errorHandler: FfiConverterTypeSyncError_lift
+        )
+}
+    
+    /**
      * One pass: pull records, pull the bodies they touched, then push.
      *
      * **`async`**: tens of round trips on a busy vault. Like every sync call
@@ -13690,6 +13893,12 @@ public struct AccountDevice: Equatable, Hashable {
     public var id: String
     public var name: String
     public var platform: String
+    /**
+     * Chapter 02 §2.3.4. `None` is unknown: an older server, a device
+     * registered before the field, or a value this build does not know. The
+     * shell then falls back to `platform`.
+     */
+    public var formFactor: DeviceFormFactor?
     public var appVersion: String?
     /**
      * Epoch seconds, as the server stores it.
@@ -13703,7 +13912,12 @@ public struct AccountDevice: Equatable, Hashable {
 
     // Default memberwise initializers are never public by default, so we
     // declare one manually.
-    public init(id: String, name: String, platform: String, appVersion: String?, 
+    public init(id: String, name: String, platform: String, 
+        /**
+         * Chapter 02 §2.3.4. `None` is unknown: an older server, a device
+         * registered before the field, or a value this build does not know. The
+         * shell then falls back to `platform`.
+         */formFactor: DeviceFormFactor?, appVersion: String?, 
         /**
          * Epoch seconds, as the server stores it.
          */lastSyncAt: Int64?, createdAt: Int64?, 
@@ -13713,6 +13927,7 @@ public struct AccountDevice: Equatable, Hashable {
         self.id = id
         self.name = name
         self.platform = platform
+        self.formFactor = formFactor
         self.appVersion = appVersion
         self.lastSyncAt = lastSyncAt
         self.createdAt = createdAt
@@ -13738,6 +13953,7 @@ public struct FfiConverterTypeAccountDevice: FfiConverterRustBuffer {
                 id: FfiConverterString.read(from: &buf), 
                 name: FfiConverterString.read(from: &buf), 
                 platform: FfiConverterString.read(from: &buf), 
+                formFactor: FfiConverterOptionTypeDeviceFormFactor.read(from: &buf), 
                 appVersion: FfiConverterOptionString.read(from: &buf), 
                 lastSyncAt: FfiConverterOptionInt64.read(from: &buf), 
                 createdAt: FfiConverterOptionInt64.read(from: &buf), 
@@ -13749,6 +13965,7 @@ public struct FfiConverterTypeAccountDevice: FfiConverterRustBuffer {
         FfiConverterString.write(value.id, into: &buf)
         FfiConverterString.write(value.name, into: &buf)
         FfiConverterString.write(value.platform, into: &buf)
+        FfiConverterOptionTypeDeviceFormFactor.write(value.formFactor, into: &buf)
         FfiConverterOptionString.write(value.appVersion, into: &buf)
         FfiConverterOptionInt64.write(value.lastSyncAt, into: &buf)
         FfiConverterOptionInt64.write(value.createdAt, into: &buf)
@@ -17192,6 +17409,10 @@ public struct DeviceDescriptor: Equatable, Hashable {
      * Chapter 02 §2.12: the registration enum, not `CLIENT_PLATFORMS`.
      */
     public var platform: DevicePlatform
+    /**
+     * Chapter 02 §2.3.4; `None` sends nothing, as an older build did.
+     */
+    public var formFactor: DeviceFormFactor?
     public var osVersion: String?
     public var appVersion: String
     /**
@@ -17207,12 +17428,16 @@ public struct DeviceDescriptor: Equatable, Hashable {
          */name: String, 
         /**
          * Chapter 02 §2.12: the registration enum, not `CLIENT_PLATFORMS`.
-         */platform: DevicePlatform, osVersion: String?, appVersion: String, 
+         */platform: DevicePlatform, 
+        /**
+         * Chapter 02 §2.3.4; `None` sends nothing, as an older build did.
+         */formFactor: DeviceFormFactor? = nil, osVersion: String?, appVersion: String, 
         /**
          * Defaults to `default` server-side when absent.
          */vaultId: String?) {
         self.name = name
         self.platform = platform
+        self.formFactor = formFactor
         self.osVersion = osVersion
         self.appVersion = appVersion
         self.vaultId = vaultId
@@ -17236,6 +17461,7 @@ public struct FfiConverterTypeDeviceDescriptor: FfiConverterRustBuffer {
             try DeviceDescriptor(
                 name: FfiConverterString.read(from: &buf), 
                 platform: FfiConverterTypeDevicePlatform.read(from: &buf), 
+                formFactor: FfiConverterOptionTypeDeviceFormFactor.read(from: &buf), 
                 osVersion: FfiConverterOptionString.read(from: &buf), 
                 appVersion: FfiConverterString.read(from: &buf), 
                 vaultId: FfiConverterOptionString.read(from: &buf)
@@ -17245,6 +17471,7 @@ public struct FfiConverterTypeDeviceDescriptor: FfiConverterRustBuffer {
     public static func write(_ value: DeviceDescriptor, into buf: inout [UInt8]) {
         FfiConverterString.write(value.name, into: &buf)
         FfiConverterTypeDevicePlatform.write(value.platform, into: &buf)
+        FfiConverterOptionTypeDeviceFormFactor.write(value.formFactor, into: &buf)
         FfiConverterOptionString.write(value.osVersion, into: &buf)
         FfiConverterString.write(value.appVersion, into: &buf)
         FfiConverterOptionString.write(value.vaultId, into: &buf)
@@ -17819,6 +18046,105 @@ public func FfiConverterTypeHttpResponse_lower(_ value: HttpResponse) -> RustBuf
 
 
 /**
+ * What one pass did.
+ */
+public struct InboxAttachmentSyncSummary: Equatable, Hashable {
+    /**
+     * Files uploaded; each capture now carries its `attachmentId`.
+     */
+    public var uploaded: UInt32
+    /**
+     * Files written under `attachments/inbox/`.
+     */
+    public var downloaded: UInt32
+    /**
+     * Downloads held back by the metered policy (FR-045). Not a failure.
+     */
+    public var deferred: UInt32
+    /**
+     * Failed this time and still owed; the next pass tries again.
+     */
+    public var failed: UInt32
+    /**
+     * Deleted captures whose chunks were dereferenced.
+     */
+    public var released: UInt32
+
+    // Default memberwise initializers are never public by default, so we
+    // declare one manually.
+    public init(
+        /**
+         * Files uploaded; each capture now carries its `attachmentId`.
+         */uploaded: UInt32, 
+        /**
+         * Files written under `attachments/inbox/`.
+         */downloaded: UInt32, 
+        /**
+         * Downloads held back by the metered policy (FR-045). Not a failure.
+         */deferred: UInt32, 
+        /**
+         * Failed this time and still owed; the next pass tries again.
+         */failed: UInt32, 
+        /**
+         * Deleted captures whose chunks were dereferenced.
+         */released: UInt32) {
+        self.uploaded = uploaded
+        self.downloaded = downloaded
+        self.deferred = deferred
+        self.failed = failed
+        self.released = released
+    }
+
+    
+
+    
+}
+
+#if compiler(>=6)
+extension InboxAttachmentSyncSummary: Sendable {}
+#endif
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
+public struct FfiConverterTypeInboxAttachmentSyncSummary: FfiConverterRustBuffer {
+    public static func read(from buf: inout (data: Data, offset: Data.Index)) throws -> InboxAttachmentSyncSummary {
+        return
+            try InboxAttachmentSyncSummary(
+                uploaded: FfiConverterUInt32.read(from: &buf), 
+                downloaded: FfiConverterUInt32.read(from: &buf), 
+                deferred: FfiConverterUInt32.read(from: &buf), 
+                failed: FfiConverterUInt32.read(from: &buf), 
+                released: FfiConverterUInt32.read(from: &buf)
+        )
+    }
+
+    public static func write(_ value: InboxAttachmentSyncSummary, into buf: inout [UInt8]) {
+        FfiConverterUInt32.write(value.uploaded, into: &buf)
+        FfiConverterUInt32.write(value.downloaded, into: &buf)
+        FfiConverterUInt32.write(value.deferred, into: &buf)
+        FfiConverterUInt32.write(value.failed, into: &buf)
+        FfiConverterUInt32.write(value.released, into: &buf)
+    }
+}
+
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
+public func FfiConverterTypeInboxAttachmentSyncSummary_lift(_ buf: RustBuffer) throws -> InboxAttachmentSyncSummary {
+    return try FfiConverterTypeInboxAttachmentSyncSummary.lift(buf)
+}
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
+public func FfiConverterTypeInboxAttachmentSyncSummary_lower(_ value: InboxAttachmentSyncSummary) -> RustBuffer {
+    return FfiConverterTypeInboxAttachmentSyncSummary.lower(value)
+}
+
+
+/**
  * Desktop's `BulkResponse`.
  */
 public struct InboxBulkResult: Equatable, Hashable {
@@ -17937,6 +18263,71 @@ public func FfiConverterTypeInboxCaptureOutcome_lower(_ value: InboxCaptureOutco
 
 
 /**
+ * A capture's file, attached to a note.
+ */
+public struct InboxFileAttachment: Equatable, Hashable {
+    public var attachmentId: String
+    /**
+     * The name an embed in the note must use: peers place a note's download
+     * by its manifest filename.
+     */
+    public var filename: String
+
+    // Default memberwise initializers are never public by default, so we
+    // declare one manually.
+    public init(attachmentId: String, 
+        /**
+         * The name an embed in the note must use: peers place a note's download
+         * by its manifest filename.
+         */filename: String) {
+        self.attachmentId = attachmentId
+        self.filename = filename
+    }
+
+    
+
+    
+}
+
+#if compiler(>=6)
+extension InboxFileAttachment: Sendable {}
+#endif
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
+public struct FfiConverterTypeInboxFileAttachment: FfiConverterRustBuffer {
+    public static func read(from buf: inout (data: Data, offset: Data.Index)) throws -> InboxFileAttachment {
+        return
+            try InboxFileAttachment(
+                attachmentId: FfiConverterString.read(from: &buf), 
+                filename: FfiConverterString.read(from: &buf)
+        )
+    }
+
+    public static func write(_ value: InboxFileAttachment, into buf: inout [UInt8]) {
+        FfiConverterString.write(value.attachmentId, into: &buf)
+        FfiConverterString.write(value.filename, into: &buf)
+    }
+}
+
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
+public func FfiConverterTypeInboxFileAttachment_lift(_ buf: RustBuffer) throws -> InboxFileAttachment {
+    return try FfiConverterTypeInboxFileAttachment.lift(buf)
+}
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
+public func FfiConverterTypeInboxFileAttachment_lower(_ value: InboxFileAttachment) -> RustBuffer {
+    return FfiConverterTypeInboxFileAttachment.lower(value)
+}
+
+
+/**
  * Where a filing landed.
  */
 public struct InboxFiled: Equatable, Hashable {
@@ -18032,10 +18423,16 @@ public struct InboxItemRecord: Equatable, Hashable {
     public var transcription: String?
     public var transcriptionStatus: String?
     /**
-     * Vault-relative; the file exists only on the capturing device.
+     * Vault-relative. The file is on the capturing device, and on another once
+     * `attachment_id` names its upload and `sync_inbox_attachments` has
+     * downloaded it.
      */
     public var attachmentPath: String?
     public var thumbnailPath: String?
+    /**
+     * The uploaded file's attachment id (§14.7.2); `nil` until it is uploaded.
+     */
+    public var attachmentId: String?
     public var createdAtMs: Int64
     public var modifiedAtMs: Int64?
     public var tags: [String]
@@ -18056,8 +18453,13 @@ public struct InboxItemRecord: Equatable, Hashable {
          * or what a newer build wrote.
          */itemType: String, title: String, content: String?, metadataJson: String?, filedAtMs: Int64?, filedTo: String?, filedAction: String?, snoozedUntilMs: Int64?, snoozeReason: String?, archivedAtMs: Int64?, viewedAtMs: Int64?, sourceUrl: String?, sourceTitle: String?, captureSource: String?, processingStatus: String?, transcription: String?, transcriptionStatus: String?, 
         /**
-         * Vault-relative; the file exists only on the capturing device.
-         */attachmentPath: String?, thumbnailPath: String?, createdAtMs: Int64, modifiedAtMs: Int64?, tags: [String], 
+         * Vault-relative. The file is on the capturing device, and on another once
+         * `attachment_id` names its upload and `sync_inbox_attachments` has
+         * downloaded it.
+         */attachmentPath: String?, thumbnailPath: String?, 
+        /**
+         * The uploaded file's attachment id (§14.7.2); `nil` until it is uploaded.
+         */attachmentId: String?, createdAtMs: Int64, modifiedAtMs: Int64?, tags: [String], 
         /**
          * Desktop's `isNoteOnlyType`: no task, event or reminder.
          */isNoteOnly: Bool, 
@@ -18084,6 +18486,7 @@ public struct InboxItemRecord: Equatable, Hashable {
         self.transcriptionStatus = transcriptionStatus
         self.attachmentPath = attachmentPath
         self.thumbnailPath = thumbnailPath
+        self.attachmentId = attachmentId
         self.createdAtMs = createdAtMs
         self.modifiedAtMs = modifiedAtMs
         self.tags = tags
@@ -18127,6 +18530,7 @@ public struct FfiConverterTypeInboxItemRecord: FfiConverterRustBuffer {
                 transcriptionStatus: FfiConverterOptionString.read(from: &buf), 
                 attachmentPath: FfiConverterOptionString.read(from: &buf), 
                 thumbnailPath: FfiConverterOptionString.read(from: &buf), 
+                attachmentId: FfiConverterOptionString.read(from: &buf), 
                 createdAtMs: FfiConverterInt64.read(from: &buf), 
                 modifiedAtMs: FfiConverterOptionInt64.read(from: &buf), 
                 tags: FfiConverterSequenceString.read(from: &buf), 
@@ -18156,6 +18560,7 @@ public struct FfiConverterTypeInboxItemRecord: FfiConverterRustBuffer {
         FfiConverterOptionString.write(value.transcriptionStatus, into: &buf)
         FfiConverterOptionString.write(value.attachmentPath, into: &buf)
         FfiConverterOptionString.write(value.thumbnailPath, into: &buf)
+        FfiConverterOptionString.write(value.attachmentId, into: &buf)
         FfiConverterInt64.write(value.createdAtMs, into: &buf)
         FfiConverterOptionInt64.write(value.modifiedAtMs, into: &buf)
         FfiConverterSequenceString.write(value.tags, into: &buf)
@@ -22743,6 +23148,10 @@ public struct SavedFilterItem: Equatable, Hashable {
      * The full `config` JSON (`{filters, sort?, starred?}`), verbatim.
      */
     public var configJson: String
+    /**
+     * The advanced rules (`{match, rules}`), verbatim; `nil` when none.
+     */
+    public var expressionJson: String?
     public var starred: Bool
     public var position: Int64
 
@@ -22751,10 +23160,14 @@ public struct SavedFilterItem: Equatable, Hashable {
     public init(id: String, name: String, 
         /**
          * The full `config` JSON (`{filters, sort?, starred?}`), verbatim.
-         */configJson: String, starred: Bool, position: Int64) {
+         */configJson: String, 
+        /**
+         * The advanced rules (`{match, rules}`), verbatim; `nil` when none.
+         */expressionJson: String?, starred: Bool, position: Int64) {
         self.id = id
         self.name = name
         self.configJson = configJson
+        self.expressionJson = expressionJson
         self.starred = starred
         self.position = position
     }
@@ -22778,6 +23191,7 @@ public struct FfiConverterTypeSavedFilterItem: FfiConverterRustBuffer {
                 id: FfiConverterString.read(from: &buf), 
                 name: FfiConverterString.read(from: &buf), 
                 configJson: FfiConverterString.read(from: &buf), 
+                expressionJson: FfiConverterOptionString.read(from: &buf), 
                 starred: FfiConverterBool.read(from: &buf), 
                 position: FfiConverterInt64.read(from: &buf)
         )
@@ -22787,6 +23201,7 @@ public struct FfiConverterTypeSavedFilterItem: FfiConverterRustBuffer {
         FfiConverterString.write(value.id, into: &buf)
         FfiConverterString.write(value.name, into: &buf)
         FfiConverterString.write(value.configJson, into: &buf)
+        FfiConverterOptionString.write(value.expressionJson, into: &buf)
         FfiConverterBool.write(value.starred, into: &buf)
         FfiConverterInt64.write(value.position, into: &buf)
     }
@@ -24450,6 +24865,110 @@ public func FfiConverterTypeTaskItem_lower(_ value: TaskItem) -> RustBuffer {
 
 
 /**
+ * One row of the Location filter's picker: a folder or a note that holds
+ * tasks (desktop's `buildTaskLocationOptions`).
+ */
+public struct TaskLocationOption: Equatable, Hashable {
+    /**
+     * `folder` or `note`.
+     */
+    public var kind: String
+    /**
+     * The folder path or note id the filter stores.
+     */
+    public var value: String
+    public var label: String
+    /**
+     * The folder a note sits in, or a folder's parent path.
+     */
+    public var context: String
+    /**
+     * Nesting below the vault root, for the tree indent; 0 while searching.
+     */
+    public var depth: UInt32
+    /**
+     * Top-level tasks the row would select.
+     */
+    public var count: UInt32
+
+    // Default memberwise initializers are never public by default, so we
+    // declare one manually.
+    public init(
+        /**
+         * `folder` or `note`.
+         */kind: String, 
+        /**
+         * The folder path or note id the filter stores.
+         */value: String, label: String, 
+        /**
+         * The folder a note sits in, or a folder's parent path.
+         */context: String, 
+        /**
+         * Nesting below the vault root, for the tree indent; 0 while searching.
+         */depth: UInt32, 
+        /**
+         * Top-level tasks the row would select.
+         */count: UInt32) {
+        self.kind = kind
+        self.value = value
+        self.label = label
+        self.context = context
+        self.depth = depth
+        self.count = count
+    }
+
+    
+
+    
+}
+
+#if compiler(>=6)
+extension TaskLocationOption: Sendable {}
+#endif
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
+public struct FfiConverterTypeTaskLocationOption: FfiConverterRustBuffer {
+    public static func read(from buf: inout (data: Data, offset: Data.Index)) throws -> TaskLocationOption {
+        return
+            try TaskLocationOption(
+                kind: FfiConverterString.read(from: &buf), 
+                value: FfiConverterString.read(from: &buf), 
+                label: FfiConverterString.read(from: &buf), 
+                context: FfiConverterString.read(from: &buf), 
+                depth: FfiConverterUInt32.read(from: &buf), 
+                count: FfiConverterUInt32.read(from: &buf)
+        )
+    }
+
+    public static func write(_ value: TaskLocationOption, into buf: inout [UInt8]) {
+        FfiConverterString.write(value.kind, into: &buf)
+        FfiConverterString.write(value.value, into: &buf)
+        FfiConverterString.write(value.label, into: &buf)
+        FfiConverterString.write(value.context, into: &buf)
+        FfiConverterUInt32.write(value.depth, into: &buf)
+        FfiConverterUInt32.write(value.count, into: &buf)
+    }
+}
+
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
+public func FfiConverterTypeTaskLocationOption_lift(_ buf: RustBuffer) throws -> TaskLocationOption {
+    return try FfiConverterTypeTaskLocationOption.lift(buf)
+}
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
+public func FfiConverterTypeTaskLocationOption_lower(_ value: TaskLocationOption) -> RustBuffer {
+    return FfiConverterTypeTaskLocationOption.lower(value)
+}
+
+
+/**
  * One row of the "Move under…" picker.
  */
 public struct TaskPlace: Equatable, Hashable {
@@ -24981,6 +25500,11 @@ public struct TaskViewResult: Equatable, Hashable {
      */
     public var totalCount: UInt32
     public var filteredCount: UInt32
+    /**
+     * The advanced rules this build evaluates in the filters' `expression`
+     * (`countTaskFilterRules`); 0 without one.
+     */
+    public var ruleCount: UInt32
 
     // Default memberwise initializers are never public by default, so we
     // declare one manually.
@@ -25006,7 +25530,11 @@ public struct TaskViewResult: Equatable, Hashable {
         /**
          * Rows before the filter bar, and after it (for the "filters hid
          * everything" empty state).
-         */totalCount: UInt32, filteredCount: UInt32) {
+         */totalCount: UInt32, filteredCount: UInt32, 
+        /**
+         * The advanced rules this build evaluates in the filters' `expression`
+         * (`countTaskFilterRules`); 0 without one.
+         */ruleCount: UInt32) {
         self.taskIds = taskIds
         self.groups = groups
         self.doneIds = doneIds
@@ -25014,6 +25542,7 @@ public struct TaskViewResult: Equatable, Hashable {
         self.counts = counts
         self.totalCount = totalCount
         self.filteredCount = filteredCount
+        self.ruleCount = ruleCount
     }
 
     
@@ -25038,7 +25567,8 @@ public struct FfiConverterTypeTaskViewResult: FfiConverterRustBuffer {
                 cardIds: FfiConverterSequenceString.read(from: &buf), 
                 counts: FfiConverterTypeTaskTabCounts.read(from: &buf), 
                 totalCount: FfiConverterUInt32.read(from: &buf), 
-                filteredCount: FfiConverterUInt32.read(from: &buf)
+                filteredCount: FfiConverterUInt32.read(from: &buf), 
+                ruleCount: FfiConverterUInt32.read(from: &buf)
         )
     }
 
@@ -25050,6 +25580,7 @@ public struct FfiConverterTypeTaskViewResult: FfiConverterRustBuffer {
         FfiConverterTypeTaskTabCounts.write(value.counts, into: &buf)
         FfiConverterUInt32.write(value.totalCount, into: &buf)
         FfiConverterUInt32.write(value.filteredCount, into: &buf)
+        FfiConverterUInt32.write(value.ruleCount, into: &buf)
     }
 }
 
@@ -27267,10 +27798,15 @@ public enum BlockEdit: Equatable, Hashable {
      *
      * `new_block_id` becomes the `columnList`'s own `id`; the core mints the
      * ids of each column and of each column's paragraph container.
-     *
-     * Last in the enum so the variants before it keep their FFI indices.
      */
     case insertColumnList(afterBlockId: String?, columns: UInt32, newBlockId: String
+    )
+    /**
+     * Backspace at a block's start: appends `block_id`'s inline content, marks
+     * and inline nodes kept, to `into_block_id`'s, then removes `block_id`. A
+     * block with nested blocks is refused. Last, to keep earlier FFI indices.
+     */
+    case mergeBlocks(blockId: String, intoBlockId: String
     )
 
 
@@ -27360,6 +27896,9 @@ public struct FfiConverterTypeBlockEdit: FfiConverterRustBuffer {
         )
         
         case 23: return .insertColumnList(afterBlockId: try FfiConverterOptionString.read(from: &buf), columns: try FfiConverterUInt32.read(from: &buf), newBlockId: try FfiConverterString.read(from: &buf)
+        )
+        
+        case 24: return .mergeBlocks(blockId: try FfiConverterString.read(from: &buf), intoBlockId: try FfiConverterString.read(from: &buf)
         )
         
         default: throw UniffiInternalError.unexpectedEnumCase
@@ -27525,6 +28064,12 @@ public struct FfiConverterTypeBlockEdit: FfiConverterRustBuffer {
             FfiConverterOptionString.write(afterBlockId, into: &buf)
             FfiConverterUInt32.write(columns, into: &buf)
             FfiConverterString.write(newBlockId, into: &buf)
+            
+        
+        case let .mergeBlocks(blockId,intoBlockId):
+            writeInt(&buf, Int32(24))
+            FfiConverterString.write(blockId, into: &buf)
+            FfiConverterString.write(intoBlockId, into: &buf)
             
         }
     }
@@ -28392,6 +28937,76 @@ public func FfiConverterTypeCryptoError_lift(_ buf: RustBuffer) throws -> Crypto
 public func FfiConverterTypeCryptoError_lower(_ value: CryptoError) -> RustBuffer {
     return FfiConverterTypeCryptoError.lower(value)
 }
+
+
+/**
+ * Chapter 02 §2.3.4: tells an iPad from an iPhone, which `platform` cannot.
+ * Absent means unknown, and a reader falls back to `platform`.
+ */
+
+public enum DeviceFormFactor: Equatable, Hashable {
+    
+    case phone
+    case tablet
+
+
+
+
+
+}
+
+#if compiler(>=6)
+extension DeviceFormFactor: Sendable {}
+#endif
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
+public struct FfiConverterTypeDeviceFormFactor: FfiConverterRustBuffer {
+    typealias SwiftType = DeviceFormFactor
+
+    public static func read(from buf: inout (data: Data, offset: Data.Index)) throws -> DeviceFormFactor {
+        let variant: Int32 = try readInt(&buf)
+        switch variant {
+        
+        case 1: return .phone
+        
+        case 2: return .tablet
+        
+        default: throw UniffiInternalError.unexpectedEnumCase
+        }
+    }
+
+    public static func write(_ value: DeviceFormFactor, into buf: inout [UInt8]) {
+        switch value {
+        
+        
+        case .phone:
+            writeInt(&buf, Int32(1))
+        
+        
+        case .tablet:
+            writeInt(&buf, Int32(2))
+        
+        }
+    }
+}
+
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
+public func FfiConverterTypeDeviceFormFactor_lift(_ buf: RustBuffer) throws -> DeviceFormFactor {
+    return try FfiConverterTypeDeviceFormFactor.lift(buf)
+}
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
+public func FfiConverterTypeDeviceFormFactor_lower(_ value: DeviceFormFactor) -> RustBuffer {
+    return FfiConverterTypeDeviceFormFactor.lower(value)
+}
+
 
 
 /**
@@ -30513,6 +31128,93 @@ public func FfiConverterTypeSyncPhase_lower(_ value: SyncPhase) -> RustBuffer {
 
 
 /**
+ * What the shell does with a batch after one send.
+ */
+
+public enum TelemetryDelivery: Equatable, Hashable {
+    
+    /**
+     * The server took it. Drop it from the queue.
+     */
+    case accepted
+    /**
+     * The server refused this batch and will refuse it again, such as a 400
+     * from a server on older contracts. Drop it: keeping it would block every
+     * batch queued behind it.
+     */
+    case rejected
+    /**
+     * No answer, a rate limit, or a 5xx. Keep it and send it on a later flush.
+     */
+    case retryLater
+
+
+
+
+
+}
+
+#if compiler(>=6)
+extension TelemetryDelivery: Sendable {}
+#endif
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
+public struct FfiConverterTypeTelemetryDelivery: FfiConverterRustBuffer {
+    typealias SwiftType = TelemetryDelivery
+
+    public static func read(from buf: inout (data: Data, offset: Data.Index)) throws -> TelemetryDelivery {
+        let variant: Int32 = try readInt(&buf)
+        switch variant {
+        
+        case 1: return .accepted
+        
+        case 2: return .rejected
+        
+        case 3: return .retryLater
+        
+        default: throw UniffiInternalError.unexpectedEnumCase
+        }
+    }
+
+    public static func write(_ value: TelemetryDelivery, into buf: inout [UInt8]) {
+        switch value {
+        
+        
+        case .accepted:
+            writeInt(&buf, Int32(1))
+        
+        
+        case .rejected:
+            writeInt(&buf, Int32(2))
+        
+        
+        case .retryLater:
+            writeInt(&buf, Int32(3))
+        
+        }
+    }
+}
+
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
+public func FfiConverterTypeTelemetryDelivery_lift(_ buf: RustBuffer) throws -> TelemetryDelivery {
+    return try FfiConverterTypeTelemetryDelivery.lift(buf)
+}
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
+public func FfiConverterTypeTelemetryDelivery_lower(_ value: TelemetryDelivery) -> RustBuffer {
+    return FfiConverterTypeTelemetryDelivery.lower(value)
+}
+
+
+
+/**
  * Failures of the `Transport` seam (research R5).
  *
  * A non-2xx HTTP status is **not** one of these: it is a successful response
@@ -31321,6 +32023,30 @@ fileprivate struct FfiConverterOptionTypeWikiTargetMatch: FfiConverterRustBuffer
         switch try readInt(&buf) as Int8 {
         case 0: return nil
         case 1: return try FfiConverterTypeWikiTargetMatch.read(from: &buf)
+        default: throw UniffiInternalError.unexpectedOptionalTag
+        }
+    }
+}
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
+fileprivate struct FfiConverterOptionTypeDeviceFormFactor: FfiConverterRustBuffer {
+    typealias SwiftType = DeviceFormFactor?
+
+    public static func write(_ value: SwiftType, into buf: inout [UInt8]) {
+        guard let value = value else {
+            writeInt(&buf, Int8(0))
+            return
+        }
+        writeInt(&buf, Int8(1))
+        FfiConverterTypeDeviceFormFactor.write(value, into: &buf)
+    }
+
+    public static func read(from buf: inout (data: Data, offset: Data.Index)) throws -> SwiftType {
+        switch try readInt(&buf) as Int8 {
+        case 0: return nil
+        case 1: return try FfiConverterTypeDeviceFormFactor.read(from: &buf)
         default: throw UniffiInternalError.unexpectedOptionalTag
         }
     }
@@ -33074,6 +33800,31 @@ fileprivate struct FfiConverterSequenceTypeTaskItem: FfiConverterRustBuffer {
 #if swift(>=5.8)
 @_documentation(visibility: private)
 #endif
+fileprivate struct FfiConverterSequenceTypeTaskLocationOption: FfiConverterRustBuffer {
+    typealias SwiftType = [TaskLocationOption]
+
+    public static func write(_ value: [TaskLocationOption], into buf: inout [UInt8]) {
+        let len = Int32(value.count)
+        writeInt(&buf, len)
+        for item in value {
+            FfiConverterTypeTaskLocationOption.write(item, into: &buf)
+        }
+    }
+
+    public static func read(from buf: inout (data: Data, offset: Data.Index)) throws -> [TaskLocationOption] {
+        let len: Int32 = try readInt(&buf)
+        var seq = [TaskLocationOption]()
+        seq.reserveCapacity(Int(len))
+        for _ in 0 ..< len {
+            seq.append(try FfiConverterTypeTaskLocationOption.read(from: &buf))
+        }
+        return seq
+    }
+}
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
 fileprivate struct FfiConverterSequenceTypeTaskPlace: FfiConverterRustBuffer {
     typealias SwiftType = [TaskPlace]
 
@@ -33922,7 +34673,9 @@ public func taskDueWindowsConformance(sectionJson: String) -> String  {
 }
 /**
  * Every section of `task-filtering.json` recomputed: `{dimensions, sorts,
- * groups, applied}` in the file's own shape (each case's `expected`).
+ * groups, applied}` in the file's own shape (each case's `expected`),
+ * `expressions` as each case's `{expected, ruleCount}`, and `locationOptions`
+ * as each of its cases' `expected` rows.
  */
 public func taskFilteringConformance(fileJson: String) -> String  {
     return try!  FfiConverterString.lift(try! rustCall() {
@@ -34124,7 +34877,7 @@ private let initializationResult: InitializationResult = {
     if (uniffi_memry_core_checksum_func_task_due_windows_conformance() != 7716) {
         return InitializationResult.apiChecksumMismatch
     }
-    if (uniffi_memry_core_checksum_func_task_filtering_conformance() != 22113) {
+    if (uniffi_memry_core_checksum_func_task_filtering_conformance() != 29961) {
         return InitializationResult.apiChecksumMismatch
     }
     if (uniffi_memry_core_checksum_func_is_task_time_in_progress() != 26769) {
@@ -34233,6 +34986,9 @@ private let initializationResult: InitializationResult = {
         return InitializationResult.apiChecksumMismatch
     }
     if (uniffi_memry_core_checksum_method_authsession_device_approver() != 31031) {
+        return InitializationResult.apiChecksumMismatch
+    }
+    if (uniffi_memry_core_checksum_method_authsession_send_telemetry() != 21711) {
         return InitializationResult.apiChecksumMismatch
     }
     if (uniffi_memry_core_checksum_method_vaultcalendar_create_event() != 11228) {
@@ -34415,7 +35171,7 @@ private let initializationResult: InitializationResult = {
     if (uniffi_memry_core_checksum_method_inbox_bulk_tag() != 26668) {
         return InitializationResult.apiChecksumMismatch
     }
-    if (uniffi_memry_core_checksum_method_inbox_capture_file() != 58559) {
+    if (uniffi_memry_core_checksum_method_inbox_capture_file() != 6100) {
         return InitializationResult.apiChecksumMismatch
     }
     if (uniffi_memry_core_checksum_method_inbox_capture_link() != 29296) {
@@ -34832,6 +35588,12 @@ private let initializationResult: InitializationResult = {
     if (uniffi_memry_core_checksum_method_vaultsync_upload_attachment() != 60438) {
         return InitializationResult.apiChecksumMismatch
     }
+    if (uniffi_memry_core_checksum_method_vaultsync_attach_inbox_file() != 44095) {
+        return InitializationResult.apiChecksumMismatch
+    }
+    if (uniffi_memry_core_checksum_method_vaultsync_sync_inbox_attachments() != 64358) {
+        return InitializationResult.apiChecksumMismatch
+    }
     if (uniffi_memry_core_checksum_method_vaultsync_sync_now() != 13576) {
         return InitializationResult.apiChecksumMismatch
     }
@@ -34907,13 +35669,16 @@ private let initializationResult: InitializationResult = {
     if (uniffi_memry_core_checksum_method_tasks_create_project() != 54330) {
         return InitializationResult.apiChecksumMismatch
     }
-    if (uniffi_memry_core_checksum_method_tasks_create_saved_filter() != 1730) {
+    if (uniffi_memry_core_checksum_method_tasks_create_saved_filter() != 18783) {
         return InitializationResult.apiChecksumMismatch
     }
     if (uniffi_memry_core_checksum_method_tasks_delete_project() != 41673) {
         return InitializationResult.apiChecksumMismatch
     }
     if (uniffi_memry_core_checksum_method_tasks_delete_saved_filter() != 31953) {
+        return InitializationResult.apiChecksumMismatch
+    }
+    if (uniffi_memry_core_checksum_method_tasks_ensure_inbox() != 60443) {
         return InitializationResult.apiChecksumMismatch
     }
     if (uniffi_memry_core_checksum_method_tasks_link_to_project() != 15728) {
@@ -34955,6 +35720,9 @@ private let initializationResult: InitializationResult = {
     if (uniffi_memry_core_checksum_method_tasks_set_project_link_pinned() != 57758) {
         return InitializationResult.apiChecksumMismatch
     }
+    if (uniffi_memry_core_checksum_method_tasks_set_saved_filter_expression() != 51350) {
+        return InitializationResult.apiChecksumMismatch
+    }
     if (uniffi_memry_core_checksum_method_tasks_set_saved_filter_starred() != 19631) {
         return InitializationResult.apiChecksumMismatch
     }
@@ -34980,6 +35748,9 @@ private let initializationResult: InitializationResult = {
         return InitializationResult.apiChecksumMismatch
     }
     if (uniffi_memry_core_checksum_method_tasks_convert_checklist_item() != 574) {
+        return InitializationResult.apiChecksumMismatch
+    }
+    if (uniffi_memry_core_checksum_method_tasks_convert_typed_checklist_item() != 11246) {
         return InitializationResult.apiChecksumMismatch
     }
     if (uniffi_memry_core_checksum_method_tasks_delete_reminder() != 65164) {
@@ -35025,6 +35796,9 @@ private let initializationResult: InitializationResult = {
         return InitializationResult.apiChecksumMismatch
     }
     if (uniffi_memry_core_checksum_method_tasks_get() != 47980) {
+        return InitializationResult.apiChecksumMismatch
+    }
+    if (uniffi_memry_core_checksum_method_tasks_location_options() != 52199) {
         return InitializationResult.apiChecksumMismatch
     }
     if (uniffi_memry_core_checksum_method_tasks_projects() != 993) {

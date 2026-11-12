@@ -219,6 +219,79 @@ describe('applyMemrynoteIdentity', () => {
     expect(setPathMock).not.toHaveBeenCalled()
   })
 
+  it.each(['fresh install', 'migrated profile'])(
+    'linux keeps its first-launch identity after storing secrets in a %s',
+    (profile) => {
+      if (profile === 'migrated profile') {
+        mkdirSync(legacyDir, { recursive: true })
+        writeFileSync(join(legacyDir, 'config.json'), '{"a":1}')
+      }
+
+      withPlatform('linux', run)
+      expect(setNameMock).toHaveBeenCalledWith(MEMRYNOTE_APP_NAME)
+      expect(paths.userData).toBe(newDir)
+      const originalPin = readFileSync(join(newDir, IDENTITY_PIN_FILENAME), 'utf-8')
+      writeFileSync(join(newDir, STORE), LOADED_STORE)
+
+      for (let launch = 0; launch < 2; launch += 1) {
+        resetIdentityDecisionForTests()
+        vi.clearAllMocks()
+        paths.userData = legacyDir
+
+        withPlatform('linux', run)
+
+        expect(setNameMock).toHaveBeenCalledWith(MEMRYNOTE_APP_NAME)
+        expect(paths.userData).toBe(newDir)
+        expect(getIdentityDecision()).toMatchObject({
+          appName: MEMRYNOTE_APP_NAME,
+          profileDir: newDir,
+          pinned: true,
+          flipped: false
+        })
+        expect(readFileSync(join(newDir, IDENTITY_PIN_FILENAME), 'utf-8')).toBe(originalPin)
+        expect(readFileSync(join(newDir, STORE), 'utf-8')).toBe(LOADED_STORE)
+        expect(getPasswordMock).not.toHaveBeenCalled()
+        expect(setPasswordMock).not.toHaveBeenCalled()
+        expect(deletePasswordMock).not.toHaveBeenCalled()
+      }
+    }
+  )
+
+  it.each([
+    { appName: MEMRYNOTE_APP_NAME, location: 'legacy' },
+    { appName: LEGACY_APP_NAME, location: 'legacy' },
+    { appName: MEMRYNOTE_APP_NAME, location: 'current' },
+    { appName: LEGACY_APP_NAME, location: 'current' }
+  ])(
+    'linux preserves a corrected $appName pin in the $location profile',
+    ({ appName, location }) => {
+      const profileDir = location === 'legacy' ? legacyDir : newDir
+      const pin = { version: 1, appName, flipped: true }
+      mkdirSync(profileDir, { recursive: true })
+      writeFileSync(join(profileDir, IDENTITY_PIN_FILENAME), JSON.stringify(pin))
+      writeFileSync(join(profileDir, STORE), LOADED_STORE)
+
+      withPlatform('linux', run)
+
+      expect(getIdentityDecision()).toMatchObject({
+        appName,
+        profileDir: newDir,
+        pinned: true,
+        flipped: true
+      })
+      expect(setNameMock.mock.calls).toEqual(
+        appName === MEMRYNOTE_APP_NAME ? [[MEMRYNOTE_APP_NAME]] : []
+      )
+      expect(paths.userData).toBe(newDir)
+      expect(pinAt(newDir)).toEqual(pin)
+      expect(readFileSync(join(newDir, STORE), 'utf-8')).toBe(LOADED_STORE)
+      expect(flipIdentityPin()).toBe(false)
+      expect(getPasswordMock).not.toHaveBeenCalled()
+      expect(setPasswordMock).not.toHaveBeenCalled()
+      expect(deletePasswordMock).not.toHaveBeenCalled()
+    }
+  )
+
   it('renames on Linux when no safeStorage store exists', () => {
     mkdirSync(legacyDir, { recursive: true })
     writeFileSync(join(legacyDir, 'config.json'), '{"a":1}')

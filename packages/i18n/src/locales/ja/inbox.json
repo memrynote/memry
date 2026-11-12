@@ -250,7 +250,8 @@
     "failedPlayAudio": "音声を再生できませんでした",
     "failedLoadAudio": "音声を読み込めませんでした",
     "video": "動画",
-    "unsupportedVideo": "お使いのブラウザーは video タグに対応していません。"
+    "unsupportedVideo": "お使いのブラウザーは video タグに対応していません。",
+    "fileOnOtherDevice": "このファイルは、取り込んだデバイスにあります。"
   },
   "reminder": {
     "dataUnavailable": "リマインダーのデータを利用できません。",

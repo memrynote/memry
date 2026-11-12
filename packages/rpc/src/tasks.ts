@@ -183,6 +183,10 @@ export interface ProjectDeletedEvent {
 }
 
 type TaskMutationResponse = Promise<TaskCreateResponse>
+/** `nextOccurrence`: the task a repeating completion created, null when none was. */
+type TaskCompleteResponse = Promise<
+  TaskCreateResponse & { nextOccurrence?: { id: string; dueDate: string } | null }
+>
 type StatusMutationResponse = Promise<{ success: boolean; status: Status | null; error?: string }>
 type ProjectMutationResponse = Promise<{
   success: boolean
@@ -216,7 +220,9 @@ export const tasksRpc = defineDomain({
       params: ['options'],
       invokeArgs: ['options ?? {}']
     }),
-    complete: defineMethod<(input: { id: string; completedAt?: string }) => TaskMutationResponse>({
+    complete: defineMethod<
+      (input: { id: string; completedAt?: string; recordOnly?: boolean }) => TaskCompleteResponse
+    >({
       channel: TasksChannels.invoke.COMPLETE,
       params: ['input']
     }),

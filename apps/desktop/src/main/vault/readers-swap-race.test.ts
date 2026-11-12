@@ -40,6 +40,7 @@ vi.mock('@main/database/queries/notes', () => ({
   getNoteCacheById: (_db: unknown, id: string) => ({ id, path: `notes/${id}.md`, title: id }),
   getOutgoingLinks: () => [],
   getNoteTags: () => [],
+  getTagsForNotes: () => new Map(),
   getNotePropertiesAsRecord: () => ({}),
   getIncomingReferences: () => [{ sourceNoteId: 'src', targetNoteId: 'target' }],
   snapshotExistsWithHash: () => false,

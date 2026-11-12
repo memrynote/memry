@@ -9,6 +9,8 @@ import {
   type ReactNode
 } from 'react'
 import { authService } from '@/services/auth-service'
+import { useOAuthSignIn } from '@/hooks/use-oauth-sign-in'
+import type { InitOAuthResult } from '@memry/contracts/ipc-auth'
 import { extractErrorMessage, getIpcErrorCode, IpcFailureError } from '@/lib/ipc-error'
 import { trackRendererError } from '@/lib/telemetry-diagnostics'
 import { deviceService, setupService } from '@/services/device-service'
@@ -45,7 +47,6 @@ export interface WizardData {
   linkingSessionId?: string | null
   verificationCode?: string | null
   expiresAt?: number | null
-  oauthState?: string | null
   error?: string | null
   vaults?: WizardVaultSummary[] | null
 }
@@ -61,7 +62,6 @@ interface AuthState {
   wizardVerificationCode: string | null
   wizardVaults: WizardVaultSummary[] | null
   wizardExpiresAt: number | null
-  wizardOAuthState: string | null
   wizardError: string | null
 }
 
@@ -100,7 +100,6 @@ const WIZARD_IDLE_FIELDS = {
   wizardVerificationCode: null,
   wizardVaults: null,
   wizardExpiresAt: null,
-  wizardOAuthState: null,
   wizardError: null
 }
 
@@ -202,9 +201,6 @@ const authReducer = (state: AuthState, action: AuthAction): AuthState => {
         }),
         ...(action.data?.expiresAt !== undefined && {
           wizardExpiresAt: action.data.expiresAt
-        }),
-        ...(action.data?.oauthState !== undefined && {
-          wizardOAuthState: action.data.oauthState
         })
       }
     case 'WIZARD_SET_ERROR':
@@ -231,7 +227,11 @@ interface AuthContextValue {
   requestOtp: (email: string) => Promise<{ expiresIn?: number }>
   verifyOtp: (code: string) => Promise<VerifyOtpResult>
   resendOtp: () => Promise<{ expiresIn?: number }>
-  initOAuth: () => Promise<{ state: string } | null>
+  oauthSession: InitOAuthResult | null
+  isOAuthBusy: boolean
+  initOAuth: () => Promise<InitOAuthResult | null>
+  retryOAuth: () => Promise<void>
+  cancelOAuth: () => void
   setupFirstDevice: (input: {
     provider: 'google'
     oauthToken: string
@@ -265,7 +265,33 @@ interface AuthProviderProps {
 
 export const AuthProvider = ({ children }: AuthProviderProps): React.JSX.Element => {
   const [state, dispatch] = useReducer(authReducer, initialState)
-  const oauthStateRef = useRef<string | null>(null)
+  const onOAuthStart = useCallback(() => dispatch({ type: 'SET_AUTHENTICATING' }), [])
+  const onOAuthError = useCallback((error: string) => {
+    dispatch({ type: 'SET_ERROR', error })
+    dispatch({ type: 'WIZARD_SET_ERROR', error })
+  }, [])
+  const onOAuthCancel = useCallback(() => {
+    dispatch({ type: 'CHECK_UNAUTHENTICATED' })
+    dispatch({ type: 'WIZARD_CLEAR_ERROR' })
+  }, [])
+  const onOAuthVerified = useCallback((result: SetupFirstDeviceResult) => {
+    dispatch({
+      type: 'OTP_VERIFIED',
+      deviceId: result.deviceId ?? '',
+      needsRecoverySetup: !!result.needsRecoverySetup
+    })
+    if (result.needsRecoveryInput) {
+      dispatch({ type: 'WIZARD_SET_STEP', step: 'linking-choice' })
+    } else if (result.needsRecoverySetup) {
+      dispatch({ type: 'WIZARD_SET_STEP', step: 'recovery-display' })
+    }
+  }, [])
+  const { oauthSession, isOAuthBusy, initOAuth, retryOAuth, cancelOAuth } = useOAuthSignIn({
+    onStart: onOAuthStart,
+    onVerified: onOAuthVerified,
+    onError: onOAuthError,
+    onCancel: onOAuthCancel
+  })
   // Set while the server has ended the session: refresh stays blocked, so a
   // sync that still lands proves nothing about a session the user can keep.
   const sessionEndedRef = useRef(false)
@@ -348,14 +374,6 @@ export const AuthProvider = ({ children }: AuthProviderProps): React.JSX.Element
   }, [state.status])
 
   useEffect(() => {
-    const unsubscribe = window.api.onOAuthError(({ error }) => {
-      dispatch({ type: 'SET_ERROR', error: error || 'OAuth sign-in failed' })
-      dispatch({ type: 'WIZARD_SET_ERROR', error: error || 'OAuth sign-in failed' })
-    })
-    return unsubscribe
-  }, [])
-
-  useEffect(() => {
     const unsubscribe = window.api.onLinkingFinalized(({ deviceId, error }) => {
       if (deviceId) {
         dispatch({ type: 'LINKING_COMPLETED', deviceId })
@@ -366,78 +384,34 @@ export const AuthProvider = ({ children }: AuthProviderProps): React.JSX.Element
     return unsubscribe
   }, [])
 
-  useEffect(() => {
-    oauthStateRef.current = state.wizardOAuthState
-  }, [state.wizardOAuthState])
-
-  useEffect(() => {
-    const unsubscribe = window.api.onOAuthCallback(({ code, state: cbState }) => {
-      if (cbState !== oauthStateRef.current) return
-      oauthStateRef.current = null
-
-      void (async () => {
-        try {
-          const result = await authService.setupFirstDevice({
-            provider: 'google',
-            oauthToken: code,
-            state: cbState
-          })
-          if (result.error) {
-            const message = extractErrorMessage(
+  const requestOtp = useCallback(
+    async (email: string): Promise<{ expiresIn?: number }> => {
+      cancelOAuth()
+      dispatch({ type: 'SET_AUTHENTICATING' })
+      try {
+        const result = await authService.requestOtp({ email })
+        if (!result.success) {
+          throw new Error(
+            extractErrorMessage(
               result.error,
-              getI18n().getFixedT(null, 'settings')('phaseI.errors.googleSignInFailed')
+              getI18n().getFixedT(null, 'settings')('phaseI.errors.failedToSendVerificationCode')
             )
-            dispatch({ type: 'SET_ERROR', error: message })
-            dispatch({ type: 'WIZARD_SET_ERROR', error: message })
-            return
-          }
-          dispatch({
-            type: 'OTP_VERIFIED',
-            deviceId: result.deviceId ?? '',
-            needsRecoverySetup: !!result.needsRecoverySetup
-          })
-          if (result.needsRecoveryInput) {
-            dispatch({ type: 'WIZARD_SET_STEP', step: 'linking-choice' })
-          } else if (result.needsRecoverySetup) {
-            dispatch({ type: 'WIZARD_SET_STEP', step: 'recovery-display' })
-          }
-        } catch (err: unknown) {
-          const message = extractErrorMessage(
-            err,
-            getI18n().getFixedT(null, 'settings')('phaseI.errors.googleSignInFailed')
           )
-          dispatch({ type: 'SET_ERROR', error: message })
-          dispatch({ type: 'WIZARD_SET_ERROR', error: message })
         }
-      })()
-    })
-    return unsubscribe
-  }, [])
-
-  const requestOtp = useCallback(async (email: string): Promise<{ expiresIn?: number }> => {
-    dispatch({ type: 'SET_AUTHENTICATING' })
-    try {
-      const result = await authService.requestOtp({ email })
-      if (!result.success) {
-        throw new Error(
-          extractErrorMessage(
-            result.error,
-            getI18n().getFixedT(null, 'settings')('phaseI.errors.failedToSendVerificationCode')
-          )
+        dispatch({ type: 'OTP_REQUESTED', email })
+        return { expiresIn: result.expiresIn }
+      } catch (err) {
+        trackRendererError('auth_otp_request_failed', err)
+        const message = extractErrorMessage(
+          err,
+          getI18n().getFixedT(null, 'settings')('phaseI.errors.failedToSendVerificationCode')
         )
+        dispatch({ type: 'SET_ERROR', error: message })
+        throw new Error(message, { cause: err })
       }
-      dispatch({ type: 'OTP_REQUESTED', email })
-      return { expiresIn: result.expiresIn }
-    } catch (err) {
-      trackRendererError('auth_otp_request_failed', err)
-      const message = extractErrorMessage(
-        err,
-        getI18n().getFixedT(null, 'settings')('phaseI.errors.failedToSendVerificationCode')
-      )
-      dispatch({ type: 'SET_ERROR', error: message })
-      throw new Error(message, { cause: err })
-    }
-  }, [])
+    },
+    [cancelOAuth]
+  )
 
   const verifyOtp = useCallback(
     async (code: string): Promise<VerifyOtpResult> => {
@@ -529,33 +503,6 @@ export const AuthProvider = ({ children }: AuthProviderProps): React.JSX.Element
     }
   }, [state.email])
 
-  const initOAuth = useCallback(async (): Promise<{ state: string } | null> => {
-    dispatch({ type: 'SET_AUTHENTICATING' })
-    const failGoogleStart = (cause: unknown): null => {
-      dispatch({
-        type: 'SET_ERROR',
-        error: extractErrorMessage(
-          cause,
-          getI18n().getFixedT(null, 'settings')('setup.signIn.errors.googleStart')
-        )
-      })
-      return null
-    }
-    try {
-      const result = await authService.initOAuth({ provider: 'google' })
-      // The main handler resolves (not rejects) with a { success: false, error }
-      // envelope when OAuth init fails (withErrorHandler). Without this guard the
-      // wizard advances with an undefined state and the button spins forever.
-      const envelope = result as { state?: string; error?: unknown }
-      if (typeof envelope.state !== 'string' || envelope.state.length === 0) {
-        return failGoogleStart(envelope.error)
-      }
-      return result
-    } catch (err) {
-      return failGoogleStart(err)
-    }
-  }, [])
-
   const setupFirstDevice = useCallback(
     async (input: {
       provider: 'google'
@@ -646,16 +593,18 @@ export const AuthProvider = ({ children }: AuthProviderProps): React.JSX.Element
   }, [])
 
   const logout = useCallback(async (): Promise<void> => {
+    cancelOAuth()
     try {
       await authService.logout()
     } finally {
       dispatch({ type: 'RESET_AUTH' })
     }
-  }, [])
+  }, [cancelOAuth])
 
   const resetAuthState = useCallback(() => {
+    cancelOAuth()
     dispatch({ type: 'RESET_AUTH' })
-  }, [])
+  }, [cancelOAuth])
 
   const setWizardStep = useCallback((step: WizardStep, data?: WizardData) => {
     dispatch({ type: 'WIZARD_SET_STEP', step, data })
@@ -670,8 +619,9 @@ export const AuthProvider = ({ children }: AuthProviderProps): React.JSX.Element
   }, [])
 
   const resetWizard = useCallback(() => {
+    cancelOAuth()
     dispatch({ type: 'WIZARD_RESET' })
-  }, [])
+  }, [cancelOAuth])
 
   const value = useMemo<AuthContextValue>(
     () => ({
@@ -679,7 +629,11 @@ export const AuthProvider = ({ children }: AuthProviderProps): React.JSX.Element
       requestOtp,
       verifyOtp,
       resendOtp,
+      oauthSession,
+      isOAuthBusy,
       initOAuth,
+      retryOAuth,
+      cancelOAuth,
       setupFirstDevice,
       confirmRecoveryPhrase,
       linkViaRecovery,
@@ -697,7 +651,11 @@ export const AuthProvider = ({ children }: AuthProviderProps): React.JSX.Element
       requestOtp,
       verifyOtp,
       resendOtp,
+      oauthSession,
+      isOAuthBusy,
       initOAuth,
+      retryOAuth,
+      cancelOAuth,
       setupFirstDevice,
       confirmRecoveryPhrase,
       linkViaRecovery,

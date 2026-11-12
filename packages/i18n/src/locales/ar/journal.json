@@ -236,5 +236,21 @@
     "range": "{start} – {end}",
     "openTask": "{title}، {range}",
     "completeTask": "إكمال {title}"
+  },
+  "pastYears": {
+    "title": "في مثل هذا اليوم",
+    "count": "{count, plural, zero {لا توجد سنوات أخرى} one {سنة أخرى واحدة} two {سنتان أخريان} few {# سنوات أخرى} many {# سنة أخرى} other {# سنة أخرى}}",
+    "showAll": "كل السنوات",
+    "showPreviews": "معاينات",
+    "yearsAgo": "{count, plural, zero {هذا العام} one {قبل سنة واحدة} two {قبل سنتين} few {قبل # سنوات} many {قبل # سنة} other {قبل # سنة}}",
+    "yearsLater": "{count, plural, zero {في العام نفسه} one {بعد سنة واحدة} two {بعد سنتين} few {بعد # سنوات} many {بعد # سنة} other {بعد # سنة}}",
+    "words": "{count, plural, zero {لا كلمات} one {كلمة واحدة} two {كلمتان} few {# كلمات} many {# كلمة} other {# كلمة}}",
+    "openDay": "فتح {date}",
+    "showFull": "عرض الإدخال كاملًا",
+    "showLess": "عرض أقل",
+    "loadError": "تعذّر تحميل هذا اليوم من السنوات الأخرى.",
+    "previousYear": "اليوم نفسه، السنة السابقة",
+    "nextYear": "اليوم نفسه، السنة التالية",
+    "goToYear": "الانتقال إلى هذا اليوم في {year}"
   }
 }

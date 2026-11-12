@@ -6,6 +6,7 @@
     "noTarget": "Portal ini belum mempunyai sasaran. Tambah nota pada definisi, atau buang blok.",
     "invalidJson": "Definisi portal ini bukan JSON yang sah. Betulkan di bawah, atau buang blok.",
     "invalidShape": "Definisi portal ini tiada nota atau carian. Betulkan di bawah, atau buang blok.",
+    "unreadable": "Portal ini tidak dapat dibaca. Alih keluar blok dan tambah portal baharu.",
     "search": {
       "editQuery": "Edit pertanyaan",
       "count": "{count, plural, other {# blok}}",
@@ -1276,6 +1277,7 @@
     "label": "Bantuan dan maklum balas",
     "reportBug": "Laporkan pepijat",
     "requestFeature": "Minta ciri",
+    "joinTestflight": "Sertai TestFlight",
     "starOnGithub": "Beri bintang di GitHub",
     "version": "MemryNote {version}",
     "whatsNew": "Apa yang baharu",
@@ -1695,5 +1697,29 @@
     "journalDaysRenamed": "Sesetengah entri jurnal tidak lagi bernama tarikh",
     "journalDaysRenamedHint": "Entri jurnal ini dinamakan semula di luar Memry semasa foldernya menunggu tetapan folder jurnal, jadi namanya bukan tarikh lagi. Entri ini kekal sebagai entri jurnal sehingga anda menamakannya semula seperti asal. Menukar satu entri kepada nota akan memadam entri jurnalnya pada semua peranti anda dan menyimpan teksnya sebagai nota. Tegnya tidak dikekalkan.",
     "turnIntoNotes": "Tukar kepada nota"
+  },
+  "iosBeta": {
+    "badge": "Baharu · TestFlight",
+    "title": "Memry untuk iPhone kini dalam beta",
+    "promptBody": "Peti besi anda pada telefon, disulitkan hujung ke hujung. Tinggalkan e-mel anda dan Apple akan menghantar jemputan TestFlight.",
+    "emailPlaceholder": "you@example.com",
+    "emailLabel": "E-mel untuk jemputan TestFlight",
+    "submit": "Dapatkan jemputan",
+    "sending": "Menghantar…",
+    "listNote": "Kami juga menambah anda ke senarai beta iPhone untuk berita pelancaran. Anda boleh berhenti melanggan pada bila-bila masa.",
+    "error": "Tidak dapat menghantar jemputan TestFlight. Sila cuba lagi.",
+    "sentTitle": "Semak peti masuk anda",
+    "sentBody": "Apple telah menghantar jemputan ke {email}. Ia mungkin mengambil masa beberapa minit dan boleh masuk ke folder spam.",
+    "stepInstall": "Pasang TestFlight daripada App Store",
+    "stepOpen": "Buka jemputan pada iPhone anda",
+    "stepSignIn": "Log masuk ke Memry pada telefon anda",
+    "done": "Selesai",
+    "dialogTitle": "Sertai Memry untuk iPhone",
+    "dialogBody": "Apple akan menghantar jemputan TestFlight melalui e-mel. Gunakan e-mel Apple ID pada iPhone anda.",
+    "entryTitle": "Beta iPhone sudah tersedia",
+    "entrySubtitle": "Melalui TestFlight",
+    "entryJoin": "Sertai beta",
+    "entrySent": "Jemputan dihantar ke {email}",
+    "sendAgain": "Hantar semula"
   }
 }

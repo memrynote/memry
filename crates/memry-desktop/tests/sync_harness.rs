@@ -210,6 +210,7 @@ impl Device {
             DeviceDescriptor {
                 name: format!("harness-{at}"),
                 platform: DevicePlatform::Macos,
+                form_factor: None,
                 os_version: None,
                 app_version: "1.0.0".into(),
                 vault_id: None,

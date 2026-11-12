@@ -5,7 +5,8 @@
     "create": "Create"
   },
   "wikiLinkPreview": {
-    "notFound": "Not found — click to create \"{title}\""
+    "notFound": "Not found — click to create \"{title}\"",
+    "journalUnwritten": "{date} is not written yet — click to open the day"
   },
   "wikiLinkMenu": {
     "aria": "Link actions",
@@ -138,6 +139,7 @@
     "actions": {
       "openInNewTab": "Open in New Tab",
       "openToTheSide": "Open to the Side",
+      "openFolderView": "Open Folder View",
       "newNote": "New Note",
       "newFolder": "New Folder",
       "showTasks": "Show Tasks",
@@ -187,7 +189,8 @@
     },
     "toast": {
       "selectionBookmarked": "Bookmarked {count} items",
-      "selectionBookmarkFailed": "Couldn't bookmark the selected items"
+      "selectionBookmarkFailed": "Couldn't bookmark the selected items",
+      "pairedNoteNameTaken": "A note named {name} is already there"
     }
   },
   "editor": {
@@ -423,9 +426,14 @@
       "savedView": "Saved view",
       "savedViewMissing": "The saved view “{name}” is gone, so this shows the default view.",
       "openAsTab": "Open as tab",
+      "newNote": "New note",
+      "newViewTitle": "New view",
+      "newViewSubtext": "A new folder beside this note, listed here",
+      "newViewFailed": "Could not create the folder for this view.",
       "empty": "Nothing matches this view yet.",
       "loadFailed": "Could not load this view. The notes themselves are untouched.",
       "folderMissing": "This folder is not in the vault any more. Pick another source.",
+      "unreadable": "This view can’t be read. Pick a source above, or remove the block.",
       "invalidJson": "This view’s definition is not valid JSON. Fix it below, or remove the block.",
       "invalidShape": "This view’s definition has no source. Pick one above, or fix it below.",
       "definition": "Definition"
@@ -679,7 +687,9 @@
       "noHeadings": "{title} has no headings",
       "noMatchingHeadings": "No headings in {title} match",
       "displayAs": "Display as",
-      "aliasHint": "Type | to name the link"
+      "aliasHint": "Type | to name the link",
+      "journalDay": "Journal · {date}",
+      "journalDayUnwritten": "Journal · not written yet"
     },
     "mention": {
       "aria": "Date and note suggestions",
@@ -781,6 +791,12 @@
     "moreInNote": "{count, plural, one {# more link in this note} other {# more links in this note}}",
     "viaProperty": "{property} → {title}",
     "viaPortal": "Shown in a portal"
+  },
+  "references": {
+    "filterAll": "All",
+    "filterNotes": "Notes",
+    "filterJournal": "Journal",
+    "filterBy": "Filter references: {filter}"
   },
   "unlinkedMentions": {
     "title": "Unlinked mentions",
@@ -895,6 +911,7 @@
       "groupEvents": "Events",
       "groupCanvases": "Canvases",
       "groupJournals": "Journal",
+      "unwrittenDay": "Not written yet",
       "empty": "No results"
     },
     "types": {

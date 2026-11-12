@@ -151,6 +151,12 @@ final class RevocationWatch: AuthSessionProtocol, @unchecked Sendable {
         try await watching { try await session.billing() }
     }
 
+    /// Not watched: the telemetry route is unauthenticated and never answers
+    /// with a revocation.
+    func sendTelemetry(batchJson: Data) async -> TelemetryDelivery {
+        await session.sendTelemetry(batchJson: batchJson)
+    }
+
     func deleteVault(vaultId: String) async throws {
         try await watching { try await session.deleteVault(vaultId: vaultId) }
     }

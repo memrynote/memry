@@ -42,10 +42,11 @@ export interface TransformContext {
 // call sites means the failure mode of a future mistake is "telemetry stays
 // anonymous", not "raw account ids are now in a third-party product forever".
 // Do not relax this to a truthiness check.
-// Value of PostHog's `$lib` for everything that arrives through the desktop
-// telemetry pipeline. The landing site's posthog-js reports `web`; desktop
-// reported nothing at all, so Error Tracking's `library` filter dropped it.
-export const POSTHOG_LIB = 'memry-desktop'
+// Value of PostHog's `$lib` for everything that arrives through the telemetry
+// pipeline. The landing site's posthog-js reports `web`; desktop reported
+// nothing at all, so Error Tracking's `library` filter dropped it.
+const posthogLib = (batch: TelemetryBatch): string =>
+  batch.platform === 'ios' ? 'memry-ios' : 'memry-desktop'
 
 const ACCOUNT_HASH_PATTERN = /^[0-9a-f]{64}$/
 
@@ -145,7 +146,7 @@ export const productEvent = (
   properties.$session_id = batch.sessionId
   // Error Tracking's `library` filter reads $lib, and a null $lib silently
   // excluded every desktop issue from it.
-  properties.$lib = POSTHOG_LIB
+  properties.$lib = posthogLib(batch)
   properties.$lib_version = batch.appVersion
   properties.$set = personProperties(batch, ctx)
 
@@ -441,7 +442,7 @@ export const exceptionEvent = (
       // unconditional assignment.
       ...(isGroupableErrorCode(event.errorCode) ? { $exception_fingerprint: event.errorCode } : {}),
       $session_id: batch.sessionId,
-      $lib: POSTHOG_LIB,
+      $lib: posthogLib(batch),
       $lib_version: batch.appVersion,
       surface: event.surface,
       action: event.action,

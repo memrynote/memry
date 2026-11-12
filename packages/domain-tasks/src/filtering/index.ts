@@ -4,5 +4,8 @@
  * vectors from these same functions.
  */
 export * from './types.ts'
+export * from './dimensions.ts'
+export * from './expression.ts'
 export * from './filters.ts'
 export * from './grouping.ts'
+export * from './location-options.ts'

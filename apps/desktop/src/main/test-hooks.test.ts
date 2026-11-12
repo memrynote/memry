@@ -78,6 +78,7 @@ vi.mock('./sync/device-registration', () => ({
 }))
 
 vi.mock('./sync/blocknote-converter', () => ({
+  setVaultEmbedResolver: () => {},
   yDocToMarkdown: yDocToMarkdownMock
 }))
 

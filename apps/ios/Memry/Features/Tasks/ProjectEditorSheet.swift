@@ -16,6 +16,8 @@ struct ProjectEditorSheet: View {
     let projectId: String?
     /// Called after the project was deleted from this sheet.
     var onDeleted: (() -> Void)?
+    /// Called with the new project's id after a create.
+    var onCreated: ((String) -> Void)?
 
     @Environment(\.dismiss) private var dismiss
     @State private var model: ProjectEditorModel
@@ -26,10 +28,16 @@ struct ProjectEditorSheet: View {
     @State private var iconText = ""
     @FocusState private var nameFocused: Bool
 
-    init(store: TasksStore, projectId: String?, onDeleted: (() -> Void)? = nil) {
+    init(
+        store: TasksStore,
+        projectId: String?,
+        onDeleted: (() -> Void)? = nil,
+        onCreated: ((String) -> Void)? = nil
+    ) {
         self.store = store
         self.projectId = projectId
         self.onDeleted = onDeleted
+        self.onCreated = onCreated
         _model = State(initialValue: ProjectEditorModel(project: store.project(projectId)))
     }
 
@@ -194,7 +202,9 @@ struct ProjectEditorSheet: View {
                 Task {
                     let saved = await model.save(in: store)
                     isSaving = false
-                    if saved { dismiss() }
+                    guard let saved else { return }
+                    if !model.isEditing { onCreated?(saved) }
+                    dismiss()
                 }
             }
             .accessibilityIdentifier("tasks.projectEditor.save")

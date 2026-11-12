@@ -30,6 +30,7 @@ struct InboxConvertSheet: View {
     @State private var dueTime: String?
     @State private var priority: Int64 = 2
     @State private var remindTaskAt: Date?
+    @State private var remindTaskOrigin: TaskReminderOrigin?
     @State private var projectId: String?
     @State private var projects: [ProjectItem] = []
     @State private var remindAt = InboxSnoozePreset.tomorrow.date(now: Date())
@@ -105,7 +106,10 @@ struct InboxConvertSheet: View {
                         }
                     }
                 case .reminder:
-                    TaskReminderPickerSheet(mode: .add, now: store.clock()) { date, _ in remindTaskAt = date }
+                    TaskReminderPickerSheet(mode: .add, now: store.clock()) { date, _, origin in
+                        remindTaskAt = date
+                        remindTaskOrigin = origin
+                    }
                 }
             }
             .task { await loadProjects() }
@@ -217,6 +221,7 @@ struct InboxConvertSheet: View {
         let priority = priority
         let projectId = projectId
         let remindTaskAt = remindTaskAt
+        let remindTaskOrigin = remindTaskOrigin
         let remindAt = remindAt
         dismiss()
         Task {
@@ -229,7 +234,9 @@ struct InboxConvertSheet: View {
                 )
                 if let taskId, let remindTaskAt, let tasks = store.tasks {
                     let iso = TaskDates.iso(remindTaskAt)
-                    _ = try? await store.executorRun { try tasks.addTaskReminder(taskId: taskId, remindAt: iso, title: nil, note: nil) }
+                    if (try? await store.executorRun({ try tasks.addTaskReminder(taskId: taskId, remindAt: iso, title: nil, note: nil) })) != nil {
+                        TasksTelemetry.reminderCreated(remindTaskOrigin, surface: .inbox)
+                    }
                     store.scheduleSync()
                 }
             case .reminder:

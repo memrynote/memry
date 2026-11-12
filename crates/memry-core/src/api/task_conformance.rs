@@ -230,7 +230,9 @@ fn filter_project(value: &Value) -> FilterProject {
 }
 
 /// Every section of `task-filtering.json` recomputed: `{dimensions, sorts,
-/// groups, applied}` in the file's own shape (each case's `expected`).
+/// groups, applied}` in the file's own shape (each case's `expected`),
+/// `expressions` as each case's `{expected, ruleCount}`, and `locationOptions`
+/// as each of its cases' `expected` rows.
 #[uniffi::export]
 pub fn task_filtering_conformance(file_json: String) -> String {
     let file = parse(&file_json);
@@ -317,7 +319,7 @@ pub fn task_filtering_conformance(file_json: String) -> String {
             let now = instant(&file["nows"][text(c, "now")]).unwrap_or(LocalDateTime::from_ms(0));
             let week = u32::try_from(c["weekStartsOn"].as_u64().unwrap_or(1)).unwrap_or(1);
             let (result, context) = task_filter::apply_filters_and_sort_with_context(
-                &tasks, &filters, &sort, &projects, now, week,
+                &tasks, &filters, &sort, &projects, now, week, None,
             );
             let mut context: Vec<&str> = context.into_iter().collect();
             context.sort_unstable();
@@ -329,6 +331,64 @@ pub fn task_filtering_conformance(file_json: String) -> String {
             })
         })
         .collect();
-    json!({"dimensions": dimensions, "sorts": sorts, "groups": groups, "applied": applied})
-        .to_string()
+    let expressions: Vec<Value> = array(&file["expressions"])
+        .iter()
+        .map(|c| {
+            let ctx = task_filter::ExpressionContext {
+                now: instant(&file["nows"][text(c, "now")]).unwrap_or(LocalDateTime::from_ms(0)),
+                week_starts_on: u32::try_from(c["weekStartsOn"].as_u64().unwrap_or(1)).unwrap_or(1),
+                note_index: c["withNotes"].as_bool().unwrap_or(false).then_some(&notes),
+            };
+            let matched: Vec<&FilterTask> = refs
+                .iter()
+                .copied()
+                .filter(|task| task_filter::matches_expression(task, &c["expression"], &ctx))
+                .collect();
+            json!({
+                "expected": ids(&matched),
+                "ruleCount": task_filter::count_rules(Some(&c["expression"])),
+            })
+        })
+        .collect();
+    json!({"dimensions": dimensions, "sorts": sorts, "groups": groups, "applied": applied,
+           "expressions": expressions, "locationOptions": location_options(&file["locationOptions"])})
+    .to_string()
+}
+
+/// The `locationOptions` section: each case's rows over the section's own
+/// notes and tasks.
+fn location_options(section: &Value) -> Vec<Value> {
+    let notes: HashMap<String, TaskNoteInfo> = array(&section["notes"])
+        .iter()
+        .map(|note| {
+            let info = TaskNoteInfo {
+                id: text(note, "id"),
+                title: text(note, "title"),
+                folder_path: text(note, "folderPath"),
+            };
+            (info.id.clone(), info)
+        })
+        .collect();
+    let tasks: Vec<FilterTask> = array(&section["tasks"]).iter().map(filter_task).collect();
+    let refs: Vec<&FilterTask> = tasks.iter().collect();
+    array(&section["cases"])
+        .iter()
+        .map(|c| {
+            let rows = task_filter::location_options(
+                &refs,
+                &notes,
+                &strings(&c["selected"]["folderPaths"]),
+                &strings(&c["selected"]["noteIds"]),
+                c["query"].as_str().unwrap_or_default(),
+            );
+            Value::Array(
+                rows.into_iter()
+                    .map(|row| {
+                        json!({"kind": row.kind.name(), "value": row.value, "label": row.label,
+                               "context": row.context, "depth": row.depth, "count": row.count})
+                    })
+                    .collect(),
+            )
+        })
+        .collect()
 }

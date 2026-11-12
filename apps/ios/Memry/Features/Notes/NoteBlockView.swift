@@ -131,10 +131,10 @@ struct NoteBlockView: View {
     }
 
     /// The kinds whose text is edited in place: every text block the insert
-    /// menu makes, except the callout, whose row draws its own chrome.
+    /// menu makes.
     private static let editableKinds: Set<String> = [
         "paragraph", "heading", "bulletListItem", "numberedListItem", "checkListItem",
-        "toggleListItem", "quote", "codeBlock",
+        "toggleListItem", "quote", "codeBlock", "callout",
     ]
 
     /// The text view for this block, or `nil` when it draws read-only.
@@ -179,6 +179,8 @@ struct NoteBlockView: View {
             EditableToggleRow(isOpen: isOpen, toggle: toggle) { field }
         case "quote":
             EditableQuoteRow { field }
+        case "callout":
+            CalloutRow(type: value("type") ?? "info") { field }
         case "codeBlock":
             VStack(alignment: .leading, spacing: Tokens.Space.small) {
                 if let language = value("language"), !language.isEmpty {
@@ -224,7 +226,7 @@ struct NoteBlockView: View {
         case "quote":
             QuoteRow(text: inline)
         case "callout":
-            CalloutRow(type: value("type") ?? "info", text: inline)
+            CalloutRow(type: value("type") ?? "info") { Text(inline) }
         case "codeBlock" where value("language") == ViewBlockFence.language:
             let text = plainText
             ViewBlockView(text: text, edit: editing.flatMap { editing in

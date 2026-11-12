@@ -1,10 +1,12 @@
 import { memo } from 'react'
+import { splitWikiTarget } from '@memry/shared/wiki-target'
 import { createPortal } from 'react-dom'
 import type { WikiLinkPreview } from '@/services/notes-service'
 import { getTagColors, withAlpha } from '../tags-row/tag-colors'
 import { formatDate } from '@/lib/format-date'
 import { useDateFormat } from '@/hooks/use-date-format'
-import { FileText } from '@/lib/icons'
+import { BookOpen, FileText } from '@/lib/icons'
+import { isJournalDay } from '@/lib/journal-link-days'
 import { NoteIconDisplay } from '@/lib/render-note-icon'
 import { useT } from '@memry/i18n/renderer'
 import { ObjectPreviewBody } from '@/features/tag-fields/object-preview-card'
@@ -68,7 +70,10 @@ export const WikiLinkPreviewCard = memo(function WikiLinkPreviewCard({
     if (!missingTarget) return null
     // The not-found card: one clickable line. The click goes through the same
     // internal-link handler the chip itself does, which opens the
-    // create-confirm dialog.
+    // create-confirm dialog, or the day for a journal day nobody wrote yet.
+    const day = splitWikiTarget(missingTarget).note
+    const unwrittenDay = isJournalDay(day)
+    const Icon = unwrittenDay ? BookOpen : FileText
     return createPortal(
       <div
         data-wiki-link-preview=""
@@ -87,9 +92,11 @@ export const WikiLinkPreviewCard = memo(function WikiLinkPreviewCard({
           onClick={() => onNoteClick?.(missingTarget)}
           className="flex w-full items-center gap-1.5 py-3 px-3.5 text-start cursor-pointer rounded-[10px] transition-colors duration-150 hover:bg-[var(--surface-active)]"
         >
-          <FileText className="size-3.5 shrink-0" style={{ color: 'var(--text-tertiary)' }} />
+          <Icon className="size-3.5 shrink-0" style={{ color: 'var(--text-tertiary)' }} />
           <span className="text-xs/[18px]" style={{ color: 'var(--text-tertiary)' }}>
-            {t('wikiLinkPreview.notFound', { title: missingTarget })}
+            {unwrittenDay
+              ? t('wikiLinkPreview.journalUnwritten', { date: day })
+              : t('wikiLinkPreview.notFound', { title: missingTarget })}
           </span>
         </button>
       </div>,
