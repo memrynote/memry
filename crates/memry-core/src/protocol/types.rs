@@ -68,17 +68,19 @@ pub const SUBSCRIBED_ITEM_TYPES: [&str; 21] = [
     "canvas",
 ];
 
-/// The four record types the server serves and this client does **not**
-/// subscribe to, chapter 13 §13.1.
+/// The six record types only desktop writes, which the iOS declaration
+/// ([`Declaration::subscribed`]) leaves out, chapter 13 §13.1.
 ///
 /// Listed rather than implied because "recognised" and "subscribed" are
 /// different questions: these are recognised names a declaration may legally
 /// carry, and omitting them from the header is what stops them arriving.
-pub const UNSUBSCRIBED_RECORD_ITEM_TYPES: [&str; 4] = [
+pub const DESKTOP_ONLY_RECORD_ITEM_TYPES: [&str; 6] = [
     "agent_conversation",
     "agent_message",
     "canvas_folder",
     "home_page",
+    "vault_lock",
+    "sticky_draft",
 ];
 
 /// `attachment` is a `SYNC_ITEM_TYPES` member and **not** a record type
@@ -88,7 +90,7 @@ pub const ATTACHMENT_ITEM_TYPE: &str = "attachment";
 
 /// The number of record types the server knows, chapter 00 §0.7.
 pub const RECORD_SYNC_ITEM_TYPE_COUNT: usize =
-    SUBSCRIBED_ITEM_TYPES.len() + UNSUBSCRIBED_RECORD_ITEM_TYPES.len();
+    SUBSCRIBED_ITEM_TYPES.len() + DESKTOP_ONLY_RECORD_ITEM_TYPES.len();
 
 /// Failures of type negotiation (FR-032).
 #[derive(Debug, Clone, PartialEq, Eq, Error)]
@@ -198,7 +200,7 @@ impl Declaration {
 /// record, so declaring it on the record feed asks for something that cannot
 /// arrive.
 pub fn is_record_item_type(name: &str) -> bool {
-    SUBSCRIBED_ITEM_TYPES.contains(&name) || UNSUBSCRIBED_RECORD_ITEM_TYPES.contains(&name)
+    SUBSCRIBED_ITEM_TYPES.contains(&name) || DESKTOP_ONLY_RECORD_ITEM_TYPES.contains(&name)
 }
 
 /// Whether this client subscribes to a name, chapter 13 §13.1.
@@ -264,7 +266,36 @@ property_definition,template,task,project,task_activity,reminder,settings,filter
 calendar_source,calendar_event,calendar_external_event,calendar_binding,bookmark,canvas"
         );
         assert!(!declaration.header_value().contains(' '));
-        assert_eq!(RECORD_SYNC_ITEM_TYPE_COUNT, 25);
+    }
+
+    #[test]
+    fn twenty_one_subscribed_and_six_desktop_only_make_twenty_seven_record_types() {
+        assert_eq!(SUBSCRIBED_ITEM_TYPES.len(), 21);
+        assert_eq!(
+            DESKTOP_ONLY_RECORD_ITEM_TYPES,
+            [
+                "agent_conversation",
+                "agent_message",
+                "canvas_folder",
+                "home_page",
+                "vault_lock",
+                "sticky_draft"
+            ]
+        );
+        assert_eq!(RECORD_SYNC_ITEM_TYPE_COUNT, 27);
+        for name in SUBSCRIBED_ITEM_TYPES
+            .iter()
+            .chain(&DESKTOP_ONLY_RECORD_ITEM_TYPES)
+        {
+            assert!(is_record_item_type(name), "{name}");
+        }
+        assert!(!is_record_item_type(ATTACHMENT_ITEM_TYPE));
+    }
+
+    #[test]
+    fn a_declaration_keeps_every_desktop_only_type() {
+        let declaration = Declaration::declare(&DESKTOP_ONLY_RECORD_ITEM_TYPES).unwrap();
+        assert_eq!(declaration.types(), DESKTOP_ONLY_RECORD_ITEM_TYPES);
     }
 
     #[test]
