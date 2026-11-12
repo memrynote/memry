@@ -59,8 +59,6 @@ fn locked(files: &[(&str, &str)], rel: &str, kind: TargetKind) -> (Env, String) 
     };
     lock(&e, kind, &target);
     reopen(&mut e);
-    // The watcher's start settles before the test edits the file.
-    std::thread::sleep(Duration::from_millis(300));
     (e, id)
 }
 
@@ -222,7 +220,6 @@ fn a_locked_notes_write_back_lands_and_stays() {
     let id = id_at(&e, "Plan.md");
     e.edit_in_app(&store, &id, "From another device");
     lock(&e, TargetKind::Note, &id);
-    std::thread::sleep(Duration::from_millis(300));
 
     e.tier.schedule(&id);
     until("the write-back lands", || {
@@ -276,7 +273,6 @@ fn a_locked_note_without_its_text_recorded_takes_the_outside_edit_as_it() {
     let (e, _) = guarded(&[("Plan.md", NOTE)]);
     let id = id_at(&e, "Plan.md");
     lock(&e, TargetKind::Note, &id);
-    std::thread::sleep(Duration::from_millis(300));
 
     edit_outside(&e, "Plan.md", OUTSIDE);
     until("the outside edit is fed", || {
