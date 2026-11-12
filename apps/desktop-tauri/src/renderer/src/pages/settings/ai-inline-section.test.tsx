@@ -14,6 +14,32 @@ const commands = vi.hoisted(() => ({
 }))
 vi.mock('../../../../generated/bindings', () => ({ commands }))
 vi.mock('sonner', () => ({ toast: { success: vi.fn(), error: vi.fn() } }))
+// Radix Select needs pointer capture that jsdom lacks; a flat stand-in renders every item
+// as a button that picks its value.
+vi.mock('@/components/ui/select', async () => {
+  const React = await import('react')
+  const Pick = React.createContext<((value: string) => void) | undefined>(undefined)
+  return {
+    Select: ({
+      children,
+      onValueChange
+    }: {
+      children: React.ReactNode
+      onValueChange?: (value: string) => void
+    }) => <Pick.Provider value={onValueChange}>{children}</Pick.Provider>,
+    SelectTrigger: ({ children }: { children: React.ReactNode }) => <div>{children}</div>,
+    SelectValue: () => null,
+    SelectContent: ({ children }: { children: React.ReactNode }) => <div>{children}</div>,
+    SelectItem: ({ children, value }: { children: React.ReactNode; value: string }) => {
+      const pick = React.useContext(Pick)
+      return (
+        <button type="button" onClick={() => pick?.(value)}>
+          {children}
+        </button>
+      )
+    }
+  }
+})
 
 import { AIInlineSettings } from './ai-inline-section'
 
@@ -92,5 +118,41 @@ describe('AIInlineSettings', () => {
 
     expect(await screen.findByText('Connected')).toBeTruthy()
     expect(commands.aiInlineListOllamaModels).toHaveBeenCalled()
+  })
+
+  it('switches provider with its default model and disables inline AI', async () => {
+    commands.aiInlineSetSettings.mockImplementation(async (updates: Partial<InlineAiSettings>) => ({
+      ...openai,
+      ...updates
+    }))
+    render(<AIInlineSettings />)
+    await userEvent.click(await screen.findByRole('button', { name: 'Anthropic' }))
+    await waitFor(() =>
+      expect(commands.aiInlineSetSettings).toHaveBeenCalledWith({
+        provider: 'anthropic',
+        model: 'claude-sonnet-5',
+        baseUrl: ''
+      })
+    )
+
+    await userEvent.click(screen.getByRole('switch'))
+    await waitFor(() =>
+      expect(commands.aiInlineSetSettings).toHaveBeenCalledWith({ enabled: false })
+    )
+    expect(toast.success).toHaveBeenCalledWith('Inline AI editing disabled')
+  })
+
+  it('shows Ollama as not connected when it does not answer on open', async () => {
+    commands.aiInlineGetSettings.mockResolvedValue({
+      ...openai,
+      provider: 'ollama',
+      apiKey: '',
+      baseUrl: 'http://localhost:11434/v1'
+    })
+    commands.aiInlineListOllamaModels.mockRejectedValue({ kind: 'unreachable', message: 'down' })
+    render(<AIInlineSettings />)
+
+    expect(await screen.findByText('Not connected')).toBeTruthy()
+    expect(toast.success).not.toHaveBeenCalled()
   })
 })
