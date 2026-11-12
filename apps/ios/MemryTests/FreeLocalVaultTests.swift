@@ -99,6 +99,27 @@ struct FreeLocalVaultTests {
         #expect(older.string(forKey: "localVault.name") == nil)
     }
 
+    @Test("the name is stored before the id, so anything that sees the id reads the name")
+    func nameLandsBeforeId() {
+        let defaults = UserDefaults(suiteName: "local-vault-\(UUID().uuidString)")!
+        let store = LocalVaultStore(defaults: defaults, deviceNoun: "iPad")
+        final class Seen: @unchecked Sendable { var names: [String?] = [] }
+        let seen = Seen()
+        let token = NotificationCenter.default.addObserver(
+            forName: UserDefaults.didChangeNotification, object: defaults, queue: nil
+        ) { _ in
+            if defaults.string(forKey: "localVault.id") != nil {
+                seen.names.append(defaults.string(forKey: "localVault.name"))
+            }
+        }
+        defer { NotificationCenter.default.removeObserver(token) }
+
+        store.create()
+
+        #expect(!seen.names.isEmpty)
+        #expect(seen.names.allSatisfy { $0 == "iPad" })
+    }
+
     // MARK: - Attach
 
     @Test("signing in registers the local vault once, then lists it from the account")

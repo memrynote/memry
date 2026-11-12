@@ -65,7 +65,7 @@
 	<key>NSMicrophoneUsageDescription</key>
 	<string>Memry records the voice memos you capture to your inbox.</string>
 	<key>NSSpeechRecognitionUsageDescription</key>
-	<string>Memry turns your voice memos into text on this device. The audio never leaves it for this.</string>
+	<string>Memry turns your voice memos into text on this device. The audio never leaves your device for this.</string>
 	<key>UIBackgroundModes</key>
 	<array>
 		<string>fetch</string>

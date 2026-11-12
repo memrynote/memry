@@ -48,8 +48,9 @@ struct LocalVaultStore: @unchecked Sendable {
     func create() -> String {
         if let id { return id }
         let minted = UUID().uuidString.lowercased()
-        defaults.set(minted, forKey: Key.id)
+        // The name lands first: whatever observes the id reads the name.
         defaults.set(deviceNoun, forKey: Key.name)
+        defaults.set(minted, forKey: Key.id)
         defaults.set(false, forKey: Key.attached)
         Telemetry.shared.track(.vaultCreated, surface: .vault, action: "created", source: "create", result: .success)
         return minted
