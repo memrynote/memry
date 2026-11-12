@@ -3,6 +3,7 @@
     "copyFailed": "ポータルをコピーできませんでした",
     "hiddenCount": "{count} 件非表示",
     "windowFailed": "このポータルを開けませんでした。代わりに元のノートを開いてください。",
+    "unreadable": "このポータルを読み取れません。ブロックを削除して、新しいポータルを追加してください。",
     "search": {
       "editQuery": "クエリを編集",
       "count": "{count, plural, other {# 個のブロック}}",

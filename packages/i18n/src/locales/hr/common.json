@@ -3,6 +3,7 @@
     "copyFailed": "Nije moguće kopirati portal",
     "hiddenCount": "Skriveno: {count}",
     "windowFailed": "Ovaj portal nije moguće otvoriti. Umjesto toga otvorite izvornu bilješku.",
+    "unreadable": "Ovaj portal nije moguće pročitati. Uklonite blok i dodajte novi portal.",
     "search": {
       "editQuery": "Uredi upit",
       "count": "{count, plural, one {# blok} few {# bloka} other {# blokova}}",

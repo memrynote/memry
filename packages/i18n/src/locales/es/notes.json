@@ -426,7 +426,8 @@
       "newViewFailed": "No se pudo crear la carpeta para esta vista.",
       "empty": "Aún no hay nada que coincida con esta vista.",
       "loadFailed": "No se pudo cargar esta vista. Las notas no se han modificado.",
-      "folderMissing": "Esta carpeta ya no está en la bóveda. Elige otro origen."
+      "folderMissing": "Esta carpeta ya no está en la bóveda. Elige otro origen.",
+      "unreadable": "No se puede leer esta vista. Elige una fuente arriba o elimina el bloque."
     },
     "chart": {
       "title": "Gráfico",

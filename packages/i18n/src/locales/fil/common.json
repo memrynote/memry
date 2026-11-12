@@ -3,6 +3,7 @@
     "copyFailed": "Hindi makopya ang portal",
     "hiddenCount": "{count} ang nakatago",
     "windowFailed": "Hindi mabuksan ang portal na ito. Buksan na lang ang pinagmulang tala.",
+    "unreadable": "Hindi mabasa ang portal na ito. Alisin ang block at magdagdag ng bagong portal.",
     "search": {
       "editQuery": "I-edit ang query",
       "count": "{count, plural, one {# block} other {# block}}",

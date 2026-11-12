@@ -3,6 +3,7 @@
     "copyFailed": "Portál se nepodařilo zkopírovat",
     "hiddenCount": "Skryto: {count}",
     "windowFailed": "Tento portál se nepodařilo otevřít. Otevřete místo něj zdrojovou poznámku.",
+    "unreadable": "Tento portál nelze přečíst. Odeberte blok a přidejte nový portál.",
     "search": {
       "editQuery": "Upravit dotaz",
       "count": "{count, plural, one {# blok} few {# bloky} many {# bloku} other {# bloků}}",
