@@ -3,6 +3,7 @@
     "copyFailed": "Portal kopyalanamadı",
     "hiddenCount": "{count} gizli",
     "windowFailed": "Bu portal açılamadı. Bunun yerine kaynak notu açın.",
+    "unreadable": "Bu portal okunamıyor. Bloğu kaldırın ve yeni bir portal ekleyin.",
     "search": {
       "editQuery": "Sorguyu düzenle",
       "count": "{count, plural, one {# blok} other {# blok}}",
