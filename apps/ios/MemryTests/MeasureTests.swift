@@ -50,30 +50,37 @@ struct MeasureTests {
     /// Q3: a table or whiteboard takes the pane, gutters kept, and the text
     /// around it stays at the reading measure.
     @Test func a_wide_block_breaks_out_to_the_pane() async throws {
-        let (text, block) = try await page(width: 1200)
+        let (text, block, _) = try await page(width: 1200)
         #expect(text.width == Tokens.Size.reading)
         #expect(text.midX == 600)
         #expect(block.width == 1200 - 2 * Tokens.Space.screenInline)
         #expect(block.midX == 600)
     }
 
+    /// A narrow table lines up with the text instead of the pane's edge.
+    @Test func a_table_in_the_pane_starts_at_the_text() async throws {
+        let (text, _, cell) = try await page(width: 1200)
+        #expect(cell.minX == text.minX)
+    }
+
     @Test func a_wide_block_on_a_phone_keeps_the_column() async throws {
-        let (text, block) = try await page(width: 402)
+        let (text, block, _) = try await page(width: 402)
         #expect(block.minX == text.minX)
         #expect(block.width == text.width)
     }
 
     /// Inside a column or an embedded note the block keeps its box.
     @Test func a_block_in_its_own_box_does_not_break_out() async throws {
-        let (text, block) = try await page(width: 1200, breakout: false)
+        let (text, block, _) = try await page(width: 1200, breakout: false)
         #expect(block.minX == text.minX)
         #expect(block.width == text.width)
     }
 
     /// Hosts a note-like page, a text row and a breakout block in a reading
     /// column inside the screen gutter, and returns where both landed.
-    private func page(width: CGFloat, breakout: Bool = true) async throws -> (CGRect, CGRect) {
+    private func page(width: CGFloat, breakout: Bool = true) async throws -> (CGRect, CGRect, CGRect) {
         let block = FrameBox()
+        let cell = FrameBox()
         let text = try await layout(width: width) { textRow in
             ScrollView {
                 VStack(alignment: .leading) {
@@ -82,6 +89,12 @@ struct MeasureTests {
                         .frame(maxWidth: .infinity, minHeight: 10, maxHeight: 10)
                         .onGeometryChange(for: CGRect.self) { $0.frame(in: .global) } action: { block.frame = $0 }
                         .paneBreakout()
+                    ScrollView(.horizontal) {
+                        Color.clear
+                            .frame(width: 100, height: 10)
+                            .onGeometryChange(for: CGRect.self) { $0.frame(in: .global) } action: { cell.frame = $0 }
+                    }
+                    .paneBreakout()
                 }
                 .frame(maxWidth: .infinity, alignment: .leading)
                 .readingColumn()
@@ -89,7 +102,7 @@ struct MeasureTests {
             }
             .environment(\.paneBreakout, breakout)
         }
-        return try (text, #require(block.frame))
+        return try (text, #require(block.frame), #require(cell.frame))
     }
 
     /// Hosts a column filling the width it is given under `measure`, and

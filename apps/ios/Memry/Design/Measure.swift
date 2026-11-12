@@ -45,17 +45,24 @@ private struct MeasuredScrollContent: ViewModifier {
 /// A block drawn across the pane, its gutters kept, while the reading
 /// column around it stays at its measure. The frame after the pane width
 /// reports the column's own width to the column and centres the wider block
-/// on it, so the column's other blocks do not move.
+/// on it, so the column's other blocks do not move. A scroll view inside (a
+/// table) starts its content at the column's leading edge, so a narrow table
+/// lines up with the text and a wide one runs on to the pane's far edge.
 private struct PaneBreakout: ViewModifier {
     @Environment(\.paneBreakout) private var breaksOut
+    @State private var pane: CGFloat = 0
+    @State private var column: CGFloat = 0
 
     func body(content: Content) -> some View {
         if breaksOut {
             content
+                .contentMargins(.leading, max(0, (pane - column) / 2), for: .scrollContent)
                 .containerRelativeFrame(.horizontal) { length, _ in
                     max(0, length - 2 * Tokens.Space.screenInline)
                 }
+                .onGeometryChange(for: CGFloat.self) { $0.size.width } action: { pane = $0 }
                 .frame(minWidth: 0, maxWidth: .infinity)
+                .onGeometryChange(for: CGFloat.self) { $0.size.width } action: { column = $0 }
         } else {
             content
         }
