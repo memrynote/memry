@@ -23,8 +23,8 @@ use base64::engine::general_purpose::STANDARD as BASE64_STANDARD;
 
 use crate::api::errors::{ApiError, AuthError, SecureStoreError};
 use crate::protocol::auth::{
-    AuthRoutes, DevicePlatform, DeviceRegisterRequest, RenewSetupTokenRequest, TokenClaims,
-    TokenManager, VerifyOtpRequest, random_nonce, sign_device_challenge,
+    AuthRoutes, DeviceFormFactor, DevicePlatform, DeviceRegisterRequest, RenewSetupTokenRequest,
+    TokenClaims, TokenManager, VerifyOtpRequest, random_nonce, sign_device_challenge,
 };
 use crate::protocol::http::{ClientIdentity, HttpClient};
 use crate::seams::secure_store::{SecureStore, SecureStoreKey};
@@ -166,6 +166,9 @@ pub struct DeviceDescriptor {
     pub name: String,
     /// Chapter 02 §2.12: the registration enum, not `CLIENT_PLATFORMS`.
     pub platform: DevicePlatform,
+    /// Chapter 02 §2.3.4; `None` sends nothing, as an older build did.
+    #[uniffi(default = None)]
+    pub form_factor: Option<DeviceFormFactor>,
     pub os_version: Option<String>,
     pub app_version: String,
     /// Defaults to `default` server-side when absent.
@@ -456,6 +459,7 @@ impl AuthSession {
         let request = DeviceRegisterRequest {
             name: self.device.name.clone(),
             platform: self.device.platform,
+            form_factor: self.device.form_factor,
             os_version: self.device.os_version.clone(),
             app_version: self.device.app_version.clone(),
             auth_public_key,

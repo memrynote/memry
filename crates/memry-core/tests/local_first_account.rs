@@ -38,6 +38,7 @@ fn session(transport: Arc<FakeTransport>, store: Arc<FakeSecureStore>) -> AuthSe
     let device = DeviceDescriptor {
         name: "iPhone".to_string(),
         platform: DevicePlatform::Ios,
+        form_factor: None,
         os_version: None,
         app_version: "1.0.0".to_string(),
         vault_id: None,

@@ -530,7 +530,13 @@ const ContentAreaEditor = memo(function ContentAreaEditor({
   useTriggeredDatePills(editorContainerRef, firedDatePillAnchors)
   const reviewMarksRef = useRef(review?.marks ?? [])
   const reviewMarkdownToEditorOffsetRef = useRef(review?.getEditorOffsetForMarkdownSourceOffset)
-  const skipNextCriticMarkupYjsWriteRef = useRef(false)
+  // This editor's writes of review marks to the Y.Doc. The observer skips their
+  // echo by this origin; a sibling editor on the same doc still sees them.
+  const criticMarkupYjsOriginRef = useRef({})
+  // The marks the write effect last saw. Only a new `review.marks` is a local
+  // change: a doc that arrives or rebinds alone leaves the marks to the
+  // observer, which lets the doc's marks win over this editor's stale ones.
+  const criticMarkupYjsSeenMarksRef = useRef(review?.marks)
   const isReviewEnabled = Boolean(review)
   const onReviewEditorReady = review?.onEditorReady
   const onReplaceMarksFromYjs = review?.onReplaceMarksFromYjs
@@ -830,33 +836,42 @@ const ContentAreaEditor = memo(function ContentAreaEditor({
   useEffect(() => {
     if (!isReviewEnabled || !yjsDoc) return undefined
 
+    const origin = criticMarkupYjsOriginRef.current
     const array = yjsDoc.getArray(CRITIC_MARKUP_MARKS_ARRAY)
     const applyYjsMarks = (): void => {
-      const nextMarks = readCriticMarkupMarksFromYDoc(yjsDoc)
-      skipNextCriticMarkupYjsWriteRef.current = true
-      onReplaceMarksFromYjs?.(nextMarks)
+      onReplaceMarksFromYjs?.(readCriticMarkupMarksFromYDoc(yjsDoc))
+    }
+    const onArrayChange = (event: Y.YArrayEvent<unknown>): void => {
+      if (event.transaction.origin !== origin) applyYjsMarks()
     }
 
     const currentYjsMarks = readCriticMarkupMarksFromYDoc(yjsDoc)
     if (currentYjsMarks.length > 0 || reviewMarksRef.current.length === 0) {
       applyYjsMarks()
     } else {
-      writeCriticMarkupMarksToYDoc(yjsDoc, reviewMarksRef.current)
+      yjsDoc.transact(() => writeCriticMarkupMarksToYDoc(yjsDoc, reviewMarksRef.current), origin)
     }
 
-    array.observe(applyYjsMarks)
+    array.observe(onArrayChange)
     return () => {
-      array.unobserve(applyYjsMarks)
+      array.unobserve(onArrayChange)
     }
   }, [isReviewEnabled, onReplaceMarksFromYjs, yjsDoc])
 
   useEffect(() => {
-    if (!isReviewEnabled || !yjsDoc) return
-    if (skipNextCriticMarkupYjsWriteRef.current) {
-      skipNextCriticMarkupYjsWriteRef.current = false
-      return
-    }
-    writeCriticMarkupMarksToYDoc(yjsDoc, review?.marks ?? [])
+    const marks = review?.marks
+    const changed = marks !== criticMarkupYjsSeenMarksRef.current
+    criticMarkupYjsSeenMarksRef.current = marks
+    if (!changed || !isReviewEnabled || !yjsDoc) return
+    // Marks the observer handed over from the doc are already in it. Compared
+    // as read, so a mark field this build does not know is not stripped by a
+    // rewrite of the array.
+    const next = marks ?? []
+    if (JSON.stringify(readCriticMarkupMarksFromYDoc(yjsDoc)) === JSON.stringify(next)) return
+    yjsDoc.transact(
+      () => writeCriticMarkupMarksToYDoc(yjsDoc, next),
+      criticMarkupYjsOriginRef.current
+    )
   }, [isReviewEnabled, review?.marks, yjsDoc])
 
   useEffect(() => {

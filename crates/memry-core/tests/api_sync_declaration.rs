@@ -78,6 +78,7 @@ async fn pass_headers(declaration: Option<Declaration>) -> (Vec<String>, Vec<Str
             DeviceDescriptor {
                 name: "Desk".to_string(),
                 platform: DevicePlatform::Macos,
+                form_factor: None,
                 os_version: None,
                 app_version: "1.0.0".to_string(),
                 vault_id: None,
