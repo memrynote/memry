@@ -83,6 +83,7 @@ fn descriptor() -> DeviceDescriptor {
     DeviceDescriptor {
         name: "Kaan's iPhone".to_string(),
         platform: DevicePlatform::Ios,
+        form_factor: None,
         os_version: Some("27.0".to_string()),
         app_version: "1.4.2".to_string(),
         vault_id: None,

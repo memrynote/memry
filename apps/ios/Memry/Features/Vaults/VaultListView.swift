@@ -112,7 +112,7 @@ struct VaultListView: View {
                 case let .choosing(summaries):
                     header(
                         "Choose a vault",
-                        "This account holds more than one. Memry opens the one you pick on this phone."
+                        "This account holds more than one. Memry opens the one you pick on this \(ThisDevice.noun)."
                     )
                     VaultChoiceList(summaries: summaries) { summary in
                         Task { await model.open(summary) }
@@ -199,7 +199,7 @@ private struct VaultChoiceList: View {
                 .frame(maxWidth: .infinity, minHeight: Tokens.Size.minimumHitArea, alignment: .leading)
                 .blockSurface(radius: Tokens.Radius.control)
                 .accessibilityLabel(VaultLabel(summary).text)
-                .accessibilityHint("Opens this vault on this phone.")
+                .accessibilityHint("Opens this vault on this \(ThisDevice.noun).")
             }
         }
         .frame(maxWidth: .infinity, alignment: .leading)
@@ -257,7 +257,7 @@ private struct OpenedVaultNotice: View {
                 .foregroundStyle(label.isPlaceholder
                     ? Tokens.Text.secondary.color
                     : Tokens.Text.primary.color)
-            Text("This vault is open on this phone.")
+            Text("This vault is open on this \(ThisDevice.noun).")
                 .font(Tokens.Typography.body.font)
                 .foregroundStyle(Tokens.Text.secondary.color)
         }

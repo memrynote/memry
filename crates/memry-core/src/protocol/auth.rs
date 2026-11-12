@@ -114,11 +114,22 @@ pub enum DevicePlatform {
     Web,
 }
 
+/// Chapter 02 §2.3.4: tells an iPad from an iPhone, which `platform` cannot.
+/// Absent means unknown, and a reader falls back to `platform`.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, uniffi::Enum)]
+#[serde(rename_all = "lowercase")]
+pub enum DeviceFormFactor {
+    Phone,
+    Tablet,
+}
+
 #[derive(Debug, Clone, Serialize)]
 #[serde(rename_all = "camelCase")]
 pub struct DeviceRegisterRequest {
     pub name: String,
     pub platform: DevicePlatform,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub form_factor: Option<DeviceFormFactor>,
     #[serde(skip_serializing_if = "Option::is_none")]
     pub os_version: Option<String>,
     pub app_version: String,

@@ -170,6 +170,12 @@ enum AuthComposition {
         )
     }
 
+    /// Chapter 02 §2.3.4: an iPad and an iPhone both register as `ios`, and
+    /// this is what lets a devices list tell them apart.
+    static func formFactor(_ idiom: UIUserInterfaceIdiom) -> DeviceFormFactor {
+        idiom == .pad ? .tablet : .phone
+    }
+
     /// Split from the bundle read so the empty-version refusal is reachable
     /// from a test: there is no way to hand `Bundle` a missing key.
     @MainActor
@@ -180,6 +186,7 @@ enum AuthComposition {
         return DeviceDescriptor(
             name: phone.name,
             platform: .ios,
+            formFactor: formFactor(phone.userInterfaceIdiom),
             osVersion: phone.systemVersion,
             appVersion: appVersion,
             // Chapter 02 §2.3: absent means the server's `default`.

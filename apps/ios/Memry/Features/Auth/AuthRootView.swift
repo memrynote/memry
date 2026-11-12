@@ -209,7 +209,7 @@ private struct AuthUnavailableView: View {
             // sentence. A mapped error without guidance has none to give, so
             // this one says the only thing that is true on every screen that
             // can show it — nothing on the phone was touched.
-            detail: error.guidance ?? "Nothing on this phone was changed. Open Memry again later."
+            detail: error.guidance ?? "Nothing on this \(ThisDevice.noun) was changed. Open Memry again later."
         ) {
             EmptyView()
         }

@@ -91,6 +91,7 @@ async fn a_local_write_is_pulled_over_then_pushed_and_leaves_the_outbox() {
             DeviceDescriptor {
                 name: "Phone".to_string(),
                 platform: DevicePlatform::Ios,
+                form_factor: None,
                 os_version: None,
                 app_version: "1.0.0".to_string(),
                 vault_id: None,
@@ -173,6 +174,7 @@ async fn an_attachment_manifest_is_signed_as_the_registered_device() {
             DeviceDescriptor {
                 name: "Phone".to_string(),
                 platform: DevicePlatform::Ios,
+                form_factor: None,
                 os_version: None,
                 app_version: "1.0.0".to_string(),
                 vault_id: None,
@@ -263,6 +265,7 @@ async fn overlapping_passes_over_one_vault_push_a_row_once() {
             DeviceDescriptor {
                 name: "Phone".to_string(),
                 platform: DevicePlatform::Ios,
+                form_factor: None,
                 os_version: None,
                 app_version: "1.0.0".to_string(),
                 vault_id: None,
@@ -353,6 +356,7 @@ async fn the_pass_pulls_owed_bodies_and_settles_only_the_merged_ones() {
             DeviceDescriptor {
                 name: "Phone".to_string(),
                 platform: DevicePlatform::Ios,
+                form_factor: None,
                 os_version: None,
                 app_version: "1.0.0".to_string(),
                 vault_id: None,
@@ -405,6 +409,7 @@ fn vault_with_side(
             DeviceDescriptor {
                 name: "Phone".to_string(),
                 platform: DevicePlatform::Ios,
+                form_factor: None,
                 os_version: None,
                 app_version: "1.0.0".to_string(),
                 vault_id: None,

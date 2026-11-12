@@ -59,13 +59,13 @@
 	<key>MemrySyncEnvironment</key>
 	<string>$(MEMRY_SYNC_ENVIRONMENT)</string>
 	<key>NSCalendarsFullAccessUsageDescription</key>
-	<string>Memry shows the calendars on this iPhone beside your notes and tasks. They stay on this iPhone and are never synced.</string>
+	<string>Memry shows the calendars on this device beside your notes and tasks. They stay on this device and are never synced.</string>
 	<key>NSCameraUsageDescription</key>
-	<string>Memry uses the camera to scan the QR code that links this phone to your vault, and to take photos you capture to your inbox.</string>
+	<string>Memry uses the camera to scan the QR code that links this device to your vault, and to take photos you capture to your inbox.</string>
 	<key>NSMicrophoneUsageDescription</key>
 	<string>Memry records the voice memos you capture to your inbox.</string>
 	<key>NSSpeechRecognitionUsageDescription</key>
-	<string>Memry turns your voice memos into text on this iPhone. The audio never leaves your device for this.</string>
+	<string>Memry turns your voice memos into text on this device. The audio never leaves your device for this.</string>
 	<key>UIApplicationSceneManifest</key>
 	<dict>
 		<key>UIApplicationSupportsMultipleScenes</key>
