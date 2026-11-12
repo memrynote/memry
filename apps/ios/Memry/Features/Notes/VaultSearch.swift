@@ -13,9 +13,9 @@ import Observation
 // `index.db` and rebuilds it when the file cannot be trusted, so it is not
 // free; minting one per keystroke would pay that cost on every letter.
 //
-// **Typing does not reindex.** A reindex walks what changed since the last
-// watermark, so it belongs on an explicit moment — the screen appearing — and
-// never inside a query.
+// **Typing does not reindex.** The vault's index owner (`VaultSearchIndex`)
+// reindexes after sync passes and writes; the query in the box runs again
+// each time it finishes.
 //
 // **Results are the core's ranking, never re-sorted.** bm25 ordering is what
 // the query returned; a shell that sorted by date would be answering a
@@ -121,14 +121,32 @@ final class VaultSearchViewModel {
     /// The in-flight query, cancelled when the next keystroke arrives so a
     /// slow search cannot land after a newer one and overwrite it.
     private var running: Task<Void, Never>?
-    private var hasIndexed = false
     /// Which search box this is, as the `source` of `search_performed`.
     private let source: StaticString
+    /// The vault's index owner, followed so a reindex re-runs the query.
+    private let index: VaultSearchIndex?
+    /// The trimmed query on screen, run again after each reindex.
+    private var query = ""
 
-    init(search: any VaultSearching, debounce: Duration = .milliseconds(150), source: StaticString = "global") {
+    init(
+        search: any VaultSearching,
+        index: VaultSearchIndex? = nil,
+        debounce: Duration = .milliseconds(150),
+        source: StaticString = "global"
+    ) {
         self.search = search
+        self.index = index
         self.debounce = debounce
         self.source = source
+        followIndex()
+    }
+
+    /// The last reindex failed: results may miss recent changes.
+    var isIndexStale: Bool { index?.failure != nil }
+
+    /// Retry for ``isIndexStale``. A success re-runs the query.
+    func retryIndex() async {
+        await index?.reindex()
     }
 
     /// Waits for the query in flight. For tests, which need the answer rather
@@ -137,28 +155,34 @@ final class VaultSearchViewModel {
         await running?.value
     }
 
-    /// Brings the index up to date, once per screen.
-    ///
-    /// Before the first query rather than during it: an index that has never
-    /// been built answers nothing, and a user typing into a box that silently
-    /// returns nothing has no way to tell that from an empty vault.
-    func prepare() async {
-        guard !hasIndexed else { return }
-        hasIndexed = true
-        do {
-            try await search.reindex()
-        } catch {
-            // Not surfaced. A stale index still answers, and the queries that
-            // follow will say so themselves if they fail.
-            let mapped = ErrorMapping.userFacing(error)
-            Log.storage.error("the search index could not be brought up to date", .code(mapped.code))
+    /// Re-runs the query on screen after each finished reindex, for as long
+    /// as this model lives. Registered synchronously, so no reindex finishing
+    /// after `init` is missed.
+    private func followIndex() {
+        guard let index else { return }
+        withObservationTracking {
+            _ = index.completed
+        } onChange: { [weak self] in
+            Task { @MainActor in
+                self?.rerun()
+                self?.followIndex()
+            }
         }
+    }
+
+    /// The same query again, its results kept on screen until the new ones
+    /// land.
+    private func rerun() {
+        guard !query.isEmpty else { return }
+        running?.cancel()
+        running = start(query, after: .zero, source: nil)
     }
 
     /// Runs `query`, replacing whatever was in flight.
     func run(_ query: String) {
         running?.cancel()
         let trimmed = query.trimmingCharacters(in: .whitespacesAndNewlines)
+        self.query = trimmed
         guard !trimmed.isEmpty else {
             phase = .idle
             taskHits = []
@@ -170,7 +194,13 @@ final class VaultSearchViewModel {
             Telemetry.shared.track(.searchOpened, surface: .search, action: "opened")
         }
         phase = .searching
-        running = Task { [search, debounce, source] in
+        running = start(trimmed, after: debounce, source: source)
+    }
+
+    /// One query. `source` is `nil` for a re-run after a reindex, which is not
+    /// a search the user performed.
+    private func start(_ trimmed: String, after debounce: Duration, source: StaticString?) -> Task<Void, Never> {
+        Task { [search] in
             do {
                 try await Task.sleep(for: debounce)
                 let started = ContinuousClock.now
@@ -178,7 +208,7 @@ final class VaultSearchViewModel {
                 let tasks = await taskMatches(trimmed)
                 guard !Task.isCancelled else { return }
                 Log.storage.info("searched this vault", .count(hits.count + tasks.count))
-                Self.trackPerformed(source: source, count: hits.count + tasks.count, since: started)
+                if let source { Self.trackPerformed(source: source, count: hits.count + tasks.count, since: started) }
                 taskHits = tasks
                 phase = .results(hits)
             } catch is CancellationError {
@@ -187,7 +217,12 @@ final class VaultSearchViewModel {
                 guard !Task.isCancelled else { return }
                 let mapped = ErrorMapping.userFacing(error)
                 Log.storage.error("this vault could not be searched", .code(mapped.code))
-                Telemetry.shared.track(.searchPerformed, surface: .search, action: "queried", source: source, result: .failed, errorCode: mapped.code)
+                if let source {
+                    Telemetry.shared.track(
+                        .searchPerformed, surface: .search, action: "queried", source: source,
+                        result: .failed, errorCode: mapped.code
+                    )
+                }
                 taskHits = []
                 phase = .failed(mapped)
             }

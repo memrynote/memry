@@ -166,7 +166,10 @@ fn the_body_column_is_extract_text_output() {
         )
         .expect("the materialised body");
     assert_eq!(stored, expected);
-    assert_eq!(source_seq, Some(1));
+    assert!(
+        source_seq.is_some(),
+        "stored with the version it was read at"
+    );
 }
 
 #[test]

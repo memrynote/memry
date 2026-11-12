@@ -47,6 +47,7 @@ use crate::api::journal::Journal;
 use crate::api::notes::Notes;
 use crate::api::notes_write::NotesWriter;
 use crate::api::search::Search;
+use crate::api::search_recents::SearchRecents;
 use crate::api::sync::VaultSync;
 use crate::api::tasks::Tasks;
 use crate::seams::secure_store::SecureStore;
@@ -222,5 +223,10 @@ impl Vault {
     /// rebuilding it per keystroke.
     pub fn search(&self) -> Result<Arc<Search>, StorageError> {
         Ok(Arc::new(Search::over(self.db.clone(), &self.directory)?))
+    }
+
+    /// The search sheet's recently opened results, device-local (#4322).
+    pub fn search_recents(&self) -> Arc<SearchRecents> {
+        Arc::new(SearchRecents::over(self.db.clone()))
     }
 }

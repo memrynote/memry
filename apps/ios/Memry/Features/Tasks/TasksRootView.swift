@@ -151,11 +151,15 @@ struct VaultTasksScope<Content: View>: View {
     @Environment(\.scenePhase) private var scenePhase
     @State private var store: TasksStore?
     @State private var failure: UserFacingError?
+    @State private var searchIndex: VaultSearchIndex?
 
     var body: some View {
         content(store, failure)
             .environment(\.requestVaultSync, syncRequest)
             .environment(\.vaultSyncPasses, store?.syncPasses ?? 0)
+            .environment(\.vaultSearchIndex, searchIndex)
+            // A pass may have pulled records and bodies the index has not seen.
+            .onChange(of: store?.syncPasses) { searchIndex?.schedule() }
             .environment(\.vaultProjects, store?.projects ?? [])
             .environment(\.whiteboards, secureStore.map { CoreWhiteboardBoards(vault: vault, store: $0, executor: .shared) })
             // Pull and push on every return to the foreground, whichever tab
@@ -213,7 +217,10 @@ struct VaultTasksScope<Content: View>: View {
 
     private var syncRequest: (@MainActor () -> Void)? {
         guard let store else { return nil }
-        return { store.scheduleSync() }
+        return { [searchIndex] in
+            store.scheduleSync()
+            searchIndex?.schedule()
+        }
     }
 
     private func make() {
@@ -222,6 +229,10 @@ struct VaultTasksScope<Content: View>: View {
         guard store?.vaultId != vault.id() else { return }
         store = nil
         failure = nil
+        // A vault whose index will not open still browses; its screens then
+        // have no search, as `VaultBrowseViewModel` does.
+        searchIndex = (try? CoreVaultSearch(vault: vault, executor: .shared)).map { VaultSearchIndex(search: $0) }
+        searchIndex?.schedule()
         guard let secureStore else {
             failure = ErrorMapping.userFacing(SyncError.Locked)
             return
