@@ -131,7 +131,7 @@ fn a_locked_notes_file_keeps_its_name() {
         let id = note_with_image(&mut f, "work/n.md");
         point_image_at(&f, &id, "k3f9x2-invoice.png");
         let target = if folder_lock { "work" } else { id.as_str() };
-        f.vault.locks().set(kind, target, true).unwrap();
+        f.vault.locks().set(kind, target, true, "device-a").unwrap();
         // The write-back takes the body through the lock; the file is left to self-heal.
         let outcome = f.run(&id);
         let written = assert_wrote(&mut f, &outcome, "work/n.md");

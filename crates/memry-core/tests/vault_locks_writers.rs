@@ -29,7 +29,7 @@ fn paragraph(text: &str, id: &str) -> BlockEdit {
 fn lock(f: &Fixture, kind: TargetKind, target: &str, locked: bool) {
     f.vault
         .locks()
-        .set(kind, target, locked)
+        .set(kind, target, locked, "device-a")
         .expect("the lock row");
 }
 

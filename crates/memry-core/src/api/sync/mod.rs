@@ -391,6 +391,7 @@ impl VaultSync {
         // feed page may owe a document this run is pulling.
         let gate = pass::pass_gate(&self.vault_id);
         let _held = gate.lock().await;
+        self.seed_vault_locks().await?;
         let cipher = self.cipher().await?;
         let http = self.session.http();
 

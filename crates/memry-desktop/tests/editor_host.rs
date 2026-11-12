@@ -501,7 +501,9 @@ fn an_edit_of_a_locked_note_is_refused_as_note_locked_and_reaches_no_window() {
     let (main, _) = env.open(&note, "main");
     let (_side, side_frames) = env.open(&note, "side");
     let core = env.session.current().unwrap().vault;
-    core.locks().set(TargetKind::Note, &note, true).unwrap();
+    core.locks()
+        .set(TargetKind::Note, &note, true, "device-a")
+        .unwrap();
 
     let refused = env
         .host
@@ -576,7 +578,9 @@ fn only_a_stored_window_edit_asks_for_its_file_to_be_written() {
     assert_eq!(edited().len(), 1, "an update the body has changes nothing");
 
     let core = env.session.current().unwrap().vault;
-    core.locks().set(TargetKind::Note, &note, true).unwrap();
+    core.locks()
+        .set(TargetKind::Note, &note, true, "device-a")
+        .unwrap();
     let refused = env.host.apply_update(&note, &main.type_text("x"), "main");
     assert!(refused.is_err());
     assert_eq!(edited().len(), 1, "a refused edit writes no file");

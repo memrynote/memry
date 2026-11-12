@@ -299,6 +299,7 @@ fn a_locked_source_refuses_the_link_as_note_locked() {
             memry_core::domain::vault_locks::TargetKind::Note,
             &source,
             true,
+            "device-a",
         )
         .unwrap();
 
