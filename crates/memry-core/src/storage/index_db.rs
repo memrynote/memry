@@ -61,8 +61,21 @@ struct Rebuild {
     reason: String,
 }
 
-/// Opens `index.db`. See the module docs for what rebuilds and what errors.
+/// Opens `index.db`. See the module docs for what rebuilds and what errors. With
+/// feature `vec`, the vector tables are created after the migrations
+/// ([`super::vec`]).
 pub fn open_or_rebuild(path: &Path) -> Result<OpenedIndex, StorageError> {
+    #[cfg(feature = "vec")]
+    super::vec::register();
+    let opened = open_tables(path)?;
+    #[cfg(feature = "vec")]
+    for table in opened.db.call_blocking(super::vec::ensure_vec_tables)? {
+        eprintln!("memry index: dropped {table}, built for another embedding width");
+    }
+    Ok(opened)
+}
+
+fn open_tables(path: &Path) -> Result<OpenedIndex, StorageError> {
     guard::refuse_foreign_schema(path)?;
     let rebuild_reason = if path.exists() {
         match inspect(path)? {

@@ -139,6 +139,17 @@ fn similar_notes_exclude_notes_already_linked_either_way() {
 }
 
 #[test]
+fn similar_notes_take_any_limit_with_exclusions() {
+    let mut store = Store::default();
+    store.add("source", "a/source.md", Some(&[1.0, 0.0, 0.0]), &[]);
+    store.add("free", "a/free.md", Some(&[0.97, 0.03, 0.0]), &[]);
+
+    // The over-fetch adds the excluded count to the limit without overflowing.
+    let result = similar_notes(&store, "source", usize::MAX).unwrap();
+    assert_eq!(ids(&result), ["free"]);
+}
+
+#[test]
 fn similar_notes_skip_a_vector_that_outlived_its_note() {
     let mut store = Store::default();
     store.add("source", "a/source.md", Some(&[1.0, 0.0, 0.0]), &[]);

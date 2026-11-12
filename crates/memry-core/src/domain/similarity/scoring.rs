@@ -253,9 +253,11 @@ pub fn suggest_group_name(members: &[GroupMember]) -> Option<String> {
         return None;
     }
     let quorum = 2.max(members.len().div_ceil(2));
-    let tag = pick_shared(members.iter().map(|m| m.tags.as_slice()), quorum);
-    if tag.is_some() {
-        return tag;
+    // An empty tag names nothing; Electron's `if (tag)` falls through to the folder.
+    if let Some(tag) = pick_shared(members.iter().map(|m| m.tags.as_slice()), quorum)
+        && !tag.is_empty()
+    {
+        return Some(tag);
     }
     let folders: Vec<Vec<String>> = members
         .iter()

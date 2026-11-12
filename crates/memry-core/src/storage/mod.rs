@@ -29,6 +29,8 @@ pub mod recovery_prune;
 pub mod repositories;
 mod salvage;
 pub mod vault_identity;
+#[cfg(feature = "vec")]
+pub mod vec;
 
 use std::path::Path;
 
