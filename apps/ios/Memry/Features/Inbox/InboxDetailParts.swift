@@ -111,12 +111,13 @@ struct InboxVoiceDetail: View {
     /// Paper 11: the waveform is the scrubber. Played bars take the voice
     /// tint; a tap or drag seeks; VoiceOver adjusts it in 5-second steps.
     private var scrubber: some View {
-        let bars = waveform.isEmpty ? Array(repeating: 0.4, count: 40) : InboxVoiceRecorder.buckets(waveform, count: 40)
-        return HStack(alignment: .center, spacing: 2) {
+        let count = InboxScrubber.barCount
+        let bars = waveform.isEmpty ? Array(repeating: 0.4, count: count) : InboxVoiceRecorder.buckets(waveform, count: count)
+        return HStack(alignment: .center, spacing: InboxScrubber.barGap) {
             ForEach(Array(bars.enumerated()), id: \.offset) { index, level in
                 RoundedRectangle(cornerRadius: 2)
                     .fill(Double(index) / Double(bars.count) < progress ? Tokens.Inbox.voice.color : Tokens.Line.border.color)
-                    .frame(width: 3, height: max(Tokens.Space.small, level * Tokens.Space.section))
+                    .frame(width: InboxScrubber.barWidth, height: max(Tokens.Space.small, level * Tokens.Space.section))
             }
         }
         .frame(maxWidth: .infinity, minHeight: Tokens.Space.section, alignment: .leading)
@@ -125,7 +126,9 @@ struct InboxVoiceDetail: View {
                 Color.clear
                     .contentShape(.rect)
                     .gesture(DragGesture(minimumDistance: 0).onChanged { drag in
-                        let fraction = min(max(drag.location.x / max(proxy.size.width, 1), 0), 1)
+                        let fraction = InboxScrubber.seekFraction(
+                            x: drag.location.x, rowWidth: proxy.size.width, barCount: bars.count
+                        )
                         seek(fraction * duration)
                     })
             }
@@ -161,6 +164,24 @@ struct InboxVoiceDetail: View {
     private func seek(_ time: TimeInterval) {
         position = time
         player?.currentTime = time
+    }
+}
+
+/// The voice memo scrubber's bars sit leading-aligned in a full-width row.
+/// A seek maps against the bars' own width, so the last bar is the end of the
+/// memo on every row width (#4342).
+enum InboxScrubber {
+    static let barCount = 40
+    static let barWidth: CGFloat = 3
+    static let barGap: CGFloat = 2
+
+    /// `x` is row-local and the bars start at the row's leading edge. When the
+    /// row is narrower than the bars, the gesture only covers the row, so the
+    /// row's trailing edge is the end.
+    static func seekFraction(x: CGFloat, rowWidth: CGFloat, barCount: Int) -> Double {
+        let bars = CGFloat(barCount) * barWidth + CGFloat(max(barCount - 1, 0)) * barGap
+        let span = max(min(bars, rowWidth), 1)
+        return Double(min(max(x / span, 0), 1))
     }
 }
 
