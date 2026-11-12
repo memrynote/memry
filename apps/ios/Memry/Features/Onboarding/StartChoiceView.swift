@@ -54,6 +54,9 @@ struct StartChoiceView: View {
                 }
                 .frame(maxWidth: .infinity, alignment: .leading)
                 .padding(.top, Tokens.Space.screenBlock)
+                // Capped inside the scroll view, so its margins still scroll.
+                .measuredColumn(Tokens.Size.form)
+                .padding(.horizontal, Tokens.Space.screenInline)
             }
 
             VStack(spacing: Tokens.Space.inset) {
@@ -69,8 +72,9 @@ struct StartChoiceView: View {
                     .frame(maxWidth: .infinity)
             }
             .padding(.bottom, Tokens.Space.inset)
+            .measuredColumn(Tokens.Size.form)
+            .padding(.horizontal, Tokens.Space.screenInline)
         }
-        .padding(.horizontal, Tokens.Space.screenInline)
         .background(Tokens.Canvas.background.color)
         .calmAnimation(.fast, value: choice)
     }
