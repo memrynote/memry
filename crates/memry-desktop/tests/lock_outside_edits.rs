@@ -462,3 +462,35 @@ fn a_tool_rewriting_a_locked_note_pushes_out_none_of_the_users_versions() {
     assert!(!kept.contains(&"tool write 0\n".to_owned()));
     assert_eq!(e.read("Plan.md"), NOTE);
 }
+
+/// A writer that wrote a first chunk of a locked note's file and stalled: the revert renames
+/// over the file it still holds, and the rest it writes there is kept as a version too.
+#[cfg(unix)]
+#[test]
+fn a_stalled_writers_late_text_in_a_reverted_locked_file_is_kept() {
+    use std::io::Write;
+
+    use memry_desktop::vault::consumer::Applied;
+
+    let (mut e, id) = locked(&[("Plan.md", NOTE)], "Plan.md", TargetKind::Note);
+    let (first, rest) = OUTSIDE.split_at(8);
+    // Writable first, as an editor makes it; the writer's own truncate follows.
+    edit_outside(&e, "Plan.md", "");
+    let mut writer = fs::OpenOptions::new()
+        .write(true)
+        .truncate(true)
+        .open(e.vault.join("Plan.md"))
+        .unwrap();
+    writer.write_all(first.as_bytes()).unwrap();
+
+    until("the locked text is back", || e.read("Plan.md") == NOTE);
+    // Facts of the revert itself are published right after it.
+    std::thread::sleep(Duration::from_millis(300));
+    e.drain();
+    writer.write_all(rest.as_bytes()).unwrap();
+    drop(writer);
+
+    e.facts_until(|f| matches!(f, Applied::LockRestored { note_id, .. } if *note_id == id));
+    assert_eq!(kept_outside_text(&e, &id), 1, "{:?}", e.versions(&id));
+    assert_eq!(e.read("Plan.md"), NOTE);
+}

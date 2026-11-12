@@ -5,6 +5,7 @@
 use std::collections::HashMap;
 use std::path::PathBuf;
 use std::sync::{Arc, Mutex, PoisonError, Weak};
+use std::time::Instant;
 
 use memry_core::api::external_feed::ExternalFeed;
 use memry_core::api::search::Search;
@@ -12,7 +13,7 @@ use memry_core::api::vault::Vault;
 use memry_core::domain::app_settings::AppSettings;
 
 use super::activity::report_unread;
-use super::body::{Body, Write};
+use super::body::{Body, Emptied, Write};
 use super::identity::{Adoption, Candidate, IdentityCtx, NoteIdentity, Removal, Rename};
 use super::rows::{Lane, RowOwner, RowSession, RowStat};
 use super::{Applied, ChangeSource, MAX_RETRIES, MoveKind};
@@ -42,6 +43,10 @@ pub(super) enum Step {
     /// The fact could not be applied for a reason that may pass (a locked file, a file
     /// missing mid-save, a failed write): the watcher reports the path again later.
     Retry(String),
+    /// The fact waits for the file to settle: the watcher looks at the path again from the
+    /// instant on (its next debounce), and the wait is no failure, so it never counts against
+    /// [`MAX_RETRIES`].
+    Wait(String, Instant),
 }
 
 pub(super) struct Applier {
@@ -66,6 +71,9 @@ pub(super) struct Applier {
     pub(super) filter: WatchFilter,
     /// By note id, how many times in a row an outside edit did not reach its record.
     pub(super) untaken: Mutex<HashMap<String, u32>>,
+    /// By note id, when its file was first read empty over a row that names other bytes
+    /// ([`Applier::emptying`]).
+    pub(super) emptied: Mutex<HashMap<String, Emptied>>,
     /// The open's write-back, which writes a body that won over an outside edit; `None` in a
     /// test that runs none.
     pub(super) writeback: Option<Arc<WriteBack>>,
@@ -307,6 +315,9 @@ impl Applier {
             };
             // Before the feed: whatever it does with the text, the file is what it is.
             record_large_file(lane.files(), note_id, large_file_class(&file.raw).is_some());
+            if let Some(until) = self.emptying(note_id, row.content_hash.as_deref(), &file) {
+                return Step::Wait(path.to_owned(), until);
+            }
             // A locked note's outside edit is kept as a version and its locked text written
             // back: it never reaches the document or the peers (`restoreLockedNoteFile`). The
             // lock answers before the typing rule (`outside_edit`), which tells the record.

@@ -25,6 +25,7 @@ use memry_core::markdown::shared::markdown_class::{
 
 use super::fs_atomic::{self, WriteError};
 use super::hash::{content_hash, hash_reader};
+use super::late_writes::{Replaced, holds_across_rename};
 use super::paths::{open_vault_file, resolve_vault_file};
 use crate::shell::file_open::{OpenError, Resolution};
 
@@ -248,13 +249,14 @@ pub fn write_note_checked(
 /// rename the file is hashed again: a file that changed, moved or went since that read is not
 /// written over ([`NoteFileError::ChangedUnderWrite`]), so an edit that lands while the write
 /// runs is kept. Its folder is never created, so a folder moved away meanwhile does not come
-/// back. The window left is the rename itself.
+/// back. The window left is the rename itself. Answers the file it replaced, held open from the
+/// last check on where that cannot fail the rename ([`Replaced`]).
 pub fn write_note_over(
     vault: &Path,
     rel: &str,
     output: &str,
     read_hash: &str,
-) -> Result<(), NoteFileError> {
+) -> Result<Replaced, NoteFileError> {
     write_note_over_checked(vault, rel, output, read_hash, &mut || {})
 }
 
@@ -267,18 +269,27 @@ pub fn write_note_over_checked(
     output: &str,
     read_hash: &str,
     between: &mut dyn FnMut(),
-) -> Result<(), NoteFileError> {
+) -> Result<Replaced, NoteFileError> {
     let (path, aimed_at) = target(vault, rel)?;
-    // `Ok(false)` only for a file that is not the one read (other bytes, or gone); a file that
+    // `Ok(None)` only for a file that is not the one read (other bytes, or gone); a file that
     // cannot be read is an error, not a change: the pass fails and the next schedule retries.
-    let unchanged = || hash_file(vault, rel).map(|now| now.as_deref() == Some(read_hash));
+    let unchanged = || -> Result<Option<File>, NoteFileError> {
+        let Some(file) = open_note_file(vault, rel)? else {
+            return Ok(None);
+        };
+        Ok((hash_reader(&file)?.0 == read_hash).then_some(file))
+    };
+    let mut replaced: Option<File> = None;
     let mut unreadable: Option<NoteFileError> = None;
     let mut contained = still_contained(vault, rel, &path, aimed_at, between);
     let mut check = || {
         contained()?;
         match unchanged() {
-            Ok(true) => Ok(()),
-            Ok(false) => Err(std::io::Error::other("the file changed under the write")),
+            Ok(Some(file)) => {
+                replaced = holds_across_rename(&file).then_some(file);
+                Ok(())
+            }
+            Ok(None) => Err(std::io::Error::other("the file changed under the write")),
             Err(error) => {
                 let stop = std::io::Error::other(error.to_string());
                 unreadable = Some(error);
@@ -289,7 +300,7 @@ pub fn write_note_over_checked(
     let written =
         fs_atomic::atomic_replace_checked(&path, output.as_bytes(), &default_delays(), &mut check);
     let Err(error) = written else {
-        return Ok(());
+        return Ok(Replaced::new(replaced, read_hash));
     };
     if let Some(error) = unreadable {
         return Err(error);
@@ -297,8 +308,8 @@ pub fn write_note_over_checked(
     // Whatever stopped it (the check, a folder that went), a file that is not the one read is
     // the reason.
     match unchanged()? {
-        false => Err(NoteFileError::ChangedUnderWrite),
-        true => Err(error.into()),
+        None => Err(NoteFileError::ChangedUnderWrite),
+        Some(_) => Err(error.into()),
     }
 }
 
