@@ -1,3 +1,3 @@
 import { wikiLoop } from './wiki-probe'
 
-wikiLoop(5, 30, 'notrans')
+wikiLoop(5, 30, 'prog')

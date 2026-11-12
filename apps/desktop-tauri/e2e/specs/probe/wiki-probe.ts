@@ -7,7 +7,7 @@ import { expect, test } from '../../harness/test'
 
 const unique = (label: string): string => `${label} ${Math.random().toString(36).slice(2, 8)}`
 
-export type Variant = 'click3' | 'stub-fixup' | 'raw' | 'notrans'
+export type Variant = 'click3' | 'stub-fixup' | 'raw' | 'notrans' | 'idle' | 'prog' | 'nospell'
 
 export function install(page: Page, stubFixup: boolean): Promise<void> {
   return page.evaluate((stub: boolean) => {
@@ -297,7 +297,26 @@ export function wikiLoop(group: number, count: number, variant: Variant): void {
           document.head.append(style)
         })
       }
-      if (variant === 'raw') {
+      if (variant === 'nospell') {
+        await page.evaluate(() => {
+          document.querySelector('.bn-editor')?.setAttribute('spellcheck', 'false')
+        })
+      }
+      if (variant === 'prog') {
+        await page.evaluate((needle: string) => {
+          const walker = document.createTreeWalker(
+            document.querySelector('.bn-editor') as Node,
+            NodeFilter.SHOW_TEXT
+          )
+          for (let n = walker.nextNode(); n; n = walker.nextNode()) {
+            if (n.textContent === needle) {
+              getSelection()?.setBaseAndExtent(n, 0, n, needle.length)
+              return
+            }
+          }
+          throw new Error('no text node')
+        }, selected)
+      } else if (variant === 'raw') {
         const box = await text.boundingBox()
         if (!box) throw new Error('PROBE-WIKI no box')
         const x = box.x + box.width / 2
@@ -311,6 +330,29 @@ export function wikiLoop(group: number, count: number, variant: Variant): void {
         await text.click({ clickCount: 3 })
       }
       await mark(page, 'afterClick')
+      if (variant === 'idle' || variant === 'prog') {
+        const held = await page.evaluate(
+          () =>
+            new Promise<string>((resolve) => {
+              const t0 = performance.now()
+              const tick = (): void => {
+                const sel = getSelection()
+                const dt = Math.round(performance.now() - t0)
+                if (!sel || sel.isCollapsed) return resolve(`collapsed@${dt}`)
+                if (dt > 1500) return resolve('held')
+                setTimeout(tick, 4)
+              }
+              tick()
+            })
+        )
+        await page.evaluate(() => {
+          ;(window as unknown as { __probeStop?: boolean }).__probeStop = true
+        })
+        if (held !== 'held') {
+          throw new Error(`PROBE-WIKI-${variant} idle-poll ${held} ${await dump(page)}`)
+        }
+        return
+      }
       await new Promise((resolve) => setTimeout(resolve, Math.floor(Math.random() * 400)))
       const linkButton = page.locator('[data-test="link-to-note"]').first()
       await expect(linkButton).toBeEnabled()
