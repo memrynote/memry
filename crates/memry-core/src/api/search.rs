@@ -39,7 +39,7 @@ use crate::storage::{Db, open_index};
 pub struct SearchResult {
     pub id: String,
     pub title: String,
-    /// `note`, `journal` or `task`.
+    /// `note`, `journal`, `task` or `inbox`.
     pub kind: String,
     /// The journal's calendar date, and `None` for everything else. A journal
     /// entry has no title of its own (§A.5), so this is what names it.
@@ -72,6 +72,7 @@ impl From<SearchHit> for SearchResult {
             HitKind::Note { emoji, folder_path } => ("note", None, emoji, folder_path),
             HitKind::Journal { date } => ("journal", Some(date), None, None),
             HitKind::Task => ("task", None, None, None),
+            HitKind::Inbox => ("inbox", None, None, None),
         };
         Self {
             id: hit.id,
@@ -337,6 +338,21 @@ impl Search {
         self.data.call_blocking(move |data| {
             index.call_blocking(|index| {
                 Ok(search::search_tasks(data, index, &query, limit)?
+                    .into_iter()
+                    .map(SearchResult::from)
+                    .collect())
+            })
+        })
+    }
+
+    /// Inbox captures matching `query`, best first, in every state: filed,
+    /// archived and snoozed ones too (#4320). Its own ranking, like tasks.
+    pub fn inbox(&self, query: String, limit: u32) -> Result<Vec<SearchResult>, StorageError> {
+        let index = self.index.clone();
+        let limit = limit as usize;
+        self.data.call_blocking(move |data| {
+            index.call_blocking(|index| {
+                Ok(search::search_inbox(data, index, &query, limit)?
                     .into_iter()
                     .map(SearchResult::from)
                     .collect())

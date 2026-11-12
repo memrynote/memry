@@ -44,6 +44,7 @@ impl SearchRecents {
                 folder_path: result.folder_path,
             },
             ("task", _) => HitKind::Task,
+            ("inbox", _) => HitKind::Inbox,
             ("journal", date) => HitKind::Journal {
                 date: date.unwrap_or_default(),
             },

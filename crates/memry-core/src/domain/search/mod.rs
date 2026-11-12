@@ -2,7 +2,7 @@
 //! data-model §A.5).
 //!
 //! Two databases, one direction. `data.db` is the source of record; `index.db`
-//! holds `fts_notes` and `fts_tasks` and is **rebuildable by definition**
+//! holds `fts_notes`, `fts_tasks` and `fts_inbox` ([`inbox`]) and is **rebuildable by definition**
 //! (§A.1). Nothing here is the only copy of anything: delete `index.db` and
 //! [`reindex`] rebuilds every row of it from `data.db`, which is what
 //! [`crate::storage::index_db`] already assumes when it throws the file away.
@@ -33,7 +33,7 @@
 //!
 //! ## Typos and other names
 //!
-//! A type (notes, journals, tasks) with fewer than three hits also gets the
+//! A type (notes, journals, tasks, inbox) with fewer than three hits also gets the
 //! titles [`fuzzy`] matches, after its body hits and without a snippet, as
 //! desktop's fallback adds them. Notes and journals then take their alias
 //! matches ([`names`]). Each hit says which of the three found it.
@@ -61,6 +61,7 @@ use crate::api::errors::StorageError;
 
 mod body_cache;
 mod fuzzy;
+mod inbox;
 mod links;
 mod literal_links;
 mod maintenance;
@@ -70,6 +71,7 @@ pub mod recents;
 mod snippet;
 
 pub(crate) use body_cache::body_version;
+pub use inbox::{INBOX_RANK, INBOX_WATERMARK_KEY, search_inbox};
 pub use maintenance::{
     DATA_VERSION_KEY, NOTES_WATERMARK_KEY, Reindexed, STAMPS_KEY, TASKS_WATERMARK_KEY, reindex,
 };
@@ -113,6 +115,8 @@ pub enum HitKind {
         date: String,
     },
     Task,
+    /// An inbox capture in any state (#4320).
+    Inbox,
 }
 
 /// One result, already ranked.
@@ -124,8 +128,8 @@ pub struct SearchHit {
     /// The bm25 score. Negative; more negative is a better match. Zero for a
     /// fuzzy or alias hit, which bm25 did not rank.
     pub score: f64,
-    /// The body window around the match (`content` for notes and journals,
-    /// `description` for tasks), empty when that column is, and for a fuzzy
+    /// The body window around the match (`content` for notes, journals and
+    /// inbox captures, `description` for tasks), empty when that column is, and for a fuzzy
     /// or alias hit.
     pub snippet: Vec<SnippetSegment>,
     pub match_kind: MatchKind,
@@ -429,5 +433,6 @@ mod tests {
     fn the_weights_are_the_ones_the_chapter_names() {
         assert_eq!(NOTES_RANK, "bm25(fts_notes, 0.0, 2.0, 1.0, 1.0)");
         assert_eq!(TASKS_RANK, "bm25(fts_tasks, 0.0, 2.0, 1.0, 1.0)");
+        assert_eq!(INBOX_RANK, "bm25(fts_inbox, 0.0, 3.0, 1.0, 1.0, 0.5)");
     }
 }
