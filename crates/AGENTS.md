@@ -38,6 +38,10 @@ This directory owns the Rust workspace. `memry-core` is the shared core under th
 - Known divergence from domino (Turndown's parser, ported on html5ever 0.40, which follows the current HTML spec): `<select>` with non-option content (domino drops the elements and keeps their text) and a stray `</p>` or `</br>` inside `<svg>` (domino inserts `<p>` or `<br>` inside the svg, html5ever leaves it first). The generic pipeline does not reach either (`select` is an exact selector and linkedom writes no stray end tags), so the vectors and the fuzz inputs avoid both. Accepted as known differences (Kaan, 2026-10-26); the repro is on #3543, and removing them needs a port of domino's parser.
 - Known approximations: `BilibiliExtractor.transcriptCache` (a process-wide map that only saves a refetch) is not ported; subtitle tracks that tie on every sort key compare by code point where JS uses `localeCompare`; the YouTube transcript-panel opener needs `MutationObserver`, which the Node DOM lacks, and yields nothing.
 
+### Embedding input
+
+`memry-core/src/domain/embedding_input.rs` (Step 23, #3540) ports Electron's `apps/desktop/src/main/lib/embedding-input.ts` and is tested against `packages/contracts/test-vectors/embedding-input.json`, which `apps/desktop/scripts/embedding-input-oracle/` generates by running that module in Node. Regenerate with `pnpm --filter @memry/desktop vectors:embedding-input`; `vectors:embedding-input:check` runs in CI. Lengths are UTF-16 code units, and a cut that splits a surrogate pair is U+FFFD on both sides.
+
 ### Note fold
 
 `memry-desktop/src/fold` (Step 14h, #3531) ports Electron's local fold (`apps/desktop/src/main/note-fold/`) and is tested against `packages/contracts/test-vectors/note-fold-text.json` and `note-fold.json`, which `apps/desktop/scripts/note-fold-oracle/` generates by running that engine in Node.
