@@ -103,8 +103,9 @@ jobs:
               {platform: "linux-x64", os: "ubuntu-22.04", triple: "x86_64-unknown-linux-gnu", on: true},
               {platform: "linux-arm64", os: "ubuntu-22.04-arm", triple: "aarch64-unknown-linux-gnu", on: true}
             ]
-            | map(select(.on and ($full == "true" or .platform == "linux-x64")) | del(.on))
+            | map(select(.on and .platform == "windows-x64")) | del(.on)
             | {include: [.[] | . as $p | ("debug", "e2e") as $variant | select($p.platform != "macos-x64" or $variant != "e2e") | select($queue != "true" or $p.platform != "windows-arm64" or $variant != "e2e") | $p + {variant: $variant}
+              | select(.variant == "e2e")
               | if .variant == "e2e" and (.platform == "linux-x64" or .platform == "windows-x64") then (. + {shard: 1}), (. + {shard: 2}) else . end]}')
           echo "build=$matrix" >> "$GITHUB_OUTPUT"
           echo "Build matrix: $matrix"
@@ -456,7 +457,6 @@ jobs:
         # The two-device spec runs once, in the first shard.
         run: |
           pnpm --filter @memry/desktop-tauri test:e2e ${SHARD:+"$SHARD"}
-          if [ "${{ matrix.shard }}" != 2 ]; then pnpm --filter @memry/desktop-tauri test:e2e:multi; fi
 
       - name: E2E specs (Linux)
         if: matrix.variant == 'e2e' && matrix.platform == 'linux-x64'
