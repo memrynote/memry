@@ -10,10 +10,11 @@ import SwiftUI
 // last in Menu's place, a Search row on top and the vault header above it.
 // The Menu tab and its sheet exist only at compact width. Each tab keeps its
 // value across a size-class change, and every page's stack lives on a router
-// here (Notes keeps its own, and its tab's id keeps that stack where the tab
-// moves), so the selected page and its stack survive the switch. A portrait
-// window starts on the tab bar instead (`VaultTabLayout.placement`). No `tabViewCustomization`: the order is
-// desktop's synced rail, and the iPad writes no competing one.
+// here (Notes keeps its own; its tab moves, and its id keeps that stack), so
+// the selected page and its stack survive the switch. A portrait window
+// starts on the tab bar instead (`VaultTabLayout.placement`). No
+// `tabViewCustomization`: the order is desktop's synced rail, and the iPad
+// writes no competing one.
 //
 // **Menu is a tab that opens a sheet.** Tapping it lists the pages behind it
 // and Settings; the pick shows under the Menu tab. `router.selectedTab` stays
