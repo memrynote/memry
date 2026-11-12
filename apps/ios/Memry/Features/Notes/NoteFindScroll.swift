@@ -66,6 +66,7 @@ struct NoteFindScroll: ViewModifier {
 
     @State private var query = ""
     @State private var pendingQuery: String?
+    @Environment(\.accessibilityReduceMotion) private var reduceMotion
     private let requests = SearchFindRequests.shared
 
     func body(content: Content) -> some View {
@@ -92,14 +93,15 @@ struct NoteFindScroll: ViewModifier {
                         self.pendingQuery = nil
                     case let .find(query, blockIndex):
                         self.pendingQuery = nil
-                        self.query = query
-                        finding = true
-                        // After the push settles: a scroll in the turn the
-                        // blocks arrive is dropped and the page stays at the
-                        // top (seen on the simulator), while a tapped match,
-                        // later, scrolls.
-                        Task { @MainActor in
-                            try? await Task.sleep(for: .milliseconds(400))
+                        // The blocks arrive with the note page's phase change,
+                        // which animates on `Tokens.Motion.normal`, and a
+                        // scroll issued while it runs is dropped. The panel
+                        // enters on the same step, and the scroll runs when
+                        // that entrance completes.
+                        withAnimation(Tokens.animation(.normal, .entering, reduceMotion: reduceMotion)) {
+                            self.query = query
+                            finding = true
+                        } completion: {
                             proxy.scrollTo(blockIndex, anchor: .top)
                         }
                     }
