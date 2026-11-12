@@ -20,6 +20,7 @@ pub mod calendar_items;
 pub mod canvas;
 pub mod content_hash;
 pub mod custom_icons;
+pub mod embedding_input;
 #[cfg(feature = "markdown")]
 pub mod external_feed;
 // The desktop note fold cache; iOS folds no note.
