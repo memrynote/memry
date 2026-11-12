@@ -81,6 +81,7 @@ export function wikiLoop(group: number, count: number): void {
       const editor = page.locator(NOTE_EDITOR).first()
       await editor.click()
       await editor.getByText(selected, { exact: false }).first().click({ clickCount: 3 })
+      await new Promise((resolve) => setTimeout(resolve, Math.floor(Math.random() * 400)))
       const linkButton = page.locator('[data-test="link-to-note"]').first()
       await expect(linkButton).toBeEnabled()
       await linkButton.evaluate((button: HTMLElement) => {
