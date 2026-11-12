@@ -35,7 +35,8 @@ import {
   TagDefinitionSyncPayloadSchema,
   TaskActivitySyncPayloadSchema,
   TaskSyncPayloadSchema,
-  TemplateSyncPayloadSchema
+  TemplateSyncPayloadSchema,
+  VaultLockSyncPayloadSchema
 } from '../sync-payloads'
 import { loadVectorFile } from './vector-loader'
 
@@ -60,7 +61,8 @@ const SCHEMAS: Record<string, ZodType> = {
   calendar_external_event: CalendarExternalEventSyncPayloadSchema,
   calendar_binding: CalendarBindingSyncPayloadSchema,
   bookmark: BookmarkSyncPayloadSchema,
-  canvas: CanvasSyncPayloadSchema
+  canvas: CanvasSyncPayloadSchema,
+  vault_lock: VaultLockSyncPayloadSchema
 }
 
 interface Case {
@@ -74,7 +76,7 @@ interface Case {
 }
 
 const vectors = loadVectorFile<{
-  meta: { caseCount: number; subscribedTypes: string[] }
+  meta: { caseCount: number; subscribedTypes: string[]; desktopOnlyTypes: string[] }
   groups: Array<{ type: string; cases: Case[] }>
 }>('payload-schemas.json')
 
@@ -96,18 +98,19 @@ function reemitFromProjection(storedJson: string, schema: ZodType): string {
 }
 
 describe('payload-schemas vectors', () => {
-  it('carries the recorded case count, four per subscribed type', () => {
+  it('carries the recorded case count, four per type', () => {
     const total = vectors.groups.reduce((n, g) => n + g.cases.length, 0)
     expect(total).toBe(vectors.meta.caseCount)
-    expect(vectors.groups).toHaveLength(21)
+    expect(vectors.groups).toHaveLength(22)
     for (const group of vectors.groups) expect(group.cases).toHaveLength(4)
   })
 
-  it('covers exactly the twenty-one subscribed types', () => {
-    expect(vectors.groups.map((g) => g.type).toSorted()).toEqual(
-      [...vectors.meta.subscribedTypes].toSorted()
-    )
-    expect(Object.keys(SCHEMAS).toSorted()).toEqual([...vectors.meta.subscribedTypes].toSorted())
+  it('covers the twenty-one subscribed types and the desktop-only vault_lock', () => {
+    expect(vectors.meta.subscribedTypes).toHaveLength(21)
+    expect(vectors.meta.desktopOnlyTypes).toEqual(['vault_lock'])
+    const covered = [...vectors.meta.subscribedTypes, ...vectors.meta.desktopOnlyTypes].toSorted()
+    expect(vectors.groups.map((g) => g.type).toSorted()).toEqual(covered)
+    expect(Object.keys(SCHEMAS).toSorted()).toEqual(covered)
   })
 
   for (const group of vectors.groups) {
