@@ -160,7 +160,7 @@ final class CalendarUITests: XCTestCase {
         XCTAssertTrue(element("calendar.settings.weekStart").exists)
         XCTAssertTrue(element("calendar.settings.showNotes").exists)
         let screens: [(String, String)] = [
-            ("google", "Google Calendar"), ("caldav", "CalDAV"), ("ics", "Subscribed"), ("apple-eventkit", "This iPhone")
+            ("google", "Google Calendar"), ("caldav", "CalDAV"), ("ics", "Subscribed"), ("apple-eventkit", UIDevice.current.userInterfaceIdiom == .pad ? "This iPad" : "This iPhone")
         ]
         for (provider, title) in screens {
             app.buttons["calendar.settings.provider.\(provider)"].firstMatch.tap()

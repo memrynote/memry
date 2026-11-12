@@ -17,7 +17,7 @@ struct HomeTab: View {
             ContentUnavailableView {
                 Label(VaultTab.home.title, systemImage: "house")
             } description: {
-                Text("Home widgets are not on iPhone yet.")
+                Text("Home widgets are not on \(ThisDevice.noun) yet.")
             }
             .frame(maxWidth: .infinity, maxHeight: .infinity)
             .background(Tokens.Canvas.background.color)

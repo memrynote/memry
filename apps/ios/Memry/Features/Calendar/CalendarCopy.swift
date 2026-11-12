@@ -40,7 +40,7 @@ enum CalendarCopy {
     static let later = "Later"
     static let earlier = "Earlier"
     static let filterCalendars = "Calendars"
-    static let filterScope = "Filters apply on this iPhone only"
+    static let filterScope = "Filters apply on this \(ThisDevice.noun) only"
     static let filterButton = "Filter calendars"
     static let sources = "Sources"
     static let memryItems = "memrynote items"
@@ -58,7 +58,7 @@ enum CalendarCopy {
         case "google": googleCalendars
         case "ics": "Subscribed calendars"
         case "caldav": "CalDAV calendars"
-        case "apple-eventkit": "This iPhone"
+        case "apple-eventkit": "This \(ThisDevice.noun)"
         default: "Other calendars"
         }
     }

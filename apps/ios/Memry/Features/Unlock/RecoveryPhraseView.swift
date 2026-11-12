@@ -73,7 +73,7 @@ struct RecoveryPhraseView: View {
             Text("Enter your recovery phrase")
                 .font(Tokens.Typography.screenTitle.font)
                 .foregroundStyle(Tokens.Text.primary.color)
-            Text("The 24 words you saved when you created this account. Memry unlocks on this phone only.")
+            Text("The 24 words you saved when you created this account. Memry unlocks on this \(ThisDevice.noun) only.")
                 .font(Tokens.Typography.body.font)
                 .foregroundStyle(Tokens.Text.secondary.color)
         }
