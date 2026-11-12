@@ -79,6 +79,16 @@ struct SearchRowTextTests {
         #expect(text.caption == nil)
         #expect(text.accessibilityLabel == "Rotate credentials, update the password vault")
     }
+
+    @Test func a_recent_names_its_item_as_the_hit_row_does() {
+        let journal = hit(kind: "journal", title: "2026-11-10", journalDate: "2026-11-10")
+        let note = hit(kind: "note", title: "Password list", emoji: "🔑", folder: "Work/Accounts")
+
+        for item in [journal, note] {
+            let recent = SearchRecent(result: item, query: "pas", visitedAt: 0)
+            #expect(SearchRecentLabel(recent: recent).title == SearchRowText(hit: item).title)
+        }
+    }
 }
 
 @Suite("Search day label")

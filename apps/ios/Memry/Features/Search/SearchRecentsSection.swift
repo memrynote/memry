@@ -56,16 +56,11 @@ struct SearchRecentsSection: View {
     }
 }
 
-/// The item's name, then the query that found it.
-private struct SearchRecentLabel: View {
+/// The item's name as its hit row says it, then the query that found it.
+struct SearchRecentLabel: View {
     let recent: SearchRecent
 
-    private var title: String {
-        let hit = recent.result
-        if let date = hit.journalDate, !date.isEmpty { return date }
-        if hit.title.isEmpty { return hit.kind == "task" ? TasksCopy.untitledTask : "Untitled note" }
-        return hit.title
-    }
+    var title: String { SearchRowText(hit: recent.result).title }
 
     var body: some View {
         VStack(alignment: .leading, spacing: Tokens.Space.tight) {
