@@ -296,6 +296,9 @@ pub struct VaultSync {
     /// §9.9's 4004/4009 latch, here rather than on the socket because the
     /// shell mints a socket per foreground (#2798).
     realtime_latch: Arc<TerminalLatch>,
+    /// The `X-Memry-Sync-Types` every request of this sync sends: the iOS
+    /// twenty-one, or desktop's declaration (chapter 13 §13.1).
+    declaration: Declaration,
 }
 
 impl VaultSync {
@@ -304,6 +307,7 @@ impl VaultSync {
         db: Db,
         session: Arc<AuthSession>,
         directory: String,
+        declaration: Declaration,
     ) -> Self {
         Self {
             vault_id,
@@ -311,6 +315,7 @@ impl VaultSync {
             session,
             directory,
             realtime_latch: Arc::default(),
+            declaration,
         }
     }
 
@@ -401,7 +406,7 @@ impl VaultSync {
             PullLoop::new(
                 Arc::clone(&http),
                 self.db.clone(),
-                Declaration::subscribed(),
+                self.declaration.clone(),
                 cipher.clone(),
             )
             .with_vault(&self.vault_id)
@@ -411,7 +416,7 @@ impl VaultSync {
             BodyPull::new(
                 Arc::clone(&http),
                 self.db.clone(),
-                Declaration::subscribed(),
+                self.declaration.clone(),
                 cipher,
             )
             .with_vault(&self.vault_id)
@@ -465,7 +470,7 @@ impl VaultSync {
         let report = BodyPull::new(
             self.session.http(),
             self.db.clone(),
-            Declaration::subscribed(),
+            self.declaration.clone(),
             cipher,
         )
         .with_vault(&self.vault_id)

@@ -26,6 +26,8 @@ mod api_journal;
 mod api_notes_write;
 #[path = "api_search.rs"]
 mod api_search;
+#[path = "api_sync_declaration.rs"]
+mod api_sync_declaration;
 #[path = "api_sync_oversized_update.rs"]
 mod api_sync_oversized_update;
 #[path = "api_sync_pass.rs"]

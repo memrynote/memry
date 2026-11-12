@@ -236,6 +236,46 @@
       }
     },
     {
+      "name": "a vault_lock delete (a desktop-only type that requires a clock)",
+      "input": {
+        "id": "note:abc123def456",
+        "type": "vault_lock",
+        "operation": "delete",
+        "clock": {
+          "d": 2
+        },
+        "deletedAt": 5
+      },
+      "claim": {
+        "id": "note:abc123def456",
+        "type": "vault_lock",
+        "deletedAt": 5,
+        "clock": {
+          "d": 2
+        }
+      }
+    },
+    {
+      "name": "a sticky_draft delete (a desktop-only type that requires a clock)",
+      "input": {
+        "id": "s",
+        "type": "sticky_draft",
+        "operation": "delete",
+        "clock": {
+          "d": 3
+        },
+        "deletedAt": 5
+      },
+      "claim": {
+        "id": "s",
+        "type": "sticky_draft",
+        "deletedAt": 5,
+        "clock": {
+          "d": 3
+        }
+      }
+    },
+    {
       "name": "an update",
       "input": {
         "id": "t",
