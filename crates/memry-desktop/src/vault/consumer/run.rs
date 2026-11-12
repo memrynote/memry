@@ -271,6 +271,7 @@ impl Run {
     fn settle(&mut self, step: Step, path: Option<&str>) {
         match step {
             Step::Retry(path) => self.retries.schedule(path, Instant::now()),
+            Step::Wait(path, until) => self.retries.wait(path, until),
             Step::Done => {
                 if let Some(path) = path
                     && self.retries.succeeded(path)

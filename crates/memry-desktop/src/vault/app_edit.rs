@@ -169,6 +169,7 @@ pub struct AppEdit {
     rows: Arc<RowOwner>,
     session: RowSession,
     echo: Arc<EchoGuard>,
+    own_files: Arc<OwnFiles>,
     feed: ExternalFeed,
     converter: Converter,
     fail_next_feed: AtomicBool,
@@ -190,6 +191,7 @@ impl AppEdit {
             identity: tier.identity(),
             session,
             echo: tier.echo(),
+            own_files: tier.own_files(),
             feed: open.vault.external_feed(store.clone())?,
             converter: converter_for(settings.as_ref()),
             rows,
@@ -410,8 +412,12 @@ impl AppEdit {
                 }
             };
         // A writer of bytes the run did not write may still be writing the file replaced.
-        if !own.is_some_and(|own| own.is(note_id, &file.hash)) {
-            replaced.keep_late_writes(&self.vault, note_id);
+        if !self.own_files.ours(note_id, &file.hash) {
+            let told = Applied::OutsideEditKept {
+                note_id: note_id.to_owned(),
+                path: row.path.clone(),
+            };
+            replaced.keep_late_writes(&self.vault, &self.rows, note_id, told);
         }
         // The watcher may skip this write's echo, so no read of it would record the class.
         record_large_file(lane.files(), note_id, large_file_class(&text).is_some());

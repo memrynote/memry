@@ -13,7 +13,7 @@ use memry_core::crdt::body_edit::BlockEdit;
 use memry_core::seams::secure_store::SecureStore;
 use memry_desktop::journal::update::DayUpdate;
 use memry_desktop::notes::service::NotesService;
-use memry_desktop::vault::consumer::EMPTIED_SETTLE;
+use memry_desktop::vault::consumer::Applied;
 use memry_desktop::vault::hash::content_hash;
 
 use crate::index_support::until;
@@ -23,7 +23,8 @@ use crate::vault_env::Env;
 const TYPED: &str = "Morning pages.\n\n- [ ] call Ann\n\nTyped in the app.";
 const WRITTEN: &str = "Written outside.";
 
-/// Past the watcher's debounce and the consumer's read, and short of [`EMPTIED_SETTLE`].
+/// Past the watcher's debounce and the consumer's read, and short of
+/// [`memry_desktop::vault::consumer::EMPTIED_SETTLE`].
 const READ: Duration = Duration::from_millis(700);
 
 /// The day's text as the outside writer writes it: the file with a line added.
@@ -72,6 +73,23 @@ fn assert_kept(e: &Env, outside: &str) {
     until("the writer's text kept", || {
         e.read(DAY_FILE) == outside || e.versions(ID).iter().any(|v| v == outside)
     });
+}
+
+/// The rest of a chunked writer's text, written after the app replaced the file the writer
+/// holds: it reaches a version, and the pages are told.
+#[cfg(unix)]
+fn write_rest_late(e: &mut Env, mut writer: File, rest: &str, outside: &str) {
+    // Facts of the replace itself are published right after it.
+    std::thread::sleep(Duration::from_millis(300));
+    e.drain();
+    writer.write_all(rest.as_bytes()).unwrap();
+    drop(writer);
+    e.facts_until(|f| matches!(f, Applied::OutsideEditKept { note_id, .. } if note_id == ID));
+    assert!(
+        e.versions(ID).iter().any(|v| v == outside),
+        "{:?}",
+        e.versions(ID)
+    );
 }
 
 fn assert_tags_kept(e: &Env) {
@@ -127,17 +145,14 @@ fn a_body_ahead_of_a_stalled_writers_empty_file_keeps_that_writers_text() {
 }
 
 /// A file the user really emptied is no write in progress once it stayed empty: the consumer
-/// takes it, and saves write over it.
+/// takes it, and saves write over it. That it waits first is `consumer::tests::emptied`.
 #[test]
 fn an_empty_file_that_stays_empty_is_taken_once_it_settled() {
     let (mut e, notes, _) = opened();
     made(&mut e, &notes);
     let empty = content_hash("");
-    assert!(EMPTIED_SETTLE > READ);
 
     fs::write(e.vault.join(DAY_FILE), "").unwrap();
-    std::thread::sleep(READ);
-    assert_ne!(row_hash(&e), Some(empty.clone()), "taken before it settled");
     until("the empty file taken", || {
         row_hash(&e) == Some(empty.clone())
     });
@@ -167,11 +182,9 @@ fn a_save_over_a_chunked_writers_first_chunk_keeps_that_writers_text() {
     let mut writer = truncated(&e);
     writer.write_all(first.as_bytes()).unwrap();
     save(&e, &notes);
-    std::thread::sleep(Duration::from_millis(300));
-    writer.write_all(rest.as_bytes()).unwrap();
-    drop(writer);
+    assert!(e.read(DAY_FILE).contains("Typed in the app."));
 
-    assert_kept(&e, &outside);
+    write_rest_late(&mut e, writer, rest, &outside);
 }
 
 /// A body ahead of a chunked writer's first chunk wins, and the write-back renames over the file
@@ -187,12 +200,10 @@ fn a_body_ahead_of_a_chunked_writers_first_chunk_keeps_that_writers_text() {
 
     let mut writer = truncated(&e);
     writer.write_all(first.as_bytes()).unwrap();
-    std::thread::sleep(Duration::from_millis(1500));
-    writer.write_all(rest.as_bytes()).unwrap();
-    drop(writer);
-
+    // The write-back renamed over the file the writer still holds.
     until("the body written", || {
         e.read(DAY_FILE).contains("Synced in.")
     });
-    assert_kept(&e, &outside);
+
+    write_rest_late(&mut e, writer, rest, &outside);
 }

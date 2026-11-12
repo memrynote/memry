@@ -25,7 +25,7 @@ use memry_core::markdown::shared::markdown_class::{
 
 use super::fs_atomic::{self, WriteError};
 use super::hash::{content_hash, hash_reader};
-use super::late_writes::Replaced;
+use super::late_writes::{Replaced, holds_across_rename};
 use super::paths::{open_vault_file, resolve_vault_file};
 use crate::shell::file_open::{OpenError, Resolution};
 
@@ -249,19 +249,19 @@ pub fn write_note_checked(
 /// rename the file is hashed again: a file that changed, moved or went since that read is not
 /// written over ([`NoteFileError::ChangedUnderWrite`]), so an edit that lands while the write
 /// runs is kept. Its folder is never created, so a folder moved away meanwhile does not come
-/// back. The window left is the rename itself.
+/// back. The window left is the rename itself. Answers the file it replaced, held open from the
+/// last check on where that cannot fail the rename ([`Replaced`]).
 pub fn write_note_over(
     vault: &Path,
     rel: &str,
     output: &str,
     read_hash: &str,
-) -> Result<(), NoteFileError> {
-    write_note_over_checked(vault, rel, output, read_hash, &mut || {}).map(drop)
+) -> Result<Replaced, NoteFileError> {
+    write_note_over_checked(vault, rel, output, read_hash, &mut || {})
 }
 
 /// [`write_note_over`] with a hook that runs after the temp file is written and before the
-/// re-checks, so a test can edit the file in that window. Answers the file it replaced, held
-/// open on Unix from the last check on ([`Replaced`]).
+/// re-checks, so a test can edit the file in that window.
 #[doc(hidden)]
 pub fn write_note_over_checked(
     vault: &Path,
@@ -286,7 +286,7 @@ pub fn write_note_over_checked(
         contained()?;
         match unchanged() {
             Ok(Some(file)) => {
-                replaced = cfg!(unix).then_some(file);
+                replaced = holds_across_rename(&file).then_some(file);
                 Ok(())
             }
             Ok(None) => Err(std::io::Error::other("the file changed under the write")),

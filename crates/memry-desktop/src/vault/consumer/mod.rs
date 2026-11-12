@@ -171,6 +171,8 @@ pub enum Applied {
     JournalFollowed,
     /// The write-back wrote the note's body over the outside edit the consumer read last
     /// (`Outcome::Wrote::replaced_outside`): typing won over it (#4030), and a version holds it.
-    /// Published after the write's [`Applied::Changed`]; only the pages are told.
+    /// Published after the write's [`Applied::Changed`]; only the pages are told. Also published
+    /// for an outside writer's text that landed in a file the app had replaced, once a version
+    /// holds it ([`crate::vault::late_writes`]).
     OutsideEditKept { note_id: String, path: String },
 }

@@ -542,6 +542,7 @@ pub(super) fn only_note(f: &Fixture, rel: &str) -> String {
 mod activity;
 mod batch;
 mod embeds;
+mod emptied;
 mod facts;
 mod flood;
 mod hash_rule;

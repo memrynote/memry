@@ -12,6 +12,7 @@
 use memry_core::api::errors::StorageError;
 
 use super::{Locks, SCOPE};
+use crate::vault::late_writes::Replaced;
 use crate::vault::note_file::{NoteFile, NoteFileError, write_new_text, write_note_over};
 
 #[derive(Debug, thiserror::Error)]
@@ -28,8 +29,9 @@ pub enum RestoreError {
 impl Locks<'_> {
     /// The locked note `note_id`'s file at `rel` holds `changed`, or is gone (`None`).
     ///
-    /// `Ok(true)`: `changed` is kept as a version and the locked text is back on disk; the
-    /// caller feeds and deletes nothing. `Ok(false)`: the caller goes on as for any file: the
+    /// `Ok(Some)`: `changed` is kept as a version and the locked text is back on disk; the
+    /// caller feeds and deletes nothing, and keeps what a writer still writing `changed` puts in
+    /// it ([`Replaced`]). `Ok(None)`: the caller goes on as for any file: the
     /// note is not locked, or one of Electron's fallbacks holds: no baseline (`changed` becomes
     /// it), or `changed` is the baseline. `Err`: the file is left as it is, its text kept as a
     /// version or not; the caller tries again later, and feeds nothing meanwhile. Electron feeds
@@ -39,20 +41,20 @@ impl Locks<'_> {
         note_id: &str,
         rel: &str,
         changed: Option<&NoteFile>,
-    ) -> Result<bool, RestoreError> {
+    ) -> Result<Option<Replaced>, RestoreError> {
         let store = self.vault.locks();
         if !store.is_note_locked(note_id, Some(rel))? {
-            return Ok(false);
+            return Ok(None);
         }
         let Some(baseline) = store.baseline(note_id)? else {
             if let Some(file) = changed {
                 store.write_baseline(note_id, &file.raw, &file.hash)?;
             }
-            return Ok(false);
+            return Ok(None);
         };
         if let Some(file) = changed {
             if file.hash == baseline.content_hash {
-                return Ok(false);
+                return Ok(None);
             }
             self.vault
                 .write_back()
@@ -61,9 +63,9 @@ impl Locks<'_> {
         }
         // Only over the bytes just kept, or into the path while it is free: a newer outside
         // edit is the watcher's next report, and is kept before it is written over.
-        self.write_through(rel, &baseline.content, || match changed {
+        let replaced = self.write_through(rel, &baseline.content, || match changed {
             Some(file) => write_note_over(self.root, rel, &baseline.content, &file.hash),
-            None => write_new_text(self.root, rel, &baseline.content),
+            None => write_new_text(self.root, rel, &baseline.content).map(|()| Replaced::default()),
         })?;
         tracing::warn!(
             scope = SCOPE,
@@ -71,6 +73,6 @@ impl Locks<'_> {
             removed = changed.is_none(),
             "wrote the locked text back over an outside change"
         );
-        Ok(true)
+        Ok(Some(replaced))
     }
 }

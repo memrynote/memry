@@ -36,6 +36,15 @@ impl Retries {
         retry.due = Some(now + FIRST_RETRY * 2u32.pow(retry.attempts - 1));
     }
 
+    /// Applies `path` again at `at`: a wait, not a failure, so its attempts stay as they are.
+    pub(super) fn wait(&mut self, path: String, at: Instant) {
+        let retry = self.by_path.entry(path).or_insert(Retry {
+            attempts: 0,
+            due: None,
+        });
+        retry.due = Some(at);
+    }
+
     /// A path that was applied starts its count again the next time it fails.
     pub(super) fn succeeded(&mut self, path: &str) -> bool {
         self.by_path.remove(path).is_some()
@@ -93,6 +102,22 @@ mod tests {
             retries.schedule("a.md".into(), t0);
         }
         retries.succeeded("a.md");
+        retries.schedule("a.md".into(), t0);
+        assert_eq!(retries.next_due(), Some(t0 + FIRST_RETRY));
+    }
+
+    /// A file that waits to settle is applied at the instant asked, and the wait is no attempt:
+    /// a path that failed before keeps its count, and is not given up.
+    #[test]
+    fn a_wait_is_due_when_asked_and_counts_no_attempt() {
+        let t0 = Instant::now();
+        let at = t0 + Duration::from_millis(1500);
+        let mut retries = Retries::default();
+        for _ in 0..MAX_RETRIES {
+            retries.wait("a.md".into(), at);
+            assert_eq!(retries.next_due(), Some(at));
+            assert_eq!(retries.due(at), vec!["a.md".to_owned()]);
+        }
         retries.schedule("a.md".into(), t0);
         assert_eq!(retries.next_due(), Some(t0 + FIRST_RETRY));
     }

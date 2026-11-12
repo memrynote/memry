@@ -19,14 +19,16 @@ impl Applier {
         changed: Option<&NoteFile>,
     ) -> Option<Step> {
         match Locks::new(&self.root, &self.vault).restore(note_id, path, changed) {
-            Ok(true) => {
-                lane.publish(Applied::LockRestored {
+            Ok(Some(replaced)) => {
+                let restored = Applied::LockRestored {
                     note_id: note_id.to_owned(),
                     path: path.to_owned(),
-                });
+                };
+                replaced.keep_late_writes(&self.vault, &self.rows, note_id, restored.clone());
+                lane.publish(restored);
                 Some(Step::Done)
             }
-            Ok(false) => None,
+            Ok(None) => None,
             Err(error) => {
                 tracing::error!(
                     scope = SCOPE,

@@ -83,7 +83,7 @@ fn a_note_read_while_it_is_renamed_over_is_retried_never_done_unread() {
             modified_ms: i64::MAX,
         };
         match f.applier.apply(changed) {
-            Step::Retry(_) => retried += 1,
+            Step::Retry(_) | Step::Wait(..) => retried += 1,
             Step::Done if f.hash_of("n.md") != Some(content_hash(saved)) => done_unread += 1,
             Step::Done => {}
         }
