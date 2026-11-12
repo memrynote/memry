@@ -432,6 +432,19 @@ jobs:
           CARGO_PROFILE_RELEASE_CODEGEN_UNITS: '16'
         run: cargo test -p memry-core --release --test read_pool_contention
 
+      # The editor host's time budgets (#3531): open, apply_update, sync step 1 and the quit's
+      # write-back on a 2 KB, a 12 KB and a 5000-block note, release build as above. Linux only:
+      # one runner type keeps the factor meaningful, and the macOS pool is the scarcest. The factor
+      # covers a shared runner against the M1 Pro the budgets were measured on.
+      - name: Editor host budgets (memry-desktop, release)
+        if: matrix.part != 'tests' && matrix.os == 'ubuntu-22.04'
+        env:
+          CARGO_PROFILE_RELEASE_LTO: 'false'
+          CARGO_PROFILE_RELEASE_CODEGEN_UNITS: '16'
+          MEMRY_PERF_ENFORCE: '1'
+          MEMRY_PERF_FACTOR: '3'
+        run: cargo test -p memry-desktop --release --test editor_perf editor_perf -- --ignored --nocapture
+
       # The markdown converter (cargo feature `markdown`) is off by default so iOS links none
       # of it. The workspace clippy above only builds it where memry-desktop turns it on, so
       # the core is linted and tested with the feature explicitly.

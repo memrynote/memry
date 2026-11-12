@@ -180,6 +180,10 @@ name = "electron_secrets_locked"
 path = "tests/electron_secrets_locked.rs"
 
 [[test]]
+name = "editor_perf"
+path = "tests/editor_perf.rs"
+
+[[test]]
 name = "extract_bench"
 path = "tests/extract_bench.rs"
 
