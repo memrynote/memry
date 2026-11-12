@@ -1,4 +1,13 @@
-import { act, cleanup, fireEvent, render, screen } from '@testing-library/react'
+import {
+  act,
+  cleanup,
+  fireEvent,
+  render,
+  screen,
+  waitFor,
+  type RenderResult
+} from '@testing-library/react'
+import type { ReactElement } from 'react'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 
 const chunk = vi.hoisted(() => ({
@@ -16,8 +25,8 @@ vi.mock('@/components/note/note-title/EmojiPicker', async () => {
 
 import { VaultIconPicker } from './vault-icon-picker'
 
-function renderPicker(onOpenChange: (open: boolean) => void): void {
-  render(
+function pickerElement(onOpenChange: (open: boolean) => void): ReactElement {
+  return (
     <VaultIconPicker
       open
       onOpenChange={onOpenChange}
@@ -30,6 +39,12 @@ function renderPicker(onOpenChange: (open: boolean) => void): void {
   )
 }
 
+function renderPicker(onOpenChange: (open: boolean) => void): RenderResult {
+  return render(pickerElement(onOpenChange))
+}
+
+// The module mock is evaluated once per file and keeps its first outcome: the tests that need the
+// chunk to fail come first.
 describe('VaultIconPicker when its chunk does not load', () => {
   beforeEach(() => chunk.toastError.mockClear())
   afterEach(cleanup)
@@ -44,7 +59,23 @@ describe('VaultIconPicker when its chunk does not load', () => {
     })
 
     expect(chunk.toastError).toHaveBeenCalledTimes(1)
+    // Its own message, not the one of a vault icon that failed to save.
+    expect(chunk.toastError).toHaveBeenCalledWith('Could not load the icon picker')
     expect(onOpenChange).toHaveBeenCalledWith(false)
+  })
+
+  it('does not load the chunk again when a vault swipe re-renders it with a new onOpenChange', async () => {
+    chunk.mode = 'fail'
+    const view = renderPicker(vi.fn())
+    await waitFor(() => expect(chunk.toastError).toHaveBeenCalledTimes(1))
+
+    // The pill re-renders on every swipe step, with an inline onOpenChange each time.
+    view.rerender(pickerElement(vi.fn()))
+    await act(async () => {
+      await new Promise((resolve) => setTimeout(resolve, 100))
+    })
+
+    expect(chunk.toastError).toHaveBeenCalledTimes(1)
   })
 
   it('closes on Escape while the chunk is still out, with nothing on screen to take it', async () => {
@@ -56,5 +87,14 @@ describe('VaultIconPicker when its chunk does not load', () => {
     fireEvent.keyDown(window, { key: 'Escape' })
 
     expect(onOpenChange).toHaveBeenCalledWith(false)
+  })
+
+  it('takes the Escape that closes it, so nothing behind it also goes back a level', () => {
+    chunk.mode = 'hang'
+    renderPicker(vi.fn())
+
+    const notPrevented = fireEvent.keyDown(window, { key: 'Escape' })
+
+    expect(notPrevented).toBe(false)
   })
 })

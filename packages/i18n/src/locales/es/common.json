@@ -1269,7 +1269,8 @@
     "resetIcon": "Restablecer icono",
     "iconButton": "Cambiar el icono de {name}",
     "leaveSandbox": "Volver a {name}",
-    "iconFailed": "No se pudo cambiar el icono de la bóveda"
+    "iconFailed": "No se pudo cambiar el icono de la bóveda",
+    "iconPickerFailed": "No se pudo cargar el selector de iconos"
   },
   "sidebarHelp": {
     "label": "Ayuda y comentarios",

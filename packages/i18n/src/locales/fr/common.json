@@ -1269,7 +1269,8 @@
     "resetIcon": "Réinitialiser l'icône",
     "iconButton": "Changer l'icône de {name}",
     "leaveSandbox": "Retour à {name}",
-    "iconFailed": "Impossible de changer l'icône du coffre"
+    "iconFailed": "Impossible de changer l'icône du coffre",
+    "iconPickerFailed": "Impossible de charger le sélecteur d'icônes"
   },
   "sidebarHelp": {
     "label": "Aide et avis",

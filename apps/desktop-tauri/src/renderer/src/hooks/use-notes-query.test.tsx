@@ -342,7 +342,7 @@ describe('use-notes-query', () => {
   })
 
   // #4300: a burst of events over a list that already has data (a sync pull, a bulk import) ends in
-  // a read that lands: `rereadQueries` cancels only a query with no data yet.
+  // a read that lands.
   it('lets the read that follows a burst of events over a list with data land', async () => {
     const { result } = renderHook(() => useNotesList(), { wrapper })
     await waitFor(() => expect(result.current.notes[0]?.title).toBe('First'))

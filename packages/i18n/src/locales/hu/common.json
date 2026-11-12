@@ -1269,7 +1269,8 @@
     "resetIcon": "Ikon visszaállítása",
     "iconButton": "Ikon módosítása: {name}",
     "leaveSandbox": "Vissza ide: {name}",
-    "iconFailed": "Nem sikerült módosítani a széf ikonját"
+    "iconFailed": "Nem sikerült módosítani a széf ikonját",
+    "iconPickerFailed": "Nem sikerült betölteni az ikonválasztót"
   },
   "sidebarHelp": {
     "label": "Súgó és visszajelzés",

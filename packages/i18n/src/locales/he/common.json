@@ -1269,7 +1269,8 @@
     "resetIcon": "איפוס הסמל",
     "iconButton": "שינוי הסמל של {name}",
     "leaveSandbox": "חזרה אל {name}",
-    "iconFailed": "לא ניתן לשנות את סמל הכספת"
+    "iconFailed": "לא ניתן לשנות את סמל הכספת",
+    "iconPickerFailed": "לא ניתן לטעון את בורר הסמלים"
   },
   "sidebarHelp": {
     "label": "עזרה ומשוב",

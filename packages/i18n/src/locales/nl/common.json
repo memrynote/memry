@@ -1269,7 +1269,8 @@
     "resetIcon": "Pictogram herstellen",
     "iconButton": "Pictogram van {name} wijzigen",
     "leaveSandbox": "Terug naar {name}",
-    "iconFailed": "Kan het kluispictogram niet wijzigen"
+    "iconFailed": "Kan het kluispictogram niet wijzigen",
+    "iconPickerFailed": "Kan de pictogramkiezer niet laden"
   },
   "sidebarHelp": {
     "label": "Help en feedback",

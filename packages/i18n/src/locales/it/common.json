@@ -1269,7 +1269,8 @@
     "resetIcon": "Ripristina icona",
     "iconButton": "Cambia l'icona di {name}",
     "leaveSandbox": "Torna a {name}",
-    "iconFailed": "Impossibile cambiare l'icona del vault"
+    "iconFailed": "Impossibile cambiare l'icona del vault",
+    "iconPickerFailed": "Impossibile caricare il selettore di icone"
   },
   "sidebarHelp": {
     "label": "Aiuto e feedback",
