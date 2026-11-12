@@ -29,12 +29,12 @@ struct VaultSearchTests {
         let reindexes = Mutex(0)
         private let hits: [SearchResult]
         private let failure: (any Error)?
-        private let reindexFailure: (any Error)?
+        let reindexFailure: Mutex<(any Error)?>
 
         init(hits: [SearchResult] = [], failure: (any Error)? = nil, reindexFailure: (any Error)? = nil) {
             self.hits = hits
             self.failure = failure
-            self.reindexFailure = reindexFailure
+            self.reindexFailure = Mutex(reindexFailure)
         }
 
         func notes(query: String, limit: UInt32) async throws -> [SearchResult] {
@@ -45,12 +45,12 @@ struct VaultSearchTests {
 
         func reindex() async throws {
             reindexes.withLock { $0 += 1 }
-            if let reindexFailure { throw reindexFailure }
+            if let failure = reindexFailure.withLock({ $0 }) { throw failure }
         }
     }
 
     private func hit(_ id: String, _ title: String, kind: String = "note") -> SearchResult {
-        SearchResult(id: id, title: title, kind: kind, journalDate: nil, score: -1, snippet: [])
+        SearchResult(id: id, title: title, kind: kind, journalDate: nil, emoji: nil, folderPath: nil, score: -1, snippet: [])
     }
 
     /// A model with no debounce, so a test waits for the work rather than for
@@ -111,18 +111,49 @@ struct VaultSearchTests {
         #expect(model.phase == .results([hit("n1", "Dune")]))
     }
 
-    @Test("the index is brought up to date once, and a failed reindex is not shown")
-    func prepareRunsOnce() async {
-        // A stale index still answers; the queries that follow say so
-        // themselves if they fail. Blocking the screen on it would make a
-        // rebuild look like a broken vault.
-        let search = ScriptedSearch(reindexFailure: StorageError.Failed(what: "no disk"))
-        let model = model(search)
+    @Test("a burst of sync passes reindexes once and runs the query on screen again")
+    func syncPassesReindexAndRequery() async {
+        // #4324: a sync landing while the sheet is open used to stay invisible
+        // until the sheet was reopened.
+        let search = ScriptedSearch(hits: [hit("n1", "Dune")])
+        let index = VaultSearchIndex(search: search, debounce: .zero)
+        let model = VaultSearchViewModel(search: search, index: index, debounce: .zero)
+        model.run("dune")
+        await model.settle()
 
-        await model.prepare()
-        await model.prepare()
+        index.schedule()
+        index.schedule()
+        index.schedule()
+        await index.settle()
+        await model.settle()
 
-        #expect(search.reindexes.withLock { $0 } == 1)
-        #expect(model.phase == .idle)
+        #expect(search.reindexes.withLock { $0 } == 1, "the burst is debounced into one reindex")
+        #expect(search.queries.withLock { $0 } == ["dune", "dune"], "the finished reindex re-ran the query")
+        #expect(model.phase == .results([hit("n1", "Dune")]))
+        #expect(!model.isIndexStale)
+    }
+
+    @Test("a failed reindex says search may be out of date, and Retry clears it")
+    func failedReindexShowsNoticeUntilRetry() async {
+        let search = ScriptedSearch(hits: [hit("n1", "Dune")], reindexFailure: StorageError.Failed(what: "no disk"))
+        let index = VaultSearchIndex(search: search, debounce: .zero)
+        let model = VaultSearchViewModel(search: search, index: index, debounce: .zero)
+        model.run("dune")
+        await model.settle()
+
+        index.schedule()
+        await index.settle()
+
+        #expect(model.isIndexStale)
+        #expect(model.phase == .results([hit("n1", "Dune")]), "the stale index still answers")
+        #expect(search.queries.withLock { $0 } == ["dune"], "a failed reindex re-runs nothing")
+
+        search.reindexFailure.withLock { $0 = nil }
+        await model.retryIndex()
+        await model.settle()
+
+        #expect(!model.isIndexStale)
+        #expect(search.reindexes.withLock { $0 } == 2)
+        #expect(search.queries.withLock { $0 } == ["dune", "dune"])
     }
 }

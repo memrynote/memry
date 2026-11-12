@@ -189,7 +189,7 @@ struct TasksNotesTests {
         let search = try CoreVaultSearch(vault: vault.vault, executor: .shared)
         let model = VaultSearchViewModel(search: search, debounce: .zero)
 
-        await model.prepare()
+        try await search.reindex()
         model.run("cardamom")
         await model.settle()
 
@@ -199,7 +199,7 @@ struct TasksNotesTests {
     }
 
     @Test func a_failed_task_search_leaves_the_note_results_standing() async {
-        let note = SearchResult(id: "n1", title: "Dune", kind: "note", journalDate: nil, score: -1, snippet: [])
+        let note = SearchResult(id: "n1", title: "Dune", kind: "note", journalDate: nil, emoji: nil, folderPath: nil, score: -1, snippet: [])
         let model = VaultSearchViewModel(
             search: TaskSearchFake(notes: [note], taskFailure: true), debounce: .zero
         )
@@ -212,7 +212,7 @@ struct TasksNotesTests {
     }
 
     @Test func clearing_the_query_clears_the_task_hits() async {
-        let task = SearchResult(id: "t1", title: "[agent] dune", kind: "task", journalDate: nil, score: -1, snippet: [])
+        let task = SearchResult(id: "t1", title: "[agent] dune", kind: "task", journalDate: nil, emoji: nil, folderPath: nil, score: -1, snippet: [])
         let model = VaultSearchViewModel(search: TaskSearchFake(tasks: [task]), debounce: .zero)
 
         model.run("dune")
