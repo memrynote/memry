@@ -245,6 +245,7 @@ export { default as SummationCircleIcon } from '@hugeicons/core-free-icons/Summa
 export { default as Sun01Icon } from '@hugeicons/core-free-icons/Sun01Icon'
 export { default as SunriseIcon } from '@hugeicons/core-free-icons/SunriseIcon'
 export { default as SunsetIcon } from '@hugeicons/core-free-icons/SunsetIcon'
+export { default as Tablet01Icon } from '@hugeicons/core-free-icons/Tablet01Icon'
 export { default as Tag01Icon } from '@hugeicons/core-free-icons/Tag01Icon'
 export { default as TagsIcon } from '@hugeicons/core-free-icons/TagsIcon'
 export { default as TextAlignCenterIcon } from '@hugeicons/core-free-icons/TextAlignCenterIcon'

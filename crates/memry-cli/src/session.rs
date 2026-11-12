@@ -109,6 +109,7 @@ impl Cli {
                 // binary runs on — not `--client-platform`, which is chapter
                 // 11's header and a different vocabulary.
                 platform: DevicePlatform::Macos,
+                form_factor: None,
                 os_version: None,
                 app_version: core_version(),
                 vault_id: None,

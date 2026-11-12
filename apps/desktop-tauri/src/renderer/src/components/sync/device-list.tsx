@@ -3,6 +3,7 @@ import { formatDistanceToNow } from 'date-fns'
 import {
   Monitor,
   Smartphone,
+  Tablet,
   Laptop,
   MoreHorizontal,
   Pencil,
@@ -46,6 +47,8 @@ interface Device {
   id: string
   name: string
   platform: string
+  /** Chapter 02 §2.3.4: absent or null is unknown, and the symbol falls back to `platform`. */
+  formFactor?: 'phone' | 'tablet' | null
   isCurrentDevice: boolean
   lastSyncAt?: number
   linkedAt: number
@@ -61,6 +64,12 @@ const PLATFORM_ICONS: Record<string, typeof Monitor> = {
   linux: Monitor,
   ios: Smartphone,
   android: Smartphone
+}
+
+const deviceIcon = (device: Device): typeof Monitor => {
+  if (device.formFactor === 'tablet') return Tablet
+  if (device.formFactor === 'phone') return Smartphone
+  return PLATFORM_ICONS[device.platform] ?? Monitor
 }
 
 const platformLabel = (platform: string): string => {
@@ -196,7 +205,7 @@ export function DeviceList({ onLinkDevice }: DeviceListProps): React.JSX.Element
     <>
       <div className="flex flex-col rounded-xl border border-border bg-card overflow-clip [--muted:var(--surface-active)]">
         {visibleDevices.map((device, i) => {
-          const Icon = PLATFORM_ICONS[device.platform] ?? Monitor
+          const Icon = deviceIcon(device)
           const syncLabel = device.lastSyncAt
             ? t('devices.lastSeen', {
                 time: formatDistanceToNow(device.lastSyncAt, { addSuffix: false })
