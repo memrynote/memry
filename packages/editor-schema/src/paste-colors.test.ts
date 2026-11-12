@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest'
-import { BlockNoteEditor } from '@blocknote/core'
+import { BlockNoteEditor, COLORS_DEFAULT } from '@blocknote/core'
 import { sidecarMarkerLines } from '@memry/shared/block-markers'
-import { createMemrySchema } from './schema'
+import { createMemrySchema, NAMED_BLOCK_COLORS } from './schema'
 import { createServerBlockSpecs, createServerInlineSpecs } from './server'
 
 function createEditor() {
@@ -60,5 +60,27 @@ describe('pasted block colors (#4330)', () => {
     ])
     const [block] = editor.tryParseHTMLToBlocks(html)
     expect(block.props).toMatchObject({ textColor: 'purple', backgroundColor: 'yellow' })
+  })
+
+  it('keeps exactly the nine editor colors and default', () => {
+    // Written out so a BlockNote upgrade that adds or renames a color fails here, and the
+    // Rust list (rules/blocks.rs NAMED_BLOCK_COLORS) is pinned by `block-style-color-every-name`.
+    expect(Object.keys(COLORS_DEFAULT).toSorted()).toEqual(
+      ['gray', 'brown', 'red', 'orange', 'yellow', 'green', 'blue', 'purple', 'pink'].toSorted()
+    )
+    expect([...NAMED_BLOCK_COLORS].toSorted()).toEqual(
+      [
+        'default',
+        'gray',
+        'brown',
+        'red',
+        'orange',
+        'yellow',
+        'green',
+        'blue',
+        'purple',
+        'pink'
+      ].toSorted()
+    )
   })
 })

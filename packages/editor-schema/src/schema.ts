@@ -155,7 +155,10 @@ function renderCodeLanguageViews(
 }
 
 /** `default` plus the colors the editor's color menu offers. */
-const NAMED_BLOCK_COLORS: ReadonlySet<string> = new Set(['default', ...Object.keys(COLORS_DEFAULT)])
+export const NAMED_BLOCK_COLORS: ReadonlySet<string> = new Set([
+  'default',
+  ...Object.keys(COLORS_DEFAULT)
+])
 
 type AnyBlockSpec = BlockSpecs[string]
 

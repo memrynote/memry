@@ -258,8 +258,9 @@ the value is `default` or a key of BlockNote's `COLORS_DEFAULT` (`gray`, `brown`
 `orange`, `yellow`, `green`, `blue`, `purple`, `pink`); any other value (`rgb(0, 0, 0)`, a hex,
 `inherit`) is dropped and the prop keeps its default (`packages/editor-schema/src/schema.ts:177`,
 `crates/memry-core/src/markdown/bn/dom_parser/rules/blocks.rs:31`, #4330). A `data-text-color` or
-`data-background-color` attribute still reaches the prop through its attribute rule, unfiltered.
-The classes are `block-style-color-*` and `block-data-color-unnamed` in `html-to-blocks.json`.
+`data-background-color` attribute still reaches the prop through its attribute rule, unfiltered
+(`crates/memry-core/src/markdown/bn/dom_parser/rules/attrs.rs:72`, `prop_attribute`).
+The classes are `block-style-color-*` (`block-style-color-every-name` pins all ten names) and `block-data-color-unnamed` in `html-to-blocks.json`.
 
 ## 12.2 FR-041 holds structurally, with three carve-outs
 
