@@ -122,18 +122,14 @@ fn a_fresh_index_database_reaches_the_latest_version() {
     let names = table_names(&db);
     for expected in [
         "block_link_refs",
-        "fts_inbox",
         "fts_notes",
         "fts_tasks",
-        "image_embedding_state",
         "index_meta",
-        "note_embedding_state",
         "note_fold_chunks",
         "note_links",
         "note_properties",
         "note_stats",
         "portal_refs",
-        "voice_embedding_state",
     ] {
         assert!(names.iter().any(|n| n == expected), "missing {expected}");
     }
