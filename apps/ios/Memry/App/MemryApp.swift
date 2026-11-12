@@ -27,6 +27,8 @@ final class MemryAppDelegate: NSObject, UIApplicationDelegate {
         _ application: UIApplication,
         didFinishLaunchingWithOptions launchOptions: [UIApplication.LaunchOptionsKey: Any]? = nil
     ) -> Bool {
+        // Read the idiom on main before any background work can ask for it.
+        _ = ThisDevice.isPad
         UNUserNotificationCenter.current().delegate = ReminderNotificationDelegate.shared
         CalendarBackgroundRefresh.register()
         TelemetryLaunch.start()

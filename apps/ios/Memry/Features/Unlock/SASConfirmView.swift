@@ -59,7 +59,7 @@ struct SASConfirmView: View {
                     .foregroundStyle(Tokens.Text.primary.color)
                 Text(
                     "Your other device is showing the same six digits. If they match, approve the link there. "
-                        + "Nothing is sent to this phone until you do."
+                        + "Nothing is sent to this \(ThisDevice.noun) until you do."
                 )
                 .font(Tokens.Typography.body.font)
                 .foregroundStyle(Tokens.Text.secondary.color)
@@ -140,10 +140,10 @@ struct SASConfirmView: View {
 
     private var linked: some View {
         VStack(alignment: .leading, spacing: Tokens.Space.medium) {
-            Label("This phone is linked", systemImage: "checkmark.seal")
+            Label("This \(ThisDevice.noun) is linked", systemImage: "checkmark.seal")
                 .font(Tokens.Typography.sectionTitle.font)
                 .foregroundStyle(Tokens.Text.primary.color)
-            Text("Your vaults are unlocked on this phone.")
+            Text("Your vaults are unlocked on this \(ThisDevice.noun).")
                 .font(Tokens.Typography.body.font)
                 .foregroundStyle(Tokens.Text.secondary.color)
         }
