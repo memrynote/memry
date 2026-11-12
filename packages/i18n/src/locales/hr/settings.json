@@ -2466,7 +2466,8 @@
       "failedToCloseVault": "Zatvaranje trezora nije uspjelo",
       "failedToSwitchVault": "Promjena trezora nije uspjela",
       "failedToUpdateConfig": "Ažuriranje konfiguracije nije uspjelo",
-      "failedToReindex": "Ponovno indeksiranje nije uspjelo"
+      "failedToReindex": "Ponovno indeksiranje nije uspjelo",
+      "googleSignInFailed": "Prijava putem Googlea nije uspjela"
     }
   },
   "agentMcp": {

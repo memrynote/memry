@@ -433,7 +433,10 @@
       "empty": "Ingenting samsvarer med denne visningen ennå.",
       "loadFailed": "Kunne ikke laste inn denne visningen. Selve notatene er uendret.",
       "folderMissing": "Denne mappen finnes ikke lenger i hvelvet. Velg en annen kilde.",
-      "unreadable": "Denne visningen kan ikke leses. Velg en kilde ovenfor, eller fjern blokken."
+      "unreadable": "Denne visningen kan ikke leses. Velg en kilde ovenfor, eller fjern blokken.",
+      "invalidJson": "Definisjonen av denne visningen er ikke gyldig JSON. Rett den nedenfor, eller fjern blokken.",
+      "invalidShape": "Definisjonen av denne visningen mangler kilde. Velg en ovenfor, eller rett den nedenfor.",
+      "definition": "Definisjon"
     },
     "chart": {
       "title": "Diagram",

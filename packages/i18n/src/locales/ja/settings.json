@@ -2466,7 +2466,8 @@
       "failedToCloseVault": "保管庫を閉じられませんでした",
       "failedToSwitchVault": "保管庫を切り替えられませんでした",
       "failedToUpdateConfig": "設定を更新できませんでした",
-      "failedToReindex": "インデックスを再作成できませんでした"
+      "failedToReindex": "インデックスを再作成できませんでした",
+      "googleSignInFailed": "Google でサインインできませんでした"
     }
   },
   "agentMcp": {

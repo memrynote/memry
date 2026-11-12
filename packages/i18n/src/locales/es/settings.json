@@ -2466,7 +2466,8 @@
       "failedToCloseVault": "No se pudo cerrar la bóveda",
       "failedToSwitchVault": "No se pudo cambiar de bóveda",
       "failedToUpdateConfig": "No se pudo actualizar la configuración",
-      "failedToReindex": "No se pudo reindexar"
+      "failedToReindex": "No se pudo reindexar",
+      "googleSignInFailed": "No se pudo iniciar sesión con Google"
     }
   },
   "agentMcp": {

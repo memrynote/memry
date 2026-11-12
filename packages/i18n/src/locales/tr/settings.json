@@ -2466,7 +2466,8 @@
       "failedToCloseVault": "Kasa kapatılamadı",
       "failedToSwitchVault": "Kasa değiştirilemedi",
       "failedToUpdateConfig": "Yapılandırma güncellenemedi",
-      "failedToReindex": "Yeniden dizinlenemedi"
+      "failedToReindex": "Yeniden dizinlenemedi",
+      "googleSignInFailed": "Google ile oturum açılamadı"
     }
   },
   "agentMcp": {

@@ -433,7 +433,10 @@
       "empty": "Még semmi sem felel meg ennek a nézetnek.",
       "loadFailed": "Nem sikerült betölteni ezt a nézetet. Maguk a jegyzetek érintetlenek.",
       "folderMissing": "Ez a mappa már nincs a széfben. Válasszon másik forrást.",
-      "unreadable": "Ez a nézet nem olvasható. Válasszon forrást fent, vagy távolítsa el a blokkot."
+      "unreadable": "Ez a nézet nem olvasható. Válasszon forrást fent, vagy távolítsa el a blokkot.",
+      "invalidJson": "A nézet definíciója nem érvényes JSON. Javítsa ki lent, vagy távolítsa el a blokkot.",
+      "invalidShape": "A nézet definíciójában nincs forrás. Válasszon egyet fent, vagy javítsa ki lent.",
+      "definition": "Definíció"
     },
     "chart": {
       "title": "Diagram",

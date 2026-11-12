@@ -2466,7 +2466,8 @@
       "failedToCloseVault": "Nem sikerült bezárni a széfet",
       "failedToSwitchVault": "Nem sikerült széfet váltani",
       "failedToUpdateConfig": "Nem sikerült frissíteni a konfigurációt",
-      "failedToReindex": "Nem sikerült újraindexelni"
+      "failedToReindex": "Nem sikerült újraindexelni",
+      "googleSignInFailed": "A Google-bejelentkezés sikertelen"
     }
   },
   "agentMcp": {

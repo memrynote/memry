@@ -2466,7 +2466,8 @@
       "failedToCloseVault": "Nepodarilo sa zavrieť trezor",
       "failedToSwitchVault": "Nepodarilo sa prepnúť trezor",
       "failedToUpdateConfig": "Nepodarilo sa aktualizovať konfiguráciu",
-      "failedToReindex": "Nepodarilo sa preindexovať"
+      "failedToReindex": "Nepodarilo sa preindexovať",
+      "googleSignInFailed": "Prihlásenie cez Google zlyhalo"
     }
   },
   "agentMcp": {

@@ -2466,7 +2466,8 @@
       "failedToCloseVault": "無法關閉儲存庫",
       "failedToSwitchVault": "無法切換儲存庫",
       "failedToUpdateConfig": "無法更新設定",
-      "failedToReindex": "無法重新索引"
+      "failedToReindex": "無法重新索引",
+      "googleSignInFailed": "Google 登入失敗"
     }
   },
   "agentMcp": {

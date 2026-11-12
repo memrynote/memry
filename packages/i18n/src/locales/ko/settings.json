@@ -2466,7 +2466,8 @@
       "failedToCloseVault": "볼트를 닫지 못했습니다.",
       "failedToSwitchVault": "볼트를 전환하지 못했습니다.",
       "failedToUpdateConfig": "구성을 업데이트하지 못했습니다.",
-      "failedToReindex": "재인덱싱하지 못했습니다."
+      "failedToReindex": "재인덱싱하지 못했습니다.",
+      "googleSignInFailed": "Google 로그인 실패"
     }
   },
   "agentMcp": {

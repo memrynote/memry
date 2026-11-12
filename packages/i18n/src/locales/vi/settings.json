@@ -2466,7 +2466,8 @@
       "failedToCloseVault": "Không thể đóng kho",
       "failedToSwitchVault": "Không thể chuyển kho",
       "failedToUpdateConfig": "Không thể cập nhật cấu hình",
-      "failedToReindex": "Không thể lập lại chỉ mục"
+      "failedToReindex": "Không thể lập lại chỉ mục",
+      "googleSignInFailed": "Không thể đăng nhập bằng Google"
     }
   },
   "agentMcp": {

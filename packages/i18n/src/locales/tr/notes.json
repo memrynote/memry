@@ -433,7 +433,10 @@
       "empty": "Henüz bu görünümle eşleşen bir şey yok.",
       "loadFailed": "Bu görünüm yüklenemedi. Notların kendisine dokunulmadı.",
       "folderMissing": "Bu klasör artık kasada değil. Başka bir kaynak seçin.",
-      "unreadable": "Bu görünüm okunamıyor. Yukarıdan bir kaynak seçin veya bloğu kaldırın."
+      "unreadable": "Bu görünüm okunamıyor. Yukarıdan bir kaynak seçin veya bloğu kaldırın.",
+      "invalidJson": "Bu görünümün tanımı geçerli bir JSON değil. Aşağıdan düzeltin veya bloğu kaldırın.",
+      "invalidShape": "Bu görünümün tanımında kaynak yok. Yukarıdan birini seçin veya aşağıdan düzeltin.",
+      "definition": "Tanım"
     },
     "chart": {
       "title": "Çizelge",

@@ -2466,7 +2466,8 @@
       "failedToCloseVault": "Gagal menutup brankas",
       "failedToSwitchVault": "Gagal mengganti brankas",
       "failedToUpdateConfig": "Gagal memperbarui konfigurasi",
-      "failedToReindex": "Gagal mengindeks ulang"
+      "failedToReindex": "Gagal mengindeks ulang",
+      "googleSignInFailed": "Gagal masuk dengan Google"
     }
   },
   "agentMcp": {

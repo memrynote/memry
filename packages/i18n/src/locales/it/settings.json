@@ -2466,7 +2466,8 @@
       "failedToCloseVault": "Impossibile chiudere il vault",
       "failedToSwitchVault": "Impossibile cambiare vault",
       "failedToUpdateConfig": "Impossibile aggiornare la configurazione",
-      "failedToReindex": "Impossibile reindicizzare"
+      "failedToReindex": "Impossibile reindicizzare",
+      "googleSignInFailed": "Accesso con Google non riuscito"
     }
   },
   "agentMcp": {

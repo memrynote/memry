@@ -433,7 +433,10 @@
       "empty": "Belum ada yang cocok dengan tampilan ini.",
       "loadFailed": "Tidak dapat memuat tampilan ini. Catatannya sendiri tidak diubah.",
       "folderMissing": "Folder ini sudah tidak ada di brankas. Pilih sumber lain.",
-      "unreadable": "Tampilan ini tidak dapat dibaca. Pilih sumber di atas, atau hapus blok."
+      "unreadable": "Tampilan ini tidak dapat dibaca. Pilih sumber di atas, atau hapus blok.",
+      "invalidJson": "Definisi tampilan ini bukan JSON yang valid. Perbaiki di bawah, atau hapus bloknya.",
+      "invalidShape": "Definisi tampilan ini tidak memiliki sumber. Pilih sumber di atas, atau perbaiki di bawah.",
+      "definition": "Definisi"
     },
     "chart": {
       "title": "Bagan",

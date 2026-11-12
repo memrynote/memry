@@ -2466,7 +2466,8 @@
       "failedToCloseVault": "Não foi possível fechar o cofre",
       "failedToSwitchVault": "Não foi possível trocar de cofre",
       "failedToUpdateConfig": "Não foi possível atualizar a configuração",
-      "failedToReindex": "Não foi possível reindexar"
+      "failedToReindex": "Não foi possível reindexar",
+      "googleSignInFailed": "O login com o Google falhou"
     }
   },
   "agentMcp": {

@@ -28,6 +28,7 @@ import {
 import { classifyMarkdownContent } from '@memry/shared/markdown-class'
 import { scanTaskCheckboxStates } from '@memry/shared/task-block'
 
+import { setVaultEmbedResolver } from '../../src/main/sync/blocknote-converter'
 import { parseNote } from '../../src/main/vault/frontmatter'
 import { extractNoteMetadata } from '../../src/main/vault/note-sync'
 
@@ -53,10 +54,10 @@ import {
 } from './doc-oracle'
 import { decodeYaml, encodeYaml, type YamlJson } from './yaml-json'
 
-// The converter imports two Electron-coupled modules. The oracle runs it
-// without a vault, a database or a log file: a silent logger, and an embed
-// resolver driven by the `embedFiles` of the job (none yet: stage 3 parses no
-// `![[embed]]`; the map is where later cases state theirs).
+// The converter imports an Electron-coupled logger and takes its embed resolver
+// through `setVaultEmbedResolver`. The oracle runs it without a vault, a
+// database or a log file: a silent logger, and a resolver driven by the
+// `embedFiles` of the job.
 vi.mock('../../src/main/lib/logger', () => {
   const silent = {
     debug: (): undefined => undefined,
@@ -67,11 +68,10 @@ vi.mock('../../src/main/lib/logger', () => {
   }
   return { log: silent, createLogger: () => silent }
 })
-vi.mock('../../src/main/vault/resolve-embed', () => ({
-  resolveVaultEmbeds: (refs: string[]): Record<string, string> =>
-    Object.fromEntries(refs.filter((ref) => ref in embedFiles).map((ref) => [ref, embedFiles[ref]]))
-}))
 const embedFiles: Record<string, string> = {}
+setVaultEmbedResolver((refs: string[]): Record<string, string> =>
+  Object.fromEntries(refs.filter((ref) => ref in embedFiles).map((ref) => [ref, embedFiles[ref]]))
+)
 
 // Block ids are `crypto.randomUUID()` (blocknote-converter.ts:501-509): a
 // counter makes every run reproducible. Vectors never compare ids anyway.

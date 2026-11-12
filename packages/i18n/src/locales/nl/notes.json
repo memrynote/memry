@@ -433,7 +433,10 @@
       "empty": "Er komt nog niets overeen met deze weergave.",
       "loadFailed": "Kan deze weergave niet laden. De notities zelf blijven ongewijzigd.",
       "folderMissing": "Deze map staat niet meer in de kluis. Kies een andere bron.",
-      "unreadable": "Deze weergave kan niet worden gelezen. Kies hierboven een bron of verwijder het blok."
+      "unreadable": "Deze weergave kan niet worden gelezen. Kies hierboven een bron of verwijder het blok.",
+      "invalidJson": "De definitie van deze weergave is geen geldige JSON. Herstel die hieronder of verwijder het blok.",
+      "invalidShape": "De definitie van deze weergave heeft geen bron. Kies er hierboven een of herstel de definitie hieronder.",
+      "definition": "Definitie"
     },
     "chart": {
       "title": "Grafiek",

@@ -2466,7 +2466,8 @@
       "failedToCloseVault": "Failed to close vault",
       "failedToSwitchVault": "Failed to switch vault",
       "failedToUpdateConfig": "Failed to update config",
-      "failedToReindex": "Failed to reindex"
+      "failedToReindex": "Failed to reindex",
+      "googleSignInFailed": "Google sign-in failed"
     }
   },
   "agentMcp": {

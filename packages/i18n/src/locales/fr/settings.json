@@ -2466,7 +2466,8 @@
       "failedToCloseVault": "Impossible de fermer le coffre",
       "failedToSwitchVault": "Impossible de changer de coffre",
       "failedToUpdateConfig": "Impossible de modifier la configuration",
-      "failedToReindex": "Échec de la réindexation"
+      "failedToReindex": "Échec de la réindexation",
+      "googleSignInFailed": "La connexion à Google a échoué"
     }
   },
   "agentMcp": {

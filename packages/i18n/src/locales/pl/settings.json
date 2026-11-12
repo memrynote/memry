@@ -2466,7 +2466,8 @@
       "failedToCloseVault": "Nie udało się zamknąć sejfu",
       "failedToSwitchVault": "Nie udało się przełączyć sejfu",
       "failedToUpdateConfig": "Nie udało się zaktualizować konfiguracji",
-      "failedToReindex": "Nie udało się ponownie zaindeksować"
+      "failedToReindex": "Nie udało się ponownie zaindeksować",
+      "googleSignInFailed": "Logowanie przez Google nie powiodło się"
     }
   },
   "agentMcp": {

@@ -2466,7 +2466,8 @@
       "failedToCloseVault": "无法关闭仓库",
       "failedToSwitchVault": "无法切换仓库",
       "failedToUpdateConfig": "无法更新配置",
-      "failedToReindex": "无法重新索引"
+      "failedToReindex": "无法重新索引",
+      "googleSignInFailed": "Google 登录失败"
     }
   },
   "agentMcp": {

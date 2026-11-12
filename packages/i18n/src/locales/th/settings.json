@@ -2466,7 +2466,8 @@
       "failedToCloseVault": "ปิดคลังข้อมูลไม่สำเร็จ",
       "failedToSwitchVault": "สลับคลังข้อมูลไม่สำเร็จ",
       "failedToUpdateConfig": "อัปเดตการกำหนดค่าไม่สำเร็จ",
-      "failedToReindex": "สร้างดัชนีใหม่ไม่สำเร็จ"
+      "failedToReindex": "สร้างดัชนีใหม่ไม่สำเร็จ",
+      "googleSignInFailed": "ลงชื่อเข้าใช้ด้วย Google ไม่สำเร็จ"
     }
   },
   "agentMcp": {

@@ -2466,7 +2466,8 @@
       "failedToCloseVault": "סגירת הכספת נכשלה",
       "failedToSwitchVault": "החלפת כספת נכשלה",
       "failedToUpdateConfig": "עדכון התצורה נכשל",
-      "failedToReindex": "האינדוקס מחדש נכשל"
+      "failedToReindex": "האינדוקס מחדש נכשל",
+      "googleSignInFailed": "ההתחברות עם Google נכשלה"
     }
   },
   "agentMcp": {

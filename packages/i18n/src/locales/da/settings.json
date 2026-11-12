@@ -2466,7 +2466,8 @@
       "failedToCloseVault": "Kunne ikke lukke boksen",
       "failedToSwitchVault": "Kunne ikke skifte boks",
       "failedToUpdateConfig": "Kunne ikke opdatere konfigurationen",
-      "failedToReindex": "Kunne ikke genindeksere"
+      "failedToReindex": "Kunne ikke genindeksere",
+      "googleSignInFailed": "Google-login mislykkedes"
     }
   },
   "agentMcp": {

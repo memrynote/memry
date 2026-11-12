@@ -2466,7 +2466,8 @@
       "failedToCloseVault": "Kunne ikke lukke hvelvet",
       "failedToSwitchVault": "Kunne ikke bytte hvelv",
       "failedToUpdateConfig": "Kunne ikke oppdatere konfigurasjonen",
-      "failedToReindex": "Kunne ikke indeksere på nytt"
+      "failedToReindex": "Kunne ikke indeksere på nytt",
+      "googleSignInFailed": "Google-pålogging mislyktes"
     }
   },
   "agentMcp": {

@@ -40,7 +40,6 @@ vi.mock('../../src/main/lib/logger', () => {
   }
   return { log: silent, createLogger: () => silent }
 })
-vi.mock('../../src/main/vault/resolve-embed', () => ({ resolveVaultEmbeds: () => ({}) }))
 
 const out = process.env.MEMRY_CORPUS_OUT
 const dirs = (process.env.MEMRY_CORPUS_DIRS ?? '').split(':').filter((d) => d.length > 0)
