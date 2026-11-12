@@ -57,7 +57,7 @@ export interface ApplyDeps {
     a: CreateProjectArgs
   ): Promise<{ success: boolean; project?: { id: string } | null }>
   createTask(a: CreateTaskArgs): Promise<{ success: boolean; task?: { id: string } | null }>
-  completeTask(a: { id: string; completedAt?: string }): Promise<unknown>
+  completeTask(a: { id: string; completedAt?: string; recordOnly?: boolean }): Promise<unknown>
   archiveTask(id: string): Promise<unknown>
   getInboxProjectId(): string | undefined
   getStatusesByProject(projectId: string): StatusRow[]
@@ -162,7 +162,8 @@ export async function applyPlan(
       tempIdToRealId.set(t.tempId, realId)
       ctx?.reportImported()
 
-      if (t.completedAt) await deps.completeTask({ id: realId, completedAt: t.completedAt })
+      if (t.completedAt)
+        await deps.completeTask({ id: realId, completedAt: t.completedAt, recordOnly: true })
       if (t.archivedAt) await deps.archiveTask(realId)
 
       for (const reminder of t.reminders) {

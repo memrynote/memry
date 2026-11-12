@@ -250,7 +250,8 @@
     "failedPlayAudio": "No se pudo reproducir el audio",
     "failedLoadAudio": "No se pudo cargar el audio",
     "video": "Vídeo",
-    "unsupportedVideo": "Tu navegador no admite la etiqueta de vídeo."
+    "unsupportedVideo": "Tu navegador no admite la etiqueta de vídeo.",
+    "fileOnOtherDevice": "El archivo está en el dispositivo que lo capturó."
   },
   "reminder": {
     "dataUnavailable": "Los datos del recordatorio no están disponibles.",

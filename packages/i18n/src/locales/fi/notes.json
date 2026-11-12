@@ -5,6 +5,7 @@
     "create": "Luo"
   },
   "wikiLinkPreview": {
+    "journalUnwritten": "Päivälle {date} ei ole vielä kirjoitettu. Avaa päivä napsauttamalla",
     "notFound": "Ei löytynyt – luo ”{title}” napsauttamalla"
   },
   "wikiLinkMenu": {
@@ -138,6 +139,7 @@
     "actions": {
       "openInNewTab": "Avaa uudessa välilehdessä",
       "openToTheSide": "Avaa sivuun",
+      "openFolderView": "Avaa kansionäkymä",
       "newNote": "Uusi muistiinpano",
       "newFolder": "Uusi kansio",
       "showTasks": "Näytä tehtävät",
@@ -187,7 +189,8 @@
     },
     "toast": {
       "selectionBookmarked": "{count} kohdetta lisätty kirjanmerkkeihin",
-      "selectionBookmarkFailed": "Valittuja kohteita ei voitu lisätä kirjanmerkkeihin"
+      "selectionBookmarkFailed": "Valittuja kohteita ei voitu lisätä kirjanmerkkeihin",
+      "pairedNoteNameTaken": "Siellä on jo muistiinpano nimeltä {name}"
     }
   },
   "editor": {
@@ -423,9 +426,14 @@
       "savedView": "Tallennettu näkymä",
       "savedViewMissing": "Tallennettua näkymää ”{name}” ei enää ole, joten tässä näytetään oletusnäkymä.",
       "openAsTab": "Avaa välilehtenä",
+      "newNote": "Uusi muistiinpano",
+      "newViewTitle": "Uusi näkymä",
+      "newViewSubtext": "Uusi kansio tämän muistiinpanon viereen, listattuna tähän",
+      "newViewFailed": "Kansiota tälle näkymälle ei voitu luoda.",
       "empty": "Mikään ei vielä vastaa tätä näkymää.",
       "loadFailed": "Näkymän lataaminen epäonnistui. Itse muistiinpanoihin ei ole koskettu.",
       "folderMissing": "Kansio ei ole enää holvissa. Valitse toinen lähde.",
+      "unreadable": "Tätä näkymää ei voi lukea. Valitse lähde yltä tai poista lohko.",
       "invalidJson": "Näkymän määritys ei ole kelvollista JSONia. Korjaa se alla tai poista lohko.",
       "invalidShape": "Näkymän määrityksessä ei ole lähdettä. Valitse lähde yllä tai korjaa määritys alla.",
       "definition": "Määritys"
@@ -668,6 +676,8 @@
   },
   "menus": {
     "wiki": {
+      "journalDay": "Päiväkirja · {date}",
+      "journalDayUnwritten": "Päiväkirja · ei vielä kirjoitettu",
       "aria": "Muistiinpanoehdotukset",
       "loading": "Ladataan muistiinpanoja…",
       "empty": "Muistiinpanoja ei löytynyt",
@@ -782,6 +792,12 @@
     "viaProperty": "{property} → {title}",
     "viaPortal": "Näytetään portaalissa"
   },
+  "references": {
+    "filterAll": "Kaikki",
+    "filterNotes": "Muistiinpanot",
+    "filterJournal": "Päiväkirja",
+    "filterBy": "Suodata viittaukset: {filter}"
+  },
   "unlinkedMentions": {
     "title": "Linkittämättömät maininnat",
     "summary": "{count, plural, one {# linkittämätön maininta} other {# linkittämätöntä mainintaa}}",
@@ -886,6 +902,7 @@
     "showOnCalendar": "Näytä kalenterissa",
     "showingOnCalendar": "Näytetään kalenterissa",
     "relation": {
+      "unwrittenDay": "Ei vielä kirjoitettu",
       "deleted": "Poistettu",
       "removeAria": "Poista ”{title}”",
       "addAria": "Lisää relaatio",

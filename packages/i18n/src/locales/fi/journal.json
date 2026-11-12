@@ -236,5 +236,21 @@
     "range": "{start} – {end}",
     "openTask": "{title}, {range}",
     "completeTask": "Merkitse valmiiksi: {title}"
+  },
+  "pastYears": {
+    "title": "Tänä päivänä",
+    "count": "{count, plural, one {# muu vuosi} other {# muuta vuotta}}",
+    "showAll": "Kaikki vuodet",
+    "showPreviews": "Esikatselut",
+    "yearsAgo": "{count, plural, one {# vuosi sitten} other {# vuotta sitten}}",
+    "yearsLater": "{count, plural, one {# vuotta myöhemmin} other {# vuotta myöhemmin}}",
+    "words": "{count, plural, one {# sana} other {# sanaa}}",
+    "openDay": "Avaa {date}",
+    "showFull": "Näytä koko merkintä",
+    "showLess": "Näytä vähemmän",
+    "loadError": "Tätä päivää muilta vuosilta ei voitu ladata.",
+    "previousYear": "Sama päivä, edellinen vuosi",
+    "nextYear": "Sama päivä, seuraava vuosi",
+    "goToYear": "Siirry tähän päivään vuonna {year}"
   }
 }

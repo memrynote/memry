@@ -122,15 +122,3 @@ export function reorderSavedFilters(db: DataDb, ids: string[], positions: number
     }
   })
 }
-
-/**
- * Check if a saved filter exists.
- */
-export function savedFilterExists(db: DataDb, id: string): boolean {
-  const result = db
-    .select({ id: savedFilters.id })
-    .from(savedFilters)
-    .where(eq(savedFilters.id, id))
-    .get()
-  return result !== undefined
-}

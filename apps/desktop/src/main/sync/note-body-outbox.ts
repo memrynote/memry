@@ -8,15 +8,14 @@ import {
 } from '@memry/sync-client/queue'
 import { createLogger } from '../lib/logger'
 import { RateLimitError, SyncServerError } from './http-client'
+import { crdtPushDelayMs } from './crdt-push-admission'
 
 const log = createLogger('NoteBodyOutbox')
 
-// Minimum spacing between two flushes of one note (#2289): an update after a
-// quiet window flushes at once, anything closer waits for one trailing flush.
-// Not lowered to the record push's 300 ms: every CRDT push route shares one
-// per-device `crdt_push` bucket (300/min) with snapshot pushes, and 300 ms
-// would let two notes edited at once spend more than all of it.
+// Preserve per-note leading/trailing flushes. The shared HTTP admission gate
+// owns cross-note pacing; drain() bounds preparation before any merge/encrypt.
 const FLUSH_INTERVAL_MS = 1000
+const MAX_FLUSHES = 2
 // Largest single merged update. Merged updates are pushed as one payload, so
 // this keeps a long offline session from producing one blob the server cannot
 // store in a D1 row (the push fn splits a batch across requests and falls back
@@ -97,15 +96,12 @@ export class NoteBodyOutbox {
   private running = false
   private paused = false
   private readFullState: NoteBodyFullStateReader | null = null
-  private flushTimers = new Map<string, ReturnType<typeof setTimeout>>()
+  private pendingNotes = new Set<string>()
+  private wakeTimer: ReturnType<typeof setTimeout> | null = null
+  private wakeAt = 0
   private lastFlushStartedAt = new Map<string, number>()
   private flushingNotes = new Set<string>()
-  /**
-   * Epoch ms until which every flush is held back after a 429. Global, not per
-   * note: every CRDT route spends one per-device `crdt_push` bucket and the
-   * server counts the requests it answers with 429, so retrying another note
-   * inside the window burns the same budget (#2293).
-   */
+  /** Scheduler deadline returned by admission; avoid re-merging held rows. */
   private rateLimitedUntil = 0
   /** Per note: consecutive deferrals and the time its next flush may start. */
   private deferredFlushes = new Map<string, { deferrals: number; until: number }>()
@@ -127,14 +123,15 @@ export class NoteBodyOutbox {
   /** Rows stay in sync_queue; the next start flushes them. */
   stop(): void {
     this.running = false
-    for (const timer of this.flushTimers.values()) clearTimeout(timer)
-    this.flushTimers.clear()
+    this.clearWakeup()
+    this.pendingNotes.clear()
     log.info('NoteBodyOutbox stopped')
   }
 
   pause(): void {
     if (this.paused) return
     this.paused = true
+    this.clearWakeup()
     log.warn('NoteBodyOutbox paused — queued body updates flush on resume')
   }
 
@@ -171,9 +168,8 @@ export class NoteBodyOutbox {
    */
   dropNote(noteId: string): void {
     this.deps.queue.removeNoteBody(noteId)
-    const timer = this.flushTimers.get(noteId)
-    if (timer) clearTimeout(timer)
-    this.flushTimers.delete(noteId)
+    this.pendingNotes.delete(noteId)
+    this.deferredFlushes.delete(noteId)
     this.lastFlushStartedAt.delete(noteId)
   }
 
@@ -183,7 +179,8 @@ export class NoteBodyOutbox {
 
   /** Flush every note with queued rows; a no-op while the outbox is held. */
   flushAll(): void {
-    for (const noteId of this.deps.queue.listNoteBodyNoteIds()) this.flushNote(noteId)
+    for (const noteId of this.deps.queue.listNoteBodyNoteIds()) this.pendingNotes.add(noteId)
+    this.drain()
   }
 
   /** Stopped, paused for the transport, or paused by the user. */
@@ -191,50 +188,68 @@ export class NoteBodyOutbox {
     return !this.running || this.paused || (this.deps.isSyncPaused?.() ?? false)
   }
 
-  /**
-   * Leading edge with a trailing guard, per note (#2289). A note with a push in
-   * flight is skipped: its settle calls this again, so an update that landed
-   * mid-push is flushed once after it and never through a re-armed timer.
-   */
+  /** One wakeup for the backlog; reserve a slot BEFORE reading/merging rows. */
   private scheduleFlush(noteId: string): void {
-    if (this.held()) return
-    if (this.flushingNotes.has(noteId) || this.flushTimers.has(noteId)) return
-    if (!this.deps.queue.hasNoteBody(noteId)) return
+    this.pendingNotes.add(noteId)
+    this.drain()
+  }
 
-    const now = Date.now()
-    const sinceLastFlush = now - (this.lastFlushStartedAt.get(noteId) ?? Number.NEGATIVE_INFINITY)
-    const heldUntil = this.heldUntil(noteId)
-    if (sinceLastFlush > FLUSH_INTERVAL_MS && now >= heldUntil) {
-      this.flushNote(noteId)
-      return
-    }
-    const waitMs = Math.max(FLUSH_INTERVAL_MS - sinceLastFlush, heldUntil - now, 0)
-    this.flushTimers.set(
-      noteId,
-      setTimeout(() => {
-        this.flushTimers.delete(noteId)
-        this.flushNote(noteId)
-      }, waitMs)
+  private clearWakeup(): void {
+    if (this.wakeTimer) clearTimeout(this.wakeTimer)
+    this.wakeTimer = null
+  }
+
+  private wakeAtTime(at: number): void {
+    if (this.wakeTimer && this.wakeAt <= at) return
+    this.clearWakeup()
+    this.wakeAt = at
+    this.wakeTimer = setTimeout(
+      () => {
+        this.wakeTimer = null
+        this.drain()
+      },
+      Math.max(0, at - Date.now())
     )
   }
 
-  private heldUntil(noteId: string): number {
-    return Math.max(this.rateLimitedUntil, this.deferredFlushes.get(noteId)?.until ?? 0)
-  }
-
-  private flushNote(noteId: string): void {
-    if (this.held()) return
-    if (Date.now() < this.heldUntil(noteId)) {
-      this.scheduleFlush(noteId)
+  private drain(): void {
+    if (this.held() || this.flushingNotes.size >= MAX_FLUSHES) return
+    const now = Date.now()
+    const commonUntil = Math.max(this.rateLimitedUntil, now + crdtPushDelayMs())
+    if (now < commonUntil) {
+      this.wakeAtTime(commonUntil)
       return
     }
-    if (this.flushingNotes.has(noteId)) return
+    this.clearWakeup()
+    let nextAt = Number.POSITIVE_INFINITY
+    for (const noteId of this.pendingNotes) {
+      if (this.flushingNotes.size >= MAX_FLUSHES) break
+      if (this.flushingNotes.has(noteId)) continue
+      const eligibleAt = Math.max(
+        (this.lastFlushStartedAt.get(noteId) ?? Number.NEGATIVE_INFINITY) + FLUSH_INTERVAL_MS,
+        this.deferredFlushes.get(noteId)?.until ?? 0
+      )
+      if (now < eligibleAt) {
+        nextAt = Math.min(nextAt, eligibleAt)
+        continue
+      }
+      const flush = this.planFlush(noteId)
+      if (!flush) {
+        if (!this.deps.queue.hasNoteBody(noteId)) this.pendingNotes.delete(noteId)
+        // A full-state row waits for its reader/serial slot, not a zero-ms timer.
+        continue
+      }
+      this.pendingNotes.delete(noteId)
+      this.flushNote(noteId, flush)
+    }
+    if (this.flushingNotes.size < MAX_FLUSHES && Number.isFinite(nextAt)) {
+      this.wakeAtTime(nextAt)
+    }
+  }
 
-    const flush = this.planFlush(noteId)
-    if (!flush) return
+  private flushNote(noteId: string, flush: NoteBodyFlush): void {
     const fullState = flush.updates === null
     if (fullState) this.fullStateFlushing = true
-
     this.flushingNotes.add(noteId)
     this.lastFlushStartedAt.set(noteId, Date.now())
     this.sendFlush(noteId, flush)
@@ -246,10 +261,10 @@ export class NoteBodyOutbox {
       .catch((err: unknown) => this.onFlushFailed(noteId, flush.rowIds, err))
       .finally(() => {
         this.flushingNotes.delete(noteId)
-        if (!fullState) return this.scheduleFlush(noteId)
-        // Hand the full-state slot to the next note waiting for it.
-        this.fullStateFlushing = false
-        for (const next of this.deps.queue.listNoteBodyNoteIds()) this.scheduleFlush(next)
+        if (fullState) this.fullStateFlushing = false
+        if (!this.running) return
+        if (this.deps.queue.hasNoteBody(noteId)) this.pendingNotes.add(noteId)
+        this.drain()
       })
   }
 
@@ -323,7 +338,7 @@ export class NoteBodyOutbox {
     }
     if (err instanceof RateLimitError) {
       this.rateLimitedUntil = Math.max(this.rateLimitedUntil, Date.now() + err.retryAfterMs)
-      log.warn('429 received, holding CRDT body flushes until Retry-After', {
+      log.warn('CRDT push deferred; holding body flushes until admission opens', {
         noteId,
         backoffMs: err.retryAfterMs
       })

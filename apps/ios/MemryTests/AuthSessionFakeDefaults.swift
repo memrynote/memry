@@ -1,3 +1,4 @@
+import Foundation
 import MemryCore
 @testable import Memry
 
@@ -21,6 +22,7 @@ extension AuthSessionProtocol {
     func checkoutToken() async throws -> CheckoutToken { throw UnscriptedSettingsCall() }
     func billingPortalUrl() async throws -> String { throw UnscriptedSettingsCall() }
     func refreshBilling() async throws -> BillingStatus { throw UnscriptedSettingsCall() }
+    func sendTelemetry(batchJson _: Data) async -> TelemetryDelivery { .accepted }
     func deviceApprover() -> DeviceApprover {
         fatalError("deviceApprover is not scripted in this fake")
     }

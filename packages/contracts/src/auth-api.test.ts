@@ -8,6 +8,7 @@
 
 import { describe, expect, it } from 'vitest'
 import {
+  DeviceListResponseSchema,
   DeviceRegisterRequestSchema,
   DeviceRegisterResponseSchema,
   FirstDeviceSetupRequestSchema,
@@ -174,6 +175,48 @@ describe('DeviceRegisterRequestSchema', () => {
   it('rejects empty appVersion', () => {
     const result = DeviceRegisterRequestSchema.safeParse({ ...base, appVersion: '' })
     expect(result.success).toBe(false)
+  })
+
+  // #4375: an iPad registers as `ios` with formFactor `tablet`.
+  it('keeps a phone or tablet form factor and leaves it out when absent', () => {
+    for (const formFactor of ['phone', 'tablet'] as const) {
+      const result = DeviceRegisterRequestSchema.parse({ ...base, platform: 'ios', formFactor })
+      expect(result.formFactor).toBe(formFactor)
+    }
+    expect(DeviceRegisterRequestSchema.parse(base)).not.toHaveProperty('formFactor')
+  })
+
+  it('registers a newer client whose form factor this server does not know, as unknown', () => {
+    const result = DeviceRegisterRequestSchema.parse({ ...base, formFactor: 'watch' })
+    expect(result.formFactor).toBeUndefined()
+  })
+
+  it('lets a server that predates formFactor register a client that sends it', () => {
+    const olderServerSchema = DeviceRegisterRequestSchema.omit({ formFactor: true })
+    const result = olderServerSchema.safeParse({ ...base, platform: 'ios', formFactor: 'tablet' })
+    expect(result.success).toBe(true)
+  })
+})
+
+describe('DeviceListResponseSchema', () => {
+  const row = {
+    id: 'd',
+    name: 'iPad',
+    platform: 'ios',
+    lastSyncAt: null,
+    createdAt: 1,
+    updatedAt: 1
+  }
+
+  it('reads a row from a server that predates formFactor, and a NULL one, as unknown', () => {
+    expect(DeviceListResponseSchema.parse({ devices: [row] }).devices[0].formFactor).toBeUndefined()
+    const nulled = DeviceListResponseSchema.parse({ devices: [{ ...row, formFactor: null }] })
+    expect(nulled.devices[0].formFactor).toBeNull()
+  })
+
+  it('carries a tablet form factor', () => {
+    const result = DeviceListResponseSchema.parse({ devices: [{ ...row, formFactor: 'tablet' }] })
+    expect(result.devices[0].formFactor).toBe('tablet')
   })
 })
 

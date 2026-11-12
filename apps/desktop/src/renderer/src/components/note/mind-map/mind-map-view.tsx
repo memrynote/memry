@@ -104,7 +104,10 @@ async function resolveWikiHrefs(
       const resolved = await resolveWikiLink(target).catch(() => null)
       if (
         !resolved ||
-        (resolved.type !== 'note' && resolved.type !== 'file' && resolved.type !== 'canvas')
+        (resolved.type !== 'note' &&
+          resolved.type !== 'file' &&
+          resolved.type !== 'canvas' &&
+          resolved.type !== 'journal')
       ) {
         return
       }

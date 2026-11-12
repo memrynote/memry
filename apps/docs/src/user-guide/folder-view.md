@@ -33,6 +33,28 @@ Click the chevron to open the note's tasks beneath its row. Each task shows its 
 
 Click a task to open its detail drawer, the same one the Tasks page uses. Click its checkbox to complete or reopen it without leaving the table. Clicking the note's title still opens the note.
 
+The **Folder** column shows where each row sits. A note directly in the folder you are viewing shows that folder's name. A note in a subfolder shows the subfolder's path from the viewed folder, such as `/2024`, and clicking it opens that subfolder.
+
+## The folder's own note
+
+A note and a folder with the same name side by side, such as `Recipes.md` next
+to `Recipes/`, show as one row in the sidebar (see
+[A note and a folder with the same name](/guide/tour#a-note-and-a-folder-with-the-same-name)).
+The note lives next to the folder, not inside it, but it is the folder's own
+page, so the folder view of `Recipes/` lists `Recipes.md` as a row too.
+
+The row behaves like any other note row. It sorts, filters, groups and counts
+with the rest. Its Folder column shows where the file really sits: the folder
+that holds `Recipes/`, or a dash when that is the top of the vault. Opening,
+renaming, moving, tagging or deleting the row acts on the note `Recipes.md`
+alone, not on the folder. A folder that holds nothing but its own note is not empty
+in its folder view. **Add all from** a folder on a canvas includes the note
+as well.
+
+The same rule as the sidebar decides which note counts: the names must match
+exactly, capitals included, and only a Markdown note qualifies. A PDF named
+`Recipes.pdf` or a journal entry is not the folder's own note.
+
 ## Sorting
 
 Click any header to sort. Click again to reverse direction. <kbd>⇧</kbd>+click for **secondary sort** (sort by A then B).

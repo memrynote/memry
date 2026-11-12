@@ -146,6 +146,7 @@
     "requestTimedOut": "Upłynął limit czasu żądania synchronizacji. Sprawdź połączenie internetowe."
   },
   "googleCalendar": {
+    "requestRejected": "Google odrzucił ten element. Sprawdź jego datę i godzinę, a następnie spróbuj ponownie.",
     "connectFailed": "Nie udało się połączyć z Google Calendar. Spróbuj ponownie za chwilę.",
     "reconnectNeeded": "Połączenie z Google Calendar wygasło. Rozłącz je i połącz ponownie.",
     "misconfigured": "Usługa Google Calendar nie jest poprawnie skonfigurowana. Jeśli to się powtarza, skontaktuj się z pomocą techniczną.",
@@ -159,7 +160,7 @@
   },
   "ai": {
     "inlineDisabled": "Edycja AI w tekście jest wyłączona",
-    "listOllamaModelsFailed": "Nie udało się pobrać listy modeli Ollama",
+    "listModelsFailed": "Nie udało się pobrać listy modeli",
     "writingAssistInvalid": "Nie udało się wysłać tego żądania do modelu AI.",
     "apiKeyMissing": "Dodaj swój klucz API {provider} w Ustawieniach → AI, aby korzystać z narzędzi do pisania.",
     "apiKeyInvalid": "Twój klucz API {provider} został odrzucony. Sprawdź go w Ustawieniach → AI.",
@@ -186,6 +187,10 @@
     "removeDeviceFailed": "Nie udało się usunąć urządzenia",
     "renameDeviceFailed": "Nie udało się zmienić nazwy urządzenia",
     "initiateOAuthFailed": "Nie udało się rozpocząć uwierzytelniania OAuth",
+    "retryOAuthFailed": "Nie udało się ponownie otworzyć przeglądarki do logowania. Zacznij logowanie od nowa.",
+    "oauthExpired": "Logowanie wygasło. Spróbuj ponownie.",
+    "oauthInvalidResponse": "Nie udało się uzyskać prawidłowego linku do logowania. Spróbuj ponownie.",
+    "oauthCancelled": "Logowanie przez Google zostało anulowane. Spróbuj ponownie.",
     "setupFirstDeviceOAuthFailed": "Nie udało się skonfigurować pierwszego urządzenia przez OAuth",
     "confirmRecoveryPhraseFailed": "Nie udało się potwierdzić frazy odzyskiwania"
   },

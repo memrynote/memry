@@ -1,4 +1,5 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
+import type { BrowserWindow } from 'electron'
 
 interface FakeWindow {
   visible: boolean
@@ -9,12 +10,14 @@ interface FakeWindow {
   isVisible: () => boolean
   show: () => void
   focus: () => void
+  isDestroyed: () => boolean
 }
 
 const desktop = {
   windows: [] as FakeWindow[],
   appActive: false,
   answer: 0,
+  parents: [] as FakeWindow[],
   shown: [] as { parentVisible: boolean; appActive: boolean; detail: string; buttons: string[] }[]
 }
 
@@ -32,7 +35,8 @@ function fakeWindow(state: { visible: boolean; minimized: boolean }): FakeWindow
     },
     focus: () => {
       win.focused = true
-    }
+    },
+    isDestroyed: () => false
   }
   return win
 }
@@ -46,6 +50,7 @@ vi.mock('electron', () => ({
   BrowserWindow: { getAllWindows: () => desktop.windows },
   dialog: {
     showMessageBox: async (parent: FakeWindow, options: { detail: string; buttons: string[] }) => {
+      desktop.parents.push(parent)
       desktop.shown.push({
         parentVisible: parent.visible && !parent.minimized,
         appActive: desktop.appActive,
@@ -58,6 +63,16 @@ vi.mock('electron', () => ({
 }))
 
 const { showPairConsentDialog } = await import('./consent-dialog')
+const { setMainWindow } = await import('../main-window')
+
+/** The app window, listed after a hidden sticky as `getAllWindows()` may do. */
+function useAppWindow(state: { visible: boolean; minimized: boolean }): FakeWindow {
+  const appWindow = fakeWindow(state)
+  desktop.windows = [fakeWindow({ visible: false, minimized: false }), appWindow]
+  // oxlint-disable-next-line typescript/no-unsafe-type-assertion -- the fake covers every member consent-dialog touches
+  setMainWindow(appWindow as unknown as BrowserWindow)
+  return appWindow
+}
 
 describe('showPairConsentDialog', () => {
   const platform = process.platform
@@ -67,6 +82,7 @@ describe('showPairConsentDialog', () => {
     desktop.appActive = false
     desktop.answer = 0
     desktop.shown = []
+    desktop.parents = []
     Object.defineProperty(process, 'platform', { value: 'darwin' })
   })
 
@@ -75,11 +91,12 @@ describe('showPairConsentDialog', () => {
   })
 
   it('brings a hidden window and the app forward before asking, so the sheet is visible', async () => {
-    desktop.windows = [fakeWindow({ visible: false, minimized: false })]
+    const appWindow = useAppWindow({ visible: false, minimized: false })
 
     const allowed = await showPairConsentDialog('chrome-extension://abc')
 
     expect(allowed).toBe(true)
+    expect(desktop.parents).toEqual([appWindow])
     expect(desktop.shown).toEqual([
       {
         parentVisible: true,
@@ -91,7 +108,7 @@ describe('showPairConsentDialog', () => {
   })
 
   it('restores a minimized window and reports Deny as not allowed', async () => {
-    desktop.windows = [fakeWindow({ visible: true, minimized: true })]
+    useAppWindow({ visible: true, minimized: true })
     desktop.answer = 1
 
     const allowed = await showPairConsentDialog('moz-extension://xyz')
@@ -101,6 +118,10 @@ describe('showPairConsentDialog', () => {
   })
 
   it('declines when there is no window to attach the dialog to', async () => {
+    const closed = fakeWindow({ visible: false, minimized: false })
+    closed.isDestroyed = () => true
+    // oxlint-disable-next-line typescript/no-unsafe-type-assertion -- the fake covers every member consent-dialog touches
+    setMainWindow(closed as unknown as BrowserWindow)
     expect(await showPairConsentDialog('chrome-extension://abc')).toBe(false)
     expect(desktop.shown).toHaveLength(0)
   })

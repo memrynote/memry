@@ -14,7 +14,7 @@ extension TasksCopy {
     /// Desktop writes its task settings to its local table only (§6 TP023),
     /// so nothing set here reaches a computer and the other way round.
     static let settingsDeviceFootnote =
-        "Desktop keeps its task settings on each computer, so changes here do not appear there. "
+        "Other devices keep their own task settings, so changes here do not appear there. "
         + "Default View applies to this device only."
 
     // MARK: Default project (`tasks.defaultProject.*`)

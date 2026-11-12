@@ -33,6 +33,7 @@ import {
 import { Skeleton } from '@/components/ui/skeleton'
 import { extractDomain } from '@/lib/inbox-utils'
 import { extractYouTubeVideoId } from '@/lib/youtube-utils'
+import { FileOnOtherDevice, isFileOnOtherDevice } from './file-on-other-device'
 import { InboxContentEditor } from './inbox-content-editor'
 import { LinkPreview } from './link-preview'
 import { ReminderDetail } from './reminder-detail'
@@ -273,6 +274,8 @@ const ImagePreview = ({ item }: ImagePreviewProps): React.JSX.Element => {
         <div className="overflow-hidden rounded-lg bg-muted">
           <img src={imageUrl} alt={item.title} className="w-full object-contain max-h-[400px]" />
         </div>
+      ) : isFileOnOtherDevice(item) ? (
+        <FileOnOtherDevice />
       ) : (
         <div className="flex items-center justify-center aspect-[34/22] rounded-lg bg-muted">
           <Image className="size-8 text-muted-foreground/25" />
@@ -571,6 +574,8 @@ const VoicePreview = ({
             <span className="text-text-tertiary">/ {formatDuration(displayDuration)}</span>
           </div>
         </div>
+      ) : isFileOnOtherDevice(item) ? (
+        <FileOnOtherDevice />
       ) : (
         <div className="flex items-center gap-3 p-3.5 bg-muted rounded-[10px]">
           <div className="size-8 rounded-full bg-muted-foreground flex items-center justify-center">
@@ -677,14 +682,18 @@ const PdfPreview = ({ item }: PdfPreviewProps): React.JSX.Element => {
 
   return (
     <div className="flex flex-col gap-3.5">
-      <div className="flex flex-col items-center justify-center gap-2.5 aspect-[34/18] rounded-lg bg-muted border border-border">
-        <FilePdf className="size-9 text-destructive" />
-        {metaParts.length > 0 && (
-          <span className="text-[11px] leading-3.5 text-text-tertiary">
-            {metaParts.join(' · ')}
-          </span>
-        )}
-      </div>
+      {isFileOnOtherDevice(item) ? (
+        <FileOnOtherDevice />
+      ) : (
+        <div className="flex flex-col items-center justify-center gap-2.5 aspect-[34/18] rounded-lg bg-muted border border-border">
+          <FilePdf className="size-9 text-destructive" />
+          {metaParts.length > 0 && (
+            <span className="text-[11px] leading-3.5 text-text-tertiary">
+              {metaParts.join(' · ')}
+            </span>
+          )}
+        </div>
+      )}
 
       {metadata?.originalFilename && (
         <span
@@ -721,6 +730,8 @@ const VideoPreview = ({ item }: VideoPreviewProps): React.JSX.Element => {
             {t('content.unsupportedVideo')}
           </video>
         </div>
+      ) : isFileOnOtherDevice(item) ? (
+        <FileOnOtherDevice />
       ) : (
         <div className="flex items-center justify-center h-[200px] bg-[var(--muted)] rounded-md">
           <FileText className="size-12 text-[var(--muted-foreground)]" />

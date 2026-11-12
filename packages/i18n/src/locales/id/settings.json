@@ -504,7 +504,8 @@
       "loading": "Memuat pengaturan…"
     },
     "groups": {
-      "footer": "Footer"
+      "footer": "Footer",
+      "pastYears": "Tahun-tahun sebelumnya"
     },
     "template": {
       "label": "Templat",
@@ -562,6 +563,14 @@
     "showInSidebar": {
       "label": "Tampilkan di bilah samping",
       "description": "Tampilkan folder jurnal dan entrinya di pohon catatan"
+    },
+    "showOnThisDay": {
+      "label": "Tampilkan Pada hari ini",
+      "description": "Tampilkan tanggal yang sama dari tahun-tahun sebelumnya di bawah entri"
+    },
+    "allYearsView": {
+      "label": "Tampilkan semua tahun secara lengkap",
+      "description": "Jurnal Abadi: setiap tahun dari tanggal ini dalam satu halaman, di bawah entri"
     }
   },
   "tasks": {
@@ -1110,7 +1119,16 @@
       "sending": "Mengirim kode…"
     },
     "oauth": {
-      "google": "Lanjutkan dengan Google"
+      "google": "Lanjutkan dengan Google",
+      "waiting": "Selesaikan proses masuk dengan Google di browser Anda.",
+      "browserUnavailable": "Tidak dapat membuka browser Anda.",
+      "manualInstructions": "Salin tautan masuk dan buka di browser pada komputer ini. Biarkan memrynote tetap terbuka selama Anda masuk.",
+      "linkLabel": "Tautan masuk",
+      "copyLink": "Salin tautan masuk",
+      "retryBrowser": "Coba buka browser lagi",
+      "copied": "Tautan masuk disalin.",
+      "copyFailed": "Tidak dapat menyalin tautan masuk. Pilih dan salin dari kolom di atas.",
+      "cancel": "Gunakan metode masuk lain"
     },
     "otp": {
       "title": "Masukkan kode verifikasi",
@@ -1347,6 +1365,7 @@
       "keySaveError": "Gagal menyimpan kunci OpenAI"
     },
     "embedding": {
+      "load": "Muat model",
       "loaded": "Dimuat",
       "loading": "Memuat",
       "downloadLoad": "Unduh & muat model",
@@ -1371,7 +1390,8 @@
         "ollama": "Ollama (Lokal)",
         "openai": "OpenAI",
         "anthropic": "Anthropic",
-        "google": "Google Gemini"
+        "google": "Google Gemini",
+        "custom": "Kustom (kompatibel dengan OpenAI)"
       },
       "model": "Model",
       "modelDescription": "Model bahasa untuk menulis ulang dan meringkas",
@@ -1381,6 +1401,11 @@
       "apiKeyPlaceholder": "Masukkan kunci API {provider}",
       "ollamaUrl": "URL Ollama",
       "ollamaUrlDescription": "Alamat server lokal",
+      "customUrl": "URL dasar",
+      "customUrlDescription": "Endpoint apa pun yang kompatibel dengan OpenAI, seperti OpenRouter",
+      "customUrlPlaceholder": "https://openrouter.ai/api/v1",
+      "customApiKeyPlaceholder": "Kunci API (opsional)",
+      "customModelPlaceholder": "ID model",
       "connection": "Koneksi",
       "activePort": "Aktif pada port {port}",
       "notConnected": "Tidak terhubung",
@@ -2032,7 +2057,7 @@
       "subtitle": "Kelola definisi properti di semua catatan"
     },
     "loading": "Memuat properti…",
-    "empty": "Belum ada definisi properti. Tambahkan properti Status, Pilihan, atau Pilihan ganda ke catatan mana pun untuk memulai.",
+    "empty": "Belum ada properti. Tambahkan properti ke catatan mana pun untuk memulai.",
     "filterPlaceholder": "Filter properti…",
     "noMatch": "Tidak ada properti yang cocok dengan “{query}”",
     "summary": "{count, plural, other {# definisi properti}}",
@@ -2072,6 +2097,14 @@
     },
     "v2": {
       "actionsAria": "Tindakan untuk {name}"
+    },
+    "usage": {
+      "heading": "Digunakan di",
+      "noteCount": "{count, plural, other {# catatan}}",
+      "mismatchCount": "Nilai yang tidak cocok dengan {type}: {count}",
+      "mismatchNote": "Tidak cocok dengan {type}",
+      "none": "Tidak ada catatan yang menggunakan properti ini",
+      "loadFailed": "Gagal memuat catatan yang menggunakan properti ini"
     }
   },
   "commandLine": {
@@ -2407,7 +2440,6 @@
   "phaseI": {
     "errors": {
       "failedToUpdateTagColor": "Gagal memperbarui warna tag",
-      "googleSignInFailed": "Gagal masuk dengan Google",
       "failedToSendVerificationCode": "Gagal mengirim kode verifikasi",
       "invalidVerificationCode": "Kode verifikasi tidak valid",
       "accountSetupFailed": "Penyiapan akun gagal",
@@ -2434,7 +2466,8 @@
       "failedToCloseVault": "Gagal menutup brankas",
       "failedToSwitchVault": "Gagal mengganti brankas",
       "failedToUpdateConfig": "Gagal memperbarui konfigurasi",
-      "failedToReindex": "Gagal mengindeks ulang"
+      "failedToReindex": "Gagal mengindeks ulang",
+      "googleSignInFailed": "Gagal masuk dengan Google"
     }
   },
   "agentMcp": {
@@ -2464,7 +2497,17 @@
       "running": "Berjalan",
       "tokenHint": "Hanya sesi ini",
       "copy": "Salin",
-      "rotate": "Rotasikan"
+      "rotate": "Rotasikan",
+      "clientConfig": {
+        "label": "Konfigurasi klien",
+        "hint": "Disalin dengan URL dan token peluncuran ini",
+        "copy": "Salin konfigurasi {client}"
+      },
+      "notes": {
+        "readOnly": "Klien eksternal hanya dapat membaca. Alat tulis mengembalikan PERMISSION_DENIED, jadi tulis melalui Agent Chat atau baris perintah memrynote.",
+        "restart": "URL dan token berubah saat memrynote dimulai ulang, berganti brankas, atau memperbarui token. Perbarui konfigurasi klien setiap kali, lalu mulai ulang klien.",
+        "docs": "Panduan penyiapan"
+      }
     }
   },
   "agentProviders": {

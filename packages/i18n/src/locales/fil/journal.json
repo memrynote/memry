@@ -236,5 +236,21 @@
     "range": "{start} – {end}",
     "openTask": "{title}, {range}",
     "completeTask": "Tapusin ang {title}"
+  },
+  "pastYears": {
+    "title": "Sa araw na ito",
+    "count": "{count, plural, one {# pang taon} other {# pang taon}}",
+    "showAll": "Lahat ng taon",
+    "showPreviews": "Mga preview",
+    "yearsAgo": "{count, plural, one {# taon na ang nakalipas} other {# taon na ang nakalipas}}",
+    "yearsLater": "{count, plural, one {makalipas ang # taon} other {makalipas ang # taon}}",
+    "words": "{count, plural, one {# salita} other {# salita}}",
+    "openDay": "Buksan ang {date}",
+    "showFull": "Ipakita ang buong entry",
+    "showLess": "Ipakita nang mas kaunti",
+    "loadError": "Hindi ma-load ang araw na ito mula sa ibang mga taon.",
+    "previousYear": "Parehong araw, nakaraang taon",
+    "nextYear": "Parehong araw, susunod na taon",
+    "goToYear": "Pumunta sa araw na ito sa {year}"
   }
 }

@@ -57,6 +57,36 @@ final class JournalUITests: XCTestCase {
         XCTAssertTrue(waitUntil { row.label.contains(", entry, ") }, row.label)
     }
 
+    /// #4152: Backspace at a block's start, on a journal day as on a note.
+    func testBackspaceDeletesAnEmptyLineAndJoinsLines() throws {
+        try openJournal(today: Self.randomDay())
+        let field = app.descendants(matching: .any)["journal.day.firstLine"].firstMatch
+        for _ in 0 ..< 10 where !field.waitForExistence(timeout: 3) {
+            app.buttons["journal.day.next"].firstMatch.tap()
+        }
+        XCTAssertTrue(field.exists, "no empty day within ten days")
+        let line = "[agent] SHIP-4152 a"
+        field.tap()
+        // Return makes the line the day's first block.
+        field.typeText(line + "\n")
+        let block = app.textViews.matching(NSPredicate(format: "value == %@", line)).firstMatch
+        XCTAssertTrue(block.waitForExistence(timeout: 10), "the typed line did not become a block")
+        // The caret at the end of the line.
+        block.coordinate(withNormalizedOffset: CGVector(dx: 0.99, dy: 0.5)).tap()
+        assertBackspaceJoinsBlocks(in: app, line: line)
+
+        // On a day other than today the bar's Today button pushes the More
+        // menu into the toolbar's overflow.
+        let more = app.buttons["journal.more"].firstMatch
+        if !more.waitForExistence(timeout: 5) {
+            app.navigationBars.buttons.element(boundBy: app.navigationBars.buttons.count - 1).tap()
+        }
+        more.tap()
+        app.buttons["journal.more.delete"].firstMatch.tap()
+        app.buttons["Delete entry"].firstMatch.tap()
+        XCTAssertTrue(field.waitForExistence(timeout: 10), "the day was not deleted")
+    }
+
     func testMonthAndYearDrillDownAndBack() throws {
         let today = Self.randomDay()
         try openJournal(today: today)
@@ -142,6 +172,24 @@ final class JournalUITests: XCTestCase {
         }
         XCTAssertTrue(journalTab.waitForExistence(timeout: 5), "the vault did not open")
         journalTab.tap()
+        // A saved stack without a day (Year or Month) restores to it rather
+        // than today: back to the Year root, then down to the pinned day.
+        if !header.waitForExistence(timeout: 5) {
+            let up = app.navigationBars.buttons["BackButton"]
+            for _ in 0 ..< 3 where up.exists && up.isHittable {
+                up.tap()
+            }
+            // The restored Year can be another year: page to the pinned one.
+            let title = app.staticTexts["journal.calendar.title"].firstMatch
+            for _ in 0 ..< 100 where title.label != "2099" {
+                app.buttons["journal.year.next"].firstMatch.tap()
+            }
+            let month = Int(today.split(separator: "-")[1]) ?? 7
+            app.buttons["journal.year.month.\(month)"].firstMatch.tap()
+            let day = app.buttons["journal.month.day.\(today)"].firstMatch
+            scroll(to: day)
+            day.tap()
+        }
         XCTAssertTrue(header.waitForExistence(timeout: 20), "the Journal tab did not show a day")
     }
 

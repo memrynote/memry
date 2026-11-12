@@ -1,0 +1,2071 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <title>memrynote · what's new · 2026.10.14</title>
+    <style>
+      @font-face {
+        font-family: 'DM Sans';
+        src: url(fonts/dm-sans-opsz-normal.woff2) format('woff2');
+        font-weight: 100 1000;
+        font-style: normal;
+      }
+      @font-face {
+        font-family: 'DM Sans';
+        src: url(fonts/dm-sans-opsz-italic.woff2) format('woff2');
+        font-weight: 100 1000;
+        font-style: italic;
+      }
+      @font-face {
+        font-family: 'JetBrains Mono';
+        src: url(fonts/jetbrains-mono.woff2) format('woff2');
+        font-weight: 100 800;
+      }
+      * {
+        box-sizing: border-box;
+      }
+      html,
+      body {
+        margin: 0;
+        background: #000;
+        overflow: hidden;
+      }
+      #stage {
+        position: relative;
+        width: 1920px;
+        height: 1080px;
+        overflow: hidden;
+        background: #0d0c0b;
+        font-family: 'DM Sans', system-ui, sans-serif;
+        color: #f3efe8;
+        -webkit-font-smoothing: antialiased;
+      }
+      .full {
+        position: absolute;
+        left: 0;
+        top: 0;
+        width: 1920px;
+        height: 1080px;
+      }
+      .mono {
+        font-family: 'JetBrains Mono', ui-monospace, monospace;
+      }
+      em {
+        font-style: italic;
+        color: #ff671a;
+      }
+      /* masked words: the inner span rises out of its own box */
+      .m {
+        display: inline-block;
+        overflow: hidden;
+        vertical-align: top;
+        padding: 0 0.08em 0.2em;
+        margin: 0 -0.08em -0.2em;
+      }
+      .i {
+        display: inline-block;
+      }
+
+      /* ---------- headlines ---------- */
+      .hd {
+        position: absolute;
+        left: 0;
+        top: 0;
+      }
+      .hd.center {
+        width: 1920px;
+        text-align: center;
+      }
+      .lbl {
+        font-family: 'JetBrains Mono', monospace;
+        font-size: 18px;
+        font-weight: 500;
+        letter-spacing: 0.22em;
+        text-transform: uppercase;
+        color: #ff671a;
+        white-space: nowrap;
+      }
+      .hd .lbl {
+        margin-bottom: 28px;
+      }
+      .hd .h {
+        font-weight: 600;
+        letter-spacing: -0.045em;
+        line-height: 0.98;
+        white-space: nowrap;
+      }
+      .hd .ln {
+        display: block;
+      }
+      .hd .sb {
+        margin-top: 34px;
+        font-size: 27px;
+        line-height: 1.42;
+        letter-spacing: -0.005em;
+        color: rgba(243, 239, 232, 0.64);
+        white-space: nowrap;
+      }
+
+      /* ---------- windows ---------- */
+      #scene {
+        position: absolute;
+        left: 0;
+        top: 0;
+        width: 1920px;
+        height: 1080px;
+        perspective: 2400px;
+        perspective-origin: 960px 540px;
+      }
+      .win {
+        position: absolute;
+        left: 0;
+        top: 0;
+        border-radius: 18px;
+      }
+      .wc {
+        position: absolute;
+        left: 0;
+        top: 0;
+      }
+      .win .shot {
+        position: absolute;
+        left: 0;
+        top: 0;
+        display: block;
+        border-radius: 18px;
+      }
+      .win .sh {
+        position: absolute;
+        left: 0;
+        top: 0;
+        width: 100%;
+        height: 100%;
+        border-radius: 18px;
+        box-shadow:
+          0 80px 160px -40px rgba(0, 0, 0, 0.8),
+          0 26px 50px -18px rgba(0, 0, 0, 0.5),
+          0 0 0 1px rgba(255, 255, 255, 0.07);
+      }
+      .patch,
+      .cut {
+        position: absolute;
+      }
+      .cut {
+        background-repeat: no-repeat;
+      }
+      .ui {
+        font-family: system-ui;
+        color: #37352f;
+      }
+
+      .cursor {
+        position: absolute;
+        left: 0;
+        top: 0;
+        width: 44px;
+        height: 60px;
+        transform-origin: 6px 4px;
+      }
+
+      .key {
+        position: absolute;
+        width: 150px;
+        height: 64px;
+        border-radius: 14px;
+        background: linear-gradient(#ffffff, #f1efeb);
+        border: 1px solid #d8d5cf;
+        color: #4a4843;
+        font-family: system-ui;
+        font-size: 19px;
+        font-weight: 500;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        gap: 10px;
+      }
+
+      /* montage */
+      #wall {
+        position: absolute;
+        left: 0;
+        top: 0;
+        width: 1920px;
+        height: 1080px;
+        transform-origin: 960px 540px;
+      }
+      .wi {
+        position: absolute;
+        left: 0;
+        top: 0;
+        font-size: 58px;
+        font-weight: 500;
+        letter-spacing: -0.03em;
+        white-space: nowrap;
+        color: #1c1b19;
+      }
+      .ws {
+        position: absolute;
+        left: 0;
+        top: 0;
+        width: 12px;
+        height: 12px;
+        border-radius: 50%;
+        background: #ff671a;
+      }
+
+      /* end card */
+      .pill {
+        position: absolute;
+        display: flex;
+        align-items: center;
+        gap: 12px;
+        height: 52px;
+        padding: 0 26px;
+        border-radius: 26px;
+        border: 1.5px solid rgba(28, 27, 25, 0.14);
+        font-family: 'JetBrains Mono', monospace;
+        font-size: 21px;
+        font-weight: 500;
+        color: #1c1b19;
+        white-space: nowrap;
+      }
+      .pill i {
+        width: 10px;
+        height: 10px;
+        border-radius: 50%;
+        background: #ff671a;
+      }
+
+      /* cards: the cursor, click rings, the search highlight, the shell command */
+      .ring {
+        position: absolute;
+        left: 0;
+        top: 0;
+        border-radius: 50%;
+        border: 5px solid #ff671a;
+      }
+      .mark {
+        position: absolute;
+        border-radius: 8px;
+        background: rgba(255, 103, 26, 0.38);
+        mix-blend-mode: multiply;
+        transform-origin: 0 50%;
+      }
+      .cmd {
+        position: absolute;
+        left: 0;
+        top: 0;
+        transform: translate(700px, 990px);
+        font-size: 22px;
+        letter-spacing: 0.02em;
+        color: rgba(243, 239, 232, 0.8);
+        white-space: nowrap;
+      }
+      /* hud */
+      .hud {
+        position: absolute;
+        top: 46px;
+        font-family: 'JetBrains Mono', monospace;
+        font-size: 15px;
+        font-weight: 500;
+        letter-spacing: 0.18em;
+        text-transform: uppercase;
+        white-space: nowrap;
+      }
+      .glint {
+        position: absolute;
+        left: 0;
+        top: 0;
+        width: 100%;
+        height: 100%;
+        pointer-events: none;
+        background: linear-gradient(
+          105deg,
+          transparent 42%,
+          rgba(255, 255, 255, 0.16) 50%,
+          transparent 58%
+        );
+        background-size: 300% 100%;
+        mix-blend-mode: screen;
+      }
+      .dotc {
+        position: absolute;
+        left: 0;
+        top: 0;
+        border-radius: 50%;
+        background: #ff671a;
+      }
+    </style>
+  </head>
+  <body>
+    <div id="stage">
+      <canvas id="bg" class="full" width="1920" height="1080"></canvas>
+      <div id="cam" class="full">
+        <div id="scene"></div>
+        <canvas id="scrim" class="full" width="1920" height="1080"></canvas>
+        <div id="open" class="full"></div>
+        <div id="wall" class="full"></div>
+        <div id="type" class="full"></div>
+        <div id="end" class="full"></div>
+      </div>
+      <div id="wipe" class="full"></div>
+      <div id="hudroot" class="full" style="mix-blend-mode: difference"></div>
+      <canvas
+        id="grain"
+        class="full"
+        width="1920"
+        height="1080"
+        style="mix-blend-mode: overlay"
+      ></canvas>
+      <svg width="0" height="0" style="position: absolute">
+        <defs id="defs"></defs>
+      </svg>
+    </div>
+    <script src="timeline.js"></script>
+    <script src="brand.js"></script>
+    <script src="themes.js"></script>
+    <script>
+      const T = window.TL,
+        FPS = T.fps,
+        DUR = T.dur,
+        W = 1920,
+        H = 1080
+      const BR = '#ff671a'
+      const DARK = [13, 12, 11],
+        PAPER = [244, 242, 238],
+        INKD = [243, 239, 232],
+        INKL = [28, 27, 25]
+      const NS = 'http://www.w3.org/2000/svg'
+      const q = new URLSearchParams(location.search)
+
+      // =====================================================================
+      // math
+      // =====================================================================
+      const clamp = (x, a = 0, b = 1) => (x < a ? a : x > b ? b : x)
+      const lerp = (a, b, u) => a + (b - a) * u
+      const inv = (t, a, b) => clamp((t - a) / (b - a))
+      const oExpo = (x) => (x >= 1 ? 1 : 1 - Math.pow(2, -10 * x))
+      const iExpo = (x) => (x <= 0 ? 0 : Math.pow(2, 10 * x - 10))
+      const ioExpo = (x) =>
+        x <= 0
+          ? 0
+          : x >= 1
+            ? 1
+            : x < 0.5
+              ? Math.pow(2, 20 * x - 10) / 2
+              : (2 - Math.pow(2, -20 * x + 10)) / 2
+      const oCub = (x) => 1 - Math.pow(1 - x, 3)
+      const iCub = (x) => x * x * x
+      const ioCub = (x) => (x < 0.5 ? 4 * x * x * x : 1 - Math.pow(-2 * x + 2, 3) / 2)
+      const oQuint = (x) => 1 - Math.pow(1 - x, 5)
+      const ioQuint = (x) => (x < 0.5 ? 16 * x ** 5 : 1 - Math.pow(-2 * x + 2, 5) / 2)
+      const ioSine = (x) => -(Math.cos(Math.PI * x) - 1) / 2
+      const oBack = (x, s = 1.70158) =>
+        x <= 0 ? 0 : x >= 1 ? 1 : 1 + (s + 1) * Math.pow(x - 1, 3) + s * Math.pow(x - 1, 2)
+      const smooth = (x) => x * x * (3 - 2 * x)
+      const hex = (h) => [1, 3, 5].map((i) => parseInt(h.slice(i, i + 2), 16))
+      const mixc = (a, b, u) => [0, 1, 2].map((i) => a[i] + (b[i] - a[i]) * u)
+      const rgb = (c) => `rgb(${c.map((v) => Math.round(v)).join(',')})`
+      const rgba = (c, a) => `rgba(${c.map((v) => Math.round(v)).join(',')},${(+a).toFixed(3)})`
+      const lum = (c) => 0.2126 * c[0] + 0.7152 * c[1] + 0.0722 * c[2]
+      function rng(seed) {
+        return () => {
+          seed |= 0
+          seed = (seed + 0x6d2b79f5) | 0
+          let t = Math.imul(seed ^ (seed >>> 15), 1 | seed)
+          t = (t + Math.imul(t ^ (t >>> 7), 61 | t)) ^ t
+          return ((t ^ (t >>> 14)) >>> 0) / 4294967296
+        }
+      }
+      function hash(a, b, c = 0) {
+        let h =
+          Math.imul((a + 0x9e3779b9) | 0, 0x85ebca6b) ^
+          Math.imul((b + 0x7f4a7c15) | 0, 0xc2b2ae35) ^
+          Math.imul((c + 0x165667b1) | 0, 0x27d4eb2f)
+        h ^= h >>> 15
+        h = Math.imul(h, 0x2c1b3c6d)
+        h ^= h >>> 12
+        return h >>> 0
+      }
+
+      // =====================================================================
+      // dom helpers
+      // =====================================================================
+      const $ = (id) => document.getElementById(id)
+      function el(tag, cls, parent, html) {
+        const e = document.createElement(tag)
+        if (cls) e.className = cls
+        if (html != null) e.innerHTML = html
+        if (parent) parent.appendChild(e)
+        return e
+      }
+      function svg(tag, attrs, parent) {
+        const e = document.createElementNS(NS, tag)
+        for (const k in attrs) e.setAttribute(k, attrs[k])
+        if (parent) parent.appendChild(e)
+        return e
+      }
+      // style writes go through a cache: render() touches hundreds of properties per frame
+      function css(e, k, v) {
+        const c = e._c || (e._c = {})
+        if (c[k] !== v) {
+          c[k] = v
+          e.style[k] = v
+        }
+      }
+      const show = (e, on) => css(e, 'display', on ? '' : 'none')
+      const box = (e, x, y, w, h) => {
+        e.style.left = x + 'px'
+        e.style.top = y + 'px'
+        if (w != null) e.style.width = w + 'px'
+        if (h != null) e.style.height = h + 'px'
+        return e
+      }
+      // masked words. "*x*" => emphasis (italic brand). returns the inner spans
+      function words(parent, text) {
+        const out = []
+        text.split(' ').forEach((w, k, all) => {
+          const m = el('span', 'm', parent)
+          const em = w.startsWith('*')
+          out.push(el(em ? 'em' : 'span', 'i', m, w.replace(/\*/g, '')))
+          if (k < all.length - 1) parent.appendChild(document.createTextNode(' '))
+        })
+        return out
+      }
+      const rise = (e, x, y = 0) =>
+        css(e, 'transform', `translateY(${((1 - x) * 112 - y * 112).toFixed(2)}%)`)
+
+      // =====================================================================
+      // camera: a pose puts native point (px,py) of a window at stage point (qx,qy)
+      // =====================================================================
+      const P = (px, py, qx, qy, s, rx = 0, ry = 0, rz = 0, z = 0, o = 1) => ({
+        px,
+        py,
+        qx,
+        qy,
+        s,
+        rx,
+        ry,
+        rz,
+        z,
+        o
+      })
+      function mixPose(a, b, u) {
+        const r = {}
+        for (const k in a) r[k] = a[k] + (b[k] - a[k]) * u
+        return r
+      }
+      const tweak = (p, d) => Object.assign({}, p, d)
+      function track(keys, t) {
+        if (t <= keys[0][0]) return keys[0][1]
+        for (let i = 1; i < keys.length; i++) {
+          if (t <= keys[i][0]) {
+            const [t0, p0] = keys[i - 1],
+              [t1, p1, ez] = keys[i]
+            return mixPose(p0, p1, (ez || ioCub)(inv(t, t0, t1)))
+          }
+        }
+        return keys[keys.length - 1][1]
+      }
+      function place(e, p) {
+        css(e, 'transformOrigin', `${p.px.toFixed(2)}px ${p.py.toFixed(2)}px`)
+        css(
+          e,
+          'transform',
+          `translate3d(${(p.qx - p.px).toFixed(2)}px,${(p.qy - p.py).toFixed(2)}px,${p.z.toFixed(2)}px) rotateX(${p.rx.toFixed(3)}deg) rotateY(${p.ry.toFixed(3)}deg) rotateZ(${p.rz.toFixed(3)}deg) scale(${p.s.toFixed(4)})`
+        )
+        css(e, 'opacity', String(+clamp(p.o).toFixed(3)))
+      }
+
+      // =====================================================================
+      // screenshots: every capture is the 1440x900 window at 2x (2880x1800), see README
+      // =====================================================================
+      const SHOT_NAMES = [
+        'RW-00-import',
+        'RW-01-panel',
+        'RW-02-token',
+        'RW-04-connected',
+        'RW-05-journal-on',
+        'RW-07-imp0',
+        'RW-11-note',
+        'RW-16-journal',
+        'P-00-note',
+        'P-01-pick',
+        'P-02-q3',
+        'P-03-sel',
+        'P-04-ins',
+        'P-05-open',
+        'P-06-focus',
+        'P-07-t01',
+        'P-07-t02',
+        'P-07-t03',
+        'P-07-t04',
+        'P-07-t05',
+        'P-07-t06',
+        'P-07-t07',
+        'P-08-typed',
+        'P-11-beside',
+        'P-12-live0',
+        'P-13-l01',
+        'P-13-l02',
+        'P-13-l03',
+        'P-13-l04',
+        'P-13-l05',
+        'P-13-l06',
+        'P-14-done',
+        'tl-0',
+        'tl-d3',
+        'tl-d-hold',
+        'tl-placed',
+        'tl-r3',
+        'tl-resized',
+        'tl2-3',
+        'tl2-hold',
+        'tl2-done',
+        'tl3-hold',
+        'tl3-done',
+        'se-n0',
+        'se-open',
+        'se-bres-1200',
+        'se-ares',
+        'se-a-d2',
+        'se-a-open2',
+        'F-01',
+        'F-04-brief-settled',
+        'F-07-key-0',
+        'F-08-key-settled',
+        'F-08-takeaway-settled',
+        'F-08-topic-settled',
+        'pal-n0',
+        'pal-p0',
+        'pal-q-theme',
+        'pal-sel',
+        'pal-dark',
+        'S-bg'
+      ]
+      // floating windows with alpha, laid over a card at native px: [width, height]
+      const SMALL = {
+        'S-00-open': [720, 376],
+        'S-01-focus': [720, 376],
+        ...Object.fromEntries(
+          Array.from({ length: 10 }, (_, i) => [
+            `S-02-t${String(i + 1).padStart(2, '0')}`,
+            [720, 376]
+          ])
+        ),
+        'S-03-typed': [720, 376],
+        'S-04-task': [720, 376],
+        'S-06-send1': [720, 284],
+        'S-11-tab': [88, 168],
+        'S-12-peek': [600, 232]
+      }
+      const SHOTS = Object.fromEntries(SHOT_NAMES.map((n) => [n, [2880, 1800]]))
+      const NAT = { ...SHOTS, ...SMALL }
+      // root (camera) > shadow + content (focus crop) > layer (the screenshot and everything cut from it)
+      function makeWin(id, name, shot) {
+        const [w, h] = SHOTS[name]
+        const e = box(el('div', 'win', $('scene')), 0, 0, w, h)
+        e.id = id
+        e.W = w
+        e.H = h
+        e.sh = box(el('div', 'sh', e), 0, 0, w, h)
+        e.c = box(el('div', 'wc', e), 0, 0, w, h)
+        e.layer = box(el('div', 'wc', e.c), 0, 0, w, h)
+        e.img = shot || el('img', 'shot', e.layer)
+        if (shot) e.layer.appendChild(shot)
+        else e.img.src = `shots/${name}.png`
+        e.img.width = w
+        e.img.height = h
+        return e
+      }
+      // frame a window down to its content column: a floating card, shadow included
+      function crop(w, l = 0, t = 0, r = 0, b = 0, rad = 18) {
+        const any = l > 0.01 || t > 0.01 || r > 0.01 || b > 0.01
+        css(
+          w.c,
+          'clipPath',
+          any
+            ? `inset(${t.toFixed(2)}px ${r.toFixed(2)}px ${b.toFixed(2)}px ${l.toFixed(2)}px round ${rad.toFixed(1)}px)`
+            : 'none'
+        )
+        css(w.sh, 'left', l.toFixed(2) + 'px')
+        css(w.sh, 'top', t.toFixed(2) + 'px')
+        css(w.sh, 'width', (w.W - l - r).toFixed(2) + 'px')
+        css(w.sh, 'height', (w.H - t - b).toFixed(2) + 'px')
+      }
+      // stage position of a native point under a flat pose (rotations ignored)
+      const onStage = (p, x, y) => [p.qx + (x - p.px) * p.s, p.qy + (y - p.py) * p.s]
+      const patch = (parent, x, y, w, h, color) => {
+        const e = box(el('div', 'patch', parent), x, y, w, h)
+        e.style.background = typeof color === 'string' ? color : rgb(color)
+        return e
+      }
+      function cut(parent, name, x, y, w, h) {
+        const e = box(el('div', 'cut', parent), x, y, w, h)
+        e.style.backgroundImage = `url(shots/${name}.png)`
+        e.style.backgroundPosition = `${-x}px ${-y}px`
+        return e
+      }
+
+      // =====================================================================
+      // headlines
+      // =====================================================================
+      function makeHead(o) {
+        const root = el('div', 'hd' + (o.center ? ' center' : ''), $('type'))
+        root.style.display = 'none'
+        root.style.left = (o.center ? 0 : o.x) + 'px'
+        root.style.top = o.y + 'px'
+        const h = { root, words: [] }
+        if (o.label) {
+          h.label = el('div', 'lbl', root)
+          h.labelIn = el('span', 'i', el('span', 'm', h.label), o.label)
+        }
+        const hh = el('div', 'h', root)
+        hh.style.fontSize = (o.size || 100) + 'px'
+        h.h = hh
+        o.lines.forEach((ln) => h.words.push(...words(el('span', 'ln', hh), ln)))
+        if (o.sub) h.sub = el('div', 'sb', root, o.sub)
+        return h
+      }
+      // a: in, b: out, o.sub: when the sub line lands, o.at: explicit word times
+      function renderHead(h, t, a, b, o = {}) {
+        const on = t >= a - 0.02 && t < b + 0.7
+        show(h.root, on)
+        if (!on) return
+        if (h.labelIn)
+          rise(h.labelIn, oExpo(inv(t, a - 0.05, a + 0.55)), iExpo(inv(t, b, b + 0.35)))
+        h.words.forEach((w, k) => {
+          const ta = o.at ? o.at[k] : a + 0.05 + k * (o.st || 0.075)
+          const tb = b + k * 0.035
+          rise(w, oExpo(inv(t, ta, ta + 0.75)), iExpo(inv(t, tb, tb + 0.4)))
+        })
+        if (h.sub) {
+          const s0 = o.sub == null ? a + 0.45 : o.sub
+          const x = oExpo(inv(t, s0, s0 + 0.9)),
+            y = iCub(inv(t, b, b + 0.3))
+          css(h.sub, 'opacity', (x * (1 - y)).toFixed(3))
+          css(h.sub, 'transform', `translateY(${((1 - x) * 16 - y * 10).toFixed(2)}px)`)
+        }
+      }
+      // decode: characters resolve left to right out of mono noise
+      const GLYPHS = 'abcdefghijklmnopqrstuvwxyz0123456789#@!/.:+'
+      function decode(e, text, t, a, b, frame, seed) {
+        const n = text.length
+        let s = ''
+        for (let k = 0; k < n; k++) {
+          const c = text[k]
+          const tk = a + ((b - a) * k) / n
+          if (t >= tk || c === ' ') s += c
+          else if (t >= tk - 0.16) s += GLYPHS[hash(frame >> 1, k, seed) % GLYPHS.length]
+          else s += '\u00a0'
+        }
+        if (e._txt !== s) {
+          e._txt = s
+          e.textContent = s
+        }
+      }
+
+      // =====================================================================
+      // OPEN: "33" rolls in as two reels; the digits are windows onto the release
+      // =====================================================================
+      const OP = {}
+      // the reels count up to counts.features (two digits): the tens reel turns once, the units reel twice
+      const DIGITS = [Math.floor(T.counts.features / 10) % 10, T.counts.features % 10]
+      const upTo = (d) => Array.from({ length: d + 1 }, (_, k) => k)
+      const REEL = [
+        [...upTo(9), ...upTo(DIGITS[0])],
+        [...upTo(9), ...upTo(9), ...upTo(DIGITS[1])]
+      ]
+      // what each digit shows through its strokes: [shot, native x, native y at the cell center, scale]
+      const FILLS = [
+        [
+          ['RW-11-note', 1400, 900, 0.95],
+          ['P-11-beside', 1500, 700, 1.0],
+          ['tl-resized', 2300, 1100, 0.9],
+          ['se-a-open2', 1300, 800, 0.95],
+          ['F-08-topic-settled', 1300, 900, 0.9],
+          ['pal-dark', 1440, 700, 0.95]
+        ],
+        [
+          ['RW-16-journal', 1300, 500, 1.0],
+          ['P-14-done', 1300, 700, 1.0],
+          ['tl3-done', 2300, 1300, 0.85],
+          ['se-ares', 1440, 600, 0.9],
+          ['F-08-key-settled', 1300, 900, 0.95],
+          ['S-bg', 1440, 900, 0.9]
+        ]
+      ]
+      function buildOpen() {
+        const root = $('open')
+        const FS = 720
+        const mc = document.createElement('canvas').getContext('2d')
+        mc.font = `700 ${FS}px "DM Sans"`
+        let adv = 0
+        for (let d = 0; d < 10; d++) adv = Math.max(adv, mc.measureText(String(d)).width)
+        const m3 = mc.measureText('3')
+        const asc = m3.actualBoundingBoxAscent,
+          dsc = m3.actualBoundingBoxDescent
+        const cw = Math.ceil(adv) + 30,
+          ch = Math.ceil(asc + dsc) + 90
+        const base = 45 + asc
+        const kern = Math.round(FS * 0.07)
+        // caption to the right of the numerals, measured for centering
+        const cap = el('div', 'hd', root)
+        const capH = el('div', 'h', cap)
+        capH.style.fontSize = '150px'
+        capH.style.lineHeight = '0.9'
+        OP.capWords = [
+          ...words(el('span', 'ln', capH), '*new*'),
+          ...words(el('span', 'ln', capH), 'features')
+        ]
+        OP.sub = el('div', 'mono', cap)
+        OP.sub.style.cssText =
+          'margin-top:34px;font-size:22px;letter-spacing:.14em;text-transform:uppercase;color:rgba(243,239,232,.62);white-space:nowrap'
+        OP.subText = `+ ${T.counts.fixes} fixes`
+        OP.sub.textContent = OP.subText
+        const capW = Math.max(capH.offsetWidth, OP.sub.offsetWidth)
+        const total = cw * 2 - kern + 70 + capW
+        const x0 = Math.round((W - total) / 2),
+          y0 = Math.round(H / 2 - ch / 2 + 10)
+        OP.cells = [x0, x0 + cw - kern].map((x) => [x, y0])
+        OP.cw = cw
+        OP.ch = ch
+        OP.base = base
+        OP.pitch = ch
+        cap.style.left = x0 + cw * 2 - kern + 70 + 'px'
+        cap.style.top = Math.round(H / 2 - cap.offsetHeight / 2 + 4) + 'px'
+        OP.cap = cap
+        const defs = $('defs')
+        OP.reels = OP.cells.map(([x, y], r) => {
+          const cell = box(el('div', '', root), x, y, cw, ch)
+          cell.style.position = 'absolute'
+          cell.style.overflow = 'hidden'
+          // clipPath content may not be grouped: the transform goes on the clipPath itself
+          const g = svg('clipPath', { id: 'reel' + r, clipPathUnits: 'userSpaceOnUse' }, defs)
+          const fill = box(el('div', '', cell), 0, 0, cw, ch)
+          fill.style.position = 'absolute'
+          fill.style.clipPath = `url(#reel${r})`
+          const imgs = FILLS[r].map(([name]) => {
+            const im = el('img', '', fill)
+            im.src = `shots/${name}.png`
+            im.style.cssText = 'position:absolute;left:0;top:0;transform-origin:0 0'
+            return im
+          })
+          const ol = svg(
+            'svg',
+            { width: cw, height: ch, style: 'position:absolute;left:0;top:0;overflow:visible' },
+            cell
+          )
+          const og = svg('g', {}, ol)
+          REEL[r].forEach((d, k) => {
+            const a = {
+              x: cw / 2,
+              y: base + k * ch,
+              'text-anchor': 'middle',
+              'font-family': 'DM Sans',
+              'font-weight': 700,
+              'font-size': FS
+            }
+            svg('text', a, g).textContent = d
+            svg('text', Object.assign({ fill: 'none', 'stroke-width': 2.2 }, a), og).textContent = d
+          })
+          return { cell, g, og, fill, imgs, ol }
+        })
+        // the dive: the same first digit, in stage space, clipping the whole scene
+        OP.dg = svg('clipPath', { id: 'dive', clipPathUnits: 'userSpaceOnUse' }, defs)
+        svg(
+          'text',
+          {
+            x: x0 + cw / 2,
+            y: y0 + base,
+            'text-anchor': 'middle',
+            'font-family': 'DM Sans',
+            'font-weight': 700,
+            'font-size': FS
+          },
+          OP.dg
+        ).textContent = String(DIGITS[0])
+        // the thickest point of the stroke is where the camera goes through
+        const c = document.createElement('canvas')
+        c.width = cw
+        c.height = ch
+        const g2 = c.getContext('2d', { willReadFrequently: true })
+        g2.font = `700 ${FS}px "DM Sans"`
+        g2.textAlign = 'center'
+        g2.fillText(String(DIGITS[0]), cw / 2, base)
+        const d = g2.getImageData(0, 0, cw, ch).data
+        const ins = (x, y) => x >= 0 && y >= 0 && x < cw && y < ch && d[(y * cw + x) * 4 + 3] > 128
+        let best = [cw / 2, ch / 2, 0]
+        for (let y = Math.floor(ch * 0.45); y < ch; y += 5)
+          for (let x = 0; x < cw; x += 5) {
+            if (!ins(x, y)) continue
+            let r = 1
+            outer: for (; r < 160; r += 2)
+              for (let a = 0; a < 16; a++) {
+                const ang = (a / 16) * Math.PI * 2
+                if (!ins(Math.round(x + Math.cos(ang) * r), Math.round(y + Math.sin(ang) * r)))
+                  break outer
+              }
+            if (r > best[2]) best = [x, y, r]
+          }
+        OP.focus = [x0 + best[0], y0 + best[1]]
+        // the thought dot and the label
+        OP.dot = el('div', 'dotc', root)
+        OP.label = el('div', 'mono', root)
+        OP.label.style.cssText =
+          'position:absolute;left:0;top:0;font-size:22px;letter-spacing:.16em;white-space:nowrap;color:rgba(243,239,232,.72)'
+        OP.labelText = `memrynote \u00b7 release ${T.version}`
+        OP.label.textContent = OP.labelText
+        OP.labelW = OP.label.offsetWidth
+        OP.label.textContent = ''
+      }
+      function reelIdx(r, t) {
+        const [a, b] = T.open.reels
+        const n = REEL[r].length - 1
+        const u = inv(t, a + r * 0.04, b)
+        let idx = n * (1 - Math.pow(1 - u, 3.2))
+        if (t > b) idx = n + 0.06 * Math.sin((t - b) * 34) * Math.exp(-(t - b) * 9)
+        return idx
+      }
+      function renderOpen(t, frame) {
+        const O = T.open
+        const on = t < O.dive[1] + 0.02
+        show($('open'), on)
+        if (!on) return
+        // dot + label: the dot lands, the label decodes out of it, both move up out of the way
+        const up = ioCub(inv(t, 0.82, 1.2))
+        const lx = lerp(W / 2 - (OP.labelW + 34) / 2, OP.cells[0][0] + 26, up)
+        const ly = lerp(H / 2, OP.cells[0][1] - 18, up)
+        const dotIn = oBack(inv(t, O.dot, O.dot + 0.45), 2.2)
+        const labOut = iCub(inv(t, O.textOut, O.textOut + 0.3))
+        const dr = 13 * dotIn * lerp(1, 0.72, up) * (1 - labOut)
+        const dx = lerp(W / 2, lx + dr, ioCub(inv(t, O.label[0] - 0.08, O.label[0] + 0.3)))
+        css(OP.dot, 'transform', `translate(${(dx - dr).toFixed(2)}px,${(ly - dr).toFixed(2)}px)`)
+        css(OP.dot, 'width', (2 * dr).toFixed(2) + 'px')
+        css(OP.dot, 'height', (2 * dr).toFixed(2) + 'px')
+        decode(OP.label, OP.labelText, t, O.label[0], O.label[1], frame, 3)
+        css(
+          OP.label,
+          'transform',
+          `translate(${(lx + 34 * lerp(1, 0.8, up)).toFixed(2)}px,${(ly - 15).toFixed(2)}px) scale(${lerp(1, 0.86, up).toFixed(4)})`
+        )
+        css(OP.label, 'transformOrigin', '0 50%')
+        css(OP.label, 'opacity', (1 - labOut).toFixed(3))
+        // reels
+        const [ra] = O.reels
+        const diving = t >= O.dive[0]
+        OP.reels.forEach((R, r) => {
+          const appear = oExpo(inv(t, ra + r * 0.05, ra + 0.5 + r * 0.05))
+          const out1 = r === 1 ? ioCub(inv(t, O.dive[0] - 0.05, O.dive[0] + 0.2)) : 0
+          show(R.cell, appear > 0.001 && out1 < 1)
+          if (appear <= 0.001) return
+          const idx = reelIdx(r, t)
+          const tr = `translate(0,${(-idx * OP.pitch).toFixed(2)})`
+          R.g.setAttribute('transform', tr)
+          R.og.setAttribute('transform', tr)
+          css(
+            R.cell,
+            'transform',
+            `translate(${(r === 1 ? out1 * 220 : 0).toFixed(1)}px,${((1 - appear) * 60).toFixed(1)}px)`
+          )
+          css(R.cell, 'opacity', (appear * (1 - out1)).toFixed(3))
+          // fill: which cut is live, with a punch-in on each cut
+          let k = -1,
+            tk = ra
+          O.cuts.forEach((c, i) => {
+            if (t >= c) {
+              k = i
+              tk = c
+            }
+          })
+          const fi = k < 0 ? 0 : k
+          const [name, nx, ny, s0] = k < 0 ? FILLS[r][0] : FILLS[r][fi]
+          const punch =
+            1 +
+            (k < 0
+              ? 0.06 * (1 - oExpo(inv(t, ra, ra + 1.2)))
+              : 0.13 * (1 - oExpo(inv(t, tk, tk + 0.45))))
+          const drift = (t - tk) * 14 * (r ? -1 : 1)
+          const s = s0 * punch
+          R.imgs.forEach((im, i) => {
+            const live = i === fi && !(diving && r === 0)
+            show(im, live)
+            if (live)
+              css(
+                im,
+                'transform',
+                `translate(${(OP.cw / 2 - nx * s + drift).toFixed(2)}px,${(OP.ch / 2 - ny * s).toFixed(2)}px) scale(${s.toFixed(4)})`
+              )
+          })
+          // outline: faint at rest, flashes brand orange as the reels lock
+          const lock = Math.exp(-Math.max(0, t - O.reels[1]) * 5) * (t >= O.reels[1] ? 1 : 0)
+          const olA = diving && r === 0 ? 0 : 0.2 + 0.58 * lock
+          R.og.setAttribute(
+            'stroke',
+            lock > 0.02
+              ? rgba(mixc([255, 255, 255], hex(BR), lock), olA)
+              : `rgba(255,255,255,${olA.toFixed(3)})`
+          )
+          R.og.setAttribute('stroke-width', (2.2 + 3 * lock).toFixed(2))
+        })
+        // caption and counts
+        OP.capWords.forEach((w, k) =>
+          rise(
+            w,
+            oExpo(inv(t, O.caption + k * 0.09, O.caption + k * 0.09 + 0.7)),
+            iExpo(inv(t, O.textOut + k * 0.03, O.textOut + k * 0.03 + 0.35))
+          )
+        )
+        decode(OP.sub, OP.subText, t, O.sub, O.sub + 0.45, frame, 11)
+        css(OP.sub, 'opacity', (1 - iCub(inv(t, O.textOut, O.textOut + 0.25))).toFixed(3))
+      }
+      // the camera flies through the stroke of the first digit into the rail window
+      function renderDive(t) {
+        const [a, b] = T.open.dive
+        const sc = $('scene')
+        if (t >= a && t < b) {
+          const u = inv(t, a, b)
+          const k = Math.exp(Math.log(80) * Math.pow(u, 2.3))
+          const [fx, fy] = OP.focus
+          OP.dg.setAttribute(
+            'transform',
+            `translate(${fx},${fy}) scale(${k.toFixed(5)}) translate(${-fx},${-fy})`
+          )
+          css(sc, 'clipPath', 'url(#dive)')
+        } else css(sc, 'clipPath', 'none')
+      }
+
+      // =====================================================================
+      // CARDS: each section is one screenshot card. Later captures of the same window are cut in region
+      // by region, so a change shows exactly where the app changed, on the app's own pixels.
+      // =====================================================================
+      // every capture is the 1440x900 window at 2x, so all native coordinates below are in that space
+      const NW = 2880,
+        NH = 1800
+      // the stage box a focus rect fills: center x, center y, max width, max height
+      const BOX = [1370, 548, 1060, 820]
+      // --tint in the Sandbox vault (its accent color), sampled from the active tab's underline
+      const TINT = [99, 102, 241]
+      const CURSOR_SVG =
+        '<svg width="44" height="60" viewBox="0 0 22 30"><path d="M3 2 L3 24.5 L8.4 19.4 L11.9 27.6 L15.5 26 L12.1 18.1 L19.2 18.1 Z" fill="#111" stroke="#fff" stroke-width="1.8" stroke-linejoin="round"/></svg>'
+      function makeCard(id, base) {
+        const w = makeWin(id, base)
+        w.layers = []
+        w.cur = el('div', 'cursor', w.c, CURSOR_SVG)
+        w.ring = el('div', 'ring', w.c)
+        return w
+      }
+      // a region [x, y, w, h] of another capture (or a flat patch when shot is null) laid over the card at a
+      // mode: cut | fade | wipe (left to right) | down (top to bottom) | pop (scales out of o.from) | up | row
+      function lay(w, shot, r, a, o = {}) {
+        const e = shot ? cut(w.layer, shot, ...r) : patch(w.layer, ...r, o.color || '#fff')
+        e.style.display = 'none'
+        const L = Object.assign({ e, r, a, mode: 'cut', dur: 0.14 }, o)
+        if (L.from) css(e, 'transformOrigin', `${L.from[0] - r[0]}px ${L.from[1] - r[1]}px`)
+        w.layers.push(L)
+        return L
+      }
+      // a whole later capture, which hides everything laid before it once it has landed
+      const full = (w, shot, a, o = {}) =>
+        lay(w, shot, [0, 0, NW, NH], a, Object.assign({ full: true }, o))
+      // typed text: the region opens one character at a time; n characters spread over the text's width
+      const typed = (w, shot, r, a, n, step, x1 = r[0] + r[2]) =>
+        lay(w, shot, r, a, { mode: 'type', n, step, x1, dur: n * step })
+      function renderLayers(w, t) {
+        let floor = -1
+        w.layers.forEach((L, i) => {
+          if (L.full && t >= L.a + (L.mode === 'cut' ? 0 : L.dur)) floor = i
+        })
+        show(w.img, floor < 0)
+        w.layers.forEach((L, i) => {
+          const on = i >= floor && t >= L.a && (L.until == null || t < L.until)
+          show(L.e, on)
+          if (!on) return
+          const u = clamp((t - L.a) / L.dur)
+          const [, , rw, rh] = L.r
+          if (L.mode === 'fade') css(L.e, 'opacity', smooth(u).toFixed(3))
+          else if (L.mode === 'wipe') {
+            const p = L.steps ? Math.ceil(u * L.steps) / L.steps : (L.ease || ioCub)(u)
+            css(L.e, 'clipPath', `inset(0 ${((1 - p) * rw).toFixed(1)}px 0 0)`)
+          } else if (L.mode === 'down')
+            css(L.e, 'clipPath', `inset(0 0 ${((1 - oCub(u)) * rh).toFixed(1)}px 0)`)
+          else if (L.mode === 'type') {
+            const k = Math.min(L.n, Math.floor((t - L.a) / L.step) + 1)
+            const x = L.r[0] + 6 + ((L.x1 - L.r[0] - 6) * k) / L.n
+            css(L.e, 'clipPath', `inset(0 ${Math.max(0, L.r[0] + rw - x).toFixed(1)}px 0 0)`)
+          } else if (L.mode === 'pop') {
+            const v = oBack(u, 1.7)
+            css(L.e, 'transform', `scale(${lerp(0.9, 1, v).toFixed(4)})`)
+            css(L.e, 'opacity', clamp(u * 3).toFixed(3))
+          } else if (L.mode === 'up') {
+            css(L.e, 'transform', `translateY(${((1 - oExpo(u)) * 70).toFixed(2)}px)`)
+            css(L.e, 'opacity', clamp(u * 2.5).toFixed(3))
+          } else if (L.mode === 'slide') {
+            const v = oQuint(u)
+            css(L.e, 'transform', `translateX(${((1 - v) * rw).toFixed(2)}px)`)
+            css(
+              L.e,
+              'boxShadow',
+              `0 0 ${(80 * v).toFixed(1)}px rgba(0,0,0,${(0.18 * v).toFixed(3)})`
+            )
+          } else if (L.mode === 'row') {
+            const v = oExpo(u)
+            css(L.e, 'transform', `translateX(${((1 - v) * -60).toFixed(2)}px)`)
+            css(L.e, 'clipPath', `inset(0 0 ${((1 - v) * rh).toFixed(1)}px 0)`)
+            css(L.e, 'opacity', clamp(u * 3).toFixed(3))
+          }
+        })
+      }
+      // a rect track: [[t, rect, ease]], eased like the camera
+      function trackR(keys, t) {
+        if (t <= keys[0][0]) return keys[0][1]
+        for (let i = 1; i < keys.length; i++)
+          if (t <= keys[i][0]) {
+            const [t0, a] = keys[i - 1],
+              [t1, b, ez] = keys[i]
+            const u = (ez || ioCub)(inv(t, t0, t1))
+            return a.map((v, k) => v + (b[k] - v) * u)
+          }
+        return keys[keys.length - 1][1]
+      }
+      // entrances and exits, as offsets on the resting pose
+      const MOVES = {
+        none: {},
+        whipL: { qx: -1900, ry: 34, z: -500, o: 0 },
+        whipR: { qx: 2000, ry: -38, z: -400 },
+        rise: { qy: 1250, rx: -22, z: -300 },
+        sink: { qy: -1200, rx: 20, z: -500, o: 0 },
+        swingL: { qx: -1100, ry: 80, z: -600, o: 0 },
+        swingR: { qx: 1100, ry: -80, z: -600 },
+        away: { z: -1800, qx: 300, o: 0 }
+      }
+      function moved(p, d, k) {
+        if (k <= 0) return p
+        const r = Object.assign({}, p)
+        for (const key in d) r[key] = key === 'o' ? lerp(p.o, d.o, k) : p[key] + d[key] * k
+        return r
+      }
+      // the card: a focus rect fills BOX, the crop follows the rect, the move carries it in and out
+      function placeCard(w, S, rect, t, o = {}) {
+        const s = Math.min(BOX[2] / rect[2], BOX[3] / rect[3])
+        let p = P(rect[0] + rect[2] / 2, rect[1] + rect[3] / 2, BOX[0], BOX[1], s, 2.5, -10)
+        if (o.dy) p.qy += o.dy
+        p = moved(p, MOVES[S.inMove || 'none'], 1 - oQuint(inv(t, S.start - 0.55, S.start + 0.05)))
+        // the first card waits behind the reel's digit, then flies to its place as the dive opens
+        if (o.dive) {
+          const k = 1 - ioQuint(inv(t, T.open.dive[0] + 0.25, S.start + 0.5))
+          p = moved(p, { qx: OP.focus[0] - p.qx, qy: OP.focus[1] - p.qy, s: 1.6 * p.s - p.s }, k)
+        }
+        p = moved(p, MOVES[S.outMove || 'none'], iCub(inv(t, S.out[0], S.out[1])))
+        place(w, p)
+        crop(w, rect[0], rect[1], NW - rect[0] - rect[2], NH - rect[1] - rect[3], 14 / s)
+        w.pose = p
+        w.rect = rect
+        return p
+      }
+      // the cursor: [[t, x, y]] in native px; clicks press it and ring out
+      function renderCursor(w, keys, clicks, t, on) {
+        show(w.cur, on)
+        let x = keys[0][1],
+          y = keys[0][2]
+        for (let i = 1; i < keys.length; i++) {
+          const [t0, x0, y0] = keys[i - 1],
+            [t1, x1, y1] = keys[i]
+          if (t < t0) break
+          const u = ioCub(inv(t, t0, t1))
+          x = lerp(x0, x1, u) + Math.sin(u * Math.PI) * 30
+          y = lerp(y0, y1, u) - Math.sin(u * Math.PI) * 24
+        }
+        const press = clicks.reduce((m, c) => Math.max(m, 1 - Math.abs(t - c) / 0.09), 0)
+        css(
+          w.cur,
+          'transform',
+          `translate(${(x - 6).toFixed(1)}px,${(y - 4).toFixed(1)}px) scale(${(1 - 0.14 * press).toFixed(4)})`
+        )
+        const last = clicks.filter((c) => t >= c).pop()
+        const ru = last == null ? 1 : inv(t, last, last + 0.5)
+        show(w.ring, ru < 1)
+        if (ru < 1) {
+          // the ring sits on the click point of the moment it was clicked
+          const r = 14 + 56 * oExpo(ru)
+          css(w.ring, 'transform', `translate(${(x - r).toFixed(1)}px,${(y - r).toFixed(1)}px)`)
+          css(w.ring, 'width', 2 * r + 'px')
+          css(w.ring, 'height', 2 * r + 'px')
+          css(w.ring, 'opacity', (1 - ru).toFixed(3))
+        }
+      }
+      // keys pressed on screen, next to the headline: [label, press times]
+      function makeKey(label, w = 150) {
+        const e = el('div', 'key', $('type'), label)
+        e.style.width = w + 'px'
+        e.style.display = 'none'
+        return e
+      }
+      function renderKey(e, presses, t, x = 132, y = 780) {
+        const a = presses[0],
+          b = presses[presses.length - 1]
+        const v = oBack(inv(t, a - 0.34, a - 0.06), 1.6) * (1 - iCub(inv(t, b + 0.45, b + 0.7)))
+        show(e, v > 0.001)
+        if (v <= 0.001) return
+        const kp = presses.reduce((m, c) => Math.max(m, 1 - Math.abs(t - c) / 0.07), 0)
+        css(
+          e,
+          'transform',
+          `translate(${x}px,${(y + (1 - v) * 30 + kp * 4).toFixed(2)}px) scale(${lerp(0.9, 1, v).toFixed(4)})`
+        )
+        css(e, 'opacity', v.toFixed(3))
+        css(
+          e,
+          'boxShadow',
+          `0 ${(5 - 4 * kp).toFixed(2)}px 0 #b9b5ad, 0 14px 28px -12px rgba(0,0,0,.45)`
+        )
+      }
+      const head = (n, name, lines, sub) =>
+        makeHead({ x: 132, y: 318, label: `0${n} \u2014 ${name}`, lines, size: 100, sub })
+      const live = (S, t) => t >= S.start - 0.6 && t < S.out[1] + 0.02
+
+      // =====================================================================
+      // SECTIONS: each is one card of the real app. Its next states are whole later captures cut in on
+      // the beat, plus typed text, a cursor and keycaps. Every time comes from timeline.js.
+      // =====================================================================
+      const SECS = []
+      const pad2 = (n) => String(n).padStart(2, '0')
+      // a small capture (a floating window with alpha) laid over the card at native px; visible from a to b
+      function ovl(w, name, x, y, a, b, o = {}) {
+        const im = el('img', '', w.layer)
+        im.src = `shots/${name}.png`
+        const [iw, ih] = NAT[name]
+        im.style.cssText = `position:absolute;left:${x}px;top:${y}px;width:${iw}px;height:${ih}px;display:none`
+        const L = Object.assign({ e: im, a, b, mode: 'cut', dur: 0.2, iw, ih }, o)
+        w.ovl.push(L)
+        return L
+      }
+      function renderOvl(w, t) {
+        w.ovl.forEach((L) => {
+          const on = t >= L.a && t < L.b + (L.out || 0)
+          show(L.e, on)
+          if (!on) return
+          const u = clamp((t - L.a) / L.dur)
+          let op = 1
+          if (L.mode === 'pop') {
+            css(L.e, 'transform', `scale(${lerp(0.9, 1, oBack(u, 1.7)).toFixed(4)})`)
+            op = clamp(u * 3)
+          } else if (L.mode === 'fade') op = smooth(u)
+          else if (L.mode === 'slideR')
+            css(L.e, 'transform', `translateX(${((1 - oQuint(u)) * L.iw).toFixed(2)}px)`)
+          if (L.out) op *= 1 - smooth(clamp((t - L.b) / L.out))
+          css(L.e, 'opacity', op.toFixed(3))
+        })
+      }
+      function mk(spec) {
+        const S = T[spec.id]
+        const w = makeCard('w' + spec.id, spec.base)
+        w.ovl = []
+        const o = { spec, S, w }
+        o.head = head(spec.n, spec.name, spec.lines, spec.sub)
+        o.keys = (spec.keycaps || []).map((k) => ({
+          e: makeKey(k.label, k.w),
+          presses: k.at(S),
+          x: k.x,
+          y: k.y
+        }))
+        spec.build(w, S, o)
+        SECS.push(o)
+        return o
+      }
+      function renderSec(o, t) {
+        const { spec, S, w } = o
+        const on = live(S, t)
+        show(w, on)
+        renderHead(o.head, t, S.head, S.out[0] - 0.2, { sub: S.sub })
+        o.keys.forEach((k) => renderKey(k.e, k.presses, t, k.x, k.y))
+        if (!on) return
+        const rect = trackR(spec.rects(S), t)
+        placeCard(w, Object.assign({ inMove: spec.inMove, outMove: spec.outMove }, S), rect, t, {
+          dive: !!spec.dive
+        })
+        renderLayers(w, t)
+        renderOvl(w, t)
+        if (spec.cursor) {
+          const c = spec.cursor(S)
+          renderCursor(w, c.keys, c.clicks, t, t > c.keys[0][0] - 0.05 && t < c.off)
+        }
+      }
+      const fadeIn = (w, shot, a, dur = 0.16) => full(w, shot, a, { mode: 'fade', dur })
+
+      // camera rects (native px of the 1440x900 window at 2x), one per place the film looks
+      const R_RW1 = [800, 470, 1240, 960],
+        R_RW2 = [800, 20, 1280, 990],
+        R_RW3 = [800, 780, 1280, 990],
+        R_NOTE = [740, 300, 1400, 1085],
+        R_NOTE2 = [740, 700, 1400, 1085],
+        R_JRN = [700, 140, 1480, 1145]
+      const R_P1 = [980, 140, 1240, 960],
+        R_P2 = [820, 200, 2000, 1000],
+        R_PL = [880, 160, 1060, 820],
+        R_PR = [1860, 380, 1020, 790]
+      const R_TL = [1720, 620, 1160, 900]
+      const R_PAL = [560, 180, 1760, 1240],
+        R_PAL2 = [400, 100, 2100, 1620]
+      const R_LV1 = [760, 40, 1340, 1040],
+        R_LV2 = [760, 700, 1340, 1040],
+        R_LV3 = [800, 250, 1260, 975]
+      const R_ST1 = [1640, 640, 1000, 770],
+        R_ST2 = [1880, 500, 1000, 770]
+      const still = (...keys) => keys
+
+      function buildSections() {
+        // 01 READWISE: connect with a token, preview, import, a book note, the journal section
+        mk({
+          id: 'readwise',
+          n: 1,
+          name: 'Readwise',
+          lines: ['Your highlights,', '*synced*.'],
+          sub: 'Connect Readwise once and every book and article<br>becomes a note that stays up to date.',
+          base: 'RW-00-import',
+          dive: true,
+          outMove: 'swingL',
+          build(w, S) {
+            fadeIn(w, 'RW-01-panel', S.row)
+            lay(w, null, [985, 908, 925, 50], S.token, { color: '#fff' })
+            typed(w, 'RW-02-token', [985, 905, 930, 55], S.token, 26, S.tokenStep)
+            lay(w, 'RW-02-token', [1745, 985, 170, 80], S.token + 26 * S.tokenStep, {
+              mode: 'fade',
+              dur: 0.2
+            })
+            fadeIn(w, 'RW-04-connected', S.preview, 0.22)
+            full(w, 'RW-05-journal-on', S.journal)
+            fadeIn(w, 'RW-07-imp0', S.done, 0.14)
+            fadeIn(w, 'RW-11-note', S.note, 0.3)
+            fadeIn(w, 'RW-16-journal', S.journalPage, 0.3)
+          },
+          rects: (S) =>
+            still(
+              [S.start, R_RW1],
+              [S.connect + 0.1, R_RW1],
+              [S.preview + 0.2, R_RW2, ioQuint],
+              [S.pan[0], R_RW2],
+              [S.pan[1], R_RW3],
+              [S.done - 0.05, R_RW3],
+              [S.done + 0.15, R_RW1],
+              [S.push[0], R_RW1],
+              [S.push[1], R_NOTE],
+              [S.pan2[0], R_NOTE],
+              [S.pan2[1], R_NOTE2],
+              [S.jpush[0], R_NOTE2],
+              [S.jpush[1], R_JRN]
+            ),
+          cursor: (S) => ({
+            keys: [
+              [S.cursor[0], 2300, 1100],
+              [S.cursor[1], 1747, 619],
+              [S.token + 1.1, 1747, 619],
+              [S.connect - 0.05, 1829, 1018],
+              [S.journalHover - 0.3, 1829, 1018],
+              [S.journal - 0.05, 1817, 1157],
+              [S.importHover - 0.2, 1817, 1157],
+              [S.import - 0.05, 1766, 1740],
+              [S.done + 0.3, 1766, 1740],
+              [S.doneClick - 0.05, 1848, 1030]
+            ],
+            clicks: [S.row, S.connect, S.journal, S.import, S.doneClick],
+            off: S.note + 0.05
+          })
+        })
+
+        // 02 PORTALS: (( opens the picker, the portal lands folded, an edit inside it, the source beside it
+        mk({
+          id: 'portals',
+          n: 2,
+          name: 'Portals',
+          lines: ['A live copy,', '*anywhere*.'],
+          sub: 'Embed a note, a block or a search inside any note.<br>Edit either side and both change.',
+          base: 'P-00-note',
+          inMove: 'whipR',
+          outMove: 'sink',
+          build(w, S) {
+            fadeIn(w, 'P-01-pick', S.pick, 0.12)
+            full(w, 'P-02-q3', S.query)
+            full(w, 'P-03-sel', S.sel)
+            fadeIn(w, 'P-04-ins', S.insert, 0.18)
+            full(w, 'P-05-open', S.open)
+            full(w, 'P-06-focus', S.focus)
+            for (let i = 1; i <= 7; i++) full(w, `P-07-t${pad2(i)}`, S.type + (i - 1) * S.typeStep)
+            full(w, 'P-08-typed', S.type + 7 * S.typeStep)
+            fadeIn(w, 'P-11-beside', S.beside, 0.3)
+            full(w, 'P-12-live0', S.live - 0.1)
+            for (let i = 1; i <= 6; i++) full(w, `P-13-l${pad2(i)}`, S.live + (i - 1) * S.liveStep)
+            full(w, 'P-14-done', S.live + 6 * S.liveStep)
+          },
+          rects: (S) =>
+            still(
+              [S.start, R_P1],
+              [S.beside - 0.1, R_P1],
+              [S.beside + 0.3, R_P2, ioQuint],
+              [S.live - 0.4, R_P2],
+              [S.live - 0.1, R_PL, ioQuint],
+              [S.live + 6 * S.liveStep, R_PL],
+              [S.paneRight[0], R_PL],
+              [S.paneRight[1], R_PR, ioQuint]
+            ),
+          keycaps: [
+            { label: '(&nbsp;(', w: 110, x: 132, y: 780, at: (S) => [S.pick - 0.1] },
+            {
+              label:
+                '<span style="font-size:17px;letter-spacing:.02em">return</span><span style="font-size:24px">\u21b5</span>',
+              w: 150,
+              x: 132,
+              y: 780,
+              at: (S) => [S.enter]
+            }
+          ]
+        })
+
+        // 03 DAY TIMELINE: drag a task onto the day, stretch it into a block, drag it back off
+        mk({
+          id: 'timeline',
+          n: 3,
+          name: 'Day timeline',
+          lines: ['Plan the day,', '*by dragging*.'],
+          sub: 'Drop tasks on today\u2019s timeline, stretch them<br>into time blocks, drag them back to unschedule.',
+          base: 'tl-0',
+          inMove: 'rise',
+          outMove: 'swingL',
+          build(w, S) {
+            full(w, 'tl-d3', S.drag1)
+            full(w, 'tl-d-hold', S.hold1)
+            fadeIn(w, 'tl-placed', S.placed, 0.1)
+            full(w, 'tl-r3', S.resize)
+            full(w, 'tl-resized', S.resized)
+            full(w, 'tl2-3', S.drag2)
+            full(w, 'tl2-hold', S.hold2)
+            fadeIn(w, 'tl2-done', S.placed2, 0.1)
+            full(w, 'tl3-hold', S.hold3)
+            fadeIn(w, 'tl3-done', S.unscheduled, 0.14)
+          },
+          rects: () => still([0, R_TL]),
+          cursor: (S) => ({
+            keys: [
+              [S.cursor[0], 2300, 1250],
+              [S.dragStart - 0.05, 1982, 1434],
+              [S.placed, 2594, 988],
+              [S.resizeHover, 2594, 988],
+              [S.resizeStart - 0.05, 2334, 1014],
+              [S.resized, 2334, 1206],
+              [S.drag2 - 0.2, 2334, 1206],
+              [S.drag2 - 0.1, 1982, 1434],
+              [S.placed2, 2674, 904],
+              [S.back - 0.1, 2674, 904],
+              [S.back - 0.05, 2736, 902],
+              [S.unscheduled, 2594, 1560]
+            ],
+            clicks: [S.dragStart, S.resizeStart, S.drag2 - 0.1, S.back],
+            off: S.unscheduled + 0.3
+          })
+        })
+
+        // 04 SEARCH: a word no note contains finds the note about it; matches inside notes open at the match
+        mk({
+          id: 'search',
+          n: 4,
+          name: 'Search',
+          lines: ['Search by', '*meaning*.'],
+          sub: 'Notes turn up by what they mean, not only the words<br>they use, and each match inside a note is one click.',
+          base: 'se-n0',
+          inMove: 'whipR',
+          outMove: 'sink',
+          build(w, S, o) {
+            full(w, 'se-open', S.open, { mode: 'fade', dur: 0.12 })
+            lay(w, null, [700, 268, 1430, 84], S.type)
+            o.typedLayer = typed(
+              w,
+              'se-bres-1200',
+              [700, 268, 520, 84],
+              S.type,
+              S.text.length,
+              S.step
+            )
+            lay(w, 'se-bres-1200', [622, 366, 1636, 988], S.results, { mode: 'down', dur: 0.3 })
+            fadeIn(w, 'se-ares', S.apolloResults)
+            full(w, 'se-a-d2', S.select)
+            fadeIn(w, 'se-a-open2', S.opened, 0.1)
+          },
+          rects: () => still([0, R_PAL]),
+          keycaps: [
+            { label: '\u2318&nbsp;K', w: 110, x: 132, y: 780, at: (S) => [S.open] },
+            {
+              label:
+                '<span style="font-size:17px;letter-spacing:.02em">return</span><span style="font-size:24px">\u21b5</span>',
+              w: 150,
+              x: 132,
+              y: 780,
+              at: (S) => [S.enter]
+            }
+          ]
+        })
+
+        // 05 SUMMARY LEVELS: fold a long note down to Brief, Key, Takeaway and Topic
+        mk({
+          id: 'levels',
+          n: 5,
+          name: 'Summary levels',
+          lines: ['Skim any', '*long* note.'],
+          sub: 'Fold a note down to its Brief, Key, Takeaway or Topic<br>level, and open only the paragraph you need.',
+          base: 'F-01',
+          inMove: 'rise',
+          outMove: 'swingL',
+          build(w, S) {
+            fadeIn(w, 'F-04-brief-settled', S.brief, 0.25)
+            full(w, 'F-07-key-0', S.key)
+            fadeIn(w, 'F-08-key-settled', S.keyDone, 0.3)
+            fadeIn(w, 'F-08-takeaway-settled', S.take, 0.35)
+            fadeIn(w, 'F-08-topic-settled', S.topic, 0.35)
+          },
+          rects: (S) =>
+            still(
+              [S.start, R_LV1],
+              [S.click + 0.1, R_LV1],
+              [S.click + 0.6, R_LV2, ioQuint],
+              [S.push[0], R_LV2],
+              [S.push[1], R_LV3]
+            ),
+          cursor: (S) => ({
+            keys: [
+              [S.cursor[0], 2300, 500],
+              [S.click - 0.05, 1824, 110],
+              [S.brief + 0.4, 1824, 110],
+              [S.keyClick - 0.05, 1284, 1663],
+              [S.take - 0.8, 1284, 1663],
+              [S.takeClick - 0.05, 1402, 1663],
+              [S.topic - 0.9, 1402, 1663],
+              [S.topicClick - 0.05, 1531, 1663]
+            ],
+            clicks: [S.click, S.keyClick, S.takeClick, S.topicClick],
+            off: S.topic + 0.4
+          })
+        })
+
+        // 06 COMMAND PALETTE: Cmd+P lists every action; typing narrows it; the theme changes at once
+        mk({
+          id: 'palette',
+          n: 6,
+          name: 'Command palette',
+          lines: ['Every action,', '*one* shortcut.'],
+          sub: 'Press \u2318P, type what you want to do,<br>and run it from the keyboard.',
+          base: 'pal-n0',
+          inMove: 'whipR',
+          outMove: 'sink',
+          build(w, S) {
+            full(w, 'pal-p0', S.key, { mode: 'fade', dur: 0.1 })
+            lay(w, null, [700, 268, 1430, 84], S.type)
+            typed(w, 'pal-q-theme', [700, 268, 420, 84], S.type, 5, S.step)
+            lay(w, 'pal-q-theme', [622, 366, 1636, 988], S.type + 5 * S.step, {
+              mode: 'down',
+              dur: 0.25
+            })
+            full(w, 'pal-sel', S.sel)
+            fadeIn(w, 'pal-dark', S.dark, 0.3)
+          },
+          rects: (S) => still([0, R_PAL], [S.dark, R_PAL], [S.dark + 0.8, R_PAL2, ioQuint]),
+          keycaps: [
+            { label: '\u2318&nbsp;P', w: 110, x: 132, y: 780, at: (S) => [S.key] },
+            {
+              label:
+                '<span style="font-size:17px;letter-spacing:.02em">return</span><span style="font-size:24px">\u21b5</span>',
+              w: 150,
+              x: 132,
+              y: 780,
+              at: (S) => [S.enter]
+            }
+          ]
+        })
+
+        // 07 STICKY CAPTURE: one shortcut from any app, a note, a task or a journal line; drafts wait on the edge
+        mk({
+          id: 'sticky',
+          n: 7,
+          name: 'Sticky capture',
+          lines: ['Jot it down,', '*anywhere*.'],
+          sub: 'Press \u2318\u21e7M in any app. Send it to a note, a task or today\u2019s<br>journal, and unsent drafts wait on the edge of the screen.',
+          base: 'S-bg',
+          inMove: 'rise',
+          outMove: 'swingL',
+          build(w, S) {
+            const CX = 1780,
+              CY = 760
+            ovl(w, 'S-00-open', CX, CY, S.card, S.focus, { mode: 'pop', dur: 0.26 })
+            ovl(w, 'S-01-focus', CX, CY, S.focus, S.type)
+            for (let i = 0; i < 10; i++)
+              ovl(
+                w,
+                `S-02-t${pad2(i + 1)}`,
+                CX,
+                CY,
+                S.type + i * S.frameStep,
+                S.type + (i + 1) * S.frameStep
+              )
+            ovl(w, 'S-03-typed', CX, CY, S.typed, S.task)
+            ovl(w, 'S-04-task', CX, CY, S.task, S.send)
+            ovl(w, 'S-06-send1', CX, CY, S.send, S.tuck, { out: 0.2 })
+            ovl(w, 'S-11-tab', 2792, 580, S.tuck, S.peek, { mode: 'slideR', dur: 0.35 })
+            ovl(w, 'S-12-peek', 2280, 540, S.peek, S.out[0] + 0.5, { mode: 'pop', dur: 0.24 })
+          },
+          rects: (S) => still([0, R_ST1], [S.tuck - 0.3, R_ST1], [S.tuck + 0.2, R_ST2, ioQuint]),
+          keycaps: [
+            {
+              label: '\u2318&nbsp;\u21e7&nbsp;M',
+              w: 180,
+              x: 132,
+              y: 780,
+              at: (S) => [S.card - 0.1]
+            },
+            { label: '\u2318&nbsp;\u21b5', w: 120, x: 132, y: 780, at: (S) => [S.send - 0.05] }
+          ]
+        })
+      }
+
+      const MORE_ROWS = [
+        [
+          'First-run setup',
+          'Note aliases',
+          'Unlinked mentions',
+          'Collapsible headings',
+          'Collapsible callouts',
+          'Custom callout types',
+          'Image lightbox'
+        ],
+        [
+          'Link display modes',
+          'Locked Apple Notes',
+          'Safer Obsidian opening',
+          'Home board covers',
+          'Notes linked to events',
+          'Sidebar multi-select',
+          'Folder shortcuts'
+        ],
+        [
+          'Gallery covers',
+          'Project All tab',
+          'Timeline subtasks',
+          'Draggable milestones',
+          'Matches inside notes',
+          'Status from tasks',
+          'Tasks in folder table'
+        ],
+        [
+          'Clearer sync pause',
+          'Stalled-sync warning',
+          'Faster catch-up sync',
+          'Better search ranking',
+          'Auto-closing brackets',
+          'Tasks in note order',
+          'PDF display choice'
+        ],
+        [
+          'Title-named new notes',
+          'Scroll position restored',
+          'Subtask delete prompt',
+          'Taskbar grouping on Windows',
+          'Case-only folder renames',
+          'Tabs in narrow windows',
+          'Remote edits in editor'
+        ],
+        [
+          'Unsynced text preserved',
+          'Tag sync merging',
+          'Table cell alignment',
+          'Search index repair',
+          'Calmer background indexing',
+          'Oversized sync errors',
+          'Readwise edits respected'
+        ]
+      ]
+      const MR = {}
+      function buildMore() {
+        const root = $('wall')
+        const R = rng(28)
+        MR.rows = MORE_ROWS.map((items, r) => {
+          const y = 150 + r * 132
+          const els = []
+          let x = 0
+          // two copies so the row never runs out while it scrolls
+          for (let rep = 0; rep < 2; rep++)
+            items.forEach((s) => {
+              const e = el('div', 'wi', root, s)
+              const w = e.offsetWidth
+              els.push({ e, x, w, y, kind: 'w', d: R() * 0.38 })
+              x += w + 38
+              const sp = el('div', 'ws', root)
+              els.push({ e: sp, x, w: 12, y: y + 30, kind: 's', d: R() * 0.38 })
+              x += 12 + 38
+            })
+          return {
+            els,
+            len: x / 2,
+            dir: r % 2 ? 1 : -1,
+            speed: 150 + ((r * 37) % 5) * 26,
+            phase: R() * 800
+          }
+        })
+        MR.label = box(el('div', 'lbl', root), 0, 0)
+        MR.label.style.position = 'absolute'
+        MR.labelIn = el('span', 'i', el('span', 'm', MR.label), `Also new in ${T.version}`)
+        MR.dot = el('div', 'dotc', $('end'))
+        MR.dot.style.width = MR.dot.style.height = '0px'
+      }
+      function renderMore(t) {
+        const S = T.more
+        const on = t >= S.start - 0.3 && t < S.collapse[1] + 0.05
+        show($('wall'), on)
+        if (!on) return
+        const [c0, c1] = S.collapse
+        const zoom = lerp(1.06, 0.97, ioSine(inv(t, S.start, c0)))
+        css($('wall'), 'transform', `rotate(-4deg) scale(${zoom.toFixed(4)})`)
+        MR.rows.forEach((row, r) => {
+          const a = S.rows[0] + r * 0.07
+          const inU = oExpo(inv(t, a, a + 0.8))
+          const off = row.phase + row.dir * row.speed * (t - S.start) + row.dir * (1 - inU) * 1400
+          row.els.forEach((o) => {
+            let x = ((((o.x + off) % (row.len * 2)) + row.len * 2) % (row.len * 2)) - row.len * 0.45
+            let y = o.y
+            const cxm = x + o.w / 2
+            const dist = Math.abs(cxm - 960)
+            let op = lerp(0.2, 1, Math.exp(-Math.pow(dist / 560, 2))) * clamp(inU * 1.3)
+            let s = 1
+            const u = iExpo(inv(t, c0 + o.d, c0 + o.d + 0.6))
+            if (u > 0) {
+              x = lerp(x, 960 - o.w / 2, u)
+              y = lerp(y, 540 - 36, u)
+              s = lerp(1, 0.04, u)
+              op *= 1 - smooth(inv(u, 0.7, 1))
+            }
+            const vis = op > 0.003 && x > -o.w - 200 && x < W + 200
+            show(o.e, vis)
+            if (!vis) return
+            css(
+              o.e,
+              'transform',
+              `translate(${x.toFixed(2)}px,${y.toFixed(2)}px) scale(${s.toFixed(4)})`
+            )
+            css(o.e, 'opacity', op.toFixed(3))
+            if (o.kind === 'w') css(o.e, 'color', dist < 300 ? '#1c1b19' : '#1c1b19')
+          })
+        })
+        css(MR.label, 'transform', 'translate(142px,62px) rotate(4deg)')
+        rise(
+          MR.labelIn,
+          oExpo(inv(t, S.start + 0.1, S.start + 0.7)),
+          iExpo(inv(t, c0 - 0.2, c0 + 0.1))
+        )
+      }
+
+      // =====================================================================
+      // END: the dot becomes the mark, the wordmark sings mem-ry-note
+      // =====================================================================
+      const EN = {}
+      function buildEnd() {
+        const root = $('end')
+        const B = window.BRAND
+        const s = svg(
+          'svg',
+          { width: W, height: H, style: 'position:absolute;left:0;top:0;overflow:visible' },
+          root
+        )
+        const markH = 106,
+          ms = markH / 1031
+        const k = 5.1 // wordmark scale, glyph units -> px
+        const g = svg('g', {}, s)
+        EN.mark = svg('g', {}, g)
+        EN.top = svg('path', { d: B.markTop, fill: B.markColor }, EN.mark)
+        EN.bar = svg('path', { d: B.bar, fill: B.markColor }, EN.mark)
+        const cp = svg('clipPath', { id: 'wmclip', clipPathUnits: 'userSpaceOnUse' }, $('defs'))
+        EN.wm = svg('g', {}, g)
+        EN.chunks = B.wordmark.map((d) => svg('path', { d, fill: B.wordColor }, EN.wm))
+        const bb = EN.wm.getBBox()
+        const markW = 1280 * ms,
+          gap = 40
+        const totalW = markW + gap + bb.width * k
+        const x0 = W / 2 - totalW / 2,
+          yMid = 452
+        EN.markT = { x: x0, y: yMid - markH / 2, s: ms }
+        EN.wmT = { x: x0 + markW + gap - bb.x * k, y: yMid + markH * 0.33, k }
+        EN.tip = [x0 + 637.44 * ms, yMid - markH / 2 + 648 * ms]
+        // userSpaceOnUse here is the wordmark's own (glyph) space, transform included
+        svg('rect', { x: bb.x - 2, y: bb.y - 2.5, width: bb.width + 4, height: bb.height + 5 }, cp)
+        EN.wm.setAttribute('clip-path', 'url(#wmclip)')
+        EN.wmH = bb.height * k
+        EN.tag = makeHead({ center: true, y: 568, lines: ['Available *now*.'], size: 64 })
+        EN.tag.h.style.color = rgb(INKL)
+        EN.pill = el('div', 'pill', root, '<i></i>memrynote.com')
+        EN.pillW = EN.pill.offsetWidth
+        EN.meta = el('div', 'mono', root)
+        EN.meta.style.cssText =
+          'position:absolute;left:0;top:0;width:1920px;text-align:center;font-size:16px;letter-spacing:.2em;color:rgba(28,27,25,.5);white-space:nowrap'
+        EN.meta.textContent = `RELEASE ${T.version}  \u00b7  ${T.counts.features} NEW FEATURES  \u00b7  ${T.counts.fixes} FIXES`
+      }
+      function renderEnd(t) {
+        const S = T.end
+        const [f0, f1] = S.fade
+        renderHead(EN.tag, t, S.tagline, f0, { st: 0.1 })
+        const on = t >= T.more.collapse[0]
+        show($('end'), on)
+        if (!on) return
+        // the dot: gathers the wall, becomes the mark's tip, comes back at the very end
+        const dIn = oBack(inv(t, T.more.collapse[0] + 0.55, T.more.collapse[1]), 2)
+        const toMark = ioCub(inv(t, S.start, S.start + 0.3))
+        const back = ioCub(inv(t, f1 - 0.35, f1))
+        const dr = 13 * dIn * (1 - smooth(inv(t, S.start + 0.12, S.start + 0.3))) + 13 * back
+        const dx = back > 0 ? W / 2 : lerp(W / 2, EN.tip[0], toMark),
+          dy = back > 0 ? H / 2 : lerp(H / 2, EN.tip[1] - 6, toMark)
+        show(MR.dot, dr > 0.05)
+        css(MR.dot, 'width', (2 * dr).toFixed(2) + 'px')
+        css(MR.dot, 'height', (2 * dr).toFixed(2) + 'px')
+        css(MR.dot, 'transform', `translate(${(dx - dr).toFixed(2)}px,${(dy - dr).toFixed(2)}px)`)
+        // mark: lobes grow from the tip, the bar slides up under them
+        const out = iCub(inv(t, f0 + 0.25, f1 - 0.3))
+        const mt = oBack(inv(t, S.start + 0.04, S.start + 0.5), 1.5) * (1 - out)
+        const mb = oExpo(inv(t, S.start + 0.12, S.start + 0.6)) * (1 - out)
+        const { x, y, s } = EN.markT
+        EN.mark.setAttribute('transform', `translate(${x},${y}) scale(${s})`)
+        EN.top.setAttribute(
+          'transform',
+          `translate(637.44,648) scale(${Math.max(0.0001, mt).toFixed(4)}) translate(-637.44,-648)`
+        )
+        EN.bar.setAttribute('transform', `translate(0,${((1 - mb) * 420).toFixed(2)})`)
+        EN.bar.setAttribute('opacity', mb.toFixed(3))
+        // wordmark syllables rise into the clip
+        EN.wm.setAttribute('transform', `translate(${EN.wmT.x},${EN.wmT.y}) scale(${EN.wmT.k})`)
+        EN.chunks.forEach((c, k) => {
+          const a = S.syllables[k]
+          const u = oExpo(inv(t, a - 0.03, a + 0.55))
+          const o = iExpo(inv(t, f0 + 0.1 + k * 0.04, f0 + 0.45 + k * 0.04))
+          c.setAttribute(
+            'transform',
+            `translate(0,${(((1 - u) * 1.15 - o * 1.15) * (EN.wmH / EN.wmT.k)).toFixed(3)})`
+          )
+        })
+        const pv = oExpo(inv(t, S.url, S.url + 0.7)) * (1 - iCub(inv(t, f0, f0 + 0.3)))
+        css(
+          EN.pill,
+          'transform',
+          `translate(${(W / 2 - EN.pillW / 2).toFixed(1)}px,${(676 + (1 - pv) * 18).toFixed(2)}px)`
+        )
+        css(EN.pill, 'opacity', pv.toFixed(3))
+        const mv = oExpo(inv(t, S.meta, S.meta + 0.9)) * (1 - iCub(inv(t, f0, f0 + 0.3)))
+        css(EN.meta, 'transform', `translateY(${(986 + (1 - mv) * 10).toFixed(2)}px)`)
+        css(EN.meta, 'opacity', mv.toFixed(3))
+      }
+
+      // =====================================================================
+      // HUD, stage, glow, scrim, transitions
+      // =====================================================================
+      const HUD = {}
+      function buildHUD() {
+        HUD.l = el('div', 'hud', $('hudroot'), 'memrynote \u00b7 what\u2019s new')
+        HUD.l.style.left = '132px'
+        HUD.r = el('div', 'hud', $('hudroot'))
+        HUD.r.style.right = '132px'
+      }
+      const SECTION_IDS = [
+        'readwise',
+        'portals',
+        'timeline',
+        'search',
+        'levels',
+        'palette',
+        'sticky'
+      ]
+      const SECTIONS = [...SECTION_IDS, 'more'].map((k) => T[k].start)
+      function renderHUD(t) {
+        const v =
+          smooth(inv(t, T.readwise.start + 0.35, T.readwise.start + 0.9)) *
+          (1 - smooth(inv(t, T.sticky.out[0] - 0.2, T.sticky.out[0] + 0.2)))
+        show($('hudroot'), v > 0.001)
+        if (v <= 0.001) return
+        let k = 0
+        while (k < SECTIONS.length - 2 && t >= SECTIONS[k + 1]) k++
+        const s = `0${k + 1} / 0${SECTIONS.length - 1}`
+        if (HUD.r.textContent !== s) HUD.r.textContent = s
+        // difference blend: light over the dark room, dark over white windows
+        css(HUD.l, 'color', 'rgb(150,148,144)')
+        css(HUD.r, 'color', 'rgb(150,148,144)')
+        css($('hudroot'), 'opacity', v.toFixed(3))
+      }
+      // the dark room holds every section; the wall and the end card sit on paper
+      const stageAt = (t) => mixc(DARK, PAPER, smooth(inv(t, T.sticky.out[0], T.more.start)))
+      // [t0, t1, color, alpha, x, y, radius]
+      const GLOWS = [
+        [0.9, 3.5, hex(BR), 0.11, 960, 560, 900],
+        ...SECTION_IDS.map((k, i) => [
+          T[k].start - 0.3,
+          T[k].out[1] - 0.2,
+          i % 2 ? TINT : [255, 243, 228],
+          i % 2 ? 0.13 : 0.1,
+          1300,
+          548,
+          1150
+        ])
+      ]
+      function drawBG(t) {
+        const x = BGX
+        x.fillStyle = rgb(stageAt(t))
+        x.fillRect(0, 0, W, H)
+        const glow = (c, a, gx, gy, r) => {
+          if (a < 0.002) return
+          const g = x.createRadialGradient(gx, gy, 0, gx, gy, r)
+          g.addColorStop(0, rgba(c, a))
+          g.addColorStop(1, rgba(c, 0))
+          x.fillStyle = g
+          x.fillRect(0, 0, W, H)
+        }
+        GLOWS.forEach(([a, b, c, al, gx, gy, r]) =>
+          glow(c, al * smooth(inv(t, a, a + 0.4)) * (1 - smooth(inv(t, b - 0.4, b))), gx, gy, r)
+        )
+        // vignette in the dark room
+        const vig = 1 - smooth(inv(t, T.sticky.out[0], T.more.start))
+        if (vig > 0.01) {
+          const g = x.createRadialGradient(960, 540, 420, 960, 540, 1250)
+          g.addColorStop(0, 'rgba(0,0,0,0)')
+          g.addColorStop(1, `rgba(0,0,0,${(0.5 * vig).toFixed(3)})`)
+          x.fillStyle = g
+          x.fillRect(0, 0, W, H)
+        }
+      }
+      // legibility behind headlines that sit over windows
+      // [t0, t1, kind, alpha, solid until, clear at]
+      const SCRIMS = []
+      function drawScrim(t) {
+        const x = SCX
+        x.clearRect(0, 0, W, H)
+        const st = stageAt(t)
+        SCRIMS.forEach(([a, b, kind, al, s0, s1]) => {
+          const v = al * smooth(inv(t, a, a + 0.4)) * (1 - smooth(inv(t, b - 0.35, b)))
+          if (v < 0.003) return
+          const g =
+            kind === 'left'
+              ? x.createLinearGradient(s0, 0, s1, 0)
+              : x.createLinearGradient(0, s0, 0, s1)
+          for (let k = 0; k <= 8; k++) g.addColorStop(k / 8, rgba(st, v * (1 - smooth(k / 8))))
+          x.fillStyle = g
+          x.fillRect(0, 0, W, H)
+        })
+      }
+      let grainTile
+      function makeGrain() {
+        grainTile = document.createElement('canvas')
+        grainTile.width = grainTile.height = 384
+        const g = grainTile.getContext('2d'),
+          img = g.createImageData(384, 384),
+          R = rng(99)
+        for (let k = 0; k < img.data.length; k += 4) {
+          const v = 128 + (R() - 0.5) * 120
+          img.data[k] = img.data[k + 1] = img.data[k + 2] = v
+          img.data[k + 3] = 255
+        }
+        g.putImageData(img, 0, 0)
+      }
+      function drawGrain(t, frame) {
+        const R = rng(frame * 7 + 3),
+          ox = Math.floor(R() * 384),
+          oy = Math.floor(R() * 384)
+        GRX.setTransform(1, 0, 0, 1, 0, 0)
+        GRX.fillStyle = GRX.createPattern(grainTile, 'repeat')
+        GRX.translate(-ox, -oy)
+        GRX.fillRect(ox, oy, W, H)
+        css($('grain'), 'opacity', (t < T.more.start ? 0.09 : 0.05).toFixed(3))
+      }
+
+      // hits: a short decaying shake and punch on the music's big accents
+      function renderCam(t) {
+        let x = 0,
+          y = 0,
+          s = 0
+        T.impacts.forEach(([ti, amp], k) => {
+          const u = t - ti
+          if (u < 0 || u > 0.6) return
+          const e = Math.exp(-u * 9)
+          x += amp * e * Math.sin(u * 71 + k * 1.7)
+          y += amp * 0.7 * e * Math.sin(u * 59 + k * 2.9)
+          s += 0.006 * (amp / 5) * Math.exp(-u * 14)
+        })
+        css(
+          $('cam'),
+          'transform',
+          `translate(${x.toFixed(2)}px,${y.toFixed(2)}px) scale(${(1 + s).toFixed(5)})`
+        )
+      }
+      // a soft specular pass across a card as it lands
+      function glint(e, t, a) {
+        const u = inv(t, a, a + 1.1)
+        show(e, u > 0 && u < 1)
+        if (u > 0 && u < 1) css(e, 'backgroundPosition', `${(100 - ioSine(u) * 100).toFixed(2)}% 0`)
+      }
+
+      // =====================================================================
+      // main
+      // =====================================================================
+      let BGX, SCX, GRX
+      const GLINTS = []
+      function render(t, frame = Math.round(t * FPS)) {
+        renderCam(t)
+        drawBG(t)
+        renderOpen(t, frame)
+        renderDive(t)
+        SECS.forEach((o) => renderSec(o, t))
+        renderMore(t)
+        renderEnd(t)
+        GLINTS.forEach(([e, a]) => glint(e, t, a))
+        drawScrim(t)
+        renderHUD(t)
+        drawGrain(t, frame)
+      }
+      // fast stretches get more motion-blur samples
+      function fastRanges() {
+        const r = [
+          [0.85, 2.15],
+          [T.open.dive[0] - 0.1, T.readwise.start + 0.1],
+          [T.more.collapse[0] - 0.05, T.end.start + 0.15],
+          [T.end.fade[1] - 0.6, T.end.fade[1] + 0.05]
+        ]
+        // every exit overlaps the next entrance
+        SECTION_IDS.forEach((k) => {
+          r.push([T[k].out[0] - 0.05, T[k].out[1] + 0.1])
+          if (T[k].push) r.push([T[k].push[0] - 0.05, T[k].push[1] + 0.05])
+        })
+        r.push(
+          [T.readwise.pan[0] - 0.05, T.readwise.pan[1] + 0.05],
+          [T.palette.dark + 0.7, T.palette.dark + 1.7]
+        )
+        return r
+      }
+      let FAST = []
+      window.samplesAt = (t) => (FAST.some(([a, b]) => t >= a && t <= b) ? 16 : 6)
+
+      window.ready = (async () => {
+        await Promise.all(
+          [
+            '700 100px "DM Sans"',
+            '600 100px "DM Sans"',
+            '500 100px "DM Sans"',
+            'italic 600 100px "DM Sans"',
+            '400 100px "DM Sans"',
+            '500 20px "JetBrains Mono"'
+          ].map((f) => document.fonts.load(f))
+        )
+        await document.fonts.ready
+        // every capture decodes before the first frame, so no frame shows a half-loaded card
+        // the decoded images stay referenced, so a cut never paints before its capture is decoded
+        window.KEEP = []
+        // with ten renderers starting at once a decode can fail under memory pressure: retry, then fail loudly
+        for (const n of Object.keys(NAT)) {
+          for (let k = 0; ; k++) {
+            const im = new Image()
+            im.src = k ? `shots/${n}.png?r=${k}` : `shots/${n}.png`
+            try {
+              await im.decode()
+              window.KEEP.push(im)
+              break
+            } catch (e) {
+              if (k === 4) throw new Error(`shots/${n}.png: ${e.message}`)
+              await new Promise((r) => setTimeout(r, 300 * (k + 1)))
+            }
+          }
+        }
+        BGX = $('bg').getContext('2d')
+        SCX = $('scrim').getContext('2d')
+        GRX = $('grain').getContext('2d')
+        buildOpen()
+        buildSections()
+        SECS.forEach((o, i) =>
+          GLINTS.push([el('div', 'glint', o.w.c), T[SECTION_IDS[i]].start + 0.05])
+        )
+        FAST = fastRanges()
+        buildMore()
+        buildEnd()
+        buildHUD()
+        makeGrain()
+        window.EVENTS = buildEvents()
+        render(0)
+        return true
+      })()
+
+      // events the score listens to (derived from the same timeline)
+      function buildEvents() {
+        const ev = []
+        const add = (t, kind, extra = {}) => ev.push({ t: +t.toFixed(4), kind, ...extra })
+        const O = T.open
+        add(O.dot, 'dot')
+        for (let k = 0; k < OP.labelText.length; k++)
+          if (OP.labelText[k] !== ' ')
+            add(O.label[0] + ((O.label[1] - O.label[0]) * k) / OP.labelText.length, 'decode', { k })
+        add(O.reels[0], 'reels')
+        // a tick every time the units reel passes a digit
+        let last = 0
+        for (let f = Math.round(O.reels[0] * FPS * 4); f <= O.reels[1] * FPS * 4; f++) {
+          const i = Math.floor(reelIdx(1, f / FPS / 4) + 0.5)
+          if (i > last) {
+            add(f / FPS / 4, 'reelTick', { k: i })
+            last = i
+          }
+        }
+        add(O.reels[1], 'lock')
+        add(O.caption, 'caption')
+        for (let k = 0; k < OP.subText.length; k += 2)
+          add(O.sub + (0.45 * k) / OP.subText.length, 'decode', { k: 100 + k })
+        O.cuts.forEach((t, k) => k > 0 && add(t, 'cut', { k }))
+        add(O.textOut, 'textOut')
+        add(O.dive[0], 'dive')
+        // sections: a landing, the layers as they change, clicks, keys, the exit
+        SECS.forEach((o, i) => {
+          const S = o.S
+          add(S.start, 'land', { k: i })
+          add(S.out[0], 'exit', { k: i })
+          let n = 0
+          o.w.layers.forEach((L) => {
+            if (L.a < S.start - 0.6 || (!L.full && L.e.className === 'patch')) return
+            if (L.mode === 'type') for (let k = 0; k < L.n; k++) add(L.a + k * L.step, 'key', { k })
+            else if (L.mode === 'wipe' && L.steps)
+              for (let k = 0; k < L.steps; k++) add(L.a + (k * L.dur) / L.steps, 'step', { k })
+            else add(L.a, L.mode, { k: n++ })
+          })
+          o.w.ovl.forEach((L) => {
+            if (L.mode === 'pop' || L.mode === 'slideR')
+              add(L.a, L.mode === 'pop' ? 'pop' : 'up', { k: n++ })
+            else if (/S-02-t/.test(L.e.src)) add(L.a, 'key', { k: n++ })
+            else add(L.a, 'cut', { k: n++ })
+          })
+          o.keys.forEach((k) => k.presses.forEach((t) => add(t, 'keycap')))
+          if (o.spec.cursor) o.spec.cursor(S).clicks.forEach((t) => add(t, 'click'))
+          if (S.push) add(S.push[0], 'whip')
+        })
+        add(T.readwise.pan[0], 'flip')
+        add(T.sticky.send, 'toast')
+        add(T.palette.dark, 'flip')
+        MR.rows.forEach((_, r) => add(T.more.rows[0] + r * 0.07, 'rowIn', { k: r }))
+        add(T.more.collapse[0], 'collapse')
+        add(T.more.collapse[0] + 0.55, 'dotIn')
+        const E = T.end
+        add(E.start, 'mark0')
+        E.syllables.forEach((t, k) => add(t, 'syllable', { k }))
+        add(E.tagline, 'tagline')
+        add(E.url, 'url')
+        add(E.meta, 'meta')
+        add(E.fade[0], 'fade')
+        return ev.sort((a, b) => a.t - b.t)
+      }
+
+      // live preview: ?t=12.3 freezes a frame; otherwise loops in real time
+      if (!navigator.webdriver) {
+        window.ready.then(() => {
+          if (q.get('t') != null) return render(+q.get('t'))
+          const t0 = performance.now()
+          ;(function loop() {
+            render(((performance.now() - t0) / 1000) % DUR)
+            requestAnimationFrame(loop)
+          })()
+        })
+      }
+      window.render = render
+    </script>
+  </body>
+</html>

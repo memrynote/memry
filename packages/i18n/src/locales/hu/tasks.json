@@ -113,7 +113,74 @@
       "noDueDate": "Nincs határidő"
     },
     "repeatTypeRepeating": "Ismétlődő",
-    "repeatTypeOneTime": "Egyszeri"
+    "repeatTypeOneTime": "Egyszeri",
+    "advanced": {
+      "entry": "Speciális szűrő…",
+      "entryHint": "Szabályok és, vagy, nem feltételekkel",
+      "title": "Szűrő",
+      "match": "Egyezés:",
+      "ofThese": "ezek közül",
+      "matches": {
+        "all": "mind",
+        "any": "bármelyik",
+        "none": "egyik sem"
+      },
+      "fields": {
+        "title": "Cím",
+        "status": "Állapot",
+        "priority": "Prioritás",
+        "due": "Határidő",
+        "project": "Projekt",
+        "location": "Hely",
+        "tags": "Címkék",
+        "repeat": "Ismétlődés",
+        "hasTime": "Van időpont"
+      },
+      "ops": {
+        "contains": "tartalmazza",
+        "notContains": "nem tartalmazza",
+        "any": "ezek egyike",
+        "none": "ezek egyike sem",
+        "all": "mindegyiket tartalmazza",
+        "empty": "üres",
+        "notEmpty": "nem üres",
+        "is": "egyenlő",
+        "isNot": "nem egyenlő"
+      },
+      "tagOps": {
+        "any": "bármelyiket tartalmazza",
+        "all": "mindegyiket tartalmazza",
+        "none": "egyiket sem tartalmazza"
+      },
+      "values": {
+        "repeating": "Ismétlődő",
+        "oneTime": "Egyszeri",
+        "withTime": "Időponttal",
+        "withoutTime": "Időpont nélkül",
+        "customRange": "Egyéni tartomány",
+        "from": "Ettől",
+        "to": "Eddig",
+        "pick": "Válassz…",
+        "titlePlaceholder": "Szöveg a címben"
+      },
+      "addRule": "Szabály hozzáadása",
+      "addGroup": "Csoport hozzáadása",
+      "clear": "Törlés",
+      "removeRule": "Szabály eltávolítása",
+      "removeGroup": "Csoport eltávolítása",
+      "matchCount": "{count, plural, one {# feladat egyezik} other {# feladat egyezik}}",
+      "skipped": "{count, plural, one {# szabály kihagyva} other {# szabály kihagyva}}",
+      "ruleCount": "{count, plural, one {# szabály} other {# szabály}}",
+      "unknownRule": "Újabb verzióból származó szabály",
+      "empty": "Még nincsenek szabályok. Adj hozzá egyet a szűréshez.",
+      "summary": {
+        "and": "és",
+        "or": "vagy",
+        "not": "nem"
+      },
+      "editRules": "Szabályok szerkesztése",
+      "clearRules": "Szabályok törlése"
+    }
   },
   "quickAdd": {
     "label": "Feladat gyors hozzáadása",

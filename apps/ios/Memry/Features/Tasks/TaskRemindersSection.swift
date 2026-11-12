@@ -51,11 +51,11 @@ struct TaskRemindersSection: View {
             reminders = await store.activeReminders(of: task.id)
         }
         .sheet(item: $picker) { mode in
-            TaskReminderPickerSheet(mode: mode, now: store.clock()) { date, note in
+            TaskReminderPickerSheet(mode: mode, now: store.clock()) { date, note, origin in
                 picker = nil
                 write {
                     switch mode {
-                    case .add: await store.addReminder(to: task.id, at: date, note: note)
+                    case .add: await store.addReminder(to: task.id, at: date, note: note, origin: origin)
                     case let .edit(reminder): await store.rescheduleReminder(reminder.id, to: date)
                     }
                 }

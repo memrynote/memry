@@ -6,6 +6,7 @@
     "noTarget": "לפורטל הזה אין עדיין יעד. אפשר להוסיף פתק להגדרה, או להסיר את הבלוק.",
     "invalidJson": "ההגדרה של הפורטל הזה אינה JSON תקין. אפשר לתקן אותה למטה, או להסיר את הבלוק.",
     "invalidShape": "בהגדרה של הפורטל הזה אין פתק או חיפוש. אפשר לתקן אותה למטה, או להסיר את הבלוק.",
+    "unreadable": "לא ניתן לקרוא את הפורטל הזה. הסירו את הבלוק והוסיפו פורטל חדש.",
     "search": {
       "editQuery": "עריכת השאילתה",
       "count": "{count, plural, one {בלוק אחד} other {# בלוקים}}",
@@ -1276,6 +1277,7 @@
     "label": "עזרה ומשוב",
     "reportBug": "דיווח על באג",
     "requestFeature": "בקשת תכונה",
+    "joinTestflight": "הצטרפות ל-TestFlight",
     "starOnGithub": "כוכב ב-GitHub",
     "version": "MemryNote {version}",
     "whatsNew": "מה חדש",
@@ -1695,5 +1697,29 @@
     "journalDaysRenamed": "לחלק מרשומות היומן כבר אין תאריך כשם",
     "journalDaysRenamedHint": "שמות רשומות היומן האלה שונו מחוץ ל-Memry בזמן שהתיקייה שלהן המתינה להגדרת תיקיית היומן, ולכן השמות שלהן כבר אינם תאריכים. הן יישארו רשומות יומן עד שתחזיר להן את השם. המרת רשומה לפתק מסירה את רשומת היומן שלה מכל המכשירים שלך ושומרת את הטקסט שלה כפתק. התגיות שלה אינן נשמרות.",
     "turnIntoNotes": "המרה לפתקים"
+  },
+  "iosBeta": {
+    "badge": "חדש · TestFlight",
+    "title": "Memry ל-iPhone בבטא",
+    "promptBody": "הכספת שלך בטלפון, מוצפנת מקצה לקצה. השאירו אימייל ו-Apple תשלח לכם הזמנת TestFlight.",
+    "emailPlaceholder": "you@example.com",
+    "emailLabel": "אימייל להזמנת TestFlight",
+    "submit": "לקבלת ההזמנה",
+    "sending": "שולח…",
+    "listNote": "אנחנו גם מוסיפים אותך לרשימת הבטא ל-iPhone לעדכוני ההשקה. אפשר להסיר את עצמך בכל עת.",
+    "error": "לא ניתן היה לשלוח את הזמנת TestFlight. אפשר לנסות שוב.",
+    "sentTitle": "בדקו את תיבת הדואר",
+    "sentBody": "Apple שלחה את ההזמנה אל {email}. זה עשוי לקחת כמה דקות, וייתכן שההודעה תגיע לספאם.",
+    "stepInstall": "התקינו את TestFlight מה-App Store",
+    "stepOpen": "פתחו את ההזמנה ב-iPhone שלכם",
+    "stepSignIn": "התחברו ל-Memry בטלפון",
+    "done": "סיום",
+    "dialogTitle": "הצטרפות ל-Memry ל-iPhone",
+    "dialogBody": "Apple שולחת לך הזמנת TestFlight באימייל. יש להשתמש באימייל של Apple ID שב-iPhone שלך.",
+    "entryTitle": "הבטא ל-iPhone זמינה",
+    "entrySubtitle": "דרך TestFlight",
+    "entryJoin": "להצטרף לבטא",
+    "entrySent": "ההזמנה נשלחה אל {email}",
+    "sendAgain": "שליחה חוזרת"
   }
 }

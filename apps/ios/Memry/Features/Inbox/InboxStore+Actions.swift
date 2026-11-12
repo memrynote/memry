@@ -10,7 +10,9 @@ extension InboxStore {
     func archive(_ item: InboxItemRecord) async {
         let id = item.id
         let title = InboxMeta.displayTitle(item)
-        guard await writeRemoving([id], { try $0.archive(id: id) }) != nil else { return }
+        let archived = await writeRemoving([id], { try $0.archive(id: id) }) != nil
+        trackArchived(ok: archived)
+        guard archived else { return }
         showToast(InboxCopy.archived(title)) { [weak self] in
             await self?.write { try $0.unarchive(id: id) }
             self?.showToast(InboxCopy.changesUndone)
@@ -18,7 +20,9 @@ extension InboxStore {
     }
 
     func archive(_ ids: [String]) async {
-        guard let result = await writeRemoving(ids, { try $0.bulkArchive(ids: ids) }) else { return }
+        let result = await writeRemoving(ids, { try $0.bulkArchive(ids: ids) })
+        trackBulk(.inboxArchived, "archived", processed: result.map { Int($0.processed) })
+        guard let result else { return }
         let archived = ids.filter { !result.failedIds.contains($0) }
         showToast(InboxCopy.archivedItems(Int(result.processed))) { [weak self] in
             for id in archived { await self?.write { try $0.unarchive(id: id) } }
@@ -31,20 +35,24 @@ extension InboxStore {
         let until = Int64(date.timeIntervalSince1970 * 1000)
         let label = InboxSnoozeFormat.until(date, now: clock())
         if ids.count == 1, let id = ids.first {
-            guard await writeRemoving(ids, { try $0.snooze(id: id, untilMs: until, reason: nil) }) != nil else { return }
+            let snoozed = await writeRemoving(ids, { try $0.snooze(id: id, untilMs: until, reason: nil) }) != nil
+            trackSnoozed("snoozed", ok: snoozed)
+            guard snoozed else { return }
             showToast(InboxCopy.snoozedUntil(label)) { [weak self] in
                 await self?.write { try $0.unsnooze(id: id) }
                 self?.showToast(InboxCopy.changesUndone)
             }
         } else {
-            guard let result = await writeRemoving(ids, { try $0.bulkSnooze(ids: ids, untilMs: until, reason: nil) })
-            else { return }
+            let result = await writeRemoving(ids, { try $0.bulkSnooze(ids: ids, untilMs: until, reason: nil) })
+            trackBulk(.inboxSnoozed, "snoozed", processed: result.map { Int($0.processed) })
+            guard let result else { return }
             showToast(InboxCopy.snoozedItemsUntil(Int(result.processed), label))
         }
     }
 
     func unsnooze(_ id: String) async {
-        await write { try $0.unsnooze(id: id) }
+        let unsnoozed = await write { try $0.unsnooze(id: id) } != nil
+        trackSnoozed("unsnoozed", ok: unsnoozed)
     }
 
     /// Archived → back in the inbox (`toast.restored`).

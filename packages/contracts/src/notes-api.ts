@@ -156,7 +156,14 @@ export interface BacklinkContext {
   linkEnd: number
 }
 
-export interface Backlink {
+/** What the reference filters on a note page read about a referencing note. */
+export interface ReferenceSourceFacets {
+  /** The day (YYYY-MM-DD) when the source is a journal entry, else null. */
+  sourceJournalDate: string | null
+  sourceTags: string[]
+}
+
+export interface Backlink extends ReferenceSourceFacets {
   sourceId: string
   sourcePath: string
   sourceTitle: string
@@ -507,7 +514,7 @@ export interface NoteAliasEditResponse {
  * linking to it (#3320). `contexts[i]` is the source's i-th mention, the
  * ordinal `notes:link-mention` takes.
  */
-export interface UnlinkedMention {
+export interface UnlinkedMention extends ReferenceSourceFacets {
   sourceId: string
   sourcePath: string
   sourceTitle: string

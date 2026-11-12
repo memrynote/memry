@@ -1,4 +1,5 @@
 import { ipcMain } from 'electron'
+import { markMainActivity } from '../../main-activity'
 import { setIpcHandlerChannel } from '../validate'
 
 type IpcHandleListener = Parameters<typeof ipcMain.handle>[1]
@@ -17,8 +18,9 @@ let installed = false
  *
  * `ipcMain.handle(channel, listener)` is the one place that knows both halves.
  * Wrapping it records the pairing once, centrally, instead of threading a
- * channel argument through 175 registration sites. Behaviour is untouched: the
- * real `handle` is always called with the same arguments.
+ * channel argument through 175 registration sites. The same boundary marks each
+ * invocation as main-process activity, so a stall log can name the channel
+ * that was running (main-activity.ts).
  *
  * Call this before any handler registers (`registerAllHandlers` does).
  * Registrations that happen earlier simply keep the old generic label.
@@ -30,6 +32,9 @@ export function installIpcChannelLabels(): void {
   const originalHandle = ipcMain.handle.bind(ipcMain)
   ipcMain.handle = (channel: string, listener: IpcHandleListener): void => {
     setIpcHandlerChannel(listener, channel)
-    originalHandle(channel, listener)
+    originalHandle(channel, (event, ...args: unknown[]) => {
+      markMainActivity(`ipc:${channel}`)
+      return listener(event, ...args)
+    })
   }
 }

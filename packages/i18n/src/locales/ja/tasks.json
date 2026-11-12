@@ -113,7 +113,74 @@
       "noDueDate": "期限なし"
     },
     "repeatTypeRepeating": "繰り返し",
-    "repeatTypeOneTime": "単発"
+    "repeatTypeOneTime": "単発",
+    "advanced": {
+      "entry": "詳細フィルター…",
+      "entryHint": "かつ・または・否定のルール",
+      "title": "フィルター",
+      "match": "次の条件に",
+      "ofThese": "一致",
+      "matches": {
+        "all": "すべて",
+        "any": "いずれか",
+        "none": "どれも"
+      },
+      "fields": {
+        "title": "タイトル",
+        "status": "ステータス",
+        "priority": "優先度",
+        "due": "期限",
+        "project": "プロジェクト",
+        "location": "場所",
+        "tags": "タグ",
+        "repeat": "繰り返し",
+        "hasTime": "時刻あり"
+      },
+      "ops": {
+        "contains": "を含む",
+        "notContains": "を含まない",
+        "any": "のいずれか",
+        "none": "のいずれでもない",
+        "all": "のすべてを持つ",
+        "empty": "空",
+        "notEmpty": "空ではない",
+        "is": "である",
+        "isNot": "ではない"
+      },
+      "tagOps": {
+        "any": "のいずれかを持つ",
+        "all": "のすべてを持つ",
+        "none": "のいずれも持たない"
+      },
+      "values": {
+        "repeating": "繰り返し",
+        "oneTime": "1回のみ",
+        "withTime": "時刻あり",
+        "withoutTime": "時刻なし",
+        "customRange": "カスタム期間",
+        "from": "開始",
+        "to": "終了",
+        "pick": "選択…",
+        "titlePlaceholder": "タイトル内のテキスト"
+      },
+      "addRule": "ルールを追加",
+      "addGroup": "グループを追加",
+      "clear": "クリア",
+      "removeRule": "ルールを削除",
+      "removeGroup": "グループを削除",
+      "matchCount": "{count, plural, other {# 件のタスクが一致}}",
+      "skipped": "{count, plural, other {# 件のルールをスキップ}}",
+      "ruleCount": "{count, plural, other {# 件のルール}}",
+      "unknownRule": "新しいバージョンのルール",
+      "empty": "ルールはまだありません。追加するとフィルターが始まります。",
+      "summary": {
+        "and": "かつ",
+        "or": "または",
+        "not": "否定"
+      },
+      "editRules": "ルールを編集",
+      "clearRules": "ルールをクリア"
+    }
   },
   "quickAdd": {
     "label": "タスクのクイック追加",

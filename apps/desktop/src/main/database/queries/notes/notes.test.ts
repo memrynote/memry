@@ -50,6 +50,7 @@ import {
   journalEntryExistsByDate,
   getHeatmapData,
   getJournalMonthEntries,
+  getJournalSameDayEntries,
   getJournalYearStats,
   getJournalStreak,
   deserializeValue,
@@ -165,7 +166,7 @@ describe('notes cache queries', () => {
     expect(JSON.stringify(listNotesFromCache(db))).toBe(
       '[{"id":"proj-1","path":"notes/proj-1.md","title":"Projection proj-1","fileType":"markdown",' +
         '"mimeType":"text/markdown","fileSize":4096,"attachmentId":null,"emoji":"📝","cover":null,"taskIds":null,' +
-        '"localOnly":false,' +
+        '"taskChecks":null,"localOnly":false,' +
         '"contentHash":"hash-proj-1","wordCount":320,"characterCount":1800,"snippet":"' +
         'x'.repeat(200) +
         '","date":null,"clock":null,"syncedAt":null,"createdAt":"2026-01-10T00:00:00.000Z",' +
@@ -550,6 +551,23 @@ describe('notes cache queries', () => {
     expect(streak.currentStreak).toBe(3)
     expect(streak.longestStreak).toBe(3)
     expect(streak.lastEntryDate).toBe('2026-01-15')
+  })
+
+  it('finds the same day in other years, newest first, with leap days on Feb 28', () => {
+    for (const date of ['2024-02-28', '2024-02-29', '2025-02-28', '2026-02-27', '2027-02-28']) {
+      createNote(`j${date}`, { path: `journal/${date}.md`, date })
+    }
+
+    expect(getJournalSameDayEntries(db, '2027-02-28').map((row) => row.date)).toEqual([
+      '2025-02-28',
+      '2024-02-29',
+      '2024-02-28'
+    ])
+    expect(getJournalSameDayEntries(db, '2028-02-29').map((row) => row.date)).toEqual([
+      '2027-02-28',
+      '2025-02-28',
+      '2024-02-29'
+    ])
   })
 })
 

@@ -99,9 +99,9 @@ struct NoteTitleEditor: View {
         // enqueue a push. Compared here as well as in the model: the model's
         // `current` reads "Untitled note" while the page reloads.
         if draft != title { rename(draft) }
-        UIApplication.shared.sendAction(
-            #selector(UIResponder.resignFirstResponder), to: nil, from: nil, for: nil
-        )
+        // Only the title's own focus: when a tap in a block ended the edit,
+        // that block is already first responder and keeps its caret.
+        focused = false
     }
 
     private func commitAndContinue() {
@@ -390,6 +390,12 @@ struct NotePropertyEditor: View {
     /// A note's title and icon by id, for a relation's value.
     var noteTitle: (String) -> String? = { _ in nil }
     var noteIcon: (String) -> String? = { _ in nil }
+    /// Every project in the vault, archived ones included so a chip naming
+    /// one still draws in its colour; only live ones are offered.
+    var projects: [ProjectItem] = []
+    /// Picks or unpicks a project by name; `nil` leaves the value read-only.
+    var toggleProject: ((String) -> Void)?
+    var removeProject: ((String) -> Void)?
 
     @State private var draft: String = ""
     @State private var loaded = false
@@ -595,13 +601,18 @@ struct NotePropertyEditor: View {
             .accessibilityLabel(property.name)
 
         case .project:
+            // Picked from the vault's live projects, as desktop's
+            // `ProjectEditor` does; the value is their names.
             FlowLayout(spacing: Tokens.Space.tight) {
-                ForEach(listed, id: \.self) { name in
-                    Chip(text: name, color: Tokens.Text.primary.color)
+                ForEach(projectNames, id: \.self) { name in
+                    projectChip(name)
+                }
+                if toggleProject != nil {
+                    projectMenu
                 }
             }
+            .accessibilityElement(children: .contain)
             .accessibilityLabel(property.name)
-            .accessibilityValue(draft)
 
         case .number:
             TextField("Empty", text: $draft)
@@ -632,6 +643,66 @@ struct NotePropertyEditor: View {
     }
 
     private var relationURIs: [String] { listed }
+
+    private var projectNames: [String] { NoteProjectValue.names(property.valueJson) }
+
+    private func project(named name: String) -> ProjectItem? {
+        projects.first { $0.name.caseInsensitiveCompare(name) == .orderedSame }
+    }
+
+    private var projectMenu: some View {
+        let live = projects.filter { $0.archivedAt == nil }
+        return Menu {
+            if live.isEmpty {
+                Text("No projects")
+            }
+            ForEach(live, id: \.id) { item in
+                let picked = projectNames.contains { $0.caseInsensitiveCompare(item.name) == .orderedSame }
+                Button {
+                    toggleProject?(item.name)
+                } label: {
+                    Label(item.name, systemImage: picked ? "checkmark" : "")
+                }
+            }
+        } label: {
+            Group {
+                if projectNames.isEmpty {
+                    Text("No project")
+                } else {
+                    Image(systemName: "plus")
+                        .font(Tokens.Typography.caption.font.weight(.medium))
+                        .padding(.horizontal, Tokens.Space.tight)
+                }
+            }
+            .foregroundStyle(Tokens.Text.tertiary.color)
+            .contentShape(.rect)
+        }
+        .accessibilityLabel("Choose a project for \(property.name)")
+    }
+
+    /// One project: its colour when this vault knows it, muted when the name
+    /// matches none (desktop keeps a typo visible rather than dropping it).
+    private func projectChip(_ name: String) -> some View {
+        let known = project(named: name)
+        return HStack(spacing: Tokens.Space.tight) {
+            Chip(
+                text: name,
+                color: known.map { Tokens.Palette.color($0.color) } ?? Tokens.Text.tertiary.color
+            )
+            if let removeProject {
+                Button {
+                    removeProject(name)
+                } label: {
+                    Image(systemName: "xmark")
+                        .font(Tokens.Typography.caption.font)
+                        .foregroundStyle(Tokens.Text.tertiary.color)
+                        .contentShape(.rect)
+                }
+                .buttonStyle(.plain)
+                .accessibilityLabel("Remove \(name) from \(property.name)")
+            }
+        }
+    }
 
     /// One related note: its icon and title when this vault knows it, the id
     /// when it does not, and a remove control beside it (desktop's chip).
@@ -766,7 +837,7 @@ private struct NoteAddPropertySheet: View {
                         .autocorrectionDisabled()
                         .accessibilityLabel("Property name")
                 }
-                Section("Type") {
+                Section {
                     ForEach(NotePropertyKind.allCases, id: \.self) { kind in
                         let blocked = kind == .project && existing.contains(NotePropertyKind.projectName)
                         Button {
@@ -779,6 +850,12 @@ private struct NoteAddPropertySheet: View {
                         }
                         .disabled(blocked)
                     }
+                } header: {
+                    Text("Type")
+                } footer: {
+                    // `NewPropertyName.resolve`: the project link is keyed
+                    // off the reserved name, so a typed one is not used.
+                    Text("A Project property is always named \u{201C}project\u{201D}.")
                 }
             }
             .navigationTitle("Add a property")
@@ -811,6 +888,8 @@ struct NoteMetadataEditors: View {
     var tagSuggestions: [String] = []
     /// The notes a relation may point at.
     var relationCandidates: [NoteSummary] = []
+    /// The vault's projects, for the `project` property.
+    var projects: [ProjectItem] = []
     /// Opens the names line's field; `nil` when the note already has a name.
     var addName: (() -> Void)?
 
@@ -1099,7 +1178,20 @@ struct NoteMetadataEditors: View {
             },
             relationCandidates: relationCandidates,
             noteTitle: noteTitle,
-            noteIcon: noteIcon
+            noteIcon: noteIcon,
+            projects: projects,
+            toggleProject: { name in
+                Task {
+                    await model.toggleProject(name, in: NoteProjectValue.names(property.valueJson))
+                    await reload()
+                }
+            },
+            removeProject: { name in
+                Task {
+                    await model.removeProject(name, from: NoteProjectValue.names(property.valueJson))
+                    await reload()
+                }
+            }
         )
     }
 }

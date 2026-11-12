@@ -236,5 +236,21 @@
     "range": "{start} – {end}",
     "openTask": "{title}, {range}",
     "completeTask": "{title} 완료"
+  },
+  "pastYears": {
+    "title": "이날",
+    "count": "{count, plural, other {다른 연도 #개}}",
+    "showAll": "모든 연도",
+    "showPreviews": "미리 보기",
+    "yearsAgo": "{count, plural, other {#년 전}}",
+    "yearsLater": "{count, plural, other {#년 후}}",
+    "words": "{count, plural, other {#단어}}",
+    "openDay": "{date} 열기",
+    "showFull": "전체 항목 보기",
+    "showLess": "간단히 보기",
+    "loadError": "다른 연도의 이날을 불러오지 못했습니다.",
+    "previousYear": "같은 날, 이전 연도",
+    "nextYear": "같은 날, 다음 연도",
+    "goToYear": "{year}년의 이날로 이동"
   }
 }

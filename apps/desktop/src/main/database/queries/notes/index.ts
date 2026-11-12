@@ -115,6 +115,8 @@ export {
   ensurePropertyDefinition,
   getPropertyType,
   listNotePropertyRowsByName,
+  listPropertyUsage,
+  listNotesWithProperty,
   setNotePropertyType,
   type PropertyValue
 } from './property-queries'
@@ -148,6 +150,7 @@ export {
   journalEntryExistsByDate,
   getHeatmapData,
   getJournalMonthEntries,
+  getJournalSameDayEntries,
   getJournalYearStats,
   getJournalStreak,
   listJournalEntries,

@@ -113,7 +113,74 @@
       "noDueDate": "Bez termínu"
     },
     "repeatTypeRepeating": "Opakujúca sa",
-    "repeatTypeOneTime": "Jednorazová"
+    "repeatTypeOneTime": "Jednorazová",
+    "advanced": {
+      "entry": "Rozšírený filter…",
+      "entryHint": "Pravidlá s a, alebo, nie",
+      "title": "Filter",
+      "match": "Spĺňa",
+      "ofThese": "z týchto",
+      "matches": {
+        "all": "všetky",
+        "any": "ktorékoľvek",
+        "none": "žiadne"
+      },
+      "fields": {
+        "title": "Názov",
+        "status": "Stav",
+        "priority": "Priorita",
+        "due": "Termín",
+        "project": "Projekt",
+        "location": "Miesto",
+        "tags": "Štítky",
+        "repeat": "Opakovanie",
+        "hasTime": "Má čas"
+      },
+      "ops": {
+        "contains": "obsahuje",
+        "notContains": "neobsahuje",
+        "any": "je niektoré z",
+        "none": "nie je žiadne z",
+        "all": "má všetky z",
+        "empty": "je prázdne",
+        "notEmpty": "nie je prázdne",
+        "is": "je",
+        "isNot": "nie je"
+      },
+      "tagOps": {
+        "any": "má niektorý z",
+        "all": "má všetky z",
+        "none": "nemá žiadny z"
+      },
+      "values": {
+        "repeating": "Opakujúca sa",
+        "oneTime": "Jednorazová",
+        "withTime": "S časom",
+        "withoutTime": "Bez času",
+        "customRange": "Vlastný rozsah",
+        "from": "Od",
+        "to": "Do",
+        "pick": "Vybrať…",
+        "titlePlaceholder": "Text v názve"
+      },
+      "addRule": "Pridať pravidlo",
+      "addGroup": "Pridať skupinu",
+      "clear": "Vymazať",
+      "removeRule": "Odstrániť pravidlo",
+      "removeGroup": "Odstrániť skupinu",
+      "matchCount": "{count, plural, one {Vyhovuje # úloha} few {Vyhovujú # úlohy} many {Vyhovuje # úlohy} other {Vyhovuje # úloh}}",
+      "skipped": "{count, plural, one {# pravidlo preskočené} few {# pravidlá preskočené} many {# pravidla preskočeného} other {# pravidiel preskočených}}",
+      "ruleCount": "{count, plural, one {# pravidlo} few {# pravidlá} many {# pravidla} other {# pravidiel}}",
+      "unknownRule": "Pravidlo z novšej verzie",
+      "empty": "Zatiaľ žiadne pravidlá. Pridajte jedno a začnite filtrovať.",
+      "summary": {
+        "and": "a",
+        "or": "alebo",
+        "not": "nie"
+      },
+      "editRules": "Upraviť pravidlá",
+      "clearRules": "Vymazať pravidlá"
+    }
   },
   "quickAdd": {
     "label": "Rýchlo pridať úlohu",

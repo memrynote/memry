@@ -72,7 +72,9 @@ struct CoreBlockEditor: BlockEditing {
     }
 
     func edit(noteId: String, _ edit: BlockEdit) async throws -> Bool {
-        try await executor.run { try writer().editBlock(noteId: noteId, edit: edit) }
+        let landed = try await executor.run { try writer().editBlock(noteId: noteId, edit: edit) }
+        if landed { NotesTelemetry.noteUpdated(noteId, source: "editor_body") }
+        return landed
     }
 
     func snapshot(noteId: String, blockId: String) async throws -> String? {
@@ -82,6 +84,10 @@ struct CoreBlockEditor: BlockEditing {
     var movesBlocksBetweenNotes: Bool { true }
 
     func appendSnapshot(_ snapshot: String, toNote noteId: String) async throws -> Bool {
-        try await executor.run { try writer().appendBlockSnapshot(noteId: noteId, snapshot: snapshot) }
+        let landed = try await executor.run { try writer().appendBlockSnapshot(noteId: noteId, snapshot: snapshot) }
+        if landed {
+            Telemetry.shared.track(.noteUpdated, surface: .notes, action: "blocks_appended", objectType: "note", result: .success)
+        }
+        return landed
     }
 }

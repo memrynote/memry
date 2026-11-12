@@ -1,8 +1,9 @@
-import { app, BrowserWindow, dialog } from 'electron'
+import { app, dialog } from 'electron'
 import { getMainI18n } from '../lib/main-i18n'
+import { getMainWindow } from '../main-window'
 
 export async function showPairConsentDialog(origin: string): Promise<boolean> {
-  const mainWindow = BrowserWindow.getAllWindows()[0]
+  const mainWindow = getMainWindow()
   if (!mainWindow) return false
   if (mainWindow.isMinimized()) mainWindow.restore()
   // The request comes from the browser, which stays frontmost. The dialog is a

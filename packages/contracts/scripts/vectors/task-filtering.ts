@@ -6,13 +6,19 @@
  * `@memry/domain-tasks/filtering` functions the desktop renderer runs. Groups
  * carry label **keys**, never display text. An unknown sort field (a saved
  * filter from a newer build) must leave the order untouched and yield no groups.
+ * `expressions` runs advanced filter trees task by task; a rule this build
+ * cannot evaluate is skipped, never matching everything or nothing.
+ * `locationOptions` records the Location filter's folder and note rows over
+ * its own small vault: counts, tree order, kept selections and search.
  *
  * Determinism: TZ pinned to UTC for the build; `now` and the week start are
  * explicit. Titles and project names order by `localeCompare` (ICU root).
  */
 import {
   applyFiltersAndSortWithContext,
+  buildTaskLocationOptions,
   countActiveFilters,
+  countTaskFilterRules,
   filterByCompletion,
   filterByDueDateRange,
   filterByHasTime,
@@ -24,21 +30,27 @@ import {
   filterByTags,
   groupTasksForSort,
   hasActiveFilters,
+  matchesTaskFilterExpression,
   sortTasksAdvanced,
   type DueDateFilter,
   type FilterTask,
   type SortField,
+  type TaskFilterGroup,
   type TaskFilters,
   type TaskNoteInfo,
   type TaskSort
 } from '../../../domain-tasks/src/filtering/index.ts'
 import { parseDateKey } from '../../../domain-tasks/src/parsing/index.ts'
 import {
+  EXPRESSION_CASES,
   FILTER_CASES,
   FILTER_NOTES,
   FILTER_NOWS,
   FILTER_PROJECTS,
   FILTER_TASKS,
+  LOCATION_CASES,
+  LOCATION_NOTES,
+  LOCATION_TASKS,
   type WireDueDateFilter,
   type WireFilters,
   type WireTask
@@ -87,7 +99,12 @@ const toDue = (wire: WireDueDateFilter): DueDateFilter =>
     customEnd: wire.customEnd ? parseDateKey(wire.customEnd) : null
   }) as DueDateFilter
 
-const toFilters = (wire: WireFilters): TaskFilters => ({ ...wire, dueDate: toDue(wire.dueDate) })
+const toFilters = (wire: WireFilters): TaskFilters => ({
+  ...wire,
+  dueDate: toDue(wire.dueDate),
+  // oxlint-disable-next-line typescript/no-unsafe-type-assertion -- fixture trees include a newer build's rules on purpose; the evaluator skips what it does not know
+  expression: (wire.expression ?? null) as TaskFilterGroup | null
+})
 
 const ids = (list: readonly FilterTask[]): string[] => list.map((task) => task.id)
 
@@ -206,6 +223,34 @@ function build() {
     }
   }))
 
+  const expressions = EXPRESSION_CASES.flatMap((c) =>
+    [true, false].map((withNotes) => {
+      // oxlint-disable-next-line typescript/no-unsafe-type-assertion -- fixture trees include a newer build's rules on purpose; the evaluator skips what it does not know
+      const expression = c.expression as TaskFilterGroup
+      const ctx = {
+        now: new Date(FILTER_NOWS[c.now]),
+        weekStartsOn: c.weekStartsOn,
+        noteIndex: withNotes ? noteIndex : undefined
+      }
+      return {
+        ...c,
+        withNotes,
+        expected: ids(tasks.filter((task) => matchesTaskFilterExpression(task, expression, ctx))),
+        ruleCount: countTaskFilterRules(expression)
+      }
+    })
+  )
+
+  const locationIndex = new Map<string, TaskNoteInfo>(LOCATION_NOTES.map((note) => [note.id, note]))
+  const locationOptions = {
+    notes: LOCATION_NOTES,
+    tasks: LOCATION_TASKS,
+    cases: LOCATION_CASES.map((c) => ({
+      ...c,
+      expected: buildTaskLocationOptions(LOCATION_TASKS, locationIndex, c.selected, c.query)
+    }))
+  }
+
   return {
     meta: {
       spec: '004-ios-tasks-parity',
@@ -222,7 +267,9 @@ function build() {
     dimensions,
     sorts,
     groups,
-    applied
+    applied,
+    expressions,
+    locationOptions
   }
 }
 

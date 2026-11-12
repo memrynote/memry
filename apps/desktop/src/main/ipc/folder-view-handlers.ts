@@ -43,6 +43,7 @@ import { listTagItems, readTagViews, writeTagViews } from '../tags/store'
 import { defaultFieldTagView, fieldColumns, listFieldTagRows, tagItemToRow } from '../tags/objects'
 import { loadResolvedTags } from '../tags/schema/read'
 import { getPropertiesForNotes } from '../notes/store'
+import { pairedFolderPath } from '@memry/shared/folder-note'
 
 const logger = createLogger('IPC:FolderView')
 
@@ -77,6 +78,40 @@ function computeRelativeFolder(notePath: string, viewedFolder: string): string {
   }
 
   return '/'
+}
+
+/** The note_cache columns a folder view row is built from. */
+const folderRowColumns = {
+  id: noteCache.id,
+  path: noteCache.path,
+  title: noteCache.title,
+  emoji: noteCache.emoji,
+  cover: noteCache.cover,
+  created: noteCache.createdAt,
+  modified: noteCache.modifiedAt,
+  wordCount: noteCache.wordCount,
+  // #2073: the renderer has to know a PDF row from a note row so its
+  // metadata cells stay read-only instead of rewriting the binary.
+  fileType: noteCache.fileType
+}
+
+/**
+ * The folder's own note: `X.md` beside `X/`, which the sidebar draws on the
+ * folder's row. It lives next to the folder, not in it, so the path query
+ * misses it, but the folder view lists it as one of the folder's rows. The
+ * LIKE only narrows the scan; `pairedFolderPath` decides.
+ */
+async function findFolderNote(db: ReturnType<typeof getDataDb>, folderPath: string) {
+  if (!folderPath) return null
+  const candidates = await db
+    .select({ ...folderRowColumns, date: noteCache.date })
+    .from(noteCache)
+    .where(like(noteCache.path, `${folderPath}.%`))
+  return (
+    candidates.find(
+      (note) => pairedFolderPath(note.path, note.fileType, note.date !== null) === folderPath
+    ) ?? null
+  )
 }
 
 /**
@@ -340,19 +375,7 @@ export function registerFolderViewHandlers(): void {
 
         // Query notes in folder (exclude journal entries where date IS NOT NULL)
         const notesResult = await db
-          .select({
-            id: noteCache.id,
-            path: noteCache.path,
-            title: noteCache.title,
-            emoji: noteCache.emoji,
-            cover: noteCache.cover,
-            created: noteCache.createdAt,
-            modified: noteCache.modifiedAt,
-            wordCount: noteCache.wordCount,
-            // #2073: the renderer has to know a PDF row from a note row so its
-            // metadata cells stay read-only instead of rewriting the binary.
-            fileType: noteCache.fileType
-          })
+          .select(folderRowColumns)
           .from(noteCache)
           .where(and(like(noteCache.path, pathPattern), isNull(noteCache.date)))
           .limit(input.limit + 1) // +1 to check hasMore
@@ -360,7 +383,10 @@ export function registerFolderViewHandlers(): void {
           .orderBy(noteCache.modifiedAt)
 
         const hasMore = notesResult.length > input.limit
-        const notes = notesResult.slice(0, input.limit)
+        // The folder's own note rides on the last page, so the offsets callers
+        // derive from the rows they received keep lining up with the query.
+        const folderNote = hasMore ? null : await findFolderNote(db, folderPath)
+        const notes = [...notesResult.slice(0, input.limit), ...(folderNote ? [folderNote] : [])]
 
         if (notes.length === 0) {
           return { notes: [], total: 0, hasMore: false }
@@ -488,14 +514,14 @@ export function registerFolderViewHandlers(): void {
           .from(noteCache)
           .where(and(like(noteCache.path, pathPattern), isNull(noteCache.date)))
 
-        if (folderNotes.length === 0) {
+        const folderNote = await findFolderNote(db, folderPath)
+        const noteIds = [...folderNotes, ...(folderNote ? [folderNote] : [])].map((note) => note.id)
+
+        if (noteIds.length === 0) {
           return { builtIn: builtInForScope, properties: [], formulas }
         }
 
-        const propCounts = await fetchPropertyCounts(
-          db,
-          folderNotes.map((note) => note.id)
-        )
+        const propCounts = await fetchPropertyCounts(db, noteIds)
 
         return { builtIn: builtInForScope, properties: toAvailableProperties(propCounts), formulas }
       }

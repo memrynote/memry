@@ -12,6 +12,26 @@ The default writing surface for a single date.
 - Date in the breadcrumb opens the picker
 - The editor shows that day's entry; the day panel shows that date's schedule and tasks when the Calendar and Tasks features are enabled
 
+## On This Day
+
+Below each entry, **On this day** lists the same date in every other year you wrote something. Each row shows the year, the weekday, and the opening lines of that entry. Click a row to open that day.
+
+Years with no entry, or an empty entry, are left out. If no other year has an entry on this date, the section does not appear.
+
+**All years** in the section header switches to the Forever Journal layout: every year of the date on one page, each entry in full and read-only. Long entries fold behind **Show full entry**. **Previews** switches back. The choice is remembered.
+
+Only the entry you have open is editable. To edit an earlier year, open that day.
+
+### Jumping Between Years
+
+When the same date has an entry in another year, the breadcrumb shows the nearest one: `‹ 2024` for an earlier year, `2026 ›` for a later one. The jump skips years without an entry. For example, on November 10, 2026 with no entry for 2025, `‹` goes straight to November 10, 2024. The buttons are hidden when there is nowhere to go.
+
+The same jumps are in the [Command Palette](/user-guide/command-palette) as **Same Day, Previous Year** and **Same Day, Next Year**, with no default shortcut.
+
+February 29 counts as February 28 in years without a leap day, so a leap-day entry still has a match every year.
+
+Entries from other years show their year in the title, and the breadcrumb notes how far back they are, such as **2 years ago**.
+
 ## Month View
 
 A grid of squares — one per day — with intensity reflecting entry length.

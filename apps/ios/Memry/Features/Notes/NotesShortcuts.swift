@@ -235,7 +235,7 @@ struct BookmarkListView: View {
                 ContentUnavailableView {
                     Label("No bookmarks", systemImage: "bookmark")
                 } description: {
-                    Text("Bookmarks you make on desktop show here.")
+                    Text("Bookmarks you make on your other devices show here.")
                 }
             } else if filtered.isEmpty {
                 ContentUnavailableView.search(text: query)

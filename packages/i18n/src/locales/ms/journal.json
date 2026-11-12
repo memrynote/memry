@@ -236,5 +236,21 @@
     "range": "{start} – {end}",
     "openTask": "{title}, {range}",
     "completeTask": "Selesaikan {title}"
+  },
+  "pastYears": {
+    "title": "Pada hari ini",
+    "count": "{count, plural, other {# tahun lain}}",
+    "showAll": "Semua tahun",
+    "showPreviews": "Pratonton",
+    "yearsAgo": "{count, plural, other {# tahun lalu}}",
+    "yearsLater": "{count, plural, other {# tahun kemudian}}",
+    "words": "{count, plural, other {# perkataan}}",
+    "openDay": "Buka {date}",
+    "showFull": "Tunjukkan entri penuh",
+    "showLess": "Tunjukkan kurang",
+    "loadError": "Tidak dapat memuatkan hari ini dari tahun lain.",
+    "previousYear": "Hari yang sama, tahun sebelumnya",
+    "nextYear": "Hari yang sama, tahun berikutnya",
+    "goToYear": "Pergi ke hari ini pada {year}"
   }
 }

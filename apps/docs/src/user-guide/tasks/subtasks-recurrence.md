@@ -108,6 +108,12 @@ task** for the next date in the rule. You end up with one completed record per c
 with its own completion date, rather than a single task you keep reopening. The completed
 instance moves to the Completed view; the fresh one appears in the active list.
 
+This happens wherever you complete the task: the Tasks list, the calendar, the journal
+day panel, a task in a note, a Done status or column, or an agent. Imports are the
+exception: a task that arrives already completed keeps that state without creating a
+next occurrence, because the source app already recorded one. Bulk completion of several
+selected tasks also closes each task without rolling its series.
+
 Editing a recurring task edits the series. There is no per-occurrence override and no
 "skip this occurrence" action yet; to skip a cycle, move the due date forward by hand.
 
@@ -118,6 +124,11 @@ daily task due Monday and finished on Thursday is still due Tuesday. A task can 
 anchored to its **completion date**, which restarts the interval on the day you actually
 finished — finishing Monday's daily task on Thursday then schedules Friday. That is what
 habit tracking usually wants.
+
+The rule runs on the due date, so set the weekdays to the day the task is due. A start
+date moves with it and keeps the same distance before the due date: a weekly task that
+starts Wednesday and is due Sunday repeats on Sundays, and each next occurrence starts the
+Wednesday before its Sunday.
 
 The anchor has no picker in the app yet. It is set by the importers and the CLI: an
 Obsidian task written as `🔁 every day when done` keeps its completion anchor through

@@ -82,7 +82,8 @@ const stopEmbeddingModelMock = vi.fn(async () => undefined)
 const startGoogleCalendarSyncRunnerMock = vi.fn(async () => undefined)
 const stopGoogleCalendarSyncRunnerMock = vi.fn()
 const triggerGoogleCalendarSyncNowMock = vi.fn()
-const computeSpkiHashFromPemMock = vi.fn(() => 'hash')
+const sessionChainHashesMock = vi.fn(() => ['hash'])
+const verifySessionCertificatePinMock = vi.fn(() => true)
 const isPinningDisabledMock = vi.fn(() => true)
 const getPinnedCertificateHashesMock = vi.fn(() => [] as string[])
 const getPinnedCertificateHashesForHostnameMock = vi.fn(() => [] as string[])
@@ -104,6 +105,7 @@ const setCertificateVerifyProcMock = vi.fn()
 const setPermissionRequestHandlerMock = vi.fn()
 const setPermissionCheckHandlerMock = vi.fn()
 const crashReporterStartMock = vi.fn()
+const startLoginShellPathAugmentationMock = vi.fn(() => Promise.resolve(false))
 const globalShortcutRegisterMock = vi.fn(() => true)
 const globalShortcutUnregisterMock = vi.fn()
 const globalShortcutUnregisterAllMock = vi.fn()
@@ -139,6 +141,7 @@ function createBrowserWindowMock() {
     }),
     show: vi.fn(),
     focus: vi.fn(),
+    setSkipTaskbar: vi.fn(),
     loadURL: vi.fn(async () => undefined),
     loadFile: vi.fn(async () => undefined),
     isDestroyed: vi.fn(() => false),
@@ -288,7 +291,8 @@ vi.mock('./calendar/google/google-sync-runner', () => ({
 }))
 
 vi.mock('./sync/certificate-pinning', () => ({
-  computeSpkiHashFromPem: computeSpkiHashFromPemMock,
+  sessionChainHashes: sessionChainHashesMock,
+  verifySessionCertificatePin: verifySessionCertificatePinMock,
   isPinningDisabled: isPinningDisabledMock,
   getPinnedCertificateHashes: getPinnedCertificateHashesMock,
   getPinnedCertificateHashesForHostname: getPinnedCertificateHashesForHostnameMock
@@ -342,6 +346,11 @@ vi.mock('./app-navigation-command', () => ({
   sendAppNavigationCommand: sendAppNavigationCommandMock,
   sendAppNavigationKeyboardCommand: sendAppNavigationKeyboardCommandMock,
   sendAppNavigationSwipeCommand: sendAppNavigationSwipeCommandMock
+}))
+
+vi.mock('./agent/cli/login-shell-path', () => ({
+  startLoginShellPathAugmentation: startLoginShellPathAugmentationMock,
+  whenLoginShellPathApplied: vi.fn(() => Promise.resolve())
 }))
 
 vi.mock('./cli/headless', () => ({
@@ -561,7 +570,8 @@ describe('main index phase2 exports', () => {
     isPinningDisabledMock.mockReturnValue(true)
     getPinnedCertificateHashesMock.mockReturnValue([])
     getPinnedCertificateHashesForHostnameMock.mockReturnValue([])
-    computeSpkiHashFromPemMock.mockReturnValue('hash')
+    sessionChainHashesMock.mockReturnValue(['hash'])
+    verifySessionCertificatePinMock.mockReturnValue(true)
     getOpenNoteIdsMock.mockReturnValue([])
     getProviderDocMock.mockReturnValue(undefined)
     createCloseSnapshotMock.mockResolvedValue(false)
@@ -662,6 +672,31 @@ describe('main index phase2 exports', () => {
     await importMainModule()
 
     expect(requestSingleInstanceLockMock).not.toHaveBeenCalled()
+  })
+
+  it('exits a launch that loses the single-instance lock before any startup work', async () => {
+    requestSingleInstanceLockMock.mockReturnValue(false)
+    const { app } = await import('electron')
+    // The real app.exit ends the process, so nothing after it runs. Throwing
+    // models that: whatever the module would have done next never happens.
+    vi.mocked(app.exit).mockImplementationOnce(() => {
+      throw new Error('process exited')
+    })
+    process.argv = ['/Applications/MemryNote', '/mock/bridge/agy-mcp-bridge.js', '--token=secret']
+
+    await expect(importMainModule()).rejects.toThrow('process exited')
+
+    expect(app.exit).toHaveBeenCalledWith(0)
+    expect(startLoginShellPathAugmentationMock).not.toHaveBeenCalled()
+    expect(crashReporterStartMock).not.toHaveBeenCalled()
+    expect(appOnMock).not.toHaveBeenCalledWith('second-instance', expect.anything())
+    const { createLogger } = await import('./lib/logger')
+    expect(createLogger('Main').info).toHaveBeenCalledWith(
+      'Another instance holds the lock; exiting',
+      expect.objectContaining({
+        argv: ['MemryNote', 'agy-mcp-bridge.js', '--token=<redacted>']
+      })
+    )
   })
 
   it('boots i18n from vault preferences and rebuilds the app menu', async () => {
@@ -1318,18 +1353,27 @@ describe('main index phase2 exports', () => {
     verify({ certificate: {}, hostname: 'api.memrynote.com' }, callback)
     expect(callback).toHaveBeenLastCalledWith(-2)
 
-    computeSpkiHashFromPemMock.mockReturnValueOnce('wrong-hash')
+    verifySessionCertificatePinMock.mockReturnValueOnce(false)
     verify({ certificate: { data: 'pem' }, hostname: 'api.memrynote.com' }, callback)
     expect(callback).toHaveBeenLastCalledWith(-2)
+    expect(sessionChainHashesMock).toHaveBeenCalledTimes(1)
 
-    computeSpkiHashFromPemMock.mockImplementationOnce(() => {
+    verifySessionCertificatePinMock.mockImplementationOnce(() => {
       throw new Error('bad pem')
     })
     verify({ certificate: { data: 'bad' }, hostname: 'api.memrynote.com' }, callback)
     expect(callback).toHaveBeenLastCalledWith(-2)
 
-    verify({ certificate: { data: 'pem' }, hostname: 'api.memrynote.com' }, callback)
-    expect(callback).toHaveBeenLastCalledWith(0)
+    // A pin match defers to Chromium's own verification (-3) instead of forcing success.
+    const request = {
+      certificate: { data: 'pem' },
+      validatedCertificate: { data: 'validated' },
+      hostname: 'api.memrynote.com'
+    }
+    verify(request, callback)
+    expect(callback).toHaveBeenLastCalledWith(-3)
+    // Both chains reach the pin check: the validated one carries the intermediate.
+    expect(verifySessionCertificatePinMock).toHaveBeenLastCalledWith(request, ['hash'])
   })
 
   it('lets unpinned external hosts use normal TLS in packaged builds', async () => {
@@ -1351,8 +1395,9 @@ describe('main index phase2 exports', () => {
     const callback = vi.fn()
     verify({ certificate: {}, hostname: 'react-tweet.vercel.app' }, callback)
 
-    expect(callback).toHaveBeenCalledWith(0)
-    expect(computeSpkiHashFromPemMock).not.toHaveBeenCalled()
+    // -3 keeps Chromium's own verification; a host without pins never reaches the pin check.
+    expect(callback).toHaveBeenCalledWith(-3)
+    expect(verifySessionCertificatePinMock).not.toHaveBeenCalled()
   })
 
   it('leaves certificate verification unset when pinning has no pins', async () => {
@@ -1581,6 +1626,53 @@ describe('main index phase2 exports', () => {
     expect(existing.show).toHaveBeenCalled()
     expect(existing.restore).toHaveBeenCalled()
     expect(existing.focus).toHaveBeenCalled()
+  })
+
+  it('surfaces the main window, not a hidden sticky listed before it, on a second launch', async () => {
+    whenReadyMock.mockResolvedValue(undefined)
+
+    await importMainModule()
+    await flushReadyWork()
+
+    const mainWindow = browserWindows[0]
+    const hiddenSticky = createBrowserWindowMock()
+    hiddenSticky.isVisible.mockReturnValue(false)
+    BrowserWindowMock.getAllWindows.mockImplementation(() => [hiddenSticky, mainWindow])
+
+    const secondInstanceHandler = appOnMock.mock.calls.find(
+      ([event]) => event === 'second-instance'
+    )?.[1] as (event: unknown, commandLine: string[]) => void
+    secondInstanceHandler({}, [])
+
+    expect(hiddenSticky.show).not.toHaveBeenCalled()
+    expect(mainWindow.focus).toHaveBeenCalled()
+  })
+
+  it('routes a deep link to the main window, not a sticky listed before it', async () => {
+    whenReadyMock.mockResolvedValue(undefined)
+
+    const module = await importMainModule()
+    await flushReadyWork()
+    module.registerOAuthState('oauth-state')
+
+    const mainWindow = browserWindows[0]
+    const sticky = createBrowserWindowMock()
+    BrowserWindowMock.getAllWindows.mockImplementation(() => [sticky, mainWindow])
+
+    const openUrlHandler = appOnMock.mock.calls.find(([event]) => event === 'open-url')?.[1] as (
+      event: { preventDefault: () => void },
+      url: string
+    ) => void
+    openUrlHandler(
+      { preventDefault: vi.fn() },
+      'memry://oauth/callback?code=auth-code&state=oauth-state'
+    )
+
+    expect(sticky.webContents.send).not.toHaveBeenCalled()
+    expect(mainWindow.webContents.send).toHaveBeenCalledWith('auth:oauth-callback', {
+      code: 'auth-code',
+      state: 'oauth-state'
+    })
   })
 
   it('handles OAuth deep links for registered states', async () => {

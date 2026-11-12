@@ -1,6 +1,7 @@
 import { describe, it, expect, beforeEach, vi } from 'vitest'
 import { eq } from 'drizzle-orm'
 import { inboxItems } from '@memry/db-schema/schema/inbox'
+import { InboxSyncPayloadSchema } from '@memry/contracts/sync-payloads'
 import { createTestDataDb, type TestDataDb } from '../../../test/helpers/test-data-db'
 
 vi.mock('../../lib/logger', () => ({
@@ -11,6 +12,9 @@ vi.mock('../../lib/logger', () => ({
     debug: vi.fn()
   })
 }))
+
+const scheduleInboxAttachmentSync = vi.hoisted(() => vi.fn())
+vi.mock('../../inbox/attachment-sync', () => ({ scheduleInboxAttachmentSync }))
 
 import { inboxHandler } from './inbox-handler'
 import { SyncQueueManager } from '@memry/sync-client/queue'
@@ -23,6 +27,7 @@ const rowOf = (id: string) => db.select().from(inboxItems).where(eq(inboxItems.i
 beforeEach(() => {
   db = createTestDataDb()
   emit.mockClear()
+  scheduleInboxAttachmentSync.mockClear()
 })
 
 describe('inboxHandler', () => {
@@ -332,6 +337,73 @@ describe('inboxHandler', () => {
     expect(JSON.parse(queued.payload)).toMatchObject({
       id: 'inbox-unclocked',
       clock: { deviceA: 1 }
+    })
+  })
+
+  describe('attachmentId (#4157)', () => {
+    it('stores the id of a first-time insert and fetches the file once the apply committed', async () => {
+      inboxHandler.applyUpsert(
+        ctx(),
+        'inbox-1',
+        { title: 'Photo', type: 'image', attachmentId: 'att-1' },
+        { deviceA: 1 }
+      )
+
+      expect(rowOf('inbox-1')?.attachmentId).toBe('att-1')
+      await vi.waitFor(() => expect(scheduleInboxAttachmentSync).toHaveBeenCalledTimes(1))
+    })
+
+    it('adopts an id that arrives on an update and fetches the file', async () => {
+      inboxHandler.applyUpsert(ctx(), 'inbox-1', { title: 'Photo', type: 'image' }, { deviceA: 1 })
+      expect(scheduleInboxAttachmentSync).not.toHaveBeenCalled()
+
+      inboxHandler.applyUpsert(ctx(), 'inbox-1', { attachmentId: 'att-1' }, { deviceA: 2 })
+
+      expect(rowOf('inbox-1')?.attachmentId).toBe('att-1')
+      await vi.waitFor(() => expect(scheduleInboxAttachmentSync).toHaveBeenCalledTimes(1))
+    })
+
+    it('keeps the local id when a later payload omits it or sends null', () => {
+      inboxHandler.applyUpsert(
+        ctx(),
+        'inbox-1',
+        { title: 'Photo', type: 'image', attachmentId: 'att-1' },
+        { deviceA: 1 }
+      )
+
+      inboxHandler.applyUpsert(ctx(), 'inbox-1', { title: 'Renamed' }, { deviceA: 2 })
+      expect(rowOf('inbox-1')).toMatchObject({ title: 'Renamed', attachmentId: 'att-1' })
+
+      inboxHandler.applyUpsert(ctx(), 'inbox-1', { attachmentId: null }, { deviceA: 3 })
+      expect(rowOf('inbox-1')?.attachmentId).toBe('att-1')
+    })
+
+    it('does not refetch when the update repeats the id this device already has', async () => {
+      inboxHandler.applyUpsert(
+        ctx(),
+        'inbox-1',
+        { title: 'Photo', type: 'image', attachmentId: 'att-1' },
+        { deviceA: 1 }
+      )
+      await vi.waitFor(() => expect(scheduleInboxAttachmentSync).toHaveBeenCalledTimes(1))
+
+      inboxHandler.applyUpsert(ctx(), 'inbox-1', { attachmentId: 'att-1' }, { deviceA: 2 })
+      await new Promise((resolve) => setTimeout(resolve, 10))
+
+      expect(scheduleInboxAttachmentSync).toHaveBeenCalledTimes(1)
+    })
+
+    it('pushes the id with the whole row so peers learn where the file is', () => {
+      inboxHandler.applyUpsert(
+        ctx(),
+        'inbox-1',
+        { title: 'Photo', type: 'image', attachmentId: 'att-1' },
+        { deviceA: 1 }
+      )
+
+      const payload = inboxHandler.buildPushPayload(db, 'inbox-1', 'deviceA', 'update')
+
+      expect(InboxSyncPayloadSchema.parse(JSON.parse(payload as string)).attachmentId).toBe('att-1')
     })
   })
 })

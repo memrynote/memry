@@ -51,6 +51,7 @@ pub mod task_records;
 pub mod task_tree;
 pub mod tasks;
 pub mod tasks_write;
+pub mod telemetry;
 pub mod vault;
 #[cfg(feature = "markdown")]
 pub mod vault_locks;

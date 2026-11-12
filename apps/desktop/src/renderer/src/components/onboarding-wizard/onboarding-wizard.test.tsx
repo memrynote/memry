@@ -1,5 +1,5 @@
 import { act, fireEvent, render, screen, waitFor } from '@testing-library/react'
-import { beforeEach, describe, expect, it, vi } from 'vitest'
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 
 vi.mock('@/lib/telemetry', () => ({ trackTelemetry: vi.fn() }))
 
@@ -14,11 +14,18 @@ vi.mock('@/components/traffic-lights', () => ({
   TrafficLights: () => <div data-testid="traffic-lights" />
 }))
 
+const authState = vi.hoisted(() => ({
+  status: 'unauthenticated',
+  wizardStep: 'idle',
+  email: ''
+}))
+
 vi.mock('@/contexts/auth-context', () => ({
-  useAuth: () => ({ state: { status: 'unauthenticated', wizardStep: 'idle', email: null } })
+  useAuth: () => ({ state: authState })
 }))
 
 import { FirstRunGate } from './first-run-gate'
+import { finishFirstRunWizard } from './first-run-store'
 
 type Mocked = Record<string, ReturnType<typeof vi.fn>>
 const api = window.api as unknown as Record<string, Mocked>
@@ -38,9 +45,16 @@ const toggle = async (name: string): Promise<void> => {
 }
 
 describe('first-run wizard', () => {
+  afterEach(() => {
+    act(() => finishFirstRunWizard())
+  })
+
   beforeEach(() => {
     vi.clearAllMocks()
     localStorage.clear()
+    authState.status = 'unauthenticated'
+    authState.wizardStep = 'idle'
+    authState.email = ''
     api.vault.getAll = vi.fn().mockResolvedValue({ vaults: [], currentVault: null })
     api.vault.getDefaultParent = vi.fn().mockResolvedValue('/Users/k/Documents/Memry')
     api.vault.create = vi.fn().mockResolvedValue({ success: true, vault: { path: '/x' } })
@@ -54,6 +68,78 @@ describe('first-run wizard', () => {
     api.settings.setFeaturesSettings = vi.fn().mockResolvedValue({ success: true })
     api.settings.setAISettings = vi.fn().mockResolvedValue({ success: true })
     ;(window.api as unknown as Record<string, unknown>).onEmbeddingProgress = vi.fn(() => () => {})
+  })
+
+  it.each(['rejected', 'unsuccessful'])(
+    'shows the native adapter diagnostic when a returning user download is %s',
+    async (failure) => {
+      authState.status = 'authenticated'
+      authState.email = 'user@example.test'
+      api.vault.listAccount = vi.fn().mockResolvedValue([
+        {
+          vaultUuid: 'cloud-vault',
+          name: 'My Notes',
+          itemCount: 12,
+          createdAt: 1,
+          localPath: null,
+          suggestedPath: '/home/user/Memry/my-notes'
+        }
+      ])
+      api.vault.getDefaultParent.mockResolvedValue('/home/user/Memry')
+      const diagnostic = 'This build cannot load SQLite: GLIBC_2.38 not found.'
+      api.vault.downloadRemote =
+        failure === 'rejected'
+          ? vi.fn().mockRejectedValue(new Error(diagnostic))
+          : vi.fn().mockResolvedValue({ success: false, vault: null, error: diagnostic })
+
+      render(<FirstRunGate />)
+      await press(/welcome\.signIn/)
+
+      expect(await screen.findByRole('alert')).toHaveTextContent(diagnostic)
+      expect(api.vault.downloadRemote).toHaveBeenCalledWith('cloud-vault', '/home/user/Memry')
+      expect(localStorage.getItem('memry:onboarding:tour:v1')).toBeNull()
+    }
+  )
+
+  it('shows the selected Linux destination and preserves its permission error', async () => {
+    authState.status = 'authenticated'
+    authState.email = 'user@example.test'
+    api.vault.listAccount = vi.fn().mockResolvedValue([
+      {
+        vaultUuid: 'cloud-a',
+        name: 'Alpha',
+        itemCount: 1,
+        createdAt: 1,
+        localPath: null,
+        suggestedPath: '/home/domain/user/Memry/alpha'
+      },
+      {
+        vaultUuid: 'cloud-b',
+        name: 'Beta',
+        itemCount: 1,
+        createdAt: 1,
+        localPath: null,
+        suggestedPath: '/home/domain/user/Memry/beta'
+      }
+    ])
+    api.vault.getDefaultParent.mockResolvedValue('/home/domain/user/Memry')
+    api.syncLinking = {
+      pickVaultFolder: vi.fn().mockResolvedValue({ path: '/mnt/work/notes' })
+    }
+    const diagnostic = 'Cannot create /mnt/work/notes. Choose a folder you can write to.'
+    api.vault.downloadRemote = vi
+      .fn()
+      .mockResolvedValue({ success: false, vault: null, error: diagnostic })
+    render(<FirstRunGate />)
+    await press(/welcome\.signIn/)
+
+    expect(await screen.findByText('/home/domain/user/Memry')).toBeInTheDocument()
+    await press(/flow\.change/)
+    expect(await screen.findByText('/mnt/work/notes')).toBeInTheDocument()
+    await press(/keys\.continue/)
+
+    expect(api.vault.downloadRemote).toHaveBeenCalledWith('cloud-a', '/mnt/work/notes')
+    expect(await screen.findByRole('alert')).toHaveTextContent(diagnostic)
   })
 
   it('shows the vault picker, not the wizard, when this computer already knows a vault', async () => {

@@ -504,7 +504,8 @@
       "loading": "Loading settings..."
     },
     "groups": {
-      "footer": "Footer"
+      "footer": "Footer",
+      "pastYears": "Past years"
     },
     "template": {
       "label": "Template",
@@ -562,6 +563,14 @@
     "showInSidebar": {
       "label": "Show in sidebar",
       "description": "Show the journal folder and its entries in the notes tree"
+    },
+    "showOnThisDay": {
+      "label": "Show On this day",
+      "description": "List the same date from past years under the entry"
+    },
+    "allYearsView": {
+      "label": "Show all years in full",
+      "description": "The Forever Journal: every year of the date on one page, under the entry"
     }
   },
   "tasks": {
@@ -1110,7 +1119,16 @@
       "sending": "Sending code..."
     },
     "oauth": {
-      "google": "Continue with Google"
+      "google": "Continue with Google",
+      "waiting": "Finish signing in with Google in your browser.",
+      "browserUnavailable": "Could not open your browser.",
+      "manualInstructions": "Copy the sign-in link and open it in a browser on this computer. Keep memrynote open while you sign in.",
+      "linkLabel": "Sign-in link",
+      "copyLink": "Copy sign-in link",
+      "retryBrowser": "Try opening browser again",
+      "copied": "Sign-in link copied.",
+      "copyFailed": "Could not copy the sign-in link. Select and copy it from the field above.",
+      "cancel": "Use another sign-in method"
     },
     "otp": {
       "title": "Enter verification code",
@@ -1350,6 +1368,7 @@
       "loaded": "Loaded",
       "loading": "Loading",
       "downloadLoad": "Download & Load Model",
+      "load": "Load Model",
       "downloadingModel": "Downloading model...",
       "loadingModel": "Loading model...",
       "loadSuccess": "Model loaded successfully",
@@ -1371,7 +1390,8 @@
         "ollama": "Ollama (Local)",
         "openai": "OpenAI",
         "anthropic": "Anthropic",
-        "google": "Google Gemini"
+        "google": "Google Gemini",
+        "custom": "Custom (OpenAI-compatible)"
       },
       "model": "Model",
       "modelDescription": "Language model for rewrite and summarize",
@@ -1381,6 +1401,11 @@
       "apiKeyPlaceholder": "Enter {provider} API key",
       "ollamaUrl": "Ollama URL",
       "ollamaUrlDescription": "Local server address",
+      "customUrl": "Base URL",
+      "customUrlDescription": "Any OpenAI-compatible endpoint, such as OpenRouter",
+      "customUrlPlaceholder": "https://openrouter.ai/api/v1",
+      "customApiKeyPlaceholder": "API key (optional)",
+      "customModelPlaceholder": "Model ID",
       "connection": "Connection",
       "activePort": "Active on port {port}",
       "notConnected": "Not connected",
@@ -2032,7 +2057,7 @@
       "subtitle": "Manage property definitions across all notes"
     },
     "loading": "Loading properties...",
-    "empty": "No property definitions yet. Add a Status, Select, or Multiselect property to any note to get started.",
+    "empty": "No properties yet. Add a property to any note to get started.",
     "filterPlaceholder": "Filter properties...",
     "noMatch": "No properties matching \"{query}\"",
     "summary": "{count, plural, one {# property definition} other {# property definitions}}",
@@ -2072,6 +2097,14 @@
     },
     "v2": {
       "actionsAria": "Actions for {name}"
+    },
+    "usage": {
+      "heading": "Used in",
+      "noteCount": "{count, plural, one {# note} other {# notes}}",
+      "mismatchCount": "Values that don't match {type}: {count}",
+      "mismatchNote": "Doesn't match {type}",
+      "none": "No notes use this property",
+      "loadFailed": "Couldn't load the notes that use this property"
     }
   },
   "commandLine": {
@@ -2407,7 +2440,6 @@
   "phaseI": {
     "errors": {
       "failedToUpdateTagColor": "Failed to update tag color",
-      "googleSignInFailed": "Google sign-in failed",
       "failedToSendVerificationCode": "Failed to send verification code",
       "invalidVerificationCode": "Invalid verification code",
       "accountSetupFailed": "Account setup failed",
@@ -2434,7 +2466,8 @@
       "failedToCloseVault": "Failed to close vault",
       "failedToSwitchVault": "Failed to switch vault",
       "failedToUpdateConfig": "Failed to update config",
-      "failedToReindex": "Failed to reindex"
+      "failedToReindex": "Failed to reindex",
+      "googleSignInFailed": "Google sign-in failed"
     }
   },
   "agentMcp": {
@@ -2464,7 +2497,17 @@
       "running": "Running",
       "tokenHint": "This launch only",
       "copy": "Copy",
-      "rotate": "Rotate"
+      "rotate": "Rotate",
+      "clientConfig": {
+        "label": "Client config",
+        "hint": "Copies with this launch's URL and token",
+        "copy": "Copy {client} config"
+      },
+      "notes": {
+        "readOnly": "External clients can only read. Write tools return PERMISSION_DENIED, so write through Agent Chat or the memrynote command line.",
+        "restart": "The URL and token change when memrynote restarts, switches vault, or rotates the token. Update your client's config each time, then restart the client.",
+        "docs": "Setup guide"
+      }
     }
   },
   "agentProviders": {

@@ -146,6 +146,7 @@
     "requestTimedOut": "Synkronointipyyntö aikakatkaistiin. Tarkista internetyhteytesi."
   },
   "googleCalendar": {
+    "requestRejected": "Google hylkäsi tämän kohteen. Tarkista sen päivämäärä ja kellonaika ja yritä uudelleen.",
     "connectFailed": "Yhteyden muodostaminen Google Calendariin epäonnistui. Yritä hetken kuluttua uudelleen.",
     "reconnectNeeded": "Google Calendar -yhteytesi on vanhentunut. Katkaise yhteys ja yhdistä uudelleen.",
     "misconfigured": "Google Calendaria ei ole määritetty oikein. Ota yhteyttä tukeen, jos tämä toistuu.",
@@ -159,7 +160,7 @@
   },
   "ai": {
     "inlineDisabled": "Tekoälyn tekstinsisäinen muokkaus on poistettu käytöstä",
-    "listOllamaModelsFailed": "Ollama-mallien luetteloiminen epäonnistui",
+    "listModelsFailed": "Mallien luetteloiminen epäonnistui",
     "writingAssistInvalid": "Pyyntöä ei voitu lähettää tekoälymallille.",
     "apiKeyMissing": "Lisää {provider}-API-avaimesi kohdassa Asetukset → Tekoäly käyttääksesi kirjoitustyökaluja.",
     "apiKeyInvalid": "{provider}-API-avaimesi hylättiin. Tarkista se kohdassa Asetukset → Tekoäly.",
@@ -186,6 +187,10 @@
     "removeDeviceFailed": "Laitteen poistaminen epäonnistui",
     "renameDeviceFailed": "Laitteen uudelleennimeäminen epäonnistui",
     "initiateOAuthFailed": "OAuth-kirjautumisen aloittaminen epäonnistui",
+    "retryOAuthFailed": "Kirjautumisselaimen avaaminen uudelleen epäonnistui. Aloita kirjautuminen alusta.",
+    "oauthExpired": "Kirjautuminen vanheni. Yritä uudelleen.",
+    "oauthInvalidResponse": "Kelvollisen kirjautumislinkin hakeminen epäonnistui. Yritä uudelleen.",
+    "oauthCancelled": "Googlella kirjautuminen peruutettiin. Yritä uudelleen.",
     "setupFirstDeviceOAuthFailed": "Ensimmäisen laitteen määrittäminen OAuth-kirjautumisella epäonnistui",
     "confirmRecoveryPhraseFailed": "Palautuslauseen vahvistaminen epäonnistui"
   },

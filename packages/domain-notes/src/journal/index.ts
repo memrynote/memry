@@ -10,6 +10,7 @@
  */
 export * from './day-identity.ts'
 export * from './preview.ts'
+export * from './same-day.ts'
 export * from './stats.ts'
 export * from './streak.ts'
 export * from './templates.ts'

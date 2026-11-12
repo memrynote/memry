@@ -103,12 +103,17 @@ struct Log: Sendable {
     static let interface = Log(.interface)
 
     private let sink: @Sendable (OSLogType, String) -> Void
+    /// Set on the production loggers only: their error and fault lines also
+    /// go to product telemetry as `app_error_seen`. The same two inputs reach
+    /// it, a `StaticString` and an `ErrorCode`, so it widens nothing.
+    private let telemetryCategory: LogSubsystem?
 
     init(_ category: LogSubsystem) {
         let logger = Logger(subsystem: Log.subsystem, category: category.rawValue)
         sink = { level, line in
             logger.log(level: level, "\(line, privacy: .public)")
         }
+        telemetryCategory = category
     }
 
     /// Redirects lines to `sink` instead of OSLog. For tests, which cannot read
@@ -116,6 +121,7 @@ struct Log: Sendable {
     /// what a caller may log: the inputs are still `StaticString` + `LogDetail`.
     init(capturing sink: @escaping @Sendable (OSLogType, String) -> Void) {
         self.sink = sink
+        telemetryCategory = nil
     }
 
     func debug(_ message: StaticString, _ detail: LogDetail? = nil) {
@@ -134,10 +140,18 @@ struct Log: Sendable {
 
     func error(_ message: StaticString, _ detail: LogDetail? = nil) {
         sink(.error, Log.line(message, detail))
+        report(message, detail)
     }
 
     func fault(_ message: StaticString, _ detail: LogDetail? = nil) {
         sink(.fault, Log.line(message, detail))
+        report(message, detail)
+    }
+
+    private func report(_ message: StaticString, _ detail: LogDetail?) {
+        guard let telemetryCategory else { return }
+        let code: ErrorCode? = if case let .code(code) = detail { code } else { nil }
+        Telemetry.shared.logged(message, code: code, subsystem: telemetryCategory)
     }
 
     /// The one place text is assembled. Both halves are compile-time literals

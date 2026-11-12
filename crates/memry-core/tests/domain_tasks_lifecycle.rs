@@ -9,6 +9,7 @@
 //! | a repeating completion closes it and creates the next  | `completeTaskWithUndo` repeat arm  |
 //! | a series at its end creates no next occurrence         | `shouldCreateNextOccurrence`       |
 //! | repeat-from-completion anchors on the completion day   | `completeRepeatingTask`            |
+//! | the next occurrence's start moves with its due date    | `rollRepeatingSeries`              |
 //! | a foreign repeatConfig completes as a plain task       | `dbRepeatConfigToUiRepeatConfig`   |
 //! | undo reverts a repeating completion                    | the registered undo                |
 //! | the subtask bulk menu                                  | `subtask-bulk-utils.ts`            |
@@ -348,6 +349,51 @@ fn repeat_from_completion_anchors_on_the_completion_day() {
         Ok(())
     })
     .expect("the completion anchor");
+}
+
+#[test]
+fn the_next_occurrence_s_start_date_moves_with_its_due_date() {
+    let db = open("tl-repeat-start");
+    db.call_blocking(|conn| {
+        seed_project(conn, "pa");
+        let sundays = daily(json!({"frequency": "weekly", "daysOfWeek": [0]}));
+        tasks::create_detailed(
+            conn,
+            &NewTask {
+                id: "t1",
+                title: "Weekly review",
+                project_id: "pa",
+                due_date: Some("2026-04-19"),
+                due_time: None,
+                priority: 0,
+                repeat_config: Some(&sundays),
+                tags: &[],
+            },
+            &TaskDetails {
+                start_date: Some("2026-04-15"),
+                ..TaskDetails::default()
+            },
+            DEVICE,
+            NOW,
+        )?;
+
+        let done = tasks::complete(
+            conn,
+            "t1",
+            local("2026-04-19T12:00:00"),
+            DEVICE,
+            NOW + 1_000,
+        )?;
+        let next = done.next_occurrence.expect("a next occurrence");
+        assert_eq!(next.due_date, "2026-04-26");
+        assert_eq!(
+            payload_of(conn, &next.id)["startDate"],
+            json!("2026-04-22"),
+            "start Wednesday, due Sunday, a week on"
+        );
+        Ok(())
+    })
+    .expect("the start date shift");
 }
 
 #[test]

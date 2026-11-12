@@ -154,6 +154,10 @@ export function createGeneratedRpcApi({
       // oxlint-disable-next-line typescript/no-unsafe-type-assertion -- the IPC invoke result type is wider than the public API contract; the cast pins the contract
       "getPropertyDefinitions": (() => invoke("notes:get-property-definitions")) as GeneratedRpcApi["notes"]["getPropertyDefinitions"],
       // oxlint-disable-next-line typescript/no-unsafe-type-assertion -- the IPC invoke result type is wider than the public API contract; the cast pins the contract
+      "getPropertyUsage": (() => invoke("notes:get-property-usage")) as GeneratedRpcApi["notes"]["getPropertyUsage"],
+      // oxlint-disable-next-line typescript/no-unsafe-type-assertion -- the IPC invoke result type is wider than the public API contract; the cast pins the contract
+      "listNotesWithProperty": ((name) => invoke("notes:list-notes-with-property", { name })) as GeneratedRpcApi["notes"]["listNotesWithProperty"],
+      // oxlint-disable-next-line typescript/no-unsafe-type-assertion -- the IPC invoke result type is wider than the public API contract; the cast pins the contract
       "createPropertyDefinition": ((input) => invoke("notes:create-property-definition", input)) as GeneratedRpcApi["notes"]["createPropertyDefinition"],
       // oxlint-disable-next-line typescript/no-unsafe-type-assertion -- the IPC invoke result type is wider than the public API contract; the cast pins the contract
       "updatePropertyDefinition": ((input) => invoke("notes:update-property-definition", input)) as GeneratedRpcApi["notes"]["updatePropertyDefinition"],
@@ -719,6 +723,10 @@ export function createGeneratedRpcApi({
     "feedback": {
       // oxlint-disable-next-line typescript/no-unsafe-type-assertion -- the IPC invoke result type is wider than the public API contract; the cast pins the contract
       "submit": ((input) => invoke("feedback:submit", input)) as GeneratedRpcApi["feedback"]["submit"],
+    },
+    "iosBeta": {
+      // oxlint-disable-next-line typescript/no-unsafe-type-assertion -- the IPC invoke result type is wider than the public API contract; the cast pins the contract
+      "join": ((input) => invoke("iosBeta:join", input)) as GeneratedRpcApi["iosBeta"]["join"],
     },
     "diagnostics": {
       // oxlint-disable-next-line typescript/no-unsafe-type-assertion -- the IPC invoke result type is wider than the public API contract; the cast pins the contract

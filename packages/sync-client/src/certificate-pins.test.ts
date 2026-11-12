@@ -9,7 +9,10 @@ import {
 } from './certificate-pins'
 
 const REAL_PIN = 'sha256/kIdp6NNEd8wsugYyyIYFsi1ylMCED3hZbSR8ZFsa/A4='
-const STAGING_PINS = [REAL_PIN, 'sha256/mEflZT5enoR1FuXLgYYGqnVEoZvmf9c2bVBpiOjYQ0c=']
+const STAGING_PINS = [
+  'sha256/kIdp6NNEd8wsugYyyIYFsi1ylMCED3hZbSR8ZFsa/A4=',
+  'sha256/mEflZT5enoR1FuXLgYYGqnVEoZvmf9c2bVBpiOjYQ0c='
+]
 const PLACEHOLDER_PIN = 'sha256/PLACEHOLDER_PRIMARY_CERT_HASH_BASE64'
 
 describe('certificate-pins', () => {

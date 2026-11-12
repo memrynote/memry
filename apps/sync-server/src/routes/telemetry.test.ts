@@ -80,6 +80,21 @@ describe('POST /telemetry/batch', () => {
     expect(body.accepted).toBe(1)
   })
 
+  it('accepts a batch from the iOS app', async () => {
+    const { env } = createEnv()
+    const response = await app.request(
+      new Request('http://localhost/telemetry/batch', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ ...sampleBatch, platform: 'ios' })
+      }),
+      {},
+      env
+    )
+
+    expect(response.status).toBe(202)
+  })
+
   it('does not require an Authorization header', async () => {
     // #given a request with no auth header
     const { env } = createEnv()

@@ -43,6 +43,7 @@ struct EditableBlockView: UIViewRepresentable {
         // intrinsic width; the width comes from `sizeThatFits` instead.
         view.setContentCompressionResistancePriority(.defaultLow, for: .horizontal)
         view.accessibilityIdentifier = "note.block.\(block.id ?? "")"
+        session.drawn(context.coordinator)
         context.coordinator.render()
         return view
     }
@@ -64,7 +65,11 @@ struct EditableBlockView: UIViewRepresentable {
         let traits = view.traitCollection
         let changed = field.block != block || field.style.font != Self.font(for: role) || field.alignment != alignment
             || field.style.ink.resolvedColor(with: traits) != nextInk.resolvedColor(with: traits)
+        let moved = field.block.id != block.id
         field.block = block
+        // Rows are drawn by position: a block inserted or removed above hands
+        // this text view the next block, which `focus` must find it under.
+        if moved { session.drawn(field) }
         field.session = session
         field.alignment = alignment
         field.style = BlockText.Style(font: Self.font(for: role), ink: nextInk, titleExists: session.titleExists, tagColors: session.tagColors)
@@ -121,6 +126,9 @@ struct EditableBlockView: UIViewRepresentable {
 final class BlockTextView: UITextView {
     /// A layout manager holds its storage weakly; this keeps it alive.
     private let storage: NSTextStorage
+    /// Backspace with the caret at the start and nothing selected. UIKit asks
+    /// the delegate about no change then, since there is nothing to delete.
+    var backspaceAtStart: (() -> Void)?
 
     init() {
         let storage = NSTextStorage()
@@ -135,6 +143,13 @@ final class BlockTextView: UITextView {
 
     @available(*, unavailable)
     required init?(coder: NSCoder) { nil }
+
+    override func deleteBackward() {
+        guard selectedRange == NSRange(location: 0, length: 0), markedTextRange == nil,
+              let backspaceAtStart
+        else { return super.deleteBackward() }
+        backspaceAtStart()
+    }
 }
 
 /// Draws the fill under a typed `#tag` (`BlockText.markTags`) as a rounded
@@ -184,6 +199,9 @@ final class BlockField: NSObject, UITextViewDelegate, UIGestureRecognizerDelegat
     let textView = BlockTextView()
     /// Typed since the last commit.
     var dirty = false
+    /// Typed since the caret came in: a checklist item left with this set is
+    /// one desktop's editor would turn into a task.
+    var typed = false
     /// The text the user's typing started from: what was last drawn or
     /// committed. While `dirty`, `block` can move on under the text view (a
     /// peer's edit merging in), and a commit sends only the change from
@@ -204,6 +222,10 @@ final class BlockField: NSObject, UITextViewDelegate, UIGestureRecognizerDelegat
         let tap = UITapGestureRecognizer(target: self, action: #selector(openTappedTag(_:)))
         tap.delegate = self
         textView.addGestureRecognizer(tap)
+        textView.backspaceAtStart = { [weak self] in
+            guard let self else { return }
+            self.session?.backspaceAtStart(self)
+        }
     }
 
     var blockId: String { block.id ?? "" }
@@ -256,14 +278,21 @@ final class BlockField: NSObject, UITextViewDelegate, UIGestureRecognizerDelegat
     }
 
     /// The `key` value drawn under `point`, if the point is on its glyphs.
+    /// Asks the layout for the glyph under the point: `characterRange(at:)`
+    /// answers the caret position nearest it, which misses the first half of
+    /// a chip (#4154).
     private func attribute<Value>(_ key: NSAttributedString.Key, at point: CGPoint) -> Value? {
-        guard let range = textView.characterRange(at: point) else { return nil }
-        let offset = textView.offset(from: textView.beginningOfDocument, to: range.start)
-        guard offset >= 0, offset < textView.textStorage.length,
-              let value = textView.textStorage.attribute(key, at: offset, effectiveRange: nil) as? Value,
-              textView.firstRect(for: range).insetBy(dx: -4, dy: -4).contains(point)
+        let layout = textView.layoutManager
+        let container = textView.textContainer
+        let local = CGPoint(x: point.x - textView.textContainerInset.left, y: point.y - textView.textContainerInset.top)
+        let glyph = layout.glyphIndex(for: local, in: container)
+        guard glyph < layout.numberOfGlyphs,
+              layout.boundingRect(forGlyphRange: NSRange(location: glyph, length: 1), in: container)
+                  .insetBy(dx: -4, dy: -4).contains(local)
         else { return nil }
-        return value
+        let offset = layout.characterIndexForGlyph(at: glyph)
+        guard offset < textView.textStorage.length else { return nil }
+        return textView.textStorage.attribute(key, at: offset, effectiveRange: nil) as? Value
     }
 
     /// Where the chip with `anchorId` is drawn now, in the text view's units.
@@ -315,6 +344,7 @@ final class BlockField: NSObject, UITextViewDelegate, UIGestureRecognizerDelegat
     /// redrew its row. Its runs are restyled for this row; the next render
     /// draws them from the core.
     private func takeOver(from old: BlockField) {
+        typed = typed || old.typed
         let source = old.textView
         if source.text != textView.text {
             let text = NSMutableAttributedString(attributedString: source.attributedText ?? NSAttributedString())
@@ -380,12 +410,20 @@ final class BlockField: NSObject, UITextViewDelegate, UIGestureRecognizerDelegat
     /// Committed when editing ends rather than per keystroke: every commit is a
     /// CRDT update and an outbox row (FR-030).
     func textViewDidEndEditing(_ textView: UITextView) {
-        session?.commit(self)
+        let blockId = blockId
+        var then: (@MainActor () async -> Void)?
+        if typed, block.kind == "checkListItem", let convert = session?.convertTypedChecklist {
+            then = { await convert(blockId) }
+        }
+        // A row a shortcut is redrawing hands `typed` on (`takeOver`).
+        if session?.shortcutField !== self { typed = false }
+        session?.commit(self, then: then)
         if session?.field === self { session?.focusChanged(to: nil) }
     }
 
     func textViewDidChange(_ textView: UITextView) {
         dirty = true
+        typed = true
         textView.invalidateIntrinsicContentSize()
         session?.selectionChanged(in: self)
     }
@@ -417,11 +455,15 @@ final class BlockField: NSObject, UITextViewDelegate, UIGestureRecognizerDelegat
             textViewDidChange(textView)
             return false
         }
-        // Typing `]` before an autocompleted `]]` steps over it.
-        if text == "]", range.length == 0, range.location + 2 <= string.length,
-           string.substring(with: NSRange(location: range.location, length: 2)) == "]]" {
-            textView.selectedRange = NSRange(location: range.location + 2, length: 0)
-            return false
+        // Typing `]` before a `]` that closes an open `[` steps over it, one
+        // at a time as desktop's does: a typed `[[Title]]` leaves no `]`.
+        if text == "]", range.length == 0, range.location < string.length,
+           string.character(at: range.location) == 93 {
+            let before = string.substring(to: range.location)
+            if before.filter({ $0 == "[" }).count > before.filter({ $0 == "]" }).count {
+                textView.selectedRange = NSRange(location: range.location + 1, length: 0)
+                return false
+            }
         }
         // Return picks the slash menu's first row, as Enter does on desktop.
         if text == "\n", let session, case .slash = session.trigger, let first = session.suggestions.first {
@@ -433,9 +475,6 @@ final class BlockField: NSObject, UITextViewDelegate, UIGestureRecognizerDelegat
             return false
         }
         if applyMarkdownShortcut(textView, range: range, text: text) { return false }
-        if text.isEmpty, range.location == 0, range.length == 0, string.length == 0 {
-            session?.backspaceAtStart(self)
-        }
         return true
     }
 
@@ -462,18 +501,56 @@ extension EditorSession {
             return
         }
         let next = Self.continuingKinds.contains(kind) ? kind : "paragraph"
+        // Desktop's `plainByContext`: Return in a plain checklist makes
+        // another plain checkbox, never a task.
+        let plain = kind == "checkListItem" && field.value("plain") == "true"
         commit(field) { [weak self] in
             guard let self, let model = self.model else { return }
             guard let newId = await model.insert(next, after: field.blockId) else { return }
+            if plain { await model.setProp(newId, "plain", "true") }
             self.history.record(.insert(blockId: newId, after: field.blockId, kind: next, text: ""))
-            self.pendingFocus = newId
+            self.focus(newId)
         }
     }
 
-    /// Backspace in an empty block that is not a paragraph turns it into one,
-    /// as desktop does before it deletes anything.
+    /// Backspace with the caret at a block's start, in desktop's order
+    /// (BlockNote's `handleBackspace`): a block that is not a paragraph turns
+    /// into one, a nested paragraph moves out a level, and a paragraph then
+    /// joins the block drawn above it, the caret at the join. Above an empty
+    /// text block, the empty block goes instead; above a block with no text,
+    /// only an empty paragraph goes. Not yet here: a block with nested blocks
+    /// (desktop lifts them out) and the first block of a column.
     func backspaceAtStart(_ field: BlockField) {
-        guard field.block.kind != "paragraph" else { return }
-        turnInto(InsertableBlock.all[0])
+        if field.block.kind != "paragraph" { return turnInto(InsertableBlock.all[0]) }
+        if canOutdent { return nest(false) }
+        let blocks = blocks()
+        guard let index = blocks.firstIndex(where: { $0.id == field.blockId }), index > 0,
+              let previousId = blocks[index - 1].id,
+              !NoteColumns.structuralKinds.contains(blocks[index - 1].kind),
+              index + 1 == blocks.count || blocks[index + 1].depth <= blocks[index].depth
+        else { return }
+        let previous = blocks[index - 1]
+        let empty = field.textView.textStorage.length == 0
+        guard BlockActionTarget.textKinds.contains(previous.kind) else {
+            if empty { runner(for: blocks, at: index).delete() }
+            return
+        }
+        if !empty, BlockText.shown(previous.inline).isEmpty {
+            return runner(for: blocks, at: index - 1).delete()
+        }
+        let blockId = field.blockId
+        commit(field) { [weak self] in
+            guard let self, let model = self.model else { return }
+            if let step = await model.merge(blockId, into: previousId) { self.history.record(step) }
+        }
+        // The caret goes now, so the keyboard stays up: at the end of the
+        // block above, which is the join once the merge redraws it.
+        focus(previousId)
+    }
+
+    private func runner(for blocks: [Block], at index: Int) -> BlockActionRunner {
+        BlockActionRunner(
+            session: self, target: BlockActionTarget(block: blocks[index], siblings: BlockSiblings.of(index, in: blocks))
+        )
     }
 }

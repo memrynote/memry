@@ -113,7 +113,74 @@
       "noDueDate": "Tanpa tenggat"
     },
     "repeatTypeRepeating": "Berulang",
-    "repeatTypeOneTime": "Sekali"
+    "repeatTypeOneTime": "Sekali",
+    "advanced": {
+      "entry": "Filter lanjutan…",
+      "entryHint": "Aturan dengan dan, atau, bukan",
+      "title": "Filter",
+      "match": "Cocokkan",
+      "ofThese": "dari ini",
+      "matches": {
+        "all": "semua",
+        "any": "salah satu",
+        "none": "tidak ada"
+      },
+      "fields": {
+        "title": "Judul",
+        "status": "Status",
+        "priority": "Prioritas",
+        "due": "Tanggal jatuh tempo",
+        "project": "Proyek",
+        "location": "Lokasi",
+        "tags": "Tag",
+        "repeat": "Berulang",
+        "hasTime": "Memiliki waktu"
+      },
+      "ops": {
+        "contains": "berisi",
+        "notContains": "tidak berisi",
+        "any": "salah satu dari",
+        "none": "bukan salah satu dari",
+        "all": "memiliki semua",
+        "empty": "kosong",
+        "notEmpty": "tidak kosong",
+        "is": "adalah",
+        "isNot": "bukan"
+      },
+      "tagOps": {
+        "any": "memiliki salah satu dari",
+        "all": "memiliki semua",
+        "none": "tidak memiliki satu pun dari"
+      },
+      "values": {
+        "repeating": "Berulang",
+        "oneTime": "Sekali",
+        "withTime": "Dengan waktu",
+        "withoutTime": "Tanpa waktu",
+        "customRange": "Rentang khusus",
+        "from": "Dari",
+        "to": "Sampai",
+        "pick": "Pilih…",
+        "titlePlaceholder": "Teks di judul"
+      },
+      "addRule": "Tambah aturan",
+      "addGroup": "Tambah grup",
+      "clear": "Hapus",
+      "removeRule": "Hapus aturan",
+      "removeGroup": "Hapus grup",
+      "matchCount": "{count, plural, other {# tugas cocok}}",
+      "skipped": "{count, plural, other {# aturan dilewati}}",
+      "ruleCount": "{count, plural, other {# aturan}}",
+      "unknownRule": "Aturan dari versi yang lebih baru",
+      "empty": "Belum ada aturan. Tambahkan satu untuk mulai memfilter.",
+      "summary": {
+        "and": "dan",
+        "or": "atau",
+        "not": "bukan"
+      },
+      "editRules": "Edit aturan",
+      "clearRules": "Hapus aturan"
+    }
   },
   "quickAdd": {
     "label": "Tambahkan tugas dengan cepat",

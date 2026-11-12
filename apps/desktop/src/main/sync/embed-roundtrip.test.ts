@@ -14,14 +14,15 @@
  * what the rewrite writes; the last case asserts the untouched path.
  */
 
-import { describe, it, expect, vi } from 'vitest'
+import { beforeAll, describe, it, expect } from 'vitest'
 import * as Y from 'yjs'
 import { writeMarkdownSourceToYDoc } from '@memry/shared/markdown-source'
 
 const NOTE = 'People/Person.md'
 
-vi.mock('../vault/resolve-embed', () => ({
-  resolveVaultEmbeds: (refs: string[], notePath?: string) =>
+beforeAll(async () => {
+  const { setVaultEmbedResolver } = await import('./blocknote-converter')
+  setVaultEmbedResolver((refs, notePath) =>
     Object.fromEntries(
       refs.map((ref) => [
         ref,
@@ -30,7 +31,8 @@ vi.mock('../vault/resolve-embed', () => ({
         notePath ? `../Images/${ref}` : `memry-file://local/Users/me/vault/Images/${ref}`
       ])
     )
-}))
+  )
+})
 
 async function seed(markdown: string, notePath?: string): Promise<Y.Doc> {
   const { markdownToYFragment } = await import('./blocknote-converter')

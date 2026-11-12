@@ -236,5 +236,21 @@
     "range": "{start} – {end}",
     "openTask": "{title}, {range}",
     "completeTask": "Finalizează {title}"
+  },
+  "pastYears": {
+    "title": "În această zi",
+    "count": "{count, plural, one {# alt an} few {# alți ani} other {# de alți ani}}",
+    "showAll": "Toți anii",
+    "showPreviews": "Previzualizări",
+    "yearsAgo": "{count, plural, one {acum # an} few {acum # ani} other {acum # de ani}}",
+    "yearsLater": "{count, plural, one {peste # an} few {peste # ani} other {peste # de ani}}",
+    "words": "{count, plural, one {# cuvânt} few {# cuvinte} other {# de cuvinte}}",
+    "openDay": "Deschide {date}",
+    "showFull": "Afișează intrarea completă",
+    "showLess": "Afișează mai puțin",
+    "loadError": "Această zi din alți ani nu a putut fi încărcată.",
+    "previousYear": "Aceeași zi, anul anterior",
+    "nextYear": "Aceeași zi, anul următor",
+    "goToYear": "Mergi la această zi în {year}"
   }
 }

@@ -30,6 +30,12 @@ TELEMETRY_HMAC_KEY=replace-me
 # R2_S3_BUCKET=replace-me
 # Optional PostHog mirroring:
 # POSTHOG_KEY=replace-with-posthog-project-token
+# Optional: desktop iPhone beta invites (POST /ios-beta/join). Same App Store Connect key
+# and external TestFlight group as landing's /api/subscribe. Absent -> the route answers 503.
+# ASC_KEY_ID=replace-me
+# ASC_ISSUER_ID=replace-me
+# ASC_PRIVATE_KEY=replace-with-p8-contents
+# ASC_BETA_GROUP_ID=replace-me
 # Optional: raises the GitHub Releases API rate limit for the daily download-count cron.
 # GITHUB_TOKEN=replace-with-a-public-repo-read-token
 # Optional: comma-separated emails auto-granted a paid (believer) sync plan in development.

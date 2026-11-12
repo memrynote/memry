@@ -47,9 +47,8 @@ function closeStaleHandle(label: string, close: () => void): void {
 
 export function initDatabase(dbPath: string): DataDb {
   // A handle already here is an orphan: openVault can throw after this point,
-  // which leaves isOpen false so closeVault() early-returns and never closes it,
-  // and createDormantVault repoints this singleton with no close at all. Every
-  // orphan keeps its page cache, fd and WAL alive. Closing is safe here —
+  // which leaves isOpen false so closeVault() early-returns and never closes it.
+  // Every orphan keeps its page cache, fd and WAL alive. Closing is safe here —
   // better-sqlite3 is synchronous, so nothing is mid-statement, and consumers
   // resolve the connection through getDatabase() per call rather than holding it.
   closeStaleHandle('data', closeDatabase)

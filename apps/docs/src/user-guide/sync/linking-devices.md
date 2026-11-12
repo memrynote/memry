@@ -133,6 +133,10 @@ When signed in, memrynote refreshes this list from the sync server so newly link
 devices appear without waiting for another sync item to pull their keys. If the server is
 unreachable, the local cached device list remains available.
 
+The iPhone app tells an iPad from an iPhone and draws each with its own icon. That works for
+an iPad or iPhone that signed in with a version that reports the device type. One that signed
+in earlier keeps the phone icon, and so does every iPad in the desktop app's list.
+
 ## Revoking a Device
 
 From the device list, click **Revoke**. Effects:

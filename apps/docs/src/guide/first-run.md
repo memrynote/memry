@@ -43,6 +43,10 @@ Next comes the plan: Plus, Pro or Believer, monthly or yearly. **Continue to che
 
 A vault you download brings its own synced settings, so it opens the way it looks on your other devices.
 
+With **Continue with Google**, MemryNote keeps the sign-in session open while you use your browser. If the browser does not open, choose **Copy sign-in link** and paste the link into a browser on the same computer. **Try opening browser again** retries the same session. **Use another sign-in method** returns to email sign-in. An expired session needs a new sign-in.
+
+The default download location uses your system's Documents folder, which can differ from `~/Documents` on Linux. When a vault is already open, new vaults default to its parent folder. Check the destination shown before downloading. If a download fails, the setup shows the reported cause. Native database loading failures do not create a new vault folder. Empty directories from a failed creation attempt are removed, but partial databases and other files are kept.
+
 ## Computers That Already Have Vaults
 
 A vault is a folder of Markdown files on disk. memrynote keeps its databases, attachments, and CRDT state in a hidden `.memry` folder inside it.

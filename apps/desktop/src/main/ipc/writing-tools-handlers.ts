@@ -15,11 +15,17 @@ import { readAIInlineSettings } from './ai-inline-handlers'
 
 const logger = createLogger('IPC:WritingTools')
 
-const PROVIDER_NAMES: Record<AIInlineSettings['provider'], string> = {
+const PROVIDER_NAMES: Record<Exclude<AIInlineSettings['provider'], 'custom'>, string> = {
   ollama: 'Ollama',
   openai: 'OpenAI',
   anthropic: 'Anthropic',
   google: 'Google'
+}
+
+/** A custom endpoint is named by its host, the one name the user typed. */
+function providerName(settings: AIInlineSettings): string {
+  if (settings.provider !== 'custom') return PROVIDER_NAMES[settings.provider]
+  return URL.parse(settings.baseUrl)?.host || settings.baseUrl
 }
 
 let registered = false
@@ -56,8 +62,8 @@ export function registerWritingToolsHandlers(): void {
       }
       const settings = readAIInlineSettings()
       if (!settings.enabled) return { success: false, error: i18n.t('errors:ai.inlineDisabled') }
-      const provider = PROVIDER_NAMES[settings.provider]
-      if (settings.provider !== 'ollama' && !settings.apiKey) {
+      const provider = providerName(settings)
+      if (settings.provider !== 'ollama' && settings.provider !== 'custom' && !settings.apiKey) {
         return { success: false, error: i18n.t('errors:ai.apiKeyMissing', { provider }) }
       }
       let writingAssist: typeof WritingAssist | null = null

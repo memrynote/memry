@@ -11,12 +11,14 @@ import { notesService } from '@/services/notes-service'
 import { resolveCanvasByTitle } from '@/lib/canvas-lookup'
 import { getFileType, getExtension, isSupported } from '@memry/shared/file-types'
 import { splitWikiTarget, isBlockReference, resolveWikiTarget } from '@memry/shared/wiki-target'
+import { isJournalDay } from '@/lib/journal-link-days'
 
 // ============================================================================
 // Types
 // ============================================================================
 
-export type ResolutionType = 'note' | 'file' | 'canvas' | 'create' | 'not-found'
+/** `journal`: a journal day, written or not; `id` is its ISO date. */
+export type ResolutionType = 'note' | 'file' | 'canvas' | 'journal' | 'create' | 'not-found'
 
 export interface ResolvedWikiLink {
   type: ResolutionType
@@ -61,6 +63,17 @@ function resolvedRecord(
     title: resolved.title,
     fileType: resolved.fileType,
     icon: FILE_TYPE_ICONS[resolved.fileType] || 'file-text',
+    heading
+  }
+}
+
+function journalDay(date: string, heading: string | null): ResolvedWikiLink {
+  return {
+    type: 'journal',
+    id: date,
+    title: date,
+    fileType: 'markdown',
+    icon: 'book-open',
     heading
   }
 }
@@ -123,7 +136,13 @@ export async function resolveWikiLink(target: string): Promise<ResolvedWikiLink>
   const resolved = await resolveWikiTarget(trimmedTarget, (title) =>
     notesService.resolveByTitle(title)
   )
-  if (resolved) return resolvedRecord(resolved.match, resolved.heading)
+  if (resolved) {
+    // A journal entry is a note row, but it opens as its day in the journal.
+    const date = resolved.match.journalDate
+    return date
+      ? journalDay(date, resolved.heading)
+      : resolvedRecord(resolved.match, resolved.heading)
+  }
 
   // Notes first, canvases second, and that order is the compatibility story:
   // every link that resolved to a note before this change still does, so a
@@ -142,6 +161,10 @@ export async function resolveWikiLink(target: string): Promise<ResolvedWikiLink>
       heading: null
     }
   }
+
+  // Existing notes and canvases keep precedence over an unwritten day.
+  // The note half names the day; a heading must survive the journal fallback.
+  if (isJournalDay(note)) return journalDay(note, anchor)
 
   // Not found in database
   if (hasKnownExtension) {

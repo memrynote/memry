@@ -577,6 +577,7 @@ auth.post('/devices', setupAuthMiddleware, async (c) => {
   const {
     name,
     platform,
+    formFactor,
     osVersion,
     appVersion,
     authPublicKey,
@@ -609,11 +610,14 @@ auth.post('/devices', setupAuthMiddleware, async (c) => {
   const now = Math.floor(Date.now() / 1000)
 
   const { results } = await c.env.DB.prepare(
-    `INSERT INTO devices (id, user_id, name, platform, os_version, app_version, auth_public_key, vault_id, created_at, updated_at)
-     VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+    `INSERT INTO devices (id, user_id, name, platform, form_factor, os_version, app_version, auth_public_key, vault_id, created_at, updated_at)
+     VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
      ON CONFLICT(user_id, auth_public_key) DO UPDATE SET
        name = excluded.name,
        platform = excluded.platform,
+       -- Same key, same hardware: an older build of the app re-registering
+       -- sends no form factor and must not erase the one already known.
+       form_factor = COALESCE(excluded.form_factor, devices.form_factor),
        os_version = excluded.os_version,
        app_version = excluded.app_version,
        vault_id = excluded.vault_id,
@@ -634,6 +638,7 @@ auth.post('/devices', setupAuthMiddleware, async (c) => {
       userId,
       sanitizedName,
       sanitizedPlatform,
+      formFactor ?? null,
       osVersion ?? null,
       appVersion,
       authPublicKey,

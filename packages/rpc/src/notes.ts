@@ -19,6 +19,7 @@ import type {
   LargeFileSearchProgressEvent,
   CanvasLinkVia,
   LinkVia,
+  ReferenceSourceFacets,
   SimilarNotesResponse,
   NoteTagSuggestionsResponse,
   NoteClustersResponse,
@@ -33,6 +34,7 @@ import type {
   NoteLinksChangedEvent
 } from '../../contracts/src/notes-api.ts'
 import type { PlainChecklistsOption } from '../../contracts/src/plain-checklists.ts'
+import type { PropertyNoteUsage, PropertyUsage } from '../../contracts/src/properties-api.ts'
 import {
   defineDomain,
   defineEvent,
@@ -121,6 +123,8 @@ export interface WikiLinkResolution {
   path: string
   title: string
   fileType: 'markdown' | 'pdf' | 'image' | 'audio' | 'video'
+  /** Authoritative journal day; journal entries may have imported, non-date ids. */
+  journalDate?: string | null
 }
 
 /**
@@ -422,7 +426,7 @@ export interface BacklinkContext {
   linkEnd: number
 }
 
-export interface Backlink {
+export interface Backlink extends ReferenceSourceFacets {
   sourceId: string
   sourcePath: string
   sourceTitle: string
@@ -713,6 +717,14 @@ export const notesRpc = defineDomain({
     }),
     getPropertyDefinitions: defineMethod<() => Promise<PropertyDefinition[]>>({
       channel: NotesChannels.invoke.GET_PROPERTY_DEFINITIONS
+    }),
+    getPropertyUsage: defineMethod<() => Promise<PropertyUsage[]>>({
+      channel: NotesChannels.invoke.GET_PROPERTY_USAGE
+    }),
+    listNotesWithProperty: defineMethod<(name: string) => Promise<PropertyNoteUsage[]>>({
+      channel: NotesChannels.invoke.LIST_NOTES_WITH_PROPERTY,
+      params: ['name'],
+      invokeArgs: ['{ name }']
     }),
     createPropertyDefinition: defineMethod<
       (input: CreatePropertyDefinitionInput) => Promise<CreatePropertyDefinitionResponse>

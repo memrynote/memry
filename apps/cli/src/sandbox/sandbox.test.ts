@@ -13,6 +13,8 @@ import { ViewConfigSchema } from '@memry/contracts/folder-view-api'
 import { isCoverValue } from '@memry/shared/cover-image'
 import { extractAnchor, parsePortalDefinition } from '@memry/shared/portal-block'
 
+import { shiftJournalYear } from '@memry/domain-notes/journal'
+import { createClock } from './clock.ts'
 import { generateSandbox } from './generate.ts'
 
 // Links that point at no note on purpose, to show what an unresolved link looks like.
@@ -159,6 +161,19 @@ test('sandbox generates a linked, populated vault', async () => {
         1
       )
       assert.equal(data.prepare('SELECT count(*) FROM tag_categories').pluck().get(), 4)
+
+      // On this day: today's date has an entry in each of the three years before.
+      const todayIso = createClock(NOW).date(0)
+      const pastYears = data
+        .prepare(
+          'SELECT journal_date FROM note_metadata WHERE substr(journal_date, 6) = ? AND journal_date < ? ORDER BY journal_date DESC'
+        )
+        .pluck()
+        .all(todayIso.slice(5), todayIso)
+      assert.deepEqual(
+        pastYears,
+        [1, 2, 3].map((years) => shiftJournalYear(todayIso, -years))
+      )
 
       await assertTagsWithFields(vault, data, notes)
       await assertNotes101(vault)

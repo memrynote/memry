@@ -5,6 +5,7 @@
     "create": "Buat"
   },
   "wikiLinkPreview": {
+    "journalUnwritten": "Catatan untuk {date} belum ditulis. Klik untuk membuka hari tersebut",
     "notFound": "Tidak ditemui — klik untuk membuat “{title}”"
   },
   "wikiLinkMenu": {
@@ -138,6 +139,7 @@
     "actions": {
       "openInNewTab": "Buka dalam tab baharu",
       "openToTheSide": "Buka di sisi",
+      "openFolderView": "Buka Paparan Folder",
       "newNote": "Nota baharu",
       "newFolder": "Folder baharu",
       "showTasks": "Tunjukkan Tugas",
@@ -187,7 +189,8 @@
     },
     "toast": {
       "selectionBookmarked": "{count} item ditanda buku",
-      "selectionBookmarkFailed": "Tidak dapat menanda buku item yang dipilih"
+      "selectionBookmarkFailed": "Tidak dapat menanda buku item yang dipilih",
+      "pairedNoteNameTaken": "Nota bernama {name} sudah ada di situ"
     }
   },
   "editor": {
@@ -423,9 +426,14 @@
       "savedView": "Paparan tersimpan",
       "savedViewMissing": "Paparan tersimpan “{name}” sudah tiada, jadi paparan lalai ditunjukkan.",
       "openAsTab": "Buka sebagai tab",
+      "newNote": "Nota baharu",
+      "newViewTitle": "Paparan baharu",
+      "newViewSubtext": "Folder baharu di sebelah nota ini, disenaraikan di sini",
+      "newViewFailed": "Tidak dapat mencipta folder untuk paparan ini.",
       "empty": "Belum ada yang sepadan dengan paparan ini.",
       "loadFailed": "Tidak dapat memuatkan paparan ini. Nota itu sendiri tidak diubah.",
       "folderMissing": "Folder ini sudah tiada dalam bilik kebal. Pilih sumber lain.",
+      "unreadable": "Paparan ini tidak dapat dibaca. Pilih sumber di atas, atau alih keluar blok.",
       "invalidJson": "Definisi paparan ini bukan JSON yang sah. Betulkannya di bawah, atau alih keluar blok ini.",
       "invalidShape": "Definisi paparan ini tiada sumber. Pilih satu di atas, atau betulkannya di bawah.",
       "definition": "Definisi"
@@ -668,6 +676,8 @@
   },
   "menus": {
     "wiki": {
+      "journalDay": "Jurnal · {date}",
+      "journalDayUnwritten": "Jurnal · belum ditulis",
       "aria": "Cadangan nota",
       "loading": "Memuatkan nota…",
       "empty": "Tiada nota ditemui",
@@ -782,6 +792,12 @@
     "viaProperty": "{property} → {title}",
     "viaPortal": "Ditunjukkan dalam portal"
   },
+  "references": {
+    "filterAll": "Semua",
+    "filterNotes": "Nota",
+    "filterJournal": "Jurnal",
+    "filterBy": "Tapis rujukan: {filter}"
+  },
   "unlinkedMentions": {
     "title": "Sebutan tanpa pautan",
     "summary": "{count, plural, other {# sebutan tanpa pautan}}",
@@ -886,6 +902,7 @@
     "showOnCalendar": "Tunjukkan pada kalendar",
     "showingOnCalendar": "Dipaparkan pada kalendar",
     "relation": {
+      "unwrittenDay": "Belum ditulis",
       "deleted": "Dipadam",
       "removeAria": "Alih keluar {title}",
       "addAria": "Tambah hubungan",

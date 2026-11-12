@@ -19,7 +19,7 @@ describe('AIInlineChannels.invoke', () => {
       GET_SERVER_PORT: 'ai-inline:get-server-port',
       START_SERVER: 'ai-inline:start-server',
       STOP_SERVER: 'ai-inline:stop-server',
-      LIST_OLLAMA_MODELS: 'ai-inline:list-ollama-models'
+      LIST_MODELS: 'ai-inline:list-models'
     })
   })
 

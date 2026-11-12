@@ -82,6 +82,47 @@ Unarchiving restores the task to the status and project it had when you archived
 opened from global search lands in the detail panel, so an archived task found that way can
 be restored without switching scope first.
 
+## Advanced Filter
+
+The chips above combine one way: a task must pass every filter, and any of the values inside
+one. When you need **or** across filters, or **not**, open **Filter → Advanced filter…**.
+
+The builder opens with your chips already turned into rules, so the list does not change.
+Each rule is a field, an operator, and a value:
+
+| Field                               | Operators                                                             |
+| ----------------------------------- | --------------------------------------------------------------------- |
+| Title                               | contains, does not contain                                            |
+| Status, Priority, Project, Location | is any of, is none of                                                 |
+| Tags                                | has any of, has all of, has none of, is empty, is not empty           |
+| Due date                            | is, is not (a preset such as Overdue or This week, or a custom range) |
+| Repeats, Has time                   | is                                                                    |
+
+**Match all / any / none** at the top decides how the rules combine: every rule, at least one,
+or no rule at all. **Add group** adds a block of rules with its own match, which is how you
+write "Urgent, **or** tagged `work` **and** High priority". A group set to **none** excludes
+what it describes: "not (`#someday` or Low priority)".
+
+The footer counts the tasks that match as you edit. A rule with no value yet is skipped, not
+treated as matching nothing, and the footer says how many are skipped.
+
+Close the builder and the rules read back as one sentence in the filter bar, for example
+`Priority Urgent or not ( Tags #work or Priority High )`. Click it to edit, or its **×** to
+remove the rules. Search and the scope dropdown stay separate and still apply.
+
+### Saving Rules
+
+**Save** stores the rules with the rest of the filter, and the saved filter syncs to your other
+devices with its rules intact.
+
+Your iPhone has the same builder, under **Advanced filter** in the filter sheet, and a filter
+saved on one device applies its rules on the other.
+
+A device on an older version of MemryNote shows the saved filter without its rules, so it
+matches more tasks there. Starring or renaming it on that device does not remove the rules.
+The same holds the other way: a rule written by a newer version shows as **Rule from a newer
+version** and is skipped until you update.
+
 ## Quick Filter Chips
 
 Pre-built chips at the start of the bar for the most common scopes:

@@ -250,7 +250,8 @@
     "failedPlayAudio": "Nie udało się odtworzyć dźwięku",
     "failedLoadAudio": "Nie udało się załadować dźwięku",
     "video": "Wideo",
-    "unsupportedVideo": "Twoja przeglądarka nie obsługuje tagu wideo."
+    "unsupportedVideo": "Twoja przeglądarka nie obsługuje tagu wideo.",
+    "fileOnOtherDevice": "Plik jest na urządzeniu, które go przechwyciło."
   },
   "reminder": {
     "dataUnavailable": "Dane przypomnienia są niedostępne.",

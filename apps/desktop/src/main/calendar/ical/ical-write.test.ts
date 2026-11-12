@@ -118,6 +118,30 @@ describe('Memry event → iCalendar → parse (#1400)', () => {
     expect(remote).toMatchObject({ isAllDay: true, startAt: '2026-07-01T00:00:00.000Z' })
   })
 
+  it.each(['Europe/Istanbul', 'America/Chicago'])(
+    'writes a one-day all-day event created in memrynote in %s on its own day',
+    (timeZone) => {
+      const originalTz = process.env.TZ
+      process.env.TZ = timeZone
+      try {
+        // The event form saves a one-day all-day event as local midnight, end = start.
+        const localMidnight = new Date(2026, 6, 1).toISOString()
+        const { ics } = roundTrip(
+          memryEvent({
+            isAllDay: true,
+            startAt: localMidnight,
+            endAt: localMidnight,
+            timezone: timeZone
+          })
+        )
+        expect(ics).toContain('DTSTART;VALUE=DATE:20260701')
+        expect(ics).toContain('DTEND;VALUE=DATE:20260702')
+      } finally {
+        process.env.TZ = originalTz
+      }
+    }
+  )
+
   it('keeps a weekly series at 9:00 local across a daylight-saving change', () => {
     // US DST starts 2026-03-08: 9:00 EST is 14:00Z, 9:00 EDT is 13:00Z.
     const { ics, instances } = roundTrip(

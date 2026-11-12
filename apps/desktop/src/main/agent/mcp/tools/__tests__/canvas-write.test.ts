@@ -1,4 +1,6 @@
 import { describe, expect, it, vi, beforeEach } from 'vitest'
+import type { BrowserWindow } from 'electron'
+import { setMainWindow } from '../../../../main-window'
 
 const mocks = vi.hoisted(() => ({
   mainToRendererInvoke: vi.fn(),
@@ -18,6 +20,11 @@ vi.mock('../../../../canvas/live-registry', () => ({
 }))
 
 const win = (id: number) => ({ id, isDestroyed: () => false })
+// oxlint-disable-next-line typescript/no-unsafe-type-assertion -- the fake covers every member canvas-write touches
+const useAppWindow = (id: number | null): void =>
+  setMainWindow(
+    (id === null ? { id: 0, isDestroyed: () => true } : win(id)) as unknown as BrowserWindow
+  )
 const okResponse = {
   ok: true,
   applied: [],
@@ -65,10 +72,11 @@ describe('invokeCanvasWrite', () => {
     )
   })
 
-  it('falls back to any live window when there is no caller window', async () => {
+  it('falls back to the app window, not another window listed first, when there is no caller window', async () => {
     mocks.getCanvasWindowId.mockReturnValue(null)
     mocks.fromId.mockReturnValue(null)
-    mocks.getAllWindows.mockReturnValue([win(9)])
+    mocks.getAllWindows.mockReturnValue([win(4), win(9)])
+    useAppWindow(9)
     const { invokeCanvasWrite } = await import('../canvas-write')
 
     await invokeCanvasWrite(null, request)
@@ -85,6 +93,7 @@ describe('invokeCanvasWrite', () => {
     mocks.getCanvasWindowId.mockReturnValue(null)
     mocks.fromId.mockReturnValue(null)
     mocks.getAllWindows.mockReturnValue([])
+    useAppWindow(null)
     const { invokeCanvasWrite } = await import('../canvas-write')
 
     await expect(invokeCanvasWrite(null, request)).rejects.toThrow(/window/i)
@@ -93,7 +102,7 @@ describe('invokeCanvasWrite', () => {
   it('surfaces a renderer error as a tool error', async () => {
     mocks.getCanvasWindowId.mockReturnValue(null)
     mocks.fromId.mockReturnValue(null)
-    mocks.getAllWindows.mockReturnValue([win(1)])
+    useAppWindow(1)
     mocks.mainToRendererInvoke.mockResolvedValue({
       ok: false,
       error: { code: 'CANVAS_WRITE_ERROR', message: 'Canvas was modified by someone else' }
@@ -106,7 +115,7 @@ describe('invokeCanvasWrite', () => {
   it('throws when the renderer never answers', async () => {
     mocks.getCanvasWindowId.mockReturnValue(null)
     mocks.fromId.mockReturnValue(null)
-    mocks.getAllWindows.mockReturnValue([win(1)])
+    useAppWindow(1)
     mocks.mainToRendererInvoke.mockResolvedValue(null)
     const { invokeCanvasWrite } = await import('../canvas-write')
 

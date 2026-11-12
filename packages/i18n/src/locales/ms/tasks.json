@@ -113,7 +113,74 @@
       "noDueDate": "Tiada tarikh akhir"
     },
     "repeatTypeRepeating": "Berulang",
-    "repeatTypeOneTime": "Sekali sahaja"
+    "repeatTypeOneTime": "Sekali sahaja",
+    "advanced": {
+      "entry": "Penapis lanjutan…",
+      "entryHint": "Peraturan dengan dan, atau, bukan",
+      "title": "Penapis",
+      "match": "Padankan",
+      "ofThese": "daripada ini",
+      "matches": {
+        "all": "semua",
+        "any": "mana-mana",
+        "none": "tiada"
+      },
+      "fields": {
+        "title": "Tajuk",
+        "status": "Status",
+        "priority": "Keutamaan",
+        "due": "Tarikh akhir",
+        "project": "Projek",
+        "location": "Lokasi",
+        "tags": "Tag",
+        "repeat": "Berulang",
+        "hasTime": "Ada masa"
+      },
+      "ops": {
+        "contains": "mengandungi",
+        "notContains": "tidak mengandungi",
+        "any": "salah satu daripada",
+        "none": "bukan mana-mana daripada",
+        "all": "ada semua",
+        "empty": "kosong",
+        "notEmpty": "tidak kosong",
+        "is": "ialah",
+        "isNot": "bukan"
+      },
+      "tagOps": {
+        "any": "ada mana-mana daripada",
+        "all": "ada semua",
+        "none": "tiada mana-mana daripada"
+      },
+      "values": {
+        "repeating": "Berulang",
+        "oneTime": "Sekali",
+        "withTime": "Dengan masa",
+        "withoutTime": "Tanpa masa",
+        "customRange": "Julat tersuai",
+        "from": "Dari",
+        "to": "Hingga",
+        "pick": "Pilih…",
+        "titlePlaceholder": "Teks dalam tajuk"
+      },
+      "addRule": "Tambah peraturan",
+      "addGroup": "Tambah kumpulan",
+      "clear": "Kosongkan",
+      "removeRule": "Alih keluar peraturan",
+      "removeGroup": "Alih keluar kumpulan",
+      "matchCount": "{count, plural, other {# tugasan sepadan}}",
+      "skipped": "{count, plural, other {# peraturan dilangkau}}",
+      "ruleCount": "{count, plural, other {# peraturan}}",
+      "unknownRule": "Peraturan daripada versi lebih baharu",
+      "empty": "Belum ada peraturan. Tambah satu untuk mula menapis.",
+      "summary": {
+        "and": "dan",
+        "or": "atau",
+        "not": "bukan"
+      },
+      "editRules": "Edit peraturan",
+      "clearRules": "Kosongkan peraturan"
+    }
   },
   "quickAdd": {
     "label": "Tambah tugas pantas",

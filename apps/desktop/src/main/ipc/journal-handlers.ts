@@ -15,6 +15,7 @@ import {
   DeleteEntryInputSchema,
   GetHeatmapInputSchema,
   GetMonthEntriesInputSchema,
+  GetSameDayEntriesInputSchema,
   GetYearStatsInputSchema,
   GetDayContextInputSchema,
   GetPropertyRowsInputSchema,
@@ -22,6 +23,7 @@ import {
   type JournalEntry,
   type HeatmapEntry,
   type MonthEntryPreview,
+  type SameDayEntry,
   type MonthStats,
   type DayContext,
   type GetAllTagsOutput
@@ -40,6 +42,7 @@ import {
   getJournalEntryByDate,
   getHeatmapData,
   getJournalMonthEntries,
+  getJournalSameDayEntries,
   getJournalYearStats,
   getJournalStreak,
   getJournalPropertyRows,
@@ -224,6 +227,28 @@ export function registerJournalHandlers(): void {
         return previews
       }
     )
+  )
+
+  // journal:getSameDayEntries - Entries from other years on the same day
+  ipcMain.handle(
+    JournalChannels.invoke.GET_SAME_DAY_ENTRIES,
+    createValidatedHandler(GetSameDayEntriesInputSchema, async (input): Promise<SameDayEntry[]> => {
+      const rows = getJournalSameDayEntries(getIndexDatabase(), input.date)
+      const entries = await Promise.all(
+        rows.map(async (row): Promise<SameDayEntry | null> => {
+          const entry = await readJournalEntry(row.date!)
+          if (!entry || entry.content.trim() === '') return null
+          return {
+            id: entry.id,
+            date: entry.date,
+            preview: extractPreview(entry.content, 160),
+            content: entry.content,
+            wordCount: entry.wordCount
+          }
+        })
+      )
+      return entries.filter((entry): entry is SameDayEntry => entry !== null)
+    })
   )
 
   // journal:getYearStats - Get stats for all months in a year

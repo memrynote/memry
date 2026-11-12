@@ -5,11 +5,11 @@ import type { Task } from '@/data/task-model'
 import type { Project } from '@/data/tasks-data'
 import { getDefaultTodoStatus, getDefaultDoneStatus, formatDateShort } from '@/lib/task-utils'
 import { buildTaskTree } from '@memry/domain-tasks/tree'
-import { completeRepeatingTask } from '@memry/domain-tasks/parsing'
-import { generateTaskId } from '@/data/task-model'
+import { parseDateKey } from '@memry/domain-tasks/parsing'
+import { tasksService } from '@/services/tasks-service'
 import { createLogger } from '@/lib/logger'
 
-const _log = createLogger('Hook:UndoableTaskActions')
+const log = createLogger('Hook:UndoableTaskActions')
 
 export const UNDOABLE_FIELDS = new Set([
   'parentId',
@@ -179,21 +179,30 @@ export const useUndoableTaskActions = ({
       }))
 
       if (task.isRepeating && task.repeatConfig && task.dueDate) {
-        const config = task.repeatConfig
-        // The anchor (due vs completion), the next date and the series end are
-        // `completeRepeatingTask`, pinned for the iOS core by vectors (spec 004 D3).
-        const { nextDueDate: nextDate, completedCount: newCompletedCount } = completeRepeatingTask(
-          { dueDate: task.dueDate, repeatConfig: config, repeatFrom: task.repeatFrom },
-          completedAt
-        )
-        const shouldCreate = nextDate !== null
-
-        updateTask(taskId, {
-          statusId: doneStatus?.id || task.statusId,
-          completedAt,
-          isRepeating: false,
-          repeatConfig: null
-        })
+        // Main closes this occurrence and creates the next one in the same
+        // write, as it does for every other completion path; the workspace
+        // refetches on the events it publishes.
+        const completion = tasksService
+          .complete({ id: taskId, completedAt: completedAt.toISOString() })
+          .then((result) => {
+            if (!result.success) throw new Error(result.error ?? 'complete failed')
+            const next = result.nextOccurrence ?? null
+            if (next) {
+              toast.success(t('toasts.completed'), {
+                description: `Next occurrence: ${formatDateShort(parseDateKey(next.dueDate))}`
+              })
+            } else {
+              toast.success(t('toasts.deletedSeries'), {
+                description: 'This was the final occurrence.'
+              })
+            }
+            return next?.id ?? null
+          })
+          .catch((error: unknown) => {
+            log.error('Failed to complete repeating task', { taskId, error })
+            toast.error(t('toasts.completeFailed'))
+            return null
+          })
 
         incompleteSubtasks.forEach((subtask) => {
           updateTask(subtask.id, {
@@ -201,36 +210,6 @@ export const useUndoableTaskActions = ({
             completedAt
           })
         })
-
-        let nextOccurrenceId: string | null = null
-
-        if (shouldCreate && nextDate) {
-          const newTask: Task = {
-            ...task,
-            id: generateTaskId(),
-            dueDate: nextDate,
-            statusId: getDefaultTodoStatus(project)?.id || task.statusId,
-            completedAt: null,
-            createdAt: new Date(),
-            // The subtasks that just closed stay attached to the occurrence
-            // that owned them, so the fresh one starts empty rather than
-            // briefly listing the previous cycle's finished rows.
-            subtaskIds: [],
-            repeatConfig: {
-              ...config,
-              completedCount: newCompletedCount
-            }
-          }
-          nextOccurrenceId = newTask.id
-          void addTask(newTask)
-          toast.success(t('toasts.completed'), {
-            description: `Next occurrence: ${formatDateShort(nextDate)}`
-          })
-        } else {
-          toast.success(t('toasts.deletedSeries'), {
-            description: 'This was the final occurrence.'
-          })
-        }
 
         const originalSnapshot = {
           statusId: task.statusId,
@@ -240,13 +219,13 @@ export const useUndoableTaskActions = ({
         }
 
         registerUndo(`Complete "${task.title}"`, () => {
-          updateTask(taskId, originalSnapshot)
-          subtaskSnapshots.forEach((snap) => {
-            updateTask(snap.id, { statusId: snap.statusId, completedAt: snap.completedAt })
+          void completion.then((nextOccurrenceId) => {
+            updateTask(taskId, originalSnapshot)
+            subtaskSnapshots.forEach((snap) => {
+              updateTask(snap.id, { statusId: snap.statusId, completedAt: snap.completedAt })
+            })
+            if (nextOccurrenceId) deleteTask(nextOccurrenceId)
           })
-          if (nextOccurrenceId) {
-            deleteTask(nextOccurrenceId)
-          }
         })
       } else {
         updateTask(taskId, {
@@ -294,7 +273,6 @@ export const useUndoableTaskActions = ({
       findProject,
       tasks,
       updateTask,
-      addTask,
       deleteTask,
       registerUndo,
       removeUndoEntry,

@@ -110,6 +110,44 @@ export const APPLY_FIXTURES: ApplyFixture[] = [
     ]
   },
   {
+    name: 'a capture with its uploaded file carries the attachment id',
+    steps: [
+      {
+        payload: {
+          ...currentDesktopRow({ desktop: 1 }),
+          type: 'image',
+          attachmentPath: 'attachments/inbox/inbox-1/photo.png',
+          attachmentId: '0123456789abcdef0123456789abcdef'
+        }
+      }
+    ]
+  },
+  {
+    // `attachmentId` is sticky like `title` and `type` (§13.7.15): an older
+    // sender omits it, a newer one may send an explicit null, and neither
+    // clears the id this device knows.
+    name: 'an older payload without the attachment id and an explicit null both keep it',
+    steps: [
+      {
+        payload: {
+          ...currentDesktopRow({ desktop: 1 }),
+          type: 'image',
+          attachmentPath: 'attachments/inbox/inbox-1/photo.png',
+          attachmentId: '0123456789abcdef0123456789abcdef'
+        }
+      },
+      { payload: { title: 'Renamed', clock: { desktop: 2 } } },
+      { payload: { attachmentId: null, content: 'caption', clock: { desktop: 3 } } }
+    ]
+  },
+  {
+    name: 'a later string replaces the attachment id',
+    steps: [
+      { payload: { attachmentId: 'aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa', clock: { desktop: 1 } } },
+      { payload: { attachmentId: 'bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb', clock: { desktop: 2 } } }
+    ]
+  },
+  {
     name: 'a stale remote is skipped',
     steps: [
       { payload: currentDesktopRow({ desktop: 3 }) },

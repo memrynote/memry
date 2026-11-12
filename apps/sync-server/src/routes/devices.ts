@@ -1,6 +1,8 @@
 import { Hono } from 'hono'
 import { z } from 'zod'
 
+import { DeviceFormFactorSchema, type DeviceListResponse } from '@memry/contracts/auth-api'
+
 import { AppError, ErrorCodes } from '../lib/errors'
 import { authMiddleware } from '../middleware/auth'
 import { createRateLimiter } from '../middleware/rate-limit'
@@ -31,10 +33,12 @@ devices.get('/', deviceListRateLimit, async (c) => {
   const userId = c.get('userId')!
   const result = await listDevices(c.env.DB, userId)
 
-  const mapped = result.map((d) => ({
+  const mapped: DeviceListResponse['devices'] = result.map((d) => ({
     id: d.id,
     name: d.name,
     platform: d.platform,
+    // Additive (#4375): null for devices registered before the column existed.
+    formFactor: DeviceFormFactorSchema.safeParse(d.form_factor).data ?? null,
     // Additive (#1396): the build each device last connected with, so a client
     // can warn before a change that older builds would mishandle.
     appVersion: d.app_version,
