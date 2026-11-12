@@ -60,7 +60,14 @@ export function install(page: Page, stubFixup: boolean): Promise<void> {
     document.addEventListener('visibilitychange', () => push('vis'))
     document.addEventListener('selectionchange', () => {
       const s = getSelection()
-      push('sel', [s?.anchorOffset, s?.focusOffset, s?.isCollapsed, s?.toString().length])
+      push('sel', [
+        s?.anchorOffset,
+        s?.focusOffset,
+        s?.isCollapsed,
+        s?.toString().length,
+        s?.anchorNode?.nodeName,
+        s?.rangeCount
+      ])
     })
     const wrap = (target: unknown, name: string, live?: (self: unknown) => boolean): void => {
       const proto = target as Record<string, unknown>
@@ -89,9 +96,42 @@ export function install(page: Page, stubFixup: boolean): Promise<void> {
       'setBaseAndExtent',
       'extend',
       'selectAllChildren',
-      'modify'
+      'modify',
+      'setPosition',
+      'deleteFromDocument'
     ]) {
       wrap(Selection.prototype, m)
+    }
+    for (const m of ['removeChild', 'insertBefore', 'appendChild', 'replaceChild']) {
+      wrap(
+        Node.prototype,
+        m,
+        (self) => self instanceof Node && !!self.parentElement?.closest('.bn-editor')
+      )
+    }
+    wrap(Document.prototype, 'execCommand')
+    wrap(Range.prototype, 'deleteContents')
+    wrap(Range.prototype, 'insertNode')
+    wrap(Range.prototype, 'setStartBefore')
+    wrap(Range.prototype, 'setStartAfter')
+    wrap(Range.prototype, 'setEndBefore')
+    wrap(Range.prototype, 'setEndAfter')
+    const root = document.querySelector('.bn-editor')
+    if (root) {
+      new MutationObserver((records) => {
+        for (const r of records) {
+          push('mut', [
+            r.type,
+            (r.target as HTMLElement).nodeName,
+            r.attributeName,
+            r.removedNodes.length,
+            r.addedNodes.length,
+            r.type === 'attributes'
+              ? (r.target as HTMLElement).getAttribute(r.attributeName ?? '')
+              : null
+          ])
+        }
+      }).observe(root, { subtree: true, childList: true, attributes: true, characterData: true })
     }
     const pw = (window as unknown as { __memryPw?: Record<string, (...a: unknown[]) => unknown> })
       .__memryPw
@@ -127,7 +167,7 @@ export function dump(page: Page): Promise<string> {
       expanded: editor?.getAttribute('aria-expanded'),
       menu: document.querySelector('.wiki-link-menu')?.textContent?.slice(0, 80),
       text: document.querySelector('.bn-editor')?.textContent?.slice(0, 120),
-      log: w.__probe.slice(0, 160)
+      log: w.__probe.filter((e) => (e as { k: string }).k !== 'keydown').slice(-120)
     })
   })
 }
