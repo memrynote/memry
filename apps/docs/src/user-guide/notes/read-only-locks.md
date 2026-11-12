@@ -78,9 +78,10 @@ locked file in it is still exactly as the lock left it, unlocking gives each one
 back.
 
 If a locked markdown note is changed or deleted anyway, Memry keeps the changed text as a version
-in the note's [version history](./version-history), writes the locked text back, and tells you which
-note it restored. This also happens at the next start when the change was made while Memry was
-closed.
+in the note's [version history](./version-history) and writes the locked text back. A message names
+the note: **"“Meeting notes” is locked, so its outside edit was undone"**, and adds that the edited
+text is in the note's version history. To keep the outside edit, unlock the note and restore that
+version. This also happens at the next start when the change was made while Memry was closed.
 
 A lock does not cover everything outside the app:
 
@@ -90,6 +91,19 @@ A lock does not cover everything outside the app:
   outside Memry is not restored, and the delete syncs.
 - Read-only on disk does not stop every program. Some can still delete or replace a locked
   attachment, and Memry does not restore it.
+
+## In the Tauri Desktop App
+
+The desktop app built on Tauri, the replacement for the current Electron app, locks notes and
+folders the same way, with these differences:
+
+- **Locks stay on this device.** The Tauri app does not sync locks to your other devices yet.
+- **An outside change is never let through.** When Memry cannot save the changed text as a version,
+  for example because the disk is full, it leaves the file as it is, does not take the change into
+  the note, and tries again later. The Electron app took the change into the note in that case.
+- **A program still writing is caught too.** If the program that changed a locked note writes more
+  to it right after Memry put the locked text back, that text is also kept as a version. This works
+  for vaults on a local disk on macOS and Linux, not on Windows or network drives.
 
 ## Going Back to an Older Version of Memry
 
