@@ -9,6 +9,8 @@ import {
 } from '@/services/notes-service'
 import { onTaskCreated, onTaskUpdated, onTaskDeleted } from '@/services/tasks-service'
 import { onCanvasCreated, onCanvasDeleted, onCanvasUpdated } from '@/services/canvas-service'
+import { subscribeToEvents } from '@/services/tauri-event'
+import { rereadQueries } from './use-notes-query'
 
 export const graphKeys = {
   all: ['graph'] as const,
@@ -49,16 +51,24 @@ export function useGraphReactivity(): void {
       if (timer !== null) clearTimeout(timer)
       timer = setTimeout(() => {
         timer = null
-        void queryClient.invalidateQueries({ queryKey: graphKeys.all })
+        rereadQueries(queryClient, graphKeys.all)
       }, GRAPH_INVALIDATE_DEBOUNCE_MS)
     }
 
     const unsubs = [
-      onNoteCreated(invalidateAll),
-      onNoteUpdated(invalidateAll),
-      onNoteDeleted(invalidateAll),
-      // Edges are the index's links, written after the note event: this comes after the commit.
-      onNoteLinksChanged(invalidateAll),
+      // The graph was read before these listeners went live, and a change in between sent its
+      // event to nobody: read it again once they listen.
+      subscribeToEvents(
+        [
+          (live) => onNoteCreated(invalidateAll, live),
+          (live) => onNoteUpdated(invalidateAll, live),
+          (live) => onNoteDeleted(invalidateAll, live),
+          // Edges are the index's links, written after the note event: this comes after the
+          // commit.
+          (live) => onNoteLinksChanged(invalidateAll, live)
+        ],
+        invalidateAll
+      ),
       onTaskCreated(invalidateAll),
       onTaskUpdated(invalidateAll),
       onTaskDeleted(invalidateAll),

@@ -40,8 +40,17 @@ vi.mock('@/hooks/use-sidebar-navigation', () => ({
 vi.mock('@/hooks/use-notes-query', () => ({
   useNote: (id: string | null) => ({
     note: (id && mocks.notes.get(id)) || null,
-    isLoading: mocks.loading
+    isLoading: mocks.loading,
+    refetch: () => undefined
   })
+}))
+// A source note reads as loading until its note listeners are live; here they are at once.
+vi.mock('@/services/tauri-event', () => ({
+  subscribeToEvent: () => () => {},
+  subscribeToEvents: (_subscriptions: unknown, onListening: () => void) => {
+    onListening()
+    return () => {}
+  }
 }))
 vi.mock('@/lib/vault-locks-store', () => ({ useIsNoteLocked: () => mocks.locked }))
 vi.mock('@/contexts/sync-context', () => ({ useSyncOptional: () => null }))

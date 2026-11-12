@@ -1,4 +1,6 @@
+import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 import { act, renderHook, waitFor } from '@testing-library/react'
+import type { ReactNode } from 'react'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 
 import { useTags } from './use-tags'
@@ -11,10 +13,13 @@ const getApi = () =>
       mergeTag: ReturnType<typeof vi.fn>
       deleteTag: ReturnType<typeof vi.fn>
     }
-    onTagsChanged: ReturnType<typeof vi.fn>
-    onTagRenamed: ReturnType<typeof vi.fn>
-    onTagDeleted: ReturnType<typeof vi.fn>
   }
+
+const wrapper = ({ children }: { children: ReactNode }) => (
+  <QueryClientProvider client={new QueryClient({ defaultOptions: { queries: { retry: false } } })}>
+    {children}
+  </QueryClientProvider>
+)
 
 describe('useTags', () => {
   beforeEach(() => {
@@ -31,13 +36,10 @@ describe('useTags', () => {
     api.tags.renameTag = vi.fn().mockResolvedValue({ success: true })
     api.tags.mergeTag = vi.fn().mockResolvedValue({ success: true })
     api.tags.deleteTag = vi.fn().mockResolvedValue({ success: true })
-    api.onTagsChanged = vi.fn(() => () => {})
-    api.onTagRenamed = vi.fn(() => () => {})
-    api.onTagDeleted = vi.fn(() => () => {})
   })
 
-  it('loads tags, subscribes to tag events, and exposes sorted searches', async () => {
-    const { result } = renderHook(() => useTags())
+  it('loads tags and exposes sorted searches', async () => {
+    const { result } = renderHook(() => useTags(), { wrapper })
 
     await waitFor(() => expect(result.current.isLoading).toBe(false))
 
@@ -58,33 +60,13 @@ describe('useTags', () => {
       'work/design'
     ])
     expect(result.current.getPopularTags(2).map((tag) => tag.name)).toEqual(['work', 'personal'])
-    expect(result.current.getRecentTags(1)).toEqual([{ name: 'work', count: 8 }])
-
-    const api = getApi()
-    expect(api.onTagsChanged).toHaveBeenCalledTimes(1)
-    expect(api.onTagRenamed).toHaveBeenCalledTimes(1)
-    expect(api.onTagDeleted).toHaveBeenCalledTimes(1)
+    expect(result.current.getRecentTags(1).map((tag) => tag.name)).toEqual(['work'])
   })
 
-  it('refetches on events and forwards rename, merge, and delete operations', async () => {
-    let onChanged: (() => void) | undefined
+  it('forwards merge and delete operations', async () => {
     const api = getApi()
-    api.onTagsChanged.mockImplementation((callback: () => void) => {
-      onChanged = callback
-      return () => {}
-    })
-
-    const { result } = renderHook(() => useTags())
+    const { result } = renderHook(() => useTags(), { wrapper })
     await waitFor(() => expect(result.current.isLoading).toBe(false))
-
-    api.tags.getAllWithCounts.mockResolvedValueOnce({
-      tags: [{ name: 'refreshed', count: 1 }]
-    })
-    await act(async () => {
-      onChanged?.()
-    })
-
-    await waitFor(() => expect(result.current.tags).toEqual([{ name: 'refreshed', count: 1 }]))
 
     await act(async () => {
       await result.current.mergeTag('source', 'target')
@@ -99,7 +81,7 @@ describe('useTags', () => {
     const api = getApi()
     api.tags.getAllWithCounts.mockRejectedValueOnce(new Error('tag load failed'))
 
-    const { result } = renderHook(() => useTags())
+    const { result } = renderHook(() => useTags(), { wrapper })
 
     await waitFor(() => expect(result.current.isLoading).toBe(false))
     expect(result.current.error).toBe('tag load failed')

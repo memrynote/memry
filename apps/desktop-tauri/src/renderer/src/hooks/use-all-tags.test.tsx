@@ -6,22 +6,21 @@ import { beforeEach, describe, expect, it, vi } from 'vitest'
 import { useAllTags } from './use-all-tags'
 
 const mocks = vi.hoisted(() => ({
-  notesGetTags: vi.fn(),
-  inboxGetTags: vi.fn(),
-  tagListeners: [] as Array<() => void>,
-  tagUnsubscribes: [] as Array<ReturnType<typeof vi.fn>>
+  getAllWithCounts: vi.fn(),
+  inboxGetTags: vi.fn()
 }))
 
-vi.mock('@/services/notes-service', () => ({
-  notesService: {
-    getTags: mocks.notesGetTags
-  },
-  onTagsChanged: (callback: () => void) => {
-    mocks.tagListeners.push(callback)
-    const unsubscribe = vi.fn()
-    mocks.tagUnsubscribes.push(unsubscribe)
-    return unsubscribe
-  }
+const noteTag = (name: string, count: number, color: string) => ({
+  name,
+  count,
+  color,
+  icon: null,
+  categoryId: null,
+  sortOrder: 0
+})
+
+vi.mock('@/services/tags-service', () => ({
+  tagsService: { getAllWithCounts: mocks.getAllWithCounts }
 }))
 
 vi.mock('@/services/inbox-service', () => ({
@@ -48,13 +47,13 @@ const createWrapper = () => {
 describe('useAllTags', () => {
   beforeEach(() => {
     vi.clearAllMocks()
-    mocks.tagListeners = []
-    mocks.tagUnsubscribes = []
-    mocks.notesGetTags.mockResolvedValue([
-      { tag: 'Work', count: 4, color: '#111111' },
-      { tag: 'work/design', count: 2, color: '#222222' },
-      { tag: 'personal', count: 1, color: '#333333' }
-    ])
+    mocks.getAllWithCounts.mockResolvedValue({
+      tags: [
+        noteTag('Work', 4, '#111111'),
+        noteTag('work/design', 2, '#222222'),
+        noteTag('personal', 1, '#333333')
+      ]
+    })
     mocks.inboxGetTags.mockResolvedValue([
       { tag: 'work', count: 3 },
       { tag: 'inbox', count: 6 },
@@ -95,53 +94,20 @@ describe('useAllTags', () => {
     ])
   })
 
-  it('refetches notes on tag events and both sources through refetch', async () => {
+  it('refetches both sources through refetch', async () => {
     const { result } = renderHook(() => useAllTags(), { wrapper: createWrapper() })
     await waitFor(() => expect(result.current.isLoading).toBe(false))
 
-    mocks.notesGetTags.mockResolvedValueOnce([{ tag: 'updated', count: 9 }])
-    await act(async () => {
-      mocks.tagListeners[0]()
-    })
-    await waitFor(() => expect(result.current.tags[0].name).toBe('updated'))
-
+    mocks.getAllWithCounts.mockResolvedValueOnce({ tags: [noteTag('updated', 9, '')] })
+    mocks.inboxGetTags.mockResolvedValueOnce([])
     await act(async () => {
       result.current.refetch()
     })
-    expect(mocks.notesGetTags).toHaveBeenCalledTimes(3)
-    expect(mocks.inboxGetTags).toHaveBeenCalledTimes(2)
-  })
-
-  it('subscribes to tag events once across re-renders and unsubscribes on unmount', async () => {
-    const { result, rerender, unmount } = renderHook(() => useAllTags(), {
-      wrapper: createWrapper()
-    })
-    await waitFor(() => expect(result.current.isLoading).toBe(false))
-
-    // The sole consumer (tag-autocomplete) re-renders on every keystroke.
-    for (let i = 0; i < 10; i += 1) {
-      rerender()
-    }
-
-    expect(mocks.tagListeners).toHaveLength(1)
-    expect(mocks.tagUnsubscribes.filter((fn) => fn.mock.calls.length > 0)).toHaveLength(0)
-
-    // A tags-changed event arriving after those re-renders must still reach the
-    // consumer (guards against a listener left holding stale render state).
-    // mockResolvedValue (not ...Once) so an unconsumed queue entry can never leak
-    // into the next test in this file.
-    mocks.notesGetTags.mockResolvedValue([{ tag: 'after-rerenders', count: 12 }])
-    await act(async () => {
-      mocks.tagListeners[mocks.tagListeners.length - 1]()
-    })
-    await waitFor(() => expect(result.current.tags[0].name).toBe('after-rerenders'))
-
-    unmount()
-    expect(mocks.tagUnsubscribes.filter((fn) => fn.mock.calls.length > 0)).toHaveLength(1)
+    await waitFor(() => expect(result.current.tags.map((tag) => tag.name)).toEqual(['updated']))
   })
 
   it('surfaces query errors while still exposing empty helper results', async () => {
-    mocks.notesGetTags.mockRejectedValueOnce(new Error('notes failed'))
+    mocks.getAllWithCounts.mockRejectedValueOnce(new Error('notes failed'))
     mocks.inboxGetTags.mockResolvedValueOnce([])
 
     const { result } = renderHook(() => useAllTags(), { wrapper: createWrapper() })

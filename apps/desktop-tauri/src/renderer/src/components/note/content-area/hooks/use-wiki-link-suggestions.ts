@@ -82,13 +82,13 @@ function createAudioFileBlockContent(props: {
 export function useWikiLinkSuggestions(editor: any, onAddName?: (name: string) => void) {
   const notesCacheRef = useRef<{ notes: NoteSuggestion[]; fetchedAt: number } | null>(null)
 
-  useEffect(
-    () =>
-      onNoteLinksChanged(() => {
-        notesCacheRef.current = null
-      }),
-    []
-  )
+  useEffect(() => {
+    const forget = (): void => {
+      notesCacheRef.current = null
+    }
+    // A list read before the listener went live may predate a change whose event went to nobody.
+    return onNoteLinksChanged(forget, forget)
+  }, [])
   // Headings have no index in either database, so `#` reads the target note's
   // body on demand. Cached per note, same 5s window as the note list.
   const headingsCacheRef = useRef(

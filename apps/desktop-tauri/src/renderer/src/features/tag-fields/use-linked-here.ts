@@ -4,6 +4,8 @@ import type { LinkedHereGroup } from '@memry/contracts/tag-objects-api'
 import { tagsService } from '@/services/tags-service'
 import { onNoteLinksChanged, onNoteUpdated, onTagsChanged } from '@/services/notes-service'
 import { onTaskUpdated } from '@/services/tasks-service'
+import { subscribeToEvents } from '@/services/tauri-event'
+import { rereadQueries } from '@/hooks/use-notes-query'
 
 export const linkedHereKey = (noteId: string, limit: number) =>
   ['tags', 'linked-here', noteId, limit] as const
@@ -25,18 +27,26 @@ export function useLinkedHere(
     const invalidate = (): void => {
       if (timer) clearTimeout(timer)
       timer = setTimeout(() => {
-        void queryClient.invalidateQueries({ queryKey: ['tags', 'linked-here', noteId] })
+        rereadQueries(queryClient, ['tags', 'linked-here', noteId])
       }, INVALIDATE_DELAY_MS)
     }
     const offs = [
-      onNoteUpdated(invalidate),
-      onTagsChanged(invalidate),
-      onTaskUpdated(invalidate),
-      // A note's update comes before the index pass that writes its links and relation values;
-      // this comes once they are committed.
-      onNoteLinksChanged(({ targetIds }) => {
-        if (targetIds.includes(noteId)) invalidate()
-      })
+      // The groups were read before these listeners went live, and a change in between sent its
+      // event to nobody: read them again once they listen.
+      subscribeToEvents(
+        [
+          (live) => onNoteUpdated(invalidate, live),
+          (live) => onTagsChanged(invalidate, live),
+          // A note's update comes before the index pass that writes its links and relation
+          // values; this comes once they are committed.
+          (live) =>
+            onNoteLinksChanged(({ targetIds }) => {
+              if (targetIds.includes(noteId)) invalidate()
+            }, live)
+        ],
+        invalidate
+      ),
+      onTaskUpdated(invalidate)
     ]
     return () => {
       if (timer) clearTimeout(timer)

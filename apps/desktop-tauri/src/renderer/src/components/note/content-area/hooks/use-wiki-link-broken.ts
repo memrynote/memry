@@ -38,6 +38,7 @@ import {
 } from '@/services/notes-service'
 import { clearCanvasLookupCache, resolveCanvasByTitle } from '@/lib/canvas-lookup'
 import { onCanvasCreated, onCanvasDeleted, onCanvasUpdated } from '@/services/canvas-service'
+import { subscribeToEvents } from '@/services/tauri-event'
 import { registerEditorPlugin } from '../register-editor-plugin'
 import { getLiveTiptapView } from '../live-prosemirror-view'
 import {
@@ -182,10 +183,17 @@ export function useWikiLinkBroken(
     void refresh()
     tiptap.on('update', scheduleRefresh)
     const unsubscribes = [
-      onNoteCreated(forceRefresh),
-      onNoteRenamed(forceRefresh),
-      onNoteDeleted(forceRefresh),
-      onNoteLinksChanged(forceRefresh),
+      // The first pass resolved before these listeners went live, and a note changed in between
+      // sent its event to nobody: resolve again once they listen.
+      subscribeToEvents(
+        [
+          (live) => onNoteCreated(forceRefresh, live),
+          (live) => onNoteRenamed(forceRefresh, live),
+          (live) => onNoteDeleted(forceRefresh, live),
+          (live) => onNoteLinksChanged(forceRefresh, live)
+        ],
+        forceRefresh
+      ),
       onCanvasCreated(forceRefresh),
       onCanvasUpdated(forceRefresh),
       onCanvasDeleted(forceRefresh)
