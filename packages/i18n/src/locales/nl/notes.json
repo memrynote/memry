@@ -426,7 +426,8 @@
       "newViewFailed": "Kan de map voor deze weergave niet maken.",
       "empty": "Er komt nog niets overeen met deze weergave.",
       "loadFailed": "Kan deze weergave niet laden. De notities zelf blijven ongewijzigd.",
-      "folderMissing": "Deze map staat niet meer in de kluis. Kies een andere bron."
+      "folderMissing": "Deze map staat niet meer in de kluis. Kies een andere bron.",
+      "unreadable": "Deze weergave kan niet worden gelezen. Kies hierboven een bron of verwijder het blok."
     },
     "chart": {
       "title": "Grafiek",

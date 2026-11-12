@@ -426,7 +426,8 @@
       "newViewFailed": "Kunne ikke oprette mappen til denne visning.",
       "empty": "Intet matcher denne visning endnu.",
       "loadFailed": "Kunne ikke indlæse denne visning. Selve noterne er uændrede.",
-      "folderMissing": "Denne mappe findes ikke længere i boksen. Vælg en anden kilde."
+      "folderMissing": "Denne mappe findes ikke længere i boksen. Vælg en anden kilde.",
+      "unreadable": "Denne visning kan ikke læses. Vælg en kilde ovenfor, eller fjern blokken."
     },
     "chart": {
       "title": "Diagram",

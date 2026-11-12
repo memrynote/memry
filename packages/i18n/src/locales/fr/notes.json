@@ -426,7 +426,8 @@
       "newViewFailed": "Impossible de créer le dossier de cette vue.",
       "empty": "Rien ne correspond encore à cette vue.",
       "loadFailed": "Impossible de charger cette vue. Les notes elles-mêmes sont intactes.",
-      "folderMissing": "Ce dossier n'est plus dans le coffre. Choisissez une autre source."
+      "folderMissing": "Ce dossier n'est plus dans le coffre. Choisissez une autre source.",
+      "unreadable": "Cette vue est illisible. Choisissez une source ci-dessus ou supprimez le bloc."
     },
     "chart": {
       "title": "Graphique",

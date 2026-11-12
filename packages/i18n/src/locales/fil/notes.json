@@ -426,7 +426,8 @@
       "newViewFailed": "Hindi magawa ang folder para sa view na ito.",
       "empty": "Wala pang tumutugma sa view na ito.",
       "loadFailed": "Hindi ma-load ang view na ito. Hindi ginalaw ang mismong mga tala.",
-      "folderMissing": "Wala na sa vault ang folder na ito. Pumili ng ibang source."
+      "folderMissing": "Wala na sa vault ang folder na ito. Pumili ng ibang source.",
+      "unreadable": "Hindi mabasa ang view na ito. Pumili ng source sa itaas, o alisin ang block."
     },
     "chart": {
       "title": "Chart",

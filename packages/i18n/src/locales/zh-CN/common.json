@@ -3,6 +3,7 @@
     "copyFailed": "无法复制传送门",
     "hiddenCount": "已隐藏 {count} 个",
     "windowFailed": "无法打开此传送门。请改为打开源笔记。",
+    "unreadable": "无法读取此传送门。请移除该块并添加新的传送门。",
     "search": {
       "editQuery": "编辑查询",
       "count": "{count, plural, other {# 个块}}",
