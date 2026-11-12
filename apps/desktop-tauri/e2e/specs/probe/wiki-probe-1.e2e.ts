@@ -1,3 +1,3 @@
 import { wikiLoop } from './wiki-probe'
 
-wikiLoop(1, 30, 'static')
+wikiLoop(1, 30, 'ce-focus')

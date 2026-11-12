@@ -1,3 +1,3 @@
 import { wikiLoop } from './wiki-probe'
 
-wikiLoop(7, 30, 'prog')
+wikiLoop(7, 30, 'ce-nofocus')

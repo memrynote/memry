@@ -16,6 +16,8 @@ export type Variant =
   | 'prog'
   | 'nospell'
   | 'static'
+  | 'ce-focus'
+  | 'ce-nofocus'
   | 'nopm'
 
 export function install(page: Page, stubFixup: boolean): Promise<void> {
@@ -316,7 +318,23 @@ export function wikiLoop(group: number, count: number, variant: Variant): void {
           window.addEventListener('selectionchange', (e) => e.stopImmediatePropagation(), true)
         })
       }
-      if (variant === 'static') {
+      if (variant === 'ce-focus' || variant === 'ce-nofocus') {
+        await page.evaluate(
+          (arg: { needle: string; focus: boolean }) => {
+            const el = document.createElement('div')
+            el.id = 'probe-ce'
+            el.contentEditable = 'true'
+            el.style.cssText =
+              'position:fixed;top:4px;left:4px;z-index:99999;background:#fff;color:#000;padding:4px'
+            el.textContent = arg.needle
+            document.body.append(el)
+            if (arg.focus) el.focus()
+            const node = el.firstChild as Text
+            getSelection()?.setBaseAndExtent(node, 0, node, arg.needle.length)
+          },
+          { needle: selected, focus: variant === 'ce-focus' }
+        )
+      } else if (variant === 'static') {
         await page.evaluate((needle: string) => {
           const el = document.createElement('div')
           el.id = 'probe-static'
@@ -355,7 +373,14 @@ export function wikiLoop(group: number, count: number, variant: Variant): void {
         await text.click({ clickCount: 3 })
       }
       await mark(page, 'afterClick')
-      if (variant === 'idle' || variant === 'prog' || variant === 'static' || variant === 'nopm') {
+      if (
+        variant === 'idle' ||
+        variant === 'prog' ||
+        variant === 'static' ||
+        variant === 'nopm' ||
+        variant === 'ce-focus' ||
+        variant === 'ce-nofocus'
+      ) {
         const held = await page.evaluate(
           () =>
             new Promise<string>((resolve) => {
