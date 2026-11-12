@@ -50,7 +50,7 @@ pub fn apply_fragment_seed(
     let Some(doc) = build_seed_doc(env, prepared) else {
         return false;
     };
-    apply_built_seed(prepared, &doc, txn, fragment)
+    apply_built_seed(prepared, &doc, txn, fragment, CriticMarks::FromMarkdown)
 }
 
 fn apply_built_seed(
@@ -58,11 +58,14 @@ fn apply_built_seed(
     doc: &Node,
     txn: &mut TransactionMut,
     fragment: &XmlFragmentRef,
+    marks: CriticMarks,
 ) -> bool {
     if write_fragment(Schema::memry(), txn, fragment, doc).is_err() {
         return false;
     }
-    write_critic_marks(txn, &prepared.marks);
+    if marks == CriticMarks::FromMarkdown {
+        write_critic_marks(txn, &prepared.marks);
+    }
     write_link_references(txn, &prepared.definitions, &prepared.usages);
     apply_writing_seed(
         txn,
@@ -132,6 +135,17 @@ pub enum ReplaceOutcome {
     Failed,
 }
 
+/// Who writes the `criticMarkupMarks` root in a replace (#4425).
+#[derive(Debug, Clone, Copy, Default, PartialEq, Eq)]
+pub enum CriticMarks {
+    /// The markdown's marks replace the root's: a file's text is the note's.
+    #[default]
+    FromMarkdown,
+    /// The root is left as it is, every field of every mark included: an editor window that
+    /// holds the note writes it, and its save may be older than the marks.
+    Kept,
+}
+
 /// BlockNote's empty document: the one empty paragraph a fresh editor holds.
 pub fn empty_document_blocks() -> Vec<Json> {
     vec![json!({"type": "paragraph", "props": {}, "content": [], "children": []})]
@@ -158,6 +172,7 @@ pub fn replace_doc_body(
     note_path: Option<&str>,
     writing: Option<WritingFrontmatter>,
     unless_changed_from: Option<&str>,
+    marks: CriticMarks,
 ) -> ReplaceOutcome {
     if classify_markdown_content(markdown, MarkdownClassThresholds::default())
         .large_file
@@ -199,7 +214,7 @@ pub fn replace_doc_body(
     if length > 0 {
         fragment.remove_range(txn, 0, length);
     }
-    if !apply_built_seed(&prepared, &doc, txn, &fragment) {
+    if !apply_built_seed(&prepared, &doc, txn, &fragment, marks) {
         return ReplaceOutcome::Failed;
     }
     // The file's new bytes are the source from here on. Without the writing

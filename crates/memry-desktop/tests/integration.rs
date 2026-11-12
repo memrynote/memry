@@ -233,6 +233,8 @@ mod notes_tag_retag;
 mod notes_tag_template;
 #[path = "notes_update.rs"]
 mod notes_update;
+#[path = "notes_update_critic_marks.rs"]
+mod notes_update_critic_marks;
 #[path = "notes_writes.rs"]
 mod notes_writes;
 #[path = "path_collision.rs"]
