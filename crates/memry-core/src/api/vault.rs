@@ -49,6 +49,7 @@ use crate::api::notes_write::NotesWriter;
 use crate::api::search::Search;
 use crate::api::sync::VaultSync;
 use crate::api::tasks::Tasks;
+use crate::protocol::types::Declaration;
 use crate::seams::secure_store::SecureStore;
 use crate::storage::{Db, OpenOptions, open_data, open_data_with};
 
@@ -102,6 +103,23 @@ impl Vault {
     pub fn search_reporting(&self) -> Result<(Arc<Search>, Option<String>), StorageError> {
         let (search, reason) = Search::over_reporting(self.db.clone(), &self.directory)?;
         Ok((Arc::new(search), reason))
+    }
+
+    /// [`Vault::sync`] under another declaration (chapter 13 §13.1): desktop
+    /// declares the six desktop-only types too. Not on the FFI surface, so
+    /// iOS keeps [`Vault::sync`] and the twenty-one.
+    pub fn sync_with_declaration(
+        &self,
+        session: Arc<AuthSession>,
+        declaration: Declaration,
+    ) -> Arc<VaultSync> {
+        Arc::new(VaultSync::over(
+            self.id.clone(),
+            self.db.clone(),
+            session,
+            self.directory.clone(),
+            declaration,
+        ))
     }
 
     /// The database handle, for integration tests that seed a peer's records
@@ -438,12 +456,7 @@ impl Vault {
     ///
     /// Building this makes no request and takes no lock.
     pub fn sync(&self, session: Arc<AuthSession>) -> Arc<VaultSync> {
-        Arc::new(VaultSync::over(
-            self.id.clone(),
-            self.db.clone(),
-            session,
-            self.directory.clone(),
-        ))
+        self.sync_with_declaration(session, Declaration::subscribed())
     }
 
     /// The note and folder reads over **this** vault's database.
