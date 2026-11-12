@@ -16,8 +16,8 @@ use memry_core::api::auth::{
 use memry_core::api::errors::{ApiError, AuthError};
 use memry_core::crypto::sodium;
 use memry_core::protocol::auth::{
-    DevicePlatform, REFRESH_REJECT_BACKOFF_MS, TokenClaims, TokenManager, device_challenge_message,
-    fallback_retry_worthwhile, refresh_delay_ms, refresh_delay_ms_with,
+    DeviceFormFactor, DevicePlatform, REFRESH_REJECT_BACKOFF_MS, TokenClaims, TokenManager,
+    device_challenge_message, fallback_retry_worthwhile, refresh_delay_ms, refresh_delay_ms_with,
 };
 use memry_core::protocol::http::{ClientIdentity, HttpClient};
 use memry_core::seams::secure_store::{SecureStore, SecureStoreKey};
@@ -31,6 +31,7 @@ fn descriptor() -> DeviceDescriptor {
         // Chapter 02 §2.12: the registration enum, while `x-memry-client`
         // carries `ios` from `CLIENT_PLATFORMS`. They coincide for a phone.
         platform: DevicePlatform::Ios,
+        form_factor: Some(DeviceFormFactor::Phone),
         os_version: Some("26.0".to_string()),
         app_version: "1.4.2".to_string(),
         vault_id: None,
@@ -38,12 +39,20 @@ fn descriptor() -> DeviceDescriptor {
 }
 
 fn session(transport: Arc<FakeTransport>, store: Arc<FakeSecureStore>) -> AuthSession {
+    session_as(transport, store, descriptor())
+}
+
+fn session_as(
+    transport: Arc<FakeTransport>,
+    store: Arc<FakeSecureStore>,
+    device: DeviceDescriptor,
+) -> AuthSession {
     AuthSession::new(
         transport,
         store,
         BASE.to_string(),
         "ios".to_string(),
-        descriptor(),
+        device,
     )
     .unwrap()
 }
@@ -281,6 +290,8 @@ async fn sign_in_registers_a_device_and_stores_the_pair() {
     assert_eq!(register["platform"], "ios");
     assert_eq!(register["appVersion"], "1.4.2");
     assert_eq!(register["osVersion"], "26.0");
+    // §2.3.4 (#4375): what tells an iPad from an iPhone, both `ios`.
+    assert_eq!(register["formFactor"], "phone");
     // Omitted rather than null: the server's schema rejects an explicit null.
     assert!(register.get("vaultId").is_none());
     // Registration is authorised by the setup token, not by a session token.
@@ -313,6 +324,32 @@ async fn sign_in_registers_a_device_and_stores_the_pair() {
     );
     // §2.3.3: the setup token is single-use, so a spent one is not kept.
     assert_eq!(store.text(SecureStoreKey::SetupToken), None);
+}
+
+/// §2.3.4: a shell that passes no form factor sends no key, exactly as a build
+/// that predates the field, and a tablet sends `tablet`.
+#[tokio::test]
+async fn registration_sends_the_form_factor_only_when_the_shell_knows_it() {
+    for (form_factor, sent) in [
+        (None, None),
+        (Some(DeviceFormFactor::Tablet), Some("tablet")),
+    ] {
+        let transport = FakeTransport::new(sign_in_script("jti-1"));
+        let device = DeviceDescriptor {
+            form_factor,
+            ..descriptor()
+        };
+        let session = session_as(transport.clone(), FakeSecureStore::new(), device);
+        session
+            .request_email_code("kaan@example.com".into())
+            .await
+            .unwrap();
+        session.verify_email_code("123456".into()).await.unwrap();
+        session.register_device().await.unwrap();
+
+        let register = body_json(&transport.calls()[2]);
+        assert_eq!(register.get("formFactor").and_then(|v| v.as_str()), sent);
+    }
 }
 
 #[tokio::test]

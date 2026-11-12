@@ -59,6 +59,8 @@ A journal day's file is written by the same rules. The one frontmatter key a pas
 
 A pass that would write the same bytes writes nothing, so the file's modification time does not change. Before a write replaces bytes the app did not write, the old file is kept as a version.
 
+An outside edit that arrives while the document holds typing its file does not have yet is not fed. The typing wins: the outside file is kept as a version and the next pass writes the document over it (`vault/consumer/body.rs`). An outside edit that arrives after the pass wrote the typing is fed as usual. The Windows write-back soak (`e2e/soak/writeback-soak.ts`) races both orders and reads the kept version back.
+
 A note whose app is killed before its write still reaches its file: when the vault opens next, the open reconcile writes every note whose document is ahead of its file. Before that, it moves to the OS trash the file of every note and journal day deleted on another device, or whose file removal a crash cut short. A file goes only while its bytes are the ones its row read, so a file edited since stays with its row.
 
 ## Shared files

@@ -62,6 +62,7 @@ pub mod repeat_config;
 pub mod saved_filters;
 pub mod search;
 pub mod settings;
+pub mod similarity;
 pub mod tag_admin;
 pub mod tag_body_rename;
 pub mod tag_categories;
