@@ -431,12 +431,25 @@ jobs:
         timeout-minutes: 5
         run: pnpm --filter @memry/desktop-tauri test:e2e:harness
 
+      # The app's own crash handler misses a fail-fast (Rust's abort) and a stack overflow; WER
+      # writes those too. The harness copies the dump of an app that died under it (#3967).
+      - name: WER local dumps (Windows)
+        if: matrix.variant == 'e2e' && runner.os == 'Windows'
+        shell: pwsh
+        run: |
+          $key = 'HKLM:\SOFTWARE\Microsoft\Windows\Windows Error Reporting\LocalDumps\Memrynote.exe'
+          New-Item -Path $key -Force | Out-Null
+          New-ItemProperty -Path $key -Name DumpFolder -PropertyType ExpandString -Value "$env:RUNNER_TEMP\wer-dumps" -Force | Out-Null
+          New-ItemProperty -Path $key -Name DumpType -PropertyType DWord -Value 1 -Force | Out-Null
+          New-ItemProperty -Path $key -Name DumpCount -PropertyType DWord -Value 50 -Force | Out-Null
+
       # `dbus-run-session` gives libsecret a session bus; the keyring is unlocked with an empty
       # password. Every other OS has its keychain already.
       - name: E2E specs
         if: matrix.variant == 'e2e' && matrix.platform != 'linux-arm64' && runner.os != 'Linux'
         env:
           MEMRY_E2E_BINARY: ${{ github.workspace }}/${{ steps.binary.outputs.path }}
+          MEMRY_E2E_WER_DUMPS: ${{ runner.os == 'Windows' && format('{0}\wer-dumps', runner.temp) || '' }}
           # One app per vCPU: 4 on the Windows runners, 2 on the 3-vCPU macOS runner.
           MEMRY_E2E_WORKERS: ${{ runner.os == 'Windows' && '4' || '2' }}
           SHARD: ${{ matrix.shard && format('--shard={0}/2', matrix.shard) || '' }}
