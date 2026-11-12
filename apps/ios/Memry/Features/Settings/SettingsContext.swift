@@ -148,8 +148,12 @@ final class AccountModel {
         }
     }
 
+    /// A paid-sync read: the server refuses it with a 402 for an account known
+    /// to be unpaid, so that account is not asked (desktop gates it the same
+    /// way). An unknown plan still asks.
     func loadStorage() async {
         guard let session else { return }
+        if let billing, billing.plan == "free" || billing.status != "active" { return }
         do { storage = try await session.storage() } catch { record(error) }
     }
 

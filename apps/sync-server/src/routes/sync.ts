@@ -40,6 +40,7 @@ import {
   type RecordPushBatchOutcome
 } from '../services/sync'
 import {
+  ensureLocalAdminPaidSyncAccessForUser,
   ensureSyncVaultAllowed,
   getSyncEntitlement,
   isPaidSyncEntitlementActive
@@ -199,6 +200,27 @@ const handleSetVaultIcon = async (c: Context<AppContext>): Promise<Response> => 
 
 sync.put('/vaults/:vaultId/icon', vaultsRateLimit, handleSetVaultIcon)
 
+const storageRateLimit = createRateLimiter({
+  keyPrefix: 'sync_storage',
+  maxRequests: 30,
+  windowSeconds: 60
+})
+
+// Account-wide, so above paidSyncMiddleware: that middleware UPSERTS the
+// request's vault, and a usage read must never create one (iOS sends it with
+// no X-Memry-Vault-Id). getStorageBreakdown enforces paid access itself.
+sync.get('/storage', storageRateLimit, async (c) => {
+  const userId = c.get('userId')!
+  await ensureLocalAdminPaidSyncAccessForUser(
+    c.env.DB,
+    c.env.ENVIRONMENT,
+    userId,
+    c.env.LOCAL_ADMIN_SYNC_EMAILS
+  )
+  const breakdown = await getStorageBreakdown(c.env.DB, userId)
+  return c.json(breakdown)
+})
+
 sync.use('*', paidSyncMiddleware)
 sync.use('*', syncTypesMiddleware)
 
@@ -323,18 +345,6 @@ sync.get('/ws', wsRateLimit, async (c) => {
       headers
     })
   )
-})
-
-const storageRateLimit = createRateLimiter({
-  keyPrefix: 'sync_storage',
-  maxRequests: 30,
-  windowSeconds: 60
-})
-
-sync.get('/storage', storageRateLimit, async (c) => {
-  const userId = c.get('userId')!
-  const breakdown = await getStorageBreakdown(c.env.DB, userId)
-  return c.json(breakdown)
 })
 
 const handleRecordStatus = async (c: Context<AppContext>): Promise<Response> => {

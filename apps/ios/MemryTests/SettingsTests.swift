@@ -100,6 +100,23 @@ struct SettingsTests {
         #expect(LocalSettings(defaults: defaults).isOn(.inbox) == false)
     }
 
+    @Test func a_free_account_is_not_asked_for_paid_storage() async {
+        let session = FakeAuthSession(from: .registered)
+        session.scriptBilling(BillingStatus(
+            email: "a@b.c", plan: "free", status: "inactive", cadence: nil,
+            storageLimit: 0, storageUsed: 0, maxFileSize: 0, maxVaults: 0, versionHistoryDays: 0,
+            expiresAt: nil, store: nil, manageUrl: nil, willRenew: nil, appAccountToken: nil,
+            canManageBilling: nil
+        ))
+        let account = AccountModel(session: session, filler: nil)
+
+        await account.load()
+        await account.loadStorage()
+
+        #expect(!session.calls.contains(.storage))
+        #expect(account.failure == nil)
+    }
+
     @Test func the_accent_keeps_its_ink_readable_in_both_styles() {
         #expect(AccentColor.palette(for: "#f97316").ink.light == AdaptiveColor.RGB(hex: 0xB4_43_09))
         for preset in AccentColor.presets {

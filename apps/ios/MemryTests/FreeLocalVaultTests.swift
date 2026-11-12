@@ -99,6 +99,27 @@ struct FreeLocalVaultTests {
         #expect(second.map(\.id) == [id])
     }
 
+    @Test("an account with no vaults gets a local vault: registered with a plan, listed and local without one", arguments: [true, false])
+    func emptyAccountGetsLocalVault(hasPlan: Bool) async throws {
+        let store = isolatedStore()
+        let session = FakeAuthSession(from: .registered)
+        if !hasPlan {
+            session.failRegisterVault(with: ApiError.PaymentRequired(code: nil, message: "no plan"))
+        }
+        let registry = AttachingVaultRegistry(
+            inner: ListedVaults(rows: []),
+            attach: LocalVaultAttach(session: session, store: store, isEmpty: { _ in true })
+        )
+
+        let rows = try await registry.vaults()
+
+        let id = try #require(store.id)
+        #expect(rows.map(\.id) == [id])
+        #expect(session.calls.filter { if case .registerVault = $0 { true } else { false } }
+            == [.registerVault(id, LocalVaultStore.name)])
+        #expect(store.isAttached == hasPlan)
+    }
+
     @Test("no plan keeps the vault local and listed, and nothing is lost")
     func paymentRequiredKeepsLocal() async throws {
         let store = isolatedStore()
