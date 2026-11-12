@@ -43,6 +43,7 @@ struct PlansView: View {
                     restore
                     footer
                 }
+                .measuredColumn(Tokens.Size.form)
                 .padding(.horizontal, Tokens.Space.screenInline)
                 .padding(.vertical, Tokens.Space.section)
             }

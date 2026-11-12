@@ -49,6 +49,7 @@ struct JournalDayPage: View {
                 JournalStatsFooter(day: store.cachedDay(date), vaultId: store.vaultId)
             }
             .frame(maxWidth: .infinity, alignment: .leading)
+            .readingColumn()
             .padding(.horizontal, Tokens.Space.screenInline)
             .padding(.vertical, Tokens.Space.medium)
         }

@@ -68,6 +68,7 @@ struct WelcomeView: View {
                     .frame(maxWidth: .infinity, minHeight: Tokens.Size.minimumHitArea)
             }
         }
+        .measuredColumn(Tokens.Size.form)
         .padding(.horizontal, Tokens.Space.screenInline)
         .padding(.bottom, Tokens.Space.inset)
     }
@@ -87,6 +88,7 @@ struct WelcomeView: View {
                 Spacer(minLength: 0)
             }
         }
+        .measuredColumn(Tokens.Size.form)
         .padding(.horizontal, Tokens.Space.screenInline)
         .padding(.top, Tokens.Space.small)
     }
@@ -114,6 +116,7 @@ private struct PromisePage: View {
             Spacer()
         }
         .frame(maxWidth: .infinity, alignment: .leading)
+        .measuredColumn(Tokens.Size.form)
         .padding(.horizontal, Tokens.Space.screenInline)
         .accessibilityElement(children: .combine)
     }
@@ -157,6 +160,7 @@ private struct TrustPage: View {
             }
             Spacer()
         }
+        .measuredColumn(Tokens.Size.form)
         .padding(.horizontal, Tokens.Space.screenInline)
         .padding(.top, Tokens.Space.section)
     }

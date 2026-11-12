@@ -57,6 +57,7 @@ struct QRLinkView: View {
                     .disabled(model.isWorking)
             }
             .frame(maxWidth: .infinity, alignment: .leading)
+            .measuredColumn(Tokens.Size.form)
             .padding(.horizontal, Tokens.Space.screenInline)
             .padding(.vertical, Tokens.Space.screenBlock)
         }

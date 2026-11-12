@@ -70,6 +70,7 @@ struct StartChoiceView: View {
             }
             .padding(.bottom, Tokens.Space.inset)
         }
+        .measuredColumn(Tokens.Size.form)
         .padding(.horizontal, Tokens.Space.screenInline)
         .background(Tokens.Canvas.background.color)
         .calmAnimation(.fast, value: choice)
