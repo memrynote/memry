@@ -62,12 +62,14 @@ use rusqlite::{Connection, OptionalExtension as _, params};
 
 use crate::api::errors::StorageError;
 
+mod body_cache;
 mod links;
 mod literal_links;
 mod maintenance;
 pub mod recents;
 mod snippet;
 
+pub(crate) use body_cache::body_version;
 pub use maintenance::{
     DATA_VERSION_KEY, NOTES_WATERMARK_KEY, Reindexed, STAMPS_KEY, TASKS_WATERMARK_KEY, reindex,
 };
