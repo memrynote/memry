@@ -17,7 +17,9 @@ import {
   getRelatedPosts,
   type BlogPost,
   type BlogSection,
-  type BlogCallout
+  type BlogCallout,
+  type BlogFaq,
+  type BlogShortAnswerRow
 } from '@/lib/blog'
 import { TINT_CLASSES } from '@/lib/site-tints'
 import { cn } from '@/lib/utils'
@@ -124,9 +126,69 @@ function ComparisonTableView({ table }: { table: NonNullable<BlogSection['table'
   )
 }
 
+function ShortAnswerView({ rows }: { rows: readonly BlogShortAnswerRow[] }) {
+  return (
+    <section aria-labelledby="short-answer" className="mt-8">
+      <h2
+        id="short-answer"
+        className="font-serif text-2xl md:text-3xl text-ink font-normal leading-tight tracking-tight mb-4"
+      >
+        The short answer
+      </h2>
+      <div className="overflow-x-auto rounded-2xl border border-border bg-card shadow-sm">
+        <table className="w-full text-start text-sm md:text-base">
+          <thead>
+            <tr className="border-b border-border bg-paper-alt">
+              <th scope="col" className="px-4 py-3.5 text-start font-serif font-medium text-ink">
+                If you…
+              </th>
+              <th scope="col" className="px-4 py-3.5 text-start font-serif font-medium text-ink">
+                Pick
+              </th>
+            </tr>
+          </thead>
+          <tbody className="divide-y divide-border/60">
+            {rows.map((row) => (
+              <tr key={row.anchor}>
+                <td className="px-4 py-3.5 text-muted">{row.situation}</td>
+                <td className="px-4 py-3.5 font-medium">
+                  <a
+                    href={`#${row.anchor}`}
+                    className="rounded-sm text-terracotta hover:underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-terracotta/60"
+                  >
+                    {row.pick}
+                  </a>
+                </td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      </div>
+    </section>
+  )
+}
+
+function FaqView({ faqs }: { faqs: readonly BlogFaq[] }) {
+  return (
+    <section className="mt-14">
+      <h2 className="font-serif text-2xl md:text-3xl text-ink font-normal leading-tight tracking-tight mb-5">
+        Frequently asked questions
+      </h2>
+      {faqs.map((faq) => (
+        <div key={faq.question} className="mb-7">
+          <h3 className="font-sans text-base md:text-lg font-semibold text-ink mb-2">
+            {faq.question}
+          </h3>
+          <p className="text-base md:text-lg leading-relaxed text-muted">{faq.answer}</p>
+        </div>
+      ))}
+    </section>
+  )
+}
+
 function SectionView({ section }: { section: BlogSection }) {
   return (
-    <section className="mt-12 first:mt-8">
+    <section id={section.slug} className="mt-12 first:mt-8 scroll-mt-28">
       <h2 className="font-serif text-2xl md:text-3xl text-ink font-normal leading-tight tracking-tight mb-5">
         {section.heading}
       </h2>
@@ -136,6 +198,20 @@ function SectionView({ section }: { section: BlogSection }) {
           {p}
         </p>
       ))}
+
+      {section.facts && (
+        <dl className="my-6 divide-y divide-border/60 rounded-2xl border border-border bg-card">
+          {section.facts.map((fact) => (
+            <div
+              key={fact.label}
+              className="grid gap-1 px-4 py-3.5 sm:grid-cols-[11rem_1fr] sm:gap-4"
+            >
+              <dt className="text-sm font-semibold text-ink">{fact.label}</dt>
+              <dd className="text-sm md:text-base leading-relaxed text-muted">{fact.value}</dd>
+            </div>
+          ))}
+        </dl>
+      )}
 
       {section.bullets && (
         <ul className="my-6 space-y-3 ps-2">
@@ -200,10 +276,23 @@ export function BlogPostView({ post }: { post: BlogPost }) {
               >
                 {post.category}
               </span>
+              {post.byline && (
+                <>
+                  <span>·</span>
+                  <span className="font-medium text-ink">{post.byline}</span>
+                </>
+              )}
               <span>·</span>
               <span className="inline-flex items-center gap-1">
                 <Calendar className="h-3.5 w-3.5" aria-hidden />
-                <time dateTime={post.datePublished}>{formatDate(post.datePublished)}</time>
+                {post.dateModified === post.datePublished ? (
+                  <time dateTime={post.datePublished}>{formatDate(post.datePublished)}</time>
+                ) : (
+                  <span>
+                    Updated{' '}
+                    <time dateTime={post.dateModified}>{formatDate(post.dateModified)}</time>
+                  </span>
+                )}
               </span>
               <span>·</span>
               <span className="inline-flex items-center gap-1">
@@ -215,6 +304,8 @@ export function BlogPostView({ post }: { post: BlogPost }) {
             <h1 className="font-serif text-3xl md:text-5xl text-ink font-normal leading-[1.1] tracking-tight text-balance">
               {post.title}
             </h1>
+
+            {post.shortAnswer && <ShortAnswerView rows={post.shortAnswer} />}
 
             <p className="mt-6 text-lg md:text-xl leading-relaxed text-muted font-normal text-balance">
               {post.lead}
@@ -247,6 +338,8 @@ export function BlogPostView({ post }: { post: BlogPost }) {
             {post.sections.map((section) => (
               <SectionView key={section.heading} section={section} />
             ))}
+
+            {post.faqs && <FaqView faqs={post.faqs} />}
 
             {/* Key Takeaways Box */}
             <div className="my-14 rounded-3xl border border-sage/30 bg-sage/5 p-6 md:p-8">

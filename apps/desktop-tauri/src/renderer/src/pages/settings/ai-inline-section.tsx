@@ -35,7 +35,8 @@ const PROVIDER_LABEL_KEYS: Record<AIInlineSettings['provider'], string> = {
   ollama: 'ai.inline.providers.ollama',
   openai: 'ai.inline.providers.openai',
   anthropic: 'ai.inline.providers.anthropic',
-  google: 'ai.inline.providers.google'
+  google: 'ai.inline.providers.google',
+  custom: 'ai.inline.providers.custom'
 }
 
 const PROVIDER_OPTIONS = [

@@ -18,7 +18,13 @@ import {
   writingToolsRpc
 } from './index.ts'
 
-const DOMAINS_WITHOUT_EVENTS = new Set(['telemetry', 'feedback', 'diagnostics', 'unsplash'])
+const DOMAINS_WITHOUT_EVENTS = new Set([
+  'telemetry',
+  'feedback',
+  'iosBeta',
+  'diagnostics',
+  'unsplash'
+])
 
 describe('@memry/rpc public surface', () => {
   it('re-exports the schema factories', () => {
@@ -44,8 +50,8 @@ describe('@memry/rpc public surface', () => {
 })
 
 describe('rpcDomains aggregate', () => {
-  it('contains exactly the twelve known domains in declaration order', () => {
-    expect(rpcDomains).toHaveLength(12)
+  it('contains exactly the thirteen known domains in declaration order', () => {
+    expect(rpcDomains).toHaveLength(13)
     expect(rpcDomains.map((d) => d.name)).toEqual([
       'notes',
       'tasks',
@@ -56,6 +62,7 @@ describe('rpcDomains aggregate', () => {
       'canvasFolder',
       'telemetry',
       'feedback',
+      'iosBeta',
       'diagnostics',
       'unsplash',
       'writingTools'

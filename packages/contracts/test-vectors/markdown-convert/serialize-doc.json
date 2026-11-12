@@ -4534,11 +4534,11 @@
         "status": "ok",
         "output": {
           "seeded": true,
-          "markdown": "Intro ((mention:https%3A%2F%2Fexample.com%2Fa%5Fb%5Fc)) outro. tail",
+          "markdown": "Intro  tail((mention:https%3A%2F%2Fexample.com%2Fa%5Fb%5Fc)) outro.",
           "outcome": "no-record",
-          "canonical": "Intro ((mention:https%3A%2F%2Fexample.com%2Fa%5Fb%5Fc)) outro. tail",
+          "canonical": "Intro  tail((mention:https%3A%2F%2Fexample.com%2Fa%5Fb%5Fc)) outro.",
           "noteBody": {
-            "markdown": "Intro ((mention:https%3A%2F%2Fexample.com%2Fa%5Fb%5Fc)) outro. tail",
+            "markdown": "Intro  tail((mention:https%3A%2F%2Fexample.com%2Fa%5Fb%5Fc)) outro.",
             "writing": {
               "alternatives": {},
               "overflow": []
@@ -4598,11 +4598,11 @@
         "status": "ok",
         "output": {
           "seeded": true,
-          "markdown": "Intro ((mention:https%3A%2F%2Fexample.com%2Fit%27s)) outro. tail",
+          "markdown": "Intro  tail((mention:https%3A%2F%2Fexample.com%2Fit%27s)) outro.",
           "outcome": "no-record",
-          "canonical": "Intro ((mention:https%3A%2F%2Fexample.com%2Fit%27s)) outro. tail",
+          "canonical": "Intro  tail((mention:https%3A%2F%2Fexample.com%2Fit%27s)) outro.",
           "noteBody": {
-            "markdown": "Intro ((mention:https%3A%2F%2Fexample.com%2Fit%27s)) outro. tail",
+            "markdown": "Intro  tail((mention:https%3A%2F%2Fexample.com%2Fit%27s)) outro.",
             "writing": {
               "alternatives": {},
               "overflow": []
@@ -4662,11 +4662,11 @@
         "status": "ok",
         "output": {
           "seeded": true,
-          "markdown": "Intro ((mention:https%3A%2F%2Fexample.com%2Fpage%23section)) outro. tail",
+          "markdown": "Intro  tail((mention:https%3A%2F%2Fexample.com%2Fpage%23section)) outro.",
           "outcome": "no-record",
-          "canonical": "Intro ((mention:https%3A%2F%2Fexample.com%2Fpage%23section)) outro. tail",
+          "canonical": "Intro  tail((mention:https%3A%2F%2Fexample.com%2Fpage%23section)) outro.",
           "noteBody": {
-            "markdown": "Intro ((mention:https%3A%2F%2Fexample.com%2Fpage%23section)) outro. tail",
+            "markdown": "Intro  tail((mention:https%3A%2F%2Fexample.com%2Fpage%23section)) outro.",
             "writing": {
               "alternatives": {},
               "overflow": []
@@ -4726,11 +4726,11 @@
         "status": "ok",
         "output": {
           "seeded": true,
-          "markdown": "Intro ((mention:https%3A%2F%2Fexample.com%2F%21%5Fbang%2Fx.y%5F%7Ez)) outro. tail",
+          "markdown": "Intro  tail((mention:https%3A%2F%2Fexample.com%2F%21%5Fbang%2Fx.y%5F%7Ez)) outro.",
           "outcome": "no-record",
-          "canonical": "Intro ((mention:https%3A%2F%2Fexample.com%2F%21%5Fbang%2Fx.y%5F%7Ez)) outro. tail",
+          "canonical": "Intro  tail((mention:https%3A%2F%2Fexample.com%2F%21%5Fbang%2Fx.y%5F%7Ez)) outro.",
           "noteBody": {
-            "markdown": "Intro ((mention:https%3A%2F%2Fexample.com%2F%21%5Fbang%2Fx.y%5F%7Ez)) outro. tail",
+            "markdown": "Intro  tail((mention:https%3A%2F%2Fexample.com%2F%21%5Fbang%2Fx.y%5F%7Ez)) outro.",
             "writing": {
               "alternatives": {},
               "overflow": []
@@ -5880,11 +5880,11 @@
         "status": "ok",
         "output": {
           "seeded": true,
-          "markdown": "- EDIT ((mention:https%3A%2F%2Fexample.com%2Fplain))\n- ((date:eyJhbmNob3JJZCI6ImExIiwiZGF0ZUlTTyI6IjIwMjYtMDgtMTRUMDk6MDA6MDAuMDAwWiIsImhhc1RpbWUiOnRydWUsImRhdGVGb3JtYXQiOiJyZWxhdGl2ZSIsInJlbWluZCI6Im5vbmUiLCJ0aW1lRm9ybWF0Ijoic3lzdGVtIn0))",
+          "markdown": "- ((mention:https%3A%2F%2Fexample.com%2Fplain))\n- EDIT ((date:eyJhbmNob3JJZCI6ImExIiwiZGF0ZUlTTyI6IjIwMjYtMDgtMTRUMDk6MDA6MDAuMDAwWiIsImhhc1RpbWUiOnRydWUsImRhdGVGb3JtYXQiOiJyZWxhdGl2ZSIsInJlbWluZCI6Im5vbmUiLCJ0aW1lRm9ybWF0Ijoic3lzdGVtIn0))",
           "outcome": "no-record",
-          "canonical": "- EDIT ((mention:https%3A%2F%2Fexample.com%2Fplain))\n- ((date:eyJhbmNob3JJZCI6ImExIiwiZGF0ZUlTTyI6IjIwMjYtMDgtMTRUMDk6MDA6MDAuMDAwWiIsImhhc1RpbWUiOnRydWUsImRhdGVGb3JtYXQiOiJyZWxhdGl2ZSIsInJlbWluZCI6Im5vbmUiLCJ0aW1lRm9ybWF0Ijoic3lzdGVtIn0))",
+          "canonical": "- ((mention:https%3A%2F%2Fexample.com%2Fplain))\n- EDIT ((date:eyJhbmNob3JJZCI6ImExIiwiZGF0ZUlTTyI6IjIwMjYtMDgtMTRUMDk6MDA6MDAuMDAwWiIsImhhc1RpbWUiOnRydWUsImRhdGVGb3JtYXQiOiJyZWxhdGl2ZSIsInJlbWluZCI6Im5vbmUiLCJ0aW1lRm9ybWF0Ijoic3lzdGVtIn0))",
           "noteBody": {
-            "markdown": "- EDIT ((mention:https%3A%2F%2Fexample.com%2Fplain))\n- ((date:eyJhbmNob3JJZCI6ImExIiwiZGF0ZUlTTyI6IjIwMjYtMDgtMTRUMDk6MDA6MDAuMDAwWiIsImhhc1RpbWUiOnRydWUsImRhdGVGb3JtYXQiOiJyZWxhdGl2ZSIsInJlbWluZCI6Im5vbmUiLCJ0aW1lRm9ybWF0Ijoic3lzdGVtIn0))",
+            "markdown": "- ((mention:https%3A%2F%2Fexample.com%2Fplain))\n- EDIT ((date:eyJhbmNob3JJZCI6ImExIiwiZGF0ZUlTTyI6IjIwMjYtMDgtMTRUMDk6MDA6MDAuMDAwWiIsImhhc1RpbWUiOnRydWUsImRhdGVGb3JtYXQiOiJyZWxhdGl2ZSIsInJlbWluZCI6Im5vbmUiLCJ0aW1lRm9ybWF0Ijoic3lzdGVtIn0))",
             "writing": {
               "alternatives": {},
               "overflow": []
@@ -5912,11 +5912,11 @@
         "status": "ok",
         "output": {
           "seeded": true,
-          "markdown": "See [[Roadmap]] and #tag and ((mention:https%3A%2F%2Fx.com)) inline. tail",
+          "markdown": "See [[Roadmap]] and #tag and  tail((mention:https%3A%2F%2Fx.com)) inline.",
           "outcome": "no-record",
-          "canonical": "See [[Roadmap]] and #tag and ((mention:https%3A%2F%2Fx.com)) inline. tail",
+          "canonical": "See [[Roadmap]] and #tag and  tail((mention:https%3A%2F%2Fx.com)) inline.",
           "noteBody": {
-            "markdown": "See [[Roadmap]] and #tag and ((mention:https%3A%2F%2Fx.com)) inline. tail",
+            "markdown": "See [[Roadmap]] and #tag and  tail((mention:https%3A%2F%2Fx.com)) inline.",
             "writing": {
               "alternatives": {},
               "overflow": []
@@ -7716,11 +7716,11 @@
         "status": "ok",
         "output": {
           "seeded": true,
-          "markdown": "Fuzz ((mention:https%3A%2F%2Ffuzz.example%2F%20z1z101%250%3D%7E)) tail. tail",
+          "markdown": "Fuzz  tail((mention:https%3A%2F%2Ffuzz.example%2F%20z1z101%250%3D%7E)) tail.",
           "outcome": "no-record",
-          "canonical": "Fuzz ((mention:https%3A%2F%2Ffuzz.example%2F%20z1z101%250%3D%7E)) tail. tail",
+          "canonical": "Fuzz  tail((mention:https%3A%2F%2Ffuzz.example%2F%20z1z101%250%3D%7E)) tail.",
           "noteBody": {
-            "markdown": "Fuzz ((mention:https%3A%2F%2Ffuzz.example%2F%20z1z101%250%3D%7E)) tail. tail",
+            "markdown": "Fuzz  tail((mention:https%3A%2F%2Ffuzz.example%2F%20z1z101%250%3D%7E)) tail.",
             "writing": {
               "alternatives": {},
               "overflow": []
@@ -7780,11 +7780,11 @@
         "status": "ok",
         "output": {
           "seeded": true,
-          "markdown": "Fuzz ((mention:https%3A%2F%2Ffuzz.example%2Fz%23%26%E6%97%A51%C3%A9%3Db%25%28%230%C3%A9%28)) tail. tail",
+          "markdown": "Fuzz  tail((mention:https%3A%2F%2Ffuzz.example%2Fz%23%26%E6%97%A51%C3%A9%3Db%25%28%230%C3%A9%28)) tail.",
           "outcome": "no-record",
-          "canonical": "Fuzz ((mention:https%3A%2F%2Ffuzz.example%2Fz%23%26%E6%97%A51%C3%A9%3Db%25%28%230%C3%A9%28)) tail. tail",
+          "canonical": "Fuzz  tail((mention:https%3A%2F%2Ffuzz.example%2Fz%23%26%E6%97%A51%C3%A9%3Db%25%28%230%C3%A9%28)) tail.",
           "noteBody": {
-            "markdown": "Fuzz ((mention:https%3A%2F%2Ffuzz.example%2Fz%23%26%E6%97%A51%C3%A9%3Db%25%28%230%C3%A9%28)) tail. tail",
+            "markdown": "Fuzz  tail((mention:https%3A%2F%2Ffuzz.example%2Fz%23%26%E6%97%A51%C3%A9%3Db%25%28%230%C3%A9%28)) tail.",
             "writing": {
               "alternatives": {},
               "overflow": []
@@ -7844,11 +7844,11 @@
         "status": "ok",
         "output": {
           "seeded": true,
-          "markdown": "Fuzz ((mention:https%3A%2F%2Ffuzz.example%2F9aa%26%21%231z9%3D%25%20%3D%C3%A9%25%7Ebb)) tail. tail",
+          "markdown": "Fuzz  tail((mention:https%3A%2F%2Ffuzz.example%2F9aa%26%21%231z9%3D%25%20%3D%C3%A9%25%7Ebb)) tail.",
           "outcome": "no-record",
-          "canonical": "Fuzz ((mention:https%3A%2F%2Ffuzz.example%2F9aa%26%21%231z9%3D%25%20%3D%C3%A9%25%7Ebb)) tail. tail",
+          "canonical": "Fuzz  tail((mention:https%3A%2F%2Ffuzz.example%2F9aa%26%21%231z9%3D%25%20%3D%C3%A9%25%7Ebb)) tail.",
           "noteBody": {
-            "markdown": "Fuzz ((mention:https%3A%2F%2Ffuzz.example%2F9aa%26%21%231z9%3D%25%20%3D%C3%A9%25%7Ebb)) tail. tail",
+            "markdown": "Fuzz  tail((mention:https%3A%2F%2Ffuzz.example%2F9aa%26%21%231z9%3D%25%20%3D%C3%A9%25%7Ebb)) tail.",
             "writing": {
               "alternatives": {},
               "overflow": []
@@ -7908,11 +7908,11 @@
         "status": "ok",
         "output": {
           "seeded": true,
-          "markdown": "Fuzz ((mention:https%3A%2F%2Ffuzz.example%2F%3D%25%C3%A99%27zz%26%2A1%C3%A9%7E%27%5F%C3%A99%2700)) tail. tail",
+          "markdown": "Fuzz  tail((mention:https%3A%2F%2Ffuzz.example%2F%3D%25%C3%A99%27zz%26%2A1%C3%A9%7E%27%5F%C3%A99%2700)) tail.",
           "outcome": "no-record",
-          "canonical": "Fuzz ((mention:https%3A%2F%2Ffuzz.example%2F%3D%25%C3%A99%27zz%26%2A1%C3%A9%7E%27%5F%C3%A99%2700)) tail. tail",
+          "canonical": "Fuzz  tail((mention:https%3A%2F%2Ffuzz.example%2F%3D%25%C3%A99%27zz%26%2A1%C3%A9%7E%27%5F%C3%A99%2700)) tail.",
           "noteBody": {
-            "markdown": "Fuzz ((mention:https%3A%2F%2Ffuzz.example%2F%3D%25%C3%A99%27zz%26%2A1%C3%A9%7E%27%5F%C3%A99%2700)) tail. tail",
+            "markdown": "Fuzz  tail((mention:https%3A%2F%2Ffuzz.example%2F%3D%25%C3%A99%27zz%26%2A1%C3%A9%7E%27%5F%C3%A99%2700)) tail.",
             "writing": {
               "alternatives": {},
               "overflow": []
@@ -7972,11 +7972,11 @@
         "status": "ok",
         "output": {
           "seeded": true,
-          "markdown": "Fuzz ((mention:https%3A%2F%2Ffuzz.example%2Fz%26%289z%C3%A9%5F%20%2A%21)) tail. tail",
+          "markdown": "Fuzz  tail((mention:https%3A%2F%2Ffuzz.example%2Fz%26%289z%C3%A9%5F%20%2A%21)) tail.",
           "outcome": "no-record",
-          "canonical": "Fuzz ((mention:https%3A%2F%2Ffuzz.example%2Fz%26%289z%C3%A9%5F%20%2A%21)) tail. tail",
+          "canonical": "Fuzz  tail((mention:https%3A%2F%2Ffuzz.example%2Fz%26%289z%C3%A9%5F%20%2A%21)) tail.",
           "noteBody": {
-            "markdown": "Fuzz ((mention:https%3A%2F%2Ffuzz.example%2Fz%26%289z%C3%A9%5F%20%2A%21)) tail. tail",
+            "markdown": "Fuzz  tail((mention:https%3A%2F%2Ffuzz.example%2Fz%26%289z%C3%A9%5F%20%2A%21)) tail.",
             "writing": {
               "alternatives": {},
               "overflow": []
@@ -8036,11 +8036,11 @@
         "status": "ok",
         "output": {
           "seeded": true,
-          "markdown": "Fuzz ((mention:https%3A%2F%2Ffuzz.example%2F%27%27%27%5F0%3D%3Dc90%5F09b0c%261%29%29)) tail. tail",
+          "markdown": "Fuzz  tail((mention:https%3A%2F%2Ffuzz.example%2F%27%27%27%5F0%3D%3Dc90%5F09b0c%261%29%29)) tail.",
           "outcome": "no-record",
-          "canonical": "Fuzz ((mention:https%3A%2F%2Ffuzz.example%2F%27%27%27%5F0%3D%3Dc90%5F09b0c%261%29%29)) tail. tail",
+          "canonical": "Fuzz  tail((mention:https%3A%2F%2Ffuzz.example%2F%27%27%27%5F0%3D%3Dc90%5F09b0c%261%29%29)) tail.",
           "noteBody": {
-            "markdown": "Fuzz ((mention:https%3A%2F%2Ffuzz.example%2F%27%27%27%5F0%3D%3Dc90%5F09b0c%261%29%29)) tail. tail",
+            "markdown": "Fuzz  tail((mention:https%3A%2F%2Ffuzz.example%2F%27%27%27%5F0%3D%3Dc90%5F09b0c%261%29%29)) tail.",
             "writing": {
               "alternatives": {},
               "overflow": []
@@ -8100,11 +8100,11 @@
         "status": "ok",
         "output": {
           "seeded": true,
-          "markdown": "Fuzz ((mention:https%3A%2F%2Ffuzz.example%2F%26b%5F9z0z%5Fz%2A9%2Aa%28a)) tail. tail",
+          "markdown": "Fuzz  tail((mention:https%3A%2F%2Ffuzz.example%2F%26b%5F9z0z%5Fz%2A9%2Aa%28a)) tail.",
           "outcome": "no-record",
-          "canonical": "Fuzz ((mention:https%3A%2F%2Ffuzz.example%2F%26b%5F9z0z%5Fz%2A9%2Aa%28a)) tail. tail",
+          "canonical": "Fuzz  tail((mention:https%3A%2F%2Ffuzz.example%2F%26b%5F9z0z%5Fz%2A9%2Aa%28a)) tail.",
           "noteBody": {
-            "markdown": "Fuzz ((mention:https%3A%2F%2Ffuzz.example%2F%26b%5F9z0z%5Fz%2A9%2Aa%28a)) tail. tail",
+            "markdown": "Fuzz  tail((mention:https%3A%2F%2Ffuzz.example%2F%26b%5F9z0z%5Fz%2A9%2Aa%28a)) tail.",
             "writing": {
               "alternatives": {},
               "overflow": []
@@ -8164,11 +8164,11 @@
         "status": "ok",
         "output": {
           "seeded": true,
-          "markdown": "Fuzz ((mention:https%3A%2F%2Ffuzz.example%2F1z%27%20%2A%7E%271%29%5F%270aacbza)) tail. tail",
+          "markdown": "Fuzz  tail((mention:https%3A%2F%2Ffuzz.example%2F1z%27%20%2A%7E%271%29%5F%270aacbza)) tail.",
           "outcome": "no-record",
-          "canonical": "Fuzz ((mention:https%3A%2F%2Ffuzz.example%2F1z%27%20%2A%7E%271%29%5F%270aacbza)) tail. tail",
+          "canonical": "Fuzz  tail((mention:https%3A%2F%2Ffuzz.example%2F1z%27%20%2A%7E%271%29%5F%270aacbza)) tail.",
           "noteBody": {
-            "markdown": "Fuzz ((mention:https%3A%2F%2Ffuzz.example%2F1z%27%20%2A%7E%271%29%5F%270aacbza)) tail. tail",
+            "markdown": "Fuzz  tail((mention:https%3A%2F%2Ffuzz.example%2F1z%27%20%2A%7E%271%29%5F%270aacbza)) tail.",
             "writing": {
               "alternatives": {},
               "overflow": []
@@ -8228,11 +8228,11 @@
         "status": "ok",
         "output": {
           "seeded": true,
-          "markdown": "Fuzz ((mention:https%3A%2F%2Ffuzz.example%2F%7E%7E%28%E6%97%A5%2Ab%26)) tail. tail",
+          "markdown": "Fuzz  tail((mention:https%3A%2F%2Ffuzz.example%2F%7E%7E%28%E6%97%A5%2Ab%26)) tail.",
           "outcome": "no-record",
-          "canonical": "Fuzz ((mention:https%3A%2F%2Ffuzz.example%2F%7E%7E%28%E6%97%A5%2Ab%26)) tail. tail",
+          "canonical": "Fuzz  tail((mention:https%3A%2F%2Ffuzz.example%2F%7E%7E%28%E6%97%A5%2Ab%26)) tail.",
           "noteBody": {
-            "markdown": "Fuzz ((mention:https%3A%2F%2Ffuzz.example%2F%7E%7E%28%E6%97%A5%2Ab%26)) tail. tail",
+            "markdown": "Fuzz  tail((mention:https%3A%2F%2Ffuzz.example%2F%7E%7E%28%E6%97%A5%2Ab%26)) tail.",
             "writing": {
               "alternatives": {},
               "overflow": []
@@ -8292,11 +8292,11 @@
         "status": "ok",
         "output": {
           "seeded": true,
-          "markdown": "Fuzz ((mention:https%3A%2F%2Ffuzz.example%2F%279a%23%21%2900%210%26%28%21%2A%2A%2A)) tail. tail",
+          "markdown": "Fuzz  tail((mention:https%3A%2F%2Ffuzz.example%2F%279a%23%21%2900%210%26%28%21%2A%2A%2A)) tail.",
           "outcome": "no-record",
-          "canonical": "Fuzz ((mention:https%3A%2F%2Ffuzz.example%2F%279a%23%21%2900%210%26%28%21%2A%2A%2A)) tail. tail",
+          "canonical": "Fuzz  tail((mention:https%3A%2F%2Ffuzz.example%2F%279a%23%21%2900%210%26%28%21%2A%2A%2A)) tail.",
           "noteBody": {
-            "markdown": "Fuzz ((mention:https%3A%2F%2Ffuzz.example%2F%279a%23%21%2900%210%26%28%21%2A%2A%2A)) tail. tail",
+            "markdown": "Fuzz  tail((mention:https%3A%2F%2Ffuzz.example%2F%279a%23%21%2900%210%26%28%21%2A%2A%2A)) tail.",
             "writing": {
               "alternatives": {},
               "overflow": []
@@ -8356,11 +8356,11 @@
         "status": "ok",
         "output": {
           "seeded": true,
-          "markdown": "Fuzz ((mention:https%3A%2F%2Ffuzz.example%2F19%C3%A9%21%21c%27%E6%97%A5%E6%97%A5%26099%20%C3%A9%3D%3D1z%3D%C3%A9%21)) tail. tail",
+          "markdown": "Fuzz  tail((mention:https%3A%2F%2Ffuzz.example%2F19%C3%A9%21%21c%27%E6%97%A5%E6%97%A5%26099%20%C3%A9%3D%3D1z%3D%C3%A9%21)) tail.",
           "outcome": "no-record",
-          "canonical": "Fuzz ((mention:https%3A%2F%2Ffuzz.example%2F19%C3%A9%21%21c%27%E6%97%A5%E6%97%A5%26099%20%C3%A9%3D%3D1z%3D%C3%A9%21)) tail. tail",
+          "canonical": "Fuzz  tail((mention:https%3A%2F%2Ffuzz.example%2F19%C3%A9%21%21c%27%E6%97%A5%E6%97%A5%26099%20%C3%A9%3D%3D1z%3D%C3%A9%21)) tail.",
           "noteBody": {
-            "markdown": "Fuzz ((mention:https%3A%2F%2Ffuzz.example%2F19%C3%A9%21%21c%27%E6%97%A5%E6%97%A5%26099%20%C3%A9%3D%3D1z%3D%C3%A9%21)) tail. tail",
+            "markdown": "Fuzz  tail((mention:https%3A%2F%2Ffuzz.example%2F19%C3%A9%21%21c%27%E6%97%A5%E6%97%A5%26099%20%C3%A9%3D%3D1z%3D%C3%A9%21)) tail.",
             "writing": {
               "alternatives": {},
               "overflow": []
@@ -8420,11 +8420,11 @@
         "status": "ok",
         "output": {
           "seeded": true,
-          "markdown": "Fuzz ((mention:https%3A%2F%2Ffuzz.example%2Fa%E6%97%A5%26%25%27%25%20%21z%25%25%2A%29%E6%97%A5)) tail. tail",
+          "markdown": "Fuzz  tail((mention:https%3A%2F%2Ffuzz.example%2Fa%E6%97%A5%26%25%27%25%20%21z%25%25%2A%29%E6%97%A5)) tail.",
           "outcome": "no-record",
-          "canonical": "Fuzz ((mention:https%3A%2F%2Ffuzz.example%2Fa%E6%97%A5%26%25%27%25%20%21z%25%25%2A%29%E6%97%A5)) tail. tail",
+          "canonical": "Fuzz  tail((mention:https%3A%2F%2Ffuzz.example%2Fa%E6%97%A5%26%25%27%25%20%21z%25%25%2A%29%E6%97%A5)) tail.",
           "noteBody": {
-            "markdown": "Fuzz ((mention:https%3A%2F%2Ffuzz.example%2Fa%E6%97%A5%26%25%27%25%20%21z%25%25%2A%29%E6%97%A5)) tail. tail",
+            "markdown": "Fuzz  tail((mention:https%3A%2F%2Ffuzz.example%2Fa%E6%97%A5%26%25%27%25%20%21z%25%25%2A%29%E6%97%A5)) tail.",
             "writing": {
               "alternatives": {},
               "overflow": []
@@ -11749,11 +11749,11 @@
         "status": "ok",
         "output": {
           "seeded": true,
-          "markdown": "a9,.;é1!日éé?cab.00a ((mention:https%3A%2F%2Ffuzz.example%2Fzc%C3%A9z%E6%97%A519b0%29)) ?日.:?ca.!009?0. tail\n\n\n0b 日日:0;;",
+          "markdown": "a9,.;é1!日éé?cab.00a  tail((mention:https%3A%2F%2Ffuzz.example%2Fzc%C3%A9z%E6%97%A519b0%29)) ?日.:?ca.!009?0.\n\n\n0b 日日:0;;",
           "outcome": "no-record",
-          "canonical": "a9,.;é1!日éé?cab.00a ((mention:https%3A%2F%2Ffuzz.example%2Fzc%C3%A9z%E6%97%A519b0%29)) ?日.:?ca.!009?0. tail\n\n\n0b 日日:0;;",
+          "canonical": "a9,.;é1!日éé?cab.00a  tail((mention:https%3A%2F%2Ffuzz.example%2Fzc%C3%A9z%E6%97%A519b0%29)) ?日.:?ca.!009?0.\n\n\n0b 日日:0;;",
           "noteBody": {
-            "markdown": "a9,.;é1!日éé?cab.00a ((mention:https%3A%2F%2Ffuzz.example%2Fzc%C3%A9z%E6%97%A519b0%29)) ?日.:?ca.!009?0. tail\n\n\n0b 日日:0;;",
+            "markdown": "a9,.;é1!日éé?cab.00a  tail((mention:https%3A%2F%2Ffuzz.example%2Fzc%C3%A9z%E6%97%A519b0%29)) ?日.:?ca.!009?0.\n\n\n0b 日日:0;;",
             "writing": {
               "alternatives": {},
               "overflow": []

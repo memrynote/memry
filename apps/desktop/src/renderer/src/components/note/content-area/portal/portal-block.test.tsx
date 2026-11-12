@@ -247,10 +247,10 @@ describe('PortalBlockRenderer', () => {
     ).toBeTruthy()
   })
 
-  it('keeps the bytes of a definition it cannot read, and shows them to fix', () => {
+  it('keeps the bytes of a definition it cannot read, and says so', () => {
     const editor = renderPortal('{"note": ')
 
-    expect(screen.getByRole('alert').textContent).toContain('not valid JSON')
+    expect(screen.getByRole('alert').textContent).toContain('can’t be read')
     expect(screen.queryByTestId('portal-window-stub')).toBeNull()
     expect(editor.updateBlock).not.toHaveBeenCalled()
   })

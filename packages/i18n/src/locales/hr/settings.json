@@ -504,7 +504,8 @@
       "loading": "Učitavanje postavki…"
     },
     "groups": {
-      "footer": "Podnožje"
+      "footer": "Podnožje",
+      "pastYears": "Prošle godine"
     },
     "template": {
       "label": "Predložak",
@@ -562,6 +563,14 @@
     "showInSidebar": {
       "label": "Prikaži na bočnoj traci",
       "description": "Prikaži mapu dnevnika i njezine zapise u stablu bilješki"
+    },
+    "showOnThisDay": {
+      "label": "Prikaži Na današnji dan",
+      "description": "Ispod unosa navedi isti datum iz prošlih godina"
+    },
+    "allYearsView": {
+      "label": "Prikaži sve godine u cijelosti",
+      "description": "Vječni dnevnik: svaka godina tog datuma na jednoj stranici, ispod unosa"
     }
   },
   "tasks": {
@@ -1110,7 +1119,16 @@
       "sending": "Slanje koda…"
     },
     "oauth": {
-      "google": "Nastavi s Googleom"
+      "google": "Nastavi s Googleom",
+      "waiting": "Dovršite prijavu putem Googlea u svom pregledniku.",
+      "browserUnavailable": "Nije moguće otvoriti vaš preglednik.",
+      "manualInstructions": "Kopirajte poveznicu za prijavu i otvorite je u pregledniku na ovom računalu. Neka memrynote ostane otvoren dok se prijavljujete.",
+      "linkLabel": "Poveznica za prijavu",
+      "copyLink": "Kopiraj poveznicu za prijavu",
+      "retryBrowser": "Pokušaj ponovno otvoriti preglednik",
+      "copied": "Poveznica za prijavu je kopirana.",
+      "copyFailed": "Kopiranje poveznice za prijavu nije uspjelo. Odaberite je u polju iznad i kopirajte.",
+      "cancel": "Upotrijebi drugi način prijave"
     },
     "otp": {
       "title": "Unesite kontrolni kod",
@@ -1347,6 +1365,7 @@
       "keySaveError": "Spremanje OpenAI ključa nije uspjelo"
     },
     "embedding": {
+      "load": "Učitaj model",
       "loaded": "Učitano",
       "loading": "Učitavanje",
       "downloadLoad": "Preuzmi i učitaj model",
@@ -1371,7 +1390,8 @@
         "ollama": "Ollama (lokalno)",
         "openai": "OpenAI",
         "anthropic": "Anthropic",
-        "google": "Google Gemini"
+        "google": "Google Gemini",
+        "custom": "Prilagođeno (kompatibilno s OpenAI)"
       },
       "model": "Model",
       "modelDescription": "Jezični model za prepisivanje i sažimanje",
@@ -1381,6 +1401,11 @@
       "apiKeyPlaceholder": "Unesite API ključ za {provider}",
       "ollamaUrl": "Ollama URL",
       "ollamaUrlDescription": "Adresa lokalnog poslužitelja",
+      "customUrl": "Osnovni URL",
+      "customUrlDescription": "Bilo koja krajnja točka kompatibilna s OpenAI, npr. OpenRouter",
+      "customUrlPlaceholder": "https://openrouter.ai/api/v1",
+      "customApiKeyPlaceholder": "API ključ (neobavezno)",
+      "customModelPlaceholder": "ID modela",
       "connection": "Veza",
       "activePort": "Aktivno na priključku {port}",
       "notConnected": "Nije povezano",
@@ -2032,7 +2057,7 @@
       "subtitle": "Upravljajte definicijama svojstava u svim bilješkama"
     },
     "loading": "Učitavanje svojstava…",
-    "empty": "Još nema definicija svojstava. Za početak dodajte svojstvo statusa, odabira ili višestrukog odabira bilo kojoj bilješci.",
+    "empty": "Još nema svojstava. Za početak dodajte svojstvo bilo kojoj bilješci.",
     "filterPlaceholder": "Filtriraj svojstva…",
     "noMatch": "Nema svojstava koja odgovaraju upitu „{query}”",
     "summary": "{count, plural, one {# definicija svojstva} few {# definicije svojstava} other {# definicija svojstava}}",
@@ -2072,6 +2097,14 @@
     },
     "v2": {
       "actionsAria": "Radnje za „{name}”"
+    },
+    "usage": {
+      "heading": "Koristi se u",
+      "noteCount": "{count, plural, one {# bilješka} few {# bilješke} other {# bilješki}}",
+      "mismatchCount": "Vrijednosti koje ne odgovaraju vrsti {type}: {count}",
+      "mismatchNote": "Ne odgovara vrsti {type}",
+      "none": "Nijedna bilješka ne koristi ovo svojstvo",
+      "loadFailed": "Nije moguće učitati bilješke koje koriste ovo svojstvo"
     }
   },
   "commandLine": {
@@ -2407,7 +2440,6 @@
   "phaseI": {
     "errors": {
       "failedToUpdateTagColor": "Ažuriranje boje oznake nije uspjelo",
-      "googleSignInFailed": "Prijava putem Googlea nije uspjela",
       "failedToSendVerificationCode": "Slanje kontrolnog koda nije uspjelo",
       "invalidVerificationCode": "Nevažeći kontrolni kod",
       "accountSetupFailed": "Postavljanje računa nije uspjelo",
@@ -2434,7 +2466,8 @@
       "failedToCloseVault": "Zatvaranje trezora nije uspjelo",
       "failedToSwitchVault": "Promjena trezora nije uspjela",
       "failedToUpdateConfig": "Ažuriranje konfiguracije nije uspjelo",
-      "failedToReindex": "Ponovno indeksiranje nije uspjelo"
+      "failedToReindex": "Ponovno indeksiranje nije uspjelo",
+      "googleSignInFailed": "Prijava putem Googlea nije uspjela"
     }
   },
   "agentMcp": {
@@ -2464,7 +2497,17 @@
       "running": "Pokrenuto",
       "tokenHint": "Samo za ovo pokretanje",
       "copy": "Kopiraj",
-      "rotate": "Zamijeni"
+      "rotate": "Zamijeni",
+      "clientConfig": {
+        "label": "Konfiguracija klijenta",
+        "hint": "Kopira se s URL-om i tokenom ovog pokretanja",
+        "copy": "Kopiraj konfiguraciju za {client}"
+      },
+      "notes": {
+        "readOnly": "Vanjski klijenti mogu samo čitati. Alati za pisanje vraćaju PERMISSION_DENIED, pa pišite putem Agent Chata ili memrynote naredbenog retka.",
+        "restart": "URL i token mijenjaju se kad se memrynote ponovno pokrene, promijeni trezor ili obnovi token. Svaki put ažurirajte konfiguraciju klijenta i ponovno ga pokrenite.",
+        "docs": "Vodič za postavljanje"
+      }
     }
   },
   "agentProviders": {

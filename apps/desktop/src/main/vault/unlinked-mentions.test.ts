@@ -18,6 +18,7 @@ import type * as IndexModule from './status'
 import type * as DatabaseModule from '../database'
 import type * as NotesModule from './notes'
 import type * as UnlinkedMentionsModule from './unlinked-mentions'
+import { createJournalEntry } from '../journal/create-entry'
 
 // ============================================================================
 // Type-Safe Mocks
@@ -164,5 +165,34 @@ describe('unlinked mentions (#3320)', () => {
         ordinal: 5
       })
     ).toBe(false)
+  })
+
+  it('tells the reference filters which sources are journal entries and their tags', async () => {
+    const target = await notes.createNote({ title: 'Project X', content: 'Body.' })
+    await notes.createNote({ title: 'Spec', content: 'See [[Project X]].', tags: ['work'] })
+    await notes.createNote({ title: 'Idea', content: 'Project X could grow.', tags: ['someday'] })
+    await createJournalEntry({ date: '2026-03-01', content: 'Worked on [[Project X]].', tags: [] })
+    await createJournalEntry({ date: '2026-03-02', content: 'Project X standup.', tags: ['daily'] })
+    await projections.flushProjectionEvents()
+
+    const facets = (source: { sourceTitle: string; sourceJournalDate: string | null }) => ({
+      title: source.sourceTitle,
+      journalDate: source.sourceJournalDate
+    })
+    const linked = (await notes.getNoteLinks(target.id)).incoming
+    expect(linked.map(facets).toSorted((a, b) => a.title.localeCompare(b.title))).toEqual([
+      { title: '2026-03-01', journalDate: '2026-03-01' },
+      { title: 'Spec', journalDate: null }
+    ])
+    const spec = linked.find((link) => link.sourceTitle === 'Spec')
+    expect(spec?.sourceTags).toEqual(['work'])
+    // The snippet quotes the body, never the source's frontmatter.
+    expect(spec?.contexts.map((c) => c.snippet)).toEqual(['See [[Project X]].'])
+
+    const unlinked = await mentions.getUnlinkedMentions(target.id)
+    expect(unlinked.map((m) => ({ ...facets(m), tags: m.sourceTags }))).toEqual([
+      { title: '2026-03-02', journalDate: '2026-03-02', tags: ['daily'] },
+      { title: 'Idea', journalDate: null, tags: ['someday'] }
+    ])
   })
 })

@@ -13,9 +13,9 @@ extension NoteEditorViewModel {
                     .contains(block.kind)
         } ?? false
         if typable, let id = target?.id {
-            session.pendingFocus = id
+            session.focus(id)
         } else if let id = await insertParagraph(after: blocks.last?.id) {
-            session.pendingFocus = id
+            session.focus(id)
         }
     }
 }

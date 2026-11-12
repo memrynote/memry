@@ -2,10 +2,13 @@ import { render, screen, waitFor } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 
+import type { useAuth } from '@/contexts/auth-context'
 import { SetupWizard } from './setup-wizard'
 
+type Auth = ReturnType<typeof useAuth>
+
 const authMock = vi.hoisted(() => ({
-  useAuth: vi.fn()
+  useAuth: vi.fn<typeof useAuth>()
 }))
 
 vi.mock('@memry/i18n/renderer', () => ({
@@ -159,10 +162,10 @@ const baseAuthState = {
   wizardStep: 'sign-in',
   wizardLinkingSessionId: null,
   wizardVerificationCode: null,
+  wizardVaults: null,
   wizardExpiresAt: null,
-  wizardOAuthState: null,
   wizardError: null
-}
+} satisfies Auth['state']
 
 const clipboardWrite = vi.fn()
 
@@ -177,32 +180,38 @@ function stubClipboard() {
   })
 }
 
-function mockAuth(
-  state: Partial<typeof baseAuthState> = {},
-  methods: Record<string, unknown> = {}
-) {
+function mockAuth(state: Partial<Auth['state']> = {}, methods: Partial<Omit<Auth, 'state'>> = {}) {
   const auth = {
     state: { ...baseAuthState, ...state },
-    requestOtp: vi.fn().mockResolvedValue({ expiresIn: 45 }),
-    verifyOtp: vi.fn().mockResolvedValue({
+    requestOtp: vi.fn<Auth['requestOtp']>().mockResolvedValue({ expiresIn: 45 }),
+    verifyOtp: vi.fn<Auth['verifyOtp']>().mockResolvedValue({
       deviceId: 'device-1',
       needsRecoverySetup: false,
       needsRecoveryInput: false
     }),
-    resendOtp: vi.fn().mockResolvedValue({ expiresIn: 30 }),
-    initOAuth: vi.fn().mockResolvedValue({ state: 'oauth-state' }),
-    confirmRecoveryPhrase: vi.fn().mockResolvedValue(undefined),
-    linkViaRecovery: vi.fn().mockResolvedValue({ deviceId: 'device-1' }),
-    linkingCompleted: vi.fn(),
-    logout: vi.fn().mockResolvedValue(undefined),
-    clearError: vi.fn(),
-    resetAuthState: vi.fn(),
-    setWizardStep: vi.fn(),
-    setWizardError: vi.fn(),
-    clearWizardError: vi.fn(),
-    resetWizard: vi.fn(),
+    resendOtp: vi.fn<Auth['resendOtp']>().mockResolvedValue({ expiresIn: 30 }),
+    oauthSession: null,
+    isOAuthBusy: false,
+    initOAuth: vi.fn<Auth['initOAuth']>().mockResolvedValue({
+      state: 'oauth-state',
+      authorizationUrl: 'https://accounts.google.com/auth?state=oauth-state',
+      browserOpened: true
+    }),
+    retryOAuth: vi.fn<Auth['retryOAuth']>().mockResolvedValue(undefined),
+    cancelOAuth: vi.fn<Auth['cancelOAuth']>(),
+    setupFirstDevice: vi.fn<Auth['setupFirstDevice']>().mockResolvedValue(null),
+    confirmRecoveryPhrase: vi.fn<Auth['confirmRecoveryPhrase']>().mockResolvedValue(undefined),
+    linkViaRecovery: vi.fn<Auth['linkViaRecovery']>().mockResolvedValue({ deviceId: 'device-1' }),
+    linkingCompleted: vi.fn<Auth['linkingCompleted']>(),
+    logout: vi.fn<Auth['logout']>().mockResolvedValue(undefined),
+    clearError: vi.fn<Auth['clearError']>(),
+    resetAuthState: vi.fn<Auth['resetAuthState']>(),
+    setWizardStep: vi.fn<Auth['setWizardStep']>(),
+    setWizardError: vi.fn<Auth['setWizardError']>(),
+    clearWizardError: vi.fn<Auth['clearWizardError']>(),
+    resetWizard: vi.fn<Auth['resetWizard']>(),
     ...methods
-  }
+  } satisfies Auth
   authMock.useAuth.mockReturnValue(auth)
   return auth
 }
@@ -212,11 +221,9 @@ describe('SetupWizard', () => {
     vi.clearAllMocks()
     vi.useRealTimers()
     stubClipboard()
-    ;(window as Window & { api: unknown }).api = {
-      syncSetup: {
-        getRecoveryPhrase: vi.fn().mockResolvedValue('alpha beta gamma')
-      }
-    }
+    Object.assign(window.api.syncSetup, {
+      getRecoveryPhrase: vi.fn().mockResolvedValue('alpha beta gamma')
+    })
   })
 
   it('requests email OTP and starts Google OAuth from sign-in', async () => {
@@ -235,10 +242,7 @@ describe('SetupWizard', () => {
     expect(auth.clearWizardError).toHaveBeenCalled()
 
     await user.click(screen.getByRole('button', { name: 'google oauth' }))
-    await waitFor(() =>
-      expect(auth.setWizardStep).toHaveBeenCalledWith('sign-in', { oauthState: 'oauth-state' })
-    )
-    expect(auth.initOAuth).toHaveBeenCalledWith()
+    await waitFor(() => expect(auth.initOAuth).toHaveBeenCalledWith())
   })
 
   it('handles OTP verify, resend, and back paths', async () => {
@@ -250,7 +254,11 @@ describe('SetupWizard', () => {
         wizardExpiresAt: Date.now() + 12_000
       },
       {
-        verifyOtp: vi.fn().mockResolvedValue({ needsRecoveryInput: true })
+        verifyOtp: vi.fn<Auth['verifyOtp']>().mockResolvedValue({
+          deviceId: 'device-1',
+          needsRecoverySetup: false,
+          needsRecoveryInput: true
+        })
       }
     )
 
@@ -300,9 +308,7 @@ describe('SetupWizard', () => {
   it('refetches the pending recovery phrase after the wizard remounts', async () => {
     mockAuth({ wizardStep: 'recovery-display' })
     const getRecoveryPhrase = vi.fn().mockResolvedValue('alpha beta gamma')
-    ;(window as Window & { api: unknown }).api = {
-      syncSetup: { getRecoveryPhrase }
-    }
+    Object.assign(window.api.syncSetup, { getRecoveryPhrase })
 
     const { unmount } = render(<SetupWizard />)
     expect(await screen.findByText('display:alpha beta gamma')).toBeInTheDocument()
@@ -317,9 +323,7 @@ describe('SetupWizard', () => {
   it('shows a recoverable error when the pending recovery phrase is gone', async () => {
     const user = userEvent.setup()
     const auth = mockAuth({ wizardStep: 'recovery-display' })
-    ;(window as Window & { api: unknown }).api = {
-      syncSetup: { getRecoveryPhrase: vi.fn().mockResolvedValue(null) }
-    }
+    Object.assign(window.api.syncSetup, { getRecoveryPhrase: vi.fn().mockResolvedValue(null) })
 
     render(<SetupWizard />)
 
@@ -332,9 +336,9 @@ describe('SetupWizard', () => {
 
   it('shows a recoverable error when fetching the recovery phrase fails', async () => {
     mockAuth({ wizardStep: 'recovery-confirm' })
-    ;(window as Window & { api: unknown }).api = {
-      syncSetup: { getRecoveryPhrase: vi.fn().mockRejectedValue(new Error('ipc down')) }
-    }
+    Object.assign(window.api.syncSetup, {
+      getRecoveryPhrase: vi.fn().mockRejectedValue(new Error('ipc down'))
+    })
 
     render(<SetupWizard />)
 

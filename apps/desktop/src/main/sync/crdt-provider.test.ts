@@ -268,6 +268,7 @@ vi.mock('../vault/frontmatter', () => ({
 }))
 
 vi.mock('./blocknote-converter', () => ({
+  setVaultEmbedResolver: () => {},
   markdownToYFragment: (...args: unknown[]) => mocks.markdownToYFragment(...args),
   repairEmptyBlockIds: (...args: unknown[]) => mocks.repairEmptyBlockIds(...args)
 }))

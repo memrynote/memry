@@ -1854,6 +1854,69 @@ describe('google calendar sync service', () => {
       )
     })
 
+    it('keeps syncing the other calendars when one fails, and still reports the failure', async () => {
+      for (const [id, title] of [
+        ['broken', 'Broken'],
+        ['work', 'Work']
+      ]) {
+        seedGoogleCalendarSource({
+          id: `google-calendar:${id}`,
+          remoteId: id,
+          title,
+          isMemryManaged: false
+        })
+      }
+      const client = {
+        ...buildClient(),
+        listCalendars: vi.fn(async () => [
+          { id: 'memry', title: 'memrynote', timezone: 'UTC', color: null, isPrimary: false }
+        ]),
+        listEvents: vi.fn(async ({ calendarId }: { calendarId: string }) => {
+          if (calendarId === 'broken') throw new Error('Google rejected this calendar')
+          return {
+            nextSyncCursor: 'work-cursor',
+            events: [
+              {
+                id: 'standup',
+                calendarId,
+                title: 'Standup',
+                startAt: '2026-11-05T09:00:00.000Z',
+                endAt: '2026-11-05T09:30:00.000Z',
+                isAllDay: false,
+                timezone: 'UTC',
+                status: 'confirmed' as const,
+                etag: null,
+                updatedAt: null,
+                raw: {}
+              }
+            ]
+          }
+        })
+      }
+
+      await expect(syncGoogleCalendarNow(db, { client: client as never })).rejects.toThrow(
+        'Google rejected this calendar'
+      )
+
+      expect(
+        db
+          .select()
+          .from(calendarExternalEvents)
+          .where(eq(calendarExternalEvents.sourceId, 'google-calendar:work'))
+          .all()
+          .map((row) => row.title)
+      ).toEqual(['Standup'])
+      const broken = db
+        .select()
+        .from(calendarSources)
+        .where(eq(calendarSources.id, 'google-calendar:broken'))
+        .get()
+      expect(broken).toMatchObject({
+        syncStatus: 'error',
+        lastError: 'Google rejected this calendar'
+      })
+    })
+
     it('uses the injected client only for the default account and routes other accounts separately', async () => {
       const aliceAccountId = 'alice@example.com'
       const bobAccountId = 'bob@example.com'

@@ -21,6 +21,7 @@ import { createNoteDerivedStateProjector } from '../projections/projectors/note-
 import * as projections from '../projections'
 import { readVaultConfig } from './init'
 import { parseNote } from './frontmatter'
+import { reconcileTaskCheckboxesFromMarkdown } from '../tasks/reconcile-markdown-tasks'
 import { VAULT_LOCKED_FOLDER_MESSAGE } from '@memry/contracts/vault-locks-api'
 import { JournalChannels } from '@memry/contracts/ipc-channels'
 import { installVaultLockSource, invalidateVaultLocks } from '../vault-locks/registry'
@@ -404,6 +405,44 @@ describe('notes operations', () => {
       expect(retrieved!.title).toBe('Get By ID Test')
       expect(retrieved!.content).toBe('Content to retrieve.\n')
       expect(retrieved!.tags).toContain('test')
+    })
+
+    it('reconciles task checkboxes only from bytes edited outside the app', async () => {
+      // #given a note the app wrote, whose task is later completed elsewhere
+      // (Tasks view, a synced peer), so the file still says `[ ]`
+      const reconcile = vi.mocked(reconcileTaskCheckboxesFromMarkdown)
+      reconcile.mockClear()
+      const created = await notes.createNote({
+        title: 'Task Note',
+        content: '- [ ] Ship it {task:t1}'
+      })
+      await projections.flushProjectionEvents()
+
+      // #when the note is opened with the app's own bytes, then after an
+      // outside edit ticks the box
+      await notes.getNoteById(created.id)
+      fs.writeFileSync(path.join(tempVault.path, created.path), '- [x] Ship it {task:t1}\n')
+      await notes.getNoteById(created.id)
+
+      // #then only the outside edit reaches the reconciler, measured against
+      // the state the app wrote; the stale `[ ]` would have reopened the done
+      // task
+      await vi.waitFor(() => expect(reconcile).toHaveBeenCalled())
+      expect(reconcile.mock.calls).toEqual([
+        [
+          {
+            markdown: '- [x] Ship it {task:t1}\n',
+            acknowledged: { t1: false },
+            fileModifiedAt: expect.any(Date)
+          }
+        ]
+      ])
+
+      // #then the open acknowledges those bytes, so a later open does not apply
+      // the same edit over a change made in the app since
+      await notes.getNoteById(created.id)
+      await vi.waitFor(() => expect(reconcile).toHaveBeenCalledTimes(2))
+      expect(reconcile.mock.calls[1]?.[0]).toMatchObject({ acknowledged: { t1: true } })
     })
 
     it('T362: returns null for non-existent note', async () => {

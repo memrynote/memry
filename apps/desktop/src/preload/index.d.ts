@@ -1,4 +1,5 @@
 import type { ElectronAPI } from '@electron-toolkit/preload'
+import type { InitOAuthResult, RetryOAuthResult } from '@memry/contracts/ipc-auth'
 import type { GeneratedRpcApi } from '@memry/rpc'
 import type * as InboxRpc from '@memry/rpc/inbox'
 import type * as NotesRpc from '@memry/rpc/notes'
@@ -32,6 +33,7 @@ import type {
   GraphViewsSettingsPatch
 } from '@memry/contracts/graph-api'
 import type { SidebarSortMode, SidebarSortSurface } from '@memry/contracts/sidebar-sort'
+import type { TaskFilterGroup } from '@memry/contracts/saved-filters-api'
 import type {
   AgentEvent,
   AgentBackendId,
@@ -128,7 +130,7 @@ import type {
 } from '@memry/contracts/folder-view-api'
 import type { ResolvedRelationRef } from '@memry/contracts/properties-api'
 import type { GetLinkedHereResponse, SearchObjectsResponse } from '@memry/contracts/tag-objects-api'
-import type { GetPropertyRowsOutput } from '@memry/contracts/journal-api'
+import type { GetPropertyRowsOutput, SameDayEntry } from '@memry/contracts/journal-api'
 import type {
   CustomIcon,
   CustomIconAddInput,
@@ -428,12 +430,15 @@ export interface TaskSortConfig {
 export interface SavedFilterConfig {
   filters: TaskFiltersConfig
   sort?: TaskSortConfig
+  starred?: boolean
 }
 
 export interface SavedFilter {
   id: string
   name: string
   config: SavedFilterConfig
+  /** Advanced rules beside `config`; null when the filter has none. */
+  expression: TaskFilterGroup | null
   position: number
   createdAt: string
 }
@@ -441,12 +446,16 @@ export interface SavedFilter {
 export interface SavedFilterCreateInput {
   name: string
   config: SavedFilterConfig
+  expression?: TaskFilterGroup | null
 }
 
 export interface SavedFilterUpdateInput {
   id: string
   name?: string
+  /** Merged key by key into the stored config. */
   config?: SavedFilterConfig
+  starred?: boolean
+  expression?: TaskFilterGroup | null
   position?: number
 }
 
@@ -503,6 +512,8 @@ export interface MonthEntryPreview {
   activityLevel: ActivityLevel
   tags: string[]
 }
+
+export type { SameDayEntry }
 
 export interface MonthStats {
   year: number
@@ -713,6 +724,7 @@ export interface JournalClientAPI {
   getHeatmap(year: number): Promise<HeatmapEntry[]>
   getMonthEntries(year: number, month: number): Promise<MonthEntryPreview[]>
   getYearStats(year: number): Promise<MonthStats[]>
+  getSameDayEntries(date: string): Promise<SameDayEntry[]>
 
   // Context
   getDayContext(date: string): Promise<DayContext>
@@ -1228,6 +1240,10 @@ export interface JournalSettings {
   showAIConnections: boolean
   /** Whether to show the stats footer at the bottom of journal entries */
   showStatsFooter: boolean
+  /** Show the same day from past years under a journal entry */
+  showOnThisDay: boolean
+  /** Show every year of the day in full under the entry (the Forever Journal) */
+  allYearsView: boolean
 }
 
 export interface AISettings {
@@ -1692,9 +1708,12 @@ interface SyncAuthClientAPI {
     message?: string
     error?: string
   }>
-  initOAuth: (input: { provider: 'google' }) => Promise<{
+  initOAuth: (input: {
+    provider: 'google'
+  }) => Promise<InitOAuthResult | { success: false; error: string }>
+  retryOAuth: (input: {
     state: string
-  }>
+  }) => Promise<RetryOAuthResult | { success: false; error: string }>
   refreshToken/* auth action */ : () => Promise<{
     success: boolean
     /** True only when the session can no longer refresh and needs a new sign-in. */

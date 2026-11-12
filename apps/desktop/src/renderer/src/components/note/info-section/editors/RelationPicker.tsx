@@ -1,4 +1,5 @@
 import { useState } from 'react'
+import { cn } from '@/lib/utils'
 import { formatRelationUri, type RelationKind } from '@memry/contracts/relation-uri'
 import { FileText, CheckSquare, Calendar, PenTool, BookOpen, type AppIcon } from '@/lib/icons'
 import { FilterSearchHeader } from '@/components/ui/filter-search-header'
@@ -77,8 +78,27 @@ function AnyRelationPicker({ onSelect }: { onSelect: (uri: string) => void }): R
             onClick={() => onSelect(formatRelationUri(item.kind ?? kind, item.id))}
             className="flex w-full items-center gap-2 rounded-[5px] px-2 py-1.5 text-start transition-colors hover:bg-accent focus:outline-none focus-visible:bg-accent"
           >
-            <Icon className="size-3.5 shrink-0 text-muted-foreground" aria-hidden />
-            <span className="truncate">{item.title}</span>
+            <Icon
+              className={cn(
+                'size-3.5 shrink-0 text-muted-foreground',
+                item.unwritten && 'opacity-60'
+              )}
+              aria-hidden
+            />
+            <span
+              className={cn(
+                'truncate',
+                item.unwritten &&
+                  'text-muted-foreground underline decoration-dashed underline-offset-4'
+              )}
+            >
+              {item.title}
+            </span>
+            {item.unwritten && (
+              <span className="ms-auto shrink-0 text-xs text-muted-foreground">
+                {t('properties.relation.unwrittenDay')}
+              </span>
+            )}
             {item.startAt && (
               <span className="ms-auto shrink-0 text-xs text-muted-foreground">
                 {dateFormat.format(new Date(item.startAt))}

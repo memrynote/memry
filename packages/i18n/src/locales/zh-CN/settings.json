@@ -504,7 +504,8 @@
       "loading": "正在加载设置…"
     },
     "groups": {
-      "footer": "页脚"
+      "footer": "页脚",
+      "pastYears": "往年"
     },
     "template": {
       "label": "模板",
@@ -562,6 +563,14 @@
     "showInSidebar": {
       "label": "在侧边栏中显示",
       "description": "在笔记树中显示日记文件夹及其条目"
+    },
+    "showOnThisDay": {
+      "label": "显示历年今日",
+      "description": "在条目下方列出往年的同一日期"
+    },
+    "allYearsView": {
+      "label": "完整显示所有年份",
+      "description": "永恒日记：该日期的每一年都在同一页，位于条目下方"
     }
   },
   "tasks": {
@@ -1110,7 +1119,16 @@
       "sending": "正在发送验证码…"
     },
     "oauth": {
-      "google": "使用 Google 继续"
+      "google": "使用 Google 继续",
+      "waiting": "请在浏览器中完成 Google 登录。",
+      "browserUnavailable": "无法打开你的浏览器。",
+      "manualInstructions": "复制登录链接，并在这台电脑的浏览器中打开。登录期间请保持 memrynote 处于打开状态。",
+      "linkLabel": "登录链接",
+      "copyLink": "复制登录链接",
+      "retryBrowser": "重新尝试打开浏览器",
+      "copied": "登录链接已复制。",
+      "copyFailed": "无法复制登录链接。请从上方字段中选中并复制。",
+      "cancel": "使用其他登录方式"
     },
     "otp": {
       "title": "输入验证码",
@@ -1347,6 +1365,7 @@
       "keySaveError": "无法保存 OpenAI 密钥"
     },
     "embedding": {
+      "load": "加载模型",
       "loaded": "已加载",
       "loading": "正在加载",
       "downloadLoad": "下载并加载模型",
@@ -1371,7 +1390,8 @@
         "ollama": "Ollama（本地）",
         "openai": "OpenAI",
         "anthropic": "Anthropic",
-        "google": "Google Gemini"
+        "google": "Google Gemini",
+        "custom": "自定义（兼容 OpenAI）"
       },
       "model": "模型",
       "modelDescription": "用于重写和总结的语言模型",
@@ -1381,6 +1401,11 @@
       "apiKeyPlaceholder": "输入 {provider} API 密钥",
       "ollamaUrl": "Ollama URL",
       "ollamaUrlDescription": "本地服务器地址",
+      "customUrl": "基础 URL",
+      "customUrlDescription": "任何兼容 OpenAI 的端点，例如 OpenRouter",
+      "customUrlPlaceholder": "https://openrouter.ai/api/v1",
+      "customApiKeyPlaceholder": "API 密钥（可选）",
+      "customModelPlaceholder": "模型 ID",
       "connection": "连接",
       "activePort": "正在端口 {port} 上运行",
       "notConnected": "未连接",
@@ -2032,7 +2057,7 @@
       "subtitle": "管理所有笔记的属性定义"
     },
     "loading": "正在加载属性…",
-    "empty": "还没有属性定义。向任意笔记添加“状态”“单选”或“多选”属性即可开始。",
+    "empty": "还没有属性。向任意笔记添加属性即可开始。",
     "filterPlaceholder": "筛选属性…",
     "noMatch": "没有匹配“{query}”的属性",
     "summary": "{count, plural, other {# 个属性定义}}",
@@ -2072,6 +2097,14 @@
     },
     "v2": {
       "actionsAria": "{name} 的操作"
+    },
+    "usage": {
+      "heading": "使用位置",
+      "noteCount": "{count, plural, other {# 篇笔记}}",
+      "mismatchCount": "与“{type}”不符的值：{count}",
+      "mismatchNote": "与“{type}”不符",
+      "none": "没有笔记使用此属性",
+      "loadFailed": "无法加载使用此属性的笔记"
     }
   },
   "commandLine": {
@@ -2407,7 +2440,6 @@
   "phaseI": {
     "errors": {
       "failedToUpdateTagColor": "无法更新标签颜色",
-      "googleSignInFailed": "Google 登录失败",
       "failedToSendVerificationCode": "无法发送验证码",
       "invalidVerificationCode": "验证码无效",
       "accountSetupFailed": "账户设置失败",
@@ -2434,7 +2466,8 @@
       "failedToCloseVault": "无法关闭仓库",
       "failedToSwitchVault": "无法切换仓库",
       "failedToUpdateConfig": "无法更新配置",
-      "failedToReindex": "无法重新索引"
+      "failedToReindex": "无法重新索引",
+      "googleSignInFailed": "Google 登录失败"
     }
   },
   "agentMcp": {
@@ -2464,7 +2497,17 @@
       "running": "正在运行",
       "tokenHint": "仅限本次启动",
       "copy": "复制",
-      "rotate": "轮换"
+      "rotate": "轮换",
+      "clientConfig": {
+        "label": "客户端配置",
+        "hint": "使用本次启动的 URL 和令牌复制",
+        "copy": "复制 {client} 配置"
+      },
+      "notes": {
+        "readOnly": "外部客户端只能读取。写入工具会返回 PERMISSION_DENIED，请通过 Agent Chat 或 memrynote 命令行写入。",
+        "restart": "memrynote 重启、切换仓库或轮换令牌时，URL 和令牌都会改变。每次都需更新客户端配置，然后重启客户端。",
+        "docs": "设置指南"
+      }
     }
   },
   "agentProviders": {

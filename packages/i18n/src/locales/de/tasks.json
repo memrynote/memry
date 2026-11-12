@@ -113,7 +113,74 @@
       "noDueDate": "Kein Fälligkeitsdatum"
     },
     "repeatTypeRepeating": "Wiederkehrend",
-    "repeatTypeOneTime": "Einmalig"
+    "repeatTypeOneTime": "Einmalig",
+    "advanced": {
+      "entry": "Erweiterter Filter…",
+      "entryHint": "Regeln mit und, oder, nicht",
+      "title": "Filter",
+      "match": "Erfüllt",
+      "ofThese": "dieser Regeln",
+      "matches": {
+        "all": "alle",
+        "any": "eine beliebige",
+        "none": "keine"
+      },
+      "fields": {
+        "title": "Titel",
+        "status": "Status",
+        "priority": "Priorität",
+        "due": "Fälligkeitsdatum",
+        "project": "Projekt",
+        "location": "Ort",
+        "tags": "Tags",
+        "repeat": "Wiederholung",
+        "hasTime": "Hat Uhrzeit"
+      },
+      "ops": {
+        "contains": "enthält",
+        "notContains": "enthält nicht",
+        "any": "ist eines von",
+        "none": "ist keines von",
+        "all": "hat alle von",
+        "empty": "ist leer",
+        "notEmpty": "ist nicht leer",
+        "is": "ist",
+        "isNot": "ist nicht"
+      },
+      "tagOps": {
+        "any": "hat eines von",
+        "all": "hat alle von",
+        "none": "hat keines von"
+      },
+      "values": {
+        "repeating": "Wiederkehrend",
+        "oneTime": "Einmalig",
+        "withTime": "Mit Uhrzeit",
+        "withoutTime": "Ohne Uhrzeit",
+        "customRange": "Benutzerdefinierter Zeitraum",
+        "from": "Von",
+        "to": "Bis",
+        "pick": "Auswählen…",
+        "titlePlaceholder": "Text im Titel"
+      },
+      "addRule": "Regel hinzufügen",
+      "addGroup": "Gruppe hinzufügen",
+      "clear": "Löschen",
+      "removeRule": "Regel entfernen",
+      "removeGroup": "Gruppe entfernen",
+      "matchCount": "{count, plural, one {# Aufgabe passt} other {# Aufgaben passen}}",
+      "skipped": "{count, plural, one {# Regel übersprungen} other {# Regeln übersprungen}}",
+      "ruleCount": "{count, plural, one {# Regel} other {# Regeln}}",
+      "unknownRule": "Regel aus einer neueren Version",
+      "empty": "Noch keine Regeln. Füge eine hinzu, um zu filtern.",
+      "summary": {
+        "and": "und",
+        "or": "oder",
+        "not": "nicht"
+      },
+      "editRules": "Regeln bearbeiten",
+      "clearRules": "Regeln löschen"
+    }
   },
   "quickAdd": {
     "label": "Aufgabe schnell hinzufügen",

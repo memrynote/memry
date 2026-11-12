@@ -7,7 +7,7 @@
  * @module main/lib/reminders
  */
 
-import { app, BrowserWindow, Notification } from 'electron'
+import { app, Notification } from 'electron'
 import { getDatabase, getIndexDatabase } from '../database'
 import type { IndexDb } from '../database/types'
 import { getNoteCacheById } from '../database/queries/notes'
@@ -17,6 +17,7 @@ import { tasks } from '@memry/db-schema/schema/tasks'
 import { inboxItems, inboxItemType } from '@memry/db-schema/schema/inbox'
 import { eq, and, lte, sql, or, gte, asc } from 'drizzle-orm'
 import { generateId } from './id'
+import { getMainWindow } from '../main-window'
 import {
   ReminderChannels,
   reminderStatus,
@@ -350,16 +351,12 @@ function showDesktopNotification(reminder: ReminderWithTarget): void {
       silent: false
     })
 
-    // Handle click - focus window and emit event to navigate.
-    // Takes the first *live* window rather than getAllWindows()[0]: short-lived
-    // windows (splash, quick capture, print/export) can still be listed after
-    // destruction, and any access to one throws "Object has been destroyed" —
-    // which would kill the click with nothing focused and nothing navigated.
+    // Handle click - focus the app window and emit event to navigate.
     notification.on('click', () => {
       // Clicking consumes the banner, so drop the tracking (and with it this
       // closure's hold on `reminder`) before doing the navigation work.
       releaseNotification(reminder.id)
-      const win = BrowserWindow.getAllWindows().find((candidate) => !candidate.isDestroyed())
+      const win = getMainWindow()
       if (!win) return
       if (win.isMinimized()) win.restore()
       win.focus()

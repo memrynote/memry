@@ -10,7 +10,9 @@ import {
 import { notesService } from '@/services/notes-service'
 import {
   buildTreeFromNotes,
+  collectPairedNotes,
   hideVaultFiles,
+  pairFolderNotes,
   type TreeStructure
 } from '@/components/notes-tree-utils'
 import { createLogger } from '@/lib/logger'
@@ -48,11 +50,13 @@ export interface NoteTreeData {
   setFolderIcon: ReturnType<typeof useNoteFoldersQuery>['setFolderIcon']
   refreshFolders: ReturnType<typeof useNoteFoldersQuery>['refetch']
   mutations: ReturnType<typeof useNoteMutations>
-  /** What the tree draws: view options applied. */
+  /** What the tree draws: view options applied, each note `X.md` folded into its folder `X/`. */
   tree: TreeStructure
+  /** Folder path to the note `tree` folded into that folder's row. */
+  pairedNotes: Map<string, NoteListItem>
   /**
    * Same order as `tree`, but with the files `sidebar.showFiles` hides still in
-   * it. Reordering writes positions over this list, so a hidden file keeps its
+   * it, and with no note folded into a folder. Reordering writes positions over this list, so a hidden file keeps its
    * slot between the notes the user did drag.
    */
   unfilteredTree: TreeStructure
@@ -168,9 +172,11 @@ export function useNoteTreeData(): NoteTreeData {
   }, [notes, folders, notePositions, sortMode, notesFirst])
 
   const tree = useMemo(
-    () => (showFiles ? unfilteredTree : hideVaultFiles(unfilteredTree)),
+    () => pairFolderNotes(showFiles ? unfilteredTree : hideVaultFiles(unfilteredTree)),
     [unfilteredTree, showFiles]
   )
+
+  const pairedNotes = useMemo(() => collectPairedNotes(tree), [tree])
 
   const noteMap = useMemo(() => {
     const map = new Map<string, NoteListItem>()
@@ -213,6 +219,7 @@ export function useNoteTreeData(): NoteTreeData {
     refreshFolders,
     mutations,
     tree,
+    pairedNotes,
     unfilteredTree,
     showFiles,
     noteMap,

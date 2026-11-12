@@ -1,5 +1,11 @@
 import type { VercelRequest, VercelResponse } from '@vercel/node'
 
+import {
+  addExternalBetaTester,
+  readAppStoreConnectConfig,
+  verifyTurnstileToken
+} from './_ios-beta-support.ts'
+
 const RESEND_API_BASE_URL = 'https://api.resend.com'
 
 /** The Resend segment behind /ios-beta. Not a secret: it only works with RESEND_API_KEY. */
@@ -87,11 +93,56 @@ function getRequestBody(req: VercelRequest): unknown {
   }
 }
 
+type Failure = { status: number; error: string }
+
+/**
+ * The iPhone beta step: a Turnstile check (Apple mails every address we add, so bots must not
+ * reach it), then the address joins the external TestFlight group and Apple sends the invite.
+ * Re-adding an existing tester succeeds, so a repeat submit stays idempotent.
+ */
+async function inviteToTestflight(
+  req: VercelRequest,
+  email: string,
+  turnstileToken: unknown
+): Promise<Failure | null> {
+  const turnstileSecret = process.env.TURNSTILE_SECRET_KEY?.trim()
+  const ascConfig = readAppStoreConnectConfig(process.env)
+  if (!turnstileSecret || !ascConfig) {
+    console.error('[subscribe] TURNSTILE_SECRET_KEY or the ASC_* TestFlight env is not configured')
+    return { status: 500, error: 'Server configuration error' }
+  }
+
+  if (typeof turnstileToken !== 'string' || !turnstileToken) {
+    return { status: 400, error: 'Please complete the verification.' }
+  }
+
+  const remoteIp = req.headers['x-real-ip']
+  const human = await verifyTurnstileToken({
+    secret: turnstileSecret,
+    token: turnstileToken,
+    remoteIp: typeof remoteIp === 'string' ? remoteIp : undefined
+  })
+  if (!human) {
+    return { status: 400, error: 'Verification failed. Please try again.' }
+  }
+
+  const result = await addExternalBetaTester(ascConfig, email)
+  if (!result.ok) {
+    console.error(
+      `[subscribe] App Store Connect beta tester error (${result.status}):`,
+      sanitizeLogValue(result.detail)
+    )
+    return { status: 502, error: 'Could not send the TestFlight invite. Please try again.' }
+  }
+
+  return null
+}
+
 /**
  * List signup — creates the Resend contact, then files it into the segment of the list it
  * asked for (the newsletter, or the iPhone beta invite list). Both calls treat "already
  * exists" as success, so re-submitting an address is idempotent rather than an error the
- * visitor has to read.
+ * visitor has to read. An iPhone beta signup first goes through `inviteToTestflight`.
  */
 export default async function handler(req: VercelRequest, res: VercelResponse) {
   if (req.method !== 'POST') {
@@ -106,7 +157,8 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
   }
 
   const body = getRequestBody(req)
-  const fields: { email?: unknown; list?: unknown } = body && typeof body === 'object' ? body : {}
+  const fields: { email?: unknown; list?: unknown; turnstileToken?: unknown } =
+    body && typeof body === 'object' ? body : {}
   const { email } = fields
   const list = fields.list ?? 'newsletter'
 
@@ -134,6 +186,11 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
   }
 
   try {
+    if (list === 'ios-beta') {
+      const failure = await inviteToTestflight(req, email, fields.turnstileToken)
+      if (failure) return res.status(failure.status).json({ error: failure.error })
+    }
+
     const contactRes = await fetch(`${RESEND_API_BASE_URL}/contacts`, {
       method: 'POST',
       headers,

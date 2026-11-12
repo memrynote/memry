@@ -32,14 +32,9 @@ interface LaunchedGroup {
 
 const ACTIVE_ITEMS: RoadmapItem[] = [
   {
-    title: 'Native iPhone app, in TestFlight beta',
+    title: 'Desktop moves from Electron to Tauri',
     caption:
-      'Notes, tasks, journal, inbox with a share extension, and calendar on the same end-to-end encrypted vault and offline-first sync as desktop. Public release planned for the end of November.'
-  },
-  {
-    title: 'Graph and canvas you can edit from',
-    caption:
-      'Link and tag notes straight from the graph, saved graph views, pinned layouts, canvas sections bound to a tag or property, and similar-note and tag suggestions from local embeddings.'
+      'Moving the desktop app to Tauri for a smaller download, lower memory use, and a faster start, on the same encrypted vault and sync.'
   }
 ]
 
@@ -84,6 +79,21 @@ const PLANNED_ITEMS: RoadmapItem[] = [
 ]
 
 const LAUNCHED_GROUPS: LaunchedGroup[] = [
+  {
+    period: 'November 2026',
+    items: [
+      {
+        title: 'Native iPhone app, in TestFlight beta',
+        caption:
+          'Notes, tasks, journal, inbox with a share extension, and calendar on the same end-to-end encrypted vault and offline-first sync as desktop. Public release planned for the end of November.'
+      },
+      {
+        title: 'Graph and canvas you can edit from',
+        caption:
+          'Link and tag notes straight from the graph, saved graph views, pinned layouts, canvas sections bound to a tag or property, and similar-note and tag suggestions from local embeddings.'
+      }
+    ]
+  },
   {
     period: 'September 2026',
     items: [

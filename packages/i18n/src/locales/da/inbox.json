@@ -250,7 +250,8 @@
     "failedPlayAudio": "Kunne ikke afspille lyden",
     "failedLoadAudio": "Kunne ikke indlæse lyden",
     "video": "Video",
-    "unsupportedVideo": "Din browser understøtter ikke video-tagget."
+    "unsupportedVideo": "Din browser understøtter ikke video-tagget.",
+    "fileOnOtherDevice": "Filen er på den enhed, der optog den."
   },
   "reminder": {
     "dataUnavailable": "Påmindelsesdata er ikke tilgængelige.",

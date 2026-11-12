@@ -19,11 +19,15 @@ A query like "setting up authentication" can surface a note titled "OAuth flow" 
 
 1. Open [Settings → AI](/user-guide/settings#ai)
 2. Toggle **Enable**
-3. Under Embedding Model, click **Download** to pull the model
-4. Wait for the status to say **Loaded**
-5. Click **Rebuild Index** to embed every existing note (one-time per model)
+3. Check the Embedding Model status and indexing progress
 
-The first index build can take a few minutes for large vaults — progress is shown.
+Enabling AI starts a background pass for notes that need embeddings. The model downloads on first
+use if its files are not already on disk. You do not need **Rebuild Index** to catch up after AI was
+off. Existing vectors stay available while missing or changed notes are indexed.
+
+The first index build can take a few minutes for large vaults. Keyword search remains available.
+
+Memry unloads the model from memory about 30 seconds after the last embedding. The files stay on disk, so the status then reads **Downloaded**, and **Load Model** reads them from disk without downloading anything again.
 
 ## The Model
 
@@ -127,15 +131,16 @@ Opening a vault never blocks on embeddings. When a vault has notes that still ne
 example the first open after importing a vault — memrynote embeds them in the **background** after the
 vault is already open, so a large vault (or a slow or failed model download) can never hold up opening.
 
-Closing a vault, switching vaults, and quitting never block on embeddings either: a background
-embedding pass stops at the next note rather than finishing its whole queue. Notes it did not reach
-keep their place in line and are embedded by the next background pass.
+Closing or switching a vault cancels its background embedding pass. A calculation already in
+progress may finish before the pass stops. Unfinished notes remain queued for a later pass. A
+note-text rebuild from a closed vault cannot write vectors into the next vault's index.
 
 Beyond that, the model is loaded lazily: semantic surfaces such as search, inbox linked-note
 suggestions, related notes, and reindexing start the local model on first use. The model runs in a
 separate utility process and shuts down after an idle period, so regular note reading does not keep the
-embedding runtime resident forever. That process runs at low OS priority and uses at most half of your
-CPU cores, so a large re-embed leaves the rest of the machine responsive.
+embedding runtime resident forever. That process runs at low OS priority and gives each model
+session at most two inference threads. Large imports can take longer to index, but no longer assign
+half the machine's cores to inference. Other app work can still use CPU.
 
 ## Similar Notes, Suggested Tags, and Canvas Groups
 
@@ -216,7 +221,10 @@ Rebuild the index after:
 - Restoring a vault from backup
 - A migration that touched note storage
 
-Reindexing is incremental — memrynote skips notes whose content hash hasn't changed.
+**Rebuild Index** recalculates note embeddings. Existing vectors stay available until their
+replacements are ready. If a note fails, its old vectors remain and the rebuild reports failure
+rather than claiming every note is indexed. Opening the vault again or disabling and re-enabling
+AI retries unfinished work.
 
 A reindex — and a settings change that reclassifies notes, such as moving the journal or default note
 folder — embeds the notes it touched in the background as soon as the pass finishes. You do not need
@@ -234,15 +242,19 @@ frame) is an ordinary edit and syncs like any other.
 
 ## Performance
 
-Once the index is built, semantic search adds <50ms to a typical query. Embedding is the expensive step (one-time per note); ranking is cheap.
+Semantic search compares your query with stored vectors, but embedding a new query still runs the
+local model. Importing many notes also starts background embedding work, even when sync is idle.
 
-If you have an enormous vault and notice slowdowns, the index can be rebuilt fresh in settings.
+If you need to stop that work, turn AI off in settings. Rebuilding the index adds work; it is not a
+way to reduce CPU usage during an import.
 
 ## Disabling Embeddings
 
-Toggle **Enable** off. The model unloads. The vector index stays on disk (you can delete the file manually if you want it gone).
+Toggle **Enable** off to stop the embedding worker. Shutdown is bounded, including when a current
+inference is stuck. The vector index stays on disk, and notes edited while AI is off remain marked
+for indexing. Turning AI back on starts the catch-up pass without deleting valid vectors.
 
-Search falls back to keyword-only — fast, but less forgiving of varied phrasing.
+Search falls back to keyword-only while AI is off.
 
 ## See Also
 

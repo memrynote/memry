@@ -79,6 +79,7 @@ import {
 } from './note-handler-sync-helpers'
 import type { ApplyContext, ApplyResult, DrizzleDb } from '@memry/sync-client/item-handlers/types'
 import { belongsToOtherType } from './note-row-type'
+import { pulledRowSyncedAt } from './pulled-row-synced-at'
 import {
   forgetBaselineOfRemotelyDeletedNote,
   settleRemoteNoteFileSync,
@@ -247,6 +248,7 @@ class NoteHandler extends BaseItemHandler<NoteSyncPayload> {
         log.warn('Concurrent note edit, applying (CRDT handles merge)', { itemId })
       }
       const modifiedAt = laterModifiedAt(existing.modifiedAt, data.modifiedAt ?? now)
+      const syncedAt = pulledRowSyncedAt(modifiedAt, now)
 
       if (existing.fileType && isBinaryFileType(existing.fileType)) {
         const newTitle = data.title ?? existing.title
@@ -261,7 +263,7 @@ class NoteHandler extends BaseItemHandler<NoteSyncPayload> {
           title: newTitle,
           emoji: resolvedEmoji,
           clock: resolution.mergedClock,
-          syncedAt: now,
+          syncedAt,
           modifiedAt
         }
 
@@ -328,7 +330,7 @@ class NoteHandler extends BaseItemHandler<NoteSyncPayload> {
           fileSize: existing.fileSize,
           attachmentId: data.attachmentId ?? existing.attachmentId,
           clock: resolution.mergedClock,
-          syncedAt: now,
+          syncedAt,
           modifiedAt
         })
         // Binary/file branch: only sidecar metadata moved, never file bytes.
@@ -383,7 +385,7 @@ class NoteHandler extends BaseItemHandler<NoteSyncPayload> {
         title: newTitle,
         emoji: resolvedEmoji,
         clock: resolution.mergedClock,
-        syncedAt: now,
+        syncedAt,
         modifiedAt
       }
 
@@ -546,7 +548,7 @@ class NoteHandler extends BaseItemHandler<NoteSyncPayload> {
         title: newTitle,
         emoji: resolvedEmoji,
         clock: resolution.mergedClock,
-        syncedAt: now,
+        syncedAt,
         modifiedAt,
         ...(prunedAttachmentRefs ? { attachmentReferences: prunedAttachmentRefs } : {}),
         propertyDefinitionNames:
@@ -597,6 +599,8 @@ class NoteHandler extends BaseItemHandler<NoteSyncPayload> {
         (p) => !!getNoteCacheByPath(indexDb, toRelativePath(p))
       )
       const relPath = toRelativePath(absolutePath)
+      const modifiedAt = data.modifiedAt ? new Date(data.modifiedAt).toISOString() : now
+      const syncedAt = pulledRowSyncedAt(modifiedAt, now)
 
       syncFileToCache(indexDb, {
         id: itemId,
@@ -612,7 +616,7 @@ class NoteHandler extends BaseItemHandler<NoteSyncPayload> {
       void flushProjectionEvents()
       updateNoteCache(indexDb, itemId, {
         clock: remoteClock,
-        syncedAt: now,
+        syncedAt,
         emoji: data.emoji ?? null,
         attachmentId: data.attachmentId ?? null
       })
@@ -625,9 +629,9 @@ class NoteHandler extends BaseItemHandler<NoteSyncPayload> {
         fileSize: 0,
         attachmentId: data.attachmentId ?? null,
         clock: remoteClock,
-        syncedAt: now,
+        syncedAt,
         createdAt: data.createdAt ? new Date(data.createdAt).toISOString() : now,
-        modifiedAt: data.modifiedAt ? new Date(data.modifiedAt).toISOString() : now
+        modifiedAt
       })
 
       if (data.attachmentId) {
@@ -669,6 +673,8 @@ class NoteHandler extends BaseItemHandler<NoteSyncPayload> {
       (p) => !!getNoteCacheByPath(indexDb, toRelativePath(p))
     )
     const relPath = toRelativePath(absolutePath)
+    const modifiedAt = data.modifiedAt ?? now
+    const syncedAt = pulledRowSyncedAt(modifiedAt, now)
 
     syncNoteToCache(
       indexDb,
@@ -680,7 +686,7 @@ class NoteHandler extends BaseItemHandler<NoteSyncPayload> {
         parsedContent: content,
         title,
         createdAt: data.createdAt ?? now,
-        modifiedAt: data.modifiedAt ?? now,
+        modifiedAt,
         emoji: data.emoji ?? null
       },
       { isNew: true }
@@ -689,10 +695,10 @@ class NoteHandler extends BaseItemHandler<NoteSyncPayload> {
     // commits no project intent for this remote note.
     if (data.properties) deriveRemoteProjectLinks(itemId, data.properties)
     void flushProjectionEvents()
-    updateNoteCache(indexDb, itemId, { clock: remoteClock, syncedAt: now })
+    updateNoteCache(indexDb, itemId, { clock: remoteClock, syncedAt })
     updateNoteMetadata(ctx.db, itemId, {
       clock: remoteClock,
-      syncedAt: now,
+      syncedAt,
       ...(data.attachmentReferences?.length
         ? { attachmentReferences: data.attachmentReferences }
         : {}),

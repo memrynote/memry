@@ -290,6 +290,15 @@ export async function getAttachmentChunkHashes(attachmentId: string): Promise<st
 export function getCanvasAssetIO(): {
   uploadAttachment: (canvasId: string, filePath: string) => Promise<UploadResult>
   downloadAttachment: (attachmentId: string, targetPath: string) => Promise<void>
+  /**
+   * Download into a directory; the file's name comes from the signed manifest.
+   * Background work ('eager'), so a user-waiting download still goes first.
+   */
+  downloadAttachmentIntoDir: (
+    ownerId: string,
+    attachmentId: string,
+    targetDir: string
+  ) => Promise<{ filePath: string }>
 } | null {
   const queue = getOrCreateUploadQueue()
   const service = getOrCreateAttachmentService()
@@ -306,6 +315,18 @@ export function getCanvasAssetIO(): {
         targetPath,
         source: 'interactive'
       })
+    },
+    downloadAttachmentIntoDir: async (ownerId, attachmentId, targetDir) => {
+      const dlQueue = getOrCreateDownloadQueue()
+      if (!dlQueue) throw new Error('Sync not initialized')
+      const { filePath } = await dlQueue.enqueue({
+        ownerId,
+        attachmentId,
+        targetPath: targetDir,
+        targetIsDir: true,
+        source: 'eager'
+      })
+      return { filePath }
     }
   }
 }

@@ -504,7 +504,8 @@
       "loading": "설정 불러오는 중…"
     },
     "groups": {
-      "footer": "바닥글"
+      "footer": "바닥글",
+      "pastYears": "지난 연도"
     },
     "template": {
       "label": "템플릿",
@@ -562,6 +563,14 @@
     "showInSidebar": {
       "label": "사이드바에 표시",
       "description": "노트 트리에 저널 폴더와 항목을 표시합니다"
+    },
+    "showOnThisDay": {
+      "label": "이날 표시",
+      "description": "항목 아래에 지난 연도의 같은 날짜를 표시합니다"
+    },
+    "allYearsView": {
+      "label": "모든 연도를 전체로 표시",
+      "description": "영원한 저널: 이 날짜의 모든 연도를 항목 아래 한 페이지에 표시합니다"
     }
   },
   "tasks": {
@@ -1110,7 +1119,16 @@
       "sending": "코드 보내는 중…"
     },
     "oauth": {
-      "google": "Google로 계속하기"
+      "google": "Google로 계속하기",
+      "waiting": "브라우저에서 Google 로그인을 완료하세요.",
+      "browserUnavailable": "브라우저를 열지 못했습니다.",
+      "manualInstructions": "로그인 링크를 복사해 이 컴퓨터의 브라우저에서 여세요. 로그인하는 동안 memrynote를 열어 두세요.",
+      "linkLabel": "로그인 링크",
+      "copyLink": "로그인 링크 복사",
+      "retryBrowser": "브라우저 다시 열기 시도",
+      "copied": "로그인 링크를 복사했습니다.",
+      "copyFailed": "로그인 링크를 복사하지 못했습니다. 위 입력란에서 선택해 복사하세요.",
+      "cancel": "다른 로그인 방법 사용"
     },
     "otp": {
       "title": "인증 코드 입력",
@@ -1347,6 +1365,7 @@
       "keySaveError": "OpenAI 키를 저장하지 못했습니다."
     },
     "embedding": {
+      "load": "모델 불러오기",
       "loaded": "불러옴",
       "loading": "불러오는 중",
       "downloadLoad": "모델 다운로드 및 불러오기",
@@ -1371,7 +1390,8 @@
         "ollama": "Ollama(로컬)",
         "openai": "OpenAI",
         "anthropic": "Anthropic",
-        "google": "Google Gemini"
+        "google": "Google Gemini",
+        "custom": "사용자 지정(OpenAI 호환)"
       },
       "model": "모델",
       "modelDescription": "재작성 및 요약을 위한 언어 모델",
@@ -1381,6 +1401,11 @@
       "apiKeyPlaceholder": "{provider} API 키 입력",
       "ollamaUrl": "Ollama URL",
       "ollamaUrlDescription": "로컬 서버 주소",
+      "customUrl": "기본 URL",
+      "customUrlDescription": "OpenRouter 등 OpenAI 호환 엔드포인트",
+      "customUrlPlaceholder": "https://openrouter.ai/api/v1",
+      "customApiKeyPlaceholder": "API 키(선택 사항)",
+      "customModelPlaceholder": "모델 ID",
       "connection": "연결",
       "activePort": "포트 {port}에서 활성",
       "notConnected": "연결되지 않음",
@@ -2032,7 +2057,7 @@
       "subtitle": "모든 노트의 속성 정의 관리"
     },
     "loading": "속성 불러오는 중…",
-    "empty": "아직 속성 정의가 없습니다. 시작하려면 노트에 상태, 선택 또는 다중 선택 속성을 추가하세요.",
+    "empty": "아직 속성이 없습니다. 시작하려면 노트에 속성을 추가하세요.",
     "filterPlaceholder": "속성 필터링…",
     "noMatch": "“{query}”와(과) 일치하는 속성이 없습니다",
     "summary": "{count, plural, other {속성 정의 #개}}",
@@ -2072,6 +2097,14 @@
     },
     "v2": {
       "actionsAria": "{name} 메뉴"
+    },
+    "usage": {
+      "heading": "사용 중인 노트",
+      "noteCount": "{count, plural, other {노트 #개}}",
+      "mismatchCount": "{type}에 맞지 않는 값: {count}",
+      "mismatchNote": "{type}에 맞지 않음",
+      "none": "이 속성을 사용하는 노트가 없습니다",
+      "loadFailed": "이 속성을 사용하는 노트를 불러오지 못했습니다"
     }
   },
   "commandLine": {
@@ -2407,7 +2440,6 @@
   "phaseI": {
     "errors": {
       "failedToUpdateTagColor": "태그 색상을 업데이트하지 못했습니다.",
-      "googleSignInFailed": "Google 로그인 실패",
       "failedToSendVerificationCode": "인증 코드를 보내지 못했습니다.",
       "invalidVerificationCode": "잘못된 인증 코드",
       "accountSetupFailed": "계정 설정 실패",
@@ -2434,7 +2466,8 @@
       "failedToCloseVault": "볼트를 닫지 못했습니다.",
       "failedToSwitchVault": "볼트를 전환하지 못했습니다.",
       "failedToUpdateConfig": "구성을 업데이트하지 못했습니다.",
-      "failedToReindex": "재인덱싱하지 못했습니다."
+      "failedToReindex": "재인덱싱하지 못했습니다.",
+      "googleSignInFailed": "Google 로그인 실패"
     }
   },
   "agentMcp": {
@@ -2464,7 +2497,17 @@
       "running": "실행 중",
       "tokenHint": "이번 실행에만 유효",
       "copy": "복사",
-      "rotate": "교체"
+      "rotate": "교체",
+      "clientConfig": {
+        "label": "클라이언트 설정",
+        "hint": "이번 실행의 URL과 토큰으로 복사됩니다",
+        "copy": "{client} 설정 복사"
+      },
+      "notes": {
+        "readOnly": "외부 클라이언트는 읽기만 할 수 있습니다. 쓰기 도구는 PERMISSION_DENIED를 반환하므로 Agent Chat이나 memrynote 명령줄로 작성하세요.",
+        "restart": "memrynote가 다시 시작되거나 볼트를 전환하거나 토큰을 재발급하면 URL과 토큰이 바뀝니다. 그때마다 클라이언트 설정을 업데이트하고 클라이언트를 다시 시작하세요.",
+        "docs": "설정 가이드"
+      }
     }
   },
   "agentProviders": {

@@ -108,6 +108,10 @@ async function connectGoogle(
     // (`discoverGoogleCalendarSources`), but it runs after this upsert and
     // is allowed to fail, so the primary has to clear its own.
     archivedAt: null,
+    // Connecting pulls the primary in full. Compat: an older build archived
+    // this row on disconnect with its events purged and its cursor still set
+    // (see discoverGoogleCalendarSources).
+    syncCursor: null,
     createdAt: now,
     modifiedAt: now
   })

@@ -3,12 +3,15 @@ import os from 'os'
 import path from 'path'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 
-const embeddings = vi.hoisted(() => ({ generate: vi.fn() }))
+const embeddings = vi.hoisted(() => ({
+  generate: vi.fn(),
+  raw: { open: true, prepare: () => ({ run: vi.fn() }) }
+}))
 
 vi.mock('../../database', () => ({
   getDatabase: () => ({}),
   getIndexDatabase: () => ({}),
-  getRawIndexDatabase: () => ({ prepare: () => ({ run: vi.fn() }) })
+  getRawIndexDatabase: () => embeddings.raw
 }))
 vi.mock('@main/database/queries/settings', () => ({
   getSetting: () => 'true',

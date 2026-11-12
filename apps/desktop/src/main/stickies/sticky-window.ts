@@ -14,6 +14,7 @@ import {
   type StickyWindowSession
 } from '@memry/contracts/sticky-api'
 import { createLogger } from '../lib/logger'
+import { getMainWindow } from '../main-window'
 import { listStickyDrafts } from './drafts'
 import { refreshEdgeTab } from './edge-tab'
 import { loadRendererRoute, STICKY_PRELOAD_PATH } from './renderer-route'
@@ -98,7 +99,10 @@ export function showStickyWindow(draftId?: string | null): void {
 
   loadRendererRoute(window.webContents, 'sticky')
 
-  window.once('ready-to-show', () => {
+  // Not 'ready-to-show': on Windows a hidden transparent window never paints,
+  // so that event waits until something else forces a frame and the shortcut
+  // seems to do nothing.
+  window.webContents.once('did-finish-load', () => {
     window.show()
     window.focus()
   })
@@ -129,15 +133,8 @@ export function resizeStickyWindow(height: number): void {
   window.setSize(WINDOW_WIDTH, clamped)
 }
 
-/** The app window: any live BrowserWindow that is not the sticky. */
-function findMainWindow(): BrowserWindow | null {
-  return (
-    BrowserWindow.getAllWindows().find((win) => win !== stickyWindow && !win.isDestroyed()) ?? null
-  )
-}
-
 function revealMainWindow(): BrowserWindow | null {
-  const mainWindow = findMainWindow()
+  const mainWindow = getMainWindow()
   if (!mainWindow) {
     log.warn('No app window to reveal from the sticky')
     return null

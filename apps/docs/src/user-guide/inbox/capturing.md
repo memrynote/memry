@@ -50,6 +50,8 @@ Drop files from your OS file manager onto the inbox window. memrynote:
 
 Multiple files dropped at once create one inbox item per file.
 
+When sync is on, the file uploads encrypted like a note attachment, and your other devices download it to show the item. It counts toward your storage plan; when storage is full the file stays on this device, and other devices show "The file is on the device that captured it." See [Files on your other devices](/user-guide/inbox/on-iphone#files-on-your-other-devices).
+
 ## Voice Capture
 
 The inbox header and inline capture input include a voice recorder. Click to start recording, click

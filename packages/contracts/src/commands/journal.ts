@@ -14,6 +14,24 @@ export const JOURNAL_COMMANDS = {
     group: 'note',
     i18nKey: 'commands.journalNext'
   },
+  'journal.previousYear': {
+    context: 'journal',
+    owner: 'journal',
+    group: 'note',
+    i18nKey: 'commands.journalPreviousYear'
+  },
+  'journal.nextYear': {
+    context: 'journal',
+    owner: 'journal',
+    group: 'note',
+    i18nKey: 'commands.journalNextYear'
+  },
+  'journal.toggleAllYears': {
+    context: 'journal',
+    owner: 'journal',
+    group: 'note',
+    i18nKey: 'commands.journalToggleAllYears'
+  },
   'journal.today': {
     context: 'journal',
     owner: 'journal',

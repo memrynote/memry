@@ -26,6 +26,10 @@ export const noteCache = sqliteTable(
     // Ids of the `{task:<id>}` lines in the body, in document order (markdown
     // only). Null until the body has been read.
     taskIds: text('task_ids', { mode: 'json' }).$type<string[]>(),
+    // Checkbox state of each `{task:<id>}` line in the bytes the app last
+    // acknowledged (markdown only). Null until then. The task reconciler follows
+    // a line only when the file's checkbox moved away from this state.
+    taskChecks: text('task_checks', { mode: 'json' }).$type<Record<string, boolean>>(),
     localOnly: integer('local_only', { mode: 'boolean' }).default(false),
     // Content hash for change detection (markdown only - nullable for other types)
     contentHash: text('content_hash'),

@@ -78,6 +78,8 @@ final class FakeAuthSession: AuthSessionProtocol, @unchecked Sendable {
         case abandonProviderSignIn
         // The free path's attach.
         case registerVault(String, String)
+        // Settings › Account.
+        case storage
     }
 
     private struct Tape {
@@ -178,6 +180,24 @@ final class FakeAuthSession: AuthSessionProtocol, @unchecked Sendable {
     func registerVault(vaultId: String, name: String) async throws {
         tape.withLock { $0.calls.append(.registerVault(vaultId, name)) }
         if let error = registerVaultError.withLock({ $0 }) { throw error }
+    }
+
+    /// What `billing` answers; `nil` traps like any unscripted call.
+    private let billingStatus = Mutex<BillingStatus?>(nil)
+
+    func scriptBilling(_ status: BillingStatus) {
+        billingStatus.withLock { $0 = status }
+    }
+
+    func billing() async throws -> BillingStatus {
+        if let status = billingStatus.withLock({ $0 }) { return status }
+        throw UnscriptedSettingsCall()
+    }
+
+    /// Answers as the server does for an unpaid account.
+    func storage() async throws -> StorageUsage {
+        tape.withLock { $0.calls.append(.storage) }
+        throw ApiError.PaymentRequired(code: "SYNC_PAYMENT_REQUIRED", message: "paid plan required")
     }
 
     func restore() throws -> AuthState { try trap(.restore) }

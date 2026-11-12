@@ -81,6 +81,7 @@ struct WhiteboardEditor: View {
             // Desktop's `unreadable` rule: no editor over a scene it cannot
             // read, or its first save would replace the drawing with nothing.
             guard WhiteboardScene(json: record.scene) != nil else {
+                Telemetry.shared.track(.canvasOpened, surface: .canvas, action: "opened", objectType: "canvas", result: .failed, errorCode: "canvas_unreadable")
                 phase = .unavailable("\(WhiteboardCopy.unreadableTitle). \(WhiteboardCopy.unreadableBody)")
                 return
             }
@@ -89,6 +90,7 @@ struct WhiteboardEditor: View {
             page.saveFailed = { saveFailure = $0 }
             page.open(scene: record.scene, dark: colorScheme == .dark)
             phase = .open
+            Telemetry.shared.track(.canvasOpened, surface: .canvas, action: "opened", objectType: "canvas", result: .success)
         } catch {
             phase = .unavailable(WhiteboardCopy.loadFailed)
         }

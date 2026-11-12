@@ -234,7 +234,11 @@ describe('a change made before an on-demand cache listens', () => {
     tauri.emit('note-links-changed-event', { sourceIds: ['n2'], targetIds: ['n1'] })
     await act(async () => tauri.goLive())
 
-    await waitFor(() => expect(result.current.incoming).toEqual([backlink]))
+    await waitFor(() =>
+      expect(result.current.incoming).toEqual([
+        { ...backlink, sourceJournalDate: null, sourceTags: [] }
+      ])
+    )
   })
 
   it('the graph shows a note made while it opened', async () => {

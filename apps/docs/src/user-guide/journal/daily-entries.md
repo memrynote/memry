@@ -72,7 +72,13 @@ A task you create inside a journal entry — from the `/task` block or by turnin
 
 ## Wiki Linking from Today
 
-You can wiki-link to other journal entries: `[[2026-05-07]]` resolves to that day's entry. Backlinks work the same as for notes.
+You can wiki-link to a journal day from any note or entry: `[[2026-05-07]]` opens that day in the Journal. Backlinks work the same as for notes, so the day lists every note that links to it.
+
+In the `[[` menu, type a date to find its day. A full date such as `2026-05-07`, or `today`, `yesterday`, `tomorrow` or `journal`, offers that day. A partial date such as `2026-05` lists the days you wrote in that month, newest first.
+
+A day you have not written yet is offered too, as a muted row marked **Journal · not written yet**. Linking it writes a normal `[[2026-05-08]]` link, shown with a dashed underline until the day exists. Hovering it says the day is not written yet, and clicking it opens the empty day instead of offering to create a note. The empty day already lists the note in its backlinks. Once you write anything on that day, the link turns into a regular link.
+
+A [relation property](/user-guide/notes/properties-tags#relation-properties) can point at a day the same way. Relations to a day are listed with its backlinks.
 
 ## What If I Skip a Day?
 

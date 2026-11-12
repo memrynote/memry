@@ -4,6 +4,7 @@ import type {
   CalendarReminders,
   CalendarVisibility
 } from '@memry/db-schema/schema/calendar-events'
+import { allDayDateRange } from '../all-day-date'
 import type { RemoteCalendarEvent, UpsertRemoteEventInput } from '../types'
 import { isIanaZone, pad, toInstant, utcToWallTime } from './ical-time'
 import { buildVTimezone } from './ical-timezone'
@@ -65,19 +66,11 @@ function dateStamp(iso: string): string {
   return iso.slice(0, 10).replace(/-/g, '')
 }
 
-function addDays(isoDate: string, days: number): string {
-  const date = new Date(`${isoDate.slice(0, 10)}T00:00:00.000Z`)
-  date.setUTCDate(date.getUTCDate() + days)
-  return date.toISOString()
-}
-
 /** The DTSTART / DTEND lines for an event, in the event's own zone. */
 function timeLines(event: UpsertRemoteEventInput): string[] {
   if (event.isAllDay) {
-    const start = event.startAt
-    const end =
-      event.endAt && event.endAt.slice(0, 10) > start.slice(0, 10) ? event.endAt : addDays(start, 1)
-    return [`DTSTART;VALUE=DATE:${dateStamp(start)}`, `DTEND;VALUE=DATE:${dateStamp(end)}`]
+    const { startDate, endDate } = allDayDateRange(event.startAt, event.endAt ?? null)
+    return [`DTSTART;VALUE=DATE:${dateStamp(startDate)}`, `DTEND;VALUE=DATE:${dateStamp(endDate)}`]
   }
   if (isUtcZone(event.timezone)) {
     return [

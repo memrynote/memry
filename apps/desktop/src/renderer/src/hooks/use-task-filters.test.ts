@@ -891,7 +891,8 @@ describe('useSavedFilters', () => {
       name: 'New Filter',
       config: expect.objectContaining({
         filters: expect.any(Object)
-      })
+      }),
+      expression: null
     })
   })
 
@@ -1042,13 +1043,12 @@ describe('useSavedFilters', () => {
     })
 
     expect(result.current.savedFilters[0].starred).toBe(true)
+    // Only the flag: a rebuilt config would drop keys a newer build wrote.
     await waitFor(() =>
-      expect(savedFiltersService.update).toHaveBeenCalledWith(
-        expect.objectContaining({
-          id: 'filter-1',
-          config: expect.objectContaining({ starred: true })
-        })
-      )
+      expect(savedFiltersService.update).toHaveBeenLastCalledWith({
+        id: 'filter-1',
+        starred: true
+      })
     )
   })
 

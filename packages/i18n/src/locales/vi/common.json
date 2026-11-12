@@ -6,6 +6,7 @@
     "noTarget": "Portal này chưa có đích. Hãy thêm một ghi chú vào định nghĩa, hoặc xóa khối này.",
     "invalidJson": "Định nghĩa của portal này không phải JSON hợp lệ. Hãy sửa bên dưới, hoặc xóa khối này.",
     "invalidShape": "Định nghĩa của portal này không có ghi chú hoặc tìm kiếm. Hãy sửa bên dưới, hoặc xóa khối này.",
+    "unreadable": "Không thể đọc cổng này. Hãy xóa khối và thêm một cổng mới.",
     "search": {
       "editQuery": "Sửa truy vấn",
       "count": "{count, plural, other {# khối}}",
@@ -1276,6 +1277,7 @@
     "label": "Trợ giúp và phản hồi",
     "reportBug": "Báo lỗi",
     "requestFeature": "Đề xuất tính năng",
+    "joinTestflight": "Tham gia TestFlight",
     "starOnGithub": "Gắn sao trên GitHub",
     "version": "MemryNote {version}",
     "whatsNew": "Có gì mới",
@@ -1695,5 +1697,29 @@
     "journalDaysRenamed": "Một số mục nhật ký không còn mang tên là ngày",
     "journalDaysRenamedHint": "Các mục nhật ký này đã được đổi tên bên ngoài Memry trong khi thư mục của chúng chờ cài đặt thư mục nhật ký, nên tên của chúng không còn là ngày. Chúng vẫn là mục nhật ký cho đến khi bạn đổi lại tên. Chuyển một mục thành ghi chú sẽ xóa mục nhật ký đó trên mọi thiết bị của bạn và giữ nội dung của nó dưới dạng ghi chú. Thẻ của mục đó không được giữ lại.",
     "turnIntoNotes": "Chuyển thành ghi chú"
+  },
+  "iosBeta": {
+    "badge": "Mới · TestFlight",
+    "title": "Memry cho iPhone đang trong giai đoạn beta",
+    "promptBody": "Kho của bạn trên điện thoại, được mã hóa đầu cuối. Hãy để lại email, Apple sẽ gửi cho bạn lời mời TestFlight.",
+    "emailPlaceholder": "you@example.com",
+    "emailLabel": "Email nhận lời mời TestFlight",
+    "submit": "Nhận lời mời",
+    "sending": "Đang gửi…",
+    "listNote": "Chúng tôi cũng thêm bạn vào danh sách beta iPhone để gửi tin về đợt ra mắt. Bạn có thể hủy đăng ký bất cứ lúc nào.",
+    "error": "Không thể gửi lời mời TestFlight. Vui lòng thử lại.",
+    "sentTitle": "Kiểm tra hộp thư của bạn",
+    "sentBody": "Apple đã gửi lời mời đến {email}. Có thể mất vài phút và thư có thể nằm trong thư rác.",
+    "stepInstall": "Cài TestFlight từ App Store",
+    "stepOpen": "Mở lời mời trên iPhone của bạn",
+    "stepSignIn": "Đăng nhập Memry trên điện thoại",
+    "done": "Xong",
+    "dialogTitle": "Tham gia Memry cho iPhone",
+    "dialogBody": "Apple sẽ gửi lời mời TestFlight qua email cho bạn. Hãy dùng email của Apple ID trên iPhone của bạn.",
+    "entryTitle": "Bản beta iPhone đã ra mắt",
+    "entrySubtitle": "Qua TestFlight",
+    "entryJoin": "Tham gia bản beta",
+    "entrySent": "Đã gửi lời mời đến {email}",
+    "sendAgain": "Gửi lại"
   }
 }

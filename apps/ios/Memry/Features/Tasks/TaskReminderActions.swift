@@ -20,6 +20,7 @@ extension TasksStore {
         to taskId: String,
         at date: Date,
         note: String?,
+        origin: TaskReminderOrigin? = nil,
         scheduler: ReminderScheduler = .shared
     ) async -> String? {
         let remindAt = TaskDates.iso(date)
@@ -27,6 +28,7 @@ extension TasksStore {
         let note = trimmed?.isEmpty == false ? trimmed : nil
         let id = await run { try $0.addTaskReminder(taskId: taskId, remindAt: remindAt, title: nil, note: note) }
         guard id != nil else { return nil }
+        TasksTelemetry.reminderCreated(origin)
         confirm(TasksCopy.reminderToastSet)
         await scheduler.requestPermissionIfNeeded()
         await scheduler.refill(from: self)
@@ -45,7 +47,9 @@ extension TasksStore {
 
     @discardableResult
     func deleteReminder(_ id: String, scheduler: ReminderScheduler = .shared) async -> Bool {
-        await reminderWrite(id, TasksCopy.reminderToastDeleted, scheduler) { try $0.deleteReminder(id: id) }
+        guard await reminderWrite(id, TasksCopy.reminderToastDeleted, scheduler, { try $0.deleteReminder(id: id) }) else { return false }
+        TasksTelemetry.reminderDeleted()
+        return true
     }
 
     @discardableResult

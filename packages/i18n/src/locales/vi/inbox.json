@@ -250,7 +250,8 @@
     "failedPlayAudio": "Không thể phát âm thanh",
     "failedLoadAudio": "Không thể tải âm thanh",
     "video": "Video",
-    "unsupportedVideo": "Trình duyệt của bạn không hỗ trợ thẻ video."
+    "unsupportedVideo": "Trình duyệt của bạn không hỗ trợ thẻ video.",
+    "fileOnOtherDevice": "Tệp nằm trên thiết bị đã ghi lại nó."
   },
   "reminder": {
     "dataUnavailable": "Không có dữ liệu lời nhắc.",

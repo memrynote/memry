@@ -24,7 +24,7 @@ struct TaskWhenActions {
     /// A preset rule, or `nil` for "Never". `nil` hides the Repeat submenu.
     var setRule: ((RepeatRule?) -> Void)?
     /// A preset reminder time. `nil` hides the Remind me submenu.
-    var addReminder: ((Date) -> Void)?
+    var addReminder: ((TaskReminderPreset) -> Void)?
 }
 
 /// The When menu's content.
@@ -75,7 +75,7 @@ struct TaskWhenMenu: View {
                 Menu {
                     ForEach(TaskReminderPresets.standard(now: store.clock())) { preset in
                         Button {
-                            addReminder(preset.date)
+                            addReminder(preset)
                         } label: {
                             Text(preset.label)
                             if let detail = preset.detail { Text(detail) }

@@ -28,7 +28,6 @@ const mocks = vi.hoisted(() => ({
     listSavedFilters: vi.fn(),
     getNextSavedFilterPosition: vi.fn(),
     insertSavedFilter: vi.fn(),
-    savedFilterExists: vi.fn(),
     updateSavedFilter: vi.fn(),
     getSavedFilterById: vi.fn(),
     deleteSavedFilter: vi.fn(),
@@ -359,7 +358,6 @@ describe('main zero-covered runtime surfaces', () => {
     store.listSavedFilters(mocks.db)
     store.getNextSavedFilterPosition(mocks.db)
     store.insertSavedFilter(mocks.db, filter as never)
-    store.savedFilterExists(mocks.db, 'filter-1')
     store.updateSavedFilter(mocks.db, 'filter-1', filter as never)
     store.getSavedFilterById(mocks.db, 'filter-1')
     store.deleteSavedFilter(mocks.db, 'filter-1')

@@ -113,7 +113,74 @@
       "noDueDate": "Sans date d'échéance"
     },
     "repeatTypeRepeating": "Récurrentes",
-    "repeatTypeOneTime": "Ponctuelles"
+    "repeatTypeOneTime": "Ponctuelles",
+    "advanced": {
+      "entry": "Filtre avancé…",
+      "entryHint": "Règles avec et, ou, non",
+      "title": "Filtre",
+      "match": "Correspondre à",
+      "ofThese": "de ces règles",
+      "matches": {
+        "all": "toutes",
+        "any": "n'importe laquelle",
+        "none": "aucune"
+      },
+      "fields": {
+        "title": "Titre",
+        "status": "Statut",
+        "priority": "Priorité",
+        "due": "Date d'échéance",
+        "project": "Projet",
+        "location": "Lieu",
+        "tags": "Étiquettes",
+        "repeat": "Répétition",
+        "hasTime": "A une heure"
+      },
+      "ops": {
+        "contains": "contient",
+        "notContains": "ne contient pas",
+        "any": "est l'un de",
+        "none": "n'est aucun de",
+        "all": "a tous",
+        "empty": "est vide",
+        "notEmpty": "n'est pas vide",
+        "is": "est",
+        "isNot": "n'est pas"
+      },
+      "tagOps": {
+        "any": "a l'une de",
+        "all": "a toutes",
+        "none": "n'a aucune de"
+      },
+      "values": {
+        "repeating": "Récurrente",
+        "oneTime": "Ponctuelle",
+        "withTime": "Avec une heure",
+        "withoutTime": "Sans heure",
+        "customRange": "Période personnalisée",
+        "from": "Du",
+        "to": "Au",
+        "pick": "Choisir…",
+        "titlePlaceholder": "Texte du titre"
+      },
+      "addRule": "Ajouter une règle",
+      "addGroup": "Ajouter un groupe",
+      "clear": "Effacer",
+      "removeRule": "Supprimer la règle",
+      "removeGroup": "Supprimer le groupe",
+      "matchCount": "{count, plural, one {# tâche correspond} other {# tâches correspondent}}",
+      "skipped": "{count, plural, one {# règle ignorée} other {# règles ignorées}}",
+      "ruleCount": "{count, plural, one {# règle} other {# règles}}",
+      "unknownRule": "Règle d'une version plus récente",
+      "empty": "Aucune règle pour le moment. Ajoutez-en une pour commencer à filtrer.",
+      "summary": {
+        "and": "et",
+        "or": "ou",
+        "not": "non"
+      },
+      "editRules": "Modifier les règles",
+      "clearRules": "Effacer les règles"
+    }
   },
   "quickAdd": {
     "label": "Ajout rapide de tâche",

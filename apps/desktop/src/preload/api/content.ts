@@ -65,13 +65,20 @@ export const templatesApi = {
 
 export const savedFiltersApi = {
   list: () => invoke(SavedFiltersChannels.invoke.LIST),
-  create: (input: { name: string; config: unknown }) =>
+  create: (input: { name: string; config: unknown; expression?: unknown }) =>
     invoke(
       SavedFiltersChannels.invoke.CREATE,
       // oxlint-disable-next-line typescript/no-unsafe-type-assertion -- config is unknown at the preload boundary; the main handler's zod schema validates it
       input as MainIpcInvokeArgs<typeof SavedFiltersChannels.invoke.CREATE>[0]
     ),
-  update: (input: { id: string; name?: string; config?: unknown; position?: number }) =>
+  update: (input: {
+    id: string
+    name?: string
+    config?: unknown
+    starred?: boolean
+    expression?: unknown
+    position?: number
+  }) =>
     invoke(
       SavedFiltersChannels.invoke.UPDATE,
       // oxlint-disable-next-line typescript/no-unsafe-type-assertion -- config is unknown at the preload boundary; the main handler's zod schema validates it

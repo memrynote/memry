@@ -22,7 +22,7 @@ struct VaultsScreen: View {
             Section {
                 ForEach(vaults.filter { $0.id != context.vaultId }, id: \.id) { vault in
                     Button {
-                        Task { await context.vaults.open(vault) }
+                        Task { await context.vaults.open(vault, source: "switch") }
                     } label: {
                         SettingsRowLabel(title: name(vault), symbol: "externaldrive", value: SettingsCopy.openVault)
                     }

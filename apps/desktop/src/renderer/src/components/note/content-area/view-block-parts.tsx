@@ -5,6 +5,7 @@
 import { foldTag } from '@memry/shared/tag-fold'
 import { useState } from 'react'
 import { useT } from '@memry/i18n/renderer'
+import type { ViewScope } from '@memry/contracts/folder-view-api'
 import type { ViewBlockDefinition, ViewBlockSource } from '@memry/shared/view-block'
 import {
   DropdownMenu,
@@ -19,6 +20,7 @@ import {
 import { Button } from '@/components/ui/button'
 import { Skeleton } from '@/components/ui/skeleton'
 import type { SidebarItem } from '@/contexts/tabs/types'
+import { useCreateNoteInScope } from '@/hooks/use-create-note-in-scope'
 import { useNoteFoldersQuery, useNoteTagsQuery } from '@/hooks/use-notes-query'
 import { useSidebarNavigation } from '@/hooks/use-sidebar-navigation'
 import {
@@ -29,7 +31,8 @@ import {
   ExternalLink,
   Folder,
   Globe,
-  Hash
+  Hash,
+  Plus
 } from '@/lib/icons'
 import { cn } from '@/lib/utils'
 
@@ -255,6 +258,24 @@ export function OpenSourceButton({
     >
       <ExternalLink />
       {t('editor.viewBlock.openAsTab')}
+    </Button>
+  )
+}
+
+/** Creates a note where this block's source lists it, as the folder page's "New note" does. */
+export function NewNoteButton({ scope }: { scope: ViewScope }): React.JSX.Element {
+  const { t } = useT('notes')
+  const createNote = useCreateNoteInScope(scope)
+  return (
+    <Button
+      type="button"
+      variant="ghost"
+      size="sm"
+      className="h-7 px-2 text-muted-foreground"
+      onClick={() => void createNote()}
+    >
+      <Plus />
+      {t('editor.viewBlock.newNote')}
     </Button>
   )
 }

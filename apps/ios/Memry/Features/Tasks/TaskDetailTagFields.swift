@@ -72,9 +72,10 @@ private struct TaskFieldValueWriter: NoteMetadataWriting {
 
     private func write(_ id: String, _ name: String, _ valueJson: String?) async throws {
         let core = core
-        _ = try await CoreExecutor.shared.run {
+        let change = try await CoreExecutor.shared.run {
             try core.setFieldValue(id: id, name: name, valueJson: valueJson)
         }
+        TasksTelemetry.track(change)
     }
 
     func rename(id: String, title: String) async throws { throw NoteMetadataWriteUnsupported() }

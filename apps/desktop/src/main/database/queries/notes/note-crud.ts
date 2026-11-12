@@ -28,6 +28,7 @@ export function insertNoteCache(db: IndexDb, note: NewNoteCache): NoteCache {
         emoji: note.emoji,
         cover: note.cover,
         taskIds: note.taskIds,
+        taskChecks: note.taskChecks,
         localOnly: note.localOnly,
         contentHash: note.contentHash,
         wordCount: note.wordCount,

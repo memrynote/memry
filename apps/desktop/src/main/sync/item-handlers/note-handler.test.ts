@@ -287,6 +287,37 @@ describe('noteHandler.applyUpsert — path collision', () => {
     expect(calls[0][1].path).toBe(path.join('a1', 'a1 2.md'))
   })
 
+  // A sender whose clock runs ahead sends a `modifiedAt` past this device's
+  // now. Read as edited since its sync, the note owed its file to a store that
+  // never held the doc, and the file replaced the server body everywhere.
+  it.each([
+    { when: 'a new note', existing: undefined },
+    {
+      when: 'an existing note',
+      existing: {
+        id: 'note-1',
+        title: 'a1',
+        path: path.join('a1', 'a1.md'),
+        fileType: 'markdown',
+        clock: { dev1: 1 },
+        createdAt: '2024-01-01T00:00:00.000Z',
+        modifiedAt: '2024-01-01T00:00:00.000Z'
+      }
+    }
+  ])('writes $when from a sender whose clock runs ahead as synced', ({ existing }) => {
+    mockGetNoteMetadataById.mockReturnValue(existing)
+    const ahead = '2999-01-01T00:00:00.000Z'
+
+    noteHandler.applyUpsert(ctx, 'note-1', makeNotePayload({ title: 'a1', modifiedAt: ahead }), {
+      dev1: 2
+    })
+
+    const row = mockUpdateNoteMetadata.mock.calls[0][2] as { syncedAt: string; modifiedAt?: string }
+    const modifiedAt = row.modifiedAt ?? vi.mocked(syncNoteToCache).mock.calls[0][1].modifiedAt
+    expect(modifiedAt).toBe(ahead)
+    expect(modifiedAt <= row.syncedAt).toBe(true)
+  })
+
   it('updates existing markdown note tags, properties, emoji, cache metadata, and events', () => {
     // #given — remote metadata is newer for an existing markdown note
     mockGetNoteMetadataById.mockReturnValue({

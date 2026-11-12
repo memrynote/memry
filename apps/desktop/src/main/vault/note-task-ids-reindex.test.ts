@@ -7,20 +7,22 @@ import { asClientDb, createTestDataDb, createTestIndexDb } from '@tests/utils/te
 import { getNoteCacheById, insertNoteCache } from '@main/database/queries/notes'
 import { getSetting } from '@main/database/queries/settings'
 import { NOTE_TASK_IDS_REINDEX_KEY, reindexNoteTaskIds } from './note-task-ids-reindex'
+import { generateContentHash } from './frontmatter'
 
 describe('reindexNoteTaskIds', () => {
   let data: TestDatabaseResult
   let index: TestDatabaseResult
   let vaultPath: string
 
-  const addNote = (id: string, body: string): void => {
+  const addNote = (id: string, body: string, { indexedBytes = false } = {}): void => {
     const relativePath = `Carport/${id}.md`
-    writeFileSync(path.join(vaultPath, relativePath), `---\nstatus: open\n---\n${body}\n`)
+    const file = `---\nstatus: open\n---\n${body}\n`
+    writeFileSync(path.join(vaultPath, relativePath), file)
     insertNoteCache(index.db, {
       id,
       path: relativePath,
       title: id,
-      contentHash: `hash-${id}`,
+      contentHash: indexedBytes ? generateContentHash(file) : `hash-${id}`,
       wordCount: 1,
       characterCount: 4,
       createdAt: '2026-01-10T00:00:00.000Z',
@@ -71,5 +73,17 @@ describe('reindexNoteTaskIds', () => {
     expect(await run(() => true)).toBeNull()
     expect(getSetting(asClientDb(data.db), NOTE_TASK_IDS_REINDEX_KEY)).toBeNull()
     expect(taskIdsOf('build')).toBeNull()
+  })
+
+  it('acknowledges checkbox states only for files that still hold the indexed bytes', async () => {
+    // #given one note the index read as it is, one edited while Memry was closed
+    addNote('known', '- [x] Done {task:t-done}', { indexedBytes: true })
+
+    // #when
+    await run()
+
+    // #then the edited one keeps no state, so its lines still reach the reconciler
+    expect(getNoteCacheById(index.db, 'known')?.taskChecks).toEqual({ 't-done': true })
+    expect(getNoteCacheById(index.db, 'build')?.taskChecks).toBeNull()
   })
 })

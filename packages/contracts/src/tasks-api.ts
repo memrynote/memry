@@ -138,7 +138,9 @@ export const TaskUpdateSchema = z.object({
 
 export const TaskCompleteSchema = z.object({
   id: z.string(),
-  completedAt: z.iso.datetime().optional() // Defaults to now
+  completedAt: z.iso.datetime().optional(), // Defaults to now
+  // A completion recorded from elsewhere: closes without rolling a repeat series.
+  recordOnly: z.boolean().optional()
 })
 
 export const TaskMoveSchema = z.object({

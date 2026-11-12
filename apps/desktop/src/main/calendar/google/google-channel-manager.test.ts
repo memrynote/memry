@@ -179,6 +179,54 @@ describe('google-channel-manager', () => {
     })
   })
 
+  describe('a calendar Google cannot push for (#4020)', () => {
+    const unsupported = (): Error =>
+      Object.assign(new Error('googleCalendar.requestFailed'), {
+        status: 400,
+        apiReason: 'pushNotSupportedForRequestedResource'
+      })
+
+    it('remembers the source, drops the server row, and does not throw', async () => {
+      const markPushUnsupported = vi.fn()
+      const deps = buildDeps({ markPushUnsupported })
+      deps.client.watchCalendar.mockRejectedValueOnce(unsupported())
+      const mgr = createGoogleChannelManager(deps)
+
+      await expect(
+        mgr.ensureChannelForSource({ sourceId: 'src-1', calendarId: 'holidays' })
+      ).resolves.toBeUndefined()
+
+      expect(markPushUnsupported).toHaveBeenCalledWith('src-1')
+      expect(deps.deleteOnServer).toHaveBeenCalledWith({ channelId: 'channel-1' })
+      expect(deps.attachResourceId).not.toHaveBeenCalled()
+      expect(mgr.getActiveChannelCount()).toBe(0)
+    })
+
+    it('skips a source already remembered as unsupported', async () => {
+      const deps = buildDeps({ isPushUnsupported: (sourceId) => sourceId === 'src-1' })
+      const mgr = createGoogleChannelManager(deps)
+
+      await mgr.ensureChannelForSource({ sourceId: 'src-1', calendarId: 'holidays' })
+
+      expect(deps.registerOnServer).not.toHaveBeenCalled()
+      expect(deps.client.watchCalendar).not.toHaveBeenCalled()
+    })
+
+    it('still surfaces any other watch failure and remembers nothing', async () => {
+      const markPushUnsupported = vi.fn()
+      const deps = buildDeps({ markPushUnsupported })
+      deps.client.watchCalendar.mockRejectedValueOnce(
+        Object.assign(new Error('googleCalendar.scopeMissing'), { status: 403 })
+      )
+      const mgr = createGoogleChannelManager(deps)
+
+      await expect(
+        mgr.ensureChannelForSource({ sourceId: 'src-1', calendarId: 'cal-a' })
+      ).rejects.toThrow('googleCalendar.scopeMissing')
+      expect(markPushUnsupported).not.toHaveBeenCalled()
+    })
+  })
+
   describe('stopForSource', () => {
     it('stops the channel on Google, deletes on server, clears state', async () => {
       const deps = buildDeps()

@@ -103,6 +103,7 @@ struct VaultTabsView<Notes: View, Tasks: View, Journal: View, More: View>: View 
         .environment(journalRouter)
         // Where the next launch continues (`LaunchSnapshot`).
         .onChange(of: router.selectedTab) { _, tab in LaunchSnapshot.shared.setTab(tab.rawValue) }
+        .onChange(of: router.selectedTab, initial: true) { _, tab in tab.trackPageView() }
         .onChange(of: router.path) { _, path in LaunchSnapshot.shared.setStack("tasks", value: path) }
         .environment(\.openJournalDay, { date in journalRouter.openDay(date) })
         .environment(inboxRouter)

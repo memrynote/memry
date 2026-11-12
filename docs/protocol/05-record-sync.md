@@ -15,18 +15,18 @@ cursor (§5.11.1, chapter 07 §7.17).
 (`apps/sync-server/src/routes/sync.ts:557`). **A new client uses the unprefixed
 form** (chapter 00 §0.3.1).
 
-| Method              | Path                                    | Query / body                                                                                                         |
-| ------------------- | --------------------------------------- | -------------------------------------------------------------------------------------------------------------------- |
-| GET                 | `/sync/status`                          | none; returns `SyncStatusSchema` including `clientPolicy` (`packages/contracts/src/sync-api.ts:473-478`)             |
-| GET                 | `/sync/manifest`                        | optional `limit` and `cursor`; **a cursor without a limit is a 400** (`apps/sync-server/src/routes/sync.ts:327-331`) |
-| GET                 | `/sync/changes`                         | optional `cursor`, optional `limit`, optional `inline=1` (§5.11.2) (`apps/sync-server/src/routes/sync.ts:344-397`)   |
-| POST                | `/sync/push`                            | `RecordPushRequestSchema`, 1 to 100 items                                                                            |
-| POST                | `/sync/pull`                            | `PullRequestSchema`, 1 to 100 item ids                                                                               |
-| GET                 | `/sync/items/:id`                       | one item                                                                                                             |
-| GET                 | `/sync/packs`                           | keyset `cursor` (chapter 08)                                                                                         |
-| GET / POST / DELETE | `/sync/vaults`, `/sync/vaults/:vaultId` | the vault registry (`apps/sync-server/src/routes/sync.ts:96`, `:133`, `:157`)                                        |
-| PUT                 | `/sync/vaults/:vaultId/icon`            | the vault icon, last writer wins (§5.11.1, `apps/sync-server/src/routes/sync.ts:200`)                                |
-| GET                 | `/sync/storage`                         | quota (`apps/sync-server/src/routes/sync.ts:280`)                                                                    |
+| Method              | Path                                    | Query / body                                                                                                                                                                          |
+| ------------------- | --------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| GET                 | `/sync/status`                          | none; returns `SyncStatusSchema` including `clientPolicy` (`packages/contracts/src/sync-api.ts:473-478`)                                                                              |
+| GET                 | `/sync/manifest`                        | optional `limit` and `cursor`; **a cursor without a limit is a 400** (`apps/sync-server/src/routes/sync.ts:327-331`)                                                                  |
+| GET                 | `/sync/changes`                         | optional `cursor`, optional `limit`, optional `inline=1` (§5.11.2) (`apps/sync-server/src/routes/sync.ts:344-397`)                                                                    |
+| POST                | `/sync/push`                            | `RecordPushRequestSchema`, 1 to 100 items                                                                                                                                             |
+| POST                | `/sync/pull`                            | `PullRequestSchema`, 1 to 100 item ids                                                                                                                                                |
+| GET                 | `/sync/items/:id`                       | one item                                                                                                                                                                              |
+| GET                 | `/sync/packs`                           | keyset `cursor` (chapter 08)                                                                                                                                                          |
+| GET / POST / DELETE | `/sync/vaults`, `/sync/vaults/:vaultId` | the vault registry (`apps/sync-server/src/routes/sync.ts:96`, `:133`, `:157`)                                                                                                         |
+| PUT                 | `/sync/vaults/:vaultId/icon`            | the vault icon, last writer wins (§5.11.1, `apps/sync-server/src/routes/sync.ts:200`)                                                                                                 |
+| GET                 | `/sync/storage`                         | account-wide quota; above the vault middleware, so it takes no `X-Memry-Vault-Id` and never creates a vault; `402` without an active plan (`apps/sync-server/src/routes/sync.ts:215`) |
 
 ## 5.2 Headers on every request
 
@@ -48,6 +48,14 @@ TitleCase constants; `x-memry-client` is lowercase
 (`apps/sync-server/src/lib/client-identity.ts:8`). HTTP header names are
 case-insensitive, so this is cosmetic, but a client that string-matches its own
 constants must match the right spelling.
+
+**Normative.** A vault-scoped request with no `X-Memry-Vault-Id` never creates
+a vault. It resolves to `default` when the account has no vaults or already
+holds `default`, to the only vault when it has one, and to
+`400 VALIDATION_ERROR` when it has several
+(`apps/sync-server/src/middleware/paid-sync.ts:36`). The vault id a device
+registered with plays no part: iOS registers with none, which the server stores
+as `default` (`apps/sync-server/src/middleware/paid-sync.ts:64`).
 
 ## 5.3 Type negotiation
 

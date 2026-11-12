@@ -52,4 +52,44 @@ describe('LocalOpenAICompatibleBackend provider errors', () => {
 
     expect(events).toContainEqual({ kind: 'error', message: 'tool_choice is not supported' })
   })
+
+  it('shows the Ollama server reason instead of the bare HTTP status text', async () => {
+    vi.stubGlobal(
+      'fetch',
+      vi.fn(async () => {
+        return new Response(JSON.stringify({ error: 'gemma does not support tools' }), {
+          status: 400,
+          statusText: 'Bad Request',
+          headers: { 'content-type': 'application/json' }
+        })
+      })
+    )
+    const backend = new LocalOpenAICompatibleBackend({
+      getSettings: async () => ({
+        preset: 'ollama',
+        baseUrl: 'http://127.0.0.1:18631/v1',
+        model: MODEL,
+        apiKeyConfigured: false,
+        allowNonLoopback: false,
+        thinking: 'default'
+      }),
+      getApiKey: async () => null,
+      toolBridge: { execute: vi.fn() } as never
+    })
+
+    const run = await backend.runTurn({
+      conversationId: 'conversation-1',
+      writeGrant: 'turn-grant-1' as TurnWriteGrant,
+      windowId: 'window-1',
+      prompt: 'User: hello',
+      options: { backend: 'local_openai_compatible', model: MODEL, toolsEnabled: false }
+    })
+    const events: BackendEvent[] = []
+    for await (const event of run.events) events.push(event)
+
+    expect(events).toContainEqual({
+      kind: 'error',
+      message: 'Bad Request: gemma does not support tools'
+    })
+  })
 })

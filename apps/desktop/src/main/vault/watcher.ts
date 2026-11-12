@@ -1094,8 +1094,14 @@ export class VaultWatcher {
     })
 
     // Markdown wins: a `- [x]`/`- [ ]` flipped outside the app is the user's
-    // intent for that task, so the DB row follows the file.
-    reconcileTaskCheckboxesFromMarkdown(parsed.content).catch((err: unknown) => {
+    // intent for that task, so the DB row follows the file. Only flipped lines:
+    // `cached` still holds the state acknowledged before this edit, and a line
+    // the edit did not touch can trail a task completed elsewhere.
+    reconcileTaskCheckboxesFromMarkdown({
+      markdown: parsed.content,
+      acknowledged: cached.taskChecks,
+      fileModifiedAt: stats.mtime
+    }).catch((err: unknown) => {
       logger.warn('Failed to reconcile task checkboxes from external edit', {
         noteId: cached.id,
         error: err

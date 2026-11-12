@@ -23,6 +23,7 @@ struct WelcomeView: View {
     let onSignIn: () -> Void
 
     @State private var page = Page.promise
+    @State private var tracked = false
 
     enum Page: Int, CaseIterable, Equatable {
         case promise
@@ -43,6 +44,11 @@ struct WelcomeView: View {
         }
         .background(Tokens.Canvas.background.color)
         .calmAnimation(.normal, value: page)
+        .onAppear {
+            guard !tracked else { return }
+            tracked = true
+            Telemetry.shared.track(.onboardingStarted, surface: .onboarding, action: "wizard")
+        }
     }
 
     private var footer: some View {
@@ -146,7 +152,7 @@ private struct TrustPage: View {
                     symbol: "laptopcomputer.and.iphone",
                     tinted: false,
                     title: "Sync when you want it",
-                    detail: "Add an account any time to keep your Mac and iPhone in step."
+                    detail: "Add an account any time to keep all your devices in step."
                 )
             }
             Spacer()

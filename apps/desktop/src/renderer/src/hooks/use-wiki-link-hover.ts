@@ -7,6 +7,11 @@ import {
   onNoteRenamed,
   onNoteUpdated
 } from '@/services/notes-service'
+import {
+  onJournalEntryCreated,
+  onJournalEntryDeleted,
+  onJournalExternalChange
+} from '@/services/journal-service'
 import { splitWikiTarget } from '@memry/shared/wiki-target'
 import { previewWikiLinkTarget } from '@/lib/wiki-link-preview'
 
@@ -164,7 +169,10 @@ export function useWikiLinkHover(
       onNoteCreated(clearCache),
       onNoteRenamed(clearCache),
       onNoteDeleted(clearCache),
-      onNoteUpdated(clearCache)
+      onNoteUpdated(clearCache),
+      onJournalEntryCreated(clearCache),
+      onJournalEntryDeleted(clearCache),
+      onJournalExternalChange(clearCache)
     ]
     return () => unsubscribes.forEach((unsubscribe) => unsubscribe())
   }, [])

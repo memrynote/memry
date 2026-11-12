@@ -1,4 +1,4 @@
-//! Data migration 0021, `wiki_name_keys`: kept apart from `tests.rs` for its line ceiling.
+//! Data migration 0023, `wiki_name_keys`: kept apart from `tests.rs` for its line ceiling.
 
 use super::*;
 use crate::storage::Db;
@@ -8,7 +8,7 @@ use crate::storage::Db;
 #[test]
 fn the_wiki_name_keys_migration_owes_every_row_and_follows_every_name_write() {
     let db = Db::open_in_memory().expect("open");
-    db.call_blocking(|conn| run(conn, &DATA_MIGRATIONS[..20]))
+    db.call_blocking(|conn| run(conn, &DATA_MIGRATIONS[..22]))
         .expect("a database as the last build left it");
     let failed = |err: rusqlite::Error| StorageError::Failed {
         what: err.to_string(),
@@ -25,7 +25,7 @@ fn the_wiki_name_keys_migration_owes_every_row_and_follows_every_name_write() {
         .call_blocking(|conn| run(conn, DATA_MIGRATIONS))
         .expect("step forward");
     assert_eq!(version, latest_version(DATA_MIGRATIONS));
-    db.call_blocking(|conn| conn.execute_batch(DATA_MIGRATIONS[20].sql).map_err(failed))
+    db.call_blocking(|conn| conn.execute_batch(DATA_MIGRATIONS[22].sql).map_err(failed))
         .expect("idempotent");
 
     let owed = |conn: &rusqlite::Connection| -> Result<Vec<String>, StorageError> {

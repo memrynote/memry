@@ -29,8 +29,12 @@ extension InboxStore {
         } else {
             await write { try $0.captureText(content: trimmed, title: nil, captureSource: source, force: force) }
         }
-        guard let outcome else { return .failed }
+        guard let outcome else {
+            trackCaptured(isLink ? .link : .text, source: source, ok: false)
+            return .failed
+        }
         if outcome.duplicate { return .duplicate(outcome.item) }
+        trackCaptured(isLink ? .link : .text, source: source, ok: true)
         markFresh(outcome.item.id)
         showToast(InboxCopy.itemCaptured)
         if outcome.item.itemType == "link" { enrich(outcome.item) }
@@ -86,11 +90,13 @@ extension InboxStore {
         guard await read({ try $0.checkFile(mimeType: checkedMime, size: size) }) != nil else {
             clearFailure()
             fail(size > 50 * 1024 * 1024 ? InboxErrors.tooLarge : InboxErrors.unsupportedType)
+            trackCaptured(InboxCaptureKind(mime: mime), source: source, ok: false)
             return .failed
         }
         let id = core.newId()
         guard let stored = store(data, id: id, filename: filename, mime: mime) else {
             fail(InboxErrors.unsupportedType)
+            trackCaptured(InboxCaptureKind(mime: mime), source: source, ok: false)
             return .failed
         }
         var metadata: [String: Any] = ["mimeType": mime]
@@ -115,6 +121,7 @@ extension InboxStore {
                 thumbnailPath: finalThumbnail, metadataJson: json, captureSource: source
             )
         }
+        trackCaptured(InboxCaptureKind(mime: finalMime), source: source, ok: item != nil)
         guard let item else { return .failed }
         markFresh(item.id)
         showToast(InboxCopy.itemCaptured)
@@ -171,6 +178,7 @@ extension InboxStore {
             try FileManager.default.moveItem(at: file, to: target)
         } catch {
             fail(InboxErrors.recordingFailed)
+            trackCaptured(.voice, source: "inline", ok: false)
             return .failed
         }
         let size = UInt64((try? FileManager.default.attributesOfItem(atPath: target.path)[.size] as? NSNumber)??.uint64Value ?? 0)
@@ -182,7 +190,15 @@ extension InboxStore {
                 waveform: waveform, transcriptionStatus: status, captureSource: "inline"
             )
         }
-        guard let item else { return .failed }
+        guard let item else {
+            trackCaptured(.voice, source: "inline", ok: false)
+            return .failed
+        }
+        Telemetry.shared.track(
+            .voiceRecordingCompleted, surface: .voice, action: "completed", source: "app", result: .success,
+            metrics: TelemetryMetrics(durationMs: (duration * 1000).rounded(), byteCount: Double(size))
+        )
+        trackCaptured(.voice, source: "inline", ok: true)
         markFresh(item.id)
         showToast(InboxCopy.itemCaptured)
         if available { await transcribeVoice(item.id, file: target) }
@@ -202,7 +218,15 @@ extension InboxStore {
             return
         }
         await write { try $0.setTranscription(id: id, transcription: nil, status: "pending") }
+        let started = ContinuousClock.now
         let text = await transcription.transcribe(url)
+        Telemetry.shared.track(
+            .transcriptionCompleted, surface: .voice, action: "completed", result: text == nil ? .failed : .success,
+            metrics: TelemetryMetrics(
+                durationMs: (started.duration(to: .now) / .milliseconds(1)).rounded(),
+                byteCount: Double(text?.utf16.count ?? 0)
+            )
+        )
         await write { try $0.setTranscription(id: id, transcription: text, status: text == nil ? "failed" : "complete") }
     }
 }

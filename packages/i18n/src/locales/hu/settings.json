@@ -504,7 +504,8 @@
       "loading": "Beállítások betöltése…"
     },
     "groups": {
-      "footer": "Lábléc"
+      "footer": "Lábléc",
+      "pastYears": "Korábbi évek"
     },
     "template": {
       "label": "Sablon",
@@ -562,6 +563,14 @@
     "showInSidebar": {
       "label": "Megjelenítés az oldalsávon",
       "description": "A naplómappa és a bejegyzései megjelennek a jegyzetfában"
+    },
+    "showOnThisDay": {
+      "label": "Ezen a napon megjelenítése",
+      "description": "Ugyanez a dátum a korábbi évekből a bejegyzés alatt"
+    },
+    "allYearsView": {
+      "label": "Minden év teljes megjelenítése",
+      "description": "Az örök napló: a dátum minden éve egy oldalon, a bejegyzés alatt"
     }
   },
   "tasks": {
@@ -1110,7 +1119,16 @@
       "sending": "Kód küldése…"
     },
     "oauth": {
-      "google": "Folytatás a Google-lal"
+      "google": "Folytatás a Google-lal",
+      "waiting": "Fejezze be a Google-bejelentkezést a böngészőjében.",
+      "browserUnavailable": "Nem sikerült megnyitni a böngészőt.",
+      "manualInstructions": "Másolja ki a bejelentkezési hivatkozást, és nyissa meg egy böngészőben ezen a számítógépen. Hagyja nyitva a memrynote-ot a bejelentkezés közben.",
+      "linkLabel": "Bejelentkezési hivatkozás",
+      "copyLink": "Bejelentkezési hivatkozás másolása",
+      "retryBrowser": "Böngésző megnyitásának újrapróbálása",
+      "copied": "A bejelentkezési hivatkozás kimásolva.",
+      "copyFailed": "Nem sikerült kimásolni a bejelentkezési hivatkozást. Jelölje ki a fenti mezőben, és másolja ki.",
+      "cancel": "Másik bejelentkezési mód használata"
     },
     "otp": {
       "title": "Írja be az ellenőrző kódot",
@@ -1347,6 +1365,7 @@
       "keySaveError": "Nem sikerült menteni az OpenAI-kulcsot"
     },
     "embedding": {
+      "load": "Modell betöltése",
       "loaded": "Betöltve",
       "loading": "Betöltés",
       "downloadLoad": "Modell letöltése és betöltése",
@@ -1371,7 +1390,8 @@
         "ollama": "Ollama (helyi)",
         "openai": "OpenAI",
         "anthropic": "Anthropic",
-        "google": "Google Gemini"
+        "google": "Google Gemini",
+        "custom": "Egyéni (OpenAI-kompatibilis)"
       },
       "model": "Modell",
       "modelDescription": "Nyelvi modell az újraíráshoz és összefoglaláshoz",
@@ -1381,6 +1401,11 @@
       "apiKeyPlaceholder": "{provider} API-kulcs megadása",
       "ollamaUrl": "Ollama URL",
       "ollamaUrlDescription": "Helyi szerver címe",
+      "customUrl": "Alap URL",
+      "customUrlDescription": "Bármely OpenAI-kompatibilis végpont, például az OpenRouter",
+      "customUrlPlaceholder": "https://openrouter.ai/api/v1",
+      "customApiKeyPlaceholder": "API-kulcs (nem kötelező)",
+      "customModelPlaceholder": "Modellazonosító",
       "connection": "Kapcsolat",
       "activePort": "Aktív, port: {port}",
       "notConnected": "Nincs csatlakoztatva",
@@ -2032,7 +2057,7 @@
       "subtitle": "Tulajdonságdefiníciók kezelése az összes jegyzetben"
     },
     "loading": "Tulajdonságok betöltése…",
-    "empty": "Még nincsenek tulajdonságdefiníciók. A kezdéshez adjon hozzá egy Állapot, Választás vagy Többszörös választás típusú tulajdonságot bármelyik jegyzethez.",
+    "empty": "Még nincsenek tulajdonságok. A kezdéshez adjon hozzá egy tulajdonságot bármelyik jegyzethez.",
     "filterPlaceholder": "Tulajdonságok szűrése…",
     "noMatch": "Nincs a(z) „{query}” keresésnek megfelelő tulajdonság",
     "summary": "{count, plural, one {# tulajdonságdefiníció} other {# tulajdonságdefiníció}}",
@@ -2072,6 +2097,14 @@
     },
     "v2": {
       "actionsAria": "Műveletek: {name}"
+    },
+    "usage": {
+      "heading": "Használja",
+      "noteCount": "{count, plural, one {# jegyzet} other {# jegyzet}}",
+      "mismatchCount": "A(z) {type} típusnak nem megfelelő értékek: {count}",
+      "mismatchNote": "Nem felel meg a(z) {type} típusnak",
+      "none": "Egyik jegyzet sem használja ezt a tulajdonságot",
+      "loadFailed": "Nem sikerült betölteni a tulajdonságot használó jegyzeteket"
     }
   },
   "commandLine": {
@@ -2407,7 +2440,6 @@
   "phaseI": {
     "errors": {
       "failedToUpdateTagColor": "Nem sikerült frissíteni a címke színét",
-      "googleSignInFailed": "A Google-bejelentkezés sikertelen",
       "failedToSendVerificationCode": "Nem sikerült elküldeni az ellenőrző kódot",
       "invalidVerificationCode": "Érvénytelen ellenőrző kód",
       "accountSetupFailed": "A fiók beállítása sikertelen",
@@ -2434,7 +2466,8 @@
       "failedToCloseVault": "Nem sikerült bezárni a széfet",
       "failedToSwitchVault": "Nem sikerült széfet váltani",
       "failedToUpdateConfig": "Nem sikerült frissíteni a konfigurációt",
-      "failedToReindex": "Nem sikerült újraindexelni"
+      "failedToReindex": "Nem sikerült újraindexelni",
+      "googleSignInFailed": "A Google-bejelentkezés sikertelen"
     }
   },
   "agentMcp": {
@@ -2464,7 +2497,17 @@
       "running": "Fut",
       "tokenHint": "Csak ehhez az indításhoz",
       "copy": "Másolás",
-      "rotate": "Csere"
+      "rotate": "Csere",
+      "clientConfig": {
+        "label": "Kliens konfiguráció",
+        "hint": "Az aktuális indítás URL-jével és tokenjével másolódik",
+        "copy": "{client} konfiguráció másolása"
+      },
+      "notes": {
+        "readOnly": "A külső kliensek csak olvasni tudnak. Az írási eszközök PERMISSION_DENIED hibát adnak, ezért írj az Agent Chaten vagy a memrynote parancssoron keresztül.",
+        "restart": "Az URL és a token megváltozik, amikor a memrynote újraindul, széfet vált vagy megújítja a tokent. Ilyenkor frissítsd a kliens konfigurációját, majd indítsd újra a klienst.",
+        "docs": "Beállítási útmutató"
+      }
     }
   },
   "agentProviders": {

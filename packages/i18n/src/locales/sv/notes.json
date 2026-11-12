@@ -5,6 +5,7 @@
     "create": "Skapa"
   },
   "wikiLinkPreview": {
+    "journalUnwritten": "Det finns inget skrivet för {date} än. Klicka för att öppna dagen",
     "notFound": "Hittades inte – klicka för att skapa ”{title}”"
   },
   "wikiLinkMenu": {
@@ -138,6 +139,7 @@
     "actions": {
       "openInNewTab": "Öppna i ny flik",
       "openToTheSide": "Öppna bredvid",
+      "openFolderView": "Öppna mappvy",
       "newNote": "Ny anteckning",
       "newFolder": "Ny mapp",
       "showTasks": "Visa uppgifter",
@@ -187,7 +189,8 @@
     },
     "toast": {
       "selectionBookmarked": "{count} objekt bokmärkta",
-      "selectionBookmarkFailed": "Det gick inte att bokmärka de markerade objekten"
+      "selectionBookmarkFailed": "Det gick inte att bokmärka de markerade objekten",
+      "pairedNoteNameTaken": "Det finns redan en anteckning med namnet {name} där"
     }
   },
   "editor": {
@@ -423,9 +426,14 @@
       "savedView": "Sparad vy",
       "savedViewMissing": "Den sparade vyn ”{name}” finns inte längre, så standardvyn visas.",
       "openAsTab": "Öppna som flik",
+      "newNote": "Ny anteckning",
+      "newViewTitle": "Ny vy",
+      "newViewSubtext": "En ny mapp bredvid den här anteckningen, listad här",
+      "newViewFailed": "Det gick inte att skapa mappen för den här vyn.",
       "empty": "Inget matchar vyn än.",
       "loadFailed": "Det gick inte att läsa in vyn. Själva anteckningarna är orörda.",
       "folderMissing": "Mappen finns inte längre i valvet. Välj en annan källa.",
+      "unreadable": "Den här vyn kan inte läsas. Välj en källa ovan eller ta bort blocket.",
       "invalidJson": "Vyns definition är inte giltig JSON. Rätta den nedan eller ta bort blocket.",
       "invalidShape": "Vyns definition saknar källa. Välj en ovan eller rätta den nedan.",
       "definition": "Definition"
@@ -668,6 +676,8 @@
   },
   "menus": {
     "wiki": {
+      "journalDay": "Dagbok · {date}",
+      "journalDayUnwritten": "Dagbok · inte skrivet än",
       "aria": "Anteckningsförslag",
       "loading": "Läser in anteckningar…",
       "empty": "Inga anteckningar hittades",
@@ -782,6 +792,12 @@
     "viaProperty": "{property} → {title}",
     "viaPortal": "Visas i en portal"
   },
+  "references": {
+    "filterAll": "Alla",
+    "filterNotes": "Anteckningar",
+    "filterJournal": "Dagbok",
+    "filterBy": "Filtrera referenser: {filter}"
+  },
   "unlinkedMentions": {
     "title": "Olänkade omnämnanden",
     "summary": "{count, plural, one {# olänkat omnämnande} other {# olänkade omnämnanden}}",
@@ -886,6 +902,7 @@
     "showOnCalendar": "Visa i kalender",
     "showingOnCalendar": "Visas i kalender",
     "relation": {
+      "unwrittenDay": "Inte skrivet än",
       "deleted": "Raderad",
       "removeAria": "Ta bort {title}",
       "addAria": "Lägg till relation",

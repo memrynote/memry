@@ -36,7 +36,10 @@ extension TasksStore {
     @discardableResult
     func createProject(_ draft: ProjectDraft) async -> String? {
         let id = await run { try $0.createProject(draft: draft) }
-        if id != nil { toast = TasksCopy.Projects.projectCreated }
+        if id != nil {
+            TasksTelemetry.projectCreated()
+            toast = TasksCopy.Projects.projectCreated
+        }
         return id
     }
 
@@ -44,13 +47,17 @@ extension TasksStore {
     @discardableResult
     func updateProject(_ id: String, draft: ProjectDraft) async -> Bool {
         let saved = await run { try $0.updateProject(id: id, draft: draft) } != nil
-        if saved { toast = TasksCopy.Projects.projectUpdated }
+        if saved {
+            TasksTelemetry.projectSaved(draft)
+            toast = TasksCopy.Projects.projectUpdated
+        }
         return saved
     }
 
     func setProjectArchived(_ id: String, archived: Bool) async {
         let done = await run { try $0.setProjectArchived(id: id, archived: archived) } != nil
         guard done else { return }
+        TasksTelemetry.projectArchived(archived)
         if archived, state.projectId == id {
             await update { $0.projectId = nil }
         }
@@ -61,7 +68,8 @@ extension TasksStore {
     /// them, so every project keeps a distinct position.
     func reorderProjects(_ activeIds: [String]) async {
         let ids = activeIds + archivedProjects.map(\.id).filter { !activeIds.contains($0) }
-        await run { try $0.reorderProjects(ids: ids) }
+        guard await run({ try $0.reorderProjects(ids: ids) }) != nil else { return }
+        for _ in ids { TasksTelemetry.projectUpdated(["position"]) }
     }
 
     /// Moves active projects the way `List.onMove` reports it.
@@ -78,6 +86,7 @@ extension TasksStore {
             try $0.deleteProject(id: id, moveTasksToInbox: moveTasksToInbox)
         } != nil
         guard deleted else { return false }
+        TasksTelemetry.projectDeleted()
         if state.projectId == id {
             await update { $0.projectId = nil }
         }
@@ -124,19 +133,25 @@ extension TasksStore {
     func link(_ item: RelatedItemRecord, to projectId: String) async {
         let type = ProjectLinkKind(relatedKind: item.kind).itemType
         let itemId = item.id
-        await run { try $0.linkToProject(id: projectId, itemType: type, itemId: itemId) }
+        guard await run({ try $0.linkToProject(id: projectId, itemType: type, itemId: itemId) }) != nil else { return }
+        TasksTelemetry.projectUpdated(["links"])
     }
 
     func unlink(_ link: ProjectLinkItem, from projectId: String) async {
-        await run { try $0.unlinkFromProject(id: projectId, itemType: link.itemType, itemId: link.itemId) }
+        guard await run({ try $0.unlinkFromProject(id: projectId, itemType: link.itemType, itemId: link.itemId) }) != nil
+        else { return }
+        TasksTelemetry.projectUpdated(["links"])
     }
 
     func setPinned(_ link: ProjectLinkItem, pinned: Bool, in projectId: String) async {
-        await run { try $0.setProjectLinkPinned(id: projectId, itemId: link.itemId, pinned: pinned) }
+        guard await run({ try $0.setProjectLinkPinned(id: projectId, itemId: link.itemId, pinned: pinned) }) != nil
+        else { return }
+        TasksTelemetry.projectUpdated(["links"])
     }
 
     func setHomeNote(_ noteId: String?, for projectId: String) async {
-        await run { try $0.setProjectHomeNote(id: projectId, noteId: noteId) }
+        guard await run({ try $0.setProjectHomeNote(id: projectId, noteId: noteId) }) != nil else { return }
+        TasksTelemetry.projectUpdated(["homeNoteId"])
     }
 }
 

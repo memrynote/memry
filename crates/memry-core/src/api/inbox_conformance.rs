@@ -61,6 +61,7 @@ fn row(item: InboxItem) -> Value {
         "sourceUrl": text(item.source_url),
         "sourceTitle": text(item.source_title),
         "captureSource": text(item.capture_source),
+        "attachmentId": text(item.attachment_id),
         "createdAt": if item.created_at == 0 { Value::Null } else { iso(Some(item.created_at)) },
     })
 }

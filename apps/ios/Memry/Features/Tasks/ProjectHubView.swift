@@ -25,6 +25,7 @@ struct ProjectHubView: View {
     @State private var composer: TaskComposerRequest?
     @State private var composerText = ""
     @State private var titleCollapsed = false
+    @State private var openTracked = false
 
     var body: some View {
         Group {
@@ -36,6 +37,11 @@ struct ProjectHubView: View {
             }
         }
         .task(id: ProjectStatsKey(projects: store.projects, tasks: store.ordered)) { await reload() }
+        .onAppear {
+            guard !openTracked else { return }
+            openTracked = true
+            TasksTelemetry.projectOpened()
+        }
     }
 
     private func content(_ project: ProjectItem) -> some View {

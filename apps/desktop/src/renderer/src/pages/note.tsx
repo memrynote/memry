@@ -78,6 +78,7 @@ import { usePropertiesCollapsed } from '@/hooks/use-properties-collapsed'
 import { useTasksLinkedToNote } from '@/hooks/use-tasks-linked-to-note'
 import { notesService, onNoteDeleted, onNoteUpdated, onNoteRenamed } from '@/services/notes-service'
 import { resolveWikiLink } from '@/lib/wikilink-resolver'
+import { journalDayTab } from '@/lib/memry-links'
 import { scrollToHeadingBlock, scrollToHeadingWhenReady } from '@/lib/scroll-to-heading'
 import { RESTORE_MAX_MS } from '@/hooks/use-tab-scroll-restore'
 import { useBlockRefScroll } from '@/hooks/use-block-ref-scroll'
@@ -787,7 +788,9 @@ export function NotePage({ noteId }: NotePageProps) {
           linkStart: ctx.linkStart,
           linkEnd: ctx.linkEnd
         })),
-        via: bl.via
+        via: bl.via,
+        sourceJournalDate: bl.sourceJournalDate,
+        sourceTags: bl.sourceTags
       }
     })
   }, [rawBacklinks])
@@ -1374,6 +1377,10 @@ export function NotePage({ noteId }: NotePageProps) {
               },
               open
             )
+            break
+
+          case 'journal':
+            openLinked(journalDayTab(resolution.id, resolution.heading), open)
             break
 
           case 'create':

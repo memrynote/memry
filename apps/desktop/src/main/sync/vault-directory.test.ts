@@ -1,5 +1,6 @@
 import { describe, it, expect, vi, beforeEach, beforeAll } from 'vitest'
 import sodium from 'libsodium-wrappers-sumo'
+import { app } from 'electron'
 
 import { decryptVaultIcon, encryptVaultIcon, encryptVaultName } from './vault-name-crypto'
 
@@ -458,6 +459,26 @@ describe('vault-directory', () => {
         localPath: null
       })
       expect(result[1].suggestedPath).toContain('beta')
+    })
+
+    it.each([
+      { documents: '/home/user/Documents', current: null, expected: '/home/user/Documents/Memry' },
+      { documents: '/home/user', current: null, expected: '/home/user/Memry' },
+      {
+        documents: '/home/user/Documents',
+        current: '/mnt/work/vaults/personal',
+        expected: '/mnt/work/vaults'
+      }
+    ])('suggests a download under $expected', ({ documents, current, expected }) => {
+      vi.mocked(app.getPath).mockReturnValue(documents)
+      vi.mocked(getCurrentVaultPath).mockReturnValue(current)
+      vi.mocked(getVaults).mockReturnValue([])
+      vi.mocked(getAccountVaultsCache).mockReturnValue({
+        fetchedAt: 1,
+        vaults: [{ vaultUuid: 'uuid-linux', name: 'My Notes', itemCount: 1, createdAt: 1 }]
+      })
+
+      expect(listAccountVaults()[0].suggestedPath).toBe(`${expected}/my-notes`)
     })
 
     it('returns empty when there is no cache', () => {

@@ -35,7 +35,7 @@ export const createShells: SandboxStep = async (ctx) => {
     ctx.notes.set(spec.key, { id: note.id, path: note.path, title: spec.title })
   }
 
-  for (const entry of journalSpecs()) {
+  for (const entry of journalSpecs(ctx.clock)) {
     const date = ctx.clock.date(entry.day)
     const note = await ctx.app.journal.write(date, '')
     ctx.journal.set(date, note.id)
@@ -146,7 +146,7 @@ async function writeCover(
 }
 
 export const writeJournal: SandboxStep = async (ctx) => {
-  for (const entry of journalSpecs()) {
+  for (const entry of journalSpecs(ctx.clock)) {
     const date = ctx.clock.date(entry.day)
     const id = need(ctx.journal, date, 'journal day')
     const b = createBody(ctx, `journal-${date}`, new Map())

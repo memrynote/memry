@@ -1,7 +1,9 @@
 //! `inbox`: captures waiting to be processed (`InboxSyncPayloadSchema`,
 //! `packages/contracts/src/sync-payloads.ts`, migration `0004`).
 //!
-//! The thirteen schema keys. Desktop's push also carries its local columns
+//! The schema's keys. `attachmentId` is read here to match the schema but is
+//! not a column: `inbox_view` (migration `0016`) reads it from the verbatim
+//! payload, like the local columns below. Desktop's push also carries its local columns
 //! (`viewedAt`, `processingStatus`, `transcription`, ...) because it serialises
 //! its whole `inbox_items` row (`inbox-handler.ts`, `buildPushPayload`); the
 //! schema strips them, so this reader does too, and `inbox_view` (migration
@@ -33,6 +35,7 @@ const INBOX_FIELDS: &[Field] = &[
     Field::opt_null("sourceUrl", Kind::Text),
     Field::opt_null("sourceTitle", Kind::Text),
     Field::opt_null("captureSource", Kind::Text),
+    Field::opt_null("attachmentId", Kind::Text),
     Field::opt_null("clock", Kind::Clock),
     Field::opt_null("createdAt", Kind::SyncTimestamp),
     Field::opt_null("modifiedAt", Kind::SyncTimestamp),

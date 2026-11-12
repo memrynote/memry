@@ -8,6 +8,7 @@
 import { powerMonitor } from 'electron'
 
 import { latestLaunchPhase } from './launch-timeline'
+import { recentMainActivity } from './main-activity'
 import { createLogger } from './lib/logger'
 
 const logger = createLogger('MainThreadStall')
@@ -17,6 +18,20 @@ export const STALL_THRESHOLD_MS = 2_000
 // A loop that keeps stalling would otherwise write a line per tick for the
 // whole run; the first ones are the ones that explain it.
 export const MAX_STALL_REPORTS = 20
+// How many of the most recently started units of work a report names.
+export const STALL_SUSPECTS = 3
+
+/**
+ * The work started last before the loop went quiet, each with its start
+ * relative to the last on-time tick (the last moment the loop was free). The
+ * unit that blocked is almost always the last one; one that started long
+ * before (a large negative offset) only ran alongside.
+ */
+function stallSuspects(freeAt: number): string[] {
+  return recentMainActivity()
+    .slice(-STALL_SUSPECTS)
+    .map((activity) => `${activity.name}@${activity.startedAt - freeAt}ms`)
+}
 
 /**
  * Start the stall detector. Returns the stop function. The tick is unref'd so
@@ -39,14 +54,16 @@ export function startMainThreadStallMonitor(): () => void {
 
   const timer = setInterval(() => {
     const now = Date.now()
-    const stallMs = now - lastTickAt - STALL_TICK_MS
+    const freeAt = lastTickAt
+    const stallMs = now - freeAt - STALL_TICK_MS
     lastTickAt = now
     if (suspended || stallMs < STALL_THRESHOLD_MS || reports >= MAX_STALL_REPORTS) return
     reports += 1
     logger.warn('main thread stalled', {
       durationMs: stallMs,
       phase: latestLaunchPhase() ?? 'startup',
-      count: reports
+      count: reports,
+      suspects: stallSuspects(freeAt)
     })
   }, STALL_TICK_MS)
   timer.unref?.()

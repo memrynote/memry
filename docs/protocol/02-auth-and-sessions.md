@@ -105,10 +105,12 @@ signer lookup resolves. `revokedAt` is null for a live device.
 
 **`GET /devices`**
 
-Response: `{ devices: [{ id, name, platform, appVersion, lastSyncAt, createdAt, updatedAt }] }`
-for the account's live devices. `appVersion` is the build the device last
+Response: `{ devices: [{ id, name, platform, formFactor, appVersion, lastSyncAt, createdAt, updatedAt }] }`
+(`packages/contracts/src/auth-api.ts:116`) for the account's live devices. `appVersion` is the build the device last
 opened a realtime socket with (chapter 09 §9.2); it was added later, so a
 client MUST treat a missing `appVersion` as unknown, never as current.
+`formFactor` is §2.3.4's; a client MUST treat a missing or `null` value as
+unknown and fall back to `platform`.
 
 **`POST /auth/refresh`**
 
@@ -225,12 +227,13 @@ client uses against server time.
 ## 2.3 Device registration
 
 **Normative.** `POST /auth/devices` request fields
-(`packages/contracts/src/auth-api.ts:22-32`):
+(`packages/contracts/src/auth-api.ts:29-42`):
 
 | Field                | Rule                                                 |
 | -------------------- | ---------------------------------------------------- |
 | `name`               | 1 to 255 characters                                  |
 | `platform`           | `macos \| windows \| linux \| ios \| android \| web` |
+| `formFactor`         | optional, `phone \| tablet`; see §2.3.4              |
 | `osVersion`          | optional                                             |
 | `appVersion`         | non-empty                                            |
 | `authPublicKey`      | the Ed25519 public key, standard base64              |
@@ -241,7 +244,7 @@ client uses against server time.
 
 The server sanitises `name` (255), `platform` (32) and `vaultId` (128) and
 rejects an empty result with `400 VALIDATION_ERROR`
-(`apps/sync-server/src/routes/auth.ts:583-589`).
+(`apps/sync-server/src/routes/auth.ts:590-596`).
 
 ### 2.3.1 The challenge
 
@@ -255,10 +258,10 @@ The signed bytes are the UTF-8 encoding of
 
 where `jti` is the **setup token's** `jti` claim
 (`apps/desktop/src/main/sync/device-registration.ts:71-72`; recomputed
-server-side at `apps/sync-server/src/routes/auth.ts:596`). There is **no domain
+server-side at `apps/sync-server/src/routes/auth.ts:603`). There is **no domain
 separation prefix and no CBOR**. The signature is Ed25519 detached, standard
 base64. A failed verification is `401 AUTH_INVALID_TOKEN`
-(`apps/sync-server/src/routes/auth.ts:597-600`).
+(`apps/sync-server/src/routes/auth.ts:604-607`).
 
 ### 2.3.2 Domain separation — Q02.2
 
@@ -275,7 +278,7 @@ assembled locally from the device's own item
 (`packages/sync-client/src/push/record-encrypt.ts:59-84`), so no remote party can
 steer this key into signing bytes it did not construct. Note that the nonce is
 **not** constrained to a UUID by the contract — `challengeNonce` is
-`z.string().min(1)` (`packages/contracts/src/auth-api.ts:29`) — so a conforming
+`z.string().min(1)` (`packages/contracts/src/auth-api.ts:39`) — so a conforming
 client MUST generate it from a CSPRNG and MUST NOT accept one from a server.
 
 Any **future** signing context for this key MUST carry an explicit domain
@@ -300,27 +303,55 @@ offers no retry, and the way back is a fresh sign-in. Servers before #2944 sent 
 refusal; a client reads that as a generic refusal, as before.
 
 The server-assigned device id is a `crypto.randomUUID()`
-(`apps/sync-server/src/routes/auth.ts:602`). Registration is idempotent on
+(`apps/sync-server/src/routes/auth.ts:609`). Registration is idempotent on
 `(user_id, auth_public_key)`: a repeat registration with the same public key
 updates the row and returns the existing id rather than creating a second device
-(`apps/sync-server/src/routes/auth.ts:604-638`).
+(`apps/sync-server/src/routes/auth.ts:611-649`).
+
+### 2.3.4 Form factor
+
+**Normative.** `formFactor` is `phone` or `tablet`
+(`packages/contracts/src/auth-api.ts:27`). It tells an iPad from an iPhone,
+which `platform` cannot: both register as `ios`, and `platform` stays a closed
+enum because shipped clients parse it strictly. iOS sends it, from the user
+interface idiom (`apps/ios/Memry/Features/Auth/AuthComposition.swift`). Desktop
+sends nothing, since `macos`, `windows` and `linux` already mean a desktop.
+
+The server stores it in `devices.form_factor`
+(`apps/sync-server/migrations/0020_device_form_factor.sql`) and returns it as
+`formFactor` from `GET /devices` (`apps/sync-server/src/routes/devices.ts:41`).
+A re-registration that omits it keeps the stored value
+(`apps/sync-server/src/routes/auth.ts:620`): the same key is the same hardware, and an older build of the app
+must not erase what a newer one reported.
+
+**Compatibility.** Absent or `null` means unknown, and a reader falls back to
+`platform`. Every device registered before the field existed reads `null`, and
+no client re-registers to backfill it.
+
+- An older client sends no `formFactor`. The column stays `NULL`.
+- A newer client against an older server: `z.object` strips the unknown key and
+  the registration succeeds.
+- A value this server does not know registers as unknown, never as a `400`
+  (`packages/contracts/src/auth-api.ts:34`), so display metadata cannot fail a
+  registration.
+- An older reader of `GET /devices` ignores the extra key.
 
 ## 2.4 Native OAuth exists for the phone
 
 **Normative.** `NativeOAuthSchema` takes an `idToken` of at most 4096 characters
 with **no** authorization code and **no** redirect URI
-(`packages/contracts/src/auth-api.ts:57-61`), because iOS has no 127.0.0.1
-loopback for the desktop flow (`packages/contracts/src/auth-api.ts:50-56`). A
+(`packages/contracts/src/auth-api.ts:67-71`), because iOS has no 127.0.0.1
+loopback for the desktop flow (`packages/contracts/src/auth-api.ts:60-66`). A
 phone MUST use `POST /auth/oauth/:provider/native`, not the callback route.
 
 ## 2.5 `devicePublicKey` and setup token renewal
 
 **Normative.** `devicePublicKey` MAY be committed at OTP verify
-(`packages/contracts/src/auth-api.ts:15`), OAuth callback (`:47`) or native OAuth
-(`:60`) time, capped at 128 characters. Committing it is what makes
+(`packages/contracts/src/auth-api.ts:15`), OAuth callback (`:57`) or native OAuth
+(`:70`) time, capped at 128 characters. Committing it is what makes
 `POST /auth/setup-token/renew` possible: renewal is authorised by **proof of
 possession of the committed key**, not by possession of the expired token
-(`packages/contracts/src/auth-api.ts:63-72`). Omitting it yields exactly one
+(`packages/contracts/src/auth-api.ts:73-82`). Omitting it yields exactly one
 non-renewable five-minute token
 (`packages/contracts/src/auth-api.ts:11-14`).
 
@@ -365,8 +396,8 @@ request shape alone:
 ## 2.6 `sessionNonce` — Q02.1
 
 **Normative.** `sessionNonce` is optional on `VerifyOtpRequestSchema`
-(`packages/contracts/src/auth-api.ts:10`), `OAuthCallbackSchema` (`:46`),
-`NativeOAuthSchema` (`:59`) and `DeviceRegisterRequestSchema` (`:30`). It is
+(`packages/contracts/src/auth-api.ts:10`), `OAuthCallbackSchema` (`:56`),
+`NativeOAuthSchema` (`:69`) and `DeviceRegisterRequestSchema` (`:40`). It is
 minted by the **client**, carried into the setup token as a claim
 (`apps/sync-server/src/routes/auth.ts:268`, `:382`, `:451`), preserved across
 renewal (`:525`), and enforced on `POST /auth/devices` **only when the token
@@ -422,7 +453,7 @@ instead, where the account is known and a mismatch does mean "wrong phrase".
 ## 2.8 `POST /auth/setup` is one-shot
 
 **Normative.** `POST /auth/setup` carries `{ kdfSalt, keyVerifier }`
-(`packages/contracts/src/auth-api.ts:34-37`) and is guarded by
+(`packages/contracts/src/auth-api.ts:44-47`) and is guarded by
 `WHERE ... AND kdf_salt IS NULL`, so it can only succeed once per account; a
 second call is `409 VALIDATION_ERROR`
 (`apps/sync-server/src/routes/auth.ts:771-783`).
@@ -499,7 +530,12 @@ and one replay of the original request:
   refresh and no second replay: two 401s across a fresh token mean the session
   is gone, not that the timing was unlucky;
 - if the refresh itself fails, the rejection latch of §2.10 applies and the
-  original request fails with the latch's outcome.
+  original request fails with the latch's outcome. Only a permanent latch
+  fails it with the original `401`. A latch window fails it with the wait, and
+  a refresh that failed without a `401` fails it with that failure, because
+  neither ends the session
+  (`crates/memry-core/src/protocol/http.rs:305-309`,
+  `crates/memry-core/src/protocol/auth.rs:490-493`).
 
 A `401` never enters the §0.6.1 ladder, in either direction: it is not
 retryable there, and the replay here is not an attempt there.
@@ -531,7 +567,7 @@ that email as used (`apps/sync-server/src/services/otp.ts:26-58`).
 
 **Normative.** `DeviceRegisterRequestSchema.platform` is
 `macos | windows | linux | ios | android | web`
-(`packages/contracts/src/auth-api.ts:24`). `CLIENT_PLATFORMS`, used by the write
+(`packages/contracts/src/auth-api.ts:31`). `CLIENT_PLATFORMS`, used by the write
 gate in chapter 11, is `ios | android | desktop`
 (`packages/contracts/src/sync-api.ts:337`). **These are different lists.** A
 phone registers as `ios` and identifies itself as `ios`, so they coincide for

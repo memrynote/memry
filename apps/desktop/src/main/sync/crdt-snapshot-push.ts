@@ -108,7 +108,7 @@ export function createCrdtSnapshotPush(deps: CrdtSnapshotPushDeps): SnapshotPush
               token = fresh
             }
           ),
-        { maxRetries: 3, baseDelayMs: 2000 }
+        { maxRetries: 3, baseDelayMs: 2000, retryOn429: false }
       )
       // The feed serves this device's own snapshot back (#2297); the
       // recorded revision lets it skip the download.

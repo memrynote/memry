@@ -123,7 +123,7 @@ struct TasksProjectsTests {
         model.form.name = "Agent Test Create"
         model.form.icon = "🚀"
         #expect(model.draft.statuses?.count == 3)
-        #expect(await model.save(in: vault.store))
+        #expect(await model.save(in: vault.store) != nil)
         let created = try #require(vault.store.projects.first { $0.name == "Agent Test Create" })
         #expect(created.icon == "🚀")
         #expect(created.statuses.count == 3)
@@ -137,7 +137,7 @@ struct TasksProjectsTests {
         edit.form.statuses[3].name = "Review"
         edit.form.statuses[3].statusType = "in_progress"
         #expect(edit.draft.statuses?.map(\.order) == [0, 1, 2, 3])
-        #expect(await edit.save(in: vault.store))
+        #expect(await edit.save(in: vault.store) != nil)
         let updated = try #require(vault.store.project(created.id))
         #expect(updated.description == "About")
         #expect(updated.statuses.map(\.name).contains("Review"))
@@ -152,7 +152,8 @@ struct TasksProjectsTests {
         await vault.store.load()
 
         await vault.store.reorderProjects([second, first])
-        #expect(vault.store.activeProjects.map(\.id) == [second, first])
+        // `load` seeded the Inbox after the two, and it keeps its place.
+        #expect(vault.store.activeProjects.map(\.id) == [second, first, "inbox"])
 
         await vault.store.setProjectArchived(first, archived: true)
         #expect(vault.store.archivedProjects.map(\.id) == [first])

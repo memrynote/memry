@@ -23,7 +23,7 @@ use crate::storage::repositories::schema::Object;
 use crate::storage::repositories::{Change, sync_items};
 use crate::sync::outbox::{self, Durable};
 
-use super::{ITEM_TYPE, InboxItem, queries, urls};
+use super::{ITEM_TYPE, InboxItem, attachments, queries, urls};
 
 // The state and enrichment writes live beside this module (600-line ceiling)
 // and are reached through it, so callers name one module.
@@ -195,6 +195,9 @@ fn insert_capture(
     insert_local(tx, ITEM_TYPE, id, payload, now_ms)?;
     for tag in &capture.tags {
         insert_tag(tx, id, tag, now_ms)?;
+    }
+    if capture.attachment_path.is_some() {
+        attachments::mark_pending(tx, id, now_ms)?;
     }
     read_back(tx, id)
 }

@@ -115,7 +115,7 @@ describe('PropertiesSettings', () => {
       updateDefinition: vi.fn()
     })
     rerender(<PropertiesSettings />)
-    expect(screen.getByText(/No property definitions yet/)).toBeInTheDocument()
+    expect(screen.getByText(/No properties yet/)).toBeInTheDocument()
   })
 
   it('filters definitions and shows the no-match state', async () => {

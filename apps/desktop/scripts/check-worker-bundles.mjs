@@ -31,7 +31,8 @@ const WORKER_ENTRIES = [
   'image-processing-worker.js',
   'voice-transcription-worker.js',
   'embedding-worker.js',
-  'ocr-worker.js'
+  'ocr-worker.js',
+  'converter-worker.js'
 ]
 
 const RELATIVE_REQUIRE = /require\(["'](\.[^"']+)["']\)/g

@@ -6,6 +6,7 @@
     "noTarget": "Tento portál zatím nemá cíl. Přidejte do definice poznámku, nebo blok odeberte.",
     "invalidJson": "Definice tohoto portálu není platný JSON. Opravte ji níže, nebo blok odeberte.",
     "invalidShape": "Definice tohoto portálu neobsahuje poznámku ani hledání. Opravte ji níže, nebo blok odeberte.",
+    "unreadable": "Tento portál nelze přečíst. Odeberte blok a přidejte nový portál.",
     "search": {
       "editQuery": "Upravit dotaz",
       "count": "{count, plural, one {# blok} few {# bloky} many {# bloku} other {# bloků}}",
@@ -1276,6 +1277,7 @@
     "label": "Nápověda a zpětná vazba",
     "reportBug": "Nahlásit chybu",
     "requestFeature": "Navrhnout funkci",
+    "joinTestflight": "Připojit se k TestFlight",
     "starOnGithub": "Dát hvězdičku na GitHubu",
     "version": "MemryNote {version}",
     "whatsNew": "Co je nového",
@@ -1695,5 +1697,29 @@
     "journalDaysRenamed": "Některé záznamy deníku už nemají jako název datum",
     "journalDaysRenamedHint": "Tyto záznamy deníku byly přejmenovány mimo Memry, zatímco jejich složka čekala na nastavení složky deníku, takže jejich názvy už nejsou data. Zůstanou záznamy deníku, dokud je nepřejmenujete zpět. Převedením na poznámku se jeho záznam deníku odstraní na všech vašich zařízeních a text zůstane jako poznámka. Jeho štítky se nezachovají.",
     "turnIntoNotes": "Převést na poznámky"
+  },
+  "iosBeta": {
+    "badge": "Novinka · TestFlight",
+    "title": "Memry pro iPhone je v betě",
+    "promptBody": "Váš trezor v telefonu, s koncovým šifrováním. Zadejte e-mail a Apple vám pošle pozvánku do TestFlight.",
+    "emailPlaceholder": "you@example.com",
+    "emailLabel": "E-mail pro pozvánku do TestFlight",
+    "submit": "Získat pozvánku",
+    "sending": "Odesílání…",
+    "listNote": "Zároveň vás přidáme do seznamu bety pro iPhone kvůli novinkám o spuštění. Odhlásit se můžete kdykoli.",
+    "error": "Pozvánku do TestFlight se nepodařilo odeslat. Zkuste to prosím znovu.",
+    "sentTitle": "Zkontrolujte doručenou poštu",
+    "sentBody": "Apple odeslal pozvánku na {email}. Může to trvat několik minut a zpráva může skončit ve spamu.",
+    "stepInstall": "Nainstalujte TestFlight z App Storu",
+    "stepOpen": "Otevřete pozvánku na svém iPhonu",
+    "stepSignIn": "Přihlaste se k Memry v telefonu",
+    "done": "Hotovo",
+    "dialogTitle": "Připojte se k Memry pro iPhone",
+    "dialogBody": "Apple vám e-mailem pošle pozvánku do TestFlight. Použijte e-mail z Apple ID na svém iPhonu.",
+    "entryTitle": "Beta pro iPhone je spuštěna",
+    "entrySubtitle": "Přes TestFlight",
+    "entryJoin": "Připojit se k betě",
+    "entrySent": "Pozvánka odeslána na {email}",
+    "sendAgain": "Odeslat znovu"
   }
 }

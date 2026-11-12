@@ -86,7 +86,7 @@ struct FreeLocalVaultTests {
         let account = VaultSummary(id: id, name: "iPhone", encryptedName: nil, nameNonce: nil)
         let registry = AttachingVaultRegistry(
             inner: ListedVaults(rows: [account]),
-            attach: LocalVaultAttach(session: session, store: store)
+            attach: LocalVaultAttach(session: session, store: store, isEmpty: { _ in true })
         )
 
         let first = try await registry.vaults()
@@ -99,6 +99,27 @@ struct FreeLocalVaultTests {
         #expect(second.map(\.id) == [id])
     }
 
+    @Test("an account with no vaults gets a local vault: registered with a plan, listed and local without one", arguments: [true, false])
+    func emptyAccountGetsLocalVault(hasPlan: Bool) async throws {
+        let store = isolatedStore()
+        let session = FakeAuthSession(from: .registered)
+        if !hasPlan {
+            session.failRegisterVault(with: ApiError.PaymentRequired(code: nil, message: "no plan"))
+        }
+        let registry = AttachingVaultRegistry(
+            inner: ListedVaults(rows: []),
+            attach: LocalVaultAttach(session: session, store: store, isEmpty: { _ in true })
+        )
+
+        let rows = try await registry.vaults()
+
+        let id = try #require(store.id)
+        #expect(rows.map(\.id) == [id])
+        #expect(session.calls.filter { if case .registerVault = $0 { true } else { false } }
+            == [.registerVault(id, LocalVaultStore.name)])
+        #expect(store.isAttached == hasPlan)
+    }
+
     @Test("no plan keeps the vault local and listed, and nothing is lost")
     func paymentRequiredKeepsLocal() async throws {
         let store = isolatedStore()
@@ -106,15 +127,46 @@ struct FreeLocalVaultTests {
         let session = FakeAuthSession(from: .registered)
         session.failRegisterVault(with: ApiError.PaymentRequired(code: nil, message: "no plan"))
         let other = VaultSummary(id: "account-vault", name: "Mac", encryptedName: nil, nameNonce: nil)
-        let attach = LocalVaultAttach(session: session, store: store)
+        let attach = LocalVaultAttach(session: session, store: store, isEmpty: { _ in false })
 
-        #expect(await attach.run() == .needsPlan)
+        #expect(await attach.run(accountVaults: [other]) == .needsPlan)
         let rows = try await AttachingVaultRegistry(inner: ListedVaults(rows: [other]), attach: attach).vaults()
 
         #expect(!store.isAttached)
         #expect(store.id == id)
         #expect(store.isUnattached(id))
         #expect(rows.map(\.id) == ["account-vault", id])
+    }
+
+    @Test("an empty local vault is not added to an account that has vaults, and drops out of the list")
+    func emptyLocalVaultIsNotAdded() async throws {
+        let store = isolatedStore()
+        store.create()
+        let session = FakeAuthSession(from: .registered)
+        let other = VaultSummary(id: "account-vault", name: "Mac", encryptedName: nil, nameNonce: nil)
+        let registry = AttachingVaultRegistry(
+            inner: ListedVaults(rows: [other]),
+            attach: LocalVaultAttach(session: session, store: store, isEmpty: { _ in true })
+        )
+
+        let rows = try await registry.vaults()
+
+        #expect(!session.calls.contains { if case .registerVault = $0 { true } else { false } })
+        #expect(rows.map(\.id) == ["account-vault"])
+        #expect(store.id == nil)
+    }
+
+    @Test("a local vault with content is still added to an account that has vaults")
+    func editedLocalVaultIsAdded() async throws {
+        let store = isolatedStore()
+        let id = store.create()
+        let session = FakeAuthSession(from: .registered)
+        let other = VaultSummary(id: "account-vault", name: "Mac", encryptedName: nil, nameNonce: nil)
+        let attach = LocalVaultAttach(session: session, store: store, isEmpty: { _ in false })
+
+        #expect(await attach.run(accountVaults: [other]) == .attached)
+        #expect(session.calls.filter { if case .registerVault = $0 { true } else { false } }
+            == [.registerVault(id, LocalVaultStore.name)])
     }
 
     @Test("PaymentRequired nested in AuthError still reads as needing a plan")

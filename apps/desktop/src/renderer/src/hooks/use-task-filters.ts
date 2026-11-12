@@ -13,7 +13,8 @@ import {
   onSavedFilterUpdated,
   onSavedFilterDeleted,
   type SavedFilter as DbSavedFilter,
-  type SavedFilterConfig
+  type SavedFilterConfig,
+  type SavedFilterUpdateInput
 } from '@/services/saved-filters-service'
 
 const log = createLogger('Hook:TaskFilters')
@@ -363,7 +364,9 @@ export function dbToFrontendFilter(dbFilter: DbSavedFilter): SavedFilter {
       hasTime: config.filters.hasTime,
       // Absent on rows written before the location filter existed.
       folderPaths: config.filters.folderPaths ?? [],
-      noteIds: config.filters.noteIds ?? []
+      noteIds: config.filters.noteIds ?? [],
+      // Beside `config`, not in it (docs/protocol §13.7.14).
+      expression: dbFilter.expression ?? null
     },
     sort: config.sort
       ? {
@@ -377,7 +380,8 @@ export function dbToFrontendFilter(dbFilter: DbSavedFilter): SavedFilter {
 }
 
 /**
- * Convert frontend filter to DB format
+ * Convert frontend filter to DB format. `expression` is left out: it is stored
+ * beside `config` as `SavedFilter.expression`.
  */
 export function frontendToDbConfig(
   filters: TaskFilters,
@@ -474,7 +478,7 @@ export const useSavedFilters = (): UseSavedFiltersReturn => {
     void (async () => {
       try {
         const config = frontendToDbConfig(filters, sort)
-        await savedFiltersService.create({ name, config })
+        await savedFiltersService.create({ name, config, expression: filters.expression ?? null })
         // Event subscription will update state
       } catch (error) {
         log.error('Failed to save filter:', error)
@@ -497,16 +501,15 @@ export const useSavedFilters = (): UseSavedFiltersReturn => {
     (id: string, updates: Partial<SavedFilter>): void => {
       void (async () => {
         try {
-          const updateInput: { id: string; name?: string; config?: SavedFilterConfig } = { id }
+          const updateInput: SavedFilterUpdateInput = { id }
           if (updates.name) updateInput.name = updates.name
           if (updates.filters || updates.sort) {
             // Get current filter to merge updates
             const current = savedFilters?.find((f) => f.id === id)
             if (current) {
-              updateInput.config = frontendToDbConfig(
-                updates.filters ?? current.filters,
-                updates.sort ?? current.sort
-              )
+              const filters = updates.filters ?? current.filters
+              updateInput.config = frontendToDbConfig(filters, updates.sort ?? current.sort)
+              updateInput.expression = filters.expression ?? null
             }
           }
           await savedFiltersService.update(updateInput)
@@ -532,8 +535,9 @@ export const useSavedFilters = (): UseSavedFiltersReturn => {
 
       void (async () => {
         try {
-          const config = frontendToDbConfig(current.filters, current.sort, newStarred)
-          await savedFiltersService.update({ id, config })
+          // Only the flag: rebuilding the config from what this build knows
+          // would drop keys a newer build wrote (docs/protocol §13.7.14).
+          await savedFiltersService.update({ id, starred: newStarred })
         } catch (error) {
           log.error('Failed to toggle star:', error)
           setSavedFilters((prev) =>

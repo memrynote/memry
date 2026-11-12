@@ -146,6 +146,7 @@
     "requestTimedOut": "תם הזמן שהוקצב לבקשת הסנכרון. כדאי לבדוק את החיבור לאינטרנט."
   },
   "googleCalendar": {
+    "requestRejected": "Google דחתה את הפריט הזה. יש לבדוק את התאריך והשעה שלו ולנסות שוב.",
     "connectFailed": "לא ניתן היה להתחבר ל-Google Calendar. אפשר לנסות שוב בעוד רגע.",
     "reconnectNeeded": "פג תוקף החיבור שלך ל-Google Calendar. יש לנתק ולהתחבר מחדש.",
     "misconfigured": "Google Calendar לא מוגדר כראוי. אם זה ממשיך לקרות, אפשר לפנות לתמיכה.",
@@ -159,7 +160,7 @@
   },
   "ai": {
     "inlineDisabled": "עריכת AI בתוך הטקסט מושבתת",
-    "listOllamaModelsFailed": "טעינת רשימת המודלים של Ollama נכשלה",
+    "listModelsFailed": "לא ניתן היה להציג את רשימת המודלים",
     "writingAssistInvalid": "לא ניתן לשלוח את הבקשה למודל ה-AI.",
     "apiKeyMissing": "כדי להשתמש בכלי הכתיבה, יש להוסיף את מפתח ה-API של {provider} ב-הגדרות ← AI.",
     "apiKeyInvalid": "מפתח ה-API של {provider} נדחה. כדאי לבדוק אותו ב-הגדרות ← AI.",
@@ -186,6 +187,10 @@
     "removeDeviceFailed": "הסרת המכשיר נכשלה",
     "renameDeviceFailed": "שינוי שם המכשיר נכשל",
     "initiateOAuthFailed": "הפעלת OAuth נכשלה",
+    "retryOAuthFailed": "לא ניתן היה לפתוח מחדש את הדפדפן להתחברות. יש להתחיל את ההתחברות מחדש.",
+    "oauthExpired": "תוקף ההתחברות פג. אפשר לנסות שוב.",
+    "oauthInvalidResponse": "לא ניתן היה לקבל קישור התחברות תקין. אפשר לנסות שוב.",
+    "oauthCancelled": "ההתחברות באמצעות Google בוטלה. אפשר לנסות שוב.",
     "setupFirstDeviceOAuthFailed": "הגדרת המכשיר הראשון באמצעות OAuth נכשלה",
     "confirmRecoveryPhraseFailed": "אישור ביטוי השחזור נכשל"
   },

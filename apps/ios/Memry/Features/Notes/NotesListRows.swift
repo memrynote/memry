@@ -57,6 +57,7 @@ struct TaskSearchResults: View {
             Section {
                 ForEach(hits, id: \.id) { hit in
                     Button {
+                        Telemetry.shared.track(.searchResultOpened, surface: .search, action: "opened", objectType: "task")
                         router?.openTask(hit.id)
                     } label: {
                         TaskSearchHitLabel(hit: hit)
@@ -129,6 +130,7 @@ struct SearchHitRow: View {
            let date = hit.journalDate.flatMap(JournalLink.date(fromWikiTarget:)),
            let openJournalDay {
             Button {
+                Telemetry.shared.track(.searchResultOpened, surface: .search, action: "opened", objectType: "journal")
                 openJournalDay(date)
             } label: {
                 SearchHitLabel(hit: hit)
@@ -143,6 +145,9 @@ struct SearchHitRow: View {
             NavigationLink(value: NoteRoute(id: hit.id)) {
                 SearchHitLabel(hit: hit)
             }
+            .simultaneousGesture(TapGesture().onEnded {
+                Telemetry.shared.track(.searchResultOpened, surface: .search, action: "opened", objectType: "note")
+            })
         }
     }
 }

@@ -53,6 +53,12 @@ export type Bindings = {
   APPLE_APP_STORE_ENVIRONMENTS?: string
   TELEMETRY_HMAC_KEY: string
   POSTHOG_KEY?: string
+  // App Store Connect API key and external TestFlight group for the desktop iPhone beta
+  // invite (routes/ios-beta.ts). Same values as landing's /api/subscribe. Absent -> 503.
+  ASC_KEY_ID?: string
+  ASC_ISSUER_ID?: string
+  ASC_PRIVATE_KEY?: string
+  ASC_BETA_GROUP_ID?: string
   POSTHOG_HOST?: string
   GITHUB_TOKEN?: string
   // R2 presign (direct-to-R2 attachment transfers, #1836). All four optional:
