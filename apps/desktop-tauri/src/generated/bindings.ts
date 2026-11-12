@@ -5,7 +5,10 @@ import * as __TAURI_EVENT from "@tauri-apps/api/event";
 
 /** Commands */
 export const commands = {
-	/**  The settings with the key masked (`ai-inline:get-settings`). */
+	/**
+	 *  The settings with the key masked (`ai-inline:get-settings`). The key itself is never read,
+	 *  so a locked keychain still opens the screen.
+	 */
 	aiInlineGetSettings: () => __TAURI_INVOKE<InlineAiSettings>("ai_inline_get_settings"),
 	/**
 	 *  The models of the configured Ollama (`ai-inline:list-ollama-models`). Nothing listening is

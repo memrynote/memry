@@ -21,9 +21,9 @@ pub fn builder() -> Builder<Wry> {
         .disable_serde_phases()
         .commands(collect_commands![
             // ai
-            crate::commands::ai::ai_inline_get_settings,
+            crate::commands::ai::ai_inline_get_settings::<Wry>,
             crate::commands::ai::ai_inline_list_ollama_models,
-            crate::commands::ai::ai_inline_set_settings,
+            crate::commands::ai::ai_inline_set_settings::<Wry>,
             crate::commands::ai::ai_inline_test_connection,
             // app
             crate::commands::app::app_info,

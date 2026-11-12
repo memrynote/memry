@@ -42,20 +42,27 @@ struct ModelEntry {
     id: Option<String>,
 }
 
-/// The client of every probe: `builder` (the shared TLS stack) with redirects off. reqwest keeps
-/// `x-api-key` and `x-goog-api-key` across a cross-host redirect, so a redirect is reported as
-/// the provider's answer and never followed.
-pub fn probe_client(builder: reqwest::ClientBuilder) -> reqwest::Client {
-    builder
-        .redirect(reqwest::redirect::Policy::none())
-        .build()
-        .expect("the probe HTTP client needs a process default rustls crypto provider")
+/// The client of every probe: the caller's builder (the shared TLS stack) with redirects off.
+/// reqwest keeps `x-api-key` and `x-goog-api-key` across a cross-host redirect, so a redirect is
+/// reported as the provider's answer and never followed. The only way to build one is
+/// [`ProbeClient::new`], so no probe runs on a client that follows redirects.
+pub struct ProbeClient(reqwest::Client);
+
+impl ProbeClient {
+    pub fn new(builder: reqwest::ClientBuilder) -> Self {
+        Self(
+            builder
+                .redirect(reqwest::redirect::Policy::none())
+                .build()
+                .expect("the probe HTTP client needs a process default rustls crypto provider"),
+        )
+    }
 }
 
-/// `GET <base>/models` with the provider's authentication, on a [`probe_client`]. The body of a
+/// `GET <base>/models` with the provider's authentication, on a [`ProbeClient`]. The body of a
 /// 2xx is returned.
 pub async fn probe(
-    client: &reqwest::Client,
+    client: &ProbeClient,
     provider: AiProvider,
     base_url: &str,
     key: Option<&str>,
@@ -69,6 +76,7 @@ pub async fn probe(
         .map_err(|error| ProbeFailure::Other(error.to_string()))?;
     let url = format!("{}/models", base_url.trim_end_matches('/'));
     let response = client
+        .0
         .get(&url)
         .headers(headers)
         .timeout(timeout)
@@ -105,7 +113,7 @@ fn classify_send(provider: AiProvider, error: &reqwest::Error) -> ProbeFailure {
 
 /// The model ids of the Ollama at `base_url` (OpenAI dialect, `{ data: [{ id }] }`).
 pub async fn list_ollama_models(
-    client: &reqwest::Client,
+    client: &ProbeClient,
     base_url: &str,
 ) -> Result<Vec<String>, ProbeFailure> {
     let base = AiProvider::Ollama.base_url(base_url);
@@ -122,7 +130,7 @@ pub async fn list_ollama_models(
 /// Whether `settings` (with its key) can reach the provider: Ollama lists its models, the
 /// others answer `GET /models`.
 pub async fn test_connection(
-    client: &reqwest::Client,
+    client: &ProbeClient,
     settings: &InlineAiSettings,
 ) -> Result<(), ProbeFailure> {
     if settings.provider == AiProvider::Ollama {

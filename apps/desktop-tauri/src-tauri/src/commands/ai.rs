@@ -4,7 +4,7 @@
 
 use std::sync::Arc;
 
-use memry_desktop::ai::catalog::{self, ProbeFailure};
+use memry_desktop::ai::catalog::{self, ProbeClient, ProbeFailure};
 use memry_desktop::ai::provider::AiProvider;
 use memry_desktop::ai::settings::{
     AiSettingsError, InlineAiSettings, InlineAiStore, InlineAiUpdates,
@@ -13,7 +13,7 @@ use memry_desktop::i18n::{self, Arg, Args};
 use memry_desktop::locale::LocaleService;
 use memry_desktop::session::Session;
 use serde::Serialize;
-use tauri::{AppHandle, Manager, Wry};
+use tauri::{AppHandle, Manager, Runtime, Wry};
 
 use super::blocking;
 use super::error::{CommandError, ErrorKind, log_failure};
@@ -29,11 +29,11 @@ pub struct TestConnectionResult {
     pub detail: Option<String>,
 }
 
-fn store(app: &AppHandle<Wry>) -> Arc<InlineAiStore> {
+fn store<R: Runtime>(app: &AppHandle<R>) -> Arc<InlineAiStore> {
     app.state::<Arc<InlineAiStore>>().inner().clone()
 }
 
-fn locale(app: &AppHandle<Wry>) -> &'static str {
+fn locale<R: Runtime>(app: &AppHandle<R>) -> &'static str {
     app.state::<Arc<LocaleService>>().get()
 }
 
@@ -59,19 +59,25 @@ fn settings_error(locale: &str, error: AiSettingsError) -> CommandError {
     }
 }
 
-fn read(app: &AppHandle<Wry>) -> Result<InlineAiSettings, CommandError> {
+fn read<R: Runtime>(app: &AppHandle<R>) -> Result<InlineAiSettings, CommandError> {
     let vault = app.state::<Session>().current();
     store(app)
         .read(vault.as_ref())
         .map_err(|error| settings_error(locale(app), error))
 }
 
-/// The settings with the key masked (`ai-inline:get-settings`).
+/// The settings with the key masked (`ai-inline:get-settings`). The key itself is never read,
+/// so a locked keychain still opens the screen.
 #[tauri::command]
 #[specta::specta]
-pub async fn ai_inline_get_settings(app: AppHandle<Wry>) -> Result<InlineAiSettings, CommandError> {
+pub async fn ai_inline_get_settings<R: Runtime>(
+    app: AppHandle<R>,
+) -> Result<InlineAiSettings, CommandError> {
     blocking("ai_inline_get_settings", move || {
-        read(&app).map(InlineAiSettings::masked)
+        let vault = app.state::<Session>().current();
+        store(&app)
+            .masked(vault.as_ref())
+            .map_err(|error| settings_error(locale(&app), error))
     })
     .await
 }
@@ -80,8 +86,8 @@ pub async fn ai_inline_get_settings(app: AppHandle<Wry>) -> Result<InlineAiSetti
 /// key is left alone, an empty key is deleted, any other key goes to the keychain.
 #[tauri::command]
 #[specta::specta]
-pub async fn ai_inline_set_settings(
-    app: AppHandle<Wry>,
+pub async fn ai_inline_set_settings<R: Runtime>(
+    app: AppHandle<R>,
     updates: InlineAiUpdates,
 ) -> Result<InlineAiSettings, CommandError> {
     blocking("ai_inline_set_settings", move || {
@@ -113,7 +119,7 @@ pub async fn ai_inline_list_ollama_models(
         blocking("ai_inline_list_ollama_models", move || read(&app)).await?
     };
     catalog::list_ollama_models(
-        &catalog::probe_client(memry_desktop::http::builder()),
+        &ProbeClient::new(memry_desktop::http::builder()),
         &settings.base_url,
     )
     .await
@@ -161,11 +167,9 @@ pub async fn ai_inline_test_connection(
             detail: Some(i18n::t(locale, "errors:ai.inlineDisabled", &Args::new())),
         });
     }
-    let outcome = catalog::test_connection(
-        &catalog::probe_client(memry_desktop::http::builder()),
-        &settings,
-    )
-    .await;
+    let outcome =
+        catalog::test_connection(&ProbeClient::new(memry_desktop::http::builder()), &settings)
+            .await;
     let detail = match outcome {
         Ok(()) => None,
         Err(ProbeFailure::KeyMissing) => Some(text(locale, "errors:ai.apiKeyMissing", provider)),

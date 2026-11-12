@@ -107,6 +107,35 @@ describe('AIInlineSettings', () => {
     await waitFor(() => expect(toast.error).toHaveBeenCalledWith(message))
   })
 
+  it('does nothing when the screen closes before the settings arrive', async () => {
+    let fail: (error: unknown) => void = () => {}
+    commands.aiInlineGetSettings.mockReturnValue(
+      new Promise((_, reject) => {
+        fail = reject
+      })
+    )
+    const first = render(<AIInlineSettings />)
+    first.unmount()
+    fail({ kind: 'locked', code: 'secure_store_locked', message: 'locked' })
+
+    let answer: (settings: InlineAiSettings) => void = () => {}
+    commands.aiInlineGetSettings.mockReturnValue(
+      new Promise((resolve) => {
+        answer = resolve
+      })
+    )
+    const second = render(<AIInlineSettings />)
+    second.unmount()
+    answer({ ...openai, provider: 'ollama', apiKey: '', baseUrl: 'http://localhost:11434/v1' })
+
+    await new Promise((resolve) => setTimeout(resolve, 0))
+    expect(commands.aiInlineGetSettings).toHaveBeenCalledTimes(2)
+    expect(toast.error).not.toHaveBeenCalled()
+    // One catalogue probe per mount (the defaults are Ollama); a load that went on after the
+    // unmount would probe a third time.
+    expect(commands.aiInlineListOllamaModels).toHaveBeenCalledTimes(2)
+  })
+
   it('probes Ollama on open and shows it connected when it answers', async () => {
     commands.aiInlineGetSettings.mockResolvedValue({
       ...openai,

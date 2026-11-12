@@ -8,16 +8,18 @@ use std::time::Duration;
 use axum::Router;
 use axum::http::{HeaderMap, StatusCode};
 use axum::routing::get;
-use memry_desktop::ai::catalog::{ProbeFailure, list_ollama_models, probe, test_connection};
+use memry_desktop::ai::catalog::{
+    ProbeClient, ProbeFailure, list_ollama_models, probe, test_connection,
+};
 use memry_desktop::ai::provider::AiProvider;
 use memry_desktop::ai::settings::InlineAiSettings;
 use tokio::net::TcpListener;
 
 const WAIT: Duration = Duration::from_secs(10);
 
-fn client() -> reqwest::Client {
+fn client() -> ProbeClient {
     let _ = rustls::crypto::ring::default_provider().install_default();
-    memry_desktop::ai::catalog::probe_client(memry_desktop::http::builder().no_proxy())
+    ProbeClient::new(memry_desktop::http::builder().no_proxy())
 }
 
 /// A provider at `127.0.0.1:<port>` whose `/models` answers `status` with `body` and records the

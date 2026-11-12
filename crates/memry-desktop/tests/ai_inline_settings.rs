@@ -45,12 +45,13 @@ impl SecureStore for DeviceKeys {
 /// Runs inside `set_secret`, before the write lands: another writer acting mid-migration.
 type OnSet = Box<dyn Fn() + Send + Sync>;
 
-/// The keychain: an in-memory map that can be locked, can refuse only writes, can drop writes (a
-/// false-absent read) and counts reads.
+/// The keychain: an in-memory map that can be locked, can fail only reads, can refuse only
+/// writes, can drop writes (a false-absent read) and counts reads.
 #[derive(Default)]
 struct Keychain {
     items: Mutex<HashMap<(String, String), Vec<u8>>>,
     locked: AtomicBool,
+    get_fails: AtomicBool,
     set_fails: AtomicBool,
     drops_writes: AtomicBool,
     gets: AtomicUsize,
@@ -81,6 +82,11 @@ impl GenericSecrets for Keychain {
     ) -> Result<Option<Vec<u8>>, SecureStoreError> {
         self.gets.fetch_add(1, Ordering::SeqCst);
         self.check()?;
+        if self.get_fails.load(Ordering::SeqCst) {
+            return Err(SecureStoreError::Failed {
+                what: "the keychain failed the read".to_owned(),
+            });
+        }
         let key = (service.to_owned(), account.to_owned());
         Ok(self.items.lock().unwrap().get(&key).cloned())
     }
@@ -412,6 +418,36 @@ fn ollama_works_with_a_locked_keychain() {
         .write(Some(&w.vault), updates)
         .expect("ollama write");
     assert_eq!(written.base_url, "http://localhost:11435/v1");
+}
+
+#[test]
+fn a_failing_keychain_never_stops_ollama_from_opening_its_settings() {
+    let w = world();
+    w.cloud_with_key("sk-old");
+    let updates = InlineAiUpdates {
+        provider: Some(AiProvider::Ollama),
+        ..InlineAiUpdates::default()
+    };
+    w.store
+        .write(Some(&w.vault), updates)
+        .expect("switch to ollama");
+    w.store.forget();
+    w.keychain.get_fails.store(true, Ordering::SeqCst);
+
+    // The stored cloud key is unknown, not absent: masked, so it survives a round trip.
+    let masked = w.store.masked(Some(&w.vault)).expect("ollama masked read");
+    assert_eq!(masked.provider, AiProvider::Ollama);
+    assert_eq!(masked.api_key, MASKED_KEY);
+    w.store.read(Some(&w.vault)).expect("ollama read");
+
+    w.keychain.get_fails.store(false, Ordering::SeqCst);
+    w.store.forget();
+    let back = InlineAiUpdates {
+        provider: Some(AiProvider::Openai),
+        ..InlineAiUpdates::default()
+    };
+    w.store.write(Some(&w.vault), back).expect("switch back");
+    assert!(w.store.read(Some(&w.vault)).expect("read").api_key == "sk-old");
 }
 
 #[test]

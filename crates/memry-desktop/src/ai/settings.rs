@@ -151,7 +151,7 @@ pub enum AiSettingsError {
     #[error(transparent)]
     Settings(#[from] SettingsError),
     /// The keychain refused or could not be reached. Nothing was written. A read that only
-    /// shows the key (masked) or a write that leaves it alone never fails with `Locked`.
+    /// shows the key (masked) or a write that leaves it alone never fails with this.
     #[error("the AI API key could not be read or saved in the keychain: {0}")]
     Keychain(SecureStoreError),
 }
@@ -272,23 +272,23 @@ impl InlineAiStore {
         *self.cache.lock().unwrap_or_else(PoisonError::into_inner) = None;
     }
 
-    /// A locked keychain leaves the key unknown, not absent: it shows masked, so a renderer that
-    /// sends the masked value back leaves the key alone.
+    /// A keychain that cannot answer (locked or failing) leaves the key unknown, not absent: it
+    /// shows masked, so a renderer that sends the masked value back leaves the key alone. The
+    /// calls that need the key itself go through [`InlineAiStore::read`] and report the error.
     fn masked_locked(&self, vault: &OpenVault) -> Result<InlineAiSettings, AiSettingsError> {
         let mut settings = self.read_row(vault)?;
         if settings.api_key.is_empty() {
             match self.stored_key(&vault.vault_id) {
                 Ok(key) if key.is_some() => settings.api_key = MASKED_KEY.to_owned(),
                 Ok(_) => {}
-                Err(AiSettingsError::Keychain(SecureStoreError::Locked)) => {
+                Err(error) => {
                     tracing::warn!(
                         scope = SCOPE,
                         vault_id = %vault.vault_id,
-                        "the keychain is locked; the inline AI key shows as unknown"
+                        "the inline AI key shows as unknown: {error}"
                     );
                     settings.api_key = MASKED_KEY.to_owned();
                 }
-                Err(error) => return Err(error),
             }
         }
         Ok(settings.masked())
