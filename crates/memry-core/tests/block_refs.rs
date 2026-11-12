@@ -158,9 +158,9 @@ fn a_link_mention_is_a_url_mention_and_never_a_block_link() {
 /// A note's document and the updates its writes captured, not yet stored.
 type Captured = (Arc<Document>, Arc<Mutex<Vec<Vec<u8>>>>);
 
-struct Vault {
-    data: Connection,
-    index: Connection,
+pub(crate) struct Vault {
+    pub(crate) data: Connection,
+    pub(crate) index: Connection,
     docs: HashMap<String, Captured>,
     seq: i64,
 }
@@ -174,7 +174,7 @@ fn files(dir: &Path, index_migrations: &[migrations::Migration]) -> (Connection,
 }
 
 impl Vault {
-    fn new(dir: &Path, index_migrations: &[migrations::Migration]) -> Self {
+    pub(crate) fn new(dir: &Path, index_migrations: &[migrations::Migration]) -> Self {
         let (data, index) = files(dir, index_migrations);
         Self {
             data,
@@ -185,7 +185,7 @@ impl Vault {
     }
 
     /// A note titled `title` whose body is `markdown`, its update stored as the server's.
-    fn note(&mut self, id: &str, title: &str, markdown: &str) {
+    pub(crate) fn note(&mut self, id: &str, title: &str, markdown: &str) {
         let new = NewNote {
             id,
             title,
@@ -228,7 +228,7 @@ impl Vault {
     }
 
     /// Replaces `id`'s body with `markdown`, as a pulled update.
-    fn body(&mut self, id: &str, markdown: &str) {
+    pub(crate) fn body(&mut self, id: &str, markdown: &str) {
         self.replace_body(id, |document| {
             seed_document(document, markdown).expect("seed");
         });
@@ -251,8 +251,8 @@ impl Vault {
         }
     }
 
-    fn reindex(&self) {
-        reindex(&self.data, &self.index, NOW + 1_000).expect("reindex");
+    pub(crate) fn reindex(&self) -> memry_core::domain::search::Reindexed {
+        reindex(&self.data, &self.index, NOW + 1_000).expect("reindex")
     }
 
     fn edges(&self) -> Vec<BlockRefEdge> {

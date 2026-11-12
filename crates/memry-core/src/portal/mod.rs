@@ -19,12 +19,14 @@ use crate::crdt::blocks::Block;
 
 mod anchor;
 mod definition;
+mod doc_blocks;
 mod resolve;
 
-pub use anchor::{extract_anchor, is_anchor};
+pub use anchor::{extract_anchor, is_anchor, strip_anchor};
 pub use definition::{
     PortalDefinition, PortalOpen, PortalTarget, anchor_steps, parse_portal_definition,
 };
+pub use doc_blocks::{DocBlock, StampOutcome, list_doc_blocks, stamp_anchor};
 
 /// Why a portal shows what it shows.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, uniffi::Enum)]

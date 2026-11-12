@@ -22,7 +22,7 @@
 
 use std::sync::{Arc, Mutex, PoisonError};
 
-use rusqlite::Connection;
+use rusqlite::{Connection, OptionalExtension as _};
 
 use crate::api::errors::StorageError;
 use crate::crdt::body_edit::{self, BlockEdit};
@@ -31,6 +31,7 @@ use crate::crdt::registry::UpdateSink;
 use crate::crdt::{epoch, markdown_seed, update_log};
 use crate::domain::notes::ITEM_TYPE;
 use crate::domain::reads;
+use crate::portal;
 use crate::sync::outbox;
 
 /// Applies one block edit to a note's body. A locked note refuses it
@@ -137,6 +138,47 @@ pub fn append_markdown(
     append_in(&tx, ITEM_TYPE, note_id, &update, now_ms)?;
     tx.commit().map_err(storage_failed)?;
     Ok(true)
+}
+
+/// Gives the block `block_id` of a note its ` ^anchor` ([`portal::stamp_anchor`]) and stores the
+/// edit with its outbox row: the source half of a block portal (desktop `stampAnchor`). A block
+/// that already has one is answered with it and nothing is written.
+///
+/// - Returns: `None` when this vault holds no live markdown note by that id, as [`edit_block`]
+///   answers `false`: a PDF or image note has no blocks. A locked note refuses
+///   ([`CrdtError::Locked`]).
+pub fn stamp_anchor(
+    conn: &Connection,
+    note_id: &str,
+    block_id: &str,
+    device_id: &str,
+    now_ms: i64,
+) -> Result<Option<portal::StampOutcome>, CrdtError> {
+    let markdown: Option<bool> = conn
+        .query_row(
+            "SELECT COALESCE(f.file_type, n.file_type, 'markdown') = 'markdown'
+             FROM notes n LEFT JOIN note_files f ON f.note_id = n.id
+             WHERE n.id = ?1 AND n.deleted_at IS NULL",
+            [note_id],
+            |row| row.get(0),
+        )
+        .optional()
+        .map_err(storage_failed)?;
+    if markdown != Some(true) {
+        return Ok(None);
+    }
+    refuse_locked(conn, note_id)?;
+    let mut outcome = portal::StampOutcome::MissingBlock;
+    let update = author_with(conn, note_id, device_id, |document| {
+        outcome = portal::stamp_anchor(document, block_id)?;
+        Ok(())
+    })?;
+    if let Some(update) = update {
+        let tx = conn.unchecked_transaction().map_err(storage_failed)?;
+        append_in(&tx, ITEM_TYPE, note_id, &update, now_ms)?;
+        tx.commit().map_err(storage_failed)?;
+    }
+    Ok(Some(outcome))
 }
 
 /// Authors the update that appends `snapshots`, in order, to `doc_id`'s

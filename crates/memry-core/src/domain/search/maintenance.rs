@@ -243,8 +243,16 @@ fn index_note(
     done: &mut Reindexed,
 ) -> Result<(), StorageError> {
     let before = links::rows(index, id)?;
+    #[cfg(feature = "markdown")]
+    let refs_before = super::block_refs::usage_rows(index, id)?;
     index_note_rows(data, names, index, id, now_ms, done)?;
     done.links.note(id, &before, &links::rows(index, id)?);
+    #[cfg(feature = "markdown")]
+    {
+        let refs_after = super::block_refs::usage_rows(index, id)?;
+        let changed = super::block_refs::usage_targets(names, &refs_before, &refs_after);
+        done.links.usage.extend(changed);
+    }
     Ok(())
 }
 
