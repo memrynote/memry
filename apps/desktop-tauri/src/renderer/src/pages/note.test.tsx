@@ -283,7 +283,9 @@ vi.mock('@/services/notes-service', async (importOriginal) => {
       // #800 getFile probe (note.tsx): null → treated as a real markdown note.
       getFile: mocks.getFile,
       get: mocks.notesGet,
-      resolveByTitle: mocks.resolveByTitle
+      resolveByTitle: mocks.resolveByTitle,
+      // The cover picker lists the vault's attachments when it opens.
+      listVaultAttachments: async () => []
     },
     onNoteEventsDropped: (handler: () => void) => {
       mocks.droppedHandler = handler
@@ -758,8 +760,18 @@ vi.mock('@/hooks/use-database-read-only', () => ({
 }))
 
 vi.mock('@/components/note/note-cover', () => ({
-  NoteCover: ({ disabled }: { disabled?: boolean }) => (
-    <div data-testid="note-cover" data-disabled={String(!!disabled)} />
+  NoteCover: ({
+    disabled,
+    onChange
+  }: {
+    disabled?: boolean
+    onChange?: (event: React.MouseEvent<HTMLElement>) => void
+  }) => (
+    <div data-testid="note-cover" data-disabled={String(!!disabled)}>
+      <button type="button" onClick={onChange}>
+        Change cover
+      </button>
+    </div>
   )
 }))
 
@@ -2974,6 +2986,22 @@ describe('NotePage', () => {
       expect(screen.getByTestId('note-cover')).toHaveAttribute('data-disabled', 'true')
       expect(screen.getByRole('button', { name: 'editor.toolbar.rename' })).toBeDisabled()
       expect(screen.getByRole('button', { name: 'names.addMenu' })).toBeDisabled()
+    })
+
+    // A picker opened while the database was still answering writable would fail on pick.
+    it('closes an open cover picker when the database turns read-only', async () => {
+      mocks.noteState.note = {
+        ...note,
+        frontmatter: { ...note.frontmatter, cover: 'wash:sage' }
+      }
+      const page = renderWithProviders(<NotePage noteId="note-1" />)
+      fireEvent.click(await screen.findByRole('button', { name: 'Change cover' }))
+      expect(await screen.findByRole('dialog')).toBeInTheDocument()
+
+      mocks.databaseReadOnly = true
+      page.rerender(<NotePage noteId="note-1" />)
+
+      await waitFor(() => expect(screen.queryByRole('dialog')).not.toBeInTheDocument())
     })
 
     it("keeps one note's lock notice off the large file the tab shows next", async () => {
