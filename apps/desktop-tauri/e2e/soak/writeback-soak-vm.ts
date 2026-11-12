@@ -20,7 +20,7 @@ import { join, resolve, win32 } from 'node:path'
 import type { Executor } from '../harness/invoke-test'
 import { invokeTest } from '../harness/invoke-test'
 import { createClient } from '../../scripts/lib/webdriver-client.mjs'
-import { optionsFromEnv, soak } from './writeback-soak'
+import { appCommand, optionsFromEnv, soak } from './writeback-soak'
 
 /**
  * Waits up to 20 s for the app to exit and up to 20 s more for the WebView2 processes of its
@@ -47,15 +47,6 @@ const READY_MS = 120_000
 const RECOVER_MS = 180_000
 const STATE = join(process.env.WINVM_HOME ?? join(homedir(), 'vms'), 'state')
 const CDP_GUEST_PORT = 9222
-
-/** `vault_select`, the picker's command, which `invokeTest` does not call (it is not `e2e_`). */
-const SELECT_VAULT = `
-  const [path, done] = arguments;
-  window.__TAURI__.core.invoke('vault_select', { path }).then(
-    (value) => done({ ok: true, value }),
-    (error) => done({ ok: false, error })
-  );
-`
 
 export default async function run(): Promise<void> {
   const port = Number(process.env.WD_PORT)
@@ -137,12 +128,12 @@ export default async function run(): Promise<void> {
   let pid = info.pid
   const vault =
     process.env.SOAK_VAULT ?? win32.join(win32.dirname(info.appDataDir), 'vault', 'test-vault')
-  const opened = (await executor.executeAsync(SELECT_VAULT, vault)) as {
-    ok: boolean
-    value?: { success: boolean; error?: string | null }
-    error?: unknown
-  }
-  if (!opened.ok || !opened.value?.success) {
+  const opened = await appCommand<{ success: boolean; error?: string | null }>(
+    executor,
+    'vault_select',
+    { path: vault }
+  )
+  if (!opened.success) {
     throw new Error(`could not open ${vault}: ${JSON.stringify(opened)}`)
   }
 
