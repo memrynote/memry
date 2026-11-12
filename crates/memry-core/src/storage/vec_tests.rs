@@ -93,7 +93,7 @@ fn reopening_keeps_vectors_and_drops_nothing() {
         .call_blocking(|conn| {
             Ok((
                 vector(conn, VecTable::NoteSimilar, "a")?,
-                ensure_vec_tables(conn)?,
+                ensure_vec_tables(conn).map_err(failed)?,
             ))
         })
         .expect("read back");
@@ -167,6 +167,95 @@ fn an_image_or_voice_table_of_another_width_is_dropped_with_its_state() {
             Ok(())
         })
         .expect("read back");
+}
+
+/// A vec0 table whose shadow table is gone cannot be dropped or read: a defect of
+/// this file, the same on every launch. The index is derived, so it is set aside
+/// and rebuilt rather than left to fail the vault open forever.
+#[test]
+fn a_vec_table_that_cannot_be_dropped_sends_the_index_to_the_rebuild_path() {
+    let dir = temp_dir("vec-defect");
+    let path = dir.path().join("index.db");
+    let first = open_or_rebuild(&path).expect("first open");
+    put(&first.db, VecTable::Notes, "a", &unit(1.0));
+    exec(
+        &first.db,
+        "DROP TABLE vec_images;
+         CREATE VIRTUAL TABLE vec_images USING vec0(
+           image_key TEXT PRIMARY KEY, embedding float[768] distance_metric=cosine);
+         DROP TABLE vec_images_info;",
+    );
+    drop(first);
+
+    let second = open_or_rebuild(&path).expect("a vec defect must not fail the open");
+
+    assert!(
+        second
+            .rebuild_reason
+            .as_deref()
+            .is_some_and(|reason| reason.contains("vector table")),
+        "{:?}",
+        second.rebuild_reason
+    );
+    second
+        .db
+        .call_blocking(|conn| {
+            for table in VecTable::ALL {
+                assert_eq!(width(conn, table), Some(EMBEDDING_DIMENSION), "{table:?}");
+            }
+            assert_eq!(vector(conn, VecTable::Notes, "a")?, None, "rebuilt empty");
+            Ok(())
+        })
+        .expect("read back");
+    drop(second);
+    let third = open_or_rebuild(&path).expect("and the next launch opens");
+    assert!(third.rebuild_reason.is_none());
+}
+
+/// A lock is the environment's fault: it must stay an error so the index is not
+/// thrown away for it.
+#[test]
+fn a_locked_index_is_busy_not_a_vec_defect() {
+    let dir = temp_dir("vec-busy");
+    let path = dir.path().join("index.db");
+    let first = open_or_rebuild(&path).expect("first open");
+    exec(&first.db, "DROP TABLE vec_voice");
+    drop(first);
+    let mut conn = Connection::open(&path).expect("conn");
+    conn.busy_timeout(std::time::Duration::ZERO)
+        .expect("no wait");
+    let holder = Connection::open(&path).expect("holder");
+    holder.execute_batch("BEGIN IMMEDIATE").expect("lock");
+
+    let err = ensure_vec_tables(&mut conn).expect_err("the create needs the write lock");
+
+    assert!(
+        matches!(&err, rusqlite::Error::SqliteFailure(f, _) if f.code == rusqlite::ErrorCode::DatabaseBusy),
+        "{err:?}"
+    );
+    assert!(!crate::storage::index_db::is_migration_defect(&err));
+}
+
+#[test]
+fn only_the_tables_that_existed_are_reported_dropped() {
+    let dir = temp_dir("vec-dropped");
+    let path = dir.path().join("index.db");
+    let first = open_or_rebuild(&path).expect("first open");
+    exec(
+        &first.db,
+        "DROP TABLE vec_notes;
+         DROP TABLE vec_note_chunks;
+         DROP TABLE vec_note_similar;
+         CREATE VIRTUAL TABLE vec_notes USING vec0(
+           note_id TEXT PRIMARY KEY, embedding float[384] distance_metric=cosine);",
+    );
+
+    let dropped = first
+        .db
+        .call_blocking(|conn| ensure_vec_tables(conn).map_err(failed))
+        .expect("ensure");
+
+    assert_eq!(dropped, ["vec_notes"]);
 }
 
 #[test]

@@ -11,7 +11,7 @@
 //!
 //! A vector is a little-endian `f32` blob, as `Float32Array` writes it.
 
-use std::sync::Once;
+use std::sync::OnceLock;
 
 use rusqlite::{Connection, OptionalExtension, params};
 
@@ -85,37 +85,46 @@ fn failed(err: rusqlite::Error) -> StorageError {
 }
 
 /// Makes vec0 available on every SQLite connection this process opens from now on.
-/// Idempotent; call it before the index opens.
-pub fn register() {
-    static REGISTER: Once = Once::new();
-    REGISTER.call_once(|| {
-        // SAFETY: `sqlite3_vec_init` is sqlite-vec's extension entry point, compiled
-        // against the bundled SQLite (`SQLITE_CORE`). The crate declares it without
-        // arguments; its C signature is the `(db, pzErrMsg, pApi)` of
-        // `RawAutoExtension`, so the transmute only restores the real type. It opens
-        // no database and touches no auto-extension, as the contract asks.
-        let init = unsafe {
-            std::mem::transmute::<*const (), rusqlite::auto_extension::RawAutoExtension>(
-                sqlite_vec::sqlite3_vec_init as *const (),
-            )
-        };
-        // SAFETY: as above; registration only appends to SQLite's list.
-        if let Err(err) = unsafe { rusqlite::auto_extension::register_auto_extension(init) } {
-            // Without vec0, opening the index fails at `ensure_vec_tables` with
-            // "no such module: vec0", which names the cause.
-            eprintln!("memry index: could not register sqlite-vec: {err}");
-        }
-    });
+/// Idempotent; call it before the index opens. An error means vec0 is missing,
+/// which is the build's fault and not the index file's, so the caller must not
+/// treat it as a defect of the file.
+pub fn register() -> Result<(), StorageError> {
+    static REGISTER: OnceLock<Result<(), String>> = OnceLock::new();
+    REGISTER
+        .get_or_init(|| {
+            // SAFETY: `sqlite3_vec_init` is sqlite-vec's extension entry point. It is
+            // compiled from C against sqlite-vec's own vendored `sqlite3.h` with
+            // `SQLITE_CORE`, so it calls SQLite's functions directly and only the
+            // symbols resolve to the engine rusqlite bundles. The crate declares it
+            // without arguments; its C signature is the `(db, pzErrMsg, pApi)` of
+            // `RawAutoExtension`, so the transmute only restores the real type. It
+            // opens no database and touches no auto-extension, as the contract asks.
+            let init = unsafe {
+                std::mem::transmute::<*const (), rusqlite::auto_extension::RawAutoExtension>(
+                    sqlite_vec::sqlite3_vec_init as *const (),
+                )
+            };
+            // SAFETY: as above; registration only appends to SQLite's list.
+            unsafe { rusqlite::auto_extension::register_auto_extension(init) }
+                .map_err(|err| err.to_string())
+        })
+        .clone()
+        .map_err(|err| StorageError::Failed {
+            what: format!("could not register sqlite-vec: {err}"),
+        })
 }
 
 /// Creates the vec0 tables the index lacks, after dropping any family with a table
 /// of another width. Runs in one transaction. Returns the tables that were
-/// dropped, for the caller's log.
-pub fn ensure_vec_tables(conn: &mut Connection) -> Result<Vec<&'static str>, StorageError> {
-    let tx = conn.transaction().map_err(failed)?;
+/// dropped, for the caller's log. The raw SQLite error is returned so the caller
+/// can tell a defect of the file (a missing shadow table) from a lock or an I/O
+/// error.
+pub fn ensure_vec_tables(conn: &mut Connection) -> Result<Vec<&'static str>, rusqlite::Error> {
+    let tx = conn.transaction()?;
     let mut dropped = Vec::new();
     for (tables, state) in FAMILIES {
         let mut stale = false;
+        let mut present = Vec::new();
         for table in tables {
             let sql: Option<Option<String>> = tx
                 .query_row(
@@ -123,21 +132,19 @@ pub fn ensure_vec_tables(conn: &mut Connection) -> Result<Vec<&'static str>, Sto
                     [table.name()],
                     |row| row.get(0),
                 )
-                .optional()
-                .map_err(failed)?;
+                .optional()?;
             if let Some(sql) = sql {
+                present.push(table.name());
                 stale |= declared_width(sql.as_deref().unwrap_or("")) != Some(EMBEDDING_DIMENSION);
             }
         }
         if stale {
             for table in tables {
-                tx.execute_batch(&format!("DROP TABLE IF EXISTS {}", table.name()))
-                    .map_err(failed)?;
-                dropped.push(table.name());
+                tx.execute_batch(&format!("DROP TABLE IF EXISTS {}", table.name()))?;
             }
+            dropped.extend(present);
             if let Some(state) = state {
-                tx.execute_batch(&format!("DELETE FROM {state}"))
-                    .map_err(failed)?;
+                tx.execute_batch(&format!("DELETE FROM {state}"))?;
             }
         }
     }
@@ -149,10 +156,9 @@ pub fn ensure_vec_tables(conn: &mut Connection) -> Result<Vec<&'static str>, Sto
              )",
             table.name(),
             table.id_column()
-        ))
-        .map_err(failed)?;
+        ))?;
     }
-    tx.commit().map_err(failed)?;
+    tx.commit()?;
     Ok(dropped)
 }
 

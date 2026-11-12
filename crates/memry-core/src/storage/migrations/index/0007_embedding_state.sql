@@ -3,11 +3,13 @@
 --
 -- Same names and columns as Electron's index database (`note_embedding_state`
 -- and `image_embedding_state` in `packages/db-schema/src/schema/`,
--- `voice_embedding_state` in `apps/desktop/src/main/database/voice-vectors.ts`,
--- `fts_inbox` in `apps/desktop/src/main/database/fts-inbox.ts`), so the
--- migration from Electron can copy rows when note ids are kept. Electron's
--- foreign keys to `note_cache` are left out: this index has no `note_cache`, and
--- the embedding reconcile prunes rows of notes that are gone.
+-- `voice_embedding_state` in `apps/desktop/src/main/database/voice-vectors.ts`),
+-- so the migration from Electron can copy rows when note ids are kept.
+-- Electron's foreign keys to `note_cache` are left out: this index has no
+-- `note_cache`, and the embedding reconcile prunes rows of notes that are gone.
+-- `fts_inbox` is different: Electron keeps it in `data.db`
+-- (`apps/desktop/src/main/database/fts-inbox.ts` takes a `DataDb`), so there is
+-- nothing to copy from an Electron index; it is built here from the inbox items.
 --
 -- The vectors these rows describe live in vec0 tables that `storage/vec.rs`
 -- creates when the index opens, never in a migration, so no later migration of

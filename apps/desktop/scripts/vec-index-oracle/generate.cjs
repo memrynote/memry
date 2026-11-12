@@ -13,7 +13,7 @@
 // query is `nearest` of `src/main/search/semantic.ts`. `vec_images` is built at
 // width 768, as a table from an older model, which the Rust open must drop.
 
-const { mkdtempSync, readFileSync, readdirSync, writeFileSync } = require('node:fs')
+const { mkdtempSync, readFileSync, readdirSync, rmSync, writeFileSync } = require('node:fs')
 const { tmpdir } = require('node:os')
 const { join } = require('node:path')
 const { gzipSync } = require('node:zlib')
@@ -140,6 +140,7 @@ const version = db.prepare('SELECT vec_version() AS v').get().v
 db.close()
 
 writeFileSync(join(FIXTURES, 'index-vec-v6.db.gz'), gzipSync(readFileSync(path), { level: 9 }))
+rmSync(dir, { recursive: true, force: true })
 writeFileSync(
   join(FIXTURES, 'index-vec-v6.json'),
   `${JSON.stringify(
