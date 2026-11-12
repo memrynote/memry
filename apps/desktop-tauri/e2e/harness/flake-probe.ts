@@ -75,6 +75,28 @@ export async function installProbe(page: Page): Promise<void> {
         original(tr)
       }
     }
+    for (const name of [
+      'removeAllRanges',
+      'empty',
+      'collapse',
+      'collapseToStart',
+      'collapseToEnd',
+      'addRange',
+      'setBaseAndExtent',
+      'setPosition'
+    ] as const) {
+      const proto = Selection.prototype as unknown as Record<
+        string,
+        (...args: unknown[]) => unknown
+      >
+      const original = proto[name]
+      proto[name] = function (this: Selection, ...args: unknown[]) {
+        stamp(
+          `Selection.${name} called by ${new Error().stack?.split('\n').slice(1, 4).join(' | ').slice(0, 300)}`
+        )
+        return original.apply(this, args)
+      }
+    }
     let html = ''
     new MutationObserver(() => {
       const now = document.querySelector('.ProseMirror td')?.innerHTML ?? ''
