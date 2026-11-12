@@ -155,9 +155,11 @@ test.describe('Note open byte stability', () => {
     await openInEditor(page, title)
     await expect(page.locator(NOTE_EDITOR).first()).toContainText('Tagged')
 
-    // #then opening it scheduled no write-back: a hash tag is never promoted, so the open
-    // changes nothing in the document
-    expect((await writebackDebug(app, baseline.id))?.performedCount ?? 0).toBe(0)
+    // #then a hash tag is never promoted, so the open changes nothing in the document. Electron
+    // asserted that no write-back pass ran; on WebKitGTK the editor's open sends the document an
+    // update and one pass runs, which finds the file already holding the body. The claim that
+    // survives every engine is the one asserted below: the file is never rewritten.
+    expect((await writebackDebug(app, baseline.id))?.lastError ?? null).toBeNull()
 
     // #and the note really does carry the tag, through the index (#1454), so this is not a lost
     // feature. The index projects it on its own schedule, so it is polled.
