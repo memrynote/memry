@@ -86,7 +86,8 @@ import { RESTORE_MAX_MS } from '@/hooks/use-tab-scroll-restore'
 import { useBlockRefScroll } from '@/hooks/use-block-ref-scroll'
 import type { BlockRef } from '@/lib/block-ref'
 import { splitWikiTarget, normalizeHeading } from '@memry/shared/wiki-target'
-import { useTabs, useActiveTab } from '@/contexts/tabs'
+import { useTabs, useActiveTab, useIsTabActive } from '@/contexts/tabs'
+import { useTabIdentity } from '@/contexts/tabs/tab-identity'
 import { useOpenPage, useOpenTarget } from '@/hooks/use-open-target'
 import { useNoteDeleteGuard } from '@/components/note/content-area/portal-flows/use-note-delete-guard'
 import type { WikiLinkOpenTarget } from '@/components/note/content-area/types'
@@ -578,7 +579,11 @@ export function NotePage({ noteId }: NotePageProps) {
     return () => marqueeZoneEl.removeEventListener('mousedown', handler)
   }, [marqueeZoneEl])
 
-  const isActiveNote = activeTab?.entityId === noteId
+  // The same note can be open in two split groups, and `activeTab` is only the focused one:
+  // comparing the entity alone would make both pages active, and one key would move both.
+  const tabIdentity = useTabIdentity()
+  const isOwnTabActive = useIsTabActive(tabIdentity?.tabId ?? '', tabIdentity?.groupId)
+  const isActiveNote = activeTab?.entityId === noteId && (!tabIdentity || isOwnTabActive)
   // A large file has no editor DOM to walk, and what is mounted is a few dozen
   // virtualized rows out of millions — searching them would answer confidently
   // about the wrong thing. The viewer owns find on that surface instead.

@@ -239,6 +239,10 @@ export function ScaledLines({
     const onBodyKeyDown = (event: KeyboardEvent): void => {
       if (!activeRef.current || event.defaultPrevented) return
       if (event.target !== document.body && event.target !== document.documentElement) return
+      // Shift+Arrow is the second key of the pane chord (⌘K, then Shift+Arrow). The chord's own
+      // listener may run after this one, when a restored tab mounted this viewer first, and
+      // would find the key already taken here.
+      if (event.shiftKey && event.key.startsWith('Arrow')) return
       onKeyDown(event)
     }
 
