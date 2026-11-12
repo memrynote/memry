@@ -3,6 +3,9 @@
     "copyFailed": "Nie udało się skopiować portalu",
     "hiddenCount": "Ukryte: {count}",
     "windowFailed": "Nie udało się otworzyć tego portalu. Otwórz zamiast tego notatkę źródłową.",
+    "noTarget": "Ten portal nie ma jeszcze celu. Dodaj notatkę do definicji albo usuń blok.",
+    "invalidJson": "Definicja tego portalu nie jest prawidłowym JSON-em. Popraw ją poniżej albo usuń blok.",
+    "invalidShape": "Definicja tego portalu nie zawiera notatki ani wyszukiwania. Popraw ją poniżej albo usuń blok.",
     "unreadable": "Nie można odczytać tego portalu. Usuń blok i dodaj nowy portal.",
     "search": {
       "editQuery": "Edytuj zapytanie",

@@ -3,6 +3,9 @@
     "copyFailed": "Kan het portaal niet kopiëren",
     "hiddenCount": "{count} verborgen",
     "windowFailed": "Dit portaal kan niet worden geopend. Open in plaats daarvan de bronnotitie.",
+    "noTarget": "Dit portaal heeft nog geen doel. Voeg een notitie toe aan de definitie of verwijder het blok.",
+    "invalidJson": "De definitie van dit portaal is geen geldige JSON. Herstel die hieronder of verwijder het blok.",
+    "invalidShape": "De definitie van dit portaal bevat geen notitie of zoekopdracht. Herstel die hieronder of verwijder het blok.",
     "unreadable": "Dit portaal kan niet worden gelezen. Verwijder het blok en voeg een nieuw portaal toe.",
     "search": {
       "editQuery": "Zoekopdracht bewerken",

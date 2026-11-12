@@ -3,6 +3,9 @@
     "copyFailed": "無法複製傳送門",
     "hiddenCount": "已隱藏 {count} 個",
     "windowFailed": "無法開啟此傳送門。請改為開啟來源筆記。",
+    "noTarget": "此傳送門尚未指定目標。請在定義中加入筆記，或移除此區塊。",
+    "invalidJson": "此傳送門的定義不是有效的 JSON。請在下方修正，或移除此區塊。",
+    "invalidShape": "此傳送門的定義中沒有筆記或搜尋。請在下方修正，或移除此區塊。",
     "unreadable": "無法讀取此傳送門。請移除該區塊並新增傳送門。",
     "search": {
       "editQuery": "編輯查詢",

@@ -3,6 +3,9 @@
     "copyFailed": "Não foi possível copiar o portal",
     "hiddenCount": "{count} oculto(s)",
     "windowFailed": "Não foi possível abrir este portal. Abra a nota de origem.",
+    "noTarget": "Este portal ainda não tem destino. Adicione uma nota à definição ou remova o bloco.",
+    "invalidJson": "A definição deste portal não é um JSON válido. Corrija abaixo ou remova o bloco.",
+    "invalidShape": "A definição deste portal não tem nota nem pesquisa. Corrija abaixo ou remova o bloco.",
     "unreadable": "Não é possível ler este portal. Remova o bloco e adicione um novo portal.",
     "search": {
       "editQuery": "Editar consulta",

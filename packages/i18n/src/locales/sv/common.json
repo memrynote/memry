@@ -3,6 +3,9 @@
     "copyFailed": "Det gick inte att kopiera portalen",
     "hiddenCount": "{count} dolda",
     "windowFailed": "Den här portalen kunde inte öppnas. Öppna källanteckningen i stället.",
+    "noTarget": "Den här portalen har inget mål ännu. Lägg till en anteckning i definitionen eller ta bort blocket.",
+    "invalidJson": "Portalens definition är inte giltig JSON. Åtgärda den nedan eller ta bort blocket.",
+    "invalidShape": "Portalens definition har ingen anteckning eller sökning. Åtgärda den nedan eller ta bort blocket.",
     "unreadable": "Den här portalen kan inte läsas. Ta bort blocket och lägg till en ny portal.",
     "search": {
       "editQuery": "Redigera fråga",

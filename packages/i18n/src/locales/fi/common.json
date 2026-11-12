@@ -3,6 +3,9 @@
     "copyFailed": "Portaalia ei voitu kopioida",
     "hiddenCount": "{count} piilotettu",
     "windowFailed": "Tätä portaalia ei voitu avata. Avaa sen sijaan lähdemuistiinpano.",
+    "noTarget": "Tällä portaalilla ei ole vielä kohdetta. Lisää määritykseen muistiinpano tai poista lohko.",
+    "invalidJson": "Tämän portaalin määritys ei ole kelvollista JSONia. Korjaa se alla tai poista lohko.",
+    "invalidShape": "Tämän portaalin määrityksessä ei ole muistiinpanoa tai hakua. Korjaa se alla tai poista lohko.",
     "unreadable": "Tätä portaalia ei voi lukea. Poista lohko ja lisää uusi portaali.",
     "search": {
       "editQuery": "Muokkaa hakua",

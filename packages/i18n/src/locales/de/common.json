@@ -3,6 +3,9 @@
     "copyFailed": "Das Portal konnte nicht kopiert werden",
     "hiddenCount": "{count} ausgeblendet",
     "windowFailed": "Dieses Portal konnte nicht geöffnet werden. Öffne stattdessen die Quellnotiz.",
+    "noTarget": "Dieses Portal hat noch kein Ziel. Füge der Definition eine Notiz hinzu oder entferne den Block.",
+    "invalidJson": "Die Definition dieses Portals ist kein gültiges JSON. Korrigiere sie unten oder entferne den Block.",
+    "invalidShape": "Die Definition dieses Portals enthält weder eine Notiz noch eine Suche. Korrigiere sie unten oder entferne den Block.",
     "unreadable": "Dieses Portal kann nicht gelesen werden. Entferne den Block und füge ein neues Portal hinzu.",
     "search": {
       "editQuery": "Abfrage bearbeiten",
