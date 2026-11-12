@@ -189,7 +189,7 @@ struct TasksNotesTests {
         let search = try CoreVaultSearch(vault: vault.vault, executor: .shared)
         let model = VaultSearchViewModel(search: search, debounce: .zero)
 
-        await model.prepare()
+        try await search.reindex()
         model.run("cardamom")
         await model.settle()
 
