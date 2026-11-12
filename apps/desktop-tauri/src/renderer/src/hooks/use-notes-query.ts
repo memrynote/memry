@@ -269,12 +269,20 @@ export function useNote(id: string | null, options: UseNoteOptions = {}): UseNot
  * may have taken the list before the change: its answer then clears the invalidation and stays
  * fresh for the stale time, so a note made during the sidebar's first read stayed out of the
  * tree (#3967). Cancelling that read silently, as TanStack does for a refetch over data, makes
- * the refetch a new read; only active queries, which the invalidation refetches at once.
+ * the refetch a new read; only active queries, which the invalidation refetches at once. Only a
+ * list with no data yet is cancelled: once it has answered, TanStack already restarts its read,
+ * and cancelling on every event of a burst (a sync pull, a bulk import) would keep a large
+ * vault's read from ever landing.
  */
 function rereadLists(queryClient: QueryClient): void {
   const lists = notesKeys.lists()
   void queryClient.cancelQueries(
-    { queryKey: lists, type: 'active', fetchStatus: 'fetching' },
+    {
+      queryKey: lists,
+      type: 'active',
+      fetchStatus: 'fetching',
+      predicate: (query) => query.state.data === undefined
+    },
     { silent: true, revert: false }
   )
   void queryClient.invalidateQueries({ queryKey: lists })
