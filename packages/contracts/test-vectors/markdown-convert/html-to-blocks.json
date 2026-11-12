@@ -4,7 +4,7 @@
     "oracle": "apps/desktop/scripts/markdown-oracle (Electron converter run in place; gray-matter 4.0.3, js-yaml 3.15.1)",
     "note": "BlockNote HTMLToBlocks on the memry schema: nestedListsToBlockNoteStructure, whitespace normalisation, the ProseMirror DOMParser with the rules of all 39 node types and 8 marks, and nodeToBlock. Blocks are canonical JSON: ids dropped, props sorted, null and undefined props omitted.",
     "yamlJsonEncoding": "Numbers that JSON cannot carry are {\"$num\": \"NaN\"|\"Infinity\"|\"-Infinity\"|\"-0\"}, a Date is {\"$date\": ISO}, a Buffer is {\"$bin\": base64}, a map with a \"$\"-prefixed key is wrapped as {\"$map\": {...}}. Key order is Object.keys order.",
-    "caseCount": 216
+    "caseCount": 220
   },
   "cases": [
     {
@@ -769,6 +769,312 @@
                   "backgroundColor": "blue"
                 },
                 "text": "b",
+                "type": "text"
+              }
+            ],
+            "children": []
+          }
+        ]
+      }
+    },
+    {
+      "id": "html-blocks/html-to-blocks/block-style-color-unnamed",
+      "op": "html-to-blocks",
+      "input": {
+        "html": "<h2 style=\"caret-color: rgb(0, 0, 0); color: rgb(0, 0, 0); background-color: rgba(0, 0, 0, 0)\">h</h2><p style=\"color: #123456; background-color: inherit\">p</p><blockquote style=\"color: rgb(1, 2, 3)\">q</blockquote>"
+      },
+      "expected": {
+        "status": "ok",
+        "output": [
+          {
+            "type": "heading",
+            "props": {
+              "backgroundColor": "default",
+              "isToggleable": false,
+              "level": 2,
+              "textAlignment": "left",
+              "textColor": "default"
+            },
+            "content": [
+              {
+                "styles": {},
+                "text": "h",
+                "type": "text"
+              }
+            ],
+            "children": []
+          },
+          {
+            "type": "paragraph",
+            "props": {
+              "backgroundColor": "default",
+              "textAlignment": "left",
+              "textColor": "default"
+            },
+            "content": [
+              {
+                "styles": {},
+                "text": "p",
+                "type": "text"
+              }
+            ],
+            "children": []
+          },
+          {
+            "type": "quote",
+            "props": {
+              "backgroundColor": "default",
+              "textColor": "default"
+            },
+            "content": [
+              {
+                "styles": {},
+                "text": "q",
+                "type": "text"
+              }
+            ],
+            "children": []
+          }
+        ]
+      }
+    },
+    {
+      "id": "html-blocks/html-to-blocks/block-data-color-unnamed",
+      "op": "html-to-blocks",
+      "input": {
+        "html": "<p data-text-color=\"rgb(1, 2, 3)\" data-background-color=\"teal\">d</p>"
+      },
+      "expected": {
+        "status": "ok",
+        "output": [
+          {
+            "type": "paragraph",
+            "props": {
+              "backgroundColor": "teal",
+              "textAlignment": "left",
+              "textColor": "rgb(1, 2, 3)"
+            },
+            "content": [
+              {
+                "styles": {},
+                "text": "d",
+                "type": "text"
+              }
+            ],
+            "children": []
+          }
+        ]
+      }
+    },
+    {
+      "id": "html-blocks/html-to-blocks/block-style-color-every-name",
+      "op": "html-to-blocks",
+      "input": {
+        "html": "<p style=\"color: gray; background-color: brown\">g</p><p style=\"color: brown; background-color: red\">b</p><p style=\"color: red; background-color: orange\">r</p><p style=\"color: orange; background-color: yellow\">o</p><p style=\"color: yellow; background-color: green\">y</p><p style=\"color: green; background-color: blue\">g</p><p style=\"color: blue; background-color: purple\">b</p><p style=\"color: purple; background-color: pink\">p</p><p style=\"color: pink; background-color: gray\">p</p>"
+      },
+      "expected": {
+        "status": "ok",
+        "output": [
+          {
+            "type": "paragraph",
+            "props": {
+              "backgroundColor": "brown",
+              "textAlignment": "left",
+              "textColor": "gray"
+            },
+            "content": [
+              {
+                "styles": {},
+                "text": "g",
+                "type": "text"
+              }
+            ],
+            "children": []
+          },
+          {
+            "type": "paragraph",
+            "props": {
+              "backgroundColor": "red",
+              "textAlignment": "left",
+              "textColor": "brown"
+            },
+            "content": [
+              {
+                "styles": {},
+                "text": "b",
+                "type": "text"
+              }
+            ],
+            "children": []
+          },
+          {
+            "type": "paragraph",
+            "props": {
+              "backgroundColor": "orange",
+              "textAlignment": "left",
+              "textColor": "red"
+            },
+            "content": [
+              {
+                "styles": {},
+                "text": "r",
+                "type": "text"
+              }
+            ],
+            "children": []
+          },
+          {
+            "type": "paragraph",
+            "props": {
+              "backgroundColor": "yellow",
+              "textAlignment": "left",
+              "textColor": "orange"
+            },
+            "content": [
+              {
+                "styles": {},
+                "text": "o",
+                "type": "text"
+              }
+            ],
+            "children": []
+          },
+          {
+            "type": "paragraph",
+            "props": {
+              "backgroundColor": "green",
+              "textAlignment": "left",
+              "textColor": "yellow"
+            },
+            "content": [
+              {
+                "styles": {},
+                "text": "y",
+                "type": "text"
+              }
+            ],
+            "children": []
+          },
+          {
+            "type": "paragraph",
+            "props": {
+              "backgroundColor": "blue",
+              "textAlignment": "left",
+              "textColor": "green"
+            },
+            "content": [
+              {
+                "styles": {},
+                "text": "g",
+                "type": "text"
+              }
+            ],
+            "children": []
+          },
+          {
+            "type": "paragraph",
+            "props": {
+              "backgroundColor": "purple",
+              "textAlignment": "left",
+              "textColor": "blue"
+            },
+            "content": [
+              {
+                "styles": {},
+                "text": "b",
+                "type": "text"
+              }
+            ],
+            "children": []
+          },
+          {
+            "type": "paragraph",
+            "props": {
+              "backgroundColor": "pink",
+              "textAlignment": "left",
+              "textColor": "purple"
+            },
+            "content": [
+              {
+                "styles": {},
+                "text": "p",
+                "type": "text"
+              }
+            ],
+            "children": []
+          },
+          {
+            "type": "paragraph",
+            "props": {
+              "backgroundColor": "gray",
+              "textAlignment": "left",
+              "textColor": "pink"
+            },
+            "content": [
+              {
+                "styles": {},
+                "text": "p",
+                "type": "text"
+              }
+            ],
+            "children": []
+          }
+        ]
+      }
+    },
+    {
+      "id": "html-blocks/html-to-blocks/block-style-color-named",
+      "op": "html-to-blocks",
+      "input": {
+        "html": "<h2 style=\"color: red; background-color: blue\">h</h2><blockquote style=\"color: gray\">q</blockquote><p data-text-color=\"purple\" data-background-color=\"pink\">d</p>"
+      },
+      "expected": {
+        "status": "ok",
+        "output": [
+          {
+            "type": "heading",
+            "props": {
+              "backgroundColor": "blue",
+              "isToggleable": false,
+              "level": 2,
+              "textAlignment": "left",
+              "textColor": "red"
+            },
+            "content": [
+              {
+                "styles": {},
+                "text": "h",
+                "type": "text"
+              }
+            ],
+            "children": []
+          },
+          {
+            "type": "quote",
+            "props": {
+              "backgroundColor": "default",
+              "textColor": "gray"
+            },
+            "content": [
+              {
+                "styles": {},
+                "text": "q",
+                "type": "text"
+              }
+            ],
+            "children": []
+          },
+          {
+            "type": "paragraph",
+            "props": {
+              "backgroundColor": "pink",
+              "textAlignment": "left",
+              "textColor": "purple"
+            },
+            "content": [
+              {
+                "styles": {},
+                "text": "d",
                 "type": "text"
               }
             ],

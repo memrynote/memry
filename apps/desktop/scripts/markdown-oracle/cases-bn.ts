@@ -339,6 +339,16 @@ const HTML: Record<string, string> = {
   'text-color-attr': '<p><span data-style-type="textColor" data-value="red">r</span></p>',
   'background-color-attr':
     '<p><span data-style-type="backgroundColor" data-value="blue">b</span></p>',
+  'block-style-color-unnamed':
+    '<h2 style="caret-color: rgb(0, 0, 0); color: rgb(0, 0, 0); background-color: rgba(0, 0, 0, 0)">h</h2><p style="color: #123456; background-color: inherit">p</p><blockquote style="color: rgb(1, 2, 3)">q</blockquote>',
+  // The tiptap attribute of a data-* prop reads it as is, so only styles are filtered.
+  'block-data-color-unnamed':
+    '<p data-text-color="rgb(1, 2, 3)" data-background-color="teal">d</p>',
+  // Pins every name of the keep list (`NAMED_BLOCK_COLORS` in blocks.rs) against a BlockNote upgrade.
+  'block-style-color-every-name':
+    '<p style="color: gray; background-color: brown">g</p><p style="color: brown; background-color: red">b</p><p style="color: red; background-color: orange">r</p><p style="color: orange; background-color: yellow">o</p><p style="color: yellow; background-color: green">y</p><p style="color: green; background-color: blue">g</p><p style="color: blue; background-color: purple">b</p><p style="color: purple; background-color: pink">p</p><p style="color: pink; background-color: gray">p</p>',
+  'block-style-color-named':
+    '<h2 style="color: red; background-color: blue">h</h2><blockquote style="color: gray">q</blockquote><p data-text-color="purple" data-background-color="pink">d</p>',
   h1: '<h1>one</h1>',
   h3: '<h3>three</h3>',
   h6: '<h6>six</h6>',

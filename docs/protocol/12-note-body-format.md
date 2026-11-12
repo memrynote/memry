@@ -253,6 +253,15 @@ classes are `url-reflect/*` in `html-to-blocks.json`. Text that the tree builder
 a table lands after the table, at the end of its parent, as jsdom's adapter does
 (`foster-table-*` cases).
 
+A block's `parse` keeps a `textColor` or `backgroundColor` it read from the element only when
+the value is `default` or a key of BlockNote's `COLORS_DEFAULT` (`gray`, `brown`, `red`,
+`orange`, `yellow`, `green`, `blue`, `purple`, `pink`); any other value (`rgb(0, 0, 0)`, a hex,
+`inherit`) is dropped and the prop keeps its default (`packages/editor-schema/src/schema.ts:177`,
+`crates/memry-core/src/markdown/bn/dom_parser/rules/blocks.rs:31`, #4330). A `data-text-color` or
+`data-background-color` attribute still reaches the prop through its attribute rule, unfiltered
+(`crates/memry-core/src/markdown/bn/dom_parser/rules/attrs.rs:72`, `prop_attribute`).
+The classes are `block-style-color-*` (`block-style-color-every-name` pins all ten names) and `block-data-color-unnamed` in `html-to-blocks.json`.
+
 ## 12.2 FR-041 holds structurally, with three carve-outs
 
 **The structural argument.** A non-desktop client never writes a vault file;

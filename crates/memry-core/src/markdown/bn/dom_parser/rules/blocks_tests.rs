@@ -27,16 +27,21 @@ fn get(parsed: &[(String, Any)], name: &str) -> Option<Any> {
 #[test]
 fn default_props_prefer_data_attributes_over_styles() {
     let (dom, p) = element(
-        r#"<p data-text-color="red" style="color: blue; background-color: #00f; text-align: center">x</p>"#,
+        r#"<p data-text-color="red" style="color: blue; background-color: yellow; text-align: center">x</p>"#,
         "p",
     );
     let parsed = props(paragraph(&dom, p));
     assert_eq!(get(&parsed, "textColor"), Some(Any::from("red")));
-    assert_eq!(
-        get(&parsed, "backgroundColor"),
-        Some(Any::from("rgb(0, 0, 255)"))
-    );
+    assert_eq!(get(&parsed, "backgroundColor"), Some(Any::from("yellow")));
     assert_eq!(get(&parsed, "textAlignment"), Some(Any::from("center")));
+    // Only the editor's named colors survive (#4330).
+    let (dom, p) = element(
+        r#"<p style="color: rgb(0, 0, 0); background-color: #00f">x</p>"#,
+        "p",
+    );
+    let parsed = props(paragraph(&dom, p));
+    assert_eq!(get(&parsed, "textColor"), None);
+    assert_eq!(get(&parsed, "backgroundColor"), None);
     let (dom, p) = element(r#"<p style="text-align: start">x</p>"#, "p");
     assert_eq!(get(&props(paragraph(&dom, p)), "textAlignment"), None);
 }

@@ -1,6 +1,7 @@
 import {
   type BlockSpecs,
   BlockNoteSchema,
+  COLORS_DEFAULT,
   defaultBlockSpecs,
   defaultInlineContentSpecs,
   createCodeBlockSpec
@@ -153,6 +154,50 @@ function renderCodeLanguageViews(
   }
 }
 
+/** `default` plus the colors the editor's color menu offers. */
+export const NAMED_BLOCK_COLORS: ReadonlySet<string> = new Set([
+  'default',
+  ...Object.keys(COLORS_DEFAULT)
+])
+
+type AnyBlockSpec = BlockSpecs[string]
+
+/**
+ * A pasted element's `textColor` / `backgroundColor` is kept only when it is a
+ * named color the editor offers; anything else is dropped and the block keeps
+ * the default.
+ *
+ * BlockNote's `parseDefaultProps` copies any inline `style.color` into the
+ * prop. WebKit (WKWebView, WebKitGTK) inlines computed styles into every HTML
+ * paste from another app, so a plain heading arrived as
+ * `textColor: "rgb(0, 0, 0)"`, which no CSS renders and the serializer still
+ * wrote into the vault file as a `<!-- colors:... -->` marker (#4330). Chrome
+ * pages with inline colors did the same on Electron.
+ *
+ * Parse only: a stored marker is applied after the parse, so existing notes
+ * keep whatever colors they hold.
+ */
+function keepNamedColorsOnly(spec: AnyBlockSpec): AnyBlockSpec {
+  const parse = spec.implementation.parse
+  if (!parse) return spec
+  return {
+    ...spec,
+    implementation: {
+      ...spec.implementation,
+      parse(el) {
+        const props = parse(el)
+        if (!props) return props
+        const kept = { ...props }
+        for (const key of ['textColor', 'backgroundColor'] as const) {
+          const value = kept[key]
+          if (value !== undefined && !NAMED_BLOCK_COLORS.has(String(value))) delete kept[key]
+        }
+        return kept
+      }
+    }
+  }
+}
+
 /**
  * The one place a Memry BlockNote schema is built.
  *
@@ -225,5 +270,10 @@ export function createMemrySchema<Blocks extends BlockSpecs>(impl: {
   assertSpecKeysMatchNodeTypes('blockSpecs', impl.blocks)
   assertSpecKeysMatchNodeTypes('inlineContentSpecs', memryInlineSpecs)
 
-  return BlockNoteSchema.create({ blockSpecs, inlineContentSpecs })
+  // oxlint-disable-next-line typescript/no-unsafe-type-assertion -- same keys, each spec's config and props unchanged; only `parse` is wrapped, and the renderer needs the precise schema type back
+  const namedColorBlockSpecs = Object.fromEntries(
+    Object.entries(blockSpecs).map(([key, spec]) => [key, keepNamedColorsOnly(spec)])
+  ) as typeof blockSpecs
+
+  return BlockNoteSchema.create({ blockSpecs: namedColorBlockSpecs, inlineContentSpecs })
 }

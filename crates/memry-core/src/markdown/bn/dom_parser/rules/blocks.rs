@@ -19,8 +19,28 @@ fn first_element_child_is_code(dom: &Dom, id: NodeId) -> Option<NodeId> {
     (dom.child_element_count(id) == 1 && tag_is(dom, code, "CODE")).then_some(code)
 }
 
-/// `parseDefaultProps`. A prop that is `undefined` is left out.
+/// `default` plus BlockNote's `COLORS_DEFAULT` keys: the colors the editor's
+/// color menu offers.
+const NAMED_BLOCK_COLORS: [&str; 10] = [
+    "default", "gray", "brown", "red", "orange", "yellow", "green", "blue", "purple", "pink",
+];
+
+/// `parseDefaultProps` behind memry's `keepNamedColorsOnly`: a color that is
+/// not a named one is left out, so a pasted `color: rgb(0, 0, 0)` keeps the
+/// default (#4330). A prop that is `undefined` is left out.
 pub fn default_props(dom: &Dom, id: NodeId) -> Props {
+    let mut props = bn_default_props(dom, id);
+    props.retain(|(name, value)| match (*name, value) {
+        ("textColor" | "backgroundColor", Any::String(color)) => {
+            NAMED_BLOCK_COLORS.contains(&color.as_ref())
+        }
+        _ => true,
+    });
+    props
+}
+
+/// `parseDefaultProps`. A prop that is `undefined` is left out.
+fn bn_default_props(dom: &Dom, id: NodeId) -> Props {
     let style = dom.style(id);
     let mut props: Props = Vec::new();
     if let Some(value) = dom.attr(id, "data-background-color") {
