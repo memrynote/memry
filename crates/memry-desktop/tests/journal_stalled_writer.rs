@@ -13,7 +13,6 @@ use memry_core::crdt::body_edit::BlockEdit;
 use memry_core::seams::secure_store::SecureStore;
 use memry_desktop::journal::update::DayUpdate;
 use memry_desktop::notes::service::NotesService;
-use memry_desktop::vault::consumer::Applied;
 use memry_desktop::vault::hash::content_hash;
 
 use crate::index_support::until;
@@ -79,6 +78,8 @@ fn assert_kept(e: &Env, outside: &str) {
 /// holds: it reaches a version, and the pages are told.
 #[cfg(unix)]
 fn write_rest_late(e: &mut Env, mut writer: File, rest: &str, outside: &str) {
+    use memry_desktop::vault::consumer::Applied;
+
     // Facts of the replace itself are published right after it.
     std::thread::sleep(Duration::from_millis(300));
     e.drain();
