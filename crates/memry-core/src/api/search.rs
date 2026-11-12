@@ -24,7 +24,7 @@ use rusqlite::OptionalExtension as _;
 
 use crate::api::errors::StorageError;
 use crate::domain::journal_ops::links::{self, BacklinkRow, OutgoingLink};
-use crate::domain::search::{self, HitKind, SearchHit};
+use crate::domain::search::{self, HitKind, SearchHit, SnippetSegment};
 use crate::domain::unlinked_mentions::{self, UnlinkedMention};
 use crate::domain::wiki_target;
 use crate::storage::{Db, open_index};
@@ -47,6 +47,10 @@ pub struct SearchResult {
     /// so a shell can show relevance if it wants to, never re-sorted — the
     /// order returned is already the ranking.
     pub score: f64,
+    /// The body text around the match, highlighted runs marked (#4316). Plain
+    /// runs only when the hit matched its title alone; empty when the body
+    /// (a task's description) is.
+    pub snippet: Vec<SnippetSegment>,
 }
 
 impl From<SearchHit> for SearchResult {
@@ -62,6 +66,7 @@ impl From<SearchHit> for SearchResult {
             kind: kind.to_owned(),
             journal_date,
             score: hit.score,
+            snippet: hit.snippet,
         }
     }
 }
