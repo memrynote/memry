@@ -32,25 +32,51 @@ export function install(page: Page, stubFixup: boolean): Promise<void> {
         .slice(2, 6)
         .map((l) => l.trim().slice(0, 90))
         .join(' < ')
-    for (const ev of [
+    const quiet = new Set([
+      'mousemove',
+      'pointermove',
+      'mouseover',
+      'mouseout',
+      'mouseenter',
+      'mouseleave',
+      'pointerover',
+      'pointerout',
+      'pointerenter',
+      'pointerleave',
+      'selectionchange',
+      'timeupdate',
+      'progress'
+    ])
+    const names = new Set<string>([
       'focus',
       'blur',
       'focusin',
       'focusout',
-      'pointerdown',
-      'mousedown',
-      'pointerup',
-      'mouseup',
-      'click',
-      'dblclick',
       'selectstart',
-      'keydown'
-    ]) {
+      'beforeinput',
+      'input',
+      'keydown',
+      'keyup',
+      'scroll',
+      'resize',
+      'dragstart',
+      'compositionstart',
+      'visibilitychange',
+      'pagehide',
+      'pageshow',
+      'transitionend',
+      'animationend',
+      'contextmenu'
+    ])
+    for (const k of Object.keys(window)) if (k.startsWith('on')) names.add(k.slice(2))
+    for (const k in document) if (k.startsWith('on')) names.add(k.slice(2))
+    for (const ev of names) {
+      if (quiet.has(ev)) continue
       window.addEventListener(
         ev,
         (e) =>
           push(ev, [
-            (e.target as HTMLElement)?.tagName,
+            (e.target as HTMLElement)?.nodeName,
             e.isTrusted ? 'T' : 'syn',
             (e as MouseEvent).detail
           ]),
@@ -127,7 +153,7 @@ export function install(page: Page, stubFixup: boolean): Promise<void> {
             r.removedNodes.length,
             r.addedNodes.length,
             r.type === 'attributes'
-              ? (r.target as HTMLElement).getAttribute(r.attributeName ?? '')
+              ? (r.target as HTMLElement).getAttribute(r.attributeName ?? '')?.slice(-30)
               : null
           ])
         }
@@ -144,6 +170,49 @@ export function install(page: Page, stubFixup: boolean): Promise<void> {
         return result
       }
     }
+    const key = (): string => {
+      const sel = getSelection()
+      return sel
+        ? `${sel.isCollapsed ? 'C' : 'R'}${sel.toString().length}:${sel.anchorOffset}-${sel.focusOffset}`
+        : 'none'
+    }
+    let last = key()
+    const check = (where: string): void => {
+      const now = key()
+      if (now !== last) {
+        push('SELCHG', [where, last, now])
+        last = now
+      }
+    }
+    const guard = (
+      kind: string,
+      fn: (...a: unknown[]) => unknown
+    ): ((...a: unknown[]) => unknown) => {
+      const at = stack()
+      return (...a: unknown[]) => {
+        check(`before-${kind} ${at}`.slice(0, 200))
+        try {
+          return fn(...a)
+        } finally {
+          check(`after-${kind} ${at}`.slice(0, 200))
+        }
+      }
+    }
+    const origST = window.setTimeout.bind(window)
+    window.setTimeout = ((fn: (...a: unknown[]) => unknown, ms?: number, ...rest: unknown[]) =>
+      typeof fn === 'function'
+        ? origST(guard('timeout', fn), ms, ...rest)
+        : origST(fn, ms)) as typeof window.setTimeout
+    const origRAF = window.requestAnimationFrame.bind(window)
+    window.requestAnimationFrame = (fn) =>
+      origRAF(guard('raf', fn as (...a: unknown[]) => unknown) as FrameRequestCallback)
+    const origQM = window.queueMicrotask.bind(window)
+    window.queueMicrotask = (fn) => origQM(guard('microtask', fn))
+    const sample = (): void => {
+      check('sampler')
+      if (!(window as unknown as { __probeStop?: boolean }).__probeStop) origST(sample, 0)
+    }
+    origST(sample, 0)
     const editor = document.querySelector(
       '[aria-label="Rich text editor"] [contenteditable="true"]'
     )
