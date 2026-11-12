@@ -301,7 +301,7 @@ struct EmptyVaultNotice: View {
         ContentUnavailableView {
             Label("No notes in this vault", systemImage: "tray")
         } description: {
-            Text("This phone holds no notes and no folders for this vault yet.")
+            Text("This \(ThisDevice.noun) holds no notes and no folders for this vault yet.")
         }
         .frame(maxWidth: .infinity, alignment: .leading)
     }

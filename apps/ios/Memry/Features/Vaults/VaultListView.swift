@@ -13,10 +13,10 @@ import SwiftUI
 // roles, and reduce-motion is branched inside `calmAnimation` on every
 // evaluation rather than read once into a flag.
 //
-// **Empty and unreadable are two screens**, because they are two facts. An
-// account with no vaults gets an empty state that says what is absent; a
-// registry that would not load gets an error with a retry. Rendering the
-// second as the first is the bug the core's reader already had once.
+// **An account never reads as having no vault.** The signed-in registry gives
+// an empty account the local vault, as desktop does. A registry that would not
+// load gets an error with a retry, never an empty list: that is the bug the
+// core's reader already had once.
 
 struct VaultListView: View {
     let model: VaultSelectionViewModel
@@ -110,20 +110,17 @@ struct VaultListView: View {
                 case let .choosing(summaries):
                     header(
                         "Choose a vault",
-                        "This account holds more than one. Memry opens the one you pick on this phone."
+                        "This account holds more than one. Memry opens the one you pick on this \(ThisDevice.noun)."
                     )
                     VaultChoiceList(summaries: summaries) { summary in
                         Task { await model.open(summary) }
                     }
-                    // Where a vault comes from, since this screen cannot make
-                    // one: the core exports no vault creation, so the sentence
-                    // stands in for a button that would not work.
-                    Text("Vaults are created in Memry on another device. New ones appear here on their own.")
-                        .font(Tokens.Typography.caption.font)
-                        .foregroundStyle(Tokens.Text.secondary.color)
-                        .frame(maxWidth: .infinity, alignment: .leading)
                 case .empty:
-                    EmptyVaultsNotice()
+                    // Unreachable in production: both registries list the
+                    // local vault, which the signed-in one creates for an
+                    // empty account. A retry reads the registry again.
+                    header("Your vault could not be opened", nil)
+                    retry("Try again")
                 case let .unreadable(error):
                     header("Your vaults could not be loaded", nil)
                     ErrorNotice(error: error, code: nil)
@@ -200,7 +197,7 @@ private struct VaultChoiceList: View {
                 .frame(maxWidth: .infinity, minHeight: Tokens.Size.minimumHitArea, alignment: .leading)
                 .blockSurface(radius: Tokens.Radius.control)
                 .accessibilityLabel(VaultLabel(summary).text)
-                .accessibilityHint("Opens this vault on this phone.")
+                .accessibilityHint("Opens this vault on this \(ThisDevice.noun).")
             }
         }
         .frame(maxWidth: .infinity, alignment: .leading)
@@ -243,22 +240,6 @@ private struct VaultRowLabel: View {
     }
 }
 
-/// An account that really holds no vault.
-///
-/// It says what is absent and where a vault comes from, and it promises no
-/// mechanism this screen has: there is no "create a vault" on iOS, so it does
-/// not offer one (`DESIGN.md` §"Error copy, in detail", spec-defect 111).
-private struct EmptyVaultsNotice: View {
-    var body: some View {
-        ContentUnavailableView {
-            Label("No vaults yet", systemImage: "tray")
-        } description: {
-            Text("This account holds no vaults. Create one in Memry on another device and it will appear here.")
-        }
-        .frame(maxWidth: .infinity, alignment: .leading)
-    }
-}
-
 /// What the phone shows once a vault is open.
 ///
 /// Deliberately thin: the folder tree is T156's and the note is T157's, and
@@ -274,7 +255,7 @@ private struct OpenedVaultNotice: View {
                 .foregroundStyle(label.isPlaceholder
                     ? Tokens.Text.secondary.color
                     : Tokens.Text.primary.color)
-            Text("This vault is open on this phone.")
+            Text("This vault is open on this \(ThisDevice.noun).")
                 .font(Tokens.Typography.body.font)
                 .foregroundStyle(Tokens.Text.secondary.color)
         }

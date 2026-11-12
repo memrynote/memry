@@ -36,7 +36,7 @@ enum GlobalSearchCopy {
     static let open = "Search"
     static let prompt = "Search notes, tasks, journal, inbox"
     static let unavailable = "Search is not available"
-    static let unavailableDetail = "This vault's search index could not be opened on this iPhone."
+    static let unavailableDetail = "This vault's search index could not be opened on this \(ThisDevice.noun)."
     static let stale = "Search may be out of date"
     static let retry = "Retry"
 }

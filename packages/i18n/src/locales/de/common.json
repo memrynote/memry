@@ -3,6 +3,7 @@
     "copyFailed": "Das Portal konnte nicht kopiert werden",
     "hiddenCount": "{count} ausgeblendet",
     "windowFailed": "Dieses Portal konnte nicht geöffnet werden. Öffne stattdessen die Quellnotiz.",
+    "unreadable": "Dieses Portal kann nicht gelesen werden. Entferne den Block und füge ein neues Portal hinzu.",
     "search": {
       "editQuery": "Abfrage bearbeiten",
       "count": "{count, plural, one {# Block} other {# Blöcke}}",

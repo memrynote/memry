@@ -426,7 +426,8 @@
       "newViewFailed": "Priečinok pre toto zobrazenie sa nepodarilo vytvoriť.",
       "empty": "Tomuto zobrazeniu zatiaľ nič nezodpovedá.",
       "loadFailed": "Toto zobrazenie sa nepodarilo načítať. Samotné poznámky zostali nedotknuté.",
-      "folderMissing": "Tento priečinok už v trezore nie je. Vyberte iný zdroj."
+      "folderMissing": "Tento priečinok už v trezore nie je. Vyberte iný zdroj.",
+      "unreadable": "Toto zobrazenie sa nedá prečítať. Vyberte vyššie zdroj alebo blok odstráňte."
     },
     "chart": {
       "title": "Diagram",

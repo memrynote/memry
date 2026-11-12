@@ -1,0 +1,13 @@
+-- A device's form factor, 'phone' or 'tablet' (protocol 02 section 2.3.4,
+-- #4375). iOS sends it on POST /auth/devices so the devices list can draw an
+-- iPad as an iPad. platform stays 'ios' for both, because older clients parse
+-- platform strictly.
+--
+-- Backward compatibility:
+--   * Nullable, no default, no backfill. Every existing device reads NULL,
+--     which readers treat as unknown and fall back to platform. Re-registering
+--     to backfill would mint a new device, so nothing does.
+--   * A Worker deployed before this migration (or rolled back after it) names
+--     its insert columns and never writes this one. Older clients ignore the
+--     extra GET /devices field.
+ALTER TABLE devices ADD COLUMN form_factor TEXT;

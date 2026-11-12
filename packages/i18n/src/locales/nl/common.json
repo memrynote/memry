@@ -3,6 +3,7 @@
     "copyFailed": "Kan het portaal niet kopiëren",
     "hiddenCount": "{count} verborgen",
     "windowFailed": "Dit portaal kan niet worden geopend. Open in plaats daarvan de bronnotitie.",
+    "unreadable": "Dit portaal kan niet worden gelezen. Verwijder het blok en voeg een nieuw portaal toe.",
     "search": {
       "editQuery": "Zoekopdracht bewerken",
       "count": "{count, plural, one {# blok} other {# blokken}}",

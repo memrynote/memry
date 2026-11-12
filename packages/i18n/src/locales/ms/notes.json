@@ -426,7 +426,8 @@
       "newViewFailed": "Tidak dapat mencipta folder untuk paparan ini.",
       "empty": "Belum ada yang sepadan dengan paparan ini.",
       "loadFailed": "Tidak dapat memuatkan paparan ini. Nota itu sendiri tidak diubah.",
-      "folderMissing": "Folder ini sudah tiada dalam bilik kebal. Pilih sumber lain."
+      "folderMissing": "Folder ini sudah tiada dalam bilik kebal. Pilih sumber lain.",
+      "unreadable": "Paparan ini tidak dapat dibaca. Pilih sumber di atas, atau alih keluar blok."
     },
     "chart": {
       "title": "Carta",

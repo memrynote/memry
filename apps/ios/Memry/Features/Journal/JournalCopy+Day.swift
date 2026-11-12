@@ -62,7 +62,7 @@ extension JournalCopy {
     static let ghostProperty = "Property"
     static let addTag = "Add tag"
     static let addProperty = "Add property"
-    static let metadataReadOnlyHint = "Read-only on iPhone for now"
+    static let metadataReadOnlyHint = "Read-only on \(ThisDevice.noun) for now"
 
     // MARK: Navigation (J10)
 
