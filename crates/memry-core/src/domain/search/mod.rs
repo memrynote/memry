@@ -65,10 +65,12 @@ use crate::api::errors::StorageError;
 mod links;
 mod literal_links;
 mod maintenance;
+mod snippet;
 
 pub use maintenance::{
     DATA_VERSION_KEY, NOTES_WATERMARK_KEY, Reindexed, STAMPS_KEY, TASKS_WATERMARK_KEY, reindex,
 };
+pub use snippet::SnippetSegment;
 
 /// The `fts_notes` ranking expression. Part of the contract (§A.5).
 pub const NOTES_RANK: &str = "bm25(fts_notes, 0.0, 2.0, 1.0, 1.0)";
@@ -96,6 +98,9 @@ pub struct SearchHit {
     pub kind: HitKind,
     /// The bm25 score. Negative; more negative is a better match.
     pub score: f64,
+    /// The body window around the match (`content` for notes and journals,
+    /// `description` for tasks), empty when that column is.
+    pub snippet: Vec<SnippetSegment>,
 }
 
 /// Searches notes and journals.
@@ -113,11 +118,12 @@ pub fn search_notes(
         return Ok(Vec::new());
     };
     let sql = format!(
-        "SELECT id, title, {NOTES_RANK} AS score
-         FROM fts_notes WHERE fts_notes MATCH ?1 ORDER BY score LIMIT ?2"
+        "SELECT id, title, {NOTES_RANK} AS score, {}
+         FROM fts_notes WHERE fts_notes MATCH ?1 ORDER BY score LIMIT ?2",
+        snippet::snippet_sql("fts_notes", 2)
     );
     let mut hits = Vec::new();
-    for (id, title, score) in scored(index, &sql, &expression, limit)? {
+    for (id, title, score, snippet) in scored(index, &sql, &expression, limit)? {
         let Some(kind) = note_kind(data, &id)? else {
             continue;
         };
@@ -126,6 +132,7 @@ pub fn search_notes(
             title,
             kind,
             score,
+            snippet,
         });
     }
     Ok(hits)
@@ -146,11 +153,12 @@ pub fn search_tasks(
         return Ok(Vec::new());
     };
     let sql = format!(
-        "SELECT id, title, {TASKS_RANK} AS score
-         FROM fts_tasks WHERE fts_tasks MATCH ?1 ORDER BY score LIMIT ?2"
+        "SELECT id, title, {TASKS_RANK} AS score, {}
+         FROM fts_tasks WHERE fts_tasks MATCH ?1 ORDER BY score LIMIT ?2",
+        snippet::snippet_sql("fts_tasks", 2)
     );
     let mut hits = Vec::new();
-    for (id, title, score) in scored(index, &sql, &expression, limit)? {
+    for (id, title, score, snippet) in scored(index, &sql, &expression, limit)? {
         if !is_live(data, "task", &id)? {
             continue;
         }
@@ -159,6 +167,7 @@ pub fn search_tasks(
             title,
             kind: HitKind::Task,
             score,
+            snippet,
         });
     }
     Ok(hits)
@@ -207,6 +216,9 @@ fn is_live(data: &Connection, item_type: &str, item_id: &str) -> Result<bool, St
     .map(|row| row.is_some())
 }
 
+/// One ranked row: id, title, bm25 score, snippet.
+type Scored = (String, String, f64, Vec<SnippetSegment>);
+
 /// One ranked page. Every row is collected through `?`: a row that will not
 /// read stops the search rather than vanishing from the results.
 fn scored(
@@ -214,7 +226,7 @@ fn scored(
     sql: &str,
     expression: &str,
     limit: usize,
-) -> Result<Vec<(String, String, f64)>, StorageError> {
+) -> Result<Vec<Scored>, StorageError> {
     let mut statement = index.prepare(sql).map_err(failed)?;
     let rows = statement
         .query_map(params![expression, limit as i64], |row| {
@@ -225,6 +237,7 @@ fn scored(
                 row.get::<_, String>(0)?,
                 row.get::<_, Option<String>>(1)?.unwrap_or_default(),
                 row.get::<_, f64>(2)?,
+                snippet::segments(&row.get::<_, Option<String>>(3)?.unwrap_or_default()),
             ))
         })
         .map_err(failed)?;

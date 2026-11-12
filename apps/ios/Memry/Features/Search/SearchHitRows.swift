@@ -59,6 +59,7 @@ struct SearchHitLabel: View {
                     .font(Tokens.Typography.caption.font)
                     .foregroundStyle(Tokens.Text.secondary.color)
             }
+            SearchSnippetText(segments: hit.snippet)
         }
         .frame(maxWidth: .infinity, alignment: .leading)
     }
@@ -69,14 +70,17 @@ struct TaskSearchHitLabel: View {
     let hit: SearchResult
 
     var body: some View {
-        HStack(spacing: Tokens.Space.small) {
+        HStack(alignment: .firstTextBaseline, spacing: Tokens.Space.small) {
             Image(systemName: "checkmark.circle")
                 .font(Tokens.Typography.body.font)
                 .foregroundStyle(Tokens.Text.secondary.color)
                 .accessibilityHidden(true)
-            Text(hit.title.isEmpty ? TasksCopy.untitledTask : hit.title)
-                .font(Tokens.Typography.body.font)
-                .foregroundStyle(Tokens.Text.primary.color)
+            VStack(alignment: .leading, spacing: Tokens.Space.tight) {
+                Text(hit.title.isEmpty ? TasksCopy.untitledTask : hit.title)
+                    .font(Tokens.Typography.body.font)
+                    .foregroundStyle(Tokens.Text.primary.color)
+                SearchSnippetText(segments: hit.snippet)
+            }
             Spacer(minLength: Tokens.Space.tight)
         }
         .frame(maxWidth: .infinity, minHeight: Tokens.Size.minimumHitArea, alignment: .leading)
