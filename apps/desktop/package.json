@@ -67,6 +67,8 @@
     "vectors:markdown-convert:check": "tsx scripts/markdown-oracle/generate.ts --check",
     "vectors:note-fold": "tsx scripts/note-fold-oracle/generate.ts",
     "vectors:note-fold:check": "tsx scripts/note-fold-oracle/generate.ts --check",
+    "vectors:embedding-input": "tsx scripts/embedding-input-oracle/generate.ts",
+    "vectors:embedding-input:check": "tsx scripts/embedding-input-oracle/generate.ts --check",
     "smoke:local-provider": "node --import tsx scripts/smoke-local-provider.ts",
     "db:generate": "drizzle-kit generate --config config/drizzle-data.config.ts && drizzle-kit generate --config config/drizzle-index.config.ts",
     "db:generate:data": "drizzle-kit generate --config config/drizzle-data.config.ts",
