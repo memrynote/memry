@@ -426,7 +426,8 @@
       "newViewFailed": "Không thể tạo thư mục cho chế độ xem này.",
       "empty": "Chưa có gì khớp với chế độ xem này.",
       "loadFailed": "Không thể tải chế độ xem này. Các ghi chú vẫn được giữ nguyên.",
-      "folderMissing": "Thư mục này không còn trong kho. Hãy chọn nguồn khác."
+      "folderMissing": "Thư mục này không còn trong kho. Hãy chọn nguồn khác.",
+      "unreadable": "Không thể đọc chế độ xem này. Hãy chọn một nguồn ở trên, hoặc xóa khối."
     },
     "chart": {
       "title": "Biểu đồ",

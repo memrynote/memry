@@ -426,7 +426,8 @@
       "newViewFailed": "Nem sikerült létrehozni a mappát ehhez a nézethez.",
       "empty": "Még semmi sem felel meg ennek a nézetnek.",
       "loadFailed": "Nem sikerült betölteni ezt a nézetet. Maguk a jegyzetek érintetlenek.",
-      "folderMissing": "Ez a mappa már nincs a széfben. Válasszon másik forrást."
+      "folderMissing": "Ez a mappa már nincs a széfben. Válasszon másik forrást.",
+      "unreadable": "Ez a nézet nem olvasható. Válasszon forrást fent, vagy távolítsa el a blokkot."
     },
     "chart": {
       "title": "Diagram",

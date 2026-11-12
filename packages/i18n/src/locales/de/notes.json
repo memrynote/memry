@@ -426,7 +426,8 @@
       "newViewFailed": "Der Ordner für diese Ansicht konnte nicht erstellt werden.",
       "empty": "Noch passt nichts zu dieser Ansicht.",
       "loadFailed": "Diese Ansicht konnte nicht geladen werden. Die Notizen selbst bleiben unverändert.",
-      "folderMissing": "Dieser Ordner ist nicht mehr im Tresor. Wähle eine andere Quelle."
+      "folderMissing": "Dieser Ordner ist nicht mehr im Tresor. Wähle eine andere Quelle.",
+      "unreadable": "Diese Ansicht kann nicht gelesen werden. Wähle oben eine Quelle oder entferne den Block."
     },
     "chart": {
       "title": "Diagramm",

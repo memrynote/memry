@@ -3,6 +3,7 @@
     "copyFailed": "Tidak dapat menyalin portal",
     "hiddenCount": "{count} disembunyikan",
     "windowFailed": "Portal ini tidak dapat dibuka. Buka nota sumber sebaliknya.",
+    "unreadable": "Portal ini tidak dapat dibaca. Alih keluar blok dan tambah portal baharu.",
     "search": {
       "editQuery": "Edit pertanyaan",
       "count": "{count, plural, other {# blok}}",

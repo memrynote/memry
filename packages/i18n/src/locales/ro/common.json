@@ -3,6 +3,7 @@
     "copyFailed": "Nu s-a putut copia portalul",
     "hiddenCount": "{count} ascunse",
     "windowFailed": "Acest portal nu a putut fi deschis. Deschide în schimb notița sursă.",
+    "unreadable": "Acest portal nu poate fi citit. Elimină blocul și adaugă un portal nou.",
     "search": {
       "editQuery": "Editează interogarea",
       "count": "{count, plural, one {# bloc} few {# blocuri} other {# de blocuri}}",

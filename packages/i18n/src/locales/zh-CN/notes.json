@@ -426,7 +426,8 @@
       "newViewFailed": "无法为此视图创建文件夹。",
       "empty": "还没有符合此视图的内容。",
       "loadFailed": "无法加载此视图。笔记本身未被改动。",
-      "folderMissing": "此文件夹已不在仓库中。请选择其他来源。"
+      "folderMissing": "此文件夹已不在仓库中。请选择其他来源。",
+      "unreadable": "无法读取此视图。请在上方选择来源，或移除该块。"
     },
     "chart": {
       "title": "图表",

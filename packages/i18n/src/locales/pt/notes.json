@@ -426,7 +426,8 @@
       "newViewFailed": "Não foi possível criar a pasta para esta visualização.",
       "empty": "Nada corresponde a esta visualização ainda.",
       "loadFailed": "Não foi possível carregar esta visualização. As notas em si estão intactas.",
-      "folderMissing": "Esta pasta não está mais no cofre. Escolha outra origem."
+      "folderMissing": "Esta pasta não está mais no cofre. Escolha outra origem.",
+      "unreadable": "Não é possível ler esta vista. Escolha uma origem acima ou remova o bloco."
     },
     "chart": {
       "title": "Gráfico",
