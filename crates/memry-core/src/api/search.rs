@@ -24,7 +24,7 @@ use rusqlite::OptionalExtension as _;
 
 use crate::api::errors::StorageError;
 use crate::domain::journal_ops::links::{self, BacklinkRow, OutgoingLink};
-use crate::domain::search::{self, HitKind, SearchHit, SnippetSegment};
+use crate::domain::search::{self, HitKind, MatchKind, SearchHit, SnippetSegment};
 use crate::domain::unlinked_mentions::{self, UnlinkedMention};
 use crate::domain::wiki_target;
 use crate::storage::{Db, open_index};
@@ -58,6 +58,12 @@ pub struct SearchResult {
     /// runs only when the hit matched its title alone; empty when the body
     /// (a task's description) is.
     pub snippet: Vec<SnippetSegment>,
+    /// Whether the index, the fuzzy title fallback or an alias found the hit
+    /// (#4319). Only a body hit carries a snippet.
+    pub match_kind: MatchKind,
+    /// The alias the query matched, for a note or journal whose title does
+    /// not hold the query. The row shows it as "also: <name>".
+    pub matched_name: Option<String>,
 }
 
 impl From<SearchHit> for SearchResult {
@@ -76,6 +82,8 @@ impl From<SearchHit> for SearchResult {
             folder_path,
             score: hit.score,
             snippet: hit.snippet,
+            match_kind: hit.match_kind,
+            matched_name: hit.matched_name,
         }
     }
 }

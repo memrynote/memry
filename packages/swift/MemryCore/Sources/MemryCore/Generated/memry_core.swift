@@ -23500,6 +23500,16 @@ public struct SearchResult: Equatable, Hashable {
      * (a task's description) is.
      */
     public var snippet: [SnippetSegment]
+    /**
+     * Whether the index, the fuzzy title fallback or an alias found the hit
+     * (#4319). Only a body hit carries a snippet.
+     */
+    public var matchKind: MatchKind
+    /**
+     * The alias the query matched, for a note or journal whose title does
+     * not hold the query. The row shows it as "also: <name>".
+     */
+    public var matchedName: String?
 
     // Default memberwise initializers are never public by default, so we
     // declare one manually.
@@ -23528,7 +23538,15 @@ public struct SearchResult: Equatable, Hashable {
          * The body text around the match, highlighted runs marked (#4316). Plain
          * runs only when the hit matched its title alone; empty when the body
          * (a task's description) is.
-         */snippet: [SnippetSegment]) {
+         */snippet: [SnippetSegment], 
+        /**
+         * Whether the index, the fuzzy title fallback or an alias found the hit
+         * (#4319). Only a body hit carries a snippet.
+         */matchKind: MatchKind, 
+        /**
+         * The alias the query matched, for a note or journal whose title does
+         * not hold the query. The row shows it as "also: <name>".
+         */matchedName: String?) {
         self.id = id
         self.title = title
         self.kind = kind
@@ -23537,6 +23555,8 @@ public struct SearchResult: Equatable, Hashable {
         self.folderPath = folderPath
         self.score = score
         self.snippet = snippet
+        self.matchKind = matchKind
+        self.matchedName = matchedName
     }
 
     
@@ -23562,7 +23582,9 @@ public struct FfiConverterTypeSearchResult: FfiConverterRustBuffer {
                 emoji: FfiConverterOptionString.read(from: &buf), 
                 folderPath: FfiConverterOptionString.read(from: &buf), 
                 score: FfiConverterDouble.read(from: &buf), 
-                snippet: FfiConverterSequenceTypeSnippetSegment.read(from: &buf)
+                snippet: FfiConverterSequenceTypeSnippetSegment.read(from: &buf), 
+                matchKind: FfiConverterTypeMatchKind.read(from: &buf), 
+                matchedName: FfiConverterOptionString.read(from: &buf)
         )
     }
 
@@ -23575,6 +23597,8 @@ public struct FfiConverterTypeSearchResult: FfiConverterRustBuffer {
         FfiConverterOptionString.write(value.folderPath, into: &buf)
         FfiConverterDouble.write(value.score, into: &buf)
         FfiConverterSequenceTypeSnippetSegment.write(value.snippet, into: &buf)
+        FfiConverterTypeMatchKind.write(value.matchKind, into: &buf)
+        FfiConverterOptionString.write(value.matchedName, into: &buf)
     }
 }
 
@@ -29903,6 +29927,92 @@ public func FfiConverterTypeManifestError_lift(_ buf: RustBuffer) throws -> Mani
 public func FfiConverterTypeManifestError_lower(_ value: ManifestError) -> RustBuffer {
     return FfiConverterTypeManifestError.lower(value)
 }
+
+
+/**
+ * What found a hit.
+ */
+
+public enum MatchKind: Equatable, Hashable {
+    
+    /**
+     * The full-text index: the title, body or tags hold the query.
+     */
+    case body
+    /**
+     * The fuzzy title fallback: the title holds the query's characters in
+     * order, as a typo does.
+     */
+    case fuzzy
+    /**
+     * One of the note's or journal day's aliases is or starts with the query.
+     */
+    case alias
+
+
+
+
+
+}
+
+#if compiler(>=6)
+extension MatchKind: Sendable {}
+#endif
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
+public struct FfiConverterTypeMatchKind: FfiConverterRustBuffer {
+    typealias SwiftType = MatchKind
+
+    public static func read(from buf: inout (data: Data, offset: Data.Index)) throws -> MatchKind {
+        let variant: Int32 = try readInt(&buf)
+        switch variant {
+        
+        case 1: return .body
+        
+        case 2: return .fuzzy
+        
+        case 3: return .alias
+        
+        default: throw UniffiInternalError.unexpectedEnumCase
+        }
+    }
+
+    public static func write(_ value: MatchKind, into buf: inout [UInt8]) {
+        switch value {
+        
+        
+        case .body:
+            writeInt(&buf, Int32(1))
+        
+        
+        case .fuzzy:
+            writeInt(&buf, Int32(2))
+        
+        
+        case .alias:
+            writeInt(&buf, Int32(3))
+        
+        }
+    }
+}
+
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
+public func FfiConverterTypeMatchKind_lift(_ buf: RustBuffer) throws -> MatchKind {
+    return try FfiConverterTypeMatchKind.lift(buf)
+}
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
+public func FfiConverterTypeMatchKind_lower(_ value: MatchKind) -> RustBuffer {
+    return FfiConverterTypeMatchKind.lower(value)
+}
+
 
 
 /**

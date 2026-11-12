@@ -31,6 +31,13 @@
 //! query on notes and journals also sorts the rows holding its words side by
 //! side first, then by bm25.
 //!
+//! ## Typos and other names
+//!
+//! A type (notes, journals, tasks) with fewer than three hits also gets the
+//! titles [`fuzzy`] matches, after its body hits and without a snippet, as
+//! desktop's fallback adds them. Notes and journals then take their alias
+//! matches ([`names`]). Each hit says which of the three found it.
+//!
 //! ## Nothing is dropped quietly
 //!
 //! A row whose payload will not parse is a **hard error**, never a skipped
@@ -46,14 +53,18 @@
 //! core's only document-to-text operation; this module writes no second
 //! extractor.
 
+use std::collections::HashSet;
+
 use rusqlite::{Connection, OptionalExtension as _, ToSql, params};
 
 use crate::api::errors::StorageError;
 
 mod body_cache;
+mod fuzzy;
 mod links;
 mod literal_links;
 mod maintenance;
+mod names;
 mod query;
 pub mod recents;
 mod snippet;
@@ -68,6 +79,22 @@ pub use snippet::SnippetSegment;
 pub const NOTES_RANK: &str = "bm25(fts_notes, 0.0, 2.0, 1.0, 1.0)";
 /// The `fts_tasks` ranking expression. Part of the contract (§A.5).
 pub const TASKS_RANK: &str = "bm25(fts_tasks, 0.0, 2.0, 1.0, 1.0)";
+
+/// Desktop's `FUZZY_FALLBACK_THRESHOLD`: a type with fewer body hits than
+/// this also gets fuzzy title matches.
+const FUZZY_FALLBACK_BELOW: usize = 3;
+
+/// What found a hit.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, uniffi::Enum)]
+pub enum MatchKind {
+    /// The full-text index: the title, body or tags hold the query.
+    Body,
+    /// The fuzzy title fallback: the title holds the query's characters in
+    /// order, as a typo does.
+    Fuzzy,
+    /// One of the note's or journal day's aliases is or starts with the query.
+    Alias,
+}
 
 /// What a hit is.
 #[derive(Debug, Clone, PartialEq, Eq)]
@@ -94,11 +121,16 @@ pub struct SearchHit {
     pub id: String,
     pub title: String,
     pub kind: HitKind,
-    /// The bm25 score. Negative; more negative is a better match.
+    /// The bm25 score. Negative; more negative is a better match. Zero for a
+    /// fuzzy or alias hit, which bm25 did not rank.
     pub score: f64,
     /// The body window around the match (`content` for notes and journals,
-    /// `description` for tasks), empty when that column is.
+    /// `description` for tasks), empty when that column is, and for a fuzzy
+    /// or alias hit.
     pub snippet: Vec<SnippetSegment>,
+    pub match_kind: MatchKind,
+    /// The alias the query matched, when the hit's title does not hold it.
+    pub matched_name: Option<String>,
 }
 
 /// Searches notes and journals.
@@ -106,13 +138,16 @@ pub struct SearchHit {
 /// `data` is consulted for every hit, so a tombstone applied since the last
 /// [`reindex`] cannot surface: the index is allowed to be stale, the answer is
 /// not. That can return fewer than `limit` hits, which is the correct trade.
+/// `limit` holds per type, as desktop's groups hold it, so the list can carry
+/// up to `limit` notes and `limit` journals.
 pub fn search_notes(
     data: &Connection,
     index: &Connection,
     query: &str,
     limit: usize,
 ) -> Result<Vec<SearchHit>, StorageError> {
-    let Some(query) = query::parse(query) else {
+    let raw = query;
+    let Some(query) = query::parse(raw) else {
         return Ok(Vec::new());
     };
     // Rows holding the words side by side first. This only reorders the
@@ -144,9 +179,35 @@ pub fn search_notes(
             kind,
             score,
             snippet,
+            match_kind: MatchKind::Body,
+            matched_name: None,
         });
     }
-    Ok(hits)
+    let is_note = |kind: &HitKind| matches!(kind, HitKind::Note { .. });
+    let is_journal = |kind: &HitKind| matches!(kind, HitKind::Journal { .. });
+    let short = |is_type: &dyn Fn(&HitKind) -> bool| {
+        hits.iter().filter(|hit| is_type(&hit.kind)).count() < FUZZY_FALLBACK_BELOW
+    };
+    let (notes_short, journals_short) = (short(&is_note), short(&is_journal));
+    if notes_short || journals_short {
+        let journals = live_ids(data, "journal")?;
+        let notes = live_ids(data, "note")?;
+        let (journal_titles, note_titles): (Vec<_>, Vec<_>) = titles(index, "fts_notes")?
+            .into_iter()
+            .partition(|(id, _)| journals.contains(id));
+        let note_titles: Vec<_> = note_titles
+            .into_iter()
+            .filter(|(id, _)| notes.contains(id))
+            .collect();
+        let kind = |id: &str| note_kind(data, id);
+        if notes_short {
+            append_fuzzy(&mut hits, raw, limit, &note_titles, &is_note, &kind)?;
+        }
+        if journals_short {
+            append_fuzzy(&mut hits, raw, limit, &journal_titles, &is_journal, &kind)?;
+        }
+    }
+    names::merge_aliases(data, index, raw, hits, limit)
 }
 
 /// Searches tasks.
@@ -160,7 +221,8 @@ pub fn search_tasks(
     query: &str,
     limit: usize,
 ) -> Result<Vec<SearchHit>, StorageError> {
-    let Some(query) = query::parse(query) else {
+    let raw = query;
+    let Some(query) = query::parse(raw) else {
         return Ok(Vec::new());
     };
     let sql = format!(
@@ -179,9 +241,90 @@ pub fn search_tasks(
             kind: HitKind::Task,
             score,
             snippet,
+            match_kind: MatchKind::Body,
+            matched_name: None,
         });
     }
+    if hits.len() < FUZZY_FALLBACK_BELOW {
+        let tasks = live_ids(data, "task")?;
+        let candidates: Vec<_> = titles(index, "fts_tasks")?
+            .into_iter()
+            .filter(|(id, _)| tasks.contains(id))
+            .collect();
+        append_fuzzy(&mut hits, raw, limit, &candidates, &|_| true, &|_| {
+            Ok(Some(HitKind::Task))
+        })?;
+    }
     Ok(hits)
+}
+
+/// Desktop's fuzzy fallback for one type: the best `limit` title matches over
+/// `candidates`, less the hits already listed, appended until the type holds
+/// `limit`.
+fn append_fuzzy(
+    hits: &mut Vec<SearchHit>,
+    query: &str,
+    limit: usize,
+    candidates: &[(String, String)],
+    is_type: &dyn Fn(&HitKind) -> bool,
+    kind: &dyn Fn(&str) -> Result<Option<HitKind>, StorageError>,
+) -> Result<(), StorageError> {
+    let mut room = limit.saturating_sub(hits.iter().filter(|hit| is_type(&hit.kind)).count());
+    let ranked = fuzzy::rank(
+        query,
+        candidates.iter().map(|(_, title)| title.as_str()),
+        limit,
+    );
+    for (at, _) in ranked {
+        let (id, title) = &candidates[at];
+        if room == 0 {
+            break;
+        }
+        if hits.iter().any(|hit| &hit.id == id) {
+            continue;
+        }
+        let Some(kind) = kind(id)? else {
+            continue;
+        };
+        hits.push(SearchHit {
+            id: id.clone(),
+            title: title.clone(),
+            kind,
+            score: 0.0,
+            snippet: Vec::new(),
+            match_kind: MatchKind::Fuzzy,
+            matched_name: None,
+        });
+        room -= 1;
+    }
+    Ok(())
+}
+
+/// Every id and title in one FTS table.
+fn titles(index: &Connection, table: &str) -> Result<Vec<(String, String)>, StorageError> {
+    let mut statement = index
+        .prepare(&format!("SELECT id, title FROM {table}"))
+        .map_err(failed)?;
+    let rows = statement
+        .query_map([], |row| {
+            Ok((
+                row.get::<_, String>(0)?,
+                row.get::<_, Option<String>>(1)?.unwrap_or_default(),
+            ))
+        })
+        .map_err(failed)?;
+    rows.map(|row| row.map_err(failed)).collect()
+}
+
+/// The ids of one type `data.db` holds live.
+fn live_ids(data: &Connection, item_type: &str) -> Result<HashSet<String>, StorageError> {
+    let mut statement = data
+        .prepare("SELECT item_id FROM sync_items WHERE item_type = ?1 AND deleted_at IS NULL")
+        .map_err(failed)?;
+    let rows = statement
+        .query_map(params![item_type], |row| row.get::<_, String>(0))
+        .map_err(failed)?;
+    rows.map(|row| row.map_err(failed)).collect()
 }
 
 /// `Note` with its emoji and folder, or `Journal` with its date, or `None`
