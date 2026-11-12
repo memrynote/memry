@@ -452,6 +452,7 @@ impl VaultTier {
             watch: Some(watcher.handle()),
             filter: WatchFilter::new(exclude.clone()),
             untaken: Mutex::default(),
+            emptied: Mutex::default(),
             writeback: Some(writeback.clone()),
         };
         let consumer = Consumer::start(applier, inbox, watcher.handle(), exclude, after_walk)

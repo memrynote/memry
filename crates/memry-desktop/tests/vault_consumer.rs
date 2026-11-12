@@ -14,7 +14,7 @@ use std::time::{Duration, Instant};
 
 use memry_desktop::vault::consumer::Applied;
 use memry_desktop::vault::consumer::identity::{
-    Adoption, Candidate, Crossed, IdentityCtx, IdentityError, NoteIdentity, Removal, Rename,
+    Adoption, Candidate, IdentityCtx, IdentityError, NoteIdentity, Removal, Rename, Settled,
 };
 use memry_desktop::vault::consumer::rows::{RowError, RowStat};
 use memry_desktop::vault::file_types::FileType;
@@ -178,7 +178,7 @@ impl NoteIdentity for DeletesWhileParked {
         self.0.on_renamed(ctx, id, old_path, new_path)
     }
 
-    fn settle_crossings(&self, ctx: &IdentityCtx<'_>) -> Vec<Crossed> {
+    fn settle_crossings(&self, ctx: &IdentityCtx<'_>) -> Settled {
         self.0.settle_crossings(ctx)
     }
 }

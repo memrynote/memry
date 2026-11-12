@@ -48,6 +48,44 @@ async function boxOf(locator: Locator) {
   return box
 }
 
+/**
+ * Opens the drag-handle menu of the block whose line is `line`. The side menu mounts at the
+ * editor's origin and moves beside the hovered line a task later, and BlockNote hides it on any
+ * scroll of an ancestor (floating-ui's `autoUpdate`) and shows it again only on a pointer move. A
+ * click waiting on a handle that had been placed and then hidden, with the pointer still, never
+ * got it back (#4227; and #3967, linux-x64 run 43103027224, job 130799139752: the handle sat
+ * beside Line 20 on the poll and was missing for the 60 s of the click). Each round moves the
+ * pointer again, a pixel off the last spot since a move to where it already is fires no event,
+ * and clicks the handle in the same round, at the box just measured: the harness's click would
+ * measure again and scroll to the handle first. A menu that did not open is another round, and an
+ * open one ends the wait.
+ */
+async function openHandleMenuBeside(
+  page: Page,
+  line: { x: number; y: number; width: number; height: number }
+): Promise<void> {
+  const handle = page.locator('[data-test="dragHandle"]').first()
+  const menu = page.locator(MENU).first()
+  let round = 0
+  await expect
+    .poll(async () => {
+      if (await menu.isVisible()) return 'open'
+      await page.mouse.move(line.x + line.width / 2 + (round++ % 2), line.y + line.height / 2)
+      const box = await handle.boundingBox()
+      if (!box) return 'no handle'
+      const middle = box.y + box.height / 2
+      if (middle < line.y || middle > line.y + line.height) return 'handle not beside its line'
+      await page.mouse.click(box.x + box.width / 2, middle)
+      return (await menu.waitFor({ state: 'visible', timeout: 3_000 }).then(
+        () => true,
+        () => false
+      ))
+        ? 'open'
+        : 'menu did not open'
+    })
+    .toBe('open')
+}
+
 test('applies block text color via real menu clicks while autosave echo lands', async ({
   page
 }) => {
@@ -123,20 +161,7 @@ test('keeps the Turn into submenu open through a hesitation on the way to it', a
       })
   )
   const line = await boxOf(target)
-  await page.mouse.move(line.x + line.width / 2, line.y + line.height / 2)
-  // The side menu mounts at the editor's origin, here scrolled out of view above, and moves beside
-  // the line a task later. A click in between scrolled the editor to the unplaced handle, the scroll
-  // closed the menu, and with the pointer still the handle never came back (#4227, linux-x64 runs
-  // 43006737328 and 43012776097). The click waits until the handle sits beside Line 20.
-  const handle = page.locator('[data-test="dragHandle"]').first()
-  await expect
-    .poll(async () => {
-      const box = await handle.boundingBox()
-      const middle = box ? box.y + box.height / 2 : -1
-      return middle >= line.y && middle <= line.y + line.height
-    })
-    .toBe(true)
-  await handle.click()
+  await openHandleMenuBeside(page, line)
   const turnInto = menuItem(page, 'Turn into')
   await turnInto.hover()
   const heading1 = menuItem(page, 'Heading 1')

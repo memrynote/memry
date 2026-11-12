@@ -30,6 +30,8 @@ const mocks = vi.hoisted(() => ({
   indexChannels: [] as Array<{ onmessage: (event: never) => void }>,
   /** The channel of every search, in call order. */
   searchChannels: [] as Array<{ onmessage: (event: never) => void }>,
+  /** Px the drawn rows sit lower than the stub's own layout: what measuring taller rows above does. */
+  startShift: 0,
   scrollToIndex: vi.fn(),
   measureElement: vi.fn(),
   measure: vi.fn(),
@@ -71,7 +73,7 @@ vi.mock('@tanstack/react-virtual', () => ({
         Array.from({ length: Math.max(0, shown) }, (_, offset) => ({
           index: first + offset,
           key: first + offset,
-          start: (first + offset) * 22,
+          start: (first + offset) * 22 + mocks.startShift,
           size: 22
         })),
       getTotalSize: () => count * 22,
@@ -194,6 +196,7 @@ describe('LargeFileViewer', () => {
   beforeEach(() => {
     mocks.visibleRows = 40
     mocks.firstRow = 0
+    mocks.startShift = 0
     mocks.indexChannels = []
     mocks.searchChannels = []
     mocks.resizeObservers = []
@@ -958,6 +961,90 @@ describe('LargeFileViewer', () => {
     await waitFor(() => expect(mocks.scrollToIndex).toHaveBeenCalledWith(3_500, expect.anything()))
   })
 
+  it('centers the hit again when the rows above it are measured taller', async () => {
+    // #given a hit that Next has jumped to
+    await openReady(4000)
+    mocks.search.mockResolvedValue({
+      status: 'complete',
+      query: 'row 7',
+      hits: [
+        { line: 7, ordinal: 0 },
+        { line: 20, ordinal: 0 }
+      ],
+      total: 2,
+      limited: false
+    } satisfies LargeFileSearchResult)
+    const input = await findInFile('row 7')
+    expect(await screen.findByText('1/2')).toBeInTheDocument()
+    await userEvent.type(input, '{Enter}')
+    await waitFor(() => expect(mocks.scrollToIndex).toHaveBeenCalledWith(20, expect.anything()))
+    const jumped = mocks.scrollToIndex.mock.calls.length
+
+    // #when the rows above it wrap taller once measured, pushing the hit down
+    mocks.startShift = 300
+    await scrollTo(0, 4000)
+
+    // #then it is centered again
+    expect(mocks.scrollToIndex.mock.calls.length).toBeGreaterThan(jumped)
+    expect(mocks.scrollToIndex).toHaveBeenLastCalledWith(20, expect.anything())
+  })
+
+  it('leaves the viewport to the user once they scroll away from the hit', async () => {
+    await openReady(4000)
+    mocks.search.mockResolvedValue({
+      status: 'complete',
+      query: 'row 7',
+      hits: [
+        { line: 7, ordinal: 0 },
+        { line: 20, ordinal: 0 }
+      ],
+      total: 2,
+      limited: false
+    } satisfies LargeFileSearchResult)
+    const input = await findInFile('row 7')
+    expect(await screen.findByText('1/2')).toBeInTheDocument()
+    await userEvent.type(input, '{Enter}')
+    await waitFor(() => expect(mocks.scrollToIndex).toHaveBeenCalledWith(20, expect.anything()))
+    const jumped = mocks.scrollToIndex.mock.calls.length
+
+    // #when the user wheels, and rows measured after that move the hit's row
+    const scroller = screen.getByText('row 0').closest('.overflow-y-auto') as HTMLElement
+    act(() => {
+      scroller.dispatchEvent(new WheelEvent('wheel', { deltaY: 100 }))
+    })
+    mocks.startShift = 300
+    await scrollTo(0, 4000)
+
+    // #then the viewport stays where the user put it
+    expect(mocks.scrollToIndex.mock.calls.length).toBe(jumped)
+  })
+
+  it('does not snap back to the hit after a scrollbar drag takes its row out of the window', async () => {
+    // #given a hit that Next has jumped to
+    await openReady(4000)
+    mocks.search.mockResolvedValue({
+      status: 'complete',
+      query: 'row 7',
+      hits: [
+        { line: 7, ordinal: 0 },
+        { line: 20, ordinal: 0 }
+      ],
+      total: 2,
+      limited: false
+    } satisfies LargeFileSearchResult)
+    const input = await findInFile('row 7')
+    expect(await screen.findByText('1/2')).toBeInTheDocument()
+    await userEvent.type(input, '{Enter}')
+    await waitFor(() => expect(mocks.scrollToIndex).toHaveBeenCalledWith(20, expect.anything()))
+    const jumped = mocks.scrollToIndex.mock.calls.length
+
+    // #when the scrollbar is dragged far away, with no wheel, touch, pointer or key event
+    await scrollTo(2000, 4000)
+
+    // #then the viewport stays where the drag put it
+    expect(mocks.scrollToIndex.mock.calls.length).toBe(jumped)
+  })
+
   it('wraps backwards from the first hit rather than stopping at it', async () => {
     // #given
     await openReady(400)
@@ -1242,6 +1329,42 @@ describe('LargeFileViewer', () => {
 
       fireEvent.keyDown(region, { key: ' ', shiftKey: true })
       await waitFor(() => expect(windowOf(region).style.transform).toBe('translateY(0px)'))
+    })
+
+    it('moves a page on PageDown with nothing focused, instead of leaving it to the browser', async () => {
+      const region = await openScaled()
+      region.blur()
+
+      // #when the key lands on the page's body
+      const notPrevented = fireEvent.keyDown(document.body, { key: 'PageDown' })
+
+      // #then the scaled bar is not scrolled by it: the anchor moves a page
+      expect(notPrevented).toBe(false)
+      await waitFor(() => expect(windowOf(region).style.transform).toBe('translateY(-360px)'))
+    })
+
+    it('leaves Shift+Arrow on the body to the pane chord instead of moving a line', async () => {
+      const region = await openScaled()
+      region.blur()
+
+      // #when the second key of ⌘K, Shift+Arrow lands on the page's body
+      const notPrevented = fireEvent.keyDown(document.body, { key: 'ArrowDown', shiftKey: true })
+
+      // #then the viewer does not take it
+      expect(notPrevented).toBe(true)
+      expect(windowOf(region).style.transform).toBe('translateY(0px)')
+    })
+
+    it('leaves a key typed in another field to that field', async () => {
+      const region = await openScaled()
+      const field = document.createElement('input')
+      document.body.appendChild(field)
+
+      const notPrevented = fireEvent.keyDown(field, { key: 'ArrowDown' })
+
+      expect(notPrevented).toBe(true)
+      expect(windowOf(region).style.transform).toBe('translateY(0px)')
+      field.remove()
     })
 
     it('moves a page on Alt+Down instead of scrolling the scaled bar', async () => {

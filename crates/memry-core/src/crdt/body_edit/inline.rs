@@ -134,18 +134,22 @@ pub(super) fn element_text_len<T: ReadTxn>(txn: &T, element: &XmlElementRef) -> 
         .sum()
 }
 
-/// One whole run's text, as formatted chunks. It takes no offset, so no
-/// caller can start it inside a character and lose the rest of the run.
-/// Embeds are left out, as the block snapshot has no place for them (#4262).
-pub(super) fn formatted_text(
-    txn: &TransactionMut,
-    run: &XmlTextRef,
-) -> Vec<(String, Option<Box<yrs::types::Attrs>>)> {
+/// One whole run's content, as formatted chunks: its text and its embeds. It
+/// takes no offset, so no caller can start it inside a character and lose the
+/// rest of the run.
+///
+/// An embed holding a shared type is refused: a copy would need a deep copy,
+/// and leaving it out loses data (#4262). y-prosemirror never writes one.
+pub(super) fn formatted_text(txn: &TransactionMut, run: &XmlTextRef) -> Result<Run, CrdtError> {
     run.diff(txn, yrs::types::text::YChange::identity)
         .into_iter()
-        .filter_map(|chunk| match chunk.insert {
-            Out::Any(Any::String(text)) => Some((text.to_string(), chunk.attributes)),
-            _ => None,
+        .map(|chunk| match chunk.insert {
+            Out::Any(Any::String(text)) => Ok((Chunk::Text(text.to_string()), chunk.attributes)),
+            Out::Any(embed) => Ok((Chunk::Embed(embed), chunk.attributes)),
+            _ => Err(CrdtError::Undecodable {
+                doc_id: "block snapshot".to_owned(),
+                what: "a text run embeds a shared type, which a copy cannot carry".to_owned(),
+            }),
         })
         .collect()
 }

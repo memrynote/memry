@@ -141,6 +141,8 @@ mod journal_format_vectors;
 mod journal_rename;
 #[path = "journal_service.rs"]
 mod journal_service;
+#[path = "journal_stalled_writer.rs"]
+mod journal_stalled_writer;
 #[path = "journal_update.rs"]
 mod journal_update;
 #[path = "large_file_index.rs"]

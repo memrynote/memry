@@ -183,13 +183,42 @@ export const LargeFileViewer = memo(function LargeFileViewer({
   }, [openFindRef, canFind, openFind])
 
   const currentHit = search.currentHit
+  // Where the hit's row sits and how tall it is, once drawn. Rows between the viewport and the
+  // hit are still on the estimate when the jump lands, and each one that is then measured and
+  // wraps taller pushes the hit down: centering it again as they settle keeps Next on the hit
+  // rather than short of it. Rows are measured by a ResizeObserver, after TanStack's own
+  // reconcile has already found the first landing stable.
+  const hitRow = currentHit ? rows.find((row) => row.index === currentHit.line) : undefined
+  const hitStart = hitRow?.start
+  const hitSize = hitRow?.size
+  // The hit being kept centered, until the user moves the viewport themselves.
+  const followedHitRef = useRef<{ hit: typeof currentHit; moved: boolean } | null>(null)
+  useEffect(() => {
+    const element = scrollRef.current
+    if (!element) return undefined
+    const markMoved = (): void => {
+      if (followedHitRef.current) followedHitRef.current.moved = true
+    }
+    const events = ['wheel', 'touchstart', 'pointerdown', 'keydown'] as const
+    for (const name of events) element.addEventListener(name, markMoved, { passive: true })
+    return () => {
+      for (const name of events) element.removeEventListener(name, markMoved)
+    }
+  }, [showRows, scaled])
   useEffect(() => {
     if (!currentHit || scaled) return
+    if (followedHitRef.current?.hit !== currentHit) {
+      followedHitRef.current = { hit: currentHit, moved: false }
+    } else if (followedHitRef.current.moved || hitStart === undefined) {
+      // A hit whose row left the window was scrolled away from (a scrollbar drag raises none of
+      // the events above), not still being settled: centering it again would snap the view back.
+      return
+    }
     virtualizer.scrollToIndex(currentHit.line, { align: 'center' })
-    // The virtualizer identity changes every render; the hit is what moves the
-    // viewport.
+    // The virtualizer identity changes every render; the hit, and where its row
+    // lands as the rows around it are measured, are what move the viewport.
     // oxlint-disable-next-line react/exhaustive-deps
-  }, [currentHit])
+  }, [currentHit, hitStart, hitSize])
 
   if (state.status === 'too-large') {
     return (
@@ -270,6 +299,7 @@ export const LargeFileViewer = memo(function LargeFileViewer({
           target={currentHit}
           label={t('page.largeFile.viewer.lines', { count: lineCount })}
           ensureRange={ensureRange}
+          active={active}
           renderRow={(line) => (
             <LineRow
               line={line}

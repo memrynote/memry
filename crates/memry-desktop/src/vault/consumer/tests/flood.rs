@@ -52,8 +52,14 @@ fn run_on(f: &Fixture, sink: EventSink, inbox: Inbox) -> Running {
     )
     .unwrap();
     let applier = applier(&f.root, &f.vault, &f.store, &f.rows, f.identity.clone());
-    let consumer =
-        Consumer::start(applier, inbox, watcher.handle(), vec![], Box::new(|_| {})).unwrap();
+    let consumer = Consumer::start(
+        applier,
+        inbox,
+        watcher.handle(),
+        vec![],
+        Box::new(|_, _| {}),
+    )
+    .unwrap();
     Running {
         _watcher: watcher,
         _consumer: consumer,

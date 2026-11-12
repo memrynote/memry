@@ -33,8 +33,17 @@
 //!   written). A save that leaves the body as read (a header tag edit) feeds nothing and keeps
 //!   no version, so a document ahead of its file keeps its text; the file then counts as the
 //!   document's (own-write record, row) only if the row named it. Only a frontmatter that does
-//!   not parse, a missing row, file or note, a file that is not markdown, and an edit that
-//!   lands during the write ([`Kept::FileChanged`]) keep the file. A file its row does not name
+//!   not parse, a missing row, file or note, a file that is not markdown, an edit that lands
+//!   during the write, and an empty file that replaced the one its row names
+//!   ([`Kept::FileChanged`]) keep the file. That empty file is an outside writer between its
+//!   truncate and its write (`fs.writeFileSync`, an editor saving in place): a save renamed
+//!   over it would leave that writer's bytes in a file no path names, kept nowhere (#4281). The
+//!   save is fed and its write refused, as for an edit that lands during the write (below);
+//!   the empty file is no outside edit the record takes, and no version. A save the feed does
+//!   not take is kept as a version instead, the one place its text then is. A row with no hash
+//!   names no file, so an empty file under it is no write in progress and a save writes over
+//!   it. A restore over that empty file is refused before it feeds anything, so its text never
+//!   lands later without the restore point it keeps. A file its row does not name
 //!   and whose bytes are not the run's own is an outside edit the consumer has not fed yet.
 //!   This save's bytes, the run's own, will never reach the consumer as one, so what that
 //!   file's frontmatter says (tags, property values) reaches the record first, through the
@@ -160,6 +169,7 @@ pub struct AppEdit {
     rows: Arc<RowOwner>,
     session: RowSession,
     echo: Arc<EchoGuard>,
+    own_files: Arc<OwnFiles>,
     feed: ExternalFeed,
     converter: Converter,
     fail_next_feed: AtomicBool,
@@ -181,6 +191,7 @@ impl AppEdit {
             identity: tier.identity(),
             session,
             echo: tier.echo(),
+            own_files: tier.own_files(),
             feed: open.vault.external_feed(store.clone())?,
             converter: converter_for(settings.as_ref()),
             rows,
@@ -246,6 +257,11 @@ impl AppEdit {
         };
         let read_body = split_frontmatter_block(read).body;
         let row_names_file = row.content_hash.as_deref() == Some(file.hash.as_str());
+        // An outside writer between its truncate and its write: see the module comment.
+        let mid_write = file.raw.is_empty() && row.content_hash.is_some() && !row_names_file;
+        if mid_write && matches!(precondition, Precondition::Restore(_)) {
+            return Ok(Edited::Kept(Kept::FileChanged));
+        }
         let mut outside = false;
         // How far the document had come when `Held` compared it; the feed refuses one past it.
         let mut compared_at = None;
@@ -276,8 +292,10 @@ impl AppEdit {
             | Precondition::SaveOver(own, _)
             | Precondition::Restore(own) => {
                 // A row with no hash names no file the document took, so none was replaced.
-                outside =
-                    row.content_hash.is_some() && !row_names_file && !own.is(note_id, &file.hash);
+                outside = !mid_write
+                    && row.content_hash.is_some()
+                    && !row_names_file
+                    && !own.is(note_id, &file.hash);
                 if let Some(previous) = row.content_hash.as_deref().filter(|_| outside) {
                     self.take_outside(note_id, previous, &file)
                         .map_err(AppEditError::from)?;
@@ -325,7 +343,8 @@ impl AppEdit {
                 body_changed && (!own_file || note_snapshots::is_significant(read_body, next_body))
             }
         };
-        if keeps {
+        // The empty file of a write in progress holds nothing to keep.
+        if keeps && !mid_write {
             let write_back = self.vault.write_back();
             match precondition {
                 Precondition::Restore(_) => {
@@ -346,7 +365,9 @@ impl AppEdit {
                     file_body: read_body,
                     compared_at,
                 };
-                match self.feed_text(note_id, &row.path, next, &edited.frontmatter, read) {
+                // Text made over an empty file says nothing of the note's writing data.
+                let frontmatter = (!mid_write).then_some(&edited.frontmatter);
+                match self.feed_text(note_id, &row.path, next, frontmatter, read) {
                     Ok(takes) => takes,
                     Err(kept) => return Ok(Edited::Kept(kept)),
                 }
@@ -360,6 +381,15 @@ impl AppEdit {
                 row_names_file
             }
         };
+        if mid_write {
+            if !takes {
+                self.vault
+                    .write_back()
+                    .keep_replaced(note_id, &text, next_body)
+                    .map_err(AppEditError::from)?;
+            }
+            return Ok(Edited::Kept(Kept::FileChanged));
+        }
         let hash = content_hash(&text);
         if takes {
             self.echo.will_write(&row.path, &hash);
@@ -368,16 +398,26 @@ impl AppEdit {
             // writes still pending there stay the app's (#4222).
             self.echo.disown(&row.path, &hash);
         }
-        if let Err(error) =
-            write_note_over_checked(&self.root, &row.path, &text, &file.hash, between)
-        {
-            if takes {
-                self.echo.cancel_write(&row.path);
-            }
-            return match error {
-                NoteFileError::ChangedUnderWrite => Ok(Edited::Kept(Kept::FileChanged)),
-                error => Err(AppEditError::from(error).into()),
+        let replaced =
+            match write_note_over_checked(&self.root, &row.path, &text, &file.hash, between) {
+                Ok(replaced) => replaced,
+                Err(error) => {
+                    if takes {
+                        self.echo.cancel_write(&row.path);
+                    }
+                    return match error {
+                        NoteFileError::ChangedUnderWrite => Ok(Edited::Kept(Kept::FileChanged)),
+                        error => Err(AppEditError::from(error).into()),
+                    };
+                }
             };
+        // A writer of bytes the run did not write may still be writing the file replaced.
+        if !self.own_files.ours(note_id, &file.hash) {
+            let told = Applied::OutsideEditKept {
+                note_id: note_id.to_owned(),
+                path: row.path.clone(),
+            };
+            replaced.keep_late_writes(&self.vault, &self.rows, note_id, told);
         }
         // The watcher may skip this write's echo, so no read of it would record the class.
         record_large_file(lane.files(), note_id, large_file_class(&text).is_some());
@@ -499,7 +539,7 @@ impl AppEdit {
         note_id: &str,
         path: &str,
         text: &str,
-        frontmatter: &YamlValue,
+        frontmatter: Option<&YamlValue>,
         read: AppRead<'_>,
     ) -> Result<bool, Kept> {
         let split = split_frontmatter_block(text);
@@ -508,7 +548,7 @@ impl AppEdit {
             note_id,
             markdown: split.body,
             note_path: Some(path),
-            writing: Some(writing_of_yaml(frontmatter)),
+            writing: frontmatter.map(writing_of_yaml),
             frontmatter: split.block,
             embeds: Some(&embeds),
         };

@@ -1,8 +1,7 @@
 //! One write-back pass for one note; the rules are the module invariants.
 
-use std::collections::HashMap;
 use std::path::{Path, PathBuf};
-use std::sync::{Arc, Mutex};
+use std::sync::Arc;
 
 use memry_core::api::vault::Vault;
 use memry_core::domain::app_settings::AppSettings;
@@ -88,9 +87,8 @@ pub struct Pass {
     pub(crate) session: RowSession,
     pub(crate) echo: Arc<EchoGuard>,
     pub(crate) settings: Option<AppSettings>,
-    /// The hash of the bytes this session's write-back last wrote, per note.
-    last_written: Mutex<HashMap<String, String>>,
-    /// What the app's other writers wrote this run, and the outside edits the consumer read.
+    /// What the write-back and the app's other writers wrote this run, and the outside edits the
+    /// consumer read.
     own_files: Arc<OwnFiles>,
 }
 
@@ -111,7 +109,6 @@ impl Pass {
             session,
             echo,
             settings,
-            last_written: Mutex::default(),
             own_files,
         }
     }
@@ -194,7 +191,15 @@ impl Pass {
             write_note_over_checked(&self.root, &row.path, &output, &file.hash, between)
         });
         match written {
-            Ok(()) => {}
+            // A writer of bytes the run did not write may still be writing the file replaced.
+            Ok(replaced) if !self.own_files.ours(note_id, &file.hash) => {
+                let told = Applied::OutsideEditKept {
+                    note_id: note_id.to_owned(),
+                    path: row.path.clone(),
+                };
+                replaced.keep_late_writes(&self.vault, &self.rows, note_id, told);
+            }
+            Ok(_) => {}
             Err(NoteFileError::ChangedUnderWrite) => return Outcome::Kept(Keep::FileChanged),
             Err(error) => return Outcome::Failed(format!("the file was not written: {error}")),
         }
@@ -204,10 +209,7 @@ impl Pass {
         // stops taking edits, as Electron's write-back degrades the note. Recorded before the
         // row, so a row write that fails leaves no large file the editor still takes edits of.
         record_large_file(lane.files(), note_id, large_file_class(&output).is_some());
-        self.last_written
-            .lock()
-            .unwrap_or_else(|e| e.into_inner())
-            .insert(note_id.to_owned(), hash.clone());
+        self.own_files.wrote_back(note_id, &hash);
         let stat = RowStat {
             file_type: FileType::Markdown,
             size: output.len() as u64,
@@ -259,13 +261,7 @@ impl Pass {
         if !replaces_unheld_bytes(raw, output) {
             return Ok((false, false));
         }
-        let ours = self
-            .last_written
-            .lock()
-            .unwrap_or_else(|e| e.into_inner())
-            .get(note_id)
-            .is_some_and(|last| last == hash)
-            || self.own_files.writer(note_id, hash).is_some();
+        let ours = self.own_files.ours(note_id, hash);
         let body = split_frontmatter_block(raw).body;
         if ours && !note_snapshots::is_significant(body, split_frontmatter_block(output).body) {
             return Ok((false, false));

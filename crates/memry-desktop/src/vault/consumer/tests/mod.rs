@@ -530,6 +530,7 @@ pub(super) fn applier(
         watch: None,
         filter: WatchFilter::new(Vec::new()),
         untaken: Mutex::default(),
+        emptied: Mutex::default(),
         writeback: None,
     }
 }
@@ -541,6 +542,7 @@ pub(super) fn only_note(f: &Fixture, rel: &str) -> String {
 mod activity;
 mod batch;
 mod embeds;
+mod emptied;
 mod facts;
 mod flood;
 mod hash_rule;

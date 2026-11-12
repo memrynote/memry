@@ -89,6 +89,8 @@ const mocks = vi.hoisted(() => ({
   contentAreaMounts: 0,
   /** What the tab would persist; the mind-map toggle lives in here. */
   tabViewState: {} as Record<string, unknown>,
+  /** The focused tab of the focused group, as the tabs context reports it. */
+  focusedTab: { tabId: '/notes/note-1', groupId: 'group-1' },
   spatialCanvasEnabled: true,
   direction: 'ltr' as 'ltr' | 'rtl',
   /** Blocks the mocked editor reports as its live document. */
@@ -283,7 +285,9 @@ vi.mock('@/services/notes-service', async (importOriginal) => {
       // #800 getFile probe (note.tsx): null → treated as a real markdown note.
       getFile: mocks.getFile,
       get: mocks.notesGet,
-      resolveByTitle: mocks.resolveByTitle
+      resolveByTitle: mocks.resolveByTitle,
+      // The cover picker lists the vault's attachments when it opens.
+      listVaultAttachments: async () => []
     },
     onNoteEventsDropped: (handler: () => void) => {
       mocks.droppedHandler = handler
@@ -336,6 +340,8 @@ vi.mock('@/contexts/tabs', () => {
     // useOpenPage (wiki/backlink navigation preference) reads openTab from here.
     useTabActions: () => ({ openTab: mocks.openTab }),
     useTabActionsOptional: () => tabActions,
+    useIsTabActive: (tabId: string, groupId?: string) =>
+      tabId === mocks.focusedTab.tabId && groupId === mocks.focusedTab.groupId,
     useActiveTab: () => ({
       id: '/notes/note-1',
       entityId: 'note-1',
@@ -758,8 +764,18 @@ vi.mock('@/hooks/use-database-read-only', () => ({
 }))
 
 vi.mock('@/components/note/note-cover', () => ({
-  NoteCover: ({ disabled }: { disabled?: boolean }) => (
-    <div data-testid="note-cover" data-disabled={String(!!disabled)} />
+  NoteCover: ({
+    disabled,
+    onChange
+  }: {
+    disabled?: boolean
+    onChange?: (event: React.MouseEvent<HTMLElement>) => void
+  }) => (
+    <div data-testid="note-cover" data-disabled={String(!!disabled)}>
+      <button type="button" onClick={onChange}>
+        Change cover
+      </button>
+    </div>
   )
 }))
 
@@ -1078,6 +1094,7 @@ describe('NotePage', () => {
     mocks.propertyCanEdit = null
     mocks.contentAreaMounts = 0
     mocks.tabViewState = {}
+    mocks.focusedTab = { tabId: '/notes/note-1', groupId: 'group-1' }
     mocks.spatialCanvasEnabled = true
     mocks.direction = 'ltr'
     mocks.editorInstances = []
@@ -2976,6 +2993,22 @@ describe('NotePage', () => {
       expect(screen.getByRole('button', { name: 'names.addMenu' })).toBeDisabled()
     })
 
+    // A picker opened while the database was still answering writable would fail on pick.
+    it('closes an open cover picker when the database turns read-only', async () => {
+      mocks.noteState.note = {
+        ...note,
+        frontmatter: { ...note.frontmatter, cover: 'wash:sage' }
+      }
+      const page = renderWithProviders(<NotePage noteId="note-1" />)
+      fireEvent.click(await screen.findByRole('button', { name: 'Change cover' }))
+      expect(await screen.findByRole('dialog')).toBeInTheDocument()
+
+      mocks.databaseReadOnly = true
+      page.rerender(<NotePage noteId="note-1" />)
+
+      await waitFor(() => expect(screen.queryByRole('dialog')).not.toBeInTheDocument())
+    })
+
     it("keeps one note's lock notice off the large file the tab shows next", async () => {
       const page = renderWithProviders(<NotePage noteId="note-1" />)
       await screen.findByTestId('info-section')
@@ -3297,6 +3330,19 @@ describe('NotePage', () => {
       expect(mocks.contentAreaMounts).toBe(1)
       // ...and find still walks the editor, which is where the text is
       expect(mocks.findInPageEnabled).toBe(true)
+    })
+
+    it('leaves the keyboard to the other split group when the same note is open in both', async () => {
+      // #given the same note in two groups, with focus in the other one: the focused tab's
+      // entity is this note, but it is not this page's tab
+      mocks.focusedTab = { tabId: '/notes/note-1-other', groupId: 'group-2' }
+
+      // #when
+      renderWithProviders(<NotePage noteId="note-1" />)
+      await screen.findByTestId('editor-content')
+
+      // #then this page does not answer find
+      expect(mocks.findInPageEnabled).toBe(false)
     })
   })
 

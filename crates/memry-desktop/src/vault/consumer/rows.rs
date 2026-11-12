@@ -107,6 +107,13 @@ impl RowOwner {
         self.applied.subscribe()
     }
 
+    /// Publishes a fact that writes no row, outside the lane: a kept text's
+    /// ([`crate::vault::late_writes`]).
+    pub(crate) fn publish(&self, fact: Applied) {
+        // No subscriber is not an error: the facts are for whoever listens.
+        let _ = self.applied.send(fact);
+    }
+
     /// Opens the rows of `vault` under a new session, which every write of this open names.
     pub(crate) fn open(&self, vault: Arc<Vault>) -> Result<RowSession, StorageError> {
         let files = vault.note_files();

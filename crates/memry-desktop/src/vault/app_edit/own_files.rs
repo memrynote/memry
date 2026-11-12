@@ -26,10 +26,15 @@ use crate::vault::consumer::ChangeSource;
 /// holds its text, so nothing of it is replaced (#4124). A file the app wrote, in this run or
 /// an earlier one, is never in it; an outside edit read in an earlier run and not replaced
 /// since is not either, and goes untold.
+///
+/// Apart again, by note id, the hash of the bytes the write-back wrote last: the run's bytes too
+/// ([`Self::ours`]), though a save does not replace them with no version, since no editor showed
+/// them.
 #[derive(Debug, Default)]
 pub struct OwnFiles {
     marks: Mutex<HashMap<String, Mark>>,
     outside: Mutex<HashMap<String, String>>,
+    written_back: Mutex<HashMap<String, String>>,
 }
 
 #[derive(Debug)]
@@ -65,6 +70,20 @@ impl OwnFiles {
         self.writer(note_id, hash).is_some()
     }
 
+    /// The write-back wrote `hash` as the note's text.
+    pub(crate) fn wrote_back(&self, note_id: &str, hash: &str) {
+        lock(&self.written_back).insert(note_id.to_owned(), hash.to_owned());
+    }
+
+    /// Whether `hash` is the bytes this run wrote last for the note: the write-back's, or another
+    /// writer's of the app.
+    pub(crate) fn ours(&self, note_id: &str, hash: &str) -> bool {
+        lock(&self.written_back)
+            .get(note_id)
+            .is_some_and(|last| last == hash)
+            || self.is(note_id, hash)
+    }
+
     /// Whether `hash` is the run's own file to a save from `editor`: the run's bytes, written by
     /// that editor or for none (see the type's comment).
     pub(super) fn is_own_to(&self, note_id: &str, hash: &str, editor: Option<&str>) -> bool {
@@ -96,6 +115,7 @@ impl OwnFiles {
     pub(crate) fn clear(&self) {
         self.marks().clear();
         lock(&self.outside).clear();
+        lock(&self.written_back).clear();
     }
 
     /// A save that left the body: `to` is the run's own only if `from`, the file it replaced,
@@ -117,4 +137,22 @@ impl OwnFiles {
 
 fn lock<T>(mutex: &Mutex<T>) -> MutexGuard<'_, T> {
     mutex.lock().unwrap_or_else(PoisonError::into_inner)
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    /// The write-back's bytes are the run's: an app edit over them starts no late-write watch
+    /// (`late_writes`), and they are not the run's own to a save, which keeps a version first.
+    #[test]
+    fn the_write_backs_bytes_are_the_runs_until_a_vault_opens() {
+        let own = OwnFiles::default();
+        own.wrote_back("n", "h1");
+        assert!(own.ours("n", "h1"));
+        assert!(!own.ours("n", "h0"));
+        assert!(!own.is_own_to("n", "h1", None));
+        own.clear();
+        assert!(!own.ours("n", "h1"));
+    }
 }

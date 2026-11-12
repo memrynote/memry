@@ -986,7 +986,6 @@ fn a_removed_file_deletes_its_note_once() {
     let mut e = notes_env();
     e.open();
     e.facts_until(indexed);
-    std::thread::sleep(Duration::from_millis(300));
     e.write("a.md", "Alpha\n");
     e.facts_until(added("a.md"));
     let id = row_id(&e, "a.md").unwrap();
@@ -1260,7 +1259,7 @@ fn a_removed_file_whose_note_has_an_edit_the_file_never_got_keeps_the_note() {
     e.open();
     e.facts_until(indexed);
     let (a, b) = (row_id(&e, "a.md").unwrap(), row_id(&e, "b.md").unwrap());
-    std::thread::sleep(Duration::from_millis(300));
+    e.after_reconcile();
     let broken = "---\nfoo: [unclosed\n---\nBroken\n";
     e.write("a.md", broken);
     e.write("b.md", broken);

@@ -86,7 +86,8 @@ import { RESTORE_MAX_MS } from '@/hooks/use-tab-scroll-restore'
 import { useBlockRefScroll } from '@/hooks/use-block-ref-scroll'
 import type { BlockRef } from '@/lib/block-ref'
 import { splitWikiTarget, normalizeHeading } from '@memry/shared/wiki-target'
-import { useTabs, useActiveTab } from '@/contexts/tabs'
+import { useTabs, useActiveTab, useIsTabActive } from '@/contexts/tabs'
+import { useTabIdentity } from '@/contexts/tabs/tab-identity'
 import { useOpenPage, useOpenTarget } from '@/hooks/use-open-target'
 import { useNoteDeleteGuard } from '@/components/note/content-area/portal-flows/use-note-delete-guard'
 import type { WikiLinkOpenTarget } from '@/components/note/content-area/types'
@@ -284,8 +285,9 @@ export function NotePage({ noteId }: NotePageProps) {
     [noteId]
   )
   // This device can't save (#4268): the note's fields take no edit, as its editor takes none.
-  // The vault's own answer covers a large file, which mounts no editor, and the moment before
-  // the editor's host answers (#4271).
+  // The vault's own answer covers a large file, which mounts no editor. It also covers the moment
+  // before the editor's host answers, once its first health ask has returned: until then the
+  // fields still take an edit, and a refused save shows its own error (#4271).
   const vaultReadOnly = useDatabaseReadOnly()
   const databaseReadOnly = docReadOnly === 'database-read-only' || vaultReadOnly
   const fieldsReadOnly = isLocked || databaseReadOnly
@@ -347,6 +349,8 @@ export function NotePage({ noteId }: NotePageProps) {
   const [pendingWikiLinkCreate, setPendingWikiLinkCreate] = useState<string | null>(null)
   const [moreMenuOpen, setMoreMenuOpen] = useState(false)
   const [coverPickerAnchor, setCoverPickerAnchor] = useState<CoverPickerAnchor | null>(null)
+  // A picker opened before the database turned read-only would fail on pick: close it.
+  if (fieldsReadOnly && coverPickerAnchor) setCoverPickerAnchor(null)
   const { vaultPath } = useVault()
   const uploadFailedMessage = t('cover.picker.uploadFailed')
   // `noteId` is always set by the time the picker renders; hooks run before the
@@ -575,7 +579,11 @@ export function NotePage({ noteId }: NotePageProps) {
     return () => marqueeZoneEl.removeEventListener('mousedown', handler)
   }, [marqueeZoneEl])
 
-  const isActiveNote = activeTab?.entityId === noteId
+  // The same note can be open in two split groups, and `activeTab` is only the focused one:
+  // comparing the entity alone would make both pages active, and one key would move both.
+  const tabIdentity = useTabIdentity()
+  const isOwnTabActive = useIsTabActive(tabIdentity?.tabId ?? '', tabIdentity?.groupId)
+  const isActiveNote = activeTab?.entityId === noteId && (!tabIdentity || isOwnTabActive)
   // A large file has no editor DOM to walk, and what is mounted is a few dozen
   // virtualized rows out of millions — searching them would answer confidently
   // about the wrong thing. The viewer owns find on that surface instead.

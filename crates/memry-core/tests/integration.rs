@@ -346,6 +346,8 @@ mod recreate_clock_vectors;
 mod recurrence_vectors;
 #[path = "roundtrip_acceptance.rs"]
 mod roundtrip_acceptance;
+#[path = "snapshot_embeds.rs"]
+mod snapshot_embeds;
 #[path = "sync_cursor_repair.rs"]
 mod sync_cursor_repair;
 #[path = "sync_engine.rs"]

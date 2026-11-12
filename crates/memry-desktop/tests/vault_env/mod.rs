@@ -24,6 +24,7 @@ use crate::device_key;
 
 pub const WAIT: Duration = Duration::from_secs(25);
 pub const QUIET: Duration = Duration::from_millis(2500);
+const PROBE: &str = "reconcile-barrier.md";
 
 /// Makes a note for every file it is offered, and remembers which. Fails the first
 /// `failures` offers at once, held or not.
@@ -183,15 +184,21 @@ impl Env {
         }
     }
 
+    /// Waits until the watcher reports a file written now: it is live, and what the OS reported
+    /// from before it was armed (FSEvents delivers it late, in one burst) was read before this
+    /// file, so the test's next write is the next thing the watcher sees. The file stays.
+    pub fn watcher_live(&mut self) {
+        self.write(PROBE, "barrier\n");
+        self.facts_until(|f| matches!(f, Applied::Added { path, .. } if path == PROBE));
+    }
+
     /// Waits until the open's `after_walk` (the write-back's reconcile) has run. The consumer
     /// publishes `Indexed` and then runs it on its one thread, which applies a later fact only
     /// after: a note written now and seen added, then removed, proves it ran and leaves no row.
     pub fn after_reconcile(&mut self) {
-        const SCRATCH: &str = "reconcile-barrier.md";
-        self.write(SCRATCH, "barrier\n");
-        self.facts_until(|f| matches!(f, Applied::Added { path, .. } if path == SCRATCH));
-        fs::remove_file(self.vault.join(SCRATCH)).unwrap();
-        self.facts_until(|f| matches!(f, Applied::Removed { path, .. } if path == SCRATCH));
+        self.watcher_live();
+        fs::remove_file(self.vault.join(PROBE)).unwrap();
+        self.facts_until(|f| matches!(f, Applied::Removed { path, .. } if path == PROBE));
     }
 
     pub fn drain(&mut self) -> Vec<Applied> {
