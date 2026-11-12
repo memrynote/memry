@@ -44,6 +44,14 @@ vi.mock('@/hooks/use-notes-query', () => ({
     refetch: () => undefined
   })
 }))
+// A source note reads as loading until its note listeners are live; here they are at once.
+vi.mock('@/services/tauri-event', () => ({
+  subscribeToEvent: () => () => {},
+  subscribeToEvents: (_subscriptions: unknown, onListening: () => void) => {
+    onListening()
+    return () => {}
+  }
+}))
 vi.mock('@/lib/vault-locks-store', () => ({ useIsNoteLocked: () => mocks.locked }))
 vi.mock('@/contexts/sync-context', () => ({ useSyncOptional: () => null }))
 vi.mock('./portal-window', () => ({

@@ -8,6 +8,8 @@ import {
   onNoteLinksChanged,
   onNoteUpdated
 } from '@/services/notes-service'
+import { rereadQueries } from '@/hooks/use-notes-query'
+import { subscribeToEvents } from '@/services/tauri-event'
 
 const EMPTY: UnlinkedMention[] = []
 
@@ -29,25 +31,31 @@ export function useUnlinkedMentionsQuery(noteId: string | null, enabled: boolean
     const refresh = () => {
       void queryClient.invalidateQueries({ queryKey: unlinkedMentionsKey(noteId) })
     }
-    // Any body edit can add or drop a mention; a rename or alias edit of this
-    // note changes the names matched.
-    const unsubUpdated = onNoteUpdated((event) => {
-      if (event.id === noteId || event.changes.content !== undefined) refresh()
-    })
-    // A source that gains a link to this note becomes a backlink and leaves the list; one that
-    // drops its last link may join it. The index sends this after it committed the links, where
-    // a note event comes before.
-    const unsubLinks = onNoteLinksChanged(({ targetIds }) => {
-      if (targetIds.includes(noteId)) refresh()
-    })
-    const unsubCreated = onNoteCreated(refresh)
-    const unsubDeleted = onNoteDeleted(refresh)
-    return () => {
-      unsubUpdated()
-      unsubLinks()
-      unsubCreated()
-      unsubDeleted()
-    }
+    // Once the listeners go live the first read may still be out, and it may have taken its
+    // answer before the change: read again, not fold into it (`rereadQueries`).
+    const rereadAfterListening = () => rereadQueries(queryClient, unlinkedMentionsKey(noteId))
+    // The list was read before these listeners went live, and a change in between sent its event
+    // to nobody: read it again once they listen.
+    return subscribeToEvents(
+      [
+        // Any body edit can add or drop a mention; a rename or alias edit of this
+        // note changes the names matched.
+        (live) =>
+          onNoteUpdated((event) => {
+            if (event.id === noteId || event.changes.content !== undefined) refresh()
+          }, live),
+        // A source that gains a link to this note becomes a backlink and leaves the list; one that
+        // drops its last link may join it. The index sends this after it committed the links, where
+        // a note event comes before.
+        (live) =>
+          onNoteLinksChanged(({ targetIds }) => {
+            if (targetIds.includes(noteId)) refresh()
+          }, live),
+        (live) => onNoteCreated(refresh, live),
+        (live) => onNoteDeleted(refresh, live)
+      ],
+      rereadAfterListening
+    )
   }, [noteId, queryClient])
 
   return { mentions: query.data ?? EMPTY, isLoading: query.isLoading }

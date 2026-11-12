@@ -9,7 +9,7 @@
  * task/event) is the dangling signal.
  */
 
-import { useEffect, useMemo, useReducer, useRef } from 'react'
+import { useEffect, useMemo, useReducer, useRef, useState } from 'react'
 import {
   notesService,
   onNoteUpdated,
@@ -214,6 +214,10 @@ export function useCanvasEntities(visibleRefs: readonly CanvasCardRef[]): Entity
   }, [visibleRefs])
   const wantedSignature = useMemo(() => Array.from(wanted.keys()).toSorted().join('|'), [wanted])
   const wantedRef = useRef(wanted)
+  // Notes and files are read only once the note listeners are live: a note changed between a
+  // read and its listener going live sent its event to nobody, and reading again to cover that
+  // would open every note twice (`notes_get` counts one `note_opened` per read).
+  const [listening, setListening] = useState(false)
   // Declared before the load effect so it runs first and the load effect reads
   // the fresh map (effects fire in declaration order).
   useEffect(() => {
@@ -234,6 +238,7 @@ export function useCanvasEntities(visibleRefs: readonly CanvasCardRef[]): Entity
   }, [])
 
   useEffect(() => {
+    if (!listening) return
     const current = wantedRef.current
     const keep = new Set(current.keys())
     dispatch({ type: 'prune', keep })
@@ -263,7 +268,7 @@ export function useCanvasEntities(visibleRefs: readonly CanvasCardRef[]): Entity
         })
     }
     // oxlint-disable-next-line react/exhaustive-effect-dependencies -- dependency is an intentional re-run trigger (token/identity), not read by the effect
-  }, [wantedSignature])
+  }, [wantedSignature, listening])
 
   // Live updates. Refetch (or apply payload) only for entities we hold.
   useEffect(() => {
@@ -301,16 +306,6 @@ export function useCanvasEntities(visibleRefs: readonly CanvasCardRef[]): Entity
       refresh('file', id)
     }
 
-    // The cards were read before these listeners went live, and a note changed in between sent
-    // its event to nobody: read every held note and file card again once they listen.
-    const refreshNotesAndFiles = (): void => {
-      for (const ref of wantedRef.current.values()) {
-        if (ref.entityType === 'note' || ref.entityType === 'file') {
-          refresh(ref.entityType, ref.entityId)
-        }
-      }
-    }
-
     const unsubscribes = [
       subscribeToEvents(
         [
@@ -323,7 +318,7 @@ export function useCanvasEntities(visibleRefs: readonly CanvasCardRef[]): Entity
               markDangling('file', event.id)
             }, live)
         ],
-        refreshNotesAndFiles
+        () => setListening(true)
       ),
       onTaskCreated(refreshProjects),
       onTaskUpdated((event) => {

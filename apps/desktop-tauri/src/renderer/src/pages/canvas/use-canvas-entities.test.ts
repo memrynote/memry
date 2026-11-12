@@ -32,20 +32,24 @@ vi.mock('@/services/notes-service', () => ({
     get: (id: string) => mocks.notesGet(id),
     getFile: (id: string) => mocks.fileGet(id)
   },
-  onNoteMoved: (cb: (e: { id: string }) => void) => {
+  onNoteMoved: (cb: (e: { id: string }) => void, live?: () => void) => {
     mocks.cb.noteMoved = cb
+    live?.()
     return () => {}
   },
-  onNoteUpdated: (cb: (e: { id: string }) => void) => {
+  onNoteUpdated: (cb: (e: { id: string }) => void, live?: () => void) => {
     mocks.cb.noteUpdated = cb
+    live?.()
     return () => {}
   },
-  onNoteRenamed: (cb: (e: { id: string }) => void) => {
+  onNoteRenamed: (cb: (e: { id: string }) => void, live?: () => void) => {
     mocks.cb.noteRenamed = cb
+    live?.()
     return () => {}
   },
-  onNoteDeleted: (cb: (e: { id: string }) => void) => {
+  onNoteDeleted: (cb: (e: { id: string }) => void, live?: () => void) => {
     mocks.cb.noteDeleted = cb
+    live?.()
     return () => {}
   }
 }))

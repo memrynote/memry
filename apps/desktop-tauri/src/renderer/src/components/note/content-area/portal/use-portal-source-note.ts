@@ -22,7 +22,12 @@ import {
 import { subscribeToEvents } from '@/services/tauri-event'
 
 export function usePortalSourceNote(noteId: string): Pick<UseNoteResult, 'note' | 'isLoading'> {
-  const { note, isLoading, refetch } = useNote(noteId)
+  // The first read waits for the listeners below: a delete between the read and the listeners
+  // going live sent its event to nobody, and reading again to cover that would open the note
+  // twice (`notes_get` counts one `note_opened` per read), once per portal on the page.
+  const [listeningId, setListeningId] = useState<string | null>(null)
+  const listening = listeningId === noteId
+  const { note, isLoading, refetch } = useNote(noteId, { enabled: listening })
   const [deletedId, setDeletedId] = useState<string | null>(null)
 
   const deletedRef = useRef(false)
@@ -40,8 +45,6 @@ export function usePortalSourceNote(noteId: string): Pick<UseNoteResult, 'note' 
       setDeletedId(null)
       refetchRef.current()
     }
-    // The note was read before these listeners went live, and a delete in between sent its
-    // event to nobody: read it again once they listen.
     return subscribeToEvents(
       [
         (live) =>
@@ -55,9 +58,9 @@ export function usePortalSourceNote(noteId: string): Pick<UseNoteResult, 'note' 
         (live) => onNoteRenamed((event) => comesBack(event.id), live),
         (live) => onNoteMoved((event) => comesBack(event.id), live)
       ],
-      () => refetchRef.current()
+      () => setListeningId(noteId)
     )
   }, [noteId])
 
-  return { note: deletedId === noteId ? null : note, isLoading }
+  return { note: deletedId === noteId ? null : note, isLoading: isLoading || !listening }
 }

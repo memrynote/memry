@@ -9,8 +9,8 @@
  * @module note/content-area/portal/portal-search-view
  */
 
-import { useEffect } from 'react'
-import { useQuery, useQueryClient } from '@tanstack/react-query'
+import { useEffect, useRef, useState } from 'react'
+import { useQuery, useQueryClient, type QueryKey } from '@tanstack/react-query'
 import { useT } from '@memry/i18n/renderer'
 import { stripAnchor, type PortalDefinition, type PortalTarget } from '@memry/shared/portal-block'
 import { rereadQueries } from '@/hooks/use-notes-query'
@@ -43,20 +43,27 @@ const REFRESH_DEBOUNCE_MS = 500
 
 const SEARCH_KEY = 'portal-search'
 
-/** Re-run every open search portal when any note changes. */
-function useSearchPortalRefresh(): void {
+/**
+ * Re-runs this portal's own search when any note changes, and says when the listeners are live.
+ * The first run waits for that: a note changed between the run and the listeners going live sent
+ * its event to nobody, and running again to cover it would run every open portal's search twice.
+ */
+function useSearchPortalRefresh(queryKey: QueryKey): boolean {
   const queryClient = useQueryClient()
+  const [listening, setListening] = useState(false)
+  const keyRef = useRef(queryKey)
+  useEffect(() => {
+    keyRef.current = queryKey
+  })
   useEffect(() => {
     let timer: ReturnType<typeof setTimeout> | null = null
     const refresh = (): void => {
       if (timer) clearTimeout(timer)
       timer = setTimeout(() => {
         timer = null
-        rereadQueries(queryClient, [SEARCH_KEY])
+        rereadQueries(queryClient, keyRef.current)
       }, REFRESH_DEBOUNCE_MS)
     }
-    // The search ran before these listeners went live, and a note changed in between sent its
-    // event to nobody: run it again once they listen.
     const unsubscribe = subscribeToEvents(
       [
         (live) => onNoteCreated(refresh, live),
@@ -65,13 +72,14 @@ function useSearchPortalRefresh(): void {
         (live) => onNoteRenamed(refresh, live),
         (live) => onNoteMoved(refresh, live)
       ],
-      refresh
+      () => setListening(true)
     )
     return () => {
       if (timer) clearTimeout(timer)
       unsubscribe()
     }
   }, [queryClient])
+  return listening
 }
 
 /** The query as the reader would type it: `#tag words`. */
@@ -118,11 +126,13 @@ export function PortalSearchView({
   const { t } = useT('common')
   const QuerySlot = usePortalSearchQuerySlot()
   const instanceId = usePortalInstanceId()
-  useSearchPortalRefresh()
 
   const { text, tag, limit } = target
+  const queryKey = [SEARCH_KEY, text ?? null, tag ?? null, limit]
+  const listening = useSearchPortalRefresh(queryKey)
   const query = useQuery({
-    queryKey: [SEARCH_KEY, text ?? null, tag ?? null, limit],
+    queryKey,
+    enabled: listening,
     queryFn: () => searchPortalBlocks({ text, tag, limit }),
     staleTime: REFRESH_DEBOUNCE_MS
   })
@@ -156,7 +166,7 @@ export function PortalSearchView({
         </button>
       </div>
     )
-  } else if (query.isLoading) {
+  } else if (query.isLoading || (!listening && !query.data)) {
     body = <p className="pt-1 text-xs text-muted-foreground">{t('portalBlock.search.loading')}</p>
   } else if (results.length === 0) {
     body = <p className="pt-1 text-xs text-muted-foreground">{t('portalBlock.search.empty')}</p>
