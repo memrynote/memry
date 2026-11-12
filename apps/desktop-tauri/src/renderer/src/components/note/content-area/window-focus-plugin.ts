@@ -17,6 +17,12 @@ import type { EditorView } from '@tiptap/pm/view'
  * #3967). A focus while the editor already counts as focused is swallowed as
  * well: a window coming to the front over an editor that took focus while it
  * was in the background sends one with no window blur before it (CI, #3967).
+ * That editor may never have seen a `focus` either: `.focus()` or a click while
+ * another app's window holds OS focus moves DOM focus with no event, and a
+ * suggestion menu opened then closed on the window's first `focus` (FLAKE-7C,
+ * #3967). So key input reaching the editor while the document has no focus, or
+ * the editor being the active element when the window comes back (the window's
+ * `focus` fires before the element's), also counts the editor as focused.
  * One plugin instance per editor. The plugin keeps its own flags because
  * ProseMirror's `view.focused` is internal and not in its type declarations.
  *
@@ -37,12 +43,19 @@ export function createWindowFocusPlugin(): Plugin {
       }
     })
   }
+  const keyInputInBackground = (view: EditorView): boolean => {
+    if (!view.dom.ownerDocument.hasFocus()) focused = true
+    return false
+  }
   return new Plugin({
     key: new PluginKey('windowFocus'),
     view: (view) => {
       focused = view.hasFocus()
       const win = view.dom.ownerDocument.defaultView
-      const onWindowFocus = (): void => recheckNextFrame(view)
+      const onWindowFocus = (): void => {
+        if (view.hasFocus()) focused = true
+        recheckNextFrame(view)
+      }
       win?.addEventListener('focus', onWindowFocus)
       return { destroy: () => win?.removeEventListener('focus', onWindowFocus) }
     },
@@ -54,6 +67,8 @@ export function createWindowFocusPlugin(): Plugin {
           else focused = false
           return blurredByWindow
         },
+        keydown: keyInputInBackground,
+        beforeinput: keyInputInBackground,
         focus: () => {
           const again = blurredByWindow || focused
           focused = true
