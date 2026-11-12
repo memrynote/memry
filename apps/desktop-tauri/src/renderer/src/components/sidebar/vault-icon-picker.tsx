@@ -1,4 +1,4 @@
-import { lazy, Suspense, useCallback, useEffect, useState, type ReactNode } from 'react'
+import { lazy, Suspense, useCallback, useEffect, useRef, useState, type ReactNode } from 'react'
 import { toast } from 'sonner'
 import { useT } from '@memry/i18n/renderer'
 import { Popover, PopoverAnchor, PopoverContent } from '@/components/ui/popover'
@@ -29,6 +29,12 @@ const LazyEmojiPicker = lazy(async () => ({
  */
 function useEmojiPickerChunk(open: boolean, onLoadFailed: () => void): boolean {
   const [loaded, setLoaded] = useState(emojiPickerLoaded)
+  // The caller passes a new callback on every render (the pill re-renders on each swipe step): the
+  // load runs once per open, whichever callback is the latest when it fails.
+  const onLoadFailedRef = useRef(onLoadFailed)
+  useEffect(() => {
+    onLoadFailedRef.current = onLoadFailed
+  })
   useEffect(() => {
     if (!open || loaded) return undefined
     let live = true
@@ -38,13 +44,13 @@ function useEmojiPickerChunk(open: boolean, onLoadFailed: () => void): boolean {
       },
       (err: unknown) => {
         log.error('Emoji picker chunk failed to load', err)
-        if (live) onLoadFailed()
+        if (live) onLoadFailedRef.current()
       }
     )
     return () => {
       live = false
     }
-  }, [open, loaded, onLoadFailed])
+  }, [open, loaded])
   return loaded
 }
 
@@ -89,20 +95,24 @@ export function VaultIconPicker({
   const setIcon = useSetVaultIcon()
   const close = useCallback(() => onOpenChange(false), [onOpenChange])
   const onLoadFailed = useCallback(() => {
-    toast.error(t('vaultSwipe.iconFailed'))
+    toast.error(t('vaultSwipe.iconPickerFailed'))
     onOpenChange(false)
   }, [onOpenChange, t])
   const ready = useEmojiPickerChunk(open, onLoadFailed)
 
   // While the chunk is out there is no popover to take Escape: a slow load must not leave the
-  // picker open with nothing on screen and no way to dismiss it.
+  // picker open with nothing on screen and no way to dismiss it. The key is this picker's, so it
+  // is marked taken (capture runs before the window's other listeners, which check
+  // `defaultPrevented`) and does not also go back a level in the sidebar.
   useEffect(() => {
     if (!open || ready) return undefined
     const onKeyDown = (event: KeyboardEvent): void => {
-      if (event.key === 'Escape') close()
+      if (event.key !== 'Escape') return
+      event.preventDefault()
+      close()
     }
-    window.addEventListener('keydown', onKeyDown)
-    return () => window.removeEventListener('keydown', onKeyDown)
+    window.addEventListener('keydown', onKeyDown, true)
+    return () => window.removeEventListener('keydown', onKeyDown, true)
   }, [open, ready, close])
 
   return (

@@ -1269,7 +1269,8 @@
     "resetIcon": "Tilbakestill ikon",
     "iconButton": "Endre ikonet for {name}",
     "leaveSandbox": "Tilbake til {name}",
-    "iconFailed": "Kunne ikke endre hvelvikonet"
+    "iconFailed": "Kunne ikke endre hvelvikonet",
+    "iconPickerFailed": "Kunne ikke laste ikonvelgeren"
   },
   "sidebarHelp": {
     "label": "Hjelp og tilbakemelding",

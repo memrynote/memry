@@ -8,6 +8,7 @@ import { renderHook, act } from '@testing-library/react'
 import React, { useEffect } from 'react'
 
 import { useChordShortcuts } from './use-chord-shortcuts'
+import { chordPendingRef } from './chord-pending-ref'
 import { TabProvider, useTabs } from '@/contexts/tabs'
 import type { TabSystemState, TabGroup, Tab, SplitLayout } from '@/contexts/tabs/types'
 
@@ -180,6 +181,30 @@ describe('useChordShortcuts', () => {
 
     // #then chord indicator becomes true
     expect(result.current).toBe(true)
+  })
+
+  it('reports a pending chord to surfaces that share its keys, until the chord ends', () => {
+    const state = makeState([makeGroup([makeTab()])])
+    const { unmount } = renderHook(() => useChordShortcuts(), {
+      wrapper: ({ children }) => <TabProvider initialState={state}>{children}</TabProvider>
+    })
+    expect(chordPendingRef.current).toBe(false)
+
+    act(() => {
+      dispatchKey('k', { meta: true })
+    })
+    expect(chordPendingRef.current).toBe(true)
+
+    act(() => {
+      dispatchKey('ArrowDown', { shift: true })
+    })
+    expect(chordPendingRef.current).toBe(false)
+
+    act(() => {
+      dispatchKey('k', { meta: true })
+    })
+    unmount()
+    expect(chordPendingRef.current).toBe(false)
   })
 
   it('dispatches TOGGLE_MAXIMIZE_GROUP after Cmd+K then m', () => {

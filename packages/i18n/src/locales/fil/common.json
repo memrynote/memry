@@ -1269,7 +1269,8 @@
     "resetIcon": "I-reset ang icon",
     "iconButton": "Palitan ang icon ng {name}",
     "leaveSandbox": "Bumalik sa {name}",
-    "iconFailed": "Hindi mapalitan ang icon ng vault"
+    "iconFailed": "Hindi mapalitan ang icon ng vault",
+    "iconPickerFailed": "Hindi ma-load ang icon picker"
   },
   "sidebarHelp": {
     "label": "Tulong at feedback",

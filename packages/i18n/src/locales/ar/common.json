@@ -1269,7 +1269,8 @@
     "resetIcon": "إعادة تعيين الأيقونة",
     "iconButton": "تغيير أيقونة {name}",
     "leaveSandbox": "العودة إلى {name}",
-    "iconFailed": "تعذّر تغيير أيقونة الخزنة"
+    "iconFailed": "تعذّر تغيير أيقونة الخزنة",
+    "iconPickerFailed": "تعذّر تحميل منتقي الأيقونات"
   },
   "sidebarHelp": {
     "label": "المساعدة والآراء",

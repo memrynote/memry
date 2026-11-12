@@ -211,7 +211,9 @@ export const LargeFileViewer = memo(function LargeFileViewer({
       followedHitRef.current = { hit: currentHit, moved: false }
     } else if (followedHitRef.current.moved || hitStart === undefined) {
       // A hit whose row left the window was scrolled away from (a scrollbar drag raises none of
-      // the events above), not still being settled: centering it again would snap the view back.
+      // the events above), not still being settled: centering it again would snap the view back,
+      // also when the drag carries on back over the row.
+      if (hitStart === undefined) followedHitRef.current.moved = true
       return
     }
     virtualizer.scrollToIndex(currentHit.line, { align: 'center' })

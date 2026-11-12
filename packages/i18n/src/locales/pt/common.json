@@ -1269,7 +1269,8 @@
     "resetIcon": "Redefinir ícone",
     "iconButton": "Alterar o ícone de {name}",
     "leaveSandbox": "Voltar para {name}",
-    "iconFailed": "Não foi possível alterar o ícone do cofre"
+    "iconFailed": "Não foi possível alterar o ícone do cofre",
+    "iconPickerFailed": "Não foi possível carregar o seletor de ícones"
   },
   "sidebarHelp": {
     "label": "Ajuda e feedback",

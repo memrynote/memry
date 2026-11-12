@@ -95,8 +95,8 @@ export function SidebarDrillDownProvider({ children }: SidebarDrillDownProviderP
   // Handle keyboard shortcuts
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
-      // Escape to go back
-      if (e.key === 'Escape' && !isAtMain) {
+      // Escape to go back, unless something in front of the sidebar (a loading picker) took it
+      if (e.key === 'Escape' && !e.defaultPrevented && !isAtMain) {
         e.preventDefault()
         goBack()
       }

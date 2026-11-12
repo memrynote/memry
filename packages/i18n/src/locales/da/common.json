@@ -1269,7 +1269,8 @@
     "resetIcon": "Nulstil ikon",
     "iconButton": "Skift ikonet for {name}",
     "leaveSandbox": "Tilbage til {name}",
-    "iconFailed": "Kunne ikke ændre boksens ikon"
+    "iconFailed": "Kunne ikke ændre boksens ikon",
+    "iconPickerFailed": "Kunne ikke indlæse ikonvælgeren"
   },
   "sidebarHelp": {
     "label": "Hjælp og feedback",

@@ -1269,7 +1269,8 @@
     "resetIcon": "Vrati zadanu ikonu",
     "iconButton": "Promijeni ikonu trezora {name}",
     "leaveSandbox": "Natrag na {name}",
-    "iconFailed": "Nije moguće promijeniti ikonu trezora"
+    "iconFailed": "Nije moguće promijeniti ikonu trezora",
+    "iconPickerFailed": "Nije moguće učitati odabir ikona"
   },
   "sidebarHelp": {
     "label": "Pomoć i povratne informacije",

@@ -1269,7 +1269,8 @@
     "resetIcon": "Resetează pictograma",
     "iconButton": "Schimbă pictograma pentru {name}",
     "leaveSandbox": "Înapoi la {name}",
-    "iconFailed": "Nu s-a putut schimba pictograma seifului"
+    "iconFailed": "Nu s-a putut schimba pictograma seifului",
+    "iconPickerFailed": "Nu s-a putut încărca selectorul de pictograme"
   },
   "sidebarHelp": {
     "label": "Ajutor și feedback",
