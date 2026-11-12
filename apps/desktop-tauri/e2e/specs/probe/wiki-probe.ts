@@ -71,10 +71,11 @@ export function install(page: Page, stubFixup: boolean): Promise<void> {
     for (const k of Object.keys(window)) if (k.startsWith('on')) names.add(k.slice(2))
     for (const k in document) if (k.startsWith('on')) names.add(k.slice(2))
     for (const ev of names) {
-      if (quiet.has(ev)) continue
+      if (quiet.has(ev) && !/^(mouse|pointer)/.test(ev)) continue
       window.addEventListener(
         ev,
         (e) =>
+          (!/^(mouse|pointer)(move|over|out|enter|leave)$/.test(ev) || e.isTrusted) &&
           push(ev, [
             (e.target as HTMLElement)?.nodeName,
             e.isTrusted ? 'T' : 'syn',
@@ -170,6 +171,27 @@ export function install(page: Page, stubFixup: boolean): Promise<void> {
         return result
       }
     }
+    const edEl = document.querySelector('.bn-editor') as unknown as {
+      editor?: { view?: Record<string, (...a: unknown[]) => unknown> }
+    } | null
+    const view = edEl?.editor?.view
+    if (view) {
+      for (const m of ['updateState', 'dispatch', 'focus']) {
+        const orig = view[m]
+        if (typeof orig !== 'function') continue
+        view[m] = function (this: unknown, ...a: unknown[]) {
+          const st = (a[0] as { selection?: { from: number; to: number } } | undefined)?.selection
+          push(`pm:${m}`, [st?.from, st?.to, stack()])
+          return orig.apply(this, a)
+        }
+      }
+    } else push('no-pm-view')
+    let lastTick = performance.now()
+    const tick = (): void => {
+      const n = performance.now()
+      if (n - lastTick > 60) push('STALL', Math.round(n - lastTick))
+      lastTick = n
+    }
     const key = (): string => {
       const sel = getSelection()
       return sel
@@ -209,6 +231,7 @@ export function install(page: Page, stubFixup: boolean): Promise<void> {
     const origQM = window.queueMicrotask.bind(window)
     window.queueMicrotask = (fn) => origQM(guard('microtask', fn))
     const sample = (): void => {
+      tick()
       check('sampler')
       if (!(window as unknown as { __probeStop?: boolean }).__probeStop) origST(sample, 0)
     }
