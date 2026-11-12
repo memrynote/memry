@@ -14,7 +14,8 @@
 // simulator's own appearance and text size are put back afterwards. Each
 // simulator must be signed in to the staging test account: a signed-out run
 // skips every test and the script fails. Resizing a window (Split View, Stage
-// Manager) is out of reach of XCUITest and stays a manual check.
+// Manager) is out of reach of XCUITest and stays a manual check. A simulator
+// the script had to boot is shut down when its runs end.
 import { spawnSync } from 'node:child_process'
 import { mkdirSync, readFileSync, renameSync, rmSync, writeFileSync } from 'node:fs'
 import { fileURLToPath } from 'node:url'
@@ -64,13 +65,13 @@ function simctl(...args) {
   return result.stdout.trim()
 }
 
-function udid(name) {
+function device(name) {
   const { devices } = JSON.parse(simctl('list', 'devices', 'available', '-j'))
   const matches = Object.values(devices)
     .flat()
-    .filter((device) => device.name === name)
+    .filter((entry) => entry.name === name)
   if (matches.length !== 1) fail(`expected one simulator named '${name}', found ${matches.length}`)
-  return matches[0].udid
+  return matches[0]
 }
 
 function xcodebuild(action, destination, log, extra = []) {
@@ -108,7 +109,7 @@ function extract(bundle, folder) {
   return { files, passedTests, failedTests, skippedTests }
 }
 
-const first = udid(simulators[0])
+const first = device(simulators[0]).udid
 console.log(`building for testing (log: ${out}/build.log)`)
 if (!xcodebuild('build-for-testing', `id=${first}`, path.join(out, 'build.log'))) {
   fail(`build failed, see ${out}/build.log`)
@@ -116,8 +117,9 @@ if (!xcodebuild('build-for-testing', `id=${first}`, path.join(out, 'build.log'))
 
 let healthy = true
 for (const [index, name] of simulators.entries()) {
-  const id = udid(name)
-  run('xcrun', ['simctl', 'boot', id])
+  const { udid: id, state } = device(name)
+  // A simulator this script boots is shut down again when its runs end.
+  if (state !== 'Booted') simctl('boot', id)
   simctl('bootstatus', id, '-b')
   const original = {
     appearance: simctl('ui', id, 'appearance'),
@@ -150,6 +152,7 @@ for (const [index, name] of simulators.entries()) {
   }
   simctl('ui', id, 'appearance', original.appearance)
   simctl('ui', id, 'content_size', original.size)
+  if (state !== 'Booted') simctl('shutdown', id)
 }
 if (!healthy) fail('a run failed or skipped: read its xcodebuild.log or open its result.xcresult')
 console.log(`done: ${out}`)

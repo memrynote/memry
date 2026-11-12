@@ -50,8 +50,7 @@ final class TabletLayoutUITests: XCTestCase {
 
     func testInboxDetail() throws {
         try openPage("inbox")
-        try first("inbox.row.", in: "the inbox").tap()
-        XCTAssertTrue(element("inbox.detail.title").waitForExistence(timeout: 10), "the inbox item did not open")
+        try openFirst("inbox.row.", in: "the inbox", showing: "inbox.detail.title")
         snap("inbox-detail")
     }
 
@@ -64,8 +63,7 @@ final class TabletLayoutUITests: XCTestCase {
     func testTaskDetail() throws {
         try openPage("tasks")
         // The row comes before its own `tasks.row.status` in the tree.
-        try first("tasks.row.", in: "the task list").tap()
-        XCTAssertTrue(element("tasks.detail").waitForExistence(timeout: 10), "the task did not open")
+        try openFirst("tasks.row.", in: "the task list", showing: "tasks.detail")
         snap("task-detail")
     }
 
@@ -122,15 +120,20 @@ final class TabletLayoutUITests: XCTestCase {
         app.descendants(matching: .any)[identifier].firstMatch
     }
 
-    /// The first element whose identifier starts with `prefix`, or a skip
-    /// when `list` has none.
-    private func first(_ prefix: String, in list: String) throws -> XCUIElement {
+    /// Taps the first row whose identifier starts with `prefix` until
+    /// `detail` shows, or skips when `list` has none. Right after the Menu
+    /// sheet closes, iPad reports the rows as not hittable and can drop the
+    /// first tap, so the tap goes to the row's middle and is retried.
+    private func openFirst(_ prefix: String, in list: String, showing detail: String) throws {
         let row = app.descendants(matching: .any)
             .matching(NSPredicate(format: "identifier BEGINSWITH %@", prefix)).firstMatch
         guard row.waitForExistence(timeout: 15) else { throw XCTSkip("\(list) is empty in this vault") }
-        // The Menu sheet may still be sliding away over the list.
-        XCTAssertTrue(row.wait(for: \.isHittable, toEqual: true, timeout: 10), "\(list) is covered")
-        return row
+        let page = element(detail)
+        for _ in 0 ..< 3 where !page.exists {
+            row.coordinate(withNormalizedOffset: CGVector(dx: 0.5, dy: 0.5)).tap()
+            _ = page.waitForExistence(timeout: 5)
+        }
+        XCTAssertTrue(page.exists, "the first row of \(list) did not open")
     }
 
     /// The first note in the Notes list. Section headers and folders carry
