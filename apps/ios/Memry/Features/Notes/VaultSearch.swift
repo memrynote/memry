@@ -14,8 +14,10 @@ import Observation
 // free; minting one per keystroke would pay that cost on every letter.
 //
 // **Typing does not reindex.** The vault's index owner (`VaultSearchIndex`)
-// reindexes after sync passes and writes; the query in the box runs again
-// each time it finishes.
+// reindexes after sync passes and writes; the screen showing the box runs the
+// query again (`rerun()`) each time it finishes. The screen subscribes, not
+// this model: SwiftUI can keep a dismissed sheet's model alive, and a model
+// that followed the index itself kept querying for a sheet nobody sees.
 //
 // **Results are the core's ranking, never re-sorted.** bm25 ordering is what
 // the query returned; a shell that sorted by date would be answering a
@@ -123,7 +125,7 @@ final class VaultSearchViewModel {
     private var running: Task<Void, Never>?
     /// Which search box this is, as the `source` of `search_performed`.
     private let source: StaticString
-    /// The vault's index owner, followed so a reindex re-runs the query.
+    /// The vault's index owner, read for its last failure.
     private let index: VaultSearchIndex?
     /// The trimmed query on screen, run again after each reindex.
     private var query = ""
@@ -138,13 +140,12 @@ final class VaultSearchViewModel {
         self.index = index
         self.debounce = debounce
         self.source = source
-        followIndex()
     }
 
     /// The last reindex failed: results may miss recent changes.
     var isIndexStale: Bool { index?.failure != nil }
 
-    /// Retry for ``isIndexStale``. A success re-runs the query.
+    /// Retry for ``isIndexStale``.
     func retryIndex() async {
         await index?.reindex()
     }
@@ -155,24 +156,9 @@ final class VaultSearchViewModel {
         await running?.value
     }
 
-    /// Re-runs the query on screen after each finished reindex, for as long
-    /// as this model lives. Registered synchronously, so no reindex finishing
-    /// after `init` is missed.
-    private func followIndex() {
-        guard let index else { return }
-        withObservationTracking {
-            _ = index.completed
-        } onChange: { [weak self] in
-            Task { @MainActor in
-                self?.rerun()
-                self?.followIndex()
-            }
-        }
-    }
-
     /// The same query again, its results kept on screen until the new ones
-    /// land.
-    private func rerun() {
+    /// land. The screen calls it when the index's `completed` moves.
+    func rerun() {
         guard !query.isEmpty else { return }
         running?.cancel()
         running = start(query, after: .zero, source: nil)
