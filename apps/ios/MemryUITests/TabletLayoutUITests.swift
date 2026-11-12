@@ -2,14 +2,15 @@ import XCTest
 
 // #4339: the screens of the layout verification matrix. Each test opens one
 // screen and attaches a screenshot in portrait and one in landscape.
-// `scripts/screenshot-matrix.sh` runs this class on each simulator, in each
+// `scripts/screenshot-matrix.mjs` runs this class on each simulator, in each
 // appearance, and extracts the attachments into a folder.
 //
 // **Precondition:** signed in to the staging test account with a vault open.
 // A test that lands on sign-in skips. A detail screen whose list is empty
 // skips and names the list.
 //
-// Read-only: the tests open existing items and change nothing in the vault.
+// Nearly read-only: the tests open existing items and change nothing, except
+// that opening an unviewed reminder in the Inbox marks it viewed.
 @MainActor
 final class TabletLayoutUITests: XCTestCase {
     let app = XCUIApplication()
@@ -86,9 +87,6 @@ final class TabletLayoutUITests: XCTestCase {
 
     func testCalendar() throws {
         try openPage("calendar")
-        // A first launch asks for calendar access; decline keeps data private.
-        let deny = app.alerts.buttons["Don’t allow"]
-        if deny.waitForExistence(timeout: 2) { deny.tap() }
         XCTAssertTrue(element("calendar.screen").waitForExistence(timeout: 15), "the calendar did not open")
         snap("calendar")
     }
@@ -106,14 +104,25 @@ final class TabletLayoutUITests: XCTestCase {
     private func snap(_ screen: String) {
         for (orientation, name) in [(UIDeviceOrientation.portrait, "portrait"), (.landscapeLeft, "landscape")] {
             XCUIDevice.shared.orientation = orientation
-            // Rotation animates and the layout settles after it.
-            Thread.sleep(forTimeInterval: 1.5)
+            waitForWindow(landscape: name == "landscape")
             let shot = XCTAttachment(screenshot: XCUIScreen.main.screenshot())
             shot.name = "\(screen)-\(name)"
             shot.lifetime = .keepAlways
             add(shot)
         }
         XCUIDevice.shared.orientation = .portrait
+    }
+
+    /// Waits until the window's frame is wider than tall (landscape) or the
+    /// reverse, which it is only once the rotation has finished.
+    private func waitForWindow(landscape: Bool) {
+        let window = app.windows.firstMatch
+        let shaped = NSPredicate { _, _ in
+            let frame = window.frame
+            return landscape ? frame.width > frame.height : frame.height > frame.width
+        }
+        let wait = XCTNSPredicateExpectation(predicate: shaped, object: nil)
+        XCTAssertEqual(XCTWaiter().wait(for: [wait], timeout: 10), .completed, "the window did not rotate to \(landscape ? "landscape" : "portrait")")
     }
 
     private func element(_ identifier: String) -> XCUIElement {

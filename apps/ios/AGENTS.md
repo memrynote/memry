@@ -44,18 +44,20 @@ The layout verification matrix comes from one script. It runs `TabletLayoutUITes
 
 ```bash
 node apps/ios/scripts/screenshot-matrix.mjs                       # iPad Air 13-inch (M4), iPad mini (A17 Pro), iPhone 17
-node apps/ios/scripts/screenshot-matrix.mjs --test testNote 'iPad Air 13-inch (M4) <tag>' 'iPhone 17 <tag>'
+node apps/ios/scripts/screenshot-matrix.mjs --boot --test testNote 'iPad Air 13-inch (M4) <tag>' 'iPhone 17 <tag>'
 ```
 
-- It writes `<out>/<simulator>/<variant>/<screen>-<orientation>.png`, by default under `apps/ios/build/screenshots/<timestamp>`. `--out` picks the folder, and each `--test` limits the run to one test method.
-- Every simulator gets a light pass at the default text size. The first one also gets a dark pass and a pass at the largest Dynamic Type size, then gets its own settings back.
-- Each simulator must be signed in to the staging test account first. The script fails when a test skips or fails, and the run's `xcodebuild.log` and `result.xcresult` sit next to its screenshots.
+- It writes `<out>/<simulator slug>/<variant>/<screen>-<orientation>.png`, where the slug is the simulator's name in lower case with each run of other characters as a dash (`ipad-air-13-inch-m4`). The default `<out>` is `apps/ios/build/screenshots/<timestamp>`. `--out` picks the folder, and each `--test` limits the run to one test method.
+- Every simulator must be booted already: the script fails on a shut-down one, because another agent may be using it. `--boot` lets it boot a simulator and shut it down again, so pass it only for your own tagged simulators.
+- Every simulator gets a light pass at the default text size. The first one also gets a dark pass and a pass at the largest Dynamic Type size. Each simulator gets its own appearance and text size back when its runs end, also after a failed run.
+- Each simulator must be signed in to the staging test account first. The script fails when a test skips or fails, when the attachments cannot be exported, or when the result bundle holds fewer tests than the class declares. The run's `xcodebuild.log` and `result.xcresult` sit next to its screenshots.
 - XCUITest cannot resize the app's window, so Split View and Stage Manager widths stay a manual check.
 
 Test gotchas:
 
 - The Unit plan runs inside the app on the shared simulator, and its sign-out tests wipe the app's keychain. Anything that needs a signed-in app, such as the UI plan or a manual check, comes after a fresh sign-in, never straight after a Unit run.
 - Before signing in to the staging test account, whether for iOS sign-in, an OTP, a recovery phrase, or a desktop launched on staging to pair or sync, read `.pi/skills/staging-test-account/SKILL.md`.
+- `RecoveryPhraseUITests` needs a simulator that is signed in but not unlocked. On an unlocked simulator, which the rest of the UI plan needs, it skips, so a green UI plan has not covered the recovery-phrase screen. Run it on its own, on a simulator that stopped at that screen.
 - `TasksUITests` needs the simulator signed in to the staging test account. It and the other UI tests skip, rather than fail, when they land on sign-in, so a UI run with skips has not exercised the flows.
 - `JournalUITests` needs the same sign-in plus the synced journal settings its header names, a Wednesday template. It pins today with `-MEMRY_JOURNAL_TODAY <date>`, always a day in 2099.
 - An editable block is a text view, so its text is the accessibility value, not the label. Match `label CONTAINS x OR value CONTAINS x`.
