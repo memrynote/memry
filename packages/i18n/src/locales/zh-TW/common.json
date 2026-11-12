@@ -3,6 +3,7 @@
     "copyFailed": "無法複製傳送門",
     "hiddenCount": "已隱藏 {count} 個",
     "windowFailed": "無法開啟此傳送門。請改為開啟來源筆記。",
+    "unreadable": "無法讀取此傳送門。請移除該區塊並新增傳送門。",
     "search": {
       "editQuery": "編輯查詢",
       "count": "{count, plural, other {# 個區塊}}",

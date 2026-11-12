@@ -3,6 +3,7 @@
     "copyFailed": "Portaalia ei voitu kopioida",
     "hiddenCount": "{count} piilotettu",
     "windowFailed": "Tätä portaalia ei voitu avata. Avaa sen sijaan lähdemuistiinpano.",
+    "unreadable": "Tätä portaalia ei voi lukea. Poista lohko ja lisää uusi portaali.",
     "search": {
       "editQuery": "Muokkaa hakua",
       "count": "{count, plural, one {# lohko} other {# lohkoa}}",

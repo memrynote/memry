@@ -3,6 +3,7 @@
     "copyFailed": "Kunne ikke kopiere portalen",
     "hiddenCount": "{count} skjult",
     "windowFailed": "Portalen kunne ikke åpnes. Åpne kildenotatet i stedet.",
+    "unreadable": "Denne portalen kan ikke leses. Fjern blokken og legg til en ny portal.",
     "search": {
       "editQuery": "Rediger søket",
       "count": "{count, plural, one {# blokk} other {# blokker}}",

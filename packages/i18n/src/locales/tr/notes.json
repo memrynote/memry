@@ -426,7 +426,8 @@
       "newViewFailed": "Bu görünüm için klasör oluşturulamadı.",
       "empty": "Henüz bu görünümle eşleşen bir şey yok.",
       "loadFailed": "Bu görünüm yüklenemedi. Notların kendisine dokunulmadı.",
-      "folderMissing": "Bu klasör artık kasada değil. Başka bir kaynak seçin."
+      "folderMissing": "Bu klasör artık kasada değil. Başka bir kaynak seçin.",
+      "unreadable": "Bu görünüm okunamıyor. Yukarıdan bir kaynak seçin veya bloğu kaldırın."
     },
     "chart": {
       "title": "Çizelge",
