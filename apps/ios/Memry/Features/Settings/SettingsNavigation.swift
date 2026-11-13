@@ -89,7 +89,8 @@ struct MoreTabView: View {
 }
 
 /// Settings at regular width: the root list beside the selected page, both
-/// columns shown in portrait too.
+/// columns shown in portrait too. No search item: the shell's Search row
+/// owns search at this width (as on Home).
 private struct SettingsSplitView: View {
     let context: SettingsContext?
     let browse: VaultBrowseViewModel?
@@ -113,7 +114,6 @@ private struct SettingsSplitView: View {
                     ProgressView(SettingsCopy.loading)
                 }
             }
-            .toolbar { GlobalSearchToolbarItem() }
         } detail: {
             NavigationStack(path: $router.settingsPath) {
                 SettingsDestinationPage(route: router.settingsPage ?? .account, context: context)
