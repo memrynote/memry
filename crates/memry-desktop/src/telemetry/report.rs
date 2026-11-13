@@ -154,6 +154,12 @@ pub async fn post_json(
     }
 }
 
+/// `local@domain.tld` with no whitespace. The sync server applies the full contract.
+pub(super) fn looks_like_email(e: &str) -> bool {
+    !e.contains(char::is_whitespace)
+        && matches!(e.split_once('@'), Some((l, d)) if !l.is_empty() && d.contains('.') && !d.starts_with('.') && !d.ends_with('.'))
+}
+
 /// The user's feedback (`FeedbackSubmitSchema`): the message trimmed and 1 to 5000 characters, an
 /// optional email that looks like one.
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize, specta::Type)]
@@ -173,9 +179,9 @@ impl FeedbackSubmit {
     pub fn validated(self) -> Result<Self, &'static str> {
         let message = self.message.trim().to_owned();
         let email = self.email.map(|e| e.trim().to_owned());
-        let bad_email = email.as_deref().is_some_and(|e| {
-            e.chars().count() > 320 || e.contains(char::is_whitespace) || !matches!(e.split_once('@'), Some((l, d)) if !l.is_empty() && d.contains('.') && !d.starts_with('.') && !d.ends_with('.'))
-        });
+        let bad_email = email
+            .as_deref()
+            .is_some_and(|e| e.chars().count() > 320 || !looks_like_email(e));
         let too_long =
             |v: &Option<String>, max| v.as_deref().is_some_and(|s| s.chars().count() > max);
         if message.is_empty()

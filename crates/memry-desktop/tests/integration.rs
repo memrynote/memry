@@ -125,6 +125,8 @@ mod indexer_facts;
 mod indexer_open_status;
 #[path = "indexer_scan.rs"]
 mod indexer_scan;
+#[path = "ios_beta_join.rs"]
+mod ios_beta_join;
 #[path = "journal_calendar.rs"]
 mod journal_calendar;
 #[path = "journal_change.rs"]
