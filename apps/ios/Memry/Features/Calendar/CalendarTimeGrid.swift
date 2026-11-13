@@ -11,9 +11,8 @@ struct CalendarGridActions {
     var complete: (CalendarItem) -> Void = { _ in }
     /// The long-press menu (artboard 15). Movable chips cannot also carry the
     /// system context menu (it takes the same long press), so for them a
-    /// hold released without moving asks the screen to show it (§6 CL044).
+    /// hold released without moving shows it as a dialog (§6 CL044).
     var contextMenu: ((CalendarItem) -> AnyView)?
-    var menu: ((CalendarItem) -> Void)?
     /// A selection made on empty time: day key, start and end minutes.
     var select: ((String, Int, Int) -> Void)?
     /// A range of whole days (Month's long press + drag): first and last day.

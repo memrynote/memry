@@ -55,7 +55,6 @@ struct CalendarScreen: View {
     @Environment(\.scenePhase) private var scenePhase
     @State var sheet: CalendarSheet?
     @State var composer: CalendarComposerRequest?
-    @State var menuItem: CalendarItem?
     @State var deleting: CalendarItem?
     @State var promoting: CalendarItem?
     @State private var links = CalendarLinks.shared
@@ -83,9 +82,6 @@ struct CalendarScreen: View {
         .navigationBarTitleDisplayMode(.inline)
         .toolbar { toolbarItems }
         .sheet(item: $sheet) { sheetContent($0) }
-        .confirmationDialog(menuItem?.title ?? "", isPresented: menuBinding, titleVisibility: .visible) {
-            if let item = menuItem { itemMenu(item) }
-        }
         .alert(CalendarCopy.deleteTitle, isPresented: deleteBinding, presenting: deleting) { item in
             Button(CalendarCopy.deleteConfirm, role: .destructive) { Task { await delete(item) } }
             Button(CalendarCopy.cancel, role: .cancel) {}
@@ -183,10 +179,6 @@ struct CalendarScreen: View {
         if !store.hasLoaded { await store.load() }
         await store.ensure(currentWindow)
         store.scheduleSync()
-    }
-
-    private var menuBinding: Binding<Bool> {
-        Binding(get: { menuItem != nil }, set: { if !$0 { menuItem = nil } })
     }
 
     private var deleteBinding: Binding<Bool> {

@@ -81,16 +81,17 @@ private struct SignOutSection: View {
                 SettingsDestructiveRow(title: AccountCopy.signOut, identifier: "settings.account.signOut") {
                     model.isConfirming = true
                 }
+                // On the row, so the popover points at it on iPad.
+                .confirmationDialog(AccountCopy.confirmTitle, isPresented: $model.isConfirming, titleVisibility: .visible) {
+                    Button(AccountCopy.signOut, role: .destructive) {
+                        Task { await model.signOut() }
+                    }
+                } message: {
+                    Text(AccountCopy.confirmMessage)
+                }
             }
             if let residue = model.residue { ErrorNotice(error: residue, code: nil) }
             if let error = model.error { ErrorNotice(error: error, code: nil) }
-        }
-        .confirmationDialog(AccountCopy.confirmTitle, isPresented: $model.isConfirming, titleVisibility: .visible) {
-            Button(AccountCopy.signOut, role: .destructive) {
-                Task { await model.signOut() }
-            }
-        } message: {
-            Text(AccountCopy.confirmMessage)
         }
     }
 }
