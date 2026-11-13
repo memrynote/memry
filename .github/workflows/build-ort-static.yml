@@ -99,6 +99,9 @@ jobs:
             aarch64-pc-windows-msvc) args+=(--arm64) ;;
           esac
           python tools/ci_build/build.py "${args[@]}"
+          # re2 is EXCLUDE_FROM_ALL and a static-only build links nothing, so it is never built, yet
+          # the ONNX Runtime libraries call it and ort-sys links it.
+          cmake --build build/Release --config Release --target re2 --parallel
 
       # A library of the wrong architecture would link nowhere, and a published archive is final.
       - name: Check the target architecture
@@ -141,6 +144,7 @@ jobs:
         run: |
           find . \( -name '*.a' -o -name '*.lib' \) -type f | sed 's|^\./||' | sort > "$RUNNER_TEMP/libs.txt"
           wc -l < "$RUNNER_TEMP/libs.txt"
+          grep -E '(^|/)(lib)?re2\.(a|lib)$' "$RUNNER_TEMP/libs.txt"
           archive="$RUNNER_TEMP/$RELEASE_TAG-${{ matrix.triple }}.tar.zst"
           cmake -E tar cf "$archive" --zstd --files-from="$RUNNER_TEMP/libs.txt"
           ls -l "$archive"
