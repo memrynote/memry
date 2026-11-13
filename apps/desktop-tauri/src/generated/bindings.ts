@@ -47,6 +47,21 @@ export const commands = {
 	aiInlineTestConnection: () => __TAURI_INVOKE<TestConnectionResult>("ai_inline_test_connection"),
 	/**  Ends a provider call the renderer aborted, before or after its head. */
 	aiProviderCancel: (requestId: string) => __TAURI_INVOKE<void>("ai_provider_cancel", { requestId }),
+	/**
+	 *  Proposals for the empty fields of a note's header tags from the inline AI model. Writes
+	 *  nothing but the disclosure's acceptance; a model failure is the `failed` result.
+	 */
+	tagsFillFields: (input: FillFieldsInput) => __TAURI_INVOKE<FillFieldsResult>("tags_fill_fields", { input }),
+	/**
+	 *  Whether "Fill from note" shows, and what the first-run disclosure names. The key itself is
+	 *  only checked for presence.
+	 */
+	tagsFillStatus: () => __TAURI_INVOKE<FieldFillStatus>("tags_fill_status"),
+	/**
+	 *  Alternative wordings for a selection from the inline AI model. Never edits the note. A
+	 *  failure is `Invalid` with the translated reason the writing tools show.
+	 */
+	writingGenerateAssist: (input: WritingAssistInput) => __TAURI_INVOKE<WritingAssistResult>("writing_generate_assist", { input }),
 	appInfo: () => __TAURI_INVOKE<AppInfo>("app_info"),
 	/**  The calling window closed its editor of `note_id`. */
 	crdtCloseDoc: (noteId: string) => __TAURI_INVOKE<null>("crdt_close_doc", { noteId }),
@@ -328,6 +343,10 @@ export const commands = {
 	notesGetCalendarPropertyNames: () => __TAURI_INVOKE<string[]>("notes_get_calendar_property_names"),
 	/**  `notes:get-property-definitions`: by name. */
 	notesGetPropertyDefinitions: () => __TAURI_INVOKE<PropertyDefinitionView[]>("notes_get_property_definitions"),
+	/**  `notes:get-property-usage`: every property the index holds, by name. */
+	notesGetPropertyUsage: () => __TAURI_INVOKE<PropertyUsageView[]>("notes_get_property_usage"),
+	/**  `notes:list-notes-with-property`: the notes that use `name`, by title. */
+	notesListNotesWithProperty: (name: string) => __TAURI_INVOKE<PropertyNoteUsageView[]>("notes_list_notes_with_property", { name }),
 	notesRemovePropertyOption: (propertyName: string, optionValue: string) => __TAURI_INVOKE<null>("notes_remove_property_option", { propertyName, optionValue }),
 	notesRenamePropertyOption: (propertyName: string, oldValue: string, newValue: string) => __TAURI_INVOKE<null>("notes_rename_property_option", { propertyName, oldValue, newValue }),
 	notesSetCalendarPropertyVisibility: (name: string, showOnCalendar: boolean) => __TAURI_INVOKE<null>("notes_set_calendar_property_visibility", { name, showOnCalendar }),
@@ -1143,6 +1162,28 @@ export type FeedbackSubmitResult = {
 	error: string | null,
 };
 
+/**  `FieldFillProposal`. */
+export type FieldFillProposal = {
+	field: string,
+	/**  Ready for a property write; null for a relation whose target must be created first. */
+	value: Value,
+	/**  What the slot shows. */
+	display: string,
+	/**  The sentence of the note the value came from; '' when the model's quote is not in it. */
+	sourceText: string,
+	create?: FillCreate | null,
+};
+
+/**  `FieldFillStatus`: whether "Fill from note" shows, and what the disclosure names. */
+export type FieldFillStatus = {
+	/**  Inline AI is on with a configured provider. */
+	available: boolean,
+	model: string,
+	/**  The provider runs on this device (Ollama). */
+	local: boolean,
+	disclosureAccepted: boolean,
+};
+
 export type FieldOptionInput = {
 	value: string,
 	color: string,
@@ -1188,6 +1229,24 @@ export type FileView = {
 	transcription: string | null,
 	transcriptionStatus: TranscriptionStatus | null,
 };
+
+/**  A relation target no object matches: accepting creates a note with this title and tag. */
+export type FillCreate = {
+	title: string,
+	tag: string,
+};
+
+/**  `FillFieldsSchema` of `@memry/contracts/tag-fill-api`. */
+export type FillFieldsInput = {
+	noteId: string,
+	/**  Only this tag's group (its own and inherited fields); all field groups when absent. */
+	tag?: string | null,
+	/**  The user accepted the first-run disclosure with this request. */
+	acceptDisclosure?: boolean | null,
+};
+
+/**  `FillFieldsResult`. */
+export type FillFieldsResult = { kind: "proposals"; proposals: FieldFillProposal[] } | { kind: "disclosure-required"; model: string; local: boolean } | { kind: "unavailable" } | { kind: "failed"; message: string };
 
 /**
  *  Main asks a window to write its unsaved edits (`flush-requested-event`); the window answers with
@@ -2156,12 +2215,28 @@ export type PropertyDefinitionView = {
 	createdAt: string,
 };
 
+/**  `PropertyNoteUsage` of `properties-api.ts`. */
+export type PropertyNoteUsageView = {
+	id: string,
+	title: string,
+	path: string,
+	emoji: string | null,
+	mismatch: boolean,
+};
+
 /**  `GetPropertyRowsOutput`. */
 export type PropertyRowsView = {
 	/**  The days in range, oldest first. */
 	rows: JournalPropertyRowView[],
 	/**  Every property of any live day, not only the ones in range: most used first. */
 	properties: JournalPropertySummaryView[],
+};
+
+/**  `PropertyUsage` of `properties-api.ts`. */
+export type PropertyUsageView = {
+	name: string,
+	noteCount: number,
+	mismatchCount: number,
 };
 
 /**  `PropertyValue` of `properties-api.ts`. */
@@ -3086,6 +3161,12 @@ export type WindowChromeStateChangedEvent = {
  *  alone until it is fixed).
  */
 export type WriteBackFailureReason = "write" | "frontmatter";
+
+/**  `WritingAssistInput` of `@memry/contracts/writing-tools-api`. */
+export type WritingAssistInput = { kind: "alternatives"; text: string; context: string };
+
+/**  `WritingAssistResult`. */
+export type WritingAssistResult = { kind: "alternatives"; alternatives: string[] };
 
 /* Tauri Specta runtime */
 type EventEmit<T> = [T] extends [null] ? () => Promise<void> : (payload: T) => Promise<void>;

@@ -707,8 +707,9 @@ in that key order with no whitespace
   or the attachment list (`message-store.ts:51-64`).
 - A reader refuses a `version` other than `1` (`encryption.ts:53-55`) and an
   envelope that does not authenticate, and ignores keys it does not know
-  (`JSON.parse`). Plaintext bytes that are not UTF-8 decode with U+FFFD
-  (`TextDecoder`, `encryption.ts:63`).
+  (`JSON.parse`). Plaintext bytes that are not UTF-8 decode with U+FFFD,
+  and one leading byte-order mark (U+FEFF) is dropped (`TextDecoder` with
+  `ignoreBOM` false, `encryption.ts:63`). `nonce` must decode to 24 bytes.
 
 The Rust core implements it in `crates/memry-core/src/crypto/agent_envelope.rs`.
 `packages/contracts/test-vectors/agent-envelope.json`, generated from

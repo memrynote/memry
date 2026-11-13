@@ -290,6 +290,7 @@ mod tests {
             accepted: 7,
             rejected: 1,
             retired: 1,
+            held: 0,
             crdt_updates: 3,
             batch_ceiling: 50,
             halvings: 1,

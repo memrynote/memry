@@ -16,6 +16,8 @@ import type { ZodType } from 'zod'
 
 import { SettingsSyncPayloadSchema } from '../settings-sync'
 import {
+  AgentConversationSyncPayloadSchema,
+  AgentMessageSyncPayloadSchema,
   BookmarkSyncPayloadSchema,
   CalendarBindingSyncPayloadSchema,
   CalendarEventSyncPayloadSchema,
@@ -68,7 +70,9 @@ const SCHEMAS: Record<string, ZodType> = {
   vault_lock: VaultLockSyncPayloadSchema,
   canvas_folder: CanvasFolderSyncPayloadSchema,
   home_page: HomePageSyncPayloadSchema,
-  sticky_draft: StickyDraftSyncPayloadSchema
+  sticky_draft: StickyDraftSyncPayloadSchema,
+  agent_conversation: AgentConversationSyncPayloadSchema,
+  agent_message: AgentMessageSyncPayloadSchema
 }
 
 interface Case {
@@ -107,17 +111,19 @@ describe('payload-schemas vectors', () => {
   it('carries the recorded case count, four per type', () => {
     const total = vectors.groups.reduce((n, g) => n + g.cases.length, 0)
     expect(total).toBe(vectors.meta.caseCount)
-    expect(vectors.groups).toHaveLength(25)
+    expect(vectors.groups).toHaveLength(27)
     for (const group of vectors.groups) expect(group.cases).toHaveLength(4)
   })
 
-  it('covers the twenty-one subscribed types and the four desktop-only types', () => {
+  it('covers the twenty-one subscribed types and the six desktop-only types', () => {
     expect(vectors.meta.subscribedTypes).toHaveLength(21)
     expect(vectors.meta.desktopOnlyTypes).toEqual([
       'vault_lock',
       'canvas_folder',
       'home_page',
-      'sticky_draft'
+      'sticky_draft',
+      'agent_conversation',
+      'agent_message'
     ])
     const covered = [...vectors.meta.subscribedTypes, ...vectors.meta.desktopOnlyTypes].toSorted()
     expect(vectors.groups.map((g) => g.type).toSorted()).toEqual(covered)

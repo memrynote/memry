@@ -7,6 +7,7 @@ type Listener = (event: { payload: { settings: InlineAiSettings } }) => void
 const mocks = vi.hoisted(() => ({
   commands: { aiInlineGetSettings: vi.fn() },
   listeners: [] as Listener[],
+  listen: { failure: null as Error | null },
   unlisten: vi.fn(),
   warn: vi.fn()
 }))
@@ -18,6 +19,7 @@ vi.mock('../../../generated/bindings', () => ({
   events: {
     aiInlineSettingsChangedEvent: {
       listen: vi.fn((listener: Listener) => {
+        if (mocks.listen.failure) return Promise.reject(mocks.listen.failure)
         mocks.listeners.push(listener)
         return Promise.resolve(mocks.unlisten)
       })
@@ -38,6 +40,7 @@ const settings = (enabled: boolean): InlineAiSettings => ({
 beforeEach(() => {
   mocks.commands.aiInlineGetSettings.mockReset()
   mocks.listeners.length = 0
+  mocks.listen.failure = null
   mocks.unlisten.mockReset()
   mocks.warn.mockReset()
 })
@@ -80,6 +83,21 @@ describe('useAIInline', () => {
         failure
       )
     )
+  })
+
+  it('logs a failed subscription once, not again on unmount', async () => {
+    mocks.commands.aiInlineGetSettings.mockResolvedValue(settings(true))
+    const failure = new Error('listen failed')
+    mocks.listen.failure = failure
+    const { result, unmount } = renderHook(() => useAIInline())
+    await waitFor(() => expect(result.current.ready).toBe(true))
+
+    unmount()
+    // The unmount's cleanup settles on the same rejected subscription.
+    await act(async () => {
+      await Promise.resolve()
+    })
+    expect(mocks.warn.mock.calls).toEqual([['AI inline settings subscription failed', failure]])
   })
 
   it('stays off when the inline AI settings are off', async () => {
