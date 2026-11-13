@@ -33,10 +33,12 @@
       "vault_lock",
       "canvas_folder",
       "home_page",
-      "sticky_draft"
+      "sticky_draft",
+      "agent_conversation",
+      "agent_message"
     ],
     "obligation": "a payload schema is a READER over a preserved string, never the storage shape (FR-033)",
-    "caseCount": 100
+    "caseCount": 108
   },
   "groups": [
     {
@@ -3088,6 +3090,336 @@
           "name": "sticky_draft: verbatim round trip of the unknown-field instance",
           "storedPayloadJson": "{\"content\":\"buy milk\",\"kind\":\"task\",\"clock\":{\"device-a\":1},\"createdAt\":\"2026-04-16T00:00:00.000Z\",\"modifiedAt\":\"2026-04-16T00:00:00.000Z\",\"syncedAt\":\"2026-04-16T00:00:01.000Z\"}",
           "expectedPushedPayloadJson": "{\"content\":\"buy milk\",\"kind\":\"task\",\"clock\":{\"device-a\":1},\"createdAt\":\"2026-04-16T00:00:00.000Z\",\"modifiedAt\":\"2026-04-16T00:00:00.000Z\",\"syncedAt\":\"2026-04-16T00:00:01.000Z\"}",
+          "pins": "the exact bytes that must come back out. An implementation that deserialises into a struct and re-serialises fails here"
+        }
+      ]
+    },
+    {
+      "type": "agent_conversation",
+      "cases": [
+        {
+          "name": "agent_conversation: valid, every modelled field populated",
+          "payload": {
+            "vaultId": "vault-1",
+            "title": "Plan the week",
+            "backend": "local",
+            "backendModel": "llama3",
+            "trustList": [
+              "read_note"
+            ],
+            "pinned": true,
+            "clock": {
+              "device-a": 1
+            },
+            "fieldClocks": {
+              "title": {
+                "device-a": 1
+              },
+              "pinned": {
+                "device-a": 1
+              }
+            },
+            "createdAt": 1760000000000,
+            "updatedAt": 1760000000001,
+            "deletedAt": null
+          },
+          "expectedParsed": {
+            "vaultId": "vault-1",
+            "title": "Plan the week",
+            "backend": "local",
+            "backendModel": "llama3",
+            "trustList": [
+              "read_note"
+            ],
+            "pinned": true,
+            "clock": {
+              "device-a": 1
+            },
+            "fieldClocks": {
+              "title": {
+                "device-a": 1
+              },
+              "pinned": {
+                "device-a": 1
+              }
+            },
+            "createdAt": 1760000000000,
+            "updatedAt": 1760000000001,
+            "deletedAt": null
+          },
+          "pins": "the projector's field list against the payload's"
+        },
+        {
+          "name": "agent_conversation: boundary — empty strings, empty arrays, optionals absent",
+          "payload": {
+            "vaultId": "",
+            "title": "",
+            "backend": "",
+            "backendModel": null,
+            "trustList": [],
+            "pinned": false,
+            "fieldClocks": {},
+            "createdAt": 0,
+            "updatedAt": 0
+          },
+          "expectedParsed": {
+            "vaultId": "",
+            "title": "",
+            "backend": "",
+            "backendModel": null,
+            "trustList": [],
+            "pinned": false,
+            "fieldClocks": {},
+            "createdAt": 0,
+            "updatedAt": 0
+          },
+          "pins": "absent and empty stay distinct across the round trip"
+        },
+        {
+          "name": "agent_conversation: an unknown field a newer client wrote",
+          "payload": {
+            "vaultId": "vault-1",
+            "title": "Plan the week",
+            "backend": "local",
+            "backendModel": "llama3",
+            "trustList": [
+              "read_note"
+            ],
+            "pinned": true,
+            "clock": {
+              "device-a": 1
+            },
+            "fieldClocks": {
+              "title": {
+                "device-a": 1
+              },
+              "pinned": {
+                "device-a": 1
+              }
+            },
+            "createdAt": 1760000000000,
+            "updatedAt": 1760000000001,
+            "deletedAt": null,
+            "archivedAt": 1760000000002
+          },
+          "expectedParsed": {
+            "vaultId": "vault-1",
+            "title": "Plan the week",
+            "backend": "local",
+            "backendModel": "llama3",
+            "trustList": [
+              "read_note"
+            ],
+            "pinned": true,
+            "clock": {
+              "device-a": 1
+            },
+            "fieldClocks": {
+              "title": {
+                "device-a": 1
+              },
+              "pinned": {
+                "device-a": 1
+              }
+            },
+            "createdAt": 1760000000000,
+            "updatedAt": 1760000000001,
+            "deletedAt": null
+          },
+          "strippedByParse": [
+            "archivedAt"
+          ],
+          "pins": "THE SC-014 CASE: Zod strips the key from the PARSED object, and the stored payload string must not change"
+        },
+        {
+          "name": "agent_conversation: verbatim round trip of the unknown-field instance",
+          "storedPayloadJson": "{\"vaultId\":\"vault-1\",\"title\":\"Plan the week\",\"backend\":\"local\",\"backendModel\":\"llama3\",\"trustList\":[\"read_note\"],\"pinned\":true,\"clock\":{\"device-a\":1},\"fieldClocks\":{\"title\":{\"device-a\":1},\"pinned\":{\"device-a\":1}},\"createdAt\":1760000000000,\"updatedAt\":1760000000001,\"deletedAt\":null,\"archivedAt\":1760000000002}",
+          "expectedPushedPayloadJson": "{\"vaultId\":\"vault-1\",\"title\":\"Plan the week\",\"backend\":\"local\",\"backendModel\":\"llama3\",\"trustList\":[\"read_note\"],\"pinned\":true,\"clock\":{\"device-a\":1},\"fieldClocks\":{\"title\":{\"device-a\":1},\"pinned\":{\"device-a\":1}},\"createdAt\":1760000000000,\"updatedAt\":1760000000001,\"deletedAt\":null,\"archivedAt\":1760000000002}",
+          "pins": "the exact bytes that must come back out. An implementation that deserialises into a struct and re-serialises fails here"
+        }
+      ]
+    },
+    {
+      "type": "agent_message",
+      "cases": [
+        {
+          "name": "agent_message: valid, every modelled field populated",
+          "payload": {
+            "conversationId": "conv-1",
+            "role": "user",
+            "content": {
+              "role": "user",
+              "data": {
+                "text": "What is due today?"
+              }
+            },
+            "attachments": [
+              {
+                "kind": "note",
+                "refId": "abc123def456",
+                "label": "Plan",
+                "snapshotAt": 1760000000000,
+                "snapshot": {
+                  "mode": "inline_note",
+                  "title": "Plan",
+                  "contentMarkdown": "# Plan",
+                  "truncated": false
+                }
+              }
+            ],
+            "toolCallId": null,
+            "status": "completed",
+            "clock": {
+              "device-a": 1
+            },
+            "createdAt": 1760000000000,
+            "updatedAt": 1760000000000,
+            "deletedAt": null
+          },
+          "expectedParsed": {
+            "conversationId": "conv-1",
+            "role": "user",
+            "content": {
+              "role": "user",
+              "data": {
+                "text": "What is due today?"
+              }
+            },
+            "attachments": [
+              {
+                "kind": "note",
+                "refId": "abc123def456",
+                "label": "Plan",
+                "snapshotAt": 1760000000000,
+                "snapshot": {
+                  "mode": "inline_note",
+                  "title": "Plan",
+                  "contentMarkdown": "# Plan",
+                  "truncated": false
+                }
+              }
+            ],
+            "toolCallId": null,
+            "status": "completed",
+            "clock": {
+              "device-a": 1
+            },
+            "createdAt": 1760000000000,
+            "updatedAt": 1760000000000,
+            "deletedAt": null
+          },
+          "pins": "the projector's field list against the payload's"
+        },
+        {
+          "name": "agent_message: boundary — empty strings, empty arrays, optionals absent",
+          "payload": {
+            "conversationId": "",
+            "role": "user",
+            "content": {
+              "role": "user",
+              "data": {
+                "text": ""
+              }
+            },
+            "attachments": [],
+            "toolCallId": null,
+            "status": "error",
+            "createdAt": 0,
+            "updatedAt": 0
+          },
+          "expectedParsed": {
+            "conversationId": "",
+            "role": "user",
+            "content": {
+              "role": "user",
+              "data": {
+                "text": ""
+              }
+            },
+            "attachments": [],
+            "toolCallId": null,
+            "status": "error",
+            "createdAt": 0,
+            "updatedAt": 0
+          },
+          "pins": "absent and empty stay distinct across the round trip"
+        },
+        {
+          "name": "agent_message: an unknown field a newer client wrote",
+          "payload": {
+            "conversationId": "conv-1",
+            "role": "user",
+            "content": {
+              "role": "user",
+              "data": {
+                "text": "What is due today?"
+              }
+            },
+            "attachments": [
+              {
+                "kind": "note",
+                "refId": "abc123def456",
+                "label": "Plan",
+                "snapshotAt": 1760000000000,
+                "snapshot": {
+                  "mode": "inline_note",
+                  "title": "Plan",
+                  "contentMarkdown": "# Plan",
+                  "truncated": false
+                }
+              }
+            ],
+            "toolCallId": null,
+            "status": "completed",
+            "clock": {
+              "device-a": 1
+            },
+            "createdAt": 1760000000000,
+            "updatedAt": 1760000000000,
+            "deletedAt": null,
+            "tokenCount": 42
+          },
+          "expectedParsed": {
+            "conversationId": "conv-1",
+            "role": "user",
+            "content": {
+              "role": "user",
+              "data": {
+                "text": "What is due today?"
+              }
+            },
+            "attachments": [
+              {
+                "kind": "note",
+                "refId": "abc123def456",
+                "label": "Plan",
+                "snapshotAt": 1760000000000,
+                "snapshot": {
+                  "mode": "inline_note",
+                  "title": "Plan",
+                  "contentMarkdown": "# Plan",
+                  "truncated": false
+                }
+              }
+            ],
+            "toolCallId": null,
+            "status": "completed",
+            "clock": {
+              "device-a": 1
+            },
+            "createdAt": 1760000000000,
+            "updatedAt": 1760000000000,
+            "deletedAt": null
+          },
+          "strippedByParse": [
+            "tokenCount"
+          ],
+          "pins": "THE SC-014 CASE: Zod strips the key from the PARSED object, and the stored payload string must not change"
+        },
+        {
+          "name": "agent_message: verbatim round trip of the unknown-field instance",
+          "storedPayloadJson": "{\"conversationId\":\"conv-1\",\"role\":\"user\",\"content\":{\"role\":\"user\",\"data\":{\"text\":\"What is due today?\"}},\"attachments\":[{\"kind\":\"note\",\"refId\":\"abc123def456\",\"label\":\"Plan\",\"snapshotAt\":1760000000000,\"snapshot\":{\"mode\":\"inline_note\",\"title\":\"Plan\",\"contentMarkdown\":\"# Plan\",\"truncated\":false}}],\"toolCallId\":null,\"status\":\"completed\",\"clock\":{\"device-a\":1},\"createdAt\":1760000000000,\"updatedAt\":1760000000000,\"deletedAt\":null,\"tokenCount\":42}",
+          "expectedPushedPayloadJson": "{\"conversationId\":\"conv-1\",\"role\":\"user\",\"content\":{\"role\":\"user\",\"data\":{\"text\":\"What is due today?\"}},\"attachments\":[{\"kind\":\"note\",\"refId\":\"abc123def456\",\"label\":\"Plan\",\"snapshotAt\":1760000000000,\"snapshot\":{\"mode\":\"inline_note\",\"title\":\"Plan\",\"contentMarkdown\":\"# Plan\",\"truncated\":false}}],\"toolCallId\":null,\"status\":\"completed\",\"clock\":{\"device-a\":1},\"createdAt\":1760000000000,\"updatedAt\":1760000000000,\"deletedAt\":null,\"tokenCount\":42}",
           "pins": "the exact bytes that must come back out. An implementation that deserialises into a struct and re-serialises fails here"
         }
       ]

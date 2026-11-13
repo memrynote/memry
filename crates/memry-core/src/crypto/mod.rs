@@ -2,6 +2,7 @@
 //! recovery phrase, and the canonical CBOR encoder.
 
 pub mod agent_envelope;
+pub mod agent_payload;
 pub mod cbor;
 pub mod keys;
 pub mod recovery;

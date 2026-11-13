@@ -42,18 +42,20 @@ use std::sync::Arc;
 
 use serde_json::{Value as Json, json};
 
-use crate::protocol::envelope::{self, EnvelopeError, RecordEnvelope, SyncOperation};
+use crate::crypto::agent_envelope::AtRestKey;
+use crate::protocol::envelope::{EnvelopeError, RecordEnvelope};
 use crate::protocol::http::{ApiRequest, Auth, HttpClient, SYNC_TYPES_HEADER, VAULT_ID_HEADER};
-use crate::protocol::types::{ArrivingItemType, Declaration};
+use crate::protocol::types::Declaration;
 use crate::storage::Db;
-use crate::storage::repositories::sync_items::{self, InboundRecord};
+use crate::storage::repositories::sync_items;
 
-use super::apply::{self, ApplyTotals, DOCUMENT_TYPES, Pending};
+use super::apply::{self, ApplyTotals, Pending};
 use super::body_debt;
 use super::body_pull::CrdtCipher;
 use super::changes_page::{ChangesPage, read_changes_page, requested_ids, uncovered_ids};
 use super::feed_restart;
 use super::note_body_feed::{self, FeedClient, FetchedBodies, NOTE_BODY_SYNC_TYPE};
+use super::pull_decode::{self, server_cursor};
 use super::store::{self, RECORD_CURSOR_SCOPE};
 
 /// §5.10.2: a new client SHOULD request the server's ceiling. Five times fewer
@@ -67,7 +69,7 @@ pub const MAX_PULL_IDS: usize = 100;
 
 /// Opens one pulled envelope.
 ///
-/// A seam rather than a direct call to [`envelope::decrypt`] because opening a
+/// A seam rather than a direct call to [`crate::protocol::envelope::decrypt`] because opening a
 /// record needs the vault key **and** the signer's Ed25519 public key resolved
 /// by `signerDeviceId` (chapter 04 §4.8, chapter 01 §1.4), and the key
 /// directory is not this task's. The loop's job is to decide what a failure
@@ -92,6 +94,8 @@ pub struct PullLoop {
     vault_id: Option<String>,
     /// This device's clock id, which a canvas conflict copy is clocked under.
     clock_device: Option<String>,
+    /// The vault key agent records are sealed under at apply (chapter 04 §4.17).
+    at_rest: AtRestKey,
 }
 
 impl PullLoop {
@@ -109,6 +113,7 @@ impl PullLoop {
             bodies: None,
             vault_id: None,
             clock_device: None,
+            at_rest: AtRestKey::default(),
         }
     }
 
@@ -133,6 +138,13 @@ impl PullLoop {
     /// the local drawing as a conflict copy instead of being recorded corrupt.
     pub fn with_clock_device(mut self, device_id: &str) -> Self {
         self.clock_device = Some(device_id.to_owned());
+        self
+    }
+
+    /// The vault key the apply seals agent records under. Without one they are
+    /// stored plain and pending until `Vault::set_at_rest_key` seals them.
+    pub fn with_at_rest_key(mut self, key: AtRestKey) -> Self {
+        self.at_rest = key;
         self
     }
 
@@ -330,7 +342,7 @@ impl PullLoop {
                 continue;
             };
             for item in items {
-                match self.decode(item) {
+                match pull_decode::decode(&self.declaration, self.cipher.as_ref(), item) {
                     Ok(decoded) => pending.push(decoded),
                     Err(corrupt) => {
                         report.corrupt += 1;
@@ -360,7 +372,7 @@ impl PullLoop {
         pending: &mut Vec<Pending>,
     ) -> Result<(), PullError> {
         for item in items {
-            match self.decode(item) {
+            match pull_decode::decode(&self.declaration, self.cipher.as_ref(), item) {
                 Ok(decoded) => pending.push(decoded),
                 Err(corrupt) => {
                     report.corrupt += 1;
@@ -459,66 +471,6 @@ impl PullLoop {
         request
     }
 
-    /// Per-item validation. Every `Err` here is **one** corrupt item.
-    fn decode(&self, item: &Json) -> Result<Pending, String> {
-        let envelope =
-            envelope::from_json(item).map_err(|error| format!("malformed envelope: {error}"))?;
-
-        // §5.3.1: a type this client did not declare is recorded, not applied.
-        // The record feed cannot produce it today; the rule is defensive.
-        if self.declaration.classify(&envelope.item_type) == ArrivingItemType::Undeclared {
-            return Err(format!("undeclared item type `{}`", envelope.item_type));
-        }
-
-        // §5.12: a present `deletedAt` overrides the declared operation, and
-        // the body is never applied, only read for `bodyStateVector` (§5.8).
-        let deleted_at = envelope
-            .deleted_at
-            .or_else(|| (envelope.operation == SyncOperation::Delete).then(now_ms));
-        if let Some(deleted_at) = deleted_at {
-            return Ok(Pending::Tombstone {
-                body_state_vector: self.tombstone_body_state_vector(&envelope),
-                item_type: envelope.item_type.clone(),
-                item_id: envelope.id.clone(),
-                deleted_at,
-                server_cursor: server_cursor(item),
-                clock: envelope.clock.clone(),
-            });
-        }
-
-        let plaintext = self
-            .cipher
-            .open(&envelope)
-            .map_err(|error| format!("could not open the record: {error}"))?;
-        let payload_json = String::from_utf8(plaintext)
-            .map_err(|_| "the decrypted payload is not UTF-8".to_owned())?;
-
-        Ok(Pending::Record(InboundRecord {
-            item_type: envelope.item_type,
-            item_id: envelope.id,
-            payload_json,
-            server_cursor: server_cursor(item),
-            signer_device_id: Some(envelope.signer_device_id),
-            updated_at: now_ms(),
-            deleted_at: None,
-        }))
-    }
-
-    /// A note or journal tombstone's `bodyStateVector` (§5.8, #3037). `None`
-    /// for other types and for a payload that does not open (an old build's
-    /// delete, a shed marker): the keep rule then decides as before.
-    fn tombstone_body_state_vector(&self, envelope: &RecordEnvelope) -> Option<String> {
-        if !DOCUMENT_TYPES.contains(&envelope.item_type.as_str()) {
-            return None;
-        }
-        let plaintext = self.cipher.open(envelope).ok()?;
-        let payload: Json = serde_json::from_slice(&plaintext).ok()?;
-        payload
-            .get("bodyStateVector")
-            .and_then(Json::as_str)
-            .map(str::to_owned)
-    }
-
     /// Records a corrupt item against its row when the wire told us enough to
     /// find one (§5.14, chapter 13 §13.2 rule 5).
     ///
@@ -563,6 +515,7 @@ impl PullLoop {
     ) -> Result<ApplyTotals, PullError> {
         let now = now_ms();
         let clock_device = self.clock_device.clone();
+        let at_rest = self.at_rest.clone();
         Ok(self
             .db
             .call(move |conn| {
@@ -571,8 +524,14 @@ impl PullLoop {
                 } else {
                     Vec::new()
                 };
-                let totals =
-                    apply::apply_page(conn, pending, untyped, now, clock_device.as_deref())?;
+                let totals = apply::apply_page(
+                    conn,
+                    pending,
+                    untyped,
+                    now,
+                    clock_device.as_deref(),
+                    &at_rest,
+                )?;
                 for doc_id in &owed_here {
                     if !totals.applied_documents.contains(doc_id) {
                         body_debt::settle(conn, doc_id)?;
@@ -588,11 +547,7 @@ fn typed_covers(pending: &[Pending], id: &str) -> bool {
     pending.iter().any(|item| item.item_id() == id)
 }
 
-fn server_cursor(item: &Json) -> Option<i64> {
-    item.get("serverCursor").and_then(Json::as_i64)
-}
-
-fn now_ms() -> i64 {
+pub(super) fn now_ms() -> i64 {
     std::time::SystemTime::now()
         .duration_since(std::time::UNIX_EPOCH)
         .map(|elapsed| elapsed.as_millis() as i64)

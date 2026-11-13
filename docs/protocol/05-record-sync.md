@@ -1054,7 +1054,7 @@ property type's promotion included
 (`crates/memry-core/src/domain/property_admin/learned.rs:103`). The server
 refuses that promotion over a marker with `SYNC_DELETE_WINS`, and the core
 tombstones the local record in the same transaction as the ack
-(`crates/memry-core/src/sync/push.rs:268-272`), unless a newer local change is
+(`crates/memry-core/src/sync/push.rs:305-309`), unless a newer local change is
 queued for it. A learned name therefore never brings back a deleted definition
 (#4025).
 

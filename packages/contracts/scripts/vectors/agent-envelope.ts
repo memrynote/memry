@@ -73,6 +73,12 @@ const SEALS: SealSpec[] = [
     name: 'attachments, one file',
     purpose: 'agent_attachments',
     plaintext: JSON.stringify([{ kind: 'file', name: 'plan.pdf', size: 1024 }])
+  },
+  {
+    // `TextDecoder` drops one leading byte-order mark, so this opens without it.
+    name: 'title, leading byte-order mark',
+    purpose: 'agent_conversation_title',
+    plaintext: '\uFEFF\uFEFFPlan'
   }
 ]
 
@@ -116,6 +122,13 @@ function electronOpen(column: string, key: Uint8Array, purpose: AgentAtRestPurpo
 // oxlint-disable-next-line typescript/no-unsafe-type-assertion -- every column parsed here was written by the generator
 const parsed = (column: string): AgentEnvelope => JSON.parse(column) as AgentEnvelope
 
+function unpadded(base64: string): string {
+  const stripped = base64.replace(/=+$/, '')
+  if (stripped === base64)
+    throw new Error('agent-envelope: the unpadded case needs padding to strip')
+  return stripped
+}
+
 function tamper(envelope: AgentEnvelope): string {
   const bytes = fromB64(envelope.ciphertext)
   bytes[0] ^= 0x01
@@ -132,10 +145,12 @@ export async function buildAgentEnvelope(): Promise<Record<string, unknown>> {
     if (parsed(column).nonce !== b64(nonce)) {
       throw new Error(`agent-envelope: ${spec.name} was not sealed under the fixed nonce`)
     }
-    if (electronOpen(column, key, spec.purpose) !== spec.plaintext) {
+    const opened = electronOpen(column, key, spec.purpose)
+    const expected = spec.plaintext.startsWith('\uFEFF') ? spec.plaintext.slice(1) : spec.plaintext
+    if (opened !== expected) {
       throw new Error(`agent-envelope: ${spec.name} does not open under Electron`)
     }
-    return { ...spec, nonceHex: hex(nonce), column }
+    return { ...spec, nonceHex: hex(nonce), column, opened }
   })
 
   const title = seals[0].column
@@ -181,6 +196,24 @@ export async function buildAgentEnvelope(): Promise<Record<string, unknown>> {
       purpose: 'agent_conversation_title',
       keyHex: VAULT_KEY,
       column: 'Weekly planning'
+    },
+    {
+      name: 'ciphertext shorter than the tag',
+      purpose: 'agent_conversation_title',
+      keyHex: VAULT_KEY,
+      column: JSON.stringify({ ...parsed(title), ciphertext: b64(new Uint8Array(15)) })
+    },
+    {
+      name: 'a 23-byte nonce',
+      purpose: 'agent_conversation_title',
+      keyHex: VAULT_KEY,
+      column: JSON.stringify({ ...parsed(title), nonce: b64(nonceFor(0).slice(0, 23)) })
+    },
+    {
+      name: 'ciphertext without base64 padding',
+      purpose: 'agent_conversation_title',
+      keyHex: VAULT_KEY,
+      column: JSON.stringify({ ...parsed(title), ciphertext: unpadded(parsed(title).ciphertext) })
     }
   ].map((spec) => ({
     ...spec,
@@ -192,7 +225,7 @@ export async function buildAgentEnvelope(): Promise<Record<string, unknown>> {
       chapter: 'docs/protocol/04-record-envelope.md §4.17',
       oracle:
         'apps/desktop/src/main/agent/storage/encryption.ts (encryptAgentJsonForVault, decryptAgentJsonForVault) with a fixed nonce',
-      note: '`column` is the text Electron stores in agent_conversations.title, agent_messages.content and agent_messages.attachments. An open case with `plaintext: null` is one Electron rejects.'
+      note: '`column` is the text Electron stores in agent_conversations.title, agent_messages.content and agent_messages.attachments; `opened` is what Electron reads back from it. An open case with `plaintext: null` is one Electron rejects.'
     }),
     keyHex: VAULT_KEY,
     seals,
