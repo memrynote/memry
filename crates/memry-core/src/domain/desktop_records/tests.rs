@@ -97,25 +97,27 @@ fn every_coalesce_key_is_refused_as_null() {
     assert_eq!(kept, TYPES, "the types apply_kept merges");
 }
 
-/// Chapter 13 §13.7.23-25: a tick written as anything but a JSON integer
+/// Chapter 13 §13.7.21-25: a tick written as anything but a JSON integer
 /// literal is refused, though desktop's `z.int()` takes `1.0` and `1e0`.
 #[test]
 fn a_tick_not_written_as_an_integer_literal_is_refused() {
     let object = |text: &str| -> crate::storage::repositories::schema::Object {
         serde_json::from_str(text).expect("an object")
     };
-    for tick in ["1.0", "-0", "1e0"] {
-        let remote = object(&format!(r#"{{"clock": {{"peer": {tick}}}}}"#));
+    // `canvas` and `vault_lock` run the same check (§13.7.21, §13.7.22).
+    for item_type in ["sticky_draft", "canvas", "vault_lock"] {
+        for tick in ["1.0", "-0", "1e0"] {
+            let remote = object(&format!(r#"{{"clock": {{"peer": {tick}}}}}"#));
+            assert!(
+                super::fails_desktop_schema(item_type, &remote, &[]),
+                "{item_type}: {tick}"
+            );
+        }
         assert!(
-            super::fails_desktop_schema("sticky_draft", &remote, &[]),
-            "{tick}"
+            !super::fails_desktop_schema(item_type, &object(r#"{"clock": {"peer": 1}}"#), &[]),
+            "{item_type}"
         );
     }
-    assert!(!super::fails_desktop_schema(
-        "sticky_draft",
-        &object(r#"{"clock": {"peer": 1}}"#),
-        &[]
-    ));
 }
 
 #[test]

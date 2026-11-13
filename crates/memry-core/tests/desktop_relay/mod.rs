@@ -2,12 +2,16 @@
 //! six desktop-only record types (Step 16, #3533, chapter 13 §13.1).
 //!
 //! The vaults are real: real SQLite, the real pull loop and the real push
-//! wave. The relay is the fake: it keeps the last item pushed per id, its
-//! `deletedAt` and clock included, and serves every item it holds on the next
-//! pull, as one page: a live item as a ref, a deleted one in `deleted` and as a
-//! `delete` item carrying its `deletedAt` and clock (§5.12). The record cipher
-//! is the identity on both sides, so a payload crosses as the bytes the push
-//! read from the row.
+//! wave. The relay is the fake server. A push runs the sync server's per-item
+//! checks (`apps/sync-server/src/services/sync.ts`): `detectReplay` (`:230`)
+//! rejects `SYNC_REPLAY_DETECTED` and `shouldRejectResurrection` (`:286`)
+//! rejects `SYNC_DELETE_WINS`, both in `rejected` (`:763-775`); every one of
+//! the six requires a clock. An accepted item is held as the last one for its
+//! id, deleted only when its `operation` is `delete` (`:865`). A pull serves
+//! every held item as one page: a live item as a ref, a deleted one in
+//! `deleted` and as a `delete` item carrying its `deletedAt` and clock
+//! (§5.12). The record cipher is the identity on both sides, so a payload
+//! crosses as the bytes the push read from the row.
 
 use std::collections::BTreeMap;
 use std::sync::{Arc, Mutex};
@@ -15,7 +19,7 @@ use std::sync::{Arc, Mutex};
 use memry_core::api::errors::StorageError;
 use memry_core::api::vault::Vault;
 use memry_core::domain::canvas_folder;
-use memry_core::protocol::envelope::{EnvelopeError, RecordEnvelope};
+use memry_core::protocol::envelope::{EnvelopeError, RecordEnvelope, SyncOperation};
 use memry_core::protocol::http::{ClientIdentity, HttpClient};
 use memry_core::protocol::types::Declaration;
 use memry_core::storage::Db;
@@ -23,6 +27,12 @@ use memry_core::sync::pull::{PullLoop, PullReport, RecordCipher};
 use memry_core::sync::push::{PendingRecord, PushCoordinator, PushSealer};
 use serde_json::{Value as Json, json};
 use zeroize::Zeroizing;
+
+use memry_core::api::errors::TransportError;
+use memry_core::seams::transport::{
+    HttpRequest, HttpResponse, SocketHandle, SocketListener, SocketRequest, Transport,
+};
+use memry_core::sync::clock::{ClockOrder, VectorClock, compare};
 
 use crate::http_fakes::{FakeTransport, response};
 
@@ -106,7 +116,7 @@ pub fn failed(error: impl std::fmt::Display) -> StorageError {
     }
 }
 
-fn http(transport: Arc<FakeTransport>) -> Arc<HttpClient> {
+fn http(transport: Arc<dyn Transport>) -> Arc<HttpClient> {
     Arc::new(HttpClient::new(
         transport,
         "https://sync.example",
@@ -131,13 +141,16 @@ impl RecordCipher for Identity {
 pub struct Sent {
     pub item_type: String,
     pub item_id: String,
+    pub operation: SyncOperation,
     pub payload: String,
-    /// The tombstone instant the envelope states. The sealer sends the row's
-    /// `deleted_at` whatever the operation, and a pull reads a present
-    /// `deletedAt` as a delete (§5.12).
+    /// The tombstone instant the server stores: `deletedAt ?? now` for a
+    /// `delete`, and nothing for any other operation, whatever the envelope
+    /// states (`sync.ts:865`).
     pub deleted_at: Option<i64>,
     /// The envelope's clock: the row's clock, as the sealer sends it.
-    pub clock: Option<Json>,
+    pub clock: Option<VectorClock>,
+    /// The server's per-item rejection, or `None` when it took the item.
+    pub rejected: Option<&'static str>,
 }
 
 /// Records what the wave would encrypt.
@@ -150,18 +163,88 @@ impl PushSealer for Recording {
         self.0.lock().unwrap().push(Sent {
             item_type: row.item_type.clone(),
             item_id: row.item_id.clone(),
+            operation: item.operation,
+            rejected: None,
             payload: row.payload.clone().unwrap_or_default(),
-            deleted_at: row.deleted_at,
+            deleted_at: (item.operation == SyncOperation::Delete)
+                .then(|| row.deleted_at.unwrap_or(NOW)),
             clock: row
                 .clock
                 .as_deref()
-                .map(|text| serde_json::from_str(text).expect("a clock")),
+                .map(|text| serde_json::from_str(text).expect("a clock"))
+                .filter(|clock: &VectorClock| !clock.is_empty()),
         });
         Ok(json!({"id": row.item_id, "type": row.item_type}))
     }
 
     fn seal_crdt_update(&self, _doc_id: &str, update: &[u8]) -> Result<Vec<u8>, EnvelopeError> {
         Ok(update.to_vec())
+    }
+}
+
+/// `POST /sync/push`: judges what the wave sealed against what the relay held
+/// when the wave started.
+struct PushServer {
+    held: BTreeMap<String, Sent>,
+    sealed: Arc<Recording>,
+}
+
+impl PushServer {
+    /// `detectReplay`, `sync.ts:230-241`.
+    fn replay(incoming: Option<&VectorClock>, existing: Option<&VectorClock>) -> bool {
+        match (incoming, existing) {
+            (None, Some(_)) => true,
+            (Some(incoming), Some(existing)) => incoming
+                .iter()
+                .all(|(device, tick)| *tick <= existing.get(device).copied().unwrap_or(0)),
+            _ => false,
+        }
+    }
+
+    /// The server's verdict on one item, `sync.ts:752-777`.
+    fn verdict(&self, item: &Sent) -> Option<&'static str> {
+        let existing = self.held.get(&item.item_id)?;
+        if Self::replay(item.clock.as_ref(), existing.clock.as_ref()) {
+            return Some("SYNC_REPLAY_DETECTED");
+        }
+        // `shouldRejectResurrection`, `sync.ts:286-296`.
+        let resurrects = item.operation != SyncOperation::Delete
+            && existing.deleted_at.is_some()
+            && matches!(
+                (item.clock.as_ref(), existing.clock.as_ref()),
+                (Some(incoming), Some(existing)) if compare(incoming, existing) != ClockOrder::After
+            );
+        resurrects.then_some("SYNC_DELETE_WINS")
+    }
+}
+
+#[async_trait::async_trait]
+impl Transport for PushServer {
+    async fn send(&self, _request: HttpRequest) -> Result<HttpResponse, TransportError> {
+        let mut sealed = self.sealed.0.lock().unwrap();
+        for item in sealed.iter_mut() {
+            item.rejected = self.verdict(item);
+        }
+        let accepted: Vec<&str> = sealed
+            .iter()
+            .filter(|item| item.rejected.is_none())
+            .map(|item| item.item_id.as_str())
+            .collect();
+        let rejected: Vec<Json> = sealed
+            .iter()
+            .filter_map(|item| Some(json!({"id": item.item_id, "reason": item.rejected?})))
+            .collect();
+        let body = json!({"accepted": accepted, "rejected": rejected,
+                          "serverTime": 1, "maxCursor": 1});
+        response(200, &body.to_string())
+    }
+
+    fn open_socket(
+        &self,
+        _request: SocketRequest,
+        _listener: Arc<dyn SocketListener>,
+    ) -> Result<Arc<dyn SocketHandle>, TransportError> {
+        unreachable!("a push opens no socket")
     }
 }
 
@@ -178,9 +261,11 @@ impl Relay {
         self.hold(Sent {
             item_type: item_type.to_owned(),
             item_id: item_id.to_owned(),
+            operation: SyncOperation::Update,
             payload: payload.to_owned(),
             deleted_at: None,
             clock: None,
+            rejected: None,
         });
     }
 
@@ -223,7 +308,7 @@ impl Relay {
                              "encryptedData": "AAAA", "dataNonce": "AAAA"},
                 });
                 if let Some(clock) = &sent.clock {
-                    item["clock"] = clock.clone();
+                    item["clock"] = json!(clock);
                 }
                 if let Some(deleted_at) = sent.deleted_at {
                     item["deletedAt"] = json!(deleted_at);
@@ -257,41 +342,31 @@ impl Relay {
         .expect("the page")
     }
 
-    /// Drains the device's outbox into the relay and returns what it sent.
+    /// Drains the device's outbox into the relay and returns what it sent,
+    /// each item with the server's verdict.
     pub async fn push(&self, device: &Device) -> Vec<Sent> {
-        let ids: Vec<String> = device
-            .db()
-            .call_blocking(|conn| {
-                let mut statement = conn
-                    .prepare("SELECT DISTINCT item_id FROM outbox")
-                    .map_err(failed)?;
-                statement
-                    .query_map([], |row| row.get(0))
-                    .and_then(Iterator::collect)
-                    .map_err(failed)
-            })
-            .expect("the outbox");
-        if ids.is_empty() {
+        let queued: i64 = device.count("SELECT COUNT(*) FROM outbox");
+        if queued == 0 {
             return Vec::new();
         }
-        let accepted = json!({"accepted": ids, "rejected": [], "serverTime": 1, "maxCursor": 1});
-        let recording = Arc::new(Recording::default());
+        let sealed = Arc::new(Recording::default());
+        let server = Arc::new(PushServer {
+            held: self.records.lock().unwrap().clone(),
+            sealed: sealed.clone(),
+        });
         let report = PushCoordinator::new(
-            http(FakeTransport::new(vec![response(
-                200,
-                &accepted.to_string(),
-            )])),
+            http(server),
             device.db(),
             Declaration::desktop(),
-            recording.clone(),
+            sealed.clone(),
         )
         .with_at_rest_key(device.vault.at_rest_key())
         .drain_wave()
         .await
         .expect("the wave");
         assert_eq!(report.held, 0, "nothing waits in the outbox");
-        let sent = recording.0.lock().unwrap().clone();
-        for item in &sent {
+        let sent = sealed.0.lock().unwrap().clone();
+        for item in sent.iter().filter(|item| item.rejected.is_none()) {
             self.hold(item.clone());
         }
         sent

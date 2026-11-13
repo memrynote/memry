@@ -19,6 +19,7 @@ use memry_core::domain::agent_message::{self, NewMessage};
 use memry_core::domain::canvas_folder;
 use memry_core::domain::home_page::{self, HomePagePatch, NewHomePage};
 use memry_core::domain::sticky_draft::{self, StickyKind};
+use memry_core::protocol::envelope::SyncOperation;
 use rusqlite::Connection;
 use serde_json::json;
 
@@ -156,7 +157,15 @@ async fn the_delete_pushed_first_wins(item_type: &'static str, survivors: &[&str
 
     delete(&a, item_type, &id);
     edit(&b, item_type, &id);
-    relay.sync(&a).await;
+    relay.pull(&a).await;
+    let sent = relay.push(&a).await;
+    let deletes: Vec<_> = sent.iter().filter(|item| item.item_id == id).collect();
+    assert_eq!(deletes.len(), 1, "{item_type}: one item for the record");
+    assert_eq!(
+        (deletes[0].operation, deletes[0].rejected),
+        (SyncOperation::Delete, None),
+        "{item_type}: a's push is a delete the server takes"
+    );
     relay.sync(&b).await;
     relay.sync(&a).await;
 
@@ -221,4 +230,33 @@ async fn two_pushes_then_two_pulls_keep_the_last_push_on_both() {
             .expect("a live draft");
         assert_eq!(draft.content, "from b", "on {}", device.id);
     }
+}
+
+/// Both devices push before either pulls: A's delete, then B's concurrent
+/// edit. The server refuses the edit (`SYNC_DELETE_WINS`,
+/// `shouldRejectResurrection`, `sync.ts:286-296`: B never saw the delete), B
+/// retires it, and each pull leaves the record gone.
+#[tokio::test]
+async fn a_delete_pushed_before_a_concurrent_edit_is_gone_on_both() {
+    let (a, b, relay) = (Device::keyed("a"), Device::keyed("b"), Relay::default());
+    let id = create(&a, "sticky_draft");
+    relay.sync(&a).await;
+    relay.sync(&b).await;
+
+    delete(&a, "sticky_draft", &id);
+    edit(&b, "sticky_draft", &id);
+    relay.push(&a).await;
+    let sent = relay.push(&b).await;
+    assert_eq!(sent.len(), 1);
+    assert_eq!(sent[0].rejected, Some("SYNC_DELETE_WINS"));
+    relay.pull(&a).await;
+    relay.pull(&b).await;
+
+    assert!(visible(&a, "sticky_draft").is_empty(), "on a");
+    assert!(visible(&b, "sticky_draft").is_empty(), "on b");
+    assert_eq!(
+        b.count("SELECT COUNT(*) FROM outbox"),
+        0,
+        "b retired its edit"
+    );
 }

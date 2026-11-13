@@ -42,9 +42,11 @@ them: `agent_conversation` and `agent_message` (desktop agent chats,
 
 **Normative.** The desktop client declares all twenty-seven: the twenty-one
 above in their order, then the six in the order just given
-(`Declaration::desktop`, `crates/memry-core/src/protocol/types.rs:143-149`).
+(`Declaration::desktop`, `crates/memry-core/src/protocol/types.rs:145-152`),
+which exists only with the `markdown` feature: without it `vault_lock` has no
+merge rule and would apply as a plain document. Every desktop build has it.
 Desktop passes that declaration to `Vault::sync_with_declaration`
-(`crates/memry-core/src/api/vault.rs:118-131`), which is not on the FFI
+(`crates/memry-core/src/api/vault.rs:122-135`), which is not on the FFI
 surface, so iOS keeps `Vault::sync` and the twenty-one. A type joins a
 declaration only with a reader for it: a declared type with none would be
 served and recorded corrupt
@@ -199,7 +201,7 @@ plaintext in `data.db`. The exception is bounded:
   the first key installed when none is stored, in the same call that checks
   it and before anything is sealed. A key that does not match the stored
   verifier is refused and nothing is installed
-  (`crates/memry-core/src/api/vault.rs:145-171`,
+  (`crates/memry-core/src/api/vault.rs:149-175`,
   `crates/memry-core/src/domain/agent_records.rs:136-165`), so a store is
   never split across two keys. Agent rows already sealed under another key
   stay held; nothing resets them. An import of an Electron vault copies
@@ -225,7 +227,7 @@ schema refuses a `canvas`, `vault_lock`, `canvas_folder`, `home_page`,
 `sticky_draft`, `agent_conversation` or `agent_message` payload (a `null` where the schema
 has no `.nullable()`, a value of the wrong type, or `widgets` that is not a
 string), the Rust core returns `Skipped` and writes nothing
-(`crates/memry-core/src/domain/desktop_records/mod.rs:85-101`,
+(`crates/memry-core/src/domain/desktop_records/mod.rs:97-113`,
 `crates/memry-core/src/domain/home_page/merge.rs:53-57`,
 `crates/memry-core/src/domain/agent_records.rs:123-134`). `Skipped` only
 counts the item (`crates/memry-core/src/sync/apply.rs:208`, `:552`): the
@@ -1110,8 +1112,11 @@ a `clock` tick that is not a safe non-negative integer
 `packages/contracts/src/sync-payloads.ts:187-207`,
 `crates/memry-core/src/domain/canvas/merge.rs:66-68`). Desktop refuses it as
 `schema_invalid` before the handler runs
-(`apps/desktop/src/main/sync/apply-item.ts:155-176`). The skip is an
-exception to §13.2 rule 5, as for §13.7.23.
+(`apps/desktop/src/main/sync/apply-item.ts:155-176`). Rust also refuses a
+tick not written as a JSON integer literal (`1.0`, `-0`, `1e0`); no
+conforming writer emits one
+(`crates/memry-core/src/domain/desktop_records/mod.rs:106-107`). The skip is
+an exception to §13.2 rule 5, as for §13.7.23.
 
 1. a payload with no string `scene` is skipped and changes nothing;
 2. a create (no local row) with no `vaultId` is skipped;
@@ -1160,8 +1165,11 @@ safe non-negative integer
 `packages/contracts/src/sync-payloads.ts:477-484`,
 `crates/memry-core/src/domain/vault_locks/merge.rs:63-65`). Desktop refuses it
 as `schema_invalid` before the handler runs
-(`apps/desktop/src/main/sync/apply-item.ts:155-176`). The skip is an
-exception to §13.2 rule 5, as for §13.7.23.
+(`apps/desktop/src/main/sync/apply-item.ts:155-176`). Rust also refuses a
+tick not written as a JSON integer literal (`1.0`, `-0`, `1e0`); no
+conforming writer emits one
+(`crates/memry-core/src/domain/desktop_records/mod.rs:106-107`). The skip is
+an exception to §13.2 rule 5, as for §13.7.23.
 
 1. a `targetKind` that is present and not a known kind is skipped, and a local
    record stays as it is (`:37-40`). An absent `targetKind` is not unknown;
@@ -1221,7 +1229,7 @@ as `parse_error` or `schema_invalid` before the handler reads the local row
 (`apps/desktop/src/main/sync/apply-item.ts:155-176`). Rust also refuses a
 tick not written as a JSON integer literal (`1.0`, `-0`, `1e0`); no
 conforming writer emits one
-(`crates/memry-core/src/domain/desktop_records/mod.rs:94-95`). With no local row, a
+(`crates/memry-core/src/domain/desktop_records/mod.rs:106-107`). With no local row, a
 payload that is not an object is stored as corrupt. The skip is an exception
 to §13.2 rule 5: the cursor advances and the record is not refetched until a
 refused-items ledger lands (#4453).
@@ -1238,8 +1246,8 @@ refused-items ledger lands (#4453).
    or `null` makes the folder live again (`:74-80`).
 
 The Rust core follows the same rule
-(`crates/memry-core/src/domain/canvas_folder/merge.rs:30-68`, over
-`crates/memry-core/src/domain/desktop_records/mod.rs:85-139`).
+(`crates/memry-core/src/domain/canvas_folder/merge.rs:30-60`, over
+`crates/memry-core/src/domain/desktop_records/mod.rs:50-61`, `:97-155`).
 
 A delete follows chapter 05 §5.8 unchanged: the folder survives a tombstone
 only when its local clock is strictly after the tombstone's
@@ -1275,7 +1283,7 @@ as `parse_error` or `schema_invalid` before the handler reads the local row
 (`apps/desktop/src/main/sync/apply-item.ts:155-176`). Rust also refuses a
 tick not written as a JSON integer literal (`1.0`, `-0`, `1e0`); no
 conforming writer emits one
-(`crates/memry-core/src/domain/desktop_records/mod.rs:94-95`). With no local row, a
+(`crates/memry-core/src/domain/desktop_records/mod.rs:106-107`). With no local row, a
 payload that is not an object is stored as corrupt. The skip is an exception
 to §13.2 rule 5: the cursor advances and the record is not refetched until a
 refused-items ledger lands (#4453).
@@ -1299,7 +1307,7 @@ refused-items ledger lands (#4453).
 
 The Rust core follows the same rule
 (`crates/memry-core/src/domain/home_page/merge.rs:36-89`, over
-`crates/memry-core/src/domain/desktop_records/mod.rs:85-139`).
+`crates/memry-core/src/domain/desktop_records/mod.rs:50-61`, `:97-155`).
 
 The `home_pages.created_at` column of a board whose payload has no
 `createdAt` keeps the time of its first apply: a later projection keeps the
@@ -1340,7 +1348,7 @@ as `parse_error` or `schema_invalid` before the handler reads the local row
 (`apps/desktop/src/main/sync/apply-item.ts:155-176`). Rust also refuses a
 tick not written as a JSON integer literal (`1.0`, `-0`, `1e0`); no
 conforming writer emits one
-(`crates/memry-core/src/domain/desktop_records/mod.rs:94-95`). With no local row, a
+(`crates/memry-core/src/domain/desktop_records/mod.rs:106-107`). With no local row, a
 payload that is not an object is stored as corrupt. The skip is an exception
 to §13.2 rule 5: the cursor advances and the record is not refetched until a
 refused-items ledger lands (#4453).
@@ -1356,8 +1364,8 @@ refused-items ledger lands (#4453).
    apply time (`:41-50`).
 
 The Rust core follows the same rule
-(`crates/memry-core/src/domain/sticky_draft/merge.rs:31-62`, over
-`crates/memry-core/src/domain/desktop_records/mod.rs:85-139`).
+(`crates/memry-core/src/domain/sticky_draft/merge.rs:31-54`, over
+`crates/memry-core/src/domain/desktop_records/mod.rs:50-61`, `:97-155`).
 
 A delete follows chapter 05 §5.8 unchanged: the draft survives a tombstone only
 when its local clock is strictly after the tombstone's
