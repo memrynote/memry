@@ -180,7 +180,7 @@ struct SettingsAccountCard: View {
             // No account means no initial to show; the phone is what holds the vault.
             Group {
                 if email == nil, title != nil {
-                    Image(systemName: "iphone")
+                    Image(systemName: ThisDevice.symbol)
                 } else {
                     Text(initial)
                 }

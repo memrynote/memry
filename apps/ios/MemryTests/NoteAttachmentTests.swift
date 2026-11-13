@@ -74,7 +74,7 @@ private final class ScriptedAttachmentFiller: VaultFilling, @unchecked Sendable 
     func firstSync(
         progress: @escaping @MainActor @Sendable (SyncProgress) -> Void
     ) async throws -> FirstSyncSummary { .none }
-    func fetchNoteBody(noteId: String) async throws -> BodyFetchSummary {
+    func pullNoteBody(noteId: String) async throws -> BodyFetchSummary {
         BodyFetchSummary(updates: 0, baselines: 0, stopped: false)
     }
 

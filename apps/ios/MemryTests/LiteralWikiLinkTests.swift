@@ -66,8 +66,13 @@ struct LiteralWikiLinkTests {
         )
         let search = try CoreVaultSearch(vault: vault.vault, executor: .shared)
         let model = BacklinksViewModel(noteId: target, search: search)
+        // The vault scope's owner builds the index on open; the section
+        // re-reads when it finishes.
+        let index = VaultSearchIndex(search: search, debounce: .zero)
+        index.schedule()
+        await index.settle()
 
-        await model.loadIfNeeded()
+        await model.reload()
 
         guard case let .ready(rows) = model.phase else {
             Issue.record("backlinks did not load: \(model.phase)")

@@ -1,4 +1,4 @@
--- index.db, migration 0003: what desktop measures in a note's vault file
+-- index.db, migration 0004: what desktop measures in a note's vault file
 -- (Electron's `note_cache` counts and snippet, `syncNoteToCache`).
 --
 -- Derived like the rest of this file: `domain::note_stats` writes a row from

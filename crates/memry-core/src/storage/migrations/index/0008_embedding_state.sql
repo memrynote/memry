@@ -1,5 +1,4 @@
--- index.db, migration 0007: what the embedding lanes have derived, and the inbox
--- full-text table.
+-- index.db, migration 0008: what the embedding lanes have derived.
 --
 -- Same names and columns as Electron's index database (`note_embedding_state`
 -- and `image_embedding_state` in `packages/db-schema/src/schema/`,
@@ -7,9 +6,7 @@
 -- so the migration from Electron can copy rows when note ids are kept.
 -- Electron's foreign keys to `note_cache` are left out: this index has no
 -- `note_cache`, and the embedding reconcile prunes rows of notes that are gone.
--- `fts_inbox` is different: Electron keeps it in `data.db`
--- (`apps/desktop/src/main/database/fts-inbox.ts` takes a `DataDb`), so there is
--- nothing to copy from an Electron index; it is built here from the inbox items.
+-- `fts_inbox` is migration 0003's.
 --
 -- The vectors these rows describe live in vec0 tables that `storage/vec.rs`
 -- creates when the index opens, never in a migration, so no later migration of
@@ -42,17 +39,4 @@ CREATE TABLE IF NOT EXISTS voice_embedding_state (
   source        TEXT NOT NULL,
   input_version INTEGER NOT NULL,
   chunks        INTEGER NOT NULL
-);
-
--- Inbox items for search, which migration 0001 left out. The column order is
--- what Electron's `bm25(fts_inbox, 0.0, 3.0, 1.0, 1.0, 0.5)` weights refer to,
--- so it must not be reordered. `id` has no unique index: a write deletes the
--- item's row before inserting it.
-CREATE VIRTUAL TABLE IF NOT EXISTS fts_inbox USING fts5 (
-  id UNINDEXED,
-  title,
-  content,
-  transcription,
-  source_title,
-  tokenize = 'porter unicode61'
 );

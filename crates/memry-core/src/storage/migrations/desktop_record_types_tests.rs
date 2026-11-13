@@ -1,4 +1,4 @@
-//! Data migration 0027, `desktop_record_types` (Step 16, #3533): kept apart from `tests.rs` for
+//! Data migration 0028, `desktop_record_types` (Step 16, #3533): kept apart from `tests.rs` for
 //! its line ceiling.
 
 use super::*;
@@ -20,7 +20,7 @@ fn count(conn: &Connection, sql: &str) -> Result<i64, StorageError> {
 #[test]
 fn the_desktop_record_types_migration_keeps_rows_reruns_and_leaves_the_file_readable() {
     let db = Db::open_in_memory().expect("open");
-    let before = 26;
+    let before = 27;
     db.call_blocking(|conn| run(conn, &DATA_MIGRATIONS[..before]))
         .expect("a database as the last build left it");
     db.call_blocking(|conn| {

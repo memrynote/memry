@@ -54,9 +54,9 @@ fn earlier_feat_list(first: u32) -> Vec<Migration> {
     shared(first as usize - 1).chain(own).collect()
 }
 
-/// The list main shipped (v2026-11-11): 1..16.
+/// The list main shipped: 1..17.
 fn main_list() -> Vec<Migration> {
-    shared(16).collect()
+    shared(17).collect()
 }
 
 fn has_table(conn: &Connection, name: &str) -> bool {
@@ -307,13 +307,13 @@ fn refused_untouched(path: &Path, version: u32) {
     assert!(!has_table(&conn, "local_settings"), "no migration ran");
 }
 
-/// iOS and the CLI on main leave `data.db` at 13..16; a desktop build opening it adds the
+/// iOS and the CLI on main leave `data.db` at 13..17; a desktop build opening it adds the
 /// tables main does not have. A file at 13 still owes 14's reset; a later file owes none, so
 /// the cursor its device pulled since stays.
 #[test]
-fn a_file_main_left_at_13_to_16_gains_the_desktop_tables() {
+fn a_file_main_left_at_13_to_17_gains_the_desktop_tables() {
     let list = main_list();
-    for version in 13..=16 {
+    for version in 13..=17 {
         let cursor = (version > 13).then(|| "tok-1".to_owned());
         let what = format!("main at {version}");
         let (_dir, path, seeded) = file_at(&list, version);

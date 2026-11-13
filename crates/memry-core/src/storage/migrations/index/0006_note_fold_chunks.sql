@@ -1,4 +1,4 @@
--- index.db, migration 0005: the note fold cache (Electron's `note_fold_chunks`,
+-- index.db, migration 0006: the note fold cache (Electron's `note_fold_chunks`,
 -- `packages/db-schema/src/schema/note-fold-chunks.ts`).
 --
 -- One row per fold chunk (a heading and its paragraphs, or a slice of a long

@@ -1,4 +1,4 @@
--- data.db, migration 0027: projection tables of three desktop-only record
+-- data.db, migration 0028: projection tables of three desktop-only record
 -- types (Step 16, #3533; chapter 13 §13.7.23-25): `canvas_folder`
 -- (`CanvasFolderSyncPayloadSchema`), `home_page` (`HomePageSyncPayloadSchema`)
 -- and `sticky_draft` (`StickyDraftSyncPayloadSchema`), all in

@@ -36,23 +36,13 @@ fn migrated(migrations: &'static [Migration]) -> Db {
 }
 
 #[test]
-fn versions_are_strictly_ascending_from_one() {
-    for migrations in [DATA_MIGRATIONS, INDEX_MIGRATIONS] {
-        for (index, migration) in migrations.iter().enumerate() {
-            let expected = u32::try_from(index + 1).expect("migration count fits u32");
-            assert_eq!(migration.version, expected, "{}", migration.name);
-        }
-    }
-}
-
-#[test]
 fn a_fresh_data_database_reaches_the_latest_version() {
     let db = migrated(DATA_MIGRATIONS);
 
     let version = db
         .call_blocking(|conn| user_version(conn))
         .expect("user_version");
-    assert_eq!(version, 27);
+    assert_eq!(version, 28);
 
     let names = table_names(&db);
     // Source of record, §A.2.
@@ -98,6 +88,7 @@ fn a_fresh_data_database_reaches_the_latest_version() {
         "reminders",
         "saved_filter_expressions",
         "saved_filters",
+        "search_recents",
         "settings",
         "settings_field_clocks",
         "tag_categories",
@@ -117,11 +108,12 @@ fn a_fresh_index_database_reaches_the_latest_version() {
     let version = db
         .call_blocking(|conn| user_version(conn))
         .expect("user_version");
-    assert_eq!(version, 7);
+    assert_eq!(version, 8);
 
     let names = table_names(&db);
     for expected in [
         "block_link_refs",
+        "fts_inbox",
         "fts_notes",
         "fts_tasks",
         "index_meta",
@@ -252,9 +244,9 @@ fn a_failing_migration_leaves_the_previous_version_in_place() {
 }
 
 #[test]
-fn note_snapshots_applies_to_a_version_16_database_and_keeps_its_rows() {
+fn note_snapshots_applies_to_a_version_17_database_and_keeps_its_rows() {
     let db = Db::open_in_memory().expect("open");
-    db.call_blocking(|conn| run(conn, &DATA_MIGRATIONS[..16]))
+    db.call_blocking(|conn| run(conn, &DATA_MIGRATIONS[..17]))
         .expect("a database as the last shipped build left it");
     db.call_blocking(|conn| {
         conn.execute(
@@ -312,9 +304,9 @@ fn note_snapshots_applies_to_a_version_16_database_and_keeps_its_rows() {
 }
 
 #[test]
-fn local_settings_applies_to_a_version_17_database_and_keeps_its_rows() {
+fn local_settings_applies_to_a_version_18_database_and_keeps_its_rows() {
     let db = Db::open_in_memory().expect("open");
-    db.call_blocking(|conn| run(conn, &DATA_MIGRATIONS[..17]))
+    db.call_blocking(|conn| run(conn, &DATA_MIGRATIONS[..18]))
         .expect("a database as the last shipped build left it");
     db.call_blocking(|conn| {
         conn.execute(
@@ -398,9 +390,9 @@ fn run_atomic_leaves_a_failed_migration_and_its_counter_untouched() {
 }
 
 #[test]
-fn note_files_applies_to_a_version_18_database_and_keeps_its_rows() {
+fn note_files_applies_to_a_version_19_database_and_keeps_its_rows() {
     let db = Db::open_in_memory().expect("open");
-    db.call_blocking(|conn| run(conn, &DATA_MIGRATIONS[..18]))
+    db.call_blocking(|conn| run(conn, &DATA_MIGRATIONS[..19]))
         .expect("a database as the last shipped build left it");
     db.call_blocking(|conn| {
         conn.execute(
@@ -437,9 +429,9 @@ fn note_files_applies_to_a_version_18_database_and_keeps_its_rows() {
 }
 
 #[test]
-fn note_positions_applies_to_a_version_19_database_and_keeps_its_rows() {
+fn note_positions_applies_to_a_version_20_database_and_keeps_its_rows() {
     let db = Db::open_in_memory().expect("open");
-    db.call_blocking(|conn| run(conn, &DATA_MIGRATIONS[..19]))
+    db.call_blocking(|conn| run(conn, &DATA_MIGRATIONS[..20]))
         .expect("a database as the last shipped build left it");
     db.call_blocking(|conn| {
         conn.execute(
@@ -459,7 +451,7 @@ fn note_positions_applies_to_a_version_19_database_and_keeps_its_rows() {
     assert_eq!(version, latest_version(DATA_MIGRATIONS));
     // The crash window of §A.0: the migration is a no-op the second time.
     db.call_blocking(|conn| {
-        conn.execute_batch(DATA_MIGRATIONS[19].sql)
+        conn.execute_batch(DATA_MIGRATIONS[20].sql)
             .map_err(|err| StorageError::Failed {
                 what: err.to_string(),
             })
@@ -484,9 +476,9 @@ fn note_positions_applies_to_a_version_19_database_and_keeps_its_rows() {
 }
 
 #[test]
-fn note_file_hashes_applies_to_a_version_20_database_and_names_the_hashes_rows_had() {
+fn note_file_hashes_applies_to_a_version_21_database_and_names_the_hashes_rows_had() {
     let db = Db::open_in_memory().expect("open");
-    db.call_blocking(|conn| run(conn, &DATA_MIGRATIONS[..20]))
+    db.call_blocking(|conn| run(conn, &DATA_MIGRATIONS[..21]))
         .expect("a database as the last shipped build left it");
     db.call_blocking(|conn| {
         conn.execute_batch(
@@ -505,7 +497,7 @@ fn note_file_hashes_applies_to_a_version_20_database_and_names_the_hashes_rows_h
     assert_eq!(version, latest_version(DATA_MIGRATIONS));
     // The crash window of §A.0: the migration is a no-op the second time.
     db.call_blocking(|conn| {
-        conn.execute_batch(DATA_MIGRATIONS[20].sql)
+        conn.execute_batch(DATA_MIGRATIONS[21].sql)
             .map_err(|err| StorageError::Failed {
                 what: err.to_string(),
             })
@@ -531,9 +523,9 @@ fn note_file_hashes_applies_to_a_version_20_database_and_names_the_hashes_rows_h
 /// feature its module is built with.
 #[cfg(feature = "markdown")]
 #[test]
-fn the_note_identity_migration_applies_to_a_version_21_database_and_answers_the_identity() {
+fn the_note_identity_migration_applies_to_a_version_22_database_and_answers_the_identity() {
     let db = Db::open_in_memory().expect("open");
-    db.call_blocking(|conn| run(conn, &DATA_MIGRATIONS[..21]))
+    db.call_blocking(|conn| run(conn, &DATA_MIGRATIONS[..22]))
         .expect("a database as the last build left it");
     db.call_blocking(|conn| {
         conn.execute(
@@ -551,7 +543,7 @@ fn the_note_identity_migration_applies_to_a_version_21_database_and_answers_the_
         .expect("step forward");
     assert_eq!(version, latest_version(DATA_MIGRATIONS));
     db.call_blocking(|conn| {
-        conn.execute_batch(DATA_MIGRATIONS[21].sql)
+        conn.execute_batch(DATA_MIGRATIONS[22].sql)
             .map_err(|err| StorageError::Failed {
                 what: err.to_string(),
             })

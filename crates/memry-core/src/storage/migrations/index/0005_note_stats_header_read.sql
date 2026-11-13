@@ -1,4 +1,4 @@
--- index.db, migration 0004: whether a `note_stats` row read its file's frontmatter
+-- index.db, migration 0005: whether a `note_stats` row read its file's frontmatter
 -- header (#3825).
 --
 -- `header_read` is 0 when the file's block did not parse, or its top level is not

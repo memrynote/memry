@@ -45,6 +45,7 @@ struct SignOutBar: View {
             }
             if canSignOut { control }
         }
+        .measuredColumn(Tokens.Size.form)
         .padding(.horizontal, Tokens.Space.screenInline)
         .padding(.vertical, Tokens.Space.medium)
         .calmAnimation(.fast, value: model.isWorking)
@@ -155,7 +156,10 @@ struct AccountShell<Content: View>: View {
     /// the keyboard into the middle of the form being typed into. On the
     /// recovery-phrase screen it sat exactly where Unlock had been, and a tap
     /// aimed at Unlock opened the sign-out dialog (#2818). While typing, the
-    /// way out steps aside; it is back the moment the keyboard is.
+    /// way out steps aside; it is back the moment the keyboard is. Read from
+    /// this window's keyboard safe area (`KeyboardOverlapReader`), not the
+    /// app-wide keyboard notifications: another window's keyboard, or a
+    /// floating one, covers nothing here (#4344).
     @State private var keyboardUp = false
 
     var body: some View {
@@ -170,12 +174,7 @@ struct AccountShell<Content: View>: View {
                     .safeAreaInset(edge: .bottom) {
                         if !hostedElsewhere && !keyboardUp { SignOutBar(model: account) }
                     }
-                    .onReceive(NotificationCenter.default.publisher(for: UIResponder.keyboardWillShowNotification)) { _ in
-                        keyboardUp = true
-                    }
-                    .onReceive(NotificationCenter.default.publisher(for: UIResponder.keyboardWillHideNotification)) { _ in
-                        keyboardUp = false
-                    }
+                    .background { KeyboardOverlapReader(overlaps: $keyboardUp) }
             case .noticeOnly:
                 content().safeAreaInset(edge: .bottom) {
                     SignOutBar(model: account, canSignOut: false)
@@ -185,6 +184,23 @@ struct AccountShell<Content: View>: View {
             }
         } else {
             content()
+        }
+    }
+}
+
+/// Whether the keyboard covers part of the view it backs: the bottom inset
+/// that respects the keyboard against one that ignores it. Both read this
+/// window's own safe area.
+private struct KeyboardOverlapReader: View {
+    @Binding var overlaps: Bool
+
+    var body: some View {
+        GeometryReader { keyboard in
+            GeometryReader { container in
+                let inset = keyboard.safeAreaInsets.bottom - container.safeAreaInsets.bottom
+                Color.clear.onChange(of: inset > 0, initial: true) { _, up in overlaps = up }
+            }
+            .ignoresSafeArea(.keyboard)
         }
     }
 }

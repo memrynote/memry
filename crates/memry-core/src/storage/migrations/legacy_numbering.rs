@@ -2,24 +2,26 @@
 //! (#4052).
 //!
 //! main shipped data migrations 13 `calendar_cursor_reset`, 14 `calendar_foreign_cursor_reset`,
-//! 15 `saved_filter_expressions` and 16 `inbox_attachments`. feat/tauri-v2's own ten migrations
-//! now run as 17..26. Earlier feat/tauri-v2 builds numbered them 13..22 (generation A, before
-//! #4052), then 15..24 (generation B, before main's 15 and 16 were merged). Those builds ran on
-//! test machines only, but their files must still open with every row, and they never ran the
-//! main migrations their own numbers took.
+//! 15 `saved_filter_expressions`, 16 `inbox_attachments` and 17 `search_recents`. feat/tauri-v2's
+//! first ten own migrations now run as 18..27. Earlier feat/tauri-v2 builds numbered them 13..22
+//! (generation A, before #4052), then 15..24 (generation B, before main's 15 and 16 were merged).
+//! Those builds ran on test machines only, but their files must still open with every row, and
+//! they never ran the main migrations their own numbers took. Builds that numbered them 17..26
+//! (before main's 17 was merged, #4438) are a one-step shift, which this module does not detect:
+//! their dev databases are reset.
 //!
 //! The counter alone cannot tell the numberings apart: a file at 19 can be any of them. The
 //! schema can. A migration commits before its counter moves, so a generation whose own first
 //! version is F holds `OWN_TABLES[V - F]` at V. The crash window of §A.0 adds at most the next
 //! table. So at V a generation-A file (F = 13) holds `OWN_TABLES[V - 13]`, a generation-B file
-//! (F = 15) holds at most `OWN_TABLES[V - 14]`, and a file of this numbering (F = 17) at most
-//! `OWN_TABLES[V - 16]`. Generation A is checked first: a generation-A file also holds
+//! (F = 15) holds at most `OWN_TABLES[V - 14]`, and a file of this numbering (F = 18) at most
+//! `OWN_TABLES[V - 17]`. Generation A is checked first: a generation-A file also holds
 //! generation B's table for its version, so the order decides. A renumbered file lands where
 //! both checks read the table of a later migration, which it lacks, so a later open leaves the
 //! file alone.
 //!
-//! The next clash: merge main into feat/tauri-v2 before main ships another data migration.
-//! A shift of two or more needs one more `GENERATIONS` entry. A one-step shift cannot be told
+//! The next clash: main keeps its number and feat/tauri-v2 shifts its own above it in the merge
+//! (#4438). A shift of two or more needs one more `GENERATIONS` entry. A one-step shift cannot be told
 //! apart by the schema: old V's table belongs to new V + 1, which a file at new V holds in its
 //! crash window, so it needs an explicit marker that the shifted build writes.
 
@@ -43,7 +45,7 @@ const OWN_TABLES: [&str; 10] = [
 ];
 
 /// The version this numbering gives `OWN_TABLES[0]`.
-const OWN_FIRST: u32 = 17;
+const OWN_FIRST: u32 = 18;
 
 /// An earlier numbering: the version it gave `OWN_TABLES[0]`, and the main migrations it never
 /// ran, by version.
@@ -56,11 +58,11 @@ struct Generation {
 const GENERATIONS: [Generation; 2] = [
     Generation {
         first: 13,
-        missed: 13..=16,
+        missed: 13..=17,
     },
     Generation {
         first: 15,
-        missed: 15..=16,
+        missed: 15..=17,
     },
 ];
 
@@ -183,8 +185,13 @@ mod tests {
                     (14, "calendar_foreign_cursor_reset"),
                     (15, "saved_filter_expressions"),
                     (16, "inbox_attachments"),
+                    (17, "search_recents"),
                 ],
-                vec![(15, "saved_filter_expressions"), (16, "inbox_attachments"),],
+                vec![
+                    (15, "saved_filter_expressions"),
+                    (16, "inbox_attachments"),
+                    (17, "search_recents"),
+                ],
             ]
         );
         for (index, table) in (0u32..).zip(OWN_TABLES) {

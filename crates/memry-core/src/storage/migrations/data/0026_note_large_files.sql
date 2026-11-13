@@ -1,4 +1,4 @@
--- data.db, migration 0025: the notes whose file is large-file class (desktop
+-- data.db, migration 0026: the notes whose file is large-file class (desktop
 -- Step 14c-2, #3531).
 --
 -- A note file past 1 MiB, or with a blank-line block past 128 KiB
@@ -12,7 +12,7 @@
 -- Device-local and never synced: another device's file says nothing about
 -- this one's. Keyed by note id with no foreign key, as `note_files`, and a
 -- removed `note_files` row takes its class with it. A new table rather than a
--- column on `note_files` for the reason 0021 gives: `ADD COLUMN` has no
+-- column on `note_files` for the reason 0022 gives: `ADD COLUMN` has no
 -- `IF NOT EXISTS`, so a re-run after a crash before the `user_version` write
 -- would fail forever.
 --

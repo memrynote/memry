@@ -16,13 +16,16 @@
 //!
 //! Only a local storage failure propagates: the debts themselves could not
 //! be kept.
+//!
+//! The step first runs the one-time [`body_heal`], so an install left with
+//! documents that hold no body state pulls them without user action.
 
 use crate::api::errors::{ApiError, StorageError};
 use crate::storage::Db;
 
-use super::body_debt;
 use super::body_pull::{BodyPull, BodyPullError, BodyPullReport, PROBE_CHUNK};
 use super::crdt_wire::SnapshotMeta;
+use super::{body_debt, body_heal};
 
 /// Requests one pass's body step may send. The first document always runs,
 /// so a single large one cannot starve.
@@ -30,7 +33,12 @@ pub const BODY_REQUEST_BUDGET: usize = 200;
 
 /// Pulls the documents due this pass and settles or re-owes each one.
 pub async fn run(db: &Db, body_pull: &BodyPull) -> Result<BodyPullReport, StorageError> {
-    let due = db.call(|conn| body_debt::due(conn)).await?;
+    let due = db
+        .call(|conn| {
+            body_heal::owe_unread_documents(conn)?;
+            body_debt::due(conn)
+        })
+        .await?;
     let mut total = BodyPullReport::default();
     'step: for chunk in due.chunks(PROBE_CHUNK) {
         if total.requests >= BODY_REQUEST_BUDGET {

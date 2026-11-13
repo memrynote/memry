@@ -157,10 +157,10 @@ enum ErrorMapping {
         switch error {
         case .InvalidLength:
             copy("crypto.invalidLength", "Memry could not read that data.",
-                 "It was not the size Memry expected. Nothing on this phone was changed.")
+                 "It was not the size Memry expected. Nothing on this \(ThisDevice.noun) was changed.")
         case .InvalidParameter:
             copy("crypto.invalidParameter", "Memry could not complete that.",
-                 "Nothing on this phone was changed.")
+                 "Nothing on this \(ThisDevice.noun) was changed.")
         case .DecryptionFailed:
             copy("crypto.decryptionFailed", "Memry could not decrypt that item.",
                  "It was encrypted with a different key, or it was altered. Your other notes are unaffected.")
@@ -172,14 +172,14 @@ enum ErrorMapping {
         // it answers a bad parameter with, and rendering this as "wrong phrase"
         // tells the user to re-type a phrase that was correct.
         case .OutOfMemory:
-            copy("crypto.outOfMemory", "Your phone ran out of memory while unlocking.",
+            copy("crypto.outOfMemory", "Your \(ThisDevice.noun) ran out of memory while unlocking.",
                  "Your recovery phrase was correct. Close a few apps, then try again.", .retry)
         case .InvalidBase64:
             copy("crypto.invalidBase64", "Memry could not read an encoded value.",
-                 "It was not valid base64. Nothing on this phone was changed.")
+                 "It was not valid base64. Nothing on this \(ThisDevice.noun) was changed.")
         case .InvalidHex:
             copy("crypto.invalidHex", "Memry could not read an encoded value.",
-                 "It was not valid hexadecimal. Nothing on this phone was changed.")
+                 "It was not valid hexadecimal. Nothing on this \(ThisDevice.noun) was changed.")
         }
     }
 
@@ -221,7 +221,7 @@ enum ErrorMapping {
                  "It holds a field this version does not know how to send. Updating Memry may fix it.")
         case .Unencodable:
             copy("cbor.unencodable", "Memry could not prepare that item for sync.",
-                 "A value in it could not be encoded. It stays on this phone and was not lost.")
+                 "A value in it could not be encoded. It stays on this \(ThisDevice.noun) and was not lost.")
         case .Malformed:
             copy("cbor.malformed", "Memry could not read an item that arrived.",
                  "It was not in a shape this version understands. Updating Memry may fix it.")
@@ -240,7 +240,7 @@ enum ErrorMapping {
                  .retryLater)
         case .Corrupt:
             copy("compress.corrupt", "That note's contents could not be unpacked.",
-                 "Memry left the copy on this phone as it is. It will be fetched again on the next sync.",
+                 "Memry left the copy on this \(ThisDevice.noun) as it is. It will be fetched again on the next sync.",
                  .retryLater)
         }
     }
@@ -252,10 +252,10 @@ enum ErrorMapping {
                  "Another change to it is still being saved. Try again in a moment.", .retry)
         case .Undecodable:
             copy("crdt.undecodable", "Memry could not read a change that arrived for that note.",
-                 "The note on this phone was left as it is.")
+                 "The note on this \(ThisDevice.noun) was left as it is.")
         case .NotApplicable:
             copy("crdt.notApplicable", "Memry could not apply a change to that note.",
-                 "The note on this phone was left as it is.")
+                 "The note on this \(ThisDevice.noun) was left as it is.")
         // Delegated so that an out-of-space does not surface as "bad document".
         case let .Storage(source):
             userFacing(source)
@@ -279,13 +279,13 @@ enum ErrorMapping {
         // server answer at all. The copy names the phone and its database and
         // mentions neither the network nor the server.
         case .Storage:
-            copy("api.storage", "This phone could not read its own Memry database.",
-                 "Restart Memry. If it keeps happening, free up storage space on this phone.", .retry)
+            copy("api.storage", "This \(ThisDevice.noun) could not read its own Memry database.",
+                 "Restart Memry. If it keeps happening, free up storage space on this \(ThisDevice.noun).", .retry)
         case .Unauthorized:
-            copy("api.unauthorized", "Memry is no longer signed in on this phone.",
+            copy("api.unauthorized", "Memry is no longer signed in on this \(ThisDevice.noun).",
                  "Sign in again to continue.")
         case .DeviceRevoked:
-            copy("api.deviceRevoked", "This phone's access to your account was revoked.",
+            copy("api.deviceRevoked", "This \(ThisDevice.noun)'s access to your account was revoked.",
                  "Its copy of your vault has been removed. Sign in again to use Memry here.")
         // #2944. Neither retrying nor updating frees a slot: the user revokes a
         // device from one that is signed in. Only desktop lists devices with a
@@ -294,7 +294,7 @@ enum ErrorMapping {
         // a fresh sign-in, not "Finish setup".
         case .DeviceLimitReached:
             copy("api.deviceLimitReached", "Your account is signed in on too many devices.",
-                 "Revoke a device you no longer use (Settings → Account → Devices on a signed-in device). Then sign in again on this phone.")
+                 "Revoke a device you no longer use (Settings → Account → Devices on a signed-in device). Then sign in again on this \(ThisDevice.noun).")
         // spec-defect 111. The old second sentence promised that "syncing will
         // resume on its own", and the screen this error is met on most often is
         // the sign-in screen, where there is no sync to resume and nothing
@@ -314,7 +314,7 @@ enum ErrorMapping {
         // backoff, and this is not a failure the user retries.
         case .WritesDisabled:
             copy("api.writesDisabled", "Memry is read-only right now.",
-                 "Your changes are saved on this phone and will sync once writing is available again.", .retryLater)
+                 "Your changes are saved on this \(ThisDevice.noun) and will sync once writing is available again.", .retryLater)
         case .UpgradeRequired:
             copy("api.upgradeRequired", "This version of Memry is too old to sync.",
                  "Update Memry from the App Store to start syncing again.")
@@ -336,15 +336,15 @@ enum ErrorMapping {
         case let .PaymentRequired(code, _):
             code == "SYNC_VAULT_LIMIT_EXCEEDED"
                 ? copy("api.vaultLimitReached", "Your plan has no room for another synced vault.",
-                       "This vault stays on this iPhone. Choose a larger plan, or delete a vault you no longer sync.")
+                       "This vault stays on this \(ThisDevice.noun). Choose a larger plan, or delete a vault you no longer sync.")
                 : copy("api.paymentRequired", "Sync needs a plan.",
-                       "Your notes stay on this iPhone. Choose a plan in Settings to sync them.")
+                       "Your notes stay on this \(ThisDevice.noun). Choose a plan in Settings to sync them.")
         case .BillingPortalUnavailable:
             copy("api.billingPortalUnavailable", "This subscription is not managed on memrynote.com.",
-                 "Manage an App Store subscription in Settings \u{203A} Apple Account \u{203A} Subscriptions on this iPhone.")
+                 "Manage an App Store subscription in Settings \u{203A} Apple Account \u{203A} Subscriptions on this \(ThisDevice.noun).")
         case .NoMasterKey:
-            copy("api.noMasterKey", "This phone is not unlocked for your account yet.",
-                 "Enter your recovery phrase, or link this phone from another device, then try again.", .retry)
+            copy("api.noMasterKey", "This \(ThisDevice.noun) is not unlocked for your account yet.",
+                 "Enter your recovery phrase, or link this \(ThisDevice.noun) from another device, then try again.", .retry)
         }
     }
 
@@ -358,7 +358,7 @@ enum ErrorMapping {
     private static let serverFault = copy(
         "api.statusServerFault",
         "The Memry server could not handle that request.",
-        "Memry will try again on the next sync. Your changes are saved on this phone.",
+        "Memry will try again on the next sync. Your changes are saved on this \(ThisDevice.noun).",
         .retryLater
     )
 
@@ -405,7 +405,7 @@ enum ErrorMapping {
             copy("auth.sessionExpired", "Your session has expired.",
                  "Sign in again to continue.")
         case .NoSetupToken:
-            copy("auth.noSetupToken", "Memry could not finish setting up this phone.",
+            copy("auth.noSetupToken", "Memry could not finish setting up this \(ThisDevice.noun).",
                  "Start sign-in again from the beginning.", .retry)
         }
     }
@@ -424,11 +424,11 @@ extension ErrorMapping {
     static func userFacing(_ error: SecureStoreError) -> UserFacingError {
         switch error {
         case .Locked:
-            copy("secureStore.locked", "Memry cannot reach its keys until this phone is unlocked.",
-                 "Unlock the phone, then open Memry again. Your vault is still here.", .retryLater)
+            copy("secureStore.locked", "Memry cannot reach its keys until this \(ThisDevice.noun) is unlocked.",
+                 "Unlock this \(ThisDevice.noun), then open Memry again. Your vault is still here.", .retryLater)
         case .Denied:
             copy("secureStore.denied", "iOS refused Memry access to the keychain.",
-                 "Close Memry and open it again. If it keeps happening, restart the phone.", .retry)
+                 "Close Memry and open it again. If it keeps happening, restart this \(ThisDevice.noun).", .retry)
         case .Failed:
             copy("secureStore.failed", "Memry could not read its keys from the keychain.",
                  "Close Memry and open it again.", .retry)
@@ -452,7 +452,7 @@ extension ErrorMapping {
             copy("storage.indexRebuildRequired", "Memry is rebuilding its search index.",
                  "Your notes are safe. Search results will be incomplete until it finishes.", .retryLater)
         case .OutOfSpace:
-            copy("storage.outOfSpace", "This phone is out of storage.",
+            copy("storage.outOfSpace", "This \(ThisDevice.noun) is out of storage.",
                  "Free up some space, then try again. Nothing was lost.", .retry)
         // Only a desktop vault can be corrupt or Electron-shaped in this
         // sense; the core reports them for every shell, so every shell maps them.
@@ -482,7 +482,7 @@ extension ErrorMapping {
         switch error {
         case .Offline:
             copy("transport.offline", "You are offline.",
-                 "Memry will sync when the connection is back. Your changes are saved on this phone.", .retryLater)
+                 "Memry will sync when the connection is back. Your changes are saved on this \(ThisDevice.noun).", .retryLater)
         case .Timeout:
             copy("transport.timeout", "The Memry server took too long to answer.",
                  "Try again, or wait for the next sync.", .retry)
@@ -498,10 +498,10 @@ extension ErrorMapping {
                  "Try again, or wait for the next sync.", .retry)
         case .SocketClosed:
             copy("transport.socketClosed", "Memry's live connection closed.",
-                 "It will reconnect on its own. Your changes are saved on this phone.", .retryLater)
+                 "It will reconnect on its own. Your changes are saved on this \(ThisDevice.noun).", .retryLater)
         case .HandshakeRejected:
             copy("transport.handshakeRejected", "Memry's live connection was refused.",
-                 "Your changes are saved on this phone and sync on the next pass.", .retryLater)
+                 "Your changes are saved on this \(ThisDevice.noun) and sync on the next pass.", .retryLater)
         }
     }
 
@@ -513,7 +513,7 @@ extension ErrorMapping {
         // The user cannot grant this from Settings, so sending them there is
         // the wrong instruction and the word does not appear.
         case .Restricted:
-            copy("capture.restricted", "Camera access is blocked on this phone.",
+            copy("capture.restricted", "Camera access is blocked on this \(ThisDevice.noun).",
                  "A device profile or Screen Time rule controls it, so you cannot turn it on yourself. " +
                  "Type the linking code instead.")
         case .Cancelled:
@@ -599,7 +599,7 @@ extension ErrorMapping {
         // than from the camera, so it is not "scan more carefully".
         case .InvalidVaultTransfer:
             copy("linking.invalidVaultTransfer", "Your other device's vault list did not arrive intact.",
-                 "Nothing was unlocked on this phone. Start the link again on another device.")
+                 "Nothing was unlocked on this \(ThisDevice.noun). Start the link again on another device.")
         // §3.4: 300 s, absolute, and neither the scan nor the approval extends
         // it. The duration is not rendered — the recourse is a new code.
         case .SessionExpired:

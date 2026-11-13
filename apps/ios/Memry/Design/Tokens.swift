@@ -331,6 +331,15 @@ enum Tokens {
         /// short enough that the title stays the dominant read on the screen
         /// (`DESIGN.md`: "one dominant read").
         static let coverHeight: CGFloat = 160
+        /// `DESIGN.md` › Tablet › Measures: the widest a note, a journal day,
+        /// or a Settings page runs. A cap, never a minimum.
+        static let reading: CGFloat = 720
+        /// `DESIGN.md` › Tablet › Side rails: a side rail's width (the Day
+        /// Panel, Journal's rail), desktop's default panel width. The rail
+        /// reserves it; content never slides underneath.
+        static let rail: CGFloat = 320
+        /// The centred column sign-in, onboarding, and other forms sit in.
+        static let form: CGFloat = 560
     }
 
     // MARK: Motion

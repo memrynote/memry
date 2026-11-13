@@ -1,4 +1,4 @@
--- index.db, migration 0006: references into another note's blocks (Electron's
+-- index.db, migration 0007: references into another note's blocks (Electron's
 -- `portal_refs` and `block_link_refs`, `packages/db-schema/src/schema/notes-cache.ts`).
 --
 -- Derived from each note's document by the search reindex and never synced.
