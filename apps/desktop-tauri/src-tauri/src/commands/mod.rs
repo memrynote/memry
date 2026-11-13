@@ -3,6 +3,7 @@
 
 pub mod agent;
 pub mod ai;
+pub mod ai_structured;
 pub mod app;
 pub mod attachment_sources;
 pub mod attachments;

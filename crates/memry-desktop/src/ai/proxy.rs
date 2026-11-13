@@ -131,7 +131,34 @@ pub enum ProxyError {
     Unreachable { provider: String },
     #[error("the request was cancelled")]
     Cancelled,
+    #[error("the vault closed")]
+    VaultClosed,
+    /// [`AiProxy::call`] only: the answer passed its cap.
+    #[error("{provider} sent an answer larger than {cap} bytes")]
+    AnswerTooLarge { provider: String, cap: usize },
+    /// [`AiProxy::call`] only: the body broke off, with the frame's message.
+    #[error("{0}")]
+    BrokeOff(String),
 }
+
+/// The webview a request belongs to, as its page was when the command began.
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct Owner {
+    label: String,
+    /// The count of [`AiProxy::cancel_owner`] calls for `label` when this was taken.
+    generation: u64,
+}
+
+/// A whole answer of [`AiProxy::call`].
+#[derive(Debug, Clone)]
+pub struct Answer {
+    pub status: u16,
+    pub headers: Vec<HeaderPair>,
+    pub body: Vec<u8>,
+}
+
+/// The message of a body the vault's close ended.
+const VAULT_CLOSED: &str = "the vault closed";
 
 /// How many ids cancelled before their request opened are remembered.
 const EARLY_CANCELS: usize = 64;
@@ -148,6 +175,9 @@ struct InFlight {
     /// Ids cancelled before `open` registered them: the renderer's abort can overtake its
     /// request while Rust still reads the settings. Ids are fresh UUIDs, so the oldest can go.
     early: VecDeque<String>,
+    /// How often each page went ([`AiProxy::cancel_owner`]), so a request whose page went
+    /// while its settings were read is refused at `open`. One counter per label ever used.
+    pages: HashMap<String, u64>,
 }
 
 struct Entry {
@@ -193,10 +223,30 @@ impl AiProxy {
         in_flight.early.push_back(id.to_owned());
     }
 
+    /// Forgets that `id` was cancelled before it opened: its request was refused before
+    /// `open` (its settings could not be read), so no `open` will ever take the id.
+    pub fn forget_cancel(&self, id: &str) {
+        let mut in_flight = self.lock();
+        if let Some(at) = in_flight.early.iter().position(|early| early == id) {
+            in_flight.early.remove(at);
+        }
+    }
+
+    /// The page of the webview labelled `label` as it is now. Take it before anything that can
+    /// wait, so that a reload during the wait refuses the request at `open`.
+    pub fn owner(&self, label: &str) -> Owner {
+        Owner {
+            label: label.to_owned(),
+            generation: self.lock().pages.get(label).copied().unwrap_or(0),
+        }
+    }
+
     /// Ends every request of the webview labelled `owner`: its page reloaded or its window
-    /// closed.
+    /// closed. A request of that page that has not opened yet is refused when it does.
     pub fn cancel_owner(&self, owner: &str) {
-        self.lock().running.retain(|_, entry| {
+        let mut in_flight = self.lock();
+        *in_flight.pages.entry(owner.to_owned()).or_default() += 1;
+        in_flight.running.retain(|_, entry| {
             let keep = entry.owner != owner;
             if !keep {
                 entry.token.cancel();
@@ -205,7 +255,8 @@ impl AiProxy {
         });
     }
 
-    /// Ends every request; each streaming body ends with `Failed("the vault closed")`.
+    /// Ends every request; each streaming body ends with `Failed("the vault closed")`, and a
+    /// request still waiting for its head with [`ProxyError::VaultClosed`].
     pub fn cancel_all(&self) {
         let mut in_flight = self.lock();
         in_flight.early.clear();
@@ -226,18 +277,23 @@ impl AiProxy {
             .unwrap_or_else(PoisonError::into_inner)
     }
 
-    /// Sends `request` of the webview labelled `owner` with the key of `settings` (read in
-    /// Rust, never the renderer's) and returns the head once it arrives, with the future that
-    /// streams the body into `sink`. The caller spawns that future; dropping it ends the
-    /// upstream request.
+    /// Sends `request` of `owner` with the key of `settings` (read in Rust, never the
+    /// renderer's) and returns the head once it arrives, with the future that streams the body
+    /// into `sink`. The caller spawns that future; dropping it ends the upstream request.
     pub async fn open(
         self: &Arc<Self>,
         settings: &InlineAiSettings,
         request: AiProviderRequest,
-        owner: &str,
+        owner: &Owner,
         mut sink: Sink,
     ) -> Result<(AiProviderHead, impl Future<Output = ()> + Send + 'static), ProxyError> {
-        let Prepared { url, headers, name } = prepare(settings, &request)?;
+        let Prepared { url, headers, name } = match prepare(settings, &request) {
+            Ok(prepared) => prepared,
+            Err(error) => {
+                self.forget_cancel(&request.request_id);
+                return Err(error);
+            }
+        };
         let token = CancellationToken::new();
         let vault_closed = Arc::new(AtomicBool::new(false));
         let id = request.request_id;
@@ -245,6 +301,9 @@ impl AiProxy {
             let mut in_flight = self.lock();
             if let Some(at) = in_flight.early.iter().position(|early| *early == id) {
                 in_flight.early.remove(at);
+                return Err(ProxyError::Cancelled);
+            }
+            if in_flight.pages.get(&owner.label).copied().unwrap_or(0) != owner.generation {
                 return Err(ProxyError::Cancelled);
             }
             if in_flight.running.contains_key(&id) {
@@ -255,7 +314,7 @@ impl AiProxy {
             in_flight.running.insert(
                 id.clone(),
                 Entry {
-                    owner: owner.to_owned(),
+                    owner: owner.label.clone(),
                     token: token.clone(),
                     vault_closed: Arc::clone(&vault_closed),
                 },
@@ -277,7 +336,13 @@ impl AiProxy {
             builder = builder.body(body);
         }
         let mut response = tokio::select! {
-            () = token.cancelled() => return Err(ProxyError::Cancelled),
+            () = token.cancelled() => {
+                return Err(if ticket.vault_closed.load(Ordering::SeqCst) {
+                    ProxyError::VaultClosed
+                } else {
+                    ProxyError::Cancelled
+                });
+            }
             sent = builder.send() => sent.map_err(|error| {
                 tracing::info!(scope = "AIProxy", "{name} request failed: {}", error.without_url());
                 ProxyError::Unreachable { provider: name.clone() }
@@ -296,7 +361,7 @@ impl AiProxy {
                 let chunk = tokio::select! {
                     () = ticket.token.cancelled() => {
                         if ticket.vault_closed.load(Ordering::SeqCst) {
-                            sink(Frame::Failed("the vault closed".to_owned()));
+                            sink(Frame::Failed(VAULT_CLOSED.to_owned()));
                         }
                         return;
                     }
@@ -324,6 +389,60 @@ impl AiProxy {
             }
         };
         Ok((head, body))
+    }
+
+    /// [`AiProxy::open`] for a caller in Rust that wants the whole answer: the body is read to
+    /// its end, at most `cap` bytes. A body that breaks off or ends without its end (a cancel)
+    /// is an error.
+    pub async fn call(
+        self: &Arc<Self>,
+        settings: &InlineAiSettings,
+        request: AiProviderRequest,
+        owner: &Owner,
+        cap: usize,
+    ) -> Result<Answer, ProxyError> {
+        #[derive(Default)]
+        struct Read {
+            body: Vec<u8>,
+            ended: bool,
+            over: bool,
+            failed: Option<String>,
+        }
+        let read = Arc::new(Mutex::new(Read::default()));
+        let into = Arc::clone(&read);
+        let sink: Sink = Box::new(move |frame| {
+            let mut read = into.lock().unwrap_or_else(PoisonError::into_inner);
+            match frame {
+                Frame::Data(bytes) if read.body.len() + bytes.len() > cap => {
+                    read.over = true;
+                    return false;
+                }
+                Frame::Data(bytes) => read.body.extend_from_slice(&bytes),
+                Frame::End => read.ended = true,
+                Frame::Failed(message) => read.failed = Some(message),
+            }
+            true
+        });
+        let provider = settings.provider.name(&settings.base_url);
+        let (head, body) = self.open(settings, request, owner, sink).await?;
+        body.await;
+        let read = std::mem::take(&mut *read.lock().unwrap_or_else(PoisonError::into_inner));
+        if read.over {
+            return Err(ProxyError::AnswerTooLarge { provider, cap });
+        }
+        match read.failed {
+            Some(message) if message == VAULT_CLOSED => return Err(ProxyError::VaultClosed),
+            Some(message) => return Err(ProxyError::BrokeOff(message)),
+            None => {}
+        }
+        if !read.ended {
+            return Err(ProxyError::Cancelled);
+        }
+        Ok(Answer {
+            status: head.status,
+            headers: head.headers,
+            body: read.body,
+        })
     }
 }
 
