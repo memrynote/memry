@@ -52,7 +52,7 @@ pub fn project_home_page(
              position = excluded.position,
              widgets = excluded.widgets,
              cover = excluded.cover,
-             created_at = excluded.created_at,
+             created_at = COALESCE(home_pages.created_at, excluded.created_at),
              updated_at = excluded.updated_at,
              deleted_at = excluded.deleted_at,
              synced_at = excluded.synced_at",

@@ -4,12 +4,14 @@
 //!
 //! - **Widgets that are present and not JSON array text are skipped** before
 //!   the clock is touched (`:40-47`), so a later readable version of the board
-//!   still wins. A `null` is not array text either.
+//!   still wins. A `null` or a value that is not text is skipped too, as
+//!   desktop's schema rejects it (`apps/desktop/src/main/sync/apply-item.ts:166-176`).
 //! - **A create needs a non-empty `name`** (`:85-91`).
 //! - **§6.3.1's gate decides**; a concurrent clock is last-writer-wins under the
 //!   merged clock (`:53-60`).
-//! - **Over a local board** (`:62-75`), an absent or `null` `name`, `position`
-//!   or `widgets` keeps the local value; an absent `icon` or `cover` keeps it and
+//! - **Over a local board** (`:62-75`), an absent `name`, `position` or
+//!   `widgets` keeps the local value, and a `null` one skips the record
+//!   ([`desktop_records::Kept`]); an absent `icon` or `cover` keeps it and
 //!   `null` clears it; `createdAt` stays local; an absent `updatedAt` reads as
 //!   the apply time. A `cover` this build cannot read
 //!   (`HomePageCoverSyncSchema`'s `.catch(undefined)`) is absent.
@@ -51,9 +53,7 @@ pub fn apply_remote(
     match remote_object.get("widgets") {
         None => {}
         Some(Value::String(text)) if is_widgets_blob(text) => {}
-        Some(Value::String(_) | Value::Null) => return Ok(Inbound::Skipped),
-        // Not text at all: the reader records it corrupt.
-        Some(_) => return task_merge::wholesale(conn, record, now_ms),
+        Some(_) => return Ok(Inbound::Skipped),
     }
     let local = desktop_records::stored(conn, ITEM_TYPE, &record.item_id, true)?;
     let Some(local) = local else {

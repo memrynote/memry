@@ -7,7 +7,9 @@
 //! - **§6.3.1's gate decides**; a concurrent clock is last-writer-wins under the
 //!   merged clock (`:65-73`).
 //! - **Over a local folder** (`:75-90`), deleted ones included because Electron
-//!   soft-deletes: an absent or `null` `path` keeps the local path, an absent
+//!   soft-deletes: an absent `path` keeps the local path and a `null` one
+//!   skips the record, as desktop's schema rejects it
+//!   ([`desktop_records::Kept`]); an absent
 //!   `icon` keeps the local icon and `null` clears it, and `vaultId` stays
 //!   local. `deletedAt` is the remote's: absent or `null` revives the folder.
 //!

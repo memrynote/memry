@@ -150,14 +150,22 @@ fn a_remote_update_keeps_the_local_path_icon_and_vault_it_does_not_state() {
     db.call_blocking(|conn| {
         upsert(conn, VAULT, "Work", Some(Some("star")), DEVICE, NOW)?;
 
-        let silent = json!({"path": null, "vaultId": "other",
-                            "clock": {"device-a": 1, "peer": 1}});
+        let before = payload(conn, ITEM_TYPE, "cvf_work");
+        let null = json!({"path": null, "clock": {"device-a": 1, "peer": 1}});
+        assert_eq!(
+            pull(conn, vec![remote(ITEM_TYPE, "cvf_work", &null)])?.skipped,
+            1,
+            "a null path fails desktop's schema"
+        );
+        assert_eq!(payload(conn, ITEM_TYPE, "cvf_work"), before);
+
+        let silent = json!({"vaultId": "other", "clock": {"device-a": 1, "peer": 1}});
         assert_eq!(
             pull(conn, vec![remote(ITEM_TYPE, "cvf_work", &silent)])?.applied,
             1
         );
         let stored = payload(conn, ITEM_TYPE, "cvf_work");
-        assert_eq!(stored["path"], json!("Work"), "null path keeps");
+        assert_eq!(stored["path"], json!("Work"), "absent path keeps");
         assert_eq!(stored["icon"], json!("star"), "absent icon keeps");
         assert_eq!(stored["vaultId"], json!(VAULT), "vaultId stays local");
 

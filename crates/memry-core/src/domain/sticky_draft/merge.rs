@@ -8,8 +8,9 @@
 //!   later version.
 //! - **§6.3.1's gate decides**; a concurrent clock is last-writer-wins under the
 //!   merged clock (`:36-40`).
-//! - **Over a local draft** (`:42-51`), an absent or `null` `content` or `kind`
-//!   keeps the local value, `createdAt` stays local, and an absent `modifiedAt`
+//! - **Over a local draft** (`:42-51`), an absent `content` or `kind` keeps the
+//!   local value and a `null` one skips the record, as desktop's schema rejects
+//!   it ([`desktop_records::Kept`]); `createdAt` stays local, and an absent `modifiedAt`
 //!   reads as the apply time
 //!   ([`crate::storage::repositories::projectors::sticky_drafts`]).
 //!

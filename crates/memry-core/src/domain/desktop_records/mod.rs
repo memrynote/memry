@@ -28,8 +28,10 @@ use crate::storage::repositories::{Change, StoredPayload};
 
 /// The keys a local record keeps over a remote that wins its clock.
 pub(crate) struct Kept {
-    /// `data.x ?? existing.x`: an absent or `null` remote value keeps the
-    /// local one.
+    /// `data.x ?? existing.x`: an absent remote value keeps the local one. A
+    /// `null` fails desktop's schema, which rejects the whole record
+    /// (`apps/desktop/src/main/sync/apply-item.ts:166-176`), so
+    /// [`apply_kept`] skips it.
     pub coalesce: &'static [&'static str],
     /// `data.x !== undefined ? data.x : existing.x`: only an absent key keeps
     /// the local value, and `null` clears it.
@@ -62,6 +64,14 @@ pub(crate) fn apply_kept(
     extra: Vec<(&'static str, Change)>,
     now_ms: i64,
 ) -> Result<Inbound, StorageError> {
+    let remote_object = remote.object();
+    if kept
+        .coalesce
+        .iter()
+        .any(|key| remote_object.get(*key).is_some_and(Value::is_null))
+    {
+        return Ok(Inbound::Skipped);
+    }
     let merged_clock = match task_merge::document_gate(conn, record)? {
         Gate::Skip => return Ok(Inbound::Skipped),
         Gate::Wholesale => None,
@@ -86,15 +96,8 @@ pub(crate) fn apply_kept(
 }
 
 fn kept_changes(local: &Object, remote: &Object, kept: &Kept) -> Vec<(&'static str, Change)> {
-    let keeps = |key: &str| {
-        if kept.coalesce.contains(&key) {
-            remote.get(key).is_none_or(Value::is_null)
-        } else if kept.when_absent.contains(&key) {
-            !remote.contains_key(key)
-        } else {
-            kept.local.contains(&key)
-        }
-    };
+    // A `null` coalesce key never reaches here (see `Kept::coalesce`).
+    let keeps = |key: &str| kept.local.contains(&key) || !remote.contains_key(key);
     kept.coalesce
         .iter()
         .chain(kept.when_absent)

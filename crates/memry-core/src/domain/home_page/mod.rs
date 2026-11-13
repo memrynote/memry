@@ -20,6 +20,7 @@ use crate::domain::desktop_records::{self, live};
 use crate::domain::notes::{failed, insert_local, iso, next_clock, object};
 use crate::domain::saved_filters::mint_id;
 use crate::storage::repositories::Change;
+use crate::storage::repositories::projectors::home_pages::is_readable_cover;
 use crate::storage::repositories::schema::Object;
 use crate::sync::outbox;
 
@@ -66,7 +67,7 @@ pub struct HomePagePatch<'a> {
 
 /// Creates a board and queues it. A board needs a name, and its widgets must
 /// be JSON array text: a peer skips a create without the one and a board
-/// without the other (§13.7.24).
+/// without the other (§13.7.24). A cover must be one a peer reads.
 pub fn create(
     conn: &Connection,
     board: &NewHomePage<'_>,
@@ -79,6 +80,7 @@ pub fn create(
         });
     }
     valid_widgets(board.widgets)?;
+    board.cover.map(valid_cover).transpose()?;
     let id = mint_id();
     outbox::commit(
         conn,
@@ -119,6 +121,7 @@ pub fn update(
     if let Some(widgets) = patch.widgets {
         valid_widgets(widgets)?;
     }
+    patch.cover.flatten().map(valid_cover).transpose()?;
     let mut changes: Vec<(&'static str, Change)> = Vec::new();
     if let Some(name) = patch.name {
         changes.push(("name", Change::set(name)));
@@ -220,6 +223,18 @@ fn valid_widgets(widgets: &str) -> Result<(), StorageError> {
     } else {
         Err(StorageError::Invalid {
             what: "a home board's widgets are JSON array text".to_owned(),
+        })
+    }
+}
+
+/// A cover a peer reads: one it cannot read is dropped there
+/// (`HomePageCoverSyncSchema`'s `.catch(undefined)`).
+fn valid_cover(cover: &Value) -> Result<(), StorageError> {
+    if is_readable_cover(cover) {
+        Ok(())
+    } else {
+        Err(StorageError::Invalid {
+            what: "a home board's cover is not one the cover schema reads".to_owned(),
         })
     }
 }
