@@ -46,7 +46,17 @@ let package = Package(
             // undefined and the app fails to link. Apple ships `libz` in every
             // SDK, so naming it here — once, beside the binary target — is all
             // any consumer needs.
-            linkerSettings: [.linkedLibrary("z")]
+            //
+            // The ONNX Runtime archive merged into the core (the `semantic`
+            // feature) needs C++, CoreML, UIKit and Network. SwiftPM cannot
+            // see cargo features, so these apply to every build.
+            linkerSettings: [
+                .linkedLibrary("z"),
+                .linkedLibrary("c++"),
+                .linkedFramework("CoreML"),
+                .linkedFramework("UIKit"),
+                .linkedFramework("Network"),
+            ]
         ),
         .target(
             name: "MemryCore",
