@@ -53,17 +53,30 @@ final class ShellSidebarUITests: XCTestCase {
         XCTAssertTrue(app.collectionViews["settings.root"].exists, "the settings list stays beside the page")
         XCTAssertTrue(anything("settings.row.tasks").isSelected)
 
-        anything("settings.row.account").tap()
-        let devices = anything("settings.row.devices")
-        XCTAssertTrue(devices.waitForExistence(timeout: 10))
-        devices.tap()
-        XCTAssertTrue(app.navigationBars["Devices"].waitForExistence(timeout: 10))
+        // Appearance › Font: a row every account state shows (the free vault
+        // has no Account row).
+        anything("settings.row.appearance").tap()
+        let font = anything("settings.row.font")
+        XCTAssertTrue(font.waitForExistence(timeout: 10))
+        font.tap()
+        XCTAssertTrue(app.navigationBars["Font"].waitForExistence(timeout: 10))
         XCTAssertTrue(app.collectionViews["settings.root"].exists)
-        XCTAssertTrue(anything("settings.row.account").isSelected)
+        XCTAssertTrue(anything("settings.row.appearance").isSelected)
 
         XCUIDevice.shared.orientation = .portrait
-        XCTAssertTrue(app.navigationBars["Devices"].waitForExistence(timeout: 5))
+        XCTAssertTrue(app.navigationBars["Font"].waitForExistence(timeout: 5))
         XCTAssertTrue(app.collectionViews["settings.root"].waitForExistence(timeout: 5), "portrait shows both columns")
+    }
+
+    /// #4348: Settings opens on a row the list shows. The free vault has no
+    /// Account row, so it opens on the first one.
+    func testSettingsOpensOnARowTheListShows() throws {
+        try openVault()
+        row("Settings").tap()
+        let list = app.collectionViews["settings.root"]
+        XCTAssertTrue(list.waitForExistence(timeout: 10))
+        let selected = list.cells.matching(NSPredicate(format: "isSelected == true")).firstMatch
+        XCTAssertTrue(selected.waitForExistence(timeout: 5), "no root row is selected")
     }
 
     // MARK: Helpers

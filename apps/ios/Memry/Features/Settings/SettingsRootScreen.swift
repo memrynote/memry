@@ -12,6 +12,7 @@ struct SettingsRootScreen: View {
     @Environment(JournalRouter.self) private var journalRouter
 
     var body: some View {
+        let rows = SettingsRootRows(context)
         List(selection: selection) {
             SettingsAccountSection(context: context)
             Section {
@@ -35,10 +36,10 @@ struct SettingsRootScreen: View {
                     .foregroundStyle(Tokens.Text.primary.color)
                     .accessibilityIdentifier("settings.row.journal")
                 }
-                if context.local.isOn(.tasks) {
+                if rows.shows(.tasks) {
                     SettingsLinkRow(title: SettingsCopy.tasks, symbol: "checkmark.circle", route: .tasks)
                 }
-                if context.local.isOn(.inbox) {
+                if rows.shows(.inbox) {
                     SettingsLinkRow(title: SettingsCopy.inbox, symbol: "tray", route: .inbox)
                 }
             }
@@ -62,6 +63,37 @@ struct SettingsRootScreen: View {
         .accessibilityIdentifier("settings.root")
         .refreshable { await context.tasks.sync() }
         .task { await context.account.load() }
+    }
+}
+
+/// The root list's selectable rows, in order (#4348): the one owner of which
+/// pages the list shows, read by the list and by the split view's selection.
+/// Journal is a row too, but it opens the Journal tab, not a page.
+struct SettingsRootRows {
+    let routes: [SettingsRoute]
+
+    init(account: AccountCardState, isOn: (AppFeature) -> Bool) {
+        // The free vault's card leads to sign-in, not to Account.
+        var routes: [SettingsRoute] = account == .local ? [] : [.account]
+        routes += [.general, .appearance, .features]
+        if isOn(.tasks) { routes.append(.tasks) }
+        if isOn(.inbox) { routes.append(.inbox) }
+        routes += [.templates, .tags, .properties, .readwise, .vaults, .about]
+        self.routes = routes
+    }
+
+    @MainActor init(_ context: SettingsContext) {
+        self.init(account: .of(context), isOn: context.local.isOn)
+    }
+
+    func shows(_ route: SettingsRoute) -> Bool { routes.contains(route) }
+
+    /// The page the split view shows: the selected row while the list shows
+    /// it, else the first row, which is Account (desktop's default) when
+    /// there is one.
+    func page(_ selected: SettingsRoute?) -> SettingsRoute {
+        if let selected, shows(selected) { return selected }
+        return routes.first ?? .general
     }
 }
 

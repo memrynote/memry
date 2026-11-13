@@ -34,7 +34,8 @@ enum SettingsRoute: Hashable, Sendable {
         case .font: .appearance
         case .template: .templates
         case .property: .properties
-        default: self
+        case .root, .account, .vaults, .general, .appearance, .features, .about,
+             .inbox, .tasks, .templates, .tags, .properties, .readwise: self
         }
     }
 }
@@ -99,8 +100,11 @@ private struct SettingsSplitView: View {
 
     var body: some View {
         @Bindable var router = router
+        // A row the list shows: the free vault has no Account row, and a
+        // module turned off takes its row away.
+        let shown = context.map { SettingsRootRows($0).page(router.settingsPage) } ?? .general
         let page = Binding<SettingsRoute?>(
-            get: { router.settingsPage ?? .account },
+            get: { shown },
             set: { if let route = $0 { router.openSettings(route) } }
         )
         NavigationSplitView(columnVisibility: $columns) {
@@ -116,7 +120,7 @@ private struct SettingsSplitView: View {
             }
         } detail: {
             NavigationStack(path: $router.settingsPath) {
-                SettingsDestinationPage(route: router.settingsPage ?? .account, context: context)
+                SettingsDestinationPage(route: shown, context: context)
                     .settingsDestinations(context: context, browse: browse, path: $router.settingsPath)
             }
         }

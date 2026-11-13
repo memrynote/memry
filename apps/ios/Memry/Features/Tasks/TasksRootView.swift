@@ -58,8 +58,8 @@ final class TasksRouter {
     /// Settings page opens. As a stack, every page over the root list; as a
     /// split view, the pages over `settingsPage` in the detail column.
     var settingsPath = NavigationPath()
-    /// The root row Settings' split view selects (#4348). `nil` shows
-    /// Account, desktop's default section.
+    /// The root row Settings' split view selects (#4348). `nil`, or a row
+    /// the list does not show, shows the first row (`SettingsRootRows.page`).
     var settingsPage: SettingsRoute?
     /// Settings shows as a split view: the shell is at regular width.
     private(set) var settingsSplit = false
