@@ -433,10 +433,7 @@
       "empty": "Chưa có gì khớp với chế độ xem này.",
       "loadFailed": "Không thể tải chế độ xem này. Các ghi chú vẫn được giữ nguyên.",
       "folderMissing": "Thư mục này không còn trong kho. Hãy chọn nguồn khác.",
-      "unreadable": "Không thể đọc chế độ xem này. Hãy chọn một nguồn ở trên, hoặc xóa khối.",
-      "invalidJson": "Định nghĩa của chế độ xem này không phải JSON hợp lệ. Hãy sửa bên dưới hoặc gỡ khối này.",
-      "invalidShape": "Định nghĩa của chế độ xem này không có nguồn. Hãy chọn nguồn ở trên hoặc sửa bên dưới.",
-      "definition": "Định nghĩa"
+      "unreadable": "Không thể đọc chế độ xem này. Hãy chọn một nguồn ở trên, hoặc xóa khối."
     },
     "chart": {
       "title": "Biểu đồ",

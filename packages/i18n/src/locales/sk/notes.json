@@ -433,10 +433,7 @@
       "empty": "Tomuto zobrazeniu zatiaľ nič nezodpovedá.",
       "loadFailed": "Toto zobrazenie sa nepodarilo načítať. Samotné poznámky zostali nedotknuté.",
       "folderMissing": "Tento priečinok už v trezore nie je. Vyberte iný zdroj.",
-      "unreadable": "Toto zobrazenie sa nedá prečítať. Vyberte vyššie zdroj alebo blok odstráňte.",
-      "invalidJson": "Definícia tohto zobrazenia nie je platný JSON. Opravte ju nižšie alebo odstráňte blok.",
-      "invalidShape": "Definícia tohto zobrazenia nemá zdroj. Vyberte ho vyššie alebo definíciu opravte nižšie.",
-      "definition": "Definícia"
+      "unreadable": "Toto zobrazenie sa nedá prečítať. Vyberte vyššie zdroj alebo blok odstráňte."
     },
     "chart": {
       "title": "Diagram",
