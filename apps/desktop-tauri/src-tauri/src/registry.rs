@@ -62,6 +62,8 @@ pub fn builder() -> Builder<Wry> {
             // fold
             crate::commands::fold::fold_get_agent_status::<Wry>,
             crate::commands::fold::fold_run::<Wry>,
+            // ios beta
+            crate::commands::ios_beta::ios_beta_join,
             // journal
             crate::commands::journal::journal_create_entry::<Wry>,
             crate::commands::journal::journal_cross_into_notes::<Wry>,
