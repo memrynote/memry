@@ -185,6 +185,8 @@ describe('notes-service', () => {
           sourceId: 'note-2',
           sourcePath: 'Dense.md',
           sourceTitle: 'Dense',
+          sourceJournalDate: '2026-05-09',
+          sourceTags: ['work'],
           contexts: [{ snippet: '[[Plan]]', linkStart: 0, linkEnd: 8 }],
           mentionCount: 60,
           truncated: true
@@ -200,10 +202,7 @@ describe('notes-service', () => {
     })
     commands.notesResolveWikiTarget.mockResolvedValue({ ...plan, heading: 'Goals' })
 
-    expect(await notesService.getLinks('note-1')).toEqual({
-      ...links,
-      incoming: links.incoming.map((link) => ({ ...link, sourceJournalDate: null, sourceTags: [] }))
-    })
+    expect(await notesService.getLinks('note-1')).toEqual(links)
     expect(commands.notesGetLinks).toHaveBeenCalledWith('note-1')
     expect(await notesService.resolveByTitle('plan')).toEqual(plan)
     expect(commands.notesResolveByTitle).toHaveBeenCalledWith('plan')
@@ -223,6 +222,8 @@ describe('notes-service', () => {
       sourceId: 'note-2',
       sourcePath: 'Standup.md',
       sourceTitle: 'Standup',
+      sourceJournalDate: null,
+      sourceTags: ['work'],
       contexts: [{ snippet: 'the Plan today', linkStart: 4, linkEnd: 8 }],
       mentionCount: 1,
       truncated: false
@@ -245,9 +246,7 @@ describe('notes-service', () => {
       .mockResolvedValueOnce({ ...card, description: 'Why', body: null })
       .mockResolvedValueOnce(null)
 
-    expect(await notesService.getUnlinkedMentions('note-1')).toEqual([
-      { ...mention, sourceJournalDate: null, sourceTags: [] }
-    ])
+    expect(await notesService.getUnlinkedMentions('note-1')).toEqual([mention])
     expect(commands.notesGetUnlinkedMentions).toHaveBeenCalledWith('note-1')
     expect(await notesService.previewByTitle('Roadmap')).toEqual({
       ...card,

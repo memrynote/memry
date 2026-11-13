@@ -9,6 +9,12 @@ import {
 } from '@/components/ui/dropdown-menu'
 import { BacklinkCard } from './BacklinkCard'
 import { BacklinksLoadingState } from './BacklinksLoadingState'
+import {
+  ALL_REFERENCES,
+  ReferenceFilter,
+  matchesReferenceFilter,
+  type ReferenceFilterValue
+} from './ReferenceFilter'
 import type { BacklinksSectionProps, BacklinkSortOption, Mention } from './types'
 import { createLogger } from '@/lib/logger'
 import { useT } from '@memry/i18n/renderer'
@@ -66,8 +72,13 @@ export function BacklinksSection({
   const [internalSortBy, setInternalSortBy] = useState<BacklinkSortOption>('recent')
   const [isCollapsed, setIsCollapsed] = useState(defaultCollapsed)
   const [visibleCount, setVisibleCount] = useState(initialCount)
+  const [filter, setFilter] = useState<ReferenceFilterValue>(ALL_REFERENCES)
 
-  const backlinks = useMemo(() => propBacklinks ?? [], [propBacklinks])
+  const allBacklinks = useMemo(() => propBacklinks ?? [], [propBacklinks])
+  const backlinks = useMemo(
+    () => allBacklinks.filter((backlink) => matchesReferenceFilter(backlink, filter)),
+    [allBacklinks, filter]
+  )
   const sortBy = propSortBy ?? internalSortBy
 
   const sortedBacklinks = useMemo(() => {
@@ -91,7 +102,7 @@ export function BacklinksSection({
     [backlinks]
   )
 
-  if (!isLoading && backlinks.length === 0) return null
+  if (!isLoading && allBacklinks.length === 0) return null
 
   const visibleBacklinks = sortedBacklinks.slice(0, visibleCount)
   const hasMore = visibleCount < sortedBacklinks.length
@@ -164,36 +175,41 @@ export function BacklinksSection({
           </span>
         </button>
 
-        {!isCollapsed && backlinks.length > 1 && (
-          <DropdownMenu>
-            <DropdownMenuTrigger asChild>
-              <button
-                type="button"
-                className={cn(
-                  'inline-flex items-center gap-1 px-1.5 py-0.5',
-                  'text-[11px] text-text-tertiary',
-                  'hover:text-muted-foreground hover:bg-surface-active/40 rounded',
-                  'transition-colors duration-150'
-                )}
-                aria-label={t('backlinks.sortBy', { sort: sortLabels[sortBy] })}
-              >
-                {sortLabels[sortBy]}
-                <ChevronDown className="h-3 w-3" aria-hidden="true" />
-              </button>
-            </DropdownMenuTrigger>
-            <DropdownMenuContent align="end" className="w-[140px]">
-              {/* oxlint-disable-next-line typescript/no-unsafe-type-assertion -- Object.keys is string[]; the keys are sortLabels' own closed union */}
-              {(Object.keys(sortLabels) as BacklinkSortOption[]).map((option) => (
-                <DropdownMenuItem
-                  key={option}
-                  onClick={() => handleSortChange(option)}
-                  className={cn(sortBy === option && 'bg-surface-active')}
-                >
-                  {sortLabels[option]}
-                </DropdownMenuItem>
-              ))}
-            </DropdownMenuContent>
-          </DropdownMenu>
+        {!isCollapsed && (
+          <div className="flex items-center gap-1">
+            <ReferenceFilter sources={allBacklinks} value={filter} onChange={setFilter} />
+            {backlinks.length > 1 && (
+              <DropdownMenu>
+                <DropdownMenuTrigger asChild>
+                  <button
+                    type="button"
+                    className={cn(
+                      'inline-flex items-center gap-1 px-1.5 py-0.5',
+                      'text-[11px] text-text-tertiary',
+                      'hover:text-muted-foreground hover:bg-surface-active/40 rounded',
+                      'transition-colors duration-150'
+                    )}
+                    aria-label={t('backlinks.sortBy', { sort: sortLabels[sortBy] })}
+                  >
+                    {sortLabels[sortBy]}
+                    <ChevronDown className="h-3 w-3" aria-hidden="true" />
+                  </button>
+                </DropdownMenuTrigger>
+                <DropdownMenuContent align="end" className="w-[140px]">
+                  {/* oxlint-disable-next-line typescript/no-unsafe-type-assertion -- Object.keys is string[]; the keys are sortLabels' own closed union */}
+                  {(Object.keys(sortLabels) as BacklinkSortOption[]).map((option) => (
+                    <DropdownMenuItem
+                      key={option}
+                      onClick={() => handleSortChange(option)}
+                      className={cn(sortBy === option && 'bg-surface-active')}
+                    >
+                      {sortLabels[option]}
+                    </DropdownMenuItem>
+                  ))}
+                </DropdownMenuContent>
+              </DropdownMenu>
+            )}
+          </div>
         )}
       </div>
 

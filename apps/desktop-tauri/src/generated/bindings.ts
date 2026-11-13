@@ -912,6 +912,13 @@ export type BacklinkView = {
 	sourceId: string,
 	sourcePath: string,
 	sourceTitle: string,
+	/**
+	 *  The day (YYYY-MM-DD) when the source is a journal entry, `None` for a note
+	 *  (`ReferenceSourceFacets`).
+	 */
+	sourceJournalDate: string | null,
+	/**  The source's tags, which the reference filter offers. */
+	sourceTags: string[],
 	contexts: BacklinkContextView[],
 	/**
 	 *  Every link to the note in the source's file: Electron's `contexts.length`, which the
@@ -2835,6 +2842,13 @@ export type UnlinkedMentionView = {
 	sourceId: string,
 	sourcePath: string,
 	sourceTitle: string,
+	/**
+	 *  The day (YYYY-MM-DD) when the source is a journal entry, `None` for a note
+	 *  (`ReferenceSourceFacets`).
+	 */
+	sourceJournalDate: string | null,
+	/**  The source's tags, which the reference filter offers. */
+	sourceTags: string[],
 	contexts: BacklinkContextView[],
 	/**  Every mention in the source: more than `contexts` holds when `truncated`. */
 	mentionCount: number,
