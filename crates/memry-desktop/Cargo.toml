@@ -10,7 +10,7 @@ autotests = false
 
 [dependencies]
 # The markdown converter is a desktop-only feature of the core; iOS keeps it off.
-memry-core = { path = "../memry-core", default-features = false, features = ["markdown"] }
+memry-core = { path = "../memry-core", default-features = false, features = ["markdown", "vec"] }
 serde = { workspace = true }
 serde_json = { workspace = true }
 thiserror = { workspace = true }

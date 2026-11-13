@@ -22,6 +22,9 @@ native-transport = []
 # The markdown converter (`src/markdown`), the Rust port of the Electron one.
 # Desktop turns it on; the iOS build keeps it off and links none of it.
 markdown = ["dep:html5ever", "dep:markup5ever", "dep:regex", "dep:url", "dep:uuid"]
+# Vector tables in index.db (`src/storage/vec.rs`), Electron's `sqlite-vec`. Desktop
+# turns it on; the iOS build keeps it off and has no vector search.
+vec = ["dep:sqlite-vec"]
 
 [dependencies]
 # Library mode: the proc-macro attributes are the only interface. `tokio` lets
@@ -48,6 +51,7 @@ async-trait = { workspace = true }
 # Storage. `bundled` pins the engine across simulator, device and CLI and
 # compiles FTS5 in; there is no separate `fts5` feature flag (research R4).
 rusqlite = { workspace = true }
+sqlite-vec = { workspace = true, optional = true }
 # `spawn_blocking`: every statement runs on the blocking pool, so the connection
 # mutex is never held across an await (research R4).
 tokio = { workspace = true }
