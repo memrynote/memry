@@ -48,8 +48,8 @@ node apps/ios/scripts/screenshot-matrix.mjs --boot --test testNote 'iPad Air 13-
 ```
 
 - It writes `<out>/<simulator slug>/<variant>/<screen>-<orientation>.png`, where the slug is the simulator's name in lower case with each run of other characters as a dash (`ipad-air-13-inch-m4`). The default `<out>` is `apps/ios/build/screenshots/<timestamp>`. `--out` picks the folder, and each `--test` limits the run to one test method.
-- Every simulator must be booted already: the script fails on a shut-down one, because another agent may be using it. `--boot` lets it boot a simulator and shut it down again, so pass it only for your own tagged simulators.
-- Every simulator gets a light pass at the default text size. The first one also gets a dark pass and a pass at the largest Dynamic Type size. Each simulator gets its own appearance and text size back when its runs end, also after a failed run.
+- Every simulator must be booted already: the script fails on a shut-down one, because another agent may be using it, and on one that is Booting or Shutting Down. `--boot` lets it boot a shut-down simulator and shut it down again, so pass it only for your own tagged simulators. A simulator that was booted before the run stays booted.
+- Every simulator gets a light pass at the default text size. The first one also gets a dark pass and a pass at the largest Dynamic Type size. Each simulator gets its own appearance and text size back when its runs end, also after a failed run and after SIGINT, SIGTERM or SIGHUP, which stop the run with exit code 128 plus the signal number (130 for Ctrl-C) and start no further variant.
 - Each simulator must be signed in to the staging test account first. The script fails when a test skips or fails, when the attachments cannot be exported, or when the result bundle holds fewer tests than the class declares. The run's `xcodebuild.log` and `result.xcresult` sit next to its screenshots.
 - XCUITest cannot resize the app's window, so Split View and Stage Manager widths stay a manual check.
 

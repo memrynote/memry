@@ -13,18 +13,23 @@
 //   --help      this text
 //
 // Every simulator must already be booted, or the script fails: another agent
-// may be using a shared one, so pass --boot only for a simulator you own.
+// may be using a shared one, so pass --boot only for a simulator you own. A
+// simulator that is neither Booted nor Shutdown, such as Booting, fails the run.
 // Every simulator gets the light pass at the default text size. The first one
 // also gets a dark pass and a pass at the largest Dynamic Type size; each
 // simulator's own appearance and text size are put back when its runs end,
-// including after a failed or killed xcodebuild. Each simulator must be signed in to
+// including after a failed xcodebuild and after SIGINT, SIGTERM or SIGHUP.
+// Such a signal stops xcodebuild, starts no further variant or simulator, shuts
+// down only a simulator this run booted, and exits with 128 plus the signal
+// number (130 for Ctrl-C). Each simulator must be signed in to
 // the staging test account: a signed-out run skips every test and the script
 // fails. A run fails too when xcodebuild fails, the attachments cannot be
 // exported, or the result bundle holds fewer tests than the class declares.
 // Resizing a window (Split View, Stage Manager) is out of reach of XCUITest
 // and stays a manual check.
-import { spawnSync } from 'node:child_process'
+import { spawn, spawnSync } from 'node:child_process'
 import { existsSync, mkdirSync, readFileSync, renameSync, rmSync, writeFileSync } from 'node:fs'
+import { constants } from 'node:os'
 import { fileURLToPath } from 'node:url'
 import { parseArgs } from 'node:util'
 import path from 'node:path'
@@ -50,9 +55,47 @@ function fail(message) {
   throw new MatrixError(message)
 }
 
+/// A stop request. It is not a failed run: no handler of a single variant or
+/// simulator may swallow it, so that nothing else starts.
+class Interrupted extends MatrixError {
+  constructor(signal) {
+    super(`stopped by ${signal}`)
+    this.signal = signal
+  }
+}
+
+const stopSignals = ['SIGINT', 'SIGTERM', 'SIGHUP']
+let stopped
+let child
+
+// spawnSync blocks the event loop, so a handler only runs while the long
+// xcodebuild runs as an async child. A signal that arrives during a short
+// simctl call is held until the next checkpoint().
+for (const signal of stopSignals) {
+  process.on(signal, () => {
+    stopped ??= signal
+    child?.kill(signal)
+  })
+}
+
+/// Lets a pending signal handler run, then throws when a stop was requested.
+async function checkpoint() {
+  await new Promise((resolve) => setImmediate(resolve))
+  if (stopped) throw new Interrupted(stopped)
+}
+
 function run(command, args) {
   const result = spawnSync(command, args, { encoding: 'utf8', maxBuffer: 1 << 28 })
   if (result.error) fail(`${command}: ${result.error.message}`)
+  if (stopSignals.includes(result.signal)) throw new Interrupted(result.signal)
+  return result
+}
+
+/// A simctl call of the cleanup: a second Ctrl-C to the process group kills
+/// the call, so it runs again once, and a signal never skips the rest.
+function cleanup(...args) {
+  let result = spawnSync('xcrun', ['simctl', ...args], { encoding: 'utf8' })
+  if (result.signal) result = spawnSync('xcrun', ['simctl', ...args], { encoding: 'utf8' })
   return result
 }
 
@@ -71,13 +114,35 @@ function device(name) {
   return matches[0]
 }
 
-function xcodebuild(action, destination, log, extra = []) {
+async function xcodebuild(action, destination, log, extra = []) {
+  await checkpoint()
   const args = [action, '-project', project, '-scheme', 'Memry', '-testPlan', 'UI']
   args.push('-destination', destination, '-derivedDataPath', derivedData, ...extra)
-  const result = run('xcodebuild', args)
+  const output = []
+  const { status, signal } = await new Promise((resolve, reject) => {
+    child = spawn('xcodebuild', args)
+    child.stdout.on('data', (chunk) => output.push(chunk))
+    child.stderr.on('data', (chunk) => output.push(chunk))
+    child.on('error', (error) => reject(new MatrixError(`xcodebuild: ${error.message}`)))
+    child.on('close', (code, closedBy) => resolve({ status: code, signal: closedBy }))
+  }).finally(() => {
+    child = undefined
+  })
   mkdirSync(path.dirname(log), { recursive: true })
-  writeFileSync(log, result.stdout + result.stderr)
-  return result.status === 0
+  writeFileSync(log, Buffer.concat(output))
+  if (stopSignals.includes(signal)) throw new Interrupted(signal)
+  await checkpoint()
+  return status === 0
+}
+
+/// The simulator, when this run may use it: Booted, or Shutdown with --boot.
+function bootable(name) {
+  const found = device(name)
+  if (found.state === 'Booted' || (found.state === 'Shutdown' && values.boot)) return found
+  if (found.state === 'Shutdown') {
+    fail(`'${name}' is not booted: boot it, or pass --boot to let the script boot and shut it down`)
+  }
+  fail(`'${name}' is ${found.state}: wait until it is Booted or Shutdown`)
 }
 
 /// Extracts the attachments as <screen>-<orientation>.png and returns the
@@ -120,9 +185,9 @@ function extract(bundle, folder) {
 
 /// One simulator's runs. The simulator's own appearance and text size are put
 /// back, and a simulator this call booted is shut down, however the runs end.
-function runSimulator(name, index) {
-  const { udid: id, state } = device(name)
-  const booted = state !== 'Booted'
+async function runSimulator(name, index) {
+  const { udid: id, state } = bootable(name)
+  const booted = state === 'Shutdown'
   const slug = name
     .toLowerCase()
     .replace(/[^a-z0-9]+/g, '-')
@@ -142,9 +207,10 @@ function runSimulator(name, index) {
       rmSync(folder, { recursive: true, force: true })
       mkdirSync(folder, { recursive: true })
       try {
+        await checkpoint()
         simctl('ui', id, 'appearance', variant.appearance)
         simctl('ui', id, 'content_size', variant.size)
-        const ok = xcodebuild(
+        const ok = await xcodebuild(
           'test-without-building',
           `id=${id}`,
           path.join(folder, 'xcodebuild.log'),
@@ -171,6 +237,7 @@ function runSimulator(name, index) {
           healthy = false
         }
       } catch (error) {
+        if (error instanceof Interrupted) throw error
         console.error(`${name} ${variant.name}: ${error.message}`)
         healthy = false
       }
@@ -181,7 +248,7 @@ function runSimulator(name, index) {
         ['appearance', 'appearance'],
         ['content_size', 'size']
       ]) {
-        const put = run('xcrun', ['simctl', 'ui', id, setting, original[key]])
+        const put = cleanup('ui', id, setting, original[key])
         if (put.status !== 0) {
           console.error(
             `${name}: could not restore ${setting} to ${original[key]}: ${put.stderr.trim()}`
@@ -190,7 +257,7 @@ function runSimulator(name, index) {
         }
       }
     }
-    if (booted) run('xcrun', ['simctl', 'shutdown', id])
+    if (booted) cleanup('shutdown', id)
   }
   return healthy
 }
@@ -240,25 +307,22 @@ try {
   if (simulators.includes('iPhone 17 Pro')) fail("never run on 'iPhone 17 Pro'")
   const unknown = values.test.filter((name) => !declared.includes(name))
   if (unknown.length) fail(`no such test in TabletLayoutUITests: ${unknown.join(', ')}`)
-  for (const name of simulators) {
-    if (device(name).state !== 'Booted' && !values.boot) {
-      fail(
-        `'${name}' is not booted: boot it, or pass --boot to let the script boot and shut it down`
-      )
-    }
-  }
+  for (const name of simulators) bootable(name)
   const first = device(simulators[0]).udid
   console.log(`building for testing (log: ${out}/build.log)`)
-  if (!xcodebuild('build-for-testing', `id=${first}`, path.join(out, 'build.log'))) {
+  if (!(await xcodebuild('build-for-testing', `id=${first}`, path.join(out, 'build.log')))) {
     fail(`build failed, see ${out}/build.log`)
   }
-  const results = simulators.map((name, index) => runSimulator(name, index))
-  if (results.includes(false)) {
+  let healthy = true
+  for (const [index, name] of simulators.entries()) {
+    if (!(await runSimulator(name, index))) healthy = false
+  }
+  if (!healthy) {
     fail('a run failed or skipped: read its xcodebuild.log or open its result.xcresult')
   }
   console.log(`done: ${out}`)
 } catch (error) {
   if (!(error instanceof MatrixError)) throw error
   console.error(`screenshot-matrix: ${error.message}`)
-  process.exitCode = 1
+  process.exitCode = error instanceof Interrupted ? 128 + constants.signals[error.signal] : 1
 }
