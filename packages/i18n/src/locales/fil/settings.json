@@ -1232,6 +1232,10 @@
     "loadingAria": "Nilo-load ang mga device",
     "none": "Wala pang naka-link na device",
     "linkNew": "Mag-link ng bagong device",
+    "linkNeedsPlan": {
+      "title": "Kailangan ng sync plan para mag-link",
+      "description": "Makikita lang ng naka-link na device ang mga tala mo kapag naka-on ang sync. Kung walang plano, mag-sign in doon gamit ang recovery phrase mo at mananatili ang sarili nitong vault."
+    },
     "thisDevice": "Ang device na ito",
     "lastSeen": "Huling nakita {time} ang nakalipas",
     "linked": "Na-link {time} ang nakalipas",

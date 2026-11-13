@@ -1232,6 +1232,10 @@
     "loadingAria": "Učitavanje uređaja",
     "none": "Još nema povezanih uređaja",
     "linkNew": "Poveži novi uređaj",
+    "linkNeedsPlan": {
+      "title": "Povezivanje zahtijeva plan sinkronizacije",
+      "description": "Povezani uređaj vidi vaše bilješke samo kad je sinkronizacija uključena. Bez plana se na njemu prijavite frazom za oporavak i on zadržava vlastiti trezor."
+    },
     "thisDevice": "Ovaj uređaj",
     "lastSeen": "Posljednja aktivnost prije {time}",
     "linked": "Povezan prije {time}",

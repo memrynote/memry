@@ -1232,6 +1232,10 @@
     "loadingAria": "Memuat perangkat",
     "none": "Belum ada perangkat yang ditautkan",
     "linkNew": "Tautkan perangkat baru",
+    "linkNeedsPlan": {
+      "title": "Menautkan perangkat memerlukan paket sinkronisasi",
+      "description": "Perangkat yang ditautkan hanya melihat catatan Anda saat sinkronisasi aktif. Tanpa paket, masuk di perangkat itu dengan frasa pemulihan Anda dan perangkat tersebut akan menyimpan brankasnya sendiri."
+    },
     "thisDevice": "Perangkat ini",
     "lastSeen": "Terakhir terlihat {time} yang lalu",
     "linked": "Ditautkan {time} yang lalu",
