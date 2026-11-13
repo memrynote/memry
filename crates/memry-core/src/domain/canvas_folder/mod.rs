@@ -51,6 +51,14 @@ pub fn sync_id(path: &str) -> String {
 /// folder, a deleted one revived, or a live one whose icon changes. `icon`
 /// `None` keeps a live folder's icon (a new one has none) and `Some(None)`
 /// clears it. A live folder keeps the spelling it was stored with.
+///
+/// `path` is the on-disk-canonical path, which this function does not make:
+/// Electron stores `portableCanvasFolder(requested)`
+/// (`apps/desktop/src/main/canvas/scene-file.ts:559-570`,
+/// `apps/desktop/src/main/canvas/folder-store.ts:16-19`), so `Work/` is stored
+/// as `Work` (`cvf_work`), and a reserved name such as `CON` as the directory
+/// it lives in. Step 30 (#3547), which owns the directories, canonicalises
+/// before it calls here; a raw path would mint a second record for one folder.
 pub fn upsert(
     conn: &Connection,
     vault_id: &str,

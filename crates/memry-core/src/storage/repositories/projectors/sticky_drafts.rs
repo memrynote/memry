@@ -40,7 +40,7 @@ pub fn project_sticky_draft(
          ON CONFLICT(id) DO UPDATE SET
              content = excluded.content,
              kind = excluded.kind,
-             created_at = excluded.created_at,
+             created_at = COALESCE(sticky_drafts.created_at, excluded.created_at),
              modified_at = excluded.modified_at,
              deleted_at = excluded.deleted_at,
              synced_at = excluded.synced_at",

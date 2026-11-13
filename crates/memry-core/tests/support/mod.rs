@@ -98,6 +98,9 @@ pub fn vector_file(name: &str) -> Json {
         "attachment-manifest" => {
             include_str!("../../../../packages/contracts/test-vectors/attachment-manifest.json")
         }
+        "agent-envelope" => {
+            include_str!("../../../../packages/contracts/test-vectors/agent-envelope.json")
+        }
         "delete-attestation" => {
             include_str!("../../../../packages/contracts/test-vectors/delete-attestation.json")
         }

@@ -1,0 +1,120 @@
+{
+  "meta": {
+    "spec": "002-native-foundation-ios",
+    "sodiumVersion": "1.0.21",
+    "encoding": "hex unless the field name says otherwise; *Base64/*B64 are standard base64 with padding",
+    "chapter": "docs/protocol/04-record-envelope.md §4.17",
+    "oracle": "apps/desktop/src/main/agent/storage/encryption.ts (encryptAgentJsonForVault, decryptAgentJsonForVault) with a fixed nonce",
+    "note": "`column` is the text Electron stores in agent_conversations.title, agent_messages.content and agent_messages.attachments. An open case with `plaintext: null` is one Electron rejects."
+  },
+  "keyHex": "5b1e0c2a9d84f3706e1d2c3b4a5968778695a4b3c2d1e0f0f1e2d3c4b5a69788",
+  "seals": [
+    {
+      "name": "title, ascii",
+      "purpose": "agent_conversation_title",
+      "plaintext": "Weekly planning",
+      "nonceHex": "000102030405060708090a0b0c0d0e0f1011121314151617",
+      "column": "{\"version\":1,\"nonce\":\"AAECAwQFBgcICQoLDA0ODxAREhMUFRYX\",\"ciphertext\":\"LwH6QMk1yWJjMdeeZP7S4/RPoX0LqB4td5hntCq0Og==\"}"
+    },
+    {
+      "name": "title, empty",
+      "purpose": "agent_conversation_title",
+      "plaintext": "",
+      "nonceHex": "18191a1b1c1d1e1f202122232425262728292a2b2c2d2e2f",
+      "column": "{\"version\":1,\"nonce\":\"GBkaGxwdHh8gISIjJCUmJygpKissLS4v\",\"ciphertext\":\"l5q3MVqJq4viCZg+Y/UMQw==\"}"
+    },
+    {
+      "name": "title, Turkish and emoji",
+      "purpose": "agent_conversation_title",
+      "plaintext": "Toplantı notları 🗓️ İğdır",
+      "nonceHex": "303132333435363738393a3b3c3d3e3f4041424344454647",
+      "column": "{\"version\":1,\"nonce\":\"MDEyMzQ1Njc4OTo7PD0+P0BBQkNERUZH\",\"ciphertext\":\"ZKEiQbv/qGV75bOQfVMKTaQT4fnBKkxpA0bPfcNNfKlqSZTsfYdfqJEPtiQLhJEpCLmf\"}"
+    },
+    {
+      "name": "title, JSON-special characters",
+      "purpose": "agent_conversation_title",
+      "plaintext": "quote \" backslash \\ slash / newline \n tab \t",
+      "nonceHex": "48494a4b4c4d4e4f505152535455565758595a5b5c5d5e5f",
+      "column": "{\"version\":1,\"nonce\":\"SElKS0xNTk9QUVJTVFVWV1hZWltcXV5f\",\"ciphertext\":\"YgrXy2gel6SVbQI0KqMH+ErJvz69GUGCUSW+D7O+CJBYMrGk2LPH2s/WyXFKDPtPIFZRgpBHSorGX/A=\"}"
+    },
+    {
+      "name": "message content, text parts",
+      "purpose": "agent_message_content",
+      "plaintext": "{\"parts\":[{\"type\":\"text\",\"text\":\"Summarise my notes from last week.\"}]}",
+      "nonceHex": "606162636465666768696a6b6c6d6e6f7071727374757677",
+      "column": "{\"version\":1,\"nonce\":\"YGFiY2RlZmdoaWprbG1ub3BxcnN0dXZ3\",\"ciphertext\":\"X7xSXIr0tA2yUnGQriPPhjeSdbx3F6anHvCcZ97Z9lwcyp2MEW5Q0n5EZPvKVjfDzhmOhhkVO4rlk/+8rfbMAwfvfYlD7qkYkKUKJLyeMjzEe4gfS84z\"}"
+    },
+    {
+      "name": "message content, 4 KiB",
+      "purpose": "agent_message_content",
+      "plaintext": "{\"parts\":[{\"type\":\"text\",\"text\":\"lorem ipsum lorem ipsum lorem ipsum lorem ipsum lorem ipsum lorem ipsum lorem ipsum lorem ipsum lorem ipsum lorem ipsum lorem ipsum lorem ipsum lorem ipsum lorem ipsum lorem ipsum lorem ipsum lorem ipsum lorem ipsum lorem ipsum lorem ipsum lorem ipsum lorem ipsum lorem ipsum lorem ipsum lorem ipsum lorem ipsum lorem ipsum lorem ipsum lorem ipsum lorem ipsum lorem ipsum lorem ipsum lorem ipsum lorem ipsum lorem ipsum lorem ipsum lorem ipsum lorem ipsum lorem ipsum lorem ipsum lorem ipsum lorem ipsum lorem ipsum lorem ipsum lorem ipsum lorem ipsum lorem ipsum lorem ipsum lorem ipsum lorem ipsum lorem ipsum lorem ipsum lorem ipsum lorem ipsum lorem ipsum lorem ipsum lorem ipsum lorem ipsum lorem ipsum lorem ipsum lorem ipsum lorem ipsum lorem ipsum lorem ipsum lorem ipsum lorem ipsum lorem ipsum lorem ipsum lorem ipsum lorem ipsum lorem ipsum lorem ipsum lorem ipsum lorem ipsum lorem ipsum lorem ipsum lorem ipsum lorem ipsum lorem ipsum lorem ipsum lorem ipsum lorem ipsum lorem ipsum lorem ipsum lorem ipsum lorem ipsum lorem ipsum lorem ipsum lorem ipsum lorem ipsum lorem ipsum lorem ipsum lorem ipsum lorem ipsum lorem ipsum lorem ipsum lorem ipsum lorem ipsum lorem ipsum lorem ipsum lorem ipsum lorem ipsum lorem ipsum lorem ipsum lorem ipsum lorem ipsum lorem ipsum lorem ipsum lorem ipsum lorem ipsum lorem ipsum lorem ipsum lorem ipsum lorem ipsum lorem ipsum lorem ipsum lorem ipsum lorem ipsum lorem ipsum lorem ipsum lorem ipsum lorem ipsum lorem ipsum lorem ipsum lorem ipsum lorem ipsum lorem ipsum lorem ipsum lorem ipsum lorem ipsum lorem ipsum lorem ipsum lorem ipsum lorem ipsum lorem ipsum lorem ipsum lorem ipsum lorem ipsum lorem ipsum lorem ipsum lorem ipsum lorem ipsum lorem ipsum lorem ipsum lorem ipsum lorem ipsum lorem ipsum lorem ipsum lorem ipsum lorem ipsum lorem ipsum lorem ipsum lorem ipsum lorem ipsum lorem ipsum lorem ipsum lorem ipsum lorem ipsum lorem ipsum lorem ipsum lorem ipsum lorem ipsum lorem ipsum lorem ipsum lorem ipsum lorem ipsum lorem ipsum lorem ipsum lorem ipsum lorem ipsum lorem ipsum lorem ipsum lorem ipsum lorem ipsum lorem ipsum lorem ipsum lorem ipsum lorem ipsum lorem ipsum lorem ipsum lorem ipsum lorem ipsum lorem ipsum lorem ipsum lorem ipsum lorem ipsum lorem ipsum lorem ipsum lorem ipsum lorem ipsum lorem ipsum lorem ipsum lorem ipsum lorem ipsum lorem ipsum lorem ipsum lorem ipsum lorem ipsum lorem ipsum lorem ipsum lorem ipsum lorem ipsum lorem ipsum lorem ipsum lorem ipsum lorem ipsum lorem ipsum lorem ipsum lorem ipsum lorem ipsum lorem ipsum lorem ipsum lorem ipsum lorem ipsum lorem ipsum lorem ipsum lorem ipsum lorem ipsum lorem ipsum lorem ipsum lorem ipsum lorem ipsum lorem ipsum lorem ipsum lorem ipsum lorem ipsum lorem ipsum lorem ipsum lorem ipsum lorem ipsum lorem ipsum lorem ipsum lorem ipsum lorem ipsum lorem ipsum lorem ipsum lorem ipsum lorem ipsum lorem ipsum lorem ipsum lorem ipsum lorem ipsum lorem ipsum lorem ipsum lorem ipsum lorem ipsum lorem ipsum lorem ipsum lorem ipsum lorem ipsum lorem ipsum lorem ipsum lorem ipsum lorem ipsum lorem ipsum lorem ipsum lorem ipsum lorem ipsum lorem ipsum lorem ipsum lorem ipsum lorem ipsum lorem ipsum lorem ipsum lorem ipsum lorem ipsum lorem ipsum lorem ipsum lorem ipsum lorem ipsum lorem ipsum lorem ipsum lorem ipsum lorem ipsum lorem ipsum lorem ipsum lorem ipsum lorem ipsum lorem ipsum lorem ipsum lorem ipsum lorem ipsum lorem ipsum lorem ipsum lorem ipsum lorem ipsum lorem ipsum lorem ipsum lorem ipsum lorem ipsum lorem ipsum lorem ipsum lorem ipsum lorem ipsum lorem ipsum lorem ipsum lorem ipsum lorem ipsum lorem ipsum lorem ipsum lorem ipsum lorem ipsum lorem ipsum lorem ipsum lorem ipsum lorem ipsum lorem ipsum lorem ipsum lorem ipsum lorem ipsum lorem ipsum lorem ipsum lorem ipsum lorem ipsum lorem ipsum lorem ipsum lorem ipsum lorem ipsum lorem ipsum lorem ipsum lorem ipsum lorem ipsum lorem ipsum lorem ipsum lorem ipsum lorem ipsum lorem ipsum lorem ipsum lorem ipsum lorem ipsum lorem ipsum lorem ipsum lorem ipsum lorem ipsum lorem ipsum lorem ipsum lorem ipsum lorem ipsum lorem ipsum lorem ipsum \"}]}",
+      "nonceHex": "78797a7b7c7d7e7f808182838485868788898a8b8c8d8e8f",
+      "column": "{\"version\":1,\"nonce\":\"eHl6e3x9fn+AgYKDhIWGh4iJiouMjY6P\",\"ciphertext\":\"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\"}"
+    },
+    {
+      "name": "attachments, empty list",
+      "purpose": "agent_attachments",
+      "plaintext": "[]",
+      "nonceHex": "909192939495969798999a9b9c9d9e9fa0a1a2a3a4a5a6a7",
+      "column": "{\"version\":1,\"nonce\":\"kJGSk5SVlpeYmZqbnJ2en6ChoqOkpaan\",\"ciphertext\":\"0M+SlPY8do76nf8h5lXpj0CZ\"}"
+    },
+    {
+      "name": "attachments, one file",
+      "purpose": "agent_attachments",
+      "plaintext": "[{\"kind\":\"file\",\"name\":\"plan.pdf\",\"size\":1024}]",
+      "nonceHex": "a8a9aaabacadaeafb0b1b2b3b4b5b6b7b8b9babbbcbdbebf",
+      "column": "{\"version\":1,\"nonce\":\"qKmqq6ytrq+wsbKztLW2t7i5uru8vb6/\",\"ciphertext\":\"6BDCYLcf6/Q1+XKYeIxTCbovtH+aDu7XpaCgU81U27/mxVjFqjbYEeydw2CVjUoRnmccxR/bXl9dkJAsWneF\"}"
+    }
+  ],
+  "opens": [
+    {
+      "name": "an extra key is ignored",
+      "purpose": "agent_message_content",
+      "keyHex": "5b1e0c2a9d84f3706e1d2c3b4a5968778695a4b3c2d1e0f0f1e2d3c4b5a69788",
+      "column": "{\"version\":1,\"nonce\":\"YGFiY2RlZmdoaWprbG1ub3BxcnN0dXZ3\",\"ciphertext\":\"X7xSXIr0tA2yUnGQriPPhjeSdbx3F6anHvCcZ97Z9lwcyp2MEW5Q0n5EZPvKVjfDzhmOhhkVO4rlk/+8rfbMAwfvfYlD7qkYkKUKJLyeMjzEe4gfS84z\",\"extra\":true}",
+      "plaintext": "{\"parts\":[{\"type\":\"text\",\"text\":\"Summarise my notes from last week.\"}]}"
+    },
+    {
+      "name": "keys in another order",
+      "purpose": "agent_conversation_title",
+      "keyHex": "5b1e0c2a9d84f3706e1d2c3b4a5968778695a4b3c2d1e0f0f1e2d3c4b5a69788",
+      "column": "{\"ciphertext\":\"LwH6QMk1yWJjMdeeZP7S4/RPoX0LqB4td5hntCq0Og==\",\"nonce\":\"AAECAwQFBgcICQoLDA0ODxAREhMUFRYX\",\"version\":1}",
+      "plaintext": "Weekly planning"
+    },
+    {
+      "name": "a title does not open as message content",
+      "purpose": "agent_message_content",
+      "keyHex": "5b1e0c2a9d84f3706e1d2c3b4a5968778695a4b3c2d1e0f0f1e2d3c4b5a69788",
+      "column": "{\"version\":1,\"nonce\":\"AAECAwQFBgcICQoLDA0ODxAREhMUFRYX\",\"ciphertext\":\"LwH6QMk1yWJjMdeeZP7S4/RPoX0LqB4td5hntCq0Og==\"}",
+      "plaintext": null
+    },
+    {
+      "name": "another key",
+      "purpose": "agent_conversation_title",
+      "keyHex": "00112233445566778899aabbccddeeff00112233445566778899aabbccddeeff",
+      "column": "{\"version\":1,\"nonce\":\"AAECAwQFBgcICQoLDA0ODxAREhMUFRYX\",\"ciphertext\":\"LwH6QMk1yWJjMdeeZP7S4/RPoX0LqB4td5hntCq0Og==\"}",
+      "plaintext": null
+    },
+    {
+      "name": "one ciphertext bit flipped",
+      "purpose": "agent_message_content",
+      "keyHex": "5b1e0c2a9d84f3706e1d2c3b4a5968778695a4b3c2d1e0f0f1e2d3c4b5a69788",
+      "column": "{\"version\":1,\"nonce\":\"YGFiY2RlZmdoaWprbG1ub3BxcnN0dXZ3\",\"ciphertext\":\"XrxSXIr0tA2yUnGQriPPhjeSdbx3F6anHvCcZ97Z9lwcyp2MEW5Q0n5EZPvKVjfDzhmOhhkVO4rlk/+8rfbMAwfvfYlD7qkYkKUKJLyeMjzEe4gfS84z\"}",
+      "plaintext": null
+    },
+    {
+      "name": "version 2",
+      "purpose": "agent_conversation_title",
+      "keyHex": "5b1e0c2a9d84f3706e1d2c3b4a5968778695a4b3c2d1e0f0f1e2d3c4b5a69788",
+      "column": "{\"version\":2,\"nonce\":\"AAECAwQFBgcICQoLDA0ODxAREhMUFRYX\",\"ciphertext\":\"LwH6QMk1yWJjMdeeZP7S4/RPoX0LqB4td5hntCq0Og==\"}",
+      "plaintext": null
+    },
+    {
+      "name": "not JSON",
+      "purpose": "agent_conversation_title",
+      "keyHex": "5b1e0c2a9d84f3706e1d2c3b4a5968778695a4b3c2d1e0f0f1e2d3c4b5a69788",
+      "column": "Weekly planning",
+      "plaintext": null
+    }
+  ]
+}

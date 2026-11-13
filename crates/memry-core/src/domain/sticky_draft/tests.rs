@@ -10,6 +10,7 @@ use crate::domain::desktop_records::testing::{
     DEVICE, NOW, clock, iso, open, payload, pull, queued, remote, remote_delete,
 };
 use crate::storage::repositories::sync_items;
+use crate::sync::apply::apply_page;
 use crate::sync::clock::{ClockOrder, clock_of, compare};
 
 const ID: &str = "draft-1";
@@ -162,11 +163,23 @@ fn a_remote_update_keeps_the_local_content_kind_and_created_at_it_leaves_out() {
         let draft = upsert(conn, None, "mine", StickyKind::Task, DEVICE, NOW)?;
         let id = draft.id.as_str();
 
-        let newer = json!({"content": null, "createdAt": iso(1),
-                           "clock": {"device-a": 1, "peer": 1}});
+        let before = payload(conn, ITEM_TYPE, id);
+        for null in [
+            json!({"content": null, "clock": {"device-a": 1, "peer": 1}}),
+            json!({"content": "theirs", "kind": null, "clock": {"device-a": 1, "peer": 1}}),
+        ] {
+            assert_eq!(
+                pull(conn, vec![remote(ITEM_TYPE, id, &null)])?.skipped,
+                1,
+                "a null fails desktop's schema: {null}"
+            );
+            assert_eq!(payload(conn, ITEM_TYPE, id), before, "{null}");
+        }
+
+        let newer = json!({"createdAt": iso(1), "clock": {"device-a": 1, "peer": 1}});
         assert_eq!(pull(conn, vec![remote(ITEM_TYPE, id, &newer)])?.applied, 1);
         let stored = payload(conn, ITEM_TYPE, id);
-        assert_eq!(stored["content"], json!("mine"), "null content keeps");
+        assert_eq!(stored["content"], json!("mine"), "absent content keeps");
         assert_eq!(stored["kind"], json!("task"), "absent kind keeps");
         assert_eq!(
             stored["createdAt"],
@@ -179,12 +192,11 @@ fn a_remote_update_keeps_the_local_content_kind_and_created_at_it_leaves_out() {
             "absent modifiedAt: apply time"
         );
 
-        let kind = json!({"content": "theirs", "kind": null,
-                          "clock": {"device-a": 1, "peer": 2}});
+        let kind = json!({"content": "theirs", "clock": {"device-a": 1, "peer": 2}});
         assert_eq!(pull(conn, vec![remote(ITEM_TYPE, id, &kind)])?.applied, 1);
         let stored = payload(conn, ITEM_TYPE, id);
         assert_eq!(stored["content"], json!("theirs"));
-        assert_eq!(stored["kind"], json!("task"), "null kind keeps");
+        assert_eq!(stored["kind"], json!("task"), "absent kind keeps");
         assert_eq!(queued(conn, ITEM_TYPE, id), 1, "an apply queues nothing");
         Ok(())
     })
@@ -262,4 +274,40 @@ fn a_kind_this_build_does_not_know_parses_as_note() {
     assert_eq!(StickyKind::parse("journal"), StickyKind::Journal);
     assert_eq!(StickyKind::parse("note"), StickyKind::Note);
     assert_eq!(StickyKind::parse("whiteboard"), StickyKind::Note);
+}
+
+#[test]
+fn a_remote_without_created_at_keeps_the_time_the_draft_first_projected() {
+    let (db, _dir) = open("sticky-draft-created-at");
+    db.call_blocking(|conn| {
+        let created_at = |conn: &Connection| -> i64 {
+            conn.query_row(
+                "SELECT created_at FROM sticky_drafts WHERE id = ?1",
+                params![ID],
+                |row| row.get(0),
+            )
+            .expect("row")
+        };
+        let first = json!({"content": "one", "clock": {"peer": 1}});
+        apply_page(
+            conn,
+            vec![remote(ITEM_TYPE, ID, &first)],
+            vec![],
+            NOW + 10,
+            Some(DEVICE),
+        )?;
+        let created = created_at(conn);
+        let second = json!({"content": "two", "clock": {"peer": 2}});
+        apply_page(
+            conn,
+            vec![remote(ITEM_TYPE, ID, &second)],
+            vec![],
+            NOW + 20,
+            Some(DEVICE),
+        )?;
+        assert_ne!(modified_at(conn, ID), created, "the second apply is later");
+        assert_eq!(created_at(conn), created);
+        Ok(())
+    })
+    .expect("created at");
 }

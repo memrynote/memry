@@ -32,8 +32,8 @@ here: `agent_conversation`, `agent_message`, `canvas_folder` (canvas folders,
 §13.7.23), `home_page` (Home boards, §13.7.24, §13.11),
 `vault_lock` (desktop read-only locks, #2606, §13.7.22), `sticky_draft`
 (unsent desktop sticky text, §13.7.25, §13.13).
-**A conforming client omits them from the header and never sees them**
-(chapter 05 §5.3.1).
+**The iOS client omits them from the header and never sees them**
+(chapter 05 §5.3.1); desktop declares them.
 
 Twenty-one plus six is the **twenty-seven record types**, which is the set
 chapter 05 §5.3 calls recognised. `attachment` is the twenty-eighth member of
@@ -1067,7 +1067,7 @@ that create one folder offline make one record, and `Work` and `work` are one
 folder on every platform. The type is in `RECREATABLE_AFTER_PURGE_ITEM_TYPES`
 (`packages/contracts/src/sync-api.ts:222`): a folder deleted and made again
 writes the same id, with a clock past the tombstone's
-(`crates/memry-core/src/domain/canvas_folder/mod.rs:98`).
+(`crates/memry-core/src/domain/canvas_folder/mod.rs:106`).
 
 Desktop's push is built key by key and never carries `syncedAt`
 (`apps/desktop/src/main/sync/item-handlers/canvas-folder-handler.ts:23-32`):
@@ -1083,20 +1083,22 @@ document-level resolver (§13.9) with three additions:
    and a non-empty `path` is skipped (`:104-112`);
 2. a concurrent clock is last-writer-wins: the remote applies under the merged
    clock (`:65-73`);
-3. over a local record, deleted ones included, an absent or `null` `path`
-   keeps the local path, an absent `icon` keeps the local icon and `null`
-   clears it, and `vaultId` stays local. `deletedAt` is the remote's: absent
+3. over a local record, deleted ones included, an absent `path` keeps the
+   local path, an absent `icon` keeps the local icon and `null` clears it, and
+   `vaultId` stays local. A `null` `path` fails the schema, so desktop skips
+   the record (`apps/desktop/src/main/sync/apply-item.ts:166-176`) and the Rust
+   core skips it too. `deletedAt` is the remote's: absent
    or `null` makes the folder live again (`:74-80`).
 
 The Rust core follows the same rule
-(`crates/memry-core/src/domain/canvas_folder/merge.rs:28-64`, over
-`crates/memry-core/src/domain/desktop_records/mod.rs:56-86`).
+(`crates/memry-core/src/domain/canvas_folder/merge.rs:30-66`, over
+`crates/memry-core/src/domain/desktop_records/mod.rs:58-92`).
 
 A delete follows chapter 05 §5.8 unchanged: the folder survives a tombstone
 only when its local clock is strictly after the tombstone's
 (`canvas-folder-handler.ts:135-151`). A client that deletes a folder states
 `deletedAt` in the payload too, as desktop's soft delete does
-(`crates/memry-core/src/domain/canvas_folder/mod.rs:108-129`).
+(`crates/memry-core/src/domain/canvas_folder/mod.rs:116-137`).
 
 ### 13.7.24 `home_page` — `:330-342`
 
@@ -1111,7 +1113,7 @@ is read as absent (`:335-338`). Desktop pushes its whole `home_pages` row
 (`packages/sync-client/src/item-handlers/home-page-handler.ts:144-153`), so
 `id` and `syncedAt` also arrive as unmodelled keys and are preserved (§13.2).
 A client that writes a board states the eight schema keys
-(`crates/memry-core/src/domain/home_page/mod.rs:70-104`), and writes a
+(`crates/memry-core/src/domain/home_page/mod.rs:71-106`), and writes a
 `position` that is an integer as a JSON integer.
 
 **Normative**, the apply rule (`home-page-handler.ts:33-110`). It is the
@@ -1120,21 +1122,23 @@ document-level resolver (§13.9) with four additions:
 1. `widgets` that is present and is not text holding a JSON array is skipped
    **before the clock is compared**, so a later readable version of the board
    still wins (`:40-47`). A `widgets` that is not a string at all fails the
-   schema; desktop skips it and the Rust core records it corrupt
-   (`crates/memry-core/src/domain/home_page/merge.rs:51-57`);
+   schema; desktop skips it (`apps/desktop/src/main/sync/apply-item.ts:166-176`)
+   and the Rust core skips it too
+   (`crates/memry-core/src/domain/home_page/merge.rs:53-57`);
 2. a create (no live local record) without a non-empty `name` is skipped
    (`:83-90`);
 3. a concurrent clock is last-writer-wins: the remote applies under the merged
    clock (`:53-61`);
-4. over a local board, an absent or `null` `name`, `position` or `widgets`
-   keeps the local value; an absent `icon` or `cover` keeps the local value and
+4. over a local board, an absent `name`, `position` or `widgets` keeps the
+   local value, and a `null` one fails the schema, so desktop and the Rust core
+   skip the record (`apply-item.ts:166-176`); an absent `icon` or `cover` keeps the local value and
    `null` clears it; an unreadable `cover` is absent and keeps the local one;
    `createdAt` stays local; an absent `updatedAt` reads as the apply time
    (`:63-75`).
 
 The Rust core follows the same rule
-(`crates/memry-core/src/domain/home_page/merge.rs:34-80`, over
-`crates/memry-core/src/domain/desktop_records/mod.rs:56-86`).
+(`crates/memry-core/src/domain/home_page/merge.rs:36-80`, over
+`crates/memry-core/src/domain/desktop_records/mod.rs:58-92`).
 
 A delete follows chapter 05 §5.8 unchanged: the board survives a tombstone
 only when its local clock is strictly after the tombstone's
@@ -1159,13 +1163,15 @@ document-level resolver (§13.9) with three additions:
    (`:54-60`);
 2. a concurrent clock is last-writer-wins: the remote applies under the merged
    clock (`:35-39`);
-3. over a local draft, an absent or `null` `content` or `kind` keeps the local
-   value, `createdAt` stays local, and an absent `modifiedAt` reads as the
+3. over a local draft, an absent `content` or `kind` keeps the local value,
+   and a `null` one fails the schema, so desktop and the Rust core skip the
+   record (`apps/desktop/src/main/sync/apply-item.ts:166-176`); `createdAt`
+   stays local, and an absent `modifiedAt` reads as the
    apply time (`:41-50`).
 
 The Rust core follows the same rule
-(`crates/memry-core/src/domain/sticky_draft/merge.rs:30-59`, over
-`crates/memry-core/src/domain/desktop_records/mod.rs:56-86`).
+(`crates/memry-core/src/domain/sticky_draft/merge.rs:31-60`, over
+`crates/memry-core/src/domain/desktop_records/mod.rs:58-92`).
 
 A delete follows chapter 05 §5.8 unchanged: the draft survives a tombstone only
 when its local clock is strictly after the tombstone's

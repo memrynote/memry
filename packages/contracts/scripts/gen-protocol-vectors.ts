@@ -32,6 +32,7 @@ import { join } from 'node:path'
 
 import { ready } from 'libsodium-wrappers-sumo'
 
+import { buildAgentEnvelope } from './vectors/agent-envelope'
 import { buildBip39Unlock } from './vectors/bip39-unlock'
 import { buildCborCanonical } from './vectors/cbor-canonical'
 import { buildCompression } from './vectors/compression'
@@ -86,6 +87,7 @@ const CLASSES: readonly VectorClass[] = [
     name: 'record-envelope',
     files: [{ path: 'record-envelope.json', build: buildRecordEnvelope }]
   },
+  { name: 'agent-envelope', files: [{ path: 'agent-envelope.json', build: buildAgentEnvelope }] },
   { name: 'crdt-update', files: [{ path: 'crdt-update.json', build: buildCrdtUpdate }] },
   { name: 'crdt-compact', files: [{ path: 'crdt-compact.json', build: buildCrdtCompact }] },
   { name: 'cbor-canonical', files: [{ path: 'cbor-canonical.json', build: buildCborCanonical }] },

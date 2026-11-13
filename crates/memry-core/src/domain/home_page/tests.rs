@@ -12,6 +12,7 @@ use crate::domain::desktop_records::testing::{
 };
 use crate::storage::repositories::projectors::home_pages::is_readable_cover;
 use crate::storage::repositories::sync_items;
+use crate::sync::apply::apply_page;
 use crate::sync::clock::clock_of;
 
 const ID: &str = "board-1";
@@ -174,9 +175,15 @@ fn widgets_that_are_not_array_text_are_skipped_before_the_clock() {
         assert_eq!(pull(conn, vec![remote(ITEM_TYPE, &id, &body)])?.applied, 1);
         assert_eq!(payload(conn, ITEM_TYPE, &id)["widgets"], json!("[]"));
 
-        // Widgets that are not text at all are not a board this build reads.
+        // Widgets that are not text at all fail desktop's schema: skipped too,
+        // and the local board stays readable.
+        let before = payload(conn, ITEM_TYPE, &id);
+        let body = json!({"widgets": 5, "clock": {"device-a": 1, "peer": 2}});
+        assert_eq!(pull(conn, vec![remote(ITEM_TYPE, &id, &body)])?.skipped, 1);
+        assert_eq!(payload(conn, ITEM_TYPE, &id), before);
         let body = json!({"name": "X", "widgets": 5, "clock": {"peer": 1}});
-        assert_eq!(pull(conn, vec![remote(ITEM_TYPE, ID, &body)])?.corrupt, 1);
+        assert_eq!(pull(conn, vec![remote(ITEM_TYPE, ID, &body)])?.skipped, 1);
+        assert!(sync_items::load(conn, ITEM_TYPE, ID)?.is_none());
         Ok(())
     })
     .expect("widgets");
@@ -222,17 +229,24 @@ fn a_remote_update_keeps_what_it_leaves_out_and_clears_what_it_nulls() {
         let id = local_board(conn)?;
         let local_cover = payload(conn, ITEM_TYPE, &id)["cover"].clone();
 
-        // `name` and `position` null, the rest left out (a `null` widgets is
-        // skipped as unreadable).
-        let silent = json!({"name": null, "position": null,
-                            "createdAt": iso(1), "clock": {"device-a": 1, "peer": 1}});
+        // A `null` name or position fails desktop's schema.
+        let before = payload(conn, ITEM_TYPE, &id);
+        for null in [
+            json!({"name": null, "clock": {"device-a": 1, "peer": 1}}),
+            json!({"position": null, "clock": {"device-a": 1, "peer": 1}}),
+        ] {
+            assert_eq!(pull(conn, vec![remote(ITEM_TYPE, &id, &null)])?.skipped, 1);
+            assert_eq!(payload(conn, ITEM_TYPE, &id), before, "{null}");
+        }
+
+        let silent = json!({"createdAt": iso(1), "clock": {"device-a": 1, "peer": 1}});
         assert_eq!(
             pull(conn, vec![remote(ITEM_TYPE, &id, &silent)])?.applied,
             1
         );
         let stored = payload(conn, ITEM_TYPE, &id);
-        assert_eq!(stored["name"], json!("Home"), "null name keeps");
-        assert_eq!(stored["position"], json!(1), "null position keeps");
+        assert_eq!(stored["name"], json!("Home"), "absent name keeps");
+        assert_eq!(stored["position"], json!(1), "absent position keeps");
         assert_eq!(
             stored["widgets"],
             json!(r#"[{"type":"inbox"}]"#),
@@ -354,4 +368,66 @@ fn a_cover_is_readable_as_the_cover_schema_reads_it() {
     ] {
         assert_eq!(is_readable_cover(&cover), readable, "{cover}");
     }
+}
+
+#[test]
+fn a_remote_without_created_at_keeps_the_time_the_board_first_projected() {
+    let (db, _dir) = open("home-page-created-at");
+    db.call_blocking(|conn| {
+        let created_at = |conn: &Connection| -> i64 {
+            conn.query_row(
+                "SELECT created_at FROM home_pages WHERE id = ?1",
+                params![ID],
+                |row| row.get(0),
+            )
+            .expect("row")
+        };
+        let first = json!({"name": "One", "widgets": "[]", "clock": {"peer": 1}});
+        apply_page(
+            conn,
+            vec![remote(ITEM_TYPE, ID, &first)],
+            vec![],
+            NOW + 10,
+            Some(DEVICE),
+        )?;
+        let created = created_at(conn);
+        let second = json!({"name": "Two", "clock": {"peer": 2}});
+        apply_page(
+            conn,
+            vec![remote(ITEM_TYPE, ID, &second)],
+            vec![],
+            NOW + 20,
+            Some(DEVICE),
+        )?;
+        assert_ne!(updated_at(conn, ID), created, "the second apply is later");
+        assert_eq!(created_at(conn), created);
+        Ok(())
+    })
+    .expect("created at");
+}
+
+#[test]
+fn a_board_with_a_cover_this_build_cannot_read_is_refused() {
+    let (db, _dir) = open("home-page-invalid-cover");
+    db.call_blocking(|conn| {
+        let unreadable = json!({"ref": 7});
+        let mut object = board("Home", 0.0);
+        object.cover = Some(&unreadable);
+        assert!(create(conn, &object, DEVICE, NOW).is_err());
+        assert!(list(conn)?.is_empty());
+
+        let made = create(conn, &board("Home", 0.0), DEVICE, NOW)?;
+        let patch = HomePagePatch {
+            cover: Some(Some(&unreadable)),
+            ..HomePagePatch::default()
+        };
+        assert!(update(conn, &made.id, &patch, DEVICE, NOW + 1).is_err());
+        assert_eq!(
+            queued(conn, ITEM_TYPE, &made.id),
+            1,
+            "a refusal queues nothing"
+        );
+        Ok(())
+    })
+    .expect("invalid cover");
 }
