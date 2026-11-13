@@ -77,6 +77,9 @@ pub fn vector_file(name: &str) -> Json {
         "text-extract" => {
             include_str!("../../../../packages/contracts/test-vectors/text-extract.json")
         }
+        "embedding-input" => {
+            include_str!("../../../../packages/contracts/test-vectors/embedding-input.json")
+        }
         "note-blocks" => {
             include_str!("../../../../packages/contracts/test-vectors/note-blocks.json")
         }
