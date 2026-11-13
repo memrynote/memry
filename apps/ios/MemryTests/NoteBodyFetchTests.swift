@@ -73,7 +73,7 @@ final class NoteFiller: VaultFilling, @unchecked Sendable {
         .none
     }
 
-    func fetchNoteBody(noteId: String) async throws -> BodyFetchSummary {
+    func pullNoteBody(noteId: String) async throws -> BodyFetchSummary {
         calls.withLock { $0 += 1 }
         if let failure { throw failure }
         // A pull that stopped part way leaves the body incomplete, not absent.
@@ -207,5 +207,20 @@ struct NoteBodyFetchTests {
             return
         }
         #expect(error.recourse != .blocked)
+    }
+
+    /// VERIFY-4419 #3: a find request opened onto a note whose body is not
+    /// here waits for the pull, rather than resolving against no blocks.
+    @Test("an unpulled body leaves the blocks unread until the pull lands")
+    func anUnpulledBodyIsNotRead() async throws {
+        let store = NoteStore()
+        let model = NoteReadViewModel(
+            route: Self.route, reader: ScriptedNote(store: store), filler: NoteFiller(store: store)
+        )
+        await model.loadIfNeeded()
+        #expect(!model.blocksRead)
+
+        await model.fetchBody()
+        #expect(model.blocksRead)
     }
 }

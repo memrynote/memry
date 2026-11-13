@@ -8196,14 +8196,6 @@ public protocol SearchProtocol: AnyObject, Sendable {
     func linksTo(targetId: String, order: BacklinkOrder) throws  -> [BacklinkRow]
     
     /**
-     * Notes and journals matching `query`, best first.
-     *
-     * A query carrying no searchable term returns **empty, not everything**:
-     * an empty search box is not a request for the whole vault.
-     */
-    func notes(query: String, limit: UInt32) throws  -> [SearchResult]
-    
-    /**
      * Brings the index up to date with the vault.
      *
      * Idempotent, incremental where it can be, and a full rebuild against an
@@ -8214,13 +8206,14 @@ public protocol SearchProtocol: AnyObject, Sendable {
     func reindex() throws  -> ReindexSummary
     
     /**
-     * Tasks matching `query`, best first.
+     * Everything matching `query`, in desktop's four groups, each best
+     * first and at most `limit` long. `filter` narrows the types, the
+     * modified date and the tags; `None` narrows nothing.
      *
-     * Its own list rather than one merged with the notes: a bm25 score is
-     * relative to the table it was computed over, so interleaving the two
-     * would be inventing an order neither ranking supports.
+     * A query carrying no searchable term returns **empty, not everything**:
+     * an empty search box is not a request for the whole vault.
      */
-    func tasks(query: String, limit: UInt32) throws  -> [SearchResult]
+    func search(query: String, filter: SearchFilter?, limit: UInt32) throws  -> SearchGroups
     
     /**
      * Notes and journal days that mention `target_id`'s title or an alias as
@@ -8343,23 +8336,6 @@ open func linksTo(targetId: String, order: BacklinkOrder)throws  -> [BacklinkRow
 }
     
     /**
-     * Notes and journals matching `query`, best first.
-     *
-     * A query carrying no searchable term returns **empty, not everything**:
-     * an empty search box is not a request for the whole vault.
-     */
-open func notes(query: String, limit: UInt32)throws  -> [SearchResult]  {
-    return try  FfiConverterSequenceTypeSearchResult.lift(try rustCallWithError(FfiConverterTypeStorageError_lift) {
-        uniffiCallStatus in
-    uniffi_memry_core_fn_method_search_notes(
-            self.uniffiCloneHandle(),
-        FfiConverterString.lower(query),
-        FfiConverterUInt32.lower(limit),uniffiCallStatus
-    )
-})
-}
-    
-    /**
      * Brings the index up to date with the vault.
      *
      * Idempotent, incremental where it can be, and a full rebuild against an
@@ -8377,18 +8353,20 @@ open func reindex()throws  -> ReindexSummary  {
 }
     
     /**
-     * Tasks matching `query`, best first.
+     * Everything matching `query`, in desktop's four groups, each best
+     * first and at most `limit` long. `filter` narrows the types, the
+     * modified date and the tags; `None` narrows nothing.
      *
-     * Its own list rather than one merged with the notes: a bm25 score is
-     * relative to the table it was computed over, so interleaving the two
-     * would be inventing an order neither ranking supports.
+     * A query carrying no searchable term returns **empty, not everything**:
+     * an empty search box is not a request for the whole vault.
      */
-open func tasks(query: String, limit: UInt32)throws  -> [SearchResult]  {
-    return try  FfiConverterSequenceTypeSearchResult.lift(try rustCallWithError(FfiConverterTypeStorageError_lift) {
+open func search(query: String, filter: SearchFilter?, limit: UInt32)throws  -> SearchGroups  {
+    return try  FfiConverterTypeSearchGroups_lift(try rustCallWithError(FfiConverterTypeStorageError_lift) {
         uniffiCallStatus in
-    uniffi_memry_core_fn_method_search_tasks(
+    uniffi_memry_core_fn_method_search_search(
             self.uniffiCloneHandle(),
         FfiConverterString.lower(query),
+        FfiConverterOptionTypeSearchFilter.lower(filter),
         FfiConverterUInt32.lower(limit),uniffiCallStatus
     )
 })
@@ -8452,6 +8430,169 @@ public func FfiConverterTypeSearch_lift(_ handle: UInt64) throws -> Search {
 #endif
 public func FfiConverterTypeSearch_lower(_ value: Search) -> UInt64 {
     return FfiConverterTypeSearch.lower(value)
+}
+
+
+
+
+
+
+/**
+ * Recents over one opened vault.
+ */
+public protocol SearchRecentsProtocol: AnyObject, Sendable {
+    
+    /**
+     * Forgets every recent.
+     */
+    func clear() throws 
+    
+    /**
+     * The recents whose items still exist, newest first, at most ten.
+     */
+    func list() throws  -> [SearchRecent]
+    
+    /**
+     * Records that `result` was opened from a search for `query`.
+     */
+    func record(result: SearchResult, query: String) throws 
+    
+}
+/**
+ * Recents over one opened vault.
+ */
+open class SearchRecents: SearchRecentsProtocol, @unchecked Sendable {
+    fileprivate let handle: UInt64
+
+    /// Used to instantiate a [FFIObject] without an actual handle, for fakes in tests, mostly.
+#if swift(>=5.8)
+    @_documentation(visibility: private)
+#endif
+    public struct NoHandle {
+        public init() {}
+    }
+
+    // TODO: We'd like this to be `private` but for Swifty reasons,
+    // we can't implement `FfiConverter` without making this `required` and we can't
+    // make it `required` without making it `public`.
+#if swift(>=5.8)
+    @_documentation(visibility: private)
+#endif
+    required public init(unsafeFromHandle handle: UInt64) {
+        self.handle = handle
+    }
+
+    // This constructor can be used to instantiate a fake object.
+    // - Parameter noHandle: Placeholder value so we can have a constructor separate from the default empty one that may be implemented for classes extending [FFIObject].
+    //
+    // - Warning:
+    //     Any object instantiated with this constructor cannot be passed to an actual Rust-backed object. Since there isn't a backing handle the FFI lower functions will crash.
+#if swift(>=5.8)
+    @_documentation(visibility: private)
+#endif
+    public init(noHandle: NoHandle) {
+        self.handle = 0
+    }
+
+#if swift(>=5.8)
+    @_documentation(visibility: private)
+#endif
+    public func uniffiCloneHandle() -> UInt64 {
+        return try! rustCall { uniffi_memry_core_fn_clone_searchrecents(self.handle, $0) }
+    }
+    // No primary constructor declared for this class.
+
+    deinit {
+        if handle == 0 {
+            // Mock objects have handle=0 don't try to free them
+            return
+        }
+
+        try! rustCall { uniffi_memry_core_fn_free_searchrecents(handle, $0) }
+    }
+
+    
+
+    
+    /**
+     * Forgets every recent.
+     */
+open func clear()throws   {try rustCallWithError(FfiConverterTypeStorageError_lift) {
+        uniffiCallStatus in
+    uniffi_memry_core_fn_method_searchrecents_clear(
+            self.uniffiCloneHandle(),uniffiCallStatus
+    )
+}
+}
+    
+    /**
+     * The recents whose items still exist, newest first, at most ten.
+     */
+open func list()throws  -> [SearchRecent]  {
+    return try  FfiConverterSequenceTypeSearchRecent.lift(try rustCallWithError(FfiConverterTypeStorageError_lift) {
+        uniffiCallStatus in
+    uniffi_memry_core_fn_method_searchrecents_list(
+            self.uniffiCloneHandle(),uniffiCallStatus
+    )
+})
+}
+    
+    /**
+     * Records that `result` was opened from a search for `query`.
+     */
+open func record(result: SearchResult, query: String)throws   {try rustCallWithError(FfiConverterTypeStorageError_lift) {
+        uniffiCallStatus in
+    uniffi_memry_core_fn_method_searchrecents_record(
+            self.uniffiCloneHandle(),
+        FfiConverterTypeSearchResult_lower(result),
+        FfiConverterString.lower(query),uniffiCallStatus
+    )
+}
+}
+    
+
+    
+}
+
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
+public struct FfiConverterTypeSearchRecents: FfiConverter {
+    typealias FfiType = UInt64
+    typealias SwiftType = SearchRecents
+
+    public static func lift(_ handle: UInt64) throws -> SearchRecents {
+        return SearchRecents(unsafeFromHandle: handle)
+    }
+
+    public static func lower(_ value: SearchRecents) -> UInt64 {
+        return value.uniffiCloneHandle()
+    }
+
+    public static func read(from buf: inout (data: Data, offset: Data.Index)) throws -> SearchRecents {
+        let handle: UInt64 = try readInt(&buf)
+        return try lift(handle)
+    }
+
+    public static func write(_ value: SearchRecents, into buf: inout [UInt8]) {
+        writeInt(&buf, lower(value))
+    }
+}
+
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
+public func FfiConverterTypeSearchRecents_lift(_ handle: UInt64) throws -> SearchRecents {
+    return try FfiConverterTypeSearchRecents.lift(handle)
+}
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
+public func FfiConverterTypeSearchRecents_lower(_ value: SearchRecents) -> UInt64 {
+    return FfiConverterTypeSearchRecents.lower(value)
 }
 
 
@@ -11944,6 +12085,11 @@ public protocol VaultProtocol: AnyObject, Sendable {
     func search() throws  -> Search
     
     /**
+     * The search sheet's recently opened results, device-local (#4322).
+     */
+    func searchRecents()  -> SearchRecents
+    
+    /**
      * Queues every record this vault has never pushed, before its first sync
      * to an account (desktop's `seedUnclocked`,
      * `apps/desktop/src/main/sync/initial-seed.ts`). Returns how many it
@@ -12193,6 +12339,18 @@ open func search()throws  -> Search  {
     return try  FfiConverterTypeSearch_lift(try rustCallWithError(FfiConverterTypeStorageError_lift) {
         uniffiCallStatus in
     uniffi_memry_core_fn_method_vault_search(
+            self.uniffiCloneHandle(),uniffiCallStatus
+    )
+})
+}
+    
+    /**
+     * The search sheet's recently opened results, device-local (#4322).
+     */
+open func searchRecents() -> SearchRecents  {
+    return try!  FfiConverterTypeSearchRecents_lift(try! rustCall() {
+        uniffiCallStatus in
+    uniffi_memry_core_fn_method_vault_search_recents(
             self.uniffiCloneHandle(),uniffiCallStatus
     )
 })
@@ -20760,6 +20918,64 @@ public func FfiConverterTypeLocalNotification_lower(_ value: LocalNotification) 
 
 
 /**
+ * Epoch milliseconds, both ends inclusive. The shell computes it from the
+ * device's local day.
+ */
+public struct ModifiedRange: Equatable, Hashable {
+    public var fromMs: Int64
+    public var toMs: Int64
+
+    // Default memberwise initializers are never public by default, so we
+    // declare one manually.
+    public init(fromMs: Int64, toMs: Int64) {
+        self.fromMs = fromMs
+        self.toMs = toMs
+    }
+
+    
+
+    
+}
+
+#if compiler(>=6)
+extension ModifiedRange: Sendable {}
+#endif
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
+public struct FfiConverterTypeModifiedRange: FfiConverterRustBuffer {
+    public static func read(from buf: inout (data: Data, offset: Data.Index)) throws -> ModifiedRange {
+        return
+            try ModifiedRange(
+                fromMs: FfiConverterInt64.read(from: &buf), 
+                toMs: FfiConverterInt64.read(from: &buf)
+        )
+    }
+
+    public static func write(_ value: ModifiedRange, into buf: inout [UInt8]) {
+        FfiConverterInt64.write(value.fromMs, into: &buf)
+        FfiConverterInt64.write(value.toMs, into: &buf)
+    }
+}
+
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
+public func FfiConverterTypeModifiedRange_lift(_ buf: RustBuffer) throws -> ModifiedRange {
+    return try FfiConverterTypeModifiedRange.lift(buf)
+}
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
+public func FfiConverterTypeModifiedRange_lower(_ value: ModifiedRange) -> RustBuffer {
+    return FfiConverterTypeModifiedRange.lower(value)
+}
+
+
+/**
  * Everything a new task can carry.
  */
 public struct NewTaskInput: Equatable, Hashable {
@@ -23224,17 +23440,242 @@ public func FfiConverterTypeSavedFilterItem_lower(_ value: SavedFilterItem) -> R
 
 
 /**
+ * What a search is narrowed to. The default narrows nothing.
+ */
+public struct SearchFilter: Equatable, Hashable {
+    /**
+     * The types to search; empty searches every type.
+     */
+    public var types: [SearchType]
+    public var modified: ModifiedRange?
+    /**
+     * Items carrying any of these; empty applies no tag filter.
+     */
+    public var tags: [String]
+
+    // Default memberwise initializers are never public by default, so we
+    // declare one manually.
+    public init(
+        /**
+         * The types to search; empty searches every type.
+         */types: [SearchType], modified: ModifiedRange?, 
+        /**
+         * Items carrying any of these; empty applies no tag filter.
+         */tags: [String]) {
+        self.types = types
+        self.modified = modified
+        self.tags = tags
+    }
+
+    
+
+    
+}
+
+#if compiler(>=6)
+extension SearchFilter: Sendable {}
+#endif
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
+public struct FfiConverterTypeSearchFilter: FfiConverterRustBuffer {
+    public static func read(from buf: inout (data: Data, offset: Data.Index)) throws -> SearchFilter {
+        return
+            try SearchFilter(
+                types: FfiConverterSequenceTypeSearchType.read(from: &buf), 
+                modified: FfiConverterOptionTypeModifiedRange.read(from: &buf), 
+                tags: FfiConverterSequenceString.read(from: &buf)
+        )
+    }
+
+    public static func write(_ value: SearchFilter, into buf: inout [UInt8]) {
+        FfiConverterSequenceTypeSearchType.write(value.types, into: &buf)
+        FfiConverterOptionTypeModifiedRange.write(value.modified, into: &buf)
+        FfiConverterSequenceString.write(value.tags, into: &buf)
+    }
+}
+
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
+public func FfiConverterTypeSearchFilter_lift(_ buf: RustBuffer) throws -> SearchFilter {
+    return try FfiConverterTypeSearchFilter.lift(buf)
+}
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
+public func FfiConverterTypeSearchFilter_lower(_ value: SearchFilter) -> RustBuffer {
+    return FfiConverterTypeSearchFilter.lower(value)
+}
+
+
+/**
+ * One search's results by type. Each group is ranked on its own, because a
+ * bm25 score is relative to the table it was computed over.
+ */
+public struct SearchGroups: Equatable, Hashable {
+    public var notes: [SearchResult]
+    public var journals: [SearchResult]
+    public var tasks: [SearchResult]
+    /**
+     * Captures in every state: filed, archived and snoozed ones too (#4320).
+     */
+    public var inbox: [SearchResult]
+
+    // Default memberwise initializers are never public by default, so we
+    // declare one manually.
+    public init(notes: [SearchResult], journals: [SearchResult], tasks: [SearchResult], 
+        /**
+         * Captures in every state: filed, archived and snoozed ones too (#4320).
+         */inbox: [SearchResult]) {
+        self.notes = notes
+        self.journals = journals
+        self.tasks = tasks
+        self.inbox = inbox
+    }
+
+    
+
+    
+}
+
+#if compiler(>=6)
+extension SearchGroups: Sendable {}
+#endif
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
+public struct FfiConverterTypeSearchGroups: FfiConverterRustBuffer {
+    public static func read(from buf: inout (data: Data, offset: Data.Index)) throws -> SearchGroups {
+        return
+            try SearchGroups(
+                notes: FfiConverterSequenceTypeSearchResult.read(from: &buf), 
+                journals: FfiConverterSequenceTypeSearchResult.read(from: &buf), 
+                tasks: FfiConverterSequenceTypeSearchResult.read(from: &buf), 
+                inbox: FfiConverterSequenceTypeSearchResult.read(from: &buf)
+        )
+    }
+
+    public static func write(_ value: SearchGroups, into buf: inout [UInt8]) {
+        FfiConverterSequenceTypeSearchResult.write(value.notes, into: &buf)
+        FfiConverterSequenceTypeSearchResult.write(value.journals, into: &buf)
+        FfiConverterSequenceTypeSearchResult.write(value.tasks, into: &buf)
+        FfiConverterSequenceTypeSearchResult.write(value.inbox, into: &buf)
+    }
+}
+
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
+public func FfiConverterTypeSearchGroups_lift(_ buf: RustBuffer) throws -> SearchGroups {
+    return try FfiConverterTypeSearchGroups.lift(buf)
+}
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
+public func FfiConverterTypeSearchGroups_lower(_ value: SearchGroups) -> RustBuffer {
+    return FfiConverterTypeSearchGroups.lower(value)
+}
+
+
+/**
+ * One recently opened result.
+ */
+public struct SearchRecent: Equatable, Hashable {
+    /**
+     * The item, shaped like a hit so the shell opens it the same way.
+     */
+    public var result: SearchResult
+    /**
+     * The query that found it.
+     */
+    public var query: String
+    /**
+     * Epoch milliseconds.
+     */
+    public var visitedAt: Int64
+
+    // Default memberwise initializers are never public by default, so we
+    // declare one manually.
+    public init(
+        /**
+         * The item, shaped like a hit so the shell opens it the same way.
+         */result: SearchResult, 
+        /**
+         * The query that found it.
+         */query: String, 
+        /**
+         * Epoch milliseconds.
+         */visitedAt: Int64) {
+        self.result = result
+        self.query = query
+        self.visitedAt = visitedAt
+    }
+
+    
+
+    
+}
+
+#if compiler(>=6)
+extension SearchRecent: Sendable {}
+#endif
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
+public struct FfiConverterTypeSearchRecent: FfiConverterRustBuffer {
+    public static func read(from buf: inout (data: Data, offset: Data.Index)) throws -> SearchRecent {
+        return
+            try SearchRecent(
+                result: FfiConverterTypeSearchResult.read(from: &buf), 
+                query: FfiConverterString.read(from: &buf), 
+                visitedAt: FfiConverterInt64.read(from: &buf)
+        )
+    }
+
+    public static func write(_ value: SearchRecent, into buf: inout [UInt8]) {
+        FfiConverterTypeSearchResult.write(value.result, into: &buf)
+        FfiConverterString.write(value.query, into: &buf)
+        FfiConverterInt64.write(value.visitedAt, into: &buf)
+    }
+}
+
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
+public func FfiConverterTypeSearchRecent_lift(_ buf: RustBuffer) throws -> SearchRecent {
+    return try FfiConverterTypeSearchRecent.lift(buf)
+}
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
+public func FfiConverterTypeSearchRecent_lower(_ value: SearchRecent) -> RustBuffer {
+    return FfiConverterTypeSearchRecent.lower(value)
+}
+
+
+/**
  * One search result.
  *
  * Flattened from [`SearchHit`] because uniffi has no enum-with-payload that
  * reads well in Swift here: `journal_date` is `Some` exactly when `kind` is
- * `journal`, and nothing else distinguishes the two.
+ * `journal`, and `emoji` and `folder_path` are `None` for anything but a
+ * note.
  */
 public struct SearchResult: Equatable, Hashable {
     public var id: String
     public var title: String
     /**
-     * `note`, `journal` or `task`.
+     * `note`, `journal`, `task` or `inbox`.
      */
     public var kind: String
     /**
@@ -23243,32 +23684,84 @@ public struct SearchResult: Equatable, Hashable {
      */
     public var journalDate: String?
     /**
+     * The note's stored icon value verbatim (an emoji, or a desktop icon
+     * reference the shell may not draw), and `None` for everything else.
+     */
+    public var emoji: String?
+    /**
+     * The note's vault folder (`Work/Accounts`), `None` at the vault root and
+     * for everything that is not a note.
+     */
+    public var folderPath: String?
+    /**
      * The bm25 score: negative, and more negative is a better match. Carried
      * so a shell can show relevance if it wants to, never re-sorted — the
      * order returned is already the ranking.
      */
     public var score: Double
+    /**
+     * The body text around the match, highlighted runs marked (#4316). Plain
+     * runs only when the hit matched its title alone; empty when the body
+     * (a task's description) is.
+     */
+    public var snippet: [SnippetSegment]
+    /**
+     * Whether the index, the fuzzy title fallback or an alias found the hit
+     * (#4319). Only a body hit carries a snippet.
+     */
+    public var matchKind: MatchKind
+    /**
+     * The alias the query matched, for a note or journal whose title does
+     * not hold the query. The row shows it as "also: <name>".
+     */
+    public var matchedName: String?
 
     // Default memberwise initializers are never public by default, so we
     // declare one manually.
     public init(id: String, title: String, 
         /**
-         * `note`, `journal` or `task`.
+         * `note`, `journal`, `task` or `inbox`.
          */kind: String, 
         /**
          * The journal's calendar date, and `None` for everything else. A journal
          * entry has no title of its own (§A.5), so this is what names it.
          */journalDate: String?, 
         /**
+         * The note's stored icon value verbatim (an emoji, or a desktop icon
+         * reference the shell may not draw), and `None` for everything else.
+         */emoji: String?, 
+        /**
+         * The note's vault folder (`Work/Accounts`), `None` at the vault root and
+         * for everything that is not a note.
+         */folderPath: String?, 
+        /**
          * The bm25 score: negative, and more negative is a better match. Carried
          * so a shell can show relevance if it wants to, never re-sorted — the
          * order returned is already the ranking.
-         */score: Double) {
+         */score: Double, 
+        /**
+         * The body text around the match, highlighted runs marked (#4316). Plain
+         * runs only when the hit matched its title alone; empty when the body
+         * (a task's description) is.
+         */snippet: [SnippetSegment], 
+        /**
+         * Whether the index, the fuzzy title fallback or an alias found the hit
+         * (#4319). Only a body hit carries a snippet.
+         */matchKind: MatchKind, 
+        /**
+         * The alias the query matched, for a note or journal whose title does
+         * not hold the query. The row shows it as "also: <name>".
+         */matchedName: String?) {
         self.id = id
         self.title = title
         self.kind = kind
         self.journalDate = journalDate
+        self.emoji = emoji
+        self.folderPath = folderPath
         self.score = score
+        self.snippet = snippet
+        self.matchKind = matchKind
+        self.matchedName = matchedName
     }
 
     
@@ -23291,7 +23784,12 @@ public struct FfiConverterTypeSearchResult: FfiConverterRustBuffer {
                 title: FfiConverterString.read(from: &buf), 
                 kind: FfiConverterString.read(from: &buf), 
                 journalDate: FfiConverterOptionString.read(from: &buf), 
-                score: FfiConverterDouble.read(from: &buf)
+                emoji: FfiConverterOptionString.read(from: &buf), 
+                folderPath: FfiConverterOptionString.read(from: &buf), 
+                score: FfiConverterDouble.read(from: &buf), 
+                snippet: FfiConverterSequenceTypeSnippetSegment.read(from: &buf), 
+                matchKind: FfiConverterTypeMatchKind.read(from: &buf), 
+                matchedName: FfiConverterOptionString.read(from: &buf)
         )
     }
 
@@ -23300,7 +23798,12 @@ public struct FfiConverterTypeSearchResult: FfiConverterRustBuffer {
         FfiConverterString.write(value.title, into: &buf)
         FfiConverterString.write(value.kind, into: &buf)
         FfiConverterOptionString.write(value.journalDate, into: &buf)
+        FfiConverterOptionString.write(value.emoji, into: &buf)
+        FfiConverterOptionString.write(value.folderPath, into: &buf)
         FfiConverterDouble.write(value.score, into: &buf)
+        FfiConverterSequenceTypeSnippetSegment.write(value.snippet, into: &buf)
+        FfiConverterTypeMatchKind.write(value.matchKind, into: &buf)
+        FfiConverterOptionString.write(value.matchedName, into: &buf)
     }
 }
 
@@ -23317,6 +23820,63 @@ public func FfiConverterTypeSearchResult_lift(_ buf: RustBuffer) throws -> Searc
 #endif
 public func FfiConverterTypeSearchResult_lower(_ value: SearchResult) -> RustBuffer {
     return FfiConverterTypeSearchResult.lower(value)
+}
+
+
+/**
+ * One run of snippet text. `highlighted` runs are the query's matches.
+ */
+public struct SnippetSegment: Equatable, Hashable {
+    public var text: String
+    public var highlighted: Bool
+
+    // Default memberwise initializers are never public by default, so we
+    // declare one manually.
+    public init(text: String, highlighted: Bool) {
+        self.text = text
+        self.highlighted = highlighted
+    }
+
+    
+
+    
+}
+
+#if compiler(>=6)
+extension SnippetSegment: Sendable {}
+#endif
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
+public struct FfiConverterTypeSnippetSegment: FfiConverterRustBuffer {
+    public static func read(from buf: inout (data: Data, offset: Data.Index)) throws -> SnippetSegment {
+        return
+            try SnippetSegment(
+                text: FfiConverterString.read(from: &buf), 
+                highlighted: FfiConverterBool.read(from: &buf)
+        )
+    }
+
+    public static func write(_ value: SnippetSegment, into buf: inout [UInt8]) {
+        FfiConverterString.write(value.text, into: &buf)
+        FfiConverterBool.write(value.highlighted, into: &buf)
+    }
+}
+
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
+public func FfiConverterTypeSnippetSegment_lift(_ buf: RustBuffer) throws -> SnippetSegment {
+    return try FfiConverterTypeSnippetSegment.lift(buf)
+}
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
+public func FfiConverterTypeSnippetSegment_lower(_ value: SnippetSegment) -> RustBuffer {
+    return FfiConverterTypeSnippetSegment.lower(value)
 }
 
 
@@ -29645,6 +30205,92 @@ public func FfiConverterTypeManifestError_lower(_ value: ManifestError) -> RustB
 
 
 /**
+ * What found a hit.
+ */
+
+public enum MatchKind: Equatable, Hashable {
+    
+    /**
+     * The full-text index: the title, body or tags hold the query.
+     */
+    case body
+    /**
+     * The fuzzy title fallback: the title holds the query's characters in
+     * order, as a typo does.
+     */
+    case fuzzy
+    /**
+     * One of the note's or journal day's aliases is or starts with the query.
+     */
+    case alias
+
+
+
+
+
+}
+
+#if compiler(>=6)
+extension MatchKind: Sendable {}
+#endif
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
+public struct FfiConverterTypeMatchKind: FfiConverterRustBuffer {
+    typealias SwiftType = MatchKind
+
+    public static func read(from buf: inout (data: Data, offset: Data.Index)) throws -> MatchKind {
+        let variant: Int32 = try readInt(&buf)
+        switch variant {
+        
+        case 1: return .body
+        
+        case 2: return .fuzzy
+        
+        case 3: return .alias
+        
+        default: throw UniffiInternalError.unexpectedEnumCase
+        }
+    }
+
+    public static func write(_ value: MatchKind, into buf: inout [UInt8]) {
+        switch value {
+        
+        
+        case .body:
+            writeInt(&buf, Int32(1))
+        
+        
+        case .fuzzy:
+            writeInt(&buf, Int32(2))
+        
+        
+        case .alias:
+            writeInt(&buf, Int32(3))
+        
+        }
+    }
+}
+
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
+public func FfiConverterTypeMatchKind_lift(_ buf: RustBuffer) throws -> MatchKind {
+    return try FfiConverterTypeMatchKind.lift(buf)
+}
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
+public func FfiConverterTypeMatchKind_lower(_ value: MatchKind) -> RustBuffer {
+    return FfiConverterTypeMatchKind.lower(value)
+}
+
+
+
+/**
  * Failures of the `Notifications` seam.
  */
 public 
@@ -30313,6 +30959,89 @@ public func FfiConverterTypeRecoveryError_lift(_ buf: RustBuffer) throws -> Reco
 public func FfiConverterTypeRecoveryError_lower(_ value: RecoveryError) -> RustBuffer {
     return FfiConverterTypeRecoveryError.lower(value)
 }
+
+
+/**
+ * One kind of search result, as the scope picker names them.
+ */
+
+public enum SearchType: Equatable, Hashable {
+    
+    case note
+    case journal
+    case task
+    case inbox
+
+
+
+
+
+}
+
+#if compiler(>=6)
+extension SearchType: Sendable {}
+#endif
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
+public struct FfiConverterTypeSearchType: FfiConverterRustBuffer {
+    typealias SwiftType = SearchType
+
+    public static func read(from buf: inout (data: Data, offset: Data.Index)) throws -> SearchType {
+        let variant: Int32 = try readInt(&buf)
+        switch variant {
+        
+        case 1: return .note
+        
+        case 2: return .journal
+        
+        case 3: return .task
+        
+        case 4: return .inbox
+        
+        default: throw UniffiInternalError.unexpectedEnumCase
+        }
+    }
+
+    public static func write(_ value: SearchType, into buf: inout [UInt8]) {
+        switch value {
+        
+        
+        case .note:
+            writeInt(&buf, Int32(1))
+        
+        
+        case .journal:
+            writeInt(&buf, Int32(2))
+        
+        
+        case .task:
+            writeInt(&buf, Int32(3))
+        
+        
+        case .inbox:
+            writeInt(&buf, Int32(4))
+        
+        }
+    }
+}
+
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
+public func FfiConverterTypeSearchType_lift(_ buf: RustBuffer) throws -> SearchType {
+    return try FfiConverterTypeSearchType.lift(buf)
+}
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
+public func FfiConverterTypeSearchType_lower(_ value: SearchType) -> RustBuffer {
+    return FfiConverterTypeSearchType.lower(value)
+}
+
 
 
 /**
@@ -31759,6 +32488,30 @@ fileprivate struct FfiConverterOptionTypeKeyMaterial: FfiConverterRustBuffer {
 #if swift(>=5.8)
 @_documentation(visibility: private)
 #endif
+fileprivate struct FfiConverterOptionTypeModifiedRange: FfiConverterRustBuffer {
+    typealias SwiftType = ModifiedRange?
+
+    public static func write(_ value: SwiftType, into buf: inout [UInt8]) {
+        guard let value = value else {
+            writeInt(&buf, Int8(0))
+            return
+        }
+        writeInt(&buf, Int8(1))
+        FfiConverterTypeModifiedRange.write(value, into: &buf)
+    }
+
+    public static func read(from buf: inout (data: Data, offset: Data.Index)) throws -> SwiftType {
+        switch try readInt(&buf) as Int8 {
+        case 0: return nil
+        case 1: return try FfiConverterTypeModifiedRange.read(from: &buf)
+        default: throw UniffiInternalError.unexpectedOptionalTag
+        }
+    }
+}
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
 fileprivate struct FfiConverterOptionTypeNoteDetail: FfiConverterRustBuffer {
     typealias SwiftType = NoteDetail?
 
@@ -31895,6 +32648,30 @@ fileprivate struct FfiConverterOptionTypeRepeatRule: FfiConverterRustBuffer {
         switch try readInt(&buf) as Int8 {
         case 0: return nil
         case 1: return try FfiConverterTypeRepeatRule.read(from: &buf)
+        default: throw UniffiInternalError.unexpectedOptionalTag
+        }
+    }
+}
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
+fileprivate struct FfiConverterOptionTypeSearchFilter: FfiConverterRustBuffer {
+    typealias SwiftType = SearchFilter?
+
+    public static func write(_ value: SwiftType, into buf: inout [UInt8]) {
+        guard let value = value else {
+            writeInt(&buf, Int8(0))
+            return
+        }
+        writeInt(&buf, Int8(1))
+        FfiConverterTypeSearchFilter.write(value, into: &buf)
+    }
+
+    public static func read(from buf: inout (data: Data, offset: Data.Index)) throws -> SwiftType {
+        switch try readInt(&buf) as Int8 {
+        case 0: return nil
+        case 1: return try FfiConverterTypeSearchFilter.read(from: &buf)
         default: throw UniffiInternalError.unexpectedOptionalTag
         }
     }
@@ -33493,6 +34270,31 @@ fileprivate struct FfiConverterSequenceTypeSavedFilterItem: FfiConverterRustBuff
 #if swift(>=5.8)
 @_documentation(visibility: private)
 #endif
+fileprivate struct FfiConverterSequenceTypeSearchRecent: FfiConverterRustBuffer {
+    typealias SwiftType = [SearchRecent]
+
+    public static func write(_ value: [SearchRecent], into buf: inout [UInt8]) {
+        let len = Int32(value.count)
+        writeInt(&buf, len)
+        for item in value {
+            FfiConverterTypeSearchRecent.write(item, into: &buf)
+        }
+    }
+
+    public static func read(from buf: inout (data: Data, offset: Data.Index)) throws -> [SearchRecent] {
+        let len: Int32 = try readInt(&buf)
+        var seq = [SearchRecent]()
+        seq.reserveCapacity(Int(len))
+        for _ in 0 ..< len {
+            seq.append(try FfiConverterTypeSearchRecent.read(from: &buf))
+        }
+        return seq
+    }
+}
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
 fileprivate struct FfiConverterSequenceTypeSearchResult: FfiConverterRustBuffer {
     typealias SwiftType = [SearchResult]
 
@@ -33510,6 +34312,31 @@ fileprivate struct FfiConverterSequenceTypeSearchResult: FfiConverterRustBuffer 
         seq.reserveCapacity(Int(len))
         for _ in 0 ..< len {
             seq.append(try FfiConverterTypeSearchResult.read(from: &buf))
+        }
+        return seq
+    }
+}
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
+fileprivate struct FfiConverterSequenceTypeSnippetSegment: FfiConverterRustBuffer {
+    typealias SwiftType = [SnippetSegment]
+
+    public static func write(_ value: [SnippetSegment], into buf: inout [UInt8]) {
+        let len = Int32(value.count)
+        writeInt(&buf, len)
+        for item in value {
+            FfiConverterTypeSnippetSegment.write(item, into: &buf)
+        }
+    }
+
+    public static func read(from buf: inout (data: Data, offset: Data.Index)) throws -> [SnippetSegment] {
+        let len: Int32 = try readInt(&buf)
+        var seq = [SnippetSegment]()
+        seq.reserveCapacity(Int(len))
+        for _ in 0 ..< len {
+            seq.append(try FfiConverterTypeSnippetSegment.read(from: &buf))
         }
         return seq
     }
@@ -33985,6 +34812,31 @@ fileprivate struct FfiConverterSequenceTypeWikiLinkCandidate: FfiConverterRustBu
         seq.reserveCapacity(Int(len))
         for _ in 0 ..< len {
             seq.append(try FfiConverterTypeWikiLinkCandidate.read(from: &buf))
+        }
+        return seq
+    }
+}
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
+fileprivate struct FfiConverterSequenceTypeSearchType: FfiConverterRustBuffer {
+    typealias SwiftType = [SearchType]
+
+    public static func write(_ value: [SearchType], into buf: inout [UInt8]) {
+        let len = Int32(value.count)
+        writeInt(&buf, len)
+        for item in value {
+            FfiConverterTypeSearchType.write(item, into: &buf)
+        }
+    }
+
+    public static func read(from buf: inout (data: Data, offset: Data.Index)) throws -> [SearchType] {
+        let len: Int32 = try readInt(&buf)
+        var seq = [SearchType]()
+        seq.reserveCapacity(Int(len))
+        for _ in 0 ..< len {
+            seq.append(try FfiConverterTypeSearchType.read(from: &buf))
         }
         return seq
     }
@@ -35481,16 +36333,22 @@ private let initializationResult: InitializationResult = {
     if (uniffi_memry_core_checksum_method_search_links_to() != 25358) {
         return InitializationResult.apiChecksumMismatch
     }
-    if (uniffi_memry_core_checksum_method_search_notes() != 18500) {
-        return InitializationResult.apiChecksumMismatch
-    }
     if (uniffi_memry_core_checksum_method_search_reindex() != 12616) {
         return InitializationResult.apiChecksumMismatch
     }
-    if (uniffi_memry_core_checksum_method_search_tasks() != 18334) {
+    if (uniffi_memry_core_checksum_method_search_search() != 47560) {
         return InitializationResult.apiChecksumMismatch
     }
     if (uniffi_memry_core_checksum_method_search_unlinked_mentions() != 24332) {
+        return InitializationResult.apiChecksumMismatch
+    }
+    if (uniffi_memry_core_checksum_method_searchrecents_clear() != 45558) {
+        return InitializationResult.apiChecksumMismatch
+    }
+    if (uniffi_memry_core_checksum_method_searchrecents_list() != 46811) {
+        return InitializationResult.apiChecksumMismatch
+    }
+    if (uniffi_memry_core_checksum_method_searchrecents_record() != 39039) {
         return InitializationResult.apiChecksumMismatch
     }
     if (uniffi_memry_core_checksum_method_settings_clear() != 25310) {
@@ -35896,6 +36754,9 @@ private let initializationResult: InitializationResult = {
         return InitializationResult.apiChecksumMismatch
     }
     if (uniffi_memry_core_checksum_method_vault_search() != 52313) {
+        return InitializationResult.apiChecksumMismatch
+    }
+    if (uniffi_memry_core_checksum_method_vault_search_recents() != 42539) {
         return InitializationResult.apiChecksumMismatch
     }
     if (uniffi_memry_core_checksum_method_vault_seed_unsynced() != 58536) {
