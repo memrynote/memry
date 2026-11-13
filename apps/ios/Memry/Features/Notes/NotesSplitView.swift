@@ -17,6 +17,11 @@ import SwiftUI
 // sidebar open): the list and the note, with the tree a tap away. Set on the width this view gets, never the device, and again only
 // when that width crosses the line, so a column the user shows or hides stays
 // as they left it.
+//
+// **The note inspector (#4347, D9).** It shows only when this width holds the
+// note column and the rail. Adding the list would push the note under the
+// reading measure on every iPad, so while it is open the note stands alone,
+// and the list comes back when it closes.
 
 struct NotesSplitView: View {
     let model: VaultBrowseViewModel
@@ -30,6 +35,9 @@ struct NotesSplitView: View {
     /// the page sidebar (about 1090pt) stay below it.
     private static let threeColumnWidth: CGFloat = 1300
     @State private var expanded: Set<String> = []
+    @State private var inspectorFits = false
+    @AppStorage(NoteInspectorLayout.openKey) private var inspectorOpen = false
+    @Environment(\.dynamicTypeSize) private var typeSize
     @State private var selectedFolder: String?
     private let notesLinks = NotesLinks.shared
     @Environment(\.requestVaultSync) private var requestVaultSync
@@ -48,13 +56,18 @@ struct NotesSplitView: View {
         .onGeometryChange(for: Bool.self) { $0.size.width >= Self.threeColumnWidth } action: {
             holdsThreeColumns = $0
         }
+        .onGeometryChange(for: Bool.self) { $0.size.width >= NoteInspectorLayout.minimumWidth } action: {
+            inspectorFits = $0
+        }
         // Once the layout settles. While the page sidebar slides in, the
         // split view writes its own choice (all three columns) over the
         // binding, about 70ms after the width changes.
         .task(id: holdsThreeColumns) {
             guard (try? await Task.sleep(for: .milliseconds(400))) != nil else { return }
-            columns = holdsThreeColumns ? .all : .doubleColumn
+            columns = widthColumns
         }
+        .onChange(of: inspectorShown) { columns = widthColumns }
+        .environment(\.noteInspectorFits, railFits)
         .environment(router)
         // A search hit or a capture's "View": the note in the detail column,
         // its row selected in the list.
@@ -74,6 +87,17 @@ struct NotesSplitView: View {
         }
         .onAppear { Task { await model.refresh() } }
         .writeFailureAlert(model)
+    }
+
+    /// The inspector fits beside the note: Journal's rail rule, accessibility
+    /// text sizes keep the page's own sections.
+    private var railFits: Bool { inspectorFits && !typeSize.isAccessibilitySize }
+
+    private var inspectorShown: Bool { railFits && inspectorOpen && router.current != nil }
+
+    private var widthColumns: NavigationSplitViewVisibility {
+        if inspectorShown { return .detailOnly }
+        return holdsThreeColumns ? .all : .doubleColumn
     }
 
     private func open(_ id: String) { router.select(NoteRoute(id: id)) }
@@ -183,6 +207,7 @@ private struct NotesDetailColumn: View {
             }
             .navigationDestination(for: NoteRoute.self) { reader($0) }
         }
+        .modifier(NoteInspectorColumn(noteId: router.current?.id))
         // Every write in the note asks for a sync pass. The list stays on
         // screen beside it, so it re-reads too: a new title or a move shows
         // in its row at once, where the phone stack re-reads on Back.

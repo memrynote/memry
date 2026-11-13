@@ -169,7 +169,106 @@ final class NotesSplitUITests: XCTestCase {
         deleteNotes([title, other])
     }
 
+    /// #4347: the inspector's outline scrolls the note to a heading.
+    func testAnOutlineEntryScrollsTheNote() throws {
+        try openNotes()
+        let title = "[agent] \(run) outline"
+        makeNote(title).tap()
+        app.typeText("# \(run) top\n")
+        // A line at a time: a long burst outruns the editor's Return on a
+        // busy simulator and merges lines.
+        for line in 1...40 {
+            app.typeText("Line \(line)\n")
+            let typed = app.textViews.matching(NSPredicate(
+                format: "identifier BEGINSWITH 'note.block.' AND value == %@", "Line \(line)"
+            )).firstMatch
+            XCTAssertTrue(typed.waitForExistence(timeout: 10), "line \(line) did not get its own block")
+        }
+        app.typeText("## \(run) far")
+        try showInspector()
+
+        let top = heading("\(run) top")
+        let far = heading("\(run) far")
+        outlineEntry("\(run) top").tap()
+        XCTAssertTrue(top.wait(for: \.isHittable, toEqual: true, timeout: 5), "the outline did not scroll to the top heading")
+        XCTAssertFalse(far.isHittable, "the note is too short to prove a scroll")
+        attach("inspector-outline-top")
+        outlineEntry("\(run) far").tap()
+        XCTAssertTrue(far.wait(for: \.isHittable, toEqual: true, timeout: 5), "the outline did not scroll to the far heading")
+        attach("inspector-outline-far")
+
+        hideInspector()
+        attach("inspector-closed-landscape")
+        XCUIDevice.shared.orientation = .portrait
+        XCTAssertTrue(page(title).waitForExistence(timeout: 10))
+        XCTAssertFalse(inspectorToggle.exists, "13\" portrait cannot hold the note column and the rail")
+        attach("inspector-hidden-portrait")
+        XCUIDevice.shared.orientation = .landscapeLeft
+        deleteNotes([title])
+    }
+
+    /// #4347: a backlink in the inspector opens its note in the detail column.
+    func testABacklinkInTheInspectorOpensInTheDetailColumn() throws {
+        try openNotes()
+        let target = "[agent] \(run) linked"
+        let source = "[agent] \(run) linking"
+        makeNote(target)
+        makeNote(source).tap()
+        app.typeText("[[\(run) linked")
+        let pick = app.buttons.matching(NSPredicate(format: "label BEGINSWITH %@", target)).firstMatch
+        XCTAssertTrue(pick.waitForExistence(timeout: 10), "the [[ menu did not offer the note")
+        pick.tap()
+        row(target).tap()
+        XCTAssertTrue(page(target).waitForExistence(timeout: 10))
+        try showInspector()
+
+        let backlink = app.buttons.matching(NSPredicate(
+            format: "identifier BEGINSWITH 'note.backlink.' AND label CONTAINS %@", source
+        )).firstMatch
+        XCTAssertTrue(backlink.waitForExistence(timeout: 15), "the inspector lists no backlink from \(source)")
+        attach("inspector-backlinks")
+        backlink.tap()
+        XCTAssertTrue(page(source).waitForExistence(timeout: 10), "the backlink did not open \(source)")
+        XCTAssertTrue(
+            app.descendants(matching: .any)["note.inspector"].waitForExistence(timeout: 5),
+            "the opened note has no inspector"
+        )
+        attach("inspector-backlink-opened")
+
+        hideInspector()
+        deleteNotes([source, target])
+    }
+
     // MARK: Helpers
+
+    private var inspectorToggle: XCUIElement { app.buttons["note.inspector.toggle"].firstMatch }
+
+    /// Opens the note inspector; skips where the window cannot hold it.
+    private func showInspector() throws {
+        guard inspectorToggle.waitForExistence(timeout: 5) else {
+            attach("inspector-unavailable")
+            throw XCTSkip("The window cannot hold the inspector: run on a 13\" iPad in landscape.")
+        }
+        let rail = app.descendants(matching: .any)["note.inspector"]
+        if !rail.exists { inspectorToggle.tap() }
+        XCTAssertTrue(rail.waitForExistence(timeout: 5), "the inspector did not open")
+    }
+
+    /// Closes the inspector, so the list comes back and the next run starts
+    /// from the default.
+    private func hideInspector() {
+        if inspectorToggle.waitForExistence(timeout: 3), inspectorToggle.label == "Hide inspector" { inspectorToggle.tap() }
+        XCTAssertTrue(app.buttons["notes.addButton"].firstMatch.waitForExistence(timeout: 10), "the list did not come back")
+    }
+
+    private func outlineEntry(_ title: String) -> XCUIElement {
+        app.buttons.matching(NSPredicate(format: "identifier BEGINSWITH 'note.outline.' AND label CONTAINS %@", title)).firstMatch
+    }
+
+    /// A heading block in the note body.
+    private func heading(_ text: String) -> XCUIElement {
+        app.textViews.matching(NSPredicate(format: "identifier BEGINSWITH 'note.block.' AND value CONTAINS %@", text)).firstMatch
+    }
 
     /// Whether the folder tree has a column on screen. Its root row's label
     /// and icon share the identifier, so any hittable match counts.
@@ -265,6 +364,8 @@ final class NotesSplitUITests: XCTestCase {
         }
         XCTAssertTrue(notes.waitForExistence(timeout: 5), "the sidebar did not show")
         notes.tap()
+        // An earlier run may have left the inspector open, which hides the list.
+        hideInspector()
         XCTAssertTrue(app.buttons["notes.addButton"].waitForExistence(timeout: 10))
     }
 }

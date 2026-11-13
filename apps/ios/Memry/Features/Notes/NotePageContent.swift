@@ -39,14 +39,14 @@ struct NotePageContent<EmptyBody: View, AfterBacklinks: View>: View {
 
     /// The keyboard toolbar's paperclip source being shown (N214's upload path).
     @State private var attaching: EditorAttachmentSource?
-    /// The quiet row's `+ Name` asked the names line for a field.
-    @State private var addingName = false
     /// The body's tags as last seen. `nil` until the note is first drawn:
     /// opening a note seeds it and writes nothing (desktop's #1454).
     @State private var inlineTags: (noteId: String, tags: [String])?
     @Environment(\.requestVaultSync) private var requestVaultSync
     @Environment(\.whiteboards) private var whiteboards
-    @Environment(\.vaultProjects) private var vaultProjects
+    /// The note inspector shows the properties, review and backlinks, so the
+    /// page leaves them out (#4347).
+    @Environment(\.noteInspectorShown) private var inspectorShown
 
     /// Opens a wiki link's note, for the read view and the editor alike.
     /// Resolved on the tap, then pushed onto the stack the browse list pushes
@@ -108,34 +108,8 @@ struct NotePageContent<EmptyBody: View, AfterBacklinks: View>: View {
         // them and where a reader looks for what a note *is* before reading
         // what it says. Absent until the read answers, and absent again when
         // there is nothing.
-        if let metadata = model.metadata {
-            NoteNamesLine(
-                names: metadata.aliases,
-                write: metadataModel.canEdit
-                    ? { names in
-                        Task {
-                            await metadataModel.setAliases(names)
-                            await model.reload()
-                        }
-                    } : nil,
-                adding: $addingName
-            )
-            if metadataModel.canEdit {
-                NoteMetadataEditors(
-                    metadata: metadata,
-                    model: metadataModel,
-                    reload: { await model.reload() },
-                    noteTitle: { id in model.vaultNotes.first { $0.id == id }?.title },
-                    noteIcon: { id in ProjectIconValue.emoji(model.vaultNotes.first { $0.id == id }?.emoji) },
-                    tagColors: model.tagColors,
-                    tagSuggestions: model.vaultTagNames,
-                    relationCandidates: model.vaultNotes,
-                    projects: vaultProjects,
-                    addName: metadata.aliases.isEmpty ? { addingName = true } : nil
-                )
-            } else {
-                NoteMetaView(metadata: metadata)
-            }
+        if let metadata = model.metadata, !inspectorShown {
+            NotePropertiesBlock(model: model, metadata: metadata, metadataModel: metadataModel)
         }
         if model.blocks.isEmpty {
             // No blocks to draw. Which of the three reasons it is — never
@@ -206,14 +180,16 @@ struct NotePageContent<EmptyBody: View, AfterBacklinks: View>: View {
                 .accessibilityHidden(true)
         }
         // Read only (N604): §12.5.1 forbids writing them.
-        ReviewCommentsSection(comments: model.comments)
+        ReviewCommentsSection(comments: inspectorShown ? [] : model.comments)
             // On a view that is always present, so the first block typed
             // into an empty note is seen too.
             .onChange(of: model.blocks, initial: true) { syncInlineTags() }
         // Under the body, where desktop puts it and where a reader looks
         // after finishing the note (N800).
         if let open {
-            BacklinksSection(model: backlinks, open: open)
+            if !inspectorShown {
+                BacklinksSection(model: backlinks, open: open)
+            }
             if let unlinkedMentions {
                 UnlinkedMentionsSection(
                     model: unlinkedMentions, targetTitle: detail.summary.title, open: open
@@ -240,6 +216,47 @@ struct NotePageContent<EmptyBody: View, AfterBacklinks: View>: View {
         Task {
             await metadataModel.setTags(next)
             await model.reload()
+        }
+    }
+}
+
+/// A note's other names, tags and properties: under the title on the page,
+/// or in the note inspector while it is shown (#4347).
+struct NotePropertiesBlock: View {
+    let model: NoteReadViewModel
+    let metadata: NoteMetadata
+    let metadataModel: NoteMetadataViewModel
+    /// The quiet row's `+ Name` asked the names line for a field.
+    @State private var addingName = false
+    @Environment(\.vaultProjects) private var vaultProjects
+
+    var body: some View {
+        NoteNamesLine(
+            names: metadata.aliases,
+            write: metadataModel.canEdit
+                ? { names in
+                    Task {
+                        await metadataModel.setAliases(names)
+                        await model.reload()
+                    }
+                } : nil,
+            adding: $addingName
+        )
+        if metadataModel.canEdit {
+            NoteMetadataEditors(
+                metadata: metadata,
+                model: metadataModel,
+                reload: { await model.reload() },
+                noteTitle: { id in model.vaultNotes.first { $0.id == id }?.title },
+                noteIcon: { id in ProjectIconValue.emoji(model.vaultNotes.first { $0.id == id }?.emoji) },
+                tagColors: model.tagColors,
+                tagSuggestions: model.vaultTagNames,
+                relationCandidates: model.vaultNotes,
+                projects: vaultProjects,
+                addName: metadata.aliases.isEmpty ? { addingName = true } : nil
+            )
+        } else {
+            NoteMetaView(metadata: metadata)
         }
     }
 }
