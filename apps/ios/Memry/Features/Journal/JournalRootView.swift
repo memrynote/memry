@@ -44,7 +44,7 @@ struct JournalTabContent: View {
                                     hint: QuickCaptureCopy.addToJournalHint,
                                     identifier: "journal.addButton"
                                 ) { capturing = true }
-                                .pickerPopover(isPresented: $capturing, size: PickerPopover.short) {
+                                .pickerPopover(isPresented: $capturing, size: PickerSize.short) {
                                     if let capture {
                                         QuickCaptureSheet(kinds: [.journal], capture: capture) { receipt in
                                             router.openDay(receipt.id)

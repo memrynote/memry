@@ -44,7 +44,7 @@ struct SubtaskBulkMenu: View {
         .foregroundStyle(Tokens.Text.secondary.color)
         .accessibilityLabel(TasksCopy.subtaskBulkMenu)
         .accessibilityIdentifier("tasks.subtasks.bulkMenu")
-        .pickerPopover(isPresented: $isSettingDue, size: PickerPopover.tall) {
+        .pickerPopover(isPresented: $isSettingDue, size: PickerSize.tall) {
             SubtaskBulkDueSheet(parent: parent, completedCount: completedCount, store: store)
         }
         .pickerPopover(isPresented: $isSettingPriority) {

@@ -50,7 +50,7 @@ private struct TaskSelectionDateItem: View {
             isPickingDate = true
         }
         .disabled(selection.isEmpty)
-        .pickerPopover(isPresented: $isPickingDate, size: PickerPopover.tall) {
+        .pickerPopover(isPresented: $isPickingDate, size: PickerSize.tall) {
             TaskDateSheet(
                 title: TasksCopy.setDueDateFor(selection.count),
                 date: nil,
