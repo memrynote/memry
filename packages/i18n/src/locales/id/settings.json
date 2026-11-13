@@ -1411,6 +1411,7 @@
       "notConnected": "Tidak terhubung",
       "test": "Uji",
       "connected": "Terhubung! Server berjalan pada port {port}",
+      "connectedProvider": "Terhubung ke {provider}",
       "connectFailed": "Gagal terhubung",
       "testFailed": "Uji koneksi gagal",
       "updateFailed": "Gagal memperbarui pengaturan"

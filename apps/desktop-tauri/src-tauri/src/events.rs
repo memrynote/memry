@@ -2,6 +2,7 @@
 //! `<Domain><Noun><Verb>Event` (`CalendarChangedEvent`, `SyncStatusChangedEvent`). Domain steps
 //! add their events here and list them in `registry.rs`; none calls `emit` directly.
 
+use memry_desktop::ai::settings::InlineAiSettings;
 use memry_desktop::journal::JournalEntryView;
 use memry_desktop::notes::index::{IndexProgress, LinkChanges};
 use memry_desktop::notes::view::NoteListItemView;
@@ -468,6 +469,14 @@ pub struct VaultIndexRecoveredEvent {
 pub struct SettingsChangedEvent {
     pub key: String,
     pub fields: Vec<String>,
+}
+
+/// The inline AI settings were written (replaces Electron's `ai-inline:server-ready` as the
+/// settings refresh). The key is masked.
+#[derive(Debug, Clone, Serialize, serde::Deserialize, specta::Type, tauri_specta::Event)]
+#[serde(rename_all = "camelCase")]
+pub struct AiInlineSettingsChangedEvent {
+    pub settings: InlineAiSettings,
 }
 
 /// The UI language changed (`locale:changed`).

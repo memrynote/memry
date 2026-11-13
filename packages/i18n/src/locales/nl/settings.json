@@ -1411,6 +1411,7 @@
       "notConnected": "Niet verbonden",
       "test": "Testen",
       "connected": "Verbonden! Server draait op poort {port}",
+      "connectedProvider": "Verbonden met {provider}",
       "connectFailed": "Kan geen verbinding maken",
       "testFailed": "Verbindingstest mislukt",
       "updateFailed": "Kan de instelling niet bijwerken"

@@ -5,6 +5,7 @@ use std::path::{Path, PathBuf};
 use std::sync::mpsc::Receiver;
 use std::sync::{Arc, Mutex, OnceLock, PoisonError};
 
+use memry_desktop::ai::settings::InlineAiStore;
 use memry_desktop::attachments::Uploads;
 use memry_desktop::editor::{EditorHost, HostEvent};
 use memry_desktop::fold::service::FoldService;
@@ -89,8 +90,11 @@ pub fn asker(app: &AppHandle<Wry>) -> impl Asker + use<> {
 }
 
 /// Seeds a vault's settings from its `config.json` preferences when it opens. A failure is
-/// logged and never blocks the open: the settings read as defaults.
+/// logged and never blocks the open: the settings read as defaults. The inline AI key read for
+/// the vault is dropped with its close.
 fn register_settings_hook(app: &AppHandle<Wry>, session: &Session) {
+    let inline_ai = app.state::<Arc<InlineAiStore>>().inner().clone();
+    session.on_close("ai-inline", Arc::new(move |_| inline_ai.forget()));
     let settings = app.state::<SettingsService>().inner().clone();
     session.on_open(
         "settings",

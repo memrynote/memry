@@ -132,8 +132,8 @@ fn a_locked_note_or_day_keeps_its_tags() {
     let (db, _d) = vault("tags-retag-locked");
     let done = db
         .call_blocking(|c| {
-            set(c, TargetKind::Note, "n1", true, NOW)?;
-            set(c, TargetKind::Note, "j1", true, NOW)?;
+            set(c, TargetKind::Note, "n1", true, "device-a", NOW)?;
+            set(c, TargetKind::Note, "j1", true, "device-a", NOW)?;
             Ok([
                 retag(c, "n1", "job", Some("Work"), "phone", NOW + 1)?,
                 retag(c, "j1", "JOB", None, "phone", NOW + 1)?,

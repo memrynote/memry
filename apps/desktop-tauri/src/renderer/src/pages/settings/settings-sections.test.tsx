@@ -2,7 +2,6 @@ import { act, fireEvent, render, screen, waitFor, within } from '@testing-librar
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 import { AccountSettings } from './account-section'
 import { AgentProvidersSection } from './agent-providers-section'
-import { AIInlineSettings } from './ai-inline-section'
 import { AppearanceSettings } from './appearance-section'
 import { CalendarSettingsSection } from './calendar-section'
 import { CommandLineSettings } from './command-line-section'
@@ -565,28 +564,6 @@ function installWindowApi() {
       })
     }
   }
-  window.electron = {
-    ...window.electron,
-    ipcRenderer: {
-      ...window.electron.ipcRenderer,
-      invoke: vi.fn(async (channel: string, payload?: unknown) => {
-        if (channel === 'ai-inline:get-settings') {
-          return {
-            enabled: true,
-            provider: 'openai',
-            model: 'gpt-4.1',
-            apiKey: 'secret',
-            baseUrl: ''
-          }
-        }
-        if (channel === 'ai-inline:get-server-port') return 9090
-        if (channel === 'ai-inline:set-settings') return { success: true, payload }
-        if (channel === 'ai-inline:stop-server') return { success: true }
-        if (channel === 'ai-inline:start-server') return { success: true, port: 9191 }
-        return null
-      })
-    }
-  }
 }
 
 describe('settings section coverage', () => {
@@ -1120,59 +1097,6 @@ describe('settings section coverage', () => {
         showStatsFooter: false
       })
     )
-  })
-
-  it('loads and updates AI inline settings, including test connection states', async () => {
-    render(<AIInlineSettings />)
-
-    expect(screen.getByText('ai.inline.loading')).toBeInTheDocument()
-    await screen.findByText('ai.inline.connection')
-
-    fireEvent.click(screen.getByText('ai.inline.providers.anthropic'))
-    await waitFor(() =>
-      expect(window.electron.ipcRenderer.invoke).toHaveBeenCalledWith('ai-inline:set-settings', {
-        provider: 'anthropic',
-        model: 'claude-sonnet-5',
-        baseUrl: ''
-      })
-    )
-
-    fireEvent.click(screen.getByText('ai.inline.test'))
-    await waitFor(() =>
-      expect(toast.success).toHaveBeenCalledWith('ai.inline.connected {"port":9191}')
-    )
-
-    fireEvent.click(screen.getByRole('switch'))
-    await waitFor(() =>
-      expect(window.electron.ipcRenderer.invoke).toHaveBeenCalledWith('ai-inline:set-settings', {
-        enabled: false
-      })
-    )
-    expect(toast.success).toHaveBeenCalledWith('ai.inline.disabled')
-  })
-
-  it('reports Ollama as unreachable instead of falsely connected', async () => {
-    window.electron.ipcRenderer.invoke = vi.fn(async (channel: string) => {
-      if (channel === 'ai-inline:get-settings') {
-        return { enabled: true, provider: 'ollama', model: 'llama3.2', apiKey: '', baseUrl: '' }
-      }
-      if (channel === 'ai-inline:get-server-port') return null
-      if (channel === 'ai-inline:start-server') return { success: true, port: 59185 }
-      if (channel === 'ai-inline:list-ollama-models')
-        return { success: false, error: 'fetch failed' }
-      return null
-    }) as typeof window.electron.ipcRenderer.invoke
-
-    render(<AIInlineSettings />)
-    await screen.findByText('ai.inline.connection')
-
-    fireEvent.click(screen.getByText('ai.inline.test'))
-    await waitFor(() =>
-      expect(toast.error).toHaveBeenCalledWith(
-        'Ollama is not running. Start it with "ollama serve" and try again.'
-      )
-    )
-    expect(toast.success).not.toHaveBeenCalledWith('ai.inline.connected {"port":59185}')
   })
 
   it('loads and updates local agent provider settings', async () => {

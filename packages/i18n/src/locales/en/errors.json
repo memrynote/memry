@@ -165,7 +165,8 @@
     "apiKeyMissing": "Add your {provider} API key in Settings → AI to use writing tools.",
     "apiKeyInvalid": "Your {provider} API key was rejected. Check it in Settings → AI.",
     "ollamaUnreachable": "Ollama is not running. Start it with \"ollama serve\", or choose another provider in Settings → AI.",
-    "providerUnreachable": "Could not reach {provider}. Check your internet connection and try again."
+    "providerUnreachable": "Could not reach {provider}. Check your internet connection and try again.",
+    "keychainUnavailable": "memrynote can't reach your system keychain, so the AI API key was not read or saved. Unlock your keyring and try again."
   },
   "auth": {
     "notAuthenticated": "Not authenticated",

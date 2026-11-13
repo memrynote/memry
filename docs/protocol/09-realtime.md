@@ -259,7 +259,7 @@ for both — for 4004 by signing the device out, for 4009 until the application 
 updated (`apps/desktop/src/main/sync/websocket.ts:181-203`, where 4004 clears
 `shouldBeConnected` and 4009 sets `versionRejected`). The Rust core keeps the
 latch on `VaultSync`, which outlives the per-foreground socket the shell mints
-and is dropped on sign-out (`crates/memry-core/src/api/sync/mod.rs:292`,
+and is dropped on sign-out (`crates/memry-core/src/api/sync/mod.rs:298`,
 `crates/memry-core/src/sync/socket_run.rs:128`).
 
 ## 9.10 Reconnect and backoff — Q09.4

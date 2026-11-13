@@ -393,7 +393,7 @@ device never pushed reach `j<D>` (#2984;
 **Drain.** After a pull run's body pass, each owed merge `F -> D` runs
 (`apps/desktop/src/main/sync/engine/crdt-sync-coordinator.ts:459`,
 `apps/desktop/src/main/sync/journal-day-merge.ts:202`; core:
-`crates/memry-core/src/api/sync/pass.rs:134`,
+`crates/memry-core/src/api/sync/pass.rs:157`,
 `crates/memry-core/src/sync/journal_day_merge/mod.rs:114`). The core drains
 only in its steady-state pass; a first sync records owed merges and the next
 pass settles them. The decision is a pure function of five facts

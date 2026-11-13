@@ -1411,6 +1411,7 @@
       "notConnected": "לא מחובר",
       "test": "בדיקה",
       "connected": "החיבור הצליח! השרת פועל ביציאה {port}",
+      "connectedProvider": "מחובר ל-{provider}",
       "connectFailed": "החיבור נכשל",
       "testFailed": "בדיקת החיבור נכשלה",
       "updateFailed": "עדכון ההגדרה נכשל"

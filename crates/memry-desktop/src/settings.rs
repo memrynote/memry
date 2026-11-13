@@ -69,6 +69,19 @@ pub struct SettingsService {
     config: Arc<AppConfig>,
 }
 
+/// Groups that hold a secret and have their own owner: [`crate::ai::settings::GROUP`], whose
+/// `apiKey` may still be plaintext in an older row. The generic reads and writes refuse them.
+const SECRET_GROUPS: &[&str] = &[crate::ai::settings::GROUP];
+
+fn open_group(group: &str) -> Result<(), SettingsError> {
+    if SECRET_GROUPS.contains(&group) {
+        return Err(SettingsError::Invalid(format!(
+            "settings group `{group}` is read and written through its own commands"
+        )));
+    }
+    Ok(())
+}
+
 fn object(value: Value) -> Map<String, Value> {
     match value {
         Value::Object(map) => map,
@@ -100,6 +113,7 @@ impl SettingsService {
         vault: Option<&OpenVault>,
         group: &str,
     ) -> Result<Read, SettingsError> {
+        open_group(group)?;
         let Some(vault) = vault else {
             let defaults = group_defaults(group).ok_or_else(|| {
                 SettingsError::Invalid(format!("settings group `{group}` is not known"))
@@ -124,6 +138,7 @@ impl SettingsService {
         group: &str,
         patch: Map<String, Value>,
     ) -> Result<SettingsChange, SettingsError> {
+        open_group(group)?;
         let vault = vault.ok_or(SettingsError::NoVault)?;
         let settings = self.settings(vault)?;
         let change = settings.set_group(group, patch.clone())?;
@@ -163,7 +178,28 @@ impl SettingsService {
     }
 
     pub fn get_path(&self, vault: &OpenVault, path: &str) -> Result<Option<Value>, SettingsError> {
+        open_group(path.split('.').next().unwrap_or_default())?;
         Ok(self.settings(vault)?.get_path(path)?)
+    }
+
+    /// A [`SECRET_GROUPS`] group as stored, for its owner only.
+    pub(crate) fn read_secret_group(
+        &self,
+        vault: &OpenVault,
+        group: &str,
+    ) -> Result<Map<String, Value>, SettingsError> {
+        Ok(object(self.settings(vault)?.get_group(group)?.value))
+    }
+
+    /// A patch of a [`SECRET_GROUPS`] group, for its owner only.
+    pub(crate) fn write_secret_group(
+        &self,
+        vault: &OpenVault,
+        group: &str,
+        patch: Map<String, Value>,
+    ) -> Result<(), SettingsError> {
+        self.settings(vault)?.set_group(group, patch)?;
+        Ok(())
     }
 
     pub fn get_local(

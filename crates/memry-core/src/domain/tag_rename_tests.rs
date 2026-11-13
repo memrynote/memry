@@ -178,6 +178,7 @@ fn rename_leaves_a_locked_notes_body_alone() {
             crate::domain::vault_locks::TargetKind::Note,
             "n2",
             true,
+            "device-a",
             NOW,
         )?;
         rename(c, "job", "career", "phone", NOW + 1)?;
@@ -448,8 +449,8 @@ fn a_locked_holder_keeps_its_record_unless_its_file_edit_began() {
     db.call_blocking(|c| {
         let plan = holders(c, Vec::new(), "job")?;
         begin(c, &job("job", "career"), plan)?;
-        set(c, TargetKind::Note, "n1", true, NOW)?;
-        set(c, TargetKind::Note, "j1", true, NOW)?;
+        set(c, TargetKind::Note, "n1", true, "device-a", NOW)?;
+        set(c, TargetKind::Note, "j1", true, "device-a", NOW)?;
         start_holder(c, "j1", "b", "a")?;
         assert!(!rename_holder(c, "n1", "phone", NOW + 1)?);
         assert!(rename_holder(c, "j1", "phone", NOW + 1)?);

@@ -350,8 +350,12 @@ fn a_locked_note_or_one_in_a_locked_folder_is_refused_and_keeps_its_file() {
     let plan = id_at(&e, "Plan.md");
     let old = id_at(&e, "Archive/Old.md");
     let locks = e.core().locks();
-    locks.set(TargetKind::Note, &plan, true).unwrap();
-    locks.set(TargetKind::Folder, "Archive", true).unwrap();
+    locks
+        .set(TargetKind::Note, &plan, true, "device-a")
+        .unwrap();
+    locks
+        .set(TargetKind::Folder, "Archive", true, "device-a")
+        .unwrap();
 
     for (id, path) in [(&plan, "Plan.md"), (&old, "Archive/Old.md")] {
         let refused = notes.apply_template(&open, input(id, &template, TemplateMode::Full));

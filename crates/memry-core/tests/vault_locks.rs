@@ -32,13 +32,13 @@ fn count(f: &Fixture, query: &str) -> i64 {
 }
 
 #[test]
-fn a_lock_outlives_a_relaunch_and_an_unlock_keeps_its_row_unsynced() {
+fn a_lock_outlives_a_relaunch_and_an_unlock_keeps_its_row_and_queues_it() {
     let f = fixture();
     let note = f.note();
     let locks = f.vault.locks();
 
     assert_eq!(
-        locks.set(TargetKind::Note, &note, true),
+        locks.set(TargetKind::Note, &note, true, "device-a"),
         Ok(SetOutcome::Created)
     );
     let f = f.relaunch();
@@ -53,23 +53,25 @@ fn a_lock_outlives_a_relaunch_and_an_unlock_keeps_its_row_unsynced() {
     assert_eq!(locks.is_note_locked(&note, None), Ok(true));
 
     assert_eq!(
-        locks.set(TargetKind::Note, &note, false),
+        locks.set(TargetKind::Note, &note, false, "device-a"),
         Ok(SetOutcome::Updated)
     );
     assert_eq!(locks.list(), Ok(LockState::default()));
     assert_eq!(locks.is_note_locked(&note, None), Ok(false));
     let (locked, clock, _, _, deleted_at) = row(&f, &format!("note:{note}")).expect("kept");
-    assert_eq!((locked, clock, deleted_at), (false, None, None));
     assert_eq!(
+        (locked, clock.as_deref(), deleted_at),
+        (false, Some("{\"device-a\":2}"), None)
+    );
+    assert!(
         count(
             &f,
             "SELECT COUNT(*) FROM outbox WHERE item_type = 'vault_lock'"
-        ),
-        0,
-        "Step 16 syncs lock rows; this step queues none"
+        ) > 0,
+        "each change is queued for sync (Step 16)"
     );
     assert_eq!(
-        locks.set(TargetKind::Note, &note, true),
+        locks.set(TargetKind::Note, &note, true, "device-a"),
         Ok(SetOutcome::Updated)
     );
 }
@@ -81,21 +83,23 @@ fn setting_the_state_a_target_already_has_writes_nothing() {
     let locks = f.vault.locks();
 
     assert_eq!(
-        locks.set(TargetKind::Folder, "Never", false),
+        locks.set(TargetKind::Folder, "Never", false, "device-a"),
         Ok(SetOutcome::Unchanged)
     );
     assert_eq!(
-        locks.set(TargetKind::Note, &note, false),
+        locks.set(TargetKind::Note, &note, false, "device-a"),
         Ok(SetOutcome::Unchanged)
     );
     assert_eq!(count(&f, "SELECT COUNT(*) FROM vault_locks"), 0);
 
-    locks.set(TargetKind::Note, &note, true).expect("lock");
+    locks
+        .set(TargetKind::Note, &note, true, "device-a")
+        .expect("lock");
     sql(&f)
         .execute("UPDATE vault_locks SET updated_at = 5", [])
         .expect("mark");
     assert_eq!(
-        locks.set(TargetKind::Note, &note, true),
+        locks.set(TargetKind::Note, &note, true, "device-a"),
         Ok(SetOutcome::Unchanged)
     );
     assert_eq!(row(&f, &format!("note:{note}")).expect("row").3, 5);
@@ -111,7 +115,7 @@ fn a_folder_lock_covers_the_files_under_it_and_nothing_beside_it() {
     let locks = f.vault.locks();
 
     assert_eq!(
-        locks.set(TargetKind::Folder, "/Projects/", true),
+        locks.set(TargetKind::Folder, "/Projects/", true, "device-a"),
         Ok(SetOutcome::Created)
     );
     assert_eq!(locks.list().expect("list").folders, vec!["Projects"]);
@@ -186,7 +190,7 @@ fn a_journal_day_locks_by_its_id() {
     let locks = f.vault.locks();
 
     assert_eq!(
-        locks.set(TargetKind::Note, &day, true),
+        locks.set(TargetKind::Note, &day, true, "device-a"),
         Ok(SetOutcome::Created)
     );
     assert_eq!(locks.is_note_locked(&day, None), Ok(true));
@@ -202,7 +206,7 @@ fn a_missing_note_or_an_empty_folder_is_refused_and_writes_nothing() {
     for target in ["no-such-note", gone.as_str()] {
         assert!(
             matches!(
-                locks.set(TargetKind::Note, target, true),
+                locks.set(TargetKind::Note, target, true, "device-a"),
                 Err(StorageError::NotFound { .. })
             ),
             "{target}"
@@ -211,7 +215,7 @@ fn a_missing_note_or_an_empty_folder_is_refused_and_writes_nothing() {
     for target in ["", "/", "\\"] {
         assert!(
             matches!(
-                locks.set(TargetKind::Folder, target, true),
+                locks.set(TargetKind::Folder, target, true, "device-a"),
                 Err(StorageError::Invalid { .. })
             ),
             "{target:?}"
@@ -240,20 +244,20 @@ fn rows_this_build_cannot_act_on_lock_nothing_and_a_tombstone_locks_again_as_new
     assert_eq!(locks.is_note_locked(&note, None), Ok(false));
     assert_eq!(locks.is_note_locked(&tombstoned, None), Ok(false));
     assert_eq!(
-        locks.set(TargetKind::Note, &tombstoned, false),
+        locks.set(TargetKind::Note, &tombstoned, false, "device-a"),
         Ok(SetOutcome::Unchanged)
     );
 
     assert_eq!(
-        locks.set(TargetKind::Note, &tombstoned, true),
+        locks.set(TargetKind::Note, &tombstoned, true, "device-a"),
         Ok(SetOutcome::Created)
     );
     let (locked, clock, created_at, _, deleted_at) =
         row(&f, &format!("note:{tombstoned}")).expect("row");
     assert_eq!(
         (locked, clock.as_deref(), deleted_at),
-        (true, Some("{\"d\":3}"), None),
-        "the clock stays for sync to tick past the tombstone"
+        (true, Some("{\"d\":3,\"device-a\":1}"), None),
+        "the new clock ticks past the tombstone's"
     );
     assert!(created_at > 1);
     assert_eq!(locks.is_note_locked(&tombstoned, None), Ok(true));

@@ -84,6 +84,25 @@ pub(super) fn pass_gate(vault_id: &str) -> Arc<tokio::sync::Mutex<()>> {
     Arc::clone(gates.entry(vault_id.to_owned()).or_default())
 }
 
+impl VaultSync {
+    /// Gives each lock written before Step 16 its record before anything is
+    /// pulled ([`vault_locks::seed_unsynced`]), so a peer's record of the same
+    /// lock meets this device's and the push carries it. Under the pass gate.
+    /// Desktop only: iOS keeps no locks.
+    pub(super) async fn seed_vault_locks(&self) -> Result<(), SyncError> {
+        #[cfg(feature = "markdown")]
+        {
+            let device = self.session.device_id()?;
+            self.db
+                .call(move |conn| {
+                    crate::domain::vault_locks::seed_unsynced(conn, &device, super::now_ms())
+                })
+                .await?;
+        }
+        Ok(())
+    }
+}
+
 impl From<PushError> for SyncError {
     fn from(error: PushError) -> Self {
         match error {
@@ -107,6 +126,7 @@ impl VaultSync {
     pub async fn sync_now(&self) -> Result<SyncPassSummary, SyncError> {
         let gate = pass_gate(&self.vault_id);
         let _held = gate.lock().await;
+        self.seed_vault_locks().await?;
         let cipher = self.cipher().await?;
         let http = self.session.http();
 

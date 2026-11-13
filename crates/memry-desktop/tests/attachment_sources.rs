@@ -398,7 +398,7 @@ fn fetched_bytes_land_only_in_an_indexed_unlocked_note() {
     v.open
         .vault
         .locks()
-        .set(TargetKind::Note, &v.other, true)
+        .set(TargetKind::Note, &v.other, true, "device-a")
         .unwrap();
     let locked = attachments::save_fetched(&v.open, &v.other, "a.jpg", b"x");
     assert!(matches!(locked, Err(AttachmentError::Locked)), "{locked:?}");

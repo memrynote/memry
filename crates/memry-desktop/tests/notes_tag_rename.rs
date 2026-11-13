@@ -11,6 +11,7 @@ use std::sync::atomic::{AtomicUsize, Ordering};
 use std::sync::{Arc, Mutex};
 
 use crate::index_support::until;
+use memry_core::api::search::Search;
 use memry_core::api::tag_hub::TagHub;
 use memry_core::domain::tag_rename::{Recorded, RenameJob, RenamePlan};
 use memry_core::seams::secure_store::{SecureStore, SecureStoreKey};
@@ -180,6 +181,11 @@ fn a_rename_writes_each_file_and_record_once_and_merges_into_a_name_in_use() {
     for id in [&plan, &merge, &day, &found] {
         measured(&e, id);
     }
+    // The index defines `Career` as Electron's does (#4418): the merge keeps its colour.
+    let search = e.session.current().unwrap().search;
+    let career = |search: &Search| search.tag_colors(vec!["career".into()]).unwrap().remove(0);
+    until("career defined", || career(&search).is_some());
+    let career_color = career(&search);
     let before: Vec<String> = [&plan, &merge, &day]
         .iter()
         .map(|id| e.read(&path_of(&e, id)))
@@ -238,9 +244,9 @@ fn a_rename_writes_each_file_and_record_once_and_merges_into_a_name_in_use() {
         0,
         "the found note's record carries no tag"
     );
-    let search = e.session.current().unwrap().search;
+    // A merge: the name in use keeps its own definition (desktop `renameTagDefinition`).
     let colors = search.tag_colors(vec!["career".into(), "job".into()]);
-    assert_eq!(colors.unwrap(), [Some("#ff0000".to_owned()), None]);
+    assert_eq!(colors.unwrap(), [career_color, None]);
 
     // The watcher reports none of the writes as outside edits.
     std::thread::sleep(QUIET);

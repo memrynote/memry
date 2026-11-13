@@ -1411,6 +1411,7 @@
       "notConnected": "연결되지 않음",
       "test": "테스트",
       "connected": "연결되었습니다! 포트 {port}에서 서버 실행 중",
+      "connectedProvider": "{provider}에 연결됨",
       "connectFailed": "연결하지 못했습니다.",
       "testFailed": "연결 테스트 실패",
       "updateFailed": "설정을 업데이트하지 못했습니다."

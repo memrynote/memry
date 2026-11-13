@@ -15,7 +15,8 @@
 //! outside edit is reverted to the replaced text; and an unlock there has the write make the
 //! file read-only again after the unlock freed it.
 //!
-//! The lock rows reach the other devices with Step 16; nothing is queued here.
+//! The core queues each changed lock as a `vault_lock` record (Step 16), so it reaches the
+//! other devices with the next sync pass.
 
 use memry_core::api::errors::StorageError;
 use memry_core::domain::vault_locks::{LockState, SetOutcome, TargetKind, normalize_folder_path};
@@ -60,9 +61,10 @@ pub fn set(
     locked: bool,
     renamed: impl FnOnce() + Send + 'static,
 ) -> Result<LockSet, NotesError> {
+    let device_id = open.vault.notes_writer(notes.store.clone())?.device_id();
     let rows = notes.tier.rows();
     let session = rows.session_for(&open.vault)?;
-    let set = Locks::of(open).set(&rows, session, kind, target, locked)?;
+    let set = Locks::of(open).set(&rows, session, kind, target, locked, &device_id)?;
     if set.changed && !locked {
         resume_after_unlock(open.clone(), notes.clone(), renamed);
     }
@@ -74,7 +76,8 @@ impl Locks<'_> {
     /// note must be live; a folder locked must be one on disk (`folderExists`), the vault root
     /// aside, and a folder unlocked must name a lock row. A failure to bring the disk in line
     /// after the row is written is logged: the row is the lock, and the next open's reconcile
-    /// finishes it. Under the rows' lane of `session`, which the caller does not hold.
+    /// finishes it. Under the rows' lane of `session`, which the caller does not hold. The row is
+    /// a `vault_lock` record queued for sync under `device_id`'s clock.
     pub(crate) fn set(
         &self,
         rows: &RowOwner,
@@ -82,6 +85,7 @@ impl Locks<'_> {
         kind: TargetKind,
         target: &str,
         locked: bool,
+        device_id: &str,
     ) -> Result<LockSet, NotesError> {
         let _lane = rows.lane_of(session)?;
         let target = match kind {
@@ -93,7 +97,7 @@ impl Locks<'_> {
         if locked {
             self.release_unlocked_notes()?;
         }
-        if store.set(kind, &target, locked)? == SetOutcome::Unchanged {
+        if store.set(kind, &target, locked, device_id)? == SetOutcome::Unchanged {
             return Ok(LockSet {
                 state: store.list()?,
                 changed: false,

@@ -282,8 +282,10 @@ impl From<BodyPullReport> for BodyFetchSummary {
 
 /// The read-only sync over one opened vault.
 ///
-/// Built by [`crate::api::vault::Vault::sync`], which is the only way: a
-/// `VaultSync` over a database nobody opened is a sync into the wrong vault.
+/// Built by [`crate::api::vault::Vault::sync`] or, under another declaration,
+/// [`crate::api::vault::Vault::sync_with_declaration`], which are the only
+/// ways: a `VaultSync` over a database nobody opened is a sync into the wrong
+/// vault.
 #[derive(uniffi::Object)]
 pub struct VaultSync {
     vault_id: String,
@@ -393,6 +395,7 @@ impl VaultSync {
         // feed page may owe a document this run is pulling.
         let gate = pass::pass_gate(&self.vault_id);
         let _held = gate.lock().await;
+        self.seed_vault_locks().await?;
         let cipher = self.cipher().await?;
         let http = self.session.http();
 

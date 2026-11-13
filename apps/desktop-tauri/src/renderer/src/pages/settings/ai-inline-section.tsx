@@ -1,4 +1,4 @@
-import { useState, useCallback, useEffect } from 'react'
+import { useState, useCallback, useEffect, useId } from 'react'
 import { useT } from '@memry/i18n/renderer'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
@@ -13,11 +13,10 @@ import {
 import { Loader2, Eye, EyeOff } from '@/lib/icons'
 import { toast } from 'sonner'
 import { extractErrorMessage } from '@/lib/ipc-error'
-import { friendlyError } from '@/hooks/use-ai-inline'
 import { createLogger } from '@/lib/logger'
 import { cn } from '@/lib/utils'
-import type { AIInlineSettings } from '@memry/contracts/ai-inline-channels'
 import { AI_INLINE_SETTINGS_DEFAULTS } from '@memry/contracts/ai-inline-channels'
+import { commands, type InlineAiSettings as AIInlineSettings } from '../../../../generated/bindings'
 import {
   SettingsGroup,
   SettingRow,
@@ -43,72 +42,68 @@ const PROVIDER_OPTIONS = [
   { value: 'ollama', labelKey: PROVIDER_LABEL_KEYS.ollama },
   { value: 'openai', labelKey: PROVIDER_LABEL_KEYS.openai },
   { value: 'anthropic', labelKey: PROVIDER_LABEL_KEYS.anthropic },
-  { value: 'google', labelKey: PROVIDER_LABEL_KEYS.google }
+  { value: 'google', labelKey: PROVIDER_LABEL_KEYS.google },
+  { value: 'custom', labelKey: PROVIDER_LABEL_KEYS.custom }
 ] as const
 
 const MODEL_PRESETS: Record<string, string[]> = {
-  ollama: ['qwen2.5:7b', 'llama3.2', 'llama3.1', 'mistral', 'gemma2', 'phi3'],
-  openai: ['gpt-4.1', 'gpt-4.1-mini', 'gpt-4o', 'gpt-4o-mini', 'o4-mini'],
-  anthropic: ['claude-sonnet-5', 'claude-opus-5', 'claude-haiku-4-5'],
-  google: [
-    'gemini-3.8-flash',
-    'gemini-3.5-flash',
-    'gemini-3.1-pro-preview',
-    'gemini-2.5-flash',
-    'gemini-2.5-pro'
-  ]
+  ollama: ['qwen3.5', 'gemma4', 'gpt-oss', 'qwen3', 'llama3.2'],
+  openai: ['gpt-6.1-sol', 'gpt-6-astra', 'gpt-6-luna'],
+  anthropic: ['claude-sonnet-5-5', 'claude-opus-5-5', 'claude-haiku-5-5', 'claude-fable-5-1'],
+  google: ['gemini-3.8-flash', 'gemini-4-argon', 'gemini-3.6-flash', 'gemini-3.5-flash-lite'],
+  custom: []
 }
 
 const BASE_URL_DEFAULTS: Record<string, string> = {
   ollama: 'http://localhost:11434/v1',
   openai: '',
   anthropic: '',
-  google: ''
+  google: '',
+  custom: ''
 }
 
 /**
- * Live Ollama catalogue for the selected endpoint, or null while the provider
- * is something else (or Ollama is unreachable, which is a normal state and
- * leaves the caller on its presets).
+ * Live model catalogue of the Ollama or custom endpoint, or null while the
+ * provider is something else (or the endpoint has no list, which is a normal
+ * state and leaves the caller on its presets). `revision` changes each time
+ * the stored URL or key changes, since the probe reads them in Rust.
  */
-function useOllamaModels(provider: AIInlineSettings['provider'], baseUrl: string): string[] | null {
-  const [models, setModels] = useState<string[] | null>(null)
+function useEndpointModels(
+  provider: AIInlineSettings['provider'],
+  revision: number
+): string[] | null {
+  const key = `${provider}:${revision}`
+  const [listed, setListed] = useState<{ key: string; models: string[] } | null>(null)
 
   useEffect(() => {
-    if (provider !== 'ollama') return undefined
+    if (provider !== 'ollama' && provider !== 'custom') return undefined
     let cancelled = false
     void (async () => {
       try {
-        // oxlint-disable-next-line typescript/no-unsafe-type-assertion -- untyped ipcRenderer.invoke channel; the shape is the main-process handler's return type
-        const res = (await window.electron.ipcRenderer.invoke('ai-inline:list-ollama-models')) as {
-          success: boolean
-          models?: string[]
-        }
+        const models = await commands.aiInlineListModels()
         // The provider or endpoint may have changed while the probe was in
         // flight, in which case this late answer describes the old one.
         if (cancelled) return
-        if (res.success && res.models?.length) setModels(res.models)
+        if (models.length) setListed({ key, models })
       } catch {
-        // unreachable Ollama → keep preset fallback
+        // unreachable endpoint → keep preset fallback
       }
     })()
     return () => {
       cancelled = true
     }
-    // oxlint-disable-next-line react/exhaustive-effect-dependencies -- provider and baseUrl are the re-probe triggers; the probe reads them through the main process
-  }, [provider, baseUrl])
+  }, [provider, key])
 
-  return models
+  return listed?.key === key ? listed.models : null
 }
 
 /** Presets for the provider, with a hand-typed model kept at the top. */
 function modelChoices(
   provider: AIInlineSettings['provider'],
   selectedModel: string,
-  ollamaModels: string[] | null
+  endpointModels: string[] | null
 ): string[] {
-  const presets =
-    provider === 'ollama' ? (ollamaModels ?? MODEL_PRESETS.ollama) : (MODEL_PRESETS[provider] ?? [])
+  const presets = endpointModels ?? MODEL_PRESETS[provider] ?? []
   return selectedModel && !presets.includes(selectedModel) ? [selectedModel, ...presets] : presets
 }
 
@@ -119,56 +114,48 @@ export function AIInlineSettings(): React.JSX.Element {
   const [isLoading, setIsLoading] = useState(true)
   const [isTesting, setIsTesting] = useState(false)
   const [showApiKey, setShowApiKey] = useState(false)
-  const [serverPort, setServerPort] = useState<number | null>(null)
+  const [connected, setConnected] = useState(false)
+  const [endpointRevision, setEndpointRevision] = useState(0)
+  const modelListId = useId()
 
   useEffect(() => {
+    let cancelled = false
     async function load(): Promise<void> {
       try {
-        const [result, port] = await Promise.all([
-          // oxlint-disable-next-line typescript/no-unsafe-type-assertion -- untyped ipcRenderer.invoke channel; the shape is the main-process handler's return type
-          window.electron.ipcRenderer.invoke('ai-inline:get-settings') as Promise<AIInlineSettings>,
-          // oxlint-disable-next-line typescript/no-unsafe-type-assertion -- untyped ipcRenderer.invoke channel; the shape is the main-process handler's return type
-          window.electron.ipcRenderer.invoke('ai-inline:get-server-port') as Promise<number | null>
-        ])
+        const result = await commands.aiInlineGetSettings()
+        if (cancelled) return
         setSettings(result)
-        // A running proxy port does not prove Ollama is reachable; probe it the
-        // same way the Test button does so the status reflects reality on open.
-        if (port && result.enabled && result.provider === 'ollama') {
-          // oxlint-disable-next-line typescript/no-unsafe-type-assertion -- untyped ipcRenderer.invoke channel; the shape is the main-process handler's return type
-          const probe = (await window.electron.ipcRenderer.invoke(
-            'ai-inline:list-ollama-models'
-          )) as { success: boolean }
-          setServerPort(probe.success ? port : null)
-        } else {
-          setServerPort(result.provider === 'ollama' || result.apiKey ? port : null)
+        // A local Ollama is cheap to ask, so the status reflects it on open. A cloud
+        // provider is asked only by the Test button.
+        if (result.enabled && result.provider === 'ollama') {
+          const reachable = await commands.aiInlineListModels().then(
+            () => true,
+            () => false
+          )
+          if (!cancelled) setConnected(reachable)
         }
       } catch (error) {
         log.error('Failed to load AI inline settings:', error)
+        if (!cancelled) toast.error(extractErrorMessage(error, t('ai.inline.updateFailed')))
       } finally {
-        setIsLoading(false)
+        if (!cancelled) setIsLoading(false)
       }
     }
     void load()
-  }, [])
+    return () => {
+      cancelled = true
+    }
+  }, [t])
 
-  const ollamaModels = useOllamaModels(settings.provider, settings.baseUrl)
+  const endpointModels = useEndpointModels(settings.provider, endpointRevision)
 
   const updateSetting = useCallback(
     async (updates: Partial<AIInlineSettings>) => {
       try {
-        // oxlint-disable-next-line typescript/no-unsafe-type-assertion -- untyped ipcRenderer.invoke channel; the shape is the main-process handler's return type
-        const result = (await window.electron.ipcRenderer.invoke(
-          'ai-inline:set-settings',
-          updates
-        )) as {
-          success: boolean
-          error?: string
-        }
-        if (result.success) {
-          setSettings((prev) => ({ ...prev, ...updates }))
-        } else {
-          toast.error(extractErrorMessage(result.error, t('ai.inline.updateFailed')))
-        }
+        // Rust answers with the key masked: the typed key does not stay in renderer state.
+        setSettings(await commands.aiInlineSetSettings(updates))
+        setConnected(false)
+        if ('baseUrl' in updates || 'apiKey' in updates) setEndpointRevision((n) => n + 1)
       } catch (error) {
         toast.error(extractErrorMessage(error, t('ai.inline.updateFailed')))
       }
@@ -196,43 +183,24 @@ export function AIInlineSettings(): React.JSX.Element {
   const handleTestConnection = useCallback(async () => {
     setIsTesting(true)
     try {
-      // No stop-first: startChatServer reuses the running port when settings are
-      // unchanged, so the proxy port stays stable instead of incrementing each test.
-      // oxlint-disable-next-line typescript/no-unsafe-type-assertion -- untyped ipcRenderer.invoke channel; the shape is the main-process handler's return type
-      const startResult = (await window.electron.ipcRenderer.invoke('ai-inline:start-server')) as {
-        success: boolean
-        port?: number
-        error?: string
+      const result = await commands.aiInlineTestConnection()
+      setConnected(result.ok)
+      if (result.ok) {
+        // A custom endpoint is named by its host, the one name the user typed.
+        const provider =
+          settings.provider === 'custom'
+            ? URL.parse(settings.baseUrl)?.host || t(PROVIDER_LABEL_KEYS.custom)
+            : t(PROVIDER_LABEL_KEYS[settings.provider])
+        toast.success(t('ai.inline.connectedProvider', { provider }))
+      } else {
+        toast.error(result.detail ?? t('ai.inline.connectFailed'))
       }
-
-      if (!startResult.success || !startResult.port) {
-        setServerPort(null)
-        toast.error(extractErrorMessage(startResult.error, t('ai.inline.connectFailed')))
-        return
-      }
-
-      // The proxy starts without ever contacting the provider, so a running port does
-      // not prove Ollama is reachable. Probe it for real before showing "connected".
-      if (settings.provider === 'ollama') {
-        // oxlint-disable-next-line typescript/no-unsafe-type-assertion -- untyped ipcRenderer.invoke channel; the shape is the main-process handler's return type
-        const probe = (await window.electron.ipcRenderer.invoke(
-          'ai-inline:list-ollama-models'
-        )) as { success: boolean; error?: string }
-        if (!probe.success) {
-          setServerPort(null)
-          toast.error(friendlyError(probe.error ?? t('ai.inline.connectFailed'), 'ollama'))
-          return
-        }
-      }
-
-      setServerPort(startResult.port)
-      toast.success(t('ai.inline.connected', { port: startResult.port }))
     } catch (error) {
       toast.error(extractErrorMessage(error, t('ai.inline.testFailed')))
     } finally {
       setIsTesting(false)
     }
-  }, [settings.provider, t])
+  }, [settings.provider, settings.baseUrl, t])
 
   if (isLoading) {
     return (
@@ -243,29 +211,28 @@ export function AIInlineSettings(): React.JSX.Element {
     )
   }
 
-  const needsApiKey = settings.provider !== 'ollama'
-  const models = modelChoices(settings.provider, settings.model, ollamaModels)
+  const isCustom = settings.provider === 'custom'
+  const hasUrlRow = settings.provider === 'ollama' || isCustom
+  const needsApiKey = settings.provider !== 'ollama' && !isCustom
+  const models = modelChoices(settings.provider, settings.model, endpointModels)
 
   const connectionControls = (
     <>
-      <span
-        title={serverPort ? t('ai.inline.activePort', { port: serverPort }) : undefined}
-        className="inline-flex w-24 items-center gap-1.5 text-xs/4 text-muted-foreground"
-      >
+      <span className="inline-flex w-24 items-center gap-1.5 text-xs/4 text-muted-foreground">
         <span
           aria-hidden
           className={cn(
             'size-1.5 shrink-0 rounded-full',
-            serverPort ? 'bg-emerald-500' : 'border border-muted-foreground/60'
+            connected ? 'bg-emerald-500' : 'border border-muted-foreground/60'
           )}
         />
         <span className="sr-only">{t('ai.inline.connection')}</span>
-        {serverPort ? t('ai.v2.connected') : t('ai.inline.notConnected')}
+        {connected ? t('ai.v2.connected') : t('ai.inline.notConnected')}
       </span>
       <button
         type="button"
         onClick={() => void handleTestConnection()}
-        disabled={isTesting || (needsApiKey && !settings.apiKey)}
+        disabled={isTesting || (needsApiKey && !settings.apiKey) || (isCustom && !settings.baseUrl)}
         className={QUIET_ACTION}
       >
         {isTesting && <Loader2 className="size-3 animate-spin" />}
@@ -305,26 +272,50 @@ export function AIInlineSettings(): React.JSX.Element {
                 ))}
               </SelectContent>
             </Select>
-            <Select value={settings.model} onValueChange={(model) => void updateSetting({ model })}>
-              <SelectTrigger
-                aria-label={t('ai.inline.model')}
-                className={cn(COMPACT_SELECT, 'font-mono')}
+            {isCustom ? (
+              <>
+                <Input
+                  aria-label={t('ai.inline.model')}
+                  list={modelListId}
+                  value={settings.model}
+                  onChange={(e) => setSettings((prev) => ({ ...prev, model: e.target.value }))}
+                  onBlur={() => void updateSetting({ model: settings.model.trim() })}
+                  placeholder={t('ai.inline.customModelPlaceholder')}
+                  className="h-7 w-52 font-mono text-xs/4"
+                />
+                <datalist id={modelListId}>
+                  {models.map((model) => (
+                    <option key={model} value={model}>
+                      {model}
+                    </option>
+                  ))}
+                </datalist>
+              </>
+            ) : (
+              <Select
+                value={settings.model}
+                onValueChange={(model) => void updateSetting({ model })}
               >
-                <SelectValue placeholder={t('ai.inline.selectModel')} />
-              </SelectTrigger>
-              <SelectContent>
-                {models.map((model) => (
-                  <SelectItem key={model} value={model} className="font-mono">
-                    {model}
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
+                <SelectTrigger
+                  aria-label={t('ai.inline.model')}
+                  className={cn(COMPACT_SELECT, 'font-mono')}
+                >
+                  <SelectValue placeholder={t('ai.inline.selectModel')} />
+                </SelectTrigger>
+                <SelectContent>
+                  {models.map((model) => (
+                    <SelectItem key={model} value={model} className="font-mono">
+                      {model}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            )}
           </div>
         </SettingRow>
       )}
 
-      {settings.enabled && needsApiKey && (
+      {settings.enabled && settings.provider !== 'ollama' && (
         <SettingRow label={t('ai.inline.apiKey')} description={t('ai.inline.apiKeyDescription')}>
           <div className="flex items-center gap-2">
             <Input
@@ -332,9 +323,13 @@ export function AIInlineSettings(): React.JSX.Element {
               value={settings.apiKey}
               onChange={(e) => setSettings((prev) => ({ ...prev, apiKey: e.target.value }))}
               onBlur={() => void updateSetting({ apiKey: settings.apiKey })}
-              placeholder={t('ai.inline.apiKeyPlaceholder', {
-                provider: t(PROVIDER_LABEL_KEYS[settings.provider])
-              })}
+              placeholder={
+                isCustom
+                  ? t('ai.inline.customApiKeyPlaceholder')
+                  : t('ai.inline.apiKeyPlaceholder', {
+                      provider: t(PROVIDER_LABEL_KEYS[settings.provider])
+                    })
+              }
               className="h-7 w-44 font-mono text-xs/4"
             />
             <Button
@@ -346,22 +341,28 @@ export function AIInlineSettings(): React.JSX.Element {
             >
               {showApiKey ? <EyeOff className="w-3.5 h-3.5" /> : <Eye className="w-3.5 h-3.5" />}
             </Button>
-            {connectionControls}
+            {!hasUrlRow && connectionControls}
           </div>
         </SettingRow>
       )}
 
-      {settings.enabled && settings.provider === 'ollama' && (
+      {settings.enabled && hasUrlRow && (
         <SettingRow
-          label={t('ai.inline.ollamaUrl')}
-          description={t('ai.inline.ollamaUrlDescription')}
+          label={isCustom ? t('ai.inline.customUrl') : t('ai.inline.ollamaUrl')}
+          description={
+            isCustom ? t('ai.inline.customUrlDescription') : t('ai.inline.ollamaUrlDescription')
+          }
         >
           <div className="flex items-center gap-2">
             <Input
               value={settings.baseUrl}
               onChange={(e) => setSettings((prev) => ({ ...prev, baseUrl: e.target.value }))}
               onBlur={() => void updateSetting({ baseUrl: settings.baseUrl })}
-              placeholder={tPhaseF('phaseF.pagesSettingsAiInlineSection.httpLocalhost11434V1')}
+              placeholder={
+                isCustom
+                  ? t('ai.inline.customUrlPlaceholder')
+                  : tPhaseF('phaseF.pagesSettingsAiInlineSection.httpLocalhost11434V1')
+              }
               className="h-7 w-52 font-mono text-xs/4"
             />
             {connectionControls}

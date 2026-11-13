@@ -165,7 +165,8 @@
     "apiKeyMissing": "请在“设置 → AI”中添加你的 {provider} API 密钥，以使用写作工具。",
     "apiKeyInvalid": "你的 {provider} API 密钥被拒绝。请在“设置 → AI”中检查。",
     "ollamaUnreachable": "Ollama 未运行。请用 \"ollama serve\" 启动它，或在“设置 → AI”中选择其他服务商。",
-    "providerUnreachable": "无法连接到 {provider}。请检查网络连接后重试。"
+    "providerUnreachable": "无法连接到 {provider}。请检查网络连接后重试。",
+    "keychainUnavailable": "memrynote 无法访问系统钥匙串，因此未读取或保存 AI API 密钥。请解锁钥匙串后重试。"
   },
   "auth": {
     "notAuthenticated": "尚未登录",
