@@ -7,10 +7,16 @@ import SwiftUI
 // (hidden for note-only types) and the primary "File…" (no suggestion to
 // name, D5). An archived capture is read-only with Restore and Delete
 // permanently (Paper 19). Opening a reminder capture marks it viewed.
+// Beside the list (#4349) the detail stays put after an action: the list
+// hands the selection to the next item.
 
 struct InboxDetailView: View {
     let itemId: String
     let store: InboxStore
+    /// The detail column beside the list, not a page pushed over it.
+    var inColumn = false
+    /// False for an item the app selected rather than the user opened.
+    var marksViewed = true
 
     @Environment(\.dismiss) private var dismiss
     @State private var item: InboxItemRecord?
@@ -46,14 +52,14 @@ struct InboxDetailView: View {
         .background(Tokens.Canvas.background.color)
         .navigationBarTitleDisplayMode(.inline)
         .toolbar { if let item, !isArchived, !isFiled { ToolbarItem(placement: .topBarTrailing) { menu(item) } } }
-        .toolbar(.hidden, for: .tabBar)
-        .inboxSheets($sheets, store: store) { dismiss() }
+        .toolbar(inColumn ? .automatic : .hidden, for: .tabBar)
+        .inboxSheets($sheets, store: store) { leave() }
         .confirmationDialog(InboxCopy.deleteTitle, isPresented: $confirmingDelete, titleVisibility: .visible) {
             Button(InboxCopy.deletePermanently, role: .destructive) {
                 guard let item else { return }
                 Task {
                     await store.deletePermanently(item)
-                    dismiss()
+                    leave()
                 }
             }
         } message: {
@@ -112,7 +118,7 @@ struct InboxDetailView: View {
                 primaryButton(InboxCopy.restore, "arrow.uturn.backward") {
                     Task {
                         await store.restore(item)
-                        dismiss()
+                        leave()
                     }
                 }
                 .accessibilityIdentifier("inbox.detail.restore")
@@ -126,7 +132,7 @@ struct InboxDetailView: View {
                 barButton(InboxCopy.archive, "archivebox") {
                     Task {
                         await store.archive(item)
-                        dismiss()
+                        leave()
                     }
                 }
                 .accessibilityIdentifier("inbox.detail.archive")
@@ -188,7 +194,7 @@ struct InboxDetailView: View {
                 InboxSnoozeMenuItems(now: store.clock()) { date in
                     Task {
                         await store.snooze([item.id], until: date)
-                        dismiss()
+                        leave()
                     }
                 } pickDate: {
                     sheets.snooze = InboxIdList(ids: [item.id])
@@ -211,13 +217,17 @@ struct InboxDetailView: View {
     private func load() async {
         await reload()
         loaded = true
-        if let item, item.itemType == "reminder", item.viewedAtMs == nil { await store.markViewed(item.id) }
+        if marksViewed, let item, item.itemType == "reminder", item.viewedAtMs == nil { await store.markViewed(item.id) }
     }
 
     private func reload() async {
         let fresh = await store.fetch(itemId)
         item = fresh
         if !titleFocused { title = fresh?.title ?? "" }
+    }
+
+    private func leave() {
+        if !inColumn { dismiss() }
     }
 
     private func saveTitle() {
