@@ -28,6 +28,16 @@ them.
 only requires `min(1)` (`packages/contracts/src/linking-api.ts:20`, `:44`). **A
 conforming client MUST treat it as a UUID.**
 
+**`initiate` needs an active paid sync plan.** Without one it answers
+`402 SYNC_PAYMENT_REQUIRED` and creates no session
+(`apps/sync-server/src/routes/linking.ts:108`,
+`apps/sync-server/src/services/entitlements.ts:171-176`): a linked device sees the
+account's vaults only through sync, so on a free account it would open an empty
+vault of its own. Clients built before this rule meet the `402` on `initiate`
+and show it as a refused request; no session exists, so nothing reaches the new
+device. The other four routes carry no plan check, because without a session
+they have nothing to act on.
+
 Rate limits are keyed by **`sessionId`, not by IP**
 (`apps/sync-server/src/routes/linking.ts:30-45`), so a network change does not
 affect the budget.

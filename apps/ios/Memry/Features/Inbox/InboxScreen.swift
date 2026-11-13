@@ -6,17 +6,35 @@ import SwiftUI
 // grouped by day, the floating "+" with the undo toast beside it. The title
 // menu switches to Snoozed & reminders, Archived and Insights in place.
 
-/// The Inbox tab: the list at the root, detail and settings pushed on it.
+/// The Inbox tab: at compact width the list at the root, detail and settings
+/// pushed on it; at regular width the list beside the detail (#4349).
 struct InboxTab: View {
     let store: InboxStore?
     @Environment(InboxRouter.self) private var router
+    @Environment(\.horizontalSizeClass) private var horizontalSizeClass
+    @Environment(\.verticalSizeClass) private var verticalSizeClass
+    /// Select mode, here so the detail column can show the bulk actions.
+    @State private var editMode: EditMode = .inactive
+    @State private var selection: Set<String> = []
 
     var body: some View {
+        let width = LayoutWidth(horizontal: horizontalSizeClass, vertical: verticalSizeClass)
+        Group {
+            if width == .regular, let store {
+                InboxSplitView(store: store, editMode: $editMode, picked: $selection)
+            } else {
+                stack
+            }
+        }
+        .onChange(of: width, initial: true) { router.adapt(to: width) }
+    }
+
+    private var stack: some View {
         @Bindable var router = router
-        NavigationStack(path: $router.path) {
+        return NavigationStack(path: $router.path) {
             Group {
                 if let store {
-                    InboxScreen(store: store)
+                    InboxScreen(store: store, editMode: $editMode, selection: $selection)
                 } else {
                     ProgressView(InboxCopy.loading)
                 }
@@ -35,10 +53,13 @@ struct InboxTab: View {
 
 struct InboxScreen: View {
     let store: InboxStore
+    @Binding var editMode: EditMode
+    @Binding var selection: Set<String>
+    /// The list column beside the detail: the detail column holds the bulk
+    /// actions and shows the selected item.
+    var split = false
 
     @Environment(InboxRouter.self) private var router
-    @State private var editMode: EditMode = .inactive
-    @State private var selection: Set<String> = []
     @State private var titleCollapsed = false
     @State private var sheets = InboxSheets()
     @State private var composing = false
@@ -81,7 +102,7 @@ struct InboxScreen: View {
             .navigationBarTitleDisplayMode(.inline)
             .toolbarTitleMenu { if !selecting { InboxTitleMenu(store: store) } }
             .toolbar { toolbar }
-            .toolbar(selecting || recording ? .hidden : .automatic, for: .tabBar)
+            .toolbar(!split && (selecting || recording) ? .hidden : .automatic, for: .tabBar)
             .navigationBarBackButtonHidden(selecting)
             .inboxSheets($sheets, store: store) { editMode = .inactive }
             .task { await store.load() }
@@ -94,7 +115,7 @@ struct InboxScreen: View {
         case .inbox:
             InboxListBody(
                 store: store, selection: $selection, titleCollapsed: $titleCollapsed,
-                selecting: selecting, open: { router.path.append(.item($0.id)) }
+                selecting: selecting, current: split ? router.selection?.id : nil, open: { router.open($0.id) }
             ) {
                 InboxTitleHeader(store: store, selectedCount: selecting ? selection.count : nil)
             }
@@ -160,7 +181,9 @@ struct InboxScreen: View {
                 .accessibilityLabel(InboxCopy.done)
                 .accessibilityIdentifier("inbox.selectDone")
             }
-            InboxSelectionToolbar(store: store, selection: $selection, sheets: $sheets) { editMode = .inactive }
+            if !split {
+                InboxSelectionToolbar(store: store, selection: $selection, sheets: $sheets) { editMode = .inactive }
+            }
         } else if store.view == .inbox {
             ToolbarItemGroup(placement: .topBarTrailing) {
                 InboxFilterMenu(store: store)

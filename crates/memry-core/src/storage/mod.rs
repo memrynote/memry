@@ -4,6 +4,7 @@
 //! Application Support/<bundle>/vault/<vaultId>/
 //!   data.db        # source of record plus typed projections
 //!   index.db       # rebuildable search and link index
+//!   vectors.db     # semantic-search cache, only while the device opts in
 //!   images/        # downloaded inline image bytes
 //! ```
 //!
@@ -11,7 +12,8 @@
 //! large write that must never contend with, or risk, the outbox, which is the
 //! one table whose loss loses a user's work. So `data.db` migrates forward and
 //! `index.db` gets deleted and rebuilt whenever it is not exactly what this
-//! build expects.
+//! build expects. `vectors.db` is a cache too, but it migrates forward like
+//! `data.db`, because rebuilding it means re-embedding every note on the phone.
 //!
 //! File protection (`completeUntilFirstUserAuthentication`) and backup exclusion
 //! are attributes of the files, not of the connections, and belong to the shell
@@ -21,6 +23,7 @@ pub mod connection;
 pub mod index_db;
 pub mod migrations;
 pub mod repositories;
+pub mod vector_db;
 
 use std::path::Path;
 

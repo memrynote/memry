@@ -22,6 +22,7 @@ struct SearchRecentsSection: View {
                     }
                     .buttonStyle(.plain)
                     .accessibilityIdentifier("search.recent.\(recent.result.kind)")
+                    .searchRow(SearchRowKey.of(recent.result))
                 }
             } header: {
                 HStack {

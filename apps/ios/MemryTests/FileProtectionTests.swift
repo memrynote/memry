@@ -396,6 +396,21 @@ struct VaultFilesSubstitutedPlatformTests {
         ])
     }
 
+    @Test("a vault with a vectors.db gets it and its sidecars swept at the vault's class")
+    func sweepCoversTheVectorDatabase() async throws {
+        let (files, stub) = vaultFiles()
+
+        _ = try await files.openingVault(vaultId) {
+            stub.opened(openedDatabaseNames + ["vectors.db", "vectors.db-wal", "vectors.db-shm"], in: $0)
+        }
+
+        #expect(stub.history.suffix(6) == [
+            "protect data.db", "protect data.db-wal", "protect data.db-shm",
+            "protect vectors.db", "protect vectors.db-wal", "protect vectors.db-shm"
+        ])
+        #expect(stub.protections.allSatisfy { $0.protection == expectedClass })
+    }
+
     @Test("a class the core sets on a database reaches that database's sidecars")
     func setProtectionCoversSidecars() throws {
         let (files, stub) = vaultFiles(.init(everythingExists: true))

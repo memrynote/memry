@@ -46,7 +46,7 @@ struct GlobalSearchSheetTests {
         let window = UIWindow(windowScene: scene)
         window.rootViewController = UIHostingController(
             rootView: GlobalSearchSheet(
-                browse: browse, openNote: { _ in }, openTask: { _ in }, openInboxItem: { _ in }, openJournalDay: { _ in }
+                presentation: .sheet, browse: browse, openNote: { _ in }, openTask: { _ in }, openInboxItem: { _ in }, openJournalDay: { _ in }
             )
             .environment(\.vaultSearchIndex, index)
         )

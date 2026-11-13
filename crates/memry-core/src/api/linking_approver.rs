@@ -164,7 +164,8 @@ impl DeviceApprover {
                     .auth(Auth::Session)
                     .json(&json!({ "ephemeralPublicKey": public_b64 })),
             )
-            .await?;
+            .await
+            .map_err(plan_refusal)?;
         let session_id = body["sessionId"]
             .as_str()
             .ok_or_else(|| malformed(path, "no sessionId"))?
@@ -300,9 +301,41 @@ impl DeviceApprover {
     }
 }
 
+/// Chapter 03 §3.1: `initiate` answers 402 without a paid sync plan, which the
+/// shell renders as "sync needs a plan" rather than a refused request.
+fn plan_refusal(error: ApiError) -> ApiError {
+    match error {
+        ApiError::Status {
+            status: 402,
+            code,
+            message,
+        } => ApiError::PaymentRequired { code, message },
+        other => other,
+    }
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[test]
+    fn a_402_on_initiate_reads_as_needing_a_plan() {
+        let refused = plan_refusal(ApiError::Status {
+            status: 402,
+            code: Some("SYNC_PAYMENT_REQUIRED".into()),
+            message: "plan".into(),
+        });
+        assert!(matches!(
+            refused,
+            ApiError::PaymentRequired { code: Some(ref c), .. } if c == "SYNC_PAYMENT_REQUIRED"
+        ));
+        let other = plan_refusal(ApiError::Status {
+            status: 429,
+            code: None,
+            message: "slow".into(),
+        });
+        assert!(matches!(other, ApiError::Status { status: 429, .. }));
+    }
     use crate::protocol::linking::MasterKeyBlock;
     use crate::protocol::linking::routes::EncryptedBlock;
     use crate::protocol::linking::transfer::open_vault_transfer;

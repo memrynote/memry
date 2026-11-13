@@ -45,6 +45,7 @@ Chapters:
 | 12  | `12-note-body-format.md`              | the Y.Doc, its roots, markdown ownership      |
 | 13  | `13-payload-schemas.md`               | per-type payloads and verbatim preservation   |
 | 14  | `14-attachments.md`                   | blobs, chunking, manifests                    |
+| 15  | `15-embedding-input.md`               | embedding model input, device-local           |
 
 ## 0.2 The four independent version numbers
 

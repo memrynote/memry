@@ -262,12 +262,14 @@ final class TabletLayoutUITests: XCTestCase {
         }
         XCTAssertTrue(menu.isHittable, "the vault did not open")
         if page == "home" || page == "notes" {
-            app.buttons[page == "home" ? "Home" : "Notes"].firstMatch.tap()
+            app.tabBars.buttons[page == "home" ? "Home" : "Notes"].firstMatch.tap()
             return
         }
+        // The tab bar's own buttons: a restored page's title menu carries
+        // the same label ("Inbox") and would open the menu instead.
         let titles = ["inbox": "Inbox", "tasks": "Tasks", "journal": "Journal", "calendar": "Calendar"]
-        if let title = titles[page], app.buttons[title].firstMatch.isHittable {
-            app.buttons[title].firstMatch.tap()
+        if let title = titles[page], app.tabBars.buttons[title].firstMatch.isHittable {
+            app.tabBars.buttons[title].firstMatch.tap()
             return
         }
         // Not in the bar: Menu lists it, or the page is turned off.
