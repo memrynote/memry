@@ -1,5 +1,5 @@
 //! The journal calendar's, charts' and day panel's commands through the IPC a renderer calls, on a mock app over a real
-//! vault, vault tier and note index (#3530 13m-4, 13m-4b): the argument names the generated bindings
+//! vault, vault tier and note index (#3530 13m-4, 13m-4b, On this day #4411): the argument names the generated bindings
 //! send, the contract's field names in the answers, and a year out of range refused by its code.
 
 mod support;
@@ -32,6 +32,7 @@ fn opened() -> Mocked {
             memry_tauri::commands::journal::journal_get_heatmap::<MockRuntime>,
             memry_tauri::commands::journal::journal_get_month_entries::<MockRuntime>,
             memry_tauri::commands::journal::journal_get_property_rows::<MockRuntime>,
+            memry_tauri::commands::journal::journal_get_same_day_entries::<MockRuntime>,
             memry_tauri::commands::journal::journal_get_streak::<MockRuntime>,
             memry_tauri::commands::journal::journal_get_year_stats::<MockRuntime>,
             memry_tauri::commands::journal::journal_update_entry::<MockRuntime>,
@@ -109,6 +110,28 @@ fn the_calendar_commands_answer_the_contracts_shapes() {
     assert_eq!(
         call("journal_get_day_context", json!({ "date": "2025-03-03" })),
         Ok(json!({ "date": "2025-03-03", "tasks": [], "events": [], "overdueCount": 0 }))
+    );
+
+    assert_eq!(
+        call(
+            "journal_get_same_day_entries",
+            json!({ "date": "2026-03-03" })
+        ),
+        Ok(json!([{
+            "id": "j2025-03-03",
+            "date": "2025-03-03",
+            "preview": "A walk.",
+            "content": "A walk.",
+            "wordCount": 2,
+        }]))
+    );
+    assert_eq!(
+        call(
+            "journal_get_same_day_entries",
+            json!({ "date": "2025-03-03" })
+        ),
+        Ok(json!([])),
+        "the day itself is not another year"
     );
 
     let refused = call("journal_get_heatmap", json!({ "year": 1969 })).unwrap_err();

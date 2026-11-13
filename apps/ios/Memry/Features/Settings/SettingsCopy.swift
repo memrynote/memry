@@ -8,7 +8,7 @@ enum SettingsCopy {
     static let title = "Settings"
     static let moreTitle = "More"
     static let shared = "Shared with your other devices."
-    static let thisDevice = "This iPhone."
+    static let thisDevice = "This \(ThisDevice.noun)."
     static let cancel = "Cancel"
     static let done = "Done"
     static let loading = "Loading settings..."
@@ -46,7 +46,7 @@ enum SettingsCopy {
     static let downloadAlways = "Always"
     static let downloadWifi = "On Wi-Fi"
     static let downloadNever = "Never"
-    static let downloadFooter = "This iPhone. An attachment you open always downloads."
+    static let downloadFooter = "This \(ThisDevice.noun). An attachment you open always downloads."
     static let storage = "Storage"
     static let devices = "Devices"
     static func storageLine(_ used: String, _ limit: String) -> String { "\(used) of \(limit)" }
@@ -77,7 +77,7 @@ enum SettingsCopy {
     static let neverSeen = "Not seen yet"
     static let devicesFooter = "Long press to rename. Swipe left to revoke."
     static let linkNewDevice = "Link new device"
-    static let linkFooter = "The new device shows a code; this phone approves it."
+    static let linkFooter = "The new device shows a code; this \(ThisDevice.noun) approves it."
     static func showMore(_ count: Int) -> String { "Show \(count) more" }
     static let renameDevice = "Rename device"
     static let rename = "Rename"
@@ -90,7 +90,7 @@ enum SettingsCopy {
     static let orEnterCode = "Or paste the code"
     static let copyCode = "Copy code"
     static func expiresIn(_ time: String) -> String { "Expires in \(time)" }
-    static let linkWaiting = "When it scans, this phone asks you to approve."
+    static let linkWaiting = "When it scans, this \(ThisDevice.noun) asks you to approve."
     static let linkExpired = "This code expired. Close and start again."
     static let approveTitle = "Approve this device?"
     static func approveMessage(_ code: String) -> String {
@@ -100,7 +100,7 @@ enum SettingsCopy {
     static let linked = "Linked just now"
 
     // Vaults
-    static let onThisPhone = "On this iPhone"
+    static let onThisPhone = "On this \(ThisDevice.noun)"
     static let inAccount = "In your account"
     static let openVault = "Open"
     static let currentVault = "Open now"
@@ -130,11 +130,11 @@ enum SettingsCopy {
     static let newNotesGoTo = "New notes go to"
     static let vaultRoot = "Vault root"
     static let folders = "Folders"
-    static let newNotesFooter = "This iPhone. New notes from the + button land here."
+    static let newNotesFooter = "This \(ThisDevice.noun). New notes from the + button land here."
     static let checkSpelling = "Check spelling"
     static let privacy = "Privacy"
     static let usageMetrics = "Share Anonymous Usage Metrics"
-    static let privacyFooter = "This iPhone. Metrics never include note content, titles or tags."
+    static let privacyFooter = "This \(ThisDevice.noun). Metrics never include note content, titles or tags."
 
     // Appearance
     static let colorMode = "Color Mode"
@@ -151,7 +151,7 @@ enum SettingsCopy {
 
     // Features
     static let home = "Home"
-    static let featuresFooter = "Off hides the module on this iPhone. Nothing is deleted and sync keeps running. Notes and More are always on."
+    static let featuresFooter = "Off hides the module on this \(ThisDevice.noun). Nothing is deleted and sync keeps running. Notes and More are always on."
     static let keepOne = "Keep at least one on."
 
     // About

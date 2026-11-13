@@ -95,10 +95,7 @@ final class SystemWebAuthenticator: NSObject, GoogleWebAuthenticator {
 
 extension SystemWebAuthenticator: ASWebAuthenticationPresentationContextProviding {
     func presentationAnchor(for session: ASWebAuthenticationSession) -> ASPresentationAnchor {
-        let window = UIApplication.shared.connectedScenes
-            .compactMap { $0 as? UIWindowScene }
-            .flatMap(\.windows)
-            .first(where: \.isKeyWindow)
+        let window = PresentingWindow.resolve()
         // An empty anchor makes the system refuse with
         // `presentationContextInvalid`, which surfaces as
         // `browserUnavailable`. That is the honest outcome for an app with no

@@ -7,8 +7,8 @@
    outranks the BlockNote one instead of relying on order. */
 
 /* Every selector keys off the block's own direction (:dir), not the UI language:
-   block-direction-plugin.ts sets dir="auto" per block, so a Persian block in an
-   English UI mirrors and an English block in a Persian UI does not.
+   block-direction-plugin.ts sets each block's dir from its first letter, so a Persian
+   block in an English UI mirrors and an English block in a Persian UI does not.
    Nested blocks indent from the inline start; the guide line follows. base.css sets
    the LTR guide offset to -14px with !important, so the mirror needs it too. */
 .bn-block-group .bn-block-group:dir(rtl) {
@@ -42,7 +42,33 @@
   border-right: 3px solid currentcolor !important;
 }
 
-.bn-editor [data-content-type='table']:dir(rtl) th {
+/* A block can hold lines in both directions: markdown lines without a blank line
+   between them are one paragraph, and so is Shift+Enter. `plaintext` gives each
+   line the direction of its own first letter, so its punctuation lands on the
+   right end and `start` alignment resolves per line. The text box is a flex
+   child that shrinks to its longest line; it fills the row so that alignment has
+   the full width to work with. A React node view (callout) wraps its text in one
+   more block, which needs the rule itself since unicode-bidi is not inherited.
+   Table cells get the same per-line direction, and their headers drop
+   BlockNote's physical `left`. */
+.bn-editor .bn-inline-content,
+.bn-editor .bn-inline-content > [data-node-view-content-react],
+.bn-editor [data-content-type='table'] :is(th, td) > p {
+  unicode-bidi: plaintext;
+}
+
+.bn-editor .bn-inline-content {
+  flex-grow: 1;
+}
+
+/* BlockNote draws the empty-block placeholder as an ::after after the text box, so
+   a box that fills the row would push it to the far end. An empty box has no
+   lines to align and stays collapsed. */
+.bn-editor .bn-inline-content:has(> .ProseMirror-trailingBreak:only-child) {
+  flex-grow: 0;
+}
+
+:root .bn-editor [data-content-type='table'] th {
   text-align: start;
 }
 
@@ -58,9 +84,13 @@
   padding-left: 0;
 }
 
-/* Code reads left to right whatever the UI language. */
+/* Code reads left to right whatever the UI language or the text it holds. */
 .bn-block-content[data-content-type='codeBlock'] > pre,
 .bn-inline-content code {
   direction: ltr;
   text-align: left;
+}
+
+.bn-editor [data-content-type='codeBlock'] .bn-inline-content {
+  unicode-bidi: normal;
 }

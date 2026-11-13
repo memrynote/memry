@@ -9,7 +9,7 @@ use std::sync::{Arc, Mutex, PoisonError};
 use std::time::Duration;
 
 use futures_util::FutureExt as _;
-use futures_util::future::{BoxFuture, Shared};
+use futures_util::future::{BoxFuture, Shared, WeakShared};
 use tokio::time::Instant;
 use zeroize::Zeroizing;
 
@@ -54,6 +54,27 @@ impl Fingerprint {
 
 type Flight = Shared<BoxFuture<'static, probe::ProbeRun>>;
 
+/// One caller's hold on a probe. Dropping the last hold drops the probe (its socket and its copy
+/// of the provider with the key) and clears the shared slot, so a cancelled turn leaves nothing
+/// running behind it.
+struct Hold<'a> {
+    probes: &'a Probes,
+    flight: Option<Flight>,
+}
+
+impl Drop for Hold<'_> {
+    fn drop(&mut self) {
+        drop(self.flight.take());
+        let mut in_flight = lock(&self.probes.in_flight);
+        if in_flight
+            .as_ref()
+            .is_some_and(|(_, weak)| weak.upgrade().is_none())
+        {
+            *in_flight = None;
+        }
+    }
+}
+
 struct ImageEntry {
     fingerprint: Fingerprint,
     chat_model: String,
@@ -64,8 +85,9 @@ struct ImageEntry {
 #[derive(Default)]
 pub(super) struct Probes {
     cache: Mutex<Option<(Fingerprint, LocalProbe)>>,
-    /// Two turns starting at once share one probe instead of racing.
-    in_flight: Mutex<Option<(Fingerprint, Flight)>>,
+    /// Two turns starting at once share one probe instead of racing. Weak: the callers own the
+    /// probe, and it ends when the last of them does.
+    in_flight: Mutex<Option<(Fingerprint, WeakShared<BoxFuture<'static, probe::ProbeRun>>)>>,
     /// The probe `turn_has_tools` answered from, for the run that follows. Taken once.
     reserved: Mutex<Option<(Fingerprint, LocalProbe)>>,
     images: Mutex<Option<ImageEntry>>,
@@ -92,31 +114,37 @@ impl Probes {
                 return probe.clone();
             }
             let mut in_flight = lock(&self.in_flight);
-            match &*in_flight {
-                Some((running, flight)) if !force && *running == fingerprint => flight.clone(),
-                _ => {
-                    let client = client.clone();
-                    let provider = provider.clone();
-                    let flight = async move { probe::probe(&client, &provider).await }
-                        .boxed()
-                        .shared();
-                    if !force {
-                        *in_flight = Some((fingerprint.clone(), flight.clone()));
-                    }
-                    flight
+            let joined = match &*in_flight {
+                Some((running, weak)) if !force && *running == fingerprint => weak.upgrade(),
+                _ => None,
+            };
+            joined.unwrap_or_else(|| {
+                let client = client.clone();
+                let provider = provider.clone();
+                let flight = async move { probe::probe(&client, &provider).await }
+                    .boxed()
+                    .shared();
+                if !force && let Some(weak) = flight.downgrade() {
+                    *in_flight = Some((fingerprint.clone(), weak));
                 }
-            }
+                flight
+            })
         };
-        let run = flight.clone().await;
+        let hold = Hold {
+            probes: self,
+            flight: Some(flight.clone()),
+        };
+        let run = flight.await;
         {
             let mut in_flight = lock(&self.in_flight);
-            if in_flight
-                .as_ref()
-                .is_some_and(|(_, running)| running.ptr_eq(&flight))
-            {
+            if in_flight.as_ref().is_some_and(|(_, weak)| {
+                weak.upgrade()
+                    .is_none_or(|running| hold.flight.as_ref().is_some_and(|f| running.ptr_eq(f)))
+            }) {
                 *in_flight = None;
             }
         }
+        drop(hold);
         self.settle(fingerprint, run)
     }
 

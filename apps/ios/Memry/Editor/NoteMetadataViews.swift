@@ -90,6 +90,8 @@ struct NoteTitleEditor: View {
     @State private var draft: String = ""
     @State private var editing = false
     @State private var pickingIcon = false
+    /// A new note's title wants the caret until the user types or moves it.
+    @State private var claimsFocus = false
     @FocusState private var focused: Bool
 
     private func commit() {
@@ -138,6 +140,7 @@ struct NoteTitleEditor: View {
                                 draft = value.replacingOccurrences(of: "\n", with: "")
                                 commitAndContinue()
                             } else {
+                                if value != draft { claimsFocus = false }
                                 draft = value
                             }
                         }
@@ -164,12 +167,35 @@ struct NoteTitleEditor: View {
                 // A note with no title (a new one) opens with the caret in
                 // its title, as desktop does.
                 .onAppear {
-                    if title.isEmpty { focused = true }
+                    if title.isEmpty {
+                        claimsFocus = true
+                        focused = true
+                    }
+                }
+                // #4346: in the iPad split view, the list column moves focus
+                // to the new note's selected row after its insert animation,
+                // which can land after the request above. A move from the
+                // title to an item that is not a text field is taken back, a
+                // turn later once the focus state has followed it. Dismissing
+                // the keyboard focuses nothing and is left alone.
+                .onReceive(NotificationCenter.default.publisher(for: UIFocusSystem.didUpdateNotification)) { note in
+                    guard claimsFocus, focused,
+                          let context = note.userInfo?[UIFocusSystem.focusUpdateContextUserInfoKey] as? UIFocusUpdateContext,
+                          let next = context.nextFocusedItem
+                    else { return }
+                    if next is UITextInput {
+                        claimsFocus = false
+                    } else {
+                        Task { focused = true }
+                    }
                 }
                 // Leaving the page, or the page reloading under the field,
                 // ends the edit without a focus change; the typed title
                 // still lands (#2680).
-                .onDisappear(perform: commit)
+                .onDisappear {
+                    claimsFocus = false
+                    commit()
+                }
                 .accessibilityLabel("Title")
             } else {
                 Text(title)

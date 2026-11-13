@@ -29,7 +29,9 @@ use serde_json::Value;
 use tokio_util::sync::CancellationToken;
 
 use crate::ai::catalog::ProbeClient;
-use crate::ai::local_provider::probe::{AgentLocalProviderProbeResult, AgentToolsOffReason};
+use crate::ai::local_provider::probe::{
+    self as provider_probe, AgentLocalProviderProbeResult, AgentToolsOffReason,
+};
 use crate::ai::local_provider::{LocalProvider, LocalProviderStore};
 
 /// Model calls per turn with tools. The last one runs without tools and asks for a handoff, so a
@@ -193,6 +195,13 @@ pub enum StructuredError {
     Schema(String),
 }
 
+/// What [`LocalAgent::status`] found.
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct LocalAgentStatus {
+    pub available: bool,
+    pub model: String,
+}
+
 /// The engine. Cheap to clone; the clones share the probe caches.
 #[derive(Clone)]
 pub struct LocalAgent {
@@ -225,6 +234,17 @@ impl LocalAgent {
             .resolve(&self.inner.client, &provider, true)
             .await
             .result
+    }
+
+    /// `getStatus`: the provider answers and lists the configured model. Live, like Electron's;
+    /// the caller caches it. `model` is the configured one, empty for "any".
+    pub async fn status(&self) -> LocalAgentStatus {
+        let provider = self.inner.provider().await;
+        let result = provider_probe::test_connection(&self.inner.client, &provider).await;
+        LocalAgentStatus {
+            available: result.connected && result.model_available,
+            model: provider.model.clone(),
+        }
     }
 
     /// `turnHasTools`: whether the next turn sends tool schemas. The run that follows reuses this

@@ -1,7 +1,7 @@
 import Foundation
 import MemryCore
 
-// The free path: a vault that lives on this iPhone with no account behind it.
+// The free path: a vault that lives on this device with no account behind it.
 //
 // **Persisted in `UserDefaults`, not the keychain.** The id names a directory
 // and carries no key material; the keychain is cleared on every sign-out, and
@@ -16,17 +16,21 @@ import MemryCore
 
 /// The local vault's id and whether the account knows it.
 struct LocalVaultStore: @unchecked Sendable {
-    /// What the vault is called on screen and on the account.
-    static let name = "iPhone"
-
     // `UserDefaults` is thread-safe; it is not marked `Sendable` in the SDK.
     private let defaults: UserDefaults
+    private let deviceNoun: String
 
-    init(defaults: UserDefaults = .standard) {
+    init(defaults: UserDefaults = .standard, deviceNoun: String = ThisDevice.noun) {
         self.defaults = defaults
+        self.deviceNoun = deviceNoun
     }
 
-    /// The vault's id, once the user chose to start on this iPhone.
+    /// What the vault is called on screen and on the account: the device that
+    /// created it. A vault created before the name was stored was always named
+    /// "iPhone", and keeps that name.
+    var name: String { defaults.string(forKey: Key.name) ?? "iPhone" }
+
+    /// The vault's id, once the user chose to start on this device.
     var id: String? { defaults.string(forKey: Key.id) }
 
     /// `true` once `registerVault` succeeded for this id.
@@ -44,6 +48,8 @@ struct LocalVaultStore: @unchecked Sendable {
     func create() -> String {
         if let id { return id }
         let minted = UUID().uuidString.lowercased()
+        // The name lands first: whatever observes the id reads the name.
+        defaults.set(deviceNoun, forKey: Key.name)
         defaults.set(minted, forKey: Key.id)
         defaults.set(false, forKey: Key.attached)
         Telemetry.shared.track(.vaultCreated, surface: .vault, action: "created", source: "create", result: .success)
@@ -60,16 +66,18 @@ struct LocalVaultStore: @unchecked Sendable {
     func forget() {
         defaults.removeObject(forKey: Key.id)
         defaults.removeObject(forKey: Key.attached)
+        defaults.removeObject(forKey: Key.name)
         defaults.removeObject(forKey: LocalSeedingMint.seededKey)
     }
 
     var summary: VaultSummary? {
-        id.map { VaultSummary(id: $0, name: Self.name, encryptedName: nil, nameNonce: nil) }
+        id.map { VaultSummary(id: $0, name: name, encryptedName: nil, nameNonce: nil) }
     }
 
     private enum Key {
         static let id = "localVault.id"
         static let attached = "localVault.attached"
+        static let name = "localVault.name"
     }
 }
 
@@ -162,7 +170,7 @@ struct LocalVaultAttach: Sendable {
             }
         }
         do {
-            try await session.registerVault(vaultId: id, name: LocalVaultStore.name)
+            try await session.registerVault(vaultId: id, name: store.name)
             store.markAttached()
             Log.sync.notice("the local vault was added to the account")
             return .attached

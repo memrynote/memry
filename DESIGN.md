@@ -284,7 +284,7 @@ A future watch app starts from the same semantics, not from a scaled-down phone 
 
 At regular width, an iPad carries desktop's information architecture with native controls. It has desktop's structure (a sidebar of pages, list and detail splits, side rails, and keyboard shortcuts), but it does not copy desktop's pixels or web components.
 
-**Size class decides.** The system horizontal size class picks the layout, not the device model. Compact width keeps the phone mapping above unchanged. This covers every iPhone, including iPhone landscape on most models, and iPad windows narrow enough to be compact. A change at compact width needs a reason of its own, not tablet work. The iPad app is not offered on Apple silicon Macs or Vision Pro. Memry opens one window. Two notes side by side happen inside that window (see below).
+**Size class decides.** The system horizontal size class picks the layout, not the device model. Compact width keeps the phone mapping above unchanged. This covers every iPhone, including iPhone landscape on most models, and iPad windows narrow enough to be compact. Large iPhones in landscape report regular width but compact height, and keep the phone mapping too: the sidebar needs regular width and regular height. A change at compact width needs a reason of its own, not tablet work. The iPad app is not offered on Apple silicon Macs or Vision Pro. Memry opens one window. Two notes side by side happen inside that window (see below).
 
 **Root navigation.** The root is a `TabView` with `.sidebarAdaptable`. The sidebar lists pages only:
 

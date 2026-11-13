@@ -56,12 +56,27 @@ final class UnlinkedMentionsViewModel {
             failure = nil
         } else {
             phase = .loading
-            await load(reindexing: true)
+            await refresh()
+        }
+    }
+
+    /// Re-reads an open list, after the vault's index owner finished a
+    /// reindex (`VaultSearchIndex`).
+    func refresh() async {
+        guard let search, isOpen else { return }
+        do {
+            let rows = try await search.unlinkedMentions(targetId: noteId)
+            if isOpen { phase = .ready(rows) }
+        } catch {
+            Log.storage.error("the unlinked mentions could not be read")
+            if isOpen { phase = .failed(ErrorMapping.userFacing(error)) }
         }
     }
 
     /// Replaces the `index`-th mention in `source` with a wiki link to this
     /// note. `true` when it landed, so the caller can ask for a sync pass.
+    /// Either way the caller asks the index owner to catch up, and the list
+    /// re-reads when it has.
     @discardableResult
     func link(_ source: UnlinkedMention, index: Int, targetTitle: String) async -> Bool {
         guard let editor, pending == nil, source.sourceKind == "note", source.mentions.indices.contains(index) else {
@@ -80,7 +95,6 @@ final class UnlinkedMentionsViewModel {
             Log.storage.error("an unlinked mention could not be linked")
             failure = ErrorMapping.userFacing(error)
         }
-        await load(reindexing: true)
         return landed
     }
 
@@ -107,17 +121,6 @@ final class UnlinkedMentionsViewModel {
         )
     }
 
-    private func load(reindexing: Bool) async {
-        guard let search else { return }
-        do {
-            if reindexing { try await search.reindex() }
-            let rows = try await search.unlinkedMentions(targetId: noteId)
-            if isOpen { phase = .ready(rows) }
-        } catch {
-            Log.storage.error("the unlinked mentions could not be read")
-            if isOpen { phase = .failed(ErrorMapping.userFacing(error)) }
-        }
-    }
 }
 
 struct UnlinkedMentionsSection: View {
@@ -128,6 +131,7 @@ struct UnlinkedMentionsSection: View {
 
     @Environment(\.requestVaultSync) private var requestVaultSync
     @Environment(\.openJournalDay) private var openJournalDay
+    @Environment(\.vaultSearchIndex) private var searchIndex
 
     var body: some View {
         if model.isAvailable {
@@ -136,6 +140,7 @@ struct UnlinkedMentionsSection: View {
                 if model.isOpen { content }
             }
             .frame(maxWidth: .infinity, alignment: .leading)
+            .onChange(of: searchIndex?.completed) { Task { await model.refresh() } }
         }
     }
 
@@ -228,6 +233,7 @@ struct UnlinkedMentionsSection: View {
     private func link(_ source: UnlinkedMention, _ index: Int) {
         Task {
             if await model.link(source, index: index, targetTitle: targetTitle) { requestVaultSync?() }
+            searchIndex?.schedule()
         }
     }
 }

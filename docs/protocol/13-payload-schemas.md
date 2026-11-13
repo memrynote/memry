@@ -153,7 +153,7 @@ plaintext in `data.db`. The exception is bounded:
   shape.** A plain title can look like an envelope, so no reader guesses. The
   owner of the fact is the `agent_sealed_pending` table, one row per record
   whose sealed keys are stored plain
-  (`crates/memry-core/src/storage/migrations/data/0028_agent_records.sql:18-26`,
+  (`crates/memry-core/src/storage/migrations/data/0029_agent_records.sql:18-26`,
   `:62-66`; `crates/memry-core/src/storage/repositories/projectors/agent.rs:63-92`).
   Projections read it and leave the sealed columns empty for a pending record
   (`crates/memry-core/src/storage/repositories/projectors/agent.rs:100`,

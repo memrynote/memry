@@ -5,6 +5,13 @@ import { toast } from 'sonner'
 import { createMockApi } from '@tests/setup-dom'
 import { AISettings } from './ai-section'
 
+const bindings = vi.hoisted(() => ({ foldGetAgentStatus: vi.fn() }))
+
+vi.mock('../../../../generated/bindings', async (importOriginal) => ({
+  ...(await importOriginal<object>()),
+  commands: { foldGetAgentStatus: bindings.foldGetAgentStatus }
+}))
+
 vi.mock('sonner', () => ({
   toast: {
     success: vi.fn(),
@@ -158,7 +165,7 @@ describe('AISettings', () => {
       summarizeLongNotes: true,
       summarizeAgent: 'auto'
     })
-    api.noteFold.getAgentStatus = vi.fn().mockResolvedValue({
+    bindings.foldGetAgentStatus.mockResolvedValue({
       choice: 'auto',
       available: [{ id: 'codex_cli', label: 'Codex' }],
       resolved: 'Codex'
@@ -182,9 +189,7 @@ describe('AISettings', () => {
       summarizeLongNotes: true,
       summarizeAgent: 'auto'
     })
-    api.noteFold.getAgentStatus = vi
-      .fn()
-      .mockResolvedValue({ choice: 'auto', available: [], resolved: null })
+    bindings.foldGetAgentStatus.mockResolvedValue({ choice: 'auto', available: [], resolved: null })
     render(<AISettings />)
 
     expect(await screen.findByText(/No agent found/)).toBeInTheDocument()
