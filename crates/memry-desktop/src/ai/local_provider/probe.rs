@@ -411,6 +411,53 @@ impl Chat<'_> {
     }
 }
 
+/// The image of `probeImageInput`: a 1x1 PNG.
+const PROBE_IMAGE_URL: &str = "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mP8/5+hHgAHggJ/PchI7wAAAABJRU5ErkJggg==";
+
+/// `probeImageInput`: whether `model` takes an image, asked with a one-token completion. Any
+/// failure, a timeout included, reads as no.
+pub async fn image_input(client: &ProbeClient, provider: &LocalProvider, model: &str) -> bool {
+    let base = match provider.endpoint() {
+        Ok(base) => base,
+        Err(error) => {
+            tracing::warn!(
+                scope = "AgentLocalProvider",
+                model,
+                "image input probe failed: {error}"
+            );
+            return false;
+        }
+    };
+    let chat = Chat {
+        client,
+        url: format!("{base}/chat/completions"),
+        provider,
+    };
+    let body = json!({
+        "model": model,
+        "max_tokens": 1,
+        "messages": [{
+            "role": "user",
+            "content": [
+                { "type": "text", "text": "Reply with ok." },
+                { "type": "image_url", "image_url": { "url": PROBE_IMAGE_URL } },
+            ],
+        }],
+    });
+    match chat.complete(&body).await {
+        Ok(_) => true,
+        Err(error) => {
+            tracing::warn!(
+                scope = "AgentLocalProvider",
+                model,
+                "image input probe failed: {}",
+                error.detail
+            );
+            false
+        }
+    }
+}
+
 /// A JavaScript-truthy JSON value, as Electron's `?.` checks read one.
 fn is_present(value: &Value) -> bool {
     match value {
@@ -477,7 +524,7 @@ fn provider_reason(body: &[u8]) -> Option<String> {
 }
 
 /// A request error without its URL.
-fn describe(error: &reqwest::Error) -> String {
+pub(crate) fn describe(error: &reqwest::Error) -> String {
     if error.is_timeout() {
         "the provider did not answer in time".to_owned()
     } else if error.is_connect() {
