@@ -9,7 +9,6 @@ use zeroize::Zeroizing;
 use super::{ITEM_TYPE, NewMessage, append, delete, get_by_conversation};
 use crate::api::errors::StorageError;
 use crate::crypto::agent_envelope::{AtRestKey, Purpose};
-use crate::crypto::agent_payload::is_envelope;
 use crate::domain::agent_records::AgentError;
 use crate::domain::desktop_records::testing::{
     DEVICE, NOW, open, payload, queued, remote, remote_delete,
@@ -21,6 +20,13 @@ fn key() -> AtRestKey {
     let key = AtRestKey::default();
     key.set(Some(Zeroizing::new([9; 32])));
     key
+}
+
+/// Whether a stored value is an envelope that opens under [`key`].
+fn sealed(purpose: Purpose, value: &Value) -> bool {
+    value
+        .as_str()
+        .is_some_and(|column| key().open(purpose, column).is_ok())
 }
 
 fn pull(
@@ -108,7 +114,10 @@ fn a_terminal_message_is_stored_sealed_and_reads_back_in_order() {
         )
         .map_err(storage)?;
         let stored = payload(conn, ITEM_TYPE, "m1");
-        assert!(is_envelope(&stored["content"]) && is_envelope(&stored["attachments"]));
+        assert!(
+            sealed(Purpose::MessageContent, &stored["content"])
+                && sealed(Purpose::Attachments, &stored["attachments"])
+        );
         assert_eq!(stored["clock"], json!({DEVICE: 1}));
         let column: String = conn
             .query_row(
@@ -180,7 +189,8 @@ fn a_message_is_written_once_and_lands_before_its_conversation() {
             1
         );
         let before = stored_payload(conn, "m1");
-        assert!(is_envelope(
+        assert!(sealed(
+            Purpose::MessageContent,
             &serde_json::from_str::<Value>(before.as_deref().unwrap()).unwrap()["content"]
         ));
 

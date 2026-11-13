@@ -48,6 +48,7 @@ use crate::protocol::http::{
 use crate::protocol::types::Declaration;
 use crate::storage::Db;
 use crate::storage::repositories::projectors;
+use crate::storage::repositories::projectors::agent::is_sealed_pending;
 use crate::storage::repositories::sync_items::{self, SyncItemRow};
 
 mod crdt;
@@ -244,8 +245,11 @@ impl PushCoordinator {
                     sealed.push(json);
                     sent.push(item);
                 }
-                // A sealed agent row that cannot be opened yet (no key, or
-                // not under this key) waits; retiring it would lose it.
+                // A sealed agent row that does not open waits: no key is
+                // installed, or a sealed key fails under the installed one
+                // (another key, an unknown envelope version, altered bytes).
+                // Retiring it would lose it, and sending it would spread the
+                // envelope text as the value.
                 Built::Held(reason) => {
                     let ids = item.ids();
                     let at = retry_at(now_ms(), item.row.attempt_count);
@@ -332,11 +336,14 @@ impl PushCoordinator {
     async fn build(&self, item: &Collapsed) -> Result<Built, PushError> {
         let item_type = item.row.item_type.clone();
         let item_id = item.row.item_id.clone();
-        let row = self
+        let loaded = self
             .db
-            .call(move |conn| sync_items::load(conn, &item_type, &item_id))
+            .call(move |conn| {
+                let row = sync_items::load(conn, &item_type, &item_id)?;
+                Ok((row, is_sealed_pending(conn, &item_type, &item_id)?))
+            })
             .await?;
-        let Some(row) = row else {
+        let (Some(row), sealed_pending) = loaded else {
             // §6.5.2 P2 has no answer for a queued key whose row is gone:
             // there is nothing live to rebuild from, and inventing a payload
             // is the freeze the rule forbids.
@@ -355,7 +362,7 @@ impl PushCoordinator {
         };
         let mut row = row;
         if let Some(payload) = &row.payload {
-            match open_payload(&row.item_type, payload, &self.at_rest) {
+            match open_payload(&row.item_type, payload, sealed_pending, &self.at_rest) {
                 Ok(Some(opened)) => row.payload = Some(opened),
                 Ok(None) => {}
                 Err(error) => return Ok(Built::Held(format!("{HELD_REASON}: {error}"))),

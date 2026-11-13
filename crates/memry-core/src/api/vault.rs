@@ -38,6 +38,7 @@
 use std::path::PathBuf;
 use std::sync::Arc;
 
+use rusqlite::OptionalExtension;
 use zeroize::Zeroizing;
 
 use crate::api::auth::AuthSession;
@@ -134,14 +135,43 @@ impl Vault {
     /// calls it at sync start and at agent bootstrap. Not on the FFI surface:
     /// a key never crosses it.
     ///
-    /// Installing a key seals every agent record a pull stored while none was
-    /// installed and returns how many; removing it returns 0.
-    pub fn set_at_rest_key(&self, key: Option<Zeroizing<[u8; 32]>>) -> Result<usize, StorageError> {
-        let installed = key.is_some();
-        self.at_rest_key.set(key);
-        if !installed {
-            return Ok(0);
+    /// A key that does not match this vault's local key verifier (chapter 01
+    /// §1.4.2, `meta` key `vault.crypto.verifier.v1`), when one is stored, is
+    /// refused and not installed: sealing under it would leave records no
+    /// later key opens. Installing a key seals every sealed-pending agent
+    /// record (one a pull stored while none was installed); removing it seals
+    /// nothing.
+    pub fn set_at_rest_key(
+        &self,
+        key: Option<Zeroizing<[u8; 32]>>,
+    ) -> Result<crate::domain::agent_records::Sealed, StorageError> {
+        let Some(key) = key else {
+            self.at_rest_key.set(None);
+            return Ok(Default::default());
+        };
+        let candidate = crate::crypto::keys::local_vault_key_verifier(key.as_slice(), &self.id)
+            .map_err(|error| StorageError::Failed {
+                what: format!("the vault key verifier will not compute: {error}"),
+            })?;
+        let stored = self.db.call_blocking(|conn| {
+            conn.query_row(
+                "SELECT value FROM meta WHERE key = 'vault.crypto.verifier.v1'",
+                [],
+                |row| row.get::<_, String>(0),
+            )
+            .optional()
+            .map_err(|error| StorageError::Failed {
+                what: format!("the vault key verifier will not read: {error}"),
+            })
+        })?;
+        if stored.is_some_and(|stored| {
+            !crate::crypto::sodium::memcmp(stored.as_bytes(), candidate.as_bytes())
+        }) {
+            return Err(StorageError::Invalid {
+                what: "the vault key does not match this vault's key verifier".to_owned(),
+            });
         }
+        self.at_rest_key.set(Some(key));
         let key = self.at_rest_key.clone();
         self.db.call_blocking(move |conn| {
             crate::domain::agent_records::seal_pending(

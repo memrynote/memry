@@ -38,7 +38,7 @@ here: `agent_conversation` and `agent_message` (desktop agent chats,
 `DESKTOP_ONLY_RECORD_ITEM_TYPES`
 (`crates/memry-core/src/protocol/types.rs:71-84`), and desktop passes a
 declaration that carries them to `Vault::sync_with_declaration`
-(`crates/memry-core/src/api/vault.rs:114-131`), which is not on the FFI
+(`crates/memry-core/src/api/vault.rs:115-132`), which is not on the FFI
 surface, so iOS keeps `Vault::sync` and the twenty-one.
 
 Twenty-one plus six is the **twenty-seven record types**, which is the set
@@ -134,38 +134,73 @@ the top level.
 
 **Named exception: agent text at rest** (#3533). An `agent_conversation`'s
 `title` and an `agent_message`'s `content` and `attachments`
-(`crates/memry-core/src/crypto/agent_payload.rs:26-34`) are stored in
+(`crates/memry-core/src/crypto/agent_payload.rs:30-39`) are stored in
 `sync_items.payload` and in their projection columns as the chapter 04 §4.17
 envelope text of the value, not as received. Electron keeps these three in
 sealed columns (chapter 04 §4.17), and a verbatim store would put the
 plaintext in `data.db`. The exception is bounded:
 
-- apply seals the three keys before the payload is stored, and leaves every
-  other key, unknown keys included, as received
-  (`crates/memry-core/src/domain/agent_records.rs:71-86`,
-  `crates/memry-core/src/crypto/agent_payload.rs:71-84`). Every write seals
-  what it is given, a value already shaped like an envelope included,
-  because a plain title can have that shape; shape alone never marks a value
-  sealed;
-- push opens them before the record envelope is built, so the opened value
-  equals the wire value and rules 3 and 4 hold for what leaves the device
-  (`crates/memry-core/src/sync/push.rs:356-362`,
-  `crates/memry-core/src/crypto/agent_payload.rs:167-180`). A value shaped
-  like an envelope that does not open under the installed key reads as
-  plain, since every write seals
-  (`crates/memry-core/src/crypto/agent_payload.rs:135-158`);
-- with no key installed, a sealed row is held in the outbox with a backoff,
-  never sent sealed and never retired
-  (`crates/memry-core/src/sync/push.rs:247-256`, `:361`);
-- a record pulled while no vault key is installed is stored as received and
-  its projection row carries `sealed_pending = 1` with the sealed columns
-  empty (`crates/memry-core/src/storage/repositories/projectors/agent.rs:5-10`);
-  installing a key through `Vault::set_at_rest_key` seals every stored agent
-  record whose sealed keys do not open under it, in one transaction with
-  `secure_delete` on and the WAL truncated after it, flags a record that will
-  not seal as corrupt, and releases the held outbox rows
-  (`crates/memry-core/src/api/vault.rs:139-158`,
-  `crates/memry-core/src/domain/agent_records.rs:110-218`).
+- **Sealed-pending is decided when the payload is written, never from its
+  shape.** A plain title can look like an envelope, so no reader guesses. The
+  owner of the fact is the `agent_sealed_pending` table, one row per record
+  whose sealed keys are stored plain
+  (`crates/memry-core/src/storage/migrations/data/0028_agent_records.sql:18-26`,
+  `:62-66`; `crates/memry-core/src/storage/repositories/projectors/agent.rs:63-92`).
+  Projections read it and leave the sealed columns empty for a pending record
+  (`crates/memry-core/src/storage/repositories/projectors/agent.rs:100`,
+  `:140`, `:177-183`), so a rebuild from `sync_items` reproduces them.
+- **Apply seals** the three keys under the installed key before the payload is
+  stored and leaves every other key, unknown keys included, as received. It
+  seals whatever it is given, a value already shaped like an envelope
+  included (`crates/memry-core/src/domain/agent_records.rs:84-112`,
+  `crates/memry-core/src/crypto/agent_payload.rs:47-60`). With no key
+  installed it stores the payload as received and marks it sealed-pending in
+  the same transaction (`crates/memry-core/src/domain/agent_records.rs:101`,
+  `:107-110`). A concurrent conversation merge without a key keeps a sealed
+  local title sealed and marks the record pending when the stored title is
+  plain: the local record was pending, or the remote's title won
+  (`crates/memry-core/src/domain/agent_conversation/merge.rs:98-104`,
+  `:120-123`). A local title edit seals the title and clears the mark
+  (`crates/memry-core/src/domain/agent_conversation/mod.rs:173-177`).
+- **A sealed value that does not open is an error, whatever its shape.** Under
+  the installed key a value of a record that is not pending must open: one
+  sealed under another key, an envelope of a version this build does not read
+  (§0.2), altered bytes, or a value that is not an envelope at all fails
+  (`crates/memry-core/src/crypto/agent_payload.rs:70-97`). A read returns the
+  error (`crates/memry-core/src/domain/agent_records.rs:56-76`). A merge
+  refuses the remote before the gate, so the pull records it corrupt and the
+  local record stays as it is
+  (`crates/memry-core/src/domain/agent_conversation/merge.rs:67-68`,
+  `:129-156`). A push holds the row in the outbox with a backoff, never sends
+  it sealed and never retires it, as it does with no key installed
+  (`crates/memry-core/src/sync/push.rs:248-260`, `:338-369`). Electron
+  likewise never reinterprets such a row: when the vault key changes it
+  deletes the agent rows (`apps/desktop/src/main/crypto/vault-key-state.ts:35-62`,
+  `:95-99`, `:150-162`).
+- **Push opens** the sealed keys of a record that is not pending before the
+  record envelope is built, so the opened value equals the wire value and
+  rules 3 and 4 hold for what leaves the device. A pending record is already
+  the wire value and goes as stored, with or without a key
+  (`crates/memry-core/src/crypto/agent_payload.rs:99-121`,
+  `crates/memry-core/src/sync/push.rs:365`).
+- **Installing a key** through `Vault::set_at_rest_key` refuses a key that does
+  not match the vault's local key verifier (chapter 01 §1.4.2, `meta` key
+  `vault.crypto.verifier.v1`) when one is stored, and installs nothing
+  (`crates/memry-core/src/api/vault.rs:144-173`). Otherwise it seals exactly
+  the sealed-pending records that are not flagged corrupt, unconditionally,
+  and clears their marks, in one transaction; a record that will not seal is
+  flagged corrupt and stays pending; the held agent rows are released
+  (`crates/memry-core/src/domain/agent_records.rs:164-264`). With nothing
+  pending and nothing held it opens no write transaction (`:179-181`).
+  `secure_delete` is on for that transaction and restored after it, `FAST`
+  included (`:182-193`), so SQLite zeroes the cells the seal frees, and a
+  `wal_checkpoint(TRUNCATE)` follows. The checkpoint's result is read: when a
+  reader still holds the WAL after the busy handler gives up, the call says so
+  (`Sealed::wal_kept`) and the WAL may keep the plain pages until a later
+  checkpoint overwrites them (`:138-145`, `:196`, `:280-289`). Neither step
+  reaches copies SQLite made earlier with `secure_delete` off: a page split or
+  an earlier free can leave plain bytes on a freelist page until the page is
+  reused or the file is vacuumed.
 
 **Rule 5 departs for the desktop-only types.** Where Electron's schema
 refuses a `vault_lock`, `canvas_folder`, `home_page`, `sticky_draft`,
@@ -174,7 +209,7 @@ has no `.nullable()`, a value of the wrong type, or `widgets` that is not a
 string), the Rust core returns `Skipped` and writes nothing
 (`crates/memry-core/src/domain/desktop_records/mod.rs:67-74`,
 `crates/memry-core/src/domain/home_page/merge.rs:53-57`,
-`crates/memry-core/src/domain/agent_records.rs:97-108`). `Skipped` only
+`crates/memry-core/src/domain/agent_records.rs:123-134`). `Skipped` only
 counts the item (`crates/memry-core/src/sync/apply.rs:208`, `:552`): the
 cursor moves past it and no later build fetches it again. Electron records
 the same item in its schema-invalid ledger
@@ -1266,13 +1301,13 @@ It is the field-level merge (§13.9) over `title`, `backend`, `backendModel`,
 1. a remote the schema refuses (a value of the wrong type, or `null` in a key
    the schema does not mark `.nullable()`) is skipped before the clock is
    compared, and nothing is written
-   (`crates/memry-core/src/domain/agent_conversation/merge.rs:56-59`,
+   (`crates/memry-core/src/domain/agent_conversation/merge.rs:63-66`,
    `crates/memry-core/src/domain/agent_conversation/mod.rs:40-53`);
 2. no local record, or a remote clock that dominates the local one, stores the
    remote as sent (`:113-133`, `:178-186`); a local clock that dominates skips
    the remote (`:136-137`). An equal clock over the same payload skips; the
    Rust core compares the local payload with its title opened, the payload it
-   would push (`crates/memry-core/src/domain/agent_conversation/merge.rs:61-67`);
+   would push (`crates/memry-core/src/domain/agent_conversation/merge.rs:67-71`);
 3. concurrent clocks merge field by field under `fieldClocks` (chapter 06
    §6.3). A local record without `fieldClocks` seeds every field from its
    document clock (`:140-142`). `updatedAt` is the later of the two, and
@@ -1280,14 +1315,16 @@ It is the field-level merge (§13.9) over `title`, `backend`, `backendModel`,
 4. without a vault key Electron skips the record (`:92-101`), so the cursor
    moves past it and that device never has it. The Rust core stores it pending
    (§13.2.3) instead; on a concurrent merge a sealed local title that wins
-   stays sealed, and a remote title that wins is stored pending.
+   stays sealed, and a remote title that wins is stored pending. A local title
+   that does not open under the installed key makes the remote corrupt
+   (§13.2.3).
 
 The Rust core follows the same rule
-(`crates/memry-core/src/domain/agent_conversation/merge.rs:47-116`) with one
+(`crates/memry-core/src/domain/agent_conversation/merge.rs:54-127`) with one
 chosen difference: on a concurrent merge in which no field value changed,
 Electron writes nothing (`:171`) and keeps its old clock, while the Rust core
 stores the merged clock, as it does for `task` and `project`
-(`crates/memry-core/src/domain/agent_conversation/merge.rs:105-112`). Nothing
+(`crates/memry-core/src/domain/agent_conversation/merge.rs:113-123`). Nothing
 is pushed either way.
 
 A delete follows chapter 05 §5.8: the conversation survives a tombstone only
@@ -1315,16 +1352,16 @@ A message is immutable (§13.9):
    remote as skipped and logs a different one as a conflict, and the Rust
    core reports both as `Skipped`; a row that has metadata and no payload
    takes the remote
-   (`crates/memry-core/src/domain/agent_message/merge.rs:50-54`). A new id
+   (`crates/memry-core/src/domain/agent_message/merge.rs:49-53`). A new id
    stores the remote as sent (`:155-176`);
 2. a remote the schema refuses (a value of the wrong type, or `null` in a key
    the schema does not mark `.nullable()`) is skipped and nothing is written
-   (`crates/memry-core/src/domain/agent_message/merge.rs:55-58`,
+   (`crates/memry-core/src/domain/agent_message/merge.rs:54-57`,
    `crates/memry-core/src/domain/agent_message/mod.rs:37-49`);
 3. a `status` that is not terminal, absent included, refuses the record:
    Electron returns `parse_error` (`:138`), and the Rust core records it
    corrupt without storing its payload
-   (`crates/memry-core/src/domain/agent_message/merge.rs:59-64`,
+   (`crates/memry-core/src/domain/agent_message/merge.rs:58-63`,
    `crates/memry-core/src/sync/apply.rs:565-582`). A writer sends only the
    terminal statuses
    (`crates/memry-core/src/domain/agent_message/mod.rs:34-35`, `:87`);

@@ -9,7 +9,9 @@
 //!   sealed by `Vault::set_at_rest_key` (`agent_sealed_pending`);
 //! - no title or message text reaches the database file;
 //! - the push opens the sealed keys, so the wire payload is the plain schema
-//!   payload, and without a key a sealed row waits in the outbox.
+//!   payload, and without a key a sealed row waits in the outbox;
+//! - a row sealed under another key is never read as plain or sealed again,
+//!   and a key that fails the vault's verifier is not installed.
 
 #[allow(unused_imports)]
 use crate::http_fakes;
@@ -18,10 +20,13 @@ use std::path::Path;
 use std::sync::{Arc, Mutex};
 
 use http_fakes::{FakeTransport, response};
+use memry_core::api::errors::StorageError;
 use memry_core::api::vault::Vault;
-use memry_core::crypto::agent_envelope::{Purpose, open};
+use memry_core::crypto::agent_envelope::{Purpose, SealError, open};
+use memry_core::crypto::keys::local_vault_key_verifier;
 use memry_core::domain::agent_conversation::{self, NewConversation};
 use memry_core::domain::agent_message::{self, NewMessage};
+use memry_core::domain::agent_records::AgentError;
 use memry_core::protocol::envelope::{EnvelopeError, RecordEnvelope};
 use memry_core::protocol::http::{ClientIdentity, HttpClient};
 use memry_core::protocol::types::Declaration;
@@ -33,6 +38,7 @@ use zeroize::Zeroizing;
 
 const NOW: i64 = 1_760_000_000_000;
 const KEY: [u8; 32] = [5; 32];
+const OTHER_KEY: [u8; 32] = [6; 32];
 const TITLE: &str = "PLAINTEXT-TITLE quarterly plan";
 const FIRST: &str = "PLAINTEXT-MESSAGE-ONE what is due";
 const SECOND: &str = "PLAINTEXT-MESSAGE-TWO three tasks";
@@ -171,7 +177,8 @@ async fn agent_sealed_pending_message_is_sealed_when_the_key_arrives() {
     let (pending, column): (i64, String) = db
         .call_blocking(|conn| {
             conn.query_row(
-                "SELECT sealed_pending, content FROM agent_messages WHERE id = 'm1'",
+                "SELECT EXISTS(SELECT 1 FROM agent_sealed_pending WHERE item_id = 'm1'), content
+                 FROM agent_messages WHERE id = 'm1'",
                 [],
                 |row| Ok((row.get(0)?, row.get(1)?)),
             )
@@ -200,12 +207,9 @@ async fn agent_sealed_pending_message_is_sealed_when_the_key_arrives() {
         .vault
         .set_at_rest_key(Some(Zeroizing::new(KEY)))
         .expect("seal pending");
-    assert_eq!(sealed, 1);
+    assert_eq!((sealed.records, sealed.wal_kept), (1, false));
     assert_eq!(
-        scalar::<i64>(
-            &db,
-            "SELECT sealed_pending FROM agent_messages WHERE id = 'm1'"
-        ),
+        scalar::<i64>(&db, "SELECT COUNT(*) FROM agent_sealed_pending"),
         0
     );
     let column: String = scalar(&db, "SELECT content FROM agent_messages WHERE id = 'm1'");
@@ -375,6 +379,151 @@ async fn agent_text_never_reaches_the_database_file_and_pushes_plain() {
         sent.iter()
             .all(|payload| payload.get("attachments").is_none_or(|a| a == &json!([])))
     );
+}
+
+/// A conversation and its message sealed under one key, then another key
+/// installed: Electron throws on reading, merging and pushing such a row
+/// (`vault-key-state.ts:35-62`), and so does this core. Neither the read nor
+/// the push treats the envelope as plain text, and installing the key seals
+/// nothing again (§13.2.3).
+#[tokio::test]
+async fn agent_record_under_another_key_errors_holds_and_is_never_sealed_again() {
+    let fixture = vault("foreign-key");
+    let db = fixture.vault.db_handle();
+    let key = fixture.vault.at_rest_key();
+    fixture
+        .vault
+        .set_at_rest_key(Some(Zeroizing::new(KEY)))
+        .expect("install");
+    let writer = key.clone();
+    let conversation = db
+        .call_blocking(move |conn| {
+            let new = NewConversation {
+                vault_id: "vault-1",
+                title: TITLE,
+                backend: "local",
+                backend_model: None,
+            };
+            let id = agent_conversation::create(conn, &writer, &new, "device-a", NOW)
+                .map_err(failed)?
+                .id;
+            let message = NewMessage {
+                id: Some("m1"),
+                conversation_id: &id,
+                role: "user",
+                content: &message_content(FIRST),
+                attachments: &json!([]),
+                tool_call_id: None,
+                status: "completed",
+            };
+            agent_message::append(conn, &writer, &message, "device-a", NOW).map_err(failed)?;
+            Ok(id)
+        })
+        .expect("writes");
+    let payloads = "SELECT group_concat(payload, '|') FROM
+                    (SELECT payload FROM sync_items ORDER BY item_type, item_id)";
+    let before: String = scalar(&db, payloads);
+
+    for _ in 0..2 {
+        let sealed = fixture
+            .vault
+            .set_at_rest_key(Some(Zeroizing::new(OTHER_KEY)))
+            .expect("another key, no verifier stored");
+        assert_eq!(sealed.records, 0);
+        assert_eq!(scalar::<String>(&db, payloads), before, "byte-identical");
+    }
+
+    let reader = key.clone();
+    let id = conversation.clone();
+    let (title, messages) = db
+        .call_blocking(move |conn| {
+            Ok((
+                agent_conversation::get(conn, &reader, &id).map(drop),
+                agent_message::get_by_conversation(conn, &reader, &id).map(drop),
+            ))
+        })
+        .expect("reads");
+    for read in [title, messages] {
+        assert!(
+            matches!(read, Err(AgentError::Envelope(SealError::Crypto(_)))),
+            "{read:?}"
+        );
+    }
+
+    let recording = Arc::new(Recording::default());
+    let report = PushCoordinator::new(
+        http(FakeTransport::new(vec![])),
+        db.clone(),
+        declaration(),
+        recording.clone(),
+    )
+    .with_at_rest_key(key)
+    .drain_wave()
+    .await
+    .expect("the wave");
+    assert_eq!((report.accepted, report.held, report.retired), (0, 2, 0));
+    assert!(recording.0.lock().unwrap().is_empty(), "nothing goes out");
+}
+
+#[test]
+fn agent_key_that_fails_the_vault_verifier_is_not_installed() {
+    let fixture = vault("verifier");
+    let verifier = local_vault_key_verifier(&KEY, &fixture.vault.id()).expect("a verifier");
+    fixture
+        .vault
+        .db_handle()
+        .call_blocking(move |conn| {
+            conn.execute(
+                "INSERT INTO meta (key, value) VALUES ('vault.crypto.verifier.v1', ?1)",
+                [verifier],
+            )
+            .map(drop)
+            .map_err(failed)
+        })
+        .expect("stored verifier");
+    let key = fixture.vault.at_rest_key();
+
+    let refused = fixture
+        .vault
+        .set_at_rest_key(Some(Zeroizing::new(OTHER_KEY)));
+    assert!(
+        matches!(refused, Err(StorageError::Invalid { .. })),
+        "{refused:?}"
+    );
+    assert!(matches!(
+        key.seal(Purpose::ConversationTitle, "plan"),
+        Err(SealError::KeyUnavailable)
+    ));
+
+    fixture
+        .vault
+        .set_at_rest_key(Some(Zeroizing::new(KEY)))
+        .expect("the vault's own key");
+    assert!(key.seal(Purpose::ConversationTitle, "plan").is_ok());
+}
+
+/// A reader holds the WAL and the writer does not wait: the seal commits and
+/// says the WAL may still hold the plain pages.
+#[tokio::test]
+async fn agent_seal_reports_a_wal_a_reader_kept() {
+    let fixture = vault("wal-kept");
+    let db = fixture.vault.db_handle();
+    pull_message(&fixture, &message_content(FIRST)).await;
+    let reader = rusqlite::Connection::open(fixture.dir.path().join("data.db")).expect("a reader");
+    reader.execute_batch("BEGIN").expect("begin");
+    let rows: i64 = reader
+        .query_row("SELECT COUNT(*) FROM sync_items", [], |row| row.get(0))
+        .expect("a snapshot");
+    assert_eq!(rows, 1);
+    db.call_blocking(|conn| conn.busy_timeout(std::time::Duration::ZERO).map_err(failed))
+        .expect("no wait");
+
+    let sealed = fixture
+        .vault
+        .set_at_rest_key(Some(Zeroizing::new(KEY)))
+        .expect("seal");
+    assert_eq!((sealed.records, sealed.wal_kept), (1, true));
+    reader.execute_batch("COMMIT").expect("end");
 }
 
 fn failed(error: impl std::fmt::Display) -> memry_core::api::errors::StorageError {

@@ -27,6 +27,7 @@ use crate::domain::notes::{failed, insert_local, next_clock, object};
 use crate::domain::saved_filters::mint_id;
 use crate::domain::task_merge::next_field_clocks;
 use crate::storage::repositories::Change;
+use crate::storage::repositories::projectors::agent::set_sealed_pending;
 use crate::storage::repositories::schema::Object;
 use crate::sync::outbox;
 
@@ -169,6 +170,11 @@ pub fn update_fields(
             next_field_clocks(stored.object(), &SYNCABLE_FIELDS, &touched, device_id)?;
         changes.push(("fieldClocks", Change::Set(field_clocks)));
         changes.push(("updatedAt", Change::set(now_ms)));
+        // A sealed title replaces a sealed-pending one, and the title is the
+        // only sealed key.
+        if changed.contains_key("title") {
+            set_sealed_pending(tx, ITEM_TYPE, id, false)?;
+        }
         desktop_records::edit(tx, ITEM_TYPE, id, &stored, changes, device_id, now_ms).map(drop)
     })?;
     get(conn, key, id)?.ok_or_else(|| {

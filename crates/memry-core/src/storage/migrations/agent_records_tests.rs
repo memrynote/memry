@@ -47,12 +47,12 @@ fn the_agent_records_migration_keeps_rows_reruns_and_leaves_the_file_readable() 
                 count(
                     conn,
                     "SELECT COUNT(*) FROM sqlite_schema WHERE type = 'table'
-                     AND name IN ('agent_conversations', 'agent_messages')",
+                     AND name IN ('agent_conversations', 'agent_messages', 'agent_sealed_pending')",
                 )?,
             ))
         })
         .expect("idempotent");
-    assert_eq!((items, tables), (2, 2));
+    assert_eq!((items, tables), (2, 3));
 
     let version = db
         .call_blocking(|conn| run(conn, &DATA_MIGRATIONS[..before]))

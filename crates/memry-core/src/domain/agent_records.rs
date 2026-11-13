@@ -1,20 +1,26 @@
 //! What `agent_conversation` and `agent_message` share (Step 16, #3533): the
 //! error their writes return, reading a record with its sealed keys opened,
-//! sealing an inbound record before it is stored, and sealing the records a
-//! pull stored while no vault key was installed.
+//! storing an inbound record sealed, and sealing the records a pull stored
+//! while no vault key was installed.
 //!
-//! The sealed keys are [`crate::crypto::agent_payload`]'s. Every write seals
-//! before its transaction opens, so no plaintext of those keys is written to
-//! `sync_items`, `outbox` or a projection column while a key is installed.
+//! The sealed keys are [`crate::crypto::agent_payload`]'s. With a key
+//! installed every write seals before its transaction opens, so no plaintext
+//! of those keys is written to `sync_items`, `outbox` or a projection column.
+//! With none, an inbound record is stored as received and marked
+//! sealed-pending in the same transaction ([`set_sealed_pending`]). That mark,
+//! never a value's shape, tells a plain value from a sealed one.
 
 use rusqlite::{Connection, params};
 use serde_json::Value;
 
 use crate::api::errors::StorageError;
 use crate::crypto::agent_envelope::{AtRestKey, SealError};
-use crate::crypto::agent_payload::{HELD_REASON, open_object, seal_object, seal_unsealed};
+use crate::crypto::agent_payload::{HELD_REASON, open_object, seal_object};
 use crate::domain::notes::failed;
+use crate::domain::task_merge;
+use crate::domain::tasks::Inbound;
 use crate::storage::repositories::StoredPayload;
+use crate::storage::repositories::projectors::agent::{is_sealed_pending, set_sealed_pending};
 use crate::storage::repositories::projectors::{self, ItemContext};
 use crate::storage::repositories::schema::Object;
 use crate::storage::repositories::sync_items::{self, InboundRecord};
@@ -26,7 +32,9 @@ pub enum AgentError {
     /// sealed or a sealed key opened.
     #[error("the agent store needs the vault key, and none is installed")]
     SealerUnavailable,
-    /// A sealed key did not open: another key, or altered bytes.
+    /// A sealed key did not open under the installed key: sealed under
+    /// another key, an envelope version this build does not read, altered
+    /// bytes, or a value that is not an envelope at all.
     #[error(transparent)]
     Envelope(SealError),
     #[error(transparent)]
@@ -42,8 +50,9 @@ impl From<SealError> for AgentError {
     }
 }
 
-/// The payload of a live `(item_type, item_id)` with its sealed keys opened,
-/// or `None` when there is no live record.
+/// The payload of a live `(item_type, item_id)` with its sealed keys opened
+/// (as stored when it is sealed-pending), or `None` when there is no live
+/// record.
 pub(crate) fn opened(
     conn: &Connection,
     item_type: &str,
@@ -60,29 +69,46 @@ pub(crate) fn opened(
         what: format!("{item_type} {item_id} payload does not parse: {error}"),
     })?;
     let mut object = stored.object().clone();
-    open_object(item_type, &mut object, key)?;
+    if !is_sealed_pending(conn, item_type, item_id)? {
+        open_object(item_type, &mut object, key)?;
+    }
     Ok(Some(object))
 }
 
-/// `record` with its sealed keys sealed, when a key is installed. Without one
-/// the record is returned as it came, and it projects as `sealed_pending`
-/// until [`seal_pending`] runs. A payload that is not a JSON object is an
-/// error, so the apply records it corrupt without storing its bytes.
-pub(crate) fn seal_inbound(
+/// Stores an inbound agent record wholesale (§6.3.1's apply branch) with its
+/// sealed keys sealed under the installed key. With no key installed the
+/// payload is stored as received and marked sealed-pending in the same
+/// transaction, so [`seal_pending`] seals it once a key arrives. A payload
+/// that is not a JSON object is an error, so the apply records it corrupt
+/// without storing its bytes.
+pub(crate) fn store_inbound(
+    conn: &Connection,
     record: &InboundRecord,
     key: &AtRestKey,
-) -> Result<InboundRecord, StorageError> {
+    now_ms: i64,
+) -> Result<Inbound, StorageError> {
     let mut object = parse_object(record)?;
-    match seal_object(&record.item_type, &mut object, key) {
-        Ok(()) => Ok(InboundRecord {
-            payload_json: Value::Object(object).to_string(),
-            ..record.clone()
-        }),
-        Err(SealError::KeyUnavailable) => Ok(record.clone()),
-        Err(error) => Err(StorageError::Failed {
-            what: format!("{} will not seal: {error}", record.item_type),
-        }),
-    }
+    let (stored, pending) = match seal_object(&record.item_type, &mut object, key) {
+        Ok(()) => {
+            let payload_json = Value::Object(object).to_string();
+            let sealed = InboundRecord {
+                payload_json,
+                ..record.clone()
+            };
+            (sealed, false)
+        }
+        Err(SealError::KeyUnavailable) => (record.clone(), true),
+        Err(error) => {
+            return Err(StorageError::Failed {
+                what: format!("{} will not seal: {error}", record.item_type),
+            });
+        }
+    };
+    let transaction = conn.unchecked_transaction().map_err(failed)?;
+    set_sealed_pending(&transaction, &record.item_type, &record.item_id, pending)?;
+    let outcome = sync_items::apply_remote_in(&transaction, &stored, now_ms)?;
+    transaction.commit().map_err(failed)?;
+    Ok(task_merge::inbound(outcome))
 }
 
 /// The inbound payload as an object, or the error that refuses it.
@@ -107,67 +133,108 @@ pub(crate) fn refuses(item_type: &str, remote: &Object, not_null: &[&str]) -> bo
         || projectors::read(item_type, remote).is_err()
 }
 
-/// Seals every stored agent record whose sealed keys do not open under `key`
-/// (a record a pull stored while no key was installed), in its `sync_items`
-/// payload and its projection row, in one transaction, and releases the agent
-/// rows a push held back for want of a key. Returns how many records it
-/// sealed. Nothing is queued: the opened payload a push sends is the same
-/// either way.
+/// What installing a vault key did to the stored agent records.
+#[derive(Debug, Default, Clone, Copy, PartialEq, Eq)]
+pub struct Sealed {
+    /// How many sealed-pending records it sealed.
+    pub records: usize,
+    /// A reader kept the WAL from being truncated after the seal, so
+    /// `data.db-wal` may still hold the plain pages the seal replaced until a
+    /// later checkpoint overwrites them. The shell logs it.
+    pub wal_kept: bool,
+}
+
+/// Seals every sealed-pending agent record (one a pull stored while no key
+/// was installed) under `key`, in its `sync_items` payload and its projection
+/// row, in one transaction, and releases the agent rows a push held back.
+/// Nothing is queued: the payload a push sends is the same either way.
 ///
-/// It reads every agent row rather than the projection's `sealed_pending`
-/// flag, because that flag is a guess from shape (a plain title can look like
-/// an envelope). A row that will not seal or read is flagged corrupt and the
-/// others still seal. `secure_delete` is on for the transaction and the WAL is
-/// truncated after it, so the plain cells it replaces leave the file.
+/// It visits only the marked records and seals their sealed keys
+/// unconditionally: they were stored plain. A record already flagged corrupt
+/// is passed over and stays sealed-pending, since its payload may not read; a
+/// later write that replaces it decides again. A record that will not seal or
+/// read is flagged corrupt, stays sealed-pending, and the others still seal.
+/// With nothing marked and nothing held it opens no write transaction.
+///
+/// `secure_delete` is on for the transaction, so SQLite zeroes the cells the
+/// seal frees, and the WAL is truncated after it ([`Sealed::wal_kept`] when a
+/// reader prevents that). Neither reaches copies SQLite made earlier, while
+/// `secure_delete` was off: a page split or an earlier free can leave the
+/// plain bytes on a freelist page until it is reused or the file is vacuumed.
 pub(crate) fn seal_pending(
     conn: &Connection,
     key: &AtRestKey,
     now_ms: i64,
-) -> Result<usize, AgentError> {
+) -> Result<Sealed, AgentError> {
+    let rows = pending_rows(conn)?;
+    let held: bool = conn
+        .query_row(
+            "SELECT EXISTS(SELECT 1 FROM outbox
+             WHERE item_type IN ('agent_conversation', 'agent_message')
+               AND last_error LIKE ?1 || '%')",
+            params![HELD_REASON],
+            |row| row.get(0),
+        )
+        .map_err(failed)?;
+    if rows.is_empty() && !held {
+        return Ok(Sealed::default());
+    }
     let previous: i64 = conn
         .query_row("PRAGMA secure_delete", [], |row| row.get(0))
         .map_err(failed)?;
     conn.execute_batch("PRAGMA secure_delete = ON")
         .map_err(failed)?;
-    let sealed = seal_rows(conn, key, now_ms);
-    conn.execute_batch(&format!("PRAGMA secure_delete = {previous}"))
+    let records = seal_rows(conn, rows, key, now_ms);
+    let restore = match previous {
+        0 => "OFF",
+        2 => "FAST",
+        _ => "ON",
+    };
+    conn.execute_batch(&format!("PRAGMA secure_delete = {restore}"))
         .map_err(failed)?;
-    let sealed = sealed?;
-    if sealed > 0 {
-        conn.execute_batch("PRAGMA wal_checkpoint(TRUNCATE)")
-            .map_err(failed)?;
-    }
-    Ok(sealed)
+    let records = records?;
+    let wal_kept = records > 0 && !truncate_wal(conn)?;
+    Ok(Sealed { records, wal_kept })
 }
 
-fn seal_rows(conn: &Connection, key: &AtRestKey, now_ms: i64) -> Result<usize, AgentError> {
-    let rows: Vec<(String, String, String, Option<i64>)> = {
-        let mut statement = conn
-            .prepare(
-                "SELECT item_type, item_id, payload, deleted_at FROM sync_items
-                 WHERE item_type IN ('agent_conversation', 'agent_message')
-                   AND payload IS NOT NULL",
-            )
-            .map_err(failed)?;
-        statement
-            .query_map([], |row| {
-                Ok((row.get(0)?, row.get(1)?, row.get(2)?, row.get(3)?))
-            })
-            .map_err(failed)?
-            .collect::<Result<_, _>>()
-            .map_err(failed)?
-    };
+/// The sealed-pending records with a payload and no corrupt flag.
+fn pending_rows(
+    conn: &Connection,
+) -> Result<Vec<(String, String, String, Option<i64>)>, StorageError> {
+    let mut statement = conn
+        .prepare(
+            "SELECT s.item_type, s.item_id, s.payload, s.deleted_at
+             FROM agent_sealed_pending p
+             JOIN sync_items s ON s.item_type = p.item_type AND s.item_id = p.item_id
+             WHERE s.payload IS NOT NULL AND s.corrupt_reason IS NULL",
+        )
+        .map_err(failed)?;
+    statement
+        .query_map([], |row| {
+            Ok((row.get(0)?, row.get(1)?, row.get(2)?, row.get(3)?))
+        })
+        .map_err(failed)?
+        .collect::<Result<_, _>>()
+        .map_err(failed)
+}
+
+fn seal_rows(
+    conn: &Connection,
+    rows: Vec<(String, String, String, Option<i64>)>,
+    key: &AtRestKey,
+    now_ms: i64,
+) -> Result<usize, AgentError> {
     let transaction = conn.unchecked_transaction().map_err(failed)?;
     let mut sealed = 0;
     for (item_type, item_id, raw, deleted_at) in rows {
         let (object, view) = match seal_row(&item_type, &raw, key) {
-            Ok(Some(sealed_row)) => sealed_row,
-            Ok(None) => continue,
+            Ok(sealed_row) => sealed_row,
             Err(reason) => {
                 sync_items::mark_corrupt(&transaction, &item_type, &item_id, &reason, now_ms)?;
                 continue;
             }
         };
+        set_sealed_pending(&transaction, &item_type, &item_id, false)?;
         transaction
             .execute(
                 "UPDATE sync_items SET payload = ?3 WHERE item_type = ?1 AND item_id = ?2",
@@ -182,8 +249,8 @@ fn seal_rows(conn: &Connection, key: &AtRestKey, now_ms: i64) -> Result<usize, A
         projectors::project(&transaction, &item_type, item, &view)?;
         sealed += 1;
     }
-    // A push that found these rows sealed and no key held them back off
-    // (`sync::push`); with the key installed they can go on the next pass.
+    // A push that could not open these rows held them back off
+    // (`sync::push`); with a key installed they can go on the next pass.
     transaction
         .execute(
             "UPDATE outbox SET next_attempt_at = NULL
@@ -196,23 +263,31 @@ fn seal_rows(conn: &Connection, key: &AtRestKey, now_ms: i64) -> Result<usize, A
     Ok(sealed)
 }
 
-/// One stored row sealed and read for its projection, `None` when it has
-/// nothing to seal, or why it cannot be sealed.
-fn seal_row(
-    item_type: &str,
-    raw: &str,
-    key: &AtRestKey,
-) -> Result<Option<(Object, Object)>, String> {
+/// One sealed-pending row sealed and read for its projection, or why it
+/// cannot be.
+fn seal_row(item_type: &str, raw: &str, key: &AtRestKey) -> Result<(Object, Object), String> {
     let mut object = StoredPayload::parse(raw)
         .map_err(|error| format!("{item_type} payload does not parse: {error}"))?
         .object()
         .clone();
-    if !seal_unsealed(item_type, &mut object, key)
-        .map_err(|error| format!("{item_type} will not seal: {error}"))?
-    {
-        return Ok(None);
-    }
+    seal_object(item_type, &mut object, key)
+        .map_err(|error| format!("{item_type} will not seal: {error}"))?;
     let view = projectors::read(item_type, &object)
         .map_err(|error| format!("{item_type} no longer reads: {error}"))?;
-    Ok(Some((object, view)))
+    Ok((object, view))
 }
+
+/// `PRAGMA wal_checkpoint(TRUNCATE)`, and whether it truncated. The
+/// connection's busy handler retries while a reader holds the WAL
+/// (`busy_timeout`, `storage::pragmas`); the pragma's first column is 1 when
+/// it still could not finish.
+fn truncate_wal(conn: &Connection) -> Result<bool, StorageError> {
+    let busy: i64 = conn
+        .query_row("PRAGMA wal_checkpoint(TRUNCATE)", [], |row| row.get(0))
+        .map_err(failed)?;
+    Ok(busy == 0)
+}
+
+#[cfg(test)]
+#[path = "agent_records_tests.rs"]
+mod tests;

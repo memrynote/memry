@@ -219,8 +219,19 @@ pub(crate) fn write_merged(
     now_ms: i64,
 ) -> Result<(), StorageError> {
     let transaction = conn.unchecked_transaction().map_err(failed)?;
+    write_merged_in(&transaction, record, changes, now_ms)?;
+    transaction.commit().map_err(failed)
+}
+
+/// [`write_merged`] inside a transaction the caller holds.
+pub(crate) fn write_merged_in(
+    transaction: &Connection,
+    record: &InboundRecord,
+    changes: &[(&str, Change)],
+    now_ms: i64,
+) -> Result<(), StorageError> {
     sync_items::apply_local_edit_in(
-        &transaction,
+        transaction,
         &record.item_type,
         &record.item_id,
         changes,
@@ -239,7 +250,7 @@ pub(crate) fn write_merged(
             ],
         )
         .map_err(failed)?;
-    transaction.commit().map_err(failed)
+    Ok(())
 }
 
 /// The stored payload of a row that has one, or `None` when there is nothing
@@ -269,7 +280,12 @@ pub(crate) fn wholesale(
     record: &InboundRecord,
     now_ms: i64,
 ) -> Result<Inbound, StorageError> {
-    Ok(match sync_items::apply_remote(conn, record, now_ms)? {
+    Ok(inbound(sync_items::apply_remote(conn, record, now_ms)?))
+}
+
+/// What a wholesale store of a record did, as the pull counts it.
+pub(crate) fn inbound(outcome: sync_items::ApplyOutcome) -> Inbound {
+    match outcome {
         sync_items::ApplyOutcome::Applied => Inbound::Applied,
         sync_items::ApplyOutcome::Corrupt { reason } => Inbound::Corrupt { reason },
         // The wholesale path runs no document gate, so it has no skip of its
@@ -278,7 +294,7 @@ pub(crate) fn wholesale(
         // `task_activity` is the only expiring type (§13.12) and it is neither
         // of the two field-merged ones, so this arm is unreachable here.
         sync_items::ApplyOutcome::Expired => Inbound::Skipped,
-    })
+    }
 }
 
 /// `fieldClocks` with each changed **listed** field ticked for this device.

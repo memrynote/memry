@@ -16,8 +16,8 @@
 //!   stores none of its payload.
 //! - A new id stores the remote with its sealed keys sealed.
 //! - **No key installed**: Electron skips the record (`:140-148`), which loses
-//!   it once the cursor moves. Here the plain remote is stored and projects as
-//!   `sealed_pending` until `Vault::set_at_rest_key` seals it.
+//!   it once the cursor moves. Here the plain remote is stored and marked
+//!   sealed-pending until `Vault::set_at_rest_key` seals it.
 //! - **No parent check**: Electron defers a message whose conversation is
 //!   missing (`:108-121`, `:156`); this core has no orphan repair, and a message that
 //!   lands first is read once its conversation does.
@@ -30,8 +30,7 @@ use serde_json::Value;
 
 use crate::api::errors::StorageError;
 use crate::crypto::agent_envelope::AtRestKey;
-use crate::domain::agent_records::{parse_object, refuses, seal_inbound};
-use crate::domain::task_merge;
+use crate::domain::agent_records::{parse_object, refuses, store_inbound};
 use crate::domain::tasks::Inbound;
 use crate::storage::repositories::sync_items::{self, InboundRecord};
 
@@ -45,7 +44,7 @@ pub fn apply_remote(
     now_ms: i64,
 ) -> Result<Inbound, StorageError> {
     if record.deleted_at.is_some() {
-        return task_merge::wholesale(conn, record, now_ms);
+        return store_inbound(conn, record, key, now_ms);
     }
     let held = sync_items::load(conn, ITEM_TYPE, &record.item_id)?
         .is_some_and(|row| row.payload.is_some());
@@ -62,5 +61,5 @@ pub fn apply_remote(
             what: format!("{ITEM_TYPE} status {status:?} is not terminal"),
         });
     }
-    task_merge::wholesale(conn, &seal_inbound(record, key)?, now_ms)
+    store_inbound(conn, record, key, now_ms)
 }

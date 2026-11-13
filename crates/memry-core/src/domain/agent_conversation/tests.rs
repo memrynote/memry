@@ -11,7 +11,7 @@ use super::{
 };
 use crate::api::errors::StorageError;
 use crate::crypto::agent_envelope::{AtRestKey, Purpose};
-use crate::crypto::agent_payload::{is_envelope, open_payload};
+use crate::crypto::agent_payload::open_payload;
 use crate::domain::agent_records::{AgentError, seal_pending};
 use crate::domain::desktop_records::testing::{
     DEVICE, NOW, open, payload, queued, remote, remote_delete,
@@ -25,6 +25,13 @@ const NEW: NewConversation<'static> = NewConversation {
     backend: "local",
     backend_model: Some("llama3"),
 };
+
+/// Whether a stored title is an envelope that opens under [`key`].
+fn sealed(value: &Value) -> bool {
+    value
+        .as_str()
+        .is_some_and(|column| key().open(Purpose::ConversationTitle, column).is_ok())
+}
 
 fn key() -> AtRestKey {
     let key = AtRestKey::default();
@@ -40,9 +47,12 @@ fn pull(
     apply_page(conn, items, vec![], NOW + 10, Some(DEVICE), key)
 }
 
+/// The projection's title column and whether the record is sealed-pending.
 fn title_column(conn: &Connection, id: &str) -> (String, i64) {
     conn.query_row(
-        "SELECT title, sealed_pending FROM agent_conversations WHERE id = ?1",
+        "SELECT title, EXISTS(SELECT 1 FROM agent_sealed_pending
+                              WHERE item_type = 'agent_conversation' AND item_id = ?1)
+         FROM agent_conversations WHERE id = ?1",
         params![id],
         |row| Ok((row.get(0)?, row.get(1)?)),
     )
@@ -73,10 +83,7 @@ fn a_conversation_is_stored_sealed_and_reads_back_opened() {
         let created = create(conn, &key, &NEW, DEVICE, NOW).map_err(storage)?;
         assert_eq!(created.title, "Plan the week");
         let stored = payload(conn, ITEM_TYPE, &created.id);
-        assert!(
-            is_envelope(&stored["title"]),
-            "the payload holds the envelope"
-        );
+        assert!(sealed(&stored["title"]), "the payload holds the envelope");
         assert_eq!(stored["clock"], json!({DEVICE: 1}));
         assert_eq!(stored["fieldClocks"]["pinned"], json!({DEVICE: 1}));
         let (column, pending) = title_column(conn, &created.id);
@@ -167,7 +174,7 @@ fn concurrent_edits_merge_field_by_field_and_the_title_stays_sealed() {
         assert_eq!((merged.backend.as_str(), merged.pinned), ("cloud", true));
         assert_eq!(merged.updated_at, NOW + 9);
         let stored = payload(conn, ITEM_TYPE, &id);
-        assert!(is_envelope(&stored["title"]));
+        assert!(sealed(&stored["title"]));
         assert_eq!(stored["clock"], json!({DEVICE: 2, "peer": 1}));
         assert_eq!(title_column(conn, &id).1, 0);
         assert_eq!(
@@ -192,7 +199,7 @@ fn concurrent_edits_merge_field_by_field_and_the_title_stays_sealed() {
             get(conn, &key, &id).map_err(storage)?.expect("live").title,
             "Peer title"
         );
-        assert!(is_envelope(&payload(conn, ITEM_TYPE, &id)["title"]));
+        assert!(sealed(&payload(conn, ITEM_TYPE, &id)["title"]));
         Ok(())
     })
     .expect("merge");
@@ -233,7 +240,7 @@ fn a_dominated_remote_skips_and_a_dominating_one_applies_sealed() {
             get(conn, &key, &id).map_err(storage)?.expect("live").title,
             "Newest"
         );
-        assert!(is_envelope(&payload(conn, ITEM_TYPE, &id)["title"]));
+        assert!(sealed(&payload(conn, ITEM_TYPE, &id)["title"]));
         Ok(())
     })
     .expect("gate");
@@ -337,7 +344,7 @@ fn a_plain_title_shaped_like_an_envelope_is_sealed_read_and_pushed_as_itself() {
             list(conn, &key, "vault-1").map_err(storage)?[0].title,
             SHAPED
         );
-        let wire = open_payload(ITEM_TYPE, &stored_text(conn, &id), &key)
+        let wire = open_payload(ITEM_TYPE, &stored_text(conn, &id), false, &key)
             .unwrap()
             .expect("opened");
         assert_eq!(
@@ -353,7 +360,10 @@ fn a_plain_title_shaped_like_an_envelope_is_sealed_read_and_pushed_as_itself() {
             json!({}),
         );
         pull(conn, &AtRestKey::default(), vec![pulled])?;
-        assert_eq!(seal_pending(conn, &key, NOW + 20).map_err(storage)?, 1);
+        assert_eq!(
+            seal_pending(conn, &key, NOW + 20).map_err(storage)?.records,
+            1
+        );
         assert_ne!(payload(conn, ITEM_TYPE, "c2")["title"], json!(SHAPED));
         assert_eq!(
             key.open(Purpose::ConversationTitle, &title_column(conn, "c2").0)
@@ -425,7 +435,7 @@ fn an_equal_clock_over_the_same_payload_skips_though_the_local_title_is_sealed()
         let key = key();
         let id = create(conn, &key, &NEW, DEVICE, NOW).map_err(storage)?.id;
         let before = stored_text(conn, &id);
-        let wire = open_payload(ITEM_TYPE, &before, &key)
+        let wire = open_payload(ITEM_TYPE, &before, false, &key)
             .unwrap()
             .expect("opened");
         let same = remote(ITEM_TYPE, &id, &serde_json::from_str(&wire).unwrap());
@@ -495,7 +505,7 @@ fn a_concurrent_merge_with_no_key_keeps_a_sealed_title_or_stores_the_remote_one_
             field_clocks.clone(),
         );
         assert_eq!(pull(conn, &no_key, vec![pinned])?.applied, 1);
-        assert!(is_envelope(&payload(conn, ITEM_TYPE, &id)["title"]));
+        assert!(sealed(&payload(conn, ITEM_TYPE, &id)["title"]));
         assert_eq!(title_column(conn, &id).1, 0, "the local title stays sealed");
 
         field_clocks["title"] = json!({DEVICE: 2, "peer": 5});
@@ -511,7 +521,10 @@ fn a_concurrent_merge_with_no_key_keeps_a_sealed_title_or_stores_the_remote_one_
             (String::new(), 1),
             "stored pending"
         );
-        assert_eq!(seal_pending(conn, &key, NOW + 20).map_err(storage)?, 1);
+        assert_eq!(
+            seal_pending(conn, &key, NOW + 20).map_err(storage)?.records,
+            1
+        );
         let sealed = get(conn, &key, &id).map_err(storage)?.expect("live");
         assert_eq!((sealed.title.as_str(), sealed.pinned), ("Peer title", true));
         Ok(())
@@ -534,7 +547,10 @@ fn sealing_pending_records_flags_a_row_that_will_not_seal_and_seals_the_rest() {
         )
         .unwrap();
         let key = key();
-        assert_eq!(seal_pending(conn, &key, NOW + 20).map_err(storage)?, 1);
+        assert_eq!(
+            seal_pending(conn, &key, NOW + 20).map_err(storage)?.records,
+            1
+        );
         assert!(corrupt_reason(conn, "c-bad").is_some());
         assert_eq!(title_column(conn, "c-good").1, 0);
         assert_eq!(
