@@ -83,14 +83,20 @@ jobs:
         run: |
           args=(--build_dir build --config Release --parallel --skip_tests --compile_no_warning_as_error
             --no_telemetry --cmake_extra_defines onnxruntime_BUILD_UNIT_TESTS=OFF)
+          if [ "$RUNNER_OS" = Windows ]; then
+            # The images differ: windows-2022 has Visual Studio 2022, windows-11-arm Visual Studio 2026.
+            vs=$("/c/Program Files (x86)/Microsoft Visual Studio/Installer/vswhere.exe" -latest -products '*' -property installationVersion | cut -d. -f1)
+            case "$vs" in
+              17) args+=(--cmake_generator "Visual Studio 17 2022") ;;
+              18) args+=(--cmake_generator "Visual Studio 18 2026") ;;
+              *) echo "::error::unknown Visual Studio version $vs"; exit 1 ;;
+            esac
+          fi
           case "${{ matrix.triple }}" in
-            x86_64-apple-darwin)
-              python tools/ci_build/build.py "${args[@]}" --osx_arch x86_64 --apple_deploy_target 13.0 ;;
-            x86_64-pc-windows-msvc)
-              python tools/ci_build/build.py "${args[@]}" --cmake_generator "Visual Studio 17 2022" ;;
-            aarch64-pc-windows-msvc)
-              python tools/ci_build/build.py "${args[@]}" --cmake_generator "Visual Studio 17 2022" --arm64 ;;
+            x86_64-apple-darwin) args+=(--osx_arch x86_64 --apple_deploy_target 13.0) ;;
+            aarch64-pc-windows-msvc) args+=(--arm64) ;;
           esac
+          python tools/ci_build/build.py "${args[@]}"
 
       # A library of the wrong architecture would link nowhere, and a published archive is final.
       - name: Check the target architecture
