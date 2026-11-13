@@ -25,17 +25,6 @@ import SwiftUI
 // sidebar hides nothing, so it keeps desktop's default (`railDefault`).
 
 struct VaultTabLayout: Equatable {
-    /// Which mapping the shell shows. The sidebar needs room both ways: an
-    /// iPad window narrow enough to be compact, and an iPhone in landscape
-    /// (compact height, regular width on the large models), keep the bar.
-    enum Width: Equatable {
-        case compact, regular
-
-        init(horizontal: UserInterfaceSizeClass?, vertical: UserInterfaceSizeClass?) {
-            self = horizontal == .regular && vertical == .regular ? .regular : .compact
-        }
-    }
-
     /// Where a regular window puts its pages. Landscape pins the sidebar. A
     /// portrait sidebar is an overlay over the page, and SwiftUI cannot close
     /// it, so a link that routes (`memry://calendar`) would select a page
@@ -56,7 +45,7 @@ struct VaultTabLayout: Equatable {
     /// The shown pages behind Menu, in order. Empty at regular width.
     let menu: [VaultTab]
 
-    init(savedOrder: [String], width: Width = .compact, isShown: (VaultTab) -> Bool) {
+    init(savedOrder: [String], width: LayoutWidth = .compact, isShown: (VaultTab) -> Bool) {
         switch width {
         case .compact:
             var ordered: [VaultTab] = []

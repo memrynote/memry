@@ -83,8 +83,8 @@ struct NotesListView: View {
     }
 
     /// The shell's own rule: a sidebar needs regular width and height.
-    private var width: VaultTabLayout.Width {
-        VaultTabLayout.Width(horizontal: horizontalSizeClass, vertical: verticalSizeClass)
+    private var width: LayoutWidth {
+        LayoutWidth(horizontal: horizontalSizeClass, vertical: verticalSizeClass)
     }
 
     var body: some View {

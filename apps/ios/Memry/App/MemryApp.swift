@@ -37,6 +37,11 @@ final class MemryAppDelegate: NSObject, UIApplicationDelegate {
         // UI tests pass `-MEMRY_HIDE_TIPS YES`: a tip's popover takes the
         // next tap, so a test's tap would land on it on a fresh install.
         if UserDefaults.standard.bool(forKey: "MEMRY_HIDE_TIPS") { Tips.hideAllTipsForTesting() }
+        // `-MEMRY_RESET_TIPS YES`: the tip test starts from a fresh install's
+        // tips, whatever earlier runs earned.
+        if UserDefaults.standard.bool(forKey: "MEMRY_RESET_TIPS") {
+            do { try Tips.resetDatastore() } catch { Log.core.error("tips could not be reset") }
+        }
         #endif
         do {
             try Tips.configure()
