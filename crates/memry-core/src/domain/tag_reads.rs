@@ -247,16 +247,28 @@ pub fn of_note(
 }
 
 /// Every tag a filed journal day, or a note whose bytes on disk the index measured, carries, one
-/// spelling per tag, in the order Electron's open walk reads them (`findVaultFiles`: each
-/// folder's entries by name, a folder's notes where its name sorts), each file's as [`of_note`]
-/// lists them. A note whose file changed since is left to the pass that measures it, as Electron
-/// takes a file's tags when it reads it: the header last measured may hold a tag a rename or a
-/// delete just took out of the file.
+/// spelling per tag, each file's as [`of_note`] lists them; `only` the files with those ids. The
+/// files go in Electron's open walk order as far as it has one: `findVaultFiles` takes each
+/// folder's entries in the order `readdir` returns them, which no platform promises, and here
+/// they go by name, a folder's notes where its name sorts. A note whose file changed since is
+/// left to the pass that measures it, as Electron takes a file's tags when it reads it: the
+/// header last measured may hold a tag a rename or a delete just took out of the file.
 pub fn used(
     data: &Connection,
     files: &HashMap<String, FileTags>,
+    only: Option<&[String]>,
 ) -> Result<Vec<String>, StorageError> {
-    let mut notes: Vec<TaggedNote> = filed_read(data, files, None)?
+    let read = match only {
+        None => filed_read(data, files, None)?,
+        Some(ids) => {
+            let mut read = Vec::new();
+            for id in ids {
+                read.extend(filed_read(data, files, Some(id))?);
+            }
+            read
+        }
+    };
+    let mut notes: Vec<TaggedNote> = read
         .into_iter()
         .filter(|(_, settled)| *settled)
         .map(|((note, _), _)| note)

@@ -4,8 +4,10 @@
 //! | Test                                                         | Rule                                  |
 //! | ------------------------------------------------------------ | ------------------------------------- |
 //! | the used tags read in Electron's walk order, measured only   | `findVaultFiles` order; current bytes |
-//! | each new definition takes the palette colour of the count    | `TAG_COLOR_PALETTE[count % 24]`       |
-//! | an existing definition is never changed, a deleted one comes back | `getOrCreateTag` reads first     |
+//! | each new definition takes the palette colour of the count    | `TAG_COLOR_PALETTE[count % 24]`, unclocked |
+//! | an existing definition is never changed, a deleted one stays deleted | `getOrCreateTag` reads first; a tombstone wins |
+//!
+//! The seed that pushes a mint after the pull is `memry-desktop`'s `tag_definitions_sync`.
 
 #![cfg(feature = "markdown")]
 
@@ -27,7 +29,7 @@ fn define(vault: &Vault, tags: &[&str], now: i64) -> usize {
     let tags: Vec<String> = tags.iter().map(|t| (*t).to_owned()).collect();
     vault
         .db_handle()
-        .call_blocking(move |conn| define_used(conn, &tags, "desk", now))
+        .call_blocking(move |conn| define_used(conn, &tags, now))
         .expect("defined")
 }
 
@@ -86,8 +88,15 @@ fn the_used_tags_read_in_electrons_walk_order_measured_only() {
     filed_as(&vault, "n4", "0.md", Some("bytes-after-the-measure"));
     measured(&search, "n4", "---\ntags: [gone]\n---\n");
     assert_eq!(
-        search.used_tags().expect("used"),
+        search.used_tags(None).expect("used"),
         ["meeting", "Idea", "focus", "health"]
+    );
+    assert_eq!(
+        search
+            .used_tags(Some(vec!["n1".into(), "n3".into(), "n4".into()]))
+            .expect("used"),
+        ["MEETING", "focus", "health"],
+        "only the files named, measured ones only"
     );
 }
 
@@ -106,7 +115,7 @@ fn each_new_definition_takes_the_palette_colour_of_the_count() {
             ("reading".to_owned(), "fuchsia".to_owned()),
         ]
     );
-    assert_eq!(queued(&vault), ["meeting", "idea", "reading"]);
+    assert!(queued(&vault).is_empty(), "minted, not queued");
     let payload: Value = vault
         .db_handle()
         .read_blocking(|conn| {
@@ -123,10 +132,15 @@ fn each_new_definition_takes_the_palette_colour_of_the_count() {
         .expect("payload");
     assert_eq!(payload["colorAuthored"], Value::Bool(false));
     assert_eq!(payload["name"], "idea");
+    assert!(
+        payload.get("clock").is_none(),
+        "unclocked until the sync pass seeds it"
+    );
 }
 
+/// A deleted tag stays deleted while a note still carries it, whatever the spelling.
 #[test]
-fn an_existing_definition_is_never_changed_and_a_deleted_one_comes_back() {
+fn an_existing_definition_is_never_changed_and_a_deleted_one_stays_deleted() {
     let (_dir, vault, _search) = open();
     vault
         .db_handle()
@@ -144,7 +158,8 @@ fn an_existing_definition_is_never_changed_and_a_deleted_one_comes_back() {
             Ok(())
         })
         .expect("deleted");
-    assert!(colors(&vault).is_empty());
-    assert_eq!(define(&vault, &["work"], 4), 1);
-    assert_eq!(colors(&vault), [("Work".to_owned(), "rose".to_owned())]);
+    let before = queued(&vault);
+    assert_eq!(define(&vault, &["work", "WORK"], 4), 0);
+    assert!(colors(&vault).is_empty(), "the deletion stands");
+    assert_eq!(queued(&vault), before, "nothing queued");
 }

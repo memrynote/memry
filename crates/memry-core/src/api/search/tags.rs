@@ -20,12 +20,12 @@ impl Search {
             .read_blocking(move |data| tag_reads::counts(data, &files))
     }
 
-    /// Every tag the filed notes and journal days carry, in Electron's walk order
-    /// ([`tag_reads::used`]).
-    pub fn used_tags(&self) -> Result<Vec<String>, StorageError> {
+    /// Every tag the filed notes and journal days carry, `only` those with these ids, in
+    /// Electron's walk order ([`tag_reads::used`]).
+    pub fn used_tags(&self, only: Option<Vec<String>>) -> Result<Vec<String>, StorageError> {
         let files = self.index.read_blocking(note_stats::file_tags)?;
         self.data
-            .read_blocking(move |data| tag_reads::used(data, &files))
+            .read_blocking(move |data| tag_reads::used(data, &files, only.as_deref()))
     }
 
     /// The colour of `tag` and the notes and journal days carrying it ([`tag_reads::tagged`]).

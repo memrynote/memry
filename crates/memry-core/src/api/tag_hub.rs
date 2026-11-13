@@ -19,6 +19,7 @@ use crate::domain::tag_retag;
 use crate::domain::tags;
 use crate::seams::secure_store::SecureStore;
 use crate::storage::Db;
+use crate::sync::engine::PassSeed;
 
 pub struct TagHub {
     db: Db,
@@ -40,11 +41,11 @@ impl TagHub {
             .call_blocking(|conn| tag_admin::set_color(conn, tag, color, &self.device_id, now_ms()))
     }
 
-    /// A definition for each of `tags` that has none ([`tag_mint::define_used`]); how many it
-    /// created.
+    /// Mints a definition for each of `tags` that has no record ([`tag_mint::define_used`]);
+    /// how many it minted.
     pub fn define_used(&self, tags: &[String]) -> Result<usize, StorageError> {
         self.db
-            .call_blocking(|conn| tag_mint::define_used(conn, tags, &self.device_id, now_ms()))
+            .call_blocking(|conn| tag_mint::define_used(conn, tags, now_ms()))
     }
 
     /// An emoji or `icon:Name`; `None` clears it.
@@ -178,5 +179,22 @@ impl TagHub {
         self.db.call_blocking(|conn| {
             tag_categories::arrange(conn, assignments, order, &self.device_id, now_ms())
         })
+    }
+}
+
+/// The minted definitions seeded by a sync pass ([`tag_mint::seed`]), as Electron's full sync
+/// seeds its unclocked tag rows between its pull and its push. Step 17's driver registers it
+/// with `SyncEngine::with_seed` for the open vault.
+pub struct TagSeed(pub Arc<TagHub>);
+
+#[async_trait::async_trait]
+impl PassSeed for TagSeed {
+    async fn seed(&self) -> Result<(), StorageError> {
+        let hub = &self.0;
+        let device_id = hub.device_id.clone();
+        hub.db
+            .call(move |conn| tag_mint::seed(conn, &device_id, now_ms()))
+            .await?;
+        Ok(())
     }
 }

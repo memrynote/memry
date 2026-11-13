@@ -6,7 +6,11 @@
 //! | the open's pass defines each tag in Electron's walk order   | `TAG_COLOR_PALETTE[count % 24]`      |
 //! | a definition someone made keeps its colour                  | an existing definition is never edited |
 //! | an outside edit's new tag is defined by its pass            | a later file's tag is defined too    |
+//! | a later pass defines only the tags of the files it read     | `ensureTagDefinitions` per file      |
 //! | an open defines the tags an older build indexed without one | existing vaults catch up on open     |
+//!
+//! A definition is minted on this device only, unclocked; `tag_definitions_sync` covers the
+//! sync pass that seeds it.
 
 #[allow(unused_imports)]
 use crate::device_key;
@@ -117,7 +121,7 @@ fn the_opens_pass_defines_each_tag_in_electrons_walk_order() {
     let (payload, queued) = record(&e, "meeting");
     assert_eq!(payload["colorAuthored"], Value::Bool(false));
     assert_eq!(payload["color"], "rose");
-    assert!(queued, "the definition goes to sync");
+    assert!(!queued, "a sync pass seeds it, after its pull");
 }
 
 /// A colour picked before the pass, or after it, stays; the pass mints the others around it.
@@ -143,6 +147,28 @@ fn an_outside_edits_new_tag_is_defined_by_its_pass() {
     until("later defined", || color(&e, "later").is_some());
     assert_eq!(color(&e, "later").as_deref(), Some("blue"));
     assert_eq!(color(&e, "health").as_deref(), Some("violet"));
+}
+
+/// A pass that reads one file mints for that file's tags, not for every note's: `walk`, whose
+/// definition went while the vault was open, waits for the next open.
+#[test]
+fn a_later_pass_defines_only_the_tags_of_the_files_it_read() {
+    let (e, _) = opened(&FILES);
+    until("every tag defined", || colors(&e).len() == 6);
+    e.core()
+        .db_handle()
+        .call_blocking(|conn| {
+            conn.execute_batch(
+                "DELETE FROM sync_items WHERE item_type = 'tag_definition' AND item_id = 'walk';
+                 DELETE FROM tag_definitions WHERE name = 'walk';",
+            )
+            .unwrap();
+            Ok(())
+        })
+        .unwrap();
+    e.write("b.md", "---\ntags: [health, later]\n---\nBody.\n");
+    until("later defined", || color(&e, "later").is_some());
+    assert_eq!(color(&e, "walk"), None, "a file the pass did not read");
 }
 
 /// A vault an older build indexed holds its notes' rows and no definitions: the next open's
