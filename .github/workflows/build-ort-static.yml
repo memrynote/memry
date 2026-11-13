@@ -109,13 +109,29 @@ jobs:
               lipo -archs libonnxruntime_common.a | tee "$RUNNER_TEMP/arch.txt"
               [ "$(cat "$RUNNER_TEMP/arch.txt")" = x86_64 ] ;;
             x86_64-unknown-linux-gnu)
-              readelf -h libonnxruntime_common.a | grep -m1 'Machine:' | tee "$RUNNER_TEMP/arch.txt"
-              grep -q 'X86-64' "$RUNNER_TEMP/arch.txt" ;;
+              # Reads the whole listing: `grep -m1` would end readelf with SIGPIPE under pipefail.
+              readelf -h libonnxruntime_common.a | grep 'Machine:' | sort -u | tee "$RUNNER_TEMP/arch.txt"
+              [ "$(wc -l < "$RUNNER_TEMP/arch.txt")" -eq 1 ] && grep -q 'X86-64' "$RUNNER_TEMP/arch.txt" ;;
             *)
-              dumpbin=$("/c/Program Files (x86)/Microsoft Visual Studio/Installer/vswhere.exe" -latest -products '*' -find 'VC/Tools/MSVC/**/dumpbin.exe' | head -1)
-              "$dumpbin" /headers Release/onnxruntime_common.lib | grep -m1 'machine' | tee "$RUNNER_TEMP/arch.txt"
-              want=$([ "${{ matrix.triple }}" = aarch64-pc-windows-msvc ] && echo ARM64 || echo x64)
-              grep -q "($want)" "$RUNNER_TEMP/arch.txt" ;;
+              # The COFF machine of every object in the archive, read directly (no dumpbin lookup).
+              want=$([ "${{ matrix.triple }}" = aarch64-pc-windows-msvc ] && echo aa64 || echo 8664)
+              python - Release/onnxruntime_common.lib "$want" <<'EOF'
+          import struct, sys
+          data = open(sys.argv[1], "rb").read()
+          assert data[:8] == b"!<arch>\n", "not an archive"
+          machines, pos = set(), 8
+          while pos + 60 <= len(data):
+              name, size = data[pos:pos + 16].rstrip(), int(data[pos + 48:pos + 58])
+              body = data[pos + 60:pos + 60 + size]
+              if name not in (b"/", b"//") and not name.startswith(b"/<"):
+                  # Import and bigobj headers start 00 00 FF FF and hold the machine at offset 6.
+                  at = 6 if body[:4] == b"\0\0\xff\xff" else 0
+                  machines.add("%04x" % struct.unpack_from("<H", body, at)[0])
+              pos += 60 + size + (size & 1)
+          print("COFF machines:", sorted(machines))
+          sys.exit(0 if machines == {sys.argv[2]} else 1)
+          EOF
+              ;;
           esac
 
       # Every static library of the build tree, at its path under build/Release: ort-sys finds the
@@ -160,7 +176,9 @@ jobs:
         run: |
           ls archives/*.tar.zst
           if ! gh release view "$RELEASE_TAG" --repo "$GITHUB_REPOSITORY" >/dev/null 2>&1; then
-            gh release create "$RELEASE_TAG" --repo "$GITHUB_REPOSITORY" --target "$GITHUB_SHA" \
+            # No --target: the tag goes on the default branch. GITHUB_TOKEN may not create a tag on a
+            # commit that changes a workflow the default branch lacks (HTTP 403).
+            gh release create "$RELEASE_TAG" --repo "$GITHUB_REPOSITORY" \
               --prerelease --latest=false --title "ONNX Runtime $ORT_VERSION static libraries (build input)" \
               --notes "CPU-only static ONNX Runtime $ORT_VERSION libraries, built by .github/workflows/build-ort-static.yml and linked into the desktop app through ORT_LIB_LOCATION. Not an app release."
           fi
