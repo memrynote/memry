@@ -6,7 +6,7 @@ import SwiftUI
 // A paging `TabView` holds the shown day and its neighbours (desktop
 // `PREFETCH_DAYS` = 1: building a neighbour's page reads it, which is the
 // prefetch). A swipe, ‹ ›, the "Today" capsule, the rail's calendar or the
-// day keys (`JournalDayShortcuts`) replace the shown day in place through
+// day keys (`JournalDayShortcuts`, `MemryCommands`) replace the shown day in place through
 // `JournalRouter.showDay`, so Back still leads to the month; Esc drills up.
 // Each page owns its own models keyed by its date, so an edit pending on one
 // day never lands on another. At regular width the rail (`JournalDayRail`)
@@ -92,8 +92,9 @@ struct JournalDayScreen: View {
         .navigationBarBackButtonHidden(true)
         .toolbar { toolbar }
         .background {
-            JournalDayShortcuts(step: step, today: { show(store.clock.today) }, drillUp: { router.drillUp() })
+            JournalDayShortcuts(step: step, drillUp: { router.drillUp() })
         }
+        .focusedSceneValue(\.journalDayCommands, JournalDayCommands(step: step, today: { show(store.clock.today) }))
         .accessibilityAction(named: JournalCopy.previousDay) { step(-1) }
         .accessibilityAction(named: JournalCopy.nextDay) { step(1) }
         .accessibilityAction(named: JournalCopy.goToToday) { show(store.clock.today) }

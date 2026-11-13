@@ -17,6 +17,7 @@ struct MemryApp: App {
                     if let link = CalendarLink(url: url) { CalendarLinks.shared.request(link) }
                 }
         }
+        .commands { MemryCommands() }
     }
 }
 

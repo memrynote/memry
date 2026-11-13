@@ -2,22 +2,25 @@ import SwiftUI
 
 // The Home page: pinned first in the bar. Its widgets are only on desktop for
 // now, so the page says so. It carries the one global "+": write something
-// down without choosing a page first (quick capture), Inbox picked.
+// down without choosing a page first (quick capture), Inbox picked. The shell
+// owns the capture sheet, which ⇧⌘N opens from any page (#4355).
 
 struct HomeTab: View {
     let switchVault: (() -> Void)?
+    /// The last capture's confirmation, shown beside the "+".
+    let receipt: CaptureReceipt?
+    /// Opens the shell's quick capture sheet.
+    let capture: () -> Void
     let open: (CaptureReceipt) -> Void
 
-    @Environment(\.quickCapture) private var capture
+    @Environment(\.quickCapture) private var quickCapture
     @Environment(\.horizontalSizeClass) private var horizontalSizeClass
     @Environment(\.verticalSizeClass) private var verticalSizeClass
-    @State private var capturing = false
-    @State private var receipt: CaptureReceipt?
 
     var body: some View {
         let items = HomeChrome.items(
             width: LayoutWidth(horizontal: horizontalSizeClass, vertical: verticalSizeClass),
-            canCapture: capture != nil,
+            canCapture: quickCapture != nil,
             canSwitchVault: switchVault != nil
         )
         NavigationStack {
@@ -33,7 +36,7 @@ struct HomeTab: View {
             .toolbar {
                 if items.contains(.capture) {
                     ToolbarItem(placement: .topBarTrailing) {
-                        Button(QuickCaptureCopy.add, systemImage: "square.and.pencil") { capturing = true }
+                        Button(QuickCaptureCopy.add, systemImage: "square.and.pencil", action: capture)
                             .accessibilityHint(QuickCaptureCopy.addHint)
                             .accessibilityIdentifier("home.addButton")
                     }
@@ -49,41 +52,22 @@ struct HomeTab: View {
             }
         }
         .overlay(alignment: .bottomTrailing) {
-            if capture != nil {
+            if quickCapture != nil {
                 HStack(spacing: Tokens.Space.medium) {
                     if let receipt {
-                        CaptureToast(receipt: receipt) {
-                            self.receipt = nil
-                            open(receipt)
-                        }
+                        CaptureToast(receipt: receipt) { open(receipt) }
                     }
                     if items.contains(.floatingCapture) {
                         FloatingAddButton(
                             label: QuickCaptureCopy.add,
                             hint: QuickCaptureCopy.addHint,
                             identifier: "home.addButton"
-                        ) { capturing = true }
+                        ) { capture() }
                     }
                 }
                 .padding(.horizontal, Tokens.Space.inset)
                 .padding(.bottom, Tokens.Space.medium)
             }
-        }
-        .sheet(isPresented: $capturing) {
-            if let capture {
-                QuickCaptureSheet(
-                    kinds: CaptureKind.allCases.filter(\.isShown),
-                    capture: capture,
-                    draft: capture.homeDraft
-                ) { made in
-                    receipt = made
-                }
-            }
-        }
-        .task(id: receipt) {
-            guard receipt != nil else { return }
-            try? await Task.sleep(for: .seconds(4))
-            receipt = nil
         }
     }
 }

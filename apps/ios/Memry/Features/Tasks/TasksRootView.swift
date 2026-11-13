@@ -65,6 +65,8 @@ final class TasksRouter {
     private(set) var settingsSplit = false
     /// The Calendar page's stack, wherever the page sits.
     var calendarPath = NavigationPath()
+    /// ⌥⌘N asked for the task list's composer (`newTask`).
+    private(set) var composerRequested = false
 
     /// The router for the vault ``LaunchSnapshot`` has open: the tab and the
     /// Tasks stack the user left.
@@ -112,6 +114,20 @@ final class TasksRouter {
     func open(_ route: TasksRoute) {
         selectedTab = .tasks
         path.append(route)
+    }
+
+    /// ⌥⌘N: the task list's composer, as its "+" opens it. The list takes
+    /// the request when it shows (`takeComposerRequest`).
+    func newTask() {
+        selectedTab = .tasks
+        path = []
+        composerRequested = true
+    }
+
+    /// Whether the list should open its composer, once.
+    func takeComposerRequest() -> Bool {
+        defer { composerRequested = false }
+        return composerRequested
     }
 }
 

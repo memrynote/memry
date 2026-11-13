@@ -72,6 +72,10 @@ struct VaultTabsView<Notes: View, Tasks: View, Journal: View, More: View>: View 
     @State private var order = VaultTabOrder.shared
     @State private var showsMenu = false
     @State private var showsSearch = false
+    /// Quick capture: Home's "+" and ⇧⌘N open the same sheet from here.
+    @State private var capturing = false
+    @State private var captureReceipt: CaptureReceipt?
+    @Environment(\.quickCapture) private var capture
     @Environment(\.horizontalSizeClass) private var horizontalSizeClass
     @Environment(\.verticalSizeClass) private var verticalSizeClass
     @Environment(\.vaultBrowse) private var browse
@@ -101,7 +105,7 @@ struct VaultTabsView<Notes: View, Tasks: View, Journal: View, More: View>: View 
                 }
                 ForEach(layout.bar, id: \.self) { page in
                     Tab(page.title, systemImage: page.symbol, value: ShellTab.page(page)) {
-                        content(page)
+                        shown(page)
                     }
                     .badge(width == .regular && page == .inbox ? inboxStore?.badgeCount ?? 0 : 0)
                 }
@@ -110,7 +114,7 @@ struct VaultTabsView<Notes: View, Tasks: View, Journal: View, More: View>: View 
                     systemImage: width == .regular ? "gearshape" : VaultTab.more.symbol,
                     value: ShellTab.page(.more)
                 ) {
-                    content(layout.menuContent(for: router.selectedTab))
+                    shown(layout.menuContent(for: router.selectedTab))
                 }
             }
             .tabViewStyle(.sidebarAdaptable)
@@ -121,15 +125,8 @@ struct VaultTabsView<Notes: View, Tasks: View, Journal: View, More: View>: View 
                 VaultSidebarHeader(name: vaultName, context: settings, switchVault: switchVault)
             }
         }
-        // ⌘K, everywhere including the editor (epic #4334 keyboard table).
-        // #4355's command table takes it over.
-        .background {
-            Button(GlobalSearchCopy.open, action: openSearch)
-                .keyboardShortcut("k", modifiers: .command)
-                .opacity(0)
-                .allowsHitTesting(false)
-                .accessibilityHidden(true)
-        }
+        // The app's keyboard commands (`MemryCommands`), ⌘K among them.
+        .focusedSceneValue(\.vaultCommands, commands(pages: layout.commandPages))
         .sheet(isPresented: $showsMenu) {
             VaultMenuSheet(pages: layout.menu) { page in
                 router.selectedTab = page
@@ -146,6 +143,20 @@ struct VaultTabsView<Notes: View, Tasks: View, Journal: View, More: View>: View 
         }
         // Settings is a split view in the sidebar's width (#4348).
         .onChange(of: width, initial: true) { _, width in router.setSettingsSplit(width == .regular) }
+        .sheet(isPresented: $capturing) {
+            if let capture {
+                QuickCaptureSheet(
+                    kinds: CaptureKind.allCases.filter(\.isShown),
+                    capture: capture,
+                    draft: capture.homeDraft
+                ) { captureReceipt = $0 }
+            }
+        }
+        .task(id: captureReceipt) {
+            guard captureReceipt != nil else { return }
+            try? await Task.sleep(for: .seconds(4))
+            captureReceipt = nil
+        }
         .sheet(isPresented: searchShown(.compact)) { searchView(.sheet) }
         // D3: a palette over the window at regular width (#4426).
         .fullScreenCover(isPresented: searchShown(.regular)) {
@@ -232,8 +243,32 @@ struct VaultTabsView<Notes: View, Tasks: View, Journal: View, More: View>: View 
         NotesLinks.shared.open(id)
     }
 
+    private func commands(pages: [VaultTab]) -> VaultCommands {
+        var newNote: (() -> Void)?
+        if browse?.writer != nil { newNote = self.newNote }
+        var quickCapture: (() -> Void)?
+        if capture != nil { quickCapture = openCapture }
+        return VaultCommands(
+            tasks: router,
+            journal: journalRouter,
+            pages: pages,
+            newNote: newNote,
+            quickCapture: quickCapture,
+            search: openSearch
+        )
+    }
+
+    private func openCapture() { capturing = true }
+
+    /// ⌘N: the Notes page makes the note, as its "+" does.
+    private func newNote() {
+        router.selectedTab = .notes
+        NotesLinks.shared.requestNewNote()
+    }
+
     /// A capture's "View": the item on its page.
     private func open(_ receipt: CaptureReceipt) {
+        captureReceipt = nil
         switch receipt.kind {
         case .inbox: inboxRouter.openItem(receipt.id, in: router)
         case .task: router.openTask(receipt.id)
@@ -242,11 +277,24 @@ struct VaultTabsView<Notes: View, Tasks: View, Journal: View, More: View>: View 
         }
     }
 
+    /// A page with ⇧⌘N's confirmation over it. Home shows its own beside
+    /// its "+".
+    private func shown(_ page: VaultTab) -> some View {
+        content(page).overlay(alignment: .bottom) {
+            if page != .home, let captureReceipt {
+                CaptureToast(receipt: captureReceipt) { open(captureReceipt) }
+                    .frame(maxWidth: Tokens.Size.form)
+                    .padding(.horizontal, Tokens.Space.inset)
+                    .padding(.bottom, Tokens.Space.medium)
+            }
+        }
+    }
+
     /// One page's screen. A page is either in the bar or behind Menu, so each
     /// is built in one place at a time.
     @ViewBuilder private func content(_ page: VaultTab) -> some View {
         switch page {
-        case .home: HomeTab(switchVault: switchVault) { open($0) }
+        case .home: HomeTab(switchVault: switchVault, receipt: captureReceipt, capture: openCapture) { open($0) }
         case .notes: notes()
         case .inbox: InboxTab(store: inboxStore)
         case .tasks: tasks()
