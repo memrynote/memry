@@ -1,5 +1,6 @@
 # CPU-only static ONNX Runtime libraries for the targets ort-sys has no usable prebuilt archive for
-# (crates/AGENTS.md, ONNX Runtime): macOS x64 (none) and Windows x64 and ARM64 (DirectML builds).
+# (crates/AGENTS.md, ONNX Runtime): macOS x64 (none), Windows x64 and ARM64 (DirectML builds) and
+# Linux x64 (built against glibc 2.38; the app supports glibc 2.35, so this one builds on Ubuntu 22.04).
 # Built once per ONNX Runtime version and attached to the release `ort-static-<version>`, which is
 # not an app release: a prerelease that is never marked latest, holding these archives only.
 # rust-ci.yml and the release builds fetch an archive through .github/actions/ort-static, which
@@ -45,7 +46,8 @@ jobs:
           targets=$(jq -cn --arg assets "$assets" --arg tag "$RELEASE_TAG" '
             [ {triple: "x86_64-apple-darwin", os: "macos-15"},
               {triple: "x86_64-pc-windows-msvc", os: "windows-2022"},
-              {triple: "aarch64-pc-windows-msvc", os: "windows-11-arm"} ]
+              {triple: "aarch64-pc-windows-msvc", os: "windows-11-arm"},
+              {triple: "x86_64-unknown-linux-gnu", os: "ubuntu-22.04"} ]
             | map(select("\($tag)-\(.triple).tar.zst" as $name | ($assets | split("\n") | index($name)) == null))')
           echo "targets=$targets" >> "$GITHUB_OUTPUT"
           echo "To build: $targets"
@@ -106,6 +108,9 @@ jobs:
             x86_64-apple-darwin)
               lipo -archs libonnxruntime_common.a | tee "$RUNNER_TEMP/arch.txt"
               [ "$(cat "$RUNNER_TEMP/arch.txt")" = x86_64 ] ;;
+            x86_64-unknown-linux-gnu)
+              readelf -h libonnxruntime_common.a | grep -m1 'Machine:' | tee "$RUNNER_TEMP/arch.txt"
+              grep -q 'X86-64' "$RUNNER_TEMP/arch.txt" ;;
             *)
               dumpbin=$("/c/Program Files (x86)/Microsoft Visual Studio/Installer/vswhere.exe" -latest -products '*' -find 'VC/Tools/MSVC/**/dumpbin.exe' | head -1)
               "$dumpbin" /headers Release/onnxruntime_common.lib | grep -m1 'machine' | tee "$RUNNER_TEMP/arch.txt"

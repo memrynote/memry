@@ -2,7 +2,7 @@ name: ONNX Runtime static library
 description: >-
   Fetches the CPU-only ONNX Runtime archive that build-ort-static.yml attached to the release
   ort-static-1.31.0 and points ORT_LIB_LOCATION at it, on the runners whose target links it (macOS
-  x64, Windows x64 and ARM64; crates/AGENTS.md, ONNX Runtime). Elsewhere ort-sys downloads its own
+  x64, Windows x64 and ARM64, Linux x64; crates/AGENTS.md, ONNX Runtime). Elsewhere ort-sys downloads its own
   prebuilt archive and this does nothing.
 inputs:
   token:
@@ -21,6 +21,7 @@ runs:
           macOS/X64) triple=x86_64-apple-darwin ;;
           Windows/X64) triple=x86_64-pc-windows-msvc ;;
           Windows/ARM64) triple=aarch64-pc-windows-msvc ;;
+          Linux/X64) triple=x86_64-unknown-linux-gnu ;;
           *) echo "ort-sys links its prebuilt archive on $RUNNER_OS/$RUNNER_ARCH"; exit 0 ;;
         esac
         temp="$RUNNER_TEMP"

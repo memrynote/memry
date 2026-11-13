@@ -236,8 +236,8 @@ jobs:
         if: steps.cargo-cache.outcome == 'failure'
         run: rm -rf target "$HOME/.cargo/registry/cache" "$HOME/.cargo/registry/index" "$HOME/.cargo/git/db"
 
-      # memry-ml links ONNX Runtime statically. macOS x64 and Windows link the archive of
-      # build-ort-static.yml (ORT_LIB_LOCATION); the other legs download ort-sys's prebuilt one.
+      # memry-ml links ONNX Runtime statically. macOS x64, Windows and Linux x64 link the archive
+      # of build-ort-static.yml (ORT_LIB_LOCATION); macOS arm64 downloads ort-sys's prebuilt one.
       - name: ONNX Runtime static library
         if: matrix.part != 'tests'
         uses: ./.github/actions/ort-static

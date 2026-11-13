@@ -1,7 +1,7 @@
 # ONNX Runtime for memry-ml (crates/AGENTS.md, ONNX Runtime).
 #
-# macOS arm64 and Linux x64 need nothing: ort-sys downloads its prebuilt static archive at build
-# time. macOS x64 and Windows x64 and ARM64 link the CPU-only archive of
+# macOS arm64 needs nothing: ort-sys downloads its prebuilt static archive at build time. macOS
+# x64, Windows x64 and ARM64 and Linux x64 link the CPU-only archive of
 # .github/workflows/build-ort-static.yml. Fetch it and export ORT_LIB_LOCATION before building:
 #
 #   gh release download ort-static-1.31.0 --repo memrynote/memry --pattern 'ort-static-1.31.0-<triple>.tar.zst'
