@@ -298,6 +298,19 @@ pub struct PortalsUsageChangedEvent {
     pub note_ids: Vec<String>,
 }
 
+/// Sends what one committed reindex changed in links: `portals:usage-changed` for the notes whose
+/// portal readers moved, and `notes:links-changed` only when a note's links did, as Electron's
+/// projectors send each on its own change.
+pub fn announce_links<R: Runtime>(app: &AppHandle<R>, links: LinkChanges) {
+    if !links.usage.is_empty() {
+        let note_ids = links.usage.iter().cloned().collect();
+        broadcast(app, PortalsUsageChangedEvent { note_ids });
+    }
+    if !links.sources.is_empty() || !links.targets.is_empty() {
+        broadcast(app, NoteLinksChangedEvent::from(links));
+    }
+}
+
 /// A tag's colour changed (`tags:color-updated`).
 #[derive(Debug, Clone, Serialize, serde::Deserialize, specta::Type, tauri_specta::Event)]
 pub struct TagColorUpdatedEvent {

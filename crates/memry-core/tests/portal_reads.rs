@@ -9,6 +9,7 @@ use memry_core::domain::search::portal_reads::{self, HostKind, PortalHost};
 use memry_core::portal::StampOutcome;
 use memry_core::storage::migrations::INDEX_MIGRATIONS;
 use rusqlite::params;
+use std::collections::BTreeSet;
 
 use crate::block_refs::Vault;
 
@@ -168,4 +169,84 @@ fn a_stamped_anchor_is_stored_and_found_again() {
         .expect("search");
     assert_eq!(again.results[0].anchor.as_deref(), Some(anchor.as_str()));
     assert_eq!(again.results[0].text, "Parent item");
+}
+
+#[test]
+fn a_journal_days_block_is_stamped_and_queued_as_the_days() {
+    let dir = tempfile::tempdir().expect("scratch");
+    let mut vault = sources(dir.path());
+    vault.day("j2026-01-02", "2026-01-02", "Morning pages\n");
+    file(&vault, "j2026-01-02", "journal/2026-01-02.md");
+    let block = vault.block_ids("j2026-01-02").remove(0);
+    let Some(StampOutcome::Stamped(_)) =
+        body_write::stamp_anchor(&vault.data, "j2026-01-02", &block, "device-a", 1).expect("stamp")
+    else {
+        panic!("a journal day's block is stamped");
+    };
+    let queued: Vec<String> = vault
+        .data
+        .prepare("SELECT item_type FROM outbox WHERE item_id = 'j2026-01-02'")
+        .and_then(|mut statement| {
+            statement
+                .query_map([], |row| row.get(0))?
+                .collect::<Result<_, _>>()
+        })
+        .expect("outbox");
+    assert_eq!(queued, ["journal"], "a day's body travels as the day's");
+}
+
+/// `count` notes `{prefix}{i}` whose body is `markdown`, each carrying `tags`.
+fn many(vault: &mut Vault, prefix: &str, count: usize, tags: &[String], markdown: &str) {
+    for i in 0..count {
+        let id = format!("{prefix}{i}");
+        vault.tagged_note(&id, &id, tags, markdown);
+        file(vault, &id, &format!("{id}.md"));
+    }
+}
+
+fn notes_found(found: &portal_reads::PortalBlockSearch) -> BTreeSet<&str> {
+    found
+        .results
+        .iter()
+        .map(|hit| hit.note_id.as_str())
+        .collect()
+}
+
+/// Electron's `searchAll` reads `limit` (40) notes for a text alone, so a text more notes match
+/// is not truncated by the note count.
+#[test]
+fn a_text_search_reads_at_most_forty_notes_and_is_not_truncated_by_them() {
+    let dir = tempfile::tempdir().expect("scratch");
+    let mut vault = Vault::new(dir.path(), INDEX_MIGRATIONS);
+    many(&mut vault, "n", 45, &[], "zeta\n");
+    vault.reindex();
+    let found = portal_reads::search_blocks(&vault.data, &vault.index, Some("zeta"), None, 200)
+        .expect("search");
+    assert_eq!(notes_found(&found).len(), portal_reads::CANDIDATE_CAP);
+    assert!(!found.truncated, "Electron fetches only the cap");
+}
+
+/// With a tag, Electron's `searchAll` fetches five times the limit, keeps the tagged notes and
+/// then the limit: tagged notes ranked below 80 untagged ones are still read.
+#[test]
+fn a_text_and_tag_search_reads_tagged_notes_ranked_past_twice_the_cap() {
+    let dir = tempfile::tempdir().expect("scratch");
+    let mut vault = Vault::new(dir.path(), INDEX_MIGRATIONS);
+    many(&mut vault, "u", 100, &[], "zeta zeta zeta\n");
+    let filler = "lorem ipsum dolor ".repeat(40);
+    many(
+        &mut vault,
+        "t",
+        45,
+        &["bio".to_owned()],
+        &format!("zeta {filler}\n"),
+    );
+    vault.reindex();
+    let found =
+        portal_reads::search_blocks(&vault.data, &vault.index, Some("zeta"), Some("bio"), 200)
+            .expect("search");
+    let notes = notes_found(&found);
+    assert_eq!(notes.len(), portal_reads::CANDIDATE_CAP, "{notes:?}");
+    assert!(notes.iter().all(|id| id.starts_with('t')));
+    assert!(!found.truncated);
 }

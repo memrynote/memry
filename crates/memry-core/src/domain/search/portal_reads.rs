@@ -68,7 +68,8 @@ pub struct PortalBlockHit {
 #[derive(Debug, Clone, Default, PartialEq, Eq)]
 pub struct PortalBlockSearch {
     pub results: Vec<PortalBlockHit>,
-    /// More blocks matched than the limit, or more notes than [`CANDIDATE_CAP`].
+    /// More blocks matched than the limit, or a tag alone matched more notes than
+    /// [`CANDIDATE_CAP`].
     pub truncated: bool,
     /// Candidate notes whose document did not replay, with why: skipped, for the shell to log.
     pub unreadable: Vec<(String, String)>,
@@ -238,13 +239,21 @@ fn candidates(
     let Some(text) = text else {
         return Ok(tagged.unwrap_or_default());
     };
-    let hits = search_notes(data, index, text, CANDIDATE_CAP * 2)?;
+    // Electron `searchAll`: a tag filter fetches five times the cap, then keeps the cap, so a text
+    // search never reads more than the cap and is never truncated by its notes.
+    let fetch = if tagged.is_some() {
+        CANDIDATE_CAP * 5
+    } else {
+        CANDIDATE_CAP
+    };
+    let hits = search_notes(data, index, text, fetch)?;
     let tagged: Option<BTreeSet<String>> = tagged.map(|ids| ids.into_iter().collect());
     Ok(hits
         .into_iter()
         .filter(|hit| matches!(hit.kind, HitKind::Note))
         .filter(|hit| tagged.as_ref().is_none_or(|ids| ids.contains(&hit.id)))
         .map(|hit| hit.id)
+        .take(CANDIDATE_CAP)
         .collect())
 }
 

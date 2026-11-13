@@ -239,6 +239,8 @@ mod notes_writes;
 mod path_collision;
 #[path = "paths.rs"]
 mod paths;
+#[path = "portals.rs"]
+mod portals;
 #[path = "properties_file.rs"]
 mod properties_file;
 #[path = "property_definitions.rs"]

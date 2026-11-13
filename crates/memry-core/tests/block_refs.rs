@@ -186,16 +186,36 @@ impl Vault {
 
     /// A note titled `title` whose body is `markdown`, its update stored as the server's.
     pub(crate) fn note(&mut self, id: &str, title: &str, markdown: &str) {
+        self.tagged_note(id, title, &[], markdown);
+    }
+
+    /// [`Vault::note`] whose record holds `tags`.
+    pub(crate) fn tagged_note(&mut self, id: &str, title: &str, tags: &[String], markdown: &str) {
         let new = NewNote {
             id,
             title,
             folder_path: None,
             content: "",
-            tags: &[],
+            tags,
             properties: None,
             emoji: None,
         };
         notes::create(&self.data, &new, "device-a", NOW).expect("create the note");
+        self.document(id, markdown);
+    }
+
+    /// The journal day `id` of `date` whose body is `markdown`, its update stored as the server's.
+    pub(crate) fn day(&mut self, id: &str, date: &str, markdown: &str) {
+        self.data
+            .execute(
+                "INSERT INTO journal_entries (id, date, created_at, modified_at) VALUES (?1, ?2, ?3, ?3)",
+                rusqlite::params![id, date, NOW],
+            )
+            .expect("the day's record");
+        self.document(id, markdown);
+    }
+
+    fn document(&mut self, id: &str, markdown: &str) {
         let captured: Arc<Mutex<Vec<Vec<u8>>>> = Arc::default();
         let sink: UpdateSink = {
             let captured = Arc::clone(&captured);
@@ -249,6 +269,11 @@ impl Vault {
             update_log::append_server_update(&self.data, id, self.seq, &update, NOW + self.seq)
                 .expect("store the update");
         }
+    }
+
+    /// The ids of `id`'s top-level blocks.
+    pub(crate) fn block_ids(&self, id: &str) -> Vec<String> {
+        memry_core::crdt::body_edit::top_level_block_ids(&self.docs[id].0).expect("block ids")
     }
 
     pub(crate) fn reindex(&self) -> memry_core::domain::search::Reindexed {
