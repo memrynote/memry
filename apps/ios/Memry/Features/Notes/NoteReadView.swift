@@ -191,7 +191,6 @@ struct NoteReadView: View {
     }
     @Environment(\.requestVaultSync) private var requestVaultSync
     @Environment(\.vaultSyncPasses) private var vaultSyncPasses
-    @Environment(\.vaultSearchIndex) private var searchIndex
 
     private var taskBridge: NoteTaskBridge {
         .note(tasks: taskActions, editor: editorModel, router: router) {
@@ -301,7 +300,7 @@ struct NoteReadView: View {
                             NoteBodyView(
                                 preview: preview,
                                 fetch: model.fetch,
-                                download: model.canFetchBody ? { Task { await model.fetchBody(index: searchIndex) } } : nil
+                                download: model.canFetchBody ? { Task { await model.fetchBody() } } : nil
                             )
                             }
                         },
@@ -391,7 +390,7 @@ struct NoteReadView: View {
         // page only through a body pull and a re-read.
         .task(id: vaultSyncPasses) {
             await model.loadIfNeeded()
-            await model.refreshFromRemote(index: searchIndex)
+            await model.refreshFromRemote()
         }
     }
 }

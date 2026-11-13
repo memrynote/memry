@@ -36,6 +36,10 @@ final class VaultSearchIndex {
     /// change: run once more before finishing.
     @ObservationIgnored private var again = false
 
+    /// A note body pull landed content outside a sync pass. The vault scope
+    /// schedules a reindex on it.
+    nonisolated static let bodyLanded = Notification.Name("memry.searchIndex.bodyLanded")
+
     init(search: any VaultSearching, debounce: Duration = .milliseconds(300)) {
         self.search = search
         self.debounce = debounce

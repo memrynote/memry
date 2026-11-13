@@ -23,7 +23,6 @@ struct JournalDayPage: View {
 
     @Environment(TasksRouter.self) private var tasksRouter: TasksRouter?
     @Environment(\.requestVaultSync) private var requestVaultSync
-    @Environment(\.vaultSearchIndex) private var searchIndex
     @State private var brokenLink: String?
     @State private var headerFrame: CGRect = .zero
     @State private var scrollY: CGFloat = 0
@@ -91,7 +90,7 @@ struct JournalDayPage: View {
             if isShown { await model?.seedIfNeeded(store: store) }
         }
         .task(id: PullKey(shown: isShown && model != nil, pass: store.syncPasses)) {
-            if isShown { await model?.pullRemoteBody(store: store, index: searchIndex) }
+            if isShown { await model?.pullRemoteBody(store: store) }
         }
         .onChange(of: store.generation) {
             // A write or a sync pass changed something: re-read in place.
@@ -182,7 +181,7 @@ struct JournalDayPage: View {
             NoteBodyView(
                 preview: preview,
                 fetch: model.read.fetch,
-                download: model.read.canFetchBody ? { Task { await model.read.fetchBody(index: searchIndex) } } : nil
+                download: model.read.canFetchBody ? { Task { await model.read.fetchBody() } } : nil
             )
         }
     }

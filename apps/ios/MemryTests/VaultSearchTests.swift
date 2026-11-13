@@ -131,7 +131,7 @@ struct VaultSearchTests {
     }
 
     @Test("a burst of sync passes reindexes once, and the followed screen runs the query on it again")
-    func syncPassesReindexAndRequery() async {
+    func syncPassesReindexAndRequery() async throws {
         // #4324: a sync landing while the sheet is open used to stay invisible
         // until the sheet was reopened. The sheet's `.task` follows the index.
         let search = ScriptedSearch(hits: [hit("n1", "Dune")])
@@ -146,9 +146,7 @@ struct VaultSearchTests {
         index.schedule()
         await index.settle()
         #expect(index.completed == 1)
-        for _ in 0 ..< 200 where search.queries.withLock({ $0.count }) < 2 {
-            await Task.yield()
-        }
+        try await wait { search.queries.withLock { $0.count } >= 2 }
         await model.settle()
 
         #expect(search.reindexes.withLock { $0 } == 1, "the burst is debounced into one reindex")

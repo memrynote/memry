@@ -173,6 +173,10 @@ struct VaultTasksScope<Content: View>: View {
             .onReceive(NotificationCenter.default.publisher(for: PathReachability.attachmentPathChanged).receive(on: DispatchQueue.main)) { _ in
                 if let attachments = store?.attachments { Task { await attachments.redrive() } }
             }
+            // A body pull outside a pass (a page, a portal, a share) landed content.
+            .onReceive(NotificationCenter.default.publisher(for: VaultSearchIndex.bodyLanded).receive(on: DispatchQueue.main)) { _ in
+                searchIndex?.schedule()
+            }
             .background {
                 if let store {
                     Color.clear.reminderScheduling(store: store)

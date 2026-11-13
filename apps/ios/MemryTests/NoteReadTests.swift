@@ -184,7 +184,7 @@ struct NoteReadTests {
         await model.loadIfNeeded()
         #expect(model.blocks.count == 1)
 
-        let refresh = Task { @MainActor in await model.refreshFromRemote(index: nil) }
+        let refresh = Task { @MainActor in await model.refreshFromRemote() }
         refresh.cancel()
         await refresh.value
 
@@ -202,7 +202,7 @@ struct NoteReadTests {
         await open.value
         #expect(outcomeKey(model).hasPrefix("loading/"))
 
-        await model.refreshFromRemote(index: nil)
+        await model.refreshFromRemote()
         #expect(outcomeKey(model).hasPrefix("ready/"))
     }
 

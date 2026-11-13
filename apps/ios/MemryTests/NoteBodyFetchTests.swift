@@ -55,14 +55,12 @@ final class NoteFiller: VaultFilling, @unchecked Sendable {
     private let store: NoteStore
     private let failure: (any Error)?
     private let stopped: Bool
-    private let lands: Bool
     private let calls = Mutex<Int>(0)
 
-    init(store: NoteStore, failure: (any Error)? = nil, stopped: Bool = false, lands: Bool = true) {
+    init(store: NoteStore, failure: (any Error)? = nil, stopped: Bool = false) {
         self.store = store
         self.failure = failure
         self.stopped = stopped
-        self.lands = lands
     }
 
     var fetches: Int { calls.withLock { $0 } }
@@ -75,28 +73,13 @@ final class NoteFiller: VaultFilling, @unchecked Sendable {
         .none
     }
 
-    func fetchNoteBody(noteId: String) async throws -> BodyFetchSummary {
+    func pullNoteBody(noteId: String) async throws -> BodyFetchSummary {
         calls.withLock { $0 += 1 }
         if let failure { throw failure }
         // A pull that stopped part way leaves the body incomplete, not absent.
         store.pull()
-        return lands
-            ? BodyFetchSummary(updates: 2, baselines: 1, stopped: stopped)
-            : BodyFetchSummary(updates: 0, baselines: 0, stopped: false)
+        return BodyFetchSummary(updates: 2, baselines: 1, stopped: stopped)
     }
-}
-
-/// An index that answers nothing and counts its reindexes.
-private final class CountedReindexes: VaultSearching, @unchecked Sendable {
-    let reindexes = Mutex(0)
-
-    func search(query: String, filter: SearchFilter?, limit: UInt32) async throws -> SearchGroups {
-        SearchGroups(notes: [], journals: [], tasks: [], inbox: [])
-    }
-    func reindex() async throws { reindexes.withLock { $0 += 1 } }
-    func backlinks(noteId: String, order: BacklinkOrder) async throws -> [Backlink] { [] }
-    func linksTo(targetId: String, order: BacklinkOrder) async throws -> [BacklinkRow] { [] }
-    func unlinkedMentions(targetId: String) async throws -> [UnlinkedMention] { [] }
 }
 
 @MainActor
@@ -131,7 +114,7 @@ struct NoteBodyFetchTests {
         #expect(model.preview == .notPulled)
         #expect(filler.fetches == 0)
 
-        await model.fetchBody(index: nil)
+        await model.fetchBody()
         #expect(filler.fetches == 1)
         #expect(model.preview == .text("the body arrived"))
         #expect(model.fetch == .idle)
@@ -148,7 +131,7 @@ struct NoteBodyFetchTests {
             route: Self.route, reader: ScriptedNote(store: store), filler: filler
         )
         await model.loadIfNeeded()
-        await model.refreshFromRemote(index: nil)
+        await model.refreshFromRemote()
         #expect(filler.fetches == 1)
         #expect(model.preview == .text("the body arrived"))
         #expect(model.fetch == .idle)
@@ -160,7 +143,7 @@ struct NoteBodyFetchTests {
     func noFillerOffersNothing() async throws {
         let model = NoteReadViewModel(route: Self.route, reader: ScriptedNote(store: NoteStore()))
         #expect(model.canFetchBody == false)
-        await model.fetchBody(index: nil)
+        await model.fetchBody()
         #expect(model.fetch == .idle)
     }
 
@@ -176,7 +159,7 @@ struct NoteBodyFetchTests {
             filler: NoteFiller(store: store, stopped: true)
         )
         await model.loadIfNeeded()
-        await model.fetchBody(index: nil)
+        await model.fetchBody()
         #expect(model.fetch == .incomplete)
         // And the text that did arrive is shown.
         #expect(model.preview == .text("the body arrived"))
@@ -194,7 +177,7 @@ struct NoteBodyFetchTests {
             filler: NoteFiller(store: store, failure: SyncError.UnknownNote(id: Self.route.id))
         )
         await model.loadIfNeeded()
-        await model.fetchBody(index: nil)
+        await model.fetchBody()
 
         guard case let .failed(error) = model.fetch else {
             Issue.record("a refused fetch did not reach the failed state")
@@ -217,7 +200,7 @@ struct NoteBodyFetchTests {
             filler: NoteFiller(store: store, failure: SyncError.Api(source: .Transport(source: .Offline)))
         )
         await model.loadIfNeeded()
-        await model.fetchBody(index: nil)
+        await model.fetchBody()
 
         guard case let .failed(error) = model.fetch else {
             Issue.record("a transport failure did not reach the failed state")
@@ -226,40 +209,18 @@ struct NoteBodyFetchTests {
         #expect(error.recourse != .blocked)
     }
 
-    /// REVIEW-4419 #1: a body pulled by an open page arrives outside a sync
-    /// pass, so the page itself tells the index owner. Without it, search and
-    /// backlinks stay blind to the body until the next pass.
-    @Test("a body pull that landed anything brings the search index up to date")
-    func aLandedPullReindexes() async throws {
+    /// VERIFY-4419 #3: a find request opened onto a note whose body is not
+    /// here waits for the pull, rather than resolving against no blocks.
+    @Test("an unpulled body leaves the blocks unread until the pull lands")
+    func anUnpulledBodyIsNotRead() async throws {
         let store = NoteStore()
-        let search = CountedReindexes()
-        let index = VaultSearchIndex(search: search, debounce: .zero)
         let model = NoteReadViewModel(
             route: Self.route, reader: ScriptedNote(store: store), filler: NoteFiller(store: store)
         )
         await model.loadIfNeeded()
+        #expect(!model.blocksRead)
 
-        // The download button, then the page's pull of a present body.
-        await model.fetchBody(index: index)
-        await index.settle()
-        #expect(index.completed == 1)
-        await model.refreshFromRemote(index: index)
-        await index.settle()
-        #expect(index.completed == 2)
-    }
-
-    @Test("a body pull that landed nothing leaves the index alone")
-    func anEmptyPullDoesNotReindex() async throws {
-        let store = NoteStore()
-        store.pull()
-        let search = CountedReindexes()
-        let index = VaultSearchIndex(search: search, debounce: .zero)
-        let model = NoteReadViewModel(
-            route: Self.route, reader: ScriptedNote(store: store), filler: NoteFiller(store: store, lands: false)
-        )
-        await model.loadIfNeeded()
-        await model.refreshFromRemote(index: index)
-        await index.settle()
-        #expect(search.reindexes.withLock { $0 } == 0)
+        await model.fetchBody()
+        #expect(model.blocksRead)
     }
 }

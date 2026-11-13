@@ -21,15 +21,27 @@ struct VaultSearchWiringTests {
         var index: VaultSearchIndex?
         var request: (@MainActor () -> Void)?
         var store: TasksStore?
+        /// Shows the portal, once the test has its baseline.
+        var portal = false
     }
 
     private struct ProbeView: View {
         let probe: Probe
         let store: TasksStore?
+        let browse: VaultBrowseViewModel?
         @Environment(\.vaultSearchIndex) private var index
         @Environment(\.requestVaultSync) private var request
 
         var body: some View {
+            VStack {
+                if probe.portal {
+                    PortalBlockView(text: #"{"v":1,"note":"n1"}"#).environment(\.vaultBrowse, browse)
+                }
+                probeTask
+            }
+        }
+
+        private var probeTask: some View {
             Color.clear.task(id: Key(index: index.map(ObjectIdentifier.init), store: store.map(ObjectIdentifier.init))) {
                 probe.index = index
                 probe.request = request
@@ -49,18 +61,32 @@ struct VaultSearchWiringTests {
         func firstSync(
             progress: @escaping @MainActor @Sendable (SyncProgress) -> Void
         ) async throws -> FirstSyncSummary { .none }
-        func fetchNoteBody(noteId: String) async throws -> BodyFetchSummary {
+        func pullNoteBody(noteId: String) async throws -> BodyFetchSummary {
             BodyFetchSummary(updates: 0, baselines: 0, stopped: false)
         }
     }
 
-    private func host(filler: (any VaultFilling)?) throws -> (UIWindow, Probe) {
+    /// A filler whose every body pull lands an update.
+    private final class LandingFiller: VaultFilling, @unchecked Sendable {
+        func isFirstSyncComplete() async throws -> Bool { true }
+        func firstSync(
+            progress: @escaping @MainActor @Sendable (SyncProgress) -> Void
+        ) async throws -> FirstSyncSummary { .none }
+        func pullNoteBody(noteId: String) async throws -> BodyFetchSummary {
+            BodyFetchSummary(updates: 1, baselines: 0, stopped: false)
+        }
+    }
+
+    private func host(filler: (any VaultFilling)?, portalFiller: (any VaultFilling)? = nil) throws -> (UIWindow, Probe) {
         let vault = try TasksTestVault()
         let probe = Probe()
+        let browse = VaultBrowseViewModel(
+            reader: CoreNotesReader(vault: vault.vault, executor: .shared), filler: portalFiller
+        )
         let window = UIWindow(frame: CGRect(x: 0, y: 0, width: 400, height: 800))
         window.rootViewController = UIHostingController(
             rootView: VaultTasksScope(vault: vault.vault, secureStore: TaskTestKeychain(), filler: filler) { store, _ in
-                ProbeView(probe: probe, store: store)
+                ProbeView(probe: probe, store: store, browse: browse)
             }
         )
         window.makeKeyAndVisible()
@@ -109,5 +135,20 @@ struct VaultSearchWiringTests {
         try await until { (probe.index?.completed ?? 0) > before }
 
         #expect((probe.index?.completed ?? 0) > before, "the request never reached the index")
+    }
+
+    /// VERIFY-4419 #1: a pull outside a note page (here a portal onto another
+    /// note) lands content outside a sync pass, and the scope still brings
+    /// the index up to date.
+    @Test("a portal's body pull brings the index up to date")
+    func aPortalPullSchedulesTheIndex() async throws {
+        let (window, probe) = try host(filler: nil, portalFiller: LandingFiller())
+        defer { window.isHidden = true }
+        let before = try await opened(probe, passes: 0)
+
+        probe.portal = true
+        try await until { (probe.index?.completed ?? 0) > before }
+
+        #expect((probe.index?.completed ?? 0) > before, "the portal's pull never reached the index")
     }
 }
