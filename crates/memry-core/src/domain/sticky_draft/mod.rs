@@ -180,3 +180,6 @@ fn read_back(tx: &Connection, id: &str) -> Result<StickyDraft, StorageError> {
 pub(crate) fn can_create(remote: &Object) -> bool {
     remote.get("content").is_some_and(Value::is_string)
 }
+
+#[cfg(test)]
+mod tests;

@@ -160,3 +160,8 @@ pub(crate) fn tombstone(
     .map_err(failed)?;
     edit(tx, item_type, item_id, stored, changes, device_id, now_ms).map(drop)
 }
+
+#[cfg(test)]
+pub(crate) mod testing;
+#[cfg(test)]
+mod tests;

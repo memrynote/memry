@@ -237,3 +237,6 @@ fn number(position: f64) -> Result<Value, StorageError> {
     }
     Ok(json!(position))
 }
+
+#[cfg(test)]
+mod tests;

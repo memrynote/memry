@@ -179,3 +179,6 @@ fn read_back(tx: &Connection, id: &str) -> Result<CanvasFolder, StorageError> {
         }),
     }
 }
+
+#[cfg(test)]
+mod tests;
