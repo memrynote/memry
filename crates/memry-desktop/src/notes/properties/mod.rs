@@ -20,7 +20,8 @@
 //! inside their own write. What an edit makes of the frontmatter is [`edit`]. The note index
 //! reads the same values into `note_properties` ([`file_properties`]) and gives a name with no
 //! definition the type it reads first (`learnCanonicalPropertyType`; `super::index`). Relation
-//! chips (`properties:resolveRefs`) are [`resolve_refs`]'s.
+//! chips (`properties:resolveRefs`) are [`resolve_refs`]'s, and Settings' count of the notes using
+//! each property is [`usage`]'s.
 //!
 //! Not here: the header status a status property takes from the note's tasks
 //! (`fillHeaderStatus`, Step 21), the journal page's own event for a day (Step 13m) and the lock
@@ -28,6 +29,7 @@
 
 pub mod edit;
 pub mod resolve_refs;
+pub mod usage;
 
 use std::cell::RefCell;
 use std::collections::HashMap;
