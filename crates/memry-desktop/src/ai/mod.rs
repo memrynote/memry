@@ -6,4 +6,5 @@ pub mod catalog;
 pub mod local_agent;
 pub mod local_provider;
 pub mod provider;
+pub mod proxy;
 pub mod settings;

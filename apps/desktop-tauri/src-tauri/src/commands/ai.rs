@@ -1,11 +1,13 @@
-//! Inline AI settings and keys (Step 22, #3539): the `ai-inline:*` channels of Electron's
-//! `ipc/ai-inline-handlers.ts` without the localhost chat server. Each command is one call of
+//! Inline AI settings, keys and the provider proxy (Step 22, #3539): the `ai-inline:*` channels
+//! of Electron's `ipc/ai-inline-handlers.ts`, and in place of its localhost chat server the
+//! authenticated `fetch` of the renderer's AI SDK. Each command is one call of
 //! `memry_desktop::ai`; the key stays in Rust and the renderer gets it masked.
 
 use std::sync::Arc;
 
 use memry_desktop::ai::catalog::{self, ProbeClient, ProbeFailure};
 use memry_desktop::ai::provider::AiProvider;
+use memry_desktop::ai::proxy::{AiProviderHead, AiProviderRequest, AiProxy, ProxyError};
 use memry_desktop::ai::settings::{
     AiSettingsError, InlineAiSettings, InlineAiStore, InlineAiUpdates,
 };
@@ -13,11 +15,13 @@ use memry_desktop::i18n::{self, Arg, Args};
 use memry_desktop::locale::LocaleService;
 use memry_desktop::session::Session;
 use serde::Serialize;
-use tauri::{AppHandle, Manager, Runtime, Wry};
+use tauri::ipc::{Channel, InvokeResponseBody};
+use tauri::{AppHandle, Manager, Runtime, Webview, Wry};
 
 use super::blocking;
 use super::error::{CommandError, ErrorKind, log_failure};
 use super::settings::map_error;
+use crate::binary;
 use crate::events::{AiInlineSettingsChangedEvent, broadcast};
 
 /// The outcome of the settings screen's Test button. `detail` is the translated reason of a
@@ -184,4 +188,89 @@ pub async fn ai_inline_test_connection(
         ok: detail.is_none(),
         detail,
     })
+}
+
+/// One provider call of the renderer's AI SDK (its `fetch`), sent with the stored key. Answers
+/// with the provider's status and headers; the body follows on `on_chunk` as tagged frames
+/// (`memry_desktop::ai::proxy::Frame`). A binary command: the frames are raw bytes. The call
+/// belongs to the calling webview and ends when its page goes ([`release_page`]).
+#[tauri::command]
+pub async fn ai_provider_request<R: Runtime>(
+    app: AppHandle<R>,
+    webview: Webview<R>,
+    request: AiProviderRequest,
+    on_chunk: Channel<InvokeResponseBody>,
+) -> Result<AiProviderHead, CommandError> {
+    let settings = {
+        let app = app.clone();
+        blocking("ai_provider_request", move || read(&app)).await?
+    };
+    let proxy = app.state::<Arc<AiProxy>>().inner().clone();
+    let sink = Box::new(move |frame: memry_desktop::ai::proxy::Frame| {
+        binary::send_chunk(&on_chunk, frame.encode()).is_ok()
+    });
+    match proxy.open(&settings, request, webview.label(), sink).await {
+        Ok((head, body)) => {
+            tauri::async_runtime::spawn(body);
+            Ok(head)
+        }
+        Err(error) => {
+            let error = proxy_error(locale(&app), &settings, error);
+            log_failure("ai_provider_request", &error);
+            Err(error)
+        }
+    }
+}
+
+/// Ends a provider call the renderer aborted, before or after its head.
+#[tauri::command]
+#[specta::specta]
+pub fn ai_provider_cancel<R: Runtime>(app: AppHandle<R>, request_id: String) {
+    app.state::<Arc<AiProxy>>().cancel(&request_id);
+}
+
+/// Ends the provider calls of the webview labelled `label`: its page reloaded or its window
+/// closed. `Channel::send` keeps succeeding after that, so a body would stream into a dead
+/// callback until the provider finished.
+pub fn release_page<R: Runtime>(app: &AppHandle<R>, label: &str) {
+    if let Some(proxy) = app.try_state::<Arc<AiProxy>>() {
+        proxy.cancel_owner(label);
+    }
+}
+
+fn proxy_error(locale: &str, settings: &InlineAiSettings, error: ProxyError) -> CommandError {
+    let (kind, code, message) = match &error {
+        ProxyError::KeyMissing { .. } => (
+            ErrorKind::Invalid,
+            "ai.apiKeyMissing",
+            text(locale, "errors:ai.apiKeyMissing", settings),
+        ),
+        ProxyError::Disabled => (
+            ErrorKind::Invalid,
+            "ai.inlineDisabled",
+            i18n::t(locale, "errors:ai.inlineDisabled", &Args::new()),
+        ),
+        ProxyError::Unreachable { .. } if settings.provider == AiProvider::Ollama => (
+            ErrorKind::Transport,
+            "ai.ollamaUnreachable",
+            i18n::t(locale, "errors:ai.ollamaUnreachable", &Args::new()),
+        ),
+        ProxyError::Unreachable { .. } => (
+            ErrorKind::Transport,
+            "ai.providerUnreachable",
+            text(locale, "errors:ai.providerUnreachable", settings),
+        ),
+        // The inline chat server's 413 text (`ai-chat-server.ts`).
+        ProxyError::TooLarge => (
+            ErrorKind::Invalid,
+            "ai.requestTooLarge",
+            "Request body too large".to_owned(),
+        ),
+        ProxyError::Cancelled => (ErrorKind::Invalid, "ai.cancelled", error.to_string()),
+        ProxyError::ProviderChanged => {
+            (ErrorKind::Invalid, "ai.providerChanged", error.to_string())
+        }
+        ProxyError::Invalid(_) => (ErrorKind::Invalid, "ai.invalidRequest", error.to_string()),
+    };
+    CommandError::new(kind, code, message)
 }

@@ -17,7 +17,7 @@ use serde_json::{Map, Value};
 use zeroize::Zeroizing;
 
 use super::cached_key::CachedKey;
-use super::provider::{AiProvider, OLLAMA_DEFAULT_BASE_URL};
+use super::provider::{AiProvider, OLLAMA_DEFAULT_BASE_URL, url_host};
 use crate::seams::secure_store::{GenericSecrets, device_account};
 use crate::session::OpenVault;
 use crate::settings::{SettingsError, SettingsService};
@@ -55,7 +55,7 @@ impl std::fmt::Debug for InlineAiSettings {
                 "api_key",
                 &(!self.api_key.is_empty()).then_some("<redacted>"),
             )
-            .field("base_url", &self.base_url)
+            .field("base_url", &url_host(&self.base_url))
             .finish()
     }
 }
@@ -140,7 +140,7 @@ impl std::fmt::Debug for InlineAiUpdates {
             .field("provider", &self.provider)
             .field("model", &self.model)
             .field("api_key", &self.api_key.as_ref().map(|_| "<redacted>"))
-            .field("base_url", &self.base_url)
+            .field("base_url", &self.base_url.as_deref().map(url_host))
             .finish()
     }
 }

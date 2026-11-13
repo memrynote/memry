@@ -15,6 +15,7 @@ pub const META_HEADER: &str = "x-memry-meta";
 
 /// Names of the binary commands, routed to [`handler`] by `registry::invoke_handler`.
 pub const COMMANDS: &[&str] = &[
+    "ai_provider_request",
     "clipboard_write_image",
     "crdt_apply_update",
     "crdt_open_doc",
@@ -29,6 +30,7 @@ pub const COMMANDS: &[&str] = &[
 /// The handler of the binary commands. Domain steps add `tauri::generate_handler!` entries.
 pub fn handler<R: Runtime>() -> impl Fn(Invoke<R>) -> bool + Send + Sync + 'static {
     tauri::generate_handler![
+        crate::commands::ai::ai_provider_request,
         crate::commands::clipboard::clipboard_write_image,
         crate::commands::editor::crdt_apply_update,
         crate::commands::editor::crdt_open_doc,
