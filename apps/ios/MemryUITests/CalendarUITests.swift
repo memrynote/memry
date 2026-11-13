@@ -200,7 +200,7 @@ final class CalendarUITests: XCTestCase {
         XCTAssertTrue(more.waitForExistence(timeout: 5),
                       "the vault did not open: \(app.buttons.allElementsBoundByIndex.prefix(10).map(\.label))")
         // Calendar sits in the bar or behind Menu, by desktop's rail order.
-        let tab = app.tabBars.buttons["Calendar"].firstMatch
+        let tab = app.buttons["Calendar"].firstMatch
         if tab.exists {
             tab.tap()
         } else {

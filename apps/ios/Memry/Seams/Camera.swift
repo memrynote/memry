@@ -356,3 +356,35 @@ private final class MetadataSink: NSObject, AVCaptureMetadataOutputObjectsDelega
         }
     }
 }
+
+/// Why the camera stopped mid-scan (#4344). The capture session pauses itself
+/// and resumes when the reason ends, so a scan survives an interruption; the
+/// screen only has to say what happened.
+enum CameraInterruption: Equatable, Sendable {
+    /// Another app shares the screen (Split View, Stage Manager, Slide Over),
+    /// and iPadOS keeps the camera for a full-screen app.
+    case sharedScreen
+    /// Another app, a call, or the system holds the camera.
+    case inUse
+
+    init(reason: AVCaptureSession.InterruptionReason?) {
+        self = reason == .videoDeviceNotAvailableWithMultipleForegroundApps ? .sharedScreen : .inUse
+    }
+
+    /// Reports each capture session's interruption, and `nil` when it ends,
+    /// on the main actor until the returned observers are removed.
+    static func observe(
+        in center: NotificationCenter,
+        _ changed: @escaping @MainActor (CameraInterruption?) -> Void
+    ) -> [NSObjectProtocol] {
+        let began = center.addObserver(forName: AVCaptureSession.wasInterruptedNotification, object: nil, queue: .main) { note in
+            let raw = note.userInfo?[AVCaptureSessionInterruptionReasonKey] as? Int
+            let interruption = CameraInterruption(reason: raw.flatMap(AVCaptureSession.InterruptionReason.init(rawValue:)))
+            MainActor.assumeIsolated { changed(interruption) }
+        }
+        let ended = center.addObserver(forName: AVCaptureSession.interruptionEndedNotification, object: nil, queue: .main) { _ in
+            MainActor.assumeIsolated { changed(nil) }
+        }
+        return [began, ended]
+    }
+}
