@@ -4,13 +4,7 @@
 // picker's note rows come from `window.api.search`, which is not ported yet: that half answers
 // empty and the block half still lists the row. With the source open in a second pane while the
 // picker inserts, its usage chip appears there live, from `portals:usage-changed`.
-import {
-  editorDocument,
-  expectSuggestionMenuOpen,
-  noteBody,
-  openNewNote,
-  typeInEditor
-} from '../../harness/editor'
+import { expectSuggestionMenuOpen, noteBody, openNewNote, typeInEditor } from '../../harness/editor'
 import {
   NOTE_EDITOR,
   NOTE_TITLE,
@@ -31,15 +25,19 @@ const ANCHOR = /\s\^([a-z0-9][a-z0-9-]{3,31})\s*$/m
 const usageChip = (page: Page, anchor: string) =>
   page.locator(`.memry-portal-usage-chip[data-anchor="${anchor}"]`)
 
-/** The open note's portal blocks, as the code block text that defines each. */
-async function portalDefinitions(page: Page): Promise<string[]> {
-  const doc = await editorDocument(page)
-  return doc
-    .filter((block) => block.type === 'codeBlock' && block.props?.language === 'memry-portal')
-    .map((block) =>
-      Array.isArray(block.content) ? block.content.map((part) => part.text ?? '').join('') : ''
+/**
+ * The definition text of each portal block the open note renders, read from the DOM in one
+ * evaluate. `__memryActiveEditor` is the tab's newest editor, and every portal's window is a
+ * nested editor on the SOURCE note that mounts once it scrolls near and its note loads, so after
+ * a restart the handle moves from the note's own editor to the window's at a moment the spec
+ * cannot pick.
+ */
+const portalDefinitions = (page: Page): Promise<string[]> =>
+  page.evaluate(() =>
+    Array.from(document.querySelectorAll('[data-memry-portal] code[data-node-view-content]')).map(
+      (code) => code.textContent ?? ''
     )
-}
+  )
 
 test('a block portal picked by search shows its usage on the source and survives a restart', async ({
   app,
@@ -84,7 +82,7 @@ test('a block portal picked by search shows its usage on the source and survives
   await expect(usageChip(page, anchor)).toHaveText('1', TIMEOUT)
   await openFromSidebar(page, host)
   await expect.poll(() => portalDefinitions(page), TIMEOUT).toHaveLength(1)
-  expect((await portalDefinitions(page))[0]).toContain(anchor)
+  await expect.poll(async () => (await portalDefinitions(page))[0] ?? '', TIMEOUT).toContain(anchor)
 })
 
 test('the source open in another pane shows its usage chip as the portal is inserted', async ({

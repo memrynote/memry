@@ -1,0 +1,7 @@
+data: {"id":"chatcmpl-custom","object":"chat.completion.chunk","created":1760000000,"model":"deepseek-chat","system_fingerprint":"fp_custom","choices":[{"index":0,"delta":{"role":"assistant","content":"","reasoning_content":"The user wants tags."},"logprobs":null,"finish_reason":null}]}
+
+data: {"id":"chatcmpl-custom","object":"chat.completion.chunk","created":1760000000,"model":"deepseek-chat","system_fingerprint":"fp_custom","choices":[{"index":0,"delta":{"content":"<tool_call>{\"name\": \"vault_get_tags\", \"parameters\": {}}</tool_call>"},"logprobs":null,"finish_reason":null}]}
+
+data: {"id":"chatcmpl-custom","object":"chat.completion.chunk","created":1760000000,"model":"deepseek-chat","system_fingerprint":"fp_custom","choices":[{"index":0,"delta":{"content":""},"logprobs":null,"finish_reason":"stop"}],"usage":{"prompt_tokens":812,"completion_tokens":24,"total_tokens":836}}
+
+data: [DONE]
