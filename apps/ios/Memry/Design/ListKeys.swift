@@ -34,15 +34,20 @@ struct ListKeys: View {
     var body: some View {
         ZStack {
             if !editingText {
-                Button("Previous") { step(-1) }
-                    .keyboardShortcut(.upArrow, modifiers: [])
-                Button("Next") { step(1) }
-                    .keyboardShortcut(.downArrow, modifiers: [])
-                Button("Open") {
-                    guard !MemryCommands.isPresenting, let current, ids.contains(current) else { return }
-                    open(current)
+                ZStack {
+                    Button("Previous") { step(-1) }
+                        .keyboardShortcut(.upArrow, modifiers: [])
+                    Button("Next") { step(1) }
+                        .keyboardShortcut(.downArrow, modifiers: [])
+                    Button("Open") {
+                        guard !MemryCommands.isPresenting, let current, ids.contains(current) else { return }
+                        open(current)
+                    }
+                    .keyboardShortcut(.return, modifiers: [])
                 }
-                .keyboardShortcut(.return, modifiers: [])
+                // A key command keeps the action it was registered with, so
+                // a new selection or row order registers the keys again.
+                .id([current ?? ""] + ids)
             }
         }
         .opacity(0)
