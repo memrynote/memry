@@ -127,7 +127,9 @@ jobs:
     needs: plan
     if: ${{ !cancelled() && (needs.plan.outputs.paths == 'true' || needs.plan.result == 'failure') }}
     runs-on: ${{ matrix.os }}
-    timeout-minutes: 65
+    # The Intel leg runs every step in one job on the slowest runner; with a cold cargo cache and the
+    # memry-ml release smoke build it ran past 65 minutes (run 43392998324).
+    timeout-minutes: ${{ matrix.os == 'macos-15-intel' && 90 || 65 }}
     strategy:
       fail-fast: false
       matrix:
