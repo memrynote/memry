@@ -4,20 +4,36 @@ import SwiftUI
 // Spec 007 CL032 (artboard 04). Month: the grid with type dots, multi-day
 // bars under the days, the filled today, "N more"; a tap selects a day and
 // lists it below, a double tap opens Day, a long press + drag across days
-// quick-creates an all-day range.
+// quick-creates an all-day range. At regular width the cells carry titled
+// chips and the selected day lists in a side column (#4352,
+// `CalendarMonthView+Regular.swift`).
 
 struct CalendarMonthView: View {
     @Bindable var store: CalendarStore
     let actions: CalendarGridActions
-    @State private var dragFrom: String?
-    @State private var dragTo: String?
-    @State private var gridSize: CGSize = .zero
+    @State var dragFrom: String?
+    @State var dragTo: String?
+    @State var gridSize: CGSize = .zero
     @Environment(\.dynamicTypeSize) private var typeSize
+    @Environment(\.horizontalSizeClass) private var horizontalSizeClass
+    @Environment(\.verticalSizeClass) private var verticalSizeClass
 
     var body: some View {
         let window = CalendarPeriods.window(.month, anchor: store.anchor, weekStartsOn: store.weekStartsOn, zoom: .months)
         let items = store.items(in: window)
         let grid = CalendarDates.monthGrid(store.anchor, weekStartsOn: store.weekStartsOn)
+        // AX text cannot fit titled chips: the list layout below holds at every width.
+        if LayoutWidth(horizontal: horizontalSizeClass, vertical: verticalSizeClass) == .regular, !typeSize.isAccessibilitySize {
+            regularLayout(grid: grid, items: items)
+                .gesture(pageGesture)
+                .accessibilityElement(children: .contain)
+                .accessibilityIdentifier("calendar.month")
+        } else {
+            compactLayout(grid: grid, items: items)
+        }
+    }
+
+    private func compactLayout(grid: [String], items: [CalendarItem]) -> some View {
         ScrollView {
             VStack(spacing: 0) {
                 if !typeSize.isAccessibilitySize {
@@ -36,15 +52,19 @@ struct CalendarMonthView: View {
         }
         .scrollDisabled(dragFrom != nil)
         .refreshable { await store.sync() }
-        .gesture(DragGesture(minimumDistance: 30).onEnded { value in
-            guard dragFrom == nil, abs(value.translation.width) > abs(value.translation.height) * 1.5 else { return }
-            store.state.anchorDate = CalendarDates.addMonths(store.anchor, value.translation.width < 0 ? 1 : -1)
-        })
+        .gesture(pageGesture)
         .accessibilityElement(children: .contain)
         .accessibilityIdentifier("calendar.month")
     }
 
-    private func weekdayHeader(_ grid: [String]) -> some View {
+    private var pageGesture: some Gesture {
+        DragGesture(minimumDistance: 30).onEnded { value in
+            guard dragFrom == nil, abs(value.translation.width) > abs(value.translation.height) * 1.5 else { return }
+            store.state.anchorDate = CalendarDates.addMonths(store.anchor, value.translation.width < 0 ? 1 : -1)
+        }
+    }
+
+    func weekdayHeader(_ grid: [String]) -> some View {
         HStack(spacing: 0) {
             ForEach(grid.prefix(7), id: \.self) { day in
                 Text(CalendarDates.start(of: day).formatted(.dateTime.weekday(.narrow)))
@@ -122,7 +142,7 @@ struct CalendarMonthView: View {
 
     /// Long press a day, drag across days: an all-day range (desktop
     /// `use-month-grid-marquee.ts`).
-    private func rangeGesture(_ grid: [String]) -> CalendarHoldDrag {
+    func rangeGesture(_ grid: [String]) -> CalendarHoldDrag {
         let rows = max(grid.count / 7, 1)
         let cell = CGSize(width: (gridSize.width - Tokens.Space.small * 2) / 7, height: gridSize.height / CGFloat(rows))
         let dayAt = { (point: CGPoint) -> String? in
@@ -147,7 +167,7 @@ struct CalendarMonthView: View {
         }
     }
 
-    private var selectionRange: ClosedRange<String>? {
+    var selectionRange: ClosedRange<String>? {
         guard let dragFrom, let dragTo else { return nil }
         return min(dragFrom, dragTo) ... max(dragFrom, dragTo)
     }

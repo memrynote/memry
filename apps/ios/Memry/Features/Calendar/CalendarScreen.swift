@@ -53,6 +53,8 @@ struct CalendarScreen: View {
     let browse: VaultBrowseViewModel?
     @Environment(TasksRouter.self) var router
     @Environment(\.scenePhase) private var scenePhase
+    @Environment(\.horizontalSizeClass) private var horizontalSizeClass
+    @Environment(\.verticalSizeClass) private var verticalSizeClass
     @State var sheet: CalendarSheet?
     @State var composer: CalendarComposerRequest?
     @State var deleting: CalendarItem?
@@ -96,6 +98,9 @@ struct CalendarScreen: View {
             }
         }
         .sheet(isPresented: $pickingDefault) { CalendarDefaultPickerSheet(store: store) }
+        .onChange(of: LayoutWidth(horizontal: horizontalSizeClass, vertical: verticalSizeClass), initial: true) { _, width in
+            store.state.openFirst(at: width)
+        }
         .task { await start() }
         .task(id: loadKey) { await store.ensure(currentWindow) }
         .onChange(of: scenePhase) { _, phase in

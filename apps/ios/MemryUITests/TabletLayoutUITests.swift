@@ -89,10 +89,22 @@ final class TabletLayoutUITests: XCTestCase {
         snap("journal-day")
     }
 
+    /// Day, Week, Month and Year (#4352), each from the title menu. Ends on
+    /// Week, the view a regular-width window opens on first.
     func testCalendar() throws {
         try openPage("calendar")
         XCTAssertTrue(element("calendar.screen").waitForExistence(timeout: 15), "the calendar did not open")
-        snap("calendar")
+        for (view, identifier) in [("Day", "calendar.day."), ("Month", "calendar.month"), ("Year", "calendar.year"), ("Week", "calendar.week")] {
+            app.buttons["calendar.titleMenu"].firstMatch.tap()
+            let option = app.buttons[view].firstMatch
+            XCTAssertTrue(option.waitForExistence(timeout: 5), "no \(view) in the title menu")
+            option.tap()
+            let shown = app.descendants(matching: .any).matching(NSPredicate(format: "identifier BEGINSWITH %@", identifier)).firstMatch
+            XCTAssertTrue(shown.waitForExistence(timeout: 10), "\(view) did not open")
+            // Day's pager scrolls to the anchor's page after it appears.
+            Thread.sleep(forTimeInterval: 1)
+            snap("calendar-\(view.lowercased())")
+        }
     }
 
     func testSettings() throws {
