@@ -7,6 +7,7 @@ pub mod config;
 pub mod crash;
 pub mod diagnostics;
 pub mod events;
+pub mod ios_beta;
 pub mod journal;
 pub mod lifecycle;
 pub mod logship;

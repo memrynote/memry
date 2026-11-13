@@ -97,6 +97,8 @@ export const commands = {
 	flushReady: () => __TAURI_INVOKE<null>("flush_ready"),
 	/**  The note or journal day folded for a reader who asked for `level`. */
 	foldRun: (noteId: string, level: FoldLevel) => __TAURI_INVOKE<FoldLayers>("fold_run", { noteId, level }),
+	/**  Sent without the account's token until Step 19 (#3536) provides the session token. */
+	iosBetaJoin: (input: IosBetaJoinInput) => __TAURI_INVOKE<IosBetaJoinResult>("ios_beta_join", { input }),
 	/**
 	 *  The day made on its first write; a day that has a file is answered as it is. A journal
 	 *  setting that followed its folder first (moved outside the app, or by a folder move a crash
@@ -1390,6 +1392,20 @@ export type InstallFailed = {
 	/**  The update that failed, or `None` when the marker did not record one. */
 	version: string | null,
 };
+
+/**  What the user typed and where (`IosBetaJoinInputSchema`). */
+export type IosBetaJoinInput = {
+	email: string,
+	source: IosBetaSource,
+};
+
+export type IosBetaJoinResult = {
+	success: boolean,
+	error: string | null,
+};
+
+/**  Where in the app the user asked for the invite (`IOS_BETA_SOURCES`). */
+export type IosBetaSource = "launch_prompt" | "settings" | "help_menu";
 
 export type ItemKind = "normal" | "separator";
 

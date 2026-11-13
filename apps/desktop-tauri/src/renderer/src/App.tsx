@@ -108,6 +108,7 @@ import { UpdateInstallFailedDialog } from '@/components/updater/update-install-f
 import { KeptRemovalsDialog } from '@/components/kept-removals-dialog'
 import { PermanentDeleteConfirm } from '@/components/note/permanent-delete-confirm'
 import { ReleaseNotesDevTrigger } from '@/components/updater/release-notes-dev-trigger'
+import { IosBetaLaunchPrompt } from '@/components/ios-beta/ios-beta-entry-points'
 import { useAppUpdaterSelector } from '@/hooks/use-app-updater'
 import { trackTelemetry } from '@/lib/telemetry'
 import { trackRendererError } from '@/lib/telemetry-diagnostics'
@@ -612,6 +613,7 @@ function VaultWorkspace({ vaultPath }: { vaultPath: string }): React.JSX.Element
                                 {import.meta.env.DEV && <ReleaseNotesDevTrigger />}
                               </SidebarDrillDownProvider>
                               <TaskDragOverlay projects={projectsWithCounts} />
+                              <IosBetaLaunchPrompt />
                               {/* Last child so paint order puts the chrome overlay above the
                                   tab-bar's drag-region (OS-level -webkit-app-region hit test picks
                                   the topmost layer; a drag-region painted over no-drag children eats
