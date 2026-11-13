@@ -37,7 +37,7 @@ struct TagListView: View {
             } else {
                 List {
                     ForEach(filtered, id: \.name) { tag in
-                        NavigationLink(value: TagRoute(name: tag.name)) {
+                        NotesLink(value: TagRoute(name: tag.name)) {
                             HStack(spacing: Tokens.Space.small) {
                                 Chip(text: tag.name, color: Tokens.Palette.color(tag.color, tag: tag.name), symbol: "#")
                                 Spacer(minLength: Tokens.Space.tight)
@@ -81,6 +81,7 @@ struct TaggedNotesView: View {
     @Environment(\.settingsContext) private var context
     @Environment(\.requestVaultSync) private var requestVaultSync
     @Environment(\.dismiss) private var dismiss
+    @Environment(NotesSplitRouter.self) private var split: NotesSplitRouter?
 
     /// Shared with the vault root and the folder screen, so every list of
     /// notes orders them the same way.
@@ -125,9 +126,18 @@ struct TaggedNotesView: View {
                 if context != nil {
                     ToolbarItem(placement: .topBarTrailing) { tagMenu }
                 }
+                // In the split view's list column the "+" is a toolbar button (D4).
+                if split != nil, canCreate {
+                    ToolbarItem(placement: .topBarTrailing) {
+                        Button("New note with #\(model.tag)", systemImage: "square.and.pencil") {
+                            Task { await createNote() }
+                        }
+                        .accessibilityIdentifier("tag.addButton")
+                    }
+                }
             }
             .overlay(alignment: .bottomTrailing) {
-                if canCreate {
+                if split == nil, canCreate {
                     FloatingAddButton(
                         label: "New note with #\(model.tag)",
                         hint: "Makes a note carrying this tag.",
@@ -233,7 +243,7 @@ struct TaggedNotesView: View {
     }
 
     private func list(_ notes: [NoteSummary]) -> some View {
-        List {
+        NotesList {
             HStack(spacing: Tokens.Space.small) {
                 Chip(text: model.tag, color: color, symbol: "#")
                 Text(notes.count == 1 ? "1 note" : "\(notes.count) notes")
@@ -247,12 +257,14 @@ struct TaggedNotesView: View {
             case .none:
                 ForEach(sort.sorted(notes), id: \.id) { note in
                     BrowseRowView(row: .note(note), toggle: { _ in }, model: browse)
+                        .notesSelection(.note(note))
                 }
             case .date:
                 ForEach(FolderNoteGroup.group(notes, sort: sort)) { group in
                     Section(group.bucket.title) {
                         ForEach(group.notes, id: \.id) { note in
                             BrowseRowView(row: .note(note), toggle: { _ in }, model: browse)
+                                .notesSelection(.note(note))
                         }
                     }
                 }
