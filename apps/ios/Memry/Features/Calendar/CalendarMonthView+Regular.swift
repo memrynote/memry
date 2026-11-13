@@ -45,8 +45,9 @@ extension CalendarMonthView {
 enum CalendarMonthFit {
     /// The narrowest day column that still shows a titled chip: 22pt of chrome
     /// (cell padding 4, the chip's rail and gap 10, its trailing inset 8) and
-    /// about 74pt of caption-semibold title, 11 characters ("Design sync").
-    /// Narrower, the chips clip to a few letters and say nothing.
+    /// about 74pt of caption-semibold title, which reads "Design re…" at default
+    /// size (measured on a 13" iPad in portrait, 98pt columns). Narrower, the
+    /// chips clip to a few letters and no longer tell two events apart.
     static let minColumn: CGFloat = 96
 
     /// A day column's width in a pane of `paneWidth` that carries the rail.
