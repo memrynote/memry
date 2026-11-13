@@ -46,6 +46,7 @@ import { buildBlockEdit } from './vectors/block-edit'
 import { buildCalendar } from './vectors/calendar'
 import { buildCalendarIcal } from './vectors/calendar-ical'
 import { buildCalendarWrite } from './vectors/calendar-write'
+import { buildEmbeddingInput } from './vectors/embedding-input'
 import { buildInbox } from './vectors/inbox'
 import { buildDeleteAttestation } from './vectors/delete-attestation'
 import { buildDeleteKeep } from './vectors/delete-keep'
@@ -131,6 +132,10 @@ const CLASSES: readonly VectorClass[] = [
   {
     name: 'calendar-write',
     files: [{ path: 'calendar-write.json', build: buildCalendarWrite }]
+  },
+  {
+    name: 'embedding-input',
+    files: [{ path: 'embedding-input.json', build: buildEmbeddingInput }]
   },
   {
     name: 'attachment-manifest',
