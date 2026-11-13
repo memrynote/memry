@@ -88,9 +88,15 @@ impl VaultSync {
     /// Gives each lock written before Step 16 its record before anything is
     /// pulled ([`vault_locks::seed_unsynced`]), so a peer's record of the same
     /// lock meets this device's and the push carries it. Under the pass gate.
-    /// Desktop only: iOS keeps no locks.
+    /// Desktop only: iOS keeps no locks. A declaration without `vault_lock`
+    /// seeds nothing: it never pulls a peer's edit of the lock, so its pushes
+    /// would tick only its own clock.
     pub(super) async fn seed_vault_locks(&self) -> Result<(), SyncError> {
         #[cfg(feature = "markdown")]
+        if self
+            .declaration
+            .classify(crate::domain::vault_locks::ITEM_TYPE)
+            == crate::protocol::types::ArrivingItemType::Subscribed
         {
             let device = self.session.device_id()?;
             self.db
