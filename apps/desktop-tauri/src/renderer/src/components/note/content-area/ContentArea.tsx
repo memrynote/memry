@@ -47,7 +47,8 @@ import {
   CRITIC_MARKUP_MARKS_ARRAY,
   readCriticMarkupMarksFromYDoc,
   serializeCriticMarkup,
-  writeCriticMarkupMarksToYDoc
+  writeCriticMarkupMarksToYDoc,
+  type CriticMarkupMark
 } from '@memry/shared'
 import { cn } from '@/lib/utils'
 import { blockNoteShadCNComponents } from '@/lib/blocknote-shadcn-components'
@@ -422,6 +423,14 @@ const relinkTask = (taskId: string, change: { unlink?: string; link?: string }):
   )
 }
 
+function withoutOffsets({
+  start: _start,
+  end: _end,
+  ...mark
+}: CriticMarkupMark): Omit<CriticMarkupMark, 'start' | 'end'> {
+  return mark
+}
+
 const ContentAreaEditor = memo(function ContentAreaEditor({
   noteId,
   notePath,
@@ -540,6 +549,7 @@ const ContentAreaEditor = memo(function ContentAreaEditor({
   const isReviewEnabled = Boolean(review)
   const onReviewEditorReady = review?.onEditorReady
   const onReplaceMarksFromYjs = review?.onReplaceMarksFromYjs
+  const onMarksDocBound = review?.onMarksDocBound
 
   // Keep noteIdRef in sync (used by uploadFile closure)
   useEffect(() => {
@@ -854,10 +864,12 @@ const ContentAreaEditor = memo(function ContentAreaEditor({
     }
 
     array.observe(onArrayChange)
+    onMarksDocBound?.(true)
     return () => {
       array.unobserve(onArrayChange)
+      onMarksDocBound?.(false)
     }
-  }, [isReviewEnabled, onReplaceMarksFromYjs, yjsDoc])
+  }, [isReviewEnabled, onMarksDocBound, onReplaceMarksFromYjs, yjsDoc])
 
   useEffect(() => {
     const marks = review?.marks
@@ -866,9 +878,17 @@ const ContentAreaEditor = memo(function ContentAreaEditor({
     if (!changed || !isReviewEnabled || !yjsDoc) return
     // Marks the observer handed over from the doc are already in it. Compared
     // as read, so a mark field this build does not know is not stripped by a
-    // rewrite of the array.
+    // rewrite of the array. Offsets are left out: the window moves them with
+    // its typing and keeps them (#4425). Writing them made it a writer of the
+    // whole array on every keystroke, so another device's resolve or typing
+    // merged with it brought a mark back or doubled it.
     const next = marks ?? []
-    if (JSON.stringify(readCriticMarkupMarksFromYDoc(yjsDoc)) === JSON.stringify(next)) return
+    if (
+      JSON.stringify(readCriticMarkupMarksFromYDoc(yjsDoc).map(withoutOffsets)) ===
+      JSON.stringify(next.map(withoutOffsets))
+    ) {
+      return
+    }
     yjsDoc.transact(
       () => writeCriticMarkupMarksToYDoc(yjsDoc, next),
       criticMarkupYjsOriginRef.current

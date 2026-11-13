@@ -318,6 +318,20 @@ mod tests {
     }
 
     #[test]
+    fn a_released_document_counts_as_held_lately_until_its_grace_period_ends_with_no_sweep() {
+        let grace = EDITOR_LIFECYCLE.grace_ms;
+        let mut resident = Resident::new(EDITOR_LIFECYCLE);
+        resident.hold("n1", "main", 0, loader("n1")).unwrap();
+        assert!(resident.release("n1", "main", 10));
+
+        assert!(!resident.is_held("n1"));
+        assert!(resident.held_lately("n1", 10));
+        assert!(resident.held_lately("n1", 10 + grace - 1));
+        assert!(!resident.held_lately("n1", 10 + grace));
+        assert!(!resident.held_lately("never-held", 10));
+    }
+
+    #[test]
     fn an_invalidated_document_reloads_for_its_holder() {
         let mut resident = Resident::new(EDITOR_LIFECYCLE);
         let first = resident

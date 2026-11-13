@@ -213,6 +213,8 @@ export interface ContentAreaProps {
     onHoveredMarkChange?: (id: string | null) => void
     onMarkPositionsChange?: (positions: Record<string, number>) => void
     onReplaceMarksFromYjs?: (marks: CriticMarkupMark[]) => void
+    /** A live Y.Doc's marks are bound (`true`) or let go: while bound, they come from the doc. */
+    onMarksDocBound?: (bound: boolean) => void
   }
   /**
    * The note page's writing tools (alternatives, ghosts, overflow). When

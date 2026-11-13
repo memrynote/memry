@@ -2026,7 +2026,8 @@ export function NotePage({ noteId }: NotePageProps) {
                       onLivePlainMarkdownChange: review.followLivePlainMarkdown,
                       onHoveredMarkChange: review.setHoveredMarkId,
                       onMarkPositionsChange: review.setMarkPositions,
-                      onReplaceMarksFromYjs: review.replaceMarksFromYjs
+                      onReplaceMarksFromYjs: review.replaceMarksFromYjs,
+                      onMarksDocBound: review.setMarksDocBound
                     }}
                   />
                 </div>
