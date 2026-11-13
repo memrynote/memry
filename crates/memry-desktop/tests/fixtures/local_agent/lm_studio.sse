@@ -1,0 +1,9 @@
+data: {"id":"chatcmpl-lmstudio","object":"chat.completion.chunk","created":1760000000,"model":"qwen2.5-7b-instruct","system_fingerprint":"qwen2.5-7b-instruct","choices":[{"index":0,"delta":{"role":"assistant","content":"<tool_call>"},"logprobs":null,"finish_reason":null}]}
+
+data: {"id":"chatcmpl-lmstudio","object":"chat.completion.chunk","created":1760000000,"model":"qwen2.5-7b-instruct","system_fingerprint":"qwen2.5-7b-instruct","choices":[{"index":0,"delta":{"content":"\n{\"name\": \"vault_get_tags\", \"arguments\": {}}\n"},"logprobs":null,"finish_reason":null}]}
+
+data: {"id":"chatcmpl-lmstudio","object":"chat.completion.chunk","created":1760000000,"model":"qwen2.5-7b-instruct","system_fingerprint":"qwen2.5-7b-instruct","choices":[{"index":0,"delta":{"content":"</tool_call>"},"logprobs":null,"finish_reason":null}]}
+
+data: {"id":"chatcmpl-lmstudio","object":"chat.completion.chunk","created":1760000000,"model":"qwen2.5-7b-instruct","system_fingerprint":"qwen2.5-7b-instruct","choices":[{"index":0,"delta":{},"logprobs":null,"finish_reason":"stop"}]}
+
+data: [DONE]
