@@ -15,12 +15,9 @@ hex = { workspace = true }
 thiserror = { workspace = true }
 # Decoders of the formats a vault image note can hold (packages/shared file-types.ts, minus SVG).
 image = { version = "0.25", default-features = false, features = ["png", "jpeg", "gif", "webp"] }
-# sharp's JPEG decoder (mozjpeg's libjpeg-turbo, islow IDCT, fancy upsampling) and colour
-# management (Little CMS 2.19), so decoded pixels equal Electron's bit for bit. Both build their
-# C with `cc`; mozjpeg without SIMD needs no nasm, and its scalar output equals the SIMD paths.
-mozjpeg = { version = "0.10", default-features = false }
-lcms2 = "6"
-moxcms = "0.8" # WIP: to_srgb still on moxcms; replace with lcms2 (handoff)
+# Colour management in pure Rust (Kaan, 2026-11-13): sharp converts with Little CMS, so a
+# profile-tagged image can differ by a level per channel (test-vectors README, pixel tensors).
+moxcms = "0.8"
 
 # ONNX Runtime 1.31.0 is linked statically (crates/AGENTS.md, ONNX Runtime). Apple Silicon links
 # ort-sys's prebuilt archive, downloaded at build time. pyke builds the Apple Silicon archive with
@@ -44,5 +41,6 @@ windows = { version = "0.62.2", features = ["Win32_System_Threading"] }
 static_vcruntime = "3.0.0"
 
 [dev-dependencies]
+base64 = { workspace = true }
 serde_json = { workspace = true }
 tempfile = "3"

@@ -56,12 +56,22 @@ fn input(message: impl Into<String>) -> MlError {
 
 /// `RawImage.fromBlob(...).rgb()` then `Gemma4ImageProcessor` with `max_soft_tokens`.
 pub fn prepare(bytes: &[u8], max_soft_tokens: usize) -> Result<PixelTensor, MlError> {
-    if !(1..=MAX_SOFT_TOKENS).contains(&max_soft_tokens) {
-        return Err(input(format!(
-            "soft tokens must be 1 to {MAX_SOFT_TOKENS}, got {max_soft_tokens}"
-        )));
+    check_soft_tokens(max_soft_tokens)?;
+    pixel_tensor(decode(bytes)?, max_soft_tokens)
+}
+
+fn check_soft_tokens(max_soft_tokens: usize) -> Result<(), MlError> {
+    if (1..=MAX_SOFT_TOKENS).contains(&max_soft_tokens) {
+        return Ok(());
     }
-    let image = decode(bytes)?;
+    Err(input(format!(
+        "soft tokens must be 1 to {MAX_SOFT_TOKENS}, got {max_soft_tokens}"
+    )))
+}
+
+/// `Gemma4ImageProcessor` on a decoded image: the aspect-preserving resize, then the patches.
+pub fn pixel_tensor(image: Rgb8, max_soft_tokens: usize) -> Result<PixelTensor, MlError> {
+    check_soft_tokens(max_soft_tokens)?;
     let max_patches = max_soft_tokens * POOLING_KERNEL * POOLING_KERNEL;
     let (height, width) = target_size(image.height, image.width, max_patches)?;
     let resized = if (height, width) == (image.height, image.width) {
@@ -89,6 +99,10 @@ pub fn decode(bytes: &[u8]) -> Result<Rgb8, MlError> {
     ) {
         return Err(input(format!("unsupported image format {format:?}")));
     }
+    if format == ImageFormat::Jpeg && !jpeg_has_end(bytes) {
+        // sharp fails on libjpeg's warning; zune-jpeg would decode the rest as grey.
+        return Err(input("VipsJpeg: premature end of JPEG image"));
+    }
     let mut reader = ImageReader::with_format(Cursor::new(bytes), format);
     let mut limits = Limits::default();
     limits.max_alloc = Some(MAX_DECODE_ALLOC);
@@ -105,8 +119,37 @@ pub fn decode(bytes: &[u8]) -> Result<Rgb8, MlError> {
     let orientation = decoder.orientation().map_err(decode_error)?;
     let icc = decoder.icc_profile().map_err(decode_error)?;
     let mut image = DynamicImage::from_decoder(decoder).map_err(decode_error)?;
+    if let (ImageFormat::Gif, DynamicImage::ImageRgba8(buffer)) = (format, &mut image) {
+        // libnsgif writes a transparent pixel as zero in all four channels.
+        for pixel in buffer.pixels_mut().filter(|pixel| pixel[3] == 0) {
+            pixel.0 = [0; 4];
+        }
+    }
     image.apply_orientation(orientation);
     to_rgb8(image, icc.as_deref())
+}
+
+/// Whether a JPEG's segments lead to a scan that an end-of-image marker closes. Entropy-coded data
+/// stuffs every 0xFF with a zero byte, so the first `FF D9` after the first scan header is the
+/// marker; an EXIF thumbnail's own markers sit inside an APP segment the walk skips.
+fn jpeg_has_end(bytes: &[u8]) -> bool {
+    let mut at = 2;
+    while at + 4 <= bytes.len() {
+        if bytes[at] != 0xFF {
+            return false;
+        }
+        let marker = bytes[at + 1];
+        if marker == 0xFF {
+            at += 1;
+            continue;
+        }
+        let length = usize::from(u16::from_be_bytes([bytes[at + 2], bytes[at + 3]]));
+        if marker == 0xDA {
+            return bytes[at + 2..].windows(2).any(|pair| pair == [0xFF, 0xD9]);
+        }
+        at += 2 + length;
+    }
+    false
 }
 
 /// The 8-bit RGB samples transformers.js keeps. sharp writes a grey image as RGB and
@@ -167,8 +210,9 @@ fn grey_to_rgb<T: Copy>(samples: &[T], channels: usize, to_u8: impl Fn(T) -> u8)
 }
 
 /// sharp's `icc_transform` to sRGB with the perceptual intent. libvips runs Little CMS; this runs
-/// moxcms, which can differ by one level in a channel. A profile moxcms cannot read is ignored,
-/// as sharp ignores an invalid one.
+/// moxcms, pure Rust (Kaan, 2026-11-13), whose output differs by a level or two in a channel
+/// (`maxLevelDiff` of `pixel-tensors.json`). A profile moxcms cannot read is ignored, as sharp
+/// ignores an invalid one.
 fn to_srgb(data: &mut [u8], profile: &[u8]) {
     use moxcms::{ColorProfile, DataColorSpace, Layout, RenderingIntent, TransformOptions};
     let Ok(source) = ColorProfile::new_from_slice(profile) else {
