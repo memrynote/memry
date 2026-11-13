@@ -508,15 +508,20 @@ jobs:
           MEMRY_ML_MODEL_DIR: ${{ runner.temp }}/models/onnx-community/embeddinggemma-2-ONNX
         run: |
           cargo test -p memry-ml --release --test smoke -- --ignored
-          bin=$(cargo test -p memry-ml --release --test smoke --no-run 2>&1 | sed -n 's/.*Executable .*(\(.*\))$/\1/p' | tail -1)
-          echo "Smoke test binary: $(wc -c < "$bin") bytes"
+          # CARGO_TERM_COLOR=always would wrap the path in escape codes.
+          bin=$(cargo test -p memry-ml --release --test smoke --no-run --color never 2>&1 | sed -n 's/.*Executable .*(\(.*\))$/\1/p' | tail -1)
+          if [ "$RUNNER_OS" = Windows ]; then bin=$(cygpath -u "$bin"); fi
+          echo "Smoke test binary: $bin, $(wc -c < "$bin") bytes"
           case "$RUNNER_OS" in
             macOS) otool -L "$bin" ;;
             Linux) ldd "$bin" ;;
             Windows)
-              dumpbin=$("/c/Program Files (x86)/Microsoft Visual Studio/Installer/vswhere.exe" -latest -products '*' -find 'VC/Tools/MSVC/**/dumpbin.exe' | head -1)
+              dumpbin=$(ls /c/Program\ Files*/Microsoft\ Visual\ Studio/*/*/VC/Tools/MSVC/*/bin/Host*/*/dumpbin.exe | head -1)
+              echo "dumpbin: $dumpbin"
               "$dumpbin" /dependents "$bin" ;;
           esac | tee "$RUNNER_TEMP/dependencies.txt"
+          # An empty or failed listing would pass the check below.
+          grep -qiE 'libc\.so|libSystem|KERNEL32' "$RUNNER_TEMP/dependencies.txt"
           if grep -iE 'onnxruntime|directml' "$RUNNER_TEMP/dependencies.txt"; then
             echo "::error::the memry-ml binary depends on a shared ONNX Runtime or DirectML library"
             exit 1
