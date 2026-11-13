@@ -4,7 +4,10 @@ import { WikiLinkMenu, type WikiLinkSuggestionItem } from './wiki-link-menu'
 
 vi.mock('@memry/i18n/renderer', () => ({
   useT: () => ({
-    t: (key: string, values?: { title?: string; name?: string; folder?: string }) => {
+    t: (
+      key: string,
+      values?: { title?: string; name?: string; folder?: string; date?: string }
+    ) => {
       const messages: Record<string, string> = {
         'menus.wiki.embed': 'Embed',
         'menus.wiki.wikiLink': 'Wiki link',
@@ -14,6 +17,7 @@ vi.mock('@memry/i18n/renderer', () => ({
         'menus.wiki.noMatchingHeadings': `No headings in ${values?.title ?? ''} match`.trim(),
         'menus.wiki.displayAs': 'Display as',
         'menus.wiki.aliasHint': 'Type | to name the link',
+        'menus.wiki.journalDay': `Journal · ${values?.date}`,
         'names.menuTarget': `→ ${values?.title}`,
         'names.menuTargetInFolder': `→ ${values?.title} · ${values?.folder}`,
         'names.addAsNameOf': `Add “${values?.name}” as a name of…`
@@ -51,6 +55,33 @@ describe('WikiLinkMenu', () => {
 
     fireEvent.click(screen.getByRole('button', { name: 'Wiki link Voice memo' }))
     expect(onItemClick).toHaveBeenCalledWith({ ...item, insertMode: 'wikiLink' })
+  })
+
+  it('renders a journal date with a heading target without treating the heading as part of the date', () => {
+    const onItemClick = vi.fn()
+    render(
+      <WikiLinkMenu
+        items={[
+          {
+            id: 'journal:2026-11-08',
+            title: '2026-11-08',
+            target: '2026-11-08#Decisions',
+            exists: true,
+            type: 'journal'
+          }
+        ]}
+        loadingState="loaded"
+        selectedIndex={0}
+        onItemClick={onItemClick}
+      />
+    )
+
+    const option = screen.getByRole('option', { name: /2026-11-08/ })
+    expect(option).toHaveTextContent('November 8, 2026')
+    fireEvent.click(option)
+    expect(onItemClick).toHaveBeenCalledWith(
+      expect.objectContaining({ target: '2026-11-08#Decisions' })
+    )
   })
 
   it('renders heading rows that insert a note#heading target', () => {

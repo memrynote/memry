@@ -7,11 +7,14 @@ use std::sync::atomic::{AtomicBool, Ordering};
 use std::sync::{Arc, Mutex, PoisonError};
 use std::time::Duration;
 
+use memry_desktop::ai::catalog::ProbeClient;
+use memry_desktop::ai::local_agent::LocalAgent;
 use memry_desktop::ai::local_provider::LocalProviderStore;
 use memry_desktop::ai::proxy::AiProxy;
 use memry_desktop::ai::settings::InlineAiStore;
 use memry_desktop::config::{Compiled, MemryEnv, RuntimeConfig};
 use memry_desktop::e2e::E2eGate;
+use memry_desktop::fold::agent::FoldAgents;
 use memry_desktop::launch_env::LaunchEnv;
 use memry_desktop::launch_timeline::{self, LaunchPhase};
 use memry_desktop::locale::{self, LocaleService};
@@ -283,11 +286,16 @@ fn manage_settings(app: &AppHandle<Wry>) -> Result<(), CommandError> {
     let keychain = Arc::new(KeyringStore::new(device.clone(), gate, &data_dir));
     let identity = Arc::new(DeviceIdentityStore::new(keychain.clone(), &data_dir));
     let settings = SettingsService::new(identity.clone(), config.clone());
-    app.manage(Arc::new(LocalProviderStore::new(
+    let local_provider = Arc::new(LocalProviderStore::new(
         config.clone(),
         keychain.clone(),
         device.as_deref(),
-    )));
+    ));
+    app.manage(Arc::new(FoldAgents::new(LocalAgent::new(
+        local_provider.clone(),
+        ProbeClient::new(memry_desktop::http::builder()),
+    ))));
+    app.manage(local_provider);
     app.manage(Arc::new(InlineAiStore::new(
         settings.clone(),
         keychain.clone(),

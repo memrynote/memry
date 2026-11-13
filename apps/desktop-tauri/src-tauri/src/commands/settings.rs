@@ -5,6 +5,8 @@
 
 use std::sync::Arc;
 
+use memry_desktop::ai::features::{self, AiSettings, AiSettingsPatch};
+use memry_desktop::fold::agent::FoldAgents;
 use memry_desktop::registry::AppConfig;
 use memry_desktop::session::{OpenVault, Session};
 use memry_desktop::settings::{SettingsError, SettingsService};
@@ -171,6 +173,38 @@ pub async fn settings_set_local(
     })
     .await?;
     announce(&app, &change.group, change.fields)
+}
+
+/// `settings:getAISettings`: the AI switches of the open vault, or their defaults.
+#[tauri::command]
+#[specta::specta]
+pub async fn settings_get_ai(app: AppHandle<Wry>) -> Result<AiSettings, CommandError> {
+    let (service, vault) = (service(&app), current(&app));
+    blocking("settings_get_ai", move || {
+        features::read(&service, vault.as_ref()).map_err(map_error)
+    })
+    .await
+}
+
+/// `settings:setAISettings`: writes the switches, forgets the fold's agent detection when a
+/// switch the fold reads changed (`refreshNoteFold`), and announces `ai` with the written fields.
+#[tauri::command]
+#[specta::specta]
+pub async fn settings_set_ai(
+    app: AppHandle<Wry>,
+    patch: AiSettingsPatch,
+) -> Result<(), CommandError> {
+    let (service, vault) = (service(&app), current(&app));
+    blocking("settings_set_ai", move || {
+        features::write(&service, vault.as_ref(), &patch).map_err(map_error)
+    })
+    .await?;
+    if patch.touches_fold()
+        && let Some(agents) = app.try_state::<Arc<FoldAgents>>()
+    {
+        agents.reset();
+    }
+    announce(&app, "ai", patch.fields())
 }
 
 /// Restores the shortcut defaults. The folder shortcuts are entries the user added, not
