@@ -3,6 +3,7 @@
 
 mod engine;
 mod files;
+pub mod image_prep;
 mod runtime;
 mod text;
 
