@@ -16,7 +16,7 @@ struct CalendarDestination: View {
         if let store {
             switch route {
             case .calendar: CalendarScreen(store: store, browse: browse)
-            case .settings: CalendarSettingsScreen(store: store)
+            case .settings: CalendarSettingsScreen(store: store).settingsPage()
             case let .provider(provider): CalendarProviderScreen(store: store, provider: provider, account: account)
             }
         } else {

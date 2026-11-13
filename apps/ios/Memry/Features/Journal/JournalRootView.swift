@@ -153,7 +153,9 @@ struct JournalRootView: View {
                     case let .day(date):
                         JournalDayScreen(store: store, date: date)
                     case .settings:
+                        // A Settings page, opened from Settings › Journal.
                         JournalSettingsScreen(store: store)
+                            .settingsPage()
                     case let .note(id):
                         if let context = store.context {
                             NoteReadView(
