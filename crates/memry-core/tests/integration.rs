@@ -260,6 +260,8 @@ mod inbox_vectors;
 mod journal_body;
 #[path = "journal_day_merge.rs"]
 mod journal_day_merge;
+#[path = "journal_ghost_refs.rs"]
+mod journal_ghost_refs;
 #[path = "journal_links.rs"]
 mod journal_links;
 #[path = "journal_metadata.rs"]

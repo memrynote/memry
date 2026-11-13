@@ -83,7 +83,7 @@ describe('portal definition guard', () => {
     expect(view.state.selection).toBeInstanceOf(NodeSelection)
   })
 
-  it('keeps a press on the definition as the opt-in', () => {
+  it('selects the portal whole on a press too: the definition is never shown', () => {
     const { view } = setup()
     let inside = -1
     view.state.doc.descendants((node, pos) => {
@@ -94,7 +94,7 @@ describe('portal definition guard', () => {
         .setSelection(TextSelection.create(view.state.doc, inside))
         .setMeta('pointer', true)
     )
-    expect(view.state.selection).toBeInstanceOf(TextSelection)
+    expect(view.state.selection).toBeInstanceOf(NodeSelection)
   })
 
   it('types after a selected portal instead of editing the fence', () => {

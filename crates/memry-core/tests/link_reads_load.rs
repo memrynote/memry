@@ -4,6 +4,7 @@
 //! machine (as `calendar_week_load.rs` counts them): a read per backlink, per mention source
 //! or per resolved title would grow the count with the list.
 
+use std::sync::Mutex;
 use std::sync::atomic::{AtomicUsize, Ordering};
 
 use memry_core::api::search::BacklinkOrder;
@@ -20,6 +21,8 @@ const MANY: usize = 400;
 
 static STATEMENTS: AtomicUsize = AtomicUsize::new(0);
 static VM_STEPS: AtomicUsize = AtomicUsize::new(0);
+/// Held by each test that counts `VM_STEPS`: the tests of a binary run in parallel.
+static STEPPING: Mutex<()> = Mutex::new(());
 
 /// A statement the code ran. SQLite reports the statements a virtual table runs for it too,
 /// prefixed `-- ` (FTS5 reads each matched row's text from its content table); those are
@@ -94,6 +97,32 @@ fn vault(notes: usize) -> (Connection, Connection) {
     for id in 1000..1000 + MANY {
         text(id, "about note 0 here");
     }
+    // Every note relates to the next one, as the note index writes a relation; `n5` also names
+    // the journal day `2026-05-08`, which has no entry.
+    let relate = |id: usize, uris: &[String]| {
+        tx.execute(
+            "INSERT INTO note_properties (note_id, name, value, type) \
+             VALUES (?1, 'related', ?2, 'relation')",
+            params![format!("n{id}"), serde_json::to_string(uris).expect("uris")],
+        )
+        .expect("property row");
+        for uri in uris {
+            let (kind, target) = uri["memry://".len()..].split_once('/').expect("a relation");
+            tx.execute(
+                "INSERT INTO property_refs (source_id, name, target_type, target_id) \
+                 VALUES (?1, 'related', ?2, ?3)",
+                params![format!("n{id}"), kind, target],
+            )
+            .expect("relation row");
+        }
+    };
+    for id in 0..notes {
+        let mut uris = vec![format!("memry://note/n{}", id + 1)];
+        if id == 5 {
+            uris.push("memry://journal/2026-05-08".to_owned());
+        }
+        relate(id, &uris);
+    }
     tx.commit().expect("commit");
     settle_name_keys(&data).expect("settle");
     (data, index)
@@ -105,6 +134,17 @@ fn vm_steps<T>(data: &Connection, read: impl FnOnce() -> T) -> (T, usize) {
     data.trace_v2(TraceEventCodes::SQLITE_TRACE_PROFILE, Some(count));
     let out = read();
     data.trace_v2(TraceEventCodes::empty(), None);
+    (out, VM_STEPS.load(Ordering::SeqCst))
+}
+
+/// The virtual machine steps `read` takes on both connections.
+fn vm_steps_both<T>(data: &Connection, index: &Connection, read: impl FnOnce() -> T) -> (T, usize) {
+    VM_STEPS.store(0, Ordering::SeqCst);
+    data.trace_v2(TraceEventCodes::SQLITE_TRACE_PROFILE, Some(count));
+    index.trace_v2(TraceEventCodes::SQLITE_TRACE_PROFILE, Some(count));
+    let out = read();
+    data.trace_v2(TraceEventCodes::empty(), None);
+    index.trace_v2(TraceEventCodes::empty(), None);
     (out, VM_STEPS.load(Ordering::SeqCst))
 }
 
@@ -195,6 +235,9 @@ fn link_reads_cost_the_same_statements_for_one_link_or_hundreds() {
 /// statements: loading every name is two statements too.
 #[test]
 fn a_name_lookup_reads_as_much_in_a_large_vault_as_in_a_small_one() {
+    let _stepping = STEPPING
+        .lock()
+        .unwrap_or_else(|poisoned| poisoned.into_inner());
     let lookups = |data: &Connection, index: &Connection| {
         let (titles, title_steps) = vm_steps(data, || {
             link_reads::resolve_titles(data, &["note 7".to_owned()]).expect("resolve")
@@ -229,5 +272,34 @@ fn a_name_lookup_reads_as_much_in_a_large_vault_as_in_a_small_one() {
         owed_steps > 100 * large.0,
         "{owed_steps} steps against {}",
         large.0
+    );
+}
+
+/// A journal day not written yet lists its links and the relations naming it by seeking them:
+/// the same virtual machine steps on a vault of 200 notes, each with a relation, as on one of
+/// 20,000.
+#[test]
+fn an_unwritten_days_references_read_as_much_in_a_large_vault_as_in_a_small_one() {
+    let _stepping = STEPPING
+        .lock()
+        .unwrap_or_else(|poisoned| poisoned.into_inner());
+    let day = |data: &Connection, index: &Connection| {
+        let (incoming, steps) = vm_steps_both(data, index, || {
+            link_reads::incoming(data, index, "j2026-05-08").expect("incoming")
+        });
+        let sources: Vec<(String, Option<String>)> = incoming
+            .sources
+            .into_iter()
+            .map(|s| (s.source_id, s.via_property))
+            .collect();
+        assert_eq!(sources, [("n5".to_owned(), Some("related".to_owned()))]);
+        steps
+    };
+    let (small_data, small_index) = vault(200);
+    let (data, index) = vault(NOTES);
+    let (small, large) = (day(&small_data, &small_index), day(&data, &index));
+    assert_eq!(
+        small, large,
+        "a day's references read more of a larger vault"
     );
 }

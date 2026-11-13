@@ -10,7 +10,12 @@ import { RelationPicker } from './RelationPicker'
 const mocks = vi.hoisted(() => ({
   quick: vi.fn(),
   searchEvents: vi.fn(),
-  listCanvases: vi.fn()
+  listCanvases: vi.fn(),
+  resolveByTitle: vi.fn()
+}))
+
+vi.mock('@/services/notes-service', () => ({
+  notesService: { resolveByTitle: (title: string) => mocks.resolveByTitle(title) }
 }))
 
 vi.mock('@/services/search-service', () => ({
@@ -126,6 +131,7 @@ function mockSearch({
 describe('RelationPicker', () => {
   beforeEach(() => {
     vi.clearAllMocks()
+    mocks.resolveByTitle.mockResolvedValue(null)
   })
 
   it('groups results by kind and omits headings for empty groups', async () => {
@@ -162,6 +168,36 @@ describe('RelationPicker', () => {
     await userEvent.click(await screen.findByText('Sprint retro'))
     expect(onSelect).toHaveBeenCalledWith('memry://journal/2026-05-10')
   })
+
+  it('offers a day nobody has written yet as a ghost, linked by its date', async () => {
+    mockSearch({ journals: [{ id: '2026-11-06', title: '2026-11-06' }] })
+    mocks.resolveByTitle.mockResolvedValue(null)
+    const onSelect = vi.fn()
+    renderWithI18n(<RelationPicker onSelect={onSelect} />)
+    await userEvent.type(screen.getByRole('textbox'), '2026-11-07')
+
+    const ghost = await screen.findByRole('option', { name: /2026-11-07/ })
+    expect(ghost).toHaveTextContent('Not written yet')
+    await userEvent.click(ghost)
+    expect(onSelect).toHaveBeenCalledWith('memry://journal/2026-11-07')
+  })
+
+  it.each<[string, string | null, boolean]>([
+    ['imported-journal-id', '2026-11-06', false],
+    ['j2026-11-06', null, true],
+    ['j2026-11-06', '2026-11-05', true]
+  ])(
+    'uses date metadata, not the id %s, to identify a written day',
+    async (id, journalDate, unwritten) => {
+      mockSearch({})
+      mocks.resolveByTitle.mockResolvedValue({ id, journalDate, path: 'x' })
+      renderWithI18n(<RelationPicker onSelect={vi.fn()} />)
+      await userEvent.type(screen.getByRole('textbox'), '2026-11-06')
+
+      const day = await screen.findByRole('option', { name: /2026-11-06/ })
+      expect(day.textContent?.includes('Not written yet')).toBe(unwritten)
+    }
+  )
 
   it('filters canvases by title rather than listing every canvas', async () => {
     mockSearch({
@@ -231,6 +267,17 @@ describe('RelationPicker', () => {
     expect(mocks.searchEvents).not.toHaveBeenCalled()
     expect(mocks.listCanvases).not.toHaveBeenCalled()
   })
+
+  it.each(['constructor', '__proto__'])(
+    'does not offer a journal day for the object prototype key %s',
+    async (query) => {
+      mockSearch({})
+      renderWithI18n(<RelationPicker onSelect={vi.fn()} />)
+      await userEvent.type(screen.getByRole('textbox'), query)
+      expect(await screen.findByText('No results')).toBeInTheDocument()
+      expect(screen.queryByRole('option')).not.toBeInTheDocument()
+    }
+  )
 
   it('shows an empty state when a search has no matches anywhere', async () => {
     mockSearch({ notes: [], tasks: [], events: [] })

@@ -238,6 +238,11 @@ pub const INDEX_MIGRATIONS: &[Migration] = &[
         name: "embedding_state",
         sql: include_str!("migrations/index/0008_embedding_state.sql"),
     },
+    Migration {
+        version: 9,
+        name: "property_refs",
+        sql: include_str!("migrations/index/0009_property_refs.sql"),
+    },
 ];
 
 /// The version a fully migrated database sits at. Zero for an empty list.

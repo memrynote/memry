@@ -8,6 +8,8 @@ const mocks = vi.hoisted(() => ({
     settingsGetLocal: vi.fn(),
     settingsSetLocal: vi.fn(),
     settingsResetKeyboard: vi.fn(),
+    settingsGetAi: vi.fn(),
+    settingsSetAi: vi.fn(),
     logWrite: vi.fn()
   },
   listeners: new Map<string, (event: { payload: unknown }) => void>()
@@ -48,19 +50,44 @@ describe('settingsService', () => {
     expect(Object.keys(modes).length).toBeGreaterThan(1)
   })
 
-  it('reads AI as on when nothing is stored, as Electron does (#4182)', async () => {
-    mocks.commands.settingsGetLocal.mockResolvedValue(null)
+  it('reads and writes the AI switches through their own commands', async () => {
+    const ai = {
+      enabled: true,
+      imageEmbeddings: true,
+      summarizeLongNotes: true,
+      summarizeAgent: 'codex_cli'
+    }
+    mocks.commands.settingsGetAi.mockResolvedValue(ai)
+    await expect(settingsService.getAISettings()).resolves.toEqual(ai)
 
-    await expect(settingsService.getAISettings()).resolves.toEqual({ enabled: true })
-    expect(mocks.commands.settingsGetLocal).toHaveBeenCalledWith('ai.enabled')
+    mocks.commands.settingsSetAi.mockResolvedValueOnce(null)
+    await expect(settingsService.setAISettings({ summarizeLongNotes: false })).resolves.toEqual({
+      success: true
+    })
+    expect(mocks.commands.settingsSetAi).toHaveBeenCalledWith({ summarizeLongNotes: false })
+
+    mocks.commands.settingsSetAi.mockRejectedValueOnce({ message: 'No vault is open' })
+    await expect(settingsService.setAISettings({ enabled: false })).resolves.toEqual({
+      success: false,
+      error: 'No vault is open'
+    })
   })
 
-  it("reads AI as off only for Electron's stored false", async () => {
-    mocks.commands.settingsGetLocal.mockResolvedValueOnce(false)
-    await expect(settingsService.getAISettings()).resolves.toEqual({ enabled: false })
+  it('hands an AI listener the written switches read from the AI command', async () => {
+    mocks.commands.settingsGetAi.mockResolvedValue({
+      enabled: false,
+      imageEmbeddings: true,
+      summarizeLongNotes: false,
+      summarizeAgent: 'auto'
+    })
+    const seen: unknown[] = []
+    onSettingsChanged((change) => seen.push(change))
 
-    mocks.commands.settingsGetLocal.mockResolvedValueOnce(true)
-    await expect(settingsService.getAISettings()).resolves.toEqual({ enabled: true })
+    mocks.listeners.get('changed')?.({ payload: { key: 'ai', fields: ['enabled'] } })
+    await flush()
+
+    expect(seen).toEqual([{ key: 'ai', value: { enabled: false } }])
+    expect(mocks.commands.settingsGetGroup).not.toHaveBeenCalled()
   })
 
   it('resolves a rejected write as { success: false, error } like the Electron handlers', async () => {

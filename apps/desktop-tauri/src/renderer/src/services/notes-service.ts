@@ -422,7 +422,14 @@ const ported = {
   },
   getLinks: async (id: string): Promise<NoteLinksResponse> => {
     const links = await commands.notesGetLinks(id)
-    return { ...links, incoming: links.incoming.map((link) => ({ ...link, ...NO_FACETS })) }
+    return {
+      ...links,
+      incoming: links.incoming.map(({ via, ...link }) => ({
+        ...link,
+        ...NO_FACETS,
+        ...(via ? { via } : {})
+      }))
+    }
   },
   resolveByTitle: (title: string): Promise<WikiLinkResolution | null> =>
     commands.notesResolveByTitle(title),
