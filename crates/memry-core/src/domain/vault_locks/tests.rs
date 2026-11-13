@@ -356,3 +356,25 @@ fn a_stale_remote_is_skipped_and_a_concurrent_one_wins_under_the_merged_clock() 
     })
     .expect("clocks");
 }
+
+/// A row with no record whose clock will not parse is refused by name, not
+/// locked from an empty clock the server would refuse.
+#[test]
+fn a_row_whose_clock_will_not_parse_is_refused_with_its_id() {
+    let (db, _dir) = open("vault-lock-bad-clock");
+    db.call_blocking(|conn| {
+        conn.execute(
+            "INSERT INTO vault_locks (id, target_kind, target, locked, created_at, updated_at, clock)
+             VALUES (?1, 'folder', 'Projects', 0, 5, 6, 'not a clock')",
+            params![ID],
+        )
+        .expect("a row with a damaged clock");
+        let error = set(conn, TargetKind::Folder, "Projects", true, "device-a", NOW)
+            .expect_err("a damaged clock is refused");
+        assert!(error.to_string().contains(ID), "{error}");
+        assert_eq!(queued(conn, ID), 0);
+        assert!(folders(conn).is_empty());
+        Ok(())
+    })
+    .expect("refusal");
+}

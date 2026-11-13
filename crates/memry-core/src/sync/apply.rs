@@ -50,7 +50,10 @@ use crate::crdt::errors::CrdtError;
 use crate::crdt::update_log;
 use crate::domain::task_merge::{self, Gate};
 use crate::domain::tasks::Inbound;
-use crate::domain::{calendar_items, canvas, inbox, journal, projects, settings, tasks};
+use crate::domain::{
+    calendar_items, canvas, canvas_folder, home_page, inbox, journal, projects, settings,
+    sticky_draft, tasks,
+};
 // Desktop only, like the locks themselves: iOS never declares `vault_lock`.
 #[cfg(feature = "markdown")]
 use crate::domain::vault_locks;
@@ -413,9 +416,9 @@ pub fn apply_inbound(
 ///   ([`apply_document`]). It is *not* an unconditional wholesale store: a
 ///   stale remote `note` record used to overwrite a newer local one, and a
 ///   rename made on this device vanished the moment a peer that had not seen
-///   it pushed anything. `inbox`, the calendar types, `canvas` and
-///   `vault_lock` are named because each runs its desktop handler's rule
-///   instead.
+///   it pushed anything. `inbox`, the calendar types, `canvas`,
+///   `vault_lock`, `canvas_folder`, `home_page` and `sticky_draft` are named
+///   because each runs its desktop handler's rule instead.
 ///
 /// `clock_device` is this device's clock id, which a diverged `canvas` needs
 /// for its conflict copy. Without one, that canvas is recorded corrupt rather
@@ -447,6 +450,11 @@ pub fn apply_inbound_on(
         // Whole-row LWW, Electron's guards (vault-lock-handler.ts).
         #[cfg(feature = "markdown")]
         vault_locks::ITEM_TYPE => vault_locks::merge::apply_remote(conn, record, now_ms),
+        // Whole-row LWW keeping local keys (canvas-folder-handler.ts,
+        // home-page-handler.ts, sticky-draft-handler.ts).
+        canvas_folder::ITEM_TYPE => canvas_folder::merge::apply_remote(conn, record, now_ms),
+        home_page::ITEM_TYPE => home_page::merge::apply_remote(conn, record, now_ms),
+        sticky_draft::ITEM_TYPE => sticky_draft::merge::apply_remote(conn, record, now_ms),
         // §6.3.1's document gate, then §6.11's join of the versioned `schema`.
         t if t == TAG_SCHEMA.item_type => {
             apply_versioned(conn, record, &TAG_SCHEMA, now_ms, clock_device)

@@ -173,6 +173,11 @@ pub const DATA_MIGRATIONS: &[Migration] = &[
         name: "note_file_marks",
         sql: include_str!("migrations/data/0026_note_file_marks.sql"),
     },
+    Migration {
+        version: 27,
+        name: "desktop_record_types",
+        sql: include_str!("migrations/data/0027_desktop_record_types.sql"),
+    },
 ];
 
 /// `index.db`: the rebuildable search and link index.
@@ -322,6 +327,8 @@ fn set_user_version(conn: &Connection, version: u32) -> Result<(), StorageError>
         })
 }
 
+#[cfg(test)]
+mod desktop_record_types_tests;
 mod legacy_numbering;
 #[cfg(test)]
 mod note_file_marks_tests;
