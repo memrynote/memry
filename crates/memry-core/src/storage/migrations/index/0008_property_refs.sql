@@ -21,7 +21,8 @@ CREATE INDEX IF NOT EXISTS idx_property_refs_target ON property_refs (target_typ
 WITH elements AS (
   SELECT p.note_id, p.name, e.type AS kind_of, e.value AS text, substr(e.value, 9) AS rest
   FROM note_properties p, json_each(p.value) e
-  WHERE json_valid(p.value) AND json_type(p.value) = 'array'
+  WHERE p.type IN ('relation', 'project', 'multiselect')
+    AND json_valid(p.value) AND json_type(p.value) = 'array'
 ),
 parsed AS (
   SELECT note_id, name,

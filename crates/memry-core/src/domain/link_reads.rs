@@ -14,7 +14,6 @@ use rusqlite::{Connection, params, params_from_iter};
 use crate::api::errors::StorageError;
 use crate::domain::journal::valid_date;
 use crate::domain::journal_ops::links::{Source, id_list, live_items};
-use crate::domain::note_properties;
 use crate::domain::notes::failed;
 use crate::domain::notes::link_rewrite::LinkNames;
 use crate::domain::notes::names::name_key;
@@ -89,7 +88,7 @@ pub fn incoming(
         ids.sort();
         ids.dedup();
     }
-    let relations = note_properties::relating(index, "journal", &date)?;
+    let relations = relating(index, "journal", &date)?;
     let unread = ids
         .iter()
         .chain(relations.iter().map(|(id, _)| id))
@@ -117,6 +116,28 @@ pub fn incoming(
         target_title: Some(target.map_or(date, |(title, _, _)| title)),
         sources: out,
     })
+}
+
+/// The notes and property names whose relations name `target_type`/`target_id`
+/// (`getIncomingPropertyRefs`), by note and name.
+fn relating(
+    index: &Connection,
+    target_type: &str,
+    target_id: &str,
+) -> Result<Vec<(String, String)>, StorageError> {
+    let mut statement = index
+        .prepare(
+            "SELECT source_id, name FROM property_refs \
+             WHERE target_type = ?1 AND target_id = ?2 ORDER BY source_id, name",
+        )
+        .map_err(failed)?;
+    statement
+        .query_map(params![target_type, target_id], |row| {
+            Ok((row.get(0)?, row.get(1)?))
+        })
+        .map_err(failed)?
+        .collect::<Result<_, _>>()
+        .map_err(failed)
 }
 
 /// The notes and days whose links to `date` are left unresolved, by the date's `target_key`.
