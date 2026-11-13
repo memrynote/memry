@@ -21,6 +21,7 @@ struct JournalDayScreen: View {
     @Environment(\.accessibilityReduceTransparency) private var reduceTransparency
     @Environment(\.horizontalSizeClass) private var horizontalSizeClass
     @Environment(\.verticalSizeClass) private var verticalSizeClass
+    @Environment(\.dynamicTypeSize) private var typeSize
     @State private var selection: String
     @State private var pages = JournalDayPages()
     @State private var titleCollapsed = false
@@ -50,9 +51,11 @@ struct JournalDayScreen: View {
     private var isToday: Bool { date == store.clock.today }
 
     /// DESIGN.md › Tablet: regular width and height. A large iPhone in
-    /// landscape (regular width, compact height) keeps the phone page.
+    /// landscape (regular width, compact height) keeps the phone page, and
+    /// so do accessibility text sizes, which break words in the rail's 320
+    /// points; the page then shows the day's tasks under the entry.
     private var showsRail: Bool {
-        horizontalSizeClass == .regular && verticalSizeClass == .regular
+        horizontalSizeClass == .regular && verticalSizeClass == .regular && !typeSize.isAccessibilitySize
     }
 
     var body: some View {
@@ -157,9 +160,11 @@ struct JournalDayScreen: View {
         }
     }
 
-    /// ‹ ›: page to the neighbour, which then becomes the shown day.
+    /// ‹ ›: page to the neighbour, which then becomes the shown day. Counts
+    /// from `selection`, which is current even in a stale copy of this view:
+    /// the hidden key buttons can keep an action built for an earlier day.
     private func step(_ days: Int) {
-        let target = JournalDates.adding(days, to: date)
+        let target = JournalDates.adding(days, to: selection)
         withAnimation(Tokens.animation(.normal, .moving, reduceMotion: reduceMotion)) {
             selection = target
         }
@@ -168,7 +173,8 @@ struct JournalDayScreen: View {
     /// Replaces the shown day in place. No push animation: the page already
     /// moved (or, for Today, jumps).
     private func show(_ day: String) {
-        guard day != date else { return }
+        // `selection` too: in a stale copy `date` can already equal `day`.
+        guard day != date || day != selection else { return }
         var transaction = Transaction()
         transaction.disablesAnimations = true
         withTransaction(transaction) { router.showDay(day) }

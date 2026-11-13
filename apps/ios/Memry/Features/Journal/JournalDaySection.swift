@@ -65,6 +65,8 @@ struct JournalDueTasks: View {
     let tasks: TasksStore
     let date: String
     let today: String
+    /// The rows' `JournalDayTaskRow.edge`, and the header's.
+    var edge = TaskLayout.edge
 
     @Environment(TasksRouter.self) private var router: TasksRouter?
 
@@ -83,7 +85,7 @@ struct JournalDueTasks: View {
                     .overlay(Tokens.Line.border.color)
                 header(count: due.count)
                 ForEach(due, id: \.id) { task in
-                    JournalDayTaskRow(task: task, tasks: tasks, isLast: task.id == due.last?.id)
+                    JournalDayTaskRow(task: task, tasks: tasks, isLast: task.id == due.last?.id, edge: edge)
                 }
             }
         }
@@ -118,7 +120,7 @@ struct JournalDueTasks: View {
             }
         }
         .padding(.top, Tokens.Space.small)
-        .padding(.horizontal, TaskLayout.edge)
+        .padding(.horizontal, edge)
     }
 
     /// Opens the Tasks tab (desktop opens the Tasks tab).

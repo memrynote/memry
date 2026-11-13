@@ -25,7 +25,7 @@ struct JournalDayAgenda: View {
                 JournalDaySchedule(calendar: calendar, date: date)
             }
             if let tasks {
-                JournalDueTasks(tasks: tasks, date: date, today: today)
+                JournalDueTasks(tasks: tasks, date: date, today: today, edge: 0)
             }
         }
         .frame(maxWidth: .infinity, alignment: .leading)
