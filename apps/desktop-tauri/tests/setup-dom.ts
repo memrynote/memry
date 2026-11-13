@@ -318,6 +318,8 @@ vi.mock('../src/generated/bindings', () => {
       tagsPreviewImpact: (query: unknown) => tags().previewImpact(query),
       tagsSearchObjects: (input: unknown) => tags().searchObjects(input),
       tagsGetLinkedHere: (input: unknown) => tags().getLinkedHere(input),
+      tagsFillStatus: () => tags().getFillStatus(),
+      tagsFillFields: (input: unknown) => tags().fillFields(input),
       tagsGetAllWithCounts: async () =>
         ((await tags().getAllWithCounts()) as { tags: unknown[] }).tags,
       tagsGetNotesByTag: (input: unknown) => tags().getNotesByTag(input),
