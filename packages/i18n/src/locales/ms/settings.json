@@ -1232,6 +1232,10 @@
     "loadingAria": "Memuatkan peranti",
     "none": "Tiada peranti dipautkan lagi",
     "linkNew": "Pautkan peranti baharu",
+    "linkNeedsPlan": {
+      "title": "Pemautan memerlukan pelan penyegerakan",
+      "description": "Peranti yang dipautkan hanya melihat nota anda apabila penyegerakan dihidupkan. Tanpa pelan, log masuk di sana dengan frasa pemulihan anda dan peranti itu akan mengekalkan bilik kebalnya sendiri."
+    },
     "thisDevice": "Peranti ini",
     "lastSeen": "Kali terakhir dilihat {time} yang lalu",
     "linked": "Dipautkan {time} yang lalu",

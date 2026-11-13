@@ -1232,6 +1232,10 @@
     "loadingAria": "Načítavajú sa zariadenia",
     "none": "Ešte nie sú prepojené žiadne zariadenia",
     "linkNew": "Prepojiť nové zariadenie",
+    "linkNeedsPlan": {
+      "title": "Prepojenie vyžaduje plán synchronizácie",
+      "description": "Prepojené zariadenie vidí vaše poznámky, len keď je zapnutá synchronizácia. Bez plánu sa na ňom prihláste obnovovacou frázou a zachová si vlastný trezor."
+    },
     "thisDevice": "Toto zariadenie",
     "lastSeen": "Naposledy videné pred {time}",
     "linked": "Prepojené pred {time}",
