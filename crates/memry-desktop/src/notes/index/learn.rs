@@ -1,12 +1,13 @@
 //! A property the index reads with no definition is typed, in every later read on this device,
-//! by the type it was first read with (Electron's `learnCanonicalPropertyType`, #3530 13k-4c-2):
-//! the next pass retypes the rows that hold the name.
+//! by the type the pass read it with (Electron's `learnCanonicalPropertyType`, #3530 13k-4c-2):
+//! the next pass retypes the rows that hold the name. The type is the first read's, unless a
+//! later read in the pass holds a value it cannot show (`rating: 5`, then `rating: good`): then
+//! it is `text`, which shows every value (Electron's `settleLearnedTypes`, 2b3a512960).
 //!
-//! Electron keeps the learned type as a data DB row with no clock, which no file and no other
-//! device holds; a full sync pushes it (`seedUnclocked`). Here it is a learned type in `data.db`
-//! ([`PropertyDefinitions::learn`]), which no definitions list, `properties.md` or record holds
-//! until a sync pass makes it a definition (`PropertyDefinitions::seed`, #4025). A type the user
-//! sets is a definition, and wins.
+//! Electron keeps the learned type as a data DB row with no clock, which its reload folds into
+//! `properties.md`; a full sync pushes it (`seedUnclocked`). Here
+//! [`PropertyDefinitions::learn`] writes it into `properties.md` too, and a sync pass makes it a
+//! record (`PropertyDefinitions::seed`, #4025). A type the user sets is a definition, and wins.
 //!
 //! **Which read is first.** A pass reads its notes in order ([`order`]): every note before
 //! every journal day, each by path. A name is learned from its first read. So a day's
@@ -26,7 +27,7 @@ use std::sync::Arc;
 
 use memry_core::api::vault::Vault;
 use memry_core::domain::note_stats::Unindexed;
-use memry_core::domain::property_values::{IndexedProperty, PROJECT_PROPERTY_KEY};
+use memry_core::domain::property_values::{IndexedProperty, PROJECT_PROPERTY_KEY, value_fits_type};
 use memry_core::seams::secure_store::SecureStore;
 use serde_json::Value;
 
@@ -39,8 +40,9 @@ pub(super) struct Learner {
     root: PathBuf,
     vault: Arc<Vault>,
     store: Arc<dyn SecureStore>,
-    /// Each name read with no definition, and the type of its first read.
-    seen: BTreeMap<String, DefinitionType>,
+    /// Each name read with no definition, and the type it settles on: its first read's, or
+    /// `text` once a later value does not fit that.
+    seen: BTreeMap<String, String>,
 }
 
 impl Learner {
@@ -54,11 +56,29 @@ impl Learner {
     }
 
     /// Notes the type of each of a file's `properties` that `types`, the definitions the pass
-    /// reads by, has none for, unless an earlier read gave it one.
+    /// reads by, has none for, unless an earlier read gave it one; a value that type cannot
+    /// show settles it on `text`.
     pub fn read(&mut self, properties: &[IndexedProperty], types: &HashMap<String, String>) {
         for property in properties {
-            if let Some(wanted) = learnable(property, types) {
-                self.seen.entry(property.name.clone()).or_insert(wanted);
+            if types.contains_key(&property.name) || property.name == PROJECT_PROPERTY_KEY {
+                continue;
+            }
+            match self.seen.get_mut(&property.name) {
+                Some(seen) => {
+                    if property
+                        .text
+                        .as_deref()
+                        .is_some_and(|text| !value_fits_type(seen, text))
+                    {
+                        "text".clone_into(seen);
+                    }
+                }
+                None => {
+                    if learnable(property).is_some() {
+                        self.seen
+                            .insert(property.name.clone(), property.type_name.clone());
+                    }
+                }
             }
         }
     }
@@ -72,7 +92,14 @@ impl Learner {
         let Some(definitions) = self.open() else {
             return false;
         };
-        definitions.learn(self.seen).unwrap_or_else(|error| {
+        let wanted = self
+            .seen
+            .into_iter()
+            .filter_map(|(name, type_name)| {
+                Some((name, serde_json::from_value(Value::String(type_name)).ok()?))
+            })
+            .collect();
+        definitions.learn(wanted).unwrap_or_else(|error| {
             tracing::warn!(
                 scope = "note_index",
                 "no property type was learned: {error}"
@@ -92,15 +119,9 @@ impl Learner {
     }
 }
 
-/// The type `property` was read with, when its name has none and its type is learned. A
-/// relation parses as no definition type.
-fn learnable(
-    property: &IndexedProperty,
-    types: &HashMap<String, String>,
-) -> Option<DefinitionType> {
-    if types.contains_key(&property.name) || property.name == PROJECT_PROPERTY_KEY {
-        return None;
-    }
+/// The type `property` was read with, when it is learned. A relation parses as no definition
+/// type.
+fn learnable(property: &IndexedProperty) -> Option<DefinitionType> {
     serde_json::from_value(Value::String(property.type_name.clone())).ok()
 }
 

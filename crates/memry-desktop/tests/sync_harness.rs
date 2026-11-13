@@ -339,15 +339,16 @@ async fn a_learned_type_reaches_the_other_device_as_a_definition() {
     let deleted = b.sync().await;
     assert!(deleted.pushed, "{deleted:?}");
 
-    // A, signed out until now, learned all three before it saw any record.
+    // A, signed out until now, learned all three before it saw any record: each is a
+    // definition only its file holds (2b3a512960).
     a.learn(&[
         ("rating", DefinitionType::Number),
         ("mood", DefinitionType::Text),
         ("gone", DefinitionType::Text),
     ]);
-    assert!(
-        a.listed().is_empty(),
-        "learned types are no definitions yet"
+    assert_eq!(
+        a.listed(),
+        types(&[("gone", "text"), ("mood", "text"), ("rating", "number")])
     );
 
     let first = a.sync().await;
@@ -379,7 +380,8 @@ async fn a_learned_type_reaches_the_other_device_as_a_definition() {
         b.file()
     );
     // What the server delivered: the record Electron's `seedUnclocked` pushes for an unclocked
-    // learned row (`{...row, clock}`, in its column order), less the local `syncedAt` column.
+    // learned row (`{...row, clock}`, in its column order), less the local `syncedAt` column. The
+    // row is rebuilt from the file, which writes `options: []`, so its options are `"[]"`.
     let rating = b.payload("rating").expect("B holds A's record");
     assert_eq!(
         rating.as_object().unwrap().keys().collect::<Vec<_>>(),
@@ -395,7 +397,7 @@ async fn a_learned_type_reaches_the_other_device_as_a_definition() {
     );
     assert_eq!(rating["name"], json!("rating"));
     assert_eq!(rating["type"], json!("number"));
-    assert_eq!(rating["options"], Value::Null);
+    assert_eq!(rating["options"], json!("[]"));
     assert_eq!(rating["defaultValue"], Value::Null);
     assert_eq!(rating["color"], Value::Null);
     assert_eq!(rating["clock"], json!({ a.clock_id.clone(): 1 }));
@@ -418,11 +420,11 @@ async fn a_learned_type_reaches_the_other_device_as_a_definition() {
 }
 
 /// A device that never pulled a definition's tombstone, because the server shed it to a marker
-/// (§5.12.3) that the core never pulls, learns the name and promotes it. The server refuses the
-/// push (`SYNC_DELETE_WINS`), and the delete wins on that device too: it lists nothing, its file
-/// drops the name, and the name is never learned again.
+/// (§5.12.3) that the core never pulls, learns the name. The learned type is a definition its
+/// file holds, pushed as `create` like Electron's `seedUnclocked` pushes a learned row, so the
+/// server re-creates it over the marker and every device keeps it.
 #[tokio::test(flavor = "multi_thread")]
-async fn a_learned_name_whose_deletion_was_purged_stays_deleted() {
+async fn a_learned_name_over_a_purged_deletion_is_kept_and_synced() {
     let mut server = Server::start();
     let b = Device::new(&server, 1).await;
     b.definitions
@@ -445,17 +447,18 @@ async fn a_learned_name_whose_deletion_was_purged_stays_deleted() {
     a.learn(&[("gone", DefinitionType::Text)]);
     let first = a.sync().await;
     assert!(first.pushed, "{first:?}");
-    assert!(a.listed().is_empty(), "{:?}", a.listed());
-    assert!(!a.file().contains("gone"), "{}", a.file());
+    assert_eq!(a.listed(), types(&[("gone", "text")]));
+    assert!(a.file().contains("gone:\n    type: text"), "{}", a.file());
     assert_eq!(a.queued(), 0);
-    assert!(a.payload("gone").is_none(), "the record is a tombstone");
 
     // Retyping the name learns nothing, and the next pass pushes nothing.
     let wanted = BTreeMap::from([("gone".to_owned(), DefinitionType::Number)]);
     assert!(!a.definitions.learn(wanted).unwrap());
     let again = a.sync().await;
     assert!(!again.pushed, "{again:?}");
-    assert!(a.listed().is_empty());
+
+    b.sync().await;
+    assert_eq!(b.listed(), types(&[("gone", "text")]));
 }
 
 /// The user's own definition over a purged deletion: pushed as `create`, which the server

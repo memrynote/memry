@@ -31,7 +31,7 @@ fn types_and_values_match_electrons_index() {
         "t: hello\nt2: ' 12 '\nt3: '0x10'\n",
         "a: [x, y]\na2: [x, y]\na3: solo\n",
         "o: { k: 1, at: 2026-10-07 }\n",
-        "nul: null\nbig: 1e21\nst: Done",
+        "nul: null\nbig: 1e21\nst: Done\nyes: yes",
     ));
     let defined = [
         ("project", "text"),
@@ -48,6 +48,7 @@ fn types_and_values_match_electrons_index() {
         ("nul", "text"),
         ("big", "text"),
         ("st", "status"),
+        ("yes", "checkbox"),
     ];
     let expected = [
         ("project", "project", json!(["x"])),
@@ -71,7 +72,8 @@ fn types_and_values_match_electrons_index() {
         ("s4", "date", json!("2026-01-01T10:00:00.123Z")),
         ("u", "url", json!("https://example.com/a b")),
         ("u2", "text", json!("ftp://x")),
-        ("t", "number", Value::Null),
+        // A value its type cannot show reads as the file's text (2b3a512960).
+        ("t", "number", json!("hello")),
         ("t2", "number", json!(12)),
         ("t3", "number", json!(16)),
         ("a", "text", json!("[\"x\",\"y\"]")),
@@ -85,6 +87,7 @@ fn types_and_values_match_electrons_index() {
         ("nul", "text", Value::Null),
         ("big", "text", json!("1e+21")),
         ("st", "status", json!("Done")),
+        ("yes", "checkbox", json!("yes")),
     ];
     let defined = |name: &str| {
         defined
@@ -101,6 +104,30 @@ fn types_and_values_match_electrons_index() {
         .map(|(name, type_name, value)| (name.to_owned(), type_name.to_owned(), value))
         .collect();
     assert_eq!(got, want);
+}
+
+/// Electron's `valueFitsType` over the index's text of each value.
+#[test]
+fn a_value_fits_its_type_as_electron_decides() {
+    let cases = [
+        ("number", "5", true),
+        ("number", "1.5e3", true),
+        ("number", "good", false),
+        ("number", "", true),
+        ("checkbox", "true", true),
+        ("checkbox", "yes", false),
+        ("date", "2026-10-07", true),
+        ("date", "2026-10-07T10:30:00+02:00", true),
+        ("date", "\"2026-10-07T00:00:00.000Z\"", true),
+        ("date", "soon", false),
+        ("url", "https://example.com", true),
+        ("url", "ftp://x", false),
+        ("text", "anything", true),
+        ("select", "anything", true),
+    ];
+    for (type_name, text, fits) in cases {
+        assert_eq!(value_fits_type(type_name, text), fits, "{type_name} {text}");
+    }
 }
 
 /// Six levels of ten aliases each: a 250-byte frontmatter that stands for a million values.

@@ -448,3 +448,60 @@ fn a_hard_linked_file_is_replaced_and_its_other_name_keeps_its_bytes() {
     assert_eq!(after, kept, "nothing is written through the link");
     assert!(f.file().unwrap().contains("Done"));
 }
+
+/// A fold that waits on an edit's turn reads the learned types after the turn, so a delete the
+/// pull applied inside that turn is never written back into the file.
+#[test]
+fn a_fold_waiting_on_the_turn_never_writes_a_name_a_pull_deleted() {
+    use std::collections::BTreeMap;
+    use std::sync::mpsc;
+    use std::time::Duration;
+    let f = fixture();
+    stage(&f);
+    assert!(
+        f.records
+            .learn(&BTreeMap::from([("gone".to_owned(), "text".to_owned())]))
+            .unwrap()
+    );
+    let stage_record = inbound(
+        &f,
+        "Stage",
+        json!({ "type": "select", "options": BOTH }),
+        false,
+    );
+    let gone_tombstone = inbound(&f, "gone", json!({ "type": "text" }), true);
+    let core = f.core.db_handle();
+    let (in_turn, entered) = mpsc::channel::<()>();
+    let (go, wait) = mpsc::channel::<()>();
+    let mut once = Some((stage_record, gone_tombstone));
+    f.definitions.before_record_write(move || {
+        if let Some((s, g)) = once.take() {
+            in_turn.send(()).unwrap();
+            wait.recv().unwrap();
+            core.call_blocking(move |c| {
+                apply_inbound(c, &s, NOW)?;
+                apply_inbound(c, &g, NOW)
+            })
+            .unwrap();
+        }
+    });
+    std::thread::scope(|scope| {
+        let edit = scope.spawn(|| f.definitions.set_option_color("Stage", "Draft", "rose"));
+        entered.recv().unwrap();
+        let fold = scope.spawn(|| f.definitions.fold_learned());
+        // Gives a fold that reads before the turn time to read; the fixed one blocks first.
+        std::thread::sleep(Duration::from_millis(400));
+        go.send(()).unwrap();
+        edit.join().unwrap().unwrap();
+        fold.join().unwrap().unwrap();
+    });
+    let listed: Vec<String> = f
+        .definitions
+        .list()
+        .unwrap()
+        .into_iter()
+        .map(|d| d.name)
+        .collect();
+    assert_eq!(listed, ["Stage"], "file: {:?}", f.file());
+    assert_eq!(file_definition(&f, "gone"), None);
+}

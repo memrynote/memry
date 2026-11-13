@@ -36,16 +36,23 @@ export function NumberEditor({
     setDraftValue(e.target.value)
   }, [])
 
+  // Leaving the field without typing writes nothing. A value that is not a
+  // number (`rating: good`) would otherwise parse to null and be deleted.
+  const save = useCallback(() => {
+    if (draftValue === null) return
+    const num = draftValue ? parseFloat(draftValue) : null
+    onChange(num !== null && !isNaN(num) ? num : null)
+  }, [draftValue, onChange])
+
   const handleBlur = useCallback(
     (e: React.FocusEvent<HTMLInputElement>) => {
-      const num = inputValue ? parseFloat(inputValue) : null
-      onChange(num !== null && !isNaN(num) ? num : null)
+      save()
       // The window lost focus, not the field: keep it open with the typed text (#3967).
       if (isWindowBlur(e)) return
       setDraftValue(null)
       onBlur?.()
     },
-    [inputValue, onChange, onBlur]
+    [save, onBlur]
   )
 
   const handleKeyDown = useCallback(
@@ -53,8 +60,7 @@ export function NumberEditor({
       // Handle Enter - save value
       if (e.key === 'Enter') {
         e.preventDefault()
-        const num = inputValue ? parseFloat(inputValue) : null
-        onChange(num !== null && !isNaN(num) ? num : null)
+        save()
         setDraftValue(null)
         onBlur?.()
         return
@@ -97,7 +103,7 @@ export function NumberEditor({
       // Block everything else (letters, special characters, etc.)
       e.preventDefault()
     },
-    [inputValue, onChange, onBlur]
+    [inputValue, save, onBlur]
   )
 
   return (
