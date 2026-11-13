@@ -684,3 +684,33 @@ at most 32 UTF-16 code units; `custom:` uploaded icons are refused
 decrypts a value it cannot validate MUST keep its local icon rather than clear
 it. A reset to the default icon is not an envelope: it travels as both fields
 `null` with a change time (chapter 05 §5.11.1).
+
+## 4.17 The agent at-rest envelope
+
+**Normative.** Desktop seals an agent conversation's title and a message's
+content and attachments in its local database, never on the wire: the sync
+payload carries them as plain JSON inside the record envelope (§4.6). The
+sealed column is the JSON text `{"version":1,"nonce":<base64>,"ciphertext":<base64>}`,
+in that key order with no whitespace
+(`apps/desktop/src/main/agent/storage/encryption.ts:35-46`,
+`apps/desktop/src/main/agent/storage/conversation-store.ts:53-58`,
+`apps/desktop/src/main/agent/storage/message-store.ts:51-64`).
+
+- XChaCha20-Poly1305 (§4.3) under the **vault key**, a fresh 24-byte random
+  nonce per seal, and the associated data `memry/1/<purpose>` in UTF-8, where
+  `<purpose>` is `agent_conversation_title`, `agent_message_content` or
+  `agent_attachments` (`encryption.ts:9-25`). The purpose keeps a title from
+  opening as a message body.
+- `nonce` and `ciphertext` are standard base64 with padding (§4.5); the
+  ciphertext carries the 16-byte tag.
+- The plaintext is the title text, or `JSON.stringify` of the message content
+  or the attachment list (`message-store.ts:51-64`).
+- A reader refuses a `version` other than `1` (`encryption.ts:53-55`) and an
+  envelope that does not authenticate, and ignores keys it does not know
+  (`JSON.parse`). Plaintext bytes that are not UTF-8 decode with U+FFFD
+  (`TextDecoder`, `encryption.ts:63`).
+
+The Rust core implements it in `crates/memry-core/src/crypto/agent_envelope.rs`.
+`packages/contracts/test-vectors/agent-envelope.json`, generated from
+Electron's functions with a fixed nonce, pins the seal byte for byte and the
+reader's refusals.
