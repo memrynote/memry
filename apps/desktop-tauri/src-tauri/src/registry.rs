@@ -22,7 +22,7 @@ pub fn builder() -> Builder<Wry> {
         .commands(collect_commands![
             // ai
             crate::commands::ai::ai_inline_get_settings::<Wry>,
-            crate::commands::ai::ai_inline_list_ollama_models,
+            crate::commands::ai::ai_inline_list_models,
             crate::commands::ai::ai_inline_set_settings::<Wry>,
             crate::commands::ai::ai_inline_test_connection,
             // app

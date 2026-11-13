@@ -9,7 +9,7 @@ const MASKED = '\u2022'.repeat(8)
 const commands = vi.hoisted(() => ({
   aiInlineGetSettings: vi.fn(),
   aiInlineSetSettings: vi.fn(),
-  aiInlineListOllamaModels: vi.fn(),
+  aiInlineListModels: vi.fn(),
   aiInlineTestConnection: vi.fn()
 }))
 vi.mock('../../../../generated/bindings', () => ({ commands }))
@@ -54,7 +54,7 @@ const openai: InlineAiSettings = {
 describe('AIInlineSettings', () => {
   beforeEach(() => {
     commands.aiInlineGetSettings.mockResolvedValue(openai)
-    commands.aiInlineListOllamaModels.mockResolvedValue(['llama3.2'])
+    commands.aiInlineListModels.mockResolvedValue(['llama3.2'])
   })
 
   afterEach(() => {
@@ -133,7 +133,7 @@ describe('AIInlineSettings', () => {
     expect(toast.error).not.toHaveBeenCalled()
     // One catalogue probe per mount (the defaults are Ollama); a load that went on after the
     // unmount would probe a third time.
-    expect(commands.aiInlineListOllamaModels).toHaveBeenCalledTimes(2)
+    expect(commands.aiInlineListModels).toHaveBeenCalledTimes(2)
   })
 
   it('probes Ollama on open and shows it connected when it answers', async () => {
@@ -146,7 +146,7 @@ describe('AIInlineSettings', () => {
     render(<AIInlineSettings />)
 
     expect(await screen.findByText('Connected')).toBeTruthy()
-    expect(commands.aiInlineListOllamaModels).toHaveBeenCalled()
+    expect(commands.aiInlineListModels).toHaveBeenCalled()
   })
 
   it('switches provider with its default model and disables inline AI', async () => {
@@ -159,7 +159,7 @@ describe('AIInlineSettings', () => {
     await waitFor(() =>
       expect(commands.aiInlineSetSettings).toHaveBeenCalledWith({
         provider: 'anthropic',
-        model: 'claude-sonnet-5',
+        model: 'claude-sonnet-5-5',
         baseUrl: ''
       })
     )
@@ -178,10 +178,51 @@ describe('AIInlineSettings', () => {
       apiKey: '',
       baseUrl: 'http://localhost:11434/v1'
     })
-    commands.aiInlineListOllamaModels.mockRejectedValue({ kind: 'unreachable', message: 'down' })
+    commands.aiInlineListModels.mockRejectedValue({ kind: 'unreachable', message: 'down' })
     render(<AIInlineSettings />)
 
     expect(await screen.findByText('Not connected')).toBeTruthy()
     expect(toast.success).not.toHaveBeenCalled()
+  })
+
+  it('lists a custom endpoint models, takes a typed model and tests without an API key', async () => {
+    const custom: InlineAiSettings = {
+      enabled: true,
+      provider: 'custom',
+      model: '',
+      apiKey: '',
+      baseUrl: 'https://openrouter.ai/api/v1'
+    }
+    commands.aiInlineGetSettings.mockResolvedValue(custom)
+    commands.aiInlineListModels.mockResolvedValue(['openai/gpt-5'])
+    commands.aiInlineSetSettings.mockImplementation(async (updates: Partial<InlineAiSettings>) => ({
+      ...custom,
+      ...updates
+    }))
+    commands.aiInlineTestConnection.mockResolvedValue({ ok: true, detail: null })
+    render(<AIInlineSettings />)
+
+    const url = await screen.findByDisplayValue('https://openrouter.ai/api/v1')
+    expect(screen.getByPlaceholderText('API key (optional)')).toBeTruthy()
+    await waitFor(() =>
+      expect(document.querySelector('datalist option[value="openai/gpt-5"]')).not.toBeNull()
+    )
+
+    const model = screen.getByRole('combobox', { name: 'Model' })
+    fireEvent.change(model, { target: { value: ' anthropic/claude-sonnet-4 ' } })
+    fireEvent.blur(model)
+    await waitFor(() =>
+      expect(commands.aiInlineSetSettings).toHaveBeenCalledWith({
+        model: 'anthropic/claude-sonnet-4'
+      })
+    )
+
+    // A new URL is a new endpoint: its catalogue is asked again.
+    fireEvent.change(url, { target: { value: 'https://llm.example/v1' } })
+    fireEvent.blur(url)
+    await waitFor(() => expect(commands.aiInlineListModels).toHaveBeenCalledTimes(2))
+
+    await userEvent.click(screen.getByRole('button', { name: 'Test' }))
+    await waitFor(() => expect(toast.success).toHaveBeenCalledWith('Connected to llm.example'))
   })
 })

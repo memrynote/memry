@@ -1,6 +1,7 @@
-//! The inline AI connection test and Ollama model list against a local fake provider: each
-//! provider gets its own auth header and nothing else, and the outcome classes match
-//! `writing-assist.ts:55-62` (401 and 403 unauthorized, no answer unreachable, the rest other).
+//! The inline AI connection test and model list against a local fake provider: each provider
+//! gets its own auth header and nothing else, a custom endpoint gets its key only at its own URL,
+//! and the outcome classes match `writing-assist.ts:55-62` (401 and 403 unauthorized, no answer
+//! unreachable, the rest other).
 
 use std::sync::{Arc, Mutex};
 use std::time::Duration;
@@ -8,9 +9,7 @@ use std::time::Duration;
 use axum::Router;
 use axum::http::{HeaderMap, StatusCode};
 use axum::routing::get;
-use memry_desktop::ai::catalog::{
-    ProbeClient, ProbeFailure, list_ollama_models, probe, test_connection,
-};
+use memry_desktop::ai::catalog::{ProbeClient, ProbeFailure, list_models, probe, test_connection};
 use memry_desktop::ai::provider::AiProvider;
 use memry_desktop::ai::settings::InlineAiSettings;
 use tokio::net::TcpListener;
@@ -113,6 +112,7 @@ async fn a_redirect_never_carries_the_key_to_another_host() {
         AiProvider::Openai,
         AiProvider::Anthropic,
         AiProvider::Google,
+        AiProvider::Custom,
     ] {
         let (elsewhere, seen) = provider(StatusCode::OK, r#"{"data":[]}"#).await;
         let base = redirecting_to(format!("{elsewhere}/models")).await;
@@ -137,7 +137,9 @@ async fn ollama_lists_its_models_with_no_auth_header() {
         r#"{"object":"list","data":[{"id":"llama3.2"},{"id":""},{"name":"x"},{"id":"qwen2.5:7b"}]}"#,
     )
     .await;
-    let models = list_ollama_models(&client(), &base).await.expect("models");
+    let models = list_models(&client(), &ollama(&base))
+        .await
+        .expect("models");
     assert_eq!(models, ["llama3.2", "qwen2.5:7b"]);
     let headers = seen.lock().unwrap()[0].clone();
     assert_eq!(header(&headers, "authorization"), None);
@@ -173,7 +175,7 @@ async fn failures_are_classified_without_the_key() {
     .expect_err("500");
     assert!(matches!(&failure, ProbeFailure::Other(text) if !text.contains("sk-secret")));
 
-    let failure = list_ollama_models(&client(), &closed_port().await)
+    let failure = list_models(&client(), &ollama(&closed_port().await))
         .await
         .expect_err("nothing listening");
     assert_eq!(failure, ProbeFailure::Unreachable);
@@ -192,22 +194,123 @@ async fn a_cloud_provider_without_a_key_is_not_contacted() {
 }
 
 #[test]
-fn only_ollama_takes_the_stored_base_url() {
-    assert_eq!(AiProvider::Ollama.base_url(""), "http://localhost:11434/v1");
+fn only_ollama_and_custom_take_the_stored_base_url() {
+    let base = |provider: AiProvider, stored: &str| provider.base_url(stored);
     assert_eq!(
-        AiProvider::Ollama.base_url("http://box:11434/v1/"),
-        "http://box:11434/v1"
+        base(AiProvider::Ollama, "").as_deref(),
+        Some("http://localhost:11434/v1")
     );
     assert_eq!(
-        AiProvider::Openai.base_url("http://evil.example/v1"),
-        "https://api.openai.com/v1"
+        base(AiProvider::Ollama, "http://box:11434/v1/").as_deref(),
+        Some("http://box:11434/v1")
     );
     assert_eq!(
-        AiProvider::Anthropic.base_url("http://evil.example"),
-        "https://api.anthropic.com/v1"
+        base(AiProvider::Custom, " https://openrouter.ai/api/v1/ ").as_deref(),
+        Some("https://openrouter.ai/api/v1")
+    );
+    assert_eq!(base(AiProvider::Custom, " "), None);
+    assert_eq!(
+        base(AiProvider::Openai, "http://evil.example/v1").as_deref(),
+        Some("https://api.openai.com/v1")
     );
     assert_eq!(
-        AiProvider::Google.base_url("http://evil.example"),
-        "https://generativelanguage.googleapis.com/v1beta"
+        base(AiProvider::Anthropic, "http://evil.example").as_deref(),
+        Some("https://api.anthropic.com/v1")
     );
+    assert_eq!(
+        base(AiProvider::Google, "http://evil.example").as_deref(),
+        Some("https://generativelanguage.googleapis.com/v1beta")
+    );
+}
+
+fn ollama(base: &str) -> InlineAiSettings {
+    InlineAiSettings {
+        base_url: base.to_owned(),
+        ..InlineAiSettings::default()
+    }
+}
+
+fn custom(base: &str, key: &str) -> InlineAiSettings {
+    InlineAiSettings {
+        provider: AiProvider::Custom,
+        model: "openai/gpt-5".to_owned(),
+        api_key: key.to_owned(),
+        base_url: base.to_owned(),
+        ..InlineAiSettings::default()
+    }
+}
+
+#[tokio::test]
+async fn a_custom_endpoint_gets_its_key_as_a_bearer_token_and_works_without_one() {
+    let (base, seen) = provider(StatusCode::OK, r#"{"data":[{"id":"openai/gpt-5"}]}"#).await;
+    let models = list_models(&client(), &custom(&format!("{base}/"), "sk-or"))
+        .await
+        .expect("models");
+    assert_eq!(models, ["openai/gpt-5"]);
+    test_connection(&client(), &custom(&base, ""))
+        .await
+        .expect("a custom endpoint takes no key");
+
+    let seen = seen.lock().unwrap().clone();
+    assert_eq!(seen.len(), 2);
+    assert_eq!(
+        header(&seen[0], "authorization").as_deref(),
+        Some("Bearer sk-or")
+    );
+    assert_eq!(header(&seen[0], "x-api-key"), None);
+    assert_eq!(header(&seen[0], "x-goog-api-key"), None);
+    assert_eq!(header(&seen[1], "authorization"), None);
+}
+
+#[tokio::test]
+async fn a_custom_endpoint_without_a_url_is_not_contacted() {
+    for blank in ["", "  "] {
+        let failure = list_models(&client(), &custom(blank, "sk-secret"))
+            .await
+            .expect_err("no URL");
+        assert_eq!(
+            failure,
+            ProbeFailure::Other("Custom provider URL required".to_owned())
+        );
+    }
+}
+
+#[tokio::test]
+async fn a_custom_endpoint_failure_never_carries_the_key() {
+    let key = "sk-secret-custom";
+    let (server_error, _) = provider(StatusCode::INTERNAL_SERVER_ERROR, "sk-secret-custom").await;
+    let (unreadable, _) = provider(StatusCode::OK, "sk-secret-custom is not a list").await;
+    let (elsewhere, seen) = provider(StatusCode::OK, r#"{"data":[]}"#).await;
+    let redirect = redirecting_to(format!("{elsewhere}/models")).await;
+    let bases = [
+        server_error,
+        unreadable,
+        redirect,
+        closed_port().await,
+        "not a url".to_owned(),
+        format!("http://user:{key}@[::1"),
+    ];
+    for base in bases {
+        let failure = list_models(&client(), &custom(&base, key))
+            .await
+            .expect_err("fails");
+        assert!(
+            !format!("{failure} {failure:?}").contains(key),
+            "{base}: {failure:?}"
+        );
+    }
+    assert!(seen.lock().unwrap().is_empty(), "followed the redirect");
+}
+
+#[tokio::test]
+async fn a_model_list_in_the_gemini_shape_reads_by_name() {
+    let (base, _) = provider(
+        StatusCode::OK,
+        r#"{"models":[{"name":"models/gemini-2.5-flash"},{"name":""},{"name":"models/gemini-2.5-pro"}]}"#,
+    )
+    .await;
+    let models = list_models(&client(), &custom(&base, ""))
+        .await
+        .expect("models");
+    assert_eq!(models, ["gemini-2.5-flash", "gemini-2.5-pro"]);
 }

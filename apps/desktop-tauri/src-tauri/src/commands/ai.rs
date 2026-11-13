@@ -37,8 +37,9 @@ fn locale<R: Runtime>(app: &AppHandle<R>) -> &'static str {
     app.state::<Arc<LocaleService>>().get()
 }
 
-fn text(locale: &str, key: &str, provider: AiProvider) -> String {
-    let args = Args::from([("provider".to_owned(), Arg::from(provider.label()))]);
+fn text(locale: &str, key: &str, settings: &InlineAiSettings) -> String {
+    let name = settings.provider.name(&settings.base_url);
+    let args = Args::from([("provider".to_owned(), Arg::from(name.as_str()))]);
     i18n::t(locale, key, &args)
 }
 
@@ -106,50 +107,45 @@ pub async fn ai_inline_set_settings<R: Runtime>(
     .await
 }
 
-/// The models of the configured Ollama (`ai-inline:list-ollama-models`). Nothing listening is
-/// the normal "Ollama is not running": `Transport` with code `ai.ollamaUnreachable`, logged at
-/// info.
+/// The models of the configured provider (`ai-inline:list-models`), asked with its key. Nothing
+/// listening at Ollama's address is the normal "Ollama is not running": `Transport` with code
+/// `ai.ollamaUnreachable`, logged at info. Every other failure is `ai.listModelsFailed`.
 #[tauri::command]
 #[specta::specta]
-pub async fn ai_inline_list_ollama_models(
-    app: AppHandle<Wry>,
-) -> Result<Vec<String>, CommandError> {
+pub async fn ai_inline_list_models(app: AppHandle<Wry>) -> Result<Vec<String>, CommandError> {
     let settings = {
         let app = app.clone();
-        blocking("ai_inline_list_ollama_models", move || read(&app)).await?
+        blocking("ai_inline_list_models", move || read(&app)).await?
     };
-    catalog::list_ollama_models(
-        &ProbeClient::new(memry_desktop::http::builder()),
-        &settings.base_url,
-    )
-    .await
-    .map_err(|failure| {
-        let locale = locale(&app);
-        let error = match failure {
-            ProbeFailure::Unreachable => {
-                tracing::info!(scope = "AIInline", "Ollama is not running");
-                return CommandError::new(
+    catalog::list_models(&ProbeClient::new(memry_desktop::http::builder()), &settings)
+        .await
+        .map_err(|failure| {
+            let locale = locale(&app);
+            let error = match failure {
+                ProbeFailure::Unreachable if settings.provider == AiProvider::Ollama => {
+                    tracing::info!(scope = "AIInline", "Ollama is not running");
+                    return CommandError::new(
+                        ErrorKind::Transport,
+                        "ai.ollamaUnreachable",
+                        i18n::t(locale, "errors:ai.ollamaUnreachable", &Args::new()),
+                    );
+                }
+                other => CommandError::new(
                     ErrorKind::Transport,
-                    "ai.ollamaUnreachable",
-                    i18n::t(locale, "errors:ai.ollamaUnreachable", &Args::new()),
-                );
-            }
-            other => CommandError::new(
-                ErrorKind::Transport,
-                "ai.listOllamaModelsFailed",
-                format!(
-                    "{}: {other}",
-                    i18n::t(locale, "errors:ai.listOllamaModelsFailed", &Args::new())
+                    "ai.listModelsFailed",
+                    format!(
+                        "{}: {other}",
+                        i18n::t(locale, "errors:ai.listModelsFailed", &Args::new())
+                    ),
                 ),
-            ),
-        };
-        log_failure("ai_inline_list_ollama_models", &error);
-        error
-    })
+            };
+            log_failure("ai_inline_list_models", &error);
+            error
+        })
 }
 
-/// Whether the configured provider answers with the stored key: Ollama lists its models, the
-/// others answer `GET /models`. A refusal is an answer, not a failed call.
+/// Whether the configured provider answers `GET /models` with the stored key. A refusal is an
+/// answer, not a failed call.
 #[tauri::command]
 #[specta::specta]
 pub async fn ai_inline_test_connection(
@@ -160,7 +156,6 @@ pub async fn ai_inline_test_connection(
         blocking("ai_inline_test_connection", move || read(&app)).await?
     };
     let locale = locale(&app);
-    let provider = settings.provider;
     if !settings.enabled {
         return Ok(TestConnectionResult {
             ok: false,
@@ -172,13 +167,13 @@ pub async fn ai_inline_test_connection(
             .await;
     let detail = match outcome {
         Ok(()) => None,
-        Err(ProbeFailure::KeyMissing) => Some(text(locale, "errors:ai.apiKeyMissing", provider)),
-        Err(ProbeFailure::Unauthorized) => Some(text(locale, "errors:ai.apiKeyInvalid", provider)),
-        Err(ProbeFailure::Unreachable) if provider == AiProvider::Ollama => {
+        Err(ProbeFailure::KeyMissing) => Some(text(locale, "errors:ai.apiKeyMissing", &settings)),
+        Err(ProbeFailure::Unauthorized) => Some(text(locale, "errors:ai.apiKeyInvalid", &settings)),
+        Err(ProbeFailure::Unreachable) if settings.provider == AiProvider::Ollama => {
             Some(i18n::t(locale, "errors:ai.ollamaUnreachable", &Args::new()))
         }
         Err(ProbeFailure::Unreachable) => {
-            Some(text(locale, "errors:ai.providerUnreachable", provider))
+            Some(text(locale, "errors:ai.providerUnreachable", &settings))
         }
         Err(ProbeFailure::Other(reason)) => {
             tracing::warn!(scope = "AIInline", "connection test failed: {reason}");

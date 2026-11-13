@@ -11,19 +11,19 @@ export const commands = {
 	 */
 	aiInlineGetSettings: () => __TAURI_INVOKE<InlineAiSettings>("ai_inline_get_settings"),
 	/**
-	 *  The models of the configured Ollama (`ai-inline:list-ollama-models`). Nothing listening is
-	 *  the normal "Ollama is not running": `Transport` with code `ai.ollamaUnreachable`, logged at
-	 *  info.
+	 *  The models of the configured provider (`ai-inline:list-models`), asked with its key. Nothing
+	 *  listening at Ollama's address is the normal "Ollama is not running": `Transport` with code
+	 *  `ai.ollamaUnreachable`, logged at info. Every other failure is `ai.listModelsFailed`.
 	 */
-	aiInlineListOllamaModels: () => __TAURI_INVOKE<string[]>("ai_inline_list_ollama_models"),
+	aiInlineListModels: () => __TAURI_INVOKE<string[]>("ai_inline_list_models"),
 	/**
 	 *  Writes a partial update (`ai-inline:set-settings`) and returns the masked result. A masked
 	 *  key is left alone, an empty key is deleted, any other key goes to the keychain.
 	 */
 	aiInlineSetSettings: (updates: InlineAiUpdates) => __TAURI_INVOKE<InlineAiSettings>("ai_inline_set_settings", { updates }),
 	/**
-	 *  Whether the configured provider answers with the stored key: Ollama lists its models, the
-	 *  others answer `GET /models`. A refusal is an answer, not a failed call.
+	 *  Whether the configured provider answers `GET /models` with the stored key. A refusal is an
+	 *  answer, not a failed call.
 	 */
 	aiInlineTestConnection: () => __TAURI_INVOKE<TestConnectionResult>("ai_inline_test_connection"),
 	appInfo: () => __TAURI_INVOKE<AppInfo>("app_info"),
@@ -659,8 +659,11 @@ export type AiInlineSettingsChangedEvent = {
 	settings: InlineAiSettings,
 };
 
-/**  `AIInlineSettings['provider']` of `@memry/contracts/ai-inline-channels`. */
-export type AiProvider = "ollama" | "openai" | "anthropic" | "google";
+/**
+ *  `AIInlineSettings['provider']` of `@memry/contracts/ai-inline-channels`. `Custom` is any
+ *  OpenAI-compatible endpoint at the stored `baseUrl`, such as OpenRouter.
+ */
+export type AiProvider = "ollama" | "openai" | "anthropic" | "google" | "custom";
 
 export type AppInfo = {
 	version: string,

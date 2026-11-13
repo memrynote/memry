@@ -463,6 +463,32 @@ fn a_migration_never_empties_a_row_that_changed_under_it() {
     assert_eq!(w.row()["apiKey"], json!("sk-other"));
 }
 
+/// Electron after c44a4afcfd writes `provider: "custom"` with the endpoint in `baseUrl`; this
+/// build reads the row as that provider, moves its key, and hands the key to Rust callers.
+#[test]
+fn a_custom_provider_row_from_a_newer_electron_reads_as_custom_with_its_key() {
+    let w = world();
+    let row = json!({
+        "enabled": true,
+        "provider": "custom",
+        "model": "anthropic/claude-sonnet-4",
+        "baseUrl": "https://openrouter.ai/api/v1",
+        "apiKey": "sk-or"
+    });
+    write_row(&w.vault, &w.device_keys, row);
+
+    let masked = w.store.masked(Some(&w.vault)).expect("masked");
+    assert_eq!(masked.provider, AiProvider::Custom);
+    assert_eq!(masked.model, "anthropic/claude-sonnet-4");
+    assert_eq!(masked.base_url, "https://openrouter.ai/api/v1");
+    assert_eq!(masked.api_key, MASKED_KEY);
+    assert_eq!(w.row()["provider"], json!("custom"));
+    assert_eq!(w.keychain.item(&w.account()).as_deref(), Some("sk-or"));
+
+    w.store.forget();
+    assert_eq!(w.store.read(Some(&w.vault)).expect("read").api_key, "sk-or");
+}
+
 #[test]
 fn the_key_is_read_from_the_keychain_once_per_session() {
     let w = world();

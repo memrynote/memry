@@ -1,10 +1,12 @@
-//! The four inline AI providers (`ai-llm-service.ts:12-40` of Electron): where each one lives and
-//! how it is authenticated. Only Rust holds a provider key; the renderer never names a host.
+//! The inline AI providers (`ai-llm-service.ts:12-46` of Electron): where each one lives and how
+//! it is authenticated. Only Rust holds a provider key. The renderer names a host only for Ollama
+//! and the custom endpoint, whose URL the user types.
 
 use reqwest::header::{HeaderMap, HeaderName, HeaderValue};
 use serde::{Deserialize, Serialize};
 
-/// `AIInlineSettings['provider']` of `@memry/contracts/ai-inline-channels`.
+/// `AIInlineSettings['provider']` of `@memry/contracts/ai-inline-channels`. `Custom` is any
+/// OpenAI-compatible endpoint at the stored `baseUrl`, such as OpenRouter.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize, specta::Type)]
 #[serde(rename_all = "lowercase")]
 pub enum AiProvider {
@@ -12,6 +14,7 @@ pub enum AiProvider {
     Openai,
     Anthropic,
     Google,
+    Custom,
 }
 
 /// The Ollama endpoint of an empty `baseUrl` (`AI_INLINE_SETTINGS_DEFAULTS`).
@@ -21,42 +24,52 @@ pub const OLLAMA_DEFAULT_BASE_URL: &str = "http://localhost:11434/v1";
 const ANTHROPIC_VERSION: &str = "2023-06-01";
 
 impl AiProvider {
-    /// The name in user-visible messages (`PROVIDER_NAMES` of `writing-tools-handlers.ts`).
-    pub fn label(self) -> &'static str {
+    /// The name in user-visible messages (`providerName` of `writing-tools-handlers.ts`): a
+    /// custom endpoint is named by the host of `stored`, the one name the user typed.
+    pub fn name(self, stored: &str) -> String {
         match self {
-            Self::Ollama => "Ollama",
-            Self::Openai => "OpenAI",
-            Self::Anthropic => "Anthropic",
-            Self::Google => "Google",
+            Self::Ollama => "Ollama".to_owned(),
+            Self::Openai => "OpenAI".to_owned(),
+            Self::Anthropic => "Anthropic".to_owned(),
+            Self::Google => "Google".to_owned(),
+            Self::Custom => {
+                // Never the URL itself, which may carry credentials the user pasted in.
+                reqwest::Url::parse(stored.trim())
+                    .ok()
+                    .and_then(|url| url.host_str().map(str::to_owned))
+                    .unwrap_or_else(|| "Custom".to_owned())
+            }
         }
     }
 
-    /// Whether requests need a stored key. Ollama runs without one.
-    pub fn needs_key(self) -> bool {
+    /// Whether a stored key goes with requests. Ollama never takes one.
+    pub fn takes_key(self) -> bool {
         self != Self::Ollama
     }
 
-    /// The API root, without a trailing slash. Only Ollama takes the stored `baseUrl`; the
-    /// others are fixed, so a settings row cannot send a key to another host.
-    pub fn base_url(self, stored: &str) -> String {
-        match self {
-            Self::Ollama => {
-                let stored = stored.trim();
-                let base = if stored.is_empty() {
-                    OLLAMA_DEFAULT_BASE_URL
-                } else {
-                    stored
-                };
-                base.trim_end_matches('/').to_owned()
-            }
+    /// Whether requests fail without a stored key. A custom endpoint may run without one.
+    pub fn needs_key(self) -> bool {
+        !matches!(self, Self::Ollama | Self::Custom)
+    }
+
+    /// The API root, without a trailing slash; `None` for a custom endpoint with no URL. Only
+    /// Ollama and the custom endpoint take the stored `baseUrl`; the others are fixed, so a
+    /// settings row cannot send their key to another host.
+    pub fn base_url(self, stored: &str) -> Option<String> {
+        let stored = stored.trim().trim_end_matches('/');
+        Some(match self {
+            Self::Ollama if stored.is_empty() => OLLAMA_DEFAULT_BASE_URL.to_owned(),
+            Self::Custom if stored.is_empty() => return None,
+            Self::Ollama | Self::Custom => stored.to_owned(),
             Self::Openai => "https://api.openai.com/v1".to_owned(),
             Self::Anthropic => "https://api.anthropic.com/v1".to_owned(),
             Self::Google => "https://generativelanguage.googleapis.com/v1beta".to_owned(),
-        }
+        })
     }
 
-    /// The headers that authenticate a request: `authorization: Bearer` for OpenAI, `x-api-key`
-    /// (and the API version) for Anthropic, `x-goog-api-key` for Google, nothing for Ollama.
+    /// The headers that authenticate a request: `authorization: Bearer` for OpenAI and a custom
+    /// endpoint, `x-api-key` (and the API version) for Anthropic, `x-goog-api-key` for Google,
+    /// nothing for Ollama.
     /// A key that is not a valid header value is refused rather than sent.
     pub fn auth_headers(self, key: Option<&str>) -> Result<HeaderMap, InvalidKey> {
         let mut headers = HeaderMap::new();
@@ -71,7 +84,7 @@ impl AiProvider {
         };
         let (name, value) = match self {
             Self::Ollama => return Ok(headers),
-            Self::Openai => ("authorization", format!("Bearer {key}")),
+            Self::Openai | Self::Custom => ("authorization", format!("Bearer {key}")),
             Self::Anthropic => ("x-api-key", key.to_owned()),
             Self::Google => ("x-goog-api-key", key.to_owned()),
         };

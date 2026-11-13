@@ -197,14 +197,14 @@ impl InlineAiStore {
     }
 
     /// The settings with the key, for Rust callers only. The defaults while no vault is open. A
-    /// cloud provider's key behind a locked keychain is an error; Ollama's read never asks.
+    /// key behind a locked keychain is an error; Ollama's read never asks.
     pub fn read(&self, vault: Option<&OpenVault>) -> Result<InlineAiSettings, AiSettingsError> {
         let Some(vault) = vault else {
             return Ok(InlineAiSettings::default());
         };
         let _guard = self.write.lock().unwrap_or_else(PoisonError::into_inner);
         let mut settings = self.read_row(vault)?;
-        if settings.api_key.is_empty() && settings.provider.needs_key() {
+        if settings.api_key.is_empty() && settings.provider.takes_key() {
             settings.api_key = self
                 .stored_key(&vault.vault_id)?
                 .map_or_else(String::new, |key| String::clone(&key));

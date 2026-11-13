@@ -1,6 +1,7 @@
-//! The model list and the connection test of the inline AI settings screen. Electron listed
-//! Ollama's models (`ai-inline-handlers.ts:134-155`) and "tested" by starting its localhost chat
-//! server; with that server gone, the test asks the provider itself (`GET <base>/models`).
+//! The model list and the connection test of the inline AI settings screen. Electron lists the
+//! models of the configured endpoint (`ai-inline-handlers.ts:133-157`) and "tested" by starting
+//! its localhost chat server; with that server gone, the test asks the provider itself: both are
+//! `GET <base>/models` with the provider's authentication.
 
 use std::time::Duration;
 
@@ -12,7 +13,7 @@ use crate::http::read_capped;
 
 /// The Ollama model list waits this long (issue #3539).
 pub const OLLAMA_TIMEOUT: Duration = Duration::from_secs(5);
-/// A cloud provider's model list waits this long.
+/// Any other provider's model list waits this long.
 pub const PROVIDER_TIMEOUT: Duration = Duration::from_secs(10);
 /// The largest model list read. OpenRouter-sized catalogues are a few hundred KiB.
 const BODY_CAP: usize = 4 * 1024 * 1024;
@@ -31,15 +32,39 @@ pub enum ProbeFailure {
     Other(String),
 }
 
+/// `{ data: [{ id }] }` of the OpenAI dialect (OpenAI, Anthropic, Ollama, OpenAI-compatible
+/// endpoints) or `{ models: [{ name: "models/<id>" }] }` of Gemini.
 #[derive(Deserialize)]
 struct ModelList {
     #[serde(default)]
     data: Vec<ModelEntry>,
+    #[serde(default)]
+    models: Vec<GeminiModel>,
 }
 
 #[derive(Deserialize)]
 struct ModelEntry {
     id: Option<String>,
+}
+
+#[derive(Deserialize)]
+struct GeminiModel {
+    name: Option<String>,
+}
+
+impl ModelList {
+    fn ids(self) -> Vec<String> {
+        let gemini = self.models.into_iter().filter_map(|model| {
+            let name = model.name?;
+            Some(name.strip_prefix("models/").unwrap_or(&name).to_owned())
+        });
+        self.data
+            .into_iter()
+            .filter_map(|entry| entry.id)
+            .chain(gemini)
+            .filter(|id| !id.is_empty())
+            .collect()
+    }
 }
 
 /// The client of every probe: the caller's builder (the shared TLS stack) with redirects off.
@@ -60,7 +85,7 @@ impl ProbeClient {
 }
 
 /// `GET <base>/models` with the provider's authentication, on a [`ProbeClient`]. The body of a
-/// 2xx is returned.
+/// 2xx is returned. No failure carries the key: messages name the provider and the status only.
 pub async fn probe(
     client: &ProbeClient,
     provider: AiProvider,
@@ -75,6 +100,7 @@ pub async fn probe(
         .auth_headers(key)
         .map_err(|error| ProbeFailure::Other(error.to_string()))?;
     let url = format!("{}/models", base_url.trim_end_matches('/'));
+    let name = provider.name(base_url);
     let response = client
         .0
         .get(&url)
@@ -82,70 +108,61 @@ pub async fn probe(
         .timeout(timeout)
         .send()
         .await
-        .map_err(|error| classify_send(provider, &error))?;
+        .map_err(|error| classify_send(&name, &error))?;
     let status = response.status();
     if status == reqwest::StatusCode::UNAUTHORIZED || status == reqwest::StatusCode::FORBIDDEN {
         return Err(ProbeFailure::Unauthorized);
     }
     if !status.is_success() {
         return Err(ProbeFailure::Other(format!(
-            "{} answered {}",
-            provider.label(),
+            "{name} answered {}",
             status.as_u16()
         )));
     }
     read_capped(response, BODY_CAP)
         .await
-        .map_err(|error| ProbeFailure::Other(format!("{}: {error}", provider.label())))
+        .map_err(|error| ProbeFailure::Other(format!("{name}: {error}")))
 }
 
 /// A request that got no status. A URL that cannot be built is a settings problem, not an
 /// unreachable host.
-fn classify_send(provider: AiProvider, error: &reqwest::Error) -> ProbeFailure {
+fn classify_send(name: &str, error: &reqwest::Error) -> ProbeFailure {
     if error.is_builder() {
-        return ProbeFailure::Other(format!(
-            "{}: the address is not a valid URL",
-            provider.label()
-        ));
+        return ProbeFailure::Other(format!("{name}: the address is not a valid URL"));
     }
     ProbeFailure::Unreachable
 }
 
-/// The model ids of the Ollama at `base_url` (OpenAI dialect, `{ data: [{ id }] }`).
-pub async fn list_ollama_models(
+/// The model ids of the configured provider (`ai-inline:list-models`), with its key when it
+/// takes one. A custom endpoint gets the key only at its own stored URL.
+pub async fn list_models(
     client: &ProbeClient,
-    base_url: &str,
+    settings: &InlineAiSettings,
 ) -> Result<Vec<String>, ProbeFailure> {
-    let base = AiProvider::Ollama.base_url(base_url);
-    let body = probe(client, AiProvider::Ollama, &base, None, OLLAMA_TIMEOUT).await?;
-    let list: ModelList = serde_json::from_slice(&body)
-        .map_err(|_| ProbeFailure::Other("Ollama answered with an unreadable model list".into()))?;
-    Ok(list
-        .data
-        .into_iter()
-        .filter_map(|entry| entry.id.filter(|id| !id.is_empty()))
-        .collect())
+    let provider = settings.provider;
+    let base = provider
+        .base_url(&settings.base_url)
+        .ok_or_else(|| ProbeFailure::Other("Custom provider URL required".to_owned()))?;
+    let key = provider.takes_key().then_some(settings.api_key.as_str());
+    let timeout = if provider == AiProvider::Ollama {
+        OLLAMA_TIMEOUT
+    } else {
+        PROVIDER_TIMEOUT
+    };
+    let body = probe(client, provider, &base, key, timeout).await?;
+    let list: ModelList = serde_json::from_slice(&body).map_err(|_| {
+        ProbeFailure::Other(format!(
+            "{} answered with an unreadable model list",
+            provider.name(&base)
+        ))
+    })?;
+    Ok(list.ids())
 }
 
-/// Whether `settings` (with its key) can reach the provider: Ollama lists its models, the
-/// others answer `GET /models`.
+/// Whether `settings` (with its key) can reach the provider: it lists the models.
 pub async fn test_connection(
     client: &ProbeClient,
     settings: &InlineAiSettings,
 ) -> Result<(), ProbeFailure> {
-    if settings.provider == AiProvider::Ollama {
-        return list_ollama_models(client, &settings.base_url)
-            .await
-            .map(|_| ());
-    }
-    let base = settings.provider.base_url(&settings.base_url);
-    probe(
-        client,
-        settings.provider,
-        &base,
-        Some(&settings.api_key),
-        PROVIDER_TIMEOUT,
-    )
-    .await
-    .map(|_| ())
+    list_models(client, settings).await.map(|_| ())
 }
