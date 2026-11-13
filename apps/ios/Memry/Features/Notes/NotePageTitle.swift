@@ -15,6 +15,7 @@ struct NotePageTitle: View {
     var body: some View {
         if metadataModel.canEdit {
             NoteTitleEditor(
+                noteId: model.route.id,
                 title: detail.summary.title,
                 icon: model.metadata?.icon,
                 canEdit: true,
