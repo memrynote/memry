@@ -30,11 +30,13 @@ struct PickerPopover<Picker: View>: ViewModifier {
     let size: CGSize
     let picker: () -> Picker
     @Environment(\.horizontalSizeClass) private var sizeClass
+    /// The size grows with Dynamic Type; the system keeps it on screen.
+    @ScaledMetric(relativeTo: .body) private var scale: CGFloat = 1
 
     func body(content: Content) -> some View {
         if sizeClass == .regular {
             content.popover(isPresented: $isPresented) {
-                picker().frame(idealWidth: size.width, idealHeight: size.height)
+                picker().frame(idealWidth: size.width * scale, idealHeight: size.height * scale)
             }
         } else {
             content.sheet(isPresented: $isPresented, content: picker)
@@ -47,10 +49,12 @@ struct PickerItemPopover<Item: Identifiable, Picker: View>: ViewModifier {
     let size: CGSize
     let picker: (Item) -> Picker
     @Environment(\.horizontalSizeClass) private var sizeClass
+    /// The size grows with Dynamic Type; the system keeps it on screen.
+    @ScaledMetric(relativeTo: .body) private var scale: CGFloat = 1
 
     func body(content: Content) -> some View {
         if sizeClass == .regular {
-            content.popover(item: $item) { picker($0).frame(idealWidth: size.width, idealHeight: size.height) }
+            content.popover(item: $item) { picker($0).frame(idealWidth: size.width * scale, idealHeight: size.height * scale) }
         } else {
             content.sheet(item: $item, content: picker)
         }
