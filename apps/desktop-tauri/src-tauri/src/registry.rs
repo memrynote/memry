@@ -60,6 +60,7 @@ pub fn builder() -> Builder<Wry> {
             crate::commands::shell_integrations::flush_done,
             crate::commands::shell_integrations::flush_ready,
             // fold
+            crate::commands::fold::fold_get_agent_status::<Wry>,
             crate::commands::fold::fold_run::<Wry>,
             // journal
             crate::commands::journal::journal_create_entry::<Wry>,
@@ -179,10 +180,12 @@ pub fn builder() -> Builder<Wry> {
             crate::commands::shell::menu_toggle_alt,
             // settings
             crate::commands::settings::app_set_zoom_factor,
+            crate::commands::settings::settings_get_ai,
             crate::commands::settings::settings_get_group,
             crate::commands::settings::settings_get_local,
             crate::commands::settings::settings_get_path,
             crate::commands::settings::settings_reset_keyboard,
+            crate::commands::settings::settings_set_ai,
             crate::commands::settings::settings_set_group,
             crate::commands::settings::settings_set_local,
             // shell

@@ -177,13 +177,16 @@ export const settingsService = {
     commands.shortcutRegisterGlobalCapture(),
   setGlobalCapture: (binding: ShortcutBindingDTO | null): Promise<GlobalCaptureResult> =>
     commands.shortcutSetGlobalCapture(binding),
-  /**
-   * Electron's flat device-local key `ai.enabled` (`settings-handlers.ts` GET_AI_SETTINGS): its
-   * stored text `true`/`false` reads back as a JSON boolean, and anything but `false` is on.
-   */
-  getAISettings: async (): Promise<AISettings> => ({
-    enabled: (await commands.settingsGetLocal('ai.enabled')) !== false
-  }),
+  getAISettings: (): Promise<AISettings> => commands.settingsGetAi(),
+  setAISettings: async (patch: Partial<AISettings>): Promise<Result> => {
+    try {
+      await commands.settingsSetAi(patch)
+      return { success: true }
+    } catch (error) {
+      log.warn('write of the AI settings failed', error)
+      return failure(error)
+    }
+  },
   getVoiceTranscriptionSettings: voice.get,
   setVoiceTranscriptionSettings: voice.set,
 
@@ -265,7 +268,9 @@ async function announce(
   fields: string[],
   callback: (change: SettingsChange) => void
 ): Promise<void> {
-  const current = await readObject(key)
+  // The AI switches are flat local keys, not a group (`settings_set_ai`).
+  const current: Record<string, Value> =
+    key === 'ai' ? await commands.settingsGetAi() : await readObject(key)
   if (key === 'sidebar') {
     for (const field of fields) callback({ key: `sidebar.${field}`, value: current[field] ?? null })
     return

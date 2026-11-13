@@ -7,7 +7,7 @@ use crate::storage::repositories::projectors::settings::SETTINGS_ITEM_ID;
 use crate::storage::repositories::{InboundRecord, sync_items};
 use crate::storage::test_support::{TempDir, temp_dir};
 
-fn open(label: &str) -> (AppSettings, TempDir) {
+pub(super) fn open(label: &str) -> (AppSettings, TempDir) {
     let dir = temp_dir(label);
     let db = open_data(&dir.path().join("data.db")).expect("open data.db");
     (AppSettings::for_test(db, "device-b"), dir)

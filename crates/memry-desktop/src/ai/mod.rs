@@ -3,6 +3,7 @@
 
 pub mod cached_key;
 pub mod catalog;
+pub mod features;
 pub mod local_agent;
 pub mod local_provider;
 pub mod provider;
