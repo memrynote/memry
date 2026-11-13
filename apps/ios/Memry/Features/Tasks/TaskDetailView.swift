@@ -25,6 +25,7 @@ struct TaskDetailView: View {
     /// when the task goes rather than showing the missing state.
     @State private var deleteRequested = false
     @Environment(\.dismiss) private var dismiss
+    @Environment(TasksRouter.self) private var router: TasksRouter?
 
     var body: some View {
         Group {
@@ -47,7 +48,13 @@ struct TaskDetailView: View {
         .navigationBarTitleDisplayMode(.inline)
         .task(id: taskId) { await check() }
         .onChange(of: store.items[taskId] == nil) { _, gone in
-            if gone, deleteRequested { dismiss() }
+            guard gone, deleteRequested else { return }
+            // The split view's detail column has nothing to pop back to.
+            if let router, router.tasksSplit, router.detailTask == taskId, router.detailPath.isEmpty {
+                router.closeTask()
+            } else {
+                dismiss()
+            }
         }
     }
 
@@ -176,8 +183,10 @@ struct TaskDetailHeader: View {
     }
 }
 
-/// The editable title. Commits on return and when focus leaves; a blank title
-/// is dropped and the stored one comes back (a task cannot be untitled).
+/// The editable title. Commits on return, when focus leaves, and when the
+/// field goes away while focused: the split view swaps the detail for another
+/// task without moving focus first (#4350). A blank title is dropped and the
+/// stored one comes back (a task cannot be untitled).
 struct TaskDetailTitleField: View {
     let task: TaskItem
     let store: TasksStore
@@ -186,6 +195,9 @@ struct TaskDetailTitleField: View {
     static var font: Font { TypeRole(.documentTitle, weight: .bold).font }
 
     @State private var draft = ""
+    /// The last text handed to the store, so focus leaving and the field going
+    /// away at once write it once.
+    @State private var committed: String?
     @FocusState private var focused: Bool
 
     var body: some View {
@@ -206,6 +218,7 @@ struct TaskDetailTitleField: View {
             .onChange(of: focused) { _, isFocused in
                 if !isFocused { commit() }
             }
+            .onDisappear { commit() }
             .onChange(of: draft) { _, text in
                 // Return in a vertical field inserts a newline; treat it as
                 // submit instead, since a title is one line.
@@ -218,10 +231,15 @@ struct TaskDetailTitleField: View {
 
     private func commit() {
         let text = draft
+        guard text != committed else { return }
+        committed = text
         let current = store.items[task.id] ?? task
         Task {
             let wrote = await store.detailRename(current, to: text)
-            if !wrote { draft = store.items[task.id]?.title ?? task.title }
+            if !wrote {
+                committed = nil
+                draft = store.items[task.id]?.title ?? task.title
+            }
         }
     }
 }
