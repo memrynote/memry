@@ -15,9 +15,17 @@
 //! - The single key of builds before #4451 ([`InlineAiStore::legacy_account`]) moves once, at the
 //!   first read, to the selection of that read; the row's `apiKeyPerProvider: true` records the
 //!   move. A selection that takes no key (Ollama, a custom endpoint without a valid URL) binds it
-//!   nowhere. The legacy entry is left in place and stays readable.
-//! - Until a key can move (a locked keychain), the key is never used and a change of provider or
-//!   URL is refused, so the key cannot follow the change.
+//!   nowhere. A key the selected provider already holds is newer and is never overwritten. The
+//!   legacy entry is left in place and stays readable.
+//! - A plaintext row key found while Ollama is selected is parked in the legacy entry, never sent;
+//!   the user re-enters it after choosing a cloud provider.
+//! - Until a key can move (a locked keychain), the key is never used and a change to a provider
+//!   or URL that takes a key is refused, so the key cannot follow the change. A switch to Ollama
+//!   is allowed.
+//! - Downgrade to a build before #4451: it ignores `apiKeyPerProvider` (and keeps it on write) and
+//!   reads only the legacy entry, which this build never writes or deletes. So it sees the key it
+//!   had before the upgrade (or none), not keys typed or moved from a plaintext row since; those
+//!   are re-entered there, and come back here on the next upgrade.
 
 use std::sync::{Arc, Mutex, PoisonError};
 
@@ -159,7 +167,9 @@ pub enum AiSettingsError {
     Keychain(SecureStoreError),
     /// A key typed while the selection names no provider or endpoint to hold it: Ollama, or a
     /// custom endpoint without a valid `http(s)` URL.
-    #[error("enter the endpoint URL before its API key")]
+    #[error(
+        "this selection takes no API key: Ollama needs none, and a custom endpoint needs a valid http(s) URL without a user name before its key"
+    )]
     NoKeyTarget,
 }
 
@@ -276,14 +286,15 @@ impl InlineAiStore {
         } = self.settle(vault)?;
         let key = updates.api_key.filter(|key| key != MASKED_KEY);
         let reselects = updates.provider.is_some() || updates.base_url.is_some();
-        if let Some(error) = pending
-            && (reselects || key.is_some())
-        {
-            return Err(AiSettingsError::Keychain(error));
-        }
         let provider = updates.provider.unwrap_or(settings.provider);
         let base_url = updates.base_url.as_deref().unwrap_or(&settings.base_url);
         let account = self.key_account(&vault.vault_id, provider, base_url);
+        // A selection that takes no key (Ollama) cannot carry the pending key anywhere.
+        if let Some(error) = pending
+            && ((reselects && account.is_some()) || key.is_some())
+        {
+            return Err(AiSettingsError::Keychain(error));
+        }
 
         let mut patch = Map::new();
         if let Some(enabled) = updates.enabled {
@@ -415,13 +426,19 @@ impl InlineAiStore {
     }
 
     /// The one-time move of the legacy key to `account`. With no provider to take it, nothing is
-    /// read and the key stays where it is, unused. `Some` is why the key could not move.
+    /// read and the key stays where it is, unused. A key `account` already holds is newer and
+    /// stays. `Some` is why the key could not move.
     fn move_legacy(
         &self,
         vault: &OpenVault,
         account: Option<&str>,
     ) -> Result<Option<SecureStoreError>, AiSettingsError> {
         if let Some(account) = account {
+            match self.secrets.get_secret(SERVICE, account) {
+                Ok(None) => {}
+                Ok(Some(_)) => return self.mark_bound(vault),
+                Err(error) => return Ok(Some(error)),
+            }
             let legacy = self.legacy_account(&vault.vault_id);
             let key = match self.secrets.get_secret(SERVICE, &legacy) {
                 Ok(key) => key.map(Zeroizing::new),
@@ -434,6 +451,10 @@ impl InlineAiStore {
                 self.key.forget();
             }
         }
+        self.mark_bound(vault)
+    }
+
+    fn mark_bound(&self, vault: &OpenVault) -> Result<Option<SecureStoreError>, AiSettingsError> {
         let patch = Map::from_iter([(BOUND.to_owned(), Value::Bool(true))]);
         self.settings.write_secret_group(vault, GROUP, patch)?;
         Ok(None)

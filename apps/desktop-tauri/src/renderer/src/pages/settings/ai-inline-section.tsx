@@ -97,6 +97,20 @@ function useEndpointModels(
   return listed?.key === key ? listed.models : null
 }
 
+/**
+ * `raw` as Rust's `parse_base` takes a custom endpoint: an http(s) URL with a host and no user
+ * name or password, else null. `new URL`, since WebKit before Safari 18 has no `URL.parse`.
+ */
+function parseEndpoint(raw: string): URL | null {
+  try {
+    const url = new URL(raw.trim())
+    const web = url.protocol === 'https:' || url.protocol === 'http:'
+    return web && url.host && !url.username && !url.password ? url : null
+  } catch {
+    return null
+  }
+}
+
 /** Presets for the provider, with a hand-typed model kept at the top. */
 function modelChoices(
   provider: AIInlineSettings['provider'],
@@ -111,6 +125,8 @@ export function AIInlineSettings(): React.JSX.Element {
   const { t: tPhaseF } = useT('settings')
   const { t } = useT('settings')
   const [settings, setSettings] = useState<AIInlineSettings>(AI_INLINE_SETTINGS_DEFAULTS)
+  // Rust's last answer: a field that differs from it holds an unsaved edit.
+  const [saved, setSaved] = useState<AIInlineSettings>(AI_INLINE_SETTINGS_DEFAULTS)
   const [isLoading, setIsLoading] = useState(true)
   const [isTesting, setIsTesting] = useState(false)
   const [showApiKey, setShowApiKey] = useState(false)
@@ -125,6 +141,7 @@ export function AIInlineSettings(): React.JSX.Element {
         const result = await commands.aiInlineGetSettings()
         if (cancelled) return
         setSettings(result)
+        setSaved(result)
         // A local Ollama is cheap to ask, so the status reflects it on open. A cloud
         // provider is asked only by the Test button.
         if (result.enabled && result.provider === 'ollama') {
@@ -153,7 +170,9 @@ export function AIInlineSettings(): React.JSX.Element {
     async (updates: Partial<AIInlineSettings>) => {
       try {
         // Rust answers with the key masked: the typed key does not stay in renderer state.
-        setSettings(await commands.aiInlineSetSettings(updates))
+        const result = await commands.aiInlineSetSettings(updates)
+        setSettings(result)
+        setSaved(result)
         setConnected(false)
         if ('baseUrl' in updates || 'apiKey' in updates) setEndpointRevision((n) => n + 1)
       } catch (error) {
@@ -189,7 +208,7 @@ export function AIInlineSettings(): React.JSX.Element {
         // A custom endpoint is named by its host, the one name the user typed.
         const provider =
           settings.provider === 'custom'
-            ? URL.parse(settings.baseUrl)?.host || t(PROVIDER_LABEL_KEYS.custom)
+            ? parseEndpoint(settings.baseUrl)?.host || t(PROVIDER_LABEL_KEYS.custom)
             : t(PROVIDER_LABEL_KEYS[settings.provider])
         toast.success(t('ai.inline.connectedProvider', { provider }))
       } else {
@@ -215,9 +234,10 @@ export function AIInlineSettings(): React.JSX.Element {
   const hasUrlRow = settings.provider === 'ollama' || isCustom
   const needsApiKey = settings.provider !== 'ollama' && !isCustom
   // Rust keeps a custom key under the origin of its URL (#4451): without one there is no key.
-  const customUrl = URL.parse(settings.baseUrl.trim())
-  const keyWaitsForUrl =
-    isCustom && customUrl?.protocol !== 'https:' && customUrl?.protocol !== 'http:'
+  const keyWaitsForUrl = isCustom && !parseEndpoint(settings.baseUrl)
+  // A key and the URL it was typed for go to Rust together, so the key lands under that URL.
+  const unsavedUrl = settings.baseUrl !== saved.baseUrl ? { baseUrl: settings.baseUrl } : {}
+  const unsavedKey = settings.apiKey !== saved.apiKey ? { apiKey: settings.apiKey } : {}
   const models = modelChoices(settings.provider, settings.model, endpointModels)
 
   const connectionControls = (
@@ -327,7 +347,7 @@ export function AIInlineSettings(): React.JSX.Element {
               value={settings.apiKey}
               disabled={keyWaitsForUrl}
               onChange={(e) => setSettings((prev) => ({ ...prev, apiKey: e.target.value }))}
-              onBlur={() => void updateSetting({ apiKey: settings.apiKey })}
+              onBlur={() => void updateSetting({ ...unsavedUrl, apiKey: settings.apiKey })}
               placeholder={
                 isCustom
                   ? t('ai.inline.customApiKeyPlaceholder')
@@ -362,7 +382,7 @@ export function AIInlineSettings(): React.JSX.Element {
             <Input
               value={settings.baseUrl}
               onChange={(e) => setSettings((prev) => ({ ...prev, baseUrl: e.target.value }))}
-              onBlur={() => void updateSetting({ baseUrl: settings.baseUrl })}
+              onBlur={() => void updateSetting({ ...unsavedKey, baseUrl: settings.baseUrl })}
               placeholder={
                 isCustom
                   ? t('ai.inline.customUrlPlaceholder')

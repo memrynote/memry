@@ -801,3 +801,87 @@ fn a_locked_keychain_never_sends_a_plaintext_row_key() {
     );
     assert_eq!(w.row()["apiKey"], json!(""));
 }
+
+#[test]
+fn equivalent_custom_urls_share_one_key() {
+    let w = world();
+    w.select(AiProvider::Custom, "https://bücher.example/v1");
+    w.store
+        .write(Some(&w.vault), key_update("sk-idn"))
+        .expect("custom key");
+    assert_eq!(
+        w.keychain
+            .item(&w.slot("custom:https://xn--bcher-kva.example"))
+            .as_deref(),
+        Some("sk-idn")
+    );
+    for same in [
+        "https://xn--bcher-kva.example/other",
+        "HTTPS://BÜCHER.EXAMPLE:443/v1/",
+        "https://Bücher.example",
+    ] {
+        w.select(AiProvider::Custom, same);
+        assert_eq!(w.key(), "sk-idn", "{same}");
+    }
+
+    w.select(AiProvider::Custom, "http://Local.Example:80/a");
+    w.store
+        .write(Some(&w.vault), key_update("sk-http"))
+        .expect("custom key");
+    w.select(AiProvider::Custom, "http://local.example/b/c");
+    assert_eq!(w.key(), "sk-http");
+    w.select(AiProvider::Custom, "https://user:pw@local.example/b");
+    assert_eq!(w.key(), "");
+}
+
+#[test]
+fn the_legacy_move_never_overwrites_a_key_the_provider_already_has() {
+    let w = world();
+    w.seed_legacy("openai", "sk-legacy");
+    w.keychain.items.lock().unwrap().insert(
+        (SERVICE.to_owned(), w.slot("openai")),
+        b"sk-current".to_vec(),
+    );
+
+    assert_eq!(w.key(), "sk-current");
+    assert_eq!(
+        w.keychain.item(&w.slot("openai")).as_deref(),
+        Some("sk-current")
+    );
+    assert_eq!(w.row()["apiKeyPerProvider"], json!(true));
+    assert_eq!(w.keychain.item(&w.account()).as_deref(), Some("sk-legacy"));
+}
+
+#[test]
+fn switching_to_ollama_is_allowed_while_a_key_cannot_move() {
+    let w = world();
+    w.seed_plaintext("sk-electron");
+    w.keychain.locked.store(true, Ordering::SeqCst);
+
+    w.select(AiProvider::Ollama, "http://localhost:11434/v1");
+    assert_eq!(w.row()["provider"], json!("ollama"));
+    assert_eq!(w.row()["apiKey"], json!("sk-electron"));
+    assert_eq!(w.key(), "");
+
+    // Under Ollama the plaintext key is parked in the legacy entry, never sent (#3554 hint).
+    w.keychain.locked.store(false, Ordering::SeqCst);
+    assert_eq!(w.key(), "");
+    assert_eq!(
+        w.keychain.item(&w.account()).as_deref(),
+        Some("sk-electron")
+    );
+    assert_eq!(w.row()["apiKey"], json!(""));
+}
+
+#[test]
+fn a_key_typed_under_ollama_is_refused_with_an_ollama_reason() {
+    let w = world();
+    w.select(AiProvider::Ollama, "");
+    let error = w
+        .store
+        .write(Some(&w.vault), key_update("sk-x"))
+        .expect_err("ollama takes no key");
+    assert!(matches!(error, AiSettingsError::NoKeyTarget), "{error:?}");
+    assert!(error.to_string().contains("Ollama"), "{error}");
+    assert!(w.keychain.items.lock().unwrap().is_empty());
+}
