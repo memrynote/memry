@@ -24,3 +24,7 @@ crates/memry-desktop/tests/fixtures/electron/** -text -whitespace
 # Notes of the markdown converter's grammar corpus: their bytes are the test input
 # (CRLF, trailing spaces, BOMs), so git neither converts nor flags them.
 packages/contracts/test-vectors/markdown-convert/corpus/** -text -whitespace
+# The Rust core embeds these with include_str!, and its tests compare the text SQLite
+# stores in sqlite_schema. A Windows checkout would convert them to CRLF; pin LF so every
+# platform embeds identical migration text.
+crates/memry-core/src/storage/migrations/**/*.sql text eol=lf
