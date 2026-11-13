@@ -3,4 +3,5 @@
 
 pub mod catalog;
 pub mod provider;
+pub mod proxy;
 pub mod settings;

@@ -26,6 +26,8 @@ export const commands = {
 	 *  answer, not a failed call.
 	 */
 	aiInlineTestConnection: () => __TAURI_INVOKE<TestConnectionResult>("ai_inline_test_connection"),
+	/**  Ends a provider call the renderer aborted, before or after its head. */
+	aiProviderCancel: (requestId: string) => __TAURI_INVOKE<void>("ai_provider_cancel", { requestId }),
 	appInfo: () => __TAURI_INVOKE<AppInfo>("app_info"),
 	/**  The calling window closed its editor of `note_id`. */
 	crdtCloseDoc: (noteId: string) => __TAURI_INVOKE<null>("crdt_close_doc", { noteId }),
@@ -665,6 +667,25 @@ export type AiInlineSettingsChangedEvent = {
  */
 export type AiProvider = "ollama" | "openai" | "anthropic" | "google" | "custom";
 
+/**  The provider's status and headers. */
+export type AiProviderHead = {
+	status: number,
+	headers: HeaderPair[],
+};
+
+/**
+ *  One provider call of the renderer's AI SDK. `path` is relative to the provider's base URL
+ *  and may carry a query (`?alt=sse`).
+ */
+export type AiProviderRequest = {
+	requestId: string,
+	provider: AiProvider,
+	method: HttpMethod,
+	path: string,
+	headers: HeaderPair[],
+	body: string | null,
+};
+
 export type AppInfo = {
 	version: string,
 	platform: string,
@@ -1197,6 +1218,11 @@ export type GlobalCaptureResult = {
 	fallbackRegistered: boolean,
 };
 
+export type HeaderPair = {
+	name: string,
+	value: string,
+};
+
 /**  `HeaderTagEditSchema`. */
 export type HeaderTagEditInput = {
 	add?: string[] | null,
@@ -1218,6 +1244,8 @@ export type HeatmapEntryView = {
 	characterCount: number,
 	level: number,
 };
+
+export type HttpMethod = "GET" | "POST";
 
 /**  `ImpactQuery`. */
 export type ImpactQuery = { kind: "remove-field"; tag: string; name: string } | { kind: "rename-field"; name: string } | { kind: "delete-tag"; tag: string } | { kind: "set-extends"; tag: string; parent: string | null } | { kind: "become-objects"; tag: string };

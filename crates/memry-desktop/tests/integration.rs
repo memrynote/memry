@@ -22,6 +22,8 @@ mod activity_scan;
 mod ai_catalog;
 #[path = "ai_inline_settings.rs"]
 mod ai_inline_settings;
+#[path = "ai_proxy.rs"]
+mod ai_proxy;
 #[path = "app_edit.rs"]
 mod app_edit;
 #[path = "article_constants.rs"]

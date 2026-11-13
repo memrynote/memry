@@ -7,7 +7,7 @@ use std::time::Duration;
 
 use serde::Deserialize;
 
-use super::provider::AiProvider;
+use super::provider::{AiProvider, BadAddress, parse_base};
 use super::settings::InlineAiSettings;
 use crate::http::read_capped;
 
@@ -15,6 +15,8 @@ use crate::http::read_capped;
 pub const OLLAMA_TIMEOUT: Duration = Duration::from_secs(5);
 /// Any other provider's model list waits this long.
 pub const PROVIDER_TIMEOUT: Duration = Duration::from_secs(10);
+/// The page size of Gemini's model list, its maximum: one page holds every model.
+const GEMINI_PAGE_SIZE: &str = "1000";
 /// The largest model list read. OpenRouter-sized catalogues are a few hundred KiB.
 const BODY_CAP: usize = 4 * 1024 * 1024;
 
@@ -99,11 +101,17 @@ pub async fn probe(
     let headers = provider
         .auth_headers(key)
         .map_err(|error| ProbeFailure::Other(error.to_string()))?;
-    let url = format!("{}/models", base_url.trim_end_matches('/'));
     let name = provider.name(base_url);
+    let mut url = parse_base(&format!("{}/models", base_url.trim_end_matches('/')))
+        .map_err(|error| ProbeFailure::Other(format!("{name}: {error}")))?;
+    if provider == AiProvider::Google {
+        // Gemini pages its model list at 50 by default; 1000 is its maximum.
+        url.query_pairs_mut()
+            .append_pair("pageSize", GEMINI_PAGE_SIZE);
+    }
     let response = client
         .0
-        .get(&url)
+        .get(url)
         .headers(headers)
         .timeout(timeout)
         .send()
@@ -128,7 +136,7 @@ pub async fn probe(
 /// unreachable host.
 fn classify_send(name: &str, error: &reqwest::Error) -> ProbeFailure {
     if error.is_builder() {
-        return ProbeFailure::Other(format!("{name}: the address is not a valid URL"));
+        return ProbeFailure::Other(format!("{name}: {}", BadAddress::NotAUrl));
     }
     ProbeFailure::Unreachable
 }

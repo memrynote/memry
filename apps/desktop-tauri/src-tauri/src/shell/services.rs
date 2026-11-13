@@ -7,6 +7,7 @@ use std::sync::atomic::{AtomicBool, Ordering};
 use std::sync::{Arc, Mutex, PoisonError};
 use std::time::Duration;
 
+use memry_desktop::ai::proxy::AiProxy;
 use memry_desktop::ai::settings::InlineAiStore;
 use memry_desktop::config::{Compiled, MemryEnv, RuntimeConfig};
 use memry_desktop::e2e::E2eGate;
@@ -286,6 +287,7 @@ fn manage_settings(app: &AppHandle<Wry>) -> Result<(), CommandError> {
         keychain.clone(),
         device,
     )));
+    app.manage(AiProxy::new(memry_desktop::http::builder()));
     app.manage(keychain);
     app.manage(identity);
     app.manage(settings);

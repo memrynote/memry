@@ -32,13 +32,7 @@ impl AiProvider {
             Self::Openai => "OpenAI".to_owned(),
             Self::Anthropic => "Anthropic".to_owned(),
             Self::Google => "Google".to_owned(),
-            Self::Custom => {
-                // Never the URL itself, which may carry credentials the user pasted in.
-                reqwest::Url::parse(stored.trim())
-                    .ok()
-                    .and_then(|url| url.host_str().map(str::to_owned))
-                    .unwrap_or_else(|| "Custom".to_owned())
-            }
+            Self::Custom => url_host(stored).unwrap_or_else(|| "Custom".to_owned()),
         }
     }
 
@@ -93,6 +87,40 @@ impl AiProvider {
         headers.insert(HeaderName::from_static(name), value);
         Ok(headers)
     }
+}
+
+/// The host of `url` with its port when the URL names one, as `URL.host` gives it in JavaScript
+/// (`localhost:8080`). Never the URL itself, which may carry credentials the user pasted in.
+pub fn url_host(url: &str) -> Option<String> {
+    let url = reqwest::Url::parse(url.trim()).ok()?;
+    let host = url.host_str()?;
+    Some(match url.port() {
+        Some(port) => format!("{host}:{port}"),
+        None => host.to_owned(),
+    })
+}
+
+/// Why a provider address is refused before any request.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, thiserror::Error)]
+pub enum BadAddress {
+    #[error("the address is not a valid URL")]
+    NotAUrl,
+    /// Electron's `fetch` refuses such a URL ("Request cannot be constructed from a URL that
+    /// includes credentials"); reqwest would send them as Basic auth.
+    #[error("the address must not contain a user name or password")]
+    Credentials,
+}
+
+/// `base` parsed as an `http` or `https` URL without credentials.
+pub fn parse_base(base: &str) -> Result<reqwest::Url, BadAddress> {
+    let url = reqwest::Url::parse(base.trim()).map_err(|_| BadAddress::NotAUrl)?;
+    if !matches!(url.scheme(), "http" | "https") || !url.has_host() {
+        return Err(BadAddress::NotAUrl);
+    }
+    if !url.username().is_empty() || url.password().is_some() {
+        return Err(BadAddress::Credentials);
+    }
+    Ok(url)
 }
 
 /// The stored key holds characters no HTTP header can carry. The key itself is never shown.

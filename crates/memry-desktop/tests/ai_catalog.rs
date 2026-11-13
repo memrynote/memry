@@ -314,3 +314,65 @@ async fn a_model_list_in_the_gemini_shape_reads_by_name() {
         .expect("models");
     assert_eq!(models, ["gemini-2.5-flash", "gemini-2.5-pro"]);
 }
+
+#[tokio::test]
+async fn gemini_asks_for_its_whole_model_list_in_one_page() {
+    let queries = Arc::new(Mutex::new(Vec::new()));
+    let record = queries.clone();
+    let app = Router::new().route(
+        "/v1beta/models",
+        get(
+            move |axum::extract::RawQuery(query): axum::extract::RawQuery| {
+                let record = record.clone();
+                async move {
+                    record.lock().unwrap().push(query);
+                    r#"{"models":[]}"#
+                }
+            },
+        ),
+    );
+    let listener = TcpListener::bind("127.0.0.1:0").await.expect("bind");
+    let port = listener.local_addr().expect("addr").port();
+    tokio::spawn(async move { axum::serve(listener, app).await });
+    let base = format!("http://127.0.0.1:{port}/v1beta");
+    probe(&client(), AiProvider::Google, &base, Some("k"), WAIT)
+        .await
+        .expect("ok");
+    probe(&client(), AiProvider::Openai, &base, Some("k"), WAIT)
+        .await
+        .expect("ok");
+    assert_eq!(
+        *queries.lock().unwrap(),
+        [Some("pageSize=1000".to_owned()), None]
+    );
+}
+
+#[tokio::test]
+async fn a_url_with_credentials_is_refused_as_electron_fetch_does() {
+    let (base, seen) = provider(StatusCode::OK, r#"{"data":[]}"#).await;
+    let with_user = base.replace("http://", "http://user:pw-secret@");
+    let failure = list_models(&client(), &custom(&with_user, ""))
+        .await
+        .expect_err("refused");
+    assert!(
+        matches!(&failure, ProbeFailure::Other(text) if text.contains("user name or password") && !text.contains("pw-secret")),
+        "{failure:?}"
+    );
+    assert!(seen.lock().unwrap().is_empty(), "the request was sent");
+}
+
+#[test]
+fn a_custom_endpoint_is_named_and_logged_by_host_and_port_only() {
+    let stored = "https://user:pw-secret@llm.example:8443/v1?token=t-secret";
+    assert_eq!(AiProvider::Custom.name(stored), "llm.example:8443");
+    assert_eq!(
+        AiProvider::Custom.name("https://llm.example/v1"),
+        "llm.example"
+    );
+    let settings = custom(stored, "sk-secret");
+    let debug = format!("{settings:?}");
+    assert!(debug.contains("llm.example:8443"), "{debug}");
+    for secret in ["pw-secret", "t-secret", "sk-secret"] {
+        assert!(!debug.contains(secret), "{debug}");
+    }
+}
