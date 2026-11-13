@@ -116,6 +116,13 @@ pub fn decode(bytes: &[u8]) -> Result<Rgb8, MlError> {
     if u64::from(width) * u64::from(height) > MAX_INPUT_PIXELS {
         return Err(input("Input image exceeds pixel limit".to_owned()));
     }
+    // The decoders do not all check `Limits::max_alloc` before allocating the frame buffer.
+    if decoder.total_bytes() > MAX_DECODE_ALLOC {
+        return Err(input(format!(
+            "image needs {} bytes to decode, over the {MAX_DECODE_ALLOC}-byte limit",
+            decoder.total_bytes()
+        )));
+    }
     let orientation = decoder.orientation().map_err(decode_error)?;
     let icc = decoder.icc_profile().map_err(decode_error)?;
     let mut image = DynamicImage::from_decoder(decoder).map_err(decode_error)?;
@@ -404,3 +411,7 @@ fn patchify(image: Rgb8, max_patches: usize) -> PixelTensor {
         resized: image,
     }
 }
+
+#[cfg(test)]
+#[path = "image_prep_tests.rs"]
+mod tests;

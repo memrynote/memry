@@ -85,6 +85,13 @@ const THREADS = Math.min(2, Math.max(1, Math.floor(os.availableParallelism() / 2
 /** Text bounds of `golden_text.rs`; the JPEG photos are held to `jpegMinCosine` instead. */
 const TOLERANCE = { minCosine: 0.9999, maxComponentDiff: 0.001 }
 
+/**
+ * Cosine bounds of the divergent cases with Electron's vector. Measured on macOS arm64: JPEG
+ * photos 0.99972 to 0.99998 here, 0.9995 at worst over 20 sample images; the P3-tagged PNG
+ * 0.99969. The bound leaves a margin of 5e-4 under the worst.
+ */
+const DIVERGENT_MIN_COSINE = { jpeg: 0.999, icc: 0.999 }
+
 const asset = (name) => readFileSync(join(ROOT, ASSETS, name))
 
 /** RGB pixels of a repo photo, resized with sharp: the base of the synthesized images. */
@@ -404,6 +411,7 @@ async function embeddingsFile(dir, all) {
       [...Object.keys(PINS), ...UNPINNED].map((name) => [name, sha256File(join(dir, name))])
     ),
     tolerance: TOLERANCE,
+    divergentMinCosine: DIVERGENT_MIN_COSINE,
     cases
   }
   return { json: `${JSON.stringify(file, null, 2)}\n` }

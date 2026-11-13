@@ -81,6 +81,8 @@ one-class change reviewable.
 | `note-fold.json`                         |                                   48 | same                                                                                           | Rust `note_fold_vectors.rs`                                                          |
 | `embedding-input.json`                   |                                   61 | `apps/desktop/scripts/embedding-input-oracle/`                                                 | Rust `domain::embedding_input` tests                                                 |
 | `embeddings-text.json`                   |                    31 + 2 + 12 pairs | `crates/memry-ml/tests/golden/generate.mjs` (needs the model)                                  | Rust `memry-ml/tests/golden_text.rs` (full tier)                                     |
+| `pixel-tensors.json`                     |                                   53 | `crates/memry-ml/tests/golden/generate-image.mjs`                                              | Rust `memry-ml/tests/pixel_tensors.rs`                                               |
+| `embeddings-image.json`                  |                                   14 | same, with `--model-dir` (needs the model)                                                     | Rust `memry-ml/tests/golden_image.rs` (full tier)                                    |
 | `markdown-roundtrip/cases.json`          |                                  285 | `../scripts/vectors/markdown-roundtrip.ts`                                                     | `../src/__tests__/markdown-roundtrip.test.ts`                                        |
 | `markdown-roundtrip/fuzz-families.json`  |                           6 families | same                                                                                           | same                                                                                 |
 | `markdown-convert/frontmatter.json`      |                                  457 | `apps/desktop/scripts/markdown-oracle/`                                                        | `../src/__tests__/markdown-convert.test.ts` + Rust `markdown_frontmatter_vectors.rs` |
@@ -104,7 +106,7 @@ one-class change reviewable.
 | `markdown-convert/blocks.json`           |                                  844 | same                                                                                           | same + Rust `markdown_doc_vectors.rs`                                                |
 | `markdown-convert/serialize-doc.json`    |                                  537 | same                                                                                           | same + Rust `markdown_doc_edit_vectors.rs`                                           |
 | `markdown-convert/replace-body.json`     |                                   44 | same                                                                                           | same + Rust `markdown_doc_edit_vectors.rs`                                           |
-| **Total**                                | **32279 cases plus 6 fuzz families** |                                                                                                |                                                                                      |
+| **Total**                                | **32346 cases plus 6 fuzz families** |                                                                                                |                                                                                      |
 
 ### `embeddings-text.json`: lone surrogates are a known divergence
 
@@ -119,6 +121,23 @@ text moves more). Both are under the 0.9999 bound. `loneSurrogates` records Elec
 that cosine, and `golden_text.rs` holds the native vector to the measured cosine within 1e-4.
 Similarity floors of 0.60 and up are unaffected in practice; only the one window that holds the
 cut moves.
+
+### `pixel-tensors.json` and `embeddings-image.json`: JPEG decoding and ICC conversion are a known divergence
+
+Electron decodes images with sharp (libvips 8.18): JPEG through libjpeg-turbo (mozjpeg) and colour
+profiles through Little CMS. `memry-ml` decodes in pure Rust (Kaan, 2026-11-13): JPEG through
+zune-jpeg (the `image` crate) and profiles through moxcms, with no C decoder in the build. PNG,
+WebP and GIF decode, resize and patch bit for bit, so those cases hold exact sha256 hashes and
+their vectors meet the text bounds (cosine 1.000000 measured). JPEG and ICC-tagged inputs decode
+a few levels apart. Measured on macOS arm64, the largest per-channel difference of the decoded
+pixels is 4 for a JPEG (all subsamplings, progressive, grey and the seven EXIF orientations), 1
+for an ICC-tagged PNG or WebP and 6 for an ICC-tagged JPEG; `pixel-tensors.json` stores Electron's
+decoded pixels for those small inputs and `pixel_tensors.rs` holds the Rust to `maxLevelDiff`
+(6, 2 and 8) while every size, patch count and position id stays exact. The embedding moves with
+the pixels: cosine with Electron's vector 0.99972 to 0.99998 for the sample photos (0.9995 at worst
+over 20 images measured while porting) and 0.99969 for the P3-tagged PNG, under the 0.9999 text
+bound. `golden_image.rs` holds them to `divergentMinCosine` (0.999 for both) and never lower. A
+truncated JPEG fails in both: sharp on libjpeg's warning, `memry-ml` on the missing end marker.
 
 ### `markdown-convert/`
 

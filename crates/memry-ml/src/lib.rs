@@ -6,10 +6,11 @@ mod files;
 pub mod image_prep;
 mod runtime;
 mod text;
+mod vision;
 
 pub use engine::{
-    EMBEDDING_DIMENSION, Embedding, EmbeddingEngine, LoadOptions, MAX_EMBEDDING_INPUT_LENGTH,
-    default_intra_threads,
+    EMBEDDING_DIMENSION, Embedding, EmbeddingEngine, IMAGE_SOFT_TOKENS, LoadOptions,
+    MAX_EMBEDDING_INPUT_LENGTH, default_intra_threads,
 };
 pub use files::{MODEL_REPO, MODEL_REVISION, ModelFile, ModelGroup, model_dir, verify};
 pub use runtime::lower_thread_priority;

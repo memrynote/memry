@@ -519,6 +519,57 @@ jobs:
           MEMRY_ML_MODEL_DIR: ${{ runner.temp }}/models/onnx-community/embeddinggemma-2-ONNX
         run: cargo test -p memry-ml --test golden_text -- --ignored
 
+      # The vision encoder (109 MB) has its own cache entry, holding only its two files, so the
+      # text entry above stays as it is.
+      - name: Restore the vision encoder (memry-ml golden image)
+        id: vision-cache
+        if: matrix.part != 'tests' && needs.plan.outputs.full == 'true'
+        uses: actions/cache/restore@v4
+        with:
+          path: |
+            ${{ runner.temp }}/models/onnx-community/embeddinggemma-2-ONNX/onnx/vision_encoder_q4.onnx
+            ${{ runner.temp }}/models/onnx-community/embeddinggemma-2-ONNX/onnx/vision_encoder_q4.onnx_data
+          key: embeddinggemma-2-vision-daa72c51243991dfcaf9f9137d2c573d8f7790c0
+          enableCrossOsArchive: true
+
+      - name: Download the vision encoder (memry-ml golden image)
+        if: matrix.part != 'tests' && needs.plan.outputs.full == 'true' && steps.vision-cache.outputs.cache-hit != 'true'
+        working-directory: ${{ runner.temp }}
+        run: |
+          base=https://huggingface.co/onnx-community/embeddinggemma-2-ONNX/resolve/daa72c51243991dfcaf9f9137d2c573d8f7790c0
+          dir=models/onnx-community/embeddinggemma-2-ONNX
+          mkdir -p "$dir/onnx"
+          while read -r sum file; do
+            curl -fsSL --retry 3 -o "$dir/$file" "$base/$file"
+            if [ "$(cmake -E sha256sum "$dir/$file" | cut -d' ' -f1)" != "$sum" ]; then
+              echo "::error::$file does not match its pinned sha256"
+              exit 1
+            fi
+          done <<'EOF'
+          7ea284226d4938f0ad921ab091f1d80a9ca699aa802984ef5cd5eec4f4761d96 onnx/vision_encoder_q4.onnx
+          0a9d6c927334f152a33dd90874f65d6ea5228999abe6a450d3f7813677fa704c onnx/vision_encoder_q4.onnx_data
+          EOF
+
+      - name: Save the vision encoder (memry-ml golden image)
+        if: matrix.part != 'tests' && needs.plan.outputs.full == 'true' && steps.vision-cache.outputs.cache-hit != 'true' && github.event_name != 'merge_group' && (github.event_name != 'pull_request' || github.base_ref != 'feat/tauri-v2')
+        uses: actions/cache/save@v4
+        with:
+          path: |
+            ${{ runner.temp }}/models/onnx-community/embeddinggemma-2-ONNX/onnx/vision_encoder_q4.onnx
+            ${{ runner.temp }}/models/onnx-community/embeddinggemma-2-ONNX/onnx/vision_encoder_q4.onnx_data
+          key: embeddinggemma-2-vision-daa72c51243991dfcaf9f9137d2c573d8f7790c0
+          enableCrossOsArchive: true
+
+      # Parity with Electron's embedImage (embeddings-image.json): token ids exact, PNG, WebP and
+      # GIF vectors within the text bounds, JPEG and ICC-tagged images within their measured
+      # cosine (test-vectors README).
+      - name: memry-ml golden image vectors
+        if: matrix.part != 'tests' && needs.plan.outputs.full == 'true'
+        timeout-minutes: 30
+        env:
+          MEMRY_ML_MODEL_DIR: ${{ runner.temp }}/models/onnx-community/embeddinggemma-2-ONNX
+        run: cargo test -p memry-ml --test golden_image -- --ignored
+
       # The shipping profile (fat LTO): the smoke test embeds with the downloaded model, then the
       # test binary's size and its shared-library dependencies are printed. No ONNX Runtime or
       # DirectML library may be among them: ONNX Runtime is linked in, CPU only. On Windows
