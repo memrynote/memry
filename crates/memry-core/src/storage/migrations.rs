@@ -101,9 +101,9 @@ pub const DATA_MIGRATIONS: &[Migration] = &[
         sql: include_str!("migrations/data/0012_journal_aliases.sql"),
     },
     // main's 13..17, shipped in v2026-11-05.2 and later. feat/tauri-v2 builds
-    // had used 13..22, then 15..24, then 17..27, for the entries from 18 on;
-    // `legacy_numbering` moves a file of the first two onto this numbering
-    // (#4052). A file of the third is a dev database and is reset (#4438).
+    // had used 13..22, then 15..24, then 17..28, for the entries from 18 on;
+    // `legacy_numbering` moves a file of any of them onto this numbering
+    // (#4052, #4438).
     Migration {
         version: 13,
         name: "calendar_cursor_reset",
