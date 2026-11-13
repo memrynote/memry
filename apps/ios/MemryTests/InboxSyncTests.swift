@@ -53,15 +53,9 @@ private final class GatedFiller: VaultFilling, @unchecked Sendable {
     ) async throws -> FirstSyncSummary {
         throw SyncError.Locked
     }
-    func fetchNoteBody(noteId: String) async throws -> BodyFetchSummary {
+    func pullNoteBody(noteId: String) async throws -> BodyFetchSummary {
         throw SyncError.Locked
     }
-}
-
-@MainActor
-private func wait(_ timeout: TimeInterval = 3, until condition: () -> Bool) async throws {
-    let deadline = Date().addingTimeInterval(timeout)
-    while !condition(), Date() < deadline { try await Task.sleep(for: .milliseconds(20)) }
 }
 
 @MainActor

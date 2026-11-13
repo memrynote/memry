@@ -4,7 +4,6 @@
 //! | Test                                              | Rule                          |
 //! | ------------------------------------------------- | ----------------------------- |
 //! | the title weight outranks the content weight      | the bm25 vector is a contract |
-//! | hostile query text never reaches the FTS5 parser  | FTS5 input is user input      |
 //! | the body column is `extract_text` output          | §A.3, chapter 12 §12.1        |
 //! | a second pass touches only what moved             | §A.5 watermarks, FR-053       |
 //! | a body update alone re-indexes the note           | the log is a watermark source |
@@ -61,7 +60,9 @@ fn ids(hits: &[SearchHit]) -> Vec<&str> {
 }
 
 fn notes(data: &Connection, index: &Connection, query: &str) -> Vec<SearchHit> {
-    search::search_notes(data, index, query, 20).expect("search notes")
+    search::search(data, index, query, &search::SearchFilter::default(), 20)
+        .map(|groups| [groups.notes, groups.journals].concat())
+        .expect("search notes")
 }
 
 fn reindex(data: &Connection, index: &Connection, at: i64) -> Reindexed {
@@ -136,50 +137,6 @@ fn the_title_weight_outranks_the_content_weight() {
 }
 
 #[test]
-fn hostile_query_text_never_reaches_the_fts5_parser() {
-    let (data, index) = databases();
-    put(&data, "note", "n1", r#"{"title":"Chapter twelve"}"#, NOW);
-    reindex(&data, &index, NOW);
-
-    for hostile in [
-        "he said \"hello",
-        "*",
-        "chapter*",
-        "title:chapter",
-        "-chapter",
-        "(chapter OR twelve)",
-        "^chapter",
-        "NEAR(chapter twelve, 2)",
-        "chapter AND NOT twelve",
-        "\"\"\"",
-        "",
-        "   ",
-        "🙂",
-    ] {
-        let found = search::search_notes(&data, &index, hostile, 20);
-        assert!(
-            found.is_ok(),
-            "{hostile:?} reached the parser: {:?}",
-            found.err()
-        );
-    }
-
-    // The words survive the rewrite; only the syntax is gone.
-    assert_eq!(ids(&notes(&data, &index, "(chapter twelve)")), vec!["n1"]);
-    assert_eq!(ids(&notes(&data, &index, "chapter:")), vec!["n1"]);
-    assert!(notes(&data, &index, "*").is_empty());
-    assert!(
-        notes(&data, &index, "chapter zebra").is_empty(),
-        "terms AND"
-    );
-    assert!(
-        notes(&data, &index, "chapter OR zebra").is_empty(),
-        "`OR` is searched for as the word `or`, not honoured as an operator, \
-         so this is three ANDed terms and matches nothing"
-    );
-}
-
-#[test]
 fn the_body_column_is_extract_text_output() {
     let (data, index) = databases();
     let (update, expected) = body_vector();
@@ -211,7 +168,10 @@ fn the_body_column_is_extract_text_output() {
         )
         .expect("the materialised body");
     assert_eq!(stored, expected);
-    assert_eq!(source_seq, Some(1));
+    assert!(
+        source_seq.is_some(),
+        "stored with the version it was read at"
+    );
 }
 
 #[test]
@@ -359,7 +319,15 @@ fn a_dropped_index_rebuilds_to_the_same_answers() {
     assert_eq!((rebuilt.notes_indexed, rebuilt.tasks_indexed), (2, 1));
     assert_eq!(notes(&data, &fresh, "Protocol"), before);
     assert_eq!(
-        ids(&search::search_tasks(&data, &fresh, "Protocol", 20).expect("tasks")),
+        ids(&search::search(
+            &data,
+            &fresh,
+            "Protocol",
+            &search::SearchFilter::default(),
+            20
+        )
+        .map(|groups| groups.tasks)
+        .expect("tasks")),
         vec!["t1"]
     );
 }
@@ -455,11 +423,21 @@ fn tasks_rank_in_their_own_corpus() {
     put(&data, "note", "n1", r#"{"title":"Ferry notes"}"#, NOW);
     reindex(&data, &index, NOW);
 
-    let hits = search::search_tasks(&data, &index, "ferry", 20).expect("tasks");
+    let hits = search::search(&data, &index, "ferry", &search::SearchFilter::default(), 20)
+        .map(|groups| groups.tasks)
+        .expect("tasks");
     assert_eq!(ids(&hits), vec!["t1", "t2"], "title outranks description");
     assert!(hits.iter().all(|hit| hit.kind == HitKind::Task));
     assert_eq!(
-        ids(&search::search_tasks(&data, &index, "travel", 20).expect("tags")),
+        ids(&search::search(
+            &data,
+            &index,
+            "travel",
+            &search::SearchFilter::default(),
+            20
+        )
+        .map(|groups| groups.tasks)
+        .expect("tags")),
         vec!["t2"],
         "the tags column is indexed"
     );

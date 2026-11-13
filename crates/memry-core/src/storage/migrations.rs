@@ -120,6 +120,11 @@ pub const DATA_MIGRATIONS: &[Migration] = &[
         name: "inbox_attachments",
         sql: include_str!("migrations/data/0016_inbox_attachments.sql"),
     },
+    Migration {
+        version: 17,
+        name: "search_recents",
+        sql: include_str!("migrations/data/0017_search_recents.sql"),
+    },
 ];
 
 /// `index.db`: the rebuildable search and link index.
@@ -138,6 +143,11 @@ pub const INDEX_MIGRATIONS: &[Migration] = &[
         version: 2,
         name: "link_target_keys",
         sql: include_str!("migrations/index/0002_link_target_keys.sql"),
+    },
+    Migration {
+        version: 3,
+        name: "fts_inbox",
+        sql: include_str!("migrations/index/0003_fts_inbox.sql"),
     },
 ];
 
@@ -248,7 +258,7 @@ mod tests {
         let version = db
             .call_blocking(|conn| user_version(conn))
             .expect("user_version");
-        assert_eq!(version, 16);
+        assert_eq!(version, 17);
 
         let names = table_names(&db);
         // Source of record, §A.2.
@@ -293,6 +303,7 @@ mod tests {
             "reminders",
             "saved_filter_expressions",
             "saved_filters",
+            "search_recents",
             "settings",
             "settings_field_clocks",
             "tag_categories",
@@ -312,10 +323,11 @@ mod tests {
         let version = db
             .call_blocking(|conn| user_version(conn))
             .expect("user_version");
-        assert_eq!(version, 2);
+        assert_eq!(version, 3);
 
         let names = table_names(&db);
         for expected in [
+            "fts_inbox",
             "fts_notes",
             "fts_tasks",
             "index_meta",
@@ -362,7 +374,7 @@ mod tests {
         let version = db
             .call_blocking(|conn| run(conn, DATA_MIGRATIONS))
             .expect("step forward");
-        assert_eq!(version, 16);
+        assert_eq!(version, 17);
 
         let (count, payload): (i64, String) = db
             .call_blocking(|conn| {
@@ -500,7 +512,7 @@ mod tests {
                 .map_err(|err| StorageError::Failed {
                     what: err.to_string(),
                 })?;
-                assert_eq!(run(conn, DATA_MIGRATIONS)?, 16);
+                assert_eq!(run(conn, &DATA_MIGRATIONS[..16])?, 16);
                 let mut statement = conn
                     .prepare("SELECT id, attachment_path, attachment_id FROM inbox_view ORDER BY id")
                     .map_err(|err| StorageError::Failed {

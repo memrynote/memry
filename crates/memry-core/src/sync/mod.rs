@@ -37,6 +37,7 @@
 
 pub mod apply;
 pub mod body_debt;
+pub mod body_heal;
 pub mod body_pull;
 pub mod body_step;
 pub mod bootstrap;
