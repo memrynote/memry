@@ -93,7 +93,7 @@ struct QRLinkView: View {
                 // Words, not a bare spinner, and a Stop that stops something
                 // real: this is the shell's own call, so cancelling it is
                 // honest. The core's `scan` is a different case — see below.
-                ProgressView { Text("Point the camera at the code on your other device") }
+                ProgressView { Text(scanningLine) }
                     .progressViewStyle(.circular)
                     .font(Tokens.Typography.supporting.font)
                     .tint(Tokens.Text.secondary.color)
@@ -113,6 +113,18 @@ struct QRLinkView: View {
             }
         }
         .frame(maxWidth: .infinity, alignment: .leading)
+    }
+
+    /// What the running scan is doing. A paused camera says why, and where
+    /// the way around it is, instead of looking like a scan finding nothing.
+    private var scanningLine: String {
+        switch model.cameraInterruption {
+        case nil: "Point the camera at the code on your other device"
+        case .sharedScreen:
+            "The camera is paused while another app shares the screen. Make Memry full screen, or paste the code below."
+        case .inUse:
+            "The camera is paused while another app is using it. Scanning picks up when it is free, or paste the code below."
+        }
     }
 
     // MARK: - The fallback that is not a fallback
