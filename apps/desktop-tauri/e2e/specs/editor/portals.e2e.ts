@@ -34,7 +34,7 @@ const usageChip = (page: Page, anchor: string) =>
  */
 const portalDefinitions = (page: Page): Promise<string[]> =>
   page.evaluate(() =>
-    Array.from(document.querySelectorAll('[data-memry-portal] > pre > code')).map(
+    Array.from(document.querySelectorAll('[data-memry-portal] code[data-node-view-content]')).map(
       (code) => code.textContent ?? ''
     )
   )
