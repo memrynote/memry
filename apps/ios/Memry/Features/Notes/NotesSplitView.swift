@@ -149,6 +149,10 @@ private extension FolderNode {
 private struct NotesDetailColumn: View {
     let model: VaultBrowseViewModel
     @Bindable var router: NotesSplitRouter
+    @Environment(\.requestVaultSync) private var requestVaultSync
+    /// Built once: a new closure on every render would change the
+    /// environment of the open note and redraw its page while it is typed in.
+    @State private var afterWrite: (@MainActor () -> Void)?
 
     var body: some View {
         NavigationStack(path: $router.trail) {
@@ -160,6 +164,17 @@ private struct NotesDetailColumn: View {
                 }
             }
             .navigationDestination(for: NoteRoute.self) { reader($0) }
+        }
+        // Every write in the note asks for a sync pass. The list stays on
+        // screen beside it, so it re-reads too: a new title or a move shows
+        // in its row at once, where the phone stack re-reads on Back.
+        .environment(\.requestVaultSync, afterWrite)
+        .onChange(of: requestVaultSync == nil, initial: true) {
+            let upstream = requestVaultSync
+            afterWrite = { [model] in
+                upstream?()
+                Task { await model.refresh() }
+            }
         }
     }
 

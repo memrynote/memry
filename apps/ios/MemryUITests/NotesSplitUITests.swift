@@ -58,7 +58,8 @@ final class NotesSplitUITests: XCTestCase {
         let source = "[agent] \(run) source"
         makeNote(target)
         makeNote(source).tap()
-        app.typeText("[[\(target)")
+        // The query skips the title's own brackets: `]` ends a typed link.
+        app.typeText("[[\(run) target")
         let pick = app.buttons.matching(NSPredicate(format: "label BEGINSWITH %@", target)).firstMatch
         XCTAssertTrue(pick.waitForExistence(timeout: 10), "the [[ menu did not offer the note")
         pick.tap()
@@ -135,7 +136,8 @@ final class NotesSplitUITests: XCTestCase {
         add.tap()
         let field = app.textFields["Title"]
         XCTAssertTrue(field.waitForExistence(timeout: 10))
-        field.tap()
+        // A new note opens with the caret in its title, as on the phone.
+        XCTAssertTrue(matches(NSPredicate(format: "hasKeyboardFocus == true"), field), "the new note's title has no caret")
         field.typeText("\(title)\n")
         XCTAssertTrue(firstBlock.waitForExistence(timeout: 10))
         XCTAssertTrue(row(title).waitForExistence(timeout: 10), "the new note has no row in the list")
