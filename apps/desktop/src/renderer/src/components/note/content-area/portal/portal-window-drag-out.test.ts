@@ -77,7 +77,7 @@ function dragOut(
   source: ReturnType<typeof mountTestEditor>,
   handle: HTMLElement,
   dropOn: HTMLElement,
-  point: { clientX: number; clientY: number }
+  point: { clientX: number; clientY: number; altKey?: boolean }
 ): void {
   const data = new Map<string, string>()
   const dataTransfer = {
@@ -132,6 +132,16 @@ describe('dragging a block out of a portal window', () => {
       props: { language: 'memry-portal' },
       content: [{ text: '{}' }]
     })
+  })
+
+  it('keeps the source block on an Option-drop out of the window', () => {
+    vi.useFakeTimers()
+    const { host, source, handle } = mount()
+
+    dragOut(source, handle, host.view.dom, { clientX: 100, clientY: 300, altKey: true })
+    vi.runAllTimers()
+
+    expect(texts(source.editor)).toEqual(['RNA copies DNA ^rna1'])
   })
 
   it('leaves a drop inside the window to BlockNote', () => {
