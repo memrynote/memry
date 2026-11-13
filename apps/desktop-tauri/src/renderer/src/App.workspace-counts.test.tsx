@@ -330,6 +330,10 @@ vi.mock('@/components/hint-overlay', () => ({
 vi.mock('@/components/search/command-palette', () => ({ CommandPalette: () => <div /> }))
 vi.mock('@/components/settings-view', () => ({ SettingsView: () => <div /> }))
 vi.mock('@/components/vault-onboarding', () => ({ VaultOnboarding: () => <div /> }))
+// The launch prompt needs the AuthProvider that main-window-root.tsx puts above App.
+vi.mock('@/components/ios-beta/ios-beta-entry-points', () => ({
+  IosBetaLaunchPrompt: () => null
+}))
 
 describe('App workspace count computation', () => {
   beforeEach(() => {
