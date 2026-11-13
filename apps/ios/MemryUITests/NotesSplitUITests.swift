@@ -52,6 +52,26 @@ final class NotesSplitUITests: XCTestCase {
         deleteNotes([first, second])
     }
 
+    /// A title typed into a new note and left by picking another row, with no
+    /// Return, lands in the list and survives a relaunch.
+    func testANewNotesTitleSurvivesPickingAnotherRow() throws {
+        try openNotes()
+        let other = "[agent] \(run) other"
+        let title = "[agent] \(run) typed"
+        makeNote(other)
+        app.buttons["notes.addButton"].firstMatch.tap()
+        let field = app.textFields["Title"]
+        XCTAssertTrue(matches(NSPredicate(format: "hasKeyboardFocus == true"), field), "the new note's title has no caret")
+        field.typeText(title)
+        row(other).tap()
+        XCTAssertTrue(page(other).waitForExistence(timeout: 10))
+        XCTAssertTrue(row(title).waitForExistence(timeout: 10), "the typed title did not reach the list")
+        app.terminate()
+        try openNotes()
+        XCTAssertTrue(row(title).waitForExistence(timeout: 10), "the typed title did not survive a relaunch")
+        deleteNotes([title, other])
+    }
+
     /// `DESIGN.md` › Tablet: three columns in 13" landscape, two (the list
     /// and the note) in portrait and beside the app's page sidebar.
     func testColumnsFollowTheWidth() throws {
