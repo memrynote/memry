@@ -71,7 +71,11 @@ struct HomeTab: View {
         }
         .sheet(isPresented: $capturing) {
             if let capture {
-                QuickCaptureSheet(kinds: CaptureKind.allCases.filter(\.isShown), capture: capture) { made in
+                QuickCaptureSheet(
+                    kinds: CaptureKind.allCases.filter(\.isShown),
+                    capture: capture,
+                    draft: capture.homeDraft
+                ) { made in
                     receipt = made
                 }
             }
