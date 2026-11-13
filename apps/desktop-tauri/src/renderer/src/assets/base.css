@@ -2438,15 +2438,8 @@
   }
 
   .dark {
-    /* ===== TYPOGRAPHY - Font Families (same in dark mode) ===== */
-    --font-sans:
-      ui-sans-serif, -apple-system, 'system-ui', 'Segoe UI Variable Display', 'Segoe UI', Helvetica,
-      'Apple Color Emoji', 'Noto Sans Arabic', 'Noto Sans Hebrew', Arial, sans-serif,
-      'Segoe UI Emoji', 'Segoe UI Symbol';
-    --font-serif: 'Crimson Pro Variable', Georgia, 'Times New Roman', serif;
-    --font-display: 'Playfair Display Variable', 'Crimson Pro Variable', Georgia, serif;
-    --font-heading: 'Space Grotesk Variable', system-ui, sans-serif;
-    --font-mono: 'JetBrains Mono Variable', 'SF Mono', 'Fira Code', monospace;
+    /* Font families are not redeclared here: BlockNote puts `.dark` on `.bn-root`, so a
+       `--font-sans` here would shadow the user's font that useThemeSync sets on <html>. */
 
     /* ===== BASE COLORS - Dark Mode (Neutral Charcoal) ===== */
     --background: #181818;
