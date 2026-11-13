@@ -90,6 +90,12 @@ struct InboxScreen: View {
                 }
             }
             .overlay(alignment: .bottom) { bottomOverlay }
+            // #4355: ↑ ↓ move the detail column's item, Return opens it.
+            .background {
+                if split, !selecting {
+                    ListKeys(ids: store.detailOrder, current: router.selection?.id, move: router.focus, open: router.open)
+                }
+            }
             .safeAreaInset(edge: .bottom, spacing: 0) {
                 if composing {
                     InboxComposer(store: store, text: $composerText, recording: $recording) { composing = false }

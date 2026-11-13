@@ -135,11 +135,15 @@ struct FolderScreen: View {
                 Text("It holds no notes and no folders on this device.")
             }
         } else {
-            NotesList {
+            let rows = node.browseRows(expanded: expanded, sort: sort)
+            let notes = grouping == .none
+                ? sort.sorted(node.notes)
+                : FolderNoteGroup.group(node.notes, sort: sort).flatMap(\.notes)
+            NotesList(noteIds: rows.compactMap(\.noteId) + notes.map(\.id)) {
                 // The same rows the vault root draws, so a folder's contents
                 // read as the root does: folders toggle in place, the selected
                 // one carries the arrow that opens it.
-                ForEach(node.browseRows(expanded: expanded, sort: sort)) { row in
+                ForEach(rows) { row in
                     BrowseRowView(
                         row: row,
                         toggle: toggle,

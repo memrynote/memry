@@ -1,5 +1,4 @@
 import SwiftUI
-import UIKit
 
 // #4351, epic #4334 keyboard decisions. The day page's own hardware keys,
 // carried by hidden buttons: Esc drills up, and plain ← / → (desktop
@@ -28,19 +27,6 @@ struct JournalDayShortcuts: View {
         .opacity(0)
         .allowsHitTesting(false)
         .accessibilityHidden(true)
-        // UIKit ends one editor before the next begins, so the last of
-        // these says whether a text input holds the keyboard.
-        .onReceive(NotificationCenter.default.publisher(for: UITextView.textDidBeginEditingNotification)) { _ in
-            editingText = true
-        }
-        .onReceive(NotificationCenter.default.publisher(for: UITextView.textDidEndEditingNotification)) { _ in
-            editingText = false
-        }
-        .onReceive(NotificationCenter.default.publisher(for: UITextField.textDidBeginEditingNotification)) { _ in
-            editingText = true
-        }
-        .onReceive(NotificationCenter.default.publisher(for: UITextField.textDidEndEditingNotification)) { _ in
-            editingText = false
-        }
+        .onTextEditing { editingText = $0 }
     }
 }

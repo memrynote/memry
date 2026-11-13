@@ -243,7 +243,10 @@ struct TaggedNotesView: View {
     }
 
     private func list(_ notes: [NoteSummary]) -> some View {
-        NotesList {
+        let shown = grouping == .none
+            ? sort.sorted(notes)
+            : FolderNoteGroup.group(notes, sort: sort).flatMap(\.notes)
+        return NotesList(noteIds: shown.map(\.id)) {
             HStack(spacing: Tokens.Space.small) {
                 Chip(text: model.tag, color: color, symbol: "#")
                 Text(notes.count == 1 ? "1 note" : "\(notes.count) notes")

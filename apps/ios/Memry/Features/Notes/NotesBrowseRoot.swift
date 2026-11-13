@@ -94,23 +94,26 @@ private struct VaultOutlineList: View {
     private var hasShortcuts: Bool { split == nil && (!model.bookmarks.isEmpty || !model.tags.isEmpty) }
 
     var body: some View {
-        NotesList {
+        let showsTree = !hasShortcuts || !collectionsCollapsed
+        let tree = outline.browseRows(expanded: expanded, sort: sort)
+        let unplaced = outline.unplacedRows(sort: sort)
+        NotesList(noteIds: showsTree ? (tree + unplaced).compactMap(\.noteId) : []) {
             // Named only beside the sections under it, as desktop's sidebar
             // names Collections beside Bookmarks and Tags. A vault with
             // neither keeps the tree unlabelled.
             if hasShortcuts {
                 ShortcutsTitleRow(title: "Collections", isCollapsed: $collectionsCollapsed)
             }
-            if !hasShortcuts || !collectionsCollapsed {
-                treeRows
+            if showsTree {
+                treeRows(tree)
             }
-            if !outline.unplacedNotes.isEmpty, !hasShortcuts || !collectionsCollapsed {
+            if !outline.unplacedNotes.isEmpty, showsTree {
                 // Kaan's spec-defect 124 decision, named on screen rather
                 // than papered over. These notes are real; their folder
                 // carries no `folder_config` row, so the tree above cannot
                 // contain them.
                 Section {
-                    ForEach(outline.unplacedRows(sort: sort)) { row in
+                    ForEach(unplaced) { row in
                         BrowseRowView(row: row, toggle: toggle, model: model)
                             .notesSelection(row)
                     }
@@ -132,8 +135,8 @@ private struct VaultOutlineList: View {
         .calmAnimation(.fast, value: expanded)
     }
 
-    private var treeRows: some View {
-        ForEach(outline.browseRows(expanded: expanded, sort: sort)) { row in
+    private func treeRows(_ rows: [BrowseRow]) -> some View {
+        ForEach(rows) { row in
             BrowseRowView(
                 row: row,
                 toggle: toggle,

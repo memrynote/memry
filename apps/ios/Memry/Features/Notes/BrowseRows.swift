@@ -35,6 +35,12 @@ struct BrowseRow: Identifiable, Equatable, Sendable {
 
     let kind: Kind
     let title: String
+
+    /// The note this row shows, for the list keys (`ListKeys`).
+    var noteId: String? {
+        if case let .note(note) = kind { return note.id }
+        return nil
+    }
     /// Rendered as a placeholder rather than as the empty string: an untitled
     /// note and a blank folder name are facts, and the id is not a title.
     let isPlaceholderTitle: Bool

@@ -44,6 +44,16 @@ final class InboxRouter {
         }
     }
 
+    /// ↑ ↓ at regular width: the detail column follows the list's focus
+    /// without marking the item viewed, as desktop's keys do
+    /// (`use-inbox-keyboard.ts`); Return then opens it (`open`).
+    func focus(_ id: String) {
+        guard width == .regular else { return }
+        selection = InboxDetailSelection(id: id, explicit: false)
+        unlisted = nil
+        path = []
+    }
+
     /// A notification or a Share hand-off: the list, with its first item in
     /// the detail column at regular width (D6). Neither names an item.
     func openInbox(in tasks: TasksRouter) {
