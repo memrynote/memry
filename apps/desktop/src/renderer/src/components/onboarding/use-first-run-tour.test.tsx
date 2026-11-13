@@ -5,6 +5,7 @@ import { GENERAL_SETTINGS_DEFAULTS } from '@memry/contracts/settings-schemas'
 import type * as DriverModule from 'driver.js'
 
 const driveSpy = vi.fn()
+let announceDrive = (): void => {}
 const destroySpy = vi.fn()
 type TourStep = {
   element?: string
@@ -19,7 +20,10 @@ vi.mock('driver.js', () => ({
     capturedConfig = config
     // Mirror driver.js: destroy() runs the onDestroyed hook.
     return {
-      drive: driveSpy,
+      drive: () => {
+        driveSpy()
+        announceDrive()
+      },
       destroy: () => {
         destroySpy()
         config.onDestroyed?.()
@@ -42,10 +46,18 @@ import { STAR_PROMPT_EVENT, STAR_PROMPT_KEY } from './star-prompt'
  */
 let vault: { onboardingCompleted: boolean; noteTotal: number }
 
-/** Let the hook's settings/notes reads resolve. */
+/**
+ * Let the hook's settings/notes reads resolve. One macrotask covers those reads
+ * only: it does not cover the lazy `import('driver.js')`, so a test that needs
+ * the tour running waits on `tourStarted` instead.
+ */
 const settle = async (): Promise<void> => {
   await act(() => new Promise<void>((resolve) => setTimeout(resolve, 0)))
 }
+
+/** Settles when the hook calls `drive()`, however long its dynamic import takes. */
+let driven: Promise<void>
+const tourStarted = (): Promise<void> => act(() => driven)
 
 describe('useFirstRunTour', () => {
   beforeEach(() => {
@@ -68,6 +80,9 @@ describe('useFirstRunTour', () => {
     }))
     driveSpy.mockClear()
     destroySpy.mockClear()
+    driven = new Promise<void>((resolve) => {
+      announceDrive = resolve
+    })
     capturedConfig = undefined
     // jsdom lacks matchMedia
     vi.stubGlobal(
@@ -87,13 +102,13 @@ describe('useFirstRunTour', () => {
 
   it('starts the tour when the flag is unset', async () => {
     renderHook(() => useFirstRunTour())
-    await settle()
+    await tourStarted()
     expect(driveSpy).toHaveBeenCalledTimes(1)
   })
 
   it('sets the flag when the tour is destroyed (finish or skip)', async () => {
     renderHook(() => useFirstRunTour())
-    await settle()
+    await tourStarted()
     expect(localStorage.getItem(TOUR_KEY)).toBeNull()
     capturedConfig?.onDestroyed?.()
     expect(localStorage.getItem(TOUR_KEY)).toBe('1')
@@ -104,7 +119,7 @@ describe('useFirstRunTour', () => {
     window.addEventListener(STAR_PROMPT_EVENT, announced)
 
     renderHook(() => useFirstRunTour())
-    await settle()
+    await tourStarted()
     expect(localStorage.getItem(STAR_PROMPT_KEY)).toBeNull()
 
     capturedConfig?.onDestroyed?.()
@@ -120,7 +135,7 @@ describe('useFirstRunTour', () => {
     localStorage.setItem(STAR_PROMPT_KEY, 'done')
 
     renderHook(() => useFirstRunTour())
-    await settle()
+    await tourStarted()
     capturedConfig?.onDestroyed?.()
 
     expect(localStorage.getItem(STAR_PROMPT_KEY)).toBe('done')
@@ -139,7 +154,7 @@ describe('useFirstRunTour', () => {
   it('keeps only the welcome step and steps whose target is mounted', async () => {
     document.body.innerHTML = '<button data-tour="new-note">new</button>'
     renderHook(() => useFirstRunTour())
-    await settle()
+    await tourStarted()
 
     const steps = capturedConfig?.steps ?? []
     // welcome step has no element; new-note is mounted; everything else is absent
@@ -162,7 +177,7 @@ describe('useFirstRunTour', () => {
     document.querySelector('[data-tour="rsb-agent"]')?.addEventListener('click', agentClick)
 
     renderHook(() => useFirstRunTour())
-    await settle()
+    await tourStarted()
 
     const agentStep = capturedConfig?.steps?.find((s) => s.element === '[data-tour="rsb-agent"]')
     expect(agentStep).toBeDefined()
@@ -199,7 +214,7 @@ describe('useFirstRunTour', () => {
 
     it('never shows the tour again once finished, even after localStorage is lost', async () => {
       const firstLaunch = renderHook(() => useFirstRunTour())
-      await settle()
+      await tourStarted()
       expect(driveSpy).toHaveBeenCalledTimes(1)
       capturedConfig?.onDestroyed?.()
       await settle()
@@ -229,7 +244,7 @@ describe('useFirstRunTour', () => {
       })
 
       renderHook(() => useFirstRunTour())
-      await settle()
+      await tourStarted()
       capturedConfig?.onDestroyed?.()
       await settle()
 
@@ -309,31 +324,38 @@ describe('useFirstRunTour', () => {
   describe('cleanup', () => {
     /**
      * Real rAF semantics: a queued callback runs on the next frame unless it is
-     * cancelled first. `flush()` runs only the frames that survived.
+     * cancelled first. `flush()` runs only the frames that survived, and `queued`
+     * settles once the hook has asked for its first frame.
      */
-    const deferFrames = (): (() => void) => {
+    const deferFrames = (): { flush: () => void; queued: Promise<void> } => {
       const pending = new Map<number, FrameRequestCallback>()
       let nextHandle = 0
+      let announceQueued = (): void => {}
+      const queued = new Promise<void>((resolve) => {
+        announceQueued = resolve
+      })
       vi.stubGlobal('requestAnimationFrame', (cb: FrameRequestCallback) => {
         nextHandle += 1
+        announceQueued()
         pending.set(nextHandle, cb)
         return nextHandle
       })
       vi.stubGlobal('cancelAnimationFrame', (handle: number) => {
         pending.delete(handle)
       })
-      return () => {
+      const flush = (): void => {
         const frames = [...pending.values()]
         pending.clear()
         frames.forEach((cb) => cb(0))
       }
+      return { flush, queued }
     }
 
     it('cancels the queued frame when unmounted before the tour starts', async () => {
-      const flush = deferFrames()
+      const { flush, queued } = deferFrames()
 
       const { unmount } = renderHook(() => useFirstRunTour())
-      await settle()
+      await act(() => queued)
       unmount()
       flush()
 
@@ -350,7 +372,7 @@ describe('useFirstRunTour', () => {
 
     it('destroys the driver instance when unmounted while the tour is running', async () => {
       const { unmount } = renderHook(() => useFirstRunTour())
-      await settle()
+      await tourStarted()
       expect(driveSpy).toHaveBeenCalledTimes(1)
 
       unmount()
@@ -363,7 +385,7 @@ describe('useFirstRunTour', () => {
       window.addEventListener(STAR_PROMPT_EVENT, announced)
 
       const { unmount } = renderHook(() => useFirstRunTour())
-      await settle()
+      await tourStarted()
       unmount()
 
       expect(localStorage.getItem(TOUR_KEY)).toBeNull()
@@ -375,10 +397,10 @@ describe('useFirstRunTour', () => {
     })
 
     it('still starts exactly one tour when effects are double-invoked', async () => {
-      const flush = deferFrames()
+      const { flush, queued } = deferFrames()
 
       renderHook(() => useFirstRunTour(), { wrapper: StrictMode })
-      await settle()
+      await act(() => queued)
       flush()
 
       expect(driveSpy).toHaveBeenCalledTimes(1)
