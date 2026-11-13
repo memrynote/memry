@@ -146,6 +146,15 @@ impl LocalProvider {
     pub fn key(&self) -> Option<&str> {
         self.api_key.as_deref().map(String::as_str)
     }
+
+    /// `text` with the key replaced: a provider may echo the authorization header in its error
+    /// body. Redact the whole text before clipping it, or a clipped key prefix gets through.
+    pub fn redact(&self, text: String) -> String {
+        match self.key() {
+            Some(key) if !key.is_empty() => text.replace(key, "[key]"),
+            _ => text,
+        }
+    }
 }
 
 #[derive(Debug, thiserror::Error)]

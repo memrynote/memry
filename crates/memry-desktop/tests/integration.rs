@@ -22,6 +22,10 @@ mod activity_scan;
 mod ai_catalog;
 #[path = "ai_inline_settings.rs"]
 mod ai_inline_settings;
+#[path = "ai_local_agent.rs"]
+mod ai_local_agent;
+#[path = "ai_local_agent_guards.rs"]
+mod ai_local_agent_guards;
 #[path = "ai_local_provider.rs"]
 mod ai_local_provider;
 #[path = "ai_proxy.rs"]
@@ -163,6 +167,8 @@ mod large_file_index;
 mod large_file_search;
 #[path = "large_file_sessions.rs"]
 mod large_file_sessions;
+#[path = "local_agent_server.rs"]
+mod local_agent_server;
 #[path = "lock_outside_edits.rs"]
 mod lock_outside_edits;
 #[path = "lock_service.rs"]

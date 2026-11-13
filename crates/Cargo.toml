@@ -4,6 +4,7 @@ members = [
     "memry-core",
     "memry-cli",
     "memry-desktop",
+    "memry-ml",
     "memry-test-kit",
     "uniffi-bindgen-swift",
     "../apps/desktop-tauri/src-tauri",
@@ -56,6 +57,12 @@ time = "0.3"
 # `name_key` composes to NFC before folding (chapter 12 §12.3), as desktop's
 # `String.prototype.normalize` does.
 unicode-normalization = "0.1.25"
+# ONNX Runtime 1.31.0 for `memry-ml`, linked statically with the CPU execution provider only.
+# Linking is per target (crates/AGENTS.md, ONNX Runtime); `memry-ml` adds the target features.
+# `=` because each ort-sys release pins one ONNX Runtime version and its prebuilt archives.
+ort = { version = "=2.0.0-rc.15", default-features = false, features = ["std", "tracing", "api-31"] }
+# The EmbeddingGemma 2 tokenizer (`tokenizer.json`, BPE with byte fallback).
+tokenizers = { version = "0.23.2", default-features = false, features = ["onig"] }
 # Pinned with `vpk` (same version): the pack format and the client must agree.
 velopack = "=1.2.161"
 
