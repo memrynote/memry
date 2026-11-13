@@ -51,12 +51,12 @@ impl PullLoop {
     }
 
     /// Refetches the records another core build refused
-    /// ([`refused_items::retryable`]) at the start of a run, as desktop's
+    /// ([`refused_items::take_retryable`]) at the start of a run, as desktop's
     /// `retrySchemaInvalidItems` does at pull start
     /// (`apps/desktop/src/main/sync/engine/pull-coordinator.ts:182`). A failure
     /// is logged and the run goes on to the feed, as desktop's does
-    /// (`corrupt-item-tracker.ts:291-297`): the entries stay for the next run,
-    /// and the outbox still pushes.
+    /// (`corrupt-item-tracker.ts:291-297`): the entries stay, retried after
+    /// the cooldown, and the outbox still pushes.
     pub(super) async fn retry_refused(&self) {
         if let Err(error) = self.refetch_refused().await {
             eprintln!("memry-core: refetching refused records failed, they stay ledgered: {error}");
@@ -64,16 +64,17 @@ impl PullLoop {
     }
 
     /// Each requested `(type, id)` the server returned is applied: resolved
-    /// when it applies or its clock decides it, recorded under this build when
-    /// it is refused again, and kept as it is when it does not decode or
-    /// applies corrupt or expired. One the server answered in full without is
-    /// resolved as gone (desktop's `missing`). A response that is not a pull
-    /// envelope keeps every entry. Other types under a requested id are not
-    /// read (`corrupt-item-tracker.ts:216-223`).
+    /// when it applies, expires or its clock decides it, recorded under this
+    /// build when it is refused again, and kept, under its old build and the
+    /// retry cooldown, when it does not decode or applies corrupt. One the
+    /// server answered in full without is resolved as gone (desktop's
+    /// `missing`). A response that is not a pull envelope, or a failed
+    /// request, keeps every entry under the cooldown. Other types under a
+    /// requested id are not read (`corrupt-item-tracker.ts:216-223`).
     async fn refetch_refused(&self) -> Result<(), PullError> {
         let requested: BTreeSet<(String, String)> = self
             .db
-            .call(|conn| refused_items::retryable(conn, CORE_BUILD))
+            .call(|conn| refused_items::take_retryable(conn, CORE_BUILD, now_ms()))
             .await?
             .into_iter()
             .collect();

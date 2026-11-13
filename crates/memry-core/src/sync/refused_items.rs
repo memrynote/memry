@@ -71,23 +71,34 @@ pub(crate) fn resolve(
     .map_err(failed)
 }
 
-/// The `(type, id)` of every entry another core build refused, which this one
-/// refetches.
-pub(crate) fn retryable(
+/// How long a kept entry waits before the next refetch: desktop's
+/// `CORRUPT_ITEM_COOLDOWN_MS`
+/// (`apps/desktop/src/main/sync/engine/schema-invalid-ledger.ts:88-90`).
+pub const RETRY_COOLDOWN_MS: i64 = 3_600_000;
+
+/// The `(type, id)` of every entry another core build refused and not tried
+/// within [`RETRY_COOLDOWN_MS`], stamped as tried at `now_ms`. An entry the
+/// refetch does not settle keeps its build and waits out the cooldown.
+pub(crate) fn take_retryable(
     conn: &Connection,
     build: &str,
+    now_ms: i64,
 ) -> Result<Vec<(String, String)>, StorageError> {
     let mut statement = conn
         .prepare(
-            "SELECT item_type, item_id FROM sync_refused_items
-             WHERE refused_by_version <> ?1 ORDER BY item_type, item_id",
+            "UPDATE sync_refused_items SET refused_at = ?3
+             WHERE refused_by_version <> ?1 AND refused_at <= ?2
+             RETURNING item_type, item_id",
         )
         .map_err(failed)?;
-    let pairs = statement
-        .query_map(params![build], |row| Ok((row.get(0)?, row.get(1)?)))
+    let mut pairs = statement
+        .query_map(params![build, now_ms - RETRY_COOLDOWN_MS, now_ms], |row| {
+            Ok((row.get(0)?, row.get(1)?))
+        })
         .map_err(failed)?
         .collect::<Result<Vec<(String, String)>, _>>()
         .map_err(failed)?;
+    pairs.sort();
     Ok(pairs)
 }
 

@@ -4,8 +4,10 @@
 --
 -- One row per pulled record this build's schema refused: the record was not
 -- applied, the local row was left as it was, and the cursor moved past it. The
--- pull refetches every row whose `refused_by_version` is not the running app
--- version, so a newer peer's shape lands once a build understands it.
+-- pull refetches every row whose `refused_by_version` is not the running core
+-- build (`<package version>+<tree hash>`, `crates/memry-core/build.rs`), so a
+-- newer peer's shape lands once a build understands it. `refused_at` is also
+-- the last refetch, which an entry that stays waits an hour after.
 --
 -- Additive only: one new table, no existing table or row touched, no backfill.
 -- An older build never reads it.

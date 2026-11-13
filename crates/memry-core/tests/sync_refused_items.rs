@@ -97,7 +97,14 @@ async fn try_run(
         "https://sync.example",
         ClientIdentity::new("desktop", version).expect("a valid identity"),
     );
-    let declared = ["note", TYPE, "home_page", "canvas", "vault_lock"];
+    let declared = [
+        "note",
+        TYPE,
+        "home_page",
+        "canvas",
+        "vault_lock",
+        "task_activity",
+    ];
     let pull = PullLoop::new(
         Arc::new(http),
         db.clone(),
@@ -171,14 +178,29 @@ fn entry(id: &str, build: &str) -> RefusedItem {
     entry_of(TYPE, id, build)
 }
 
-/// Plays an entry an older core build left behind.
+/// Plays an entry an older core build left behind, past the retry cooldown.
 fn as_older_build(db: &Db) {
     db.call_blocking(|conn| {
         conn.execute(
-            "UPDATE sync_refused_items SET refused_by_version = ?1",
+            "UPDATE sync_refused_items SET refused_by_version = ?1, refused_at = 0",
             [OLDER_BUILD],
         )
         .expect("re-stamp");
+        Ok(())
+    })
+    .expect("write");
+}
+
+/// An entry an older core build left for an item with no local row.
+fn seed_older_entry(db: &Db, item_type: &str, id: &str) {
+    let (item_type, id) = (item_type.to_owned(), id.to_owned());
+    db.call_blocking(move |conn| {
+        conn.execute(
+            "INSERT INTO sync_refused_items (item_type, item_id, refused_by_version, refused_at)
+             VALUES (?1, ?2, ?3, 0)",
+            [item_type.as_str(), id.as_str(), OLDER_BUILD],
+        )
+        .expect("seed");
         Ok(())
     })
     .expect("write");
@@ -344,6 +366,52 @@ async fn a_refetched_record_that_does_not_decode_stays_ledgered() {
     assert_eq!(local_state(&db, &id), before, "no corrupt flag");
 }
 
+/// VERIFY-4453 item 1: a kept entry waits out desktop's one-hour cooldown
+/// (`schema-invalid-ledger.ts:88-90`) instead of a refetch on every pass.
+#[tokio::test]
+async fn a_kept_entry_is_refetched_once_across_two_passes() {
+    let db = scratch_db();
+    let id = refused_by_older_build(&db).await;
+
+    let malformed = json!({"id": id, "type": TYPE});
+    let script = vec![pulled_items(vec![malformed]), changes(&[], "11")];
+    let (_, first) = run(&db, "1.0.0", &accepted_shape(), script).await;
+    let (_, second) = run(&db, "1.0.0", &accepted_shape(), vec![changes(&[], "12")]).await;
+
+    assert_eq!(first.calls_to("/sync/pull").len(), 1);
+    assert!(second.calls_to("/sync/pull").is_empty(), "cooling down");
+    assert_eq!(ledger(&db), vec![entry(&id, OLDER_BUILD)]);
+}
+
+/// VERIFY-4453 item 7: a refetched record that applies corrupt keeps its
+/// entry for a later build.
+#[tokio::test]
+async fn a_refetched_record_that_applies_corrupt_keeps_its_entry() {
+    let db = scratch_db();
+    seed_older_entry(&db, TYPE, "draft-gone");
+
+    let script = vec![pulled(&["draft-gone"]), changes(&[], "11")];
+    run(&db, "1.0.0", &json!("not an object"), script).await;
+
+    assert_eq!(ledger(&db), vec![entry("draft-gone", OLDER_BUILD)]);
+}
+
+/// VERIFY-4453 item 1: an expired record is final, so its entry is resolved.
+#[tokio::test]
+async fn a_refetched_record_that_expired_resolves_its_entry() {
+    let db = scratch_db();
+    seed_older_entry(&db, "task_activity", "activity-1");
+
+    let old = json!({"taskId": "t", "createdAt": "2000-01-01T00:00:00.000Z", "clock": {"peer": 1}});
+    let script = vec![
+        pulled_items(vec![envelope_of("task_activity", "activity-1")]),
+        changes(&[], "11"),
+    ];
+    run(&db, "1.0.0", &old, script).await;
+
+    assert!(ledger(&db).is_empty());
+}
+
 /// Review item 6: a refetch by id answers every type under it; only the
 /// requested `(type, id)` is read.
 #[tokio::test]
@@ -461,6 +529,8 @@ async fn a_canvas_scene_that_is_not_text_is_ledgered() {
     ledgers("canvas", "canvas-1", payload).await;
 }
 
+/// `vault_lock` applies only in the desktop build (`src/sync/apply.rs:469`).
+#[cfg(feature = "markdown")]
 #[tokio::test]
 async fn a_vault_lock_target_kind_that_is_not_text_is_ledgered() {
     let payload = json!({"targetKind": 5, "target": "x", "locked": true, "clock": {"peer": 1}});

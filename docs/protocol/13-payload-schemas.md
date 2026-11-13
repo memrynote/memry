@@ -74,23 +74,33 @@ row is left as it is, and the pull records it by type, id and core build in
 `sync_refused_items`
 (`crates/memry-core/src/storage/migrations/data/0030_sync_refused_items.sql:12-18`,
 `crates/memry-core/src/sync/pull/apply_step.rs:47`). The core build is
-`<package version>+<git commit>`, stamped at compile time
-(`crates/memry-core/build.rs:32-43`,
-`crates/memry-core/src/sync/refused_items.rs:27`), not the app version of the
-`x-memry-client` header: the refusal is the core's decision, and iOS reports one
-marketing version across its builds. The first page of every run refetches by
-id each `(type, id)` another core build recorded, and reads only the requested
-pairs (`crates/memry-core/src/sync/pull.rs:233`,
-`crates/memry-core/src/sync/pull/apply_step.rs:73-121`). A failed refetch is
-logged and the run goes on to the feed with every entry kept
+`<package version>+<tree hash>`, where the tree hash is git's hash of
+`crates/memry-core` at HEAD, stamped at compile time
+(`crates/memry-core/build.rs:40-58`,
+`crates/memry-core/src/sync/refused_items.rs:27`). It is not the app version of
+the `x-memry-client` header: the refusal is the core's decision, and iOS reports
+one marketing version across its builds. The first page of every run refetches
+by id each `(type, id)` another core build recorded and nobody tried within the
+last hour, desktop's `CORRUPT_ITEM_COOLDOWN_MS`, and stamps it as tried
+(`crates/memry-core/src/sync/pull.rs:233`,
+`crates/memry-core/src/sync/refused_items.rs:77-103`). It reads only the
+requested pairs (`crates/memry-core/src/sync/pull/apply_step.rs:74-122`). A
+failed refetch is logged and the run goes on to the feed with every entry kept
 (`crates/memry-core/src/sync/pull/apply_step.rs:60-64`). Three things resolve
-an entry: an apply or a clock decision of the record
-(`crates/memry-core/src/sync/apply.rs:222-225`), a tombstone of it, typed, bare
-or untyped (`:182`, `:201`, `:231`), and a refetch the server answered in full
-without it (`crates/memry-core/src/sync/pull/apply_step.rs:112-119`). A returned
-record that does not decode, or applies corrupt or expired, keeps its entry
-under the older build and is retried on the next run, and its local row is not
-flagged corrupt (`crates/memry-core/src/sync/pull/apply_step.rs:99-106`).
+an entry: an apply, an expiry or a clock decision of the record
+(`crates/memry-core/src/sync/apply.rs:222-229`), a tombstone of it, typed, bare
+or untyped (`:182`, `:201`, `:235`), and a refetch that did not return it
+(`crates/memry-core/src/sync/pull/apply_step.rs:113-120`). A pair the server
+lists in `blobMissing` (chapter 05 §5.12.4) is not returned, so Rust resolves
+it as gone where desktop keeps it as `blob_missing` and refetches it on the
+cooldown. Nothing is lost by that: the server has no payload to send, the local
+row stays, and only an accepted push of the item refills the server row, at a
+new cursor that the feed delivers, where a refusal is ledgered again. A
+returned record that does not decode keeps its entry under the older build and
+the cooldown, and its local row is not flagged corrupt
+(`crates/memry-core/src/sync/pull/apply_step.rs:100-107`). One that decodes but
+applies as corrupt keeps its entry the same way, and that apply does flag the
+row corrupt, as on any pull (`crates/memry-core/src/sync/apply.rs:488`).
 
 ### 13.2.1 Desktop meets the obligation by a different mechanism (#2183)
 
@@ -574,7 +584,7 @@ The Rust core projects it as `Field::opt_null("schema", Kind::Any)` with no
 column (`crates/memry-core/src/storage/repositories/projectors/taxonomy.rs:64`).
 It runs §6.3.1's document gate on the rest of the definition, then joins
 `schema` by chapter 06 §6.11 on every apply path, the skip included, and heals
-(`crates/memry-core/src/sync/apply.rs:462-464`, `:510-521`,
+(`crates/memry-core/src/sync/apply.rs:466-468`, `:514-525`,
 `crates/memry-core/src/sync/versioned_apply.rs:46`, `:74`). A schema edit
 stamps `t` one past the stored value's
 (`crates/memry-core/src/domain/tag_schema/edit.rs:97`,

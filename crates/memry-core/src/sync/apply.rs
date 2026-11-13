@@ -219,8 +219,12 @@ pub(crate) fn apply_page(
                             .push((record.item_type.clone(), record.item_id.clone()));
                     }
                 }
-                // Read and decided: an earlier refusal is settled.
-                if matches!(outcome, ApplyOutcome::Applied | ApplyOutcome::Skipped) {
+                // Read and decided, or expired for good: an earlier refusal is
+                // settled.
+                if matches!(
+                    outcome,
+                    ApplyOutcome::Applied | ApplyOutcome::Skipped | ApplyOutcome::Expired
+                ) {
                     refused_items::resolve(conn, &record.item_type, &record.item_id)?;
                 }
             }
