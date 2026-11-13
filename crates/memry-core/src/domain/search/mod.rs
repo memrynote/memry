@@ -67,6 +67,8 @@ pub mod block_refs;
 mod links;
 mod literal_links;
 mod maintenance;
+#[cfg(feature = "markdown")]
+pub mod portal_reads;
 
 pub use links::LinkChanges;
 #[doc(hidden)]

@@ -107,6 +107,7 @@ fn changes(sources: &[&str], targets: &[&str]) -> search::LinkChanges {
     search::LinkChanges {
         sources: set(sources),
         targets: set(targets),
+        usage: Default::default(),
     }
 }
 

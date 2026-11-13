@@ -23,6 +23,7 @@ pub mod local_only;
 pub mod mentions;
 pub mod moves;
 pub(crate) mod owed_moves;
+pub mod portals;
 pub mod positions;
 pub mod properties;
 pub mod property_definitions;

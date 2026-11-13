@@ -1,6 +1,9 @@
 use std::sync::{Arc, Mutex};
 
-use memry_tauri::events::{broadcast, send_to};
+use memry_desktop::notes::index::LinkChanges;
+use memry_tauri::events::{
+    NoteLinksChangedEvent, PortalsUsageChangedEvent, announce_links, broadcast, send_to,
+};
 use serde::{Deserialize, Serialize};
 use tauri::test::mock_app;
 use tauri::{Listener, WebviewUrl, WebviewWindowBuilder};
@@ -55,4 +58,39 @@ fn events_send_to_targets_one_label_and_never_errors() {
     send_to(app.handle(), "missing", TestPingEvent { n: 2 });
 
     assert_eq!(*hits.lock().expect("lock"), (1, 0));
+}
+
+#[test]
+fn a_reindex_that_moved_only_portal_usage_sends_no_links_event() {
+    let app = mock_app();
+    let heard = Arc::new(Mutex::new(Vec::new()));
+    for name in [NoteLinksChangedEvent::NAME, PortalsUsageChangedEvent::NAME] {
+        let sink = Arc::clone(&heard);
+        app.listen_any(name, move |_| sink.lock().expect("lock").push(name));
+    }
+    let ids = |list: &[&str]| list.iter().map(|id| (*id).to_owned()).collect();
+    let sent = |links: LinkChanges| {
+        announce_links(app.handle(), links);
+        std::mem::take(&mut *heard.lock().expect("lock"))
+    };
+
+    let usage = LinkChanges {
+        usage: ids(&["src"]),
+        ..LinkChanges::default()
+    };
+    assert_eq!(sent(usage), [PortalsUsageChangedEvent::NAME]);
+    let links = LinkChanges {
+        targets: ids(&["b"]),
+        ..LinkChanges::default()
+    };
+    assert_eq!(sent(links), [NoteLinksChangedEvent::NAME]);
+    let both = LinkChanges {
+        sources: ids(&["a"]),
+        targets: ids(&["b"]),
+        usage: ids(&["b"]),
+    };
+    assert_eq!(
+        sent(both),
+        [PortalsUsageChangedEvent::NAME, NoteLinksChangedEvent::NAME]
+    );
 }

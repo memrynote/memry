@@ -30,7 +30,11 @@ use crate::crdt::errors::CrdtError;
 use crate::crdt::registry::UpdateSink;
 use crate::crdt::{epoch, markdown_seed, update_log};
 use crate::domain::notes::ITEM_TYPE;
+#[cfg(feature = "markdown")]
+use crate::domain::notes::journal_day::body_owner;
 use crate::domain::reads;
+#[cfg(feature = "markdown")]
+use crate::portal;
 use crate::sync::outbox;
 
 /// Applies one block edit to a note's body. A locked note refuses it
@@ -137,6 +141,52 @@ pub fn append_markdown(
     append_in(&tx, ITEM_TYPE, note_id, &update, now_ms)?;
     tx.commit().map_err(storage_failed)?;
     Ok(true)
+}
+
+/// Gives the block `block_id` of a note or journal day its ` ^anchor` ([`portal::stamp_anchor`])
+/// and stores the edit with its outbox row, queued under the owner's item type: the source half
+/// of a block portal (desktop `stampAnchor`, which reads both from `note_cache`). A block that
+/// already has one is answered with it and nothing is written.
+///
+/// - Returns: `None` when this vault holds no live markdown note or journal day by that id, as
+///   [`edit_block`] answers `false`: a PDF or image note has no blocks. A locked one refuses
+///   ([`CrdtError::Locked`]).
+#[cfg(feature = "markdown")]
+pub fn stamp_anchor(
+    conn: &Connection,
+    note_id: &str,
+    block_id: &str,
+    device_id: &str,
+    now_ms: i64,
+) -> Result<Option<portal::StampOutcome>, CrdtError> {
+    let Some(owner) = body_owner(conn, note_id)? else {
+        return Ok(None);
+    };
+    if owner.item_type == ITEM_TYPE {
+        let markdown: bool = conn
+            .query_row(
+                "SELECT COALESCE(f.file_type, n.file_type, 'markdown') = 'markdown'
+                 FROM notes n LEFT JOIN note_files f ON f.note_id = n.id WHERE n.id = ?1",
+                [note_id],
+                |row| row.get(0),
+            )
+            .map_err(storage_failed)?;
+        if !markdown {
+            return Ok(None);
+        }
+    }
+    refuse_locked(conn, note_id)?;
+    let mut outcome = portal::StampOutcome::MissingBlock;
+    let update = author_with(conn, note_id, device_id, |document| {
+        outcome = portal::stamp_anchor(document, block_id)?;
+        Ok(())
+    })?;
+    if let Some(update) = update {
+        let tx = conn.unchecked_transaction().map_err(storage_failed)?;
+        append_in(&tx, owner.item_type, note_id, &update, now_ms)?;
+        tx.commit().map_err(storage_failed)?;
+    }
+    Ok(Some(outcome))
 }
 
 /// Authors the update that appends `snapshots`, in order, to `doc_id`'s
