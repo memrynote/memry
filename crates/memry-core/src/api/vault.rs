@@ -125,6 +125,7 @@ impl Vault {
             session,
             self.directory.clone(),
             declaration,
+            self.at_rest_key.clone(),
         ))
     }
 
@@ -132,8 +133,29 @@ impl Vault {
     /// their text under (chapter 04 §4.17), or removes it with `None`. Desktop
     /// calls it at sync start and at agent bootstrap. Not on the FFI surface:
     /// a key never crosses it.
-    pub fn set_at_rest_key(&self, key: Option<Zeroizing<[u8; 32]>>) {
+    ///
+    /// Installing a key seals every agent record a pull stored while none was
+    /// installed and returns how many; removing it returns 0.
+    pub fn set_at_rest_key(&self, key: Option<Zeroizing<[u8; 32]>>) -> Result<usize, StorageError> {
+        let installed = key.is_some();
         self.at_rest_key.set(key);
+        if !installed {
+            return Ok(0);
+        }
+        let key = self.at_rest_key.clone();
+        self.db.call_blocking(move |conn| {
+            crate::domain::agent_records::seal_pending(
+                conn,
+                &key,
+                crate::api::tasks_write::now_ms(),
+            )
+            .map_err(|error| match error {
+                crate::domain::agent_records::AgentError::Storage(error) => error,
+                other => StorageError::Failed {
+                    what: other.to_string(),
+                },
+            })
+        })
     }
 
     /// The installed at-rest key, shared with the agent writers that seal

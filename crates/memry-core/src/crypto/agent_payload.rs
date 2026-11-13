@@ -107,6 +107,28 @@ pub fn open_object(
     Ok(())
 }
 
+/// The `outbox.last_error` prefix of an agent row a push could not open, so
+/// installing a key can release it from its backoff.
+pub const HELD_REASON: &str = "held until it opens";
+
+/// A stored payload's text with its sealed keys opened, the bytes a push
+/// encrypts for the wire. `None` when there is nothing to open: another type,
+/// or a payload that is not an object (the push decides what that means).
+pub fn open_payload(
+    item_type: &str,
+    payload: &str,
+    key: &AtRestKey,
+) -> Result<Option<String>, SealError> {
+    if sealed_keys(item_type).is_empty() {
+        return Ok(None);
+    }
+    let Ok(Value::Object(mut object)) = serde_json::from_str::<Value>(payload) else {
+        return Ok(None);
+    };
+    open_object(item_type, &mut object, key)?;
+    Ok(Some(Value::Object(object).to_string()))
+}
+
 fn sealable(purpose: Purpose, value: &Value) -> bool {
     match purpose {
         Purpose::ConversationTitle => value.is_string(),

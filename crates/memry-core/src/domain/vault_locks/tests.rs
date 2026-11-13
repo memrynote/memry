@@ -51,7 +51,14 @@ fn folders(conn: &Connection) -> Vec<String> {
 }
 
 fn pull(conn: &Connection, item: Pending) -> Result<ApplyTotals, StorageError> {
-    apply_page(conn, vec![item], vec![], NOW + 10, Some("device-a"))
+    apply_page(
+        conn,
+        vec![item],
+        vec![],
+        NOW + 10,
+        Some("device-a"),
+        &crate::crypto::agent_envelope::AtRestKey::default(),
+    )
 }
 
 fn remote(id: &str, body: Value) -> Pending {

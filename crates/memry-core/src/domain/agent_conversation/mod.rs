@@ -150,7 +150,8 @@ pub fn update_fields(
             .into_iter()
             .filter_map(|field| Some((field, Change::Set(changed.get(field)?.clone()))))
             .collect();
-        let field_clocks = next_field_clocks(stored.object(), &SYNCABLE_FIELDS, &touched, device_id)?;
+        let field_clocks =
+            next_field_clocks(stored.object(), &SYNCABLE_FIELDS, &touched, device_id)?;
         changes.push(("fieldClocks", Change::Set(field_clocks)));
         changes.push(("updatedAt", Change::set(now_ms)));
         desktop_records::edit(tx, ITEM_TYPE, id, &stored, changes, device_id, now_ms).map(drop)
@@ -186,7 +187,11 @@ pub fn soft_delete(
 }
 
 /// One live conversation by id.
-pub fn get(conn: &Connection, key: &AtRestKey, id: &str) -> Result<Option<Conversation>, AgentError> {
+pub fn get(
+    conn: &Connection,
+    key: &AtRestKey,
+    id: &str,
+) -> Result<Option<Conversation>, AgentError> {
     if !is_live(conn, id)? {
         return Ok(None);
     }
@@ -242,9 +247,17 @@ fn from_payload(id: &str, payload: &Object) -> Conversation {
         trust_list: payload
             .get("trustList")
             .and_then(Value::as_array)
-            .map(|items| items.iter().filter_map(|item| item.as_str().map(str::to_owned)).collect())
+            .map(|items| {
+                items
+                    .iter()
+                    .filter_map(|item| item.as_str().map(str::to_owned))
+                    .collect()
+            })
             .unwrap_or_default(),
-        pinned: payload.get("pinned").and_then(Value::as_bool).unwrap_or(false),
+        pinned: payload
+            .get("pinned")
+            .and_then(Value::as_bool)
+            .unwrap_or(false),
         created_at: number("createdAt"),
         updated_at: number("updatedAt"),
     }

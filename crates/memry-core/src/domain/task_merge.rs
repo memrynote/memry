@@ -307,7 +307,7 @@ pub(crate) fn next_field_clocks(
 ///
 /// An unparseable clock is an error and never an empty clock: an empty one
 /// lowers `clockTotal` and changes the winner (§6.10).
-fn stored_clock(stored: &Object) -> Result<Option<VectorClock>, StorageError> {
+pub(crate) fn stored_clock(stored: &Object) -> Result<Option<VectorClock>, StorageError> {
     match stored.get("clock") {
         None | Some(Value::Null) => Ok(None),
         Some(value) => serde_json::from_value(value.clone())

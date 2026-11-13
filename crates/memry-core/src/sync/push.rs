@@ -36,6 +36,8 @@ use std::sync::atomic::{AtomicUsize, Ordering};
 use serde_json::{Value as Json, json};
 
 use crate::api::errors::{ApiError, StorageError};
+use crate::crypto::agent_envelope::AtRestKey;
+use crate::crypto::agent_payload::{HELD_REASON, open_payload};
 use crate::domain::notes::failed;
 use crate::domain::property_admin;
 use crate::protocol::envelope::{EnvelopeError, SyncOperation};
@@ -116,6 +118,9 @@ pub struct PushReport {
     pub rejected: usize,
     /// Rows that will never succeed and were acked locally (§A.2).
     pub retired: usize,
+    /// Sealed agent rows left queued because they could not be opened for
+    /// the wire: no at-rest key installed, or a value it does not open.
+    pub held: usize,
     pub crdt_updates: usize,
     /// The batch ceiling in force after the wave. Below
     /// [`PUSH_BATCH_SIZE`] iff a 5xx halved it.
@@ -123,6 +128,13 @@ pub struct PushReport {
     /// The wave stopped because the ladder reached [`MIN_PUSH_BATCH_SIZE`]
     /// and a single item still drew a 5xx.
     pub halvings: u32,
+}
+
+/// What [`PushCoordinator::build`] made of one queued row.
+enum Built {
+    Sealed(Json),
+    Retired(String),
+    Held(String),
 }
 
 /// The push half of a pass. One per vault.
@@ -133,6 +145,9 @@ pub struct PushCoordinator {
     declaration: Declaration,
     vault_id: Option<String>,
     snapshot_fallback: Option<Arc<dyn SnapshotFallback>>,
+    /// Opens the sealed keys of an agent record before it is sealed for the
+    /// wire (chapter 04 §4.17).
+    at_rest: AtRestKey,
     /// §5.6's ceiling. Lowered by a 5xx and **never raised**.
     ceiling: AtomicUsize,
     halvings: AtomicUsize,
@@ -152,6 +167,7 @@ impl PushCoordinator {
             declaration,
             vault_id: None,
             snapshot_fallback: None,
+            at_rest: AtRestKey::default(),
             ceiling: AtomicUsize::new(PUSH_BATCH_SIZE),
             halvings: AtomicUsize::new(0),
         }
@@ -160,6 +176,13 @@ impl PushCoordinator {
     /// The `X-Memry-Vault-Id` header's value, when a vault is selected (§5.2).
     pub fn with_vault(mut self, vault_id: &str) -> Self {
         self.vault_id = Some(vault_id.to_owned());
+        self
+    }
+
+    /// The vault key agent records are opened under. Without one a sealed
+    /// agent row waits in the outbox instead of retiring.
+    pub fn with_at_rest_key(mut self, key: AtRestKey) -> Self {
+        self.at_rest = key;
         self
     }
 
@@ -217,15 +240,25 @@ impl PushCoordinator {
         let mut sent: Vec<Collapsed> = Vec::with_capacity(items.len());
         for item in items {
             match self.build(&item).await? {
-                Ok(json) => {
+                Built::Sealed(json) => {
                     sealed.push(json);
                     sent.push(item);
+                }
+                // A sealed agent row that cannot be opened yet (no key, or
+                // not under this key) waits; retiring it would lose it.
+                Built::Held(reason) => {
+                    let ids = item.ids();
+                    let at = retry_at(now_ms(), item.row.attempt_count);
+                    report.held += ids.len();
+                    self.db
+                        .call(move |conn| outbox::defer(conn, &ids, &reason, Some(at)))
+                        .await?;
                 }
                 // §A.2: two rows retire forever rather than retrying — a row
                 // whose payload cannot be parsed, and a row rejected as too
                 // large. Both are acked locally with a recorded reason,
                 // because a retry reproduces the same failure for ever.
-                Err(reason) => {
+                Built::Retired(reason) => {
                     let ids = item.ids();
                     report.retired += ids.len();
                     self.db
@@ -295,8 +328,8 @@ impl PushCoordinator {
         Ok(())
     }
 
-    /// Reads the live row and seals it, or names why the row retires.
-    async fn build(&self, item: &Collapsed) -> Result<Result<Json, String>, PushError> {
+    /// Reads the live row and seals it, or names why the row retires or waits.
+    async fn build(&self, item: &Collapsed) -> Result<Built, PushError> {
         let item_type = item.row.item_type.clone();
         let item_id = item.row.item_id.clone();
         let row = self
@@ -307,14 +340,32 @@ impl PushCoordinator {
             // §6.5.2 P2 has no answer for a queued key whose row is gone:
             // there is nothing live to rebuild from, and inventing a payload
             // is the freeze the rule forbids.
-            return Ok(Err("no live sync_items row at send time".to_owned()));
+            return Ok(Built::Retired(
+                "no live sync_items row at send time".to_owned(),
+            ));
         };
         let operation = match operation_of(&item.row) {
             Some(operation) => operation,
-            None => return Ok(Err(format!("unknown outbox op `{}`", item.row.op))),
+            None => {
+                return Ok(Built::Retired(format!(
+                    "unknown outbox op `{}`",
+                    item.row.op
+                )));
+            }
         };
+        let mut row = row;
+        if let Some(payload) = &row.payload {
+            match open_payload(&row.item_type, payload, &self.at_rest) {
+                Ok(Some(opened)) => row.payload = Some(opened),
+                Ok(None) => {}
+                Err(error) => return Ok(Built::Held(format!("{HELD_REASON}: {error}"))),
+            }
+        }
         let pending = PendingRecord { operation, row };
-        Ok(self.sealer.seal_record(&pending).map_err(|e| e.to_string()))
+        Ok(match self.sealer.seal_record(&pending) {
+            Ok(json) => Built::Sealed(json),
+            Err(error) => Built::Retired(error.to_string()),
+        })
     }
 
     async fn retire_one(&self, id: i64, reason: &str) -> Result<(), PushError> {
@@ -492,69 +543,4 @@ fn now_ms() -> i64 {
 }
 
 #[cfg(test)]
-mod tests {
-    use super::*;
-    use crate::sync::outbox::RecordOp;
-
-    #[test]
-    fn only_the_three_internal_error_statuses_halve() {
-        let status = |status| ApiError::Status {
-            status,
-            code: None,
-            message: String::new(),
-        };
-        for retryable in [500, 502, 503] {
-            assert!(is_retryable_5xx(&status(retryable)));
-        }
-        // §0.6.1: a 501 is a deployment gap, not a transient fault.
-        for other in [400, 402, 404, 429, 501, 504] {
-            assert!(!is_retryable_5xx(&status(other)));
-        }
-    }
-
-    #[test]
-    fn the_retry_ladder_is_base_times_two_to_the_attempt_with_no_jitter() {
-        assert_eq!(retry_at(0, 0), DEFAULT_BASE_DELAY_MS as i64);
-        assert_eq!(retry_at(0, 1), 2 * DEFAULT_BASE_DELAY_MS as i64);
-        assert_eq!(retry_at(0, 2), 4 * DEFAULT_BASE_DELAY_MS as i64);
-        assert!(retry_at(100, 40) > 100, "the shift is clamped, not wrapped");
-    }
-
-    #[test]
-    fn an_upsert_is_an_update_on_the_wire() {
-        let row = |op: RecordOp| OutboxRow {
-            id: 1,
-            item_type: "task".to_owned(),
-            item_id: "t1".to_owned(),
-            op: op.as_str().to_owned(),
-            payload: None,
-            enqueued_at: 0,
-            attempt_count: 0,
-            last_error: None,
-            next_attempt_at: None,
-        };
-        assert_eq!(
-            operation_of(&row(RecordOp::Upsert)),
-            Some(SyncOperation::Update)
-        );
-        assert_eq!(
-            operation_of(&row(RecordOp::Delete)),
-            Some(SyncOperation::Delete)
-        );
-        assert_eq!(
-            operation_of(&row(RecordOp::Create)),
-            Some(SyncOperation::Create)
-        );
-    }
-
-    #[test]
-    fn a_rejection_reason_is_read_per_item() {
-        let body = json!({
-            "accepted": ["a"],
-            "rejected": [{"id": "b", "reason": REASON_REPLAY_DETECTED}],
-        });
-        assert_eq!(string_set(&body, "accepted"), vec!["a".to_owned()]);
-        assert_eq!(rejection_reason(&body, "b"), REASON_REPLAY_DETECTED);
-        assert_eq!(rejection_reason(&body, "c"), "rejected without a reason");
-    }
-}
+mod tests;

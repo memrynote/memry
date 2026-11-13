@@ -12,7 +12,7 @@ use serde_json::Value;
 
 use crate::api::errors::StorageError;
 use crate::crypto::agent_envelope::{AtRestKey, SealError};
-use crate::crypto::agent_payload::{open_object, seal_object};
+use crate::crypto::agent_payload::{HELD_REASON, open_object, seal_object};
 use crate::domain::notes::failed;
 use crate::storage::repositories::StoredPayload;
 use crate::storage::repositories::projectors::{self, ItemContext};
@@ -95,9 +95,10 @@ pub(crate) fn parse_object(record: &InboundRecord) -> Result<Object, StorageErro
 }
 
 /// Seals every agent record a pull stored while no key was installed, in its
-/// `sync_items` payload and its projection row, in one transaction. Returns
-/// how many records it sealed. Nothing is queued: the opened payload a push
-/// sends is the same either way.
+/// `sync_items` payload and its projection row, in one transaction, and
+/// releases the agent rows a push held back for want of a key. Returns how
+/// many records it sealed. Nothing is queued: the opened payload a push sends
+/// is the same either way.
 pub(crate) fn seal_pending(
     conn: &Connection,
     key: &AtRestKey,
@@ -145,6 +146,16 @@ pub(crate) fn seal_pending(
         projectors::project(&transaction, &item_type, item, &view)?;
         sealed += 1;
     }
+    // A push that found these rows sealed and no key held them back off
+    // (`sync::push`); with the key installed they can go on the next pass.
+    transaction
+        .execute(
+            "UPDATE outbox SET next_attempt_at = NULL
+             WHERE item_type IN ('agent_conversation', 'agent_message')
+               AND last_error LIKE ?1 || '%'",
+            params![HELD_REASON],
+        )
+        .map_err(failed)?;
     transaction.commit().map_err(failed)?;
     Ok(sealed)
 }

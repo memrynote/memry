@@ -80,7 +80,9 @@ fn agent_envelope_key_installed_on_the_vault_reaches_its_writers() {
 
     let file = vector_file("agent-envelope");
     let key = key(hex_field(&file, "keyHex"));
-    vault.set_at_rest_key(Some(Zeroizing::new(key)));
+    vault
+        .set_at_rest_key(Some(Zeroizing::new(key)))
+        .expect("install");
     let sealed = writer
         .seal(Purpose::ConversationTitle, "plan")
         .expect("seal");
@@ -96,7 +98,7 @@ fn agent_envelope_key_installed_on_the_vault_reaches_its_writers() {
         str_field(electron, "plaintext")
     );
 
-    vault.set_at_rest_key(None);
+    vault.set_at_rest_key(None).expect("remove");
     assert!(matches!(
         writer.open(Purpose::ConversationTitle, &sealed),
         Err(SealError::KeyUnavailable)
