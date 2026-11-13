@@ -91,6 +91,38 @@ owner: Kaan\n---\nThe body.\n";
     assert!(changes(&mut e).is_empty());
 }
 
+/// 2b3a512960: under a number definition, `rating: good` read back as `null`, and the record a
+/// set or a sync carried put `null` in place of the user's value. It reads back as the file's
+/// text, and a whole-record set that changes another key leaves it in the file and the record.
+#[test]
+fn a_value_its_type_cannot_show_reads_back_as_written_and_survives_a_set() {
+    let numbers = "---\nproperties:\n  rating:\n    type: number\n---\n";
+    let note = "---\nrating: good\nstage: Draft\n---\nThe body.\n";
+    let (e, notes, _) = opened(&[(".memry/properties.md", numbers), ("Plan.md", note)]);
+    let open = e.session.current().unwrap();
+    let id = id_at(&e, "Plan.md");
+
+    let shown = notes.properties(&open, &id).unwrap();
+    assert_eq!(shown[0].type_name, "number");
+    let base = record(&shown);
+    assert_eq!(
+        Value::Object(base.clone()),
+        json!({ "rating": "good", "stage": "Draft" })
+    );
+    assert_eq!(
+        synced(&e, &id),
+        json!({ "rating": "good", "stage": "Draft" })
+    );
+
+    let mut next = base.clone();
+    next.insert("stage".into(), json!("Done"));
+    let set = notes.set_properties(&open, &id, next, base).unwrap();
+    assert_eq!(e.read("Plan.md"), note.replace("Draft", "Done"));
+    let stored = json!({ "rating": "good", "stage": "Done" });
+    assert_eq!(Value::Object(set.properties), stored);
+    assert_eq!(synced(&e, &id), stored);
+}
+
 #[test]
 fn a_set_keeps_an_outside_edit_the_panel_had_not_shown() {
     let (e, notes, _) = opened(&[("Plan.md", NOTE)]);

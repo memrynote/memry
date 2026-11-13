@@ -28,7 +28,7 @@ use crate::api::errors::StorageError;
 use crate::domain::journal_ops::links::{self, BacklinkRow, OutgoingLink};
 use crate::domain::link_reads::{self, Incoming, LinkTarget, MentionSources};
 #[cfg(feature = "markdown")]
-use crate::domain::note_properties::{self, StoredProperty};
+use crate::domain::note_properties::{self, PropertyUse, StoredProperty};
 #[cfg(feature = "markdown")]
 use crate::domain::note_stats::{self, MeasuredFile, NoteStatsRow, StoredStats, Unindexed};
 #[cfg(feature = "markdown")]
@@ -303,6 +303,17 @@ impl Search {
     ) -> Result<Vec<String>, StorageError> {
         self.index
             .read_blocking(move |index| note_properties::holding(index, &names))
+    }
+
+    /// [`note_properties::usage`].
+    pub fn property_usage(&self) -> Result<Vec<PropertyUse>, StorageError> {
+        self.index.read_blocking(note_properties::usage)
+    }
+
+    /// [`note_properties::named`].
+    pub fn notes_with_property(&self, name: String) -> Result<Vec<(String, bool)>, StorageError> {
+        self.index
+            .read_blocking(move |index| note_properties::named(index, &name))
     }
 
     /// The definitions' types the `note_properties` rows were typed with

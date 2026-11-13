@@ -138,6 +138,8 @@ pub fn builder() -> Builder<Wry> {
             crate::commands::property_definitions::notes_ensure_property_definition,
             crate::commands::property_definitions::notes_get_calendar_property_names,
             crate::commands::property_definitions::notes_get_property_definitions,
+            crate::commands::property_definitions::notes_get_property_usage,
+            crate::commands::property_definitions::notes_list_notes_with_property,
             crate::commands::property_definitions::notes_remove_property_option,
             crate::commands::property_definitions::notes_rename_property_option,
             crate::commands::property_definitions::notes_set_calendar_property_visibility,

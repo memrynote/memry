@@ -240,6 +240,8 @@ vi.mock('../src/generated/bindings', () => {
       // Component tests answer the definition writes in Electron's envelope; a command answers
       // with the definition, or rejects.
       notesGetPropertyDefinitions: () => notes().getPropertyDefinitions(),
+      notesGetPropertyUsage: () => notes().getPropertyUsage(),
+      notesListNotesWithProperty: (name: string) => notes().listNotesWithProperty(name),
       notesCreatePropertyDefinition: async (input: unknown) =>
         definition(notes().createPropertyDefinition(input)),
       notesUpdatePropertyDefinition: async (input: unknown) =>
@@ -542,6 +544,8 @@ const createMockApi = () => ({
     openExternal: vi.fn().mockResolvedValue({ success: true }),
     revealInFinder: vi.fn().mockResolvedValue({ success: true }),
     getPropertyDefinitions: vi.fn().mockResolvedValue([]),
+    getPropertyUsage: vi.fn().mockResolvedValue([]),
+    listNotesWithProperty: vi.fn().mockResolvedValue([]),
     getCalendarPropertyNames: vi.fn().mockResolvedValue([]),
     createPropertyDefinition: vi.fn().mockResolvedValue({ success: true }),
     updatePropertyDefinition: vi.fn().mockResolvedValue({ success: true }),

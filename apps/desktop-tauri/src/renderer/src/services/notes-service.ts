@@ -52,6 +52,7 @@ import type {
   UndoTagTemplateResponse,
   UnlinkedMention
 } from '@memry/contracts/notes-api'
+import type { PropertyNoteUsage, PropertyUsage } from '@memry/contracts/properties-api'
 import { markdownPreviewText } from '@memry/shared/markdown-preview-text'
 import { getI18n } from 'react-i18next'
 import { toast } from 'sonner'
@@ -468,6 +469,9 @@ const ported = {
   }),
   getPropertyDefinitions: async (): Promise<PropertyDefinition[]> =>
     (await commands.notesGetPropertyDefinitions()).map(toDefinition),
+  getPropertyUsage: (): Promise<PropertyUsage[]> => commands.notesGetPropertyUsage(),
+  listNotesWithProperty: (name: string): Promise<PropertyNoteUsage[]> =>
+    commands.notesListNotesWithProperty(name),
   // A create or an update answers its failure as Electron's `registerCommand` does; the option
   // edits reject.
   createPropertyDefinition: async (
