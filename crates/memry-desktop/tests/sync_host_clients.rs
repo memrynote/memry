@@ -65,6 +65,10 @@ const ALLOWED: &[(&str, &str)] = &[
         "the inline AI provider the person picked or their local Ollama, the inline chat's requests",
     ),
     (
+        "crates/memry-desktop/src/ai/structured.rs",
+        "the inline AI provider's status reason only; its requests go through ai::proxy",
+    ),
+    (
         "apps/desktop-tauri/src-tauri/src/commands/ai.rs",
         "the inline AI provider the person picked or their local Ollama, through ai::catalog",
     ),
@@ -75,6 +79,14 @@ const ALLOWED: &[(&str, &str)] = &[
     (
         "crates/memry-desktop/src/ai/local_provider/probe.rs",
         "the local agent provider the person configured (loopback unless they confirmed another host)",
+    ),
+    (
+        "crates/memry-desktop/src/ai/local_agent/turn.rs",
+        "the local agent provider the person configured, on the ai::local_provider::probe client",
+    ),
+    (
+        "crates/memry-desktop/src/ai/local_agent/error_body.rs",
+        "the status of a failed local agent step; only the status type, no request",
     ),
     (
         "apps/desktop-tauri/src-tauri/src/commands/agent.rs",

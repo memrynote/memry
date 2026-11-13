@@ -41,14 +41,14 @@ fn locale<R: Runtime>(app: &AppHandle<R>) -> &'static str {
     app.state::<Arc<LocaleService>>().get()
 }
 
-fn text(locale: &str, key: &str, settings: &InlineAiSettings) -> String {
+pub(super) fn text(locale: &str, key: &str, settings: &InlineAiSettings) -> String {
     let name = settings.provider.name(&settings.base_url);
     let args = Args::from([("provider".to_owned(), Arg::from(name.as_str()))]);
     i18n::t(locale, key, &args)
 }
 
 /// A keychain failure reads the same whatever the cause; the code tells them apart.
-fn settings_error(locale: &str, error: AiSettingsError) -> CommandError {
+pub(super) fn settings_error(locale: &str, error: AiSettingsError) -> CommandError {
     match error {
         AiSettingsError::NoVault => {
             CommandError::new(ErrorKind::NotFound, "no_vault_open", error.to_string())
@@ -206,15 +206,24 @@ pub async fn ai_provider_request<R: Runtime>(
     request: AiProviderRequest,
     on_chunk: Channel<InvokeResponseBody>,
 ) -> Result<AiProviderHead, CommandError> {
-    let settings = {
-        let app = app.clone();
-        blocking("ai_provider_request", move || read(&app)).await?
-    };
     let proxy = app.state::<Arc<AiProxy>>().inner().clone();
+    // Taken before the read: a reload while it waits refuses the request at `open`.
+    let owner = proxy.owner(webview.label());
+    let read = {
+        let app = app.clone();
+        blocking("ai_provider_request", move || read(&app)).await
+    };
+    let settings = match read {
+        Ok(settings) => settings,
+        Err(error) => {
+            proxy.forget_cancel(&request.request_id);
+            return Err(error);
+        }
+    };
     let sink = Box::new(move |frame: memry_desktop::ai::proxy::Frame| {
         binary::send_chunk(&on_chunk, frame.encode()).is_ok()
     });
-    match proxy.open(&settings, request, webview.label(), sink).await {
+    match proxy.open(&settings, request, &owner, sink).await {
         Ok((head, body)) => {
             tauri::async_runtime::spawn(body);
             Ok(head)
@@ -272,6 +281,10 @@ fn proxy_error(locale: &str, settings: &InlineAiSettings, error: ProxyError) -> 
             "Request body too large".to_owned(),
         ),
         ProxyError::Cancelled => (ErrorKind::Invalid, "ai.cancelled", error.to_string()),
+        ProxyError::VaultClosed => (ErrorKind::Invalid, "ai.vaultClosed", error.to_string()),
+        ProxyError::AnswerTooLarge { .. } | ProxyError::BrokeOff(_) => {
+            (ErrorKind::Transport, "ai.brokeOff", error.to_string())
+        }
         ProxyError::ProviderChanged => {
             (ErrorKind::Invalid, "ai.providerChanged", error.to_string())
         }

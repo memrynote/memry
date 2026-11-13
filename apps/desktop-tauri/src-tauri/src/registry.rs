@@ -32,6 +32,9 @@ pub fn builder() -> Builder<Wry> {
             crate::commands::ai::ai_inline_set_settings::<Wry>,
             crate::commands::ai::ai_inline_test_connection,
             crate::commands::ai::ai_provider_cancel::<Wry>,
+            crate::commands::ai_structured::tags_fill_fields::<Wry>,
+            crate::commands::ai_structured::tags_fill_status::<Wry>,
+            crate::commands::ai_structured::writing_generate_assist::<Wry>,
             // app
             crate::commands::app::app_info,
             // crdt (`crdt_open_doc`, `crdt_apply_update` and the sync steps are binary commands)
@@ -61,6 +64,8 @@ pub fn builder() -> Builder<Wry> {
             crate::commands::shell_integrations::flush_ready,
             // fold
             crate::commands::fold::fold_run::<Wry>,
+            // ios beta
+            crate::commands::ios_beta::ios_beta_join,
             // journal
             crate::commands::journal::journal_create_entry::<Wry>,
             crate::commands::journal::journal_cross_into_notes::<Wry>,

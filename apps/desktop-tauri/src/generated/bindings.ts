@@ -47,6 +47,21 @@ export const commands = {
 	aiInlineTestConnection: () => __TAURI_INVOKE<TestConnectionResult>("ai_inline_test_connection"),
 	/**  Ends a provider call the renderer aborted, before or after its head. */
 	aiProviderCancel: (requestId: string) => __TAURI_INVOKE<void>("ai_provider_cancel", { requestId }),
+	/**
+	 *  Proposals for the empty fields of a note's header tags from the inline AI model. Writes
+	 *  nothing but the disclosure's acceptance; a model failure is the `failed` result.
+	 */
+	tagsFillFields: (input: FillFieldsInput) => __TAURI_INVOKE<FillFieldsResult>("tags_fill_fields", { input }),
+	/**
+	 *  Whether "Fill from note" shows, and what the first-run disclosure names. The key itself is
+	 *  only checked for presence.
+	 */
+	tagsFillStatus: () => __TAURI_INVOKE<FieldFillStatus>("tags_fill_status"),
+	/**
+	 *  Alternative wordings for a selection from the inline AI model. Never edits the note. A
+	 *  failure is `Invalid` with the translated reason the writing tools show.
+	 */
+	writingGenerateAssist: (input: WritingAssistInput) => __TAURI_INVOKE<WritingAssistResult>("writing_generate_assist", { input }),
 	appInfo: () => __TAURI_INVOKE<AppInfo>("app_info"),
 	/**  The calling window closed its editor of `note_id`. */
 	crdtCloseDoc: (noteId: string) => __TAURI_INVOKE<null>("crdt_close_doc", { noteId }),
@@ -97,6 +112,8 @@ export const commands = {
 	flushReady: () => __TAURI_INVOKE<null>("flush_ready"),
 	/**  The note or journal day folded for a reader who asked for `level`. */
 	foldRun: (noteId: string, level: FoldLevel) => __TAURI_INVOKE<FoldLayers>("fold_run", { noteId, level }),
+	/**  Sent without the account's token until Step 19 (#3536) provides the session token. */
+	iosBetaJoin: (input: IosBetaJoinInput) => __TAURI_INVOKE<IosBetaJoinResult>("ios_beta_join", { input }),
 	/**
 	 *  The day made on its first write; a day that has a file is answered as it is. A journal
 	 *  setting that followed its folder first (moved outside the app, or by a folder move a crash
@@ -1141,6 +1158,28 @@ export type FeedbackSubmitResult = {
 	error: string | null,
 };
 
+/**  `FieldFillProposal`. */
+export type FieldFillProposal = {
+	field: string,
+	/**  Ready for a property write; null for a relation whose target must be created first. */
+	value: Value,
+	/**  What the slot shows. */
+	display: string,
+	/**  The sentence of the note the value came from; '' when the model's quote is not in it. */
+	sourceText: string,
+	create?: FillCreate | null,
+};
+
+/**  `FieldFillStatus`: whether "Fill from note" shows, and what the disclosure names. */
+export type FieldFillStatus = {
+	/**  Inline AI is on with a configured provider. */
+	available: boolean,
+	model: string,
+	/**  The provider runs on this device (Ollama). */
+	local: boolean,
+	disclosureAccepted: boolean,
+};
+
 export type FieldOptionInput = {
 	value: string,
 	color: string,
@@ -1186,6 +1225,24 @@ export type FileView = {
 	transcription: string | null,
 	transcriptionStatus: TranscriptionStatus | null,
 };
+
+/**  A relation target no object matches: accepting creates a note with this title and tag. */
+export type FillCreate = {
+	title: string,
+	tag: string,
+};
+
+/**  `FillFieldsSchema` of `@memry/contracts/tag-fill-api`. */
+export type FillFieldsInput = {
+	noteId: string,
+	/**  Only this tag's group (its own and inherited fields); all field groups when absent. */
+	tag?: string | null,
+	/**  The user accepted the first-run disclosure with this request. */
+	acceptDisclosure?: boolean | null,
+};
+
+/**  `FillFieldsResult`. */
+export type FillFieldsResult = { kind: "proposals"; proposals: FieldFillProposal[] } | { kind: "disclosure-required"; model: string; local: boolean } | { kind: "unavailable" } | { kind: "failed"; message: string };
 
 /**
  *  Main asks a window to write its unsaved edits (`flush-requested-event`); the window answers with
@@ -1386,6 +1443,20 @@ export type InstallFailed = {
 	/**  The update that failed, or `None` when the marker did not record one. */
 	version: string | null,
 };
+
+/**  What the user typed and where (`IosBetaJoinInputSchema`). */
+export type IosBetaJoinInput = {
+	email: string,
+	source: IosBetaSource,
+};
+
+export type IosBetaJoinResult = {
+	success: boolean,
+	error: string | null,
+};
+
+/**  Where in the app the user asked for the invite (`IOS_BETA_SOURCES`). */
+export type IosBetaSource = "launch_prompt" | "settings" | "help_menu";
 
 export type ItemKind = "normal" | "separator";
 
@@ -3070,6 +3141,12 @@ export type WindowChromeStateChangedEvent = {
  *  alone until it is fixed).
  */
 export type WriteBackFailureReason = "write" | "frontmatter";
+
+/**  `WritingAssistInput` of `@memry/contracts/writing-tools-api`. */
+export type WritingAssistInput = { kind: "alternatives"; text: string; context: string };
+
+/**  `WritingAssistResult`. */
+export type WritingAssistResult = { kind: "alternatives"; alternatives: string[] };
 
 /* Tauri Specta runtime */
 type EventEmit<T> = [T] extends [null] ? () => Promise<void> : (payload: T) => Promise<void>;
