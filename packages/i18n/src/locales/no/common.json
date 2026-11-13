@@ -3,9 +3,6 @@
     "copyFailed": "Kunne ikke kopiere portalen",
     "hiddenCount": "{count} skjult",
     "windowFailed": "Portalen kunne ikke åpnes. Åpne kildenotatet i stedet.",
-    "noTarget": "Denne portalen har ikke noe mål ennå. Legg til et notat i definisjonen, eller fjern blokken.",
-    "invalidJson": "Definisjonen til denne portalen er ikke gyldig JSON. Rett den under, eller fjern blokken.",
-    "invalidShape": "Definisjonen til denne portalen har verken notat eller søk. Rett den under, eller fjern blokken.",
     "unreadable": "Denne portalen kan ikke leses. Fjern blokken og legg til en ny portal.",
     "search": {
       "editQuery": "Rediger søket",

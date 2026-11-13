@@ -433,10 +433,7 @@
       "empty": "Noch passt nichts zu dieser Ansicht.",
       "loadFailed": "Diese Ansicht konnte nicht geladen werden. Die Notizen selbst bleiben unverändert.",
       "folderMissing": "Dieser Ordner ist nicht mehr im Tresor. Wähle eine andere Quelle.",
-      "unreadable": "Diese Ansicht kann nicht gelesen werden. Wähle oben eine Quelle oder entferne den Block.",
-      "invalidJson": "Die Definition dieser Ansicht ist kein gültiges JSON. Korrigiere sie unten oder entferne den Block.",
-      "invalidShape": "Die Definition dieser Ansicht hat keine Quelle. Wähle oben eine aus oder korrigiere sie unten.",
-      "definition": "Definition"
+      "unreadable": "Diese Ansicht kann nicht gelesen werden. Wähle oben eine Quelle oder entferne den Block."
     },
     "chart": {
       "title": "Diagramm",
