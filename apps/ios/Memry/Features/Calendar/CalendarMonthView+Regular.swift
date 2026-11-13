@@ -43,16 +43,35 @@ extension CalendarMonthView {
 
 /// How many chips fit, as a pure rule so it can be pinned by tests.
 enum CalendarMonthFit {
+    /// The narrowest day column that still shows a titled chip: 22pt of chrome
+    /// (cell padding 4, the chip's rail and gap 10, its trailing inset 8) and
+    /// about 74pt of caption-semibold title, 11 characters ("Design sync").
+    /// Narrower, the chips clip to a few letters and say nothing.
+    static let minColumn: CGFloat = 96
+
+    /// A day column's width in a pane of `paneWidth` that carries the rail.
+    static func column(paneWidth: CGFloat) -> CGFloat {
+        (paneWidth - Tokens.Size.rail - 0.5 - Tokens.Space.small * 2) / 7
+    }
+
+    /// Whether the pane holds titled chips and the agenda rail side by side.
+    /// Below that the Month falls back to the list layout (the grid with
+    /// type dots, the agenda under it), which keeps every item reachable.
+    static func showsRail(paneWidth: CGFloat) -> Bool {
+        column(paneWidth: paneWidth) >= minColumn
+    }
+
     /// Chip rows a cell of `height` holds under its day number.
     static func slots(height: CGFloat, label: CGFloat, step: CGFloat) -> Int {
         guard step > 0 else { return 0 }
         return max(0, Int((height - label) / step))
     }
 
-    /// Span lanes a week shows: all that fit, else all but one row, which
-    /// the cells keep for "+N".
+    /// Span lanes a week shows: all that leave a row free, else all but one
+    /// row, which the cells keep for "+N". Lanes that fill every slot would
+    /// clip a cell's own "+N".
     static func lanes(_ count: Int, slots: Int) -> Int {
-        count <= slots ? count : max(slots - 1, 0)
+        count < slots ? count : max(slots - 1, 0)
     }
 
     /// A cell's own chips, and the "+N" for its items past the room plus its

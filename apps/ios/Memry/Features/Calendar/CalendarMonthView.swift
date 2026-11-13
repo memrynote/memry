@@ -5,8 +5,8 @@ import SwiftUI
 // bars under the days, the filled today, "N more"; a tap selects a day and
 // lists it below, a double tap opens Day, a long press + drag across days
 // quick-creates an all-day range. At regular width the cells carry titled
-// chips and the selected day lists in a side column (#4352,
-// `CalendarMonthView+Regular.swift`).
+// chips and the selected day lists in a side column, while the pane is wide
+// enough for both (#4352, `CalendarMonthView+Regular.swift`).
 
 struct CalendarMonthView: View {
     @Bindable var store: CalendarStore
@@ -23,13 +23,17 @@ struct CalendarMonthView: View {
         let items = store.items(in: window)
         let grid = CalendarDates.monthGrid(store.anchor, weekStartsOn: store.weekStartsOn)
         // AX text cannot fit titled chips: the list layout below holds at every width.
-        if LayoutWidth(horizontal: horizontalSizeClass, vertical: verticalSizeClass) == .regular, !typeSize.isAccessibilitySize {
-            regularLayout(grid: grid, items: items)
-                .gesture(pageGesture)
-                .accessibilityElement(children: .contain)
-                .accessibilityIdentifier("calendar.month")
-        } else {
-            compactLayout(grid: grid, items: items)
+        // So does a pane too narrow for titled chips beside the rail (`CalendarMonthFit.minColumn`).
+        GeometryReader { proxy in
+            if LayoutWidth(horizontal: horizontalSizeClass, vertical: verticalSizeClass) == .regular,
+               !typeSize.isAccessibilitySize, CalendarMonthFit.showsRail(paneWidth: proxy.size.width) {
+                regularLayout(grid: grid, items: items)
+                    .gesture(pageGesture)
+                    .accessibilityElement(children: .contain)
+                    .accessibilityIdentifier("calendar.month")
+            } else {
+                compactLayout(grid: grid, items: items)
+            }
         }
     }
 

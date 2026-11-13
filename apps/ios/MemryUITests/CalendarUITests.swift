@@ -10,7 +10,8 @@ import XCTest
 // not a pass: check the run's skip count before calling a UI plan green.
 //
 // Every event a test writes is titled `[agent] ui-<run>…` and deleted by the
-// same test (lane F), so a green run leaves nothing behind.
+// same test (lane F), so a green run leaves nothing behind. A teardown
+// block deletes it by that title when a lane fails before it does.
 @MainActor
 final class CalendarUITests: XCTestCase {
     let app = XCUIApplication()
@@ -322,8 +323,33 @@ final class CalendarUITests: XCTestCase {
         XCTAssertTrue(field.waitForExistence(timeout: 5))
         field.typeText(title)
         app.buttons["calendar.editor.save"].firstMatch.tap()
+        addTeardownBlock { [self] in removeLeftover(title) }
         XCTAssertTrue(chip(title).waitForExistence(timeout: 10), "the new event is not on the grid")
         return title
+    }
+
+    /// A lane that failed after `createEvent` would leave its `[agent]` event in the vault: delete it by title. A no-op once the lane deleted it.
+    private func removeLeftover(_ title: String) {
+        guard app.state == .runningForeground else { return }
+        for _ in 0 ..< 3 {
+            let sheet = element("calendar.sheet.event")
+            if !sheet.exists {
+                // The editor or a menu may still be up from the failed step.
+                if app.buttons["calendar.editor.save"].exists { app.buttons["calendar.editor.save"].firstMatch.tap() }
+                guard chip(title).waitForExistence(timeout: 2), chip(title).isHittable else { return }
+                chip(title).tap()
+                guard sheet.waitForExistence(timeout: 5) else { continue }
+            }
+            let more = app.buttons["calendar.sheet.more"].firstMatch
+            guard more.waitForExistence(timeout: 3) else { continue }
+            more.tap()
+            let delete = app.buttons["Delete event"].firstMatch
+            guard delete.waitForExistence(timeout: 3) else { continue }
+            delete.tap()
+            let confirm = app.alerts.buttons["Delete"].firstMatch
+            if confirm.waitForExistence(timeout: 3) { confirm.tap() }
+            if chip(title).waitForNonExistence(timeout: 5) { return }
+        }
     }
 
     private func deleteOpenEvent(_ title: String) {

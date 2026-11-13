@@ -98,9 +98,8 @@ struct CalendarScreen: View {
             }
         }
         .sheet(isPresented: $pickingDefault) { CalendarDefaultPickerSheet(store: store) }
-        .onChange(of: LayoutWidth(horizontal: horizontalSizeClass, vertical: verticalSizeClass), initial: true) { _, width in
-            store.state.openFirst(at: width)
-        }
+        // On appearing only: a window that widens while Calendar is open keeps the view it shows.
+        .onAppear { store.state.openFirst(at: LayoutWidth(horizontal: horizontalSizeClass, vertical: verticalSizeClass)) }
         .task { await start() }
         .task(id: loadKey) { await store.ensure(currentWindow) }
         .onChange(of: scenePhase) { _, phase in

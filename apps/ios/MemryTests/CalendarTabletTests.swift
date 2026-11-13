@@ -72,4 +72,39 @@ struct CalendarTabletTests {
         #expect(CalendarMonthFit.lanes(5, slots: 4) == 3)
         #expect(CalendarMonthFit.lanes(1, slots: 0) == 0)
     }
+
+    @Test func spans_that_would_fill_every_slot_leave_a_row_for_the_cells_more() {
+        // 3 lanes in 3 slots: the third lane hides, so a cell's one event still reads "1 more".
+        let lanes = CalendarMonthFit.lanes(3, slots: 3)
+        #expect(lanes == 2)
+        #expect(CalendarMonthFit.cell(slots: 3, lanes: lanes, items: 1, hiddenSpans: 1) == (0, 2))
+        #expect(CalendarMonthFit.cell(slots: 3, lanes: lanes, items: 2, hiddenSpans: 0) == (0, 2))
+        #expect(CalendarMonthFit.lanes(1, slots: 1) == 0)
+    }
+
+    @Test func four_spans_in_a_default_size_week_keep_the_more_row() {
+        // 4 slots is what a 13" portrait week holds at default size.
+        let slots = 4
+        let lanes = CalendarMonthFit.lanes(4, slots: slots)
+        #expect(lanes == 3)
+        let own = CalendarMonthFit.cell(slots: slots, lanes: lanes, items: 2, hiddenSpans: 1)
+        #expect(own.chips == 0)
+        #expect(own.more == 3)
+        #expect(lanes + (own.more > 0 ? 1 : 0) <= slots, "the rows the cell draws fit its slots")
+    }
+
+    @Test func the_month_keeps_its_agenda_rail_only_where_day_columns_hold_a_titled_chip() {
+        // 13" landscape and portrait, 11" landscape.
+        #expect(CalendarMonthFit.showsRail(paneWidth: 1376))
+        #expect(CalendarMonthFit.showsRail(paneWidth: 1032))
+        #expect(CalendarMonthFit.showsRail(paneWidth: 1194))
+        // 11" portrait, iPad mini portrait, and a 13" at half width.
+        #expect(!CalendarMonthFit.showsRail(paneWidth: 834))
+        #expect(!CalendarMonthFit.showsRail(paneWidth: 744))
+        #expect(!CalendarMonthFit.showsRail(paneWidth: 516))
+        // The edge: 7 columns of the floor, the rail, its hairline and the grid's inset.
+        let edge = CalendarMonthFit.minColumn * 7 + Tokens.Size.rail + 0.5 + Tokens.Space.small * 2
+        #expect(CalendarMonthFit.showsRail(paneWidth: edge))
+        #expect(!CalendarMonthFit.showsRail(paneWidth: edge - 1))
+    }
 }
