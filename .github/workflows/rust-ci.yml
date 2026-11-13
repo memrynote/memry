@@ -120,7 +120,7 @@ jobs:
         uses: ./.github/actions/paths-changed
         with:
           token: ${{ github.token }}
-          include: '^(crates/|apps/desktop-tauri/|tests/sync-harness/scripts/serve\.ts$|tests/sync-harness/src/|apps/sync-server/|pnpm-lock\.yaml$|packages/swift/|packages/contracts/test-vectors/|packages/article-extract/|scripts/check-line-ceilings\.mjs$|scripts/check-test-timing(\.test)?\.mjs$|\.github/workflows/rust-ci\.yml$)'
+          include: '^(crates/|apps/desktop-tauri/|tests/sync-harness/scripts/serve\.ts$|tests/sync-harness/src/|apps/sync-server/|pnpm-lock\.yaml$|packages/swift/|packages/contracts/test-vectors/|packages/article-extract/|scripts/check-line-ceilings\.mjs$|scripts/check-test-timing(\.test)?\.mjs$|\.github/workflows/rust-ci\.yml$|\.github/actions/ort-static/)'
 
   lint-and-test:
     name: Rust ${{ matrix.part }}${{ matrix.partition && format(' {0}', matrix.partition) || '' }} (${{ matrix.os }})
@@ -235,6 +235,14 @@ jobs:
       - name: Drop a partial cargo cache
         if: steps.cargo-cache.outcome == 'failure'
         run: rm -rf target "$HOME/.cargo/registry/cache" "$HOME/.cargo/registry/index" "$HOME/.cargo/git/db"
+
+      # memry-ml links ONNX Runtime statically. macOS x64 and Windows link the archive of
+      # build-ort-static.yml (ORT_LIB_LOCATION); the other legs download ort-sys's prebuilt one.
+      - name: ONNX Runtime static library
+        if: matrix.part != 'tests'
+        uses: ./.github/actions/ort-static
+        with:
+          token: ${{ github.token }}
 
       - name: Format
         if: matrix.part != 'tests' && runner.os == 'Linux'
@@ -452,6 +460,67 @@ jobs:
       - name: Clippy (memry-core, markdown feature)
         if: matrix.part != 'tests' && matrix.os != 'macos-15-intel'
         run: cargo clippy -p memry-core --all-targets --features markdown -- -D warnings
+
+      # Builds the ONNX Runtime environment, so a target whose library is missing or does not link
+      # fails here, on every tier.
+      - name: Test memry-ml
+        if: matrix.part != 'tests'
+        run: cargo nextest run -p memry-ml --no-fail-fast
+
+      # The model tests run on the full tier only (#3540 K5): the pinned text files (207 MB) come
+      # from a cache shared across OSes and, on a miss, from Hugging Face; the test checks their
+      # size and hash before loading.
+      - name: Restore the text model (memry-ml smoke)
+        id: model-cache
+        if: matrix.part != 'tests' && needs.plan.outputs.full == 'true'
+        uses: actions/cache/restore@v4
+        with:
+          path: ${{ runner.temp }}/models
+          key: embeddinggemma-2-text-daa72c51243991dfcaf9f9137d2c573d8f7790c0
+          enableCrossOsArchive: true
+
+      - name: Download the text model (memry-ml smoke)
+        if: matrix.part != 'tests' && needs.plan.outputs.full == 'true' && steps.model-cache.outputs.cache-hit != 'true'
+        working-directory: ${{ runner.temp }}
+        run: |
+          base=https://huggingface.co/onnx-community/embeddinggemma-2-ONNX/resolve/daa72c51243991dfcaf9f9137d2c573d8f7790c0
+          dir=models/onnx-community/embeddinggemma-2-ONNX
+          mkdir -p "$dir/onnx"
+          for file in tokenizer.json onnx/model_q4.onnx onnx/model_q4.onnx_data; do
+            curl -fsSL --retry 3 -o "$dir/$file" "$base/$file"
+          done
+
+      - name: Save the text model (memry-ml smoke)
+        if: matrix.part != 'tests' && needs.plan.outputs.full == 'true' && steps.model-cache.outputs.cache-hit != 'true' && github.event_name != 'merge_group' && (github.event_name != 'pull_request' || github.base_ref != 'feat/tauri-v2')
+        uses: actions/cache/save@v4
+        with:
+          path: ${{ runner.temp }}/models
+          key: embeddinggemma-2-text-daa72c51243991dfcaf9f9137d2c573d8f7790c0
+          enableCrossOsArchive: true
+
+      # The shipping profile (fat LTO): the smoke test embeds with the downloaded model, then the
+      # test binary's size and its shared-library dependencies are printed. No ONNX Runtime or
+      # DirectML library may be among them: ONNX Runtime is linked in, CPU only.
+      - name: memry-ml smoke test and linked libraries (release)
+        if: matrix.part != 'tests' && needs.plan.outputs.full == 'true'
+        timeout-minutes: 30
+        env:
+          MEMRY_ML_MODEL_DIR: ${{ runner.temp }}/models/onnx-community/embeddinggemma-2-ONNX
+        run: |
+          cargo test -p memry-ml --release --test smoke -- --ignored
+          bin=$(cargo test -p memry-ml --release --test smoke --no-run 2>&1 | sed -n 's/.*Executable .*(\(.*\))$/\1/p' | tail -1)
+          echo "Smoke test binary: $(wc -c < "$bin") bytes"
+          case "$RUNNER_OS" in
+            macOS) otool -L "$bin" ;;
+            Linux) ldd "$bin" ;;
+            Windows)
+              dumpbin=$("/c/Program Files (x86)/Microsoft Visual Studio/Installer/vswhere.exe" -latest -products '*' -find 'VC/Tools/MSVC/**/dumpbin.exe' | head -1)
+              "$dumpbin" /dependents "$bin" ;;
+          esac | tee "$RUNNER_TEMP/dependencies.txt"
+          if grep -iE 'onnxruntime|directml' "$RUNNER_TEMP/dependencies.txt"; then
+            echo "::error::the memry-ml binary depends on a shared ONNX Runtime or DirectML library"
+            exit 1
+          fi
 
       - name: Test memry-cli
         if: matrix.part != 'tests' && runner.os == 'Linux'

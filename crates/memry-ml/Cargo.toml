@@ -1,0 +1,38 @@
+[package]
+name = "memry-ml"
+version = "0.0.0"
+edition.workspace = true
+rust-version.workspace = true
+license.workspace = true
+publish = false
+description = "Native ML of MemryNote: EmbeddingGemma 2 on an in-process ONNX Runtime. Never depends on tauri."
+
+[dependencies]
+ort = { workspace = true }
+tokenizers = { workspace = true }
+sha2 = { workspace = true }
+hex = { workspace = true }
+thiserror = { workspace = true }
+
+# ONNX Runtime 1.31.0 is linked statically (crates/AGENTS.md, ONNX Runtime). Apple Silicon and
+# Linux x64 link ort-sys's prebuilt archive, downloaded at build time. pyke builds the Apple
+# Silicon archive with CoreML, so the dist only matches with the `coreml` feature; the provider
+# is linked and never registered. Every other target links the CPU-only archive of
+# `build-ort-static.yml` through `ORT_LIB_LOCATION` and downloads nothing.
+[target.'cfg(all(target_os = "macos", target_arch = "aarch64"))'.dependencies]
+ort = { workspace = true, features = ["download-binaries", "tls-rustls", "coreml"] }
+
+[target.'cfg(all(target_os = "linux", target_arch = "x86_64"))'.dependencies]
+ort = { workspace = true, features = ["download-binaries", "tls-rustls"] }
+
+[target.'cfg(target_os = "macos")'.dependencies]
+libc = "0.2"
+
+[target.'cfg(target_os = "linux")'.dependencies]
+libc = "0.2"
+
+[target.'cfg(windows)'.dependencies]
+windows = { version = "0.62.2", features = ["Win32_System_Threading"] }
+
+[dev-dependencies]
+tempfile = "3"

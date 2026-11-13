@@ -17,6 +17,15 @@ This directory owns the Rust workspace. `memry-core` is the shared core under th
 - A blocking core call runs inside `spawn_blocking`.
 - Desktop never uses `memry_core::api::runtime`.
 
+### ONNX Runtime
+
+`memry-ml` links ONNX Runtime 1.31.0 (`ort` 2.0.0-rc.15) statically, in process, with the CPU execution provider only. `runtime.rs` sets ort's device policy to `PreferCPU`; ort's default registers the linked CoreML provider on macOS.
+
+- macOS arm64 and Linux x64 link ort-sys's prebuilt archive, which the build downloads (cargo features `download-binaries` and, on macOS arm64, `coreml`, which that archive is built with). `memry-ml/build.rs` links `libclang_rt.osx.a` on macOS arm64: the archive's CoreML code calls `__isPlatformVersionAtLeast`, and fat LTO drops std's copy.
+- macOS x64, Windows x64 and Windows ARM64 link the CPU-only archive `ort-static-1.31.0-<triple>.tar.zst` that `.github/workflows/build-ort-static.yml` builds once and attaches to the release `ort-static-1.31.0`. Set `ORT_LIB_LOCATION` to the extracted archive before building (commands in `crates/.cargo/config.toml`); CI does it through `.github/actions/ort-static`. Without it, `cargo check` and clippy pass and every link of `memry-ml` fails.
+- A new ONNX Runtime version means a new `ort` pin, a new `ORT_VERSION` and release tag in the workflow and the action, and a dispatch of the workflow. A published archive is never replaced.
+- No built binary may depend on a shared ONNX Runtime or DirectML library: the full tier of `rust-ci.yml` lists the smoke binary's dependencies (`otool -L`, `ldd`, `dumpbin /dependents`) and fails on one. `cargo test -p memry-ml --test smoke -- --ignored` needs the pinned text files in `MEMRY_ML_MODEL_DIR`; model weights are never committed.
+
 ## Conformance
 
 - The vectors in `packages/contracts/test-vectors/` come out of the TypeScript production code paths (`packages/contracts/scripts/gen-protocol-vectors.ts`). `packages/contracts/src/__tests__/` verifies them on the TypeScript side, and `memry-core`'s tests, `memry-core/tests/*_vectors.rs` among them, reproduce them byte for byte. The `memry-core/src/api/*_conformance.rs` exports let the iOS conformance plan run the same vectors through the shell ([apps/ios](../apps/ios/AGENTS.md#tests)).

@@ -1,0 +1,156 @@
+# CPU-only static ONNX Runtime libraries for the targets ort-sys has no usable prebuilt archive for
+# (crates/AGENTS.md, ONNX Runtime): macOS x64 (none) and Windows x64 and ARM64 (DirectML builds).
+# Built once per ONNX Runtime version and attached to the release `ort-static-<version>`, which is
+# not an app release: a prerelease that is never marked latest, holding these archives only.
+# rust-ci.yml and the release builds fetch an archive through .github/actions/ort-static, which
+# sets ORT_LIB_LOCATION.
+#
+# A run builds only the archives the release does not hold yet, so a push of this file or a
+# dispatch after a partial failure finishes the set and a complete set builds nothing. A published
+# archive is never replaced: a new ONNX Runtime version gets a new release.
+name: Build ONNX Runtime static libraries
+
+on:
+  workflow_dispatch:
+  push:
+    paths:
+      - .github/workflows/build-ort-static.yml
+
+permissions:
+  contents: read
+
+concurrency:
+  group: build-ort-static
+  cancel-in-progress: false
+
+env:
+  # The version ort-sys 2.0.0-rc.15 (crates/Cargo.toml) binds to; a bump changes both.
+  ORT_VERSION: 1.31.0
+  RELEASE_TAG: ort-static-1.31.0
+
+jobs:
+  plan:
+    name: Archives to build
+    runs-on: ubuntu-22.04
+    timeout-minutes: 5
+    outputs:
+      targets: ${{ steps.missing.outputs.targets }}
+    steps:
+      - name: List the archives the release lacks
+        id: missing
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          assets=$(gh release view "$RELEASE_TAG" --repo "$GITHUB_REPOSITORY" --json assets --jq '.assets[].name' 2>/dev/null || true)
+          targets=$(jq -cn --arg assets "$assets" --arg tag "$RELEASE_TAG" '
+            [ {triple: "x86_64-apple-darwin", os: "macos-15"},
+              {triple: "x86_64-pc-windows-msvc", os: "windows-2022"},
+              {triple: "aarch64-pc-windows-msvc", os: "windows-11-arm"} ]
+            | map(select("\($tag)-\(.triple).tar.zst" as $name | ($assets | split("\n") | index($name)) == null))')
+          echo "targets=$targets" >> "$GITHUB_OUTPUT"
+          echo "To build: $targets"
+
+  build:
+    name: ONNX Runtime ${{ matrix.triple }}
+    needs: plan
+    if: needs.plan.outputs.targets != '[]'
+    runs-on: ${{ matrix.os }}
+    # A cold ONNX Runtime build takes about an hour on a hosted runner.
+    timeout-minutes: 240
+    strategy:
+      fail-fast: false
+      matrix:
+        include: ${{ fromJSON(needs.plan.outputs.targets) }}
+    defaults:
+      run:
+        shell: bash
+    steps:
+      - name: Checkout ONNX Runtime
+        uses: actions/checkout@v6
+        with:
+          repository: microsoft/onnxruntime
+          ref: v${{ env.ORT_VERSION }}
+          fetch-depth: 1
+
+      - name: Setup Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+
+      # CPU execution provider only (no --use_dml, no other provider), telemetry compiled out, no
+      # unit tests. macOS x64 is cross-built on the Apple Silicon runner for macOS 13 and later.
+      - name: Build
+        run: |
+          args=(--build_dir build --config Release --parallel --skip_tests --compile_no_warning_as_error
+            --no_telemetry --cmake_extra_defines onnxruntime_BUILD_UNIT_TESTS=OFF)
+          case "${{ matrix.triple }}" in
+            x86_64-apple-darwin)
+              python tools/ci_build/build.py "${args[@]}" --osx_arch x86_64 --apple_deploy_target 13.0 ;;
+            x86_64-pc-windows-msvc)
+              python tools/ci_build/build.py "${args[@]}" --cmake_generator "Visual Studio 17 2022" ;;
+            aarch64-pc-windows-msvc)
+              python tools/ci_build/build.py "${args[@]}" --cmake_generator "Visual Studio 17 2022" --arm64 ;;
+          esac
+
+      # A library of the wrong architecture would link nowhere, and a published archive is final.
+      - name: Check the target architecture
+        working-directory: build/Release
+        run: |
+          case "${{ matrix.triple }}" in
+            x86_64-apple-darwin)
+              lipo -archs libonnxruntime_common.a | tee "$RUNNER_TEMP/arch.txt"
+              [ "$(cat "$RUNNER_TEMP/arch.txt")" = x86_64 ] ;;
+            *)
+              dumpbin=$("/c/Program Files (x86)/Microsoft Visual Studio/Installer/vswhere.exe" -latest -products '*' -find 'VC/Tools/MSVC/**/dumpbin.exe' | head -1)
+              "$dumpbin" /headers Release/onnxruntime_common.lib | grep -m1 'machine' | tee "$RUNNER_TEMP/arch.txt"
+              want=$([ "${{ matrix.triple }}" = aarch64-pc-windows-msvc ] && echo ARM64 || echo x64)
+              grep -q "($want)" "$RUNNER_TEMP/arch.txt" ;;
+          esac
+
+      # Every static library of the build tree, at its path under build/Release: ort-sys finds the
+      # ONNX Runtime libraries and their `_deps` from ORT_LIB_LOCATION by that layout.
+      - name: Package
+        working-directory: build/Release
+        run: |
+          find . \( -name '*.a' -o -name '*.lib' \) -type f | sed 's|^\./||' | sort > "$RUNNER_TEMP/libs.txt"
+          wc -l < "$RUNNER_TEMP/libs.txt"
+          archive="$RUNNER_TEMP/$RELEASE_TAG-${{ matrix.triple }}.tar.zst"
+          cmake -E tar cf "$archive" --zstd --files-from="$RUNNER_TEMP/libs.txt"
+          ls -l "$archive"
+
+      - name: Upload
+        uses: actions/upload-artifact@v4
+        with:
+          name: ${{ env.RELEASE_TAG }}-${{ matrix.triple }}
+          path: ${{ runner.temp }}/${{ env.RELEASE_TAG }}-${{ matrix.triple }}.tar.zst
+          retention-days: 7
+          if-no-files-found: error
+
+  # Attaches whatever built, so one failed target does not discard the others; the next run builds
+  # only the one still missing.
+  publish:
+    name: Attach to the release
+    needs: build
+    if: ${{ !cancelled() && needs.build.result != 'skipped' }}
+    runs-on: ubuntu-22.04
+    timeout-minutes: 15
+    permissions:
+      contents: write
+    steps:
+      - name: Download the archives
+        uses: actions/download-artifact@v4
+        with:
+          path: archives
+          merge-multiple: true
+
+      - name: Create the release and attach the archives
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          ls archives/*.tar.zst
+          if ! gh release view "$RELEASE_TAG" --repo "$GITHUB_REPOSITORY" >/dev/null 2>&1; then
+            gh release create "$RELEASE_TAG" --repo "$GITHUB_REPOSITORY" --target "$GITHUB_SHA" \
+              --prerelease --latest=false --title "ONNX Runtime $ORT_VERSION static libraries (build input)" \
+              --notes "CPU-only static ONNX Runtime $ORT_VERSION libraries, built by .github/workflows/build-ort-static.yml and linked into the desktop app through ORT_LIB_LOCATION. Not an app release."
+          fi
+          gh release upload "$RELEASE_TAG" --repo "$GITHUB_REPOSITORY" archives/*.tar.zst

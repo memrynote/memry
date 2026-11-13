@@ -1,0 +1,33 @@
+name: ONNX Runtime static library
+description: >-
+  Fetches the CPU-only ONNX Runtime archive that build-ort-static.yml attached to the release
+  ort-static-1.31.0 and points ORT_LIB_LOCATION at it, on the runners whose target links it (macOS
+  x64, Windows x64 and ARM64; crates/AGENTS.md, ONNX Runtime). Elsewhere ort-sys downloads its own
+  prebuilt archive and this does nothing.
+inputs:
+  token:
+    description: Token that can read the repository's releases.
+    required: true
+runs:
+  using: composite
+  steps:
+    - name: Fetch the archive and set ORT_LIB_LOCATION
+      shell: bash
+      env:
+        GH_TOKEN: ${{ inputs.token }}
+        RELEASE_TAG: ort-static-1.31.0
+      run: |
+        case "$RUNNER_OS/$RUNNER_ARCH" in
+          macOS/X64) triple=x86_64-apple-darwin ;;
+          Windows/X64) triple=x86_64-pc-windows-msvc ;;
+          Windows/ARM64) triple=aarch64-pc-windows-msvc ;;
+          *) echo "ort-sys links its prebuilt archive on $RUNNER_OS/$RUNNER_ARCH"; exit 0 ;;
+        esac
+        temp="$RUNNER_TEMP"
+        if [ "$RUNNER_OS" = Windows ]; then temp=$(cygpath -m "$temp"); fi
+        asset="$RELEASE_TAG-$triple.tar.zst"
+        gh release download "$RELEASE_TAG" --repo "$GITHUB_REPOSITORY" --pattern "$asset" --dir "$temp"
+        mkdir -p "$temp/ort-static"
+        (cd "$temp/ort-static" && cmake -E tar xf "$temp/$asset")
+        rm "$temp/$asset"
+        echo "ORT_LIB_LOCATION=$temp/ort-static" >> "$GITHUB_ENV"
