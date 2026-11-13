@@ -38,6 +38,8 @@
 use std::path::PathBuf;
 use std::sync::Arc;
 
+use zeroize::Zeroizing;
+
 use crate::api::auth::AuthSession;
 use crate::api::calendar::VaultCalendar;
 use crate::api::canvas::Canvases;
@@ -49,6 +51,7 @@ use crate::api::notes_write::NotesWriter;
 use crate::api::search::Search;
 use crate::api::sync::VaultSync;
 use crate::api::tasks::Tasks;
+use crate::crypto::agent_envelope::AtRestKey;
 use crate::protocol::types::Declaration;
 use crate::seams::secure_store::SecureStore;
 use crate::storage::{Db, OpenOptions, open_data, open_data_with};
@@ -74,6 +77,8 @@ pub struct Vault {
     /// The files no write of the app reaches, shared with the editor.
     #[cfg(feature = "markdown")]
     excluded: crate::api::excluded_paths::ExcludedPaths,
+    /// The vault key the agent stores seal under, once a shell installs it.
+    at_rest_key: AtRestKey,
 }
 
 impl Vault {
@@ -95,6 +100,7 @@ impl Vault {
             editor: std::sync::OnceLock::new(),
             #[cfg(feature = "markdown")]
             excluded: Default::default(),
+            at_rest_key: AtRestKey::default(),
         })
     }
 
@@ -120,6 +126,21 @@ impl Vault {
             self.directory.clone(),
             declaration,
         ))
+    }
+
+    /// Installs the vault key the agent conversation and message stores seal
+    /// their text under (chapter 04 §4.17), or removes it with `None`. Desktop
+    /// calls it at sync start and at agent bootstrap. Not on the FFI surface:
+    /// a key never crosses it.
+    pub fn set_at_rest_key(&self, key: Option<Zeroizing<[u8; 32]>>) {
+        self.at_rest_key.set(key);
+    }
+
+    /// The installed at-rest key, shared with the agent writers that seal
+    /// under it. Not on the FFI surface.
+    #[doc(hidden)]
+    pub fn at_rest_key(&self) -> AtRestKey {
+        self.at_rest_key.clone()
     }
 
     /// The database handle, for integration tests that seed a peer's records
@@ -420,6 +441,7 @@ impl Vault {
             editor: std::sync::OnceLock::new(),
             #[cfg(feature = "markdown")]
             excluded: Default::default(),
+            at_rest_key: AtRestKey::default(),
         })
     }
 

@@ -2,7 +2,6 @@ import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 import { act, fireEvent, render, renderHook, screen, waitFor } from '@testing-library/react'
 import type { ReactNode } from 'react'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
-import { useAIInline } from './use-ai-inline'
 import { useActiveHeading } from './use-active-heading'
 import { useCalendarPreferences, resolveDayCellClickBehavior } from './use-calendar-preferences'
 import { useCountdown } from './use-countdown'
@@ -300,47 +299,6 @@ beforeEach(() => {
   window.api.onSettingsChanged = vi.fn(() => mocks.unsubscribe)
   mocks.flushAllPendingSaves.mockResolvedValue(undefined)
   mocks.hasPendingSaves.mockReturnValue(false)
-})
-
-describe('AI hooks', () => {
-  it('initializes AI inline from disabled, healthy, failed, and retry states', async () => {
-    const invoke = vi.fn()
-    window.electron.ipcRenderer.invoke = invoke
-    globalThis.fetch = vi.fn().mockResolvedValue({ ok: true }) as never
-
-    const globallyDisabled = renderHook(() => useAIInline(false))
-    await waitFor(() => expect(globallyDisabled.result.current.loading).toBe(false))
-    expect(globallyDisabled.result.current.port).toBeNull()
-    expect(invoke).toHaveBeenCalledWith('ai-inline:stop-server')
-    expect(invoke).not.toHaveBeenCalledWith('ai-inline:get-settings')
-    expect(invoke).not.toHaveBeenCalledWith('ai-inline:get-server-port')
-    expect(invoke).not.toHaveBeenCalledWith('ai-inline:start-server')
-    globallyDisabled.unmount()
-    invoke.mockClear()
-
-    invoke.mockResolvedValueOnce({ enabled: false, provider: 'ollama' })
-    const disabled = renderHook(() => useAIInline())
-    await waitFor(() => expect(disabled.result.current.loading).toBe(false))
-    expect(disabled.result.current.port).toBeNull()
-    disabled.unmount()
-
-    invoke.mockResolvedValueOnce({ enabled: true, provider: 'ollama' }).mockResolvedValueOnce(3210)
-    const healthy = renderHook(() => useAIInline())
-    await waitFor(() => expect(healthy.result.current.port).toBe(3210))
-    healthy.unmount()
-
-    invoke
-      .mockResolvedValueOnce({ enabled: true, provider: 'ollama' })
-      .mockResolvedValueOnce(null)
-      .mockResolvedValueOnce({ success: false, error: 'ECONNREFUSED' })
-      .mockResolvedValueOnce({ enabled: true, provider: 'openai' })
-      .mockResolvedValueOnce(null)
-      .mockResolvedValueOnce({ success: false, error: '401 api key' })
-    const failed = renderHook(() => useAIInline())
-    await waitFor(() => expect(failed.result.current.error).toContain('Ollama is not running'))
-    act(() => failed.result.current.retry())
-    await waitFor(() => expect(failed.result.current.error).toContain('Invalid API key for openai'))
-  })
 })
 
 describe('navigation and keyboard hooks', () => {

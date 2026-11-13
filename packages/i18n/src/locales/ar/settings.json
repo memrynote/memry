@@ -1411,6 +1411,7 @@
       "notConnected": "غير متصل",
       "test": "اختبار",
       "connected": "متصل! الخادم يعمل على المنفذ {port}",
+      "connectedProvider": "متصل بـ {provider}",
       "connectFailed": "تعذّر الاتصال",
       "testFailed": "فشل اختبار الاتصال",
       "updateFailed": "تعذّر تحديث الإعداد"

@@ -1411,6 +1411,7 @@
       "notConnected": "Ikke tilkoblet",
       "test": "Test",
       "connected": "Tilkoblet! Serveren kjører på port {port}",
+      "connectedProvider": "Koblet til {provider}",
       "connectFailed": "Kunne ikke koble til",
       "testFailed": "Tilkoblingstest mislyktes",
       "updateFailed": "Kunne ikke oppdatere innstillingen"

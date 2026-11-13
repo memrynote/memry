@@ -43,10 +43,6 @@ import type {
   AgentBackendId,
   AgentBackendModelList,
   AgentBackendModelListRequest,
-  AgentLocalModelList,
-  AgentLocalProviderProbeResult,
-  AgentLocalProviderSettings,
-  AgentLocalProviderSettingsUpdate,
   AgentPreferences,
   AgentPreferencesUpdate,
   AgentToolGrants,
@@ -149,15 +145,6 @@ import type {
   IndexRebuildProgress
 } from '@memry/contracts/search-api'
 import type { RecentlyOpenedItem, RecordRecentlyOpenedInput } from '@memry/contracts/recents-api'
-import type {
-  PortalGetUsageInput,
-  PortalGetUsageResult,
-  PortalSearchInput,
-  PortalSearchResult,
-  PortalStampAnchorInput,
-  PortalStampAnchorResult,
-  PortalUsageChangedEvent
-} from '@memry/contracts/portals-api'
 
 // Vault types (mirrored from contracts for preload compatibility)
 export interface VaultInfo {
@@ -1001,14 +988,6 @@ export interface SearchClientAPI {
 export interface RecentsClientAPI {
   record(input: RecordRecentlyOpenedInput): Promise<{ recorded: boolean }>
   list(limit?: number): Promise<RecentlyOpenedItem[]>
-}
-
-// Portals API (live windows onto another note or block)
-export interface PortalsClientAPI {
-  getUsage(input: PortalGetUsageInput): Promise<PortalGetUsageResult>
-  stampAnchor(input: PortalStampAnchorInput): Promise<PortalStampAnchorResult>
-  search(input: PortalSearchInput): Promise<PortalSearchResult>
-  onUsageChanged(callback: (event: PortalUsageChangedEvent) => void): () => void
 }
 
 // Graph API
@@ -1885,15 +1864,8 @@ interface AgentClientAPI {
   clearMemory: () => Promise<{ ok: boolean }>
   getBackendStatuses: () => Promise<BackendStatusesResponse>
   listBackendModels: (input: AgentBackendModelListRequest) => Promise<AgentBackendModelList>
-  getLocalProviderSettings: () => Promise<AgentLocalProviderSettings>
-  setLocalProviderSettings: (
-    input: AgentLocalProviderSettingsUpdate
-  ) => Promise<AgentLocalProviderSettings>
   getPreferences: () => Promise<AgentPreferences>
   setPreferences: (input: AgentPreferencesUpdate) => Promise<AgentPreferences>
-  listLocalModels: () => Promise<AgentLocalModelList>
-  testLocalProvider: () => Promise<AgentLocalProviderProbeResult>
-  probeLocalProvider: () => Promise<AgentLocalProviderProbeResult>
   acceptDisclosure: () => Promise<{ accepted: boolean }>
   getDisclosureState: () => Promise<{ accepted: boolean }>
   getWindowId: () => Promise<{ windowId: string | null }>
@@ -1975,7 +1947,6 @@ interface API
   }
   reminders: RemindersClientAPI
   recents: RecentsClientAPI
-  portals: PortalsClientAPI
   search: SearchClientAPI
   graph: GraphClientAPI
   quickCapture: QuickCaptureClientAPI

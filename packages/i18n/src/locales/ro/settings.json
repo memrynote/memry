@@ -1411,6 +1411,7 @@
       "notConnected": "Nu este conectat",
       "test": "Testează",
       "connected": "Conectat! Serverul rulează pe portul {port}",
+      "connectedProvider": "Conectat la {provider}",
       "connectFailed": "Nu s-a putut conecta",
       "testFailed": "Testul de conectare a eșuat",
       "updateFailed": "Nu s-a putut actualiza setarea"

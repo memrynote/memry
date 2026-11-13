@@ -44,6 +44,7 @@ use memry_core::crdt::errors::CrdtError;
 use memry_core::domain::external_feed::{AppRead, FeedInput, FeedOutcome};
 use memry_core::domain::note_stats::word_count;
 use memry_core::markdown::convert::api::Converter;
+use memry_core::markdown::convert::apply::CriticMarks;
 use memry_core::markdown::frontmatter::{split_frontmatter_block, write_markdown_note};
 use memry_core::markdown::shared::writing_tools::WritingFrontmatter;
 use serde_json::{Map, Value};
@@ -409,6 +410,7 @@ impl Seed<'_> {
             let read = AppRead {
                 file_body: read,
                 compared_at: None,
+                critic_marks: CriticMarks::FromMarkdown,
             };
             feed.feed_app_edit(converter, input, read)
         })

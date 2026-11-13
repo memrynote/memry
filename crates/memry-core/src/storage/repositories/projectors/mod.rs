@@ -56,12 +56,15 @@
 pub mod bookmarks;
 pub mod calendar;
 pub mod canvas;
+pub mod canvas_folders;
 pub mod filters;
+pub mod home_pages;
 pub mod inbox;
 pub mod notes;
 pub mod projects;
 pub mod reminders;
 pub mod settings;
+pub mod sticky_drafts;
 pub mod tasks;
 pub mod taxonomy;
 pub mod templates;
@@ -117,6 +120,9 @@ pub fn read(item_type: &str, parsed: &Object) -> Result<Object, ProjectionError>
         "bookmark" => bookmarks::read_bookmark(parsed),
         "canvas" => canvas::read_canvas(parsed),
         "vault_lock" => vault_locks::read_vault_lock(parsed),
+        "canvas_folder" => canvas_folders::read_canvas_folder(parsed),
+        "home_page" => home_pages::read_home_page(parsed),
+        "sticky_draft" => sticky_drafts::read_sticky_draft(parsed),
         other => Err(ProjectionError::UnknownType {
             item_type: other.to_owned(),
         }),
@@ -155,6 +161,9 @@ pub fn project(
         // No table by design; see `canvas`'s module comment.
         "canvas" => Ok(()),
         "vault_lock" => vault_locks::project_vault_lock(conn, item, view),
+        "canvas_folder" => canvas_folders::project_canvas_folder(conn, item, view),
+        "home_page" => home_pages::project_home_page(conn, item, view),
+        "sticky_draft" => sticky_drafts::project_sticky_draft(conn, item, view),
         // Unreachable: `read` refused the type before the caller got here.
         other => Err(StorageError::Failed {
             what: format!("no projector for item type `{other}`"),
@@ -248,6 +257,9 @@ fn delete_targets(item_type: &str) -> &'static [(&'static str, Option<&'static s
         "calendar_binding" => &[("calendar_bindings", Some("id"))],
         "bookmark" => &[("bookmarks", Some("id"))],
         "vault_lock" => &[("vault_locks", Some("id"))],
+        "canvas_folder" => &[("canvas_folders", Some("id"))],
+        "home_page" => &[("home_pages", Some("id"))],
+        "sticky_draft" => &[("sticky_drafts", Some("id"))],
         _ => &[],
     }
 }

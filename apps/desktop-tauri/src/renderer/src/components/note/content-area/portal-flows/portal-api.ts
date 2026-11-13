@@ -1,54 +1,46 @@
 /**
- * The renderer's seam to the portals IPC (`portals:*`). Every call the flows
- * make goes through here, so the preload shape is named in one place.
+ * The renderer's seam to the portals commands (`portals_*`). Every call the
+ * flows make goes through here, so the command shapes are named in one place.
  *
  * @module note/content-area/portal-flows/portal-api
  */
 
 import type {
-  PortalGetUsageInput,
-  PortalGetUsageResult,
   PortalHost,
   PortalSearchInput,
   PortalSearchResult,
-  PortalStampAnchorInput,
   PortalStampAnchorResult
 } from '@memry/contracts/portals-api'
+import { commands, events } from '../../../../../../generated/bindings'
+import { subscribeToEvent } from '@/services/tauri-event'
 
 export type { PortalHost, PortalSearchResultItem } from '@memry/contracts/portals-api'
 
-/** What the preload exposes as `window.api.portals`. */
-export interface PortalsPreloadApi {
-  getUsage: (input: PortalGetUsageInput) => Promise<PortalGetUsageResult>
-  stampAnchor: (input: PortalStampAnchorInput) => Promise<PortalStampAnchorResult>
-  search: (input: PortalSearchInput) => Promise<PortalSearchResult>
-  /** Fires with the source notes whose usage changed; returns the unsubscribe. */
-  onUsageChanged: (callback: (event: { noteIds: string[] }) => void) => () => void
-}
-
-function portalsApi(): PortalsPreloadApi {
-  const api: PortalsPreloadApi | undefined = window.api.portals
-  if (!api) throw new Error('portals API is not available in this build')
-  return api
-}
-
 /** Hosts that show `noteId` (or one block of it) through a portal. */
 export async function getPortalUsage(noteId: string, anchor?: string): Promise<PortalHost[]> {
-  const result = await portalsApi().getUsage(anchor ? { noteId, anchor } : { noteId })
-  return result.hosts
+  const result = await commands.portalsGetUsage(noteId, anchor || null)
+  return result.hosts.map(({ ordinal, ...host }) => (ordinal == null ? host : { ...host, ordinal }))
 }
 
-export function stampPortalAnchor(
+export async function stampPortalAnchor(
   noteId: string,
   blockId: string
 ): Promise<PortalStampAnchorResult> {
-  return portalsApi().stampAnchor({ noteId, blockId })
+  const { anchor, reason } = await commands.portalsStampAnchor(noteId, blockId)
+  if (anchor !== null) return { success: true, anchor }
+  if (reason === null) throw new Error('portals_stamp_anchor answered neither anchor nor reason')
+  return { success: false, reason }
 }
 
 export function searchPortalBlocks(input: PortalSearchInput): Promise<PortalSearchResult> {
-  return portalsApi().search(input)
+  return commands.portalsSearch({
+    text: input.text ?? null,
+    tag: input.tag ?? null,
+    limit: input.limit
+  })
 }
 
+/** Fires with the source notes whose usage changed; returns the unsubscribe. */
 export function onPortalUsageChanged(callback: (noteIds: string[]) => void): () => void {
-  return portalsApi().onUsageChanged((event) => callback(event.noteIds))
+  return subscribeToEvent(events.portalsUsageChangedEvent, (event) => callback(event.noteIds))
 }

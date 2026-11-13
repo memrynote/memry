@@ -1411,6 +1411,7 @@
       "notConnected": "接続されていません",
       "test": "テスト",
       "connected": "接続しました。サーバーはポート {port} で実行中です",
+      "connectedProvider": "{provider} に接続しました",
       "connectFailed": "接続できませんでした",
       "testFailed": "接続を確認できませんでした",
       "updateFailed": "設定を更新できませんでした"

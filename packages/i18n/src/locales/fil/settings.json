@@ -1411,6 +1411,7 @@
       "notConnected": "Hindi nakakonekta",
       "test": "Subukan",
       "connected": "Nakakonekta! Tumatakbo ang server sa port {port}",
+      "connectedProvider": "Nakakonekta sa {provider}",
       "connectFailed": "Hindi makakonekta",
       "testFailed": "Nabigo ang pagsubok sa koneksyon",
       "updateFailed": "Hindi ma-update ang setting"

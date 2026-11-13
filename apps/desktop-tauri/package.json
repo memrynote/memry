@@ -32,6 +32,10 @@
     "check:test-hooks": "node e2e/scripts/check-test-hooks-mapped.mjs"
   },
   "dependencies": {
+    "@ai-sdk/anthropic": "^3.0.140",
+    "@ai-sdk/google": "^3.0.140",
+    "@ai-sdk/openai": "^3.0.91",
+    "@ai-sdk/openai-compatible": "^2.0.81",
     "@base-ui/react": "^1.8.0",
     "@blocknote/core": "^0.54.2",
     "@blocknote/diagram-block": "^0.54.2",

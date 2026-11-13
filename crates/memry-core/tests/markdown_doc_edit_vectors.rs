@@ -125,6 +125,7 @@ fn replace_case(case: &Json) -> Result<(), String> {
             writing,
             unless_changed_from: guard.as_deref(),
             embeds: Some(&files),
+            ..ReplaceOptions::default()
         },
     );
     let name = match outcome {

@@ -5,6 +5,8 @@ use std::path::{Path, PathBuf};
 use std::sync::mpsc::Receiver;
 use std::sync::{Arc, Mutex, OnceLock, PoisonError};
 
+use memry_desktop::ai::proxy::AiProxy;
+use memry_desktop::ai::settings::InlineAiStore;
 use memry_desktop::attachments::Uploads;
 use memry_desktop::editor::{EditorHost, HostEvent};
 use memry_desktop::fold::service::FoldService;
@@ -33,10 +35,10 @@ use tokio::sync::broadcast::error::RecvError;
 use crate::commands::error::{CommandError, ErrorKind};
 use crate::commands::vault_index::{send_indexing_status, send_status};
 use crate::events::{
-    CrdtProviderReadyEvent, CrdtProviderResetEvent, CrdtWriteBackFailedEvent,
-    NoteLinksChangedEvent, NoteTagsChangedEvent, VaultActivityChangedEvent, VaultErrorEvent,
-    VaultIndexProgressEvent, VaultIndexRecoveredEvent, VaultListChangedEvent,
-    VaultNoticesChangedEvent, WriteBackFailureReason, broadcast,
+    CrdtProviderReadyEvent, CrdtProviderResetEvent, CrdtWriteBackFailedEvent, NoteTagsChangedEvent,
+    VaultActivityChangedEvent, VaultErrorEvent, VaultIndexProgressEvent, VaultIndexRecoveredEvent,
+    VaultListChangedEvent, VaultNoticesChangedEvent, WriteBackFailureReason, announce_links,
+    broadcast,
 };
 use crate::shell::{dialogs, services};
 use crate::shutdown::ShutdownService;
@@ -89,8 +91,12 @@ pub fn asker(app: &AppHandle<Wry>) -> impl Asker + use<> {
 }
 
 /// Seeds a vault's settings from its `config.json` preferences when it opens. A failure is
-/// logged and never blocks the open: the settings read as defaults.
+/// logged and never blocks the open: the settings read as defaults. The inline AI key read for
+/// the vault is dropped with its close, and every provider request of inline chat ends.
 fn register_settings_hook(app: &AppHandle<Wry>, session: &Session) {
+    let inline_ai = app.state::<Arc<InlineAiStore>>().inner().clone();
+    session.on_close("ai-inline", Arc::new(move |_| inline_ai.forget()));
+    app.state::<Arc<AiProxy>>().register(session);
     let settings = app.state::<SettingsService>().inner().clone();
     session.on_open(
         "settings",
@@ -148,7 +154,7 @@ fn register_vault_watcher(app: &AppHandle<Wry>, session: &Session) {
             }
             IndexReport::Indexing => send_indexing_status(&reporter),
         },
-        move |links| broadcast(&announcer, NoteLinksChangedEvent::from(links)),
+        move |links| announce_links(&announcer, links),
         move |note_id| crate::shell::journal_events::landed(&lander, note_id),
     );
     index.register(session);

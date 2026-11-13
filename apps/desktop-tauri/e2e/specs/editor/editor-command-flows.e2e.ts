@@ -127,10 +127,80 @@ test('uploads dropped files and embeds pasted YouTube links into editor blocks',
     .toContain('dQw4w9WgXcQ')
 })
 
-// Inline AI still reaches its server through the not-ported `window.electron.ipcRenderer`
-// channels (`hooks/use-ai-inline.ts`); Step 22 (#3539) replaces them with `ai_inline_*` commands
-// and ports this case with them.
-test.skip('opens AI inline commands, invokes a selection command, and cancels the menu', () => {})
+const MOD = process.platform === 'darwin' ? 'Meta' : 'Control'
+
+interface AiProbe {
+  getExtension?(name: string): {
+    invokeAI(input: { userPrompt: string; useSelection?: boolean }): Promise<void>
+  } | null
+}
+
+declare global {
+  interface Window {
+    __memryAiInvocations?: Array<{ userPrompt: string; useSelection?: boolean }>
+    __memryResolveAiInvocation?: () => void
+  }
+}
+
+test('opens AI inline commands, invokes a selection command, and cancels the menu', async ({
+  page
+}) => {
+  await vaultOpen(page)
+  // Port 1 refuses connections; `invokeAI` is stubbed below, so no request is ever sent.
+  await invoke(page, 'ai_inline_set_settings', {
+    updates: {
+      enabled: true,
+      provider: 'ollama',
+      model: 'e2e-ai',
+      baseUrl: 'http://127.0.0.1:1/v1'
+    }
+  })
+  await openNewNote(page, label('AI Commands'), 'rough paragraph for ai selection')
+  await page.locator(NOTE_EDITOR).first().click()
+
+  await expect
+    .poll(() =>
+      page.evaluate(() => {
+        const editor = (window as unknown as { __memryActiveEditor?: AiProbe }).__memryActiveEditor
+        return Boolean(editor?.getExtension?.('ai'))
+      })
+    )
+    .toBe(true)
+
+  await page.evaluate(() => {
+    const ai = (
+      window as unknown as { __memryActiveEditor?: AiProbe }
+    ).__memryActiveEditor?.getExtension?.('ai')
+    if (!ai) throw new Error('AI extension not registered')
+    window.__memryAiInvocations = []
+    ai.invokeAI = async (input) => {
+      window.__memryAiInvocations?.push({
+        userPrompt: input.userPrompt,
+        useSelection: input.useSelection
+      })
+      await new Promise<void>((resolve) => {
+        window.__memryResolveAiInvocation = resolve
+      })
+    }
+  })
+
+  await page.keyboard.press(`${MOD}+a`)
+  await page.keyboard.press(`${MOD}+j`)
+  await expect(page.getByText('Summarize').first()).toBeVisible()
+  await page.getByText('Summarize').first().click()
+
+  await expect
+    .poll(() =>
+      page.evaluate(() =>
+        (window.__memryAiInvocations ?? []).map((call) => call.userPrompt.startsWith('Summarize'))
+      )
+    )
+    .toEqual([true])
+
+  await page.keyboard.press('Escape')
+  await expect(page.getByText('Summarize').first()).toBeHidden()
+  await page.evaluate(() => window.__memryResolveAiInvocation?.())
+})
 
 // Issue #2081: choosing "URL" used to replace the list item with a paragraph, so the bullet
 // disappeared. Issue #2080: the pasted URL has to stay ordinary editable inline content.

@@ -14,6 +14,8 @@ mod support;
 
 #[path = "account_setup.rs"]
 mod account_setup;
+#[path = "agent_envelope_vectors.rs"]
+mod agent_envelope_vectors;
 #[path = "api_attachment_fetch.rs"]
 mod api_attachment_fetch;
 #[path = "api_inbox.rs"]
@@ -342,6 +344,8 @@ mod offset_kind;
 mod outbox_crdt_batch_cap;
 #[path = "pack_vectors.rs"]
 mod pack_vectors;
+#[path = "portal_reads.rs"]
+mod portal_reads;
 #[path = "portal_vectors.rs"]
 mod portal_vectors;
 #[path = "projector_null_tolerance.rs"]
@@ -388,6 +392,8 @@ mod sync_realtime_run;
 mod tag_fields;
 #[path = "tag_fold_vectors.rs"]
 mod tag_fold_vectors;
+#[path = "tag_mint.rs"]
+mod tag_mint;
 #[path = "tag_objects.rs"]
 mod tag_objects;
 #[path = "tag_pins.rs"]

@@ -53,6 +53,34 @@ const ALLOWED: &[(&str, &str)] = &[
         "api.unsplash.com",
     ),
     (
+        "crates/memry-desktop/src/ai/catalog.rs",
+        "the inline AI provider the person picked (OpenAI, Anthropic, Google, OpenRouter) or their local Ollama",
+    ),
+    (
+        "crates/memry-desktop/src/ai/provider.rs",
+        "the auth headers for that inline AI provider; only the header types, no request",
+    ),
+    (
+        "crates/memry-desktop/src/ai/proxy.rs",
+        "the inline AI provider the person picked or their local Ollama, the inline chat's requests",
+    ),
+    (
+        "apps/desktop-tauri/src-tauri/src/commands/ai.rs",
+        "the inline AI provider the person picked or their local Ollama, through ai::catalog",
+    ),
+    (
+        "apps/desktop-tauri/src-tauri/src/shell/services.rs",
+        "builds the inline AI proxy's client, the provider the person picked or their local Ollama",
+    ),
+    (
+        "crates/memry-desktop/src/ai/local_provider/probe.rs",
+        "the local agent provider the person configured (loopback unless they confirmed another host)",
+    ),
+    (
+        "apps/desktop-tauri/src-tauri/src/commands/agent.rs",
+        "the local agent provider the person configured, through ai::local_provider::probe",
+    ),
+    (
         "apps/desktop-tauri/src-tauri/src/updater/velopack_backend.rs",
         "the update feed on github.com, fetched by Velopack; only its error type is named here",
     ),

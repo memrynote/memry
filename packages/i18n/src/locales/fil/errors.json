@@ -165,7 +165,8 @@
     "apiKeyMissing": "Idagdag ang iyong {provider} API key sa Mga setting → AI para magamit ang mga tool sa pagsusulat.",
     "apiKeyInvalid": "Tinanggihan ang iyong {provider} API key. Tingnan ito sa Mga setting → AI.",
     "ollamaUnreachable": "Hindi tumatakbo ang Ollama. Simulan ito gamit ang \"ollama serve\", o pumili ng ibang provider sa Mga setting → AI.",
-    "providerUnreachable": "Hindi maabot ang {provider}. Tingnan ang iyong koneksyon sa internet at subukan ulit."
+    "providerUnreachable": "Hindi maabot ang {provider}. Tingnan ang iyong koneksyon sa internet at subukan ulit.",
+    "keychainUnavailable": "Hindi maabot ng memrynote ang keychain ng system mo, kaya hindi nabasa o na-save ang AI API key. I-unlock ang keyring mo at subukan ulit."
   },
   "auth": {
     "notAuthenticated": "Hindi naka-authenticate",

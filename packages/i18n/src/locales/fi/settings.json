@@ -1411,6 +1411,7 @@
       "notConnected": "Ei yhdistetty",
       "test": "Testaa",
       "connected": "Yhdistetty! Palvelin toimii portissa {port}",
+      "connectedProvider": "Yhdistetty: {provider}",
       "connectFailed": "Yhteyden muodostaminen epäonnistui",
       "testFailed": "Yhteystesti epäonnistui",
       "updateFailed": "Asetuksen päivittäminen epäonnistui"

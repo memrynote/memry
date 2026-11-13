@@ -2,6 +2,7 @@
 //! `<Domain><Noun><Verb>Event` (`CalendarChangedEvent`, `SyncStatusChangedEvent`). Domain steps
 //! add their events here and list them in `registry.rs`; none calls `emit` directly.
 
+use memry_desktop::ai::settings::InlineAiSettings;
 use memry_desktop::journal::JournalEntryView;
 use memry_desktop::notes::index::{IndexProgress, LinkChanges};
 use memry_desktop::notes::view::NoteListItemView;
@@ -289,6 +290,28 @@ impl From<LinkChanges> for NoteLinksChangedEvent {
     }
 }
 
+/// The notes whose portal usage changed (`portals:usage-changed`): a host gained or lost a
+/// portal or a block link to them. Sent with the link rows written, so a usage chip refetching
+/// on it reads them.
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, specta::Type, tauri_specta::Event)]
+#[serde(rename_all = "camelCase")]
+pub struct PortalsUsageChangedEvent {
+    pub note_ids: Vec<String>,
+}
+
+/// Sends what one committed reindex changed in links: `portals:usage-changed` for the notes whose
+/// portal readers moved, and `notes:links-changed` only when a note's links did, as Electron's
+/// projectors send each on its own change.
+pub fn announce_links<R: Runtime>(app: &AppHandle<R>, links: LinkChanges) {
+    if !links.usage.is_empty() {
+        let note_ids = links.usage.iter().cloned().collect();
+        broadcast(app, PortalsUsageChangedEvent { note_ids });
+    }
+    if !links.sources.is_empty() || !links.targets.is_empty() {
+        broadcast(app, NoteLinksChangedEvent::from(links));
+    }
+}
+
 /// A tag's colour changed (`tags:color-updated`).
 #[derive(Debug, Clone, Serialize, serde::Deserialize, specta::Type, tauri_specta::Event)]
 pub struct TagColorUpdatedEvent {
@@ -446,6 +469,14 @@ pub struct VaultIndexRecoveredEvent {
 pub struct SettingsChangedEvent {
     pub key: String,
     pub fields: Vec<String>,
+}
+
+/// The inline AI settings were written (replaces Electron's `ai-inline:server-ready` as the
+/// settings refresh). The key is masked.
+#[derive(Debug, Clone, Serialize, serde::Deserialize, specta::Type, tauri_specta::Event)]
+#[serde(rename_all = "camelCase")]
+pub struct AiInlineSettingsChangedEvent {
+    pub settings: InlineAiSettings,
 }
 
 /// The UI language changed (`locale:changed`).

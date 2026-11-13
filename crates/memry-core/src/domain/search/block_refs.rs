@@ -285,6 +285,46 @@ pub(super) fn write(index: &Connection, id: &str, blocks: &[Block]) -> Result<()
     Ok(())
 }
 
+/// A note's reference rows as its readers' usage lists see them: a portal's source, anchor and
+/// fence, or a block link's note half and anchor.
+pub(super) type UsageRows = BTreeSet<(bool, String, Option<String>, Option<u32>)>;
+
+pub(super) fn usage_rows(index: &Connection, id: &str) -> Result<UsageRows, StorageError> {
+    let mut statement = index
+        .prepare_cached(
+            "SELECT 1, source_note_id, anchor, ordinal FROM portal_refs
+               WHERE host_note_id = ?1 AND source_note_id IS NOT NULL
+             UNION ALL
+             SELECT 0, target, anchor, NULL FROM block_link_refs WHERE source_note_id = ?1",
+        )
+        .map_err(failed)?;
+    let rows = statement
+        .query_map(params![id], |row| {
+            Ok((row.get(0)?, row.get(1)?, row.get(2)?, row.get(3)?))
+        })
+        .map_err(failed)?;
+    rows.collect::<Result<_, _>>().map_err(failed)
+}
+
+/// The notes whose usage moved between a note's rows `before` and `after`: a portal's source,
+/// and the note a block link resolves to.
+pub(super) fn usage_targets(
+    names: &WikiNames,
+    before: &UsageRows,
+    after: &UsageRows,
+) -> BTreeSet<String> {
+    before
+        .symmetric_difference(after)
+        .filter_map(
+            |(portal, to, ..)| match (portal, to.strip_prefix(MEMRY_NOTE)) {
+                (true, _) => Some(to.clone()),
+                (false, Some(id)) => Some(id.to_owned()),
+                (false, None) => super::links::target_id(names, to),
+            },
+        )
+        .collect()
+}
+
 #[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash)]
 pub enum BlockRefKind {
     /// A `memry-portal` fence shows the note, or `to_block` of it.

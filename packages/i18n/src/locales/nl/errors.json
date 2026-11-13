@@ -165,7 +165,8 @@
     "apiKeyMissing": "Voeg je {provider}-API-sleutel toe in Instellingen → AI om schrijftools te gebruiken.",
     "apiKeyInvalid": "Je {provider}-API-sleutel is geweigerd. Controleer hem in Instellingen → AI.",
     "ollamaUnreachable": "Ollama draait niet. Start het met \"ollama serve\" of kies een andere provider in Instellingen → AI.",
-    "providerUnreachable": "Kan {provider} niet bereiken. Controleer je internetverbinding en probeer het opnieuw."
+    "providerUnreachable": "Kan {provider} niet bereiken. Controleer je internetverbinding en probeer het opnieuw.",
+    "keychainUnavailable": "memrynote kan de sleutelhanger van het systeem niet bereiken, dus de AI-API-sleutel is niet gelezen of opgeslagen. Ontgrendel je sleutelhanger en probeer het opnieuw."
   },
   "auth": {
     "notAuthenticated": "Niet ingelogd",

@@ -1,11 +1,16 @@
 import { act, fireEvent, screen, waitFor, within } from '@testing-library/react'
 import { renderWithProviders as render } from '@tests/utils/render'
-import { useSyncExternalStore } from 'react'
+import { useLayoutEffect, useState, useSyncExternalStore } from 'react'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 import { commands } from '../../../../../generated/bindings'
 import * as Y from 'yjs'
 import { getDefaultReactSlashMenuItems } from '@blocknote/react'
-import { serializeCriticMarkup, type CriticMarkupMark } from '@memry/shared'
+import {
+  readCriticMarkupMarksFromYDoc,
+  serializeCriticMarkup,
+  writeCriticMarkupMarksToYDoc,
+  type CriticMarkupMark
+} from '@memry/shared'
 import { WIKI_LINK_EDIT_PLUGIN_KEY } from './wiki-link-edit-plugin'
 import type * as AttachmentPickerDialogModule from './attachment-picker-dialog'
 import type * as BlockSideMenuModule from './block-side-menu'
@@ -83,7 +88,7 @@ const contentAreaMocks = vi.hoisted(() => ({
     isRemoteUpdateRef: { current: false }
   },
   aiContext: {
-    port: 4315,
+    ready: true,
     error: null as string | null,
     retry: null as null | (() => void)
   },
@@ -505,6 +510,8 @@ import { ContentArea } from './ContentArea'
 import type * as ScanTaskIntents from './scan-task-intents'
 import { markTaskRemovalsHandled } from './task-removal'
 import { useYjsCollaboration } from '@/sync/use-yjs-collaboration'
+import { useEditorSync } from './hooks'
+import { useCriticMarkupReview } from '../review/use-critic-markup-review'
 
 function createBlock(id: string, overrides: Record<string, unknown> = {}) {
   const block = {
@@ -691,7 +698,7 @@ describe('ContentArea', () => {
       isReady: true,
       isRemoteUpdateRef: { current: false }
     }
-    contentAreaMocks.aiContext = { port: 4315, error: null, retry: null }
+    contentAreaMocks.aiContext = { ready: true, error: null, retry: null }
     contentAreaMocks.wikiHover = {
       isVisible: false,
       preview: null,
@@ -1037,7 +1044,7 @@ describe('ContentArea', () => {
   })
 
   it('renders editor chrome, suggestions, wiki preview, and context-menu conversion', async () => {
-    contentAreaMocks.aiContext = { port: 4315, error: 'AI offline', retry: null }
+    contentAreaMocks.aiContext = { ready: false, error: 'AI offline', retry: null }
     contentAreaMocks.wikiHover = {
       isVisible: true,
       preview: { id: 'note-b', title: 'Beta' },
@@ -1189,6 +1196,143 @@ describe('ContentArea', () => {
     // the deleted one is not among them.
     act(() => doc.transact(() => marksArray.push([remoteComment]), 'remote'))
     expect(replaceMarksFromYjs).toHaveBeenLastCalledWith([remoteComment])
+  })
+
+  // #4425: the window owns an open note's marks, and the host no longer rewrites
+  // them from each save. The window writes the doc's marks only when the user
+  // adds, edits, resolves, deletes or undoes one: a rewrite of the whole array
+  // on typing made it a concurrent writer of every mark, so a comment another
+  // device resolved came back, and two typing devices doubled every comment.
+  function bindReviewWindow(doc: Y.Doc, markdown: string) {
+    contentAreaMocks.useSyncState = { status: 'idle' }
+    contentAreaMocks.yjsState = {
+      fragment: doc.getXmlFragment('blocks'),
+      doc,
+      provider: { doc, isSynced: true },
+      isReady: true,
+      isRemoteUpdateRef: { current: false }
+    }
+    const shown: {
+      review?: ReturnType<typeof useCriticMarkupReview>
+      showText?: (markdown: string) => void
+    } = {}
+    const onMarkdownChange = vi.fn()
+    function Window() {
+      const [text, setText] = useState(markdown)
+      const review = useCriticMarkupReview({ markdown: text, onMarkdownChange })
+      useLayoutEffect(() => {
+        shown.review = review
+        shown.showText = setText
+      }, [review])
+      return (
+        <ContentArea
+          noteId="note-1"
+          review={{
+            plainMarkdown: review.plainMarkdown,
+            marks: review.marks,
+            hoveredMarkId: null,
+            onPlainMarkdownChange: review.handlePlainMarkdownChange,
+            onLivePlainMarkdownChange: review.followLivePlainMarkdown,
+            onReplaceMarksFromYjs: review.replaceMarksFromYjs,
+            onMarksDocBound: review.setMarksDocBound
+          }}
+        />
+      )
+    }
+    render(<Window />)
+    // What the editor's sync hears on each change of the live editor's text.
+    const liveText = (text: string, local: boolean) =>
+      act(() => vi.mocked(useEditorSync).mock.lastCall![0].onLiveMarkdownChange!(text, local))
+    const windowMarks = () => shown.review!.marks.map(({ id, start, end }) => [id, start, end])
+    return { shown, liveText, windowMarks }
+  }
+
+  const docMarks = (doc: Y.Doc) =>
+    doc
+      .getArray<CriticMarkupMark>('criticMarkupMarks')
+      .toArray()
+      .map(({ id, start, end }) => [id, start, end])
+
+  it('moves the window marks with the text typed before them, and leaves the doc marks', async () => {
+    const doc = new Y.Doc()
+    const plain = 'beta and beta.'
+    const comment: CriticMarkupMark = {
+      id: 'c-1',
+      kind: 'comment',
+      visibleText: 'beta',
+      start: 9,
+      end: 13,
+      body: 'the second beta'
+    }
+    const { liveText, windowMarks } = bindReviewWindow(doc, serializeCriticMarkup(plain, [comment]))
+    await waitFor(() => expect(docMarks(doc)).toEqual([['c-1', 9, 13]]))
+    const writes: unknown[] = []
+    doc.on('update', (update: Uint8Array) => writes.push(update))
+
+    liveText(`Intro. ${plain}`, true)
+    expect(windowMarks()).toEqual([['c-1', 16, 20]])
+
+    // A remote change brings its own marks through the doc: these do not move.
+    liveText(`Hi. Intro. ${plain}`, false)
+    liveText(`Hi. Intro. ${plain}!`, true)
+    expect(windowMarks()).toEqual([['c-1', 16, 20]])
+    expect(docMarks(doc)).toEqual([['c-1', 9, 13]])
+    expect(writes).toEqual([])
+  })
+
+  it('leaves a comment another device resolved out after typing here, with one copy of each other', async () => {
+    const here = new Y.Doc()
+    const plain = 'alpha and gamma.'
+    const marks: CriticMarkupMark[] = [
+      { id: 'c-1', kind: 'comment', visibleText: 'alpha', start: 0, end: 5, body: 'one' },
+      { id: 'c-2', kind: 'comment', visibleText: 'gamma', start: 10, end: 15, body: 'two' }
+    ]
+    const { shown, liveText } = bindReviewWindow(here, serializeCriticMarkup(plain, marks))
+    await waitFor(() => expect(docMarks(here).map(([id]) => id)).toEqual(['c-1', 'c-2']))
+    const there = new Y.Doc()
+    Y.applyUpdate(there, Y.encodeStateAsUpdate(here))
+
+    // Offline: this window types before both comments, the other device resolves c-1.
+    liveText(`Intro. ${plain}`, true)
+    there.transact(() =>
+      writeCriticMarkupMarksToYDoc(
+        there,
+        readCriticMarkupMarksFromYDoc(there).filter((mark) => mark.id !== 'c-1')
+      )
+    )
+    const toThere = Y.encodeStateAsUpdate(here, Y.encodeStateVector(there))
+    const toHere = Y.encodeStateAsUpdate(there, Y.encodeStateVector(here))
+    act(() => {
+      Y.applyUpdate(here, toHere, 'remote')
+      Y.applyUpdate(there, toThere, 'remote')
+    })
+
+    expect(docMarks(here).map(([id]) => id)).toEqual(['c-2'])
+    expect(docMarks(there).map(([id]) => id)).toEqual(['c-2'])
+    await waitFor(() => expect(shown.review!.marks.map((mark) => mark.id)).toEqual(['c-2']))
+  })
+
+  // A save from another editor of the note (a canvas card, a project overview:
+  // no review, so its text carries no marks) comes back as a content event.
+  it("takes the text of another editor's save and leaves the marks to the doc", async () => {
+    const doc = new Y.Doc()
+    const plain = 'beta and beta.'
+    const comment: CriticMarkupMark = {
+      id: 'c-1',
+      kind: 'comment',
+      visibleText: 'beta',
+      start: 9,
+      end: 13,
+      body: 'b'
+    }
+    const { shown, windowMarks } = bindReviewWindow(doc, serializeCriticMarkup(plain, [comment]))
+    await waitFor(() => expect(docMarks(doc)).toEqual([['c-1', 9, 13]]))
+
+    act(() => shown.showText!(`${plain} More.`))
+
+    expect(shown.review!.plainMarkdown).toBe(`${plain} More.`)
+    expect(windowMarks()).toEqual([['c-1', 9, 13]])
+    expect(docMarks(doc)).toEqual([['c-1', 9, 13]])
   })
 
   // The note is open on two devices. The checkbox typed on one reaches the

@@ -18,8 +18,10 @@ pub mod bookmarks;
 pub mod calendar;
 pub mod calendar_items;
 pub mod canvas;
+pub mod canvas_folder;
 pub mod content_hash;
 pub mod custom_icons;
+mod desktop_records;
 pub mod embedding_input;
 #[cfg(feature = "markdown")]
 pub mod external_feed;
@@ -30,6 +32,7 @@ pub mod folders;
 // Desktop's note edit only: iOS writes no note file, so it links none of it.
 #[cfg(feature = "markdown")]
 pub mod header_tags;
+pub mod home_page;
 pub mod inbox;
 pub mod journal;
 pub mod journal_ops;
@@ -63,10 +66,12 @@ pub mod saved_filters;
 pub mod search;
 pub mod settings;
 pub mod similarity;
+pub mod sticky_draft;
 pub mod tag_admin;
 pub mod tag_body_rename;
 pub mod tag_categories;
 pub mod tag_fields;
+pub mod tag_mint;
 // Desktop's object reads: they read the note index of files.
 #[cfg(feature = "markdown")]
 pub mod tag_objects;

@@ -5,6 +5,48 @@ import * as __TAURI_EVENT from "@tauri-apps/api/event";
 
 /** Commands */
 export const commands = {
+	/**  `agent:getLocalProviderSettings`. A locked keychain still opens the screen. */
+	agentGetLocalProviderSettings: () => __TAURI_INVOKE<AgentLocalProviderSettings>("agent_get_local_provider_settings"),
+	/**
+	 *  `agent:listLocalModels`. An unreachable server or a keychain that cannot answer is an empty
+	 *  list, as in Electron.
+	 */
+	agentListLocalModels: () => __TAURI_INVOKE<AgentLocalModelList>("agent_list_local_models"),
+	/**
+	 *  `agent:probeLocalProvider`: a live capability probe (streaming and tool calls), never
+	 *  answered from a cache.
+	 */
+	agentProbeLocalProvider: () => __TAURI_INVOKE<AgentLocalProviderProbeResult>("agent_probe_local_provider"),
+	/**
+	 *  `agent:setLocalProviderSettings`. A non-loopback URL needs `allowNonLoopback`; the key goes to
+	 *  the keychain before the config is written.
+	 */
+	agentSetLocalProviderSettings: (input: AgentLocalProviderSettingsUpdate) => __TAURI_INVOKE<AgentLocalProviderSettings>("agent_set_local_provider_settings", { input }),
+	/**  `agent:testLocalProvider`: the server answers `GET /models` and lists the model. */
+	agentTestLocalProvider: () => __TAURI_INVOKE<AgentLocalProviderProbeResult>("agent_test_local_provider"),
+	/**
+	 *  The settings with the key masked (`ai-inline:get-settings`). The key itself is never read,
+	 *  so a locked keychain still opens the screen.
+	 */
+	aiInlineGetSettings: () => __TAURI_INVOKE<InlineAiSettings>("ai_inline_get_settings"),
+	/**
+	 *  The models of the configured provider (`ai-inline:list-models`), asked with its key. Nothing
+	 *  listening at Ollama's address is the normal "Ollama is not running": `Transport` with code
+	 *  `ai.ollamaUnreachable`, logged at info. Every other failure is `ai.listModelsFailed`.
+	 */
+	aiInlineListModels: () => __TAURI_INVOKE<string[]>("ai_inline_list_models"),
+	/**
+	 *  Writes a partial update (`ai-inline:set-settings`) and returns the masked result. A masked
+	 *  key is left alone, an empty key is deleted, any other key goes to the keychain.
+	 */
+	aiInlineSetSettings: (updates: InlineAiUpdates) => __TAURI_INVOKE<InlineAiSettings>("ai_inline_set_settings", { updates }),
+	/**
+	 *  Whether the configured provider answers `GET /models` with the stored key. A refusal is an
+	 *  answer, not a failed call.
+	 */
+	aiInlineTestConnection: () => __TAURI_INVOKE<TestConnectionResult>("ai_inline_test_connection"),
+	/**  Ends a provider call the renderer aborted, before or after its head. */
+	aiProviderCancel: (requestId: string) => __TAURI_INVOKE<void>("ai_provider_cancel", { requestId }),
 	appInfo: () => __TAURI_INVOKE<AppInfo>("app_info"),
 	/**  The calling window closed its editor of `note_id`. */
 	crdtCloseDoc: (noteId: string) => __TAURI_INVOKE<null>("crdt_close_doc", { noteId }),
@@ -323,6 +365,15 @@ export const commands = {
 	 *  Linux when a daemon owns `org.freedesktop.Notifications`.
 	 */
 	notificationSupported: () => __TAURI_INVOKE<boolean>("notification_supported"),
+	/**
+	 *  `portals:get-usage`: the notes that show `note_id`, or its block `anchor`, with the notes
+	 *  that link to it.
+	 */
+	portalsGetUsage: (noteId: string, anchor: string | null) => __TAURI_INVOKE<PortalUsageView>("portals_get_usage", { noteId, anchor }),
+	/**  `portals:search`: the blocks a text or tag finds, `PortalSearchSchema` checked here. */
+	portalsSearch: (input: PortalSearchInput) => __TAURI_INVOKE<PortalSearchView>("portals_search", { input }),
+	/**  `portals:stamp-anchor`: the block's anchor, given one when it has none. */
+	portalsStampAnchor: (noteId: string, blockId: string) => __TAURI_INVOKE<StampAnchorView>("portals_stamp_anchor", { noteId, blockId }),
 	/**  `properties:get`: the note's values in its frontmatter's order; none for no note. */
 	propertiesGet: (entityId: string) => __TAURI_INVOKE<PropertyValueView[]>("properties_get", { entityId }),
 	/**  `properties:merge`: the given keys set, a `null` one removed, the rest left. */
@@ -576,6 +627,7 @@ export const commands = {
 
 /** Events */
 export const events = {
+	aiInlineSettingsChangedEvent: makeEvent<AiInlineSettingsChangedEvent, AiInlineSettingsChangedEvent>("ai-inline-settings-changed-event"),
 	appNavigationRequestedEvent: makeEvent<AppNavigationRequestedEvent, AppNavigationRequestedEvent>("app-navigation-requested-event"),
 	crdtProviderReadyEvent: makeEvent<CrdtProviderReadyEvent, CrdtProviderReadyEvent>("crdt-provider-ready-event"),
 	crdtProviderResetEvent: makeEvent<CrdtProviderResetEvent, CrdtProviderResetEvent>("crdt-provider-reset-event"),
@@ -600,6 +652,7 @@ export const events = {
 	noteRenamedEvent: makeEvent<NoteRenamedEvent, NoteRenamedEvent>("note-renamed-event"),
 	noteTagsChangedEvent: makeEvent<NoteTagsChangedEvent, NoteTagsChangedEvent>("note-tags-changed-event"),
 	noteUpdatedEvent: makeEvent<NoteUpdatedEvent, NoteUpdatedEvent>("note-updated-event"),
+	portalsUsageChangedEvent: makeEvent<PortalsUsageChangedEvent, PortalsUsageChangedEvent>("portals-usage-changed-event"),
 	propertyDefinitionChangedEvent: makeEvent<PropertyDefinitionChangedEvent, PropertyDefinitionChangedEvent>("property-definition-changed-event"),
 	settingsChangedEvent: makeEvent<SettingsChangedEvent, SettingsChangedEvent>("settings-changed-event"),
 	settingsOpenSectionEvent: makeEvent<SettingsOpenSectionEvent, SettingsOpenSectionEvent>("settings-open-section-event"),
@@ -629,6 +682,89 @@ export const events = {
 };
 
 /* Types */
+/**  `AgentLocalModelList`. */
+export type AgentLocalModelList = {
+	models: string[],
+};
+
+/**
+ *  `AgentLocalProviderPreset`. A preset a newer build adds reads as `custom`, which keeps its
+ *  stored URL.
+ */
+export type AgentLocalProviderPreset = "ollama" | "lm_studio" | "llama_cpp" | "custom";
+
+/**  `AgentLocalProviderProbeResult`. */
+export type AgentLocalProviderProbeResult = {
+	connected: boolean,
+	modelAvailable: boolean,
+	streamingSupported: boolean,
+	toolCallingSupported: boolean,
+	toolContinuationSupported: boolean,
+	toolsEnabled: boolean,
+	detail: string | null,
+};
+
+/**  `AgentLocalProviderSettings`, the renderer's copy: whether a key is stored, never the key. */
+export type AgentLocalProviderSettings = {
+	preset: AgentLocalProviderPreset,
+	baseUrl: string,
+	model: string,
+	apiKeyConfigured: boolean,
+	allowNonLoopback: boolean,
+	thinking: AgentLocalThinking,
+};
+
+/**
+ *  `AgentLocalProviderSettingsUpdate`. `api_key`: absent keeps the stored key, `null` or the
+ *  empty string deletes it, any other value replaces it. `clear_api_key` deletes it too.
+ *  `thinking` absent keeps the stored value.
+ */
+export type AgentLocalProviderSettingsUpdate = {
+	preset: AgentLocalProviderPreset,
+	baseUrl: string,
+	model: string,
+	allowNonLoopback: boolean,
+	apiKey?: string | null,
+	clearApiKey?: boolean | null,
+	thinking?: AgentLocalThinking | null,
+};
+
+/**  `AgentLocalThinking`: `off` asks a thinking model to answer without thinking. */
+export type AgentLocalThinking = "default" | "off";
+
+/**
+ *  The inline AI settings were written (replaces Electron's `ai-inline:server-ready` as the
+ *  settings refresh). The key is masked.
+ */
+export type AiInlineSettingsChangedEvent = {
+	settings: InlineAiSettings,
+};
+
+/**
+ *  `AIInlineSettings['provider']` of `@memry/contracts/ai-inline-channels`. `Custom` is any
+ *  OpenAI-compatible endpoint at the stored `baseUrl`, such as OpenRouter.
+ */
+export type AiProvider = "ollama" | "openai" | "anthropic" | "google" | "custom";
+
+/**  The provider's status and headers. */
+export type AiProviderHead = {
+	status: number,
+	headers: HeaderPair[],
+};
+
+/**
+ *  One provider call of the renderer's AI SDK. `path` is relative to the provider's base URL
+ *  and may carry a query (`?alt=sse`).
+ */
+export type AiProviderRequest = {
+	requestId: string,
+	provider: AiProvider,
+	method: HttpMethod,
+	path: string,
+	headers: HeaderPair[],
+	body: string | null,
+};
+
 export type AppInfo = {
 	version: string,
 	platform: string,
@@ -1161,6 +1297,11 @@ export type GlobalCaptureResult = {
 	fallbackRegistered: boolean,
 };
 
+export type HeaderPair = {
+	name: string,
+	value: string,
+};
+
 /**  `HeaderTagEditSchema`. */
 export type HeaderTagEditInput = {
 	add?: string[] | null,
@@ -1183,6 +1324,8 @@ export type HeatmapEntryView = {
 	level: number,
 };
 
+export type HttpMethod = "GET" | "POST";
+
 /**  `ImpactQuery`. */
 export type ImpactQuery = { kind: "remove-field"; tag: string; name: string } | { kind: "rename-field"; name: string } | { kind: "delete-tag"; tag: string } | { kind: "set-extends"; tag: string; parent: string | null } | { kind: "become-objects"; tag: string };
 
@@ -1200,6 +1343,30 @@ export type InboxOpenItemEvent = {
 export type InheritedFieldsView = {
 	from: string,
 	fields: ResolvedFieldView[],
+};
+
+/**
+ *  `AIInlineSettings` of `@memry/contracts/ai-inline-channels`. Outside Rust `api_key` is
+ *  always [`MASKED_KEY`] or empty.
+ */
+export type InlineAiSettings = {
+	enabled: boolean,
+	provider: AiProvider,
+	model: string,
+	apiKey: string,
+	baseUrl: string,
+};
+
+/**
+ *  A partial write (`Partial<AIInlineSettings>`). An `api_key` of [`MASKED_KEY`] is ignored,
+ *  the empty string deletes the stored key, any other value replaces it.
+ */
+export type InlineAiUpdates = {
+	enabled?: boolean | null,
+	provider?: AiProvider | null,
+	model?: string | null,
+	apiKey?: string | null,
+	baseUrl?: string | null,
 };
 
 /**  The block props that embed an attachment another note stores: `InsertExistingAttachmentResult`. */
@@ -1866,6 +2033,58 @@ export type OptionInput = {
 	default?: boolean | null,
 };
 
+/**  `PortalHost['kind']`. */
+export type PortalHostKind = "portal" | "link";
+
+/**  `PortalHostSchema`. */
+export type PortalHostView = {
+	noteId: string,
+	title: string,
+	path: string,
+	count: number,
+	kind: PortalHostKind,
+	/**  A portal's first matching fence among the host's portal fences; absent for a link. */
+	ordinal?: number | null,
+};
+
+/**  `PortalSearchSchema`, checked by the command. */
+export type PortalSearchInput = {
+	text: string | null,
+	tag: string | null,
+	limit: number,
+};
+
+/**  `PortalSearchResultItemSchema`. */
+export type PortalSearchItemView = {
+	noteId: string,
+	title: string,
+	path: string,
+	blockId: string,
+	anchor: string | null,
+	text: string,
+	parentText: string | null,
+};
+
+/**  `PortalSearchResultSchema`. */
+export type PortalSearchView = {
+	results: PortalSearchItemView[],
+	truncated: boolean,
+};
+
+/**  `PortalGetUsageResultSchema`. */
+export type PortalUsageView = {
+	hosts: PortalHostView[],
+};
+
+/**
+ *  The notes whose portal usage changed (`portals:usage-changed`): a host gained or lost a
+ *  portal or a block link to them. Sent with the link rows written, so a usage chip refetching
+ *  on it reads them.
+ */
+export type PortalsUsageChangedEvent = {
+	noteIds: string[],
+};
+
 /**  `PRESET_KEYS`. */
 export type PresetKey = "person" | "company" | "meeting" | "book";
 
@@ -2150,6 +2369,18 @@ export type StagedDrop = {
 };
 
 /**
+ *  `PortalStampAnchorResultSchema`: `anchor` on success, `reason` otherwise. The renderer's seam
+ *  turns it into the contract's union.
+ */
+export type StampAnchorView = {
+	anchor: string | null,
+	reason: StampRefusal | null,
+};
+
+/**  Why a stamp was refused (`PortalStampAnchorResultSchema`'s `reason`). */
+export type StampRefusal = "missing-note" | "missing-block" | "locked";
+
+/**
  *  The one startup type of the epic. Steps 08 (#3525) and 09 (#3526) extend this struct in
  *  place; no second startup type exists. The renderer reads it from `window.__MEMRY_STARTUP__`
  *  before first paint.
@@ -2405,6 +2636,15 @@ export type TemplateView = {
 	content: string,
 	createdAt: string,
 	modifiedAt: string,
+};
+
+/**
+ *  The outcome of the settings screen's Test button. `detail` is the translated reason of a
+ *  failure, `None` when `ok`.
+ */
+export type TestConnectionResult = {
+	ok: boolean,
+	detail: string | null,
 };
 
 /**  One entry of `WikiLinkTitleResolutions`. */

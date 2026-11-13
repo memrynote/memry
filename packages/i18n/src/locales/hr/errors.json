@@ -165,7 +165,8 @@
     "apiKeyMissing": "Dodajte svoj API ključ za {provider} u Postavke → AI da biste koristili alate za pisanje.",
     "apiKeyInvalid": "Vaš API ključ za {provider} je odbijen. Provjerite ga u Postavke → AI.",
     "ollamaUnreachable": "Ollama nije pokrenuta. Pokrenite je naredbom „ollama serve” ili odaberite drugog pružatelja u Postavke → AI.",
-    "providerUnreachable": "Nije moguće doći do usluge {provider}. Provjerite internetsku vezu i pokušajte ponovno."
+    "providerUnreachable": "Nije moguće doći do usluge {provider}. Provjerite internetsku vezu i pokušajte ponovno.",
+    "keychainUnavailable": "memrynote ne može pristupiti privjesku ključeva sustava, pa API ključ za AI nije pročitan ni spremljen. Otključajte privjesak ključeva i pokušajte ponovno."
   },
   "auth": {
     "notAuthenticated": "Niste prijavljeni",

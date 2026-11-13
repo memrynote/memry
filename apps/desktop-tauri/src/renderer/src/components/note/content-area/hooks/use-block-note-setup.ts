@@ -2,11 +2,11 @@
 
 import { useEffect, useState } from 'react'
 import { AIExtension } from '@blocknote/xl-ai'
-import { DefaultChatTransport } from 'ai'
 import type { HighlightInfo } from '../types'
 import { scrollToAnchor } from '../scroll-to-anchor'
 import { openClickedLink } from '../editor-links'
 import { openLink } from '@/lib/external-link-guard'
+import { TauriChatTransport } from '@/lib/ai/tauri-chat-transport'
 import { useEditorTarget } from '@/commands'
 import { createLogger } from '@/lib/logger'
 
@@ -14,7 +14,8 @@ const _log = createLogger('Hook:BlockNoteSetup')
 
 interface BlockNoteSetupParams {
   editor: any
-  aiPort?: number | null
+  /** Inline AI is on: the AI extension is registered. */
+  aiEnabled?: boolean
   spellCheck?: boolean
   focusAtEndRef?: React.RefObject<((clickY?: number) => void) | null>
   editorContainerRef: React.RefObject<HTMLDivElement | null>
@@ -30,7 +31,7 @@ interface BlockNoteSetupResult {
 
 export function useBlockNoteSetup({
   editor,
-  aiPort,
+  aiEnabled = false,
   spellCheck,
   focusAtEndRef,
   editorContainerRef,
@@ -42,13 +43,10 @@ export function useBlockNoteSetup({
 
   // AI extension registration
   useEffect(() => {
-    if (!aiPort) return undefined
+    if (!aiEnabled) return undefined
 
     if (!editor.getExtension('ai')) {
-      const transport = new DefaultChatTransport({
-        api: `http://127.0.0.1:${aiPort}/api/ai/chat`
-      })
-      const aiExtension = AIExtension({ transport })
+      const aiExtension = AIExtension({ transport: new TauriChatTransport() })
       editor.registerExtension(aiExtension)
     }
 
@@ -80,7 +78,7 @@ export function useBlockNoteSetup({
       // renders the AI menu again.
       setAiReady(false)
     }
-  }, [aiPort, editor])
+  }, [aiEnabled, editor])
 
   // Offer the editable editor to the Edit, Insert and Format commands of the
   // tab it renders in. Read-only instances (template preview) never are one.
@@ -242,5 +240,5 @@ export function useBlockNoteSetup({
   // registration is checked too: the AI components throw without the extension,
   // and a hidden workspace can render between the cleanup that unregisters it
   // and the state update that follows.
-  return { aiReady: aiPort ? aiReady && Boolean(editor.getExtension('ai')) : false }
+  return { aiReady: aiEnabled ? aiReady && Boolean(editor.getExtension('ai')) : false }
 }

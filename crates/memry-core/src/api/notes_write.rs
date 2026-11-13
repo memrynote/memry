@@ -47,6 +47,8 @@ use serde_json::Value;
 #[cfg(feature = "markdown")]
 mod files;
 mod folders;
+#[cfg(feature = "markdown")]
+mod portal;
 
 /// The write surface over one opened vault.
 #[derive(uniffi::Object)]

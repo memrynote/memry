@@ -4,19 +4,21 @@ import { Activity, createElement, type ReactNode } from 'react'
 import type React from 'react'
 import { commands } from '../../../../../../generated/bindings'
 
-const { AIExtensionMock, DefaultChatTransportMock } = vi.hoisted(() => ({
+const { AIExtensionMock, TauriChatTransportMock } = vi.hoisted(() => ({
   AIExtensionMock: vi.fn((config: unknown) => ({ name: 'ai', config })),
-  DefaultChatTransportMock: vi.fn(function DefaultChatTransport(config: unknown) {
-    return config
-  })
+  TauriChatTransportMock: vi.fn(
+    class TauriChatTransport {
+      readonly kind = 'tauri'
+    }
+  )
 }))
 
 vi.mock('@blocknote/xl-ai', () => ({
   AIExtension: AIExtensionMock
 }))
 
-vi.mock('ai', () => ({
-  DefaultChatTransport: DefaultChatTransportMock
+vi.mock('@/lib/ai/tauri-chat-transport', () => ({
+  TauriChatTransport: TauriChatTransportMock
 }))
 
 import { useBlockNoteSetup } from './use-block-note-setup'
@@ -117,7 +119,7 @@ describe('useBlockNoteSetup', () => {
     const { result } = renderHook(() =>
       useBlockNoteSetup({
         editor,
-        aiPort: 4315,
+        aiEnabled: true,
         editorContainerRef
       })
     )
@@ -135,7 +137,7 @@ describe('useBlockNoteSetup', () => {
     const { result, unmount } = renderHook(() =>
       useBlockNoteSetup({
         editor,
-        aiPort: 4315,
+        aiEnabled: true,
         editorContainerRef
       })
     )
@@ -144,8 +146,8 @@ describe('useBlockNoteSetup', () => {
       expect(result.current.aiReady).toBe(true)
     })
 
-    expect(DefaultChatTransportMock).toHaveBeenCalledWith({
-      api: 'http://127.0.0.1:4315/api/ai/chat'
+    expect(AIExtensionMock).toHaveBeenCalledWith({
+      transport: expect.any(TauriChatTransportMock)
     })
     expect(AIExtensionMock).toHaveBeenCalledTimes(1)
     expect(getAIExtension()).toBeTruthy()
@@ -166,7 +168,7 @@ describe('useBlockNoteSetup', () => {
     let rendered: boolean | null = null
     const { rerender } = renderHook(
       () => {
-        const setup = useBlockNoteSetup({ editor, aiPort: 4315, editorContainerRef })
+        const setup = useBlockNoteSetup({ editor, aiEnabled: true, editorContainerRef })
         rendered = setup.aiReady
         return setup
       },
@@ -194,7 +196,7 @@ describe('useBlockNoteSetup', () => {
     const { result, unmount } = renderHook(() =>
       useBlockNoteSetup({
         editor,
-        aiPort: null,
+        aiEnabled: false,
         editorContainerRef
       })
     )
@@ -215,7 +217,7 @@ describe('useBlockNoteSetup', () => {
     const { unmount } = renderHook(() =>
       useBlockNoteSetup({
         editor,
-        aiPort: null,
+        aiEnabled: false,
         editorContainerRef
       })
     )
@@ -227,12 +229,12 @@ describe('useBlockNoteSetup', () => {
   it('keeps another live editor offered when a later mount unmounts', () => {
     const { editor: noteEditor } = createEditor()
     const note = renderHook(() =>
-      useBlockNoteSetup({ editor: noteEditor, aiPort: null, editorContainerRef })
+      useBlockNoteSetup({ editor: noteEditor, aiEnabled: false, editorContainerRef })
     )
 
     const { editor: otherEditor } = createEditor()
     const other = renderHook(() =>
-      useBlockNoteSetup({ editor: otherEditor, aiPort: null, editorContainerRef })
+      useBlockNoteSetup({ editor: otherEditor, aiEnabled: false, editorContainerRef })
     )
     expect(getE2eEditor()).toBe(otherEditor)
 
@@ -476,7 +478,7 @@ describe('useBlockNoteSetup', () => {
     renderHook(() =>
       useBlockNoteSetup({
         editor,
-        aiPort: 4315,
+        aiEnabled: true,
         editorContainerRef
       })
     )

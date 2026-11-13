@@ -2,13 +2,24 @@ import { act, fireEvent, render, screen, waitFor, within } from '@testing-librar
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 import { AccountSettings } from './account-section'
 import { AgentProvidersSection } from './agent-providers-section'
-import { AIInlineSettings } from './ai-inline-section'
 import { AppearanceSettings } from './appearance-section'
 import { CalendarSettingsSection } from './calendar-section'
 import { CommandLineSettings } from './command-line-section'
 import { EditorSettings } from './editor-section'
 import { JournalSettings } from './journal-section'
 import { toast } from 'sonner'
+import type * as Bindings from '../../../../generated/bindings'
+
+const localProvider = vi.hoisted(() => ({
+  agentGetLocalProviderSettings: vi.fn(),
+  agentSetLocalProviderSettings: vi.fn(),
+  agentListLocalModels: vi.fn(),
+  agentTestLocalProvider: vi.fn()
+}))
+vi.mock('../../../../generated/bindings', async (importOriginal) => {
+  const actual = await importOriginal<typeof Bindings>()
+  return { ...actual, commands: { ...actual.commands, ...localProvider } }
+})
 
 const mocks = vi.hoisted(() => ({
   pickerOpenChange: null as null | ((open: boolean) => void),
@@ -378,7 +389,37 @@ vi.mock('@/components/sync/device-list', () => ({
   )
 }))
 
+function installLocalProviderCommands() {
+  localProvider.agentGetLocalProviderSettings.mockResolvedValue({
+    preset: 'ollama',
+    baseUrl: 'http://localhost:11434/v1',
+    model: 'llama3',
+    apiKeyConfigured: false,
+    allowNonLoopback: false,
+    thinking: 'default'
+  })
+  localProvider.agentSetLocalProviderSettings.mockImplementation(async (input) => ({
+    preset: input.preset,
+    baseUrl: input.baseUrl,
+    model: input.model,
+    apiKeyConfigured: Boolean(input.apiKey),
+    allowNonLoopback: input.allowNonLoopback,
+    thinking: input.thinking ?? 'default'
+  }))
+  localProvider.agentListLocalModels.mockResolvedValue({ models: ['llama3', 'qwen2.5'] })
+  localProvider.agentTestLocalProvider.mockResolvedValue({
+    connected: true,
+    modelAvailable: true,
+    streamingSupported: true,
+    toolCallingSupported: false,
+    toolContinuationSupported: false,
+    toolsEnabled: false,
+    detail: null
+  })
+}
+
 function installWindowApi() {
+  installLocalProviderCommands()
   const agentPreferences = {
     accessMode: 'vault_only',
     toolApprovalMode: 'always_accept'
@@ -386,14 +427,6 @@ function installWindowApi() {
   window.api = {
     ...window.api,
     agent: {
-      getLocalProviderSettings: vi.fn().mockResolvedValue({
-        preset: 'ollama',
-        baseUrl: 'http://localhost:11434/v1',
-        model: 'llama3',
-        apiKeyConfigured: false,
-        allowNonLoopback: false,
-        thinking: 'default'
-      }),
       getPreferences: vi.fn().mockResolvedValue(agentPreferences),
       getBackendStatuses: vi.fn().mockResolvedValue({
         claude_cli: { backend: 'claude_cli', available: true, version: '2.3.0' },
@@ -410,34 +443,7 @@ function installWindowApi() {
       // #2317 made the section read standing tool grants on mount; without it
       // here the whole section throws before it renders.
       getToolGrants: vi.fn().mockResolvedValue({ tools: [] }),
-      setPreferences: vi.fn(async (input) => ({ ...agentPreferences, ...input })),
-      setLocalProviderSettings: vi.fn(async (input) => ({
-        preset: input.preset,
-        baseUrl: input.baseUrl,
-        model: input.model,
-        apiKeyConfigured: Boolean(input.apiKey),
-        allowNonLoopback: input.allowNonLoopback,
-        thinking: input.thinking ?? 'default'
-      })),
-      listLocalModels: vi.fn().mockResolvedValue({ models: ['llama3', 'qwen2.5'] }),
-      testLocalProvider: vi.fn().mockResolvedValue({
-        connected: true,
-        modelAvailable: true,
-        streamingSupported: true,
-        toolCallingSupported: false,
-        toolContinuationSupported: false,
-        toolsEnabled: false,
-        detail: null
-      }),
-      probeLocalProvider: vi.fn().mockResolvedValue({
-        connected: true,
-        modelAvailable: true,
-        streamingSupported: true,
-        toolCallingSupported: true,
-        toolContinuationSupported: true,
-        toolsEnabled: true,
-        detail: null
-      })
+      setPreferences: vi.fn(async (input) => ({ ...agentPreferences, ...input }))
     } as unknown as typeof window.api.agent,
     syncOps: {
       getStorageBreakdown: vi.fn().mockResolvedValue({
@@ -562,28 +568,6 @@ function installWindowApi() {
             { path: '/vaults/work', name: 'work', isDefault: true }
           ]
         }
-      })
-    }
-  }
-  window.electron = {
-    ...window.electron,
-    ipcRenderer: {
-      ...window.electron.ipcRenderer,
-      invoke: vi.fn(async (channel: string, payload?: unknown) => {
-        if (channel === 'ai-inline:get-settings') {
-          return {
-            enabled: true,
-            provider: 'openai',
-            model: 'gpt-4.1',
-            apiKey: 'secret',
-            baseUrl: ''
-          }
-        }
-        if (channel === 'ai-inline:get-server-port') return 9090
-        if (channel === 'ai-inline:set-settings') return { success: true, payload }
-        if (channel === 'ai-inline:stop-server') return { success: true }
-        if (channel === 'ai-inline:start-server') return { success: true, port: 9191 }
-        return null
       })
     }
   }
@@ -1122,64 +1106,11 @@ describe('settings section coverage', () => {
     )
   })
 
-  it('loads and updates AI inline settings, including test connection states', async () => {
-    render(<AIInlineSettings />)
-
-    expect(screen.getByText('ai.inline.loading')).toBeInTheDocument()
-    await screen.findByText('ai.inline.connection')
-
-    fireEvent.click(screen.getByText('ai.inline.providers.anthropic'))
-    await waitFor(() =>
-      expect(window.electron.ipcRenderer.invoke).toHaveBeenCalledWith('ai-inline:set-settings', {
-        provider: 'anthropic',
-        model: 'claude-sonnet-5',
-        baseUrl: ''
-      })
-    )
-
-    fireEvent.click(screen.getByText('ai.inline.test'))
-    await waitFor(() =>
-      expect(toast.success).toHaveBeenCalledWith('ai.inline.connected {"port":9191}')
-    )
-
-    fireEvent.click(screen.getByRole('switch'))
-    await waitFor(() =>
-      expect(window.electron.ipcRenderer.invoke).toHaveBeenCalledWith('ai-inline:set-settings', {
-        enabled: false
-      })
-    )
-    expect(toast.success).toHaveBeenCalledWith('ai.inline.disabled')
-  })
-
-  it('reports Ollama as unreachable instead of falsely connected', async () => {
-    window.electron.ipcRenderer.invoke = vi.fn(async (channel: string) => {
-      if (channel === 'ai-inline:get-settings') {
-        return { enabled: true, provider: 'ollama', model: 'llama3.2', apiKey: '', baseUrl: '' }
-      }
-      if (channel === 'ai-inline:get-server-port') return null
-      if (channel === 'ai-inline:start-server') return { success: true, port: 59185 }
-      if (channel === 'ai-inline:list-ollama-models')
-        return { success: false, error: 'fetch failed' }
-      return null
-    }) as typeof window.electron.ipcRenderer.invoke
-
-    render(<AIInlineSettings />)
-    await screen.findByText('ai.inline.connection')
-
-    fireEvent.click(screen.getByText('ai.inline.test'))
-    await waitFor(() =>
-      expect(toast.error).toHaveBeenCalledWith(
-        'Ollama is not running. Start it with "ollama serve" and try again.'
-      )
-    )
-    expect(toast.success).not.toHaveBeenCalledWith('ai.inline.connected {"port":59185}')
-  })
-
   it('loads and updates local agent provider settings', async () => {
     render(<AgentProvidersSection />)
 
     expect(await screen.findByText('agentProviders.header.title')).toBeInTheDocument()
-    expect(window.api.agent.getLocalProviderSettings).toHaveBeenCalled()
+    expect(localProvider.agentGetLocalProviderSettings).toHaveBeenCalled()
     expect(window.api.agent.getPreferences).toHaveBeenCalled()
 
     expect(await screen.findByText('agentProviders.v2.permissions.group')).toBeInTheDocument()
@@ -1235,7 +1166,7 @@ describe('settings section coverage', () => {
     // Edits auto-save (debounced) — no Save button — then the connection is re-checked.
     await waitFor(
       () =>
-        expect(window.api.agent.setLocalProviderSettings).toHaveBeenCalledWith({
+        expect(localProvider.agentSetLocalProviderSettings).toHaveBeenCalledWith({
           preset: 'lm_studio',
           baseUrl: 'https://models.example.com/v1',
           model: 'qwen2.5',
@@ -1245,7 +1176,7 @@ describe('settings section coverage', () => {
         }),
       { timeout: 2000 }
     )
-    expect(window.api.agent.testLocalProvider).toHaveBeenCalled()
+    expect(localProvider.agentTestLocalProvider).toHaveBeenCalled()
     await screen.findAllByText('agentProviders.status.connected', undefined, { timeout: 2000 })
 
     expect(
@@ -1253,7 +1184,7 @@ describe('settings section coverage', () => {
     ).toHaveAttribute('aria-checked', 'true')
 
     fireEvent.click(screen.getByRole('button', { name: 'agentProviders.actions.test' }))
-    await waitFor(() => expect(window.api.agent.testLocalProvider).toHaveBeenCalledTimes(2))
+    await waitFor(() => expect(localProvider.agentTestLocalProvider).toHaveBeenCalledTimes(2))
   })
 
   // #2523: the lazy agent runtime rejects with runtimeStarting while it boots;

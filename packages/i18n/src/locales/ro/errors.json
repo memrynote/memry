@@ -165,7 +165,8 @@
     "apiKeyMissing": "Adaugă cheia API {provider} în Setări → AI pentru a folosi instrumentele de scriere.",
     "apiKeyInvalid": "Cheia API {provider} a fost respinsă. Verifică-o în Setări → AI.",
     "ollamaUnreachable": "Ollama nu rulează. Pornește-l cu „ollama serve” sau alege alt furnizor în Setări → AI.",
-    "providerUnreachable": "Nu s-a putut contacta {provider}. Verifică conexiunea la internet și încearcă din nou."
+    "providerUnreachable": "Nu s-a putut contacta {provider}. Verifică conexiunea la internet și încearcă din nou.",
+    "keychainUnavailable": "memrynote nu poate accesa brelocul de chei al sistemului, așa că cheia API pentru AI nu a fost citită sau salvată. Deblocați brelocul și încercați din nou."
   },
   "auth": {
     "notAuthenticated": "Neautentificat",

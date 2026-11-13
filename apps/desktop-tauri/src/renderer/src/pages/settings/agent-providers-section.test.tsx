@@ -1,17 +1,28 @@
 import { render, screen } from '@testing-library/react'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 
+import type * as Bindings from '../../../../generated/bindings'
 import { AgentProvidersSection } from './agent-providers-section'
+
+const localProvider = vi.hoisted(() => ({
+  agentGetLocalProviderSettings: vi.fn()
+}))
+vi.mock('../../../../generated/bindings', async (importOriginal) => {
+  const actual = await importOriginal<typeof Bindings>()
+  return { ...actual, commands: { ...actual.commands, ...localProvider } }
+})
 
 describe('AgentProvidersSection permissions', () => {
   beforeEach(() => {
+    localProvider.agentGetLocalProviderSettings.mockResolvedValue({
+      preset: 'ollama',
+      baseUrl: 'http://127.0.0.1:11434/v1',
+      model: '',
+      apiKeyConfigured: false,
+      allowNonLoopback: false,
+      thinking: 'default'
+    })
     window.api.agent = {
-      getLocalProviderSettings: vi.fn().mockResolvedValue({
-        preset: 'ollama',
-        baseUrl: 'http://127.0.0.1:11434/v1',
-        model: '',
-        hasApiKey: false
-      }),
       getPreferences: vi
         .fn()
         .mockResolvedValue({ accessMode: 'vault_only', toolApprovalMode: 'always_accept' }),
