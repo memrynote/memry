@@ -108,7 +108,7 @@ final class StoreFiller: VaultFilling, @unchecked Sendable {
         return summary
     }
 
-    func fetchNoteBody(noteId: String) async throws -> BodyFetchSummary {
+    func pullNoteBody(noteId: String) async throws -> BodyFetchSummary {
         calls.withLock { $0.append(.body(noteId)) }
         if let failure { throw failure }
         return BodyFetchSummary(updates: 1, baselines: 0, stopped: false)

@@ -136,6 +136,7 @@ struct VaultTabsView<Notes: View, Tasks: View, Journal: View, More: View>: View 
                 browse: browse,
                 openNote: { openNote($0) },
                 openTask: { router.openTask($0) },
+                openInboxItem: { inboxRouter.openItem($0, in: router) },
                 openJournalDay: { journalRouter.openDay($0) }
             )
             .environment(router)
