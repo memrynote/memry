@@ -22,8 +22,9 @@ pub struct StartupState {
     pub direction: String,
     pub startup_vault: Option<String>,
     /// Set in an e2e build whose control file names a test vault: the init script marks the
-    /// onboarding tour and the star prompt as seen, so no overlay covers the app
-    /// (`apps/desktop/src/preload/lib/e2e-onboarding.ts`). Not part of the published state.
+    /// onboarding tour, the star prompt and the iPhone beta launch prompt as seen, so no overlay
+    /// covers the app (`apps/desktop/src/preload/lib/e2e-onboarding.ts`). Not part of the
+    /// published state.
     #[serde(skip)]
     #[specta(skip)]
     pub suppress_onboarding: bool,
@@ -63,7 +64,8 @@ pub fn script(state: &StartupState) -> String {
         .replace('<', "\\u003c");
     let onboarding = if state.suppress_onboarding {
         // Wrapped: a webview without storage must not stop the state from being published.
-        "try{localStorage.setItem('memry:onboarding:tour:v1','1');localStorage.setItem('memry:onboarding:star:v1','done');}catch(e){}\n"
+        // The iPhone beta state is seeded only when absent, so a relaunch keeps a spec's join.
+        "try{localStorage.setItem('memry:onboarding:tour:v1','1');localStorage.setItem('memry:onboarding:star:v1','done');if(localStorage.getItem('memry:ios-beta')===null)localStorage.setItem('memry:ios-beta','{\"joinedEmail\":null,\"promptSeen\":true}');}catch(e){}\n"
     } else {
         ""
     };
