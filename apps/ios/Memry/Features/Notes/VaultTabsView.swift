@@ -131,6 +131,8 @@ struct VaultTabsView<Notes: View, Tasks: View, Journal: View, More: View>: View 
         // The Menu sheet is compact-only: a window resized to regular width
         // drops it rather than show it with the sidebar's empty menu.
         .onChange(of: width) { showsMenu = false }
+        // Settings is a split view in the sidebar's width (#4348).
+        .onChange(of: width, initial: true) { _, width in router.setSettingsSplit(width == .regular) }
         .sheet(isPresented: $showsSearch) {
             GlobalSearchSheet(
                 browse: browse,
