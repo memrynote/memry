@@ -30,8 +30,10 @@ use crate::crdt::errors::CrdtError;
 use crate::crdt::registry::UpdateSink;
 use crate::crdt::{epoch, markdown_seed, update_log};
 use crate::domain::notes::ITEM_TYPE;
+#[cfg(feature = "markdown")]
 use crate::domain::notes::journal_day::body_owner;
 use crate::domain::reads;
+#[cfg(feature = "markdown")]
 use crate::portal;
 use crate::sync::outbox;
 
@@ -149,6 +151,7 @@ pub fn append_markdown(
 /// - Returns: `None` when this vault holds no live markdown note or journal day by that id, as
 ///   [`edit_block`] answers `false`: a PDF or image note has no blocks. A locked one refuses
 ///   ([`CrdtError::Locked`]).
+#[cfg(feature = "markdown")]
 pub fn stamp_anchor(
     conn: &Connection,
     note_id: &str,

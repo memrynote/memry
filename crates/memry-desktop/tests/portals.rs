@@ -144,7 +144,7 @@ fn a_locked_note_refuses_a_stamp_and_is_left_out_of_a_search() {
         .expect("the note's block");
     e.core()
         .locks()
-        .set(TargetKind::Note, &plan, true)
+        .set(TargetKind::Note, &plan, true, "device-a")
         .expect("lock");
     let queued = queued_as(&e, &plan).len();
 
