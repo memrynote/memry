@@ -3,16 +3,20 @@ import type {
   AgentAccessMode,
   AgentBackendStatus,
   AgentCliBackendId,
-  AgentLocalProviderPreset,
-  AgentLocalThinking,
-  AgentLocalProviderProbeResult,
-  AgentLocalProviderSettings,
   AgentPreferences,
   AgentToolApprovalMode,
   BackendStatusesResponse
 } from '@memry/contracts/ipc-agent'
 import { isInPageReviewTool } from '@memry/contracts/ipc-agent'
 import { useT } from '@memry/i18n/renderer'
+
+import {
+  commands,
+  type AgentLocalProviderPreset,
+  type AgentLocalProviderProbeResult,
+  type AgentLocalProviderSettings,
+  type AgentLocalThinking
+} from '../../../../generated/bindings'
 
 import { invokeWhenAgentReady } from '@/agent-chat/agent-runtime-ready'
 import {
@@ -95,7 +99,7 @@ export function AgentProvidersSection({
   useEffect(() => {
     let cancelled = false
     void Promise.all([
-      window.api.agent.getLocalProviderSettings(),
+      commands.agentGetLocalProviderSettings(),
       window.api.agent.getPreferences()
     ]).then(([nextSettings, nextPreferences]) => {
       if (cancelled) return
@@ -133,7 +137,7 @@ export function AgentProvidersSection({
       void (async () => {
         setBusy('save')
         try {
-          const saved = await window.api.agent.setLocalProviderSettings({
+          const saved = await commands.agentSetLocalProviderSettings({
             preset: settings.preset,
             baseUrl: settings.baseUrl,
             model: settings.model,
@@ -143,7 +147,7 @@ export function AgentProvidersSection({
           })
           setSettings(saved)
           setDirty(false)
-          setStatus(await window.api.agent.testLocalProvider())
+          setStatus(await commands.agentTestLocalProvider())
         } finally {
           setBusy(null)
         }
@@ -230,7 +234,7 @@ export function AgentProvidersSection({
   const loadModels = useCallback(async () => {
     setBusy('models')
     try {
-      const result = await window.api.agent.listLocalModels()
+      const result = await commands.agentListLocalModels()
       setModels(result.models)
     } finally {
       setBusy(null)
@@ -240,7 +244,7 @@ export function AgentProvidersSection({
   const testConnection = useCallback(async () => {
     setBusy('test')
     try {
-      setStatus(await window.api.agent.testLocalProvider())
+      setStatus(await commands.agentTestLocalProvider())
     } finally {
       setBusy(null)
     }

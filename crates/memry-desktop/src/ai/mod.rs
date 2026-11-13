@@ -2,5 +2,7 @@
 //! Rust only: the renderer gets masked settings and never names a provider host.
 
 pub mod catalog;
+pub mod local_agent;
+pub mod local_provider;
 pub mod provider;
 pub mod settings;

@@ -82,6 +82,11 @@ impl ProbeClient {
                 .expect("the probe HTTP client needs a process default rustls crypto provider"),
         )
     }
+
+    /// The client itself, for the other probes of this module tree.
+    pub(crate) fn http(&self) -> &reqwest::Client {
+        &self.0
+    }
 }
 
 /// `GET <base>/models` with the provider's authentication, on a [`ProbeClient`]. The body of a

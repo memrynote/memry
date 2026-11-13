@@ -65,6 +65,14 @@ const ALLOWED: &[(&str, &str)] = &[
         "the inline AI provider the person picked or their local Ollama, through ai::catalog",
     ),
     (
+        "crates/memry-desktop/src/ai/local_provider/probe.rs",
+        "the local agent provider the person configured (loopback unless they confirmed another host)",
+    ),
+    (
+        "apps/desktop-tauri/src-tauri/src/commands/agent.rs",
+        "the local agent provider the person configured, through ai::local_provider::probe",
+    ),
+    (
         "apps/desktop-tauri/src-tauri/src/updater/velopack_backend.rs",
         "the update feed on github.com, fetched by Velopack; only its error type is named here",
     ),

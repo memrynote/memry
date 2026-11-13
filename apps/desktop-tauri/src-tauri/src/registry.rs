@@ -20,6 +20,12 @@ pub fn builder() -> Builder<Wry> {
         // One type per struct: the renderer reads `StartupState` and never writes it.
         .disable_serde_phases()
         .commands(collect_commands![
+            // agent
+            crate::commands::agent::agent_get_local_provider_settings::<Wry>,
+            crate::commands::agent::agent_list_local_models::<Wry>,
+            crate::commands::agent::agent_probe_local_provider::<Wry>,
+            crate::commands::agent::agent_set_local_provider_settings::<Wry>,
+            crate::commands::agent::agent_test_local_provider::<Wry>,
             // ai
             crate::commands::ai::ai_inline_get_settings::<Wry>,
             crate::commands::ai::ai_inline_list_models,
