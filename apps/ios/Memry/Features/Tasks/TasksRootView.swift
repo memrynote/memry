@@ -55,8 +55,14 @@ final class TasksRouter {
     var selectedTab: VaultTab = .notes
     var path: [TasksRoute] = []
     /// Settings' stack (spec 006 ST20): Settings routes, and the notes a
-    /// Settings page opens.
+    /// Settings page opens. As a stack, every page over the root list; as a
+    /// split view, the pages over `settingsPage` in the detail column.
     var settingsPath = NavigationPath()
+    /// The root row Settings' split view selects (#4348). `nil`, or a row
+    /// the list does not show, shows the first row (`SettingsRootRows.page`).
+    var settingsPage: SettingsRoute?
+    /// Settings shows as a split view: the shell is at regular width.
+    private(set) var settingsSplit = false
     /// The Calendar page's stack, wherever the page sits.
     var calendarPath = NavigationPath()
 
@@ -72,10 +78,28 @@ final class TasksRouter {
 
     /// Every "… › settings" entry point: Menu › Settings, that section, and
     /// Back returns to the Settings root (flow lane 01).
+    /// In the split view, a root row's page is selected and a page under
+    /// one (Account › Devices) is pushed over its row's page.
     func openSettings(_ route: SettingsRoute) {
         selectedTab = .more
         var path = NavigationPath()
-        if route != .root { path.append(route) }
+        if settingsSplit {
+            if route != .root { settingsPage = route.section }
+            if route != route.section { path.append(route) }
+        } else if route != .root {
+            path.append(route)
+        }
+        settingsPath = path
+    }
+
+    /// The shell changed width. The stack's root page carries over; a
+    /// `NavigationPath` cannot be read, so the pages over it do not, and a
+    /// stack's page is unknown to the split view, which keeps its selection.
+    func setSettingsSplit(_ split: Bool) {
+        guard split != settingsSplit else { return }
+        settingsSplit = split
+        var path = NavigationPath()
+        if !split, let settingsPage { path.append(settingsPage) }
         settingsPath = path
     }
 
@@ -151,11 +175,15 @@ struct VaultTasksScope<Content: View>: View {
     @Environment(\.scenePhase) private var scenePhase
     @State private var store: TasksStore?
     @State private var failure: UserFacingError?
+    @State private var searchIndex: VaultSearchIndex?
 
     var body: some View {
         content(store, failure)
             .environment(\.requestVaultSync, syncRequest)
             .environment(\.vaultSyncPasses, store?.syncPasses ?? 0)
+            .environment(\.vaultSearchIndex, searchIndex)
+            // A pass may have pulled records and bodies the index has not seen.
+            .onChange(of: store?.syncPasses) { searchIndex?.schedule() }
             .environment(\.vaultProjects, store?.projects ?? [])
             .environment(\.whiteboards, secureStore.map { CoreWhiteboardBoards(vault: vault, store: $0, executor: .shared) })
             // Pull and push on every return to the foreground, whichever tab
@@ -168,6 +196,10 @@ struct VaultTasksScope<Content: View>: View {
             // Reconnect: retry attachments a dead path left missing (#3261).
             .onReceive(NotificationCenter.default.publisher(for: PathReachability.attachmentPathChanged).receive(on: DispatchQueue.main)) { _ in
                 if let attachments = store?.attachments { Task { await attachments.redrive() } }
+            }
+            // A body pull outside a pass (a page, a portal, a share) landed content.
+            .onReceive(NotificationCenter.default.publisher(for: VaultSearchIndex.bodyLanded).receive(on: DispatchQueue.main)) { _ in
+                searchIndex?.schedule()
             }
             .background {
                 if let store {
@@ -213,7 +245,10 @@ struct VaultTasksScope<Content: View>: View {
 
     private var syncRequest: (@MainActor () -> Void)? {
         guard let store else { return nil }
-        return { store.scheduleSync() }
+        return { [searchIndex] in
+            store.scheduleSync()
+            searchIndex?.schedule()
+        }
     }
 
     private func make() {
@@ -222,6 +257,10 @@ struct VaultTasksScope<Content: View>: View {
         guard store?.vaultId != vault.id() else { return }
         store = nil
         failure = nil
+        // A vault whose index will not open still browses; its screens then
+        // have no search, as `VaultBrowseViewModel` does.
+        searchIndex = (try? CoreVaultSearch(vault: vault, executor: .shared)).map { VaultSearchIndex(search: $0) }
+        searchIndex?.schedule()
         guard let secureStore else {
             failure = ErrorMapping.userFacing(SyncError.Locked)
             return
