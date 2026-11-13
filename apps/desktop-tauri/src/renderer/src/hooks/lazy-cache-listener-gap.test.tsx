@@ -338,8 +338,8 @@ describe('a change made before an on-demand cache listens', () => {
 
   it('a search portal shows a block written while it opened, and searched once', async () => {
     let results = [searchItem('Before')]
-    const search = vi.fn(async () => ({ results, truncated: false }))
-    windowApi.portals = { search }
+    const search = vi.fn(async (_input: unknown) => ({ results, truncated: false }))
+    tauri.answers.portals_search = (args: { input: unknown }) => search(args.input)
     const target = { kind: 'search' as const, text: 'exam', tag: 'bio', limit: 50 }
     const editor = {
       isEditable: true,
@@ -372,8 +372,11 @@ describe('a change made before an on-demand cache listens', () => {
   })
 
   it('a note change runs each open search portal once, on its own query', async () => {
-    const search = vi.fn(async () => ({ results: [searchItem('Hit')], truncated: false }))
-    windowApi.portals = { search }
+    const search = vi.fn(async (_input: unknown) => ({
+      results: [searchItem('Hit')],
+      truncated: false
+    }))
+    tauri.answers.portals_search = (args: { input: unknown }) => search(args.input)
     const editor = {
       isEditable: true,
       getBlock: () => undefined,
