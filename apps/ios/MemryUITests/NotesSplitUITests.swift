@@ -72,6 +72,34 @@ final class NotesSplitUITests: XCTestCase {
         deleteNotes([title, other])
     }
 
+    /// With the caret in a note's body, the list's "+" opens a new note, and
+    /// the next typing lands in the new note's title, not in the open body.
+    func testPlusWithTheCaretInABodyTypesIntoTheNewNote() throws {
+        try openNotes()
+        XCUIDevice.shared.orientation = .portrait
+        let open = "[agent] \(run) open"
+        let typed = "[agent] \(run) next"
+        makeNote(open).typeText("Body text here.")
+        XCTAssertTrue(matches(NSPredicate(format: "value CONTAINS 'Body text here.'"), firstBlock))
+
+        app.buttons["notes.addButton"].firstMatch.tap()
+        let field = app.textFields["Title"]
+        XCTAssertTrue(field.waitForExistence(timeout: 10), "+ did not open a new note")
+        XCTAssertTrue(matches(NSPredicate(format: "hasKeyboardFocus == true"), field), "the new note's title has no caret")
+        app.typeText("\(typed)\n")
+        XCTAssertTrue(page(typed).waitForExistence(timeout: 10), "the typing did not reach the new note's title")
+
+        row(open).tap()
+        XCTAssertTrue(page(open).waitForExistence(timeout: 10))
+        let kept = matches(NSPredicate(format: "value CONTAINS 'Body text here.'"), firstBlock)
+        attach("open-note-after-plus")
+        let body = firstBlock.value as? String ?? ""
+        XCTAssertTrue(kept, "the open note's body was emptied: \(body)")
+        XCTAssertFalse(body.contains(typed), "the typing landed in the open note's body: \(body)")
+        XCUIDevice.shared.orientation = .landscapeLeft
+        deleteNotes([open, typed])
+    }
+
     /// `DESIGN.md` › Tablet: three columns in 13" landscape, two (the list
     /// and the note) in portrait and beside the app's page sidebar.
     func testColumnsFollowTheWidth() throws {
