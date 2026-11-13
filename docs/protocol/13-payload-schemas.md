@@ -28,9 +28,10 @@ Notes root and is appended after them. `canvas` (whiteboards, §13.7.21) was
 added for the phone's whiteboard block and is appended last.
 
 Six more **record types** are served by the server and **not** subscribed to
-here: `agent_conversation`, `agent_message`, `canvas_folder`, `home_page`,
+here: `agent_conversation`, `agent_message`, `canvas_folder` (canvas folders,
+§13.7.23), `home_page` (Home boards, §13.7.24, §13.11),
 `vault_lock` (desktop read-only locks, #2606, §13.7.22), `sticky_draft`
-(unsent desktop sticky text, §13.13).
+(unsent desktop sticky text, §13.7.25, §13.13).
 **A conforming client omits them from the header and never sees them**
 (chapter 05 §5.3.1).
 
@@ -1020,8 +1021,8 @@ it out (§13.1), and `payload-schemas.json` lists it under
 record. Unlocking writes `locked: false` on the same record
 (`packages/contracts/src/sync-payloads.ts:455-458`). `targetKind` is a
 free-form string, so a kind a newer build adds still parses (`:460-462`).
-Desktop's push states all six keys
-(`apps/desktop/src/main/sync/item-handlers/vault-lock-handler.ts:119-136`).
+Desktop's push states up to six keys; `clock` is absent when the row has none
+(`apps/desktop/src/main/sync/item-handlers/vault-lock-handler.ts:127-134`).
 Its seed of a lock made before sync pushes the whole `vault_locks` row
 (`:143-157`), so `id` and `syncedAt` also arrive as unmodelled keys and are
 preserved (§13.2).
@@ -1050,6 +1051,126 @@ A client that locks a target whose record it holds as a tombstone writes the
 new record with a clock past the tombstone's
 (`crates/memry-core/src/domain/vault_locks/mod.rs:176`).
 
+### 13.7.23 `canvas_folder` — `:218-225`
+
+`id`, `vaultId`, `path`, `icon`, `clock`, `deletedAt`, every one optional on the
+wire. `canvas_folder` is desktop only: the iOS declaration leaves it out
+(§13.1), and `payload-schemas.json` lists it under `meta.desktopOnlyTypes`. The
+record carries only what a directory cannot: the icon, and the existence of an
+empty folder. Which folder a canvas is in lives on the canvas (§13.7.21).
+
+The id is derived from the path: `cvf_` and the path, NFC-normalised and
+lowercased (`canvasFolderSyncId`,
+`packages/contracts/src/canvas-folder-types.ts:24-26`;
+`crates/memry-core/src/domain/canvas_folder/mod.rs:45-48`), so two devices
+that create one folder offline make one record, and `Work` and `work` are one
+folder on every platform. The type is in `RECREATABLE_AFTER_PURGE_ITEM_TYPES`
+(`packages/contracts/src/sync-api.ts:222`): a folder deleted and made again
+writes the same id, with a clock past the tombstone's
+(`crates/memry-core/src/domain/canvas_folder/mod.rs:98`).
+
+Desktop's push is built key by key and never carries `syncedAt`
+(`apps/desktop/src/main/sync/item-handlers/canvas-folder-handler.ts:23-32`):
+`icon` and `deletedAt` are stated as `null` when empty, and `clock` is absent
+when the row has none. `deletedAt` is epoch milliseconds. Desktop
+soft-deletes, so a deleted folder can arrive as a live record whose
+`deletedAt` is a number; a reader treats it as deleted.
+
+**Normative**, the apply rule (`canvas-folder-handler.ts:53-133`). It is the
+document-level resolver (§13.9) with three additions:
+
+1. a create (no local record, live or deleted) without a non-empty `vaultId`
+   and a non-empty `path` is skipped (`:104-112`);
+2. a concurrent clock is last-writer-wins: the remote applies under the merged
+   clock (`:65-73`);
+3. over a local record, deleted ones included, an absent or `null` `path`
+   keeps the local path, an absent `icon` keeps the local icon and `null`
+   clears it, and `vaultId` stays local. `deletedAt` is the remote's: absent
+   or `null` makes the folder live again (`:74-80`).
+
+The Rust core follows the same rule
+(`crates/memry-core/src/domain/canvas_folder/merge.rs:28-64`, over
+`crates/memry-core/src/domain/desktop_records/mod.rs:56-86`).
+
+A delete follows chapter 05 §5.8 unchanged: the folder survives a tombstone
+only when its local clock is strictly after the tombstone's
+(`canvas-folder-handler.ts:135-151`). A client that deletes a folder states
+`deletedAt` in the payload too, as desktop's soft delete does
+(`crates/memry-core/src/domain/canvas_folder/mod.rs:108-129`).
+
+### 13.7.24 `home_page` — `:330-342`
+
+`name`, `icon`, `position`, `widgets`, `cover`, `clock`, `createdAt`,
+`updatedAt`, every one optional on the wire. `home_page` is desktop only: the
+iOS declaration leaves it out (§13.1, §13.11), and `payload-schemas.json`
+lists it under `meta.desktopOnlyTypes`. `widgets` is opaque JSON **text** that
+holds an array, never parsed by the schema, so a widget a newer build adds
+still round-trips (`packages/contracts/src/sync-payloads.ts:315-329`). `cover`
+is `HomePageCoverSyncSchema` (`:305-311`), and a value that schema cannot read
+is read as absent (`:335-338`). Desktop pushes its whole `home_pages` row
+(`packages/sync-client/src/item-handlers/home-page-handler.ts:144-153`), so
+`id` and `syncedAt` also arrive as unmodelled keys and are preserved (§13.2).
+A client that writes a board states the eight schema keys
+(`crates/memry-core/src/domain/home_page/mod.rs:70-104`), and writes a
+`position` that is an integer as a JSON integer.
+
+**Normative**, the apply rule (`home-page-handler.ts:33-110`). It is the
+document-level resolver (§13.9) with four additions:
+
+1. `widgets` that is present and is not text holding a JSON array is skipped
+   **before the clock is compared**, so a later readable version of the board
+   still wins (`:40-47`). A `widgets` that is not a string at all fails the
+   schema; desktop skips it and the Rust core records it corrupt
+   (`crates/memry-core/src/domain/home_page/merge.rs:51-57`);
+2. a create (no live local record) without a non-empty `name` is skipped
+   (`:83-90`);
+3. a concurrent clock is last-writer-wins: the remote applies under the merged
+   clock (`:53-61`);
+4. over a local board, an absent or `null` `name`, `position` or `widgets`
+   keeps the local value; an absent `icon` or `cover` keeps the local value and
+   `null` clears it; an unreadable `cover` is absent and keeps the local one;
+   `createdAt` stays local; an absent `updatedAt` reads as the apply time
+   (`:63-75`).
+
+The Rust core follows the same rule
+(`crates/memry-core/src/domain/home_page/merge.rs:34-80`, over
+`crates/memry-core/src/domain/desktop_records/mod.rs:56-86`).
+
+A delete follows chapter 05 §5.8 unchanged: the board survives a tombstone
+only when its local clock is strictly after the tombstone's
+(`home-page-handler.ts:123-138`). Board ids are random, so the type is not in
+`RECREATABLE_AFTER_PURGE_ITEM_TYPES` (`packages/contracts/src/sync-api.ts:217-228`).
+
+### 13.7.25 `sticky_draft` — `:494-500`
+
+`content`, `kind`, `clock`, `createdAt`, `modifiedAt`, every one optional on the
+wire. `sticky_draft` is desktop only: the iOS declaration leaves it out
+(§13.1, §13.13), and `payload-schemas.json` lists it under
+`meta.desktopOnlyTypes`. Desktop pushes its whole `sticky_drafts` row
+(`apps/desktop/src/main/sync/item-handlers/sticky-draft-handler.ts:104-113`),
+so `id` and `syncedAt` also arrive as unmodelled keys and are preserved
+(§13.2). A client that writes a draft states the five schema keys
+(`crates/memry-core/src/domain/sticky_draft/mod.rs:70-115`).
+
+**Normative**, the apply rule (`sticky-draft-handler.ts:23-78`). It is the
+document-level resolver (§13.9) with three additions:
+
+1. a create (no live local record) without a string `content` is skipped
+   (`:54-60`);
+2. a concurrent clock is last-writer-wins: the remote applies under the merged
+   clock (`:35-39`);
+3. over a local draft, an absent or `null` `content` or `kind` keeps the local
+   value, `createdAt` stays local, and an absent `modifiedAt` reads as the
+   apply time (`:41-50`).
+
+The Rust core follows the same rule
+(`crates/memry-core/src/domain/sticky_draft/merge.rs:30-59`, over
+`crates/memry-core/src/domain/desktop_records/mod.rs:56-86`).
+
+A delete follows chapter 05 §5.8 unchanged: the draft survives a tombstone only
+when its local clock is strictly after the tombstone's
+(`sticky-draft-handler.ts:80-92`).
+
 ## 13.8 `attachment` is not a record type
 
 **Normative.** `attachment` is in `SYNC_ITEM_TYPES`
@@ -1069,6 +1190,9 @@ new record with a clock past the tombstone's
 | `settings`                  | dotted-path field clocks                                 | yes, its own key space                             |
 | `canvas`                    | document-level resolver, plus a conflict copy (§13.7.21) | no                                                 |
 | `vault_lock`                | document-level resolver, keeping local keys (§13.7.22)   | no                                                 |
+| `canvas_folder`             | document-level resolver, keeping local keys (§13.7.23)   | no                                                 |
+| `home_page`                 | document-level resolver, keeping local keys (§13.7.24)   | no                                                 |
+| `sticky_draft`              | document-level resolver, keeping local keys (§13.7.25)   | no                                                 |
 | every other subscribed type | document-level resolver                                  | no                                                 |
 
 **`task.fields` and `tag_definition.schema` are versioned values** joined by
@@ -1122,11 +1246,12 @@ is no settings-specific mechanism).**
 ## 13.11 `home_page` — Q13.3
 
 `home_page` is in `RECORD_SYNC_ITEM_TYPES`
-(`packages/contracts/src/sync-api.ts:61`) and this feature does not subscribe to
-it (§13.1). Its payload is `{ name, icon, position, widgets, cover, clock,
-createdAt, updatedAt }` (`packages/contracts/src/sync-payloads.ts:317-329`),
+(`packages/contracts/src/sync-api.ts:63`). The iOS declaration does not
+subscribe to it (§13.1); a desktop declaration that names it applies it by
+§13.7.24. Its payload is `{ name, icon, position, widgets, cover, clock,
+createdAt, updatedAt }` (`packages/contracts/src/sync-payloads.ts:330-342`),
 where `widgets` is an opaque string and `cover` is the board's banner
-(`packages/contracts/src/sync-payloads.ts:292-298`): the note cover's shape plus
+(`packages/contracts/src/sync-payloads.ts:305-311`): the note cover's shape plus
 an optional `attachmentId`. `cover` follows the `icon` rule: absent keeps the
 receiver's value, `null` removes it, and an unreadable value is read as absent
 (`packages/sync-client/src/item-handlers/home-page-handler.ts:71`). Its bytes
@@ -1177,7 +1302,7 @@ write; no re-pull loop).**
 ## 13.13 `sticky_draft`
 
 A `sticky_draft` is text typed into the desktop sticky and not sent yet
-(`StickyDraftSyncPayloadSchema`, `packages/contracts/src/sync-payloads.ts:481-487`).
+(`StickyDraftSyncPayloadSchema`, `packages/contracts/src/sync-payloads.ts:494-500`).
 Its payload carries `content`, `kind`, `clock`, `createdAt` and `modifiedAt`,
 all optional on the wire. One vector clock covers the whole record (chapter 06),
 so concurrent edits on two devices keep the later one.
@@ -1194,4 +1319,5 @@ never come back after a delete, so the type is not in
 the type is a leaf in the reference graph, and a client that does not subscribe
 to it orphans nothing.
 
-This feature does not subscribe to `sticky_draft` (§13.1).
+The iOS declaration does not subscribe to `sticky_draft` (§13.1); a desktop
+declaration that names it applies it by §13.7.25.
