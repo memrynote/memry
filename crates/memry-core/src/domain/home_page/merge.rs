@@ -34,6 +34,14 @@ use crate::storage::repositories::projectors::home_pages::is_readable_cover;
 use super::{ITEM_TYPE, is_widgets_blob};
 
 const KEPT: Kept = Kept {
+    not_null: &[
+        "name",
+        "position",
+        "widgets",
+        "clock",
+        "createdAt",
+        "updatedAt",
+    ],
     coalesce: &["name", "position", "widgets"],
     when_absent: &["icon", "cover"],
     local: &["createdAt"],
@@ -47,7 +55,8 @@ pub fn apply_remote(
 ) -> Result<Inbound, StorageError> {
     let remote = match StoredPayload::parse(&record.payload_json) {
         Ok(remote) if record.deleted_at.is_none() => remote,
-        _ => return task_merge::wholesale(conn, record, now_ms),
+        Ok(_) => return task_merge::wholesale(conn, record, now_ms),
+        Err(_) => return desktop_records::unreadable(conn, record, now_ms),
     };
     let remote_object = remote.object();
     match remote_object.get("widgets") {

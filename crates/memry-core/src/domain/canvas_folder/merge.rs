@@ -28,6 +28,7 @@ use crate::storage::repositories::sync_items::InboundRecord;
 use super::ITEM_TYPE;
 
 const KEPT: Kept = Kept {
+    not_null: &["id", "vaultId", "path", "clock"],
     coalesce: &["path"],
     when_absent: &["icon"],
     local: &["vaultId"],
@@ -41,7 +42,8 @@ pub fn apply_remote(
 ) -> Result<Inbound, StorageError> {
     let remote = match StoredPayload::parse(&record.payload_json) {
         Ok(remote) if record.deleted_at.is_none() => remote,
-        _ => return task_merge::wholesale(conn, record, now_ms),
+        Ok(_) => return task_merge::wholesale(conn, record, now_ms),
+        Err(_) => return desktop_records::unreadable(conn, record, now_ms),
     };
     let local = desktop_records::stored(conn, ITEM_TYPE, &record.item_id, false)?;
     let stated = |key: &str| {

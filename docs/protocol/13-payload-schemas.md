@@ -1079,6 +1079,17 @@ soft-deletes, so a deleted folder can arrive as a live record whose
 **Normative**, the apply rule (`canvas-folder-handler.ts:53-133`). It is the
 document-level resolver (§13.9) with three additions:
 
+Before any of them, a live record that fails desktop's schema is skipped and
+the local record stays as it is: a payload that is not a JSON object, a schema
+key of the wrong type, a `clock` tick that is not a safe non-negative integer
+(`packages/contracts/src/sync-api.ts:386`), or `null` in any schema key
+but `icon` and `deletedAt` (`packages/contracts/src/sync-payloads.ts:218-225`). Desktop refuses it
+as `parse_error` or `schema_invalid` before the handler reads the local row
+(`apps/desktop/src/main/sync/apply-item.ts:155-176`). With no local row, a
+payload that is not an object is stored as corrupt. The skip is an exception
+to §13.2 rule 5: the cursor advances and the record is not refetched until a
+refused-items ledger lands (#4453).
+
 1. a create (no local record, live or deleted) without a non-empty `vaultId`
    and a non-empty `path` is skipped (`:104-112`);
 2. a concurrent clock is last-writer-wins: the remote applies under the merged
@@ -1091,8 +1102,8 @@ document-level resolver (§13.9) with three additions:
    or `null` makes the folder live again (`:74-80`).
 
 The Rust core follows the same rule
-(`crates/memry-core/src/domain/canvas_folder/merge.rs:30-66`, over
-`crates/memry-core/src/domain/desktop_records/mod.rs:58-92`).
+(`crates/memry-core/src/domain/canvas_folder/merge.rs:30-68`, over
+`crates/memry-core/src/domain/desktop_records/mod.rs:85-141`).
 
 A delete follows chapter 05 §5.8 unchanged: the folder survives a tombstone
 only when its local clock is strictly after the tombstone's
@@ -1119,12 +1130,23 @@ A client that writes a board states the eight schema keys
 **Normative**, the apply rule (`home-page-handler.ts:33-110`). It is the
 document-level resolver (§13.9) with four additions:
 
+Before any of them, a live record that fails desktop's schema is skipped and
+the local record stays as it is: a payload that is not a JSON object, a schema
+key of the wrong type, a `clock` tick that is not a safe non-negative integer
+(`packages/contracts/src/sync-api.ts:386`), or `null` in any schema key
+but `icon` and `cover` (`packages/contracts/src/sync-payloads.ts:330-342`). Desktop refuses it
+as `parse_error` or `schema_invalid` before the handler reads the local row
+(`apps/desktop/src/main/sync/apply-item.ts:155-176`). With no local row, a
+payload that is not an object is stored as corrupt. The skip is an exception
+to §13.2 rule 5: the cursor advances and the record is not refetched until a
+refused-items ledger lands (#4453).
+
 1. `widgets` that is present and is not text holding a JSON array is skipped
    **before the clock is compared**, so a later readable version of the board
    still wins (`:40-47`). A `widgets` that is not a string at all fails the
    schema; desktop skips it (`apps/desktop/src/main/sync/apply-item.ts:166-176`)
    and the Rust core skips it too
-   (`crates/memry-core/src/domain/home_page/merge.rs:53-57`);
+   (`crates/memry-core/src/domain/home_page/merge.rs:62-66`);
 2. a create (no live local record) without a non-empty `name` is skipped
    (`:83-90`);
 3. a concurrent clock is last-writer-wins: the remote applies under the merged
@@ -1137,8 +1159,8 @@ document-level resolver (§13.9) with four additions:
    (`:63-75`).
 
 The Rust core follows the same rule
-(`crates/memry-core/src/domain/home_page/merge.rs:36-80`, over
-`crates/memry-core/src/domain/desktop_records/mod.rs:58-92`).
+(`crates/memry-core/src/domain/home_page/merge.rs:36-89`, over
+`crates/memry-core/src/domain/desktop_records/mod.rs:85-141`).
 
 A delete follows chapter 05 §5.8 unchanged: the board survives a tombstone
 only when its local clock is strictly after the tombstone's
@@ -1159,6 +1181,17 @@ so `id` and `syncedAt` also arrive as unmodelled keys and are preserved
 **Normative**, the apply rule (`sticky-draft-handler.ts:23-78`). It is the
 document-level resolver (§13.9) with three additions:
 
+Before any of them, a live record that fails desktop's schema is skipped and
+the local record stays as it is: a payload that is not a JSON object, a schema
+key of the wrong type, a `clock` tick that is not a safe non-negative integer
+(`packages/contracts/src/sync-api.ts:386`), or `null` in any schema key
+(`packages/contracts/src/sync-payloads.ts:494-500`). Desktop refuses it
+as `parse_error` or `schema_invalid` before the handler reads the local row
+(`apps/desktop/src/main/sync/apply-item.ts:155-176`). With no local row, a
+payload that is not an object is stored as corrupt. The skip is an exception
+to §13.2 rule 5: the cursor advances and the record is not refetched until a
+refused-items ledger lands (#4453).
+
 1. a create (no live local record) without a string `content` is skipped
    (`:54-60`);
 2. a concurrent clock is last-writer-wins: the remote applies under the merged
@@ -1170,8 +1203,8 @@ document-level resolver (§13.9) with three additions:
    apply time (`:41-50`).
 
 The Rust core follows the same rule
-(`crates/memry-core/src/domain/sticky_draft/merge.rs:31-60`, over
-`crates/memry-core/src/domain/desktop_records/mod.rs:58-92`).
+(`crates/memry-core/src/domain/sticky_draft/merge.rs:31-62`, over
+`crates/memry-core/src/domain/desktop_records/mod.rs:85-141`).
 
 A delete follows chapter 05 §5.8 unchanged: the draft survives a tombstone only
 when its local clock is strictly after the tombstone's
