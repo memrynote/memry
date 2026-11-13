@@ -67,10 +67,12 @@ impl ModelList {
     }
 }
 
-/// The client of every probe: the caller's builder (the shared TLS stack) with redirects off.
-/// reqwest keeps `x-api-key` and `x-goog-api-key` across a cross-host redirect, so a redirect is
-/// reported as the provider's answer and never followed. The only way to build one is
-/// [`ProbeClient::new`], so no probe runs on a client that follows redirects.
+/// The client of every probe: the caller's builder (the shared TLS stack) with redirects and
+/// proxies off. reqwest keeps `x-api-key` and `x-goog-api-key` across a cross-host redirect, so a
+/// redirect is reported as the provider's answer and never followed. A system or `HTTP_PROXY`
+/// proxy would see the key, even one sent to a loopback server, so none is used, as Electron's
+/// Node `fetch` used none. The only way to build one is [`ProbeClient::new`], so no probe runs on
+/// a client that follows redirects or goes through a proxy.
 pub struct ProbeClient(reqwest::Client);
 
 impl ProbeClient {
@@ -78,6 +80,7 @@ impl ProbeClient {
         Self(
             builder
                 .redirect(reqwest::redirect::Policy::none())
+                .no_proxy()
                 .build()
                 .expect("the probe HTTP client needs a process default rustls crypto provider"),
         )

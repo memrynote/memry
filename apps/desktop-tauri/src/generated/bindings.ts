@@ -7,7 +7,10 @@ import * as __TAURI_EVENT from "@tauri-apps/api/event";
 export const commands = {
 	/**  `agent:getLocalProviderSettings`. A locked keychain still opens the screen. */
 	agentGetLocalProviderSettings: () => __TAURI_INVOKE<AgentLocalProviderSettings>("agent_get_local_provider_settings"),
-	/**  `agent:listLocalModels`. An unreachable server is an empty list, as in Electron. */
+	/**
+	 *  `agent:listLocalModels`. An unreachable server or a keychain that cannot answer is an empty
+	 *  list, as in Electron.
+	 */
 	agentListLocalModels: () => __TAURI_INVOKE<AgentLocalModelList>("agent_list_local_models"),
 	/**
 	 *  `agent:probeLocalProvider`: a live capability probe (streaming and tool calls), never

@@ -16,7 +16,7 @@ use memry_desktop::ai::local_provider::probe::{
     AgentToolsOffReason, ToolChoice, ToolVerdict, list_models, probe, test_connection,
 };
 use memry_desktop::ai::local_provider::{
-    AgentLocalProviderPreset, AgentLocalProviderSettingsUpdate, AgentLocalThinking,
+    AgentLocalProviderPreset, AgentLocalProviderSettingsUpdate, AgentLocalThinking, LocalProvider,
     LocalProviderError, LocalProviderStore, SERVICE,
 };
 use memry_desktop::registry::AppConfig;
@@ -108,6 +108,13 @@ impl Fixture {
         std::fs::read_to_string(self.dir.path().join("memry-config.json")).unwrap()
     }
 
+    /// The settings with the key, from a keychain that answered.
+    fn provider(&self) -> LocalProvider {
+        let (provider, error) = self.store.read();
+        assert!(error.is_none(), "{error:?}");
+        provider
+    }
+
     fn local(&self) -> Value {
         let config: Value = serde_json::from_str(&self.config_text()).unwrap();
         config["agent"]["localProvider"].clone()
@@ -183,7 +190,7 @@ fn the_key_goes_to_the_keychain_and_never_into_the_config() {
     let config: Value = serde_json::from_str(&fixture.config_text()).unwrap();
     assert_eq!(config["agent"]["accessMode"], "vault_only");
 
-    let provider = fixture.store.read().expect("read");
+    let provider = fixture.provider();
     assert_eq!(provider.key(), Some(KEY));
     assert!(!format!("{provider:?}").contains(KEY));
 }
@@ -208,7 +215,7 @@ fn an_absent_key_is_kept_and_null_empty_or_clear_deletes_it() {
         let cleared = fixture.store.write(lm_studio(clear.clone())).unwrap();
         assert!(!cleared.api_key_configured, "{clear}");
         assert_eq!(fixture.keychain.item("api-key"), None, "{clear}");
-        assert_eq!(fixture.store.read().unwrap().key(), None);
+        assert_eq!(fixture.provider().key(), None);
     }
 }
 
@@ -249,14 +256,21 @@ fn a_non_loopback_url_needs_confirmation_and_a_refusal_writes_nothing() {
     }
 
     let fixture = Fixture::new(json!({}));
-    for invalid in ["not a url", "ftp://localhost/v1", "file:///tmp/x"] {
+    for invalid in [
+        "not a url",
+        "ftp://localhost/v1",
+        "file:///tmp/x",
+        "ftp://user:secret@localhost/v1",
+    ] {
         let refused = fixture.store.write(lm_studio(
             json!({"baseUrl": invalid, "allowNonLoopback": true}),
         ));
         assert!(
-            matches!(refused, Err(LocalProviderError::InvalidUrl(_))),
+            matches!(refused, Err(LocalProviderError::InvalidUrl)),
             "{invalid}"
         );
+        // The message never repeats the URL, which can carry a password.
+        assert!(!refused.unwrap_err().to_string().contains("secret"));
     }
 }
 
@@ -266,10 +280,9 @@ fn a_locked_keychain_shows_the_key_unknown_and_writes_no_half_change() {
     fixture.keychain.locked.store(true, Ordering::SeqCst);
 
     assert!(fixture.store.settings().api_key_configured);
-    assert!(matches!(
-        fixture.store.read(),
-        Err(LocalProviderError::Keychain(SecureStoreError::Locked))
-    ));
+    let (provider, error) = fixture.store.read();
+    assert_eq!(provider.key(), None);
+    assert!(matches!(error, Some(SecureStoreError::Locked)));
     let refused = fixture.store.write(lm_studio(json!({"apiKey": KEY})));
     assert!(matches!(refused, Err(LocalProviderError::Keychain(_))));
     assert_eq!(fixture.local()["preset"], "ollama");
@@ -287,7 +300,7 @@ fn the_key_is_read_from_the_keychain_once_per_process() {
     let fixture = Fixture::new(json!({}));
     fixture.store.settings();
     fixture.store.settings();
-    fixture.store.read().unwrap();
+    fixture.provider();
     assert_eq!(fixture.keychain.gets.load(Ordering::SeqCst), 1);
 }
 
@@ -384,9 +397,10 @@ async fn server(
     (format!("http://127.0.0.1:{port}/v1"), seen)
 }
 
+/// The production client of the local provider requests.
 fn client() -> ProbeClient {
     let _ = rustls::crypto::ring::default_provider().install_default();
-    ProbeClient::new(memry_desktop::http::builder().no_proxy())
+    ProbeClient::new(memry_desktop::http::builder())
 }
 
 fn message(message: Value) -> (StatusCode, String) {
@@ -428,7 +442,7 @@ fn native_call() -> Script {
 async fn list_and_test_send_the_key_as_a_bearer_and_report_a_missing_model() {
     let (base, seen) = server(&["llama3", "qwen"], StatusCode::OK, native_call()).await;
     let fixture = configured(&base);
-    let provider = fixture.store.read().unwrap();
+    let provider = fixture.provider();
     assert_eq!(
         list_models(&client(), &provider).await.unwrap(),
         ["llama3", "qwen"]
@@ -455,7 +469,7 @@ async fn an_unconfirmed_remote_url_in_the_config_is_never_asked() {
     let fixture = Fixture::new(json!({"agent": {"localProvider": {
         "preset": "custom", "baseUrl": "https://models.example.invalid/v1", "model": "m"
     }}}));
-    let provider = fixture.store.read().unwrap();
+    let provider = fixture.provider();
     let result = test_connection(&client(), &provider).await;
     assert!(!result.connected);
     assert_eq!(
@@ -472,7 +486,7 @@ async fn an_unconfirmed_remote_url_in_the_config_is_never_asked() {
 async fn a_native_tool_call_and_its_continuation_turn_tools_on() {
     let (base, seen) = server(&["qwen"], StatusCode::OK, native_call()).await;
     let fixture = configured(&base);
-    let run = probe(&client(), &fixture.store.read().unwrap()).await;
+    let run = probe(&client(), &fixture.provider()).await;
     assert_eq!(run.tools, ToolVerdict::On(ToolChoice::Auto));
     let result = run.result;
     assert!(result.connected && result.model_available && result.streaming_supported);
@@ -510,7 +524,7 @@ async fn a_refused_named_tool_choice_is_retried_without_one() {
     });
     let (base, seen) = server(&["qwen"], StatusCode::OK, script).await;
     let fixture = configured(&base);
-    let run = probe(&client(), &fixture.store.read().unwrap()).await;
+    let run = probe(&client(), &fixture.provider()).await;
     assert_eq!(run.tools, ToolVerdict::On(ToolChoice::Omit));
     assert!(run.result.tools_enabled);
     assert_eq!(seen.lock().unwrap().chats.len(), 3);
@@ -528,7 +542,7 @@ async fn a_call_left_in_the_reply_text_is_replayed_as_a_structured_call() {
     });
     let (base, seen) = server(&["qwen"], StatusCode::OK, script).await;
     let fixture = configured(&base);
-    let run = probe(&client(), &fixture.store.read().unwrap()).await;
+    let run = probe(&client(), &fixture.provider()).await;
     assert_eq!(run.tools, ToolVerdict::On(ToolChoice::Auto));
 
     let seen = seen.lock().unwrap();
@@ -546,7 +560,7 @@ async fn a_model_that_never_calls_or_rejects_tools_turns_them_off() {
     let silent: Script =
         Arc::new(|_: &Value| message(json!({"role": "assistant", "content": "hi"})));
     let (base, _) = server(&["qwen"], StatusCode::OK, silent).await;
-    let run = probe(&client(), &configured(&base).store.read().unwrap()).await;
+    let run = probe(&client(), &configured(&base).provider()).await;
     assert_eq!(
         run.tools,
         ToolVerdict::Off {
@@ -567,7 +581,7 @@ async fn a_model_that_never_calls_or_rejects_tools_turns_them_off() {
         )
     });
     let (base, _) = server(&["qwen"], StatusCode::OK, rejecting).await;
-    let run = probe(&client(), &configured(&base).store.read().unwrap()).await;
+    let run = probe(&client(), &configured(&base).provider()).await;
     let detail = "/v1/chat/completions returned HTTP 400: model does not support tools";
     assert_eq!(
         run.tools,
@@ -589,7 +603,7 @@ async fn a_rejected_tool_result_counts_as_called_but_not_continued() {
         }
     });
     let (base, _) = server(&["qwen"], StatusCode::OK, script).await;
-    let run = probe(&client(), &configured(&base).store.read().unwrap()).await;
+    let run = probe(&client(), &configured(&base).provider()).await;
     assert_eq!(
         run.tools,
         ToolVerdict::Off {
@@ -609,7 +623,7 @@ async fn a_server_error_says_nothing_about_tools_and_keeps_them_on() {
     ] {
         let script: Script = Arc::new(move |_: &Value| (status, String::new()));
         let (base, seen) = server(&["qwen"], StatusCode::OK, script).await;
-        let run = probe(&client(), &configured(&base).store.read().unwrap()).await;
+        let run = probe(&client(), &configured(&base).provider()).await;
         assert_eq!(run.tools, ToolVerdict::Transient, "{status}");
         assert!(run.result.tools_enabled);
         assert!(
@@ -626,7 +640,7 @@ async fn a_server_error_says_nothing_about_tools_and_keeps_them_on() {
 #[tokio::test]
 async fn no_streamed_reply_turns_tools_off_before_any_tool_request() {
     let (base, seen) = server(&["qwen"], StatusCode::NOT_FOUND, native_call()).await;
-    let run = probe(&client(), &configured(&base).store.read().unwrap()).await;
+    let run = probe(&client(), &configured(&base).provider()).await;
     assert_eq!(
         run.tools,
         ToolVerdict::Off {
@@ -640,4 +654,170 @@ async fn no_streamed_reply_turns_tools_off_before_any_tool_request() {
         Some("/v1/chat/completions streaming returned HTTP 404")
     );
     assert!(seen.lock().unwrap().chats.is_empty());
+}
+
+/// A TCP listener that counts the connections it is offered and answers none of them.
+async fn bystander() -> (String, Arc<AtomicUsize>) {
+    let listener = TcpListener::bind("127.0.0.1:0").await.expect("bind");
+    let url = format!("http://{}", listener.local_addr().expect("addr"));
+    let hits = Arc::new(AtomicUsize::new(0));
+    let counted = hits.clone();
+    tokio::spawn(async move {
+        while let Ok((socket, _)) = listener.accept().await {
+            counted.fetch_add(1, Ordering::SeqCst);
+            drop(socket);
+        }
+    });
+    (url, hits)
+}
+
+#[tokio::test]
+async fn a_configured_proxy_never_sees_a_keyed_request() {
+    let _ = rustls::crypto::ring::default_provider().install_default();
+    let (proxy, proxied) = bystander().await;
+    let proxied_client = ProbeClient::new(
+        memry_desktop::http::builder().proxy(reqwest::Proxy::all(proxy.as_str()).unwrap()),
+    );
+    let (base, seen) = server(&["qwen"], StatusCode::OK, native_call()).await;
+    let fixture = configured(&base);
+    let run = probe(&proxied_client, &fixture.provider()).await;
+
+    assert_eq!(
+        proxied.load(Ordering::SeqCst),
+        0,
+        "a request went to the proxy"
+    );
+    assert_eq!(run.tools, ToolVerdict::On(ToolChoice::Auto));
+    let seen = seen.lock().unwrap();
+    assert_eq!(seen.auth.len(), 4);
+    assert!(
+        seen.auth
+            .iter()
+            .all(|auth| auth.as_deref() == Some(&format!("Bearer {KEY}")))
+    );
+}
+
+#[tokio::test]
+async fn a_redirected_chat_request_is_not_followed() {
+    let (elsewhere, followed) = bystander().await;
+    let location = format!("{elsewhere}/v1/chat/completions");
+    let app = Router::new()
+        .route(
+            "/v1/models",
+            get(|| async { json!({"data": [{"id": "qwen"}]}).to_string() }),
+        )
+        .route(
+            "/v1/chat/completions",
+            post(move || {
+                let location = location.clone();
+                async move { (StatusCode::TEMPORARY_REDIRECT, [("location", location)]) }
+            }),
+        );
+    let listener = TcpListener::bind("127.0.0.1:0").await.expect("bind");
+    let base = format!("http://{}/v1", listener.local_addr().expect("addr"));
+    tokio::spawn(async move { axum::serve(listener, app).await });
+
+    let run = probe(&client(), &configured(&base).provider()).await;
+    assert_eq!(
+        followed.load(Ordering::SeqCst),
+        0,
+        "the redirect was followed"
+    );
+    assert!(!run.result.streaming_supported);
+    assert_eq!(
+        run.result.detail.as_deref(),
+        Some("/v1/chat/completions streaming returned HTTP 307")
+    );
+}
+
+/// A keychain holding one key whose first read parks after it has read the old value, until a
+/// write arrives or half a second passes: the window in which a write can race a cache miss.
+struct RacingKeychain {
+    key: Mutex<Option<Vec<u8>>>,
+    first_read: AtomicBool,
+    reading: Mutex<std::sync::mpsc::Sender<()>>,
+    written: (
+        Mutex<std::sync::mpsc::Sender<()>>,
+        Mutex<std::sync::mpsc::Receiver<()>>,
+    ),
+}
+
+impl GenericSecrets for RacingKeychain {
+    fn get_secret(&self, _: &str, _: &str) -> Result<Option<Vec<u8>>, SecureStoreError> {
+        let key = self.key.lock().unwrap().clone();
+        if !self.first_read.swap(true, Ordering::SeqCst) {
+            self.reading.lock().unwrap().send(()).unwrap();
+            let written = self.written.1.lock().unwrap();
+            let _ = written.recv_timeout(std::time::Duration::from_millis(500));
+        }
+        Ok(key)
+    }
+    fn set_secret(&self, _: &str, _: &str, value: &[u8]) -> Result<(), SecureStoreError> {
+        *self.key.lock().unwrap() = Some(value.to_vec());
+        let _ = self.written.0.lock().unwrap().send(());
+        Ok(())
+    }
+    fn delete_secret(&self, _: &str, _: &str) -> Result<(), SecureStoreError> {
+        *self.key.lock().unwrap() = None;
+        let _ = self.written.0.lock().unwrap().send(());
+        Ok(())
+    }
+}
+
+#[test]
+fn a_read_that_misses_the_cache_never_keeps_a_key_a_racing_write_replaced() {
+    let dir = tempfile::tempdir().unwrap();
+    let (reading, read_started) = std::sync::mpsc::channel();
+    let written = std::sync::mpsc::channel();
+    let keychain = Arc::new(RacingKeychain {
+        key: Mutex::new(Some(b"sk-old".to_vec())),
+        first_read: AtomicBool::new(false),
+        reading: Mutex::new(reading),
+        written: (Mutex::new(written.0), Mutex::new(written.1)),
+    });
+    let store = Arc::new(LocalProviderStore::new(
+        Arc::new(AppConfig::load(dir.path().join("memry-config.json"))),
+        keychain.clone(),
+        None,
+    ));
+
+    let reader = std::thread::spawn({
+        let store = store.clone();
+        move || store.settings()
+    });
+    read_started.recv().unwrap();
+    let writer = std::thread::spawn({
+        let store = store.clone();
+        move || store.write(lm_studio(json!({"apiKey": "sk-new"}))).unwrap()
+    });
+    reader.join().unwrap();
+    writer.join().unwrap();
+
+    assert_eq!(
+        keychain.key.lock().unwrap().as_deref(),
+        Some(&b"sk-new"[..])
+    );
+    assert_eq!(store.read().0.key(), Some("sk-new"));
+}
+
+#[tokio::test]
+async fn a_locked_keychain_sends_the_requests_without_a_key() {
+    let (base, seen) = server(&["qwen"], StatusCode::OK, native_call()).await;
+    let fixture = configured(&base);
+    fixture.keychain.locked.store(true, Ordering::SeqCst);
+    let locked = LocalProviderStore::new(
+        Arc::new(AppConfig::load(
+            fixture.dir.path().join("memry-config.json"),
+        )),
+        fixture.keychain.clone(),
+        None,
+    );
+    let (provider, error) = locked.read();
+    assert!(matches!(error, Some(SecureStoreError::Locked)));
+
+    let run = probe(&client(), &provider).await;
+    assert_eq!(run.tools, ToolVerdict::On(ToolChoice::Auto));
+    let seen = seen.lock().unwrap();
+    assert_eq!(seen.auth.len(), 4);
+    assert!(seen.auth.iter().all(Option::is_none));
 }

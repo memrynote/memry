@@ -1,6 +1,6 @@
 //! The local provider commands through the IPC a renderer calls, on a mock app: no answer ever
 //! carries the key, an unconfirmed remote URL is refused with its code, and a locked keychain
-//! still opens the settings while the probes report it (#3539).
+//! still opens the settings while the probes run without the key and say why (#3539).
 
 use std::collections::HashMap;
 use std::sync::atomic::{AtomicBool, Ordering};
@@ -80,8 +80,17 @@ struct Fixture {
 }
 
 fn app() -> Fixture {
+    app_with(json!({}))
+}
+
+/// The app over a config file that already holds `config`.
+fn app_with(config: Value) -> Fixture {
+    // As `lib.rs` installs it at startup, for the probes' HTTP client.
+    let _ = rustls::crypto::ring::default_provider().install_default();
     let dir = tempfile::tempdir().unwrap();
-    let config = Arc::new(AppConfig::load(dir.path().join("memry-config.json")));
+    let path = dir.path().join("memry-config.json");
+    std::fs::write(&path, config.to_string()).unwrap();
+    let config = Arc::new(AppConfig::load(path));
     let keychain = Arc::new(Keychain::default());
     let store = Arc::new(LocalProviderStore::new(config, keychain.clone(), None));
 
@@ -91,7 +100,9 @@ fn app() -> Fixture {
         .commands(collect_commands![
             memry_tauri::commands::agent::agent_get_local_provider_settings::<MockRuntime>,
             memry_tauri::commands::agent::agent_set_local_provider_settings::<MockRuntime>,
+            memry_tauri::commands::agent::agent_list_local_models::<MockRuntime>,
             memry_tauri::commands::agent::agent_test_local_provider::<MockRuntime>,
+            memry_tauri::commands::agent::agent_probe_local_provider::<MockRuntime>,
         ]);
     let app = mock_builder()
         .invoke_handler(commands.invoke_handler())
@@ -191,19 +202,26 @@ fn an_unconfirmed_remote_url_is_refused_with_its_code() {
 }
 
 #[test]
-fn a_locked_keychain_opens_the_settings_and_fails_the_test_with_the_keychain_message() {
-    let f = app();
+fn a_locked_keychain_opens_the_settings_and_the_probes_say_why_they_sent_no_key() {
+    // Port 9 (discard) refuses the connection, so no local server answers.
+    let f = app_with(json!({"agent": {"localProvider": {
+        "preset": "custom", "baseUrl": "http://127.0.0.1:9/v1", "model": "qwen"
+    }}}));
     f.keychain.locked.store(true, Ordering::SeqCst);
     let got = f
         .invoke("agent_get_local_provider_settings", json!({}))
         .expect("the settings never need the key itself");
     assert_eq!(got["apiKeyConfigured"], json!(true));
 
-    let error = f
-        .invoke("agent_test_local_provider", json!({}))
-        .expect_err("the test needs the key");
-    assert!(
-        error["message"].as_str().unwrap().contains("keychain"),
-        "{error}"
-    );
+    let models = f
+        .invoke("agent_list_local_models", json!({}))
+        .expect("an empty list, as in Electron");
+    assert_eq!(models, json!({ "models": [] }));
+
+    for cmd in ["agent_test_local_provider", "agent_probe_local_provider"] {
+        let result = f.invoke(cmd, json!({})).expect("sent without the key");
+        assert_eq!(result["connected"], json!(false), "{cmd}");
+        let detail = result["detail"].as_str().unwrap();
+        assert!(detail.contains("keychain"), "{cmd}: {detail}");
+    }
 }

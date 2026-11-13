@@ -28,7 +28,7 @@ fn store<R: Runtime>(app: &AppHandle<R>) -> Arc<LocalProviderStore> {
 
 fn store_error<R: Runtime>(app: &AppHandle<R>, error: LocalProviderError) -> CommandError {
     match error {
-        LocalProviderError::InvalidUrl(_) => CommandError::new(
+        LocalProviderError::InvalidUrl => CommandError::new(
             ErrorKind::Invalid,
             "agent.invalidBaseUrl",
             error.to_string(),
@@ -43,29 +43,54 @@ fn store_error<R: Runtime>(app: &AppHandle<R>, error: LocalProviderError) -> Com
         }
         LocalProviderError::Keychain(error) => {
             tracing::warn!(scope = SCOPE, "keychain: {error}");
-            let locale = app.state::<Arc<LocaleService>>().get();
             CommandError {
-                message: i18n::t(locale, "errors:ai.keychainUnavailable", &Args::new()),
+                message: keychain_message(app),
                 ..CommandError::from_core(&error)
             }
         }
     }
 }
 
-/// The settings with the key, read off the async runtime (the keychain call can block).
+fn keychain_message<R: Runtime>(app: &AppHandle<R>) -> String {
+    let locale = app.state::<Arc<LocaleService>>().get();
+    i18n::t(locale, "errors:ai.keychainUnavailable", &Args::new())
+}
+
+/// The settings with the key, read off the async runtime (the keychain call can block). A
+/// keychain that cannot answer gives no key and `true`.
 async fn read<R: Runtime>(
     app: &AppHandle<R>,
     command: &'static str,
-) -> Result<LocalProvider, CommandError> {
+) -> Result<(LocalProvider, bool), CommandError> {
     let app = app.clone();
     blocking(command, move || {
-        store(&app).read().map_err(|error| {
-            let error = store_error(&app, error);
-            log_failure(command, &error);
-            error
-        })
+        let (provider, error) = store(&app).read();
+        if let Some(error) = &error {
+            tracing::warn!(
+                scope = SCOPE,
+                command,
+                "the local provider key could not be read: {error}"
+            );
+        }
+        Ok((provider, error.is_some()))
     })
     .await
+}
+
+/// A request sent without the key because the keychain could not answer says so first.
+fn with_keychain_detail<R: Runtime>(
+    app: &AppHandle<R>,
+    mut result: AgentLocalProviderProbeResult,
+    keychain_failed: bool,
+) -> AgentLocalProviderProbeResult {
+    if keychain_failed {
+        let message = keychain_message(app);
+        result.detail = Some(match result.detail {
+            Some(detail) => format!("{message} {detail}"),
+            None => message,
+        });
+    }
+    result
 }
 
 fn client() -> ProbeClient {
@@ -102,13 +127,17 @@ pub async fn agent_set_local_provider_settings<R: Runtime>(
     .await
 }
 
-/// `agent:listLocalModels`. An unreachable server is an empty list, as in Electron.
+/// `agent:listLocalModels`. An unreachable server or a keychain that cannot answer is an empty
+/// list, as in Electron.
 #[tauri::command]
 #[specta::specta]
 pub async fn agent_list_local_models<R: Runtime>(
     app: AppHandle<R>,
 ) -> Result<AgentLocalModelList, CommandError> {
-    let provider = read(&app, "agent_list_local_models").await?;
+    let (provider, keychain_failed) = read(&app, "agent_list_local_models").await?;
+    if keychain_failed {
+        return Ok(AgentLocalModelList { models: Vec::new() });
+    }
     let models = probe::list_models(&client(), &provider)
         .await
         .unwrap_or_else(|reason| {
@@ -127,8 +156,9 @@ pub async fn agent_list_local_models<R: Runtime>(
 pub async fn agent_test_local_provider<R: Runtime>(
     app: AppHandle<R>,
 ) -> Result<AgentLocalProviderProbeResult, CommandError> {
-    let provider = read(&app, "agent_test_local_provider").await?;
-    Ok(probe::test_connection(&client(), &provider).await)
+    let (provider, keychain_failed) = read(&app, "agent_test_local_provider").await?;
+    let result = probe::test_connection(&client(), &provider).await;
+    Ok(with_keychain_detail(&app, result, keychain_failed))
 }
 
 /// `agent:probeLocalProvider`: a live capability probe (streaming and tool calls), never
@@ -138,6 +168,7 @@ pub async fn agent_test_local_provider<R: Runtime>(
 pub async fn agent_probe_local_provider<R: Runtime>(
     app: AppHandle<R>,
 ) -> Result<AgentLocalProviderProbeResult, CommandError> {
-    let provider = read(&app, "agent_probe_local_provider").await?;
-    Ok(probe::probe(&client(), &provider).await.result)
+    let (provider, keychain_failed) = read(&app, "agent_probe_local_provider").await?;
+    let result = probe::probe(&client(), &provider).await.result;
+    Ok(with_keychain_detail(&app, result, keychain_failed))
 }

@@ -18,7 +18,7 @@ const WAIT: Duration = Duration::from_secs(10);
 
 fn client() -> ProbeClient {
     let _ = rustls::crypto::ring::default_provider().install_default();
-    ProbeClient::new(memry_desktop::http::builder().no_proxy())
+    ProbeClient::new(memry_desktop::http::builder())
 }
 
 /// A provider at `127.0.0.1:<port>` whose `/models` answers `status` with `body` and records the

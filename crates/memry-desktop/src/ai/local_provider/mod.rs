@@ -18,6 +18,7 @@ use serde_json::{Map, Value};
 use url::Url;
 use zeroize::Zeroizing;
 
+use crate::ai::cached_key::CachedKey;
 use crate::registry::{AppConfig, ConfigError};
 use crate::seams::secure_store::{GenericSecrets, device_account};
 
@@ -149,8 +150,9 @@ impl LocalProvider {
 
 #[derive(Debug, thiserror::Error)]
 pub enum LocalProviderError {
-    #[error("{0} is not an http or https URL")]
-    InvalidUrl(String),
+    /// The URL itself is left out: it can carry a user name and password.
+    #[error("the base URL is not an http or https URL")]
+    InvalidUrl,
     #[error("Non-loopback local provider endpoints require explicit confirmation.")]
     NonLoopback,
     #[error(transparent)]
@@ -174,7 +176,7 @@ fn check_base_url(base_url: &str, allow_non_loopback: bool) -> Result<(), LocalP
     let url = Url::parse(base_url.trim())
         .ok()
         .filter(|url| matches!(url.scheme(), "http" | "https"))
-        .ok_or_else(|| LocalProviderError::InvalidUrl(base_url.to_owned()))?;
+        .ok_or(LocalProviderError::InvalidUrl)?;
     if !allow_non_loopback && !is_loopback(&url) {
         return Err(LocalProviderError::NonLoopback);
     }
@@ -207,10 +209,9 @@ fn from_config(stored: Option<&Map<String, Value>>) -> LocalProvider {
 /// per process and kept until a write.
 pub struct LocalProviderStore {
     config: Arc<AppConfig>,
-    secrets: Arc<dyn GenericSecrets>,
+    key: CachedKey,
     account: String,
-    cache: Mutex<Option<Option<Zeroizing<String>>>>,
-    /// Serializes writes, so the cached key always matches the keychain.
+    /// Serializes writes, so two never merge into the config from the same stale copy.
     write: Mutex<()>,
 }
 
@@ -223,9 +224,8 @@ impl LocalProviderStore {
     ) -> Self {
         Self {
             config,
-            secrets,
+            key: CachedKey::new(secrets, SERVICE, "local provider API key"),
             account: device_account("api-key", device),
-            cache: Mutex::new(None),
             write: Mutex::new(()),
         }
     }
@@ -235,17 +235,24 @@ impl LocalProviderStore {
         &self.account
     }
 
-    /// The settings with the key, for Rust callers only. A locked keychain is an error.
-    pub fn read(&self) -> Result<LocalProvider, LocalProviderError> {
+    /// The settings with the key, for Rust callers only. A keychain that cannot answer gives the
+    /// settings without a key, and its error for the caller to show: a keyless server still
+    /// works, and one that needs the key answers 401.
+    pub fn read(&self) -> (LocalProvider, Option<SecureStoreError>) {
         let mut provider = self.stored();
-        provider.api_key = self.stored_key()?;
-        Ok(provider)
+        match self.key.get(&self.account) {
+            Ok(key) => {
+                provider.api_key = key;
+                (provider, None)
+            }
+            Err(error) => (provider, Some(error)),
+        }
     }
 
     /// The renderer's copy. A keychain that cannot answer leaves the key unknown, which shows as
     /// configured: a renderer that sends no key back leaves it alone either way.
     pub fn settings(&self) -> AgentLocalProviderSettings {
-        let configured = match self.stored_key() {
+        let configured = match self.key.get(&self.account) {
             Ok(key) => key.is_some(),
             Err(error) => {
                 tracing::warn!(
@@ -279,21 +286,10 @@ impl LocalProviderStore {
         } else {
             update.api_key.map(|key| key.filter(|key| !key.is_empty()))
         };
-        match key {
-            Some(None) => {
-                self.secrets
-                    .delete_secret(SERVICE, &self.account)
-                    .map_err(LocalProviderError::Keychain)?;
-                self.remember(None);
-            }
-            Some(Some(key)) => {
-                let key = Zeroizing::new(key);
-                self.secrets
-                    .set_secret(SERVICE, &self.account, key.as_bytes())
-                    .map_err(LocalProviderError::Keychain)?;
-                self.remember(Some(key));
-            }
-            None => {}
+        if let Some(key) = key {
+            self.key
+                .set(&self.account, key.map(Zeroizing::new))
+                .map_err(LocalProviderError::Keychain)?;
         }
         let mut patch = Map::new();
         patch.insert("preset".into(), serde_json::json!(update.preset));
@@ -315,36 +311,5 @@ impl LocalProviderStore {
 
     fn stored(&self) -> LocalProvider {
         from_config(self.config.agent().local_provider.as_ref())
-    }
-
-    fn stored_key(&self) -> Result<Option<Zeroizing<String>>, LocalProviderError> {
-        if let Some(key) = self
-            .cache
-            .lock()
-            .unwrap_or_else(PoisonError::into_inner)
-            .as_ref()
-        {
-            return Ok(key.clone());
-        }
-        let key = self
-            .secrets
-            .get_secret(SERVICE, &self.account)
-            .map_err(LocalProviderError::Keychain)?
-            .map(|bytes| {
-                let bytes = Zeroizing::new(bytes);
-                std::str::from_utf8(&bytes).map(|key| Zeroizing::new(key.to_owned()))
-            })
-            .transpose()
-            .map_err(|_| {
-                LocalProviderError::Keychain(SecureStoreError::Failed {
-                    what: "the stored local provider API key is not UTF-8 text".to_owned(),
-                })
-            })?;
-        self.remember(key.clone());
-        Ok(key)
-    }
-
-    fn remember(&self, key: Option<Zeroizing<String>>) {
-        *self.cache.lock().unwrap_or_else(PoisonError::into_inner) = Some(key);
     }
 }
