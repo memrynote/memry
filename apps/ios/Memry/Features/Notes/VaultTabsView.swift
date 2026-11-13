@@ -80,7 +80,7 @@ struct VaultTabsView<Notes: View, Tasks: View, Journal: View, More: View>: View 
 
     var body: some View {
         // Read here so the layout follows a module toggle and a synced order.
-        let width = VaultTabLayout.Width(horizontal: horizontalSizeClass, vertical: verticalSizeClass)
+        let width = LayoutWidth(horizontal: horizontalSizeClass, vertical: verticalSizeClass)
         let layout = VaultTabLayout(savedOrder: order.saved, width: width) { $0.isShown }
         GeometryReader { proxy in
             TabView(selection: Binding(

@@ -76,13 +76,13 @@ struct NoteRowActions: ViewModifier {
                     // leaves every device on the account, not just this phone.
                     Text("It leaves every device on this account. Your other devices keep no copy of it either.")
                 }
-                .sheet(isPresented: $isPickingIcon) {
+                .pickerPopover(isPresented: $isPickingIcon) {
                     EmojiPickerSheet(current: note.emoji) { chosen in
                         isPickingIcon = false
                         Task { await model.setNoteIcon(id: note.id, to: chosen) }
                     }
                 }
-                .sheet(item: $sharedCopy) { copy in
+                .pickerPopover(item: $sharedCopy) { copy in
                     ActivityShareSheet(text: copy.export.contents)
                         .presentationDetents([.medium, .large])
                         .ignoresSafeArea()
@@ -196,7 +196,7 @@ struct FolderRowActions: ViewModifier {
                     delete: { isConfirmingDelete = true }
                 )
             }
-            .sheet(isPresented: $isPickingIcon) {
+            .pickerPopover(isPresented: $isPickingIcon) {
                 EmojiPickerSheet(current: currentIcon) { chosen in
                     isPickingIcon = false
                     Task { await model.setFolderIcon(path: context.path, to: chosen) }

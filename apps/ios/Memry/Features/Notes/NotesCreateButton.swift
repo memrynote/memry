@@ -10,7 +10,9 @@ import TipKit
 // **A hold is invisible, so it is taught once.** `NotesCreateTip` points at
 // the button after the first note made with it, and never again once the
 // menu has been used. VoiceOver cannot discover a hold: the menu's entries
-// are also the button's accessibility actions.
+// are also the button's accessibility actions. The tip shows only while the
+// button is on screen: the tap that earns it also opens the new note, and a
+// popover left behind would point at nothing (#4341).
 
 struct NotesCreateButton: View {
     let newNote: () -> Void
@@ -19,6 +21,7 @@ struct NotesCreateButton: View {
     var fromTemplate: (() -> Void)?
 
     private let tip = NotesCreateTip()
+    @State private var isOnScreen = false
 
     var body: some View {
         Menu {
@@ -36,13 +39,18 @@ struct NotesCreateButton: View {
                 .foregroundStyle(Tokens.Text.primary.color)
                 .padding(Tokens.Space.small)
         } primaryAction: {
+            // Off before the donation makes the tip eligible: shown during the
+            // push, it would count as its one display and then vanish.
+            isOnScreen = false
             newNote()
             Task { await NotesCreateTip.madeNote.donate() }
         }
         .menuStyle(.button)
         .buttonStyle(.glass)
         .buttonBorderShape(.circle)
-        .popoverTip(tip, arrowEdge: .bottom)
+        .popoverTip(isOnScreen ? tip : nil, arrowEdge: .bottom)
+        .onAppear { isOnScreen = true }
+        .onDisappear { isOnScreen = false }
         .accessibilityLabel(NotesCreateCopy.newNote)
         .accessibilityHint(NotesCreateCopy.holdHint)
         .accessibilityAction(named: NotesCreateCopy.newFolder) { usedMenu(newFolder) }
