@@ -62,6 +62,10 @@ final class VaultFiles: FileProtection {
     static let vaultsDirectoryName = "vault"
     static let dataDatabaseName = "data.db"
     static let indexDatabaseName = "index.db"
+    /// The semantic-search cache. The core creates it only while the device
+    /// opts in, and it holds vectors derived from note text, so it takes the
+    /// same class and backup exclusion as the other two.
+    static let vectorDatabaseName = "vectors.db"
     static let imagesDirectoryName = "images"
 
     /// SQLite's companions to a database file. `-wal` and `-shm` exist only
@@ -290,12 +294,12 @@ final class VaultFiles: FileProtection {
             .appendingPathComponent(vaultId, isDirectory: true)
     }
 
-    /// The two databases and every sidecar name they can have, in a fixed
+    /// The three databases and every sidecar name they can have, in a fixed
     /// order. Named rather than enumerated from the directory: the list then
     /// says what is being protected, and an `images/` cache with thousands of
     /// files does not make every open pay for a directory walk.
     static func databaseFiles(in directory: URL) -> [URL] {
-        [dataDatabaseName, indexDatabaseName].flatMap { database -> [URL] in
+        [dataDatabaseName, indexDatabaseName, vectorDatabaseName].flatMap { database -> [URL] in
             [directory.appendingPathComponent(database)]
                 + sidecarSuffixes.map { directory.appendingPathComponent(database + $0) }
         }

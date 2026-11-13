@@ -95,7 +95,7 @@ fn build(path: &Path) -> Result<Db, StorageError> {
 
 /// Removes the database and its `-wal` and `-shm` sidecars. A path that is
 /// already absent is not an error.
-fn delete(path: &Path) -> Result<(), StorageError> {
+pub(super) fn delete(path: &Path) -> Result<(), StorageError> {
     for target in [
         path.to_path_buf(),
         sidecar(path, "-wal"),
