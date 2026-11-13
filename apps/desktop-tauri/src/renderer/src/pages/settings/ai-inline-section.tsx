@@ -214,6 +214,10 @@ export function AIInlineSettings(): React.JSX.Element {
   const isCustom = settings.provider === 'custom'
   const hasUrlRow = settings.provider === 'ollama' || isCustom
   const needsApiKey = settings.provider !== 'ollama' && !isCustom
+  // Rust keeps a custom key under the origin of its URL (#4451): without one there is no key.
+  const customUrl = URL.parse(settings.baseUrl.trim())
+  const keyWaitsForUrl =
+    isCustom && customUrl?.protocol !== 'https:' && customUrl?.protocol !== 'http:'
   const models = modelChoices(settings.provider, settings.model, endpointModels)
 
   const connectionControls = (
@@ -321,6 +325,7 @@ export function AIInlineSettings(): React.JSX.Element {
             <Input
               type={showApiKey ? 'text' : 'password'}
               value={settings.apiKey}
+              disabled={keyWaitsForUrl}
               onChange={(e) => setSettings((prev) => ({ ...prev, apiKey: e.target.value }))}
               onBlur={() => void updateSetting({ apiKey: settings.apiKey })}
               placeholder={

@@ -210,6 +210,21 @@ fn ollama_with_a_stored_cloud_key_reads_as_set_settings_answers() {
         .invoke("ai_inline_set_settings", json!({ "updates": {} }))
         .unwrap();
     assert_eq!(got["provider"], json!("ollama"));
-    assert_eq!(got["apiKey"], json!(MASKED_KEY));
+    // The OpenAI key is OpenAI's: Ollama shows none (#4451).
+    assert_eq!(got["apiKey"], json!(""));
     assert_eq!(got, set);
+}
+
+/// #4451 through the commands: the key field follows the selected provider and endpoint.
+#[test]
+fn the_key_field_shows_the_selected_providers_key_only() {
+    let f = opened(AiProvider::Openai);
+    let set = |updates: Value| f.invoke("ai_inline_set_settings", json!({ "updates": updates }));
+
+    let custom = set(json!({"provider": "custom", "baseUrl": "https://evil.example/v1"})).unwrap();
+    assert_eq!(custom["apiKey"], json!(""));
+    let back = set(json!({"provider": "openai", "baseUrl": ""})).unwrap();
+    assert_eq!(back["apiKey"], json!(MASKED_KEY));
+    let read = f.store.read(f.session.current().as_ref()).unwrap();
+    assert!(read.api_key == STORED, "the OpenAI key changed");
 }

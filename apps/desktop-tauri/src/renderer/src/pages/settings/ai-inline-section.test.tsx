@@ -225,4 +225,43 @@ describe('AIInlineSettings', () => {
     await userEvent.click(screen.getByRole('button', { name: 'Test' }))
     await waitFor(() => expect(toast.success).toHaveBeenCalledWith('Connected to llm.example'))
   })
+
+  it('shows the key state of the selected provider, as Rust answers it (#4451)', async () => {
+    commands.aiInlineSetSettings.mockImplementation(async (updates: Partial<InlineAiSettings>) => ({
+      ...openai,
+      ...updates,
+      apiKey: updates.provider === 'anthropic' ? '' : MASKED
+    }))
+    render(<AIInlineSettings />)
+    expect(await screen.findByPlaceholderText('Enter OpenAI API key')).toHaveProperty(
+      'value',
+      MASKED
+    )
+
+    await userEvent.click(screen.getByRole('button', { name: 'Anthropic' }))
+    const anthropic = await screen.findByPlaceholderText('Enter Anthropic API key')
+    expect(anthropic).toHaveProperty('value', '')
+    expect(screen.getByRole('button', { name: 'Test' })).toHaveProperty('disabled', true)
+  })
+
+  it('holds the custom key field until the endpoint URL parses', async () => {
+    const custom: InlineAiSettings = {
+      enabled: true,
+      provider: 'custom',
+      model: '',
+      apiKey: '',
+      baseUrl: ''
+    }
+    commands.aiInlineGetSettings.mockResolvedValue(custom)
+    commands.aiInlineListModels.mockResolvedValue([])
+    render(<AIInlineSettings />)
+
+    const key = await screen.findByPlaceholderText('API key (optional)')
+    expect(key).toHaveProperty('disabled', true)
+    const url = screen.getByPlaceholderText('https://openrouter.ai/api/v1')
+    fireEvent.change(url, { target: { value: 'not a url' } })
+    expect(key).toHaveProperty('disabled', true)
+    fireEvent.change(url, { target: { value: 'https://llm.example/v1' } })
+    expect(key).toHaveProperty('disabled', false)
+  })
 })
