@@ -1,9 +1,9 @@
 name: ONNX Runtime static library
 description: >-
   Fetches the CPU-only ONNX Runtime archive that build-ort-static.yml attached to the release
-  ort-static-1.31.0 and points ORT_LIB_LOCATION at it, on the runners whose target links it (macOS
-  x64, Windows x64 and ARM64, Linux x64; crates/AGENTS.md, ONNX Runtime). Elsewhere ort-sys downloads its own
-  prebuilt archive and this does nothing.
+  ort-static-1.31.0-r2, checks its pinned sha256 and points ORT_LIB_LOCATION at it, on the runners
+  whose target links it (macOS x64, Windows x64 and ARM64, Linux x64; crates/AGENTS.md, ONNX
+  Runtime). Elsewhere ort-sys downloads its own prebuilt archive and this does nothing.
 inputs:
   token:
     description: Token that can read the repository's releases.
@@ -15,19 +15,26 @@ runs:
       shell: bash
       env:
         GH_TOKEN: ${{ inputs.token }}
-        RELEASE_TAG: ort-static-1.31.0
+        RELEASE_TAG: ort-static-1.31.0-r2
+      # The sha256 of each archive as build-ort-static.yml published it (the same pins as
+      # crates/.cargo/config.toml): an asset replaced under the tag fails here, before extraction.
       run: |
         case "$RUNNER_OS/$RUNNER_ARCH" in
-          macOS/X64) triple=x86_64-apple-darwin ;;
-          Windows/X64) triple=x86_64-pc-windows-msvc ;;
-          Windows/ARM64) triple=aarch64-pc-windows-msvc ;;
-          Linux/X64) triple=x86_64-unknown-linux-gnu ;;
+          macOS/X64) triple=x86_64-apple-darwin sha256=4fb1160c4677ece8934f54069cdbfe5cad70a621d4cd12f8d92ab47bf37514ca ;;
+          Windows/X64) triple=x86_64-pc-windows-msvc sha256=5febd3aca7ed519549fda1c907cd522f9d435c84888e5b55622e14bb97aeb899 ;;
+          Windows/ARM64) triple=aarch64-pc-windows-msvc sha256=887e613bf0ae6ceb9b01c84f8369828e01e57239d8a4d73c15df5895fc9c0b09 ;;
+          Linux/X64) triple=x86_64-unknown-linux-gnu sha256=bb24e11f9372555b94b60de271de156fd28eba3406aed3fa3364bbbb35f5dc05 ;;
           *) echo "ort-sys links its prebuilt archive on $RUNNER_OS/$RUNNER_ARCH"; exit 0 ;;
         esac
         temp="$RUNNER_TEMP"
         if [ "$RUNNER_OS" = Windows ]; then temp=$(cygpath -m "$temp"); fi
         asset="$RELEASE_TAG-$triple.tar.zst"
         gh release download "$RELEASE_TAG" --repo "$GITHUB_REPOSITORY" --pattern "$asset" --dir "$temp"
+        actual=$(cmake -E sha256sum "$temp/$asset" | cut -d' ' -f1)
+        if [ "$actual" != "$sha256" ]; then
+          echo "::error::$asset has sha256 $actual, pinned $sha256"
+          exit 1
+        fi
         mkdir -p "$temp/ort-static"
         (cd "$temp/ort-static" && cmake -E tar xf "$temp/$asset")
         rm "$temp/$asset"

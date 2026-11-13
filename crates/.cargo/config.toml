@@ -2,11 +2,18 @@
 #
 # macOS arm64 needs nothing: ort-sys downloads its prebuilt static archive at build time. macOS
 # x64, Windows x64 and ARM64 and Linux x64 link the CPU-only archive of
-# .github/workflows/build-ort-static.yml. Fetch it and export ORT_LIB_LOCATION before building:
+# .github/workflows/build-ort-static.yml. Fetch it, check its sha256 against the pin below (the
+# same pins as .github/actions/ort-static) and export ORT_LIB_LOCATION before building:
 #
-#   gh release download ort-static-1.31.0 --repo memrynote/memry --pattern 'ort-static-1.31.0-<triple>.tar.zst'
-#   mkdir ort-static && (cd ort-static && cmake -E tar xf ../ort-static-1.31.0-<triple>.tar.zst)
+#   gh release download ort-static-1.31.0-r2 --repo memrynote/memry --pattern 'ort-static-1.31.0-r2-<triple>.tar.zst'
+#   cmake -E sha256sum ort-static-1.31.0-r2-<triple>.tar.zst
+#   mkdir ort-static && (cd ort-static && cmake -E tar xf ../ort-static-1.31.0-r2-<triple>.tar.zst)
 #   export ORT_LIB_LOCATION="$PWD/ort-static"
+#
+#   x86_64-apple-darwin       4fb1160c4677ece8934f54069cdbfe5cad70a621d4cd12f8d92ab47bf37514ca
+#   x86_64-pc-windows-msvc    5febd3aca7ed519549fda1c907cd522f9d435c84888e5b55622e14bb97aeb899
+#   aarch64-pc-windows-msvc   887e613bf0ae6ceb9b01c84f8369828e01e57239d8a4d73c15df5895fc9c0b09
+#   x86_64-unknown-linux-gnu  bb24e11f9372555b94b60de271de156fd28eba3406aed3fa3364bbbb35f5dc05
 #
 # ORT_LIB_LOCATION stays an environment variable, not an [env] entry: an entry here would also
 # apply on the targets that link the prebuilt archive, and ort-sys would look for libraries there.
