@@ -518,7 +518,7 @@ jobs:
             Windows)
               dumpbin=$(ls /c/Program\ Files*/Microsoft\ Visual\ Studio/*/*/VC/Tools/MSVC/*/bin/Host*/*/dumpbin.exe | head -1)
               echo "dumpbin: $dumpbin"
-              "$dumpbin" /dependents "$bin" ;;
+              "$dumpbin" -dependents "$bin" ;; # `/dependents` would be rewritten as an MSYS path
           esac | tee "$RUNNER_TEMP/dependencies.txt"
           # An empty or failed listing would pass the check below.
           grep -qiE 'libc\.so|libSystem|KERNEL32' "$RUNNER_TEMP/dependencies.txt"
