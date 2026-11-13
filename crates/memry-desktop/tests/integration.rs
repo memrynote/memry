@@ -113,6 +113,8 @@ mod i18n_vectors;
 mod icons;
 #[path = "import_copy.rs"]
 mod import_copy;
+#[path = "index_tag_definitions.rs"]
+mod index_tag_definitions;
 #[path = "indexer_facts.rs"]
 mod indexer_facts;
 #[path = "indexer_open_status.rs"]
@@ -267,6 +269,8 @@ mod seams_transport;
 mod settings_service;
 #[path = "sync_host_clients.rs"]
 mod sync_host_clients;
+#[path = "tag_definitions_sync.rs"]
+mod tag_definitions_sync;
 #[path = "tag_field_rename.rs"]
 mod tag_field_rename;
 #[path = "tag_impact.rs"]
