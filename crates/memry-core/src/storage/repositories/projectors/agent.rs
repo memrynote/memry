@@ -1,5 +1,5 @@
 //! `agent_conversation` and `agent_message` (`AgentConversationSyncPayloadSchema`
-//! and `AgentMessageSyncPayloadSchema`, `packages/contracts/src/sync-payloads.ts:686-711`;
+//! and `AgentMessageSyncPayloadSchema`, `packages/contracts/src/sync-payloads.ts:699-724`;
 //! chapter 13 §13.7.26-27; migration `0028`).
 //!
 //! The payload this reads is the stored one, whose sealed keys hold envelope

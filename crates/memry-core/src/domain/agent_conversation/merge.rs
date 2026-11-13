@@ -1,6 +1,6 @@
 //! The inbound half of `agent_conversation`: Electron's
 //! `AgentConversationHandler.applyUpsert`
-//! (`apps/desktop/src/main/sync/item-handlers/agent-conversation-handler.ts:85-185`),
+//! (`apps/desktop/src/main/sync/item-handlers/agent-conversation-handler.ts:86-187`),
 //! with the title sealed at rest ([`crate::crypto::agent_payload`]).
 //!
 //! - **§6.3.1's gate decides.** No local record, or a remote that dominates,
@@ -10,9 +10,9 @@
 //!   both sides compare plain values, and a winning title is sealed again.
 //!   A local record with no `fieldClocks` seeds every field from its document
 //!   clock (`:140-142`). `updatedAt` is the later of the two, and `deletedAt`
-//!   is the remote's, else the local one (`:160-161`). The union clock is
+//!   is the remote's, else the local one (`:167-168`). The union clock is
 //!   stored and nothing is queued (§6.5.2 P3); Electron skips the write when
-//!   no field changed (`:164`), which leaves its clock behind the peer's, so
+//!   no field changed (`:171`), which leaves its clock behind the peer's, so
 //!   this core stores the union clock either way, as `task` and `project` do.
 //! - **No key installed**: Electron skips the record (`:92-100`), which loses
 //!   it once the cursor moves. Here the plain remote is stored and projects
@@ -21,7 +21,7 @@
 //!   sealed; if the remote title wins, the plain one is stored pending.
 //!
 //! A delete is [`crate::sync::apply`]'s tombstone path: it applies unless the
-//! local clock is strictly after the delete's (`:189-200`).
+//! local clock is strictly after the delete's (`:190-210`).
 
 use rusqlite::Connection;
 use serde_json::{Value, json};

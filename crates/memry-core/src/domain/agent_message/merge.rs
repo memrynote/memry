@@ -1,6 +1,6 @@
 //! The inbound half of `agent_message`: Electron's
 //! `AgentMessageHandler.applyUpsert`
-//! (`apps/desktop/src/main/sync/item-handlers/agent-message-handler.ts:129-185`),
+//! (`apps/desktop/src/main/sync/item-handlers/agent-message-handler.ts:132-185`),
 //! with the content and attachments sealed at rest
 //! ([`crate::crypto::agent_payload`]).
 //!
@@ -9,7 +9,7 @@
 //!   stores none of its payload.
 //! - **A message is written once.** A new id stores the remote with its
 //!   sealed keys sealed. An id this device already holds keeps the local
-//!   record whatever the remote says (`:175-181`): Electron skips an
+//!   record whatever the remote says (`:179-183`): Electron skips an
 //!   identical message and logs a conflict for a different one, and this core
 //!   has no log, so both are `Skipped`. A row with no payload (metadata only)
 //!   holds no message yet and takes the remote.
@@ -17,11 +17,11 @@
 //!   it once the cursor moves. Here the plain remote is stored and projects as
 //!   `sealed_pending` until `Vault::set_at_rest_key` seals it.
 //! - **No parent check**: Electron defers a message whose conversation is
-//!   missing (`:72-120`); this core has no orphan repair, and a message that
+//!   missing (`:108-121`, `:156`); this core has no orphan repair, and a message that
 //!   lands first is read once its conversation does.
 //!
 //! A delete is [`crate::sync::apply`]'s tombstone path: it applies unless the
-//! local clock is strictly after the delete's (`:203-213`).
+//! local clock is strictly after the delete's (`:187-210`).
 
 use rusqlite::Connection;
 use serde_json::Value;

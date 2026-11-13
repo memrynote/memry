@@ -28,12 +28,18 @@ Notes root and is appended after them. `canvas` (whiteboards, §13.7.21) was
 added for the phone's whiteboard block and is appended last.
 
 Six more **record types** are served by the server and **not** subscribed to
-here: `agent_conversation`, `agent_message`, `canvas_folder` (canvas folders,
+here: `agent_conversation` and `agent_message` (desktop agent chats,
+§13.7.26, §13.7.27), `canvas_folder` (canvas folders,
 §13.7.23), `home_page` (Home boards, §13.7.24, §13.11),
 `vault_lock` (desktop read-only locks, #2606, §13.7.22), `sticky_draft`
 (unsent desktop sticky text, §13.7.25, §13.13).
 **The iOS client omits them from the header and never sees them**
-(chapter 05 §5.3.1); desktop declares them.
+(chapter 05 §5.3.1); desktop declares them. The Rust core lists them as
+`DESKTOP_ONLY_RECORD_ITEM_TYPES`
+(`crates/memry-core/src/protocol/types.rs:71-84`), and desktop passes a
+declaration that carries them to `Vault::sync_with_declaration`
+(`crates/memry-core/src/api/vault.rs:114-131`), which is not on the FFI
+surface, so iOS keeps `Vault::sync` and the twenty-one.
 
 Twenty-one plus six is the **twenty-seven record types**, which is the set
 chapter 05 §5.3 calls recognised. `attachment` is the twenty-eighth member of
@@ -125,6 +131,48 @@ value, or a struct carrying a flattened `extra` map. **A plain derived
 deserialise-then-reserialise reproduces desktop's original bug exactly**, and
 desktop's remainder table is a retrofit, not the shape to copy — it only reaches
 the top level.
+
+**Named exception: agent text at rest** (#3533). An `agent_conversation`'s
+`title` and an `agent_message`'s `content` and `attachments`
+(`crates/memry-core/src/crypto/agent_payload.rs:26-34`) are stored in
+`sync_items.payload` and in their projection columns as the chapter 04 §4.17
+envelope text of the value, not as received. Electron keeps these three in
+sealed columns (chapter 04 §4.17), and a verbatim store would put the
+plaintext in `data.db`. The exception is bounded:
+
+- apply seals the three keys before the payload is stored, and leaves every
+  other key, unknown keys included, as received
+  (`crates/memry-core/src/domain/agent_records.rs:71-86`,
+  `crates/memry-core/src/crypto/agent_payload.rs:66-85`);
+- push opens them before the record envelope is built, so the opened value
+  equals the wire value and rules 3 and 4 hold for what leaves the device
+  (`crates/memry-core/src/sync/push.rs:356-362`,
+  `crates/memry-core/src/crypto/agent_payload.rs:117-131`);
+- a sealed row that does not open (no key installed, or another key) is held
+  in the outbox with a backoff, never sent sealed and never retired
+  (`crates/memry-core/src/sync/push.rs:247-256`);
+- a record pulled while no vault key is installed is stored as received and
+  its projection row carries `sealed_pending = 1` with the sealed columns
+  empty (`crates/memry-core/src/storage/repositories/projectors/agent.rs:5-10`);
+  installing a key through `Vault::set_at_rest_key` seals every such record
+  in one transaction and releases the held outbox rows
+  (`crates/memry-core/src/api/vault.rs:139-158`,
+  `crates/memry-core/src/domain/agent_records.rs:97-161`).
+
+**Rule 5 departs for the desktop-only document types.** Where Electron's
+schema refuses a `vault_lock`, `canvas_folder`, `home_page` or `sticky_draft`
+payload (a `null` where the schema has no `.nullable()`, or `widgets` that is
+not a string), the Rust core returns `Skipped`
+(`crates/memry-core/src/domain/desktop_records/mod.rs:67-74`,
+`crates/memry-core/src/domain/home_page/merge.rs:53-57`). `Skipped` only
+counts the item (`crates/memry-core/src/sync/apply.rs:208`, `:552`): the
+cursor moves past it and no later build fetches it again. Electron records
+the same item in its schema-invalid ledger
+(`apps/desktop/src/main/sync/engine/pull-coordinator.ts:634`, `:684`), which
+fetches it again by id once another app version runs
+(`apps/desktop/src/main/sync/engine/schema-invalid-ledger.ts:41-46`). A
+payload that a newer build can read is therefore recovered by Electron after
+an update and stays lost on the Rust core until the core keeps such a ledger.
 
 **Disposition of Q13.2: answered** (this section).
 
@@ -1140,6 +1188,17 @@ The Rust core follows the same rule
 (`crates/memry-core/src/domain/home_page/merge.rs:36-80`, over
 `crates/memry-core/src/domain/desktop_records/mod.rs:58-92`).
 
+The `home_pages.created_at` column of a board whose payload has no
+`createdAt` keeps the time of its first apply: a later projection keeps the
+stored value (`COALESCE`,
+`crates/memry-core/src/storage/repositories/projectors/home_pages.rs:60`).
+`rebuild_projections` into dropped tables has no stored value and writes the
+rebuild time (`crates/memry-core/src/storage/repositories/sync_items.rs:358`,
+`:385`). Electron writes the apply time once at create
+(`packages/sync-client/src/item-handlers/home-page-handler.ts:102`) and has
+no rebuild. The payload is unchanged either way; only the local column
+differs.
+
 A delete follows chapter 05 §5.8 unchanged: the board survives a tombstone
 only when its local clock is strictly after the tombstone's
 (`home-page-handler.ts:123-138`). Board ids are random, so the type is not in
@@ -1177,6 +1236,85 @@ A delete follows chapter 05 §5.8 unchanged: the draft survives a tombstone only
 when its local clock is strictly after the tombstone's
 (`sticky-draft-handler.ts:80-92`).
 
+### 13.7.26 `agent_conversation` — `:699-711`
+
+`vaultId`, `title`, `backend`, `backendModel` (nullable), `trustList`,
+`pinned`, `clock` (optional), `fieldClocks`, `createdAt`, `updatedAt`,
+`deletedAt` (nullable, optional). Unlike the other desktop-only types, the
+schema requires every key except `clock` and `deletedAt`.
+`agent_conversation` is desktop only: the iOS declaration leaves it out
+(§13.1), and `payload-schemas.json` lists it under `meta.desktopOnlyTypes`.
+`title` is plain text on the wire and sealed at rest (§13.2.3, chapter 04
+§4.17).
+
+**Normative**, the apply rule
+(`apps/desktop/src/main/sync/item-handlers/agent-conversation-handler.ts:86-187`).
+It is the field-level merge (§13.9) over `title`, `backend`, `backendModel`,
+`trustList` and `pinned`
+(`crates/memry-core/src/domain/agent_conversation/mod.rs:36-38`):
+
+1. no local record, or a remote clock that dominates the local one, stores the
+   remote as sent (`:113-133`, `:178-186`); a local clock that dominates skips
+   the remote (`:136-137`);
+2. concurrent clocks merge field by field under `fieldClocks` (chapter 06
+   §6.3). A local record without `fieldClocks` seeds every field from its
+   document clock (`:140-142`). `updatedAt` is the later of the two, and
+   `deletedAt` is the remote's, else the local one (`:167-168`);
+3. without a vault key Electron skips the record (`:92-101`), so the cursor
+   moves past it and that device never has it. The Rust core stores it pending
+   (§13.2.3) instead.
+
+The Rust core follows the same rule
+(`crates/memry-core/src/domain/agent_conversation/merge.rs:43-103`) with one
+chosen difference: on a concurrent merge in which no field value changed,
+Electron writes nothing (`:171`) and keeps its old clock, while the Rust core
+stores the merged clock, as it does for `task` and `project`
+(`crates/memry-core/src/domain/agent_conversation/merge.rs:92-99`). Nothing
+is pushed either way.
+
+A delete follows chapter 05 §5.8: the conversation survives a tombstone only
+when its local clock is strictly after the tombstone's (`:190-210`).
+
+### 13.7.27 `agent_message` — `:713-724`
+
+`conversationId`, `role` (`user`, `assistant`, `tool_call`, `tool_result`,
+`system`), `content` (`AgentMessageContentSchema`), `attachments` (an array of
+`AgentMessageAttachmentSchema`), `toolCallId` (nullable), `status`
+(`completed`, `cancelled`, `error`), `clock` (optional), `createdAt`,
+`updatedAt`, `deletedAt` (nullable, optional). `agent_message` is desktop
+only: the iOS declaration leaves it out (§13.1), and `payload-schemas.json`
+lists it under `meta.desktopOnlyTypes`. `content` and `attachments` are plain
+JSON on the wire and sealed at rest (§13.2.3, chapter 04 §4.17).
+
+**Normative**, the apply rule
+(`apps/desktop/src/main/sync/item-handlers/agent-message-handler.ts:132-185`).
+A message is immutable (§13.9):
+
+1. a `status` that is not terminal, absent included, refuses the record:
+   Electron returns `parse_error` (`:138`), and the Rust core records it
+   corrupt without storing its payload
+   (`crates/memry-core/src/domain/agent_message/merge.rs:48-54`,
+   `crates/memry-core/src/sync/apply.rs:565-582`). A writer sends only the
+   terminal statuses
+   (`crates/memry-core/src/domain/agent_message/mod.rs:34-35`, `:73`);
+2. a message is written once. A new id stores the remote as sent
+   (`:155-176`). An id the device already holds keeps the local message
+   whatever the remote says (`:179-183`): Electron reports an identical
+   remote as skipped and logs a different one as a conflict, and the Rust
+   core reports both as `Skipped`; a row that has metadata and no payload
+   takes the remote
+   (`crates/memry-core/src/domain/agent_message/merge.rs:55-60`);
+3. without a vault key Electron skips the record (`:140-149`). The Rust core
+   stores it pending (§13.2.3) instead;
+4. Electron defers a message whose conversation it does not hold to orphan
+   repair (`:108-121`, `:156`). The Rust core has no parent check: it stores
+   the message, which a read of its conversation returns once the
+   conversation arrives
+   (`crates/memry-core/src/domain/agent_message/mod.rs:104-113`).
+
+A delete follows chapter 05 §5.8: the message survives a tombstone only when
+its local clock is strictly after the tombstone's (`:187-210`).
+
 ## 13.8 `attachment` is not a record type
 
 **Normative.** `attachment` is in `SYNC_ITEM_TYPES`
@@ -1199,6 +1337,8 @@ when its local clock is strictly after the tombstone's
 | `canvas_folder`             | document-level resolver, keeping local keys (§13.7.23)   | no                                                 |
 | `home_page`                 | document-level resolver, keeping local keys (§13.7.24)   | no                                                 |
 | `sticky_draft`              | document-level resolver, keeping local keys (§13.7.25)   | no                                                 |
+| `agent_conversation`        | field-level (§13.7.26)                                   | yes (`:707`)                                       |
+| `agent_message`             | immutable: written once (§13.7.27)                       | no                                                 |
 | every other subscribed type | document-level resolver                                  | no                                                 |
 
 **`task.fields` and `tag_definition.schema` are versioned values** joined by

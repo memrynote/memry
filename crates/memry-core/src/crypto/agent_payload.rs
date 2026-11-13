@@ -5,7 +5,7 @@
 //! On the wire an `agent_conversation`'s `title` and an `agent_message`'s
 //! `content` and `attachments` are plain JSON
 //! (`AgentConversationSyncPayloadSchema`, `AgentMessageSyncPayloadSchema`,
-//! `packages/contracts/src/sync-payloads.ts:686-711`). In `sync_items.payload`
+//! `packages/contracts/src/sync-payloads.ts:699-724`). In `sync_items.payload`
 //! and the projection columns they hold the chapter 04 §4.17 envelope text of
 //! the value: the title's text, or the JSON text of the content or attachment
 //! list, as Electron stores them (`conversation-store.ts:53-55`,
