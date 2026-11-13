@@ -1,10 +1,12 @@
 //! The body snippet under a search hit (#4316).
 //!
 //! Desktop shows `snippet(fts_notes, 2, '<mark>', '</mark>', '...', 20)` under
-//! each hit. This asks FTS5 for the same window over the same column (notes
-//! and journals: `content`; tasks: `description`), with 20 tokens and a `...`
-//! ellipsis, and hands the shell **segments** instead of markup: a shell never
-//! parses a highlight out of text.
+//! each hit. This asks FTS5 for the same window, 20 tokens and a `...`
+//! ellipsis, over column 2 of each table: `content` for notes, journals and
+//! inbox items, `description` for tasks. Desktop snippets a task's column 1,
+//! its `title`, which repeats the row's own title; the core shows the
+//! description instead. It hands the shell **segments** instead of markup: a
+//! shell never parses a highlight out of text.
 //!
 //! FTS5 marks a match with two strings of our choosing. These are private-use
 //! code points, which no keyboard types and `extract_text` never produces, so

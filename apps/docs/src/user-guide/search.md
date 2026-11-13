@@ -34,8 +34,8 @@ Typing several words finds notes that contain all of them, anywhere and in any o
 - **Words match as prefixes.** `pass` finds "password", so results appear while you type.
 - **Quotes match a phrase.** `"meeting notes"` finds the words side by side in that order. Curly quotes (`“meeting notes”`), which a phone keyboard types, work the same.
 - **`AND`, `OR` and `NOT` are operators only in capitals.** `black and white` searches for all three words, while `notes OR journal` matches either word and `meeting NOT personal` leaves out anything that contains "personal". Operators keep the order you typed them, so `foo OR "a b"` matches either side.
-- **A `NOT` or `OR` with nothing before or after it is ignored**, so a half-typed query never shows an error.
-- **A typo can still find a title.** When a type has fewer than three matches, search adds notes, journal entries, tasks and inbox items whose title is close, such as "Password list" for `pasword`. A search with quotes or operators skips this, because it asked for exact words.
+- **An `AND` or `OR` with nothing before or after it is ignored**, and so is a `NOT` at the end, so a half-typed query never shows an error. A search that starts with `NOT`, such as `NOT personal`, finds nothing: it asks for everything without that word, which search cannot list.
+- **A typo can still find a title.** When a type has fewer than three matches, search adds notes, journal entries, tasks and inbox items whose title is close, such as "Password list" for `pasword`. On iPhone, a search with quotes or operators skips this, because it asked for exact words.
 - **Aliases count.** A note is found by any of its aliases, and the row shows which one matched.
 
 ## Preview

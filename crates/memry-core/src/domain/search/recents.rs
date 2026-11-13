@@ -62,6 +62,11 @@ pub fn record(
 }
 
 /// The recents whose items are still live, newest first.
+///
+/// [`record`] trims the table to [`RECENTS_CAP`] rows, dead or live, and this
+/// drops the dead ones after reading them. A deleted item therefore keeps its
+/// slot until newer opens push it out, and the list can hold fewer than
+/// [`RECENTS_CAP`] recents.
 pub fn list(data: &Connection) -> Result<Vec<Recent>, StorageError> {
     let mut statement = data
         .prepare(

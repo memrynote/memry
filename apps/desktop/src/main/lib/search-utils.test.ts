@@ -84,7 +84,6 @@ describe('parseSearchQuery', () => {
     ['foo OR "a b"', '"foo"* OR "a b"', ''],
     ['"exact phrase" AND other', '"exact phrase" AND "other"*', ''],
     ['a or not b', '"a"* "or"* "not"* "b"*', '"a or not b"*'],
-    ['NOT foo', '"foo"*', ''],
     ['OR foo', '"foo"*', ''],
     ['foo NOT', '"foo"*', ''],
     ['foo OR', '"foo"*', ''],
@@ -103,10 +102,23 @@ describe('parseSearchQuery', () => {
     expect(parseSearchQuery(query)).toEqual({ match, phrase })
   })
 
-  it.each(['', '   ', '"', '""', '*', ':', '()', '--', 'AND', 'OR', 'NOT', 'NOT OR AND'])(
-    'builds nothing from %j',
-    (query) => {
-      expect(parseSearchQuery(query)).toEqual({ match: '', phrase: '' })
-    }
-  )
+  it.each([
+    '',
+    '   ',
+    '"',
+    '""',
+    '*',
+    ':',
+    '()',
+    '--',
+    'AND',
+    'OR',
+    'NOT',
+    'NOT OR AND',
+    'NOT foo',
+    'NOT foo bar',
+    'OR NOT foo'
+  ])('builds nothing from %j', (query) => {
+    expect(parseSearchQuery(query)).toEqual({ match: '', phrase: '' })
+  })
 })

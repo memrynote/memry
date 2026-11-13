@@ -8,10 +8,12 @@
 //! - the uppercase words `AND`, `OR` and `NOT` are operators. Lowercase `and`,
 //!   `or` and `not` are words to search for.
 //!
-//! An operator with no operand before it (`NOT b`, `OR b`) or after it
-//! (`a NOT`) is dropped, and of two operators in a row the second wins
-//! (`a OR NOT b` is `a NOT b`): FTS5 has no unary `NOT` and raises a syntax
-//! error on each of those shapes.
+//! An `AND` or `OR` with no operand before it (`OR b`) and any operator with
+//! none after it (`a NOT`) is dropped, and of two operators in a row the
+//! second wins (`a OR NOT b` is `a NOT b`): FTS5 raises a syntax error on each
+//! of those shapes. A `NOT` with no operand before it (`NOT b`) asks for every
+//! row without `b`, which FTS5 cannot express since it has no unary `NOT`, so
+//! the query matches nothing rather than its opposite.
 //!
 //! ## A user string is not an FTS5 query
 //!
@@ -98,10 +100,12 @@ pub fn parse(query: &str) -> Option<FtsQuery> {
     let mut pending: Option<Operator> = None;
     for token in &tokens {
         let Some(operand) = token.operand() else {
-            if let Token::Operator(operator) = token
-                && !expression.is_empty()
-            {
-                pending = Some(*operator);
+            if let Token::Operator(operator) = token {
+                if !expression.is_empty() {
+                    pending = Some(*operator);
+                } else if *operator == Operator::Not {
+                    return None;
+                }
             }
             continue;
         };
@@ -218,7 +222,6 @@ mod tests {
             "\"a\"* \"or\"* \"not\"* \"b\"*",
             Some("\"a or not b\"*"),
         ),
-        ("NOT foo", "\"foo\"*", None),
         ("OR foo", "\"foo\"*", None),
         ("foo NOT", "\"foo\"*", None),
         ("foo OR", "\"foo\"*", None),
@@ -269,6 +272,9 @@ mod tests {
             "OR",
             "NOT",
             "NOT OR AND",
+            "NOT foo",
+            "NOT foo bar",
+            "OR NOT foo",
         ] {
             assert_eq!(parse(empty), None, "{empty:?}");
         }

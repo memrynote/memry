@@ -93,8 +93,11 @@ function tokenize(input: string): Token[] {
  * Turns the search box text into FTS5 `MATCH` expressions. A plain word is a
  * prefix (`pass` finds "password"), words side by side are AND-ed, `"…"` is an
  * exact phrase, and uppercase `AND`, `OR` and `NOT` are operators kept in the
- * order typed. An operator with nothing before or after it is dropped, and of
- * two in a row the second wins: FTS5 raises a syntax error on each of those.
+ * order typed. An `AND` or `OR` with nothing before it, and any operator with
+ * nothing after it, is dropped, and of two in a row the second wins: FTS5
+ * raises a syntax error on each of those. A `NOT` with nothing before it
+ * matches nothing: FTS5 has no unary `NOT`, and dropping it would return the
+ * rows the user asked to exclude.
  *
  * The expression is built from parsed tokens, never from user text: every
  * operand is alphanumeric runs inside double quotes, so no input can close a
@@ -109,6 +112,7 @@ export function parseSearchQuery(input: string): FtsQuery {
   for (const token of tokens) {
     if (token.kind === 'operator') {
       if (match) pending = token.operator
+      else if (token.operator === 'NOT') return { match: '', phrase: '' }
       continue
     }
     const operand =
