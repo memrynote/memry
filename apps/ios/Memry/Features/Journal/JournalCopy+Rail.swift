@@ -36,8 +36,15 @@ extension JournalCopy {
             count == 1 ? "1 other year" : "\(count) other years"
         }
 
+        /// How far `entry` is from the `shown` day (desktop
+        /// `journal-past-years.tsx`): "Today" when it is today.
+        static func sameDayDistance(_ entry: String, shown: String, today: String) -> String {
+            guard entry != today else { return JournalCopy.today }
+            return yearsAway(JournalDates.yearMonth(shown).year - JournalDates.yearMonth(entry).year)
+        }
+
         /// `pastYears.yearsAgo` / `yearsLater`.
-        static func yearsAway(_ years: Int) -> String {
+        private static func yearsAway(_ years: Int) -> String {
             switch years {
             case 1: "1 year ago"
             case 2...: "\(years) years ago"

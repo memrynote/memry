@@ -34,6 +34,7 @@ struct JournalOnThisDay: View {
         // through a sync pass.
         .task(id: "\(date)|\(store.syncPasses)") {
             let read = await store.sameDayEntries(date)
+            guard !Task.isCancelled else { return }
             failed = read == nil
             entries = read ?? []
         }
@@ -55,8 +56,7 @@ struct JournalOnThisDay: View {
     }
 
     private func row(_ entry: JournalSameDayEntry) -> some View {
-        let years = JournalDates.yearMonth(date).year - JournalDates.yearMonth(entry.date).year
-        return Button { show(entry.date) } label: {
+        Button { show(entry.date) } label: {
             HStack(alignment: .firstTextBaseline, spacing: Tokens.Space.small) {
                 JournalActivityDot(level: entry.level)
                 VStack(alignment: .leading, spacing: Tokens.Space.tight / 2) {
@@ -64,7 +64,7 @@ struct JournalOnThisDay: View {
                         Text(verbatim: String(entry.date.prefix(4)))
                             .font(Tokens.Typography.supporting.font.weight(.semibold).monospacedDigit())
                             .foregroundStyle(Tokens.Text.primary.color)
-                        Text(JournalCopy.Rail.yearsAway(years))
+                        Text(JournalCopy.Rail.sameDayDistance(entry.date, shown: date, today: store.today))
                             .font(Tokens.Typography.caption.font)
                             .foregroundStyle(Tokens.Text.tertiary.color)
                     }

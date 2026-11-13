@@ -14,6 +14,7 @@ struct JournalYearScreen: View {
     @Environment(JournalRouter.self) private var router
     @Environment(\.dynamicTypeSize) private var dynamicTypeSize
     @Environment(\.horizontalSizeClass) private var horizontalSizeClass
+    @Environment(\.verticalSizeClass) private var verticalSizeClass
     @State private var titleCollapsed = false
 
     var body: some View {
@@ -68,17 +69,22 @@ struct JournalYearScreen: View {
 
     private var columns: [GridItem] {
         let count = Self.columnCount(
-            regularWidth: horizontalSizeClass == .regular,
+            horizontal: horizontalSizeClass,
+            vertical: verticalSizeClass,
             accessibilitySize: dynamicTypeSize.isAccessibilitySize
         )
         return Array(repeating: GridItem(.flexible(), spacing: Tokens.Space.small), count: count)
     }
 
-    /// Three columns (Paper J06), four at regular width (#4351, desktop's
-    /// `sm:grid-cols-4`); one fewer at accessibility sizes so names and
+    /// Three columns (Paper J06), four at regular width and height (#4351,
+    /// desktop's `sm:grid-cols-4`, DESIGN.md › Tablet); one fewer at accessibility sizes so names and
     /// counts keep their room (JP057).
-    static func columnCount(regularWidth: Bool, accessibilitySize: Bool) -> Int {
-        (regularWidth ? 4 : 3) - (accessibilitySize ? 1 : 0)
+    static func columnCount(
+        horizontal: UserInterfaceSizeClass?,
+        vertical: UserInterfaceSizeClass?,
+        accessibilitySize: Bool
+    ) -> Int {
+        (LayoutWidth(horizontal: horizontal, vertical: vertical) == .regular ? 4 : 3) - (accessibilitySize ? 1 : 0)
     }
 
     private func cards(_ record: JournalYearRecord) -> [JournalYearCardModel] {

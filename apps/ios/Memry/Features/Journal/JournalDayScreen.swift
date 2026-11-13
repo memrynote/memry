@@ -55,7 +55,8 @@ struct JournalDayScreen: View {
     /// so do accessibility text sizes, which break words in the rail's 320
     /// points; the page then shows the day's tasks under the entry.
     private var showsRail: Bool {
-        horizontalSizeClass == .regular && verticalSizeClass == .regular && !typeSize.isAccessibilitySize
+        LayoutWidth(horizontal: horizontalSizeClass, vertical: verticalSizeClass) == .regular
+            && !typeSize.isAccessibilitySize
     }
 
     var body: some View {

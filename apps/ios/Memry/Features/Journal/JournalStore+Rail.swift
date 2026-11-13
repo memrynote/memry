@@ -44,13 +44,13 @@ enum JournalSameDay {
 }
 
 extension JournalStore {
-    /// The same day in other years up to today, newest first, each with the
-    /// core's preview. `nil` when the read failed (already reported).
+    /// The same day in every other year, later ones included (desktop
+    /// `getJournalSameDayEntries`), newest first, each with the core's preview. `nil` when the read failed (already reported).
     func sameDayEntries(_ date: String) async -> [JournalSameDayEntry]? {
         let today = today
         return await read { core in
             var months: [String: JournalMonthRecord] = [:]
-            return try core.daysWithEntries(from: "1000-01-01", to: today)
+            return try core.daysWithEntries(from: "1000-01-01", to: "9999-12-31")
                 .filter { JournalSameDay.matches(date, $0) }
                 .sorted(by: >)
                 .compactMap { candidate in

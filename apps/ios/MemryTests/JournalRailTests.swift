@@ -1,5 +1,6 @@
 import Foundation
 import MemryCore
+import SwiftUI
 import Testing
 
 @testable import Memry
@@ -22,6 +23,23 @@ struct JournalRailTests {
 
         #expect(entries.map(\.date) == ["2097-06-15", "2095-06-15"])
         #expect(entries.first?.preview.contains("Lake swim.") == true)
+    }
+
+    @Test func on_this_day_lists_later_years_too() async throws {
+        let vault = try JournalTestVault()
+        try vault.write("Planned ahead.", on: "2101-06-15")
+        try vault.write("Last year.", on: "2098-06-15")
+
+        let entries = try #require(await vault.store.sameDayEntries("2097-06-15"))
+
+        #expect(entries.map(\.date) == ["2101-06-15", "2098-06-15"])
+    }
+
+    @Test func an_other_year_entry_dated_today_reads_today() {
+        let today = JournalTestVault.today
+        #expect(JournalCopy.Rail.sameDayDistance("2099-06-15", shown: "2097-06-15", today: today) == "Today")
+        #expect(JournalCopy.Rail.sameDayDistance("2098-06-15", shown: "2097-06-15", today: today) == "1 year later")
+        #expect(JournalCopy.Rail.sameDayDistance("2095-06-15", shown: "2097-06-15", today: today) == "2 years ago")
     }
 
     @Test func on_this_day_reads_without_creating_days() async throws {
@@ -48,10 +66,15 @@ struct JournalRailTests {
         #expect(!JournalSameDay.matches("2097-06-15", "2097-06-15"), "the same year is not another year")
     }
 
-    @Test func the_year_grid_has_four_columns_at_regular_width() {
-        #expect(JournalYearScreen.columnCount(regularWidth: false, accessibilitySize: false) == 3)
-        #expect(JournalYearScreen.columnCount(regularWidth: true, accessibilitySize: false) == 4)
-        #expect(JournalYearScreen.columnCount(regularWidth: false, accessibilitySize: true) == 2)
-        #expect(JournalYearScreen.columnCount(regularWidth: true, accessibilitySize: true) == 3)
+    @Test func the_year_grid_has_four_columns_only_at_regular_width_and_height() {
+        func columns(_ horizontal: UserInterfaceSizeClass, _ vertical: UserInterfaceSizeClass, large: Bool = false) -> Int {
+            JournalYearScreen.columnCount(horizontal: horizontal, vertical: vertical, accessibilitySize: large)
+        }
+        #expect(columns(.compact, .regular) == 3, "iPhone portrait, iPad Split View")
+        #expect(columns(.regular, .compact) == 3, "large iPhone in landscape")
+        #expect(columns(.regular, .regular) == 4, "iPad")
+        #expect(columns(.compact, .regular, large: true) == 2)
+        #expect(columns(.regular, .compact, large: true) == 2)
+        #expect(columns(.regular, .regular, large: true) == 3)
     }
 }
