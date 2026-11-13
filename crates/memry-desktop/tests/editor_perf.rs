@@ -24,7 +24,11 @@
 //! ([`KEYSTROKE`]); `apply_update`'s p95 is its commit's WAL write, which a busy disk stretches.
 //! The test prints p50 and p95 and only reports a miss; `MEMRY_PERF_ENFORCE=1` turns a miss into
 //! a failure, and `MEMRY_PERF_FACTOR` scales every budget (a shared CI runner is slower).
+//!
+//! `editor_perf_ai_proxy` holds the inline AI provider proxy's rows (#3539), described in
+//! [`ai_proxy_perf`].
 
+mod ai_proxy_perf;
 mod device_key;
 mod editor_window;
 mod vault_env;
@@ -341,5 +345,13 @@ fn editor_perf_budget() {
         &written[..80]
     );
 
+    report.finish();
+}
+
+#[test]
+#[ignore = "timing: run in a release build, see the module docs"]
+fn editor_perf_ai_proxy() {
+    let mut report = Report::new();
+    ai_proxy_perf::run(&mut report);
     report.finish();
 }

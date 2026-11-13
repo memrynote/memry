@@ -489,7 +489,7 @@ const ContentAreaEditor = memo(function ContentAreaEditor({
   const editorTheme = resolvedTheme === 'dark' ? 'dark' : 'light'
   const { openSidebarItem } = useSidebarNavigation()
   const { enabled: aiEnabled } = useAISettingsContext()
-  const { port: aiPort, error: aiError, retry: retryAI } = useAIInlineContext()
+  const { ready: aiInlineReady, error: aiError, retry: retryAI } = useAIInlineContext()
   const { isEnabled: isFeatureEnabled } = useFeatureFlags()
   const resolvedPlaceholder = placeholder ?? t('editor.content.placeholder')
 
@@ -781,7 +781,7 @@ const ContentAreaEditor = memo(function ContentAreaEditor({
   // Hook #1: Editor setup (AI extension, spellcheck, links, highlight scroll)
   const { aiReady } = useBlockNoteSetup({
     editor,
-    aiPort: aiEnabled ? aiPort : null,
+    aiEnabled: aiEnabled && aiInlineReady,
     spellCheck,
     focusAtEndRef,
     editorContainerRef,
@@ -3103,8 +3103,8 @@ const ContentAreaEditor = memo(function ContentAreaEditor({
   // oxlint-disable-next-line react/refs -- latest-value ref written during render so stable callbacks read current props; an effect would leave a stale window
   reportAIUnavailableRef.current = reportAIUnavailable
 
-  // Cmd/Ctrl+J is the AI shortcut. Once the AI server failed to start no
-  // extension handles it, so say why instead of doing nothing.
+  // Cmd/Ctrl+J is the AI shortcut. When the inline AI settings could not be
+  // read no extension handles it, so say why instead of doing nothing.
   useEffect(() => {
     if (!aiEnabled || !aiError) return undefined
     const onKeyDown = (e: KeyboardEvent): void => {
@@ -3517,8 +3517,8 @@ const ContentAreaEditor = memo(function ContentAreaEditor({
                         }
                       ]
                     : []
-                  // The AI server failed to start (bad key, Ollama down). The error is
-                  // shown only once the user reaches for AI, never on a plain note.
+                  // The inline AI settings could not be read. The error is shown
+                  // only once the user reaches for AI, never on a plain note.
                   const aiItems =
                     aiEnabled && aiReady
                       ? getAISlashMenuItems(editor)

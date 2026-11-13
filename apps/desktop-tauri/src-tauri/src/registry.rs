@@ -31,6 +31,7 @@ pub fn builder() -> Builder<Wry> {
             crate::commands::ai::ai_inline_list_models,
             crate::commands::ai::ai_inline_set_settings::<Wry>,
             crate::commands::ai::ai_inline_test_connection,
+            crate::commands::ai::ai_provider_cancel::<Wry>,
             // app
             crate::commands::app::app_info,
             // crdt (`crdt_open_doc`, `crdt_apply_update` and the sync steps are binary commands)
@@ -349,6 +350,9 @@ pub fn builder() -> Builder<Wry> {
             crate::events::WindowChromeStateChangedEvent,
         ])
         .typ::<StartupState>()
+        // `ai_provider_request` is a binary command; its argument and answer still get types.
+        .typ::<memry_desktop::ai::proxy::AiProviderRequest>()
+        .typ::<memry_desktop::ai::proxy::AiProviderHead>()
 }
 
 /// Sends a call to the binary handler when `command` is one of `binary_commands` and to the

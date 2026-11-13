@@ -88,7 +88,7 @@ const contentAreaMocks = vi.hoisted(() => ({
     isRemoteUpdateRef: { current: false }
   },
   aiContext: {
-    port: 4315,
+    ready: true,
     error: null as string | null,
     retry: null as null | (() => void)
   },
@@ -698,7 +698,7 @@ describe('ContentArea', () => {
       isReady: true,
       isRemoteUpdateRef: { current: false }
     }
-    contentAreaMocks.aiContext = { port: 4315, error: null, retry: null }
+    contentAreaMocks.aiContext = { ready: true, error: null, retry: null }
     contentAreaMocks.wikiHover = {
       isVisible: false,
       preview: null,
@@ -1044,7 +1044,7 @@ describe('ContentArea', () => {
   })
 
   it('renders editor chrome, suggestions, wiki preview, and context-menu conversion', async () => {
-    contentAreaMocks.aiContext = { port: 4315, error: 'AI offline', retry: null }
+    contentAreaMocks.aiContext = { ready: false, error: 'AI offline', retry: null }
     contentAreaMocks.wikiHover = {
       isVisible: true,
       preview: { id: 'note-b', title: 'Beta' },

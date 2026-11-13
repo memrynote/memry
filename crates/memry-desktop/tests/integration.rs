@@ -24,6 +24,8 @@ mod ai_catalog;
 mod ai_inline_settings;
 #[path = "ai_local_provider.rs"]
 mod ai_local_provider;
+#[path = "ai_proxy.rs"]
+mod ai_proxy;
 #[path = "app_edit.rs"]
 mod app_edit;
 #[path = "article_constants.rs"]
