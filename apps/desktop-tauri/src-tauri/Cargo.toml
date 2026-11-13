@@ -171,3 +171,7 @@ yrs = { workspace = true }
 [target.'cfg(windows)'.dev-dependencies]
 # `tests/event_loop_runner.rs` drives the event loop Tauri runs on; the version Tauri resolves.
 tao = "0.37"
+# `tests/ml_link.rs` links ONNX Runtime the way the app will: with this crate's link arguments,
+# tauri-build's static VC runtime among them. Windows only: there the runtime of the archive and
+# the app's must agree, and every Windows test build has ORT_LIB_LOCATION (crates/AGENTS.md).
+memry-ml = { path = "../../../crates/memry-ml" }
