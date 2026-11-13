@@ -108,3 +108,39 @@ fn on_this_day_lists_other_years_newest_first_with_leap_days_on_feb_28() {
     assert!(same_day_entries(&open, &journal, "2025-02-30").is_err());
     e.close();
 }
+
+/// A past year's day file over the note ceiling is skipped (and logged), never failing the list.
+#[test]
+fn a_day_file_too_large_to_read_is_left_out_not_the_whole_list() {
+    let store: Mutex<Option<Arc<dyn SecureStore>>> = Mutex::default();
+    let mut e = env(|s| {
+        *store.lock().unwrap() = Some(s.clone());
+        Some(NotesIdentity::new(s))
+    });
+    e.write(
+        "journal/2023-03-03.md",
+        "---\ndate: 2023-03-03\n---\nSmall.\n",
+    );
+    e.write(
+        "journal/2024-03-03.md",
+        "---\ndate: 2024-03-03\n---\nSmall too.\n",
+    );
+    NoteIndex::new(e.tier.clone(), |_| {}, |_| {}, |_| {}).register(&e.session);
+    e.open();
+    e.facts_until(indexed);
+    let open = e.session.current().unwrap();
+    let journal = open
+        .vault
+        .journal(store.lock().unwrap().clone().unwrap())
+        .unwrap();
+    let large = format!("---\ndate: 2024-03-03\n---\n{}", "word ".repeat(300_000));
+    std::fs::write(open.path.join("journal/2024-03-03.md"), large).unwrap();
+
+    let dates: Vec<String> = same_day_entries(&open, &journal, "2025-03-03")
+        .unwrap()
+        .into_iter()
+        .map(|entry| entry.date)
+        .collect();
+    assert_eq!(dates, ["2023-03-03"]);
+    e.close();
+}

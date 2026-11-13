@@ -6,8 +6,11 @@
 //! of non-leap years, so a leap-day entry never drops out of sight for three years.
 //!
 //! The days are the live journal records, as the calendar's ([`super::calendar`]): a day with a
-//! file reads its text from the file, a day no file row names yet (made on another device) from
-//! its record. A day whose text is empty is left out.
+//! file reads its text from the file. A day no file row names yet (synced from another device,
+//! its file written on its first open) is listed from its record's plain text; Electron reads
+//! files only, so it shows that day once its sync wrote the file. This matches the Tauri
+//! calendar. A day whose text is empty is left out, and a day file past the note ceiling is
+//! logged and left out rather than failing the list.
 
 use memry_core::api::journal::Journal;
 use memry_core::domain::journal::valid_date;
@@ -15,7 +18,7 @@ use memry_core::domain::journal_ops::reads::DayHeld;
 use memry_core::domain::journal_rules::{count_words, extract_journal_preview};
 use serde::Serialize;
 
-use super::entry;
+use super::{SCOPE, entry};
 use crate::notes::error::NotesError;
 use crate::session::OpenVault;
 
@@ -61,9 +64,19 @@ pub fn same_day_entries(
             continue;
         };
         let (id, content) = match day.held {
-            DayHeld::File(_) => match entry(open, journal, &candidate)? {
-                Some(view) => (view.id, view.content),
-                None => continue,
+            DayHeld::File(_) => match entry(open, journal, &candidate) {
+                Ok(Some(view)) => (view.id, view.content),
+                Ok(None) => continue,
+                Err(NotesError::TooLarge(ceiling)) => {
+                    tracing::warn!(
+                        scope = SCOPE,
+                        date = %candidate,
+                        ceiling,
+                        "a same-day file is past the note ceiling; left out of On this day"
+                    );
+                    continue;
+                }
+                Err(error) => return Err(error),
             },
             DayHeld::Record { text } => (day.id, text.trim().to_owned()),
         };
