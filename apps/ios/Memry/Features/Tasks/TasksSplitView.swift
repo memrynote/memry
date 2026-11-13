@@ -13,8 +13,13 @@ import SwiftUI
 // column and the list stays beside it.
 //
 // **Columns (Q4).** Three at 13" landscape width, two below it (the list and
-// the task, the sidebar a tap away), as in Notes. The board needs the width
-// more than the scopes do, so it shows the list and the detail only.
+// the task, the sidebar a tap away), as in Notes.
+//
+// **The board uses the full pane** (`DESIGN.md` › Tablet, "Measures"). As a
+// content column the system clamps it to about half the window, one column
+// and a sliver. So the board is the split view's detail, the scopes a tap
+// away, and a card's task pushes over the board on the router's whole path,
+// as on the phone. Back returns to the board.
 
 struct TasksSplitView: View {
     let store: TasksStore
@@ -25,34 +30,25 @@ struct TasksSplitView: View {
     /// The width Notes uses: 13" landscape, and no smaller iPad.
     private static let threeColumnWidth: CGFloat = 1300
     private static let listWidth: CGFloat = 360
-    /// Three kanban columns and the peek of a fourth.
-    private static let boardWidth: CGFloat = 1100
 
     var body: some View {
-        @Bindable var router = router
-        NavigationSplitView(columnVisibility: $columns) {
-            TasksScopeSidebar(store: store)
-        } content: {
-            NavigationStack(path: $router.listPath) {
-                TaskListScreen(store: store)
-                    .tasksDestinations(store: store)
-            }
-            .tasksToast(store: store, over: router.listPath)
-            .navigationSplitViewColumnWidth(
-                min: Self.listWidth,
-                ideal: store.showsKanban ? Self.boardWidth : Self.listWidth,
-                max: store.showsKanban ? Self.boardWidth : Self.listWidth * 1.4
-            )
-        } detail: {
-            NavigationStack(path: $router.detailPath) {
-                Group {
-                    if let id = router.detailTask {
-                        TaskDetailView(taskId: id, store: store).id(id)
-                    } else {
-                        TasksEmptyDetail()
-                    }
+        Group {
+            if store.showsKanban {
+                NavigationSplitView(columnVisibility: $columns) {
+                    TasksScopeSidebar(store: store)
+                } detail: {
+                    boardStack
                 }
-                .tasksDestinations(store: store)
+            } else {
+                NavigationSplitView(columnVisibility: $columns) {
+                    TasksScopeSidebar(store: store)
+                } content: {
+                    listStack.navigationSplitViewColumnWidth(
+                        min: Self.listWidth, ideal: Self.listWidth, max: Self.listWidth * 1.4
+                    )
+                } detail: {
+                    detailStack
+                }
             }
         }
         .navigationSplitViewStyle(.balanced)
@@ -63,7 +59,39 @@ struct TasksSplitView: View {
         // view writes its own choice over the binding (see `NotesSplitView`).
         .task(id: ColumnsKey(wide: holdsThreeColumns, board: store.showsKanban)) {
             guard (try? await Task.sleep(for: .milliseconds(400))) != nil else { return }
-            columns = holdsThreeColumns && !store.showsKanban ? .all : .doubleColumn
+            columns = store.showsKanban ? .detailOnly : holdsThreeColumns ? .all : .doubleColumn
+        }
+    }
+
+    private var listStack: some View {
+        @Bindable var router = router
+        return NavigationStack(path: $router.listPath) {
+            TaskListScreen(store: store)
+                .tasksDestinations(store: store)
+        }
+        .tasksToast(store: store, over: router.listPath)
+    }
+
+    private var boardStack: some View {
+        @Bindable var router = router
+        return NavigationStack(path: $router.path) {
+            TaskListScreen(store: store)
+                .tasksDestinations(store: store)
+        }
+        .tasksToast(store: store, over: router.path)
+    }
+
+    private var detailStack: some View {
+        @Bindable var router = router
+        return NavigationStack(path: $router.detailPath) {
+            Group {
+                if let id = router.detailTask {
+                    TaskDetailView(taskId: id, store: store).id(id)
+                } else {
+                    TasksEmptyDetail()
+                }
+            }
+            .tasksDestinations(store: store)
         }
     }
 

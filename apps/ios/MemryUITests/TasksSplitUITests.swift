@@ -116,6 +116,64 @@ final class TasksSplitUITests: XCTestCase {
         deleteOpenTask()
     }
 
+    /// The scopes sidebar picks the list's view, as the title menu does.
+    /// Read-only: it changes the saved view and puts All back.
+    func testTheScopeSidebarPicksTheView() throws {
+        try openTasks()
+        narrow("")
+        app.buttons["Show Sidebar"].firstMatch.tap()
+        let today = app.buttons["tasks.sidebar.tab.today"].firstMatch
+        XCTAssertTrue(today.waitForExistence(timeout: 5), "the scopes sidebar did not show")
+        attach("scope-sidebar")
+        today.tap()
+        let title = app.buttons["tasks.titleMenu"].firstMatch
+        XCTAssertTrue(waitUntil { title.label.hasPrefix("Today") }, title.label)
+        let all = app.buttons["tasks.sidebar.tab.all"].firstMatch
+        if !all.isHittable { app.buttons["Show Sidebar"].firstMatch.tap() }
+        XCTAssertTrue(waitUntil { today.isSelected }, "the sidebar did not mark Today")
+        all.tap()
+        XCTAssertTrue(waitUntil { title.label.hasPrefix("All") }, title.label)
+    }
+
+    /// The board takes the full pane: three or more whole columns in 13"
+    /// landscape. A card's task pushes over the board, and Back returns to it.
+    func testTheBoardShowsThreeColumnsAndACardOpensOverIt() throws {
+        try openTasks()
+        let title = "[agent] \(run) card"
+        quickAdd(title)
+        app.buttons["tasks.moreMenu"].firstMatch.tap()
+        app.buttons["tasks.more.board"].firstMatch.tap()
+        let board = app.descendants(matching: .any)["tasks.kanban.board"]
+        XCTAssertTrue(board.waitForExistence(timeout: 10))
+        let window = app.windows.firstMatch.frame
+        let columns = app.descendants(matching: .any)
+            .matching(NSPredicate(format: "identifier BEGINSWITH 'tasks.kanban.column.'"))
+        let whole = { columns.allElementsBoundByIndex.filter { window.contains($0.frame) }.count }
+        XCTAssertTrue(waitUntil { whole() >= 3 }, "\(whole()) whole columns on the board")
+        attach("board")
+
+        let card = app.descendants(matching: .any)
+            .matching(NSPredicate(format: "identifier BEGINSWITH 'tasks.kanban.card.' AND label CONTAINS %@", run))
+            .firstMatch
+        XCTAssertTrue(card.waitForExistence(timeout: 10))
+        card.tap()
+        XCTAssertTrue(waitUntil { self.detailTitle == title }, "the task shows \(detailTitle ?? "none")")
+        attach("board-task")
+        app.navigationBars.buttons["BackButton"].firstMatch.tap()
+        XCTAssertTrue(waitUntil { self.detailTitle == nil && board.exists }, "Back did not return to the board")
+
+        card.tap()
+        XCTAssertTrue(waitUntil { self.detailTitle == title }, "the card did not reopen its task")
+        app.buttons["tasks.detail.more"].firstMatch.tap()
+        app.buttons["tasks.detail.delete"].firstMatch.tap()
+        let confirm = app.buttons["tasks.detail.deleteConfirm"].firstMatch
+        XCTAssertTrue(confirm.waitForExistence(timeout: 5))
+        confirm.tap()
+        XCTAssertTrue(waitUntil { !card.exists && board.exists }, "the delete did not return to the board")
+        app.buttons["tasks.moreMenu"].firstMatch.tap()
+        app.buttons["tasks.more.list"].firstMatch.tap()
+    }
+
     // MARK: Helpers
 
     /// The detail column's title, or `nil` when no task is open.
