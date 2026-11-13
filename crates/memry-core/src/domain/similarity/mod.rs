@@ -60,7 +60,13 @@ pub trait SimilarityStore {
     /// The `k` stored vectors nearest `vector`, closest first, with their cosine
     /// distance (`1 - cosine`).
     fn nearest(&self, vector: &[f32], k: usize) -> Result<Vec<(String, f64)>, StorageError>;
-    /// Notes `note_id` links to or is linked from, by body link or note property.
+    /// Notes already connected to `note_id` either way, as Electron's `linkedNoteIds`
+    /// (`similarity/index.ts`) collects them: the resolved targets of its wiki-links,
+    /// the notes whose wiki-links resolve to it, the notes whose note properties
+    /// reference it (when that note still exists), the notes hosting a portal of it
+    /// (`getPortalHostIds`, `link-queries.ts:86-88`, hosts that exist, itself
+    /// excluded), and the notes its own note properties reference. Portals it hosts
+    /// do not count.
     fn linked_note_ids(&self, note_id: &str) -> Result<HashSet<String>, StorageError>;
     /// The tags of each note that has any, in stored order.
     fn tags_by_note(
@@ -170,7 +176,7 @@ pub fn similar_notes(
     let mut exclude = store.linked_note_ids(note_id)?;
     exclude.insert(note_id.to_owned());
     // Over-fetch by the excluded count so filtering cannot starve the list.
-    let hits: Vec<(String, f64)> = nearest(store, &vector, limit + exclude.len())?
+    let hits: Vec<(String, f64)> = nearest(store, &vector, limit.saturating_add(exclude.len()))?
         .into_iter()
         .filter(|(id, similarity)| !exclude.contains(id) && *similarity >= MIN_SIMILAR)
         .collect();

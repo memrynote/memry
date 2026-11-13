@@ -117,7 +117,7 @@ fn a_fresh_index_database_reaches_the_latest_version() {
     let version = db
         .call_blocking(|conn| user_version(conn))
         .expect("user_version");
-    assert_eq!(version, 6);
+    assert_eq!(version, 7);
 
     let names = table_names(&db);
     for expected in [

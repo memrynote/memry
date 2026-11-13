@@ -26,6 +26,10 @@ libsodium-sys-stable = "1.24.0"
 zeroize = "1.8"
 bip39 = { version = "2.2.2", default-features = false, features = ["std"] }
 rusqlite = { version = "0.40.2", features = ["bundled", "backup", "functions", "trace", "limits"] }
+# The vec0 virtual table of index.db (`memry-core` feature `vec`). Compiled from C
+# against its own vendored `sqlite3.h` with `SQLITE_CORE`; only its SQLite symbols
+# resolve to the bundled engine above. Registered with `sqlite3_auto_extension`.
+sqlite-vec = "0.1.9"
 ciborium = "0.2.2"
 # Stock zlib, not the default `miniz_oxide` and not `zlib-rs`. Chapter 04 §4.1
 # pins the frame's bytes to `pako.deflate`, and pako is a port of stock zlib.

@@ -117,6 +117,31 @@ fn shows_the_casing_most_neighbours_use() {
 }
 
 #[test]
+fn a_casing_tie_shows_the_first_spelling_seen() {
+    let scored = score_neighbour_tags(
+        &[neighbour(0.6, &["Sleep"]), neighbour(0.6, &["sleep"])],
+        &TagScoringOptions::default(),
+    );
+    assert_eq!(scored[0].tag, "Sleep");
+}
+
+#[test]
+fn equal_confidence_ranks_the_tag_more_neighbours_carry_first() {
+    // Confidence counts the best three; the fourth neighbour only adds support.
+    let scored = score_neighbour_tags(
+        &[
+            neighbour(0.6, &["few", "many"]),
+            neighbour(0.6, &["few", "many"]),
+            neighbour(0.6, &["few", "many"]),
+            neighbour(0.6, &["many"]),
+        ],
+        &TagScoringOptions::default(),
+    );
+    assert_eq!(scored[0].confidence, scored[1].confidence);
+    assert_eq!(names(&scored), ["many", "few"]);
+}
+
+#[test]
 fn a_duplicate_tag_on_one_neighbour_counts_once() {
     let scored = score_neighbour_tags(
         &[neighbour(0.6, &["sleep", "Sleep"])],
@@ -220,6 +245,12 @@ fn names_a_group_by_a_tag_most_members_share() {
 #[test]
 fn falls_back_to_the_last_segment_of_a_shared_folder() {
     let name = suggest_group_name(&[member(&[], "areas/health"), member(&["a"], "areas/health")]);
+    assert_eq!(name.as_deref(), Some("health"));
+}
+
+#[test]
+fn an_empty_shared_tag_falls_back_to_the_folder() {
+    let name = suggest_group_name(&[member(&[""], "areas/health"), member(&[""], "areas/health")]);
     assert_eq!(name.as_deref(), Some("health"));
 }
 
