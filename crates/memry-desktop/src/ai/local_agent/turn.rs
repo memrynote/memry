@@ -9,6 +9,7 @@ use futures_util::{Stream, StreamExt as _, stream};
 use serde_json::{Value, json};
 use tokio_util::sync::CancellationToken;
 
+use super::error_body::http_error;
 use super::images::{self, Assistant, CallRecord, Entry, ToolEntry, ToolOutput};
 use super::ollama::{self, LineReader};
 use super::openai::{self, ChunkReader};
@@ -26,8 +27,6 @@ use crate::http::read_capped;
 
 /// The largest error body read for the provider's reason.
 const ERROR_BODY_CAP: usize = 64 * 1024;
-/// `withResponseReason` clips the server's reason to this many characters.
-const REASON_CLIP: usize = 500;
 
 pub(super) fn stream(
     inner: Arc<Inner>,
@@ -290,7 +289,7 @@ impl Turn {
                 body = read_capped(response, ERROR_BODY_CAP) => body.unwrap_or_default(),
             };
             let body = provider.redact(String::from_utf8_lossy(&body).into_owned());
-            return Err(Some(http_error(status, &body)));
+            return Err(Some(http_error(status, &body, &provider)));
         }
         let decoder = if ollama {
             LineDecoder::ndjson()
@@ -531,62 +530,5 @@ fn tool_result(call_id: &str, outcome: ToolOutcome) -> (BackendEvent, ToolOutput
             };
             (event, ToolOutput::Json(result))
         }
-    }
-}
-
-/// The message of a failed provider call (`errorMessage` with `withResponseReason`): an
-/// OpenAI-style `{error: {message}}` body gives the message; otherwise the status text, with the
-/// server's own reason (`{error: "..."}` or a non-JSON body) after it.
-fn http_error(status: reqwest::StatusCode, text: &str) -> String {
-    let parsed = serde_json::from_str::<Value>(text.trim()).ok();
-    if let Some(message) = parsed
-        .as_ref()
-        .and_then(|body| body["error"]["message"].as_str())
-    {
-        return message.to_owned();
-    }
-    let status_text = status
-        .canonical_reason()
-        .map_or_else(|| format!("HTTP {}", status.as_u16()), str::to_owned);
-    let reason = match &parsed {
-        Some(body) => body["error"].as_str().map(str::to_owned),
-        None => Some(text.trim().to_owned()),
-    };
-    match reason.filter(|reason| !reason.is_empty()) {
-        Some(reason) => {
-            let clipped: String = reason.chars().take(REASON_CLIP).collect();
-            let clipped = if clipped.len() < reason.len() {
-                format!("{clipped}...")
-            } else {
-                clipped
-            };
-            format!("{status_text}: {clipped}")
-        }
-        None => status_text,
-    }
-}
-
-#[cfg(test)]
-mod tests {
-    use reqwest::StatusCode;
-
-    use super::http_error;
-
-    #[test]
-    fn the_server_reason_follows_the_status_text() {
-        let bad = StatusCode::BAD_REQUEST;
-        assert_eq!(
-            http_error(
-                bad,
-                r#"{"error":{"message":"tool_choice is not supported"}}"#
-            ),
-            "tool_choice is not supported"
-        );
-        assert_eq!(
-            http_error(bad, r#"{"error":"gemma does not support tools"}"#),
-            "Bad Request: gemma does not support tools"
-        );
-        assert_eq!(http_error(bad, "plain"), "Bad Request: plain");
-        assert_eq!(http_error(bad, ""), "Bad Request");
     }
 }

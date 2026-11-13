@@ -92,6 +92,26 @@ async fn a_key_across_the_reason_clip_is_redacted_before_the_clip() {
 }
 
 #[tokio::test]
+async fn a_json_escaped_key_across_the_reason_clip_is_redacted_after_parsing() {
+    // `json_encode` writes `/` as `\/`, so the raw body never holds the key as stored.
+    let key = "abc/def0123456789";
+    // 485 + "Bearer " puts the clip at the key's eighth character.
+    let filler = "a".repeat(485);
+    let body = format!(r#"{{"error":"{filler}Bearer abc\/def0123456789"}}"#);
+    let fake = serve(move |_| (StatusCode::BAD_REQUEST, "application/json", body.clone())).await;
+    let mut settings = provider(AgentLocalProviderPreset::Custom, &fake.base_url, MODEL);
+    settings.api_key = Some(Zeroizing::new(key.into()));
+    let events = run(&agent(settings), LocalRunInput::new(PROMPT), None).await;
+    assert_eq!(
+        events,
+        [BackendEvent::Error {
+            message: format!("Bad Request: {filler}Bearer [key]")
+        }]
+    );
+    assert!(!format!("{events:?}").contains("abc/"));
+}
+
+#[tokio::test]
 async fn a_step_reply_over_the_byte_budget_ends_the_turn_with_an_error() {
     let piece = "x".repeat(1024 * 1024);
     let fake = serve(move |request| {

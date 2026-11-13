@@ -8,6 +8,7 @@
 //! [`ProbeClient`] (no proxy, no redirects) with the key from [`LocalProviderStore::read`], and no
 //! event or log carries the key.
 
+mod error_body;
 pub mod images;
 pub mod ollama;
 pub mod openai;
