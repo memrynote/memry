@@ -13,8 +13,8 @@ pub(crate) mod value;
 mod yaml_dump;
 mod yaml_load;
 
-pub use edit::equal_visits;
 #[doc(hidden)]
+pub use edit::equal_visits;
 pub(crate) use edit::parse_yaml_date;
 pub use edit::{deep_strict_equal, edit_frontmatter_block, serialize_updated_note};
 /// JavaScript's `String#trim`, which a desktop input check needs to match zod's `.trim()`, and

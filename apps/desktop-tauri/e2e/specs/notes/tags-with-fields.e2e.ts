@@ -73,9 +73,10 @@ test('a ready-made tag brings its related tags, and Not now holds over a restart
     ['meeting', 'added'],
     ['book', 'add']
   ])
+  // The vault's journal days define `date` (a learned type), so the preset's Date field takes its name.
   expect(added.tags.meeting.ownFields.map((field) => [field.name, field.relation?.target])).toEqual(
     [
-      ['Date', undefined],
+      ['date', undefined],
       ['Attendees', 'person'],
       ['Company', 'company']
     ]

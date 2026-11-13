@@ -62,11 +62,11 @@ impl PropertyDefinitions {
     /// ([`Self::seed`]), as Electron's `seedUnclocked` pushes its rows. Returns the names
     /// written.
     pub fn fold_learned(&self) -> Result<Vec<String>, DefinitionsError> {
+        let _turn = TURN.lock().unwrap_or_else(PoisonError::into_inner);
         let learned = self.records.learned()?;
         if learned.is_empty() {
             return Ok(Vec::new());
         }
-        let _turn = TURN.lock().unwrap_or_else(PoisonError::into_inner);
         let (added, held) = properties_file::update_file(&self.vault, |file| {
             let mut added = Vec::new();
             let mut held = Vec::new();
