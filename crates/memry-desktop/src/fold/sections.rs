@@ -37,6 +37,7 @@ static LIST_MARKER: LazyLock<Regex> =
 static QUOTE: LazyLock<Regex> = LazyLock::new(|| regex(r"^\s*>\s?"));
 static SENTENCE_END: LazyLock<Regex> = LazyLock::new(|| regex(r#"[.!?…。！？:;]["'”’)\]*_`]*$"#));
 
+#[derive(Clone)]
 pub struct ParsedParagraph {
     pub hash: String,
     pub text: String,
@@ -45,6 +46,7 @@ pub struct ParsedParagraph {
     pub sentences_md: Vec<String>,
 }
 
+#[derive(Clone)]
 pub struct ParsedChunk {
     /// Hash of the heading and the paragraph hashes: the cache key, with language and writer.
     pub hash: String,

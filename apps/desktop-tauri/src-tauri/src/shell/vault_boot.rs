@@ -9,6 +9,7 @@ use memry_desktop::ai::proxy::AiProxy;
 use memry_desktop::ai::settings::InlineAiStore;
 use memry_desktop::attachments::Uploads;
 use memry_desktop::editor::{EditorHost, HostEvent};
+use memry_desktop::fold::agent::FoldAgents;
 use memry_desktop::fold::service::FoldService;
 use memry_desktop::large_file::LargeFiles;
 use memry_desktop::launch_env::LaunchEnv;
@@ -35,10 +36,10 @@ use tokio::sync::broadcast::error::RecvError;
 use crate::commands::error::{CommandError, ErrorKind};
 use crate::commands::vault_index::{send_indexing_status, send_status};
 use crate::events::{
-    CrdtProviderReadyEvent, CrdtProviderResetEvent, CrdtWriteBackFailedEvent, NoteTagsChangedEvent,
-    VaultActivityChangedEvent, VaultErrorEvent, VaultIndexProgressEvent, VaultIndexRecoveredEvent,
-    VaultListChangedEvent, VaultNoticesChangedEvent, WriteBackFailureReason, announce_links,
-    broadcast,
+    CrdtProviderReadyEvent, CrdtProviderResetEvent, CrdtWriteBackFailedEvent, NoteFoldUpdatedEvent,
+    NoteTagsChangedEvent, VaultActivityChangedEvent, VaultErrorEvent, VaultIndexProgressEvent,
+    VaultIndexRecoveredEvent, VaultListChangedEvent, VaultNoticesChangedEvent,
+    WriteBackFailureReason, announce_links, broadcast,
 };
 use crate::shell::{dialogs, services};
 use crate::shutdown::ShutdownService;
@@ -166,9 +167,7 @@ fn register_vault_watcher(app: &AppHandle<Wry>, session: &Session) {
     app.manage(tier.activity());
     let notes = NotesService::new(tier.clone(), store.inner().clone());
     notes.register_resume(session);
-    let fold = FoldService::new(notes.clone());
-    fold.register(session);
-    app.manage(fold);
+    register_fold(app, session, &notes, &tier);
     let schemas_changed = app.clone();
     memry_desktop::tags::schema::rename::register_resume(
         &notes,
@@ -180,6 +179,44 @@ fn register_vault_watcher(app: &AppHandle<Wry>, session: &Session) {
     crate::shell::journal_events::forward(app.clone(), tier.subscribe());
     app.manage(notes);
     app.manage(tier);
+}
+
+/// The note fold, its model runs on the agents `services` manages (the `Handlers` stage, before
+/// this one), and the notes the vault tier writes for its regeneration.
+fn register_fold(
+    app: &AppHandle<Wry>,
+    session: &Session,
+    notes: &Arc<NotesService>,
+    tier: &Arc<VaultTier>,
+) {
+    let (Some(settings), Some(agents)) = (
+        app.try_state::<SettingsService>(),
+        app.try_state::<Arc<FoldAgents>>(),
+    ) else {
+        tracing::error!(
+            scope = "note_fold",
+            "no settings or agents: notes do not fold"
+        );
+        return;
+    };
+    let updated = app.clone();
+    let fold = FoldService::new(
+        notes.clone(),
+        settings.inner().clone(),
+        agents.inner().clone(),
+        tauri::async_runtime::handle().inner().clone(),
+        Arc::new(move |note_id: &str| {
+            broadcast(
+                &updated,
+                NoteFoldUpdatedEvent {
+                    note_id: note_id.to_owned(),
+                },
+            );
+        }),
+    );
+    fold.register(session);
+    fold.watch(tier.subscribe());
+    app.manage(fold);
 }
 
 /// Serves each open vault's documents to the editor windows (`commands::editor`), tells the

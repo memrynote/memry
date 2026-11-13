@@ -7,6 +7,7 @@ use std::sync::Arc;
 
 use memry_desktop::ai::features::{self, AiSettings, AiSettingsPatch};
 use memry_desktop::fold::agent::FoldAgents;
+use memry_desktop::fold::service::FoldService;
 use memry_desktop::registry::AppConfig;
 use memry_desktop::session::{OpenVault, Session};
 use memry_desktop::settings::{SettingsError, SettingsService};
@@ -199,10 +200,14 @@ pub async fn settings_set_ai(
         features::write(&service, vault.as_ref(), &patch).map_err(map_error)
     })
     .await?;
-    if patch.touches_fold()
-        && let Some(agents) = app.try_state::<Arc<FoldAgents>>()
-    {
-        agents.reset();
+    // `refreshNoteFold`: forget the agent detection, then every fetched note fetches again.
+    if patch.touches_fold() {
+        if let Some(agents) = app.try_state::<Arc<FoldAgents>>() {
+            agents.reset();
+        }
+        if let Some(fold) = app.try_state::<Arc<FoldService>>() {
+            fold.refresh();
+        }
     }
     announce(&app, "ai", patch.fields())
 }

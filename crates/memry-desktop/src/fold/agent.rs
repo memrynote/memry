@@ -10,10 +10,13 @@
 use std::sync::atomic::{AtomicU64, Ordering};
 use std::time::Duration;
 
+use async_trait::async_trait;
 use serde::{Deserialize, Serialize};
+use serde_json::Value;
 use tokio::sync::Mutex;
 use tokio::time::Instant;
 
+use super::queue::{FoldBackend, FoldWriter};
 use crate::ai::local_agent::LocalAgent;
 
 /// How long a detected agent holds (`DETECTED_TTL_MS`).
@@ -186,5 +189,39 @@ fn pick(found: &[DetectedAgent], choice: FoldAgentChoice) -> Option<&DetectedAge
     match choice {
         FoldAgentChoice::Auto => found.first(),
         choice => found.iter().find(|agent| agent.id == choice),
+    }
+}
+
+/// `toFoldAgent`: the label and the cache's model id (`<agent>:<model or default>`), and the run.
+#[async_trait]
+impl FoldBackend for FoldAgents {
+    async fn writer(&self, choice: FoldAgentChoice) -> Option<FoldWriter> {
+        let agent = self.resolve(choice).await?;
+        Some(FoldWriter {
+            id: agent.id,
+            label: agent.id.label().to_owned(),
+            model_id: format!(
+                "{}:{}",
+                agent.id.as_str(),
+                agent.model.as_deref().unwrap_or("default")
+            ),
+        })
+    }
+
+    async fn run(&self, writer: &FoldWriter, prompt: &str) -> Result<Value, String> {
+        match writer.id {
+            FoldAgentChoice::LocalOpenaiCompatible => {
+                match self.local.complete_structured::<Value>(prompt).await {
+                    Ok(reply) => Ok(reply),
+                    Err(error) => Err(self.local.redact(error.to_string()).await),
+                }
+            }
+            // Detection finds the local provider only, so no other agent resolves.
+            other => Err(format!("{} does not run in this build", other.label())),
+        }
+    }
+
+    fn forget(&self) {
+        self.reset();
     }
 }

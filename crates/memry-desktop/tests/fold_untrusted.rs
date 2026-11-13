@@ -9,7 +9,8 @@
 //! hostile inputs below turn into quadratic work.
 
 use memry_desktop::fold::FoldLayers;
-use memry_desktop::fold::engine::{assemble, local_brief, prepare};
+use memry_desktop::fold::engine::{assemble, prepare};
+use memry_desktop::fold::morph::{MorphLines, build_morph};
 use memry_desktop::fold::text::steps;
 use memry_desktop::fold::tokens::Zone;
 use memry_test_kit::{
@@ -19,8 +20,7 @@ use proptest::prelude::*;
 
 fn fold(markdown: &str) -> FoldLayers {
     let prepared = prepare(markdown, Zone::Utc);
-    let language = prepared.language.clone();
-    assemble("n", &prepared, |chunk| local_brief(chunk, &language))
+    assemble("n", &prepared, |_| None).layers
 }
 
 /// Bytes of every string the snapshot carries for its reader.
@@ -38,6 +38,14 @@ fn text_bytes(layers: &FoldLayers) -> usize {
                             + strings(&p.sentences)
                             + strings(&p.sentences_md)
                             + strings(&p.src_tokens)
+                            + p.takeaway.len()
+                            + p.topic.len()
+                            + [&p.morph.takeaway, &p.morph.topic]
+                                .into_iter()
+                                .flatten()
+                                .flatten()
+                                .map(|t| t.text.len())
+                                .sum::<usize>()
                     })
                     .sum::<usize>()
         })
@@ -49,7 +57,7 @@ fn assert_linear(what: &'static str, input: String) {
     on_small_stack(move || {
         assert_steps_at_most(what, steps, bound, || {
             let layers = fold(&input);
-            assert!(layers.foldable, "{what} must reach the scans");
+            assert!(!layers.sections.is_empty(), "{what} must reach the scans");
         });
     });
 }
@@ -85,8 +93,41 @@ fn a_deeply_nested_note_folds_on_a_small_stack() {
     for input in [quotes, lists, brackets] {
         let words = format!("{input}\n\n{}", "word ".repeat(200));
         let layers = on_small_stack(move || fold(&words));
-        assert!(layers.foldable);
+        assert!(!layers.sections.is_empty());
     }
+}
+
+/// A model line is model output: a long one over a long paragraph would fill a quadratic table.
+/// Past `MAX_LCS_CELLS` the line is not mapped, so the work stays linear in the text.
+#[test]
+fn a_long_model_line_over_a_long_paragraph_is_not_mapped() {
+    let words = |n: usize| (0..n).map(|i| format!("w{i} ")).collect::<String>();
+    let (text, line) = (words(3_000), words(3_000));
+    let sentences = vec![text.trim_end().to_owned()];
+    let bound = 8 * (text.len() + line.len()) + 1000;
+    let mut morph = None;
+    assert_steps_at_most("model line map", steps, bound, || {
+        morph = Some(build_morph(
+            &text,
+            &sentences,
+            &MorphLines {
+                key_takeaway: None,
+                key_reason: None,
+                takeaway: Some(&line),
+                topic: None,
+            },
+            "en",
+        ));
+    });
+    let mapped = morph
+        .expect("the map")
+        .morph
+        .takeaway
+        .expect("the line's tokens");
+    assert!(
+        mapped.iter().all(|t| t.src.is_none()),
+        "nothing is mapped past the cap"
+    );
 }
 
 #[test]
@@ -172,7 +213,7 @@ proptest! {
         let before = steps();
         let layers = fold(&input);
         prop_assert!(steps() - before <= 8 * input.len() + 1000);
-        prop_assert!(layers.foldable);
+        prop_assert!(!layers.sections.is_empty());
         prop_assert!(text_bytes(&layers) <= output_bound(input.len()));
         for p in layers.sections.iter().flat_map(|s| &s.paragraphs) {
             prop_assert_eq!(p.src_tokens.concat(), p.text.clone());

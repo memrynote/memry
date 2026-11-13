@@ -271,6 +271,11 @@ impl LocalAgent {
         turn::stream(self.inner.clone(), input, host, cancel)
     }
 
+    /// `text` without the provider key, for a log line or an error that may quote the provider.
+    pub async fn redact(&self, text: String) -> String {
+        self.inner.provider().await.redact(text)
+    }
+
     /// `completeStructured`: one run without tools, drained, whose reply must hold one JSON object
     /// that `T` reads (`T` stands in for the zod schema of Electron).
     pub async fn complete_structured<T: DeserializeOwned>(

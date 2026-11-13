@@ -1,12 +1,15 @@
-//! The local fold (`engine.ts`): a note's Markdown to the snapshot the renderer shows. Pure;
-//! [`super::service`] owns the reads.
+//! The fold engine (`engine.ts`): a note's Markdown to the snapshot the renderer shows, with
+//! the model lines a lookup finds and the local fallback where it finds none. Pure;
+//! [`super::service`] owns the reads, the cache and the model runs.
 
 use crate::web::extract::utils::js::is_js_whitespace;
 
+use super::model::{ChunkAi, ChunkParagraphAi, level_words, truncate_units};
+use super::morph::{MorphLines, build_morph};
 use super::sections::{ParsedChunk, ParsedParagraph, ParsedSection, build_sections};
-use super::text::{count_words, detect_language, is_cjk, is_foldable, sha256, step, word_segments};
+use super::text::{count_words, detect_language, is_cjk, is_foldable, sha256};
 use super::tokens::{Zone, expand_inline_tokens, without_inline_tokens};
-use super::{FoldLayers, FoldParagraph, FoldSection, LevelWords};
+use super::{FoldLayers, FoldLevel, FoldParagraph, FoldSection, FoldStatus, LevelWords};
 
 /// A note read and cut up, before any level is resolved.
 pub struct Prepared {
@@ -62,106 +65,118 @@ pub fn local_brief_idx(sentences: &[String], language: &str) -> Vec<u32> {
     vec![best as u32]
 }
 
-/// The local Brief of a chunk: one pick per paragraph.
-pub fn local_brief(chunk: &ParsedChunk, language: &str) -> Vec<Vec<u32>> {
-    chunk
-        .paragraphs
-        .iter()
-        .map(|p| local_brief_idx(&p.sentences, language))
-        .collect()
-}
-
-/// The word segments of a paragraph and where each sentence starts among them
-/// (`buildMorph`'s `srcTokens` and `srcSentenceStart`).
-fn source_tokens(text: &str, sentences: &[String]) -> (Vec<String>, Vec<u32>) {
-    let src = word_segments(text);
-    let mut starts = Vec::with_capacity(sentences.len());
-    let mut cursor = 0;
-    let mut token = 0;
-    for s in sentences {
-        let found = text[cursor..].find(s.as_str()).map(|at| cursor + at);
-        let offset = found.unwrap_or(cursor);
-        step(offset - cursor + s.len());
-        while token + 1 < src.len() && src[token].offset < offset {
-            step(1);
-            token += 1;
-        }
-        starts.push(token as u32);
-        // A sentence that is not in the text (never, as both come from it) moves nothing: past
-        // its length the cursor could leave the text or split a character.
-        if found.is_some() {
-            cursor = offset + s.len();
-        }
-    }
-    (src.iter().map(|s| s.text.to_owned()).collect(), starts)
-}
-
-fn paragraph(p: &ParsedParagraph, brief_idx: Vec<u32>) -> FoldParagraph {
-    let (src_tokens, src_sentence_start) = source_tokens(&p.text, &p.sentences);
+fn paragraph(p: &ParsedParagraph, ai: Option<&ChunkParagraphAi>, language: &str) -> FoldParagraph {
+    let first = p.sentences.first().unwrap_or(&p.text);
+    let key = ai.map(|ai| ai.key.clone());
+    let takeaway = ai.map_or_else(
+        || truncate_units(first, language, 12),
+        |ai| ai.takeaway.clone(),
+    );
+    let topic = ai.map_or_else(|| truncate_units(first, language, 4), |ai| ai.topic.clone());
+    // Derived from the cached model lines on every assemble: not stored, so an old cache row
+    // needs no rewrite.
+    let lines = MorphLines {
+        key_takeaway: key.as_ref().map(|k| k.takeaway.as_str()),
+        key_reason: key.as_ref().map(|k| k.reason.as_str()),
+        takeaway: Some(&takeaway),
+        topic: Some(&topic),
+    };
+    let morph = build_morph(&p.text, &p.sentences, &lines, language);
     FoldParagraph {
         hash: p.hash.clone(),
         text: p.text.clone(),
         sentences: p.sentences.clone(),
         sentences_md: p.sentences_md.clone(),
-        src_tokens,
-        src_sentence_start,
-        brief_idx,
+        src_tokens: morph.src_tokens,
+        src_sentence_start: morph.src_sentence_start,
+        morph: morph.morph,
+        brief_idx: ai.map_or_else(
+            || local_brief_idx(&p.sentences, language),
+            |ai| ai.brief.clone(),
+        ),
+        key,
+        takeaway,
+        topic,
+        evidence: ai.map(|ai| ai.evidence.clone()).unwrap_or_default(),
     }
 }
 
-/// Words Brief shows: the picked sentences of every paragraph.
-fn brief_words(sections: &[FoldSection], language: &str) -> u32 {
-    let mut total = 0;
-    for p in sections.iter().flat_map(|s| &s.paragraphs) {
-        for &i in &p.brief_idx {
-            total += p
-                .sentences
-                .get(i as usize)
-                .map_or(0, |s| count_words(s, language));
-        }
-    }
-    total
+/// The snapshot and the chunks no model has written for this text yet (`Assembled`).
+pub struct Assembled<'a> {
+    /// `status` reads `Short` and `agent` `None`: the service sets both.
+    pub layers: FoldLayers,
+    pub missing: Vec<&'a ParsedChunk>,
 }
 
-/// The snapshot (`assemble`), each chunk's Brief from `brief`.
-pub fn assemble(
+/// `assemble`: each chunk's model lines from `lookup`, the local fallback where it has none.
+pub fn assemble<'a>(
     note_id: &str,
-    prepared: &Prepared,
-    mut brief: impl FnMut(&ParsedChunk) -> Vec<Vec<u32>>,
-) -> FoldLayers {
+    prepared: &'a Prepared,
+    mut lookup: impl FnMut(&ParsedChunk) -> Option<ChunkAi>,
+) -> Assembled<'a> {
     let language = &prepared.language;
+    let mut missing = Vec::new();
     let sections: Vec<FoldSection> = prepared
         .sections
         .iter()
         .map(|section| {
             let mut paragraphs = Vec::new();
+            let mut takeaways = Vec::new();
             for chunk in &section.chunks {
-                let picks = brief(chunk);
+                let ai = lookup(chunk);
+                if ai.is_none() {
+                    missing.push(chunk);
+                }
                 for (i, p) in chunk.paragraphs.iter().enumerate() {
-                    paragraphs.push(paragraph(p, picks.get(i).cloned().unwrap_or_default()));
+                    let line = ai.as_ref().and_then(|ai| ai.paragraphs.get(i));
+                    paragraphs.push(paragraph(p, line, language));
+                }
+                if let Some(ai) = ai {
+                    takeaways.push(ai.section_takeaway);
                 }
             }
+            let fallback = paragraphs.first().map(|p| p.takeaway.clone());
             let mut parts = vec![section.heading.as_deref().unwrap_or("")];
             parts.extend(section.chunks.iter().map(|c| c.hash.as_str()));
             FoldSection {
                 hash: sha256(&parts.join("\u{0}")),
                 heading: section.heading.clone(),
+                takeaway: if takeaways.len() == section.chunks.len() {
+                    Some(takeaways.join(" "))
+                } else {
+                    fallback
+                },
                 paragraphs,
                 skipped: section.skipped.clone(),
             }
         })
         .collect();
     let total_words = count_words(&prepared.source, language);
-    FoldLayers {
-        note_id: note_id.to_owned(),
-        source_hash: sha256(&prepared.source),
-        language: language.clone(),
-        total_words,
-        words_by_level: LevelWords {
-            full: total_words,
-            brief: brief_words(&sections, language),
+    let ready = if missing.is_empty() && !sections.is_empty() {
+        vec![FoldLevel::Key, FoldLevel::Takeaway, FoldLevel::Topic]
+    } else {
+        Vec::new()
+    };
+    let words = |level| level_words(&sections, level, language);
+    let words_by_level = LevelWords {
+        full: total_words,
+        brief: words(FoldLevel::Brief),
+        key: words(FoldLevel::Key),
+        takeaway: words(FoldLevel::Takeaway),
+        topic: words(FoldLevel::Topic),
+    };
+    Assembled {
+        layers: FoldLayers {
+            note_id: note_id.to_owned(),
+            source_hash: sha256(&prepared.source),
+            language: language.clone(),
+            total_words,
+            words_by_level,
+            sections,
+            ready,
+            status: FoldStatus::Short,
+            agent: None,
         },
-        foldable: !sections.is_empty(),
-        sections,
+        missing,
     }
 }
