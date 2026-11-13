@@ -17,6 +17,7 @@ pub mod bookmarks;
 pub mod calendar;
 pub mod calendar_items;
 pub mod canvas;
+pub mod embedding_input;
 pub mod folders;
 pub mod inbox;
 pub mod journal;
