@@ -9,7 +9,7 @@
 
 use std::path::Path;
 
-use rusqlite::{Connection, params};
+use rusqlite::{Connection, ErrorCode, params};
 
 use crate::api::errors::StorageError;
 use crate::storage::connection::Db;
@@ -25,37 +25,49 @@ pub type VectorBytes = [u8; VECTOR_BYTES];
 /// Opted out, it deletes the file and its sidecars and returns `None`. Opted
 /// in, it migrates any `user_version` forward and keeps the rows; a file from a
 /// newer build stays at its version, which is safe because every migration is
-/// additive. A file that fails `quick_check` or cannot migrate is deleted and
-/// built fresh, and the embedder refills it.
+/// additive. A corrupt file, one SQLite reports as `SQLITE_CORRUPT` or
+/// `SQLITE_NOTADB` or that fails `quick_check`, is deleted and built fresh, and
+/// the embedder refills it. Every other failure (busy, permissions, I/O, a full
+/// disk, a failed migration) is returned and the file kept.
+///
+/// Every `Db` on this file must be dropped before calling: opting out or
+/// rebuilding unlinks the file, and a live connection would keep writing to
+/// the orphaned inode.
 pub fn open(path: &Path, opted_in: bool) -> Result<Option<Db>, StorageError> {
     if !opted_in {
         index_db::delete(path)?;
         return Ok(None);
     }
-    match migrated(path) {
-        Ok(db) => Ok(Some(db)),
-        Err(err) => {
-            eprintln!("memry-core: vectors.db rebuilt: {err}");
-            index_db::delete(path)?;
-            migrated(path).map(Some)
-        }
+    if corrupt(path)? {
+        index_db::delete(path)?;
     }
+    let db = Db::open(path)?;
+    db.call_blocking(|conn| migrations::run(conn, VECTOR_MIGRATIONS))?;
+    Ok(Some(db))
 }
 
-fn migrated(path: &Path) -> Result<Db, StorageError> {
-    let db = Db::open(path)?;
-    db.call_blocking(|conn| {
-        let check: String = conn
-            .query_row("PRAGMA quick_check", [], |row| row.get(0))
-            .map_err(failed)?;
-        if check != "ok" {
-            return Err(StorageError::Failed {
-                what: format!("integrity check reported {check}"),
-            });
+/// Classifies on a plain connection because `Db::open` flattens the SQLite
+/// error code into a message.
+fn corrupt(path: &Path) -> Result<bool, StorageError> {
+    let check = Connection::open(path)
+        .and_then(|conn| conn.query_row("PRAGMA quick_check", [], |row| row.get::<_, String>(0)));
+    match check {
+        Ok(check) if check == "ok" => Ok(false),
+        Ok(check) => {
+            eprintln!("memry-core: vectors.db rebuilt: integrity check reported {check}");
+            Ok(true)
         }
-        migrations::run(conn, VECTOR_MIGRATIONS)
-    })?;
-    Ok(db)
+        Err(err)
+            if matches!(
+                err.sqlite_error_code(),
+                Some(ErrorCode::DatabaseCorrupt | ErrorCode::NotADatabase)
+            ) =>
+        {
+            eprintln!("memry-core: vectors.db rebuilt: {err}");
+            Ok(true)
+        }
+        Err(err) => Err(failed(err)),
+    }
 }
 
 /// What a note's vectors were built from. One row per embedded note, including

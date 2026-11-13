@@ -315,3 +315,53 @@ fn a_vault_with_vectors_keeps_index_db_at_version_3() {
     assert_eq!(with(&reopened.db, user_version), 3);
     assert!(with(&data, user_version) >= 17);
 }
+
+fn one_note(path: &Path) {
+    let db = opened(path);
+    with(&db, |conn| {
+        VectorStore::new(conn).replace_note(&state("n1", "gemma-a", 1), &[vector(1)], 1)
+    });
+}
+
+#[cfg(unix)]
+#[test]
+fn probe_unreadable_file_is_not_deleted() {
+    use std::os::unix::fs::PermissionsExt;
+    let scratch = Scratch::new("unreadable");
+    let path = scratch.vectors();
+    one_note(&path);
+    std::fs::set_permissions(&path, std::fs::Permissions::from_mode(0o000)).expect("chmod 000");
+
+    let result = vector_db::open(&path, true);
+
+    std::fs::set_permissions(&path, std::fs::Permissions::from_mode(0o644)).expect("chmod 644");
+    assert!(result.is_err(), "an unreadable file opened");
+    assert_eq!(
+        scan(&opened(&path), "gemma-a"),
+        [("n1".to_owned(), 0, vector(1))]
+    );
+}
+
+#[cfg(unix)]
+#[test]
+fn probe_locked_file_is_not_deleted() {
+    use std::os::unix::fs::MetadataExt;
+    let scratch = Scratch::new("locked");
+    let path = scratch.vectors();
+    one_note(&path);
+    let inode = std::fs::metadata(&path).expect("metadata").ino();
+    let holder = Connection::open(&path).expect("holder");
+    holder
+        .execute_batch("PRAGMA locking_mode = EXCLUSIVE; BEGIN EXCLUSIVE;")
+        .expect("exclusive lock");
+
+    let result = vector_db::open(&path, true);
+
+    drop(holder);
+    assert!(result.is_err(), "a locked file opened");
+    assert_eq!(std::fs::metadata(&path).expect("metadata").ino(), inode);
+    assert_eq!(
+        scan(&opened(&path), "gemma-a"),
+        [("n1".to_owned(), 0, vector(1))]
+    );
+}
