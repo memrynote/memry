@@ -93,14 +93,15 @@ declaring bodies does not re-read the record feed (chapter 07 §7.17.4, #2304).
 A server older than #2295 ignores the unrecognised entry.
 
 **Otherwise "recognised" means a member of the twenty-seven record types**, being
-the twenty-one this feature subscribes to plus the six it does not, both
-enumerated in chapter 13 §13.1. `attachment` is in `SYNC_ITEM_TYPES` but is
+the twenty-one the iOS client subscribes to plus the six only desktop
+declares, both enumerated in chapter 13 §13.1. `attachment` is in `SYNC_ITEM_TYPES` but is
 **not** a record type (§13.8) and is therefore not recognised in this header:
 declaring it is indistinguishable from declaring a typo. Anything outside those
 twenty-seven is dropped from the resolved set, silently and individually — an
 unrecognised entry never fails the request and never invalidates the entries
-beside it. This only bites a client that declares something outside the fixed
-twenty-one; a conforming client's header is recognised in full by construction.
+beside it. This only bites a client that declares something outside the
+twenty-seven; a conforming client's header is recognised in full by
+construction.
 
 The empty-set rule is deliberate: falling back to legacy would hand a
 negotiating client 15 types it never asked for, which is the convergence loss
@@ -108,9 +109,9 @@ the feature exists to prevent
 (`apps/sync-server/src/lib/sync-types.ts:21-26`). Entries are trimmed and
 deduplicated because the header is unbounded client input (`:28-32`).
 
-This feature's client declares **twenty-one** types (chapter 13 §13.1); the
-shipped TypeScript client declares all 25
-(`packages/sync-client/src/pull/http.ts:74`).
+The iOS client declares **twenty-one** types and the Rust desktop client
+**twenty-seven** (chapter 13 §13.1); the shipped TypeScript client declares
+all 25 (`packages/sync-client/src/pull/http.ts:74`).
 
 ### 5.3.1 The subset path — Q05.1
 

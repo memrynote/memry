@@ -1106,7 +1106,8 @@ Before any of them, a live record that fails desktop's schema is skipped and
 the local record stays as it is: a schema key of the wrong type (a numeric
 `title`, an array `folder`), `null` in `id`, `vaultId`, `scene` or `clock`, or
 a `clock` tick that is not a safe non-negative integer
-(`packages/contracts/src/sync-payloads.ts:187-207`,
+(`VectorClockSchema`, `packages/contracts/src/sync-api.ts:386`;
+`packages/contracts/src/sync-payloads.ts:187-207`,
 `crates/memry-core/src/domain/canvas/merge.rs:66-68`). Desktop refuses it as
 `schema_invalid` before the handler runs
 (`apps/desktop/src/main/sync/apply-item.ts:155-176`). The skip is an
@@ -1155,7 +1156,8 @@ Before any of them, a live record that fails desktop's schema is skipped and
 the local record stays as it is: a schema key of the wrong type (`target: 5`,
 `locked: "yes"`), `null` in any schema key, or a `clock` tick that is not a
 safe non-negative integer
-(`packages/contracts/src/sync-payloads.ts:477-484`,
+(`VectorClockSchema`, `packages/contracts/src/sync-api.ts:386`;
+`packages/contracts/src/sync-payloads.ts:477-484`,
 `crates/memry-core/src/domain/vault_locks/merge.rs:63-65`). Desktop refuses it
 as `schema_invalid` before the handler runs
 (`apps/desktop/src/main/sync/apply-item.ts:155-176`). The skip is an
