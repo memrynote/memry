@@ -1,6 +1,5 @@
--- data.db, migration 0029: the search sheet's recently opened results (#4322),
--- desktop's `search_reasons`. Versions 17..=28 belong to feat/tauri-v2
--- (#4438), so main skips them.
+-- data.db, migration 0017: the search sheet's recently opened results (#4322),
+-- desktop's `search_reasons`.
 --
 -- Additive only: one new table, no existing table or row touched. Device-local
 -- UI state, not a projection: no record feeds it, nothing syncs it, and

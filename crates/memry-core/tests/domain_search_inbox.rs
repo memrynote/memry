@@ -8,7 +8,7 @@
 //! | a tombstone stops matching                             | the live-row check, the index row |
 //! | a second pass picks up only the new capture            | `fts_inbox`'s own watermark       |
 //! | a missing inbox watermark forces the first fill        | same                              |
-//! | an index.db from before fts_inbox is rebuilt and filled | §A.0, migration 0008             |
+//! | an index.db from before fts_inbox is rebuilt and filled | §A.0, migration 0003             |
 //! | a typo finds the title                                 | the fuzzy fallback (#4319)        |
 //! | an opened capture is a recent until it is deleted      | recents liveness (#4322)          |
 

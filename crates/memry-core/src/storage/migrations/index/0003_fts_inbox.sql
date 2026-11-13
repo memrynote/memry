@@ -1,5 +1,4 @@
--- index.db, migration 0008: inbox items in search (#4320). Versions 3..=7
--- belong to feat/tauri-v2 (#4438), so main skips them.
+-- index.db, migration 0003: inbox items in search (#4320).
 --
 -- Desktop's `fts_inbox` (`fts-inbox.ts`): the same columns in the same order,
 -- because the order is what gives `bm25(fts_inbox, 0.0, 3.0, 1.0, 1.0, 0.5)`

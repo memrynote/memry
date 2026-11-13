@@ -28,8 +28,7 @@ use crate::api::errors::StorageError;
 /// One hand-written, forward-only step.
 pub struct Migration {
     /// The value `user_version` takes once this migration has committed.
-    /// Strictly ascending across a list, starting at 1. main skips the
-    /// versions feat/tauri-v2 reserves (#4438), so main's lists have gaps.
+    /// Strictly ascending across a list, starting at 1.
     pub version: u32,
     /// For error messages and logs only. Never read as an identity.
     pub name: &'static str,
@@ -121,13 +120,10 @@ pub const DATA_MIGRATIONS: &[Migration] = &[
         name: "inbox_attachments",
         sql: include_str!("migrations/data/0016_inbox_attachments.sql"),
     },
-    // 17..=28 belong to feat/tauri-v2 (#4438). A file this build leaves at 29
-    // has not run them, so that branch must run them on a file at 29 that
-    // lacks their tables.
     Migration {
-        version: 29,
+        version: 17,
         name: "search_recents",
-        sql: include_str!("migrations/data/0029_search_recents.sql"),
+        sql: include_str!("migrations/data/0017_search_recents.sql"),
     },
 ];
 
@@ -148,11 +144,10 @@ pub const INDEX_MIGRATIONS: &[Migration] = &[
         name: "link_target_keys",
         sql: include_str!("migrations/index/0002_link_target_keys.sql"),
     },
-    // 3..=7 belong to feat/tauri-v2 (#4438).
     Migration {
-        version: 8,
+        version: 3,
         name: "fts_inbox",
-        sql: include_str!("migrations/index/0008_fts_inbox.sql"),
+        sql: include_str!("migrations/index/0003_fts_inbox.sql"),
     },
 ];
 
@@ -247,18 +242,11 @@ mod tests {
     }
 
     #[test]
-    fn versions_ascend_from_one_skipping_only_the_reserved_ones() {
-        // feat/tauri-v2's versions (#4438). A main migration that takes one
-        // collides with that branch when main is next merged into it.
-        for (migrations, reserved) in [(DATA_MIGRATIONS, 17..=28), (INDEX_MIGRATIONS, 3..=7)] {
-            let mut expected = (1..).filter(|version| !reserved.contains(version));
-            for migration in migrations {
-                assert_eq!(
-                    Some(migration.version),
-                    expected.next(),
-                    "{}",
-                    migration.name
-                );
+    fn versions_are_strictly_ascending_from_one() {
+        for migrations in [DATA_MIGRATIONS, INDEX_MIGRATIONS] {
+            for (index, migration) in migrations.iter().enumerate() {
+                let expected = u32::try_from(index + 1).expect("migration count fits u32");
+                assert_eq!(migration.version, expected, "{}", migration.name);
             }
         }
     }
@@ -270,7 +258,7 @@ mod tests {
         let version = db
             .call_blocking(|conn| user_version(conn))
             .expect("user_version");
-        assert_eq!(version, 29);
+        assert_eq!(version, 17);
 
         let names = table_names(&db);
         // Source of record, §A.2.
@@ -335,7 +323,7 @@ mod tests {
         let version = db
             .call_blocking(|conn| user_version(conn))
             .expect("user_version");
-        assert_eq!(version, 8);
+        assert_eq!(version, 3);
 
         let names = table_names(&db);
         for expected in [
@@ -386,7 +374,7 @@ mod tests {
         let version = db
             .call_blocking(|conn| run(conn, DATA_MIGRATIONS))
             .expect("step forward");
-        assert_eq!(version, 29);
+        assert_eq!(version, 17);
 
         let (count, payload): (i64, String) = db
             .call_blocking(|conn| {
