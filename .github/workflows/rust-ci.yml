@@ -238,8 +238,9 @@ jobs:
 
       # memry-ml links ONNX Runtime statically. macOS x64, Windows and Linux x64 link the archive
       # of build-ort-static.yml (ORT_LIB_LOCATION); macOS arm64 downloads ort-sys's prebuilt one.
+      # The test partitions need it too: on Windows every memry-tauri test links memry-ml
+      # (tests/ml_link.rs).
       - name: ONNX Runtime static library
-        if: matrix.part != 'tests'
         uses: ./.github/actions/ort-static
         with:
           token: ${{ github.token }}
@@ -486,9 +487,18 @@ jobs:
           base=https://huggingface.co/onnx-community/embeddinggemma-2-ONNX/resolve/daa72c51243991dfcaf9f9137d2c573d8f7790c0
           dir=models/onnx-community/embeddinggemma-2-ONNX
           mkdir -p "$dir/onnx"
-          for file in tokenizer.json onnx/model_q4.onnx onnx/model_q4.onnx_data; do
+          # The pins of memry-ml/src/files.rs, checked before the save below shares the files.
+          while read -r sum file; do
             curl -fsSL --retry 3 -o "$dir/$file" "$base/$file"
-          done
+            if [ "$(cmake -E sha256sum "$dir/$file" | cut -d' ' -f1)" != "$sum" ]; then
+              echo "::error::$file does not match its pinned sha256"
+              exit 1
+            fi
+          done <<'EOF'
+          4d777ef5bdc1aa36227abdfb77c3e49e7b9c892d16e1b6bda41c393504828be4 tokenizer.json
+          f9eeba97acddf139b8ee2ddf04bc30dceafa88de93fadf74d7644e0d61a477a9 onnx/model_q4.onnx
+          c3975f2d1ab7a1878ae31a7d7a9b7804a827aff3800b60dfceafce21cac3df49 onnx/model_q4.onnx_data
+          EOF
 
       - name: Save the text model (memry-ml smoke)
         if: matrix.part != 'tests' && needs.plan.outputs.full == 'true' && steps.model-cache.outputs.cache-hit != 'true' && github.event_name != 'merge_group' && (github.event_name != 'pull_request' || github.base_ref != 'feat/tauri-v2')
@@ -500,31 +510,46 @@ jobs:
 
       # The shipping profile (fat LTO): the smoke test embeds with the downloaded model, then the
       # test binary's size and its shared-library dependencies are printed. No ONNX Runtime or
-      # DirectML library may be among them: ONNX Runtime is linked in, CPU only.
+      # DirectML library may be among them: ONNX Runtime is linked in, CPU only. On Windows
+      # memry-tauri's tests/ml_link.rs embeds through the app's link (tauri-build's static VC
+      # runtime) too, and neither binary may need the VC++ redistributable (MSVCP140, VCRUNTIME140).
       - name: memry-ml smoke test and linked libraries (release)
         if: matrix.part != 'tests' && needs.plan.outputs.full == 'true'
         timeout-minutes: 30
         env:
           MEMRY_ML_MODEL_DIR: ${{ runner.temp }}/models/onnx-community/embeddinggemma-2-ONNX
         run: |
+          # Prints the binary of `cargo test <args> --no-run` and checks its shared libraries.
+          check_dependencies() {
+            # CARGO_TERM_COLOR=always would wrap the path in escape codes.
+            bin=$(cargo test "$@" --no-run --color never 2>&1 | sed -n 's/.*Executable .*(\(.*\))$/\1/p' | tail -1)
+            if [ "$RUNNER_OS" = Windows ]; then bin=$(cygpath -u "$bin"); fi
+            echo "Test binary: $bin, $(wc -c < "$bin") bytes"
+            case "$RUNNER_OS" in
+              macOS) otool -L "$bin" ;;
+              Linux) ldd "$bin" ;;
+              Windows)
+                dumpbin=$(ls /c/Program\ Files*/Microsoft\ Visual\ Studio/*/*/VC/Tools/MSVC/*/bin/Host*/*/dumpbin.exe | head -1)
+                "$dumpbin" -dependents "$bin" ;; # `/dependents` would be rewritten as an MSYS path
+            esac | tee "$RUNNER_TEMP/dependencies.txt"
+            # An empty or failed listing would pass the checks below.
+            grep -qiE 'libc\.so|libSystem|KERNEL32' "$RUNNER_TEMP/dependencies.txt"
+            if grep -iE 'onnxruntime|directml' "$RUNNER_TEMP/dependencies.txt"; then
+              echo "::error::$bin depends on a shared ONNX Runtime or DirectML library"
+              exit 1
+            fi
+            if grep -iE 'msvcp[0-9]|vcruntime[0-9]' "$RUNNER_TEMP/dependencies.txt"; then
+              echo "::error::$bin depends on the VC++ redistributable"
+              exit 1
+            fi
+          }
           cargo test -p memry-ml --release --test smoke -- --ignored
-          # CARGO_TERM_COLOR=always would wrap the path in escape codes.
-          bin=$(cargo test -p memry-ml --release --test smoke --no-run --color never 2>&1 | sed -n 's/.*Executable .*(\(.*\))$/\1/p' | tail -1)
-          if [ "$RUNNER_OS" = Windows ]; then bin=$(cygpath -u "$bin"); fi
-          echo "Smoke test binary: $bin, $(wc -c < "$bin") bytes"
-          case "$RUNNER_OS" in
-            macOS) otool -L "$bin" ;;
-            Linux) ldd "$bin" ;;
-            Windows)
-              dumpbin=$(ls /c/Program\ Files*/Microsoft\ Visual\ Studio/*/*/VC/Tools/MSVC/*/bin/Host*/*/dumpbin.exe | head -1)
-              echo "dumpbin: $dumpbin"
-              "$dumpbin" -dependents "$bin" ;; # `/dependents` would be rewritten as an MSYS path
-          esac | tee "$RUNNER_TEMP/dependencies.txt"
-          # An empty or failed listing would pass the check below.
-          grep -qiE 'libc\.so|libSystem|KERNEL32' "$RUNNER_TEMP/dependencies.txt"
-          if grep -iE 'onnxruntime|directml' "$RUNNER_TEMP/dependencies.txt"; then
-            echo "::error::the memry-ml binary depends on a shared ONNX Runtime or DirectML library"
-            exit 1
+          check_dependencies -p memry-ml --release --test smoke
+          if [ "$RUNNER_OS" = Windows ]; then
+            # Dev profile: the link arguments are the release build's, and fat LTO over Tauri would
+            # add a long build for no other difference.
+            cargo test -p memry-tauri --test ml_link -- --ignored
+            check_dependencies -p memry-tauri --test ml_link
           fi
 
       - name: Test memry-cli

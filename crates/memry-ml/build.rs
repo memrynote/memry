@@ -6,7 +6,11 @@
 //! - Windows: ort-sys 2.0.0-rc.15 misses two libraries of a Visual Studio build tree, which keeps
 //!   each library in a `Release` folder: it looks for `model_package` under `Release/` and for
 //!   `utf8_validity.lib`, where protobuf names it `libutf8_validity.lib`. This links them from
-//!   the `build-ort-static.yml` archive in `ORT_LIB_LOCATION`.
+//!   the `build-ort-static.yml` archive in `ORT_LIB_LOCATION`. That archive links the VC runtime
+//!   statically (/MT), as the app does through tauri-build's `staticVCRuntime`, so this crate's own
+//!   test binaries link the same way (`static_vcruntime`, which tauri-build calls). A binary of
+//!   another crate that links memry-ml needs the same link arguments, which a build script cannot
+//!   pass on to its dependents.
 
 use std::path::{Path, PathBuf};
 use std::process::Command;
@@ -22,19 +26,27 @@ fn main() {
         if let Ok(location) = std::env::var("ORT_LIB_LOCATION") {
             link_windows_leftovers(Path::new(&location));
         }
+        static_vcruntime::metabuild();
     }
 }
 
 fn link_clang_runtime() {
-    let output = Command::new("cc")
-        .arg("--print-resource-dir")
+    // Apple's clang, the one rustc links with: a `cc` from Homebrew LLVM or GCC has another
+    // resource directory or none.
+    let output = Command::new("xcrun")
+        .args(["clang", "--print-resource-dir"])
         .output()
-        .expect("run `cc --print-resource-dir`");
-    assert!(output.status.success(), "`cc --print-resource-dir` failed");
+        .expect("run `xcrun clang --print-resource-dir`");
+    assert!(
+        output.status.success(),
+        "`xcrun clang --print-resource-dir` failed"
+    );
     let resource_dir = String::from_utf8(output.stdout).expect("utf-8 resource dir");
     let runtime_dir = PathBuf::from(resource_dir.trim())
         .join("lib")
         .join("darwin");
+    let runtime = runtime_dir.join("libclang_rt.osx.a");
+    assert!(runtime.is_file(), "{} is missing", runtime.display());
     println!("cargo:rustc-link-search=native={}", runtime_dir.display());
     println!("cargo:rustc-link-lib=static=clang_rt.osx");
 }

@@ -31,5 +31,9 @@ libc = "0.2"
 [target.'cfg(windows)'.dependencies]
 windows = { version = "0.62.2", features = ["Win32_System_Threading"] }
 
+# The static VC runtime of the Windows archives (build.rs); the version tauri-build uses.
+[build-dependencies]
+static_vcruntime = "3.0.0"
+
 [dev-dependencies]
 tempfile = "3"
