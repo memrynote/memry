@@ -1,13 +1,31 @@
-//! The inline AI settings of a vault (`ai-inline-handlers.ts` of Electron) with the API key in
+//! The inline AI settings of a vault (`ai-inline-handlers.ts` of Electron) with the API keys in
 //! the OS keychain.
 //!
 //! The non-secret fields stay in the vault's `ai-inline` local settings group, the same JSON
 //! Electron wrote (`{enabled, provider, model, apiKey, baseUrl}`), with `apiKey` always empty
-//! when this build writes it. The key lives under [`SERVICE`] / [`InlineAiStore::account`]. A
-//! row that still carries a key (Electron's plaintext, or one imported from it) moves into the
-//! keychain on first read: written, read back, compared, and only then emptied in the row. When
-//! the keychain cannot be reached the row keeps the key and this session uses it; the next read
-//! tries again. Compatibility contract: rows with a plaintext `apiKey` stay readable forever.
+//! when this build writes it. Each key belongs to one provider, and a custom endpoint's key to
+//! one origin (#4451): it lives under [`SERVICE`] / [`InlineAiStore::key_account`], so a change of
+//! provider or custom URL never sends a key to another provider or host.
+//!
+//! Compatibility contract (existing installs and rows):
+//! - A row that still carries a key (Electron's plaintext, or one imported from it, Step 37) moves
+//!   into the key of the provider and origin the row selects when it is read: written, read
+//!   back, compared, and only then emptied in the row. Rows with a plaintext `apiKey` stay
+//!   readable forever.
+//! - The single key of builds before #4451 ([`InlineAiStore::legacy_account`]) moves once, at the
+//!   first read, to the selection of that read; the row's `apiKeyPerProvider: true` records the
+//!   move. A selection that takes no key (Ollama, a custom endpoint without a valid URL) binds it
+//!   nowhere. A key the selected provider already holds is newer and is never overwritten. The
+//!   legacy entry is left in place and stays readable.
+//! - A plaintext row key found while Ollama is selected is parked in the legacy entry, never sent;
+//!   the user re-enters it after choosing a cloud provider.
+//! - Until a key can move (a locked keychain), the key is never used and a change to a provider
+//!   or URL that takes a key is refused, so the key cannot follow the change. A switch to Ollama
+//!   is allowed.
+//! - Downgrade to a build before #4451: it ignores `apiKeyPerProvider` (and keeps it on write) and
+//!   reads only the legacy entry, which this build never writes or deletes. So it sees the key it
+//!   had before the upgrade (or none), not keys typed or moved from a plaintext row since; those
+//!   are re-entered there, and come back here on the next upgrade.
 
 use std::sync::{Arc, Mutex, PoisonError};
 
@@ -73,14 +91,6 @@ impl Default for InlineAiSettings {
 }
 
 impl InlineAiSettings {
-    /// The renderer's copy: the key replaced by [`MASKED_KEY`] when one exists.
-    pub fn masked(mut self) -> Self {
-        if !self.api_key.is_empty() {
-            self.api_key = MASKED_KEY.to_owned();
-        }
-        self
-    }
-
     /// The group as read. A field of the wrong type (a newer build's value) reads as its
     /// default and stays in the row.
     fn from_group(group: &Map<String, Value>) -> Self {
@@ -155,16 +165,34 @@ pub enum AiSettingsError {
     /// shows the key (masked) or a write that leaves it alone never fails with this.
     #[error("the AI API key could not be read or saved in the keychain: {0}")]
     Keychain(SecureStoreError),
+    /// A key typed while the selection names no provider or endpoint to hold it: Ollama, or a
+    /// custom endpoint without a valid `http(s)` URL.
+    #[error(
+        "this selection takes no API key: Ollama needs none, and a custom endpoint needs a valid http(s) URL without a user name before its key"
+    )]
+    NoKeyTarget,
 }
 
-/// The one owner of the inline AI settings and key. Readers in Rust (the provider proxy, the
-/// structured calls) take [`InlineAiStore::read`]; the renderer gets [`InlineAiStore::masked`].
-/// Ollama takes no key, so its `read` never asks the keychain.
+/// The row field that records the one-time move of the legacy key. Older builds ignore it and
+/// keep it on write.
+const BOUND: &str = "apiKeyPerProvider";
+
+/// The row as settled: the settings with `api_key` empty, the account of the selected
+/// provider's key, and why a key in the row or the legacy entry has not moved yet.
+struct Settled {
+    settings: InlineAiSettings,
+    account: Option<String>,
+    pending: Option<SecureStoreError>,
+}
+
+/// The one owner of the inline AI settings and keys. Readers in Rust (the provider proxy, the
+/// model list, the structured calls) take [`InlineAiStore::read`]; the renderer gets
+/// [`InlineAiStore::masked`]. Ollama takes no key, so its `read` never asks the keychain.
 pub struct InlineAiStore {
     settings: SettingsService,
     secrets: Arc<dyn GenericSecrets>,
     device: Option<String>,
-    /// The key of the open vault, read from the keychain once per session.
+    /// The key last read or written, kept until a write.
     key: CachedKey,
     /// Serializes the read-migrate and write paths, so a migration never races a key write.
     write: Mutex<()>,
@@ -186,29 +214,56 @@ impl InlineAiStore {
         }
     }
 
-    /// `api-key:<vault id>` with the device suffix of the sync entries (`-<MEMRY_DEVICE>`, one
-    /// `-dev` for every dev worktree).
-    pub fn account(&self, vault_id: &str) -> String {
+    /// The account of the key `provider` takes at `base_url`: `api-key:<vault id>:<slot>` with
+    /// the slot of [`AiProvider::key_slot`] and the device suffix of the sync entries
+    /// (`-<MEMRY_DEVICE>`, one `-dev` for every dev worktree). `None` when it takes no key.
+    pub fn key_account(
+        &self,
+        vault_id: &str,
+        provider: AiProvider,
+        base_url: &str,
+    ) -> Option<String> {
+        let slot = provider.key_slot(base_url)?;
+        Some(device_account(
+            &format!("api-key:{vault_id}:{slot}"),
+            self.device.as_deref(),
+        ))
+    }
+
+    /// The single key of builds before #4451, `api-key:<vault id>` with the device suffix. Read
+    /// once by the move and by the Electron import (Step 37); never written by a key edit.
+    pub fn legacy_account(&self, vault_id: &str) -> String {
         device_account(&format!("api-key:{vault_id}"), self.device.as_deref())
     }
 
-    /// The settings with the key, for Rust callers only. The defaults while no vault is open. A
-    /// key behind a locked keychain is an error; Ollama's read never asks.
+    /// The settings with the selected provider's key, for Rust callers only. The defaults while
+    /// no vault is open. A key behind a locked keychain is an error; Ollama's read never asks.
     pub fn read(&self, vault: Option<&OpenVault>) -> Result<InlineAiSettings, AiSettingsError> {
         let Some(vault) = vault else {
             return Ok(InlineAiSettings::default());
         };
         let _guard = self.write.lock().unwrap_or_else(PoisonError::into_inner);
-        let mut settings = self.read_row(vault)?;
-        if settings.api_key.is_empty() && settings.provider.takes_key() {
-            settings.api_key = self
-                .stored_key(&vault.vault_id)?
-                .map_or_else(String::new, |key| String::clone(&key));
+        let Settled {
+            mut settings,
+            account,
+            pending,
+        } = self.settle(vault)?;
+        let Some(account) = account else {
+            return Ok(settings);
+        };
+        if let Some(error) = pending {
+            return Err(AiSettingsError::Keychain(error));
         }
+        settings.api_key = self
+            .key
+            .get(&account)
+            .map_err(AiSettingsError::Keychain)?
+            .map_or_else(String::new, |key| String::clone(&key));
         Ok(settings)
     }
 
-    /// The renderer's copy of [`InlineAiStore::read`].
+    /// The renderer's copy of [`InlineAiStore::read`]: `apiKey` is [`MASKED_KEY`] when the
+    /// selected provider has a key, else empty.
     pub fn masked(&self, vault: Option<&OpenVault>) -> Result<InlineAiSettings, AiSettingsError> {
         let Some(vault) = vault else {
             return Ok(InlineAiSettings::default());
@@ -217,8 +272,8 @@ impl InlineAiStore {
         self.masked_locked(vault)
     }
 
-    /// Applies `updates` and returns the masked result. The key goes to the keychain first; when
-    /// that fails nothing is written.
+    /// Applies `updates` and returns the masked result. A key goes to the provider and origin
+    /// the updated selection names, before anything else; when that fails nothing is written.
     pub fn write(
         &self,
         vault: Option<&OpenVault>,
@@ -226,7 +281,20 @@ impl InlineAiStore {
     ) -> Result<InlineAiSettings, AiSettingsError> {
         let vault = vault.ok_or(AiSettingsError::NoVault)?;
         let _guard = self.write.lock().unwrap_or_else(PoisonError::into_inner);
-        self.read_row(vault)?;
+        let Settled {
+            settings, pending, ..
+        } = self.settle(vault)?;
+        let key = updates.api_key.filter(|key| key != MASKED_KEY);
+        let reselects = updates.provider.is_some() || updates.base_url.is_some();
+        let provider = updates.provider.unwrap_or(settings.provider);
+        let base_url = updates.base_url.as_deref().unwrap_or(&settings.base_url);
+        let account = self.key_account(&vault.vault_id, provider, base_url);
+        // A selection that takes no key (Ollama) cannot carry the pending key anywhere.
+        if let Some(error) = pending
+            && ((reselects && account.is_some()) || key.is_some())
+        {
+            return Err(AiSettingsError::Keychain(error));
+        }
 
         let mut patch = Map::new();
         if let Some(enabled) = updates.enabled {
@@ -241,12 +309,16 @@ impl InlineAiStore {
         if let Some(base_url) = updates.base_url {
             patch.insert("baseUrl".into(), Value::String(base_url));
         }
-        if let Some(key) = updates.api_key.filter(|key| key != MASKED_KEY) {
+        if let Some(key) = key {
             let key = Some(Zeroizing::new(key)).filter(|key| !key.is_empty());
-            self.key
-                .set(&self.account(&vault.vault_id), key)
-                .map_err(AiSettingsError::Keychain)?;
-            patch.insert("apiKey".into(), Value::String(String::new()));
+            match (account, key) {
+                (Some(account), key) => self
+                    .key
+                    .set(&account, key)
+                    .map_err(AiSettingsError::Keychain)?,
+                (None, None) => {}
+                (None, Some(_)) => return Err(AiSettingsError::NoKeyTarget),
+            }
         }
         if !patch.is_empty() {
             self.settings.write_secret_group(vault, GROUP, patch)?;
@@ -263,80 +335,143 @@ impl InlineAiStore {
     /// shows masked, so a renderer that sends the masked value back leaves the key alone. The
     /// calls that need the key itself go through [`InlineAiStore::read`] and report the error.
     fn masked_locked(&self, vault: &OpenVault) -> Result<InlineAiSettings, AiSettingsError> {
-        let mut settings = self.read_row(vault)?;
-        if settings.api_key.is_empty() {
-            match self.stored_key(&vault.vault_id) {
-                Ok(key) if key.is_some() => settings.api_key = MASKED_KEY.to_owned(),
-                Ok(_) => {}
-                Err(error) => {
-                    tracing::warn!(
-                        scope = SCOPE,
-                        vault_id = %vault.vault_id,
-                        "the inline AI key shows as unknown: {error}"
-                    );
-                    settings.api_key = MASKED_KEY.to_owned();
-                }
-            }
-        }
-        Ok(settings.masked())
-    }
-
-    /// The row's settings. `api_key` is a plaintext key the row still holds, else empty.
-    fn read_row(&self, vault: &OpenVault) -> Result<InlineAiSettings, AiSettingsError> {
-        let group = self.settings.read_secret_group(vault, GROUP)?;
-        let settings = InlineAiSettings::from_group(&group);
-        if settings.api_key.is_empty() {
+        let Settled {
+            mut settings,
+            account,
+            pending,
+        } = self.settle(vault)?;
+        let Some(account) = account else {
             return Ok(settings);
-        }
-        // A plaintext key in the row: move it, or use it for this session.
-        let plaintext = Zeroizing::new(settings.api_key.clone());
-        match self.migrate(vault, &plaintext) {
-            Ok(()) => tracing::info!(
-                scope = SCOPE,
-                vault_id = %vault.vault_id,
-                "moved the inline AI key from the settings row into the keychain"
-            ),
-            Err(error) => tracing::warn!(
-                scope = SCOPE,
-                vault_id = %vault.vault_id,
-                "the inline AI key stays in the settings row until the keychain can take it: {error}"
-            ),
-        }
+        };
+        let known = match pending {
+            Some(error) => Err(error),
+            None => self.key.get(&account),
+        };
+        settings.api_key = match known {
+            Ok(Some(_)) => MASKED_KEY.to_owned(),
+            Ok(None) => String::new(),
+            Err(error) => {
+                tracing::warn!(
+                    scope = SCOPE,
+                    vault_id = %vault.vault_id,
+                    "the inline AI key shows as unknown: {error}"
+                );
+                MASKED_KEY.to_owned()
+            }
+        };
         Ok(settings)
     }
 
-    /// Writes the key, reads it back, and empties the row only when both agree and the row still
-    /// holds the key that was moved.
-    fn migrate(&self, vault: &OpenVault, plaintext: &Zeroizing<String>) -> Result<(), String> {
-        let account = self.account(&vault.vault_id);
-        self.secrets
-            .set_secret(SERVICE, &account, plaintext.as_bytes())
-            .map_err(|error| error.to_string())?;
-        let back = self
-            .secrets
-            .get_secret(SERVICE, &account)
-            .map_err(|error| error.to_string())?
-            .map(Zeroizing::new);
-        if back.as_deref().map(Vec::as_slice) != Some(plaintext.as_bytes()) {
-            return Err("the keychain did not return the key it was given".to_owned());
-        }
-        self.key.remember(&account, Some(plaintext.clone()));
-        let row = self
-            .settings
-            .read_secret_group(vault, GROUP)
-            .map_err(|error| error.to_string())?;
-        if row.get("apiKey").and_then(Value::as_str) != Some(plaintext.as_str()) {
-            return Err("the settings row changed while its key moved".to_owned());
-        }
-        let patch = Map::from_iter([("apiKey".to_owned(), Value::String(String::new()))]);
-        self.settings
-            .write_secret_group(vault, GROUP, patch)
-            .map_err(|error| error.to_string())
+    /// Reads the row and moves a key it or the legacy entry still holds to its provider.
+    fn settle(&self, vault: &OpenVault) -> Result<Settled, AiSettingsError> {
+        let group = self.settings.read_secret_group(vault, GROUP)?;
+        let mut settings = InlineAiSettings::from_group(&group);
+        let account = self.key_account(&vault.vault_id, settings.provider, &settings.base_url);
+        let plaintext = Zeroizing::new(std::mem::take(&mut settings.api_key));
+        let pending = if !plaintext.is_empty() {
+            self.move_plaintext(vault, account.as_deref(), &plaintext)?
+        } else if group.get(BOUND).and_then(Value::as_bool) != Some(true) {
+            self.move_legacy(vault, account.as_deref())?
+        } else {
+            None
+        };
+        Ok(Settled {
+            settings,
+            account,
+            pending,
+        })
     }
 
-    fn stored_key(&self, vault_id: &str) -> Result<Option<Zeroizing<String>>, AiSettingsError> {
-        self.key
-            .get(&self.account(vault_id))
-            .map_err(AiSettingsError::Keychain)
+    /// Moves the row's plaintext key to `account`, or with no provider to take it into the
+    /// legacy entry, where it is kept and never sent. The row is emptied only when the keychain
+    /// returned the key and the row still holds it. `Some` is why the key could not move.
+    fn move_plaintext(
+        &self,
+        vault: &OpenVault,
+        account: Option<&str>,
+        plaintext: &Zeroizing<String>,
+    ) -> Result<Option<SecureStoreError>, AiSettingsError> {
+        let target = account.map_or_else(|| self.legacy_account(&vault.vault_id), str::to_owned);
+        if let Err(error) = self.put_verified(&target, plaintext.as_bytes()) {
+            tracing::warn!(
+                scope = SCOPE,
+                vault_id = %vault.vault_id,
+                "the inline AI key stays in the settings row, unused, until the keychain can take it: {error}"
+            );
+            return Ok(Some(error));
+        }
+        if account.is_some() {
+            self.key.remember(&target, Some(plaintext.clone()));
+        }
+        let row = self.settings.read_secret_group(vault, GROUP)?;
+        if row.get("apiKey").and_then(Value::as_str) != Some(plaintext.as_str()) {
+            tracing::warn!(
+                scope = SCOPE,
+                vault_id = %vault.vault_id,
+                "the settings row changed while its key moved; the next read moves the new one"
+            );
+            return Ok(None);
+        }
+        let patch = Map::from_iter([
+            ("apiKey".to_owned(), Value::String(String::new())),
+            (BOUND.to_owned(), Value::Bool(true)),
+        ]);
+        self.settings.write_secret_group(vault, GROUP, patch)?;
+        tracing::info!(
+            scope = SCOPE,
+            vault_id = %vault.vault_id,
+            "moved the inline AI key from the settings row into the keychain"
+        );
+        Ok(None)
+    }
+
+    /// The one-time move of the legacy key to `account`. With no provider to take it, nothing is
+    /// read and the key stays where it is, unused. A key `account` already holds is newer and
+    /// stays. `Some` is why the key could not move.
+    fn move_legacy(
+        &self,
+        vault: &OpenVault,
+        account: Option<&str>,
+    ) -> Result<Option<SecureStoreError>, AiSettingsError> {
+        if let Some(account) = account {
+            match self.secrets.get_secret(SERVICE, account) {
+                Ok(None) => {}
+                Ok(Some(_)) => return self.mark_bound(vault),
+                Err(error) => return Ok(Some(error)),
+            }
+            let legacy = self.legacy_account(&vault.vault_id);
+            let key = match self.secrets.get_secret(SERVICE, &legacy) {
+                Ok(key) => key.map(Zeroizing::new),
+                Err(error) => return Ok(Some(error)),
+            };
+            if let Some(key) = key {
+                if let Err(error) = self.put_verified(account, &key) {
+                    return Ok(Some(error));
+                }
+                self.key.forget();
+            }
+        }
+        self.mark_bound(vault)
+    }
+
+    fn mark_bound(&self, vault: &OpenVault) -> Result<Option<SecureStoreError>, AiSettingsError> {
+        let patch = Map::from_iter([(BOUND.to_owned(), Value::Bool(true))]);
+        self.settings.write_secret_group(vault, GROUP, patch)?;
+        Ok(None)
+    }
+
+    /// Writes `key` under `account` and reads it back.
+    fn put_verified(&self, account: &str, key: &[u8]) -> Result<(), SecureStoreError> {
+        self.secrets.set_secret(SERVICE, account, key)?;
+        let back = self
+            .secrets
+            .get_secret(SERVICE, account)?
+            .map(Zeroizing::new);
+        if back.as_deref().map(Vec::as_slice) != Some(key) {
+            return Err(SecureStoreError::Failed {
+                what: "the keychain did not return the key it was given".to_owned(),
+            });
+        }
+        Ok(())
     }
 }

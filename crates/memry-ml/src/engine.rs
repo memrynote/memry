@@ -55,10 +55,15 @@ impl EmbeddingEngine {
     /// Embeds the first [`MAX_EMBEDDING_INPUT_LENGTH`] UTF-16 units of `text` as given: the
     /// caller adds the task prefix (`memry_core::domain::embedding_input`).
     pub fn embed_text(&mut self, text: &str) -> Result<Embedding, MlError> {
-        let ids = self
-            .text
-            .token_ids(&utf16_prefix(text, MAX_EMBEDDING_INPUT_LENGTH))?;
+        let ids = self.token_ids(text)?;
         truncate_embedding(&self.text.sentence_embedding(ids)?)
+    }
+
+    /// The ids [`Self::embed_text`] gives the model for `text`: `<bos>`, the first
+    /// [`MAX_EMBEDDING_INPUT_LENGTH`] UTF-16 units tokenized, `<eos>`.
+    pub fn token_ids(&self, text: &str) -> Result<Vec<i64>, MlError> {
+        self.text
+            .token_ids(&utf16_prefix(text, MAX_EMBEDDING_INPUT_LENGTH))
     }
 }
 

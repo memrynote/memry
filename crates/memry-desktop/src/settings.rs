@@ -223,6 +223,28 @@ impl SettingsService {
         Ok(self.settings(vault)?.set_local(key, value)?)
     }
 
+    /// A flat local key's stored text, as Electron wrote it; `None` while no vault is open.
+    pub fn get_local_text(
+        &self,
+        vault: Option<&OpenVault>,
+        key: &str,
+    ) -> Result<Option<String>, SettingsError> {
+        match vault {
+            Some(vault) => Ok(self.settings(vault)?.get_local_text(key)?),
+            None => Ok(None),
+        }
+    }
+
+    pub fn set_local_text(
+        &self,
+        vault: Option<&OpenVault>,
+        key: &str,
+        text: &str,
+    ) -> Result<SettingsChange, SettingsError> {
+        let vault = vault.ok_or(SettingsError::NoVault)?;
+        Ok(self.settings(vault)?.set_local_text(key, text)?)
+    }
+
     /// Resets one group's local fields and synced fields to the defaults.
     pub fn reset_group(
         &self,

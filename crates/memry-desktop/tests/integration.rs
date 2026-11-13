@@ -21,6 +21,8 @@ mod activity_log;
 mod activity_scan;
 #[path = "ai_catalog.rs"]
 mod ai_catalog;
+#[path = "ai_features.rs"]
+mod ai_features;
 #[path = "ai_fill_fields.rs"]
 mod ai_fill_fields;
 #[path = "ai_inline_settings.rs"]
@@ -112,6 +114,8 @@ mod editor_readonly;
 mod embeds;
 #[path = "file_open.rs"]
 mod file_open;
+#[path = "fold_agent.rs"]
+mod fold_agent;
 #[path = "fold_untrusted.rs"]
 mod fold_untrusted;
 #[path = "folder_file.rs"]

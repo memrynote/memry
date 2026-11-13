@@ -1,5 +1,5 @@
 import type { GeneratedRpcApi } from '@memry/rpc'
-import type { MovesRecovered } from '../generated/bindings'
+import type { AiSettings, MovesRecovered } from '../generated/bindings'
 import type * as InboxRpc from '@memry/rpc/inbox'
 import type * as NotesRpc from '@memry/rpc/notes'
 import type {
@@ -1076,9 +1076,7 @@ export interface JournalSettings {
   allYearsView: boolean
 }
 
-export interface AISettings {
-  enabled: boolean
-}
+export type AISettings = AiSettings
 
 export interface AIModelStatus {
   name: string

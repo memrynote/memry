@@ -184,7 +184,7 @@ async fn cancelling_mid_stream_ends_the_run_and_closes_the_connection() {
 }
 
 #[tokio::test]
-async fn cancelling_while_the_probe_runs_ends_the_run() {
+async fn cancelling_while_the_probe_runs_ends_the_run_and_closes_the_probe_connection() {
     // The model list passes; the streaming check (a 120 s request timeout) is never answered.
     let models = json!({ "object": "list", "data": [{ "id": MODEL }] });
     let held = hold_open(vec![raw_json(&models)]).await;
@@ -209,6 +209,13 @@ async fn cancelling_while_the_probe_runs_ends_the_run() {
     .await
     .expect("a cancelled run stops waiting on the probe");
     assert_eq!(events, []);
+    // The engine lives on, but no caller waits on the shared probe: it is dropped, with its
+    // socket and its copy of the key, instead of waiting for the next probe.
+    tokio::time::timeout(WATCHDOG, held.closed)
+        .await
+        .expect("the server sees the probe connection close")
+        .expect("the server task ran");
+    drop(agent);
 }
 
 /// A host whose call never returns; it records that it was entered and that it was dropped.

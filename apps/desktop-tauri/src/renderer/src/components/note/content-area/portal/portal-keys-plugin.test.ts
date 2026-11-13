@@ -25,10 +25,10 @@ import { mountTestEditor, para, unmountTestEditors } from './portal-test-editor'
 
 afterEach(unmountTestEditors)
 
-const portal = (): PartialBlock => ({
+const portal = (content = '{"note":"src"}'): PartialBlock => ({
   type: 'codeBlock',
   props: { language: 'memry-portal' },
-  content: '{"note":"src"}'
+  content
 })
 
 /** The caret at the start (or end) of the block with this text. */
@@ -71,6 +71,66 @@ describe('portal keys', () => {
     expect(portalSelectionPast(view.state, -1)).toBeInstanceOf(NodeSelection)
     caretIn(view, 'last', 'start')
     expect(portalSelectionPast(view.state, -1)).toBeNull()
+  })
+})
+
+const VIEW_JSON = '{"source":{"kind":"vault"}}'
+
+const viewBlock = (): PartialBlock => ({
+  type: 'codeBlock',
+  props: { language: 'memry-view' },
+  content: VIEW_JSON
+})
+
+const selectedLanguage = (view: ReturnType<typeof mountTestEditor>['view']): unknown => {
+  const { selection } = view.state
+  return selection instanceof NodeSelection ? selection.node.firstChild?.attrs.language : null
+}
+
+describe('a hidden definition never holds the caret', () => {
+  it('selects the view block a note opens on, and the next key starts a line after it', async () => {
+    // #given a note whose caret sits in its first block, a view, before the plugin attaches
+    const { editor, view } = mountTestEditor([viewBlock(), para('below')])
+    caretIn(view, VIEW_JSON, 'start')
+
+    // #when the plugin attaches
+    registerEditorPlugin(editor, createPortalKeysPlugin(editor), prependPlugin)
+    await Promise.resolve()
+
+    // #then the view is selected whole, and typing leaves its definition alone
+    expect(selectedLanguage(view)).toBe('memry-view')
+    view.dom.dispatchEvent(
+      new KeyboardEvent('keydown', { key: 'x', bubbles: true, cancelable: true })
+    )
+    expect(editor.document.map((b) => b.type)).toEqual(['codeBlock', 'paragraph', 'paragraph'])
+    expect(view.state.doc.textContent).toBe(`${VIEW_JSON}xbelow`)
+  })
+
+  it('selects a view or portal whole when the caret is moved into its definition', () => {
+    const { editor, view } = mountTestEditor([para('above'), viewBlock(), portal()])
+    registerEditorPlugin(editor, createPortalKeysPlugin(editor), prependPlugin)
+
+    caretIn(view, VIEW_JSON, 'end')
+    expect(selectedLanguage(view)).toBe('memry-view')
+    caretIn(view, '{"note":"src"}', 'start')
+    expect(selectedLanguage(view)).toBe('memry-portal')
+  })
+
+  it('selects a broken definition whole too', () => {
+    const { editor, view } = mountTestEditor([para('above'), portal('{"note": ')])
+    registerEditorPlugin(editor, createPortalKeysPlugin(editor), prependPlugin)
+
+    caretIn(view, '{"note": ', 'end')
+    expect(selectedLanguage(view)).toBe('memry-portal')
+  })
+
+  it('finds a view block past the caret, as it finds a portal', () => {
+    const { view } = mountTestEditor([para('above'), viewBlock(), para('below')])
+
+    caretIn(view, 'above', 'end')
+    expect(portalSelectionPast(view.state, 1)?.node.firstChild?.attrs.language).toBe('memry-view')
+    caretIn(view, 'below', 'start')
+    expect(portalSelectionPast(view.state, -1)?.node.firstChild?.attrs.language).toBe('memry-view')
   })
 })
 

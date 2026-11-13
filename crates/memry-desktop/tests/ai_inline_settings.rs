@@ -1,6 +1,7 @@
-//! The inline AI settings store against a real session and vault: the key lives in the keychain,
-//! the renderer sees it masked, a plaintext row (Electron's) moves into the keychain only after a
-//! verified read-back, and a locked keychain never loses the key or writes half a change.
+//! The inline AI settings store against a real session and vault: each provider's key lives in the
+//! keychain, the renderer sees it masked, a plaintext row (Electron's) moves into the keychain only
+//! after a verified read-back, a locked keychain never loses the key or writes half a change, and
+//! a key never follows a change of provider or custom host (#4451).
 
 use std::collections::HashMap;
 use std::sync::atomic::{AtomicBool, AtomicUsize, Ordering};
@@ -8,6 +9,7 @@ use std::sync::{Arc, Mutex};
 
 use memry_core::api::errors::SecureStoreError;
 use memry_core::seams::secure_store::{SecureStore, SecureStoreKey};
+use memry_desktop::ai::catalog::{ProbeClient, list_models};
 use memry_desktop::ai::provider::AiProvider;
 use memry_desktop::ai::settings::{
     AiSettingsError, InlineAiStore, InlineAiUpdates, MASKED_KEY, SERVICE,
@@ -229,7 +231,7 @@ fn a_plaintext_row_moves_into_the_keychain_after_a_verified_read_back() {
     assert_eq!(masked.provider, AiProvider::Openai);
     assert_eq!(masked.model, "gpt-4.1");
     assert_eq!(
-        w.keychain.item(&w.account()).as_deref(),
+        w.keychain.item(&w.slot("openai")).as_deref(),
         Some("sk-electron")
     );
     assert_eq!(w.row()["apiKey"], json!(""));
@@ -241,45 +243,23 @@ fn a_plaintext_row_moves_into_the_keychain_after_a_verified_read_back() {
 }
 
 #[test]
-fn a_locked_keychain_keeps_the_plaintext_row_and_this_session_uses_it() {
-    let w = world();
-    w.seed_plaintext("sk-electron");
-    w.keychain.locked.store(true, Ordering::SeqCst);
-
-    let read = w.store.read(Some(&w.vault)).expect("read");
-    assert_eq!(read.api_key, "sk-electron");
-    assert_eq!(w.row()["apiKey"], json!("sk-electron"));
-    assert_eq!(w.keychain.item(&w.account()), None);
-
-    // The next read retries once the keychain is back.
-    w.keychain.locked.store(false, Ordering::SeqCst);
-    assert_eq!(
-        w.store.read(Some(&w.vault)).expect("read").api_key,
-        "sk-electron"
-    );
-    assert_eq!(w.row()["apiKey"], json!(""));
-    assert_eq!(
-        w.keychain.item(&w.account()).as_deref(),
-        Some("sk-electron")
-    );
-}
-
-#[test]
 fn a_false_absent_read_back_never_empties_the_row() {
     let w = world();
     w.seed_plaintext("sk-electron");
     w.keychain.drops_writes.store(true, Ordering::SeqCst);
 
-    assert_eq!(
-        w.store.read(Some(&w.vault)).expect("read").api_key,
-        "sk-electron"
-    );
+    // The key did not land: it is not sent, and the row keeps it for the next read.
+    assert!(matches!(
+        w.store.read(Some(&w.vault)),
+        Err(AiSettingsError::Keychain(SecureStoreError::Failed { .. }))
+    ));
     assert_eq!(w.row()["apiKey"], json!("sk-electron"));
 }
 
 #[test]
 fn a_typed_key_goes_to_the_keychain_and_never_back_to_the_renderer() {
     let w = world();
+    w.select(AiProvider::Openai, "");
     let written = w
         .store
         .write(Some(&w.vault), key_update("sk-new"))
@@ -289,7 +269,10 @@ fn a_typed_key_goes_to_the_keychain_and_never_back_to_the_renderer() {
         w.store.masked(Some(&w.vault)).expect("read").api_key,
         MASKED_KEY
     );
-    assert_eq!(w.keychain.item(&w.account()).as_deref(), Some("sk-new"));
+    assert_eq!(
+        w.keychain.item(&w.slot("openai")).as_deref(),
+        Some("sk-new")
+    );
     assert_eq!(w.row()["apiKey"], json!(""));
     assert!(!serde_json::to_string(&w.row()).unwrap().contains("sk-new"));
 }
@@ -297,6 +280,7 @@ fn a_typed_key_goes_to_the_keychain_and_never_back_to_the_renderer() {
 #[test]
 fn the_masked_value_is_ignored_and_the_empty_string_deletes_the_key() {
     let w = world();
+    w.select(AiProvider::Openai, "");
     w.store
         .write(Some(&w.vault), key_update("sk-new"))
         .expect("write");
@@ -305,19 +289,23 @@ fn the_masked_value_is_ignored_and_the_empty_string_deletes_the_key() {
     updates.model = Some("gpt-4o".to_owned());
     let written = w.store.write(Some(&w.vault), updates).expect("write");
     assert_eq!(written.model, "gpt-4o");
-    assert_eq!(w.keychain.item(&w.account()).as_deref(), Some("sk-new"));
+    assert_eq!(
+        w.keychain.item(&w.slot("openai")).as_deref(),
+        Some("sk-new")
+    );
 
     let cleared = w
         .store
         .write(Some(&w.vault), key_update(""))
         .expect("write");
     assert_eq!(cleared.api_key, "");
-    assert_eq!(w.keychain.item(&w.account()), None);
+    assert_eq!(w.keychain.item(&w.slot("openai")), None);
 }
 
 #[test]
 fn a_locked_keychain_refuses_a_key_write_and_writes_nothing() {
     let w = world();
+    w.select(AiProvider::Openai, "");
     w.keychain.locked.store(true, Ordering::SeqCst);
     let mut updates = key_update("sk-new");
     updates.model = Some("gpt-4o".to_owned());
@@ -351,7 +339,10 @@ fn a_failed_key_write_leaves_the_row_and_the_cached_key_alone() {
         AiSettingsError::Keychain(SecureStoreError::Failed { .. })
     ));
     assert_eq!(w.row()["model"], json!("gpt-4.1"));
-    assert_eq!(w.keychain.item(&w.account()).as_deref(), Some("sk-old"));
+    assert_eq!(
+        w.keychain.item(&w.slot("openai")).as_deref(),
+        Some("sk-old")
+    );
     let gets = w.keychain.gets.load(Ordering::SeqCst);
     assert_eq!(
         w.store.read(Some(&w.vault)).expect("read").api_key,
@@ -434,10 +425,10 @@ fn a_failing_keychain_never_stops_ollama_from_opening_its_settings() {
     w.store.forget();
     w.keychain.get_fails.store(true, Ordering::SeqCst);
 
-    // The stored cloud key is unknown, not absent: masked, so it survives a round trip.
+    // Ollama has no key of its own, so neither read asks the keychain.
     let masked = w.store.masked(Some(&w.vault)).expect("ollama masked read");
     assert_eq!(masked.provider, AiProvider::Ollama);
-    assert_eq!(masked.api_key, MASKED_KEY);
+    assert_eq!(masked.api_key, "");
     w.store.read(Some(&w.vault)).expect("ollama read");
 
     w.keychain.get_fails.store(false, Ordering::SeqCst);
@@ -483,7 +474,12 @@ fn a_custom_provider_row_from_a_newer_electron_reads_as_custom_with_its_key() {
     assert_eq!(masked.base_url, "https://openrouter.ai/api/v1");
     assert_eq!(masked.api_key, MASKED_KEY);
     assert_eq!(w.row()["provider"], json!("custom"));
-    assert_eq!(w.keychain.item(&w.account()).as_deref(), Some("sk-or"));
+    assert_eq!(
+        w.keychain
+            .item(&w.slot("custom:https://openrouter.ai"))
+            .as_deref(),
+        Some("sk-or")
+    );
 
     w.store.forget();
     assert_eq!(w.store.read(Some(&w.vault)).expect("read").api_key, "sk-or");
@@ -520,18 +516,33 @@ fn without_a_vault_reads_are_the_defaults_and_writes_say_so() {
 fn the_account_names_the_vault_and_the_device_as_the_sync_entries_do() {
     let w = world_with(Some("a"));
     let id = &w.vault.vault_id;
-    assert_eq!(w.store.account(id), format!("api-key:{id}-a"));
+    assert_eq!(w.store.legacy_account(id), format!("api-key:{id}-a"));
+    assert_eq!(
+        w.store.key_account(id, AiProvider::Openai, ""),
+        Some(format!("api-key:{id}:openai-a"))
+    );
+    assert_eq!(w.store.key_account(id, AiProvider::Ollama, ""), None);
+    w.select(AiProvider::Openai, "");
     w.store
         .write(Some(&w.vault), key_update("sk-a"))
         .expect("write");
     assert_eq!(
-        w.keychain.item(&format!("api-key:{id}-a")).as_deref(),
+        w.keychain
+            .item(&format!("api-key:{id}:openai-a"))
+            .as_deref(),
         Some("sk-a")
     );
 
     let worktree = world_with(Some("dev-0123abcd"));
     let id = &worktree.vault.vault_id;
-    assert_eq!(worktree.store.account(id), format!("api-key:{id}-dev"));
+    assert_eq!(
+        worktree.store.legacy_account(id),
+        format!("api-key:{id}-dev")
+    );
+    assert_eq!(
+        worktree.store.key_account(id, AiProvider::Google, ""),
+        Some(format!("api-key:{id}:google-dev"))
+    );
 }
 
 /// The OS credential store, as keyring-core's in-memory mock.
@@ -554,4 +565,323 @@ fn the_real_keychain_worker_accepts_the_inline_service() {
         keychain.get_secret(SERVICE, "api-key:v").expect("get"),
         Some(b"sk".to_vec())
     );
+}
+
+// #4451: a key belongs to one provider, and a custom key to one endpoint origin.
+
+impl World {
+    fn slot(&self, slot: &str) -> String {
+        format!("api-key:{}:{slot}", self.vault.vault_id)
+    }
+
+    fn select(&self, provider: AiProvider, base_url: &str) {
+        let updates = InlineAiUpdates {
+            provider: Some(provider),
+            base_url: Some(base_url.to_owned()),
+            ..InlineAiUpdates::default()
+        };
+        self.store
+            .write(Some(&self.vault), updates)
+            .expect("select");
+    }
+
+    fn key(&self) -> String {
+        let read = self.store.read(Some(&self.vault)).expect("read");
+        read.api_key.clone()
+    }
+
+    /// A key Tauri stored before #4451: one entry for every provider.
+    fn seed_legacy(&self, provider: &str, key: &str) {
+        write_row(
+            &self.vault,
+            &self.device_keys,
+            json!({"provider": provider}),
+        );
+        let item = (SERVICE.to_owned(), self.account());
+        let mut items = self.keychain.items.lock().unwrap();
+        items.insert(item, key.as_bytes().to_vec());
+    }
+}
+
+/// A provider that records the request headers of `GET /v1/models`.
+async fn recording_host() -> (String, Arc<Mutex<Vec<axum::http::HeaderMap>>>) {
+    let seen = Arc::new(Mutex::new(Vec::new()));
+    let record = seen.clone();
+    let app = axum::Router::new().route(
+        "/v1/models",
+        axum::routing::get(move |headers: axum::http::HeaderMap| {
+            let record = record.clone();
+            async move {
+                record.lock().unwrap().push(headers);
+                r#"{"data":[]}"#
+            }
+        }),
+    );
+    let listener = tokio::net::TcpListener::bind("127.0.0.1:0")
+        .await
+        .expect("bind");
+    let port = listener.local_addr().expect("addr").port();
+    tokio::spawn(async move { axum::serve(listener, app).await });
+    (format!("http://127.0.0.1:{port}/v1"), seen)
+}
+
+#[tokio::test]
+async fn switching_openai_to_a_custom_host_sends_that_host_no_key() {
+    let _ = rustls::crypto::ring::default_provider().install_default();
+    let w = world();
+    w.cloud_with_key("sk-openai");
+    let (evil, seen) = recording_host().await;
+    w.select(AiProvider::Custom, &evil);
+
+    let settings = w.store.read(Some(&w.vault)).expect("read");
+    assert_eq!(settings.api_key, "");
+    assert_eq!(w.store.masked(Some(&w.vault)).expect("masked").api_key, "");
+    let client = ProbeClient::new(memry_desktop::http::builder());
+    list_models(&client, &settings).await.expect("listed");
+    let headers = seen.lock().unwrap()[0].clone();
+    assert!(headers.get("authorization").is_none(), "{headers:?}");
+}
+
+#[test]
+fn switching_back_to_openai_restores_its_key() {
+    let w = world();
+    w.cloud_with_key("sk-openai");
+    w.select(AiProvider::Custom, "https://evil.example/v1");
+    w.store
+        .write(Some(&w.vault), key_update("sk-evil"))
+        .expect("custom key");
+    w.select(AiProvider::Anthropic, "");
+    assert_eq!(w.key(), "");
+
+    w.select(AiProvider::Openai, "");
+    assert_eq!(w.key(), "sk-openai");
+    assert_eq!(
+        w.store.masked(Some(&w.vault)).expect("masked").api_key,
+        MASKED_KEY
+    );
+    assert_eq!(
+        w.keychain.item(&w.slot("openai")).as_deref(),
+        Some("sk-openai")
+    );
+    w.select(AiProvider::Custom, "https://evil.example/v1");
+    assert_eq!(w.key(), "sk-evil");
+}
+
+#[test]
+fn a_custom_key_follows_the_normalized_origin_of_its_endpoint() {
+    let w = world();
+    w.select(AiProvider::Custom, "https://openrouter.ai/api/v1");
+    w.store
+        .write(Some(&w.vault), key_update("sk-or"))
+        .expect("custom key");
+    assert_eq!(
+        w.keychain
+            .item(&w.slot("custom:https://openrouter.ai"))
+            .as_deref(),
+        Some("sk-or")
+    );
+
+    w.select(AiProvider::Custom, " HTTPS://OpenRouter.AI:443/other/ ");
+    assert_eq!(w.key(), "sk-or");
+    for other in [
+        "http://openrouter.ai/api/v1",
+        "https://openrouter.ai:8443/api/v1",
+        "https://evil.openrouter.ai/api/v1",
+        "",
+        "not a url",
+    ] {
+        w.select(AiProvider::Custom, other);
+        assert_eq!(w.key(), "", "{other}");
+    }
+}
+
+#[test]
+fn a_key_typed_without_an_endpoint_is_refused_and_stored_nowhere() {
+    let w = world();
+    w.select(AiProvider::Custom, "");
+    let error = w
+        .store
+        .write(Some(&w.vault), key_update("sk-x"))
+        .expect_err("no endpoint");
+    assert!(matches!(error, AiSettingsError::NoKeyTarget), "{error:?}");
+    assert!(w.keychain.items.lock().unwrap().is_empty());
+}
+
+#[test]
+fn the_legacy_key_moves_once_to_the_provider_selected_at_first_read() {
+    let w = world();
+    w.seed_legacy("openai", "sk-legacy");
+
+    assert_eq!(w.key(), "sk-legacy");
+    assert_eq!(
+        w.keychain.item(&w.slot("openai")).as_deref(),
+        Some("sk-legacy")
+    );
+    // Kept for the Electron import of Step 37.
+    assert_eq!(w.keychain.item(&w.account()).as_deref(), Some("sk-legacy"));
+
+    w.select(AiProvider::Custom, "https://evil.example/v1");
+    w.store.forget();
+    assert_eq!(w.key(), "");
+    w.select(AiProvider::Anthropic, "");
+    assert_eq!(w.key(), "");
+    w.select(AiProvider::Openai, "");
+    assert_eq!(w.key(), "sk-legacy");
+}
+
+#[test]
+fn a_legacy_key_found_under_ollama_binds_to_no_provider() {
+    let w = world();
+    w.seed_legacy("ollama", "sk-legacy");
+    w.store.read(Some(&w.vault)).expect("ollama read");
+    assert_eq!(w.keychain.gets.load(Ordering::SeqCst), 0);
+
+    w.select(AiProvider::Custom, "https://evil.example/v1");
+    assert_eq!(w.key(), "");
+    w.select(AiProvider::Openai, "");
+    assert_eq!(w.key(), "");
+    assert_eq!(w.keychain.item(&w.account()).as_deref(), Some("sk-legacy"));
+}
+
+#[test]
+fn a_locked_keychain_holds_the_legacy_key_back_until_it_can_bind() {
+    let w = world();
+    w.seed_legacy("openai", "sk-legacy");
+    w.keychain.locked.store(true, Ordering::SeqCst);
+
+    assert!(matches!(
+        w.store.read(Some(&w.vault)),
+        Err(AiSettingsError::Keychain(SecureStoreError::Locked))
+    ));
+    assert_eq!(
+        w.store.masked(Some(&w.vault)).expect("masked").api_key,
+        MASKED_KEY
+    );
+    // A selection change would rebind the pending key: refused while it cannot move.
+    let updates = InlineAiUpdates {
+        provider: Some(AiProvider::Custom),
+        base_url: Some("https://evil.example/v1".to_owned()),
+        ..InlineAiUpdates::default()
+    };
+    assert!(matches!(
+        w.store.write(Some(&w.vault), updates),
+        Err(AiSettingsError::Keychain(SecureStoreError::Locked))
+    ));
+    assert_eq!(w.row()["provider"], json!("openai"));
+
+    w.keychain.locked.store(false, Ordering::SeqCst);
+    assert_eq!(w.key(), "sk-legacy");
+    w.select(AiProvider::Custom, "https://evil.example/v1");
+    assert_eq!(w.key(), "");
+}
+
+#[test]
+fn a_locked_keychain_never_sends_a_plaintext_row_key() {
+    let w = world();
+    w.seed_plaintext("sk-electron");
+    w.keychain.locked.store(true, Ordering::SeqCst);
+
+    assert!(matches!(
+        w.store.read(Some(&w.vault)),
+        Err(AiSettingsError::Keychain(SecureStoreError::Locked))
+    ));
+    assert_eq!(w.row()["apiKey"], json!("sk-electron"));
+    let updates = InlineAiUpdates {
+        provider: Some(AiProvider::Custom),
+        base_url: Some("https://evil.example/v1".to_owned()),
+        ..InlineAiUpdates::default()
+    };
+    assert!(w.store.write(Some(&w.vault), updates).is_err());
+
+    w.keychain.locked.store(false, Ordering::SeqCst);
+    assert_eq!(w.key(), "sk-electron");
+    assert_eq!(
+        w.keychain.item(&w.slot("openai")).as_deref(),
+        Some("sk-electron")
+    );
+    assert_eq!(w.row()["apiKey"], json!(""));
+}
+
+#[test]
+fn equivalent_custom_urls_share_one_key() {
+    let w = world();
+    w.select(AiProvider::Custom, "https://bücher.example/v1");
+    w.store
+        .write(Some(&w.vault), key_update("sk-idn"))
+        .expect("custom key");
+    assert_eq!(
+        w.keychain
+            .item(&w.slot("custom:https://xn--bcher-kva.example"))
+            .as_deref(),
+        Some("sk-idn")
+    );
+    for same in [
+        "https://xn--bcher-kva.example/other",
+        "HTTPS://BÜCHER.EXAMPLE:443/v1/",
+        "https://Bücher.example",
+    ] {
+        w.select(AiProvider::Custom, same);
+        assert_eq!(w.key(), "sk-idn", "{same}");
+    }
+
+    w.select(AiProvider::Custom, "http://Local.Example:80/a");
+    w.store
+        .write(Some(&w.vault), key_update("sk-http"))
+        .expect("custom key");
+    w.select(AiProvider::Custom, "http://local.example/b/c");
+    assert_eq!(w.key(), "sk-http");
+    w.select(AiProvider::Custom, "https://user:pw@local.example/b");
+    assert_eq!(w.key(), "");
+}
+
+#[test]
+fn the_legacy_move_never_overwrites_a_key_the_provider_already_has() {
+    let w = world();
+    w.seed_legacy("openai", "sk-legacy");
+    w.keychain.items.lock().unwrap().insert(
+        (SERVICE.to_owned(), w.slot("openai")),
+        b"sk-current".to_vec(),
+    );
+
+    assert_eq!(w.key(), "sk-current");
+    assert_eq!(
+        w.keychain.item(&w.slot("openai")).as_deref(),
+        Some("sk-current")
+    );
+    assert_eq!(w.row()["apiKeyPerProvider"], json!(true));
+    assert_eq!(w.keychain.item(&w.account()).as_deref(), Some("sk-legacy"));
+}
+
+#[test]
+fn switching_to_ollama_is_allowed_while_a_key_cannot_move() {
+    let w = world();
+    w.seed_plaintext("sk-electron");
+    w.keychain.locked.store(true, Ordering::SeqCst);
+
+    w.select(AiProvider::Ollama, "http://localhost:11434/v1");
+    assert_eq!(w.row()["provider"], json!("ollama"));
+    assert_eq!(w.row()["apiKey"], json!("sk-electron"));
+    assert_eq!(w.key(), "");
+
+    // Under Ollama the plaintext key is parked in the legacy entry, never sent (#3554 hint).
+    w.keychain.locked.store(false, Ordering::SeqCst);
+    assert_eq!(w.key(), "");
+    assert_eq!(
+        w.keychain.item(&w.account()).as_deref(),
+        Some("sk-electron")
+    );
+    assert_eq!(w.row()["apiKey"], json!(""));
+}
+
+#[test]
+fn a_key_typed_under_ollama_is_refused_with_an_ollama_reason() {
+    let w = world();
+    w.select(AiProvider::Ollama, "");
+    let error = w
+        .store
+        .write(Some(&w.vault), key_update("sk-x"))
+        .expect_err("ollama takes no key");
+    assert!(matches!(error, AiSettingsError::NoKeyTarget), "{error:?}");
+    assert!(error.to_string().contains("Ollama"), "{error}");
+    assert!(w.keychain.items.lock().unwrap().is_empty());
 }
