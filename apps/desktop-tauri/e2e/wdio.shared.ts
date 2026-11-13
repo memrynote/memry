@@ -81,7 +81,7 @@ export const sharedConfig = {
   connectionRetryTimeout: 120_000,
   logLevel: 'warn',
   connectionRetryCount: 1,
-  specFileRetries: IS_CI ? 2 : 0,
+  specFileRetries: IS_CI ? 0 : 0,
   mochaOpts: { ui: 'bdd', timeout: TEST_TIMEOUT_MS },
   reporters: ['spec', [E2eJunitReporter, { outputDir: join(packageRoot, 'test-results/e2e') }]],
   async onPrepare(): Promise<void> {
