@@ -74,22 +74,32 @@ final class InboxUITests: XCTestCase {
         // `TEST_RUNNER_MEMRY_UI_VAULT` overrides the usual one.
         let name = ProcessInfo.processInfo.environment["MEMRY_UI_VAULT"] ?? "MemryNote"
         let vault = app.staticTexts[name]
-        let inboxTab = app.tabBars.buttons["Inbox"].firstMatch
+        // iPad's bar sits at the top and is no `tabBars` element.
+        let menu = app.buttons["Menu"].firstMatch
         // Signed out lands on the welcome screen first, or on sign-in once
         // past it.
         let signIn = app.descendants(matching: .any).matching(NSPredicate(
             format: "label IN {'Sign in to Memry', 'Already have an account? Sign in'}"
         )).firstMatch
         let deadline = Date().addingTimeInterval(60)
-        while Date() < deadline, !inboxTab.exists {
+        while Date() < deadline, !menu.exists {
             if signIn.exists {
                 throw XCTSkip("Signed out: sign in to the staging test account first (tasks.md §0.3a).")
             }
             if vault.exists, vault.isHittable { vault.tap() }
             Thread.sleep(forTimeInterval: 0.5)
         }
-        XCTAssertTrue(inboxTab.waitForExistence(timeout: 5), "the vault did not open")
-        inboxTab.tap()
+        XCTAssertTrue(menu.waitForExistence(timeout: 5), "the vault did not open")
+        // Inbox sits in the bar or behind Menu, by desktop's rail order.
+        let inboxTab = app.buttons["Inbox"].firstMatch
+        if inboxTab.exists {
+            inboxTab.tap()
+        } else {
+            menu.tap()
+            let entry = app.buttons["menu.inbox"].firstMatch
+            XCTAssertTrue(entry.waitForExistence(timeout: 10))
+            entry.tap()
+        }
         XCTAssertTrue(app.buttons["inbox.addButton"].firstMatch.waitForExistence(timeout: 20))
         if !app.buttons["inbox.addButton"].firstMatch.isHittable { selectView("inbox") }
     }
