@@ -295,6 +295,7 @@ fn a_remote_without_created_at_keeps_the_time_the_draft_first_projected() {
             vec![],
             NOW + 10,
             Some(DEVICE),
+            &crate::crypto::agent_envelope::AtRestKey::default(),
         )?;
         let created = created_at(conn);
         let second = json!({"content": "two", "clock": {"peer": 2}});
@@ -304,6 +305,7 @@ fn a_remote_without_created_at_keeps_the_time_the_draft_first_projected() {
             vec![],
             NOW + 20,
             Some(DEVICE),
+            &crate::crypto::agent_envelope::AtRestKey::default(),
         )?;
         assert_ne!(modified_at(conn, ID), created, "the second apply is later");
         assert_eq!(created_at(conn), created);

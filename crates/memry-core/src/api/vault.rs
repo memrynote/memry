@@ -52,6 +52,7 @@ use crate::api::search::Search;
 use crate::api::sync::VaultSync;
 use crate::api::tasks::Tasks;
 use crate::crypto::agent_envelope::AtRestKey;
+use crate::domain::agent_records;
 use crate::protocol::types::Declaration;
 use crate::seams::secure_store::SecureStore;
 use crate::storage::{Db, OpenOptions, open_data, open_data_with};
@@ -125,6 +126,7 @@ impl Vault {
             session,
             self.directory.clone(),
             declaration,
+            self.at_rest_key.clone(),
         ))
     }
 
@@ -132,8 +134,40 @@ impl Vault {
     /// their text under (chapter 04 §4.17), or removes it with `None`. Desktop
     /// calls it at sync start and at agent bootstrap. Not on the FFI surface:
     /// a key never crosses it.
-    pub fn set_at_rest_key(&self, key: Option<Zeroizing<[u8; 32]>>) {
-        self.at_rest_key.set(key);
+    ///
+    /// The first key installed binds this vault's local key verifier
+    /// (chapter 01 §1.4.2, `meta` key `vault.crypto.verifier.v1`) when none is
+    /// stored. A key that does not match the stored verifier is refused and
+    /// not installed: sealing under it would leave records no later key
+    /// opens. Records already sealed under another key stay held. Installing a key seals every sealed-pending agent
+    /// record (one a pull stored while none was installed); removing it seals
+    /// nothing.
+    pub fn set_at_rest_key(
+        &self,
+        key: Option<Zeroizing<[u8; 32]>>,
+    ) -> Result<agent_records::Sealed, StorageError> {
+        let Some(key) = key else {
+            self.at_rest_key.set(None);
+            return Ok(Default::default());
+        };
+        let candidate = crate::crypto::keys::local_vault_key_verifier(key.as_slice(), &self.id)
+            .map_err(|error| StorageError::Failed {
+                what: format!("the vault key verifier will not compute: {error}"),
+            })?;
+        self.db
+            .call_blocking(move |conn| agent_records::check_verifier(conn, &candidate))?;
+        self.at_rest_key.set(Some(key));
+        let key = self.at_rest_key.clone();
+        self.db.call_blocking(move |conn| {
+            agent_records::seal_pending(conn, &key, crate::api::tasks_write::now_ms()).map_err(
+                |error| match error {
+                    agent_records::AgentError::Storage(error) => error,
+                    other => StorageError::Failed {
+                        what: other.to_string(),
+                    },
+                },
+            )
+        })
     }
 
     /// The installed at-rest key, shared with the agent writers that seal
