@@ -110,6 +110,11 @@ export const commands = {
 	flushDone: (requestId: string) => __TAURI_INVOKE<null>("flush_done", { requestId }),
 	/**  The calling window's page subscribed to flush requests: from now on a quit or a close asks it. */
 	flushReady: () => __TAURI_INVOKE<null>("flush_ready"),
+	/**
+	 *  `note-fold:agent-status`: the detected agents, the vault's `ai.summarizeAgent` and the agent a
+	 *  run would use.
+	 */
+	foldGetAgentStatus: () => __TAURI_INVOKE<FoldAgentStatus>("fold_get_agent_status"),
 	/**  The note or journal day folded for a reader who asked for `level`. */
 	foldRun: (noteId: string, level: FoldLevel) => __TAURI_INVOKE<FoldLayers>("fold_run", { noteId, level }),
 	/**  Sent without the account's token until Step 19 (#3536) provides the session token. */
@@ -442,6 +447,8 @@ export const commands = {
 	menuToggleAlt: () => __TAURI_INVOKE<boolean>("menu_toggle_alt"),
 	/**  Stores the zoom factor for the next launch's first paint (`startupValues`). */
 	appSetZoomFactor: (factor: number | null) => __TAURI_INVOKE<null>("app_set_zoom_factor", { factor }),
+	/**  `settings:getAISettings`: the AI switches of the open vault, or their defaults. */
+	settingsGetAi: () => __TAURI_INVOKE<AiSettings>("settings_get_ai"),
 	/**  A group of the open vault, or its defaults while no vault is open. */
 	settingsGetGroup: (group: string) => __TAURI_INVOKE<Value>("settings_get_group", { group }),
 	/**  A flat device-local key (`tagSearches`, `graphViews`). */
@@ -453,6 +460,11 @@ export const commands = {
 	 *  departures from a default, so they stay.
 	 */
 	settingsResetKeyboard: () => __TAURI_INVOKE<null>("settings_reset_keyboard"),
+	/**
+	 *  `settings:setAISettings`: writes the switches, forgets the fold's agent detection when a
+	 *  switch the fold reads changed (`refreshNoteFold`), and announces `ai` with the written fields.
+	 */
+	settingsSetAi: (patch: AiSettingsPatch) => __TAURI_INVOKE<null>("settings_set_ai", { patch }),
 	/**
 	 *  Merges `patch` into a group. A value the group refuses rejects with `settings_invalid_value`
 	 *  and nothing is written.
@@ -784,6 +796,22 @@ export type AiProviderRequest = {
 	path: string,
 	headers: HeaderPair[],
 	body: string | null,
+};
+
+/**  `AISettings`. With no vault open it reads as the defaults (`DEFAULT_AI_SETTINGS`). */
+export type AiSettings = {
+	enabled: boolean,
+	imageEmbeddings: boolean,
+	summarizeLongNotes: boolean,
+	summarizeAgent: FoldAgentChoice,
+};
+
+/**  `Partial<AISettings>`: an absent field is left as it is. */
+export type AiSettingsPatch = {
+	enabled?: boolean | null,
+	imageEmbeddings?: boolean | null,
+	summarizeLongNotes?: boolean | null,
+	summarizeAgent?: FoldAgentChoice | null,
 };
 
 export type AppInfo = {
@@ -1254,6 +1282,24 @@ export type FillFieldsResult = { kind: "proposals"; proposals: FieldFillProposal
  */
 export type FlushRequestedEvent = {
 	requestId: string,
+};
+
+/**  `ai.summarizeAgent` (`FOLD_AGENT_CHOICES` of `@memry/contracts/note-fold`). */
+export type FoldAgentChoice = "auto" | "claude_cli" | "codex_cli" | "antigravity_cli" | "local_openai_compatible";
+
+export type FoldAgentOption = {
+	id: FoldAgentChoice,
+	label: string,
+};
+
+/**
+ *  `FoldAgentStatus`: the detected agents in `auto` order, the user's choice, and the label of
+ *  the agent a run would use (`None` is `no_agent`).
+ */
+export type FoldAgentStatus = {
+	choice: FoldAgentChoice,
+	available: FoldAgentOption[],
+	resolved: string | null,
 };
 
 /**  A note folded (`FoldLayers` of `@memry/contracts/note-fold`, its local levels). */
