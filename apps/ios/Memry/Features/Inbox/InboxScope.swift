@@ -90,6 +90,16 @@ final class InboxRouter {
         }
     }
 
+    /// An action from the detail column (archive, snooze, file, delete,
+    /// restore) took `id` out of it. A listed item's list change hands the
+    /// selection on; an unlisted one has no list change to follow, so it
+    /// falls back here as a listed one would: the list's first item.
+    func left(_ id: String, order: [String]) {
+        guard unlisted == id else { return }
+        unlisted = nil
+        follow(order, order)
+    }
+
     /// The list beside the detail changed from `old` to `new` ids.
     func follow(_ old: [String], _ new: [String]) {
         guard revealing == nil else { return }

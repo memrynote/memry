@@ -8,7 +8,8 @@ import SwiftUI
 // name, D5). An archived capture is read-only with Restore and Delete
 // permanently (Paper 19). Opening a reminder capture marks it viewed.
 // Beside the list (#4349) the detail stays put after an action: the list
-// hands the selection to the next item.
+// hands the selection to the next item, and the router moves off an item no
+// list holds.
 
 struct InboxDetailView: View {
     let itemId: String
@@ -19,6 +20,7 @@ struct InboxDetailView: View {
     var marksViewed = true
 
     @Environment(\.dismiss) private var dismiss
+    @Environment(InboxRouter.self) private var router
     @State private var item: InboxItemRecord?
     @State private var loaded = false
     @State private var title = ""
@@ -232,7 +234,7 @@ struct InboxDetailView: View {
     }
 
     private func leave() {
-        if !inColumn { dismiss() }
+        if inColumn { router.left(itemId, order: store.detailOrder) } else { dismiss() }
     }
 
     private func saveTitle() {

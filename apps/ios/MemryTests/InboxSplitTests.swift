@@ -134,6 +134,48 @@ struct InboxRouterSplitTests {
         #expect(router.selection == InboxDetailSelection(id: "a", explicit: false))
     }
 
+    /// F5: archiving (or snoozing, filing, deleting) a capture no list holds
+    /// moves off it, as acting on a listed one does.
+    @Test func archivingAnUnlistedItemFallsToTheFirst() {
+        let router = InboxRouter()
+        router.adapt(to: .regular)
+        router.openItem("z", in: TasksRouter())
+        router.revealed(["a", "b"], exists: true)
+        #expect(router.unlisted == "z")
+        router.left("z", order: ["a", "b"])
+        #expect(router.unlisted == nil)
+        #expect(router.selection == InboxDetailSelection(id: "a", explicit: false))
+    }
+
+    /// A listed item waits for its list to change, which hands the
+    /// selection to the next item, not the first.
+    @Test func archivingAListedItemLeavesTheHandOffToTheList() {
+        let router = InboxRouter()
+        router.adapt(to: .regular)
+        router.open("b")
+        router.left("b", order: ["a", "b", "c"])
+        #expect(router.selection == InboxDetailSelection(id: "b", explicit: true))
+        router.follow(["a", "b", "c"], ["a", "c"])
+        #expect(router.selection == InboxDetailSelection(id: "c", explicit: false))
+    }
+
+    /// F7: an unlisted item survives a trip through compact width.
+    @Test func anUnlistedItemStaysSelectedAcrossCompactAndBack() {
+        let router = InboxRouter()
+        router.adapt(to: .regular)
+        router.openItem("z", in: TasksRouter())
+        router.revealed(["a"], exists: true)
+        router.adapt(to: .compact)
+        #expect(router.path == [.item("z")])
+        router.adapt(to: .regular)
+        #expect(router.revealing == "z")
+        router.revealed(["a"], exists: true)
+        router.follow(["a"], ["a", "b"])
+        #expect(router.unlisted == "z")
+        #expect(router.selection == InboxDetailSelection(id: "z", explicit: true))
+        #expect(router.path.isEmpty)
+    }
+
     @Test func anItemTheAppSelectedIsNotPushedAtCompactWidth() {
         let router = InboxRouter()
         router.adapt(to: .regular)
@@ -267,6 +309,38 @@ struct InboxSplitDetailTests {
         #expect(router.selection == InboxDetailSelection(id: note.id, explicit: true))
     }
 
+    /// F6: a reveal still fetching when a newer outside open replaced it
+    /// does not switch the list. The newer open names an item gone from the
+    /// vault, so nothing switches the list back.
+    @Test func aStaleRevealDoesNotSwitchTheList() async throws {
+        let scratch = try InboxTestVault()
+        let gated = GatedInbox(scratch.inbox)
+        let store = InboxStore(
+            core: gated, vaultId: "vault-inbox-test", vaultDirectory: scratch.directory, filler: nil,
+            executor: CoreExecutor(label: "inbox-split-gated"), transcription: .scripted
+        )
+        await store.load()
+        _ = await store.capture("[agent] stays in the inbox")
+        _ = await store.capture("[agent] snoozed for later")
+        let snoozed = try #require(store.items.first { $0.title.contains("snoozed") })
+        await store.snooze([snoozed.id], until: Date().addingTimeInterval(3600))
+        let router = InboxRouter()
+        let window = show(Host(store: store, router: router))
+        defer { window.isHidden = true }
+        try await settle { router.selection != nil }
+
+        gated.hold(snoozed.id)
+        defer { gated.release() }
+        router.openItem(snoozed.id, in: TasksRouter())
+        try await settle { gated.waiting }
+        #expect(gated.waiting)
+        router.openItem("gone-from-the-vault", in: TasksRouter())
+        gated.release()
+        try await settle { router.revealing == nil }
+        try await Task.sleep(for: .milliseconds(300))
+        #expect(store.view == .inbox, "the stale reveal switched the list")
+    }
+
     private func show(_ host: Host) -> UIWindow {
         let window = UIWindow(frame: CGRect(x: 0, y: 0, width: 1366, height: 1024))
         window.rootViewController = UIHostingController(rootView: host)
@@ -278,5 +352,39 @@ struct InboxSplitDetailTests {
         for _ in 0 ..< 40 where !done() {
             try await Task.sleep(for: .milliseconds(50))
         }
+    }
+}
+
+/// The real inbox, with `get` held for one id until the test releases it.
+private final class GatedInbox: Inbox, @unchecked Sendable {
+    private let lock = NSLock()
+    private var held: String?
+    private var entered = false
+    private let gate = DispatchSemaphore(value: 0)
+
+    init(_ inbox: Inbox) { super.init(unsafeFromHandle: inbox.uniffiCloneHandle()) }
+
+    required init(unsafeFromHandle handle: UInt64) { super.init(unsafeFromHandle: handle) }
+
+    var waiting: Bool { lock.withLock { entered } }
+
+    func hold(_ id: String) { lock.withLock { held = id } }
+
+    func release() {
+        let wasHeld = lock.withLock {
+            defer { held = nil; entered = false }
+            return entered
+        }
+        if wasHeld { gate.signal() }
+    }
+
+    override func get(id: String) throws -> InboxItemRecord? {
+        let waits = lock.withLock {
+            guard held == id, !entered else { return false }
+            entered = true
+            return true
+        }
+        if waits { gate.wait() }
+        return try super.get(id: id)
     }
 }
