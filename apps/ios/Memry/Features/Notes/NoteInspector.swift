@@ -38,89 +38,39 @@ enum NoteInspectorLayout {
     static let minimumWidth = Tokens.Size.reading + Tokens.Size.rail
 }
 
-/// The rails of the note pages on screen, by note id. The Notes detail
-/// column owns it and presents the current note's rail: a system inspector
-/// inside the column's stack, on a page, keeps the main thread in layout at
-/// 13" landscape, while one on the stack itself does not.
-@MainActor
-@Observable
-final class NoteInspectorRails {
-    /// Each rail with the page that handed it in. Two pages can show one
-    /// note for a moment (a page replaced by a fresh one), and the leaving
-    /// page must not take the arriving page's rail with it.
-    private var rails: [String: (page: UUID, rail: NoteInspectorRail)] = [:]
-
-    func rail(for noteId: String) -> NoteInspectorRail? { rails[noteId]?.rail }
-
-    func show(_ rail: NoteInspectorRail, for noteId: String, page: UUID) {
-        rails[noteId] = (page, rail)
-    }
-
-    func hide(_ noteId: String, page: UUID) {
-        if rails[noteId]?.page == page { rails[noteId] = nil }
-    }
-}
-
-extension EnvironmentValues {
-    /// Where a note page hands its rail. `nil` outside the Notes split view.
-    @Entry var noteInspectorRails: NoteInspectorRails?
-}
-
-/// A note page's side of the inspector: its rail handed to the detail column,
-/// the toolbar button, and its own sections left out while the rail shows.
+/// A note page's side rail: the rail beside the page in its own
+/// `Tokens.Size.rail` of width, as on Journal's day screen, so the note never
+/// slides under it; the toolbar button; and the page's own sections left out
+/// while the rail shows.
+///
+/// The page owns its rail, so a note pushed from a backlink brings its own
+/// and Back returns to the one before. Not the system inspector: inside the
+/// split view's detail column it closed itself on every push and kept the
+/// main thread in layout at launch. Not a rail beside the column's stack
+/// either: the split view hosts pushed pages over the whole column.
 struct NoteInspector: ViewModifier {
-    let noteId: String
     let rail: NoteInspectorRail
 
-    @Environment(\.noteInspectorRails) private var rails
     @Environment(\.noteInspectorFits) private var fits
     @AppStorage(NoteInspectorLayout.openKey) private var isOpen = false
-    @State private var page = UUID()
 
     func body(content: Content) -> some View {
-        content
-            .environment(\.noteInspectorShown, fits && isOpen && rails != nil)
-            .onAppear { rails?.show(rail, for: noteId, page: page) }
-            .onDisappear { rails?.hide(noteId, page: page) }
-            .toolbar {
-                if fits, rails != nil {
-                    ToolbarItem(placement: .topBarTrailing) {
-                        Button(isOpen ? "Hide inspector" : "Show inspector", systemImage: "sidebar.trailing") {
-                            isOpen.toggle()
-                        }
-                        .accessibilityIdentifier("note.inspector.toggle")
+        let shown = fits && isOpen
+        HStack(spacing: 0) {
+            content
+                .environment(\.noteInspectorShown, shown)
+            if shown { rail }
+        }
+        .toolbar {
+            if fits {
+                ToolbarItem(placement: .topBarTrailing) {
+                    Button(isOpen ? "Hide inspector" : "Show inspector", systemImage: "sidebar.trailing") {
+                        isOpen.toggle()
                     }
+                    .accessibilityIdentifier("note.inspector.toggle")
                 }
             }
-    }
-}
-
-/// The detail column's side: the system inspector, showing the current
-/// note's rail.
-struct NoteInspectorColumn: ViewModifier {
-    /// The note on screen in the column.
-    let noteId: String?
-
-    @State private var rails = NoteInspectorRails()
-    @Environment(\.noteInspectorFits) private var fits
-    @AppStorage(NoteInspectorLayout.openKey) private var isOpen = false
-
-    private var shown: Binding<Bool> {
-        Binding(
-            get: { fits && isOpen && noteId != nil },
-            // A window that stops fitting closes it for now, not for good.
-            set: { if fits { isOpen = $0 } }
-        )
-    }
-
-    func body(content: Content) -> some View {
-        content
-            .environment(\.noteInspectorRails, rails)
-            .inspector(isPresented: shown) {
-                if let noteId, let rail = rails.rail(for: noteId) {
-                    rail.inspectorColumnWidth(Tokens.Size.rail)
-                }
-            }
+        }
     }
 }
 
@@ -151,7 +101,14 @@ struct NoteInspectorRail: View {
             }
             .padding(Tokens.Space.medium)
         }
+        .frame(width: Tokens.Size.rail)
         .background(Tokens.Canvas.background.color)
+        .overlay(alignment: .leading) {
+            Rectangle()
+                .fill(Tokens.Line.border.color)
+                .frame(width: Tokens.Size.hairline)
+                .ignoresSafeArea()
+        }
         .accessibilityElement(children: .contain)
         .accessibilityLabel("Inspector")
         .accessibilityIdentifier("note.inspector")

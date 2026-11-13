@@ -195,6 +195,9 @@ private struct NotesDetailColumn: View {
     /// Built once: a new closure on every render would change the
     /// environment of the open note and redraw its page while it is typed in.
     @State private var afterWrite: (@MainActor () -> Void)?
+    /// Handed to each page: a page pushed onto the stack does not see an
+    /// environment set outside it.
+    @Environment(\.noteInspectorFits) private var inspectorFits
 
     var body: some View {
         NavigationStack(path: $router.trail) {
@@ -207,7 +210,6 @@ private struct NotesDetailColumn: View {
             }
             .navigationDestination(for: NoteRoute.self) { reader($0) }
         }
-        .modifier(NoteInspectorColumn(noteId: router.current?.id))
         // Every write in the note asks for a sync pass. The list stays on
         // screen beside it, so it re-reads too: a new title or a move shows
         // in its row at once, where the phone stack re-reads on Back.
@@ -234,6 +236,7 @@ private struct NotesDetailColumn: View {
             openTag: { router.show(.tag($0)) },
             noteTasks: model.noteTasks
         )
+        .environment(\.noteInspectorFits, inspectorFits)
     }
 }
 

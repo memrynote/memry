@@ -184,7 +184,9 @@ final class NotesSplitUITests: XCTestCase {
             )).firstMatch
             XCTAssertTrue(typed.waitForExistence(timeout: 10), "line \(line) did not get its own block")
         }
-        app.typeText("## \(run) far")
+        // Return commits the line: the outline lists the note as saved, which
+        // trails the typing inside a line.
+        app.typeText("## \(run) far\n")
         try showInspector()
 
         let top = heading("\(run) top")
@@ -193,7 +195,9 @@ final class NotesSplitUITests: XCTestCase {
         XCTAssertTrue(top.wait(for: \.isHittable, toEqual: true, timeout: 5), "the outline did not scroll to the top heading")
         XCTAssertFalse(far.isHittable, "the note is too short to prove a scroll")
         attach("inspector-outline-top")
-        outlineEntry("\(run) far").tap()
+        let farEntry = outlineEntry("\(run) far")
+        XCTAssertTrue(farEntry.waitForExistence(timeout: 15), "the outline does not list the far heading")
+        farEntry.tap()
         XCTAssertTrue(far.wait(for: \.isHittable, toEqual: true, timeout: 5), "the outline did not scroll to the far heading")
         attach("inspector-outline-far")
 
