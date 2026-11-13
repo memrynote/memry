@@ -212,7 +212,15 @@ final class BlockField: NSObject, UITextViewDelegate, UIGestureRecognizerDelegat
     /// Owned here, handed to SwiftUI by `makeUIView`.
     let textView = BlockTextView()
     /// Typed since the last commit.
-    var dirty = false
+    var dirty = false {
+        didSet { writer = dirty ? session?.model ?? writer : nil }
+    }
+    /// The page's editor model, held while typing waits for its commit
+    /// (#4506). Only the page's `@State` holds it otherwise, and a page torn
+    /// down (a split view swapping notes, Back, a size-class re-host) can
+    /// free it before this block resigns. It owns `session`, which stays set
+    /// for the commit too. The commit's queued write holds it from there.
+    private var writer: NoteEditorViewModel?
     /// Typed since the caret came in: a checklist item left with this set is
     /// one desktop's editor would turn into a task.
     var typed = false
