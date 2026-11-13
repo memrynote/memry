@@ -8,8 +8,9 @@
 //! `getNoteLinks` reads it (comments stripped, `link_contexts`), and the file path a
 //! resolution names.
 //!
-//! Not here yet, stated: Electron's backlinks also list relation properties, portals and
-//! canvas arrows (`LinkVia`); the core has no index of those for desktop. A source that links
+//! A journal day's backlinks list the relation properties that name its date, written or not
+//! (`LinkVia` `property`). Not here yet, stated: Electron's backlinks also list relations to a
+//! note, portals and canvas arrows; the core has no index of those for desktop. A source that links
 //! to the note under two spellings is listed once (`note_links` holds a row per spelling, and
 //! Electron listed each). A journal day is a source with text once a file row names it
 //! (13m); a day with none is listed at the path the journal settings give it, with no text.
@@ -78,6 +79,19 @@ pub struct BacklinkView {
     /// The file links so densely that its snippets stopped at the output bound
     /// (`link_contexts`): `contexts` holds the first ones.
     pub truncated: bool,
+    /// How the source references the note when not by a link in its text; left out then.
+    #[serde(skip_serializing_if = "Option::is_none")]
+    #[specta(optional)]
+    pub via: Option<LinkViaView>,
+}
+
+/// `LinkVia`: the relation property naming the note. A relation has no text, so its backlink
+/// has no contexts.
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, specta::Type)]
+#[serde(tag = "kind", rename_all = "camelCase")]
+pub enum LinkViaView {
+    #[serde(rename_all = "camelCase")]
+    Property { property_name: String },
 }
 
 /// `NoteLinksResponse`.
@@ -96,6 +110,11 @@ pub struct LinkResolutionView {
     pub path: String,
     pub title: String,
     pub file_type: FileType,
+    /// The day a journal entry is for, left out for a note: a day's id need not hold its date
+    /// (`notes:resolve-by-title`'s `journalDate`).
+    #[serde(skip_serializing_if = "Option::is_none")]
+    #[specta(optional)]
+    pub journal_date: Option<String>,
 }
 
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, specta::Type)]
@@ -157,7 +176,9 @@ impl NoteLinks {
 
     fn backlink(&self, source: IncomingLink, target_title: &str, days: &Days) -> BacklinkView {
         let found = match &source.source_path {
-            Some(path) if !target_title.is_empty() => self.contexts(path, target_title, &source),
+            Some(path) if !target_title.is_empty() && source.via_property.is_none() => {
+                self.contexts(path, target_title, &source)
+            }
             _ => LinkContexts::default(),
         };
         BacklinkView {
@@ -171,6 +192,9 @@ impl NoteLinks {
             contexts: found.contexts.into_iter().map(Into::into).collect(),
             mention_count: units(found.count),
             truncated: found.truncated,
+            via: source
+                .via_property
+                .map(|property_name| LinkViaView::Property { property_name }),
         }
     }
 
@@ -203,12 +227,14 @@ impl NoteLinks {
             .pop()
             .flatten()
             .map(|target| {
+                let journal_date = target.journal_date.clone();
                 let (id, path, title, file_type) = named(target, &Days::new(&self.root));
                 LinkResolutionView {
                     id,
                     path,
                     title,
                     file_type,
+                    journal_date,
                 }
             }))
     }

@@ -17,10 +17,11 @@ import { createLogger } from '@/lib/logger'
 import { extractErrorMessage } from '@/lib/ipc-error'
 import type { RelationKind } from '@memry/contracts/properties-api'
 import { useT } from '@memry/i18n/renderer'
-import { useRelationNavigation } from '@/hooks/use-relation-navigation'
+import { isUnwrittenJournalDay, useRelationNavigation } from '@/hooks/use-relation-navigation'
 import { getTagColors, withAlpha } from '@/components/note/tags-row/tag-colors'
 import { ObjectAvatar } from '@/features/tag-fields/object-avatar'
 import { useRelationDrop } from '@/features/tag-fields/relation-drop'
+import { useJournalRelationRevision } from '@/hooks/use-journal-relation-revision'
 import { useOptionalTagSchemaSnapshot } from '@/features/tag-fields/use-optional-object-identity'
 import { objectIdentityOf } from '@/features/tag-fields/use-tag-schemas'
 import { RelationPicker } from './RelationPicker'
@@ -55,6 +56,7 @@ export function RelationEditor({ value, onChange, targetTag, many = true }: Rela
   const snapshot = useOptionalTagSchemaSnapshot()
   const [resolved, setResolved] = useState<ResolvedRelationRef[]>([])
   const [pickerOpen, setPickerOpen] = useState(false)
+  const journalRevision = useJournalRelationRevision(value)
 
   useEffect(() => {
     // Nothing to resolve. `resolved` is left untouched here on purpose — the
@@ -77,7 +79,8 @@ export function RelationEditor({ value, onChange, targetTag, many = true }: Rela
     return () => {
       cancelled = true
     }
-  }, [value])
+    // oxlint-disable-next-line react/exhaustive-effect-dependencies -- journalRevision refreshes unchanged URIs when the day gains or loses its file
+  }, [value, journalRevision])
 
   const handleRemove = (uri: string) => {
     onChange(value.filter((v) => v !== uri))
@@ -104,7 +107,12 @@ export function RelationEditor({ value, onChange, targetTag, many = true }: Rela
       {drop.dialog}
       {chips.map((ref) => {
         const Icon = KIND_ICONS[ref.targetType]
-        const label = ref.exists ? ref.title : t('properties.relation.deleted')
+        const unwritten = isUnwrittenJournalDay(ref)
+        const label = ref.exists
+          ? ref.title
+          : unwritten
+            ? ref.targetId
+            : t('properties.relation.deleted')
 
         // An object (G1, E1) draws its avatar or tag tile in its tag colour. A
         // note's own emoji stands in for the generic kind icon. Only markdown
@@ -126,7 +134,13 @@ export function RelationEditor({ value, onChange, targetTag, many = true }: Rela
         return (
           <span
             key={ref.uri}
-            data-testid={ref.exists ? 'relation-chip' : 'relation-chip-deleted'}
+            data-testid={
+              ref.exists
+                ? 'relation-chip'
+                : unwritten
+                  ? 'relation-chip-unwritten'
+                  : 'relation-chip-deleted'
+            }
             className={cn(
               'group/chip [font-synthesis:none] inline-flex items-center gap-1',
               'rounded-[10px] ps-1.5 pe-1 py-0.5',
@@ -143,11 +157,11 @@ export function RelationEditor({ value, onChange, targetTag, many = true }: Rela
             {/* A dangling ref has nothing to open, so it stays inert text.
                 The remove control is a sibling, never nested inside this
                 button — a button inside a button is invalid markup. */}
-            {ref.exists ? (
+            {ref.exists || unwritten ? (
               <button
                 type="button"
                 onClick={() => navigate(ref)}
-                title={ref.title}
+                title={unwritten ? t('properties.relation.unwrittenDay') : ref.title}
                 className={cn(
                   'inline-flex min-w-0 items-center gap-1 rounded-[8px]',
                   'transition-opacity duration-150 hover:opacity-80',
@@ -155,7 +169,14 @@ export function RelationEditor({ value, onChange, targetTag, many = true }: Rela
                 )}
               >
                 {glyph}
-                <span className="truncate">{label}</span>
+                <span
+                  className={cn(
+                    'truncate',
+                    unwritten && 'underline decoration-dashed underline-offset-2'
+                  )}
+                >
+                  {label}
+                </span>
               </button>
             ) : (
               <>

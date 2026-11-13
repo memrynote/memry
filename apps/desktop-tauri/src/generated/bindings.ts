@@ -874,6 +874,8 @@ export type BacklinkView = {
 	 *  (`link_contexts`): `contexts` holds the first ones.
 	 */
 	truncated: boolean,
+	/**  How the source references the note when not by a link in its text; left out then. */
+	via?: LinkViaView | null,
 };
 
 export type BuildKind = "dev" | "packaged";
@@ -1592,6 +1594,11 @@ export type LinkResolutionView = {
 	path: string,
 	title: string,
 	fileType: FileType,
+	/**
+	 *  The day a journal entry is for, left out for a note: a day's id need not hold its date
+	 *  (`notes:resolve-by-title`'s `journalDate`).
+	 */
+	journalDate?: string | null,
 };
 
 export type LinkTargetView = {
@@ -1602,6 +1609,12 @@ export type LinkTargetView = {
 	/**  The heading to scroll to, `None` when the link names none. */
 	heading: string | null,
 };
+
+/**
+ *  `LinkVia`: the relation property naming the note. A relation has no text, so its backlink
+ *  has no contexts.
+ */
+export type LinkViaView = { kind: "property"; propertyName: string };
 
 /**  `LinkedHereGroup`. */
 export type LinkedHereGroupView = { kind: "relation"; sourceTag: string; field: string; label: string; total: number; items: LinkedNoteView[]; filter: string } | { kind: "task-field"; tag: string; field: string; total: number; items: LinkedTaskView[]; filter: string } | { kind: "mentions"; total: number; items: LinkedNoteView[] };

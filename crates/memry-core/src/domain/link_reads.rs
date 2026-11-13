@@ -12,6 +12,7 @@ use std::collections::{HashMap, HashSet};
 use rusqlite::{Connection, params, params_from_iter};
 
 use crate::api::errors::StorageError;
+use crate::domain::journal::valid_date;
 use crate::domain::journal_ops::links::{Source, id_list, live_items};
 use crate::domain::notes::failed;
 use crate::domain::notes::link_rewrite::LinkNames;
@@ -32,12 +33,16 @@ pub struct IncomingLink {
     /// The vault path of the source's file, `None` when no file row names it (a note or day
     /// whose file the vault tier has not recorded).
     pub source_path: Option<String>,
+    /// The relation property that names the target, `None` for a link in the source's body
+    /// (Electron's `via: { kind: 'property' }`).
+    pub via_property: Option<String>,
 }
 
 /// The target's name and every link to it.
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct Incoming {
-    /// The target's title (a day's date), `None` when it is not live.
+    /// The target's title (a day's date, also for a day not written yet), `None` when it is
+    /// not live.
     pub target_title: Option<String>,
     pub sources: Vec<IncomingLink>,
 }
@@ -47,17 +52,115 @@ pub struct Incoming {
 /// `getIncomingLinks` matches `target_id` only: a link the index resolved to another note of
 /// the same name is that note's backlink. A self link and a tombstoned source are left out;
 /// so is a second link from the same source, which Electron lists as a second card.
+///
+/// A journal day, asked about by its `j<date>` id whether or not it is written, also lists
+/// the notes whose relation properties name its date, each after the links, once per property
+/// (`getIncomingReferences`). A day not written yet lists the links left unresolved under its
+/// date, unless the date names another note, and is titled by its date.
 pub fn incoming(
     data: &Connection,
     index: &Connection,
     target_id: &str,
 ) -> Result<Incoming, StorageError> {
-    let ids = linking_ids(index, target_id)?;
-    let sources = live_items(data, ids.iter().map(String::as_str).chain([target_id]))?;
+    let mut ids = linking_ids(index, target_id)?;
+    let mut sources = live_items(data, ids.iter().map(String::as_str).chain([target_id]))?;
+    let target = sources.get(target_id).map(Source::named);
+    let journal_date = match &target {
+        Some((_, _, date)) => date.clone(),
+        None => target_id
+            .strip_prefix('j')
+            .filter(|date| valid_date(date).is_ok())
+            .map(str::to_owned),
+    };
+    let Some(date) = journal_date else {
+        return Ok(Incoming {
+            target_title: target.map(|(title, _, _)| title),
+            sources: named_sources(&sources, ids, target_id),
+        });
+    };
+    let unwritten = target.is_none();
+    if unwritten
+        && WikiNames::load_for(data, [date.as_str()])?
+            .resolve(&date)
+            .is_none()
+    {
+        ids.extend(unresolved_ids(index, &date)?);
+        ids.sort();
+        ids.dedup();
+    }
+    let relations = relation_sources(index, &format!("memry://journal/{date}"))?;
+    let unread = ids
+        .iter()
+        .chain(relations.iter().map(|(id, _)| id))
+        .filter(|id| !sources.contains_key(id.as_str()));
+    let more = live_items(data, unread.map(String::as_str))?;
+    sources.extend(more);
+    let mut out = named_sources(&sources, ids, target_id);
+    let mut via: Vec<IncomingLink> = relations
+        .into_iter()
+        .filter_map(|(id, property)| {
+            let mut link = named_sources(&sources, vec![id], target_id).pop()?;
+            link.via_property = Some(property);
+            Some(link)
+        })
+        .collect();
+    via.sort_by_cached_key(|link| {
+        (
+            link.source_title.to_lowercase(),
+            link.source_id.clone(),
+            link.via_property.clone(),
+        )
+    });
+    out.extend(via);
     Ok(Incoming {
-        target_title: sources.get(target_id).map(|target| target.named().0),
-        sources: named_sources(&sources, ids, target_id),
+        target_title: Some(target.map_or(date, |(title, _, _)| title)),
+        sources: out,
     })
+}
+
+/// The notes and days whose links to `date` are left unresolved, by the date's `target_key`.
+fn unresolved_ids(index: &Connection, date: &str) -> Result<Vec<String>, StorageError> {
+    let mut statement = index
+        .prepare(
+            "SELECT DISTINCT source_id FROM note_links WHERE target_id IS NULL AND target_key = ?1",
+        )
+        .map_err(failed)?;
+    statement
+        .query_map(params![name_key(date)], |row| row.get::<_, String>(0))
+        .map_err(failed)?
+        .collect::<Result<Vec<_>, _>>()
+        .map_err(failed)
+}
+
+/// The notes and relation property names whose `relation` value lists `uri`. The value is the
+/// JSON array the index stores (`serializeValue`); `instr` only narrows the rows parsed.
+fn relation_sources(index: &Connection, uri: &str) -> Result<Vec<(String, String)>, StorageError> {
+    let mut statement = index
+        .prepare(
+            "SELECT note_id, name, value FROM note_properties \
+             WHERE type = 'relation' AND instr(value, ?1) > 0",
+        )
+        .map_err(failed)?;
+    let rows = statement
+        .query_map(params![uri], |row| {
+            Ok((
+                row.get::<_, String>(0)?,
+                row.get::<_, String>(1)?,
+                row.get::<_, Option<String>>(2)?,
+            ))
+        })
+        .map_err(failed)?;
+    let mut out = Vec::new();
+    for row in rows {
+        let (id, name, value) = row.map_err(failed)?;
+        let listed = value
+            .and_then(|value| serde_json::from_str::<Vec<String>>(&value).ok())
+            .is_some_and(|values| values.iter().any(|value| value == uri));
+        if listed {
+            out.push((id, name));
+        }
+    }
+    Ok(out)
 }
 
 /// The notes and days whose links may name the note once called `from`, the note itself
@@ -132,6 +235,7 @@ fn named_sources(
                 source_title,
                 source_kind: source_kind.to_owned(),
                 source_date,
+                via_property: None,
             })
         })
         .collect();

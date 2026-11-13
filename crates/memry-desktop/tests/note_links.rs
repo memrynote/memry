@@ -7,6 +7,8 @@
 //! - Backlinks carry the text around each link, read from the linking note's or day's file
 //!   with its comments stripped, and count every link past the snippet bound; a broken link
 //!   has no target.
+//! - A journal day not written yet lists the notes that link to its date and the relations that
+//!   name it, and keeps them once it is written.
 
 #[allow(unused_imports)]
 use crate::device_key;
@@ -21,9 +23,10 @@ use std::sync::{Arc, Mutex};
 use index_support::until;
 use memry_core::seams::secure_store::SecureStore;
 use memry_core::storage::repositories::sync_items::{self, ApplyOutcome, InboundRecord};
+use memry_desktop::journal::write::NewDay;
 use memry_desktop::notes::identity::NotesIdentity;
 use memry_desktop::notes::index::NoteIndex;
-use memry_desktop::notes::links::{NoteLinks, TitleMatchView};
+use memry_desktop::notes::links::{LinkViaView, NoteLinks, TitleMatchView};
 use memry_desktop::vault::consumer::rows::RowStat;
 use memry_desktop::vault::file_types::FileType;
 use serde_json::{Value, json};
@@ -249,4 +252,65 @@ fn backlinks_carry_the_text_around_each_link_from_the_linking_file() {
     assert!(links.get("no-such-note").unwrap().incoming.is_empty());
     drop(links);
     e.close();
+}
+
+#[test]
+fn an_unwritten_journal_day_lists_its_links_and_relations_and_keeps_them_once_written() {
+    let (e, notes, _) = crate::notes_link_rewrite::opened(&[(
+        "Observation.md",
+        "---\nrelated:\n  - memry://journal/2026-05-08\n---\nObserved on [[2026-05-08]].\n",
+    )]);
+    let source = crate::notes_link_rewrite::id_at(&e, "Observation.md");
+    let open = e.session.current().unwrap();
+    let links = NoteLinks::new(&open);
+    let day = "j2026-05-08";
+    let listed = |links: &NoteLinks| -> Vec<(String, Option<LinkViaView>, usize)> {
+        links
+            .get(day)
+            .unwrap()
+            .incoming
+            .into_iter()
+            .map(|b| (b.source_id, b.via, b.contexts.len()))
+            .collect()
+    };
+    let both = vec![
+        (source.clone(), None, 1),
+        (
+            source.clone(),
+            Some(LinkViaView::Property {
+                property_name: "related".to_owned(),
+            }),
+            0,
+        ),
+    ];
+    until("the note's links and relations indexed", || {
+        listed(&links).len() == 2
+    });
+    assert_eq!(listed(&links), both, "the unwritten day");
+    let snippet = links.get(day).unwrap().incoming[0].contexts[0]
+        .snippet
+        .clone();
+    assert!(
+        snippet.ends_with("Observed on [[2026-05-08]]."),
+        "{snippet}"
+    );
+    assert!(
+        !e.vault.join("journal/2026-05-08.md").exists(),
+        "reading wrote no day"
+    );
+
+    let day_entry = NewDay {
+        date: "2026-05-08".into(),
+        content: "Wrote the day.".into(),
+        ..NewDay::default()
+    };
+    assert_eq!(notes.create_day(&open, day_entry).unwrap().id, day);
+    until("the written day's backlinks", || listed(&links) == both);
+    let resolved = links.resolve_by_title("2026-05-08").unwrap().unwrap();
+    assert_eq!(
+        (resolved.id.as_str(), resolved.journal_date.as_deref()),
+        (day, Some("2026-05-08"))
+    );
+    let note = links.resolve_by_title("Observation").unwrap().unwrap();
+    assert_eq!(note.journal_date, None);
 }
