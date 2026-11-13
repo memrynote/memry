@@ -28,6 +28,7 @@ use crate::storage::repositories::sync_items::InboundRecord;
 use super::ITEM_TYPE;
 
 const KEPT: Kept = Kept {
+    not_null: &["id", "vaultId", "path", "clock"],
     coalesce: &["path"],
     when_absent: &["icon"],
     local: &["vaultId"],
