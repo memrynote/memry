@@ -48,11 +48,12 @@ use rusqlite::Connection;
 use crate::api::errors::StorageError;
 use crate::crdt::errors::CrdtError;
 use crate::crdt::update_log;
+use crate::crypto::agent_envelope::AtRestKey;
 use crate::domain::task_merge::{self, Gate};
 use crate::domain::tasks::Inbound;
 use crate::domain::{
-    calendar_items, canvas, canvas_folder, home_page, inbox, journal, projects, settings,
-    sticky_draft, tasks,
+    agent_conversation, agent_message, calendar_items, canvas, canvas_folder, home_page, inbox,
+    journal, projects, settings, sticky_draft, tasks,
 };
 // Desktop only, like the locks themselves: iOS never declares `vault_lock`.
 #[cfg(feature = "markdown")]
@@ -148,13 +149,15 @@ pub(crate) const DOCUMENT_TYPES: [&str; 2] = ["note", "journal"];
 /// the ids §5.12.1 leaves with no type on the wire.
 ///
 /// `clock_device` is this device's clock id (chapter 01 §1.5), which a canvas
-/// conflict copy is clocked under.
+/// conflict copy is clocked under. `at_rest` seals the agent records
+/// ([`crate::crypto::agent_payload`]).
 pub(crate) fn apply_page(
     conn: &Connection,
     pending: Vec<Pending>,
     untyped: Vec<String>,
     now_ms: i64,
     clock_device: Option<&str>,
+    at_rest: &AtRestKey,
 ) -> Result<ApplyTotals, StorageError> {
     let mut totals = ApplyTotals::default();
     for item in pending {
@@ -201,7 +204,8 @@ pub(crate) fn apply_page(
                     refused_items::resolve(conn, &record.item_type, &record.item_id)?;
                     continue;
                 }
-                let outcome = apply_inbound_on(conn, &record, now_ms, clock_device)?;
+                let outcome = apply_record(conn, &record, now_ms, clock_device, at_rest)?;
+                refused_items::settle(conn, &record, &outcome, &mut totals.refused)?;
                 match outcome {
                     ApplyOutcome::Applied => {
                         totals.applied += 1;
@@ -209,23 +213,9 @@ pub(crate) fn apply_page(
                             totals.applied_documents.push(record.item_id.clone());
                         }
                     }
-                    ApplyOutcome::Skipped => totals.skipped += 1,
+                    ApplyOutcome::Skipped | ApplyOutcome::Refused => totals.skipped += 1,
                     ApplyOutcome::Corrupt { .. } => totals.corrupt += 1,
                     ApplyOutcome::Expired => totals.expired += 1,
-                    ApplyOutcome::Refused => {
-                        totals.skipped += 1;
-                        totals
-                            .refused
-                            .push((record.item_type.clone(), record.item_id.clone()));
-                    }
-                }
-                // Read and decided, or expired for good: an earlier refusal is
-                // settled.
-                if matches!(
-                    outcome,
-                    ApplyOutcome::Applied | ApplyOutcome::Skipped | ApplyOutcome::Expired
-                ) {
-                    refused_items::resolve(conn, &record.item_type, &record.item_id)?;
                 }
             }
         }
@@ -439,17 +429,29 @@ pub fn apply_inbound(
 ///   stale remote `note` record used to overwrite a newer local one, and a
 ///   rename made on this device vanished the moment a peer that had not seen
 ///   it pushed anything. `inbox`, the calendar types, `canvas`,
-///   `vault_lock`, `canvas_folder`, `home_page` and `sticky_draft` are named
+///   `vault_lock`, `canvas_folder`, `home_page`, `sticky_draft` and the two
+///   agent types are named
 ///   because each runs its desktop handler's rule instead.
 ///
 /// `clock_device` is this device's clock id, which a diverged `canvas` needs
 /// for its conflict copy. Without one, that canvas is recorded corrupt rather
-/// than losing either drawing.
+/// than losing either drawing. No at-rest key is installed here, so an agent
+/// record is stored pending; the pull passes its key.
 pub fn apply_inbound_on(
     conn: &Connection,
     record: &InboundRecord,
     now_ms: i64,
     clock_device: Option<&str>,
+) -> Result<ApplyOutcome, StorageError> {
+    apply_record(conn, record, now_ms, clock_device, &AtRestKey::default())
+}
+
+fn apply_record(
+    conn: &Connection,
+    record: &InboundRecord,
+    now_ms: i64,
+    clock_device: Option<&str>,
+    at_rest: &AtRestKey,
 ) -> Result<ApplyOutcome, StorageError> {
     // One journal item per day (#2939): a foreign id is owed, never stored.
     if record.item_type == journal::ITEM_TYPE
@@ -477,6 +479,14 @@ pub fn apply_inbound_on(
         canvas_folder::ITEM_TYPE => canvas_folder::merge::apply_remote(conn, record, now_ms),
         home_page::ITEM_TYPE => home_page::merge::apply_remote(conn, record, now_ms),
         sticky_draft::ITEM_TYPE => sticky_draft::merge::apply_remote(conn, record, now_ms),
+        // Field merge, the title sealed (agent-conversation-handler.ts).
+        agent_conversation::ITEM_TYPE => {
+            agent_conversation::merge::apply_remote(conn, record, at_rest, now_ms)
+        }
+        // Written once, terminal only, sealed (agent-message-handler.ts).
+        agent_message::ITEM_TYPE => {
+            agent_message::merge::apply_remote(conn, record, at_rest, now_ms)
+        }
         // §6.3.1's document gate, then §6.11's join of the versioned `schema`.
         t if t == TAG_SCHEMA.item_type => {
             apply_versioned(conn, record, &TAG_SCHEMA, now_ms, clock_device)

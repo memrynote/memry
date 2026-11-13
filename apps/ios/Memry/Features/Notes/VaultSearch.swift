@@ -13,9 +13,11 @@ import Observation
 // `index.db` and rebuilds it when the file cannot be trusted, so it is not
 // free; minting one per keystroke would pay that cost on every letter.
 //
-// **Typing does not reindex.** A reindex walks what changed since the last
-// watermark, so it belongs on an explicit moment — the screen appearing — and
-// never inside a query.
+// **Typing does not reindex.** The vault's index owner (`VaultSearchIndex`)
+// reindexes after sync passes and writes; the screen showing the box runs the
+// query again (`rerun()`) each time it finishes. The screen subscribes, not
+// this model: SwiftUI can keep a dismissed sheet's model alive, and a model
+// that followed the index itself kept querying for a sheet nobody sees.
 //
 // **Results are the core's ranking, never re-sorted.** bm25 ordering is what
 // the query returned; a shell that sorted by date would be answering a
@@ -23,13 +25,11 @@ import Observation
 
 /// The search surface over one vault.
 protocol VaultSearching: Sendable {
-    /// Notes and journals matching `query`, best first. A query carrying no
-    /// searchable term returns **empty** — an empty box is not a request for
-    /// the whole vault.
-    func notes(query: String, limit: UInt32) async throws -> [SearchResult]
-    /// Tasks matching `query`, best first (TP056). Its own ranking: a bm25
-    /// score is relative to its table, so the two lists are never merged.
-    func tasks(query: String, limit: UInt32) async throws -> [SearchResult]
+    /// Notes, journals, tasks and inbox captures matching `query`, each group
+    /// best first and ranked on its own, narrowed by `filter` (#4321). A query
+    /// carrying no searchable term returns **empty** — an empty box is not a
+    /// request for the whole vault.
+    func search(query: String, filter: SearchFilter?, limit: UInt32) async throws -> SearchGroups
     /// Brings the index up to date. Idempotent, and safe on any schedule.
     func reindex() async throws
     /// Every note linking to this one (N800).
@@ -57,14 +57,9 @@ struct CoreVaultSearch: VaultSearching {
         self.executor = executor
     }
 
-    func notes(query: String, limit: UInt32) async throws -> [SearchResult] {
+    func search(query: String, filter: SearchFilter?, limit: UInt32) async throws -> SearchGroups {
         let search = search
-        return try await executor.run { try search.notes(query: query, limit: limit) }
-    }
-
-    func tasks(query: String, limit: UInt32) async throws -> [SearchResult] {
-        let search = search
-        return try await executor.run { try search.tasks(query: query, limit: limit) }
+        return try await executor.run { try search.search(query: query, filter: filter, limit: limit) }
     }
 
     func reindex() async throws {
@@ -105,10 +100,17 @@ final class VaultSearchViewModel {
         case failed(UserFacingError)
     }
 
+    /// The notes, then the journal days, the query matched.
     private(set) var phase: Phase = .idle
     /// The tasks the same query matched (TP056), shown in their own section.
     /// Empty while idle, searching or after a failure.
     private(set) var taskHits: [SearchResult] = []
+    /// The inbox captures the same query matched (#4320), in their own
+    /// section after the tasks. Empty whenever ``taskHits`` is.
+    private(set) var inboxHits: [SearchResult] = []
+    /// The scope and the filter menu's choices (#4321). A change runs the
+    /// query on screen again.
+    private(set) var filters = SearchFilters()
 
     private let search: any VaultSearching
     /// How long a keystroke waits before it becomes a query.
@@ -121,14 +123,31 @@ final class VaultSearchViewModel {
     /// The in-flight query, cancelled when the next keystroke arrives so a
     /// slow search cannot land after a newer one and overwrite it.
     private var running: Task<Void, Never>?
-    private var hasIndexed = false
     /// Which search box this is, as the `source` of `search_performed`.
     private let source: StaticString
+    /// The vault's index owner, read for its last failure.
+    private let index: VaultSearchIndex?
+    /// The trimmed query on screen, run again after each reindex.
+    private var query = ""
 
-    init(search: any VaultSearching, debounce: Duration = .milliseconds(150), source: StaticString = "global") {
+    init(
+        search: any VaultSearching,
+        index: VaultSearchIndex? = nil,
+        debounce: Duration = .milliseconds(150),
+        source: StaticString = "global"
+    ) {
         self.search = search
+        self.index = index
         self.debounce = debounce
         self.source = source
+    }
+
+    /// The last reindex failed: results may miss recent changes.
+    var isIndexStale: Bool { index?.failure != nil }
+
+    /// Retry for ``isIndexStale``.
+    func retryIndex() async {
+        await index?.reindex()
     }
 
     /// Waits for the query in flight. For tests, which need the answer rather
@@ -137,31 +156,47 @@ final class VaultSearchViewModel {
         await running?.value
     }
 
-    /// Brings the index up to date, once per screen.
-    ///
-    /// Before the first query rather than during it: an index that has never
-    /// been built answers nothing, and a user typing into a box that silently
-    /// returns nothing has no way to tell that from an empty vault.
-    func prepare() async {
-        guard !hasIndexed else { return }
-        hasIndexed = true
-        do {
-            try await search.reindex()
-        } catch {
-            // Not surfaced. A stale index still answers, and the queries that
-            // follow will say so themselves if they fail.
-            let mapped = ErrorMapping.userFacing(error)
-            Log.storage.error("the search index could not be brought up to date", .code(mapped.code))
+    /// Runs the query on screen again each time the index catches up, until
+    /// the calling task is cancelled. The sheet runs it in its `.task`, so it
+    /// stops when the sheet goes: SwiftUI keeps a dismissed sheet's model
+    /// alive, and a model that followed the index on its own would re-run a
+    /// query nobody sees on every sync pass.
+    func followIndex() async {
+        guard let index else { return }
+        var seen = index.completed
+        for await completed in Observations({ index.completed }) where completed != seen {
+            seen = completed
+            rerun()
         }
+    }
+
+    /// The same query again, its results kept on screen until the new ones
+    /// land.
+    func rerun() {
+        guard !query.isEmpty else { return }
+        running?.cancel()
+        running = start(query, after: .zero, source: nil)
+    }
+
+    /// Narrows the query on screen to `filters`, without the typing debounce.
+    func apply(_ filters: SearchFilters) {
+        guard filters != self.filters else { return }
+        self.filters = filters
+        guard !query.isEmpty else { return }
+        running?.cancel()
+        phase = .searching
+        running = start(query, after: .zero, source: source)
     }
 
     /// Runs `query`, replacing whatever was in flight.
     func run(_ query: String) {
         running?.cancel()
         let trimmed = query.trimmingCharacters(in: .whitespacesAndNewlines)
+        self.query = trimmed
         guard !trimmed.isEmpty else {
             phase = .idle
             taskHits = []
+            inboxHits = []
             return
         }
         // Desktop counts a search as opened once the user types into an
@@ -170,16 +205,25 @@ final class VaultSearchViewModel {
             Telemetry.shared.track(.searchOpened, surface: .search, action: "opened")
         }
         phase = .searching
-        running = Task { [search, debounce, source] in
+        running = start(trimmed, after: debounce, source: source)
+    }
+
+    /// One query. `source` is `nil` for a re-run after a reindex, which is not
+    /// a search the user performed.
+    private func start(_ trimmed: String, after debounce: Duration, source: StaticString?) -> Task<Void, Never> {
+        let filter = filters.record(now: .now, calendar: .current)
+        return Task { [search] in
             do {
                 try await Task.sleep(for: debounce)
                 let started = ContinuousClock.now
-                let hits = try await search.notes(query: trimmed, limit: 50)
-                let tasks = await taskMatches(trimmed)
+                let groups = try await search.search(query: trimmed, filter: filter, limit: 50)
                 guard !Task.isCancelled else { return }
-                Log.storage.info("searched this vault", .count(hits.count + tasks.count))
-                Self.trackPerformed(source: source, count: hits.count + tasks.count, since: started)
-                taskHits = tasks
+                let hits = groups.notes + groups.journals
+                let count = hits.count + groups.tasks.count + groups.inbox.count
+                Log.storage.info("searched this vault", .count(count))
+                if let source { Self.trackPerformed(source: source, count: count, since: started) }
+                taskHits = groups.tasks
+                inboxHits = groups.inbox
                 phase = .results(hits)
             } catch is CancellationError {
                 // A newer query owns the screen now.
@@ -187,8 +231,14 @@ final class VaultSearchViewModel {
                 guard !Task.isCancelled else { return }
                 let mapped = ErrorMapping.userFacing(error)
                 Log.storage.error("this vault could not be searched", .code(mapped.code))
-                Telemetry.shared.track(.searchPerformed, surface: .search, action: "queried", source: source, result: .failed, errorCode: mapped.code)
+                if let source {
+                    Telemetry.shared.track(
+                        .searchPerformed, surface: .search, action: "queried", source: source,
+                        result: .failed, errorCode: mapped.code
+                    )
+                }
                 taskHits = []
+                inboxHits = []
                 phase = .failed(mapped)
             }
         }
@@ -204,20 +254,5 @@ final class VaultSearchViewModel {
             dimension: (.resultBucket, bucket),
             metrics: TelemetryMetrics(durationMs: elapsed.rounded(), resultCount: Double(count))
         )
-    }
-
-    /// The task half of a query. A failure here is logged and reads as no
-    /// task matches: the note results still answer the query, and replacing
-    /// them with an error would hide what the index did find.
-    private func taskMatches(_ query: String) async -> [SearchResult] {
-        do {
-            return try await search.tasks(query: query, limit: 20)
-        } catch is CancellationError {
-            return []
-        } catch {
-            let mapped = ErrorMapping.userFacing(error)
-            Log.storage.error("this vault's tasks could not be searched", .code(mapped.code))
-            return []
-        }
     }
 }

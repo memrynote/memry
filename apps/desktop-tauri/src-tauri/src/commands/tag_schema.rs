@@ -32,7 +32,7 @@ use crate::events::{
 };
 
 /// The open vault's schemas, in the UI language, written under this device's identity.
-fn schemas<R: Runtime>(app: &AppHandle<R>) -> Result<Schemas, CommandError> {
+pub(super) fn schemas<R: Runtime>(app: &AppHandle<R>) -> Result<Schemas, CommandError> {
     let open = open_vault(app)?;
     let locale = app.state::<Arc<LocaleService>>().get();
     Schemas::open(&open, &service(app)?, locale).map_err(|error| CommandError::from_core(&error))

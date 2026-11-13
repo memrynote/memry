@@ -29,11 +29,18 @@ async function blocks(page: Page): Promise<BlockSummary[]> {
 }
 const types = async (page: Page): Promise<string[]> => (await blocks(page)).map((b) => b.type)
 
-const textBox = async (page: Page, text: string) => {
-  const box = await page.locator(NOTE_EDITOR).getByText(text, { exact: true }).first().boundingBox()
-  if (!box) throw new Error(`no box for ${text}`)
-  return box
-}
+/** The box of the rendered text: the element itself fills the row (editor-rtl.css). */
+const textBox = (page: Page, text: string) =>
+  page
+    .locator(NOTE_EDITOR)
+    .getByText(text, { exact: true })
+    .first()
+    .evaluate((element: Element) => {
+      const range = document.createRange()
+      range.selectNodeContents(element)
+      const { x, y, width, height } = range.getBoundingClientRect()
+      return { x, y, width, height }
+    })
 
 /** Presses at `from`, moves to `to` in `steps` moves and releases. */
 async function drag(

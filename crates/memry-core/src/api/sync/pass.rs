@@ -144,6 +144,7 @@ impl VaultSync {
         )
         .with_vault(&self.vault_id)
         .with_clock_device(&self.session.device_id()?)
+        .with_at_rest_key(self.at_rest.clone())
         .with_note_bodies(cipher.clone())
         .run(MAX_PULL_PAGES)
         .await?;
@@ -196,6 +197,7 @@ impl VaultSync {
         };
         let push = PushCoordinator::new(http, self.db.clone(), self.declaration.clone(), sealer)
             .with_vault(&self.vault_id)
+            .with_at_rest_key(self.at_rest.clone())
             .with_snapshot_fallback(Arc::new(snapshots));
         let report = push.drain_wave().await?;
         let pending = self

@@ -319,7 +319,7 @@ struct CalendarReadOnlySheet: View {
 
     private var kind: String {
         switch item.source.provider {
-        case "apple-eventkit": CalendarCopy.thisIPhone
+        case "apple-eventkit": CalendarCopy.thisDevice
         case "ics": CalendarCopy.subscribedKind
         default: CalendarCopy.visualType(item.visualType)
         }

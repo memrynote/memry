@@ -388,7 +388,7 @@ for the drain instead of purging them, and owes a deleted merge, so edits this
 device never pushed reach `j<D>` (#2984;
 `apps/desktop/src/main/sync/item-handlers/journal-handler.ts:186`; core:
 `crates/memry-core/src/sync/journal_day_merge/owed.rs:157`, called from
-`crates/memry-core/src/sync/apply.rs:273`).
+`crates/memry-core/src/sync/apply.rs:267`).
 
 **Drain.** After a pull run's body pass, each owed merge `F -> D` runs
 (`apps/desktop/src/main/sync/engine/crdt-sync-coordinator.ts:459`,

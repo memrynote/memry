@@ -118,7 +118,7 @@ fn the_links_an_edit_changed_are_announced_once_they_read_back() {
     // Full text commits with the links, in the pass a changed link would be announced from.
     let search = e.session.current().unwrap().search;
     until("the link-free edit indexed", || {
-        let hits = search.notes("still".into(), 5).unwrap();
+        let hits = search.search("still".into(), None, 5).unwrap().notes;
         hits.iter().any(|hit| hit.id == late)
     });
 

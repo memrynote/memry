@@ -14,7 +14,7 @@ extension InboxCopy {
     static let images = "Images"
     static let embedShort = "Embedded"
     static let askWhenFiling = "Ask when filing"
-    static let imagesFooter = "Embedded puts the image inside the linked note. File in the sidebar keeps it as its own file; on this phone it is embedded."
+    static let imagesFooter = "Embedded puts the image inside the linked note. File in the sidebar keeps it as its own file; on this \(ThisDevice.noun) it is embedded."
 
     static func reviewTitle(_ count: Int) -> String {
         count == 1 ? "Time to review 1 item" : "Time to review \(count) items"

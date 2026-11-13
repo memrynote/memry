@@ -433,10 +433,7 @@
       "empty": "Nada corresponde a esta visualização ainda.",
       "loadFailed": "Não foi possível carregar esta visualização. As notas em si estão intactas.",
       "folderMissing": "Esta pasta não está mais no cofre. Escolha outra origem.",
-      "unreadable": "Não é possível ler esta vista. Escolha uma origem acima ou remova o bloco.",
-      "invalidJson": "A definição desta visualização não é um JSON válido. Corrija-a abaixo ou remova o bloco.",
-      "invalidShape": "A definição desta visualização não tem origem. Escolha uma acima ou corrija-a abaixo.",
-      "definition": "Definição"
+      "unreadable": "Não é possível ler esta vista. Escolha uma origem acima ou remova o bloco."
     },
     "chart": {
       "title": "Gráfico",

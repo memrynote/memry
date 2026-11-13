@@ -56,6 +56,7 @@ use zeroize::Zeroizing;
 
 use crate::api::auth::AuthSession;
 use crate::api::errors::{StorageError, SyncError};
+use crate::crypto::agent_envelope::AtRestKey;
 use crate::crypto::keys;
 use crate::crypto::sodium;
 use crate::domain::attachments;
@@ -301,6 +302,9 @@ pub struct VaultSync {
     /// The `X-Memry-Sync-Types` every request of this sync sends: the iOS
     /// twenty-one, or desktop's declaration (chapter 13 §13.1).
     declaration: Declaration,
+    /// The vault's at-rest key: the pull seals agent records under it and the
+    /// push opens them (chapter 04 §4.17).
+    at_rest: AtRestKey,
 }
 
 impl VaultSync {
@@ -310,6 +314,7 @@ impl VaultSync {
         session: Arc<AuthSession>,
         directory: String,
         declaration: Declaration,
+        at_rest: AtRestKey,
     ) -> Self {
         Self {
             vault_id,
@@ -318,6 +323,7 @@ impl VaultSync {
             directory,
             realtime_latch: Arc::default(),
             declaration,
+            at_rest,
         }
     }
 
@@ -413,7 +419,8 @@ impl VaultSync {
                 cipher.clone(),
             )
             .with_vault(&self.vault_id)
-            .with_clock_device(&self.session.device_id()?),
+            .with_clock_device(&self.session.device_id()?)
+            .with_at_rest_key(self.at_rest.clone()),
         );
         let bodies = Arc::new(
             BodyPull::new(

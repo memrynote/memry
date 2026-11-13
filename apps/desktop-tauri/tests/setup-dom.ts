@@ -150,6 +150,7 @@ vi.mock('../src/generated/bindings', () => {
       journalGetMonthEntries: (year: number, month: number) =>
         journal().getMonthEntries(year, month),
       journalGetYearStats: (year: number) => journal().getYearStats(year),
+      journalGetSameDayEntries: (date: string) => journal().getSameDayEntries(date),
       journalGetStreak: () => journal().getStreak(),
       journalGetPropertyRows: (from: string, to: string) => journal().getPropertyRows(from, to),
       journalGetDayContext: (date: string) => journal().getDayContext(date),
@@ -240,6 +241,8 @@ vi.mock('../src/generated/bindings', () => {
       // Component tests answer the definition writes in Electron's envelope; a command answers
       // with the definition, or rejects.
       notesGetPropertyDefinitions: () => notes().getPropertyDefinitions(),
+      notesGetPropertyUsage: () => notes().getPropertyUsage(),
+      notesListNotesWithProperty: (name: string) => notes().listNotesWithProperty(name),
       notesCreatePropertyDefinition: async (input: unknown) =>
         definition(notes().createPropertyDefinition(input)),
       notesUpdatePropertyDefinition: async (input: unknown) =>
@@ -317,6 +320,8 @@ vi.mock('../src/generated/bindings', () => {
       tagsPreviewImpact: (query: unknown) => tags().previewImpact(query),
       tagsSearchObjects: (input: unknown) => tags().searchObjects(input),
       tagsGetLinkedHere: (input: unknown) => tags().getLinkedHere(input),
+      tagsFillStatus: () => tags().getFillStatus(),
+      tagsFillFields: (input: unknown) => tags().fillFields(input),
       tagsGetAllWithCounts: async () =>
         ((await tags().getAllWithCounts()) as { tags: unknown[] }).tags,
       tagsGetNotesByTag: (input: unknown) => tags().getNotesByTag(input),
@@ -542,6 +547,8 @@ const createMockApi = () => ({
     openExternal: vi.fn().mockResolvedValue({ success: true }),
     revealInFinder: vi.fn().mockResolvedValue({ success: true }),
     getPropertyDefinitions: vi.fn().mockResolvedValue([]),
+    getPropertyUsage: vi.fn().mockResolvedValue([]),
+    listNotesWithProperty: vi.fn().mockResolvedValue([]),
     getCalendarPropertyNames: vi.fn().mockResolvedValue([]),
     createPropertyDefinition: vi.fn().mockResolvedValue({ success: true }),
     updatePropertyDefinition: vi.fn().mockResolvedValue({ success: true }),
@@ -741,7 +748,8 @@ const createMockApi = () => ({
       list: vi.fn().mockResolvedValue({ entries: [] }),
       getHeatmap: vi.fn().mockResolvedValue([]),
       getMonth: getMonthEntries,
-      getMonthEntries
+      getMonthEntries,
+      getSameDayEntries: vi.fn().mockResolvedValue([])
     }
   })(),
 

@@ -139,6 +139,7 @@ struct CalendarGridChip: View {
     let actions: CalendarGridActions
     @Binding var dragState: CalendarDragState?
     @State private var liveDelta = 0
+    @State private var showsMenu = false
 
     var body: some View {
         let dragging = dragState?.projectionId == item.projectionId
@@ -171,6 +172,10 @@ struct CalendarGridChip: View {
         .gesture(moveGesture)
         .sensoryFeedback(.selection, trigger: liveDelta)
         .calendarItemMenu(item.canDrag && actions.move != nil ? nil : actions.contextMenu, item: item)
+        // On the chip, so the popover points at it on iPad.
+        .confirmationDialog(item.title, isPresented: $showsMenu, titleVisibility: .visible) {
+            if let menu = actions.contextMenu { menu(item) }
+        }
         .accessibilityElement(children: .ignore)
         .accessibilityLabel(CalendarItemStyle.accessibilityLabel(item))
         .accessibilityAddTraits(.isButton)
@@ -278,7 +283,7 @@ struct CalendarGridChip: View {
                 guard completed else { return }
                 guard delta != 0 else {
                     // Held, not moved: the item's menu.
-                    actions.menu?(item)
+                    showsMenu = true
                     return
                 }
                 let day = CalendarDates.key(item.startDate)

@@ -2,8 +2,9 @@
 //!
 //! The committed JSON comes out of Electron's sealer
 //! (`apps/desktop/src/main/agent/storage/encryption.ts`) under a fixed nonce,
-//! so a seal here must reproduce Electron's column byte for byte, and every
-//! open must agree with Electron's reader: the same plaintext, or a refusal
+//! so a seal must reproduce Electron's column byte for byte (the unit test in
+//! `src/crypto/agent_envelope.rs`), and every open must agree with Electron's
+//! reader: the same plaintext, or a refusal
 //! where Electron throws. Step 36 copies Electron's columns unchanged, so a
 //! drift here is unreadable agent history after the migration.
 
@@ -11,7 +12,7 @@
 use crate::support;
 
 use memry_core::api::vault::Vault;
-use memry_core::crypto::agent_envelope::{Purpose, SealError, open, seal_with_nonce};
+use memry_core::crypto::agent_envelope::{Purpose, SealError, open};
 use serde_json::Value as Json;
 use support::{hex_field, str_field, vector_file};
 use zeroize::Zeroizing;
@@ -29,23 +30,21 @@ fn key(bytes: Vec<u8>) -> [u8; 32] {
     bytes.try_into().expect("a 32-byte key")
 }
 
+/// Every Electron column opens to what Electron reads back. The seal half,
+/// byte for byte under the fixed nonce, is the unit test in
+/// `src/crypto/agent_envelope.rs`: the nonce-taking seal is private.
 #[test]
-fn agent_envelope_seals_reproduce_electron_columns() {
+fn agent_envelope_electron_columns_open_to_what_electron_reads() {
     let file = vector_file("agent-envelope");
     let key = key(hex_field(&file, "keyHex"));
     let seals = file["seals"].as_array().expect("seals");
-    assert_eq!(seals.len(), 8);
+    assert_eq!(seals.len(), 9);
     for case in seals {
         let name = str_field(case, "name");
-        let plaintext = str_field(case, "plaintext");
-        let column = str_field(case, "column");
-        let sealed = seal_with_nonce(purpose(case), plaintext, &key, &hex_field(case, "nonceHex"))
-            .unwrap_or_else(|error| panic!("{name}: {error}"));
-        assert_eq!(sealed, column, "{name}: seal");
         assert_eq!(
-            open(purpose(case), column, &key).expect(name),
-            plaintext,
-            "{name}: open"
+            open(purpose(case), str_field(case, "column"), &key).expect(name),
+            str_field(case, "opened"),
+            "{name}"
         );
     }
 }
@@ -54,7 +53,7 @@ fn agent_envelope_seals_reproduce_electron_columns() {
 fn agent_envelope_opens_agree_with_electron() {
     let file = vector_file("agent-envelope");
     let opens = file["opens"].as_array().expect("opens");
-    assert_eq!(opens.len(), 7);
+    assert_eq!(opens.len(), 10);
     for case in opens {
         let name = str_field(case, "name");
         let key = key(hex_field(case, "keyHex"));
@@ -81,7 +80,9 @@ fn agent_envelope_key_installed_on_the_vault_reaches_its_writers() {
 
     let file = vector_file("agent-envelope");
     let key = key(hex_field(&file, "keyHex"));
-    vault.set_at_rest_key(Some(Zeroizing::new(key)));
+    vault
+        .set_at_rest_key(Some(Zeroizing::new(key)))
+        .expect("install");
     let sealed = writer
         .seal(Purpose::ConversationTitle, "plan")
         .expect("seal");
@@ -97,7 +98,7 @@ fn agent_envelope_key_installed_on_the_vault_reaches_its_writers() {
         str_field(electron, "plaintext")
     );
 
-    vault.set_at_rest_key(None);
+    vault.set_at_rest_key(None).expect("remove");
     assert!(matches!(
         writer.open(Purpose::ConversationTitle, &sealed),
         Err(SealError::KeyUnavailable)

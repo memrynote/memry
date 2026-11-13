@@ -250,6 +250,7 @@ struct NoteBlockView: View {
                 edit: editing.map { editing in { editing.session.editWhiteboard(canvasId: $0, title: $1) } },
                 revision: editing?.session.whiteboardRevision ?? 0
             )
+            .paneBreakout()
         case "mathBlock":
             // `content: none`: the formula is the `latex` prop.
             let latex = value("latex") ?? ""
@@ -292,6 +293,7 @@ struct NoteBlockView: View {
                 editing: tableEditing,
                 tableId: block.id
             )
+            .paneBreakout()
         case "bookmark":
             // The page's own card once its metadata loads, as desktop draws
             // it; the stored props or the address until then. An empty

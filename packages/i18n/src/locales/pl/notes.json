@@ -433,10 +433,7 @@
       "empty": "Nic jeszcze nie pasuje do tego widoku.",
       "loadFailed": "Nie udało się załadować tego widoku. Same notatki pozostają nienaruszone.",
       "folderMissing": "Tego folderu nie ma już w sejfie. Wybierz inne źródło.",
-      "unreadable": "Nie można odczytać tego widoku. Wybierz źródło powyżej lub usuń blok.",
-      "invalidJson": "Definicja tego widoku nie jest prawidłowym kodem JSON. Popraw ją poniżej lub usuń blok.",
-      "invalidShape": "Definicja tego widoku nie ma źródła. Wybierz je powyżej lub popraw definicję poniżej.",
-      "definition": "Definicja"
+      "unreadable": "Nie można odczytać tego widoku. Wybierz źródło powyżej lub usuń blok."
     },
     "chart": {
       "title": "Wykres",

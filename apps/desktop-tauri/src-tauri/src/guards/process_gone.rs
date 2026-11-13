@@ -13,7 +13,7 @@ use memry_desktop::shell::web_crash::{CrashAction, MAX_RELOADS, ReloadBudget};
 use memry_desktop::telemetry::main_warning::Level;
 use tauri::plugin::TauriPlugin;
 use tauri::webview::PageLoadEvent;
-use tauri::{AppHandle, Manager, RunEvent, Webview, WindowEvent, Wry};
+use tauri::{AppHandle, Manager, RunEvent, Runtime, Webview, WindowEvent, Wry};
 
 use crate::flush::FlushService;
 use crate::shell::services::telemetry;
@@ -23,8 +23,9 @@ use crate::windows::startup_error;
 /// Watches the page of every app window, wherever the window is built: a webview process that
 /// ends releases the flush waits on the page and recovers it, and a new document stops the
 /// flushes until it listens (`flush_ready`). A page that closes or starts a new document lets go
-/// of its large-file leases and ends its attachment uploads and AI provider calls. The only process-failure subscription on Windows and
-/// Linux; macOS reports through the builder hook [`on_web_content_process_terminate`].
+/// of its large-file leases and ends its attachment uploads and AI provider calls
+/// ([`release_page_resources`]). The only process-failure subscription on Windows and Linux;
+/// macOS reports through the builder hook [`on_web_content_process_terminate`].
 pub fn plugin() -> TauriPlugin<Wry> {
     tauri::plugin::Builder::new("memry-page-watch")
         .on_webview_ready(|webview| {
@@ -36,9 +37,7 @@ pub fn plugin() -> TauriPlugin<Wry> {
         .on_page_load(|webview, payload| {
             if matches!(payload.event(), PageLoadEvent::Started) && is_app_label(webview.label()) {
                 document_replaced(webview.app_handle(), webview.label());
-                crate::commands::large_file::release_page(webview.app_handle(), webview.label());
-                crate::commands::attachments::release_page(webview.app_handle(), webview.label());
-                crate::commands::ai::release_page(webview.app_handle(), webview.label());
+                release_page_resources(webview.app_handle(), webview.label());
             }
         })
         .on_event(|app, event| {
@@ -49,12 +48,20 @@ pub fn plugin() -> TauriPlugin<Wry> {
             } = event
             {
                 forget(app, label);
-                crate::commands::large_file::release_page(app, label);
-                crate::commands::attachments::release_page(app, label);
-                crate::commands::ai::release_page(app, label);
+                release_page_resources(app, label);
             }
         })
         .build()
+}
+
+/// The page of window `label` started a new document or its window closed: it lets go of its
+/// large-file leases and ends its attachment uploads and AI provider calls. Generic so a mock
+/// app can drive it; the plugin's hooks themselves cannot be (`RunEvent` is non-exhaustive and
+/// `PageLoadPayload` has no public constructor).
+pub fn release_page_resources<R: Runtime>(app: &AppHandle<R>, label: &str) {
+    crate::commands::large_file::release_page(app, label);
+    crate::commands::attachments::release_page(app, label);
+    crate::commands::ai::release_page(app, label);
 }
 
 /// The reload budget of each window, and the windows reloaded since their page last asked.

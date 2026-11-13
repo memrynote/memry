@@ -46,6 +46,23 @@ impl AiProvider {
         !matches!(self, Self::Ollama | Self::Custom)
     }
 
+    /// The stored key that goes with this provider at `stored` (#4451): one per cloud provider,
+    /// one per origin of a custom endpoint (`custom:https://host[:port]`, normalized as the URL
+    /// standard serializes origins), and none for Ollama or a custom endpoint whose URL does not
+    /// parse. So a key never follows a selection change to another provider or host.
+    pub fn key_slot(self, stored: &str) -> Option<String> {
+        Some(match self {
+            Self::Ollama => return None,
+            Self::Openai => "openai".to_owned(),
+            Self::Anthropic => "anthropic".to_owned(),
+            Self::Google => "google".to_owned(),
+            Self::Custom => {
+                let origin = parse_base(stored).ok()?.origin().ascii_serialization();
+                format!("custom:{origin}")
+            }
+        })
+    }
+
     /// The API root, without a trailing slash; `None` for a custom endpoint with no URL. Only
     /// Ollama and the custom endpoint take the stored `baseUrl`; the others are fixed, so a
     /// settings row cannot send their key to another host.

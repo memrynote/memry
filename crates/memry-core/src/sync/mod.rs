@@ -9,6 +9,7 @@
 //! | [`pull`]          | 05                     | one page: refs, bodies, apply, advance            |
 //! | `feed_restart`    | 05 §5.11, #2382        | when the record feed is read again from the start |
 //! | `pull_report`     | 05 §5.14               | what one pull did, in counts, or failed with      |
+//! | `pull_decode`     | 05 §5.12, §5.14        | one pulled envelope read into a pending item      |
 //! | `changes_page`    | 05 §5.11.2, §5.12      | one changes page read, and its ids left to pull   |
 //! | [`apply`]         | 06 §6.8, 05 §5.12      | the apply step, and the one dispatch on item type |
 //! | [`settings_merge`] | 06 §6.9, 13 §13.7.13  | `settings` inbound: the dotted-path field clocks  |
@@ -37,6 +38,7 @@
 
 pub mod apply;
 pub mod body_debt;
+pub mod body_heal;
 pub mod body_pull;
 pub mod body_step;
 pub mod bootstrap;
@@ -56,6 +58,7 @@ pub mod outbox;
 pub mod pack_bootstrap;
 pub mod policy;
 pub mod pull;
+mod pull_decode;
 mod pull_report;
 pub mod push;
 pub mod refused_items;

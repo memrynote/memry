@@ -21,11 +21,11 @@ import {
   serializeBlocksPreservingBlanks
 } from '../markdown-utils'
 import { recordLoadedMarkdownSource, serializeMarkdownPreservingSource } from '../markdown-source'
-import { createLinkMentionContent } from '../link-mention'
-import { normalizeLinkMentions } from '../link-mention-utils'
-import { fetchLinkPreview } from '@/lib/url-metadata'
+import { normalizeLinkMentions } from '@memry/editor-schema/inline'
+import { fetchLinkPreview, type UrlPreviewData } from '@/lib/url-metadata'
 import type { HeadingInfo, InlineTagsOrigin } from '../types'
 import { createLogger } from '@/lib/logger'
+import { typingHoldOf } from '@/sync/typing-hold'
 import { trackRendererError } from '@/lib/telemetry-diagnostics'
 import { isEditingWikiLinkText } from '../wiki-link-edit-plugin'
 
@@ -228,11 +228,9 @@ function promoteDateMentionsInSharedDoc(editor: any): void {
  * with those characters raw: promoting it rewrites the token in the closed
  * alphabet once, and every open after that is a no-op.
  *
- * No favicon hydration here, deliberately. `hydrateLinkMentionFavicons` writes
- * back a content array it captured before its fetch, which on a shared document
- * would push a stale block to every device, and it resolves after
- * `clearYjsUndoHistory` has run, leaving the open undoable. A chip promoted
- * here renders its domain, which is what the token carries.
+ * The core's seed builds the node itself now (#3871), so this only meets a doc
+ * seeded by an older build. A chip promoted here carries its domain only;
+ * `hydrateLinkMentions` fills in the rest.
  */
 function promoteLinkMentionsInSharedDoc(editor: any): void {
   // oxlint-disable-next-line typescript/no-unsafe-type-assertion -- BlockNote types blocks against its custom schema generics; this helper takes the structural shape and the editor is any-typed at this seam
@@ -325,47 +323,83 @@ export function insertInlineContentInActiveEditor(noteId: string, content: unkno
   return true
 }
 
-function hydrateLinkMentionFavicons(editor: any): void {
-  const mentions: { block: any; index: number; url: string }[] = []
+/** URLs each editor already asked a preview for, so a change never refetches. */
+const requestedLinkPreviews = new WeakMap<object, Set<string>>()
 
-  const walk = (blocks: any[]): void => {
-    for (const block of blocks) {
-      const content = block.content
-      if (Array.isArray(content)) {
-        content.forEach((c: any, i: number) => {
-          if (
-            c.type === 'linkMention' &&
-            c.props?.url &&
-            (!c.props.favicon || !c.props.siteName || !c.props.title)
-          ) {
-            mentions.push({ block, index: i, url: c.props.url })
-          }
-        })
-      }
-      if (block.children?.length) walk(block.children)
-    }
+/**
+ * Fill in the title, favicon and site name of every link mention missing them.
+ *
+ * The token on disk carries only the URL, so a mention built from markdown —
+ * on load, by the core's seed, or by an edit fed in from outside the editor
+ * (a restore, the file watcher, an agent write) — is a bare domain until this
+ * runs. Running on open only left every such chip bare on a collaborative note
+ * for good, which is how a page of mentions came to look like plain links
+ * (#3871). So it runs on every change too, and asks for each URL once.
+ *
+ * The preview is written as the mention's attributes, on the node found again
+ * when it arrives: content captured before the fetch would put back whatever
+ * the block held then. Off the undo stack, because Cmd+Z must undo the user's
+ * edit, not strip a chip. On a shared doc it is an attribute set, which merges
+ * with the same write from another device rather than adding a node.
+ *
+ * `doc` is the note's shared doc, null on the markdown path: while the window holds typing for
+ * an outside edit, the fill waits for the hold to end. Sent during the hold, the plugin would
+ * refuse it as typing and replay it over the edit, as an undoable step that puts back a
+ * mention the edit deleted.
+ */
+function hydrateLinkMentions(editor: any, doc: Y.Doc | null): void {
+  const state = editor?._tiptapEditor?.state
+  if (!state?.doc || typeof editor.transact !== 'function') return
+
+  let requested = requestedLinkPreviews.get(editor)
+  if (!requested) {
+    requested = new Set()
+    requestedLinkPreviews.set(editor, requested)
   }
 
-  walk(editor.document)
+  const urls = new Set<string>()
+  state.doc.descendants((node: any) => {
+    if (node.type.name !== 'linkMention') return
+    const { url, favicon, siteName, title } = node.attrs
+    if (url && !requested.has(url) && (!favicon || !siteName || !title)) urls.add(url)
+  })
 
-  for (const { block, index, url } of mentions) {
+  for (const url of urls) {
+    requested.add(url)
     fetchLinkPreview(url)
-      .then((metadata) => {
-        const current = block.content
-        if (!Array.isArray(current)) return
-        if (current[index]?.type !== 'linkMention') return
-        const updated = [...current]
-        updated[index] = createLinkMentionContent(
-          url,
-          metadata.domain || current[index].props.domain,
-          metadata.title || current[index].props.title,
-          metadata.favicon,
-          metadata.siteName || current[index].props.siteName
-        )
-        editor.updateBlock(block, { content: updated })
-      })
-      .catch(() => {})
+      .then((preview) => applyLinkPreview(editor, doc, url, preview))
+      .catch((error: unknown) => log.warn('Link mention preview failed', error))
   }
+}
+
+function applyLinkPreview(
+  editor: any,
+  doc: Y.Doc | null,
+  url: string,
+  preview: UrlPreviewData
+): void {
+  if (editor?._tiptapEditor?.isDestroyed) return
+  const hold = doc ? typingHoldOf(doc) : null
+  if (hold?.held) {
+    void hold.settled().then(() => applyLinkPreview(editor, doc, url, preview))
+    return
+  }
+
+  editor.transact((tr: any) => {
+    tr.setMeta('addToHistory', false)
+    tr.doc.descendants((node: any, pos: number) => {
+      if (node.type.name !== 'linkMention' || node.attrs.url !== url) return
+      const attrs = {
+        ...node.attrs,
+        domain: preview.domain || node.attrs.domain,
+        title: preview.title || node.attrs.title,
+        favicon: preview.favicon || node.attrs.favicon,
+        siteName: preview.siteName || node.attrs.siteName
+      }
+      const changed = Object.keys(attrs).some((key) => attrs[key] !== node.attrs[key])
+      if (changed) tr.setNodeMarkup(pos, undefined, attrs)
+    })
+  })
 }
 
 interface EditorSyncParams {
@@ -529,6 +563,7 @@ export function useEditorSync({
         lastNormalizedTagsRef.current = noteTags.toSorted().join(',')
       }
       clearYjsUndoHistory(editor)
+      hydrateLinkMentions(editor, yjsFragment.doc)
       isContentReadyRef.current = true
       if (onHeadingsChange) {
         // oxlint-disable-next-line typescript/no-unsafe-type-assertion -- BlockNote types blocks against its custom schema generics; this helper takes the structural shape and the editor is any-typed at this seam
@@ -581,7 +616,7 @@ export function useEditorSync({
 
             normalizedBlocks = sanitizeBlockIds(normalizedBlocks)
             replaceInitialBlocksWithoutHistory(editor, normalizedBlocks)
-            hydrateLinkMentionFavicons(editor)
+            hydrateLinkMentions(editor, null)
             if (contentType === 'markdown') {
               markdownSourceRef.current = await recordLoadedMarkdownSource(editor, content)
             }
@@ -608,7 +643,7 @@ export function useEditorSync({
 
           normalizedBlocks = sanitizeBlockIds(normalizedBlocks)
           replaceInitialBlocksWithoutHistory(editor, normalizedBlocks)
-          hydrateLinkMentionFavicons(editor)
+          hydrateLinkMentions(editor, null)
           loadedSuccessfully = true
         } else {
           // An outside edit that emptied the body (a tag template's Undo, a file
@@ -667,6 +702,8 @@ export function useEditorSync({
       editor.replaceBlocks(editor.document, normalized.blocks)
       return
     }
+
+    hydrateLinkMentions(editor, yjsFragment?.doc ?? null)
 
     // oxlint-disable-next-line typescript/no-unsafe-type-assertion -- BlockNote types blocks against its custom schema generics; this helper takes the structural shape and the editor is any-typed at this seam
     onContentChange?.(blocks as Block[])

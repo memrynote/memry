@@ -3,9 +3,6 @@
     "copyFailed": "Portal kopyalanamadı",
     "hiddenCount": "{count} gizli",
     "windowFailed": "Bu portal açılamadı. Bunun yerine kaynak notu açın.",
-    "noTarget": "Bu portalın henüz bir hedefi yok. Tanıma bir not ekleyin ya da bloğu kaldırın.",
-    "invalidJson": "Bu portalın tanımı geçerli bir JSON değil. Aşağıdan düzeltin ya da bloğu kaldırın.",
-    "invalidShape": "Bu portalın tanımında not veya arama yok. Aşağıdan düzeltin ya da bloğu kaldırın.",
     "unreadable": "Bu portal okunamıyor. Bloğu kaldırın ve yeni bir portal ekleyin.",
     "search": {
       "editQuery": "Sorguyu düzenle",

@@ -51,7 +51,14 @@ pub(crate) fn queued(conn: &Connection, item_type: &str, id: &str) -> i64 {
 
 /// Applies `items` as one pulled page, ten milliseconds after [`NOW`].
 pub(crate) fn pull(conn: &Connection, items: Vec<Pending>) -> Result<ApplyTotals, StorageError> {
-    apply_page(conn, items, vec![], NOW + 10, Some(DEVICE))
+    apply_page(
+        conn,
+        items,
+        vec![],
+        NOW + 10,
+        Some(DEVICE),
+        &crate::crypto::agent_envelope::AtRestKey::default(),
+    )
 }
 
 pub(crate) fn remote(item_type: &str, id: &str, body: &Value) -> Pending {

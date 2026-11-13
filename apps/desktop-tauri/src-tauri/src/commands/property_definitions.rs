@@ -1,33 +1,42 @@
 //! The property definition commands of `ipc/notes-handlers.ts` (#3530 Step 13k): the
 //! `notes:*-property-definition*`, `notes:*-option*` and calendar visibility channels, each one
-//! call of `memry_desktop::notes::property_definitions`. No note file is written.
+//! call of `memry_desktop::notes::property_definitions`, and Settings' property usage
+//! (`notes:get-property-usage`, `notes:list-notes-with-property`) of
+//! `memry_desktop::notes::properties::usage`. No note file is written.
 
 use std::sync::Arc;
 
 use memry_desktop::i18n::{self, Args};
 use memry_desktop::locale::LocaleService;
 use memry_desktop::notes::index::NoteIndex;
+use memry_desktop::notes::properties::usage::{
+    PropertyNoteUsageView, PropertyUsageView, notes_with_property, property_usage,
+};
 use memry_desktop::notes::property_definitions::{
     DefinitionInput, DefinitionsError, EnsuredType, OptionInput, PropertyDefinitionView,
     PropertyDefinitions, StatusCategoryKey,
 };
 use memry_desktop::seams::secure_store::DeviceIdentityStore;
-use memry_desktop::session::Session;
+use memry_desktop::session::{OpenVault, Session};
 use tauri::{AppHandle, Manager, Wry};
 
 use super::blocking;
 use super::error::{CommandError, ErrorKind};
 
-/// The open vault's definitions, written under this device's identity.
-fn definitions(app: &AppHandle<Wry>) -> Result<PropertyDefinitions, CommandError> {
-    let open = app.state::<Session>().current().ok_or_else(|| {
+fn open_vault(app: &AppHandle<Wry>) -> Result<OpenVault, CommandError> {
+    app.state::<Session>().current().ok_or_else(|| {
         let locale = app.state::<Arc<LocaleService>>().get();
         CommandError::new(
             ErrorKind::Invalid,
             "no_vault_open",
             i18n::t(locale, "errors:ipc.noVaultOpen", &Args::new()),
         )
-    })?;
+    })
+}
+
+/// The open vault's definitions, written under this device's identity.
+fn definitions(app: &AppHandle<Wry>) -> Result<PropertyDefinitions, CommandError> {
+    let open = open_vault(app)?;
     let store = app.state::<Arc<DeviceIdentityStore>>().inner().clone();
     PropertyDefinitions::open(&open, store).map_err(|error| CommandError::from_core(&error))
 }
@@ -185,6 +194,32 @@ pub async fn notes_set_calendar_property_visibility(
 ) -> Result<(), CommandError> {
     on_definitions(app, "notes_set_calendar_property_visibility", move |d| {
         d.set_show_on_calendar(&name, show_on_calendar)
+    })
+    .await
+}
+
+/// `notes:get-property-usage`: every property the index holds, by name.
+#[tauri::command]
+#[specta::specta]
+pub async fn notes_get_property_usage(
+    app: AppHandle<Wry>,
+) -> Result<Vec<PropertyUsageView>, CommandError> {
+    blocking("notes_get_property_usage", move || {
+        property_usage(&open_vault(&app)?).map_err(|error| CommandError::from_core(&error))
+    })
+    .await
+}
+
+/// `notes:list-notes-with-property`: the notes that use `name`, by title.
+#[tauri::command]
+#[specta::specta]
+pub async fn notes_list_notes_with_property(
+    app: AppHandle<Wry>,
+    name: String,
+) -> Result<Vec<PropertyNoteUsageView>, CommandError> {
+    blocking("notes_list_notes_with_property", move || {
+        notes_with_property(&open_vault(&app)?, &name)
+            .map_err(|error| CommandError::from_core(&error))
     })
     .await
 }

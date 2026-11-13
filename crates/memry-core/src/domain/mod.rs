@@ -10,6 +10,9 @@
 //! parses it (chapter 12 §12.1.0). `extract_text` is the core's only
 //! document-to-text operation (chapter 12 §12.1).
 
+pub mod agent_conversation;
+pub mod agent_message;
+pub mod agent_records;
 pub mod app_settings;
 pub mod attachments;
 pub mod body_tags;

@@ -47,6 +47,21 @@ export const commands = {
 	aiInlineTestConnection: () => __TAURI_INVOKE<TestConnectionResult>("ai_inline_test_connection"),
 	/**  Ends a provider call the renderer aborted, before or after its head. */
 	aiProviderCancel: (requestId: string) => __TAURI_INVOKE<void>("ai_provider_cancel", { requestId }),
+	/**
+	 *  Proposals for the empty fields of a note's header tags from the inline AI model. Writes
+	 *  nothing but the disclosure's acceptance; a model failure is the `failed` result.
+	 */
+	tagsFillFields: (input: FillFieldsInput) => __TAURI_INVOKE<FillFieldsResult>("tags_fill_fields", { input }),
+	/**
+	 *  Whether "Fill from note" shows, and what the first-run disclosure names. The key itself is
+	 *  only checked for presence.
+	 */
+	tagsFillStatus: () => __TAURI_INVOKE<FieldFillStatus>("tags_fill_status"),
+	/**
+	 *  Alternative wordings for a selection from the inline AI model. Never edits the note. A
+	 *  failure is `Invalid` with the translated reason the writing tools show.
+	 */
+	writingGenerateAssist: (input: WritingAssistInput) => __TAURI_INVOKE<WritingAssistResult>("writing_generate_assist", { input }),
 	appInfo: () => __TAURI_INVOKE<AppInfo>("app_info"),
 	/**  The calling window closed its editor of `note_id`. */
 	crdtCloseDoc: (noteId: string) => __TAURI_INVOKE<null>("crdt_close_doc", { noteId }),
@@ -95,8 +110,15 @@ export const commands = {
 	flushDone: (requestId: string) => __TAURI_INVOKE<null>("flush_done", { requestId }),
 	/**  The calling window's page subscribed to flush requests: from now on a quit or a close asks it. */
 	flushReady: () => __TAURI_INVOKE<null>("flush_ready"),
+	/**
+	 *  `note-fold:agent-status`: the detected agents, the vault's `ai.summarizeAgent` and the agent a
+	 *  run would use.
+	 */
+	foldGetAgentStatus: () => __TAURI_INVOKE<FoldAgentStatus>("fold_get_agent_status"),
 	/**  The note or journal day folded for a reader who asked for `level`. */
 	foldRun: (noteId: string, level: FoldLevel) => __TAURI_INVOKE<FoldLayers>("fold_run", { noteId, level }),
+	/**  Sent without the account's token until Step 19 (#3536) provides the session token. */
+	iosBetaJoin: (input: IosBetaJoinInput) => __TAURI_INVOKE<IosBetaJoinResult>("ios_beta_join", { input }),
 	/**
 	 *  The day made on its first write; a day that has a file is answered as it is. A journal
 	 *  setting that followed its folder first (moved outside the app, or by a folder move a crash
@@ -131,6 +153,11 @@ export const commands = {
 	 *  (`journal:getPropertyRows`).
 	 */
 	journalGetPropertyRows: (from: string, to: string) => __TAURI_INVOKE<PropertyRowsView>("journal_get_property_rows", { from, to }),
+	/**
+	 *  The live days of other years that show as the same day as `date`, newest first, days
+	 *  without text left out (`journal:getSameDayEntries`).
+	 */
+	journalGetSameDayEntries: (date: string) => __TAURI_INVOKE<SameDayEntryView[]>("journal_get_same_day_entries", { date }),
 	/**  The current and longest runs of live days (`journal:getStreak`). */
 	journalGetStreak: () => __TAURI_INVOKE<StreakView>("journal_get_streak"),
 	/**  One row per month of the year that has a live day (`journal:getYearStats`). */
@@ -326,6 +353,10 @@ export const commands = {
 	notesGetCalendarPropertyNames: () => __TAURI_INVOKE<string[]>("notes_get_calendar_property_names"),
 	/**  `notes:get-property-definitions`: by name. */
 	notesGetPropertyDefinitions: () => __TAURI_INVOKE<PropertyDefinitionView[]>("notes_get_property_definitions"),
+	/**  `notes:get-property-usage`: every property the index holds, by name. */
+	notesGetPropertyUsage: () => __TAURI_INVOKE<PropertyUsageView[]>("notes_get_property_usage"),
+	/**  `notes:list-notes-with-property`: the notes that use `name`, by title. */
+	notesListNotesWithProperty: (name: string) => __TAURI_INVOKE<PropertyNoteUsageView[]>("notes_list_notes_with_property", { name }),
 	notesRemovePropertyOption: (propertyName: string, optionValue: string) => __TAURI_INVOKE<null>("notes_remove_property_option", { propertyName, optionValue }),
 	notesRenamePropertyOption: (propertyName: string, oldValue: string, newValue: string) => __TAURI_INVOKE<null>("notes_rename_property_option", { propertyName, oldValue, newValue }),
 	notesSetCalendarPropertyVisibility: (name: string, showOnCalendar: boolean) => __TAURI_INVOKE<null>("notes_set_calendar_property_visibility", { name, showOnCalendar }),
@@ -421,6 +452,8 @@ export const commands = {
 	menuToggleAlt: () => __TAURI_INVOKE<boolean>("menu_toggle_alt"),
 	/**  Stores the zoom factor for the next launch's first paint (`startupValues`). */
 	appSetZoomFactor: (factor: number | null) => __TAURI_INVOKE<null>("app_set_zoom_factor", { factor }),
+	/**  `settings:getAISettings`: the AI switches of the open vault, or their defaults. */
+	settingsGetAi: () => __TAURI_INVOKE<AiSettings>("settings_get_ai"),
 	/**  A group of the open vault, or its defaults while no vault is open. */
 	settingsGetGroup: (group: string) => __TAURI_INVOKE<Value>("settings_get_group", { group }),
 	/**  A flat device-local key (`tagSearches`, `graphViews`). */
@@ -432,6 +465,11 @@ export const commands = {
 	 *  departures from a default, so they stay.
 	 */
 	settingsResetKeyboard: () => __TAURI_INVOKE<null>("settings_reset_keyboard"),
+	/**
+	 *  `settings:setAISettings`: writes the switches, forgets the fold's agent detection when a
+	 *  switch the fold reads changed (`refreshNoteFold`), and announces `ai` with the written fields.
+	 */
+	settingsSetAi: (patch: AiSettingsPatch) => __TAURI_INVOKE<null>("settings_set_ai", { patch }),
 	/**
 	 *  Merges `patch` into a group. A value the group refuses rejects with `settings_invalid_value`
 	 *  and nothing is written.
@@ -765,6 +803,22 @@ export type AiProviderRequest = {
 	body: string | null,
 };
 
+/**  `AISettings`. With no vault open it reads as the defaults (`DEFAULT_AI_SETTINGS`). */
+export type AiSettings = {
+	enabled: boolean,
+	imageEmbeddings: boolean,
+	summarizeLongNotes: boolean,
+	summarizeAgent: FoldAgentChoice,
+};
+
+/**  `Partial<AISettings>`: an absent field is left as it is. */
+export type AiSettingsPatch = {
+	enabled?: boolean | null,
+	imageEmbeddings?: boolean | null,
+	summarizeLongNotes?: boolean | null,
+	summarizeAgent?: FoldAgentChoice | null,
+};
+
 export type AppInfo = {
 	version: string,
 	platform: string,
@@ -874,6 +928,8 @@ export type BacklinkView = {
 	 *  (`link_contexts`): `contexts` holds the first ones.
 	 */
 	truncated: boolean,
+	/**  How the source references the note when not by a link in its text; left out then. */
+	via?: LinkViaView | null,
 };
 
 export type BuildKind = "dev" | "packaged";
@@ -1141,6 +1197,28 @@ export type FeedbackSubmitResult = {
 	error: string | null,
 };
 
+/**  `FieldFillProposal`. */
+export type FieldFillProposal = {
+	field: string,
+	/**  Ready for a property write; null for a relation whose target must be created first. */
+	value: Value,
+	/**  What the slot shows. */
+	display: string,
+	/**  The sentence of the note the value came from; '' when the model's quote is not in it. */
+	sourceText: string,
+	create?: FillCreate | null,
+};
+
+/**  `FieldFillStatus`: whether "Fill from note" shows, and what the disclosure names. */
+export type FieldFillStatus = {
+	/**  Inline AI is on with a configured provider. */
+	available: boolean,
+	model: string,
+	/**  The provider runs on this device (Ollama). */
+	local: boolean,
+	disclosureAccepted: boolean,
+};
+
 export type FieldOptionInput = {
 	value: string,
 	color: string,
@@ -1187,12 +1265,48 @@ export type FileView = {
 	transcriptionStatus: TranscriptionStatus | null,
 };
 
+/**  A relation target no object matches: accepting creates a note with this title and tag. */
+export type FillCreate = {
+	title: string,
+	tag: string,
+};
+
+/**  `FillFieldsSchema` of `@memry/contracts/tag-fill-api`. */
+export type FillFieldsInput = {
+	noteId: string,
+	/**  Only this tag's group (its own and inherited fields); all field groups when absent. */
+	tag?: string | null,
+	/**  The user accepted the first-run disclosure with this request. */
+	acceptDisclosure?: boolean | null,
+};
+
+/**  `FillFieldsResult`. */
+export type FillFieldsResult = { kind: "proposals"; proposals: FieldFillProposal[] } | { kind: "disclosure-required"; model: string; local: boolean } | { kind: "unavailable" } | { kind: "failed"; message: string };
+
 /**
  *  Main asks a window to write its unsaved edits (`flush-requested-event`); the window answers with
  *  the `flush_done` command and the same id.
  */
 export type FlushRequestedEvent = {
 	requestId: string,
+};
+
+/**  `ai.summarizeAgent` (`FOLD_AGENT_CHOICES` of `@memry/contracts/note-fold`). */
+export type FoldAgentChoice = "auto" | "claude_cli" | "codex_cli" | "antigravity_cli" | "local_openai_compatible";
+
+export type FoldAgentOption = {
+	id: FoldAgentChoice,
+	label: string,
+};
+
+/**
+ *  `FoldAgentStatus`: the detected agents in `auto` order, the user's choice, and the label of
+ *  the agent a run would use (`None` is `no_agent`).
+ */
+export type FoldAgentStatus = {
+	choice: FoldAgentChoice,
+	available: FoldAgentOption[],
+	resolved: string | null,
 };
 
 /**  A note folded (`FoldLayers` of `@memry/contracts/note-fold`, its local levels). */
@@ -1386,6 +1500,20 @@ export type InstallFailed = {
 	/**  The update that failed, or `None` when the marker did not record one. */
 	version: string | null,
 };
+
+/**  What the user typed and where (`IosBetaJoinInputSchema`). */
+export type IosBetaJoinInput = {
+	email: string,
+	source: IosBetaSource,
+};
+
+export type IosBetaJoinResult = {
+	success: boolean,
+	error: string | null,
+};
+
+/**  Where in the app the user asked for the invite (`IOS_BETA_SOURCES`). */
+export type IosBetaSource = "launch_prompt" | "settings" | "help_menu";
 
 export type ItemKind = "normal" | "separator";
 
@@ -1592,6 +1720,11 @@ export type LinkResolutionView = {
 	path: string,
 	title: string,
 	fileType: FileType,
+	/**
+	 *  The day a journal entry is for, left out for a note: a day's id need not hold its date
+	 *  (`notes:resolve-by-title`'s `journalDate`).
+	 */
+	journalDate?: string | null,
 };
 
 export type LinkTargetView = {
@@ -1602,6 +1735,12 @@ export type LinkTargetView = {
 	/**  The heading to scroll to, `None` when the link names none. */
 	heading: string | null,
 };
+
+/**
+ *  `LinkVia`: the relation property naming the note. A relation has no text, so its backlink
+ *  has no contexts.
+ */
+export type LinkViaView = { kind: "property"; propertyName: string };
 
 /**  `LinkedHereGroup`. */
 export type LinkedHereGroupView = { kind: "relation"; sourceTag: string; field: string; label: string; total: number; items: LinkedNoteView[]; filter: string } | { kind: "task-field"; tag: string; field: string; total: number; items: LinkedTaskView[]; filter: string } | { kind: "mentions"; total: number; items: LinkedNoteView[] };
@@ -2140,12 +2279,28 @@ export type PropertyDefinitionView = {
 	createdAt: string,
 };
 
+/**  `PropertyNoteUsage` of `properties-api.ts`. */
+export type PropertyNoteUsageView = {
+	id: string,
+	title: string,
+	path: string,
+	emoji: string | null,
+	mismatch: boolean,
+};
+
 /**  `GetPropertyRowsOutput`. */
 export type PropertyRowsView = {
 	/**  The days in range, oldest first. */
 	rows: JournalPropertyRowView[],
 	/**  Every property of any live day, not only the ones in range: most used first. */
 	properties: JournalPropertySummaryView[],
+};
+
+/**  `PropertyUsage` of `properties-api.ts`. */
+export type PropertyUsageView = {
+	name: string,
+	noteCount: number,
+	mismatchCount: number,
 };
 
 /**  `PropertyValue` of `properties-api.ts`. */
@@ -2273,6 +2428,17 @@ export type ResolvedTemplateView = {
 	id: string,
 	autofill: boolean,
 	inheritedFrom: string | null,
+};
+
+/**  `SameDayEntry` (`packages/contracts/src/journal-api.ts`). */
+export type SameDayEntryView = {
+	id: string,
+	/**  `YYYY-MM-DD` */
+	date: string,
+	preview: string,
+	/**  The markdown below the frontmatter, trimmed. */
+	content: string,
+	wordCount: number,
 };
 
 export type SandboxInfo = {
@@ -3070,6 +3236,12 @@ export type WindowChromeStateChangedEvent = {
  *  alone until it is fixed).
  */
 export type WriteBackFailureReason = "write" | "frontmatter";
+
+/**  `WritingAssistInput` of `@memry/contracts/writing-tools-api`. */
+export type WritingAssistInput = { kind: "alternatives"; text: string; context: string };
+
+/**  `WritingAssistResult`. */
+export type WritingAssistResult = { kind: "alternatives"; alternatives: string[] };
 
 /* Tauri Specta runtime */
 type EventEmit<T> = [T] extends [null] ? () => Promise<void> : (payload: T) => Promise<void>;

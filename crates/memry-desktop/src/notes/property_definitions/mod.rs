@@ -20,9 +20,9 @@
 //! name writes the record again. A date's calendar flag lives only in this device's file.
 //!
 //! The note index types its rows by these definitions and retypes them when one changes type
-//! (`retypeIndexedProperties`). A property it reads with no definition is typed by the type it
-//! was first read with, learned on this device alone ([`learned`]; `notes::index`) until a sync
-//! pass makes it a definition ([`seed`]).
+//! (`retypeIndexedProperties`). A property it reads with no definition is given the type its
+//! values read as (`notes::index`), learned and written into the file ([`learned`]), and a sync
+//! pass makes it a record ([`seed`]).
 
 mod kind;
 mod learned;
@@ -148,6 +148,7 @@ impl PropertyDefinitions {
                 "pulled definitions are not in the file yet: {error}"
             );
         }
+        self.fold_learned_or_warn();
         self.read()
     }
 

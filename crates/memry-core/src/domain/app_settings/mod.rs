@@ -35,6 +35,8 @@ mod groups;
 mod syncable;
 
 #[cfg(test)]
+mod local_text_tests;
+#[cfg(test)]
 mod tests;
 
 use std::sync::Arc;
@@ -227,11 +229,25 @@ impl AppSettings {
     /// A flat local key's value, `None` when never written. An unparseable row reads as `None`
     /// and is left on disk.
     pub fn get_local(&self, key: &str) -> Result<Option<Value>, StorageError> {
+        Ok(self
+            .get_local_text(key)?
+            .and_then(|raw| serde_json::from_str(&raw).ok()))
+    }
+
+    /// Replaces a flat local key's value.
+    pub fn set_local(&self, key: &str, value: &Value) -> Result<SettingsChange, StorageError> {
+        self.set_local_text(key, &value.to_string())
+    }
+
+    /// A flat local key's stored text, `None` when never written. Electron's `getSetting` reads
+    /// its `ai.*` keys this way: `ai.summarizeAgent` holds the bare choice (`codex_cli`), which
+    /// is not JSON.
+    pub fn get_local_text(&self, key: &str) -> Result<Option<String>, StorageError> {
         if !local_key_ok(key) {
             return Err(invalid(format!("`{key}` is not a local settings key")));
         }
         let key = key.to_owned();
-        let raw: Option<String> = self.db.read_blocking(move |conn| {
+        self.db.read_blocking(move |conn| {
             conn.query_row(
                 "SELECT value FROM local_settings WHERE key = ?1",
                 params![key],
@@ -239,16 +255,15 @@ impl AppSettings {
             )
             .optional()
             .map_err(failed)
-        })?;
-        Ok(raw.and_then(|raw| serde_json::from_str(&raw).ok()))
+        })
     }
 
-    /// Replaces a flat local key's value.
-    pub fn set_local(&self, key: &str, value: &Value) -> Result<SettingsChange, StorageError> {
+    /// Replaces a flat local key's stored text (Electron's `setSetting`).
+    pub fn set_local_text(&self, key: &str, text: &str) -> Result<SettingsChange, StorageError> {
         if !local_key_ok(key) {
             return Err(invalid(format!("`{key}` is not a local settings key")));
         }
-        let (name, text) = (key.to_owned(), value.to_string());
+        let (name, text) = (key.to_owned(), text.to_owned());
         self.db.call_blocking(move |conn| {
             conn.execute(
                 "INSERT INTO local_settings (key, value, updated_at) VALUES (?1, ?2, ?3)

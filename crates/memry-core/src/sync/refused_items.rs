@@ -14,6 +14,7 @@
 use rusqlite::{Connection, params};
 
 use crate::api::errors::StorageError;
+use crate::storage::repositories::sync_items::{ApplyOutcome, InboundRecord};
 
 fn failed(error: rusqlite::Error) -> StorageError {
     StorageError::Failed {
@@ -52,6 +53,26 @@ pub(crate) fn record(
             params![item_type, item_id, version, now_ms],
         )
         .map_err(failed)?;
+    }
+    Ok(())
+}
+
+/// The ledger's half of one applied record: a refusal is collected for
+/// [`record`] in `refused`; an apply, a clock decision or an expiry settles an
+/// earlier refusal; a corrupt apply keeps it.
+pub(crate) fn settle(
+    conn: &Connection,
+    applied: &InboundRecord,
+    outcome: &ApplyOutcome,
+    refused: &mut Vec<(String, String)>,
+) -> Result<(), StorageError> {
+    let key = (applied.item_type.clone(), applied.item_id.clone());
+    match outcome {
+        ApplyOutcome::Refused => refused.push(key),
+        ApplyOutcome::Applied | ApplyOutcome::Skipped | ApplyOutcome::Expired => {
+            resolve(conn, &key.0, &key.1)?;
+        }
+        ApplyOutcome::Corrupt { .. } => {}
     }
     Ok(())
 }

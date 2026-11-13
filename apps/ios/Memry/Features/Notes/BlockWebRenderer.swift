@@ -201,7 +201,7 @@ final class BlockWebRenderer: NSObject {
         if let web, web.window != nil { return web }
         web?.removeFromSuperview()
         web = nil
-        guard let window = Self.window(),
+        guard let window = PresentingWindow.resolve(),
               let base = Bundle.main.url(forResource: "BlockRender", withExtension: "bundle")
         else {
             Log.interface.error("block renderer has no window or bundle")
@@ -233,13 +233,6 @@ final class BlockWebRenderer: NSObject {
         }
         web = view
         return view
-    }
-
-    private static func window() -> UIWindow? {
-        let windows = UIApplication.shared.connectedScenes
-            .compactMap { $0 as? UIWindowScene }
-            .flatMap(\.windows)
-        return windows.first(where: \.isKeyWindow) ?? windows.first
     }
 
     private func finishLoading(_ ready: Bool) {

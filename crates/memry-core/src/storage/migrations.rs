@@ -100,9 +100,10 @@ pub const DATA_MIGRATIONS: &[Migration] = &[
         name: "journal_aliases",
         sql: include_str!("migrations/data/0012_journal_aliases.sql"),
     },
-    // main's 13..16, shipped in v2026-11-05.2 to v2026-11-11. feat/tauri-v2
-    // builds had used 13..22, then 15..24, for the entries from 17 on;
-    // `legacy_numbering` moves a file they migrated onto this numbering (#4052).
+    // main's 13..17, shipped in v2026-11-05.2 and later. feat/tauri-v2 builds
+    // had used 13..22, then 15..24, then 17..28, for the entries from 18 on;
+    // `legacy_numbering` moves a file of any of them onto this numbering
+    // (#4052, #4438).
     Migration {
         version: 13,
         name: "calendar_cursor_reset",
@@ -125,58 +126,68 @@ pub const DATA_MIGRATIONS: &[Migration] = &[
     },
     Migration {
         version: 17,
-        name: "note_snapshots",
-        sql: include_str!("migrations/data/0017_note_snapshots.sql"),
+        name: "search_recents",
+        sql: include_str!("migrations/data/0017_search_recents.sql"),
     },
     Migration {
         version: 18,
-        name: "local_settings",
-        sql: include_str!("migrations/data/0018_local_settings.sql"),
+        name: "note_snapshots",
+        sql: include_str!("migrations/data/0018_note_snapshots.sql"),
     },
     Migration {
         version: 19,
-        name: "note_files",
-        sql: include_str!("migrations/data/0019_note_files.sql"),
+        name: "local_settings",
+        sql: include_str!("migrations/data/0019_local_settings.sql"),
     },
     Migration {
         version: 20,
-        name: "notes_device_tables",
-        sql: include_str!("migrations/data/0020_notes_device_tables.sql"),
+        name: "note_files",
+        sql: include_str!("migrations/data/0020_note_files.sql"),
     },
     Migration {
         version: 21,
-        name: "note_file_hashes",
-        sql: include_str!("migrations/data/0021_note_file_hashes.sql"),
+        name: "notes_device_tables",
+        sql: include_str!("migrations/data/0021_notes_device_tables.sql"),
     },
     Migration {
         version: 22,
-        name: "note_identity",
-        sql: include_str!("migrations/data/0022_note_identity.sql"),
+        name: "note_file_hashes",
+        sql: include_str!("migrations/data/0022_note_file_hashes.sql"),
     },
     Migration {
         version: 23,
-        name: "wiki_name_keys",
-        sql: include_str!("migrations/data/0023_wiki_name_keys.sql"),
+        name: "note_identity",
+        sql: include_str!("migrations/data/0023_note_identity.sql"),
     },
     Migration {
         version: 24,
-        name: "vault_locks",
-        sql: include_str!("migrations/data/0024_vault_locks.sql"),
+        name: "wiki_name_keys",
+        sql: include_str!("migrations/data/0024_wiki_name_keys.sql"),
     },
     Migration {
         version: 25,
-        name: "note_large_files",
-        sql: include_str!("migrations/data/0025_note_large_files.sql"),
+        name: "vault_locks",
+        sql: include_str!("migrations/data/0025_vault_locks.sql"),
     },
     Migration {
         version: 26,
-        name: "note_file_marks",
-        sql: include_str!("migrations/data/0026_note_file_marks.sql"),
+        name: "note_large_files",
+        sql: include_str!("migrations/data/0026_note_large_files.sql"),
     },
     Migration {
         version: 27,
+        name: "note_file_marks",
+        sql: include_str!("migrations/data/0027_note_file_marks.sql"),
+    },
+    Migration {
+        version: 28,
         name: "desktop_record_types",
-        sql: include_str!("migrations/data/0027_desktop_record_types.sql"),
+        sql: include_str!("migrations/data/0028_desktop_record_types.sql"),
+    },
+    Migration {
+        version: 29,
+        name: "agent_records",
+        sql: include_str!("migrations/data/0029_agent_records.sql"),
     },
     // 30 follows the main -> feat/tauri-v2 shift (#4438): main's #4419 keeps
     // data 0017, and feat's own 0017-0028 (28 is #4456's agent records) move
@@ -208,28 +219,38 @@ pub const INDEX_MIGRATIONS: &[Migration] = &[
     },
     Migration {
         version: 3,
-        name: "note_stats",
-        sql: include_str!("migrations/index/0003_note_stats.sql"),
+        name: "fts_inbox",
+        sql: include_str!("migrations/index/0003_fts_inbox.sql"),
     },
     Migration {
         version: 4,
-        name: "note_stats_header_read",
-        sql: include_str!("migrations/index/0004_note_stats_header_read.sql"),
+        name: "note_stats",
+        sql: include_str!("migrations/index/0004_note_stats.sql"),
     },
     Migration {
         version: 5,
-        name: "note_fold_chunks",
-        sql: include_str!("migrations/index/0005_note_fold_chunks.sql"),
+        name: "note_stats_header_read",
+        sql: include_str!("migrations/index/0005_note_stats_header_read.sql"),
     },
     Migration {
         version: 6,
-        name: "block_refs",
-        sql: include_str!("migrations/index/0006_block_refs.sql"),
+        name: "note_fold_chunks",
+        sql: include_str!("migrations/index/0006_note_fold_chunks.sql"),
     },
     Migration {
         version: 7,
+        name: "block_refs",
+        sql: include_str!("migrations/index/0007_block_refs.sql"),
+    },
+    Migration {
+        version: 8,
         name: "embedding_state",
-        sql: include_str!("migrations/index/0007_embedding_state.sql"),
+        sql: include_str!("migrations/index/0008_embedding_state.sql"),
+    },
+    Migration {
+        version: 9,
+        name: "property_refs",
+        sql: include_str!("migrations/index/0009_property_refs.sql"),
     },
 ];
 
@@ -342,6 +363,8 @@ fn set_user_version(conn: &Connection, version: u32) -> Result<(), StorageError>
 }
 
 #[cfg(test)]
+mod agent_records_tests;
+#[cfg(test)]
 mod desktop_record_types_tests;
 mod legacy_numbering;
 #[cfg(test)]
@@ -352,6 +375,8 @@ mod note_large_files_tests;
 mod numbering_tests;
 #[cfg(test)]
 mod saved_filter_inbox_tests;
+#[cfg(test)]
+mod sequence_tests;
 #[cfg(test)]
 mod tests;
 #[cfg(test)]

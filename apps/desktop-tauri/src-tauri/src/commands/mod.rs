@@ -3,6 +3,7 @@
 
 pub mod agent;
 pub mod ai;
+pub mod ai_structured;
 pub mod app;
 pub mod attachment_sources;
 pub mod attachments;
@@ -14,6 +15,7 @@ pub mod editor;
 pub mod error;
 pub mod fold;
 pub mod folders;
+pub mod ios_beta;
 pub mod journal;
 pub mod large_file;
 pub mod locale;

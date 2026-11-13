@@ -522,12 +522,12 @@ mod tests {
         assert!(!read("---\n- a list\n---\nbody\n"));
     }
 
-    /// Migration 0004: an older row with no header tags may be a block that did not parse.
+    /// Migration 0005: an older row with no header tags may be a block that did not parse.
     #[test]
     fn an_older_row_with_no_header_tags_is_not_taken_as_read() {
         use crate::storage::migrations::{INDEX_MIGRATIONS, run_atomic};
         let mut index = Connection::open_in_memory().unwrap();
-        run_atomic(&mut index, &INDEX_MIGRATIONS[..3]).unwrap();
+        run_atomic(&mut index, &INDEX_MIGRATIONS[..4]).unwrap();
         for (id, tags) in [("none", "[]"), ("some", "[\"a\"]")] {
             index
                 .execute(

@@ -98,6 +98,18 @@ pub(crate) fn document_gate(
     conn: &Connection,
     record: &InboundRecord,
 ) -> Result<Gate, StorageError> {
+    document_gate_with(conn, record, |local| local)
+}
+
+/// [`document_gate`] for a type whose stored payload differs from its wire
+/// payload: `wire` turns the stored local payload into what a push would send
+/// before §6.5.2 P4's equal-clock comparison (an agent record opens its sealed
+/// keys).
+pub(crate) fn document_gate_with(
+    conn: &Connection,
+    record: &InboundRecord,
+    wire: impl FnOnce(Object) -> Object,
+) -> Result<Gate, StorageError> {
     if record.deleted_at.is_some() {
         return Ok(Gate::Wholesale);
     }
@@ -114,7 +126,8 @@ pub(crate) fn document_gate(
     // device would push is the row being pulled. The stored payload is the
     // push payload (P2), so it is the comparison; a deleted or corrupt local
     // row cannot answer, so it applies.
-    let identical = || pushable && payloads_identical(local.object(), remote.object());
+    let identical =
+        || pushable && payloads_identical(&wire(local.object().clone()), remote.object());
     Ok(
         match resolve_clock_conflict(local_clock.as_ref(), &remote_clock, identical) {
             DocumentResolution::Apply => Gate::Wholesale,
@@ -187,18 +200,43 @@ pub(crate) fn apply_remote_merged(
         Change::Set(as_json(&result.merged_field_clocks)?),
     ));
 
-    // One transaction, and **no outbox row**: §6.5.2 P3, the merging device
-    // stores the union clock and does not re-push.
+    write_merged(conn, record, &changes, now_ms)?;
+    Ok(Inbound::Merged {
+        conflicted_fields: result.conflicted_fields,
+    })
+}
+
+/// Writes a concurrent branch's merged `changes` over the stored payload, and
+/// the bookkeeping the wholesale path would have written, in one transaction.
+///
+/// **No outbox row**: §6.5.2 P3, the merging device stores the union clock and
+/// does not re-push. `deleted_at` is untouched: this branch cannot be a
+/// tombstone.
+pub(crate) fn write_merged(
+    conn: &Connection,
+    record: &InboundRecord,
+    changes: &[(&str, Change)],
+    now_ms: i64,
+) -> Result<(), StorageError> {
     let transaction = conn.unchecked_transaction().map_err(failed)?;
+    write_merged_in(&transaction, record, changes, now_ms)?;
+    transaction.commit().map_err(failed)
+}
+
+/// [`write_merged`] inside a transaction the caller holds.
+pub(crate) fn write_merged_in(
+    transaction: &Connection,
+    record: &InboundRecord,
+    changes: &[(&str, Change)],
+    now_ms: i64,
+) -> Result<(), StorageError> {
     sync_items::apply_local_edit_in(
-        &transaction,
+        transaction,
         &record.item_type,
         &record.item_id,
-        &changes,
+        changes,
         now_ms,
     )?;
-    // The bookkeeping the wholesale path would have written. `deleted_at` is
-    // untouched: this branch cannot be a tombstone.
     transaction
         .execute(
             "UPDATE sync_items SET server_cursor = ?3, signer_device_id = ?4, updated_at = ?5
@@ -212,11 +250,7 @@ pub(crate) fn apply_remote_merged(
             ],
         )
         .map_err(failed)?;
-    transaction.commit().map_err(failed)?;
-
-    Ok(Inbound::Merged {
-        conflicted_fields: result.conflicted_fields,
-    })
+    Ok(())
 }
 
 /// The stored payload of a row that has one, or `None` when there is nothing
@@ -246,7 +280,12 @@ pub(crate) fn wholesale(
     record: &InboundRecord,
     now_ms: i64,
 ) -> Result<Inbound, StorageError> {
-    Ok(match sync_items::apply_remote(conn, record, now_ms)? {
+    Ok(inbound(sync_items::apply_remote(conn, record, now_ms)?))
+}
+
+/// What a wholesale store of a record did, as the pull counts it.
+pub(crate) fn inbound(outcome: sync_items::ApplyOutcome) -> Inbound {
+    match outcome {
         sync_items::ApplyOutcome::Applied => Inbound::Applied,
         sync_items::ApplyOutcome::Corrupt { reason } => Inbound::Corrupt { reason },
         // The wholesale path runs no document gate, so it has no skip of its
@@ -256,7 +295,7 @@ pub(crate) fn wholesale(
         // `task_activity` is the only expiring type (§13.12) and it is neither
         // of the two field-merged ones, so this arm is unreachable here.
         sync_items::ApplyOutcome::Expired => Inbound::Skipped,
-    })
+    }
 }
 
 /// `fieldClocks` with each changed **listed** field ticked for this device.
@@ -298,7 +337,7 @@ pub(crate) fn next_field_clocks(
 ///
 /// An unparseable clock is an error and never an empty clock: an empty one
 /// lowers `clockTotal` and changes the winner (§6.10).
-fn stored_clock(stored: &Object) -> Result<Option<VectorClock>, StorageError> {
+pub(crate) fn stored_clock(stored: &Object) -> Result<Option<VectorClock>, StorageError> {
     match stored.get("clock") {
         None | Some(Value::Null) => Ok(None),
         Some(value) => serde_json::from_value(value.clone())
@@ -309,7 +348,7 @@ fn stored_clock(stored: &Object) -> Result<Option<VectorClock>, StorageError> {
     }
 }
 
-fn stored_field_clocks(
+pub(crate) fn stored_field_clocks(
     stored: &Object,
     whose: &str,
 ) -> Result<BTreeMap<String, VectorClock>, StorageError> {

@@ -1,5 +1,5 @@
 //! `home_page`: Home boards (`HomePageSyncPayloadSchema`,
-//! `packages/contracts/src/sync-payloads.ts`, migration `0027`).
+//! `packages/contracts/src/sync-payloads.ts`, migration `0028`).
 //!
 //! Eight fields under a whole-row clock. `widgets` is an opaque JSON string and
 //! is stored as sent, never parsed into widgets: the merge
@@ -11,6 +11,11 @@
 //! whole `home_pages` row, so `id` and `syncedAt` can arrive as unmodelled keys
 //! and are preserved. An absent `name` is empty text, an absent `position` 0,
 //! an absent `widgets` `[]`, and an absent instant the apply time.
+//!
+//! `created_at` keeps the stored value (`COALESCE`), so a board whose payload
+//! has no `createdAt` keeps the time of its first apply. A
+//! `rebuild_projections` into dropped tables has no stored value and writes
+//! the rebuild time; Electron has no rebuild (chapter 13 §13.7.24).
 
 use rusqlite::{Connection, params};
 use serde_json::Value;

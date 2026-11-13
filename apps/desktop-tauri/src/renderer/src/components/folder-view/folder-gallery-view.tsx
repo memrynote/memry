@@ -37,6 +37,7 @@ import {
   type TagMetaMap
 } from './note-card-pieces'
 import { RowContextMenu, type RowMenuActions } from './row-context-menu'
+import { folderLabel } from './property-cell'
 
 export interface FolderGalleryViewProps {
   notes: NoteWithProperties[]
@@ -221,7 +222,7 @@ export function FolderGalleryView({
               <div className="flex items-center gap-1.5 text-[11px] text-muted-foreground/70">
                 <Folder className="size-3 shrink-0" />
                 <span className="truncate">
-                  {note.folder ? note.folder.replace(/^\//, '') : '—'}
+                  {folderLabel(note.folder, note.path)?.replace(/^\//, '') ?? '—'}
                 </span>
                 <div className="flex-1" />
                 <span className="tabular-nums">{formatRelative(note.modified)}</span>

@@ -3,8 +3,12 @@
 
 pub mod cached_key;
 pub mod catalog;
+pub mod features;
+pub mod fill_fields;
 pub mod local_agent;
 pub mod local_provider;
 pub mod provider;
 pub mod proxy;
 pub mod settings;
+pub mod structured;
+pub mod writing_assist;

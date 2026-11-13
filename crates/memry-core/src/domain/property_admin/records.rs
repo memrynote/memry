@@ -229,6 +229,11 @@ impl DefinitionRecords {
         self.db.call_blocking(|conn| learned::learn(conn, wanted))
     }
 
+    /// [`learned::forget`].
+    pub fn forget_learned(&self, names: &[String]) -> Result<(), StorageError> {
+        self.db.call_blocking(|conn| learned::forget(conn, names))
+    }
+
     /// [`learned::promote`], under this device's identity.
     pub fn promote(
         &self,

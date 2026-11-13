@@ -9,6 +9,7 @@ import { foldTag } from '@memry/shared/tag-fold'
 import {
   useCallback,
   useEffect,
+  useEffectEvent,
   useMemo,
   useRef,
   useState,
@@ -91,7 +92,8 @@ import { toast } from 'sonner'
 import { useTabs, useActiveTab } from '@/contexts/tabs'
 import { useTabIdentity } from '@/contexts/tabs/tab-identity'
 import { useTabViewState } from '@/hooks/use-tab-view-state'
-import { useTabScrollRestore } from '@/hooks/use-tab-scroll-restore'
+import { RESTORE_MAX_MS, useTabScrollRestore } from '@/hooks/use-tab-scroll-restore'
+import { generateJournalId } from '@memry/contracts/journal-api'
 import {
   DEFAULT_JOURNAL_DRILL,
   JOURNAL_DATE_KEY,
@@ -103,9 +105,11 @@ import {
   type JournalDrill
 } from './journal-view-state'
 import { resolveWikiLink } from '@/lib/wikilink-resolver'
-import { scrollToHeadingBlock } from '@/lib/scroll-to-heading'
+import { journalDayTab } from '@/lib/memry-links'
+import { scrollToHeadingBlock, scrollToHeadingWhenReady } from '@/lib/scroll-to-heading'
 import { splitWikiTarget, normalizeHeading } from '@memry/shared/wiki-target'
 import { extractInlineTagsFromMarkdown } from '@memry/shared/inline-tags'
+import { JournalPastYears } from '@/components/journal/journal-past-years'
 import {
   createJournalDateLabels,
   formatDateToISO,
@@ -120,6 +124,7 @@ import {
   useJournalEntry,
   useJournalHeatmap,
   useMonthEntries,
+  useSameDayEntries,
   useYearStats
 } from '@/hooks/use-journal'
 import { useIsBookmarked } from '@/hooks/use-bookmarks'
@@ -207,6 +212,11 @@ export function JournalPage({ className }: JournalPageProps): React.JSX.Element 
     parse: parseJournalDrill
   })
   const selectedDate = resolveJournalDate(tabDate, selectedDateState)
+  const [headingRequest, setHeadingRequest] = useTabViewState<string | undefined>({
+    key: 'headingText',
+    defaultValue: undefined,
+    parse: (raw) => (typeof raw === 'string' ? raw : undefined)
+  })
   const currentViewState = useMemo<JournalViewState>(
     () => toJournalViewState(drill, selectedDate),
     [drill, selectedDate]
@@ -279,13 +289,21 @@ export function JournalPage({ className }: JournalPageProps): React.JSX.Element 
     incoming: rawBacklinks,
     outgoing: outgoingLinks,
     isLoading: backlinksLoading
-  } = useNoteLinksQuery(entry?.id ?? null)
+  } = useNoteLinksQuery(entry?.id ?? generateJournalId(selectedDate))
 
   // Tags hook
   const { tags: allAvailableTags } = useNoteTagsQuery()
 
   // Journal settings
-  const { settings: journalSettings, isLoading: isJournalSettingsLoading } = useJournalSettings()
+  const {
+    settings: journalSettings,
+    isLoading: isJournalSettingsLoading,
+    updateSettings: updateJournalSettings
+  } = useJournalSettings()
+  const toggleAllYears = useCallback(
+    () => void updateJournalSettings({ allYearsView: !journalSettings.allYearsView }),
+    [updateJournalSettings, journalSettings.allYearsView]
+  )
 
   // Editor settings — width follows the global setting (Normal / Full) unless
   // the user overrides it for Journal, which applies to every journal page.
@@ -491,6 +509,7 @@ export function JournalPage({ className }: JournalPageProps): React.JSX.Element 
   useTabScrollRestore({
     getScrollElement: getJournalScrollEl,
     enabled: currentViewState.type !== 'day' || editorLoadState === 'loaded',
+    restore: !headingRequest,
     key: journalScrollKey(currentViewState)
   })
   const prefersReducedMotion = useReducedMotion()
@@ -665,7 +684,7 @@ export function JournalPage({ className }: JournalPageProps): React.JSX.Element 
   )
 
   const navigateToDay = useCallback(
-    (date: string) => {
+    (date: string, heading: string | null = null) => {
       setSelectedDateState(date)
       setDrill({ type: 'day' })
       openTab({
@@ -677,7 +696,7 @@ export function JournalPage({ className }: JournalPageProps): React.JSX.Element 
         isModified: false,
         isPreview: false,
         isDeleted: false,
-        viewState: { date }
+        viewState: { date, headingText: heading ?? undefined }
       })
     },
     [openTab, setDrill, t]
@@ -702,6 +721,19 @@ export function JournalPage({ className }: JournalPageProps): React.JSX.Element 
     const nextDay = addDays(selectedDateObj, 1)
     navigateToDay(formatDateToISO(nextDay))
   }, [selectedDateObj, navigateToDay])
+
+  // Year jumps land only on years that have an entry on this day (newest first).
+  const { entries: sameDayEntries } = useSameDayEntries(selectedDate)
+  const previousYearDate = sameDayEntries.find((e) => e.date < selectedDate)?.date ?? null
+  const nextYearDate = sameDayEntries.findLast((e) => e.date > selectedDate)?.date ?? null
+
+  const handlePreviousYearSameDay = useCallback(() => {
+    if (previousYearDate) navigateToDay(previousYearDate)
+  }, [previousYearDate, navigateToDay])
+
+  const handleNextYearSameDay = useCallback(() => {
+    if (nextYearDate) navigateToDay(nextYearDate)
+  }, [nextYearDate, navigateToDay])
 
   const handlePreviousMonth = useCallback(() => {
     if (currentViewState.type === 'month') {
@@ -850,6 +882,21 @@ export function JournalPage({ className }: JournalPageProps): React.JSX.Element 
     [headings]
   )
 
+  const requestedHeadingId = useEffectEvent(() => {
+    const wanted = normalizeHeading(headingRequest ?? '')
+    return headings.find((heading) => normalizeHeading(heading.text) === wanted)?.id ?? null
+  })
+  useEffect(() => {
+    if (!headingRequest || isDataPending) return undefined
+    return scrollToHeadingWhenReady({
+      getContainer: () => editorContainerRef.current,
+      getHeadingId: requestedHeadingId,
+      smooth: false,
+      timeoutMs: RESTORE_MAX_MS,
+      onSettled: () => setHeadingRequest(undefined)
+    })
+  }, [headingRequest, isDataPending, setHeadingRequest])
+
   const handleInternalLinkClick = useCallback(
     async (linkedNoteIdOrTitle: string, open?: WikiLinkOpenTarget) => {
       const target = linkedNoteIdOrTitle?.trim()
@@ -915,6 +962,11 @@ export function JournalPage({ className }: JournalPageProps): React.JSX.Element 
               isDeleted: false
             })
             break
+          case 'journal':
+            // Another day of this journal: plain clicks stay on this page.
+            if (open) openLinked(journalDayTab(resolution.id, resolution.heading))
+            else navigateToDay(resolution.id, resolution.heading)
+            break
           case 'create':
             // Same confirm dialog as the note editor (#1716) instead of the
             // old dead-end "not found" toast.
@@ -929,7 +981,15 @@ export function JournalPage({ className }: JournalPageProps): React.JSX.Element 
         toast.error(t('toast.openLinkedItemFailed'))
       }
     },
-    [openTab, openInNewTab, openToTheSide, t, scrollToHeadingText, prefersReducedMotion]
+    [
+      openTab,
+      openInNewTab,
+      openToTheSide,
+      t,
+      scrollToHeadingText,
+      prefersReducedMotion,
+      navigateToDay
+    ]
   )
 
   // The confirmed half of the wiki-link create dialog: create in the default
@@ -1013,6 +1073,10 @@ export function JournalPage({ className }: JournalPageProps): React.JSX.Element 
     goPrevious: handleNavigationPrevious,
     goNext: handleNavigationNext,
     goToday: handleTodayClick,
+    goPreviousYear: previousYearDate ? handlePreviousYearSameDay : null,
+    goNextYear: nextYearDate ? handleNextYearSameDay : null,
+    toggleAllYears,
+    allYearsView: journalSettings.allYearsView,
     isBookmarked,
     toggleBookmark: handleBookmarkToggle,
     toggleFullWidth: toggleJournalWidth,
@@ -1208,8 +1272,13 @@ export function JournalPage({ className }: JournalPageProps): React.JSX.Element 
             <JournalBreadcrumb
               viewState={currentViewState}
               isToday={isToday}
+              today={today}
               onPreviousDay={handlePreviousDay}
               onNextDay={handleNextDay}
+              previousYearDate={previousYearDate}
+              nextYearDate={nextYearDate}
+              onPreviousYear={() => runJournal('journal.previousYear')}
+              onNextYear={() => runJournal('journal.nextYear')}
               onMonthClick={navigateToMonth}
               onYearClick={navigateToYear}
               onTodayClick={handleTodayClick}
@@ -1445,6 +1514,17 @@ export function JournalPage({ className }: JournalPageProps): React.JSX.Element 
                           )}
                         </div>
 
+                        {!isJournalSettingsLoading &&
+                          (journalSettings.showOnThisDay || journalSettings.allYearsView) && (
+                            <JournalPastYears
+                              date={selectedDate}
+                              today={today}
+                              allYears={journalSettings.allYearsView}
+                              onToggleAllYears={() => runJournal('journal.toggleAllYears')}
+                              onOpenDay={navigateToDay}
+                            />
+                          )}
+
                         {/* Excluded from marquee/focus-at-end so graph drags and
                             clicks are not hijacked by the editor's marquee zone. */}
                         {isLocalGraphOpen && entryId && (
@@ -1468,7 +1548,7 @@ export function JournalPage({ className }: JournalPageProps): React.JSX.Element 
                           </div>
                         )}
 
-                        {entry && (backlinks.length > 0 || outgoingLinks.length > 0) && (
+                        {(backlinks.length > 0 || outgoingLinks.length > 0) && (
                           <div className="mt-6 flex flex-col gap-6" data-marquee-ignore>
                             <BacklinksSection
                               backlinks={backlinks}

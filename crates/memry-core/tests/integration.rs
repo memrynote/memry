@@ -16,6 +16,8 @@ mod support;
 mod account_setup;
 #[path = "agent_envelope_vectors.rs"]
 mod agent_envelope_vectors;
+#[path = "agent_records_sync.rs"]
+mod agent_records_sync;
 #[path = "api_attachment_fetch.rs"]
 mod api_attachment_fetch;
 #[path = "api_inbox.rs"]
@@ -190,6 +192,18 @@ mod domain_reminders_task;
 mod domain_saved_filters;
 #[path = "domain_search.rs"]
 mod domain_search;
+#[path = "domain_search_filter.rs"]
+mod domain_search_filter;
+#[path = "domain_search_inbox.rs"]
+mod domain_search_inbox;
+#[path = "domain_search_names.rs"]
+mod domain_search_names;
+#[path = "domain_search_query.rs"]
+mod domain_search_query;
+#[path = "domain_search_rows.rs"]
+mod domain_search_rows;
+#[path = "domain_search_snippet.rs"]
+mod domain_search_snippet;
 #[path = "domain_tag_categories.rs"]
 mod domain_tag_categories;
 #[path = "domain_task_activity.rs"]
@@ -246,6 +260,8 @@ mod inbox_vectors;
 mod journal_body;
 #[path = "journal_day_merge.rs"]
 mod journal_day_merge;
+#[path = "journal_ghost_refs.rs"]
+mod journal_ghost_refs;
 #[path = "journal_links.rs"]
 mod journal_links;
 #[path = "journal_metadata.rs"]
@@ -364,12 +380,18 @@ mod recreate_clock_vectors;
 mod recurrence_vectors;
 #[path = "roundtrip_acceptance.rs"]
 mod roundtrip_acceptance;
+#[path = "search_body_cache.rs"]
+mod search_body_cache;
 #[path = "session_refresh_errors.rs"]
 mod session_refresh_errors;
 #[path = "snapshot_embeds.rs"]
 mod snapshot_embeds;
+#[path = "sync_body_heal.rs"]
+mod sync_body_heal;
 #[path = "sync_cursor_repair.rs"]
 mod sync_cursor_repair;
+#[path = "sync_empty_body_pull.rs"]
+mod sync_empty_body_pull;
 #[path = "sync_engine.rs"]
 mod sync_engine;
 #[path = "sync_engine_seed.rs"]

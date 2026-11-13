@@ -28,7 +28,20 @@ struct VaultsScreen: View {
                     }
                     .accessibilityIdentifier("settings.vault.\(vault.id)")
                     .swipeActions(edge: .trailing) {
-                        Button(SettingsCopy.deleteFromAccount, role: .destructive) { deleting = vault }
+                        // Tinted, not `role: .destructive`: a destructive swipe
+                        // removes the row, and the confirmation on it with it.
+                        Button(SettingsCopy.deleteFromAccount) { deleting = vault }
+                            .tint(.red)
+                    }
+                    // On the row, so the popover points at it on iPad.
+                    .confirmationDialog(
+                        SettingsCopy.deleteVaultTitle(name(vault)),
+                        isPresented: Binding(get: { deleting?.id == vault.id }, set: { if !$0 { deleting = nil } }),
+                        titleVisibility: .visible
+                    ) {
+                        Button(SettingsCopy.deleteFromAccount, role: .destructive) { Task { await delete(vault) } }
+                    } message: {
+                        Text(SettingsCopy.deleteVaultMessage)
                     }
                 }
             } header: {
@@ -42,15 +55,6 @@ struct VaultsScreen: View {
         .navigationBarTitleDisplayMode(.inline)
         .task { await load() }
         .refreshable { await load() }
-        .confirmationDialog(
-            SettingsCopy.deleteVaultTitle(deleting.map(name) ?? ""),
-            isPresented: Binding(get: { deleting != nil }, set: { if !$0 { deleting = nil } }),
-            titleVisibility: .visible
-        ) {
-            Button(SettingsCopy.deleteFromAccount, role: .destructive) { let vault = deleting; Task { await delete(vault) } }
-        } message: {
-            Text(SettingsCopy.deleteVaultMessage)
-        }
     }
 
     private func name(_ vault: VaultSummary) -> String {
@@ -67,8 +71,8 @@ struct VaultsScreen: View {
         }
     }
 
-    private func delete(_ vault: VaultSummary?) async {
-        guard let vault, vault.id != context.vaultId else { return }
+    private func delete(_ vault: VaultSummary) async {
+        guard vault.id != context.vaultId else { return }
         deleting = nil
         if let error = await context.account.deleteVault(vault.id) {
             failure = error

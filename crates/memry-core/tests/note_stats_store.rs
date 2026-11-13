@@ -263,15 +263,15 @@ fn a_newer_index_is_set_aside_and_rebuilt() {
 }
 
 #[test]
-fn a_version_2_index_migrates_in_place_to_note_stats() {
+fn a_version_3_index_migrates_in_place_to_note_stats() {
     let dir = scratch();
     let (vault, search) = open(dir.path());
     seed_three(&vault);
     drop((search, vault));
     // The file an earlier build left: everything but this migration's table.
     index_db(dir.path())
-        .execute_batch("DROP TABLE note_stats; PRAGMA user_version = 2;")
-        .expect("back to version 2");
+        .execute_batch("DROP TABLE note_stats; PRAGMA user_version = 3;")
+        .expect("back to version 3");
 
     let vault = open_vault(dir.path());
     let (search, reason) = vault.search_reporting().expect("index.db");

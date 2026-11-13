@@ -3,7 +3,8 @@ import { spellingFor, writingToolsService } from './writing-tools-service'
 
 const commands = vi.hoisted(() => ({
   spellCheckWord: vi.fn(),
-  spellAddWord: vi.fn()
+  spellAddWord: vi.fn(),
+  writingGenerateAssist: vi.fn()
 }))
 
 vi.mock('../../../generated/bindings', () => ({ commands }))
@@ -14,6 +15,7 @@ vi.mock('../lib/logger', () => ({
 beforeEach(() => {
   commands.spellCheckWord.mockReset()
   commands.spellAddWord.mockReset()
+  commands.writingGenerateAssist.mockReset()
 })
 
 describe('spellingFor', () => {
@@ -57,5 +59,24 @@ describe('writingToolsService.addWordToDictionary', () => {
     commands.spellAddWord.mockResolvedValue(true)
     expect(await writingToolsService.addWordToDictionary('memry')).toBe(true)
     expect(commands.spellAddWord).toHaveBeenCalledWith('memry')
+  })
+})
+
+describe('writingToolsService.generateAssist', () => {
+  it('asks the Rust command and rejects with its translated reason', async () => {
+    const input = { kind: 'alternatives' as const, text: 'quick', context: 'a quick fox' }
+    commands.writingGenerateAssist.mockResolvedValue({
+      kind: 'alternatives',
+      alternatives: ['fast']
+    })
+    expect(await writingToolsService.generateAssist(input)).toEqual({
+      kind: 'alternatives',
+      alternatives: ['fast']
+    })
+    expect(commands.writingGenerateAssist).toHaveBeenCalledWith(input)
+
+    const refused = { kind: 'Invalid', code: 'ai.apiKeyMissing', message: 'Add your OpenAI key' }
+    commands.writingGenerateAssist.mockRejectedValue(refused)
+    await expect(writingToolsService.generateAssist(input)).rejects.toBe(refused)
   })
 })

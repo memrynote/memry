@@ -1,12 +1,16 @@
-//! A property the note index reads with no definition types every later read by the type it was
-//! first read with (#3530 13k-4c-2, Electron's `learnCanonicalPropertyType`), over a real
-//! session, tier, watcher and index task. The learned type is this device's alone, as
-//! Electron's unsynced row is: not a definition, so neither `properties.md`, nor a synced
-//! record, nor the definitions list holds it.
+//! A property the note index reads with no definition types every later read by the type the
+//! pass read it with (#3530 13k-4c-2, Electron's `learnCanonicalPropertyType`), over a real
+//! session, tier, watcher and index task. The learned type is written into `properties.md`, as
+//! Electron's reload folds its unsynced rows in (2b3a512960), and has no synced record until a
+//! sync pass seeds it.
 //!
 //! | Test                                                      | Rule                                   |
 //! | --------------------------------------------------------- | -------------------------------------- |
 //! | a read learns a type once, and later values follow it     | the first type read types the rest     |
+//! | values a learned type cannot show settle it on text       | `settleLearnedTypes`                   |
+//! | a type the user chose never settles                       | only a learned type settles            |
+//! | learned definitions are in the file after a reopen        | the fold into `properties.md`          |
+//! | types an older build learned reach the file on a list     | the fold of what `meta` still holds    |
 //! | a day's title follows the type a note's title learned     | a note before a day (13q-9 diff)       |
 //! | a defined name keeps its definition                       | only a name with none is learned       |
 //! | a deleted definition stays deleted through a retype       | a retype learns nothing                |
@@ -93,6 +97,33 @@ impl Fixture {
         std::fs::read_to_string(self.e.vault.join(".memry/properties.md")).ok()
     }
 
+    /// `name`'s definition in the file and the list, of `type_name`, with no synced record.
+    fn learned_into_the_file(&self, name: &str, type_name: &str) {
+        let listed = self
+            .definition(name)
+            .unwrap_or_else(|| panic!("{name} not listed"));
+        assert_eq!(serde_json::to_value(listed.type_name).unwrap(), type_name);
+        let file = self.properties_file().unwrap_or_default();
+        assert!(
+            file.contains(&format!("  {name}:\n    type: {type_name}\n")),
+            "{name} not in the file:\n{file}"
+        );
+        let open = self.e.session.current().unwrap();
+        let records = open.vault.property_definition_records(self.store.clone());
+        let records = records.unwrap();
+        assert!(
+            records
+                .list()
+                .unwrap()
+                .iter()
+                .all(|stored| stored.record.name != name)
+        );
+        assert!(
+            !records.learned().unwrap().contains_key(name),
+            "{name} still learned"
+        );
+    }
+
     /// No definition of `name` anywhere a user or another device sees one.
     fn undefined(&self, name: &str) {
         assert!(self.definition(name).is_none(), "{name} listed");
@@ -112,12 +143,13 @@ impl Fixture {
 }
 
 /// The first file read learns `rating`, and `Second.md`, read in the same pass by the
-/// definitions as the pass found them, is retyped by the next.
+/// definitions as the pass found them, is retyped by the next. A note a later pass reads keeps
+/// the type: only what one pass read settles it.
 #[test]
 fn a_read_learns_a_type_once_and_later_values_follow_it() {
     let f = opened(&[
         ("First.md", "---\nrating: 5\n---\n"),
-        ("Second.md", "---\nrating: high\n---\n"),
+        ("Second.md", "---\nrating: '7'\n---\n"),
     ]);
     until("the note read in the same pass retyped", || {
         f.row_type("Second.md", "rating").as_deref() == Some("number")
@@ -126,8 +158,88 @@ fn a_read_learns_a_type_once_and_later_values_follow_it() {
     until("the later note read", || {
         f.row_type("Later.md", "rating").as_deref() == Some("number")
     });
-    f.undefined("rating");
-    assert_eq!(f.properties_file(), None);
+    f.learned_into_the_file("rating", "number");
+}
+
+/// 2b3a512960: with `rating: 5` in one note and `rating: good` in another, the type was the
+/// first file's, and `good` could not show under it. A learned type some value does not fit
+/// settles on text.
+#[test]
+fn values_a_learned_type_cannot_show_settle_it_on_text() {
+    let f = opened(&[
+        ("First.md", "---\nrating: 5\n---\n"),
+        ("Second.md", "---\nrating: good\n---\n"),
+    ]);
+    until("the rows typed by the settled type", || {
+        f.row_type("First.md", "rating").as_deref() == Some("text")
+            && f.row_type("Second.md", "rating").as_deref() == Some("text")
+    });
+    f.learned_into_the_file("rating", "text");
+}
+
+/// A number the user chose stays a number over a value it cannot show.
+#[test]
+fn a_type_the_user_chose_never_settles() {
+    let chosen = "---\nproperties:\n  rating:\n    type: number\n---\n";
+    let f = opened(&[
+        (".memry/properties.md", chosen),
+        ("First.md", "---\nrating: 5\n---\n"),
+        ("Second.md", "---\nrating: good\n---\n"),
+    ]);
+    assert_eq!(f.row_type("Second.md", "rating").as_deref(), Some("number"));
+    assert_eq!(f.properties_file().as_deref(), Some(chosen));
+    let listed = f.definition("rating").unwrap();
+    assert_eq!(listed.type_name, DefinitionType::Number);
+}
+
+/// 2b3a512960: Electron's reload deleted the learned rows, so a vault opened from Obsidian lost
+/// its text and number definitions on the next launch. Here they are in `properties.md`.
+#[test]
+fn learned_definitions_are_in_the_file_after_a_reopen() {
+    let mut f = opened(&[(
+        "Plan.md",
+        "---\nrating: 5\nsite: https://example.com\nmood: calm\n---\n",
+    )]);
+    until("the names learned", || {
+        f.typed_with().is_some_and(|typed| {
+            ["rating", "site", "mood"]
+                .iter()
+                .all(|n| typed.contains_key(*n))
+        })
+    });
+    f.e.close();
+    f.e.open();
+    f.e.facts_until(vault_env::indexed);
+    f.learned_into_the_file("rating", "number");
+    f.learned_into_the_file("site", "url");
+    f.learned_into_the_file("mood", "text");
+}
+
+/// A type an older build learned is in `meta` only. The next list writes it into the file, and
+/// it leaves `meta`; a name the file holds keeps the file's entry.
+#[test]
+fn types_an_older_build_learned_reach_the_file_on_a_list() {
+    let f = crate::property_definitions::fixture();
+    f.set_file(DEFINITIONS);
+    let data = rusqlite::Connection::open(f.vault.join(".memry/core/data.db")).unwrap();
+    data.execute(
+        "INSERT INTO meta (key, value) VALUES ('property_definitions.learned', ?1)",
+        [r#"{"rating":"number","stage":"text"}"#],
+    )
+    .unwrap();
+    let names: Vec<String> = f
+        .definitions
+        .list()
+        .unwrap()
+        .into_iter()
+        .map(|d| d.name)
+        .collect();
+    assert_eq!(names, ["project", "rating", "stage"]);
+    let file = f.file().unwrap();
+    assert!(file.contains(DEFINED_KEPT), "{file}");
+    assert!(file.contains("  rating:\n    type: number\n"), "{file}");
+    assert!(f.records.learned().unwrap().is_empty());
+    assert!(f.record("rating").is_none());
 }
 
 /// A note's `title` is a property (Electron's `RESERVED_FRONTMATTER_KEYS` holds no `title`). A
@@ -149,10 +261,12 @@ fn a_days_title_follows_the_type_a_notes_title_learned() {
         f.row_type("notes/plan.md", "title").as_deref(),
         Some("text")
     );
-    f.undefined("title");
+    f.learned_into_the_file("title", "text");
 }
 
 const DEFINITIONS: &str = "---\nproperties:\n  stage:\n    type: select\n    options:\n      - value: Draft\n        color: sky\n  project:\n    type: text\n    color: red\n---\n";
+/// The entries of [`DEFINITIONS`] as the file keeps them after another entry is written.
+const DEFINED_KEPT: &str = "  stage:\n    type: select\n    options:\n      - value: Draft\n        color: sky\n  project:\n    type: text\n    options: []\n    color: red\n";
 
 #[test]
 fn a_defined_name_keeps_its_definition() {
@@ -165,9 +279,11 @@ fn a_defined_name_keeps_its_definition() {
     assert_eq!(f.row_type("Plan.md", "site").as_deref(), Some("url"));
     assert_eq!(f.row_type("Plan.md", "project").as_deref(), Some("project"));
     assert_eq!(f.row_type("Plan.md", "links").as_deref(), Some("relation"));
-    assert_eq!(f.properties_file().as_deref(), Some(DEFINITIONS));
+    let file = f.properties_file().unwrap();
+    assert!(file.contains(DEFINED_KEPT), "{file}");
     let names: Vec<String> = f.definitions().into_iter().map(|d| d.name).collect();
-    assert_eq!(names, ["project", "stage"]);
+    assert_eq!(names, ["project", "site", "stage"]);
+    f.learned_into_the_file("site", "url");
 }
 
 /// A definition the user deleted while notes hold the name stays deleted: the retype its delete
@@ -223,6 +339,7 @@ fn a_note_read_only_to_retype_it_teaches_nothing() {
         [],
     )
     .unwrap();
+    std::fs::remove_file(f.e.vault.join(".memry/properties.md")).unwrap();
     let search = f.e.session.current().unwrap().search;
     let mut older = f.typed_with().unwrap();
     older.remove("title");
@@ -255,7 +372,6 @@ fn a_note_read_only_to_retype_it_teaches_nothing() {
 fn learning_over_a_definition_that_landed_meanwhile_keeps_it() {
     let f = crate::property_definitions::fixture();
     f.set_file(DEFINITIONS);
-    let file = f.file();
     let wanted = |pairs: &[(&str, DefinitionType)]| {
         pairs
             .iter()
@@ -272,10 +388,11 @@ fn learning_over_a_definition_that_landed_meanwhile_keeps_it() {
             .learn(wanted(&[("site", DefinitionType::Text)]))
             .unwrap()
     );
-    assert_eq!(f.file(), file);
+    let held = f.file().unwrap();
+    assert!(held.contains(DEFINED_KEPT), "{held}");
+    assert!(held.contains("  site:\n    type: url\n"), "{held}");
     assert!(f.record("site").is_none());
-    let learned = f.records.learned().unwrap();
-    assert_eq!(learned, BTreeMap::from([("site".into(), "url".into())]));
+    assert!(f.records.learned().unwrap().is_empty());
     let types = f.definitions.types().unwrap();
     assert_eq!(types.get("stage").map(String::as_str), Some("select"));
     assert_eq!(types.get("site").map(String::as_str), Some("url"));

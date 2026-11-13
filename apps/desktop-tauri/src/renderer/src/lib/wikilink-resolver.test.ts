@@ -290,6 +290,99 @@ describe('wikilink-resolver', () => {
     })
   })
 
+  describe('journal days', () => {
+    const journalDay = (date: string) => ({
+      type: 'journal',
+      id: date,
+      title: date,
+      fileType: 'markdown',
+      icon: 'book-open',
+      heading: null
+    })
+
+    it.each<[string, string | null]>([
+      ['2025-01-01', null],
+      ['2025-01-01#Decisions', 'Decisions'],
+      ['2025-01-01#Morning#Decisions', 'Decisions'],
+      ['2025-01-01#^block', null]
+    ])('opens a written day with the heading from %s', async (target, heading) => {
+      resolveByTitle.mockResolvedValue({
+        id: 'imported-journal-id',
+        title: '2025-01-01',
+        path: 'journal/2025-01-01.md',
+        fileType: 'markdown',
+        journalDate: '2025-01-01'
+      })
+
+      expect(await resolveWikiLink(target)).toEqual({ ...journalDay('2025-01-01'), heading })
+    })
+
+    it('does not classify an ordinary note by a journal-shaped id', async () => {
+      resolveByTitle.mockResolvedValue({
+        id: 'j2025-01-01',
+        title: 'Ordinary note',
+        path: 'Ordinary note.md',
+        fileType: 'markdown',
+        journalDate: null
+      })
+
+      expect(await resolveWikiLink('Ordinary note')).toMatchObject({
+        type: 'note',
+        id: 'j2025-01-01'
+      })
+    })
+
+    it.each<[string, string | null]>([
+      ['2011-12-30', null],
+      ['2024-02-29', null],
+      ['2026-11-08', null],
+      ['2026-11-08#Decisions', 'Decisions'],
+      ['2026-11-08#Morning#Decisions', 'Decisions'],
+      ['2026-11-08#', null],
+      ['2026-11-08#^block', null]
+    ])('opens an unwritten day instead of creating a note for %s', async (target, heading) => {
+      resolveByTitle.mockResolvedValue(null)
+
+      expect(await resolveWikiLink(target)).toEqual({ ...journalDay(target.slice(0, 10)), heading })
+    })
+
+    it.each(['2026-11-08', '2026-11-08#Ideas'])(
+      'keeps an existing date-named canvas ahead of an unwritten day for %s',
+      async (target) => {
+        resolveByTitle.mockResolvedValue(null)
+        resolveCanvas.mockImplementation(async (title) =>
+          title === '2026-11-08' ? { id: 'canvas-date', title } : null
+        )
+
+        expect(await resolveWikiLink(target)).toMatchObject({
+          type: 'canvas',
+          id: 'canvas-date',
+          heading: null
+        })
+      }
+    )
+
+    it('keeps a raw note title containing a date and hash ahead of an unwritten day', async () => {
+      resolveByTitle.mockImplementation(async (title) =>
+        title === '2026-11-08#Ideas'
+          ? { id: 'note-date', title, path: `${title}.md`, fileType: 'markdown' }
+          : null
+      )
+
+      expect(await resolveWikiLink('2026-11-08#Ideas')).toMatchObject({
+        type: 'note',
+        id: 'note-date',
+        heading: null
+      })
+    })
+
+    it('keeps offering a note for a date that is not on the calendar', async () => {
+      resolveByTitle.mockResolvedValue(null)
+
+      expect((await resolveWikiLink('2026-02-31')).type).toBe('create')
+    })
+  })
+
   describe('hasFileExtension', () => {
     it('returns true for supported file extensions', () => {
       expect(hasFileExtension('photo.PNG')).toBe(true)

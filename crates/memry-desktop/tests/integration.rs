@@ -5,6 +5,7 @@
 //! it with `--test`) gets a `[[test]]` target in Cargo.toml instead. `every_test_file_is_built`
 //! keeps a new file from being left out of both: with `autotests = false` it would never compile.
 
+mod ai_fake;
 mod device_key;
 mod index_support;
 mod move_tree;
@@ -20,12 +21,26 @@ mod activity_log;
 mod activity_scan;
 #[path = "ai_catalog.rs"]
 mod ai_catalog;
+#[path = "ai_features.rs"]
+mod ai_features;
+#[path = "ai_fill_fields.rs"]
+mod ai_fill_fields;
 #[path = "ai_inline_settings.rs"]
 mod ai_inline_settings;
+#[path = "ai_local_agent.rs"]
+mod ai_local_agent;
+#[path = "ai_local_agent_guards.rs"]
+mod ai_local_agent_guards;
 #[path = "ai_local_provider.rs"]
 mod ai_local_provider;
 #[path = "ai_proxy.rs"]
 mod ai_proxy;
+#[path = "ai_proxy_refusals.rs"]
+mod ai_proxy_refusals;
+#[path = "ai_structured.rs"]
+mod ai_structured;
+#[path = "ai_structured_shapes.rs"]
+mod ai_structured_shapes;
 #[path = "app_edit.rs"]
 mod app_edit;
 #[path = "article_constants.rs"]
@@ -99,6 +114,8 @@ mod editor_readonly;
 mod embeds;
 #[path = "file_open.rs"]
 mod file_open;
+#[path = "fold_agent.rs"]
+mod fold_agent;
 #[path = "fold_untrusted.rs"]
 mod fold_untrusted;
 #[path = "folder_file.rs"]
@@ -125,6 +142,8 @@ mod indexer_facts;
 mod indexer_open_status;
 #[path = "indexer_scan.rs"]
 mod indexer_scan;
+#[path = "ios_beta_join.rs"]
+mod ios_beta_join;
 #[path = "journal_calendar.rs"]
 mod journal_calendar;
 #[path = "journal_change.rs"]
@@ -149,6 +168,8 @@ mod journal_folder_outside;
 mod journal_format_vectors;
 #[path = "journal_rename.rs"]
 mod journal_rename;
+#[path = "journal_same_day.rs"]
+mod journal_same_day;
 #[path = "journal_service.rs"]
 mod journal_service;
 #[path = "journal_stalled_writer.rs"]
@@ -161,6 +182,8 @@ mod large_file_index;
 mod large_file_search;
 #[path = "large_file_sessions.rs"]
 mod large_file_sessions;
+#[path = "local_agent_server.rs"]
+mod local_agent_server;
 #[path = "lock_outside_edits.rs"]
 mod lock_outside_edits;
 #[path = "lock_service.rs"]
@@ -261,6 +284,8 @@ mod property_definitions;
 mod property_definitions_seed;
 #[path = "property_definitions_sync.rs"]
 mod property_definitions_sync;
+#[path = "property_usage.rs"]
+mod property_usage;
 #[path = "sanitize_svg_inert.rs"]
 mod sanitize_svg_inert;
 #[path = "sanitize_svg_untrusted.rs"]

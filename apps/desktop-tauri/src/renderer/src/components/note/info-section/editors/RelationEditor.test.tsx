@@ -1,4 +1,4 @@
-import { render, screen } from '@testing-library/react'
+import { act, render, screen, waitFor } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { describe, it, expect, vi, beforeEach, beforeAll } from 'vitest'
 import { I18nextProvider } from 'react-i18next'
@@ -402,6 +402,47 @@ describe('RelationEditor — emoji and navigation', () => {
     await userEvent.click(chip)
 
     expect(mocks.openTab).not.toHaveBeenCalled()
+  })
+
+  it('shows a relation to an unwritten journal day as that day, and opens it', async () => {
+    mockResolveRefs([
+      ref({
+        uri: 'memry://journal/2026-11-08',
+        targetType: 'journal',
+        targetId: '2026-11-08',
+        title: '',
+        exists: false
+      })
+    ])
+    renderWithI18n(<RelationEditor value={['memry://journal/2026-11-08']} onChange={vi.fn()} />)
+    await userEvent.click(await screen.findByText('2026-11-08'))
+
+    expect(screen.getByTestId('relation-chip-unwritten')).toBeInTheDocument()
+    expect(mocks.openTab).toHaveBeenCalledWith(
+      expect.objectContaining({ type: 'journal', viewState: { date: '2026-11-08' } })
+    )
+  })
+
+  it('updates a mounted ghost relation when its journal day is written elsewhere', async () => {
+    const ghost = ref({
+      uri: 'memry://journal/2026-11-08',
+      targetType: 'journal',
+      targetId: '2026-11-08',
+      title: '',
+      exists: false
+    })
+    mockResolveRefs([ghost])
+    renderWithI18n(<RelationEditor value={[ghost.uri]} onChange={vi.fn()} />)
+    expect(await screen.findByTestId('relation-chip-unwritten')).toBeInTheDocument()
+
+    mockResolveRefs([{ ...ghost, exists: true, title: '2026-11-08' }])
+    act(() => {
+      const callback = vi.mocked(window.api.onJournalExternalChange).mock.calls.at(-1)?.[0]
+      callback?.({ date: '2026-11-08', type: 'modified' })
+    })
+
+    await waitFor(() => expect(screen.queryByTestId('relation-chip-unwritten')).toBeNull())
+    expect(screen.getByTestId('relation-chip')).toHaveTextContent('2026-11-08')
   })
 
   it('removes without navigating when the × is clicked', async () => {

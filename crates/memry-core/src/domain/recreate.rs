@@ -141,6 +141,7 @@ mod tests {
                 vec![],
                 NOW + 1,
                 None,
+                &crate::crypto::agent_envelope::AtRestKey::default(),
             )?;
             assert_eq!(totals.deleted, 1);
 
@@ -168,6 +169,7 @@ mod tests {
                 vec![],
                 NOW + 1,
                 None,
+                &crate::crypto::agent_envelope::AtRestKey::default(),
             )?;
 
             folders::create(conn, "Notes", None, "device-a", NOW + 2)?.acknowledge();
@@ -193,6 +195,7 @@ mod tests {
                 vec![],
                 NOW + 1,
                 None,
+                &crate::crypto::agent_envelope::AtRestKey::default(),
             )?;
 
             tag_admin::set_color(conn, "Work", "sky", "device-a", NOW + 2)?;
@@ -217,6 +220,7 @@ mod tests {
                 vec![],
                 NOW + 1,
                 None,
+                &crate::crypto::agent_envelope::AtRestKey::default(),
             )?;
 
             tag_admin::set_color(conn, "Work", "sky", "device-a", NOW + 2)?;
@@ -248,6 +252,7 @@ mod tests {
                 vec![],
                 NOW + 1,
                 None,
+                &crate::crypto::agent_envelope::AtRestKey::default(),
             )?;
             assert!(tag_admin::definitions(conn)?.is_empty());
 

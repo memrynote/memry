@@ -6,8 +6,8 @@ use serde_json::Value as Json;
 
 use super::{MAX_PULL_IDS, PullError, PullLoop, now_ms};
 use crate::sync::apply::{self, ApplyTotals, Pending};
-use crate::sync::body_debt;
 use crate::sync::refused_items::{self, CORE_BUILD};
+use crate::sync::{body_debt, pull_decode};
 
 impl PullLoop {
     /// Hands the page to [`apply`], which owns every decision about what an
@@ -29,6 +29,7 @@ impl PullLoop {
     ) -> Result<ApplyTotals, PullError> {
         let now = now_ms();
         let clock_device = self.clock_device.clone();
+        let at_rest = self.at_rest.clone();
         Ok(self
             .db
             .call(move |conn| {
@@ -37,8 +38,14 @@ impl PullLoop {
                 } else {
                     Vec::new()
                 };
-                let totals =
-                    apply::apply_page(conn, pending, untyped, now, clock_device.as_deref())?;
+                let totals = apply::apply_page(
+                    conn,
+                    pending,
+                    untyped,
+                    now,
+                    clock_device.as_deref(),
+                    &at_rest,
+                )?;
                 for doc_id in &owed_here {
                     if !totals.applied_documents.contains(doc_id) {
                         body_debt::settle(conn, doc_id)?;
@@ -97,7 +104,7 @@ impl PullLoop {
                 if !requested.contains(&key) {
                     continue;
                 }
-                match self.decode(item) {
+                match pull_decode::decode(&self.declaration, self.cipher.as_ref(), item) {
                     Ok(decoded) => pending.push(decoded),
                     Err(reason) => eprintln!(
                         "memry-core: refused {} {} still does not decode: {reason}",
