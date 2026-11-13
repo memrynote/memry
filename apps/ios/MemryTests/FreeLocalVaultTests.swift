@@ -253,6 +253,14 @@ struct FreeLocalVaultTests {
         #expect(BillingFacts.isActivationPending(status(plan: "pro", status: "inactive")))
     }
 
+    @Test("linking sends a known-unpaid account to the plans, an unknown one to the server")
+    func knownUnpaid() {
+        #expect(BillingFacts.isKnownUnpaid(status(plan: "free", status: "inactive")))
+        #expect(BillingFacts.isKnownUnpaid(status(plan: "pro", status: "inactive")))
+        #expect(!BillingFacts.isKnownUnpaid(status(plan: "pro", status: "active")))
+        #expect(!BillingFacts.isKnownUnpaid(nil))
+    }
+
     @Test("the web checkout carries the token in the fragment")
     func checkoutURL() {
         #expect(PlansLinks.checkout(token: "abc")?.absoluteString == "https://memrynote.com/account/sync#token=abc")

@@ -316,6 +316,54 @@ struct EditorCommitBaseTests {
         #expect(ended.contains(second))
     }
 
+    /// #4506: a page torn down (a split view swapping notes, Back, a
+    /// size-class re-host) can free its model before its focused block
+    /// resigns. The keyboard toolbar keeps the session alive, the model goes.
+    @Test(.timeLimit(.minutes(1))) func typing_lands_when_the_page_frees_its_model_before_the_block_resigns() async {
+        let editor = RecordingEditor()
+        var model: NoteEditorViewModel? = NoteEditorViewModel(noteId: "note-1", editor: editor)
+        let session = model!.session
+        session.model = model
+        let style = BlockText.Style(font: .systemFont(ofSize: 17), ink: .label, titleExists: nil)
+        let field = BlockField(block: paragraph("hello"), session: session, style: style, alignment: .natural)
+        field.render()
+        session.focusChanged(to: field)
+        field.textView.text = "hello world"
+        field.textViewDidChange(field.textView)
+
+        await withCheckedContinuation { (done: CheckedContinuation<Void, Never>) in
+            session.reload = { done.resume() }
+            model = nil
+            field.textViewDidEndEditing(field.textView)
+        }
+
+        #expect(editor.all == [.setText(blockId: "a", text: "hello world")])
+    }
+
+    /// #4506: the dismantle commit (#4346) of a page whose model and session
+    /// are both gone still writes, and nothing outlives the write.
+    @Test(.timeLimit(.minutes(1))) func a_block_dismantled_after_its_page_is_freed_still_writes_its_typing() async {
+        let editor = RecordingEditor()
+        var model: NoteEditorViewModel? = NoteEditorViewModel(noteId: "note-1", editor: editor)
+        weak var freed = model
+        model?.session.model = model
+        let style = BlockText.Style(font: .systemFont(ofSize: 17), ink: .label, titleExists: nil)
+        let field = BlockField(block: paragraph("hello"), session: model!.session, style: style, alignment: .natural)
+        field.render()
+        field.textView.text = "hello world"
+        field.textViewDidChange(field.textView)
+
+        await withCheckedContinuation { (done: CheckedContinuation<Void, Never>) in
+            model?.session.reload = { done.resume() }
+            model = nil
+            EditableBlockView.dismantleUIView(field.textView, coordinator: field)
+        }
+        for _ in 0..<50 { await Task.yield() }
+
+        #expect(editor.all == [.setText(blockId: "a", text: "hello world")])
+        #expect(freed == nil, "the page's model is released once its writes land")
+    }
+
     private func commit(_ session: EditorSession, _ field: BlockField) async {
         await withCheckedContinuation { (done: CheckedContinuation<Void, Never>) in
             session.reload = { done.resume() }

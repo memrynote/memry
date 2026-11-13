@@ -52,8 +52,9 @@ final class EditorFocusMemory {
         return caret
     }
 
+    /// `caret` is still the one remembered, and has not expired.
     func holds(_ caret: Caret) -> Bool {
-        self.caret?.id == caret.id
+        self.caret(in: caret.noteId)?.id == caret.id
     }
 
     /// A new note's title takes the caret when it appears, unless one of the
@@ -93,7 +94,7 @@ extension EditorSession {
     /// Puts the remembered caret back in `field` once the writes queued
     /// before it left have landed and the page has read them. Only the same
     /// note's same block takes it, and only while nothing else has taken the
-    /// caret since.
+    /// caret since: a search field opened over the page keeps it (#4426).
     private func restoreFocus(_ field: BlockField) {
         guard let noteId, let caret = focusMemory.caret(in: noteId),
               caret.blockId == field.blockId, !restoringFocus
@@ -106,8 +107,8 @@ extension EditorSession {
             self.restoringFocus = false
             guard self.focusMemory.holds(caret) else { return }
             self.focusMemory.forget()
-            guard let field, field.blockId == caret.blockId, field.textView.window != nil,
-                  self.focusedBlockId == nil
+            guard let field, field.blockId == caret.blockId, let window = field.textView.window,
+                  self.focusedBlockId == nil, !window.holdsCaret
             else { return }
             let textView = field.textView
             textView.becomeFirstResponder()
@@ -118,5 +119,12 @@ extension EditorSession {
             // puts the whole selection back.
             if NSMaxRange(caret.selection) > length { field.pendingSelection = caret.selection }
         }
+    }
+}
+
+private extension UIView {
+    /// Some view in this view's tree is first responder.
+    var holdsCaret: Bool {
+        isFirstResponder || subviews.contains { $0.holdsCaret }
     }
 }

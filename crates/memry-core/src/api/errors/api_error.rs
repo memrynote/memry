@@ -103,7 +103,8 @@ pub enum ApiError {
 
     /// A 402 from an account route that needs a plan: `POST /sync/vaults`
     /// answers it with no code when the account has no active sync plan, and
-    /// with `SYNC_VAULT_LIMIT_EXCEEDED` when the plan's vault slots are full.
+    /// with `SYNC_VAULT_LIMIT_EXCEEDED` when the plan's vault slots are full;
+    /// `POST /auth/linking/initiate` answers it with `SYNC_PAYMENT_REQUIRED`.
     /// The shell offers a plan; retrying changes nothing. Raised only by the
     /// routes that name it, so the sync engine's 402 handling
     /// (`sync::policy`, which reads `Status`) is unchanged.

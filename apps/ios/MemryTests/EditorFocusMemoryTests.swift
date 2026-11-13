@@ -73,6 +73,8 @@ struct EditorFocusMemoryTests {
     @Test(.timeLimit(.minutes(1))) func a_redrawn_page_takes_back_the_caret_and_selection_its_block_had() async {
         let editor = LandingEditor()
         let memory = EditorFocusMemory()
+        // A loaded host can take longer than the lifetime to land the writes.
+        memory.now = { Date(timeIntervalSince1970: 0) }
         var (oldModel, oldSession): (NoteEditorViewModel?, EditorSession?) = page("note-1", editor, memory)
         _ = oldModel
         let old = draw("hello", in: oldSession!)
@@ -130,6 +132,53 @@ struct EditorFocusMemoryTests {
         #expect(memory.titleMayAutofocus("note-1"), "a page the user comes back to later opens as usual")
         other.textView.removeFromSuperview()
         _ = (oldModel, otherModel)
+    }
+
+    /// A page re-hosted with its block focused, whose restore is waiting on
+    /// its writes and reload when `meanwhile` runs.
+    private func restoreRacing(
+        _ memory: EditorFocusMemory, meanwhile: @escaping () -> Void
+    ) async -> (BlockField, () -> Void) {
+        let editor = LandingEditor()
+        let (oldModel, oldSession) = page("note-1", editor, memory)
+        let old = draw("hello", in: oldSession)
+        #expect(old.textView.becomeFirstResponder())
+        old.textView.removeFromSuperview()
+
+        let (newModel, newSession) = page("note-1", editor, memory)
+        newSession.reload = meanwhile
+        let new = draw("hello", in: newSession)
+        await newSession.tail?.value
+        return (new, {
+            new.textView.removeFromSuperview()
+            _ = (oldModel, newModel)
+        })
+    }
+
+    /// REVIEW-4504 L2: a search field that took the caret while the restore
+    /// waited keeps it (#4426's palette opening over the editor).
+    @Test(.timeLimit(.minutes(1))) func a_pending_restore_leaves_the_caret_with_a_field_that_took_it() async {
+        let search = UITextField(frame: CGRect(x: 0, y: 300, width: 300, height: 40))
+        window.rootViewController?.view.addSubview(search)
+        let (new, done) = await restoreRacing(EditorFocusMemory()) { _ = search.becomeFirstResponder() }
+
+        #expect(search.isFirstResponder, "the restore took the caret from the search field")
+        #expect(!new.textView.isFirstResponder)
+        search.resignFirstResponder()
+        search.removeFromSuperview()
+        done()
+    }
+
+    /// REVIEW-4504 L1: a restore whose writes landed after the caret expired
+    /// puts nothing back.
+    @Test(.timeLimit(.minutes(1))) func a_restore_that_waited_past_the_lifetime_puts_nothing_back() async {
+        let memory = EditorFocusMemory()
+        var clock = Date(timeIntervalSince1970: 0)
+        memory.now = { clock }
+        let (new, done) = await restoreRacing(memory) { clock += EditorFocusMemory.lifetime + 1 }
+
+        #expect(!new.textView.isFirstResponder)
+        done()
     }
 
     /// The caret moving on, or the keyboard going away, is not a re-host:

@@ -80,7 +80,7 @@ struct VaultTabsView<Notes: View, Tasks: View, Journal: View, More: View>: View 
 
     var body: some View {
         // Read here so the layout follows a module toggle and a synced order.
-        let width = LayoutWidth(horizontal: horizontalSizeClass, vertical: verticalSizeClass)
+        let width = width
         let layout = VaultTabLayout(savedOrder: order.saved, width: width) { $0.isShown }
         GeometryReader { proxy in
             TabView(selection: Binding(
@@ -90,7 +90,7 @@ struct VaultTabsView<Notes: View, Tasks: View, Journal: View, More: View>: View 
                 // Settings in the sidebar is a page like any other.
                 set: { tab in
                     switch tab {
-                    case .search: showsSearch = true
+                    case .search: openSearch()
                     case .page(.more) where width == .compact: showsMenu = true
                     case let .page(page): router.selectedTab = page
                     }
@@ -121,6 +121,15 @@ struct VaultTabsView<Notes: View, Tasks: View, Journal: View, More: View>: View 
                 VaultSidebarHeader(name: vaultName, context: settings, switchVault: switchVault)
             }
         }
+        // ⌘K, everywhere including the editor (epic #4334 keyboard table).
+        // #4355's command table takes it over.
+        .background {
+            Button(GlobalSearchCopy.open, action: openSearch)
+                .keyboardShortcut("k", modifiers: .command)
+                .opacity(0)
+                .allowsHitTesting(false)
+                .accessibilityHidden(true)
+        }
         .sheet(isPresented: $showsMenu) {
             VaultMenuSheet(pages: layout.menu) { page in
                 router.selectedTab = page
@@ -129,21 +138,21 @@ struct VaultTabsView<Notes: View, Tasks: View, Journal: View, More: View>: View 
             .presentationDetents([.medium])
         }
         // The Menu sheet is compact-only: a window resized to regular width
-        // drops it rather than show it with the sidebar's empty menu.
-        .onChange(of: width) { showsMenu = false }
+        // drops it rather than show it with the sidebar's empty menu. Search
+        // closes too rather than swap its sheet for the palette mid-query.
+        .onChange(of: width) {
+            showsMenu = false
+            showsSearch = false
+        }
         // Settings is a split view in the sidebar's width (#4348).
         .onChange(of: width, initial: true) { _, width in router.setSettingsSplit(width == .regular) }
-        .sheet(isPresented: $showsSearch) {
-            GlobalSearchSheet(
-                browse: browse,
-                openNote: { openNote($0) },
-                openTask: { router.openTask($0) },
-                openInboxItem: { inboxRouter.openItem($0, in: router) },
-                openJournalDay: { journalRouter.openDay($0) }
-            )
-            .environment(router)
+        .sheet(isPresented: searchShown(.compact)) { searchView(.sheet) }
+        // D3: a palette over the window at regular width (#4426).
+        .fullScreenCover(isPresented: searchShown(.regular)) {
+            searchView(.palette)
+                .presentationBackground(.clear)
         }
-        .environment(\.openGlobalSearch) { showsSearch = true }
+        .environment(\.openGlobalSearch, openSearch)
         .environment(router)
         .environment(journalRouter)
         // Where the next launch continues (`LaunchSnapshot`).
@@ -186,6 +195,35 @@ struct VaultTabsView<Notes: View, Tasks: View, Journal: View, More: View>: View 
         // Sign out lives on Settings › Account (F1), so the shell stops
         // drawing it over every screen of the vault.
         .preference(key: SignOutHostedKey.self, value: true)
+    }
+
+    private var width: LayoutWidth {
+        LayoutWidth(horizontal: horizontalSizeClass, vertical: verticalSizeClass)
+    }
+
+    /// Opens search the way this width shows it. The palette appears in
+    /// place, without the full-screen cover's slide.
+    private func openSearch() {
+        var transaction = Transaction()
+        transaction.disablesAnimations = width == .regular
+        withTransaction(transaction) { showsSearch = true }
+    }
+
+    /// Whether search is open at `shown` width.
+    private func searchShown(_ shown: LayoutWidth) -> Binding<Bool> {
+        Binding(get: { showsSearch && width == shown }, set: { showsSearch = $0 })
+    }
+
+    private func searchView(_ presentation: SearchPresentation) -> some View {
+        GlobalSearchSheet(
+            presentation: presentation,
+            browse: browse,
+            openNote: { openNote($0) },
+            openTask: { router.openTask($0) },
+            openInboxItem: { inboxRouter.openItem($0, in: router) },
+            openJournalDay: { journalRouter.openDay($0) }
+        )
+        .environment(router)
     }
 
     /// A note on the Notes page, which takes the request itself.

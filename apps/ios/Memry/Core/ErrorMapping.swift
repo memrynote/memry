@@ -354,11 +354,13 @@ enum ErrorMapping {
         status >= 500 || status == 408 ? serverFault : serverRefusal
     }
 
-    /// A 5xx or a 408. Transient, and saying so is honest.
+    /// A 5xx or a 408. Transient, and saying so is honest. Same rule as
+    /// `RateLimited`: the sign-in screen shows this too, where there is no
+    /// sync to retry, so the guidance promises no mechanism.
     private static let serverFault = copy(
         "api.statusServerFault",
         "The Memry server could not handle that request.",
-        "Memry will try again on the next sync. Your changes are saved on this \(ThisDevice.noun).",
+        "Nothing was lost. Try again in a few minutes.",
         .retryLater
     )
 
