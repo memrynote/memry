@@ -340,6 +340,9 @@ enum Tokens {
         static let rail: CGFloat = 320
         /// The centred column sign-in, onboarding, and other forms sit in.
         static let form: CGFloat = 560
+        /// `DESIGN.md` › Tablet › Search: the width of the search palette at
+        /// regular width, and of the `⌘P` palette in the same family.
+        static let palette: CGFloat = 600
     }
 
     // MARK: Motion
