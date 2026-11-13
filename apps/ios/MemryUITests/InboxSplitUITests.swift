@@ -8,8 +8,8 @@ import XCTest
 // account, or the free vault on this device). A run that lands on sign-in, or
 // on an iPhone, skips; a skip is not a pass.
 //
-// The test captures two items named `[agent] ui-<run>…`, files one to the
-// vault root, and deletes the filed note and the other capture at the end.
+// The test captures two items named `[agent] ui-<run>…` and files one to the
+// vault root. Its teardown deletes what the run left, also after a failure.
 @MainActor
 final class InboxSplitUITests: XCTestCase {
     let app = XCUIApplication()
@@ -29,6 +29,7 @@ final class InboxSplitUITests: XCTestCase {
         try openInbox()
         let older = "[agent] \(run) next"
         let newer = "[agent] \(run) filed"
+        addTeardownBlock { [self] in cleanUp() }
         capture(older)
         capture(newer)
         let filed = row(containing: newer)
@@ -45,11 +46,6 @@ final class InboxSplitUITests: XCTestCase {
         XCTAssertTrue(filed.waitForNonExistence(timeout: 10), "the filed row stayed in the inbox")
         XCTAssertTrue(next.wait(for: \.isSelected, toEqual: true, timeout: 5), "the next row is not selected")
         XCTAssertTrue(detailTitle(contains: older), "the detail column does not show the next item")
-
-        tap("inbox.detail.archive")
-        XCTAssertTrue(next.waitForNonExistence(timeout: 10), "the archived row stayed in the inbox")
-        deleteFromArchived(older)
-        deleteNote(newer)
     }
 
     // MARK: Steps
@@ -85,33 +81,39 @@ final class InboxSplitUITests: XCTestCase {
         field.typeText(text)
         tap("inbox.composer.send")
         XCTAssertTrue(waitUntil { (field.value as? String ?? "").isEmpty || !field.exists }, "the composer did not send")
-        // A tap outside the composer, in the list column, closes it.
-        app.coordinate(withNormalizedOffset: CGVector(dx: 0.3, dy: 0.2)).tap()
+        // A tap on the list column, above the keyboard, closes the composer:
+        // while it is open, a layer over the list takes the tap, so no row
+        // opens.
+        element("inbox.list").coordinate(withNormalizedOffset: CGVector(dx: 0.5, dy: 0.15)).tap()
+        XCTAssertTrue(element("inbox.composer").waitForNonExistence(timeout: 5), "the composer stayed open")
         XCTAssertTrue(row(containing: text).waitForExistence(timeout: 10), "the capture did not appear")
     }
 
-    private func deleteFromArchived(_ text: String) {
-        selectView("archived")
-        let archived = row(containing: text)
-        XCTAssertTrue(archived.waitForExistence(timeout: 10), "the capture is not under Archived")
-        archived.swipeLeft()
-        tap("inbox.archived.delete")
-        let confirm = app.buttons["Delete permanently"].firstMatch
-        XCTAssertTrue(confirm.waitForExistence(timeout: 5))
-        confirm.tap()
-        XCTAssertTrue(archived.waitForNonExistence(timeout: 10), "the capture was not deleted")
-        selectView("inbox")
-    }
-
-    /// The note filing made, at the vault root. Notes loaded at launch and
-    /// lists the filed note only after the next one.
-    private func deleteNote(_ title: String) {
+    /// Deletes this run's captures, wherever the test stopped, and the note
+    /// filing made. A relaunch starts from a known screen, and Notes lists
+    /// the filed note only after one.
+    private func cleanUp() {
         app.terminate()
-        app.launch()
-        XCTAssertTrue(sidebarRow("Notes").waitForExistence(timeout: 30), "the sidebar did not show")
+        guard (try? openInbox()) != nil, element("inbox.list").exists else { return }
+        let left = row(containing: run)
+        while left.waitForExistence(timeout: 3) {
+            left.tap()
+            tap("inbox.detail.archive")
+            XCTAssertTrue(left.waitForNonExistence(timeout: 10), "the archived row stayed in the inbox")
+        }
+        selectView("archived")
+        while left.waitForExistence(timeout: 5) {
+            left.swipeLeft()
+            tap("inbox.archived.delete")
+            let confirm = app.buttons["Delete permanently"].firstMatch
+            XCTAssertTrue(confirm.waitForExistence(timeout: 5))
+            confirm.tap()
+            XCTAssertTrue(left.waitForNonExistence(timeout: 10), "the capture was not deleted")
+        }
+        selectView("inbox")
         sidebarRow("Notes").tap()
-        let note = app.descendants(matching: .any).matching(NSPredicate(format: "label CONTAINS %@", title)).firstMatch
-        XCTAssertTrue(note.waitForExistence(timeout: 15), "the filed note is not in Notes")
+        let note = app.descendants(matching: .any).matching(NSPredicate(format: "label CONTAINS %@", run)).firstMatch
+        guard note.waitForExistence(timeout: 15) else { return }
         note.press(forDuration: 1)
         tap("Delete note")
         app.buttons["Delete"].firstMatch.tap()

@@ -22,6 +22,9 @@ final class InboxRouter {
     var path: [InboxRoute] = []
     private(set) var selection: InboxDetailSelection?
     private(set) var width: LayoutWidth = .compact
+    /// The list an item opened from outside the Inbox sits in. The detail
+    /// column switches the list to it, so the item is listed beside itself.
+    private(set) var revealing: InboxView?
 
     /// A row, a capture's "View" or a calendar link opened `id`.
     func open(_ id: String) {
@@ -41,10 +44,19 @@ final class InboxRouter {
         selection = nil
     }
 
-    func openItem(_ id: String, in tasks: TasksRouter) {
+    /// Calendar's "Open in Inbox" (a snoozed capture) or a capture's "View"
+    /// (an Inbox one) opened `id`, which sits in `view`.
+    func openItem(_ id: String, in view: InboxView, tasks: TasksRouter) {
         tasks.selectedTab = .inbox
         path = []
         open(id)
+        if width == .regular { revealing = view }
+    }
+
+    /// The list now shows `revealing`'s view, whose ids are `order`.
+    func revealed(_ order: [String]) {
+        revealing = nil
+        follow(order, order)
     }
 
     /// The window crossed the regular rule: the item opened by hand stays
@@ -64,6 +76,7 @@ final class InboxRouter {
 
     /// The list beside the detail changed from `old` to `new` ids.
     func follow(_ old: [String], _ new: [String]) {
+        guard revealing == nil else { return }
         let next = InboxDetailSelection.next(after: selection, old: old, new: new)
         if next != selection { selection = next }
     }
@@ -80,13 +93,13 @@ struct InboxDetailSelection: Equatable {
 
     /// Desktop's rule (`use-inbox-keyboard.ts`): an item that leaves the
     /// list hands the selection to the item after it, else the one before.
-    /// No selection takes the first item (`DESIGN.md` › Tablet, D6). An item
-    /// opened from outside the list (a link to a snoozed capture) stays.
+    /// No selection, or one the list never held (a capture deleted while the
+    /// window was compact), takes the first item (`DESIGN.md` › Tablet, D6).
     static func next(after selection: Self?, old: [String], new: [String]) -> Self? {
         let auto = { (id: String) in Self(id: id, explicit: false) }
         guard let selection else { return new.first.map(auto) }
         if new.contains(selection.id) { return selection }
-        guard let index = old.firstIndex(of: selection.id) else { return selection }
+        guard let index = old.firstIndex(of: selection.id) else { return new.first.map(auto) }
         let kept = Set(new)
         let neighbor = old[(index + 1)...].first(where: kept.contains) ?? old[..<index].last(where: kept.contains)
         return (neighbor ?? new.first).map(auto)

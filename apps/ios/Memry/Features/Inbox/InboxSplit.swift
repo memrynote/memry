@@ -4,9 +4,10 @@ import SwiftUI
 // #4349. The Inbox at regular width: the list beside the detail
 // (`DESIGN.md` › Tablet › Lists and details). `InboxRouter` owns what the
 // detail column shows; the list writes it through `open`, and every change to
-// the list hands the selection on through `InboxDetailSelection.next`. Select
-// mode turns the detail column into the bulk actions. Compact width keeps the
-// phone stack in `InboxTab`.
+// the list hands the selection on through `InboxDetailSelection.next`, so the
+// detail never shows an item the list does not hold. Select mode turns the
+// detail column into the bulk actions. Compact width keeps the phone stack in
+// `InboxTab`.
 
 struct InboxSplitView: View {
     let store: InboxStore
@@ -35,6 +36,11 @@ struct InboxSplitView: View {
         // first item again (D6).
         .onChange(of: router.selection == nil) { _, cleared in
             if cleared { router.follow(store.detailOrder, store.detailOrder) }
+        }
+        .task(id: router.revealing) {
+            guard let view = router.revealing else { return }
+            if store.view != view { await store.select(view) }
+            router.revealed(store.detailOrder)
         }
     }
 

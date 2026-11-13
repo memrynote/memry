@@ -375,7 +375,7 @@ struct InboxFailureTests {
     }
 }
 
-private func execute(_ sql: String, in path: String) throws {
+func execute(_ sql: String, in path: String) throws {
     var handle: OpaquePointer?
     guard sqlite3_open(path, &handle) == SQLITE_OK else { throw CocoaError(.fileReadUnknown) }
     defer { sqlite3_close(handle) }

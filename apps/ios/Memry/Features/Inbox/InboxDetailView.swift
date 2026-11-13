@@ -66,7 +66,9 @@ struct InboxDetailView: View {
         } message: {
             Text(InboxCopy.deleteBody)
         }
-        .task(id: itemId) { await load() }
+        // An open of the item the app selected marks it viewed: same item,
+        // new key.
+        .task(id: "\(itemId)|\(marksViewed)") { await load() }
         .onDisappear(perform: saveTitle)
         .onChange(of: store.items) { _, _ in Task { await reload() } }
     }
