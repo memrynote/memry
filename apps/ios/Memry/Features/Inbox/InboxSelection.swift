@@ -17,59 +17,71 @@ struct InboxSelectionToolbar: ToolbarContent {
     /// the Tasks selection bar).
     var body: some ToolbarContent {
         ToolbarItem(placement: .bottomBar) {
-            let ids = Array(selection)
-            HStack(spacing: 0) {
-                Button { sheets.file = InboxFileRequest(ids: ids) } label: {
-                    TaskBulkActionLabel(title: InboxCopy.file, systemImage: "folder")
+            InboxBulkActions(store: store, ids: Array(selection), sheets: $sheets, finish: finish)
+        }
+    }
+}
+
+/// Select mode's File / Tag / Snooze / Archive: the bottom bar at compact
+/// width, the detail column beside the list at regular width (#4349).
+struct InboxBulkActions: View {
+    let store: InboxStore
+    let ids: [String]
+    @Binding var sheets: InboxSheets
+    let finish: () -> Void
+
+    var body: some View {
+        HStack(spacing: 0) {
+            Button { sheets.file = InboxFileRequest(ids: ids) } label: {
+                TaskBulkActionLabel(title: InboxCopy.file, systemImage: "folder")
+            }
+            .accessibilityIdentifier("inbox.bulk.file")
+            .frame(maxWidth: .infinity)
+            Button { sheets.tag = InboxIdList(ids: ids) } label: {
+                TaskBulkActionLabel(title: InboxCopy.tag, systemImage: "tag")
+            }
+            .accessibilityIdentifier("inbox.bulk.tag")
+            .frame(maxWidth: .infinity)
+            Menu {
+                InboxSnoozeMenuItems(now: store.clock()) { date in
+                    Task {
+                        await store.snooze(ids, until: date)
+                        finish()
+                    }
+                } pickDate: {
+                    sheets.snooze = InboxIdList(ids: ids)
                 }
-                .accessibilityIdentifier("inbox.bulk.file")
-                .frame(maxWidth: .infinity)
-                Button { sheets.tag = InboxIdList(ids: ids) } label: {
-                    TaskBulkActionLabel(title: InboxCopy.tag, systemImage: "tag")
-                }
-                .accessibilityIdentifier("inbox.bulk.tag")
-                .frame(maxWidth: .infinity)
-                Menu {
-                    InboxSnoozeMenuItems(now: store.clock()) { date in
+            } label: {
+                TaskBulkActionLabel(title: InboxCopy.snooze, systemImage: "alarm")
+            }
+            .accessibilityIdentifier("inbox.bulk.snooze")
+            .frame(maxWidth: .infinity)
+            Button { sheets.archiveAll = ids } label: {
+                TaskBulkActionLabel(title: InboxCopy.archive, systemImage: "archivebox")
+            }
+            .accessibilityIdentifier("inbox.bulk.archive")
+            // On the button, so the popover points at it.
+            .confirmationDialog(
+                InboxCopy.archiveDialogTitle(sheets.archiveAll?.count ?? 0),
+                isPresented: Binding(get: { sheets.archiveAll != nil }, set: { if !$0 { sheets.archiveAll = nil } }),
+                titleVisibility: .visible
+            ) {
+                Button(InboxCopy.archiveDialogConfirm(sheets.archiveAll?.count ?? 0), role: .destructive) {
+                    if let ids = sheets.archiveAll {
                         Task {
-                            await store.snooze(ids, until: date)
+                            await store.archive(ids)
                             finish()
                         }
-                    } pickDate: {
-                        sheets.snooze = InboxIdList(ids: ids)
                     }
-                } label: {
-                    TaskBulkActionLabel(title: InboxCopy.snooze, systemImage: "alarm")
+                    sheets.archiveAll = nil
                 }
-                .accessibilityIdentifier("inbox.bulk.snooze")
-                .frame(maxWidth: .infinity)
-                Button { sheets.archiveAll = ids } label: {
-                    TaskBulkActionLabel(title: InboxCopy.archive, systemImage: "archivebox")
-                }
-                .accessibilityIdentifier("inbox.bulk.archive")
-                // On the button, so the popover points at it.
-                .confirmationDialog(
-                    InboxCopy.archiveDialogTitle(sheets.archiveAll?.count ?? 0),
-                    isPresented: Binding(get: { sheets.archiveAll != nil }, set: { if !$0 { sheets.archiveAll = nil } }),
-                    titleVisibility: .visible
-                ) {
-                    Button(InboxCopy.archiveDialogConfirm(sheets.archiveAll?.count ?? 0), role: .destructive) {
-                        if let ids = sheets.archiveAll {
-                            Task {
-                                await store.archive(ids)
-                                finish()
-                            }
-                        }
-                        sheets.archiveAll = nil
-                    }
-                } message: {
-                    Text(InboxCopy.archiveDialogBody)
-                }
-                .frame(maxWidth: .infinity)
+            } message: {
+                Text(InboxCopy.archiveDialogBody)
             }
-            .buttonStyle(.plain)
-            .disabled(ids.isEmpty)
+            .frame(maxWidth: .infinity)
         }
+        .buttonStyle(.plain)
+        .disabled(ids.isEmpty)
     }
 }
 

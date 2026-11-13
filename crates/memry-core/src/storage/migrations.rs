@@ -151,6 +151,15 @@ pub const INDEX_MIGRATIONS: &[Migration] = &[
     },
 ];
 
+/// `vectors.db`: the semantic-search cache. Unlike `index.db` it migrates
+/// forward like `data.db`, so a schema bump never throws away hours of
+/// embedding; every entry is additive so an older build still reads the file.
+pub const VECTOR_MIGRATIONS: &[Migration] = &[Migration {
+    version: 1,
+    name: "note_vectors",
+    sql: include_str!("migrations/vectors/0001_note_vectors.sql"),
+}];
+
 /// The version a fully migrated database sits at. Zero for an empty list.
 pub fn latest_version(migrations: &[Migration]) -> u32 {
     migrations.last().map_or(0, |migration| migration.version)
@@ -243,7 +252,7 @@ mod tests {
 
     #[test]
     fn versions_are_strictly_ascending_from_one() {
-        for migrations in [DATA_MIGRATIONS, INDEX_MIGRATIONS] {
+        for migrations in [DATA_MIGRATIONS, INDEX_MIGRATIONS, VECTOR_MIGRATIONS] {
             for (index, migration) in migrations.iter().enumerate() {
                 let expected = u32::try_from(index + 1).expect("migration count fits u32");
                 assert_eq!(migration.version, expected, "{}", migration.name);

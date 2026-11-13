@@ -1232,6 +1232,10 @@
     "loadingAria": "Cihazlar yükleniyor",
     "none": "Henüz bağlı cihaz yok",
     "linkNew": "Yeni cihaz bağla",
+    "linkNeedsPlan": {
+      "title": "Bağlamak için Eşitleme planı gerekir",
+      "description": "Bağlı bir cihaz notlarınızı yalnızca eşitleme açıkken görür. Plan olmadan orada kurtarma ifadenizle oturum açın; cihaz kendi kasasını korur."
+    },
     "thisDevice": "Bu cihaz",
     "lastSeen": "Son görülme: {time} önce",
     "linked": "{time} önce bağlandı",

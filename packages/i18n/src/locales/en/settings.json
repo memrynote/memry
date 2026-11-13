@@ -1232,6 +1232,10 @@
     "loadingAria": "Loading devices",
     "none": "No devices linked yet",
     "linkNew": "Link new device",
+    "linkNeedsPlan": {
+      "title": "Linking needs a sync plan",
+      "description": "A linked device only sees your notes when sync is on. Without a plan, sign in there with your recovery phrase and it keeps its own vault."
+    },
     "thisDevice": "This device",
     "lastSeen": "Last seen {time} ago",
     "linked": "Linked {time} ago",

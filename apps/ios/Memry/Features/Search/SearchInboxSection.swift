@@ -17,6 +17,7 @@ struct SearchInboxSection: View {
                     .buttonStyle(.plain)
                     .accessibilityHint(SearchInboxCopy.openInInbox)
                     .accessibilityIdentifier("search.result.inbox")
+                    .searchRow(SearchRowKey.of(hit))
                 }
             } header: {
                 Text(InboxCopy.title)

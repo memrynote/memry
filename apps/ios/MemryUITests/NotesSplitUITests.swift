@@ -147,26 +147,51 @@ final class NotesSplitUITests: XCTestCase {
         deleteNotes([source, target])
     }
 
-    func testASearchHitOpensInTheDetailColumn() throws {
+    /// #4426 (D3): the Search row opens the palette; ↓ moves the highlight
+    /// to the second hit and Return opens that one in the detail column.
+    func testTheSearchPaletteOpensTheHighlightedHitInTheDetailColumn() throws {
         try openNotes()
-        let title = "[agent] \(run) found"
-        let other = "[agent] \(run) other"
-        makeNote(title)
-        makeNote(other)
+        let first = "[agent] \(run) found one"
+        let second = "[agent] \(run) found two"
+        makeNote(first)
+        makeNote(second)
 
         sidebarRow("Search").tap()
-        let field = app.searchFields.firstMatch
-        XCTAssertTrue(field.waitForExistence(timeout: 10))
-        field.typeText(run + " found")
-        let hit = app.buttons.matching(identifier: "search.result.note")
-            .matching(NSPredicate(format: "label CONTAINS %@", "\(run) found")).firstMatch
-        XCTAssertTrue(hit.waitForExistence(timeout: 15), "search did not find the note")
-        hit.tap()
-        XCTAssertTrue(page(title).waitForExistence(timeout: 10), "the hit did not open in the detail column")
-        XCTAssertTrue(row(title).wait(for: \.isSelected, toEqual: true, timeout: 5), "the hit's row is not selected")
+        let field = app.textFields["search.palette.field"]
+        XCTAssertTrue(field.waitForExistence(timeout: 10), "the Search row did not open the palette")
+        XCTAssertTrue(matches(NSPredicate(format: "hasKeyboardFocus == true"), field), "the palette's field has no caret")
+        field.typeText("\(run) found")
+        let hits = app.buttons.matching(identifier: "search.result.note")
+            .matching(NSPredicate(format: "label CONTAINS %@", "\(run) found"))
+        XCTAssertTrue(hits.element(boundBy: 1).waitForExistence(timeout: 15), "search did not find both notes")
+        let highlighted = hits.matching(NSPredicate(format: "isSelected == true"))
+        XCTAssertEqual(highlighted.firstMatch.label, hits.element(boundBy: 0).label, "the first hit is not highlighted")
+        attach("search-palette")
+
+        field.typeKey(.downArrow, modifierFlags: [])
+        XCTAssertTrue(hits.element(boundBy: 1).wait(for: \.isSelected, toEqual: true, timeout: 5), "↓ did not move the highlight")
+        let target = hits.element(boundBy: 1).label.contains("found two") ? second : first
+        field.typeText("\n")
+        XCTAssertTrue(field.waitForNonExistence(timeout: 5), "Return did not close the palette")
+        XCTAssertTrue(page(target).waitForExistence(timeout: 10), "Return did not open the hit in the detail column")
+        XCTAssertTrue(row(target).wait(for: \.isSelected, toEqual: true, timeout: 5), "the hit's row is not selected")
         attach("search-hit")
 
-        deleteNotes([title, other])
+        deleteNotes([first, second])
+    }
+
+    /// #4426: ⌘K opens the palette while the editor has the caret, and Esc
+    /// (⌘. on the simulator) closes it.
+    func testCommandKOpensThePaletteFromTheEditor() throws {
+        try openNotes()
+        let title = "[agent] \(run) editing"
+        makeNote(title).typeText("Body")
+        app.typeKey("k", modifierFlags: .command)
+        let field = app.textFields["search.palette.field"]
+        XCTAssertTrue(field.waitForExistence(timeout: 5), "⌘K did not open the palette from the editor")
+        app.typeKey(".", modifierFlags: .command)
+        XCTAssertTrue(field.waitForNonExistence(timeout: 5), "Esc did not close the palette")
+        deleteNotes([title])
     }
 
     /// #4347: the inspector's outline scrolls the note to a heading.

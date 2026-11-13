@@ -52,7 +52,7 @@ struct EditableBlockView: UIViewRepresentable {
     /// column opening another note) removes its text views without ending
     /// their edits, so typing not yet committed would be lost with them.
     static func dismantleUIView(_ view: BlockTextView, coordinator: BlockField) {
-        if coordinator.dirty { coordinator.session?.commit(coordinator) }
+        if coordinator.dirty { coordinator.commitTyping() }
     }
 
     /// Takes the offered width and grows vertically to fit the wrapped text.
@@ -136,6 +136,8 @@ final class BlockTextView: UITextView {
     /// Backspace with the caret at the start and nothing selected. UIKit asks
     /// the delegate about no change then, since there is nothing to delete.
     var backspaceAtStart: (() -> Void)?
+    /// The view moved into a window, or out of one (#4457).
+    var movedToWindow: ((UIWindow?) -> Void)?
 
     init() {
         let storage = NSTextStorage()
@@ -156,6 +158,11 @@ final class BlockTextView: UITextView {
               let backspaceAtStart
         else { return super.deleteBackward() }
         backspaceAtStart()
+    }
+
+    override func didMoveToWindow() {
+        super.didMoveToWindow()
+        movedToWindow?(window)
     }
 }
 
@@ -205,7 +212,15 @@ final class BlockField: NSObject, UITextViewDelegate, UIGestureRecognizerDelegat
     /// Owned here, handed to SwiftUI by `makeUIView`.
     let textView = BlockTextView()
     /// Typed since the last commit.
-    var dirty = false
+    var dirty = false {
+        didSet { writer = dirty ? session?.model ?? writer : nil }
+    }
+    /// The page's editor model, held while typing waits for its commit
+    /// (#4506). Only the page's `@State` holds it otherwise, and a page torn
+    /// down (a split view swapping notes, Back, a size-class re-host) can
+    /// free it before this block resigns. It owns `session`, which stays set
+    /// for the commit too. The commit's queued write holds it from there.
+    private var writer: NoteEditorViewModel?
     /// Typed since the caret came in: a checklist item left with this set is
     /// one desktop's editor would turn into a task.
     var typed = false
@@ -232,6 +247,10 @@ final class BlockField: NSObject, UITextViewDelegate, UIGestureRecognizerDelegat
         textView.backspaceAtStart = { [weak self] in
             guard let self else { return }
             self.session?.backspaceAtStart(self)
+        }
+        textView.movedToWindow = { [weak self] window in
+            guard let self else { return }
+            self.session?.field(self, movedInto: window)
         }
     }
 
@@ -417,6 +436,14 @@ final class BlockField: NSObject, UITextViewDelegate, UIGestureRecognizerDelegat
     /// Committed when editing ends rather than per keystroke: every commit is a
     /// CRDT update and an outbox row (FR-030).
     func textViewDidEndEditing(_ textView: UITextView) {
+        commitTyping()
+        session?.editingEnded(self, selection: textView.selectedRange)
+        if session?.field === self { session?.focusChanged(to: nil) }
+    }
+
+    /// Commits the typing, and turns a checklist item typed in into a task,
+    /// as desktop's editor does when the caret leaves it.
+    func commitTyping() {
         let blockId = blockId
         var then: (@MainActor () async -> Void)?
         if typed, block.kind == "checkListItem", let convert = session?.convertTypedChecklist {
@@ -425,11 +452,12 @@ final class BlockField: NSObject, UITextViewDelegate, UIGestureRecognizerDelegat
         // A row a shortcut is redrawing hands `typed` on (`takeOver`).
         if session?.shortcutField !== self { typed = false }
         session?.commit(self, then: then)
-        if session?.field === self { session?.focusChanged(to: nil) }
     }
 
     func textViewDidChange(_ textView: UITextView) {
         dirty = true
+        // Typing moved the caret on from any selection a render would put back.
+        pendingSelection = nil
         typed = true
         textView.invalidateIntrinsicContentSize()
         session?.selectionChanged(in: self)
