@@ -6,16 +6,17 @@
 # rust-ci.yml and the release builds fetch an archive through .github/actions/ort-static, which
 # sets ORT_LIB_LOCATION.
 #
-# A run builds only the archives the release does not hold yet, so a push of this file or a
-# dispatch after a partial failure finishes the set and a complete set builds nothing. A published
-# archive is never replaced: a new ONNX Runtime version gets a new release.
+# A run builds only the archives the release does not hold yet, so a dispatch after a partial
+# failure finishes the set and a complete set builds nothing. A published archive is never
+# replaced: a changed build (a new ONNX Runtime version, new build flags) gets a new release tag,
+# and the action pins each archive's sha256.
+#
+# Dispatch only, and `publish` runs in the `ort-static` environment, whose deployment branch
+# policy admits main and feat/tauri-v2: a branch nobody reviewed builds but publishes nothing.
 name: Build ONNX Runtime static libraries
 
 on:
   workflow_dispatch:
-  push:
-    paths:
-      - .github/workflows/build-ort-static.yml
 
 permissions:
   contents: read
@@ -27,7 +28,11 @@ concurrency:
 env:
   # The version ort-sys 2.0.0-rc.15 (crates/Cargo.toml) binds to; a bump changes both.
   ORT_VERSION: 1.31.0
-  RELEASE_TAG: ort-static-1.31.0
+  # The commit of the tag v1.31.0, so a moved tag cannot change what builds.
+  ORT_COMMIT: 402979ac1bef89dcd55add41eaa7277c407599eb
+  # r2: Windows archives built with the static VC runtime (/MT). ort-static-1.31.0 holds the
+  # first set (Windows /MD) and stays published, unused.
+  RELEASE_TAG: ort-static-1.31.0-r2
 
 jobs:
   plan:
@@ -42,7 +47,13 @@ jobs:
         env:
           GH_TOKEN: ${{ github.token }}
         run: |
-          assets=$(gh release view "$RELEASE_TAG" --repo "$GITHUB_REPOSITORY" --json assets --jq '.assets[].name' 2>/dev/null || true)
+          # A missing release means nothing is built yet; any other error stops the run, since an
+          # empty listing would rebuild archives the release already holds.
+          if ! assets=$(gh release view "$RELEASE_TAG" --repo "$GITHUB_REPOSITORY" --json assets --jq '.assets[].name' 2>"$RUNNER_TEMP/error.txt"); then
+            cat "$RUNNER_TEMP/error.txt"
+            grep -qx 'release not found' "$RUNNER_TEMP/error.txt"
+            assets=
+          fi
           targets=$(jq -cn --arg assets "$assets" --arg tag "$RELEASE_TAG" '
             [ {triple: "x86_64-apple-darwin", os: "macos-15"},
               {triple: "x86_64-pc-windows-msvc", os: "windows-2022"},
@@ -71,7 +82,7 @@ jobs:
         uses: actions/checkout@v6
         with:
           repository: microsoft/onnxruntime
-          ref: v${{ env.ORT_VERSION }}
+          ref: ${{ env.ORT_COMMIT }}
           fetch-depth: 1
 
       - name: Setup Python
@@ -81,6 +92,8 @@ jobs:
 
       # CPU execution provider only (no --use_dml, no other provider), telemetry compiled out, no
       # unit tests. macOS x64 is cross-built on the Apple Silicon runner for macOS 13 and later.
+      # Windows links the VC runtime statically (/MT), as the app does (tauri-build's
+      # staticVCRuntime, memry-ml/build.rs), so no binary needs MSVCP140.dll.
       - name: Build
         run: |
           args=(--build_dir build --config Release --parallel --skip_tests --compile_no_warning_as_error
@@ -93,6 +106,7 @@ jobs:
               18) args+=(--cmake_generator "Visual Studio 18 2026") ;;
               *) echo "::error::unknown Visual Studio version $vs"; exit 1 ;;
             esac
+            args+=(--enable_msvc_static_runtime)
           fi
           case "${{ matrix.triple }}" in
             x86_64-apple-darwin) args+=(--osx_arch x86_64 --apple_deploy_target 13.0) ;;
@@ -142,6 +156,26 @@ jobs:
               ;;
           esac
 
+      # A /MD object anywhere in the tree (ONNX Runtime or a `_deps` library) would bring back the
+      # VC++ redistributable DLLs. Its linker directives name the DLL runtime's import libraries.
+      - name: Check the static VC runtime
+        if: runner.os == 'Windows'
+        working-directory: build/Release
+        run: |
+          find . -name '*.lib' -type f > "$RUNNER_TEMP/windows-libs.txt"
+          python - "$RUNNER_TEMP/windows-libs.txt" <<'EOF'
+          import re, sys
+          dynamic = re.compile(rb'(?i)RuntimeLibrary=MD_Dynamic|/DEFAULTLIB:"?(msvcrtd?|msvcprtd?)(\.lib)?\b')
+          static = re.compile(rb'RuntimeLibrary=MT_StaticRelease')
+          paths = open(sys.argv[1]).read().split()
+          bad = [p for p in paths if dynamic.search(open(p, "rb").read())]
+          mt = sum(1 for p in paths if static.search(open(p, "rb").read()))
+          print(f"{len(paths)} libraries, {mt} built /MT")
+          if bad or mt == 0:
+              print("built against the DLL runtime:", *bad, sep="\n  ")
+              sys.exit(1)
+          EOF
+
       # Every static library of the build tree, at its path under build/Release: ort-sys finds the
       # ONNX Runtime libraries and their `_deps` from ORT_LIB_LOCATION by that layout.
       - name: Package
@@ -170,6 +204,7 @@ jobs:
     if: ${{ !cancelled() && needs.build.result != 'skipped' }}
     runs-on: ubuntu-22.04
     timeout-minutes: 15
+    environment: ort-static
     permissions:
       contents: write
     steps:
@@ -183,12 +218,15 @@ jobs:
         env:
           GH_TOKEN: ${{ github.token }}
         run: |
-          ls archives/*.tar.zst
-          if ! gh release view "$RELEASE_TAG" --repo "$GITHUB_REPOSITORY" >/dev/null 2>&1; then
+          # The hashes .github/actions/ort-static pins.
+          sha256sum archives/*.tar.zst
+          if ! gh release view "$RELEASE_TAG" --repo "$GITHUB_REPOSITORY" >/dev/null 2>"$RUNNER_TEMP/error.txt"; then
+            cat "$RUNNER_TEMP/error.txt"
+            grep -qx 'release not found' "$RUNNER_TEMP/error.txt"
             # No --target: the tag goes on the default branch. GITHUB_TOKEN may not create a tag on a
             # commit that changes a workflow the default branch lacks (HTTP 403).
             gh release create "$RELEASE_TAG" --repo "$GITHUB_REPOSITORY" \
-              --prerelease --latest=false --title "ONNX Runtime $ORT_VERSION static libraries (build input)" \
-              --notes "CPU-only static ONNX Runtime $ORT_VERSION libraries, built by .github/workflows/build-ort-static.yml and linked into the desktop app through ORT_LIB_LOCATION. Not an app release."
+              --prerelease --latest=false --title "ONNX Runtime $ORT_VERSION static libraries, $RELEASE_TAG (build input)" \
+              --notes "CPU-only static ONNX Runtime $ORT_VERSION libraries (commit $ORT_COMMIT; Windows with the static VC runtime), built by .github/workflows/build-ort-static.yml and linked into the desktop app through ORT_LIB_LOCATION. Not an app release."
           fi
           gh release upload "$RELEASE_TAG" --repo "$GITHUB_REPOSITORY" archives/*.tar.zst
