@@ -36,6 +36,11 @@ import {
   onNoteLinksChanged,
   onNoteRenamed
 } from '@/services/notes-service'
+import {
+  onJournalEntryCreated,
+  onJournalEntryDeleted,
+  onJournalExternalChange
+} from '@/services/journal-service'
 import { clearCanvasLookupCache, resolveCanvasByTitle } from '@/lib/canvas-lookup'
 import { onCanvasCreated, onCanvasDeleted, onCanvasUpdated } from '@/services/canvas-service'
 import { subscribeToEvents } from '@/services/tauri-event'
@@ -190,7 +195,10 @@ export function useWikiLinkBroken(
           (live) => onNoteCreated(forceRefresh, live),
           (live) => onNoteRenamed(forceRefresh, live),
           (live) => onNoteDeleted(forceRefresh, live),
-          (live) => onNoteLinksChanged(forceRefresh, live)
+          (live) => onNoteLinksChanged(forceRefresh, live),
+          (live) => onJournalEntryCreated(forceRefresh, live),
+          (live) => onJournalEntryDeleted(forceRefresh, live),
+          (live) => onJournalExternalChange(forceRefresh, live)
         ],
         forceRefresh
       ),

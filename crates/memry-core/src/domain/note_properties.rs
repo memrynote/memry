@@ -7,14 +7,19 @@
 //! A row's type depends on the definitions as they were when the file was read. The index
 //! records them ([`TYPED_WITH`]), and the desktop indexer reads again the notes holding a name
 //! whose definition changed since (`retypeIndexedProperties`).
+//!
+//! `property_refs` holds the relations the rows name, written and dropped with them, as
+//! Electron's `setPropertyRefs` keeps them: the notes relating to an item are a seek
+//! (`link_reads::incoming`).
 
 use std::collections::BTreeMap;
 
 use rusqlite::{Connection, OptionalExtension as _, params};
+use serde_json::Value;
 
 use crate::api::errors::StorageError;
 use crate::domain::notes::failed;
-use crate::domain::property_values::{IndexedProperty, value_fits_type};
+use crate::domain::property_values::{IndexedProperty, parse_relation_uri, value_fits_type};
 
 /// `index_meta` key: each defined property's type, by name, as the rows were typed with.
 pub const TYPED_WITH: &str = "note_properties.typed_with";
@@ -43,9 +48,21 @@ pub(crate) fn replace(
             params![ids],
         )
         .map_err(failed)?;
+    index
+        .execute(
+            "DELETE FROM property_refs WHERE source_id IN (SELECT value FROM json_each(?1))",
+            params![ids],
+        )
+        .map_err(failed)?;
     let mut insert = index
         .prepare_cached(
             "INSERT INTO note_properties (note_id, name, value, type) VALUES (?1, ?2, ?3, ?4)",
+        )
+        .map_err(failed)?;
+    let mut refer = index
+        .prepare_cached(
+            "INSERT OR IGNORE INTO property_refs (source_id, name, target_type, target_id) \
+             VALUES (?1, ?2, ?3, ?4)",
         )
         .map_err(failed)?;
     for (note_id, properties) in notes {
@@ -58,15 +75,51 @@ pub(crate) fn replace(
                     property.type_name
                 ])
                 .map_err(failed)?;
+            for (kind, id) in relations(property) {
+                refer
+                    .execute(params![note_id, property.name, kind, id])
+                    .map_err(failed)?;
+            }
         }
     }
     Ok(())
+}
+
+/// `parseRelationValue`: the kinds and ids of a non-empty list of relation URIs, none for any
+/// other value. The list is the file's: a lone value the index reads as a one-item list
+/// (`indexed_value`) was a scalar in the file. A text that only looks like a list is text for
+/// a name with no definition; under a relation, project or multiselect definition a quoted
+/// list-looking string reads as a list and is a ref (a parity gap with Electron, accepted).
+fn relations(property: &IndexedProperty) -> Vec<(&str, &str)> {
+    let listed = property
+        .text
+        .as_deref()
+        .and_then(|text| serde_json::from_str::<Value>(text).ok())
+        .is_some_and(|value| value.is_array());
+    let Some(items) = listed
+        .then_some(&property.value)
+        .and_then(Value::as_array)
+        .filter(|items| !items.is_empty())
+    else {
+        return Vec::new();
+    };
+    items
+        .iter()
+        .map(|item| item.as_str().and_then(parse_relation_uri))
+        .collect::<Option<Vec<_>>>()
+        .unwrap_or_default()
 }
 
 pub(crate) fn forget(index: &Connection, note_id: &str) -> Result<(), StorageError> {
     index
         .execute(
             "DELETE FROM note_properties WHERE note_id = ?1",
+            params![note_id],
+        )
+        .map_err(failed)?;
+    index
+        .execute(
+            "DELETE FROM property_refs WHERE source_id = ?1",
             params![note_id],
         )
         .map_err(failed)?;
@@ -224,6 +277,125 @@ pub fn retyped(before: &BTreeMap<String, String>, now: &BTreeMap<String, String>
 #[cfg(test)]
 mod tests {
     use super::*;
+    use crate::domain::property_values::indexed_value;
+    use crate::storage::migrations::{self, INDEX_MIGRATIONS};
+
+    /// `(note, name, text, type)` rows, the cases the backfill and `replace` must agree on.
+    const ROWS: &[(&str, &str, Option<&str>, &str)] = &[
+        (
+            "a",
+            "related",
+            Some(r#"["memry://note/n1","memry://journal/2026-05-08"]"#),
+            "relation",
+        ),
+        ("b", "related", Some("memry://note/n2"), "relation"),
+        ("c", "said", Some(r#"["memry://note/n3"]"#), "text"),
+        (
+            "d",
+            "related",
+            Some(r#"["memry://note/n1","plain"]"#),
+            "relation",
+        ),
+        ("e", "project", Some(r#"["memry://note/n4"]"#), "project"),
+        ("f", "related", None, "relation"),
+        ("f", "junk", Some("[not json"), "relation"),
+        (
+            "g",
+            "related",
+            Some(r#"["memry://note/n1\u0000"]"#),
+            "relation",
+        ),
+        (
+            "g",
+            "project",
+            Some(r#"["memry://note/n1\u0000"]"#),
+            "project",
+        ),
+        (
+            "g",
+            "tags",
+            Some(r#"["memry://note/n1\u0000"]"#),
+            "multiselect",
+        ),
+    ];
+
+    fn refs(index: &Connection) -> Vec<(String, String, String, String)> {
+        let mut statement = index
+            .prepare(
+                "SELECT source_id, name, target_type, target_id FROM property_refs \
+                 ORDER BY source_id, name, target_type, target_id",
+            )
+            .expect("read");
+        statement
+            .query_map([], |row| {
+                Ok((row.get(0)?, row.get(1)?, row.get(2)?, row.get(3)?))
+            })
+            .expect("rows")
+            .collect::<Result<_, _>>()
+            .expect("rows")
+    }
+
+    fn property(name: &str, text: Option<&str>, type_name: &str) -> IndexedProperty {
+        IndexedProperty {
+            name: name.to_owned(),
+            type_name: type_name.to_owned(),
+            text: text.map(str::to_owned),
+            value: text.map_or(Value::Null, |text| {
+                indexed_value(text.to_owned(), type_name)
+            }),
+        }
+    }
+
+    #[test]
+    fn a_lone_relation_uri_names_no_relation() -> Result<(), StorageError> {
+        let mut index = Connection::open_in_memory().expect("index.db");
+        migrations::run(&mut index, INDEX_MIGRATIONS)?;
+        let lone = [property("related", Some("memry://note/n2"), "relation")];
+        replace(&index, &[("b", &lone)])?;
+        assert!(refs(&index).is_empty());
+        Ok(())
+    }
+
+    #[test]
+    fn the_backfill_writes_the_refs_replace_writes() -> Result<(), StorageError> {
+        let mut migrated = Connection::open_in_memory().expect("index.db");
+        let before = INDEX_MIGRATIONS
+            .iter()
+            .position(|migration| migration.name == "property_refs")
+            .expect("the migration");
+        migrations::run(&mut migrated, &INDEX_MIGRATIONS[..before])?;
+        for (note, name, text, type_name) in ROWS {
+            migrated
+                .execute(
+                    "INSERT INTO note_properties (note_id, name, value, type) VALUES (?1, ?2, ?3, ?4)",
+                    params![note, name, text, type_name],
+                )
+                .expect("row");
+        }
+        migrations::run(&mut migrated, INDEX_MIGRATIONS)?;
+
+        let mut replaced = Connection::open_in_memory().expect("index.db");
+        migrations::run(&mut replaced, INDEX_MIGRATIONS)?;
+        for (note, name, text, type_name) in ROWS {
+            let one = [property(name, *text, type_name)];
+            let kept: Vec<IndexedProperty> = ROWS
+                .iter()
+                .filter(|(other, other_name, _, _)| other == note && other_name != name)
+                .map(|(_, other_name, text, type_name)| property(other_name, *text, type_name))
+                .chain(one)
+                .collect();
+            replace(&replaced, &[(note, &kept)])?;
+        }
+        let own = |a: &str, b: &str, c: &str, d: &str| (a.into(), b.into(), c.into(), d.into());
+        let expected = vec![
+            own("a", "related", "journal", "2026-05-08"),
+            own("a", "related", "note", "n1"),
+            own("e", "project", "note", "n4"),
+        ];
+        assert_eq!(refs(&migrated), expected, "the backfill");
+        assert_eq!(refs(&replaced), expected, "replace");
+        Ok(())
+    }
 
     fn types(pairs: &[(&str, &str)]) -> BTreeMap<String, String> {
         pairs

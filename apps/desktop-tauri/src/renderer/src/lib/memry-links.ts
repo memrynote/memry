@@ -255,6 +255,19 @@ const BASE = {
   isDeleted: false
 } as const
 
+/** The tab that opens one journal day, written or not. */
+export function journalDayTab(date: string, heading: string | null = null): OpenableTab {
+  return {
+    ...BASE,
+    type: 'journal',
+    title: `Journal - ${date}`,
+    icon: 'book-open',
+    path: `/journal/${date}`,
+    entityId: date,
+    viewState: { date, ...(heading ? { headingText: heading } : {}) }
+  }
+}
+
 /**
  * Builds the tab that opens a `memry://` href "as if the item were clicked in
  * its home view". Returns null for anything this grammar cannot resolve.
@@ -311,15 +324,7 @@ export function tabFromMemryHref(
         viewState: { focusInboxItemId: parsed.id, focusedAt: now }
       }
     case 'journal':
-      return {
-        ...BASE,
-        type: 'journal',
-        title: `Journal - ${parsed.id}`,
-        icon: 'book-open',
-        path: `/journal/${parsed.id}`,
-        entityId: parsed.id,
-        viewState: { date: parsed.id }
-      }
+      return journalDayTab(parsed.id)
     case 'project':
       return {
         ...BASE,
