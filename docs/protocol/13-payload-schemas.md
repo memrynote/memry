@@ -186,18 +186,18 @@ plaintext in `data.db`. The exception is bounded:
 - **Installing a key** through `Vault::set_at_rest_key` refuses a key that does
   not match the vault's local key verifier (chapter 01 §1.4.2, `meta` key
   `vault.crypto.verifier.v1`) when one is stored, and installs nothing
-  (`crates/memry-core/src/api/vault.rs:144-173`). Otherwise it seals exactly
+  (`crates/memry-core/src/api/vault.rs:144-170`). Otherwise it seals exactly
   the sealed-pending records that are not flagged corrupt, unconditionally,
   and clears their marks, in one transaction; a record that will not seal is
   flagged corrupt and stays pending; the held agent rows are released
-  (`crates/memry-core/src/domain/agent_records.rs:164-264`). With nothing
-  pending and nothing held it opens no write transaction (`:179-181`).
+  (`crates/memry-core/src/domain/agent_records.rs:188-289`). With nothing
+  pending and nothing held it opens no write transaction (`:203-205`).
   `secure_delete` is on for that transaction and restored after it, `FAST`
-  included (`:182-193`), so SQLite zeroes the cells the seal frees, and a
+  included (`:206-217`), so SQLite zeroes the cells the seal frees, and a
   `wal_checkpoint(TRUNCATE)` follows. The checkpoint's result is read: when a
   reader still holds the WAL after the busy handler gives up, the call says so
   (`Sealed::wal_kept`) and the WAL may keep the plain pages until a later
-  checkpoint overwrites them (`:138-145`, `:196`, `:280-289`). Neither step
+  checkpoint overwrites them (`:162-169`, `:220`, `:305-314`). Neither step
   reaches copies SQLite made earlier with `secure_delete` off: a page split or
   an earlier free can leave plain bytes on a freelist page until the page is
   reused or the file is vacuumed.

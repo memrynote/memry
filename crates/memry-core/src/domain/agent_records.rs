@@ -10,7 +10,7 @@
 //! sealed-pending in the same transaction ([`set_sealed_pending`]). That mark,
 //! never a value's shape, tells a plain value from a sealed one.
 
-use rusqlite::{Connection, params};
+use rusqlite::{Connection, OptionalExtension, params};
 use serde_json::Value;
 
 use crate::api::errors::StorageError;
@@ -133,6 +133,30 @@ pub(crate) fn refuses(item_type: &str, remote: &Object, not_null: &[&str]) -> bo
         || projectors::read(item_type, remote).is_err()
 }
 
+/// Refuses a vault key whose verifier (`candidate`) does not match the one
+/// stored in `meta.vault.crypto.verifier.v1` (chapter 01 §1.4.2). A vault
+/// with no stored verifier accepts any key.
+pub(crate) fn check_verifier(conn: &Connection, candidate: &str) -> Result<(), StorageError> {
+    let stored = conn
+        .query_row(
+            "SELECT value FROM meta WHERE key = 'vault.crypto.verifier.v1'",
+            [],
+            |row| row.get::<_, String>(0),
+        )
+        .optional()
+        .map_err(|error| StorageError::Failed {
+            what: format!("the vault key verifier will not read: {error}"),
+        })?;
+    if stored.is_some_and(|stored| {
+        !crate::crypto::sodium::memcmp(stored.as_bytes(), candidate.as_bytes())
+    }) {
+        return Err(StorageError::Invalid {
+            what: "the vault key does not match this vault's key verifier".to_owned(),
+        });
+    }
+    Ok(())
+}
+
 /// What installing a vault key did to the stored agent records.
 #[derive(Debug, Default, Clone, Copy, PartialEq, Eq)]
 pub struct Sealed {
@@ -197,10 +221,11 @@ pub(crate) fn seal_pending(
     Ok(Sealed { records, wal_kept })
 }
 
+/// `(item_type, item_id, payload, deleted_at)` of a sealed-pending record.
+type PendingRow = (String, String, String, Option<i64>);
+
 /// The sealed-pending records with a payload and no corrupt flag.
-fn pending_rows(
-    conn: &Connection,
-) -> Result<Vec<(String, String, String, Option<i64>)>, StorageError> {
+fn pending_rows(conn: &Connection) -> Result<Vec<PendingRow>, StorageError> {
     let mut statement = conn
         .prepare(
             "SELECT s.item_type, s.item_id, s.payload, s.deleted_at
@@ -220,7 +245,7 @@ fn pending_rows(
 
 fn seal_rows(
     conn: &Connection,
-    rows: Vec<(String, String, String, Option<i64>)>,
+    rows: Vec<PendingRow>,
     key: &AtRestKey,
     now_ms: i64,
 ) -> Result<usize, AgentError> {

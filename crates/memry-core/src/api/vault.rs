@@ -38,7 +38,6 @@
 use std::path::PathBuf;
 use std::sync::Arc;
 
-use rusqlite::OptionalExtension;
 use zeroize::Zeroizing;
 
 use crate::api::auth::AuthSession;
@@ -53,6 +52,7 @@ use crate::api::search::Search;
 use crate::api::sync::VaultSync;
 use crate::api::tasks::Tasks;
 use crate::crypto::agent_envelope::AtRestKey;
+use crate::domain::agent_records;
 use crate::protocol::types::Declaration;
 use crate::seams::secure_store::SecureStore;
 use crate::storage::{Db, OpenOptions, open_data, open_data_with};
@@ -144,7 +144,7 @@ impl Vault {
     pub fn set_at_rest_key(
         &self,
         key: Option<Zeroizing<[u8; 32]>>,
-    ) -> Result<crate::domain::agent_records::Sealed, StorageError> {
+    ) -> Result<agent_records::Sealed, StorageError> {
         let Some(key) = key else {
             self.at_rest_key.set(None);
             return Ok(Default::default());
@@ -153,38 +153,19 @@ impl Vault {
             .map_err(|error| StorageError::Failed {
                 what: format!("the vault key verifier will not compute: {error}"),
             })?;
-        let stored = self.db.call_blocking(|conn| {
-            conn.query_row(
-                "SELECT value FROM meta WHERE key = 'vault.crypto.verifier.v1'",
-                [],
-                |row| row.get::<_, String>(0),
-            )
-            .optional()
-            .map_err(|error| StorageError::Failed {
-                what: format!("the vault key verifier will not read: {error}"),
-            })
-        })?;
-        if stored.is_some_and(|stored| {
-            !crate::crypto::sodium::memcmp(stored.as_bytes(), candidate.as_bytes())
-        }) {
-            return Err(StorageError::Invalid {
-                what: "the vault key does not match this vault's key verifier".to_owned(),
-            });
-        }
+        self.db
+            .call_blocking(move |conn| agent_records::check_verifier(conn, &candidate))?;
         self.at_rest_key.set(Some(key));
         let key = self.at_rest_key.clone();
         self.db.call_blocking(move |conn| {
-            crate::domain::agent_records::seal_pending(
-                conn,
-                &key,
-                crate::api::tasks_write::now_ms(),
-            )
-            .map_err(|error| match error {
-                crate::domain::agent_records::AgentError::Storage(error) => error,
-                other => StorageError::Failed {
-                    what: other.to_string(),
+            agent_records::seal_pending(conn, &key, crate::api::tasks_write::now_ms()).map_err(
+                |error| match error {
+                    agent_records::AgentError::Storage(error) => error,
+                    other => StorageError::Failed {
+                        what: other.to_string(),
+                    },
                 },
-            })
+            )
         })
     }
 
