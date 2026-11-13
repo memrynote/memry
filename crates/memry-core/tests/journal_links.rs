@@ -325,7 +325,15 @@ fn a_journal_body_hit_carries_its_date() {
     let id = day(&data, DAY, "saffron risotto for dinner", &[], NOW);
     reindex(&data, &index);
 
-    let hits = search::search_notes(&data, &index, "saffron", 10).expect("search");
+    let hits = search::search(
+        &data,
+        &index,
+        "saffron",
+        &search::SearchFilter::default(),
+        10,
+    )
+    .map(|groups| [groups.notes, groups.journals].concat())
+    .expect("search");
     assert_eq!(hits.len(), 1, "{hits:?}");
     assert_eq!(hits[0].id, id);
     assert_eq!(

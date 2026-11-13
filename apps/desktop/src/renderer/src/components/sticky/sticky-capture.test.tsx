@@ -79,6 +79,10 @@ async function renderSticky(): Promise<HTMLTextAreaElement> {
   const input = screen.getByLabelText(INPUT) as HTMLTextAreaElement
   await waitFor(() => expect(input).not.toBeDisabled())
   await settleEffects()
+  // Enabled means the DOM committed, not that its effects ran: the window key
+  // listener still closes over the empty pre-load draft. The ready effect that
+  // focuses the input runs in the same flush that attaches the new listener.
+  await waitFor(() => expect(input).toHaveFocus())
   return input
 }
 

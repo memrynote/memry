@@ -379,9 +379,9 @@ fn a_row_of_a_note_deleted_since_the_last_reindex_is_no_edge() {
 }
 
 #[test]
-fn an_index_migrated_from_version_5_fills_the_rows_of_notes_that_never_change_again() {
+fn an_index_migrated_from_version_6_fills_the_rows_of_notes_that_never_change_again() {
     let dir = tempfile::tempdir().expect("scratch");
-    let mut vault = Vault::new(dir.path(), &INDEX_MIGRATIONS[..5]);
+    let mut vault = Vault::new(dir.path(), &INDEX_MIGRATIONS[..6]);
     vault.note("n-src", "Source", "Para ^abc1\n");
     vault.note("n-host", "Host", HOST);
     // What the last build's reindex leaves: every note indexed, under a watermark past them.

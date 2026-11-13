@@ -91,6 +91,12 @@ struct PropertyDetailScreen: View {
                     SettingsDestructiveRow(title: PropertiesCopy.deleteProperty, identifier: "settings.property.delete") {
                         deleting = true
                     }
+                    // On the row, so the popover points at it on iPad.
+                    .confirmationDialog(PropertiesCopy.deleteTitle(name), isPresented: $deleting, titleVisibility: .visible) {
+                        Button(PropertiesCopy.deleteProperty, role: .destructive) { Task { await deleteDefinition() } }
+                    } message: {
+                        Text(PropertiesCopy.deleteMessage(Int(definition.usedIn)))
+                    }
                 }
             }
         }
@@ -111,11 +117,6 @@ struct PropertyDetailScreen: View {
         }
         .sheet(item: $recolouring) { option in
             OptionColorSheet(option: option) { color in Task { await recolour(option, color) } }
-        }
-        .confirmationDialog(PropertiesCopy.deleteTitle(name), isPresented: $deleting, titleVisibility: .visible) {
-            Button(PropertiesCopy.deleteProperty, role: .destructive) { Task { await deleteDefinition() } }
-        } message: {
-            Text(PropertiesCopy.deleteMessage(Int(definition?.usedIn ?? 0)))
         }
     }
 

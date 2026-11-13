@@ -97,9 +97,6 @@ final class JournalDayPageModel {
         do {
             let summary = try await filler.fetchNoteBody(noteId: read.route.id)
             guard summary.updates > 0 || summary.baselines > 0 else { return }
-            // The pulled body may carry new links: index it, then let every
-            // page re-read (generation), which also refreshes backlinks.
-            await JournalTabContent.reindex(store)
             await store.refresh()
         } catch {
             Log.sync.debug("a journal day body could not be pulled")

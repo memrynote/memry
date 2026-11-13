@@ -168,7 +168,7 @@ extension CalendarCopy {
     static let eventKind = "Event"
     static let readOnly = "Read-only"
     static let subscribedKind = "Subscribed calendar"
-    static let thisIPhone = "This iPhone"
+    static let thisDevice = "This \(ThisDevice.noun)"
     static let joinMeeting = "Join meeting"
     static let noteFootnote = "A note's date property shows as an all-day item. An inline date in the text shows as a dashed, timed item and opens the note at that line."
     static let snoozeFootnote = "Reschedule opens the same snooze menu as Inbox: Later today, Tomorrow, This weekend, Next week, Pick a date."

@@ -68,28 +68,9 @@ final class BacklinksViewModel {
         self.search = search
     }
 
-    /// The first read brings the index up to date. Only search and journal
-    /// screens reindexed, so a note opened first on a fresh install read an
-    /// index that had never been built and showed no backlinks. A reindex
-    /// walks only what changed since its watermark, so a built index pays
-    /// little.
-    func loadIfNeeded() async {
-        guard case .loading = phase else { return }
-        if let search {
-            do {
-                try await search.reindex()
-            } catch {
-                // A stale index still answers; the read below reports its own
-                // failure.
-                let mapped = ErrorMapping.userFacing(error)
-                Log.storage.error("the backlinks index could not be brought up to date", .code(mapped.code))
-            }
-        }
-        await load()
-    }
-
-    /// Re-reads after the index moved under a screen that stays open (a
-    /// journal day after a sync pass). Keeps the rows on screen meanwhile.
+    /// Reads the links, on appear and again each time the vault's index owner
+    /// finishes a reindex (`VaultSearchIndex`). Keeps the rows on screen
+    /// meanwhile.
     func reload() async {
         await load()
     }
@@ -112,6 +93,7 @@ final class BacklinksViewModel {
 struct BacklinksSection: View {
     let model: BacklinksViewModel
     let open: (NoteRoute) -> Void
+    @Environment(\.vaultSearchIndex) private var searchIndex
 
     private var heading: some View {
         Text("Linked from")
@@ -147,7 +129,7 @@ struct BacklinksSection: View {
             if hasContent { content }
         }
         .frame(maxWidth: .infinity, alignment: .leading)
-        .task { await model.loadIfNeeded() }
+        .task(id: searchIndex?.completed) { await model.reload() }
     }
 
     @ViewBuilder
@@ -232,6 +214,7 @@ struct NoteBacklinksSheet: View {
     let open: (NoteRoute) -> Void
 
     @Environment(\.dismiss) private var dismiss
+    @Environment(\.vaultSearchIndex) private var searchIndex
 
     var body: some View {
         NavigationStack {
@@ -262,6 +245,6 @@ struct NoteBacklinksSheet: View {
             }
         }
         .presentationDetents([.medium, .large])
-        .task { await model.loadIfNeeded() }
+        .task(id: searchIndex?.completed) { await model.reload() }
     }
 }

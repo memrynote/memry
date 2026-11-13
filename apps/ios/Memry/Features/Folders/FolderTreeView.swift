@@ -89,9 +89,6 @@ struct FolderScreen: View {
     /// Shared with the vault root, so both screens order notes the same way.
     @AppStorage("notes.browseSort") private var sort: BrowseSort = .modifiedNewest
     @AppStorage("notes.folderGrouping") private var grouping: FolderNoteGrouping = .none
-    @State private var isNamingFolder = false
-    @State private var draftName = ""
-    @State private var isPickingTemplate = false
 
     var body: some View {
         Group {
@@ -100,37 +97,7 @@ struct FolderScreen: View {
                     .navigationTitle(node.title)
                     .toolbar { toolbar(for: node) }
                     // Tap for a note in this folder, hold for a folder inside it.
-                    .overlay(alignment: .bottomTrailing) {
-                        if model.writer != nil {
-                            NotesCreateButton(
-                                newNote: {
-                                    Task {
-                                        if let id = await model.createNote(in: route.path) { openNote(id) }
-                                    }
-                                },
-                                newFolder: {
-                                    draftName = ""
-                                    isNamingFolder = true
-                                },
-                                fromTemplate: { isPickingTemplate = true }
-                            )
-                            .padding(.horizontal, Tokens.Space.inset)
-                            .padding(.bottom, Tokens.Space.medium)
-                        }
-                    }
-                    .fromTemplateSheet(
-                        isPresented: $isPickingTemplate, browse: model, folderPath: route.path, open: openNote
-                    )
-                    .alert("New folder", isPresented: $isNamingFolder) {
-                        TextField("Name", text: $draftName)
-                        Button("Create") {
-                            let name = draftName
-                            Task { await model.createFolder(named: name, in: route.path) }
-                        }
-                        Button("Cancel", role: .cancel) {}
-                    } message: {
-                        Text("Inside \(node.title).")
-                    }
+                    .notesCreate(model, in: route.path, place: "Inside \(node.title).", open: openNote)
             } else if model.phase == .loading {
                 // A write reloads the outline; for that moment the folder is
                 // unknown, not missing.
@@ -168,7 +135,7 @@ struct FolderScreen: View {
                 Text("It holds no notes and no folders on this device.")
             }
         } else {
-            List {
+            NotesList {
                 // The same rows the vault root draws, so a folder's contents
                 // read as the root does: folders toggle in place, the selected
                 // one carries the arrow that opens it.
@@ -182,17 +149,20 @@ struct FolderScreen: View {
                         openNote: openNote,
                         setExpanded: setExpanded
                     )
+                    .notesSelection(row)
                 }
                 switch grouping {
                 case .none:
                     ForEach(sort.sorted(node.notes), id: \.id) { note in
                         BrowseRowView(row: .note(note), toggle: toggle, model: model)
+                            .notesSelection(.note(note))
                     }
                 case .date:
                     ForEach(FolderNoteGroup.group(node.notes, sort: sort)) { group in
                         Section(group.bucket.title) {
                             ForEach(group.notes, id: \.id) { note in
                                 BrowseRowView(row: .note(note), toggle: toggle, model: model)
+                                    .notesSelection(.note(note))
                             }
                         }
                     }

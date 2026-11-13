@@ -1,4 +1,4 @@
-//! The update-log mark of each row's stamp (table `note_file_marks`, migration 24): one past the
+//! The update-log mark of each row's stamp (table `note_file_marks`, migration 27): one past the
 //! highest sequence each namespace of the note's body log had claimed when the row was stamped
 //! ([`LogMark`]). An entry at or above it was stored after the stamp, in the stamp's millisecond
 //! too. A mark counts only while its `indexed_at` is the row's stamp.

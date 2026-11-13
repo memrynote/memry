@@ -46,6 +46,9 @@ struct JournalDayHeader: View {
             .accessibilityIdentifier("journal.day.titleMenu")
         }
         .frame(maxWidth: .infinity, alignment: .leading)
+        // The heading keeps the reading measure; the fog behind it spans the
+        // pane, as it lines up with the fog under the toolbar.
+        .readingColumn()
         .background { if !reduceTransparency { fog } }
         // One heading for VoiceOver (JP057); `.combine` keeps the title
         // menu's activation, so double-tap still opens Month / Year / Go to.

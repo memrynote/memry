@@ -98,8 +98,8 @@ extension ErrorMapping {
     /// (`DESIGN.md` §"Error copy, in detail", spec-defect 111).
     static let locked = UserFacingError(
         code: "sync.locked",
-        title: "This phone holds no key for your account.",
-        guidance: "Nothing has been lost. Unlock Memry on this phone before it can download your notes.",
+        title: "This \(ThisDevice.noun) holds no key for your account.",
+        guidance: "Nothing has been lost. Unlock Memry on this \(ThisDevice.noun) before it can download your notes.",
         recourse: .blocked,
         isUserVisible: true
     )

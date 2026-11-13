@@ -5,10 +5,12 @@ import SwiftUI
 //
 // A paging `TabView` holds the shown day and its neighbours (desktop
 // `PREFETCH_DAYS` = 1: building a neighbour's page reads it, which is the
-// prefetch). A swipe, ‹ ›, the "Today" capsule or a hardware ← / → replace
-// the shown day in place through `JournalRouter.showDay`, so Back still
-// leads to the month; Esc drills up. Each page owns its own models keyed by
-// its date, so an edit pending on one day never lands on another.
+// prefetch). A swipe, ‹ ›, the "Today" capsule, the rail's calendar or the
+// day keys (`JournalDayShortcuts`) replace the shown day in place through
+// `JournalRouter.showDay`, so Back still leads to the month; Esc drills up.
+// Each page owns its own models keyed by its date, so an edit pending on one
+// day never lands on another. At regular width the rail (`JournalDayRail`)
+// sits beside the pager in its own space (#4351).
 
 struct JournalDayScreen: View {
     let store: JournalStore
@@ -17,6 +19,9 @@ struct JournalDayScreen: View {
     @Environment(JournalRouter.self) private var router
     @Environment(\.accessibilityReduceMotion) private var reduceMotion
     @Environment(\.accessibilityReduceTransparency) private var reduceTransparency
+    @Environment(\.horizontalSizeClass) private var horizontalSizeClass
+    @Environment(\.verticalSizeClass) private var verticalSizeClass
+    @Environment(\.dynamicTypeSize) private var typeSize
     @State private var selection: String
     @State private var pages = JournalDayPages()
     @State private var titleCollapsed = false
@@ -45,23 +50,23 @@ struct JournalDayScreen: View {
 
     private var isToday: Bool { date == store.clock.today }
 
+    /// DESIGN.md › Tablet: regular width and height. A large iPhone in
+    /// landscape (regular width, compact height) keeps the phone page, and
+    /// so do accessibility text sizes, which break words in the rail's 320
+    /// points; the page then shows the day's tasks under the entry.
+    private var showsRail: Bool {
+        LayoutWidth(horizontal: horizontalSizeClass, vertical: verticalSizeClass) == .regular
+            && !typeSize.isAccessibilitySize
+    }
+
     var body: some View {
-        TabView(selection: $selection) {
-            ForEach(Self.window(around: date), id: \.self) { day in
-                JournalDayPage(
-                    store: store,
-                    date: day,
-                    model: pages.model(for: day),
-                    isShown: day == selection,
-                    open: open,
-                    titleCollapsed: $titleCollapsed,
-                    fog: $fog
-                )
-                .tag(day)
-                .task { await pages.build(day, store: store) }
+        HStack(spacing: 0) {
+            pager
+                .environment(\.journalRailShown, showsRail)
+            if showsRail {
+                JournalDayRail(store: store, date: date, show: show)
             }
         }
-        .tabViewStyle(.page(indexDisplayMode: .never))
         .safeAreaInset(edge: .top) { JournalFailureBanner(store: store) }
         .background {
             ZStack(alignment: .topLeading) {
@@ -86,11 +91,33 @@ struct JournalDayScreen: View {
         // Esc drills up (desktop keys), so the system Back is not drawn.
         .navigationBarBackButtonHidden(true)
         .toolbar { toolbar }
-        .background { shortcuts }
+        .background {
+            JournalDayShortcuts(step: step, today: { show(store.clock.today) }, drillUp: { router.drillUp() })
+        }
         .accessibilityAction(named: JournalCopy.previousDay) { step(-1) }
         .accessibilityAction(named: JournalCopy.nextDay) { step(1) }
         .accessibilityAction(named: JournalCopy.goToToday) { show(store.clock.today) }
         .accessibilityIdentifier("journal.day")
+    }
+
+    /// The shown day and its neighbours, paged by a swipe on touch.
+    private var pager: some View {
+        TabView(selection: $selection) {
+            ForEach(Self.window(around: date), id: \.self) { day in
+                JournalDayPage(
+                    store: store,
+                    date: day,
+                    model: pages.model(for: day),
+                    isShown: day == selection,
+                    open: open,
+                    titleCollapsed: $titleCollapsed,
+                    fog: $fog
+                )
+                .tag(day)
+                .task { await pages.build(day, store: store) }
+            }
+        }
+        .tabViewStyle(.page(indexDisplayMode: .never))
     }
 
     @ToolbarContentBuilder
@@ -134,26 +161,11 @@ struct JournalDayScreen: View {
         }
     }
 
-    /// Desktop's day keys (`pages/journal.tsx` keydown): ← / → change the
-    /// day and Esc drills up. Hidden buttons carrying the shortcuts; a
-    /// focused text field keeps its own arrow keys (system behaviour wins).
-    private var shortcuts: some View {
-        ZStack {
-            Button(JournalCopy.previousDay) { step(-1) }
-                .keyboardShortcut(.leftArrow, modifiers: [])
-            Button(JournalCopy.nextDay) { step(1) }
-                .keyboardShortcut(.rightArrow, modifiers: [])
-            Button(JournalCopy.backToMonth) { router.drillUp() }
-                .keyboardShortcut(.cancelAction)
-        }
-        .opacity(0)
-        .allowsHitTesting(false)
-        .accessibilityHidden(true)
-    }
-
-    /// ‹ ›: page to the neighbour, which then becomes the shown day.
+    /// ‹ ›: page to the neighbour, which then becomes the shown day. Counts
+    /// from `selection`, which is current even in a stale copy of this view:
+    /// the hidden key buttons can keep an action built for an earlier day.
     private func step(_ days: Int) {
-        let target = JournalDates.adding(days, to: date)
+        let target = JournalDates.adding(days, to: selection)
         withAnimation(Tokens.animation(.normal, .moving, reduceMotion: reduceMotion)) {
             selection = target
         }
@@ -162,7 +174,8 @@ struct JournalDayScreen: View {
     /// Replaces the shown day in place. No push animation: the page already
     /// moved (or, for Today, jumps).
     private func show(_ day: String) {
-        guard day != date else { return }
+        // `selection` too: in a stale copy `date` can already equal `day`.
+        guard day != date || day != selection else { return }
         var transaction = Transaction()
         transaction.disablesAnimations = true
         withTransaction(transaction) { router.showDay(day) }
