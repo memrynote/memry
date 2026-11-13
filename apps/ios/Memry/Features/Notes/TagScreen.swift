@@ -151,11 +151,6 @@ struct TaggedNotesView: View {
             } message: {
                 Text(TagsCopy.renameMessage(itemCount))
             }
-            .confirmationDialog(TagsCopy.deleteTitle(model.tag), isPresented: $isConfirmingDelete, titleVisibility: .visible) {
-                Button(TagsCopy.deleteAction, role: .destructive) { Task { await delete() } }
-            } message: {
-                Text(TagsCopy.deleteMessage(itemCount))
-            }
             .sheet(item: $styling) { tag in
                 TagStyleSheet(tag: tag) { color, icon in Task { await style(tag, color: color, icon: icon) } }
             }
@@ -228,6 +223,12 @@ struct TaggedNotesView: View {
             Button(TagsCopy.delete, systemImage: "trash", role: .destructive) { isConfirmingDelete = true }
         } label: {
             Label("Tag actions", systemImage: "number")
+        }
+        // On the menu, so the popover points at it on iPad.
+        .confirmationDialog(TagsCopy.deleteTitle(model.tag), isPresented: $isConfirmingDelete, titleVisibility: .visible) {
+            Button(TagsCopy.deleteAction, role: .destructive) { Task { await delete() } }
+        } message: {
+            Text(TagsCopy.deleteMessage(itemCount))
         }
     }
 

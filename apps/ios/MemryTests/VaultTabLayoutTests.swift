@@ -80,10 +80,10 @@ struct VaultTabLayoutTests {
     }
 
     @Test func the_sidebar_needs_regular_width_and_regular_height() {
-        #expect(VaultTabLayout.Width(horizontal: .regular, vertical: .regular) == .regular)
-        #expect(VaultTabLayout.Width(horizontal: .compact, vertical: .regular) == .compact, "iPad Split View")
-        #expect(VaultTabLayout.Width(horizontal: .regular, vertical: .compact) == .compact, "large iPhone in landscape")
-        #expect(VaultTabLayout.Width(horizontal: nil, vertical: nil) == .compact)
+        #expect(LayoutWidth(horizontal: .regular, vertical: .regular) == .regular)
+        #expect(LayoutWidth(horizontal: .compact, vertical: .regular) == .compact, "iPad Split View")
+        #expect(LayoutWidth(horizontal: .regular, vertical: .compact) == .compact, "large iPhone in landscape")
+        #expect(LayoutWidth(horizontal: nil, vertical: nil) == .compact)
     }
 
     /// A portrait window would open with the sidebar over the page, and a

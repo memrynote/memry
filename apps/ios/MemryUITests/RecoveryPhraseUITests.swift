@@ -23,6 +23,11 @@ final class RecoveryPhraseUITests: XCTestCase {
             XCUIElement.ElementType.textField.rawValue, XCUIElement.ElementType.textView.rawValue
         )).firstMatch
         if chooser.waitForExistence(timeout: 15), !field.exists { chooser.tap() }
+        // An unlocked simulator, which the rest of the UI plan needs, opens
+        // the vault instead: skip with the precondition as the reason.
+        if app.buttons["Menu"].firstMatch.exists {
+            throw XCTSkip("Unlocked: this test needs a signed-in simulator that has not entered its recovery phrase.")
+        }
         guard field.waitForExistence(timeout: 10) else {
             return XCTFail("Not on the recovery-phrase screen. Sign in to staging without unlocking first.")
         }
