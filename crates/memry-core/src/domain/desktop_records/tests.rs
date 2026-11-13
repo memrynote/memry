@@ -2,6 +2,7 @@
 //! of each lands whole, and a key this build does not model survives a local
 //! edit (§13.2 rule 3).
 
+use rusqlite::types::Value as SqlValue;
 use rusqlite::{Connection, params};
 use serde_json::{Value, json};
 
@@ -116,6 +117,234 @@ fn one_page_of_each_type_lands_whole() {
         Ok(())
     })
     .expect("pull");
+}
+
+/// Everything a refused remote must leave alone: the stored row (payload,
+/// clock, tombstone, corrupt mark) and the projected row.
+fn snapshot(conn: &Connection, item_type: &str, id: &str) -> (String, Vec<SqlValue>) {
+    let row = sync_items::load(conn, item_type, id)
+        .expect("read")
+        .expect("a row");
+    let stored = format!(
+        "{:?}",
+        (
+            &row.payload,
+            &row.clock,
+            row.deleted_at,
+            &row.corrupt_reason
+        )
+    );
+    let table = match item_type {
+        "canvas_folder" => "canvas_folders",
+        "home_page" => "home_pages",
+        _ => "sticky_drafts",
+    };
+    let projected = conn
+        .query_row(
+            &format!("SELECT * FROM {table} WHERE id = ?1"),
+            params![id],
+            |row| {
+                (0..row.as_ref().column_count())
+                    .map(|index| row.get::<_, SqlValue>(index))
+                    .collect()
+            },
+        )
+        .expect("a projected row");
+    (stored, projected)
+}
+
+/// A remote whose schema keys desktop's schema refuses
+/// (`packages/contracts/src/sync-payloads.ts`), which `apply-item.ts:166-176`
+/// turns into `schema_invalid` before the handler reads the local row.
+fn refused_cases() -> Vec<(&'static str, Value)> {
+    vec![
+        ("canvas_folder", json!({"path": 5})),
+        ("canvas_folder", json!({"icon": 5})),
+        ("canvas_folder", json!({"deletedAt": "x"})),
+        ("canvas_folder", json!({"id": null})),
+        ("canvas_folder", json!({"vaultId": null, "deletedAt": 123})),
+        ("canvas_folder", json!({"clock": "x"})),
+        ("canvas_folder", json!({"clock": {"peer": 3, DEVICE: -1}})),
+        ("home_page", json!({"clock": {"peer": 3, DEVICE: 2.5}})),
+        (
+            "sticky_draft",
+            json!({"clock": {"peer": 9_007_199_254_740_992_u64, DEVICE: 2}}),
+        ),
+        ("home_page", json!({"name": 5})),
+        ("home_page", json!({"position": "x"})),
+        ("home_page", json!({"icon": 5})),
+        ("home_page", json!({"createdAt": null})),
+        ("home_page", json!({"updatedAt": null})),
+        ("home_page", json!({"updatedAt": 5})),
+        ("sticky_draft", json!({"content": 5})),
+        ("sticky_draft", json!({"kind": 5})),
+        ("sticky_draft", json!({"createdAt": null})),
+        ("sticky_draft", json!({"modifiedAt": null})),
+        ("sticky_draft", json!({"modifiedAt": 5})),
+    ]
+}
+
+/// A body that dominates a local record pulled from [`body`] and edited once.
+fn dominating(item_type: &str, id: &str, bad: &Value) -> Value {
+    let mut sent = body(item_type, id);
+    let object = sent.as_object_mut().expect("object");
+    object.insert("clock".to_owned(), json!({"peer": 2, DEVICE: 2}));
+    if item_type == "canvas_folder" {
+        object.insert("deletedAt".to_owned(), json!(NOW + 30));
+    }
+    for (key, value) in bad.as_object().expect("object") {
+        object.insert(key.clone(), value.clone());
+    }
+    sent
+}
+
+#[test]
+fn a_dominating_remote_desktop_refuses_leaves_the_local_record_alone() {
+    let mut failures = Vec::new();
+    for (item_type, bad) in refused_cases() {
+        let case = format!("{item_type} {bad}");
+        let (db, _dir) = open("desktop-records-refuse");
+        let outcome = db.call_blocking(move |conn| {
+            let id = id_of(item_type);
+            pull(conn, vec![remote(item_type, &id, &body(item_type, &id))])?;
+            edit(conn, item_type, &id);
+            let before = snapshot(conn, item_type, &id);
+
+            let totals = pull(
+                conn,
+                vec![remote(item_type, &id, &dominating(item_type, &id, &bad))],
+            )?;
+
+            let counts = (totals.applied, totals.corrupt, totals.skipped);
+            let after = snapshot(conn, item_type, &id);
+            Ok((counts == (0, 0, 1) && after == before)
+                .then_some(())
+                .ok_or(format!("{counts:?}, {after:?}")))
+        });
+        match outcome {
+            Ok(Ok(())) => {}
+            Ok(Err(what)) => failures.push(format!("{case}: {what}")),
+            Err(error) => failures.push(format!("{case}: {error}")),
+        }
+    }
+    assert!(failures.is_empty(), "{}", failures.join("\n"));
+}
+
+/// The control for the test above: the same remote without the refused key
+/// wins, so each refusal is the schema check and not the clock gate.
+#[test]
+fn the_same_dominating_remote_without_the_refused_key_applies() {
+    for item_type in TYPES {
+        let (db, _dir) = open("desktop-records-dominate");
+        db.call_blocking(move |conn| {
+            let id = id_of(item_type);
+            pull(conn, vec![remote(item_type, &id, &body(item_type, &id))])?;
+            edit(conn, item_type, &id);
+            let before = snapshot(conn, item_type, &id);
+
+            let sent = dominating(item_type, &id, &json!({}));
+            let totals = pull(conn, vec![remote(item_type, &id, &sent)])?;
+
+            assert_eq!(totals.applied, 1, "{item_type}");
+            assert_ne!(snapshot(conn, item_type, &id), before, "{item_type}");
+            Ok(())
+        })
+        .expect("pull");
+    }
+}
+
+/// What desktop's schema accepts still lands over the local record: a float
+/// number, an unreadable `cover` (`.catch(undefined)`), and a `null` for a key
+/// the schema does not model.
+#[test]
+fn a_dominating_remote_desktop_accepts_applies() {
+    let accepted = [
+        ("canvas_folder", json!({"deletedAt": 1.5})),
+        ("home_page", json!({"position": 1.5})),
+        ("home_page", json!({"cover": 5})),
+        ("home_page", json!({"id": null})),
+        ("sticky_draft", json!({"id": null})),
+    ];
+    for (item_type, extra) in accepted {
+        let (db, _dir) = open("desktop-records-accept");
+        db.call_blocking(move |conn| {
+            let id = id_of(item_type);
+            pull(conn, vec![remote(item_type, &id, &body(item_type, &id))])?;
+            edit(conn, item_type, &id);
+
+            let sent = dominating(item_type, &id, &extra);
+            let totals = pull(conn, vec![remote(item_type, &id, &sent)])?;
+
+            assert_eq!(
+                (totals.applied, totals.corrupt, totals.skipped),
+                (1, 0, 0),
+                "{item_type} {extra}"
+            );
+            let row = sync_items::load(conn, item_type, &id)?.expect("a row");
+            assert_eq!(row.corrupt_reason, None, "{item_type} {extra}");
+            Ok(())
+        })
+        .expect("pull");
+    }
+}
+
+/// A create whose `clock` is `null` fails desktop's schema like any other
+/// `null` the schema has no room for.
+#[test]
+fn a_create_with_a_null_clock_is_refused() {
+    for item_type in TYPES {
+        let (db, _dir) = open("desktop-records-null-clock");
+        db.call_blocking(move |conn| {
+            let id = id_of(item_type);
+            let mut sent = body(item_type, &id);
+            sent["clock"] = Value::Null;
+            let totals = pull(conn, vec![remote(item_type, &id, &sent)])?;
+
+            assert_eq!(
+                (totals.applied, totals.corrupt, totals.skipped),
+                (0, 0, 1),
+                "{item_type}"
+            );
+            assert!(
+                sync_items::load(conn, item_type, &id)?.is_none(),
+                "{item_type}"
+            );
+            Ok(())
+        })
+        .expect("pull");
+    }
+}
+
+/// A live remote that is not a JSON object leaves a local record alone, and
+/// with none it is stored as corrupt, as before.
+#[test]
+fn a_remote_that_is_not_an_object_leaves_the_local_record_alone() {
+    for item_type in TYPES {
+        for sent in [json!([]), json!(5), Value::Null] {
+            let (db, _dir) = open("desktop-records-not-object");
+            db.call_blocking(move |conn| {
+                let id = id_of(item_type);
+                pull(conn, vec![remote(item_type, &id, &body(item_type, &id))])?;
+                edit(conn, item_type, &id);
+                let before = snapshot(conn, item_type, &id);
+
+                let totals = pull(conn, vec![remote(item_type, &id, &sent)])?;
+
+                assert_eq!(
+                    (totals.applied, totals.corrupt, totals.skipped),
+                    (0, 0, 1),
+                    "{item_type} {sent}"
+                );
+                assert_eq!(snapshot(conn, item_type, &id), before, "{item_type} {sent}");
+
+                let fresh = format!("{id}-fresh");
+                let totals = pull(conn, vec![remote(item_type, &fresh, &sent)])?;
+                assert_eq!(totals.corrupt, 1, "{item_type} {sent} with no local row");
+                Ok(())
+            })
+            .expect("pull");
+        }
+    }
 }
 
 mod properties {
