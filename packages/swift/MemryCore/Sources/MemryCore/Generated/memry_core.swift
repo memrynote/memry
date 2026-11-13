@@ -26911,7 +26911,8 @@ enum ApiError: Swift.Error, Equatable, Hashable, Foundation.LocalizedError {
     /**
      * A 402 from an account route that needs a plan: `POST /sync/vaults`
      * answers it with no code when the account has no active sync plan, and
-     * with `SYNC_VAULT_LIMIT_EXCEEDED` when the plan's vault slots are full.
+     * with `SYNC_VAULT_LIMIT_EXCEEDED` when the plan's vault slots are full;
+     * `POST /auth/linking/initiate` answers it with `SYNC_PAYMENT_REQUIRED`.
      * The shell offers a plan; retrying changes nothing. Raised only by the
      * routes that name it, so the sync engine's 402 handling
      * (`sync::policy`, which reads `Status`) is unchanged.
@@ -35405,6 +35406,18 @@ public func validateRecoveryPhrase(phrase: String)throws  -> String  {
 })
 }
 /**
+ * Runs every case of `embedding-input.json` and answers `{ cases: [{ name,
+ * actual: { document, chunks } }], queries: [{ name, actual }] }`.
+ */
+public func embeddingInputConformance(vectorJson: String) -> String  {
+    return try!  FfiConverterString.lift(try! rustCall() {
+        uniffiCallStatus in
+    uniffi_memry_core_fn_func_embedding_input_conformance(
+        FfiConverterString.lower(vectorJson),uniffiCallStatus
+    )
+})
+}
+/**
  * `inbox.json` evaluated by the core: `{apply: [{name, actual}], views}`,
  * each `actual` in the shape of the file's `expected`. A failure is reported
  * in the JSON (`error`), never a panic.
@@ -35674,6 +35687,9 @@ private let initializationResult: InitializationResult = {
         return InitializationResult.apiChecksumMismatch
     }
     if (uniffi_memry_core_checksum_func_validate_recovery_phrase() != 42065) {
+        return InitializationResult.apiChecksumMismatch
+    }
+    if (uniffi_memry_core_checksum_func_embedding_input_conformance() != 55842) {
         return InitializationResult.apiChecksumMismatch
     }
     if (uniffi_memry_core_checksum_func_inbox_conformance() != 10056) {
