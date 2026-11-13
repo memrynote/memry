@@ -13,20 +13,133 @@ enum InboxRoute: Hashable, Sendable {
     case inboxSettings
 }
 
-/// The Inbox tab's stack, so a notification can open the Inbox.
+/// The Inbox tab's navigation, so a notification can open the Inbox. At
+/// compact width it is the stack. At regular width (#4349) `selection` is the
+/// detail column's item and `path` stacks over it; an item is never pushed.
 @MainActor
 @Observable
 final class InboxRouter {
     var path: [InboxRoute] = []
+    private(set) var selection: InboxDetailSelection?
+    private(set) var width: LayoutWidth = .compact
+    /// An item opened from outside the Inbox (Calendar, a capture's "View",
+    /// search), which may sit in another of its lists. The detail column
+    /// switches the list to the one that holds it.
+    private(set) var revealing: String?
+    /// An item opened by hand that exists but no list holds: a filed capture
+    /// (search's #4320 contract), one a type filter or an archived search
+    /// hides, or one past the 200-row cap. It stays in the detail, as the
+    /// pushed page does at compact width, until a list holds it or the user
+    /// opens another.
+    private(set) var unlisted: String?
 
+    /// A row, a capture's "View" or a calendar link opened `id`.
+    func open(_ id: String) {
+        switch width {
+        case .compact: path.append(.item(id))
+        case .regular:
+            selection = InboxDetailSelection(id: id, explicit: true)
+            unlisted = nil
+            path = []
+        }
+    }
+
+    /// A notification or a Share hand-off: the list, with its first item in
+    /// the detail column at regular width (D6). Neither names an item.
     func openInbox(in tasks: TasksRouter) {
         tasks.selectedTab = .inbox
         path = []
+        selection = nil
+        unlisted = nil
     }
 
     func openItem(_ id: String, in tasks: TasksRouter) {
         tasks.selectedTab = .inbox
-        path = [.item(id)]
+        path = []
+        open(id)
+        if width == .regular { revealing = id }
+    }
+
+    /// The list now holds `revealing`, if any list does, in `order`.
+    /// `exists` is false for an item gone from the vault.
+    func revealed(_ order: [String], exists: Bool) {
+        if exists, let revealing, selection?.id == revealing, !order.contains(revealing) { unlisted = revealing }
+        revealing = nil
+        follow(order, order)
+    }
+
+    /// The window crossed the regular rule: the item opened by hand stays
+    /// open, pushed at compact width and selected at regular width.
+    func adapt(to width: LayoutWidth) {
+        guard width != self.width else { return }
+        self.width = width
+        unlisted = nil
+        switch width {
+        case .regular:
+            // An item pushed by hand, or opened from outside before the tab
+            // first showed, may sit in another list: reveal it.
+            if case let .item(id) = path.last(where: \.isItem) {
+                selection = InboxDetailSelection(id: id, explicit: true)
+                revealing = id
+            }
+            path.removeAll(where: \.isItem)
+        case .compact:
+            if let selection, selection.explicit { path.insert(.item(selection.id), at: 0) }
+            selection = nil
+            revealing = nil
+        }
+    }
+
+    /// An action from the detail column (archive, snooze, file, delete,
+    /// restore) took `id` out of it. A listed item's list change hands the
+    /// selection on; an unlisted one has no list change to follow, so it
+    /// falls back here as a listed one would: the list's first item.
+    func left(_ id: String, order: [String]) {
+        guard unlisted == id else { return }
+        unlisted = nil
+        follow(order, order)
+    }
+
+    /// The list beside the detail changed from `old` to `new` ids.
+    func follow(_ old: [String], _ new: [String]) {
+        guard revealing == nil else { return }
+        if let unlisted {
+            guard new.contains(unlisted) else { return }
+            self.unlisted = nil
+        }
+        let next = InboxDetailSelection.next(after: selection, old: old, new: new)
+        if next != selection { selection = next }
+    }
+}
+
+/// The item in the detail column at regular width. `explicit` is false when
+/// the app chose it (the first item, or the next one after a file, snooze,
+/// archive or delete), and such an item is not marked viewed: desktop marks a
+/// reminder viewed only when the user opens it, never when its list focus
+/// moves (`use-inbox-keyboard.ts`, `reminder-detail.tsx`).
+struct InboxDetailSelection: Equatable {
+    let id: String
+    let explicit: Bool
+
+    /// Desktop's rule (`use-inbox-keyboard.ts`): an item that leaves the
+    /// list hands the selection to the item after it, else the one before.
+    /// No selection, or one the list never held (a capture deleted while the
+    /// window was compact), takes the first item (`DESIGN.md` › Tablet, D6).
+    static func next(after selection: Self?, old: [String], new: [String]) -> Self? {
+        let auto = { (id: String) in Self(id: id, explicit: false) }
+        guard let selection else { return new.first.map(auto) }
+        if new.contains(selection.id) { return selection }
+        guard let index = old.firstIndex(of: selection.id) else { return new.first.map(auto) }
+        let kept = Set(new)
+        let neighbor = old[(index + 1)...].first(where: kept.contains) ?? old[..<index].last(where: kept.contains)
+        return (neighbor ?? new.first).map(auto)
+    }
+}
+
+extension InboxRoute {
+    var isItem: Bool {
+        if case .item = self { return true }
+        return false
     }
 }
 

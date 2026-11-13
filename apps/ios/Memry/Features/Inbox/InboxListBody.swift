@@ -9,6 +9,8 @@ struct InboxListBody<Header: View>: View {
     @Binding var selection: Set<String>
     @Binding var titleCollapsed: Bool
     let selecting: Bool
+    /// The item the detail column shows beside the list (#4349).
+    var current: String?
     let open: (InboxItemRecord) -> Void
     @ViewBuilder let header: () -> Header
 
@@ -41,11 +43,13 @@ struct InboxListBody<Header: View>: View {
                     ForEach(rows, id: \.id) { item in
                         InboxRow(
                             item: item, store: store, now: now,
-                            selecting: selecting, selected: selection.contains(item.id)
+                            selecting: selecting,
+                            selected: selecting ? selection.contains(item.id) : current == item.id
                         )
                         .onTapGesture { tap(item) }
                         .inboxRowActions(item, store: store, enabled: !selecting)
                         .inboxItemRow()
+                        .inboxCurrentRow(!selecting && current == item.id)
                     }
                 }
             }
@@ -98,6 +102,11 @@ extension View {
                 top: first ? Tokens.Space.small + 2 : Tokens.Space.section - 2,
                 leading: InboxLayout.edge, bottom: Tokens.Space.tight, trailing: InboxLayout.edge
             ))
+    }
+
+    /// The row whose item the detail column shows.
+    @ViewBuilder func inboxCurrentRow(_ current: Bool) -> some View {
+        if current { listRowBackground(Tokens.Canvas.surfaceActive.color) } else { self }
     }
 
     func inboxItemRow() -> some View {
