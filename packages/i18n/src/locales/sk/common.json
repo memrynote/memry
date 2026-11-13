@@ -3,9 +3,6 @@
     "copyFailed": "Portál sa nepodarilo skopírovať",
     "hiddenCount": "Skryté: {count}",
     "windowFailed": "Tento portál sa nepodarilo otvoriť. Otvorte radšej zdrojovú poznámku.",
-    "noTarget": "Tento portál zatiaľ nemá cieľ. Pridajte do definície poznámku alebo blok odstráňte.",
-    "invalidJson": "Definícia tohto portálu nie je platný JSON. Opravte ju nižšie alebo blok odstráňte.",
-    "invalidShape": "Definícia tohto portálu neobsahuje poznámku ani vyhľadávanie. Opravte ju nižšie alebo blok odstráňte.",
     "unreadable": "Tento portál sa nedá prečítať. Odstráňte blok a pridajte nový portál.",
     "search": {
       "editQuery": "Upraviť dopyt",

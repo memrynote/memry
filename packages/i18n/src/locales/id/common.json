@@ -3,9 +3,6 @@
     "copyFailed": "Tidak dapat menyalin portal",
     "hiddenCount": "{count} disembunyikan",
     "windowFailed": "Portal ini tidak dapat dibuka. Buka catatan sumbernya.",
-    "noTarget": "Portal ini belum memiliki target. Tambahkan catatan ke definisinya, atau hapus blok ini.",
-    "invalidJson": "Definisi portal ini bukan JSON yang valid. Perbaiki di bawah, atau hapus blok ini.",
-    "invalidShape": "Definisi portal ini tidak memiliki catatan atau pencarian. Perbaiki di bawah, atau hapus blok ini.",
     "unreadable": "Portal ini tidak dapat dibaca. Hapus blok dan tambahkan portal baru.",
     "search": {
       "editQuery": "Edit kueri",
