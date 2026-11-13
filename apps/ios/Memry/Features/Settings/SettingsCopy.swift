@@ -103,7 +103,7 @@ enum SettingsCopy {
     static let onThisPhone = "On this \(ThisDevice.noun)"
     static let inAccount = "In your account"
     static let openVault = "Open"
-    static let currentVault = "Open now"
+    static let currentVault = "Current"
     static let download = "Download"
     static let unnamedVault = "Unnamed vault"
     static func vaultsFooter(_ max: Int64?) -> String {
