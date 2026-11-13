@@ -5,7 +5,8 @@ import SwiftUI
 // (`DESIGN.md` › Tablet › Lists and details). `InboxRouter` owns what the
 // detail column shows; the list writes it through `open`, and every change to
 // the list hands the selection on through `InboxDetailSelection.next`, so the
-// detail never shows an item the list does not hold. Select mode turns the
+// detail never shows an item the list does not hold, save one the user opened
+// that no list holds (`InboxRouter.unlisted`). Select mode turns the
 // detail column into the bulk actions. Compact width keeps the phone stack in
 // `InboxTab`.
 
@@ -39,8 +40,11 @@ struct InboxSplitView: View {
         }
         .task(id: router.revealing) {
             guard let id = router.revealing else { return }
-            if let item = await store.fetch(id), store.view != .holding(item) { await store.select(.holding(item)) }
-            router.revealed(store.detailOrder)
+            let item = await store.fetch(id)
+            if let item, store.view != .holding(item) { await store.select(.holding(item)) }
+            // A second outside open replaced this one while it fetched.
+            guard router.revealing == id else { return }
+            router.revealed(store.detailOrder, exists: item != nil)
         }
     }
 
@@ -86,8 +90,8 @@ private struct InboxBulkDetail: View {
 }
 
 extension InboxView {
-    /// The list that holds `item`. A filed capture is in none, and the
-    /// Inbox's rule then selects its first item.
+    /// The list that holds `item`. A filed capture is in none, and stays in
+    /// the detail beside the Inbox list (`InboxRouter.unlisted`).
     static func holding(_ item: InboxItemRecord) -> Self {
         if item.archivedAtMs != nil { return .archived }
         return item.snoozedUntilMs != nil ? .snoozed : .inbox

@@ -26,6 +26,12 @@ final class InboxRouter {
     /// search), which may sit in another of its lists. The detail column
     /// switches the list to the one that holds it.
     private(set) var revealing: String?
+    /// An item opened by hand that exists but no list holds: a filed capture
+    /// (search's #4320 contract), one a type filter or an archived search
+    /// hides, or one past the 200-row cap. It stays in the detail, as the
+    /// pushed page does at compact width, until a list holds it or the user
+    /// opens another.
+    private(set) var unlisted: String?
 
     /// A row, a capture's "View" or a calendar link opened `id`.
     func open(_ id: String) {
@@ -33,6 +39,7 @@ final class InboxRouter {
         case .compact: path.append(.item(id))
         case .regular:
             selection = InboxDetailSelection(id: id, explicit: true)
+            unlisted = nil
             path = []
         }
     }
@@ -43,6 +50,7 @@ final class InboxRouter {
         tasks.selectedTab = .inbox
         path = []
         selection = nil
+        unlisted = nil
     }
 
     func openItem(_ id: String, in tasks: TasksRouter) {
@@ -53,7 +61,9 @@ final class InboxRouter {
     }
 
     /// The list now holds `revealing`, if any list does, in `order`.
-    func revealed(_ order: [String]) {
+    /// `exists` is false for an item gone from the vault.
+    func revealed(_ order: [String], exists: Bool) {
+        if exists, let revealing, selection?.id == revealing, !order.contains(revealing) { unlisted = revealing }
         revealing = nil
         follow(order, order)
     }
@@ -63,19 +73,30 @@ final class InboxRouter {
     func adapt(to width: LayoutWidth) {
         guard width != self.width else { return }
         self.width = width
+        unlisted = nil
         switch width {
         case .regular:
-            if case let .item(id) = path.last(where: \.isItem) { selection = InboxDetailSelection(id: id, explicit: true) }
+            // An item pushed by hand, or opened from outside before the tab
+            // first showed, may sit in another list: reveal it.
+            if case let .item(id) = path.last(where: \.isItem) {
+                selection = InboxDetailSelection(id: id, explicit: true)
+                revealing = id
+            }
             path.removeAll(where: \.isItem)
         case .compact:
             if let selection, selection.explicit { path.insert(.item(selection.id), at: 0) }
             selection = nil
+            revealing = nil
         }
     }
 
     /// The list beside the detail changed from `old` to `new` ids.
     func follow(_ old: [String], _ new: [String]) {
         guard revealing == nil else { return }
+        if let unlisted {
+            guard new.contains(unlisted) else { return }
+            self.unlisted = nil
+        }
         let next = InboxDetailSelection.next(after: selection, old: old, new: new)
         if next != selection { selection = next }
     }

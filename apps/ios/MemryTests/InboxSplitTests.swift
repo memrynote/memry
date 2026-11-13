@@ -87,9 +87,51 @@ struct InboxRouterSplitTests {
         router.follow(["a"], ["a"])
         #expect(router.revealing == "z")
         #expect(router.selection == InboxDetailSelection(id: "z", explicit: true))
-        router.revealed(["y", "z"])
+        router.revealed(["y", "z"], exists: true)
         #expect(router.revealing == nil)
         #expect(router.selection == InboxDetailSelection(id: "z", explicit: true))
+    }
+
+    /// Calendar, search or a capture's "View" opened an item before the
+    /// Inbox tab ever showed at regular width: the router was still compact.
+    @Test func anItemOpenedBeforeTheFirstRegularLayoutIsRevealed() {
+        let router = InboxRouter()
+        router.openItem("z", in: TasksRouter())
+        router.adapt(to: .regular)
+        #expect(router.revealing == "z")
+        router.follow(["a"], ["a"])
+        #expect(router.selection == InboxDetailSelection(id: "z", explicit: true))
+    }
+
+    @Test func goingCompactEndsAReveal() {
+        let router = InboxRouter()
+        router.adapt(to: .regular)
+        router.openItem("z", in: TasksRouter())
+        router.adapt(to: .compact)
+        #expect(router.revealing == nil)
+        #expect(router.path == [.item("z")])
+    }
+
+    /// A filed capture opened from search: no list holds it, and it stays
+    /// until a list does or the user opens another item.
+    @Test func anOpenedItemNoListHoldsStaysSelected() {
+        let router = InboxRouter()
+        router.adapt(to: .regular)
+        router.openItem("z", in: TasksRouter())
+        router.revealed(["a"], exists: true)
+        router.follow(["a"], ["a", "b"])
+        #expect(router.selection == InboxDetailSelection(id: "z", explicit: true))
+        router.follow(["a", "b"], ["z", "a", "b"])
+        router.follow(["z", "a", "b"], ["a", "b"])
+        #expect(router.selection == InboxDetailSelection(id: "a", explicit: false))
+    }
+
+    @Test func anOpenedItemGoneFromTheVaultFallsToTheFirst() {
+        let router = InboxRouter()
+        router.adapt(to: .regular)
+        router.openItem("z", in: TasksRouter())
+        router.revealed(["a"], exists: false)
+        #expect(router.selection == InboxDetailSelection(id: "a", explicit: false))
     }
 
     @Test func anItemTheAppSelectedIsNotPushedAtCompactWidth() {
@@ -165,6 +207,71 @@ struct InboxSplitDetailTests {
         try await settle { scratch.store.view == .snoozed && router.revealing == nil }
         #expect(scratch.store.view == .snoozed)
         #expect(router.selection == InboxDetailSelection(id: snoozed.id, explicit: true))
+    }
+
+    /// F1: Calendar opened a snoozed capture before the Inbox tab first
+    /// laid out at regular width, so the router pushed it.
+    @Test func anItemOpenedBeforeTheTabShowsStaysSelectedInItsList() async throws {
+        let scratch = try InboxTestVault()
+        _ = await scratch.store.capture("[agent] stays in the inbox")
+        _ = await scratch.store.capture("[agent] snoozed for later")
+        let snoozed = try #require(scratch.store.items.first { $0.title.contains("snoozed") })
+        await scratch.store.snooze([snoozed.id], until: Date().addingTimeInterval(3600))
+        let router = InboxRouter()
+        router.openItem(snoozed.id, in: TasksRouter())
+        let window = show(Host(store: scratch.store, router: router))
+        defer { window.isHidden = true }
+
+        try await settle { scratch.store.view == .snoozed && router.revealing == nil }
+        #expect(scratch.store.view == .snoozed)
+        #expect(router.selection == InboxDetailSelection(id: snoozed.id, explicit: true))
+    }
+
+    /// Search opens a filed capture (#4320), which no list holds: the detail
+    /// shows it, as the pushed page does at compact width.
+    @Test func aFiledCaptureOpenedFromOutsideStaysSelected() async throws {
+        let scratch = try InboxTestVault()
+        _ = await scratch.store.capture("[agent] stays in the inbox")
+        _ = await scratch.store.capture("[agent] filed away")
+        let filed = try #require(scratch.store.items.first { $0.title.contains("filed") })
+        await scratch.store.file(filed, to: "Agent Test", tags: [])
+        #expect(await scratch.store.fetch(filed.id)?.filedAtMs != nil)
+        let router = InboxRouter()
+        let window = show(Host(store: scratch.store, router: router))
+        defer { window.isHidden = true }
+        try await settle { router.selection != nil }
+
+        router.openItem(filed.id, in: TasksRouter())
+        try await settle { router.revealing == nil }
+        try await Task.sleep(for: .milliseconds(300))
+        #expect(router.selection == InboxDetailSelection(id: filed.id, explicit: true))
+    }
+
+    /// A type filter hides the opened capture. The filter stays, and so does
+    /// the selection.
+    @Test func aFilteredOutItemOpenedFromOutsideStaysSelected() async throws {
+        let scratch = try InboxTestVault()
+        _ = await scratch.store.capture("https://example.com/agent/1")
+        _ = await scratch.store.capture("[agent] a note the filter hides")
+        let note = try #require(scratch.store.items.first { $0.itemType == "note" })
+        scratch.store.typeFilter = ["link"]
+        let router = InboxRouter()
+        let window = show(Host(store: scratch.store, router: router))
+        defer { window.isHidden = true }
+        try await settle { router.selection != nil }
+
+        router.openItem(note.id, in: TasksRouter())
+        try await settle { router.revealing == nil }
+        try await Task.sleep(for: .milliseconds(300))
+        #expect(scratch.store.typeFilter == ["link"])
+        #expect(router.selection == InboxDetailSelection(id: note.id, explicit: true))
+    }
+
+    private func show(_ host: Host) -> UIWindow {
+        let window = UIWindow(frame: CGRect(x: 0, y: 0, width: 1366, height: 1024))
+        window.rootViewController = UIHostingController(rootView: host)
+        window.makeKeyAndVisible()
+        return window
     }
 
     private func settle(_ done: () -> Bool) async throws {
