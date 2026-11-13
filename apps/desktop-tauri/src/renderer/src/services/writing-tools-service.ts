@@ -22,11 +22,9 @@ export async function spellingFor(word: string): Promise<EditorContextMenuSpelli
 }
 
 export const writingToolsService = {
-  /** Throws with main's (localized) message when the request fails. */
-  async generateAssist(input: WritingAssistInput): Promise<WritingAssistResult> {
-    const response = await window.api.writingTools.generateAssist(input)
-    if (!response.success) throw new Error(response.error)
-    return response.result
+  /** Rejects with the command's (localized) error when the request fails. */
+  generateAssist(input: WritingAssistInput): Promise<WritingAssistResult> {
+    return commands.writingGenerateAssist(input)
   },
   /**
    * The word under the pointer when it is misspelled, with the platform's suggestions. Null when

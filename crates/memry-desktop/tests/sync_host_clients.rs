@@ -65,6 +65,10 @@ const ALLOWED: &[(&str, &str)] = &[
         "the inline AI provider the person picked or their local Ollama, the inline chat's requests",
     ),
     (
+        "crates/memry-desktop/src/ai/structured.rs",
+        "the inline AI provider's status reason only; its requests go through ai::proxy",
+    ),
+    (
         "apps/desktop-tauri/src-tauri/src/commands/ai.rs",
         "the inline AI provider the person picked or their local Ollama, through ai::catalog",
     ),

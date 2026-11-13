@@ -7,6 +7,8 @@ const commands = vi.hoisted(() => ({
   tagsPreviewImpact: vi.fn(),
   tagsSearchObjects: vi.fn(),
   tagsGetLinkedHere: vi.fn(),
+  tagsFillStatus: vi.fn(),
+  tagsFillFields: vi.fn(),
   tagsGetAllWithCounts: vi.fn(),
   tagsGetNotesByTag: vi.fn(),
   tagsUpdateColor: vi.fn(),
@@ -219,6 +221,34 @@ describe('tags-service', () => {
     })
     expect(api.tags.searchObjects).not.toHaveBeenCalled()
     expect(api.tags.getLinkedHere).not.toHaveBeenCalled()
+  })
+
+  it('asks the fill status and proposals of the Rust commands, never window.api', async () => {
+    api.tags.getFillStatus = vi.fn()
+    api.tags.fillFields = vi.fn()
+    const status = { available: true, model: 'm', local: false, disclosureAccepted: true }
+    commands.tagsFillStatus.mockResolvedValue(status)
+    expect(await tagsService.getFillStatus()).toBe(status)
+
+    const linked = { field: 'Company', value: ['memry://note/n2'], display: 'IBM', sourceText: '' }
+    const create = { title: 'Acme', tag: 'company' }
+    commands.tagsFillFields.mockResolvedValue({
+      kind: 'proposals',
+      proposals: [
+        { ...linked, create: null },
+        { field: 'Boss', value: null, display: 'Acme', sourceText: '', create }
+      ]
+    })
+    const input = { noteId: 'n1', tag: 'person', acceptDisclosure: true }
+    expect(await tagsService.fillFields(input)).toEqual({
+      kind: 'proposals',
+      proposals: [linked, { field: 'Boss', value: null, display: 'Acme', sourceText: '', create }]
+    })
+    expect(commands.tagsFillFields).toHaveBeenCalledWith(input)
+    commands.tagsFillFields.mockResolvedValue({ kind: 'failed', message: 'quota' })
+    expect(await tagsService.fillFields(input)).toEqual({ kind: 'failed', message: 'quota' })
+    expect(api.tags.getFillStatus).not.toHaveBeenCalled()
+    expect(api.tags.fillFields).not.toHaveBeenCalled()
   })
 
   it('pins and unpins through the commands, a failure answering its message', async () => {

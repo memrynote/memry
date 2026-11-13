@@ -225,9 +225,21 @@ export type PortedTagMethod = keyof typeof ported
 export const tagsService: TagsService = {
   ...ported,
 
-  getFillStatus: () => window.api.tags.getFillStatus(),
+  /** Whether "Fill from note" shows, and what the first-run disclosure names. */
+  getFillStatus: () => commands.tagsFillStatus(),
 
-  fillFields: (input) => window.api.tags.fillFields(input)
+  /** Proposals for a note's empty fields from the inline AI model; the key stays in Rust. */
+  fillFields: async (input) => {
+    const result = await commands.tagsFillFields(input)
+    if (result.kind !== 'proposals') return result
+    // `create` is absent rather than null in `FieldFillProposal`.
+    return {
+      kind: 'proposals',
+      proposals: result.proposals.map(({ create, ...proposal }) =>
+        create ? { ...proposal, create } : proposal
+      )
+    }
+  }
 }
 
 // ============================================================================
