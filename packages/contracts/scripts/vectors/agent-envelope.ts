@@ -122,7 +122,9 @@ function tamper(envelope: AgentEnvelope): string {
   return JSON.stringify({ ...envelope, ciphertext: b64(bytes) })
 }
 
-export function buildAgentEnvelope(): Record<string, unknown> {
+export async function buildAgentEnvelope(): Promise<Record<string, unknown>> {
+  // A second instance: the entry point's `await ready` does not initialise it.
+  await electronSodium.ready
   const key = fromHex(VAULT_KEY)
   const seals = SEALS.map((spec, index) => {
     const nonce = nonceFor(index)
