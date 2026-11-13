@@ -38,8 +38,8 @@ struct InboxSplitView: View {
             if cleared { router.follow(store.detailOrder, store.detailOrder) }
         }
         .task(id: router.revealing) {
-            guard let view = router.revealing else { return }
-            if store.view != view { await store.select(view) }
+            guard let id = router.revealing else { return }
+            if let item = await store.fetch(id), store.view != .holding(item) { await store.select(.holding(item)) }
             router.revealed(store.detailOrder)
         }
     }
@@ -82,6 +82,15 @@ private struct InboxBulkDetail: View {
         .background(Tokens.Canvas.background.color)
         .inboxSheets($sheets, store: store, afterExit: finish)
         .accessibilityIdentifier("inbox.bulkDetail")
+    }
+}
+
+extension InboxView {
+    /// The list that holds `item`. A filed capture is in none, and the
+    /// Inbox's rule then selects its first item.
+    static func holding(_ item: InboxItemRecord) -> Self {
+        if item.archivedAtMs != nil { return .archived }
+        return item.snoozedUntilMs != nil ? .snoozed : .inbox
     }
 }
 

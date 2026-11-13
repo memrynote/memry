@@ -197,7 +197,7 @@ struct VaultTabsView<Notes: View, Tasks: View, Journal: View, More: View>: View 
     /// A capture's "View": the item on its page.
     private func open(_ receipt: CaptureReceipt) {
         switch receipt.kind {
-        case .inbox: inboxRouter.openItem(receipt.id, in: .inbox, tasks: router)
+        case .inbox: inboxRouter.openItem(receipt.id, in: router)
         case .task: router.openTask(receipt.id)
         case .note: openNote(receipt.id)
         case .journal: journalRouter.openDay(receipt.id)

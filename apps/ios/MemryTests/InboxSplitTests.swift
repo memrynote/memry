@@ -79,13 +79,13 @@ struct InboxRouterSplitTests {
     }
 
     /// Calendar's "Open in Inbox" names a snoozed capture the Inbox list
-    /// does not hold: the list waits for the detail column to show Snoozed.
+    /// does not hold: the list waits for the detail column to switch lists.
     @Test func anItemOpenedFromOutsideStaysUntilItsListShows() {
         let router = InboxRouter()
         router.adapt(to: .regular)
-        router.openItem("z", in: .snoozed, tasks: TasksRouter())
+        router.openItem("z", in: TasksRouter())
         router.follow(["a"], ["a"])
-        #expect(router.revealing == .snoozed)
+        #expect(router.revealing == "z")
         #expect(router.selection == InboxDetailSelection(id: "z", explicit: true))
         router.revealed(["y", "z"])
         #expect(router.revealing == nil)
@@ -161,7 +161,7 @@ struct InboxSplitDetailTests {
         defer { window.isHidden = true }
         try await settle { router.selection != nil }
 
-        router.openItem(snoozed.id, in: .snoozed, tasks: TasksRouter())
+        router.openItem(snoozed.id, in: TasksRouter())
         try await settle { scratch.store.view == .snoozed && router.revealing == nil }
         #expect(scratch.store.view == .snoozed)
         #expect(router.selection == InboxDetailSelection(id: snoozed.id, explicit: true))

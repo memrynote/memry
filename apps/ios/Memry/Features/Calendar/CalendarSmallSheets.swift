@@ -122,7 +122,7 @@ struct CalendarSnoozeSheet: View {
             VStack(spacing: 0) {
                 row(CalendarCopy.openInInbox, systemImage: "tray") {
                     dismiss()
-                    inboxRouter.openItem(item.sourceId, in: .snoozed, tasks: router)
+                    inboxRouter.openItem(item.sourceId, in: router)
                 }
                 .accessibilityIdentifier("calendar.snooze.open")
                 Divider().padding(.leading, Tokens.Space.inset * 2 + Tokens.Space.small)

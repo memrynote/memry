@@ -22,9 +22,10 @@ final class InboxRouter {
     var path: [InboxRoute] = []
     private(set) var selection: InboxDetailSelection?
     private(set) var width: LayoutWidth = .compact
-    /// The list an item opened from outside the Inbox sits in. The detail
-    /// column switches the list to it, so the item is listed beside itself.
-    private(set) var revealing: InboxView?
+    /// An item opened from outside the Inbox (Calendar, a capture's "View",
+    /// search), which may sit in another of its lists. The detail column
+    /// switches the list to the one that holds it.
+    private(set) var revealing: String?
 
     /// A row, a capture's "View" or a calendar link opened `id`.
     func open(_ id: String) {
@@ -44,16 +45,14 @@ final class InboxRouter {
         selection = nil
     }
 
-    /// Calendar's "Open in Inbox" (a snoozed capture) or a capture's "View"
-    /// (an Inbox one) opened `id`, which sits in `view`.
-    func openItem(_ id: String, in view: InboxView, tasks: TasksRouter) {
+    func openItem(_ id: String, in tasks: TasksRouter) {
         tasks.selectedTab = .inbox
         path = []
         open(id)
-        if width == .regular { revealing = view }
+        if width == .regular { revealing = id }
     }
 
-    /// The list now shows `revealing`'s view, whose ids are `order`.
+    /// The list now holds `revealing`, if any list does, in `order`.
     func revealed(_ order: [String]) {
         revealing = nil
         follow(order, order)
