@@ -178,6 +178,11 @@ pub const DATA_MIGRATIONS: &[Migration] = &[
         name: "desktop_record_types",
         sql: include_str!("migrations/data/0027_desktop_record_types.sql"),
     },
+    Migration {
+        version: 28,
+        name: "agent_records",
+        sql: include_str!("migrations/data/0028_agent_records.sql"),
+    },
 ];
 
 /// `index.db`: the rebuildable search and link index.
@@ -221,6 +226,11 @@ pub const INDEX_MIGRATIONS: &[Migration] = &[
         version: 7,
         name: "embedding_state",
         sql: include_str!("migrations/index/0007_embedding_state.sql"),
+    },
+    Migration {
+        version: 8,
+        name: "property_refs",
+        sql: include_str!("migrations/index/0008_property_refs.sql"),
     },
 ];
 
@@ -332,6 +342,8 @@ fn set_user_version(conn: &Connection, version: u32) -> Result<(), StorageError>
         })
 }
 
+#[cfg(test)]
+mod agent_records_tests;
 #[cfg(test)]
 mod desktop_record_types_tests;
 mod legacy_numbering;

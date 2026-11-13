@@ -54,6 +54,11 @@ pub(super) fn settings_error(locale: &str, error: AiSettingsError) -> CommandErr
             CommandError::new(ErrorKind::NotFound, "no_vault_open", error.to_string())
         }
         AiSettingsError::Settings(error) => map_error(error),
+        // The settings screen holds the key field until the URL parses, so only a stale or
+        // scripted call lands here.
+        AiSettingsError::NoKeyTarget => {
+            CommandError::new(ErrorKind::Invalid, "ai.noKeyTarget", error.to_string())
+        }
         AiSettingsError::Keychain(error) => {
             tracing::warn!(scope = "AIInline", "keychain: {error}");
             CommandError {

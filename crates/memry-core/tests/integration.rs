@@ -16,6 +16,8 @@ mod support;
 mod account_setup;
 #[path = "agent_envelope_vectors.rs"]
 mod agent_envelope_vectors;
+#[path = "agent_records_sync.rs"]
+mod agent_records_sync;
 #[path = "api_attachment_fetch.rs"]
 mod api_attachment_fetch;
 #[path = "api_inbox.rs"]
@@ -246,6 +248,8 @@ mod inbox_vectors;
 mod journal_body;
 #[path = "journal_day_merge.rs"]
 mod journal_day_merge;
+#[path = "journal_ghost_refs.rs"]
+mod journal_ghost_refs;
 #[path = "journal_links.rs"]
 mod journal_links;
 #[path = "journal_metadata.rs"]

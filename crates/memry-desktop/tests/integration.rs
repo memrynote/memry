@@ -286,6 +286,8 @@ mod property_definitions;
 mod property_definitions_seed;
 #[path = "property_definitions_sync.rs"]
 mod property_definitions_sync;
+#[path = "property_usage.rs"]
+mod property_usage;
 #[path = "sanitize_svg_inert.rs"]
 mod sanitize_svg_inert;
 #[path = "sanitize_svg_untrusted.rs"]

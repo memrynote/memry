@@ -179,7 +179,7 @@ fn once<T>(
 
 /// `parseYamlDate` (`vault/yaml-dates.ts`): the date a string spells as YAML or as the index's
 /// JSON text of a date (`"2026-10-07T00:00:00.000Z"`, quotes included), else `None`.
-fn parse_yaml_date(value: &str) -> Option<i64> {
+pub(crate) fn parse_yaml_date(value: &str) -> Option<i64> {
     let text = value
         .strip_prefix('"')
         .and_then(|rest| rest.strip_suffix('"'))

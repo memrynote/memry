@@ -17,6 +17,8 @@ import type { ZodType } from 'zod'
 
 import { SettingsSyncPayloadSchema } from '../../src/settings-sync'
 import {
+  AgentConversationSyncPayloadSchema,
+  AgentMessageSyncPayloadSchema,
   BookmarkSyncPayloadSchema,
   CalendarBindingSyncPayloadSchema,
   CalendarEventSyncPayloadSchema,
@@ -647,6 +649,83 @@ const SPECS: TypeSpec[] = [
     boundary: { content: '', kind: '', clock: {} },
     unknownKey: 'syncedAt',
     unknownValue: '2026-04-16T00:00:01.000Z',
+    desktopOnly: true
+  },
+  {
+    // Agent conversations, desktop only. The wire carries the title plain; a
+    // client seals it at rest (chapter 04 §4.17), never on the wire.
+    type: 'agent_conversation',
+    schema: AgentConversationSyncPayloadSchema,
+    valid: {
+      vaultId: 'vault-1',
+      title: 'Plan the week',
+      backend: 'local',
+      backendModel: 'llama3',
+      trustList: ['read_note'],
+      pinned: true,
+      clock: CLOCK,
+      fieldClocks: { title: CLOCK, pinned: CLOCK },
+      createdAt: 1760000000000,
+      updatedAt: 1760000000001,
+      deletedAt: null
+    },
+    boundary: {
+      vaultId: '',
+      title: '',
+      backend: '',
+      backendModel: null,
+      trustList: [],
+      pinned: false,
+      fieldClocks: {},
+      createdAt: 0,
+      updatedAt: 0
+    },
+    unknownKey: 'archivedAt',
+    unknownValue: 1760000000002,
+    desktopOnly: true
+  },
+  {
+    // Agent messages, desktop only: terminal statuses only, written once.
+    // `content` and `attachments` are plain on the wire and sealed at rest.
+    type: 'agent_message',
+    schema: AgentMessageSyncPayloadSchema,
+    valid: {
+      conversationId: 'conv-1',
+      role: 'user',
+      content: { role: 'user', data: { text: 'What is due today?' } },
+      attachments: [
+        {
+          kind: 'note',
+          refId: 'abc123def456',
+          label: 'Plan',
+          snapshotAt: 1760000000000,
+          snapshot: {
+            mode: 'inline_note',
+            title: 'Plan',
+            contentMarkdown: '# Plan',
+            truncated: false
+          }
+        }
+      ],
+      toolCallId: null,
+      status: 'completed',
+      clock: CLOCK,
+      createdAt: 1760000000000,
+      updatedAt: 1760000000000,
+      deletedAt: null
+    },
+    boundary: {
+      conversationId: '',
+      role: 'user',
+      content: { role: 'user', data: { text: '' } },
+      attachments: [],
+      toolCallId: null,
+      status: 'error',
+      createdAt: 0,
+      updatedAt: 0
+    },
+    unknownKey: 'tokenCount',
+    unknownValue: 42,
     desktopOnly: true
   }
 ]

@@ -354,6 +354,7 @@ fn a_delete_beats_a_concurrent_edit_and_loses_to_a_later_one() {
             vec![],
             NOW,
             Some(LOCAL_DEVICE),
+            &crate::crypto::agent_envelope::AtRestKey::default(),
         )?;
         assert_eq!(concurrent.deleted, 1);
         assert_eq!(get(conn, "c1")?, None);
@@ -371,6 +372,7 @@ fn a_delete_beats_a_concurrent_edit_and_loses_to_a_later_one() {
             vec![],
             NOW,
             Some(LOCAL_DEVICE),
+            &crate::crypto::agent_envelope::AtRestKey::default(),
         )?;
         assert_eq!((older.deleted, older.skipped), (0, 1));
         assert!(get(conn, "c2")?.is_some());

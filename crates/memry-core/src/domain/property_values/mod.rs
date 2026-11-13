@@ -11,8 +11,8 @@ use std::sync::Arc;
 
 use serde_json::{Map, Number, Value};
 
-use crate::markdown::frontmatter::YamlValue;
 use crate::markdown::frontmatter::js::{iso_string, number_to_string};
+use crate::markdown::frontmatter::{YamlValue, parse_yaml_date};
 use crate::markdown::shared::block_colors::js_value::{js_number, js_parse, js_stringify};
 
 /// `PROJECT_PROPERTY_KEY`: the one key whose type is always `project`.
@@ -227,9 +227,15 @@ fn distinct_nodes<'a>(values: impl Iterator<Item = &'a YamlValue>) -> usize {
     nodes
 }
 
-/// `deserializeValue` of the index's text by the type: a number that is not one reads as
-/// `null`, a list type takes a lone value as a one-item list.
+/// `deserializeValue` of the index's text by the type: a list type takes a lone value as a
+/// one-item list. A value its type cannot show ([`value_fits_type`]) reads as the text the file
+/// holds: `rating: good` under a number type read as `null` (`yes` under a checkbox as
+/// `false`), and the next write of the whole record put that into the file and the synced
+/// record in place of the user's value.
 pub fn indexed_value(text: String, type_name: &str) -> Value {
+    if !value_fits_type(type_name, &text) {
+        return Value::String(text);
+    }
     match type_name {
         "number" => number(js_number(&text)),
         "checkbox" => Value::Bool(text == "true"),
@@ -238,6 +244,23 @@ pub fn indexed_value(text: String, type_name: &str) -> Value {
             _ => Value::Array(vec![Value::String(text)]),
         },
         _ => Value::String(text),
+    }
+}
+
+/// `valueFitsType` (`vault/property-type.ts`): whether an indexed value, as `serializeValue`
+/// spelled it, can be shown as its type. A property's type is vault-wide, so one note's
+/// `rating: good` can sit under the number type another note's `rating: 5` gave it. An empty
+/// value fits every type, and a text-like type fits every value.
+pub fn value_fits_type(type_name: &str, text: &str) -> bool {
+    if text.is_empty() {
+        return true;
+    }
+    match type_name {
+        "number" => js_number(text).is_finite(),
+        "checkbox" => text == "true" || text == "false",
+        "date" => is_iso_date(text) || parse_yaml_date(text).is_some(),
+        "url" => is_web_url(text),
+        _ => true,
     }
 }
 

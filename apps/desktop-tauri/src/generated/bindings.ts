@@ -355,6 +355,10 @@ export const commands = {
 	notesGetCalendarPropertyNames: () => __TAURI_INVOKE<string[]>("notes_get_calendar_property_names"),
 	/**  `notes:get-property-definitions`: by name. */
 	notesGetPropertyDefinitions: () => __TAURI_INVOKE<PropertyDefinitionView[]>("notes_get_property_definitions"),
+	/**  `notes:get-property-usage`: every property the index holds, by name. */
+	notesGetPropertyUsage: () => __TAURI_INVOKE<PropertyUsageView[]>("notes_get_property_usage"),
+	/**  `notes:list-notes-with-property`: the notes that use `name`, by title. */
+	notesListNotesWithProperty: (name: string) => __TAURI_INVOKE<PropertyNoteUsageView[]>("notes_list_notes_with_property", { name }),
 	notesRemovePropertyOption: (propertyName: string, optionValue: string) => __TAURI_INVOKE<null>("notes_remove_property_option", { propertyName, optionValue }),
 	notesRenamePropertyOption: (propertyName: string, oldValue: string, newValue: string) => __TAURI_INVOKE<null>("notes_rename_property_option", { propertyName, oldValue, newValue }),
 	notesSetCalendarPropertyVisibility: (name: string, showOnCalendar: boolean) => __TAURI_INVOKE<null>("notes_set_calendar_property_visibility", { name, showOnCalendar }),
@@ -929,6 +933,8 @@ export type BacklinkView = {
 	 *  (`link_contexts`): `contexts` holds the first ones.
 	 */
 	truncated: boolean,
+	/**  How the source references the note when not by a link in its text; left out then. */
+	via?: LinkViaView | null,
 };
 
 export type BuildKind = "dev" | "packaged";
@@ -1770,6 +1776,11 @@ export type LinkResolutionView = {
 	path: string,
 	title: string,
 	fileType: FileType,
+	/**
+	 *  The day a journal entry is for, left out for a note: a day's id need not hold its date
+	 *  (`notes:resolve-by-title`'s `journalDate`).
+	 */
+	journalDate?: string | null,
 };
 
 export type LinkTargetView = {
@@ -1780,6 +1791,12 @@ export type LinkTargetView = {
 	/**  The heading to scroll to, `None` when the link names none. */
 	heading: string | null,
 };
+
+/**
+ *  `LinkVia`: the relation property naming the note. A relation has no text, so its backlink
+ *  has no contexts.
+ */
+export type LinkViaView = { kind: "property"; propertyName: string };
 
 /**  `LinkedHereGroup`. */
 export type LinkedHereGroupView = { kind: "relation"; sourceTag: string; field: string; label: string; total: number; items: LinkedNoteView[]; filter: string } | { kind: "task-field"; tag: string; field: string; total: number; items: LinkedTaskView[]; filter: string } | { kind: "mentions"; total: number; items: LinkedNoteView[] };
@@ -2326,12 +2343,28 @@ export type PropertyDefinitionView = {
 	createdAt: string,
 };
 
+/**  `PropertyNoteUsage` of `properties-api.ts`. */
+export type PropertyNoteUsageView = {
+	id: string,
+	title: string,
+	path: string,
+	emoji: string | null,
+	mismatch: boolean,
+};
+
 /**  `GetPropertyRowsOutput`. */
 export type PropertyRowsView = {
 	/**  The days in range, oldest first. */
 	rows: JournalPropertyRowView[],
 	/**  Every property of any live day, not only the ones in range: most used first. */
 	properties: JournalPropertySummaryView[],
+};
+
+/**  `PropertyUsage` of `properties-api.ts`. */
+export type PropertyUsageView = {
+	name: string,
+	noteCount: number,
+	mismatchCount: number,
 };
 
 /**  `PropertyValue` of `properties-api.ts`. */

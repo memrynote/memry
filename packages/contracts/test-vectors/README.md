@@ -80,6 +80,7 @@ one-class change reviewable.
 | `note-fold-text.json`                    |                                   75 | `apps/desktop/scripts/note-fold-oracle/`                                                       | Rust `note_fold_text_vectors.rs`                                                     |
 | `note-fold.json`                         |                                   48 | same                                                                                           | Rust `note_fold_vectors.rs`                                                          |
 | `embedding-input.json`                   |                                   61 | `apps/desktop/scripts/embedding-input-oracle/`                                                 | Rust `domain::embedding_input` tests                                                 |
+| `embeddings-text.json`                   |                    31 + 2 + 12 pairs | `crates/memry-ml/tests/golden/generate.mjs` (needs the model)                                  | Rust `memry-ml/tests/golden_text.rs` (full tier)                                     |
 | `markdown-roundtrip/cases.json`          |                                  285 | `../scripts/vectors/markdown-roundtrip.ts`                                                     | `../src/__tests__/markdown-roundtrip.test.ts`                                        |
 | `markdown-roundtrip/fuzz-families.json`  |                           6 families | same                                                                                           | same                                                                                 |
 | `markdown-convert/frontmatter.json`      |                                  457 | `apps/desktop/scripts/markdown-oracle/`                                                        | `../src/__tests__/markdown-convert.test.ts` + Rust `markdown_frontmatter_vectors.rs` |
@@ -104,6 +105,20 @@ one-class change reviewable.
 | `markdown-convert/serialize-doc.json`    |                                  537 | same                                                                                           | same + Rust `markdown_doc_edit_vectors.rs`                                           |
 | `markdown-convert/replace-body.json`     |                                   44 | same                                                                                           | same + Rust `markdown_doc_edit_vectors.rs`                                           |
 | **Total**                                | **32279 cases plus 6 fuzz families** |                                                                                                |                                                                                      |
+
+### `embeddings-text.json`: lone surrogates are a known divergence
+
+Electron cuts text by UTF-16 units, so a cut can leave half of a surrogate pair, and
+transformers.js tokenizes the lone half as the three byte-fallback tokens of `EF BF BD`
+(`<0xEF><0xBF><0xBD>`, which also stops `▁` from merging with it). A Rust string cannot hold a
+lone surrogate: `memry_core::domain::embedding_input` and `memry-ml`'s cut write U+FFFD, which is
+the single token 238479. The same input then embeds differently. Measured with transformers.js
+4.3.1 and the pinned q4 model, the cosine between the two vectors is 0.99371 for a pair split by
+the 4000-unit cut and 0.98467 for a 300-unit window that starts with a low surrogate (a short
+text moves more). Both are under the 0.9999 bound. `loneSurrogates` records Electron's vector and
+that cosine, and `golden_text.rs` holds the native vector to the measured cosine within 1e-4.
+Similarity floors of 0.60 and up are unaffected in practice; only the one window that holds the
+cut moves.
 
 ### `markdown-convert/`
 

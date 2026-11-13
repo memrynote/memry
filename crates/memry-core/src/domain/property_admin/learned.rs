@@ -2,10 +2,11 @@
 //! Electron's `learnCanonicalPropertyType`): the type a name was first read with, which types
 //! every later read of it here.
 //!
-//! Electron keeps such a type as a `property_definitions` row with no clock: no sync item, and
-//! not in `properties.md`. This keeps it in `meta` (`property_definitions.learned`, a JSON
-//! object of name to type; an older build ignores the key, so no migration), apart from the
-//! records, so it reaches no other device, no file and no definitions list.
+//! Electron keeps such a type as a `property_definitions` row with no clock, no sync item, which
+//! its reload folds into `properties.md` (2b3a512960). This keeps it in `meta`
+//! (`property_definitions.learned`, a JSON object of name to type; an older build ignores the
+//! key, so no migration), apart from the records, until the desktop writes it into its file and
+//! [`forget`]s it here. It reaches no other device until a sync pass.
 //!
 //! A name with a record, live or deleted, has a definition or had one: it is not learned, and a
 //! type learned before the record came is not read. So a definition the user or another device
@@ -110,6 +111,21 @@ pub fn promote(
     }
     tx.commit().map_err(failed)?;
     Ok(promoted)
+}
+
+/// Drops `names` from the learned types: the shell's definitions file holds them now, and its
+/// definition types them. A stored value this build cannot read stays as it is.
+pub fn forget(conn: &Connection, names: &[String]) -> Result<(), StorageError> {
+    let tx = conn.unchecked_transaction().map_err(failed)?;
+    let Some(mut types) = stored(&tx)? else {
+        return Ok(());
+    };
+    let before = types.len();
+    types.retain(|name, _| !names.contains(name));
+    if types.len() != before {
+        store(&tx, &types)?;
+    }
+    tx.commit().map_err(failed)
 }
 
 /// A type a definition holds: no `relation`, which none holds, and no `project`, which its name

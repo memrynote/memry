@@ -4117,6 +4117,7 @@ dependencies = [
  "hex",
  "libc",
  "ort",
+ "serde_json",
  "sha2 0.11.0",
  "static_vcruntime",
  "tempfile",

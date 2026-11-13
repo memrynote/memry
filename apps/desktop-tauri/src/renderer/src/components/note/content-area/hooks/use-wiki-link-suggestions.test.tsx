@@ -7,6 +7,8 @@ const mocks = vi.hoisted(() => ({
   getFile: vi.fn(),
   getByPath: vi.fn(),
   listCanvases: vi.fn(),
+  journalHeatmap: vi.fn(),
+  journalChanges: new Map<string, () => void>(),
   linksChanged: [] as Array<() => void>,
   logger: {
     error: vi.fn()
@@ -25,6 +27,20 @@ vi.mock('@/services/notes-service', () => ({
   }
 }))
 
+vi.mock('@/services/journal-service', () => {
+  const subscribe = (event: string) => (callback: () => void) => {
+    mocks.journalChanges.set(event, callback)
+    return () => mocks.journalChanges.delete(event)
+  }
+  return {
+    journalService: { getHeatmap: (...args: unknown[]) => mocks.journalHeatmap(...args) },
+    onJournalEntryCreated: subscribe('created'),
+    onJournalEntryUpdated: subscribe('updated'),
+    onJournalEntryDeleted: subscribe('deleted'),
+    onJournalExternalChange: subscribe('external')
+  }
+})
+
 vi.mock('@/services/canvas-service', () => ({
   canvasService: { list: (...args: unknown[]) => mocks.listCanvases(...args) }
 }))
@@ -39,6 +55,7 @@ describe('useWikiLinkSuggestions', () => {
   beforeEach(() => {
     vi.clearAllMocks()
     mocks.linksChanged.length = 0
+    mocks.journalChanges.clear()
     clearCanvasLookupCache()
     vi.useFakeTimers()
     vi.setSystemTime(new Date('2026-05-10T12:00:00.000Z'))
@@ -428,6 +445,86 @@ describe('useWikiLinkSuggestions', () => {
         [{ type: 'wikiLink', props: { target: 'Daily Note#Kararlar alındı', alias: 'dün' } }],
         { updateSelection: true }
       )
+    })
+  })
+
+  describe('journal days', () => {
+    const rowsFor = async (query: string) => {
+      const { result } = renderHook(() =>
+        useWikiLinkSuggestions({ insertInlineContent: vi.fn() }, vi.fn())
+      )
+      let items = [] as Awaited<ReturnType<typeof result.current.getWikiLinkItems>>
+      await act(async () => {
+        items = await result.current.getWikiLinkItems(query)
+      })
+      return items.map((item) => [item.type, item.target, item.exists])
+    }
+
+    beforeEach(() => {
+      mocks.journalHeatmap.mockResolvedValue([
+        { date: '2026-05-01', characterCount: 10, level: 1 },
+        { date: '2026-05-09', characterCount: 10, level: 1 },
+        { date: '2026-05-10', characterCount: 10, level: 1 }
+      ])
+    })
+
+    it('offers an unwritten day as a ghost journal row, never as a note to create', async () => {
+      expect(await rowsFor('2026-05-12')).toEqual([['journal', '2026-05-12', false]])
+    })
+
+    it.each<[string, string, boolean]>([
+      ['2026-05-10#Review', '2026-05-10#Review', true],
+      ['2026-05-12#Review', '2026-05-12#Review', false],
+      ['2026-05-12#Morning#Review', '2026-05-12#Review', false],
+      ['2026-05-12#', '2026-05-12', false]
+    ])(
+      'keeps a journal target rather than creating a note for %s',
+      async (query, target, exists) => {
+        expect(await rowsFor(query)).toEqual([['journal', target, exists]])
+      }
+    )
+
+    it('preserves the heading when committing a journal alias', async () => {
+      expect(await rowsFor('2026-05-12#Review|tomorrow')).toEqual([
+        ['alias', '2026-05-12#Review', true]
+      ])
+    })
+
+    it.each(['2026-05-12', '2026-05-12#Review'])(
+      'keeps an existing date-named canvas ahead of a ghost for %s',
+      async (query) => {
+        mocks.listCanvases.mockResolvedValue({
+          canvases: [{ id: 'canvas-date', title: '2026-05-12' }]
+        })
+        expect(await rowsFor(query)).toEqual([['canvas', '2026-05-12', true]])
+      }
+    )
+
+    it('lists the written days a partly typed date matches, newest first', async () => {
+      expect(await rowsFor('2026-05-0')).toEqual([
+        ['journal', '2026-05-09', true],
+        ['journal', '2026-05-01', true],
+        ['create', '2026-05-0', false],
+        ['addName', '2026-05-0', false]
+      ])
+    })
+
+    it.each(['created', 'updated', 'deleted', 'external'])(
+      'refreshes journal suggestions on a %s event within the cache TTL',
+      async (event) => {
+        const { result } = renderHook(() =>
+          useWikiLinkSuggestions({ insertInlineContent: vi.fn() })
+        )
+        mocks.journalHeatmap.mockResolvedValue([])
+        expect((await result.current.getWikiLinkItems('2026-05-12'))[0].exists).toBe(false)
+        mocks.journalHeatmap.mockResolvedValue([{ date: '2026-05-12' }])
+        mocks.journalChanges.get(event)?.()
+        expect((await result.current.getWikiLinkItems('2026-05-12'))[0].exists).toBe(true)
+      }
+    )
+
+    it('finds today by name', async () => {
+      expect((await rowsFor('today'))[0]).toEqual(['journal', '2026-05-10', true])
     })
   })
 

@@ -882,6 +882,14 @@ describe('JournalPage', () => {
     await waitFor(() => expect(mocks.forceReload).toHaveBeenCalled())
   })
 
+  it('shows incoming references on a journal day that has no entry yet', () => {
+    mocks.entry = null
+    render(<JournalPage />)
+
+    expect(screen.getByTestId('backlinks')).toHaveTextContent('Source Note')
+    expect(mocks.updateEntry).not.toHaveBeenCalled()
+  })
+
   it('creates the entry before bookmarking an empty day', async () => {
     mocks.entry = null
     mocks.updateEntry.mockResolvedValue({ id: 'j2026-01-15', date: '2026-01-15' })

@@ -510,6 +510,15 @@ jobs:
           key: embeddinggemma-2-text-daa72c51243991dfcaf9f9137d2c573d8f7790c0
           enableCrossOsArchive: true
 
+      # Parity with transformers.js (embeddings-text.json): token ids exact, cosine and component
+      # bounds per text, ranking order. The dev profile reuses the build of `Test memry-ml`.
+      - name: memry-ml golden text vectors
+        if: matrix.part != 'tests' && needs.plan.outputs.full == 'true'
+        timeout-minutes: 20
+        env:
+          MEMRY_ML_MODEL_DIR: ${{ runner.temp }}/models/onnx-community/embeddinggemma-2-ONNX
+        run: cargo test -p memry-ml --test golden_text -- --ignored
+
       # The shipping profile (fat LTO): the smoke test embeds with the downloaded model, then the
       # test binary's size and its shared-library dependencies are printed. No ONNX Runtime or
       # DirectML library may be among them: ONNX Runtime is linked in, CPU only. On Windows
