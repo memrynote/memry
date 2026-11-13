@@ -66,6 +66,12 @@ fn failure_text(locale: &str, settings: &InlineAiSettings, error: &StructuredErr
         }
         Failure::Unreachable => text(locale, "errors:ai.providerUnreachable", settings),
         Failure::Unauthorized => text(locale, "errors:ai.apiKeyInvalid", settings),
+        // The proxy's own English reason ("the vault closed") is no text for a toast.
+        Failure::Ended => i18n::t(
+            locale,
+            "notes:writingTools.alternatives.suggestFailed",
+            &Args::new(),
+        ),
         Failure::Other => error.to_string(),
     }
 }

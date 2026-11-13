@@ -1,7 +1,8 @@
 //! One structured call to the inline AI model against a local fake provider (#3539): the
 //! request goes through the proxy with the stored key in the auth header only, the SDK's
-//! retries and `retry-after` hold, a failure names what the user can fix, the answer is capped
-//! and a provider that quotes the key back has it cut out before anything reads the message.
+//! retries and `retry-after` hold, a vault that closes during a retry's wait ends the call, a
+//! failure names what the user can fix, the answer is capped and a provider that quotes the key
+//! back has it cut out before anything reads the message.
 
 use std::sync::Arc;
 use std::time::Duration;
@@ -345,4 +346,106 @@ async fn writing_assist_returns_cleaned_alternatives_of_the_selection() {
         prompt,
         json!("Surrounding text:\nHe said Hello to her.\n\nSelection to rephrase:\nHello")
     );
+}
+
+#[tokio::test]
+async fn a_vault_that_closes_during_a_retry_wait_ends_the_call_with_nothing_sent() {
+    // Half a minute asked: well past the watchdog, so only the close can end the wait.
+    let fake = fake(vec![
+        Reply::status(429).with_header("retry-after", "30"),
+        Reply::chat(r#"{"answer":"next vault"}"#),
+    ])
+    .await;
+    let proxy = proxy();
+    let calling = {
+        let proxy = proxy.clone();
+        let settings = settings(AiProvider::Custom, &fake.base, KEY);
+        tokio::spawn(async move {
+            let owner = proxy.owner("main");
+            generate::<Value>(&proxy, &settings, &owner, &ask(), NOW).await
+        })
+    };
+    fake.wait_for(1).await;
+    // The 429 is read once its request leaves the in-flight map: the call is in its wait.
+    tokio::time::timeout(WAIT, async {
+        while proxy.in_flight() > 0 {
+            tokio::time::sleep(Duration::from_millis(5)).await;
+        }
+    })
+    .await
+    .expect("the first answer was read");
+    proxy.cancel_all();
+
+    let outcome = tokio::time::timeout(WAIT, calling)
+        .await
+        .expect("the wait ended with the vault")
+        .unwrap();
+    assert_eq!(
+        outcome,
+        Err(StructuredError::Proxy(ProxyError::VaultClosed))
+    );
+    assert_eq!(outcome.unwrap_err().failure(), Failure::Ended);
+    assert_eq!(fake.seen().len(), 1, "no request after the close");
+}
+
+#[tokio::test]
+async fn a_later_try_that_no_retry_helps_says_so() {
+    let fake = fake(vec![Reply::status(503), Reply::status(400)]).await;
+    let error = call(
+        &proxy(),
+        &settings(AiProvider::Custom, &fake.base, KEY),
+        NOW,
+    )
+    .await
+    .unwrap_err();
+    assert_eq!(fake.seen().len(), 2);
+    assert_eq!(
+        error.to_string(),
+        "Failed after 2 attempts with non-retryable error: 'status 400'"
+    );
+}
+
+#[tokio::test]
+async fn a_key_quoted_back_as_json_text_is_cut_out_too() {
+    // A key with the characters a JSON string escapes; the provider echoes the request body.
+    const ODD: &str = r#"test"key\not-real-42"#;
+    let echoed = format!("bad request body: {}", json!({ "key": ODD }));
+    assert!(!echoed.contains(ODD), "the echo holds the escaped key only");
+    let fake = fake(vec![Reply::json(
+        400,
+        &json!({ "error": { "message": echoed } }),
+    )])
+    .await;
+    let error = call(
+        &proxy(),
+        &settings(AiProvider::Custom, &fake.base, ODD),
+        NOW,
+    )
+    .await
+    .unwrap_err();
+    assert_eq!(
+        error.to_string(),
+        r#"bad request body: {"key":"[redacted]"}"#
+    );
+}
+
+#[tokio::test]
+async fn provider_text_is_left_alone_for_a_short_key_or_a_provider_without_one() {
+    let text = "the model llama-local-model is not loaded";
+    for (provider, key) in [
+        // A key this short would cut letters out of words.
+        (AiProvider::Custom, "el"),
+        // Ollama never gets the stored cloud key, so it cannot quote it.
+        (AiProvider::Ollama, "llama-local-model"),
+    ] {
+        let fake = fake(vec![Reply::json(
+            400,
+            &json!({ "error": { "message": text } }),
+        )])
+        .await;
+        let error = call(&proxy(), &settings(provider, &fake.base, key), NOW)
+            .await
+            .unwrap_err();
+        assert_eq!(error.to_string(), text, "{provider:?}");
+    }
 }

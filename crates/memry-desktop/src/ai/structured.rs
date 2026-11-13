@@ -8,15 +8,16 @@
 //! - OpenAI: the Responses API with a strict `json_schema` text format (`createOpenAI()(model)`).
 //! - Ollama and a custom endpoint: chat completions with a strict `json_schema` response format
 //!   (`createOpenAI().chat()` and `createOpenAICompatible({ supportsStructuredOutputs })`).
-//!   Electron's writing assist sent Ollama to the Responses API, which Ollama does not serve
-//!   (the comment on `buildModel` in `fill-fields.ts`); both calls use chat here.
+//!   Electron's writing assist sent Ollama to the Responses API. Ollama serves `/v1/responses`
+//!   since v0.13.3 but ignores its `text.format`, so the answer is not held to the schema (the
+//!   comment on `buildModel` in `fill-fields.ts`); both calls use chat here.
 //! - Anthropic: `output_config.format` on the models the SDK sends it to, else a forced `json`
 //!   tool (`@ai-sdk/anthropic` `structuredOutputMode: "auto"`).
 //! - Google: `responseMimeType: application/json` with the schema as `responseSchema`.
 //!
 //! Retries follow the SDK's `maxRetries: 2`: a connection that fails or a 408, 409, 429 or 5xx is
 //! tried again after 2 s, then 4 s, or after the provider's `retry-after` when that is shorter
-//! than a minute.
+//! than a minute. A vault that closes during the wait ends the call.
 
 use std::sync::Arc;
 use std::time::Duration;
@@ -31,8 +32,11 @@ use super::settings::InlineAiSettings;
 /// The largest answer read. A proposal list or five alternatives is a few kilobytes.
 pub const ANSWER_CAP: usize = 4 * 1024 * 1024;
 
-/// Anthropic needs an output budget; neither call asks for more than a few hundred tokens.
-const ANTHROPIC_MAX_TOKENS: u32 = 4096;
+/// A key shorter than this is not cut out of provider text: cutting a few common characters
+/// would garble the message, and the providers' keys are tens of characters long.
+const MIN_REDACTED_KEY: usize = 8;
+
+const REDACTED: &str = "[redacted]";
 
 /// What one call asks: the instructions, the user's text and the JSON schema of the answer.
 pub struct Ask<'a> {
@@ -68,9 +72,20 @@ pub enum StructuredError {
     /// The answer held no object of the schema (`NoObjectGeneratedError`).
     #[error("No object generated: {0}")]
     NoObject(String),
-    /// Every try failed; the last failure (`RetryError`).
+    /// The model stopped at its output token limit before the object was whole (Anthropic's
+    /// `stop_reason: max_tokens`), as a thinking model does when its thinking takes the budget.
+    #[error("No object generated: the model reached its output token limit")]
+    OutputLimit,
+    /// Every try failed; the last failure (`RetryError`, reason `maxRetriesExceeded`).
     #[error("Failed after {attempts} attempts. Last error: {last}")]
     Retried {
+        attempts: u32,
+        last: Box<StructuredError>,
+    },
+    /// A try after the first failed in a way no retry helps (`RetryError`, reason
+    /// `errorNotRetryable`).
+    #[error("Failed after {attempts} attempts with non-retryable error: '{last}'")]
+    NonRetryable {
         attempts: u32,
         last: Box<StructuredError>,
     },
@@ -83,14 +98,19 @@ pub enum Failure {
     Unreachable,
     /// The provider refused the key (401 or 403).
     Unauthorized,
+    /// The call ended with its page or the vault.
+    Ended,
     Other,
 }
 
 impl StructuredError {
     pub fn failure(&self) -> Failure {
         match self {
-            Self::Retried { last, .. } => last.failure(),
-            Self::Proxy(ProxyError::Unreachable { .. }) => Failure::Unreachable,
+            Self::Retried { last, .. } | Self::NonRetryable { last, .. } => last.failure(),
+            Self::Proxy(ProxyError::Unreachable { .. } | ProxyError::BrokeOff(_)) => {
+                Failure::Unreachable
+            }
+            Self::Proxy(ProxyError::Cancelled | ProxyError::VaultClosed) => Failure::Ended,
             Self::Status {
                 status: 401 | 403, ..
             } => Failure::Unauthorized,
@@ -135,23 +155,21 @@ pub async fn generate<T: DeserializeOwned>(
         };
         let (error, wait) = match proxy.call(settings, request, owner, ANSWER_CAP).await {
             Ok(answer) if (200..300).contains(&answer.status) => {
-                return parse(dialect, &answer.body);
+                return dialect.object(&answer.body);
             }
             Ok(answer) => {
                 let wait = retry_after(&answer.headers)
                     .filter(|ms| *ms < 60_000.0 || *ms < delay.as_secs_f64() * 1000.0);
-                (status_error(&answer, &settings.api_key), wait)
+                (status_error(&answer, settings), wait)
             }
             Err(error) => (StructuredError::Proxy(error), None),
         };
         if !error.retryable() || attempt > retry.retries {
-            return Err(if attempt == 1 {
-                error
-            } else {
-                StructuredError::Retried {
-                    attempts: attempt,
-                    last: Box::new(error),
-                }
+            let (attempts, last) = (attempt, Box::new(error));
+            return Err(match *last {
+                error if attempt == 1 => error,
+                _ if last.retryable() => StructuredError::Retried { attempts, last },
+                _ => StructuredError::NonRetryable { attempts, last },
             });
         }
         let pause = wait.map_or(delay, |ms| Duration::from_secs_f64(ms / 1000.0));
@@ -162,7 +180,13 @@ pub async fn generate<T: DeserializeOwned>(
             attempt + 1,
             pause.as_millis()
         );
-        tokio::time::sleep(pause).await;
+        // The next try would send the closed vault's key and text.
+        tokio::select! {
+            () = owner.vault_closed() => {
+                return Err(StructuredError::Proxy(ProxyError::VaultClosed));
+            }
+            () = tokio::time::sleep(pause) => {}
+        }
         delay *= 2;
     }
 }
@@ -183,7 +207,7 @@ fn retry_after(headers: &[HeaderPair]) -> Option<f64> {
 
 /// The provider's own error message (`error.message`, or `error` as text), else the status. A
 /// provider that quotes the key back has it cut out: the message reaches the log and the UI.
-fn status_error(answer: &Answer, key: &str) -> StructuredError {
+fn status_error(answer: &Answer, settings: &InlineAiSettings) -> StructuredError {
     let body: Option<Value> = serde_json::from_slice(&answer.body).ok();
     let error = body.as_ref().and_then(|body| body.get("error"));
     let message = error
@@ -197,25 +221,22 @@ fn status_error(answer: &Answer, key: &str) -> StructuredError {
                 .unwrap_or("the provider refused the request")
                 .to_owned()
         });
-    let message = if key.is_empty() {
-        message
-    } else {
-        message.replace(key, "[redacted]")
-    };
     StructuredError::Status {
         status: answer.status,
-        message,
+        message: redact(message, settings),
     }
 }
 
-fn parse<T: DeserializeOwned>(dialect: Dialect, body: &[u8]) -> Result<T, StructuredError> {
-    let no_object = |why: &str| StructuredError::NoObject(why.to_owned());
-    let body: Value =
-        serde_json::from_slice(body).map_err(|_| no_object("the provider's answer is not JSON"))?;
-    let text = dialect
-        .text(&body)
-        .ok_or_else(|| no_object("the answer holds no text"))?;
-    serde_json::from_str(&text).map_err(|_| no_object("could not parse the response"))
+/// `message` without the key of `settings`, as sent and as a JSON string escapes it. A provider
+/// that never got the key cannot quote it.
+fn redact(message: String, settings: &InlineAiSettings) -> String {
+    let key = settings.api_key.as_str();
+    if !settings.provider.takes_key() || key.chars().count() < MIN_REDACTED_KEY {
+        return message;
+    }
+    let quoted = Value::from(key).to_string();
+    let escaped = &quoted[1..quoted.len() - 1];
+    message.replace(escaped, REDACTED).replace(key, REDACTED)
 }
 
 /// The request and answer shape of each provider.
@@ -223,7 +244,7 @@ fn parse<T: DeserializeOwned>(dialect: Dialect, body: &[u8]) -> Result<T, Struct
 pub enum Dialect {
     Responses,
     Chat,
-    Anthropic { output_format: bool },
+    Anthropic(AnthropicModel),
     Google,
 }
 
@@ -232,9 +253,7 @@ impl Dialect {
         match settings.provider {
             AiProvider::Openai => Self::Responses,
             AiProvider::Ollama | AiProvider::Custom => Self::Chat,
-            AiProvider::Anthropic => Self::Anthropic {
-                output_format: anthropic_output_format(&settings.model),
-            },
+            AiProvider::Anthropic => Self::Anthropic(anthropic_model(&settings.model)),
             AiProvider::Google => Self::Google,
         }
     }
@@ -271,10 +290,13 @@ impl Dialect {
                     } },
                 }),
             ),
-            Self::Anthropic { output_format } => {
+            Self::Anthropic(AnthropicModel {
+                output_format,
+                max_tokens,
+            }) => {
                 let mut body = json!({
                     "model": model,
-                    "max_tokens": ANTHROPIC_MAX_TOKENS,
+                    "max_tokens": max_tokens,
                     "system": ask.system,
                     "messages": [{ "role": "user", "content": ask.prompt }],
                 });
@@ -317,6 +339,30 @@ impl Dialect {
         }
     }
 
+    /// The object of a provider's answer `body`.
+    pub fn object<T: DeserializeOwned>(self, body: &[u8]) -> Result<T, StructuredError> {
+        let no_object = |why: &str| StructuredError::NoObject(why.to_owned());
+        let body: Value = serde_json::from_slice(body)
+            .map_err(|_| no_object("the provider's answer is not JSON"))?;
+        let text = self.text(&body);
+        if let Some(object) = text
+            .as_deref()
+            .and_then(|text| serde_json::from_str(text).ok())
+        {
+            return Ok(object);
+        }
+        if matches!(self, Self::Anthropic(_))
+            && body.get("stop_reason") == Some(&json!("max_tokens"))
+        {
+            return Err(StructuredError::OutputLimit);
+        }
+        Err(no_object(if text.is_none() {
+            "the answer holds no text"
+        } else {
+            "could not parse the response"
+        }))
+    }
+
     /// The answer's text, which holds the object; `None` when there is none (a refusal).
     pub fn text(self, body: &Value) -> Option<String> {
         let joined = |parts: Vec<&str>| (!parts.is_empty()).then(|| parts.concat());
@@ -333,17 +379,19 @@ impl Dialect {
                 .pointer("/choices/0/message/content")?
                 .as_str()
                 .map(str::to_owned),
-            Self::Anthropic {
+            Self::Anthropic(AnthropicModel {
                 output_format: true,
-            } => joined(
+                ..
+            }) => joined(
                 items(body.get("content"))
                     .filter(|part| part.get("type") == Some(&json!("text")))
                     .filter_map(|part| part.get("text")?.as_str())
                     .collect(),
             ),
-            Self::Anthropic {
+            Self::Anthropic(AnthropicModel {
                 output_format: false,
-            } => items(body.get("content"))
+                ..
+            }) => items(body.get("content"))
                 .find(|part| {
                     part.get("type") == Some(&json!("tool_use"))
                         && part.get("name") == Some(&json!("json"))
@@ -370,34 +418,61 @@ fn merge(into: &mut Value, extra: Value) {
     }
 }
 
-/// Whether `@ai-sdk/anthropic`'s `getModelCapabilities` gives `model` structured output, so
-/// its `auto` mode sends `output_config.format` instead of the `json` tool. Its table, in its
-/// order: the 4.x models named first support it, the other 4.x and the 3.x, 2.x and instant
-/// models do not, any other `claude-` model does, and a model id it does not know does not.
-pub fn anthropic_output_format(model: &str) -> bool {
-    const NATIVE_4: [&str; 8] = [
-        "claude-opus-4-8",
-        "claude-opus-4-7",
-        "claude-sonnet-4-6",
-        "claude-opus-4-6",
-        "claude-sonnet-4-5",
-        "claude-opus-4-5",
-        "claude-haiku-4-5",
-        "claude-opus-4-1",
+/// What `@ai-sdk/anthropic`'s `getModelCapabilities` gives a model.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub struct AnthropicModel {
+    /// Its `auto` mode sends `output_config.format` instead of the `json` tool.
+    pub output_format: bool,
+    /// `maxOutputTokens`, which the SDK sends as `max_tokens` when the call names none.
+    pub max_tokens: u32,
+}
+
+/// `getModelCapabilities` of `@ai-sdk/anthropic` 3.0.142, its table in its order: the first
+/// name `model` contains wins, then the legacy models, then any other `claude-` model, then a
+/// model id it does not know.
+pub fn anthropic_model(model: &str) -> AnthropicModel {
+    const NAMED: [(&[&str], bool, u32); 13] = [
+        (&["claude-sonnet-5-5"], true, 128_000),
+        (&["claude-opus-5-5"], true, 128_000),
+        (&["claude-haiku-5-5"], true, 128_000),
+        (&["claude-opus-5"], true, 128_000),
+        (&["claude-fable-5-2", "claude-fable-5-1"], true, 128_000),
+        (&["claude-fable-5"], true, 128_000),
+        (
+            &["claude-opus-4-8", "claude-opus-4-7", "claude-sonnet-5"],
+            true,
+            128_000,
+        ),
+        (&["claude-sonnet-4-6", "claude-opus-4-6"], true, 128_000),
+        (
+            &["claude-sonnet-4-5", "claude-opus-4-5", "claude-haiku-4-5"],
+            true,
+            64_000,
+        ),
+        (&["claude-opus-4-1"], true, 32_000),
+        (&["claude-sonnet-4-"], false, 64_000),
+        (&["claude-opus-4-"], false, 32_000),
+        (&["claude-3-haiku"], false, 4096),
     ];
-    if NATIVE_4.iter().any(|name| model.contains(name)) {
-        return true;
-    }
-    if ["claude-sonnet-4-", "claude-opus-4-", "claude-3-haiku"]
+    let (output_format, max_tokens) = NAMED
         .iter()
-        .any(|name| model.contains(name))
-    {
-        return false;
+        .find(|(names, ..)| names.iter().any(|name| model.contains(name)))
+        .map_or_else(
+            || {
+                if legacy_claude(model) {
+                    (false, 4096)
+                } else if model.contains("claude-") {
+                    (true, 128_000)
+                } else {
+                    (false, 4096)
+                }
+            },
+            |&(_, output_format, max_tokens)| (output_format, max_tokens),
+        );
+    AnthropicModel {
+        output_format,
+        max_tokens,
     }
-    if legacy_claude(model) {
-        return false;
-    }
-    model.contains("claude-")
 }
 
 /// `/claude-(?:instant(?:-|$)|v?2(?=$|[-.:])|3(?=$|[-.]))/` of the SDK's table.

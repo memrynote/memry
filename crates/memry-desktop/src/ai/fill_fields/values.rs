@@ -80,7 +80,8 @@ pub fn parse_locale_number(raw: &str, locale: &str) -> Option<f64> {
     number.filter(|number| number.is_finite())
 }
 
-/// `YYYY-MM-DD` naming a real day: `2026-02-30` is refused, not rolled into March.
+/// `YYYY-MM-DD` naming a real day from year 100 on: `2026-02-30` is refused, not rolled into
+/// March.
 pub fn is_calendar_date(text: &str) -> bool {
     let bytes = text.as_bytes();
     if bytes.len() != 10 || bytes[4] != b'-' || bytes[7] != b'-' {
@@ -95,6 +96,10 @@ pub fn is_calendar_date(text: &str) -> bool {
     let (Some(year), Some(month), Some(day)) = (number(0..4), number(5..7), number(8..10)) else {
         return false;
     };
+    // `Date.UTC` reads years 0 to 99 as 1900 to 1999, so Electron refuses them.
+    if year < 100 {
+        return false;
+    }
     let leap = (year % 4 == 0 && year % 100 != 0) || year % 400 == 0;
     let days = match month {
         1 | 3 | 5 | 7 | 8 | 10 | 12 => 31,

@@ -1,6 +1,7 @@
 //! Writing assist and the field fill through the IPC a renderer calls (#3539), on a mock app
 //! over a real vault: what "Fill from note" shows, the first-run disclosure recorded only once
-//! accepted, and the text a failed writing assist shows, which never carries the key.
+//! accepted, and the text a failed writing assist shows, which never carries the key and is
+//! translated when the call ended with the vault, its page or a broken answer.
 
 #[allow(
     dead_code,
@@ -12,6 +13,7 @@ use std::collections::HashMap;
 use std::io::{Read, Write};
 use std::net::TcpListener;
 use std::sync::{Arc, Mutex};
+use std::time::{Duration, Instant};
 
 use memry_core::api::errors::SecureStoreError;
 use memry_core::seams::secure_store::{SecureStore, SecureStoreKey};
@@ -153,6 +155,15 @@ impl Fixture {
 
 /// A provider on this host that answers every request with `status` and `body`, then closes.
 fn provider(status: &'static str, body: String) -> String {
+    serve(Some(format!(
+        "HTTP/1.1 {status}\r\ncontent-type: application/json\r\ncontent-length: {}\r\nconnection: close\r\n\r\n{body}",
+        body.len()
+    )))
+}
+
+/// A provider on this host that writes `answer` for every request, then closes; with `None`
+/// it says nothing until the client leaves.
+fn serve(answer: Option<String>) -> String {
     let listener = TcpListener::bind("127.0.0.1:0").unwrap();
     let port = listener.local_addr().unwrap().port();
     std::thread::spawn(move || {
@@ -179,11 +190,12 @@ fn provider(status: &'static str, body: String) -> String {
                     break;
                 }
             }
-            let answer = format!(
-                "HTTP/1.1 {status}\r\ncontent-type: application/json\r\ncontent-length: {}\r\nconnection: close\r\n\r\n{body}",
-                body.len()
-            );
-            let _ = stream.write_all(answer.as_bytes());
+            match &answer {
+                Some(answer) => {
+                    let _ = stream.write_all(answer.as_bytes());
+                }
+                None => while matches!(stream.read(&mut buf), Ok(read) if read > 0) {},
+            }
         }
     });
     format!("http://127.0.0.1:{port}/v1")
@@ -252,18 +264,20 @@ fn the_fill_asks_for_the_disclosure_and_records_it_only_once_accepted() {
     assert_eq!(fill(None), json!({ "kind": "unavailable" }));
 }
 
+/// The code and message of a refused call, which never holds the key.
+fn refused(result: Result<Value, Value>) -> (String, String) {
+    let error = result.expect_err("refused");
+    let text = error.to_string();
+    assert!(!text.contains(&KEY[..12]), "key text in {text}");
+    (
+        error["code"].as_str().unwrap().to_owned(),
+        error["message"].as_str().unwrap().to_owned(),
+    )
+}
+
 #[test]
 fn a_failed_writing_assist_says_what_to_fix_and_never_shows_the_key() {
     let f = fixture();
-    let refused = |result: Result<Value, Value>| {
-        let error = result.expect_err("refused");
-        let text = error.to_string();
-        assert!(!text.contains(&KEY[..12]), "key text in {text}");
-        (
-            error["code"].as_str().unwrap().to_owned(),
-            error["message"].as_str().unwrap().to_owned(),
-        )
-    };
 
     f.set(AiProvider::Custom, true, KEY, &closed_base());
     assert_eq!(
@@ -324,4 +338,60 @@ fn a_failed_writing_assist_says_what_to_fix_and_never_shows_the_key() {
     let (code, message) = refused(f.assist("Hello"));
     assert_eq!(code, "ai.writingAssistFailed");
     assert!(message.starts_with("Ollama is not running."), "{message}");
+}
+
+#[test]
+fn a_writing_assist_ended_by_its_vault_its_page_or_a_broken_answer_shows_translated_text() {
+    let f = fixture();
+    let proxy = f
+        .mocked
+        .webview
+        .app_handle()
+        .state::<Arc<AiProxy>>()
+        .inner()
+        .clone();
+    let label = f.mocked.webview.label().to_owned();
+    f.set(AiProvider::Custom, true, KEY, &serve(None));
+    for page_reloaded in [false, true] {
+        let ender = {
+            let (proxy, label) = (proxy.clone(), label.clone());
+            std::thread::spawn(move || {
+                // Watchdog on the wait for the request, not a budget.
+                let deadline = Instant::now() + Duration::from_secs(10);
+                while proxy.in_flight() == 0 {
+                    assert!(Instant::now() < deadline, "the request never opened");
+                    std::thread::sleep(Duration::from_millis(5));
+                }
+                if page_reloaded {
+                    proxy.cancel_owner(&label);
+                } else {
+                    proxy.cancel_all();
+                }
+            })
+        };
+        let outcome = refused(f.assist("Hello"));
+        ender.join().unwrap();
+        assert_eq!(
+            outcome,
+            (
+                "ai.writingAssistFailed".to_owned(),
+                "Could not suggest alternatives".to_owned()
+            ),
+            "page reloaded: {page_reloaded}"
+        );
+    }
+
+    // The head came, then the connection broke off part way through the body.
+    let base = serve(Some(
+        "HTTP/1.1 200 OK\r\ncontent-type: application/json\r\ncontent-length: 100\r\nconnection: close\r\n\r\n{\"choices\"".to_owned(),
+    ));
+    f.set(AiProvider::Custom, true, KEY, &base);
+    let host = &base["http://".len()..base.len() - "/v1".len()];
+    assert_eq!(
+        refused(f.assist("Hello")),
+        (
+            "ai.writingAssistFailed".to_owned(),
+            format!("Could not reach {host}. Check your internet connection and try again.")
+        )
+    );
 }

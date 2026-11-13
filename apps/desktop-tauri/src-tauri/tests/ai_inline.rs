@@ -1,20 +1,26 @@
 //! The inline AI settings commands through the IPC a renderer calls, on a mock app over a real
 //! vault: the settings screen opens with the key masked whatever the keychain says, and
-//! `ai_inline_get_settings` reports the key exactly as `ai_inline_set_settings` does (#3539).
+//! `ai_inline_get_settings` reports the key exactly as `ai_inline_set_settings` does, and a
+//! provider call whose settings read fails lets go of the renderer's early cancel (#3539).
 
 use std::collections::HashMap;
+use std::io::{Read, Write};
+use std::net::TcpListener;
 use std::sync::atomic::{AtomicBool, Ordering};
 use std::sync::{Arc, Mutex};
 
 use memry_core::api::errors::SecureStoreError;
 use memry_core::seams::secure_store::{SecureStore, SecureStoreKey};
 use memry_desktop::ai::provider::AiProvider;
+use memry_desktop::ai::proxy::{AiProviderRequest, AiProxy};
 use memry_desktop::ai::settings::{InlineAiStore, InlineAiUpdates, MASKED_KEY};
 use memry_desktop::locale::LocaleService;
 use memry_desktop::registry::{AppConfig, VaultRegistry};
 use memry_desktop::seams::secure_store::GenericSecrets;
 use memry_desktop::session::{OpenSource, Session};
 use memry_desktop::settings::SettingsService;
+use memry_tauri::binary;
+use memry_tauri::registry::dispatcher;
 use serde_json::{Value, json};
 use tauri::ipc::{CallbackFn, InvokeBody, InvokeResponseBody};
 use tauri::test::{
@@ -105,6 +111,7 @@ struct Fixture {
     keychain: Arc<Keychain>,
     store: Arc<InlineAiStore>,
     session: Session,
+    proxy: Arc<AiProxy>,
 }
 
 /// An open vault whose inline AI provider is `provider`, with a cloud key stored in the
@@ -143,14 +150,22 @@ fn opened(provider: AiProvider) -> Fixture {
         .commands(collect_commands![
             memry_tauri::commands::ai::ai_inline_get_settings::<MockRuntime>,
             memry_tauri::commands::ai::ai_inline_set_settings::<MockRuntime>,
+            memry_tauri::commands::ai::ai_provider_cancel::<MockRuntime>,
         ]);
     let app = mock_builder()
-        .invoke_handler(commands.invoke_handler())
+        .invoke_handler(dispatcher(
+            binary::COMMANDS,
+            binary::handler(),
+            commands.invoke_handler(),
+        ))
         .build(mock_context(noop_assets()))
         .unwrap();
     app.manage(session.clone());
     app.manage(store.clone());
     app.manage(Arc::new(LocaleService::new("en")));
+    let _ = rustls::crypto::ring::default_provider().install_default();
+    let proxy = AiProxy::new(memry_desktop::http::builder().no_proxy());
+    app.manage(proxy.clone());
     let webview = WebviewWindowBuilder::new(&app, "main", WebviewUrl::default())
         .build()
         .unwrap();
@@ -161,6 +176,7 @@ fn opened(provider: AiProvider) -> Fixture {
         keychain,
         store,
         session,
+        proxy,
     }
 }
 
@@ -212,4 +228,71 @@ fn ollama_with_a_stored_cloud_key_reads_as_set_settings_answers() {
     assert_eq!(got["provider"], json!("ollama"));
     assert_eq!(got["apiKey"], json!(MASKED_KEY));
     assert_eq!(got, set);
+}
+
+/// A custom endpoint on this host that answers every request `200 {}`, then closes.
+fn endpoint() -> String {
+    let listener = TcpListener::bind("127.0.0.1:0").unwrap();
+    let port = listener.local_addr().unwrap().port();
+    std::thread::spawn(move || {
+        for mut stream in listener.incoming().flatten() {
+            let mut request = Vec::new();
+            let mut buf = [0u8; 4096];
+            while let Ok(read) = stream.read(&mut buf) {
+                request.extend_from_slice(&buf[..read]);
+                // The request below is `{}`, two bytes.
+                if read == 0 || request.ends_with(b"\r\n\r\n{}") {
+                    break;
+                }
+            }
+            let answer = "HTTP/1.1 200 OK\r\ncontent-length: 2\r\nconnection: close\r\n\r\n{}";
+            let _ = stream.write_all(answer.as_bytes());
+        }
+    });
+    format!("http://127.0.0.1:{port}/v1")
+}
+
+#[test]
+fn a_provider_call_refused_by_a_locked_keychain_lets_go_of_its_early_cancel() {
+    let f = opened(AiProvider::Custom);
+    let updates = InlineAiUpdates {
+        base_url: Some(endpoint()),
+        ..InlineAiUpdates::default()
+    };
+    f.store
+        .write(f.session.current().as_ref(), updates)
+        .unwrap();
+    f.store.forget();
+    let request = json!({
+        "requestId": "aborted",
+        "provider": "custom",
+        "method": "POST",
+        "path": "/chat/completions",
+        "headers": [],
+        "body": "{}",
+    });
+
+    // The renderer aborted while Rust read the settings, and the read then failed.
+    f.invoke("ai_provider_cancel", json!({ "requestId": "aborted" }))
+        .unwrap();
+    f.keychain.locked.store(true, Ordering::SeqCst);
+    let error = f
+        .invoke(
+            "ai_provider_request",
+            json!({ "request": request, "onChunk": "__CHANNEL__:7" }),
+        )
+        .expect_err("the key could not be read");
+    assert_eq!(error["code"], json!("secure_store_locked"), "{error}");
+
+    // The id is free again: no later request of it is refused as cancelled.
+    f.keychain.locked.store(false, Ordering::SeqCst);
+    let settings = f.store.read(f.session.current().as_ref()).unwrap();
+    let request: AiProviderRequest = serde_json::from_value(request).unwrap();
+    let answer = tauri::async_runtime::block_on(f.proxy.call(
+        &settings,
+        request,
+        &f.proxy.owner("main"),
+        1024,
+    ));
+    assert_eq!(answer.map(|answer| answer.status), Ok(200));
 }

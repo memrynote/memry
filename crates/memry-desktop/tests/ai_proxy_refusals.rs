@@ -1,7 +1,7 @@
 //! The provider proxy's refusals around `open` (#3539, carry items of VERIFY-4449): a cancel
 //! remembered for a request that never opens is let go, a page that went while its request
-//! read the settings refuses that request, and a vault that closes before the head answers
-//! `VaultClosed`, not a user's cancel.
+//! read the settings refuses that request, and a vault that closes before the head, or before
+//! the request opens, answers `VaultClosed`, not a user's cancel.
 
 use std::sync::Arc;
 use std::sync::atomic::{AtomicBool, Ordering};
@@ -117,4 +117,25 @@ async fn a_vault_close_before_the_head_is_vault_closed() {
         assert_eq!(outcome, Err(ProxyError::VaultClosed));
     }
     assert_eq!(proxy.in_flight(), 0);
+}
+
+#[tokio::test]
+async fn a_request_taken_before_the_vault_closed_never_opens() {
+    let fake = fake(vec![Reply::chat("{}")]).await;
+    let proxy = proxy();
+    let good = settings(AiProvider::Custom, &fake.base, KEY);
+
+    // Taken when the command began; the vault closed while it waited (a retry's backoff).
+    let before = proxy.owner("main");
+    proxy.cancel_all();
+    assert_eq!(
+        open(&proxy, &good, "stale", &before).await,
+        Err(ProxyError::VaultClosed)
+    );
+    assert!(fake.seen().is_empty());
+
+    // The next vault's requests go.
+    let after = proxy.owner("main");
+    assert_eq!(open(&proxy, &good, "fresh", &after).await, Ok(200));
+    assert_eq!(fake.seen().len(), 1);
 }

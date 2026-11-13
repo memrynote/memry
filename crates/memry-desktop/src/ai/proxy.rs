@@ -141,12 +141,23 @@ pub enum ProxyError {
     BrokeOff(String),
 }
 
-/// The webview a request belongs to, as its page was when the command began.
-#[derive(Debug, Clone, PartialEq, Eq)]
+/// The webview a request belongs to, as its page and the vault were when the command began.
+#[derive(Debug, Clone)]
 pub struct Owner {
     label: String,
     /// The count of [`AiProxy::cancel_owner`] calls for `label` when this was taken.
     generation: u64,
+    /// Cancelled when the vault open at the time closes ([`AiProxy::cancel_all`]).
+    vault: CancellationToken,
+}
+
+impl Owner {
+    /// Resolves once the vault this owner was taken under has closed. A caller that waits
+    /// between requests (a retry's backoff) ends with it, rather than sending the closed
+    /// vault's key and text when the wait is over.
+    pub async fn vault_closed(&self) {
+        self.vault.cancelled().await;
+    }
 }
 
 /// A whole answer of [`AiProxy::call`].
@@ -178,6 +189,9 @@ struct InFlight {
     /// How often each page went ([`AiProxy::cancel_owner`]), so a request whose page went
     /// while its settings were read is refused at `open`. One counter per label ever used.
     pages: HashMap<String, u64>,
+    /// The open vault's token, cancelled and replaced when it closes, so that a request whose
+    /// [`Owner`] was taken before the close is refused at `open`.
+    vault: CancellationToken,
 }
 
 struct Entry {
@@ -235,9 +249,11 @@ impl AiProxy {
     /// The page of the webview labelled `label` as it is now. Take it before anything that can
     /// wait, so that a reload during the wait refuses the request at `open`.
     pub fn owner(&self, label: &str) -> Owner {
+        let in_flight = self.lock();
         Owner {
             label: label.to_owned(),
-            generation: self.lock().pages.get(label).copied().unwrap_or(0),
+            generation: in_flight.pages.get(label).copied().unwrap_or(0),
+            vault: in_flight.vault.clone(),
         }
     }
 
@@ -256,9 +272,11 @@ impl AiProxy {
     }
 
     /// Ends every request; each streaming body ends with `Failed("the vault closed")`, and a
-    /// request still waiting for its head with [`ProxyError::VaultClosed`].
+    /// request still waiting for its head with [`ProxyError::VaultClosed`]. A request of an
+    /// [`Owner`] taken before this is refused with [`ProxyError::VaultClosed`] at `open`.
     pub fn cancel_all(&self) {
         let mut in_flight = self.lock();
+        std::mem::take(&mut in_flight.vault).cancel();
         in_flight.early.clear();
         for (_, entry) in in_flight.running.drain() {
             entry.vault_closed.store(true, Ordering::SeqCst);
@@ -299,6 +317,9 @@ impl AiProxy {
         let id = request.request_id;
         {
             let mut in_flight = self.lock();
+            if owner.vault.is_cancelled() {
+                return Err(ProxyError::VaultClosed);
+            }
             if let Some(at) = in_flight.early.iter().position(|early| *early == id) {
                 in_flight.early.remove(at);
                 return Err(ProxyError::Cancelled);
