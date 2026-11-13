@@ -9,13 +9,19 @@
 //! - the stored `user_version` is **newer** than this build writes, i.e. a newer
 //!   build created it and an older one opened it;
 //! - an in-place migration fails with a defect of its own (a SQL error or a
-//!   constraint), which would otherwise fail every launch.
+//!   constraint), which would otherwise fail every launch;
+//! - the file's counter is past main's 0003 and it lacks the `fts_inbox` that
+//!   0003 creates, as a file feat/tauri-v2 numbered before #4438 left at 3..6
+//!   does; every inbox pass would fail on it.
 //!
 //! A **lower** `user_version` is none of them. It migrates in place through the
 //! hand-written, additive [`INDEX_MIGRATIONS`], each with its `user_version`
 //! written in the migration's own transaction ([`migrations::run_atomic`]), keeping
 //! every row, because later steps put content in this file (embeddings) that a
-//! rebuild does not recover cheaply. A missing file is created.
+//! rebuild does not recover cheaply. A missing file is created. Main's builds
+//! rebuild an index below their version instead; here a version-2 index from
+//! main migrates in place through 0003, and the missing inbox watermark then
+//! fills `fts_inbox` from `data.db`.
 //!
 //! Every other failure is an error, not a rebuild: a lock (a second instance, a
 //! backup tool), a permission or I/O error, a full disk. Deleting a healthy index
@@ -34,6 +40,9 @@ use crate::storage::connection::{Db, Profile};
 use crate::storage::guard::{self, is_damage};
 use crate::storage::migrations::{self, INDEX_MIGRATIONS};
 use crate::storage::quarantine;
+
+/// The index migration that creates `fts_inbox` (main's 0003).
+const FTS_INBOX: u32 = 3;
 
 /// Quarantined copies kept per kind. One: the index is derived, and a pile of
 /// multi-hundred-megabyte copies is a disk hazard.
@@ -167,6 +176,12 @@ fn inspect(path: &Path) -> Result<Result<Db, Rebuild>, StorageError> {
                 ),
             }));
         }
+        if found >= FTS_INBOX && !has_fts_inbox(conn)? {
+            return Ok(Some(Rebuild {
+                label: "old",
+                reason: format!("fts_inbox is missing at user_version {found}"),
+            }));
+        }
         if found < expected
             && let Err(failure) = migrations::run_atomic(conn, INDEX_MIGRATIONS)
         {
@@ -194,6 +209,17 @@ fn inspect(path: &Path) -> Result<Result<Db, Rebuild>, StorageError> {
     Ok(match verdict {
         None => Ok(db),
         Some(rebuild) => Err(rebuild),
+    })
+}
+
+fn has_fts_inbox(conn: &rusqlite::Connection) -> Result<bool, StorageError> {
+    conn.query_row(
+        "SELECT EXISTS (SELECT 1 FROM sqlite_schema WHERE name = 'fts_inbox')",
+        [],
+        |row| row.get(0),
+    )
+    .map_err(|err| StorageError::Failed {
+        what: format!("could not read the index.db schema: {err}"),
     })
 }
 
