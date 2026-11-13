@@ -39,6 +39,10 @@ overrides:
   '@radix-ui/react-dismissable-layer': 1.1.11
   '@radix-ui/react-focus-scope': 1.1.7
   tar: '>=7.5.21'
+  # One mermaid for streamdown, @streamdown/mermaid, BlockNote and Excalidraw.
+  # Two copies put both diagram graphs in each renderer build, and the Tauri
+  # build then ran out of its 4 GB CI heap (#4408).
+  mermaid: 11.17.2
   # One yaml for every vite peer variant; @wdio/native-utils needs ^2.9.1 (#3520).
   yaml: '>=2.9.1'
   tsx: '4.21.0'
