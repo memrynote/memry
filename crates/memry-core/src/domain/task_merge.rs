@@ -187,18 +187,32 @@ pub(crate) fn apply_remote_merged(
         Change::Set(as_json(&result.merged_field_clocks)?),
     ));
 
-    // One transaction, and **no outbox row**: §6.5.2 P3, the merging device
-    // stores the union clock and does not re-push.
+    write_merged(conn, record, &changes, now_ms)?;
+    Ok(Inbound::Merged {
+        conflicted_fields: result.conflicted_fields,
+    })
+}
+
+/// Writes a concurrent branch's merged `changes` over the stored payload, and
+/// the bookkeeping the wholesale path would have written, in one transaction.
+///
+/// **No outbox row**: §6.5.2 P3, the merging device stores the union clock and
+/// does not re-push. `deleted_at` is untouched: this branch cannot be a
+/// tombstone.
+pub(crate) fn write_merged(
+    conn: &Connection,
+    record: &InboundRecord,
+    changes: &[(&str, Change)],
+    now_ms: i64,
+) -> Result<(), StorageError> {
     let transaction = conn.unchecked_transaction().map_err(failed)?;
     sync_items::apply_local_edit_in(
         &transaction,
         &record.item_type,
         &record.item_id,
-        &changes,
+        changes,
         now_ms,
     )?;
-    // The bookkeeping the wholesale path would have written. `deleted_at` is
-    // untouched: this branch cannot be a tombstone.
     transaction
         .execute(
             "UPDATE sync_items SET server_cursor = ?3, signer_device_id = ?4, updated_at = ?5
@@ -212,11 +226,7 @@ pub(crate) fn apply_remote_merged(
             ],
         )
         .map_err(failed)?;
-    transaction.commit().map_err(failed)?;
-
-    Ok(Inbound::Merged {
-        conflicted_fields: result.conflicted_fields,
-    })
+    transaction.commit().map_err(failed)
 }
 
 /// The stored payload of a row that has one, or `None` when there is nothing
@@ -308,7 +318,7 @@ fn stored_clock(stored: &Object) -> Result<Option<VectorClock>, StorageError> {
     }
 }
 
-fn stored_field_clocks(
+pub(crate) fn stored_field_clocks(
     stored: &Object,
     whose: &str,
 ) -> Result<BTreeMap<String, VectorClock>, StorageError> {

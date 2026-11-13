@@ -53,6 +53,7 @@
 //! self-healing. A canvas scene is its payload in the same way. Both readers
 //! still run, so a malformed payload is recorded corrupt like any other.
 
+pub mod agent;
 pub mod bookmarks;
 pub mod calendar;
 pub mod canvas;
@@ -123,6 +124,8 @@ pub fn read(item_type: &str, parsed: &Object) -> Result<Object, ProjectionError>
         "canvas_folder" => canvas_folders::read_canvas_folder(parsed),
         "home_page" => home_pages::read_home_page(parsed),
         "sticky_draft" => sticky_drafts::read_sticky_draft(parsed),
+        agent::CONVERSATION => agent::read_agent_conversation(parsed),
+        agent::MESSAGE => agent::read_agent_message(parsed),
         other => Err(ProjectionError::UnknownType {
             item_type: other.to_owned(),
         }),
@@ -164,6 +167,8 @@ pub fn project(
         "canvas_folder" => canvas_folders::project_canvas_folder(conn, item, view),
         "home_page" => home_pages::project_home_page(conn, item, view),
         "sticky_draft" => sticky_drafts::project_sticky_draft(conn, item, view),
+        agent::CONVERSATION => agent::project_agent_conversation(conn, item, view),
+        agent::MESSAGE => agent::project_agent_message(conn, item, view),
         // Unreachable: `read` refused the type before the caller got here.
         other => Err(StorageError::Failed {
             what: format!("no projector for item type `{other}`"),
@@ -260,6 +265,8 @@ fn delete_targets(item_type: &str) -> &'static [(&'static str, Option<&'static s
         "canvas_folder" => &[("canvas_folders", Some("id"))],
         "home_page" => &[("home_pages", Some("id"))],
         "sticky_draft" => &[("sticky_drafts", Some("id"))],
+        agent::CONVERSATION => &[("agent_conversations", Some("id"))],
+        agent::MESSAGE => &[("agent_messages", Some("id"))],
         _ => &[],
     }
 }
