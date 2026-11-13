@@ -505,6 +505,8 @@ import { ContentArea } from './ContentArea'
 import type * as ScanTaskIntents from './scan-task-intents'
 import { markTaskRemovalsHandled } from './task-removal'
 import { useYjsCollaboration } from '@/sync/use-yjs-collaboration'
+import { useEditorSync } from './hooks'
+import { useCriticMarkupReview } from '../review/use-critic-markup-review'
 
 function createBlock(id: string, overrides: Record<string, unknown> = {}) {
   const block = {
@@ -1189,6 +1191,65 @@ describe('ContentArea', () => {
     // the deleted one is not among them.
     act(() => doc.transact(() => marksArray.push([remoteComment]), 'remote'))
     expect(replaceMarksFromYjs).toHaveBeenLastCalledWith([remoteComment])
+  })
+
+  // #4425: the window owns an open note's marks in the Y.Doc, and the host no
+  // longer rewrites them from each save. Typing before a comment left its
+  // offsets on the old text, so the doc pointed at other words on every device,
+  // and the serializer moved the comment to the first copy of its words.
+  it('moves the Y.Doc marks with the text typed before them', async () => {
+    const doc = new Y.Doc()
+    contentAreaMocks.useSyncState = { status: 'idle' }
+    contentAreaMocks.yjsState = {
+      fragment: doc.getXmlFragment('blocks'),
+      doc,
+      provider: { doc, isSynced: true },
+      isReady: true,
+      isRemoteUpdateRef: { current: false }
+    }
+    const plain = 'beta and beta.'
+    const comment: CriticMarkupMark = {
+      id: 'c-1',
+      kind: 'comment',
+      visibleText: 'beta',
+      start: 9,
+      end: 13,
+      body: 'the second beta'
+    }
+    const marksArray = doc.getArray<CriticMarkupMark>('criticMarkupMarks')
+    const offsets = () => marksArray.toArray().map(({ start, end }) => [start, end])
+    function Window() {
+      const review = useCriticMarkupReview({
+        markdown: serializeCriticMarkup(plain, [comment]),
+        onMarkdownChange: vi.fn()
+      })
+      return (
+        <ContentArea
+          noteId="note-1"
+          review={{
+            plainMarkdown: review.plainMarkdown,
+            marks: review.marks,
+            hoveredMarkId: null,
+            onPlainMarkdownChange: review.handlePlainMarkdownChange,
+            onLivePlainMarkdownChange: review.followLivePlainMarkdown,
+            onReplaceMarksFromYjs: review.replaceMarksFromYjs
+          }}
+        />
+      )
+    }
+    render(<Window />)
+    await waitFor(() => expect(offsets()).toEqual([[9, 13]]))
+    // What the editor's sync hears on each change of the live editor's text.
+    const liveText = () => vi.mocked(useEditorSync).mock.lastCall![0].onLiveMarkdownChange!
+
+    act(() => liveText()(`Intro. ${plain}`, true))
+    await waitFor(() => expect(offsets()).toEqual([[16, 20]]))
+
+    // A remote change brings its own marks through the doc: these do not move.
+    act(() => liveText()(`Hi. Intro. ${plain}`, false))
+    act(() => liveText()(`Hi. Intro. ${plain}!`, true))
+    await waitFor(() => expect(offsets()).toEqual([[16, 20]]))
+    expect(marksArray.toArray()[0].visibleText).toBe('beta')
   })
 
   // The note is open on two devices. The checkbox typed on one reaches the

@@ -100,6 +100,7 @@ use crate::markdown::convert::api::{Converter, ReplaceOptions};
 use crate::markdown::convert::apply::{CriticMarks, ReplaceOutcome};
 use crate::markdown::convert::restore::SerializeOptions;
 use crate::markdown::frontmatter::{YamlValue, parse_markdown_note, stringify_frontmatter_block};
+use crate::markdown::shared::critic_markup::parse_critic_markup;
 use crate::markdown::shared::markdown_class::{MarkdownClassThresholds, classify_markdown_content};
 use crate::markdown::shared::writing_tools::{WritingFrontmatter, merge_writing_yaml};
 use crate::protocol::account::MAX_UPDATE_BYTES;
@@ -360,10 +361,20 @@ fn author(
         };
         // Text first: a file that reads back what the document says (the app's own
         // write-back, a startup scan) is not an edit, whatever the body holds. A caller that
-        // did not read the frontmatter (`writing: None`) says nothing about it.
-        if same_text(&body.markdown, markdown)
-            && writing.as_ref().is_none_or(|w| *w == body.writing)
-        {
+        // did not read the frontmatter (`writing: None`) says nothing about it. With the marks
+        // left to the editor window, a text that differs only in them says nothing either:
+        // replacing the body would rewrite every block under the window.
+        let text_is_the_body = match write {
+            Write::Replace {
+                critic_marks: CriticMarks::Kept,
+                ..
+            } => same_text(
+                &parse_critic_markup(&body.markdown).plain_text,
+                &parse_critic_markup(markdown).plain_text,
+            ),
+            _ => same_text(&body.markdown, markdown),
+        };
+        if text_is_the_body && writing.as_ref().is_none_or(|w| *w == body.writing) {
             owed_file_body::clear(&tx, note_id)?;
             tx.commit().map_err(storage_failed)?;
             return Ok(FeedOutcome::Unchanged);

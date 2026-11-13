@@ -389,6 +389,12 @@ interface EditorSyncParams {
   tagIconMap?: Map<string, string>
   onContentChange?: (blocks: Block[]) => void
   onMarkdownChange?: (markdown: string) => void
+  /**
+   * With a live Y.Doc the doc owns the body and no markdown save runs. This still hears the
+   * editor's text, debounced, so the review marks the window owns follow it (#4425). `local`:
+   * no remote change came in since the last delivery, so the change is this editor's own.
+   */
+  onLiveMarkdownChange?: (markdown: string, local: boolean) => void
   onHeadingsChange?: (headings: HeadingInfo[]) => void
   /**
    * Reports the inline `#tags` in the body. `origin` separates the tag set the
@@ -427,6 +433,7 @@ export function useEditorSync({
   tagIconMap,
   onContentChange,
   onMarkdownChange,
+  onLiveMarkdownChange,
   onHeadingsChange,
   onInlineTagsChange
 }: EditorSyncParams): EditorSyncResult {
@@ -438,6 +445,8 @@ export function useEditorSync({
   const markdownDebounceRef = useRef<ReturnType<typeof setTimeout> | null>(null)
   const headingsDebounceRef = useRef<ReturnType<typeof setTimeout> | null>(null)
   const inlineTagsDebounceRef = useRef<ReturnType<typeof setTimeout> | null>(null)
+  const liveDebounceRef = useRef<ReturnType<typeof setTimeout> | null>(null)
+  const liveSawRemoteRef = useRef(false)
   // The debounced markdown save, kept callable so teardown can run it early.
   const pendingMarkdownSaveRef = useRef<
     ((deliver?: (markdown: string) => void) => Promise<void>) | null
@@ -453,6 +462,7 @@ export function useEditorSync({
       if (markdownDebounceRef.current) clearTimeout(markdownDebounceRef.current)
       if (headingsDebounceRef.current) clearTimeout(headingsDebounceRef.current)
       if (inlineTagsDebounceRef.current) clearTimeout(inlineTagsDebounceRef.current)
+      if (liveDebounceRef.current) clearTimeout(liveDebounceRef.current)
     }
   }, [])
 
@@ -661,6 +671,26 @@ export function useEditorSync({
     // oxlint-disable-next-line typescript/no-unsafe-type-assertion -- BlockNote types blocks against its custom schema generics; this helper takes the structural shape and the editor is any-typed at this seam
     onContentChange?.(blocks as Block[])
 
+    if (yjsFragment && onLiveMarkdownChange && isContentReadyRef.current) {
+      if (isRemoteUpdateRef?.current) liveSawRemoteRef.current = true
+      if (liveDebounceRef.current) clearTimeout(liveDebounceRef.current)
+      liveDebounceRef.current = setTimeout(() => {
+        liveDebounceRef.current = null
+        const local = !liveSawRemoteRef.current
+        liveSawRemoteRef.current = false
+        void serializeMarkdownPreservingSource(
+          editor,
+          // oxlint-disable-next-line typescript/no-unsafe-type-assertion -- BlockNote types blocks against its custom schema generics; this helper takes the structural shape and the editor is any-typed at this seam
+          editor.document as Block[],
+          markdownSourceRef.current,
+          notePath
+        ).then(
+          (markdown) => onLiveMarkdownChange(markdown, local),
+          (error: unknown) => log.error('Failed to convert blocks to markdown', error)
+        )
+      }, 150)
+    }
+
     if (isRemoteUpdateRef?.current) return
 
     // When Yjs collaboration is active, the main-process CRDT doc owns body
@@ -729,6 +759,7 @@ export function useEditorSync({
     isRemoteUpdateRef,
     yjsFragment,
     onMarkdownChange,
+    onLiveMarkdownChange,
     notePath,
     onHeadingsChange,
     onInlineTagsChange

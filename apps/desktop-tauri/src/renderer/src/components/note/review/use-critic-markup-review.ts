@@ -21,6 +21,7 @@ import {
   proseMirrorDocPosToEditorOffset,
   proseMirrorVisibleText
 } from '../content-area/critic-markup-offset-map'
+import { rebaseMarks } from './rebase-marks'
 
 interface UseCriticMarkupReviewParams {
   markdown: string
@@ -69,6 +70,11 @@ export interface CriticMarkupReviewController {
   hoveredMarkId: string | null
   markPositions: Record<string, number>
   handlePlainMarkdownChange: (plainMarkdown: string) => string
+  /**
+   * The live editor's text (the Y.Doc owns the body, so no save carries it): the marks move
+   * with a `local` change; a remote one brings its marks through the doc.
+   */
+  followLivePlainMarkdown: (plainMarkdown: string, local: boolean) => void
   persistCurrentMarkdown: () => void
   handleEditorReady: (editor: unknown) => void
   openCommentComposer: (selection: ReviewSelection) => void
@@ -168,7 +174,7 @@ export function useCriticMarkupReview({
   )
 
   const handlePlainMarkdownChange = useCallback((nextPlainMarkdown: string): string => {
-    const nextMarks = marksRef.current
+    const nextMarks = rebaseMarks(plainMarkdownRef.current, nextPlainMarkdown, marksRef.current)
     const serialized = serializeCriticMarkup(nextPlainMarkdown, nextMarks)
     plainMarkdownRef.current = nextPlainMarkdown
     marksRef.current = nextMarks
@@ -177,6 +183,18 @@ export function useCriticMarkupReview({
     rememberEmittedMarkdown(emittedMarkdownsRef.current, serialized)
     return serialized
   }, [])
+
+  const followLivePlainMarkdown = useCallback(
+    (nextPlainMarkdown: string, local: boolean) => {
+      if (local) {
+        handlePlainMarkdownChange(nextPlainMarkdown)
+        return
+      }
+      plainMarkdownRef.current = nextPlainMarkdown
+      setPlainMarkdown(nextPlainMarkdown)
+    },
+    [handlePlainMarkdownChange]
+  )
 
   const persistCurrentMarkdown = useCallback(() => {
     const serialized = serializeCriticMarkup(plainMarkdownRef.current, marksRef.current)
@@ -429,6 +447,7 @@ export function useCriticMarkupReview({
     hoveredMarkId,
     markPositions,
     handlePlainMarkdownChange,
+    followLivePlainMarkdown,
     persistCurrentMarkdown,
     handleEditorReady,
     openCommentComposer,

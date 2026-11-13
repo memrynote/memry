@@ -4,20 +4,25 @@
 //! lands after a later edit of the marks (it was serialized before it) would bring a resolved
 //! comment back, and its write racing the window's own write of one mark would leave two. A
 //! save of a note no window holds, and an outside edit of an open one, still set the marks from
-//! the file's text.
+//! the file's text. Every save of a held note leaves them: a journal day's (no editor id), and a
+//! save from an editor with no review (a canvas card, a project overview) whose text has no
+//! marks. So does a save that lands within the grace period after its window closed.
 
 use std::sync::Arc;
+use std::time::{SystemTime, UNIX_EPOCH};
 
 use memry_core::api::editor::Editor;
+use memry_core::crdt::resident::EDITOR_LIFECYCLE;
 use memry_core::markdown::pm::model::{any_to_json, json_to_any};
 use memry_core::markdown::shared::critic_markup::{CriticMarkupMark, serialize_critic_markup};
 use memry_core::seams::secure_store::SecureStore;
+use memry_desktop::journal::update::DayUpdate;
 use memry_desktop::notes::identity::NotesIdentity;
 use memry_desktop::notes::service::NotesService;
 use memry_desktop::notes::update::NoteUpdateInput;
 use serde_json::{Value, json};
 use yrs::updates::decoder::Decode;
-use yrs::{Any, Array as _, Doc, ReadTxn as _, Transact as _, Update};
+use yrs::{Any, Array as _, Doc, ReadTxn as _, StateVector, Transact as _, Update};
 
 use crate::index_support::until;
 use crate::vault_env::{Env, env, indexed};
@@ -133,6 +138,29 @@ fn marks_of(editor: &Editor, id: &str) -> Vec<Value> {
         .collect()
 }
 
+/// How far the document has come.
+fn state_of(editor: &Editor, id: &str) -> StateVector {
+    window_copy(&editor.open(id, WINDOW).unwrap().state)
+        .transact()
+        .state_vector()
+}
+
+fn now_ms() -> i64 {
+    SystemTime::now()
+        .duration_since(UNIX_EPOCH)
+        .unwrap()
+        .as_millis() as i64
+}
+
+/// The window's resolve of c1 reaches the file at `rel` (the editor host schedules the write-back
+/// after a window's edit), so a later save holding c1 changes the file.
+fn resolve_reaches_file(e: &Env, id: &str, rel: &str) {
+    e.tier.schedule(id);
+    until("the write-back wrote the resolve", || {
+        !e.read(rel).contains("about Alpha")
+    });
+}
+
 fn ids(marks: &[Value]) -> Vec<&str> {
     marks
         .iter()
@@ -202,15 +230,119 @@ fn an_editor_save_racing_the_window_write_of_a_mark_leaves_one_copy() {
     assert_eq!(ids(&marks_of(&editor, &id)), ["c1"], "the mark doubled");
 }
 
-/// A save of a note no window holds sets the marks from its text.
+/// A save of a note no window holds sets the marks from its text, with the editor built and the
+/// note opened and closed before, past the grace period.
 #[test]
 fn a_save_of_a_note_no_window_holds_sets_its_marks() {
     let (e, notes, store) = opened(&[("Plan.md", &text_with(&[c1(), c2()]))]);
     let open = e.session.current().unwrap();
     let id = id_at(&e, "Plan.md");
+    let editor = open.vault.editor(store).unwrap();
+    editor.open(&id, WINDOW).unwrap();
+    assert!(editor.release(&id, WINDOW));
+    editor.sweep(now_ms() + EDITOR_LIFECYCLE.grace_ms);
 
     notes.update(&open, save(&id, &text_with(&[c2()]))).unwrap();
 
-    let editor = open.vault.editor(store).unwrap();
     assert_eq!(ids(&marks_of(&editor, &id)), ["c2"]);
+}
+
+/// The window resolves c1 and closes; the save it flushed as it closed, still holding c1, lands
+/// after the close. The document keeps the window's marks.
+#[test]
+fn a_save_landing_after_its_window_closed_leaves_the_marks() {
+    let both = text_with(&[c1(), c2()]);
+    let (e, notes, store) = opened(&[("Plan.md", &both)]);
+    let open = e.session.current().unwrap();
+    let id = id_at(&e, "Plan.md");
+    let editor = open.vault.editor(store).unwrap();
+    let copy = window_copy(&editor.open(&id, WINDOW).unwrap().state);
+    editor
+        .apply_update(&id, &window_writes_marks(&copy, &[c2()]), WINDOW)
+        .unwrap();
+    resolve_reaches_file(&e, &id, "Plan.md");
+    assert!(editor.release(&id, WINDOW));
+
+    notes.update(&open, save(&id, &both)).unwrap();
+
+    assert_eq!(
+        ids(&marks_of(&editor, &id)),
+        ["c2"],
+        "the late save brought c1 back"
+    );
+}
+
+/// A save from an editor with no review (a canvas card, a project overview) of a note a window
+/// holds: its text has no marks, and the window's stay.
+#[test]
+fn a_save_from_an_editor_with_no_review_leaves_the_marks_of_an_open_note() {
+    let (e, notes, store) = opened(&[("Plan.md", &text_with(&[c1(), c2()]))]);
+    let open = e.session.current().unwrap();
+    let id = id_at(&e, "Plan.md");
+    let editor = open.vault.editor(store).unwrap();
+    editor.open(&id, WINDOW).unwrap();
+
+    let card = NoteUpdateInput {
+        editor: None,
+        ..save(&id, &format!("{PLAIN}More.\n"))
+    };
+    notes.update(&open, card).unwrap();
+
+    assert_eq!(
+        ids(&marks_of(&editor, &id)),
+        ["c1", "c2"],
+        "the card's save wiped the comments"
+    );
+}
+
+/// A journal day open in a window: the window resolves c1, and the day's save (`journal:
+/// updateEntry`, no editor id) serialized before it, still holding c1, lands after it.
+#[test]
+fn a_late_journal_save_leaves_the_marks_of_an_open_day_to_its_window() {
+    let both = text_with(&[c1(), c2()]);
+    let day = |content: &str| DayUpdate {
+        date: "2025-01-17".into(),
+        content: Some(content.to_owned()),
+        ..DayUpdate::default()
+    };
+    let (e, notes, store) = opened(&[]);
+    let open = e.session.current().unwrap();
+    assert!(notes.update_day(&open, day(&both)).unwrap().created);
+    let id = id_at(&e, "journal/2025-01-17.md");
+    let editor = open.vault.editor(store).unwrap();
+    let copy = window_copy(&editor.open(&id, WINDOW).unwrap().state);
+    assert_eq!(ids(&marks_of(&editor, &id)), ["c1", "c2"]);
+    editor
+        .apply_update(&id, &window_writes_marks(&copy, &[c2()]), WINDOW)
+        .unwrap();
+    resolve_reaches_file(&e, &id, "journal/2025-01-17.md");
+
+    notes.update_day(&open, day(&both)).unwrap();
+
+    assert_eq!(
+        ids(&marks_of(&editor, &id)),
+        ["c2"],
+        "the late day save brought c1 back"
+    );
+}
+
+/// A save whose text differs from the document's only in its marks leaves the body of an open
+/// note as it is: rewriting it would replace every block under the window.
+#[test]
+fn a_marks_only_save_of_an_open_note_leaves_its_body_as_it_is() {
+    let both = text_with(&[c1(), c2()]);
+    let (e, notes, store) = opened(&[("Plan.md", &both)]);
+    let open = e.session.current().unwrap();
+    let id = id_at(&e, "Plan.md");
+    let editor = open.vault.editor(store).unwrap();
+    let copy = window_copy(&editor.open(&id, WINDOW).unwrap().state);
+    editor
+        .apply_update(&id, &window_writes_marks(&copy, &[c2()]), WINDOW)
+        .unwrap();
+    resolve_reaches_file(&e, &id, "Plan.md");
+    let before = state_of(&editor, &id);
+
+    notes.update(&open, save(&id, &both)).unwrap();
+
+    assert_eq!(state_of(&editor, &id), before, "the save rewrote the body");
 }

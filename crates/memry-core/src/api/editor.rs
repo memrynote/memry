@@ -102,6 +102,7 @@ use listeners::Listeners;
 
 mod catch_up;
 mod compaction;
+mod holders;
 mod listeners;
 
 /// What a window receives when it opens a document.
@@ -403,21 +404,6 @@ impl Editor {
         })
     }
 
-    /// `holder` closes `note_id`. False when it did not hold it.
-    pub fn release(&self, note_id: &str, holder: &str) -> bool {
-        self.resident().release(note_id, holder, now_ms())
-    }
-
-    /// A window that is gone lets go of everything it held; returns those ids.
-    pub fn release_holder(&self, holder: &str) -> Vec<String> {
-        self.resident().release_holder(holder, now_ms())
-    }
-
-    /// Unloads the documents nobody has held for the grace period; returns them.
-    pub fn sweep(&self, now_ms: i64) -> Vec<String> {
-        self.resident().sweep(now_ms)
-    }
-
     /// Whether the edits this host takes are stored (`crdt:get-health`).
     /// Waits for the writer on its first call only.
     pub fn health(&self) -> Result<Health, EditorError> {
@@ -432,16 +418,6 @@ impl Editor {
         Ok(Health {
             persistent: !read_only,
         })
-    }
-
-    /// Whether any holder has `note_id` open.
-    pub fn is_open(&self, note_id: &str) -> bool {
-        self.resident().is_held(note_id)
-    }
-
-    /// Every note some holder has open, sorted.
-    pub fn open_note_ids(&self) -> Vec<String> {
-        self.resident().held_ids()
     }
 
     /// Runs `read` on `note_id`'s document with the resident lock held, so no

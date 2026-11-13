@@ -16,25 +16,28 @@ use crate::vault::embeds::Resolved;
 
 impl AppEdit {
     /// Who sets the note's comment marks (#4425). An editor window that holds the note writes
-    /// them into the document as the user resolves, deletes or undoes one, so its save, which
-    /// it serialized before a later such edit may land, leaves them; two writers of the one
-    /// array would bring a resolved comment back, or hold a mark twice. Any other edit, and the
-    /// save of a note no window holds, sets them from its text.
+    /// them into the document as the user resolves, deletes or undoes one, so a save of it,
+    /// which may be serialized before a later such edit, leaves them: a note tab's, a journal
+    /// day's, or one from an editor with no review whose text has no marks at all. Two writers
+    /// of the one array would bring a resolved comment back, or hold a mark twice. The window's
+    /// last save, flushed as it closes, may land after the close, so a note closed within the
+    /// grace period counts as held. Any other edit, and the save of a note no window holds,
+    /// sets them from its text.
     pub(super) fn critic_marks(
         &self,
         note_id: &str,
         precondition: Precondition<'_>,
     ) -> CriticMarks {
-        let editor_save = matches!(
+        let save = matches!(
             precondition,
-            Precondition::Save(_, Some(_)) | Precondition::SaveOver(_, Some(_))
+            Precondition::Save(..) | Precondition::SaveOver(..)
         );
         let held = || {
             self.vault
                 .built_editor()
-                .is_some_and(|editor| editor.is_open(note_id))
+                .is_some_and(|editor| editor.held_lately(note_id))
         };
-        match editor_save && held() {
+        match save && held() {
             true => CriticMarks::Kept,
             false => CriticMarks::FromMarkdown,
         }

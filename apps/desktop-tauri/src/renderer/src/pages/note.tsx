@@ -2023,6 +2023,7 @@ export function NotePage({ noteId }: NotePageProps) {
                         review.getEditorOffsetForMarkdownSourceOffset,
                       onPersistCurrentMarkdown: review.persistCurrentMarkdown,
                       onPlainMarkdownChange: review.handlePlainMarkdownChange,
+                      onLivePlainMarkdownChange: review.followLivePlainMarkdown,
                       onHoveredMarkChange: review.setHoveredMarkId,
                       onMarkPositionsChange: review.setMarkPositions,
                       onReplaceMarksFromYjs: review.replaceMarksFromYjs

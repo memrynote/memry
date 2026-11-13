@@ -797,6 +797,7 @@ const ContentAreaEditor = memo(function ContentAreaEditor({
     onMarkdownChange: onMarkdownChange
       ? (markdown) => onMarkdownChange(review?.onPlainMarkdownChange?.(markdown) ?? markdown)
       : undefined,
+    onLiveMarkdownChange: review?.onLivePlainMarkdownChange,
     onHeadingsChange,
     onInlineTagsChange
   })
