@@ -14,7 +14,7 @@ import type * as BodyPush from './note-body-push'
 // outbox, SQLite queue, snapshot senders, retries, auth retry and HTTP stay real.
 const fixture = vi.hoisted(() => ({
   db: null as DataDb | null,
-  pendingPushes: new Set<Promise<void>>(),
+  pendingPushes: new Set<Promise<unknown>>(),
   fetch: vi.fn<typeof fetch>(),
   getToken: vi.fn<() => Promise<string | null>>(),
   getKey: vi.fn<() => Promise<Uint8Array | null>>(),
@@ -278,6 +278,19 @@ async function settle(): Promise<void> {
   for (let turn = 0; turn < 4; turn++) await nextTurn()
 }
 
+// One advanceTimersByTimeAsync jumps the clock to its end whenever no timer is
+// due, even while a push is still parsing its response in real time. A wakeup
+// scheduled after that jump never fires inside the window, and which notes
+// that strands depends on machine load. Slices keep the clock within one
+// slice of the pushes the test can await.
+async function advanceWhileSettled(ms: number, sliceMs = 1_000): Promise<void> {
+  for (let elapsed = 0; elapsed < ms; elapsed += sliceMs) {
+    await vi.advanceTimersByTimeAsync(Math.min(sliceMs, ms - elapsed))
+    while (fixture.pendingPushes.size > 0) await Promise.allSettled(fixture.pendingPushes)
+    await settle()
+  }
+}
+
 function localUpdate(): Uint8Array {
   const doc = new Y.Doc()
   doc.getText('body').insert(0, 'imported markdown')
@@ -485,24 +498,24 @@ describe('runtime CRDT backpressure through durable SQLite and HTTP', () => {
       }
       return json({ sequenceNum: 1 })
     })
-    fixture.provider.pushSnapshotsForNotes.mockImplementation(async (ids) => {
+    fixture.provider.pushSnapshotsForNotes.mockImplementation((ids) => {
       // Provider encoding is not under test; delivery comes from the runtime's
       // actual batched sender, including the actual retry/auth/HTTP adapters.
       const [, , batch] = fixture.provider.init.mock.calls[0]
-      return batch(
+      const pending = batch(
         ids.map((noteId) => ({ noteId, state: localUpdate(), coverage: { unmerged: false } }))
       )
+      fixture.pendingPushes.add(pending)
+      return pending.finally(() => fixture.pendingPushes.delete(pending))
     })
     const ids = Array.from({ length: 12 }, (_, index) => `finite-${index}`)
     for (const id of ids) outbox.enqueue(id, localUpdate())
-    await vi.advanceTimersByTimeAsync(30_000)
-    await settle()
+    await advanceWhileSettled(30_000)
     expect(outbox.getOutstandingCount()).toBe(0)
 
     // Every inline retry has failed before admission becomes available again.
     // No new writes, reconnects or manual scheduling occur after the bulk.
-    await vi.advanceTimersByTimeAsync(180_000)
-    await settle()
+    await advanceWhileSettled(180_000)
     expect([...stored].toSorted()).toEqual(ids.toSorted())
   })
 
