@@ -22,7 +22,9 @@
 //!   it once the cursor moves. Here the plain remote is stored and marked
 //!   sealed-pending until `Vault::set_at_rest_key` seals it. On a concurrent
 //!   branch a sealed local title stays sealed; if the remote title wins, or
-//!   the local one was already pending, the record is stored pending.
+//!   the local one was already pending, the record is stored pending. A
+//!   winning title that is absent keeps the stored one, and with it the
+//!   local record's pending mark, key or no key.
 //! - **A local title that does not open under the installed key** (sealed
 //!   under another key, an unknown envelope version, altered bytes) is an
 //!   error before the gate, so the pull records the remote corrupt and the
@@ -95,11 +97,17 @@ pub fn apply_remote(
         &SYNCABLE_FIELDS,
     );
     let mut winners: Object = result.merged.into_iter().collect();
-    // With no key the local title stayed as stored: a winning title is plain
-    // when the local record was pending or the remote's title won.
+    // An absent winning title leaves the stored one as it is, plain when the
+    // local record was pending. With no key a winning title is plain when the
+    // local record was pending or the remote's title won.
     let pending = match seal_object(ITEM_TYPE, &mut winners, key) {
-        Ok(()) => false,
-        Err(SealError::KeyUnavailable) => pending || winners.get("title") != stored_title.as_ref(),
+        Ok(()) => pending && !winners.contains_key("title"),
+        Err(SealError::KeyUnavailable) => {
+            pending
+                || winners
+                    .get("title")
+                    .is_some_and(|title| Some(title) != stored_title.as_ref())
+        }
         Err(error) => return Err(failed(&format!("title will not seal: {error}"))),
     };
 

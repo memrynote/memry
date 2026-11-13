@@ -381,8 +381,8 @@ async fn agent_text_never_reaches_the_database_file_and_pushes_plain() {
     );
 }
 
-/// A conversation and its message sealed under one key, then another key
-/// installed: Electron throws on reading, merging and pushing such a row
+/// A conversation and its message sealed under one key, then the vault binds
+/// another key: they stay held, with no reset (§13.2.3). Electron throws on reading, merging and pushing such a row
 /// (`vault-key-state.ts:35-62`), and so does this core. Neither the read nor
 /// the push treats the envelope as plain text, and installing the key seals
 /// nothing again (§13.2.3).
@@ -391,10 +391,9 @@ async fn agent_record_under_another_key_errors_holds_and_is_never_sealed_again()
     let fixture = vault("foreign-key");
     let db = fixture.vault.db_handle();
     let key = fixture.vault.at_rest_key();
-    fixture
-        .vault
-        .set_at_rest_key(Some(Zeroizing::new(KEY)))
-        .expect("install");
+    // The rows are sealed under a key this vault never bound, as a device that
+    // held another key once wrote them.
+    key.set(Some(Zeroizing::new(OTHER_KEY)));
     let writer = key.clone();
     let conversation = db
         .call_blocking(move |conn| {
@@ -424,11 +423,13 @@ async fn agent_record_under_another_key_errors_holds_and_is_never_sealed_again()
                     (SELECT payload FROM sync_items ORDER BY item_type, item_id)";
     let before: String = scalar(&db, payloads);
 
+    key.set(None);
+
     for _ in 0..2 {
         let sealed = fixture
             .vault
-            .set_at_rest_key(Some(Zeroizing::new(OTHER_KEY)))
-            .expect("another key, no verifier stored");
+            .set_at_rest_key(Some(Zeroizing::new(KEY)))
+            .expect("the key the vault binds");
         assert_eq!(sealed.records, 0);
         assert_eq!(scalar::<String>(&db, payloads), before, "byte-identical");
     }
@@ -500,6 +501,36 @@ fn agent_key_that_fails_the_vault_verifier_is_not_installed() {
         .set_at_rest_key(Some(Zeroizing::new(KEY)))
         .expect("the vault's own key");
     assert!(key.seal(Purpose::ConversationTitle, "plan").is_ok());
+}
+
+/// The first key installed binds the vault's verifier, so a later different
+/// key is refused with no verifier written by anyone else (chapter 13
+/// §13.2.3): sealing under it would split the store across two keys.
+#[test]
+fn agent_first_key_binds_the_verifier_and_a_different_key_is_refused() {
+    let fixture = vault("bind");
+    let key = fixture.vault.at_rest_key();
+    fixture
+        .vault
+        .set_at_rest_key(Some(Zeroizing::new(KEY)))
+        .expect("the first key");
+    fixture.vault.set_at_rest_key(None).expect("remove");
+
+    let refused = fixture
+        .vault
+        .set_at_rest_key(Some(Zeroizing::new(OTHER_KEY)));
+    assert!(
+        matches!(refused, Err(StorageError::Invalid { .. })),
+        "{refused:?}"
+    );
+    assert!(matches!(
+        key.seal(Purpose::ConversationTitle, "plan"),
+        Err(SealError::KeyUnavailable)
+    ));
+    fixture
+        .vault
+        .set_at_rest_key(Some(Zeroizing::new(KEY)))
+        .expect("the bound key again");
 }
 
 /// A reader holds the WAL and the writer does not wait: the seal commits and

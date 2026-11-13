@@ -10,7 +10,7 @@
 //! sealed-pending in the same transaction ([`set_sealed_pending`]). That mark,
 //! never a value's shape, tells a plain value from a sealed one.
 
-use rusqlite::{Connection, OptionalExtension, params};
+use rusqlite::{Connection, params};
 use serde_json::Value;
 
 use crate::api::errors::StorageError;
@@ -133,23 +133,30 @@ pub(crate) fn refuses(item_type: &str, remote: &Object, not_null: &[&str]) -> bo
         || projectors::read(item_type, remote).is_err()
 }
 
-/// Refuses a vault key whose verifier (`candidate`) does not match the one
-/// stored in `meta.vault.crypto.verifier.v1` (chapter 01 §1.4.2). A vault
-/// with no stored verifier accepts any key.
+/// Binds the vault key verifier (`candidate`) in
+/// `meta.vault.crypto.verifier.v1` (chapter 01 §1.4.2) when none is stored,
+/// and refuses a key whose verifier differs from the stored one. The first key
+/// installed binds the vault, so a later different key cannot split the store
+/// across two keys. Electron's import copies Electron's verifier into `meta`
+/// before any key is installed (Step 36, #3553).
 pub(crate) fn check_verifier(conn: &Connection, candidate: &str) -> Result<(), StorageError> {
     let stored = conn
-        .query_row(
-            "SELECT value FROM meta WHERE key = 'vault.crypto.verifier.v1'",
-            [],
-            |row| row.get::<_, String>(0),
+        .execute(
+            "INSERT INTO meta (key, value) VALUES ('vault.crypto.verifier.v1', ?1)
+             ON CONFLICT(key) DO NOTHING",
+            [candidate],
         )
-        .optional()
+        .and_then(|_| {
+            conn.query_row(
+                "SELECT value FROM meta WHERE key = 'vault.crypto.verifier.v1'",
+                [],
+                |row| row.get::<_, String>(0),
+            )
+        })
         .map_err(|error| StorageError::Failed {
-            what: format!("the vault key verifier will not read: {error}"),
+            what: format!("the vault key verifier will not bind: {error}"),
         })?;
-    if stored.is_some_and(|stored| {
-        !crate::crypto::sodium::memcmp(stored.as_bytes(), candidate.as_bytes())
-    }) {
+    if !crate::crypto::sodium::memcmp(stored.as_bytes(), candidate.as_bytes()) {
         return Err(StorageError::Invalid {
             what: "the vault key does not match this vault's key verifier".to_owned(),
         });
@@ -174,10 +181,10 @@ pub struct Sealed {
 /// Nothing is queued: the payload a push sends is the same either way.
 ///
 /// It visits only the marked records and seals their sealed keys
-/// unconditionally: they were stored plain. A record already flagged corrupt
-/// is passed over and stays sealed-pending, since its payload may not read; a
-/// later write that replaces it decides again. A record that will not seal or
-/// read is flagged corrupt, stays sealed-pending, and the others still seal.
+/// unconditionally: they were stored plain. A record a later pull flagged
+/// corrupt still holds its plain payload, so it is sealed too and its flag
+/// cleared. A record that will not seal or read is flagged corrupt, stays
+/// sealed-pending, and the others still seal.
 /// With nothing marked and nothing held it opens no write transaction.
 ///
 /// `secure_delete` is on for the transaction, so SQLite zeroes the cells the
@@ -224,14 +231,14 @@ pub(crate) fn seal_pending(
 /// `(item_type, item_id, payload, deleted_at)` of a sealed-pending record.
 type PendingRow = (String, String, String, Option<i64>);
 
-/// The sealed-pending records with a payload and no corrupt flag.
+/// The sealed-pending records with a payload.
 fn pending_rows(conn: &Connection) -> Result<Vec<PendingRow>, StorageError> {
     let mut statement = conn
         .prepare(
             "SELECT s.item_type, s.item_id, s.payload, s.deleted_at
              FROM agent_sealed_pending p
              JOIN sync_items s ON s.item_type = p.item_type AND s.item_id = p.item_id
-             WHERE s.payload IS NOT NULL AND s.corrupt_reason IS NULL",
+             WHERE s.payload IS NOT NULL",
         )
         .map_err(failed)?;
     statement
@@ -262,7 +269,8 @@ fn seal_rows(
         set_sealed_pending(&transaction, &item_type, &item_id, false)?;
         transaction
             .execute(
-                "UPDATE sync_items SET payload = ?3 WHERE item_type = ?1 AND item_id = ?2",
+                "UPDATE sync_items SET payload = ?3, corrupt_reason = NULL, corrupt_at = NULL
+                 WHERE item_type = ?1 AND item_id = ?2",
                 params![item_type, item_id, Value::Object(object).to_string()],
             )
             .map_err(failed)?;

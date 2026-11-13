@@ -135,10 +135,11 @@ impl Vault {
     /// calls it at sync start and at agent bootstrap. Not on the FFI surface:
     /// a key never crosses it.
     ///
-    /// A key that does not match this vault's local key verifier (chapter 01
-    /// §1.4.2, `meta` key `vault.crypto.verifier.v1`), when one is stored, is
-    /// refused and not installed: sealing under it would leave records no
-    /// later key opens. Installing a key seals every sealed-pending agent
+    /// The first key installed binds this vault's local key verifier
+    /// (chapter 01 §1.4.2, `meta` key `vault.crypto.verifier.v1`) when none is
+    /// stored. A key that does not match the stored verifier is refused and
+    /// not installed: sealing under it would leave records no later key
+    /// opens. Records already sealed under another key stay held. Installing a key seals every sealed-pending agent
     /// record (one a pull stored while none was installed); removing it seals
     /// nothing.
     pub fn set_at_rest_key(

@@ -152,3 +152,78 @@ fn a_local_title_under_another_key_makes_the_merge_corrupt() {
     })
     .expect("merge");
 }
+
+/// A pending conversation (pulled with no key) meets a concurrent remote with
+/// no title that wins the title field: the merge leaves the plain local title
+/// as stored, so the record stays pending and installing the key seals it.
+#[test]
+fn a_merge_that_keeps_a_pending_title_stays_pending() {
+    use crate::domain::agent_conversation::get;
+
+    let (db, _dir) = open("agent-merge-no-title");
+    db.call_blocking(|conn| {
+        let none = AtRestKey::default();
+        let conversation = json!({
+            "vaultId": "vault-1", "title": "Pulled", "backend": "local",
+            "backendModel": null, "trustList": [], "pinned": false,
+            "clock": {"peer": 1}, "fieldClocks": {}, "createdAt": NOW, "updatedAt": NOW,
+            "deletedAt": null,
+        });
+        let pulled = remote("agent_conversation", "c1", &conversation);
+        apply_page(conn, vec![pulled], vec![], NOW, Some(DEVICE), &none)?;
+        let body = json!({
+            "vaultId": "vault-1", "backend": "local", "backendModel": null,
+            "trustList": [], "pinned": true, "clock": {"other": 1},
+            "fieldClocks": {"title": {"other": 5}, "pinned": {"other": 5}},
+            "createdAt": NOW, "updatedAt": NOW + 1, "deletedAt": null,
+        });
+        let concurrent = remote("agent_conversation", "c1", &body);
+        let totals = apply_page(conn, vec![concurrent], vec![], NOW, Some(DEVICE), &none)?;
+        assert_eq!(totals.corrupt, 0);
+        assert!(is_sealed_pending(conn, "agent_conversation", "c1")?);
+
+        let key = key();
+        assert_eq!(
+            seal_pending(conn, &key, NOW + 2).map_err(storage)?.records,
+            1
+        );
+        let read = get(conn, &key, "c1").map_err(storage)?.expect("live");
+        assert_eq!((read.title.as_str(), read.pinned), ("Pulled", true));
+        Ok(())
+    })
+    .expect("merge");
+}
+
+/// A pending conversation a later pull flagged corrupt still holds its title
+/// plain: installing the key seals it and clears the flag.
+#[test]
+fn a_pending_record_flagged_corrupt_is_sealed() {
+    let (db, _dir) = open("agent-seal-corrupt");
+    db.call_blocking(|conn| {
+        let conversation = json!({
+            "vaultId": "vault-1", "title": "PLAIN-TITLE", "backend": "local",
+            "backendModel": null, "trustList": [], "pinned": false,
+            "clock": {"peer": 1}, "fieldClocks": {}, "createdAt": NOW, "updatedAt": NOW,
+            "deletedAt": null,
+        });
+        let none = AtRestKey::default();
+        let pulled = remote("agent_conversation", "c1", &conversation);
+        apply_page(conn, vec![pulled], vec![], NOW, Some(DEVICE), &none)?;
+        let broken = remote("agent_conversation", "c1", &json!([1]));
+        let totals = apply_page(conn, vec![broken], vec![], NOW, Some(DEVICE), &none)?;
+        assert_eq!(totals.corrupt, 1);
+
+        assert_eq!(
+            seal_pending(conn, &key(), NOW + 2)
+                .map_err(storage)?
+                .records,
+            1
+        );
+        let row = sync_items::load(conn, "agent_conversation", "c1")?.expect("row");
+        assert!(!row.payload.expect("payload").contains("PLAIN-TITLE"));
+        assert_eq!(row.corrupt_reason, None);
+        assert!(!is_sealed_pending(conn, "agent_conversation", "c1")?);
+        Ok(())
+    })
+    .expect("seal");
+}
