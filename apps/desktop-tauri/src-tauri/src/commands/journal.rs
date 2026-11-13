@@ -1,7 +1,7 @@
 //! The journal commands of Step 13m (`journal:getEntry`, `journal:createEntry`,
 //! `journal:updateEntry`, `journal:deleteEntry`, the calendar's `getHeatmap`,
 //! `getMonthEntries`, `getYearStats` and `getStreak`, the charts' `getPropertyRows` and the day
-//! panel's `getDayContext` of `ipc/journal-handlers.ts`), each one call of
+//! panel's `getDayContext` and On this day's `getSameDayEntries` of `ipc/journal-handlers.ts`), each one call of
 //! `memry_desktop::journal`. A create, an update and a delete send their journal event after
 //! the write; a create and an update once the note index measured the day's file, so the
 //! calendar's refetch on the event reads the saved counts (`shell::journal_events::measure`).
@@ -13,6 +13,7 @@ use memry_desktop::journal::calendar::{
 };
 use memry_desktop::journal::day_context::DayContextView;
 use memry_desktop::journal::property_rows::PropertyRowsView;
+use memry_desktop::journal::same_day::{self, SameDayEntryView};
 use memry_desktop::journal::update::{DayUpdate, DayUpdated, InlineTags};
 use memry_desktop::journal::write::NewDay;
 use memry_desktop::journal::{self, JournalEntryView};
@@ -378,6 +379,24 @@ pub async fn journal_get_day_context<R: Runtime>(
         notes::service(&app)?
             .journal_day_context(&notes::open_vault(&app)?, &date)
             .map_err(|error| failed(&error))
+    })
+    .await
+}
+
+/// The live days of other years that show as the same day as `date`, newest first, days
+/// without text left out (`journal:getSameDayEntries`).
+#[tauri::command]
+#[specta::specta]
+pub async fn journal_get_same_day_entries<R: Runtime>(
+    app: AppHandle<R>,
+    date: String,
+) -> Result<Vec<SameDayEntryView>, CommandError> {
+    blocking("journal_get_same_day_entries", move || {
+        let open = notes::open_vault(&app)?;
+        let journal = notes::service(&app)?
+            .journal(&open)
+            .map_err(|error| failed(&error))?;
+        same_day::same_day_entries(&open, &journal, &date).map_err(|error| failed(&error))
     })
     .await
 }

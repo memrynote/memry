@@ -11,7 +11,7 @@ import type {
   JournalEntryDeletedEvent,
   JournalExternalChangeEvent
 } from '../../../preload/index.d'
-import type { DayContext, GetPropertyRowsOutput } from '@memry/contracts/journal-api'
+import type { DayContext, GetPropertyRowsOutput, SameDayEntry } from '@memry/contracts/journal-api'
 import { commands, events, type JournalEntryView, type Value } from '../../../generated/bindings'
 import { getI18n } from 'react-i18next'
 import { commandErrorCode } from '../lib/ipc-error'
@@ -31,7 +31,7 @@ function toLevel(level: number): ActivityLevel {
   return LEVELS[level] ?? 0
 }
 
-/** The journal methods served from Rust commands (`commands/journal.rs`, #3530 13m-2, 13m-4). */
+/** The journal methods served from Rust commands (`commands/journal.rs`, #3530 13m-2, 13m-4, #4411). */
 const ported = {
   /**
    * Get a journal entry by date.
@@ -115,6 +115,10 @@ const ported = {
       ...day,
       activityLevel: toLevel(day.activityLevel)
     })),
+
+  /** The days of other years shown as the same day as `date`, newest first. */
+  getSameDayEntries: (date: string): Promise<SameDayEntry[]> =>
+    commands.journalGetSameDayEntries(date),
 
   /** One row per month of the year that has a live day. */
   getYearStats: async (year: number): Promise<MonthStats[]> =>
