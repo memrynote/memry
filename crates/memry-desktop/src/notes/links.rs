@@ -9,8 +9,8 @@
 //! resolution names.
 //!
 //! A journal day's backlinks list the relation properties that name its date, written or not
-//! (`LinkVia` `property`). Not here yet, stated: Electron's backlinks also list relations to a
-//! note, portals and canvas arrows; the core has no index of those for desktop. A source that links
+//! (`LinkVia` `property`, read from the index's `property_refs`). Not here yet, stated:
+//! Electron's backlinks also list relations to a note, portals and canvas arrows. A source that links
 //! to the note under two spellings is listed once (`note_links` holds a row per spelling, and
 //! Electron listed each). A journal day is a source with text once a file row names it
 //! (13m); a day with none is listed at the path the journal settings give it, with no text.

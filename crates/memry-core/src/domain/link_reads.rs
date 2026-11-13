@@ -14,6 +14,7 @@ use rusqlite::{Connection, params, params_from_iter};
 use crate::api::errors::StorageError;
 use crate::domain::journal::valid_date;
 use crate::domain::journal_ops::links::{Source, id_list, live_items};
+use crate::domain::note_properties;
 use crate::domain::notes::failed;
 use crate::domain::notes::link_rewrite::LinkNames;
 use crate::domain::notes::names::name_key;
@@ -88,7 +89,7 @@ pub fn incoming(
         ids.sort();
         ids.dedup();
     }
-    let relations = relation_sources(index, &format!("memry://journal/{date}"))?;
+    let relations = note_properties::relating(index, "journal", &date)?;
     let unread = ids
         .iter()
         .chain(relations.iter().map(|(id, _)| id))
@@ -130,37 +131,6 @@ fn unresolved_ids(index: &Connection, date: &str) -> Result<Vec<String>, Storage
         .map_err(failed)?
         .collect::<Result<Vec<_>, _>>()
         .map_err(failed)
-}
-
-/// The notes and relation property names whose `relation` value lists `uri`. The value is the
-/// JSON array the index stores (`serializeValue`); `instr` only narrows the rows parsed.
-fn relation_sources(index: &Connection, uri: &str) -> Result<Vec<(String, String)>, StorageError> {
-    let mut statement = index
-        .prepare(
-            "SELECT note_id, name, value FROM note_properties \
-             WHERE type = 'relation' AND instr(value, ?1) > 0",
-        )
-        .map_err(failed)?;
-    let rows = statement
-        .query_map(params![uri], |row| {
-            Ok((
-                row.get::<_, String>(0)?,
-                row.get::<_, String>(1)?,
-                row.get::<_, Option<String>>(2)?,
-            ))
-        })
-        .map_err(failed)?;
-    let mut out = Vec::new();
-    for row in rows {
-        let (id, name, value) = row.map_err(failed)?;
-        let listed = value
-            .and_then(|value| serde_json::from_str::<Vec<String>>(&value).ok())
-            .is_some_and(|values| values.iter().any(|value| value == uri));
-        if listed {
-            out.push((id, name));
-        }
-    }
-    Ok(out)
 }
 
 /// The notes and days whose links may name the note once called `from`, the note itself

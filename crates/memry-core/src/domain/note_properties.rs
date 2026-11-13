@@ -7,14 +7,19 @@
 //! A row's type depends on the definitions as they were when the file was read. The index
 //! records them ([`TYPED_WITH`]), and the desktop indexer reads again the notes holding a name
 //! whose definition changed since (`retypeIndexedProperties`).
+//!
+//! `property_refs` holds the relations the rows name, written and dropped with them, as
+//! Electron's `setPropertyRefs` keeps them: the notes relating to an item are a seek
+//! ([`relating`]).
 
 use std::collections::BTreeMap;
 
 use rusqlite::{Connection, OptionalExtension as _, params};
+use serde_json::Value;
 
 use crate::api::errors::StorageError;
 use crate::domain::notes::failed;
-use crate::domain::property_values::IndexedProperty;
+use crate::domain::property_values::{IndexedProperty, parse_relation_uri};
 
 /// `index_meta` key: each defined property's type, by name, as the rows were typed with.
 pub const TYPED_WITH: &str = "note_properties.typed_with";
@@ -43,9 +48,21 @@ pub(crate) fn replace(
             params![ids],
         )
         .map_err(failed)?;
+    index
+        .execute(
+            "DELETE FROM property_refs WHERE source_id IN (SELECT value FROM json_each(?1))",
+            params![ids],
+        )
+        .map_err(failed)?;
     let mut insert = index
         .prepare_cached(
             "INSERT INTO note_properties (note_id, name, value, type) VALUES (?1, ?2, ?3, ?4)",
+        )
+        .map_err(failed)?;
+    let mut refer = index
+        .prepare_cached(
+            "INSERT OR IGNORE INTO property_refs (source_id, name, target_type, target_id) \
+             VALUES (?1, ?2, ?3, ?4)",
         )
         .map_err(failed)?;
     for (note_id, properties) in notes {
@@ -58,15 +75,61 @@ pub(crate) fn replace(
                     property.type_name
                 ])
                 .map_err(failed)?;
+            for (kind, id) in relations(&property.value) {
+                refer
+                    .execute(params![note_id, property.name, kind, id])
+                    .map_err(failed)?;
+            }
         }
     }
     Ok(())
+}
+
+/// `parseRelationValue`: the kinds and ids of a non-empty list of relation URIs, none for any
+/// other value.
+fn relations(value: &Value) -> Vec<(&str, &str)> {
+    let Some(items) = value.as_array().filter(|items| !items.is_empty()) else {
+        return Vec::new();
+    };
+    items
+        .iter()
+        .map(|item| item.as_str().and_then(parse_relation_uri))
+        .collect::<Option<Vec<_>>>()
+        .unwrap_or_default()
+}
+
+/// The notes and property names whose relations name `target_type`/`target_id`
+/// (`getIncomingPropertyRefs`), by note and name.
+pub fn relating(
+    index: &Connection,
+    target_type: &str,
+    target_id: &str,
+) -> Result<Vec<(String, String)>, StorageError> {
+    let mut statement = index
+        .prepare(
+            "SELECT source_id, name FROM property_refs \
+             WHERE target_type = ?1 AND target_id = ?2 ORDER BY source_id, name",
+        )
+        .map_err(failed)?;
+    statement
+        .query_map(params![target_type, target_id], |row| {
+            Ok((row.get(0)?, row.get(1)?))
+        })
+        .map_err(failed)?
+        .collect::<Result<_, _>>()
+        .map_err(failed)
 }
 
 pub(crate) fn forget(index: &Connection, note_id: &str) -> Result<(), StorageError> {
     index
         .execute(
             "DELETE FROM note_properties WHERE note_id = ?1",
+            params![note_id],
+        )
+        .map_err(failed)?;
+    index
+        .execute(
+            "DELETE FROM property_refs WHERE source_id = ?1",
             params![note_id],
         )
         .map_err(failed)?;
