@@ -6,7 +6,8 @@ import SwiftUI
 // counts, the project scope, the starred saved filters, and the way to the
 // projects list. A view and a project are picked independently, as on
 // desktop's tab strip and project picker, so each section marks its own pick.
-// A pick returns the list column to the list.
+// A pick returns the list column to the list. On the board, which has no
+// list column, it also closes the task pushed over the board.
 
 struct TasksScopeSidebar: View {
     let store: TasksStore
@@ -42,7 +43,7 @@ struct TasksScopeSidebar: View {
                     ) { await store.selectProject(project.id) }
                 }
                 Button {
-                    router.listPath = [.projects]
+                    show([.projects])
                 } label: {
                     Label(TasksCopy.manageProjects, systemImage: "ellipsis.circle")
                         .foregroundStyle(Tokens.Text.secondary.color)
@@ -78,7 +79,7 @@ struct TasksScopeSidebar: View {
         action: @escaping @MainActor () async -> Void
     ) -> some View {
         Button {
-            router.listPath = []
+            show([])
             Task { await action() }
         } label: {
             Label {
@@ -102,6 +103,10 @@ struct TasksScopeSidebar: View {
         .listRowBackground(selected ? Tokens.Canvas.surfaceActive.color : nil)
         .accessibilityAddTraits(selected ? [.isButton, .isSelected] : .isButton)
         .accessibilityIdentifier(identifier)
+    }
+
+    private func show(_ routes: [TasksRoute]) {
+        if store.showsKanban { router.path = routes } else { router.listPath = routes }
     }
 
     private static func symbol(_ tab: TasksTab) -> String {

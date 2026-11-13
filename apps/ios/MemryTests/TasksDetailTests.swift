@@ -38,6 +38,28 @@ struct TasksDetailTests {
         #expect(vault.store.undoable == nil)
     }
 
+    /// #4350: the title field commits on focus loss and on going away, once
+    /// per edit. Renamed to B, a peer renames it to C, B typed again: written.
+    @Test func a_title_retyped_after_a_peer_rename_is_written() async throws {
+        let (vault, id) = try await loaded()
+        var commits = TaskTitleCommits()
+        let first = try #require(commits.take("[agent] B", over: try item(vault, id).title))
+        #expect(await vault.store.detailRename(try item(vault, id), to: first))
+        _ = try vault.tasks.setTitle(id: id, title: "[agent] C")
+        await vault.store.refresh()
+        #expect(try item(vault, id).title == "[agent] C")
+        let again = try #require(commits.take("[agent] B", over: try item(vault, id).title))
+        #expect(await vault.store.detailRename(try item(vault, id), to: again))
+        #expect(try item(vault, id).title == "[agent] B")
+    }
+
+    @Test func focus_loss_and_going_away_write_one_edit_once() {
+        var commits = TaskTitleCommits()
+        #expect(commits.take("B", over: "A") == "B")
+        #expect(commits.take("B", over: "A") == nil)
+        #expect(commits.take("B2", over: "A") == "B2")
+    }
+
     @Test func status_priority_due_and_project_edits_are_undoable() async throws {
         let (vault, id) = try await loaded()
         let task = try item(vault, id)

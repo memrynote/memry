@@ -7,7 +7,9 @@ import XCTest
 // **Precondition:** a full-screen iPad simulator with a vault open (the
 // staging test account, or a free vault on this device). A run that lands on
 // sign-in, or on a compact window, skips; a skip is not a pass. Every task a
-// test writes is titled `[agent] <run>…` and deleted by the test.
+// test writes is titled `[agent] <run>…` and deleted by the test. After a
+// failure, tearDown relaunches and deletes what is left of that run's tasks,
+// so a red run leaves nothing in the vault.
 @MainActor
 final class TasksSplitUITests: XCTestCase {
     let app = XCUIApplication()
@@ -20,6 +22,7 @@ final class TasksSplitUITests: XCTestCase {
     }
 
     override func tearDown() async throws {
+        if let result = testRun, result.failureCount + result.unexpectedExceptionCount > 0 { sweep() }
         narrow("")
         XCUIDevice.shared.orientation = .portrait
     }
@@ -29,12 +32,15 @@ final class TasksSplitUITests: XCTestCase {
         let title = "[agent] \(run) found"
         quickAdd(title)
         XCTAssertNotEqual(detailTitle, title, "the new task opened on its own")
+        // A free vault indexes a local write only at the next launch (#4537).
+        app.terminate()
+        try openTasks()
 
         // From another page: the hit selects Tasks and fills its detail column.
         sidebarRow("Notes").tap()
         sidebarRow("Search").tap()
-        let field = app.searchFields.firstMatch
-        XCTAssertTrue(field.waitForExistence(timeout: 10))
+        let field = app.textFields["search.palette.field"]
+        XCTAssertTrue(field.waitForExistence(timeout: 10), "the Search row did not open the palette")
         field.typeText("\(run) found")
         let hit = app.buttons.matching(identifier: "search.result.task")
             .matching(NSPredicate(format: "label CONTAINS %@", "\(run) found")).firstMatch
@@ -87,7 +93,8 @@ final class TasksSplitUITests: XCTestCase {
     }
 
     /// Select mode works beside an open task: rows select instead of opening,
-    /// and the detail column keeps its task.
+    /// and the detail column keeps its task. Deleting the selection with the
+    /// open task in it empties the detail column.
     func testSelectModeKeepsTheDetailColumn() throws {
         try openTasks()
         let first = "[agent] \(run) one"
@@ -109,11 +116,29 @@ final class TasksSplitUITests: XCTestCase {
         )
         XCTAssertEqual(detailTitle, first, "a tap in select mode opened a task")
         attach("select-mode")
-        app.buttons["tasks.editButton"].firstMatch.tap()
 
-        deleteOpenTask()
-        open(secondRow, showing: second)
-        deleteOpenTask()
+        app.buttons["tasks.bulk.more"].firstMatch.tap()
+        app.buttons["tasks.bulk.delete"].firstMatch.tap()
+        let confirm = app.buttons["tasks.bulk.delete.confirm"].firstMatch
+        XCTAssertTrue(confirm.waitForExistence(timeout: 5))
+        confirm.tap()
+        XCTAssertTrue(
+            app.descendants(matching: .any)["tasks.detail.empty"].waitForExistence(timeout: 10),
+            "the deleted open task did not leave the detail column empty"
+        )
+        XCTAssertFalse(app.descendants(matching: .any)["tasks.detail.missing"].exists)
+        app.buttons["tasks.editButton"].firstMatch.tap()
+    }
+
+    /// D4: at regular width the "+" is the list column's toolbar button, not
+    /// a floating disc over the list.
+    func testTheAddButtonIsInTheListColumnToolbar() throws {
+        try openTasks()
+        let add = app.buttons["tasks.addButton"].firstMatch
+        XCTAssertTrue(add.waitForExistence(timeout: 5))
+        let bar = app.navigationBars.containing(.button, identifier: "tasks.filterButton").firstMatch
+        XCTAssertTrue(bar.buttons["tasks.addButton"].exists, "the + is not in the list column's toolbar")
+        attach("add-in-toolbar")
     }
 
     /// The scopes sidebar picks the list's view, as the title menu does.
@@ -159,11 +184,16 @@ final class TasksSplitUITests: XCTestCase {
         card.tap()
         XCTAssertTrue(waitUntil { self.detailTitle == title }, "the task shows \(detailTitle ?? "none")")
         attach("board-task")
+        // A title typed and left by Back, with no Return, is kept.
+        let field = app.descendants(matching: .any)["tasks.detail.title"].firstMatch
+        field.coordinate(withNormalizedOffset: CGVector(dx: 0.98, dy: 0.5)).tap()
+        field.typeText(" renamed")
         app.navigationBars.buttons["BackButton"].firstMatch.tap()
         XCTAssertTrue(waitUntil { self.detailTitle == nil && board.exists }, "Back did not return to the board")
+        XCTAssertTrue(waitUntil { card.label.contains("renamed") }, "Back dropped the typed title: \(card.label)")
 
         card.tap()
-        XCTAssertTrue(waitUntil { self.detailTitle == title }, "the card did not reopen its task")
+        XCTAssertTrue(waitUntil { self.detailTitle == "\(title) renamed" }, "the card did not reopen its task")
         app.buttons["tasks.detail.more"].firstMatch.tap()
         app.buttons["tasks.detail.delete"].firstMatch.tap()
         let confirm = app.buttons["tasks.detail.deleteConfirm"].firstMatch
@@ -247,6 +277,19 @@ final class TasksSplitUITests: XCTestCase {
         shot.name = name
         shot.lifetime = .keepAlways
         add(shot)
+    }
+
+    /// After a failure: relaunches onto this run's rows and deletes each.
+    private func sweep() {
+        app.terminate()
+        guard (try? openTasks()) != nil else { return }
+        let rows = app.buttons.matching(NSPredicate(format: "identifier BEGINSWITH 'tasks.row.' AND label CONTAINS %@", run))
+        var left = 10
+        while left > 0, rows.firstMatch.waitForExistence(timeout: 3) {
+            rows.firstMatch.tap()
+            deleteOpenTask()
+            left -= 1
+        }
     }
 
     /// Launches onto Tasks with the All view and every project.

@@ -195,9 +195,7 @@ struct TaskDetailTitleField: View {
     static var font: Font { TypeRole(.documentTitle, weight: .bold).font }
 
     @State private var draft = ""
-    /// The last text handed to the store, so focus leaving and the field going
-    /// away at once write it once.
-    @State private var committed: String?
+    @State private var commits = TaskTitleCommits()
     @FocusState private var focused: Bool
 
     var body: some View {
@@ -230,17 +228,30 @@ struct TaskDetailTitleField: View {
     }
 
     private func commit() {
-        let text = draft
-        guard text != committed else { return }
-        committed = text
         let current = store.items[task.id] ?? task
+        guard let text = commits.take(draft, over: current.title) else { return }
         Task {
             let wrote = await store.detailRename(current, to: text)
             if !wrote {
-                committed = nil
+                commits = TaskTitleCommits()
                 draft = store.items[task.id]?.title ?? task.title
             }
         }
+    }
+}
+
+/// Which title edits reach the store. Focus leaving and the field going away
+/// at once commit the same text twice: one write. The same text over another
+/// stored title is a new edit (renamed to B, a peer renamed it to C, B typed
+/// again), so the guard keys on both.
+struct TaskTitleCommits {
+    private var sent: (text: String, over: String)?
+
+    /// The text to write, or `nil` when it already went over this title.
+    mutating func take(_ text: String, over stored: String) -> String? {
+        if let sent, sent.text == text, sent.over == stored { return nil }
+        sent = (text, stored)
+        return text
     }
 }
 

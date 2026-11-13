@@ -129,6 +129,20 @@ struct TaskOpenLink<Label: View>: View {
     }
 }
 
+/// D4: in the split view the floating "+" is the list column's toolbar
+/// button, `square.and.pencil`, as in Notes. Tasks has no create menu, so a
+/// hold does nothing more than a tap.
+struct TaskAddToolbarButton: View {
+    let action: () -> Void
+
+    var body: some View {
+        Button(action: action) { Image(systemName: "square.and.pencil") }
+            .accessibilityLabel(TasksCopy.addTask)
+            .accessibilityHint(TasksCopy.addButtonHint)
+            .accessibilityIdentifier("tasks.addButton")
+    }
+}
+
 /// No task open: a plain empty state (D6).
 private struct TasksEmptyDetail: View {
     var body: some View {
