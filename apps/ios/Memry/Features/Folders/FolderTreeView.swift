@@ -149,17 +149,20 @@ struct FolderScreen: View {
                         openNote: openNote,
                         setExpanded: setExpanded
                     )
+                    .notesSelection(row)
                 }
                 switch grouping {
                 case .none:
                     ForEach(sort.sorted(node.notes), id: \.id) { note in
                         BrowseRowView(row: .note(note), toggle: toggle, model: model)
+                            .notesSelection(.note(note))
                     }
                 case .date:
                     ForEach(FolderNoteGroup.group(node.notes, sort: sort)) { group in
                         Section(group.bucket.title) {
                             ForEach(group.notes, id: \.id) { note in
                                 BrowseRowView(row: .note(note), toggle: toggle, model: model)
+                                    .notesSelection(.note(note))
                             }
                         }
                     }

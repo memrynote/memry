@@ -52,6 +52,26 @@ final class NotesSplitUITests: XCTestCase {
         deleteNotes([first, second])
     }
 
+    /// `DESIGN.md` › Tablet: three columns in 13" landscape, two (the list
+    /// and the note) in portrait and beside the app's page sidebar.
+    func testColumnsFollowTheWidth() throws {
+        try openNotes()
+        let list = app.buttons["notes.addButton"].firstMatch
+        XCTAssertTrue(list.isHittable, "beside the page sidebar the list is hidden")
+        XCTAssertFalse(treeShown(), "beside the page sidebar the tree takes a column")
+        if app.windows.firstMatch.frame.width >= 1300 {
+            togglePageSidebar()
+            attach("columns-three")
+            XCTAssertTrue(treeShown(), "13\" landscape hides the tree")
+            XCTAssertTrue(list.isHittable, "13\" landscape hides the list")
+            togglePageSidebar()
+        }
+        XCUIDevice.shared.orientation = .portrait
+        attach("columns-portrait")
+        XCTAssertFalse(treeShown(), "portrait shows the tree")
+        XCTAssertTrue(list.isHittable, "portrait hides the list")
+    }
+
     func testAWikiLinkOpensInTheDetailColumnAndBackReturns() throws {
         try openNotes()
         let target = "[agent] \(run) target"
@@ -102,6 +122,21 @@ final class NotesSplitUITests: XCTestCase {
     }
 
     // MARK: Helpers
+
+    /// Whether the folder tree has a column on screen. Its root row's label
+    /// and icon share the identifier, so any hittable match counts.
+    private func treeShown() -> Bool {
+        let rows = app.descendants(matching: .any).matching(identifier: "notes.sidebar.root")
+        return rows.allElementsBoundByIndex.contains(where: \.isHittable)
+    }
+
+    /// The app's page sidebar's own button, the leftmost sidebar toggle.
+    private func togglePageSidebar() {
+        let toggles = app.buttons.matching(NSPredicate(format: "label CONTAINS[c] 'sidebar'")).allElementsBoundByIndex
+        let toggle = toggles.filter(\.isHittable).min { $0.frame.minX < $1.frame.minX }
+        XCTAssertNotNil(toggle, "no sidebar button: \(toggles.map(\.label))")
+        toggle?.tap()
+    }
 
     private var firstBlock: XCUIElement {
         app.textViews.matching(NSPredicate(format: "identifier BEGINSWITH 'note.block.'")).firstMatch

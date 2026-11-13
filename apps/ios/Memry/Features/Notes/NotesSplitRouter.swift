@@ -189,3 +189,31 @@ struct NotesList<Content: View>: View {
         }
     }
 }
+
+extension View {
+    /// Marks the split view's selected note row with desktop's active-row
+    /// fill. `BrowseRowView` sets its own `listRowBackground`, which hides the
+    /// list's selection highlight and outranks one set here, so the fill sits
+    /// behind the row's content. A no-op at compact width and on folders.
+    func notesSelection(_ row: BrowseRow) -> some View {
+        modifier(NotesRowSelection(row: row))
+    }
+}
+
+private struct NotesRowSelection: ViewModifier {
+    let row: BrowseRow
+    @Environment(NotesSplitRouter.self) private var split: NotesSplitRouter?
+
+    func body(content: Content) -> some View {
+        if let split, case let .note(note) = row.kind {
+            content.background {
+                if split.note?.id == note.id {
+                    RoundedRectangle(cornerRadius: Tokens.Radius.small)
+                        .fill(Tokens.Canvas.surfaceActive.color)
+                }
+            }
+        } else {
+            content
+        }
+    }
+}

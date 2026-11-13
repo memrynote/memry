@@ -256,12 +256,14 @@ struct TaggedNotesView: View {
             case .none:
                 ForEach(sort.sorted(notes), id: \.id) { note in
                     BrowseRowView(row: .note(note), toggle: { _ in }, model: browse)
+                        .notesSelection(.note(note))
                 }
             case .date:
                 ForEach(FolderNoteGroup.group(notes, sort: sort)) { group in
                     Section(group.bucket.title) {
                         ForEach(group.notes, id: \.id) { note in
                             BrowseRowView(row: .note(note), toggle: { _ in }, model: browse)
+                                .notesSelection(.note(note))
                         }
                     }
                 }

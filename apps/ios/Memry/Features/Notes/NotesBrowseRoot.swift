@@ -112,6 +112,7 @@ private struct VaultOutlineList: View {
                 Section {
                     ForEach(outline.unplacedRows(sort: sort)) { row in
                         BrowseRowView(row: row, toggle: toggle, model: model)
+                            .notesSelection(row)
                     }
                 } header: {
                     Text("Outside the folder list")
@@ -142,6 +143,7 @@ private struct VaultOutlineList: View {
                 openNote: openNote,
                 setExpanded: setExpanded
             )
+            .notesSelection(row)
         }
     }
 

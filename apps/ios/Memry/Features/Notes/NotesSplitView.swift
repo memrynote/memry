@@ -12,17 +12,23 @@ import SwiftUI
 // `NotesLink`), and the detail column reads it. A link inside the note pushes
 // onto the detail column's own stack, so Back returns to the note before.
 //
-// **Columns (Q4).** Three when the window holds the sidebar, the list and the
-// reading measure side by side (13" landscape), two otherwise: the list and
-// the note, with the tree a tap away. Decided on the width this view gets,
-// never the device.
+// **Columns (Q4, `DESIGN.md` › Tablet).** Three at 13" landscape width with
+// the page sidebar hidden, two below it (portrait, smaller iPads, the page
+// sidebar open): the list and the note, with the tree a tap away. Set on the width this view gets, never the device, and again only
+// when that width crosses the line, so a column the user shows or hides stays
+// as they left it.
 
 struct NotesSplitView: View {
     let model: VaultBrowseViewModel
     @Bindable var router: NotesSplitRouter
     @Binding var sort: BrowseSort
 
-    @State private var columns: NavigationSplitViewVisibility = .automatic
+    @State private var columns: NavigationSplitViewVisibility = .doubleColumn
+    @State private var holdsThreeColumns = false
+    /// 13" landscape is 1366-1376pt wide. Every smaller iPad in landscape
+    /// (at most 1210pt), 13" portrait (1024-1032pt) and 13" landscape beside
+    /// the page sidebar (about 1090pt) stay below it.
+    private static let threeColumnWidth: CGFloat = 1300
     @State private var expanded: Set<String> = []
     @State private var selectedFolder: String?
     private let notesLinks = NotesLinks.shared
@@ -37,6 +43,18 @@ struct NotesSplitView: View {
             NotesDetailColumn(model: model, router: router)
         }
         .navigationSplitViewStyle(.balanced)
+        // The width left beside the app's page sidebar, a safe-area inset.
+        // With that sidebar open the split view keeps two columns anyway.
+        .onGeometryChange(for: Bool.self) { $0.size.width >= Self.threeColumnWidth } action: {
+            holdsThreeColumns = $0
+        }
+        // Once the layout settles. While the page sidebar slides in, the
+        // split view writes its own choice (all three columns) over the
+        // binding, about 70ms after the width changes.
+        .task(id: holdsThreeColumns) {
+            guard (try? await Task.sleep(for: .milliseconds(400))) != nil else { return }
+            columns = holdsThreeColumns ? .all : .doubleColumn
+        }
         .environment(router)
         // A search hit or a capture's "View": the note in the detail column,
         // its row selected in the list.
