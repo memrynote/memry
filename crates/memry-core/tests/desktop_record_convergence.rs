@@ -2,6 +2,15 @@
 //! converge on every desktop-only record type (Step 16, #3533, chapter 13
 //! §13.9). Each sync is a pull then a push, as a pass runs; the merged row a
 //! pull leaves is what the push sends (§6.5.2 P2).
+//!
+//! The winner of a concurrent whole-record edit is desktop's: a remote whose
+//! clock is concurrent with the local one applies over it under the merged
+//! clock (`resolveClockConflict`'s `merge`,
+//! `packages/sync-client/src/item-handlers/types.ts:72-86`, taken by
+//! `sticky-draft-handler.ts:35-49`, `canvas-folder-handler.ts:65-101` and
+//! `home-page-handler.ts:54-80`). In pull-then-push passes the second device
+//! pulls the first one's edit before it pushes, so the first device to push
+//! wins on both.
 
 use crate::desktop_relay::{Device, NOW, Relay, failed};
 
@@ -117,7 +126,7 @@ async fn a_message_appended_on_one_device_reads_back_on_the_other() {
 }
 
 #[tokio::test]
-async fn concurrent_edits_to_a_sticky_draft_keep_the_later_clock_on_both() {
+async fn concurrent_edits_to_a_sticky_draft_keep_the_first_push_on_both() {
     let (a, b, relay) = (Device::bare("a"), Device::bare("b"), Relay::default());
     let id = a
         .db()
@@ -158,6 +167,12 @@ async fn concurrent_edits_to_a_sticky_draft_keep_the_later_clock_on_both() {
             "the kept record's clock is after both edits"
         );
     }
+    let draft = a
+        .db()
+        .call_blocking(move |conn| sticky_draft::get(conn, &id))
+        .expect("read")
+        .expect("a live draft");
+    assert_eq!(draft.content, "from a", "a pushed first");
 }
 
 #[tokio::test]
@@ -195,7 +210,7 @@ async fn a_vault_lock_removed_on_one_device_is_gone_on_the_other() {
 }
 
 /// The two document-level types without a named case above: concurrent edits
-/// on both sides end in one record on both.
+/// on both sides end in a's record on both, since a pushed first.
 #[tokio::test]
 async fn concurrent_edits_to_a_canvas_folder_and_a_home_board_converge() {
     let (a, b, relay) = (Device::bare("a"), Device::bare("b"), Relay::default());
@@ -244,4 +259,17 @@ async fn concurrent_edits_to_a_canvas_folder_and_a_home_board_converge() {
         b.stored("canvas_folder", &folder)
     );
     assert_eq!(a.stored("home_page", &board), b.stored("home_page", &board));
+    let (icon, name) = a
+        .db()
+        .call_blocking(move |conn| {
+            let icon = canvas_folder::list(conn)?.remove(0).icon;
+            let name = home_page::get(conn, &board)?.expect("a live board").name;
+            Ok((icon, name))
+        })
+        .expect("read");
+    assert_eq!(
+        (icon.as_deref(), name.as_str()),
+        (Some("moon"), "Home A"),
+        "a pushed first"
+    );
 }

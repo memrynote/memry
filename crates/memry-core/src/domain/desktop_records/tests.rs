@@ -10,6 +10,7 @@ use super::testing::{DEVICE, NOW, iso, open, payload, pull, remote};
 use crate::domain::canvas_folder;
 use crate::domain::home_page::{self, HomePagePatch};
 use crate::domain::sticky_draft::{self, StickyKind};
+use crate::protocol::types::{DESKTOP_ONLY_RECORD_ITEM_TYPES, SUBSCRIBED_ITEM_TYPES};
 use crate::storage::repositories::sync_items;
 
 const TYPES: [&str; 3] = ["canvas_folder", "home_page", "sticky_draft"];
@@ -79,15 +80,21 @@ fn edit(conn: &Connection, item_type: &str, id: &str) {
 /// `null` for it must be refused first ([`super::apply_kept`]).
 #[test]
 fn every_coalesce_key_is_refused_as_null() {
-    for kept in [
-        &canvas_folder::merge::KEPT,
-        &home_page::merge::KEPT,
-        &sticky_draft::merge::KEPT,
-    ] {
-        for key in kept.coalesce {
-            assert!(kept.not_null.contains(key), "{key}");
-        }
-    }
+    let kept: Vec<&str> = SUBSCRIBED_ITEM_TYPES
+        .iter()
+        .chain(&DESKTOP_ONLY_RECORD_ITEM_TYPES)
+        .copied()
+        .filter(|item_type| {
+            let Some(kept) = super::kept(item_type) else {
+                return false;
+            };
+            for key in kept.coalesce {
+                assert!(kept.not_null.contains(key), "{item_type}: {key}");
+            }
+            true
+        })
+        .collect();
+    assert_eq!(kept, TYPES, "the types apply_kept merges");
 }
 
 /// Chapter 13 §13.7.23-25: a tick written as anything but a JSON integer

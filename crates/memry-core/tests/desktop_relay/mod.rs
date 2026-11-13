@@ -2,10 +2,12 @@
 //! six desktop-only record types (Step 16, #3533, chapter 13 §13.1).
 //!
 //! The vaults are real: real SQLite, the real pull loop and the real push
-//! wave. The relay is the fake: it keeps the last payload pushed per id and
-//! serves every record it holds on the next pull, as one page. The record
-//! cipher is the identity on both sides, so a payload crosses as the bytes the
-//! push read from the live row.
+//! wave. The relay is the fake: it keeps the last item pushed per id, its
+//! `deletedAt` and clock included, and serves every item it holds on the next
+//! pull, as one page: a live item as a ref, a deleted one in `deleted` and as a
+//! `delete` item carrying its `deletedAt` and clock (§5.12). The record cipher
+//! is the identity on both sides, so a payload crosses as the bytes the push
+//! read from the row.
 
 use std::collections::BTreeMap;
 use std::sync::{Arc, Mutex};
@@ -124,18 +126,38 @@ impl RecordCipher for Identity {
     }
 }
 
-/// Records what the wave would encrypt: type, id and payload text.
+/// One item a push sent, as the server holds it.
+#[derive(Debug, Clone)]
+pub struct Sent {
+    pub item_type: String,
+    pub item_id: String,
+    pub payload: String,
+    /// The tombstone instant the envelope states. The sealer sends the row's
+    /// `deleted_at` whatever the operation, and a pull reads a present
+    /// `deletedAt` as a delete (§5.12).
+    pub deleted_at: Option<i64>,
+    /// The envelope's clock: the row's clock, as the sealer sends it.
+    pub clock: Option<Json>,
+}
+
+/// Records what the wave would encrypt.
 #[derive(Default)]
-struct Recording(Mutex<Vec<(String, String, String)>>);
+struct Recording(Mutex<Vec<Sent>>);
 
 impl PushSealer for Recording {
     fn seal_record(&self, item: &PendingRecord) -> Result<Json, EnvelopeError> {
-        self.0.lock().unwrap().push((
-            item.row.item_type.clone(),
-            item.row.item_id.clone(),
-            item.row.payload.clone().unwrap_or_default(),
-        ));
-        Ok(json!({"id": item.row.item_id, "type": item.row.item_type}))
+        let row = &item.row;
+        self.0.lock().unwrap().push(Sent {
+            item_type: row.item_type.clone(),
+            item_id: row.item_id.clone(),
+            payload: row.payload.clone().unwrap_or_default(),
+            deleted_at: row.deleted_at,
+            clock: row
+                .clock
+                .as_deref()
+                .map(|text| serde_json::from_str(text).expect("a clock")),
+        });
+        Ok(json!({"id": row.item_id, "type": row.item_type}))
     }
 
     fn seal_crdt_update(&self, _doc_id: &str, update: &[u8]) -> Result<Vec<u8>, EnvelopeError> {
@@ -143,20 +165,30 @@ impl PushSealer for Recording {
     }
 }
 
-/// The server: the last payload pushed for each id, with its type.
+/// The server: the last item pushed for each id.
 #[derive(Default)]
 pub struct Relay {
-    records: Mutex<BTreeMap<String, (String, String)>>,
+    records: Mutex<BTreeMap<String, Sent>>,
     cursor: Mutex<u64>,
 }
 
 impl Relay {
-    /// Holds a payload a peer pushed, as the server would.
+    /// Holds a live payload a peer pushed, as the server would.
     pub fn put(&self, item_type: &str, item_id: &str, payload: &str) {
-        self.records.lock().unwrap().insert(
-            item_id.to_owned(),
-            (item_type.to_owned(), payload.to_owned()),
-        );
+        self.hold(Sent {
+            item_type: item_type.to_owned(),
+            item_id: item_id.to_owned(),
+            payload: payload.to_owned(),
+            deleted_at: None,
+            clock: None,
+        });
+    }
+
+    fn hold(&self, sent: Sent) {
+        self.records
+            .lock()
+            .unwrap()
+            .insert(sent.item_id.clone(), sent);
     }
 
     /// One sync pass: pull, then push, as a pass runs.
@@ -173,25 +205,36 @@ impl Relay {
             *cursor += 1;
             *cursor
         };
-        let refs: Vec<Json> = records
+        let (deleted, live): (Vec<&Sent>, Vec<&Sent>) =
+            records.values().partition(|sent| sent.deleted_at.is_some());
+        let refs: Vec<Json> = live
             .iter()
-            .map(|(id, (item_type, _))| json!({"id": id, "type": item_type}))
+            .map(|sent| json!({"id": sent.item_id, "type": sent.item_type}))
             .collect();
+        let deleted: Vec<&str> = deleted.iter().map(|sent| sent.item_id.as_str()).collect();
         let items: Vec<Json> = records
-            .iter()
-            .map(|(id, (item_type, _))| {
-                json!({
-                    "id": id, "type": item_type, "operation": "update",
+            .values()
+            .map(|sent| {
+                let mut item = json!({
+                    "id": sent.item_id, "type": sent.item_type,
+                    "operation": if sent.deleted_at.is_some() { "delete" } else { "update" },
                     "signature": "AAAA", "signerDeviceId": "relay",
                     "blob": {"encryptedKey": "AAAA", "keyNonce": "AAAA",
                              "encryptedData": "AAAA", "dataNonce": "AAAA"},
-                })
+                });
+                if let Some(clock) = &sent.clock {
+                    item["clock"] = clock.clone();
+                }
+                if let Some(deleted_at) = sent.deleted_at {
+                    item["deletedAt"] = json!(deleted_at);
+                }
+                item
             })
             .collect();
         let transport = FakeTransport::new(vec![
             response(
                 200,
-                &json!({"items": refs, "deleted": [], "hasMore": false,
+                &json!({"items": refs, "deleted": deleted, "hasMore": false,
                         "nextCursor": cursor.to_string()})
                 .to_string(),
             ),
@@ -199,7 +242,7 @@ impl Relay {
         ]);
         let plaintexts = records
             .into_iter()
-            .map(|(id, (_, payload))| (id, payload))
+            .map(|(id, sent)| (id, sent.payload))
             .collect();
         PullLoop::new(
             http(transport),
@@ -215,7 +258,7 @@ impl Relay {
     }
 
     /// Drains the device's outbox into the relay and returns what it sent.
-    pub async fn push(&self, device: &Device) -> Vec<(String, String, String)> {
+    pub async fn push(&self, device: &Device) -> Vec<Sent> {
         let ids: Vec<String> = device
             .db()
             .call_blocking(|conn| {
@@ -248,8 +291,8 @@ impl Relay {
         .expect("the wave");
         assert_eq!(report.held, 0, "nothing waits in the outbox");
         let sent = recording.0.lock().unwrap().clone();
-        for (item_type, item_id, payload) in &sent {
-            self.put(item_type, item_id, payload);
+        for item in &sent {
+            self.hold(item.clone());
         }
         sent
     }

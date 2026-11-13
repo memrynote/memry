@@ -139,7 +139,10 @@ impl Declaration {
 
     /// Desktop's twenty-seven, chapter 13 §13.1: the twenty-one, then
     /// [`DESKTOP_ONLY_RECORD_ITEM_TYPES`] in their order. Rust-only: desktop
-    /// passes it to `Vault::sync_with_declaration`.
+    /// passes it to `Vault::sync_with_declaration`. Only with `markdown`,
+    /// which every desktop build has: without it `vault_lock` has no merge
+    /// rule (`sync::apply`) and would apply as a plain document.
+    #[cfg(feature = "markdown")]
     pub fn desktop() -> Self {
         let types: Vec<&str> = SUBSCRIBED_ITEM_TYPES
             .into_iter()
@@ -303,6 +306,7 @@ calendar_source,calendar_event,calendar_external_event,calendar_binding,bookmark
         assert!(!is_record_item_type(ATTACHMENT_ITEM_TYPE));
     }
 
+    #[cfg(feature = "markdown")]
     #[test]
     fn the_desktop_declaration_is_the_twenty_one_then_the_six() {
         let declaration = Declaration::desktop();

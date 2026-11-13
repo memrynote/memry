@@ -73,7 +73,7 @@ pub fn apply_remote(
         if !named {
             return Ok(Inbound::Skipped);
         }
-        return desktop_records::apply_kept(conn, record, &remote, None, &KEPT, Vec::new(), now_ms);
+        return desktop_records::apply_kept(conn, record, &remote, None, Vec::new(), now_ms);
     };
     // An unreadable cover is absent: the local one stays.
     let extra = match remote_object.get("cover") {
@@ -85,5 +85,5 @@ pub fn apply_remote(
         }
         _ => Vec::new(),
     };
-    desktop_records::apply_kept(conn, record, &remote, Some(&local), &KEPT, extra, now_ms)
+    desktop_records::apply_kept(conn, record, &remote, Some(&local), extra, now_ms)
 }

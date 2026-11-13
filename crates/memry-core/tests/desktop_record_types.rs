@@ -115,34 +115,36 @@ fn unknown_value() -> impl Strategy<Value = Json> {
 }
 
 proptest! {
-    // Each case opens a vault and runs a pull and a push wave.
+    // Each case opens six vaults and runs a pull and a push wave in each.
     #![proptest_config(proptest_config(48))]
 
     /// §13.2 for each of the six: pull a payload carrying a key this build
     /// does not model, edit the record here, and the pushed payload still
-    /// carries the key with its value. For the agent records the stored
+    /// carries the key with its value. Every case runs every type, so each
+    /// type meets every generated key. For the agent records the stored
     /// payload is sealed and the push opens it, so this also covers the
     /// open.
     #[test]
     fn a_key_this_build_does_not_model_reaches_the_push_after_a_local_edit(
-        item_type in prop::sample::select(TYPES.to_vec()),
         key in "x[A-Za-z]{1,8}",
         value in unknown_value(),
     ) {
-        let device = Device::keyed("preserve");
-        let relay = Relay::default();
-        let mut payload = wire(item_type);
-        payload.as_object_mut().expect("object").insert(key.clone(), value.clone());
-        relay.put(item_type, &id_of(item_type), &payload.to_string());
+        for item_type in TYPES {
+            let device = Device::keyed("preserve");
+            let relay = Relay::default();
+            let mut payload = wire(item_type);
+            payload.as_object_mut().expect("object").insert(key.clone(), value.clone());
+            relay.put(item_type, &id_of(item_type), &payload.to_string());
 
-        let sent = runtime::block_on(async {
-            let report = relay.pull(&device).await;
-            assert_eq!((report.applied, report.corrupt), (1, 0));
-            edit(&device, item_type);
-            relay.push(&device).await
-        });
-        prop_assert_eq!(sent.len(), 1);
-        let pushed: Json = serde_json::from_str(&sent[0].2).expect("json");
-        prop_assert_eq!(pushed.get(&key), Some(&value), "{} lost {}", item_type, key);
+            let sent = runtime::block_on(async {
+                let report = relay.pull(&device).await;
+                assert_eq!((report.applied, report.corrupt), (1, 0), "{item_type}");
+                edit(&device, item_type);
+                relay.push(&device).await
+            });
+            prop_assert_eq!(sent.len(), 1);
+            let pushed: Json = serde_json::from_str(&sent[0].payload).expect("json");
+            prop_assert_eq!(pushed.get(&key), Some(&value), "{} lost {}", item_type, key);
+        }
     }
 }

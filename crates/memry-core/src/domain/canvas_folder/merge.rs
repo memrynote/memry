@@ -56,13 +56,5 @@ pub fn apply_remote(
     if local.is_none() && !(stated("vaultId") && stated("path")) {
         return Ok(Inbound::Skipped);
     }
-    desktop_records::apply_kept(
-        conn,
-        record,
-        &remote,
-        local.as_ref(),
-        &KEPT,
-        Vec::new(),
-        now_ms,
-    )
+    desktop_records::apply_kept(conn, record, &remote, local.as_ref(), Vec::new(), now_ms)
 }

@@ -26,6 +26,7 @@ use crate::api::errors::StorageError;
 use crate::domain::notes::{clock_in, failed, next_clock, require_payload};
 use crate::domain::task_merge::{self, Gate};
 use crate::domain::tasks::Inbound;
+use crate::domain::{canvas_folder, home_page, sticky_draft};
 use crate::storage::repositories::projectors;
 use crate::storage::repositories::schema::Object;
 use crate::storage::repositories::sync_items::{self, InboundRecord};
@@ -46,6 +47,17 @@ pub(crate) struct Kept {
     pub when_absent: &'static [&'static str],
     /// Never taken from a remote over a local record.
     pub local: &'static [&'static str],
+}
+
+/// The [`Kept`] of each type [`apply_kept`] merges, and `None` for every
+/// other type.
+pub(crate) fn kept(item_type: &str) -> Option<&'static Kept> {
+    match item_type {
+        canvas_folder::ITEM_TYPE => Some(&canvas_folder::merge::KEPT),
+        home_page::ITEM_TYPE => Some(&home_page::merge::KEPT),
+        sticky_draft::ITEM_TYPE => Some(&sticky_draft::merge::KEPT),
+        _ => None,
+    }
 }
 
 /// The stored payload of `(item_type, item_id)`, when the row has one that
@@ -100,18 +112,22 @@ pub(crate) fn fails_desktop_schema(item_type: &str, remote: &Object, not_null: &
             .any(|key| remote.get(*key).is_some_and(Value::is_null))
 }
 
-/// Applies `remote` over `local` by `kept`, after desktop's schema and
-/// §6.3.1's gate. `extra` are edits the type's own rule adds to the remote
-/// payload.
+/// Applies `remote` over `local` by the type's [`kept`], after desktop's
+/// schema and §6.3.1's gate. `extra` are edits the type's own rule adds to the
+/// remote payload.
 pub(crate) fn apply_kept(
     conn: &Connection,
     record: &InboundRecord,
     remote: &StoredPayload,
     local: Option<&StoredPayload>,
-    kept: &Kept,
     extra: Vec<(&'static str, Change)>,
     now_ms: i64,
 ) -> Result<Inbound, StorageError> {
+    let Some(kept) = kept(&record.item_type) else {
+        return Err(StorageError::Failed {
+            what: format!("`{}` has no kept keys", record.item_type),
+        });
+    };
     if fails_desktop_schema(&record.item_type, remote.object(), kept.not_null) {
         return Ok(Inbound::Skipped);
     }

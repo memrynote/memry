@@ -133,6 +133,9 @@ mod delete_keep_vectors;
 #[path = "desktop_record_convergence.rs"]
 mod desktop_record_convergence;
 #[cfg(feature = "markdown")]
+#[path = "desktop_record_deletes.rs"]
+mod desktop_record_deletes;
+#[cfg(feature = "markdown")]
 #[path = "desktop_record_types.rs"]
 mod desktop_record_types;
 #[path = "device_link.rs"]

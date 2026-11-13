@@ -50,13 +50,5 @@ pub fn apply_remote(
     if local.is_none() && !can_create(remote.object()) {
         return Ok(Inbound::Skipped);
     }
-    desktop_records::apply_kept(
-        conn,
-        record,
-        &remote,
-        local.as_ref(),
-        &KEPT,
-        Vec::new(),
-        now_ms,
-    )
+    desktop_records::apply_kept(conn, record, &remote, local.as_ref(), Vec::new(), now_ms)
 }
