@@ -3,7 +3,9 @@
 //! still opens the settings while the probes run without the key and say why (#3539).
 
 use std::collections::HashMap;
-use std::sync::atomic::{AtomicBool, Ordering};
+use std::io::{BufRead, BufReader, Read, Write};
+use std::net::TcpListener;
+use std::sync::atomic::{AtomicBool, AtomicUsize, Ordering};
 use std::sync::{Arc, Mutex};
 
 use memry_core::api::errors::SecureStoreError;
@@ -201,11 +203,57 @@ fn an_unconfirmed_remote_url_is_refused_with_its_code() {
     .expect("confirmed");
 }
 
+/// A provider that answers every request with 401 and records whether it carried a key.
+struct Unauthorized {
+    base_url: String,
+    connections: Arc<AtomicUsize>,
+    authorized: Arc<AtomicBool>,
+}
+
+fn unauthorized_server() -> Unauthorized {
+    let listener = TcpListener::bind("127.0.0.1:0").unwrap();
+    let base_url = format!("http://{}/v1", listener.local_addr().unwrap());
+    let connections = Arc::new(AtomicUsize::new(0));
+    let authorized = Arc::new(AtomicBool::new(false));
+    let (count, auth) = (connections.clone(), authorized.clone());
+    std::thread::spawn(move || {
+        for stream in listener.incoming() {
+            let Ok(mut stream) = stream else { continue };
+            count.fetch_add(1, Ordering::SeqCst);
+            let mut reader = BufReader::new(stream.try_clone().unwrap());
+            let mut length = 0;
+            loop {
+                let mut line = String::new();
+                if reader.read_line(&mut line).unwrap_or(0) == 0 || line == "\r\n" {
+                    break;
+                }
+                let lower = line.to_ascii_lowercase();
+                if lower.starts_with("authorization:") {
+                    auth.store(true, Ordering::SeqCst);
+                }
+                if let Some(value) = lower.strip_prefix("content-length:") {
+                    length = value.trim().parse().unwrap_or(0);
+                }
+            }
+            let mut body = vec![0; length];
+            let _ = reader.read_exact(&mut body);
+            let _ = stream.write_all(
+                b"HTTP/1.1 401 Unauthorized\r\ncontent-length: 0\r\nconnection: close\r\n\r\n",
+            );
+        }
+    });
+    Unauthorized {
+        base_url,
+        connections,
+        authorized,
+    }
+}
+
 #[test]
 fn a_locked_keychain_opens_the_settings_and_the_probes_say_why_they_sent_no_key() {
-    // Port 9 (discard) refuses the connection, so no local server answers.
+    let server = unauthorized_server();
     let f = app_with(json!({"agent": {"localProvider": {
-        "preset": "custom", "baseUrl": "http://127.0.0.1:9/v1", "model": "qwen"
+        "preset": "custom", "baseUrl": server.base_url, "model": "qwen"
     }}}));
     f.keychain.locked.store(true, Ordering::SeqCst);
     let got = f
@@ -217,6 +265,11 @@ fn a_locked_keychain_opens_the_settings_and_the_probes_say_why_they_sent_no_key(
         .invoke("agent_list_local_models", json!({}))
         .expect("an empty list, as in Electron");
     assert_eq!(models, json!({ "models": [] }));
+    assert_eq!(
+        server.connections.load(Ordering::SeqCst),
+        0,
+        "Electron lists no models without the key"
+    );
 
     for cmd in ["agent_test_local_provider", "agent_probe_local_provider"] {
         let result = f.invoke(cmd, json!({})).expect("sent without the key");
@@ -224,4 +277,6 @@ fn a_locked_keychain_opens_the_settings_and_the_probes_say_why_they_sent_no_key(
         let detail = result["detail"].as_str().unwrap();
         assert!(detail.contains("keychain"), "{cmd}: {detail}");
     }
+    assert!(server.connections.load(Ordering::SeqCst) > 0);
+    assert!(!server.authorized.load(Ordering::SeqCst));
 }
