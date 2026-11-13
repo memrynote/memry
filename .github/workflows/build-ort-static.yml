@@ -100,8 +100,13 @@ jobs:
           esac
           python tools/ci_build/build.py "${args[@]}"
           # re2 is EXCLUDE_FROM_ALL and a static-only build links nothing, so it is never built, yet
-          # the ONNX Runtime libraries call it and ort-sys links it.
-          cmake --build build/Release --config Release --target re2 --parallel
+          # the ONNX Runtime libraries call it and ort-sys links it. The Visual Studio solution
+          # leaves out EXCLUDE_FROM_ALL targets, so Windows builds re2's own solution.
+          if [ "$RUNNER_OS" = Windows ]; then
+            cmake --build build/Release/_deps/re2-build --config Release --parallel
+          else
+            cmake --build build/Release --config Release --target re2 --parallel
+          fi
 
       # A library of the wrong architecture would link nowhere, and a published archive is final.
       - name: Check the target architecture
