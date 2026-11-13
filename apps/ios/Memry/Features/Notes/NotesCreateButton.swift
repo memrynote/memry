@@ -39,6 +39,9 @@ struct NotesCreateButton: View {
                 .foregroundStyle(Tokens.Text.primary.color)
                 .padding(Tokens.Space.small)
         } primaryAction: {
+            // Off before the donation makes the tip eligible: shown during the
+            // push, it would count as its one display and then vanish.
+            isOnScreen = false
             newNote()
             Task { await NotesCreateTip.madeNote.donate() }
         }

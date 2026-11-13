@@ -75,7 +75,7 @@ struct TaskRowActions: ViewModifier {
             .sheet(isPresented: $isPickingParent) {
                 ParentPickerSheet(task: task, store: store)
             }
-            .sheet(isPresented: $isPickingDate) {
+            .pickerPopover(isPresented: $isPickingDate, size: PickerPopover.tall) {
                 TaskWhenSheet(store: store, target: .task(task))
             }
             .confirmationDialog(

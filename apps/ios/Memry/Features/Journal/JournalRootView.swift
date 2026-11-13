@@ -44,17 +44,17 @@ struct JournalTabContent: View {
                                     hint: QuickCaptureCopy.addToJournalHint,
                                     identifier: "journal.addButton"
                                 ) { capturing = true }
+                                .pickerPopover(isPresented: $capturing, size: PickerPopover.short) {
+                                    if let capture {
+                                        QuickCaptureSheet(kinds: [.journal], capture: capture) { receipt in
+                                            router.openDay(receipt.id)
+                                        }
+                                    }
+                                }
                             }
                         }
                         .padding(.horizontal, Tokens.Space.inset)
                         .padding(.bottom, Tokens.Space.medium)
-                    }
-                    .sheet(isPresented: $capturing) {
-                        if let capture {
-                            QuickCaptureSheet(kinds: [.journal], capture: capture) { receipt in
-                                router.openDay(receipt.id)
-                            }
-                        }
                     }
             } else if let failure {
                 NavigationStack {

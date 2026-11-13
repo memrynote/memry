@@ -23,8 +23,8 @@ final class PresentationUITests: XCTestCase {
     }
 
     /// The row menu's "Share a copy" wrapped a share sheet in a SwiftUI sheet,
-    /// with no anchor on iPad. It is a `ShareLink` now: the system share
-    /// sheet opens from the row and closes again.
+    /// with no anchor on iPad. It is a popover on the row now: the system
+    /// share sheet opens there and closes again.
     func testShareACopyOpensTheShareSheetFromTheRow() throws {
         try openNotes(hidingTips: true)
         let title = "[agent] \(run) share"
@@ -53,12 +53,11 @@ final class PresentationUITests: XCTestCase {
     /// note, and its popover stayed over the note pointing at nothing. It
     /// shows only while the "+" is on screen.
     ///
-    /// Needs a fresh install: the tip shows once per install, so a run where
-    /// it never appears skips.
+    /// Launches with the tip store reset, as on a fresh install.
     func testTheCreateTipNeverCoversTheNewNote() throws {
         try openNotes(hidingTips: false)
         let tip = app.staticTexts["Hold + for more"]
-        if tip.exists { throw XCTSkip("The tip is already showing: run on a fresh install.") }
+        XCTAssertFalse(tip.exists, "the tip shows before it is earned")
         let title = "[agent] \(run) tip"
         app.buttons["notes.addButton"].firstMatch.tap()
         let field = app.textFields["Title"]
@@ -67,10 +66,10 @@ final class PresentationUITests: XCTestCase {
         field.typeText("\(title)\n")
         app.buttons["BackButton"].firstMatch.tap()
 
-        let shown = tip.waitForExistence(timeout: 6)
-        if shown { app.buttons["Close"].firstMatch.tap() }
+        // Back on the list, the "+" is on screen again and the tip shows.
+        XCTAssertTrue(tip.waitForExistence(timeout: 6), "the tip never shows")
+        app.buttons["Close"].firstMatch.tap()
         deleteNote(noteRow(title))
-        if !shown { throw XCTSkip("The tip has shown on this install before: run on a fresh install.") }
     }
 
     // MARK: Helpers
@@ -103,7 +102,7 @@ final class PresentationUITests: XCTestCase {
 
     private func openNotes(hidingTips: Bool) throws {
         // A tip's popover takes the next tap; only the tip test wants it.
-        app.launchArguments = hidingTips ? ["-MEMRY_HIDE_TIPS", "YES"] : []
+        app.launchArguments = hidingTips ? ["-MEMRY_HIDE_TIPS", "YES"] : ["-MEMRY_RESET_TIPS", "YES"]
         app.launch()
         let name = ProcessInfo.processInfo.environment["MEMRY_UI_VAULT"] ?? "MemryNote"
         let vault = app.staticTexts[name].firstMatch
