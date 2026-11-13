@@ -38,9 +38,11 @@ enum GlobalSearchCopy {
     static let unavailableDetail = "This vault's search index could not be opened on this \(ThisDevice.noun)."
     static let stale = "Search may be out of date"
     static let retry = "Retry"
+    static let scope = "Search in"
 }
 
 struct GlobalSearchSheet: View {
+    let presentation: SearchPresentation
     let browse: VaultBrowseViewModel?
     let openNote: (String) -> Void
     let openTask: (String) -> Void
@@ -50,35 +52,26 @@ struct GlobalSearchSheet: View {
     @State private var model: VaultSearchViewModel?
     @State private var recents: SearchRecentsViewModel?
     @State private var query = ""
+    /// The palette's keyboard selection (`SearchRowKey`).
+    @State private var highlighted: String?
     @FocusState private var isFocused: Bool
     @Environment(\.dismiss) private var dismiss
     @Environment(\.vaultSearchIndex) private var searchIndex
 
     var body: some View {
-        NavigationStack {
-            results
-                .navigationTitle(GlobalSearchCopy.open)
-                .navigationBarTitleDisplayMode(.inline)
-                .searchable(text: $query, placement: .navigationBarDrawer(displayMode: .always), prompt: GlobalSearchCopy.prompt)
-                .searchScopes(scope) {
-                    ForEach(SearchScope.allCases, id: \.self) { Text($0.title).tag($0) }
-                }
-                .searchFocused($isFocused)
-                .onChange(of: query) { _, query in model?.run(query) }
-                .toolbar {
-                    ToolbarItem(placement: .cancellationAction) {
-                        Button(role: .close) { dismiss() }
-                            .accessibilityIdentifier("search.close")
-                    }
-                    // The bottom bar stays while the search is active; the top
-                    // bar's trailing items do not.
-                    if let model {
-                        ToolbarItem(placement: .bottomBar) {
-                            SearchFilterMenu(filters: model.filters, apply: model.apply)
-                        }
-                    }
-                }
+        Group {
+            switch presentation {
+            case .sheet: sheet
+            case .palette:
+                SearchPaletteFrame(
+                    query: $query, isFocused: $isFocused, scope: scope, model: model,
+                    move: move, submit: submit, close: close
+                ) { results }
+            }
         }
+        .onChange(of: query) { _, query in model?.run(query) }
+        // A new list highlights its first row.
+        .onChange(of: keyboardRows.map(\.key), initial: true) { _, keys in highlighted = keys.first }
         .task {
             if model == nil, let searcher = browse?.searcher {
                 model = VaultSearchViewModel(search: searcher, index: searchIndex)
@@ -93,69 +86,144 @@ struct GlobalSearchSheet: View {
         }
     }
 
+    private var sheet: some View {
+        NavigationStack {
+            results
+                .navigationTitle(GlobalSearchCopy.open)
+                .navigationBarTitleDisplayMode(.inline)
+                .searchable(text: $query, placement: .navigationBarDrawer(displayMode: .always), prompt: GlobalSearchCopy.prompt)
+                .searchScopes(scope) {
+                    ForEach(SearchScope.allCases, id: \.self) { Text($0.title).tag($0) }
+                }
+                .searchFocused($isFocused)
+                .toolbar {
+                    ToolbarItem(placement: .cancellationAction) {
+                        Button(role: .close) { dismiss() }
+                            .accessibilityIdentifier("search.close")
+                    }
+                    // The bottom bar stays while the search is active; the top
+                    // bar's trailing items do not.
+                    if let model {
+                        ToolbarItem(placement: .bottomBar) {
+                            SearchFilterMenu(filters: model.filters, apply: model.apply)
+                        }
+                    }
+                }
+        }
+    }
+
     @ViewBuilder private var results: some View {
         if browse != nil, model == nil, browse?.searcher == nil {
             ContentUnavailableView(GlobalSearchCopy.unavailable, systemImage: "magnifyingglass", description: Text(GlobalSearchCopy.unavailableDetail))
         } else {
-            List {
-                if let model, model.isIndexStale {
-                    Section {
-                        // Stacked when the line cannot hold both at large text.
-                        ViewThatFits(in: .horizontal) {
-                            HStack { staleNotice; Spacer(); retry(model) }
-                            VStack(alignment: .leading, spacing: Tokens.Space.tight) { staleNotice; retry(model) }
-                        }
+            ScrollViewReader { proxy in
+                list
+                    .environment(\.searchHighlight, presentation == .palette ? SearchPaletteHighlight(key: highlighted) : nil)
+                    .onChange(of: highlighted) { _, key in
+                        if let key { proxy.scrollTo(key) }
                     }
-                }
-                switch model?.phase {
-                case let .results(hits) where !hits.isEmpty || !(model?.taskHits.isEmpty ?? true)
-                    || !(model?.inboxHits.isEmpty ?? true):
-                    ForEach(hits, id: \.id) { hit in
-                        let journal = hit.kind == "journal"
-                        Button { routes.open(hit, query: query) } label: {
-                            SearchHitLabel(hit: hit)
-                                .frame(minHeight: Tokens.Size.minimumHitArea)
-                                .contentShape(.rect)
-                        }
-                        .buttonStyle(.plain)
-                        .accessibilityHint(journal ? JournalCopy.openInJournal : "")
-                        .accessibilityIdentifier(journal ? "search.result.journal" : "search.result.note")
-                    }
-                    if let tasks = model?.taskHits, !tasks.isEmpty {
-                        Section {
-                            ForEach(tasks, id: \.id) { hit in
-                                Button { routes.open(hit, query: query) } label: {
-                                    TaskSearchHitLabel(hit: hit)
-                                }
-                                .buttonStyle(.plain)
-                                .accessibilityHint(TasksCopy.openInTasks)
-                                .accessibilityIdentifier("search.result.task")
-                            }
-                        } header: {
-                            Text(TasksCopy.searchTasksSection)
-                                .accessibilityAddTraits(.isHeader)
-                        }
-                    }
-                    SearchInboxSection(hits: model?.inboxHits ?? []) { routes.open($0, query: query) }
-                case .results:
-                    ContentUnavailableView.search(text: query)
-                        .listRowSeparator(.hidden)
-                case let .failed(error):
-                    ErrorNotice(error: error, code: nil)
-                        .listRowSeparator(.hidden)
-                case .searching:
-                    ProgressView()
-                        .frame(maxWidth: .infinity)
-                        .listRowSeparator(.hidden)
-                case .idle, .none:
-                    if let recents {
-                        SearchRecentsSection(model: recents, open: routes.reopen)
+            }
+        }
+    }
+
+    private var list: some View {
+        List {
+            if let model, model.isIndexStale {
+                Section {
+                    // Stacked when the line cannot hold both at large text.
+                    ViewThatFits(in: .horizontal) {
+                        HStack { staleNotice; Spacer(); retry(model) }
+                        VStack(alignment: .leading, spacing: Tokens.Space.tight) { staleNotice; retry(model) }
                     }
                 }
             }
-            .listStyle(.plain)
-            .accessibilityIdentifier("search.results")
+            switch model?.phase {
+            case let .results(hits) where !hits.isEmpty || !(model?.taskHits.isEmpty ?? true)
+                || !(model?.inboxHits.isEmpty ?? true):
+                ForEach(hits, id: \.id) { hit in
+                    let journal = hit.kind == "journal"
+                    Button { routes.open(hit, query: query) } label: {
+                        SearchHitLabel(hit: hit)
+                            .frame(minHeight: Tokens.Size.minimumHitArea)
+                            .contentShape(.rect)
+                    }
+                    .buttonStyle(.plain)
+                    .accessibilityHint(journal ? JournalCopy.openInJournal : "")
+                    .accessibilityIdentifier(journal ? "search.result.journal" : "search.result.note")
+                    .searchRow(SearchRowKey.of(hit))
+                }
+                if let tasks = model?.taskHits, !tasks.isEmpty {
+                    Section {
+                        ForEach(tasks, id: \.id) { hit in
+                            Button { routes.open(hit, query: query) } label: {
+                                TaskSearchHitLabel(hit: hit)
+                            }
+                            .buttonStyle(.plain)
+                            .accessibilityHint(TasksCopy.openInTasks)
+                            .accessibilityIdentifier("search.result.task")
+                            .searchRow(SearchRowKey.of(hit))
+                        }
+                    } header: {
+                        Text(TasksCopy.searchTasksSection)
+                            .accessibilityAddTraits(.isHeader)
+                    }
+                }
+                SearchInboxSection(hits: model?.inboxHits ?? []) { routes.open($0, query: query) }
+            case .results:
+                ContentUnavailableView.search(text: query)
+                    .listRowSeparator(.hidden)
+            case let .failed(error):
+                ErrorNotice(error: error, code: nil)
+                    .listRowSeparator(.hidden)
+            case .searching:
+                ProgressView()
+                    .frame(maxWidth: .infinity)
+                    .listRowSeparator(.hidden)
+            case .idle, .none:
+                if let recents {
+                    SearchRecentsSection(model: recents, open: routes.reopen)
+                }
+            }
         }
+        .listStyle(.plain)
+        .accessibilityIdentifier("search.results")
+    }
+
+    /// The rows the palette's arrow keys walk, in the order the list shows
+    /// them, each with what Return does.
+    private var keyboardRows: [(key: String, open: () -> Void)] {
+        let routes = routes
+        switch model?.phase {
+        case let .results(hits):
+            return (hits + (model?.taskHits ?? []) + (model?.inboxHits ?? [])).map { hit in
+                (SearchRowKey.of(hit), { routes.open(hit, query: query) })
+            }
+        case .idle, .none:
+            return (recents?.items ?? []).map { recent in
+                (SearchRowKey.of(recent.result), { routes.reopen(recent) })
+            }
+        case .searching, .failed:
+            return []
+        }
+    }
+
+    private func move(_ step: Int) {
+        let keys = keyboardRows.map(\.key)
+        guard !keys.isEmpty else { return }
+        let index = highlighted.flatMap(keys.firstIndex(of:)).map { $0 + step } ?? 0
+        highlighted = keys[min(max(index, 0), keys.count - 1)]
+    }
+
+    private func submit() {
+        let rows = keyboardRows
+        (rows.first { $0.key == highlighted } ?? rows.first)?.open()
+    }
+
+    /// The palette comes and goes in place, as on desktop; the sheet slides.
+    private func close() {
+        var transaction = Transaction()
+        transaction.disablesAnimations = presentation == .palette
+        withTransaction(transaction) { dismiss() }
     }
 
     /// The scope picker's selection, held by the model with the menu's
@@ -178,7 +246,7 @@ struct GlobalSearchSheet: View {
                 Task { await recents.record(hit, query: query) }
             },
             finds: .shared,
-            dismiss: { dismiss() },
+            dismiss: close,
             openNote: openNote,
             openTask: openTask,
             openInboxItem: openInboxItem,
