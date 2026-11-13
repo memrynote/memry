@@ -25,6 +25,7 @@ import { normalizeLinkMentions } from '@memry/editor-schema/inline'
 import { fetchLinkPreview, type UrlPreviewData } from '@/lib/url-metadata'
 import type { HeadingInfo, InlineTagsOrigin } from '../types'
 import { createLogger } from '@/lib/logger'
+import { typingHoldOf } from '@/sync/typing-hold'
 import { trackRendererError } from '@/lib/telemetry-diagnostics'
 import { isEditingWikiLinkText } from '../wiki-link-edit-plugin'
 
@@ -340,8 +341,13 @@ const requestedLinkPreviews = new WeakMap<object, Set<string>>()
  * the block held then. Off the undo stack, because Cmd+Z must undo the user's
  * edit, not strip a chip. On a shared doc it is an attribute set, which merges
  * with the same write from another device rather than adding a node.
+ *
+ * `doc` is the note's shared doc, null on the markdown path: while the window holds typing for
+ * an outside edit, the fill waits for the hold to end. Sent during the hold, the plugin would
+ * refuse it as typing and replay it over the edit, as an undoable step that puts back a
+ * mention the edit deleted.
  */
-function hydrateLinkMentions(editor: any): void {
+function hydrateLinkMentions(editor: any, doc: Y.Doc | null): void {
   const state = editor?._tiptapEditor?.state
   if (!state?.doc || typeof editor.transact !== 'function') return
 
@@ -361,13 +367,23 @@ function hydrateLinkMentions(editor: any): void {
   for (const url of urls) {
     requested.add(url)
     fetchLinkPreview(url)
-      .then((preview) => applyLinkPreview(editor, url, preview))
+      .then((preview) => applyLinkPreview(editor, doc, url, preview))
       .catch((error: unknown) => log.warn('Link mention preview failed', error))
   }
 }
 
-function applyLinkPreview(editor: any, url: string, preview: UrlPreviewData): void {
+function applyLinkPreview(
+  editor: any,
+  doc: Y.Doc | null,
+  url: string,
+  preview: UrlPreviewData
+): void {
   if (editor?._tiptapEditor?.isDestroyed) return
+  const hold = doc ? typingHoldOf(doc) : null
+  if (hold?.held) {
+    void hold.settled().then(() => applyLinkPreview(editor, doc, url, preview))
+    return
+  }
 
   editor.transact((tr: any) => {
     tr.setMeta('addToHistory', false)
@@ -547,7 +563,7 @@ export function useEditorSync({
         lastNormalizedTagsRef.current = noteTags.toSorted().join(',')
       }
       clearYjsUndoHistory(editor)
-      hydrateLinkMentions(editor)
+      hydrateLinkMentions(editor, yjsFragment.doc)
       isContentReadyRef.current = true
       if (onHeadingsChange) {
         // oxlint-disable-next-line typescript/no-unsafe-type-assertion -- BlockNote types blocks against its custom schema generics; this helper takes the structural shape and the editor is any-typed at this seam
@@ -600,7 +616,7 @@ export function useEditorSync({
 
             normalizedBlocks = sanitizeBlockIds(normalizedBlocks)
             replaceInitialBlocksWithoutHistory(editor, normalizedBlocks)
-            hydrateLinkMentions(editor)
+            hydrateLinkMentions(editor, null)
             if (contentType === 'markdown') {
               markdownSourceRef.current = await recordLoadedMarkdownSource(editor, content)
             }
@@ -627,7 +643,7 @@ export function useEditorSync({
 
           normalizedBlocks = sanitizeBlockIds(normalizedBlocks)
           replaceInitialBlocksWithoutHistory(editor, normalizedBlocks)
-          hydrateLinkMentions(editor)
+          hydrateLinkMentions(editor, null)
           loadedSuccessfully = true
         } else {
           // An outside edit that emptied the body (a tag template's Undo, a file
@@ -687,7 +703,7 @@ export function useEditorSync({
       return
     }
 
-    hydrateLinkMentions(editor)
+    hydrateLinkMentions(editor, yjsFragment?.doc ?? null)
 
     // oxlint-disable-next-line typescript/no-unsafe-type-assertion -- BlockNote types blocks against its custom schema generics; this helper takes the structural shape and the editor is any-typed at this seam
     onContentChange?.(blocks as Block[])
