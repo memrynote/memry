@@ -58,7 +58,9 @@ export function useAIInline(aiEnabled = true): AIInlineState {
       })
     return () => {
       active = false
-      void registered.then((unlisten) => unlisten()).catch(() => undefined)
+      void registered
+        .then((unlisten) => unlisten())
+        .catch((err: unknown) => log.warn('Unsubscribing from the inline AI settings failed', err))
     }
     // oxlint-disable-next-line react/exhaustive-effect-dependencies -- attempt is the retry trigger, not read inside the effect
   }, [attempt, aiEnabled])

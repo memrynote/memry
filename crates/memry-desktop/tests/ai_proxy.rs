@@ -49,6 +49,9 @@ fn request(id: &str, provider: AiProvider, path: &str) -> AiProviderRequest {
         headers: vec![
             pair("content-type", "application/json"),
             pair("Authorization", "Bearer renderer-dummy"),
+            pair("authorization", "Bearer renderer-second"),
+            pair("Proxy-Authorization", "Basic renderer-dummy"),
+            pair("cookie", "session=renderer-dummy"),
             pair("x-api-key", "renderer-dummy"),
             pair("X-Goog-Api-Key", "renderer-dummy"),
             pair("host", "evil.example"),
@@ -295,6 +298,11 @@ fn each_provider_gets_only_its_own_auth_header_from_the_stored_key() {
         }
         assert!(header(headers, "host").is_empty(), "{provider:?}");
         assert!(
+            header(headers, "proxy-authorization").is_empty(),
+            "{provider:?}"
+        );
+        assert!(header(headers, "cookie").is_empty(), "{provider:?}");
+        assert!(
             header(headers, "accept-encoding").is_empty(),
             "{provider:?}"
         );
@@ -373,6 +381,7 @@ async fn the_body_streams_through_as_it_arrives_with_the_stored_key() {
         .open(
             &settings(AiProvider::Custom, &fake.base, KEY),
             request("stream", AiProvider::Custom, "/chat"),
+            "main",
             sink,
         )
         .await
@@ -390,6 +399,8 @@ async fn the_body_streams_through_as_it_arrives_with_the_stored_key() {
     );
     assert!(header(&headers, "x-api-key").is_empty());
     assert!(header(&headers, "x-goog-api-key").is_empty());
+    assert!(header(&headers, "proxy-authorization").is_empty());
+    assert!(header(&headers, "cookie").is_empty());
 
     tokio::spawn(body);
     // Each chunk reaches the sink before the provider sends the next one.
@@ -419,6 +430,7 @@ async fn a_cancel_ends_the_upstream_request_mid_stream() {
         .open(
             &settings(AiProvider::Custom, &fake.base, KEY),
             request("hang", AiProvider::Custom, "/chat"),
+            "main",
             sink,
         )
         .await
@@ -434,6 +446,8 @@ async fn a_cancel_ends_the_upstream_request_mid_stream() {
         .expect("no panic");
     fake.dropped.wait().await;
     assert_eq!(proxy.in_flight(), 0);
+    // The renderer aborted it, so nothing more is sent.
+    assert!(frames.try_recv().is_err());
 }
 
 #[tokio::test]
@@ -449,6 +463,7 @@ async fn a_cancel_before_the_head_ends_the_upstream_request() {
                 .open(
                     &settings,
                     request("slow", AiProvider::Custom, "/chat"),
+                    "main",
                     sink,
                 )
                 .await
@@ -481,6 +496,7 @@ async fn a_gone_renderer_and_a_vault_close_end_the_upstream_request() {
         .open(
             &settings(AiProvider::Custom, &fake_gone.base, KEY),
             request("gone", AiProvider::Custom, "/chat"),
+            "main",
             sink_gone,
         )
         .await
@@ -500,6 +516,7 @@ async fn a_gone_renderer_and_a_vault_close_end_the_upstream_request() {
         .open(
             &settings(AiProvider::Custom, &fake_open.base, KEY),
             request("open", AiProvider::Custom, "/chat"),
+            "main",
             sink_open,
         )
         .await
@@ -512,6 +529,10 @@ async fn a_gone_renderer_and_a_vault_close_end_the_upstream_request() {
         .await
         .expect("body ended")
         .expect("no panic");
+    assert_eq!(
+        next(&mut frames).await,
+        Frame::Failed("the vault closed".to_owned())
+    );
     fake_open.dropped.wait().await;
     assert_eq!(proxy.in_flight(), 0);
 }
@@ -524,6 +545,7 @@ async fn a_redirect_is_answered_never_followed() {
         .open(
             &settings(AiProvider::Custom, &fake.base, KEY),
             request("redirect", AiProvider::Custom, "/chat"),
+            "main",
             sink,
         )
         .await
@@ -543,6 +565,7 @@ async fn an_unreachable_provider_is_named_without_the_key_and_a_running_id_is_re
         .open(
             &settings(AiProvider::Custom, &base, KEY),
             request("closed", AiProvider::Custom, "/chat"),
+            "main",
             sink_closed,
         )
         .await
@@ -563,6 +586,7 @@ async fn an_unreachable_provider_is_named_without_the_key_and_a_running_id_is_re
         .open(
             &settings(AiProvider::Custom, &fake.base, KEY),
             request("same", AiProvider::Custom, "/chat"),
+            "main",
             sink_first,
         )
         .await
@@ -572,10 +596,99 @@ async fn an_unreachable_provider_is_named_without_the_key_and_a_running_id_is_re
         .open(
             &settings(AiProvider::Custom, &fake.base, KEY),
             request("same", AiProvider::Custom, "/chat"),
+            "main",
             sink_second,
         )
         .await
         .err()
         .expect("refused");
     assert!(matches!(second, ProxyError::Invalid(_)), "{second:?}");
+}
+
+#[tokio::test]
+async fn a_cancel_that_arrives_before_open_refuses_the_request() {
+    let fake = fake(Answer::Redirect).await;
+    let proxy = proxy();
+    // The renderer aborted while Rust still read the settings: the id is not registered yet.
+    proxy.cancel("early");
+    let (sink, _frames) = sink(Arc::new(AtomicBool::new(true)));
+    let outcome = proxy
+        .open(
+            &settings(AiProvider::Custom, &fake.base, KEY),
+            request("early", AiProvider::Custom, "/chat"),
+            "main",
+            sink,
+        )
+        .await
+        .map(|_| ());
+    assert_eq!(outcome, Err(ProxyError::Cancelled));
+    assert!(fake.seen.lock().unwrap().is_empty());
+    assert_eq!(proxy.in_flight(), 0);
+}
+
+#[tokio::test]
+async fn a_closed_or_reloaded_page_ends_only_its_own_requests() {
+    let proxy = proxy();
+    let mut running = Vec::new();
+    for owner in ["main", "note-1"] {
+        let fake = fake(Answer::Hang).await;
+        let (sink, mut frames) = sink(Arc::new(AtomicBool::new(true)));
+        let (_, body) = proxy
+            .open(
+                &settings(AiProvider::Custom, &fake.base, KEY),
+                request(owner, AiProvider::Custom, "/chat"),
+                owner,
+                sink,
+            )
+            .await
+            .expect("head");
+        let body = tokio::spawn(body);
+        fake.release.send(()).unwrap();
+        assert!(matches!(next(&mut frames).await, Frame::Data(_)));
+        running.push((fake, body));
+    }
+    proxy.cancel_owner("main");
+    let (main, main_body) = running.remove(0);
+    tokio::time::timeout(WAIT, main_body)
+        .await
+        .expect("body ended")
+        .expect("no panic");
+    main.dropped.wait().await;
+    assert_eq!(proxy.in_flight(), 1);
+    assert!(!running[0].1.is_finished());
+    assert!(!running[0].0.dropped.0.load(Ordering::SeqCst));
+}
+
+#[tokio::test]
+async fn the_proxy_client_goes_to_the_provider_directly_past_a_configured_proxy() {
+    let provider = fake(Answer::Redirect).await;
+    let relay = TcpListener::bind("127.0.0.1:0").await.expect("bind");
+    let relay_url = format!("http://{}", relay.local_addr().expect("addr"));
+    let relayed = Arc::new(AtomicBool::new(false));
+    {
+        let relayed = relayed.clone();
+        tokio::spawn(async move {
+            while let Ok((connection, _)) = relay.accept().await {
+                relayed.store(true, Ordering::SeqCst);
+                drop(connection);
+            }
+        });
+    }
+    let _ = rustls::crypto::ring::default_provider().install_default();
+    let proxy = AiProxy::new(
+        memry_desktop::http::builder().proxy(reqwest::Proxy::all(&relay_url).expect("proxy")),
+    );
+    let (sink, _frames) = sink(Arc::new(AtomicBool::new(true)));
+    let (head, _body) = proxy
+        .open(
+            &settings(AiProvider::Custom, &provider.base, KEY),
+            request("direct", AiProvider::Custom, "/chat"),
+            "main",
+            sink,
+        )
+        .await
+        .expect("the provider answered");
+    assert_eq!(head.status, 302);
+    assert_eq!(provider.seen.lock().unwrap().len(), 1);
+    assert!(!relayed.load(Ordering::SeqCst));
 }

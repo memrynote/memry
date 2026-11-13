@@ -84,7 +84,7 @@ async fn proxied(
     };
     let start = Instant::now();
     let (head, body) = proxy
-        .open(settings, request(n), sink)
+        .open(settings, request(n), "main", sink)
         .await
         .expect("proxied head");
     let head_latency = start.elapsed();

@@ -16,7 +16,7 @@ use memry_desktop::locale::LocaleService;
 use memry_desktop::session::Session;
 use serde::Serialize;
 use tauri::ipc::{Channel, InvokeResponseBody};
-use tauri::{AppHandle, Manager, Runtime, Wry};
+use tauri::{AppHandle, Manager, Runtime, Webview, Wry};
 
 use super::blocking;
 use super::error::{CommandError, ErrorKind, log_failure};
@@ -192,10 +192,12 @@ pub async fn ai_inline_test_connection(
 
 /// One provider call of the renderer's AI SDK (its `fetch`), sent with the stored key. Answers
 /// with the provider's status and headers; the body follows on `on_chunk` as tagged frames
-/// (`memry_desktop::ai::proxy::Frame`). A binary command: the frames are raw bytes.
+/// (`memry_desktop::ai::proxy::Frame`). A binary command: the frames are raw bytes. The call
+/// belongs to the calling webview and ends when its page goes ([`release_page`]).
 #[tauri::command]
 pub async fn ai_provider_request<R: Runtime>(
     app: AppHandle<R>,
+    webview: Webview<R>,
     request: AiProviderRequest,
     on_chunk: Channel<InvokeResponseBody>,
 ) -> Result<AiProviderHead, CommandError> {
@@ -207,7 +209,7 @@ pub async fn ai_provider_request<R: Runtime>(
     let sink = Box::new(move |frame: memry_desktop::ai::proxy::Frame| {
         binary::send_chunk(&on_chunk, frame.encode()).is_ok()
     });
-    match proxy.open(&settings, request, sink).await {
+    match proxy.open(&settings, request, webview.label(), sink).await {
         Ok((head, body)) => {
             tauri::async_runtime::spawn(body);
             Ok(head)
@@ -225,6 +227,15 @@ pub async fn ai_provider_request<R: Runtime>(
 #[specta::specta]
 pub fn ai_provider_cancel<R: Runtime>(app: AppHandle<R>, request_id: String) {
     app.state::<Arc<AiProxy>>().cancel(&request_id);
+}
+
+/// Ends the provider calls of the webview labelled `label`: its page reloaded or its window
+/// closed. `Channel::send` keeps succeeding after that, so a body would stream into a dead
+/// callback until the provider finished.
+pub fn release_page<R: Runtime>(app: &AppHandle<R>, label: &str) {
+    if let Some(proxy) = app.try_state::<Arc<AiProxy>>() {
+        proxy.cancel_owner(label);
+    }
 }
 
 fn proxy_error(locale: &str, settings: &InlineAiSettings, error: ProxyError) -> CommandError {

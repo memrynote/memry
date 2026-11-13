@@ -4,11 +4,14 @@
 //! never reaches the webview and no request reaches a host the settings do not name.
 //!
 //! A request answers with its status and headers; the body follows as [`Frame`]s. The
-//! upstream request ends on [`AiProxy::cancel`], when the sink reports the renderer gone, and
-//! for every request when the vault closes (the `ai-proxy` close hook).
+//! upstream request ends on [`AiProxy::cancel`], when the page that sent it reloads or its
+//! window closes ([`AiProxy::cancel_owner`]: a channel to a gone page keeps accepting frames, so
+//! the sink cannot tell), when the sink reports the renderer gone, and for every request when
+//! the vault closes (the `ai-proxy` close hook).
 
-use std::collections::HashMap;
+use std::collections::{HashMap, VecDeque};
 use std::future::Future;
+use std::sync::atomic::{AtomicBool, Ordering};
 use std::sync::{Arc, Mutex, PoisonError};
 
 use reqwest::header::{HeaderMap, HeaderName, HeaderValue};
@@ -130,23 +133,43 @@ pub enum ProxyError {
     Cancelled,
 }
 
+/// How many ids cancelled before their request opened are remembered.
+const EARLY_CANCELS: usize = 64;
+
 /// The in-flight provider requests, each cancellable by its id.
 pub struct AiProxy {
     client: reqwest::Client,
-    in_flight: Mutex<HashMap<String, CancellationToken>>,
+    in_flight: Mutex<InFlight>,
+}
+
+#[derive(Default)]
+struct InFlight {
+    running: HashMap<String, Entry>,
+    /// Ids cancelled before `open` registered them: the renderer's abort can overtake its
+    /// request while Rust still reads the settings. Ids are fresh UUIDs, so the oldest can go.
+    early: VecDeque<String>,
+}
+
+struct Entry {
+    /// The label of the webview that sent the request.
+    owner: String,
+    token: CancellationToken,
+    vault_closed: Arc<AtomicBool>,
 }
 
 impl AiProxy {
     /// A proxy on `builder` (the shared TLS stack) with redirects off: reqwest keeps
     /// `x-api-key` and `x-goog-api-key` across a cross-host redirect, so a 3xx goes back to the
-    /// renderer as the provider's answer and is never followed.
+    /// renderer as the provider's answer and is never followed. It never goes through a proxy,
+    /// as Electron's Node `fetch` did not.
     pub fn new(builder: reqwest::ClientBuilder) -> Arc<Self> {
         Arc::new(Self {
             client: builder
+                .no_proxy()
                 .redirect(reqwest::redirect::Policy::none())
                 .build()
                 .expect("the AI proxy HTTP client needs a process default rustls crypto provider"),
-            in_flight: Mutex::new(HashMap::new()),
+            in_flight: Mutex::new(InFlight::default()),
         })
     }
 
@@ -156,56 +179,93 @@ impl AiProxy {
         session.on_close("ai-proxy", Arc::new(move |_| proxy.cancel_all()));
     }
 
-    /// Ends request `id`, before or after its head. An unknown id is a request that already
-    /// ended.
+    /// Ends request `id`, before or after its head. An unknown id has ended or has not opened
+    /// yet; it is remembered so that an `open` arriving after it is refused.
     pub fn cancel(&self, id: &str) {
-        if let Some(token) = self.lock().remove(id) {
-            token.cancel();
+        let mut in_flight = self.lock();
+        if let Some(entry) = in_flight.running.remove(id) {
+            entry.token.cancel();
+            return;
         }
+        if in_flight.early.len() == EARLY_CANCELS {
+            in_flight.early.pop_front();
+        }
+        in_flight.early.push_back(id.to_owned());
     }
 
+    /// Ends every request of the webview labelled `owner`: its page reloaded or its window
+    /// closed.
+    pub fn cancel_owner(&self, owner: &str) {
+        self.lock().running.retain(|_, entry| {
+            let keep = entry.owner != owner;
+            if !keep {
+                entry.token.cancel();
+            }
+            keep
+        });
+    }
+
+    /// Ends every request; each streaming body ends with `Failed("the vault closed")`.
     pub fn cancel_all(&self) {
-        for (_, token) in self.lock().drain() {
-            token.cancel();
+        let mut in_flight = self.lock();
+        in_flight.early.clear();
+        for (_, entry) in in_flight.running.drain() {
+            entry.vault_closed.store(true, Ordering::SeqCst);
+            entry.token.cancel();
         }
     }
 
     /// The number of requests not yet ended.
     pub fn in_flight(&self) -> usize {
-        self.lock().len()
+        self.lock().running.len()
     }
 
-    fn lock(&self) -> std::sync::MutexGuard<'_, HashMap<String, CancellationToken>> {
+    fn lock(&self) -> std::sync::MutexGuard<'_, InFlight> {
         self.in_flight
             .lock()
             .unwrap_or_else(PoisonError::into_inner)
     }
 
-    /// Sends `request` with the key of `settings` (read in Rust, never the renderer's) and
-    /// returns the head once it arrives, with the future that streams the body into `sink`.
-    /// The caller spawns that future; dropping it ends the upstream request.
+    /// Sends `request` of the webview labelled `owner` with the key of `settings` (read in
+    /// Rust, never the renderer's) and returns the head once it arrives, with the future that
+    /// streams the body into `sink`. The caller spawns that future; dropping it ends the
+    /// upstream request.
     pub async fn open(
         self: &Arc<Self>,
         settings: &InlineAiSettings,
         request: AiProviderRequest,
+        owner: &str,
         mut sink: Sink,
     ) -> Result<(AiProviderHead, impl Future<Output = ()> + Send + 'static), ProxyError> {
         let Prepared { url, headers, name } = prepare(settings, &request)?;
         let token = CancellationToken::new();
+        let vault_closed = Arc::new(AtomicBool::new(false));
         let id = request.request_id;
         {
             let mut in_flight = self.lock();
-            if in_flight.contains_key(&id) {
+            if let Some(at) = in_flight.early.iter().position(|early| *early == id) {
+                in_flight.early.remove(at);
+                return Err(ProxyError::Cancelled);
+            }
+            if in_flight.running.contains_key(&id) {
                 return Err(ProxyError::Invalid(format!(
                     "request {id} is already running"
                 )));
             }
-            in_flight.insert(id.clone(), token.clone());
+            in_flight.running.insert(
+                id.clone(),
+                Entry {
+                    owner: owner.to_owned(),
+                    token: token.clone(),
+                    vault_closed: Arc::clone(&vault_closed),
+                },
+            );
         }
         let ticket = Ticket {
             proxy: Arc::clone(self),
             id,
             token: token.clone(),
+            vault_closed,
         };
 
         let method = match request.method {
@@ -234,7 +294,12 @@ impl AiProxy {
             let ticket = ticket;
             loop {
                 let chunk = tokio::select! {
-                    () = ticket.token.cancelled() => return,
+                    () = ticket.token.cancelled() => {
+                        if ticket.vault_closed.load(Ordering::SeqCst) {
+                            sink(Frame::Failed("the vault closed".to_owned()));
+                        }
+                        return;
+                    }
                     chunk = response.chunk() => chunk,
                 };
                 let frame = match chunk {
@@ -317,6 +382,7 @@ struct Ticket {
     proxy: Arc<AiProxy>,
     id: String,
     token: CancellationToken,
+    vault_closed: Arc<AtomicBool>,
 }
 
 impl Drop for Ticket {
@@ -324,7 +390,7 @@ impl Drop for Ticket {
         // A cancelled request was removed by the cancel, and its id may be in use again. One
         // that was not still owns its entry: a running id is never taken twice.
         if !self.token.is_cancelled() {
-            self.proxy.lock().remove(&self.id);
+            self.proxy.lock().running.remove(&self.id);
         }
     }
 }

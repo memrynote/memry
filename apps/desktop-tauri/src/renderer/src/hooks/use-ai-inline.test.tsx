@@ -7,7 +7,11 @@ type Listener = (event: { payload: { settings: InlineAiSettings } }) => void
 const mocks = vi.hoisted(() => ({
   commands: { aiInlineGetSettings: vi.fn() },
   listeners: [] as Listener[],
-  unlisten: vi.fn()
+  unlisten: vi.fn(),
+  warn: vi.fn()
+}))
+vi.mock('@/lib/logger', () => ({
+  createLogger: () => ({ debug: vi.fn(), info: vi.fn(), warn: mocks.warn, error: vi.fn() })
 }))
 vi.mock('../../../generated/bindings', () => ({
   commands: mocks.commands,
@@ -35,6 +39,7 @@ beforeEach(() => {
   mocks.commands.aiInlineGetSettings.mockReset()
   mocks.listeners.length = 0
   mocks.unlisten.mockReset()
+  mocks.warn.mockReset()
 })
 
 describe('useAIInline', () => {
@@ -57,6 +62,24 @@ describe('useAIInline', () => {
 
     unmount()
     await waitFor(() => expect(mocks.unlisten).toHaveBeenCalled())
+  })
+
+  it('logs an unsubscribe that fails on unmount', async () => {
+    mocks.commands.aiInlineGetSettings.mockResolvedValue(settings(true))
+    const failure = new Error('unlisten failed')
+    mocks.unlisten.mockImplementation(() => {
+      throw failure
+    })
+    const { result, unmount } = renderHook(() => useAIInline())
+    await waitFor(() => expect(result.current.ready).toBe(true))
+
+    unmount()
+    await waitFor(() =>
+      expect(mocks.warn).toHaveBeenCalledWith(
+        'Unsubscribing from the inline AI settings failed',
+        failure
+      )
+    )
   })
 
   it('stays off when the inline AI settings are off', async () => {
