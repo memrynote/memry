@@ -9,6 +9,7 @@
 //! The layered-summary idea follows github.com/chenxiachan/textfold (Apache-2.0); the code is
 //! original.
 
+pub mod agent;
 pub mod engine;
 pub mod inline;
 pub mod sections;

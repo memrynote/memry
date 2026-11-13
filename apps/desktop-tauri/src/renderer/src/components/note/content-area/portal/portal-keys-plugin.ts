@@ -1,8 +1,9 @@
 /**
- * Keyboard access to a portal block in its host note.
+ * Keyboard access to a portal or view block in its host note.
  *
- * A portal is a `memry-portal` code block whose text, the definition's JSON,
- * is hidden. Two things go wrong with a hidden textblock. Backspace at the
+ * Both are code blocks (`memry-portal`, `memry-view`) whose text, the
+ * definition's JSON, is never shown. Two things go wrong with a hidden
+ * textblock. Backspace at the
  * start of the block after it merges that block's text into the JSON, and an
  * arrow key at a block edge hands the caret to the browser, which cannot place
  * one in hidden text. This plugin selects the portal as a whole in both cases:
@@ -25,7 +26,8 @@ import { NodeSelection, Plugin, PluginKey, Selection, TextSelection } from '@tip
 import type { EditorState, Transaction } from '@tiptap/pm/state'
 import type { EditorView } from '@tiptap/pm/view'
 import type { Node as PMNode } from '@tiptap/pm/model'
-import { PORTAL_BLOCK_LANGUAGE, parsePortalDefinition } from '@memry/shared/portal-block'
+import { PORTAL_BLOCK_LANGUAGE } from '@memry/shared/portal-block'
+import { VIEW_BLOCK_LANGUAGE } from '@memry/shared/view-block'
 import {
   PORTAL_EXIT_EVENT,
   PORTAL_SELECT_EVENT,
@@ -34,6 +36,16 @@ import {
 import { registerEditorPlugin } from '../register-editor-plugin'
 
 export const portalKeysPluginKey = new PluginKey('portalKeys')
+
+/** Code block languages whose text is a definition the reader never sees. */
+const HIDDEN_DEFINITION_LANGUAGES: ReadonlySet<unknown> = new Set([
+  PORTAL_BLOCK_LANGUAGE,
+  VIEW_BLOCK_LANGUAGE
+])
+
+function isHiddenDefinition(node: PMNode | null | undefined): boolean {
+  return node?.type.name === 'codeBlock' && HIDDEN_DEFINITION_LANGUAGES.has(node.attrs.language)
+}
 
 const ARROWS: Readonly<Record<string, { dir: 1 | -1; edge: 'up' | 'down' | 'left' | 'right' }>> = {
   ArrowDown: { dir: 1, edge: 'down' },
@@ -54,9 +66,7 @@ export function portalSelectionPast(state: EditorState, dir: 1 | -1): NodeSelect
   const next = Selection.findFrom($outside, dir, true)
   if (!(next instanceof TextSelection)) return null
   const { $head: $target } = next
-  const block = $target.parent
-  if (block.type.name !== 'codeBlock' || block.attrs.language !== PORTAL_BLOCK_LANGUAGE) return null
-  if ($target.depth < 2) return null
+  if (!isHiddenDefinition($target.parent) || $target.depth < 2) return null
   // The portal is the blockContainer around the code block.
   return NodeSelection.create(state.doc, $target.before($target.depth - 1))
 }
@@ -68,12 +78,7 @@ export type PortalKeysEditor = Pick<
 >
 
 function isPortalContainer(node: PMNode): boolean {
-  const content = node.firstChild
-  return (
-    node.type.name === 'blockContainer' &&
-    content?.type.name === 'codeBlock' &&
-    content.attrs.language === PORTAL_BLOCK_LANGUAGE
-  )
+  return node.type.name === 'blockContainer' && isHiddenDefinition(node.firstChild)
 }
 
 /** The portal container a window event came from: the nearest block around its target. */
@@ -131,24 +136,13 @@ function portalAroundCaret(state: EditorState): { pos: number; node: PMNode } | 
 }
 
 /**
- * A selection that moves into a portal's definition without the user pointing
- * at it (an arrow, Meta+Arrow, Home/End, a programmatic move) selects the
- * portal as one block instead. A press on the visible definition is the
- * opt-in, as is a definition that cannot be read: it is shown, and the user
- * has to be able to fix it.
+ * A caret in a hidden definition (an arrow, Home/End, a note opening on the
+ * block, a programmatic move) selects the block as a whole instead, so no
+ * keystroke edits JSON the reader cannot see.
  */
-function guardDefinition(
-  transactions: readonly Transaction[],
-  oldState: EditorState,
-  newState: EditorState
-): Transaction | null {
-  if (transactions.some((tr) => tr.docChanged || tr.getMeta('pointer'))) return null
-  if (!transactions.some((tr) => tr.selectionSet)) return null
-  const inside = portalAroundCaret(newState)
-  if (!inside) return null
-  if (portalAroundCaret(oldState)?.node.attrs.id === inside.node.attrs.id) return null
-  if (!parsePortalDefinition(inside.node.textContent).ok) return null
-  return newState.tr.setSelection(NodeSelection.create(newState.doc, inside.pos))
+function guardDefinition(state: EditorState): Transaction | null {
+  const inside = portalAroundCaret(state)
+  return inside ? state.tr.setSelection(NodeSelection.create(state.doc, inside.pos)) : null
 }
 
 /** An empty paragraph (holding `text`) after the selected portal, with the caret at its end. */
@@ -164,6 +158,14 @@ export function createPortalKeysPlugin(editor: PortalKeysEditor): Plugin {
   return new Plugin({
     key: portalKeysPluginKey,
     view(view) {
+      // The plugin attaches once a block mounts, after the note's content (and
+      // the caret in it) has loaded. A view cannot dispatch while it is being
+      // built, so the guard runs right after.
+      let destroyed = false
+      queueMicrotask(() => {
+        const guarded = destroyed ? null : guardDefinition(view.state)
+        if (guarded) view.dispatch(guarded)
+      })
       const onExit = (event: Event): void => {
         const at = containerForEvent(view, event)
         if (!at) return
@@ -183,6 +185,7 @@ export function createPortalKeysPlugin(editor: PortalKeysEditor): Plugin {
       view.dom.addEventListener(PORTAL_SELECT_EVENT, onSelect)
       return {
         destroy() {
+          destroyed = true
           view.dom.removeEventListener(PORTAL_EXIT_EVENT, onExit)
           view.dom.removeEventListener(PORTAL_SELECT_EVENT, onSelect)
         }
@@ -192,7 +195,7 @@ export function createPortalKeysPlugin(editor: PortalKeysEditor): Plugin {
     // the hidden JSON where the selection was. The next Backspace would then
     // edit the definition. A portal that was selected stays selected.
     appendTransaction(transactions, oldState, newState) {
-      const guarded = guardDefinition(transactions, oldState, newState)
+      const guarded = guardDefinition(newState)
       if (guarded) return guarded
       const before = oldState.selection
       if (!(before instanceof NodeSelection) || !isPortalContainer(before.node)) return null

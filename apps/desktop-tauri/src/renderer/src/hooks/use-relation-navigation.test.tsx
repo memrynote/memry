@@ -64,7 +64,7 @@ describe('useRelationNavigation', () => {
     )
   })
 
-  it('ignores a dangling target of any kind', () => {
+  it('ignores a dangling target', () => {
     navigate({
       ...base,
       uri: 'memry://canvas/cnv_gone',
@@ -72,6 +72,10 @@ describe('useRelationNavigation', () => {
       targetId: 'cnv_gone',
       exists: false
     })
+    expect(mocks.openTab).not.toHaveBeenCalled()
+  })
+
+  it('opens a journal day nobody has written yet, since the date is the whole day', () => {
     navigate({
       ...base,
       uri: 'memry://journal/2026-05-11',
@@ -79,6 +83,8 @@ describe('useRelationNavigation', () => {
       targetId: '2026-05-11',
       exists: false
     })
-    expect(mocks.openTab).not.toHaveBeenCalled()
+    expect(mocks.openTab).toHaveBeenCalledWith(
+      expect.objectContaining({ type: 'journal', viewState: { date: '2026-05-11' } })
+    )
   })
 })

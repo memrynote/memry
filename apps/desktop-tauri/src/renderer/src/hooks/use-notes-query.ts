@@ -522,7 +522,11 @@ export function useNoteLinksQuery(noteId: string | null, options: { enabled?: bo
         (live) =>
           onNoteUpdated((event) => {
             // Refresh if this note or any linked note changed
-            if (event.id === noteId || event.changes.content !== undefined) {
+            if (
+              event.id === noteId ||
+              event.changes.content !== undefined ||
+              event.changes.properties !== undefined
+            ) {
               refresh()
             }
           }, live),

@@ -18,6 +18,7 @@ import {
 } from '@/components/settings/settings-primitives'
 import { extractErrorMessage } from '@/lib/ipc-error'
 import { createLogger } from '@/lib/logger'
+import { commands } from '../../../../generated/bindings'
 
 const log = createLogger('Page:Settings:AI')
 
@@ -54,7 +55,7 @@ export function SummarizeLongNotesRow({
 
   const refreshAgentStatus = useCallback(async () => {
     try {
-      setAgentStatus(await window.api.noteFold.getAgentStatus())
+      setAgentStatus(await commands.foldGetAgentStatus())
     } catch (error) {
       log.error('Failed to read the fold agent status', error)
     }

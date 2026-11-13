@@ -4,6 +4,16 @@ import { useT } from '@memry/i18n/renderer'
 import { toLocalDateKey } from '@/components/calendar/date-utils'
 import { buildMemryHref, tabFromMemryHref } from '@/lib/memry-links'
 import type { ResolvedRelationRef } from '@memry/contracts/properties-api'
+import { isJournalDay } from '@/lib/journal-link-days'
+
+/**
+ * A relation to a journal day nobody has written yet. Its URI carries the
+ * date, which is the day's whole identity, so it is a ghost chip that still
+ * opens the day rather than a dangling one.
+ */
+export function isUnwrittenJournalDay(ref: ResolvedRelationRef): boolean {
+  return ref.targetType === 'journal' && !ref.exists && isJournalDay(ref.targetId)
+}
 
 /**
  * The calendar's `anchorDate` is a local `YYYY-MM-DD` string, not an instant:
@@ -49,7 +59,8 @@ function toCalendarFocusDate(startAt: string | undefined): string | null {
  *               canvas tab and a journal day open. Relations deliberately do
  *               not mint a second scheme for the same two destinations.
  *
- * A dangling ref (`exists: false`) has nothing to open and is ignored.
+ * A dangling ref (`exists: false`) has nothing to open and is ignored, except
+ * an unwritten journal day, which opens the empty day.
  */
 export function useRelationNavigation(): (ref: ResolvedRelationRef) => void {
   const { openTab } = useTabs()
@@ -57,7 +68,7 @@ export function useRelationNavigation(): (ref: ResolvedRelationRef) => void {
 
   return useCallback(
     (ref: ResolvedRelationRef) => {
-      if (!ref.exists) return
+      if (!ref.exists && !isUnwrittenJournalDay(ref)) return
 
       const base = {
         isPinned: false,

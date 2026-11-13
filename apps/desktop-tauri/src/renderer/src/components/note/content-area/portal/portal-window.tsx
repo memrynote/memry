@@ -21,6 +21,7 @@ import { cn } from '@/lib/utils'
 import { PortalAncestryContext } from './portal-context'
 import type { PortalPlan } from './portal-plans'
 import { descendPortalAncestry, type PortalAncestry, type PortalWindowTarget } from './portal-state'
+import { attachPortalWindowDragOut, type PortalDropOutside } from './portal-window-drag-out'
 import { usePortalLinkOpen } from './use-portal-link-open'
 import { usePortalWindowPlugin, type PortalWindowResolution } from './use-portal-window-plugin'
 import './portal-window.css'
@@ -80,6 +81,8 @@ export interface PortalWindowProps {
   onResolve: (resolution: PortalWindowResolution) => void
   /** Enter or Backspace in the window changed what the portal lists. */
   onPlan: (plan: PortalPlan) => void | Promise<unknown>
+  /** A block handle in the window was dragged out and dropped on another editor. */
+  onDropOutside: (drop: PortalDropOutside) => void
 }
 
 export function PortalWindow({
@@ -91,7 +94,8 @@ export function PortalWindow({
   sourceContent,
   editable,
   onResolve,
-  onPlan
+  onPlan,
+  onDropOutside
 }: PortalWindowProps): React.JSX.Element {
   const { t } = useT('common')
   const frameRef = useRef<HTMLDivElement>(null)
@@ -112,6 +116,16 @@ export function PortalWindow({
     onPlan,
     onAttached: setAttached
   })
+
+  const onDropOutsideRef = useRef(onDropOutside)
+  useEffect(() => {
+    onDropOutsideRef.current = onDropOutside
+  })
+  useEffect(() => {
+    const frame = frameRef.current
+    if (!frame) return undefined
+    return attachPortalWindowDragOut(frame, (drop) => onDropOutsideRef.current(drop))
+  }, [])
 
   // Without its plugin the editor would show the whole source, so it stays out
   // of sight until the plugin is on, and is dropped if it never gets one.
