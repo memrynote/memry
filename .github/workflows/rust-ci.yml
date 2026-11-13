@@ -519,6 +519,53 @@ jobs:
           MEMRY_ML_MODEL_DIR: ${{ runner.temp }}/models/onnx-community/embeddinggemma-2-ONNX
         run: cargo test -p memry-ml --test golden_text -- --ignored
 
+      # The audio encoder files (189 MB) get their own cache next to the text files: only the
+      # audio golden test needs them.
+      - name: Restore the audio encoder (memry-ml golden audio)
+        id: audio-model-cache
+        if: matrix.part != 'tests' && needs.plan.outputs.full == 'true'
+        uses: actions/cache/restore@v4
+        with:
+          path: ${{ runner.temp }}/models/onnx-community/embeddinggemma-2-ONNX/onnx/audio_encoder_q4.onnx*
+          key: embeddinggemma-2-audio-daa72c51243991dfcaf9f9137d2c573d8f7790c0
+          enableCrossOsArchive: true
+
+      - name: Download the audio encoder (memry-ml golden audio)
+        if: matrix.part != 'tests' && needs.plan.outputs.full == 'true' && steps.audio-model-cache.outputs.cache-hit != 'true'
+        working-directory: ${{ runner.temp }}
+        run: |
+          base=https://huggingface.co/onnx-community/embeddinggemma-2-ONNX/resolve/daa72c51243991dfcaf9f9137d2c573d8f7790c0
+          dir=models/onnx-community/embeddinggemma-2-ONNX
+          mkdir -p "$dir/onnx"
+          # The pins of memry-ml/src/files.rs, checked before the save below shares the files.
+          while read -r sum file; do
+            curl -fsSL --retry 3 -o "$dir/$file" "$base/$file"
+            if [ "$(cmake -E sha256sum "$dir/$file" | cut -d' ' -f1)" != "$sum" ]; then
+              echo "::error::$file does not match its pinned sha256"
+              exit 1
+            fi
+          done <<'EOF'
+          c4cce3370e72262280d00293cac038896050a03a8e9a27e10b061ca97510296e onnx/audio_encoder_q4.onnx
+          ba9328e6341360974083085b44b2bba265003bda564740f7c4c23ed9928f17e2 onnx/audio_encoder_q4.onnx_data
+          EOF
+
+      - name: Save the audio encoder (memry-ml golden audio)
+        if: matrix.part != 'tests' && needs.plan.outputs.full == 'true' && steps.audio-model-cache.outputs.cache-hit != 'true' && github.event_name != 'merge_group' && (github.event_name != 'pull_request' || github.base_ref != 'feat/tauri-v2')
+        uses: actions/cache/save@v4
+        with:
+          path: ${{ runner.temp }}/models/onnx-community/embeddinggemma-2-ONNX/onnx/audio_encoder_q4.onnx*
+          key: embeddinggemma-2-audio-daa72c51243991dfcaf9f9137d2c573d8f7790c0
+          enableCrossOsArchive: true
+
+      # Parity with Electron's audio path (embeddings-audio.json): WAV decode, windows, token ids
+      # exact, cosine and component bounds per window.
+      - name: memry-ml golden audio vectors
+        if: matrix.part != 'tests' && needs.plan.outputs.full == 'true'
+        timeout-minutes: 20
+        env:
+          MEMRY_ML_MODEL_DIR: ${{ runner.temp }}/models/onnx-community/embeddinggemma-2-ONNX
+        run: cargo test -p memry-ml --test golden_audio -- --ignored
+
       # The shipping profile (fat LTO): the smoke test embeds with the downloaded model, then the
       # test binary's size and its shared-library dependencies are printed. No ONNX Runtime or
       # DirectML library may be among them: ONNX Runtime is linked in, CPU only. On Windows

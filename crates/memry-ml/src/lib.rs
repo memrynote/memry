@@ -1,11 +1,17 @@
 //! Native ML of MemryNote: the EmbeddingGemma 2 model of Electron's embedding worker
 //! (`apps/desktop/src/main/lib/embedding-worker.ts`) on an in-process ONNX Runtime.
 
+mod audio;
+mod audio_prep;
 mod engine;
 mod files;
 mod runtime;
 mod text;
 
+pub use audio_prep::{
+    AudioFeatures, MAX_DECODED_SAMPLES, MAX_WINDOWS, MEL_BINS, MIN_SAMPLE_RATE, MIN_SAMPLES,
+    SAMPLE_RATE, WINDOW_SAMPLES, audio_features, audio_windows, decode_steps, decode_wav,
+};
 pub use engine::{
     EMBEDDING_DIMENSION, Embedding, EmbeddingEngine, LoadOptions, MAX_EMBEDDING_INPUT_LENGTH,
     default_intra_threads,

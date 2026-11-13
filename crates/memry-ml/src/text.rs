@@ -16,7 +16,7 @@ use crate::runtime::session_builder;
 const PLACEHOLDERS: [(&str, i64); 3] = [("image", 258_880), ("video", 258_884), ("audio", 258_881)];
 
 /// Width of one soft token (`text_config.hidden_size`).
-const SOFT_TOKEN_WIDTH: usize = 512;
+pub(crate) const SOFT_TOKEN_WIDTH: usize = 512;
 
 /// Width of `sentence_embedding`.
 pub(crate) const SENTENCE_EMBEDDING_WIDTH: usize = 768;
@@ -49,7 +49,18 @@ impl TextModel {
 
     /// Runs the graph on a prompt that carries no image, video or audio.
     pub(crate) fn sentence_embedding(&mut self, ids: Vec<i64>) -> Result<Vec<f32>, MlError> {
-        check_placeholders(&ids)?;
+        self.sentence_embedding_with_audio(ids, Vec::new())
+    }
+
+    /// Runs the graph on a prompt whose `<|audio|>` placeholders take the rows of `audio`, the
+    /// audio encoder's soft tokens.
+    pub(crate) fn sentence_embedding_with_audio(
+        &mut self,
+        ids: Vec<i64>,
+        audio: Vec<f32>,
+    ) -> Result<Vec<f32>, MlError> {
+        let audio_rows = audio.len() / SOFT_TOKEN_WIDTH;
+        check_placeholders(&ids, audio_rows)?;
         let len = ids.len();
         let inference = |error: ort::Error| MlError::Inference(error.to_string());
         let input_ids = Tensor::from_array(([1, len], ids)).map_err(inference)?;
@@ -63,7 +74,8 @@ impl TextModel {
                 "attention_mask" => attention_mask,
                 "image_features" => no_features()?,
                 "video_features" => no_features()?,
-                "audio_features" => no_features()?,
+                "audio_features" => Tensor::from_array(([audio_rows, SOFT_TOKEN_WIDTH], audio))
+                    .map_err(inference)?,
             })
             .map_err(inference)?;
         let embedding = outputs
@@ -80,15 +92,17 @@ impl TextModel {
     }
 }
 
-/// The model places one soft token at each placeholder, so a prompt with a placeholder and no
-/// matching features is refused, with `modeling_embedding_gemma2.js`'s message. A text such as
-/// `<|image|>` typed into a note tokenizes to the placeholder and fails here as it does there.
-fn check_placeholders(ids: &[i64]) -> Result<(), MlError> {
+/// The model places one soft token at each placeholder, so a prompt whose placeholders do not match
+/// its features (`audio_rows` audio soft tokens, no image or video) is refused, with
+/// `modeling_embedding_gemma2.js`'s message. A text such as `<|image|>` typed into a note tokenizes
+/// to the placeholder and fails here as it does there.
+fn check_placeholders(ids: &[i64], audio_rows: usize) -> Result<(), MlError> {
     for (modality, token_id) in PLACEHOLDERS {
         let tokens = ids.iter().filter(|&&id| id == token_id).count();
-        if tokens != 0 {
+        let features = if modality == "audio" { audio_rows } else { 0 };
+        if tokens != features {
             return Err(MlError::Input(format!(
-                "The number of {modality} tokens ({tokens}) and {modality} features (0) do not match."
+                "The number of {modality} tokens ({tokens}) and {modality} features ({features}) do not match."
             )));
         }
     }
@@ -101,16 +115,24 @@ mod tests {
 
     #[test]
     fn a_placeholder_without_features_is_refused_with_the_worker_message() {
-        assert!(check_placeholders(&[2, 9259, 1]).is_ok());
-        let error = check_placeholders(&[2, 258_881, 258_881, 1]).expect_err("audio placeholders");
+        assert!(check_placeholders(&[2, 9259, 1], 0).is_ok());
+        let error =
+            check_placeholders(&[2, 258_881, 258_881, 1], 0).expect_err("audio placeholders");
         assert_eq!(
             error.to_string(),
             "The number of audio tokens (2) and audio features (0) do not match."
         );
-        let error = check_placeholders(&[2, 258_884, 258_880, 1]).expect_err("image first");
+        let error = check_placeholders(&[2, 258_884, 258_880, 1], 0).expect_err("image first");
         assert_eq!(
             error.to_string(),
             "The number of image tokens (1) and image features (0) do not match."
+        );
+        let audio_prompt = [2, 256_000, 258_881, 258_881, 258_883, 1];
+        assert!(check_placeholders(&audio_prompt, 2).is_ok());
+        let error = check_placeholders(&audio_prompt, 3).expect_err("one row too many");
+        assert_eq!(
+            error.to_string(),
+            "The number of audio tokens (2) and audio features (3) do not match."
         );
     }
 }

@@ -4116,7 +4116,9 @@ version = "0.0.0"
 dependencies = [
  "hex",
  "libc",
+ "memry-test-kit",
  "ort",
+ "proptest",
  "serde_json",
  "sha2 0.11.0",
  "static_vcruntime",
