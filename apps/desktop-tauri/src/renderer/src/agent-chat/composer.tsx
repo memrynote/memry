@@ -5,7 +5,6 @@ import type {
   AgentBackendModelList,
   AgentCliBackendId,
   AgentBackendOptions,
-  AgentLocalProviderSettings,
   AttachmentInput,
   BackendStatusesResponse,
   CodexReasoningEffort,
@@ -19,6 +18,7 @@ import { Button } from '@/components/ui/button'
 import { useActiveTab } from '@/contexts/tabs'
 import { useSettingsModal } from '@/contexts/settings-modal-context'
 import { ArrowUp, AtSign, Square } from '@/lib/icons'
+import { commands, type AgentLocalProviderSettings } from '../../../generated/bindings'
 import { ConnectedToolsTray } from './connected-tools-tray'
 import {
   ComposerSettingsMenu,
@@ -404,13 +404,13 @@ export function Composer({
   const loadLocalProviderData = async (): Promise<void> => {
     if (localSettings !== null && localModels !== null) return
     try {
-      const settings = await window.api.agent.getLocalProviderSettings()
+      const settings = await commands.agentGetLocalProviderSettings()
       setLocalSettings(settings)
     } catch {
       setLocalSettings(null)
     }
     try {
-      const list = await window.api.agent.listLocalModels()
+      const list = await commands.agentListLocalModels()
       setLocalModels(list.models)
     } catch {
       setLocalModels([])

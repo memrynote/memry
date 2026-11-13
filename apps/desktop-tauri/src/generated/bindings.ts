@@ -5,6 +5,25 @@ import * as __TAURI_EVENT from "@tauri-apps/api/event";
 
 /** Commands */
 export const commands = {
+	/**  `agent:getLocalProviderSettings`. A locked keychain still opens the screen. */
+	agentGetLocalProviderSettings: () => __TAURI_INVOKE<AgentLocalProviderSettings>("agent_get_local_provider_settings"),
+	/**
+	 *  `agent:listLocalModels`. An unreachable server or a keychain that cannot answer is an empty
+	 *  list, as in Electron.
+	 */
+	agentListLocalModels: () => __TAURI_INVOKE<AgentLocalModelList>("agent_list_local_models"),
+	/**
+	 *  `agent:probeLocalProvider`: a live capability probe (streaming and tool calls), never
+	 *  answered from a cache.
+	 */
+	agentProbeLocalProvider: () => __TAURI_INVOKE<AgentLocalProviderProbeResult>("agent_probe_local_provider"),
+	/**
+	 *  `agent:setLocalProviderSettings`. A non-loopback URL needs `allowNonLoopback`; the key goes to
+	 *  the keychain before the config is written.
+	 */
+	agentSetLocalProviderSettings: (input: AgentLocalProviderSettingsUpdate) => __TAURI_INVOKE<AgentLocalProviderSettings>("agent_set_local_provider_settings", { input }),
+	/**  `agent:testLocalProvider`: the server answers `GET /models` and lists the model. */
+	agentTestLocalProvider: () => __TAURI_INVOKE<AgentLocalProviderProbeResult>("agent_test_local_provider"),
 	/**
 	 *  The settings with the key masked (`ai-inline:get-settings`). The key itself is never read,
 	 *  so a locked keychain still opens the screen.
@@ -661,6 +680,56 @@ export const events = {
 };
 
 /* Types */
+/**  `AgentLocalModelList`. */
+export type AgentLocalModelList = {
+	models: string[],
+};
+
+/**
+ *  `AgentLocalProviderPreset`. A preset a newer build adds reads as `custom`, which keeps its
+ *  stored URL.
+ */
+export type AgentLocalProviderPreset = "ollama" | "lm_studio" | "llama_cpp" | "custom";
+
+/**  `AgentLocalProviderProbeResult`. */
+export type AgentLocalProviderProbeResult = {
+	connected: boolean,
+	modelAvailable: boolean,
+	streamingSupported: boolean,
+	toolCallingSupported: boolean,
+	toolContinuationSupported: boolean,
+	toolsEnabled: boolean,
+	detail: string | null,
+};
+
+/**  `AgentLocalProviderSettings`, the renderer's copy: whether a key is stored, never the key. */
+export type AgentLocalProviderSettings = {
+	preset: AgentLocalProviderPreset,
+	baseUrl: string,
+	model: string,
+	apiKeyConfigured: boolean,
+	allowNonLoopback: boolean,
+	thinking: AgentLocalThinking,
+};
+
+/**
+ *  `AgentLocalProviderSettingsUpdate`. `api_key`: absent keeps the stored key, `null` or the
+ *  empty string deletes it, any other value replaces it. `clear_api_key` deletes it too.
+ *  `thinking` absent keeps the stored value.
+ */
+export type AgentLocalProviderSettingsUpdate = {
+	preset: AgentLocalProviderPreset,
+	baseUrl: string,
+	model: string,
+	allowNonLoopback: boolean,
+	apiKey?: string | null,
+	clearApiKey?: boolean | null,
+	thinking?: AgentLocalThinking | null,
+};
+
+/**  `AgentLocalThinking`: `off` asks a thinking model to answer without thinking. */
+export type AgentLocalThinking = "default" | "off";
+
 /**
  *  The inline AI settings were written (replaces Electron's `ai-inline:server-ready` as the
  *  settings refresh). The key is masked.

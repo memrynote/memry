@@ -43,10 +43,6 @@ import type {
   AgentBackendId,
   AgentBackendModelList,
   AgentBackendModelListRequest,
-  AgentLocalModelList,
-  AgentLocalProviderProbeResult,
-  AgentLocalProviderSettings,
-  AgentLocalProviderSettingsUpdate,
   AgentPreferences,
   AgentPreferencesUpdate,
   AgentToolGrants,
@@ -1868,15 +1864,8 @@ interface AgentClientAPI {
   clearMemory: () => Promise<{ ok: boolean }>
   getBackendStatuses: () => Promise<BackendStatusesResponse>
   listBackendModels: (input: AgentBackendModelListRequest) => Promise<AgentBackendModelList>
-  getLocalProviderSettings: () => Promise<AgentLocalProviderSettings>
-  setLocalProviderSettings: (
-    input: AgentLocalProviderSettingsUpdate
-  ) => Promise<AgentLocalProviderSettings>
   getPreferences: () => Promise<AgentPreferences>
   setPreferences: (input: AgentPreferencesUpdate) => Promise<AgentPreferences>
-  listLocalModels: () => Promise<AgentLocalModelList>
-  testLocalProvider: () => Promise<AgentLocalProviderProbeResult>
-  probeLocalProvider: () => Promise<AgentLocalProviderProbeResult>
   acceptDisclosure: () => Promise<{ accepted: boolean }>
   getDisclosureState: () => Promise<{ accepted: boolean }>
   getWindowId: () => Promise<{ windowId: string | null }>
