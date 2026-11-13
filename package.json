@@ -26,6 +26,7 @@
     "docs:build": "pnpm --filter @memry/docs build",
     "docs:preview": "pnpm --filter @memry/docs preview",
     "release": "node scripts/release.mjs",
+    "embed:golden": "node crates/memry-ml/tests/golden/generate.mjs",
     "cert:check": "cargo run --manifest-path crates/Cargo.toml -q -p memry-desktop --example cert_check --",
     "sandbox": "pnpm --filter @memry/cli sandbox",
     "seed": "pnpm --filter @memry/desktop seed:vault",
@@ -92,6 +93,7 @@
     "doctor": "npx react-doctor@latest"
   },
   "devDependencies": {
+    "@huggingface/transformers": "4.3.1",
     "@oxlint/plugins": "1.89.0",
     "app-builder-lib": "26.15.6",
     "husky": "^9.1.7",
