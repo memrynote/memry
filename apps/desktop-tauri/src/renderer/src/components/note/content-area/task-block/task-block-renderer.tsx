@@ -780,6 +780,7 @@ export const TaskBlockRenderer: FC<TaskBlockRendererProps> = ({ block, editor: e
       <input
         ref={titleInputRef}
         type="text"
+        dir="auto"
         value={editTitle}
         onChange={(e) => handleTitleChange(e.target.value)}
         onBlur={handleTitleBlur}
