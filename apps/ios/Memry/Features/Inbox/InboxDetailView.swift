@@ -38,6 +38,7 @@ struct InboxDetailView: View {
                         header(item)
                         InboxDetailContent(item: item, store: store, editable: !isArchived && !isFiled)
                     }
+                    .measuredColumn(Tokens.Size.reading)
                     .padding(.horizontal, InboxLayout.edge)
                     .padding(.bottom, Tokens.Space.screenBlock * 3)
                 }
@@ -125,6 +126,7 @@ struct InboxDetailView: View {
             }
             .padding(Tokens.Space.tight)
             .chromeGlass(in: .capsule)
+            .measuredColumn(Tokens.Size.reading)
             .padding(.horizontal, InboxLayout.edge)
             .dynamicTypeSize(...InboxLayout.barTypeCap)
         } else {
@@ -145,6 +147,7 @@ struct InboxDetailView: View {
             }
             .padding(Tokens.Space.tight)
             .chromeGlass(in: .capsule)
+            .measuredColumn(Tokens.Size.reading)
             .padding(.horizontal, InboxLayout.edge)
             .dynamicTypeSize(...InboxLayout.barTypeCap)
         }

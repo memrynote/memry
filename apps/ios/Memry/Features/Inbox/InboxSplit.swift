@@ -51,7 +51,8 @@ struct InboxSplitView: View {
     }
 }
 
-/// Select mode's detail column: the count and the bar's four actions.
+/// Select mode's detail column: the count, and the four actions where the
+/// item detail keeps its bar.
 private struct InboxBulkDetail: View {
     let store: InboxStore
     let picked: Set<String>
@@ -63,11 +64,13 @@ private struct InboxBulkDetail: View {
             Label(InboxCopy.selectedCount(picked.count), systemImage: "checkmark.circle")
         } description: {
             Text(picked.isEmpty ? InboxCopy.bulkPrompt : InboxCopy.bulkHint)
-        } actions: {
+        }
+        .safeAreaInset(edge: .bottom) {
             InboxBulkActions(store: store, ids: Array(picked), sheets: $sheets, finish: finish)
                 .padding(Tokens.Space.tight)
                 .chromeGlass(in: .capsule)
-                .frame(maxWidth: Tokens.Size.form)
+                .measuredColumn(Tokens.Size.reading)
+                .padding(.horizontal, InboxLayout.edge)
                 .dynamicTypeSize(...InboxLayout.barTypeCap)
         }
         .background(Tokens.Canvas.background.color)
