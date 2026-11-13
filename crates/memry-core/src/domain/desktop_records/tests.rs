@@ -1,0 +1,168 @@
+//! The three desktop record types together (Step 16, #3533): one pulled page
+//! of each lands whole, and a key this build does not model survives a local
+//! edit (§13.2 rule 3).
+
+use rusqlite::{Connection, params};
+use serde_json::{Value, json};
+
+use super::testing::{DEVICE, NOW, iso, open, payload, pull, remote};
+use crate::domain::canvas_folder;
+use crate::domain::home_page::{self, HomePagePatch};
+use crate::domain::sticky_draft::{self, StickyKind};
+use crate::storage::repositories::sync_items;
+
+const TYPES: [&str; 3] = ["canvas_folder", "home_page", "sticky_draft"];
+
+/// A payload of `item_type` a peer could send for id `id`, as Electron pushes
+/// it.
+fn body(item_type: &str, id: &str) -> Value {
+    match item_type {
+        "canvas_folder" => json!({
+            "id": id, "vaultId": "vault-1", "path": "Work", "icon": "star",
+            "clock": {"peer": 1}, "deletedAt": null,
+        }),
+        "home_page" => json!({
+            "id": id, "name": "Home", "icon": null, "position": 0, "widgets": "[]",
+            "cover": {"ref": "unsplash:a"}, "clock": {"peer": 1},
+            "createdAt": iso(NOW), "updatedAt": iso(NOW), "syncedAt": iso(NOW),
+        }),
+        _ => json!({
+            "id": id, "content": "hi", "kind": "note", "clock": {"peer": 1},
+            "createdAt": iso(NOW), "modifiedAt": iso(NOW), "syncedAt": iso(NOW),
+        }),
+    }
+}
+
+fn id_of(item_type: &str) -> String {
+    match item_type {
+        "canvas_folder" => canvas_folder::sync_id("Work"),
+        _ => format!("{item_type}-1"),
+    }
+}
+
+fn count(conn: &Connection, sql: &str) -> i64 {
+    conn.query_row(sql, params![], |row| row.get(0))
+        .expect("count")
+}
+
+/// A local edit of the record, through the type's own write.
+fn edit(conn: &Connection, item_type: &str, id: &str) {
+    match item_type {
+        "canvas_folder" => canvas_folder::upsert(
+            conn,
+            "vault-1",
+            "Work",
+            Some(Some("moon")),
+            DEVICE,
+            NOW + 20,
+        )
+        .map(drop),
+        "home_page" => home_page::update(
+            conn,
+            id,
+            &HomePagePatch {
+                name: Some("Edited"),
+                ..HomePagePatch::default()
+            },
+            DEVICE,
+            NOW + 20,
+        )
+        .map(drop),
+        _ => sticky_draft::upsert(conn, Some(id), "edited", StickyKind::Note, DEVICE, NOW + 20)
+            .map(drop),
+    }
+    .expect("a local edit");
+}
+
+#[test]
+fn one_page_of_each_type_lands_whole() {
+    let (db, _dir) = open("desktop-records-pull");
+    db.call_blocking(|conn| {
+        let items = TYPES
+            .iter()
+            .map(|item_type| {
+                remote(
+                    item_type,
+                    &id_of(item_type),
+                    &body(item_type, &id_of(item_type)),
+                )
+            })
+            .collect();
+        let totals = pull(conn, items)?;
+        assert_eq!((totals.applied, totals.corrupt, totals.skipped), (3, 0, 0));
+        assert_eq!(
+            count(
+                conn,
+                "SELECT COUNT(*) FROM sync_items
+                 WHERE item_type IN ('canvas_folder', 'home_page', 'sticky_draft')"
+            ),
+            3
+        );
+        for table in ["canvas_folders", "home_pages", "sticky_drafts"] {
+            assert_eq!(
+                count(conn, &format!("SELECT COUNT(*) FROM {table}")),
+                1,
+                "{table}"
+            );
+        }
+        for item_type in TYPES {
+            let id = id_of(item_type);
+            assert_eq!(
+                sync_items::push_payload(conn, item_type, &id)?,
+                Some(body(item_type, &id).to_string()),
+                "{item_type} verbatim"
+            );
+        }
+        Ok(())
+    })
+    .expect("pull");
+}
+
+mod properties {
+    use super::*;
+    use memry_test_kit::proptest_config;
+    use proptest::prelude::*;
+
+    /// Each case migrates a fresh `data.db` (about 50 ms), so the default 2000
+    /// would take minutes.
+    const CASES: u32 = 128;
+
+    fn unknown_value() -> impl Strategy<Value = Value> {
+        let leaf = prop_oneof![
+            Just(Value::Null),
+            any::<bool>().prop_map(Value::from),
+            any::<i32>().prop_map(Value::from),
+            "[a-z ]{0,8}".prop_map(Value::from),
+        ];
+        leaf.prop_recursive(3, 12, 3, |inner| {
+            prop_oneof![
+                prop::collection::vec(inner.clone(), 0..3).prop_map(Value::from),
+                prop::collection::btree_map("[a-z]{1,3}", inner, 0..3)
+                    .prop_map(|map| Value::Object(map.into_iter().collect())),
+            ]
+        })
+    }
+
+    proptest! {
+        #![proptest_config(proptest_config(CASES))]
+
+        #[test]
+        fn a_key_this_build_does_not_model_survives_a_local_edit(
+            item_type in prop::sample::select(TYPES.to_vec()),
+            key in "x[A-Za-z]{1,8}",
+            value in unknown_value(),
+        ) {
+            let (db, _dir) = open("desktop-records-preserve");
+            let id = id_of(item_type);
+            let mut sent = body(item_type, &id);
+            sent.as_object_mut().expect("object").insert(key.clone(), value.clone());
+            let pushed = db.call_blocking(move |conn| {
+                let totals = pull(conn, vec![remote(item_type, &id, &sent)])?;
+                assert_eq!(totals.applied, 1);
+                edit(conn, item_type, &id);
+                Ok(payload(conn, item_type, &id))
+            }).expect("apply then edit");
+            prop_assert_eq!(pushed.get(&key), Some(&value), "{} lost {}", item_type, key);
+        }
+    }
+}

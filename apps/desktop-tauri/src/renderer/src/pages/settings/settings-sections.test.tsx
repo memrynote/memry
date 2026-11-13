@@ -8,6 +8,18 @@ import { CommandLineSettings } from './command-line-section'
 import { EditorSettings } from './editor-section'
 import { JournalSettings } from './journal-section'
 import { toast } from 'sonner'
+import type * as Bindings from '../../../../generated/bindings'
+
+const localProvider = vi.hoisted(() => ({
+  agentGetLocalProviderSettings: vi.fn(),
+  agentSetLocalProviderSettings: vi.fn(),
+  agentListLocalModels: vi.fn(),
+  agentTestLocalProvider: vi.fn()
+}))
+vi.mock('../../../../generated/bindings', async (importOriginal) => {
+  const actual = await importOriginal<typeof Bindings>()
+  return { ...actual, commands: { ...actual.commands, ...localProvider } }
+})
 
 const mocks = vi.hoisted(() => ({
   pickerOpenChange: null as null | ((open: boolean) => void),
@@ -377,7 +389,37 @@ vi.mock('@/components/sync/device-list', () => ({
   )
 }))
 
+function installLocalProviderCommands() {
+  localProvider.agentGetLocalProviderSettings.mockResolvedValue({
+    preset: 'ollama',
+    baseUrl: 'http://localhost:11434/v1',
+    model: 'llama3',
+    apiKeyConfigured: false,
+    allowNonLoopback: false,
+    thinking: 'default'
+  })
+  localProvider.agentSetLocalProviderSettings.mockImplementation(async (input) => ({
+    preset: input.preset,
+    baseUrl: input.baseUrl,
+    model: input.model,
+    apiKeyConfigured: Boolean(input.apiKey),
+    allowNonLoopback: input.allowNonLoopback,
+    thinking: input.thinking ?? 'default'
+  }))
+  localProvider.agentListLocalModels.mockResolvedValue({ models: ['llama3', 'qwen2.5'] })
+  localProvider.agentTestLocalProvider.mockResolvedValue({
+    connected: true,
+    modelAvailable: true,
+    streamingSupported: true,
+    toolCallingSupported: false,
+    toolContinuationSupported: false,
+    toolsEnabled: false,
+    detail: null
+  })
+}
+
 function installWindowApi() {
+  installLocalProviderCommands()
   const agentPreferences = {
     accessMode: 'vault_only',
     toolApprovalMode: 'always_accept'
@@ -385,14 +427,6 @@ function installWindowApi() {
   window.api = {
     ...window.api,
     agent: {
-      getLocalProviderSettings: vi.fn().mockResolvedValue({
-        preset: 'ollama',
-        baseUrl: 'http://localhost:11434/v1',
-        model: 'llama3',
-        apiKeyConfigured: false,
-        allowNonLoopback: false,
-        thinking: 'default'
-      }),
       getPreferences: vi.fn().mockResolvedValue(agentPreferences),
       getBackendStatuses: vi.fn().mockResolvedValue({
         claude_cli: { backend: 'claude_cli', available: true, version: '2.3.0' },
@@ -409,34 +443,7 @@ function installWindowApi() {
       // #2317 made the section read standing tool grants on mount; without it
       // here the whole section throws before it renders.
       getToolGrants: vi.fn().mockResolvedValue({ tools: [] }),
-      setPreferences: vi.fn(async (input) => ({ ...agentPreferences, ...input })),
-      setLocalProviderSettings: vi.fn(async (input) => ({
-        preset: input.preset,
-        baseUrl: input.baseUrl,
-        model: input.model,
-        apiKeyConfigured: Boolean(input.apiKey),
-        allowNonLoopback: input.allowNonLoopback,
-        thinking: input.thinking ?? 'default'
-      })),
-      listLocalModels: vi.fn().mockResolvedValue({ models: ['llama3', 'qwen2.5'] }),
-      testLocalProvider: vi.fn().mockResolvedValue({
-        connected: true,
-        modelAvailable: true,
-        streamingSupported: true,
-        toolCallingSupported: false,
-        toolContinuationSupported: false,
-        toolsEnabled: false,
-        detail: null
-      }),
-      probeLocalProvider: vi.fn().mockResolvedValue({
-        connected: true,
-        modelAvailable: true,
-        streamingSupported: true,
-        toolCallingSupported: true,
-        toolContinuationSupported: true,
-        toolsEnabled: true,
-        detail: null
-      })
+      setPreferences: vi.fn(async (input) => ({ ...agentPreferences, ...input }))
     } as unknown as typeof window.api.agent,
     syncOps: {
       getStorageBreakdown: vi.fn().mockResolvedValue({
@@ -1103,7 +1110,7 @@ describe('settings section coverage', () => {
     render(<AgentProvidersSection />)
 
     expect(await screen.findByText('agentProviders.header.title')).toBeInTheDocument()
-    expect(window.api.agent.getLocalProviderSettings).toHaveBeenCalled()
+    expect(localProvider.agentGetLocalProviderSettings).toHaveBeenCalled()
     expect(window.api.agent.getPreferences).toHaveBeenCalled()
 
     expect(await screen.findByText('agentProviders.v2.permissions.group')).toBeInTheDocument()
@@ -1159,7 +1166,7 @@ describe('settings section coverage', () => {
     // Edits auto-save (debounced) — no Save button — then the connection is re-checked.
     await waitFor(
       () =>
-        expect(window.api.agent.setLocalProviderSettings).toHaveBeenCalledWith({
+        expect(localProvider.agentSetLocalProviderSettings).toHaveBeenCalledWith({
           preset: 'lm_studio',
           baseUrl: 'https://models.example.com/v1',
           model: 'qwen2.5',
@@ -1169,7 +1176,7 @@ describe('settings section coverage', () => {
         }),
       { timeout: 2000 }
     )
-    expect(window.api.agent.testLocalProvider).toHaveBeenCalled()
+    expect(localProvider.agentTestLocalProvider).toHaveBeenCalled()
     await screen.findAllByText('agentProviders.status.connected', undefined, { timeout: 2000 })
 
     expect(
@@ -1177,7 +1184,7 @@ describe('settings section coverage', () => {
     ).toHaveAttribute('aria-checked', 'true')
 
     fireEvent.click(screen.getByRole('button', { name: 'agentProviders.actions.test' }))
-    await waitFor(() => expect(window.api.agent.testLocalProvider).toHaveBeenCalledTimes(2))
+    await waitFor(() => expect(localProvider.agentTestLocalProvider).toHaveBeenCalledTimes(2))
   })
 
   // #2523: the lazy agent runtime rejects with runtimeStarting while it boots;

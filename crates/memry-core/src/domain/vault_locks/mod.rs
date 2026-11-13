@@ -245,7 +245,9 @@ fn lock_payload(
     })))
 }
 
-/// A lock row's `created_at`, and its `clock` when it has one that parses.
+/// A lock row's `created_at`, and its `clock` when it has one. A stored clock
+/// that is not a JSON object is an error: dropping it would tick the new
+/// record from nothing, and the server refuses a lock it already holds.
 fn row_lineage(conn: &Connection, id: &str) -> Result<Option<(i64, Option<Value>)>, StorageError> {
     let row: Option<(i64, Option<String>)> = conn
         .query_row(
@@ -255,10 +257,21 @@ fn row_lineage(conn: &Connection, id: &str) -> Result<Option<(i64, Option<Value>
         )
         .optional()
         .map_err(failed)?;
-    Ok(row.map(|(created_at, clock)| {
-        let clock = clock.and_then(|text| serde_json::from_str::<Value>(&text).ok());
-        (created_at, clock.filter(Value::is_object))
-    }))
+    let Some((created_at, clock)) = row else {
+        return Ok(None);
+    };
+    let clock = match clock {
+        None => None,
+        Some(text) => match serde_json::from_str::<Value>(&text) {
+            Ok(clock) if clock.is_object() => Some(clock),
+            _ => {
+                return Err(StorageError::Failed {
+                    what: format!("vault lock {id}: the stored clock is not a vector clock"),
+                });
+            }
+        },
+    };
+    Ok(Some((created_at, clock)))
 }
 
 /// Every locked note and folder, in the order they were first locked.

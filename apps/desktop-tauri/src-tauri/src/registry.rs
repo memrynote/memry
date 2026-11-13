@@ -20,6 +20,12 @@ pub fn builder() -> Builder<Wry> {
         // One type per struct: the renderer reads `StartupState` and never writes it.
         .disable_serde_phases()
         .commands(collect_commands![
+            // agent
+            crate::commands::agent::agent_get_local_provider_settings::<Wry>,
+            crate::commands::agent::agent_list_local_models::<Wry>,
+            crate::commands::agent::agent_probe_local_provider::<Wry>,
+            crate::commands::agent::agent_set_local_provider_settings::<Wry>,
+            crate::commands::agent::agent_test_local_provider::<Wry>,
             // ai
             crate::commands::ai::ai_inline_get_settings::<Wry>,
             crate::commands::ai::ai_inline_list_models,
@@ -147,6 +153,10 @@ pub fn builder() -> Builder<Wry> {
             crate::commands::shell_integrations::notification_permission,
             crate::commands::shell_integrations::notification_show,
             crate::commands::shell_integrations::notification_supported,
+            // portals
+            crate::commands::portals::portals_get_usage::<Wry>,
+            crate::commands::portals::portals_search::<Wry>,
+            crate::commands::portals::portals_stamp_anchor::<Wry>,
             // properties
             crate::commands::properties::properties_get::<Wry>,
             crate::commands::properties::properties_merge::<Wry>,
@@ -313,6 +323,8 @@ pub fn builder() -> Builder<Wry> {
             crate::events::NoteTagsChangedEvent,
             crate::events::NoteUpdatedEvent,
             crate::events::PropertyDefinitionChangedEvent,
+            // portals
+            crate::events::PortalsUsageChangedEvent,
             // tags
             crate::events::TagCategoriesChangedEvent,
             crate::events::TagColorUpdatedEvent,

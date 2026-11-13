@@ -5,10 +5,15 @@ import { createRef } from 'react'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 
 import { toast } from 'sonner'
+import type * as Bindings from '../../../../generated/bindings'
 
 const mockUseAgentOptional = vi.hoisted(() => vi.fn())
 const mockUseActiveTab = vi.hoisted(() => vi.fn())
 const mockPrepareVoiceMemoAudio = vi.hoisted(() => vi.fn())
+const localProvider = vi.hoisted(() => ({
+  agentGetLocalProviderSettings: vi.fn(),
+  agentListLocalModels: vi.fn()
+}))
 
 vi.mock('../agent-context', () => ({
   useAgentOptional: mockUseAgentOptional
@@ -20,6 +25,11 @@ vi.mock('@/contexts/tabs', () => ({
   useTabActionsOptional: () => null,
   useActiveTab: mockUseActiveTab
 }))
+
+vi.mock('../../../../generated/bindings', async (importOriginal) => {
+  const actual = await importOriginal<typeof Bindings>()
+  return { ...actual, commands: { ...actual.commands, ...localProvider } }
+})
 
 vi.mock('sonner', () => ({
   toast: { error: vi.fn(), success: vi.fn() }
@@ -216,7 +226,7 @@ describe('Composer', () => {
       accessMode: 'vault_only',
       toolApprovalMode: 'always_accept'
     })
-    vi.mocked(window.api.agent.getLocalProviderSettings).mockResolvedValue({
+    localProvider.agentGetLocalProviderSettings.mockResolvedValue({
       preset: 'ollama',
       baseUrl: 'http://localhost:11434/v1',
       model: '',
@@ -224,7 +234,7 @@ describe('Composer', () => {
       allowNonLoopback: false,
       thinking: 'default'
     })
-    vi.mocked(window.api.agent.listLocalModels).mockResolvedValue({ models: [] })
+    localProvider.agentListLocalModels.mockResolvedValue({ models: [] })
   })
 
   it('submits on Enter', async () => {
@@ -754,7 +764,7 @@ describe('Composer', () => {
   })
 
   it('lists configured local models and passes the pick with the prompt', async () => {
-    vi.mocked(window.api.agent.listLocalModels).mockResolvedValue({
+    localProvider.agentListLocalModels.mockResolvedValue({
       models: ['llama3', 'qwen2.5']
     })
     renderComposer('conversation-1')
@@ -781,7 +791,7 @@ describe('Composer', () => {
   })
 
   it('offers Default, High and Max depth for an OpenAI-compatible endpoint and sends the pick', async () => {
-    vi.mocked(window.api.agent.getLocalProviderSettings).mockResolvedValue({
+    localProvider.agentGetLocalProviderSettings.mockResolvedValue({
       preset: 'custom',
       baseUrl: 'https://api.deepseek.com/v1',
       model: 'deepseek-chat',
@@ -789,7 +799,7 @@ describe('Composer', () => {
       allowNonLoopback: true,
       thinking: 'default'
     })
-    vi.mocked(window.api.agent.listLocalModels).mockResolvedValue({ models: ['deepseek-chat'] })
+    localProvider.agentListLocalModels.mockResolvedValue({ models: ['deepseek-chat'] })
     renderComposer('conversation-1')
 
     await openModelSubmenu()
@@ -857,7 +867,7 @@ describe('Composer', () => {
       accessMode: 'computer_access',
       toolApprovalMode: 'always_accept'
     })
-    vi.mocked(window.api.agent.listLocalModels).mockResolvedValue({ models: ['deepseek-chat'] })
+    localProvider.agentListLocalModels.mockResolvedValue({ models: ['deepseek-chat'] })
     renderComposer('conversation-1')
 
     await openSettingsMenu()

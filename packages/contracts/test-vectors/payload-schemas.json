@@ -30,10 +30,13 @@
       "canvas"
     ],
     "desktopOnlyTypes": [
-      "vault_lock"
+      "vault_lock",
+      "canvas_folder",
+      "home_page",
+      "sticky_draft"
     ],
     "obligation": "a payload schema is a READER over a preserved string, never the storage shape (FR-033)",
-    "caseCount": 88
+    "caseCount": 100
   },
   "groups": [
     {
@@ -2830,6 +2833,261 @@
           "name": "vault_lock: verbatim round trip of the unknown-field instance",
           "storedPayloadJson": "{\"targetKind\":\"folder\",\"target\":\"Projects\",\"locked\":true,\"clock\":{\"device-a\":1},\"createdAt\":\"2026-04-16T00:00:00.000Z\",\"updatedAt\":\"2026-04-16T00:00:00.000Z\",\"syncedAt\":\"2026-04-16T00:00:01.000Z\"}",
           "expectedPushedPayloadJson": "{\"targetKind\":\"folder\",\"target\":\"Projects\",\"locked\":true,\"clock\":{\"device-a\":1},\"createdAt\":\"2026-04-16T00:00:00.000Z\",\"updatedAt\":\"2026-04-16T00:00:00.000Z\",\"syncedAt\":\"2026-04-16T00:00:01.000Z\"}",
+          "pins": "the exact bytes that must come back out. An implementation that deserialises into a struct and re-serialises fails here"
+        }
+      ]
+    },
+    {
+      "type": "canvas_folder",
+      "cases": [
+        {
+          "name": "canvas_folder: valid, every modelled field populated",
+          "payload": {
+            "id": "cvf_work/q3",
+            "vaultId": "vault-1",
+            "path": "Work/Q3",
+            "icon": "folder",
+            "clock": {
+              "device-a": 1
+            },
+            "deletedAt": null
+          },
+          "expectedParsed": {
+            "id": "cvf_work/q3",
+            "vaultId": "vault-1",
+            "path": "Work/Q3",
+            "icon": "folder",
+            "clock": {
+              "device-a": 1
+            },
+            "deletedAt": null
+          },
+          "pins": "the projector's field list against the payload's"
+        },
+        {
+          "name": "canvas_folder: boundary — empty strings, empty arrays, optionals absent",
+          "payload": {
+            "path": "",
+            "icon": null,
+            "deletedAt": null,
+            "clock": {}
+          },
+          "expectedParsed": {
+            "path": "",
+            "icon": null,
+            "clock": {},
+            "deletedAt": null
+          },
+          "pins": "absent and empty stay distinct across the round trip"
+        },
+        {
+          "name": "canvas_folder: an unknown field a newer client wrote",
+          "payload": {
+            "id": "cvf_work/q3",
+            "vaultId": "vault-1",
+            "path": "Work/Q3",
+            "icon": "folder",
+            "clock": {
+              "device-a": 1
+            },
+            "deletedAt": null,
+            "color": "#aabbcc"
+          },
+          "expectedParsed": {
+            "id": "cvf_work/q3",
+            "vaultId": "vault-1",
+            "path": "Work/Q3",
+            "icon": "folder",
+            "clock": {
+              "device-a": 1
+            },
+            "deletedAt": null
+          },
+          "strippedByParse": [
+            "color"
+          ],
+          "pins": "THE SC-014 CASE: Zod strips the key from the PARSED object, and the stored payload string must not change"
+        },
+        {
+          "name": "canvas_folder: verbatim round trip of the unknown-field instance",
+          "storedPayloadJson": "{\"id\":\"cvf_work/q3\",\"vaultId\":\"vault-1\",\"path\":\"Work/Q3\",\"icon\":\"folder\",\"clock\":{\"device-a\":1},\"deletedAt\":null,\"color\":\"#aabbcc\"}",
+          "expectedPushedPayloadJson": "{\"id\":\"cvf_work/q3\",\"vaultId\":\"vault-1\",\"path\":\"Work/Q3\",\"icon\":\"folder\",\"clock\":{\"device-a\":1},\"deletedAt\":null,\"color\":\"#aabbcc\"}",
+          "pins": "the exact bytes that must come back out. An implementation that deserialises into a struct and re-serialises fails here"
+        }
+      ]
+    },
+    {
+      "type": "home_page",
+      "cases": [
+        {
+          "name": "home_page: valid, every modelled field populated",
+          "payload": {
+            "name": "Home",
+            "icon": "house",
+            "position": 1,
+            "widgets": "[{\"id\":\"w1\",\"type\":\"inbox\"}]",
+            "cover": {
+              "ref": "unsplash:abc",
+              "focus": 40
+            },
+            "clock": {
+              "device-a": 1
+            },
+            "createdAt": "2026-04-16T00:00:00.000Z",
+            "updatedAt": "2026-04-16T00:00:00.000Z"
+          },
+          "expectedParsed": {
+            "name": "Home",
+            "icon": "house",
+            "position": 1,
+            "widgets": "[{\"id\":\"w1\",\"type\":\"inbox\"}]",
+            "cover": {
+              "ref": "unsplash:abc",
+              "focus": 40
+            },
+            "clock": {
+              "device-a": 1
+            },
+            "createdAt": "2026-04-16T00:00:00.000Z",
+            "updatedAt": "2026-04-16T00:00:00.000Z"
+          },
+          "pins": "the projector's field list against the payload's"
+        },
+        {
+          "name": "home_page: boundary — empty strings, empty arrays, optionals absent",
+          "payload": {
+            "name": "",
+            "icon": null,
+            "position": 0,
+            "widgets": "[]",
+            "cover": null,
+            "clock": {}
+          },
+          "expectedParsed": {
+            "name": "",
+            "icon": null,
+            "position": 0,
+            "widgets": "[]",
+            "cover": null,
+            "clock": {}
+          },
+          "pins": "absent and empty stay distinct across the round trip"
+        },
+        {
+          "name": "home_page: an unknown field a newer client wrote",
+          "payload": {
+            "name": "Home",
+            "icon": "house",
+            "position": 1,
+            "widgets": "[{\"id\":\"w1\",\"type\":\"inbox\"}]",
+            "cover": {
+              "ref": "unsplash:abc",
+              "focus": 40
+            },
+            "clock": {
+              "device-a": 1
+            },
+            "createdAt": "2026-04-16T00:00:00.000Z",
+            "updatedAt": "2026-04-16T00:00:00.000Z",
+            "syncedAt": "2026-04-16T00:00:01.000Z"
+          },
+          "expectedParsed": {
+            "name": "Home",
+            "icon": "house",
+            "position": 1,
+            "widgets": "[{\"id\":\"w1\",\"type\":\"inbox\"}]",
+            "cover": {
+              "ref": "unsplash:abc",
+              "focus": 40
+            },
+            "clock": {
+              "device-a": 1
+            },
+            "createdAt": "2026-04-16T00:00:00.000Z",
+            "updatedAt": "2026-04-16T00:00:00.000Z"
+          },
+          "strippedByParse": [
+            "syncedAt"
+          ],
+          "pins": "THE SC-014 CASE: Zod strips the key from the PARSED object, and the stored payload string must not change"
+        },
+        {
+          "name": "home_page: verbatim round trip of the unknown-field instance",
+          "storedPayloadJson": "{\"name\":\"Home\",\"icon\":\"house\",\"position\":1,\"widgets\":\"[{\\\"id\\\":\\\"w1\\\",\\\"type\\\":\\\"inbox\\\"}]\",\"cover\":{\"ref\":\"unsplash:abc\",\"focus\":40},\"clock\":{\"device-a\":1},\"createdAt\":\"2026-04-16T00:00:00.000Z\",\"updatedAt\":\"2026-04-16T00:00:00.000Z\",\"syncedAt\":\"2026-04-16T00:00:01.000Z\"}",
+          "expectedPushedPayloadJson": "{\"name\":\"Home\",\"icon\":\"house\",\"position\":1,\"widgets\":\"[{\\\"id\\\":\\\"w1\\\",\\\"type\\\":\\\"inbox\\\"}]\",\"cover\":{\"ref\":\"unsplash:abc\",\"focus\":40},\"clock\":{\"device-a\":1},\"createdAt\":\"2026-04-16T00:00:00.000Z\",\"updatedAt\":\"2026-04-16T00:00:00.000Z\",\"syncedAt\":\"2026-04-16T00:00:01.000Z\"}",
+          "pins": "the exact bytes that must come back out. An implementation that deserialises into a struct and re-serialises fails here"
+        }
+      ]
+    },
+    {
+      "type": "sticky_draft",
+      "cases": [
+        {
+          "name": "sticky_draft: valid, every modelled field populated",
+          "payload": {
+            "content": "buy milk",
+            "kind": "task",
+            "clock": {
+              "device-a": 1
+            },
+            "createdAt": "2026-04-16T00:00:00.000Z",
+            "modifiedAt": "2026-04-16T00:00:00.000Z"
+          },
+          "expectedParsed": {
+            "content": "buy milk",
+            "kind": "task",
+            "clock": {
+              "device-a": 1
+            },
+            "createdAt": "2026-04-16T00:00:00.000Z",
+            "modifiedAt": "2026-04-16T00:00:00.000Z"
+          },
+          "pins": "the projector's field list against the payload's"
+        },
+        {
+          "name": "sticky_draft: boundary — empty strings, empty arrays, optionals absent",
+          "payload": {
+            "content": "",
+            "kind": "",
+            "clock": {}
+          },
+          "expectedParsed": {
+            "content": "",
+            "kind": "",
+            "clock": {}
+          },
+          "pins": "absent and empty stay distinct across the round trip"
+        },
+        {
+          "name": "sticky_draft: an unknown field a newer client wrote",
+          "payload": {
+            "content": "buy milk",
+            "kind": "task",
+            "clock": {
+              "device-a": 1
+            },
+            "createdAt": "2026-04-16T00:00:00.000Z",
+            "modifiedAt": "2026-04-16T00:00:00.000Z",
+            "syncedAt": "2026-04-16T00:00:01.000Z"
+          },
+          "expectedParsed": {
+            "content": "buy milk",
+            "kind": "task",
+            "clock": {
+              "device-a": 1
+            },
+            "createdAt": "2026-04-16T00:00:00.000Z",
+            "modifiedAt": "2026-04-16T00:00:00.000Z"
+          },
+          "strippedByParse": [
+            "syncedAt"
+          ],
+          "pins": "THE SC-014 CASE: Zod strips the key from the PARSED object, and the stored payload string must not change"
+        },
+        {
+          "name": "sticky_draft: verbatim round trip of the unknown-field instance",
+          "storedPayloadJson": "{\"content\":\"buy milk\",\"kind\":\"task\",\"clock\":{\"device-a\":1},\"createdAt\":\"2026-04-16T00:00:00.000Z\",\"modifiedAt\":\"2026-04-16T00:00:00.000Z\",\"syncedAt\":\"2026-04-16T00:00:01.000Z\"}",
+          "expectedPushedPayloadJson": "{\"content\":\"buy milk\",\"kind\":\"task\",\"clock\":{\"device-a\":1},\"createdAt\":\"2026-04-16T00:00:00.000Z\",\"modifiedAt\":\"2026-04-16T00:00:00.000Z\",\"syncedAt\":\"2026-04-16T00:00:01.000Z\"}",
           "pins": "the exact bytes that must come back out. An implementation that deserialises into a struct and re-serialises fails here"
         }
       ]

@@ -21,16 +21,19 @@ import {
   CalendarEventSyncPayloadSchema,
   CalendarExternalEventSyncPayloadSchema,
   CalendarSourceSyncPayloadSchema,
+  CanvasFolderSyncPayloadSchema,
   CanvasSyncPayloadSchema,
   CustomIconSyncPayloadSchema,
   FilterSyncPayloadSchema,
   FolderConfigSyncPayloadSchema,
+  HomePageSyncPayloadSchema,
   InboxSyncPayloadSchema,
   JournalSyncPayloadSchema,
   NoteSyncPayloadSchema,
   ProjectSyncPayloadSchema,
   PropertyDefinitionSyncPayloadSchema,
   ReminderSyncPayloadSchema,
+  StickyDraftSyncPayloadSchema,
   TagCategorySyncPayloadSchema,
   TagDefinitionSyncPayloadSchema,
   TaskActivitySyncPayloadSchema,
@@ -62,7 +65,10 @@ const SCHEMAS: Record<string, ZodType> = {
   calendar_binding: CalendarBindingSyncPayloadSchema,
   bookmark: BookmarkSyncPayloadSchema,
   canvas: CanvasSyncPayloadSchema,
-  vault_lock: VaultLockSyncPayloadSchema
+  vault_lock: VaultLockSyncPayloadSchema,
+  canvas_folder: CanvasFolderSyncPayloadSchema,
+  home_page: HomePageSyncPayloadSchema,
+  sticky_draft: StickyDraftSyncPayloadSchema
 }
 
 interface Case {
@@ -101,13 +107,18 @@ describe('payload-schemas vectors', () => {
   it('carries the recorded case count, four per type', () => {
     const total = vectors.groups.reduce((n, g) => n + g.cases.length, 0)
     expect(total).toBe(vectors.meta.caseCount)
-    expect(vectors.groups).toHaveLength(22)
+    expect(vectors.groups).toHaveLength(25)
     for (const group of vectors.groups) expect(group.cases).toHaveLength(4)
   })
 
-  it('covers the twenty-one subscribed types and the desktop-only vault_lock', () => {
+  it('covers the twenty-one subscribed types and the four desktop-only types', () => {
     expect(vectors.meta.subscribedTypes).toHaveLength(21)
-    expect(vectors.meta.desktopOnlyTypes).toEqual(['vault_lock'])
+    expect(vectors.meta.desktopOnlyTypes).toEqual([
+      'vault_lock',
+      'canvas_folder',
+      'home_page',
+      'sticky_draft'
+    ])
     const covered = [...vectors.meta.subscribedTypes, ...vectors.meta.desktopOnlyTypes].toSorted()
     expect(vectors.groups.map((g) => g.type).toSorted()).toEqual(covered)
     expect(Object.keys(SCHEMAS).toSorted()).toEqual(covered)

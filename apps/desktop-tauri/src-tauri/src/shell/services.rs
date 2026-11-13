@@ -7,6 +7,7 @@ use std::sync::atomic::{AtomicBool, Ordering};
 use std::sync::{Arc, Mutex, PoisonError};
 use std::time::Duration;
 
+use memry_desktop::ai::local_provider::LocalProviderStore;
 use memry_desktop::ai::proxy::AiProxy;
 use memry_desktop::ai::settings::InlineAiStore;
 use memry_desktop::config::{Compiled, MemryEnv, RuntimeConfig};
@@ -281,7 +282,12 @@ fn manage_settings(app: &AppHandle<Wry>) -> Result<(), CommandError> {
     };
     let keychain = Arc::new(KeyringStore::new(device.clone(), gate, &data_dir));
     let identity = Arc::new(DeviceIdentityStore::new(keychain.clone(), &data_dir));
-    let settings = SettingsService::new(identity.clone(), config);
+    let settings = SettingsService::new(identity.clone(), config.clone());
+    app.manage(Arc::new(LocalProviderStore::new(
+        config.clone(),
+        keychain.clone(),
+        device.as_deref(),
+    )));
     app.manage(Arc::new(InlineAiStore::new(
         settings.clone(),
         keychain.clone(),

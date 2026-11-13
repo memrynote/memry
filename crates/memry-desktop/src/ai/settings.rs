@@ -16,6 +16,7 @@ use serde::{Deserialize, Serialize};
 use serde_json::{Map, Value};
 use zeroize::Zeroizing;
 
+use super::cached_key::CachedKey;
 use super::provider::{AiProvider, OLLAMA_DEFAULT_BASE_URL, url_host};
 use crate::seams::secure_store::{GenericSecrets, device_account};
 use crate::session::OpenVault;
@@ -156,12 +157,6 @@ pub enum AiSettingsError {
     Keychain(SecureStoreError),
 }
 
-/// The key of the open vault, read from the keychain once per session and kept until a write.
-struct CachedKey {
-    vault_id: String,
-    key: Option<Zeroizing<String>>,
-}
-
 /// The one owner of the inline AI settings and key. Readers in Rust (the provider proxy, the
 /// structured calls) take [`InlineAiStore::read`]; the renderer gets [`InlineAiStore::masked`].
 /// Ollama takes no key, so its `read` never asks the keychain.
@@ -169,7 +164,8 @@ pub struct InlineAiStore {
     settings: SettingsService,
     secrets: Arc<dyn GenericSecrets>,
     device: Option<String>,
-    cache: Mutex<Option<CachedKey>>,
+    /// The key of the open vault, read from the keychain once per session.
+    key: CachedKey,
     /// Serializes the read-migrate and write paths, so a migration never races a key write.
     write: Mutex<()>,
 }
@@ -183,9 +179,9 @@ impl InlineAiStore {
     ) -> Self {
         Self {
             settings,
+            key: CachedKey::new(secrets.clone(), SERVICE, "AI API key"),
             secrets,
             device,
-            cache: Mutex::new(None),
             write: Mutex::new(()),
         }
     }
@@ -246,19 +242,10 @@ impl InlineAiStore {
             patch.insert("baseUrl".into(), Value::String(base_url));
         }
         if let Some(key) = updates.api_key.filter(|key| key != MASKED_KEY) {
-            let key = Zeroizing::new(key);
-            let account = self.account(&vault.vault_id);
-            if key.is_empty() {
-                self.secrets
-                    .delete_secret(SERVICE, &account)
-                    .map_err(AiSettingsError::Keychain)?;
-                self.remember(&vault.vault_id, None);
-            } else {
-                self.secrets
-                    .set_secret(SERVICE, &account, key.as_bytes())
-                    .map_err(AiSettingsError::Keychain)?;
-                self.remember(&vault.vault_id, Some(key));
-            }
+            let key = Some(Zeroizing::new(key)).filter(|key| !key.is_empty());
+            self.key
+                .set(&self.account(&vault.vault_id), key)
+                .map_err(AiSettingsError::Keychain)?;
             patch.insert("apiKey".into(), Value::String(String::new()));
         }
         if !patch.is_empty() {
@@ -269,7 +256,7 @@ impl InlineAiStore {
 
     /// Drops the cached key; called when the vault closes.
     pub fn forget(&self) {
-        *self.cache.lock().unwrap_or_else(PoisonError::into_inner) = None;
+        self.key.forget();
     }
 
     /// A keychain that cannot answer (locked or failing) leaves the key unknown, not absent: it
@@ -333,7 +320,7 @@ impl InlineAiStore {
         if back.as_deref().map(Vec::as_slice) != Some(plaintext.as_bytes()) {
             return Err("the keychain did not return the key it was given".to_owned());
         }
-        self.remember(&vault.vault_id, Some(plaintext.clone()));
+        self.key.remember(&account, Some(plaintext.clone()));
         let row = self
             .settings
             .read_secret_group(vault, GROUP)
@@ -348,35 +335,8 @@ impl InlineAiStore {
     }
 
     fn stored_key(&self, vault_id: &str) -> Result<Option<Zeroizing<String>>, AiSettingsError> {
-        {
-            let cache = self.cache.lock().unwrap_or_else(PoisonError::into_inner);
-            if let Some(cached) = cache.as_ref().filter(|cached| cached.vault_id == vault_id) {
-                return Ok(cached.key.clone());
-            }
-        }
-        let bytes = self
-            .secrets
-            .get_secret(SERVICE, &self.account(vault_id))
-            .map_err(AiSettingsError::Keychain)?
-            .map(Zeroizing::new);
-        let key = match bytes {
-            Some(bytes) => Some(Zeroizing::new(String::from_utf8(bytes.to_vec()).map_err(
-                |_| {
-                    AiSettingsError::Keychain(SecureStoreError::Failed {
-                        what: "the stored AI API key is not UTF-8 text".to_owned(),
-                    })
-                },
-            )?)),
-            None => None,
-        };
-        self.remember(vault_id, key.clone());
-        Ok(key)
-    }
-
-    fn remember(&self, vault_id: &str, key: Option<Zeroizing<String>>) {
-        *self.cache.lock().unwrap_or_else(PoisonError::into_inner) = Some(CachedKey {
-            vault_id: vault_id.to_owned(),
-            key,
-        });
+        self.key
+            .get(&self.account(vault_id))
+            .map_err(AiSettingsError::Keychain)
     }
 }

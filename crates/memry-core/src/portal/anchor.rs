@@ -30,9 +30,56 @@ pub fn extract_anchor(text: &str) -> Option<String> {
     is_anchor(anchor).then(|| anchor.to_string())
 }
 
+/// The text without its trailing anchor and the whitespace before it (`stripAnchor`).
+pub fn strip_anchor(text: &str) -> &str {
+    if extract_anchor(text).is_none() {
+        return text;
+    }
+    let trimmed = text.trim_end_matches(is_space);
+    match trimmed.char_indices().rev().find(|(_, c)| is_space(*c)) {
+        Some((at, _)) => &text[..at],
+        None => "",
+    }
+}
+
+const ALPHABET: &[u8; 36] = b"abcdefghijklmnopqrstuvwxyz0123456789";
+const ANCHOR_ATTEMPTS: usize = 20;
+
+/// Six random base-36 characters (`makeAnchor`).
+fn make_anchor() -> String {
+    crate::crypto::sodium::random_bytes(6)
+        .into_iter()
+        .map(|byte| char::from(ALPHABET[usize::from(byte) % ALPHABET.len()]))
+        .collect()
+}
+
+/// A fresh anchor no block of the note carries. `None` only when 20 draws all collided, which
+/// means the random source is broken: six characters leave two billion anchors.
+pub(crate) fn fresh_anchor(taken: &std::collections::HashSet<String>) -> Option<String> {
+    (0..ANCHOR_ATTEMPTS)
+        .map(|_| make_anchor())
+        .find(|anchor| !taken.contains(anchor))
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[test]
+    fn strips_the_anchor_and_the_space_before_it() {
+        assert_eq!(strip_anchor("Parent ^par1"), "Parent");
+        assert_eq!(strip_anchor("a  b ^ab-12  "), "a  b");
+        assert_eq!(strip_anchor("^par1"), "");
+        assert_eq!(strip_anchor("word^par1"), "word^par1");
+        assert_eq!(strip_anchor("plain"), "plain");
+    }
+
+    #[test]
+    fn a_made_anchor_is_an_anchor() {
+        let anchor = fresh_anchor(&Default::default()).expect("anchor");
+        assert_eq!(anchor.len(), 6);
+        assert!(is_anchor(&anchor), "{anchor}");
+    }
 
     #[test]
     fn finds_a_trailing_anchor() {

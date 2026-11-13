@@ -5,6 +5,25 @@ import * as __TAURI_EVENT from "@tauri-apps/api/event";
 
 /** Commands */
 export const commands = {
+	/**  `agent:getLocalProviderSettings`. A locked keychain still opens the screen. */
+	agentGetLocalProviderSettings: () => __TAURI_INVOKE<AgentLocalProviderSettings>("agent_get_local_provider_settings"),
+	/**
+	 *  `agent:listLocalModels`. An unreachable server or a keychain that cannot answer is an empty
+	 *  list, as in Electron.
+	 */
+	agentListLocalModels: () => __TAURI_INVOKE<AgentLocalModelList>("agent_list_local_models"),
+	/**
+	 *  `agent:probeLocalProvider`: a live capability probe (streaming and tool calls), never
+	 *  answered from a cache.
+	 */
+	agentProbeLocalProvider: () => __TAURI_INVOKE<AgentLocalProviderProbeResult>("agent_probe_local_provider"),
+	/**
+	 *  `agent:setLocalProviderSettings`. A non-loopback URL needs `allowNonLoopback`; the key goes to
+	 *  the keychain before the config is written.
+	 */
+	agentSetLocalProviderSettings: (input: AgentLocalProviderSettingsUpdate) => __TAURI_INVOKE<AgentLocalProviderSettings>("agent_set_local_provider_settings", { input }),
+	/**  `agent:testLocalProvider`: the server answers `GET /models` and lists the model. */
+	agentTestLocalProvider: () => __TAURI_INVOKE<AgentLocalProviderProbeResult>("agent_test_local_provider"),
 	/**
 	 *  The settings with the key masked (`ai-inline:get-settings`). The key itself is never read,
 	 *  so a locked keychain still opens the screen.
@@ -346,6 +365,15 @@ export const commands = {
 	 *  Linux when a daemon owns `org.freedesktop.Notifications`.
 	 */
 	notificationSupported: () => __TAURI_INVOKE<boolean>("notification_supported"),
+	/**
+	 *  `portals:get-usage`: the notes that show `note_id`, or its block `anchor`, with the notes
+	 *  that link to it.
+	 */
+	portalsGetUsage: (noteId: string, anchor: string | null) => __TAURI_INVOKE<PortalUsageView>("portals_get_usage", { noteId, anchor }),
+	/**  `portals:search`: the blocks a text or tag finds, `PortalSearchSchema` checked here. */
+	portalsSearch: (input: PortalSearchInput) => __TAURI_INVOKE<PortalSearchView>("portals_search", { input }),
+	/**  `portals:stamp-anchor`: the block's anchor, given one when it has none. */
+	portalsStampAnchor: (noteId: string, blockId: string) => __TAURI_INVOKE<StampAnchorView>("portals_stamp_anchor", { noteId, blockId }),
 	/**  `properties:get`: the note's values in its frontmatter's order; none for no note. */
 	propertiesGet: (entityId: string) => __TAURI_INVOKE<PropertyValueView[]>("properties_get", { entityId }),
 	/**  `properties:merge`: the given keys set, a `null` one removed, the rest left. */
@@ -624,6 +652,7 @@ export const events = {
 	noteRenamedEvent: makeEvent<NoteRenamedEvent, NoteRenamedEvent>("note-renamed-event"),
 	noteTagsChangedEvent: makeEvent<NoteTagsChangedEvent, NoteTagsChangedEvent>("note-tags-changed-event"),
 	noteUpdatedEvent: makeEvent<NoteUpdatedEvent, NoteUpdatedEvent>("note-updated-event"),
+	portalsUsageChangedEvent: makeEvent<PortalsUsageChangedEvent, PortalsUsageChangedEvent>("portals-usage-changed-event"),
 	propertyDefinitionChangedEvent: makeEvent<PropertyDefinitionChangedEvent, PropertyDefinitionChangedEvent>("property-definition-changed-event"),
 	settingsChangedEvent: makeEvent<SettingsChangedEvent, SettingsChangedEvent>("settings-changed-event"),
 	settingsOpenSectionEvent: makeEvent<SettingsOpenSectionEvent, SettingsOpenSectionEvent>("settings-open-section-event"),
@@ -653,6 +682,56 @@ export const events = {
 };
 
 /* Types */
+/**  `AgentLocalModelList`. */
+export type AgentLocalModelList = {
+	models: string[],
+};
+
+/**
+ *  `AgentLocalProviderPreset`. A preset a newer build adds reads as `custom`, which keeps its
+ *  stored URL.
+ */
+export type AgentLocalProviderPreset = "ollama" | "lm_studio" | "llama_cpp" | "custom";
+
+/**  `AgentLocalProviderProbeResult`. */
+export type AgentLocalProviderProbeResult = {
+	connected: boolean,
+	modelAvailable: boolean,
+	streamingSupported: boolean,
+	toolCallingSupported: boolean,
+	toolContinuationSupported: boolean,
+	toolsEnabled: boolean,
+	detail: string | null,
+};
+
+/**  `AgentLocalProviderSettings`, the renderer's copy: whether a key is stored, never the key. */
+export type AgentLocalProviderSettings = {
+	preset: AgentLocalProviderPreset,
+	baseUrl: string,
+	model: string,
+	apiKeyConfigured: boolean,
+	allowNonLoopback: boolean,
+	thinking: AgentLocalThinking,
+};
+
+/**
+ *  `AgentLocalProviderSettingsUpdate`. `api_key`: absent keeps the stored key, `null` or the
+ *  empty string deletes it, any other value replaces it. `clear_api_key` deletes it too.
+ *  `thinking` absent keeps the stored value.
+ */
+export type AgentLocalProviderSettingsUpdate = {
+	preset: AgentLocalProviderPreset,
+	baseUrl: string,
+	model: string,
+	allowNonLoopback: boolean,
+	apiKey?: string | null,
+	clearApiKey?: boolean | null,
+	thinking?: AgentLocalThinking | null,
+};
+
+/**  `AgentLocalThinking`: `off` asks a thinking model to answer without thinking. */
+export type AgentLocalThinking = "default" | "off";
+
 /**
  *  The inline AI settings were written (replaces Electron's `ai-inline:server-ready` as the
  *  settings refresh). The key is masked.
@@ -1954,6 +2033,58 @@ export type OptionInput = {
 	default?: boolean | null,
 };
 
+/**  `PortalHost['kind']`. */
+export type PortalHostKind = "portal" | "link";
+
+/**  `PortalHostSchema`. */
+export type PortalHostView = {
+	noteId: string,
+	title: string,
+	path: string,
+	count: number,
+	kind: PortalHostKind,
+	/**  A portal's first matching fence among the host's portal fences; absent for a link. */
+	ordinal?: number | null,
+};
+
+/**  `PortalSearchSchema`, checked by the command. */
+export type PortalSearchInput = {
+	text: string | null,
+	tag: string | null,
+	limit: number,
+};
+
+/**  `PortalSearchResultItemSchema`. */
+export type PortalSearchItemView = {
+	noteId: string,
+	title: string,
+	path: string,
+	blockId: string,
+	anchor: string | null,
+	text: string,
+	parentText: string | null,
+};
+
+/**  `PortalSearchResultSchema`. */
+export type PortalSearchView = {
+	results: PortalSearchItemView[],
+	truncated: boolean,
+};
+
+/**  `PortalGetUsageResultSchema`. */
+export type PortalUsageView = {
+	hosts: PortalHostView[],
+};
+
+/**
+ *  The notes whose portal usage changed (`portals:usage-changed`): a host gained or lost a
+ *  portal or a block link to them. Sent with the link rows written, so a usage chip refetching
+ *  on it reads them.
+ */
+export type PortalsUsageChangedEvent = {
+	noteIds: string[],
+};
+
 /**  `PRESET_KEYS`. */
 export type PresetKey = "person" | "company" | "meeting" | "book";
 
@@ -2236,6 +2367,18 @@ export type StagedDrop = {
 	id: string,
 	path: string,
 };
+
+/**
+ *  `PortalStampAnchorResultSchema`: `anchor` on success, `reason` otherwise. The renderer's seam
+ *  turns it into the contract's union.
+ */
+export type StampAnchorView = {
+	anchor: string | null,
+	reason: StampRefusal | null,
+};
+
+/**  Why a stamp was refused (`PortalStampAnchorResultSchema`'s `reason`). */
+export type StampRefusal = "missing-note" | "missing-block" | "locked";
 
 /**
  *  The one startup type of the epic. Steps 08 (#3525) and 09 (#3526) extend this struct in

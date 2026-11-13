@@ -342,6 +342,8 @@ mod offset_kind;
 mod outbox_crdt_batch_cap;
 #[path = "pack_vectors.rs"]
 mod pack_vectors;
+#[path = "portal_reads.rs"]
+mod portal_reads;
 #[path = "portal_vectors.rs"]
 mod portal_vectors;
 #[path = "projector_null_tolerance.rs"]

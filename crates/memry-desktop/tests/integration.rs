@@ -22,6 +22,8 @@ mod activity_scan;
 mod ai_catalog;
 #[path = "ai_inline_settings.rs"]
 mod ai_inline_settings;
+#[path = "ai_local_provider.rs"]
+mod ai_local_provider;
 #[path = "ai_proxy.rs"]
 mod ai_proxy;
 #[path = "app_edit.rs"]
@@ -249,6 +251,8 @@ mod notes_writes;
 mod path_collision;
 #[path = "paths.rs"]
 mod paths;
+#[path = "portals.rs"]
+mod portals;
 #[path = "properties_file.rs"]
 mod properties_file;
 #[path = "property_definitions.rs"]
