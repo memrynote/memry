@@ -21,6 +21,7 @@ import {
   proseMirrorDocPosToEditorOffset,
   proseMirrorVisibleText
 } from '../content-area/critic-markup-offset-map'
+import { rebaseMarks } from './rebase-marks'
 
 interface UseCriticMarkupReviewParams {
   markdown: string
@@ -69,6 +70,11 @@ export interface CriticMarkupReviewController {
   hoveredMarkId: string | null
   markPositions: Record<string, number>
   handlePlainMarkdownChange: (plainMarkdown: string) => string
+  /**
+   * The live editor's text (the Y.Doc owns the body, so no save carries it): the marks move
+   * with a `local` change; a remote one brings its marks through the doc.
+   */
+  followLivePlainMarkdown: (plainMarkdown: string, local: boolean) => void
   persistCurrentMarkdown: () => void
   handleEditorReady: (editor: unknown) => void
   openCommentComposer: (selection: ReviewSelection) => void
@@ -85,6 +91,8 @@ export interface CriticMarkupReviewController {
   setHoveredMarkId: (id: string | null) => void
   setMarkPositions: (positions: Record<string, number>) => void
   replaceMarksFromYjs: (marks: CriticMarkupMark[]) => void
+  /** A live Y.Doc's marks are bound (`true`) or let go. While bound, the marks come from it. */
+  setMarksDocBound: (bound: boolean) => void
 }
 
 export function useCriticMarkupReview({
@@ -109,6 +117,8 @@ export function useCriticMarkupReview({
   // below from dropping a just-added comment when a refetch/sync delivers stale
   // note content during note.tsx's save debounce window (issue #797).
   const pendingMarkIdsRef = useRef<Set<string>>(new Set())
+  // A live Y.Doc's marks are bound: the doc observer is their one source (#4425).
+  const marksDocBoundRef = useRef(false)
 
   useEffect(() => {
     const currentSerialized = serializeCriticMarkup(plainMarkdownRef.current, marksRef.current)
@@ -120,6 +130,17 @@ export function useCriticMarkupReview({
       return
     }
     if (emittedMarkdownsRef.current.includes(markdown)) {
+      return
+    }
+
+    // The note's text as another editor saved it (a canvas card, a project overview: no review,
+    // so no marks), or a file older than the doc's marks. With the doc's marks bound, it brings
+    // the text only: taking its marks wiped or revived the doc's on the next write (#4425).
+    if (marksDocBoundRef.current) {
+      undoStackRef.current = []
+      plainMarkdownRef.current = parsed.plainText
+      /* oxlint-disable-next-line react-you-might-not-need-an-effect/no-pass-data-to-parent, react-you-might-not-need-an-effect/no-derived-state, react-you-might-not-need-an-effect/no-adjust-state-on-prop-change -- same external sync as below, text only */
+      setPlainMarkdown(parsed.plainText)
       return
     }
 
@@ -168,7 +189,7 @@ export function useCriticMarkupReview({
   )
 
   const handlePlainMarkdownChange = useCallback((nextPlainMarkdown: string): string => {
-    const nextMarks = marksRef.current
+    const nextMarks = rebaseMarks(plainMarkdownRef.current, nextPlainMarkdown, marksRef.current)
     const serialized = serializeCriticMarkup(nextPlainMarkdown, nextMarks)
     plainMarkdownRef.current = nextPlainMarkdown
     marksRef.current = nextMarks
@@ -177,6 +198,18 @@ export function useCriticMarkupReview({
     rememberEmittedMarkdown(emittedMarkdownsRef.current, serialized)
     return serialized
   }, [])
+
+  const followLivePlainMarkdown = useCallback(
+    (nextPlainMarkdown: string, local: boolean) => {
+      if (local) {
+        handlePlainMarkdownChange(nextPlainMarkdown)
+        return
+      }
+      plainMarkdownRef.current = nextPlainMarkdown
+      setPlainMarkdown(nextPlainMarkdown)
+    },
+    [handlePlainMarkdownChange]
+  )
 
   const persistCurrentMarkdown = useCallback(() => {
     const serialized = serializeCriticMarkup(plainMarkdownRef.current, marksRef.current)
@@ -413,6 +446,10 @@ export function useCriticMarkupReview({
     })
   }, [])
 
+  const setMarksDocBound = useCallback((bound: boolean) => {
+    marksDocBoundRef.current = bound
+  }, [])
+
   const replaceMarksFromYjs = useCallback((nextMarks: CriticMarkupMark[]) => {
     if (areCriticMarkupMarksEqual(marksRef.current, nextMarks)) return
     marksRef.current = nextMarks
@@ -429,6 +466,7 @@ export function useCriticMarkupReview({
     hoveredMarkId,
     markPositions,
     handlePlainMarkdownChange,
+    followLivePlainMarkdown,
     persistCurrentMarkdown,
     handleEditorReady,
     openCommentComposer,
@@ -444,7 +482,8 @@ export function useCriticMarkupReview({
     undoLastReviewAction,
     setHoveredMarkId,
     setMarkPositions: updateMarkPositions,
-    replaceMarksFromYjs
+    replaceMarksFromYjs,
+    setMarksDocBound
   }
 }
 

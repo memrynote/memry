@@ -11,7 +11,7 @@ use std::panic::{AssertUnwindSafe, catch_unwind};
 use serde_json::Value as Json;
 use yrs::{Transact as _, TransactionMut, XmlFragmentRef};
 
-use super::apply::{self, ReplaceOutcome};
+use super::apply::{self, CriticMarks, ReplaceOutcome};
 use super::canonical::{self, BODY_FRAGMENT, rehearsal_copy};
 use super::note_body::{NoteBody, serialize_note_body};
 use super::restore::{SerializeOptions, SerializedBody, doc_to_markdown};
@@ -34,6 +34,7 @@ pub struct ReplaceOptions<'a> {
     /// body: the replace happens only if the fragment still holds exactly that.
     pub unless_changed_from: Option<&'a str>,
     pub embeds: Option<&'a dyn EmbedResolver>,
+    pub critic_marks: CriticMarks,
 }
 
 /// Stateless and `Send + Sync`: callers run it inside `spawn_blocking`.
@@ -254,6 +255,7 @@ impl Converter {
                 options.note_path,
                 options.writing.clone(),
                 None,
+                options.critic_marks,
             )
         };
         let rehearsed = doc.read(|txn| rehearsal_copy(txn)).ok().flatten();
@@ -289,6 +291,7 @@ impl Converter {
                     options.note_path,
                     options.writing,
                     options.unless_changed_from,
+                    options.critic_marks,
                 )
             }))
             .unwrap_or(ReplaceOutcome::Failed)

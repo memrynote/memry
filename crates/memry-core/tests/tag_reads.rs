@@ -85,7 +85,7 @@ pub(crate) fn filed(vault: &Vault, id: &str, path: &str) {
 
 /// [`filed`] with the hash of the bytes on disk now: [`measured`]'s `hash-<id>` makes the
 /// index current.
-fn filed_as(vault: &Vault, id: &str, path: &str, file_hash: Option<&str>) {
+pub(crate) fn filed_as(vault: &Vault, id: &str, path: &str, file_hash: Option<&str>) {
     vault
         .note_files()
         .upsert_stat(NoteFileStat {

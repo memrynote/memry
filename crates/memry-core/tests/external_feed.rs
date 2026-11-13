@@ -22,6 +22,7 @@ use memry_core::crypto::sodium;
 use memry_core::domain::external_feed::{AppRead, FeedInput, FeedOutcome, Refusal};
 use memry_core::markdown::convert::NoEmbeds;
 use memry_core::markdown::convert::api::Converter;
+use memry_core::markdown::convert::apply::CriticMarks;
 use memry_core::markdown::schema::callout_types::CalloutTypes;
 use memry_core::seams::secure_store::{SecureStore as _, SecureStoreKey};
 use rusqlite::params;
@@ -862,6 +863,7 @@ fn app_edit(f: &Fixture, id: &str, markdown: &str, read: &str) -> FeedOutcome {
             AppRead {
                 file_body: read,
                 compared_at: None,
+                critic_marks: CriticMarks::FromMarkdown,
             },
         )
         .expect("the feed itself does not fail")

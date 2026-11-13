@@ -112,20 +112,17 @@ use memry_core::api::external_feed::ExternalFeed;
 use memry_core::api::search::Search;
 use memry_core::api::vault::Vault;
 use memry_core::crdt::errors::CrdtError;
-use memry_core::domain::external_feed::{AppRead, FeedInput, FeedOutcome, same_text};
-use memry_core::domain::note_files::LogMark;
+use memry_core::domain::external_feed::AppRead;
 use memry_core::domain::note_files::StampMark;
 use memry_core::domain::note_snapshots;
-use memry_core::domain::write_back::BodyRead;
 use memry_core::markdown::convert::api::Converter;
-use memry_core::markdown::frontmatter::{YamlValue, parse_markdown_note, split_frontmatter_block};
-use memry_core::markdown::shared::writing_tools::writing_of_yaml;
+use memry_core::markdown::convert::apply::CriticMarks;
+use memry_core::markdown::frontmatter::{parse_markdown_note, split_frontmatter_block};
 use memry_core::seams::secure_store::SecureStore;
 
 use super::consumer::identity::{IdentityCtx, IdentityError, NoteIdentity};
 use super::consumer::rows::{RowError, RowOwner, RowSession, RowStat, now_ms};
 use super::consumer::{Applied, ChangeSource, VaultTier, converter_for};
-use super::embeds::Resolved;
 use super::file_types::FileType;
 use super::hash::content_hash;
 use super::note_file::{
@@ -136,6 +133,7 @@ use super::watch::EchoGuard;
 use crate::notes::write_order::NoteTurn;
 use crate::session::OpenVault;
 
+mod document;
 mod own_files;
 mod terms;
 pub use own_files::OwnFiles;
@@ -164,6 +162,7 @@ pub enum AppEditError {
 /// never reach another's files.
 pub struct AppEdit {
     root: PathBuf,
+    tier: Arc<VaultTier>,
     vault: Arc<Vault>,
     search: Arc<Search>,
     identity: Arc<dyn NoteIdentity>,
@@ -178,7 +177,7 @@ pub struct AppEdit {
 
 impl AppEdit {
     pub fn new(
-        tier: &VaultTier,
+        tier: &Arc<VaultTier>,
         store: &Arc<dyn SecureStore>,
         open: &OpenVault,
     ) -> Result<Self, AppEditError> {
@@ -187,6 +186,7 @@ impl AppEdit {
         let settings = open.vault.app_settings(store.clone()).ok();
         Ok(Self {
             root: open.path.clone(),
+            tier: tier.clone(),
             vault: open.vault.clone(),
             search: open.search.clone(),
             identity: tier.identity(),
@@ -360,11 +360,13 @@ impl AppEdit {
         // The body as the note's read and its events give it (a byte order mark with no
         // frontmatter stays in it): the text an editor compares with what it lost.
         let kept = keeps.then(|| content_hash(split_frontmatter_block(&file.raw).body));
+        let critic_marks = self.critic_marks(note_id, precondition);
         let takes = match body_moved {
             true => {
                 let read = AppRead {
                     file_body: read_body,
                     compared_at,
+                    critic_marks,
                 };
                 // Text made over an empty file says nothing of the note's writing data.
                 let frontmatter = (!mid_write).then_some(&edited.frontmatter);
@@ -445,6 +447,11 @@ impl AppEdit {
                 .map_err(AppEditError::from)?;
         }
         landed()?;
+        // The file holds the save's marks, which may be older than the document's: the
+        // write-back writes the document's over them.
+        if takes && critic_marks == CriticMarks::Kept {
+            self.tier.schedule(note_id);
+        }
         if !takes {
             return Ok(Edited::Wrote {
                 hash,
@@ -497,93 +504,6 @@ impl AppEdit {
                 IdentityError::Storage(error) => error,
                 IdentityError::Other(what) => StorageError::Failed { what },
             })
-    }
-
-    /// How far the document had come when its body was found to be the file's text `read`
-    /// (`body_mark`), or why it is not. The mark is taken first: an edit stored after it either
-    /// shows in the comparison or makes the feed refuse.
-    fn document_held(
-        &self,
-        note_id: &str,
-        path: &str,
-        read: &str,
-        frontmatter: &YamlValue,
-    ) -> Result<Result<LogMark, Kept>, CrdtError> {
-        let mark = self.vault.write_back().body_mark(note_id)?;
-        let body = split_frontmatter_block(read).body;
-        // Outside the read: the lookup reads the database the read holds.
-        let embeds = Resolved::of_markdown(&self.root, &self.vault.note_files(), body, path);
-        let read = self
-            .vault
-            .write_back()
-            .body(&self.converter, note_id, path, body, &embeds)?;
-        Ok(match read {
-            BodyRead::Body(held)
-                if same_text(&held.markdown, body)
-                    && held.writing == writing_of_yaml(frontmatter) =>
-            {
-                Ok(mark)
-            }
-            BodyRead::Body(_) => Err(Kept::BodyAhead),
-            BodyRead::FileAhead => Err(Kept::FileAhead),
-            BodyRead::BodyNotPulled => Err(Kept::BodyNotPulled),
-            BodyRead::NotRepresentable(_) | BodyRead::Failed(_) => Err(Kept::NotRepresentable),
-            BodyRead::NoNote => Err(Kept::NoBody),
-        })
-    }
-
-    /// Feeds the new text's body over `read`: whether the document now holds it, or why the
-    /// file is kept (no such note, a lock taken since the read, or typing stored since the
-    /// document was compared).
-    fn feed_text(
-        &self,
-        note_id: &str,
-        path: &str,
-        text: &str,
-        frontmatter: Option<&YamlValue>,
-        read: AppRead<'_>,
-    ) -> Result<bool, Kept> {
-        let split = split_frontmatter_block(text);
-        let embeds = Resolved::of_markdown(&self.root, &self.vault.note_files(), split.body, path);
-        let input = FeedInput {
-            note_id,
-            markdown: split.body,
-            note_path: Some(path),
-            writing: frontmatter.map(writing_of_yaml),
-            frontmatter: split.block,
-            embeds: Some(&embeds),
-        };
-        let fed = match self.fail_next_feed.swap(false, Ordering::Relaxed) {
-            true => Err(CrdtError::Undecodable {
-                doc_id: note_id.to_owned(),
-                what: "test fault".to_owned(),
-            }),
-            false => self.feed.feed_app_edit(&self.converter, input, read),
-        };
-        match fed {
-            Ok(FeedOutcome::Fed | FeedOutcome::Unchanged) => Ok(true),
-            Ok(FeedOutcome::NoNote) => Err(Kept::NoBody),
-            Ok(FeedOutcome::Changed) => Err(Kept::BodyAhead),
-            Err(CrdtError::Locked { .. }) => Err(Kept::Locked),
-            Ok(outcome) => {
-                tracing::warn!(
-                    scope = SCOPE,
-                    note_id,
-                    outcome = ?outcome,
-                    "an edited file's text did not reach its note; the watcher brings it in"
-                );
-                Ok(false)
-            }
-            Err(error) => {
-                tracing::error!(
-                    scope = SCOPE,
-                    note_id,
-                    "an edited file's text did not reach its note; the watcher feeds it again: \
-                     {error}"
-                );
-                Ok(false)
-            }
-        }
     }
 }
 
