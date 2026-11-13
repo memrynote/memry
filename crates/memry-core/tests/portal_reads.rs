@@ -250,3 +250,108 @@ fn a_text_and_tag_search_reads_tagged_notes_ranked_past_twice_the_cap() {
     assert!(notes.iter().all(|id| id.starts_with('t')));
     assert!(!found.truncated);
 }
+
+#[test]
+fn a_non_markdown_notes_block_is_not_stamped() {
+    let dir = tempfile::tempdir().expect("scratch");
+    let mut vault = Vault::new(dir.path(), INDEX_MIGRATIONS);
+    note(&mut vault, "n-pdf", "Slides", "Extracted text\n");
+    vault
+        .data
+        .execute(
+            "UPDATE note_files SET file_type = 'pdf' WHERE note_id = 'n-pdf'",
+            [],
+        )
+        .expect("pdf");
+    let block = vault.block_ids("n-pdf").remove(0);
+    let queued = || -> i64 {
+        vault
+            .data
+            .query_row(
+                "SELECT count(*) FROM outbox WHERE item_id = 'n-pdf'",
+                [],
+                |row| row.get(0),
+            )
+            .expect("outbox")
+    };
+    let before = queued();
+    assert_eq!(
+        body_write::stamp_anchor(&vault.data, "n-pdf", &block, "device-a", 1).expect("stamp"),
+        None,
+        "a PDF note has no blocks to stamp"
+    );
+    assert_eq!(queued(), before, "nothing is queued for a refused stamp");
+}
+
+/// `count` live, indexable journal days `{prefix}{i}` whose body is `markdown`.
+fn days(vault: &mut Vault, prefix: &str, count: usize, markdown: &str) {
+    for i in 0..count {
+        let id = format!("{prefix}{i}");
+        let date = format!("2026-01-{:02}", i + 1);
+        vault.day(&id, &date, markdown);
+        let payload = format!(r#"{{"id":"{id}","date":"{date}"}}"#);
+        vault
+            .data
+            .execute(
+                "INSERT INTO sync_items (item_type, item_id, payload, payload_state, updated_at)
+                 VALUES ('journal', ?1, ?2, 'full', 1)",
+                params![id, payload],
+            )
+            .expect("the day's sync item");
+        file(vault, &id, &format!("journal/{date}.md"));
+    }
+}
+
+/// Electron's `searchNotes` drops journal days and non-markdown notes in SQL, before its LIMIT,
+/// so better-ranked days and PDFs never take a note's place among the 40 read.
+#[test]
+fn a_text_search_reads_forty_notes_past_better_ranked_days_and_pdfs() {
+    let dir = tempfile::tempdir().expect("scratch");
+    let mut vault = Vault::new(dir.path(), INDEX_MIGRATIONS);
+    let filler = "lorem ipsum dolor ".repeat(40);
+    many(&mut vault, "n", 45, &[], &format!("zeta {filler}\n"));
+    days(&mut vault, "j", 10, "zeta zeta zeta\n");
+    many(&mut vault, "p", 5, &[], "zeta zeta zeta\n");
+    for i in 0..5 {
+        vault
+            .data
+            .execute(
+                "UPDATE note_files SET file_type = 'pdf' WHERE note_id = ?1",
+                [format!("p{i}")],
+            )
+            .expect("pdf");
+    }
+    vault.reindex();
+    let found = portal_reads::search_blocks(&vault.data, &vault.index, Some("zeta"), None, 200)
+        .expect("search");
+    let notes = notes_found(&found);
+    assert_eq!(notes.len(), portal_reads::CANDIDATE_CAP, "{notes:?}");
+    assert!(notes.iter().all(|id| id.starts_with('n')));
+    assert!(!found.truncated);
+}
+
+/// With a tag, the five-times fetch counts notes only: days ranked above every note do not push
+/// tagged notes out of it.
+#[test]
+fn a_text_and_tag_search_fetch_counts_notes_past_better_ranked_days() {
+    let dir = tempfile::tempdir().expect("scratch");
+    let mut vault = Vault::new(dir.path(), INDEX_MIGRATIONS);
+    days(&mut vault, "j", 10, "zeta zeta zeta zeta\n");
+    many(&mut vault, "u", 155, &[], "zeta zeta zeta\n");
+    let filler = "lorem ipsum dolor ".repeat(40);
+    many(
+        &mut vault,
+        "t",
+        45,
+        &["bio".to_owned()],
+        &format!("zeta {filler}\n"),
+    );
+    vault.reindex();
+    let found =
+        portal_reads::search_blocks(&vault.data, &vault.index, Some("zeta"), Some("bio"), 200)
+            .expect("search");
+    let notes = notes_found(&found);
+    assert_eq!(notes.len(), portal_reads::CANDIDATE_CAP, "{notes:?}");
+    assert!(notes.iter().all(|id| id.starts_with('t')));
+    assert!(!found.truncated);
+}

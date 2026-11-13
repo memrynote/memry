@@ -21,7 +21,7 @@ use crate::domain::wiki_target::WikiNames;
 use crate::domain::{note_stats, reads, tag_reads, vault_locks};
 use crate::portal::{extract_anchor, list_doc_blocks, strip_anchor};
 
-use super::{HitKind, failed, links::target_id, search_notes};
+use super::{HitKind, failed, links::target_id, match_expression, search_notes};
 
 /// Notes a search opens at most; each one costs a document replay.
 pub const CANDIDATE_CAP: usize = 40;
@@ -246,15 +246,55 @@ fn candidates(
     } else {
         CANDIDATE_CAP
     };
-    let hits = search_notes(data, index, text, fetch)?;
+    let notes = markdown_notes(data, index, text, fetch)?;
     let tagged: Option<BTreeSet<String>> = tagged.map(|ids| ids.into_iter().collect());
-    Ok(hits
+    Ok(notes
         .into_iter()
-        .filter(|hit| matches!(hit.kind, HitKind::Note))
-        .filter(|hit| tagged.as_ref().is_none_or(|ids| ids.contains(&hit.id)))
-        .map(|hit| hit.id)
+        .filter(|id| tagged.as_ref().is_none_or(|ids| ids.contains(id)))
         .take(CANDIDATE_CAP)
         .collect())
+}
+
+/// The first `want` live markdown notes `text` matches, best first. Electron's `searchNotes`
+/// drops journal days and other file types before its LIMIT, so a better-ranked day or PDF never
+/// takes a note's place: the index is read in growing pages until `want` notes or its end.
+fn markdown_notes(
+    data: &Connection,
+    index: &Connection,
+    text: &str,
+    want: usize,
+) -> Result<Vec<String>, StorageError> {
+    let Some(expression) = match_expression(text) else {
+        return Ok(Vec::new());
+    };
+    let matching: i64 = index
+        .query_row(
+            "SELECT count(*) FROM fts_notes WHERE fts_notes MATCH ?1",
+            params![expression],
+            |row| row.get(0),
+        )
+        .map_err(failed)?;
+    let mut limit = want;
+    loop {
+        let hits = search_notes(data, index, text, limit)?;
+        let ids = hits
+            .iter()
+            .filter(|hit| matches!(hit.kind, HitKind::Note))
+            .map(|hit| hit.id.clone())
+            .collect();
+        let names = named(data, &ids)?;
+        let notes: Vec<String> = hits
+            .into_iter()
+            .filter(|hit| matches!(hit.kind, HitKind::Note))
+            .filter(|hit| names.get(&hit.id).is_some_and(|name| name.markdown))
+            .map(|hit| hit.id)
+            .take(want)
+            .collect();
+        if notes.len() == want || limit as i64 >= matching {
+            return Ok(notes);
+        }
+        limit *= 2;
+    }
 }
 
 /// Blocks matching a search portal's query: every lowercased word of `text` is in the block's
