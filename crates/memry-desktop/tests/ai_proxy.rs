@@ -541,7 +541,8 @@ async fn a_gone_renderer_and_a_vault_close_end_the_upstream_request() {
 async fn a_redirect_is_answered_never_followed() {
     let fake = fake(Answer::Redirect).await;
     let (sink, _frames) = sink(Arc::new(AtomicBool::new(true)));
-    let (head, _body) = proxy()
+    let proxy = proxy();
+    let (head, _body) = proxy
         .open(
             &settings(AiProvider::Custom, &fake.base, KEY),
             request("redirect", AiProvider::Custom, "/chat"),
@@ -561,11 +562,12 @@ async fn an_unreachable_provider_is_named_without_the_key_and_a_running_id_is_re
     drop(listener);
     let base = format!("http://127.0.0.1:{port}/v1");
     let (sink_closed, _frames) = sink(Arc::new(AtomicBool::new(true)));
-    let error = proxy()
+    let closed = proxy();
+    let error = closed
         .open(
             &settings(AiProvider::Custom, &base, KEY),
             request("closed", AiProvider::Custom, "/chat"),
-            &proxy.owner("main"),
+            &closed.owner("main"),
             sink_closed,
         )
         .await
