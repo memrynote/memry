@@ -4,6 +4,8 @@
 // and the composer's format toolbar keeps the draft. The window starts at the harness's
 // 1440x900 (Electron set 1440x960), wide enough for the rail; the narrow layout resizes the window
 // through `e2e_set_window_rect`, as Electron's `setViewportSize` resized the page.
+import { existsSync, readFileSync } from 'node:fs'
+import { join } from 'node:path'
 import { ensureDayPanelClosed, navigateTo, SHORTCUTS } from '../../harness/app-helpers'
 import { openNewNote, typeInEditor } from '../../harness/editor'
 import { invokeTest } from '../../harness/invoke-test'
@@ -11,6 +13,7 @@ import { NOTE_EDITOR, vaultOpen } from '../../harness/notes'
 import type { Page } from '../../harness/pw-compat/page'
 import type { TauriApp } from '../../harness/tauri-lifecycle'
 import { test, expect } from '../../harness/test'
+import { pollUntil } from '../../harness/wait'
 
 type MarkKind = 'addition' | 'deletion' | 'substitution' | 'comment'
 
@@ -267,6 +270,48 @@ test('review rail collapses on narrow note and journal layouts', async ({ app, p
   await setWindowWidth(app, 820, 900)
   await expect(page.locator('[data-journal-review-rail]')).toBeHidden()
   await expect(editor(page)).toBeVisible()
+})
+
+// #4425: the day's window owns its comment marks in the document, and a day's save (no editor
+// id) no longer sets them from its text. A resolved comment leaves the day's file, and text typed
+// after the resolve, saved again, does not bring it back.
+test('a resolved journal comment leaves the day file and stays out', async ({
+  page,
+  testVaultPath
+}) => {
+  await vaultOpen(page)
+  await ensureDayPanelClosed(page)
+  await navigateTo(page, 'journal')
+  await expect(editor(page)).toBeVisible({ timeout: 10_000 })
+  const date = await page.evaluate(() => {
+    const now = new Date()
+    const pad = (n: number) => String(n).padStart(2, '0')
+    return `${now.getFullYear()}-${pad(now.getMonth() + 1)}-${pad(now.getDate())}`
+  })
+  const file = join(testVaultPath, 'journal', `${date}.md`)
+  const dayText = () => (existsSync(file) ? readFileSync(file, 'utf8') : '')
+  await editor(page).click()
+  await typeInEditor(page, 'journal resolve target')
+  await selectEditorText(page, 'journal resolve target')
+  await commentButton(page).click()
+  await submitComment(page, 'Journal resolve check.')
+  await expect(reviewRail(page)).toContainText('Journal resolve check.')
+  expect(
+    await pollUntil(() => dayText().includes('Journal resolve check.'), { timeoutMs: 20_000 })
+  ).toBe(true)
+
+  await clickCardAction(page, 'Resolve')
+  await expect(commentCards(page)).toHaveCount(0)
+  expect(
+    await pollUntil(() => !dayText().includes('Journal resolve check.'), { timeoutMs: 20_000 })
+  ).toBe(true)
+
+  await editor(page).click()
+  await page.keyboard.press('End')
+  await typeInEditor(page, ' and after')
+  expect(await pollUntil(() => dayText().includes('and after'), { timeoutMs: 20_000 })).toBe(true)
+  expect(dayText()).not.toContain('Journal resolve check.')
+  await expect(commentCards(page)).toHaveCount(0)
 })
 
 test('formats a comment draft from the selection toolbar without cancelling the draft', async ({

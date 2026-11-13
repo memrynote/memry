@@ -52,6 +52,10 @@ pub struct Resident {
     holders: BTreeMap<String, BTreeSet<String>>,
     /// Holders whose copy is of a document since purged; see [`Resident::purge`].
     stale: BTreeMap<String, BTreeSet<String>>,
+    /// When the last holder of each unheld document let it go, until the grace period ends; see
+    /// [`Resident::held_lately`].
+    released_at: HashMap<String, i64>,
+    grace_ms: i64,
 }
 
 impl Resident {
@@ -61,6 +65,8 @@ impl Resident {
             docs: HashMap::new(),
             holders: BTreeMap::new(),
             stale: BTreeMap::new(),
+            released_at: HashMap::new(),
+            grace_ms: config.grace_ms,
         }
     }
 
@@ -88,6 +94,7 @@ impl Resident {
         let document = self.request(doc_id, now_ms, load);
         if let Ok(Some(_)) = document {
             self.lifecycle.editor_attached(doc_id, now_ms);
+            self.released_at.remove(doc_id);
             self.holders
                 .entry(doc_id.to_owned())
                 .or_default()
@@ -129,6 +136,7 @@ impl Resident {
         }
         if set.is_empty() {
             self.holders.remove(doc_id);
+            self.released_at.insert(doc_id.to_owned(), now_ms);
         }
         self.reopened(doc_id, holder);
         self.lifecycle.release(doc_id, now_ms);
@@ -197,6 +205,9 @@ impl Resident {
 
     /// Unloads every unheld document whose grace period has passed.
     pub fn sweep(&mut self, now_ms: i64) -> Vec<String> {
+        let grace_ms = self.grace_ms;
+        self.released_at
+            .retain(|_, released| now_ms - *released < grace_ms);
         let gone = self.lifecycle.sweep(now_ms);
         for id in &gone {
             self.docs.remove(id);
@@ -206,6 +217,16 @@ impl Resident {
 
     pub fn is_held(&self, doc_id: &str) -> bool {
         self.holders.contains_key(doc_id)
+    }
+
+    /// Whether `doc_id` is held, or its last holder let it go less than the grace period before
+    /// `now_ms`: an editor's last save, flushed as it closes, may land after the release.
+    pub fn held_lately(&self, doc_id: &str, now_ms: i64) -> bool {
+        self.is_held(doc_id)
+            || self
+                .released_at
+                .get(doc_id)
+                .is_some_and(|released| now_ms - released < self.grace_ms)
     }
 
     /// Every held id, sorted.
@@ -294,6 +315,20 @@ mod tests {
         assert!(resident.peek("n39").is_some());
         let loaded = ids.iter().filter(|id| resident.peek(id).is_some()).count();
         assert_eq!(loaded + 1, EDITOR_LIFECYCLE.max_open);
+    }
+
+    #[test]
+    fn a_released_document_counts_as_held_lately_until_its_grace_period_ends_with_no_sweep() {
+        let grace = EDITOR_LIFECYCLE.grace_ms;
+        let mut resident = Resident::new(EDITOR_LIFECYCLE);
+        resident.hold("n1", "main", 0, loader("n1")).unwrap();
+        assert!(resident.release("n1", "main", 10));
+
+        assert!(!resident.is_held("n1"));
+        assert!(resident.held_lately("n1", 10));
+        assert!(resident.held_lately("n1", 10 + grace - 1));
+        assert!(!resident.held_lately("n1", 10 + grace));
+        assert!(!resident.held_lately("never-held", 10));
     }
 
     #[test]

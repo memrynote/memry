@@ -89,7 +89,7 @@ use crate::crdt::BODY_FRAGMENT;
 use crate::crdt::epoch;
 use crate::crdt::errors::CrdtError;
 use crate::crdt::markdown_seed::body_is_empty;
-use crate::crdt::registry::{DocumentRegistry, UpdateSink, client_id_from_device_id};
+use crate::crdt::registry::UpdateSink;
 use crate::domain::body_write::{append_in, refuse_locked};
 use crate::domain::note_files::LogMark;
 use crate::domain::notes::journal_day::body_owner;
@@ -97,9 +97,10 @@ use crate::domain::write_back::body_mark;
 use crate::domain::{note_snapshots, owed_file_body};
 use crate::markdown::convert::EmbedResolver;
 use crate::markdown::convert::api::{Converter, ReplaceOptions};
-use crate::markdown::convert::apply::ReplaceOutcome;
+use crate::markdown::convert::apply::{CriticMarks, ReplaceOutcome};
 use crate::markdown::convert::restore::SerializeOptions;
 use crate::markdown::frontmatter::{YamlValue, parse_markdown_note, stringify_frontmatter_block};
+use crate::markdown::shared::critic_markup::parse_critic_markup;
 use crate::markdown::shared::markdown_class::{MarkdownClassThresholds, classify_markdown_content};
 use crate::markdown::shared::writing_tools::{WritingFrontmatter, merge_writing_yaml};
 use crate::protocol::account::MAX_UPDATE_BYTES;
@@ -180,6 +181,9 @@ pub struct AppRead<'a> {
     /// ([`super::write_back::body_mark`]), when it did: the replace happens only while the
     /// document has taken no edit since.
     pub compared_at: Option<LogMark>,
+    /// Whether the edit's markdown sets the note's comment marks, or leaves them to the editor
+    /// window that holds the note and writes them into the document itself (#4425).
+    pub critic_marks: CriticMarks,
 }
 
 /// Replaces the body of the note with the file's text.
@@ -199,6 +203,7 @@ pub fn feed_external_edit(
         Write::Replace {
             read: None,
             compared_at: None,
+            critic_marks: CriticMarks::FromMarkdown,
         },
     )
 }
@@ -217,6 +222,7 @@ pub fn feed_external_edit_since(
     let write = Write::Replace {
         read: None,
         compared_at: Some(compared_at),
+        critic_marks: CriticMarks::FromMarkdown,
     };
     author(conn, converter, input, device_id, now_ms, write)
 }
@@ -249,6 +255,7 @@ pub fn feed_app_edit(
         Write::Replace {
             read: Some(file_body.strip_prefix('\u{feff}').unwrap_or(file_body)),
             compared_at: read.compared_at,
+            critic_marks: read.critic_marks,
         },
     )
 }
@@ -277,9 +284,11 @@ pub fn seed_body_if_empty(
 enum Write<'r> {
     /// `read`: the file body the app read before its own write, which needs no version.
     /// `compared_at`: how far the document had come when the app compared it.
+    /// `critic_marks`: whether the markdown's comment marks replace the document's.
     Replace {
         read: Option<&'r str>,
         compared_at: Option<LogMark>,
+        critic_marks: CriticMarks,
     },
     SeedIfEmpty,
 }
@@ -352,10 +361,20 @@ fn author(
         };
         // Text first: a file that reads back what the document says (the app's own
         // write-back, a startup scan) is not an edit, whatever the body holds. A caller that
-        // did not read the frontmatter (`writing: None`) says nothing about it.
-        if same_text(&body.markdown, markdown)
-            && writing.as_ref().is_none_or(|w| *w == body.writing)
-        {
+        // did not read the frontmatter (`writing: None`) says nothing about it. With the marks
+        // left to the editor window, a text that differs only in them says nothing either:
+        // replacing the body would rewrite every block under the window.
+        let text_is_the_body = match write {
+            Write::Replace {
+                critic_marks: CriticMarks::Kept,
+                ..
+            } => same_text(
+                &parse_critic_markup(&body.markdown).plain_text,
+                &parse_critic_markup(markdown).plain_text,
+            ),
+            _ => same_text(&body.markdown, markdown),
+        };
+        if text_is_the_body && writing.as_ref().is_none_or(|w| *w == body.writing) {
             owed_file_body::clear(&tx, note_id)?;
             tx.commit().map_err(storage_failed)?;
             return Ok(FeedOutcome::Unchanged);
@@ -377,6 +396,10 @@ fn author(
             writing,
             unless_changed_from: None,
             embeds,
+            critic_marks: match write {
+                Write::Replace { critic_marks, .. } => critic_marks,
+                Write::SeedIfEmpty => CriticMarks::FromMarkdown,
+            },
         },
     );
     match outcome {
@@ -420,66 +443,6 @@ fn author(
     owed_file_body::clear(&tx, note_id)?;
     tx.commit().map_err(storage_failed)?;
     Ok(FeedOutcome::Fed)
-}
-
-/// The body a new note gets from its file's text, authored without the database. Only
-/// [`first_body`] makes one, so the note it was authored for and its client id are the ones
-/// the transaction that stores it checks ([`super::notes::new_files::adopt_new`]).
-pub struct FirstBody {
-    /// The id of the note the updates were authored for.
-    pub(crate) note_id: String,
-    /// The Yjs client id the updates were authored under: this device's for a document it
-    /// never purged ([`epoch::client_id`] at epoch 0).
-    pub(crate) client_id: u64,
-    pub(crate) updates: Vec<Vec<u8>>,
-}
-
-/// What [`seed_body_if_empty`] writes into the empty document of a note this device just
-/// created, authored off the writer connection: a caller converts many files at once and
-/// creates their notes with these bodies in one transaction
-/// ([`super::notes::new_files::adopt_new`]). `input.note_id` is the id the note will get.
-/// `None` when the seed would not answer [`FeedOutcome::Fed`] (large-file class, not
-/// convertible, or past the update cap): the note is then created and seeded alone, which
-/// records why.
-pub fn first_body(
-    converter: &Converter,
-    input: FeedInput<'_>,
-    device_id: &str,
-) -> Option<FirstBody> {
-    let markdown = input
-        .markdown
-        .strip_prefix('\u{feff}')
-        .unwrap_or(input.markdown);
-    if classify_markdown_content(markdown, MarkdownClassThresholds::default())
-        .large_file
-        .is_some()
-    {
-        return None;
-    }
-    let client_id = client_id_from_device_id(device_id);
-    let (sink, authored) = collecting_sink();
-    let document = DocumentRegistry::with_client_id(client_id, sink)
-        .get_or_open(input.note_id)
-        .ok()?;
-    let options = ReplaceOptions {
-        note_path: input.note_path,
-        writing: input.writing,
-        unless_changed_from: None,
-        embeds: input.embeds,
-    };
-    // The document is this call's alone and is dropped unless the body replaced it.
-    if converter.replace_unshared_body(&document, markdown, options) != ReplaceOutcome::Replaced {
-        return None;
-    }
-    let updates = std::mem::take(&mut *authored.lock().unwrap_or_else(PoisonError::into_inner));
-    updates
-        .iter()
-        .all(|update| rides_as_one_update(update))
-        .then(|| FirstBody {
-            note_id: input.note_id.to_owned(),
-            client_id,
-            updates,
-        })
 }
 
 /// A sink that keeps every update a write authors, for the caller to store.
@@ -586,6 +549,9 @@ fn storage_failed(error: rusqlite::Error) -> CrdtError {
         what: error.to_string(),
     })
 }
+
+mod first_body;
+pub use first_body::{FirstBody, first_body};
 
 #[cfg(test)]
 mod tests;

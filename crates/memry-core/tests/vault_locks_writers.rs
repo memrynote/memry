@@ -13,6 +13,7 @@ use memry_core::domain::external_feed::{AppRead, FeedInput, FeedOutcome};
 use memry_core::domain::journal_ops::body::edit_entry;
 use memry_core::domain::vault_locks::TargetKind;
 use memry_core::markdown::convert::api::Converter;
+use memry_core::markdown::convert::apply::CriticMarks;
 
 use crate::editor_support::{Fixture, fixture};
 
@@ -48,6 +49,7 @@ fn read(file_body: &str) -> AppRead<'_> {
     AppRead {
         file_body,
         compared_at: None,
+        critic_marks: CriticMarks::FromMarkdown,
     }
 }
 

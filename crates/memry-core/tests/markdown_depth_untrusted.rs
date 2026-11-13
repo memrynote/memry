@@ -142,6 +142,7 @@ fn replacing_the_body_of_a_deep_yjs_doc_fails_closed() {
                     writing: None,
                     unless_changed_from: Some("stale"),
                     embeds: Some(&NoEmbeds),
+                    ..ReplaceOptions::default()
                 },
             );
             assert_eq!(outcome, ReplaceOutcome::Failed, "{tag}");
@@ -153,6 +154,7 @@ fn replacing_the_body_of_a_deep_yjs_doc_fails_closed() {
                     writing: None,
                     unless_changed_from: None,
                     embeds: Some(&NoEmbeds),
+                    ..ReplaceOptions::default()
                 },
             );
             assert_eq!(outcome, ReplaceOutcome::Failed, "{tag}");
