@@ -388,6 +388,8 @@ mod sync_pack_bootstrap;
 mod sync_realtime;
 #[path = "sync_realtime_run.rs"]
 mod sync_realtime_run;
+#[path = "sync_refused_items.rs"]
+mod sync_refused_items;
 #[path = "tag_fields.rs"]
 mod tag_fields;
 #[path = "tag_fold_vectors.rs"]

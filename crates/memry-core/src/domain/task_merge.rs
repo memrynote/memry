@@ -252,6 +252,7 @@ pub(crate) fn wholesale(
         // The wholesale path runs no document gate, so it has no skip of its
         // own to report; the §6.3.1 skip is decided above, before this call.
         sync_items::ApplyOutcome::Skipped => Inbound::Skipped,
+        sync_items::ApplyOutcome::Refused => Inbound::Refused,
         // `task_activity` is the only expiring type (§13.12) and it is neither
         // of the two field-merged ones, so this arm is unreachable here.
         sync_items::ApplyOutcome::Expired => Inbound::Skipped,

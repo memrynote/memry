@@ -178,6 +178,12 @@ pub const DATA_MIGRATIONS: &[Migration] = &[
         name: "desktop_record_types",
         sql: include_str!("migrations/data/0027_desktop_record_types.sql"),
     },
+    // 28 is #4456's agent records, 29 main's #4419: both land before this one.
+    Migration {
+        version: 30,
+        name: "sync_refused_items",
+        sql: include_str!("migrations/data/0030_sync_refused_items.sql"),
+    },
 ];
 
 /// `index.db`: the rebuildable search and link index.

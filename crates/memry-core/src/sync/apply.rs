@@ -62,7 +62,7 @@ use crate::storage::repositories::sync_items::{self, ApplyOutcome, InboundRecord
 
 use super::clock::{ClockOrder, VectorClock, compare};
 use super::versioned_apply::{TAG_SCHEMA, VersionedKey};
-use super::{body_debt, delete_keep, journal_day_merge, settings_merge, store};
+use super::{body_debt, delete_keep, journal_day_merge, refused_items, settings_merge, store};
 
 /// One decoded item, waiting for its turn in the apply order (§5.13).
 pub(crate) enum Pending {
@@ -128,6 +128,10 @@ pub(crate) struct ApplyTotals {
     /// The `note` and `journal` records this page wrote, so the pull can tell
     /// which of its body debts a skip made unnecessary.
     pub(crate) applied_documents: Vec<String>,
+    /// `(type, id)` of the records the type's schema refused, counted in
+    /// `skipped` too. The pull records them in [`super::refused_items`] under
+    /// its app version, which this step does not know.
+    pub(crate) refused: Vec<(String, String)>,
 }
 
 /// The two item types whose bodies are CRDT documents (chapter 07, §12.3).
@@ -175,6 +179,7 @@ pub(crate) fn apply_page(
                     clock_device,
                     &mut totals,
                 )?;
+                refused_items::resolve(conn, &item_type, &item_id)?;
             }
             Pending::Record(record) => {
                 // §5.12.1: a bare tombstone outranks the item that arrives
@@ -195,7 +200,8 @@ pub(crate) fn apply_page(
                     )?;
                     continue;
                 }
-                match apply_inbound_on(conn, &record, now_ms, clock_device)? {
+                let outcome = apply_inbound_on(conn, &record, now_ms, clock_device)?;
+                match outcome {
                     ApplyOutcome::Applied => {
                         totals.applied += 1;
                         if DOCUMENT_TYPES.contains(&record.item_type.as_str()) {
@@ -205,6 +211,16 @@ pub(crate) fn apply_page(
                     ApplyOutcome::Skipped => totals.skipped += 1,
                     ApplyOutcome::Corrupt { .. } => totals.corrupt += 1,
                     ApplyOutcome::Expired => totals.expired += 1,
+                    ApplyOutcome::Refused => {
+                        totals.skipped += 1;
+                        totals
+                            .refused
+                            .push((record.item_type.clone(), record.item_id.clone()));
+                    }
+                }
+                // Read and decided: an earlier refusal is settled.
+                if matches!(outcome, ApplyOutcome::Applied | ApplyOutcome::Skipped) {
+                    refused_items::resolve(conn, &record.item_type, &record.item_id)?;
                 }
             }
         }
@@ -528,6 +544,7 @@ fn outcome(inbound: Inbound) -> ApplyOutcome {
         Inbound::Applied | Inbound::Merged { .. } => ApplyOutcome::Applied,
         Inbound::Skipped => ApplyOutcome::Skipped,
         Inbound::Corrupt { reason } => ApplyOutcome::Corrupt { reason },
+        Inbound::Refused => ApplyOutcome::Refused,
     }
 }
 

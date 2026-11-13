@@ -52,7 +52,7 @@ fn a_fresh_data_database_reaches_the_latest_version() {
     let version = db
         .call_blocking(|conn| user_version(conn))
         .expect("user_version");
-    assert_eq!(version, 27);
+    assert_eq!(version, 30);
 
     let names = table_names(&db);
     // Source of record, §A.2.
@@ -66,6 +66,7 @@ fn a_fresh_data_database_reaches_the_latest_version() {
         "outbox",
         "sync_cursors",
         "sync_items",
+        "sync_refused_items",
         "sync_tombstone_clocks",
         "yjs_doc_epochs",
         "yjs_snapshots",

@@ -158,6 +158,7 @@ fn finish(
     Ok(match outcome {
         ApplyOutcome::Applied => Inbound::Applied,
         ApplyOutcome::Corrupt { reason } => Inbound::Corrupt { reason },
+        ApplyOutcome::Refused => Inbound::Refused,
         // `task_activity` is the only expiring type and the store has no skip.
         ApplyOutcome::Skipped | ApplyOutcome::Expired => Inbound::Skipped,
     })
