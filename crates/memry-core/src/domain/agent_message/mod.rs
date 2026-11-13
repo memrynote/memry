@@ -34,6 +34,20 @@ pub const ITEM_TYPE: &str = "agent_message";
 /// `TERMINAL_STATUSES` (`apps/desktop/src/main/agent/storage/types.ts:24-28`).
 pub const TERMINAL_STATUSES: [&str; 3] = ["completed", "cancelled", "error"];
 
+/// The keys `AgentMessageSyncPayloadSchema` does not mark `.nullable()`
+/// (`packages/contracts/src/sync-payloads.ts:713-724`): a remote with `null`
+/// in one is refused.
+pub const NOT_NULL: [&str; 8] = [
+    "conversationId",
+    "role",
+    "content",
+    "attachments",
+    "status",
+    "clock",
+    "createdAt",
+    "updatedAt",
+];
+
 /// One live message, its content and attachments opened. Instants are epoch
 /// milliseconds.
 #[derive(Debug, Clone, PartialEq)]

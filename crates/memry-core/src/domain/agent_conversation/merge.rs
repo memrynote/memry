@@ -3,7 +3,11 @@
 //! (`apps/desktop/src/main/sync/item-handlers/agent-conversation-handler.ts:86-187`),
 //! with the title sealed at rest ([`crate::crypto::agent_payload`]).
 //!
-//! - **§6.3.1's gate decides.** No local record, or a remote that dominates,
+//! - **A remote Electron's schema refuses is skipped** before the gate and
+//!   nothing is written ([`refuses`] over [`NOT_NULL`]); Electron records it
+//!   `schema_invalid` (chapter 13 §13.2.3).
+//! - **§6.3.1's gate decides.** An equal clock compares the local payload
+//!   with its title opened, the payload a push would send (§6.5.2 P4). No local record, or a remote that dominates,
 //!   stores the remote with its title sealed. A dominating local record skips.
 //! - **Concurrent clocks merge field by field** over [`SYNCABLE_FIELDS`]
 //!   (§6.3, [`crate::sync::field_merge`]): the local title is opened first so
@@ -29,7 +33,7 @@ use serde_json::{Value, json};
 use crate::api::errors::StorageError;
 use crate::crypto::agent_envelope::{AtRestKey, SealError};
 use crate::crypto::agent_payload::{open_object, seal_object};
-use crate::domain::agent_records::{parse_object, seal_inbound};
+use crate::domain::agent_records::{parse_object, refuses, seal_inbound};
 use crate::domain::task_merge::{self, Gate};
 use crate::domain::tasks::Inbound;
 use crate::storage::repositories::Change;
@@ -37,7 +41,7 @@ use crate::storage::repositories::schema::Object;
 use crate::storage::repositories::sync_items::InboundRecord;
 use crate::sync::field_merge::{init_all_field_clocks, merge_fields};
 
-use super::{ITEM_TYPE, SYNCABLE_FIELDS};
+use super::{ITEM_TYPE, NOT_NULL, SYNCABLE_FIELDS};
 
 /// Applies one inbound `agent_conversation` record.
 pub fn apply_remote(
@@ -49,8 +53,18 @@ pub fn apply_remote(
     if record.deleted_at.is_some() {
         return task_merge::wholesale(conn, record, now_ms);
     }
+    let remote = parse_object(record)?;
+    if refuses(ITEM_TYPE, &remote, &NOT_NULL) {
+        return Ok(Inbound::Skipped);
+    }
     let sealed = seal_inbound(record, key)?;
-    let (local, merged_clock) = match task_merge::document_gate(conn, record)? {
+    // A title that does not open (no key) stays sealed, so the two compare
+    // unequal and the remote applies: the outcome before P4's skip existed.
+    let wire = |mut local: Object| {
+        let _unopened = open_object(ITEM_TYPE, &mut local, key);
+        local
+    };
+    let (local, merged_clock) = match task_merge::document_gate_with(conn, record, wire)? {
         Gate::Wholesale => return task_merge::wholesale(conn, &sealed, now_ms),
         Gate::Skip => return Ok(Inbound::Skipped),
         Gate::Merge {
@@ -59,7 +73,6 @@ pub fn apply_remote(
             ..
         } => (local.object().clone(), merged_clock),
     };
-    let remote = parse_object(record)?;
     let local = opened_local(local, key)?;
 
     let local_field_clocks = match local.get("fieldClocks") {

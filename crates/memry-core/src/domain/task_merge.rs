@@ -98,6 +98,18 @@ pub(crate) fn document_gate(
     conn: &Connection,
     record: &InboundRecord,
 ) -> Result<Gate, StorageError> {
+    document_gate_with(conn, record, |local| local)
+}
+
+/// [`document_gate`] for a type whose stored payload differs from its wire
+/// payload: `wire` turns the stored local payload into what a push would send
+/// before §6.5.2 P4's equal-clock comparison (an agent record opens its sealed
+/// keys).
+pub(crate) fn document_gate_with(
+    conn: &Connection,
+    record: &InboundRecord,
+    wire: impl FnOnce(Object) -> Object,
+) -> Result<Gate, StorageError> {
     if record.deleted_at.is_some() {
         return Ok(Gate::Wholesale);
     }
@@ -114,7 +126,8 @@ pub(crate) fn document_gate(
     // device would push is the row being pulled. The stored payload is the
     // push payload (P2), so it is the comparison; a deleted or corrupt local
     // row cannot answer, so it applies.
-    let identical = || pushable && payloads_identical(local.object(), remote.object());
+    let identical =
+        || pushable && payloads_identical(&wire(local.object().clone()), remote.object());
     Ok(
         match resolve_clock_conflict(local_clock.as_ref(), &remote_clock, identical) {
             DocumentResolution::Apply => Gate::Wholesale,

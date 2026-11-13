@@ -34,10 +34,12 @@ pub fn sealed_keys(item_type: &str) -> &'static [(&'static str, Purpose)] {
     }
 }
 
-/// Whether `value` is an envelope column: text holding exactly the three keys
-/// `version` (a number), `nonce` and `ciphertext` (strings), which is all a
-/// seal writes. A plaintext title that happens to be such text reads as
-/// sealed; no title a person types is.
+/// Whether `value` has the shape of an envelope column: text holding exactly
+/// the three keys `version` (a number), `nonce` and `ciphertext` (strings),
+/// which is all a seal writes. Shape alone does not make a value sealed: a
+/// plain title can be such text, so writes seal whatever they are given and
+/// a reader treats a shaped value that does not open under the installed key
+/// as plain ([`open_object`], [`seal_unsealed`]).
 pub fn is_envelope(value: &Value) -> bool {
     let Some(text) = value.as_str() else {
         return false;
@@ -60,32 +62,76 @@ pub fn is_pending(item_type: &str, payload: &Object) -> bool {
     })
 }
 
-/// Seals every plain sealed key of `payload` under `key`. An absent or `null`
-/// value has nothing to seal, and a title that is not text is left for the
-/// reader to refuse.
+/// Seals every sealed key of `payload` under `key`, for a write whose values
+/// are all plain: a local write, an inbound wire payload, or merge winners
+/// over an opened local record. A value shaped like an envelope is sealed
+/// too, since a plain value can have that shape. An absent or `null` value
+/// has nothing to seal, and a title that is not text is left for the reader
+/// to refuse.
 pub fn seal_object(
     item_type: &str,
     payload: &mut Object,
     key: &AtRestKey,
 ) -> Result<(), SealError> {
     for (name, purpose) in sealed_keys(item_type) {
-        let Some(value) = payload.get_mut(*name) else {
-            continue;
-        };
-        if !sealable(*purpose, value) || is_envelope(value) {
-            continue;
+        if let Some(value) = payload.get_mut(*name)
+            && sealable(*purpose, value)
+        {
+            seal_value(*purpose, value, key)?;
         }
-        let plaintext = match &*value {
-            Value::String(text) if *purpose == Purpose::ConversationTitle => text.clone(),
-            other => other.to_string(),
-        };
-        *value = Value::String(key.seal(*purpose, &plaintext)?);
     }
     Ok(())
 }
 
+/// Seals the sealed keys of a stored `payload` that do not already open under
+/// `key`, and says whether it sealed any. What [`seal_object`] is for a
+/// stored record that may be pending: a value that opens is sealed already,
+/// and anything else, a shaped value that does not open included, is plain.
+pub fn seal_unsealed(
+    item_type: &str,
+    payload: &mut Object,
+    key: &AtRestKey,
+) -> Result<bool, SealError> {
+    let mut sealed = false;
+    for (name, purpose) in sealed_keys(item_type) {
+        let Some(value) = payload.get_mut(*name) else {
+            continue;
+        };
+        if !sealable(*purpose, value) || opens(*purpose, value, key)? {
+            continue;
+        }
+        seal_value(*purpose, value, key)?;
+        sealed = true;
+    }
+    Ok(sealed)
+}
+
+fn seal_value(purpose: Purpose, value: &mut Value, key: &AtRestKey) -> Result<(), SealError> {
+    let plaintext = match &*value {
+        Value::String(text) if purpose == Purpose::ConversationTitle => text.clone(),
+        other => other.to_string(),
+    };
+    *value = Value::String(key.seal(purpose, &plaintext)?);
+    Ok(())
+}
+
+/// Whether `value` is an envelope that opens under `key`. Only a missing key
+/// is an error: without one nothing can be told apart.
+fn opens(purpose: Purpose, value: &Value, key: &AtRestKey) -> Result<bool, SealError> {
+    let Some(column) = value.as_str().filter(|_| is_envelope(value)) else {
+        return Ok(false);
+    };
+    match key.open(purpose, column) {
+        Ok(_) => Ok(true),
+        Err(SealError::KeyUnavailable) => Err(SealError::KeyUnavailable),
+        Err(_) => Ok(false),
+    }
+}
+
 /// Opens every sealed key of `payload` back to its wire value. A plain value
-/// (a pending record) is already the wire value and stays.
+/// (a pending record) is already the wire value and stays, and so does a
+/// value shaped like an envelope that does not open under the installed key:
+/// every write seals, so such a value was stored plain.
 pub fn open_object(
     item_type: &str,
     payload: &mut Object,
@@ -98,7 +144,11 @@ pub fn open_object(
         let Some(column) = value.as_str().filter(|_| is_envelope(value)) else {
             continue;
         };
-        let plaintext = key.open(*purpose, column)?;
+        let plaintext = match key.open(*purpose, column) {
+            Ok(plaintext) => plaintext,
+            Err(SealError::KeyUnavailable) => return Err(SealError::KeyUnavailable),
+            Err(_) => continue,
+        };
         *value = match purpose {
             Purpose::ConversationTitle => Value::String(plaintext),
             _ => serde_json::from_str(&plaintext).map_err(|_| SealError::Malformed)?,
@@ -180,17 +230,35 @@ mod tests {
     }
 
     #[test]
-    fn sealing_twice_seals_once_and_absent_or_null_values_stay() {
+    fn sealing_a_stored_payload_twice_seals_once_and_absent_or_null_values_stay() {
         let key = installed();
         let mut stored = object(json!({"title": "Plan", "backendModel": null}));
-        seal_object("agent_conversation", &mut stored, &key).unwrap();
+        assert!(seal_unsealed("agent_conversation", &mut stored, &key).unwrap());
         let sealed = stored["title"].clone();
-        seal_object("agent_conversation", &mut stored, &key).unwrap();
+        assert!(!seal_unsealed("agent_conversation", &mut stored, &key).unwrap());
         assert_eq!(stored["title"], sealed);
         let mut message = object(json!({"content": null}));
         seal_object("agent_message", &mut message, &key).unwrap();
         assert_eq!(message, object(json!({"content": null})));
         assert!(!is_pending("agent_message", &message));
+    }
+
+    #[test]
+    fn a_plain_title_shaped_like_an_envelope_is_sealed_and_opens_to_itself() {
+        let key = installed();
+        let shaped = r#"{"version":1,"nonce":"AAAA","ciphertext":"AAAA"}"#;
+        assert!(is_envelope(&json!(shaped)));
+        let mut written = object(json!({"title": shaped}));
+        seal_object("agent_conversation", &mut written, &key).unwrap();
+        assert_ne!(written["title"], json!(shaped), "a write seals it");
+        let mut pending = object(json!({"title": shaped}));
+        open_object("agent_conversation", &mut pending, &key).unwrap();
+        assert_eq!(pending["title"], json!(shaped), "it reads as plain");
+        assert!(seal_unsealed("agent_conversation", &mut pending, &key).unwrap());
+        for mut sealed in [written, pending] {
+            open_object("agent_conversation", &mut sealed, &key).unwrap();
+            assert_eq!(sealed["title"], json!(shaped));
+        }
     }
 
     #[test]

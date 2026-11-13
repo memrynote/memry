@@ -122,11 +122,9 @@ fn occurrences(haystack: &[u8], needle: &str) -> usize {
         .count()
 }
 
-#[tokio::test]
-async fn agent_sealed_pending_message_is_sealed_when_the_key_arrives() {
-    let fixture = vault("pending");
-    let db = fixture.vault.db_handle();
-    let content = message_content(FIRST);
+/// Pulls message `m1` with `FIRST` as its text into `fixture` through the
+/// real pull loop, with whatever key the vault holds.
+async fn pull_message(fixture: &Fixture, content: &Json) {
     let wire = json!({
         "conversationId": "conv-1", "role": "user", "content": content,
         "attachments": [], "toolCallId": null, "status": "completed",
@@ -152,7 +150,7 @@ async fn agent_sealed_pending_message_is_sealed_when_the_key_arrives() {
     ]);
     let report = PullLoop::new(
         http(transport),
-        db.clone(),
+        fixture.vault.db_handle(),
         declaration(),
         Arc::new(Plain(wire.to_string())),
     )
@@ -161,6 +159,15 @@ async fn agent_sealed_pending_message_is_sealed_when_the_key_arrives() {
     .await
     .expect("the page");
     assert_eq!((report.applied, report.corrupt), (1, 0));
+}
+
+#[tokio::test]
+async fn agent_sealed_pending_message_is_sealed_when_the_key_arrives() {
+    let fixture = vault("pending");
+    let db = fixture.vault.db_handle();
+    // Longer than a page, so the plain text also sits in overflow pages.
+    let content = message_content(&FIRST.repeat(200));
+    pull_message(&fixture, &content).await;
     let (pending, column): (i64, String) = db
         .call_blocking(|conn| {
             conn.query_row(
@@ -178,6 +185,16 @@ async fn agent_sealed_pending_message_is_sealed_when_the_key_arrives() {
         (1, ""),
         "no key: stored pending, column empty"
     );
+    // The plain row reaches the main file, as an automatic checkpoint would
+    // move it there before the key arrives.
+    db.call_blocking(|conn| {
+        conn.execute_batch("PRAGMA wal_checkpoint(TRUNCATE)")
+            .map_err(|error| memry_core::api::errors::StorageError::Failed {
+                what: error.to_string(),
+            })
+    })
+    .expect("checkpoint");
+    assert!(occurrences(&file_bytes(fixture.dir.path()), FIRST) > 0);
 
     let sealed = fixture
         .vault
@@ -201,6 +218,45 @@ async fn agent_sealed_pending_message_is_sealed_when_the_key_arrives() {
         "SELECT payload FROM sync_items WHERE item_type = 'agent_message' AND item_id = 'm1'",
     );
     assert!(!stored.contains(FIRST), "the stored payload is sealed too");
+    assert_eq!(
+        occurrences(&file_bytes(fixture.dir.path()), FIRST),
+        0,
+        "the plain text the seal replaced is gone from the database file and its WAL"
+    );
+}
+
+#[tokio::test]
+async fn agent_pending_record_pushes_plain_with_no_key() {
+    let fixture = vault("pending-push");
+    let db = fixture.vault.db_handle();
+    let content = message_content(FIRST);
+    pull_message(&fixture, &content).await;
+    db.call_blocking(|conn| agent_message::delete(conn, "m1", "device-a", NOW + 1))
+        .map(|deleted| assert!(deleted))
+        .expect("delete");
+
+    let recording = Arc::new(Recording::default());
+    let accepted = json!({"accepted": ["m1"], "rejected": [], "serverTime": 1, "maxCursor": 1});
+    let report = PushCoordinator::new(
+        http(FakeTransport::new(vec![response(
+            200,
+            &accepted.to_string(),
+        )])),
+        db.clone(),
+        declaration(),
+        recording.clone(),
+    )
+    .with_at_rest_key(fixture.vault.at_rest_key())
+    .drain_wave()
+    .await
+    .expect("the wave");
+    assert_eq!((report.accepted, report.held, report.retired), (1, 0, 0));
+    let sent = recording.0.lock().unwrap().clone();
+    assert_eq!(sent.len(), 1);
+    assert_eq!(
+        sent[0]["content"], content,
+        "the plain pending text goes as is"
+    );
 }
 
 #[tokio::test]

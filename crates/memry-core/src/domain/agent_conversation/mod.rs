@@ -1,5 +1,5 @@
 //! Agent conversations: the `agent_conversation` sync type
-//! (`AgentConversationSyncPayloadSchema`, `packages/contracts/src/sync-payloads.ts:686-698`;
+//! (`AgentConversationSyncPayloadSchema`, `packages/contracts/src/sync-payloads.ts:699-711`;
 //! chapter 13 §13.7.26), the record half of desktop's
 //! `apps/desktop/src/main/agent/storage/conversation-store.ts`. Step 28
 //! (#3545) builds the agent on these functions.
@@ -36,6 +36,21 @@ pub const ITEM_TYPE: &str = "agent_conversation";
 /// `AGENT_CONVERSATION_SYNCABLE_FIELDS`
 /// (`packages/sync-client/src/agent-conversation-fields.ts:1-7`).
 pub const SYNCABLE_FIELDS: [&str; 5] = ["title", "backend", "backendModel", "trustList", "pinned"];
+
+/// The keys `AgentConversationSyncPayloadSchema` does not mark `.nullable()`
+/// (`packages/contracts/src/sync-payloads.ts:699-711`): a remote with `null`
+/// in one is refused.
+pub const NOT_NULL: [&str; 9] = [
+    "vaultId",
+    "title",
+    "backend",
+    "trustList",
+    "pinned",
+    "clock",
+    "fieldClocks",
+    "createdAt",
+    "updatedAt",
+];
 
 /// One live conversation, its title opened. Instants are epoch milliseconds.
 #[derive(Debug, Clone, PartialEq, Eq)]

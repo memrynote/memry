@@ -2,7 +2,7 @@
 //! reads, and Electron's apply rules (`agent-message-handler.ts`) through the
 //! real pull apply step.
 
-use rusqlite::{Connection, params};
+use rusqlite::{Connection, OptionalExtension, params};
 use serde_json::{Value, json};
 use zeroize::Zeroizing;
 
@@ -52,16 +52,28 @@ fn new<'a>(
     }
 }
 
+fn body(content: &str, status: Value) -> Value {
+    json!({
+        "conversationId": "conv-1", "role": "user", "content": text(content),
+        "attachments": [], "toolCallId": null, "status": status,
+        "clock": {"peer": 1}, "createdAt": NOW, "updatedAt": NOW,
+    })
+}
+
 fn peer(id: &str, content: &str, status: Value) -> Pending {
-    remote(
-        ITEM_TYPE,
-        id,
-        &json!({
-            "conversationId": "conv-1", "role": "user", "content": text(content),
-            "attachments": [], "toolCallId": null, "status": status,
-            "clock": {"peer": 1}, "createdAt": NOW, "updatedAt": NOW,
-        }),
+    remote(ITEM_TYPE, id, &body(content, status))
+}
+
+/// The stored payload, `None` when there is no row or no payload.
+fn stored_payload_or_none(conn: &Connection, id: &str) -> Option<String> {
+    conn.query_row(
+        "SELECT payload FROM sync_items WHERE item_type = ?1 AND item_id = ?2",
+        params![ITEM_TYPE, id],
+        |row| row.get(0),
     )
+    .optional()
+    .expect("query")
+    .flatten()
 }
 
 fn stored_payload(conn: &Connection, id: &str) -> Option<String> {
@@ -201,14 +213,72 @@ fn a_message_is_written_once_and_lands_before_its_conversation() {
 fn a_message_that_is_not_terminal_is_recorded_corrupt_with_no_payload() {
     let (db, _dir) = open("agent-message-corrupt");
     db.call_blocking(|conn| {
-        for (id, status) in [("m1", json!("streaming")), ("m2", Value::Null)] {
-            let totals = pull(conn, &key(), vec![peer(id, "secret draft", status)])?;
+        let mut absent = body("secret draft", json!("completed"));
+        absent.as_object_mut().unwrap().remove("status");
+        let items = [
+            ("m1", body("secret draft", json!("streaming"))),
+            ("m2", absent),
+        ];
+        for (id, body) in items {
+            let totals = pull(conn, &key(), vec![remote(ITEM_TYPE, id, &body)])?;
             assert_eq!(totals.corrupt, 1, "{id}");
             assert_eq!(stored_payload(conn, id), None, "{id}");
         }
         Ok(())
     })
     .expect("corrupt");
+}
+
+#[test]
+fn a_message_this_device_holds_skips_a_remote_that_is_not_terminal() {
+    let (db, _dir) = open("agent-message-held-streaming");
+    db.call_blocking(|conn| {
+        let key = key();
+        pull(conn, &key, vec![peer("m1", "original", json!("completed"))])?;
+        let before = stored_payload(conn, "m1");
+        let totals = pull(conn, &key, vec![peer("m1", "draft", json!("streaming"))])?;
+        assert_eq!((totals.skipped, totals.corrupt), (1, 0));
+        assert_eq!(stored_payload(conn, "m1"), before);
+        let corrupt: Option<String> = conn
+            .query_row(
+                "SELECT corrupt_reason FROM sync_items WHERE item_type = ?1 AND item_id = 'm1'",
+                params![ITEM_TYPE],
+                |row| row.get(0),
+            )
+            .unwrap();
+        assert_eq!(corrupt, None, "the held message stays editable");
+        Ok(())
+    })
+    .expect("held");
+}
+
+#[test]
+fn a_remote_the_schema_refuses_is_skipped_and_writes_nothing() {
+    let (db, _dir) = open("agent-message-refused");
+    db.call_blocking(|conn| {
+        let cases = [
+            ("conversationId", json!(5)),
+            ("role", json!(["user"])),
+            ("toolCallId", json!(5)),
+            ("createdAt", json!("x")),
+            ("status", Value::Null),
+            ("content", Value::Null),
+            ("attachments", Value::Null),
+            ("clock", Value::Null),
+        ];
+        for (index, (name, value)) in cases.into_iter().enumerate() {
+            let id = format!("m{index}");
+            let mut bad = body("SECRET-REFUSED words", json!("completed"));
+            bad[name] = value;
+            for key in [AtRestKey::default(), key()] {
+                let totals = pull(conn, &key, vec![remote(ITEM_TYPE, &id, &bad)])?;
+                assert_eq!((totals.skipped, totals.corrupt), (1, 0), "{name}");
+                assert_eq!(stored_payload_or_none(conn, &id), None, "{name}");
+            }
+        }
+        Ok(())
+    })
+    .expect("refused");
 }
 
 #[test]
