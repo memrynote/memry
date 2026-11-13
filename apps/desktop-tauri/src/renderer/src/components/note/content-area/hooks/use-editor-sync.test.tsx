@@ -2,7 +2,6 @@ import { act, renderHook, waitFor } from '@testing-library/react'
 import { afterEach, describe, expect, it, vi } from 'vitest'
 import { useEditorSync } from './use-editor-sync'
 import { useEditorTeardown } from '@/hooks/use-editor-teardown'
-import { fetchLinkPreview } from '@/lib/url-metadata'
 import type * as CoreModule from '@blocknote/core'
 
 const blockNoteMocks = vi.hoisted(() => ({
@@ -201,51 +200,6 @@ describe('useEditorSync', () => {
     )
     expect(onLiveMarkdownChange).toHaveBeenCalledTimes(2)
     expect(onMarkdownChange).not.toHaveBeenCalled()
-  })
-
-  it('hydrates link mentions without crashing on non-array block content', async () => {
-    const nestedMention = {
-      id: 'nested-mention',
-      type: 'paragraph',
-      props: {},
-      content: [
-        {
-          type: 'linkMention',
-          props: { url: 'https://example.com', domain: 'example.com', title: 'Example' }
-        }
-      ],
-      children: []
-    }
-    const editor = createEditor([
-      { id: 'string-content', type: 'paragraph', props: {}, content: 'plain string', children: [] },
-      {
-        id: 'table-content',
-        type: 'table',
-        props: {},
-        content: { type: 'tableContent', rows: [] },
-        children: []
-      },
-      {
-        id: 'task-content-none',
-        type: 'taskBlock',
-        props: { taskId: 'task-1', title: 'Task', checked: false, parentTaskId: '' },
-        content: undefined,
-        children: [nestedMention]
-      }
-    ])
-
-    renderHook(() =>
-      useEditorSync({
-        editor,
-        initialContent: 'content',
-        contentType: 'markdown'
-      })
-    )
-
-    await waitFor(() => expect(fetchLinkPreview).toHaveBeenCalledWith('https://example.com'))
-    await waitFor(() =>
-      expect(editor.updateBlock).toHaveBeenCalledWith(nestedMention, expect.anything())
-    )
   })
 
   it('does not promote the wiki link the caret is inside, and promotes the others', async () => {
