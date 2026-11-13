@@ -16,6 +16,14 @@ use super::{FoldMorph, FoldToken};
 /// (`MAX_LCS_CELLS`). It bounds the work a long model line over a long paragraph costs.
 pub const MAX_LCS_CELLS: usize = 4_000_000;
 
+/// A fallback line of more word segments than this is not mapped either. A divergence from
+/// `engine-morph.ts`, which caps the cells only: a fallback line is a prefix of its paragraph
+/// (its first 12 whitespace-split words, which need not be short), so the vault's own text
+/// decides its length, and a long paragraph with few spaces would cost up to
+/// [`MAX_LCS_CELLS`] for every few kilobytes of the note. With this cap a fallback line costs
+/// at most this many steps per source segment. A model line keeps Electron's cap only.
+pub const MAX_LINE_TOKENS: usize = 128;
+
 static NOT_LETTER_OR_NUMBER: LazyLock<Regex> =
     LazyLock::new(|| Regex::new(r"[^\p{L}\p{N}]").expect("not letter or number"));
 
@@ -99,6 +107,9 @@ pub struct MorphLines<'a> {
     pub key_reason: Option<&'a str>,
     pub takeaway: Option<&'a str>,
     pub topic: Option<&'a str>,
+    /// Takeaway and Topic are the local fallback, not a model's lines: [`MAX_LINE_TOKENS`]
+    /// applies to them.
+    pub fallback: bool,
 }
 
 /// `buildMorph`.
@@ -130,10 +141,11 @@ pub fn build_morph(
         }
     }
 
-    let map = |line: Option<&str>| -> Option<Vec<FoldToken>> {
+    let map = |line: Option<&str>, capped: bool| -> Option<Vec<FoldToken>> {
         let line = line?;
         let tokens = word_segments(line);
         let norm = normalized(&tokens, language);
+        let capped = capped && norm.len() > MAX_LINE_TOKENS;
         let mut out: Vec<FoldToken> = tokens
             .iter()
             .map(|t| FoldToken {
@@ -141,8 +153,10 @@ pub fn build_morph(
                 src: None,
             })
             .collect();
-        for (li, si) in lcs_pairs(&norm, &src_norm) {
-            out[li].src = Some(si as u32);
+        if !capped {
+            for (li, si) in lcs_pairs(&norm, &src_norm) {
+                out[li].src = Some(si as u32);
+            }
         }
         Some(out)
     };
@@ -151,10 +165,10 @@ pub fn build_morph(
         src_tokens: src.iter().map(|s| s.text.to_owned()).collect(),
         src_sentence_start,
         morph: FoldMorph {
-            key_takeaway: map(lines.key_takeaway),
-            key_reason: map(lines.key_reason),
-            takeaway: map(lines.takeaway),
-            topic: map(lines.topic),
+            key_takeaway: map(lines.key_takeaway, false),
+            key_reason: map(lines.key_reason, false),
+            takeaway: map(lines.takeaway, lines.fallback),
+            topic: map(lines.topic, lines.fallback),
         },
     }
 }

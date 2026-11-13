@@ -211,44 +211,65 @@ impl FoldService {
             true => self.backend.writer(ai.summarize_agent).await,
             false => None,
         };
-        let (id, lookup_writer) = (note_id.to_owned(), writer.clone());
-        let Folded {
-            mut layers,
-            missing,
-            language,
-        } = blocking(move || fold(&id, &open, &prepared, lookup_writer.as_ref())).await?;
-        layers.status = if !foldable {
-            FoldStatus::Short
-        } else if !enabled {
-            FoldStatus::Off
-        } else if let Some(writer) = &writer {
-            self.queue_missing(note_id, generation, &missing, &language, writer)
-        } else {
-            FoldStatus::NoAgent
-        };
-        layers.agent = writer.map(|writer| writer.label);
-        Ok(layers)
+        let prepared = Arc::new(prepared);
+        // A chunk can finish between the cache lookup and the queueing, which `fold-service.ts`
+        // does in one synchronous step: fold again rather than run it a second time.
+        for attempt in 0.. {
+            let written = lock(&self.state).queue.written;
+            let (id, vault, prepared, lookup_writer) = (
+                note_id.to_owned(),
+                open.clone(),
+                prepared.clone(),
+                writer.clone(),
+            );
+            let Folded {
+                mut layers,
+                missing,
+                language,
+            } = blocking(move || fold(&id, &vault, &prepared, lookup_writer.as_ref())).await?;
+            layers.status = if !foldable {
+                FoldStatus::Short
+            } else if !enabled {
+                FoldStatus::Off
+            } else if let Some(writer) = &writer {
+                let seen = (attempt < 8).then_some(written);
+                match self.queue_missing(note_id, generation, seen, &missing, &language, writer) {
+                    Some(status) => status,
+                    None => continue,
+                }
+            } else {
+                FoldStatus::NoAgent
+            };
+            layers.agent = writer.map(|writer| writer.label);
+            return Ok(layers);
+        }
+        unreachable!("the last attempt queues whatever it read")
     }
 
-    /// The status of a note whose chunks `writer` writes, the missing ones queued.
+    /// The status of a note whose chunks `writer` writes, the missing ones queued. `None` when
+    /// a chunk was written since the cache read `seen` writes: the caller folds again.
     fn queue_missing(
         self: &Arc<Self>,
         note_id: &str,
         generation: u64,
+        seen: Option<u64>,
         missing: &[ParsedChunk],
         language: &str,
         writer: &FoldWriter,
-    ) -> FoldStatus {
+    ) -> Option<FoldStatus> {
         let mut state = lock(&self.state);
         if state.generation != generation {
-            return FoldStatus::Writing;
+            return Some(FoldStatus::Writing);
+        }
+        if !missing.is_empty() && seen.is_some_and(|seen| seen != state.queue.written) {
+            return None;
         }
         state.opened.insert(note_id.to_owned());
         if missing.is_empty() {
-            return FoldStatus::Ready;
+            return Some(FoldStatus::Ready);
         }
         let Some(search) = state.open.as_ref().map(|open| open.search.clone()) else {
-            return FoldStatus::Writing;
+            return Some(FoldStatus::Writing);
         };
         for chunk in missing {
             state
@@ -268,11 +289,11 @@ impl FoldService {
         let in_flight = keys.iter().any(|key| state.queue.jobs.contains_key(key));
         let failed = keys.iter().any(|key| state.queue.failed.contains_key(key));
         self.pump(&mut state);
-        if !in_flight && failed {
+        Some(if !in_flight && failed {
             FoldStatus::Failed
         } else {
             FoldStatus::Writing
-        }
+        })
     }
 
     /// `pump`: starts queued jobs while a run slot is free.

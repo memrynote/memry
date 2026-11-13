@@ -10,7 +10,7 @@
 
 use memry_desktop::fold::FoldLayers;
 use memry_desktop::fold::engine::{assemble, prepare};
-use memry_desktop::fold::morph::{MorphLines, build_morph};
+use memry_desktop::fold::morph::{MAX_LINE_TOKENS, MorphLines, build_morph};
 use memry_desktop::fold::text::steps;
 use memry_desktop::fold::tokens::Zone;
 use memry_test_kit::{
@@ -52,8 +52,14 @@ fn text_bytes(layers: &FoldLayers) -> usize {
         .sum()
 }
 
+/// The scans visit each byte a few times; with no model lines, the two fallback line maps of a
+/// paragraph (Takeaway, Topic) cost at most [`MAX_LINE_TOKENS`] steps per source segment each.
+fn linear_bound(len: usize) -> usize {
+    (8 + 2 * MAX_LINE_TOKENS) * len + 1000
+}
+
 fn assert_linear(what: &'static str, input: String) {
-    let bound = 8 * input.len() + 1000;
+    let bound = linear_bound(input.len());
     on_small_stack(move || {
         assert_steps_at_most(what, steps, bound, || {
             let layers = fold(&input);
@@ -115,6 +121,7 @@ fn a_long_model_line_over_a_long_paragraph_is_not_mapped() {
                 key_reason: None,
                 takeaway: Some(&line),
                 topic: None,
+                fallback: false,
             },
             "en",
         ));
@@ -128,6 +135,15 @@ fn a_long_model_line_over_a_long_paragraph_is_not_mapped() {
         mapped.iter().all(|t| t.src.is_none()),
         "nothing is mapped past the cap"
     );
+}
+
+/// A paragraph with no spaces is one long fallback line (its first 12 whitespace-split words):
+/// mapped, it would cost as many steps as segments squared, just under `MAX_LCS_CELLS` here.
+#[test]
+fn a_paragraph_without_spaces_maps_in_linear_work() {
+    let paragraph = "a-".repeat(940);
+    let input = format!("{paragraph}a.\n\n").repeat(20);
+    assert_linear("paragraphs without spaces", input);
 }
 
 #[test]
@@ -212,7 +228,7 @@ proptest! {
         let input = format!("{}\n\n{body}", "word ".repeat(160));
         let before = steps();
         let layers = fold(&input);
-        prop_assert!(steps() - before <= 8 * input.len() + 1000);
+        prop_assert!(steps() - before <= linear_bound(input.len()));
         prop_assert!(!layers.sections.is_empty());
         prop_assert!(text_bytes(&layers) <= output_bound(input.len()));
         for p in layers.sections.iter().flat_map(|s| &s.paragraphs) {

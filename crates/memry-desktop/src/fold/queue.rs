@@ -119,6 +119,8 @@ pub struct Queue {
     pub failed: HashMap<String, NoteIds>,
     pub last_failure: Option<String>,
     pub last_note_id: Option<String>,
+    /// Chunks written so far: a fold that read the cache before the last write reads again.
+    pub written: u64,
 }
 
 impl Queue {
@@ -189,6 +191,7 @@ impl Queue {
             .unwrap_or_default();
         match outcome {
             Ok(()) => {
+                self.written += 1;
                 self.failed.remove(key);
                 if let Some(last) = self.last_failure.clone()
                     && note_ids.has(&last)

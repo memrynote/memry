@@ -236,6 +236,13 @@ impl LocalAgent {
             .result
     }
 
+    /// Whether a probe two turns share is still in its slot. For tests: a cancelled turn
+    /// leaves none.
+    #[doc(hidden)]
+    pub fn probe_in_flight(&self) -> bool {
+        self.inner.probes.in_flight()
+    }
+
     /// `getStatus`: the provider answers and lists the configured model. Live, like Electron's;
     /// the caller caches it. `model` is the configured one, empty for "any".
     pub async fn status(&self) -> LocalAgentStatus {

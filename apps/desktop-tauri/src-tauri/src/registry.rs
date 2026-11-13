@@ -192,7 +192,7 @@ pub fn builder() -> Builder<Wry> {
             crate::commands::settings::settings_get_local,
             crate::commands::settings::settings_get_path,
             crate::commands::settings::settings_reset_keyboard,
-            crate::commands::settings::settings_set_ai,
+            crate::commands::settings::settings_set_ai::<Wry>,
             crate::commands::settings::settings_set_group,
             crate::commands::settings::settings_set_local,
             // shell

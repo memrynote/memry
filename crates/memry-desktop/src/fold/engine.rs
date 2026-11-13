@@ -80,6 +80,7 @@ fn paragraph(p: &ParsedParagraph, ai: Option<&ChunkParagraphAi>, language: &str)
         key_reason: key.as_ref().map(|k| k.reason.as_str()),
         takeaway: Some(&takeaway),
         topic: Some(&topic),
+        fallback: ai.is_none(),
     };
     let morph = build_morph(&p.text, &p.sentences, &lines, language);
     FoldParagraph {

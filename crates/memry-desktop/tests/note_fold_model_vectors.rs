@@ -10,8 +10,8 @@
 
 use std::collections::HashMap;
 
-use memry_desktop::fold::FoldLayers;
 use memry_desktop::fold::FoldKey;
+use memry_desktop::fold::FoldLayers;
 use memry_desktop::fold::engine::{Prepared, assemble, prepare};
 use memry_desktop::fold::model::{ChunkAi, ChunkParagraphAi, build_chunk_prompt, chunk_ai};
 use memry_desktop::fold::sections::ParsedChunk;
@@ -93,8 +93,16 @@ fn model_fields(layers: &FoldLayers, exact: bool) -> Value {
                 .iter()
                 .map(|p| {
                     let lines = [
-                        ("keyTakeaway", &p.morph.key_takeaway, p.key.as_ref().map(|k| &k.takeaway)),
-                        ("keyReason", &p.morph.key_reason, p.key.as_ref().map(|k| &k.reason)),
+                        (
+                            "keyTakeaway",
+                            &p.morph.key_takeaway,
+                            p.key.as_ref().map(|k| &k.takeaway),
+                        ),
+                        (
+                            "keyReason",
+                            &p.morph.key_reason,
+                            p.key.as_ref().map(|k| &k.reason),
+                        ),
                         ("takeaway", &p.morph.takeaway, Some(&p.takeaway)),
                         ("topic", &p.morph.topic, Some(&p.topic)),
                     ];
@@ -167,7 +175,9 @@ fn actual(markdown: &str, exact: bool) -> Value {
     let all = chunks(&prepared);
     let local = assemble("note", &prepared, |_| None);
     let written = assemble("note", &prepared, |chunk| {
-        let index = all.iter().position(|c| c.hash == chunk.hash && std::ptr::eq(*c, chunk));
+        let index = all
+            .iter()
+            .position(|c| c.hash == chunk.hash && std::ptr::eq(*c, chunk));
         (index.expect("a chunk of the note") % 3 != 1).then(|| fake_reply(chunk))
     });
     let mut written_fields = model_fields(&written.layers, exact);
@@ -187,7 +197,11 @@ fn the_model_levels_reproduce_every_vector() {
     let file = read("note-fold-model.json");
     let documents = documents();
     let cases = file["cases"].as_array().expect("cases");
-    assert!(cases.len() >= 40, "too few folding documents: {}", cases.len());
+    assert!(
+        cases.len() >= 40,
+        "too few folding documents: {}",
+        cases.len()
+    );
     let mut failed = Vec::new();
     for case in cases {
         let name = case["name"].as_str().expect("name");
@@ -239,7 +253,11 @@ fn the_reply_check_accepts_and_refuses_what_zod_does() {
             "{name}: {got:?}"
         );
         if let Ok(value) = got {
-            assert_eq!(serde_json::to_value(&value).expect("json"), case["value"], "{name}");
+            assert_eq!(
+                serde_json::to_value(&value).expect("json"),
+                case["value"],
+                "{name}"
+            );
         }
     }
 }

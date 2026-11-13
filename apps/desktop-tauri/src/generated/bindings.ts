@@ -464,8 +464,10 @@ export const commands = {
 	 */
 	settingsResetKeyboard: () => __TAURI_INVOKE<null>("settings_reset_keyboard"),
 	/**
-	 *  `settings:setAISettings`: writes the switches, forgets the fold's agent detection when a
-	 *  switch the fold reads changed (`refreshNoteFold`), and announces `ai` with the written fields.
+	 *  `settings:setAISettings` (`writeAISettings`): writes the switches, forgets the fold's
+	 *  agent detection when a switch the fold reads changed (`refreshNoteFold`), and announces
+	 *  `ai` with the written fields, one `setting_changed` each. With no vault open it refuses with
+	 *  the localized "no vault is open"; an empty patch only announces.
 	 */
 	settingsSetAi: (patch: AiSettingsPatch) => __TAURI_INVOKE<null>("settings_set_ai", { patch }),
 	/**
