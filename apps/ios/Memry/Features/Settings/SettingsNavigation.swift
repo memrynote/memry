@@ -24,6 +24,19 @@ enum SettingsRoute: Hashable, Sendable {
         default: String(describing: self)
         }
     }
+
+    /// The root row a page is opened from: itself for a row, the page that
+    /// links to it otherwise. The split view selects this row (#4348).
+    var section: SettingsRoute {
+        switch self {
+        case .storage, .devices: .account
+        case .newNotesFolder: .general
+        case .font: .appearance
+        case .template: .templates
+        case .property: .properties
+        default: self
+        }
+    }
 }
 
 extension EnvironmentValues {
@@ -34,6 +47,11 @@ extension EnvironmentValues {
 
 /// The pages built over the Settings context: Settings (Menu › Settings,
 /// F1) and Calendar, each on its own stack.
+///
+/// At regular width (`DESIGN.md` › Tablet, #4348) Settings is a split view:
+/// the root list is the sidebar, the selected row's page the detail, and a
+/// page's links push inside the detail column. The shell picks the width
+/// (`TasksRouter.setSettingsSplit`), so an iPhone in landscape keeps the stack.
 struct MoreTabView: View {
     let context: SettingsContext?
     let browse: VaultBrowseViewModel?
@@ -51,6 +69,8 @@ struct MoreTabView: View {
                     }
                     .noteDestinations(browse: browse, path: $router.calendarPath)
             }
+        } else if router.settingsSplit {
+            SettingsSplitView(context: context, browse: browse)
         } else {
             NavigationStack(path: $router.settingsPath) {
                 Group {
@@ -62,21 +82,73 @@ struct MoreTabView: View {
                 }
                 .settingsPage()
                 .toolbar { GlobalSearchToolbarItem() }
-                .navigationDestination(for: SettingsRoute.self) { route in
-                    if let context {
-                        SettingsDestination(route: route, context: context)
-                            .settingsPage()
-                    } else {
-                        ProgressView(SettingsCopy.loading)
-                    }
-                }
-                .noteDestinations(browse: browse, path: $router.settingsPath)
+                .settingsDestinations(context: context, browse: browse, path: $router.settingsPath)
             }
         }
     }
 }
 
+/// Settings at regular width: the root list beside the selected page, both
+/// columns shown in portrait too.
+private struct SettingsSplitView: View {
+    let context: SettingsContext?
+    let browse: VaultBrowseViewModel?
+    @Environment(TasksRouter.self) private var router
+    @State private var columns = NavigationSplitViewVisibility.all
+
+    var body: some View {
+        @Bindable var router = router
+        let page = Binding<SettingsRoute?>(
+            get: { router.settingsPage ?? .account },
+            set: { if let route = $0 { router.openSettings(route) } }
+        )
+        NavigationSplitView(columnVisibility: $columns) {
+            Group {
+                if let context {
+                    SettingsRootScreen(context: context, selection: page)
+                } else {
+                    ProgressView(SettingsCopy.loading)
+                }
+            }
+            .toolbar { GlobalSearchToolbarItem() }
+        } detail: {
+            NavigationStack(path: $router.settingsPath) {
+                SettingsDestinationPage(route: router.settingsPage ?? .account, context: context)
+                    .settingsDestinations(context: context, browse: browse, path: $router.settingsPath)
+            }
+        }
+        .navigationSplitViewStyle(.balanced)
+    }
+}
+
+/// A route's page at the settings measure, once the context exists.
+private struct SettingsDestinationPage: View {
+    let route: SettingsRoute
+    let context: SettingsContext?
+
+    var body: some View {
+        if let context {
+            SettingsDestination(route: route, context: context)
+                .settingsPage()
+        } else {
+            ProgressView(SettingsCopy.loading)
+        }
+    }
+}
+
 private extension View {
+    /// The pages a Settings page pushes, and the notes and tags it opens.
+    func settingsDestinations(
+        context: SettingsContext?,
+        browse: VaultBrowseViewModel?,
+        path: Binding<NavigationPath>
+    ) -> some View {
+        navigationDestination(for: SettingsRoute.self) { route in
+            SettingsDestinationPage(route: route, context: context)
+        }
+        .noteDestinations(browse: browse, path: path)
+    }
+
     /// The notes and tag lists a Settings or Calendar page opens, pushed on
     /// that page's own stack.
     func noteDestinations(

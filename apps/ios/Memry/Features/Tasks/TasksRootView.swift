@@ -55,8 +55,14 @@ final class TasksRouter {
     var selectedTab: VaultTab = .notes
     var path: [TasksRoute] = []
     /// Settings' stack (spec 006 ST20): Settings routes, and the notes a
-    /// Settings page opens.
+    /// Settings page opens. As a stack, every page over the root list; as a
+    /// split view, the pages over `settingsPage` in the detail column.
     var settingsPath = NavigationPath()
+    /// The root row Settings' split view selects (#4348). `nil` shows
+    /// Account, desktop's default section.
+    var settingsPage: SettingsRoute?
+    /// Settings shows as a split view: the shell is at regular width.
+    private(set) var settingsSplit = false
     /// The Calendar page's stack, wherever the page sits.
     var calendarPath = NavigationPath()
 
@@ -72,10 +78,28 @@ final class TasksRouter {
 
     /// Every "… › settings" entry point: Menu › Settings, that section, and
     /// Back returns to the Settings root (flow lane 01).
+    /// In the split view, a root row's page is selected and a page under
+    /// one (Account › Devices) is pushed over its row's page.
     func openSettings(_ route: SettingsRoute) {
         selectedTab = .more
         var path = NavigationPath()
-        if route != .root { path.append(route) }
+        if settingsSplit {
+            if route != .root { settingsPage = route.section }
+            if route != route.section { path.append(route) }
+        } else if route != .root {
+            path.append(route)
+        }
+        settingsPath = path
+    }
+
+    /// The shell changed width. The stack's root page carries over; a
+    /// `NavigationPath` cannot be read, so the pages over it do not, and a
+    /// stack's page is unknown to the split view, which keeps its selection.
+    func setSettingsSplit(_ split: Bool) {
+        guard split != settingsSplit else { return }
+        settingsSplit = split
+        var path = NavigationPath()
+        if !split, let settingsPage { path.append(settingsPage) }
         settingsPath = path
     }
 

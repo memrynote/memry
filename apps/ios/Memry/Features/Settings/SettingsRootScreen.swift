@@ -6,10 +6,13 @@ import SwiftUI
 // Inbox appear once those features ship (F9).
 struct SettingsRootScreen: View {
     let context: SettingsContext
+    /// The split view's selected row (#4348); `nil` in a stack, where a row
+    /// pushes its page.
+    var selection: Binding<SettingsRoute?>?
     @Environment(JournalRouter.self) private var journalRouter
 
     var body: some View {
-        List {
+        List(selection: selection) {
             SettingsAccountSection(context: context)
             Section {
                 SettingsLinkRow(title: SettingsCopy.general, symbol: "gearshape", route: .general)
