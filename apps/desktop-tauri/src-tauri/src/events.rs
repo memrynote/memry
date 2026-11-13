@@ -289,6 +289,15 @@ impl From<LinkChanges> for NoteLinksChangedEvent {
     }
 }
 
+/// The notes whose portal usage changed (`portals:usage-changed`): a host gained or lost a
+/// portal or a block link to them. Sent with the link rows written, so a usage chip refetching
+/// on it reads them.
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, specta::Type, tauri_specta::Event)]
+#[serde(rename_all = "camelCase")]
+pub struct PortalsUsageChangedEvent {
+    pub note_ids: Vec<String>,
+}
+
 /// A tag's colour changed (`tags:color-updated`).
 #[derive(Debug, Clone, Serialize, serde::Deserialize, specta::Type, tauri_specta::Event)]
 pub struct TagColorUpdatedEvent {

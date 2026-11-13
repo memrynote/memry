@@ -323,6 +323,15 @@ export const commands = {
 	 *  Linux when a daemon owns `org.freedesktop.Notifications`.
 	 */
 	notificationSupported: () => __TAURI_INVOKE<boolean>("notification_supported"),
+	/**
+	 *  `portals:get-usage`: the notes that show `note_id`, or its block `anchor`, with the notes
+	 *  that link to it.
+	 */
+	portalsGetUsage: (noteId: string, anchor: string | null) => __TAURI_INVOKE<PortalUsageView>("portals_get_usage", { noteId, anchor }),
+	/**  `portals:search`: the blocks a text or tag finds, `PortalSearchSchema` checked here. */
+	portalsSearch: (input: PortalSearchInput) => __TAURI_INVOKE<PortalSearchView>("portals_search", { input }),
+	/**  `portals:stamp-anchor`: the block's anchor, given one when it has none. */
+	portalsStampAnchor: (noteId: string, blockId: string) => __TAURI_INVOKE<StampAnchorView>("portals_stamp_anchor", { noteId, blockId }),
 	/**  `properties:get`: the note's values in its frontmatter's order; none for no note. */
 	propertiesGet: (entityId: string) => __TAURI_INVOKE<PropertyValueView[]>("properties_get", { entityId }),
 	/**  `properties:merge`: the given keys set, a `null` one removed, the rest left. */
@@ -600,6 +609,7 @@ export const events = {
 	noteRenamedEvent: makeEvent<NoteRenamedEvent, NoteRenamedEvent>("note-renamed-event"),
 	noteTagsChangedEvent: makeEvent<NoteTagsChangedEvent, NoteTagsChangedEvent>("note-tags-changed-event"),
 	noteUpdatedEvent: makeEvent<NoteUpdatedEvent, NoteUpdatedEvent>("note-updated-event"),
+	portalsUsageChangedEvent: makeEvent<PortalsUsageChangedEvent, PortalsUsageChangedEvent>("portals-usage-changed-event"),
 	propertyDefinitionChangedEvent: makeEvent<PropertyDefinitionChangedEvent, PropertyDefinitionChangedEvent>("property-definition-changed-event"),
 	settingsChangedEvent: makeEvent<SettingsChangedEvent, SettingsChangedEvent>("settings-changed-event"),
 	settingsOpenSectionEvent: makeEvent<SettingsOpenSectionEvent, SettingsOpenSectionEvent>("settings-open-section-event"),
@@ -1866,6 +1876,58 @@ export type OptionInput = {
 	default?: boolean | null,
 };
 
+/**  `PortalHost['kind']`. */
+export type PortalHostKind = "portal" | "link";
+
+/**  `PortalHostSchema`. */
+export type PortalHostView = {
+	noteId: string,
+	title: string,
+	path: string,
+	count: number,
+	kind: PortalHostKind,
+	/**  A portal's first matching fence among the host's portal fences; absent for a link. */
+	ordinal?: number | null,
+};
+
+/**  `PortalSearchSchema`, checked by the command. */
+export type PortalSearchInput = {
+	text: string | null,
+	tag: string | null,
+	limit: number,
+};
+
+/**  `PortalSearchResultItemSchema`. */
+export type PortalSearchItemView = {
+	noteId: string,
+	title: string,
+	path: string,
+	blockId: string,
+	anchor: string | null,
+	text: string,
+	parentText: string | null,
+};
+
+/**  `PortalSearchResultSchema`. */
+export type PortalSearchView = {
+	results: PortalSearchItemView[],
+	truncated: boolean,
+};
+
+/**  `PortalGetUsageResultSchema`. */
+export type PortalUsageView = {
+	hosts: PortalHostView[],
+};
+
+/**
+ *  The notes whose portal usage changed (`portals:usage-changed`): a host gained or lost a
+ *  portal or a block link to them. Sent with the link rows written, so a usage chip refetching
+ *  on it reads them.
+ */
+export type PortalsUsageChangedEvent = {
+	noteIds: string[],
+};
+
 /**  `PRESET_KEYS`. */
 export type PresetKey = "person" | "company" | "meeting" | "book";
 
@@ -2148,6 +2210,18 @@ export type StagedDrop = {
 	id: string,
 	path: string,
 };
+
+/**
+ *  `PortalStampAnchorResultSchema`: `anchor` on success, `reason` otherwise. The renderer's seam
+ *  turns it into the contract's union.
+ */
+export type StampAnchorView = {
+	anchor: string | null,
+	reason: StampRefusal | null,
+};
+
+/**  Why a stamp was refused (`PortalStampAnchorResultSchema`'s `reason`). */
+export type StampRefusal = "missing-note" | "missing-block" | "locked";
 
 /**
  *  The one startup type of the epic. Steps 08 (#3525) and 09 (#3526) extend this struct in

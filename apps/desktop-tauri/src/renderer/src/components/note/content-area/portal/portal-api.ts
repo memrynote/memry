@@ -1,7 +1,7 @@
 /**
- * The seam to the portals IPC (`portals:*`). One owner: the insert flows'
- * `portal-flows/portal-api.ts` names the preload shape and the portal window
- * reuses it, so there is a single place that reads `window.api.portals`.
+ * The seam to the portals commands (`portals_*`). One owner: the insert flows'
+ * `portal-flows/portal-api.ts` names the command shapes and the portal window
+ * reuses it, so there is a single place that calls them.
  *
  * @module note/content-area/portal/portal-api
  */

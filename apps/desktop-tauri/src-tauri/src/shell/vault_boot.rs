@@ -34,9 +34,9 @@ use crate::commands::error::{CommandError, ErrorKind};
 use crate::commands::vault_index::{send_indexing_status, send_status};
 use crate::events::{
     CrdtProviderReadyEvent, CrdtProviderResetEvent, CrdtWriteBackFailedEvent,
-    NoteLinksChangedEvent, NoteTagsChangedEvent, VaultActivityChangedEvent, VaultErrorEvent,
-    VaultIndexProgressEvent, VaultIndexRecoveredEvent, VaultListChangedEvent,
-    VaultNoticesChangedEvent, WriteBackFailureReason, broadcast,
+    NoteLinksChangedEvent, NoteTagsChangedEvent, PortalsUsageChangedEvent,
+    VaultActivityChangedEvent, VaultErrorEvent, VaultIndexProgressEvent, VaultIndexRecoveredEvent,
+    VaultListChangedEvent, VaultNoticesChangedEvent, WriteBackFailureReason, broadcast,
 };
 use crate::shell::{dialogs, services};
 use crate::shutdown::ShutdownService;
@@ -148,7 +148,13 @@ fn register_vault_watcher(app: &AppHandle<Wry>, session: &Session) {
             }
             IndexReport::Indexing => send_indexing_status(&reporter),
         },
-        move |links| broadcast(&announcer, NoteLinksChangedEvent::from(links)),
+        move |links| {
+            if !links.usage.is_empty() {
+                let note_ids = links.usage.iter().cloned().collect();
+                broadcast(&announcer, PortalsUsageChangedEvent { note_ids });
+            }
+            broadcast(&announcer, NoteLinksChangedEvent::from(links));
+        },
         move |note_id| crate::shell::journal_events::landed(&lander, note_id),
     );
     index.register(session);

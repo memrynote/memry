@@ -141,6 +141,10 @@ pub fn builder() -> Builder<Wry> {
             crate::commands::shell_integrations::notification_permission,
             crate::commands::shell_integrations::notification_show,
             crate::commands::shell_integrations::notification_supported,
+            // portals
+            crate::commands::portals::portals_get_usage::<Wry>,
+            crate::commands::portals::portals_search::<Wry>,
+            crate::commands::portals::portals_stamp_anchor::<Wry>,
             // properties
             crate::commands::properties::properties_get::<Wry>,
             crate::commands::properties::properties_merge::<Wry>,
@@ -305,6 +309,8 @@ pub fn builder() -> Builder<Wry> {
             crate::events::NoteTagsChangedEvent,
             crate::events::NoteUpdatedEvent,
             crate::events::PropertyDefinitionChangedEvent,
+            // portals
+            crate::events::PortalsUsageChangedEvent,
             // tags
             crate::events::TagCategoriesChangedEvent,
             crate::events::TagColorUpdatedEvent,

@@ -18,6 +18,7 @@ pub mod locale;
 pub mod logging;
 pub mod notes;
 pub mod notes_versions;
+pub mod portals;
 pub mod properties;
 pub mod property_definitions;
 pub mod settings;
