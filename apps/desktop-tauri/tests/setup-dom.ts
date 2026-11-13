@@ -150,6 +150,7 @@ vi.mock('../src/generated/bindings', () => {
       journalGetMonthEntries: (year: number, month: number) =>
         journal().getMonthEntries(year, month),
       journalGetYearStats: (year: number) => journal().getYearStats(year),
+      journalGetSameDayEntries: (date: string) => journal().getSameDayEntries(date),
       journalGetStreak: () => journal().getStreak(),
       journalGetPropertyRows: (from: string, to: string) => journal().getPropertyRows(from, to),
       journalGetDayContext: (date: string) => journal().getDayContext(date),
@@ -741,7 +742,8 @@ const createMockApi = () => ({
       list: vi.fn().mockResolvedValue({ entries: [] }),
       getHeatmap: vi.fn().mockResolvedValue([]),
       getMonth: getMonthEntries,
-      getMonthEntries
+      getMonthEntries,
+      getSameDayEntries: vi.fn().mockResolvedValue([])
     }
   })(),
 

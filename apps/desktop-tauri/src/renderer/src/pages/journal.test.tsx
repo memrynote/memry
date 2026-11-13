@@ -138,6 +138,7 @@ vi.mock('@/hooks/use-journal', () => ({
   useMonthEntries: () => ({
     data: [{ date: '2026-01-15', preview: 'Today', characterCount: 7 }]
   }),
+  useSameDayEntries: () => ({ entries: [], error: null }),
   useYearStats: () => ({ data: mocks.yearStats })
 }))
 
@@ -274,6 +275,9 @@ vi.mock('@/components/find-bar/find-bar', () => ({
     </div>
   )
 }))
+
+// Its read-only bodies pull BlockNote and react-pdf, which need DOMMatrix jsdom lacks.
+vi.mock('@/components/journal/journal-past-years', () => ({ JournalPastYears: () => null }))
 
 vi.mock('@/components/journal', () => ({
   JournalErrorBoundary: ({ children }: { children: React.ReactNode }) => <>{children}</>,

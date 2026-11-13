@@ -298,7 +298,9 @@ export function createMockAPI(config?: MockAPIConfig): Record<string, unknown> {
         showSchedule: true,
         showTasks: true,
         showAIConnections: true,
-        showStatsFooter: false
+        showStatsFooter: false,
+        showOnThisDay: true,
+        allYearsView: false
       }),
       setJournalSettings: vi.fn().mockResolvedValue({ success: true }),
       openOsMicrophoneSettings: vi.fn().mockResolvedValue({ success: true }),

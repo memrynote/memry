@@ -153,6 +153,8 @@ mod journal_folder_outside;
 mod journal_format_vectors;
 #[path = "journal_rename.rs"]
 mod journal_rename;
+#[path = "journal_same_day.rs"]
+mod journal_same_day;
 #[path = "journal_service.rs"]
 mod journal_service;
 #[path = "journal_stalled_writer.rs"]
