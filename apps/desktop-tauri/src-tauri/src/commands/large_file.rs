@@ -10,7 +10,7 @@ use memry_desktop::large_file::{
     LargeFileSearchInput, LargeFileSearchProgress, LargeFileSearchResult, LargeFiles, ProgressSink,
 };
 use tauri::ipc::Channel;
-use tauri::{AppHandle, Manager, Webview, Wry};
+use tauri::{AppHandle, Manager, Runtime, Webview, Wry};
 
 use super::blocking;
 use super::error::{CommandError, ErrorKind};
@@ -112,7 +112,7 @@ pub async fn notes_large_file_close(
 }
 
 /// A page that closed or started a new document never closes its leases: they go now.
-pub fn release_page(app: &AppHandle<Wry>, label: &str) {
+pub fn release_page<R: Runtime>(app: &AppHandle<R>, label: &str) {
     if let Some(files) = app.try_state::<Arc<LargeFiles>>() {
         files.release_owner(label);
     }

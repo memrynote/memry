@@ -77,12 +77,15 @@ fn note_with(f: &Fixture, properties: Value) {
 fn a_learned_type_becomes_a_definition_in_the_file_and_a_record() {
     let f = fixture();
     learn(&f, &[("rating", DefinitionType::Number)]);
-    assert_eq!(listed(&f, "rating"), None, "learned, not yet a definition");
+    // In the file at once (2b3a512960), and a record once a pass seeds it.
+    assert_eq!(listed(&f, "rating").as_deref(), Some("number"));
+    assert!(f.record("rating").is_none(), "no record before the seed");
 
     assert_eq!(f.definitions.seed().unwrap(), ["rating"]);
     let record = f.record("rating").expect("the record");
     assert_eq!(record.type_name, "number");
-    assert_eq!(record.options, None);
+    // Seeded from the file's entry, as any definition only the file holds is (#4099).
+    assert_eq!(record.options.as_deref(), Some("[]"));
     assert_eq!(listed(&f, "rating").as_deref(), Some("number"));
     assert!(
         f.file().unwrap().contains("rating:\n    type: number"),

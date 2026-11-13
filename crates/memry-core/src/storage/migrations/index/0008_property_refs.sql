@@ -26,7 +26,7 @@ WITH elements AS (
 ),
 parsed AS (
   SELECT note_id, name,
-    CASE WHEN kind_of = 'text' AND substr(text, 1, 8) = 'memry://' AND instr(rest, '/') > 0
+    CASE WHEN kind_of = 'text' AND instr(text, char(0)) = 0 AND substr(text, 1, 8) = 'memry://' AND instr(rest, '/') > 0
       THEN substr(rest, 1, instr(rest, '/') - 1) END AS kind,
     substr(rest, instr(rest, '/') + 1) AS id
   FROM elements

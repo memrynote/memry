@@ -19,7 +19,7 @@ use serde_json::Value;
 
 use crate::api::errors::StorageError;
 use crate::domain::notes::failed;
-use crate::domain::property_values::{IndexedProperty, parse_relation_uri};
+use crate::domain::property_values::{IndexedProperty, parse_relation_uri, value_fits_type};
 
 /// `index_meta` key: each defined property's type, by name, as the rows were typed with.
 pub const TYPED_WITH: &str = "note_properties.typed_with";
@@ -87,7 +87,9 @@ pub(crate) fn replace(
 
 /// `parseRelationValue`: the kinds and ids of a non-empty list of relation URIs, none for any
 /// other value. The list is the file's: a lone value the index reads as a one-item list
-/// (`indexed_value`) was a scalar in the file, and a text that only looks like a list is text.
+/// (`indexed_value`) was a scalar in the file. A text that only looks like a list is text for
+/// a name with no definition; under a relation, project or multiselect definition a quoted
+/// list-looking string reads as a list and is a ref (a parity gap with Electron, accepted).
 fn relations(property: &IndexedProperty) -> Vec<(&str, &str)> {
     let listed = property
         .text
@@ -159,6 +161,61 @@ pub fn holding(index: &Connection, names: &[String]) -> Result<Vec<String>, Stor
     notes.sort();
     notes.dedup();
     Ok(notes)
+}
+
+/// How many notes hold a property, and how many of those hold a value its type cannot show
+/// ([`value_fits_type`]; `PropertyUsage` of `properties-api.ts`).
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct PropertyUse {
+    pub name: String,
+    pub note_count: u32,
+    pub mismatch_count: u32,
+}
+
+/// Every property name the rows hold, by name, with its use (`listPropertyUsage`).
+pub fn usage(index: &Connection) -> Result<Vec<PropertyUse>, StorageError> {
+    let mut statement = index
+        .prepare("SELECT name, type, value FROM note_properties")
+        .map_err(failed)?;
+    let mut rows = statement.query([]).map_err(failed)?;
+    let mut usage: BTreeMap<String, PropertyUse> = BTreeMap::new();
+    while let Some(row) = rows.next().map_err(failed)? {
+        let name: String = row.get(0).map_err(failed)?;
+        let type_name: String = row.get(1).map_err(failed)?;
+        let text: Option<String> = row.get(2).map_err(failed)?;
+        let entry = usage.entry(name.clone()).or_insert(PropertyUse {
+            name,
+            note_count: 0,
+            mismatch_count: 0,
+        });
+        entry.note_count += 1;
+        if !fits(&type_name, text.as_deref()) {
+            entry.mismatch_count += 1;
+        }
+    }
+    Ok(usage.into_values().collect())
+}
+
+/// Each note holding `name`, and whether its value is one the property's type cannot show
+/// (`listNotesWithProperty`).
+pub fn named(index: &Connection, name: &str) -> Result<Vec<(String, bool)>, StorageError> {
+    let mut statement = index
+        .prepare("SELECT note_id, type, value FROM note_properties WHERE name = ?1")
+        .map_err(failed)?;
+    statement
+        .query_map(params![name], |row| {
+            let type_name: String = row.get(1)?;
+            let text: Option<String> = row.get(2)?;
+            Ok((row.get(0)?, !fits(&type_name, text.as_deref())))
+        })
+        .map_err(failed)?
+        .collect::<Result<Vec<_>, _>>()
+        .map_err(failed)
+}
+
+/// A missing value fits every type.
+fn fits(type_name: &str, text: Option<&str>) -> bool {
+    text.is_none_or(|text| value_fits_type(type_name, text))
 }
 
 /// The definitions' types the rows were typed with; `None` when the index has not recorded
@@ -242,6 +299,24 @@ mod tests {
         ("e", "project", Some(r#"["memry://note/n4"]"#), "project"),
         ("f", "related", None, "relation"),
         ("f", "junk", Some("[not json"), "relation"),
+        (
+            "g",
+            "related",
+            Some(r#"["memry://note/n1\u0000"]"#),
+            "relation",
+        ),
+        (
+            "g",
+            "project",
+            Some(r#"["memry://note/n1\u0000"]"#),
+            "project",
+        ),
+        (
+            "g",
+            "tags",
+            Some(r#"["memry://note/n1\u0000"]"#),
+            "multiselect",
+        ),
     ];
 
     fn refs(index: &Connection) -> Vec<(String, String, String, String)> {
