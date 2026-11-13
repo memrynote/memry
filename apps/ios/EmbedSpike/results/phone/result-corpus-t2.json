@@ -1,0 +1,60 @@
+{
+  "baseline": {
+    "availableMB": 3063.9000000000001,
+    "footprintMB": 8.0999999999999996,
+    "label": "baseline",
+    "lifetimePeakMB": 8.0999999999999996,
+    "limitMB": 3072,
+    "thermal": "fair"
+  },
+  "batteryEnd": {
+    "level": 0.80000001192092896,
+    "state": "charging"
+  },
+  "batteryStart": {
+    "level": 0.75,
+    "state": "charging"
+  },
+  "chars": 2524460,
+  "device": {
+    "cores": 6,
+    "machine": "iPhone13,3",
+    "os": "Version 27.3 (Build 24C5037i)",
+    "ramMB": 5715.8999999999996
+  },
+  "end": {
+    "availableMB": 2672.8000000000002,
+    "footprintMB": 399.19999999999999,
+    "label": "end",
+    "lifetimePeakMB": 441.89999999999998,
+    "limitMB": 3072,
+    "thermal": "serious"
+  },
+  "load": {
+    "after": {
+      "availableMB": 2742.5999999999999,
+      "footprintMB": 329.39999999999998,
+      "label": "after load",
+      "lifetimePeakMB": 426.69999999999999,
+      "limitMB": 3072,
+      "thermal": "fair"
+    },
+    "peakMB": 426.69999999999999,
+    "sessionMs": 751.39029199999993,
+    "tokenizerMs": 400.739417,
+    "wallMs": 1152.4770259857178
+  },
+  "medianWindowMs": 2184.6426240000001,
+  "mode": "corpus",
+  "notes": 1000,
+  "p90WindowMs": 5407.4466250000005,
+  "peakMB": 441.89999999999998,
+  "thermalNotes": {
+    "fair": 45,
+    "serious": 955
+  },
+  "threads": 2,
+  "tokens": 522186,
+  "wallSeconds": 3414.1200129985809,
+  "windows": 1274
+}

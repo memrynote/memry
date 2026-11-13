@@ -1,0 +1,34 @@
+2026-11-13T10:30:45Z start mode=load threads=2
+2026-11-13T10:31:08Z done mode=load
+2026-11-13T10:32:26Z start mode=load threads=4
+2026-11-13T10:32:43Z done mode=load
+2026-11-13T10:34:08Z start mode=load threads=1
+2026-11-13T10:34:38Z done mode=load
+2026-11-13T10:35:56Z start mode=parity threads=2
+2026-11-13T10:36:07Z done mode=parity
+2026-11-13T10:37:23Z start mode=background threads=2
+2026-11-13T10:37:24Z model loaded, waiting for background
+2026-11-13T10:37:39Z in background, embedding
+2026-11-13T10:38:09Z done mode=background
+2026-11-13T10:39:33Z start mode=corpus threads=2
+2026-11-13T10:41:27Z corpus 50/1000 windows=66 elapsed=112s thermal=serious
+2026-11-13T10:43:42Z corpus 100/1000 windows=127 elapsed=247s thermal=serious
+2026-11-13T10:46:00Z corpus 150/1000 windows=190 elapsed=386s thermal=serious
+2026-11-13T10:48:22Z corpus 200/1000 windows=249 elapsed=527s thermal=serious
+2026-11-13T10:51:16Z corpus 250/1000 windows=316 elapsed=701s thermal=serious
+2026-11-13T10:53:11Z corpus 300/1000 windows=371 elapsed=817s thermal=serious
+2026-11-13T10:56:55Z corpus 350/1000 windows=435 elapsed=1041s thermal=serious
+2026-11-13T10:59:40Z corpus 400/1000 windows=496 elapsed=1205s thermal=serious
+2026-11-13T11:03:18Z corpus 450/1000 windows=569 elapsed=1424s thermal=serious
+2026-11-13T11:06:14Z corpus 500/1000 windows=632 elapsed=1600s thermal=serious
+2026-11-13T11:08:30Z corpus 550/1000 windows=693 elapsed=1736s thermal=serious
+2026-11-13T11:11:17Z corpus 600/1000 windows=752 elapsed=1903s thermal=serious
+2026-11-13T11:14:53Z corpus 650/1000 windows=823 elapsed=2118s thermal=serious
+2026-11-13T11:17:35Z corpus 700/1000 windows=880 elapsed=2281s thermal=serious
+2026-11-13T11:19:50Z corpus 750/1000 windows=936 elapsed=2415s thermal=serious
+2026-11-13T11:22:02Z corpus 800/1000 windows=997 elapsed=2548s thermal=serious
+2026-11-13T11:24:34Z corpus 850/1000 windows=1056 elapsed=2699s thermal=serious
+2026-11-13T11:29:01Z corpus 900/1000 windows=1134 elapsed=2966s thermal=serious
+2026-11-13T11:32:50Z corpus 950/1000 windows=1206 elapsed=3195s thermal=serious
+2026-11-13T11:36:28Z corpus 1000/1000 windows=1274 elapsed=3414s thermal=serious
+2026-11-13T11:36:28Z done mode=corpus

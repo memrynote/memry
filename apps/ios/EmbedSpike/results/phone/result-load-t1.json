@@ -1,0 +1,84 @@
+{
+  "baseline": {
+    "availableMB": 3063.9000000000001,
+    "footprintMB": 8.0999999999999996,
+    "label": "baseline",
+    "lifetimePeakMB": 8.0999999999999996,
+    "limitMB": 3072,
+    "thermal": "nominal"
+  },
+  "batteryStart": {
+    "level": 0.69999998807907104,
+    "state": "charging"
+  },
+  "device": {
+    "cores": 6,
+    "machine": "iPhone13,3",
+    "os": "Version 27.3 (Build 24C5037i)",
+    "ramMB": 5715.8999999999996
+  },
+  "end": {
+    "availableMB": 2704,
+    "footprintMB": 368,
+    "label": "end",
+    "lifetimePeakMB": 426.89999999999998,
+    "limitMB": 3072,
+    "thermal": "nominal"
+  },
+  "load": {
+    "after": {
+      "availableMB": 2742.3000000000002,
+      "footprintMB": 329.69999999999999,
+      "label": "after load",
+      "lifetimePeakMB": 426.89999999999998,
+      "limitMB": 3072,
+      "thermal": "nominal"
+    },
+    "peakMB": 426.89999999999998,
+    "sessionMs": 850.00962500000003,
+    "tokenizerMs": 425.75787500000001,
+    "wallMs": 1276.1149406433105
+  },
+  "mode": "load",
+  "query": {
+    "after": {
+      "availableMB": 2822.0999999999999,
+      "footprintMB": 249.90000000000001,
+      "label": "after stage",
+      "lifetimePeakMB": 426.89999999999998,
+      "limitMB": 3072,
+      "thermal": "nominal"
+    },
+    "chars": 68,
+    "firstInferMs": 133.16354100000001,
+    "firstPeakMB": 331.19999999999999,
+    "firstTokenizeMs": 0.31745800000000002,
+    "medianInferMs": 87.311334000000002,
+    "medianTokenizeMs": 0.025000000000000001,
+    "p90InferMs": 88.362915999999998,
+    "repeatPeakMB": 285.5,
+    "runs": 20,
+    "tokens": 16
+  },
+  "threads": 1,
+  "window": {
+    "after": {
+      "availableMB": 2704,
+      "footprintMB": 368,
+      "label": "after stage",
+      "lifetimePeakMB": 426.89999999999998,
+      "limitMB": 3072,
+      "thermal": "nominal"
+    },
+    "chars": 3940,
+    "firstInferMs": 3961.8596249999996,
+    "firstPeakMB": 368,
+    "firstTokenizeMs": 1.5297909999999999,
+    "medianInferMs": 4502.0472500000005,
+    "medianTokenizeMs": 1.2679579999999999,
+    "p90InferMs": 4971.1964170000001,
+    "repeatPeakMB": 368.80000000000001,
+    "runs": 5,
+    "tokens": 791
+  }
+}

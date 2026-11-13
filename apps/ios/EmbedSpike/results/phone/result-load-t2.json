@@ -1,0 +1,84 @@
+{
+  "baseline": {
+    "availableMB": 3063.9000000000001,
+    "footprintMB": 8.0999999999999996,
+    "label": "baseline",
+    "lifetimePeakMB": 8.1999999999999993,
+    "limitMB": 3072,
+    "thermal": "nominal"
+  },
+  "batteryStart": {
+    "level": 0.69999998807907104,
+    "state": "charging"
+  },
+  "device": {
+    "cores": 6,
+    "machine": "iPhone13,3",
+    "os": "Version 27.3 (Build 24C5037i)",
+    "ramMB": 5715.8999999999996
+  },
+  "end": {
+    "availableMB": 2700,
+    "footprintMB": 372,
+    "label": "end",
+    "lifetimePeakMB": 427,
+    "limitMB": 3072,
+    "thermal": "nominal"
+  },
+  "load": {
+    "after": {
+      "availableMB": 2742.0999999999999,
+      "footprintMB": 329.89999999999998,
+      "label": "after load",
+      "lifetimePeakMB": 427,
+      "limitMB": 3072,
+      "thermal": "nominal"
+    },
+    "peakMB": 427,
+    "sessionMs": 922.90416600000003,
+    "tokenizerMs": 516.37654099999997,
+    "wallMs": 1439.9219751358032
+  },
+  "mode": "load",
+  "query": {
+    "after": {
+      "availableMB": 2822.3000000000002,
+      "footprintMB": 249.69999999999999,
+      "label": "after stage",
+      "lifetimePeakMB": 427,
+      "limitMB": 3072,
+      "thermal": "nominal"
+    },
+    "chars": 68,
+    "firstInferMs": 102.393416,
+    "firstPeakMB": 331.69999999999999,
+    "firstTokenizeMs": 0.454542,
+    "medianInferMs": 59.800457999999999,
+    "medianTokenizeMs": 0.028416,
+    "p90InferMs": 61.457374999999999,
+    "repeatPeakMB": 334.5,
+    "runs": 20,
+    "tokens": 16
+  },
+  "threads": 2,
+  "window": {
+    "after": {
+      "availableMB": 2700,
+      "footprintMB": 372,
+      "label": "after stage",
+      "lifetimePeakMB": 427,
+      "limitMB": 3072,
+      "thermal": "nominal"
+    },
+    "chars": 3940,
+    "firstInferMs": 2979.191542,
+    "firstPeakMB": 399,
+    "firstTokenizeMs": 1.9417499999999999,
+    "medianInferMs": 3339.3284159999998,
+    "medianTokenizeMs": 1.6036250000000001,
+    "p90InferMs": 3991.6694169999996,
+    "repeatPeakMB": 372,
+    "runs": 5,
+    "tokens": 791
+  }
+}
