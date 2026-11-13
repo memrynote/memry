@@ -112,6 +112,14 @@ export function JournalSettings() {
     [setDefaultTemplate, t]
   )
 
+  const handlePastYearsChange = useCallback(
+    async (updates: { showOnThisDay?: boolean; allYearsView?: boolean }) => {
+      const success = await updateSettings(updates)
+      if (!success) toast.error(t('journal.updateError'))
+    },
+    [t, updateSettings]
+  )
+
   const handleShowStatsFooterChange = useCallback(
     async (checked: boolean) => {
       const success = await updateSettings({ showStatsFooter: checked })
@@ -359,6 +367,31 @@ export function JournalSettings() {
        * persisted and readable/writable through settings so existing installs keep their values
        * and re-exposing the rows later is a UI-only change.
        */}
+
+      <SettingsGroup label={t('journal.groups.pastYears')}>
+        <SettingRow
+          label={t('journal.showOnThisDay.label')}
+          description={t('journal.showOnThisDay.description')}
+        >
+          <Switch
+            checked={settings.showOnThisDay}
+            onCheckedChange={(checked) => void handlePastYearsChange({ showOnThisDay: checked })}
+            aria-label={t('journal.showOnThisDay.label')}
+            className={ACCENT_SWITCH}
+          />
+        </SettingRow>
+        <SettingRow
+          label={t('journal.allYearsView.label')}
+          description={t('journal.allYearsView.description')}
+        >
+          <Switch
+            checked={settings.allYearsView}
+            onCheckedChange={(checked) => void handlePastYearsChange({ allYearsView: checked })}
+            aria-label={t('journal.allYearsView.label')}
+            className={ACCENT_SWITCH}
+          />
+        </SettingRow>
+      </SettingsGroup>
 
       <SettingsGroup label={t('journal.groups.footer')}>
         <SettingRow

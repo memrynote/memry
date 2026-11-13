@@ -153,6 +153,11 @@ export const commands = {
 	 *  (`journal:getPropertyRows`).
 	 */
 	journalGetPropertyRows: (from: string, to: string) => __TAURI_INVOKE<PropertyRowsView>("journal_get_property_rows", { from, to }),
+	/**
+	 *  The live days of other years that show as the same day as `date`, newest first, days
+	 *  without text left out (`journal:getSameDayEntries`).
+	 */
+	journalGetSameDayEntries: (date: string) => __TAURI_INVOKE<SameDayEntryView[]>("journal_get_same_day_entries", { date }),
 	/**  The current and longest runs of live days (`journal:getStreak`). */
 	journalGetStreak: () => __TAURI_INVOKE<StreakView>("journal_get_streak"),
 	/**  One row per month of the year that has a live day (`journal:getYearStats`). */
@@ -2423,6 +2428,17 @@ export type ResolvedTemplateView = {
 	id: string,
 	autofill: boolean,
 	inheritedFrom: string | null,
+};
+
+/**  `SameDayEntry` (`packages/contracts/src/journal-api.ts`). */
+export type SameDayEntryView = {
+	id: string,
+	/**  `YYYY-MM-DD` */
+	date: string,
+	preview: string,
+	/**  The markdown below the frontmatter, trimmed. */
+	content: string,
+	wordCount: number,
 };
 
 export type SandboxInfo = {
