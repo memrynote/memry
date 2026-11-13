@@ -35405,6 +35405,18 @@ public func validateRecoveryPhrase(phrase: String)throws  -> String  {
 })
 }
 /**
+ * Runs every case of `embedding-input.json` and answers `{ cases: [{ name,
+ * actual: { document, chunks } }], queries: [{ name, actual }] }`.
+ */
+public func embeddingInputConformance(vectorJson: String) -> String  {
+    return try!  FfiConverterString.lift(try! rustCall() {
+        uniffiCallStatus in
+    uniffi_memry_core_fn_func_embedding_input_conformance(
+        FfiConverterString.lower(vectorJson),uniffiCallStatus
+    )
+})
+}
+/**
  * `inbox.json` evaluated by the core: `{apply: [{name, actual}], views}`,
  * each `actual` in the shape of the file's `expected`. A failure is reported
  * in the JSON (`error`), never a panic.
@@ -35674,6 +35686,9 @@ private let initializationResult: InitializationResult = {
         return InitializationResult.apiChecksumMismatch
     }
     if (uniffi_memry_core_checksum_func_validate_recovery_phrase() != 42065) {
+        return InitializationResult.apiChecksumMismatch
+    }
+    if (uniffi_memry_core_checksum_func_embedding_input_conformance() != 55842) {
         return InitializationResult.apiChecksumMismatch
     }
     if (uniffi_memry_core_checksum_func_inbox_conformance() != 10056) {
