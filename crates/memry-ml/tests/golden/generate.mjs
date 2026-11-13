@@ -1,10 +1,11 @@
 /**
  * Generates `packages/contracts/test-vectors/embeddings-text.json`: the token ids and the stored
- * 256-value vectors transformers.js gives for 30 texts and 12 query and document pairs, which
- * `crates/memry-ml/tests/golden_text.rs` reproduces with the native engine.
+ * 256-value vectors transformers.js gives for 31 texts, 2 texts with a lone surrogate and 12 query
+ * and document pairs, which `crates/memry-ml/tests/golden_text.rs` reproduces with the native
+ * engine.
  *
  *   pnpm embed:golden --model-dir <dir>            # write the file
- *   pnpm embed:golden --model-dir <dir> --check    # regenerate in memory, diff, write nothing
+ *   pnpm embed:golden --model-dir <dir> --check    # regenerate in memory, compare, write nothing
  *
  * `<dir>` (or `MEMRY_ML_MODEL_DIR`) is a `.../onnx-community/embeddinggemma-2-ONNX` folder that
  * holds the files of revision `MODEL_REVISION`, such as an Electron profile's
@@ -12,10 +13,10 @@
  * dev tool: no build runs it and CI does not run `--check`, because it needs the model.
  *
  * The oracle is Electron's text path (`apps/desktop/src/main/lib/embedding-worker.ts`), which
- * cannot be imported outside an Electron utility process, so each step is repeated here with its
- * source line: `handleEmbed` cuts the text to 4000 UTF-16 units, `loadEmbeddingPipeline` builds the
- * text-only model, `embed` tokenizes one text with `padding` and `truncation` and runs the model,
- * and `truncateEmbedding` keeps the first 256 values and divides them by their norm. The texts come
+ * cannot be imported outside an Electron utility process, so each step is repeated here:
+ * `handleEmbed` cuts the text to 4000 UTF-16 units, `loadEmbeddingPipeline` builds the text-only
+ * model, `embed` tokenizes one text with `padding` and `truncation` and runs the model,
+ * and `truncateEmbedding` keeps the first 256 values and divides them by their norm. Most texts come
  * from `embedding-input.json`, the shaped inputs Electron's `embedding-input.ts` produces.
  */
 import { createHash } from 'node:crypto'
@@ -50,8 +51,9 @@ const THREADS = Math.min(2, Math.max(1, Math.floor(os.availableParallelism() / 2
 const TOLERANCE = { minCosine: 0.9999, maxComponentDiff: 0.001 }
 
 /**
- * Closest two documents may score for one query. A drift within the tolerance above could swap a
- * closer pair on another CPU, so the ranking texts are chosen to keep every gap above this.
+ * Closest two documents may score for one query: a margin for cross-CPU floating-point noise, not
+ * a consequence of the tolerance above (which allows far larger score shifts). A ranking failure
+ * while every text is inside the tolerance is drift to investigate.
  */
 const MIN_RANK_GAP = 1e-4
 
@@ -71,11 +73,26 @@ function modelDir() {
   return abs
 }
 
+const EN = [
+  'The meeting moved to Thursday afternoon.',
+  'Bring the quarterly numbers and the draft plan.',
+  'Search should find this note by meaning, not only by words.'
+]
+
+/** Text of exactly `length` UTF-16 units from `EN` (no surrogate pairs). */
+const filler = (length) => {
+  let text = ''
+  for (let i = 0; text.length < length; i++) text += `${EN[i % EN.length]} `
+  return text.slice(0, length)
+}
+
 /**
- * The 30 golden texts, taken from `embedding-input.json` by case name: the 16 windows of a long
- * note, note documents and similarity inputs (English, Turkish, mixed, untitled, emoji, CJK, a
- * full 4000-unit window) and typed queries. Cases with a lone surrogate are skipped: the JSON
- * holds their well-formed form, not the string Electron embeds.
+ * The 31 golden texts. Thirty come from `embedding-input.json` by case name: 16 distinct windows
+ * of six long notes (the sentence pools repeat, so one note gives at most four distinct windows),
+ * note documents and similarity inputs (English, Turkish, mixed, untitled, emoji, CJK, full
+ * 4000-unit windows) and typed queries. Cases with a lone surrogate are skipped there: the JSON
+ * holds their well-formed form, not the string Electron embeds (see `loneSurrogateTexts`). The
+ * last text is longer than 4000 units, so `handleEmbed`'s cut runs.
  */
 function goldenTexts() {
   const input = JSON.parse(readFileSync(join(VECTORS, 'embedding-input.json'), 'utf8'))
@@ -87,8 +104,16 @@ function goldenTexts() {
     if (typeof value !== 'string' || value === '') throw new Error(`${name} ${field} is empty`)
     return { name: `${name} / ${field}${index === undefined ? '' : ` ${index}`}`, text: value }
   }
-  const windows = Array.from({ length: 16 }, (_, i) => pick('more than 16 windows', 'chunks', i))
-  return [
+  const windows = [
+    ['more than 16 windows', [0, 1, 2, 3]],
+    ['paragraph breaks', [0, 1, 2]],
+    ['word break just past half', [0, 1, 2]],
+    ['turkish long', [0, 3]],
+    ['untitled long', [0, 3]],
+    ['cjk without spaces', [1]],
+    ['emoji zwj sequences', [1]]
+  ].flatMap(([name, indices]) => indices.map((i) => pick(name, 'chunks', i)))
+  const texts = [
     ...windows,
     pick('english title and body', 'document'),
     pick('english title and body', 'similarity'),
@@ -96,16 +121,38 @@ function goldenTexts() {
     pick('turkish title and body', 'similarity'),
     pick('mixed languages', 'document'),
     pick('null title', 'document'),
-    pick('emoji zwj sequences', 'document'),
     pick('cjk without spaces', 'document'),
     pick('turkish long', 'document'),
     pick('untitled long', 'similarity'),
     pick('one word', 'query'),
     pick('turkish', 'query'),
     pick('emoji', 'query'),
-    pick('operators kept verbatim', 'query')
+    pick('operators kept verbatim', 'query'),
+    pick('title only', 'document'),
+    { name: 'over the window', text: `task: search result | query: ${filler(4100)}` }
   ]
+  if (new Set(texts.map((item) => item.text)).size !== texts.length) {
+    throw new Error('two golden texts are the same string')
+  }
+  return texts
 }
+
+/**
+ * Strings Electron embeds with a lone surrogate, which a Rust string cannot hold: a pair split by
+ * `handleEmbed`'s 4000-unit cut, and a window that starts with the second half of a pair the
+ * chunk cut split. `text` is what the native engine is given (the raw string well-formed, so the
+ * lone half becomes U+FFFD).
+ */
+const LONE_SURROGATES = [
+  {
+    name: 'pair split by the 4000-unit cut',
+    raw: `task: search result | query: ${filler(3999 - 29)}\u{1F600} tail`
+  },
+  {
+    name: 'window starting with a low surrogate',
+    raw: `\uDE00 ${filler(300)}`
+  }
+]
 
 /**
  * Twelve topics, each a typed query and the note that answers it, in the forms of
@@ -191,6 +238,21 @@ async function render(dir) {
   const texts = []
   for (const item of goldenTexts()) texts.push({ ...item, ...(await embed(engine, item.text)) })
 
+  const loneSurrogates = []
+  for (const { name, raw } of LONE_SURROGATES) {
+    const electron = await embed(engine, raw)
+    const wellFormed = await embed(engine, raw.substring(0, MAX_INPUT).toWellFormed())
+    loneSurrogates.push({
+      name,
+      text: raw.toWellFormed(),
+      ...wellFormed,
+      electron: {
+        ...electron,
+        cosine: Number(dot(electron.embedding, wellFormed.embedding).toPrecision(9))
+      }
+    })
+  }
+
   const queries = []
   const documents = []
   for (const pair of RANKING) {
@@ -223,6 +285,8 @@ async function render(dir) {
       model: { repo: MODEL_REPO, revision: MODEL_REVISION, dtype: 'q4' },
       unpinnedFiles: Object.fromEntries(UNPINNED.map((file) => [file, sha256(join(dir, file))])),
       note: 'tokenIds are the input_ids of tokenizer([text], { padding: true, truncation: true }) after the 4000-unit cut. embedding is the stored 256-value vector. ranking.queries[i].order lists document indices by descending cosine.',
+      loneSurrogateNote:
+        'loneSurrogates[i].text is the raw string well-formed; tokenIds and embedding are transformers.js on its first 4000 units with U+FFFD, electron holds what transformers.js gives for the raw string with the lone surrogate, and electron.cosine is their cosine.',
       textCount: texts.length,
       rankingPairs: queries.length,
       rankingMinGap: Number(minGap.toPrecision(3)),
@@ -230,9 +294,35 @@ async function render(dir) {
     },
     tolerance: TOLERANCE,
     texts,
+    loneSurrogates,
     ranking: { queries, documents }
   }
   return `${JSON.stringify(document, null, 2)}\n`
+}
+
+/**
+ * Differences between two renders: exact on everything but `embedding`, which may differ within
+ * the file's tolerance, so a run on another CPU or thread count still passes.
+ */
+function differences(committed, fresh, path = '') {
+  if (path.endsWith('.embedding') && Array.isArray(committed) && Array.isArray(fresh)) {
+    const worst = Math.max(...committed.map((value, i) => Math.abs(value - fresh[i])))
+    return committed.length === fresh.length &&
+      dot(committed, fresh) >= TOLERANCE.minCosine &&
+      worst <= TOLERANCE.maxComponentDiff
+      ? []
+      : [`${path}: cosine ${dot(committed, fresh)}, largest component difference ${worst}`]
+  }
+  if (
+    typeof committed !== 'object' ||
+    committed === null ||
+    typeof fresh !== 'object' ||
+    fresh === null
+  ) {
+    return Object.is(committed, fresh) ? [] : [`${path}: ${committed} != ${fresh}`]
+  }
+  const keys = new Set([...Object.keys(committed), ...Object.keys(fresh)])
+  return [...keys].flatMap((key) => differences(committed[key], fresh[key], `${path}.${key}`))
 }
 
 async function main() {
@@ -242,14 +332,16 @@ async function main() {
     process.stdout.write(`wrote ${OUT}\n`)
     return
   }
-  let committed = ''
+  let found = [`${basename(OUT)} is missing`]
   try {
-    committed = readFileSync(OUT, 'utf8')
-  } catch {
-    committed = ''
+    found = differences(JSON.parse(readFileSync(OUT, 'utf8')), JSON.parse(fresh))
+  } catch (error) {
+    found = [`${basename(OUT)}: ${error instanceof Error ? error.message : String(error)}`]
   }
-  if (committed !== fresh) {
-    process.stderr.write(`${basename(OUT)} is missing or regenerates differently.\n`)
+  if (found.length > 0) {
+    process.stderr.write(
+      `${basename(OUT)} regenerates differently:\n${found.slice(0, 20).join('\n')}\n`
+    )
     process.exit(1)
   }
   process.stdout.write(`${basename(OUT)} is current\n`)

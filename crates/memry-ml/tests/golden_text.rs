@@ -1,8 +1,8 @@
 //! Parity with transformers.js: `packages/contracts/test-vectors/embeddings-text.json`, written by
 //! `tests/golden/generate.mjs` from Electron's text path, holds the token ids and the stored vector
-//! of 30 texts and 12 query and document pairs. Needs the pinned text files in the directory
-//! `MEMRY_ML_MODEL_DIR` names; CI runs it on the full tier with the smoke test.
-//! Run: `cargo test -p memry-ml --release --test golden_text -- --ignored`.
+//! of 31 texts, 2 texts Electron embeds with a lone surrogate, and 12 query and document pairs.
+//! Needs the pinned text files in the directory `MEMRY_ML_MODEL_DIR` names; CI runs it on the full
+//! tier in the dev profile. Run: `cargo test -p memry-ml --test golden_text -- --ignored`.
 
 use std::path::{Path, PathBuf};
 
@@ -54,6 +54,20 @@ struct Tolerance {
     max_component_diff: f64,
 }
 
+/// The file's bounds, which may not be looser than #3540's acceptance.
+fn tolerance(vectors: &Value) -> Tolerance {
+    let tolerance = Tolerance {
+        min_cosine: vectors["tolerance"]["minCosine"]
+            .as_f64()
+            .expect("minCosine"),
+        max_component_diff: vectors["tolerance"]["maxComponentDiff"]
+            .as_f64()
+            .expect("maxComponentDiff"),
+    };
+    assert!(tolerance.min_cosine >= 0.9999 && tolerance.max_component_diff <= 0.001);
+    tolerance
+}
+
 /// Embeds `text` and compares its ids and vector with the oracle's. Returns the vector and, on a
 /// mismatch, the reason, so every fixture is checked before the test fails.
 fn check(
@@ -103,24 +117,38 @@ fn check(
 #[ignore = "needs the downloaded model in MEMRY_ML_MODEL_DIR"]
 fn native_text_embeddings_match_transformers_js() {
     let vectors = vectors();
-    let tolerance = Tolerance {
-        min_cosine: vectors["tolerance"]["minCosine"]
-            .as_f64()
-            .expect("minCosine"),
-        max_component_diff: vectors["tolerance"]["maxComponentDiff"]
-            .as_f64()
-            .expect("maxComponentDiff"),
-    };
-    // A loosened file would pass anything: the bounds are #3540's acceptance.
-    assert!(tolerance.min_cosine >= 0.9999 && tolerance.max_component_diff <= 0.001);
+    let tolerance = tolerance(&vectors);
     let texts = vectors["texts"].as_array().expect("texts");
-    assert_eq!(texts.len(), 30);
+    assert_eq!(texts.len(), 31);
 
     let mut engine = engine();
     let mut failures = Vec::new();
     for case in texts {
         let name = case["name"].as_str().expect("name");
         check(&mut engine, &tolerance, name, case, &mut failures);
+    }
+
+    // Known divergence (test-vectors README): Electron embeds a lone surrogate as the three
+    // byte-fallback tokens of EF BF BD; a Rust string holds U+FFFD, one token. The native vector
+    // matches transformers.js on the U+FFFD form within the bounds, and its cosine with Electron's
+    // vector stays at the measured gap, so a change on either side fails.
+    let lone = vectors["loneSurrogates"]
+        .as_array()
+        .expect("loneSurrogates");
+    assert_eq!(lone.len(), 2);
+    for case in lone {
+        let name = case["name"].as_str().expect("name");
+        let actual = check(&mut engine, &tolerance, name, case, &mut failures);
+        let measured = case["electron"]["cosine"]
+            .as_f64()
+            .expect("electron.cosine");
+        let electron = cosine(&actual, &embedding(&case["electron"]["embedding"]));
+        eprintln!("{name}: cosine with Electron's vector {electron:.9}, recorded {measured:.9}");
+        if (electron - measured).abs() > 1e-4 {
+            failures.push(format!(
+                "{name}: cosine with Electron's lone-surrogate vector {electron:.7}, recorded {measured:.7}"
+            ));
+        }
     }
     assert!(failures.is_empty(), "{}", failures.join("\n"));
 }
@@ -129,10 +157,7 @@ fn native_text_embeddings_match_transformers_js() {
 #[ignore = "needs the downloaded model in MEMRY_ML_MODEL_DIR"]
 fn native_vectors_rank_documents_as_transformers_js() {
     let vectors = vectors();
-    let tolerance = Tolerance {
-        min_cosine: 0.9999,
-        max_component_diff: 0.001,
-    };
+    let tolerance = tolerance(&vectors);
     let queries = vectors["ranking"]["queries"].as_array().expect("queries");
     let documents = vectors["ranking"]["documents"]
         .as_array()
