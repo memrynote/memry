@@ -10,7 +10,7 @@
 
 use memry_desktop::fold::FoldLayers;
 use memry_desktop::fold::engine::{assemble, prepare};
-use memry_desktop::fold::morph::{MAX_LINE_TOKENS, MorphLines, build_morph};
+use memry_desktop::fold::morph::{MAX_LINE_TOKENS, MorphLines, build_morph, morph_steps};
 use memry_desktop::fold::text::steps;
 use memry_desktop::fold::tokens::Zone;
 use memry_test_kit::{
@@ -52,18 +52,25 @@ fn text_bytes(layers: &FoldLayers) -> usize {
         .sum()
 }
 
-/// The scans visit each byte a few times; with no model lines, the two fallback line maps of a
-/// paragraph (Takeaway, Topic) cost at most [`MAX_LINE_TOKENS`] steps per source segment each.
+/// The scans visit each byte a few times.
 fn linear_bound(len: usize) -> usize {
-    (8 + 2 * MAX_LINE_TOKENS) * len + 1000
+    8 * len + 1000
+}
+
+/// With no model lines, the two fallback line maps of a paragraph (Takeaway, Topic) cost at
+/// most [`MAX_LINE_TOKENS`] steps per source segment each, plus a walk over its sentences.
+fn morph_bound(len: usize) -> usize {
+    (2 * MAX_LINE_TOKENS + 2) * len + 1000
 }
 
 fn assert_linear(what: &'static str, input: String) {
-    let bound = linear_bound(input.len());
+    let (bound, morph) = (linear_bound(input.len()), morph_bound(input.len()));
     on_small_stack(move || {
         assert_steps_at_most(what, steps, bound, || {
-            let layers = fold(&input);
-            assert!(!layers.sections.is_empty(), "{what} must reach the scans");
+            assert_steps_at_most(what, morph_steps, morph, || {
+                let layers = fold(&input);
+                assert!(!layers.sections.is_empty(), "{what} must reach the scans");
+            });
         });
     });
 }
@@ -112,7 +119,7 @@ fn a_long_model_line_over_a_long_paragraph_is_not_mapped() {
     let sentences = vec![text.trim_end().to_owned()];
     let bound = 8 * (text.len() + line.len()) + 1000;
     let mut morph = None;
-    assert_steps_at_most("model line map", steps, bound, || {
+    assert_steps_at_most("model line map", morph_steps, bound, || {
         morph = Some(build_morph(
             &text,
             &sentences,
@@ -226,9 +233,10 @@ proptest! {
         // Past the threshold, and first, since an open fence hides the rest of the note: every
         // case reaches sections, sentences and the Brief.
         let input = format!("{}\n\n{body}", "word ".repeat(160));
-        let before = steps();
+        let (before, morph_before) = (steps(), morph_steps());
         let layers = fold(&input);
         prop_assert!(steps() - before <= linear_bound(input.len()));
+        prop_assert!(morph_steps() - morph_before <= morph_bound(input.len()));
         prop_assert!(!layers.sections.is_empty());
         prop_assert!(text_bytes(&layers) <= output_bound(input.len()));
         for p in layers.sections.iter().flat_map(|s| &s.paragraphs) {

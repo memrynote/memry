@@ -73,6 +73,20 @@ struct State {
     queue: Queue,
 }
 
+impl State {
+    /// The idle timer `task` of `note_id` fired. A change since then replaced it with a new
+    /// timer, which stays.
+    fn timer_fired(&mut self, note_id: &str, task: tokio::task::Id) {
+        if self
+            .timers
+            .get(note_id)
+            .is_some_and(|timer| timer.id() == task)
+        {
+            self.timers.remove(note_id);
+        }
+    }
+}
+
 /// A note read and folded before its status is known.
 struct Folded {
     layers: FoldLayers,
@@ -179,14 +193,24 @@ impl FoldService {
     /// `get`: the snapshot, with the local fallback where no model wrote yet, and the missing
     /// chunks queued. A note or day that does not exist (yet) reads as empty, so it does not fold.
     pub async fn get(self: &Arc<Self>, note_id: &str) -> Result<FoldLayers, NotesError> {
-        let (open, generation) = {
+        loop {
+            if let Some(layers) = self.get_once(note_id).await? {
+                return Ok(layers);
+            }
+        }
+    }
+
+    /// One [`Self::get`]; `None` when the vault closed or opened again during the agent
+    /// detection, so it folds again from the start.
+    async fn get_once(self: &Arc<Self>, note_id: &str) -> Result<Option<FoldLayers>, NotesError> {
+        let (vault, generation) = {
             let mut state = lock(&self.state);
             let open = state.open.clone().ok_or(NotesError::Closed)?;
             state.seen.insert(note_id.to_owned());
             (open, state.generation)
         };
         let this = self.clone();
-        let (id, vault) = (note_id.to_owned(), open.clone());
+        let id = note_id.to_owned();
         let (fetched, ai, prepared) = blocking(move || {
             let fetched = this.source(&vault, &id)?;
             let ai = features::read(&this.settings, Some(&vault))
@@ -211,11 +235,20 @@ impl FoldService {
             true => self.backend.writer(ai.summarize_agent).await,
             false => None,
         };
+        // The detection can take seconds, so the vault is not held across it: a close and a
+        // reopen within the hook deadline would fail with `SessionError::Held`.
+        let open = {
+            let state = lock(&self.state);
+            match &state.open {
+                Some(open) if state.generation == generation => open.clone(),
+                _ => return Ok(None),
+            }
+        };
         let prepared = Arc::new(prepared);
         // A chunk can finish between the cache lookup and the queueing, which `fold-service.ts`
         // does in one synchronous step: fold again rather than run it a second time.
         for attempt in 0.. {
-            let written = lock(&self.state).queue.written;
+            let written = lock(&self.state).queue.writes;
             let (id, vault, prepared, lookup_writer) = (
                 note_id.to_owned(),
                 open.clone(),
@@ -241,13 +274,14 @@ impl FoldService {
                 FoldStatus::NoAgent
             };
             layers.agent = writer.map(|writer| writer.label);
-            return Ok(layers);
+            return Ok(Some(layers));
         }
         unreachable!("the last attempt queues whatever it read")
     }
 
     /// The status of a note whose chunks `writer` writes, the missing ones queued. `None` when
-    /// a chunk was written since the cache read `seen` writes: the caller folds again.
+    /// a missing chunk was written after the cache read, which saw `seen` writes: the caller
+    /// folds again.
     fn queue_missing(
         self: &Arc<Self>,
         note_id: &str,
@@ -261,7 +295,20 @@ impl FoldService {
         if state.generation != generation {
             return Some(FoldStatus::Writing);
         }
-        if !missing.is_empty() && seen.is_some_and(|seen| seen != state.queue.written) {
+        let keys: Vec<String> = missing
+            .iter()
+            .map(|chunk| {
+                job_key(&ChunkKey {
+                    chunk_hash: chunk.hash.clone(),
+                    language: language.to_owned(),
+                    model_id: writer.model_id.clone(),
+                })
+            })
+            .collect();
+        let written_since = |key: &String| {
+            seen.is_some_and(|seen| state.queue.written.get(key).is_some_and(|&at| at > seen))
+        };
+        if keys.iter().any(written_since) {
             return None;
         }
         state.opened.insert(note_id.to_owned());
@@ -276,16 +323,6 @@ impl FoldService {
                 .queue
                 .enqueue(note_id, chunk, language, writer, &search);
         }
-        let keys: Vec<String> = missing
-            .iter()
-            .map(|chunk| {
-                job_key(&ChunkKey {
-                    chunk_hash: chunk.hash.clone(),
-                    language: language.to_owned(),
-                    model_id: writer.model_id.clone(),
-                })
-            })
-            .collect();
         let in_flight = keys.iter().any(|key| state.queue.jobs.contains_key(key));
         let failed = keys.iter().any(|key| state.queue.failed.contains_key(key));
         self.pump(&mut state);
@@ -371,7 +408,7 @@ impl FoldService {
                 if state.generation != generation {
                     return;
                 }
-                state.timers.remove(&id);
+                state.timer_fired(&id, tokio::task::id());
             }
             // `get` hashes the new body and queues only the chunks with no cached result.
             match this.get(&id).await {
@@ -509,5 +546,27 @@ async fn blocking<T: Send + 'static>(
     match tokio::task::spawn_blocking(work).await {
         Ok(outcome) => outcome,
         Err(error) => std::panic::resume_unwind(error.into_panic()),
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::State;
+
+    /// A timer that woke while a change replaced it leaves the new timer in place, so a later
+    /// change or a close still aborts it.
+    #[tokio::test]
+    async fn a_fired_timer_removes_only_itself() {
+        let pending = || tokio::spawn(std::future::pending::<()>());
+        let (old, new) = (pending(), pending());
+        let mut state = State::default();
+        state.timers.insert("n".into(), new.abort_handle());
+
+        state.timer_fired("n", old.id());
+        assert_eq!(state.timers.get("n").map(|t| t.id()), Some(new.id()));
+        state.timer_fired("n", new.id());
+        assert!(state.timers.is_empty());
+        old.abort();
+        new.abort();
     }
 }

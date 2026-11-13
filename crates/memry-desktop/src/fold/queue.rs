@@ -30,6 +30,8 @@ pub struct FoldWriter {
     pub label: String,
     /// Part of the cache key, so a different model never reads another's chunks.
     pub model_id: String,
+    /// The model a run asks for (`None`: the provider's default), the one `model_id` names.
+    pub model: Option<String>,
 }
 
 /// Who writes the model levels: the agents the fold detects (`agent.ts`), behind a trait so the
@@ -119,8 +121,11 @@ pub struct Queue {
     pub failed: HashMap<String, NoteIds>,
     pub last_failure: Option<String>,
     pub last_note_id: Option<String>,
-    /// Chunks written so far: a fold that read the cache before the last write reads again.
-    pub written: u64,
+    /// Chunks written so far.
+    pub writes: u64,
+    /// The write count after each chunk's last write, by job key: a fold that read the cache
+    /// before one of its missing chunks was written reads again.
+    pub written: HashMap<String, u64>,
 }
 
 impl Queue {
@@ -191,7 +196,8 @@ impl Queue {
             .unwrap_or_default();
         match outcome {
             Ok(()) => {
-                self.written += 1;
+                self.writes += 1;
+                self.written.insert(key.to_owned(), self.writes);
                 self.failed.remove(key);
                 if let Some(last) = self.last_failure.clone()
                     && note_ids.has(&last)

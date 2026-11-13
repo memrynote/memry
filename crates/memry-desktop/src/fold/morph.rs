@@ -4,12 +4,13 @@
 //! subsequence over normalized words, after the word alignment in github.com/chenxiachan/textfold
 //! (textfold/tokens.py `norm`, `lcs_pairs`; Apache-2.0).
 
+use std::cell::Cell;
 use std::sync::LazyLock;
 
 use regex::Regex;
 use unicode_normalization::UnicodeNormalization as _;
 
-use super::text::{Segment, step, word_segments};
+use super::text::{Segment, word_segments};
 use super::{FoldMorph, FoldToken};
 
 /// Above this many dp cells a paragraph is not mapped; its lines then fade instead of slide
@@ -23,6 +24,21 @@ pub const MAX_LCS_CELLS: usize = 4_000_000;
 /// [`MAX_LCS_CELLS`] for every few kilobytes of the note. With this cap a fallback line costs
 /// at most this many steps per source segment. A model line keeps Electron's cap only.
 pub const MAX_LINE_TOKENS: usize = 128;
+
+thread_local! {
+    static STEPS: Cell<usize> = const { Cell::new(0) };
+}
+
+/// Word pairs and characters the line maps visited on this thread, counted apart from the
+/// scans' [`super::text::steps`], for tests that bound the work by steps.
+#[doc(hidden)]
+pub fn morph_steps() -> usize {
+    STEPS.with(Cell::get)
+}
+
+fn step(n: usize) {
+    STEPS.with(|steps| steps.set(steps.get() + n));
+}
 
 static NOT_LETTER_OR_NUMBER: LazyLock<Regex> =
     LazyLock::new(|| Regex::new(r"[^\p{L}\p{N}]").expect("not letter or number"));

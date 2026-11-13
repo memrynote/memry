@@ -2,19 +2,22 @@
 //! `agent.test.ts`): which agent `auto` and a chosen agent resolve to, and how long an answer
 //! holds.
 
-use std::sync::Arc;
 use std::sync::atomic::{AtomicBool, Ordering};
+use std::sync::{Arc, Mutex};
 use std::time::Duration;
 
 use axum::http::{Method, StatusCode};
-use memry_desktop::ai::local_provider::AgentLocalProviderPreset;
+use memry_core::api::errors::SecureStoreError;
+use memry_desktop::ai::local_agent::{LocalAgent, ProviderSource};
+use memry_desktop::ai::local_provider::{AgentLocalProviderPreset, LocalProvider};
 use memry_desktop::fold::agent::{
     DETECTED_TTL, FoldAgentChoice, FoldAgentOption, FoldAgentStatus, FoldAgents, NONE_TTL,
 };
+use memry_desktop::fold::queue::FoldBackend;
 use serde_json::json;
 
 use crate::ai_local_agent::{agent, provider};
-use crate::local_agent_server::{Fake, MODEL, json_reply, models, serve};
+use crate::local_agent_server::{Fake, MODEL, answer, client, json_reply, models, serve};
 
 fn local() -> FoldAgentOption {
     FoldAgentOption {
@@ -163,6 +166,46 @@ async fn callers_that_ask_at_once_share_one_detection() {
     assert_eq!(a.resolved.as_deref(), Some("Local model"));
     assert!(b.is_some());
     assert_eq!(model_lists(&fake), 1);
+}
+
+/// Provider settings the user edits while the fold runs.
+struct Editable(Mutex<LocalProvider>);
+
+impl ProviderSource for Editable {
+    fn read(&self) -> (LocalProvider, Option<SecureStoreError>) {
+        (self.0.lock().unwrap().clone(), None)
+    }
+}
+
+/// `toFoldAgent` pins the detected model on the run: a model switch after detection never
+/// writes the new model's reply under the old model's cache key.
+#[tokio::test]
+async fn a_run_asks_the_model_its_writer_was_detected_with() {
+    let fake = serve(|request| match request.method {
+        Method::GET => models(MODEL),
+        _ => answer("{\"ok\": true}", false),
+    })
+    .await;
+    let source = Arc::new(Editable(Mutex::new(provider(
+        AgentLocalProviderPreset::Custom,
+        &fake.base_url,
+        MODEL,
+    ))));
+    let agents = FoldAgents::new(LocalAgent::new(source.clone(), client()));
+    let writer = agents
+        .writer(FoldAgentChoice::Auto)
+        .await
+        .expect("detected");
+    assert_eq!(writer.model_id, format!("local_openai_compatible:{MODEL}"));
+
+    source.0.lock().unwrap().model = "other-model".into();
+    agents.run(&writer, "Summarize").await.expect("a reply");
+    let run = fake
+        .requests()
+        .into_iter()
+        .find(|r| r.method == Method::POST)
+        .expect("a run");
+    assert_eq!(run.body["model"], MODEL);
 }
 
 #[test]

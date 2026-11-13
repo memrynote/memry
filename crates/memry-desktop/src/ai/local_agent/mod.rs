@@ -289,9 +289,20 @@ impl LocalAgent {
         &self,
         prompt: &str,
     ) -> Result<T, StructuredError> {
+        self.complete_structured_on(prompt, None).await
+    }
+
+    /// [`Self::complete_structured`] on `model` (`None`: the configured one). The fold pins the
+    /// model it detected, which its cache key names.
+    pub async fn complete_structured_on<T: DeserializeOwned>(
+        &self,
+        prompt: &str,
+        model: Option<String>,
+    ) -> Result<T, StructuredError> {
         use futures_util::StreamExt as _;
         let mut input = LocalRunInput::new(prompt);
         input.tools_enabled = false;
+        input.model = model;
         let mut events = std::pin::pin!(self.run(input, None, CancellationToken::new()));
         let mut text = String::new();
         let mut failure = None;

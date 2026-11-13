@@ -261,8 +261,9 @@ async fn an_open_forgets_the_agent_and_prunes_old_chunks() {
 }
 
 /// Stated divergence from fold-service.ts:265-270: closing the vault cancels the runs in
-/// flight and drops their results, where Electron lets them finish and write into whichever
-/// index is open by then.
+/// flight, so a run waiting on its model writes nothing, where Electron lets them finish and
+/// write into whichever index is open by then. A write already under way can still land in
+/// the closing vault's own index.
 #[tokio::test(flavor = "multi_thread", worker_threads = 2)]
 async fn closing_the_vault_cancels_the_runs_and_drops_their_results() {
     let text = sectioned(3, "closing");

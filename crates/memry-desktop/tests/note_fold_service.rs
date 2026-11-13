@@ -142,6 +142,7 @@ impl FoldBackend for Fake {
             id: FoldAgentChoice::LocalOpenaiCompatible,
             label: "Fake model".into(),
             model_id: MODEL_ID.into(),
+            model: None,
         })
     }
 
@@ -433,4 +434,54 @@ async fn the_service_lets_go_of_the_vault_when_it_closes() {
     // Nothing of the closed vault is held: it opens again.
     w.e.open();
     assert_eq!(w.get(&id).await.status, FoldStatus::Off);
+}
+
+/// An agent detection that waits on `gate`, as a slow local provider takes up to ~15 s, and
+/// then finds no agent.
+struct SlowDetection {
+    asked: UnboundedSender<()>,
+    gate: Semaphore,
+}
+
+#[async_trait]
+impl FoldBackend for SlowDetection {
+    async fn writer(&self, _choice: FoldAgentChoice) -> Option<FoldWriter> {
+        let _ = self.asked.send(());
+        self.gate.acquire().await.expect("open gate").forget();
+        None
+    }
+
+    async fn run(&self, _writer: &FoldWriter, _prompt: &str) -> Result<Value, String> {
+        Err("no agent runs".into())
+    }
+
+    fn forget(&self) {}
+}
+
+/// A fold waiting on the agent detection does not hold the vault: closing and reopening it
+/// within the hook deadline works, and the fold answers from the reopened vault.
+#[tokio::test(flavor = "multi_thread", worker_threads = 2)]
+async fn a_slow_agent_detection_does_not_hold_the_vault_through_a_reopen() {
+    let (asked_tx, mut asked) = unbounded_channel();
+    let backend = Arc::new(SlowDetection {
+        asked: asked_tx,
+        gate: Semaphore::new(0),
+    });
+    let mut w = world_on(&[("plan.md", &long_note(8))], IDLE, Some(backend.clone()));
+    w.summarize(true);
+    let id = w.id_of("plan.md");
+    let pending = tokio::spawn({
+        let (fold, id) = (w.fold.clone(), id.clone());
+        async move { fold.get(&id).await }
+    });
+    tokio::time::timeout(WAIT, asked.recv())
+        .await
+        .expect("the detection started");
+
+    w.e.close();
+    // `Env::open` fails with `SessionError::Held` when the fold still holds the vault.
+    tokio::task::block_in_place(|| w.e.open());
+    backend.gate.add_permits(8);
+    let layers = pending.await.expect("the fold task").expect("fold");
+    assert_eq!(layers.status, FoldStatus::NoAgent);
 }

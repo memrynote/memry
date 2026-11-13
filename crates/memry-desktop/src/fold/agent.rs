@@ -192,7 +192,8 @@ fn pick(found: &[DetectedAgent], choice: FoldAgentChoice) -> Option<&DetectedAge
     }
 }
 
-/// `toFoldAgent`: the label and the cache's model id (`<agent>:<model or default>`), and the run.
+/// `toFoldAgent`: the label, the model the run asks for and the cache's model id
+/// (`<agent>:<model or default>`), and the run.
 #[async_trait]
 impl FoldBackend for FoldAgents {
     async fn writer(&self, choice: FoldAgentChoice) -> Option<FoldWriter> {
@@ -205,13 +206,19 @@ impl FoldBackend for FoldAgents {
                 agent.id.as_str(),
                 agent.model.as_deref().unwrap_or("default")
             ),
+            model: agent.model,
         })
     }
 
     async fn run(&self, writer: &FoldWriter, prompt: &str) -> Result<Value, String> {
         match writer.id {
             FoldAgentChoice::LocalOpenaiCompatible => {
-                match self.local.complete_structured::<Value>(prompt).await {
+                let model = writer.model.clone();
+                match self
+                    .local
+                    .complete_structured_on::<Value>(prompt, model)
+                    .await
+                {
                     Ok(reply) => Ok(reply),
                     Err(error) => Err(self.local.redact(error.to_string()).await),
                 }
