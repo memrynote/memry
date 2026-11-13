@@ -46,7 +46,15 @@ let package = Package(
             // undefined and the app fails to link. Apple ships `libz` in every
             // SDK, so naming it here — once, beside the binary target — is all
             // any consumer needs.
-            linkerSettings: [.linkedLibrary("z")]
+            linkerSettings: [
+                .linkedLibrary("z"),
+                // #4437 spike: the ONNX Runtime archive merged into the core.
+                .linkedLibrary("c++"),
+                .linkedFramework("CoreML"),
+                .linkedFramework("UIKit"),
+                .linkedFramework("Network"),
+                .linkedFramework("Foundation"),
+            ]
         ),
         .target(
             name: "MemryCore",

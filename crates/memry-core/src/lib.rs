@@ -13,6 +13,8 @@ pub mod api;
 pub mod crdt;
 pub mod crypto;
 pub mod domain;
+#[cfg(feature = "embed-spike")]
+pub mod embed_spike;
 pub mod portal;
 pub mod protocol;
 pub mod seams;

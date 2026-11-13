@@ -551,6 +551,22 @@ fileprivate struct FfiConverterInt64: FfiConverterPrimitive {
 #if swift(>=5.8)
 @_documentation(visibility: private)
 #endif
+fileprivate struct FfiConverterFloat: FfiConverterPrimitive {
+    typealias FfiType = Float
+    typealias SwiftType = Float
+
+    public static func read(from buf: inout (data: Data, offset: Data.Index)) throws -> Float {
+        return try lift(readFloat(&buf))
+    }
+
+    public static func write(_ value: Float, into buf: inout [UInt8]) {
+        writeFloat(&buf, lower(value))
+    }
+}
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
 fileprivate struct FfiConverterDouble: FfiConverterPrimitive {
     typealias FfiType = Double
     typealias SwiftType = Double
@@ -9667,6 +9683,156 @@ public func FfiConverterTypeSocketListener_lift(_ handle: UInt64) throws -> Sock
 #endif
 public func FfiConverterTypeSocketListener_lower(_ value: SocketListener) -> UInt64 {
     return FfiConverterTypeSocketListener.lower(value)
+}
+
+
+
+
+
+
+public protocol SpikeEmbedderProtocol: AnyObject, Sendable {
+    
+    /**
+     * One model window, already shaped by the caller (desktop's
+     * `embedding-worker.ts` cuts at 4000 chars before tokenizing).
+     */
+    func embed(text: String) throws  -> SpikeEmbedding
+    
+    func loadTiming()  -> SpikeLoadTiming
+    
+}
+open class SpikeEmbedder: SpikeEmbedderProtocol, @unchecked Sendable {
+    fileprivate let handle: UInt64
+
+    /// Used to instantiate a [FFIObject] without an actual handle, for fakes in tests, mostly.
+#if swift(>=5.8)
+    @_documentation(visibility: private)
+#endif
+    public struct NoHandle {
+        public init() {}
+    }
+
+    // TODO: We'd like this to be `private` but for Swifty reasons,
+    // we can't implement `FfiConverter` without making this `required` and we can't
+    // make it `required` without making it `public`.
+#if swift(>=5.8)
+    @_documentation(visibility: private)
+#endif
+    required public init(unsafeFromHandle handle: UInt64) {
+        self.handle = handle
+    }
+
+    // This constructor can be used to instantiate a fake object.
+    // - Parameter noHandle: Placeholder value so we can have a constructor separate from the default empty one that may be implemented for classes extending [FFIObject].
+    //
+    // - Warning:
+    //     Any object instantiated with this constructor cannot be passed to an actual Rust-backed object. Since there isn't a backing handle the FFI lower functions will crash.
+#if swift(>=5.8)
+    @_documentation(visibility: private)
+#endif
+    public init(noHandle: NoHandle) {
+        self.handle = 0
+    }
+
+#if swift(>=5.8)
+    @_documentation(visibility: private)
+#endif
+    public func uniffiCloneHandle() -> UInt64 {
+        return try! rustCall { uniffi_memry_core_fn_clone_spikeembedder(self.handle, $0) }
+    }
+    // No primary constructor declared for this class.
+
+    deinit {
+        if handle == 0 {
+            // Mock objects have handle=0 don't try to free them
+            return
+        }
+
+        try! rustCall { uniffi_memry_core_fn_free_spikeembedder(handle, $0) }
+    }
+
+    
+    /**
+     * Loads `tokenizer.json` and `onnx/model_q4.onnx` (+ `_data`) from `model_dir`.
+     */
+public static func load(modelDir: String, intraThreads: UInt32)throws  -> SpikeEmbedder  {
+    return try  FfiConverterTypeSpikeEmbedder_lift(try rustCallWithError(FfiConverterTypeSpikeError_lift) {
+        uniffiCallStatus in
+    uniffi_memry_core_fn_constructor_spikeembedder_load(
+        FfiConverterString.lower(modelDir),
+        FfiConverterUInt32.lower(intraThreads),uniffiCallStatus
+    )
+})
+}
+    
+
+    
+    /**
+     * One model window, already shaped by the caller (desktop's
+     * `embedding-worker.ts` cuts at 4000 chars before tokenizing).
+     */
+open func embed(text: String)throws  -> SpikeEmbedding  {
+    return try  FfiConverterTypeSpikeEmbedding_lift(try rustCallWithError(FfiConverterTypeSpikeError_lift) {
+        uniffiCallStatus in
+    uniffi_memry_core_fn_method_spikeembedder_embed(
+            self.uniffiCloneHandle(),
+        FfiConverterString.lower(text),uniffiCallStatus
+    )
+})
+}
+    
+open func loadTiming() -> SpikeLoadTiming  {
+    return try!  FfiConverterTypeSpikeLoadTiming_lift(try! rustCall() {
+        uniffiCallStatus in
+    uniffi_memry_core_fn_method_spikeembedder_load_timing(
+            self.uniffiCloneHandle(),uniffiCallStatus
+    )
+})
+}
+    
+
+    
+}
+
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
+public struct FfiConverterTypeSpikeEmbedder: FfiConverter {
+    typealias FfiType = UInt64
+    typealias SwiftType = SpikeEmbedder
+
+    public static func lift(_ handle: UInt64) throws -> SpikeEmbedder {
+        return SpikeEmbedder(unsafeFromHandle: handle)
+    }
+
+    public static func lower(_ value: SpikeEmbedder) -> UInt64 {
+        return value.uniffiCloneHandle()
+    }
+
+    public static func read(from buf: inout (data: Data, offset: Data.Index)) throws -> SpikeEmbedder {
+        let handle: UInt64 = try readInt(&buf)
+        return try lift(handle)
+    }
+
+    public static func write(_ value: SpikeEmbedder, into buf: inout [UInt8]) {
+        writeInt(&buf, lower(value))
+    }
+}
+
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
+public func FfiConverterTypeSpikeEmbedder_lift(_ handle: UInt64) throws -> SpikeEmbedder {
+    return try FfiConverterTypeSpikeEmbedder.lift(handle)
+}
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
+public func FfiConverterTypeSpikeEmbedder_lower(_ value: SpikeEmbedder) -> UInt64 {
+    return FfiConverterTypeSpikeEmbedder.lower(value)
 }
 
 
@@ -23377,6 +23543,122 @@ public func FfiConverterTypeSocketRequest_lower(_ value: SocketRequest) -> RustB
 }
 
 
+public struct SpikeEmbedding: Equatable, Hashable {
+    public var vector: [Float]
+    public var tokens: UInt32
+    public var tokenizeMs: Double
+    public var inferMs: Double
+
+    // Default memberwise initializers are never public by default, so we
+    // declare one manually.
+    public init(vector: [Float], tokens: UInt32, tokenizeMs: Double, inferMs: Double) {
+        self.vector = vector
+        self.tokens = tokens
+        self.tokenizeMs = tokenizeMs
+        self.inferMs = inferMs
+    }
+
+    
+
+    
+}
+
+#if compiler(>=6)
+extension SpikeEmbedding: Sendable {}
+#endif
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
+public struct FfiConverterTypeSpikeEmbedding: FfiConverterRustBuffer {
+    public static func read(from buf: inout (data: Data, offset: Data.Index)) throws -> SpikeEmbedding {
+        return
+            try SpikeEmbedding(
+                vector: FfiConverterSequenceFloat.read(from: &buf), 
+                tokens: FfiConverterUInt32.read(from: &buf), 
+                tokenizeMs: FfiConverterDouble.read(from: &buf), 
+                inferMs: FfiConverterDouble.read(from: &buf)
+        )
+    }
+
+    public static func write(_ value: SpikeEmbedding, into buf: inout [UInt8]) {
+        FfiConverterSequenceFloat.write(value.vector, into: &buf)
+        FfiConverterUInt32.write(value.tokens, into: &buf)
+        FfiConverterDouble.write(value.tokenizeMs, into: &buf)
+        FfiConverterDouble.write(value.inferMs, into: &buf)
+    }
+}
+
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
+public func FfiConverterTypeSpikeEmbedding_lift(_ buf: RustBuffer) throws -> SpikeEmbedding {
+    return try FfiConverterTypeSpikeEmbedding.lift(buf)
+}
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
+public func FfiConverterTypeSpikeEmbedding_lower(_ value: SpikeEmbedding) -> RustBuffer {
+    return FfiConverterTypeSpikeEmbedding.lower(value)
+}
+
+
+public struct SpikeLoadTiming: Equatable, Hashable {
+    public var tokenizerMs: Double
+    public var sessionMs: Double
+
+    // Default memberwise initializers are never public by default, so we
+    // declare one manually.
+    public init(tokenizerMs: Double, sessionMs: Double) {
+        self.tokenizerMs = tokenizerMs
+        self.sessionMs = sessionMs
+    }
+
+    
+
+    
+}
+
+#if compiler(>=6)
+extension SpikeLoadTiming: Sendable {}
+#endif
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
+public struct FfiConverterTypeSpikeLoadTiming: FfiConverterRustBuffer {
+    public static func read(from buf: inout (data: Data, offset: Data.Index)) throws -> SpikeLoadTiming {
+        return
+            try SpikeLoadTiming(
+                tokenizerMs: FfiConverterDouble.read(from: &buf), 
+                sessionMs: FfiConverterDouble.read(from: &buf)
+        )
+    }
+
+    public static func write(_ value: SpikeLoadTiming, into buf: inout [UInt8]) {
+        FfiConverterDouble.write(value.tokenizerMs, into: &buf)
+        FfiConverterDouble.write(value.sessionMs, into: &buf)
+    }
+}
+
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
+public func FfiConverterTypeSpikeLoadTiming_lift(_ buf: RustBuffer) throws -> SpikeLoadTiming {
+    return try FfiConverterTypeSpikeLoadTiming.lift(buf)
+}
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
+public func FfiConverterTypeSpikeLoadTiming_lower(_ value: SpikeLoadTiming) -> RustBuffer {
+    return FfiConverterTypeSpikeLoadTiming.lower(value)
+}
+
+
 /**
  * One status in a project editor.
  */
@@ -30613,6 +30895,81 @@ public func FfiConverterTypeSeedOutcome_lower(_ value: SeedOutcome) -> RustBuffe
 
 
 
+public 
+enum SpikeError: Swift.Error, Equatable, Hashable, Foundation.LocalizedError {
+
+    
+    
+    case Failed(message: String
+    )
+
+    
+
+    
+
+    
+    public var errorDescription: String? {
+        String(reflecting: self)
+    }
+    
+}
+
+#if compiler(>=6)
+extension SpikeError: Sendable {}
+#endif
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
+public struct FfiConverterTypeSpikeError: FfiConverterRustBuffer {
+    typealias SwiftType = SpikeError
+
+    public static func read(from buf: inout (data: Data, offset: Data.Index)) throws -> SpikeError {
+        let variant: Int32 = try readInt(&buf)
+        switch variant {
+
+        
+
+        
+        case 1: return .Failed(
+            message: try FfiConverterString.read(from: &buf)
+            )
+
+         default: throw UniffiInternalError.unexpectedEnumCase
+        }
+    }
+
+    public static func write(_ value: SpikeError, into buf: inout [UInt8]) {
+        switch value {
+
+        
+
+        
+        
+        case let .Failed(message):
+            writeInt(&buf, Int32(1))
+            FfiConverterString.write(message, into: &buf)
+            
+        }
+    }
+}
+
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
+public func FfiConverterTypeSpikeError_lift(_ buf: RustBuffer) throws -> SpikeError {
+    return try FfiConverterTypeSpikeError.lift(buf)
+}
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
+public func FfiConverterTypeSpikeError_lower(_ value: SpikeError) -> RustBuffer {
+    return FfiConverterTypeSpikeError.lower(value)
+}
+
+
 /**
  * Failures of the storage layer and the `FileProtection` seam.
  */
@@ -32160,6 +32517,31 @@ fileprivate struct FfiConverterSequenceInt64: FfiConverterRustBuffer {
         seq.reserveCapacity(Int(len))
         for _ in 0 ..< len {
             seq.append(try FfiConverterInt64.read(from: &buf))
+        }
+        return seq
+    }
+}
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
+fileprivate struct FfiConverterSequenceFloat: FfiConverterRustBuffer {
+    typealias SwiftType = [Float]
+
+    public static func write(_ value: [Float], into buf: inout [UInt8]) {
+        let len = Int32(value.count)
+        writeInt(&buf, len)
+        for item in value {
+            FfiConverterFloat.write(item, into: &buf)
+        }
+    }
+
+    public static func read(from buf: inout (data: Data, offset: Data.Index)) throws -> [Float] {
+        let len: Int32 = try readInt(&buf)
+        var seq = [Float]()
+        seq.reserveCapacity(Int(len))
+        for _ in 0 ..< len {
+            seq.append(try FfiConverterFloat.read(from: &buf))
         }
         return seq
     }
@@ -34739,6 +35121,19 @@ public func repeatPreview(rule: RepeatRule, start: String, count: UInt32) -> [St
     )
 })
 }
+/**
+ * Port of desktop's `buildEmbeddingChunks` for the corpus-cost run only.
+ * Lengths count UTF-16 units as JS does; the corpus is ASCII so chars == units.
+ */
+public func spikeEmbeddingChunks(title: String, content: String) -> [String]  {
+    return try!  FfiConverterSequenceString.lift(try! rustCall() {
+        uniffiCallStatus in
+    uniffi_memry_core_fn_func_spike_embedding_chunks(
+        FfiConverterString.lower(title),
+        FfiConverterString.lower(content),uniffiCallStatus
+    )
+})
+}
 
 private enum InitializationResult {
     case ok
@@ -34867,6 +35262,9 @@ private let initializationResult: InitializationResult = {
         return InitializationResult.apiChecksumMismatch
     }
     if (uniffi_memry_core_checksum_func_repeat_preview() != 44138) {
+        return InitializationResult.apiChecksumMismatch
+    }
+    if (uniffi_memry_core_checksum_func_spike_embedding_chunks() != 2192) {
         return InitializationResult.apiChecksumMismatch
     }
     if (uniffi_memry_core_checksum_method_authsession_billing() != 64440) {
@@ -35910,6 +36308,12 @@ private let initializationResult: InitializationResult = {
     if (uniffi_memry_core_checksum_method_vault_tasks() != 49091) {
         return InitializationResult.apiChecksumMismatch
     }
+    if (uniffi_memry_core_checksum_method_spikeembedder_embed() != 42263) {
+        return InitializationResult.apiChecksumMismatch
+    }
+    if (uniffi_memry_core_checksum_method_spikeembedder_load_timing() != 296) {
+        return InitializationResult.apiChecksumMismatch
+    }
     if (uniffi_memry_core_checksum_method_backgroundexec_schedule_refresh() != 7923) {
         return InitializationResult.apiChecksumMismatch
     }
@@ -36025,6 +36429,9 @@ private let initializationResult: InitializationResult = {
         return InitializationResult.apiChecksumMismatch
     }
     if (uniffi_memry_core_checksum_constructor_vault_open() != 12310) {
+        return InitializationResult.apiChecksumMismatch
+    }
+    if (uniffi_memry_core_checksum_constructor_spikeembedder_load() != 49528) {
         return InitializationResult.apiChecksumMismatch
     }
 

@@ -42,9 +42,35 @@ generated_dir="$swift_pkg/Sources/MemryCore/Generated"
 xcframework="$swift_pkg/MemryCoreFFI.xcframework"
 staging="$workspace_dir/target/xcframework-staging"
 
+# #4437 spike (throwaway): MEMRY_CORE_FEATURES=embed-spike links ONNX Runtime
+# from ORT_XCFWK (Microsoft's onnxruntime-c pod) and merges its archive into
+# each slice, so the app still links one MemryCoreFFI.xcframework.
+features="${MEMRY_CORE_FEATURES:-}"
+ort_xcfwk="${ORT_XCFWK:-}"
 for target in "${targets[@]}"; do
   rustup target add "$target" >/dev/null
-  cargo build -p memry-core --target "$target" --profile "$cargo_profile"
+  if [[ -n "$features" ]]; then
+    ort_env=(ORT_IOS_XCFWK_PATH="$ort_xcfwk")
+    if [[ "$target" == "x86_64-apple-ios" ]]; then
+      # ort-sys's xcframework lookup knows only the arm64 triples.
+      ort_x86="$workspace_dir/target/ort-x86_64-sim"
+      mkdir -p "$ort_x86"
+      lipo -thin x86_64 "$ort_xcfwk/ios-arm64_x86_64-simulator/onnxruntime.framework/onnxruntime" -output "$ort_x86/libonnxruntime.a"
+      ort_env=(ORT_LIB_PATH="$ort_x86")
+    fi
+    env "${ort_env[@]}" cargo build -p memry-core --target "$target" --profile "$cargo_profile" --features "$features"
+    lib="$workspace_dir/target/$target/$profile/libmemry_core.a"
+    case "$target" in
+      aarch64-apple-ios) ort_a="$ort_xcfwk/ios-arm64/onnxruntime.framework/onnxruntime" ;;
+      aarch64-apple-ios-sim) ort_a="$workspace_dir/target/ort-arm64-sim.a"
+        lipo -thin arm64 "$ort_xcfwk/ios-arm64_x86_64-simulator/onnxruntime.framework/onnxruntime" -output "$ort_a" ;;
+      x86_64-apple-ios) ort_a="$ort_x86/libonnxruntime.a" ;;
+    esac
+    libtool -static -o "$lib.merged" "$lib" "$ort_a"
+    mv "$lib.merged" "$lib"
+  else
+    cargo build -p memry-core --target "$target" --profile "$cargo_profile"
+  fi
 done
 
 # One bindgen run over any one built library: the metadata is identical across

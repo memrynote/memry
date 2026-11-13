@@ -1,0 +1,31 @@
+# Throwaway #4437 bench app: ONNX Runtime embeddings inside MemryCoreFFI.
+# Generate with `xcodegen generate` in this directory. Not the Memry app: no
+# vault, no sync, no account. Release config is the measured build.
+name: EmbedSpike
+options:
+  deploymentTarget:
+    iOS: '26.0'
+packages:
+  MemryCore:
+    path: ../../../packages/swift/MemryCore
+targets:
+  EmbedSpike:
+    type: application
+    platform: iOS
+    sources: [Sources]
+    dependencies:
+      - package: MemryCore
+    settings:
+      base:
+        PRODUCT_BUNDLE_IDENTIFIER: com.memrynote.embedspike
+        DEVELOPMENT_TEAM: TV343Q4W8A
+        CODE_SIGN_STYLE: Automatic
+        GENERATE_INFOPLIST_FILE: YES
+        INFOPLIST_KEY_UILaunchScreen_Generation: YES
+        INFOPLIST_KEY_UIFileSharingEnabled: YES
+        INFOPLIST_KEY_LSSupportsOpeningDocumentsInPlace: YES
+        MARKETING_VERSION: '0.1'
+        CURRENT_PROJECT_VERSION: '1'
+        SWIFT_VERSION: '5.0'
+        SWIFT_STRICT_CONCURRENCY: minimal
+        TARGETED_DEVICE_FAMILY: '1'

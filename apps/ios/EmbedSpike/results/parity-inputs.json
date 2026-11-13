@@ -1,0 +1,82 @@
+[
+  {
+    "id": "q-en-short",
+    "text": "task: search result | query: budget meeting"
+  },
+  {
+    "id": "q-en-sentence",
+    "text": "task: search result | query: what did we decide about hiring?"
+  },
+  {
+    "id": "q-tr",
+    "text": "task: search result | query: geçen haftaki toplantı notları"
+  },
+  {
+    "id": "q-word",
+    "text": "task: search result | query: kedi"
+  },
+  {
+    "id": "q-mixed",
+    "text": "task: search result | query: invoice ödeme Q3 2026"
+  },
+  {
+    "id": "q-emoji",
+    "text": "task: search result | query: trip to Japan 🇯🇵 ramen"
+  },
+  {
+    "id": "q-code",
+    "text": "task: search result | query: useEffect cleanup function"
+  },
+  {
+    "id": "q-de",
+    "text": "task: search result | query: Rezept für Apfelkuchen"
+  },
+  {
+    "id": "d-short",
+    "text": "title: Groceries | text: milk, eggs, bread, coffee"
+  },
+  {
+    "id": "d-untitled",
+    "text": "title: none | text: Call the dentist about the appointment on Friday."
+  },
+  {
+    "id": "d-tr",
+    "text": "title: Haftalık plan | text: Pazartesi spor salonu, salı müşteri görüşmesi, çarşamba kitap kulübü. İlaçları almayı unutma."
+  },
+  {
+    "id": "d-markdown",
+    "text": "title: Release checklist | text: ## Steps\n- [ ] bump version\n- [x] run `pnpm release`\n\n> Do not push to main.\n\n| a | b |\n|---|---|\n| 1 | 2 |"
+  },
+  {
+    "id": "d-code",
+    "text": "title: Snippet | text: function debounce(fn, ms) {\n  let t\n  return (...a) => { clearTimeout(t); t = setTimeout(() => fn(...a), ms) }\n}"
+  },
+  {
+    "id": "d-cjk",
+    "text": "title: 東京旅行 | text: 浅草寺と上野公園を訪れた。ラーメンが美味しかった。"
+  },
+  {
+    "id": "d-medium",
+    "text": "title: Planning | text: The quarterly planning meeting covered the budget for the design system, the hiring plan for two engineers, and the release schedule for the sync server. Action items: Ayse drafts the onboarding doc, Mehmet reviews the invoice from the contractor, and we revisit the metrics dashboard next Tuesday.\n\nThe quarterly planning meeting covered the budget for the design system, the hiring plan for two engineers, and the release schedule for the sync server. Action items: Ayse drafts the onboarding doc, Mehmet reviews the invoice from the contractor, and we revisit the metrics dashboard next Tuesday.\n\nThe quarterly planning meeting covered the budget for the design system, the hiring plan for two engineers, and the release schedule for the sync server. Action items: Ayse drafts the onboarding doc, Mehmet reviews the invoice from the contractor, and we revisit the metrics dashboard next Tuesday.\n\nThe quarterly planning meeting covered the budget for the design system, the hiring plan for two engineers, and the release schedule for the sync server. Action items: Ayse drafts the onboarding doc, Mehmet reviews the invoice from the contractor, and we revisit the metrics dashboard next Tuesday."
+  },
+  {
+    "id": "d-window-0",
+    "text": "title: Quarterly planning | text: The quarterly planning meeting covered the budget for the design system, the hiring plan for two engineers, and the release schedule for the sync server. Action items: Ayse drafts the onboarding doc, Mehmet reviews the invoice from the contractor, and we revisit the metrics dashboard next Tuesday.\n\nThe quarterly planning meeting covered the budget for the design system, the hiring plan for two engineers, and the release schedule for the sync server. Action items: Ayse drafts the onboarding doc, Mehmet reviews the invoice from the contractor, and we revisit the metrics dashboard next Tuesday.\n\nThe quarterly planning meeting covered the budget for the design system, the hiring plan for two engineers, and the release schedule for the sync server. Action items: Ayse drafts the onboarding doc, Mehmet reviews the invoice from the contractor, and we revisit the metrics dashboard next Tuesday.\n\nThe quarterly planning meeting covered the budget for the design system, the hiring plan for two engineers, and the release schedule for the sync server. Action items: Ayse drafts the onboarding doc, Mehmet reviews the invoice from the contractor, and we revisit the metrics dashboard next Tuesday.\n\nThe quarterly planning meeting covered the budget for the design system, the hiring plan for two engineers, and the release schedule for the sync server. Action items: Ayse drafts the onboarding doc, Mehmet reviews the invoice from the contractor, and we revisit the metrics dashboard next Tuesday.\n\nThe quarterly planning meeting covered the budget for the design system, the hiring plan for two engineers, and the release schedule for the sync server. Action items: Ayse drafts the onboarding doc, Mehmet reviews the invoice from the contractor, and we revisit the metrics dashboard next Tuesday.\n\nThe quarterly planning meeting covered the budget for the design system, the hiring plan for two engineers, and the release schedule for the sync server. Action items: Ayse drafts the onboarding doc, Mehmet reviews the invoice from the contractor, and we revisit the metrics dashboard next Tuesday.\n\nThe quarterly planning meeting covered the budget for the design system, the hiring plan for two engineers, and the release schedule for the sync server. Action items: Ayse drafts the onboarding doc, Mehmet reviews the invoice from the contractor, and we revisit the metrics dashboard next Tuesday.\n\nThe quarterly planning meeting covered the budget for the design system, the hiring plan for two engineers, and the release schedule for the sync server. Action items: Ayse drafts the onboarding doc, Mehmet reviews the invoice from the contractor, and we revisit the metrics dashboard next Tuesday.\n\nThe quarterly planning meeting covered the budget for the design system, the hiring plan for two engineers, and the release schedule for the sync server. Action items: Ayse drafts the onboarding doc, Mehmet reviews the invoice from the contractor, and we revisit the metrics dashboard next Tuesday.\n\nThe quarterly planning meeting covered the budget for the design system, the hiring plan for two engineers, and the release schedule for the sync server. Action items: Ayse drafts the onboarding doc, Mehmet reviews the invoice from the contractor, and we revisit the metrics dashboard next Tuesday.\n\nThe quarterly planning meeting covered the budget for the design system, the hiring plan for two engineers, and the release schedule for the sync server. Action items: Ayse drafts the onboarding doc, Mehmet reviews the invoice from the contractor, and we revisit the metrics dashboard next Tuesday.\n\nThe quarterly planning meeting covered the budget for the design system, the hiring plan for two engineers, and the release schedule for the sync server. Action items: Ayse drafts the onboarding doc, Mehmet reviews the invoice from the contractor, and we revisit the metrics dashboard next Tuesday."
+  },
+  {
+    "id": "d-window-1",
+    "text": "title: Quarterly planning | text: The quarterly planning meeting covered the budget for the design system, the hiring plan for two engineers, and the release schedule for the sync server. Action items: Ayse drafts the onboarding doc, Mehmet reviews the invoice from the contractor, and we revisit the metrics dashboard next Tuesday.\n\nThe quarterly planning meeting covered the budget for the design system, the hiring plan for two engineers, and the release schedule for the sync server. Action items: Ayse drafts the onboarding doc, Mehmet reviews the invoice from the contractor, and we revisit the metrics dashboard next Tuesday.\n\nThe quarterly planning meeting covered the budget for the design system, the hiring plan for two engineers, and the release schedule for the sync server. Action items: Ayse drafts the onboarding doc, Mehmet reviews the invoice from the contractor, and we revisit the metrics dashboard next Tuesday.\n\nThe quarterly planning meeting covered the budget for the design system, the hiring plan for two engineers, and the release schedule for the sync server. Action items: Ayse drafts the onboarding doc, Mehmet reviews the invoice from the contractor, and we revisit the metrics dashboard next Tuesday.\n\nThe quarterly planning meeting covered the budget for the design system, the hiring plan for two engineers, and the release schedule for the sync server. Action items: Ayse drafts the onboarding doc, Mehmet reviews the invoice from the contractor, and we revisit the metrics dashboard next Tuesday.\n\nThe quarterly planning meeting covered the budget for the design system, the hiring plan for two engineers, and the release schedule for the sync server. Action items: Ayse drafts the onboarding doc, Mehmet reviews the invoice from the contractor, and we revisit the metrics dashboard next Tuesday.\n\nThe quarterly planning meeting covered the budget for the design system, the hiring plan for two engineers, and the release schedule for the sync server. Action items: Ayse drafts the onboarding doc, Mehmet reviews the invoice from the contractor, and we revisit the metrics dashboard next Tuesday.\n\nThe quarterly planning meeting covered the budget for the design system, the hiring plan for two engineers, and the release schedule for the sync server. Action items: Ayse drafts the onboarding doc, Mehmet reviews the invoice from the contractor, and we revisit the metrics dashboard next Tuesday.\n\nThe quarterly planning meeting covered the budget for the design system, the hiring plan for two engineers, and the release schedule for the sync server. Action items: Ayse drafts the onboarding doc, Mehmet reviews the invoice from the contractor, and we revisit the metrics dashboard next Tuesday.\n\nThe quarterly planning meeting covered the budget for the design system, the hiring plan for two engineers, and the release schedule for the sync server. Action items: Ayse drafts the onboarding doc, Mehmet reviews the invoice from the contractor, and we revisit the metrics dashboard next Tuesday.\n\nThe quarterly planning meeting covered the budget for the design system, the hiring plan for two engineers, and the release schedule for the sync server. Action items: Ayse drafts the onboarding doc, Mehmet reviews the invoice from the contractor, and we revisit the metrics dashboard next Tuesday.\n\nThe quarterly planning meeting covered the budget for the design system, the hiring plan for two engineers, and the release schedule for the sync server. Action items: Ayse drafts the onboarding doc, Mehmet reviews the invoice from the contractor, and we revisit the metrics dashboard next Tuesday.\n\nThe quarterly planning meeting covered the budget for the design system, the hiring plan for two engineers, and the release schedule for the sync server. Action items: Ayse drafts the onboarding doc, Mehmet reviews the invoice from the contractor, and we revisit the metrics dashboard next Tuesday."
+  },
+  {
+    "id": "d-window-2",
+    "text": "title: Quarterly planning | text: The quarterly planning meeting covered the budget for the design system, the hiring plan for two engineers, and the release schedule for the sync server. Action items: Ayse drafts the onboarding doc, Mehmet reviews the invoice from the contractor, and we revisit the metrics dashboard next Tuesday.\n\nThe quarterly planning meeting covered the budget for the design system, the hiring plan for two engineers, and the release schedule for the sync server. Action items: Ayse drafts the onboarding doc, Mehmet reviews the invoice from the contractor, and we revisit the metrics dashboard next Tuesday.\n\nThe quarterly planning meeting covered the budget for the design system, the hiring plan for two engineers, and the release schedule for the sync server. Action items: Ayse drafts the onboarding doc, Mehmet reviews the invoice from the contractor, and we revisit the metrics dashboard next Tuesday.\n\nThe quarterly planning meeting covered the budget for the design system, the hiring plan for two engineers, and the release schedule for the sync server. Action items: Ayse drafts the onboarding doc, Mehmet reviews the invoice from the contractor, and we revisit the metrics dashboard next Tuesday.\n\nThe quarterly planning meeting covered the budget for the design system, the hiring plan for two engineers, and the release schedule for the sync server. Action items: Ayse drafts the onboarding doc, Mehmet reviews the invoice from the contractor, and we revisit the metrics dashboard next Tuesday.\n\nThe quarterly planning meeting covered the budget for the design system, the hiring plan for two engineers, and the release schedule for the sync server. Action items: Ayse drafts the onboarding doc, Mehmet reviews the invoice from the contractor, and we revisit the metrics dashboard next Tuesday.\n\nThe quarterly planning meeting covered the budget for the design system, the hiring plan for two engineers, and the release schedule for the sync server. Action items: Ayse drafts the onboarding doc, Mehmet reviews the invoice from the contractor, and we revisit the metrics dashboard next Tuesday.\n\nThe quarterly planning meeting covered the budget for the design system, the hiring plan for two engineers, and the release schedule for the sync server. Action items: Ayse drafts the onboarding doc, Mehmet reviews the invoice from the contractor, and we revisit the metrics dashboard next Tuesday.\n\nThe quarterly planning meeting covered the budget for the design system, the hiring plan for two engineers, and the release schedule for the sync server. Action items: Ayse drafts the onboarding doc, Mehmet reviews the invoice from the contractor, and we revisit the metrics dashboard next Tuesday.\n\nThe quarterly planning meeting covered the budget for the design system, the hiring plan for two engineers, and the release schedule for the sync server. Action items: Ayse drafts the onboarding doc, Mehmet reviews the invoice from the contractor, and we revisit the metrics dashboard next Tuesday.\n\nThe quarterly planning meeting covered the budget for the design system, the hiring plan for two engineers, and the release schedule for the sync server. Action items: Ayse drafts the onboarding doc, Mehmet reviews the invoice from the contractor, and we revisit the metrics dashboard next Tuesday.\n\nThe quarterly planning meeting covered the budget for the design system, the hiring plan for two engineers, and the release schedule for the sync server. Action items: Ayse drafts the onboarding doc, Mehmet reviews the invoice from the contractor, and we revisit the metrics dashboard next Tuesday.\n\nThe quarterly planning meeting covered the budget for the design system, the hiring plan for two engineers, and the release schedule for the sync server. Action items: Ayse drafts the onboarding doc, Mehmet reviews the invoice from the contractor, and we revisit the metrics dashboard next Tuesday."
+  },
+  {
+    "id": "s-similarity",
+    "text": "task: sentence similarity | query: Groceries\nmilk, eggs, bread, coffee"
+  },
+  {
+    "id": "s-similarity-tr",
+    "text": "task: sentence similarity | query: Kitap notları\nSuç ve Ceza, Dostoyevski. Raskolnikov’un vicdan muhasebesi."
+  }
+]
