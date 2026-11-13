@@ -271,6 +271,8 @@ That checkbox is the source of truth for whether the task is done. Tick or untic
 
 The change lands whether the file was edited while memrynote was running or while it was closed, and it shows up everywhere the task appears — the task lists, Today, the project, and any other note that links it.
 
+Only a checkbox you actually changed counts. A task you complete from the Tasks view, on another device or with the CLI stays done even though the note's file still says `- [ ]` until the note is next opened, and an edit to another line of that note does not reopen it. For a file memrynote has never read before, such as a note copied in from a backup, each line follows the file only when the file is newer than the task.
+
 Only the checkbox is read this way; due dates, priority, and project stay with the task itself. Leave the `{task:…}` suffix alone — it is how the line and the task find each other. A line whose id no longer matches a task is left untouched.
 
 Any list marker works (`-`, `*`, `+`), as does an uppercase `- [X]`. Other markers some editors use for "in progress", such as `- [-]`, are ignored rather than guessed at.

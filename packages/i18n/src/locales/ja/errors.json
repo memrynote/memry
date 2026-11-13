@@ -146,6 +146,7 @@
     "requestTimedOut": "同期リクエストがタイムアウトしました。インターネット接続を確認してください。"
   },
   "googleCalendar": {
+    "requestRejected": "Google がこの項目を拒否しました。日付と時刻を確認して、もう一度お試しください。",
     "connectFailed": "Google Calendar に接続できませんでした。少し時間をおいてもう一度お試しください。",
     "reconnectNeeded": "Google Calendar の接続の有効期限が切れました。接続を解除してから、もう一度接続してください。",
     "misconfigured": "Google Calendar が正しく設定されていません。繰り返し発生する場合はサポートにご連絡ください。",
@@ -159,7 +160,7 @@
   },
   "ai": {
     "inlineDisabled": "AI のインライン編集は無効になっています",
-    "listOllamaModelsFailed": "Ollama のモデル一覧を取得できませんでした",
+    "listModelsFailed": "モデルの一覧を取得できませんでした",
     "writingAssistInvalid": "このリクエストを AI モデルに送信できませんでした。",
     "apiKeyMissing": "文章ツールを使うには、設定 → AI で {provider} の API キーを追加してください。",
     "apiKeyInvalid": "{provider} の API キーが拒否されました。設定 → AI で確認してください。",
@@ -187,6 +188,10 @@
     "removeDeviceFailed": "デバイスを削除できませんでした",
     "renameDeviceFailed": "デバイスの名前を変更できませんでした",
     "initiateOAuthFailed": "OAuth を開始できませんでした",
+    "retryOAuthFailed": "サインイン用のブラウザーを再度開けませんでした。もう一度サインインを始めてください。",
+    "oauthExpired": "サインインの有効期限が切れました。もう一度お試しください。",
+    "oauthInvalidResponse": "有効なサインインリンクを取得できませんでした。もう一度お試しください。",
+    "oauthCancelled": "Google でのサインインがキャンセルされました。もう一度お試しください。",
     "setupFirstDeviceOAuthFailed": "OAuth で最初のデバイスを設定できませんでした",
     "confirmRecoveryPhraseFailed": "リカバリーフレーズを確認できませんでした"
   },

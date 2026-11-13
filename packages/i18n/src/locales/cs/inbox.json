@@ -250,7 +250,8 @@
     "failedPlayAudio": "Zvuk se nepodařilo přehrát",
     "failedLoadAudio": "Zvuk se nepodařilo načíst",
     "video": "Video",
-    "unsupportedVideo": "Váš prohlížeč nepodporuje přehrávání videa."
+    "unsupportedVideo": "Váš prohlížeč nepodporuje přehrávání videa.",
+    "fileOnOtherDevice": "Soubor je v zařízení, které ho zachytilo."
   },
   "reminder": {
     "dataUnavailable": "Data připomenutí nejsou k dispozici.",

@@ -250,7 +250,8 @@
     "failedPlayAudio": "Äänen toistaminen epäonnistui",
     "failedLoadAudio": "Äänen lataaminen epäonnistui",
     "video": "Video",
-    "unsupportedVideo": "Selaimesi ei tue videoelementtiä."
+    "unsupportedVideo": "Selaimesi ei tue videoelementtiä.",
+    "fileOnOtherDevice": "Tiedosto on laitteella, joka tallensi sen."
   },
   "reminder": {
     "dataUnavailable": "Muistutustiedot eivät ole saatavilla.",

@@ -31,7 +31,8 @@ use super::model::{
 /// The fields the next occurrence copies from the one completed. Desktop
 /// spreads the whole task and re-creates it through `tasksService.create`,
 /// which carries these and not `sourceNoteId`; `dueDate`, `statusId`,
-/// `repeatConfig` and `position` are set separately.
+/// `repeatConfig` and `position` are set separately, and `startDate` moves
+/// with the due date.
 const OCCURRENCE_FIELDS: [&str; 12] = [
     "title",
     "description",
@@ -138,6 +139,15 @@ pub fn complete(
                 fields.insert("statusId".to_owned(), status);
             }
             fields.insert("dueDate".to_owned(), json!(due_date));
+            // The start keeps its distance to the due date: start Wednesday,
+            // due Sunday stays Wednesday to Sunday every week.
+            if let Some(start) = task.str("startDate").and_then(LocalDateTime::parse) {
+                let shift = next_due.days_since_epoch() - due.days_since_epoch();
+                fields.insert(
+                    "startDate".to_owned(),
+                    json!(start.date().add_days(shift).key()),
+                );
+            }
             fields.insert(
                 "repeatConfig".to_owned(),
                 with_completed_count(&repeat_wire, completion.completed_count),

@@ -113,7 +113,74 @@
       "noDueDate": "Bez termínu"
     },
     "repeatTypeRepeating": "Opakující se",
-    "repeatTypeOneTime": "Jednorázové"
+    "repeatTypeOneTime": "Jednorázové",
+    "advanced": {
+      "entry": "Pokročilý filtr…",
+      "entryHint": "Pravidla s a, nebo, ne",
+      "title": "Filtr",
+      "match": "Splňuje",
+      "ofThese": "z těchto",
+      "matches": {
+        "all": "všechna",
+        "any": "kterékoli",
+        "none": "žádné"
+      },
+      "fields": {
+        "title": "Název",
+        "status": "Stav",
+        "priority": "Priorita",
+        "due": "Termín",
+        "project": "Projekt",
+        "location": "Umístění",
+        "tags": "Štítky",
+        "repeat": "Opakování",
+        "hasTime": "Má čas"
+      },
+      "ops": {
+        "contains": "obsahuje",
+        "notContains": "neobsahuje",
+        "any": "je některé z",
+        "none": "není žádné z",
+        "all": "má všechny z",
+        "empty": "je prázdné",
+        "notEmpty": "není prázdné",
+        "is": "je",
+        "isNot": "není"
+      },
+      "tagOps": {
+        "any": "má některý z",
+        "all": "má všechny z",
+        "none": "nemá žádný z"
+      },
+      "values": {
+        "repeating": "Opakující se",
+        "oneTime": "Jednorázový",
+        "withTime": "S časem",
+        "withoutTime": "Bez času",
+        "customRange": "Vlastní rozsah",
+        "from": "Od",
+        "to": "Do",
+        "pick": "Vybrat…",
+        "titlePlaceholder": "Text v názvu"
+      },
+      "addRule": "Přidat pravidlo",
+      "addGroup": "Přidat skupinu",
+      "clear": "Vymazat",
+      "removeRule": "Odebrat pravidlo",
+      "removeGroup": "Odebrat skupinu",
+      "matchCount": "{count, plural, one {Vyhovuje # úkol} few {Vyhovují # úkoly} many {Vyhovuje # úkolu} other {Vyhovuje # úkolů}}",
+      "skipped": "{count, plural, one {# pravidlo přeskočeno} few {# pravidla přeskočena} many {# pravidla přeskočeno} other {# pravidel přeskočeno}}",
+      "ruleCount": "{count, plural, one {# pravidlo} few {# pravidla} many {# pravidla} other {# pravidel}}",
+      "unknownRule": "Pravidlo z novější verze",
+      "empty": "Zatím žádná pravidla. Přidejte jedno a začněte filtrovat.",
+      "summary": {
+        "and": "a",
+        "or": "nebo",
+        "not": "ne"
+      },
+      "editRules": "Upravit pravidla",
+      "clearRules": "Vymazat pravidla"
+    }
   },
   "quickAdd": {
     "label": "Rychlé přidání úkolu",

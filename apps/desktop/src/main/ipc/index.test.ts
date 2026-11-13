@@ -68,6 +68,8 @@ const hoisted = vi.hoisted(() => ({
   unregisterTelemetryHandlers: vi.fn(),
   registerFeedbackHandlers: vi.fn(),
   unregisterFeedbackHandlers: vi.fn(),
+  registerIosBetaHandlers: vi.fn(),
+  unregisterIosBetaHandlers: vi.fn(),
   registerDiagnosticsHandlers: vi.fn(),
   unregisterDiagnosticsHandlers: vi.fn(),
   registerUnsplashHandlers: vi.fn(),
@@ -219,6 +221,10 @@ vi.mock('./telemetry-handlers', () => ({
 vi.mock('./feedback-handlers', () => ({
   registerFeedbackHandlers: hoisted.registerFeedbackHandlers,
   unregisterFeedbackHandlers: hoisted.unregisterFeedbackHandlers
+}))
+vi.mock('./ios-beta-handlers', () => ({
+  registerIosBetaHandlers: hoisted.registerIosBetaHandlers,
+  unregisterIosBetaHandlers: hoisted.unregisterIosBetaHandlers
 }))
 vi.mock('./diagnostics-handlers', () => ({
   registerDiagnosticsHandlers: hoisted.registerDiagnosticsHandlers,

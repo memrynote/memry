@@ -102,6 +102,7 @@ vi.mock('../crdt-provider', () => ({
 // The body under test is plain text; the BlockNote schema is not what this
 // file is about.
 vi.mock('../blocknote-converter', () => ({
+  setVaultEmbedResolver: () => {},
   yDocToMarkdown: async (doc: Y.Doc) => doc.getText('body').toJSON(),
   findUnrepresentableNodes: () => []
 }))

@@ -168,7 +168,8 @@ export async function convertChecklistsToTasks(
       if (checked) {
         await domain.completeTask({
           id: result.task.id,
-          ...(completedAt ? { completedAt } : {})
+          ...(completedAt ? { completedAt } : {}),
+          recordOnly: true
         })
       }
 

@@ -138,6 +138,44 @@ describe('embedding worker', () => {
     expect(tokenizer).toHaveBeenCalledWith(['a'.repeat(4000)], { padding: true, truncation: true })
   })
 
+  it.each([
+    { cores: 32, threads: 2 },
+    { cores: 4, threads: 2 },
+    { cores: 2, threads: 1 },
+    { cores: 1, threads: 1 }
+  ])(
+    'loads the model with $threads inference threads for $cores available cores',
+    async ({ cores, threads }) => {
+      const parallelism = vi.spyOn(os, 'availableParallelism').mockReturnValue(cores)
+      try {
+        const port = new MockParentPort()
+        Object.defineProperty(process, 'parentPort', {
+          configurable: true,
+          writable: true,
+          value: port
+        })
+        mockModelLoad.mockResolvedValue(Object.assign(vi.fn(), { dispose: vi.fn() }))
+        await import('./embedding-worker')
+        port.emit('message', { data: { type: 'load-model', requestId: 'thread-budget' } })
+        await vi.waitFor(() => {
+          expect(port.postMessage).toHaveBeenCalledWith({
+            type: 'load-model-result',
+            requestId: 'thread-budget'
+          })
+        })
+
+        expect(mockModelLoad).toHaveBeenCalledWith(
+          'onnx-community/embeddinggemma-2-ONNX',
+          expect.objectContaining({
+            session_options: { intraOpNumThreads: threads, interOpNumThreads: 1 }
+          })
+        )
+      } finally {
+        parallelism.mockRestore()
+      }
+    }
+  )
+
   describe('image encoder', () => {
     const start = (): MockParentPort => {
       const port = new MockParentPort()

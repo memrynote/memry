@@ -63,6 +63,18 @@ describe('blog editorial surface', () => {
     }
   })
 
+  it('links every short-answer pick to a section on the same post', () => {
+    for (const post of BLOG_POSTS) {
+      const sectionSlugs = new Set(post.sections.map((s) => s.slug))
+      for (const row of post.shortAnswer ?? []) {
+        assert.ok(
+          sectionSlugs.has(row.anchor),
+          `Post ${post.slug} short answer "${row.pick}" links to missing section #${row.anchor}`
+        )
+      }
+    }
+  })
+
   it('looks up post by slug and returns undefined for unknown slugs', () => {
     const post = getPostBySlug('how-to-keep-a-plain-text-daily-journal-that-outlives-any-app')
     assert.ok(post)

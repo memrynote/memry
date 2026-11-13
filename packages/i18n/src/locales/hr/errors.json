@@ -146,6 +146,7 @@
     "requestTimedOut": "Zahtjev za sinkronizaciju je istekao. Provjerite internetsku vezu."
   },
   "googleCalendar": {
+    "requestRejected": "Google je odbio ovu stavku. Provjerite njezin datum i vrijeme pa pokušajte ponovno.",
     "connectFailed": "Povezivanje s uslugom Google Calendar nije uspjelo. Pokušajte ponovno za koji trenutak.",
     "reconnectNeeded": "Veza s uslugom Google Calendar je istekla. Prekinite vezu i ponovno se povežite.",
     "misconfigured": "Google Calendar nije ispravno konfiguriran. Obratite se podršci ako se ovo nastavi događati.",
@@ -159,7 +160,7 @@
   },
   "ai": {
     "inlineDisabled": "AI uređivanje u tekstu je isključeno",
-    "listOllamaModelsFailed": "Dohvaćanje Ollama modela nije uspjelo",
+    "listModelsFailed": "Popis modela nije moguće dohvatiti",
     "writingAssistInvalid": "Taj zahtjev nije moguće poslati AI modelu.",
     "apiKeyMissing": "Dodajte svoj API ključ za {provider} u Postavke → AI da biste koristili alate za pisanje.",
     "apiKeyInvalid": "Vaš API ključ za {provider} je odbijen. Provjerite ga u Postavke → AI.",
@@ -187,6 +188,10 @@
     "removeDeviceFailed": "Uklanjanje uređaja nije uspjelo",
     "renameDeviceFailed": "Preimenovanje uređaja nije uspjelo",
     "initiateOAuthFailed": "Pokretanje OAuth prijave nije uspjelo",
+    "retryOAuthFailed": "Ponovno otvaranje preglednika za prijavu nije uspjelo. Pokrenite prijavu ispočetka.",
+    "oauthExpired": "Prijava je istekla. Pokušajte ponovno.",
+    "oauthInvalidResponse": "Nije moguće dobiti valjanu poveznicu za prijavu. Pokušajte ponovno.",
+    "oauthCancelled": "Prijava putem Googlea je otkazana. Pokušajte ponovno.",
     "setupFirstDeviceOAuthFailed": "Postavljanje prvog uređaja putem OAuth-a nije uspjelo",
     "confirmRecoveryPhraseFailed": "Potvrda fraze za oporavak nije uspjela"
   },

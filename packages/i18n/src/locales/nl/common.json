@@ -6,6 +6,7 @@
     "noTarget": "Dit portaal heeft nog geen doel. Voeg een notitie toe aan de definitie of verwijder het blok.",
     "invalidJson": "De definitie van dit portaal is geen geldige JSON. Herstel die hieronder of verwijder het blok.",
     "invalidShape": "De definitie van dit portaal bevat geen notitie of zoekopdracht. Herstel die hieronder of verwijder het blok.",
+    "unreadable": "Dit portaal kan niet worden gelezen. Verwijder het blok en voeg een nieuw portaal toe.",
     "search": {
       "editQuery": "Zoekopdracht bewerken",
       "count": "{count, plural, one {# blok} other {# blokken}}",
@@ -1276,6 +1277,7 @@
     "label": "Help en feedback",
     "reportBug": "Fout melden",
     "requestFeature": "Functie aanvragen",
+    "joinTestflight": "Doe mee met TestFlight",
     "starOnGithub": "Ster geven op GitHub",
     "version": "MemryNote {version}",
     "whatsNew": "Wat is er nieuw",
@@ -1695,5 +1697,29 @@
     "journalDaysRenamed": "Sommige journaalitems hebben geen datum meer als naam",
     "journalDaysRenamedHint": "Deze journaalitems zijn buiten Memry hernoemd terwijl hun map wachtte op de instelling van de journaalmap, dus hun namen zijn geen datums meer. Ze blijven journaalitems tot je hun naam terugzet. Als je er een omzet in een notitie, verdwijnt het journaalitem op al je apparaten en blijft de tekst bewaard als notitie. De tags worden niet bewaard.",
     "turnIntoNotes": "Omzetten in notities"
+  },
+  "iosBeta": {
+    "badge": "Nieuw · TestFlight",
+    "title": "Memry voor iPhone is in bèta",
+    "promptBody": "Je kluis op je telefoon, end-to-end versleuteld. Laat je e-mailadres achter en Apple stuurt je een TestFlight-uitnodiging.",
+    "emailPlaceholder": "you@example.com",
+    "emailLabel": "E-mailadres voor de TestFlight-uitnodiging",
+    "submit": "Uitnodiging aanvragen",
+    "sending": "Versturen…",
+    "listNote": "We zetten je ook op de iPhone-bètalijst voor nieuws over de lancering. Je kunt je altijd uitschrijven.",
+    "error": "Kan de TestFlight-uitnodiging niet versturen. Probeer het opnieuw.",
+    "sentTitle": "Check je inbox",
+    "sentBody": "Apple heeft de uitnodiging naar {email} gestuurd. Dit kan een paar minuten duren en de mail kan in je spam terechtkomen.",
+    "stepInstall": "Installeer TestFlight vanuit de App Store",
+    "stepOpen": "Open de uitnodiging op je iPhone",
+    "stepSignIn": "Log in bij Memry op je telefoon",
+    "done": "Klaar",
+    "dialogTitle": "Doe mee met Memry voor iPhone",
+    "dialogBody": "Apple mailt je een TestFlight-uitnodiging. Gebruik het e-mailadres van de Apple ID op je iPhone.",
+    "entryTitle": "iPhone-bèta is live",
+    "entrySubtitle": "Via TestFlight",
+    "entryJoin": "Doe mee met de bèta",
+    "entrySent": "Uitnodiging verstuurd naar {email}",
+    "sendAgain": "Opnieuw versturen"
   }
 }

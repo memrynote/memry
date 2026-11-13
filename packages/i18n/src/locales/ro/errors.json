@@ -146,6 +146,7 @@
     "requestTimedOut": "Cererea de sincronizare a expirat. Verificați conexiunea la internet."
   },
   "googleCalendar": {
+    "requestRejected": "Google a respins acest element. Verificați data și ora acestuia, apoi încercați din nou.",
     "connectFailed": "Conectarea la Google Calendar nu a reușit. Vă rugăm să încercați din nou peste puțin timp.",
     "reconnectNeeded": "Conexiunea la Google Calendar a expirat. Vă rugăm să îl deconectați și să îl conectați din nou.",
     "misconfigured": "Google Calendar nu este configurat corect. Vă rugăm să contactați asistența dacă se repetă.",
@@ -159,7 +160,7 @@
   },
   "ai": {
     "inlineDisabled": "Editarea AI în linie este dezactivată",
-    "listOllamaModelsFailed": "Nu s-au putut lista modelele Ollama",
+    "listModelsFailed": "Modelele nu au putut fi listate",
     "writingAssistInvalid": "Cererea nu a putut fi trimisă către modelul AI.",
     "apiKeyMissing": "Adaugă cheia API {provider} în Setări → AI pentru a folosi instrumentele de scriere.",
     "apiKeyInvalid": "Cheia API {provider} a fost respinsă. Verifică-o în Setări → AI.",
@@ -187,6 +188,10 @@
     "removeDeviceFailed": "Nu s-a putut elimina dispozitivul",
     "renameDeviceFailed": "Nu s-a putut redenumi dispozitivul",
     "initiateOAuthFailed": "Nu s-a putut iniția OAuth",
+    "retryOAuthFailed": "Nu s-a putut redeschide browserul pentru conectare. Reluați conectarea.",
+    "oauthExpired": "Conectarea a expirat. Încercați din nou.",
+    "oauthInvalidResponse": "Nu s-a putut obține un link de conectare valid. Încercați din nou.",
+    "oauthCancelled": "Conectarea cu Google a fost anulată. Încercați din nou.",
     "setupFirstDeviceOAuthFailed": "Nu s-a putut configura primul dispozitiv prin OAuth",
     "confirmRecoveryPhraseFailed": "Nu s-a putut confirma fraza de recuperare"
   },

@@ -187,7 +187,7 @@ fn an_unlock_lifts_the_lock_row_as_it_is_spelled() {
     let rows = e.core().locks();
 
     for (row, given) in [("archive", "archive"), ("archive", "ARCHIVE"), (nfd, nfc)] {
-        rows.set(TargetKind::Folder, row, true).unwrap();
+        rows.set(TargetKind::Folder, row, true, "device-a").unwrap();
         let set = locks.set(TargetKind::Folder, given, false).unwrap();
         assert!(
             set.changed && set.state.folders.is_empty(),

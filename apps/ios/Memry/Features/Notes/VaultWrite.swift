@@ -196,6 +196,7 @@ extension VaultBrowseViewModel {
         do {
             let id = try await writer.create(title: title, folderPath: folderPath)
             Log.storage.info("created a note", .count(1))
+            NotesTelemetry.noteCreated()
             await wrote()
             return id
         } catch {
@@ -217,6 +218,7 @@ extension VaultBrowseViewModel {
                 templateId: templateId, title: title, folderPath: folderPath
             )
             Log.storage.info("created a note from a template", .count(1))
+            NotesTelemetry.noteCreated()
             await wrote()
             return id
         } catch {
@@ -249,6 +251,7 @@ extension VaultBrowseViewModel {
         guard let writer else { return }
         do {
             try await writer.delete(id: id)
+            NotesTelemetry.noteDeleted()
             await wrote()
         } catch {
             report(error, "a note could not be deleted")

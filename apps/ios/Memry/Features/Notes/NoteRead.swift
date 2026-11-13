@@ -136,6 +136,8 @@ final class NoteReadViewModel {
             Log.sync.notice("fetched one note body", .count(Int(summary.updates)))
             fetch = summary.stopped ? .incomplete : .idle
         } catch {
+            // Cancelled with its `.task`, not failed: no notice.
+            if Task.isCancelled { fetch = .idle; return }
             let mapped = ErrorMapping.userFacing(error)
             Log.sync.error("a note body could not be fetched", .code(mapped.code))
             fetch = .failed(mapped)
@@ -143,31 +145,6 @@ final class NoteReadViewModel {
         }
         hasLoaded = false
         await load()
-    }
-
-    /// Every folder the notes-list tree shows, for the Move to sheet (N808,
-    /// #2909): configured folders plus the ones `VaultOutline` derives from
-    /// note paths, sorted by path. A failed `folders()` read leaves only the
-    /// vault root; a failed `list()` read degrades to the configured folders.
-    /// Both are logged.
-    func moveDestinations() async -> [FolderSummary] {
-        let configured: [FolderSummary]
-        do {
-            configured = try await reader.folders()
-        } catch {
-            let mapped = ErrorMapping.userFacing(error)
-            Log.storage.error("this vault's folders could not be read for a move", .code(mapped.code))
-            return []
-        }
-        let notes: [NoteSummary]
-        do {
-            notes = try await reader.list()
-        } catch {
-            let mapped = ErrorMapping.userFacing(error)
-            Log.storage.error("this vault's notes could not be read for a move", .code(mapped.code))
-            notes = []
-        }
-        return VaultOutline.destinations(configured: configured, notes: notes)
     }
 
     /// Pulls this note's body, then re-reads the note in place.
@@ -205,6 +182,8 @@ final class NoteReadViewModel {
         do {
             blocks = try await reader.blocks(id: route.id) ?? []
         } catch {
+            // Cancelled, not failed: keep the blocks being edited on screen.
+            if Task.isCancelled { return }
             let mapped = ErrorMapping.userFacing(error)
             Log.storage.error("this note's blocks could not be walked", .code(mapped.code))
             blocks = []
@@ -223,6 +202,7 @@ final class NoteReadViewModel {
             else { continue }
             if let card = try? await reader.task(id: id) { cards[id] = card }
         }
+        guard !Task.isCancelled else { return }
         taskCards = cards
     }
 
@@ -232,6 +212,7 @@ final class NoteReadViewModel {
         do {
             comments = try await reader.comments(id: route.id)
         } catch {
+            if Task.isCancelled { return }
             let mapped = ErrorMapping.userFacing(error)
             Log.storage.error("this note's review comments could not be read", .code(mapped.code))
             comments = []
@@ -249,6 +230,7 @@ final class NoteReadViewModel {
             do {
                 bound[url] = try await reader.attachmentForBlock(id: route.id, url: url)
             } catch {
+                if Task.isCancelled { return }
                 let mapped = ErrorMapping.userFacing(error)
                 Log.storage.error("an attachment could not be resolved", .code(mapped.code))
             }
@@ -270,6 +252,7 @@ final class NoteReadViewModel {
                     loaded[blockId] = table
                 }
             } catch {
+                if Task.isCancelled { return }
                 let mapped = ErrorMapping.userFacing(error)
                 Log.storage.error("a table in this note could not be read", .code(mapped.code))
             }
@@ -284,6 +267,7 @@ final class NoteReadViewModel {
         do {
             metadata = try await reader.metadata(id: route.id)
         } catch {
+            if Task.isCancelled { return }
             let mapped = ErrorMapping.userFacing(error)
             Log.storage.error("this note's tags and properties could not be read", .code(mapped.code))
             // Left unread rather than emptied. An empty row would say this
@@ -343,6 +327,9 @@ final class NoteReadViewModel {
         do {
             detail = try await reader.read(id: route.id)
         } catch {
+            // Each sync pass cancels `.task(id: vaultSyncPasses)` and
+            // `CoreExecutor` refuses its queued read. Not unreadable: keep the page.
+            if Task.isCancelled { return }
             let mapped = ErrorMapping.userFacing(error)
             Log.storage.error("this note could not be read", .code(mapped.code))
             // Retryable, so the next attempt is a real attempt.
@@ -375,6 +362,7 @@ final class NoteReadViewModel {
         do {
             vaultNotes = try await reader.list()
         } catch {
+            if Task.isCancelled { return }
             Log.storage.error("the vault's notes could not be listed for linking")
             vaultNotes = []
         }
@@ -387,6 +375,7 @@ final class NoteReadViewModel {
             tagColors = colors
             vaultTagNames = tags.sorted { $0.noteCount > $1.noteCount }.map(\.name)
         } catch {
+            if Task.isCancelled { return }
             Log.storage.error("the vault's tag colours could not be read")
         }
     }

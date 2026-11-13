@@ -146,6 +146,7 @@
     "requestTimedOut": "Die Sync-Anfrage hat das Zeitlimit überschritten. Bitte prüfe deine Internetverbindung."
   },
   "googleCalendar": {
+    "requestRejected": "Google hat diesen Eintrag abgelehnt. Prüfe Datum und Uhrzeit und versuche es erneut.",
     "connectFailed": "Die Verbindung zu Google Calendar konnte nicht hergestellt werden. Bitte versuch es gleich noch einmal.",
     "reconnectNeeded": "Deine Verbindung zu Google Calendar ist abgelaufen. Bitte trenne sie und verbinde dich erneut.",
     "misconfigured": "Google Calendar ist nicht richtig konfiguriert. Bitte wende dich an den Support, falls das weiterhin auftritt.",
@@ -159,7 +160,7 @@
   },
   "ai": {
     "inlineDisabled": "Die KI-Inline-Bearbeitung ist deaktiviert",
-    "listOllamaModelsFailed": "Die Ollama-Modelle konnten nicht aufgelistet werden",
+    "listModelsFailed": "Die Modelle konnten nicht aufgelistet werden",
     "writingAssistInvalid": "Diese Anfrage konnte nicht an das KI-Modell gesendet werden.",
     "apiKeyMissing": "Füge deinen {provider}-API-Schlüssel unter Einstellungen → KI hinzu, um Schreibwerkzeuge zu nutzen.",
     "apiKeyInvalid": "Dein {provider}-API-Schlüssel wurde abgelehnt. Prüfe ihn unter Einstellungen → KI.",
@@ -187,6 +188,10 @@
     "removeDeviceFailed": "Das Gerät konnte nicht entfernt werden",
     "renameDeviceFailed": "Das Gerät konnte nicht umbenannt werden",
     "initiateOAuthFailed": "OAuth konnte nicht gestartet werden",
+    "retryOAuthFailed": "Der Browser für die Anmeldung konnte nicht erneut geöffnet werden. Starte die Anmeldung neu.",
+    "oauthExpired": "Die Anmeldung ist abgelaufen. Bitte versuche es erneut.",
+    "oauthInvalidResponse": "Es konnte kein gültiger Anmeldelink abgerufen werden. Bitte versuche es erneut.",
+    "oauthCancelled": "Die Anmeldung mit Google wurde abgebrochen. Bitte versuche es erneut.",
     "setupFirstDeviceOAuthFailed": "Das erste Gerät konnte nicht über OAuth eingerichtet werden",
     "confirmRecoveryPhraseFailed": "Die Wiederherstellungsphrase konnte nicht bestätigt werden"
   },

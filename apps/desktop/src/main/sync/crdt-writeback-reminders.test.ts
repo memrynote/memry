@@ -46,6 +46,7 @@ vi.mock('./crdt-provider', () => ({
   getCrdtProvider: () => ({ getDoc: () => undefined, close: vi.fn(), purge: vi.fn() })
 }))
 vi.mock('./blocknote-converter', () => ({
+  setVaultEmbedResolver: () => {},
   yDocToMarkdown: async () => mocks.markdown,
   findUnrepresentableNodes: () => []
 }))

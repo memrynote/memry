@@ -146,6 +146,7 @@
     "requestTimedOut": "Vypršal časový limit požiadavky na synchronizáciu. Skontrolujte internetové pripojenie."
   },
   "googleCalendar": {
+    "requestRejected": "Google odmietol túto položku. Skontrolujte jej dátum a čas a skúste to znova.",
     "connectFailed": "Nepodarilo sa pripojiť k službe Google Calendar. Skúste to o chvíľu znova.",
     "reconnectNeeded": "Vaše pripojenie k službe Google Calendar vypršalo. Odpojte ho a pripojte znova.",
     "misconfigured": "Služba Google Calendar nie je správne nastavená. Ak sa to opakuje, kontaktujte podporu.",
@@ -159,7 +160,7 @@
   },
   "ai": {
     "inlineDisabled": "Úpravy pomocou AI priamo v texte sú vypnuté",
-    "listOllamaModelsFailed": "Nepodarilo sa načítať zoznam modelov Ollama",
+    "listModelsFailed": "Nepodarilo sa načítať zoznam modelov",
     "writingAssistInvalid": "Túto požiadavku sa nepodarilo odoslať modelu AI.",
     "apiKeyMissing": "Ak chcete používať nástroje na písanie, pridajte svoj kľúč API pre {provider} v časti Nastavenia → AI.",
     "apiKeyInvalid": "Váš kľúč API pre {provider} bol odmietnutý. Skontrolujte ho v časti Nastavenia → AI.",
@@ -187,6 +188,10 @@
     "removeDeviceFailed": "Nepodarilo sa odstrániť zariadenie",
     "renameDeviceFailed": "Nepodarilo sa premenovať zariadenie",
     "initiateOAuthFailed": "Nepodarilo sa spustiť OAuth",
+    "retryOAuthFailed": "Prehliadač na prihlásenie sa nepodarilo znova otvoriť. Spustite prihlásenie odznova.",
+    "oauthExpired": "Platnosť prihlásenia vypršala. Skúste to znova.",
+    "oauthInvalidResponse": "Nepodarilo sa získať platný odkaz na prihlásenie. Skúste to znova.",
+    "oauthCancelled": "Prihlásenie cez Google bolo zrušené. Skúste to znova.",
     "setupFirstDeviceOAuthFailed": "Nepodarilo sa nastaviť prvé zariadenie cez OAuth",
     "confirmRecoveryPhraseFailed": "Nepodarilo sa potvrdiť obnovovaciu frázu"
   },

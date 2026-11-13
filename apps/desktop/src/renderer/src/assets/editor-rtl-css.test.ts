@@ -25,4 +25,14 @@ describe('editor RTL mirror', () => {
       /\[data-content-type='quote'\]:dir\(rtl\) blockquote \{[^}]*border-right: 3px/
     )
   })
+
+  it('gives each line of a block its own direction, except in code', () => {
+    const css = strip(readFileSync(join(ASSETS, 'editor-rtl.css'), 'utf8'))
+    expect(css).toMatch(/\.bn-editor \.bn-inline-content,[^{]*\{[^}]*unicode-bidi: plaintext/)
+    expect(css).toMatch(/\.bn-editor \.bn-inline-content \{[^}]*flex-grow: 1/)
+    expect(css).toMatch(/:has\(> \.ProseMirror-trailingBreak:only-child\) \{[^}]*flex-grow: 0/)
+    expect(css).toMatch(
+      /\[data-content-type='codeBlock'\] \.bn-inline-content \{[^}]*unicode-bidi: normal/
+    )
+  })
 })

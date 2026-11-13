@@ -1,10 +1,11 @@
 import { BrowserWindow, ipcMain, nativeTheme, type BrowserWindowConstructorOptions } from 'electron'
 import { AppChannels } from '@memry/contracts/ipc-channels'
+import { clampZoomFactor } from '@memry/contracts/app-zoom'
 import { createLogger } from './lib/logger'
 
 const logger = createLogger('TitleBarOverlay')
 
-/** Matches the renderer's h-9 title row. */
+/** Matches the renderer's h-9 title row at 100% zoom. */
 export const TITLE_BAR_HEIGHT_PX = 36
 
 // Transparent so the caption buttons sit on Memry's own chrome, whatever the theme.
@@ -44,6 +45,15 @@ export function getMainWindowFrameOptions(
   return {}
 }
 
+/**
+ * The title row is 36 CSS px, so page zoom scales it, while the native overlay
+ * height is in unzoomed DIPs. Without this the caption buttons outgrow the row
+ * below 100% and fall short of it above.
+ */
+export function titleBarHeightForZoom(zoomFactor: number): number {
+  return Math.round(TITLE_BAR_HEIGHT_PX * clampZoomFactor(zoomFactor))
+}
+
 export function registerTitleBarOverlayIpc(): void {
   if (process.platform !== 'win32') return
   ipcMain.on(AppChannels.send.TITLE_BAR_SYMBOL_COLOR, (event, color: unknown) => {
@@ -54,6 +64,16 @@ export function registerTitleBarOverlayIpc(): void {
       win.setTitleBarOverlay({ color: OVERLAY_COLOR, symbolColor: color })
     } catch (err) {
       // Throws for windows created without an overlay (splash, quick capture).
+      logger.debug('setTitleBarOverlay skipped:', err)
+    }
+  })
+  ipcMain.on(AppChannels.send.TITLE_BAR_ZOOM_FACTOR, (event, zoomFactor: unknown) => {
+    if (typeof zoomFactor !== 'number') return
+    const win = BrowserWindow.fromWebContents(event.sender)
+    if (!win || win.isDestroyed()) return
+    try {
+      win.setTitleBarOverlay({ height: titleBarHeightForZoom(zoomFactor) })
+    } catch (err) {
       logger.debug('setTitleBarOverlay skipped:', err)
     }
   })

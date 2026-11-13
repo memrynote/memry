@@ -10,6 +10,7 @@ vi.mock('../sync/crdt-provider', () => ({
   ORIGIN_LOCAL: 'local'
 }))
 vi.mock('../sync/blocknote-converter', () => ({
+  setVaultEmbedResolver: () => {},
   prepareFragmentSeed: (...a: unknown[]) => prepareFragmentSeed(...a),
   applyFragmentSeed: (...a: unknown[]) => applyFragmentSeed(...a),
   recordMarkdownSourceInYDoc: (...a: unknown[]) => recordMarkdownSourceInYDoc(...a)

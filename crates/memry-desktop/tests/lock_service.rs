@@ -33,11 +33,17 @@ use crate::vault_settings::{opened_keeping, stored};
 pub(crate) const NOTE: &str = "The body.\n";
 
 pub(crate) fn lock(e: &Env, kind: TargetKind, target: &str) {
-    e.core().locks().set(kind, target, true).unwrap();
+    e.core()
+        .locks()
+        .set(kind, target, true, "device-a")
+        .unwrap();
 }
 
 pub(crate) fn unlock(e: &Env, kind: TargetKind, target: &str) {
-    e.core().locks().set(kind, target, false).unwrap();
+    e.core()
+        .locks()
+        .set(kind, target, false, "device-a")
+        .unwrap();
 }
 
 fn assert_refused(refused: Result<impl std::fmt::Debug, NotesError>, code: &str) {

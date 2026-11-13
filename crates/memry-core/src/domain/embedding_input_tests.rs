@@ -41,8 +41,8 @@ fn constants_match_the_oracle() {
 fn every_case_matches_the_oracle() {
     let file = vectors();
     let cases = file["cases"].as_array().expect("cases");
-    assert_eq!(cases.len(), 60);
-    assert_eq!(file["meta"]["caseCount"].as_u64(), Some(60));
+    assert_eq!(cases.len(), 61);
+    assert_eq!(file["meta"]["caseCount"].as_u64(), Some(61));
     for case in cases {
         let name = case["name"].as_str().expect("name");
         let want = &case["expected"];

@@ -18,13 +18,14 @@ import {
 } from '@memry/contracts/agent-mcp-channels'
 
 import { getCanvasWindowId } from '../../../canvas/live-registry'
+import { getMainWindow } from '../../../main-window'
 import { mainToRendererInvoke } from '../../../lib/window-rpc'
 import { AgentToolError } from '../errors'
 
 type OkResponse = Extract<AgentMcpCanvasWriteResponse, { ok: true }>
 
 /**
- * Owner window first, then the calling window, then any live window. A stale
+ * Owner window first, then the calling window, then the app window. A stale
  * registry entry (window gone without a close report) resolves to null here and
  * degrades to the headless path rather than failing the write.
  */
@@ -37,7 +38,7 @@ function resolveWindow(canvasId: string, windowId: string | null): BrowserWindow
   const caller = Number.isInteger(numericId) ? BrowserWindow.fromId(numericId) : null
   if (caller) return caller
 
-  return BrowserWindow.getAllWindows().find((win) => !win.isDestroyed()) ?? null
+  return getMainWindow()
 }
 
 export async function invokeCanvasWrite(

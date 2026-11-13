@@ -1,9 +1,10 @@
 /**
  * The other half of #1844, and the one that made the mention vanish outright.
  *
- * Main seeds the shared Y.Doc straight from the vault file, and the mention
- * spec has no text `parse` rule, so `((mention:…))` reaches the doc as plain
- * TEXT. The collaborative branch of `useEditorSync` returns before
+ * Main seeded the shared Y.Doc straight from the vault file, and the mention
+ * spec has no text `parse` rule, so `((mention:…))` reached the doc as plain
+ * TEXT. Main's seed builds the node now (#3871); docs an older build seeded
+ * still hold the text. The collaborative branch of `useEditorSync` returns before
  * `normalizeNoteBlocks` ever runs, so nothing on either side turned that text
  * back into a chip: a mention survived until the Y.Doc was thrown away, and
  * came back as literal `((mention:…))` after a restart or a vault switch.
@@ -15,9 +16,10 @@
  * the one plain text run that parser produces.
  */
 
-import { renderHook } from '@testing-library/react'
+import { renderHook, waitFor } from '@testing-library/react'
 import { afterEach, describe, expect, it, vi } from 'vitest'
 import { BlockNoteEditor, type Block } from '@blocknote/core'
+import { yUndoPluginKey } from 'y-prosemirror'
 import * as Y from 'yjs'
 import { CRDT_FRAGMENT_NAME } from '@memry/contracts/ipc-crdt'
 import { serializeLinkMentionToken } from '@memry/editor-schema/inline'
@@ -28,7 +30,13 @@ vi.mock('react-pdf', () => ({
   pdfjs: { GlobalWorkerOptions: { workerSrc: '' } }
 }))
 
-const fetchLinkPreview = vi.fn().mockResolvedValue({ domain: '', title: '', favicon: '' })
+const PREVIEW = {
+  domain: 'eksisozluk.com',
+  title: 'Entry 184233570',
+  favicon: 'https://eksisozluk.com/favicon.ico',
+  siteName: 'Eksi Sozluk'
+}
+const fetchLinkPreview = vi.fn().mockResolvedValue(PREVIEW)
 vi.mock('@/lib/url-metadata', () => ({
   fetchLinkPreview: (url: string) => fetchLinkPreview(url),
   extractDomain: (url: string) => {
@@ -101,9 +109,24 @@ function nodeNames(fragment: Y.XmlFragment): string[] {
 
 /** Rendering the hook IS opening the note: its load effect is the subject. */
 function openNote(editor: BlockNoteEditor, fragment: Y.XmlFragment): void {
-  renderHook(() =>
+  const { result } = renderHook(() =>
     useEditorSync({ editor, noteId: 'link-mention-promotion-note', yjsFragment: fragment })
   )
+  // What `BlockNoteView`'s `onChange` does in ContentArea.
+  editor.onChange(() => result.current.handleChange())
+}
+
+/** Every mention in the document, table cells and nested blocks included. */
+function mentionProps(editor: BlockNoteEditor): Array<Record<string, string>> {
+  const props: Array<Record<string, string>> = []
+  editor._tiptapEditor.state.doc.descendants((node) => {
+    if (node.type.name === 'linkMention') props.push({ ...node.attrs })
+  })
+  return props
+}
+
+async function settlePreviews(): Promise<void> {
+  await new Promise((resolve) => setTimeout(resolve, 0))
 }
 
 const URL_ = 'https://eksisozluk.com/entry/184233570?debe=true'
@@ -134,6 +157,7 @@ describe('the renderer promotes ((mention:…)) inside a collaborative document'
     const { editor, doc, fragment } = createCollaborativeEditor()
     seedWithPlainText(editor, `See ${serializeLinkMentionToken(URL_)} for details.`)
     openNote(editor, fragment)
+    await settlePreviews()
 
     // #when it is opened again against the already-promoted document. Awaited
     // so any queued microtask lands inside the window being asserted on.
@@ -168,21 +192,95 @@ describe('the renderer promotes ((mention:…)) inside a collaborative document'
     expect(content[0].props?.url).toBe('https://x.test/page')
   })
 
-  it('does not fetch site metadata on this path', async () => {
+  it('fills in the title and favicon on open, into the shared doc, with no undo step', async () => {
     // #given
     const { editor, fragment } = createCollaborativeEditor()
     seedWithPlainText(editor, serializeLinkMentionToken(URL_))
 
     // #when
     openNote(editor, fragment)
-    await Promise.resolve()
+    await settlePreviews()
 
-    // #then `hydrateLinkMentionFavicons` writes back a content array captured
-    // before its fetch and resolves after the undo history is cleared. On a
-    // shared document that is a stale block pushed to every device and an
-    // undoable step on open, so the collaborative path leaves the chip with the
-    // domain the token carries.
-    expect(fetchLinkPreview).not.toHaveBeenCalled()
+    // #then the chip is rich, other devices get it, and Cmd+Z has nothing to undo
+    expect(mentionProps(editor)).toEqual([{ url: URL_, ...PREVIEW }])
+    expect(fragment.toJSON()).toContain(`title="${PREVIEW.title}"`)
+    const undoManager = yUndoPluginKey.getState(editor._tiptapEditor.state)?.undoManager
+    expect(undoManager?.undoStack).toHaveLength(0)
+  })
+
+  it('fills in a bare mention that arrives while the note is open (#3871)', async () => {
+    // #given an open note, and a restore on another replica that leaves the
+    // mention as the token carries it: the URL and its domain, nothing else
+    const { editor, doc, fragment } = createCollaborativeEditor()
+    seedWithPlainText(editor, 'Links')
+    openNote(editor, fragment)
+    const remote = createCollaborativeEditor()
+    Y.applyUpdate(remote.doc, Y.encodeStateAsUpdate(doc))
+    remote.editor.replaceBlocks(remote.editor.document, [
+      {
+        type: 'paragraph',
+        content: [{ type: 'linkMention', props: { url: URL_, domain: 'eksisozluk.com' } }]
+      } as never
+    ])
+
+    // #when the edit reaches this replica
+    Y.applyUpdate(doc, Y.encodeStateAsUpdate(remote.doc))
+    await settlePreviews()
+
+    // #then
+    expect(mentionProps(editor)).toEqual([{ url: URL_, ...PREVIEW }])
+  })
+
+  it('writes the preview over the current content, not a copy taken before the fetch', async () => {
+    // #given a preview that resolves only after the user has typed
+    let resolvePreview: (value: typeof PREVIEW) => void = () => {}
+    fetchLinkPreview.mockReturnValueOnce(new Promise((resolve) => (resolvePreview = resolve)))
+    const { editor, fragment } = createCollaborativeEditor()
+    seedWithPlainText(editor, `See ${serializeLinkMentionToken(URL_)}`)
+    openNote(editor, fragment)
+    editor.insertInlineContent(' typed meanwhile')
+
+    // #when
+    resolvePreview(PREVIEW)
+    await settlePreviews()
+
+    // #then
+    const block = editor.document[0] as Block
+    const text = (block.content as Array<{ type: string; text?: string }>)
+      .map((run) => run.text ?? '')
+      .join('')
+    expect(text).toContain('typed meanwhile')
+    expect(mentionProps(editor)).toEqual([{ url: URL_, ...PREVIEW }])
+  })
+
+  it('fills in mentions in a table cell and a nested block on the markdown path', async () => {
+    // #given a note with no shared doc
+    const editor = BlockNoteEditor.create({ schema: editorSchema }) as unknown as BlockNoteEditor
+    const el = document.createElement('div')
+    document.body.appendChild(el)
+    editor.mount(el)
+    const token = serializeLinkMentionToken(URL_)
+    const markdown = `| Link |\n| --- |\n| ${token} |\n\n- Parent\n  - ${token}\n`
+
+    // #when
+    renderHook(() =>
+      useEditorSync({
+        editor,
+        noteId: 'markdown-note',
+        initialContent: markdown,
+        contentType: 'markdown'
+      })
+    )
+
+    // #then
+    await waitFor(() =>
+      expect(mentionProps(editor)).toEqual([
+        { url: URL_, ...PREVIEW },
+        { url: URL_, ...PREVIEW }
+      ])
+    )
+    editor.unmount()
+    el.remove()
   })
 
   it('leaves a note without a mention untouched', () => {

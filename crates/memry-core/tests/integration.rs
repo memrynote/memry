@@ -18,6 +18,8 @@ mod account_setup;
 mod api_attachment_fetch;
 #[path = "api_inbox.rs"]
 mod api_inbox;
+#[path = "api_inbox_attachments.rs"]
+mod api_inbox_attachments;
 #[path = "api_journal.rs"]
 mod api_journal;
 #[path = "api_notes_write.rs"]
@@ -32,10 +34,14 @@ mod api_sync_oversized_update;
 mod api_sync_pass;
 #[path = "api_task_conformance.rs"]
 mod api_task_conformance;
+#[path = "api_task_location_options.rs"]
+mod api_task_location_options;
 #[path = "api_task_tree.rs"]
 mod api_task_tree;
 #[path = "api_tasks.rs"]
 mod api_tasks;
+#[path = "api_typed_checklist.rs"]
+mod api_typed_checklist;
 #[path = "api_vault_reads.rs"]
 mod api_vault_reads;
 #[path = "api_vault_sync.rs"]
@@ -60,6 +66,8 @@ mod block_refs_untrusted;
 mod body_edit_append;
 #[path = "body_edit_columns.rs"]
 mod body_edit_columns;
+#[path = "body_edit_merge.rs"]
+mod body_edit_merge;
 #[path = "body_edit_ops.rs"]
 mod body_edit_ops;
 #[path = "body_edit_replace_text.rs"]
@@ -130,6 +138,8 @@ mod domain_file_cover;
 mod domain_file_tags;
 #[path = "domain_folders.rs"]
 mod domain_folders;
+#[path = "domain_inbox_attachments.rs"]
+mod domain_inbox_attachments;
 #[path = "domain_inbox_queries.rs"]
 mod domain_inbox_queries;
 #[path = "domain_inbox_sync.rs"]
@@ -288,6 +298,8 @@ mod markdown_layer_blocks_vectors;
 mod markdown_layer_critic_vectors;
 #[path = "markdown_layer_markers_vectors.rs"]
 mod markdown_layer_markers_vectors;
+#[path = "markdown_link_mention_seed.rs"]
+mod markdown_link_mention_seed;
 #[path = "markdown_md_to_html_vectors.rs"]
 mod markdown_md_to_html_vectors;
 #[path = "markdown_memry_parse_vectors.rs"]
@@ -348,6 +360,8 @@ mod recreate_clock_vectors;
 mod recurrence_vectors;
 #[path = "roundtrip_acceptance.rs"]
 mod roundtrip_acceptance;
+#[path = "session_refresh_errors.rs"]
+mod session_refresh_errors;
 #[path = "snapshot_embeds.rs"]
 mod snapshot_embeds;
 #[path = "sync_cursor_repair.rs"]
@@ -392,6 +406,8 @@ mod task_filter_vectors;
 mod task_parse_vectors;
 #[path = "task_views_vectors.rs"]
 mod task_views_vectors;
+#[path = "telemetry_send.rs"]
+mod telemetry_send;
 #[path = "text_extract_vectors.rs"]
 mod text_extract_vectors;
 #[path = "tombstone.rs"]
@@ -402,6 +418,8 @@ mod tombstone_purge;
 mod unknown_fields;
 #[path = "unlinked_mentions.rs"]
 mod unlinked_mentions;
+#[path = "vault_lock_sync.rs"]
+mod vault_lock_sync;
 #[path = "vault_locks.rs"]
 mod vault_locks;
 #[path = "vault_locks_schema.rs"]

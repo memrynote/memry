@@ -6,6 +6,8 @@ export interface Device {
   user_id: string
   name: string
   platform: string
+  /** 'phone' or 'tablet'; NULL for devices registered before #4375. */
+  form_factor?: string | null
   os_version: string | null
   app_version: string
   auth_public_key: string

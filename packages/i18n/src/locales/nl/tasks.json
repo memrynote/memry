@@ -113,7 +113,74 @@
       "noDueDate": "Geen vervaldatum"
     },
     "repeatTypeRepeating": "Herhalend",
-    "repeatTypeOneTime": "Eenmalig"
+    "repeatTypeOneTime": "Eenmalig",
+    "advanced": {
+      "entry": "Geavanceerd filter…",
+      "entryHint": "Regels met en, of, niet",
+      "title": "Filter",
+      "match": "Voldoe aan",
+      "ofThese": "van deze",
+      "matches": {
+        "all": "alle",
+        "any": "een van",
+        "none": "geen"
+      },
+      "fields": {
+        "title": "Titel",
+        "status": "Status",
+        "priority": "Prioriteit",
+        "due": "Vervaldatum",
+        "project": "Project",
+        "location": "Locatie",
+        "tags": "Tags",
+        "repeat": "Herhaling",
+        "hasTime": "Heeft tijd"
+      },
+      "ops": {
+        "contains": "bevat",
+        "notContains": "bevat niet",
+        "any": "is een van",
+        "none": "is geen van",
+        "all": "heeft alle",
+        "empty": "is leeg",
+        "notEmpty": "is niet leeg",
+        "is": "is",
+        "isNot": "is niet"
+      },
+      "tagOps": {
+        "any": "heeft een van",
+        "all": "heeft alle",
+        "none": "heeft geen van"
+      },
+      "values": {
+        "repeating": "Herhalend",
+        "oneTime": "Eenmalig",
+        "withTime": "Met tijd",
+        "withoutTime": "Zonder tijd",
+        "customRange": "Aangepast bereik",
+        "from": "Van",
+        "to": "Tot",
+        "pick": "Kiezen…",
+        "titlePlaceholder": "Tekst in de titel"
+      },
+      "addRule": "Regel toevoegen",
+      "addGroup": "Groep toevoegen",
+      "clear": "Wissen",
+      "removeRule": "Regel verwijderen",
+      "removeGroup": "Groep verwijderen",
+      "matchCount": "{count, plural, one {# taak komt overeen} other {# taken komen overeen}}",
+      "skipped": "{count, plural, one {# regel overgeslagen} other {# regels overgeslagen}}",
+      "ruleCount": "{count, plural, one {# regel} other {# regels}}",
+      "unknownRule": "Regel uit een nieuwere versie",
+      "empty": "Nog geen regels. Voeg er een toe om te filteren.",
+      "summary": {
+        "and": "en",
+        "or": "of",
+        "not": "niet"
+      },
+      "editRules": "Regels bewerken",
+      "clearRules": "Regels wissen"
+    }
   },
   "quickAdd": {
     "label": "Taak snel toevoegen",

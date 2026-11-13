@@ -232,9 +232,75 @@ shared attachment queues (`apps/desktop/src/main/home/cover-service.ts:291`,
 `:311`) and settles both directions in one idempotent pass
 (`apps/desktop/src/main/home/cover-service.ts:324`).
 
-The Rust core does not subscribe to `home_page`
-(`crates/memry-core/src/protocol/types.rs:77`), so it never meets a board
-cover.
+The iOS declaration (`Declaration::subscribed`) omits `home_page`
+(`crates/memry-core/src/protocol/types.rs:77`), so an iOS client never meets a
+board cover.
+
+### 14.7.2 An Inbox capture's file (#4157)
+
+**Normative.** An `inbox` payload's `attachmentId` names one attachment,
+resolved by the chain of §14.7 (`packages/contracts/src/sync-payloads.ts:81-87`;
+chapter 13 §13.7.15). Its bytes are the file at the capture's `attachmentPath`,
+and the manifest's `filename` is that path's last segment
+(`crates/memry-core/src/domain/inbox/attachments.rs:69-87`).
+
+- **Upload on capture, by builds that know this section.** A capture with a
+  file is marked upload-pending in the write that creates it
+  (`crates/memry-core/src/domain/inbox/write.rs:199-201`,
+  `crates/memry-core/src/storage/migrations/data/0016_inbox_attachments.sql:29-32`).
+  Only a capture made by such a build has the mark, so a capture made before it
+  never uploads. The capturing device uploads the file through §14.2 to §14.5,
+  then writes `attachmentId` into the capture by an ordinary local edit, which
+  ticks the clock and pushes the payload
+  (`crates/memry-core/src/api/sync/inbox_attachments.rs:212-267`,
+  `crates/memry-core/src/domain/inbox/attachments.rs:165-181`;
+  `apps/desktop/src/main/inbox/attachment-sync.ts:107`, `:123`). A thumbnail is not
+  uploaded.
+- **Receiver path rule.** A receiver MUST write a downloaded file only to
+  `attachments/inbox/<itemId>/<file>`, where `<itemId>` is the capture's own id
+  and `<file>` is one segment that is not empty, `.` or `..` and holds no `/`
+  or `\`, and MUST refuse any other `attachmentPath` rather than write there,
+  as §14.7.1 does for a cover `ref`
+  (`crates/memry-core/src/domain/inbox/attachments.rs:41-44`). The sender reads
+  its own file under the same rule
+  (`crates/memry-core/src/api/sync/inbox_attachments.rs:179-191`). The core
+  writes the file at the payload's `attachmentPath`
+  (`crates/memry-core/src/api/sync/inbox_attachments.rs:335-350`), desktop under
+  the manifest `filename` in the same folder
+  (`apps/desktop/src/main/inbox/attachment-sync.ts:87`, `:173`). A receiver downloads only
+  a capture that is not filed and whose file is absent
+  (`crates/memry-core/src/domain/inbox/attachments.rs:108-113`,
+  `crates/memry-core/src/api/sync/inbox_attachments.rs:271-295`). A filed
+  capture's bytes belong to its note.
+- **Filing reuses the upload.** Filing a capture that has an `attachmentId`
+  into a note adds that id to the note's `attachmentReferences` (§14.7) and does
+  not upload a second copy. A note body that embeds the file MUST name it by the
+  manifest `filename`, because a peer places a note's download by that name. A
+  writer that cannot use that name uploads the file afresh
+  (`crates/memry-core/src/api/sync/inbox_attachments.rs:112-169`;
+  `apps/desktop/src/main/inbox/filing.ts:304`, `:1234`, `:1264`;
+  `apps/desktop/src/main/inbox/attachment-sync.ts:273`).
+- **Quota and lifetime.** The file counts against plan storage like any
+  attachment (§14.8) and the 50 MB capture cap applies
+  (`crates/memry-core/src/domain/inbox/write.rs:34`). An upload the server
+  refuses for quota or for the plan's file size, both `413`
+  (`STORAGE_QUOTA_EXCEEDED`, `STORAGE_FILE_TOO_LARGE`;
+  `apps/sync-server/src/routes/blob.ts:271`, `:274`,
+  `apps/sync-server/src/services/quota.ts:12`), is permanent. The capture gets
+  no `attachmentId`, the device does not retry, and peers show the capture
+  without its file (`crates/memry-core/src/api/sync/inbox_attachments.rs:67-78`).
+  Archiving a capture keeps its bytes. A permanent delete raised on a device
+  records a release, and 30 days later that device dereferences the file's
+  chunks (§14.8), unless a live note references the id, in which case filing
+  made the note its owner and the record is dropped
+  (`crates/memry-core/src/domain/inbox/attachments.rs:29-31`, `:185-200`,
+  `crates/memry-core/src/api/sync/inbox_attachments.rs:370-416`;
+  `apps/desktop/src/main/sync/deleted-asset-release.ts:71`). A delete pulled from
+  a peer records nothing, so the device that raised it releases.
+- **Older builds.** A build without this section keeps `attachmentId` as an
+  unmodelled key (chapter 13 §13.2 rule 3) and keeps a capture's file on the
+  device that took it, as before. A capture whose file never uploaded has no
+  `attachmentId`.
 
 ## 14.8 Quota, and never dereferencing — Q14.3
 

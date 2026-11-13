@@ -853,9 +853,10 @@ fn clock_field(input: &Json) -> Option<BTreeMap<String, u64>> {
 /// The file's 56 payload cases exercise the per-type projectors, which are not
 /// this module's: chapter 13 §13.2 requires them to read a preserved string
 /// rather than to be the storage shape, and they land with the repositories.
-/// What is assertable here is the half the negotiation owns — that the fourteen
-/// names this client declares are exactly the fourteen the vector was generated
-/// for, in the same order, and that every group in the file is one of them.
+/// What is assertable here is the half the negotiation owns — that the names
+/// this client declares are exactly the ones the vector was generated for, in
+/// the same order, and that every other group is a desktop-only record type
+/// the file lists as such.
 #[test]
 fn payload_schemas_subscribed_types() {
     let file = vector_file("payload-schemas");
@@ -871,8 +872,29 @@ fn payload_schemas_subscribed_types() {
     let declaration = types::Declaration::subscribed();
     assert_eq!(declaration.header_value(), declared.join(","));
 
+    let desktop_only: Vec<&str> = file["meta"]["desktopOnlyTypes"]
+        .as_array()
+        .unwrap()
+        .iter()
+        .map(|value| value.as_str().unwrap())
+        .collect();
+    for item_type in &desktop_only {
+        assert!(
+            types::DESKTOP_ONLY_RECORD_ITEM_TYPES.contains(item_type),
+            "{item_type}"
+        );
+    }
+
     for group in file["groups"].as_array().unwrap() {
         let item_type = str_field(group, "type");
+        if desktop_only.contains(&item_type) {
+            assert_eq!(
+                declaration.classify(item_type),
+                types::ArrivingItemType::Undeclared,
+                "{item_type}"
+            );
+            continue;
+        }
         assert_eq!(
             declaration.classify(item_type),
             types::ArrivingItemType::Subscribed,

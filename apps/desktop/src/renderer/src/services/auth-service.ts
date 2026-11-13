@@ -15,6 +15,10 @@ export const authService = {
     return window.api.syncAuth.initOAuth(input)
   },
 
+  retryOAuth: (input: { state: string }) => {
+    return window.api.syncAuth.retryOAuth(input)
+  },
+
   refreshToken: () => {
     return window.api.syncAuth.refreshToken()
   },

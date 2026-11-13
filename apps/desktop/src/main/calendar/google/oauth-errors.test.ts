@@ -26,6 +26,7 @@ const MISCONFIGURED = 'googleCalendar.misconfigured'
 const SCOPE_MISSING = 'googleCalendar.scopeMissing'
 const UNAVAILABLE = 'googleCalendar.temporarilyUnavailable'
 const CONNECT_FAILED = 'googleCalendar.connectFailed'
+const REQUEST_REJECTED = 'googleCalendar.requestRejected'
 
 beforeEach(() => {
   getFixedTSpy.mockClear()
@@ -173,6 +174,13 @@ describe('userMessageForCalendarApiError', () => {
     expect(userMessageForCalendarApiError({ status: 500 })).toBe(UNAVAILABLE)
   })
 
+  it('#given Google refuses the request body #when status is 400 #then says Google rejected the item instead of blaming the connection', () => {
+    expect(userMessageForCalendarApiError({ status: 400 })).toBe(REQUEST_REJECTED)
+    expect(userMessageForCalendarApiError({ status: 400, apiStatus: 'INVALID_ARGUMENT' })).toBe(
+      REQUEST_REJECTED
+    )
+  })
+
   it('#given Google rate limits us #when status is 429 #then the user sees the generic retry message (rate limiting is not called out separately)', () => {
     expect(userMessageForCalendarApiError({ status: 429 })).toBe(CONNECT_FAILED)
     expect(userMessageForCalendarApiError({ status: 429, apiStatus: 'RESOURCE_EXHAUSTED' })).toBe(
@@ -182,7 +190,7 @@ describe('userMessageForCalendarApiError', () => {
 
   it('#given an error shape the code does not recognise #when neither the status nor apiStatus is classified #then the user sees the generic fallback', () => {
     expect(userMessageForCalendarApiError({ status: 404 })).toBe(CONNECT_FAILED)
-    expect(userMessageForCalendarApiError({ status: 400, apiStatus: 'NOT_FOUND' })).toBe(
+    expect(userMessageForCalendarApiError({ status: 409, apiStatus: 'NOT_FOUND' })).toBe(
       CONNECT_FAILED
     )
     expect(userMessageForCalendarApiError({ status: 0 })).toBe(CONNECT_FAILED)

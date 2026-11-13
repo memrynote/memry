@@ -5,7 +5,7 @@ import {
 } from '@memry/contracts/calendar-api'
 import { calendarBindings } from '@memry/db-schema/schema/calendar-bindings'
 import { calendarExternalEvents } from '@memry/db-schema/schema/calendar-external-events'
-import type { calendarSources } from '@memry/db-schema/schema/calendar-sources'
+import { calendarSources } from '@memry/db-schema/schema/calendar-sources'
 import type { DataDb } from '../../database'
 import { emitCalendarChanged } from '../change-events'
 import { mapCalendarSource } from '../calendar-source-record'
@@ -55,6 +55,10 @@ export function upsertSyncedCalendarSource(
  * runs both when a calendar is de-selected and when its account is
  * disconnected; in both cases nothing is left to refresh those rows, so
  * leaving them behind would strand them on the calendar view forever.
+ *
+ * The sync cursor goes with them. It records how far the deleted events were
+ * pulled, so keeping it makes the next pull an incremental one that returns
+ * only later changes, and the purged events never come back.
  */
 export function purgeCalendarSourceMirrors(
   db: DataDb,
@@ -65,6 +69,11 @@ export function purgeCalendarSourceMirrors(
 
   const sourceIds = sources.map((source) => source.id)
   const remoteIds = sources.map((source) => source.remoteId)
+
+  db.update(calendarSources)
+    .set({ syncCursor: null })
+    .where(inArray(calendarSources.id, sourceIds))
+    .run()
 
   const externalRows = db
     .select()

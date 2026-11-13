@@ -305,7 +305,7 @@ describe('property definitions reach .memry/properties.md', () => {
     })
   })
 
-  it('backfills database-only definitions once without touching file entries', async () => {
+  it('keeps definitions note indexing learned across every launch, without touching file entries', async () => {
     writeFileSync(
       filePath,
       matter.stringify('', {
@@ -320,20 +320,41 @@ describe('property definitions reach .memry/properties.md', () => {
       ])
       .run()
 
-    await PropertyDefinitionsService.get().reloadOnOpen()
+    await PropertyDefinitionsService.get().reload()
 
     expect(fileProperties()).toEqual({
       Stage: { type: 'select', options: [{ value: 'Draft', color: 'gray' }] },
       Rating: { type: 'number', options: [] }
     })
 
+    // Learned after the launch above. The next launch used to delete it,
+    // and the property dropped out of Settings.
     state
       .dataDb!.db.insert(propertyDefinitions)
       .values({ name: 'Mood', type: 'text', options: null, defaultValue: null, color: null })
       .run()
-    await PropertyDefinitionsService.get().reloadOnOpen()
+    await PropertyDefinitionsService.get().reload()
 
-    expect(Object.keys(fileProperties() as object)).toEqual(['Stage', 'Rating'])
+    expect(Object.keys(fileProperties() as object)).toEqual(['Stage', 'Rating', 'Mood'])
+    const listed = (await invoke(NotesChannels.invoke.GET_PROPERTY_DEFINITIONS)) as Array<{
+      name: string
+    }>
+    expect(listed.map(({ name }) => name)).toEqual(['Mood', 'Rating', 'Stage'])
+  })
+
+  it('keeps a learned definition when another definition is written', async () => {
+    state
+      .dataDb!.db.insert(propertyDefinitions)
+      .values({ name: 'Mood', type: 'text', options: null, defaultValue: null, color: null })
+      .run()
+
+    await invoke(NotesChannels.invoke.CREATE_PROPERTY_DEFINITION, { name: 'Stage', type: 'select' })
+
+    const listed = (await invoke(NotesChannels.invoke.GET_PROPERTY_DEFINITIONS)) as Array<{
+      name: string
+    }>
+    expect(listed.map(({ name }) => name)).toEqual(['Mood', 'Stage'])
+    expect(Object.keys(fileProperties() as object)).toEqual(['Mood', 'Stage'])
   })
 
   it('adopts the type a re-added property names, keeping its options', async () => {

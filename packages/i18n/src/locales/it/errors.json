@@ -146,6 +146,7 @@
     "requestTimedOut": "La richiesta di sincronizzazione è scaduta. Controlla la tua connessione a internet."
   },
   "googleCalendar": {
+    "requestRejected": "Google ha rifiutato questo elemento. Controlla la data e l'ora, poi riprova.",
     "connectFailed": "Impossibile connettersi a Google Calendar. Riprova tra un momento.",
     "reconnectNeeded": "La connessione a Google Calendar è scaduta. Scollegalo e collegalo di nuovo.",
     "misconfigured": "Google Calendar non è configurato correttamente. Contatta l'assistenza se il problema persiste.",
@@ -159,7 +160,7 @@
   },
   "ai": {
     "inlineDisabled": "La modifica in linea con l'IA è disattivata",
-    "listOllamaModelsFailed": "Impossibile elencare i modelli Ollama",
+    "listModelsFailed": "Impossibile elencare i modelli",
     "writingAssistInvalid": "Impossibile inviare quella richiesta al modello AI.",
     "apiKeyMissing": "Aggiungi la tua chiave API {provider} in Impostazioni → AI per usare gli strumenti di scrittura.",
     "apiKeyInvalid": "La tua chiave API {provider} è stata rifiutata. Controllala in Impostazioni → AI.",
@@ -187,6 +188,10 @@
     "removeDeviceFailed": "Impossibile rimuovere il dispositivo",
     "renameDeviceFailed": "Impossibile rinominare il dispositivo",
     "initiateOAuthFailed": "Impossibile avviare OAuth",
+    "retryOAuthFailed": "Impossibile riaprire il browser per l'accesso. Avvia di nuovo l'accesso.",
+    "oauthExpired": "L'accesso è scaduto. Riprova.",
+    "oauthInvalidResponse": "Impossibile ottenere un link di accesso valido. Riprova.",
+    "oauthCancelled": "L'accesso con Google è stato annullato. Riprova.",
     "setupFirstDeviceOAuthFailed": "Impossibile configurare il primo dispositivo tramite OAuth",
     "confirmRecoveryPhraseFailed": "Impossibile confermare la frase di recupero"
   },

@@ -315,18 +315,17 @@ describe('secret-storage', () => {
       expect(readStoreJson().entries[SERVICE]?.[ACCOUNT]).toBeDefined()
     })
 
-    it('throws when the stored ciphertext is undecryptable and no keytar copy remains', async () => {
-      fs.mkdirSync(harness.userDataDir, { recursive: true })
-      fs.writeFileSync(
-        storeFilePath(),
-        JSON.stringify({ version: 1, entries: { [SERVICE]: { [ACCOUNT]: 'not-decryptable' } } }),
-        'utf-8'
-      )
-      harness.keytarStore.clear()
+    it('reports the Linux backend when encryption is available but the stored secret cannot decrypt', async () => {
+      setPlatform('linux')
+      harness.backend = 'gnome_libsecret'
+      seedStoreFile(SERVICE, ACCOUNT, 'store-value')
+      const storedBytes = fs.readFileSync(storeFilePath())
+      harness.decryptPrefix = 'other-key:'
 
       await expect(getSecret(SERVICE, ACCOUNT)).rejects.toThrow(
-        /could not be read this run.*stored ciphertext did not decrypt/
+        /could not be read this run.*stored ciphertext did not decrypt.*encryptionAvailable=true backend=gnome_libsecret/
       )
+      expect(fs.readFileSync(storeFilePath())).toEqual(storedBytes)
     })
 
     it('still returns null for a genuinely fresh secret (nothing in store or keytar)', async () => {

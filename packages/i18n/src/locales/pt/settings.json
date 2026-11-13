@@ -504,7 +504,8 @@
       "loading": "Carregando configurações…"
     },
     "groups": {
-      "footer": "Rodapé"
+      "footer": "Rodapé",
+      "pastYears": "Anos anteriores"
     },
     "template": {
       "label": "Modelo",
@@ -562,6 +563,14 @@
     "showInSidebar": {
       "label": "Mostrar na barra lateral",
       "description": "Mostra a pasta do diário e suas entradas na árvore de notas"
+    },
+    "showOnThisDay": {
+      "label": "Mostrar Neste dia",
+      "description": "Listar a mesma data de anos anteriores abaixo da entrada"
+    },
+    "allYearsView": {
+      "label": "Mostrar todos os anos por completo",
+      "description": "O diário perpétuo: todos os anos da data numa só página, abaixo da entrada"
     }
   },
   "tasks": {
@@ -1110,7 +1119,16 @@
       "sending": "Enviando código…"
     },
     "oauth": {
-      "google": "Continuar com o Google"
+      "google": "Continuar com o Google",
+      "waiting": "Conclua o login com o Google no seu navegador.",
+      "browserUnavailable": "Não foi possível abrir o navegador.",
+      "manualInstructions": "Copie o link de login e abra-o em um navegador neste computador. Mantenha o memrynote aberto enquanto você entra.",
+      "linkLabel": "Link de login",
+      "copyLink": "Copiar link de login",
+      "retryBrowser": "Tentar abrir o navegador novamente",
+      "copied": "Link de login copiado.",
+      "copyFailed": "Não foi possível copiar o link de login. Selecione e copie do campo acima.",
+      "cancel": "Usar outro método de login"
     },
     "otp": {
       "title": "Digite o código de verificação",
@@ -1347,6 +1365,7 @@
       "keySaveError": "Não foi possível salvar a chave da OpenAI"
     },
     "embedding": {
+      "load": "Carregar modelo",
       "loaded": "Carregado",
       "loading": "Carregando",
       "downloadLoad": "Baixar e carregar modelo",
@@ -1371,7 +1390,8 @@
         "ollama": "Ollama (local)",
         "openai": "OpenAI",
         "anthropic": "Anthropic",
-        "google": "Google Gemini"
+        "google": "Google Gemini",
+        "custom": "Personalizado (compatível com OpenAI)"
       },
       "model": "Modelo",
       "modelDescription": "Modelo de linguagem para reescrever e resumir",
@@ -1381,6 +1401,11 @@
       "apiKeyPlaceholder": "Digite a chave de API de {provider}",
       "ollamaUrl": "URL do Ollama",
       "ollamaUrlDescription": "Endereço do servidor local",
+      "customUrl": "URL base",
+      "customUrlDescription": "Qualquer endpoint compatível com OpenAI, como o OpenRouter",
+      "customUrlPlaceholder": "https://openrouter.ai/api/v1",
+      "customApiKeyPlaceholder": "Chave de API (opcional)",
+      "customModelPlaceholder": "ID do modelo",
       "connection": "Conexão",
       "activePort": "Ativo na porta {port}",
       "notConnected": "Não conectado",
@@ -2033,7 +2058,7 @@
       "subtitle": "Gerencie definições de propriedades em todas as notas"
     },
     "loading": "Carregando propriedades…",
-    "empty": "Ainda não há definições de propriedade. Adicione uma propriedade Status, Seleção ou Seleção múltipla a qualquer nota para começar.",
+    "empty": "Ainda não há propriedades. Adicione uma propriedade a qualquer nota para começar.",
     "filterPlaceholder": "Filtrar propriedades…",
     "noMatch": "Nenhuma propriedade corresponde a “{query}”",
     "summary": "{count, plural, one {# definição de propriedade} other {# definições de propriedade}}",
@@ -2073,6 +2098,14 @@
     },
     "v2": {
       "actionsAria": "Ações para {name}"
+    },
+    "usage": {
+      "heading": "Usada em",
+      "noteCount": "{count, plural, one {# nota} other {# notas}}",
+      "mismatchCount": "Valores que não correspondem a {type}: {count}",
+      "mismatchNote": "Não corresponde a {type}",
+      "none": "Nenhuma nota usa esta propriedade",
+      "loadFailed": "Não foi possível carregar as notas que usam esta propriedade"
     }
   },
   "commandLine": {
@@ -2408,7 +2441,6 @@
   "phaseI": {
     "errors": {
       "failedToUpdateTagColor": "Não foi possível atualizar a cor da tag",
-      "googleSignInFailed": "O login com o Google falhou",
       "failedToSendVerificationCode": "Não foi possível enviar o código de verificação",
       "invalidVerificationCode": "Código de verificação inválido",
       "accountSetupFailed": "A configuração da conta falhou",
@@ -2435,7 +2467,8 @@
       "failedToCloseVault": "Não foi possível fechar o cofre",
       "failedToSwitchVault": "Não foi possível trocar de cofre",
       "failedToUpdateConfig": "Não foi possível atualizar a configuração",
-      "failedToReindex": "Não foi possível reindexar"
+      "failedToReindex": "Não foi possível reindexar",
+      "googleSignInFailed": "O login com o Google falhou"
     }
   },
   "agentMcp": {
@@ -2465,7 +2498,17 @@
       "running": "Em execução",
       "tokenHint": "Somente nesta execução",
       "copy": "Copiar",
-      "rotate": "Rotacionar"
+      "rotate": "Rotacionar",
+      "clientConfig": {
+        "label": "Configuração do cliente",
+        "hint": "Copiada com o URL e o token desta execução",
+        "copy": "Copiar configuração do {client}"
+      },
+      "notes": {
+        "readOnly": "Clientes externos só podem ler. As ferramentas de escrita retornam PERMISSION_DENIED; escreva pelo Agent Chat ou pela linha de comando memrynote.",
+        "restart": "O URL e o token mudam quando o memrynote reinicia, troca de cofre ou renova o token. Atualize a configuração do cliente sempre que isso ocorrer e reinicie o cliente.",
+        "docs": "Guia de configuração"
+      }
     }
   },
   "agentProviders": {

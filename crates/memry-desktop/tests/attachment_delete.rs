@@ -317,14 +317,22 @@ fn a_locked_notes_file_stays() {
         (TargetKind::Note, v.owner.as_str()),
         (TargetKind::Folder, "notes"),
     ] {
-        v.open.vault.locks().set(kind, target, true).unwrap();
+        v.open
+            .vault
+            .locks()
+            .set(kind, target, true, "device-a")
+            .unwrap();
         let (outcome, trashed) = v.delete(FILE);
         assert!(
             matches!(outcome, Err(AttachmentError::Locked)),
             "{outcome:?}"
         );
         assert!(v.kept() && trashed.is_empty(), "{target}");
-        v.open.vault.locks().set(kind, target, false).unwrap();
+        v.open
+            .vault
+            .locks()
+            .set(kind, target, false, "device-a")
+            .unwrap();
     }
     assert_eq!(v.delete(FILE).0.unwrap(), gone());
 }

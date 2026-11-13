@@ -504,7 +504,8 @@
       "loading": "Đang tải cài đặt…"
     },
     "groups": {
-      "footer": "Chân trang"
+      "footer": "Chân trang",
+      "pastYears": "Những năm trước"
     },
     "template": {
       "label": "Mẫu",
@@ -562,6 +563,14 @@
     "showInSidebar": {
       "label": "Hiện trong thanh bên",
       "description": "Hiện thư mục nhật ký và các mục của nó trong cây ghi chú"
+    },
+    "showOnThisDay": {
+      "label": "Hiện Ngày này năm xưa",
+      "description": "Liệt kê cùng ngày của những năm trước bên dưới mục"
+    },
+    "allYearsView": {
+      "label": "Hiện đầy đủ tất cả các năm",
+      "description": "Nhật ký vĩnh cửu: mọi năm của ngày này trên một trang, bên dưới mục"
     }
   },
   "tasks": {
@@ -1110,7 +1119,16 @@
       "sending": "Đang gửi mã…"
     },
     "oauth": {
-      "google": "Tiếp tục bằng Google"
+      "google": "Tiếp tục bằng Google",
+      "waiting": "Hoàn tất đăng nhập bằng Google trong trình duyệt của bạn.",
+      "browserUnavailable": "Không thể mở trình duyệt của bạn.",
+      "manualInstructions": "Sao chép liên kết đăng nhập và mở trong trình duyệt trên máy tính này. Hãy để memrynote mở trong khi bạn đăng nhập.",
+      "linkLabel": "Liên kết đăng nhập",
+      "copyLink": "Sao chép liên kết đăng nhập",
+      "retryBrowser": "Thử mở lại trình duyệt",
+      "copied": "Đã sao chép liên kết đăng nhập.",
+      "copyFailed": "Không thể sao chép liên kết đăng nhập. Hãy chọn và sao chép từ trường ở trên.",
+      "cancel": "Dùng cách đăng nhập khác"
     },
     "otp": {
       "title": "Nhập mã xác minh",
@@ -1347,6 +1365,7 @@
       "keySaveError": "Không thể lưu khóa OpenAI"
     },
     "embedding": {
+      "load": "Tải mô hình",
       "loaded": "Đã tải",
       "loading": "Đang tải",
       "downloadLoad": "Tải xuống và tải mô hình",
@@ -1371,7 +1390,8 @@
         "ollama": "Ollama (cục bộ)",
         "openai": "OpenAI",
         "anthropic": "Anthropic",
-        "google": "Google Gemini"
+        "google": "Google Gemini",
+        "custom": "Tùy chỉnh (tương thích OpenAI)"
       },
       "model": "Mô hình",
       "modelDescription": "Mô hình ngôn ngữ để viết lại và tóm tắt",
@@ -1381,6 +1401,11 @@
       "apiKeyPlaceholder": "Nhập khóa API {provider}",
       "ollamaUrl": "URL Ollama",
       "ollamaUrlDescription": "Địa chỉ máy chủ cục bộ",
+      "customUrl": "URL cơ sở",
+      "customUrlDescription": "Bất kỳ endpoint nào tương thích OpenAI, chẳng hạn OpenRouter",
+      "customUrlPlaceholder": "https://openrouter.ai/api/v1",
+      "customApiKeyPlaceholder": "Khóa API (không bắt buộc)",
+      "customModelPlaceholder": "ID mô hình",
       "connection": "Kết nối",
       "activePort": "Hoạt động trên cổng {port}",
       "notConnected": "Chưa kết nối",
@@ -2033,7 +2058,7 @@
       "subtitle": "Quản lý các định nghĩa thuộc tính trên tất cả các ghi chú"
     },
     "loading": "Đang tải thuộc tính…",
-    "empty": "Chưa có định nghĩa thuộc tính nào. Thêm một thuộc tính Trạng thái, Chọn một hoặc Chọn nhiều vào bất kỳ ghi chú nào để bắt đầu.",
+    "empty": "Chưa có thuộc tính nào. Thêm một thuộc tính vào bất kỳ ghi chú nào để bắt đầu.",
     "filterPlaceholder": "Lọc thuộc tính…",
     "noMatch": "Không có thuộc tính nào khớp với “{query}”",
     "summary": "{count, plural, other {# định nghĩa thuộc tính}}",
@@ -2073,6 +2098,14 @@
     },
     "v2": {
       "actionsAria": "Thao tác cho {name}"
+    },
+    "usage": {
+      "heading": "Được dùng trong",
+      "noteCount": "{count, plural, other {# ghi chú}}",
+      "mismatchCount": "Giá trị không khớp với {type}: {count}",
+      "mismatchNote": "Không khớp với {type}",
+      "none": "Không có ghi chú nào dùng thuộc tính này",
+      "loadFailed": "Không thể tải các ghi chú dùng thuộc tính này"
     }
   },
   "commandLine": {
@@ -2408,7 +2441,6 @@
   "phaseI": {
     "errors": {
       "failedToUpdateTagColor": "Không thể cập nhật màu thẻ",
-      "googleSignInFailed": "Không thể đăng nhập bằng Google",
       "failedToSendVerificationCode": "Không thể gửi mã xác minh",
       "invalidVerificationCode": "Mã xác minh không hợp lệ",
       "accountSetupFailed": "Không thể thiết lập tài khoản",
@@ -2435,7 +2467,8 @@
       "failedToCloseVault": "Không thể đóng kho",
       "failedToSwitchVault": "Không thể chuyển kho",
       "failedToUpdateConfig": "Không thể cập nhật cấu hình",
-      "failedToReindex": "Không thể lập lại chỉ mục"
+      "failedToReindex": "Không thể lập lại chỉ mục",
+      "googleSignInFailed": "Không thể đăng nhập bằng Google"
     }
   },
   "agentMcp": {
@@ -2465,7 +2498,17 @@
       "running": "Đang chạy",
       "tokenHint": "Chỉ lần khởi chạy này",
       "copy": "Sao chép",
-      "rotate": "Tạo lại"
+      "rotate": "Tạo lại",
+      "clientConfig": {
+        "label": "Cấu hình máy khách",
+        "hint": "Sao chép với URL và token của lần khởi động này",
+        "copy": "Sao chép cấu hình {client}"
+      },
+      "notes": {
+        "readOnly": "Máy khách bên ngoài chỉ có thể đọc. Công cụ ghi trả về PERMISSION_DENIED, vì vậy hãy ghi qua Agent Chat hoặc dòng lệnh memrynote.",
+        "restart": "URL và token thay đổi khi memrynote khởi động lại, chuyển kho hoặc xoay vòng token. Mỗi lần như vậy, hãy cập nhật cấu hình máy khách rồi khởi động lại máy khách.",
+        "docs": "Hướng dẫn thiết lập"
+      }
     }
   },
   "agentProviders": {

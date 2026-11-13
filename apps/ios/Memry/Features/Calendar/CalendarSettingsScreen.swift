@@ -212,7 +212,7 @@ extension CalendarCopy {
     static let showNotesOnCalendar = "Show notes on calendar"
     static let showNotesFooter = "Shows every note as an all-day item on the day it was created."
     static let dateProperties = "Date properties on this iPhone"
-    static let datePropertiesFooter = "Notes with these date properties appear on that day. This choice stays on this iPhone, as on your computer."
+    static let datePropertiesFooter = "Notes with these date properties appear on that day. This choice stays on this iPhone, as on your other devices."
     static let notConnected = "Not connected"
     static let notAllowedYet = "Not allowed yet"
     static let signInHere = "Connected on another device · sign in here"

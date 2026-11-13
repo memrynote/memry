@@ -14,7 +14,7 @@ export const AIInlineChannels = {
     GET_SERVER_PORT: 'ai-inline:get-server-port',
     START_SERVER: 'ai-inline:start-server',
     STOP_SERVER: 'ai-inline:stop-server',
-    LIST_OLLAMA_MODELS: 'ai-inline:list-ollama-models'
+    LIST_MODELS: 'ai-inline:list-models'
   },
   events: {
     SERVER_READY: 'ai-inline:server-ready',
@@ -29,7 +29,8 @@ export type AIInlineEventChannel =
 
 export interface AIInlineSettings {
   enabled: boolean
-  provider: 'ollama' | 'openai' | 'anthropic' | 'google'
+  /** `custom` is any OpenAI-compatible endpoint at `baseUrl`, such as OpenRouter. */
+  provider: 'ollama' | 'openai' | 'anthropic' | 'google' | 'custom'
   model: string
   apiKey: string
   baseUrl: string

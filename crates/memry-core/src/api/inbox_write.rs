@@ -167,7 +167,8 @@ impl Inbox {
         })
     }
 
-    /// A file already stored at `attachment_path` (vault-relative). The title
+    /// A file already stored at `attachment_path` (vault-relative), marked to
+    /// upload on the next `VaultSync::sync_inbox_attachments`. The title
     /// is the filename without its extension; `metadata_json` adds keys
     /// (`width`, `height`, `format`, `pageCount`, `duration`, ...).
     #[allow(clippy::too_many_arguments)]

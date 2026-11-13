@@ -435,7 +435,10 @@ impl Vault {
     /// queued.
     ///
     /// **Always 0 here, by construction.** Desktop needs the seed because its
-    /// items predate sync and carry no clock. Every core write commits its
+    /// items predate sync and carry no clock. The one exception is a lock row
+    /// written before Step 16, which has no outbox row; the sync pass seeds
+    /// those itself at its start (`VaultSync::seed_vault_locks`), not here.
+    /// Every core write commits its
     /// outbox row in the same transaction as the row it changes
     /// (`sync::outbox`, FR-030), whether or not an account exists, and an
     /// outbox row leaves only when the server acknowledges it or it is retired

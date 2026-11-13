@@ -504,7 +504,8 @@
       "loading": "กำลังโหลดการตั้งค่า…"
     },
     "groups": {
-      "footer": "ส่วนท้าย"
+      "footer": "ส่วนท้าย",
+      "pastYears": "ปีที่ผ่านมา"
     },
     "template": {
       "label": "เทมเพลต",
@@ -562,6 +563,14 @@
     "showInSidebar": {
       "label": "แสดงในแถบด้านข้าง",
       "description": "แสดงโฟลเดอร์บันทึกประจำวันและรายการในแผนผังโน้ต"
+    },
+    "showOnThisDay": {
+      "label": "แสดง ในวันนี้",
+      "description": "แสดงวันที่เดียวกันจากปีที่ผ่านมาใต้บันทึก"
+    },
+    "allYearsView": {
+      "label": "แสดงทุกปีแบบเต็ม",
+      "description": "บันทึกประจำวันตลอดกาล: ทุกปีของวันที่นี้ในหน้าเดียว ใต้บันทึก"
     }
   },
   "tasks": {
@@ -1110,7 +1119,16 @@
       "sending": "กำลังส่งรหัส…"
     },
     "oauth": {
-      "google": "ดำเนินการต่อด้วย Google"
+      "google": "ดำเนินการต่อด้วย Google",
+      "waiting": "ลงชื่อเข้าใช้ด้วย Google ในเบราว์เซอร์ของคุณให้เสร็จสิ้น",
+      "browserUnavailable": "เปิดเบราว์เซอร์ของคุณไม่สำเร็จ",
+      "manualInstructions": "คัดลอกลิงก์ลงชื่อเข้าใช้แล้วเปิดในเบราว์เซอร์บนคอมพิวเตอร์เครื่องนี้ โปรดเปิด memrynote ค้างไว้ระหว่างลงชื่อเข้าใช้",
+      "linkLabel": "ลิงก์ลงชื่อเข้าใช้",
+      "copyLink": "คัดลอกลิงก์ลงชื่อเข้าใช้",
+      "retryBrowser": "ลองเปิดเบราว์เซอร์อีกครั้ง",
+      "copied": "คัดลอกลิงก์ลงชื่อเข้าใช้แล้ว",
+      "copyFailed": "คัดลอกลิงก์ลงชื่อเข้าใช้ไม่สำเร็จ โปรดเลือกและคัดลอกจากช่องด้านบน",
+      "cancel": "ใช้วิธีลงชื่อเข้าใช้อื่น"
     },
     "otp": {
       "title": "ป้อนรหัสยืนยัน",
@@ -1347,6 +1365,7 @@
       "keySaveError": "บันทึกคีย์ OpenAI ไม่สำเร็จ"
     },
     "embedding": {
+      "load": "โหลดโมเดล",
       "loaded": "โหลดแล้ว",
       "loading": "กำลังโหลด",
       "downloadLoad": "ดาวน์โหลดและโหลดโมเดล",
@@ -1371,7 +1390,8 @@
         "ollama": "Ollama (ในเครื่อง)",
         "openai": "OpenAI",
         "anthropic": "Anthropic",
-        "google": "Google Gemini"
+        "google": "Google Gemini",
+        "custom": "กำหนดเอง (รองรับ OpenAI)"
       },
       "model": "โมเดล",
       "modelDescription": "โมเดลภาษาเพื่อเขียนใหม่และสรุป",
@@ -1381,6 +1401,11 @@
       "apiKeyPlaceholder": "กรอกคีย์ API {provider}",
       "ollamaUrl": "URL ของ Ollama",
       "ollamaUrlDescription": "ที่อยู่เซิร์ฟเวอร์ในเครื่อง",
+      "customUrl": "URL หลัก",
+      "customUrlDescription": "ปลายทางใดก็ได้ที่รองรับ OpenAI เช่น OpenRouter",
+      "customUrlPlaceholder": "https://openrouter.ai/api/v1",
+      "customApiKeyPlaceholder": "คีย์ API (ไม่บังคับ)",
+      "customModelPlaceholder": "รหัสโมเดล",
       "connection": "การเชื่อมต่อ",
       "activePort": "ใช้งานที่พอร์ต {port}",
       "notConnected": "ยังไม่ได้เชื่อมต่อ",
@@ -2033,7 +2058,7 @@
       "subtitle": "จัดการคำจำกัดความคุณสมบัติในโน้ตทั้งหมด"
     },
     "loading": "กำลังโหลดคุณสมบัติ…",
-    "empty": "ยังไม่มีคำจำกัดความคุณสมบัติ เพิ่มคุณสมบัติประเภทสถานะ ตัวเลือกเดียว หรือหลายตัวเลือกลงในโน้ตใดก็ได้เพื่อเริ่มต้น",
+    "empty": "ยังไม่มีคุณสมบัติ เพิ่มคุณสมบัติลงในโน้ตใดก็ได้เพื่อเริ่มต้น",
     "filterPlaceholder": "กรองคุณสมบัติ…",
     "noMatch": "ไม่มีคุณสมบัติที่ตรงกับ “{query}”",
     "summary": "{count, plural, other {คำจำกัดความคุณสมบัติ # รายการ}}",
@@ -2073,6 +2098,14 @@
     },
     "v2": {
       "actionsAria": "การดำเนินการสำหรับ {name}"
+    },
+    "usage": {
+      "heading": "ใช้ใน",
+      "noteCount": "{count, plural, other {โน้ต # รายการ}}",
+      "mismatchCount": "ค่าที่ไม่ตรงกับ {type}: {count}",
+      "mismatchNote": "ไม่ตรงกับ {type}",
+      "none": "ไม่มีโน้ตที่ใช้คุณสมบัตินี้",
+      "loadFailed": "โหลดโน้ตที่ใช้คุณสมบัตินี้ไม่ได้"
     }
   },
   "commandLine": {
@@ -2408,7 +2441,6 @@
   "phaseI": {
     "errors": {
       "failedToUpdateTagColor": "อัปเดตสีแท็กไม่สำเร็จ",
-      "googleSignInFailed": "ลงชื่อเข้าใช้ด้วย Google ไม่สำเร็จ",
       "failedToSendVerificationCode": "ส่งรหัสยืนยันไม่สำเร็จ",
       "invalidVerificationCode": "รหัสยืนยันไม่ถูกต้อง",
       "accountSetupFailed": "ตั้งค่าบัญชีไม่สำเร็จ",
@@ -2435,7 +2467,8 @@
       "failedToCloseVault": "ปิดคลังข้อมูลไม่สำเร็จ",
       "failedToSwitchVault": "สลับคลังข้อมูลไม่สำเร็จ",
       "failedToUpdateConfig": "อัปเดตการกำหนดค่าไม่สำเร็จ",
-      "failedToReindex": "สร้างดัชนีใหม่ไม่สำเร็จ"
+      "failedToReindex": "สร้างดัชนีใหม่ไม่สำเร็จ",
+      "googleSignInFailed": "ลงชื่อเข้าใช้ด้วย Google ไม่สำเร็จ"
     }
   },
   "agentMcp": {
@@ -2465,7 +2498,17 @@
       "running": "กำลังทำงาน",
       "tokenHint": "เฉพาะการเปิดแอปครั้งนี้",
       "copy": "คัดลอก",
-      "rotate": "หมุนเวียน"
+      "rotate": "หมุนเวียน",
+      "clientConfig": {
+        "label": "การกำหนดค่าไคลเอนต์",
+        "hint": "คัดลอกพร้อม URL และโทเค็นของการเปิดครั้งนี้",
+        "copy": "คัดลอกการกำหนดค่า {client}"
+      },
+      "notes": {
+        "readOnly": "ไคลเอนต์ภายนอกอ่านได้อย่างเดียว เครื่องมือเขียนจะส่งคืน PERMISSION_DENIED ให้เขียนผ่าน Agent Chat หรือบรรทัดคำสั่ง memrynote",
+        "restart": "URL และโทเค็นจะเปลี่ยนเมื่อ memrynote รีสตาร์ท สลับคลังข้อมูล หรือหมุนเวียนโทเค็น อัปเดตการกำหนดค่าไคลเอนต์ทุกครั้ง แล้วรีสตาร์ทไคลเอนต์",
+        "docs": "คู่มือการตั้งค่า"
+      }
     }
   },
   "agentProviders": {

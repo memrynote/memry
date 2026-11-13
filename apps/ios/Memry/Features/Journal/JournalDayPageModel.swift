@@ -44,7 +44,7 @@ final class JournalDayPageModel {
             filler: context.filler,
             reachability: PathReachability.forAttachments
         )
-        editor = NoteEditorViewModel(noteId: id, editor: bridge)
+        editor = NoteEditorViewModel(noteId: id, editor: bridge, notes: context.writer)
         metadata = NoteMetadataViewModel(
             noteId: id,
             writer: JournalWriteGate.metadataWrites ? JournalMetadataWriter(bridge: bridge) : nil
@@ -75,6 +75,11 @@ final class JournalDayPageModel {
     func seedIfNeeded(store: JournalStore) async {
         guard !seedChecked else { return }
         seedChecked = true
+        defer {
+            if store.cachedDay(date) != nil {
+                Telemetry.shared.track(.journalOpened, surface: .journal, action: "opened", objectType: "journal", result: .success)
+            }
+        }
         guard store.hasRead(date), store.cachedDay(date) == nil else { return }
         if await store.seedIfNeeded(date) {
             await store.loadDay(date)

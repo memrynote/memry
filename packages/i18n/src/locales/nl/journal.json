@@ -236,5 +236,21 @@
     "range": "{start} – {end}",
     "openTask": "{title}, {range}",
     "completeTask": "{title} voltooien"
+  },
+  "pastYears": {
+    "title": "Op deze dag",
+    "count": "{count, plural, one {# ander jaar} other {# andere jaren}}",
+    "showAll": "Alle jaren",
+    "showPreviews": "Voorbeelden",
+    "yearsAgo": "{count, plural, one {# jaar geleden} other {# jaar geleden}}",
+    "yearsLater": "{count, plural, one {# jaar later} other {# jaar later}}",
+    "words": "{count, plural, one {# woord} other {# woorden}}",
+    "openDay": "{date} openen",
+    "showFull": "Volledig bericht tonen",
+    "showLess": "Minder tonen",
+    "loadError": "Kan deze dag uit andere jaren niet laden.",
+    "previousYear": "Dezelfde dag, vorig jaar",
+    "nextYear": "Dezelfde dag, volgend jaar",
+    "goToYear": "Ga naar deze dag in {year}"
   }
 }

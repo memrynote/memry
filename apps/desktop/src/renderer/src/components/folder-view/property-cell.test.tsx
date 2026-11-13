@@ -1,4 +1,4 @@
-import { fireEvent, render, screen } from '@testing-library/react'
+import { act, fireEvent, render, screen, waitFor } from '@testing-library/react'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 import type { ResolvedRelationRef } from '@memry/contracts/properties-api'
 import {
@@ -240,6 +240,19 @@ describe('folder-view property cells', () => {
     expect(screen.getAllByText('—')).toHaveLength(3)
   })
 
+  it('names the viewed folder for a note directly inside it, and only a vault-root note gets a dash', () => {
+    render(
+      <div>
+        <FolderCell path="/" notePath="Notes/Auditoria Guatemala.md" />
+        <FolderCell path="/" notePath="Inbox note.md" />
+      </div>
+    )
+
+    expect(screen.getByText('Notes')).toBeInTheDocument()
+    expect(screen.queryByRole('button', { name: 'Notes' })).not.toBeInTheDocument()
+    expect(screen.getAllByText('—')).toHaveLength(1)
+  })
+
   it('renders project property values as chips, not the raw JSON array', () => {
     // Regression test: the `project` property's value is a string[] of project
     // names. Before this fix, PropertyType had no 'project' member so the
@@ -422,6 +435,31 @@ describe('relation property cells', () => {
     render(<PropertyCell type="relation" value={['memry://note/nte_gone']} />)
     const chip = await screen.findByText('Deleted')
     expect(chip.parentElement).toHaveClass('bg-muted', 'text-muted-foreground')
+  })
+
+  it('refreshes a mounted journal relation when its file is deleted', async () => {
+    const day: ResolvedRelationRef = {
+      uri: 'memry://journal/2026-11-08',
+      targetType: 'journal',
+      targetId: '2026-11-08',
+      title: '2026-11-08',
+      exists: true
+    }
+    mockResolveRefs([day])
+    render(<PropertyCell type="relation" value={[day.uri]} />)
+    expect(await screen.findByText(day.title)).not.toHaveClass('decoration-dashed')
+
+    mockResolveRefs([{ ...day, title: '', exists: false }])
+    act(() => {
+      const callback = vi.mocked(window.api.onJournalEntryDeleted).mock.calls.at(-1)?.[0]
+      callback?.({ date: day.targetId })
+    })
+
+    await waitFor(() => expect(screen.getByText(day.targetId)).toHaveClass('decoration-dashed'))
+    fireEvent.click(screen.getByRole('button', { name: day.targetId }))
+    expect(mocks.openTab).toHaveBeenCalledWith(
+      expect.objectContaining({ type: 'journal', viewState: { date: day.targetId } })
+    )
   })
 
   it('renders an em dash for an empty relation value without resolving', () => {

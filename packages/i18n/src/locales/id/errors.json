@@ -146,6 +146,7 @@
     "requestTimedOut": "Permintaan sinkronisasi kehabisan waktu. Periksa koneksi internet Anda."
   },
   "googleCalendar": {
+    "requestRejected": "Google menolak item ini. Periksa tanggal dan waktunya, lalu coba lagi.",
     "connectFailed": "Tidak dapat terhubung ke Google Calendar. Silakan coba lagi sebentar lagi.",
     "reconnectNeeded": "Koneksi Google Calendar Anda telah kedaluwarsa. Putuskan lalu hubungkan kembali.",
     "misconfigured": "Google Calendar tidak dikonfigurasi dengan benar. Hubungi dukungan jika ini terus terjadi.",
@@ -159,7 +160,7 @@
   },
   "ai": {
     "inlineDisabled": "Pengeditan sebaris AI dinonaktifkan",
-    "listOllamaModelsFailed": "Gagal menampilkan daftar model Ollama",
+    "listModelsFailed": "Gagal menampilkan daftar model",
     "writingAssistInvalid": "Permintaan itu tidak dapat dikirim ke model AI.",
     "apiKeyMissing": "Tambahkan kunci API {provider} Anda di Pengaturan → AI untuk menggunakan alat menulis.",
     "apiKeyInvalid": "Kunci API {provider} Anda ditolak. Periksa di Pengaturan → AI.",
@@ -187,6 +188,10 @@
     "removeDeviceFailed": "Gagal menghapus perangkat",
     "renameDeviceFailed": "Gagal mengganti nama perangkat",
     "initiateOAuthFailed": "Gagal memulai OAuth",
+    "retryOAuthFailed": "Tidak dapat membuka kembali browser untuk masuk. Mulai proses masuk lagi.",
+    "oauthExpired": "Sesi masuk telah kedaluwarsa. Silakan coba lagi.",
+    "oauthInvalidResponse": "Tidak dapat memperoleh tautan masuk yang valid. Silakan coba lagi.",
+    "oauthCancelled": "Proses masuk dengan Google dibatalkan. Silakan coba lagi.",
     "setupFirstDeviceOAuthFailed": "Gagal menyiapkan perangkat pertama melalui OAuth",
     "confirmRecoveryPhraseFailed": "Gagal mengonfirmasi frasa pemulihan"
   },

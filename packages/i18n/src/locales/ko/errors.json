@@ -146,6 +146,7 @@
     "requestTimedOut": "동기화 요청 시간이 초과되었습니다. 인터넷 연결을 확인하세요."
   },
   "googleCalendar": {
+    "requestRejected": "Google에서 이 항목을 거부했습니다. 날짜와 시간을 확인한 후 다시 시도하세요.",
     "connectFailed": "Google Calendar에 연결하지 못했습니다. 잠시 후 다시 시도하세요.",
     "reconnectNeeded": "Google Calendar 연결이 만료되었습니다. 연결을 해제한 뒤 다시 연결하세요.",
     "misconfigured": "Google Calendar가 올바르게 구성되어 있지 않습니다. 문제가 계속되면 지원팀에 문의하세요.",
@@ -159,7 +160,7 @@
   },
   "ai": {
     "inlineDisabled": "AI 인라인 편집이 비활성화되어 있습니다.",
-    "listOllamaModelsFailed": "Ollama 모델 목록을 가져오지 못했습니다.",
+    "listModelsFailed": "모델 목록을 불러오지 못했습니다",
     "writingAssistInvalid": "AI 모델에 해당 요청을 보내지 못했습니다.",
     "apiKeyMissing": "글쓰기 도구를 사용하려면 설정 → AI에서 {provider} API 키를 추가하세요.",
     "apiKeyInvalid": "{provider} API 키가 거부되었습니다. 설정 → AI에서 확인하세요.",
@@ -187,6 +188,10 @@
     "removeDeviceFailed": "기기를 제거하지 못했습니다.",
     "renameDeviceFailed": "기기 이름을 변경하지 못했습니다.",
     "initiateOAuthFailed": "OAuth를 시작하지 못했습니다.",
+    "retryOAuthFailed": "로그인용 브라우저를 다시 열지 못했습니다. 로그인을 처음부터 다시 시작하세요.",
+    "oauthExpired": "로그인이 만료되었습니다. 다시 시도하세요.",
+    "oauthInvalidResponse": "올바른 로그인 링크를 받지 못했습니다. 다시 시도하세요.",
+    "oauthCancelled": "Google 로그인이 취소되었습니다. 다시 시도하세요.",
     "setupFirstDeviceOAuthFailed": "OAuth로 첫 기기를 설정하지 못했습니다.",
     "confirmRecoveryPhraseFailed": "복구 문구를 확인하지 못했습니다."
   },

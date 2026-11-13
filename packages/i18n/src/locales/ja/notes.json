@@ -5,6 +5,7 @@
     "create": "作成"
   },
   "wikiLinkPreview": {
+    "journalUnwritten": "{date}のジャーナルはまだ書かれていません。クリックしてその日を開く",
     "notFound": "見つかりません。クリックして「{title}」を作成"
   },
   "wikiLinkMenu": {
@@ -138,6 +139,7 @@
     "actions": {
       "openInNewTab": "新しいタブで開く",
       "openToTheSide": "横に並べて開く",
+      "openFolderView": "フォルダビューを開く",
       "newNote": "新規ノート",
       "newFolder": "新しいフォルダー",
       "showTasks": "タスクを表示",
@@ -187,7 +189,8 @@
     },
     "toast": {
       "selectionBookmarked": "{count} 件をブックマークしました",
-      "selectionBookmarkFailed": "選択した項目をブックマークできませんでした"
+      "selectionBookmarkFailed": "選択した項目をブックマークできませんでした",
+      "pairedNoteNameTaken": "{name} という名前のノートがすでにあります"
     }
   },
   "editor": {
@@ -423,9 +426,14 @@
       "savedView": "保存済みビュー",
       "savedViewMissing": "保存済みビュー「{name}」が見つからないため、デフォルトのビューを表示しています。",
       "openAsTab": "タブとして開く",
+      "newNote": "新規ノート",
+      "newViewTitle": "新しいビュー",
+      "newViewSubtext": "このノートの隣に作成され、ここに一覧表示される新しいフォルダ",
+      "newViewFailed": "このビュー用のフォルダを作成できませんでした。",
       "empty": "このビューに該当するものはまだありません。",
       "loadFailed": "このビューを読み込めませんでした。ノート自体は変更されていません。",
       "folderMissing": "このフォルダーはもう保管庫にありません。別の表示対象を選択してください。",
+      "unreadable": "このビューを読み取れません。上でソースを選ぶか、ブロックを削除してください。",
       "invalidJson": "このビューの定義は有効な JSON ではありません。下で修正するか、ブロックを削除してください。",
       "invalidShape": "このビューの定義には表示対象がありません。上で選択するか、下で修正してください。",
       "definition": "定義"
@@ -668,6 +676,8 @@
   },
   "menus": {
     "wiki": {
+      "journalDay": "ジャーナル · {date}",
+      "journalDayUnwritten": "ジャーナル · 未記入",
       "aria": "ノートの候補",
       "loading": "ノートを読み込み中…",
       "empty": "ノートが見つかりません",
@@ -782,6 +792,12 @@
     "viaProperty": "{property} → {title}",
     "viaPortal": "ポータルに表示"
   },
+  "references": {
+    "filterAll": "すべて",
+    "filterNotes": "ノート",
+    "filterJournal": "ジャーナル",
+    "filterBy": "参照を絞り込み: {filter}"
+  },
   "unlinkedMentions": {
     "title": "リンクされていない言及",
     "summary": "{count, plural, other {リンクされていない言及 # 件}}",
@@ -886,6 +902,7 @@
     "showOnCalendar": "カレンダーに表示",
     "showingOnCalendar": "カレンダーに表示中",
     "relation": {
+      "unwrittenDay": "未記入",
       "deleted": "削除済み",
       "removeAria": "{title} を外す",
       "addAria": "リレーションを追加",

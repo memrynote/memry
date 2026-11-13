@@ -33,6 +33,10 @@ A portal shows a **folded** block, an **open** block, or a whole note.
 
 Edit freely inside a portal. Press <kbd>Enter</kbd> at the end of the last block and the new block stays visible in the portal. <kbd>Enter</kbd> on an empty last line moves the cursor out, to the next block of your note.
 
+## Move a portal
+
+The handle you see beside a block inside a portal belongs to the source block. Drag it within the portal to reorder the source note. Drag it out of the portal, for example under another heading in your note, and the whole portal moves there. The source block stays where it is in its own note.
+
 ## Show more, show less
 
 Click inside a portal and a small toolbar appears above it.

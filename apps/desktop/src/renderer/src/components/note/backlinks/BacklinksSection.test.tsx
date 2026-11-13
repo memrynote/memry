@@ -26,6 +26,8 @@ function buildBacklinks(): Backlink[] {
       noteId: 'note-a',
       noteTitle: 'Zulu',
       date: new Date('2026-05-10'),
+      sourceJournalDate: null,
+      sourceTags: ['work'],
       mentions: [{ id: 'm1', snippet: 'WIKI mention text', linkStart: 0, linkEnd: 4 }]
     },
     {
@@ -33,6 +35,8 @@ function buildBacklinks(): Backlink[] {
       noteId: 'note-a',
       noteTitle: 'Zulu',
       date: new Date('2026-05-10'),
+      sourceJournalDate: null,
+      sourceTags: ['work'],
       via: { kind: 'property', propertyName: 'father' },
       mentions: [
         { id: 'm2', snippet: 'PROPERTY mention text', linkStart: 0, linkEnd: 8 },
@@ -44,6 +48,8 @@ function buildBacklinks(): Backlink[] {
       noteId: 'note-b',
       noteTitle: 'Alpha',
       date: new Date('2026-05-01'),
+      sourceJournalDate: '2026-05-01',
+      sourceTags: [],
       mentions: [{ id: 'm3', snippet: 'other mention', linkStart: 0, linkEnd: 5 }]
     }
   ]
@@ -84,5 +90,39 @@ describe('BacklinksSection — two entries sharing a sourceId', () => {
     fireEvent.click(screen.getByRole('button', { name: 'expand father → Zulu' }))
     expect(screen.getByText('WIKI mention text')).toBeInTheDocument()
     expect(screen.getByText('PROPERTY mention text')).toBeInTheDocument()
+  })
+})
+
+describe('BacklinksSection — reference filter', () => {
+  const pickFilter = async (option: string) => {
+    fireEvent.pointerDown(screen.getByRole('button', { name: 'filterBy' }), {
+      button: 0,
+      pointerType: 'mouse'
+    })
+    fireEvent.click(await screen.findByRole('menuitem', { name: option }))
+  }
+
+  it('narrows the list to journal entries, to notes with a tag, and back to all', async () => {
+    render(
+      <BacklinksSection
+        backlinks={buildBacklinks()}
+        sortBy="alphabetical"
+        onBacklinkClick={vi.fn()}
+      />
+    )
+    expect(screen.getByText('other mention')).toBeInTheDocument()
+    expect(screen.getByText('WIKI mention text')).toBeInTheDocument()
+
+    await pickFilter('filterJournal')
+    expect(screen.getByText('other mention')).toBeInTheDocument()
+    expect(screen.queryByText('WIKI mention text')).not.toBeInTheDocument()
+
+    await pickFilter('#work')
+    expect(screen.queryByText('other mention')).not.toBeInTheDocument()
+    expect(screen.getByText('WIKI mention text')).toBeInTheDocument()
+
+    await pickFilter('filterAll')
+    expect(screen.getByText('other mention')).toBeInTheDocument()
+    expect(screen.getByText('WIKI mention text')).toBeInTheDocument()
   })
 })

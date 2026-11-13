@@ -250,7 +250,8 @@
     "failedPlayAudio": "Gagal memutar audio",
     "failedLoadAudio": "Gagal memuat audio",
     "video": "Video",
-    "unsupportedVideo": "Browser Anda tidak mendukung tag video."
+    "unsupportedVideo": "Browser Anda tidak mendukung tag video.",
+    "fileOnOtherDevice": "File ada di perangkat yang menangkapnya."
   },
   "reminder": {
     "dataUnavailable": "Data pengingat tidak tersedia.",

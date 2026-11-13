@@ -128,6 +128,11 @@ vi.mock('../vault/index', () => ({
   getConfig: vi.fn(() => ({ defaultNoteFolder: 'notes' }))
 }))
 
+const mockReuseInboxAttachment = vi.fn()
+vi.mock('./attachment-sync', () => ({
+  reuseInboxAttachmentForNote: (...args: unknown[]) => mockReuseInboxAttachment(...args)
+}))
+
 vi.mock('./attachments', () => ({
   resolveAttachmentUrl: vi.fn((p: string) => (p ? `memry-file://${p}` : null)),
   deleteInboxAttachments: vi.fn()
@@ -267,6 +272,7 @@ describe('Inbox Filing Operations', () => {
     mockReadFile.mockReset().mockResolvedValue(Buffer.from('png-bytes'))
     mockSaveAttachment.mockReset()
     mockEmitNoteAttachmentSaved.mockReset()
+    mockReuseInboxAttachment.mockReset()
     mockSyncNoteCreate.mockReset()
     vi.mocked(getStatus).mockReturnValue({ isOpen: true, path: '/mock-vault' } as never)
 
@@ -2347,6 +2353,124 @@ describe('Inbox Filing Operations', () => {
       expect(mockRename).not.toHaveBeenCalled()
       expect(deleteInboxAttachments).not.toHaveBeenCalled()
       expect(mockUpdateNote).not.toHaveBeenCalled()
+    })
+  })
+  // ==========================================================================
+  // A capture whose file already synced (#4157)
+  // ==========================================================================
+  describe('reusing an uploaded capture file', () => {
+    function seedUploadedImage(id: string, filename = 'ab12cd-screenshot.png'): string {
+      const itemId = seedInboxItem(testDb.db, { id, type: 'image', title: 'Screenshot' })
+      updateInboxItem(itemId, {
+        attachmentPath: `attachments/inbox/${id}/${filename}`,
+        attachmentId: 'att-uploaded'
+      })
+      return itemId
+    }
+
+    it('records the existing blob on the file note instead of uploading again', async () => {
+      const itemId = seedUploadedImage('image-reuse-file')
+
+      const result = await fileToFolder(itemId, 'projects')
+
+      expect(result.success).toBe(true)
+      expect(mockReuseInboxAttachment).toHaveBeenCalledWith(
+        expect.anything(),
+        '/mock-vault',
+        'file-note-id',
+        '/mock-vault/projects/Screenshot.png',
+        'att-uploaded'
+      )
+      expect(mockEmitNoteAttachmentSaved).not.toHaveBeenCalled()
+    })
+
+    it('uploads a capture that has no attachment id yet, as before', async () => {
+      const itemId = seedInboxItem(testDb.db, { id: 'image-no-id', type: 'image', title: 'Shot' })
+      updateInboxItem(itemId, { attachmentPath: 'attachments/inbox/image-no-id/shot.png' })
+
+      await fileToFolder(itemId, 'projects')
+
+      expect(mockEmitNoteAttachmentSaved).toHaveBeenCalledWith(
+        'file-note-id',
+        '/mock-vault/projects/Shot.png'
+      )
+      expect(mockReuseInboxAttachment).not.toHaveBeenCalled()
+    })
+
+    it('records the blob on the owner note of an embed, saved under the manifest filename', async () => {
+      const itemId = seedUploadedImage('image-reuse-embed')
+      mockGetNoteById.mockResolvedValueOnce({ id: 'note-1', content: '# N', path: 'n.md' })
+      mockSaveAttachment.mockResolvedValue({
+        success: true,
+        path: 'memry-file:///mock-vault/attachments/note-1/ab12cd-screenshot.png'
+      })
+
+      const result = await linkToNotes(
+        itemId,
+        [{ kind: 'note', noteId: 'note-1' }],
+        [],
+        undefined,
+        'embed'
+      )
+
+      expect(result.success).toBe(true)
+      expect(mockSaveAttachment).toHaveBeenCalledWith(
+        'note-1',
+        expect.any(Buffer),
+        'ab12cd-screenshot.png',
+        { exactFilename: true }
+      )
+      expect(mockReuseInboxAttachment).toHaveBeenCalledWith(
+        expect.anything(),
+        '/mock-vault',
+        'note-1',
+        '/mock-vault/attachments/note-1/ab12cd-screenshot.png',
+        'att-uploaded'
+      )
+      expect(mockEmitNoteAttachmentSaved).not.toHaveBeenCalled()
+    })
+
+    it('falls back to a fresh upload when the inbox filename is not a plain name', async () => {
+      const itemId = seedUploadedImage('image-reuse-odd', 'ab12cd-my shot.png')
+      mockGetNoteById.mockResolvedValueOnce({ id: 'note-1', content: '# N', path: 'n.md' })
+      mockSaveAttachment.mockResolvedValue({
+        success: true,
+        path: 'memry-file:///mock-vault/attachments/note-1/zz99yy-Screenshot.png'
+      })
+
+      await linkToNotes(itemId, [{ kind: 'note', noteId: 'note-1' }], [], undefined, 'embed')
+
+      expect(mockSaveAttachment).toHaveBeenCalledWith(
+        'note-1',
+        expect.any(Buffer),
+        'Screenshot.png'
+      )
+      expect(mockReuseInboxAttachment).not.toHaveBeenCalled()
+      expect(mockEmitNoteAttachmentSaved).toHaveBeenCalledWith(
+        'note-1',
+        '/mock-vault/attachments/note-1/zz99yy-Screenshot.png'
+      )
+    })
+
+    it('records the blob when a linked binary moves into the vault', async () => {
+      const itemId = seedUploadedImage('image-reuse-link')
+      mockGetNoteById.mockResolvedValueOnce({
+        id: 'note-1',
+        content: '# N',
+        path: 'projects/n.md'
+      })
+
+      const result = await linkToNotes(itemId, [{ kind: 'note', noteId: 'note-1' }])
+
+      expect(result.success).toBe(true)
+      expect(mockReuseInboxAttachment).toHaveBeenCalledWith(
+        expect.anything(),
+        '/mock-vault',
+        'file-note-id',
+        '/mock-vault/projects/Screenshot.png',
+        'att-uploaded'
+      )
+      expect(mockEmitNoteAttachmentSaved).not.toHaveBeenCalled()
     })
   })
 })

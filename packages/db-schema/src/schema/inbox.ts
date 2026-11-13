@@ -185,6 +185,13 @@ export const inboxItems = sqliteTable(
     /** Relative path to thumbnail image */
     thumbnailPath: text('thumbnail_path'),
 
+    /**
+     * Sync attachment id (§14.7) of the bytes at `attachmentPath`. Set once the
+     * capture's file is uploaded, and sticky: a remote payload never clears it.
+     * It rides the whole-row push, so peers learn where to download the file.
+     */
+    attachmentId: text('attachment_id'),
+
     // ========================================================================
     // Transcription (Voice Items)
     // ========================================================================
@@ -231,6 +238,23 @@ export const inboxItems = sqliteTable(
 
 export type InboxItem = typeof inboxItems.$inferSelect
 export type NewInboxItem = typeof inboxItems.$inferInsert
+
+// ============================================================================
+// inbox_attachment_uploads Table
+// ============================================================================
+
+/**
+ * Captures whose file still has to be uploaded. A separate table, not a column
+ * on `inbox_items`, because the item row is pushed whole and this mark is
+ * device-local. Written in the capture's own transaction, removed when the
+ * upload settles. Items captured before this table existed never get a row.
+ */
+export const inboxAttachmentUploads = sqliteTable('inbox_attachment_uploads', {
+  itemId: text('item_id')
+    .primaryKey()
+    .references(() => inboxItems.id, { onDelete: 'cascade' }),
+  createdAt: integer('created_at').notNull()
+})
 
 // ============================================================================
 // inbox_item_tags Table

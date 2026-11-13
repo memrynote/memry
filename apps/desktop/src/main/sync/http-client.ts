@@ -9,6 +9,7 @@ import { resolveSyncServerUrl } from '@memry/sync-client/sync-server-url'
 import { withRetry } from '@memry/sync-client/retry'
 import { MAX_CRDT_UPDATE_PAYLOAD_CHARS } from '@memry/sync-client/crdt-payload'
 import { getBootstrapTokenHeaders } from './bootstrap-session-state'
+import { admitCrdtPush, holdCrdtPushes } from './crdt-push-admission'
 import {
   SyncServerError,
   NetworkError,
@@ -117,58 +118,80 @@ export const syncFetch = async <T>(
     Object.assign(headers, extraHeaders)
   }
 
-  let response: Response
+  signal?.throwIfAborted()
+  const isCrdtPush =
+    method === 'POST' &&
+    (path === '/sync/crdt/updates' ||
+      path === '/sync/crdt/snapshot' ||
+      path === '/sync/crdt/snapshot/batch')
+  const release = isCrdtPush ? admitCrdtPush() : undefined
   try {
-    response = await fetchImpl(url, {
-      method,
-      headers,
-      body: body != null ? JSON.stringify(body) : undefined,
-      signal: signal
-        ? AbortSignal.any([AbortSignal.timeout(timeoutMs), signal])
-        : AbortSignal.timeout(timeoutMs)
-    })
-  } catch (error) {
-    if (signal?.aborted) throw signal.reason
-    if (error instanceof Error && (error.name === 'TimeoutError' || error.name === 'AbortError')) {
-      throw new NetworkError(getMainI18n().t('errors:sync.requestTimedOut'))
+    let response: Response
+    try {
+      response = await fetchImpl(url, {
+        method,
+        headers,
+        body: body != null ? JSON.stringify(body) : undefined,
+        signal: signal
+          ? AbortSignal.any([AbortSignal.timeout(timeoutMs), signal])
+          : AbortSignal.timeout(timeoutMs)
+      })
+    } catch (error) {
+      if (signal?.aborted) throw signal.reason
+      if (
+        error instanceof Error &&
+        (error.name === 'TimeoutError' || error.name === 'AbortError')
+      ) {
+        throw new NetworkError(getMainI18n().t('errors:sync.requestTimedOut'))
+      }
+      throw new NetworkError(getMainI18n().t('errors:sync.serverUnreachable'))
     }
-    throw new NetworkError(getMainI18n().t('errors:sync.serverUnreachable'))
-  }
 
-  if (response.status === 429) {
-    const retryAfter = parseRetryAfterHeader(response.headers.get('Retry-After'))
-    throw new RateLimitError(retryAfter)
-  }
+    if (response.status === 429) {
+      const retryAfter = parseRetryAfterHeader(response.headers.get('Retry-After'))
+      const error = new RateLimitError(retryAfter)
+      if (isCrdtPush) holdCrdtPushes(error)
+      throw error
+    }
 
-  let responseBody: unknown
-  try {
-    responseBody = await response.json()
-  } catch {
+    let responseBody: unknown
+    try {
+      responseBody = await response.json()
+    } catch {
+      if (!response.ok) {
+        throw new SyncServerError(`Server returned ${response.status}`, response.status)
+      }
+      // A bodiless success (the 204 of PATCH and DELETE /calendar/channels/:id,
+      // #4020) has nothing to parse. Callers of such routes ignore the result.
+      if (response.status === 204 || response.headers.get('content-length') === '0') {
+        // oxlint-disable-next-line typescript/no-unsafe-type-assertion -- a bodiless success carries no value; only callers of routes that answer with no body reach here
+        return undefined as T
+      }
+      throw new SyncServerError('Invalid response body', response.status)
+    }
+
     if (!response.ok) {
-      throw new SyncServerError(`Server returned ${response.status}`, response.status)
+      // oxlint-disable-next-line typescript/no-unsafe-type-assertion -- loosely typed value (unknown, column or error) named as its contract type; a runtime guard would change behavior
+      const errorBody = responseBody as ServerErrorResponse
+      const errorCode = typeof errorBody?.error === 'object' ? errorBody.error.code : undefined
+      const message =
+        (typeof errorBody?.error === 'string' ? errorBody.error : errorBody?.error?.message) ||
+        errorBody?.message ||
+        `Server error (${response.status})`
+      const serverError = errorCode ? `${errorCode}: ${message}` : message
+      throw new SyncServerError(
+        message,
+        response.status,
+        serverError,
+        typeof errorBody?.error === 'object' ? errorBody.error : undefined
+      )
     }
-    throw new SyncServerError('Invalid response body', response.status)
-  }
 
-  if (!response.ok) {
     // oxlint-disable-next-line typescript/no-unsafe-type-assertion -- loosely typed value (unknown, column or error) named as its contract type; a runtime guard would change behavior
-    const errorBody = responseBody as ServerErrorResponse
-    const errorCode = typeof errorBody?.error === 'object' ? errorBody.error.code : undefined
-    const message =
-      (typeof errorBody?.error === 'string' ? errorBody.error : errorBody?.error?.message) ||
-      errorBody?.message ||
-      `Server error (${response.status})`
-    const serverError = errorCode ? `${errorCode}: ${message}` : message
-    throw new SyncServerError(
-      message,
-      response.status,
-      serverError,
-      typeof errorBody?.error === 'object' ? errorBody.error : undefined
-    )
+    return responseBody as T
+  } finally {
+    release?.()
   }
-
-  // oxlint-disable-next-line typescript/no-unsafe-type-assertion -- loosely typed value (unknown, column or error) named as its contract type; a runtime guard would change behavior
-  return responseBody as T
 }
 
 export const postToServer = async <T>(
@@ -176,9 +199,19 @@ export const postToServer = async <T>(
   body?: unknown,
   token?: string,
   fetchFn?: FetchFn,
-  extraHeaders?: Record<string, string>
+  extraHeaders?: Record<string, string>,
+  signal?: AbortSignal
 ): Promise<T> => {
-  return syncFetch<T>('POST', path, body, token, fetchFn, SYNC_REQUEST_TIMEOUT_MS, extraHeaders)
+  return syncFetch<T>(
+    'POST',
+    path,
+    body,
+    token,
+    fetchFn,
+    SYNC_REQUEST_TIMEOUT_MS,
+    extraHeaders,
+    signal
+  )
 }
 
 export const getFromServer = async <T>(

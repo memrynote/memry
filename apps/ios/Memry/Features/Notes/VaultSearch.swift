@@ -122,10 +122,13 @@ final class VaultSearchViewModel {
     /// slow search cannot land after a newer one and overwrite it.
     private var running: Task<Void, Never>?
     private var hasIndexed = false
+    /// Which search box this is, as the `source` of `search_performed`.
+    private let source: StaticString
 
-    init(search: any VaultSearching, debounce: Duration = .milliseconds(150)) {
+    init(search: any VaultSearching, debounce: Duration = .milliseconds(150), source: StaticString = "global") {
         self.search = search
         self.debounce = debounce
+        self.source = source
     }
 
     /// Waits for the query in flight. For tests, which need the answer rather
@@ -161,14 +164,21 @@ final class VaultSearchViewModel {
             taskHits = []
             return
         }
+        // Desktop counts a search as opened once the user types into an
+        // empty box (`command-palette.tsx`), not when the box appears.
+        if phase == .idle {
+            Telemetry.shared.track(.searchOpened, surface: .search, action: "opened")
+        }
         phase = .searching
-        running = Task { [search, debounce] in
+        running = Task { [search, debounce, source] in
             do {
                 try await Task.sleep(for: debounce)
+                let started = ContinuousClock.now
                 let hits = try await search.notes(query: trimmed, limit: 50)
                 let tasks = await taskMatches(trimmed)
                 guard !Task.isCancelled else { return }
                 Log.storage.info("searched this vault", .count(hits.count + tasks.count))
+                Self.trackPerformed(source: source, count: hits.count + tasks.count, since: started)
                 taskHits = tasks
                 phase = .results(hits)
             } catch is CancellationError {
@@ -177,10 +187,23 @@ final class VaultSearchViewModel {
                 guard !Task.isCancelled else { return }
                 let mapped = ErrorMapping.userFacing(error)
                 Log.storage.error("this vault could not be searched", .code(mapped.code))
+                Telemetry.shared.track(.searchPerformed, surface: .search, action: "queried", source: source, result: .failed, errorCode: mapped.code)
                 taskHits = []
                 phase = .failed(mapped)
             }
         }
+    }
+
+    /// Desktop `search-handlers.ts`: the count, the time and a coarse bucket,
+    /// never the query.
+    private static func trackPerformed(source: StaticString, count: Int, since started: ContinuousClock.Instant) {
+        let elapsed = (ContinuousClock.now - started) / .milliseconds(1)
+        let bucket = count == 0 ? "zero" : count <= 5 ? "one_to_five" : "six_plus"
+        Telemetry.shared.track(
+            .searchPerformed, surface: .search, action: "queried", source: source, result: .success,
+            dimension: (.resultBucket, bucket),
+            metrics: TelemetryMetrics(durationMs: elapsed.rounded(), resultCount: Double(count))
+        )
     }
 
     /// The task half of a query. A failure here is logged and reads as no

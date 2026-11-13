@@ -146,6 +146,7 @@
     "requestTimedOut": "Eşitleme isteği zaman aşımına uğradı. İnternet bağlantınızı kontrol edin."
   },
   "googleCalendar": {
+    "requestRejected": "Google bu öğeyi reddetti. Tarih ve saatini kontrol edip yeniden deneyin.",
     "connectFailed": "Google Calendar'a bağlanılamadı. Lütfen birazdan tekrar deneyin.",
     "reconnectNeeded": "Google Calendar bağlantınızın süresi doldu. Lütfen bağlantıyı kesip yeniden bağlanın.",
     "misconfigured": "Google Calendar doğru yapılandırılmamış. Bu durum devam ederse lütfen destek ekibiyle iletişime geçin.",
@@ -159,7 +160,7 @@
   },
   "ai": {
     "inlineDisabled": "Yapay zeka ile satır içi düzenleme devre dışı",
-    "listOllamaModelsFailed": "Ollama modelleri listelenemedi",
+    "listModelsFailed": "Modeller listelenemedi",
     "writingAssistInvalid": "Bu istek yapay zeka modeline gönderilemedi.",
     "apiKeyMissing": "Yazma araçlarını kullanmak için Ayarlar → Yapay Zeka bölümüne {provider} API anahtarını ekle.",
     "apiKeyInvalid": "{provider} API anahtarın reddedildi. Ayarlar → Yapay Zeka bölümünden kontrol et.",
@@ -187,6 +188,10 @@
     "removeDeviceFailed": "Cihaz kaldırılamadı",
     "renameDeviceFailed": "Cihaz yeniden adlandırılamadı",
     "initiateOAuthFailed": "OAuth başlatılamadı",
+    "retryOAuthFailed": "Giriş tarayıcısı yeniden açılamadı. Girişi baştan başlatın.",
+    "oauthExpired": "Girişin süresi doldu. Lütfen tekrar deneyin.",
+    "oauthInvalidResponse": "Geçerli bir giriş bağlantısı alınamadı. Lütfen tekrar deneyin.",
+    "oauthCancelled": "Google ile giriş iptal edildi. Lütfen tekrar deneyin.",
     "setupFirstDeviceOAuthFailed": "İlk cihaz OAuth ile kurulamadı",
     "confirmRecoveryPhraseFailed": "Kurtarma ifadesi onaylanamadı"
   },

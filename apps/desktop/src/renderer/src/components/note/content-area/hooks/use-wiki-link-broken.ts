@@ -36,6 +36,11 @@ import {
   onNoteLinksChanged,
   onNoteRenamed
 } from '@/services/notes-service'
+import {
+  onJournalEntryCreated,
+  onJournalEntryDeleted,
+  onJournalExternalChange
+} from '@/services/journal-service'
 import { clearCanvasLookupCache, resolveCanvasByTitle } from '@/lib/canvas-lookup'
 import { onCanvasCreated, onCanvasDeleted, onCanvasUpdated } from '@/services/canvas-service'
 import { registerEditorPlugin } from '../register-editor-plugin'
@@ -186,6 +191,9 @@ export function useWikiLinkBroken(
       onNoteRenamed(forceRefresh),
       onNoteDeleted(forceRefresh),
       onNoteLinksChanged(forceRefresh),
+      onJournalEntryCreated(forceRefresh),
+      onJournalEntryDeleted(forceRefresh),
+      onJournalExternalChange(forceRefresh),
       onCanvasCreated(forceRefresh),
       onCanvasUpdated(forceRefresh),
       onCanvasDeleted(forceRefresh)

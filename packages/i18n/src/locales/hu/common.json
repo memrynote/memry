@@ -6,6 +6,7 @@
     "noTarget": "Ennek a portálnak még nincs célja. Adjon jegyzetet a definícióhoz, vagy távolítsa el a blokkot.",
     "invalidJson": "Ennek a portálnak a definíciója nem érvényes JSON. Javítsa lent, vagy távolítsa el a blokkot.",
     "invalidShape": "Ennek a portálnak a definíciójában nincs jegyzet vagy keresés. Javítsa lent, vagy távolítsa el a blokkot.",
+    "unreadable": "Ez a portál nem olvasható. Távolítsa el a blokkot, és adjon hozzá új portált.",
     "search": {
       "editQuery": "Lekérdezés szerkesztése",
       "count": "{count, plural, one {# blokk} other {# blokk}}",
@@ -1276,6 +1277,7 @@
     "label": "Súgó és visszajelzés",
     "reportBug": "Hiba bejelentése",
     "requestFeature": "Funkció kérése",
+    "joinTestflight": "Csatlakozás a TestFlighthoz",
     "starOnGithub": "Csillagozás a GitHubon",
     "version": "MemryNote {version}",
     "whatsNew": "Újdonságok",
@@ -1695,5 +1697,29 @@
     "journalDaysRenamed": "Néhány naplóbejegyzés neve már nem dátum",
     "journalDaysRenamedHint": "Ezeket a naplóbejegyzéseket a Memryn kívül nevezték át, miközben a mappájuk a naplómappa beállítására várt, így a nevük már nem dátum. Naplóbejegyzések maradnak, amíg vissza nem nevezed őket. Ha jegyzetté alakítasz egyet, a naplóbejegyzése minden eszközödről törlődik, a szövege pedig jegyzetként megmarad. A címkéi nem maradnak meg.",
     "turnIntoNotes": "Átalakítás jegyzetekké"
+  },
+  "iosBeta": {
+    "badge": "Új · TestFlight",
+    "title": "A Memry iPhone-ra béta állapotban van",
+    "promptBody": "A tárolója a telefonján, végpontok közötti titkosítással. Adja meg az e-mail-címét, és az Apple TestFlight-meghívót küld.",
+    "emailPlaceholder": "you@example.com",
+    "emailLabel": "E-mail-cím a TestFlight-meghívóhoz",
+    "submit": "Meghívó kérése",
+    "sending": "Küldés…",
+    "listNote": "Felvesszük az iPhone-os béta listájára is, hogy értesítsük az indulásról. Bármikor leiratkozhat.",
+    "error": "Nem sikerült elküldeni a TestFlight-meghívót. Próbálja újra.",
+    "sentTitle": "Nézze meg a postaládáját",
+    "sentBody": "Az Apple elküldte a meghívót ide: {email}. Néhány percig tarthat, és a levélszemét közé is kerülhet.",
+    "stepInstall": "Telepítse a TestFlightot az App Store-ból",
+    "stepOpen": "Nyissa meg a meghívót az iPhone-ján",
+    "stepSignIn": "Jelentkezzen be a Memrybe a telefonján",
+    "done": "Kész",
+    "dialogTitle": "Csatlakozzon a Memry iPhone-os verziójához",
+    "dialogBody": "Az Apple e-mailben küld TestFlight-meghívót. Az iPhone-ján használt Apple ID e-mail-címét adja meg.",
+    "entryTitle": "Elindult az iPhone-os béta",
+    "entrySubtitle": "TestFlighton keresztül",
+    "entryJoin": "Csatlakozás a bétához",
+    "entrySent": "Meghívó elküldve ide: {email}",
+    "sendAgain": "Küldés újra"
   }
 }

@@ -59,6 +59,7 @@ final class URLSessionTransport: Transport, @unchecked Sendable {
     private let socketSession: URLSession
     private let socketRouter: SocketRouter
     private let emitter: CoreEventEmitter
+    private let exchangeHold: ExchangeHold
 
     /// - Parameters:
     ///   - emitter: the shell's event hub, never the hub itself and never the
@@ -68,13 +69,16 @@ final class URLSessionTransport: Transport, @unchecked Sendable {
     ///   - spillThresholdBytes: see ``defaultSpillThresholdBytes``.
     ///   - spillDirectory: where an oversized body is streamed. The file is
     ///     unlinked as soon as it is mapped, so nothing survives the call.
+    ///   - exchangeHold: keeps the app running while an exchange is in flight.
     init(
         emitter: CoreEventEmitter,
         configuration: URLSessionConfiguration = URLSessionTransport.defaultConfiguration(),
         spillThresholdBytes: Int = URLSessionTransport.defaultSpillThresholdBytes,
-        spillDirectory: URL = FileManager.default.temporaryDirectory
+        spillDirectory: URL = FileManager.default.temporaryDirectory,
+        exchangeHold: ExchangeHold = .none
     ) {
         self.emitter = emitter
+        self.exchangeHold = exchangeHold
         collector = HTTPResponseCollector(
             spillThresholdBytes: spillThresholdBytes,
             spillDirectory: spillDirectory
@@ -126,6 +130,8 @@ final class URLSessionTransport: Transport, @unchecked Sendable {
             urlRequest.setValue(value, forHTTPHeaderField: name.lowercased())
         }
 
+        let release = exchangeHold.begin()
+        defer { release() }
         let started = DispatchTime.now()
         let response = try await collector.perform(urlRequest, timeoutMs: request.timeoutMs, in: session)
         Log.transport.info(

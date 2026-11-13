@@ -37,6 +37,7 @@ import { openVaultFile } from '../lib/paths'
 import { OutsideVaultError } from '../lib/errors'
 import { generateContentHash, parseNote } from '../vault/frontmatter'
 import { loadBlockNoteConverter } from './blocknote-converter-loader'
+import { seedFragment } from './converter-worker-bridge'
 import { repairEmptyBlockIds } from './repair-block-ids'
 import { compactYDoc } from '@memry/sync-client/crdt-compact-utils'
 import { isBinaryFileType } from '@memry/shared/file-types'
@@ -1914,8 +1915,9 @@ export class CrdtProvider {
 
     // Pass the note's path so embed targets are written relative to it — this
     // fragment is what gets serialized back to the vault file.
-    const { markdownToYFragment } = await loadBlockNoteConverter()
-    const ok = await markdownToYFragment(
+    // Parsed on the converter worker, so a first open does not freeze the
+    // window while BlockNote and jsdom load (converter-worker-bridge.ts).
+    const ok = await seedFragment(
       parsed.content,
       fragment,
       cached.path,

@@ -7,8 +7,6 @@
  * @module main/ipc/settings-handlers
  */
 
-import { FoldAgentChoiceSchema, type FoldAgentChoice } from '@memry/contracts/note-fold'
-import { refreshNoteFold } from '../note-fold'
 import { ipcMain, app, globalShortcut, shell } from 'electron'
 import { broadcastToAllWindows } from '../lib/window-broadcast'
 import { SettingsChannels } from '@memry/contracts/ipc-channels'
@@ -66,16 +64,7 @@ import {
 import { createLogger } from '../lib/logger'
 import { getDatabase } from '../database'
 import { getSetting, setSetting, deleteSetting } from '../settings/settings-store'
-import { withErrorHandler } from './validate'
-import {
-  initEmbeddingModel,
-  getModelInfo,
-  isModelLoaded,
-  isModelLoading,
-  resetEmbeddingModelFailure
-} from '../lib/embeddings'
-import { IMAGE_EMBEDDING_SETTING_KEY } from '../lib/image-embedding'
-import { rebuildProjections } from '../projections'
+import { registerSettingsAIHandlers, unregisterSettingsAIHandlers } from './settings-ai-handlers'
 import { writePreferences, PORTABLE_GENERAL_FIELDS } from '../vault/vault-preferences'
 import { getCurrentVaultPath, getDefaultVaultPath, getVaults, setDefaultVaultPath } from '../store'
 import { downloadVoiceModel, getVoiceModelStatus } from '../inbox/voice-model'
@@ -172,9 +161,8 @@ const SETTINGS_KEYS = {
   JOURNAL_SHOW_TASKS: 'journal.showTasks',
   JOURNAL_SHOW_AI_CONNECTIONS: 'journal.showAIConnections',
   JOURNAL_SHOW_STATS_FOOTER: 'journal.showStatsFooter',
-  AI_ENABLED: 'ai.enabled',
-  AI_SUMMARIZE_LONG_NOTES: 'ai.summarizeLongNotes',
-  AI_SUMMARIZE_AGENT: 'ai.summarizeAgent',
+  JOURNAL_SHOW_ON_THIS_DAY: 'journal.showOnThisDay',
+  JOURNAL_ALL_YEARS_VIEW: 'journal.allYearsView',
   // Tab settings
   TAB_RESTORE_SESSION: 'tabs.restoreSessionOnStart',
   TAB_CLOSE_BUTTON: 'tabs.tabCloseButton',
@@ -197,42 +185,10 @@ export interface JournalSettings {
   showTasks: boolean
   showAIConnections: boolean
   showStatsFooter: boolean
-}
-
-// ============================================================================
-// AI Settings Interface (Simplified - no API key needed)
-// ============================================================================
-
-export interface AISettings {
-  enabled: boolean
-  imageEmbeddings: boolean
-  /** Local, off by default. Read by the note-fold service via `ai.summarizeLongNotes`. */
-  summarizeLongNotes: boolean
-  /** Local. `auto` uses the first detected agent; a chosen agent that is missing means no summaries. */
-  summarizeAgent: FoldAgentChoice
-}
-
-/** A stored value from a newer or older build that is not a known choice reads as `auto`. */
-function readSummarizeAgent(raw: string | null | undefined): FoldAgentChoice {
-  const parsed = FoldAgentChoiceSchema.safeParse(raw)
-  return parsed.success ? parsed.data : 'auto'
-}
-
-export interface AIModelStatus {
-  name: string
-  dimension: number
-  loaded: boolean
-  loading: boolean
-  error: string | null
-  embeddingCount?: number
-}
-
-/** Default AI settings values */
-const DEFAULT_AI_SETTINGS: AISettings = {
-  enabled: true,
-  imageEmbeddings: true,
-  summarizeLongNotes: false,
-  summarizeAgent: 'auto'
+  /** Show the same day from past years under a journal entry */
+  showOnThisDay: boolean
+  /** Show every year of the day in full under the entry (the Forever Journal) */
+  allYearsView: boolean
 }
 
 export interface VoiceTranscriptionOpenAIKeyStatus {
@@ -498,7 +454,9 @@ export function getJournalSettings(): JournalSettings {
       showSchedule: true,
       showTasks: true,
       showAIConnections: true,
-      showStatsFooter: false
+      showStatsFooter: false,
+      showOnThisDay: true,
+      allYearsView: false
     }
   }
 
@@ -517,7 +475,9 @@ export function getJournalSettings(): JournalSettings {
     showSchedule: showScheduleStr !== 'false', // Default true
     showTasks: showTasksStr !== 'false', // Default true
     showAIConnections: showAIConnectionsStr !== 'false', // Default true
-    showStatsFooter: showStatsFooterStr === 'true' // Default false
+    showStatsFooter: showStatsFooterStr === 'true', // Default false
+    showOnThisDay: getSetting(db, SETTINGS_KEYS.JOURNAL_SHOW_ON_THIS_DAY) !== 'false',
+    allYearsView: getSetting(db, SETTINGS_KEYS.JOURNAL_ALL_YEARS_VIEW) === 'true'
   }
 }
 
@@ -576,6 +536,16 @@ export function writeJournalSettings(settings: Partial<JournalSettings>): {
       settings.showStatsFooter ? 'true' : 'false'
     )
   }
+  if (settings.showOnThisDay !== undefined) {
+    setSetting(
+      db,
+      SETTINGS_KEYS.JOURNAL_SHOW_ON_THIS_DAY,
+      settings.showOnThisDay ? 'true' : 'false'
+    )
+  }
+  if (settings.allYearsView !== undefined) {
+    setSetting(db, SETTINGS_KEYS.JOURNAL_ALL_YEARS_VIEW, settings.allYearsView ? 'true' : 'false')
+  }
 
   // Emit settings changed event. The weekday map goes out whole: the
   // renderer merges settings patches shallowly, so a one-day patch would
@@ -593,6 +563,7 @@ export function writeJournalSettings(settings: Partial<JournalSettings>): {
 }
 
 export function registerSettingsHandlers(): void {
+  registerSettingsAIHandlers()
   ipcMain.on(SettingsChannels.sync.GET_STARTUP_THEME, (event) => {
     event.returnValue = getStartupTheme()
   })
@@ -867,82 +838,6 @@ export function registerSettingsHandlers(): void {
     (_event, settings: Partial<JournalSettings>) => writeJournalSettings(settings)
   )
 
-  // Get AI settings (simplified - just enabled flag)
-  ipcMain.handle(SettingsChannels.invoke.GET_AI_SETTINGS, () => {
-    const db = getDbOrNull()
-    if (!db) {
-      return DEFAULT_AI_SETTINGS
-    }
-
-    const enabledStr = getSetting(db, SETTINGS_KEYS.AI_ENABLED)
-
-    return {
-      enabled: enabledStr !== 'false', // Default to true
-      imageEmbeddings: getSetting(db, IMAGE_EMBEDDING_SETTING_KEY) !== 'false',
-      summarizeLongNotes: getSetting(db, SETTINGS_KEYS.AI_SUMMARIZE_LONG_NOTES) === 'true',
-      summarizeAgent: readSummarizeAgent(getSetting(db, SETTINGS_KEYS.AI_SUMMARIZE_AGENT))
-    }
-  })
-
-  // Set AI settings
-  ipcMain.handle(
-    SettingsChannels.invoke.SET_AI_SETTINGS,
-    (_event, settings: Partial<AISettings>) => {
-      const db = getDbOrNull()
-      if (!db) {
-        return { success: false, error: getMainI18n().t('errors:ipc.noVaultOpen') }
-      }
-
-      if (settings.enabled !== undefined) {
-        setSetting(db, SETTINGS_KEYS.AI_ENABLED, settings.enabled ? 'true' : 'false')
-        // Re-enabling AI is an explicit retry: clear the model-load circuit
-        // breaker so a previously failed/stalled load is attempted again (#803).
-        if (settings.enabled) {
-          resetEmbeddingModelFailure()
-        }
-      }
-
-      if (settings.imageEmbeddings !== undefined) {
-        setSetting(db, IMAGE_EMBEDDING_SETTING_KEY, settings.imageEmbeddings ? 'true' : 'false')
-      }
-
-      if (settings.summarizeLongNotes !== undefined) {
-        setSetting(
-          db,
-          SETTINGS_KEYS.AI_SUMMARIZE_LONG_NOTES,
-          settings.summarizeLongNotes ? 'true' : 'false'
-        )
-      }
-
-      if (settings.summarizeAgent !== undefined) {
-        // Parse before writing: an unknown value would silently read back as `auto`.
-        setSetting(
-          db,
-          SETTINGS_KEYS.AI_SUMMARIZE_AGENT,
-          FoldAgentChoiceSchema.parse(settings.summarizeAgent)
-        )
-      }
-
-      if (
-        settings.enabled !== undefined ||
-        settings.summarizeLongNotes !== undefined ||
-        settings.summarizeAgent !== undefined
-      ) {
-        refreshNoteFold()
-      }
-
-      // Emit settings changed event
-      broadcastToAllWindows(SettingsChannels.events.CHANGED, {
-        key: 'ai',
-        value: settings
-      })
-
-      trackGroupSettingChanges('ai', settings)
-
-      return { success: true }
-    }
-  )
-
   ipcMain.handle(SettingsChannels.invoke.GET_VOICE_TRANSCRIPTION_SETTINGS, () => {
     return readGroupSettings('voiceTranscription', VOICE_TRANSCRIPTION_SETTINGS_DEFAULTS)
   })
@@ -1095,69 +990,6 @@ export function registerSettingsHandlers(): void {
         return { success: false, error: message }
       }
     }
-  )
-
-  // Get AI model status
-  ipcMain.handle(SettingsChannels.invoke.GET_AI_MODEL_STATUS, async (): Promise<AIModelStatus> => {
-    const modelInfo = getModelInfo()
-
-    // Get embedding count if database is available
-    let embeddingCount = 0
-    try {
-      const { getEmbeddingCount } = await import('../inbox/suggestions')
-      embeddingCount = getEmbeddingCount()
-    } catch {
-      // Ignore - database might not be open
-    }
-
-    return {
-      ...modelInfo,
-      embeddingCount
-    }
-  })
-
-  // Load AI model
-  ipcMain.handle(
-    SettingsChannels.invoke.LOAD_AI_MODEL,
-    withErrorHandler(async () => {
-      if (isModelLoaded()) {
-        return { success: true, message: 'Model already loaded' }
-      }
-
-      if (isModelLoading()) {
-        return { success: false, error: getMainI18n().t('errors:settings.modelAlreadyLoading') }
-      }
-
-      // Manual load is an explicit retry — clear the circuit breaker first (#803).
-      resetEmbeddingModelFailure()
-      const success = await initEmbeddingModel()
-      if (success) {
-        return { success: true }
-      } else {
-        const info = getModelInfo()
-        return {
-          success: false,
-          error: info.error || getMainI18n().t('errors:settings.modelLoadFailed')
-        }
-      }
-    }, 'errors:generic.unknown')
-  )
-
-  // Reindex embeddings
-  ipcMain.handle(
-    SettingsChannels.invoke.REINDEX_EMBEDDINGS,
-    withErrorHandler(async () => {
-      // Reindex is an explicit retry — clear the circuit breaker first (#803).
-      resetEmbeddingModelFailure()
-      const result = await rebuildProjections(['embedding'])
-      // oxlint-disable-next-line typescript/no-unsafe-type-assertion -- untyped external object narrowed to a loose record; members are checked before use
-      return result.embedding as {
-        success: boolean
-        computed: number
-        skipped: number
-        error?: string
-      }
-    }, 'errors:generic.unknown')
   )
 
   // Get tab settings
@@ -1801,13 +1633,12 @@ function writeEditorToConfig(updates: Partial<EditorSettings>): void {
  * Unregister all settings-related IPC handlers.
  */
 export function unregisterSettingsHandlers(): void {
+  unregisterSettingsAIHandlers()
   ipcMain.removeAllListeners(SettingsChannels.sync.GET_STARTUP_THEME)
   ipcMain.removeHandler(SettingsChannels.invoke.GET)
   ipcMain.removeHandler(SettingsChannels.invoke.SET)
   ipcMain.removeHandler(SettingsChannels.invoke.GET_JOURNAL_SETTINGS)
   ipcMain.removeHandler(SettingsChannels.invoke.SET_JOURNAL_SETTINGS)
-  ipcMain.removeHandler(SettingsChannels.invoke.GET_AI_SETTINGS)
-  ipcMain.removeHandler(SettingsChannels.invoke.SET_AI_SETTINGS)
   ipcMain.removeHandler(SettingsChannels.invoke.GET_VOICE_TRANSCRIPTION_SETTINGS)
   ipcMain.removeHandler(SettingsChannels.invoke.SET_VOICE_TRANSCRIPTION_SETTINGS)
   ipcMain.removeHandler(SettingsChannels.invoke.GET_VOICE_MODEL_STATUS)
@@ -1816,9 +1647,6 @@ export function unregisterSettingsHandlers(): void {
   ipcMain.removeHandler(SettingsChannels.invoke.OPEN_OS_MICROPHONE_SETTINGS)
   ipcMain.removeHandler(SettingsChannels.invoke.GET_VOICE_TRANSCRIPTION_OPENAI_KEY_STATUS)
   ipcMain.removeHandler(SettingsChannels.invoke.SET_VOICE_TRANSCRIPTION_OPENAI_KEY)
-  ipcMain.removeHandler(SettingsChannels.invoke.GET_AI_MODEL_STATUS)
-  ipcMain.removeHandler(SettingsChannels.invoke.LOAD_AI_MODEL)
-  ipcMain.removeHandler(SettingsChannels.invoke.REINDEX_EMBEDDINGS)
   ipcMain.removeHandler(SettingsChannels.invoke.GET_TAB_SETTINGS)
   ipcMain.removeHandler(SettingsChannels.invoke.SET_TAB_SETTINGS)
   ipcMain.removeHandler(SettingsChannels.invoke.GET_NOTE_EDITOR_SETTINGS)

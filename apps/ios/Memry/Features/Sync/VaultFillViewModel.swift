@@ -112,10 +112,12 @@ final class VaultFillViewModel {
 
     private func run() async {
         phase = .filling(nil)
+        let start = ContinuousClock.now
         do {
             let summary = try await filler.firstSync { [weak self] progress in
                 self?.report(progress)
             }
+            SyncTelemetry.bootstrapInteractive(summary, since: start)
             self.summary = summary
             Log.sync.notice("a first sync finished", .count(Int(summary.metadataApplied)))
             phase = .filled

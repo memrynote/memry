@@ -28,6 +28,8 @@ final class NoteEditorViewModel {
 
     let noteId: String
     private let editor: (any BlockEditing)?
+    /// Creates the note a `[[` menu's Create row names. `nil` creates none.
+    private let notes: (any NotesWriting)?
 
     private(set) var status: Status = .idle
 
@@ -40,9 +42,10 @@ final class NoteEditorViewModel {
     /// typed into is ahead of the document until it commits.
     private(set) var drafts: [String: String] = [:]
 
-    init(noteId: String, editor: (any BlockEditing)?) {
+    init(noteId: String, editor: (any BlockEditing)?, notes: (any NotesWriting)? = nil) {
         self.noteId = noteId
         self.editor = editor
+        self.notes = notes
     }
 
     /// Whether this note can be edited at all.
@@ -173,35 +176,37 @@ final class NoteEditorViewModel {
         }
     }
 
-    /// Merges a block into the one above it, which is Backspace at offset 0.
+    /// Merges a block into the one above it, which is Backspace at offset 0:
+    /// its content, marks and inline nodes kept, joins the end of
+    /// `previousId`'s in one write (`BlockEdit.mergeBlocks`), so no failure
+    /// leaves the text twice or not at all.
     ///
-    /// - Returns: the offset the caret lands at in the block above — the
-    ///   length of its text before the merge — so the caret sits where the
-    ///   join happened rather than at either end.
-    ///
-    /// **The join is written before the block is removed**, for the same
-    /// reason as ``split``: a failure between the two leaves the text twice
-    /// rather than not at all.
-    @discardableResult
-    func merge(_ blockId: String, into previousId: String, text: String, previousText: String)
-        async -> Int?
-    {
+    /// - Returns: the step that undoes it, or `nil` when it did not land or a
+    ///   block could not be read first.
+    func merge(_ blockId: String, into previousId: String) async -> EditorUndoStep? {
         guard let editor else { return nil }
+        let removed = await snapshot(blockId)
+        let target = await snapshot(previousId)
         status = .saving
         do {
-            _ = try await editor.edit(
-                noteId: noteId,
-                .setText(blockId: previousId, text: previousText + text)
-            )
-            _ = try await editor.edit(noteId: noteId, .delete(blockId: blockId))
-            drafts[previousId] = previousText + text
+            _ = try await editor.edit(noteId: noteId, .mergeBlocks(blockId: blockId, intoBlockId: previousId))
+            drafts[previousId] = nil
             drafts[blockId] = nil
             status = .idle
-            return previousText.count
         } catch {
+            Log.storage.error("a block merge did not land")
             status = .failed(ErrorMapping.userFacing(error))
             return nil
         }
+        guard let removed, let target else { return nil }
+        // The removed block comes back after its sibling first, then the
+        // block it joined gets its own content back.
+        return EditorUndoStep(
+            name: "Merge",
+            backward: .restoreBlock(snapshot: removed),
+            forward: .mergeBlocks(blockId: blockId, intoBlockId: previousId),
+            backwardAfter: [.restoreBlock(snapshot: target)]
+        )
     }
 
     /// The block and everything under it, for an undo step that has to put
@@ -432,6 +437,20 @@ final class NoteEditorViewModel {
             text: "",
             attrs: WikiLinkAttrs.attrs(target: title, alias: alias)
         )
+    }
+
+    /// Creates the note titled `title` in the new-notes folder, for the `[[`
+    /// menu's Create row (#4154): a link to a note that exists is one a tap
+    /// can follow. A failure leaves the link broken and says so.
+    func createNote(titled title: String) async {
+        guard let notes else { return }
+        do {
+            _ = try await notes.create(title: title, folderPath: LocalSettings.shared.newNotesFolder)
+        } catch {
+            let mapped = ErrorMapping.userFacing(error)
+            Log.storage.error("a linked note could not be created", .code(mapped.code))
+            status = .failed(mapped)
+        }
     }
 
     /// A date mention (N601), in desktop's shape.

@@ -651,7 +651,9 @@ test('opens a standalone vault and exposes core note, journal, task, inbox, and 
     showSchedule: true,
     showTasks: true,
     showAIConnections: true,
-    showStatsFooter: false
+    showStatsFooter: false,
+    showOnThisDay: true,
+    allYearsView: false
   })
   assert.deepEqual(
     await app.settings.setGroup('journal', {
@@ -664,7 +666,9 @@ test('opens a standalone vault and exposes core note, journal, task, inbox, and 
       showSchedule: false,
       showTasks: true,
       showAIConnections: true,
-      showStatsFooter: true
+      showStatsFooter: true,
+      showOnThisDay: true,
+      allYearsView: false
     }
   )
   assert.deepEqual(await app.settings.setGroup('tabs', { tabCloseButton: 'always' }), {

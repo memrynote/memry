@@ -5,6 +5,7 @@
     "create": "إنشاء"
   },
   "wikiLinkPreview": {
+    "journalUnwritten": "لم تُكتب يوميات {date} بعد. انقر لفتح اليوم",
     "notFound": "غير موجودة — انقر لإنشاء «{title}»"
   },
   "wikiLinkMenu": {
@@ -138,6 +139,7 @@
     "actions": {
       "openInNewTab": "فتح في علامة تبويب جديدة",
       "openToTheSide": "فتح في جزء جانبي",
+      "openFolderView": "فتح عرض المجلد",
       "newNote": "ملاحظة جديدة",
       "newFolder": "مجلد جديد",
       "showTasks": "عرض المهام",
@@ -187,7 +189,8 @@
     },
     "toast": {
       "selectionBookmarked": "تمت إضافة العناصر ({count}) إلى الإشارات المرجعية",
-      "selectionBookmarkFailed": "تعذّرت إضافة العناصر المحددة إلى الإشارات المرجعية"
+      "selectionBookmarkFailed": "تعذّرت إضافة العناصر المحددة إلى الإشارات المرجعية",
+      "pairedNoteNameTaken": "توجد ملاحظة باسم {name} هناك بالفعل"
     }
   },
   "editor": {
@@ -423,9 +426,14 @@
       "savedView": "عرض محفوظ",
       "savedViewMissing": "لم يعد العرض المحفوظ «{name}» موجودًا، لذا يظهر هنا العرض الافتراضي.",
       "openAsTab": "فتح كعلامة تبويب",
+      "newNote": "ملاحظة جديدة",
+      "newViewTitle": "عرض جديد",
+      "newViewSubtext": "مجلد جديد بجانب هذه الملاحظة، يُعرض هنا",
+      "newViewFailed": "تعذّر إنشاء المجلد لهذا العرض.",
       "empty": "لا يوجد ما يطابق هذا العرض بعد.",
       "loadFailed": "تعذّر تحميل هذا العرض. لم تتغير الملاحظات نفسها.",
       "folderMissing": "لم يعد هذا المجلد موجودًا في الخزنة. اختر مصدرًا آخر.",
+      "unreadable": "لا يمكن قراءة هذا العرض. اختر مصدرًا أعلاه، أو أزل الكتلة.",
       "invalidJson": "تعريف هذا العرض ليس JSON صالحًا. أصلحه أدناه، أو أزِل الكتلة.",
       "invalidShape": "لا يحدد تعريف هذا العرض أي مصدر. اختر مصدرًا أعلاه، أو أصلح التعريف أدناه.",
       "definition": "التعريف"
@@ -668,6 +676,8 @@
   },
   "menus": {
     "wiki": {
+      "journalDay": "اليوميات · {date}",
+      "journalDayUnwritten": "اليوميات · لم تُكتب بعد",
       "aria": "اقتراحات الملاحظات",
       "loading": "جارٍ تحميل الملاحظات…",
       "empty": "لم يتم العثور على أي ملاحظات",
@@ -782,6 +792,12 @@
     "viaProperty": "{property} ← {title}",
     "viaPortal": "معروض في بوابة"
   },
+  "references": {
+    "filterAll": "الكل",
+    "filterNotes": "الملاحظات",
+    "filterJournal": "اليوميات",
+    "filterBy": "تصفية الإشارات: {filter}"
+  },
   "unlinkedMentions": {
     "title": "إشارات غير مرتبطة",
     "summary": "{count, plural, zero {# إشارة غير مرتبطة} one {إشارة غير مرتبطة واحدة} two {إشارتان غير مرتبطتين} few {# إشارات غير مرتبطة} many {# إشارة غير مرتبطة} other {# إشارة غير مرتبطة}}",
@@ -886,6 +902,7 @@
     "showOnCalendar": "إظهار في التقويم",
     "showingOnCalendar": "يظهر في التقويم",
     "relation": {
+      "unwrittenDay": "لم تُكتب بعد",
       "deleted": "محذوف",
       "removeAria": "إزالة {title}",
       "addAria": "إضافة علاقة",

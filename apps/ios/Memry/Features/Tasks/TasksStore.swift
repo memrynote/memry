@@ -123,6 +123,7 @@ final class TasksStore {
             state = TasksViewState()
             restoredState = false
         }
+        attachments?.requestSync = { [weak self] in self?.scheduleSync() }
     }
 
     // MARK: Reading
@@ -135,7 +136,9 @@ final class TasksStore {
         let core = core
         do {
             let loaded = try await executor.run {
-                (
+                // A vault with no Inbox gets desktop's, so a new task has a project.
+                _ = try core.ensureInbox()
+                return (
                     try core.all(),
                     try core.projects(includeArchived: true),
                     try core.savedFilters(),
@@ -209,6 +212,7 @@ final class TasksStore {
         let core = core
         do {
             let change = try await executor.run { try work(core) }
+            TasksTelemetry.track(change)
             if let message {
                 undoable = TasksUndo(message: message, change: change)
                 toast = message
@@ -306,7 +310,7 @@ final class TasksStore {
             return
         }
         isSyncing = true
-        defer { isSyncing = false }
+        var reached = false
         do {
             let pass = try await filler.syncNow()
             Log.sync.info("task sync pass pulled", .count(Int(pass.pulled)))
@@ -314,13 +318,17 @@ final class TasksStore {
             if pass.rejected > 0 { Log.sync.error("task sync pass rejected", .count(Int(pass.rejected))) }
             if pass.pending > 0 { Log.sync.info("task sync pass left pending", .count(Int(pass.pending))) }
             syncFinished?(true)
-            await attachments?.redrive()
+            reached = true
         } catch {
             report(error)
             syncFinished?(false)
         }
         await refresh()
         syncPasses += 1
+        isSyncing = false
+        // Outside the pass: up to 25 downloads must not hold the next pass, or
+        // a write made now, back (#4155).
+        if reached, let attachments { Task { await attachments.redrive() } }
         if syncAgain {
             syncAgain = false
             scheduleSync()

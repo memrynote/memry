@@ -58,8 +58,11 @@ const resolveVaultIdWithoutHeader = async (db: D1Database, userId: string): Prom
 
 export const paidSyncMiddleware: MiddlewareHandler<AppContext> = async (c, next) => {
   const userId = c.get('userId')!
-  const headerVaultId = c.req.header('X-Memry-Vault-Id') ?? c.get('vaultId')
-  const vaultId = headerVaultId ?? (await resolveVaultIdWithoutHeader(c.env.DB, userId))
+  // The header is the only source. The device row's vault_id is where the
+  // device registered, 'default' for a client that sent none (iOS), and
+  // reading it here bypassed the resolver and minted that phantom vault.
+  const vaultId =
+    c.req.header('X-Memry-Vault-Id') ?? (await resolveVaultIdWithoutHeader(c.env.DB, userId))
 
   if (!VAULT_ID_PATTERN.test(vaultId)) {
     throw new AppError(ErrorCodes.VALIDATION_ERROR, 'Invalid vault id', 400)

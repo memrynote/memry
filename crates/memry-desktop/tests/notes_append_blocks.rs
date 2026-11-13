@@ -233,8 +233,12 @@ fn a_locked_or_excluded_target_is_refused() {
     let in_folder = id_at(&v.e, "Locked/In.md");
     let old = id_at(&v.e, "archive/Old.md");
     let locks = v.e.core().locks();
-    locks.set(TargetKind::Note, &target, true).unwrap();
-    locks.set(TargetKind::Folder, "Locked", true).unwrap();
+    locks
+        .set(TargetKind::Note, &target, true, "device-a")
+        .unwrap();
+    locks
+        .set(TargetKind::Folder, "Locked", true, "device-a")
+        .unwrap();
 
     for (id, path) in [(&target, "Target.md"), (&in_folder, "Locked/In.md")] {
         let body = v.e.body(id);

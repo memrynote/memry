@@ -146,6 +146,7 @@
     "requestTimedOut": "Synkroniseringsforespørselen ble tidsavbrutt. Sjekk internettforbindelsen din."
   },
   "googleCalendar": {
+    "requestRejected": "Google avviste dette elementet. Sjekk datoen og klokkeslettet, og prøv igjen.",
     "connectFailed": "Kunne ikke koble til Google Calendar. Prøv igjen om litt.",
     "reconnectNeeded": "Tilkoblingen til Google Calendar er utløpt. Koble fra og koble til igjen.",
     "misconfigured": "Google Calendar er ikke satt opp riktig. Kontakt kundestøtte hvis dette fortsetter.",
@@ -159,7 +160,7 @@
   },
   "ai": {
     "inlineDisabled": "KI-redigering i teksten er slått av",
-    "listOllamaModelsFailed": "Kunne ikke liste Ollama-modeller",
+    "listModelsFailed": "Kunne ikke hente modeller",
     "writingAssistInvalid": "Forespørselen kunne ikke sendes til AI-modellen.",
     "apiKeyMissing": "Legg til API-nøkkelen din for {provider} i Innstillinger → AI for å bruke skriveverktøyene.",
     "apiKeyInvalid": "API-nøkkelen din for {provider} ble avvist. Sjekk den i Innstillinger → AI.",
@@ -187,6 +188,10 @@
     "removeDeviceFailed": "Kunne ikke fjerne enheten",
     "renameDeviceFailed": "Kunne ikke gi enheten nytt navn",
     "initiateOAuthFailed": "Kunne ikke starte OAuth",
+    "retryOAuthFailed": "Kunne ikke åpne innloggingsnettleseren på nytt. Start innloggingen på nytt.",
+    "oauthExpired": "Innloggingen har utløpt. Prøv igjen.",
+    "oauthInvalidResponse": "Kunne ikke hente en gyldig innloggingslenke. Prøv igjen.",
+    "oauthCancelled": "Google-innloggingen ble avbrutt. Prøv igjen.",
     "setupFirstDeviceOAuthFailed": "Kunne ikke sette opp den første enheten med OAuth",
     "confirmRecoveryPhraseFailed": "Kunne ikke bekrefte gjenopprettingsfrasen"
   },

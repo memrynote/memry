@@ -90,7 +90,7 @@ function storeNoteEmbeddings(
   })()
 }
 
-function deleteNoteEmbedding(noteId: string): void {
+function deleteNoteEmbedding(noteId: string): boolean {
   try {
     const rawDb = getRawIndexDatabase()
     rawDb.transaction(() => {
@@ -99,8 +99,10 @@ function deleteNoteEmbedding(noteId: string): void {
       rawDb.prepare('DELETE FROM vec_note_similar WHERE note_id = ?').run(noteId)
       rawDb.prepare('DELETE FROM note_embedding_state WHERE note_id = ?').run(noteId)
     })()
-  } catch {
-    // ignore missing vec table during shutdown/setup
+    return true
+  } catch (error) {
+    logger.warn('Failed to remove note embedding', { noteId, error })
+    return false
   }
 }
 
@@ -138,11 +140,17 @@ function withAttachmentText(noteId: string, content: string): string {
   return extracted ? `${content}\n\n${extracted}` : content
 }
 
-async function readEmbeddableContent(vaultPath: string, note: EmbeddableNote): Promise<string> {
+async function readEmbeddableContent(
+  vaultPath: string,
+  note: EmbeddableNote,
+  ownsDatabase: () => boolean
+): Promise<string | null> {
+  if (!ownsDatabase()) return null
   if (note.fileType && note.fileType !== 'markdown') {
     return readFileTextOpening(note.id)
   }
   const raw = await readVaultFile(vaultPath, note.path)
+  if (!ownsDatabase()) return null
   if (raw === null) throw new Error(`Note file is missing: ${note.path}`)
   return withAttachmentText(note.id, parseNote(raw, note.path).content)
 }
@@ -152,86 +160,136 @@ interface NoteText {
   content: string
 }
 
-async function updateEmbedding(noteId: string, text: NoteText): Promise<boolean> {
-  const windows = buildEmbeddingChunks(text)
-  if (!isAIEnabled() || windows.length === 0) {
-    deleteNoteEmbedding(noteId)
-    return false
-  }
-
-  if (!isModelLoaded()) {
-    const loaded = await initEmbeddingModel()
-    if (!loaded) {
-      return false
-    }
-  }
-
-  // One window at a time: peak memory is one inference, however long the note.
-  const embeddings: Float32Array[] = []
-  for (const window of windows) {
-    const embedding = await generateLocalEmbedding(window)
-    if (!embedding) {
-      return false
-    }
-    embeddings.push(embedding)
-  }
-  const similar = await generateLocalEmbedding(buildEmbeddingInput(text, 'similarity'))
-  if (!similar) {
-    return false
-  }
-
-  storeNoteEmbeddings(noteId, embeddings, similar)
-  return true
-}
-
-// Embed a list of notes: markdown from disk, filed PDFs and images from their
-// extracted text. Shared by the full rebuild and the reconcile backfill;
-// assumes the model is already loaded and vaultPath is set.
-const embedNotes = async (
-  vaultPath: string,
-  notes: EmbeddableNote[],
-  signal?: AbortSignal
-): Promise<{ computed: number; skipped: number }> => {
-  let computed = 0
-  let skipped = 0
-
-  for (let i = 0; i < notes.length; i++) {
-    // Checked per note, not per pass: this loop is the long pole (file read +
-    // CPU inference each), so a close or vault switch has to be able to cut it
-    // short between notes instead of after the whole work list.
-    if (signal?.aborted) {
-      break
-    }
-
-    const note = notes[i]
-    try {
-      const content = await readEmbeddableContent(vaultPath, note)
-      if (!(await updateEmbedding(note.id, { title: note.title, content }))) {
-        skipped++
-      } else {
-        computed++
-      }
-    } catch (error) {
-      skipped++
-      logger.warn('Failed to rebuild note embedding', { noteId: note.id, error })
-    }
-
-    if ((i + 1) % 5 === 0 || i === notes.length - 1) {
-      emitProgress(i + 1, notes.length, 'embedding')
-    }
-  }
-
-  return { computed, skipped }
+interface EmbeddingWork {
+  note: EmbeddableNote
+  revision: symbol | undefined
 }
 
 export function createEmbeddingProjector(
   getVaultPath: () => string | null,
   isIndexing: () => boolean = () => false
 ): ProjectionProjector {
-  // Note ids whose embedding was deferred because it arrived during the initial
-  // index pass (see project()). Instance-scoped so it starts empty per open; the
-  // backgrounded reconcile drains it after the vault is open (#803).
-  const pendingEmbedding = new Set<string>()
+  // Startup constructs projectors before opening index.db. Bind once at the
+  // first available public work entry, never from an asynchronous continuation:
+  // manual rebuilds can outlive stop() and must not adopt the next vault's DB.
+  let owner: Database.Database | null = null
+  const bindDatabase = (): boolean => {
+    try {
+      const current = getRawIndexDatabase()
+      if (!current.open) return false
+      owner ??= current
+      return owner === current
+    } catch (error) {
+      logger.debug('Embedding projector work deferred until the index database opens', { error })
+      return false
+    }
+  }
+  const ownsDatabase = (): boolean => {
+    if (!owner?.open) return false
+    try {
+      return getRawIndexDatabase() === owner
+    } catch {
+      return false
+    }
+  }
+
+  // Only guards in-flight computations against newer events. SQLite's version-0
+  // sentinel owns owed work, including across app restarts; this is not a queue.
+  const revisions = new Map<string, symbol>()
+
+  const markDirty = (noteId: string): symbol | undefined => {
+    if (!ownsDatabase()) return undefined
+    const revision = Symbol(noteId)
+    revisions.set(noteId, revision)
+    // Version 0 is stale to shipped older builds too. Keep chunk ownership and
+    // valid old vectors until a same-revision computation replaces them.
+    getRawIndexDatabase()
+      .prepare(
+        `INSERT INTO note_embedding_state (note_id, input_version, chunk_count)
+         VALUES (?, 0, 0)
+         ON CONFLICT(note_id) DO UPDATE SET input_version = 0`
+      )
+      .run(noteId)
+    return revision
+  }
+
+  const captureWork = (notes: EmbeddableNote[]): EmbeddingWork[] =>
+    notes.map((note) => ({ note, revision: revisions.get(note.id) }))
+
+  const updateEmbedding = async (
+    noteId: string,
+    text: NoteText,
+    revision: symbol | undefined,
+    signal?: AbortSignal
+  ): Promise<boolean> => {
+    const canContinue = (): boolean =>
+      ownsDatabase() && !signal?.aborted && isAIEnabled() && revisions.get(noteId) === revision
+    if (!canContinue()) return false
+
+    const windows = buildEmbeddingChunks(text)
+    if (windows.length === 0) return deleteNoteEmbedding(noteId)
+    if (!isModelLoaded() && !(await initEmbeddingModel())) {
+      logger.warn('Note embedding remains owed after model load failed', { noteId })
+      return false
+    }
+
+    // One inference at a time; disable, close and newer edits cut off the next
+    // chunk and the final commit, not just the next note in a long pass.
+    const embeddings: Float32Array[] = []
+    for (const window of windows) {
+      if (!canContinue()) return false
+      const embedding = await generateLocalEmbedding(window)
+      if (!embedding) {
+        logger.warn('Note embedding remains owed after inference failed', { noteId })
+        return false
+      }
+      embeddings.push(embedding)
+    }
+    if (!canContinue()) return false
+    const similar = await generateLocalEmbedding(buildEmbeddingInput(text, 'similarity'))
+    if (!similar) {
+      logger.warn('Note similarity embedding remains owed after inference failed', { noteId })
+      return false
+    }
+    if (!canContinue()) return false
+
+    storeNoteEmbeddings(noteId, embeddings, similar)
+    return true
+  }
+
+  const embedNotes = async (
+    vaultPath: string,
+    work: EmbeddingWork[],
+    signal?: AbortSignal
+  ): Promise<{ computed: number; skipped: number }> => {
+    let computed = 0
+    let skipped = 0
+    for (let i = 0; i < work.length; i++) {
+      if (!ownsDatabase() || signal?.aborted || !isAIEnabled()) break
+      const { note, revision } = work[i]
+      try {
+        if (revisions.get(note.id) !== revision) {
+          skipped++
+          continue
+        }
+        const content = await readEmbeddableContent(vaultPath, note, ownsDatabase)
+        if (content === null) break
+        if (await updateEmbedding(note.id, { title: note.title, content }, revision, signal)) {
+          computed++
+        } else {
+          skipped++
+        }
+      } catch (error) {
+        skipped++
+        logger.warn('Failed to rebuild note embedding', { noteId: note.id, error })
+      }
+      if (!ownsDatabase()) break
+      if ((i + 1) % 5 === 0 || i === work.length - 1) {
+        emitProgress(i + 1, work.length, 'embedding')
+      }
+    }
+    return { computed, skipped }
+  }
 
   const runRebuild = async (
     signal?: AbortSignal
@@ -241,6 +299,14 @@ export function createEmbeddingProjector(
     skipped: number
     error?: string
   }> => {
+    if (!bindDatabase()) {
+      return {
+        success: false,
+        computed: 0,
+        skipped: 0,
+        error: 'Projector database is no longer current'
+      }
+    }
     if (!isAIEnabled()) {
       return { success: false, computed: 0, skipped: 0, error: 'AI is disabled' }
     }
@@ -257,6 +323,7 @@ export function createEmbeddingProjector(
     const indexDb = getIndexDatabase()
     const rawDb = getRawIndexDatabase()
     const notes = indexDb.all<EmbeddableNote>(EMBEDDABLE_NOTES)
+    const work = notes.map((note) => ({ note, revision: markDirty(note.id) }))
 
     if (notes.length === 0) {
       rawDb.prepare('DELETE FROM vec_notes').run()
@@ -274,22 +341,25 @@ export function createEmbeddingProjector(
       }
     }
 
-    // The load above takes seconds; re-check before the destructive DELETE so an
-    // aborted pass does not wipe the vector table it is no longer going to refill.
-    if (signal?.aborted) {
-      return { success: false, computed: 0, skipped: 0, error: 'Aborted' }
+    // Loading can take seconds; a stopped pass must not begin inference.
+    if (!ownsDatabase() || signal?.aborted || !isAIEnabled()) {
+      return { success: false, computed: 0, skipped: 0, error: 'Embedding pass stopped' }
     }
 
-    rawDb.prepare('DELETE FROM vec_notes').run()
-    rawDb.prepare('DELETE FROM vec_note_chunks').run()
-    rawDb.prepare('DELETE FROM vec_note_similar').run()
-    rawDb.prepare('DELETE FROM note_embedding_state').run()
+    // Refresh each note atomically rather than emptying valid search results
+    // before inference. A failed or cancelled refresh keeps the old vectors.
     emitProgress(0, notes.length, 'embedding')
 
-    const { computed, skipped } = await embedNotes(vaultPath, notes, signal)
+    const { computed, skipped } = await embedNotes(vaultPath, work, signal)
 
-    if (signal?.aborted) {
-      return { success: false, computed, skipped, error: 'Aborted' }
+    if (
+      !ownsDatabase() ||
+      signal?.aborted ||
+      !isAIEnabled() ||
+      computed !== work.length ||
+      work.some(({ note, revision }) => revisions.get(note.id) !== revision)
+    ) {
+      return { success: false, computed, skipped, error: 'Embedding pass incomplete' }
     }
 
     emitProgress(notes.length, notes.length, 'complete')
@@ -297,17 +367,16 @@ export function createEmbeddingProjector(
   }
 
   const embedFileText = async (noteId: string, title: string): Promise<void> => {
+    if (!ownsDatabase()) return
     const content = readFileTextOpening(noteId)
     if (!content) {
+      revisions.set(noteId, Symbol(noteId))
       deleteNoteEmbedding(noteId)
-      pendingEmbedding.delete(noteId)
       return
     }
-    if (isIndexing()) {
-      pendingEmbedding.add(noteId)
-      return
-    }
-    await updateEmbedding(noteId, { title, content })
+    const revision = markDirty(noteId)
+    if (isIndexing()) return
+    await updateEmbedding(noteId, { title, content }, revision)
   }
 
   return {
@@ -327,9 +396,10 @@ export function createEmbeddingProjector(
     },
 
     async project(event: ProjectionEvent): Promise<void> {
+      if (!bindDatabase()) return
       if (event.type === 'note.deleted') {
+        revisions.set(event.noteId, Symbol(event.noteId))
         deleteNoteEmbedding(event.noteId)
-        pendingEmbedding.delete(event.noteId)
         return
       }
 
@@ -341,13 +411,13 @@ export function createEmbeddingProjector(
           return
         }
         // Text read from the note's attachments changed.
+        const revision = markDirty(note.id)
         const vaultPath = getVaultPath()
-        if (isIndexing()) {
-          pendingEmbedding.add(note.id)
-        } else if (vaultPath) {
+        if (!isIndexing() && vaultPath && isAIEnabled()) {
           try {
-            const content = await readEmbeddableContent(vaultPath, note)
-            await updateEmbedding(note.id, { title: note.title, content })
+            const content = await readEmbeddableContent(vaultPath, note, ownsDatabase)
+            if (content === null) return
+            await updateEmbedding(note.id, { title: note.title, content }, revision)
           } catch (error) {
             logger.warn('Failed to embed attachment text', { noteId: note.id, error })
           }
@@ -373,20 +443,15 @@ export function createEmbeddingProjector(
         return
       }
 
-      // During the initial index pass, embedding is deferred: indexVault awaits
-      // this projector per file (before the vault is marked open), and loading the
-      // ~210MB model + running CPU inference here is what stranded vault-open for
-      // minutes. Record the id and let the backgrounded reconcile embed it after
-      // isOpen. Only fires while isIndexing; live edits still embed inline. (#803)
-      if (isIndexing()) {
-        pendingEmbedding.add(note.noteId)
-        return
-      }
+      const revision = markDirty(note.noteId)
+      // Indexing records debt without loading the model on the vault-open path.
+      if (isIndexing()) return
 
-      await updateEmbedding(note.noteId, {
-        title: note.title,
-        content: withAttachmentText(note.noteId, note.parsedContent)
-      })
+      await updateEmbedding(
+        note.noteId,
+        { title: note.title, content: withAttachmentText(note.noteId, note.parsedContent) },
+        revision
+      )
     },
 
     rebuild: runRebuild,
@@ -403,11 +468,7 @@ export function createEmbeddingProjector(
      * whatever `getRawIndexDatabase()` points at by then — the new vault's index.
      */
     async reconcile(signal?: AbortSignal): Promise<void> {
-      if (signal?.aborted) {
-        return
-      }
-
-      if (signal?.aborted) {
+      if (signal?.aborted || !bindDatabase()) {
         return
       }
 
@@ -444,7 +505,11 @@ export function createEmbeddingProjector(
       for (const { note_id } of orphaned) deleteNoteChunks(rawDb, note_id)
       rawDb
         .prepare(
-          'DELETE FROM note_embedding_state WHERE note_id NOT IN (SELECT note_id FROM vec_notes)'
+          `DELETE FROM note_embedding_state WHERE note_id NOT IN (
+            SELECT id FROM note_cache
+            WHERE COALESCE(file_type, 'markdown') = 'markdown'
+              OR id IN (SELECT note_id FROM extracted_text WHERE text != '')
+          )`
         )
         .run()
 
@@ -452,17 +517,12 @@ export function createEmbeddingProjector(
 
       const vaultPath = getVaultPath()
       if (!isAIEnabled() || !vaultPath) {
-        // Deferred ids are left intact — nothing was embedded, so a later
-        // reconcile (or a full rebuild once AI is enabled) can still pick them up.
-        emitProgress(embeddableNotes.length, embeddableNotes.length, 'complete')
         return
       }
 
-      // Backfill: embed notes with no vector yet (freshly imported notes
-      // whose inline embedding was deferred during indexing) plus any deferred /
-      // edited notes tracked this session. Runs in the background after isOpen, so
-      // a slow or failed model load never blocks vault-open (#803). Loading the
-      // model is bounded to when there is actually work to do.
+      // Missing vectors, older formats and version-0 dirty events are all owed.
+      // The existing runtime serializes these background passes and aborts them
+      // on close; a slow model load never blocks vault-open (#803).
       const embeddedIds = new Set(
         // oxlint-disable-next-line typescript/no-unsafe-type-assertion -- better-sqlite3 returns unknown rows; row shape is fixed by this SQL
         (rawDb.prepare('SELECT note_id FROM vec_notes').all() as Array<{ note_id: string }>).map(
@@ -479,17 +539,15 @@ export function createEmbeddingProjector(
         .all(EMBEDDING_INPUT_VERSION) as Array<{ note_id: string }>
       const currentIds = new Set(currentRows.map((row) => row.note_id))
       const owed = embeddableNotes.filter(
-        (note) =>
-          !embeddedIds.has(note.id) || !currentIds.has(note.id) || pendingEmbedding.has(note.id)
+        (note) => !embeddedIds.has(note.id) || !currentIds.has(note.id)
       )
       // Notes with no vector at all first: they are invisible to semantic search.
-      const workList = [
+      const workList = captureWork([
         ...owed.filter((note) => !embeddedIds.has(note.id)),
         ...owed.filter((note) => embeddedIds.has(note.id))
-      ]
+      ])
 
       if (workList.length === 0) {
-        pendingEmbedding.clear()
         emitProgress(embeddableNotes.length, embeddableNotes.length, 'complete')
         return
       }
@@ -497,28 +555,30 @@ export function createEmbeddingProjector(
       if (!isModelLoaded()) {
         const loaded = await initEmbeddingModel()
         if (!loaded) {
-          // Keep the deferred ids: dropping them here would let an edited note
-          // (which still has a stale vector, so the missing-vector filter above
-          // won't re-catch it) keep that stale embedding after a failed load.
-          emitProgress(embeddableNotes.length, embeddableNotes.length, 'complete')
+          logger.warn('Embedding backfill remains owed after model load failed', {
+            remaining: workList.length
+          })
           return
         }
       }
 
-      if (signal?.aborted) {
+      if (!ownsDatabase() || signal?.aborted) {
         return
       }
 
       emitProgress(0, workList.length, 'embedding')
-      await embedNotes(vaultPath, workList, signal)
+      const { computed } = await embedNotes(vaultPath, workList, signal)
 
-      if (signal?.aborted) {
-        // Deferred ids stay: the pass stopped part-way, so the notes it never
-        // reached still owe an embedding on the next reconcile.
+      if (
+        !ownsDatabase() ||
+        signal?.aborted ||
+        !isAIEnabled() ||
+        computed !== workList.length ||
+        workList.some(({ note, revision }) => revisions.get(note.id) !== revision)
+      ) {
         return
       }
 
-      pendingEmbedding.clear()
       emitProgress(workList.length, workList.length, 'complete')
     }
   }

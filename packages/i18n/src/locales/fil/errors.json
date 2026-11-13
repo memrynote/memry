@@ -146,6 +146,7 @@
     "requestTimedOut": "Nag-time out ang kahilingan sa pag-sync. Pakisuri ang iyong koneksyon sa internet."
   },
   "googleCalendar": {
+    "requestRejected": "Tinanggihan ng Google ang item na ito. Suriin ang petsa at oras nito, saka subukan muli.",
     "connectFailed": "Hindi makakonekta sa Google Calendar. Subukan ulit maya-maya.",
     "reconnectNeeded": "Nag-expire na ang iyong koneksyon sa Google Calendar. Idiskonekta at kumonekta muli.",
     "misconfigured": "Hindi wastong naka-configure ang Google Calendar. Makipag-ugnayan sa support kung magpatuloy ito.",
@@ -159,7 +160,7 @@
   },
   "ai": {
     "inlineDisabled": "Naka-off ang inline na pag-edit gamit ang AI",
-    "listOllamaModelsFailed": "Hindi mailista ang mga modelo ng Ollama",
+    "listModelsFailed": "Hindi mailista ang mga model",
     "writingAssistInvalid": "Hindi maipadala ang request na iyon sa AI model.",
     "apiKeyMissing": "Idagdag ang iyong {provider} API key sa Mga setting → AI para magamit ang mga tool sa pagsusulat.",
     "apiKeyInvalid": "Tinanggihan ang iyong {provider} API key. Tingnan ito sa Mga setting → AI.",
@@ -187,6 +188,10 @@
     "removeDeviceFailed": "Hindi maalis ang device",
     "renameDeviceFailed": "Hindi mapalitan ang pangalan ng device",
     "initiateOAuthFailed": "Hindi masimulan ang OAuth",
+    "retryOAuthFailed": "Hindi na-reopen ang browser para sa pag-sign in. Simulan ulit ang pag-sign in.",
+    "oauthExpired": "Nag-expire na ang pag-sign in. Subukan ulit.",
+    "oauthInvalidResponse": "Hindi nakakuha ng wastong link sa pag-sign in. Subukan ulit.",
+    "oauthCancelled": "Nakansela ang pag-sign in gamit ang Google. Subukan ulit.",
     "setupFirstDeviceOAuthFailed": "Hindi ma-set up ang unang device gamit ang OAuth",
     "confirmRecoveryPhraseFailed": "Hindi makumpirma ang recovery phrase"
   },

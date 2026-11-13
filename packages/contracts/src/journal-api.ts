@@ -252,6 +252,30 @@ export const GetMonthEntriesOutputSchema = z.array(MonthEntryPreviewSchema)
 
 export type GetMonthEntriesOutput = z.infer<typeof GetMonthEntriesOutputSchema>
 
+// --- Get Same Day Entries ---
+
+/** Entries from other years shown as the same day: the On this day section and All years view. */
+export const GetSameDayEntriesInputSchema = z.object({
+  date: z.string().regex(/^\d{4}-\d{2}-\d{2}$/, 'Date must be YYYY-MM-DD')
+})
+
+export type GetSameDayEntriesInput = z.infer<typeof GetSameDayEntriesInputSchema>
+
+export const SameDayEntrySchema = z.object({
+  id: z.string(),
+  date: z.string(),
+  preview: z.string(),
+  content: z.string(),
+  wordCount: z.number().int().nonnegative()
+})
+
+export type SameDayEntry = z.infer<typeof SameDayEntrySchema>
+
+/** Newest first. Days without text are left out. */
+export const GetSameDayEntriesOutputSchema = z.array(SameDayEntrySchema)
+
+export type GetSameDayEntriesOutput = z.infer<typeof GetSameDayEntriesOutputSchema>
+
 // --- Get Year Stats ---
 
 export const GetYearStatsInputSchema = z.object({
@@ -342,6 +366,7 @@ export const JOURNAL_IPC_CHANNELS = {
   GET_HEATMAP: 'journal:getHeatmap',
   GET_MONTH_ENTRIES: 'journal:getMonthEntries',
   GET_YEAR_STATS: 'journal:getYearStats',
+  GET_SAME_DAY_ENTRIES: 'journal:getSameDayEntries',
 
   // Context
   GET_DAY_CONTEXT: 'journal:getDayContext',

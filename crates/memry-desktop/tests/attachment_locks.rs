@@ -68,14 +68,20 @@ fn an_upload_to_a_locked_note_writes_nothing() {
         (TargetKind::Note, note.as_str()),
         (TargetKind::Folder, "work"),
     ] {
-        open.vault.locks().set(kind, target, true).unwrap();
+        open.vault
+            .locks()
+            .set(kind, target, true, "device-a")
+            .unwrap();
         assert!(is_locked(attachments::upload(&open, &note, "a.png", b"x")));
         assert_eq!(
             AttachmentError::Locked.to_string(),
             "The owner made this note read-only."
         );
         assert_eq!(names(&folder), Vec::<String>::new(), "{target}");
-        open.vault.locks().set(kind, target, false).unwrap();
+        open.vault
+            .locks()
+            .set(kind, target, false, "device-a")
+            .unwrap();
     }
     // Unlocked, the same upload lands.
     let saved = attachments::upload(&open, &note, "a.png", b"x").unwrap();
@@ -88,7 +94,7 @@ fn a_chunked_upload_to_a_locked_note_never_starts() {
     let open = e.session.current().unwrap();
     open.vault
         .locks()
-        .set(TargetKind::Folder, "work", true)
+        .set(TargetKind::Folder, "work", true, "device-a")
         .unwrap();
     let size = (2 * CHUNK_BYTES) as u64;
     assert!(is_locked(
@@ -97,7 +103,7 @@ fn a_chunked_upload_to_a_locked_note_never_starts() {
     assert_eq!(names(&e.vault.join(".memry/uploads")), Vec::<String>::new());
     open.vault
         .locks()
-        .set(TargetKind::Folder, "work", false)
+        .set(TargetKind::Folder, "work", false, "device-a")
         .unwrap();
     assert!(
         uploads
@@ -122,7 +128,7 @@ fn a_lock_set_while_the_parts_arrive_ends_the_upload_with_nothing() {
     );
     open.vault
         .locks()
-        .set(TargetKind::Note, &note, true)
+        .set(TargetKind::Note, &note, true, "device-a")
         .unwrap();
     assert!(is_locked(uploads.write_chunk(
         &open,
@@ -152,7 +158,10 @@ fn a_rename_of_a_locked_notes_attachment_leaves_the_file() {
         (TargetKind::Note, note.as_str()),
         (TargetKind::Folder, "work"),
     ] {
-        open.vault.locks().set(kind, target, true).unwrap();
+        open.vault
+            .locks()
+            .set(kind, target, true, "device-a")
+            .unwrap();
         assert!(is_locked(attachments::rename(
             &open,
             &note,
@@ -163,7 +172,10 @@ fn a_rename_of_a_locked_notes_attachment_leaves_the_file() {
             names(&e.vault.join("attachments").join(&note)),
             std::slice::from_ref(&stored)
         );
-        open.vault.locks().set(kind, target, false).unwrap();
+        open.vault
+            .locks()
+            .set(kind, target, false, "device-a")
+            .unwrap();
     }
     let renamed = attachments::rename(&open, &note, &saved.path, "invoice").unwrap();
     assert_eq!(&renamed.stored_filename[..7], &stored[..7]);

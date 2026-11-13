@@ -113,7 +113,74 @@
       "noDueDate": "Senza data di scadenza"
     },
     "repeatTypeRepeating": "Ricorrente",
-    "repeatTypeOneTime": "Una tantum"
+    "repeatTypeOneTime": "Una tantum",
+    "advanced": {
+      "entry": "Filtro avanzato…",
+      "entryHint": "Regole con e, o, non",
+      "title": "Filtro",
+      "match": "Soddisfa",
+      "ofThese": "di queste",
+      "matches": {
+        "all": "tutte",
+        "any": "una qualsiasi",
+        "none": "nessuna"
+      },
+      "fields": {
+        "title": "Titolo",
+        "status": "Stato",
+        "priority": "Priorità",
+        "due": "Scadenza",
+        "project": "Progetto",
+        "location": "Luogo",
+        "tags": "Tag",
+        "repeat": "Ripetizione",
+        "hasTime": "Ha un orario"
+      },
+      "ops": {
+        "contains": "contiene",
+        "notContains": "non contiene",
+        "any": "è uno di",
+        "none": "non è nessuno di",
+        "all": "ha tutti",
+        "empty": "è vuoto",
+        "notEmpty": "non è vuoto",
+        "is": "è",
+        "isNot": "non è"
+      },
+      "tagOps": {
+        "any": "ha uno di",
+        "all": "ha tutti",
+        "none": "non ha nessuno di"
+      },
+      "values": {
+        "repeating": "Ricorrente",
+        "oneTime": "Una tantum",
+        "withTime": "Con orario",
+        "withoutTime": "Senza orario",
+        "customRange": "Intervallo personalizzato",
+        "from": "Da",
+        "to": "A",
+        "pick": "Scegli…",
+        "titlePlaceholder": "Testo nel titolo"
+      },
+      "addRule": "Aggiungi regola",
+      "addGroup": "Aggiungi gruppo",
+      "clear": "Cancella",
+      "removeRule": "Rimuovi regola",
+      "removeGroup": "Rimuovi gruppo",
+      "matchCount": "{count, plural, one {# attività corrisponde} other {# attività corrispondono}}",
+      "skipped": "{count, plural, one {# regola saltata} other {# regole saltate}}",
+      "ruleCount": "{count, plural, one {# regola} other {# regole}}",
+      "unknownRule": "Regola da una versione più recente",
+      "empty": "Ancora nessuna regola. Aggiungine una per iniziare a filtrare.",
+      "summary": {
+        "and": "e",
+        "or": "o",
+        "not": "non"
+      },
+      "editRules": "Modifica regole",
+      "clearRules": "Cancella regole"
+    }
   },
   "quickAdd": {
     "label": "Aggiunta rapida di attività",

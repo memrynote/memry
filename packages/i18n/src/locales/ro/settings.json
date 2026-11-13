@@ -504,7 +504,8 @@
       "loading": "Se încarcă setările…"
     },
     "groups": {
-      "footer": "Subsol"
+      "footer": "Subsol",
+      "pastYears": "Anii trecuți"
     },
     "template": {
       "label": "Șablon",
@@ -562,6 +563,14 @@
     "showInSidebar": {
       "label": "Afișează în bara laterală",
       "description": "Afișează dosarul jurnalului și intrările sale în arborele de notițe"
+    },
+    "showOnThisDay": {
+      "label": "Afișează În această zi",
+      "description": "Listează aceeași dată din anii trecuți sub intrare"
+    },
+    "allYearsView": {
+      "label": "Afișează toți anii complet",
+      "description": "Jurnalul perpetuu: fiecare an al datei pe o singură pagină, sub intrare"
     }
   },
   "tasks": {
@@ -1110,7 +1119,16 @@
       "sending": "Se trimite codul…"
     },
     "oauth": {
-      "google": "Continuă cu Google"
+      "google": "Continuă cu Google",
+      "waiting": "Finalizați conectarea cu Google în browser.",
+      "browserUnavailable": "Nu s-a putut deschide browserul.",
+      "manualInstructions": "Copiați linkul de conectare și deschideți-l într-un browser de pe acest computer. Lăsați memrynote deschis cât timp vă conectați.",
+      "linkLabel": "Link de conectare",
+      "copyLink": "Copiază linkul de conectare",
+      "retryBrowser": "Încearcă din nou să deschizi browserul",
+      "copied": "Linkul de conectare a fost copiat.",
+      "copyFailed": "Nu s-a putut copia linkul de conectare. Selectați-l și copiați-l din câmpul de mai sus.",
+      "cancel": "Folosiți altă metodă de conectare"
     },
     "otp": {
       "title": "Introduceți codul de verificare",
@@ -1347,6 +1365,7 @@
       "keySaveError": "Nu s-a putut salva cheia OpenAI"
     },
     "embedding": {
+      "load": "Încarcă modelul",
       "loaded": "Încărcat",
       "loading": "Se încarcă",
       "downloadLoad": "Descarcă și încarcă modelul",
@@ -1371,7 +1390,8 @@
         "ollama": "Ollama (local)",
         "openai": "OpenAI",
         "anthropic": "Anthropic",
-        "google": "Google Gemini"
+        "google": "Google Gemini",
+        "custom": "Personalizat (compatibil OpenAI)"
       },
       "model": "Model",
       "modelDescription": "Model de limbaj pentru rescriere și rezumare",
@@ -1381,6 +1401,11 @@
       "apiKeyPlaceholder": "Introduceți cheia API {provider}",
       "ollamaUrl": "URL Ollama",
       "ollamaUrlDescription": "Adresa serverului local",
+      "customUrl": "URL de bază",
+      "customUrlDescription": "Orice endpoint compatibil OpenAI, cum ar fi OpenRouter",
+      "customUrlPlaceholder": "https://openrouter.ai/api/v1",
+      "customApiKeyPlaceholder": "Cheie API (opțional)",
+      "customModelPlaceholder": "ID model",
       "connection": "Conexiune",
       "activePort": "Activ pe portul {port}",
       "notConnected": "Nu este conectat",
@@ -2033,7 +2058,7 @@
       "subtitle": "Gestionați definițiile proprietăților din toate notițele"
     },
     "loading": "Se încarcă proprietățile…",
-    "empty": "Încă nu există definiții de proprietăți. Adăugați o proprietate Stare, Selecție sau Selecție multiplă la orice notiță pentru a începe.",
+    "empty": "Încă nu există proprietăți. Adăugați o proprietate la orice notiță pentru a începe.",
     "filterPlaceholder": "Filtrează proprietățile…",
     "noMatch": "Nicio proprietate care să se potrivească cu „{query}”",
     "summary": "{count, plural, one {# definiție de proprietate} few {# definiții de proprietăți} other {# de definiții de proprietăți}}",
@@ -2073,6 +2098,14 @@
     },
     "v2": {
       "actionsAria": "Acțiuni pentru {name}"
+    },
+    "usage": {
+      "heading": "Folosită în",
+      "noteCount": "{count, plural, one {# notiță} few {# notițe} other {# de notițe}}",
+      "mismatchCount": "Valori care nu corespund tipului {type}: {count}",
+      "mismatchNote": "Nu corespunde tipului {type}",
+      "none": "Nicio notiță nu folosește această proprietate",
+      "loadFailed": "Notițele care folosesc această proprietate nu au putut fi încărcate"
     }
   },
   "commandLine": {
@@ -2408,7 +2441,6 @@
   "phaseI": {
     "errors": {
       "failedToUpdateTagColor": "Nu s-a putut actualiza culoarea etichetei",
-      "googleSignInFailed": "Conectarea la Google a eșuat",
       "failedToSendVerificationCode": "Nu s-a putut trimite codul de verificare",
       "invalidVerificationCode": "Cod de verificare nevalid",
       "accountSetupFailed": "Configurarea contului a eșuat",
@@ -2435,7 +2467,8 @@
       "failedToCloseVault": "Nu s-a putut închide seiful",
       "failedToSwitchVault": "Nu s-a putut schimba seiful",
       "failedToUpdateConfig": "Nu s-a putut actualiza configurația",
-      "failedToReindex": "Nu s-a putut reindexa"
+      "failedToReindex": "Nu s-a putut reindexa",
+      "googleSignInFailed": "Conectarea la Google a eșuat"
     }
   },
   "agentMcp": {
@@ -2465,7 +2498,17 @@
       "running": "Rulează",
       "tokenHint": "Doar pentru această lansare",
       "copy": "Copiază",
-      "rotate": "Rotește"
+      "rotate": "Rotește",
+      "clientConfig": {
+        "label": "Configurație client",
+        "hint": "Se copiază cu URL-ul și tokenul acestei lansări",
+        "copy": "Copiază configurația {client}"
+      },
+      "notes": {
+        "readOnly": "Clienții externi pot doar citi. Instrumentele de scriere returnează PERMISSION_DENIED, așa că scrie prin Agent Chat sau linia de comandă memrynote.",
+        "restart": "URL-ul și tokenul se schimbă când memrynote repornește, schimbă seiful sau reînnoiește tokenul. Actualizează de fiecare dată configurația clientului, apoi repornește clientul.",
+        "docs": "Ghid de configurare"
+      }
     }
   },
   "agentProviders": {

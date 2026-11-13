@@ -504,7 +504,8 @@
       "loading": "Memuatkan tetapan…"
     },
     "groups": {
-      "footer": "Pengaki"
+      "footer": "Pengaki",
+      "pastYears": "Tahun lepas"
     },
     "template": {
       "label": "Templat",
@@ -562,6 +563,14 @@
     "showInSidebar": {
       "label": "Tunjukkan dalam bar sisi",
       "description": "Tunjukkan folder jurnal dan catatannya dalam pepohon nota"
+    },
+    "showOnThisDay": {
+      "label": "Tunjukkan Pada hari ini",
+      "description": "Senaraikan tarikh yang sama dari tahun lepas di bawah entri"
+    },
+    "allYearsView": {
+      "label": "Tunjukkan semua tahun sepenuhnya",
+      "description": "Jurnal Abadi: setiap tahun bagi tarikh itu dalam satu halaman, di bawah entri"
     }
   },
   "tasks": {
@@ -1110,7 +1119,16 @@
       "sending": "Menghantar kod…"
     },
     "oauth": {
-      "google": "Teruskan dengan Google"
+      "google": "Teruskan dengan Google",
+      "waiting": "Selesaikan log masuk dengan Google dalam pelayar anda.",
+      "browserUnavailable": "Tidak dapat membuka pelayar anda.",
+      "manualInstructions": "Salin pautan log masuk dan buka dalam pelayar pada komputer ini. Biarkan memrynote terbuka semasa anda log masuk.",
+      "linkLabel": "Pautan log masuk",
+      "copyLink": "Salin pautan log masuk",
+      "retryBrowser": "Cuba buka pelayar lagi",
+      "copied": "Pautan log masuk disalin.",
+      "copyFailed": "Tidak dapat menyalin pautan log masuk. Pilih dan salin daripada medan di atas.",
+      "cancel": "Guna kaedah log masuk lain"
     },
     "otp": {
       "title": "Masukkan kod pengesahan",
@@ -1347,6 +1365,7 @@
       "keySaveError": "Gagal menyimpan kunci OpenAI"
     },
     "embedding": {
+      "load": "Muatkan model",
       "loaded": "Dimuatkan",
       "loading": "Memuatkan",
       "downloadLoad": "Muat turun & muatkan model",
@@ -1371,7 +1390,8 @@
         "ollama": "Ollama (setempat)",
         "openai": "OpenAI",
         "anthropic": "Anthropic",
-        "google": "Google Gemini"
+        "google": "Google Gemini",
+        "custom": "Tersuai (serasi dengan OpenAI)"
       },
       "model": "Model",
       "modelDescription": "Model bahasa untuk menulis semula dan meringkaskan",
@@ -1381,6 +1401,11 @@
       "apiKeyPlaceholder": "Masukkan kunci API {provider}",
       "ollamaUrl": "URL Ollama",
       "ollamaUrlDescription": "Alamat pelayan setempat",
+      "customUrl": "URL asas",
+      "customUrlDescription": "Mana-mana titik akhir yang serasi dengan OpenAI, seperti OpenRouter",
+      "customUrlPlaceholder": "https://openrouter.ai/api/v1",
+      "customApiKeyPlaceholder": "Kunci API (pilihan)",
+      "customModelPlaceholder": "ID model",
       "connection": "Sambungan",
       "activePort": "Aktif pada port {port}",
       "notConnected": "Tidak disambungkan",
@@ -2033,7 +2058,7 @@
       "subtitle": "Urus definisi sifat merentas semua nota"
     },
     "loading": "Memuatkan sifat…",
-    "empty": "Tiada definisi sifat lagi. Tambah sifat Status, Pilihan atau Pilihan berbilang pada mana-mana nota untuk bermula.",
+    "empty": "Tiada sifat lagi. Tambah sifat pada mana-mana nota untuk bermula.",
     "filterPlaceholder": "Tapis sifat…",
     "noMatch": "Tiada sifat yang sepadan dengan “{query}”",
     "summary": "{count, plural, other {# definisi sifat}}",
@@ -2073,6 +2098,14 @@
     },
     "v2": {
       "actionsAria": "Tindakan untuk {name}"
+    },
+    "usage": {
+      "heading": "Digunakan dalam",
+      "noteCount": "{count, plural, other {# nota}}",
+      "mismatchCount": "Nilai yang tidak sepadan dengan {type}: {count}",
+      "mismatchNote": "Tidak sepadan dengan {type}",
+      "none": "Tiada nota yang menggunakan sifat ini",
+      "loadFailed": "Tidak dapat memuatkan nota yang menggunakan sifat ini"
     }
   },
   "commandLine": {
@@ -2408,7 +2441,6 @@
   "phaseI": {
     "errors": {
       "failedToUpdateTagColor": "Gagal mengemas kini warna teg",
-      "googleSignInFailed": "Log masuk Google gagal",
       "failedToSendVerificationCode": "Gagal menghantar kod pengesahan",
       "invalidVerificationCode": "Kod pengesahan tidak sah",
       "accountSetupFailed": "Persediaan akaun gagal",
@@ -2435,7 +2467,8 @@
       "failedToCloseVault": "Gagal menutup bilik kebal",
       "failedToSwitchVault": "Gagal menukar bilik kebal",
       "failedToUpdateConfig": "Gagal mengemas kini konfigurasi",
-      "failedToReindex": "Gagal mengindeks semula"
+      "failedToReindex": "Gagal mengindeks semula",
+      "googleSignInFailed": "Log masuk Google gagal"
     }
   },
   "agentMcp": {
@@ -2465,7 +2498,17 @@
       "running": "Sedang berjalan",
       "tokenHint": "Pelancaran ini sahaja",
       "copy": "Salin",
-      "rotate": "Tukar"
+      "rotate": "Tukar",
+      "clientConfig": {
+        "label": "Konfigurasi klien",
+        "hint": "Disalin dengan URL dan token pelancaran ini",
+        "copy": "Salin konfigurasi {client}"
+      },
+      "notes": {
+        "readOnly": "Klien luaran hanya boleh membaca. Alat tulis memulangkan PERMISSION_DENIED, jadi tulis melalui Agent Chat atau baris arahan memrynote.",
+        "restart": "URL dan token berubah apabila memrynote dimulakan semula, menukar bilik kebal atau memperbaharui token. Kemas kini konfigurasi klien setiap kali, kemudian mulakan semula klien.",
+        "docs": "Panduan persediaan"
+      }
     }
   },
   "agentProviders": {

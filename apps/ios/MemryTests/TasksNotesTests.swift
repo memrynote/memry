@@ -120,6 +120,24 @@ struct TasksNotesTests {
         #expect(actions.failure == NoteTaskActions.refused)
     }
 
+    @Test func a_typed_checklist_item_converts_unless_desktops_setting_is_off() async throws {
+        let vault = try TasksTestVault()
+        _ = try vault.project()
+        let made = try noteWithChecklist(vault)
+        let actions = actions(vault, note: made.note)
+        try vault.vault.settings(store: TaskTestKeychain())
+            .set(path: "editor.convertChecklistsToTasks", json: "false")
+
+        #expect(await actions.convertTyped(blockId: made.block) == false)
+        #expect(actions.failure == nil, "a line that stays a checkbox is no failure")
+
+        try vault.vault.settings(store: TaskTestKeychain())
+            .set(path: "editor.convertChecklistsToTasks", json: "true")
+        #expect(await actions.convertTyped(blockId: made.block))
+        let line = try vault.vault.notes().blocks(id: made.note)?.first { $0.id == made.block }
+        #expect(line?.kind == "taskBlock")
+    }
+
     @Test func a_write_that_throws_is_reported_as_mapped_copy() async {
         let actions = NoteTaskActions(noteId: "n", tasks: FailingNoteTasks())
 
@@ -218,6 +236,10 @@ private struct FailingNoteTasks: NoteTaskWriting {
     }
 
     func convertChecklistItem(noteId: String, blockId: String, localNow: String) async throws -> String? {
+        throw StorageError.Failed(what: "the core said no")
+    }
+
+    func convertTypedChecklistItem(noteId: String, blockId: String, localNow: String) async throws -> String? {
         throw StorageError.Failed(what: "the core said no")
     }
 }

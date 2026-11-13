@@ -10,8 +10,9 @@
 //!    remote **omits** keeps the local value — the sender predates the column
 //!    and must not clobber it. A key the remote sends as **`null`** is the
 //!    explicit clear that unsnooze, unarchive and unfile push, and it clears.
-//!    `title` and `type` are the two exceptions: desktop reads them as
-//!    `data.x ?? existing.x`, so a `null` keeps them too.
+//!    `title` and `type` are exceptions: desktop reads them as
+//!    `data.x ?? existing.x`, so a `null` keeps them too. So does
+//!    `attachmentId` (§13.7.15): a capture's upload never un-happens.
 //! 3. With nothing local, the remote applies as it arrived; the projector
 //!    supplies desktop's insert defaults (`Untitled`, `note`).
 //!
@@ -29,8 +30,9 @@ use crate::storage::repositories::StoredPayload;
 use crate::storage::repositories::sync_items::{self, InboundRecord};
 use crate::sync::clock::VectorClock;
 
-/// The two keys a `null` never clears (`data.title ?? existing.title`).
-const NEVER_CLEARED: [&str; 2] = ["title", "type"];
+/// The keys a `null` never clears: `data.title ?? existing.title`, and
+/// `attachmentId`, which an older sender omits or nulls without knowing it.
+const NEVER_CLEARED: [&str; 3] = ["title", "type", "attachmentId"];
 
 /// §6.8's `inbox` row: the document gate, then desktop's overlay.
 pub(crate) fn apply_remote(
@@ -144,6 +146,24 @@ mod tests {
         assert_eq!(out["type"], "link");
         assert_eq!(out["archivedAt"], Value::Null);
         assert_eq!(out["filedTo"], Value::Null);
+    }
+
+    #[test]
+    fn an_attachment_id_is_sticky_against_absent_and_null() {
+        let local = r#"{"attachmentId":"a1","title":"x"}"#;
+        assert_eq!(merged(local, r#"{"title":"y"}"#)["attachmentId"], "a1");
+        assert_eq!(
+            merged(local, r#"{"attachmentId":null}"#)["attachmentId"],
+            "a1"
+        );
+        assert_eq!(
+            merged(local, r#"{"attachmentId":"a2"}"#)["attachmentId"],
+            "a2"
+        );
+        assert_eq!(
+            merged(r#"{"title":"x"}"#, r#"{"attachmentId":"a1"}"#)["attachmentId"],
+            "a1"
+        );
     }
 
     #[test]

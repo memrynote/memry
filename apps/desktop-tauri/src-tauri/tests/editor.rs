@@ -282,13 +282,16 @@ fn a_locked_large_file_or_excluded_note_opens_read_only_by_its_reason() {
         .note_files()
         .record_large_file(&f.note, false)
         .unwrap();
-    f.core.locks().set(TargetKind::Note, &f.note, true).unwrap();
+    f.core
+        .locks()
+        .set(TargetKind::Note, &f.note, true, "device-a")
+        .unwrap();
     let (header, _) = f.open_doc(&f.main);
     assert_eq!(header["readOnly"], "locked");
 
     f.core
         .locks()
-        .set(TargetKind::Note, &f.note, false)
+        .set(TargetKind::Note, &f.note, false, "device-a")
         .unwrap();
     let file = NoteFileStat {
         note_id: f.note.clone(),

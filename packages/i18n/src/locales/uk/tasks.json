@@ -113,7 +113,74 @@
       "noDueDate": "Без терміну"
     },
     "repeatTypeRepeating": "Повторювані",
-    "repeatTypeOneTime": "Одноразові"
+    "repeatTypeOneTime": "Одноразові",
+    "advanced": {
+      "entry": "Розширений фільтр…",
+      "entryHint": "Правила з і, або, не",
+      "title": "Фільтр",
+      "match": "Відповідність",
+      "ofThese": "з цих правил",
+      "matches": {
+        "all": "усім",
+        "any": "будь-якому",
+        "none": "жодному"
+      },
+      "fields": {
+        "title": "Назва",
+        "status": "Статус",
+        "priority": "Пріоритет",
+        "due": "Термін",
+        "project": "Проєкт",
+        "location": "Місце",
+        "tags": "Теги",
+        "repeat": "Повторення",
+        "hasTime": "Має час"
+      },
+      "ops": {
+        "contains": "містить",
+        "notContains": "не містить",
+        "any": "одне з",
+        "none": "жодне з",
+        "all": "має всі",
+        "empty": "порожнє",
+        "notEmpty": "не порожнє",
+        "is": "дорівнює",
+        "isNot": "не дорівнює"
+      },
+      "tagOps": {
+        "any": "має будь-який з",
+        "all": "має всі",
+        "none": "не має жодного з"
+      },
+      "values": {
+        "repeating": "Повторюване",
+        "oneTime": "Одноразове",
+        "withTime": "З часом",
+        "withoutTime": "Без часу",
+        "customRange": "Власний діапазон",
+        "from": "З",
+        "to": "По",
+        "pick": "Вибрати…",
+        "titlePlaceholder": "Текст у назві"
+      },
+      "addRule": "Додати правило",
+      "addGroup": "Додати групу",
+      "clear": "Очистити",
+      "removeRule": "Видалити правило",
+      "removeGroup": "Видалити групу",
+      "matchCount": "{count, plural, one {Підходить # завдання} few {Підходять # завдання} many {Підходять # завдань} other {Підходить # завдання}}",
+      "skipped": "{count, plural, one {Пропущено # правило} few {Пропущено # правила} many {Пропущено # правил} other {Пропущено # правила}}",
+      "ruleCount": "{count, plural, one {# правило} few {# правила} many {# правил} other {# правила}}",
+      "unknownRule": "Правило з новішої версії",
+      "empty": "Правил ще немає. Додайте правило, щоб почати фільтрувати.",
+      "summary": {
+        "and": "і",
+        "or": "або",
+        "not": "не"
+      },
+      "editRules": "Змінити правила",
+      "clearRules": "Очистити правила"
+    }
   },
   "quickAdd": {
     "label": "Швидко додати завдання",

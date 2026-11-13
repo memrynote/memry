@@ -3,8 +3,9 @@ import { noteLinks, type NoteLink, type NewNoteLink } from '@memry/db-schema/sch
 import { listHtmlBlockText } from '@memry/app-core/html-block-text'
 import { nameKey } from '@memry/shared/note-names'
 import { extractWikiLinks } from '@memry/shared/wiki-target'
+import { dateFromJournalId } from '@memry/contracts/journal-api'
 import type { IndexDb } from '../../types'
-import { noteCacheExists } from './note-crud'
+import { getNoteCacheById, noteCacheExists } from './note-crud'
 import { pathLinkKeys } from './note-names-queries'
 import { getPortalHostIds } from './portal-ref-queries'
 import { getIncomingPropertyRefs } from './property-ref-queries'
@@ -67,14 +68,28 @@ export interface IncomingReference {
 }
 
 export function getIncomingReferences(db: IndexDb, noteId: string): IncomingReference[] {
-  const wikiLinks: IncomingReference[] = getIncomingLinks(db, noteId).map((link) => ({
-    sourceNoteId: link.sourceId
-  }))
+  const target = getNoteCacheById(db, noteId)
+  // The journal can ask about a day before it has a file or an indexed id.
+  const journalDate = target ? target.date : dateFromJournalId(noteId)
+  const links = getIncomingLinks(db, noteId)
+  if (!target && journalDate && !resolveLinkTargets(db, [journalDate]).get(journalDate)) {
+    links.push(
+      ...db
+        .select()
+        .from(noteLinks)
+        .where(and(isNull(noteLinks.targetId), eq(noteLinks.targetKey, nameKey(journalDate) ?? '')))
+        .all()
+    )
+  }
+  const wikiLinks: IncomingReference[] = links.map((link) => ({ sourceNoteId: link.sourceId }))
 
-  // property_refs is a rebuildable index-DB cache with no FK enforcement, so
-  // a source note can be deleted without its outgoing rows being cleaned up.
-  // Drop those before they turn into phantom backlinks.
-  const propertyLinks: IncomingReference[] = getIncomingPropertyRefs(db, 'note', noteId)
+  // Relations name journal days by date, including days without an entry.
+  const propertyRefs = [
+    ...getIncomingPropertyRefs(db, 'note', noteId),
+    ...(journalDate ? getIncomingPropertyRefs(db, 'journal', journalDate) : [])
+  ]
+  // Drop refs whose source note was deleted without its index rows being cleaned up.
+  const propertyLinks: IncomingReference[] = propertyRefs
     .filter((ref) => noteCacheExists(db, ref.sourceNoteId))
     .map((ref) => ({
       sourceNoteId: ref.sourceNoteId,

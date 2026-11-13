@@ -46,6 +46,7 @@ struct NotePageContent<EmptyBody: View, AfterBacklinks: View>: View {
     @State private var inlineTags: (noteId: String, tags: [String])?
     @Environment(\.requestVaultSync) private var requestVaultSync
     @Environment(\.whiteboards) private var whiteboards
+    @Environment(\.vaultProjects) private var vaultProjects
 
     /// Opens a wiki link's note, for the read view and the editor alike.
     /// Resolved on the tap, then pushed onto the stack the browse list pushes
@@ -93,6 +94,7 @@ struct NotePageContent<EmptyBody: View, AfterBacklinks: View>: View {
         session.relinkTask = taskBridge.relink.map { relink in
             { taskId, target in await relink(taskId, noteId, target) }
         }
+        session.convertTypedChecklist = taskBridge.convertTyped
         // Assigned only when it appears or goes, so drawing does not keep
         // invalidating the toolbar that observes it.
         if (session.attach == nil) == composer.canUpload {
@@ -128,6 +130,7 @@ struct NotePageContent<EmptyBody: View, AfterBacklinks: View>: View {
                     tagColors: model.tagColors,
                     tagSuggestions: model.vaultTagNames,
                     relationCandidates: model.vaultNotes,
+                    projects: vaultProjects,
                     addName: metadata.aliases.isEmpty ? { addingName = true } : nil
                 )
             } else {

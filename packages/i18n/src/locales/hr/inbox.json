@@ -250,7 +250,8 @@
     "failedPlayAudio": "Reprodukcija zvuka nije uspjela",
     "failedLoadAudio": "Učitavanje zvuka nije uspjelo",
     "video": "Video",
-    "unsupportedVideo": "Preglednik ne podržava reprodukciju videozapisa."
+    "unsupportedVideo": "Preglednik ne podržava reprodukciju videozapisa.",
+    "fileOnOtherDevice": "Datoteka je na uređaju koji ju je snimio."
   },
   "reminder": {
     "dataUnavailable": "Podaci podsjetnika nisu dostupni.",

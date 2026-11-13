@@ -504,7 +504,8 @@
       "loading": "Načítavajú sa nastavenia…"
     },
     "groups": {
-      "footer": "Päta"
+      "footer": "Päta",
+      "pastYears": "Minulé roky"
     },
     "template": {
       "label": "Šablóna",
@@ -562,6 +563,14 @@
     "showInSidebar": {
       "label": "Zobraziť v bočnom paneli",
       "description": "Zobraziť priečinok denníka a jeho záznamy v strome poznámok"
+    },
+    "showOnThisDay": {
+      "label": "Zobraziť V tento deň",
+      "description": "Pod záznamom zobraziť rovnaký dátum z minulých rokov"
+    },
+    "allYearsView": {
+      "label": "Zobraziť všetky roky celé",
+      "description": "Večný denník: každý rok daného dátumu na jednej stránke pod záznamom"
     }
   },
   "tasks": {
@@ -1110,7 +1119,16 @@
       "sending": "Odosiela sa kód…"
     },
     "oauth": {
-      "google": "Pokračovať s účtom Google"
+      "google": "Pokračovať s účtom Google",
+      "waiting": "Dokončite prihlásenie cez Google vo svojom prehliadači.",
+      "browserUnavailable": "Prehliadač sa nepodarilo otvoriť.",
+      "manualInstructions": "Skopírujte odkaz na prihlásenie a otvorte ho v prehliadači v tomto počítači. Počas prihlasovania nechajte memrynote otvorené.",
+      "linkLabel": "Odkaz na prihlásenie",
+      "copyLink": "Kopírovať odkaz na prihlásenie",
+      "retryBrowser": "Skúsiť prehliadač otvoriť znova",
+      "copied": "Odkaz na prihlásenie bol skopírovaný.",
+      "copyFailed": "Odkaz na prihlásenie sa nepodarilo skopírovať. Označte ho v poli vyššie a skopírujte.",
+      "cancel": "Použiť iný spôsob prihlásenia"
     },
     "otp": {
       "title": "Zadajte overovací kód",
@@ -1347,6 +1365,7 @@
       "keySaveError": "Nepodarilo sa uložiť kľúč OpenAI"
     },
     "embedding": {
+      "load": "Načítať model",
       "loaded": "Načítané",
       "loading": "Načítava sa",
       "downloadLoad": "Stiahnuť a načítať model",
@@ -1371,7 +1390,8 @@
         "ollama": "Ollama (lokálne)",
         "openai": "OpenAI",
         "anthropic": "Anthropic",
-        "google": "Google Gemini"
+        "google": "Google Gemini",
+        "custom": "Vlastný (kompatibilný s OpenAI)"
       },
       "model": "Model",
       "modelDescription": "Jazykový model na prepisovanie a zhrnutie textu",
@@ -1381,6 +1401,11 @@
       "apiKeyPlaceholder": "Zadajte kľúč API pre {provider}",
       "ollamaUrl": "Ollama URL",
       "ollamaUrlDescription": "Adresa lokálneho servera",
+      "customUrl": "Základná URL",
+      "customUrlDescription": "Ľubovoľný endpoint kompatibilný s OpenAI, napríklad OpenRouter",
+      "customUrlPlaceholder": "https://openrouter.ai/api/v1",
+      "customApiKeyPlaceholder": "Kľúč API (voliteľné)",
+      "customModelPlaceholder": "ID modelu",
       "connection": "Pripojenie",
       "activePort": "Aktívne na porte {port}",
       "notConnected": "Nie je pripojené",
@@ -2033,7 +2058,7 @@
       "subtitle": "Spravujte definície vlastností vo všetkých poznámkach"
     },
     "loading": "Načítavajú sa vlastnosti…",
-    "empty": "Zatiaľ žiadne definície vlastností. Začnite pridaním vlastnosti typu Stav, Výber alebo Viacnásobný výber do ľubovoľnej poznámky.",
+    "empty": "Zatiaľ žiadne vlastnosti. Začnite pridaním vlastnosti do ľubovoľnej poznámky.",
     "filterPlaceholder": "Filtrovať vlastnosti…",
     "noMatch": "Výrazu „{query}“ nezodpovedajú žiadne vlastnosti",
     "summary": "{count, plural, one {# definícia vlastnosti} few {# definície vlastností} other {# definícií vlastností}}",
@@ -2073,6 +2098,14 @@
     },
     "v2": {
       "actionsAria": "Akcie pre {name}"
+    },
+    "usage": {
+      "heading": "Použité v",
+      "noteCount": "{count, plural, one {# poznámka} few {# poznámky} other {# poznámok}}",
+      "mismatchCount": "Hodnoty nezodpovedajúce typu {type}: {count}",
+      "mismatchNote": "Nezodpovedá typu {type}",
+      "none": "Túto vlastnosť nepoužíva žiadna poznámka",
+      "loadFailed": "Poznámky s touto vlastnosťou sa nepodarilo načítať"
     }
   },
   "commandLine": {
@@ -2408,7 +2441,6 @@
   "phaseI": {
     "errors": {
       "failedToUpdateTagColor": "Nepodarilo sa aktualizovať farbu značky",
-      "googleSignInFailed": "Prihlásenie cez Google zlyhalo",
       "failedToSendVerificationCode": "Nepodarilo sa odoslať overovací kód",
       "invalidVerificationCode": "Neplatný overovací kód",
       "accountSetupFailed": "Nepodarilo sa nastaviť účet",
@@ -2435,7 +2467,8 @@
       "failedToCloseVault": "Nepodarilo sa zavrieť trezor",
       "failedToSwitchVault": "Nepodarilo sa prepnúť trezor",
       "failedToUpdateConfig": "Nepodarilo sa aktualizovať konfiguráciu",
-      "failedToReindex": "Nepodarilo sa preindexovať"
+      "failedToReindex": "Nepodarilo sa preindexovať",
+      "googleSignInFailed": "Prihlásenie cez Google zlyhalo"
     }
   },
   "agentMcp": {
@@ -2465,7 +2498,17 @@
       "running": "Beží",
       "tokenHint": "Len pre toto spustenie",
       "copy": "Kopírovať",
-      "rotate": "Obnoviť"
+      "rotate": "Obnoviť",
+      "clientConfig": {
+        "label": "Konfigurácia klienta",
+        "hint": "Kopíruje sa s URL a tokenom tohto spustenia",
+        "copy": "Kopírovať konfiguráciu {client}"
+      },
+      "notes": {
+        "readOnly": "Externí klienti môžu iba čítať. Zapisovacie nástroje vracajú PERMISSION_DENIED, preto zapisujte cez Agent Chat alebo príkazový riadok memrynote.",
+        "restart": "URL a token sa menia, keď sa memrynote reštartuje, prepne trezor alebo obnoví token. Zakaždým aktualizujte konfiguráciu klienta a klienta reštartujte.",
+        "docs": "Sprievodca nastavením"
+      }
     }
   },
   "agentProviders": {

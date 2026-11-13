@@ -23,7 +23,10 @@ use crate::vault_env::Env;
 const NOTE: &str = "---\ntags: [x]\n---\nThe body.\n";
 
 fn lock(e: &Env, kind: TargetKind, target: &str) {
-    e.core().locks().set(kind, target, true).unwrap();
+    e.core()
+        .locks()
+        .set(kind, target, true, "device-a")
+        .unwrap();
 }
 
 fn save(id: &str, content: &str) -> NoteUpdateInput {
@@ -69,7 +72,7 @@ fn a_save_of_a_locked_note_or_of_one_in_a_locked_folder_is_refused_and_changes_n
 
     e.core()
         .locks()
-        .set(TargetKind::Note, &plan, false)
+        .set(TargetKind::Note, &plan, false, "device-a")
         .unwrap();
     notes.update(&open, save(&plan, "Rewritten.\n")).unwrap();
     assert_eq!(e.body(&plan), "Rewritten.");

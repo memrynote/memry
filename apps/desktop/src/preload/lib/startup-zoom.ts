@@ -1,4 +1,5 @@
-import { webFrame } from 'electron'
+import { ipcRenderer, webFrame } from 'electron'
+import { AppChannels } from '@memry/contracts/ipc-channels'
 import { clampZoomFactor, ZOOM_FACTOR_DEFAULT } from '@memry/contracts/app-zoom'
 
 export const ZOOM_STORAGE_KEY = 'memry-zoom-factor'
@@ -22,6 +23,12 @@ export function applyZoomFactor(factor: number): void {
     webFrame.setZoomFactor(zoomFactor)
   } catch {
     // webFrame is absent outside a real renderer (tests, restricted contexts)
+  }
+
+  // The Windows caption buttons are native and ignore page zoom, so main resizes
+  // them to the zoomed title row (main/title-bar-overlay.ts).
+  if (process.platform === 'win32') {
+    ipcRenderer.send(AppChannels.send.TITLE_BAR_ZOOM_FACTOR, zoomFactor)
   }
 
   try {

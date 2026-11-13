@@ -90,6 +90,7 @@ struct GlobalSearchSheet: View {
                             SearchHitRow(hit: hit)
                         } else {
                             Button {
+                                Telemetry.shared.track(.searchResultOpened, surface: .search, action: "opened", objectType: "note")
                                 dismiss()
                                 openNote(hit.id)
                             } label: {
@@ -105,6 +106,7 @@ struct GlobalSearchSheet: View {
                         Section {
                             ForEach(tasks, id: \.id) { hit in
                                 Button {
+                                    Telemetry.shared.track(.searchResultOpened, surface: .search, action: "opened", objectType: "task")
                                     dismiss()
                                     openTask(hit.id)
                                 } label: {

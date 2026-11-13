@@ -504,7 +504,8 @@
       "loading": "Nilo-load ang mga setting…"
     },
     "groups": {
-      "footer": "Footer"
+      "footer": "Footer",
+      "pastYears": "Mga nakaraang taon"
     },
     "template": {
       "label": "Template",
@@ -562,6 +563,14 @@
     "showInSidebar": {
       "label": "Ipakita sa sidebar",
       "description": "Ipakita ang folder ng talaarawan at ang mga entry nito sa puno ng mga tala"
+    },
+    "showOnThisDay": {
+      "label": "Ipakita ang Sa araw na ito",
+      "description": "Ilista ang parehong petsa mula sa mga nakaraang taon sa ilalim ng entry"
+    },
+    "allYearsView": {
+      "label": "Ipakita nang buo ang lahat ng taon",
+      "description": "Ang Walang-hanggang Talaarawan: bawat taon ng petsa sa iisang pahina, sa ilalim ng entry"
     }
   },
   "tasks": {
@@ -1110,7 +1119,16 @@
       "sending": "Nagpapadala ng code…"
     },
     "oauth": {
-      "google": "Magpatuloy gamit ang Google"
+      "google": "Magpatuloy gamit ang Google",
+      "waiting": "Tapusin ang pag-sign in gamit ang Google sa browser mo.",
+      "browserUnavailable": "Hindi mabuksan ang browser mo.",
+      "manualInstructions": "Kopyahin ang link sa pag-sign in at buksan ito sa browser sa computer na ito. Panatilihing bukas ang memrynote habang nagsa-sign in ka.",
+      "linkLabel": "Link sa pag-sign in",
+      "copyLink": "Kopyahin ang link sa pag-sign in",
+      "retryBrowser": "Subukan ulit buksan ang browser",
+      "copied": "Nakopya ang link sa pag-sign in.",
+      "copyFailed": "Hindi nakopya ang link sa pag-sign in. Piliin at kopyahin ito mula sa field sa itaas.",
+      "cancel": "Gumamit ng ibang paraan ng pag-sign in"
     },
     "otp": {
       "title": "Ilagay ang verification code",
@@ -1347,6 +1365,7 @@
       "keySaveError": "Hindi ma-save ang OpenAI key"
     },
     "embedding": {
+      "load": "I-load ang modelo",
       "loaded": "Na-load",
       "loading": "Naglo-load",
       "downloadLoad": "I-download at i-load ang modelo",
@@ -1371,7 +1390,8 @@
         "ollama": "Ollama (Lokal)",
         "openai": "OpenAI",
         "anthropic": "Anthropic",
-        "google": "Google Gemini"
+        "google": "Google Gemini",
+        "custom": "Custom (tugma sa OpenAI)"
       },
       "model": "Modelo",
       "modelDescription": "Modelo ng wika para sa muling pagsulat at pagbubuod",
@@ -1381,6 +1401,11 @@
       "apiKeyPlaceholder": "Ilagay ang API key ng {provider}",
       "ollamaUrl": "Ollama URL",
       "ollamaUrlDescription": "Lokal na address ng server",
+      "customUrl": "Base URL",
+      "customUrlDescription": "Anumang endpoint na tugma sa OpenAI, gaya ng OpenRouter",
+      "customUrlPlaceholder": "https://openrouter.ai/api/v1",
+      "customApiKeyPlaceholder": "API key (opsyonal)",
+      "customModelPlaceholder": "Model ID",
       "connection": "Koneksyon",
       "activePort": "Aktibo sa port {port}",
       "notConnected": "Hindi nakakonekta",
@@ -2033,7 +2058,7 @@
       "subtitle": "Pamahalaan ang mga kahulugan ng property sa lahat ng tala"
     },
     "loading": "Nilo-load ang mga property…",
-    "empty": "Wala pang kahulugan ng property. Magdagdag ng property na Katayuan, Isang pagpipilian, o Maramihang pagpipilian sa anumang tala para makapagsimula.",
+    "empty": "Wala pang property. Magdagdag ng property sa anumang tala para makapagsimula.",
     "filterPlaceholder": "I-filter ang mga property…",
     "noMatch": "Walang property na tumutugma sa “{query}”",
     "summary": "{count, plural, one {# kahulugan ng property} other {# kahulugan ng property}}",
@@ -2073,6 +2098,14 @@
     },
     "v2": {
       "actionsAria": "Mga aksyon para sa {name}"
+    },
+    "usage": {
+      "heading": "Ginagamit sa",
+      "noteCount": "{count, plural, one {# tala} other {# tala}}",
+      "mismatchCount": "Mga value na hindi tugma sa {type}: {count}",
+      "mismatchNote": "Hindi tugma sa {type}",
+      "none": "Walang talang gumagamit ng property na ito",
+      "loadFailed": "Hindi ma-load ang mga talang gumagamit ng property na ito"
     }
   },
   "commandLine": {
@@ -2408,7 +2441,6 @@
   "phaseI": {
     "errors": {
       "failedToUpdateTagColor": "Hindi ma-update ang kulay ng tag",
-      "googleSignInFailed": "Nabigo ang pag-sign in sa Google",
       "failedToSendVerificationCode": "Hindi maipadala ang verification code",
       "invalidVerificationCode": "Di-wastong verification code",
       "accountSetupFailed": "Nabigo ang pag-setup ng account",
@@ -2435,7 +2467,8 @@
       "failedToCloseVault": "Hindi maisara ang vault",
       "failedToSwitchVault": "Hindi makalipat ng vault",
       "failedToUpdateConfig": "Hindi ma-update ang config",
-      "failedToReindex": "Hindi ma-index ulit"
+      "failedToReindex": "Hindi ma-index ulit",
+      "googleSignInFailed": "Nabigo ang pag-sign in sa Google"
     }
   },
   "agentMcp": {
@@ -2465,7 +2498,17 @@
       "running": "Tumatakbo",
       "tokenHint": "Para sa pagbukas na ito lang",
       "copy": "Kopyahin",
-      "rotate": "I-rotate"
+      "rotate": "I-rotate",
+      "clientConfig": {
+        "label": "Config ng client",
+        "hint": "Kinokopya kasama ang URL at token ng launch na ito",
+        "copy": "Kopyahin ang config ng {client}"
+      },
+      "notes": {
+        "readOnly": "Pagbasa lang ang kaya ng mga external client. Nagbabalik ng PERMISSION_DENIED ang mga write tool, kaya magsulat sa pamamagitan ng Agent Chat o ng memrynote command line.",
+        "restart": "Nagbabago ang URL at token kapag nag-restart ang memrynote, nagpalit ng vault, o nag-rotate ng token. I-update ang config ng client sa bawat pagkakataon, saka i-restart ang client.",
+        "docs": "Gabay sa pag-setup"
+      }
     }
   },
   "agentProviders": {

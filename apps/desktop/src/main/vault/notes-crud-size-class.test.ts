@@ -20,7 +20,8 @@ vi.mock('@main/database/queries/notes', () => ({
   getNoteTags: vi.fn(() => []),
   ensureTagDefinitions: vi.fn(),
   getNotePropertiesAsRecord: vi.fn(() => ({})),
-  resolveLinkTarget: vi.fn()
+  resolveLinkTarget: vi.fn(),
+  updateNoteCache: vi.fn()
 }))
 
 vi.mock('./file-ops', () => ({

@@ -504,7 +504,8 @@
       "loading": "Instellingen laden…"
     },
     "groups": {
-      "footer": "Voettekst"
+      "footer": "Voettekst",
+      "pastYears": "Afgelopen jaren"
     },
     "template": {
       "label": "Sjabloon",
@@ -562,6 +563,14 @@
     "showInSidebar": {
       "label": "Tonen in zijbalk",
       "description": "Toon de dagboekmap en de bijbehorende items in de notitieboom"
+    },
+    "showOnThisDay": {
+      "label": "Op deze dag tonen",
+      "description": "Dezelfde datum uit afgelopen jaren onder het bericht tonen"
+    },
+    "allYearsView": {
+      "label": "Alle jaren volledig tonen",
+      "description": "Het eeuwige dagboek: elk jaar van de datum op één pagina, onder het bericht"
     }
   },
   "tasks": {
@@ -1110,7 +1119,16 @@
       "sending": "Code verzenden…"
     },
     "oauth": {
-      "google": "Doorgaan met Google"
+      "google": "Doorgaan met Google",
+      "waiting": "Rond het inloggen met Google af in je browser.",
+      "browserUnavailable": "Kan je browser niet openen.",
+      "manualInstructions": "Kopieer de inloglink en open hem in een browser op deze computer. Houd memrynote open terwijl je inlogt.",
+      "linkLabel": "Inloglink",
+      "copyLink": "Inloglink kopiëren",
+      "retryBrowser": "Browser opnieuw proberen te openen",
+      "copied": "Inloglink gekopieerd.",
+      "copyFailed": "Kan de inloglink niet kopiëren. Selecteer en kopieer hem uit het veld hierboven.",
+      "cancel": "Een andere inlogmethode gebruiken"
     },
     "otp": {
       "title": "Voer de verificatiecode in",
@@ -1347,6 +1365,7 @@
       "keySaveError": "Kan de OpenAI-sleutel niet opslaan"
     },
     "embedding": {
+      "load": "Model laden",
       "loaded": "Geladen",
       "loading": "Laden",
       "downloadLoad": "Model downloaden en laden",
@@ -1371,7 +1390,8 @@
         "ollama": "Ollama (lokaal)",
         "openai": "OpenAI",
         "anthropic": "Anthropic",
-        "google": "Google Gemini"
+        "google": "Google Gemini",
+        "custom": "Aangepast (OpenAI-compatibel)"
       },
       "model": "Model",
       "modelDescription": "Taalmodel voor herschrijven en samenvatten",
@@ -1381,6 +1401,11 @@
       "apiKeyPlaceholder": "API-sleutel voor {provider} invoeren",
       "ollamaUrl": "Ollama-URL",
       "ollamaUrlDescription": "Lokaal serveradres",
+      "customUrl": "Basis-URL",
+      "customUrlDescription": "Elk OpenAI-compatibel endpoint, zoals OpenRouter",
+      "customUrlPlaceholder": "https://openrouter.ai/api/v1",
+      "customApiKeyPlaceholder": "API-sleutel (optioneel)",
+      "customModelPlaceholder": "Model-ID",
       "connection": "Verbinding",
       "activePort": "Actief op poort {port}",
       "notConnected": "Niet verbonden",
@@ -2033,7 +2058,7 @@
       "subtitle": "Beheer eigenschapsdefinities voor alle notities"
     },
     "loading": "Eigenschappen laden…",
-    "empty": "Nog geen eigenschapsdefinities. Voeg een eigenschap van het type Status, Selectie of Meervoudige selectie toe aan een notitie om te beginnen.",
+    "empty": "Nog geen eigenschappen. Voeg een eigenschap toe aan een notitie om te beginnen.",
     "filterPlaceholder": "Eigenschappen filteren…",
     "noMatch": "Geen eigenschappen die overeenkomen met “{query}”",
     "summary": "{count, plural, one {# eigenschapsdefinitie} other {# eigenschapsdefinities}}",
@@ -2073,6 +2098,14 @@
     },
     "v2": {
       "actionsAria": "Acties voor {name}"
+    },
+    "usage": {
+      "heading": "Gebruikt in",
+      "noteCount": "{count, plural, one {# notitie} other {# notities}}",
+      "mismatchCount": "Waarden die niet bij {type} passen: {count}",
+      "mismatchNote": "Past niet bij {type}",
+      "none": "Geen enkele notitie gebruikt deze eigenschap",
+      "loadFailed": "Kan de notities met deze eigenschap niet laden"
     }
   },
   "commandLine": {
@@ -2408,7 +2441,6 @@
   "phaseI": {
     "errors": {
       "failedToUpdateTagColor": "Kan de tagkleur niet bijwerken",
-      "googleSignInFailed": "Inloggen met Google mislukt",
       "failedToSendVerificationCode": "Kan de verificatiecode niet verzenden",
       "invalidVerificationCode": "Ongeldige verificatiecode",
       "accountSetupFailed": "Accountconfiguratie mislukt",
@@ -2435,7 +2467,8 @@
       "failedToCloseVault": "Kan de kluis niet sluiten",
       "failedToSwitchVault": "Kan niet van kluis wisselen",
       "failedToUpdateConfig": "Kan de configuratie niet bijwerken",
-      "failedToReindex": "Opnieuw indexeren is mislukt"
+      "failedToReindex": "Opnieuw indexeren is mislukt",
+      "googleSignInFailed": "Inloggen met Google mislukt"
     }
   },
   "agentMcp": {
@@ -2465,7 +2498,17 @@
       "running": "Actief",
       "tokenHint": "Alleen voor deze sessie",
       "copy": "Kopiëren",
-      "rotate": "Vernieuwen"
+      "rotate": "Vernieuwen",
+      "clientConfig": {
+        "label": "Clientconfiguratie",
+        "hint": "Gekopieerd met de URL en het token van deze start",
+        "copy": "{client}-configuratie kopiëren"
+      },
+      "notes": {
+        "readOnly": "Externe clients kunnen alleen lezen. Schrijftools geven PERMISSION_DENIED terug; schrijf via Agent Chat of de memrynote-opdrachtregel.",
+        "restart": "De URL en het token veranderen wanneer memrynote herstart, van kluis wisselt of het token vernieuwt. Werk dan de clientconfiguratie bij en herstart de client.",
+        "docs": "Installatiehandleiding"
+      }
     }
   },
   "agentProviders": {

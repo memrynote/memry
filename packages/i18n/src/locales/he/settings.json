@@ -504,7 +504,8 @@
       "loading": "טוען הגדרות…"
     },
     "groups": {
-      "footer": "כותרת תחתונה"
+      "footer": "כותרת תחתונה",
+      "pastYears": "שנים קודמות"
     },
     "template": {
       "label": "תבנית",
@@ -562,6 +563,14 @@
     "showInSidebar": {
       "label": "הצגה בסרגל הצד",
       "description": "הצגת תיקיית היומן והרשומות שלה בעץ הפתקים"
+    },
+    "showOnThisDay": {
+      "label": "הצגת \"ביום הזה\"",
+      "description": "הצגת אותו תאריך משנים קודמות מתחת לרשומה"
+    },
+    "allYearsView": {
+      "label": "הצגת כל השנים במלואן",
+      "description": "היומן הנצחי: כל השנים של התאריך בעמוד אחד, מתחת לרשומה"
     }
   },
   "tasks": {
@@ -1110,7 +1119,16 @@
       "sending": "שולח קוד…"
     },
     "oauth": {
-      "google": "התחברות עם Google"
+      "google": "התחברות עם Google",
+      "waiting": "סיימו להתחבר עם Google בדפדפן שלכם.",
+      "browserUnavailable": "לא ניתן היה לפתוח את הדפדפן שלך.",
+      "manualInstructions": "העתיקו את קישור ההתחברות ופתחו אותו בדפדפן במחשב הזה. השאירו את memrynote פתוח בזמן ההתחברות.",
+      "linkLabel": "קישור התחברות",
+      "copyLink": "העתקת קישור התחברות",
+      "retryBrowser": "ניסיון נוסף לפתוח את הדפדפן",
+      "copied": "קישור ההתחברות הועתק.",
+      "copyFailed": "לא ניתן היה להעתיק את קישור ההתחברות. אפשר לסמן אותו בשדה שמעל ולהעתיק.",
+      "cancel": "שימוש בשיטת התחברות אחרת"
     },
     "otp": {
       "title": "הזנת קוד אימות",
@@ -1347,6 +1365,7 @@
       "keySaveError": "שמירת מפתח OpenAI נכשלה"
     },
     "embedding": {
+      "load": "טעינת מודל",
       "loaded": "טעון",
       "loading": "טוען",
       "downloadLoad": "הורדה וטעינה של המודל",
@@ -1371,7 +1390,8 @@
         "ollama": "Ollama (מקומי)",
         "openai": "OpenAI",
         "anthropic": "Anthropic",
-        "google": "Google Gemini"
+        "google": "Google Gemini",
+        "custom": "מותאם אישית (תואם OpenAI)"
       },
       "model": "מודל",
       "modelDescription": "מודל שפה לשכתוב וסיכום",
@@ -1381,6 +1401,11 @@
       "apiKeyPlaceholder": "הזנת מפתח API של {provider}",
       "ollamaUrl": "כתובת URL של Ollama",
       "ollamaUrlDescription": "כתובת שרת מקומי",
+      "customUrl": "כתובת URL בסיסית",
+      "customUrlDescription": "כל נקודת קצה תואמת OpenAI, כמו OpenRouter",
+      "customUrlPlaceholder": "https://openrouter.ai/api/v1",
+      "customApiKeyPlaceholder": "מפתח API (אופציונלי)",
+      "customModelPlaceholder": "מזהה מודל",
       "connection": "חיבור",
       "activePort": "פעיל ביציאה {port}",
       "notConnected": "לא מחובר",
@@ -2033,7 +2058,7 @@
       "subtitle": "ניהול הגדרות המאפיינים בכל הפתקים"
     },
     "loading": "טוען מאפיינים…",
-    "empty": "עדיין אין הגדרות מאפיינים. כדי להתחיל, אפשר להוסיף מאפיין מסוג סטטוס, בחירה או בחירה מרובה לפתק כלשהו.",
+    "empty": "עדיין אין מאפיינים. כדי להתחיל, אפשר להוסיף מאפיין לפתק כלשהו.",
     "filterPlaceholder": "סינון מאפיינים…",
     "noMatch": "אין מאפיינים שתואמים ל-\"{query}\"",
     "summary": "{count, plural, one {הגדרת מאפיין אחת} other {# הגדרות מאפיינים}}",
@@ -2073,6 +2098,14 @@
     },
     "v2": {
       "actionsAria": "פעולות עבור {name}"
+    },
+    "usage": {
+      "heading": "משמש בפתקים",
+      "noteCount": "{count, plural, one {פתק אחד} other {# פתקים}}",
+      "mismatchCount": "ערכים שלא תואמים ל{type}: {count}",
+      "mismatchNote": "לא תואם ל{type}",
+      "none": "אף פתק לא משתמש במאפיין הזה",
+      "loadFailed": "לא ניתן לטעון את הפתקים שמשתמשים במאפיין הזה"
     }
   },
   "commandLine": {
@@ -2408,7 +2441,6 @@
   "phaseI": {
     "errors": {
       "failedToUpdateTagColor": "עדכון צבע התגית נכשל",
-      "googleSignInFailed": "ההתחברות עם Google נכשלה",
       "failedToSendVerificationCode": "שליחת קוד האימות נכשלה",
       "invalidVerificationCode": "קוד אימות לא חוקי",
       "accountSetupFailed": "הגדרת החשבון נכשלה",
@@ -2435,7 +2467,8 @@
       "failedToCloseVault": "סגירת הכספת נכשלה",
       "failedToSwitchVault": "החלפת כספת נכשלה",
       "failedToUpdateConfig": "עדכון התצורה נכשל",
-      "failedToReindex": "האינדוקס מחדש נכשל"
+      "failedToReindex": "האינדוקס מחדש נכשל",
+      "googleSignInFailed": "ההתחברות עם Google נכשלה"
     }
   },
   "agentMcp": {
@@ -2465,7 +2498,17 @@
       "running": "פועל",
       "tokenHint": "להפעלה הזו בלבד",
       "copy": "העתקה",
-      "rotate": "החלפה"
+      "rotate": "החלפה",
+      "clientConfig": {
+        "label": "תצורת לקוח",
+        "hint": "מועתק עם כתובת ה-URL והאסימון של ההפעלה הנוכחית",
+        "copy": "העתקת תצורת {client}"
+      },
+      "notes": {
+        "readOnly": "לקוחות חיצוניים יכולים רק לקרוא. כלי כתיבה מחזירים PERMISSION_DENIED, לכן יש לכתוב דרך Agent Chat או שורת הפקודה של memrynote.",
+        "restart": "כתובת ה-URL והאסימון משתנים כש-memrynote מופעל מחדש, מחליף כספת או מחדש את האסימון. יש לעדכן בכל פעם את תצורת הלקוח ולהפעיל אותו מחדש.",
+        "docs": "מדריך הגדרה"
+      }
     }
   },
   "agentProviders": {

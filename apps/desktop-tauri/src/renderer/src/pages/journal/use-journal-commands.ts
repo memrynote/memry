@@ -91,6 +91,10 @@ export function useJournalCommands(input: JournalCommandInput): {
     'journal.previous': item(t(stepLabel[viewType][0]), input.goPrevious, true),
     'journal.next': item(t(stepLabel[viewType][1]), input.goNext, true),
     'journal.today': item(t('action.goToToday'), input.goToday, !(isDay && input.isToday)),
+    // main's past-years view is not ported to the Tauri journal yet, so its commands stay off.
+    'journal.previousYear': item(t('pastYears.previousYear'), () => {}, false),
+    'journal.nextYear': item(t('pastYears.nextYear'), () => {}, false),
+    'journal.toggleAllYears': item(t('pastYears.showAll'), () => {}, false),
     'journal.find': item(tNotes('editor.toolbar.find'), input.openFind),
     'journal.localGraph': item(
       input.isLocalGraphOpen

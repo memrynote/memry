@@ -23,8 +23,7 @@ import {
   extractFolderFromPath,
   getParentFolder,
   isDescendantOrSelf,
-  getNotesInFolder,
-  getFoldersInParent,
+  planLevelReorder,
   type TreeStructure
 } from '@/components/notes-tree-utils'
 import type { MoveOperation, DropPosition } from '@/components/kibo-ui/tree'
@@ -90,6 +89,43 @@ function dropItemsInsideSelectedFolders(
   })
 }
 
+/** A paired note and the path it takes when its folder moves. */
+interface PairedNoteMove {
+  note: NoteListItem
+  newPath: string
+}
+
+/**
+ * Where a folder's paired note goes when the folder moves from `oldPath` to
+ * `newPath`, or null when the folder has none. The note takes the folder's new
+ * name and parent, so the sidebar keeps drawing the two as one row.
+ */
+function pairedNoteMove(
+  pairedNotes: Map<string, NoteListItem>,
+  oldPath: string,
+  newPath: string
+): PairedNoteMove | null {
+  const note = pairedNotes.get(oldPath)
+  if (!note) return null
+  return { note, newPath: `${newPath}${note.path.slice(note.path.lastIndexOf('.'))}` }
+}
+
+/**
+ * Another note already holds the paired note's new path. Main would save the
+ * paired note as `X 1.md` instead and split the row in two. Compared without
+ * case, the way the default macOS and Windows file systems compare names.
+ */
+function isPairedNotePathTaken(
+  noteMap: Map<string, NoteListItem>,
+  { note, newPath }: PairedNoteMove
+): boolean {
+  const target = newPath.toLowerCase()
+  for (const other of noteMap.values()) {
+    if (other.id !== note.id && other.path.toLowerCase() === target) return true
+  }
+  return false
+}
+
 function selectionParents(notes: NoteListItem[], folderPaths: string[]): string[] {
   return [
     ...notes.map((note) => extractFolderFromPath(note.path)),
@@ -123,6 +159,11 @@ export interface NoteTreeActionsDeps {
   selectedIds: string[]
   setSelectedIds: React.Dispatch<React.SetStateAction<string[]>>
   computeTargetFolder: (selectedIds: string[]) => string
+  /**
+   * Folder path to the note the sidebar draws on that folder's row. Opening,
+   * renaming, moving, and deleting the row act on both.
+   */
+  pairedNotes: Map<string, NoteListItem>
   expandFolderPath: (path: string) => void
   /** Carry a folder's expanded state over to the path it just moved to. */
   renameFolderPath: (oldPath: string, newPath: string) => void
@@ -194,9 +235,11 @@ export function useNoteTreeActions(deps: NoteTreeActionsDeps) {
           moves.push({ note, newPath: `${newPath}/${note.path.slice(prefix.length)}` })
         }
       }
+      const paired = pairedNoteMove(deps.pairedNotes, oldPath, newPath)
+      if (paired) moves.push(paired)
       return confirmJournalChange(moves)
     },
-    [vaultConfig, deps.noteMap, confirmJournalChange]
+    [vaultConfig, deps.noteMap, deps.pairedNotes, confirmJournalChange]
   )
 
   const [isCreating, setIsCreating] = useState(false)
@@ -236,11 +279,14 @@ export function useNoteTreeActions(deps: NoteTreeActionsDeps) {
     (ids: string[]) => {
       deps.setSelectedIds(ids)
 
-      const noteIds = ids.filter((id) => !id.startsWith('folder-') && id !== 'notes-root')
-      if (noteIds.length === 1) {
-        const note = deps.noteMap.get(noteIds[0])
-        if (note) openPage(noteTabData(note))
-      }
+      // A folder row with a paired note opens that note, like a note row does.
+      const notes = ids.flatMap((id) => {
+        const note = id.startsWith('folder-')
+          ? deps.pairedNotes.get(id.slice('folder-'.length))
+          : deps.noteMap.get(id)
+        return note ? [note] : []
+      })
+      if (notes.length === 1) openPage(noteTabData(notes[0]))
     },
     [deps, openPage]
   )
@@ -547,6 +593,43 @@ export function useNoteTreeActions(deps: NoteTreeActionsDeps) {
     ])
   }, [deps, queryClient])
 
+  // ---- Paired notes ----
+
+  /**
+   * The paired note's move for a folder moving from `oldPath` to `newPath`.
+   * `undefined` means the folder is not paired, null that the note's new name
+   * is taken: the caller stops before touching the folder, and the user is told.
+   */
+  const planPairedNoteMove = useCallback(
+    (oldPath: string, newPath: string): PairedNoteMove | null | undefined => {
+      const move = pairedNoteMove(deps.pairedNotes, oldPath, newPath)
+      if (!move) return undefined
+      if (!isPairedNotePathTaken(deps.noteMap, move)) return move
+      toast.error(
+        getI18n().getFixedT(null, 'notes')('tree.toast.pairedNoteNameTaken', {
+          name: getDisplayName(move.newPath)
+        })
+      )
+      return null
+    },
+    [deps.pairedNotes, deps.noteMap]
+  )
+
+  /** Move and rename a paired note after its folder, so the two stay one row. */
+  const carryPairedNote = useCallback(
+    async ({ note, newPath }: PairedNoteMove) => {
+      const newFolder = extractFolderFromPath(newPath)
+      if (extractFolderFromPath(note.path) !== newFolder) {
+        await deps.mutations.moveNote.mutateAsync({ id: note.id, newFolder })
+      }
+      const newName = getDisplayName(newPath)
+      if (getDisplayName(note.path) !== newName) {
+        await deps.mutations.renameNote.mutateAsync({ id: note.id, newTitle: newName })
+      }
+    },
+    [deps.mutations.moveNote, deps.mutations.renameNote]
+  )
+
   // ---- Folder rename ----
 
   const handleRenameFolderClick = useCallback((folderPath: string) => {
@@ -577,9 +660,12 @@ export function useNoteTreeActions(deps: NoteTreeActionsDeps) {
           ? `${parentPath}/${folderRenameValue.trim()}`
           : folderRenameValue.trim()
 
+        const pairedMove = planPairedNoteMove(oldPath, newPath)
+        if (pairedMove === null) return
         if (!(await confirmFolderJournalChange(oldPath, newPath))) return
         await notesService.renameFolder(oldPath, newPath)
         deps.renameFolderPath(oldPath, newPath)
+        if (pairedMove) await carryPairedNote(pairedMove)
         await refreshFolderTree()
       } catch (err) {
         trackRendererError('folder_rename_failed', err)
@@ -595,7 +681,15 @@ export function useNoteTreeActions(deps: NoteTreeActionsDeps) {
         setRenamingFolderPath(null)
       }
     },
-    [folderRenameValue, isFolderRenaming, deps, refreshFolderTree, confirmFolderJournalChange]
+    [
+      folderRenameValue,
+      isFolderRenaming,
+      deps,
+      refreshFolderTree,
+      confirmFolderJournalChange,
+      planPairedNoteMove,
+      carryPairedNote
+    ]
   )
 
   const handleFolderRenameCancel = useCallback(() => {
@@ -611,21 +705,34 @@ export function useNoteTreeActions(deps: NoteTreeActionsDeps) {
     setIsDeleteDialogOpen(true)
   }, [])
 
-  const handleDeleteFolderClick = useCallback((folderPath: string) => {
-    setNotesToDelete([])
-    setFoldersToDelete([folderPath])
-    setIsDeleteDialogOpen(true)
-  }, [])
+  // A folder row goes with the note paired onto it, and the dialog lists both.
+  const pairedNotesOf = useCallback(
+    (folderPaths: string[]) =>
+      folderPaths.flatMap((path) => {
+        const note = deps.pairedNotes.get(path)
+        return note ? [note] : []
+      }),
+    [deps.pairedNotes]
+  )
+
+  const handleDeleteFolderClick = useCallback(
+    (folderPath: string) => {
+      setNotesToDelete(pairedNotesOf([folderPath]))
+      setFoldersToDelete([folderPath])
+      setIsDeleteDialogOpen(true)
+    },
+    [pairedNotesOf]
+  )
 
   const handleBulkDelete = useCallback(() => {
     const { notes: selectedNotes, folderPaths } = partitionSelection(deps.selectedIds, deps.noteMap)
 
     if (selectedNotes.length > 0 || folderPaths.length > 0) {
-      setNotesToDelete(selectedNotes)
+      setNotesToDelete([...selectedNotes, ...pairedNotesOf(folderPaths)])
       setFoldersToDelete(folderPaths)
       setIsDeleteDialogOpen(true)
     }
-  }, [deps.selectedIds, deps.noteMap])
+  }, [deps.selectedIds, deps.noteMap, pairedNotesOf])
 
   const handleDeleteConfirm = useCallback(
     async (taskIds: string[] = []) => {
@@ -849,11 +956,14 @@ export function useNoteTreeActions(deps: NoteTreeActionsDeps) {
       }
 
       if (newPath === sourceFolderPath) return false
+      const pairedMove = planPairedNoteMove(sourceFolderPath, newPath)
+      if (pairedMove === null) return false
       if (!(await confirmFolderJournalChange(sourceFolderPath, newPath))) return false
 
       try {
         await notesService.renameFolder(sourceFolderPath, newPath)
         deps.renameFolderPath(sourceFolderPath, newPath)
+        if (pairedMove) await carryPairedNote(pairedMove)
         await refreshFolderTree()
         return true
       } catch (err) {
@@ -870,7 +980,7 @@ export function useNoteTreeActions(deps: NoteTreeActionsDeps) {
         return false
       }
     },
-    [deps, refreshFolderTree, confirmFolderJournalChange]
+    [deps, refreshFolderTree, confirmFolderJournalChange, planPairedNoteMove, carryPairedNote]
   )
 
   // Reordering writes a stored position, and only the manual mode reads one.
@@ -880,89 +990,35 @@ export function useNoteTreeActions(deps: NoteTreeActionsDeps) {
   const { mode: collectionsSortMode } = useSidebarSortMode('collections')
   const reorderAllowed = isReorderable(collectionsSortMode)
 
-  const handleReorderInFolder = useCallback(
-    async (
-      folderPath: string,
-      draggedNoteId: string,
-      targetNoteId: string,
-      position: DropPosition
-    ): Promise<boolean> => {
+  /**
+   * Reorder one level when a single note or folder is dropped before or after
+   * a sibling of either kind. False when the drop is not a reorder, so the
+   * caller treats it as a move.
+   */
+  const handleReorderInLevel = useCallback(
+    async (draggedId: string, targetId: string, position: DropPosition): Promise<boolean> => {
       if (!reorderAllowed) return false
-      const folderNotes = getNotesInFolder(deps.tree, folderPath)
-      if (folderNotes.length < 2) return false
+      const pathOf = (id: string): string | undefined =>
+        id.startsWith('folder-') ? id.slice('folder-'.length) : deps.noteMap.get(id)?.path
+      const draggedPath = pathOf(draggedId)
+      const targetPath = pathOf(targetId)
+      if (!draggedPath || !targetPath) return false
 
-      const draggedNote = deps.noteMap.get(draggedNoteId)
-      const targetNote = deps.noteMap.get(targetNoteId)
-      if (!draggedNote || !targetNote) return false
+      const parentPath = getParentFolder(draggedPath)
+      if (getParentFolder(targetPath) !== parentPath) return false
 
-      const currentPaths = folderNotes.map((n) => n.path)
-      const draggedIndex = currentPaths.indexOf(draggedNote.path)
-      const targetIndex = currentPaths.indexOf(targetNote.path)
-
-      if (draggedIndex === -1 || targetIndex === -1) return false
-
-      const newPaths = [...currentPaths]
-      newPaths.splice(draggedIndex, 1)
-
-      let insertIndex = targetIndex
-      if (draggedIndex < targetIndex) insertIndex = targetIndex - 1
-      if (position === 'after') insertIndex += 1
-
-      newPaths.splice(insertIndex, 0, draggedNote.path)
-
-      if (newPaths.every((p, i) => p === currentPaths[i])) return false
+      const paths = planLevelReorder(deps.tree, parentPath, draggedPath, targetPath, position)
+      if (!paths) return false
 
       try {
-        await notesService.reorder(folderPath, newPaths)
+        await notesService.reorder(parentPath, paths)
         const result = await notesService.getAllPositions()
         if (result.success) {
           deps.setNotePositions(result.positions)
         }
         return true
       } catch (err) {
-        log.error('Failed to reorder notes', err)
-        return false
-      }
-    },
-    [deps, reorderAllowed]
-  )
-
-  const handleReorderFoldersInParent = useCallback(
-    async (
-      parentPath: string,
-      draggedFolderPath: string,
-      targetFolderPath: string,
-      position: DropPosition
-    ): Promise<boolean> => {
-      if (!reorderAllowed) return false
-      const siblingFolders = getFoldersInParent(deps.tree, parentPath)
-      if (siblingFolders.length < 2) return false
-
-      const draggedIndex = siblingFolders.indexOf(draggedFolderPath)
-      const targetIndex = siblingFolders.indexOf(targetFolderPath)
-
-      if (draggedIndex === -1 || targetIndex === -1) return false
-
-      const newPaths = [...siblingFolders]
-      newPaths.splice(draggedIndex, 1)
-
-      let insertIndex = targetIndex
-      if (draggedIndex < targetIndex) insertIndex = targetIndex - 1
-      if (position === 'after') insertIndex += 1
-
-      newPaths.splice(insertIndex, 0, draggedFolderPath)
-
-      if (newPaths.every((p, i) => p === siblingFolders[i])) return false
-
-      try {
-        await notesService.reorder(parentPath, newPaths)
-        const result = await notesService.getAllPositions()
-        if (result.success) {
-          deps.setNotePositions(result.positions)
-        }
-        return true
-      } catch (err) {
-        log.error('Failed to reorder folders', err)
+        log.error('Failed to reorder sidebar level', err)
         return false
       }
     },
@@ -1011,56 +1067,14 @@ export function useNoteTreeActions(deps: NoteTreeActionsDeps) {
         if (!(await confirmJournalChange(moves))) return
 
         if (
-          foldersToMoveList.length === 1 &&
-          notesToMove.length === 0 &&
-          targetId.startsWith('folder-') &&
-          (position === 'before' || position === 'after')
+          itemsToMove.length === 1 &&
+          (await handleReorderInLevel(itemsToMove[0], targetId, position))
         ) {
-          const draggedFolderPath = foldersToMoveList[0]
-          const targetFolderPathFromId = targetId.replace('folder-', '')
-
-          const draggedParent = getParentFolder(draggedFolderPath)
-          const targetParent = getParentFolder(targetFolderPathFromId)
-
-          if (draggedParent === targetParent) {
-            const reordered = await handleReorderFoldersInParent(
-              draggedParent,
-              draggedFolderPath,
-              targetFolderPathFromId,
-              position
-            )
-            if (reordered) return
-          }
+          return
         }
 
         for (const folderPath of foldersToMoveList) {
           await handleFolderMove(folderPath, targetId, position)
-        }
-
-        if (
-          notesToMove.length === 1 &&
-          foldersToMoveList.length === 0 &&
-          !targetId.startsWith('folder-') &&
-          targetId !== 'notes-root' &&
-          (position === 'before' || position === 'after')
-        ) {
-          const draggedNote = deps.noteMap.get(notesToMove[0])
-          const targetNoteObj = deps.noteMap.get(targetId)
-
-          if (draggedNote && targetNoteObj) {
-            const draggedFolder = extractFolderFromPath(draggedNote.path)
-            const dropFolder = extractFolderFromPath(targetNoteObj.path)
-
-            if (draggedFolder === dropFolder) {
-              const reordered = await handleReorderInFolder(
-                draggedFolder,
-                notesToMove[0],
-                targetId,
-                position
-              )
-              if (reordered) return
-            }
-          }
         }
 
         for (const noteId of notesToMove) {
@@ -1079,9 +1093,8 @@ export function useNoteTreeActions(deps: NoteTreeActionsDeps) {
       // oxlint-disable-next-line react/memo-dependencies -- dependency list is intentional; compiler trace misreads indirect closure
       deps,
       calculateTargetFolder,
-      handleReorderFoldersInParent,
+      handleReorderInLevel,
       handleFolderMove,
-      handleReorderInFolder,
       handleNoteMove,
       confirmJournalChange
     ]

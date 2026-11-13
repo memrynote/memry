@@ -100,7 +100,9 @@ struct PortalBlockView: View {
         let sourceId = target.noteId
         if let refusal = ancestry.withHost(hostNote).refusal(for: target) {
             phase = .state(refusal == .cycle ? .cycle : .tooDeep)
-            title = (try? await reader.read(id: sourceId))?.summary.title
+            let source = try? await reader.read(id: sourceId)
+            guard !Task.isCancelled else { return }
+            title = source?.summary.title
             return
         }
         // A pass pulls no body edit that arrived as CRDT updates alone, so a
@@ -117,16 +119,17 @@ struct PortalBlockView: View {
             let slice = try await reader.portalSlice(id: sourceId, definitionJson: text)
             switch slice.status {
             case .ok:
-                phase = await .ready(
-                    blocks: slice.blocks,
-                    tables: tables(in: slice.blocks, of: sourceId, reader: reader),
-                    attachments: attachments(in: slice.blocks, of: sourceId, reader: reader)
-                )
+                let tables = await tables(in: slice.blocks, of: sourceId, reader: reader)
+                let attachments = await attachments(in: slice.blocks, of: sourceId, reader: reader)
+                guard !Task.isCancelled else { return }
+                phase = .ready(blocks: slice.blocks, tables: tables, attachments: attachments)
             case .missingNote: phase = .state(.missingNote)
             case .missingBlock: phase = .state(.missingBlock)
             case .invalid: phase = .state(.invalid)
             }
         } catch {
+            // A sync pass restarts this `.task`; cancelled is not failed.
+            if Task.isCancelled { return }
             Log.storage.error("a portal could not be read")
             phase = .state(.failed)
         }

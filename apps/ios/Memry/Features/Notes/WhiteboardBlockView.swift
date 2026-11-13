@@ -37,7 +37,9 @@ struct CoreWhiteboardBoards: WhiteboardBoards {
     }
 
     func create(title: String, ownerNoteId: String) async throws -> CanvasRecord {
-        try await executor.run { try canvases().create(title: title, ownerNoteId: ownerNoteId, scene: nil) }
+        let record = try await executor.run { try canvases().create(title: title, ownerNoteId: ownerNoteId, scene: nil) }
+        Telemetry.shared.track(.canvasCreated, surface: .canvas, action: "created", objectType: "canvas", result: .success)
+        return record
     }
 
     func save(_ id: String, scene: String) async throws {
@@ -110,6 +112,8 @@ struct WhiteboardBlockView: View {
             board = WhiteboardScene(json: record.scene).map { .ready(title: record.title, scene: $0) }
                 ?? .unreadable(title: record.title)
         } catch {
+            // A sync pass restarts this `.task`; cancelled is not failed.
+            if Task.isCancelled { return }
             Log.interface.error("whiteboard canvas did not load")
             board = .failed
         }

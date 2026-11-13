@@ -344,7 +344,7 @@ fn a_locked_source_keeps_its_links_through_a_rename_and_an_open_one_follows() {
     let open = f.linking(&[("Plan", "")]);
     f.vault
         .locks()
-        .set(TargetKind::Note, &locked, true)
+        .set(TargetKind::Note, &locked, true, "device-a")
         .expect("lock");
 
     f.writer

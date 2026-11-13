@@ -151,7 +151,8 @@
     "misconfigured": "Google Calendar is not configured correctly. Please contact support if this keeps happening.",
     "scopeMissing": "We couldn't access your Google Calendar because Calendar permission wasn't granted. Please try again and make sure the Calendar checkbox stays ticked on the Google consent screen.",
     "accessDenied": "Google Calendar access was declined. You can connect again whenever you are ready.",
-    "temporarilyUnavailable": "Google Calendar is temporarily unavailable. Please try again shortly."
+    "temporarilyUnavailable": "Google Calendar is temporarily unavailable. Please try again shortly.",
+    "requestRejected": "Google rejected this item. Check its date and time, then try again."
   },
   "agent": {
     "runtimeStarting": "Agent runtime is starting. Try again.",
@@ -159,7 +160,7 @@
   },
   "ai": {
     "inlineDisabled": "AI inline editing is disabled",
-    "listOllamaModelsFailed": "Failed to list Ollama models",
+    "listModelsFailed": "Failed to list models",
     "writingAssistInvalid": "That request could not be sent to the AI model.",
     "apiKeyMissing": "Add your {provider} API key in Settings → AI to use writing tools.",
     "apiKeyInvalid": "Your {provider} API key was rejected. Check it in Settings → AI.",
@@ -187,6 +188,10 @@
     "removeDeviceFailed": "Failed to remove device",
     "renameDeviceFailed": "Failed to rename device",
     "initiateOAuthFailed": "Failed to initiate OAuth",
+    "retryOAuthFailed": "Could not reopen the sign-in browser. Start sign-in again.",
+    "oauthExpired": "Sign-in expired. Please try again.",
+    "oauthInvalidResponse": "Could not get a valid sign-in link. Please try again.",
+    "oauthCancelled": "Google sign-in was cancelled. Please try again.",
     "setupFirstDeviceOAuthFailed": "Failed to setup first device via OAuth",
     "confirmRecoveryPhraseFailed": "Failed to confirm recovery phrase"
   },

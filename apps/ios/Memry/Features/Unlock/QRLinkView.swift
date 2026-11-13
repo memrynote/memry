@@ -67,11 +67,11 @@ struct QRLinkView: View {
 
     private var header: some View {
         VStack(alignment: .leading, spacing: Tokens.Space.small) {
-            Text("Unlock with a nearby computer")
+            Text("Unlock with a nearby device")
                 .font(Tokens.Typography.screenTitle.font)
                 .foregroundStyle(Tokens.Text.primary.color)
             Text(
-                "On a computer where Memry is already unlocked, open Settings and choose "
+                "On a device where Memry is already unlocked, open Settings and choose "
                     + "Link a device. Scan the code it shows, or paste it below."
             )
             .font(Tokens.Typography.body.font)
@@ -92,7 +92,7 @@ struct QRLinkView: View {
                 // Words, not a bare spinner, and a Stop that stops something
                 // real: this is the shell's own call, so cancelling it is
                 // honest. The core's `scan` is a different case — see below.
-                ProgressView { Text("Point the camera at the code on your computer") }
+                ProgressView { Text("Point the camera at the code on your other device") }
                     .progressViewStyle(.circular)
                     .font(Tokens.Typography.supporting.font)
                     .tint(Tokens.Text.secondary.color)
@@ -119,7 +119,7 @@ struct QRLinkView: View {
     private var manualSection: some View {
         VStack(alignment: .leading, spacing: Tokens.Space.medium) {
             OrDivider()
-            Text("Your computer offers a copy button beside the code. It is long; pasting is the way in.")
+            Text("Your other device offers a copy button beside the code. It is long; pasting is the way in.")
                 .font(Tokens.Typography.supporting.font)
                 .foregroundStyle(Tokens.Text.secondary.color)
             FieldGroup(label: "Linking code") {
@@ -135,7 +135,7 @@ struct QRLinkView: View {
                     // switcher and for screen recording.
                     .privacySensitive()
                     .accessibilityLabel("Linking code")
-                    .accessibilityHint("Paste the code your computer is showing.")
+                    .accessibilityHint("Paste the code your other device is showing.")
             }
             Button("Continue") { Task { await model.submitTypedPayload() } }
                 .memryPrimaryAction()

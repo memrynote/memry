@@ -49,6 +49,7 @@ import {
   isTrayActive,
   showMainWindow
 } from './tray'
+import { getMainWindow, setMainWindow } from './main-window'
 import { autoOpenLastVault, closeVault, getLaunchVaultPath, isVaultSwitchInProgress } from './vault'
 import { loadEnvironmentConfig } from './env-config'
 import {
@@ -127,6 +128,7 @@ import {
   migrateLegacyLogDir
 } from './lib/logger'
 import { applyMemrynoteIdentity, flipIdentityPin, getIdentityDecision } from './app-identity'
+import { parentProcessName, redactLaunchArgv } from './second-launch'
 import { probeSecretStoreIdentity } from './secrets/secret-storage'
 import { isAllowedExternalUrl, isPathInsideDirs, resolveMemryFilePath } from './lib/external-url'
 import { serveMemryFile } from './lib/memry-file-protocol'
@@ -136,7 +138,8 @@ import { decideEmbedRequestHeaders } from './lib/embed-referer'
 import { registerTestHooks } from './test-hooks'
 import { registerAgentDebugHandles } from './agent-debug'
 import {
-  computeSpkiHashFromPem,
+  sessionChainHashes,
+  verifySessionCertificatePin,
   isPinningDisabled,
   getPinnedCertificateHashes,
   getPinnedCertificateHashesForHostname,
@@ -320,6 +323,29 @@ if (deviceId) {
   app.setPath('userData', deviceUserData)
 }
 
+const headlessCliArgs = getHeadlessCliArgs(process.argv)
+
+// Device-scoped E2E runs need two Electron instances side by side, so skip the
+// process-wide lock only for that test harness path.
+const allowMultiInstanceForDeviceTests =
+  process.env.NODE_ENV === 'test' && typeof process.env.MEMRY_DEVICE === 'string'
+const enforcesSingleInstance = !headlessCliArgs && !allowMultiInstanceForDeviceTests
+
+// The lock is keyed on userData, so it can only be taken once the identity above
+// has settled. Everything after it (login-shell PATH probe, crash reporter, log
+// migration, protocol and handler registration) is work a losing launch must not
+// do: a client that relaunches the binary in a loop used to pay for all of it on
+// every attempt. app.exit, not app.quit: before 'ready' there is nothing to shut
+// down, and the before-quit cleanup would run against an empty app.
+if (enforcesSingleInstance && !app.requestSingleInstanceLock()) {
+  // Which client keeps launching a second copy is only knowable from here.
+  createLogger('Main').info('Another instance holds the lock; exiting', {
+    argv: redactLaunchArgv(process.argv),
+    parent: parentProcessName(process.ppid)
+  })
+  app.exit(0)
+}
+
 // Existing installs logged into `@memry/desktop` (the raw package name);
 // move that history into the `memrynote` dir before workers spawn and this
 // launch's log volume starts landing there.
@@ -417,8 +443,6 @@ void startLoginShellPathAugmentation({ packaged: app.isPackaged }).then((applied
 // layer whether this device's key is the account's, so it can tell a stale
 // verifier (rebind) from a wrong key (route the user to recovery).
 setAccountKeyChecker(checkLocalKeyAgainstAccount)
-
-const headlessCliArgs = getHeadlessCliArgs(process.argv)
 
 let mainI18n: I18nInstance
 
@@ -656,7 +680,9 @@ function configureCertificatePinning(): void {
   session.defaultSession.setCertificateVerifyProc((request, callback) => {
     const pinsForHostname = [...getPinnedCertificateHashesForHostname(request.hostname)]
     if (pinsForHostname.length === 0) {
-      callback(0)
+      // -3 keeps Chromium's own verdict. 0 would force success and skip chain, expiry and
+      // hostname verification for every host that has no pin entry, e.g. a self-signed cert.
+      callback(-3)
       return
     }
 
@@ -668,18 +694,20 @@ function configureCertificatePinning(): void {
     }
 
     try {
-      const spkiHash = computeSpkiHashFromPem(cert.data)
-      if (!pinsForHostname.some((pin) => pin === spkiHash)) {
+      if (!verifySessionCertificatePin(request, pinsForHostname)) {
         certPinLog.error('Session certificate pin mismatch', {
           hostname: request.hostname,
-          hash: spkiHash
+          chainHashes: sessionChainHashes(request)
         })
         callback(-2)
         return
       }
 
+      // -3 keeps Chromium's own verdict (chain, expiry, hostname). A pin on an
+      // intermediate matches every certificate that CA issues, so forcing success
+      // with 0 would accept a certificate issued for another host.
       certPinLog.debug('Session certificate pin verified', { hostname: request.hostname })
-      callback(0)
+      callback(-3)
     } catch (err) {
       certPinLog.error('Certificate verification error', {
         hostname: request.hostname,
@@ -777,6 +805,7 @@ function createWindow(): void {
       webSecurity: true
     }
   })
+  setMainWindow(mainWindow)
   // Applied again after the window is shown: Windows can ignore maximize on a
   // still-hidden window, which is how a window closed while maximized used to
   // come back small. `applyStartupWindowMode` is idempotent.
@@ -815,7 +844,7 @@ function createWindow(): void {
 
   // Registered after the bounds flush so geometry is still persisted on a close
   // that the tray intercepts.
-  initTray({ getMainWindow: () => mainWindow })
+  initTray({ getMainWindow })
   mainWindow.on('close', (event) => handleMainWindowClose(event, mainWindow))
 
   const unsubscribeVaultStatus = onVaultStatusChanged((status) => {
@@ -1217,7 +1246,7 @@ function handleDeepLink(url: string): void {
       dimensions: { target }
     })
 
-    const mainWindow = BrowserWindow.getAllWindows()[0]
+    const mainWindow = getMainWindow()
     if (!mainWindow) return
 
     if (parsed.hostname === 'open') {
@@ -1248,28 +1277,21 @@ function handleDeepLink(url: string): void {
     }
 
     if (parsed.hostname === 'pair') {
-      // getMainI18n() throws until bootI18n() has run. That is only reachable when
-      // the sole window is the pre-boot install splash or the startup-error window,
-      // but it must not abort the handler: the restore/focus below has to run for
-      // every memry:// url, as it did before this dialog was localized.
-      try {
-        const i18n = getMainI18n()
-        const t = i18n.getFixedT(null, 'system')
-        void dialog
-          .showMessageBox(mainWindow, {
-            type: 'question',
-            buttons: [t('dialog.pair.buttonPair'), i18n.t('common:button.cancel')],
-            defaultId: 0,
-            cancelId: 1,
-            title: t('dialog.pair.title'),
-            message: t('dialog.pair.message')
-          })
-          .then(({ response }) => {
-            if (response === 0) openPairingWindow()
-          })
-      } catch (error) {
-        deepLinkLog.error('pair prompt skipped; i18n not ready:', error)
-      }
+      // The main window is created after bootI18n(), so getMainI18n() is ready here.
+      const i18n = getMainI18n()
+      const t = i18n.getFixedT(null, 'system')
+      void dialog
+        .showMessageBox(mainWindow, {
+          type: 'question',
+          buttons: [t('dialog.pair.buttonPair'), i18n.t('common:button.cancel')],
+          defaultId: 0,
+          cancelId: 1,
+          title: t('dialog.pair.title'),
+          message: t('dialog.pair.message')
+        })
+        .then(({ response }) => {
+          if (response === 0) openPairingWindow()
+        })
     }
 
     if (mainWindow.isMinimized()) mainWindow.restore()
@@ -1279,40 +1301,21 @@ function handleDeepLink(url: string): void {
   }
 }
 
-const allowMultiInstanceForDeviceTests =
-  process.env.NODE_ENV === 'test' && typeof process.env.MEMRY_DEVICE === 'string'
-
 // Windows/Linux: deep links arrive via second-instance event.
-// Device-scoped E2E runs need two Electron instances side by side, so skip the
-// process-wide lock only for that test harness path.
-if (!headlessCliArgs && !allowMultiInstanceForDeviceTests) {
-  const gotTheLock = app.requestSingleInstanceLock()
-  if (!gotTheLock) {
-    app.quit()
-  } else {
-    app.on('second-instance', (_event, commandLine) => {
-      // A second launch (e.g. double-clicking the shortcut while the app is
-      // already running) must surface the existing window, not silently no-op.
-      // On Windows there is no Dock/'activate' fallback, so without this a hidden
-      // or minimized instance stays invisible and the app looks like it "won't open".
-      if (isTrayActive()) {
-        // Hidden to the tray rather than closed, so it needs the same restore
-        // the tray icon performs, including leaving skipTaskbar behind.
-        showMainWindow()
-      } else {
-        const existing = BrowserWindow.getAllWindows().find((w) => !w.isDestroyed())
-        if (existing) {
-          if (!existing.isVisible()) existing.show()
-          if (existing.isMinimized()) existing.restore()
-          existing.focus()
-        }
-      }
-      const deepLinkUrl = commandLine.find((arg) => arg.startsWith('memry://'))
-      if (deepLinkUrl) {
-        handleDeepLink(deepLinkUrl)
-      }
-    })
-  }
+if (enforcesSingleInstance) {
+  app.on('second-instance', (_event, commandLine) => {
+    // A second launch (e.g. double-clicking the shortcut while the app is
+    // already running) must surface the existing window, not silently no-op.
+    // On Windows there is no Dock/'activate' fallback, so without this a hidden
+    // or minimized instance stays invisible and the app looks like it "won't open".
+    // The main window by reference: the first live window can be the sticky or
+    // Quick Capture, and a second launch used to show a hidden sticky instead.
+    showMainWindow()
+    const deepLinkUrl = commandLine.find((arg) => arg.startsWith('memry://'))
+    if (deepLinkUrl) {
+      handleDeepLink(deepLinkUrl)
+    }
+  })
 }
 
 // This method will be called when Electron has finished
@@ -1545,9 +1548,7 @@ const appReady = app.whenReady().then(async () => {
   })
 
   ipcMain.on('quick-capture:open-settings', (_event, section?: string) => {
-    const mainWindow = BrowserWindow.getAllWindows().find(
-      (win) => win !== quickCaptureWindow && !win.isDestroyed()
-    )
+    const mainWindow = getMainWindow()
 
     if (mainWindow) {
       if (mainWindow.isMinimized()) {

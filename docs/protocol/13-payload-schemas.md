@@ -29,8 +29,8 @@ added for the phone's whiteboard block and is appended last.
 
 Six more **record types** are served by the server and **not** subscribed to
 here: `agent_conversation`, `agent_message`, `canvas_folder`, `home_page`,
-`vault_lock` (desktop read-only locks, #2606), `sticky_draft` (unsent desktop
-sticky text, §13.13).
+`vault_lock` (desktop read-only locks, #2606, §13.7.22), `sticky_draft`
+(unsent desktop sticky text, §13.13).
 **A conforming client omits them from the header and never sees them**
 (chapter 05 §5.3.1).
 
@@ -789,9 +789,9 @@ desktop write path stores the whole group
 (`apps/desktop/src/main/ipc/settings-handlers.ts`, `writeGroupSettings`), so it
 is never seeded and cannot overwrite another device's choice.
 
-### 13.7.14 `filter` — `:85-91`
+### 13.7.14 `filter` — `:86-98`
 
-`name`, `config`, `position`, `clock`, `createdAt`. No `modifiedAt` and no
+`name`, `config`, `expression`, `position`, `clock`, `createdAt`. No `modifiedAt` and no
 `fieldClocks`: `filter` takes the document-level resolver (§13.9). Desktop's
 push is its whole `saved_filters` row serialised
 (`packages/sync-client/src/item-handlers/filter-handler.ts:94-103`), so `id` and
@@ -803,23 +803,76 @@ push is its whole `saved_filters` row serialised
 edit merges into the stored `config` rather than replacing it (§13.2 rule 3).
 Starring writes `config.starred` as a boolean, `false` included.
 
-### 13.7.15 `inbox` — `:66-82`
+**`expression`** holds a saved filter's advanced rules, ANDed with
+`config.filters`. It sits beside `config`, not inside it, because desktop builds
+before it rebuild `config` from the keys they model when they star a filter,
+while §13.2.1 carries an unknown top-level key through their push. Desktop
+stores it in `saved_filters.expression`
+(`apps/desktop/src/main/database/drizzle-data/0082_saved_filter_expression.sql`),
+which adopts a value a build without the column captured into
+`sync_unknown_fields`. On apply, an absent `expression` keeps the stored value
+(a writer that predates the key) and `null` clears it
+(`packages/sync-client/src/item-handlers/filter-handler.ts:45`). Desktop's IPC
+update merges `config` and `config.filters` key by key into the stored config
+and writes `starred` alone (`apps/desktop/src/main/ipc/saved-filters-handlers.ts:60-82`),
+so this build keeps the keys a newer one wrote.
+
+The value is a group, `{ match, rules }`, where `match` is `all`, `any` or
+`none` and each element of `rules` is a group or a rule. A rule is
+`{ field, op, ... }`; the shapes this build writes are
+`TaskFilterGroupSchema` (`packages/contracts/src/saved-filters-api.ts:149-206`).
+Each rule reuses the chip filter of its dimension, so a rule matches what the
+chip with the same values matches (`packages/domain-tasks/src/filtering/expression.ts`):
+
+| `field`                         | `op`                                      | value keys                                                                                  |
+| ------------------------------- | ----------------------------------------- | ------------------------------------------------------------------------------------------- |
+| `title`                         | `contains`, `notContains`                 | `values[0]`, case-folded with `toLowerCase`, title only                                     |
+| `priority`, `status`, `project` | `any`, `none`                             | `values`                                                                                    |
+| `tags`                          | `any`, `all`, `none`, `empty`, `notEmpty` | `values`, folded as the tag chip folds                                                      |
+| `due`                           | `is`, `isNot`                             | `values`: due presets, any of; `custom` reads `dueStart`/`dueEnd` (`YYYY-MM-DD` local keys) |
+| `location`                      | `any`, `none`                             | `folderPaths` (subfolders included), `noteIds`                                              |
+| `repeat`                        | `is`                                      | `values[0]`: `repeating` or `one-time`                                                      |
+| `hasTime`                       | `is`                                      | `values[0]`: `with-time` or `without-time`                                                  |
+
+**A client skips what it cannot evaluate**
+(`packages/domain-tasks/src/filtering/expression.ts:155-250`): a rule with an
+unknown `field` or `op`, with no usable value (empty or non-string `values`, a
+blank title, a `custom` range missing an end or not a date key), and a group
+with an unknown `match` or with nothing left to evaluate. A skipped node drops
+out of its group; it neither matches every task nor none. A fully skipped root
+passes every task. The `expressions` section of `task-filtering.json` pins
+this, task by task, with and without the note index.
+
+### 13.7.15 `inbox` — `packages/contracts/src/sync-payloads.ts:67-91`
 
 `title`, `content`, `type`, `metadata`, `filedAt`, `filedTo`, `filedAction`,
 `snoozedUntil`, `snoozeReason`, `archivedAt`, `sourceUrl`, `sourceTitle`,
-`captureSource`, `clock`, `createdAt`, `modifiedAt`. No `fieldClocks`: `inbox`
-takes the document-level resolver (§13.9). Desktop's push is its whole
-`inbox_items` row serialised
-(`apps/desktop/src/main/sync/item-handlers/inbox-handler.ts:141-148`), so its
+`captureSource`, `attachmentId`, `clock`, `createdAt`, `modifiedAt`. No
+`fieldClocks`: `inbox` takes the document-level resolver (§13.9). Desktop's
+push is its whole `inbox_items` row serialised
+(`apps/desktop/src/main/sync/item-handlers/inbox-handler.ts:161-169`), so its
 local columns (`viewedAt`, `processingStatus`, `transcription`,
 `transcriptionStatus`, `attachmentPath`, `thumbnailPath`, `syncedAt`,
 `localOnly`) arrive as unmodelled keys and are preserved like any other.
 
-**Normative apply rule** (desktop's `applyUpsert`, `:48-72`): after the
+**`attachmentId` is the attachment id of the capture's file (#4157).** It is
+the §14.7 id of the bytes at the capture's `attachmentPath`, and it is absent
+until the capturing device has uploaded them
+(`packages/contracts/src/sync-payloads.ts:81-87`). `attachmentPath` stays an
+unmodelled key. §14.7.2 owns what the id means and where a receiver writes the
+file.
+
+**Normative apply rule** (desktop's `applyUpsert`, `:32-137`): after the
 document gate, a remote payload is laid **key by key** over the local one. A
 key the remote omits keeps the local value; a key it sends as `null` clears it
-(unsnooze, unarchive and unfile push explicit `null`s); `title` and `type` keep
-the local value on `null` too. `metadata` is `z.unknown()` and replaced whole.
+(unsnooze, unarchive and unfile push explicit `null`s); `title`, `type` and
+`attachmentId` keep the local value on `null` too, so a remote never clears an
+`attachmentId`: an older sender omits the key or sends `null` without knowing
+it, and a capture's file never changes once uploaded
+(`crates/memry-core/src/domain/inbox/merge.rs:35`, `:84-86`; desktop's
+`apps/desktop/src/main/sync/item-handlers/inbox-handler.ts:65` reads it as
+`data.attachmentId ?? existing.attachmentId`). A string sets it, including over
+a different known id. `metadata` is `z.unknown()` and replaced whole.
 
 ### 13.7.16 `calendar_source` — `:410-428`
 
@@ -955,6 +1008,48 @@ when its local clock is strictly after the tombstone's (#2198,
 copy is the one push an apply writes, and it does not contradict §6.5.2 P3: it
 is a new item, not a re-push of the merged one.
 
+### 13.7.22 `vault_lock` — `:464-471`
+
+`targetKind`, `target`, `locked`, `clock`, `createdAt`, `updatedAt`, every one
+optional on the wire. `vault_lock` is desktop only: the iOS declaration leaves
+it out (§13.1), and `payload-schemas.json` lists it under
+`meta.desktopOnlyTypes`, not `meta.subscribedTypes`. `targetKind` is `note`
+(`target` is the note id) or `folder` (`target` is the vault-relative path)
+(`packages/contracts/src/vault-locks-api.ts:13`), and the id is
+`<targetKind>:<target>` (`:21-23`), so two devices locking one target share one
+record. Unlocking writes `locked: false` on the same record
+(`packages/contracts/src/sync-payloads.ts:455-458`). `targetKind` is a
+free-form string, so a kind a newer build adds still parses (`:460-462`).
+Desktop's push states all six keys
+(`apps/desktop/src/main/sync/item-handlers/vault-lock-handler.ts:119-136`).
+Its seed of a lock made before sync pushes the whole `vault_locks` row
+(`:143-157`), so `id` and `syncedAt` also arrive as unmodelled keys and are
+preserved (§13.2).
+
+**Normative**, the apply rule (`vault-lock-handler.ts:28-95`). It is the
+document-level resolver (§13.9) with four additions:
+
+1. a `targetKind` that is present and not a known kind is skipped, and a local
+   record stays as it is (`:37-40`). An absent `targetKind` is not unknown;
+2. a create (no live local record) that lacks a non-empty `targetKind`, a
+   non-empty `target` or a boolean `locked` is skipped (`:72-76`);
+3. a concurrent clock is last-writer-wins: the remote applies under the merged
+   clock (`:48-55`);
+4. over a local record, the local `targetKind`, `target` and `createdAt` stay,
+   and an absent `locked` keeps the local value (`:56-63`). An absent
+   `updatedAt` reads as the apply time (`:62`).
+
+The Rust core follows the same rule
+(`crates/memry-core/src/domain/vault_locks/merge.rs:39-74`).
+
+A delete follows chapter 05 §5.8 unchanged and unlocks the target: the lock
+survives a tombstone only when its local clock is strictly after the
+tombstone's (`vault-lock-handler.ts:97-113`). The type is not in
+`RECREATABLE_AFTER_PURGE_ITEM_TYPES` (`packages/contracts/src/sync-api.ts:217-228`).
+A client that locks a target whose record it holds as a tombstone writes the
+new record with a clock past the tombstone's
+(`crates/memry-core/src/domain/vault_locks/mod.rs:176`).
+
 ## 13.8 `attachment` is not a record type
 
 **Normative.** `attachment` is in `SYNC_ITEM_TYPES`
@@ -973,6 +1068,7 @@ is a new item, not a re-push of the merged one.
 | `calendar_event`            | field-level                                              | yes (`:405`)                                       |
 | `settings`                  | dotted-path field clocks                                 | yes, its own key space                             |
 | `canvas`                    | document-level resolver, plus a conflict copy (§13.7.21) | no                                                 |
+| `vault_lock`                | document-level resolver, keeping local keys (§13.7.22)   | no                                                 |
 | every other subscribed type | document-level resolver                                  | no                                                 |
 
 **`task.fields` and `tag_definition.schema` are versioned values** joined by

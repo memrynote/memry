@@ -65,6 +65,7 @@ pub mod settings;
 pub mod tasks;
 pub mod taxonomy;
 pub mod templates;
+pub mod vault_locks;
 
 use rusqlite::{Connection, params};
 use serde_json::Value;
@@ -115,6 +116,7 @@ pub fn read(item_type: &str, parsed: &Object) -> Result<Object, ProjectionError>
         "calendar_binding" => calendar::read_binding(parsed),
         "bookmark" => bookmarks::read_bookmark(parsed),
         "canvas" => canvas::read_canvas(parsed),
+        "vault_lock" => vault_locks::read_vault_lock(parsed),
         other => Err(ProjectionError::UnknownType {
             item_type: other.to_owned(),
         }),
@@ -152,6 +154,7 @@ pub fn project(
         "bookmark" => bookmarks::project_bookmark(conn, item, view),
         // No table by design; see `canvas`'s module comment.
         "canvas" => Ok(()),
+        "vault_lock" => vault_locks::project_vault_lock(conn, item, view),
         // Unreachable: `read` refused the type before the caller got here.
         other => Err(StorageError::Failed {
             what: format!("no projector for item type `{other}`"),
@@ -244,6 +247,7 @@ fn delete_targets(item_type: &str) -> &'static [(&'static str, Option<&'static s
         "calendar_external_event" => &[("calendar_external_events", Some("id"))],
         "calendar_binding" => &[("calendar_bindings", Some("id"))],
         "bookmark" => &[("bookmarks", Some("id"))],
+        "vault_lock" => &[("vault_locks", Some("id"))],
         _ => &[],
     }
 }

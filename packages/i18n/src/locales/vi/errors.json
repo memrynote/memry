@@ -146,6 +146,7 @@
     "requestTimedOut": "Yêu cầu đồng bộ đã hết thời gian chờ. Vui lòng kiểm tra kết nối internet của bạn."
   },
   "googleCalendar": {
+    "requestRejected": "Google đã từ chối mục này. Kiểm tra ngày và giờ của mục đó, rồi thử lại.",
     "connectFailed": "Không thể kết nối với Google Calendar. Vui lòng thử lại sau giây lát.",
     "reconnectNeeded": "Kết nối Google Calendar của bạn đã hết hạn. Vui lòng ngắt kết nối rồi kết nối lại.",
     "misconfigured": "Google Calendar chưa được cấu hình đúng. Vui lòng liên hệ hỗ trợ nếu việc này tiếp diễn.",
@@ -159,7 +160,7 @@
   },
   "ai": {
     "inlineDisabled": "Đã tắt chỉnh sửa nội dòng bằng AI",
-    "listOllamaModelsFailed": "Không thể liệt kê các mô hình Ollama",
+    "listModelsFailed": "Không thể liệt kê các mô hình",
     "writingAssistInvalid": "Không thể gửi yêu cầu đó đến mô hình AI.",
     "apiKeyMissing": "Hãy thêm khóa API {provider} của bạn trong Cài đặt → AI để dùng công cụ viết.",
     "apiKeyInvalid": "Khóa API {provider} của bạn bị từ chối. Hãy kiểm tra trong Cài đặt → AI.",
@@ -187,6 +188,10 @@
     "removeDeviceFailed": "Không thể gỡ thiết bị",
     "renameDeviceFailed": "Không thể đổi tên thiết bị",
     "initiateOAuthFailed": "Không thể bắt đầu OAuth",
+    "retryOAuthFailed": "Không thể mở lại trình duyệt đăng nhập. Hãy bắt đầu đăng nhập lại.",
+    "oauthExpired": "Phiên đăng nhập đã hết hạn. Vui lòng thử lại.",
+    "oauthInvalidResponse": "Không thể nhận liên kết đăng nhập hợp lệ. Vui lòng thử lại.",
+    "oauthCancelled": "Đã hủy đăng nhập bằng Google. Vui lòng thử lại.",
     "setupFirstDeviceOAuthFailed": "Không thể thiết lập thiết bị đầu tiên qua OAuth",
     "confirmRecoveryPhraseFailed": "Không thể xác nhận cụm từ khôi phục"
   },

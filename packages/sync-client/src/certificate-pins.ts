@@ -7,8 +7,11 @@ export const PINNED_CERTIFICATE_HASHES_BY_HOST: Record<string, readonly string[]
     'sha256/PLACEHOLDER_PRIMARY_CERT_HASH_BASE64',
     'sha256/PLACEHOLDER_BACKUP_CERT_HASH_BASE64'
   ],
-  // Google Trust Services WE1 (the issuing intermediate), then the GlobalSign-signed GTS Root R4
-  // the server presents above WE1.
+  // Pins sit on the issuer chain, not the leaf: the leaf renews about every 90 days and a leaf pin
+  // refused every packaged build when it did (2026-10-13). Enforcement matches any certificate in
+  // the presented chain. Keep two: the issuing intermediate (Google Trust Services WE1) and the
+  // root key above it (GTS Root R4). When an issuer rotates, add the new pins before the old
+  // issuer stops serving, and never swap both at once.
   'sync-staging.memrynote.com': [
     'sha256/kIdp6NNEd8wsugYyyIYFsi1ylMCED3hZbSR8ZFsa/A4=',
     'sha256/mEflZT5enoR1FuXLgYYGqnVEoZvmf9c2bVBpiOjYQ0c='

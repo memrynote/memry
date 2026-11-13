@@ -216,7 +216,10 @@ fn a_locked_notes_sync_policy_is_not_changed() {
     let (e, open, _) = opened();
     let plan = id_of(&open, "Plan.md");
     let other = id_of(&open, "Other.md");
-    e.core().locks().set(TargetKind::Note, &plan, true).unwrap();
+    e.core()
+        .locks()
+        .set(TargetKind::Note, &plan, true, "device-a")
+        .unwrap();
     let queued_before = queued(&e, &plan);
 
     let refused = local_only::set(&open, &plan, true, None).unwrap_err();

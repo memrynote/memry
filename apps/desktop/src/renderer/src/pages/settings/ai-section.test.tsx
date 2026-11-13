@@ -1,4 +1,4 @@
-import { act, render, screen, waitFor } from '@testing-library/react'
+import { act, render, screen, waitFor, within } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import { toast } from 'sonner'
@@ -404,6 +404,28 @@ describe('AISettings', () => {
     })
 
     expect(screen.getByText('model failed')).toBeInTheDocument()
+  })
+
+  it('shows a downloaded but unloaded embedding model as Downloaded with a Load action (#3437)', async () => {
+    api.settings.getAISettings = vi.fn().mockResolvedValue({ enabled: true })
+    api.settings.getAIModelStatus = vi.fn().mockResolvedValue({
+      name: 'EmbeddingGemma 2',
+      dimension: 256,
+      loaded: false,
+      downloaded: true,
+      loading: false,
+      error: null,
+      embeddingCount: 204
+    })
+
+    render(<AISettings />)
+
+    const row = await screen.findByTestId('embedding-model-row')
+    expect(within(row).getByText('Downloaded')).toBeInTheDocument()
+    expect(within(row).queryByText('Not downloaded')).not.toBeInTheDocument()
+    expect(within(row).queryByRole('button', { name: 'Download & Load Model' })).toBeNull()
+    await userEvent.click(within(row).getByRole('button', { name: 'Load Model' }))
+    expect(api.settings.loadAIModel).toHaveBeenCalled()
   })
 
   it('surfaces failed setting, model, voice, key, and reindex mutations', async () => {

@@ -8,6 +8,8 @@ const downloadTargets = [
   {
     label: 'Windows',
     matches: [
+      (name) => name === 'MemryNote-Setup-win-x64.exe',
+      // The Velopack Setup's name up to v2026-10-25.
       (name) => name === 'MemryNote-win-Setup.exe',
       (name) => name.toLowerCase().endsWith('-setup.exe')
     ]

@@ -177,6 +177,7 @@ struct JournalNoteBridge: NotesReading, BlockEditing {
         guard let outcome else { throw CancellationError() }
         switch outcome {
         case let .success(value):
+            NotesTelemetry.journalUpdated(date)
             return value
         case let .failure(error):
             await store.report(error)

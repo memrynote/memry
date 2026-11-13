@@ -542,9 +542,23 @@ A canvas entry says **Connected on** and the canvas name, and has no text snippe
 Each entry shows:
 
 - The source note's title
-- A snippet of the surrounding text (for a relation, the property name and value instead)
+- A snippet of the surrounding text from the note's body, never its frontmatter (for a relation, the property name and value instead)
 - A timestamp
 - A click target to open the source note
+
+### Filtering backlinks and mentions
+
+**Backlinks** and **Unlinked mentions** each have a filter menu in their header, set to
+**All** by default. Pick **Notes** to keep only regular notes, **Journal** to keep only
+journal days, or a tag such as `#work` to keep only notes that carry that tag. The menu
+lists the tags of the notes in that section. The count in the header follows the filter.
+
+For example, on a note called **Project X**, choose **Journal** to see the days you
+wrote about it, or `#meeting` to see only your meeting notes that link to it.
+
+The menu is hidden while it would not change the list: every source is the same kind and
+none has a tag. The filter is not saved. Tasks
+linked to the note keep their own section and are not part of this filter.
 
 ## Outgoing Links
 
@@ -703,6 +717,11 @@ one-click behaviour did.
 The styling stays current without a reload: creating, renaming, or deleting a note — on
 this device or another — restyles the links in every open editor. Recreating a note with a
 broken link's title makes that link live again, because links match by title.
+
+A link to a date, such as `[[2026-05-08]]`, is a journal day rather than a missing note. It
+looks the same until the day is written, but hovering it says the day is not written yet and
+clicking it opens that day in the Journal. See
+[Wiki Linking from Today](/user-guide/journal/daily-entries#wiki-linking-from-today).
 
 Only the note half is checked: `[[Meeting#Decisions]]` is broken when there is no note
 titled "Meeting", not when the heading is missing — a link to a renamed or deleted heading

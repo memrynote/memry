@@ -213,7 +213,11 @@ describe('auth-oauth handlers', () => {
 
       const result = await invokeHandler(SYNC_CHANNELS.AUTH_INIT_OAUTH, { provider: 'google' })
 
-      expect(result).toEqual({ state: 'oauth-state' })
+      expect(result).toEqual({
+        state: 'oauth-state',
+        authorizationUrl: 'https://accounts.google.com/o/oauth2/v2/auth?state=oauth-state',
+        browserOpened: true
+      })
       expect(loopback.shellOpenExternal).toHaveBeenCalledWith(
         'https://accounts.google.com/o/oauth2/v2/auth?state=oauth-state'
       )
@@ -261,7 +265,9 @@ describe('auth-oauth handlers', () => {
       const res = { writeHead: vi.fn(), end: vi.fn() }
       loopback.requestHandler?.({ url: '/callback?error=access_denied&state=oauth-state' }, res)
 
-      expect(send).toHaveBeenCalledWith(SYNC_EVENTS.OAUTH_ERROR, { error: 'access_denied' })
+      expect(send).toHaveBeenCalledWith(SYNC_EVENTS.OAUTH_ERROR, {
+        error: 'Google sign-in was cancelled. Please try again.'
+      })
       expect(loopback.close).toHaveBeenCalled()
 
       unregisterAuthOAuthHandlers()
@@ -712,6 +718,7 @@ describe('auth-oauth handlers', () => {
 
       const channels = [
         SYNC_CHANNELS.AUTH_INIT_OAUTH,
+        SYNC_CHANNELS.AUTH_RETRY_OAUTH,
         SYNC_CHANNELS.AUTH_REFRESH_TOKEN,
         SYNC_CHANNELS.SETUP_FIRST_DEVICE,
         SYNC_CHANNELS.CONFIRM_RECOVERY_PHRASE,
@@ -729,6 +736,7 @@ describe('auth-oauth handlers', () => {
 
       const channels = [
         SYNC_CHANNELS.AUTH_INIT_OAUTH,
+        SYNC_CHANNELS.AUTH_RETRY_OAUTH,
         SYNC_CHANNELS.AUTH_REFRESH_TOKEN,
         SYNC_CHANNELS.SETUP_FIRST_DEVICE,
         SYNC_CHANNELS.CONFIRM_RECOVERY_PHRASE,

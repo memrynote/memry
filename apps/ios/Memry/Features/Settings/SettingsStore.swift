@@ -150,6 +150,7 @@ final class SettingsStore {
         do {
             try await executor.run { try core.set(path: path, json: json) }
             revision = (try? await executor.run { try core.revision() }) ?? revision
+            LocalSettings.trackChanged(path)
             requestSync?()
         } catch {
             set(self, previous)
@@ -161,7 +162,7 @@ final class SettingsStore {
     func setDefaultTemplate(_ id: String?) async {
         let previous = journal
         journal = JournalTemplateSettings(defaultTemplate: id, weekdayTemplates: journal.weekdayTemplates)
-        await journalWrite(previous) { try $0.setDefaultTemplate(templateId: id) }
+        await journalWrite(previous, setting: "journal.defaultTemplate") { try $0.setDefaultTemplate(templateId: id) }
     }
 
     func setWeekdayTemplate(day: Int, _ id: String?) async {
@@ -171,16 +172,18 @@ final class SettingsStore {
         days[day] = id
         journal = JournalTemplateSettings(defaultTemplate: journal.defaultTemplate, weekdayTemplates: days)
         let weekday = UInt8(day)
-        await journalWrite(previous) { try $0.setWeekdayTemplate(day: weekday, templateId: id) }
+        await journalWrite(previous, setting: "journal.weekdayTemplates") { try $0.setWeekdayTemplate(day: weekday, templateId: id) }
     }
 
     private func journalWrite(
         _ previous: JournalTemplateSettings,
+        setting: String,
         _ work: @escaping @Sendable (any SettingsProtocol) throws -> JournalTemplateSettings
     ) async {
         let core = core
         do {
             journal = try await executor.run { try work(core) }
+            LocalSettings.trackChanged(setting)
             requestSync?()
         } catch {
             journal = previous
@@ -194,6 +197,7 @@ final class SettingsStore {
         let core = core
         do {
             review = try await executor.run { try core.setReviewReminder(enabled: enabled, time: time) }
+            LocalSettings.trackChanged(previous.enabled != enabled ? "inbox.reviewReminderEnabled" : "inbox.reviewReminderTime")
             requestSync?()
         } catch {
             review = previous

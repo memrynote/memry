@@ -89,6 +89,8 @@ linux:
   maintainer: electronjs.org
   category: Utility
 appImage:
+  # Keep Chromium sandboxing unless AppRun detects unavailable user namespaces.
+  executableArgs: []
   artifactName: ${productName}-${version}-${arch}.${ext}
 deb:
   artifactName: ${productName}-${version}-${arch}.${ext}

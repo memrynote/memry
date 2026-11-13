@@ -504,7 +504,8 @@
       "loading": "Ladataan asetuksia…"
     },
     "groups": {
-      "footer": "Alatunniste"
+      "footer": "Alatunniste",
+      "pastYears": "Menneet vuodet"
     },
     "template": {
       "label": "Pohja",
@@ -562,6 +563,14 @@
     "showInSidebar": {
       "label": "Näytä sivupalkissa",
       "description": "Näytä päiväkirjakansio ja sen merkinnät muistiinpanopuussa"
+    },
+    "showOnThisDay": {
+      "label": "Näytä Tänä päivänä",
+      "description": "Listaa sama päivämäärä menneiltä vuosilta merkinnän alle"
+    },
+    "allYearsView": {
+      "label": "Näytä kaikki vuodet kokonaan",
+      "description": "Ikuinen päiväkirja: päivämäärän kaikki vuodet yhdellä sivulla merkinnän alla"
     }
   },
   "tasks": {
@@ -1110,7 +1119,16 @@
       "sending": "Lähetetään koodia…"
     },
     "oauth": {
-      "google": "Jatka Googlella"
+      "google": "Jatka Googlella",
+      "waiting": "Viimeistele Googlella kirjautuminen selaimessasi.",
+      "browserUnavailable": "Selaimen avaaminen epäonnistui.",
+      "manualInstructions": "Kopioi kirjautumislinkki ja avaa se selaimessa tällä tietokoneella. Pidä memrynote auki kirjautumisen ajan.",
+      "linkLabel": "Kirjautumislinkki",
+      "copyLink": "Kopioi kirjautumislinkki",
+      "retryBrowser": "Yritä avata selain uudelleen",
+      "copied": "Kirjautumislinkki kopioitu.",
+      "copyFailed": "Kirjautumislinkin kopioiminen epäonnistui. Valitse se yllä olevasta kentästä ja kopioi.",
+      "cancel": "Käytä toista kirjautumistapaa"
     },
     "otp": {
       "title": "Anna vahvistuskoodi",
@@ -1347,6 +1365,7 @@
       "keySaveError": "OpenAI-avaimen tallentaminen epäonnistui"
     },
     "embedding": {
+      "load": "Lataa malli",
       "loaded": "Ladattu",
       "loading": "Ladataan",
       "downloadLoad": "Lataa ja ota malli käyttöön",
@@ -1371,7 +1390,8 @@
         "ollama": "Ollama (paikallinen)",
         "openai": "OpenAI",
         "anthropic": "Anthropic",
-        "google": "Google Gemini"
+        "google": "Google Gemini",
+        "custom": "Mukautettu (OpenAI-yhteensopiva)"
       },
       "model": "Malli",
       "modelDescription": "Kielimalli uudelleenkirjoitusta ja yhteenvetoa varten",
@@ -1381,6 +1401,11 @@
       "apiKeyPlaceholder": "Anna palvelun {provider} API-avain",
       "ollamaUrl": "Ollaman URL-osoite",
       "ollamaUrlDescription": "Paikallisen palvelimen osoite",
+      "customUrl": "Perus-URL",
+      "customUrlDescription": "Mikä tahansa OpenAI-yhteensopiva päätepiste, kuten OpenRouter",
+      "customUrlPlaceholder": "https://openrouter.ai/api/v1",
+      "customApiKeyPlaceholder": "API-avain (valinnainen)",
+      "customModelPlaceholder": "Mallin tunnus",
       "connection": "Yhteys",
       "activePort": "Aktiivinen portissa {port}",
       "notConnected": "Ei yhdistetty",
@@ -2033,7 +2058,7 @@
       "subtitle": "Hallitse ominaisuuksien määrityksiä kaikissa muistiinpanoissa"
     },
     "loading": "Ladataan ominaisuuksia…",
-    "empty": "Ei vielä ominaisuuksien määrityksiä. Aloita lisäämällä mihin tahansa muistiinpanoon Tila-, Valinta- tai Monivalinta-ominaisuus.",
+    "empty": "Ei vielä ominaisuuksia. Aloita lisäämällä ominaisuus mihin tahansa muistiinpanoon.",
     "filterPlaceholder": "Suodata ominaisuuksia…",
     "noMatch": "Ei ominaisuuksia haulla ”{query}”",
     "summary": "{count, plural, one {# ominaisuuden määritys} other {# ominaisuuden määritystä}}",
@@ -2073,6 +2098,14 @@
     },
     "v2": {
       "actionsAria": "Ominaisuuden {name} toiminnot"
+    },
+    "usage": {
+      "heading": "Käytössä",
+      "noteCount": "{count, plural, one {# muistiinpano} other {# muistiinpanoa}}",
+      "mismatchCount": "Arvot, jotka eivät vastaa tyyppiä {type}: {count}",
+      "mismatchNote": "Ei vastaa tyyppiä {type}",
+      "none": "Mikään muistiinpano ei käytä tätä ominaisuutta",
+      "loadFailed": "Tätä ominaisuutta käyttäviä muistiinpanoja ei voitu ladata"
     }
   },
   "commandLine": {
@@ -2408,7 +2441,6 @@
   "phaseI": {
     "errors": {
       "failedToUpdateTagColor": "Tunnisteen värin päivittäminen epäonnistui",
-      "googleSignInFailed": "Google-sisäänkirjautuminen epäonnistui",
       "failedToSendVerificationCode": "Vahvistuskoodin lähettäminen epäonnistui",
       "invalidVerificationCode": "Virheellinen vahvistuskoodi",
       "accountSetupFailed": "Tilin määrittäminen epäonnistui",
@@ -2435,7 +2467,8 @@
       "failedToCloseVault": "Holvin sulkeminen epäonnistui",
       "failedToSwitchVault": "Holvin vaihtaminen epäonnistui",
       "failedToUpdateConfig": "Määritysten päivittäminen epäonnistui",
-      "failedToReindex": "Uudelleenindeksoiminen epäonnistui"
+      "failedToReindex": "Uudelleenindeksoiminen epäonnistui",
+      "googleSignInFailed": "Google-sisäänkirjautuminen epäonnistui"
     }
   },
   "agentMcp": {
@@ -2465,7 +2498,17 @@
       "running": "Käynnissä",
       "tokenHint": "Vain tämä käynnistyskerta",
       "copy": "Kopioi",
-      "rotate": "Vaihda"
+      "rotate": "Vaihda",
+      "clientConfig": {
+        "label": "Asiakasohjelman määritys",
+        "hint": "Kopioidaan tämän käynnistyksen URL-osoitteella ja tunnuksella",
+        "copy": "Kopioi {client}-määritys"
+      },
+      "notes": {
+        "readOnly": "Ulkoiset asiakasohjelmat voivat vain lukea. Kirjoitustyökalut palauttavat PERMISSION_DENIED, joten kirjoita Agent Chatin tai memrynote-komentorivin kautta.",
+        "restart": "URL ja tunnus vaihtuvat, kun memrynote käynnistyy uudelleen, vaihtaa holvia tai uusii tunnuksen. Päivitä silloin asiakasohjelman määritys ja käynnistä se uudelleen.",
+        "docs": "Käyttöönotto-opas"
+      }
     }
   },
   "agentProviders": {

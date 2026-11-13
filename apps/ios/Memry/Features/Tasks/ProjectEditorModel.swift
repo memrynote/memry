@@ -270,13 +270,13 @@ final class ProjectEditorModel {
         )
     }
 
-    /// Creates or updates through the store; `true` when saved.
-    func save(in store: TasksStore) async -> Bool {
-        guard isValid else { return false }
+    /// Creates or updates through the store; the project's id when saved.
+    func save(in store: TasksStore) async -> String? {
+        guard isValid else { return nil }
         let draft = draft
         if let projectId {
-            return await store.updateProject(projectId, draft: draft)
+            return await store.updateProject(projectId, draft: draft) ? projectId : nil
         }
-        return await store.createProject(draft) != nil
+        return await store.createProject(draft)
     }
 }

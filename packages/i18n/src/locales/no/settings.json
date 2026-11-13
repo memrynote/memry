@@ -504,7 +504,8 @@
       "loading": "Laster inn innstillinger …"
     },
     "groups": {
-      "footer": "Bunntekst"
+      "footer": "Bunntekst",
+      "pastYears": "Tidligere år"
     },
     "template": {
       "label": "Mal",
@@ -562,6 +563,14 @@
     "showInSidebar": {
       "label": "Vis i sidefeltet",
       "description": "Vis journalmappen og innleggene i notattreet"
+    },
+    "showOnThisDay": {
+      "label": "Vis På denne dagen",
+      "description": "Vis samme dato fra tidligere år under innlegget"
+    },
+    "allYearsView": {
+      "label": "Vis alle år i sin helhet",
+      "description": "Den evige dagboken: alle årene for datoen på én side, under innlegget"
     }
   },
   "tasks": {
@@ -1110,7 +1119,16 @@
       "sending": "Sender kode …"
     },
     "oauth": {
-      "google": "Fortsett med Google"
+      "google": "Fortsett med Google",
+      "waiting": "Fullfør innloggingen med Google i nettleseren din.",
+      "browserUnavailable": "Kunne ikke åpne nettleseren din.",
+      "manualInstructions": "Kopier innloggingslenken og åpne den i en nettleser på denne datamaskinen. La memrynote stå åpen mens du logger inn.",
+      "linkLabel": "Innloggingslenke",
+      "copyLink": "Kopier innloggingslenke",
+      "retryBrowser": "Prøv å åpne nettleseren på nytt",
+      "copied": "Innloggingslenken er kopiert.",
+      "copyFailed": "Kunne ikke kopiere innloggingslenken. Merk og kopier den fra feltet ovenfor.",
+      "cancel": "Bruk en annen innloggingsmetode"
     },
     "otp": {
       "title": "Skriv inn bekreftelseskode",
@@ -1347,6 +1365,7 @@
       "keySaveError": "Kunne ikke lagre OpenAI-nøkkelen"
     },
     "embedding": {
+      "load": "Last inn modell",
       "loaded": "Lastet inn",
       "loading": "Laster inn",
       "downloadLoad": "Last ned og last inn modell",
@@ -1371,7 +1390,8 @@
         "ollama": "Ollama (lokal)",
         "openai": "OpenAI",
         "anthropic": "Anthropic",
-        "google": "Google Gemini"
+        "google": "Google Gemini",
+        "custom": "Egendefinert (OpenAI-kompatibel)"
       },
       "model": "Modell",
       "modelDescription": "Språkmodell for omskriving og oppsummering",
@@ -1381,6 +1401,11 @@
       "apiKeyPlaceholder": "Skriv inn API-nøkkel for {provider}",
       "ollamaUrl": "Ollama-URL",
       "ollamaUrlDescription": "Lokal serveradresse",
+      "customUrl": "Basis-URL",
+      "customUrlDescription": "Ethvert OpenAI-kompatibelt endepunkt, for eksempel OpenRouter",
+      "customUrlPlaceholder": "https://openrouter.ai/api/v1",
+      "customApiKeyPlaceholder": "API-nøkkel (valgfritt)",
+      "customModelPlaceholder": "Modell-ID",
       "connection": "Tilkobling",
       "activePort": "Aktiv på port {port}",
       "notConnected": "Ikke tilkoblet",
@@ -2033,7 +2058,7 @@
       "subtitle": "Administrer egenskapsdefinisjoner på tvers av alle notater"
     },
     "loading": "Laster inn egenskaper …",
-    "empty": "Ingen egenskapsdefinisjoner ennå. Legg til en egenskap av typen Status, Enkeltvalg eller Flervalg i et notat for å komme i gang.",
+    "empty": "Ingen egenskaper ennå. Legg til en egenskap i et notat for å komme i gang.",
     "filterPlaceholder": "Filtrer egenskaper …",
     "noMatch": "Ingen egenskaper samsvarer med «{query}»",
     "summary": "{count, plural, one {# egenskapsdefinisjon} other {# egenskapsdefinisjoner}}",
@@ -2073,6 +2098,14 @@
     },
     "v2": {
       "actionsAria": "Handlinger for {name}"
+    },
+    "usage": {
+      "heading": "Brukes i",
+      "noteCount": "{count, plural, one {# notat} other {# notater}}",
+      "mismatchCount": "Verdier som ikke passer til {type}: {count}",
+      "mismatchNote": "Passer ikke til {type}",
+      "none": "Ingen notater bruker denne egenskapen",
+      "loadFailed": "Kunne ikke laste inn notatene som bruker denne egenskapen"
     }
   },
   "commandLine": {
@@ -2408,7 +2441,6 @@
   "phaseI": {
     "errors": {
       "failedToUpdateTagColor": "Kunne ikke oppdatere taggfargen",
-      "googleSignInFailed": "Google-pålogging mislyktes",
       "failedToSendVerificationCode": "Kunne ikke sende bekreftelseskoden",
       "invalidVerificationCode": "Ugyldig bekreftelseskode",
       "accountSetupFailed": "Kontokonfigurering mislyktes",
@@ -2435,7 +2467,8 @@
       "failedToCloseVault": "Kunne ikke lukke hvelvet",
       "failedToSwitchVault": "Kunne ikke bytte hvelv",
       "failedToUpdateConfig": "Kunne ikke oppdatere konfigurasjonen",
-      "failedToReindex": "Kunne ikke indeksere på nytt"
+      "failedToReindex": "Kunne ikke indeksere på nytt",
+      "googleSignInFailed": "Google-pålogging mislyktes"
     }
   },
   "agentMcp": {
@@ -2465,7 +2498,17 @@
       "running": "Kjører",
       "tokenHint": "Bare for denne oppstarten",
       "copy": "Kopier",
-      "rotate": "Roter"
+      "rotate": "Roter",
+      "clientConfig": {
+        "label": "Klientkonfigurasjon",
+        "hint": "Kopieres med URL og token for denne oppstarten",
+        "copy": "Kopier {client}-konfigurasjon"
+      },
+      "notes": {
+        "readOnly": "Eksterne klienter kan bare lese. Skriveverktøy returnerer PERMISSION_DENIED, så skriv via Agent Chat eller memrynote-kommandolinjen.",
+        "restart": "URL og token endres når memrynote starter på nytt, bytter hvelv eller fornyer token. Oppdater da klientkonfigurasjonen og start klienten på nytt.",
+        "docs": "Oppsettsveiledning"
+      }
     }
   },
   "agentProviders": {

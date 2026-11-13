@@ -57,7 +57,7 @@ export function useOpenSearchItem(): (item: OpenableSearchItem) => void {
             isModified: false,
             isPreview: false,
             isDeleted: false,
-            ...(item.find && { viewState: { date, [FIND_REQUEST_KEY]: item.find } })
+            viewState: { date, ...(item.find && { [FIND_REQUEST_KEY]: item.find }) }
           })
           break
         }

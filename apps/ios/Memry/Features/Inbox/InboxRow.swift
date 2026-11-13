@@ -62,7 +62,7 @@ struct InboxRow: View {
                 }
                 .frame(maxWidth: .infinity, alignment: .leading)
                 if item.itemType == "image" {
-                    InboxThumbnail(url: store.localFile(item.thumbnailPath ?? item.attachmentPath))
+                    InboxThumbnail(url: store.thumbnailFile(for: item))
                 }
             }
             .padding(.vertical, Tokens.Space.small + 3)

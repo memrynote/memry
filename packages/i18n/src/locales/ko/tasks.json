@@ -113,7 +113,74 @@
       "noDueDate": "마감일 없음"
     },
     "repeatTypeRepeating": "반복",
-    "repeatTypeOneTime": "일회성"
+    "repeatTypeOneTime": "일회성",
+    "advanced": {
+      "entry": "고급 필터…",
+      "entryHint": "그리고, 또는, 아님 규칙",
+      "title": "필터",
+      "match": "다음 중",
+      "ofThese": "일치",
+      "matches": {
+        "all": "모두",
+        "any": "하나 이상",
+        "none": "없음"
+      },
+      "fields": {
+        "title": "제목",
+        "status": "상태",
+        "priority": "우선순위",
+        "due": "마감일",
+        "project": "프로젝트",
+        "location": "위치",
+        "tags": "태그",
+        "repeat": "반복",
+        "hasTime": "시간 있음"
+      },
+      "ops": {
+        "contains": "포함",
+        "notContains": "포함하지 않음",
+        "any": "다음 중 하나",
+        "none": "다음 중 어느 것도 아님",
+        "all": "모두 포함",
+        "empty": "비어 있음",
+        "notEmpty": "비어 있지 않음",
+        "is": "같음",
+        "isNot": "같지 않음"
+      },
+      "tagOps": {
+        "any": "다음 중 하나 포함",
+        "all": "모두 포함",
+        "none": "어느 것도 포함하지 않음"
+      },
+      "values": {
+        "repeating": "반복",
+        "oneTime": "한 번",
+        "withTime": "시간 있음",
+        "withoutTime": "시간 없음",
+        "customRange": "사용자 지정 범위",
+        "from": "시작",
+        "to": "종료",
+        "pick": "선택…",
+        "titlePlaceholder": "제목의 텍스트"
+      },
+      "addRule": "규칙 추가",
+      "addGroup": "그룹 추가",
+      "clear": "지우기",
+      "removeRule": "규칙 제거",
+      "removeGroup": "그룹 제거",
+      "matchCount": "{count, plural, other {작업 #개 일치}}",
+      "skipped": "{count, plural, other {규칙 #개 건너뜀}}",
+      "ruleCount": "{count, plural, other {규칙 #개}}",
+      "unknownRule": "최신 버전의 규칙",
+      "empty": "아직 규칙이 없습니다. 규칙을 추가해 필터링을 시작하세요.",
+      "summary": {
+        "and": "그리고",
+        "or": "또는",
+        "not": "아님"
+      },
+      "editRules": "규칙 편집",
+      "clearRules": "규칙 지우기"
+    }
   },
   "quickAdd": {
     "label": "작업 빠르게 추가",

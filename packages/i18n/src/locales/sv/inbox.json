@@ -250,7 +250,8 @@
     "failedPlayAudio": "Det gick inte att spela upp ljudet",
     "failedLoadAudio": "Det gick inte att läsa in ljudet",
     "video": "Video",
-    "unsupportedVideo": "Din webbläsare stöder inte videotaggen."
+    "unsupportedVideo": "Din webbläsare stöder inte videotaggen.",
+    "fileOnOtherDevice": "Filen finns på enheten som fångade den."
   },
   "reminder": {
     "dataUnavailable": "Påminnelsedata är inte tillgängliga.",

@@ -1,4 +1,4 @@
-import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest'
+import { describe, it, expect, vi, beforeEach } from 'vitest'
 import { renderHook, act } from '@testing-library/react'
 import { useUndoableTaskActions, UNDOABLE_FIELDS } from './use-undoable-task-actions'
 import type { Task, Priority } from '@/data/task-model'
@@ -19,6 +19,9 @@ vi.mock('@/lib/logger', () => ({
     debug: vi.fn()
   })
 }))
+
+const tasksServiceMocks = vi.hoisted(() => ({ complete: vi.fn() }))
+vi.mock('@/services/tasks-service', () => ({ tasksService: tasksServiceMocks }))
 
 import { toast } from 'sonner'
 
@@ -414,262 +417,61 @@ describe('useUndoableTaskActions', () => {
 
   // ---------- completeTask (repeating) ----------
 
+  // Main rolls the series (task-completion-domain.test.ts); the hook asks for
+  // the completion and keeps what undo needs.
   describe('completeTask - repeating', () => {
-    const makeRepeatingTask = (): Task =>
-      makeTask({
+    const repeatConfig = {
+      frequency: 'daily' as const,
+      interval: 1,
+      endType: 'never' as const,
+      completedCount: 0,
+      createdAt: new Date('2026-01-01')
+    }
+
+    function setupRepeating() {
+      return setup([
+        { id: 'repeat-1', isRepeating: true, dueDate: new Date('2026-03-01'), repeatConfig }
+      ])
+    }
+
+    it('completes through main and leaves the next occurrence to it', async () => {
+      tasksServiceMocks.complete.mockResolvedValue({
+        success: true,
+        task: {},
+        nextOccurrence: { id: 'next-1', dueDate: '2026-03-02' }
+      })
+      const { result, deps } = setupRepeating()
+
+      act(() => {
+        result.current.completeTask('repeat-1')
+      })
+
+      expect(tasksServiceMocks.complete).toHaveBeenCalledWith({
         id: 'repeat-1',
-        title: 'Recurring',
-        isRepeating: true,
-        dueDate: new Date('2026-03-01'),
-        repeatConfig: {
-          frequency: 'daily',
-          interval: 1,
-          endType: 'never',
-          completedCount: 0,
-          createdAt: new Date('2026-01-01')
-        }
+        completedAt: expect.any(String)
       })
+      expect(deps.addTask).not.toHaveBeenCalled()
+      await vi.waitFor(() => expect(toast.success).toHaveBeenCalled())
+    })
 
-    it('should mark original as done and non-repeating', () => {
-      const task = makeRepeatingTask()
-      const deps = {
-        tasks: [task],
-        addTask: vi.fn(),
-        updateTask: vi.fn(),
-        deleteTask: vi.fn(),
-        registerUndo: vi.fn().mockReturnValue('undo-r1'),
-        removeUndoEntry: vi.fn(),
-        projects: [
-          {
-            id: 'proj-1',
-            name: 'Project',
-            color: '#000',
-            isArchived: false,
-            statuses: [
-              {
-                id: 'status-todo',
-                name: 'To Do',
-                type: 'todo' as const,
-                position: 0,
-                isDefault: true
-              },
-              {
-                id: 'status-done',
-                name: 'Done',
-                type: 'done' as const,
-                position: 2,
-                isDefault: true
-              }
-            ]
-          }
-        ]
-      }
-
-      const { result } = renderHook(() => useUndoableTaskActions(deps))
+    it('undoes by restoring the series and deleting the occurrence main created', async () => {
+      tasksServiceMocks.complete.mockResolvedValue({
+        success: true,
+        task: {},
+        nextOccurrence: { id: 'next-1', dueDate: '2026-03-02' }
+      })
+      const { result, deps } = setupRepeating()
 
       act(() => {
         result.current.completeTask('repeat-1')
       })
+      deps.registerUndo.mock.calls[0][1]()
 
+      await vi.waitFor(() => expect(deps.deleteTask).toHaveBeenCalledWith('next-1'))
       expect(deps.updateTask).toHaveBeenCalledWith(
         'repeat-1',
-        expect.objectContaining({
-          statusId: 'status-done',
-          isRepeating: false,
-          repeatConfig: null
-        })
+        expect.objectContaining({ completedAt: null, isRepeating: true, repeatConfig })
       )
-    })
-
-    it('should create next occurrence', () => {
-      const task = makeRepeatingTask()
-      const deps = {
-        tasks: [task],
-        addTask: vi.fn(),
-        updateTask: vi.fn(),
-        deleteTask: vi.fn(),
-        registerUndo: vi.fn().mockReturnValue('undo-r2'),
-        removeUndoEntry: vi.fn(),
-        projects: [
-          {
-            id: 'proj-1',
-            name: 'Project',
-            color: '#000',
-            isArchived: false,
-            statuses: [
-              {
-                id: 'status-todo',
-                name: 'To Do',
-                type: 'todo' as const,
-                position: 0,
-                isDefault: true
-              },
-              {
-                id: 'status-done',
-                name: 'Done',
-                type: 'done' as const,
-                position: 2,
-                isDefault: true
-              }
-            ]
-          }
-        ]
-      }
-
-      const { result } = renderHook(() => useUndoableTaskActions(deps))
-
-      act(() => {
-        result.current.completeTask('repeat-1')
-      })
-
-      expect(deps.addTask).toHaveBeenCalledWith(
-        expect.objectContaining({
-          isRepeating: true,
-          completedAt: null
-        })
-      )
-    })
-
-    // The anchor only shows itself when the task is completed off its due date,
-    // so these two run the same overdue task under both settings.
-    describe('repeat anchor', () => {
-      const setupOverdue = (repeatFrom: Task['repeatFrom']) => {
-        const deps = {
-          tasks: [makeTask({ ...makeRepeatingTask(), repeatFrom })],
-          addTask: vi.fn(),
-          updateTask: vi.fn(),
-          deleteTask: vi.fn(),
-          registerUndo: vi.fn().mockReturnValue('undo-anchor'),
-          removeUndoEntry: vi.fn(),
-          projects: [
-            {
-              id: 'proj-1',
-              name: 'Project',
-              color: '#000',
-              isArchived: false,
-              statuses: [
-                {
-                  id: 'status-todo',
-                  name: 'To Do',
-                  type: 'todo' as const,
-                  position: 0,
-                  isDefault: true
-                },
-                {
-                  id: 'status-done',
-                  name: 'Done',
-                  type: 'done' as const,
-                  position: 2,
-                  isDefault: true
-                }
-              ]
-            }
-          ]
-        }
-
-        const { result } = renderHook(() => useUndoableTaskActions(deps))
-        return { result, deps }
-      }
-
-      beforeEach(() => {
-        vi.useFakeTimers()
-        vi.setSystemTime(new Date(2026, 2, 5, 10, 0, 0))
-      })
-
-      afterEach(() => {
-        vi.useRealTimers()
-      })
-
-      it('keeps the fixed cadence when the anchor is unset', () => {
-        const { result, deps } = setupOverdue(null)
-
-        act(() => {
-          result.current.completeTask('repeat-1')
-        })
-
-        expect(deps.addTask).toHaveBeenCalledWith(
-          expect.objectContaining({ dueDate: new Date(2026, 2, 2) })
-        )
-      })
-
-      it('restarts the interval on the completion date when asked to', () => {
-        const { result, deps } = setupOverdue('completion')
-
-        act(() => {
-          result.current.completeTask('repeat-1')
-        })
-
-        expect(deps.addTask).toHaveBeenCalledWith(
-          expect.objectContaining({
-            dueDate: new Date(2026, 2, 6),
-            repeatFrom: 'completion'
-          })
-        )
-      })
-    })
-
-    it('should undo by restoring original repeat config and deleting next occurrence', () => {
-      const task = makeRepeatingTask()
-      const deps = {
-        tasks: [task],
-        addTask: vi.fn(),
-        updateTask: vi.fn(),
-        deleteTask: vi.fn(),
-        registerUndo: vi.fn().mockReturnValue('undo-r3'),
-        removeUndoEntry: vi.fn(),
-        projects: [
-          {
-            id: 'proj-1',
-            name: 'Project',
-            color: '#000',
-            isArchived: false,
-            statuses: [
-              {
-                id: 'status-todo',
-                name: 'To Do',
-                type: 'todo' as const,
-                position: 0,
-                isDefault: true
-              },
-              {
-                id: 'status-done',
-                name: 'Done',
-                type: 'done' as const,
-                position: 2,
-                isDefault: true
-              }
-            ]
-          }
-        ]
-      }
-
-      const { result } = renderHook(() => useUndoableTaskActions(deps))
-
-      act(() => {
-        result.current.completeTask('repeat-1')
-      })
-
-      // Capture next occurrence ID
-      const nextTask = deps.addTask.mock.calls[0][0]
-      const nextId = nextTask.id
-
-      // #when — undo
-      deps.updateTask.mockClear()
-      deps.deleteTask.mockClear()
-      const undoFn = deps.registerUndo.mock.calls[0][1]
-      undoFn()
-
-      // Original restored with repeat config
-      expect(deps.updateTask).toHaveBeenCalledWith(
-        'repeat-1',
-        expect.objectContaining({
-          isRepeating: true,
-          repeatConfig: expect.objectContaining({ frequency: 'daily' })
-        })
-      )
-
-      // Next occurrence deleted
-      expect(deps.deleteTask).toHaveBeenCalledWith(nextId)
     })
   })
 
