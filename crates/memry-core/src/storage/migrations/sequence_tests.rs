@@ -44,3 +44,58 @@ fn every_migration_file_is_its_numbered_entry() {
         }
     }
 }
+
+/// `fts_inbox` as main's index migration 0003 (#4419) creates it, desktop's `fts-inbox.ts`
+/// columns: the order is what `INBOX_RANK`'s weights refer to.
+fn fts_inbox(conn: &rusqlite::Connection) -> Vec<(String, Option<String>)> {
+    let mut statement = conn
+        .prepare("SELECT type, sql FROM sqlite_schema WHERE name = 'fts_inbox'")
+        .expect("prepare");
+    statement
+        .query_map([], |row| Ok((row.get(0)?, row.get(1)?)))
+        .expect("query")
+        .collect::<Result<_, _>>()
+        .expect("rows")
+}
+
+/// The shifted index list runs on a fresh file and on one main left at its version 3, and
+/// either way ends with one `fts_inbox`, main's, with the rows main's build wrote.
+#[test]
+fn the_index_list_runs_fresh_and_over_mains_version_3_with_one_fts_inbox() {
+    let mut fresh = rusqlite::Connection::open_in_memory().expect("open");
+    run_atomic(&mut fresh, INDEX_MIGRATIONS).expect("fresh");
+    let expected = fts_inbox(&fresh);
+    assert_eq!(expected.len(), 1, "{expected:?}");
+    assert!(
+        expected[0].1.as_deref().is_some_and(|sql| sql.contains(
+            "id UNINDEXED,\n  title,\n  content,\n  transcription,\n  source_title,\n  \
+             tokenize = 'porter unicode61'"
+        )),
+        "{expected:?}"
+    );
+
+    let mut main = rusqlite::Connection::open_in_memory().expect("open");
+    assert_eq!(
+        run_atomic(&mut main, &INDEX_MIGRATIONS[..3]).expect("main"),
+        3
+    );
+    assert_eq!(INDEX_MIGRATIONS[2].name, "fts_inbox");
+    main.execute_batch(
+        "INSERT INTO fts_inbox (id, title, content, transcription, source_title)
+         VALUES ('c1', 'Osprey', '', '', '')",
+    )
+    .expect("a row main's build indexed");
+    assert_eq!(
+        run_atomic(&mut main, INDEX_MIGRATIONS).expect("step forward"),
+        latest_version(INDEX_MIGRATIONS)
+    );
+    assert_eq!(fts_inbox(&main), expected);
+    let kept: i64 = main
+        .query_row(
+            "SELECT count(*) FROM fts_inbox WHERE fts_inbox MATCH 'osprey'",
+            [],
+            |row| row.get(0),
+        )
+        .expect("count");
+    assert_eq!(kept, 1);
+}

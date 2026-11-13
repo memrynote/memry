@@ -49,16 +49,38 @@ fn a_tombstone_older_than_a_revived_row_is_skipped_and_a_clockless_one_still_app
         journal::open_day(conn, "2026-04-16", "device-a", 1)?;
         let first = clock_of([("device-a", 1), ("device-b", 1)]);
         assert_eq!(
-            apply_page(conn, vec![delete(Some(first.clone()))], vec![], 2, None)?.deleted,
+            apply_page(
+                conn,
+                vec![delete(Some(first.clone()))],
+                vec![],
+                2,
+                None,
+                &crate::crypto::agent_envelope::AtRestKey::default()
+            )?
+            .deleted,
             1
         );
         journal::open_day(conn, "2026-04-16", "device-a", 3)?;
 
-        let late = apply_page(conn, vec![delete(Some(first))], vec![], 4, None)?;
+        let late = apply_page(
+            conn,
+            vec![delete(Some(first))],
+            vec![],
+            4,
+            None,
+            &crate::crypto::agent_envelope::AtRestKey::default(),
+        )?;
         assert_eq!((late.deleted, late.skipped), (0, 1));
         assert!(live(conn));
 
-        let clockless = apply_page(conn, vec![delete(None)], vec![], 5, None)?;
+        let clockless = apply_page(
+            conn,
+            vec![delete(None)],
+            vec![],
+            5,
+            None,
+            &crate::crypto::agent_envelope::AtRestKey::default(),
+        )?;
         assert_eq!(clockless.deleted, 1);
         assert!(!live(conn));
         Ok(())

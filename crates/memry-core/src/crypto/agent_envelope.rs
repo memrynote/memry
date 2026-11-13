@@ -67,6 +67,10 @@ pub enum SealError {
     Crypto(#[from] CryptoError),
 }
 
+/// The column's JSON. `version` is a `u64`, so `1.0` does not read as version
+/// 1, and serde refuses a key stated twice; Electron accepts both
+/// (`JSON.parse` and `===` on the number), but its writer emits neither
+/// (`encryption.ts:35-46`), so no stored column is refused for it.
 #[derive(Serialize, Deserialize)]
 struct Envelope {
     version: u64,
@@ -79,10 +83,9 @@ pub fn seal(purpose: Purpose, plaintext: &str, key: &[u8; 32]) -> Result<String,
     seal_with_nonce(purpose, plaintext, key, &sodium::random_bytes(NONCE_LEN))
 }
 
-/// [`seal`] under a given nonce, for the conformance vectors. Production
-/// callers use [`seal`]: a nonce reused under one key breaks the cipher.
-#[doc(hidden)]
-pub fn seal_with_nonce(
+/// [`seal`] under a given nonce. Private, so only [`seal`] and this module's
+/// conformance test reach it: a nonce reused under one key breaks the cipher.
+fn seal_with_nonce(
     purpose: Purpose,
     plaintext: &str,
     key: &[u8; 32],
@@ -105,8 +108,10 @@ pub fn seal_with_nonce(
 
 /// Opens an envelope [`seal`] or Electron wrote for `purpose`.
 ///
-/// Invalid UTF-8 in the plaintext becomes U+FFFD, as Electron's `TextDecoder`
-/// does; only a holder of the key can produce such a plaintext.
+/// The plaintext decodes as Electron's `TextDecoder` does
+/// (`encryption.ts:63`): invalid UTF-8 becomes U+FFFD, and one leading
+/// byte-order mark is dropped (`ignoreBOM` false, chapter 04 §4.17). Only a
+/// holder of the key can produce such a plaintext.
 pub fn open(purpose: Purpose, envelope: &str, key: &[u8; 32]) -> Result<String, SealError> {
     let envelope: Envelope = serde_json::from_str(envelope).map_err(|_| SealError::Malformed)?;
     if envelope.version != VERSION {
@@ -120,7 +125,8 @@ pub fn open(purpose: Purpose, envelope: &str, key: &[u8; 32]) -> Result<String, 
     let associated_data = purpose.associated_data();
     let plaintext =
         sodium::aead_decrypt(&ciphertext, Some(associated_data.as_bytes()), &nonce, key)?;
-    Ok(String::from_utf8_lossy(&plaintext).into_owned())
+    let text = String::from_utf8_lossy(&plaintext);
+    Ok(text.strip_prefix('\u{FEFF}').unwrap_or(&text).to_owned())
 }
 
 /// The vault key the agent stores seal under, shared by the [`Vault`] that
@@ -175,6 +181,47 @@ mod tests {
     use super::*;
 
     const KEY: [u8; 32] = [7; 32];
+
+    /// The `agent-envelope` class's seals: under the fixed nonce, Electron's
+    /// column byte for byte (`packages/contracts/test-vectors/agent-envelope.json`).
+    #[test]
+    fn agent_envelope_seals_reproduce_electron_columns() {
+        let path = concat!(
+            env!("CARGO_MANIFEST_DIR"),
+            "/../../packages/contracts/test-vectors/agent-envelope.json"
+        );
+        let file: serde_json::Value =
+            serde_json::from_str(&std::fs::read_to_string(path).expect("the vector file"))
+                .expect("json");
+        let text = |case: &serde_json::Value, key: &str| case[key].as_str().expect(key).to_owned();
+        let key: [u8; 32] = hex::decode(text(&file, "keyHex"))
+            .expect("hex")
+            .try_into()
+            .expect("32 bytes");
+        let seals = file["seals"].as_array().expect("seals");
+        assert_eq!(seals.len(), 9);
+        for case in seals {
+            let name = text(case, "name");
+            let purpose = match text(case, "purpose").as_str() {
+                "agent_conversation_title" => Purpose::ConversationTitle,
+                "agent_message_content" => Purpose::MessageContent,
+                _ => Purpose::Attachments,
+            };
+            let nonce = hex::decode(text(case, "nonceHex")).expect("hex");
+            let sealed = seal_with_nonce(purpose, &text(case, "plaintext"), &key, &nonce)
+                .unwrap_or_else(|error| panic!("{name}: {error}"));
+            assert_eq!(sealed, text(case, "column"), "{name}");
+        }
+    }
+
+    #[test]
+    fn one_leading_byte_order_mark_is_dropped_on_open() {
+        let sealed = seal(Purpose::ConversationTitle, "\u{FEFF}\u{FEFF}t", &KEY).unwrap();
+        assert_eq!(
+            open(Purpose::ConversationTitle, &sealed, &KEY).unwrap(),
+            "\u{FEFF}t"
+        );
+    }
 
     #[test]
     fn a_sealed_text_opens_under_its_purpose_only() {

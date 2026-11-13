@@ -51,6 +51,14 @@ This directory owns the Rust workspace. `memry-core` is the shared core under th
 
 `memry-core/src/domain/embedding_input.rs` (Step 23, #3540) ports Electron's `apps/desktop/src/main/lib/embedding-input.ts` and is tested against `packages/contracts/test-vectors/embedding-input.json`, which `apps/desktop/scripts/embedding-input-oracle/` generates by running that module in Node. Regenerate with `pnpm --filter @memry/desktop vectors:embedding-input`; `vectors:embedding-input:check` runs in CI. Lengths are UTF-16 code units, and a cut that splits a surrogate pair is U+FFFD on both sides.
 
+### Embeddings text
+
+`memry-ml`'s text engine is tested against `packages/contracts/test-vectors/embeddings-text.json`: the token ids and the stored 256-value vector transformers.js gives on Electron's text path (`embedding-worker.ts`) for 31 texts (30 taken from `embedding-input.json`, one past the 4000-unit cut), 2 texts Electron embeds with a lone surrogate, and 12 query and document pairs with their oracle ranking. `crates/memry-ml/tests/golden/generate.mjs` writes it from a local copy of the pinned model (`pnpm embed:golden --model-dir <.../onnx-community/embeddinggemma-2-ONNX>`). `--check` writes nothing; it is exact on token ids, order and meta and holds the vectors to the file's tolerance. It needs the model, so CI does not run it.
+
+- `tests/golden_text.rs` (full tier, dev profile, `MEMRY_ML_MODEL_DIR`) holds every text to equal token ids, so a `<bos>`/`<eos>` change in `tokenizer.encode(..., true)` fails, to cosine at least 0.9999 and to at most 0.001 per component, and every query to the oracle's full document order. Never loosen the bounds; on an ONNX Runtime or tokenizer change, regenerate and fix the Rust.
+- The generator refuses ranking texts that put two documents within 1e-4 for one query. That floor is a margin for cross-CPU floating-point noise, observed far below it (bit-identical on macOS arm64, all legs green); it does not follow from the bounds, which allow a score to shift by about 0.028. A ranking failure while every text is inside the bounds is drift to investigate, not a reason to change a ranking text.
+- Lone surrogates are a known divergence (test-vectors README): the test pins the measured cosine with Electron's vector instead of the bounds.
+
 ### Note fold
 
 `memry-desktop/src/fold` (Step 14h, #3531) ports Electron's local fold (`apps/desktop/src/main/note-fold/`) and is tested against `packages/contracts/test-vectors/note-fold-text.json` and `note-fold.json`, which `apps/desktop/scripts/note-fold-oracle/` generates by running that engine in Node.

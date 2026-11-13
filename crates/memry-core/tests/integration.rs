@@ -16,6 +16,8 @@ mod support;
 mod account_setup;
 #[path = "agent_envelope_vectors.rs"]
 mod agent_envelope_vectors;
+#[path = "agent_records_sync.rs"]
+mod agent_records_sync;
 #[path = "api_attachment_fetch.rs"]
 mod api_attachment_fetch;
 #[path = "api_inbox.rs"]

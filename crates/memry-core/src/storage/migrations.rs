@@ -184,6 +184,11 @@ pub const DATA_MIGRATIONS: &[Migration] = &[
         name: "desktop_record_types",
         sql: include_str!("migrations/data/0028_desktop_record_types.sql"),
     },
+    Migration {
+        version: 29,
+        name: "agent_records",
+        sql: include_str!("migrations/data/0029_agent_records.sql"),
+    },
 ];
 
 /// `index.db`: the rebuildable search and link index.
@@ -343,6 +348,8 @@ fn set_user_version(conn: &Connection, version: u32) -> Result<(), StorageError>
         })
 }
 
+#[cfg(test)]
+mod agent_records_tests;
 #[cfg(test)]
 mod desktop_record_types_tests;
 mod legacy_numbering;
