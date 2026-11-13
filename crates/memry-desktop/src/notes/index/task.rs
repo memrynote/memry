@@ -375,6 +375,8 @@ impl Indexer {
         owed.retype = false;
         owed.due = None;
         let stop = || cancel.is_cancelled();
+        // The open's pass mints for every note, a later one for the files it read.
+        let sweep = report.is_some();
         let mut throttle = ProgressThrottle::new(PROGRESS_INTERVAL);
         let mut progress = |step| {
             if let Some(report) = report
@@ -398,6 +400,11 @@ impl Indexer {
                 announce,
             )
         });
+        if let Ok(pass) = &outcome
+            && pass.reindexed
+        {
+            self.define_tags((!sweep).then(|| pass.written.clone()));
+        }
         owed.settle(ids, scan, &outcome);
         owed.land(&outcome, landed);
     }
@@ -448,6 +455,11 @@ impl Indexer {
                 announce,
             )
         });
+        if let Ok(pass) = &outcome
+            && pass.reindexed
+        {
+            self.define_tags(None);
+        }
         owed.settle(ids, scan, &outcome);
         owed.land(&outcome, landed);
         match outcome {
@@ -469,6 +481,7 @@ mod tests {
             stopped: false,
             written: Vec::new(),
             learned: false,
+            reindexed: false,
         })
     }
 

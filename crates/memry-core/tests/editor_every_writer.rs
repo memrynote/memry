@@ -17,6 +17,7 @@ use memry_core::crdt::body_edit::BlockEdit;
 use memry_core::crdt::update_log;
 use memry_core::domain::external_feed::{AppRead, FeedInput, FeedOutcome};
 use memry_core::markdown::convert::api::Converter;
+use memry_core::markdown::convert::apply::CriticMarks;
 use memry_core::protocol::envelope::{EnvelopeError, RecordEnvelope};
 use memry_core::protocol::http::{ClientIdentity, HttpClient};
 use memry_core::protocol::types::Declaration;
@@ -165,6 +166,7 @@ fn an_app_edit_of_the_file_reaches_the_windows_as_a_system_write() {
     let read = AppRead {
         file_body: "the file before",
         compared_at: None,
+        critic_marks: CriticMarks::FromMarkdown,
     };
     let input = FeedInput {
         note_id: &note,

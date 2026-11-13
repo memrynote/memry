@@ -171,6 +171,38 @@ describe('useEditorSync', () => {
     expect(undoManager.stopCapturing).toHaveBeenCalled()
   })
 
+  // #4425: with a live Y.Doc no markdown save runs, and the review marks the
+  // window owns in the doc must still move with the text typed before them.
+  it('hands a live editor text to the review, telling its own changes from remote ones', async () => {
+    yUndoMocks.getState.mockReturnValue({ undoManager: { clear: vi.fn(), stopCapturing: vi.fn() } })
+    const editor = createEditor()
+    const onLiveMarkdownChange = vi.fn()
+    const onMarkdownChange = vi.fn()
+    const isRemoteUpdateRef = { current: false }
+    const { result } = renderHook(() =>
+      useEditorSync({
+        editor,
+        yjsFragment: {} as never,
+        isRemoteUpdateRef,
+        onMarkdownChange,
+        onLiveMarkdownChange
+      })
+    )
+    await waitFor(() => expect(result.current.isContentReadyRef.current).toBe(true))
+
+    act(() => result.current.handleChange())
+    await waitFor(() => expect(onLiveMarkdownChange).toHaveBeenCalledWith(expect.any(String), true))
+
+    isRemoteUpdateRef.current = true
+    act(() => result.current.handleChange())
+    isRemoteUpdateRef.current = false
+    await waitFor(() =>
+      expect(onLiveMarkdownChange).toHaveBeenLastCalledWith(expect.any(String), false)
+    )
+    expect(onLiveMarkdownChange).toHaveBeenCalledTimes(2)
+    expect(onMarkdownChange).not.toHaveBeenCalled()
+  })
+
   it('hydrates link mentions without crashing on non-array block content', async () => {
     const nestedMention = {
       id: 'nested-mention',

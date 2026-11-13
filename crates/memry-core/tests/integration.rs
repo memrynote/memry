@@ -388,6 +388,8 @@ mod sync_realtime_run;
 mod tag_fields;
 #[path = "tag_fold_vectors.rs"]
 mod tag_fold_vectors;
+#[path = "tag_mint.rs"]
+mod tag_mint;
 #[path = "tag_objects.rs"]
 mod tag_objects;
 #[path = "tag_pins.rs"]

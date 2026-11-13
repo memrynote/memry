@@ -81,6 +81,8 @@ pub(super) struct Pass {
     pub written: Vec<String>,
     /// It learned a type ([`super::learn`]): the rows holding its name are owed it.
     pub learned: bool,
+    /// The search reindex ran to its end: the body tags are the files' ([`Self::define_tags`]).
+    pub reindexed: bool,
 }
 
 enum Read {
@@ -223,6 +225,7 @@ impl Indexer {
             stopped: false,
             written: Vec::new(),
             learned: false,
+            reindexed: false,
         };
         // Owed before the first write: a pass that ends early leaves it owed.
         if total > 0 {
@@ -290,6 +293,7 @@ impl Indexer {
                     if !changed.is_empty() {
                         announce(changed);
                     }
+                    pass.reindexed = true;
                 }
                 None => pass.stopped = true,
             }
@@ -301,6 +305,36 @@ impl Indexer {
             self.search.set_properties_typed_with(record)?;
         }
         Ok(pass)
+    }
+
+    /// Mints a definition for every tag of the notes `only` names, or of every note, that has
+    /// none (#4418, Electron's `ensureTagDefinitions` for each file it indexes), once a pass's
+    /// search reindex brought the body tags up to date. A pass mints for the files it read; the
+    /// open's pass for every note, which defines the tags of a vault an older build indexed. A
+    /// failure is logged, and the next pass that reads the file, or the next open, tries again.
+    pub(super) fn define_tags(&self, only: Option<Vec<String>>) {
+        if only.as_ref().is_some_and(Vec::is_empty) {
+            return;
+        }
+        let defined = self.search.used_tags(only).and_then(|tags| {
+            let hub =
+                self.vault
+                    .tag_hub(self.store.clone())
+                    .map_err(|error| StorageError::Failed {
+                        what: format!("no device identity: {error}"),
+                    })?;
+            hub.define_used(&tags)
+        });
+        match defined {
+            Ok(0) => {}
+            Ok(created) => tracing::info!(scope = "note_index", created, "tags defined"),
+            Err(error) => {
+                tracing::warn!(
+                    scope = "note_index",
+                    "tags not defined, retried later: {error}"
+                );
+            }
+        }
     }
 
     fn write(
