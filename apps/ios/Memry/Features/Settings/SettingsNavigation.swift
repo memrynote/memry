@@ -105,7 +105,10 @@ private struct SettingsSplitView: View {
         NavigationSplitView(columnVisibility: $columns) {
             Group {
                 if let context {
+                    // The selected row is neutral (`--surface-active`), not
+                    // the tint: the rows' own text colours stay legible on it.
                     SettingsRootScreen(context: context, selection: page)
+                        .tint(Tokens.Canvas.surfaceActive.color)
                 } else {
                     ProgressView(SettingsCopy.loading)
                 }
