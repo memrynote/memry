@@ -26,9 +26,9 @@ use crate::local_agent_server::{
     NDJSON, Recorded, SSE, answer, chunk, client, json_reply, models, probe_reply, serve, sse,
 };
 
-const PROMPT: &str = "User: list my tags";
+pub(crate) const PROMPT: &str = "User: list my tags";
 
-struct Fixed(LocalProvider);
+pub(crate) struct Fixed(pub(crate) LocalProvider);
 
 impl ProviderSource for Fixed {
     fn read(&self) -> (LocalProvider, Option<SecureStoreError>) {
@@ -36,7 +36,11 @@ impl ProviderSource for Fixed {
     }
 }
 
-fn provider(preset: AgentLocalProviderPreset, base_url: &str, model: &str) -> LocalProvider {
+pub(crate) fn provider(
+    preset: AgentLocalProviderPreset,
+    base_url: &str,
+    model: &str,
+) -> LocalProvider {
     LocalProvider {
         preset,
         base_url: base_url.to_owned(),
@@ -47,25 +51,25 @@ fn provider(preset: AgentLocalProviderPreset, base_url: &str, model: &str) -> Lo
     }
 }
 
-fn agent(provider: LocalProvider) -> LocalAgent {
+pub(crate) fn agent(provider: LocalProvider) -> LocalAgent {
     LocalAgent::new(Arc::new(Fixed(provider)), client())
 }
 
 /// The vault tools a turn offers; every call answers `outcome`.
-struct Host {
+pub(crate) struct Host {
     calls: Mutex<Vec<ToolCall>>,
     outcome: ToolOutcome,
 }
 
 impl Host {
-    fn new(outcome: ToolOutcome) -> Arc<Self> {
+    pub(crate) fn new(outcome: ToolOutcome) -> Arc<Self> {
         Arc::new(Self {
             calls: Mutex::new(Vec::new()),
             outcome,
         })
     }
 
-    fn tags() -> Arc<Self> {
+    pub(crate) fn tags() -> Arc<Self> {
         Self::new(ToolOutcome::Ok {
             data: json!({ "tags": [] }),
             images: Vec::new(),
@@ -96,7 +100,7 @@ impl AgentToolHost for Host {
     }
 }
 
-async fn run(
+pub(crate) async fn run(
     agent: &LocalAgent,
     input: LocalRunInput,
     host: Option<Arc<Host>>,
@@ -129,7 +133,7 @@ fn reasoning(events: &[BackendEvent]) -> String {
 }
 
 /// The turn's own chat requests (the probes never carry the prompt).
-fn turn_requests(fake: &Fake) -> Vec<Recorded> {
+pub(crate) fn turn_requests(fake: &Fake) -> Vec<Recorded> {
     fake.requests()
         .into_iter()
         .filter(|request| request.method == Method::POST && request.mentions(PROMPT))
@@ -253,7 +257,7 @@ async fn local_agent_a_quoted_call_of_an_unknown_tool_stays_text() {
     assert!(host.calls().is_empty());
 }
 
-async fn deepseek(server: DeepSeek, thinking: AgentLocalThinking) -> (Fake, LocalAgent) {
+pub(crate) async fn deepseek(server: DeepSeek, thinking: AgentLocalThinking) -> (Fake, LocalAgent) {
     let fake = serve(move |request| server.handle(request)).await;
     let mut settings = provider(
         AgentLocalProviderPreset::Custom,
@@ -424,12 +428,12 @@ impl RejectedChoice for Recorded {
     }
 }
 
-const IMAGE: &str = "iVBORw0KGgo=";
+pub(crate) const IMAGE: &str = "iVBORw0KGgo=";
 
 /// A provider whose model calls `vault_view_file` once; `accepts_images` answers the one-token
 /// image probe.
-async fn vision(accepts_images: bool) -> (Fake, Vec<BackendEvent>) {
-    let fake = serve(move |request| {
+pub(crate) async fn vision_server(accepts_images: bool) -> Fake {
+    serve(move |request| {
         if request.path.ends_with("/models") {
             return models(MODEL);
         }
@@ -453,14 +457,22 @@ async fn vision(accepts_images: bool) -> (Fake, Vec<BackendEvent>) {
         let call = json!({ "index": 0, "id": "call_1", "type": "function", "function": { "name": "vault_view_file", "arguments": "{}" } });
         sse(&[chunk(json!({ "tool_calls": [call] }), Some("tool_calls"))])
     })
-    .await;
-    let host = Host::new(ToolOutcome::Ok {
+    .await
+}
+
+/// A host whose every call returns one image.
+pub(crate) fn image_host() -> Arc<Host> {
+    Host::new(ToolOutcome::Ok {
         data: json!({ "id": "file-1", "width": 1, "height": 1 }),
         images: vec![ToolImage {
             data: IMAGE.into(),
             mime_type: "image/png".into(),
         }],
-    });
+    })
+}
+
+async fn vision(accepts_images: bool) -> (Fake, Vec<BackendEvent>) {
+    let fake = vision_server(accepts_images).await;
     let events = run(
         &agent(provider(
             AgentLocalProviderPreset::Custom,
@@ -468,7 +480,7 @@ async fn vision(accepts_images: bool) -> (Fake, Vec<BackendEvent>) {
             MODEL,
         )),
         LocalRunInput::new(PROMPT),
-        Some(host),
+        Some(image_host()),
     )
     .await;
     (fake, events)

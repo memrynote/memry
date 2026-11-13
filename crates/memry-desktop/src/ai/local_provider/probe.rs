@@ -308,7 +308,8 @@ impl Chat<'_> {
         }
     }
 
-    /// `postChatCompletion`: one non-streamed completion.
+    /// `postChatCompletion`: one non-streamed completion. The provider's reason is redacted
+    /// here, so every reader of the detail (probe results, tools-off events, warnings) is clean.
     async fn complete(&self, body: &Value) -> Result<Value, ChatError> {
         let response = self.send(body).await?;
         let status = response.status();
@@ -321,7 +322,9 @@ impl Chat<'_> {
                 .map_or_else(String::new, |reason| format!(": {reason}"));
             return Err(ChatError {
                 transient: code == 408 || code == 429 || code >= 500,
-                detail: format!("/v1/chat/completions returned HTTP {code}{reason}"),
+                detail: self
+                    .provider
+                    .redact(format!("/v1/chat/completions returned HTTP {code}{reason}")),
             });
         }
         let body = read_capped(response, BODY_CAP)

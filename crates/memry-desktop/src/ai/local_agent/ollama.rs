@@ -135,7 +135,7 @@ impl LineReader {
         let Ok(line) = serde_json::from_str::<Value>(data) else {
             return vec![Part::Error("Invalid JSON response".to_owned())];
         };
-        if let Some(error) = line.get("error") {
+        if let Some(error) = line.get("error").filter(|error| !error.is_null()) {
             let message = error
                 .as_str()
                 .or_else(|| error["message"].as_str())
@@ -213,6 +213,14 @@ mod tests {
         assert_eq!(
             reader.line(r#"{"error":"model does not support tools"}"#),
             vec![Part::Error("model does not support tools".into())]
+        );
+    }
+
+    #[test]
+    fn a_null_error_is_no_error() {
+        assert_eq!(
+            LineReader::default().line(r#"{"error":null,"message":{"content":"hi"}}"#),
+            vec![Part::Text("hi".into())]
         );
     }
 }

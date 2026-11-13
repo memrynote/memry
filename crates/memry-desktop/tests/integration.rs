@@ -24,6 +24,8 @@ mod ai_catalog;
 mod ai_inline_settings;
 #[path = "ai_local_agent.rs"]
 mod ai_local_agent;
+#[path = "ai_local_agent_guards.rs"]
+mod ai_local_agent_guards;
 #[path = "ai_local_provider.rs"]
 mod ai_local_provider;
 #[path = "app_edit.rs"]

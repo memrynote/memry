@@ -16,7 +16,8 @@ use super::profile::{self, StepText};
 use super::sse::{Frame, LineDecoder};
 use super::{
     AgentToolHost, BackendEvent, HANDOFF_SYSTEM, Inner, LocalRunInput, Part, SCOPE,
-    STEP_BUDGET_SYSTEM, STEP_LIMIT, ToolCall, ToolError, ToolOutcome, ToolSpec, reasoning,
+    STEP_BUDGET_SYSTEM, STEP_BYTE_BUDGET, STEP_LIMIT, ToolCall, ToolError, ToolOutcome, ToolSpec,
+    reasoning,
 };
 use crate::ai::local_provider::probe::{ToolChoice, ToolVerdict, describe};
 use crate::ai::local_provider::{AgentLocalProviderPreset, LocalProvider};
@@ -72,6 +73,8 @@ struct Step {
     /// `None` on a step without tools: reply text is never searched for calls.
     text_calls: Option<StepText>,
     assistant: Assistant,
+    /// Bytes of the reply so far, held to [`STEP_BYTE_BUDGET`].
+    received: usize,
     /// Calls in arrival order; `Err` holds why a call cannot run.
     calls: Vec<(CallRecord, Result<(), String>)>,
 }
@@ -109,7 +112,11 @@ impl Turn {
             match std::mem::replace(&mut self.state, State::Done) {
                 State::Done => return None,
                 State::Start => {
-                    let leading = self.start().await;
+                    let cancel = self.cancel.clone();
+                    let leading = tokio::select! {
+                        () = cancel.cancelled() => return None,
+                        leading = self.start() => leading,
+                    };
                     self.state = State::Send;
                     if !leading.is_empty() {
                         return Some(leading);
@@ -127,7 +134,17 @@ impl Turn {
                     };
                     let ended = matches!(chunk, Ok(None));
                     let frames = match chunk {
-                        Ok(Some(bytes)) => step.decoder.push(&bytes),
+                        Ok(Some(bytes)) => {
+                            step.received += bytes.len();
+                            if step.received > STEP_BYTE_BUDGET {
+                                let message = format!(
+                                    "The provider's reply to one step is over {} MiB.",
+                                    STEP_BYTE_BUDGET >> 20
+                                );
+                                return Some(vec![self.error(message)]);
+                            }
+                            step.decoder.push(&bytes)
+                        }
                         Ok(None) => step.decoder.finish(),
                         Err(error) => return Some(vec![self.error(describe(&error))]),
                     };
@@ -272,6 +289,7 @@ impl Turn {
                 () = self.cancel.cancelled() => return Err(None),
                 body = read_capped(response, ERROR_BODY_CAP) => body.unwrap_or_default(),
             };
+            let body = provider.redact(String::from_utf8_lossy(&body).into_owned());
             return Err(Some(http_error(status, &body)));
         }
         let decoder = if ollama {
@@ -291,6 +309,7 @@ impl Turn {
                 text_calls
             },
             assistant: Assistant::default(),
+            received: 0,
             calls: Vec::new(),
         })
     }
@@ -467,9 +486,9 @@ impl Turn {
 
     /// A provider may echo the authorization header in its error body.
     fn redact(&self, message: String) -> String {
-        match self.provider.as_ref().and_then(LocalProvider::key) {
-            Some(key) if !key.is_empty() => message.replace(key, "[key]"),
-            _ => message,
+        match &self.provider {
+            Some(provider) => provider.redact(message),
+            None => message,
         }
     }
 }
@@ -518,8 +537,7 @@ fn tool_result(call_id: &str, outcome: ToolOutcome) -> (BackendEvent, ToolOutput
 /// The message of a failed provider call (`errorMessage` with `withResponseReason`): an
 /// OpenAI-style `{error: {message}}` body gives the message; otherwise the status text, with the
 /// server's own reason (`{error: "..."}` or a non-JSON body) after it.
-fn http_error(status: reqwest::StatusCode, body: &[u8]) -> String {
-    let text = String::from_utf8_lossy(body);
+fn http_error(status: reqwest::StatusCode, text: &str) -> String {
     let parsed = serde_json::from_str::<Value>(text.trim()).ok();
     if let Some(message) = parsed
         .as_ref()
@@ -560,15 +578,15 @@ mod tests {
         assert_eq!(
             http_error(
                 bad,
-                br#"{"error":{"message":"tool_choice is not supported"}}"#
+                r#"{"error":{"message":"tool_choice is not supported"}}"#
             ),
             "tool_choice is not supported"
         );
         assert_eq!(
-            http_error(bad, br#"{"error":"gemma does not support tools"}"#),
+            http_error(bad, r#"{"error":"gemma does not support tools"}"#),
             "Bad Request: gemma does not support tools"
         );
-        assert_eq!(http_error(bad, b"plain"), "Bad Request: plain");
-        assert_eq!(http_error(bad, b""), "Bad Request");
+        assert_eq!(http_error(bad, "plain"), "Bad Request: plain");
+        assert_eq!(http_error(bad, ""), "Bad Request");
     }
 }

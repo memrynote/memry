@@ -39,6 +39,10 @@ pub const STEP_LIMIT: usize = 24;
 pub const STEP_BUDGET_SYSTEM: &str = "You can make at most 24 model calls in this turn, and each tool round uses one. Plan the work to fit, and answer before the budget runs out.";
 /// `HANDOFF_SYSTEM`, the system line of the last step, which runs without tools.
 pub const HANDOFF_SYSTEM: &str = "This is the last model call of this turn: the step limit is reached, and tools are off for this call. Do not write tool calls or tool syntax. Answer in plain text with a short handoff: what is done, what is left, and what the user should send to continue.";
+/// The most bytes one step's streamed reply may carry. Text, reasoning and tool-call arguments
+/// all accumulate for the next step's request, so an endless reply would grow them without
+/// bound; past this the step ends with an error.
+pub const STEP_BYTE_BUDGET: usize = 16 * 1024 * 1024;
 const SCOPE: &str = "LocalAgent";
 
 /// A tool the model may call: an MCP tool of the vault server in Step 28.

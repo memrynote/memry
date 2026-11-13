@@ -123,9 +123,12 @@ pub(super) struct ChunkReader {
 impl ChunkReader {
     pub fn chunk(&mut self, data: &str) -> Vec<Part> {
         let Ok(chunk) = serde_json::from_str::<Value>(data) else {
+            self.finished = true;
             return vec![Part::Error("Invalid JSON response".to_owned())];
         };
-        if let Some(error) = chunk.get("error") {
+        // A stream error is the step's outcome, so the end adds no missing-finish error.
+        if let Some(error) = chunk.get("error").filter(|error| !error.is_null()) {
+            self.finished = true;
             let message = error
                 .get("message")
                 .and_then(Value::as_str)
@@ -273,5 +276,28 @@ mod tests {
                 "Response stream ended without a finish reason.".into()
             )]
         );
+    }
+
+    #[test]
+    fn a_null_error_is_no_error_and_an_error_chunk_counts_as_the_finish() {
+        let mut reader = ChunkReader::default();
+        assert_eq!(
+            reader.chunk(
+                r#"{"error":null,"choices":[{"delta":{"content":"hi"},"finish_reason":"stop"}]}"#
+            ),
+            vec![Part::Text("hi".into())]
+        );
+        let mut reader = ChunkReader::default();
+        assert_eq!(
+            reader.chunk(r#"{"error":{"message":"overloaded"}}"#),
+            vec![Part::Error("overloaded".into())]
+        );
+        assert_eq!(reader.end(), vec![]);
+        let mut reader = ChunkReader::default();
+        assert_eq!(
+            reader.chunk("{not json"),
+            vec![Part::Error("Invalid JSON response".into())]
+        );
+        assert_eq!(reader.end(), vec![]);
     }
 }

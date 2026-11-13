@@ -10,7 +10,9 @@ use axum::http::{HeaderMap, Method, StatusCode, Uri, header};
 use axum::response::{IntoResponse, Response};
 use memry_desktop::ai::catalog::ProbeClient;
 use serde_json::{Value, json};
+use tokio::io::{AsyncReadExt as _, AsyncWriteExt as _};
 use tokio::net::TcpListener;
+use tokio::sync::oneshot;
 
 pub const MODEL: &str = "test-model";
 pub const DEEPSEEK_MODEL: &str = "deepseek-v4-flash";
@@ -323,4 +325,72 @@ fn tool_rounds(body: &Value) -> usize {
         .flatten()
         .filter(|m| m["role"] == "tool")
         .count()
+}
+
+/// A provider held open by [`hold_open`]. `arrived` resolves once a request head was read,
+/// `closed` once the client closed the connection.
+pub struct Held {
+    pub base_url: String,
+    pub arrived: oneshot::Receiver<()>,
+    pub closed: oneshot::Receiver<()>,
+}
+
+/// A provider on one connection: it answers the requests in turn with `answers` (raw HTTP; every
+/// request but the last must have no body), then reads one more request head and holds the
+/// connection open without answering.
+pub async fn hold_open(answers: Vec<String>) -> Held {
+    let listener = TcpListener::bind("127.0.0.1:0").await.expect("bind");
+    let port = listener.local_addr().unwrap().port();
+    let (arrived, on_arrival) = oneshot::channel();
+    let (closed, on_close) = oneshot::channel();
+    tokio::spawn(async move {
+        let (mut socket, _) = listener.accept().await.expect("accept");
+        let mut buf = vec![0u8; 64 * 1024];
+        let mut pending = Vec::new();
+        for answer in answers.into_iter().map(Some).chain([None]) {
+            let head_end = loop {
+                if let Some(at) = pending.windows(4).position(|w| w == b"\r\n\r\n") {
+                    break Some(at + 4);
+                }
+                match socket.read(&mut buf).await {
+                    Ok(0) | Err(_) => break None,
+                    Ok(n) => pending.extend_from_slice(&buf[..n]),
+                }
+            };
+            let Some(head_end) = head_end else { break };
+            pending.drain(..head_end);
+            match answer {
+                Some(answer) => socket.write_all(answer.as_bytes()).await.expect("write"),
+                None => {
+                    let _ = arrived.send(());
+                    break;
+                }
+            }
+        }
+        while let Ok(1..) = socket.read(&mut buf).await {}
+        let _ = closed.send(());
+    });
+    Held {
+        base_url: format!("http://127.0.0.1:{port}/v1"),
+        arrived: on_arrival,
+        closed: on_close,
+    }
+}
+
+/// A complete JSON answer for [`hold_open`].
+pub fn raw_json(value: &Value) -> String {
+    let body = value.to_string();
+    format!(
+        "HTTP/1.1 200 OK\r\ncontent-type: {JSON}\r\ncontent-length: {}\r\n\r\n{body}",
+        body.len()
+    )
+}
+
+/// The head of a chunked SSE reply and its first event.
+pub fn sse_head_and_first(chunk: &Value) -> String {
+    let event = format!("data: {chunk}\n\n");
+    format!(
+        "HTTP/1.1 200 OK\r\ncontent-type: {SSE}\r\ntransfer-encoding: chunked\r\n\r\n{:x}\r\n{event}\r\n",
+        event.len()
+    )
 }
