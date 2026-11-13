@@ -8,16 +8,10 @@ enum SearchRecentsCopy {
 }
 
 /// The empty search sheet's "Recent" section. A row reopens its item through
-/// the route a hit takes: a note on Notes, a task in Tasks, a capture in
-/// Inbox, a journal day in Journal (through `openJournalDay`, which the sheet
-/// sets to close first).
+/// the route a hit takes (`GlobalSearchRoutes.reopen`).
 struct SearchRecentsSection: View {
     let model: SearchRecentsViewModel
-    let openNote: (String) -> Void
-    let openTask: (String) -> Void
-    let openInboxItem: (String) -> Void
-
-    @Environment(\.openJournalDay) private var openJournalDay
+    let open: (SearchRecent) -> Void
 
     var body: some View {
         if !model.items.isEmpty {
@@ -39,23 +33,6 @@ struct SearchRecentsSection: View {
                         .accessibilityIdentifier("search.recent.clear")
                 }
             }
-        }
-    }
-
-    private func open(_ recent: SearchRecent) {
-        let hit = recent.result
-        Task { await model.record(hit, query: recent.query) }
-        switch hit.kind {
-        case "task":
-            openTask(hit.id)
-        case "inbox":
-            openInboxItem(hit.id)
-        case "journal":
-            if let date = hit.journalDate.flatMap(JournalLink.date(fromWikiTarget:)) {
-                openJournalDay?(date)
-            }
-        default:
-            openNote(hit.id)
         }
     }
 }

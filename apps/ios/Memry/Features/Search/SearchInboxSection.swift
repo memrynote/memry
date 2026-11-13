@@ -11,10 +11,7 @@ struct SearchInboxSection: View {
         if !hits.isEmpty {
             Section {
                 ForEach(hits, id: \.id) { hit in
-                    Button {
-                        Telemetry.shared.track(.searchResultOpened, surface: .search, action: "opened", objectType: "inbox")
-                        open(hit)
-                    } label: {
+                    Button { open(hit) } label: {
                         InboxSearchHitLabel(hit: hit)
                     }
                     .buttonStyle(.plain)

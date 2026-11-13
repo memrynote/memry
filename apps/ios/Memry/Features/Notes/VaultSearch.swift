@@ -156,8 +156,22 @@ final class VaultSearchViewModel {
         await running?.value
     }
 
+    /// Runs the query on screen again each time the index catches up, until
+    /// the calling task is cancelled. The sheet runs it in its `.task`, so it
+    /// stops when the sheet goes: SwiftUI keeps a dismissed sheet's model
+    /// alive, and a model that followed the index on its own would re-run a
+    /// query nobody sees on every sync pass.
+    func followIndex() async {
+        guard let index else { return }
+        var seen = index.completed
+        for await completed in Observations({ index.completed }) where completed != seen {
+            seen = completed
+            rerun()
+        }
+    }
+
     /// The same query again, its results kept on screen until the new ones
-    /// land. The screen calls it when the index's `completed` moves.
+    /// land.
     func rerun() {
         guard !query.isEmpty else { return }
         running?.cancel()

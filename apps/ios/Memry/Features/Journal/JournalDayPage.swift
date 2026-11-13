@@ -79,6 +79,7 @@ struct JournalDayPage: View {
         .modifier(NoteFindScroll(
             target: .journalDay(date),
             blocks: model?.read.blocks ?? [],
+            blocksRead: model?.read.blocksRead ?? false,
             finding: Binding(get: { model?.finding ?? false }, set: { model?.finding = $0 })
         ))
         .task(id: model == nil) {
@@ -181,7 +182,7 @@ struct JournalDayPage: View {
             NoteBodyView(
                 preview: preview,
                 fetch: model.read.fetch,
-                download: model.read.canFetchBody ? { Task { await model.read.fetchBody() } } : nil
+                download: model.read.canFetchBody ? { Task { await model.read.fetchBody(index: searchIndex) } } : nil
             )
         }
     }

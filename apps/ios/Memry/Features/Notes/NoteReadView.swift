@@ -191,6 +191,7 @@ struct NoteReadView: View {
     }
     @Environment(\.requestVaultSync) private var requestVaultSync
     @Environment(\.vaultSyncPasses) private var vaultSyncPasses
+    @Environment(\.vaultSearchIndex) private var searchIndex
 
     private var taskBridge: NoteTaskBridge {
         .note(tasks: taskActions, editor: editorModel, router: router) {
@@ -300,7 +301,7 @@ struct NoteReadView: View {
                             NoteBodyView(
                                 preview: preview,
                                 fetch: model.fetch,
-                                download: model.canFetchBody ? { Task { await model.fetchBody() } } : nil
+                                download: model.canFetchBody ? { Task { await model.fetchBody(index: searchIndex) } } : nil
                             )
                             }
                         },
@@ -325,7 +326,7 @@ struct NoteReadView: View {
         .onGeometryChange(for: CGFloat.self) { $0.safeAreaInsets.top } action: { topInset = $0 }
         // A cover runs under the navigation bar; the edge blur would smear it.
         .scrollEdgeEffectHidden(hasCover, for: .top)
-        .modifier(NoteFindScroll(target: .note(model.route.id), blocks: model.blocks, finding: $finding))
+        .modifier(NoteFindScroll(target: .note(model.route.id), blocks: model.blocks, blocksRead: model.blocksRead, finding: $finding))
         // The keyboard accessory is floating glass: paint the page colour under
         // it and drop the bottom edge blur, or the strip behind the toolbar reads
         // as a black band with a shadow over it.
@@ -390,7 +391,7 @@ struct NoteReadView: View {
         // page only through a body pull and a re-read.
         .task(id: vaultSyncPasses) {
             await model.loadIfNeeded()
-            await model.refreshFromRemote()
+            await model.refreshFromRemote(index: searchIndex)
         }
     }
 }

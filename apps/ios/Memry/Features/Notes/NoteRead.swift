@@ -76,6 +76,8 @@ final class NoteReadViewModel {
     /// that was never pulled, and a reader that cannot walk blocks are three
     /// different facts and only the first two are the note's.
     private(set) var blocks: [Block] = []
+    /// The first walk of the blocks has finished, whatever it found.
+    private(set) var blocksRead = false
     /// Each table in the body, by the block id of its `table` block.
     ///
     /// Read eagerly once the blocks land, rather than lazily while drawing:
@@ -128,12 +130,16 @@ final class NoteReadViewModel {
     /// `SyncError.UnknownNote` arrives here for a note this vault has no live
     /// record of. It is **permanent** — the mapped copy says so and carries
     /// `.blocked`, so the view offers no retry over it.
-    func fetchBody() async {
+    ///
+    /// A pull that landed anything schedules `index`: the body arrived outside
+    /// a sync pass, so nothing else tells search, backlinks and mentions.
+    func fetchBody(index: VaultSearchIndex?) async {
         guard let filler, fetch != .fetching else { return }
         fetch = .fetching
         do {
             let summary = try await filler.fetchNoteBody(noteId: route.id)
             Log.sync.notice("fetched one note body", .count(Int(summary.updates)))
+            Self.landed(summary, index: index)
             fetch = summary.stopped ? .incomplete : .idle
         } catch {
             // Cancelled with its `.task`, not failed: no notice.
@@ -155,21 +161,25 @@ final class NoteReadViewModel {
     /// state, as desktop pulls the note on screen first (#3253); a failed
     /// fetch is not repeated until the user asks. Offline is not an error for a
     /// present body: the local copy stays.
-    func refreshFromRemote() async {
+    func refreshFromRemote(index: VaultSearchIndex?) async {
         guard hasLoaded else { return }
         if case let .ready(detail) = phase, !detail.body.present {
-            if fetch == .idle { await fetchBody() }
+            if fetch == .idle { await fetchBody(index: index) }
             return
         }
         if let filler, fetch != .fetching,
            case let .ready(detail) = phase, detail.body.present {
             do {
-                _ = try await filler.fetchNoteBody(noteId: route.id)
+                Self.landed(try await filler.fetchNoteBody(noteId: route.id), index: index)
             } catch {
                 Log.sync.debug("a note body could not be pulled")
             }
         }
         await load(quietly: true)
+    }
+
+    private static func landed(_ summary: BodyFetchSummary, index: VaultSearchIndex?) {
+        if summary.updates > 0 || summary.baselines > 0 { index?.schedule() }
     }
 
     /// The rendered body, read after the summary so the title and the dates
@@ -188,6 +198,7 @@ final class NoteReadViewModel {
             Log.storage.error("this note's blocks could not be walked", .code(mapped.code))
             blocks = []
         }
+        blocksRead = true
         await loadTables()
         await loadAttachments()
         await loadComments()

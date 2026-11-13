@@ -29,6 +29,11 @@ final class SearchFindRequests {
         pending = query.isEmpty ? nil : Request(target: target, query: query)
     }
 
+    /// An open that carries no query, such as a recent: nothing waits.
+    func clear() {
+        pending = nil
+    }
+
     /// The query waiting for `target`, cleared as it is read.
     func take(for target: FindTarget) -> String? {
         guard let request = pending, request.target == target else { return nil }
@@ -41,16 +46,28 @@ final class SearchFindRequests {
 enum SearchFindOpening: Equatable {
     /// The blocks are not here yet.
     case waiting
-    /// No block holds the query literally: the page opens at the top, find
-    /// closed.
+    /// No block holds the query literally, or the page read no blocks at
+    /// all: the page opens at the top, find closed.
     case top
     /// Find opens with the query, scrolled to the first matching block.
     case find(query: String, blockIndex: Int)
 
-    static func resolve(_ query: String, in blocks: [Block]) -> Self {
-        guard !blocks.isEmpty else { return .waiting }
+    /// `read` is whether the page's first read of its blocks has finished.
+    static func resolve(_ query: String, in blocks: [Block], read: Bool) -> Self {
+        guard !blocks.isEmpty else { return read ? .top : .waiting }
         guard let match = NoteFind.matches(of: query, in: blocks).first else { return .top }
         return .find(query: query, blockIndex: match.blockIndex)
+    }
+}
+
+/// The find panel's text. A search hit sets it as find opens; closing find,
+/// by any path, clears it, so the next open starts empty rather than on an
+/// earlier search's word.
+struct NoteFindQuery: Equatable {
+    var text = ""
+
+    mutating func finding(_ open: Bool) {
+        if !open { text = "" }
     }
 }
 
@@ -62,9 +79,11 @@ enum SearchFindOpening: Equatable {
 struct NoteFindScroll: ViewModifier {
     let target: FindTarget
     let blocks: [Block]
+    /// The page's first read of its blocks has finished.
+    let blocksRead: Bool
     @Binding var finding: Bool
 
-    @State private var query = ""
+    @State private var query = NoteFindQuery()
     @State private var pendingQuery: String?
     @Environment(\.accessibilityReduceMotion) private var reduceMotion
     private let requests = SearchFindRequests.shared
@@ -74,19 +93,20 @@ struct NoteFindScroll: ViewModifier {
             content
                 .safeAreaInset(edge: .top) {
                     if finding {
-                        NoteFindPanel(blocks: blocks, query: $query) { index in
+                        NoteFindPanel(blocks: blocks, query: $query.text) { index in
                             proxy.scrollTo(index, anchor: .top)
                         } close: {
                             finding = false
                         }
                     }
                 }
+                .onChange(of: finding) { _, open in query.finding(open) }
                 .onChange(of: requests.pending, initial: true) {
                     if let query = requests.take(for: target) { pendingQuery = query }
                 }
-                .onChange(of: OpenKey(query: pendingQuery, blocks: blocks.count), initial: true) {
+                .onChange(of: OpenKey(query: pendingQuery, blocks: blocks.count, read: blocksRead), initial: true) {
                     guard let pendingQuery else { return }
-                    switch SearchFindOpening.resolve(pendingQuery, in: blocks) {
+                    switch SearchFindOpening.resolve(pendingQuery, in: blocks, read: blocksRead) {
                     case .waiting:
                         return
                     case .top:
@@ -99,7 +119,7 @@ struct NoteFindScroll: ViewModifier {
                         // enters on the same step, and the scroll runs when
                         // that entrance completes.
                         withAnimation(Tokens.animation(.normal, .entering, reduceMotion: reduceMotion)) {
-                            self.query = query
+                            self.query.text = query
                             finding = true
                         } completion: {
                             proxy.scrollTo(blockIndex, anchor: .top)
@@ -112,5 +132,6 @@ struct NoteFindScroll: ViewModifier {
     private struct OpenKey: Equatable {
         let query: String?
         let blocks: Int
+        let read: Bool
     }
 }
