@@ -81,10 +81,9 @@ fn no_typed_text_raises_an_fts5_error() {
             .map(|groups| [groups.notes, groups.journals].concat());
         assert!(found.is_ok(), "{hostile:?} raised {:?}", found.err());
     }
-    assert_eq!(
-        ids(&data, &index, "NOT chapter"),
-        vec!["n1"],
-        "a leading NOT is dropped"
+    assert!(
+        ids(&data, &index, "NOT chapter").is_empty(),
+        "a leading NOT matches nothing rather than what it excludes"
     );
     assert_eq!(
         ids(&data, &index, "chapter NOT"),

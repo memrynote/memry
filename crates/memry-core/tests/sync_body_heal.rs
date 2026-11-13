@@ -8,6 +8,7 @@ use std::path::PathBuf;
 use std::sync::atomic::{AtomicU64, Ordering};
 
 use memry_core::api::errors::StorageError;
+use memry_core::domain::notes::{self, NewNote};
 use memry_core::storage::open_data;
 use memry_core::storage::repositories::sync_items::{self, InboundRecord};
 use memry_core::sync::body_debt;
@@ -24,6 +25,8 @@ enum State {
     Bare,
     /// A pending record change in the outbox, such as a rename.
     Outbox,
+    /// Created here and still queued: the server has no record of it yet.
+    LocalCreate,
     /// Text typed here, still under the `local.` namespace.
     LocalUpdate,
     /// A snapshot under the `local.` namespace.
@@ -41,6 +44,7 @@ const CASES: &[(&str, &str, State, bool)] = &[
     ("bare-note", "note", State::Bare, true),
     ("j2026-11-10", "journal", State::Bare, true),
     ("outbox-note", "note", State::Outbox, true),
+    ("local-create", "note", State::LocalCreate, false),
     ("local-update", "note", State::LocalUpdate, false),
     ("local-snapshot", "note", State::LocalSnapshot, false),
     ("pulled-update", "note", State::PulledUpdate, false),
@@ -51,6 +55,24 @@ const CASES: &[(&str, &str, State, bool)] = &[
 ];
 
 fn arrange(conn: &Connection, id: &str, item_type: &str, state: State) {
+    if let State::LocalCreate = state {
+        notes::create(
+            conn,
+            &NewNote {
+                id,
+                title: id,
+                folder_path: None,
+                content: "",
+                tags: &[],
+                properties: None,
+                emoji: None,
+            },
+            "device-local",
+            1,
+        )
+        .expect("create a note here");
+        return;
+    }
     let payload = match item_type {
         "journal" => json!({"date": &id[1..], "content": "", "clock": {"device-b": 1}}),
         _ => json!({"title": id, "clock": {"device-b": 1}}),
@@ -70,7 +92,7 @@ fn arrange(conn: &Connection, id: &str, item_type: &str, state: State) {
     )
     .expect("apply the record");
     let sql = match state {
-        State::Bare | State::Tombstone => return,
+        State::Bare | State::Tombstone | State::LocalCreate => return,
         State::Outbox => {
             "INSERT INTO outbox (item_type, item_id, op, enqueued_at) VALUES ('note', ?1, 'upsert', 1)"
         }

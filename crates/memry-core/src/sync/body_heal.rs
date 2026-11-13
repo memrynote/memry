@@ -24,9 +24,10 @@ pub const META_BODY_HEAL: &str = "sync.body_heal";
 
 /// Owes a body pull to every live note and journal holding no body state,
 /// once per install. A document with a record change still in the outbox is
-/// owed too: the heal never runs again, and a pull of a document the server
-/// has not seen yet meets an empty log and leaves a cursor of `0`. Answers
-/// how many it owed.
+/// owed too when its record came from the server, since the heal never runs
+/// again. One created here and not yet pushed is left out: the server holds
+/// no body for it, and nothing but this device has written one. Answers how
+/// many it owed.
 pub fn owe_unread_documents(conn: &Connection) -> Result<usize, StorageError> {
     if read_meta(conn, META_BODY_HEAL)?.is_some() {
         return Ok(0);
@@ -44,6 +45,11 @@ pub fn owe_unread_documents(conn: &Connection) -> Result<usize, StorageError> {
                                    WHERE doc_id IN (live.id, 'local.' || live.id))
                    AND NOT EXISTS (SELECT 1 FROM yjs_snapshots
                                    WHERE doc_id IN (live.id, 'local.' || live.id))
+                   AND (NOT EXISTS (SELECT 1 FROM outbox WHERE item_id = live.id)
+                        OR EXISTS (SELECT 1 FROM sync_items
+                                   WHERE item_type IN ('note', 'journal')
+                                     AND item_id = live.id
+                                     AND server_cursor IS NOT NULL))
                  ORDER BY id",
             )
             .map_err(failed)?;
