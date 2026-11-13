@@ -153,7 +153,7 @@ final class AccountModel {
     /// way). An unknown plan still asks.
     func loadStorage() async {
         guard let session else { return }
-        if let billing, billing.plan == "free" || billing.status != "active" { return }
+        if BillingFacts.isKnownUnpaid(billing) { return }
         do { storage = try await session.storage() } catch { record(error) }
     }
 
