@@ -1,7 +1,10 @@
 //! Step 16 (#3533) performance: a 500-row page of the six desktop-only types
-//! against a 500-row page of notes, through [`apply_page`]. Ignored, so CI
-//! never asserts a wall-clock number (`scripts/check-test-timing.mjs`); run it
-//! in release and record the printed ratio:
+//! against a 500-row page of notes, through [`apply_page`]. Ignored, so the
+//! test suite never asserts a wall-clock number (`scripts/check-test-timing.mjs`).
+//! The release bench job of `rust-ci.yml` runs it next to the editor host
+//! budgets: the ratio budget is [`RATIO_BUDGET`] times `MEMRY_PERF_FACTOR`,
+//! and `MEMRY_PERF_ENFORCE=1` turns a miss into a failure (decision
+//! 3533#issuecomment-6833047247). Locally:
 //!
 //! `cargo test -p memry-core --release --features markdown --lib
 //! sync::apply::bench -- --ignored --nocapture`
@@ -16,6 +19,8 @@ use crate::storage::{open_data, test_support::temp_dir};
 
 const ROWS: usize = 500;
 const RUNS: usize = 7;
+/// Desktop-only rows may cost at most this much more than notes.
+const RATIO_BUDGET: f64 = 1.2;
 const NOW: i64 = 1_760_000_000_000;
 const ISO: &str = "2025-10-09T08:53:20.000Z";
 
@@ -107,13 +112,25 @@ fn median(page: fn() -> Vec<Pending>) -> Duration {
 }
 
 #[test]
-#[ignore = "a release-build measurement, printed and not asserted"]
+#[ignore = "a release-build measurement, enforced only by the bench job"]
 fn a_page_of_desktop_only_types_against_a_page_of_notes() {
     let notes = median(notes);
     let mixed = median(mixed);
+    let ratio = mixed.as_secs_f64() / notes.as_secs_f64();
+    let factor: f64 = std::env::var("MEMRY_PERF_FACTOR")
+        .ok()
+        .and_then(|v| v.parse().ok())
+        .unwrap_or(1.0);
+    let budget = RATIO_BUDGET * factor;
     println!(
         "apply {ROWS} rows, median of {RUNS}: notes {notes:?}, desktop-only {mixed:?}, \
-         ratio {:.3}",
-        mixed.as_secs_f64() / notes.as_secs_f64()
+         ratio {ratio:.3}, budget {budget:.2}"
     );
+    if ratio > budget {
+        let miss = format!("ratio {ratio:.3} is over the budget {budget:.2}");
+        if std::env::var("MEMRY_PERF_ENFORCE").is_ok_and(|v| v == "1") {
+            panic!("{miss}");
+        }
+        println!("over budget (not enforced): {miss}");
+    }
 }
