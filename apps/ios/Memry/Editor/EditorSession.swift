@@ -26,7 +26,12 @@ final class EditorSession {
 
     // MARK: Wiring
 
-    @ObservationIgnored weak var model: NoteEditorViewModel?
+    @ObservationIgnored weak var model: NoteEditorViewModel? {
+        didSet { if let model { noteId = model.noteId } }
+    }
+    /// The note being edited, kept past the model: a page torn down drops
+    /// its model as its focused block leaves the window (#4457).
+    @ObservationIgnored private(set) var noteId: String?
     /// Re-reads the page after a write (`didChange`).
     @ObservationIgnored var reload: () async -> Void = {}
     /// Notes for the `[[` and `@` menus, most recently modified first.
@@ -120,7 +125,14 @@ final class EditorSession {
     /// (`resolveColumnFocus`).
     @ObservationIgnored var pendingColumnFocus: String?
     @ObservationIgnored var keyboardHeight: CGFloat = 300
-    @ObservationIgnored private var tail: Task<Void, Never>?
+    @ObservationIgnored private(set) var tail: Task<Void, Never>?
+    /// The field whose editing just ended, and its selection, until the turn
+    /// ends (`editingEnded`).
+    @ObservationIgnored var endedField: (field: BlockField, selection: NSRange)?
+    /// A remembered caret is on its way back (`restoreFocus`).
+    @ObservationIgnored var restoringFocus = false
+    /// Seam for tests; the app keeps one memory (`EditorFocusMemory`).
+    @ObservationIgnored var focusMemory = EditorFocusMemory.shared
     /// The Reduce Motion panel swap in flight (`show`). The generation lets a
     /// later swap retire an earlier swap's fallback timer.
     @ObservationIgnored private var panelSwap: (generation: Int, observer: NSObjectProtocol)?
@@ -343,6 +355,7 @@ final class EditorSession {
     func focusChanged(to field: BlockField?) {
         focusedBlockId = field?.blockId
         if let field {
+            focusMemory.forget()
             self.field = field
             focusedKind = field.block.kind
             focusedLevel = field.value("level").flatMap(Int.init)
@@ -414,7 +427,7 @@ final class EditorSession {
 
     /// Runs `work` after every write queued before it: a mark must land after
     /// the commit of the text it marks.
-    private func enqueue(_ work: @escaping @MainActor () async -> Void) {
+    func enqueue(_ work: @escaping @MainActor () async -> Void) {
         let previous = tail
         tail = Task { @MainActor in
             await previous?.value
@@ -426,6 +439,13 @@ final class EditorSession {
     /// since the last commit into a link node (desktop's input rule). Never
     /// in a code block, whose text stays literal.
     func commit(_ field: BlockField, then: (@MainActor () async -> Void)? = nil) {
+        // Held by the queued write, not read when it runs: a page torn down
+        // (a split view swapping notes, Back, a size-class re-host) drops
+        // the model before its last typing lands.
+        guard let model else {
+            Log.storage.error("a block commit had no editor model")
+            return
+        }
         let attributed = field.textView.attributedText ?? NSAttributedString()
         let text = attributed.string
         let current = BlockText.shown(field.block.inline)
@@ -445,8 +465,8 @@ final class EditorSession {
         // lands before the reload would keep it, and the next commit's base
         // would still spell a link the core already holds as a node.
         if !links.isEmpty { field.drawLinks(links) }
-        enqueue { [weak self] in
-            guard let self, let model = self.model else { return }
+        // The session too, so the write still schedules its sync pass.
+        enqueue {
             if dirty, text != base {
                 await model.commit(text, for: blockId, current: current, formatted: formatted, base: base)
                 self.history.record(Self.textStep(blockId, from: current, to: text, formatted: formatted))

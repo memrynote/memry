@@ -79,6 +79,7 @@ private struct NoteCoverPlaceholder: View {
 
 /// The note's icon and title, both editable (N702).
 struct NoteTitleEditor: View {
+    let noteId: String
     let title: String
     let icon: String?
     let canEdit: Bool
@@ -92,6 +93,7 @@ struct NoteTitleEditor: View {
     @State private var pickingIcon = false
     /// A new note's title wants the caret until the user types or moves it.
     @State private var claimsFocus = false
+    @State private var host = TitleWindow()
     @FocusState private var focused: Bool
 
     private func commit() {
@@ -156,6 +158,7 @@ struct NoteTitleEditor: View {
                 .onSubmit(commitAndContinue)
                 .onChange(of: focused) { _, isFocused in
                     if isFocused {
+                        EditorFocusMemory.shared.forget()
                         if !editing {
                             draft = title
                             editing = true
@@ -165,9 +168,10 @@ struct NoteTitleEditor: View {
                     }
                 }
                 // A note with no title (a new one) opens with the caret in
-                // its title, as desktop does.
+                // its title, as desktop does. Not when the page is drawn
+                // again under a block that had the caret (#4457).
                 .onAppear {
-                    if title.isEmpty {
+                    if title.isEmpty, EditorFocusMemory.shared.titleMayAutofocus(noteId) {
                         claimsFocus = true
                         focused = true
                     }
@@ -175,20 +179,21 @@ struct NoteTitleEditor: View {
                 // #4346: in the iPad split view, the list column moves focus
                 // to the new note's selected row after its insert animation,
                 // which can land after the request above. A move from the
-                // title to an item that is not a text field is taken back, a
-                // turn later once the focus state has followed it. Dismissing
-                // the keyboard focuses nothing and is left alone.
+                // title to an item that is not a text field, in this title's
+                // window, is taken back once, a turn later once the focus
+                // state has followed it: a later tap on another row or
+                // control keeps its focus. Dismissing the keyboard focuses
+                // nothing and is left alone.
                 .onReceive(NotificationCenter.default.publisher(for: UIFocusSystem.didUpdateNotification)) { note in
-                    guard claimsFocus, focused,
+                    guard claimsFocus, focused, let window = host.window,
+                          note.object as? UIFocusSystem === UIFocusSystem.focusSystem(for: window),
                           let context = note.userInfo?[UIFocusSystem.focusUpdateContextUserInfoKey] as? UIFocusUpdateContext,
                           let next = context.nextFocusedItem
                     else { return }
-                    if next is UITextInput {
-                        claimsFocus = false
-                    } else {
-                        Task { focused = true }
-                    }
+                    claimsFocus = false
+                    if !(next is UITextInput) { Task { focused = true } }
                 }
+                .background(TitleWindowReader(host: host))
                 // Leaving the page, or the page reloading under the field,
                 // ends the edit without a focus change; the typed title
                 // still lands (#2680).
@@ -209,6 +214,35 @@ struct NoteTitleEditor: View {
                 setIcon(chosen)
                 pickingIcon = false
             }
+        }
+    }
+}
+
+/// The window a title is drawn in, read without redrawing the title.
+private final class TitleWindow {
+    weak var window: UIWindow?
+}
+
+private struct TitleWindowReader: UIViewRepresentable {
+    let host: TitleWindow
+
+    func makeUIView(context: Context) -> Probe {
+        let probe = Probe()
+        probe.host = host
+        probe.isUserInteractionEnabled = false
+        return probe
+    }
+
+    func updateUIView(_ probe: Probe, context: Context) {
+        probe.host = host
+    }
+
+    final class Probe: UIView {
+        weak var host: TitleWindow?
+
+        override func didMoveToWindow() {
+            super.didMoveToWindow()
+            host?.window = window
         }
     }
 }
