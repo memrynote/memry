@@ -2,6 +2,9 @@
 //! (`apps/desktop/src/main/sync/item-handlers/canvas-handler.ts`), rule for
 //! rule.
 //!
+//! - **A record desktop's schema refuses is skipped** before anything else (a
+//!   key of the wrong type, a `null` the schema has no room for, a clock tick
+//!   that is not a safe integer), so a local canvas stays as it is.
 //! - **No scene, no apply** (D5). A payload without a string `scene` never
 //!   overwrites the local drawing.
 //! - **A create needs a `vaultId`**, or desktop would never list it.
@@ -28,6 +31,7 @@ use rusqlite::Connection;
 use serde_json::{Value, json};
 
 use crate::api::errors::StorageError;
+use crate::domain::desktop_records::fails_desktop_schema;
 use crate::domain::notes::{failed, insert_local, next_clock, object};
 use crate::domain::saved_filters::mint_id;
 use crate::domain::task_merge::{self, Gate};
@@ -39,6 +43,10 @@ use crate::sync::clock::VectorClock;
 use crate::sync::outbox;
 
 use super::ITEM_TYPE;
+
+/// The schema keys `CanvasSyncPayloadSchema` refuses `null` for
+/// (`packages/contracts/src/sync-payloads.ts:187-207`).
+const NOT_NULL: [&str; 4] = ["id", "vaultId", "scene", "clock"];
 
 /// The keys an older client may leave out, which then keep the local value.
 const KEPT_WHEN_ABSENT: [&str; 4] = ["title", "folder", "icon", "ownerNoteId"];
@@ -55,6 +63,9 @@ pub fn apply_remote(
         Ok(remote) if record.deleted_at.is_none() => remote,
         _ => return task_merge::wholesale(conn, record, now_ms),
     };
+    if fails_desktop_schema(ITEM_TYPE, remote.object(), &NOT_NULL) {
+        return Ok(Inbound::Skipped);
+    }
     let Some(remote_scene) = remote.object().get("scene").and_then(Value::as_str) else {
         return Ok(Inbound::Skipped);
     };

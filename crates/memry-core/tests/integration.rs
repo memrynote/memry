@@ -5,6 +5,7 @@
 //! it with `--test`) gets a `[[test]]` target in Cargo.toml instead. `every_test_file_is_built`
 //! keeps a new file from being left out of both: with `autotests = false` it would never compile.
 
+mod desktop_relay;
 #[cfg(feature = "markdown")]
 mod editor_support;
 mod http_fakes;
@@ -126,6 +127,10 @@ mod delete_attestation_vectors;
 mod delete_keep;
 #[path = "delete_keep_vectors.rs"]
 mod delete_keep_vectors;
+#[path = "desktop_record_convergence.rs"]
+mod desktop_record_convergence;
+#[path = "desktop_record_types.rs"]
+mod desktop_record_types;
 #[path = "device_link.rs"]
 mod device_link;
 #[path = "domain_bookmarks.rs"]

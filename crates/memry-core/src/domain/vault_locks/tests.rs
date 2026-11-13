@@ -332,6 +332,32 @@ fn a_remote_update_moves_locked_and_keeps_the_local_target() {
     .expect("remote update");
 }
 
+/// `VaultLockSyncPayloadSchema` refuses each of these, so desktop never applies
+/// them; nor may core, even over a local lock that would mask the bad key.
+#[test]
+fn a_newer_remote_desktops_schema_refuses_leaves_the_local_lock_alone() {
+    let (db, _dir) = open("vault-lock-remote-refused");
+    db.call_blocking(|conn| {
+        set(conn, TargetKind::Folder, "Projects", true, "device-a", NOW)?;
+        let before = payload(conn, ID);
+        let newer = json!({"device-a": 1, "peer": 1});
+        for bad in [
+            json!({"target": 5, "locked": false, "clock": newer}),
+            json!({"locked": "no", "clock": newer}),
+            json!({"locked": null, "clock": newer}),
+            json!({"target": null, "locked": false, "clock": newer}),
+            json!({"locked": false, "updatedAt": null, "clock": newer}),
+            json!({"locked": false, "clock": {"device-a": 1, "peer": 9_007_199_254_740_992_u64}}),
+        ] {
+            assert_eq!(pull(conn, remote(ID, bad.clone()))?.skipped, 1, "{bad}");
+            assert_eq!(payload(conn, ID), before, "{bad}");
+        }
+        assert_eq!(folders(conn), ["Projects"]);
+        Ok(())
+    })
+    .expect("refused");
+}
+
 #[test]
 fn a_stale_remote_is_skipped_and_a_concurrent_one_wins_under_the_merged_clock() {
     let (db, _dir) = open("vault-lock-remote-clock");

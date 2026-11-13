@@ -582,4 +582,6 @@ fn refuse(
 }
 
 #[cfg(test)]
+mod bench;
+#[cfg(test)]
 mod tests;

@@ -362,3 +362,29 @@ pub(crate) fn clock_text(view: &Object) -> Option<String> {
 pub(crate) fn field_clocks_text(view: &Object) -> Option<String> {
     json(view, "fieldClocks")
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use crate::protocol::types::Declaration;
+
+    /// Declaring a type with no reader makes the server send rows this build
+    /// records corrupt (`protocol::types`), so desktop's declaration is only
+    /// as wide as this match.
+    #[test]
+    fn every_type_the_desktop_declaration_names_has_a_reader() {
+        for item_type in Declaration::desktop().types() {
+            assert!(
+                !matches!(
+                    read(item_type, &Object::new()),
+                    Err(ProjectionError::UnknownType { .. })
+                ),
+                "{item_type} has no reader"
+            );
+        }
+        assert!(matches!(
+            read("hologram", &Object::new()),
+            Err(ProjectionError::UnknownType { .. })
+        ));
+    }
+}

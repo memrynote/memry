@@ -82,6 +82,24 @@ pub(crate) fn unreadable(
     task_merge::wholesale(conn, record, now_ms)
 }
 
+/// Whether desktop's schema refuses a live remote payload: a schema key of the
+/// wrong type, a clock tick that is not a safe non-negative integer, or a
+/// `null` in `not_null`. Desktop parses the remote with the type's schema
+/// before its handler reads the local row and refuses the whole record
+/// (`schema_invalid`, `apps/desktop/src/main/sync/apply-item.ts:166-176`), so a
+/// caller skips it before the gate and the local record stays as it is.
+pub(crate) fn fails_desktop_schema(item_type: &str, remote: &Object, not_null: &[&str]) -> bool {
+    // `VectorClockSchema`'s ticks are safe non-negative integers
+    // (`packages/contracts/src/sync-api.ts:386`); `Kind::Clock` takes any number.
+    let clock_ok =
+        clock_in(remote).is_ok_and(|clock| clock.values().all(|tick| *tick <= MAX_SAFE_INTEGER));
+    !clock_ok
+        || projectors::read(item_type, remote).is_err()
+        || not_null
+            .iter()
+            .any(|key| remote.get(*key).is_some_and(Value::is_null))
+}
+
 /// Applies `remote` over `local` by `kept`, after desktop's schema and
 /// §6.3.1's gate. `extra` are edits the type's own rule adds to the remote
 /// payload.
@@ -94,27 +112,7 @@ pub(crate) fn apply_kept(
     extra: Vec<(&'static str, Change)>,
     now_ms: i64,
 ) -> Result<Inbound, StorageError> {
-    // Desktop parses the remote with the type's schema before its handler
-    // reads the local row, and refuses the whole record on a schema key of the
-    // wrong type or a `null` the schema has no room for (`schema_invalid`,
-    // `apps/desktop/src/main/sync/apply-item.ts:166-176`). Skipped here before
-    // the gate, so the local record stays as it is.
-    debug_assert!(
-        kept.coalesce.iter().all(|key| kept.not_null.contains(key)),
-        "every coalesce key is in not_null"
-    );
-    let remote_object = remote.object();
-    // `VectorClockSchema`'s ticks are safe non-negative integers
-    // (`packages/contracts/src/sync-api.ts:386`); `Kind::Clock` takes any number.
-    let clock_ok = clock_in(remote_object)
-        .is_ok_and(|clock| clock.values().all(|tick| *tick <= MAX_SAFE_INTEGER));
-    let refused = !clock_ok
-        || projectors::read(&record.item_type, remote_object).is_err()
-        || kept
-            .not_null
-            .iter()
-            .any(|key| remote_object.get(*key).is_some_and(Value::is_null));
-    if refused {
+    if fails_desktop_schema(&record.item_type, remote.object(), kept.not_null) {
         return Ok(Inbound::Skipped);
     }
     let merged_clock = match task_merge::document_gate(conn, record)? {

@@ -75,6 +75,42 @@ fn edit(conn: &Connection, item_type: &str, id: &str) {
     .expect("a local edit");
 }
 
+/// A `??` key keeps the local value only when the remote leaves it out, so a
+/// `null` for it must be refused first ([`super::apply_kept`]).
+#[test]
+fn every_coalesce_key_is_refused_as_null() {
+    for kept in [
+        &canvas_folder::merge::KEPT,
+        &home_page::merge::KEPT,
+        &sticky_draft::merge::KEPT,
+    ] {
+        for key in kept.coalesce {
+            assert!(kept.not_null.contains(key), "{key}");
+        }
+    }
+}
+
+/// Chapter 13 §13.7.23-25: a tick written as anything but a JSON integer
+/// literal is refused, though desktop's `z.int()` takes `1.0` and `1e0`.
+#[test]
+fn a_tick_not_written_as_an_integer_literal_is_refused() {
+    let object = |text: &str| -> crate::storage::repositories::schema::Object {
+        serde_json::from_str(text).expect("an object")
+    };
+    for tick in ["1.0", "-0", "1e0"] {
+        let remote = object(&format!(r#"{{"clock": {{"peer": {tick}}}}}"#));
+        assert!(
+            super::fails_desktop_schema("sticky_draft", &remote, &[]),
+            "{tick}"
+        );
+    }
+    assert!(!super::fails_desktop_schema(
+        "sticky_draft",
+        &object(r#"{"clock": {"peer": 1}}"#),
+        &[]
+    ));
+}
+
 #[test]
 fn one_page_of_each_type_lands_whole() {
     let (db, _dir) = open("desktop-records-pull");

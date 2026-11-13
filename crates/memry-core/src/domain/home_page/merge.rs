@@ -33,7 +33,7 @@ use crate::storage::repositories::projectors::home_pages::is_readable_cover;
 
 use super::{ITEM_TYPE, is_widgets_blob};
 
-const KEPT: Kept = Kept {
+pub(crate) const KEPT: Kept = Kept {
     not_null: &[
         "name",
         "position",
