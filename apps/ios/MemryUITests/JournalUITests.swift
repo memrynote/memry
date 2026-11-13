@@ -87,6 +87,51 @@ final class JournalUITests: XCTestCase {
         XCTAssertTrue(field.waitForExistence(timeout: 10), "the day was not deleted")
     }
 
+    /// #4351: with a hardware keyboard, ← in the editor moves the caret and
+    /// leaves the day alone; ⌥⌘← / ⌥⌘→ change the day from inside it.
+    func testArrowKeysInTheEditorMoveTheCaretNotTheDay() throws {
+        try openJournal(today: Self.randomDay())
+        let field = app.descendants(matching: .any)["journal.day.firstLine"].firstMatch
+        for _ in 0 ..< 10 where !field.waitForExistence(timeout: 3) {
+            app.buttons["journal.day.next"].firstMatch.tap()
+        }
+        XCTAssertTrue(field.exists, "no empty day within ten days")
+        let day = try XCTUnwrap(shownDate())
+        // The first line's field is the day's text input until Return turns
+        // it into a block; both post the editing notifications the keys read.
+        field.tap()
+        field.typeText("[agent] SHIP-4351 ab")
+        app.typeKey(.leftArrow, modifierFlags: [])
+        app.typeText("X")
+        let moved = app.descendants(matching: .any)
+            .matching(NSPredicate(format: "value == %@", "[agent] SHIP-4351 aXb")).firstMatch
+        XCTAssertTrue(moved.waitForExistence(timeout: 5), "← did not move the caret")
+        XCTAssertEqual(shownDate(), day, "← in the editor changed the day")
+
+        app.typeKey(.leftArrow, modifierFlags: [.option, .command])
+        XCTAssertTrue(waitUntil { self.shownDate() == Self.shift(day, by: -1) }, header.label)
+        app.typeKey(.rightArrow, modifierFlags: [.option, .command])
+        XCTAssertTrue(waitUntil { self.shownDate() == day }, header.label)
+        // Leaving the day landed the line on it.
+        let landed = app.textViews.matching(NSPredicate(format: "value == %@", "[agent] SHIP-4351 aXb")).firstMatch
+        XCTAssertTrue(landed.waitForExistence(timeout: 10), "the line did not land on its day")
+
+        let more = app.buttons["journal.more"].firstMatch
+        if !more.waitForExistence(timeout: 5) {
+            app.navigationBars.buttons.element(boundBy: app.navigationBars.buttons.count - 1).tap()
+        }
+        // On iPad the first tap after the keys can land while the page
+        // settles; open the menu until it shows.
+        let delete = app.buttons["journal.more.delete"].firstMatch
+        for _ in 0 ..< 3 where !delete.exists {
+            more.tap()
+            _ = delete.waitForExistence(timeout: 3)
+        }
+        delete.tap()
+        app.buttons["Delete entry"].firstMatch.tap()
+        XCTAssertTrue(field.waitForExistence(timeout: 10), "the day was not deleted")
+    }
+
     func testMonthAndYearDrillDownAndBack() throws {
         let today = Self.randomDay()
         try openJournal(today: today)
