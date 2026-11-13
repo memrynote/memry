@@ -1411,6 +1411,7 @@
       "notConnected": "Non connesso",
       "test": "Prova",
       "connected": "Connesso! Server in esecuzione sulla porta {port}",
+      "connectedProvider": "Connesso a {provider}",
       "connectFailed": "Impossibile connettersi",
       "testFailed": "Test di connessione non riuscito",
       "updateFailed": "Impossibile aggiornare l'impostazione"

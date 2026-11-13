@@ -1411,6 +1411,7 @@
       "notConnected": "Inte ansluten",
       "test": "Testa",
       "connected": "Ansluten! Servern körs på port {port}",
+      "connectedProvider": "Ansluten till {provider}",
       "connectFailed": "Det gick inte att ansluta",
       "testFailed": "Anslutningstest misslyckades",
       "updateFailed": "Det gick inte att uppdatera inställningen"

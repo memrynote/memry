@@ -1411,6 +1411,7 @@
       "notConnected": "未連線",
       "test": "測試",
       "connected": "已連線！伺服器在連接埠 {port} 上執行",
+      "connectedProvider": "已連線至 {provider}",
       "connectFailed": "連線失敗",
       "testFailed": "連線測試失敗",
       "updateFailed": "無法更新設定"

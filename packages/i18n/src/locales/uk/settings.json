@@ -1411,6 +1411,7 @@
       "notConnected": "Не підключено",
       "test": "Перевірити",
       "connected": "Підключено! Сервер працює на порті {port}",
+      "connectedProvider": "Підключено до {provider}",
       "connectFailed": "Не вдалося підключитися",
       "testFailed": "Не вдалося перевірити з’єднання",
       "updateFailed": "Не вдалося оновити налаштування"

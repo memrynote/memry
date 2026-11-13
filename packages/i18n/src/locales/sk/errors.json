@@ -165,7 +165,8 @@
     "apiKeyMissing": "Ak chcete používať nástroje na písanie, pridajte svoj kľúč API pre {provider} v časti Nastavenia → AI.",
     "apiKeyInvalid": "Váš kľúč API pre {provider} bol odmietnutý. Skontrolujte ho v časti Nastavenia → AI.",
     "ollamaUnreachable": "Ollama nebeží. Spustite ju príkazom „ollama serve“ alebo vyberte iného poskytovateľa v časti Nastavenia → AI.",
-    "providerUnreachable": "Nepodarilo sa spojiť s poskytovateľom {provider}. Skontrolujte internetové pripojenie a skúste to znova."
+    "providerUnreachable": "Nepodarilo sa spojiť s poskytovateľom {provider}. Skontrolujte internetové pripojenie a skúste to znova.",
+    "keychainUnavailable": "memrynote nemá prístup ku kľúčenke systému, preto kľúč API pre AI nebol načítaný ani uložený. Odomknite kľúčenku a skúste to znova."
   },
   "auth": {
     "notAuthenticated": "Nie je prihlásený žiadny účet",

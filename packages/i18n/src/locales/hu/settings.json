@@ -1411,6 +1411,7 @@
       "notConnected": "Nincs csatlakoztatva",
       "test": "Tesztelés",
       "connected": "Csatlakozva! A szerver fut, port: {port}",
+      "connectedProvider": "Csatlakozva: {provider}",
       "connectFailed": "Nem sikerült csatlakozni",
       "testFailed": "A kapcsolatteszt sikertelen",
       "updateFailed": "Nem sikerült frissíteni a beállítást"

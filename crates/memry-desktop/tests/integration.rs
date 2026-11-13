@@ -18,6 +18,10 @@ mod vault_env;
 mod activity_log;
 #[path = "activity_scan.rs"]
 mod activity_scan;
+#[path = "ai_catalog.rs"]
+mod ai_catalog;
+#[path = "ai_inline_settings.rs"]
+mod ai_inline_settings;
 #[path = "app_edit.rs"]
 mod app_edit;
 #[path = "article_constants.rs"]

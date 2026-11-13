@@ -165,7 +165,8 @@
     "apiKeyMissing": "Yazma araçlarını kullanmak için Ayarlar → Yapay Zeka bölümüne {provider} API anahtarını ekle.",
     "apiKeyInvalid": "{provider} API anahtarın reddedildi. Ayarlar → Yapay Zeka bölümünden kontrol et.",
     "ollamaUnreachable": "Ollama çalışmıyor. \"ollama serve\" ile başlat ya da Ayarlar → Yapay Zeka bölümünden başka bir sağlayıcı seç.",
-    "providerUnreachable": "{provider} sunucusuna ulaşılamadı. İnternet bağlantını kontrol edip tekrar dene."
+    "providerUnreachable": "{provider} sunucusuna ulaşılamadı. İnternet bağlantını kontrol edip tekrar dene.",
+    "keychainUnavailable": "memrynote sistem anahtar zincirine ulaşamıyor, bu yüzden yapay zekâ API anahtarı okunmadı veya kaydedilmedi. Anahtar zincirinin kilidini açıp tekrar dene."
   },
   "auth": {
     "notAuthenticated": "Kimlik doğrulanmadı",

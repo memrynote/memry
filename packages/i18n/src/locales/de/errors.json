@@ -165,7 +165,8 @@
     "apiKeyMissing": "Füge deinen {provider}-API-Schlüssel unter Einstellungen → KI hinzu, um Schreibwerkzeuge zu nutzen.",
     "apiKeyInvalid": "Dein {provider}-API-Schlüssel wurde abgelehnt. Prüfe ihn unter Einstellungen → KI.",
     "ollamaUnreachable": "Ollama läuft nicht. Starte es mit „ollama serve“ oder wähle unter Einstellungen → KI einen anderen Anbieter.",
-    "providerUnreachable": "{provider} ist nicht erreichbar. Prüfe deine Internetverbindung und versuche es erneut."
+    "providerUnreachable": "{provider} ist nicht erreichbar. Prüfe deine Internetverbindung und versuche es erneut.",
+    "keychainUnavailable": "memrynote kann den Schlüsselbund des Systems nicht erreichen, daher wurde der KI-API-Schlüssel weder gelesen noch gespeichert. Entsperre deinen Schlüsselbund und versuche es erneut."
   },
   "auth": {
     "notAuthenticated": "Nicht angemeldet",

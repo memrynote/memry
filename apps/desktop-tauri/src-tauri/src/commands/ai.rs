@@ -1,0 +1,187 @@
+//! Inline AI settings and keys (Step 22, #3539): the `ai-inline:*` channels of Electron's
+//! `ipc/ai-inline-handlers.ts` without the localhost chat server. Each command is one call of
+//! `memry_desktop::ai`; the key stays in Rust and the renderer gets it masked.
+
+use std::sync::Arc;
+
+use memry_desktop::ai::catalog::{self, ProbeClient, ProbeFailure};
+use memry_desktop::ai::provider::AiProvider;
+use memry_desktop::ai::settings::{
+    AiSettingsError, InlineAiSettings, InlineAiStore, InlineAiUpdates,
+};
+use memry_desktop::i18n::{self, Arg, Args};
+use memry_desktop::locale::LocaleService;
+use memry_desktop::session::Session;
+use serde::Serialize;
+use tauri::{AppHandle, Manager, Runtime, Wry};
+
+use super::blocking;
+use super::error::{CommandError, ErrorKind, log_failure};
+use super::settings::map_error;
+use crate::events::{AiInlineSettingsChangedEvent, broadcast};
+
+/// The outcome of the settings screen's Test button. `detail` is the translated reason of a
+/// failure, `None` when `ok`.
+#[derive(Debug, Serialize, specta::Type)]
+#[serde(rename_all = "camelCase")]
+pub struct TestConnectionResult {
+    pub ok: bool,
+    pub detail: Option<String>,
+}
+
+fn store<R: Runtime>(app: &AppHandle<R>) -> Arc<InlineAiStore> {
+    app.state::<Arc<InlineAiStore>>().inner().clone()
+}
+
+fn locale<R: Runtime>(app: &AppHandle<R>) -> &'static str {
+    app.state::<Arc<LocaleService>>().get()
+}
+
+fn text(locale: &str, key: &str, settings: &InlineAiSettings) -> String {
+    let name = settings.provider.name(&settings.base_url);
+    let args = Args::from([("provider".to_owned(), Arg::from(name.as_str()))]);
+    i18n::t(locale, key, &args)
+}
+
+/// A keychain failure reads the same whatever the cause; the code tells them apart.
+fn settings_error(locale: &str, error: AiSettingsError) -> CommandError {
+    match error {
+        AiSettingsError::NoVault => {
+            CommandError::new(ErrorKind::NotFound, "no_vault_open", error.to_string())
+        }
+        AiSettingsError::Settings(error) => map_error(error),
+        AiSettingsError::Keychain(error) => {
+            tracing::warn!(scope = "AIInline", "keychain: {error}");
+            CommandError {
+                message: i18n::t(locale, "errors:ai.keychainUnavailable", &Args::new()),
+                ..CommandError::from_core(&error)
+            }
+        }
+    }
+}
+
+fn read<R: Runtime>(app: &AppHandle<R>) -> Result<InlineAiSettings, CommandError> {
+    let vault = app.state::<Session>().current();
+    store(app)
+        .read(vault.as_ref())
+        .map_err(|error| settings_error(locale(app), error))
+}
+
+/// The settings with the key masked (`ai-inline:get-settings`). The key itself is never read,
+/// so a locked keychain still opens the screen.
+#[tauri::command]
+#[specta::specta]
+pub async fn ai_inline_get_settings<R: Runtime>(
+    app: AppHandle<R>,
+) -> Result<InlineAiSettings, CommandError> {
+    blocking("ai_inline_get_settings", move || {
+        let vault = app.state::<Session>().current();
+        store(&app)
+            .masked(vault.as_ref())
+            .map_err(|error| settings_error(locale(&app), error))
+    })
+    .await
+}
+
+/// Writes a partial update (`ai-inline:set-settings`) and returns the masked result. A masked
+/// key is left alone, an empty key is deleted, any other key goes to the keychain.
+#[tauri::command]
+#[specta::specta]
+pub async fn ai_inline_set_settings<R: Runtime>(
+    app: AppHandle<R>,
+    updates: InlineAiUpdates,
+) -> Result<InlineAiSettings, CommandError> {
+    blocking("ai_inline_set_settings", move || {
+        let vault = app.state::<Session>().current();
+        let settings = store(&app)
+            .write(vault.as_ref(), updates)
+            .map_err(|error| settings_error(locale(&app), error))?;
+        broadcast(
+            &app,
+            AiInlineSettingsChangedEvent {
+                settings: settings.clone(),
+            },
+        );
+        Ok(settings)
+    })
+    .await
+}
+
+/// The models of the configured provider (`ai-inline:list-models`), asked with its key. Nothing
+/// listening at Ollama's address is the normal "Ollama is not running": `Transport` with code
+/// `ai.ollamaUnreachable`, logged at info. Every other failure is `ai.listModelsFailed`.
+#[tauri::command]
+#[specta::specta]
+pub async fn ai_inline_list_models(app: AppHandle<Wry>) -> Result<Vec<String>, CommandError> {
+    let settings = {
+        let app = app.clone();
+        blocking("ai_inline_list_models", move || read(&app)).await?
+    };
+    catalog::list_models(&ProbeClient::new(memry_desktop::http::builder()), &settings)
+        .await
+        .map_err(|failure| {
+            let locale = locale(&app);
+            let error = match failure {
+                ProbeFailure::Unreachable if settings.provider == AiProvider::Ollama => {
+                    tracing::info!(scope = "AIInline", "Ollama is not running");
+                    return CommandError::new(
+                        ErrorKind::Transport,
+                        "ai.ollamaUnreachable",
+                        i18n::t(locale, "errors:ai.ollamaUnreachable", &Args::new()),
+                    );
+                }
+                other => CommandError::new(
+                    ErrorKind::Transport,
+                    "ai.listModelsFailed",
+                    format!(
+                        "{}: {other}",
+                        i18n::t(locale, "errors:ai.listModelsFailed", &Args::new())
+                    ),
+                ),
+            };
+            log_failure("ai_inline_list_models", &error);
+            error
+        })
+}
+
+/// Whether the configured provider answers `GET /models` with the stored key. A refusal is an
+/// answer, not a failed call.
+#[tauri::command]
+#[specta::specta]
+pub async fn ai_inline_test_connection(
+    app: AppHandle<Wry>,
+) -> Result<TestConnectionResult, CommandError> {
+    let settings = {
+        let app = app.clone();
+        blocking("ai_inline_test_connection", move || read(&app)).await?
+    };
+    let locale = locale(&app);
+    if !settings.enabled {
+        return Ok(TestConnectionResult {
+            ok: false,
+            detail: Some(i18n::t(locale, "errors:ai.inlineDisabled", &Args::new())),
+        });
+    }
+    let outcome =
+        catalog::test_connection(&ProbeClient::new(memry_desktop::http::builder()), &settings)
+            .await;
+    let detail = match outcome {
+        Ok(()) => None,
+        Err(ProbeFailure::KeyMissing) => Some(text(locale, "errors:ai.apiKeyMissing", &settings)),
+        Err(ProbeFailure::Unauthorized) => Some(text(locale, "errors:ai.apiKeyInvalid", &settings)),
+        Err(ProbeFailure::Unreachable) if settings.provider == AiProvider::Ollama => {
+            Some(i18n::t(locale, "errors:ai.ollamaUnreachable", &Args::new()))
+        }
+        Err(ProbeFailure::Unreachable) => {
+            Some(text(locale, "errors:ai.providerUnreachable", &settings))
+        }
+        Err(ProbeFailure::Other(reason)) => {
+            tracing::warn!(scope = "AIInline", "connection test failed: {reason}");
+            Some(reason)
+        }
+    };
+    Ok(TestConnectionResult {
+        ok: detail.is_none(),
+        detail,
+    })
+}

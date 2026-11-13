@@ -165,7 +165,8 @@
     "apiKeyMissing": "Tambahkan kunci API {provider} Anda di Pengaturan → AI untuk menggunakan alat menulis.",
     "apiKeyInvalid": "Kunci API {provider} Anda ditolak. Periksa di Pengaturan → AI.",
     "ollamaUnreachable": "Ollama tidak berjalan. Jalankan dengan \"ollama serve\", atau pilih penyedia lain di Pengaturan → AI.",
-    "providerUnreachable": "Tidak dapat menjangkau {provider}. Periksa koneksi internet Anda dan coba lagi."
+    "providerUnreachable": "Tidak dapat menjangkau {provider}. Periksa koneksi internet Anda dan coba lagi.",
+    "keychainUnavailable": "memrynote tidak dapat menjangkau keychain sistem, jadi kunci API AI tidak dibaca atau disimpan. Buka kunci keyring Anda dan coba lagi."
   },
   "auth": {
     "notAuthenticated": "Belum terautentikasi",
