@@ -178,7 +178,10 @@ pub const DATA_MIGRATIONS: &[Migration] = &[
         name: "desktop_record_types",
         sql: include_str!("migrations/data/0027_desktop_record_types.sql"),
     },
-    // 28 is #4456's agent records, 29 main's #4419: both land before this one.
+    // 30 follows the main -> feat/tauri-v2 shift (#4438): main's #4419 keeps
+    // data 0017, and feat's own 0017-0028 (28 is #4456's agent records) move
+    // to 0018-0029 in that merge commit. 30 must not land before 28 and 29:
+    // the runner applies only `version > user_version`.
     Migration {
         version: 30,
         name: "sync_refused_items",

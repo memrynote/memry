@@ -230,7 +230,7 @@ impl PullLoop {
     /// Every run starts here, so it first refetches what another app version
     /// refused ([`PullLoop::retry_refused`], #4453).
     pub async fn pull_first_page(&self) -> Result<PullReport, PullError> {
-        self.retry_refused().await?;
+        self.retry_refused().await;
         self.page(true).await
     }
 

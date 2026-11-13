@@ -70,16 +70,27 @@ sends the stored string (`crates/memry-core/src/storage/repositories/sync_items.
 
 The Rust core meets rule 5 with a refused-items ledger (#4453), the equal of
 desktop's below. A record its type's schema refuses is not applied, its local
-row is left as it is, and the pull records it by type, id and app version in
+row is left as it is, and the pull records it by type, id and core build in
 `sync_refused_items`
 (`crates/memry-core/src/storage/migrations/data/0030_sync_refused_items.sql:12-18`,
-`crates/memry-core/src/sync/pull/apply_step.rs:44`). The app version is the one
-the host passes for the `x-memry-client` header (chapter 11 §11.1,
-`crates/memry-core/src/sync/pull/apply_step.rs:28`). The first page of every
-run refetches by id each entry another app version recorded
-(`crates/memry-core/src/sync/pull.rs:233`,
-`crates/memry-core/src/sync/pull/apply_step.rs:57-74`); a later apply or a
-clock decision resolves it (`crates/memry-core/src/sync/apply.rs:221-224`).
+`crates/memry-core/src/sync/pull/apply_step.rs:47`). The core build is
+`<package version>+<git commit>`, stamped at compile time
+(`crates/memry-core/build.rs:32-43`,
+`crates/memry-core/src/sync/refused_items.rs:27`), not the app version of the
+`x-memry-client` header: the refusal is the core's decision, and iOS reports one
+marketing version across its builds. The first page of every run refetches by
+id each `(type, id)` another core build recorded, and reads only the requested
+pairs (`crates/memry-core/src/sync/pull.rs:233`,
+`crates/memry-core/src/sync/pull/apply_step.rs:73-121`). A failed refetch is
+logged and the run goes on to the feed with every entry kept
+(`crates/memry-core/src/sync/pull/apply_step.rs:60-64`). Three things resolve
+an entry: an apply or a clock decision of the record
+(`crates/memry-core/src/sync/apply.rs:222-225`), a tombstone of it, typed, bare
+or untyped (`:182`, `:201`, `:231`), and a refetch the server answered in full
+without it (`crates/memry-core/src/sync/pull/apply_step.rs:112-119`). A returned
+record that does not decode, or applies corrupt or expired, keeps its entry
+under the older build and is retried on the next run, and its local row is not
+flagged corrupt (`crates/memry-core/src/sync/pull/apply_step.rs:99-106`).
 
 ### 13.2.1 Desktop meets the obligation by a different mechanism (#2183)
 
@@ -563,7 +574,7 @@ The Rust core projects it as `Field::opt_null("schema", Kind::Any)` with no
 column (`crates/memry-core/src/storage/repositories/projectors/taxonomy.rs:64`).
 It runs §6.3.1's document gate on the rest of the definition, then joins
 `schema` by chapter 06 §6.11 on every apply path, the skip included, and heals
-(`crates/memry-core/src/sync/apply.rs:460-462`, `:508-519`,
+(`crates/memry-core/src/sync/apply.rs:462-464`, `:510-521`,
 `crates/memry-core/src/sync/versioned_apply.rs:46`, `:74`). A schema edit
 stamps `t` one past the stored value's
 (`crates/memry-core/src/domain/tag_schema/edit.rs:97`,
@@ -1004,7 +1015,10 @@ edit look like a divergence.
 **Normative**, the apply rule (`canvas-handler.ts:148-345`, `:479-571`). It is the
 document-level resolver (§13.9) with five additions:
 
-1. a payload with no string `scene` is skipped and changes nothing;
+1. a payload with no `scene` is skipped and changes nothing. A `scene` that is
+   not text fails the schema (`schema_invalid`), and the Rust core refuses it
+   into the refused-items ledger (§13.2,
+   `crates/memry-core/src/domain/canvas/merge.rs:59-65`);
 2. a create (no local row) with no `vaultId` is skipped;
 3. on a **concurrent** clock, when the local row is live and its scene text
    differs from the remote's, the client first writes the local scene as a new
@@ -1044,7 +1058,10 @@ preserved (§13.2).
 document-level resolver (§13.9) with four additions:
 
 1. a `targetKind` that is present and not a known kind is skipped, and a local
-   record stays as it is (`:37-40`). An absent `targetKind` is not unknown;
+   record stays as it is (`:37-40`). An absent `targetKind` is not unknown. One
+   that is not text fails the schema (`schema_invalid`), and the Rust core
+   refuses it into the refused-items ledger (§13.2,
+   `crates/memry-core/src/domain/vault_locks/merge.rs:50-55`);
 2. a create (no live local record) that lacks a non-empty `targetKind`, a
    non-empty `target` or a boolean `locked` is skipped (`:72-76`);
 3. a concurrent clock is last-writer-wins: the remote applies under the merged
@@ -1054,7 +1071,7 @@ document-level resolver (§13.9) with four additions:
    `updatedAt` reads as the apply time (`:62`).
 
 The Rust core follows the same rule
-(`crates/memry-core/src/domain/vault_locks/merge.rs:39-74`).
+(`crates/memry-core/src/domain/vault_locks/merge.rs:41-77`).
 
 A delete follows chapter 05 §5.8 unchanged and unlocks the target: the lock
 survives a tombstone only when its local clock is strictly after the
@@ -1101,7 +1118,7 @@ as `parse_error` or `schema_invalid` before the handler reads the local row
 (`apps/desktop/src/main/sync/apply-item.ts:155-176`). With no local row, a
 payload that is not an object is stored as corrupt. The refusal meets §13.2
 rule 5: JSON that fails the schema is recorded in the refused-items ledger and
-refetched once another app version runs (§13.2,
+refetched once another core build runs (§13.2,
 `crates/memry-core/src/domain/desktop_records/mod.rs:85-91`, `:128-130`); text
 that is not JSON is desktop's `parse_error`, which desktop does not ledger
 either, and stays a skip.
@@ -1155,7 +1172,7 @@ as `parse_error` or `schema_invalid` before the handler reads the local row
 (`apps/desktop/src/main/sync/apply-item.ts:155-176`). With no local row, a
 payload that is not an object is stored as corrupt. The refusal meets §13.2
 rule 5: JSON that fails the schema is recorded in the refused-items ledger and
-refetched once another app version runs (§13.2,
+refetched once another core build runs (§13.2,
 `crates/memry-core/src/domain/desktop_records/mod.rs:85-91`, `:128-130`); text
 that is not JSON is desktop's `parse_error`, which desktop does not ledger
 either, and stays a skip.
@@ -1209,7 +1226,7 @@ as `parse_error` or `schema_invalid` before the handler reads the local row
 (`apps/desktop/src/main/sync/apply-item.ts:155-176`). With no local row, a
 payload that is not an object is stored as corrupt. The refusal meets §13.2
 rule 5: JSON that fails the schema is recorded in the refused-items ledger and
-refetched once another app version runs (§13.2,
+refetched once another core build runs (§13.2,
 `crates/memry-core/src/domain/desktop_records/mod.rs:85-91`, `:128-130`); text
 that is not JSON is desktop's `parse_error`, which desktop does not ledger
 either, and stays a skip.

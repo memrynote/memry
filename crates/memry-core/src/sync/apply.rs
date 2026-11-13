@@ -198,6 +198,7 @@ pub(crate) fn apply_page(
                         clock_device,
                         &mut totals,
                     )?;
+                    refused_items::resolve(conn, &record.item_type, &record.item_id)?;
                     continue;
                 }
                 let outcome = apply_inbound_on(conn, &record, now_ms, clock_device)?;
@@ -227,6 +228,7 @@ pub(crate) fn apply_page(
     }
     for item_id in untyped {
         apply_untyped_tombstone(conn, &item_id, now_ms, &mut totals)?;
+        refused_items::resolve_id(conn, &item_id)?;
     }
     Ok(totals)
 }
