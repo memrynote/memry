@@ -5,6 +5,7 @@
 //! it with `--test`) gets a `[[test]]` target in Cargo.toml instead. `every_test_file_is_built`
 //! keeps a new file from being left out of both: with `autotests = false` it would never compile.
 
+mod ai_fake;
 mod device_key;
 mod index_support;
 mod move_tree;
@@ -22,6 +23,8 @@ mod activity_scan;
 mod ai_catalog;
 #[path = "ai_features.rs"]
 mod ai_features;
+#[path = "ai_fill_fields.rs"]
+mod ai_fill_fields;
 #[path = "ai_inline_settings.rs"]
 mod ai_inline_settings;
 #[path = "ai_local_agent.rs"]
@@ -32,6 +35,12 @@ mod ai_local_agent_guards;
 mod ai_local_provider;
 #[path = "ai_proxy.rs"]
 mod ai_proxy;
+#[path = "ai_proxy_refusals.rs"]
+mod ai_proxy_refusals;
+#[path = "ai_structured.rs"]
+mod ai_structured;
+#[path = "ai_structured_shapes.rs"]
+mod ai_structured_shapes;
 #[path = "app_edit.rs"]
 mod app_edit;
 #[path = "article_constants.rs"]

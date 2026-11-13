@@ -58,8 +58,12 @@ export function useAIInline(aiEnabled = true): AIInlineState {
       })
     return () => {
       active = false
+      // A subscription that failed was logged when it failed; there is nothing to undo.
       void registered
-        .then((unlisten) => unlisten())
+        .then(
+          (unlisten) => unlisten(),
+          () => undefined
+        )
         .catch((err: unknown) => log.warn('Unsubscribing from the inline AI settings failed', err))
     }
     // oxlint-disable-next-line react/exhaustive-effect-dependencies -- attempt is the retry trigger, not read inside the effect

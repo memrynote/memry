@@ -381,7 +381,7 @@ async fn the_body_streams_through_as_it_arrives_with_the_stored_key() {
         .open(
             &settings(AiProvider::Custom, &fake.base, KEY),
             request("stream", AiProvider::Custom, "/chat"),
-            "main",
+            &proxy.owner("main"),
             sink,
         )
         .await
@@ -430,7 +430,7 @@ async fn a_cancel_ends_the_upstream_request_mid_stream() {
         .open(
             &settings(AiProvider::Custom, &fake.base, KEY),
             request("hang", AiProvider::Custom, "/chat"),
-            "main",
+            &proxy.owner("main"),
             sink,
         )
         .await
@@ -463,7 +463,7 @@ async fn a_cancel_before_the_head_ends_the_upstream_request() {
                 .open(
                     &settings,
                     request("slow", AiProvider::Custom, "/chat"),
-                    "main",
+                    &proxy.owner("main"),
                     sink,
                 )
                 .await
@@ -496,7 +496,7 @@ async fn a_gone_renderer_and_a_vault_close_end_the_upstream_request() {
         .open(
             &settings(AiProvider::Custom, &fake_gone.base, KEY),
             request("gone", AiProvider::Custom, "/chat"),
-            "main",
+            &proxy.owner("main"),
             sink_gone,
         )
         .await
@@ -516,7 +516,7 @@ async fn a_gone_renderer_and_a_vault_close_end_the_upstream_request() {
         .open(
             &settings(AiProvider::Custom, &fake_open.base, KEY),
             request("open", AiProvider::Custom, "/chat"),
-            "main",
+            &proxy.owner("main"),
             sink_open,
         )
         .await
@@ -541,11 +541,12 @@ async fn a_gone_renderer_and_a_vault_close_end_the_upstream_request() {
 async fn a_redirect_is_answered_never_followed() {
     let fake = fake(Answer::Redirect).await;
     let (sink, _frames) = sink(Arc::new(AtomicBool::new(true)));
-    let (head, _body) = proxy()
+    let proxy = proxy();
+    let (head, _body) = proxy
         .open(
             &settings(AiProvider::Custom, &fake.base, KEY),
             request("redirect", AiProvider::Custom, "/chat"),
-            "main",
+            &proxy.owner("main"),
             sink,
         )
         .await
@@ -561,11 +562,12 @@ async fn an_unreachable_provider_is_named_without_the_key_and_a_running_id_is_re
     drop(listener);
     let base = format!("http://127.0.0.1:{port}/v1");
     let (sink_closed, _frames) = sink(Arc::new(AtomicBool::new(true)));
-    let error = proxy()
+    let closed = proxy();
+    let error = closed
         .open(
             &settings(AiProvider::Custom, &base, KEY),
             request("closed", AiProvider::Custom, "/chat"),
-            "main",
+            &closed.owner("main"),
             sink_closed,
         )
         .await
@@ -586,7 +588,7 @@ async fn an_unreachable_provider_is_named_without_the_key_and_a_running_id_is_re
         .open(
             &settings(AiProvider::Custom, &fake.base, KEY),
             request("same", AiProvider::Custom, "/chat"),
-            "main",
+            &proxy.owner("main"),
             sink_first,
         )
         .await
@@ -596,7 +598,7 @@ async fn an_unreachable_provider_is_named_without_the_key_and_a_running_id_is_re
         .open(
             &settings(AiProvider::Custom, &fake.base, KEY),
             request("same", AiProvider::Custom, "/chat"),
-            "main",
+            &proxy.owner("main"),
             sink_second,
         )
         .await
@@ -616,7 +618,7 @@ async fn a_cancel_that_arrives_before_open_refuses_the_request() {
         .open(
             &settings(AiProvider::Custom, &fake.base, KEY),
             request("early", AiProvider::Custom, "/chat"),
-            "main",
+            &proxy.owner("main"),
             sink,
         )
         .await
@@ -637,7 +639,7 @@ async fn a_closed_or_reloaded_page_ends_only_its_own_requests() {
             .open(
                 &settings(AiProvider::Custom, &fake.base, KEY),
                 request(owner, AiProvider::Custom, "/chat"),
-                owner,
+                &proxy.owner(owner),
                 sink,
             )
             .await
@@ -683,7 +685,7 @@ async fn the_proxy_client_goes_to_the_provider_directly_past_a_configured_proxy(
         .open(
             &settings(AiProvider::Custom, &provider.base, KEY),
             request("direct", AiProvider::Custom, "/chat"),
-            "main",
+            &proxy.owner("main"),
             sink,
         )
         .await

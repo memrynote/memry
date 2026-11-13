@@ -206,6 +206,25 @@ impl Schemas {
         self.resolved_by(self.definitions.read()?)
     }
 
+    /// The resolved tags the object search reads, for the field fill (`tags:fill-fields`).
+    pub fn resolved_tags(&self) -> Result<Resolved, SchemaError> {
+        self.read_resolved()
+    }
+
+    /// Up to `limit` objects of `tag` and the tags that extend it, as an empty search lists
+    /// them: a relation target's candidates for the field fill.
+    pub fn relation_candidates(
+        &self,
+        resolved: &Resolved,
+        tag: &str,
+        limit: usize,
+    ) -> Result<Vec<ObjectMatch>, SchemaError> {
+        Ok(self
+            .open
+            .search
+            .search_objects(resolved, "", Some(tag), limit)?)
+    }
+
     /// `tags:search-objects`.
     pub fn search_objects(
         &self,
