@@ -22,16 +22,19 @@ import {
   CalendarEventSyncPayloadSchema,
   CalendarExternalEventSyncPayloadSchema,
   CalendarSourceSyncPayloadSchema,
+  CanvasFolderSyncPayloadSchema,
   CanvasSyncPayloadSchema,
   CustomIconSyncPayloadSchema,
   FilterSyncPayloadSchema,
   FolderConfigSyncPayloadSchema,
+  HomePageSyncPayloadSchema,
   InboxSyncPayloadSchema,
   JournalSyncPayloadSchema,
   NoteSyncPayloadSchema,
   ProjectSyncPayloadSchema,
   PropertyDefinitionSyncPayloadSchema,
   ReminderSyncPayloadSchema,
+  StickyDraftSyncPayloadSchema,
   TagCategorySyncPayloadSchema,
   TagDefinitionSyncPayloadSchema,
   TaskActivitySyncPayloadSchema,
@@ -587,6 +590,61 @@ const SPECS: TypeSpec[] = [
       updatedAt: '2026-04-16T00:00:00.000Z'
     },
     boundary: { targetKind: '', target: '', locked: false, clock: {} },
+    unknownKey: 'syncedAt',
+    unknownValue: '2026-04-16T00:00:01.000Z',
+    desktopOnly: true
+  },
+  {
+    // Canvas folders, desktop only. The id is derived from the path
+    // (`canvasFolderSyncId`); a soft delete states `deletedAt`.
+    type: 'canvas_folder',
+    schema: CanvasFolderSyncPayloadSchema,
+    valid: {
+      id: 'cvf_work/q3',
+      vaultId: 'vault-1',
+      path: 'Work/Q3',
+      icon: 'folder',
+      clock: CLOCK,
+      deletedAt: null
+    },
+    boundary: { path: '', icon: null, deletedAt: null, clock: {} },
+    unknownKey: 'color',
+    unknownValue: '#aabbcc',
+    desktopOnly: true
+  },
+  {
+    // Home boards, desktop only. `widgets` is opaque JSON array text; desktop
+    // pushes its whole `home_pages` row, so `id` and `syncedAt` ride along.
+    type: 'home_page',
+    schema: HomePageSyncPayloadSchema,
+    valid: {
+      name: 'Home',
+      icon: 'house',
+      position: 1,
+      widgets: '[{"id":"w1","type":"inbox"}]',
+      cover: { ref: 'unsplash:abc', focus: 40 },
+      clock: CLOCK,
+      createdAt: '2026-04-16T00:00:00.000Z',
+      updatedAt: '2026-04-16T00:00:00.000Z'
+    },
+    boundary: { name: '', icon: null, position: 0, widgets: '[]', cover: null, clock: {} },
+    unknownKey: 'syncedAt',
+    unknownValue: '2026-04-16T00:00:01.000Z',
+    desktopOnly: true
+  },
+  {
+    // Unsent sticky text, desktop only. Desktop pushes its whole
+    // `sticky_drafts` row, so `id` and `syncedAt` ride along unmodelled.
+    type: 'sticky_draft',
+    schema: StickyDraftSyncPayloadSchema,
+    valid: {
+      content: 'buy milk',
+      kind: 'task',
+      clock: CLOCK,
+      createdAt: '2026-04-16T00:00:00.000Z',
+      modifiedAt: '2026-04-16T00:00:00.000Z'
+    },
+    boundary: { content: '', kind: '', clock: {} },
     unknownKey: 'syncedAt',
     unknownValue: '2026-04-16T00:00:01.000Z',
     desktopOnly: true
