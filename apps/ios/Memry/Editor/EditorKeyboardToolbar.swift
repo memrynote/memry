@@ -33,7 +33,8 @@ enum EditorToolbarItem: String, CaseIterable, Identifiable {
 
 /// The accessory row, with the `[[` / `@` / `#` menu above it when one is
 /// open. `Aa`, or a non-empty selection, slides the format row in over the
-/// main row.
+/// main row. Capped at the reading measure and centred, so a wide window
+/// does not draw a window-wide band of glass (`DESIGN.md` › Tablet).
 struct EditorKeyboardToolbar: View {
     let session: EditorSession
     @Environment(\.accessibilityReduceMotion) private var reduceMotion
@@ -69,6 +70,7 @@ struct EditorKeyboardToolbar: View {
                         .chromeGlass(in: .circle)
                 }
             }
+            .measuredColumn(Tokens.Size.reading)
             .padding(.horizontal, Tokens.Space.small)
             .padding(.top, Tokens.Space.small)
             .padding(.bottom, Tokens.Space.tight)
@@ -441,6 +443,17 @@ private struct EditorSuggestionList: View {
 
 /// What replaces the keyboard: the insert grid, or turn-into and colours.
 struct EditorPanelView: View {
+    /// The share of the window's height the panel may take.
+    static let windowShare: CGFloat = 0.4
+
+    /// The keyboard's height, capped at `windowShare` of the window, so a
+    /// short Stage Manager window or a phone in landscape keeps the note in
+    /// view. With no window yet, the keyboard's height.
+    static func height(keyboard: CGFloat, window: CGFloat?) -> CGFloat {
+        guard let window, window > 0 else { return keyboard }
+        return min(keyboard, window * windowShare)
+    }
+
     let session: EditorSession
     /// Grows with Dynamic Type, so a tile's title wraps rather than truncates.
     @ScaledMetric(relativeTo: .caption) private var tileWidth: CGFloat = 96

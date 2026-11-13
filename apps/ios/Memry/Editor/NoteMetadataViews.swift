@@ -425,6 +425,62 @@ struct FlowLayout: Layout {
     }
 }
 
+/// A property's name beside its value, the name as wide as its text with a
+/// `minimum`, so short names share an edge and a long one, or any name at a
+/// large Dynamic Type size, is not cut off. A name wider than `share` of the
+/// row sits above its value instead of squeezing it.
+struct PropertyRowLayout: Layout {
+    static let minimum: CGFloat = 118
+    static let share: CGFloat = 0.5
+
+    var spacing: CGFloat
+
+    /// The name's width beside the value, or `nil` when it goes above it.
+    static func nameWidth(ideal: CGFloat, row: CGFloat) -> CGFloat? {
+        let width = max(minimum, ideal)
+        return width <= max(minimum, row * share) ? width : nil
+    }
+
+    func sizeThatFits(proposal: ProposedViewSize, subviews: Subviews, cache: inout ()) -> CGSize {
+        let (name, value) = frames(width: proposal.width ?? .infinity, subviews)
+        let union = name.union(value)
+        return CGSize(width: proposal.width ?? union.width, height: union.height)
+    }
+
+    func placeSubviews(in bounds: CGRect, proposal: ProposedViewSize, subviews: Subviews, cache: inout ()) {
+        let (name, value) = frames(width: bounds.width, subviews)
+        for (subview, frame) in zip(subviews, [name, value]) {
+            subview.place(
+                at: CGPoint(x: bounds.minX + frame.minX, y: bounds.minY + frame.minY), anchor: .topLeading,
+                proposal: ProposedViewSize(frame.size)
+            )
+        }
+    }
+
+    /// Where the name and the value go in a row `width` wide, from its
+    /// leading edge: side by side and centred on each other, or stacked.
+    private func frames(width: CGFloat, _ subviews: Subviews) -> (CGRect, CGRect) {
+        guard subviews.count == 2 else { return (.zero, .zero) }
+        let ideal = subviews[0].sizeThatFits(.unspecified).width
+        if let nameWidth = Self.nameWidth(ideal: ideal, row: width) {
+            let valueWidth = max(0, width - nameWidth - spacing)
+            let name = subviews[0].sizeThatFits(ProposedViewSize(width: nameWidth, height: nil))
+            let value = subviews[1].sizeThatFits(ProposedViewSize(width: valueWidth, height: nil))
+            let height = max(name.height, value.height)
+            return (
+                CGRect(x: 0, y: (height - name.height) / 2, width: nameWidth, height: name.height),
+                CGRect(x: nameWidth + spacing, y: (height - value.height) / 2, width: valueWidth, height: value.height)
+            )
+        }
+        let name = subviews[0].sizeThatFits(ProposedViewSize(width: width, height: nil))
+        let value = subviews[1].sizeThatFits(ProposedViewSize(width: width, height: nil))
+        return (
+            CGRect(x: 0, y: 0, width: width, height: name.height),
+            CGRect(x: 0, y: name.height + Tokens.Space.tight, width: width, height: value.height)
+        )
+    }
+}
+
 /// One property, edited against its type (N704), laid out as desktop lays it
 /// out: a type glyph and the name in a label column, the value beside it —
 /// plain text for text, numbers and dates, coloured chips for choices,
@@ -463,6 +519,9 @@ struct NotePropertyEditor: View {
     @State private var nameDraft = ""
     @State private var pickingDate = false
     @State private var pickingRelation = false
+    /// The type glyph's lane, grown with the name's text size. A minimum, so
+    /// a glyph wider than the lane at a large size pushes the name over.
+    @ScaledMetric(relativeTo: .subheadline) private var glyphLane = Tokens.Space.inset
 
     private var kind: NotePropertyKind? { NotePropertyKind.of(property) ?? kindHint }
 
@@ -470,9 +529,8 @@ struct NotePropertyEditor: View {
     private var optionColors: [String: String] { NotePropertyOptions.colors(of: property.optionsJson) }
 
     var body: some View {
-        HStack(alignment: .center, spacing: Tokens.Space.medium) {
+        PropertyRowLayout(spacing: Tokens.Space.medium) {
             nameLabel
-                .frame(width: 118, alignment: .leading)
 
             editor
                 .font(Tokens.Typography.supporting.font)
@@ -537,8 +595,8 @@ struct NotePropertyEditor: View {
         let label = HStack(spacing: Tokens.Space.small) {
             // One lane for every glyph, so the names share an edge.
             Image(systemName: kind?.symbol ?? NotePropertyKind.text.symbol)
-                .frame(width: Tokens.Space.inset, alignment: .center)
-            Text(property.name).lineLimit(1)
+                .frame(minWidth: glyphLane, alignment: .center)
+            Text(property.name)
         }
         .font(Tokens.Typography.supporting.font)
         .foregroundStyle(Tokens.Text.secondary.color)
