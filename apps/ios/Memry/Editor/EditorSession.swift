@@ -146,9 +146,12 @@ final class EditorSession {
         ) { [weak self] note in
             guard let frame = note.userInfo?[UIResponder.keyboardFrameEndUserInfoKey] as? CGRect else { return }
             let screen = note.object as? UIScreen
+            let isLocal = note.userInfo?[UIResponder.keyboardIsLocalUserInfoKey] as? Bool != false
             MainActor.assumeIsolated {
-                // Another window's keyboard (#4344) says nothing about this one's.
-                guard let self, self.panel == .none, let window = self.field?.textView.window,
+                // #4344: a keyboard on another screen, or another app's on
+                // this one (Split View, Stage Manager), says nothing about
+                // this window's.
+                guard isLocal, let self, self.panel == .none, let window = self.field?.textView.window,
                       let frame = PresentingWindow.keyboardFrame(frame, on: screen, in: window)
                 else { return }
                 let accessory = self.accessory.frame.height
@@ -258,8 +261,9 @@ final class EditorSession {
         // `keyboardWillChangeFrame`, so `performWithoutAnimation` cannot reach
         // it. The slide is taken off the keyboard's own windows in this scene
         // before that turn commits (`stillKeyboard`); the rest of the app
-        // keeps its animations (#4344). Without the notification the panel
-        // fades in after half a second.
+        // keeps its animations (#4344). Only this screen's keyboard, and
+        // not another app's on it, ends the swap. Without the notification
+        // the panel fades in after half a second.
         if panel != .none { panelView.alpha = 0 }
         if let panelSwap { NotificationCenter.default.removeObserver(panelSwap.observer) }
         panelSwapGeneration += 1
@@ -268,7 +272,8 @@ final class EditorSession {
         let observer = NotificationCenter.default.addObserver(
             forName: UIResponder.keyboardWillChangeFrameNotification,
             object: editorWindow?.windowScene?.screen, queue: .main
-        ) { [weak self, weak editorWindow] _ in
+        ) { [weak self, weak editorWindow] note in
+            guard note.userInfo?[UIResponder.keyboardIsLocalUserInfoKey] as? Bool != false else { return }
             MainActor.assumeIsolated {
                 Self.stillKeyboard(of: editorWindow) { self?.finishPanelSwap(generation) }
             }

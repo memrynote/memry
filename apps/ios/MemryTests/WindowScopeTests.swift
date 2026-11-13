@@ -1,7 +1,8 @@
 //
 //  WindowScopeTests.swift
 //  #4344: an iPad window shares the screen, the keyboard and the camera with
-//  other apps' windows. The editor reads only its own screen's keyboard, a
+//  other apps' windows. The editor reads only this app's keyboard on its
+//  own screen, a
 //  Reduce Motion panel swap leaves the rest of the app animating, and a
 //  camera paused mid-scan says why.
 //
@@ -42,25 +43,28 @@ struct WindowScopeTests {
         return window
     }
 
-    private func keyboardWillShow(height: CGFloat, on screen: UIScreen?) {
+    private func keyboardWillShow(height: CGFloat, on screen: UIScreen?, isLocal: Bool) {
         NotificationCenter.default.post(
             name: UIResponder.keyboardWillShowNotification,
             object: screen,
-            userInfo: [UIResponder.keyboardFrameEndUserInfoKey: CGRect(x: 0, y: 400, width: 800, height: height)]
+            userInfo: [
+                UIResponder.keyboardFrameEndUserInfoKey: CGRect(x: 0, y: 400, width: 800, height: height),
+                UIResponder.keyboardIsLocalUserInfoKey: isLocal,
+            ]
         )
     }
 
-    @Test func the_editor_sizes_its_panel_only_from_its_own_screens_keyboard() throws {
+    @Test func the_editor_sizes_its_panel_only_from_its_own_apps_keyboard() throws {
         let window = try window()
         defer { window.isHidden = true }
         let (session, field) = focusedField(in: window)
         defer { withExtendedLifetime(field) {} }
         let before = session.keyboardHeight
 
-        keyboardWillShow(height: 520, on: nil)
-        #expect(session.keyboardHeight == before, "a keyboard on no named screen is not this window's")
+        keyboardWillShow(height: 520, on: window.windowScene?.screen, isLocal: false)
+        #expect(session.keyboardHeight == before, "another app's keyboard on this screen is not this window's")
 
-        keyboardWillShow(height: 520, on: window.windowScene?.screen)
+        keyboardWillShow(height: 520, on: window.windowScene?.screen, isLocal: true)
         #expect(session.keyboardHeight == 520 - session.accessory.frame.height)
     }
 

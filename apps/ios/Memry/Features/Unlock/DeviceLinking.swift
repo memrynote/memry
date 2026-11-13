@@ -192,6 +192,7 @@ final class DeviceLinkingViewModel {
         case .restricted: return record(CaptureError.Restricted, phase: .idle)
         case .denied, .notAsked: return record(CaptureError.NotPermitted, phase: .idle)
         }
+        cameraInterruption = nil
         phase = .scanning
         let observers = CameraInterruption.observe(in: notifications) { [weak self] in self?.cameraInterruption = $0 }
         let scanned: Result<String, any Error>
