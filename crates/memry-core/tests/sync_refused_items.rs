@@ -529,12 +529,32 @@ async fn a_canvas_scene_that_is_not_text_is_ledgered() {
     ledgers("canvas", "canvas-1", payload).await;
 }
 
+/// Any key desktop's canvas schema types, not only `scene`
+/// (`desktop_records::fails_desktop_schema`).
+#[tokio::test]
+async fn a_canvas_with_a_wrong_typed_key_is_ledgered() {
+    let payload = json!({"vaultId": "v", "scene": "{}", "title": 5, "clock": {"peer": 1}});
+    ledgers("canvas", "canvas-2", payload).await;
+}
+
 /// `vault_lock` applies only in the desktop build (`src/sync/apply.rs:469`).
 #[cfg(feature = "markdown")]
 #[tokio::test]
 async fn a_vault_lock_target_kind_that_is_not_text_is_ledgered() {
     let payload = json!({"targetKind": 5, "target": "x", "locked": true, "clock": {"peer": 1}});
     ledgers("vault_lock", "lock-1", payload).await;
+}
+
+/// Any key desktop's vault_lock schema types, and a `null` it has no room for.
+#[cfg(feature = "markdown")]
+#[tokio::test]
+async fn a_vault_lock_with_a_wrong_typed_or_null_key_is_ledgered() {
+    let payload =
+        json!({"targetKind": "note", "target": "x", "locked": "yes", "clock": {"peer": 1}});
+    ledgers("vault_lock", "lock-2", payload).await;
+    let payload =
+        json!({"targetKind": "note", "target": null, "locked": true, "clock": {"peer": 1}});
+    ledgers("vault_lock", "lock-3", payload).await;
 }
 
 #[tokio::test]

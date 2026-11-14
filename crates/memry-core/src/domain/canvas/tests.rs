@@ -137,6 +137,46 @@ fn a_payload_without_a_scene_or_a_create_without_a_vault_is_skipped() {
     .expect("skips");
 }
 
+/// `CanvasSyncPayloadSchema` refuses each of these, so desktop never applies
+/// them; nor may core, even where a kept local key would mask the bad one.
+#[test]
+fn a_newer_remote_desktops_schema_refuses_leaves_the_local_canvas_alone() {
+    let (db, _dir) = open("canvas-refused");
+    db.call_blocking(|conn| {
+        seed(
+            conn,
+            "c1",
+            &scene_with("note-keep"),
+            json!({ "A": 1 }),
+            json!({}),
+        );
+        let before = stored(conn, "c1");
+        let scene = scene_with("note-remote");
+        for bad in [
+            json!({ "vaultId": 7 }),
+            json!({ "vaultId": null }),
+            json!({ "title": 7 }),
+            json!({ "folder": ["Work"] }),
+            json!({ "icon": false }),
+            json!({ "id": null }),
+        ] {
+            let mut payload = json!({ "id": "c1", "vaultId": VAULT_ID, "scene": scene,
+                                      "clock": { "A": 1, "B": 2 } });
+            for (key, value) in bad.as_object().expect("keys") {
+                payload[key] = value.clone();
+            }
+            assert_eq!(
+                apply_inbound(conn, &inbound("c1", payload), NOW)?,
+                ApplyOutcome::Refused,
+                "{bad}"
+            );
+            assert_eq!(stored(conn, "c1"), before, "{bad}");
+        }
+        Ok(())
+    })
+    .expect("refused");
+}
+
 #[test]
 fn a_newer_remote_overwrites_and_an_older_one_is_skipped() {
     let (db, _dir) = open("canvas-lww");

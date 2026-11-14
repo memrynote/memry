@@ -28,6 +28,7 @@ use crate::api::errors::StorageError;
 use crate::domain::notes::{clock_in, failed, next_clock, require_payload};
 use crate::domain::task_merge::{self, Gate};
 use crate::domain::tasks::Inbound;
+use crate::domain::{canvas_folder, home_page, sticky_draft};
 use crate::storage::repositories::projectors;
 use crate::storage::repositories::schema::Object;
 use crate::storage::repositories::sync_items::{self, InboundRecord};
@@ -38,7 +39,7 @@ use crate::storage::repositories::{Change, StoredPayload};
 pub(crate) struct Kept {
     /// The schema keys desktop's schema refuses `null` for
     /// (`packages/contracts/src/sync-payloads.ts`, every one `.optional()`
-    /// without `.nullable()`). [`apply_kept`] skips a remote that nulls one.
+    /// without `.nullable()`). [`apply_kept`] refuses a remote that nulls one.
     pub not_null: &'static [&'static str],
     /// `data.x ?? existing.x`: an absent remote value keeps the local one.
     /// Every one is in `not_null`.
@@ -48,6 +49,17 @@ pub(crate) struct Kept {
     pub when_absent: &'static [&'static str],
     /// Never taken from a remote over a local record.
     pub local: &'static [&'static str],
+}
+
+/// The [`Kept`] of each type [`apply_kept`] merges, and `None` for every
+/// other type.
+pub(crate) fn kept(item_type: &str) -> Option<&'static Kept> {
+    match item_type {
+        canvas_folder::ITEM_TYPE => Some(&canvas_folder::merge::KEPT),
+        home_page::ITEM_TYPE => Some(&home_page::merge::KEPT),
+        sticky_draft::ITEM_TYPE => Some(&sticky_draft::merge::KEPT),
+        _ => None,
+    }
 }
 
 /// The stored payload of `(item_type, item_id)`, when the row has one that
@@ -92,40 +104,42 @@ pub(crate) fn unreadable(
     task_merge::wholesale(conn, record, now_ms)
 }
 
-/// Applies `remote` over `local` by `kept`, after desktop's schema and
-/// §6.3.1's gate. `extra` are edits the type's own rule adds to the remote
-/// payload.
+/// Whether desktop's schema refuses a live remote payload: a schema key of the
+/// wrong type, a clock tick that is not a safe non-negative integer, or a
+/// `null` in `not_null`. Desktop parses the remote with the type's schema
+/// before its handler reads the local row and refuses the whole record
+/// (`schema_invalid`, `apps/desktop/src/main/sync/apply-item.ts:166-176`), so a
+/// caller returns [`Inbound::Refused`] before the gate: the local record stays
+/// as it is, and the pull ledgers it ([`crate::sync::refused_items`]).
+pub(crate) fn fails_desktop_schema(item_type: &str, remote: &Object, not_null: &[&str]) -> bool {
+    // `VectorClockSchema`'s ticks are safe non-negative integers
+    // (`packages/contracts/src/sync-api.ts:386`); `Kind::Clock` takes any number.
+    let clock_ok =
+        clock_in(remote).is_ok_and(|clock| clock.values().all(|tick| *tick <= MAX_SAFE_INTEGER));
+    !clock_ok
+        || projectors::read(item_type, remote).is_err()
+        || not_null
+            .iter()
+            .any(|key| remote.get(*key).is_some_and(Value::is_null))
+}
+
+/// Applies `remote` over `local` by the type's [`kept`], after desktop's
+/// schema and §6.3.1's gate. `extra` are edits the type's own rule adds to the
+/// remote payload.
 pub(crate) fn apply_kept(
     conn: &Connection,
     record: &InboundRecord,
     remote: &StoredPayload,
     local: Option<&StoredPayload>,
-    kept: &Kept,
     extra: Vec<(&'static str, Change)>,
     now_ms: i64,
 ) -> Result<Inbound, StorageError> {
-    // Desktop parses the remote with the type's schema before its handler
-    // reads the local row, and refuses the whole record on a schema key of the
-    // wrong type or a `null` the schema has no room for (`schema_invalid`,
-    // `apps/desktop/src/main/sync/apply-item.ts:166-176`). Refused here before
-    // the gate, so the local record stays as it is, and ledgered by the pull
-    // as desktop's `SchemaInvalidLedger` does (`pull-coordinator.ts:684`).
-    debug_assert!(
-        kept.coalesce.iter().all(|key| kept.not_null.contains(key)),
-        "every coalesce key is in not_null"
-    );
-    let remote_object = remote.object();
-    // `VectorClockSchema`'s ticks are safe non-negative integers
-    // (`packages/contracts/src/sync-api.ts:386`); `Kind::Clock` takes any number.
-    let clock_ok = clock_in(remote_object)
-        .is_ok_and(|clock| clock.values().all(|tick| *tick <= MAX_SAFE_INTEGER));
-    let refused = !clock_ok
-        || projectors::read(&record.item_type, remote_object).is_err()
-        || kept
-            .not_null
-            .iter()
-            .any(|key| remote_object.get(*key).is_some_and(Value::is_null));
-    if refused {
+    let Some(kept) = kept(&record.item_type) else {
+        return Err(StorageError::Failed {
+            what: format!("`{}` has no kept keys", record.item_type),
+        });
+    };
+    if fails_desktop_schema(&record.item_type, remote.object(), kept.not_null) {
         return Ok(Inbound::Refused);
     }
     let merged_clock = match task_merge::document_gate(conn, record)? {

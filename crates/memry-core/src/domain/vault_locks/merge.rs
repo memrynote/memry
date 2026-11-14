@@ -2,11 +2,13 @@
 //! (`apps/desktop/src/main/sync/item-handlers/vault-lock-handler.ts`), rule
 //! for rule.
 //!
+//! - **A record desktop's schema refuses is refused**, and the local record
+//!   left alone: a key of the wrong type (`targetKind: 5`, `target: 5`,
+//!   `locked: "yes"`), a `null` in any key, or a clock tick that is not a safe
+//!   integer. The pull ledgers it ([`crate::sync::refused_items`]).
 //! - **A kind this build does not know is skipped**, and the local record left
 //!   alone: guessing what it locks could block writes or leave a target the
-//!   peer meant to protect writable. An absent `targetKind` is not unknown;
-//!   one that is not text fails desktop's schema and is refused, so the pull
-//!   ledgers it ([`crate::sync::refused_items`]).
+//!   peer meant to protect writable. An absent `targetKind` is not unknown.
 //! - **A create needs `targetKind`, `target` and `locked`**: every payload
 //!   field is optional, so `{}` parses, and a lock row needs all three.
 //! - **§6.3.1's gate decides**, through [`task_merge::document_gate`]. A
@@ -25,6 +27,7 @@ use rusqlite::Connection;
 use serde_json::Value;
 
 use crate::api::errors::StorageError;
+use crate::domain::desktop_records::fails_desktop_schema;
 use crate::domain::task_merge::{self, Gate};
 use crate::domain::tasks::Inbound;
 use crate::storage::repositories::schema::Object;
@@ -33,6 +36,17 @@ use crate::storage::repositories::{Change, StoredPayload};
 use crate::sync::clock::VectorClock;
 
 use super::{ITEM_TYPE, is_known_kind};
+
+/// `VaultLockSyncPayloadSchema` refuses `null` for every key
+/// (`packages/contracts/src/sync-payloads.ts:477-484`).
+const NOT_NULL: [&str; 6] = [
+    "targetKind",
+    "target",
+    "locked",
+    "clock",
+    "createdAt",
+    "updatedAt",
+];
 
 /// The keys a local record keeps whatever the remote says.
 const KEPT_LOCAL: [&str; 3] = ["targetKind", "target", "createdAt"];
@@ -47,11 +61,13 @@ pub fn apply_remote(
         Ok(remote) if record.deleted_at.is_none() => remote,
         _ => return task_merge::wholesale(conn, record, now_ms),
     };
-    match remote.object().get("targetKind") {
-        Some(Value::String(kind)) if !is_known_kind(kind) => return Ok(Inbound::Skipped),
-        Some(Value::String(_)) | None => {}
-        // Not text: desktop's schema refuses it, and the pull ledgers it.
-        Some(_) => return Ok(Inbound::Refused),
+    if fails_desktop_schema(ITEM_TYPE, remote.object(), &NOT_NULL) {
+        return Ok(Inbound::Refused);
+    }
+    if let Some(Value::String(kind)) = remote.object().get("targetKind")
+        && !is_known_kind(kind)
+    {
+        return Ok(Inbound::Skipped);
     }
     let local = sync_items::load(conn, ITEM_TYPE, &record.item_id)?
         .filter(|row| row.deleted_at.is_none())
