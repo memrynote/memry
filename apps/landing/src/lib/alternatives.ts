@@ -123,7 +123,7 @@ export const ALTERNATIVES: readonly AlternativeConfig[] = [
       {
         question: 'Is there a mobile app?',
         answer:
-          'memrynote is a desktop app for macOS, Windows, and Linux today. Because your vault is plain Markdown in a folder you own, the files stay readable and editable on any device or app.'
+          'An iPhone app is in beta on TestFlight, on the same vault as your desktop: notes, tasks, journal, calendar, and search. Join the beta at memrynote.com/ios-beta. Canvases, the graph, and home boards are not on the phone yet, and there is no Android app yet. Because your vault is plain Markdown in a folder you own, the files also stay readable in any other app.'
       }
     ],
     footnote: COMPARISON_FOOTNOTE
@@ -1242,10 +1242,10 @@ export const ALTERNATIVES: readonly AlternativeConfig[] = [
     heading: 'The Google Keep alternative with',
     headingAccent: 'notes, tasks & encryption you control.',
     intro:
-      'memrynote is a private, local-first alternative to Google Keep that upgrades disposable sticky notes into a full second brain: Markdown notes with wiki-links and backlinks, task projects with Kanban and Calendar views, a daily journal, and an inbox — all in one desktop app on macOS, Windows, and Linux. Where Keep stores notes in your Google account and targets fast mobile capture, memrynote keeps every note as a plain .md file in a folder you own and encrypts sync with XChaCha20-Poly1305, so the server only ever holds ciphertext. Migrating is simple: export via Google Takeout and import in memrynote. If you rely on Google’s mobile apps, real-time sharing, or deep Google Calendar integration, Keep remains the easier path. For data ownership, zero-knowledge encryption, and a real note-taking workspace, memrynote is the upgrade.',
+      'memrynote is a private, local-first alternative to Google Keep that upgrades disposable sticky notes into a full second brain: Markdown notes with wiki-links and backlinks, task projects with Kanban and Calendar views, a daily journal, and an inbox — all in one app on macOS, Windows, and Linux, with an iPhone app in TestFlight beta. Where Keep stores notes in your Google account and targets fast mobile capture, memrynote keeps every note as a plain .md file in a folder you own and encrypts sync with XChaCha20-Poly1305, so the server only ever holds ciphertext. Migrating is simple: export via Google Takeout and import in memrynote. If you rely on Google’s mobile apps, real-time sharing, or deep Google Calendar integration, Keep remains the easier path. For data ownership, zero-knowledge encryption, and a real note-taking workspace, memrynote is the upgrade.',
     rows: [
       { feature: 'Free to use', memry: 'partial', competitor: true },
-      { feature: 'Mobile apps (iOS & Android)', memry: false, competitor: true },
+      { feature: 'Mobile apps (iOS & Android)', memry: 'partial', competitor: true },
       { feature: 'Local-first & offline', memry: true, competitor: 'partial' },
       { feature: 'Plain Markdown files you own', memry: true, competitor: false },
       { feature: 'End-to-end encrypted sync', memry: true, competitor: false },
@@ -1321,7 +1321,7 @@ export const ALTERNATIVES: readonly AlternativeConfig[] = [
       {
         question: 'Does memrynote have a mobile app like Google Keep?',
         answer:
-          'Not yet — memrynote is a desktop app for macOS, Windows, and Linux today. Because your vault is plain Markdown in a folder you own, the files stay readable on any device in the meantime.'
+          'An iPhone app is in beta on TestFlight, on the same vault as your desktop: notes, tasks, journal, calendar, and search. Join the beta at memrynote.com/ios-beta. Canvases, the graph, and home boards are not on the phone yet, and there is no Android app yet.'
       }
     ],
     footnote: COMPARISON_FOOTNOTE
@@ -1593,7 +1593,7 @@ export const ALTERNATIVES: readonly AlternativeConfig[] = [
       {
         question: 'Does memrynote have a mobile app?',
         answer:
-          'memrynote is a desktop app for macOS, Windows, and Linux today, with mobile apps planned. Because your vault is plain Markdown, your notes stay readable in any app on any device.'
+          'An iPhone app is in beta on TestFlight, on the same vault as your desktop: notes, tasks, journal, calendar, and search. Join the beta at memrynote.com/ios-beta. Canvases, the graph, and home boards are not on the phone yet, and there is no Android app yet.'
       },
       {
         question: 'Is memrynote free?',
@@ -1683,7 +1683,7 @@ export const ALTERNATIVES: readonly AlternativeConfig[] = [
       {
         question: 'Does memrynote have a mobile app?',
         answer:
-          'memrynote is a desktop app for macOS, Windows, and Linux today, with mobile apps planned. Your vault is plain Markdown, so your notes stay readable on any device.'
+          'An iPhone app is in beta on TestFlight, on the same vault as your desktop: notes, tasks, journal, calendar, and search. Join the beta at memrynote.com/ios-beta. Canvases, the graph, and home boards are not on the phone yet, and there is no Android app yet.'
       },
       {
         question: 'Is memrynote open source?',
@@ -1774,7 +1774,7 @@ export const ALTERNATIVES: readonly AlternativeConfig[] = [
       {
         question: 'Does memrynote have a mobile journaling app?',
         answer:
-          'Not yet. Mobile apps are planned. Today memrynote is a desktop app, and your entries are plain Markdown files that any app can read.'
+          'An iPhone app is in beta on TestFlight, on the same vault as your desktop, so you can write and read your journal on the phone. Join the beta at memrynote.com/ios-beta. There is no Android app yet.'
       },
       {
         question: 'Can I bring my existing journal?',
