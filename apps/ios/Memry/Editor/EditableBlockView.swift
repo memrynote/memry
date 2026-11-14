@@ -138,6 +138,9 @@ final class BlockTextView: UITextView {
     var backspaceAtStart: (() -> Void)?
     /// The view moved into a window, or out of one (#4457).
     var movedToWindow: ((UIWindow?) -> Void)?
+    /// The editor's hardware keys (#4354): which apply now, and the handler.
+    var editorKeys: (() -> [EditorKeyCommand])?
+    var editorKeyPressed: ((EditorKeyCommand) -> Void)?
 
     init() {
         let storage = NSTextStorage()
@@ -163,6 +166,57 @@ final class BlockTextView: UITextView {
     override func didMoveToWindow() {
         super.didMoveToWindow()
         movedToWindow?(window)
+    }
+
+    /// Ahead of the text view's own, so Tab nests instead of typing a tab
+    /// and ⌘Z undoes through the session. None while marked text is
+    /// pending: an IME composition keeps its keys, and a command's commit
+    /// would cancel it.
+    override var keyCommands: [UIKeyCommand]? {
+        guard markedTextRange == nil else { return super.keyCommands }
+        let editor = (editorKeys?() ?? []).map { $0.keyCommand(action: #selector(editorKey(_:))) }
+        return editor + (super.keyCommands ?? [])
+    }
+
+    @objc func editorKey(_ sender: UIKeyCommand) {
+        guard let name = sender.propertyList as? String, let command = EditorKeyCommand(rawValue: name) else { return }
+        editorKeyPressed?(command)
+    }
+
+    /// ⌘Z, the shortcut bar's undo and the undo gestures all reach the
+    /// focused text view's undo manager, ahead of any key command: this one
+    /// hands them to the session, so they include its block steps.
+    let editorUndo = BlockUndoManager()
+    override var undoManager: UndoManager? { editorUndo }
+    /// The manager the text view's typing is registered in.
+    var typingUndo: UndoManager? { super.undoManager }
+}
+
+/// The undo manager a block's text view answers with. `undo()` and
+/// `redo()` go through the session (`EditorSession.undo`), which undoes
+/// typing first, in `typing`, and its own steps after that.
+final class BlockUndoManager: UndoManager {
+    /// Where UIKit registers the text view's typing: the manager up the
+    /// responder chain, not this one.
+    var typing: () -> UndoManager? = { nil }
+    var sessionUndo: (() -> Void)?
+    var sessionRedo: (() -> Void)?
+    var sessionCanUndo: () -> Bool = { false }
+    var sessionCanRedo: () -> Bool = { false }
+
+    /// The session's answer once wired (`EditorSession.canUndo`), which
+    /// counts typing only where its `undo()` would take it.
+    override var canUndo: Bool { sessionUndo == nil ? typing()?.canUndo == true : sessionCanUndo() }
+    override var canRedo: Bool { sessionRedo == nil ? typing()?.canRedo == true : sessionCanRedo() }
+
+    override func undo() {
+        guard let sessionUndo else { return typing()?.undo() ?? () }
+        sessionUndo()
+    }
+
+    override func redo() {
+        guard let sessionRedo else { return typing()?.redo() ?? () }
+        sessionRedo()
     }
 }
 
@@ -252,6 +306,18 @@ final class BlockField: NSObject, UITextViewDelegate, UIGestureRecognizerDelegat
             guard let self else { return }
             self.session?.field(self, movedInto: window)
         }
+        textView.editorKeys = { [weak self] in
+            EditorKeyCommand.active(menuOpen: self?.session?.menuOpen ?? false)
+        }
+        textView.editorKeyPressed = { [weak self] command in
+            self?.session?.perform(command)
+        }
+        let undo = textView.editorUndo
+        undo.typing = { [weak textView] in textView?.typingUndo }
+        undo.sessionUndo = { [weak self] in self?.session?.undo() }
+        undo.sessionRedo = { [weak self] in self?.session?.redo() }
+        undo.sessionCanUndo = { [weak self] in self?.session?.canUndo ?? false }
+        undo.sessionCanRedo = { [weak self] in self?.session?.canRedo ?? false }
     }
 
     var blockId: String { block.id ?? "" }
@@ -500,11 +566,8 @@ final class BlockField: NSObject, UITextViewDelegate, UIGestureRecognizerDelegat
                 return false
             }
         }
-        // Return picks the slash menu's first row, as Enter does on desktop.
-        if text == "\n", let session, case .slash = session.trigger, let first = session.suggestions.first {
-            session.choose(first)
-            return false
-        }
+        // Return picks an open menu's highlighted row, as Enter does on desktop.
+        if text == "\n", let session, session.pickHighlighted() { return false }
         if text == "\n", block.kind != "codeBlock" {
             session?.returnPressed(self)
             return false
@@ -519,7 +582,7 @@ final class BlockField: NSObject, UITextViewDelegate, UIGestureRecognizerDelegat
         _ textView: UITextView, editMenuForTextIn range: NSRange, suggestedActions: [UIMenuElement]
     ) -> UIMenu? {
         guard range.length > 0, let session else { return nil }
-        return UIMenu(children: [FormatEditMenu.menu(session: session, textView: textView)] + suggestedActions)
+        return UIMenu(children: [FormatEditMenu.menu(session: session, field: self)] + suggestedActions)
     }
 }
 
