@@ -53,6 +53,33 @@ pub struct AppliedRecord {
     pub conflicts: Vec<FieldConflict>,
 }
 
+/// An attachment an applied record references (Electron's
+/// `requestEmbeddedAttachmentDownloads`, `note-handler.ts:153`). Core does
+/// not know which files this device holds; the observer skips what it has.
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct AttachmentDownload {
+    pub owner_id: String,
+    pub attachment_id: String,
+    /// The owner's item type.
+    pub hint: String,
+}
+
+/// What one committed page applied, as the observers hear it.
+#[derive(Debug, Clone, Default, PartialEq)]
+pub struct AppliedFeed {
+    /// Every record of the page, in apply order.
+    pub records: Vec<AppliedRecord>,
+    /// Notes whose pulled tombstone lost to a newer local edit.
+    pub revived_notes: Vec<String>,
+    pub downloads: Vec<AttachmentDownload>,
+}
+
+impl AppliedFeed {
+    pub fn is_empty(&self) -> bool {
+        self.records.is_empty() && self.revived_notes.is_empty() && self.downloads.is_empty()
+    }
+}
+
 /// A desktop service that follows what sync applied. Every method defaults to
 /// nothing, so an observer implements only what it consumes. It runs under the
 /// vault's pass gate: awaiting a pass (`run_pass`, `sync_now`) from it
@@ -69,7 +96,8 @@ pub trait ApplyObserver: Send + Sync {
     fn note_revived(&self, _note_id: &str) {}
 
     /// An applied record references attachment `attachment_id`, which this
-    /// device lacks. `hint` is the owner's type.
+    /// device may lack: the observer skips one it has or already asked for.
+    /// `hint` is the owner's type.
     fn attachment_download_needed(&self, _owner_id: &str, _attachment_id: &str, _hint: &str) {}
 
     /// These note or journal bodies changed in the update log, committed.
@@ -99,15 +127,28 @@ impl Observers {
             .clone()
     }
 
-    /// Tells every observer about one committed page, on `spawn_blocking`.
-    /// An empty page tells no one.
-    pub async fn records_applied(&self, batch: Vec<AppliedRecord>) {
-        if batch.is_empty() {
+    /// Tells every observer what one committed page applied, on
+    /// `spawn_blocking`: the records in one call, then each revived note, then
+    /// each attachment. An empty page tells no one.
+    pub async fn applied(&self, feed: AppliedFeed) {
+        if feed.is_empty() {
             return;
         }
-        let size = batch.len();
+        let size = feed.records.len();
         self.each("records_applied", size, move |observer| {
-            observer.records_applied(&batch)
+            if !feed.records.is_empty() {
+                observer.records_applied(&feed.records);
+            }
+            for note_id in &feed.revived_notes {
+                observer.note_revived(note_id);
+            }
+            for download in &feed.downloads {
+                observer.attachment_download_needed(
+                    &download.owner_id,
+                    &download.attachment_id,
+                    &download.hint,
+                );
+            }
         })
         .await;
     }
@@ -199,6 +240,13 @@ mod tests {
         }
     }
 
+    fn page(records: Vec<AppliedRecord>) -> AppliedFeed {
+        AppliedFeed {
+            records,
+            ..AppliedFeed::default()
+        }
+    }
+
     #[tokio::test(flavor = "multi_thread")]
     async fn a_panicking_observer_does_not_stop_the_next_one() {
         let observers = Observers::default();
@@ -208,7 +256,7 @@ mod tests {
         observers.register(after.clone());
 
         observers
-            .records_applied(vec![record("t1"), record("t2")])
+            .applied(page(vec![record("t1"), record("t2")]))
             .await;
         observers.bodies_applied(vec!["n1".into()]).await;
         assert_eq!(*after.seen.lock().unwrap(), ["t1", "t2", "n1"]);
@@ -219,12 +267,12 @@ mod tests {
         let observers = Observers::default();
         let first = recording("first", false);
         observers.register(first.clone());
-        observers.records_applied(Vec::new()).await;
+        observers.applied(AppliedFeed::default()).await;
         assert!(first.seen.lock().unwrap().is_empty());
 
         let second = recording("second", false);
         observers.register(second.clone());
-        observers.records_applied(vec![record("t1")]).await;
+        observers.applied(page(vec![record("t1")])).await;
         assert_eq!(*first.seen.lock().unwrap(), ["t1"]);
         assert_eq!(*second.seen.lock().unwrap(), ["t1"]);
     }

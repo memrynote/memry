@@ -302,7 +302,8 @@ fn a_concurrent_pair_merges_per_field_stores_the_union_clock_and_never_re_pushes
         assert_eq!(
             outcome,
             Inbound::Merged {
-                conflicted_fields: Vec::new()
+                conflicted_fields: Vec::new(),
+                conflicts: Vec::new(),
             },
             "unequal totals resolve by the larger total and are not conflicts (§6.5.4)"
         );
@@ -376,7 +377,8 @@ fn a_tied_concurrent_field_is_reported_as_a_conflict_and_the_remote_wins() {
         assert_eq!(
             outcome,
             Inbound::Merged {
-                conflicted_fields: vec!["title".to_owned()]
+                conflicted_fields: vec!["title".to_owned()],
+                conflicts: Vec::new(),
             }
         );
         // Remote is the default winner on every tie (§6.3 step 5).

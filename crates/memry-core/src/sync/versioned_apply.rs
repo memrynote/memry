@@ -102,7 +102,9 @@ impl VersionedKey {
         let heal = joined.remote_behind
             && match inbound {
                 Inbound::Applied => true,
-                Inbound::Merged { conflicted_fields } => conflicted_fields.is_empty(),
+                Inbound::Merged {
+                    conflicted_fields, ..
+                } => conflicted_fields.is_empty(),
                 Inbound::Skipped | Inbound::Corrupt { .. } | Inbound::Refused => false,
             };
 

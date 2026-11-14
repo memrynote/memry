@@ -129,8 +129,22 @@ pub fn apply_remote(
     set_sealed_pending(&transaction, ITEM_TYPE, &record.item_id, pending)?;
     task_merge::write_merged_in(&transaction, record, &changes, now_ms)?;
     transaction.commit().map_err(sql_failed)?;
+    // The title is sealed at rest, so its values stay out of the feed.
+    let conflicts = result
+        .conflicts
+        .into_iter()
+        .map(|mut conflict| {
+            if conflict.field == "title" {
+                conflict.local_value = None;
+                conflict.remote_value = None;
+                conflict.merged_value = None;
+            }
+            conflict
+        })
+        .collect();
     Ok(Inbound::Merged {
         conflicted_fields: result.conflicted_fields,
+        conflicts,
     })
 }
 
