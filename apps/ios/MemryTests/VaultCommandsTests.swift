@@ -26,7 +26,8 @@ struct VaultCommandsTests {
             newNote: newNote,
             quickCapture: nil,
             search: {},
-            sideRails: rails
+            sideRails: rails,
+            commandPalette: { _ in }
         )
         commands.journalDay = journalDay
         commands.today = { "2099-03-04" }
