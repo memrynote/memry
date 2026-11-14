@@ -98,6 +98,7 @@ struct JournalDayScreen: View {
         .accessibilityAction(named: JournalCopy.nextDay) { step(1) }
         .accessibilityAction(named: JournalCopy.goToToday) { show(store.clock.today) }
         .accessibilityIdentifier("journal.day")
+        .handoff(.journalDay(date))
     }
 
     /// The shown day and its neighbours, paged by a swipe on touch.
