@@ -59,7 +59,8 @@ struct VaultSettingsScope<Content: View>: View {
                 notes: vault.notes(),
                 account: account,
                 vaults: model,
-                vaultId: vault.id()
+                vaultId: vault.id(),
+                vault: vault
             )
             tasks.syncFinished = { succeeded in
                 account.syncFinished(succeeded)
