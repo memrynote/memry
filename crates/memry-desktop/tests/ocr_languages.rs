@@ -469,3 +469,19 @@ async fn a_language_the_server_answers_404_for_is_unavailable() {
 
     assert_eq!(ocr.state().statuses[&Deu], failed("unavailable"));
 }
+
+#[tokio::test(flavor = "multi_thread", worker_threads = 2)]
+async fn a_download_that_cannot_take_its_name_leaves_no_part_file() {
+    let fx = Fixture::new().await;
+    // A directory holds the pack's name, so the verified data is written and the move fails.
+    let blocker = fx.data_dir().join("deu.traineddata");
+    std::fs::create_dir_all(&blocker).expect("dir");
+    std::fs::write(blocker.join("keep"), b"x").expect("file");
+    let ocr = fx.service();
+
+    ocr.set(&[Deu]).expect("set");
+    ocr.sync().await;
+
+    assert_eq!(ocr.state().statuses[&Deu], failed("saveFailed"));
+    assert_eq!(names(&fx.data_dir()), ["deu.traineddata"]);
+}
