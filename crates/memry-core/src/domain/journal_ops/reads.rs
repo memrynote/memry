@@ -1,5 +1,6 @@
 //! Journal reads for the shells (spec 005-journal JP023): one day, a month, a
-//! year, the heatmap, the streak and the days with an entry in a range.
+//! year, the heatmap, the streak, the days with an entry in a range and the
+//! same day in other years.
 //!
 //! Nothing here writes. Browsing never creates a day (D2), and a read never
 //! refreshes a cache row either: the read path must be safe on a vault that
@@ -46,7 +47,8 @@ use crate::domain::journal::{self, ITEM_TYPE};
 use crate::domain::journal_rules::{
     ActivityLevel, JOURNAL_PREVIEW_LENGTH, JournalHeatmapDay, JournalMonthActivity, JournalStreak,
     calculate_activity_level, compute_journal_streak, count_words, extract_journal_preview,
-    heatmap_day, month_activity, month_days, utf16_len,
+    heatmap_day, is_same_day_in_other_year, month_activity, month_days, same_day_month_days,
+    utf16_len,
 };
 use crate::domain::note_meta::NoteProperty;
 use crate::domain::notes::names;
@@ -211,21 +213,14 @@ pub fn month(
         let entry = entries
             .iter()
             .find(|(_, date)| *date == calendar_day.date)
-            .map(|(id, _)| id);
-        let body = entry.map(|id| day_body(conn, id)).transpose()?;
-        let character_count = body.as_ref().map_or(0, DayBody::character_count);
-        days.push(JournalMonthEntry {
-            has_entry: entry.is_some(),
-            level: calculate_activity_level(character_count),
-            preview: body.as_ref().map_or_else(String::new, |body| {
-                extract_journal_preview(&body.text, JOURNAL_PREVIEW_LENGTH)
-            }),
-            character_count,
-            body_state: body.map(|body| body.state),
-            date: calendar_day.date,
-            is_today: calendar_day.is_today,
-            is_future: calendar_day.is_future,
-        });
+            .map(|(id, _)| id.as_str());
+        days.push(listed_day(
+            conn,
+            entry,
+            calendar_day.date,
+            calendar_day.is_today,
+            calendar_day.is_future,
+        )?);
     }
 
     Ok(JournalMonth {
@@ -234,6 +229,67 @@ pub fn month(
         days,
         entry_count: u32::try_from(entries.len()).unwrap_or(u32::MAX),
         streak: streak(conn, today)?,
+    })
+}
+
+/// The live days of other years that show as the same day as `date`
+/// (desktop's `getJournalSameDayEntries`), newest first, later years
+/// included, each flagged against `today`. The month-day match runs in SQL,
+/// so no year bound applies and no month is read whole; the leap-day rule
+/// ([`is_same_day_in_other_year`]) then drops the same year and a leap year's
+/// Feb 28.
+pub fn same_day_entries(
+    conn: &Connection,
+    date: &str,
+    today: &str,
+) -> Result<Vec<JournalMonthEntry>, CrdtError> {
+    let (date, today) = (journal::valid_date(date)?, journal::valid_date(today)?);
+    let month_days = same_day_month_days(date);
+    // At most two month-days; a single one is bound twice.
+    let (first, second) = (month_days[0], *month_days.last().unwrap_or(&month_days[0]));
+    let mut statement = conn
+        .prepare(
+            "SELECT id, date FROM journal_entries
+             WHERE deleted_at IS NULL AND substr(date, 6) IN (?1, ?2)
+             ORDER BY date DESC",
+        )
+        .map_err(failed)?;
+    let rows: Vec<(String, String)> = statement
+        .query_map(params![first, second], |row| Ok((row.get(0)?, row.get(1)?)))
+        .map_err(failed)?
+        .collect::<Result<_, _>>()
+        .map_err(failed)?;
+    rows.into_iter()
+        .filter(|(_, candidate)| is_same_day_in_other_year(date, candidate))
+        .map(|(id, candidate)| {
+            let (is_today, is_future) = (candidate == today, candidate.as_str() > today);
+            listed_day(conn, Some(&id), candidate, is_today, is_future)
+        })
+        .collect()
+}
+
+/// One day as the Month view and the same-day list show it; `entry` is the
+/// live record id, `None` for a day without one.
+fn listed_day(
+    conn: &Connection,
+    entry: Option<&str>,
+    date: String,
+    is_today: bool,
+    is_future: bool,
+) -> Result<JournalMonthEntry, CrdtError> {
+    let body = entry.map(|id| day_body(conn, id)).transpose()?;
+    let character_count = body.as_ref().map_or(0, DayBody::character_count);
+    Ok(JournalMonthEntry {
+        has_entry: entry.is_some(),
+        level: calculate_activity_level(character_count),
+        preview: body.as_ref().map_or_else(String::new, |body| {
+            extract_journal_preview(&body.text, JOURNAL_PREVIEW_LENGTH)
+        }),
+        character_count,
+        body_state: body.map(|body| body.state),
+        date,
+        is_today,
+        is_future,
     })
 }
 
