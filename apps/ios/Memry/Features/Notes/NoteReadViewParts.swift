@@ -232,5 +232,9 @@ struct NotePageLoad: ViewModifier {
                 await model.loadIfNeeded()
                 await model.refreshFromRemote()
             }
+            .onReceive(NotificationCenter.default.publisher(for: NoteReadViewModel.titleSaved)) { note in
+                guard note.object as? String == model.route.id else { return }
+                Task { await model.reload() }
+            }
     }
 }
