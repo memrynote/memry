@@ -2,13 +2,13 @@ name: flake-4668-probe
 on:
   push:
     branches: [fix/4668-windows-trash-flake]
-    paths: ['.github/workflows/flake-4668-probe.yml', '.github/probe-4668/**']
+    paths: ['.github/workflows/flake-4668-probe.yml']
   workflow_dispatch:
 jobs:
   probe:
     name: probe (${{ matrix.os }})
     runs-on: ${{ matrix.os }}
-    timeout-minutes: 60
+    timeout-minutes: 75
     strategy:
       fail-fast: false
       matrix:
@@ -16,20 +16,40 @@ jobs:
     defaults:
       run:
         shell: bash
-        working-directory: .github/probe-4668
+        working-directory: crates
     steps:
       - uses: actions/checkout@v6
         with:
           fetch-depth: 1
-          sparse-checkout: .github/probe-4668
+          filter: blob:none
+          sparse-checkout-cone-mode: false
+          sparse-checkout: |
+            /*
+            !/marketing/**
       - uses: dtolnay/rust-toolchain@stable
         with:
           toolchain: '1.98.1'
+      - uses: Swatinem/rust-cache@v2
+        continue-on-error: true
+        with:
+          workspaces: crates
+          key: probe-${{ matrix.os }}
+      - uses: ./.github/actions/ort-static
+        with:
+          token: ${{ github.token }}
       - name: Build
-        run: cargo build --release
-      - name: Probe under CPU load
         run: |
+          cargo test -p memry-desktop --test integration --features memry-core/markdown --no-run --message-format=json | grep '"executable":"' | grep -o '"executable":"[^"]*"' | head -1 | sed 's/"executable":"//;s/"$//;s/\\\\/\//g' > /tmp/exe.txt
+          cat /tmp/exe.txt
+      - name: Real test under CPU load
+        run: |
+          exe=$(cat /tmp/exe.txt)
           pids=""
           for k in 1 2 3 4 5 6; do yes >/dev/null & pids="$pids $!"; done
-          ./target/release/probe4668.exe 240 2>&1 | grep -E "PROBE4668" | head -300
+          start=$(date +%s); fails=0; n=0
+          while [ $(( $(date +%s) - start )) -lt 1800 ] && [ $n -lt 600 ]; do
+            n=$((n+1))
+            "$exe" --exact notes_mixed_order::the_marker_row_goes_away_with_its_folder --nocapture >/tmp/t.log 2>&1 || { fails=$((fails+1)); grep -h "PROBE4668\|panicked\|operations were" /tmp/t.log | cut -c1-300 | head -60; }
+          done
           kill $pids
+          echo "RESULT real test: $fails failed / $n"

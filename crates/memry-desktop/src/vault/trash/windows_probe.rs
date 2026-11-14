@@ -1,10 +1,5 @@
-//! Temporary probe for #4668: why does the Recycle Bin delete abort.
-use std::{
-    fs,
-    os::windows::ffi::OsStrExt,
-    path::{Path, PathBuf},
-    time::{Duration, Instant},
-};
+//! TEMPORARY probe for #4668.
+use std::{os::windows::ffi::OsStrExt, os::windows::fs::OpenOptionsExt, path::Path};
 use windows::core::{implement, Ref, Result as WResult, HRESULT, PCWSTR};
 use windows::Win32::System::Com::*;
 use windows::Win32::UI::Shell::*;
@@ -41,10 +36,23 @@ impl IFileOperationProgressSink_Impl for Sink_Impl {
     fn ResumeTimer(&self) -> WResult<()> { Ok(()) }
 }
 
-fn with_sink(path: &Path, flags: FILEOPERATION_FLAGS) -> Result<(), String> {
+struct Com;
+impl Com {
+    fn init() -> Com {
+        unsafe { CoInitializeEx(None, COINIT_APARTMENTTHREADED).ok().unwrap() };
+        Com
+    }
+}
+impl Drop for Com {
+    fn drop(&mut self) { unsafe { CoUninitialize() } }
+}
+thread_local! { static COM: Com = Com::init(); }
+
+fn attempt(path: &Path) -> Result<(), String> {
+    COM.with(|_| ());
     unsafe {
         let pfo: IFileOperation = CoCreateInstance(&FileOperation, None, CLSCTX_ALL).map_err(|e| format!("create {e}"))?;
-        pfo.SetOperationFlags(flags).map_err(|e| format!("flags {e}"))?;
+        pfo.SetOperationFlags(FOF_NO_UI | FOF_ALLOWUNDO | FOF_WANTNUKEWARNING).map_err(|e| format!("flags {e}"))?;
         let wide: Vec<u16> = path.as_os_str().encode_wide().chain(Some(0)).collect();
         let item: IShellItem = SHCreateItemFromParsingName(PCWSTR(wide.as_ptr()), None).map_err(|e| format!("item {e}"))?;
         let sink: IFileOperationProgressSink = Sink.into();
@@ -57,44 +65,32 @@ fn with_sink(path: &Path, flags: FILEOPERATION_FLAGS) -> Result<(), String> {
     }
 }
 
-fn make(root: &Path, i: usize) -> PathBuf {
-    let dir = root.join(format!("Work{i}"));
-    fs::create_dir_all(dir.join("Sub")).unwrap();
-    fs::write(dir.join("a.md"), "---\nid: a\n---\nbody a\n").unwrap();
-    fs::write(dir.join("b.md"), "---\nid: b\n---\nbody b\n").unwrap();
-    dir
-}
-
-fn run(mode: &str, how: &dyn Fn(&Path) -> Result<(), String>, aged: bool, budget: Duration, vault: &Path) {
-    let start = Instant::now();
-    let (mut done, mut failed) = (0usize, 0usize);
-    let mut n = 0usize;
-    while start.elapsed() < budget {
-        let batch: Vec<PathBuf> = (0..if aged { 60 } else { 1 }).map(|_| { n += 1; make(vault, n) }).collect();
-        if aged { std::thread::sleep(Duration::from_secs(6)); }
-        for dir in batch {
-            done += 1;
-            if let Err(e) = how(&dir) {
-                failed += 1;
-                eprintln!("PROBE4668 {mode} FAIL #{done}: {e}");
-            }
+fn dump(p: &Path, depth: usize) {
+    // FILE_FLAG_BACKUP_SEMANTICS opens a directory; share mode 0 fails while anyone holds it.
+    let mut o = std::fs::OpenOptions::new();
+    o.read(true).share_mode(0).custom_flags(0x0200_0000);
+    let state = match o.open(p) { Ok(_) => "free".to_owned(), Err(e) => format!("HELD {e}") };
+    eprintln!("PROBE4668 {:indent$}{} {state}", "", p.display(), indent = depth * 2);
+    let Ok(rd) = std::fs::read_dir(p) else { return };
+    for entry in rd.flatten() {
+        let path = entry.path();
+        if path.is_dir() { dump(&path, depth + 1); } else {
+            let st = match std::fs::OpenOptions::new().read(true).share_mode(0).open(&path) { Ok(_) => "free".to_owned(), Err(e) => format!("HELD {e}") };
+            eprintln!("PROBE4668 {:indent$}{} {st}", "", path.display(), indent = (depth + 1) * 2);
         }
     }
-    println!("PROBE4668 RESULT {mode}: {failed} failed / {done}");
 }
 
-fn main() {
-    unsafe { CoInitializeEx(None, COINIT_APARTMENTTHREADED).ok().unwrap() };
-    let secs: u64 = std::env::args().nth(1).and_then(|s| s.parse().ok()).unwrap_or(240);
-    let budget = Duration::from_secs(secs);
-    let tmp = tempfile::tempdir().unwrap();
-    let vault = tmp.path().join("vault");
-    fs::create_dir_all(&vault).unwrap();
-    let crate_flags = FOF_NO_UI | FOF_ALLOWUNDO | FOF_WANTNUKEWARNING;
-    let electron_flags = FOF_NO_UI | FOFX_ADDUNDORECORD | FOF_NOERRORUI | FOF_SILENT | FOFX_SHOWELEVATIONPROMPT | FOFX_RECYCLEONDELETE;
-    run("trash-crate fresh", &|p| trash::delete(p).map_err(|e| e.to_string()), false, budget, &vault);
-    run("crate-flags+sink fresh", &|p| with_sink(p, crate_flags), false, budget, &vault);
-    run("electron-flags+sink fresh", &|p| with_sink(p, electron_flags), false, budget, &vault);
-    run("crate-flags+sink aged6s", &|p| with_sink(p, crate_flags), true, budget, &vault);
-    run("trash-crate aged6s", &|p| trash::delete(p).map_err(|e| e.to_string()), true, budget, &vault);
+pub fn delete(path: &Path) -> Result<(), String> {
+    match attempt(path) {
+        Ok(()) => Ok(()),
+        Err(first) => {
+            eprintln!("PROBE4668 first attempt failed: {first}");
+            dump(path, 1);
+            if let Some(parent) = path.parent() { dump(parent, 0); }
+            let again = attempt(path);
+            eprintln!("PROBE4668 retry: {again:?}");
+            Err(first)
+        }
+    }
 }

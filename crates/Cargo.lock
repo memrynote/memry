@@ -4101,6 +4101,7 @@ dependencies = [
  "url",
  "uuid",
  "windows",
+ "windows-core",
  "windows-native-keyring-store",
  "x509-parser",
  "xattr",
