@@ -99,6 +99,43 @@ fn a_crashed_child_fails_its_call_and_is_restarted() {
 }
 
 #[test]
+fn a_crash_is_accounted_before_its_call_fails() {
+    // The failed call's caller may call again at once; it must never reach the dead child.
+    let worker = supervisor(limits());
+    for _ in 0..100 {
+        assert!(matches!(
+            worker.call(&open("exit")),
+            Err(WorkerError::Exited(_))
+        ));
+        assert_eq!(
+            worker.pid(),
+            None,
+            "the crashed child is gone from the state"
+        );
+        assert_eq!(worker.call(&open("ok")), Ok(opened()));
+    }
+}
+
+#[cfg(unix)]
+#[test]
+fn the_call_after_one_that_found_the_child_dead_starts_a_new_child() {
+    let worker = supervisor(limits());
+    for _ in 0..100 {
+        assert_eq!(worker.call(&open("ok")), Ok(opened()));
+        let pid = worker.pid().expect("running");
+        // SAFETY: kills the child this test started.
+        assert_eq!(unsafe { libc::kill(pid as libc::pid_t, libc::SIGKILL) }, 0);
+        // Either a new child answers, or the call writes to the dead one and fails.
+        let first = worker.call(&open("ok"));
+        assert!(
+            matches!(first, Ok(_) | Err(WorkerError::Exited(_))),
+            "{first:?}"
+        );
+        assert_eq!(worker.call(&open("ok")), Ok(opened()));
+    }
+}
+
+#[test]
 fn an_oversized_frame_from_the_worker_kills_it() {
     let worker = supervisor(limits());
     assert_eq!(worker.call(&open("ok")), Ok(opened()));

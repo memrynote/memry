@@ -1,5 +1,5 @@
 //! Test-only stand-in for `memry-ml-worker`, speaking the same frames. `PdfOpen`'s path picks the
-//! behaviour: `hang` never answers, `crash` aborts the process, `oversize` writes a frame header
+//! behaviour: `hang` never answers, `crash` aborts the process, `exit` exits with code 1, `oversize` writes a frame header
 //! past the cap, `log` writes a stderr line and answers; anything else answers with one page.
 //! `--crash-before-ready` aborts before the `Ready` frame. Never bundled.
 
@@ -21,6 +21,7 @@ fn main() {
                     std::thread::park();
                 },
                 "crash" => std::process::abort(),
+                "exit" => std::process::exit(1),
                 "oversize" => {
                     let mut out = std::io::stdout().lock();
                     let _ = out.write_all(&(MAX_FRAME_LEN + 1).to_be_bytes());

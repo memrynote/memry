@@ -156,8 +156,17 @@ impl Supervisor {
             running.last_used = now;
             if let Err(error) = write_frame(&mut running.stdin, &request.to_frame(id)) {
                 lock(&running.pending).remove(&id);
-                // The stdout reader sees the exit and accounts for it.
-                return Err(WorkerError::Exited(error.to_string()));
+                // The child is gone. Forget it now, so the next call starts a new one instead
+                // of writing to it again; its stdout reader then finds it is not current.
+                let error = WorkerError::Exited(error.to_string());
+                record_crash(shared, &mut state);
+                let dead = state.running.take();
+                drop(state);
+                if let Some(dead) = dead {
+                    fail_all(&dead.pending, &error);
+                    reap(dead.child);
+                }
+                return Err(error);
             }
             (rx, running.generation)
         };
@@ -310,23 +319,27 @@ fn read_replies(shared: Weak<Shared>, stdout: ChildStdout, pending: Pending, gen
             Err(error) => break WorkerError::Protocol(error.to_string()),
         }
     };
-    fail_all(&pending, &error);
-    let Some(shared) = shared.upgrade() else {
-        return;
-    };
-    let taken = {
-        let mut state = lock(&shared.state);
-        let current = state
-            .running
-            .as_ref()
-            .is_some_and(|r| r.generation == generation);
-        if !current {
-            return;
+    // The state forgets the child before its callers hear of the failure, so a caller that
+    // calls again at once starts a new child instead of writing to the dead one. A child that
+    // never sent `Ready` is not in the state: `start` holds the state lock while it waits for
+    // `Ready`, and accounts for the failure itself.
+    let starting = lock(&pending).contains_key(&READY_ID);
+    let taken = match shared.upgrade() {
+        Some(shared) if !starting => {
+            let mut state = lock(&shared.state);
+            let current = state
+                .running
+                .as_ref()
+                .is_some_and(|r| r.generation == generation);
+            // Not stopped by the app: it crashed or misbehaved.
+            if current {
+                record_crash(&shared, &mut state);
+            }
+            state.running.take_if(|_| current)
         }
-        // Not stopped by the app: it crashed or misbehaved.
-        record_crash(&shared, &mut state);
-        state.running.take()
+        _ => None,
     };
+    fail_all(&pending, &error);
     if let Some(running) = taken {
         tracing::warn!(scope = "MlWorker", "worker ended: {error}");
         reap(running.child);
