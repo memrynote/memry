@@ -1,6 +1,7 @@
 //! The core's embedder against desktop's transformers.js vectors for the #4437
-//! spike's 20 shaped inputs (`fixtures/embedding_parity.json`). Every input
-//! must reach cosine 0.9999. No CI job has the 207 MB model, so this runs by
+//! spike's 20 shaped inputs and three windows past the token cap (Japanese,
+//! hex, CJK Extension B) in `fixtures/embedding_parity.json`. Every input must
+//! reach cosine 0.9999. No CI job has the 207 MB model, so this runs by
 //! hand on a Mac:
 //!
 //! ```sh
@@ -37,7 +38,7 @@ fn core_vectors_match_desktop() {
     .expect("every pinned model file at its final name and size");
     let cases: Vec<Case> =
         serde_json::from_str(include_str!("fixtures/embedding_parity.json")).expect("fixture");
-    assert_eq!(cases.len(), 20);
+    assert_eq!(cases.len(), 23);
 
     let embedder = load(&model, Threads::Foreground).expect("load");
     let mut worst = f32::MAX;
