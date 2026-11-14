@@ -12,6 +12,8 @@
 //! The table keeps its own watermark, read the way [`super::maintenance`]
 //! reads the others: `inbox_items.synced_at` is this device's apply stamp, and
 //! a missing watermark empties the table and fills it from every capture.
+//! [`upsert`], [`delete`] and [`clear`] change one row or all of them between
+//! passes, as desktop's capture paths do.
 
 use rusqlite::{Connection, OptionalExtension as _, params};
 
@@ -56,6 +58,41 @@ pub(super) fn reindex(
         INBOX_WATERMARK_KEY,
         &high.unwrap_or(from).max(from).to_string(),
     )
+}
+
+/// Re-indexes one capture from `data.db` (`insertFtsInboxItem`, `fts-inbox.ts:47-66`):
+/// its row is deleted, then written again if the capture is live, in one
+/// transaction. The capture shell calls it on capture, edit and transcription, so a
+/// capture is findable before the next [`super::reindex`]. Leaves the watermark alone.
+pub fn upsert(data: &Connection, index: &Connection, id: &str) -> Result<(), StorageError> {
+    let transaction = index.unchecked_transaction().map_err(failed)?;
+    index_item(data, &transaction, id, &mut Reindexed::default())?;
+    transaction.commit().map_err(failed)
+}
+
+/// Drops one capture's row (`deleteFtsInboxItem`, `fts-inbox.ts:75-77`).
+pub fn delete(index: &Connection, id: &str) -> Result<(), StorageError> {
+    index
+        .execute("DELETE FROM fts_inbox WHERE id = ?1", params![id])
+        .map(|_| ())
+        .map_err(failed)
+}
+
+/// Empties the table (`clearFtsInboxTable`, `fts-inbox.ts:79-81`) and forgets its
+/// watermark, so the next [`super::reindex`] refills it from every capture rather
+/// than only those changed since.
+pub fn clear(index: &Connection) -> Result<(), StorageError> {
+    let transaction = index.unchecked_transaction().map_err(failed)?;
+    transaction
+        .execute_batch("DELETE FROM fts_inbox;")
+        .map_err(failed)?;
+    transaction
+        .execute(
+            "DELETE FROM index_meta WHERE key = ?1",
+            params![INBOX_WATERMARK_KEY],
+        )
+        .map_err(failed)?;
+    transaction.commit().map_err(failed)
 }
 
 /// Re-indexes one capture: delete first, then insert if it is still live.
