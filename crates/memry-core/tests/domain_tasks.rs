@@ -319,8 +319,8 @@ fn a_concurrent_pair_merges_per_field_stores_the_union_clock_and_never_re_pushes
         );
         assert_eq!(parsed["fieldClocks"]["title"], json!({"device-a": 2}));
 
-        // §6.5.2 P3: the merging device does not re-push. A queue row here is
-        // the §6.5.1 case-3c divergence coming back.
+        // §6.5.2 P3: the merge re-queues the row, which collapses into the
+        // row already queued for it.
         assert_eq!(outbox_rows(conn, "task1"), queued);
 
         // The server's bookkeeping still lands, so the cursor is not lost.

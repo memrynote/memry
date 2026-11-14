@@ -7,7 +7,7 @@ use memry_desktop::seams::transport::SyncTransport;
 use memry_desktop::telemetry::ios_beta::{self, IosBetaJoinInput, IosBetaJoinResult};
 use tauri::{AppHandle, Manager, Wry};
 
-use super::error::{CommandError, ErrorKind};
+use super::error::CommandError;
 use crate::shell::services::telemetry;
 
 /// Sent without the account's token until Step 19 (#3536) provides the session token.
@@ -17,13 +17,13 @@ pub async fn ios_beta_join(
     app: AppHandle<Wry>,
     input: IosBetaJoinInput,
 ) -> Result<IosBetaJoinResult, CommandError> {
-    let service = telemetry(&app).ok_or_else(|| {
-        CommandError::new(
-            ErrorKind::Internal,
-            "telemetry_not_initialized",
-            "Telemetry has not started",
-        )
-    })?;
+    let service = telemetry(&app);
     let url = app.state::<RuntimeConfig>().server_url("/ios-beta/join");
-    Ok(ios_beta::join(app.state::<SyncTransport>().as_ref(), &url, input, &service).await)
+    Ok(ios_beta::join(
+        app.state::<SyncTransport>().as_ref(),
+        &url,
+        input,
+        service.as_deref(),
+    )
+    .await)
 }

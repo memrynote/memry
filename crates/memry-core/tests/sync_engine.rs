@@ -917,8 +917,7 @@ async fn the_push_payload_is_rebuilt_from_the_live_row_and_a_pull_apply_enqueues
     pull.pull_page().await.expect("the page");
 
     db.call_blocking(|conn| {
-        // §6.5.2 P3: a pull apply never enqueues a push. An enqueue here is
-        // the re-push that reintroduces the §6.5.1 case-3c divergence.
+        // §6.5.2 P3: only a concurrent merge re-queues; this apply is not one.
         let queued: i64 = conn
             .query_row("SELECT count(*) FROM outbox", [], |row| row.get(0))
             .expect("count the outbox");
@@ -1088,8 +1087,8 @@ async fn a_concurrent_task_edit_keeps_both_field_changes_through_the_real_pull()
         json!({"device-a": 1, "device-b": 1})
     );
 
-    // §6.5.2 P3: the merging device stores the union clock and does **not**
-    // re-push. A queue row here is the §6.5.1 case-3c divergence coming back.
+    // §6.5.2 P3: the merge re-queues the row, which collapses into the
+    // row already queued for it.
     assert_eq!(outbox_rows(&db, "task-1"), queued_before);
 
     db.call_blocking(|conn| {
@@ -1411,7 +1410,7 @@ async fn a_stale_remote_note_does_not_clobber_a_newer_local_one() {
         "nothing was written, so the local clock is untouched"
     );
     assert_eq!(projected_note_title(&db, "abc123def456"), "Local title");
-    // §6.5.2 P3: an inbound apply never enqueues, and neither does a skip.
+    // §6.5.2 P3: only a concurrent merge re-queues, and a skip is not one.
     assert_eq!(outbox_rows(&db, "abc123def456"), queued_before);
 }
 
@@ -1579,7 +1578,7 @@ async fn a_stale_remote_settings_payload_does_not_clobber_a_newer_local_one() {
             "\"light\"".to_owned()
         )]
     );
-    // §6.5.2 P3: an inbound apply never enqueues, and neither does a skip.
+    // §6.5.2 P3: only a concurrent merge re-queues, and a skip is not one.
     assert_eq!(outbox_rows(&db, SETTINGS_ID), queued_before);
 }
 

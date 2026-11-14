@@ -89,7 +89,7 @@ fn peer() -> Value {
 }
 
 #[test]
-fn a_concurrent_recolour_takes_the_colour_and_keeps_the_newer_schema_and_heals() {
+fn a_concurrent_recolour_takes_the_colour_and_keeps_the_newer_schema_and_requeues() {
     let (db, _dir) = edited("tag-schema-sync-concurrent");
     apply(
         &db,
@@ -101,13 +101,13 @@ fn a_concurrent_recolour_takes_the_colour_and_keeps_the_newer_schema_and_heals()
     assert_eq!(after["schema"], ours());
     assert_eq!(
         after["clock"],
-        json!({"desk": 2, "me": 2}),
-        "the heal ticks this device"
+        json!({"desk": 2, "me": 1}),
+        "the merge's requeue pushes the union, never ticked again (§6.5.2 P3)"
     );
     assert_eq!(
         pending(&db),
         1,
-        "the peer is behind, so the schema is re-pushed"
+        "the requeue carries the kept schema, so no heal is owed (§6.11.4)"
     );
 }
 

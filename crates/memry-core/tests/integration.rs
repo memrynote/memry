@@ -286,6 +286,8 @@ mod journal_metadata;
 mod journal_reads;
 #[path = "journal_reminders.rs"]
 mod journal_reminders;
+#[path = "journal_same_day_reads.rs"]
+mod journal_same_day_reads;
 #[path = "journal_seed.rs"]
 mod journal_seed;
 #[path = "journal_settings.rs"]
@@ -382,6 +384,10 @@ mod portal_reads;
 mod portal_vectors;
 #[path = "projector_null_tolerance.rs"]
 mod projector_null_tolerance;
+// `note_properties` is desktop only (`markdown`).
+#[cfg(feature = "markdown")]
+#[path = "property_reads_load.rs"]
+mod property_reads_load;
 #[path = "push_crdt_update_cap.rs"]
 mod push_crdt_update_cap;
 #[path = "push_delete_wins.rs"]
@@ -428,6 +434,14 @@ mod sync_realtime;
 mod sync_realtime_run;
 #[path = "sync_refused_items.rs"]
 mod sync_refused_items;
+#[cfg(feature = "markdown")]
+#[path = "sync_requeue_convergence.rs"]
+mod sync_requeue_convergence;
+#[cfg(feature = "markdown")]
+#[path = "sync_requeue_delete.rs"]
+mod sync_requeue_delete;
+#[path = "sync_requeue_pass.rs"]
+mod sync_requeue_pass;
 #[path = "tag_fields.rs"]
 mod tag_fields;
 #[path = "tag_fold_vectors.rs"]
