@@ -563,8 +563,7 @@ struct NotePropertyEditor: View {
 
     @State private var draft: String = ""
     @State private var loaded = false
-    /// The draft holds keys not yet written.
-    @State private var typed = false
+    @State private var commits = NotePropertyDraftCommits()
     @FocusState private var valueFocused: Bool
     @State private var renaming = false
     @State private var nameDraft = ""
@@ -601,28 +600,28 @@ struct NotePropertyEditor: View {
                     Label("Rename \(property.name)", systemImage: "pencil")
                 }
             }
-            Button(role: .destructive, action: clear) {
+            Button(role: .destructive, action: clearValue) {
                 Label("Clear \(property.name)", systemImage: "xmark.circle")
             }
         }
         .accessibilityElement(children: .contain)
-        .accessibilityAction(named: "Clear \(property.name)", clear)
+        .accessibilityAction(named: "Clear \(property.name)", clearValue)
         .onAppear {
             guard !loaded else { return }
             draft = NotePropertyJSON.decode(property)
             loaded = true
         }
-        // A write from elsewhere (the other copy of this row, sync) shows
-        // here unless keys are waiting.
+        // A write from elsewhere (a Clear, the other copy of this row, sync)
+        // shows here unless the field is being edited.
         .onChange(of: property.valueJson) {
-            if !typed { draft = NotePropertyJSON.decode(property) }
+            if !valueFocused { draft = NotePropertyJSON.decode(property) }
         }
-        // Typed keys land when the field is left or the row goes, as on
+        // A typed value lands when the field is left or the row goes, as on
         // Return: the rail can close, or the page change, before Return.
         .onChange(of: valueFocused) { _, isFocused in
-            if !isFocused { submit(explicit: false) }
+            if isFocused { commits.begin(draft) } else { submit() }
         }
-        .onDisappear { submit(explicit: false) }
+        .onDisappear(perform: submit)
         .alert("Rename property", isPresented: $renaming) {
             TextField("Property name", text: $nameDraft)
                 .textInputAutocapitalization(.never)
@@ -639,8 +638,7 @@ struct NotePropertyEditor: View {
                     pickingDate = false
                 },
                 clear: {
-                    draft = ""
-                    clear()
+                    clearValue()
                     pickingDate = false
                 }
             )
@@ -679,18 +677,20 @@ struct NotePropertyEditor: View {
         }
     }
 
-    private var typing: Binding<String> {
-        Binding(get: { draft }, set: { draft = $0; typed = true })
+    private func submit() {
+        if let value = commits.take(draft) {
+            commit(value)
+        } else {
+            draft = NotePropertyJSON.decode(property)
+        }
     }
 
-    /// Writes typed keys once: Return then leaving the field is one write.
-    /// Leaving an emptied field writes nothing; Return on it writes the
-    /// empty value, as before.
-    private func submit(explicit: Bool) {
-        guard typed, explicit || !draft.isEmpty else { return }
-        typed = false
-        guard draft != NotePropertyJSON.decode(property) else { return }
-        commit(draft)
+    /// The draft empties with the value (#4616), so a Return or a blur after
+    /// it cannot write the old value back.
+    private func clearValue() {
+        draft = ""
+        commits.rebase(draft)
+        clear()
     }
 
     private func startRenaming() {
@@ -815,28 +815,28 @@ struct NotePropertyEditor: View {
             .accessibilityLabel(property.name)
 
         case .number:
-            TextField("Empty", text: typing)
+            TextField("Empty", text: $draft)
                 .keyboardType(.decimalPad)
                 .focused($valueFocused)
-                .onSubmit { submit(explicit: true) }
+                .onSubmit { valueFocused = false }
                 .accessibilityLabel(property.name)
 
         case .url:
-            TextField("Empty", text: typing)
+            TextField("Empty", text: $draft)
                 .keyboardType(.URL)
                 .textInputAutocapitalization(.never)
                 .foregroundStyle(Tokens.Text.tint.color)
                 .focused($valueFocused)
-                .onSubmit { submit(explicit: true) }
+                .onSubmit { valueFocused = false }
                 .accessibilityLabel(property.name)
 
         default:
             // text, a choice with no options, and any type this build has
             // never heard of. A comma-separated list is how an array type is
             // typed, which the model turns back into a JSON array.
-            TextField("Empty", text: typing)
+            TextField("Empty", text: $draft)
                 .focused($valueFocused)
-                .onSubmit { submit(explicit: true) }
+                .onSubmit { valueFocused = false }
                 .accessibilityLabel(property.name)
         }
     }
@@ -929,6 +929,32 @@ struct NotePropertyEditor: View {
                 .accessibilityLabel("Remove \(title) from \(property.name)")
             }
         }
+    }
+}
+
+/// Which typed property values are written, after `TaskTitleCommits`. Only a
+/// value the user changed since focus came in is written, so a draft left
+/// as it was never writes back over a Clear, a sync or the rail's copy of
+/// the row (#4616). Return and leaving the field end one edit: the first
+/// take ends it, so one write. An emptied field writes nothing; Clear is how
+/// a value is emptied.
+struct NotePropertyDraftCommits {
+    private var focusedOn: String?
+
+    /// Focus came in on the field showing `draft`.
+    mutating func begin(_ draft: String) { focusedOn = draft }
+
+    /// The value was replaced under an edit in progress (a Clear): it starts
+    /// again from `draft`.
+    mutating func rebase(_ draft: String) {
+        if focusedOn != nil { focusedOn = draft }
+    }
+
+    /// The value to write, or `nil` when there is nothing to write.
+    mutating func take(_ text: String) -> String? {
+        guard let base = focusedOn else { return nil }
+        focusedOn = nil
+        return text == base || text.isEmpty ? nil : text
     }
 }
 

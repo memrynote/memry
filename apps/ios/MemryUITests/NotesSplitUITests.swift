@@ -330,6 +330,42 @@ final class NotesSplitUITests: XCTestCase {
         XCTAssertTrue(page(title).waitForExistence(timeout: 10))
         XCTAssertTrue(matches(NSPredicate(format: "value == 'drafted'"), app.textFields["status"].firstMatch))
         XCTAssertTrue(app.staticTexts[run].firstMatch.waitForExistence(timeout: 10))
+
+        deleteNotes([title])
+    }
+
+    /// #4616: Clear, then Return in the field with nothing typed, leaves the
+    /// value empty; the row's draft does not write the old value back.
+    func testReturnAfterAClearKeepsThePropertyEmpty() throws {
+        try openNotes()
+        let title = "[agent] \(run) cleared"
+        makeNote(title)
+        let addProperty = app.buttons["Add a property"].firstMatch
+        XCTAssertTrue(addProperty.waitForExistence(timeout: 10))
+        addProperty.tap()
+        let name = app.textFields["Property name"]
+        XCTAssertTrue(name.waitForExistence(timeout: 10))
+        name.tap()
+        name.typeText("status")
+        app.buttons["Text"].firstMatch.tap()
+        let value = app.textFields["status"].firstMatch
+        XCTAssertTrue(value.waitForExistence(timeout: 10), "the property has no field")
+        value.tap()
+        value.typeText("old\n")
+
+        app.buttons["status"].firstMatch.press(forDuration: 1)
+        let clear = app.buttons["Clear status"].firstMatch
+        XCTAssertTrue(clear.waitForExistence(timeout: 5), "the row has no Clear")
+        clear.tap()
+        value.tap()
+        value.typeText("\n")
+        attach("property-cleared")
+
+        app.terminate()
+        try openNotes()
+        XCTAssertTrue(page(title).waitForExistence(timeout: 10))
+        let empty = NSPredicate(format: "value == '' OR value == 'Empty' OR value == nil")
+        XCTAssertTrue(matches(empty, app.textFields["status"].firstMatch), "Return after Clear wrote the old value back")
         deleteNotes([title])
     }
 
