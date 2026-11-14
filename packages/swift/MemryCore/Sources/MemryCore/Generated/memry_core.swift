@@ -4445,6 +4445,14 @@ public protocol JournalProtocol: AnyObject, Sendable {
     func resolveWikiTarget(target: String) throws  -> WikiTargetMatch?
     
     /**
+     * The day in every other year with a live entry, later years included,
+     * newest first, flagged against `today` (desktop's
+     * `getJournalSameDayEntries`). A Feb 29 shows on Feb 28 of a year
+     * without one, and back.
+     */
+    func sameDayEntries(date: String, today: String) throws  -> [JournalMonthDayRecord]
+    
+    /**
      * Seeds an empty day from a template with the shell's locale strings.
      * A day with a live entry is never seeded (`AlreadyExists`). A template
      * not on this device yet throws `NotFound`; the shell retries later.
@@ -4753,6 +4761,23 @@ open func resolveWikiTarget(target: String)throws  -> WikiTargetMatch?  {
     uniffi_memry_core_fn_method_journal_resolve_wiki_target(
             self.uniffiCloneHandle(),
         FfiConverterString.lower(target),uniffiCallStatus
+    )
+})
+}
+    
+    /**
+     * The day in every other year with a live entry, later years included,
+     * newest first, flagged against `today` (desktop's
+     * `getJournalSameDayEntries`). A Feb 29 shows on Feb 28 of a year
+     * without one, and back.
+     */
+open func sameDayEntries(date: String, today: String)throws  -> [JournalMonthDayRecord]  {
+    return try  FfiConverterSequenceTypeJournalMonthDayRecord.lift(try rustCallWithError(FfiConverterTypeCrdtError_lift) {
+        uniffiCallStatus in
+    uniffi_memry_core_fn_method_journal_same_day_entries(
+            self.uniffiCloneHandle(),
+        FfiConverterString.lower(date),
+        FfiConverterString.lower(today),uniffiCallStatus
     )
 })
 }
@@ -8212,6 +8237,11 @@ public protocol SearchProtocol: AnyObject, Sendable {
      *
      * A query carrying no searchable term returns **empty, not everything**:
      * an empty search box is not a request for the whole vault.
+     *
+     * With semantic search on and its model loaded, notes and journals near
+     * the query's meaning fuse into their groups. The query is embedded
+     * before any database lock is taken, and never waits on a model load:
+     * the first query starts the load and answers from FTS alone.
      */
     func search(query: String, filter: SearchFilter?, limit: UInt32) throws  -> SearchGroups
     
@@ -8359,6 +8389,11 @@ open func reindex()throws  -> ReindexSummary  {
      *
      * A query carrying no searchable term returns **empty, not everything**:
      * an empty search box is not a request for the whole vault.
+     *
+     * With semantic search on and its model loaded, notes and journals near
+     * the query's meaning fuse into their groups. The query is embedded
+     * before any database lock is taken, and never waits on a model load:
+     * the first query starts the load and answers from FTS alone.
      */
 open func search(query: String, filter: SearchFilter?, limit: UInt32)throws  -> SearchGroups  {
     return try  FfiConverterTypeSearchGroups_lift(try rustCallWithError(FfiConverterTypeStorageError_lift) {
@@ -8927,6 +8962,224 @@ public func FfiConverterTypeSecureStore_lift(_ handle: UInt64) throws -> SecureS
 #endif
 public func FfiConverterTypeSecureStore_lower(_ value: SecureStore) -> UInt64 {
     return FfiConverterTypeSecureStore.lower(value)
+}
+
+
+
+
+
+
+public protocol SemanticSearchProtocol: AnyObject, Sendable {
+    
+    /**
+     * Unloads the model, deletes the model files and the opt-in, and deletes
+     * this vault's `vectors.db`. Other vaults delete theirs on their next
+     * open, because the opt-in is gone.
+     */
+    func disable(vault: Vault) async throws 
+    
+    /**
+     * Opts this device in, then downloads or resumes. Refuses when the rest
+     * of the download would leave less than 64 MiB free. Idempotent.
+     */
+    func enable(availableBytes: UInt64) async throws  -> ModelState
+    
+    /**
+     * Downloads or resumes only when this device opted in. For foregrounding
+     * and Wi-Fi coming back.
+     */
+    func resume() async throws  -> ModelState
+    
+    /**
+     * Cheap: file sizes and two counts.
+     */
+    func status(vault: Vault)  -> SemanticStatus
+    
+}
+open class SemanticSearch: SemanticSearchProtocol, @unchecked Sendable {
+    fileprivate let handle: UInt64
+
+    /// Used to instantiate a [FFIObject] without an actual handle, for fakes in tests, mostly.
+#if swift(>=5.8)
+    @_documentation(visibility: private)
+#endif
+    public struct NoHandle {
+        public init() {}
+    }
+
+    // TODO: We'd like this to be `private` but for Swifty reasons,
+    // we can't implement `FfiConverter` without making this `required` and we can't
+    // make it `required` without making it `public`.
+#if swift(>=5.8)
+    @_documentation(visibility: private)
+#endif
+    required public init(unsafeFromHandle handle: UInt64) {
+        self.handle = handle
+    }
+
+    // This constructor can be used to instantiate a fake object.
+    // - Parameter noHandle: Placeholder value so we can have a constructor separate from the default empty one that may be implemented for classes extending [FFIObject].
+    //
+    // - Warning:
+    //     Any object instantiated with this constructor cannot be passed to an actual Rust-backed object. Since there isn't a backing handle the FFI lower functions will crash.
+#if swift(>=5.8)
+    @_documentation(visibility: private)
+#endif
+    public init(noHandle: NoHandle) {
+        self.handle = 0
+    }
+
+#if swift(>=5.8)
+    @_documentation(visibility: private)
+#endif
+    public func uniffiCloneHandle() -> UInt64 {
+        return try! rustCall { uniffi_memry_core_fn_clone_semanticsearch(self.handle, $0) }
+    }
+    /**
+     * No model load and no network. Build exactly one per process.
+     */
+public convenience init(modelsDir: String, transport: Transport, reachability: Reachability) {
+    let handle =
+        try! rustCall() {
+        uniffiCallStatus in
+    uniffi_memry_core_fn_constructor_semanticsearch_new(
+        FfiConverterString.lower(modelsDir),
+        FfiConverterTypeTransport_lower(transport),
+        FfiConverterTypeReachability_lower(reachability),uniffiCallStatus
+    )
+}
+    self.init(unsafeFromHandle: handle)
+}
+
+    deinit {
+        if handle == 0 {
+            // Mock objects have handle=0 don't try to free them
+            return
+        }
+
+        try! rustCall { uniffi_memry_core_fn_free_semanticsearch(handle, $0) }
+    }
+
+    
+
+    
+    /**
+     * Unloads the model, deletes the model files and the opt-in, and deletes
+     * this vault's `vectors.db`. Other vaults delete theirs on their next
+     * open, because the opt-in is gone.
+     */
+open func disable(vault: Vault)async throws   {
+    return
+        try  await uniffiRustCallAsync(
+            rustFutureFunc: {
+                uniffi_memry_core_fn_method_semanticsearch_disable(
+                        self.uniffiCloneHandle(),FfiConverterTypeVault_lower(vault)
+                )
+            },
+            pollFunc: ffi_memry_core_rust_future_poll_void,
+            completeFunc: ffi_memry_core_rust_future_complete_void,
+            freeFunc: ffi_memry_core_rust_future_free_void,
+            liftFunc: { $0 },
+            errorHandler: FfiConverterTypeSemanticError_lift
+        )
+}
+    
+    /**
+     * Opts this device in, then downloads or resumes. Refuses when the rest
+     * of the download would leave less than 64 MiB free. Idempotent.
+     */
+open func enable(availableBytes: UInt64)async throws  -> ModelState  {
+    return
+        try  await uniffiRustCallAsync(
+            rustFutureFunc: {
+                uniffi_memry_core_fn_method_semanticsearch_enable(
+                        self.uniffiCloneHandle(),FfiConverterUInt64.lower(availableBytes)
+                )
+            },
+            pollFunc: ffi_memry_core_rust_future_poll_rust_buffer,
+            completeFunc: ffi_memry_core_rust_future_complete_rust_buffer,
+            freeFunc: ffi_memry_core_rust_future_free_rust_buffer,
+            liftFunc: FfiConverterTypeModelState_lift,
+            errorHandler: FfiConverterTypeSemanticError_lift
+        )
+}
+    
+    /**
+     * Downloads or resumes only when this device opted in. For foregrounding
+     * and Wi-Fi coming back.
+     */
+open func resume()async throws  -> ModelState  {
+    return
+        try  await uniffiRustCallAsync(
+            rustFutureFunc: {
+                uniffi_memry_core_fn_method_semanticsearch_resume(
+                        self.uniffiCloneHandle()
+                )
+            },
+            pollFunc: ffi_memry_core_rust_future_poll_rust_buffer,
+            completeFunc: ffi_memry_core_rust_future_complete_rust_buffer,
+            freeFunc: ffi_memry_core_rust_future_free_rust_buffer,
+            liftFunc: FfiConverterTypeModelState_lift,
+            errorHandler: FfiConverterTypeSemanticError_lift
+        )
+}
+    
+    /**
+     * Cheap: file sizes and two counts.
+     */
+open func status(vault: Vault) -> SemanticStatus  {
+    return try!  FfiConverterTypeSemanticStatus_lift(try! rustCall() {
+        uniffiCallStatus in
+    uniffi_memry_core_fn_method_semanticsearch_status(
+            self.uniffiCloneHandle(),
+        FfiConverterTypeVault_lower(vault),uniffiCallStatus
+    )
+})
+}
+    
+
+    
+}
+
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
+public struct FfiConverterTypeSemanticSearch: FfiConverter {
+    typealias FfiType = UInt64
+    typealias SwiftType = SemanticSearch
+
+    public static func lift(_ handle: UInt64) throws -> SemanticSearch {
+        return SemanticSearch(unsafeFromHandle: handle)
+    }
+
+    public static func lower(_ value: SemanticSearch) -> UInt64 {
+        return value.uniffiCloneHandle()
+    }
+
+    public static func read(from buf: inout (data: Data, offset: Data.Index)) throws -> SemanticSearch {
+        let handle: UInt64 = try readInt(&buf)
+        return try lift(handle)
+    }
+
+    public static func write(_ value: SemanticSearch, into buf: inout [UInt8]) {
+        writeInt(&buf, lower(value))
+    }
+}
+
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
+public func FfiConverterTypeSemanticSearch_lift(_ handle: UInt64) throws -> SemanticSearch {
+    return try FfiConverterTypeSemanticSearch.lift(handle)
+}
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
+public func FfiConverterTypeSemanticSearch_lower(_ value: SemanticSearch) -> UInt64 {
+    return FfiConverterTypeSemanticSearch.lower(value)
 }
 
 
@@ -12080,9 +12333,10 @@ public protocol VaultProtocol: AnyObject, Sendable {
      * **Opens `index.db`, which [`Vault::open`] does not**, and rebuilds it
      * when the file cannot be trusted — so this one is not free, and a vault
      * that is never searched never opens it. Hold the handle rather than
-     * rebuilding it per keystroke.
+     * rebuilding it per keystroke. `semantic` fuses on-device semantic hits
+     * into the results while it is on; `None` searches FTS alone.
      */
-    func search() throws  -> Search
+    func search(semantic: SemanticSearch?) throws  -> Search
     
     /**
      * The search sheet's recently opened results, device-local (#4322).
@@ -12333,13 +12587,15 @@ open func notesWriter(store: SecureStore)throws  -> NotesWriter  {
      * **Opens `index.db`, which [`Vault::open`] does not**, and rebuilds it
      * when the file cannot be trusted — so this one is not free, and a vault
      * that is never searched never opens it. Hold the handle rather than
-     * rebuilding it per keystroke.
+     * rebuilding it per keystroke. `semantic` fuses on-device semantic hits
+     * into the results while it is on; `None` searches FTS alone.
      */
-open func search()throws  -> Search  {
+open func search(semantic: SemanticSearch?)throws  -> Search  {
     return try  FfiConverterTypeSearch_lift(try rustCallWithError(FfiConverterTypeStorageError_lift) {
         uniffiCallStatus in
     uniffi_memry_core_fn_method_vault_search(
-            self.uniffiCloneHandle(),uniffiCallStatus
+            self.uniffiCloneHandle(),
+        FfiConverterOptionTypeSemanticSearch.lower(semantic),uniffiCallStatus
     )
 })
 }
@@ -23694,9 +23950,10 @@ public struct SearchResult: Equatable, Hashable {
      */
     public var folderPath: String?
     /**
-     * The bm25 score: negative, and more negative is a better match. Carried
-     * so a shell can show relevance if it wants to, never re-sorted — the
-     * order returned is already the ranking.
+     * A per-kind diagnostic value, never re-sorted: the order returned is
+     * already the ranking. The bm25 score for a body hit (negative, more
+     * negative is better), zero for a fuzzy or alias hit, and the cosine for
+     * a semantic hit.
      */
     public var score: Double
     /**
@@ -23706,8 +23963,9 @@ public struct SearchResult: Equatable, Hashable {
      */
     public var snippet: [SnippetSegment]
     /**
-     * Whether the index, the fuzzy title fallback or an alias found the hit
-     * (#4319). Only a body hit carries a snippet.
+     * Whether the index, the fuzzy title fallback, an alias (#4319) or the
+     * on-device embedding (#4505) found the hit. Only a body hit carries a
+     * snippet.
      */
     public var matchKind: MatchKind
     /**
@@ -23735,9 +23993,10 @@ public struct SearchResult: Equatable, Hashable {
          * for everything that is not a note.
          */folderPath: String?, 
         /**
-         * The bm25 score: negative, and more negative is a better match. Carried
-         * so a shell can show relevance if it wants to, never re-sorted — the
-         * order returned is already the ranking.
+         * A per-kind diagnostic value, never re-sorted: the order returned is
+         * already the ranking. The bm25 score for a body hit (negative, more
+         * negative is better), zero for a fuzzy or alias hit, and the cosine for
+         * a semantic hit.
          */score: Double, 
         /**
          * The body text around the match, highlighted runs marked (#4316). Plain
@@ -23745,8 +24004,9 @@ public struct SearchResult: Equatable, Hashable {
          * (a task's description) is.
          */snippet: [SnippetSegment], 
         /**
-         * Whether the index, the fuzzy title fallback or an alias found the hit
-         * (#4319). Only a body hit carries a snippet.
+         * Whether the index, the fuzzy title fallback, an alias (#4319) or the
+         * on-device embedding (#4505) found the hit. Only a body hit carries a
+         * snippet.
          */matchKind: MatchKind, 
         /**
          * The alias the query matched, for a note or journal whose title does
@@ -23820,6 +24080,68 @@ public func FfiConverterTypeSearchResult_lift(_ buf: RustBuffer) throws -> Searc
 #endif
 public func FfiConverterTypeSearchResult_lower(_ value: SearchResult) -> RustBuffer {
     return FfiConverterTypeSearchResult.lower(value)
+}
+
+
+public struct SemanticStatus: Equatable, Hashable {
+    public var model: ModelState
+    public var downloadBytes: UInt64
+    public var embeddedNotes: UInt32
+    public var totalNotes: UInt32
+
+    // Default memberwise initializers are never public by default, so we
+    // declare one manually.
+    public init(model: ModelState, downloadBytes: UInt64, embeddedNotes: UInt32, totalNotes: UInt32) {
+        self.model = model
+        self.downloadBytes = downloadBytes
+        self.embeddedNotes = embeddedNotes
+        self.totalNotes = totalNotes
+    }
+
+    
+
+    
+}
+
+#if compiler(>=6)
+extension SemanticStatus: Sendable {}
+#endif
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
+public struct FfiConverterTypeSemanticStatus: FfiConverterRustBuffer {
+    public static func read(from buf: inout (data: Data, offset: Data.Index)) throws -> SemanticStatus {
+        return
+            try SemanticStatus(
+                model: FfiConverterTypeModelState.read(from: &buf), 
+                downloadBytes: FfiConverterUInt64.read(from: &buf), 
+                embeddedNotes: FfiConverterUInt32.read(from: &buf), 
+                totalNotes: FfiConverterUInt32.read(from: &buf)
+        )
+    }
+
+    public static func write(_ value: SemanticStatus, into buf: inout [UInt8]) {
+        FfiConverterTypeModelState.write(value.model, into: &buf)
+        FfiConverterUInt64.write(value.downloadBytes, into: &buf)
+        FfiConverterUInt32.write(value.embeddedNotes, into: &buf)
+        FfiConverterUInt32.write(value.totalNotes, into: &buf)
+    }
+}
+
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
+public func FfiConverterTypeSemanticStatus_lift(_ buf: RustBuffer) throws -> SemanticStatus {
+    return try FfiConverterTypeSemanticStatus.lift(buf)
+}
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
+public func FfiConverterTypeSemanticStatus_lower(_ value: SemanticStatus) -> RustBuffer {
+    return FfiConverterTypeSemanticStatus.lower(value)
 }
 
 
@@ -29669,6 +29991,99 @@ public func FfiConverterTypeDevicePlatform_lower(_ value: DevicePlatform) -> Rus
 
 
 
+
+public enum DownloadFailure: Equatable, Hashable {
+    
+    /**
+     * A finished file's sha256 differed from the pin. The part is deleted, so
+     * the next attempt starts that file over.
+     */
+    case mismatch
+    /**
+     * The host answered with something other than the range asked for.
+     */
+    case http(status: UInt16
+    )
+    case network
+    /**
+     * Writing the model files failed, most often because the disk is full.
+     */
+    case storage
+
+
+
+
+
+}
+
+#if compiler(>=6)
+extension DownloadFailure: Sendable {}
+#endif
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
+public struct FfiConverterTypeDownloadFailure: FfiConverterRustBuffer {
+    typealias SwiftType = DownloadFailure
+
+    public static func read(from buf: inout (data: Data, offset: Data.Index)) throws -> DownloadFailure {
+        let variant: Int32 = try readInt(&buf)
+        switch variant {
+        
+        case 1: return .mismatch
+        
+        case 2: return .http(status: try FfiConverterUInt16.read(from: &buf)
+        )
+        
+        case 3: return .network
+        
+        case 4: return .storage
+        
+        default: throw UniffiInternalError.unexpectedEnumCase
+        }
+    }
+
+    public static func write(_ value: DownloadFailure, into buf: inout [UInt8]) {
+        switch value {
+        
+        
+        case .mismatch:
+            writeInt(&buf, Int32(1))
+        
+        
+        case let .http(status):
+            writeInt(&buf, Int32(2))
+            FfiConverterUInt16.write(status, into: &buf)
+            
+        
+        case .network:
+            writeInt(&buf, Int32(3))
+        
+        
+        case .storage:
+            writeInt(&buf, Int32(4))
+        
+        }
+    }
+}
+
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
+public func FfiConverterTypeDownloadFailure_lift(_ buf: RustBuffer) throws -> DownloadFailure {
+    return try FfiConverterTypeDownloadFailure.lift(buf)
+}
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
+public func FfiConverterTypeDownloadFailure_lower(_ value: DownloadFailure) -> RustBuffer {
+    return FfiConverterTypeDownloadFailure.lower(value)
+}
+
+
+
 /**
  * What this device holds of a day's body.
  */
@@ -30224,6 +30639,11 @@ public enum MatchKind: Equatable, Hashable {
      * One of the note's or journal day's aliases is or starts with the query.
      */
     case alias
+    /**
+     * Only the on-device embedding found it: the note means what the query
+     * means without holding its words ([`semantic`]).
+     */
+    case semantic
 
 
 
@@ -30251,6 +30671,8 @@ public struct FfiConverterTypeMatchKind: FfiConverterRustBuffer {
         
         case 3: return .alias
         
+        case 4: return .semantic
+        
         default: throw UniffiInternalError.unexpectedEnumCase
         }
     }
@@ -30270,6 +30692,10 @@ public struct FfiConverterTypeMatchKind: FfiConverterRustBuffer {
         case .alias:
             writeInt(&buf, Int32(3))
         
+        
+        case .semantic:
+            writeInt(&buf, Int32(4))
+        
         }
     }
 }
@@ -30287,6 +30713,109 @@ public func FfiConverterTypeMatchKind_lift(_ buf: RustBuffer) throws -> MatchKin
 #endif
 public func FfiConverterTypeMatchKind_lower(_ value: MatchKind) -> RustBuffer {
     return FfiConverterTypeMatchKind.lower(value)
+}
+
+
+
+
+public enum ModelState: Equatable, Hashable {
+    
+    case off
+    case downloading(received: UInt64, total: UInt64
+    )
+    /**
+     * Wi-Fi means unmetered: a hotspot or Low Data Mode counts as cellular.
+     */
+    case waitingForWifi(received: UInt64, total: UInt64
+    )
+    case failed(received: UInt64, total: UInt64, failure: DownloadFailure
+    )
+    case ready
+
+
+
+
+
+}
+
+#if compiler(>=6)
+extension ModelState: Sendable {}
+#endif
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
+public struct FfiConverterTypeModelState: FfiConverterRustBuffer {
+    typealias SwiftType = ModelState
+
+    public static func read(from buf: inout (data: Data, offset: Data.Index)) throws -> ModelState {
+        let variant: Int32 = try readInt(&buf)
+        switch variant {
+        
+        case 1: return .off
+        
+        case 2: return .downloading(received: try FfiConverterUInt64.read(from: &buf), total: try FfiConverterUInt64.read(from: &buf)
+        )
+        
+        case 3: return .waitingForWifi(received: try FfiConverterUInt64.read(from: &buf), total: try FfiConverterUInt64.read(from: &buf)
+        )
+        
+        case 4: return .failed(received: try FfiConverterUInt64.read(from: &buf), total: try FfiConverterUInt64.read(from: &buf), failure: try FfiConverterTypeDownloadFailure.read(from: &buf)
+        )
+        
+        case 5: return .ready
+        
+        default: throw UniffiInternalError.unexpectedEnumCase
+        }
+    }
+
+    public static func write(_ value: ModelState, into buf: inout [UInt8]) {
+        switch value {
+        
+        
+        case .off:
+            writeInt(&buf, Int32(1))
+        
+        
+        case let .downloading(received,total):
+            writeInt(&buf, Int32(2))
+            FfiConverterUInt64.write(received, into: &buf)
+            FfiConverterUInt64.write(total, into: &buf)
+            
+        
+        case let .waitingForWifi(received,total):
+            writeInt(&buf, Int32(3))
+            FfiConverterUInt64.write(received, into: &buf)
+            FfiConverterUInt64.write(total, into: &buf)
+            
+        
+        case let .failed(received,total,failure):
+            writeInt(&buf, Int32(4))
+            FfiConverterUInt64.write(received, into: &buf)
+            FfiConverterUInt64.write(total, into: &buf)
+            FfiConverterTypeDownloadFailure.write(failure, into: &buf)
+            
+        
+        case .ready:
+            writeInt(&buf, Int32(5))
+        
+        }
+    }
+}
+
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
+public func FfiConverterTypeModelState_lift(_ buf: RustBuffer) throws -> ModelState {
+    return try FfiConverterTypeModelState.lift(buf)
+}
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
+public func FfiConverterTypeModelState_lower(_ value: ModelState) -> RustBuffer {
+    return FfiConverterTypeModelState.lower(value)
 }
 
 
@@ -31343,6 +31872,106 @@ public func FfiConverterTypeSeedOutcome_lower(_ value: SeedOutcome) -> RustBuffe
 
 
 
+public 
+enum SemanticError: Swift.Error, Equatable, Hashable, Foundation.LocalizedError {
+
+    
+    
+    case Unavailable
+    case Inference(what: String
+    )
+    /**
+     * A panic during inference poisoned the session; only a reload clears it.
+     */
+    case Poisoned
+    case Storage(source: StorageError
+    )
+
+    
+
+    
+
+    
+    public var errorDescription: String? {
+        String(reflecting: self)
+    }
+    
+}
+
+#if compiler(>=6)
+extension SemanticError: Sendable {}
+#endif
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
+public struct FfiConverterTypeSemanticError: FfiConverterRustBuffer {
+    typealias SwiftType = SemanticError
+
+    public static func read(from buf: inout (data: Data, offset: Data.Index)) throws -> SemanticError {
+        let variant: Int32 = try readInt(&buf)
+        switch variant {
+
+        
+
+        
+        case 1: return .Unavailable
+        case 2: return .Inference(
+            what: try FfiConverterString.read(from: &buf)
+            )
+        case 3: return .Poisoned
+        case 4: return .Storage(
+            source: try FfiConverterTypeStorageError.read(from: &buf)
+            )
+
+         default: throw UniffiInternalError.unexpectedEnumCase
+        }
+    }
+
+    public static func write(_ value: SemanticError, into buf: inout [UInt8]) {
+        switch value {
+
+        
+
+        
+        
+        case .Unavailable:
+            writeInt(&buf, Int32(1))
+        
+        
+        case let .Inference(what):
+            writeInt(&buf, Int32(2))
+            FfiConverterString.write(what, into: &buf)
+            
+        
+        case .Poisoned:
+            writeInt(&buf, Int32(3))
+        
+        
+        case let .Storage(source):
+            writeInt(&buf, Int32(4))
+            FfiConverterTypeStorageError.write(source, into: &buf)
+            
+        }
+    }
+}
+
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
+public func FfiConverterTypeSemanticError_lift(_ buf: RustBuffer) throws -> SemanticError {
+    return try FfiConverterTypeSemanticError.lift(buf)
+}
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
+public func FfiConverterTypeSemanticError_lower(_ value: SemanticError) -> RustBuffer {
+    return FfiConverterTypeSemanticError.lower(value)
+}
+
+
 /**
  * Failures of the storage layer and the `FileProtection` seam.
  */
@@ -32265,6 +32894,30 @@ fileprivate struct FfiConverterOptionData: FfiConverterRustBuffer {
         switch try readInt(&buf) as Int8 {
         case 0: return nil
         case 1: return try FfiConverterData.read(from: &buf)
+        default: throw UniffiInternalError.unexpectedOptionalTag
+        }
+    }
+}
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
+fileprivate struct FfiConverterOptionTypeSemanticSearch: FfiConverterRustBuffer {
+    typealias SwiftType = SemanticSearch?
+
+    public static func write(_ value: SwiftType, into buf: inout [UInt8]) {
+        guard let value = value else {
+            writeInt(&buf, Int8(0))
+            return
+        }
+        writeInt(&buf, Int8(1))
+        FfiConverterTypeSemanticSearch.write(value, into: &buf)
+    }
+
+    public static func read(from buf: inout (data: Data, offset: Data.Index)) throws -> SwiftType {
+        switch try readInt(&buf) as Int8 {
+        case 0: return nil
+        case 1: return try FfiConverterTypeSemanticSearch.read(from: &buf)
         default: throw UniffiInternalError.unexpectedOptionalTag
         }
     }
@@ -36118,6 +36771,9 @@ private let initializationResult: InitializationResult = {
     if (uniffi_memry_core_checksum_method_journal_resolve_wiki_target() != 4674) {
         return InitializationResult.apiChecksumMismatch
     }
+    if (uniffi_memry_core_checksum_method_journal_same_day_entries() != 57501) {
+        return InitializationResult.apiChecksumMismatch
+    }
     if (uniffi_memry_core_checksum_method_journal_seed_from_template() != 21646) {
         return InitializationResult.apiChecksumMismatch
     }
@@ -36352,7 +37008,7 @@ private let initializationResult: InitializationResult = {
     if (uniffi_memry_core_checksum_method_search_reindex() != 12616) {
         return InitializationResult.apiChecksumMismatch
     }
-    if (uniffi_memry_core_checksum_method_search_search() != 47560) {
+    if (uniffi_memry_core_checksum_method_search_search() != 1136) {
         return InitializationResult.apiChecksumMismatch
     }
     if (uniffi_memry_core_checksum_method_search_unlinked_mentions() != 24332) {
@@ -36365,6 +37021,18 @@ private let initializationResult: InitializationResult = {
         return InitializationResult.apiChecksumMismatch
     }
     if (uniffi_memry_core_checksum_method_searchrecents_record() != 39039) {
+        return InitializationResult.apiChecksumMismatch
+    }
+    if (uniffi_memry_core_checksum_method_semanticsearch_disable() != 18804) {
+        return InitializationResult.apiChecksumMismatch
+    }
+    if (uniffi_memry_core_checksum_method_semanticsearch_enable() != 60176) {
+        return InitializationResult.apiChecksumMismatch
+    }
+    if (uniffi_memry_core_checksum_method_semanticsearch_resume() != 55843) {
+        return InitializationResult.apiChecksumMismatch
+    }
+    if (uniffi_memry_core_checksum_method_semanticsearch_status() != 37333) {
         return InitializationResult.apiChecksumMismatch
     }
     if (uniffi_memry_core_checksum_method_settings_clear() != 25310) {
@@ -36769,7 +37437,7 @@ private let initializationResult: InitializationResult = {
     if (uniffi_memry_core_checksum_method_vault_notes_writer() != 9506) {
         return InitializationResult.apiChecksumMismatch
     }
-    if (uniffi_memry_core_checksum_method_vault_search() != 52313) {
+    if (uniffi_memry_core_checksum_method_vault_search() != 55225) {
         return InitializationResult.apiChecksumMismatch
     }
     if (uniffi_memry_core_checksum_method_vault_search_recents() != 42539) {
@@ -36899,6 +37567,9 @@ private let initializationResult: InitializationResult = {
         return InitializationResult.apiChecksumMismatch
     }
     if (uniffi_memry_core_checksum_constructor_runtimehost_new() != 10694) {
+        return InitializationResult.apiChecksumMismatch
+    }
+    if (uniffi_memry_core_checksum_constructor_semanticsearch_new() != 38333) {
         return InitializationResult.apiChecksumMismatch
     }
     if (uniffi_memry_core_checksum_constructor_vault_open() != 12310) {
