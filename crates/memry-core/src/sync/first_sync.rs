@@ -63,6 +63,8 @@ use super::note_body_feed;
 use super::pack_bootstrap::{PackBootstrap, PackBootstrapReport};
 
 mod body_pass;
+mod refs_page;
+use refs_page::{read_refs_page, reference_now};
 
 use super::pull::{PULL_PAGE_LIMIT, PullError, PullLoop};
 use super::store::{self, RECORD_CURSOR_SCOPE};
@@ -93,6 +95,31 @@ pub const RECENT_WINDOW_MS: i64 = 30 * 24 * 60 * 60 * 1_000;
 /// Everything past this loads on demand, which is exactly what FR-028 asks
 /// for ("older content on demand"), and owed a pull each pass sweeps (#3253).
 pub const RECENT_BODY_LIMIT: usize = 500;
+
+/// How much of the vault the bodies pass pulls.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub struct FirstSyncLimits {
+    /// How far back "recent" reaches, in milliseconds; `None` reaches every
+    /// live document, whatever its age.
+    pub recent_window_ms: Option<i64>,
+    /// The ceiling on bodies pulled; `None` pulls every one in the window.
+    pub recent_body_limit: Option<usize>,
+}
+
+impl FirstSyncLimits {
+    /// The phone's window: [`RECENT_WINDOW_MS`] and [`RECENT_BODY_LIMIT`].
+    pub const RECENT: Self = Self {
+        recent_window_ms: Some(RECENT_WINDOW_MS),
+        recent_body_limit: Some(RECENT_BODY_LIMIT),
+    };
+
+    /// Every note and journal body, Electron's first sync (#3534): a desktop
+    /// holds the whole vault on disk, so it has no "load on demand".
+    pub const ALL: Self = Self {
+        recent_window_ms: None,
+        recent_body_limit: None,
+    };
+}
 
 /// How many ids one metadata call asks for. Chapter 05 §5.10: `POST
 /// /sync/pull` takes at most 100.
@@ -189,6 +216,7 @@ pub struct FirstSync {
     bootstrap: Option<Arc<BootstrapClient>>,
     packs: Option<Arc<PackBootstrap>>,
     progress: Arc<dyn ProgressSink>,
+    limits: FirstSyncLimits,
 }
 
 impl FirstSync {
@@ -200,7 +228,14 @@ impl FirstSync {
             bootstrap: None,
             packs: None,
             progress: Arc::new(SilentProgress),
+            limits: FirstSyncLimits::RECENT,
         }
+    }
+
+    /// The bodies pass's window and cap; [`FirstSyncLimits::RECENT`] unless set.
+    pub fn with_limits(mut self, limits: FirstSyncLimits) -> Self {
+        self.limits = limits;
+        self
     }
 
     /// §10.6: a client SHOULD open a session, and every failure is silent.
@@ -401,9 +436,10 @@ impl FirstSync {
         window_start: i64,
         report: &mut FirstSyncReport,
     ) -> Result<(), FirstSyncError> {
+        let limit = self.limits.recent_body_limit;
         let window = self
             .db
-            .call(move |conn| recent_document_ids(conn, window_start))
+            .call(move |conn| recent_document_ids(conn, window_start, limit))
             .await?;
         // §7.15: a tombstoned document is excluded by the query above. The
         // server still answers with the surviving log, and applying it would
@@ -431,6 +467,10 @@ impl FirstSync {
 
     /// The window boundary, chosen once and remembered.
     async fn window_start(&self, now_ms: i64) -> Result<i64, FirstSyncError> {
+        // No window has no boundary to slide, so there is nothing to remember.
+        let Some(window_ms) = self.limits.recent_window_ms else {
+            return Ok(i64::MIN);
+        };
         if let Some(stored) = self
             .db
             .call(|conn| read_meta(conn, META_FIRST_SYNC_WINDOW_START))
@@ -439,7 +479,7 @@ impl FirstSync {
         {
             return Ok(stored);
         }
-        let chosen = now_ms - RECENT_WINDOW_MS;
+        let chosen = now_ms - window_ms;
         self.db
             .call(move |conn| write_meta(conn, META_FIRST_SYNC_WINDOW_START, &chosen.to_string()))
             .await?;
@@ -468,79 +508,6 @@ impl FirstSync {
     }
 }
 
-/// One `/sync/changes` ref row, reduced to what the refs pass records
-/// (chapter 05 §5.11.1).
-#[derive(Debug, Clone, PartialEq, Eq)]
-struct RefRow {
-    item_id: String,
-    item_type: String,
-    modified_at: i64,
-}
-
-#[derive(Debug, Clone, Default, PartialEq, Eq)]
-struct RefsPage {
-    refs: Vec<RefRow>,
-    deleted: Vec<String>,
-    has_more: bool,
-    next_cursor: Option<String>,
-}
-
-/// Reads the page tolerantly: chapter 13 §13.2.2 permits ignoring an envelope
-/// key a client does not know, and a missing array reads as empty.
-fn read_refs_page(body: &Json) -> RefsPage {
-    let refs = body
-        .get("items")
-        .and_then(Json::as_array)
-        .map(|items| {
-            items
-                .iter()
-                .filter_map(|item| {
-                    Some(RefRow {
-                        item_id: item.get("id").and_then(Json::as_str)?.to_owned(),
-                        item_type: item.get("type").and_then(Json::as_str)?.to_owned(),
-                        modified_at: item
-                            .get("modifiedAt")
-                            .and_then(Json::as_i64)
-                            .unwrap_or_default(),
-                    })
-                })
-                .collect()
-        })
-        .unwrap_or_default();
-    RefsPage {
-        refs,
-        deleted: body
-            .get("deleted")
-            .and_then(Json::as_array)
-            .map(|ids| {
-                ids.iter()
-                    .filter_map(Json::as_str)
-                    .map(str::to_owned)
-                    .collect()
-            })
-            .unwrap_or_default(),
-        has_more: body.get("hasMore").and_then(Json::as_bool).unwrap_or(false),
-        // §5.11.1: `nextCursor` is an integer on this route. A server that
-        // spells it as a string means the same thing.
-        next_cursor: match body.get("nextCursor") {
-            Some(Json::String(text)) => Some(text.clone()),
-            Some(Json::Number(number)) => Some(number.to_string()),
-            _ => None,
-        },
-    }
-}
-
-/// The deletion instant for a tombstoned id: the ref row's `modifiedAt` when
-/// the page carried one, and the local clock otherwise. A refs-only pass has
-/// no envelope to read `deletedAt` from, and inventing a far-future instant
-/// would outrank a real edit.
-fn reference_now(refs: &[RefRow], item_id: &str) -> i64 {
-    refs.iter()
-        .find(|reference| reference.item_id == item_id)
-        .map(|reference| reference.modified_at)
-        .unwrap_or_else(now_ms)
-}
-
 fn sqlite_failed(error: rusqlite::Error) -> StorageError {
     StorageError::Failed {
         what: error.to_string(),
@@ -557,37 +524,6 @@ fn now_ms() -> i64 {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use serde_json::json;
-
-    #[test]
-    fn a_ref_page_keeps_the_type_and_the_modified_instant() {
-        // §5.11.1's ref row. The refs pass needs `type` to file the row and
-        // `modifiedAt` to order pass two, and needs nothing else.
-        let page = read_refs_page(&json!({
-            "items": [
-                {"id": "abc123def456", "type": "note", "version": 3, "modifiedAt": 99, "size": 12},
-                {"id": "no-type"}
-            ],
-            "deleted": ["gone1"],
-            "hasMore": true,
-            "nextCursor": 41
-        }));
-        assert_eq!(page.refs.len(), 1);
-        assert_eq!(page.refs[0].item_type, "note");
-        assert_eq!(page.refs[0].modified_at, 99);
-        assert_eq!(page.deleted, ["gone1"]);
-        assert!(page.has_more);
-        assert_eq!(page.next_cursor.as_deref(), Some("41"));
-    }
-
-    #[test]
-    fn a_page_missing_its_arrays_reads_as_empty_rather_than_failing() {
-        let page = read_refs_page(&json!({}));
-        assert!(page.refs.is_empty());
-        assert!(page.deleted.is_empty());
-        assert!(!page.has_more);
-        assert_eq!(page.next_cursor, None);
-    }
 
     #[test]
     fn the_window_is_thirty_days_and_the_body_cap_fits_sc_007() {

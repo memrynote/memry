@@ -38,7 +38,8 @@ use memry_core::storage::{Db, open_data};
 use memry_core::sync::body_pull::{BodyPull, CrdtCipher, PackedUpdate, crdt_cursor_scope};
 use memry_core::sync::bootstrap::BootstrapClient;
 use memry_core::sync::first_sync::{
-    BODY_CONCURRENCY_ELEVATED, FirstSync, FirstSyncPhase, FirstSyncProgress, ProgressSink,
+    BODY_CONCURRENCY_ELEVATED, FirstSync, FirstSyncLimits, FirstSyncPhase, FirstSyncProgress,
+    ProgressSink,
 };
 use memry_core::sync::first_sync_store::read_meta;
 use memry_core::sync::note_body_feed::META_NOTE_BODY_LEGACY_PULL;
@@ -1106,6 +1107,42 @@ async fn a_note_outside_the_window_is_owed_a_body_pull() {
         .call_blocking(|conn| memry_core::sync::body_debt::owed(conn))
         .expect("debts");
     assert_eq!(owed, vec![NOTE.to_owned()]);
+}
+
+/// Desktop's first sync ([`FirstSyncLimits::ALL`]) has no window: a sixty-day-old note's body
+/// is pulled with the rest, as Electron's is.
+#[tokio::test]
+async fn an_unwindowed_first_sync_pulls_a_note_older_than_the_window() {
+    let db = scratch_db("unwindowed");
+    let (public_key, secret_key) =
+        memry_core::crypto::sodium::sign_seed_keypair(&[29u8; 32]).expect("keypair");
+    let transport = FakeTransport::new(vec![
+        response(200, &changes_page(&[(NOTE, "note")], &[], 10, false)),
+        response(
+            200,
+            &json!({"items": [record_envelope(NOTE, "note")]}).to_string(),
+        ),
+        response(200, &json!({"snapshot": Json::Null}).to_string()),
+        response(
+            200,
+            &json!({"updates": [{
+                "sequenceNum": 1,
+                "data": packed_base64(NOTE, &body_update("Old words"), &secret_key),
+                "createdAt": 1_700_000_000_000i64,
+                "signerDeviceId": "device-a"
+            }], "hasMore": false})
+            .to_string(),
+        ),
+    ]);
+    let sixty_days_ms = 60 * 24 * 60 * 60 * 1_000;
+    let report = first_sync(&db, transport, public_key, RecordedProgress::new())
+        .with_limits(FirstSyncLimits::ALL)
+        .run(epoch(MODIFIED_AT) + sixty_days_ms)
+        .await
+        .expect("the first sync");
+
+    assert_eq!(report.bodies.documents, 1, "no window");
+    assert_eq!(text_of(&db, NOTE), "Old words");
 }
 
 // ------------------------------------------- "owed" means "awaits its body"

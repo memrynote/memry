@@ -29,6 +29,8 @@
 //! | `socket_frame`    | 09 §9.5, §9.12         | one socket message parsed into one hint           |
 //! | [`first_sync`]    | §C.3, FR-028           | refs, then metadata, then bodies for the window   |
 //! | [`first_sync_store`] | §A.2                | that run's two work lists and its two `meta` keys |
+//! | [`driver`]        | #3534                  | the one composition a long-lived shell runs        |
+//! | [`server_vault`]  | 05 §5.2, #3534 K1      | the server's id for this vault, one `meta` key     |
 //!
 //! **The core owns no networking.** Every call here goes out through
 //! [`crate::protocol::http`], which goes out through the `Transport` seam
@@ -47,6 +49,7 @@ mod changes_page;
 pub mod clock;
 pub mod crdt_wire;
 pub mod delete_keep;
+pub mod driver;
 pub mod engine;
 mod feed_restart;
 pub mod field_merge;
@@ -62,6 +65,7 @@ mod pull_decode;
 mod pull_report;
 pub mod push;
 pub mod refused_items;
+pub mod server_vault;
 pub mod settings_merge;
 pub mod socket;
 mod socket_frame;

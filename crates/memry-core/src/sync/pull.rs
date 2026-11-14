@@ -52,6 +52,7 @@ use crate::storage::repositories::sync_items;
 use super::apply::{self, Pending};
 use super::body_pull::CrdtCipher;
 use super::changes_page::{ChangesPage, read_changes_page, requested_ids, uncovered_ids};
+use super::driver::Observers;
 use super::feed_restart;
 use super::note_body_feed::{self, FeedClient, FetchedBodies, NOTE_BODY_SYNC_TYPE};
 use super::pull_decode::{self, server_cursor};
@@ -97,6 +98,8 @@ pub struct PullLoop {
     clock_device: Option<String>,
     /// The vault key agent records are sealed under at apply (chapter 04 §4.17).
     at_rest: AtRestKey,
+    /// Told what each page applied, after it commits ([`Observers`]).
+    observers: Option<Arc<Observers>>,
 }
 
 impl PullLoop {
@@ -115,7 +118,14 @@ impl PullLoop {
             vault_id: None,
             clock_device: None,
             at_rest: AtRestKey::default(),
+            observers: None,
         }
+    }
+
+    /// Tells `observers` what each page applied, once the page has committed.
+    pub fn with_observers(mut self, observers: Arc<Observers>) -> Self {
+        self.observers = Some(observers);
+        self
     }
 
     /// Declares `note_body` on the feed's `GET /sync/changes` and lands the
@@ -319,6 +329,11 @@ impl PullLoop {
             })
             .await?;
         report.cursor = advanced;
+        if let Some(observers) = &self.observers {
+            observers
+                .bodies_applied(report.advanced_documents.clone())
+                .await;
+        }
 
         // §5.14's breaker, all three conditions or none.
         let yielded = report.applied + report.deleted + report.skipped + report.expired;
