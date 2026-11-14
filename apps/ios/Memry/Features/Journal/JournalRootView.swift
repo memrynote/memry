@@ -101,12 +101,15 @@ struct JournalRootView: View {
         @Bindable var router = router
         NavigationStack(path: $router.path) {
             JournalYearScreen(store: store)
+                .modifier(JournalDayPanelBeside())
                 .navigationDestination(for: JournalRoute.self) { route in
                     switch route {
                     case let .month(year, month):
                         JournalMonthScreen(store: store, year: year, month: month)
+                            .modifier(JournalDayPanelBeside())
                     case let .day(date):
                         JournalDayScreen(store: store, date: date)
+                            .modifier(JournalDayPanelBeside())
                     case .settings:
                         // A Settings page, opened from Settings › Journal.
                         JournalSettingsScreen(store: store)

@@ -7,8 +7,8 @@ import SwiftUI
 // a hide button, a mini month calendar that jumps to a day and marks
 // the days with an entry, the day's tasks and events, and the same day in
 // other years. No statistics, no AI connections. `DayPanelHost` lays it
-// beside every page in its own `Tokens.Size.rail` of width, so the page never
-// slides under it. On the journal page it follows the shown day and a picked
+// beside every page (the Journal inside its stack, `JournalDayPanelBeside`)
+// in its own `Tokens.Size.rail` of width, so the page never slides under it. On the journal page it follows the shown day and a picked
 // day opens there; elsewhere it shows today until stepped (`SideRails`).
 
 extension EnvironmentValues {

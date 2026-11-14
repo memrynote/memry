@@ -10,7 +10,7 @@ import SwiftUI
 // `JournalRouter.showDay`, so Back still leads to the month; Esc drills up.
 // Each page owns its own models keyed by its date, so an edit pending on one
 // day never lands on another. At regular width the Day Panel (`DayPanelRail`)
-// is the Journal rail: the shell lays it beside the page and it follows the
+// is the Journal rail: `JournalRootView` lays it beside the page and it follows the
 // shown day (#4351, #4380).
 
 struct JournalDayScreen: View {

@@ -162,16 +162,13 @@ final class SideRails {
 }
 
 /// One page of the shell with the Day Panel beside it. Every page measures
-/// its own room; only the selected page draws the panel.
+/// its own room; only the selected page draws the panel. The Journal draws
+/// it inside its stack (`JournalDayPanelBeside`), so its bar spans the panel.
 struct DayPanelHost: ViewModifier {
     let page: VaultTab
     let isSelected: Bool
 
     @Environment(SideRails.self) private var rails
-    @Environment(JournalRouter.self) private var journal
-    @Environment(\.journalStore) private var store
-    @Environment(\.journalStoreFailure) private var failure
-    @Environment(\.journalTasks) private var tasks
     @Environment(\.horizontalSizeClass) private var horizontalSizeClass
     @Environment(\.verticalSizeClass) private var verticalSizeClass
     @Environment(\.dynamicTypeSize) private var typeSize
@@ -181,14 +178,40 @@ struct DayPanelHost: ViewModifier {
         let large = typeSize.isAccessibilitySize
         HStack(spacing: 0) {
             content
-            if isSelected, rails.dayPanelShown(on: page) { panel }
+            if isSelected, page != .journal, rails.dayPanelShown(on: page) { DayPanel(page: page) }
         }
         .onGeometryChange(for: SideRailRoom.self) {
             SideRailRoom(width: $0.size.width, regular: regular, accessibilitySize: large, onJournal: page == .journal)
         } action: { rails.measured($0, on: page) }
     }
+}
 
-    @ViewBuilder private var panel: some View {
+/// A Journal screen (Year, Month, Day) with the Day Panel beside it, inside
+/// the Journal's stack: the screen's bar spans the panel, so the floating
+/// tab bar of a portrait window leaves the day's own buttons room.
+struct JournalDayPanelBeside: ViewModifier {
+    @Environment(SideRails.self) private var rails: SideRails?
+    @Environment(TasksRouter.self) private var tabs: TasksRouter?
+
+    func body(content: Content) -> some View {
+        HStack(spacing: 0) {
+            content
+            if tabs?.selectedTab == .journal, rails?.dayPanelShown(on: .journal) == true { DayPanel(page: .journal) }
+        }
+    }
+}
+
+/// The Day Panel for `page`: the day, or why the vault's journal is not open.
+private struct DayPanel: View {
+    let page: VaultTab
+
+    @Environment(SideRails.self) private var rails
+    @Environment(JournalRouter.self) private var journal
+    @Environment(\.journalStore) private var store
+    @Environment(\.journalStoreFailure) private var failure
+    @Environment(\.journalTasks) private var tasks
+
+    var body: some View {
         let hide = { rails.toggleDayPanel(on: page) }
         if let store {
             let today = store.clock.today
