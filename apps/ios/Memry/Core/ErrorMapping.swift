@@ -101,6 +101,7 @@ enum ErrorMapping {
     /// that is on by default on a user's device — so the gap is findable.
     static func userFacing(_ error: any Error) -> UserFacingError {
         if let mapped = mappedCoreError(error) { return mapped }
+        if let mapped = mappedDomainError(error) { return mapped }
         if let mapped = mappedSeamError(error) { return mapped }
         if error is CancellationError { return cancelled }
         Log.core.fault("unrecognised error reached the shell", .code(unrecognised.code))
@@ -124,7 +125,14 @@ enum ErrorMapping {
         // T237. `SyncError` is newer still, and it arrived uncovered for
         // exactly the reason `LinkingError` did. `ErrorMappingSync.swift`.
         if let error = error as? SyncError { return userFacing(error) }
+        return nil
+    }
+
+    /// Domain enums newer than `core-api.md`, split out so each funnel stays
+    /// under the complexity ceiling. `PropertyWriteError` is #4649.
+    private static func mappedDomainError(_ error: any Error) -> UserFacingError? {
         if let error = error as? SemanticError { return userFacing(error) }
+        if let error = error as? PropertyWriteError { return userFacing(error) }
         return nil
     }
 

@@ -331,6 +331,32 @@ struct ErrorMappingTests {
         #expect(off != ErrorMapping.userFacing(BackgroundError.Failed(what: payload)))
     }
 
+    // MARK: - Property writes (#4649)
+
+    /// The Full width toggle over `fullWidth: "yes"`. It used to reach the
+    /// funnel's fallback: "a problem it could not identify", logged at fault.
+    @Test("a retyped property names the property and the way out")
+    func retypedNamesThePropertyAndTheFix() {
+        let error = PropertyWriteError.Retyped(name: "fullWidth", existing: "text", proposed: "a boolean")
+        let mapped = ErrorMapping.userFacing(error as any Error)
+        #expect(mapped.code == ErrorCode("property.retyped"))
+        #expect(mapped.code != ErrorMapping.unrecognised.code)
+        #expect(says(mapped, "\u{201C}fullWidth\u{201D} holds text"))
+        #expect(says(mapped, "a boolean"))
+        #expect(says(mapped, "in Properties first"))
+        #expect(mapped.recourse == .blocked, "the same write would be refused again")
+        #expect(mapped.isUserVisible)
+        #expect(mapped.text != String(reflecting: error))
+    }
+
+    @Test("a property write's storage failure reads as that storage failure")
+    func propertyStorageDelegates() {
+        let full = StorageError.OutOfSpace(neededBytes: 1, availableBytes: 0)
+        let mapped = ErrorMapping.userFacing(PropertyWriteError.Storage(source: full) as any Error)
+        #expect(mapped == ErrorMapping.userFacing(full))
+        #expect(mapped.code != ErrorMapping.unrecognised.code)
+    }
+
     // MARK: - The fallback
 
     /// "Could not tell" must never look like "nothing wrong".

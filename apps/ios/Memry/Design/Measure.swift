@@ -8,8 +8,8 @@ import SwiftUI
 extension EnvironmentValues {
     /// The surface runs the full pane instead of the reading measure.
     ///
-    /// Nothing sets it yet. #4376 sets it from desktop's per-device editor
-    /// width, a note's `fullWidth` frontmatter, and the journal override.
+    /// The note page sets it from a note's `fullWidth` frontmatter, then this
+    /// device's editor width; the journal day from the journal override.
     @Entry var fullWidthReading = false
 
     /// A wide block breaks out of the reading measure to the full pane.
