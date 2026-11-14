@@ -4,7 +4,9 @@ import MemryCore
 /// What a search hit row says (#4323), after desktop's `search-result-item`:
 /// a note's emoji and title over its folder, a journal's relative day over
 /// "Journal", a task's title. A note or journal an alias found also says
-/// "also: <alias>" (#4319). The snippet line follows in the view.
+/// "also: <alias>" (#4319). The snippet line follows in the view; a note or
+/// journal only semantic search found has none and says "Similar meaning"
+/// there instead (#4505).
 struct SearchRowText: Equatable {
     enum Caption: Equatable {
         /// The full vault folder; the view truncates it at the head.
@@ -17,6 +19,8 @@ struct SearchRowText: Equatable {
     /// "also: <alias>" when the query matched an alias the title does not
     /// hold.
     let also: String?
+    /// "Similar meaning" when only semantic search found the hit.
+    let related: String?
     let accessibilityLabel: String
 
     init(hit: SearchResult, now: Date = .now, calendar: Calendar = .autoupdatingCurrent,
@@ -25,13 +29,15 @@ struct SearchRowText: Equatable {
         let alias = hit.matchedName.flatMap { $0.isEmpty ? nil : $0 }
         also = alias.map { "also: \($0)" }
         let spokenAlias = alias.map { "also \($0)" } ?? ""
+        related = hit.matchKind == .semantic ? SemanticSearchCopy.similarMeaning : nil
+        let detail = related ?? snippet
         switch hit.kind {
         case "journal":
             let date = hit.journalDate.flatMap { $0.isEmpty ? nil : $0 }
             title = date.map { SearchDayLabel.text($0, now: now, calendar: calendar, locale: locale) } ?? hit.title
             caption = .journal
             let spoken = date.map { SearchDayLabel.spoken($0, now: now, calendar: calendar, locale: locale) } ?? hit.title
-            accessibilityLabel = Self.joined(["Journal", spoken, spokenAlias, snippet])
+            accessibilityLabel = Self.joined(["Journal", spoken, spokenAlias, detail])
         case "task":
             title = hit.title.isEmpty ? TasksCopy.untitledTask : hit.title
             caption = nil
@@ -46,7 +52,7 @@ struct SearchRowText: Equatable {
             let folder = hit.folderPath.map(SearchFolderPath.segments).flatMap { $0.isEmpty ? nil : $0.joined(separator: "/") }
             title = emoji.map { "\($0) \(name)" } ?? name
             caption = folder.map(Caption.folder)
-            accessibilityLabel = Self.joined([emoji ?? "", name, spokenAlias, folder.map { "Folder \($0)" } ?? "", snippet])
+            accessibilityLabel = Self.joined([emoji ?? "", name, spokenAlias, folder.map { "Folder \($0)" } ?? "", detail])
         }
     }
 

@@ -58,6 +58,24 @@ struct SearchRowTextTests {
         #expect(text.accessibilityLabel == "🔑, Password list, also Creds, Folder Work/Accounts")
     }
 
+    @Test func a_note_only_semantic_search_found_says_similar_meaning_in_place_of_a_snippet() {
+        var found = hit(kind: "note", title: "Spice cabinet", folder: "Kitchen")
+        found.matchKind = .semantic
+        let text = row(found)
+
+        #expect(text.related == "Similar meaning")
+        #expect(text.caption == .folder("Kitchen"))
+        #expect(text.accessibilityLabel == "Spice cabinet, Folder Kitchen, Similar meaning")
+        #expect(row(hit(kind: "note", title: "Spice cabinet")).related == nil)
+    }
+
+    @Test func a_journal_day_only_semantic_search_found_says_similar_meaning() {
+        var found = hit(kind: "journal", title: "2026-11-10", journalDate: "2026-11-10")
+        found.matchKind = .semantic
+
+        #expect(row(found).accessibilityLabel == "Journal, Tuesday, November 10, Similar meaning")
+    }
+
     @Test func a_note_without_an_emoji_or_folder_is_its_title_alone() {
         let text = row(hit(kind: "note", title: "Grocery", emoji: "custom:abc", folder: "/"))
 

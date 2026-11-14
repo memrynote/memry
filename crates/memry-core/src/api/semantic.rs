@@ -7,10 +7,12 @@ use std::sync::{Arc, Mutex, MutexGuard, PoisonError};
 
 use crate::api::errors::StorageError;
 use crate::api::vault::Vault;
+use crate::domain::embedding_input::query_input;
+use crate::domain::search::semantic::{SemanticHit, nearest, wants_semantic};
 use crate::seams::reachability::{Reachability, Reachable};
 use crate::seams::transport::Transport;
 use crate::semantic::download::{self, DownloadEnd, DownloadError};
-use crate::semantic::{ModelDir, ModelHost, SemanticError, load};
+use crate::semantic::{Loader, ModelDir, ModelHost, SemanticError, load};
 use crate::storage::Db;
 use crate::storage::vector_db::{self, VectorStore};
 
@@ -174,16 +176,25 @@ impl SemanticSearch {
         reachability: Arc<dyn Reachability>,
     ) -> Self {
         let models = model.clone();
-        let host = ModelHost::new(Arc::new(move |threads| {
+        let loader: Loader = Arc::new(move |threads| {
             let verified = models
                 .verified()
                 .filter(|_| models.opted_in())
                 .ok_or_else(|| SemanticError::inference("the model is not downloaded"))?;
             load(&verified, threads)
-        }));
+        });
+        Self::with_loader(model, transport, reachability, loader)
+    }
+
+    pub(crate) fn with_loader(
+        model: ModelDir,
+        transport: Arc<dyn Transport>,
+        reachability: Arc<dyn Reachability>,
+        loader: Loader,
+    ) -> Self {
         Self {
             model,
-            host,
+            host: ModelHost::new(loader),
             transport,
             reachability,
             transfer: Mutex::new(Transfer::Idle),
@@ -240,7 +251,41 @@ impl SemanticSearch {
         Ok(self.model_state())
     }
 
+    /// The semantic leg of one search over the vault in `vault_dir`, best
+    /// first. Empty means FTS only: the query takes no semantic leg, the model
+    /// is off, still downloading or loading, or the leg failed. Never waits on
+    /// a model load; the first query starts one.
+    pub(crate) fn hits(&self, vault_dir: &Path, query: &str) -> Vec<SemanticHit> {
+        if !wants_semantic(query) || !self.model.opted_in() || self.model.verified().is_none() {
+            return Vec::new();
+        }
+        let Some(vector) = query_input(query).and_then(|window| self.host.query_vector(&window))
+        else {
+            return Vec::new();
+        };
+        let key = self.model.manifest().vector_key;
+        let scanned = self.vectors(vault_dir).and_then(|db| match db {
+            Some(db) => {
+                db.call_blocking(|conn| nearest(&vector, VectorStore::new(conn).scan(key)?))
+            }
+            None => Ok(Vec::new()),
+        });
+        scanned.unwrap_or_else(|error| {
+            eprintln!("memry-core: semantic leg failed, FTS only: {error}");
+            Vec::new()
+        })
+    }
+
     fn embedded_notes(&self, vault_dir: &Path) -> Result<u32, StorageError> {
+        let Some(db) = self.vectors(vault_dir)? else {
+            return Ok(0);
+        };
+        let key = self.model.manifest().vector_key;
+        db.call_blocking(|conn| VectorStore::new(conn).counts(key))
+    }
+
+    /// This vault's `vectors.db`, opened once and held.
+    fn vectors(&self, vault_dir: &Path) -> Result<Option<Db>, StorageError> {
         let path = vault_dir.join("vectors.db");
         let mut handles = lock(&self.vectors);
         // Sign-out removes the vault tree under an open handle, which would
@@ -248,18 +293,14 @@ impl SemanticSearch {
         if !path.exists() {
             handles.remove(vault_dir);
         }
-        let db = match handles.get(vault_dir) {
-            Some(db) => db.clone(),
-            None => {
-                let Some(db) = vector_db::open(&path, true)? else {
-                    return Ok(0);
-                };
-                handles.insert(vault_dir.to_path_buf(), db.clone());
-                db
-            }
-        };
-        let key = self.model.manifest().vector_key;
-        db.call_blocking(|conn| VectorStore::new(conn).counts(key))
+        if let Some(db) = handles.get(vault_dir) {
+            return Ok(Some(db.clone()));
+        }
+        let opened = vector_db::open(&path, true)?;
+        if let Some(db) = &opened {
+            handles.insert(vault_dir.to_path_buf(), db.clone());
+        }
+        Ok(opened)
     }
 }
 
