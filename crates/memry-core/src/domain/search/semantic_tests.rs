@@ -40,6 +40,8 @@ fn the_semantic_leg_skips_short_queries_operators_and_phrases() {
         ("say \"hello\"", false),
         ("an \"\" empty quote", true),
         ("one \" quote", true),
+        ("ab\u{85}", true),
+        ("\u{FEFF}ab", false),
     ] {
         assert_eq!(wants_semantic(query), wanted, "{query:?}");
     }
@@ -137,6 +139,21 @@ fn fusion_cuts_to_the_limit() {
     );
     let order: Vec<_> = fused.iter().map(|hit| hit.id.as_str()).collect();
     assert_eq!(order, ["a", "c"]);
+}
+
+#[test]
+fn fusion_without_hits_does_not_touch_the_database() {
+    let blind = Connection::open_in_memory().unwrap();
+    let filter = SearchFilter {
+        tags: vec!["kitchen".into()],
+        ..SearchFilter::default()
+    };
+    let mut groups = Groups::default();
+    groups.notes.push(hit("a"));
+
+    fuse(&blind, &blind, &mut groups, &[], &filter, 10).unwrap();
+
+    assert_eq!(groups.notes, [hit("a")]);
 }
 
 /// `cargo test -p memry-core --release scan_bench -- --ignored --nocapture`.

@@ -4,8 +4,6 @@ enum SemanticSearchCopy {
     static let title = "Semantic search"
     static let toggle = "Search by meaning"
     static let toggleDetail = "Finds notes by what they mean, not only by their words."
-    /// A search row only the meaning found, in place of its snippet.
-    static let similarMeaning = "Similar meaning"
 
     static func footer(size: String) -> String {
         "Downloads a \(size) model once, on Wi-Fi only. A personal hotspot or Low Data Mode counts as cellular, so the "

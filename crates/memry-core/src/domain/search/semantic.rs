@@ -12,10 +12,11 @@ use rusqlite::{Connection, OptionalExtension as _, params};
 
 use super::{Groups, MatchKind, SearchFilter, SearchHit, SearchType, failed, hit_kind, query};
 use crate::api::errors::StorageError;
+use crate::domain::journal_rules::js_trim;
 use crate::semantic::Vector;
 use crate::storage::vector_db::VectorBytes;
 
-/// UTF-16 units of the trimmed query.
+/// UTF-16 units of the query, trimmed as JavaScript's `trim` does.
 pub const MIN_QUERY_LENGTH: usize = 3;
 /// Per window class, before collapsing to one hit per note.
 pub const NEIGHBOURS: usize = 30;
@@ -28,7 +29,7 @@ const RRF_K: f64 = 60.0;
 /// searchable term, and no operator. `AND`, `OR`, `NOT` and a quoted phrase
 /// ask for literal matches, not meaning.
 pub fn wants_semantic(query: &str) -> bool {
-    let trimmed = query.trim();
+    let trimmed = js_trim(query);
     trimmed.encode_utf16().count() >= MIN_QUERY_LENGTH
         && query::parse(trimmed).is_some()
         && !has_operators(trimmed)
@@ -107,6 +108,9 @@ pub fn fuse(
     filter: &SearchFilter,
     limit: usize,
 ) -> Result<(), StorageError> {
+    if hits.is_empty() {
+        return Ok(());
+    }
     for kind in [SearchType::Note, SearchType::Journal] {
         if !filter.wants(kind) {
             continue;

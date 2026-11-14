@@ -41,8 +41,8 @@ struct SearchHitRow: View {
 
 /// One note or journal hit: the note's emoji and title over its folder, or
 /// the journal's relative day over "Journal" (#4323), with "also: <alias>"
-/// leading that line when an alias matched (#4319), then the snippet, or
-/// "Similar meaning" for a hit only semantic search found (#4505).
+/// leading that line when an alias matched (#4319), then the snippet, which a
+/// hit only semantic search found does not have (#4505).
 struct SearchHitLabel: View {
     let hit: SearchResult
 
@@ -72,11 +72,7 @@ struct SearchHitLabel: View {
                     }
                 }
             }
-            if let related = text.related {
-                caption(related)
-            } else {
-                SearchSnippetText(segments: hit.snippet)
-            }
+            SearchSnippetText(segments: hit.snippet)
         }
         .frame(maxWidth: .infinity, alignment: .leading)
         .accessibilityElement(children: .ignore)
