@@ -228,7 +228,7 @@ schema refuses a `canvas`, `vault_lock`, `canvas_folder`, `home_page`,
 has no `.nullable()`, a value of the wrong type, or `widgets` that is not a
 string), the Rust core returns `Skipped` and writes nothing
 (`crates/memry-core/src/domain/desktop_records/mod.rs:97-113`,
-`crates/memry-core/src/domain/home_page/merge.rs:53-57`,
+`crates/memry-core/src/domain/home_page/merge.rs:62-66`,
 `crates/memry-core/src/domain/agent_records.rs:123-134`). `Skipped` only
 counts the item (`crates/memry-core/src/sync/apply.rs:208`, `:552`): the
 cursor moves past it and no later build fetches it again. Electron records
@@ -1247,7 +1247,7 @@ refused-items ledger lands (#4453).
 
 The Rust core follows the same rule
 (`crates/memry-core/src/domain/canvas_folder/merge.rs:30-60`, over
-`crates/memry-core/src/domain/desktop_records/mod.rs:50-61`, `:97-155`).
+`crates/memry-core/src/domain/desktop_records/mod.rs:52-61`, `:97-155`).
 
 A delete follows chapter 05 §5.8 unchanged: the folder survives a tombstone
 only when its local clock is strictly after the tombstone's
@@ -1307,7 +1307,7 @@ refused-items ledger lands (#4453).
 
 The Rust core follows the same rule
 (`crates/memry-core/src/domain/home_page/merge.rs:36-89`, over
-`crates/memry-core/src/domain/desktop_records/mod.rs:50-61`, `:97-155`).
+`crates/memry-core/src/domain/desktop_records/mod.rs:52-61`, `:97-155`).
 
 The `home_pages.created_at` column of a board whose payload has no
 `createdAt` keeps the time of its first apply: a later projection keeps the
@@ -1365,7 +1365,7 @@ refused-items ledger lands (#4453).
 
 The Rust core follows the same rule
 (`crates/memry-core/src/domain/sticky_draft/merge.rs:31-54`, over
-`crates/memry-core/src/domain/desktop_records/mod.rs:50-61`, `:97-155`).
+`crates/memry-core/src/domain/desktop_records/mod.rs:52-61`, `:97-155`).
 
 A delete follows chapter 05 §5.8 unchanged: the draft survives a tombstone only
 when its local clock is strictly after the tombstone's
