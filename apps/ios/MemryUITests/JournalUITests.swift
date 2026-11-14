@@ -280,17 +280,10 @@ final class JournalUITests: XCTestCase {
 
     private func toggleFullWidth() {
         let more = app.buttons["journal.more"].firstMatch
-        // Beside the open Day Panel the toolbar can fold the day menu into
-        // its overflow, as a "More options" submenu without its identifier.
         if !more.waitForExistence(timeout: 5) {
-            app.buttons["OverflowBarButtonItem"].firstMatch.tap()
+            app.navigationBars.buttons.element(boundBy: app.navigationBars.buttons.count - 1).tap()
         }
-        let overflowed = app.buttons["More options"].firstMatch
-        if !more.waitForExistence(timeout: 2), overflowed.waitForExistence(timeout: 3) {
-            overflowed.tap()
-        } else {
-            more.tap()
-        }
+        more.tap()
         let toggle = app.descendants(matching: .any).matching(identifier: "journal.more.fullWidth").firstMatch
         XCTAssertTrue(toggle.waitForExistence(timeout: 5), "the day menu has no Full width")
         toggle.tap()

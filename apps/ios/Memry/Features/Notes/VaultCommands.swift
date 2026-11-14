@@ -88,7 +88,7 @@ struct VaultCommands {
         case .search, .commandPalette, .settings: true
         case .today: VaultTab.journal.isShown
         case .previousDay, .nextDay: dayShown != nil
-        case .dayPanel: sideRails.room != .none
+        case .dayPanel: sideRails.dayPanelFits(on: tasks.selectedTab)
         case let .page(number): page(number) != nil
         }
     }
@@ -107,7 +107,7 @@ struct VaultCommands {
             if let dayShown { dayShown.today() } else { journal.openDay(today()) }
         case .previousDay: dayShown?.step(-1)
         case .nextDay: dayShown?.step(1)
-        case .dayPanel: sideRails.toggleDayPanel()
+        case .dayPanel: sideRails.toggleDayPanel(on: tasks.selectedTab)
         case let .page(number): if let page = page(number) { tasks.selectedTab = page }
         }
     }

@@ -91,7 +91,7 @@ struct NotesSplitView: View {
 
     /// A rail beside the open note: the note inspector or the Day Panel.
     private var railShown: Bool {
-        router.current != nil && (rails?.inspectorShown == true || rails?.dayPanelShown == true)
+        router.current != nil && (rails?.inspectorShown == true || rails?.dayPanelShown(on: .notes) == true)
     }
 
     private var widthColumns: NavigationSplitViewVisibility {

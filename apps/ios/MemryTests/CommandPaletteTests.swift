@@ -17,7 +17,7 @@ struct CommandPaletteTests {
     /// room for the Day Panel.
     private func commands() -> VaultCommands {
         journal.tabs = tasks
-        rails.room = .one
+        rails.measured(.one, on: .journal)
         tasks.selectedTab = .journal
         journal.path = [.day("2099-03-03")]
         var commands = VaultCommands(

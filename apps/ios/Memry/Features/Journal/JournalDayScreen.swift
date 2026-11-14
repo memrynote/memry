@@ -54,7 +54,7 @@ struct JournalDayScreen: View {
         pager
         // Where the panel is closed or cannot fit, the page shows the day's
         // tasks under the entry.
-        .environment(\.journalRailShown, rails?.dayPanelShown ?? false)
+        .environment(\.journalRailShown, rails?.dayPanelShown(on: .journal) ?? false)
         .environment(\.fullWidthReading, local.journalIsFullWidth)
         .safeAreaInset(edge: .top) { JournalFailureBanner(store: store) }
         .background {

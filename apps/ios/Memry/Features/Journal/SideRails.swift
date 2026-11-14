@@ -7,9 +7,14 @@ import SwiftUI
 // never disagree about the room.
 //
 // **Room.** A rail shows only where the page keeps the `720pt` reading
-// measure beside it (`1040pt`), and two rails need `1360pt`. Compact width
-// and accessibility text sizes, which break words in the rail's `320pt`,
-// hold none.
+// measure beside it (`1040pt`), and two rails need `1360pt`. The Journal
+// keeps its day rail's shipped rule: the panel shows there at any regular
+// width. Compact width and accessibility text sizes, which break words in
+// the rail's `320pt`, hold none. Each page measures its own room, so a page
+// never reads another's.
+//
+// **Where it shows.** Not on Calendar, whose regular width has its own
+// agenda column, and nowhere while Journal is off in Settings › Features.
 //
 // **One at a time where two do not fit.** Opening one rail closes the other.
 // When both are left open (a window that shrank), the Day Panel shows and the
@@ -25,9 +30,11 @@ import SwiftUI
 enum SideRailRoom: Equatable {
     case none, one, two
 
-    init(width: CGFloat, regular: Bool, accessibilitySize: Bool) {
+    /// `onJournal`: the Journal page, where one rail fits at any regular
+    /// width (its day rail's shipped rule).
+    init(width: CGFloat, regular: Bool, accessibilitySize: Bool, onJournal: Bool = false) {
         let one = Tokens.Size.reading + Tokens.Size.rail
-        if !regular || accessibilitySize || width < one {
+        if !regular || accessibilitySize || (!onJournal && width < one) {
             self = .none
         } else {
             self = width >= one + Tokens.Size.rail ? .two : .one
@@ -48,8 +55,10 @@ struct SideRailsOpen: Equatable {
         (onJournal ? journalDayPanel : dayPanel) && room != .none
     }
 
-    func inspectorShown(in room: SideRailRoom) -> Bool {
-        inspector && (room == .two || (room == .one && !dayPanel))
+    /// `panelRoom`: the Day Panel's room on the same page, `.none` where it
+    /// cannot show.
+    func inspectorShown(in room: SideRailRoom, panelRoom: SideRailRoom) -> Bool {
+        inspector && (room == .two || (room == .one && !dayPanelShown(in: panelRoom, onJournal: false)))
     }
 
     mutating func toggleDayPanel(in room: SideRailRoom, onJournal: Bool) {
@@ -63,8 +72,8 @@ struct SideRailsOpen: Equatable {
         }
     }
 
-    mutating func toggleInspector(in room: SideRailRoom) {
-        if inspectorShown(in: room) {
+    mutating func toggleInspector(in room: SideRailRoom, panelRoom: SideRailRoom) {
+        if inspectorShown(in: room, panelRoom: panelRoom) {
             inspector = false
         } else {
             inspector = true
@@ -73,19 +82,19 @@ struct SideRailsOpen: Equatable {
     }
 }
 
-/// The shell's rails: the room on the shown page, the open states, and the
-/// day the Day Panel shows off the journal page.
+/// The shell's rails: each page's room, the open states, and the day the Day
+/// Panel shows where it follows no journal day. Every question names its
+/// page; the shell asks for the selected one (`TasksRouter.selectedTab`).
 @MainActor
 @Observable
 final class SideRails {
     static let dayPanelKey = "dayPanel.open"
     static let journalDayPanelKey = "dayPanel.journal.open"
 
-    /// Measured by the shown page's `DayPanelHost`.
-    var room: SideRailRoom = .none
-    /// Whether the shown page is the Journal, set by its `DayPanelHost`.
-    var onJournal = false
-    /// The day stepped to off the journal page; `nil` follows today.
+    /// Each page's room, measured by its `DayPanelHost`.
+    private var rooms: [VaultTab: SideRailRoom] = [:]
+    /// The day stepped to where the panel follows no journal day; `nil`
+    /// follows today.
     var steppedDay: String?
     private(set) var open: SideRailsOpen {
         didSet {
@@ -96,9 +105,11 @@ final class SideRails {
     }
 
     @ObservationIgnored private let defaults: UserDefaults
+    @ObservationIgnored private let settings: LocalSettings
 
-    init(defaults: UserDefaults = .standard) {
+    init(defaults: UserDefaults = .standard, settings: LocalSettings = .shared) {
         self.defaults = defaults
+        self.settings = settings
         open = SideRailsOpen(
             dayPanel: defaults.bool(forKey: Self.dayPanelKey),
             journalDayPanel: defaults.object(forKey: Self.journalDayPanelKey) as? Bool ?? true,
@@ -106,12 +117,36 @@ final class SideRails {
         )
     }
 
-    var dayPanelShown: Bool { open.dayPanelShown(in: room, onJournal: onJournal) }
-    var inspectorFits: Bool { room != .none }
-    var inspectorShown: Bool { open.inspectorShown(in: room) }
+    func measured(_ room: SideRailRoom, on page: VaultTab) {
+        if rooms[page] != room { rooms[page] = room }
+    }
 
-    func toggleDayPanel() { open.toggleDayPanel(in: room, onJournal: onJournal) }
-    func toggleInspector() { open.toggleInspector(in: room) }
+    /// The Day Panel's room on `page`: none on Calendar, which has its own
+    /// agenda column, and none while Journal is off.
+    func dayPanelRoom(on page: VaultTab) -> SideRailRoom {
+        guard page != .calendar, settings.isOn(.journal) else { return .none }
+        return rooms[page] ?? .none
+    }
+
+    func dayPanelFits(on page: VaultTab) -> Bool { dayPanelRoom(on: page) != .none }
+
+    func dayPanelShown(on page: VaultTab) -> Bool {
+        open.dayPanelShown(in: dayPanelRoom(on: page), onJournal: page == .journal)
+    }
+
+    func toggleDayPanel(on page: VaultTab) {
+        open.toggleDayPanel(in: dayPanelRoom(on: page), onJournal: page == .journal)
+    }
+
+    // The inspector shows beside a note on the Notes page.
+    var inspectorFits: Bool { rooms[.notes, default: .none] != .none }
+    var inspectorShown: Bool {
+        open.inspectorShown(in: rooms[.notes, default: .none], panelRoom: dayPanelRoom(on: .notes))
+    }
+
+    func toggleInspector() {
+        open.toggleInspector(in: rooms[.notes, default: .none], panelRoom: dayPanelRoom(on: .notes))
+    }
 
     /// The Day Panel's day: the journal's shown day where it follows one,
     /// else the day stepped to, else today.
@@ -119,22 +154,15 @@ final class SideRails {
         shownDay ?? steppedDay ?? today
     }
 
-    /// A day picked in the panel. On the journal page it shows that day;
-    /// elsewhere the panel steps to it, and today goes back to following
-    /// today.
-    func step(to day: String, today: String, journal: JournalRouter?) {
-        if let journal, journal.shownDay != nil {
-            var transaction = Transaction()
-            transaction.disablesAnimations = true
-            withTransaction(transaction) { journal.showDay(day) }
-        } else {
-            steppedDay = day == today ? nil : day
-        }
+    /// The panel's own ‹ › and Today, and a day picked off the Journal page:
+    /// the panel steps to it, and today goes back to following today.
+    func step(to day: String, today: String) {
+        steppedDay = day == today ? nil : day
     }
 }
 
-/// One page of the shell with the Day Panel beside it. It measures the page
-/// for both rails and hands the room to the shell's `SideRails`.
+/// One page of the shell with the Day Panel beside it. Every page measures
+/// its own room; only the selected page draws the panel.
 struct DayPanelHost: ViewModifier {
     let page: VaultTab
     let isSelected: Bool
@@ -142,36 +170,46 @@ struct DayPanelHost: ViewModifier {
     @Environment(SideRails.self) private var rails
     @Environment(JournalRouter.self) private var journal
     @Environment(\.journalStore) private var store
+    @Environment(\.journalStoreFailure) private var failure
     @Environment(\.journalTasks) private var tasks
     @Environment(\.horizontalSizeClass) private var horizontalSizeClass
     @Environment(\.verticalSizeClass) private var verticalSizeClass
     @Environment(\.dynamicTypeSize) private var typeSize
-    @State private var room: SideRailRoom = .none
 
     func body(content: Content) -> some View {
         let regular = LayoutWidth(horizontal: horizontalSizeClass, vertical: verticalSizeClass) == .regular
         let large = typeSize.isAccessibilitySize
         HStack(spacing: 0) {
             content
-            if rails.dayPanelShown, let store {
-                let today = store.clock.today
-                DayPanelRail(
-                    store: store,
-                    date: rails.dayPanelDate(following: followedDay, today: today),
-                    show: { rails.step(to: $0, today: today, journal: followedDay == nil ? nil : journal) }
-                )
-                // The Tasks and Journal pages bind the prompts themselves.
-                .modifier(JournalSubtaskPrompts(tasks: page == .tasks || page == .journal ? nil : tasks))
-            }
+            if isSelected, rails.dayPanelShown(on: page) { panel }
         }
         .onGeometryChange(for: SideRailRoom.self) {
-            SideRailRoom(width: $0.size.width, regular: regular, accessibilitySize: large)
-        } action: { room = $0 }
-        .onChange(of: isSelected ? room : nil, initial: true) { _, room in
-            if let room {
-                rails.room = room
-                rails.onJournal = page == .journal
-            }
+            SideRailRoom(width: $0.size.width, regular: regular, accessibilitySize: large, onJournal: page == .journal)
+        } action: { rails.measured($0, on: page) }
+    }
+
+    @ViewBuilder private var panel: some View {
+        let hide = { rails.toggleDayPanel(on: page) }
+        if let store {
+            let today = store.clock.today
+            let step = { (day: String) in rails.step(to: day, today: today) }
+            DayPanelRail(
+                store: store,
+                date: rails.dayPanelDate(following: followedDay, today: today),
+                // The Journal day's toolbar steps the day it shows.
+                step: followedDay == nil ? step : nil,
+                // On the Journal a picked day opens there, at every level.
+                pick: page == .journal ? { day in
+                    var transaction = Transaction()
+                    transaction.disablesAnimations = true
+                    withTransaction(transaction) { journal.showDay(day) }
+                } : step,
+                hide: hide
+            )
+            // The Tasks and Journal pages bind the prompts themselves.
+            .modifier(JournalSubtaskPrompts(tasks: page == .tasks || page == .journal ? nil : tasks))
+        } else {
+            DayPanelUnavailable(failure: failure, hide: hide)
         }
     }
 
@@ -179,18 +217,19 @@ struct DayPanelHost: ViewModifier {
     private var followedDay: String? { page == .journal ? journal.shownDay : nil }
 }
 
-/// The page's Day Panel button, where a rail fits.
+/// The page's Day Panel button, while the panel is closed and fits. The open
+/// panel carries its own hide button.
 struct DayPanelToolbarItem: ToolbarContent {
     @Environment(SideRails.self) private var rails: SideRails?
+    @Environment(TasksRouter.self) private var tabs: TasksRouter?
 
     var body: some ToolbarContent {
-        if let rails, rails.room != .none {
+        if let rails, let page = tabs?.selectedTab, rails.dayPanelFits(on: page), !rails.dayPanelShown(on: page) {
             ToolbarItem(placement: .topBarTrailing) {
-                Button(
-                    rails.dayPanelShown ? JournalCopy.Rail.hide : JournalCopy.Rail.show,
-                    systemImage: "calendar.day.timeline.trailing"
-                ) { rails.toggleDayPanel() }
-                    .accessibilityIdentifier("dayPanel.toggle")
+                Button(JournalCopy.Rail.show, systemImage: "calendar.day.timeline.trailing") {
+                    rails.toggleDayPanel(on: page)
+                }
+                .accessibilityIdentifier("dayPanel.toggle")
             }
         }
     }

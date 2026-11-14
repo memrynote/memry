@@ -128,18 +128,29 @@ struct VaultCommandsTests {
         #expect(tasks.selectedTab == .tasks)
     }
 
-    @Test func day_panel_key_toggles_the_panel_only_where_a_rail_fits() {
+    @Test func day_panel_key_toggles_the_selected_pages_panel_only_where_a_rail_fits() {
         let commands = commands()
-        rails.room = .none
+        tasks.selectedTab = .tasks
+        rails.measured(.none, on: .tasks)
         #expect(!commands.can(.dayPanel), "compact width and narrow windows have no panel")
         commands.run(.dayPanel)
         #expect(!rails.open.dayPanel)
 
-        rails.room = .one
+        rails.measured(.one, on: .tasks)
         commands.run(.dayPanel)
-        #expect(rails.dayPanelShown)
+        #expect(rails.dayPanelShown(on: .tasks))
         commands.run(.dayPanel)
-        #expect(!rails.dayPanelShown)
+        #expect(!rails.dayPanelShown(on: .tasks))
+
+        tasks.selectedTab = .journal
+        rails.measured(.one, on: .journal)
+        commands.run(.dayPanel)
+        #expect(!rails.open.journalDayPanel, "on the Journal the key closes the Journal's panel")
+        #expect(!rails.open.dayPanel)
+
+        tasks.selectedTab = .calendar
+        rails.measured(.one, on: .calendar)
+        #expect(!commands.can(.dayPanel), "Calendar has its own agenda column")
     }
 
     @Test func every_command_has_its_own_key() {

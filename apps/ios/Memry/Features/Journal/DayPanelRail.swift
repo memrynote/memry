@@ -3,12 +3,13 @@ import SwiftUI
 
 // #4351 (D8, D9), #4380. The Day Panel (desktop `global-day-panel.tsx`,
 // ⇧⌘B), which is also the Journal rail (DESIGN.md › Tablet › Side rails): the
-// day with ‹ › and Today, a mini month calendar that jumps to a day and marks
+// day with ‹ › and Today (not on the Journal day, whose toolbar has them) and
+// a hide button, a mini month calendar that jumps to a day and marks
 // the days with an entry, the day's tasks and events, and the same day in
 // other years. No statistics, no AI connections. `DayPanelHost` lays it
 // beside every page in its own `Tokens.Size.rail` of width, so the page never
-// slides under it. On the journal page it follows the shown day; elsewhere it
-// shows today until stepped (`SideRails`).
+// slides under it. On the journal page it follows the shown day and a picked
+// day opens there; elsewhere it shows today until stepped (`SideRails`).
 
 extension EnvironmentValues {
     /// The day screen shows the rail, which carries the day's tasks; the
@@ -19,33 +20,28 @@ extension EnvironmentValues {
 struct DayPanelRail: View {
     let store: JournalStore
     let date: String
-    /// Shows a day: in place on the journal page, in the panel elsewhere.
-    let show: (String) -> Void
+    /// The header's ‹ › and Today; `nil` on the Journal day, whose toolbar
+    /// has them.
+    let step: ((String) -> Void)?
+    /// A day picked in the calendar or On this day.
+    let pick: (String) -> Void
+    let hide: () -> Void
 
     var body: some View {
         ScrollView {
             VStack(alignment: .leading, spacing: Tokens.Space.section) {
                 header
-                JournalMiniMonth(store: store, date: date, show: show)
+                JournalMiniMonth(store: store, date: date, show: pick)
                 JournalDayAgenda(date: date, today: store.clock.today)
-                JournalOnThisDay(store: store, date: date, show: show)
+                JournalOnThisDay(store: store, date: date, show: pick)
             }
             .padding(Tokens.Space.medium)
         }
-        .frame(width: Tokens.Size.rail)
-        .background(Tokens.Canvas.background.color)
-        .overlay(alignment: .leading) {
-            Rectangle()
-                .fill(Tokens.Line.border.color)
-                .frame(width: Tokens.Size.hairline)
-                .ignoresSafeArea()
-        }
-        .accessibilityElement(children: .contain)
-        .accessibilityLabel(JournalCopy.Rail.label)
-        .accessibilityIdentifier("dayPanel")
+        .dayPanelColumn()
     }
 
-    /// The day, stepped a day at a time as on desktop's panel.
+    /// The day, stepped a day at a time as on desktop's panel, and the
+    /// panel's hide button.
     private var header: some View {
         HStack(spacing: 0) {
             Text(date == store.clock.today ? JournalCopy.today : JournalCopy.inlineTitle(date))
@@ -55,23 +51,85 @@ struct DayPanelRail: View {
                 .accessibilityAddTraits(.isHeader)
                 .accessibilityIdentifier("dayPanel.date")
             Spacer(minLength: Tokens.Space.small)
-            if date != store.clock.today {
-                Button(JournalCopy.today) { show(store.clock.today) }
-                    .accessibilityLabel(JournalCopy.goToToday)
-                    .frame(minHeight: Tokens.Size.minimumHitArea)
-                    .accessibilityIdentifier("dayPanel.today")
+            if let step {
+                if date != store.clock.today {
+                    Button(JournalCopy.today) { step(store.clock.today) }
+                        .accessibilityLabel(JournalCopy.goToToday)
+                        .frame(minHeight: Tokens.Size.minimumHitArea)
+                        .accessibilityIdentifier("dayPanel.today")
+                }
+                dayStep(-1, label: JournalCopy.previousDay, symbol: "chevron.backward", id: "previous", step: step)
+                dayStep(1, label: JournalCopy.nextDay, symbol: "chevron.forward", id: "next", step: step)
             }
-            dayStep(-1, label: JournalCopy.previousDay, symbol: "chevron.backward", id: "previous")
-            dayStep(1, label: JournalCopy.nextDay, symbol: "chevron.forward", id: "next")
+            DayPanelHideButton(hide: hide)
         }
     }
 
-    private func dayStep(_ offset: Int, label: String, symbol: String, id: String) -> some View {
-        Button(label, systemImage: symbol) { show(JournalDates.adding(offset, to: date)) }
+    private func dayStep(_ offset: Int, label: String, symbol: String, id: String, step: @escaping (String) -> Void) -> some View {
+        Button(label, systemImage: symbol) { step(JournalDates.adding(offset, to: date)) }
             .labelStyle(.iconOnly)
             .frame(width: Tokens.Size.minimumHitArea, height: Tokens.Size.minimumHitArea)
             .contentShape(.rect)
             .accessibilityIdentifier("dayPanel.\(id)")
+    }
+}
+
+/// The panel while the vault's journal is not open: why it could not be
+/// opened (the Journal page's own error), or loading.
+struct DayPanelUnavailable: View {
+    let failure: UserFacingError?
+    let hide: () -> Void
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: Tokens.Space.section) {
+            HStack(spacing: 0) {
+                Text(JournalCopy.Rail.label)
+                    .font(Tokens.Typography.heading.font)
+                    .foregroundStyle(Tokens.Text.primary.color)
+                    .accessibilityAddTraits(.isHeader)
+                Spacer(minLength: Tokens.Space.small)
+                DayPanelHideButton(hide: hide)
+            }
+            if let failure {
+                ErrorNotice(error: failure, code: nil)
+            } else {
+                ProgressView(JournalCopy.loading)
+                    .frame(maxWidth: .infinity)
+            }
+            Spacer(minLength: 0)
+        }
+        .padding(Tokens.Space.medium)
+        .dayPanelColumn()
+    }
+}
+
+/// Closes the panel; the page's toolbar button opens it again.
+private struct DayPanelHideButton: View {
+    let hide: () -> Void
+
+    var body: some View {
+        Button(JournalCopy.Rail.hide, systemImage: "calendar.day.timeline.trailing", action: hide)
+            .labelStyle(.iconOnly)
+            .frame(width: Tokens.Size.minimumHitArea, height: Tokens.Size.minimumHitArea)
+            .contentShape(.rect)
+            .accessibilityIdentifier("dayPanel.hide")
+    }
+}
+
+private extension View {
+    /// The panel's own `Tokens.Size.rail` beside the page, behind a hairline.
+    func dayPanelColumn() -> some View {
+        frame(width: Tokens.Size.rail)
+            .background(Tokens.Canvas.background.color)
+            .overlay(alignment: .leading) {
+                Rectangle()
+                    .fill(Tokens.Line.border.color)
+                    .frame(width: Tokens.Size.hairline)
+                    .ignoresSafeArea()
+            }
+            .accessibilityElement(children: .contain)
+            .accessibilityLabel(JournalCopy.Rail.label)
+            .accessibilityIdentifier("dayPanel")
     }
 }
 

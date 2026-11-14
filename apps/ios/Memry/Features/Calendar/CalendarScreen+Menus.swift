@@ -64,7 +64,6 @@ extension CalendarScreen {
                 .accessibilityIdentifier("calendar.filter")
             }
         }
-        DayPanelToolbarItem()
         // The vault-wide search keeps the magnifier's slot on every page;
         // the calendar's own search is in the title menu.
         GlobalSearchToolbarItem()
