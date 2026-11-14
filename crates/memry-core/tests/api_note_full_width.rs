@@ -7,13 +7,14 @@
 //! | a toggle writes only `fullWidth`                      | other keys untouched, queued  |
 //! | a value that is not a boolean follows the global width | desktop `typeof === boolean`  |
 //! | the override is a property row                        | desktop lists it, unreserved  |
+//! | a toggle over text is refused untouched               | a value edit never retypes    |
 
 use std::collections::HashMap;
 use std::path::{Path, PathBuf};
 use std::sync::atomic::{AtomicU64, Ordering};
 use std::sync::{Arc, Mutex};
 
-use memry_core::api::errors::{SecureStoreError, StorageError};
+use memry_core::api::errors::{PropertyWriteError, SecureStoreError, StorageError};
 use memry_core::api::vault::Vault;
 use memry_core::seams::secure_store::{SecureStore, SecureStoreKey};
 use memry_core::storage::repositories::sync_items;
@@ -100,15 +101,19 @@ fn seed(dir: &Path, id: &str, payload: &Value) {
 }
 
 fn stored(dir: &Path, id: &str) -> Value {
-    let raw = behind(dir)
+    serde_json::from_str(&raw(dir, id)).expect("JSON")
+}
+
+/// The payload as stored, byte for byte.
+fn raw(dir: &Path, id: &str) -> String {
+    behind(dir)
         .call_blocking(|conn: &mut Connection| {
             sync_items::push_payload(conn, "note", id).map_err(|error| StorageError::Failed {
                 what: error.to_string(),
             })
         })
         .expect("read")
-        .expect("a payload");
-    serde_json::from_str(&raw).expect("JSON")
+        .expect("a payload")
 }
 
 fn queued(dir: &Path) -> i64 {
@@ -220,4 +225,37 @@ fn a_value_that_is_not_a_boolean_follows_the_global_width() {
         vault.notes().full_width("null".into()).expect("read"),
         Some(true)
     );
+}
+
+/// #4649. Desktop's own value is not a boolean, so the toggle must not
+/// coerce it: the refusal is typed for the shell's copy, and nothing is
+/// written or queued.
+#[test]
+fn a_toggle_over_text_is_refused_untouched() {
+    let (dir, vault) = vault("refused");
+    seed(
+        &dir,
+        "n1",
+        &desktop_note(json!({"status": "draft", "fullWidth": "yes"})),
+    );
+    let before = raw(&dir, "n1");
+    let rows = queued(&dir);
+    let writer = vault.notes_writer(registered()).expect("writer");
+
+    let refused = writer.set_full_width("n1".into(), true);
+
+    assert_eq!(
+        refused,
+        Err(PropertyWriteError::Retyped {
+            name: "fullWidth".to_owned(),
+            existing: "text".to_owned(),
+            proposed: "a boolean".to_owned(),
+        })
+    );
+    assert_eq!(
+        raw(&dir, "n1"),
+        before,
+        "the payload must be byte-identical"
+    );
+    assert_eq!(queued(&dir), rows, "nothing may reach the outbox");
 }
