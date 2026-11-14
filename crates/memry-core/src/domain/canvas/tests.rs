@@ -137,6 +137,46 @@ fn a_payload_without_a_scene_or_a_create_without_a_vault_is_skipped() {
     .expect("skips");
 }
 
+/// `CanvasSyncPayloadSchema` refuses each of these, so desktop never applies
+/// them; nor may core, even where a kept local key would mask the bad one.
+#[test]
+fn a_newer_remote_desktops_schema_refuses_leaves_the_local_canvas_alone() {
+    let (db, _dir) = open("canvas-refused");
+    db.call_blocking(|conn| {
+        seed(
+            conn,
+            "c1",
+            &scene_with("note-keep"),
+            json!({ "A": 1 }),
+            json!({}),
+        );
+        let before = stored(conn, "c1");
+        let scene = scene_with("note-remote");
+        for bad in [
+            json!({ "vaultId": 7 }),
+            json!({ "vaultId": null }),
+            json!({ "title": 7 }),
+            json!({ "folder": ["Work"] }),
+            json!({ "icon": false }),
+            json!({ "id": null }),
+        ] {
+            let mut payload = json!({ "id": "c1", "vaultId": VAULT_ID, "scene": scene,
+                                      "clock": { "A": 1, "B": 2 } });
+            for (key, value) in bad.as_object().expect("keys") {
+                payload[key] = value.clone();
+            }
+            assert_eq!(
+                apply_inbound(conn, &inbound("c1", payload), NOW)?,
+                ApplyOutcome::Refused,
+                "{bad}"
+            );
+            assert_eq!(stored(conn, "c1"), before, "{bad}");
+        }
+        Ok(())
+    })
+    .expect("refused");
+}
+
 #[test]
 fn a_newer_remote_overwrites_and_an_older_one_is_skipped() {
     let (db, _dir) = open("canvas-lww");
@@ -271,10 +311,15 @@ fn a_concurrent_edit_over_a_different_scene_keeps_both_drawings() {
                 "ownerNoteId": "note-1", "clock": { LOCAL_DEVICE: 1 }, "deletedAt": null,
             })
         );
-        assert_eq!(
-            outbox(conn),
-            [(ITEM_TYPE.to_owned(), copy_id.clone(), "upsert".to_owned())]
-        );
+        // The copy, and the merged original re-queued (§6.5.2 P3).
+        let mut queued = outbox(conn);
+        queued.sort();
+        let mut expected = [
+            (ITEM_TYPE.to_owned(), copy_id.clone(), "upsert".to_owned()),
+            (ITEM_TYPE.to_owned(), "c1".to_owned(), "upsert".to_owned()),
+        ];
+        expected.sort();
+        assert_eq!(queued, expected);
         Ok(())
     })
     .expect("conflict");
@@ -295,7 +340,11 @@ fn a_concurrent_edit_over_an_identical_scene_merges_clocks_only() {
             ApplyOutcome::Applied
         );
         assert_eq!(canvas_ids(conn), ["c1"]);
-        assert_eq!(outbox(conn), []);
+        // No copy; the merged row is re-queued at the union (§6.5.2 P3).
+        assert_eq!(
+            outbox(conn),
+            [(ITEM_TYPE.to_owned(), "c1".to_owned(), "upsert".to_owned())]
+        );
         assert_eq!(stored(conn, "c1")["clock"], json!({ "A": 2, "B": 3 }));
         Ok(())
     })

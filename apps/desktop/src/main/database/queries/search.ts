@@ -25,13 +25,7 @@ import type {
   TaskResultMetadata,
   InboxResultMetadata
 } from '@memry/contracts/search-api'
-import {
-  normalizeScores,
-  buildPhraseQuery,
-  buildPrefixQuery,
-  parseSearchQuery,
-  truncateQuery
-} from '../../lib/search-utils'
+import { normalizeScores, parseSearchQuery, truncateQuery } from '../../lib/search-utils'
 import { fuzzySearchTitles } from '../../lib/fuzzysort-search'
 import { mergeNameHits, searchNoteNames } from './search-note-names'
 import { fuseSemanticHits, type SemanticHit } from './search-semantic-merge'
@@ -558,9 +552,7 @@ export function searchAll(
 ): SearchResponse {
   const startTime = performance.now()
   const truncated = truncateQuery(query.text)
-  const hasOperators = /\b(AND|OR|NOT)\b/.test(truncated) || /"[^"]+"/.test(truncated)
-  const ftsQuery = hasOperators ? parseSearchQuery(truncated) : buildPrefixQuery(truncated)
-  const phraseQuery = hasOperators ? '' : buildPhraseQuery(truncated)
+  const { match: ftsQuery, phrase: phraseQuery } = parseSearchQuery(truncated)
 
   if (!ftsQuery) {
     return { groups: [], totalCount: 0, queryTimeMs: 0 }

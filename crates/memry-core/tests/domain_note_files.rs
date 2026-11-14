@@ -252,10 +252,10 @@ fn missing_candidates_skip_attachments_that_never_arrived() {
 #[test]
 fn the_migration_runs_again_over_a_file_that_already_has_the_table() {
     // A crash between the migration's commit and the `user_version` pragma leaves the
-    // table in place at the old version; the next open runs 0019 again. Nothing past 0019
-    // has run in that window, so 0020's `note_positions` and 0022's `note_place_owed` are not
-    // there either: a file at 18 that has one reads as one an earlier desktop build numbered
-    // (`legacy_numbering`).
+    // table in place at the old version; the next open runs 0020 again. Nothing past 0020
+    // has run in that window, so 0021's `note_positions`, 0022's `note_file_hashes`, 0023's
+    // `note_place_owed` and 0024's `wiki_name_keys` are not there either: a file at 19 that has
+    // one reads as one an earlier desktop build numbered (`legacy_numbering`).
     let Fixture { dir, vault } = fixture();
     vault
         .note_files()
@@ -265,7 +265,8 @@ fn the_migration_runs_again_over_a_file_that_already_has_the_table() {
         .db_handle()
         .call_blocking(|conn| {
             conn.execute_batch(
-                "DROP TABLE note_positions; DROP TABLE note_place_owed; PRAGMA user_version = 18",
+                "DROP TABLE note_positions; DROP TABLE note_file_hashes; DROP TABLE note_place_owed;
+                 DROP TABLE wiki_name_keys; PRAGMA user_version = 19",
             )
             .map_err(|err| StorageError::Failed {
                 what: err.to_string(),

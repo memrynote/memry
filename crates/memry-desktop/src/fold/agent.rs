@@ -10,10 +10,13 @@
 use std::sync::atomic::{AtomicU64, Ordering};
 use std::time::Duration;
 
+use async_trait::async_trait;
 use serde::{Deserialize, Serialize};
+use serde_json::Value;
 use tokio::sync::Mutex;
 use tokio::time::Instant;
 
+use super::queue::{FoldBackend, FoldWriter};
 use crate::ai::local_agent::LocalAgent;
 
 /// How long a detected agent holds (`DETECTED_TTL_MS`).
@@ -186,5 +189,50 @@ fn pick(found: &[DetectedAgent], choice: FoldAgentChoice) -> Option<&DetectedAge
     match choice {
         FoldAgentChoice::Auto => found.first(),
         choice => found.iter().find(|agent| agent.id == choice),
+    }
+}
+
+/// `toFoldAgent`: the label, the model the run asks for and the cache's model id
+/// (`<agent>:<model or default>`), and the run.
+#[async_trait]
+impl FoldBackend for FoldAgents {
+    async fn writer(&self, choice: FoldAgentChoice) -> Option<FoldWriter> {
+        let agent = self.resolve(choice).await?;
+        Some(FoldWriter {
+            id: agent.id,
+            label: agent.id.label().to_owned(),
+            model_id: format!(
+                "{}:{}",
+                agent.id.as_str(),
+                agent.model.as_deref().unwrap_or("default")
+            ),
+            model: agent.model,
+        })
+    }
+
+    async fn run(&self, writer: &FoldWriter, prompt: &str) -> Result<Value, String> {
+        match writer.id {
+            FoldAgentChoice::LocalOpenaiCompatible => {
+                // Detected with no model, the cache key says `default`: a model configured since
+                // would write its reply under that key, so the run waits for a new detection.
+                // Jobs already queued with this writer fail too, on purpose: none of them
+                // writes a reply under the stale key.
+                if writer.model.is_none() && !self.local.configured_model().await.is_empty() {
+                    self.reset();
+                    return Err("the local model changed after the fold detected it".to_owned());
+                }
+                let model = writer.model.clone();
+                match self.local.complete_structured::<Value>(prompt, model).await {
+                    Ok(reply) => Ok(reply),
+                    Err(error) => Err(self.local.redact(error.to_string()).await),
+                }
+            }
+            // Detection finds the local provider only, so no other agent resolves.
+            other => Err(format!("{} does not run in this build", other.label())),
+        }
+    }
+
+    fn forget(&self) {
+        self.reset();
     }
 }

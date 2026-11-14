@@ -127,10 +127,6 @@ function toListItem(view: NoteListItemView): NoteListItem {
   return { ...view, created: new Date(view.created), modified: new Date(view.modified) }
 }
 
-// main's reference filters (sourceJournalDate, sourceTags) are not in the Tauri link commands
-// yet, and nothing in this renderer reads them: every source reads as untagged, not a journal day.
-const NO_FACETS = { sourceJournalDate: null, sourceTags: [] }
-
 /** A version as the history lists it. Rust sends the stored reason, which only Memry writes. */
 function toVersion(view: VersionView): SnapshotListItem {
   // oxlint-disable-next-line typescript/no-unsafe-type-assertion -- string DB/wire column narrowed to the union its writers constrain
@@ -424,11 +420,7 @@ const ported = {
     const links = await commands.notesGetLinks(id)
     return {
       ...links,
-      incoming: links.incoming.map(({ via, ...link }) => ({
-        ...link,
-        ...NO_FACETS,
-        ...(via ? { via } : {})
-      }))
+      incoming: links.incoming.map(({ via, ...link }) => ({ ...link, ...(via ? { via } : {}) }))
     }
   },
   resolveByTitle: (title: string): Promise<WikiLinkResolution | null> =>
@@ -437,8 +429,8 @@ const ported = {
     commands.notesResolveTitles(titles),
   resolveWikiTarget: (target: string): Promise<WikiLinkTargetResolution | null> =>
     commands.notesResolveWikiTarget(target),
-  getUnlinkedMentions: async (id: string): Promise<UnlinkedMention[]> =>
-    (await commands.notesGetUnlinkedMentions(id)).map((mention) => ({ ...mention, ...NO_FACETS })),
+  getUnlinkedMentions: (id: string): Promise<UnlinkedMention[]> =>
+    commands.notesGetUnlinkedMentions(id),
   linkMention: async ({
     sourceId,
     targetId,

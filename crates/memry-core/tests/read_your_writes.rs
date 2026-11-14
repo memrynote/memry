@@ -218,8 +218,9 @@ fn search_sees_a_note_after_the_index_catches_up() {
     search.reindex().expect("reindex");
     assert!(
         search
-            .notes("Zanzibar".to_owned(), 10)
+            .search("Zanzibar".to_owned(), None, 10)
             .expect("search")
+            .notes
             .iter()
             .any(|r| r.id == id)
     );

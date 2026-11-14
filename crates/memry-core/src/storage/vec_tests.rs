@@ -7,8 +7,8 @@ use crate::storage::index_db::open_or_rebuild;
 use crate::storage::migrations::{INDEX_MIGRATIONS, latest_version, user_version};
 use crate::storage::test_support::temp_dir;
 
-const FIXTURE_DB: &[u8] = include_bytes!("../../tests/fixtures/index-vec-v6.db.gz");
-const FIXTURE_ANSWERS: &str = include_str!("../../tests/fixtures/index-vec-v6.json");
+const FIXTURE_DB: &[u8] = include_bytes!("../../tests/fixtures/index-vec-v7.db.gz");
+const FIXTURE_ANSWERS: &str = include_str!("../../tests/fixtures/index-vec-v7.json");
 
 fn count(conn: &Connection, sql: &str) -> i64 {
     conn.query_row(sql, [], |row| row.get(0)).expect(sql)
@@ -298,7 +298,7 @@ fn unpack_fixture(path: &Path) {
     std::fs::write(path, bytes).expect("write the fixture");
 }
 
-/// An index at migration 6 holding vec0 rows that Electron's sqlite-vec wrote
+/// An index at migration 7 holding vec0 rows that Electron's sqlite-vec wrote
 /// (`apps/desktop/scripts/vec-index-oracle/generate.cjs`) migrates in place, keeps
 /// every vector, drops its 768-wide `vec_images`, and answers Electron's `k = 30`
 /// query with Electron's ids and distances.
@@ -378,16 +378,16 @@ fn an_index_with_electron_vectors_survives_the_migration_and_answers_like_electr
         .expect("read back");
 }
 
-/// The fixture is what the test above takes it for: an index at migration 6 with
+/// The fixture is what the test above takes it for: an index at migration 7 with
 /// a `vec_images` from an older model.
 #[test]
-fn the_fixture_is_an_index_at_migration_6_with_a_768_wide_image_table() {
+fn the_fixture_is_an_index_at_migration_7_with_a_768_wide_image_table() {
     let dir = temp_dir("vec-fixture-raw");
     let path = dir.path().join("index.db");
     unpack_fixture(&path);
     let db = Db::open_with(&path, Profile::Index).expect("open");
     db.call_blocking(|conn| {
-        assert_eq!(user_version(conn)?, 6);
+        assert_eq!(user_version(conn)?, 7);
         assert_eq!(width(conn, VecTable::Images), Some(768));
         Ok(())
     })

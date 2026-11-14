@@ -192,7 +192,7 @@ struct ErrorMappingTests {
         for word in ["server", "network", "connection", "offline", "unreachable"] {
             #expect(!says(disk, word), "reads as a network failure: \(word)")
         }
-        #expect(says(disk, "this phone"))
+        #expect(says(disk, "this \(ThisDevice.noun)"))
         #expect(says(offline, "offline"))
         #expect(disk != offline)
     }

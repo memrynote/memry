@@ -71,6 +71,8 @@ struct VaultListView: View {
                 VaultSettingsScope(vault: vault, model: model, tasks: tasksStore) { settings, browse in
                     VaultTabsView(
                         switchVault: model.isSwitchable ? { Task { await model.chooseAgain() } } : nil,
+                        vaultName: VaultLabel(summary).text,
+                        settings: settings,
                         notes: {
                         NotesListView(
                             vault: vault,
@@ -110,7 +112,7 @@ struct VaultListView: View {
                 case let .choosing(summaries):
                     header(
                         "Choose a vault",
-                        "This account holds more than one. Memry opens the one you pick on this phone."
+                        "This account holds more than one. Memry opens the one you pick on this \(ThisDevice.noun)."
                     )
                     VaultChoiceList(summaries: summaries) { summary in
                         Task { await model.open(summary) }
@@ -139,6 +141,7 @@ struct VaultListView: View {
                 }
             }
             .frame(maxWidth: .infinity, alignment: .leading)
+            .measuredColumn(Tokens.Size.form)
             .padding(.horizontal, Tokens.Space.screenInline)
             .padding(.vertical, Tokens.Space.screenBlock)
         }
@@ -197,7 +200,7 @@ private struct VaultChoiceList: View {
                 .frame(maxWidth: .infinity, minHeight: Tokens.Size.minimumHitArea, alignment: .leading)
                 .blockSurface(radius: Tokens.Radius.control)
                 .accessibilityLabel(VaultLabel(summary).text)
-                .accessibilityHint("Opens this vault on this phone.")
+                .accessibilityHint("Opens this vault on this \(ThisDevice.noun).")
             }
         }
         .frame(maxWidth: .infinity, alignment: .leading)
@@ -255,7 +258,7 @@ private struct OpenedVaultNotice: View {
                 .foregroundStyle(label.isPlaceholder
                     ? Tokens.Text.secondary.color
                     : Tokens.Text.primary.color)
-            Text("This vault is open on this phone.")
+            Text("This vault is open on this \(ThisDevice.noun).")
                 .font(Tokens.Typography.body.font)
                 .foregroundStyle(Tokens.Text.secondary.color)
         }

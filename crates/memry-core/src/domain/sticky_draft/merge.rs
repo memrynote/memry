@@ -28,7 +28,7 @@ use crate::storage::repositories::sync_items::InboundRecord;
 
 use super::{ITEM_TYPE, can_create};
 
-const KEPT: Kept = Kept {
+pub(crate) const KEPT: Kept = Kept {
     not_null: &["content", "kind", "clock", "createdAt", "modifiedAt"],
     coalesce: &["content", "kind"],
     when_absent: &[],
@@ -50,13 +50,5 @@ pub fn apply_remote(
     if local.is_none() && !can_create(remote.object()) {
         return Ok(Inbound::Skipped);
     }
-    desktop_records::apply_kept(
-        conn,
-        record,
-        &remote,
-        local.as_ref(),
-        &KEPT,
-        Vec::new(),
-        now_ms,
-    )
+    desktop_records::apply_kept(conn, record, &remote, local.as_ref(), Vec::new(), now_ms)
 }

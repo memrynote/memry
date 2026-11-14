@@ -5,7 +5,8 @@
 
 mod common;
 
-use common::{floats, mono_samples, vectors};
+use common::audio::mono_samples;
+use common::{floats, vectors};
 use memry_ml::{MEL_BINS, audio_features, audio_windows, decode_wav};
 
 #[test]

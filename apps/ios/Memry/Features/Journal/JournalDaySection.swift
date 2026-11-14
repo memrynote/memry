@@ -17,9 +17,11 @@ struct JournalDaySection: View {
     let date: String
 
     @Environment(\.journalTasks) private var tasks
+    @Environment(\.journalRailShown) private var railShown
 
     var body: some View {
-        if let tasks {
+        // At regular width the rail shows the day's tasks (`JournalDayAgenda`).
+        if let tasks, !railShown {
             JournalDueTasks(tasks: tasks, date: date, today: store.clock.today)
         }
     }
@@ -57,11 +59,14 @@ enum JournalDayTasks {
     }
 }
 
-/// The section over a present tasks store.
-private struct JournalDueTasks: View {
+/// The tasks due on a day, over a present tasks store: the Day section on
+/// a phone, the rail's agenda at regular width.
+struct JournalDueTasks: View {
     let tasks: TasksStore
     let date: String
     let today: String
+    /// The rows' `JournalDayTaskRow.edge`, and the header's.
+    var edge = TaskLayout.edge
 
     @Environment(TasksRouter.self) private var router: TasksRouter?
 
@@ -80,7 +85,7 @@ private struct JournalDueTasks: View {
                     .overlay(Tokens.Line.border.color)
                 header(count: due.count)
                 ForEach(due, id: \.id) { task in
-                    JournalDayTaskRow(task: task, tasks: tasks, isLast: task.id == due.last?.id)
+                    JournalDayTaskRow(task: task, tasks: tasks, isLast: task.id == due.last?.id, edge: edge)
                 }
             }
         }
@@ -115,7 +120,7 @@ private struct JournalDueTasks: View {
             }
         }
         .padding(.top, Tokens.Space.small)
-        .padding(.horizontal, TaskLayout.edge)
+        .padding(.horizontal, edge)
     }
 
     /// Opens the Tasks tab (desktop opens the Tasks tab).

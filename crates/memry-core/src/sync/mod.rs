@@ -38,6 +38,7 @@
 
 pub mod apply;
 pub mod body_debt;
+pub mod body_heal;
 pub mod body_pull;
 pub mod body_step;
 pub mod bootstrap;
@@ -51,6 +52,7 @@ mod feed_restart;
 pub mod field_merge;
 pub mod first_sync;
 pub mod first_sync_store;
+pub(crate) mod hardening;
 pub mod journal_day_merge;
 pub mod note_body_feed;
 pub mod outbox;
@@ -60,6 +62,7 @@ pub mod pull;
 mod pull_decode;
 mod pull_report;
 pub mod push;
+pub mod refused_items;
 pub mod settings_merge;
 pub mod socket;
 mod socket_frame;

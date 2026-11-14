@@ -21,11 +21,14 @@
 //!   the user re-enters it after choosing a cloud provider.
 //! - Until a key can move (a locked keychain), the key is never used and a change to a provider
 //!   or URL that takes a key is refused, so the key cannot follow the change. A switch to Ollama
-//!   is allowed.
+//!   is allowed, and gives the pending key up: once the keychain answers, a plaintext row key is
+//!   parked as above and a legacy key stays where it is, so a switch back to a cloud provider
+//!   shows no key and the user re-enters it.
 //! - Downgrade to a build before #4451: it ignores `apiKeyPerProvider` (and keeps it on write) and
-//!   reads only the legacy entry, which this build never writes or deletes. So it sees the key it
-//!   had before the upgrade (or none), not keys typed or moved from a plaintext row since; those
-//!   are re-entered there, and come back here on the next upgrade.
+//!   reads only the legacy entry. This build never deletes that entry, and writes it only to park
+//!   a plaintext row key found under Ollama. So the older build sees the key it had before the
+//!   upgrade (or the parked one, or none), not keys typed or moved since; those are re-entered
+//!   there, and come back here on the next upgrade.
 
 use std::sync::{Arc, Mutex, PoisonError};
 
@@ -289,7 +292,8 @@ impl InlineAiStore {
         let provider = updates.provider.unwrap_or(settings.provider);
         let base_url = updates.base_url.as_deref().unwrap_or(&settings.base_url);
         let account = self.key_account(&vault.vault_id, provider, base_url);
-        // A selection that takes no key (Ollama) cannot carry the pending key anywhere.
+        // A selection that takes no key (Ollama) cannot carry the pending key anywhere, so it is
+        // allowed and the key is given up: it parks or stays unbound, and needs re-entry.
         if let Some(error) = pending
             && ((reselects && account.is_some()) || key.is_some())
         {
@@ -434,7 +438,11 @@ impl InlineAiStore {
         account: Option<&str>,
     ) -> Result<Option<SecureStoreError>, AiSettingsError> {
         if let Some(account) = account {
-            match self.secrets.get_secret(SERVICE, account) {
+            match self
+                .secrets
+                .get_secret(SERVICE, account)
+                .map(|key| key.map(Zeroizing::new))
+            {
                 Ok(None) => {}
                 Ok(Some(_)) => return self.mark_bound(vault),
                 Err(error) => return Ok(Some(error)),

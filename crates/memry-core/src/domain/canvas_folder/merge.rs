@@ -27,7 +27,7 @@ use crate::storage::repositories::sync_items::InboundRecord;
 
 use super::ITEM_TYPE;
 
-const KEPT: Kept = Kept {
+pub(crate) const KEPT: Kept = Kept {
     not_null: &["id", "vaultId", "path", "clock"],
     coalesce: &["path"],
     when_absent: &["icon"],
@@ -56,13 +56,5 @@ pub fn apply_remote(
     if local.is_none() && !(stated("vaultId") && stated("path")) {
         return Ok(Inbound::Skipped);
     }
-    desktop_records::apply_kept(
-        conn,
-        record,
-        &remote,
-        local.as_ref(),
-        &KEPT,
-        Vec::new(),
-        now_ms,
-    )
+    desktop_records::apply_kept(conn, record, &remote, local.as_ref(), Vec::new(), now_ms)
 }

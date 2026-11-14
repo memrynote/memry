@@ -433,10 +433,7 @@
       "empty": "Rien ne correspond encore à cette vue.",
       "loadFailed": "Impossible de charger cette vue. Les notes elles-mêmes sont intactes.",
       "folderMissing": "Ce dossier n'est plus dans le coffre. Choisissez une autre source.",
-      "unreadable": "Cette vue est illisible. Choisissez une source ci-dessus ou supprimez le bloc.",
-      "invalidJson": "La définition de cette vue n'est pas du JSON valide. Corrigez-la ci-dessous ou retirez le bloc.",
-      "invalidShape": "La définition de cette vue n'a pas de source. Choisissez-en une ci-dessus ou corrigez-la ci-dessous.",
-      "definition": "Définition"
+      "unreadable": "Cette vue est illisible. Choisissez une source ci-dessus ou supprimez le bloc."
     },
     "chart": {
       "title": "Graphique",

@@ -1,36 +1,36 @@
 //! Parity with Electron's audio embeddings: `packages/contracts/test-vectors/embeddings-audio.json`,
 //! written by `tests/golden/generate-audio.mjs` from `audio-embedding.ts` in place and the audio
-//! path of `embedding-worker.ts` on transformers.js, holds every window Electron embeds for eight
-//! WAV files. Each file is decoded, split and embedded natively. Needs the pinned text and audio
-//! files in the directory `MEMRY_ML_MODEL_DIR` names; CI runs it on the full tier in the dev
-//! profile. Run: `cargo test -p memry-ml --test golden_audio -- --ignored`.
+//! path of `embedding-worker.ts` on transformers.js, holds every window Electron embeds for seven
+//! WAV files. Each file is decoded, split and embedded natively. The oracle embeds each window
+//! whole, where Electron's feature extractor keeps the first 30 s (Kaan, 2026-11-14): a longer
+//! window also records Electron's vector and its measured cosine (test-vectors README). Needs the
+//! pinned text and audio files in the directory `MEMRY_ML_MODEL_DIR` names; CI runs it on the full
+//! tier in the dev profile. Run: `cargo test -p memry-ml --test golden_audio -- --ignored`.
 
 mod common;
 
 use std::path::PathBuf;
 
-use common::{floats, vectors, wav};
+use common::audio::wav;
+use common::{cosine, floats, ids, vectors};
 use memry_ml::{
-    EMBEDDING_DIMENSION, EmbeddingEngine, LoadOptions, ModelGroup, audio_windows, decode_wav,
+    EMBEDDING_DIMENSION, EmbeddingEngine, LoadOptions, MlError, ModelGroup, SAMPLE_RATE,
+    audio_windows, decode_wav,
 };
-use serde_json::Value;
 
-fn engine() -> EmbeddingEngine {
-    let dir = PathBuf::from(std::env::var_os("MEMRY_ML_MODEL_DIR").expect("MEMRY_ML_MODEL_DIR"));
-    memry_ml::verify(&dir, ModelGroup::Text).expect("the pinned text files");
-    memry_ml::verify(&dir, ModelGroup::Audio).expect("the pinned audio files");
-    let mut engine = EmbeddingEngine::load(&dir, LoadOptions::default()).expect("load");
-    engine.load_audio(&dir).expect("load the audio encoder");
-    engine
+/// Samples Electron's feature extractor keeps of a window (`max_length`, 30 s).
+const ELECTRON_SAMPLES: u64 = 30 * SAMPLE_RATE as u64;
+
+fn model_dir() -> PathBuf {
+    PathBuf::from(std::env::var_os("MEMRY_ML_MODEL_DIR").expect("MEMRY_ML_MODEL_DIR"))
 }
 
-fn ids(value: &Value) -> Vec<i64> {
-    value
-        .as_array()
-        .expect("tokenIds")
-        .iter()
-        .map(|id| id.as_i64().expect("an integer id"))
-        .collect()
+/// The text group only: the audio encoder loads with the first window.
+fn engine() -> EmbeddingEngine {
+    let dir = model_dir();
+    memry_ml::verify(&dir, ModelGroup::Text).expect("the pinned text files");
+    memry_ml::verify(&dir, ModelGroup::Audio).expect("the pinned audio files");
+    EmbeddingEngine::load(&dir, LoadOptions::default()).expect("load")
 }
 
 #[test]
@@ -77,39 +77,66 @@ fn native_audio_embeddings_match_transformers_js() {
                 failures.push(format!("{name}: {} token ids differ", actual_ids.len()));
             }
             let vector = engine.embed_audio(window).expect("embed");
-            let oracle = floats(&oracle["embedding"]);
-            assert_eq!(oracle.len(), EMBEDDING_DIMENSION);
-            let cosine: f64 = vector
-                .iter()
-                .zip(&oracle)
-                .map(|(&a, &b)| f64::from(a) * f64::from(b))
-                .sum();
+            let electron = &oracle["electron"];
+            let expected = floats(&oracle["embedding"]);
+            assert_eq!(expected.len(), EMBEDDING_DIMENSION);
+            let similarity = cosine(&vector, &expected);
             let worst = vector
                 .iter()
-                .zip(&oracle)
+                .zip(&expected)
                 .map(|(&a, &b)| (f64::from(a) - f64::from(b)).abs())
                 .fold(0.0, f64::max);
-            eprintln!("{name}: cosine {cosine:.9}, largest component difference {worst:.2e}");
-            if cosine < min_cosine || worst > max_diff {
+            eprintln!("{name}: cosine {similarity:.9}, largest component difference {worst:.2e}");
+            if similarity < min_cosine || worst > max_diff {
                 failures.push(format!(
-                    "{name}: cosine {cosine:.7}, largest difference {worst:.6}"
+                    "{name}: cosine {similarity:.7}, largest difference {worst:.6}"
                 ));
+            }
+            // The divergence is read from the window's length, so the file cannot hide one.
+            if (window.len() as u64 > ELECTRON_SAMPLES) != electron.is_object() {
+                failures.push(format!("{name}: electron record does not match its length"));
+                continue;
+            }
+            if electron.is_object() {
+                let measured = electron["cosine"].as_f64().expect("electron.cosine");
+                let actual = cosine(&vector, &floats(&electron["embedding"]));
+                eprintln!(
+                    "{name}: cosine with Electron's 30 s vector {actual:.6}, recorded {measured:.6}"
+                );
+                if (actual - measured).abs() > 1e-4 {
+                    failures.push(format!(
+                        "{name}: cosine with Electron's vector {actual:.7}, recorded {measured:.7}"
+                    ));
+                }
             }
         }
     }
     assert!(failures.is_empty(), "{}", failures.join("\n"));
 }
 
-/// Without `load_audio`, a window is refused with the worker's message instead of loading the
-/// encoder behind the caller's back.
+/// The audio encoder loads with the first window: an engine on a folder without the audio group
+/// embeds text and reports the missing encoder file on a window, before decoding anything else.
 #[test]
 #[ignore = "needs the downloaded model in MEMRY_ML_MODEL_DIR"]
-fn a_window_before_load_audio_is_refused() {
-    let dir = PathBuf::from(std::env::var_os("MEMRY_ML_MODEL_DIR").expect("MEMRY_ML_MODEL_DIR"));
-    let mut engine = EmbeddingEngine::load(&dir, LoadOptions::default()).expect("load");
-    let error = engine.embed_audio(&[0.0; 16_000]).expect_err("not loaded");
-    assert_eq!(
-        error.to_string(),
-        "loading the model failed: Audio encoder is not loaded"
+fn the_audio_encoder_loads_with_the_first_window() {
+    let dir = model_dir();
+    // Next to the model so the hard links stay on one volume (the runner temp on Windows).
+    let text_only = tempfile::Builder::new()
+        .prefix("memry-ml-text-only")
+        .tempdir_in(dir.parent().expect("parent"))
+        .expect("tempdir");
+    for file in ModelGroup::Text.files() {
+        let target = text_only.path().join(file.path);
+        std::fs::create_dir_all(target.parent().expect("parent")).expect("mkdir");
+        std::fs::hard_link(dir.join(file.path), target).expect("link");
+    }
+    let mut engine = EmbeddingEngine::load(text_only.path(), LoadOptions::default()).expect("load");
+    engine
+        .embed_text("a text needs no audio encoder")
+        .expect("text");
+    let error = engine.embed_audio(&[0.0; 16_000]).expect_err("no encoder");
+    assert!(
+        matches!(error, MlError::ModelMissing(ref path) if path == "onnx/audio_encoder_q4.onnx"),
+        "{error}"
     );
 }

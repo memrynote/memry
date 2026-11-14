@@ -1,5 +1,5 @@
 //! `home_page`: Home boards (`HomePageSyncPayloadSchema`,
-//! `packages/contracts/src/sync-payloads.ts`, migration `0027`).
+//! `packages/contracts/src/sync-payloads.ts`, migration `0028`).
 //!
 //! Eight fields under a whole-row clock. `widgets` is an opaque JSON string and
 //! is stored as sent, never parsed into widgets: the merge

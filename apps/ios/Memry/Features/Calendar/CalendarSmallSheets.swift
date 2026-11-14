@@ -59,6 +59,10 @@ struct CalendarSmallSheetFrame<Actions: View>: View {
         }
         .padding(.horizontal, Tokens.Space.inset + Tokens.Space.tight)
         .padding(.top, Tokens.Space.inset)
+        // Regular width ignores the fractional detents: a form sheet as
+        // tall as its content instead of a mostly empty one (#4341).
+        .padding(.bottom, Tokens.Space.inset)
+        .presentationSizing(.form.fitted(horizontal: false, vertical: true))
     }
 }
 

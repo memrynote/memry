@@ -2,8 +2,12 @@
 //! (`apps/desktop/src/main/sync/item-handlers/canvas-handler.ts`), rule for
 //! rule.
 //!
-//! - **No scene, no apply** (D5). A payload without a string `scene` never
-//!   overwrites the local drawing.
+//! - **A record desktop's schema refuses is refused** before anything else (a
+//!   key of the wrong type, `scene` included, a `null` the schema has no room
+//!   for, a clock tick that is not a safe integer): a local canvas stays as it
+//!   is, and the pull ledgers it ([`crate::sync::refused_items`]).
+//! - **No scene, no apply** (D5). A payload without a `scene` is skipped and
+//!   never overwrites the local drawing.
 //! - **A create needs a `vaultId`**, or desktop would never list it.
 //! - **§6.3.1's gate decides**, through [`task_merge::document_gate`], so the
 //!   equal-clock identical skip (§6.5.2 P4) is the one every type uses.
@@ -18,8 +22,8 @@
 //!   stated them, and `null` is a real clear. `vaultId` always stays local.
 //!
 //! The copy and the overwrite are one transaction, as desktop's are. The copy
-//! is the one outbox row an inbound apply writes: it is a new item no peer has,
-//! not a re-push of the merged one (§6.5.2 P3).
+//! is a new item no peer has; the merged original is re-queued beside it
+//! (§6.5.2 P3, [`crate::sync::hardening::requeue`]).
 //!
 //! Deletes are not here. [`crate::sync::apply`]'s tombstone path already lets
 //! only a local clock strictly after the delete keep the item (#2198, #2409).
@@ -28,6 +32,7 @@ use rusqlite::Connection;
 use serde_json::{Value, json};
 
 use crate::api::errors::StorageError;
+use crate::domain::desktop_records::fails_desktop_schema;
 use crate::domain::notes::{failed, insert_local, next_clock, object};
 use crate::domain::saved_filters::mint_id;
 use crate::domain::task_merge::{self, Gate};
@@ -36,9 +41,14 @@ use crate::storage::repositories::schema::Object;
 use crate::storage::repositories::sync_items::{self, ApplyOutcome, InboundRecord};
 use crate::storage::repositories::{Change, StoredPayload};
 use crate::sync::clock::VectorClock;
+use crate::sync::hardening::requeue;
 use crate::sync::outbox;
 
 use super::ITEM_TYPE;
+
+/// The schema keys `CanvasSyncPayloadSchema` refuses `null` for
+/// (`packages/contracts/src/sync-payloads.ts:187-207`).
+const NOT_NULL: [&str; 4] = ["id", "vaultId", "scene", "clock"];
 
 /// The keys an older client may leave out, which then keep the local value.
 const KEPT_WHEN_ABSENT: [&str; 4] = ["title", "folder", "icon", "ownerNoteId"];
@@ -55,6 +65,9 @@ pub fn apply_remote(
         Ok(remote) if record.deleted_at.is_none() => remote,
         _ => return task_merge::wholesale(conn, record, now_ms),
     };
+    if fails_desktop_schema(ITEM_TYPE, remote.object(), &NOT_NULL) {
+        return Ok(Inbound::Refused);
+    }
     let Some(remote_scene) = remote.object().get("scene").and_then(Value::as_str) else {
         return Ok(Inbound::Skipped);
     };
@@ -67,7 +80,7 @@ pub fn apply_remote(
         if !remote.object().get("vaultId").is_some_and(Value::is_string) {
             return Ok(Inbound::Skipped);
         }
-        return finish(tx, record, now_ms);
+        return finish(tx, record, now_ms, false);
     };
 
     let merged_clock = match task_merge::document_gate(&tx, record)? {
@@ -91,7 +104,7 @@ pub fn apply_remote(
         payload_json: remote.merge(&changes),
         ..record.clone()
     };
-    finish(tx, &merged, now_ms)
+    finish(tx, &merged, now_ms, merged_clock.is_some())
 }
 
 /// The remote payload's edits that keep what desktop keeps: an absent
@@ -152,12 +165,17 @@ fn finish(
     tx: rusqlite::Transaction<'_>,
     record: &InboundRecord,
     now_ms: i64,
+    merged: bool,
 ) -> Result<Inbound, StorageError> {
     let outcome = sync_items::apply_remote_in(&tx, record, now_ms)?;
+    if merged && outcome == ApplyOutcome::Applied {
+        requeue::requeue(&tx, ITEM_TYPE, &record.item_id, now_ms)?;
+    }
     tx.commit().map_err(failed)?;
     Ok(match outcome {
         ApplyOutcome::Applied => Inbound::Applied,
         ApplyOutcome::Corrupt { reason } => Inbound::Corrupt { reason },
+        ApplyOutcome::Refused => Inbound::Refused,
         // `task_activity` is the only expiring type and the store has no skip.
         ApplyOutcome::Skipped | ApplyOutcome::Expired => Inbound::Skipped,
     })

@@ -81,7 +81,7 @@ enum SignInAction: Equatable, Sendable {
         case .sendCode: "Sending your code"
         case .verify: "Checking your code"
         case .resend: "Sending a new code"
-        case .registerDevice: "Setting up this phone"
+        case .registerDevice: "Setting up this \(ThisDevice.noun)"
         case .renewSetup: "Carrying on"
         case .startOver: "Signing out"
         case .signInWithGoogle: "Signing in with Google"
@@ -145,8 +145,8 @@ struct SignInStep: Equatable, Sendable {
             )
         case .setupPending:
             self.init(
-                title: "Setting up this phone",
-                detail: "Memry is registering this phone on your account.",
+                title: "Setting up this \(ThisDevice.noun)",
+                detail: "Memry is registering this \(ThisDevice.noun) on your account.",
                 field: .absent, primary: .registerDevice, secondary: nil
             )
         case .setupExpired:
@@ -160,19 +160,19 @@ struct SignInStep: Equatable, Sendable {
             // Naming it is better than an action this build cannot perform.
             self.init(
                 title: "You are signed in",
-                detail: "Unlocking your vault on this phone comes next.",
+                detail: "Unlocking your vault on this \(ThisDevice.noun) comes next.",
                 field: .absent, primary: nil, secondary: nil
             )
         case .refreshing:
             self.init(
                 title: "Reconnecting",
-                detail: "Memry is renewing this phone's session. Nothing is lost while it does.",
+                detail: "Memry is renewing this \(ThisDevice.noun)'s session. Nothing is lost while it does.",
                 field: .absent, primary: nil, secondary: nil
             )
         case .sessionExpired:
             self.init(
                 title: "Your session has expired",
-                detail: "Sign in again to keep using Memry on this phone.",
+                detail: "Sign in again to keep using Memry on this \(ThisDevice.noun).",
                 field: .absent, primary: .startOver, secondary: nil
             )
         // §C.1: local vault content is removed **before** this is shown. That
@@ -181,8 +181,8 @@ struct SignInStep: Equatable, Sendable {
         // was deleted.
         case .revoked:
             self.init(
-                title: "This phone's access was revoked",
-                detail: "Someone removed this phone from your account. Sign in again to use Memry here.",
+                title: "This \(ThisDevice.noun)'s access was revoked",
+                detail: "Someone removed this \(ThisDevice.noun) from your account. Sign in again to use Memry here.",
                 field: .absent, primary: .startOver, secondary: nil
             )
         }

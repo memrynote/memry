@@ -1,5 +1,5 @@
 //! `sticky_draft`: unsent sticky text (`StickyDraftSyncPayloadSchema`,
-//! `packages/contracts/src/sync-payloads.ts`, migration `0027`).
+//! `packages/contracts/src/sync-payloads.ts`, migration `0028`).
 //!
 //! Five fields under a whole-row clock. `createdAt` and `modifiedAt` are ISO
 //! strings on the wire and epoch milliseconds in the table (§A.6). Electron

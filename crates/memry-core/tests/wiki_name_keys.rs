@@ -1,4 +1,4 @@
-//! `wiki_name_keys` (data migration 0021) only narrows the rows a wiki name lookup reads:
+//! `wiki_name_keys` (data migration 0024) only narrows the rows a wiki name lookup reads:
 //! whatever wrote the names, and whether or not the reindex has settled their keys since, a
 //! lookup answers as a load of the whole vault does. Each trigger arm of the migration is
 //! here as the write it follows, made after a settle so only the trigger can make it seen.

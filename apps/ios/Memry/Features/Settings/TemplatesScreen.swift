@@ -26,7 +26,17 @@ struct TemplatesScreen: View {
                 ForEach(templates.filter { !$0.isBuiltIn }, id: \.id) { template in
                     NavigationLink(value: SettingsRoute.template(template.id)) { label(template) }
                         .contextMenu { menu(template) }
-                        .swipeActions { Button(TemplatesCopy.delete, role: .destructive) { deleting = template } }
+                        // Tinted, not `role: .destructive`: a destructive swipe
+                        // removes the row, and the confirmation on it with it.
+                        .swipeActions { Button(TemplatesCopy.delete) { deleting = template }.tint(.red) }
+                        // On the row, so the popover points at it on iPad.
+                        .confirmationDialog(TemplatesCopy.deleteTitle(template.name),
+                                            isPresented: Binding(get: { deleting?.id == template.id }, set: { if !$0 { deleting = nil } }),
+                                            titleVisibility: .visible) {
+                            Button(TemplatesCopy.deleteAction, role: .destructive) { Task { await delete(template) } }
+                        } message: {
+                            Text(TemplatesCopy.deleteMessage)
+                        }
                 }
             } header: {
                 Text(TemplatesCopy.mine)
@@ -59,13 +69,6 @@ struct TemplatesScreen: View {
             Button(TemplatesCopy.duplicate) { let source = duplicating; Task { await duplicate(source) } }
         } message: {
             Text(TemplatesCopy.duplicateMessage)
-        }
-        .confirmationDialog(TemplatesCopy.deleteTitle(deleting?.name ?? ""),
-                            isPresented: Binding(get: { deleting != nil }, set: { if !$0 { deleting = nil } }),
-                            titleVisibility: .visible) {
-            Button(TemplatesCopy.deleteAction, role: .destructive) { let template = deleting; Task { await delete(template) } }
-        } message: {
-            Text(TemplatesCopy.deleteMessage)
         }
     }
 
@@ -123,8 +126,7 @@ struct TemplatesScreen: View {
         await load()
     }
 
-    private func delete(_ template: TemplateItem?) async {
-        guard let template else { return }
+    private func delete(_ template: TemplateItem) async {
         deleting = nil
         switch await context.run({ try $0.deleteTemplate(id: template.id) }) {
         case .success: notice = TemplatesCopy.deleted

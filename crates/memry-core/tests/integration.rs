@@ -5,6 +5,9 @@
 //! it with `--test`) gets a `[[test]]` target in Cargo.toml instead. `every_test_file_is_built`
 //! keeps a new file from being left out of both: with `autotests = false` it would never compile.
 
+// The desktop record tests seed `vault_locks`, which exists only with `markdown` (desktop builds).
+#[cfg(feature = "markdown")]
+mod desktop_relay;
 #[cfg(feature = "markdown")]
 mod editor_support;
 mod http_fakes;
@@ -30,6 +33,8 @@ mod api_journal;
 mod api_notes_write;
 #[path = "api_search.rs"]
 mod api_search;
+#[path = "api_search_cjk.rs"]
+mod api_search_cjk;
 #[path = "api_sync_declaration.rs"]
 mod api_sync_declaration;
 #[path = "api_sync_oversized_update.rs"]
@@ -60,6 +65,8 @@ mod attachment_manifest_vectors;
 mod attachment_upload_wire;
 #[path = "auth_session.rs"]
 mod auth_session;
+#[path = "auth_web_callback.rs"]
+mod auth_web_callback;
 #[path = "block_edit_vectors.rs"]
 mod block_edit_vectors;
 #[path = "block_refs.rs"]
@@ -126,6 +133,15 @@ mod delete_attestation_vectors;
 mod delete_keep;
 #[path = "delete_keep_vectors.rs"]
 mod delete_keep_vectors;
+#[cfg(feature = "markdown")]
+#[path = "desktop_record_convergence.rs"]
+mod desktop_record_convergence;
+#[cfg(feature = "markdown")]
+#[path = "desktop_record_deletes.rs"]
+mod desktop_record_deletes;
+#[cfg(feature = "markdown")]
+#[path = "desktop_record_types.rs"]
+mod desktop_record_types;
 #[path = "device_link.rs"]
 mod device_link;
 #[path = "domain_bookmarks.rs"]
@@ -192,6 +208,18 @@ mod domain_reminders_task;
 mod domain_saved_filters;
 #[path = "domain_search.rs"]
 mod domain_search;
+#[path = "domain_search_filter.rs"]
+mod domain_search_filter;
+#[path = "domain_search_inbox.rs"]
+mod domain_search_inbox;
+#[path = "domain_search_names.rs"]
+mod domain_search_names;
+#[path = "domain_search_query.rs"]
+mod domain_search_query;
+#[path = "domain_search_rows.rs"]
+mod domain_search_rows;
+#[path = "domain_search_snippet.rs"]
+mod domain_search_snippet;
 #[path = "domain_tag_categories.rs"]
 mod domain_tag_categories;
 #[path = "domain_task_activity.rs"]
@@ -258,6 +286,8 @@ mod journal_metadata;
 mod journal_reads;
 #[path = "journal_reminders.rs"]
 mod journal_reminders;
+#[path = "journal_same_day_reads.rs"]
+mod journal_same_day_reads;
 #[path = "journal_seed.rs"]
 mod journal_seed;
 #[path = "journal_settings.rs"]
@@ -354,6 +384,10 @@ mod portal_reads;
 mod portal_vectors;
 #[path = "projector_null_tolerance.rs"]
 mod projector_null_tolerance;
+// `note_properties` is desktop only (`markdown`).
+#[cfg(feature = "markdown")]
+#[path = "property_reads_load.rs"]
+mod property_reads_load;
 #[path = "push_crdt_update_cap.rs"]
 mod push_crdt_update_cap;
 #[path = "push_delete_wins.rs"]
@@ -368,12 +402,18 @@ mod recreate_clock_vectors;
 mod recurrence_vectors;
 #[path = "roundtrip_acceptance.rs"]
 mod roundtrip_acceptance;
+#[path = "search_body_cache.rs"]
+mod search_body_cache;
 #[path = "session_refresh_errors.rs"]
 mod session_refresh_errors;
 #[path = "snapshot_embeds.rs"]
 mod snapshot_embeds;
+#[path = "sync_body_heal.rs"]
+mod sync_body_heal;
 #[path = "sync_cursor_repair.rs"]
 mod sync_cursor_repair;
+#[path = "sync_empty_body_pull.rs"]
+mod sync_empty_body_pull;
 #[path = "sync_engine.rs"]
 mod sync_engine;
 #[path = "sync_engine_seed.rs"]
@@ -392,6 +432,16 @@ mod sync_pack_bootstrap;
 mod sync_realtime;
 #[path = "sync_realtime_run.rs"]
 mod sync_realtime_run;
+#[path = "sync_refused_items.rs"]
+mod sync_refused_items;
+#[cfg(feature = "markdown")]
+#[path = "sync_requeue_convergence.rs"]
+mod sync_requeue_convergence;
+#[cfg(feature = "markdown")]
+#[path = "sync_requeue_delete.rs"]
+mod sync_requeue_delete;
+#[path = "sync_requeue_pass.rs"]
+mod sync_requeue_pass;
 #[path = "tag_fields.rs"]
 mod tag_fields;
 #[path = "tag_fold_vectors.rs"]
@@ -436,6 +486,8 @@ mod vault_locks;
 mod vault_locks_schema;
 #[path = "vault_locks_writers.rs"]
 mod vault_locks_writers;
+#[path = "vault_name_vectors.rs"]
+mod vault_name_vectors;
 #[path = "vectors.rs"]
 mod vectors;
 #[path = "versioned_keys_carry.rs"]

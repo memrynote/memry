@@ -145,8 +145,15 @@ final class EditorSession {
             forName: UIResponder.keyboardWillShowNotification, object: nil, queue: .main
         ) { [weak self] note in
             guard let frame = note.userInfo?[UIResponder.keyboardFrameEndUserInfoKey] as? CGRect else { return }
+            let screen = note.object as? UIScreen
+            let isLocal = note.userInfo?[UIResponder.keyboardIsLocalUserInfoKey] as? Bool != false
             MainActor.assumeIsolated {
-                guard let self, self.panel == .none else { return }
+                // #4344: a keyboard on another screen, or another app's on
+                // this one (Split View, Stage Manager), says nothing about
+                // this window's.
+                guard isLocal, let self, self.panel == .none, let window = self.field?.textView.window,
+                      let frame = PresentingWindow.keyboardFrame(frame, on: screen, in: window)
+                else { return }
                 let accessory = self.accessory.frame.height
                 if frame.height - accessory > 200 { self.keyboardHeight = frame.height - accessory }
             }
@@ -247,39 +254,66 @@ final class EditorSession {
             panelView.frame.size.height = keyboardHeight
             textView.inputView = panelView
         }
-        guard UIAccessibility.isReduceMotionEnabled else { return textView.reloadInputViews() }
+        guard reduceMotion() else { return textView.reloadInputViews() }
         // Reduce Motion: the panel swaps in place and fades in, instead of
         // sliding up like a keyboard. UIKit builds that slide a few run-loop
         // turns after `reloadInputViews`, in the turn it posts
         // `keyboardWillChangeFrame`, so `performWithoutAnimation` cannot reach
-        // it. UIView animations stay off app-wide until the turn after that
-        // notification (about 70 ms), or half a second if it never comes.
+        // it. The slide is taken off the keyboard's own windows in this scene
+        // before that turn commits (`stillKeyboard`); the rest of the app
+        // keeps its animations (#4344). Only this screen's keyboard, and
+        // not another app's on it, ends the swap. Without the notification
+        // the panel fades in after half a second.
         if panel != .none { panelView.alpha = 0 }
         if let panelSwap { NotificationCenter.default.removeObserver(panelSwap.observer) }
         panelSwapGeneration += 1
         let generation = panelSwapGeneration
+        let editorWindow = textView.window
         let observer = NotificationCenter.default.addObserver(
             forName: UIResponder.keyboardWillChangeFrameNotification,
-            object: textView.window?.windowScene?.screen, queue: .main
-        ) { [weak self] _ in
-            DispatchQueue.main.async { self?.finishPanelSwap(generation) }
+            object: editorWindow?.windowScene?.screen, queue: .main
+        ) { [weak self, weak editorWindow] note in
+            guard note.userInfo?[UIResponder.keyboardIsLocalUserInfoKey] as? Bool != false else { return }
+            MainActor.assumeIsolated {
+                Self.stillKeyboard(of: editorWindow) { self?.finishPanelSwap(generation) }
+            }
         }
         panelSwap = (generation, observer)
-        UIView.setAnimationsEnabled(false)
         DispatchQueue.main.asyncAfter(deadline: .now() + 0.5) { [weak self] in
-            guard let self else { return UIView.setAnimationsEnabled(true) }
-            finishPanelSwap(generation)
+            self?.finishPanelSwap(generation)
         }
         textView.reloadInputViews()
     }
 
-    /// The end of Reduce Motion panel swap `generation` (`show`): animations
-    /// back on, and the panel faded in. A stale generation does nothing.
+    /// Seam for tests; the app reads the accessibility setting.
+    @ObservationIgnored var reduceMotion: () -> Bool = { UIAccessibility.isReduceMotionEnabled }
+
+    /// Drops the animations added to the keyboard windows of `editorWindow`'s
+    /// scene during this run-loop turn, just before Core Animation commits
+    /// them, then calls `done`. The editor's own window is left alone.
+    private static func stillKeyboard(of editorWindow: UIWindow?, then done: @escaping @MainActor () -> Void) {
+        let observer = CFRunLoopObserverCreateWithHandler(nil, CFRunLoopActivity.beforeWaiting.rawValue, false, 0) { _, _ in
+            MainActor.assumeIsolated {
+                for window in editorWindow?.windowScene?.windows ?? [] where window !== editorWindow {
+                    removeAnimations(window.layer)
+                }
+                done()
+            }
+        }
+        CFRunLoopAddObserver(CFRunLoopGetMain(), observer, .commonModes)
+    }
+
+    private static func removeAnimations(_ layer: CALayer) {
+        layer.removeAllAnimations()
+        layer.sublayers?.forEach(removeAnimations)
+    }
+
+    /// The end of Reduce Motion panel swap `generation` (`show`): the panel
+    /// fades in. A stale generation does nothing.
     private func finishPanelSwap(_ generation: Int) {
         guard let panelSwap, panelSwap.generation == generation else { return }
         NotificationCenter.default.removeObserver(panelSwap.observer)
         self.panelSwap = nil
-        UIView.setAnimationsEnabled(true)
         UIView.animate(withDuration: Tokens.Motion.normal.duration) { self.panelView.alpha = 1 }
     }
 

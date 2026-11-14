@@ -166,7 +166,7 @@ private struct FirstSyncScreen: View {
             .calmAnimation(.normal, .moving, value: progress.completed)
         } else {
             ProgressView {
-                Text(checking ? "Checking what this phone already has" : "Starting")
+                Text(checking ? "Checking what this \(ThisDevice.noun) already has" : "Starting")
                     .font(Tokens.Typography.supporting.font)
                     .foregroundStyle(Tokens.Text.secondary.color)
             }
@@ -196,7 +196,7 @@ private struct FirstSyncScreen: View {
     /// honest one would be a figure the user cannot use (`DESIGN.md`
     /// §"Error copy, in detail", spec-defect 111).
     static let explanation = """
-        Memry is bringing this vault onto your phone for the first time. \
+        Memry is bringing this vault onto your \(ThisDevice.noun) for the first time. \
         Everything it has already brought in is kept, so if this is \
         interrupted it carries on from there.
         """

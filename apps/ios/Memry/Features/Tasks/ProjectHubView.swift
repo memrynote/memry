@@ -126,7 +126,6 @@ struct ProjectHubView: View {
         .sheet(item: $editing) { target in
             ProjectEditorSheet(store: store, projectId: target.projectId) { dismiss() }
         }
-        .projectDeleteDialog($deleting, store: store) { dismiss() }
         .refreshable {
             await store.sync()
             await reload()
@@ -165,6 +164,8 @@ struct ProjectHubView: View {
                 Label(Copy.projectActions, systemImage: "ellipsis")
             }
             .accessibilityIdentifier("tasks.projectHub.menu")
+            // On the menu, so the popover points at it on iPad.
+            .projectDeleteDialog($deleting, store: store) { dismiss() }
         }
     }
 

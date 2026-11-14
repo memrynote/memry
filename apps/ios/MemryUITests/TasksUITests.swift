@@ -167,11 +167,14 @@ final class TasksUITests: XCTestCase {
             .matching(NSPredicate(format: "identifier BEGINSWITH 'tasks.kanban.card.' AND label CONTAINS %@", run))
             .firstMatch
         XCTAssertTrue(card.waitForExistence(timeout: 10))
-        // The next column peeks in at the trailing edge; the card is dropped
-        // on that visible part.
+        // On iPhone the next column peeks in at the trailing edge, on iPad it
+        // is all on screen: the card is dropped on the middle of the visible
+        // part, near its top.
         let inProgress = app.descendants(matching: .any)["tasks.kanban.column.in_progress"]
         XCTAssertTrue(inProgress.waitForExistence(timeout: 5))
-        let peek = inProgress.coordinate(withNormalizedOffset: CGVector(dx: 0.1, dy: 0.1))
+        let visible = inProgress.frame.intersection(app.windows.firstMatch.frame)
+        let peek = app.coordinate(withNormalizedOffset: .zero)
+            .withOffset(CGVector(dx: visible.midX, dy: visible.minY + visible.height * 0.1))
         card.coordinate(withNormalizedOffset: CGVector(dx: 0.5, dy: 0.5))
             .press(forDuration: 1.0, thenDragTo: peek, withVelocity: .slow, thenHoldForDuration: 0.5)
         XCTAssertTrue(waitUntil { inProgress.label.hasPrefix("In Progress column, 1 task") }, inProgress.label)

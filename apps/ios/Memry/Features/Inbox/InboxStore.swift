@@ -39,7 +39,7 @@ struct InboxToast: Equatable {
 final class InboxStore {
     // MARK: Data
 
-    private(set) var items: [InboxItemRecord] = []
+    private(set) var items: [InboxItemRecord] = [] { didSet { countBadge() } }
     private(set) var typeCounts: [InboxTypeCount] = []
     private(set) var stats: InboxStatsRecord?
     private(set) var recentFolders: [String] = []
@@ -55,7 +55,7 @@ final class InboxStore {
     var typeFilter: Set<String> = []
     var archivedSearch = ""
     /// Rows removed optimistically while their write is in flight.
-    private(set) var hidden: Set<String> = []
+    private(set) var hidden: Set<String> = [] { didSet { countBadge() } }
     /// Rows captured in this session, for the fresh-capture fade.
     private(set) var fresh: Set<String> = []
     var toast: InboxToast?
@@ -131,6 +131,17 @@ final class InboxStore {
 
     /// Captures still to process (the More row and the subtitle).
     var toProcess: Int { items.filter { !hidden.contains($0.id) }.count }
+
+    /// The sidebar's Inbox badge, desktop's count (`app-sidebar.tsx`
+    /// `inboxCount`): rows not hidden, a reminder only until it is viewed.
+    /// Stored and set only when it changes, so the shell, which reads it,
+    /// redraws only then.
+    private(set) var badgeCount = 0
+
+    private func countBadge() {
+        let count = items.count { !hidden.contains($0.id) && ($0.itemType != "reminder" || $0.viewedAtMs == nil) }
+        if count != badgeCount { badgeCount = count }
+    }
 
     var nowMs: Int64 { Int64(clock().timeIntervalSince1970 * 1000) }
 

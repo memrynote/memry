@@ -2,6 +2,10 @@
 //! (`apps/desktop/src/main/sync/item-handlers/vault-lock-handler.ts`), rule
 //! for rule.
 //!
+//! - **A record desktop's schema refuses is refused**, and the local record
+//!   left alone: a key of the wrong type (`targetKind: 5`, `target: 5`,
+//!   `locked: "yes"`), a `null` in any key, or a clock tick that is not a safe
+//!   integer. The pull ledgers it ([`crate::sync::refused_items`]).
 //! - **A kind this build does not know is skipped**, and the local record left
 //!   alone: guessing what it locks could block writes or leave a target the
 //!   peer meant to protect writable. An absent `targetKind` is not unknown.
@@ -23,14 +27,27 @@ use rusqlite::Connection;
 use serde_json::Value;
 
 use crate::api::errors::StorageError;
+use crate::domain::desktop_records::fails_desktop_schema;
 use crate::domain::task_merge::{self, Gate};
 use crate::domain::tasks::Inbound;
 use crate::storage::repositories::schema::Object;
 use crate::storage::repositories::sync_items::{self, InboundRecord};
 use crate::storage::repositories::{Change, StoredPayload};
 use crate::sync::clock::VectorClock;
+use crate::sync::hardening::requeue;
 
 use super::{ITEM_TYPE, is_known_kind};
+
+/// `VaultLockSyncPayloadSchema` refuses `null` for every key
+/// (`packages/contracts/src/sync-payloads.ts:477-484`).
+const NOT_NULL: [&str; 6] = [
+    "targetKind",
+    "target",
+    "locked",
+    "clock",
+    "createdAt",
+    "updatedAt",
+];
 
 /// The keys a local record keeps whatever the remote says.
 const KEPT_LOCAL: [&str; 3] = ["targetKind", "target", "createdAt"];
@@ -45,6 +62,9 @@ pub fn apply_remote(
         Ok(remote) if record.deleted_at.is_none() => remote,
         _ => return task_merge::wholesale(conn, record, now_ms),
     };
+    if fails_desktop_schema(ITEM_TYPE, remote.object(), &NOT_NULL) {
+        return Ok(Inbound::Refused);
+    }
     if let Some(Value::String(kind)) = remote.object().get("targetKind")
         && !is_known_kind(kind)
     {
@@ -70,6 +90,9 @@ pub fn apply_remote(
         payload_json: remote.merge(&changes),
         ..record.clone()
     };
+    if merged_clock.is_some() {
+        return requeue::store_merged(conn, &merged, now_ms);
+    }
     task_merge::wholesale(conn, &merged, now_ms)
 }
 

@@ -312,3 +312,33 @@ fn the_inline_ai_group_is_closed_to_the_generic_reads_and_writes() {
         Err(SettingsError::Invalid(_))
     ));
 }
+
+/// On this day's two device-local settings (#4411), with Electron's keys and defaults
+/// (`journal.showOnThisDay` true, `journal.allYearsView` false), so a profile carried over keeps
+/// them.
+#[test]
+fn the_past_years_settings_read_electrons_defaults_and_round_trip() {
+    let w = world();
+    let vault = w.open("v-journal");
+    let journal = |service: &SettingsService| {
+        let value = service
+            .read_group(Some(&vault), "journal")
+            .expect("read")
+            .value;
+        (
+            value["showOnThisDay"].clone(),
+            value["allYearsView"].clone(),
+        )
+    };
+    assert_eq!(journal(&w.service), (json!(true), json!(false)));
+
+    w.service
+        .write_group(
+            Some(&vault),
+            "journal",
+            patch(json!({"showOnThisDay": false, "allYearsView": true})),
+        )
+        .expect("write");
+    let fresh = SettingsService::new(Arc::new(MemoryStore::default()), w.config.clone());
+    assert_eq!(journal(&fresh), (json!(false), json!(true)));
+}

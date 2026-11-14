@@ -68,6 +68,7 @@ use super::bootstrap::BootstrapClient;
 use super::crdt_wire::{SnapshotMeta, UpdatePage, read_update_page};
 use super::store;
 
+mod log_writes;
 mod pack_seed;
 mod probe;
 
@@ -363,6 +364,12 @@ impl BodyPull {
         if has_more && report.stopped.is_empty() {
             report.incomplete.push(doc_id.to_owned());
         }
+        // #4315: a pull that reached an empty head still read the server body.
+        // Without a cursor the feed treats the document as never fetched and
+        // drops every update typed into it afterwards.
+        if cursor == 0 && report.merged() {
+            self.hold_empty_body(doc_id).await?;
+        }
 
         Ok(report)
     }
@@ -465,77 +472,6 @@ impl BodyPull {
         Ok(read_update_page(&body, doc_id))
     }
 
-    /// One update, durable **with** its cursor. §7.9 advances the watermark
-    /// per update rather than per page, and the transaction is what makes a
-    /// kill between the two impossible.
-    ///
-    /// The log row is stamped with **this device's** clock at apply time, not
-    /// the server's `createdAt`: the search index's incremental watermark
-    /// compares `yjs_updates.created_at` against its own epoch-ms stamps
-    /// (`domain::search::maintenance`), and a server stamp (seconds, or a
-    /// remote clock) sat below it, so a pulled body was never re-indexed and
-    /// its links never became backlinks.
-    async fn store_update(
-        &self,
-        doc_id: &str,
-        sequence_num: i64,
-        update: Vec<u8>,
-    ) -> Result<(), BodyPullError> {
-        let doc = doc_id.to_owned();
-        let scope = crdt_cursor_scope(doc_id);
-        self.db
-            .call(move |conn| {
-                // Stamped under the writer, not before waiting for it: a body entry's stamp is
-                // then later than every read of the body that did not see it, which the
-                // desktop write-back's stamp relies on (`domain::note_files::NoteFile::indexed_at`).
-                let created_at = now_ms();
-                let txn = conn.unchecked_transaction().map_err(sqlite_failed)?;
-                update_log::append_server_update(&txn, &doc, sequence_num, &update, created_at)
-                    .map_err(crdt_failed)?;
-                store::write_cursor(&txn, &scope, Some(&sequence_num.to_string()), created_at)?;
-                txn.commit().map_err(sqlite_failed)?;
-                Ok(())
-            })
-            .await?;
-        Ok(())
-    }
-
-    /// §7.8: store the snapshot with its sequence number and revision, and
-    /// advance the cursor **only if** the snapshot's sequence number is ahead.
-    async fn store_baseline(
-        &self,
-        doc_id: &str,
-        snapshot: Vec<u8>,
-        sequence_num: i64,
-        revision: Option<String>,
-        cursor: i64,
-    ) -> Result<(), BodyPullError> {
-        let doc = doc_id.to_owned();
-        let scope = crdt_cursor_scope(doc_id);
-        self.db
-            .call(move |conn| {
-                // Under the writer, as `store_update` stamps.
-                let now = now_ms();
-                let txn = conn.unchecked_transaction().map_err(sqlite_failed)?;
-                update_log::put_server_snapshot(
-                    &txn,
-                    &doc,
-                    &snapshot,
-                    sequence_num,
-                    revision.as_deref(),
-                    now,
-                )
-                .map_err(crdt_failed)?;
-                if sequence_num > cursor {
-                    store::write_cursor(&txn, &scope, Some(&sequence_num.to_string()), now)?;
-                }
-                txn.commit().map_err(sqlite_failed)?;
-                Ok(())
-            })
-            .await?;
-        Ok(())
-    }
-
     async fn read_cursor(&self, doc_id: &str) -> Result<i64, BodyPullError> {
         let scope = crdt_cursor_scope(doc_id);
         let stored = self
@@ -557,18 +493,6 @@ impl BodyPull {
             request = bootstrap.elevate(request, now_ms() / 1_000);
         }
         request
-    }
-}
-
-fn crdt_failed(error: crate::crdt::CrdtError) -> StorageError {
-    StorageError::Failed {
-        what: error.to_string(),
-    }
-}
-
-fn sqlite_failed(error: rusqlite::Error) -> StorageError {
-    StorageError::Failed {
-        what: error.to_string(),
     }
 }
 

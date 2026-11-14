@@ -21,27 +21,23 @@
 //! and an insert of the same bytes, so the safe direction costs nothing.
 //!
 //! A missing watermark, or an `index_meta` `data.user_version` that does not
-//! match `data.db`, forces a full rebuild: both FTS tables are emptied and
-//! every live row is re-indexed.
+//! match `data.db`, forces a full rebuild: every FTS table is emptied and
+//! every live row is re-indexed. `fts_inbox` is [`super::inbox`]'s, called
+//! from here with its own watermark.
 
 use std::collections::BTreeSet;
-use std::sync::Arc;
 
 use rusqlite::{Connection, OptionalExtension as _, params};
-use sha2::{Digest as _, Sha256};
 
 use crate::api::errors::StorageError;
 use crate::crdt::blocks::extract_blocks;
-use crate::crdt::errors::CrdtError;
-use crate::crdt::registry::Document;
-use crate::crdt::registry::{DocumentRegistry, UpdateSink};
-use crate::crdt::text_extract::extract_text;
-use crate::crdt::update_log::{self, LOCAL_NAMESPACE_PREFIX};
+use crate::crdt::update_log::LOCAL_NAMESPACE_PREFIX;
 use crate::domain::body_tags;
 use crate::domain::wiki_target::{WikiNames, settle_name_keys};
 use crate::storage::repositories::StoredPayload;
 use crate::storage::repositories::projectors::{self, strings, text};
 
+use super::body_cache::{body_document, body_text, crdt_failed};
 use super::failed;
 use super::links::{self, LinkChanges};
 
@@ -57,13 +53,10 @@ pub const TASKS_WATERMARK_KEY: &str = "watermark.fts_tasks";
 /// holds rows no incremental pass will ever see. A missing or older value
 /// forces one full rebuild.
 pub const STAMPS_KEY: &str = "stamps.version";
-/// The current [`STAMPS_KEY`]: body updates stamped at apply time.
-const STAMPS_VERSION: i64 = 1;
-
-/// The device id the read-only body materialisation opens documents under.
-///
-/// It never writes an update, so its Yjs client id never reaches the log.
-const READER_DEVICE_ID: &str = "memry-core-indexer";
+/// The current [`STAMPS_KEY`]. `1`: body updates stamped at apply time. `2`
+/// (#4315): the body cache keyed by a version a snapshot moves, so the bodies
+/// cached empty under `1` are read again.
+const STAMPS_VERSION: i64 = 2;
 
 /// What one [`reindex`] pass did.
 #[derive(Debug, Clone, Default, PartialEq, Eq)]
@@ -75,6 +68,8 @@ pub struct Reindexed {
     pub notes_removed: usize,
     pub tasks_indexed: usize,
     pub tasks_removed: usize,
+    pub inbox_indexed: usize,
+    pub inbox_removed: usize,
     /// Rows the apply path had already flagged corrupt. Not an error here.
     pub corrupt_skipped: usize,
     /// The links the pass changed, in rows it committed.
@@ -155,6 +150,7 @@ pub fn reindex_until(
         }
         index_task(data, &transaction, id, &mut done)?;
     }
+    super::inbox::reindex(data, &transaction, full, &mut done)?;
 
     meta_set(&transaction, DATA_VERSION_KEY, &version.to_string())?;
     meta_set(&transaction, STAMPS_KEY, &STAMPS_VERSION.to_string())?;
@@ -212,7 +208,7 @@ fn task_candidates(
     )
 }
 
-fn candidates(
+pub(super) fn candidates(
     data: &Connection,
     sql: &str,
     bound: &[&dyn rusqlite::ToSql],
@@ -335,7 +331,7 @@ fn index_note_rows(
             ],
         )
         .map_err(failed)?;
-    index_links(data, names, index, id, now_ms)?;
+    index_links(data, names, index, id)?;
     done.notes_indexed += 1;
     Ok(())
 }
@@ -355,9 +351,8 @@ fn index_links(
     names: &WikiNames,
     index: &Connection,
     id: &str,
-    now_ms: i64,
 ) -> Result<(), StorageError> {
-    let document = body_document(data, id, now_ms)?;
+    let document = body_document(data, id)?;
     let Some(document) = document else {
         return Ok(());
     };
@@ -447,115 +442,7 @@ fn read_payload(
     })
 }
 
-/// The body's `extract_text` output, materialised into `note_bodies` on the way
-/// past (§A.3).
-///
-/// `source_seq` is what makes "skip when nothing moved" possible: it holds the
-/// **sum** of the two namespaces' high-water sequences. A sum, because the
-/// server and local sequence spaces are independent, so a single maximum over
-/// both would sit still while the lower of the two advanced; each half is
-/// non-decreasing, so the sum is non-decreasing and moves whenever either half
-/// does.
-fn body_text(data: &Connection, doc_id: &str, now_ms: i64) -> Result<String, StorageError> {
-    let high = body_high_water(data, doc_id)?;
-    let stored = data
-        .query_row(
-            "SELECT text, source_seq FROM note_bodies WHERE note_id = ?1",
-            params![doc_id],
-            |row| Ok((row.get::<_, String>(0)?, row.get::<_, Option<i64>>(1)?)),
-        )
-        .optional()
-        .map_err(failed)?;
-    if let Some((text, Some(source_seq))) = &stored
-        && *source_seq == high
-    {
-        return Ok(text.clone());
-    }
-
-    let plan = update_log::load_plan(data, doc_id).map_err(|error| crdt_failed(doc_id, error))?;
-    let sink: UpdateSink = Arc::new(|_, _| {});
-    let document = DocumentRegistry::new(READER_DEVICE_ID, sink)
-        .get_or_open(doc_id)
-        .map_err(|error| crdt_failed(doc_id, error))?;
-    for blob in plan.blobs() {
-        document
-            .apply_durable_update(blob)
-            .map_err(|error| crdt_failed(doc_id, error))?;
-    }
-    let text = extract_text(&document).map_err(|error| crdt_failed(doc_id, error))?;
-
-    data.execute(
-        "INSERT INTO note_bodies (
-             note_id, text, seed_markdown, text_sha256, source_seq, materialised_at
-         ) VALUES (?1, ?2, NULL, ?3, ?4, ?5)
-         ON CONFLICT(note_id) DO UPDATE SET
-             text = excluded.text,
-             text_sha256 = excluded.text_sha256,
-             source_seq = excluded.source_seq,
-             materialised_at = excluded.materialised_at",
-        params![
-            doc_id,
-            &text,
-            hex::encode(Sha256::digest(text.as_bytes())),
-            high,
-            now_ms,
-        ],
-    )
-    .map_err(failed)?;
-    Ok(text)
-}
-
-/// One note's body as a document, rebuilt from the durable log.
-///
-/// `None` when the log holds nothing for it, which is a note whose body has
-/// not arrived rather than an empty one — the two are different and only the
-/// first can still change.
-fn body_document(
-    data: &Connection,
-    doc_id: &str,
-    _now_ms: i64,
-) -> Result<Option<Arc<Document>>, StorageError> {
-    let plan = update_log::load_plan(data, doc_id).map_err(|error| crdt_failed(doc_id, error))?;
-    let blobs = plan.blobs();
-    if blobs.is_empty() {
-        return Ok(None);
-    }
-    let sink: UpdateSink = Arc::new(|_, _| {});
-    let document = DocumentRegistry::new(READER_DEVICE_ID, sink)
-        .get_or_open(doc_id)
-        .map_err(|error| crdt_failed(doc_id, error))?;
-    for blob in blobs {
-        document
-            .apply_durable_update(blob)
-            .map_err(|error| crdt_failed(doc_id, error))?;
-    }
-    Ok(Some(document))
-}
-
-fn body_high_water(data: &Connection, doc_id: &str) -> Result<i64, StorageError> {
-    let local = format!("{LOCAL_NAMESPACE_PREFIX}{doc_id}");
-    let mut high = 0;
-    for row_id in [doc_id, local.as_str()] {
-        let updates: i64 = data
-            .query_row(
-                "SELECT COALESCE(MAX(seq), 0) FROM yjs_updates WHERE doc_id = ?1",
-                params![row_id],
-                |row| row.get(0),
-            )
-            .map_err(failed)?;
-        let folded: i64 = data
-            .query_row(
-                "SELECT COALESCE((SELECT last_seq FROM yjs_snapshots WHERE doc_id = ?1), 0)",
-                params![row_id],
-                |row| row.get(0),
-            )
-            .map_err(failed)?;
-        high += updates.max(folded);
-    }
-    Ok(high)
-}
-
-fn meta_number(index: &Connection, key: &str) -> Result<Option<i64>, StorageError> {
+pub(super) fn meta_number(index: &Connection, key: &str) -> Result<Option<i64>, StorageError> {
     let raw: Option<Option<String>> = index
         .query_row(
             "SELECT value FROM index_meta WHERE key = ?1",
@@ -573,7 +460,7 @@ fn meta_number(index: &Connection, key: &str) -> Result<Option<i64>, StorageErro
     }
 }
 
-fn meta_set(index: &Connection, key: &str, value: &str) -> Result<(), StorageError> {
+pub(super) fn meta_set(index: &Connection, key: &str, value: &str) -> Result<(), StorageError> {
     index
         .execute(
             "INSERT INTO index_meta (key, value) VALUES (?1, ?2)
@@ -582,10 +469,4 @@ fn meta_set(index: &Connection, key: &str, value: &str) -> Result<(), StorageErr
         )
         .map_err(failed)?;
     Ok(())
-}
-
-fn crdt_failed(doc_id: &str, error: CrdtError) -> StorageError {
-    StorageError::Failed {
-        what: format!("body of {doc_id} could not be read for indexing: {error}"),
-    }
 }

@@ -1,6 +1,6 @@
 //! Path identity and file state of every vault file (desktop Step 12).
 //!
-//! The `note_files` table (migration 17) holds one row per note id: the
+//! The `note_files` table (migration 20) holds one row per note id: the
 //! vault-relative path, the kind of file, its size and the content hash of the
 //! bytes the index last read. It is device-local and never synced.
 //!
@@ -24,7 +24,7 @@
 //! replaces it with the value the caller read (`None` clears it), so a row never
 //! pairs a new stat with the hash of older bytes.
 //!
-//! `file_hash` (table `note_file_hashes`, migration 19) is the same kind of
+//! `file_hash` (table `note_file_hashes`, migration 22) is the same kind of
 //! string for the bytes on disk now, whether or not the note's document took
 //! them, or `None` when the tier does not know them: it is never the hash of
 //! bytes that went or were replaced. Rename pairing reads it, and a removal of

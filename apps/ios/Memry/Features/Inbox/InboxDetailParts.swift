@@ -21,7 +21,7 @@ struct InboxVoiceDetail: View {
     var body: some View {
         VStack(alignment: .leading, spacing: Tokens.Space.inset) {
             if file != nil { playerCard } else {
-                Label(InboxCopy.fileNotHere, systemImage: "iphone.slash")
+                Label(InboxCopy.fileNotHere, systemImage: ThisDevice.symbolSlash)
                     .font(Tokens.Typography.supporting.font)
                     .foregroundStyle(Tokens.Text.secondary.color)
             }
@@ -278,6 +278,6 @@ enum InboxPanelText {
     }
 
     static func unopenable(_ type: String) -> String {
-        type == "journal" ? "Journal days open on another device for now." : "Open it from Notes on this phone."
+        type == "journal" ? "Journal days open on another device for now." : "Open it from Notes on this \(ThisDevice.noun)."
     }
 }

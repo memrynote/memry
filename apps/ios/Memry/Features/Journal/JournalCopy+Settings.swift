@@ -21,7 +21,7 @@ extension JournalCopy {
     }
 
     /// D9: the stats footer switch is not a synced setting.
-    static let settingsStatsFooterDevice = "Kept on this iPhone for this vault."
+    static let settingsStatsFooterDevice = "Kept on this \(ThisDevice.noun) for this vault."
 
     /// VoiceOver: a weekday row, "Saturday, Weekend review".
     static func settingsWeekdayAccessibility(_ weekday: Int, value: String) -> String {

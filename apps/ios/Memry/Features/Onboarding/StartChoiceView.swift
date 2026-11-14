@@ -29,7 +29,7 @@ struct StartChoiceView: View {
                             .font(Tokens.Typography.welcomeHeadline.font)
                             .foregroundStyle(Tokens.Text.primary.color)
                             .accessibilityAddTraits(.isHeader)
-                        Text("Start free on this phone, or bring the vault you already have.")
+                        Text("Start free on this \(ThisDevice.noun), or bring the vault you already have.")
                             .font(Tokens.Typography.body.font)
                             .foregroundStyle(Tokens.Text.secondary.color)
                     }
@@ -37,14 +37,14 @@ struct StartChoiceView: View {
 
                     VStack(spacing: Tokens.Space.medium) {
                         StartCard(
-                            symbol: "iphone.gen3",
-                            title: "Start on this iPhone",
+                            symbol: ThisDevice.symbolGenerational,
+                            title: "Start on this \(ThisDevice.noun)",
                             badge: "FREE",
                             detail: "No account, no email. Your notes stay right here.",
                             isSelected: choice == .local
                         ) { choice = .local }
                         StartCard(
-                            symbol: "laptopcomputer.and.iphone",
+                            symbol: ThisDevice.symbolWithLaptop,
                             title: "Sign in and sync",
                             badge: nil,
                             detail: "Pick up where you left off on your other devices. End-to-end encrypted.",
@@ -54,6 +54,9 @@ struct StartChoiceView: View {
                 }
                 .frame(maxWidth: .infinity, alignment: .leading)
                 .padding(.top, Tokens.Space.screenBlock)
+                // Capped inside the scroll view, so its margins still scroll.
+                .measuredColumn(Tokens.Size.form)
+                .padding(.horizontal, Tokens.Space.screenInline)
             }
 
             VStack(spacing: Tokens.Space.inset) {
@@ -69,8 +72,9 @@ struct StartChoiceView: View {
                     .frame(maxWidth: .infinity)
             }
             .padding(.bottom, Tokens.Space.inset)
+            .measuredColumn(Tokens.Size.form)
+            .padding(.horizontal, Tokens.Space.screenInline)
         }
-        .padding(.horizontal, Tokens.Space.screenInline)
         .background(Tokens.Canvas.background.color)
         .calmAnimation(.fast, value: choice)
     }

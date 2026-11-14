@@ -329,7 +329,8 @@ pre-negotiation binary is served, and adding a type to it reaches a client whose
 enum rejects it, failing a whole page and advancing that device's cursor past
 good data (`packages/contracts/src/sync-api.ts:106-117`).
 
-This feature's client subscribes to **twenty-one** types (chapter 13).
+The iOS client subscribes to **twenty-one** types and the Rust desktop client
+to **twenty-seven** (chapter 13 §13.1).
 
 ## 0.8 Cross-chapter obligations
 

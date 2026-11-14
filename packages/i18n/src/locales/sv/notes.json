@@ -433,10 +433,7 @@
       "empty": "Inget matchar vyn än.",
       "loadFailed": "Det gick inte att läsa in vyn. Själva anteckningarna är orörda.",
       "folderMissing": "Mappen finns inte längre i valvet. Välj en annan källa.",
-      "unreadable": "Den här vyn kan inte läsas. Välj en källa ovan eller ta bort blocket.",
-      "invalidJson": "Vyns definition är inte giltig JSON. Rätta den nedan eller ta bort blocket.",
-      "invalidShape": "Vyns definition saknar källa. Välj en ovan eller rätta den nedan.",
-      "definition": "Definition"
+      "unreadable": "Den här vyn kan inte läsas. Välj en källa ovan eller ta bort blocket."
     },
     "chart": {
       "title": "Diagram",

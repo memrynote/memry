@@ -26,6 +26,8 @@ function buildBacklinks(): Backlink[] {
       noteId: 'note-a',
       noteTitle: 'Zulu',
       date: new Date('2026-05-10'),
+      sourceJournalDate: null,
+      sourceTags: ['work'],
       mentions: [{ id: 'm1', snippet: 'WIKI mention text', linkStart: 0, linkEnd: 4 }],
       mentionCount: 1,
       truncated: false
@@ -36,6 +38,8 @@ function buildBacklinks(): Backlink[] {
       noteTitle: 'Zulu',
       date: new Date('2026-05-10'),
       via: { kind: 'property', propertyName: 'father' },
+      sourceJournalDate: null,
+      sourceTags: ['work'],
       mentions: [
         { id: 'm2', snippet: 'PROPERTY mention text', linkStart: 0, linkEnd: 8 },
         { id: 'm2b', snippet: 'PROPERTY mention text two', linkStart: 0, linkEnd: 8 }
@@ -48,6 +52,8 @@ function buildBacklinks(): Backlink[] {
       noteId: 'note-b',
       noteTitle: 'Alpha',
       date: new Date('2026-05-01'),
+      sourceJournalDate: '2026-05-01',
+      sourceTags: [],
       mentions: [{ id: 'm3', snippet: 'other mention', linkStart: 0, linkEnd: 5 }],
       mentionCount: 1,
       truncated: false
@@ -93,6 +99,40 @@ describe('BacklinksSection — two entries sharing a sourceId', () => {
   })
 })
 
+describe('BacklinksSection — reference filter', () => {
+  const pickFilter = async (option: string) => {
+    fireEvent.pointerDown(screen.getByRole('button', { name: 'filterBy' }), {
+      button: 0,
+      pointerType: 'mouse'
+    })
+    fireEvent.click(await screen.findByRole('menuitem', { name: option }))
+  }
+
+  it('narrows the list to journal entries, to notes with a tag, and back to all', async () => {
+    render(
+      <BacklinksSection
+        backlinks={buildBacklinks()}
+        sortBy="alphabetical"
+        onBacklinkClick={vi.fn()}
+      />
+    )
+    expect(screen.getByText('other mention')).toBeInTheDocument()
+    expect(screen.getByText('WIKI mention text')).toBeInTheDocument()
+
+    await pickFilter('filterJournal')
+    expect(screen.getByText('other mention')).toBeInTheDocument()
+    expect(screen.queryByText('WIKI mention text')).not.toBeInTheDocument()
+
+    await pickFilter('#work')
+    expect(screen.queryByText('other mention')).not.toBeInTheDocument()
+    expect(screen.getByText('WIKI mention text')).toBeInTheDocument()
+
+    await pickFilter('filterAll')
+    expect(screen.getByText('other mention')).toBeInTheDocument()
+    expect(screen.getByText('WIKI mention text')).toBeInTheDocument()
+  })
+})
+
 describe('BacklinksSection — counts', () => {
   it('sorts and totals by every link, not by the snippets a cut source kept', () => {
     const backlinks: Backlink[] = [
@@ -101,6 +141,8 @@ describe('BacklinksSection — counts', () => {
         noteId: 'note-a',
         noteTitle: 'Few',
         date: new Date('2026-05-10'),
+        sourceJournalDate: null,
+        sourceTags: [],
         mentions: [
           { id: 'a1', snippet: 'few one', linkStart: 0, linkEnd: 3 },
           { id: 'a2', snippet: 'few two', linkStart: 0, linkEnd: 3 }
@@ -113,6 +155,8 @@ describe('BacklinksSection — counts', () => {
         noteId: 'note-b',
         noteTitle: 'Dense',
         date: new Date('2026-05-01'),
+        sourceJournalDate: null,
+        sourceTags: [],
         mentions: [{ id: 'b1', snippet: 'dense one', linkStart: 0, linkEnd: 5 }],
         mentionCount: 40,
         truncated: true

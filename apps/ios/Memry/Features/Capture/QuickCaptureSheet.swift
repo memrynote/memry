@@ -9,31 +9,23 @@ import SwiftUI
 struct QuickCaptureSheet: View {
     let kinds: [CaptureKind]
     let capture: QuickCapture
+    /// Owned by the presenter's `QuickCapture`, so it outlives this sheet.
+    @Bindable var draft: CaptureDraft
     let captured: (CaptureReceipt) -> Void
 
-    @State private var kind: CaptureKind
-    @State private var text = ""
-    @State private var saving = false
-    @State private var failed = false
     @FocusState private var focused: Bool
     @Environment(\.dismiss) private var dismiss
 
-    init(kinds: [CaptureKind], capture: QuickCapture, captured: @escaping (CaptureReceipt) -> Void) {
-        self.kinds = kinds
-        self.capture = capture
-        self.captured = captured
-        _kind = State(initialValue: kinds.first ?? .note)
-    }
-
-    private var canSave: Bool {
-        !saving && !text.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty
+    /// The picked chip, or the first one offered.
+    private var kind: CaptureKind {
+        draft.kind.flatMap { kinds.contains($0) ? $0 : nil } ?? kinds.first ?? .note
     }
 
     var body: some View {
         VStack(alignment: .leading, spacing: 0) {
             TextField(
                 kinds == [.journal] ? QuickCaptureCopy.journalPlaceholder : QuickCaptureCopy.placeholder,
-                text: $text,
+                text: $draft.text,
                 axis: .vertical
             )
             .font(Tokens.Typography.body.font)
@@ -43,7 +35,7 @@ struct QuickCaptureSheet: View {
             .padding(.horizontal, Tokens.Space.screenInline)
             .padding(.top, Tokens.Space.section)
             .accessibilityIdentifier("capture.field")
-            if failed {
+            if draft.failed {
                 Text(QuickCaptureCopy.failed)
                     .font(Tokens.Typography.caption.font)
                     .foregroundStyle(Tokens.Text.secondary.color)
@@ -61,7 +53,7 @@ struct QuickCaptureSheet: View {
                 } else {
                     Spacer()
                 }
-                SheetConfirmButton(label: QuickCaptureCopy.send, isEnabled: canSave) { save() }
+                SheetConfirmButton(label: QuickCaptureCopy.send, isEnabled: draft.canSave) { save() }
                     .accessibilityIdentifier("capture.send")
             }
             .padding(.horizontal, Tokens.Space.inset)
@@ -75,7 +67,7 @@ struct QuickCaptureSheet: View {
 
     private func chip(_ option: CaptureKind) -> some View {
         let isOn = option == kind
-        return Button { kind = option } label: {
+        return Button { draft.kind = option } label: {
             Text(option.title)
                 .font(Tokens.Typography.supporting.font.weight(.medium))
                 .foregroundStyle(isOn ? Tokens.Canvas.background.color : Tokens.Text.primary.color)
@@ -89,18 +81,10 @@ struct QuickCaptureSheet: View {
     }
 
     private func save() {
-        guard canSave else { return }
-        saving = true
-        failed = false
-        let text = text
+        guard draft.canSave else { return }
         let kind = kind
         Task {
-            let receipt = await capture.capture(text, as: kind)
-            saving = false
-            guard let receipt else {
-                failed = true
-                return
-            }
+            guard let receipt = await draft.save(as: kind, through: { await capture.capture($0, as: $1) }) else { return }
             dismiss()
             captured(receipt)
         }

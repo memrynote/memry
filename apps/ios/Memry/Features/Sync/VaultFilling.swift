@@ -73,7 +73,10 @@ protocol VaultFilling: Sendable {
     ///
     /// Throws `SyncError.UnknownNote` for a note this vault holds no **live**
     /// record of. That refusal is **permanent**; no copy may call it retryable.
-    func fetchNoteBody(noteId: String) async throws -> BodyFetchSummary
+    ///
+    /// Callers use ``fetchNoteBody(noteId:)``, which also tells the search
+    /// index owner when anything landed.
+    func pullNoteBody(noteId: String) async throws -> BodyFetchSummary
 
     /// Fetches one attachment's bytes (chapter 14, FR-045).
     ///
@@ -152,6 +155,18 @@ protocol VaultFilling: Sendable {
 
 extension VaultFilling {
     func pendingChanges() async throws -> UInt32 { 0 }
+
+    /// One note's body, on demand (``pullNoteBody(noteId:)``). A pull that
+    /// landed anything posts ``VaultSearchIndex/bodyLanded``: the body arrived
+    /// outside a sync pass, so nothing else tells search, backlinks and
+    /// mentions. Every pull goes through here, whichever screen asked.
+    func fetchNoteBody(noteId: String) async throws -> BodyFetchSummary {
+        let summary = try await pullNoteBody(noteId: noteId)
+        if summary.updates > 0 || summary.baselines > 0 {
+            NotificationCenter.default.post(name: VaultSearchIndex.bodyLanded, object: nil)
+        }
+        return summary
+    }
 }
 
 /// The production filler: the core's own `VaultSync`.
@@ -204,7 +219,7 @@ struct CoreVaultFiller: VaultFilling {
 
     /// Awaited directly for the same reason, though this one is a handful of
     /// round trips rather than tens.
-    func fetchNoteBody(noteId: String) async throws -> BodyFetchSummary {
+    func pullNoteBody(noteId: String) async throws -> BodyFetchSummary {
         try await sync.fetchNoteBody(noteId: noteId)
     }
 

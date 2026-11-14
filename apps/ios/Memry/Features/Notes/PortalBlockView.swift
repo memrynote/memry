@@ -78,6 +78,7 @@ struct PortalBlockView: View {
                 .environment(\.portalHostNote, target.noteId)
                 // The host's comments are pinned to the host's text.
                 .environment(\.reviewMarks, [])
+                .environment(\.paneBreakout, false)
             }
         case .state:
             EmptyView()

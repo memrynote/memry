@@ -78,7 +78,7 @@ struct NoteBodyView: View {
             // 10 §10.6.1). **This is the state that must never render as an
             // empty note**, and before T237 it was also a dead end.
             ContentUnavailableView {
-                Label("This note's text is not on this phone", systemImage: "icloud.and.arrow.down")
+                Label("This note's text is not on this \(ThisDevice.noun)", systemImage: "icloud.and.arrow.down")
             } description: {
                 Text("Memry downloaded this note's title but not its text yet.")
             }
@@ -91,7 +91,7 @@ struct NoteBodyView: View {
             ContentUnavailableView {
                 Label("This note has no text", systemImage: "text.append")
             } description: {
-                Text("The note is on this phone and its text is empty.")
+                Text("The note is on this \(ThisDevice.noun) and its text is empty.")
             }
             .frame(maxWidth: .infinity, alignment: .leading)
         }
@@ -200,7 +200,7 @@ struct NoteFetchState: View {
     /// open and the cursor did not advance, so the rest is retried rather than
     /// lost. Neither "complete" nor "failed" would be true of it.
     static let incomplete = """
-        Part of this note's text could not be opened on this phone. \
+        Part of this note's text could not be opened on this \(ThisDevice.noun). \
         Nothing was lost, and Memry carries on from where it stopped.
         """
 }

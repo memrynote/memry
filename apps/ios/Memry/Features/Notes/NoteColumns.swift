@@ -197,6 +197,7 @@ struct NoteColumnsView: View {
 
     var body: some View {
         content
+            .environment(\.paneBreakout, false)
             .padding(.leading, CGFloat(group.indent) * Tokens.Space.inset)
             .frame(maxWidth: .infinity, alignment: .leading)
             .accessibilityElement(children: .contain)

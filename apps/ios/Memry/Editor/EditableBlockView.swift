@@ -48,6 +48,13 @@ struct EditableBlockView: UIViewRepresentable {
         return view
     }
 
+    /// #4346: a page swapped out in place (the iPad split view's detail
+    /// column opening another note) removes its text views without ending
+    /// their edits, so typing not yet committed would be lost with them.
+    static func dismantleUIView(_ view: BlockTextView, coordinator: BlockField) {
+        if coordinator.dirty { coordinator.session?.commit(coordinator) }
+    }
+
     /// Takes the offered width and grows vertically to fit the wrapped text.
     func sizeThatFits(_ proposal: ProposedViewSize, uiView: BlockTextView, context: Context) -> CGSize? {
         guard let width = proposal.width, width.isFinite else { return nil }

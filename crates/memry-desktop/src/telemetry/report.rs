@@ -5,7 +5,7 @@
 use std::collections::HashMap;
 use std::time::Duration;
 
-use memry_core::seams::transport::{HttpRequest, Transport};
+use memry_core::seams::transport::{HttpRequest, HttpResponse, Transport};
 use serde::{Deserialize, Serialize};
 
 use super::logship::DiagnosticLine;
@@ -133,11 +133,26 @@ pub async fn post_json(
     body: String,
     bearer: Option<&str>,
 ) -> Result<(), String> {
+    let response = send_json(transport, url, body, bearer).await?;
+    if (200..300).contains(&response.status) {
+        Ok(())
+    } else {
+        Err(format!("status {}", response.status))
+    }
+}
+
+/// POSTs `body` as JSON and returns the response whatever its status; `Err` is a transport failure.
+pub(super) async fn send_json(
+    transport: &dyn Transport,
+    url: &str,
+    body: String,
+    bearer: Option<&str>,
+) -> Result<HttpResponse, String> {
     let mut headers = HashMap::from([("content-type".to_owned(), "application/json".to_owned())]);
     if let Some(token) = bearer {
         headers.insert("authorization".to_owned(), format!("Bearer {token}"));
     }
-    let response = transport
+    transport
         .send(HttpRequest {
             method: "POST".to_owned(),
             url: url.to_owned(),
@@ -146,12 +161,7 @@ pub async fn post_json(
             timeout_ms: u64::try_from(REQUEST_TIMEOUT.as_millis()).unwrap_or(u64::MAX),
         })
         .await
-        .map_err(|e| e.to_string())?;
-    if (200..300).contains(&response.status) {
-        Ok(())
-    } else {
-        Err(format!("status {}", response.status))
-    }
+        .map_err(|e| e.to_string())
 }
 
 /// `local@domain.tld` with no whitespace. The sync server applies the full contract.

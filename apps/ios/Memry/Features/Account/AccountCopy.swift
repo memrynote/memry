@@ -25,22 +25,22 @@ enum AccountCopy {
     static let signOut = "Sign out"
     static let signingOut = "Signing out…"
 
-    static let confirmTitle = "Sign out of Memry on this phone?"
+    static let confirmTitle = "Sign out of Memry on this \(ThisDevice.noun)?"
     /// Named effects, not "all local data". A user cannot weigh a phrase that
     /// does not say what it covers.
     static let confirmMessage = """
-        This phone's keys, its copy of your notes, and any images downloaded to it are removed. \
+        This \(ThisDevice.noun)'s keys, its copy of your notes, and any images downloaded to it are removed. \
         Your account and the notes in it are not deleted, and you can sign in again here at any time.
         """
 
-    static let revokedTitle = "This phone's access to your account was turned off."
+    static let revokedTitle = "This \(ThisDevice.noun)'s access to your account was turned off."
     /// No accusation and no mechanism. "Turned off for your account" is what
     /// this device actually knows: the server refused it, and it was not told
     /// by whom or why.
     static let revokedBody = """
-        Memry has removed this phone's keys and its copy of your notes. \
+        Memry has removed this \(ThisDevice.noun)'s keys and its copy of your notes. \
         Nothing was deleted from your account — your notes are still there, \
-        and signing in again brings them back to this phone.
+        and signing in again brings them back to this \(ThisDevice.noun).
         """
     static let revokedAction = "Sign in again"
 
@@ -57,9 +57,9 @@ enum AccountCopy {
     /// the two things that work, and both exist.
     static let contentSurvived = UserFacingError(
         code: "account.contentSurvived",
-        title: "You are signed out, but part of this phone's copy could not be removed.",
+        title: "You are signed out, but part of this \(ThisDevice.noun)'s copy could not be removed.",
         guidance: "Your keys are gone, so nothing left behind can be opened. "
-            + "Signing out again removes the rest; deleting Memry from this phone also removes it.",
+            + "Signing out again removes the rest; deleting Memry from this \(ThisDevice.noun) also removes it.",
         recourse: .retry,
         isUserVisible: true
     )

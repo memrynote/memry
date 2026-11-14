@@ -8,7 +8,7 @@ import SwiftUI
 
 enum BillingCopy {
     static let plansTitle = "Your vault, on every device."
-    static let plansSubtitle = "Memry stays free on this phone. Sync is end-to-end encrypted — we never see your notes."
+    static let plansSubtitle = "Memry stays free on this \(ThisDevice.noun). Sync is end-to-end encrypted — we never see your notes."
     static let monthly = "Monthly"
     static let yearly = "Yearly"
     static func save(_ percent: Int) -> String { "Save \(percent)%" }
@@ -38,14 +38,14 @@ enum BillingCopy {
     static let close = "Close"
 
     // Account card
-    static let onThisIPhone = "On this iPhone"
+    static let onThisDevice = "On this \(ThisDevice.noun)"
     static let localLine = "Free · Not signed in"
     static let localDetail = "Sign in to back up your vault and keep it in step with your other devices."
     static let signIn = "Sign in"
     static let createAccount = "Create account"
     static let freeLine = "Free plan · Sync off"
     static let needsPlanLine = "Sync needs a plan"
-    static let needsPlanDetail = "This vault stays on this iPhone until your plan has room for it."
+    static let needsPlanDetail = "This vault stays on this \(ThisDevice.noun) until your plan has room for it."
     static let unlockSync = "Unlock sync"
     static func unlockDetail(_ price: String?) -> String {
         guard let price else { return "Encrypted sync across all your devices." }
@@ -123,7 +123,7 @@ enum BillingCopy {
     static let manageFailed = UserFacingError(
         code: "billing.manageFailed",
         title: "Subscription settings could not be opened.",
-        guidance: "Open Settings › Apple Account › Subscriptions on this iPhone.",
+        guidance: "Open Settings › Apple Account › Subscriptions on this \(ThisDevice.noun).",
         recourse: .retry, isUserVisible: true
     )
 }

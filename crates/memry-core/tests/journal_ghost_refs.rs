@@ -8,7 +8,7 @@
 //! | an unwritten day lists a link, then a relation    | ghost references, links first           |
 //! | a date off the calendar lists nothing             | `j2026-02-30` is no day                 |
 //! | a date another note is titled lists nothing       | the date names that note, not the day   |
-//! | an index migrated in place fills `property_refs`  | migration 0008 reads `note_properties`  |
+//! | an index migrated in place fills `property_refs`  | migration 0009 reads `note_properties`  |
 
 use memry_core::domain::link_reads;
 use memry_core::domain::notes::names::name_key;

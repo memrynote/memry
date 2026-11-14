@@ -66,6 +66,10 @@ final class QuickCapture {
     /// Bumped by every journal capture, so an open Journal page re-reads the
     /// day it did not write itself.
     private(set) var journalWrites = 0
+    /// Home's "+" draft and the Journal page's own, kept apart: each sheet
+    /// files to different kinds.
+    let homeDraft = CaptureDraft()
+    let journalDraft = CaptureDraft()
     private let vault: Vault
     private let secureStore: any SecureStore
     private let tasks: TasksStore?

@@ -55,6 +55,8 @@ final class VaultBrowseViewModel {
     /// The raw search surface, for the reads that are not a query — the
     /// backlinks section (N800) is one.
     let searcher: (any VaultSearching)?
+    /// The search sheet's recently opened results (#4322).
+    let recents: (any SearchRecentsStoring)?
     /// The task writes a note screen makes (TP054), `nil` without an
     /// identity to sign with, like ``writer``.
     let noteTasks: (any NoteTaskWriting)?
@@ -82,6 +84,7 @@ final class VaultBrowseViewModel {
         editor: (any BlockEditing)? = nil,
         metadataWriter: (any NoteMetadataWriting)? = nil,
         search: (any VaultSearching)? = nil,
+        recents: (any SearchRecentsStoring)? = nil,
         noteTasks: (any NoteTaskWriting)? = nil
     ) {
         self.reader = reader
@@ -91,6 +94,7 @@ final class VaultBrowseViewModel {
         self.editor = editor
         self.metadataWriter = metadataWriter
         self.searcher = search
+        self.recents = recents
         self.search = search.map { VaultSearchViewModel(search: $0, source: "notes_list") }
     }
 
@@ -115,6 +119,7 @@ final class VaultBrowseViewModel {
             // browsing, so this failure is absorbed into "no full-text search"
             // rather than into "no screen".
             search: try? CoreVaultSearch(vault: vault, executor: executor),
+            recents: CoreSearchRecents(vault: vault, executor: executor),
             noteTasks: store.map { CoreNoteTasks(vault: vault, store: $0, executor: executor) }
         )
     }

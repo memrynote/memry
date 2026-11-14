@@ -238,6 +238,26 @@ struct NoteReadView: View {
 
     var body: some View {
         ScrollView {
+            // The cover sits above everything, as desktop puts it, and spans
+            // the pane; the page under it keeps the reading measure. Spacing
+            // 0: the band brings its own gap.
+            VStack(alignment: .leading, spacing: 0) {
+            if case .ready = model.phase {
+                NoteCoverSection(
+                    noteId: model.route.id,
+                    coverJson: model.metadata?.coverJson,
+                    reader: model.reader,
+                    filler: model.filler,
+                    reachability: model.reachability,
+                    metadataModel: metadataModel,
+                    composer: composer,
+                    reload: { await model.reload() },
+                    bleed: Tokens.Space.screenInline,
+                    topBleed: Tokens.Space.screenBlock + topInset,
+                    picking: $choosingCover,
+                    repositioning: $repositioningCover
+                )
+            }
             VStack(alignment: .leading, spacing: Tokens.Space.section) {
                 switch model.phase {
                 case .loading:
@@ -254,29 +274,10 @@ struct NoteReadView: View {
                     Button("Try again") { Task { await model.reload() } }
                         .memrySecondaryAction()
                 case let .ready(detail):
-                    // The cover sits above everything, as desktop puts it.
-                    // Spacing 0: the band brings its own gap, so a note
-                    // without a cover gets no empty section above its title.
-                    VStack(alignment: .leading, spacing: 0) {
-                    NoteCoverSection(
-                        noteId: model.route.id,
-                        coverJson: model.metadata?.coverJson,
-                        reader: model.reader,
-                        filler: model.filler,
-                        reachability: model.reachability,
-                        metadataModel: metadataModel,
-                        composer: composer,
-                        reload: { await model.reload() },
-                        bleed: Tokens.Space.screenInline,
-                        topBleed: Tokens.Space.screenBlock + topInset,
-                        picking: $choosingCover,
-                        repositioning: $repositioningCover
-                    )
                     NotePageTitle(
                         model: model, detail: detail, metadataModel: metadataModel,
                         returnToBody: editorModel.canEdit ? { Task { await focusBody(atEnd: false) } } : nil
                     )
-                    }
                     NotePageContent(
                         model: model,
                         detail: detail,
@@ -314,6 +315,8 @@ struct NoteReadView: View {
                 }
             }
             .frame(maxWidth: .infinity, alignment: .leading)
+            .readingColumn()
+            }
             .padding(.horizontal, Tokens.Space.screenInline)
             .padding(.vertical, Tokens.Space.screenBlock)
         }
@@ -322,11 +325,7 @@ struct NoteReadView: View {
         .onGeometryChange(for: CGFloat.self) { $0.safeAreaInsets.top } action: { topInset = $0 }
         // A cover runs under the navigation bar; the edge blur would smear it.
         .scrollEdgeEffectHidden(hasCover, for: .top)
-        .safeAreaInset(edge: .top) {
-            if finding {
-                NoteFindPanel(blocks: model.blocks) { finding = false }
-            }
-        }
+        .modifier(NoteFindScroll(target: .note(model.route.id), blocks: model.blocks, blocksRead: model.blocksRead, finding: $finding))
         // The keyboard accessory is floating glass: paint the page colour under
         // it and drop the bottom edge blur, or the strip behind the toolbar reads
         // as a black band with a shadow over it.

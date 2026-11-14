@@ -18,7 +18,7 @@ import {
 } from '@/components/settings/settings-primitives'
 import { extractErrorMessage } from '@/lib/ipc-error'
 import { createLogger } from '@/lib/logger'
-import { commands } from '../../../../generated/bindings'
+import { commands, events } from '../../../../generated/bindings'
 
 const log = createLogger('Page:Settings:AI')
 
@@ -69,7 +69,7 @@ export function SummarizeLongNotesRow({
 
   const refreshLastRun = useCallback(async () => {
     try {
-      const run = await window.api.noteFold.getLastRun()
+      const run = await commands.foldGetLastRun()
       setFailed(run.status === 'failed')
     } catch (error) {
       log.error('Failed to read the last fold run', error)
@@ -80,12 +80,26 @@ export function SummarizeLongNotesRow({
     if (!checked) return undefined
     // oxlint-disable-next-line react/set-state-in-effect -- loads from the main process over IPC on mount; the effect synchronizes with that external system
     void refreshLastRun()
-    return window.api.noteFold.onUpdated(() => void refreshLastRun())
+    let active = true
+    const registered = events.noteFoldUpdatedEvent.listen(() => {
+      if (active) void refreshLastRun()
+    })
+    void registered.catch((error: unknown) => log.warn('Fold update subscription failed', error))
+    return () => {
+      active = false
+      // A subscription that failed was logged when it failed; there is nothing to undo.
+      void registered
+        .then(
+          (unlisten) => unlisten(),
+          () => undefined
+        )
+        .catch((error: unknown) => log.warn('Unsubscribing from fold updates failed', error))
+    }
   }, [checked, refreshLastRun])
 
   const handleRetry = useCallback(async () => {
     try {
-      await window.api.noteFold.retry()
+      await commands.foldRetry(null)
       await refreshLastRun()
     } catch (error) {
       toast.error(extractErrorMessage(error, t('ai.summarizeLongNotes.retryError')))

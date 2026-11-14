@@ -4,9 +4,11 @@
 //!
 //! - The `wiki-target-resolution` vectors resolve to the vector's note, at the vector's path,
 //!   by title, by batch and as a wiki-link target with a heading.
-//! - Backlinks carry the text around each link, read from the linking note's or day's file
-//!   with its comments stripped, and count every link past the snippet bound; a broken link
-//!   has no target.
+//! - Backlinks carry the text around each link, read from the body of the linking note's or
+//!   day's file with its comments stripped, and count every link past the snippet bound; a
+//!   broken link has no target.
+//! - Backlinks and unlinked mentions name a journal source's day and every source's tags, which
+//!   the reference filters read.
 //! - A journal day not written yet lists the notes that link to its date and the relations that
 //!   name it, and keeps them once it is written.
 
@@ -27,6 +29,7 @@ use memry_desktop::journal::write::NewDay;
 use memry_desktop::notes::identity::NotesIdentity;
 use memry_desktop::notes::index::NoteIndex;
 use memry_desktop::notes::links::{LinkViaView, NoteLinks, TitleMatchView};
+use memry_desktop::notes::mentions::Mentions;
 use memry_desktop::vault::consumer::rows::RowStat;
 use memry_desktop::vault::file_types::FileType;
 use serde_json::{Value, json};
@@ -204,7 +207,7 @@ fn backlinks_carry_the_text_around_each_link_from_the_linking_file() {
         [
             ("2025-01-01", "journal/2025-01-01.md", 1, false, 1),
             ("Dense", "Dense.md", 60, true, 34),
-            ("Source", "notes/Source.md", 3, false, 3),
+            ("Source", "notes/Source.md", 2, false, 2),
         ]
     );
     assert_eq!(got.incoming[0].source_id, "j2025-01-01");
@@ -229,12 +232,12 @@ fn backlinks_carry_the_text_around_each_link_from_the_linking_file() {
             String::from_utf16(&units[c.link_start as usize..c.link_end as usize]).unwrap()
         })
         .collect();
-    // The whole file is read, frontmatter included, as `getNoteLinks` reads it; the commented
-    // link is not text the note shows.
-    assert_eq!(shown, ["[[Target]]", "[[Target]]", "[[target|the target]]"]);
+    // The body is read, as `getNoteLinks` reads it: the frontmatter's link and the commented
+    // one are not text the note shows.
+    assert_eq!(shown, ["[[Target]]", "[[target|the target]]"]);
     assert_eq!(
-        backlink.contexts[1].snippet,
-        "--- related: \"[[Target]]\" --- Intro [[Target]] middle [[target|the target]] end"
+        backlink.contexts[0].snippet,
+        "Intro [[Target]] middle [[target|the target]] end"
     );
 
     let from_source = links.get(&source).unwrap();
@@ -313,4 +316,102 @@ fn an_unwritten_journal_day_lists_its_links_and_relations_and_keeps_them_once_wr
     );
     let note = links.resolve_by_title("Observation").unwrap().unwrap();
     assert_eq!(note.journal_date, None);
+}
+
+#[test]
+fn references_name_a_journal_sources_day_and_every_sources_tags() {
+    let store: Mutex<Option<Arc<dyn SecureStore>>> = Mutex::default();
+    let mut e = env(|s| {
+        *store.lock().unwrap() = Some(s.clone());
+        Some(NotesIdentity::new(s))
+    });
+    e.write("Project X.md", "Body.\n");
+    // The header names the target too, and a snippet never quotes it.
+    e.write(
+        "Spec.md",
+        "---\ntags: [work]\nrelated: \"[[Project X]]\"\nsummary: Project X\n---\nSee [[Project X]].\n",
+    );
+    e.write(
+        "Idea.md",
+        "---\ntags: [someday]\n---\nProject X could grow.\n",
+    );
+    e.write("journal/2026-03-01.md", "Worked on [[Project X]].\n");
+    e.write(
+        "journal/2026-03-02.md",
+        "---\ntags: [daily]\n---\nProject X standup.\n",
+    );
+    let index = NoteIndex::new(e.tier.clone(), |_| {}, |_| {}, |_| {});
+    index.register(&e.session);
+    e.open();
+    e.facts_until(indexed);
+    let target = e
+        .rows()
+        .into_iter()
+        .find(|(_, p)| p == "Project X.md")
+        .expect("the target's row")
+        .0;
+    let open = e.session.current().unwrap();
+    let (links, mentions) = (NoteLinks::new(&open), Mentions::new(&open));
+    until("the sources and their tags indexed", || {
+        let linked = links.get(&target).unwrap().incoming;
+        let unlinked = mentions.get(&target).unwrap();
+        linked.len() == 2
+            && unlinked.len() == 2
+            && linked.iter().any(|b| b.source_tags == ["work"])
+            && unlinked.iter().all(|m| !m.source_tags.is_empty())
+    });
+
+    // Title, journal day, tags, snippets.
+    type Listed = (String, Option<String>, Vec<String>, Vec<String>);
+    let linked: Vec<Listed> = links
+        .get(&target)
+        .unwrap()
+        .incoming
+        .into_iter()
+        .map(|b| {
+            let snippets = b.contexts.into_iter().map(|c| c.snippet).collect();
+            (
+                b.source_title,
+                b.source_journal_date,
+                b.source_tags,
+                snippets,
+            )
+        })
+        .collect();
+    assert_eq!(
+        linked,
+        [
+            (
+                "2026-03-01".to_owned(),
+                Some("2026-03-01".to_owned()),
+                vec![],
+                vec!["Worked on [[Project X]].".to_owned()]
+            ),
+            (
+                "Spec".to_owned(),
+                None,
+                vec!["work".to_owned()],
+                vec!["See [[Project X]].".to_owned()]
+            ),
+        ]
+    );
+    let unlinked: Vec<(String, Option<String>, Vec<String>)> = mentions
+        .get(&target)
+        .unwrap()
+        .into_iter()
+        .map(|m| (m.source_title, m.source_journal_date, m.source_tags))
+        .collect();
+    assert_eq!(
+        unlinked,
+        [
+            (
+                "2026-03-02".to_owned(),
+                Some("2026-03-02".to_owned()),
+                vec!["daily".to_owned()]
+            ),
+            ("Idea".to_owned(), None, vec!["someday".to_owned()]),
+        ]
+    );
+    drop((links, mentions));
+    e.close();
 }

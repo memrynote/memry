@@ -66,13 +66,22 @@ impl Drop for Hold<'_> {
     fn drop(&mut self) {
         drop(self.flight.take());
         let mut in_flight = lock(&self.probes.in_flight);
-        if in_flight
-            .as_ref()
-            .is_some_and(|(_, weak)| weak.upgrade().is_none())
-        {
+        if in_flight.as_ref().is_some_and(|slot| over_or(slot, None)) {
             *in_flight = None;
         }
     }
+}
+
+type Slot = (Fingerprint, WeakShared<BoxFuture<'static, probe::ProbeRun>>);
+
+/// Whether the shared flight in `slot` is over, or is `ours`. The upgrade that looks is a
+/// strong reference itself: when it is the last one, dropping it ends the flight, so that
+/// counts as over too and the slot (with its copy of the key) is cleared.
+fn over_or(slot: &Slot, ours: Option<&Flight>) -> bool {
+    slot.1.upgrade().is_none_or(|running| {
+        ours.is_some_and(|ours| running.ptr_eq(ours))
+            || running.strong_count().is_none_or(|count| count <= 1)
+    })
 }
 
 struct ImageEntry {
@@ -87,7 +96,7 @@ pub(super) struct Probes {
     cache: Mutex<Option<(Fingerprint, LocalProbe)>>,
     /// Two turns starting at once share one probe instead of racing. Weak: the callers own the
     /// probe, and it ends when the last of them does.
-    in_flight: Mutex<Option<(Fingerprint, WeakShared<BoxFuture<'static, probe::ProbeRun>>)>>,
+    in_flight: Mutex<Option<Slot>>,
     /// The probe `turn_has_tools` answered from, for the run that follows. Taken once.
     reserved: Mutex<Option<(Fingerprint, LocalProbe)>>,
     images: Mutex<Option<ImageEntry>>,
@@ -98,6 +107,11 @@ fn lock<T>(mutex: &Mutex<T>) -> std::sync::MutexGuard<'_, T> {
 }
 
 impl Probes {
+    /// Whether a shared probe sits in the slot.
+    pub(super) fn in_flight(&self) -> bool {
+        lock(&self.in_flight).is_some()
+    }
+
     /// `resolveProbe`. `force` (the settings screen) skips the cache and the shared flight.
     pub async fn resolve(
         &self,
@@ -137,10 +151,10 @@ impl Probes {
         let run = flight.await;
         {
             let mut in_flight = lock(&self.in_flight);
-            if in_flight.as_ref().is_some_and(|(_, weak)| {
-                weak.upgrade()
-                    .is_none_or(|running| hold.flight.as_ref().is_some_and(|f| running.ptr_eq(f)))
-            }) {
+            if in_flight
+                .as_ref()
+                .is_some_and(|slot| over_or(slot, hold.flight.as_ref()))
+            {
                 *in_flight = None;
             }
         }

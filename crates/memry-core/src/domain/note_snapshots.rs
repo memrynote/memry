@@ -1,5 +1,5 @@
 //! Versions of a note's body (desktop `note-snapshots.ts`, `notes-versions.ts`), in the
-//! `note_snapshots` table of `data.db` (migration 0017). Versions never sync.
+//! `note_snapshots` table of `data.db` (migration 0018). Versions never sync.
 //!
 //! [`keep`] is the one writer, with Electron's rules (`note-snapshots.ts:26-28`):
 //! - a version whose content this note already holds is not kept twice

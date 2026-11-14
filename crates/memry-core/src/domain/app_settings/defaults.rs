@@ -145,7 +145,9 @@ pub(super) fn journal() -> Value {
         "showSchedule": true,
         "showTasks": true,
         "showAIConnections": true,
-        "showStatsFooter": false
+        "showStatsFooter": false,
+        "showOnThisDay": true,
+        "allYearsView": false
     })
 }
 

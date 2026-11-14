@@ -9,6 +9,10 @@
  *   vector of every window Electron embeds for a WAV file, which
  *   `crates/memry-ml/tests/golden_audio.rs` reproduces with the native engine.
  *
+ * Both embed the whole window (Kaan, 2026-11-14): the feature extractor runs with `truncation` off,
+ * where Electron's keeps the first 30 s. A longer window also records Electron's own vector and its
+ * cosine with the whole-window one (`electron`), the measured cost of that divergence.
+ *
  *   pnpm embed:golden:audio --model-dir <dir>            # write both files
  *   pnpm embed:golden:audio --model-dir <dir> --check    # regenerate in memory, compare, write nothing
  *
@@ -23,25 +27,34 @@
  * Electron utility process: `processor(null, null, audio)`, the model, `truncateEmbedding`.
  *
  * Every input is built from integer recipes (an LCG, square and triangle waves), so the Rust tests
- * rebuild the same bytes without storing them: see `tests/common/mod.rs`.
+ * rebuild the same bytes without storing them: see `tests/common/audio.rs`.
  */
-import { createHash } from 'node:crypto'
-import { readFileSync, writeFileSync } from 'node:fs'
+import { readFileSync } from 'node:fs'
 import { registerHooks } from 'node:module'
 import os from 'node:os'
-import { basename, dirname, join, resolve } from 'node:path'
-import { fileURLToPath, pathToFileURL } from 'node:url'
+import { join, resolve } from 'node:path'
+import { pathToFileURL } from 'node:url'
 
 import { AutoConfig, AutoModel, AutoProcessor, env } from '@huggingface/transformers'
 
-const ROOT = resolve(dirname(fileURLToPath(import.meta.url)), '../../../..')
-const VECTORS = join(ROOT, 'packages/contracts/test-vectors')
+import {
+  DIMENSION,
+  MODEL_REPO,
+  MODEL_REVISION,
+  ROOT,
+  VECTORS,
+  dot,
+  modelDir,
+  sha256File,
+  storedVector,
+  truncateEmbedding,
+  writeOrCheck
+} from './common.mjs'
+
 const FEATURES_OUT = join(VECTORS, 'audio-features.json')
 const EMBEDDINGS_OUT = join(VECTORS, 'embeddings-audio.json')
 const AUDIO_EMBEDDING = join(ROOT, 'apps/desktop/src/main/lib/audio-embedding.ts')
 
-const MODEL_REPO = 'onnx-community/embeddinggemma-2-ONNX'
-const MODEL_REVISION = 'daa72c51243991dfcaf9f9137d2c573d8f7790c0'
 /** The text and audio groups of `crates/memry-ml/src/files.rs`. */
 const PINS = {
   'tokenizer.json': '4d777ef5bdc1aa36227abdfb77c3e49e7b9c892d16e1b6bda41c393504828be4',
@@ -59,7 +72,6 @@ const UNPINNED = [
   'preprocessor_config.json'
 ]
 
-const DIMENSION = 256
 const THREADS = Math.min(2, Math.max(1, Math.floor(os.availableParallelism() / 2)))
 
 /** Acceptance of #3540, as for `embeddings-text.json`. */
@@ -71,21 +83,8 @@ const EMBEDDING_TOLERANCE = { minCosine: 0.9999, maxComponentDiff: 0.001 }
  */
 const FEATURE_TOLERANCE = { maxAbsDiff: 1e-4 }
 
-const sha256 = (path) => createHash('sha256').update(readFileSync(path)).digest('hex')
-
-function modelDir() {
-  const flag = process.argv.indexOf('--model-dir')
-  const dir = flag === -1 ? process.env.MEMRY_ML_MODEL_DIR : process.argv[flag + 1]
-  if (!dir) throw new Error('pass --model-dir <.../onnx-community/embeddinggemma-2-ONNX>')
-  const abs = resolve(dir)
-  if (!abs.split(/[\\/]/).join('/').endsWith(MODEL_REPO)) {
-    throw new Error(`${abs} is not a ${MODEL_REPO} folder`)
-  }
-  for (const [file, pin] of Object.entries(PINS)) {
-    if (sha256(join(abs, file)) !== pin) throw new Error(`${file} is not the pinned file`)
-  }
-  return abs
-}
+/** The extractor's `max_length`: Electron embeds the first 30 s of a window. */
+const ELECTRON_SAMPLES = 480_000
 
 // --- Inputs --------------------------------------------------------------------------------
 
@@ -347,7 +346,7 @@ const FEATURE_CASES = [
   ],
   ['half a second', noise(8_000, 13)],
   ['under one frame', noise(300, 14)],
-  ['31 s: the extractor keeps 30 s', noise(16_000 * 31, 15, 2)]
+  ['31 s: the whole window', noise(16_000 * 31, 15, 2)]
 ].map(([name, signal]) => featureCase(name, signal))
 
 /** WAV files Electron embeds end to end. */
@@ -376,9 +375,8 @@ const EMBEDDING_CASES = [
       subFormat: 1
     }
   ],
-  ['31 s of noise: the extractor keeps 30 s', pcm(1, 16_000, noise(16_000 * 31, 23, 1))],
+  ['31 s of noise: the whole window', pcm(1, 16_000, noise(16_000 * 31, 23, 1))],
   ['301 s: two windows, the second one second long', pcm(1, 16_000, noise(16_000 * 301, 24, 2))],
-  ['300.5 s: the half-second tail is dropped', pcm(1, 16_000, noise(16_000 * 300 + 8_000, 25, 2))],
   ['0.9 s: too short to embed', pcm(1, 16_000, noise(14_400, 26))]
 ].map(([name, recipe]) => embeddingCase(name, recipe))
 
@@ -421,25 +419,22 @@ async function loadModel(dir) {
     }),
     AutoProcessor.from_pretrained(MODEL_REPO)
   ])
-  return { model, processor }
+  // The whole window (Kaan, 2026-11-14): the processor's extractor runs with `truncation` off
+  // unless `extractor.electron` asks for Electron's 30 s.
+  const extractor = processor.feature_extractor
+  const call = extractor._call.bind(extractor)
+  const truncation = { electron: false }
+  extractor._call = (audio, options = {}) =>
+    call(audio, { ...options, truncation: truncation.electron })
+  return { model, processor, truncation }
 }
 
-/** embedding-worker.ts `truncateEmbedding`. */
-function truncateEmbedding(full) {
-  const out = new Float32Array(DIMENSION)
-  let norm = 0
-  for (let i = 0; i < DIMENSION; i++) {
-    out[i] = full[i]
-    norm += full[i] * full[i]
-  }
-  norm = Math.sqrt(norm)
-  if (!Number.isFinite(norm) || norm === 0) throw new Error('Embedding is not finite')
-  for (let i = 0; i < DIMENSION; i++) out[i] /= norm
-  return out
+/** embedding-worker.ts `embedAudio` for one window. */
+async function embedWindow({ model, processor }, window) {
+  const inputs = await processor(null, null, window)
+  const output = await model(inputs)
+  return { inputs, embedding: truncateEmbedding(output.sentence_embedding.data) }
 }
-
-/** Nine significant digits give back the same f32. */
-const f32 = (values) => Array.from(values, (value) => Number(value.toPrecision(9)))
 
 const mono16k = (signal) => Float32Array.from(recipeSamples(signal, 1), (value) => value / 32768)
 
@@ -492,7 +487,10 @@ async function renderFeatures(audioEmbedding, processor, unpinnedFiles) {
         softTokens,
         rowSums,
         rows: Object.fromEntries(
-          keptRows(frames).map((row) => [row, f32(data.subarray(row * width, (row + 1) * width))])
+          keptRows(frames).map((row) => [
+            row,
+            storedVector(data.subarray(row * width, (row + 1) * width))
+          ])
         )
       }
     } catch (error) {
@@ -505,10 +503,10 @@ async function renderFeatures(audioEmbedding, processor, unpinnedFiles) {
     meta: {
       spec: 'tauri-v2-3540-audio-features',
       oracle:
-        'crates/memry-ml/tests/golden/generate-audio.mjs (Electron audio-embedding.ts in place, transformers.js Gemma4AudioFeatureExtractor)',
+        'crates/memry-ml/tests/golden/generate-audio.mjs (Electron audio-embedding.ts in place, transformers.js Gemma4AudioFeatureExtractor, truncation off)',
       transformers: transformersVersion(),
       unpinnedFiles,
-      note: 'decode[i].expected is decodeWavForEmbedding(wav) (16 kHz mono f32, exact) or null. windows[i].windows lists the lengths embedAudio hands the worker for a recording of `samples` 16 kHz samples. features[i] runs the processor feature extractor on 16 kHz mono samples built from `signal`: rows keeps whole feature rows by index, rowSums sums every row, validFrames is the length of the mask prefix of ones, softTokens counts the mask at every 4th frame. Recipes: see generate-audio.mjs recipeSamples.'
+      note: 'decode[i].expected is decodeWavForEmbedding(wav) (16 kHz mono f32, exact) or null. windows[i].windows lists the lengths embedAudio hands the worker for a recording of `samples` 16 kHz samples. features[i] runs the processor feature extractor (truncation off: the whole window) on 16 kHz mono samples built from `signal`: rows keeps whole feature rows by index, rowSums sums every row, validFrames is the length of the mask prefix of ones, softTokens counts the mask at every 4th frame. Recipes: see generate-audio.mjs recipeSamples.'
     },
     tolerance: FEATURE_TOLERANCE,
     decode,
@@ -517,19 +515,24 @@ async function renderFeatures(audioEmbedding, processor, unpinnedFiles) {
   }
 }
 
-async function renderEmbeddings(audioEmbedding, { model, processor }, unpinnedFiles) {
+async function renderEmbeddings(audioEmbedding, engine, unpinnedFiles) {
   const cases = []
   for (const item of EMBEDDING_CASES) {
     const samples = audioEmbedding.decodeWavForEmbedding(wav(item.recipe))
     if (samples === null) throw new Error(`${item.name}: Electron does not decode it`)
     const windows = []
     globalThis.__memryAudioOracle = async (window) => {
-      // embedding-worker.ts embedAudio.
-      const inputs = await processor(null, null, window)
-      const output = await model(inputs)
-      const embedding = truncateEmbedding(output.sentence_embedding.data)
+      const { inputs, embedding } = await embedWindow(engine, window)
       const tokenIds = Array.from(inputs.input_ids.data, Number)
-      windows.push({ samples: window.length, tokenIds, embedding: f32(embedding) })
+      const record = { samples: window.length, tokenIds, embedding: storedVector(embedding) }
+      if (window.length > ELECTRON_SAMPLES) {
+        engine.truncation.electron = true
+        const electron = storedVector((await embedWindow(engine, window)).embedding)
+        engine.truncation.electron = false
+        const cosine = Number(dot(record.embedding, electron).toPrecision(9))
+        record.electron = { cosine, embedding: electron }
+      }
+      windows.push(record)
       return embedding
     }
     const vectors = await audioEmbedding.embedAudio(samples)
@@ -544,7 +547,7 @@ async function renderEmbeddings(audioEmbedding, { model, processor }, unpinnedFi
       transformers: transformersVersion(),
       model: { repo: MODEL_REPO, revision: MODEL_REVISION, dtype: 'q4' },
       unpinnedFiles,
-      note: 'Each case is a WAV file built from `recipe` (generate-audio.mjs wav). windows lists what Electron embeds: decodeWavForEmbedding, embedAudio windows, then per window processor(null, null, window) and the model. tokenIds are the processor input_ids; embedding is the stored 256-value vector.'
+      note: 'Each case is a WAV file built from `recipe` (generate-audio.mjs wav). windows lists what Electron embeds: decodeWavForEmbedding, embedAudio windows, then per window processor(null, null, window) and the model, with the feature extractor truncation off so the whole window is embedded (Kaan, 2026-11-14; Electron keeps the first 30 s). tokenIds are the processor input_ids; embedding is the stored 256-value vector. A window over 30 s also holds electron: the vector Electron stores for it and its cosine with embedding.'
     },
     tolerance: EMBEDDING_TOLERANCE,
     cases
@@ -557,44 +560,11 @@ function transformersVersion() {
   ).version
 }
 
-const dot = (a, b) => a.reduce((sum, value, i) => sum + value * b[i], 0)
-const worstDiff = (a, b) => Math.max(...a.map((value, i) => Math.abs(value - b[i])))
-
-/**
- * Differences between two renders: exact on everything but embeddings and features, which may
- * differ within the file's tolerance, so a run on another CPU or thread count still passes.
- */
-function differences(committed, fresh, tolerance, path = '') {
-  const numbers = Array.isArray(committed) && Array.isArray(fresh)
-  if (numbers && path.endsWith('.embedding')) {
-    const ok =
-      committed.length === fresh.length &&
-      dot(committed, fresh) >= tolerance.minCosine &&
-      worstDiff(committed, fresh) <= tolerance.maxComponentDiff
-    return ok ? [] : [`${path}: cosine ${dot(committed, fresh)}`]
-  }
-  if (numbers && (/\.rows\.\d+$/.test(path) || path.endsWith('.rowSums'))) {
-    const bound = path.endsWith('.rowSums') ? 128 * tolerance.maxAbsDiff : tolerance.maxAbsDiff
-    const ok = committed.length === fresh.length && worstDiff(committed, fresh) <= bound
-    return ok ? [] : [`${path}: largest difference ${worstDiff(committed, fresh)}`]
-  }
-  if (
-    typeof committed !== 'object' ||
-    committed === null ||
-    typeof fresh !== 'object' ||
-    fresh === null
-  ) {
-    return Object.is(committed, fresh) ? [] : [`${path}: ${committed} != ${fresh}`]
-  }
-  const keys = new Set([...Object.keys(committed), ...Object.keys(fresh)])
-  return [...keys].flatMap((key) =>
-    differences(committed[key], fresh[key], tolerance, `${path}.${key}`)
-  )
-}
-
 async function main() {
-  const dir = modelDir()
-  const unpinnedFiles = Object.fromEntries(UNPINNED.map((file) => [file, sha256(join(dir, file))]))
+  const dir = modelDir(PINS)
+  const unpinnedFiles = Object.fromEntries(
+    UNPINNED.map((file) => [file, sha256File(join(dir, file))])
+  )
   const audioEmbedding = await loadAudioEmbedding()
   const engine = await loadModel(dir)
   const outputs = [
@@ -604,30 +574,9 @@ async function main() {
     },
     { out: EMBEDDINGS_OUT, document: await renderEmbeddings(audioEmbedding, engine, unpinnedFiles) }
   ]
-  let failed = false
   for (const { out, document } of outputs) {
-    const fresh = `${JSON.stringify(document, null, 2)}\n`
-    if (!process.argv.includes('--check')) {
-      writeFileSync(out, fresh, 'utf8')
-      process.stdout.write(`wrote ${out}\n`)
-      continue
-    }
-    let found = [`${basename(out)} is missing`]
-    try {
-      found = differences(JSON.parse(readFileSync(out, 'utf8')), document, document.tolerance)
-    } catch (error) {
-      found = [`${basename(out)}: ${error instanceof Error ? error.message : String(error)}`]
-    }
-    if (found.length > 0) {
-      failed = true
-      process.stderr.write(
-        `${basename(out)} regenerates differently:\n${found.slice(0, 20).join('\n')}\n`
-      )
-    } else {
-      process.stdout.write(`${basename(out)} is current\n`)
-    }
+    writeOrCheck(out, `${JSON.stringify(document, null, 2)}\n`, document.tolerance)
   }
-  if (failed) process.exit(1)
 }
 
 await main()

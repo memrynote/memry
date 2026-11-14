@@ -104,6 +104,10 @@ export const SETTINGS_SEARCH_INDEX: SettingsSearchEntry[] = [
     ['journal.folder.label', ['journal.folder.description']],
     ['journal.dateFormat.label']
   ]),
+  ...group('journal', 'journal.groups.pastYears', [
+    ['journal.showOnThisDay.label', ['journal.showOnThisDay.description']],
+    ['journal.allYearsView.label', ['journal.allYearsView.description']]
+  ]),
   ...group('journal', 'journal.groups.footer', [['journal.showStatsFooter.label']]),
   ...group('tasks', 'tasks.groups.defaults', [
     ['tasks.defaultProject.label'],

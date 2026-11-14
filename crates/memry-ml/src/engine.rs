@@ -1,19 +1,25 @@
 //! `EmbeddingEngine`: the loaded model and the embedding calls of Electron's embedding worker.
 
 use std::borrow::Cow;
-use std::path::Path;
+use std::path::{Path, PathBuf};
 
 use crate::MlError;
 use crate::audio::{AudioEncoder, audio_prompt};
 use crate::audio_prep::audio_features;
 use crate::files::{self, ModelGroup};
-use crate::text::TextModel;
+use crate::image_prep;
+use crate::text::{MediaFeatures, TextModel};
+use crate::vision::{self, VisionModel};
 
 /// Stored vector width: the first 256 of the model's 768 dimensions (Matryoshka), re-normalised.
 pub const EMBEDDING_DIMENSION: usize = 256;
 
 /// UTF-16 code units of one text the worker embeds (`MAX_EMBEDDING_INPUT_LENGTH`).
 pub const MAX_EMBEDDING_INPUT_LENGTH: usize = 4000;
+
+/// Soft tokens of an image embedded alone (`EMBEDDING_IMAGE_SOFT_TOKENS`); a page or an image with
+/// its text gets `EMBEDDING_PAGE_SOFT_TOKENS` (280) from the caller.
+pub const IMAGE_SOFT_TOKENS: usize = 140;
 
 pub type Embedding = [f32; EMBEDDING_DIMENSION];
 
@@ -38,13 +44,15 @@ pub fn default_intra_threads() -> usize {
     (cores / 2).clamp(1, 2)
 }
 
-/// The text model, loaded from a model directory (`files::model_dir`), and the audio encoder once
-/// [`EmbeddingEngine::load_audio`] ran. Inference takes `&mut self`: one thread owns the engine and
-/// serves one request at a time.
+/// The text model, loaded from a model directory (`files::model_dir`), and the vision and audio
+/// encoders, each loaded with its first image or recording as the worker does. Inference takes
+/// `&mut self`: one thread owns the engine and serves one request at a time.
 pub struct EmbeddingEngine {
+    dir: PathBuf,
+    options: LoadOptions,
     text: TextModel,
+    vision: Option<VisionModel>,
     audio: Option<AudioEncoder>,
-    intra_threads: usize,
 }
 
 impl EmbeddingEngine {
@@ -53,33 +61,36 @@ impl EmbeddingEngine {
     pub fn load(dir: &Path, options: LoadOptions) -> Result<Self, MlError> {
         files::ensure_present(dir, ModelGroup::Text)?;
         Ok(Self {
+            dir: dir.to_path_buf(),
+            options,
             text: TextModel::load(dir, options.intra_threads)?,
+            vision: None,
             audio: None,
-            intra_threads: options.intra_threads,
         })
-    }
-
-    /// Loads the audio encoder from `dir` unless it is loaded: the worker's
-    /// `loadEmbeddingPipeline({ audio: true })`, reached on the first recording to embed. Fails with
-    /// `ModelMissing` when a file of the audio group is absent or has the wrong size.
-    pub fn load_audio(&mut self, dir: &Path) -> Result<(), MlError> {
-        if self.audio.is_none() {
-            files::ensure_present(dir, ModelGroup::Audio)?;
-            self.audio = Some(AudioEncoder::load(dir, self.intra_threads)?);
-        }
-        Ok(())
     }
 
     /// Embeds one window of 16 kHz mono samples (`audio_prep::audio_windows`) as the worker's
     /// `embedAudio`: the window's features, the encoder's soft tokens at the prompt's placeholders.
+    /// Loads the audio group on first use. The whole window is embedded, where Electron's feature
+    /// extractor keeps its first 30 s (Kaan, 2026-11-14; test-vectors README).
     pub fn embed_audio(&mut self, window: &[f32]) -> Result<Embedding, MlError> {
-        let Some(encoder) = self.audio.as_mut() else {
-            return Err(MlError::Load("Audio encoder is not loaded".into()));
-        };
         let features = audio_features(window)?;
-        let soft_tokens = encoder.encode(&features)?;
         let ids = self.text.token_ids(&audio_prompt(features.soft_tokens()))?;
-        truncate_embedding(&self.text.sentence_embedding_with_audio(ids, soft_tokens)?)
+        let encoder = match &mut self.audio {
+            Some(encoder) => encoder,
+            empty => {
+                files::ensure_present(&self.dir, ModelGroup::Audio)?;
+                empty.insert(AudioEncoder::load(&self.dir, self.options.intra_threads)?)
+            }
+        };
+        let audio = encoder.encode(&features)?;
+        truncate_embedding(&self.text.sentence_embedding(
+            ids,
+            MediaFeatures {
+                audio,
+                ..MediaFeatures::default()
+            },
+        )?)
     }
 
     /// The ids [`Self::embed_audio`] gives the model for `window`.
@@ -92,7 +103,51 @@ impl EmbeddingEngine {
     /// caller adds the task prefix (`memry_core::domain::embedding_input`).
     pub fn embed_text(&mut self, text: &str) -> Result<Embedding, MlError> {
         let ids = self.token_ids(text)?;
-        truncate_embedding(&self.text.sentence_embedding(ids)?)
+        truncate_embedding(
+            &self
+                .text
+                .sentence_embedding(ids, MediaFeatures::default())?,
+        )
+    }
+
+    /// The worker's `embedImage`: the image's soft tokens (`soft_tokens`, default
+    /// [`IMAGE_SOFT_TOKENS`]) at the `<|image|>` placeholder of `text`, which the caller builds
+    /// (`memry_core::domain::embedding_input::build_interleaved_input`), or the image alone.
+    /// Loads the vision group on first use; a malformed image is an [`MlError::Input`].
+    pub fn embed_image(
+        &mut self,
+        bytes: &[u8],
+        text: Option<&str>,
+        soft_tokens: Option<usize>,
+    ) -> Result<Embedding, MlError> {
+        let tensor = image_prep::prepare(bytes, soft_tokens.unwrap_or(IMAGE_SOFT_TOKENS))?;
+        let ids = self.image_token_ids(text, tensor.num_soft_tokens)?;
+        let vision = match &mut self.vision {
+            Some(vision) => vision,
+            empty => {
+                files::ensure_present(&self.dir, ModelGroup::Vision)?;
+                empty.insert(VisionModel::load(&self.dir, self.options.intra_threads)?)
+            }
+        };
+        let image = vision.image_features(tensor)?;
+        truncate_embedding(&self.text.sentence_embedding(
+            ids,
+            MediaFeatures {
+                image,
+                ..MediaFeatures::default()
+            },
+        )?)
+    }
+
+    /// The ids [`Self::embed_image`] gives the model for an image of `num_soft_tokens` soft
+    /// tokens: the processor's expanded prompt, tokenized with `<bos>` and `<eos>` and uncut.
+    pub fn image_token_ids(
+        &self,
+        text: Option<&str>,
+        num_soft_tokens: usize,
+    ) -> Result<Vec<i64>, MlError> {
+        self.text
+            .token_ids(&vision::image_prompt(text, num_soft_tokens)?)
     }
 
     /// The ids [`Self::embed_text`] gives the model for `text`: `<bos>`, the first

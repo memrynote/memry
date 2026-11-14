@@ -217,7 +217,7 @@ therefore stop a request when the base64 of its updates would pass **6,000,000
 characters**, and the rest of the queue rides the next request: desktop in
 `MAX_CRDT_REQUEST_PAYLOAD_CHARS` (`packages/sync-client/src/crdt-payload.ts:16`),
 the Rust core in `MAX_REQUEST_PAYLOAD_CHARS` (`crates/memry-core/src/protocol/crdt_envelope.rs:75`)
-applied by the claim in `next_batch` (`crates/memry-core/src/sync/outbox.rs:452-489`).
+applied by the claim in `next_batch` (`crates/memry-core/src/sync/outbox.rs:475-512`).
 The Rust cost of an update is an upper bound taken without compressing (the frame
 is never longer than the stored form, chapter 04 §4.1), so a batch is never
 over-full. The first update of a batch always rides.
@@ -296,10 +296,10 @@ second full-document upload.
 
 **A document's rows go in order or not at all.** While one CRDT row of a document is
 deferred or parked, the document's later rows are not claimed
-(`crates/memry-core/src/sync/outbox.rs:398`): a peer given them without it
+(`crates/memry-core/src/sync/outbox.rs:439-442`): a peer given them without it
 holds pending structs until the earlier update arrives, and one that never does
 would never heal. The next edit of a parked document queues a row and releases the
-batch with it (`crates/memry-core/src/sync/outbox.rs:277`). Desktop's outbox is
+batch with it (`crates/memry-core/src/sync/outbox.rs:331-338`). Desktop's outbox is
 all or none per document the same way.
 
 **A snapshot claim bounds the race with an unclaimed replace.** A snapshot sent
@@ -1109,8 +1109,8 @@ names the documents whose log grew.
   - A stop or an error answer backs the document off for
     `2^(failures - 1)` passes, up to 32.
   - **Owed means "awaits its server body".** Every note or journal record a
-    feed page (`crates/memry-core/src/sync/pull.rs:285`) or the first sync's
-    metadata pass (`crates/memry-core/src/sync/pull.rs:344`) applies is owed
+    feed page (`crates/memry-core/src/sync/pull.rs:290`) or the first sync's
+    metadata pass (`crates/memry-core/src/sync/pull.rs:349`) applies is owed
     in a transaction just before the one that applies it, inside the same
     writer call. The first sync's bodies pass owes every live document before
     its first pull (`crates/memry-core/src/sync/first_sync.rs:415`) and

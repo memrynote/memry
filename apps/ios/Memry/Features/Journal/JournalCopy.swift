@@ -85,7 +85,7 @@ enum JournalCopy {
     // MARK: Month and Year (journal.json `empty.*`, `count.*`)
 
     static let noEntry = "No entry"
-    static let notOnThisPhone = "Not on this phone yet"
+    static let notOnThisPhone = "Not on this \(ThisDevice.noun) yet"
     static let daysWithEntries = "days with entries"
     static let charactersWritten = "characters written"
 
@@ -181,6 +181,6 @@ enum JournalCopy {
 
     /// D5, gate G0: why the tag and property rows cannot be edited here yet.
     static let metadataReadOnly =
-        "Tags and properties on a journal day are read-only on iPhone for now. "
+        "Tags and properties on a journal day are read-only on \(ThisDevice.noun) for now. "
         + "Edit them in Memry on another device."
 }

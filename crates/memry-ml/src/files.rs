@@ -41,7 +41,7 @@ const TEXT_WEIGHTS: ModelFile = ModelFile {
     size: 174_028_800,
     sha256: "c3975f2d1ab7a1878ae31a7d7a9b7804a827aff3800b60dfceafce21cac3df49",
 };
-const VISION_GRAPH: ModelFile = ModelFile {
+pub(crate) const VISION_GRAPH: ModelFile = ModelFile {
     path: "onnx/vision_encoder_q4.onnx",
     size: 159_400,
     sha256: "7ea284226d4938f0ad921ab091f1d80a9ca699aa802984ef5cd5eec4f4761d96",

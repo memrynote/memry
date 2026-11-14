@@ -1,5 +1,5 @@
 //! `vault_lock`: desktop read-only locks (`VaultLockSyncPayloadSchema`,
-//! `packages/contracts/src/sync-payloads.ts`, migration `0022`).
+//! `packages/contracts/src/sync-payloads.ts`, migration `0025`).
 //!
 //! Six fields under a whole-row clock. `createdAt` and `updatedAt` are ISO
 //! strings on the wire and epoch milliseconds in the table (§A.6); the push

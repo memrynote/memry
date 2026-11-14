@@ -885,3 +885,24 @@ fn a_key_typed_under_ollama_is_refused_with_an_ollama_reason() {
     assert!(error.to_string().contains("Ollama"), "{error}");
     assert!(w.keychain.items.lock().unwrap().is_empty());
 }
+
+#[test]
+fn a_pending_key_given_up_by_a_switch_to_ollama_needs_re_entry() {
+    let w = world();
+    w.seed_plaintext("sk-electron");
+    w.keychain.locked.store(true, Ordering::SeqCst);
+    // Ollama takes no key, so the switch is allowed while the row key cannot move.
+    w.select(AiProvider::Ollama, "");
+
+    w.keychain.locked.store(false, Ordering::SeqCst);
+    assert_eq!(w.key(), "");
+    // The row key was parked in the legacy entry, never bound to a provider.
+    assert_eq!(w.row()["apiKey"], json!(""));
+    assert_eq!(
+        w.keychain.item(&w.account()).as_deref(),
+        Some("sk-electron")
+    );
+    w.select(AiProvider::Openai, "");
+    assert_eq!(w.store.masked(Some(&w.vault)).expect("masked").api_key, "");
+    assert_eq!(w.key(), "");
+}

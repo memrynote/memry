@@ -160,7 +160,7 @@ final class CalendarUITests: XCTestCase {
         XCTAssertTrue(element("calendar.settings.weekStart").exists)
         XCTAssertTrue(element("calendar.settings.showNotes").exists)
         let screens: [(String, String)] = [
-            ("google", "Google Calendar"), ("caldav", "CalDAV"), ("ics", "Subscribed"), ("apple-eventkit", "This iPhone")
+            ("google", "Google Calendar"), ("caldav", "CalDAV"), ("ics", "Subscribed"), ("apple-eventkit", UIDevice.current.userInterfaceIdiom == .pad ? "This iPad" : "This iPhone")
         ]
         for (provider, title) in screens {
             app.buttons["calendar.settings.provider.\(provider)"].firstMatch.tap()
@@ -200,7 +200,7 @@ final class CalendarUITests: XCTestCase {
         XCTAssertTrue(more.waitForExistence(timeout: 5),
                       "the vault did not open: \(app.buttons.allElementsBoundByIndex.prefix(10).map(\.label))")
         // Calendar sits in the bar or behind Menu, by desktop's rail order.
-        let tab = app.tabBars.buttons["Calendar"].firstMatch
+        let tab = app.buttons["Calendar"].firstMatch
         if tab.exists {
             tab.tap()
         } else {

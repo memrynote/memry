@@ -56,6 +56,8 @@ struct LinkDeviceSheet: View {
             }
         }
         .presentationDetents([.large])
+        // A camera flow: the large page sheet at regular width (#4341).
+        .presentationSizing(.page)
         .task { await start() }
     }
 

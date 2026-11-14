@@ -14,10 +14,10 @@
 //! output, never from markdown. `note_bodies.text` holds that output, but only
 //! [`crate::domain::search::reindex`] refreshes it; a local edit or a pulled
 //! update leaves it stale until the next reindex. The row carries a freshness
-//! token, `source_seq`, the sum of the two namespaces' high-water sequences
-//! (`search/maintenance.rs` `body_high_water`). So each day costs:
+//! token, `source_seq`, which [`crate::domain::search::body_version`] owns. So
+//! each day costs:
 //!
-//! - a small indexed read of the update log's high water, and
+//! - a small indexed read of the update log's version, and
 //! - when `source_seq` matches it, the cached text (cheap), or
 //! - otherwise one replay of that day's update log plus `extract_text`, the
 //!   same cost as opening the note. A month read after a fresh reindex does no
@@ -46,10 +46,12 @@ use crate::domain::journal::{self, ITEM_TYPE};
 use crate::domain::journal_rules::{
     ActivityLevel, JOURNAL_PREVIEW_LENGTH, JournalHeatmapDay, JournalMonthActivity, JournalStreak,
     calculate_activity_level, compute_journal_streak, count_words, extract_journal_preview,
-    heatmap_day, month_activity, month_days, utf16_len,
+    heatmap_day, is_same_day_in_other_year, month_activity, month_days, same_day_month_days,
+    utf16_len,
 };
 use crate::domain::note_meta::NoteProperty;
 use crate::domain::notes::names;
+use crate::domain::search::body_version;
 use crate::domain::{properties, tags};
 
 /// The device id bodies are rebuilt under. A read never authors an update.
@@ -271,16 +273,52 @@ pub fn calendar_days(
         )
         .map_err(failed)?;
     let rows = statement
-        .query_map(params![from, to], |row| {
-            Ok((
-                row.get::<_, String>(0)?,
-                row.get::<_, String>(1)?,
-                row.get::<_, Option<String>>(2)?,
-            ))
-        })
+        .query_map(params![from, to], calendar_row)
         .map_err(failed)?
         .collect::<Result<Vec<_>, _>>()
         .map_err(failed)?;
+    held_days(conn, rows)
+}
+
+/// The live days of other years that show as the same day as `date` (`getJournalSameDayEntries`),
+/// newest first, as [`CalendarDay`]. One query over every year: Feb 29 and Feb 28 are both read
+/// where [`same_day_month_days`] names them, then held to [`is_same_day_in_other_year`].
+pub fn same_day_calendar_days(
+    conn: &Connection,
+    date: &str,
+) -> Result<Vec<CalendarDay>, CrdtError> {
+    let date = journal::valid_date(date)?;
+    let month_days = same_day_month_days(date);
+    let mut statement = conn
+        .prepare(
+            "SELECT j.id, j.date, f.path FROM journal_entries j
+               LEFT JOIN note_files f ON f.note_id = j.id
+              WHERE j.deleted_at IS NULL AND substr(j.date, 6) IN (?1, ?2)
+              ORDER BY j.date DESC",
+        )
+        .map_err(failed)?;
+    // One or two month-days: the first is bound twice when there is one.
+    let (first, last) = (month_days[0], month_days[month_days.len() - 1]);
+    let rows = statement
+        .query_map(params![first, last], calendar_row)
+        .map_err(failed)?
+        .filter(|row| {
+            row.as_ref()
+                .map_or(true, |(_, other, _)| is_same_day_in_other_year(date, other))
+        })
+        .collect::<Result<Vec<_>, _>>()
+        .map_err(failed)?;
+    held_days(conn, rows)
+}
+
+type CalendarRow = (String, String, Option<String>);
+
+fn calendar_row(row: &rusqlite::Row<'_>) -> rusqlite::Result<CalendarRow> {
+    Ok((row.get(0)?, row.get(1)?, row.get(2)?))
+}
+
+/// Each row as a [`CalendarDay`]; a day no file row names reads its record's text.
+fn held_days(conn: &Connection, rows: Vec<CalendarRow>) -> Result<Vec<CalendarDay>, CrdtError> {
     rows.into_iter()
         .map(|(id, date, path)| {
             let held = match path {
@@ -452,15 +490,12 @@ fn day_properties(conn: &Connection, id: &str) -> Result<Vec<NoteProperty>, Stor
 }
 
 /// The day's extracted text: `note_bodies.text` when its `source_seq` matches
-/// the log's high water, otherwise rebuilt from the log (module doc).
+/// the log's version, otherwise rebuilt from the log (module doc).
 fn day_body(conn: &Connection, id: &str) -> Result<DayBody, CrdtError> {
     let local = format!("{LOCAL_NAMESPACE_PREFIX}{id}");
     let mut present = false;
-    let mut high = 0;
     for row_id in [id, local.as_str()] {
-        let (rows, namespace_high) = log_high_water(conn, row_id)?;
-        present |= rows > 0;
-        high += namespace_high;
+        present |= log_rows(conn, row_id)? > 0;
     }
     if !present {
         return Ok(DayBody {
@@ -478,7 +513,7 @@ fn day_body(conn: &Connection, id: &str) -> Result<DayBody, CrdtError> {
         .optional()
         .map_err(failed)?;
     let text = match cached {
-        Some((text, Some(source_seq))) if source_seq == high => text,
+        Some((text, Some(source_seq))) if source_seq == body_version(conn, id)? => text,
         _ => rebuilt_text(conn, id)?,
     };
     let state = if text.is_empty() {
@@ -489,20 +524,13 @@ fn day_body(conn: &Connection, id: &str) -> Result<DayBody, CrdtError> {
     Ok(DayBody { text, state })
 }
 
-/// Rows held for one namespace's row id, and its high-water sequence: the
-/// larger of the newest update and the snapshot's fold point, as
-/// `search/maintenance.rs` `body_high_water` computes it for `source_seq`.
-fn log_high_water(conn: &Connection, row_id: &str) -> Result<(i64, i64), StorageError> {
+/// Rows held for one namespace's row id.
+fn log_rows(conn: &Connection, row_id: &str) -> Result<i64, StorageError> {
     conn.query_row(
-        "SELECT
-             (SELECT COUNT(*) FROM yjs_updates WHERE doc_id = ?1)
-               + (SELECT COUNT(*) FROM yjs_snapshots WHERE doc_id = ?1),
-             MAX(
-               (SELECT COALESCE(MAX(seq), 0) FROM yjs_updates WHERE doc_id = ?1),
-               (SELECT COALESCE(MAX(last_seq), 0) FROM yjs_snapshots WHERE doc_id = ?1)
-             )",
+        "SELECT (SELECT COUNT(*) FROM yjs_updates WHERE doc_id = ?1)
+                  + (SELECT COUNT(*) FROM yjs_snapshots WHERE doc_id = ?1)",
         params![row_id],
-        |row| Ok((row.get(0)?, row.get(1)?)),
+        |row| row.get(0),
     )
     .map_err(failed)
 }

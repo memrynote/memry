@@ -13,7 +13,7 @@
 //! more words here, the divergence `crates/AGENTS.md` records as accepted: such a case holds its
 //! word counts to that bound, checks its segments the CJK way and everything else exactly.
 
-use memry_desktop::fold::engine::{assemble, local_brief, prepare};
+use memry_desktop::fold::engine::{assemble, prepare};
 use memry_desktop::fold::text::is_cjk;
 use memry_desktop::fold::tokens::Zone;
 use serde_json::{Value, json};
@@ -40,9 +40,7 @@ fn vectors() -> Value {
 
 fn actual(markdown: &str) -> (Value, Segments) {
     let prepared = prepare(markdown, Zone::Utc);
-    let layers = assemble("note", &prepared, |chunk| {
-        local_brief(chunk, &prepared.language)
-    });
+    let layers = assemble("note", &prepared, |_| None).layers;
     let kind = if is_cjk(&prepared.language) {
         Segments::Cjk
     } else if let Some(found) = dictionary(markdown) {
@@ -68,7 +66,12 @@ fn actual(markdown: &str) -> (Value, Segments) {
                 .expect("paragraphs")
                 .iter()
                 .map(|p| {
-                    let mut p = p.clone();
+                    // The model levels' fields are `note_fold_model_vectors.rs`'s.
+                    let mut p = json!({
+                        "hash": p["hash"], "text": p["text"], "sentences": p["sentences"],
+                        "sentencesMd": p["sentencesMd"], "srcTokens": p["srcTokens"],
+                        "srcSentenceStart": p["srcSentenceStart"], "briefIdx": p["briefIdx"],
+                    });
                     if cjk {
                         segments_rebuild(&p);
                         let object = p.as_object_mut().expect("paragraph");
@@ -91,9 +94,9 @@ fn actual(markdown: &str) -> (Value, Segments) {
         "language": prepared.language,
         "source": prepared.source,
         "sourceHash": layers["sourceHash"],
-        "foldable": layers["foldable"],
+        "foldable": !prepared.sections.is_empty(),
         "totalWords": layers["totalWords"],
-        "wordsByLevel": layers["wordsByLevel"],
+        "wordsByLevel": { "full": layers["wordsByLevel"]["full"], "brief": layers["wordsByLevel"]["brief"] },
         "sections": sections,
     });
     (value, kind)

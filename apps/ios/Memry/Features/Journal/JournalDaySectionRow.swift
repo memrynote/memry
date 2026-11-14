@@ -12,6 +12,9 @@ struct JournalDayTaskRow: View {
     let tasks: TasksStore
     /// The last row draws no separator under it (J01).
     var isLast = false
+    /// The space before the status and after the priority: the task list's
+    /// edge on a page, none in the Journal rail, which pads its own.
+    var edge = TaskLayout.edge
 
     @Environment(TasksRouter.self) private var router: TasksRouter?
     @Environment(\.dynamicTypeSize) private var typeSize
@@ -38,7 +41,7 @@ struct JournalDayTaskRow: View {
             Button(action: open) { content }
                 .buttonStyle(.plain)
         }
-        .padding(.leading, TaskLayout.edge)
+        .padding(.leading, edge)
         .sensoryFeedback(.success, trigger: completions)
         .accessibilityElement(children: .ignore)
         .accessibilityLabel(tasks.rowAccessibilityLabel(task))
@@ -67,7 +70,7 @@ struct JournalDayTaskRow: View {
                 .frame(minWidth: Tokens.Space.inset, alignment: .trailing)
         }
         .padding(.vertical, TaskLayout.rowPadding)
-        .padding(.trailing, TaskLayout.edge)
+        .padding(.trailing, edge)
         .frame(minHeight: Tokens.Size.minimumHitArea)
         .overlay(alignment: .bottom) {
             if !isLast {

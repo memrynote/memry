@@ -1,6 +1,6 @@
 //! `agent_conversation` and `agent_message` (`AgentConversationSyncPayloadSchema`
 //! and `AgentMessageSyncPayloadSchema`, `packages/contracts/src/sync-payloads.ts:699-724`;
-//! chapter 13 §13.7.26-27; migration `0028`).
+//! chapter 13 §13.7.26-27; migration `0029`).
 //!
 //! The payload this reads is the stored one, whose sealed keys hold envelope
 //! text ([`crate::crypto::agent_payload`]). A sealed column takes that text,
@@ -58,7 +58,7 @@ pub fn read_agent_message(parsed: &Object) -> Result<Object, ProjectionError> {
 }
 
 /// Whether the stored payload of `(item_type, item_id)` holds its sealed keys
-/// plain (migration `0028`'s `agent_sealed_pending`). Decided when the payload
+/// plain (migration `0029`'s `agent_sealed_pending`). Decided when the payload
 /// is written, never from its shape.
 pub fn is_sealed_pending(
     conn: &Connection,

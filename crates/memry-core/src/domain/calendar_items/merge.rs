@@ -27,7 +27,8 @@
 //! from a point this device never reached.
 //!
 //! Keys this build does not model ride along (§13.2 rule 3): every overlay
-//! starts from the local object. Nothing here enqueues (§6.5.2 P3).
+//! starts from the local object. The concurrent branch re-queues the merged
+//! row (§6.5.2 P3, [`crate::sync::hardening::requeue`]).
 
 use std::collections::BTreeMap;
 
@@ -41,6 +42,7 @@ use crate::storage::repositories::StoredPayload;
 use crate::storage::repositories::sync_items::{self, InboundRecord};
 use crate::sync::clock::VectorClock;
 use crate::sync::field_merge::{init_all_field_clocks, merge_fields};
+use crate::sync::hardening::requeue;
 
 use super::{BINDING_TYPE, EVENT_TYPE, EXTERNAL_TYPE, SOURCE_TYPE};
 
@@ -216,7 +218,7 @@ pub(crate) fn apply_remote(
                 )
             };
             merged.insert("clock".to_owned(), to_json(&merged_clock)?);
-            store(conn, record, merged, now_ms)
+            requeue::store_merged(conn, &with_payload(record, merged)?, now_ms)
         }
     }
 }
@@ -336,15 +338,21 @@ fn store(
     merged: Map<String, Value>,
     now_ms: i64,
 ) -> Result<Inbound, StorageError> {
+    task_merge::wholesale(conn, &with_payload(record, merged)?, now_ms)
+}
+
+fn with_payload(
+    record: &InboundRecord,
+    merged: Map<String, Value>,
+) -> Result<InboundRecord, StorageError> {
     let payload_json =
         serde_json::to_string(&Value::Object(merged)).map_err(|error| StorageError::Failed {
             what: format!("merged calendar payload will not serialise: {error}"),
         })?;
-    let merged = InboundRecord {
+    Ok(InboundRecord {
         payload_json,
         ..record.clone()
-    };
-    task_merge::wholesale(conn, &merged, now_ms)
+    })
 }
 
 fn to_json<T: serde::Serialize>(value: &T) -> Result<Value, StorageError> {

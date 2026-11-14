@@ -68,6 +68,7 @@ struct WelcomeView: View {
                     .frame(maxWidth: .infinity, minHeight: Tokens.Size.minimumHitArea)
             }
         }
+        .measuredColumn(Tokens.Size.form)
         .padding(.horizontal, Tokens.Space.screenInline)
         .padding(.bottom, Tokens.Space.inset)
     }
@@ -87,6 +88,7 @@ struct WelcomeView: View {
                 Spacer(minLength: 0)
             }
         }
+        .measuredColumn(Tokens.Size.form)
         .padding(.horizontal, Tokens.Space.screenInline)
         .padding(.top, Tokens.Space.small)
     }
@@ -108,12 +110,13 @@ private struct PromisePage: View {
             Text("Everything you think, in one quiet place.")
                 .font(Tokens.Typography.welcomeHeadline.font)
                 .foregroundStyle(Tokens.Text.primary.color)
-            Text("Notes, tasks and journals that stay yours. No account needed — start writing on this iPhone.")
+            Text("Notes, tasks and journals that stay yours. No account needed — start writing on this \(ThisDevice.noun).")
                 .font(Tokens.Typography.body.font)
                 .foregroundStyle(Tokens.Text.secondary.color)
             Spacer()
         }
         .frame(maxWidth: .infinity, alignment: .leading)
+        .measuredColumn(Tokens.Size.form)
         .padding(.horizontal, Tokens.Space.screenInline)
         .accessibilityElement(children: .combine)
     }
@@ -142,14 +145,14 @@ private struct TrustPage: View {
                 )
                 Divider().overlay(Tokens.Line.border.color)
                 Fact(
-                    symbol: "iphone.gen3",
+                    symbol: ThisDevice.symbolGenerational,
                     tinted: false,
                     title: "Works with no signal",
-                    detail: "Everything is stored on this phone first. Sync catches up when you are back online."
+                    detail: "Everything is stored on this \(ThisDevice.noun) first. Sync catches up when you are back online."
                 )
                 Divider().overlay(Tokens.Line.border.color)
                 Fact(
-                    symbol: "laptopcomputer.and.iphone",
+                    symbol: ThisDevice.symbolWithLaptop,
                     tinted: false,
                     title: "Sync when you want it",
                     detail: "Add an account any time to keep all your devices in step."
@@ -157,6 +160,7 @@ private struct TrustPage: View {
             }
             Spacer()
         }
+        .measuredColumn(Tokens.Size.form)
         .padding(.horizontal, Tokens.Space.screenInline)
         .padding(.top, Tokens.Space.section)
     }

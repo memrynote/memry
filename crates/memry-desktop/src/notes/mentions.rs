@@ -34,6 +34,11 @@ pub struct UnlinkedMentionView {
     pub source_id: String,
     pub source_path: String,
     pub source_title: String,
+    /// The day (YYYY-MM-DD) when the source is a journal entry, `None` for a note
+    /// (`ReferenceSourceFacets`).
+    pub source_journal_date: Option<String>,
+    /// The source's tags, which the reference filter offers.
+    pub source_tags: Vec<String>,
     pub contexts: Vec<BacklinkContextView>,
     /// Every mention in the source: more than `contexts` holds when `truncated`.
     pub mention_count: u32,
@@ -62,11 +67,17 @@ impl Mentions {
         let Some(found) = self.search.mention_sources(id)? else {
             return Ok(Vec::new());
         };
-        Ok(found
+        let mut out: Vec<UnlinkedMentionView> = found
             .sources
             .into_iter()
             .filter_map(|source| mentions_in(&self.root, source, &found.names))
-            .collect())
+            .collect();
+        let ids = out.iter().map(|mention| mention.source_id.clone());
+        let mut tags = self.search.tags_of_notes(ids.collect())?;
+        for mention in &mut out {
+            mention.source_tags = tags.remove(&mention.source_id).unwrap_or_default();
+        }
+        Ok(out)
     }
 }
 
@@ -100,6 +111,8 @@ fn mentions_in(root: &Path, source: IncomingLink, names: &[String]) -> Option<Un
         source_id: source.source_id,
         source_path: path,
         source_title: source.source_title,
+        source_journal_date: source.source_date,
+        source_tags: Vec::new(),
         contexts: found.contexts.into_iter().map(Into::into).collect(),
         mention_count: units(found.count),
         truncated: found.truncated,

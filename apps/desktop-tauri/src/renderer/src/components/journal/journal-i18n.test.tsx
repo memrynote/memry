@@ -70,8 +70,13 @@ describe('journal i18n', () => {
       <JournalBreadcrumb
         viewState={{ type: 'day', date: '2026-04-14' }}
         isToday={false}
+        today="2026-04-14"
         onPreviousDay={vi.fn()}
         onNextDay={vi.fn()}
+        previousYearDate={null}
+        nextYearDate={null}
+        onPreviousYear={vi.fn()}
+        onNextYear={vi.fn()}
         onMonthClick={vi.fn()}
         onYearClick={vi.fn()}
         onTodayClick={vi.fn()}
@@ -84,6 +89,51 @@ describe('journal i18n', () => {
     )
 
     expect(screen.getByText('Aprilo')).toBeInTheDocument()
+  })
+
+  it('offers year jumps only to years that have an entry on this day', async () => {
+    const onPreviousYear = vi.fn()
+    await renderWithI18n(
+      <JournalBreadcrumb
+        viewState={{ type: 'day', date: '2026-11-10' }}
+        isToday
+        today="2026-11-10"
+        onPreviousDay={vi.fn()}
+        onNextDay={vi.fn()}
+        previousYearDate="2024-11-10"
+        nextYearDate={null}
+        onPreviousYear={onPreviousYear}
+        onNextYear={vi.fn()}
+        onMonthClick={vi.fn()}
+        onYearClick={vi.fn()}
+        onTodayClick={vi.fn()}
+      />
+    )
+
+    screen.getByRole('button', { name: 'Go to this day in 2024' }).click()
+    expect(onPreviousYear).toHaveBeenCalledOnce()
+    expect(screen.queryByRole('button', { name: /Go to this day in 2027/ })).toBeNull()
+  })
+
+  it('hides year jumps when no other year has an entry on this day', async () => {
+    await renderWithI18n(
+      <JournalBreadcrumb
+        viewState={{ type: 'day', date: '2026-11-10' }}
+        isToday
+        today="2026-11-10"
+        onPreviousDay={vi.fn()}
+        onNextDay={vi.fn()}
+        previousYearDate={null}
+        nextYearDate={null}
+        onPreviousYear={vi.fn()}
+        onNextYear={vi.fn()}
+        onMonthClick={vi.fn()}
+        onYearClick={vi.fn()}
+        onTodayClick={vi.fn()}
+      />
+    )
+
+    expect(screen.queryByRole('button', { name: /Go to this day in/ })).toBeNull()
   })
 
   it('uses journal navigation aria labels', async () => {

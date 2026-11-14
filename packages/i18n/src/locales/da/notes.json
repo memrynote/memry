@@ -433,10 +433,7 @@
       "empty": "Intet matcher denne visning endnu.",
       "loadFailed": "Kunne ikke indlæse denne visning. Selve noterne er uændrede.",
       "folderMissing": "Denne mappe findes ikke længere i boksen. Vælg en anden kilde.",
-      "unreadable": "Denne visning kan ikke læses. Vælg en kilde ovenfor, eller fjern blokken.",
-      "invalidJson": "Denne visnings definition er ikke gyldig JSON. Ret den nedenfor, eller fjern blokken.",
-      "invalidShape": "Denne visnings definition har ingen kilde. Vælg en ovenfor, eller ret den nedenfor.",
-      "definition": "Definition"
+      "unreadable": "Denne visning kan ikke læses. Vælg en kilde ovenfor, eller fjern blokken."
     },
     "chart": {
       "title": "Diagram",

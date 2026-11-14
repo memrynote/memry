@@ -32,8 +32,6 @@ pub const MAX_DECODED_SAMPLES: usize = MAX_WINDOWS * WINDOW_SAMPLES;
 /// one). At 4 kHz the output is at most 8 times the input (`memry-test-kit` `output_bound`).
 pub const MIN_SAMPLE_RATE: u32 = 4_000;
 
-/// The extractor's `max_length`: it embeds the first 30 s of each window and drops the rest.
-const MAX_FEATURE_SAMPLES: usize = 480_000;
 const PAD_TO_MULTIPLE: usize = 128;
 const FRAME_LENGTH: usize = 320;
 const HOP_LENGTH: usize = 160;
@@ -217,14 +215,20 @@ impl AudioFeatures {
     }
 }
 
-/// `Gemma4AudioFeatureExtractor` with the model's `preprocessor_config.json`: the first 30 s,
-/// zero-padded to a multiple of 128 samples, 160 zeros in front (semicausal), 320-sample frames
+/// `Gemma4AudioFeatureExtractor` with the model's `preprocessor_config.json` and `truncation` off:
+/// the whole window (Electron's extractor keeps its first 30 s; Kaan, 2026-11-14, test-vectors
+/// README), at most [`WINDOW_SAMPLES`] so the features stay bounded, zero-padded to a multiple of
+/// 128 samples, 160 zeros in front (semicausal), 320-sample frames
 /// every 160 samples under a periodic Hann window, a 512-point power spectrum, its square root, the
 /// HTK mel filters (0 to 8 kHz, no normalisation), `ln(mel + 0.001)`.
 pub fn audio_features(window: &[f32]) -> Result<AudioFeatures, MlError> {
     let original = window.len();
-    let audio = &window[..original.min(MAX_FEATURE_SAMPLES)];
-    let padded = audio.len().div_ceil(PAD_TO_MULTIPLE) * PAD_TO_MULTIPLE;
+    if original > WINDOW_SAMPLES {
+        return Err(MlError::Input(format!(
+            "{original} samples are longer than one 300 s window"
+        )));
+    }
+    let padded = original.div_ceil(PAD_TO_MULTIPLE) * PAD_TO_MULTIPLE;
     let pad_left = FRAME_LENGTH / 2;
     // Python's `unfold(size=frame_length + 1, step=hop_length)` over the semicausal padding.
     let span = padded + pad_left;
@@ -237,7 +241,7 @@ pub fn audio_features(window: &[f32]) -> Result<AudioFeatures, MlError> {
     let sample = |index: usize| -> f64 {
         index
             .checked_sub(pad_left)
-            .and_then(|i| audio.get(i))
+            .and_then(|i| window.get(i))
             .map_or(0.0, |&value| f64::from(value))
     };
 

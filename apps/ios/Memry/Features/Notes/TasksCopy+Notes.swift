@@ -14,7 +14,7 @@ extension TasksCopy {
     static let taskNotDone = "Not done"
     /// A task line whose task this vault does not hold (not pulled yet, or
     /// deleted on another device). Desktop hands such a row no controls.
-    static let taskNotHere = "This task is not on this phone"
+    static let taskNotHere = "This task is not on this \(ThisDevice.noun)"
 
     static func blockPriority(_ value: Int64) -> String {
         "Priority: \(priorityLabel(value))"

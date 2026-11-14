@@ -25,8 +25,21 @@ struct DevicesScreen: View {
                 ForEach(visibleOthers, id: \.id) { device in
                     row(device)
                         .swipeActions(edge: .trailing) {
-                            Button(SettingsCopy.revoke, role: .destructive) { revoking = device }
+                            // Tinted, not `role: .destructive`: a destructive swipe
+                            // removes the row, and the confirmation on it with it.
+                            Button(SettingsCopy.revoke) { revoking = device }
+                                .tint(.red)
                                 .accessibilityIdentifier("settings.devices.revoke")
+                        }
+                        // On the row, so the popover points at it on iPad.
+                        .confirmationDialog(
+                            SettingsCopy.revokeTitle(device.name),
+                            isPresented: Binding(get: { revoking?.id == device.id }, set: { if !$0 { revoking = nil } }),
+                            titleVisibility: .visible
+                        ) {
+                            Button(SettingsCopy.revokeDevice, role: .destructive) { Task { await revoke(device) } }
+                        } message: {
+                            Text(SettingsCopy.revokeMessage)
                         }
                 }
                 if !showsAll, context.account.otherDevices.count > 5 {
@@ -56,15 +69,6 @@ struct DevicesScreen: View {
             Button(SettingsCopy.cancel, role: .cancel) {}
             Button(SettingsCopy.rename) { let device = renaming; Task { await rename(device) } }
                 .disabled(draftName.trimmingCharacters(in: .whitespaces).isEmpty)
-        }
-        .confirmationDialog(
-            SettingsCopy.revokeTitle(revoking?.name ?? ""),
-            isPresented: isRevoking,
-            titleVisibility: .visible
-        ) {
-            Button(SettingsCopy.revokeDevice, role: .destructive) { let device = revoking; Task { await revoke(device) } }
-        } message: {
-            Text(SettingsCopy.revokeMessage)
         }
         .sheet(isPresented: $linking, onDismiss: { Task { await context.account.loadDevices() } }) {
             LinkDeviceSheet(account: context.account)
@@ -133,10 +137,6 @@ struct DevicesScreen: View {
         Binding(get: { renaming != nil }, set: { if !$0 { renaming = nil } })
     }
 
-    private var isRevoking: Binding<Bool> {
-        Binding(get: { revoking != nil }, set: { if !$0 { revoking = nil } })
-    }
-
     private func rename(_ device: AccountDevice?) async {
         guard let device else { return }
         let name = draftName.trimmingCharacters(in: .whitespaces)
@@ -149,8 +149,7 @@ struct DevicesScreen: View {
         }
     }
 
-    private func revoke(_ device: AccountDevice?) async {
-        guard let device else { return }
+    private func revoke(_ device: AccountDevice) async {
         revoking = nil
         failure = await context.account.revoke(device)
     }

@@ -47,10 +47,9 @@ enum NoteFind {
 /// The find bar and its results.
 struct NoteFindView: View {
     let blocks: [Block]
-    /// Scrolls the note to a block. `nil` lists matches without moving.
-    var scrollTo: ((String) -> Void)?
-
-    @State private var query = ""
+    @Binding var query: String
+    /// Scrolls the page to a match's block index.
+    let scrollTo: (Int) -> Void
 
     private var matches: [NoteMatch] { NoteFind.matches(of: query, in: blocks) }
 
@@ -75,15 +74,15 @@ struct NoteFindView: View {
 
                     ForEach(matches) { match in
                         Button {
-                            if let id = match.blockId { scrollTo?(id) }
+                            scrollTo(match.blockIndex)
                         } label: {
                             Text(match.line)
                                 .font(Tokens.Typography.supporting.font)
                                 .foregroundStyle(Tokens.Text.primary.color)
                                 .lineLimit(2)
+                                .multilineTextAlignment(.leading)
                                 .frame(maxWidth: .infinity, alignment: .leading)
                         }
-                        .disabled(match.blockId == nil || scrollTo == nil)
                     }
                 }
             }
@@ -96,6 +95,8 @@ struct NoteFindView: View {
 /// and the journal day's "Find".
 struct NoteFindPanel: View {
     let blocks: [Block]
+    @Binding var query: String
+    let scrollTo: (Int) -> Void
     let close: () -> Void
 
     var body: some View {
@@ -108,8 +109,9 @@ struct NoteFindPanel: View {
                         .contentShape(.rect)
                 }
                 .accessibilityLabel("Close find")
+                .accessibilityIdentifier("find.close")
             }
-            NoteFindView(blocks: blocks)
+            NoteFindView(blocks: blocks, query: $query, scrollTo: scrollTo)
         }
         .padding(.horizontal, Tokens.Space.screenInline)
         .padding(.bottom, Tokens.Space.small)

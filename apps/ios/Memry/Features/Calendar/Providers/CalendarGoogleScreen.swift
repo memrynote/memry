@@ -163,7 +163,7 @@ extension CalendarStore {
 extension CalendarCopy {
     static let googleTitle = "Google Calendar"
     static let googleConnected = "Connected"
-    static let googleSignInHere = "Sign in on this iPhone"
+    static let googleSignInHere = "Sign in on this \(ThisDevice.noun)"
     static let reconnect = "Reconnect"
     static let addAccount = "Add account"
     static let showInGoogle = "Show memrynote events in Google"

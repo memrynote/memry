@@ -30,8 +30,9 @@ use std::collections::{BTreeMap, BTreeSet, HashMap};
 use rusqlite::{Connection, params_from_iter};
 
 use crate::api::errors::StorageError;
+use crate::domain::journal_ops::links::id_list;
 use crate::domain::note_list::NoteSort;
-use crate::domain::note_stats::FileTags;
+use crate::domain::note_stats::{self, FileTags};
 use crate::domain::notes::failed;
 use crate::domain::tag_admin::{self, default_color};
 use crate::domain::tags::{fold, tag_key};
@@ -113,7 +114,8 @@ impl Gathered {
 }
 
 /// The live notes and journal days that have a file row, by id, each with its tags and when
-/// its record pinned each of them (by position); `only` the one with that id.
+/// its record pinned each of them (by position); `only` those whose id is in that JSON array,
+/// each read by its key.
 fn filed(
     data: &Connection,
     files: &HashMap<String, FileTags>,
@@ -135,9 +137,9 @@ fn filed_read(
     let args: Vec<&str> = only.into_iter().collect();
     let (one_file, one_row, one_body) = match only {
         Some(_) => (
-            " AND f.note_id = ?1",
-            " AND note_id = ?1",
-            " WHERE note_id = ?1",
+            " AND f.note_id IN (SELECT value FROM json_each(?1))",
+            " AND note_id IN (SELECT value FROM json_each(?1))",
+            " WHERE note_id IN (SELECT value FROM json_each(?1))",
         ),
         None => ("", "", ""),
     };
@@ -242,8 +244,25 @@ pub fn of_note(
     file: FileTags,
 ) -> Result<Option<Vec<String>>, StorageError> {
     let files = HashMap::from([(id.to_owned(), file)]);
-    let mut filed = filed(data, &files, Some(id))?;
+    let mut filed = filed(data, &files, Some(&id_list(std::iter::once(id))?))?;
     Ok(filed.pop().map(|(note, _)| note.tags))
+}
+
+/// The tags of each filed note or journal day among `ids`, by id, as [`of_note`] lists them
+/// with the header the index last measured. Every row is read by its key, in a fixed number
+/// of statements whatever the number of ids or the size of the vault; an id with no live
+/// record or no file row is left out.
+pub fn of_notes<'a>(
+    data: &Connection,
+    index: &Connection,
+    ids: impl Iterator<Item = &'a str>,
+) -> Result<HashMap<String, Vec<String>>, StorageError> {
+    let ids = id_list(ids)?;
+    let files = note_stats::file_tags_of(index, &ids)?;
+    Ok(filed(data, &files, Some(&ids))?
+        .into_iter()
+        .map(|(note, _)| (note.id, note.tags))
+        .collect())
 }
 
 /// Every tag a filed journal day, or a note whose bytes on disk the index measured, carries, one
@@ -260,13 +279,7 @@ pub fn used(
 ) -> Result<Vec<String>, StorageError> {
     let read = match only {
         None => filed_read(data, files, None)?,
-        Some(ids) => {
-            let mut read = Vec::new();
-            for id in ids {
-                read.extend(filed_read(data, files, Some(id))?);
-            }
-            read
-        }
+        Some(ids) => filed_read(data, files, Some(&id_list(ids.iter().map(String::as_str))?))?,
     };
     let mut notes: Vec<TaggedNote> = read
         .into_iter()

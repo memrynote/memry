@@ -267,7 +267,7 @@ extension CalendarCopy {
     static let syncNow = "Sync now"
     static let everyFifteen = "every 15 min"
     static let disconnect = "Disconnect"
-    static let caldavSignInHere = "Connected on another device. Connect here with its app password to sync on this iPhone."
+    static let caldavSignInHere = "Connected on another device. Connect here with its app password to sync on this \(ThisDevice.noun)."
     static let writerCompatTitle = "An older device may duplicate events"
     static let writerCompatAck = "I understand, connect anyway"
     static func writerCompatBody(_ devices: [String]) -> String {
@@ -291,7 +291,7 @@ extension CalendarCopy {
         case "unreachable": "Couldn't reach the server. Check the address and your connection."
         case "not_caldav": "That server doesn't answer as a CalDAV calendar."
         case "no_calendars": "The account has no calendars with events."
-        case "keychain": "Couldn't save the password on this iPhone."
+        case "keychain": "Couldn't save the password on this \(ThisDevice.noun)."
         default: "Couldn't connect (\(code))."
         }
     }

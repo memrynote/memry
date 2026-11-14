@@ -97,6 +97,29 @@ fn features_of_a_window_too_short_for_one_frame_are_an_error() {
     assert!(features.values.iter().all(|&v| v == 0.0));
 }
 
+/// Kaan, 2026-11-14: the whole window is embedded, where Electron's extractor keeps its first 30 s.
+#[test]
+fn features_cover_the_whole_window() {
+    let window = vec![0.25_f32; 31 * 16_000];
+    let features = audio_features(&window).expect("31 s");
+    assert_eq!((features.frames, features.soft_tokens()), (3_099, 775));
+    assert!(features.mask.iter().all(|&valid| valid));
+    // 7500 soft tokens: the 7504 ids transformers.js gives a 300 s window without truncation.
+    let full = audio_features(&vec![0.25_f32; WINDOW_SAMPLES]).expect("300 s");
+    assert_eq!((full.frames, full.soft_tokens()), (29_999, 7_500));
+}
+
+/// A window is at most [`WINDOW_SAMPLES`], so its features are bounded: one longer is refused
+/// before anything is allocated.
+#[test]
+fn a_window_longer_than_300_s_is_refused() {
+    let error = audio_features(&vec![0.0; WINDOW_SAMPLES + 1]).expect_err("300 s + 1");
+    assert_eq!(
+        error.to_string(),
+        "4800001 samples are longer than one 300 s window"
+    );
+}
+
 #[test]
 fn non_finite_samples_give_non_finite_features_not_a_panic() {
     let mut window = vec![0.25_f32; 16_000];

@@ -151,11 +151,15 @@ struct VaultTasksScope<Content: View>: View {
     @Environment(\.scenePhase) private var scenePhase
     @State private var store: TasksStore?
     @State private var failure: UserFacingError?
+    @State private var searchIndex: VaultSearchIndex?
 
     var body: some View {
         content(store, failure)
             .environment(\.requestVaultSync, syncRequest)
             .environment(\.vaultSyncPasses, store?.syncPasses ?? 0)
+            .environment(\.vaultSearchIndex, searchIndex)
+            // A pass may have pulled records and bodies the index has not seen.
+            .onChange(of: store?.syncPasses) { searchIndex?.schedule() }
             .environment(\.vaultProjects, store?.projects ?? [])
             .environment(\.whiteboards, secureStore.map { CoreWhiteboardBoards(vault: vault, store: $0, executor: .shared) })
             // Pull and push on every return to the foreground, whichever tab
@@ -168,6 +172,10 @@ struct VaultTasksScope<Content: View>: View {
             // Reconnect: retry attachments a dead path left missing (#3261).
             .onReceive(NotificationCenter.default.publisher(for: PathReachability.attachmentPathChanged).receive(on: DispatchQueue.main)) { _ in
                 if let attachments = store?.attachments { Task { await attachments.redrive() } }
+            }
+            // A body pull outside a pass (a page, a portal, a share) landed content.
+            .onReceive(NotificationCenter.default.publisher(for: VaultSearchIndex.bodyLanded).receive(on: DispatchQueue.main)) { _ in
+                searchIndex?.schedule()
             }
             .background {
                 if let store {
@@ -213,7 +221,10 @@ struct VaultTasksScope<Content: View>: View {
 
     private var syncRequest: (@MainActor () -> Void)? {
         guard let store else { return nil }
-        return { store.scheduleSync() }
+        return { [searchIndex] in
+            store.scheduleSync()
+            searchIndex?.schedule()
+        }
     }
 
     private func make() {
@@ -222,6 +233,10 @@ struct VaultTasksScope<Content: View>: View {
         guard store?.vaultId != vault.id() else { return }
         store = nil
         failure = nil
+        // A vault whose index will not open still browses; its screens then
+        // have no search, as `VaultBrowseViewModel` does.
+        searchIndex = (try? CoreVaultSearch(vault: vault, executor: .shared)).map { VaultSearchIndex(search: $0) }
+        searchIndex?.schedule()
         guard let secureStore else {
             failure = ErrorMapping.userFacing(SyncError.Locked)
             return

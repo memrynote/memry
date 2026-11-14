@@ -1,6 +1,6 @@
 // Writes the index fixture of the Rust vector tables
 // (`crates/memry-core/src/storage/vec_tests.rs`): an index.db at index
-// migration 6, as a Tauri build before the vector tables left it, holding vec0
+// migration 7, as a Tauri build before the vector tables left it, holding vec0
 // rows written by Electron's sqlite-vec, and the answers Electron's nearest
 // query gives over them.
 //
@@ -55,12 +55,12 @@ db.pragma('journal_mode = DELETE')
 const migrations = readdirSync(MIGRATIONS)
   .filter((name) => name.endsWith('.sql'))
   .toSorted()
-  .slice(0, 6)
-if (migrations.length !== 6 || !migrations[5].startsWith('0006_')) {
-  throw new Error(`expected index migrations 0001-0006, found ${migrations.join(', ')}`)
+  .slice(0, 7)
+if (migrations.length !== 7 || !migrations[6].startsWith('0007_')) {
+  throw new Error(`expected index migrations 0001-0007, found ${migrations.join(', ')}`)
 }
 for (const name of migrations) db.exec(readFileSync(join(MIGRATIONS, name), 'utf8'))
-db.pragma('user_version = 6')
+db.pragma('user_version = 7')
 
 sqliteVec.load(db)
 for (const [table, id] of [
@@ -139,10 +139,10 @@ for (const table of Object.keys(rows)) {
 const version = db.prepare('SELECT vec_version() AS v').get().v
 db.close()
 
-writeFileSync(join(FIXTURES, 'index-vec-v6.db.gz'), gzipSync(readFileSync(path), { level: 9 }))
+writeFileSync(join(FIXTURES, 'index-vec-v7.db.gz'), gzipSync(readFileSync(path), { level: 9 }))
 rmSync(dir, { recursive: true, force: true })
 writeFileSync(
-  join(FIXTURES, 'index-vec-v6.json'),
+  join(FIXTURES, 'index-vec-v7.json'),
   `${JSON.stringify(
     {
       generator: 'apps/desktop/scripts/vec-index-oracle/generate.cjs',
@@ -156,4 +156,4 @@ writeFileSync(
     1
   )}\n`
 )
-console.log(`index-vec-v6 written with sqlite-vec ${version}`)
+console.log(`index-vec-v7 written with sqlite-vec ${version}`)

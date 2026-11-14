@@ -10,6 +10,12 @@ import { notesService } from '@/services/notes-service'
 import { unlinkedMentionsKey, useUnlinkedMentionsQuery } from '@/hooks/use-unlinked-mentions'
 import { notesKeys } from '@/hooks/use-notes-query'
 import { BacklinksLoadingState } from './BacklinksLoadingState'
+import {
+  ALL_REFERENCES,
+  ReferenceFilter,
+  matchesReferenceFilter,
+  type ReferenceFilterValue
+} from './ReferenceFilter'
 
 interface UnlinkedMentionsSectionProps {
   noteId: string
@@ -27,6 +33,8 @@ export function UnlinkedMentionsSection({ noteId, onOpen }: UnlinkedMentionsSect
   const { mentions, isLoading } = useUnlinkedMentionsQuery(noteId, isOpen)
   const queryClient = useQueryClient()
   const [pending, setPending] = useState<string | null>(null)
+  const [filter, setFilter] = useState<ReferenceFilterValue>(ALL_REFERENCES)
+  const shown = mentions.filter((source) => matchesReferenceFilter(source, filter))
 
   const link = async (sourceId: string, ordinal: number) => {
     const key = `${sourceId}:${ordinal}`
@@ -45,32 +53,37 @@ export function UnlinkedMentionsSection({ noteId, onOpen }: UnlinkedMentionsSect
 
   return (
     <section className="flex flex-col gap-1" aria-label={t('unlinkedMentions.sectionAria')}>
-      <button
-        type="button"
-        onClick={() => setIsOpen(!isOpen)}
-        className="flex items-center gap-1.5 cursor-pointer hover:opacity-80 transition-opacity"
-        aria-expanded={isOpen}
-      >
-        <ChevronDown
-          className={cn(
-            'h-3 w-3 text-text-tertiary flex-shrink-0 transition-transform duration-150',
-            !isOpen && '-rotate-90'
-          )}
-          aria-hidden="true"
-        />
-        <span className="text-xs/4 font-medium text-text-tertiary">
-          {isOpen && !isLoading
-            ? t('unlinkedMentions.summary', { count: mentions.length })
-            : t('unlinkedMentions.title')}
-        </span>
-      </button>
+      <div className="flex items-center justify-between">
+        <button
+          type="button"
+          onClick={() => setIsOpen(!isOpen)}
+          className="flex items-center gap-1.5 cursor-pointer hover:opacity-80 transition-opacity"
+          aria-expanded={isOpen}
+        >
+          <ChevronDown
+            className={cn(
+              'h-3 w-3 text-text-tertiary flex-shrink-0 transition-transform duration-150',
+              !isOpen && '-rotate-90'
+            )}
+            aria-hidden="true"
+          />
+          <span className="text-xs/4 font-medium text-text-tertiary">
+            {isOpen && !isLoading
+              ? t('unlinkedMentions.summary', { count: shown.length })
+              : t('unlinkedMentions.title')}
+          </span>
+        </button>
+        {isOpen && !isLoading && (
+          <ReferenceFilter sources={mentions} value={filter} onChange={setFilter} />
+        )}
+      </div>
 
       {isOpen &&
         (isLoading ? (
           <BacklinksLoadingState />
         ) : (
           <div className="flex flex-col">
-            {mentions.map((source) => (
+            {shown.map((source) => (
               <SourceMentions
                 key={source.sourceId}
                 source={source}

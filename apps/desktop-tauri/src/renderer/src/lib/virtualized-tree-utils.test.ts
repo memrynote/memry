@@ -221,12 +221,74 @@ describe('virtualized-tree-utils', () => {
       const [work, personal] = tree.folders
       const [workNote] = work.notes
       const ids = (notesFirst: boolean) =>
-        orderFolderEntries(tree.folders, [tree.rootNotes[0], workNote], notesFirst).map((entry) =>
-          entry.type === 'folder' ? entry.folder.path : entry.note.id
-        )
+        orderFolderEntries({ ...tree, notesFirst }, '', tree.folders, [
+          tree.rootNotes[0],
+          workNote
+        ]).map((entry) => (entry.type === 'folder' ? entry.folder.path : entry.note.id))
 
       expect(ids(false)).toEqual([work.path, personal.path, 'note-root', 'note-work-1'])
       expect(ids(true)).toEqual(['note-root', 'note-work-1', work.path, personal.path])
+    })
+  })
+
+  describe('mixed manual order', () => {
+    const expandAll = new Set(['folder-Work', 'folder-Work/Project', 'folder-Personal'])
+    const rows = (tree: TreeStructure) =>
+      flattenTree(tree, expandAll).map((item) => `${item.id}${item.isLast ? ' (last)' : ''}`)
+
+    it('interleaves folders and notes on a marked level only, in both group orders', () => {
+      const { tree } = buildSampleTree()
+      const mixed = (notesFirst: boolean): TreeStructure => ({
+        ...tree,
+        notesFirst,
+        mixedOrder: {
+          levels: new Set(['Work']),
+          // Root carries positions too but no marker, so it stays grouped.
+          positions: {
+            'notes/Work/note-work.md': 0,
+            'Work/Project': 1,
+            'notes/root.md': -5,
+            Work: 3,
+            Personal: 4
+          }
+        }
+      })
+
+      // `Work` puts its note above its subfolder whichever group comes first.
+      expect(rows(mixed(false))).toEqual([
+        'folder-Work',
+        'note-work-1',
+        'folder-Work/Project (last)',
+        'note-project-1',
+        'note-project-2 (last)',
+        'folder-Personal',
+        'note-root (last)'
+      ])
+      expect(rows(mixed(true))).toEqual([
+        'note-root',
+        'folder-Work',
+        'note-work-1',
+        'folder-Work/Project (last)',
+        'note-project-1',
+        'note-project-2 (last)',
+        'folder-Personal (last)'
+      ])
+    })
+
+    it('keeps unpositioned items at the end of a mixed level in their grouped order', () => {
+      const { tree } = buildSampleTree()
+      const [work, personal] = tree.folders
+      const ids = orderFolderEntries(
+        {
+          ...tree,
+          mixedOrder: { levels: new Set(['']), positions: { 'notes/root.md': 0 } }
+        },
+        '',
+        tree.folders,
+        tree.rootNotes
+      ).map((entry) => (entry.type === 'folder' ? entry.folder.path : entry.note.id))
+
+      expect(ids).toEqual(['note-root', work.path, personal.path])
     })
   })
 

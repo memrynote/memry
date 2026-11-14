@@ -10,6 +10,7 @@ use super::testing::{DEVICE, NOW, iso, open, payload, pull, remote};
 use crate::domain::canvas_folder;
 use crate::domain::home_page::{self, HomePagePatch};
 use crate::domain::sticky_draft::{self, StickyKind};
+use crate::protocol::types::{DESKTOP_ONLY_RECORD_ITEM_TYPES, SUBSCRIBED_ITEM_TYPES};
 use crate::storage::repositories::sync_items;
 
 const TYPES: [&str; 3] = ["canvas_folder", "home_page", "sticky_draft"];
@@ -73,6 +74,50 @@ fn edit(conn: &Connection, item_type: &str, id: &str) {
             .map(drop),
     }
     .expect("a local edit");
+}
+
+/// A `??` key keeps the local value only when the remote leaves it out, so a
+/// `null` for it must be refused first ([`super::apply_kept`]).
+#[test]
+fn every_coalesce_key_is_refused_as_null() {
+    let kept: Vec<&str> = SUBSCRIBED_ITEM_TYPES
+        .iter()
+        .chain(&DESKTOP_ONLY_RECORD_ITEM_TYPES)
+        .copied()
+        .filter(|item_type| {
+            let Some(kept) = super::kept(item_type) else {
+                return false;
+            };
+            for key in kept.coalesce {
+                assert!(kept.not_null.contains(key), "{item_type}: {key}");
+            }
+            true
+        })
+        .collect();
+    assert_eq!(kept, TYPES, "the types apply_kept merges");
+}
+
+/// Chapter 13 §13.7.21-25: a tick written as anything but a JSON integer
+/// literal is refused, though desktop's `z.int()` takes `1.0` and `1e0`.
+#[test]
+fn a_tick_not_written_as_an_integer_literal_is_refused() {
+    let object = |text: &str| -> crate::storage::repositories::schema::Object {
+        serde_json::from_str(text).expect("an object")
+    };
+    // `canvas` and `vault_lock` run the same check (§13.7.21, §13.7.22).
+    for item_type in ["sticky_draft", "canvas", "vault_lock"] {
+        for tick in ["1.0", "-0", "1e0"] {
+            let remote = object(&format!(r#"{{"clock": {{"peer": {tick}}}}}"#));
+            assert!(
+                super::fails_desktop_schema(item_type, &remote, &[]),
+                "{item_type}: {tick}"
+            );
+        }
+        assert!(
+            !super::fails_desktop_schema(item_type, &object(r#"{"clock": {"peer": 1}}"#), &[]),
+            "{item_type}"
+        );
+    }
 }
 
 #[test]

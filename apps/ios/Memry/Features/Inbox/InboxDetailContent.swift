@@ -232,7 +232,7 @@ struct InboxDetailContent: View {
     }
 
     private var fileElsewhere: some View {
-        Label(InboxCopy.fileNotHere, systemImage: "iphone.slash")
+        Label(InboxCopy.fileNotHere, systemImage: ThisDevice.symbolSlash)
             .font(Tokens.Typography.supporting.font)
             .foregroundStyle(Tokens.Text.secondary.color)
             .padding(Tokens.Space.inset)

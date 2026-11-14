@@ -27,11 +27,6 @@ import type {
   TagsProgressEvent
 } from '@memry/contracts/tag-schema-api'
 import type {
-  FieldFillStatus,
-  FillFieldsInput,
-  FillFieldsResult
-} from '@memry/contracts/tag-fill-api'
-import type {
   GraphLayout,
   SaveGraphLayoutRequest,
   GraphViewsSettings,
@@ -123,7 +118,7 @@ import type {
 } from '@memry/contracts/folder-view-api'
 import type { ResolvedRelationRef } from '@memry/contracts/properties-api'
 import type { GetLinkedHereResponse, SearchObjectsResponse } from '@memry/contracts/tag-objects-api'
-import type { GetPropertyRowsOutput } from '@memry/contracts/journal-api'
+import type { GetPropertyRowsOutput, SameDayEntry } from '@memry/contracts/journal-api'
 import type {
   StickyDraft,
   StickyOpenTargetInput,
@@ -133,7 +128,6 @@ import type {
   StickyUndoResult,
   StickyWindowSession
 } from '@memry/contracts/sticky-api'
-import type { FoldAgentStatus, FoldLastRun, FoldLayers } from '@memry/contracts/note-fold'
 import type { OcrLanguagesSetInput, OcrLanguagesState } from '@memry/contracts/ocr-languages-api'
 import type { SyncedSettings } from '../shared/contracts/settings-sync'
 import type {
@@ -392,6 +386,8 @@ export interface MonthEntryPreview {
   tags: string[]
 }
 
+export type { SameDayEntry }
+
 export interface MonthStats {
   year: number
   month: number
@@ -592,6 +588,7 @@ export interface JournalClientAPI {
   getHeatmap(year: number): Promise<HeatmapEntry[]>
   getMonthEntries(year: number, month: number): Promise<MonthEntryPreview[]>
   getYearStats(year: number): Promise<MonthStats[]>
+  getSameDayEntries(date: string): Promise<SameDayEntry[]>
 
   // Context
   getDayContext(date: string): Promise<DayContext>
@@ -646,15 +643,6 @@ export interface OnboardingClientAPI {
   detectAgents: () => Promise<OnboardingAgentStatus[]>
   detectSources: () => Promise<OnboardingSources>
   isMemryVault: (path: string) => Promise<boolean>
-}
-
-export interface NoteFoldClientAPI {
-  get(noteId: string): Promise<FoldLayers>
-  /** No noteId retries the last failed note; null when there is nothing to retry. */
-  retry(noteId?: string): Promise<FoldLayers | null>
-  getLastRun(): Promise<FoldLastRun>
-  getAgentStatus(): Promise<FoldAgentStatus>
-  onUpdated(callback: (event: { noteId: string }) => void): () => void
 }
 
 export interface OcrLanguagesClientAPI {
@@ -914,8 +902,6 @@ export interface TagsClientAPI {
   getSchemaSnapshot(): Promise<TagSchemaSnapshot>
   editSchema(command: TagSchemaCommand): Promise<TagSchemaCommandResult>
   previewImpact(query: ImpactQuery): Promise<ImpactResult>
-  getFillStatus(): Promise<FieldFillStatus>
-  fillFields(input: FillFieldsInput): Promise<FillFieldsResult>
   searchObjects(input: {
     query: string
     tag?: string
@@ -1067,6 +1053,10 @@ export interface JournalSettings {
   showAIConnections: boolean
   /** Whether to show the stats footer at the bottom of journal entries */
   showStatsFooter: boolean
+  /** Show the same day from past years under a journal entry */
+  showOnThisDay: boolean
+  /** Show every year of the day in full under the entry (the Forever Journal) */
+  allYearsView: boolean
 }
 
 export type AISettings = AiSettings
@@ -1960,7 +1950,6 @@ interface API
   syncAttachments: SyncAttachmentsClientAPI
   homePages: HomePagesClientAPI
   sticky: StickyClientAPI
-  noteFold: NoteFoldClientAPI
   ocrLanguages: OcrLanguagesClientAPI
   onboarding: OnboardingClientAPI
   agentMcp: AgentMcpClientAPI

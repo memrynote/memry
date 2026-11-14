@@ -134,6 +134,7 @@ final class JournalStore {
             streak = record.streak
             return record
         } catch {
+            guard !Task.isCancelled else { return nil }
             report(error)
             return nil
         }
@@ -232,6 +233,7 @@ final class JournalStore {
         do {
             return try await executor.run { try work(core) }
         } catch {
+            guard !Task.isCancelled else { return nil }
             report(error)
             return nil
         }

@@ -1,5 +1,4 @@
 import type { FoldLayers, FoldParagraph, FoldToken } from '@memry/contracts/note-fold'
-import type { FoldLayers as LocalLayers } from '../../../../../generated/bindings'
 
 /** Words, whitespace runs and single marks, like the engine's Intl.Segmenter pass. */
 export function tokenize(text: string): string[] {
@@ -90,34 +89,6 @@ export function layers(overrides: Partial<FoldLayers> = {}): FoldLayers {
     ready: ['key', 'takeaway', 'topic'],
     status: 'ready',
     agent: 'Claude Code',
-    ...overrides
-  }
-}
-
-/** `layers()` as the fold service sends it: the local levels only. */
-export function localLayers(overrides: Partial<LocalLayers> = {}): LocalLayers {
-  const full = layers()
-  return {
-    noteId: full.noteId,
-    sourceHash: full.sourceHash,
-    language: full.language,
-    totalWords: full.totalWords,
-    wordsByLevel: { full: 1104, brief: 212 },
-    sections: full.sections.map(({ hash, heading, skipped, paragraphs }) => ({
-      hash,
-      heading,
-      skipped,
-      paragraphs: paragraphs.map((p) => ({
-        hash: p.hash,
-        text: p.text,
-        sentences: p.sentences,
-        sentencesMd: p.sentencesMd,
-        srcTokens: p.srcTokens,
-        srcSentenceStart: p.srcSentenceStart,
-        briefIdx: p.briefIdx
-      }))
-    })),
-    foldable: true,
     ...overrides
   }
 }

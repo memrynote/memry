@@ -386,3 +386,64 @@ fn an_index_held_by_another_connection_is_an_error_and_keeps_its_rows() {
     assert!(reopened.rebuild_reason.is_none());
     assert_eq!(row_count(&reopened.db), 1, "the rows were never touched");
 }
+
+/// feat/tauri-v2 builds before #4438 numbered their own index migrations from 3, where main's
+/// 0003 `fts_inbox` now sits. A file one of them left at 3..6 is past 0003 by its counter and
+/// never ran it, so it is rebuilt rather than failing every inbox pass.
+#[test]
+fn an_index_numbered_before_fts_inbox_without_it_is_rebuilt() {
+    assert_eq!(INDEX_MIGRATIONS[FTS_INBOX as usize - 1].name, "fts_inbox");
+    for old in 3..=6u32 {
+        let dir = temp_dir("index-pre-shift");
+        let path = dir.path().join("index.db");
+        let list: Vec<migrations::Migration> = INDEX_MIGRATIONS
+            .iter()
+            .filter(|m| m.name != "fts_inbox")
+            .map(|m| migrations::Migration {
+                version: if m.version > 3 {
+                    m.version - 1
+                } else {
+                    m.version
+                },
+                ..*m
+            })
+            .collect();
+        let db = Db::open_with(&path, Profile::Index).expect("open");
+        db.call_blocking(|conn| {
+            migrations::run_atomic(conn, &list[..old as usize])?;
+            conn.execute_batch("INSERT INTO index_meta (key, value) VALUES ('k', 'v')")
+                .map_err(|err| StorageError::Failed {
+                    what: err.to_string(),
+                })
+        })
+        .expect("a pre-shift index");
+        drop(db);
+
+        let opened = open_or_rebuild(&path).expect("open");
+
+        assert!(
+            opened
+                .rebuild_reason
+                .as_deref()
+                .is_some_and(|reason| reason.contains("fts_inbox")),
+            "old {old}: {:?}",
+            opened.rebuild_reason
+        );
+        let inbox: i64 = opened
+            .db
+            .call_blocking(|conn| {
+                conn.query_row("SELECT COUNT(*) FROM fts_inbox", [], |row| row.get(0))
+                    .map_err(|err| StorageError::Failed {
+                        what: err.to_string(),
+                    })
+            })
+            .expect("fts_inbox is there");
+        assert_eq!(inbox, 0);
+        drop(opened);
+        assert_eq!(
+            row_count(&set_aside_copy(dir.path(), "old")),
+            1,
+            "old {old}"
+        );
+    }
+}

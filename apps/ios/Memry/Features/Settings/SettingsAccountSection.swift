@@ -19,7 +19,7 @@ struct SettingsAccountSection: View {
         case .local:
             Section {
                 VStack(alignment: .leading, spacing: Tokens.Space.medium) {
-                    SettingsAccountCard(title: BillingCopy.onThisIPhone, line: BillingCopy.localLine, dot: nil)
+                    SettingsAccountCard(title: BillingCopy.onThisDevice, line: BillingCopy.localLine, dot: nil)
                     Text(BillingCopy.localDetail)
                         .font(Tokens.Typography.supporting.font)
                         .foregroundStyle(Tokens.Text.secondary.color)

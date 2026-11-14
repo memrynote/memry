@@ -14,13 +14,10 @@
 
 use serde_json::{Value as Json, json};
 
+use crate::api::crypto::encrypt_vault_name;
 use crate::api::errors::ApiError;
-use crate::crypto::{keys, sodium};
 use crate::protocol::account_admin::{self, BillingStatus, segment};
 use crate::protocol::http::{ApiRequest, Auth, HttpClient};
-
-/// XChaCha20-Poly1305 nonce length (chapter 04 §4.3).
-const NAME_NONCE_BYTES: usize = 24;
 
 /// A signed token the web checkout trusts in place of a web session.
 #[derive(Debug, Clone, PartialEq, Eq, uniffi::Record)]
@@ -43,23 +40,6 @@ fn local(what: impl std::fmt::Display) -> ApiError {
     }
 }
 
-/// Seals a vault name exactly as desktop does
-/// (`apps/desktop/src/main/sync/vault-name-crypto.ts:46-53`): XChaCha20-Poly1305
-/// under the vault key (chapter 01 §1.6), `vault-name-v1:<vaultUuid>` as
-/// associated data, ciphertext and nonce in standard base64.
-pub(crate) fn seal_vault_name(
-    master_key: &[u8],
-    vault_id: &str,
-    name: &str,
-) -> Result<(String, String), ApiError> {
-    let key = keys::derive_vault_key(master_key).map_err(local)?;
-    let nonce = sodium::random_bytes(NAME_NONCE_BYTES);
-    let aad = format!("vault-name-v1:{vault_id}");
-    let sealed =
-        sodium::aead_encrypt(name.as_bytes(), Some(aad.as_bytes()), &nonce, &key).map_err(local)?;
-    Ok((keys::base64_encode(&sealed), keys::base64_encode(&nonce)))
-}
-
 /// `POST /sync/vaults`. The route upserts, so a vault already registered
 /// answers `200` and its name is refreshed. A `409` is treated as the same
 /// success for servers that refuse a duplicate instead. A `402` (no plan, or
@@ -71,13 +51,13 @@ pub async fn register_vault(
     name: &str,
 ) -> Result<(), ApiError> {
     let vault_id = segment(vault_id)?;
-    let (encrypted_name, name_nonce) = seal_vault_name(master_key, vault_id, name)?;
+    let sealed = encrypt_vault_name(master_key, vault_id, name).map_err(local)?;
     let request = ApiRequest::new("POST", "/sync/vaults")
         .auth(Auth::Session)
         .json(&json!({
             "vaultUuid": vault_id,
-            "encryptedName": encrypted_name,
-            "nameNonce": name_nonce,
+            "encryptedName": sealed.ciphertext,
+            "nameNonce": sealed.nonce,
         }));
     match http.send_json::<Json>(request).await {
         Ok(_) | Err(ApiError::Status { status: 409, .. }) => Ok(()),
@@ -178,26 +158,6 @@ pub async fn billing_portal_url(http: &HttpClient) -> Result<String, ApiError> {
 #[cfg(test)]
 mod tests {
     use super::*;
-
-    #[test]
-    fn a_sealed_name_opens_with_the_reader_desktop_names_share() {
-        let master = vec![5u8; 32];
-        let (sealed, nonce) = seal_vault_name(&master, "v-1", "Phone").expect("seal");
-        assert_eq!(
-            crate::api::crypto::decrypt_vault_name(
-                master.clone(),
-                "v-1".into(),
-                sealed.clone(),
-                nonce.clone()
-            )
-            .as_deref(),
-            Some("Phone")
-        );
-        assert_eq!(
-            crate::api::crypto::decrypt_vault_name(master, "v-2".into(), sealed, nonce),
-            None
-        );
-    }
 
     #[test]
     fn a_checkout_token_needs_both_fields() {

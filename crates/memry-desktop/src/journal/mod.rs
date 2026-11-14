@@ -16,7 +16,8 @@
 //! - the write-back keeps the file's body in step with the document after that (13m-1);
 //! - the calendar ([`calendar`]) lists the live records, measured by the note index's row of
 //!   each day's file, the charts ([`property_rows`]) the records' property values, and the day
-//!   panel ([`day_context`]) the tasks due on a day.
+//!   panel ([`day_context`]) the tasks due on a day, and On this day ([`same_day`]) the same
+//!   day in other years.
 //!
 //! Not here yet: the journal folder following a move of the folder (13m-7); until then a day
 //! the folder carries is held ([`folder_follow`]).
@@ -26,6 +27,7 @@ pub mod cross;
 pub mod day_context;
 pub mod folder_follow;
 pub mod property_rows;
+pub mod same_day;
 pub mod update;
 pub mod write;
 

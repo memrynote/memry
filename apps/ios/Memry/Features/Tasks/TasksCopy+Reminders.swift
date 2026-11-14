@@ -82,13 +82,13 @@ extension TasksCopy {
     // MARK: Platform limits (FR-062)
 
     static func reminderWindowLimit(_ window: Int, beyond: Int) -> String {
-        "This phone holds the next \(window) reminders at a time. "
+        "This \(ThisDevice.noun) holds the next \(window) reminders at a time. "
             + "\(beyond) later \(beyond == 1 ? "one is" : "ones are") scheduled as earlier ones fire, "
             + "each time Memry opens."
     }
 
     static let reminderNotificationsOff =
-        "Notifications are off for Memry, so reminders will not alert on this phone."
+        "Notifications are off for Memry, so reminders will not alert on this \(ThisDevice.noun)."
     static let reminderOpenSettings = "Open Settings"
 
     // MARK: More tab

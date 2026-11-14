@@ -90,15 +90,9 @@ private final class InboxFilesFiller: VaultFilling, @unchecked Sendable {
     func firstSync(
         progress: @escaping @MainActor @Sendable (SyncProgress) -> Void
     ) async throws -> FirstSyncSummary { .none }
-    func fetchNoteBody(noteId: String) async throws -> BodyFetchSummary {
+    func pullNoteBody(noteId: String) async throws -> BodyFetchSummary {
         BodyFetchSummary(updates: 0, baselines: 0, stopped: false)
     }
-}
-
-@MainActor
-private func wait(_ timeout: TimeInterval = 3, until condition: () -> Bool) async throws {
-    let deadline = Date().addingTimeInterval(timeout)
-    while !condition(), Date() < deadline { try await Task.sleep(for: .milliseconds(20)) }
 }
 
 @MainActor

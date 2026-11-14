@@ -76,6 +76,8 @@ final class NoteReadViewModel {
     /// that was never pulled, and a reader that cannot walk blocks are three
     /// different facts and only the first two are the note's.
     private(set) var blocks: [Block] = []
+    /// The first walk of the blocks has finished, whatever it found.
+    private(set) var blocksRead = false
     /// Each table in the body, by the block id of its `table` block.
     ///
     /// Read eagerly once the blocks land, rather than lazily while drawing:
@@ -188,6 +190,9 @@ final class NoteReadViewModel {
             Log.storage.error("this note's blocks could not be walked", .code(mapped.code))
             blocks = []
         }
+        // A body not on this device yet has no blocks to find in: a find
+        // request waits for the pull instead of reporting no match.
+        if case let .ready(detail) = phase { blocksRead = detail.body.present }
         await loadTables()
         await loadAttachments()
         await loadComments()

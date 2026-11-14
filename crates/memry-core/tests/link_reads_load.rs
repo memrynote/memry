@@ -10,6 +10,8 @@ use std::sync::atomic::{AtomicUsize, Ordering};
 use memry_core::api::search::BacklinkOrder;
 use memry_core::domain::journal_ops::links;
 use memry_core::domain::link_reads;
+#[cfg(feature = "markdown")]
+use memry_core::domain::tag_reads;
 use memry_core::domain::unlinked_mentions::unlinked_mentions;
 use memry_core::domain::wiki_target::settle_name_keys;
 use memry_core::storage::migrations::{self, DATA_MIGRATIONS, INDEX_MIGRATIONS};
@@ -302,4 +304,65 @@ fn an_unwritten_days_references_read_as_much_in_a_large_vault_as_in_a_small_one(
         small, large,
         "a day's references read more of a larger vault"
     );
+}
+
+/// The tags the reference filters read for a list's sources: the same statements for one source
+/// as for hundreds, and the same virtual machine steps on a vault of 200 notes, each tagged in
+/// its record, its body and its header, as on one of 20,000.
+#[cfg(feature = "markdown")]
+#[test]
+fn reference_source_tags_read_by_key_whatever_the_list_or_the_vault() {
+    let _stepping = STEPPING
+        .lock()
+        .unwrap_or_else(|poisoned| poisoned.into_inner());
+    let tag_every_note = |data: &Connection, index: &Connection, notes: usize| {
+        data.execute_batch(
+            "INSERT INTO note_tags (note_id, tag, position) SELECT id, 'work', 0 FROM notes; \
+             INSERT INTO note_body_tags (note_id, tag) SELECT id, 'inline' FROM notes;",
+        )
+        .expect("record and body tags");
+        index
+            .execute(
+                "INSERT INTO note_stats (note_id, file_hash, word_count, character_count, \
+                 snippet, task_ids, header_tags, indexed_at) \
+                 SELECT 'n' || i, NULL, 1, 1, '', '[]', '[\"Work\",\"header\"]', 0 \
+                 FROM (WITH RECURSIVE n(i) AS (SELECT 0 UNION ALL SELECT i + 1 FROM n \
+                 WHERE i + 1 < ?1) SELECT i FROM n)",
+                params![notes as i64],
+            )
+            .expect("header tags");
+    };
+    let (small_data, small_index) = vault(200);
+    let (data, index) = vault(NOTES);
+    tag_every_note(&small_data, &small_index, 200);
+    tag_every_note(&data, &index, NOTES);
+
+    let read = |data: &Connection, index: &Connection, ids: &[String]| {
+        vm_steps_both(data, index, || tags_of(data, index, ids))
+    };
+    let one = vec!["n7".to_owned()];
+    let (small_tags, small_steps) = read(&small_data, &small_index, &one);
+    let (tags, steps) = read(&data, &index, &one);
+    // The header's spelling of a tag the record holds is the same tag; the record's is kept.
+    assert_eq!(tags["n7"], ["work", "inline", "header"]);
+    assert_eq!(small_tags, tags);
+    assert_eq!(
+        small_steps, steps,
+        "a source's tags read more of a larger vault"
+    );
+
+    let lots: Vec<String> = (10..10 + MANY).map(|i| format!("n{i}")).collect();
+    let (_, one_cost) = statements(&data, &index, || tags_of(&data, &index, &one));
+    let (found, lots_cost) = statements(&data, &index, || tags_of(&data, &index, &lots));
+    assert_eq!(found.len(), MANY);
+    assert_eq!(one_cost, lots_cost, "tags: one read per source");
+}
+
+#[cfg(feature = "markdown")]
+fn tags_of(
+    data: &Connection,
+    index: &Connection,
+    ids: &[String],
+) -> std::collections::HashMap<String, Vec<String>> {
+    tag_reads::of_notes(data, index, ids.iter().map(String::as_str)).expect("tags")
 }

@@ -62,12 +62,11 @@ extension JournalCopy {
     static let ghostProperty = "Property"
     static let addTag = "Add tag"
     static let addProperty = "Add property"
-    static let metadataReadOnlyHint = "Read-only on iPhone for now"
+    static let metadataReadOnlyHint = "Read-only on \(ThisDevice.noun) for now"
 
     // MARK: Navigation (J10)
 
     static let backToMonth = "Back to month"
-    static let closeFind = "Close find"
 
     // MARK: Stats footer (journal.json `stats.*`, `count.*`)
 

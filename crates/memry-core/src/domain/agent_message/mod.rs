@@ -10,7 +10,7 @@
 //! streaming message stays in the agent's memory until it ends. `content`
 //! and `attachments` are stored sealed ([`crate::crypto::agent_payload`]).
 //! No check that the conversation exists: a message lands before its
-//! conversation does, as migration `0028` explains.
+//! conversation does, as migration `0029` explains.
 
 pub mod merge;
 

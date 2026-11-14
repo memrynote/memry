@@ -3,7 +3,7 @@
  * asked (language, inline tokens, the fold threshold, sections and chunks,
  * `assemble` with no model lines), for each document of `doc-cases.ts`.
  * `levels` lists the levels the file covers; the model levels (Key, Takeaway,
- * Topic) append theirs. Checked by
+ * Topic) are in `note-fold-model.json` (`model.ts`). Checked by
  * `crates/memry-desktop/tests/note_fold_vectors.rs`.
  */
 import {

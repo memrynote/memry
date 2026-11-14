@@ -1,10 +1,11 @@
 import Foundation
+import SwiftUI
 import Testing
 
 @testable import Memry
 
-// The tab bar: Home and Notes pinned, two slots in desktop's rail order,
-// the rest behind Menu.
+// Compact: Home and Notes pinned, two slots in desktop's rail order, the rest
+// behind Menu. Regular: every page in desktop's rail order, then Notes.
 
 @MainActor
 @Suite("Vault tab layout")
@@ -42,5 +43,53 @@ struct VaultTabLayoutTests {
         #expect(layout.menuContent(for: .inbox) == .inbox)
         #expect(layout.barSelection(for: .tasks) == .tasks)
         #expect(layout.menuContent(for: .tasks) == .more, "Menu falls back to Settings")
+    }
+
+    // MARK: Regular width (the iPad sidebar)
+
+    @Test func the_sidebar_lists_every_page_in_desktops_default_rail_then_notes() {
+        let layout = VaultTabLayout(savedOrder: [], width: .regular, isShown: all)
+        #expect(layout.bar == [.home, .inbox, .journal, .calendar, .tasks, .notes])
+        #expect(layout.menu.isEmpty)
+    }
+
+    @Test func the_sidebar_follows_the_dragged_rail_and_skips_pages_ios_lacks() {
+        let saved = ["graph", "tasks", "calendar", "canvas", "home", "inbox", "journal"]
+        let layout = VaultTabLayout(savedOrder: saved, width: .regular, isShown: all)
+        #expect(layout.bar == [.tasks, .calendar, .home, .inbox, .journal, .notes])
+    }
+
+    @Test func a_page_an_older_rail_lacks_lands_after_its_default_neighbour() {
+        // Desktop's `resolveSidebarSectionOrder`: Calendar follows Journal.
+        let layout = VaultTabLayout(savedOrder: ["tasks", "journal", "home", "inbox"], width: .regular, isShown: all)
+        #expect(layout.bar == [.tasks, .journal, .calendar, .home, .inbox, .notes])
+    }
+
+    @Test func a_page_turned_off_leaves_the_sidebar() {
+        let layout = VaultTabLayout(savedOrder: [], width: .regular, isShown: { $0 != .inbox && $0 != .calendar })
+        #expect(layout.bar == [.home, .journal, .tasks, .notes])
+    }
+
+    @Test func every_shown_page_selects_its_own_row_and_settings_selects_settings() {
+        let layout = VaultTabLayout(savedOrder: [], width: .regular, isShown: all)
+        for page in layout.bar {
+            #expect(layout.barSelection(for: page) == page)
+        }
+        #expect(layout.barSelection(for: .more) == .more)
+        #expect(layout.menuContent(for: .more) == .more)
+    }
+
+    @Test func the_sidebar_needs_regular_width_and_regular_height() {
+        #expect(LayoutWidth(horizontal: .regular, vertical: .regular) == .regular)
+        #expect(LayoutWidth(horizontal: .compact, vertical: .regular) == .compact, "iPad Split View")
+        #expect(LayoutWidth(horizontal: .regular, vertical: .compact) == .compact, "large iPhone in landscape")
+        #expect(LayoutWidth(horizontal: nil, vertical: nil) == .compact)
+    }
+
+    /// A portrait window would open with the sidebar over the page, and a
+    /// link that routes there (`memry://calendar`) cannot close it.
+    @Test func the_sidebar_is_pinned_only_in_a_landscape_window() {
+        #expect(VaultTabLayout.placement(for: CGSize(width: 1376, height: 1032)) == .sidebar)
+        #expect(VaultTabLayout.placement(for: CGSize(width: 1032, height: 1376)) == .automatic)
     }
 }

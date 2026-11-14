@@ -23,7 +23,7 @@ private final class RecordingRedrives: VaultFilling, @unchecked Sendable {
     ) async throws -> FirstSyncSummary {
         throw SyncError.Locked
     }
-    func fetchNoteBody(noteId: String) async throws -> BodyFetchSummary {
+    func pullNoteBody(noteId: String) async throws -> BodyFetchSummary {
         throw SyncError.Locked
     }
 }

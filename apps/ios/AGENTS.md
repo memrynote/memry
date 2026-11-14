@@ -38,10 +38,26 @@ Run the narrowest of the three plans that covers the change:
 - `TestPlans/Conformance.xctestplan` runs `MemryConformanceTests`, which hold iOS to the same protocol and domain behavior as desktop through the shared vectors. A failure here means iOS diverged, not that the test is wrong.
 - `TestPlans/UI.xctestplan` runs `MemryUITests`.
 
+The plans run on iPad as well: pass `name=iPad Air 13-inch (M4)` or `name=iPad mini (A17 Pro)` as the destination. On iPad the tab bar sits at the top and XCUITest finds no `tabBars` element, so a UI test finds a tab as `app.buttons["<title>"]`.
+
+The layout verification matrix comes from one script. It runs `TabletLayoutUITests`, which opens each main screen (Home, Notes, a note, Inbox, an Inbox item, Tasks, a task, the Journal day, Calendar, Settings) and attaches a screenshot in portrait and in landscape:
+
+```bash
+node apps/ios/scripts/screenshot-matrix.mjs                       # iPad Air 13-inch (M4), iPad mini (A17 Pro), iPhone 17
+node apps/ios/scripts/screenshot-matrix.mjs --boot --test testNote 'iPad Air 13-inch (M4) <tag>' 'iPhone 17 <tag>'
+```
+
+- It writes `<out>/<simulator slug>/<variant>/<screen>-<orientation>.png`, where the slug is the simulator's name in lower case with each run of other characters as a dash (`ipad-air-13-inch-m4`). The default `<out>` is `apps/ios/build/screenshots/<timestamp>`. `--out` picks the folder, and each `--test` limits the run to one test method.
+- Every simulator must be booted already: the script fails on a shut-down one, because another agent may be using it, and on one that is Booting or Shutting Down. `--boot` lets it boot a shut-down simulator and shut it down again, so pass it only for your own tagged simulators. A simulator that was booted before the run stays booted.
+- Every simulator gets a light pass at the default text size. The first one also gets a dark pass and a pass at the largest Dynamic Type size. Each simulator gets its own appearance and text size back when its runs end, also after a failed run and after SIGINT, SIGTERM or SIGHUP, which stop the run with exit code 128 plus the signal number (130 for Ctrl-C) and start no further variant.
+- Each simulator must be signed in to the staging test account first. The script fails when a test skips or fails, when the attachments cannot be exported, or when the result bundle holds fewer tests than the class declares. The run's `xcodebuild.log` and `result.xcresult` sit next to its screenshots.
+- XCUITest cannot resize the app's window, so Split View and Stage Manager widths stay a manual check.
+
 Test gotchas:
 
 - The Unit plan runs inside the app on the shared simulator, and its sign-out tests wipe the app's keychain. Anything that needs a signed-in app, such as the UI plan or a manual check, comes after a fresh sign-in, never straight after a Unit run.
 - Before signing in to the staging test account, whether for iOS sign-in, an OTP, a recovery phrase, or a desktop launched on staging to pair or sync, read `.pi/skills/staging-test-account/SKILL.md`.
+- `RecoveryPhraseUITests` needs a simulator that is signed in but not unlocked. On an unlocked simulator, which the rest of the UI plan needs, it skips, so a green UI plan has not covered the recovery-phrase screen. Run it on its own, on a simulator that stopped at that screen.
 - `TasksUITests` needs the simulator signed in to the staging test account. It and the other UI tests skip, rather than fail, when they land on sign-in, so a UI run with skips has not exercised the flows.
 - `JournalUITests` needs the same sign-in plus the synced journal settings its header names, a Wednesday template. It pins today with `-MEMRY_JOURNAL_TODAY <date>`, always a day in 2099.
 - An editable block is a text view, so its text is the accessibility value, not the label. Match `label CONTAINS x OR value CONTAINS x`.
@@ -78,7 +94,7 @@ The app is one Universal build. iPad layouts adapt the iPhone app, not replace i
 - Anything the server checks against a device, such as a pushed record's signer or an attachment manifest's signer, uses the server-registered id from the access token's `device_id` claim (`AuthSession::registered_device_id`). The local id derived from the signing key only names this device inside field clocks, and the server rejects it with `AUTH_DEVICE_NOT_FOUND`.
 - A write that should reach other devices schedules a sync pass. Task writes do it through `TasksStore`, and other screens call the `requestVaultSync` environment action.
 - A sync pass pulls bodies only for the records it applied, and desktop pushes a body edit as CRDT updates with no record. A screen showing a document another device edits pulls that body itself with `VaultFilling.fetchNoteBody` when it appears and after each sync pass, as the journal day page does.
-- Backlinks and link targets read the search index. Reindex with `VaultSearching.reindex` after a sync pass on any screen that shows them.
+- Search, backlinks, link targets and unlinked mentions read the search index. `VaultSearchIndex` (`\.vaultSearchIndex`) owns reindexing: it runs after each sync pass and local write, one at a time. A screen that reads the index re-reads when its `completed` changes and never reindexes itself. After content arrives outside a sync pass, such as a body pull, call its `schedule()`.
 - Address a journal day by its date, never by `j<date>`. Days written by older desktops carry other ids, and every write goes to the existing record's id.
 - Journal tag and property writes stay off (`JournalWriteGate.metadataWrites`) until the oldest desktop in use includes the JP029a handler fix (`specs/005-ios-journal-parity/tasks.md`). Earlier desktops empty the day's file on a record-only change.
 - `BlockEdit.setText` edits a single plain run in place, so a peer's concurrent typing in the same block survives. Keep plain-text edits on that path instead of replacing the whole run.

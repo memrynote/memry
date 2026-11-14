@@ -137,6 +137,20 @@ impl Declaration {
         Self::declare(&SUBSCRIBED_ITEM_TYPES).expect("the subscribed twenty-one are all recognised")
     }
 
+    /// Desktop's twenty-seven, chapter 13 §13.1: the twenty-one, then
+    /// [`DESKTOP_ONLY_RECORD_ITEM_TYPES`] in their order. Rust-only: desktop
+    /// passes it to `Vault::sync_with_declaration`. Only with `markdown`,
+    /// which every desktop build has: without it `vault_lock` has no merge
+    /// rule (`sync::apply`) and would apply as a plain document.
+    #[cfg(feature = "markdown")]
+    pub fn desktop() -> Self {
+        let types: Vec<&str> = SUBSCRIBED_ITEM_TYPES
+            .into_iter()
+            .chain(DESKTOP_ONLY_RECORD_ITEM_TYPES)
+            .collect();
+        Self::declare(&types).expect("the twenty-seven record types are all recognised")
+    }
+
     /// Resolves a declaration the way the server will resolve it.
     ///
     /// Entries are trimmed and deduplicated because the header is unbounded
@@ -290,6 +304,19 @@ calendar_source,calendar_event,calendar_external_event,calendar_binding,bookmark
             assert!(is_record_item_type(name), "{name}");
         }
         assert!(!is_record_item_type(ATTACHMENT_ITEM_TYPE));
+    }
+
+    #[cfg(feature = "markdown")]
+    #[test]
+    fn the_desktop_declaration_is_the_twenty_one_then_the_six() {
+        let declaration = Declaration::desktop();
+        assert_eq!(declaration.types().len(), RECORD_SYNC_ITEM_TYPE_COUNT);
+        assert_eq!(declaration.types()[..21], SUBSCRIBED_ITEM_TYPES);
+        assert_eq!(declaration.types()[21..], DESKTOP_ONLY_RECORD_ITEM_TYPES);
+        assert!(declaration.header_value().ends_with(
+            ",canvas,agent_conversation,agent_message,canvas_folder,home_page,vault_lock,\
+sticky_draft"
+        ));
     }
 
     #[test]

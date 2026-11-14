@@ -3,6 +3,7 @@ import { cn } from '@/lib/utils'
 import { createJournalDateLabels, getMonthName } from '@/lib/journal-utils'
 import type { JournalViewState } from './date-breadcrumb'
 import { useT } from '@memry/i18n/renderer'
+import { useToday } from '@/hooks/use-today'
 
 export type TimeOfDay = 'morning' | 'afternoon' | 'evening' | 'night'
 
@@ -41,6 +42,7 @@ export function JournalDateDisplay({ viewState, dateParts, className }: JournalD
   const { t, i18n: _i18n } = useT('journal')
   const dateLabels = useMemo(() => createJournalDateLabels(t), [t])
   const timeOfDay = useMemo(() => getTimeOfDay(), [])
+  const currentYear = Number(useToday().slice(0, 4))
 
   if (viewState.type === 'day' && dateParts) {
     const fog = FOG_CONFIG[timeOfDay]
@@ -56,6 +58,7 @@ export function JournalDateDisplay({ viewState, dateParts, className }: JournalD
           style={{ fontFamily: 'var(--font-heading)' }}
         >
           {dateParts.dayName}, {dateParts.month} {dateParts.day}
+          {dateParts.year !== currentYear && `, ${dateParts.year}`}
         </h1>
       </div>
     )

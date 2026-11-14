@@ -21,36 +21,37 @@ struct VaultSearchTests {
         func backlinks(noteId: String, order: BacklinkOrder) async throws -> [Backlink] { [] }
         func linksTo(targetId: String, order: BacklinkOrder) async throws -> [BacklinkRow] { [] }
         func unlinkedMentions(targetId: String) async throws -> [UnlinkedMention] { [] }
-        /// TP056. No task hits: the task half of a query is asserted in
-        /// `TasksNotesTests` against a real index.
-        func tasks(query: String, limit: UInt32) async throws -> [SearchResult] { [] }
 
         let queries = Mutex([String]())
+        let filters = Mutex([SearchFilter?]())
         let reindexes = Mutex(0)
         private let hits: [SearchResult]
         private let failure: (any Error)?
-        private let reindexFailure: (any Error)?
+        let reindexFailure: Mutex<(any Error)?>
 
         init(hits: [SearchResult] = [], failure: (any Error)? = nil, reindexFailure: (any Error)? = nil) {
             self.hits = hits
             self.failure = failure
-            self.reindexFailure = reindexFailure
+            self.reindexFailure = Mutex(reindexFailure)
         }
 
-        func notes(query: String, limit: UInt32) async throws -> [SearchResult] {
+        /// Note hits only: the task and inbox groups are asserted against a
+        /// real index in `TasksNotesTests` and `SearchInboxTests`.
+        func search(query: String, filter: SearchFilter?, limit: UInt32) async throws -> SearchGroups {
             queries.withLock { $0.append(query) }
+            filters.withLock { $0.append(filter) }
             if let failure { throw failure }
-            return hits
+            return SearchGroups(notes: hits, journals: [], tasks: [], inbox: [])
         }
 
         func reindex() async throws {
             reindexes.withLock { $0 += 1 }
-            if let reindexFailure { throw reindexFailure }
+            if let failure = reindexFailure.withLock({ $0 }) { throw failure }
         }
     }
 
     private func hit(_ id: String, _ title: String, kind: String = "note") -> SearchResult {
-        SearchResult(id: id, title: title, kind: kind, journalDate: nil, score: -1)
+        SearchResult(id: id, title: title, kind: kind, journalDate: nil, emoji: nil, folderPath: nil, score: -1, snippet: [], matchKind: .body, matchedName: nil)
     }
 
     /// A model with no debounce, so a test waits for the work rather than for
@@ -111,18 +112,98 @@ struct VaultSearchTests {
         #expect(model.phase == .results([hit("n1", "Dune")]))
     }
 
-    @Test("the index is brought up to date once, and a failed reindex is not shown")
-    func prepareRunsOnce() async {
-        // A stale index still answers; the queries that follow say so
-        // themselves if they fail. Blocking the screen on it would make a
-        // rebuild look like a broken vault.
-        let search = ScriptedSearch(reindexFailure: StorageError.Failed(what: "no disk"))
+    @Test("a filter change runs the query on screen again with the scope and menu filters")
+    func filtersReachTheSearch() async {
+        let search = ScriptedSearch(hits: [hit("n1", "Dune")])
         let model = model(search)
+        model.run("dune")
+        await model.settle()
 
-        await model.prepare()
-        await model.prepare()
+        var filters = model.filters
+        filters.scope = .journal
+        filters.toggle(tag: "searchtest")
+        model.apply(filters)
+        await model.settle()
+
+        #expect(search.queries.withLock { $0 } == ["dune", "dune"])
+        #expect(search.filters.withLock { $0 } == [nil, SearchFilter(types: [.journal], modified: nil, tags: ["searchtest"])])
+        #expect(model.phase == .results([hit("n1", "Dune")]))
+    }
+
+    @Test("a burst of sync passes reindexes once, and the followed screen runs the query on it again")
+    func syncPassesReindexAndRequery() async throws {
+        // #4324: a sync landing while the sheet is open used to stay invisible
+        // until the sheet was reopened. The sheet's `.task` follows the index.
+        let search = ScriptedSearch(hits: [hit("n1", "Dune")])
+        let index = VaultSearchIndex(search: search, debounce: .zero)
+        let model = VaultSearchViewModel(search: search, index: index, debounce: .zero)
+        model.run("dune")
+        await model.settle()
+        let follower = Task { await model.followIndex() }
+
+        index.schedule()
+        index.schedule()
+        index.schedule()
+        await index.settle()
+        #expect(index.completed == 1)
+        try await wait { search.queries.withLock { $0.count } >= 2 }
+        await model.settle()
+
+        #expect(search.reindexes.withLock { $0 } == 1, "the burst is debounced into one reindex")
+        #expect(search.queries.withLock { $0 } == ["dune", "dune"], "the screen re-ran the query")
+        #expect(model.phase == .results([hit("n1", "Dune")]))
+        #expect(!model.isIndexStale)
+
+        // The sheet went: its task is cancelled and the model stops following.
+        follower.cancel()
+        await follower.value
+        index.schedule()
+        await index.settle()
+        for _ in 0 ..< 20 { await Task.yield() }
+        #expect(index.completed == 2)
+        #expect(search.queries.withLock { $0 }.count == 2, "a cancelled follower re-runs nothing")
+    }
+
+    @Test("a model whose sheet is gone runs no query when a reindex finishes")
+    func aDismissedModelStaysQuiet() async {
+        // SwiftUI keeps a dismissed sheet's toolbar, and with it the model,
+        // alive. A model that followed the index itself re-ran its last query
+        // on every sync pass for each sheet opened since launch.
+        let search = ScriptedSearch(hits: [hit("n1", "Dune")])
+        let index = VaultSearchIndex(search: search, debounce: .zero)
+        let model = VaultSearchViewModel(search: search, index: index, debounce: .zero)
+        model.run("dune")
+        await model.settle()
+
+        index.schedule()
+        await index.settle()
+        for _ in 0..<10 { await Task.yield() }
+        await model.settle()
 
         #expect(search.reindexes.withLock { $0 } == 1)
-        #expect(model.phase == .idle)
+        #expect(search.queries.withLock { $0 } == ["dune"], "only the screen re-runs a query")
+    }
+
+    @Test("a failed reindex says search may be out of date, and Retry clears it")
+    func failedReindexShowsNoticeUntilRetry() async {
+        let search = ScriptedSearch(hits: [hit("n1", "Dune")], reindexFailure: StorageError.Failed(what: "no disk"))
+        let index = VaultSearchIndex(search: search, debounce: .zero)
+        let model = VaultSearchViewModel(search: search, index: index, debounce: .zero)
+        model.run("dune")
+        await model.settle()
+
+        index.schedule()
+        await index.settle()
+
+        #expect(model.isIndexStale)
+        #expect(model.phase == .results([hit("n1", "Dune")]), "the stale index still answers")
+        #expect(search.queries.withLock { $0 } == ["dune"], "a failed reindex re-runs nothing")
+
+        search.reindexFailure.withLock { $0 = nil }
+        await model.retryIndex()
+
+        #expect(!model.isIndexStale)
+        #expect(search.reindexes.withLock { $0 } == 2)
+        #expect(index.completed == 1, "the screen re-runs the query when this moves")
     }
 }

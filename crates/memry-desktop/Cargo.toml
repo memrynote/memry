@@ -98,7 +98,7 @@ notify = "8.2.1"
 trash = "5.2.9"
 # Custom icons (`notes::icons`): raster uploads are decoded and re-encoded as PNG. Only the four
 # input formats of `CUSTOM_ICON_INPUT_EXTENSIONS` are compiled in.
-image = { version = "0.25", default-features = false, features = ["png", "jpeg", "gif", "webp"] }
+image = { workspace = true }
 
 [target.'cfg(unix)'.dependencies]
 libc = "0.2"
@@ -190,6 +190,10 @@ path = "tests/editor_flush_quit.rs"
 [[test]]
 name = "extract_bench"
 path = "tests/extract_bench.rs"
+
+[[test]]
+name = "model_download_proxy"
+path = "tests/model_download_proxy.rs"
 
 [[test]]
 name = "sync_harness"

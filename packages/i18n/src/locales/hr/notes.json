@@ -433,10 +433,7 @@
       "empty": "Ovom prikazu još ništa ne odgovara.",
       "loadFailed": "Nije moguće učitati ovaj prikaz. Same bilješke su netaknute.",
       "folderMissing": "Ova mapa više nije u trezoru. Odaberite drugi izvor.",
-      "unreadable": "Ovaj prikaz nije moguće pročitati. Odaberite izvor iznad ili uklonite blok.",
-      "invalidJson": "Definicija ovog prikaza nije valjani JSON. Ispravite je u nastavku ili uklonite blok.",
-      "invalidShape": "Definicija ovog prikaza nema izvor. Odaberite ga gore ili ispravite definiciju u nastavku.",
-      "definition": "Definicija"
+      "unreadable": "Ovaj prikaz nije moguće pročitati. Odaberite izvor iznad ili uklonite blok."
     },
     "chart": {
       "title": "Grafikon",

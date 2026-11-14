@@ -63,6 +63,11 @@ struct ProjectEditorSheet: View {
                     Button(Copy.deleteProject, role: .destructive) { deleting = store.project(projectId) }
                         .frame(minHeight: Tokens.Size.minimumHitArea)
                         .accessibilityIdentifier("tasks.projectEditor.delete")
+                        // On the button, so the popover points at it on iPad.
+                        .projectDeleteDialog($deleting, store: store) {
+                            dismiss()
+                            onDeleted?()
+                        }
                         .sheetRow()
                 }
                 if let failure = store.failure {
@@ -86,10 +91,6 @@ struct ProjectEditorSheet: View {
                 .accessibilityIdentifier("tasks.projectEditor.discard")
         } message: {
             Text(Copy.unsavedChangesBody)
-        }
-        .projectDeleteDialog($deleting, store: store) {
-            dismiss()
-            onDeleted?()
         }
         .onAppear {
             store.clearFailure()

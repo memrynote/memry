@@ -328,7 +328,7 @@ struct SignInViewModelTests {
 
         #expect(model.state == .setupPending)
         #expect(model.step.primary == .registerDevice)
-        #expect(model.error?.title == "Memry could not finish setting up this phone.")
+        #expect(model.error?.title == "Memry could not finish setting up this \(ThisDevice.noun).")
     }
 
     /// #2940: the core keeps `AwaitingOtp` on a 429, so the code screen, the

@@ -12,6 +12,8 @@ export const journalKeys = {
   monthEntries: () => [...journalKeys.all, 'monthEntries'] as const,
   monthEntriesForMonth: (year: number, month: number) =>
     [...journalKeys.monthEntries(), year, month] as const,
+  sameDay: () => [...journalKeys.all, 'sameDay'] as const,
+  sameDayForDate: (date: string) => [...journalKeys.sameDay(), date] as const,
   yearStats: () => [...journalKeys.all, 'yearStats'] as const,
   yearStatsForYear: (year: number) => [...journalKeys.yearStats(), year] as const,
   dayContext: () => [...journalKeys.all, 'dayContext'] as const,

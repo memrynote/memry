@@ -60,10 +60,12 @@ struct MoreTabView: View {
                         ProgressView(SettingsCopy.loading)
                     }
                 }
+                .settingsPage()
                 .toolbar { GlobalSearchToolbarItem() }
                 .navigationDestination(for: SettingsRoute.self) { route in
                     if let context {
                         SettingsDestination(route: route, context: context)
+                            .settingsPage()
                     } else {
                         ProgressView(SettingsCopy.loading)
                     }

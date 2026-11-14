@@ -23,7 +23,7 @@ struct UnlinkedMentionsTests {
         let search: CoreVaultSearch
     }
 
-    private func fixture(_ body: String) throws -> Fixture {
+    private func fixture(_ body: String) async throws -> Fixture {
         let vault = try TasksTestVault()
         let writer = try vault.vault.notesWriter(store: TaskTestKeychain())
         let target = try writer.create(title: "Agent Dune", folderPath: nil)
@@ -36,6 +36,7 @@ struct UnlinkedMentionsTests {
             )
         )
         let search = try CoreVaultSearch(vault: vault.vault, executor: .shared)
+        try await search.reindex()
         let reader = CoreNotesReader(vault: vault.vault, executor: .shared)
         let editor = CoreBlockEditor(vault: vault.vault, store: TaskTestKeychain(), executor: .shared)
         let model = UnlinkedMentionsViewModel(noteId: target, search: search, reader: reader, editor: editor)
@@ -51,7 +52,7 @@ struct UnlinkedMentionsTests {
     }
 
     @Test func the_list_names_each_mention_as_written() async throws {
-        let f = try fixture("I like agent dune. Also Agent Dune! But not Agent Dunes.")
+        let f = try await fixture("I like agent dune. Also Agent Dune! But not Agent Dunes.")
 
         await f.model.toggle()
 
@@ -61,11 +62,15 @@ struct UnlinkedMentionsTests {
     }
 
     @Test func link_turns_the_chosen_mention_into_a_wiki_link_with_its_text_as_alias() async throws {
-        let f = try fixture("I like agent dune. Also Agent Dune!")
+        let f = try await fixture("I like agent dune. Also Agent Dune!")
         await f.model.toggle()
         let source = try #require(rows(f.model).first)
 
         let landed = await f.model.link(source, index: 1, targetTitle: "Agent Dune")
+        // What the section does after a Link: the index owner catches up and
+        // the open list re-reads.
+        try await f.search.reindex()
+        await f.model.refresh()
 
         #expect(landed)
         let blocks = try #require(try await f.reader.blocks(id: f.source))
@@ -79,7 +84,7 @@ struct UnlinkedMentionsTests {
     }
 
     @Test func a_mention_edited_away_is_refused_not_linked_elsewhere() async throws {
-        let f = try fixture("I like agent dune.")
+        let f = try await fixture("I like agent dune.")
         await f.model.toggle()
         let stale = try #require(rows(f.model).first)
         let blocks = try #require(try await f.reader.blocks(id: f.source))

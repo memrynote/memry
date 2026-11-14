@@ -9,7 +9,11 @@ const bindings = vi.hoisted(() => ({ foldGetAgentStatus: vi.fn() }))
 
 vi.mock('../../../../generated/bindings', async (importOriginal) => ({
   ...(await importOriginal<object>()),
-  commands: { foldGetAgentStatus: bindings.foldGetAgentStatus }
+  commands: {
+    foldGetAgentStatus: bindings.foldGetAgentStatus,
+    foldGetLastRun: vi.fn(() => Promise.resolve({ status: 'idle', noteId: null }))
+  },
+  events: { noteFoldUpdatedEvent: { listen: vi.fn(() => Promise.resolve(() => {})) } }
 }))
 
 vi.mock('sonner', () => ({
@@ -136,6 +140,16 @@ describe('AISettings', () => {
 
     expect(api.settings.setAISettings).toHaveBeenCalledWith({ imageEmbeddings: false })
     expect(toast.success).toHaveBeenCalledWith('Image search disabled')
+  })
+
+  it('shows the stored AI switches when another part of the page fails to load', async () => {
+    api.settings.getAISettings = vi
+      .fn()
+      .mockResolvedValue({ enabled: true, summarizeLongNotes: true })
+    api.settings.getAIModelStatus = vi.fn().mockRejectedValue(new Error('not ported'))
+    render(<AISettings />)
+
+    expect(await screen.findByRole('switch', { name: 'Summarize long notes' })).toBeChecked()
   })
 
   it('shows Summarize long notes only while AI is on and saves it on its own', async () => {

@@ -21,7 +21,7 @@
 --
 -- Journals are indexed in `fts_notes` alongside notes, distinguished by the
 -- `date` on their `journal_entries` projection row, which is what desktop does.
--- `fts_inbox` is not created: inbox is out of scope for this feature.
+-- `fts_inbox` is created by 0003 (#4320).
 --
 -- One operational note carried over from the mobile baseline: on that stack,
 -- closing a connection while an FTS5 virtual table is attached segfaults, and the

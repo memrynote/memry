@@ -53,6 +53,7 @@ one-class change reviewable.
 | `bip39-unlock.json`                      |                                    9 | `../scripts/vectors/bip39-unlock.ts`                                                           | `../src/__tests__/bip39-unlock.test.ts`                                              |
 | `record-envelope.json`                   |                                   14 | `../scripts/vectors/record-envelope.ts`                                                        | `../src/__tests__/record-envelope.test.ts` + the desktop parity suite                |
 | `agent-envelope.json`                    |                                   15 | `../scripts/vectors/agent-envelope.ts` (Electron's `agent/storage/encryption.ts`)              | Rust `agent_envelope_vectors.rs`                                                     |
+| `vault-name.json`                        |                                   20 | `../scripts/vectors/vault-name.ts` (Electron's `sync/vault-name-crypto.ts`)                    | Rust `vault_name_vectors.rs`                                                         |
 | `crdt-update.json`                       |                                    8 | `../scripts/vectors/crdt-update.ts`                                                            | `../src/__tests__/crdt-update.test.ts` + the desktop parity suite                    |
 | `crdt-compact.json`                      |                                    8 | `../scripts/vectors/crdt-compact.ts`                                                           | Rust `crdt_compact.rs`                                                               |
 | `cbor-canonical.json`                    |                                   14 | `../scripts/vectors/cbor-canonical.ts`                                                         | `../src/__tests__/cbor-canonical.test.ts` + the desktop parity suite                 |
@@ -82,7 +83,9 @@ one-class change reviewable.
 | `embedding-input.json`                   |                                   61 | `apps/desktop/scripts/embedding-input-oracle/`                                                 | Rust `domain::embedding_input` tests                                                 |
 | `embeddings-text.json`                   |                    31 + 2 + 12 pairs | `crates/memry-ml/tests/golden/generate.mjs` (needs the model)                                  | Rust `memry-ml/tests/golden_text.rs` (full tier)                                     |
 | `audio-features.json`                    |                           33 + 8 + 7 | `crates/memry-ml/tests/golden/generate-audio.mjs` (needs the model)                            | Rust `memry-ml/tests/audio_features.rs`                                              |
-| `embeddings-audio.json`                  |                   8 files, 9 windows | same                                                                                           | Rust `memry-ml/tests/golden_audio.rs` (full tier)                                    |
+| `embeddings-audio.json`                  |                   7 files, 8 windows | same                                                                                           | Rust `memry-ml/tests/golden_audio.rs` (full tier)                                    |
+| `pixel-tensors.json`                     |                                   53 | `crates/memry-ml/tests/golden/generate-image.mjs`                                              | Rust `memry-ml/tests/pixel_tensors.rs`                                               |
+| `embeddings-image.json`                  |                                   14 | same, with `--model-dir` (needs the model)                                                     | Rust `memry-ml/tests/golden_image.rs` (full tier)                                    |
 | `markdown-roundtrip/cases.json`          |                                  285 | `../scripts/vectors/markdown-roundtrip.ts`                                                     | `../src/__tests__/markdown-roundtrip.test.ts`                                        |
 | `markdown-roundtrip/fuzz-families.json`  |                           6 families | same                                                                                           | same                                                                                 |
 | `markdown-convert/frontmatter.json`      |                                  457 | `apps/desktop/scripts/markdown-oracle/`                                                        | `../src/__tests__/markdown-convert.test.ts` + Rust `markdown_frontmatter_vectors.rs` |
@@ -106,7 +109,7 @@ one-class change reviewable.
 | `markdown-convert/blocks.json`           |                                  844 | same                                                                                           | same + Rust `markdown_doc_vectors.rs`                                                |
 | `markdown-convert/serialize-doc.json`    |                                  537 | same                                                                                           | same + Rust `markdown_doc_edit_vectors.rs`                                           |
 | `markdown-convert/replace-body.json`     |                                   44 | same                                                                                           | same + Rust `markdown_doc_edit_vectors.rs`                                           |
-| **Total**                                | **32279 cases plus 6 fuzz families** |                                                                                                |                                                                                      |
+| **Total**                                | **32346 cases plus 6 fuzz families** |                                                                                                |                                                                                      |
 
 ### `embeddings-text.json`: lone surrogates are a known divergence
 
@@ -122,15 +125,69 @@ that cosine, and `golden_text.rs` holds the native vector to the measured cosine
 Similarity floors of 0.60 and up are unaffected in practice; only the one window that holds the
 cut moves.
 
-### `audio-features.json`, `embeddings-audio.json`: what the port keeps and where it differs
+### `audio-features.json`, `embeddings-audio.json`: the whole window is embedded, unlike Electron
 
 Both files come from Electron's audio path run in place: `decodeWavForEmbedding` and `embedAudio`
 of `apps/desktop/src/main/lib/audio-embedding.ts`, then the worker's `processor(null, null, audio)`
-and model on transformers.js. Two behaviours are easy to miss. The audio feature extractor keeps
-only the first 480,000 samples (30 s) of a window, so a 300 s window embeds its first 30 s; the
-vectors pin that (`31 s` cases), and `memry-ml` does the same. The one divergence is a WAV file
-under 4000 Hz: Electron resamples it, the native decoder refuses it, because a few bytes at 1 Hz
-would claim hours of output. Such a case carries `divergence` in `decode`.
+and model on transformers.js. Decoding, the 300 s windows and their limits are Electron's, exact.
+
+The embedded window is an intentional divergence (Kaan, 2026-11-14). Electron's audio feature
+extractor keeps only the first 480,000 samples (30 s) of a window, so a 300 s window is indexed by
+its first 30 s and the other 270 s never reach the index. `memry-ml` embeds the whole window, and
+the generator runs the extractor with `truncation` off, so these vectors are a Tauri-side oracle
+for any window over 30 s, not an Electron parity claim for it. Such a window also records
+Electron's own vector and the cosine between the two (`electron`), and `golden_audio.rs` holds the
+native vector to that cosine within 1e-4. Measured with transformers.js 4.3.1 and the pinned q4
+model on LCG noise: 0.996534 for a 31 s window and 0.960938 for a full 300 s window. Stored audio
+vectors of an Electron vault therefore differ from Tauri's for recordings over 30 s and are
+re-embedded. A full 300 s window is 7,504 tokens: 129 s and a 6.8 GB peak resident set for the
+native engine on macOS arm64 (2 threads), 128 s and 6.1 GB on transformers.js, against 11 s and
+0.9 GB for a 30 s window.
+
+The other divergence is a WAV file under 4000 Hz: Electron resamples it, the native decoder
+refuses it, because a few bytes at 1 Hz would claim hours of output. Such a case carries
+`divergence` in `decode`.
+
+### `pixel-tensors.json` and `embeddings-image.json`: JPEG decoding, ICC conversion and CMYK conversion are a known divergence
+
+Electron decodes images with sharp (libvips 8.18): JPEG through libjpeg-turbo (mozjpeg) and colour
+profiles through Little CMS. `memry-ml` decodes in pure Rust (Kaan, 2026-11-13): JPEG through
+zune-jpeg (the `image` crate) and profiles through moxcms, with no C decoder in the build. PNG,
+WebP and GIF decode, resize and patch bit for bit, so those cases hold exact sha256 hashes and
+their vectors meet the text bounds (cosine 1.000000 measured). JPEG and ICC-tagged inputs decode
+a few levels apart. The tests read each case's class (`jpeg`, `icc`, `jpeg+icc` and the CMYK
+classes below) from the input bytes (`crates/memry-ml/tests/common/image.rs`), and the generator tags it the same way from sharp's
+metadata: a tag the bytes do not call for fails. Measured on macOS arm64, the largest per-channel
+difference of the decoded pixels is 4 for a JPEG (all subsamplings, progressive, grey), 1 for an
+ICC-tagged PNG or WebP and 6 for an ICC-tagged JPEG (the P3 one; the seven EXIF orientations, whose
+sRGB profile sharp writes, 4). `pixel-tensors.json` stores Electron's decoded pixels for those
+small inputs and `pixel_tensors.rs` holds the Rust to `maxLevelDiff` under the ceilings 6, 2 and 8
+it hard-codes, while every size, patch count and position id stays exact. The embedding moves with
+the pixels: cosine with Electron's vector 0.99972 to 0.99998 for the sample photos (0.9995 at worst
+over 20 images measured while porting) and 0.99969 for the P3-tagged PNG, under the 0.9999 text
+bound. `golden_image.rs` holds them to `divergentMinCosine` and never under its hard-coded 0.999;
+a test edits the files to show that a looser bound or a wrong tag fails. Raising a ceiling or
+lowering the floor needs Kaan. A
+truncated JPEG fails in both: sharp on libjpeg's warning, `memry-ml` on the missing end marker.
+
+A CMYK or YCCK JPEG (four components, `is_cmyk_jpeg`) is its own class, `cmyk` without a profile
+and `cmyk+icc` with one, and an accepted divergence (Kaan, 2026-11-14): zune-jpeg converts it to
+RGB with its naive formula and `memry-ml` drops the profile, where libvips converts through the
+embedded profile or, without one, its built-in CMYK profile. The CMYK inputs are the 64x48 photo
+written by libvips through that built-in profile. The `cmyk+icc` input embeds a 40 KB resample of
+it (a 9x9x9x9 `lut16Type` table the generator samples from libvips, which decodes within a mean 0.9
+and a maximum 20 levels of the 940 KB original). Measured on macOS arm64: 46 levels for both,
+cosine 0.977145 without a profile and 0.978037 with the resampled one (0.985693 with libvips' whole
+profile). `pixel_tensors.rs` hard-codes the ceiling 48 for both classes and `golden_image.rs` the
+cosine floor 0.97, under the 0.999 of the other classes.
+
+Not covered by a vector, and different from Electron: a grey or CMYK profile on any image
+(dropped and logged where libvips applies it), a 16-bit image with a profile (cut to 8 bits before
+the profile applies, where libvips converts at 16 bits), JPEG warnings other than a missing end
+marker (zune-jpeg runs with `strict_mode` off) and a file in a format libvips reads but a vault
+image is not (TIFF, AVIF, HEIF: refused). `--check` regenerates from the committed synthesized
+inputs. `pixel-tensors.json` records the sharp, libvips and transformers.js versions it was written
+under, `embeddings-image.json` the transformers.js version.
 
 ### `markdown-convert/`
 

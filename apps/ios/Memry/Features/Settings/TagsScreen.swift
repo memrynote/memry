@@ -26,6 +26,12 @@ struct TagsScreen: View {
                         .contextMenu { menu(tag) }
                         .accessibilityIdentifier("settings.tag.\(tag.name)")
                         .accessibilityActions { menu(tag) }
+                        // On the row, so the popover points at it on iPad.
+                        .confirmationDialog(TagsCopy.deleteTitle(tag.name), isPresented: present($deleting, is: tag), titleVisibility: .visible) {
+                            Button(TagsCopy.deleteAction, role: .destructive) { Task { await delete(tag) } }
+                        } message: {
+                            Text(TagsCopy.deleteMessage(count(tag)))
+                        }
                 }
             } header: {
                 Text(TagsCopy.header(tags.count))
@@ -48,11 +54,6 @@ struct TagsScreen: View {
             Button(SettingsCopy.rename) { let tag = renaming; Task { await rename(tag) } }
         } message: {
             Text(TagsCopy.renameMessage(renaming.map(count) ?? 0))
-        }
-        .confirmationDialog(TagsCopy.deleteTitle(deleting?.name ?? ""), isPresented: present($deleting), titleVisibility: .visible) {
-            Button(TagsCopy.deleteAction, role: .destructive) { let tag = deleting; Task { await delete(tag) } }
-        } message: {
-            Text(TagsCopy.deleteMessage(deleting.map(count) ?? 0))
         }
         .sheet(item: $merging) { source in
             TagMergeSheet(source: source, count: count(source), tags: tags.filter { $0.name != source.name }) { target in
@@ -82,6 +83,10 @@ struct TagsScreen: View {
         Binding(get: { item.wrappedValue != nil }, set: { if !$0 { item.wrappedValue = nil } })
     }
 
+    private func present(_ item: Binding<TagItem?>, is tag: TagItem) -> Binding<Bool> {
+        Binding(get: { item.wrappedValue?.name == tag.name }, set: { if !$0 { item.wrappedValue = nil } })
+    }
+
     private func load() async {
         switch await context.read({ try $0.tagList() }) {
         case let .success(list): tags = list
@@ -97,8 +102,7 @@ struct TagsScreen: View {
         await finish(await context.run { try $0.renameTag(oldName: old, newName: new) }, .tagRenamed, "renamed") { TagsCopy.renamed(old, new, $0) }
     }
 
-    private func delete(_ tag: TagItem?) async {
-        guard let tag else { return }
+    private func delete(_ tag: TagItem) async {
         deleting = nil
         let name = tag.name
         await finish(await context.run { try $0.deleteTag(tag: name) }, .tagDeleted, "deleted") { TagsCopy.deleted(name, $0) }
@@ -174,6 +178,12 @@ struct TagMergeSheet: View {
                     ForEach(tags.filter { query.isEmpty || $0.name.localizedCaseInsensitiveContains(query) }, id: \.name) { tag in
                         Button { confirming = tag.name } label: { TagRow(tag: tag) }
                             .accessibilityIdentifier("settings.merge.\(tag.name)")
+                            // On the row, so the popover points at it on iPad.
+                            .confirmationDialog(TagsCopy.confirmMerge(source.name, tag.name),
+                                                isPresented: Binding(get: { confirming == tag.name }, set: { if !$0 { confirming = nil } }),
+                                                titleVisibility: .visible) {
+                                Button(TagsCopy.merge, role: .destructive) { merge(tag.name) }
+                            }
                     }
                 } header: {
                     Text(TagsCopy.mergeInto)
@@ -186,11 +196,6 @@ struct TagMergeSheet: View {
             .navigationBarTitleDisplayMode(.inline)
             .toolbar {
                 ToolbarItem(placement: .cancellationAction) { Button(SettingsCopy.cancel, systemImage: "xmark") { dismiss() } }
-            }
-            .confirmationDialog(TagsCopy.confirmMerge(source.name, confirming ?? ""),
-                                isPresented: Binding(get: { confirming != nil }, set: { if !$0 { confirming = nil } }),
-                                titleVisibility: .visible) {
-                Button(TagsCopy.merge, role: .destructive) { if let target = confirming { merge(target) } }
             }
         }
         .presentationDetents([.medium, .large])

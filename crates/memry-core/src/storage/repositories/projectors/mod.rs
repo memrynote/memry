@@ -362,3 +362,53 @@ pub(crate) fn clock_text(view: &Object) -> Option<String> {
 pub(crate) fn field_clocks_text(view: &Object) -> Option<String> {
     json(view, "fieldClocks")
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    #[cfg(feature = "markdown")]
+    use crate::protocol::types::Declaration;
+
+    /// Declaring a type with no reader makes the server send rows this build
+    /// records corrupt (`protocol::types`), and one with no projector fails
+    /// its apply, so desktop's declaration is only as wide as both matches.
+    #[cfg(feature = "markdown")]
+    #[test]
+    fn every_type_the_desktop_declaration_names_has_a_reader_and_a_projector() {
+        // No tables: a projector reached fails on its table, not on its type.
+        let conn = Connection::open_in_memory().expect("a connection");
+        let item = ItemContext {
+            item_id: "id-1",
+            synced_at: 0,
+            deleted_at: None,
+        };
+        for item_type in Declaration::desktop().types() {
+            assert!(
+                !matches!(
+                    read(item_type, &Object::new()),
+                    Err(ProjectionError::UnknownType { .. })
+                ),
+                "{item_type} has no reader"
+            );
+            let projected = project(&conn, item_type, item, &Object::new());
+            assert!(
+                !projected
+                    .as_ref()
+                    .is_err_and(|error| error.to_string().contains("no projector")),
+                "{item_type} has no projector: {projected:?}"
+            );
+        }
+        assert!(
+            project(&conn, "hologram", item, &Object::new())
+                .is_err_and(|error| error.to_string().contains("no projector"))
+        );
+    }
+
+    #[test]
+    fn an_unknown_type_has_no_reader() {
+        assert!(matches!(
+            read("hologram", &Object::new()),
+            Err(ProjectionError::UnknownType { .. })
+        ));
+    }
+}

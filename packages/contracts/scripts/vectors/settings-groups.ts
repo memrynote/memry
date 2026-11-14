@@ -155,7 +155,9 @@ const GROUPS: Record<string, GroupSpec> = {
       showSchedule: true,
       showTasks: true,
       showAIConnections: true,
-      showStatsFooter: false
+      showStatsFooter: false,
+      showOnThisDay: true,
+      allYearsView: false
     },
     syncable: ['defaultTemplate'],
     maps: [

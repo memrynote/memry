@@ -1,5 +1,5 @@
-//! Data migration numbering (#4052): main shipped 13..16, while feat/tauri-v2 builds had used
-//! 13..22, then 15..24, for their own. Files written under any numbering open through
+//! Data migration numbering (#4052, #4438): main shipped 13..17, while feat/tauri-v2 builds had
+//! used 13..22, then 15..24, then 17..28, for their own. Files written under any numbering open through
 //! [`open_data`], the real entry point, and end with the schema of a fresh database, every row
 //! and the calendar cursors reset.
 
@@ -54,9 +54,9 @@ fn earlier_feat_list(first: u32) -> Vec<Migration> {
     shared(first as usize - 1).chain(own).collect()
 }
 
-/// The list main shipped (v2026-11-11): 1..16.
+/// The list main shipped: 1..17.
 fn main_list() -> Vec<Migration> {
-    shared(16).collect()
+    shared(17).collect()
 }
 
 fn has_table(conn: &Connection, name: &str) -> bool {
@@ -236,6 +236,21 @@ fn a_file_numbered_by_an_earlier_feat_build_is_renumbered_once_and_gets_mains_mi
     }
 }
 
+/// Before main's 17 `search_recents` was merged (#4438), feat/tauri-v2 numbered all its own
+/// migrations from 17: `note_snapshots` at 17 on to `agent_records` at 28. Such a file is one
+/// step behind this numbering and never ran `search_recents`; it gains it and lands at 29.
+#[test]
+fn a_file_numbered_from_17_gains_search_recents_and_lands_on_this_numbering() {
+    let list: Vec<Migration> = shared(16)
+        .chain(DATA_MIGRATIONS[17..].iter().map(|m| copy(m, m.version - 1)))
+        .collect();
+    for version in 17..=28 {
+        for crashed in [false, true] {
+            earlier_feat_file_opens(&list, 17, version, crashed);
+        }
+    }
+}
+
 fn earlier_feat_file_opens(list: &[Migration], first: u32, version: u32, crashed: bool) {
     let what = format!("feat numbering from {first} at {version}, crash window {crashed}");
     let (_dir, path, seeded) = file_at(list, version);
@@ -307,13 +322,13 @@ fn refused_untouched(path: &Path, version: u32) {
     assert!(!has_table(&conn, "local_settings"), "no migration ran");
 }
 
-/// iOS and the CLI on main leave `data.db` at 13..16; a desktop build opening it adds the
+/// iOS and the CLI on main leave `data.db` at 13..17; a desktop build opening it adds the
 /// tables main does not have. A file at 13 still owes 14's reset; a later file owes none, so
 /// the cursor its device pulled since stays.
 #[test]
-fn a_file_main_left_at_13_to_16_gains_the_desktop_tables() {
+fn a_file_main_left_at_13_to_17_gains_the_desktop_tables() {
     let list = main_list();
-    for version in 13..=16 {
+    for version in 13..=17 {
         let cursor = (version > 13).then(|| "tok-1".to_owned());
         let what = format!("main at {version}");
         let (_dir, path, seeded) = file_at(&list, version);

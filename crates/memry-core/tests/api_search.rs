@@ -28,7 +28,7 @@ use yrs::{
 const NOW: i64 = 1_760_000_000_000;
 const DEVICE: &str = "device-a";
 
-fn vault(label: &str) -> (Db, Vault) {
+pub(crate) fn vault(label: &str) -> (Db, Vault) {
     let dir = tempfile::Builder::new()
         .prefix(&format!("memry-api-search-{label}-"))
         .tempdir()
@@ -49,7 +49,7 @@ fn vault(label: &str) -> (Db, Vault) {
 /// authoritative for a body and §12.2 calls create-time `content` best-effort
 /// in its own words. A test that seeded `content` would pass against an
 /// indexer that never read a body at all.
-fn write_note(db: &Db, id: &str, title: &str, body: &str) {
+pub(crate) fn write_note(db: &Db, id: &str, title: &str, body: &str) {
     db.call_blocking(|conn: &mut Connection| {
         let note = NewNote {
             id,
@@ -111,7 +111,8 @@ fn a_body_word_is_found_not_only_a_title() {
     search.reindex().expect("the reindex");
 
     let hits = search
-        .notes("cardamom".to_string(), 10)
+        .search("cardamom".to_string(), None, 10)
+        .map(|groups| [groups.notes, groups.journals].concat())
         .expect("the search");
 
     let ids: Vec<&str> = hits.iter().map(|hit| hit.id.as_str()).collect();
@@ -173,19 +174,22 @@ fn an_empty_query_returns_nothing() {
 
     assert!(
         search
-            .notes(String::new(), 10)
+            .search(String::new(), None, 10)
+            .map(|groups| [groups.notes, groups.journals].concat())
             .expect("the search")
             .is_empty()
     );
     assert!(
         search
-            .notes("   ".to_string(), 10)
+            .search("   ".to_string(), None, 10)
+            .map(|groups| [groups.notes, groups.journals].concat())
             .expect("the search")
             .is_empty()
     );
     assert!(
         search
-            .notes("!!".to_string(), 10)
+            .search("!!".to_string(), None, 10)
+            .map(|groups| [groups.notes, groups.journals].concat())
             .expect("the search")
             .is_empty()
     );
@@ -201,7 +205,8 @@ fn a_note_deleted_after_indexing_never_surfaces() {
     search.reindex().expect("the reindex");
     assert_eq!(
         search
-            .notes("cardamom".to_string(), 10)
+            .search("cardamom".to_string(), None, 10)
+            .map(|groups| [groups.notes, groups.journals].concat())
             .expect("before")
             .len(),
         1
@@ -216,7 +221,8 @@ fn a_note_deleted_after_indexing_never_surfaces() {
     // Deliberately **no** reindex between the delete and the search.
     assert!(
         search
-            .notes("cardamom".to_string(), 10)
+            .search("cardamom".to_string(), None, 10)
+            .map(|groups| [groups.notes, groups.journals].concat())
             .expect("after")
             .is_empty(),
         "a tombstoned note must not surface from a stale index"
@@ -245,7 +251,8 @@ fn a_reindex_is_idempotent() {
     // safe side of that trade, and duplicate rows are what matter.
     assert_eq!(
         search
-            .notes("cardamom".to_string(), 10)
+            .search("cardamom".to_string(), None, 10)
+            .map(|groups| [groups.notes, groups.journals].concat())
             .expect("the search")
             .len(),
         1,

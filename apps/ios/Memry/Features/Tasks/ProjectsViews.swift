@@ -78,7 +78,6 @@ struct ProjectsListView: View {
         .sheet(item: $editing) { target in
             ProjectEditorSheet(store: store, projectId: target.projectId)
         }
-        .projectDeleteDialog($deleting, store: store)
         .task(id: ProjectStatsKey(projects: store.projects, tasks: store.ordered)) {
             stats = await store.projectStatsById()
         }
@@ -127,7 +126,10 @@ struct ProjectsListView: View {
         .accessibilityIdentifier("tasks.projects.row.\(project.id)")
         .swipeActions(edge: .trailing) {
             if !project.isInbox {
-                Button(Copy.deleteProject, systemImage: "trash", role: .destructive) { deleting = project }
+                // Tinted, not `role: .destructive`: a destructive swipe
+                // removes the row, and the confirmation on it with it.
+                Button(Copy.deleteProject, systemImage: "trash") { deleting = project }
+                    .tint(.red)
                 archiveButton(project)
             }
         }
@@ -156,6 +158,11 @@ struct ProjectsListView: View {
             }
             if project.archivedAt == nil { moveActions(project) }
         }
+        // On the row, so the popover points at it on iPad.
+        .projectDeleteDialog(
+            Binding(get: { deleting?.id == project.id ? deleting : nil }, set: { deleting = $0 }),
+            store: store
+        )
     }
 
     private func archiveButton(_ project: ProjectItem) -> some View {

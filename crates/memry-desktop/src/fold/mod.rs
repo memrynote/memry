@@ -1,10 +1,11 @@
-//! Note folding, the local levels (Electron's `main/note-fold/`): Full is the note as written,
-//! Brief keeps the sentences of each paragraph that best carry it, picked from the note's own
-//! text. A note of 150 words or fewer (300 characters in Chinese, Japanese and Korean) does not
-//! fold. [`text`] reads a note's language, sentences and words; [`tokens`] turns its date and
-//! link pills into the text a reader sees; [`engine`] turns a note's Markdown into the
-//! snapshot the renderer shows; [`service::FoldService`] reads the note or day and folds it,
-//! picking the Brief again on every run (no cache, as in Electron).
+//! Note folding (Electron's `main/note-fold/`): Full is the note as written, Brief keeps the
+//! sentences of each paragraph that best carry it, and Key, Takeaway and Topic are lines a model
+//! writes. A note of 150 words or fewer (300 characters in Chinese, Japanese and Korean) does
+//! not fold. [`text`] reads a note's language, sentences and words; [`tokens`] turns its date
+//! and link pills into the text a reader sees; [`engine`] turns a note's Markdown into the
+//! snapshot the renderer shows; [`model`] is the contract with the model and [`morph`] maps its
+//! words onto the source; [`service::FoldService`] reads the note or day, folds it, and queues
+//! the chunks no model has written yet.
 //!
 //! The layered-summary idea follows github.com/chenxiachan/textfold (Apache-2.0); the code is
 //! original.
@@ -12,6 +13,9 @@
 pub mod agent;
 pub mod engine;
 pub mod inline;
+pub mod model;
+pub mod morph;
+pub mod queue;
 pub mod sections;
 pub mod service;
 pub mod text;
@@ -28,9 +32,24 @@ pub const FOLD_MIN_WORDS: u32 = 150;
 pub enum FoldLevel {
     Full,
     Brief,
+    Key,
+    Takeaway,
+    Topic,
 }
 
-/// A note folded (`FoldLayers` of `@memry/contracts/note-fold`, its local levels).
+/// What the settings row shows for a note (`FoldLayers.status`).
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize, specta::Type)]
+#[serde(rename_all = "snake_case")]
+pub enum FoldStatus {
+    Off,
+    Short,
+    NoAgent,
+    Writing,
+    Ready,
+    Failed,
+}
+
+/// A note folded (`FoldLayers` of `@memry/contracts/note-fold`).
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize, specta::Type)]
 #[serde(rename_all = "camelCase")]
 pub struct FoldLayers {
@@ -43,8 +62,11 @@ pub struct FoldLayers {
     pub words_by_level: LevelWords,
     /// Empty when the note does not fold.
     pub sections: Vec<FoldSection>,
-    /// Long enough to fold, with at least one paragraph.
-    pub foldable: bool,
+    /// The model levels written for every chunk of the current text.
+    pub ready: Vec<FoldLevel>,
+    pub status: FoldStatus,
+    /// The agent's label, for "Written by <agent>"; `None` when no agent runs.
+    pub agent: Option<String>,
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize, specta::Type)]
@@ -52,6 +74,9 @@ pub struct FoldLayers {
 pub struct LevelWords {
     pub full: u32,
     pub brief: u32,
+    pub key: u32,
+    pub takeaway: u32,
+    pub topic: u32,
 }
 
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize, specta::Type)]
@@ -59,6 +84,9 @@ pub struct LevelWords {
 pub struct FoldSection {
     pub hash: String,
     pub heading: Option<String>,
+    /// The model's section lines joined, once every chunk has them; the first paragraph's
+    /// Takeaway until then.
+    pub takeaway: Option<String>,
     pub paragraphs: Vec<FoldParagraph>,
     /// Blocks left out of the paragraphs, in the order of the paragraph each follows.
     pub skipped: Vec<FoldSkipped>,
@@ -77,8 +105,43 @@ pub struct FoldParagraph {
     pub src_tokens: Vec<String>,
     /// Index in the word segments where each sentence starts.
     pub src_sentence_start: Vec<u32>,
-    /// Indices into `sentences` that make Brief.
+    /// Word maps of the model lines onto `src_tokens`, for the slide morph.
+    pub morph: FoldMorph,
+    /// Indices into `sentences` that make Brief: the model's, else the local pick.
     pub brief_idx: Vec<u32>,
+    /// `None` until the model has written it.
+    pub key: Option<FoldKey>,
+    /// The model's line, else the first sentence cut to 12 words.
+    pub takeaway: String,
+    /// The model's line, else the first sentence cut to 4 words.
+    pub topic: String,
+    /// Sentence indices the model lines rest on.
+    pub evidence: Vec<u32>,
+}
+
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize, specta::Type)]
+#[serde(rename_all = "camelCase")]
+pub struct FoldKey {
+    pub takeaway: String,
+    pub reason: String,
+}
+
+/// A word of a model line; `src` indexes the paragraph's `src_tokens` when the word occurs there.
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize, specta::Type)]
+#[serde(rename_all = "camelCase")]
+pub struct FoldToken {
+    pub text: String,
+    pub src: Option<u32>,
+}
+
+/// Word maps per model line; a line is `None` until the model has written it.
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize, specta::Type)]
+#[serde(rename_all = "camelCase")]
+pub struct FoldMorph {
+    pub key_takeaway: Option<Vec<FoldToken>>,
+    pub key_reason: Option<Vec<FoldToken>>,
+    pub takeaway: Option<Vec<FoldToken>>,
+    pub topic: Option<Vec<FoldToken>>,
 }
 
 /// A non-prose block the fold leaves out, for the one-line marker.
