@@ -5,7 +5,9 @@ use std::sync::atomic::{AtomicU64, Ordering};
 
 use memry_core::api::errors::StorageError;
 use memry_core::storage::migrations::user_version;
-use memry_core::storage::vector_db::{self, NoteState, VECTOR_BYTES, VectorBytes, VectorStore};
+use memry_core::storage::vector_db::{
+    self, Attempt, NoteState, VECTOR_BYTES, VectorBytes, VectorStore,
+};
 use memry_core::storage::{Db, open_data, open_index};
 use rusqlite::Connection;
 
@@ -148,7 +150,11 @@ fn a_version_one_file_migrates_forward_and_keeps_its_vectors() {
     });
     assert_eq!(
         with(&db, |conn| VectorStore::new(conn).attempts()),
-        [[7; 32]]
+        [Attempt {
+            note_id: "n1".to_owned(),
+            source_key: [7; 32],
+            unfinished: 1,
+        }]
     );
 }
 
@@ -275,6 +281,27 @@ fn a_short_note_has_a_state_row_and_no_windows() {
         with(&db, |conn| VectorStore::new(conn).counts("gemma-a")),
         1
     );
+}
+
+#[test]
+fn prune_removes_the_attempt_rows_of_pruned_notes() {
+    let scratch = Scratch::new("prune-attempts");
+    let db = opened(&scratch.vectors());
+    with(&db, |conn| {
+        let store = VectorStore::new(conn);
+        store.begin_attempt("gone", &[7; 32])?;
+        store.begin_attempt("live", &[8; 32])
+    });
+
+    with(&db, |conn| {
+        VectorStore::new(conn).prune(&["gone".to_owned()])
+    });
+
+    let ids: Vec<String> = with(&db, |conn| VectorStore::new(conn).attempts())
+        .into_iter()
+        .map(|attempt| attempt.note_id)
+        .collect();
+    assert_eq!(ids, ["live"]);
 }
 
 #[test]

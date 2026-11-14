@@ -72,17 +72,19 @@ impl SemanticSearch {
 
         let sources = data.call(|conn| queue::sources(conn)).await?;
         let states = vectors.call(|conn| VectorStore::new(conn).states()).await?;
-        let died = vectors
+        let attempts = vectors
             .call(|conn| VectorStore::new(conn).attempts())
             .await?;
-        for source_key in died {
-            if lock(&self.skipped).insert(source_key) {
+        for attempt in &attempts {
+            if attempt.unfinished >= queue::DEATHS_BEFORE_SKIP
+                && lock(&self.skipped).insert(attempt.source_key)
+            {
                 eprintln!(
-                    "memry-core: a note's embedding died with the process, skipped until it changes"
+                    "memry-core: a note's embedding died with the process twice, skipped until it changes"
                 );
             }
         }
-        let plan = queue::plan(&sources, &states, key, &lock(&self.skipped));
+        let plan = queue::plan(&sources, &states, &attempts, key, &lock(&self.skipped));
         if !plan.prune.is_empty() {
             let prune = plan.prune.clone();
             vectors

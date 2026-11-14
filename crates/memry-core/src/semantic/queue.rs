@@ -11,23 +11,25 @@
 //!    source key is computed from the text the windows were cut from, so an
 //!    edit at any time, during the note's own embedding included, leaves the
 //!    row stale and the note due again.
-//! 4. **Only live notes keep vectors.** Every step prunes the state rows of
-//!    notes that left the live set.
+//! 4. **Only live notes keep vectors.** Every step prunes the state rows and
+//!    attempt rows of notes that left the live set.
 //! 5. **A note whose inference fails is skipped, not retried.** Its source key
 //!    joins a per-process set the plan passes over, so one bad note never
 //!    holds up the notes behind it. The failure writes no state row: an edit or a
 //!    rename gives it a new key and a relaunch empties the set, and either
 //!    retries it. Until then its old vectors, if any, keep serving.
-//! 6. **A note whose window dies with the process is skipped until it
-//!    changes.** A row in `vectors.db`'s `note_embed_attempts` names the
-//!    note's source key while each window runs. A row a later step finds
-//!    belongs to a window that never returned, most often because iOS killed
-//!    the process for memory, so its key joins the skip set of invariant 5.
-//!    The row outlives a relaunch, so the note stays skipped until an edit or
-//!    a rename gives it a new key. A kill between windows leaves no row, and
-//!    the note resumes.
+//! 6. **A note whose windows die with the process twice is skipped until it
+//!    changes.** A row in `vectors.db`'s `note_embed_attempts` counts the
+//!    note's windows that began at its source key and never returned, most
+//!    often because iOS killed the process for memory or at a background
+//!    task's expiry. One death is retried, since an expiry lands mid-window
+//!    as a rule. At [`DEATHS_BEFORE_SKIP`] the key joins the skip set of
+//!    invariant 5. The count outlives a relaunch, so the note stays skipped
+//!    until an edit or a rename gives it a new key, which starts the count
+//!    over. The note's commit clears it, and a kill between windows adds
+//!    nothing.
 
-use std::collections::{HashMap, HashSet};
+use std::collections::{BTreeSet, HashMap, HashSet};
 use std::time::Duration;
 
 use rusqlite::Connection;
@@ -37,7 +39,10 @@ use super::Vector;
 use crate::api::errors::StorageError;
 use crate::domain::embedding_input::{EMBEDDING_INPUT_VERSION, Window, chunks};
 use crate::domain::search::source::live_notes;
-use crate::storage::vector_db::{NoteState, VectorBytes};
+use crate::storage::vector_db::{Attempt, NoteState, VectorBytes};
+
+/// Unfinished windows at one source key after which the note is skipped.
+pub(crate) const DEATHS_BEFORE_SKIP: u32 = 2;
 
 /// The device's thermal state, as the shell reads it.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, uniffi::Enum)]
@@ -84,6 +89,7 @@ pub(crate) struct Plan {
 pub(crate) fn plan(
     sources: &[NoteSource],
     states: &[NoteState],
+    attempts: &[Attempt],
     vector_key: &str,
     skipped: &HashSet<[u8; 32]>,
 ) -> Plan {
@@ -114,8 +120,12 @@ pub(crate) fn plan(
         next: missing.or(stale).cloned(),
         prune: states
             .iter()
-            .filter(|state| !live.contains(state.note_id.as_str()))
-            .map(|state| state.note_id.clone())
+            .map(|state| state.note_id.as_str())
+            .chain(attempts.iter().map(|attempt| attempt.note_id.as_str()))
+            .filter(|note_id| !live.contains(note_id))
+            .collect::<BTreeSet<_>>()
+            .into_iter()
+            .map(str::to_owned)
             .collect(),
         embedded,
         total: u32::try_from(sources.len()).unwrap_or(u32::MAX),
@@ -206,6 +216,14 @@ mod tests {
         }
     }
 
+    fn attempt(id: &str) -> Attempt {
+        Attempt {
+            note_id: id.into(),
+            source_key: [9; 32],
+            unfinished: 2,
+        }
+    }
+
     const V: u32 = EMBEDDING_INPUT_VERSION;
 
     #[test]
@@ -214,6 +232,7 @@ mod tests {
             name: &'static str,
             sources: Vec<NoteSource>,
             states: Vec<NoteState>,
+            attempts: Vec<Attempt>,
             next: Option<&'static str>,
             prune: Vec<&'static str>,
             embedded: u32,
@@ -224,6 +243,7 @@ mod tests {
                 name: "empty vault",
                 sources: vec![],
                 states: vec![],
+                attempts: vec![],
                 next: None,
                 prune: vec![],
                 embedded: 0,
@@ -233,6 +253,7 @@ mod tests {
                 name: "a skipped note is passed over, missing or stale",
                 sources: vec![source("a", 7), source("b", 8), source("c", 3)],
                 states: vec![state("b", 2, "k", V)],
+                attempts: vec![],
                 next: Some("c"),
                 prune: vec![],
                 embedded: 0,
@@ -242,6 +263,7 @@ mod tests {
                 name: "a skipped key that is current still counts",
                 sources: vec![source("a", 1)],
                 states: vec![state("a", 1, "k", V)],
+                attempts: vec![],
                 next: None,
                 prune: vec![],
                 embedded: 1,
@@ -251,6 +273,7 @@ mod tests {
                 name: "all current",
                 sources: vec![source("a", 1), source("b", 2)],
                 states: vec![state("a", 1, "k", V), state("b", 2, "k", V)],
+                attempts: vec![],
                 next: None,
                 prune: vec![],
                 embedded: 2,
@@ -260,6 +283,7 @@ mod tests {
                 name: "missing before stale, whatever the order",
                 sources: vec![source("a", 9), source("b", 2)],
                 states: vec![state("a", 1, "k", V)],
+                attempts: vec![],
                 next: Some("b"),
                 prune: vec![],
                 embedded: 0,
@@ -269,6 +293,7 @@ mod tests {
                 name: "edited source is stale",
                 sources: vec![source("a", 9)],
                 states: vec![state("a", 1, "k", V)],
+                attempts: vec![],
                 next: Some("a"),
                 prune: vec![],
                 embedded: 0,
@@ -278,6 +303,7 @@ mod tests {
                 name: "another model is stale",
                 sources: vec![source("a", 1)],
                 states: vec![state("a", 1, "old", V)],
+                attempts: vec![],
                 next: Some("a"),
                 prune: vec![],
                 embedded: 0,
@@ -287,24 +313,26 @@ mod tests {
                 name: "an older input version is stale",
                 sources: vec![source("a", 1)],
                 states: vec![state("a", 1, "k", V - 1)],
+                attempts: vec![],
                 next: Some("a"),
                 prune: vec![],
                 embedded: 0,
                 skipped: vec![],
             },
             Case {
-                name: "a row whose note left is pruned",
+                name: "a row whose note left is pruned, once",
                 sources: vec![source("a", 1)],
                 states: vec![state("a", 1, "k", V), state("gone", 1, "k", V)],
+                attempts: vec![attempt("a"), attempt("died"), attempt("gone")],
                 next: None,
-                prune: vec!["gone"],
+                prune: vec!["died", "gone"],
                 embedded: 1,
                 skipped: vec![],
             },
         ];
         for case in cases {
             let skipped = case.skipped.iter().map(|&key| [key; 32]).collect();
-            let plan = plan(&case.sources, &case.states, "k", &skipped);
+            let plan = plan(&case.sources, &case.states, &case.attempts, "k", &skipped);
             assert_eq!(plan.next.as_deref(), case.next, "{}", case.name);
             assert_eq!(plan.prune, case.prune, "{}", case.name);
             assert_eq!(plan.embedded, case.embedded, "{}", case.name);
