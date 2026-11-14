@@ -81,6 +81,15 @@ pub struct NoteState {
     pub window_count: u32,
 }
 
+/// A note whose windows began at `source_key` and `unfinished` of them never
+/// returned.
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct Attempt {
+    pub note_id: String,
+    pub source_key: [u8; 32],
+    pub unfinished: u32,
+}
+
 /// The only code that knows `vectors.db`'s SQL.
 pub struct VectorStore<'c> {
     conn: &'c Connection,
@@ -114,7 +123,8 @@ impl<'c> VectorStore<'c> {
     }
 
     /// One transaction: delete the note's windows, insert the new ones, upsert
-    /// the state row. A failure leaves the note's previous vectors serving.
+    /// the state row, clear its attempt row. A failure leaves the note's
+    /// previous vectors serving.
     pub fn replace_note(
         &self,
         state: &NoteState,
@@ -165,10 +175,16 @@ impl<'c> VectorStore<'c> {
             ],
         )
         .map_err(failed)?;
+        tx.execute(
+            "DELETE FROM note_embed_attempts WHERE note_id = ?1",
+            [&state.note_id],
+        )
+        .map_err(failed)?;
         tx.commit().map_err(failed)
     }
 
-    /// Removes the notes' state and vectors. Absent notes are not an error.
+    /// Removes the notes' state, vectors and attempt rows. Absent notes are not
+    /// an error.
     pub fn prune(&self, note_ids: &[String]) -> Result<(), StorageError> {
         let tx = self.conn.unchecked_transaction().map_err(failed)?;
         for note_id in note_ids {
@@ -179,8 +195,60 @@ impl<'c> VectorStore<'c> {
                 [note_id],
             )
             .map_err(failed)?;
+            tx.execute(
+                "DELETE FROM note_embed_attempts WHERE note_id = ?1",
+                [note_id],
+            )
+            .map_err(failed)?;
         }
         tx.commit().map_err(failed)
+    }
+
+    /// Counts a window of `note_id` from `source_key` as unfinished. A different
+    /// key starts the count over.
+    pub fn begin_attempt(&self, note_id: &str, source_key: &[u8; 32]) -> Result<(), StorageError> {
+        self.conn
+            .execute(
+                "INSERT INTO note_embed_attempts (note_id, source_key, unfinished)
+                 VALUES (?1, ?2, 1)
+                 ON CONFLICT (note_id) DO UPDATE SET
+                   unfinished = CASE WHEN source_key = excluded.source_key
+                                     THEN unfinished + 1 ELSE 1 END,
+                   source_key = excluded.source_key",
+                params![note_id, source_key],
+            )
+            .map(drop)
+            .map_err(failed)
+    }
+
+    pub fn end_attempt(&self, note_id: &str) -> Result<(), StorageError> {
+        self.conn
+            .execute(
+                "UPDATE note_embed_attempts SET unfinished = max(unfinished - 1, 0)
+                 WHERE note_id = ?1",
+                [note_id],
+            )
+            .map(drop)
+            .map_err(failed)
+    }
+
+    pub fn attempts(&self) -> Result<Vec<Attempt>, StorageError> {
+        let mut statement = self
+            .conn
+            .prepare(
+                "SELECT note_id, source_key, unfinished FROM note_embed_attempts ORDER BY note_id",
+            )
+            .map_err(failed)?;
+        statement
+            .query_map([], |row| {
+                Ok(Attempt {
+                    note_id: row.get(0)?,
+                    source_key: row.get(1)?,
+                    unfinished: row.get(2)?,
+                })
+            })
+            .and_then(Iterator::collect)
+            .map_err(failed)
     }
 
     /// Every window built with `vector_key`, at any input version: a stale

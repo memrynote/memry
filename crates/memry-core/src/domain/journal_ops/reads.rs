@@ -39,16 +39,17 @@ use std::sync::Arc;
 use rusqlite::{Connection, OptionalExtension as _, params};
 
 use crate::api::errors::StorageError;
+use crate::crdt::blocks::{extract_blocks, is_inline_node};
 use crate::crdt::errors::CrdtError;
-use crate::crdt::registry::{DocumentRegistry, UpdateSink};
+use crate::crdt::registry::{Document, DocumentRegistry, UpdateSink};
 use crate::crdt::text_extract::extract_text;
 use crate::crdt::update_log::{self, LOCAL_NAMESPACE_PREFIX};
 use crate::domain::journal::{self, ITEM_TYPE};
 use crate::domain::journal_rules::{
     ActivityLevel, JOURNAL_PREVIEW_LENGTH, JournalHeatmapDay, JournalMonthActivity, JournalStreak,
     calculate_activity_level, compute_journal_streak, count_words, extract_journal_preview,
-    heatmap_day, is_same_day_in_other_year, month_activity, month_days, same_day_month_days,
-    utf16_len,
+    heatmap_day, is_same_day_in_other_year, js_trim, month_activity, month_days,
+    same_day_month_days, utf16_len,
 };
 use crate::domain::note_meta::NoteProperty;
 use crate::domain::notes::names;
@@ -210,17 +211,17 @@ pub fn month(
 
     let mut days = Vec::new();
     for calendar_day in month_days(year, month - 1, today).into_iter().rev() {
-        let entry = entries
+        let body = entries
             .iter()
             .find(|(_, date)| *date == calendar_day.date)
-            .map(|(id, _)| id.as_str());
+            .map(|(id, _)| day_body(conn, id))
+            .transpose()?;
         days.push(listed_day(
-            conn,
-            entry,
+            body,
             calendar_day.date,
             calendar_day.is_today,
             calendar_day.is_future,
-        )?);
+        ));
     }
 
     Ok(JournalMonth {
@@ -238,6 +239,16 @@ pub fn month(
 /// so no year bound applies and no month is read whole; the leap-day rule
 /// ([`is_same_day_in_other_year`]) then drops the same year and a leap year's
 /// Feb 28.
+///
+/// Desktop drops a day whose markdown file `trim()`s to `''`. Core holds no
+/// markdown, so it drops a pulled day only when [`is_blank`] holds: its
+/// extracted text `trim()`s to `''` and its body has no block but paragraphs
+/// whose own text does too. An image, a divider, a table or a file block has
+/// markdown on desktop and keeps the day here. A body not pulled to this
+/// device yet is kept: its text is unknown here, not empty, and the row stands for a day
+/// the user wrote. The rule stays here because the Month view lists every
+/// calendar day and the heatmap and Year view count characters, which an
+/// empty body already reads as 0.
 pub fn same_day_entries(
     conn: &Connection,
     date: &str,
@@ -259,28 +270,52 @@ pub fn same_day_entries(
         .map_err(failed)?
         .collect::<Result<_, _>>()
         .map_err(failed)?;
-    rows.into_iter()
-        .filter(|(_, candidate)| is_same_day_in_other_year(date, candidate))
-        .map(|(id, candidate)| {
-            let (is_today, is_future) = (candidate == today, candidate.as_str() > today);
-            listed_day(conn, Some(&id), candidate, is_today, is_future)
-        })
-        .collect()
+    let mut entries = Vec::new();
+    for (id, candidate) in rows {
+        if !is_same_day_in_other_year(date, &candidate) {
+            continue;
+        }
+        let body = day_body(conn, &id)?;
+        if body.state != JournalBodyState::NotPulled && is_blank(conn, &id, &body.text)? {
+            continue;
+        }
+        let (is_today, is_future) = (candidate == today, candidate.as_str() > today);
+        entries.push(listed_day(Some(body), candidate, is_today, is_future));
+    }
+    Ok(entries)
 }
 
-/// One day as the Month view and the same-day list show it; `entry` is the
-/// live record id, `None` for a day without one.
+/// Whether a pulled day's body, extracted as `text`, holds nothing desktop's
+/// markdown would keep: every block is a paragraph, and neither `text` nor any
+/// paragraph's own runs hold more than JS `trim()` whitespace or an inline node.
+/// The runs are read as well as `text` because extraction trims a line's end
+/// with Rust's whitespace set, which strips NEL (U+0085) where JS keeps it.
+/// The blocks cost a log replay, paid only for a day whose text is already
+/// blank.
+fn is_blank(conn: &Connection, id: &str, text: &str) -> Result<bool, CrdtError> {
+    if !js_trim(text).is_empty() {
+        return Ok(false);
+    }
+    let blocks = extract_blocks(&*rebuilt_document(conn, id)?)?;
+    Ok(blocks.iter().all(|block| {
+        block.kind == "paragraph"
+            && block.inline.iter().all(|run| {
+                js_trim(&run.text).is_empty() && !run.marks.iter().any(|mark| is_inline_node(mark))
+            })
+    }))
+}
+
+/// One day as the Month view and the same-day list show it; `body` is the
+/// live entry's body, `None` for a day without one.
 fn listed_day(
-    conn: &Connection,
-    entry: Option<&str>,
+    body: Option<DayBody>,
     date: String,
     is_today: bool,
     is_future: bool,
-) -> Result<JournalMonthEntry, CrdtError> {
-    let body = entry.map(|id| day_body(conn, id)).transpose()?;
+) -> JournalMonthEntry {
     let character_count = body.as_ref().map_or(0, DayBody::character_count);
-    Ok(JournalMonthEntry {
-        has_entry: entry.is_some(),
+    JournalMonthEntry {
+        has_entry: body.is_some(),
         level: calculate_activity_level(character_count),
         preview: body.as_ref().map_or_else(String::new, |body| {
             extract_journal_preview(&body.text, JOURNAL_PREVIEW_LENGTH)
@@ -290,7 +325,7 @@ fn listed_day(
         date,
         is_today,
         is_future,
-    })
+    }
 }
 
 /// The Year view for `year`: twelve month cards, totals and the streak.
@@ -431,7 +466,7 @@ fn day_body(conn: &Connection, id: &str) -> Result<DayBody, CrdtError> {
         .map_err(failed)?;
     let text = match cached {
         Some((text, Some(source_seq))) if source_seq == body_version(conn, id)? => text,
-        _ => rebuilt_text(conn, id)?,
+        _ => extract_text(&*rebuilt_document(conn, id)?)?,
     };
     let state = if text.is_empty() {
         JournalBodyState::Empty
@@ -452,16 +487,15 @@ fn log_rows(conn: &Connection, row_id: &str) -> Result<i64, StorageError> {
     .map_err(failed)
 }
 
-/// The body rebuilt from the durable log and extracted, without writing the
-/// cache row back.
-fn rebuilt_text(conn: &Connection, id: &str) -> Result<String, CrdtError> {
+/// The body rebuilt from the durable log, without writing the cache row back.
+fn rebuilt_document(conn: &Connection, id: &str) -> Result<Arc<Document>, CrdtError> {
     let plan = update_log::load_plan(conn, id)?;
     let sink: UpdateSink = Arc::new(|_, _| {});
     let document = DocumentRegistry::new(READER_DEVICE_ID, sink).get_or_open(id)?;
     for blob in plan.blobs() {
         document.apply_durable_update(blob)?;
     }
-    extract_text(&document)
+    Ok(document)
 }
 
 fn valid_year(year: i64) -> Result<i64, StorageError> {
