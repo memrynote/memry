@@ -77,6 +77,9 @@ pub trait PushWave: Send + Sync {
 /// first has landed here and wins, and only when the write gate lets the push run, so nothing is
 /// seeded to sit parked while another device pushes the same record. A failed seed is logged and
 /// the push still runs; the next pass seeds again, so a seed must be idempotent.
+///
+/// A seed runs under the vault's pass gate: awaiting a pass (`run_pass`, `sync_now`) from it
+/// deadlocks.
 #[async_trait::async_trait]
 pub trait PassSeed: Send + Sync {
     async fn seed(&self) -> Result<(), StorageError>;

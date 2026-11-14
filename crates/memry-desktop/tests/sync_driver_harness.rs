@@ -7,6 +7,7 @@
 //! | the driver's seeds carry definitions, tags and locks   | Electron's pull, `seedUnclocked`, push |
 //! | a paused driver runs no pass                           | the supervisor's pause                |
 //! | a device registered after the driver opened            | ch. 01 §1.4.0, applied in the same pass |
+//! | a new signer's record, driver dropped before it settled | re-pulled when the next driver opens |
 //! | passes over one vault serialize                        | one pass gate: drivers and `sync_now` |
 //! | the driver sends the bound vault id                    | K1: unbound refused, rebinding refused |
 
@@ -166,6 +167,22 @@ impl Device {
             session,
             driver,
         }
+    }
+
+    /// A fresh driver over this vault, in place of the one it held.
+    async fn reopen(&mut self) {
+        let seeds: Vec<Arc<dyn PassSeed>> =
+            vec![Arc::new(DefinitionsSeed(Arc::clone(&self.definitions)))];
+        self.driver = self
+            .core
+            .sync_driver(
+                Arc::clone(&self.session),
+                Arc::new(Online),
+                DriverConfig::desktop(),
+                seeds,
+            )
+            .await
+            .expect("the driver");
     }
 
     async fn sync(&self) -> PassReport {
@@ -513,6 +530,65 @@ async fn a_device_registered_after_the_driver_opened_is_applied_in_the_same_pass
         a.stored("note", &note).is_some(),
         "applied in the same pass"
     );
+}
+
+/// Once armed, holds the next pass at its seed step forever, after its pull committed.
+#[derive(Default)]
+struct Stall {
+    armed: std::sync::atomic::AtomicBool,
+    reached: tokio::sync::Notify,
+}
+
+#[async_trait::async_trait]
+impl PassSeed for Stall {
+    async fn seed(&self) -> Result<(), StorageError> {
+        if self.armed.swap(false, std::sync::atomic::Ordering::SeqCst) {
+            self.reached.notify_one();
+            std::future::pending::<()>().await;
+        }
+        Ok(())
+    }
+}
+
+/// A's pass stores the late device's record corrupt and moves the cursor past it, then A's driver
+/// is dropped before it refetched the directory (a quit or crash): the next driver over the vault
+/// re-pulls the record when it opens. B's note shares the page, so the page is not refused
+/// (§5.14) and the pass reaches its seeds.
+#[tokio::test(flavor = "multi_thread")]
+async fn a_new_signers_record_held_corrupt_when_the_driver_dropped_applies_on_reopen() {
+    let mut server = Server::start();
+    let stall = Arc::new(Stall::default());
+    let mut a = Device::bound(&server.url, &server.devices[0], VAULT, vec![stall.clone()]).await;
+    let b = Device::new(&server, 1).await;
+    let late = server.register();
+    let c = Device::bound(&server.url, &late, VAULT, Vec::new()).await;
+    b.core
+        .notes_writer(b.store.clone())
+        .unwrap()
+        .create("Known".into(), None)
+        .unwrap();
+    assert!(b.sync().await.pushed);
+    let note = c
+        .core
+        .notes_writer(c.store.clone())
+        .unwrap()
+        .create("Late".into(), None)
+        .unwrap();
+    assert!(c.sync().await.pushed);
+
+    stall.armed.store(true, std::sync::atomic::Ordering::SeqCst);
+    tokio::select! {
+        _ = a.driver.run_pass(PassTrigger::Explicit) => panic!("the pass outran its stalled seed"),
+        () = stall.reached.notified() => {}
+    }
+    assert!(
+        a.corrupt("note", &note).is_some(),
+        "held corrupt behind the cursor"
+    );
+
+    a.reopen().await;
+    assert_eq!(a.corrupt("note", &note), None, "no longer corrupt");
+    assert!(a.stored("note", &note).is_some(), "applied on reopen");
 }
 
 /// Tries `pass` from inside the outer pass, the first time it runs, and records whether it was

@@ -20,7 +20,9 @@
 //! - **One pass at a time per vault**, across every driver and `VaultSync` of
 //!   it: the caller hands in the vault's process-wide pass gate.
 //! - **The device directory** ([`cipher`]): refetched after a lookup missed,
-//!   and the records that missed re-pulled in the same pass.
+//!   and the records that missed re-pulled in the same pass. The records an
+//!   earlier driver stored corrupt for an unknown signer are re-pulled when
+//!   the driver opens, so a quit before that re-pull loses nothing.
 //! - **The snapshot cadence** (chapter 07 §7.13.3): which documents asked for
 //!   a snapshot, and which are due. The push itself needs the resident
 //!   document and is the supervisor's.
@@ -45,6 +47,7 @@ use crate::protocol::http::HttpClient;
 use crate::protocol::types::Declaration;
 use crate::seams::reachability::Reachability;
 use crate::storage::Db;
+use crate::storage::repositories::sync_items;
 
 use super::body_pull::BodyPull;
 use super::bootstrap::BootstrapClient;
@@ -224,7 +227,7 @@ impl SyncDriver {
             engine = engine.with_seed(seed);
         }
 
-        Ok(Self {
+        let driver = Self {
             engine,
             first: FirstSyncParts {
                 pull: Arc::new(pull_loop()),
@@ -239,7 +242,9 @@ impl SyncDriver {
             observers,
             paused: AtomicBool::new(false),
             snapshots: Mutex::default(),
-        })
+        };
+        driver.repull_unknown_signers().await?;
+        Ok(driver)
     }
 
     /// Adds an observer of every page applied from now on, after those
@@ -377,6 +382,36 @@ impl SyncDriver {
         self.snapshots
             .lock()
             .unwrap_or_else(std::sync::PoisonError::into_inner)
+    }
+
+    /// Re-pulls, under the pass gate and over the directory `open` just
+    /// fetched, every record stored corrupt for an unknown signer (chapter 01
+    /// §1.4.0). The cipher's list of misses lives only as long as a driver, so
+    /// after a quit between the page that stored such a record and
+    /// [`SyncDriver::settle_misses`], the row is the only trace. A failed
+    /// re-pull is logged and left to the next pass's settle.
+    async fn repull_unknown_signers(&self) -> Result<(), SyncError> {
+        let _gate = self.engine.hold_gate().await;
+        let ids = self
+            .db
+            .call(|conn| sync_items::unknown_signer_ids(conn))
+            .await?;
+        if ids.is_empty() {
+            return Ok(());
+        }
+        match self.first.pull.fetch_ids(&ids).await {
+            // A signer still missing from a fresh directory is not in the
+            // account, as in `settle_misses`.
+            Ok(_) => self.cipher.forget_missed(),
+            Err(error) => {
+                eprintln!(
+                    "memry-core: re-pulling {} record(s) of an unknown signer failed: {error}",
+                    ids.len()
+                );
+                self.cipher.keep_missed(ids);
+            }
+        }
+        Ok(())
     }
 
     /// After a lookup missed (chapter 01 §1.4.0): refetches the directory and

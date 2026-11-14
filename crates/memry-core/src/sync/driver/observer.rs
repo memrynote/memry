@@ -54,7 +54,9 @@ pub struct AppliedRecord {
 }
 
 /// A desktop service that follows what sync applied. Every method defaults to
-/// nothing, so an observer implements only what it consumes.
+/// nothing, so an observer implements only what it consumes. It runs under the
+/// vault's pass gate: awaiting a pass (`run_pass`, `sync_now`) from it
+/// deadlocks.
 pub trait ApplyObserver: Send + Sync {
     /// A name for the log line of a panic.
     fn name(&self) -> &str;
