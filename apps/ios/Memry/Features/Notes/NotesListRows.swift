@@ -63,6 +63,7 @@ struct TaskSearchResults: View {
                         TaskSearchHitLabel(hit: hit)
                     }
                     .buttonStyle(.plain)
+                    .pointerHover(.row)
                     .disabled(router == nil)
                     .accessibilityHint(TasksCopy.openInTasks)
                     .accessibilityIdentifier("tasks.search.result")
@@ -160,6 +161,7 @@ struct BrowseRowView: View {
                     }
                 }
                 .buttonStyle(.plain)
+                .pointerHover(.row)
                 .accessibilityElement(children: .ignore)
                 .accessibilityLabel(noteCount > 0 ? "\(row.title), \(noteCount) notes" : row.title)
                 // Said in words rather than as a trait: `AccessibilityTraits`
@@ -176,6 +178,7 @@ struct BrowseRowView: View {
                             .contentShape(.rect)
                     }
                     .buttonStyle(.plain)
+                    .pointerHover(.glyph)
                     .accessibilityLabel("Open folder")
                 }
             }

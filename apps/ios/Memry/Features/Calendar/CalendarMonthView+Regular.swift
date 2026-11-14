@@ -27,7 +27,7 @@ extension CalendarMonthView {
                 // equal rows.
                 .padding(.horizontal, Tokens.Space.small)
                 .onGeometryChange(for: CGSize.self) { $0.size } action: { gridSize = $0 }
-                .gesture(rangeGesture(grid))
+                .calendarHoldDrag(rangeGesture(grid))
                 .sensoryFeedback(.selection, trigger: dragTo)
             }
             Rectangle().fill(Tokens.Line.border.color).frame(width: 0.5)
@@ -167,6 +167,7 @@ struct CalendarMonthWeekRow: View {
         }
         .clipped()
         .contentShape(.rect)
+        .pointerHover(.row)
         .onTapGesture(count: 2) {
             store.state.anchorDate = day
             store.state.view = .day

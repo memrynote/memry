@@ -26,6 +26,7 @@ struct CalendarDayView: View {
                 let forward = value.translation.width < 0
                 store.state.anchorDate = CalendarDates.addDays(store.anchor, forward ? 7 : -7)
             })
+            .gesture(CalendarScrollPage { store.state.anchorDate = CalendarDates.addDays(store.anchor, $0 * 7) })
             Rectangle().fill(Tokens.Line.border.color).frame(height: 0.5)
             // The paging offset stays in points when the width changes
             // (rotation, sidebar, Split View), which lands between pages on
@@ -146,12 +147,15 @@ struct CalendarWeekView: View {
                 }
             }
         }
-        .gesture(DragGesture(minimumDistance: 30).onEnded { value in
-            guard dragState == nil, abs(value.translation.width) > abs(value.translation.height) * 1.5 else { return }
-            store.state.anchorDate = CalendarDates.addDays(store.anchor, value.translation.width < 0 ? 7 : -7)
-        })
+        .gesture(DragGesture(minimumDistance: 30).onEnded { value in pageWeek(CalendarSwipe.touchStep(value.translation)) })
+        .gesture(CalendarScrollPage { pageWeek($0) })
         .accessibilityElement(children: .contain)
         .accessibilityIdentifier("calendar.week")
+    }
+
+    private func pageWeek(_ step: Int?) {
+        guard dragState == nil, let step else { return }
+        store.state.anchorDate = CalendarDates.addDays(store.anchor, step * 7)
     }
 
     private func todayTint(days: [String]) -> some View {
@@ -195,6 +199,7 @@ struct CalendarWeekSpanRow: View {
                     ForEach(bars) { bar in
                         CalendarChip(item: bar.item, now: now)
                             .frame(width: column * CGFloat(bar.endColumn - bar.startColumn + 1) - 2, height: 22)
+                            .pointerHover(.card(radius: Tokens.Calendar.chipRadius))
                             .offset(x: column * CGFloat(bar.startColumn) + 1, y: CGFloat(bar.row) * 25)
                             .onTapGesture { actions.open(bar.item) }
                             .accessibilityElement(children: .ignore)
