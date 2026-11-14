@@ -327,6 +327,7 @@ impl EmbeddingService {
 
     fn request(self: &Arc<Self>, request: Request) -> (u64, Result<Reply, Fault>) {
         let deadline = Instant::now() + self.timing.request_deadline;
+        let embed = matches!(request, Request::Embed(_));
         let slot = Arc::new(Slot::default());
         let generation = {
             let mut state = lock(&self.state);
@@ -355,7 +356,7 @@ impl EmbeddingService {
         match slot.wait_until(deadline) {
             Some(result) => (generation, result),
             None => {
-                self.time_out(generation);
+                self.time_out(generation, embed);
                 (generation, Err(Fault::TimedOut))
             }
         }
@@ -385,14 +386,17 @@ impl EmbeddingService {
     }
 
     /// `failProcess` for a request past its deadline: the thread is let go (an inference cannot
-    /// be interrupted; it drops the model when it returns) and the failure feeds the backoff.
-    fn time_out(&self, generation: u64) {
+    /// be interrupted; it drops the model when it returns) and the failure feeds the backoff. Only
+    /// an `embed` counts as an embed failure, which a later successful load does not clear.
+    fn time_out(&self, generation: u64, embed: bool) {
         let mut state = lock(&self.state);
         if state.generation != generation {
             return;
         }
         state.error = Some("Embedding request timed out".to_owned());
-        state.breaker.embed_failures += 1;
+        if embed {
+            state.breaker.embed_failures += 1;
+        }
         Self::record_failure(&mut state);
         Self::retire(&mut state);
     }

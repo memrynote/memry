@@ -208,6 +208,10 @@ pub async fn settings_set_ai<R: Runtime>(
     let fields = patch.fields();
     let touches_fold = patch.touches_fold();
     let enabled = patch.enabled;
+    // The written vault's runtime: a vault switch during the write must not catch up another.
+    let projections = app
+        .try_state::<Session>()
+        .and_then(|session| session.projections());
     let was_enabled = blocking("settings_set_ai", move || {
         let was_enabled = features::read(&service, Some(&vault))
             .map_err(map_error)?
@@ -247,10 +251,8 @@ pub async fn settings_set_ai<R: Runtime>(
     }
     match (enabled, was_enabled) {
         (Some(true), false) => {
-            let pass = app
-                .try_state::<Session>()
-                .and_then(|session| session.projections())
-                .map(|projections| projections.reconcile_named(&EMBEDDING_PROJECTORS));
+            let pass =
+                projections.map(|projections| projections.reconcile_named(&EMBEDDING_PROJECTORS));
             if let Some(Err(error)) = pass {
                 tracing::error!(scope = "Settings", "AI embedding recovery failed: {error}");
             }

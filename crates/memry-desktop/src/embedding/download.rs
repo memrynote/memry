@@ -29,7 +29,8 @@ use super::service::{ModelProgress, Phase};
 pub const HUB_HOST: &str = "https://huggingface.co";
 
 /// One file of a pinned model revision, `path` relative to the model directory with `/`
-/// separators (`memry_ml::ModelFile`).
+/// separators (`memry_ml::ModelFile`). The paths come from the compiled pin table, never from
+/// the network or the disk, and never contain a `..` component.
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct PinnedFile {
     pub path: String,
@@ -93,8 +94,11 @@ impl ModelSource {
         dir: PathBuf,
         files: Vec<PinnedFile>,
     ) -> Self {
+        // The hub answers with a redirect to its CDN: an `https` host never follows one to plain
+        // `http`. Tests serve the files from a local `http` fake.
         let client = crate::http::builder()
             .no_proxy()
+            .https_only(host.starts_with("https://"))
             .build()
             .expect("the model download client needs a process default rustls crypto provider");
         Self {
@@ -283,6 +287,10 @@ fn range_start(response: &reqwest::Response) -> Option<u64> {
 }
 
 fn file_path(dir: &Path, path: &str) -> PathBuf {
+    debug_assert!(
+        !path.split('/').any(|part| part == ".."),
+        "a pinned model path leaves the model directory: {path}"
+    );
     let mut out = dir.to_path_buf();
     out.extend(path.split('/'));
     out

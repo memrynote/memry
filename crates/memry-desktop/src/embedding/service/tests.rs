@@ -6,6 +6,7 @@ use std::sync::atomic::{AtomicUsize, Ordering};
 use std::sync::mpsc::Receiver;
 
 use super::*;
+use crate::embedding::breaker::MAX_CONSECUTIVE_FAILURES;
 use crate::registry::{AppConfig, VaultRegistry};
 use crate::session::OpenSource;
 use crate::shell::shutdown::{Deadline, ShutdownContext, ShutdownReason};
@@ -300,6 +301,35 @@ fn a_request_past_its_deadline_fails_and_lets_the_stuck_thread_go() {
     until("the stuck thread dropping its model", || {
         c.script.dropped.load(Ordering::SeqCst) == 1
     });
+}
+
+/// failProcess (embeddings.ts:820-835) counts only an `embed` request toward `embedFailures`: a
+/// load past its deadline backs off like a failed load, and the next successful load clears it.
+#[test]
+fn a_load_past_its_deadline_is_cleared_by_the_next_successful_load() {
+    let c = case(Timing {
+        request_deadline: Duration::from_millis(200),
+        retry_base: Duration::ZERO,
+        ..Timing::default()
+    });
+    let (gate, reached) = Gate::new();
+    lock(&c.script.loads).push_back(Step::Block(gate.clone()));
+    assert!(!returns({
+        let service = c.service.clone();
+        move || service.load()
+    }));
+    reached.recv_timeout(HANG).expect("the load started");
+    gate.release();
+    assert!(c.service.load());
+
+    // Four more failures stay under the latch only if the success reset the count.
+    c.service.stop();
+    for _ in 1..MAX_CONSECUTIVE_FAILURES {
+        lock(&c.script.loads).push_back(Step::Fail("offline"));
+        assert!(!c.service.load());
+    }
+    assert!(c.service.load(), "latched by the timed-out load");
+    assert_eq!(c.loads(), 2 + MAX_CONSECUTIVE_FAILURES as usize);
 }
 
 #[test]

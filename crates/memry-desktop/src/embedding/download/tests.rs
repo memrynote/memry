@@ -23,6 +23,19 @@ enum Mode {
     StallAfter(usize),
     /// Every answer is the whole file with a 200, whatever the range.
     IgnoreRange,
+    /// The next ranged answer is a 206 that starts at this byte, not at the asked one.
+    WrongStartOnce(usize),
+    /// The next ranged answer is a 416.
+    RefuseRangeOnce,
+}
+
+impl Mode {
+    fn once(self) -> bool {
+        matches!(
+            self,
+            Mode::CutOnceAfter(_) | Mode::WrongStartOnce(_) | Mode::RefuseRangeOnce
+        )
+    }
 }
 
 struct Fake {
@@ -89,7 +102,7 @@ impl Fake {
             return;
         };
         let mode = std::mem::replace(&mut *self.mode.lock().unwrap(), Mode::Serve);
-        if !matches!(mode, Mode::CutOnceAfter(_)) {
+        if !mode.once() {
             *self.mode.lock().unwrap() = mode;
         }
         let start = match (
@@ -97,6 +110,15 @@ impl Fake {
             range.as_deref().and_then(|r| r.strip_prefix("bytes=")),
         ) {
             (Mode::IgnoreRange, _) | (_, None) => None,
+            (Mode::WrongStartOnce(from), Some(_)) => Some(from),
+            (Mode::RefuseRangeOnce, Some(_)) => {
+                let _ = stream
+                    .write_all(
+                        b"HTTP/1.1 416 Range Not Satisfiable\r\ncontent-length: 0\r\nconnection: close\r\n\r\n",
+                    )
+                    .await;
+                return;
+            }
             (_, Some(r)) => Some(r.trim_end_matches('-').parse::<usize>().unwrap()),
         };
         let (status, rest, extra) = match start {
@@ -124,7 +146,7 @@ impl Fake {
                     std::future::pending::<()>().await;
                 }
             }
-            Mode::Serve | Mode::IgnoreRange => {
+            Mode::Serve | Mode::IgnoreRange | Mode::WrongStartOnce(_) | Mode::RefuseRangeOnce => {
                 let _ = stream.write_all(rest).await;
             }
         }
@@ -400,4 +422,97 @@ async fn a_missing_file_is_an_http_error_naming_it() {
         matches!(&error, DownloadError::Http { file, status: 404 } if file == "gone.bin"),
         "{error:?}"
     );
+}
+
+/// Writes `bytes` as the part file of `rel`, as a cut download leaves it.
+fn leave_part(case: &Case, rel: &str, bytes: &[u8]) -> PathBuf {
+    let part = part_path(&case.path(rel));
+    fs::create_dir_all(part.parent().unwrap()).unwrap();
+    fs::write(&part, bytes).unwrap();
+    part
+}
+
+#[tokio::test]
+async fn a_206_from_another_byte_drops_the_part_and_the_next_attempt_starts_over() {
+    let weights = bytes(4096, 12);
+    let fake = Fake::start(&[("w.bin", weights.clone())], Mode::WrongStartOnce(0)).await;
+    let case = Case::new(&fake, vec![pin("w.bin", &weights)]);
+    let part = leave_part(&case, "w.bin", &weights[..1000]);
+
+    let error = case.ensure().await.expect_err("wrong start");
+    assert!(
+        matches!(error, DownloadError::Http { status: 206, .. }),
+        "{error:?}"
+    );
+    assert!(!part.exists());
+
+    case.ensure().await.expect("downloaded whole");
+    assert_eq!(fs::read(case.path("w.bin")).unwrap(), weights);
+    assert_eq!(
+        fake.seen(),
+        [
+            ("w.bin".to_owned(), Some("bytes=1000-".to_owned())),
+            ("w.bin".to_owned(), None),
+        ]
+    );
+}
+
+#[tokio::test]
+async fn a_416_drops_the_part_and_the_next_attempt_starts_over() {
+    let weights = bytes(4096, 13);
+    let fake = Fake::start(&[("w.bin", weights.clone())], Mode::RefuseRangeOnce).await;
+    let case = Case::new(&fake, vec![pin("w.bin", &weights)]);
+    let part = leave_part(&case, "w.bin", &weights[..1000]);
+
+    let error = case.ensure().await.expect_err("416");
+    assert!(
+        matches!(error, DownloadError::Http { status: 416, .. }),
+        "{error:?}"
+    );
+    assert!(!part.exists());
+
+    case.ensure().await.expect("downloaded whole");
+    assert_eq!(fs::read(case.path("w.bin")).unwrap(), weights);
+    assert_eq!(
+        fake.seen(),
+        [
+            ("w.bin".to_owned(), Some("bytes=1000-".to_owned())),
+            ("w.bin".to_owned(), None),
+        ]
+    );
+}
+
+#[tokio::test]
+async fn a_part_larger_than_the_pin_is_dropped_and_downloaded_whole() {
+    let weights = bytes(4096, 14);
+    let fake = Fake::start(&[("w.bin", weights.clone())], Mode::Serve).await;
+    let case = Case::new(&fake, vec![pin("w.bin", &weights)]);
+    leave_part(&case, "w.bin", &bytes(5000, 15));
+
+    case.ensure().await.expect("downloaded whole");
+    assert_eq!(fs::read(case.path("w.bin")).unwrap(), weights);
+    assert_eq!(fake.seen(), [("w.bin".to_owned(), None)]);
+}
+
+#[tokio::test]
+async fn a_full_size_part_with_the_wrong_hash_is_never_used() {
+    let weights = bytes(4096, 16);
+    let fake = Fake::start(&[("w.bin", weights.clone())], Mode::Serve).await;
+    let case = Case::new(&fake, vec![pin("w.bin", &weights)]);
+    let part = leave_part(&case, "w.bin", &bytes(4096, 17));
+
+    let error = case.ensure().await.expect_err("the part's hash differs");
+    assert!(
+        matches!(error, DownloadError::HashMismatch { .. }),
+        "{error:?}"
+    );
+    assert!(!case.path("w.bin").exists());
+    assert!(!part.exists());
+    assert!(
+        fake.seen().is_empty(),
+        "a full part asks the host for nothing"
+    );
+
+    case.ensure().await.expect("downloaded");
+    assert_eq!(fs::read(case.path("w.bin")).unwrap(), weights);
 }
