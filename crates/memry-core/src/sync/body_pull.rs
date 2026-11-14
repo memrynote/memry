@@ -66,6 +66,7 @@ use crate::storage::Db;
 
 use super::bootstrap::BootstrapClient;
 use super::crdt_wire::{SnapshotMeta, UpdatePage, read_update_page};
+use super::driver::observer::Observers;
 use super::store;
 
 mod log_writes;
@@ -200,6 +201,7 @@ pub struct BodyPull {
     cipher: Arc<dyn CrdtCipher>,
     vault_id: Option<String>,
     bootstrap: Option<Arc<BootstrapClient>>,
+    observers: Option<Arc<Observers>>,
 }
 
 impl BodyPull {
@@ -216,6 +218,21 @@ impl BodyPull {
             cipher,
             vault_id: None,
             bootstrap: None,
+            observers: None,
+        }
+    }
+
+    /// Tells `observers` of each document whose stored body changed, once
+    /// the write has committed: a pull that stored a baseline or an update,
+    /// and a pack seed that applied.
+    pub fn with_observers(mut self, observers: Arc<Observers>) -> Self {
+        self.observers = Some(observers);
+        self
+    }
+
+    async fn tell_observers(&self, doc_id: &str) {
+        if let Some(observers) = &self.observers {
+            observers.bodies_applied(vec![doc_id.to_owned()]).await;
         }
     }
 
@@ -268,6 +285,18 @@ impl BodyPull {
     }
 
     pub(super) async fn pull_with(
+        &self,
+        doc_id: &str,
+        probed: Option<&SnapshotMeta>,
+    ) -> Result<BodyPullReport, BodyPullError> {
+        let report = self.pull_stored(doc_id, probed).await?;
+        if report.baselines + report.updates > 0 {
+            self.tell_observers(doc_id).await;
+        }
+        Ok(report)
+    }
+
+    async fn pull_stored(
         &self,
         doc_id: &str,
         probed: Option<&SnapshotMeta>,

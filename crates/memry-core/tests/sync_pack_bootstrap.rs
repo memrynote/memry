@@ -10,6 +10,8 @@ use crate::http_fakes;
 use std::path::PathBuf;
 use std::sync::Arc;
 
+use base64::Engine as _;
+use base64::engine::general_purpose::STANDARD as BASE64;
 use http_fakes::{FakeTransport, response};
 use memry_core::crdt::registry::UpdateSink;
 use memry_core::crdt::update_log;
@@ -20,6 +22,7 @@ use memry_core::protocol::http::{ClientIdentity, HttpClient};
 use memry_core::protocol::types::Declaration;
 use memry_core::storage::{Db, open_data};
 use memry_core::sync::body_pull::{BodyPull, CrdtCipher, PackedUpdate, crdt_cursor_scope};
+use memry_core::sync::driver::observer::{ApplyObserver, Observers};
 use memry_core::sync::first_sync_store::read_meta;
 use memry_core::sync::pack_bootstrap::{META_PACKS_APPLIED_THROUGH, PackBootstrap};
 use memry_core::sync::store;
@@ -446,4 +449,114 @@ async fn a_concurrent_bootstrap_downloads_three_packs_at_once() {
     assert_eq!(server.most.load(std::sync::atomic::Ordering::SeqCst), 3);
     assert_eq!(report.packs_applied, 5);
     assert_eq!(report.applied_through_cursor, Some(50));
+}
+
+/// Records every `bodies_applied` call with the document's `crdt:` cursor as a fresh read saw it.
+struct BodyWatcher {
+    db: Db,
+    heard: std::sync::Mutex<Vec<(Vec<String>, Option<String>)>>,
+}
+
+impl ApplyObserver for BodyWatcher {
+    fn name(&self) -> &str {
+        "body-watcher"
+    }
+
+    fn bodies_applied(&self, doc_ids: &[String]) {
+        let cursor = cursor_of(&self.db, &doc_ids[0]);
+        self.heard.lock().unwrap().push((doc_ids.to_vec(), cursor));
+    }
+}
+
+/// `bodies_applied` names a document once its body change has committed: a packed snapshot that
+/// applied, then a pulled update. A refused or untrusted pack entry and a pull that stored nothing
+/// tell no one.
+#[tokio::test]
+async fn a_seeded_or_pulled_body_is_told_to_the_observers_after_it_commits() {
+    let db = scratch_db("observers");
+    let (public_key, secret_key) =
+        memry_core::crypto::sodium::sign_seed_keypair(&[7u8; 32]).expect("keypair");
+    let (_, stranger_key) =
+        memry_core::crypto::sodium::sign_seed_keypair(&[8u8; 32]).expect("keypair");
+    let pack_bytes = mpak(&[
+        (
+            NOTE,
+            Some(json!({"sequenceNum": 7, "revision": "rev-7"})),
+            packed(NOTE, &body_update("Hello from a pack"), &secret_key),
+        ),
+        (
+            "nometa000001",
+            None,
+            packed("nometa000001", &body_update("x"), &secret_key),
+        ),
+        (
+            "stranger0001",
+            Some(json!({"sequenceNum": 3, "revision": "rev-3"})),
+            packed("stranger0001", &body_update("forged"), &stranger_key),
+        ),
+    ]);
+    let update = BASE64.encode(packed(NOTE, &body_update("Edited"), &secret_key));
+    let probe = json!({
+        "notes": {NOTE: {"updates": [], "hasMore": false}},
+        "snapshotMeta": {NOTE: {"sequenceNum": 7, "revision": "rev-7"}}
+    })
+    .to_string();
+    let transport = FakeTransport::new(vec![
+        response(200, &listing(40)),
+        bytes_response(pack_bytes),
+        response(200, &probe),
+        response(
+            200,
+            &json!({"updates": [{"sequenceNum": 8, "data": update, "signerDeviceId": "device-a"}],
+                    "hasMore": false})
+            .to_string(),
+        ),
+        response(200, &probe),
+        response(200, &json!({"updates": [], "hasMore": false}).to_string()),
+    ]);
+    let http = http(transport);
+    let observers = Arc::new(Observers::default());
+    let watcher = Arc::new(BodyWatcher {
+        db: db.clone(),
+        heard: std::sync::Mutex::default(),
+    });
+    observers.register(watcher.clone());
+    let bodies = Arc::new(
+        BodyPull::new(
+            Arc::clone(&http),
+            db.clone(),
+            Declaration::subscribed(),
+            Arc::new(Directory {
+                device_id: "device-a".into(),
+                public_key,
+            }),
+        )
+        .with_observers(observers),
+    );
+
+    PackBootstrap::new(Arc::clone(&http), db.clone(), Arc::clone(&bodies))
+        .run(1_000)
+        .await
+        .expect("the pack bootstrap");
+    assert_eq!(
+        *watcher.heard.lock().unwrap(),
+        [(vec![NOTE.to_owned()], Some("7".to_owned()))],
+        "only the applied pack entry, after its baseline committed"
+    );
+
+    let pulled = bodies.pull_document(NOTE).await.expect("the body pull");
+    assert_eq!(pulled.updates, 1);
+    let quiet = bodies
+        .pull_document(NOTE)
+        .await
+        .expect("a pull with nothing new");
+    assert_eq!(quiet.updates + quiet.baselines, 0);
+    assert_eq!(
+        *watcher.heard.lock().unwrap(),
+        [
+            (vec![NOTE.to_owned()], Some("7".to_owned())),
+            (vec![NOTE.to_owned()], Some("8".to_owned())),
+        ],
+        "the pulled update once, after it committed; the empty pull tells no one"
+    );
 }

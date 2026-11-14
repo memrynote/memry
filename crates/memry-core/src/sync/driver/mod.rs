@@ -185,7 +185,8 @@ impl SyncDriver {
             db.clone(),
             declaration.clone(),
             cipher.clone(),
-        );
+        )
+        .with_observers(Arc::clone(&observers));
         if let Some(vault) = &server_vault {
             push = push.with_vault(vault);
             bootstrap = bootstrap.with_vault(vault);
