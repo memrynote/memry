@@ -1,6 +1,7 @@
 //! The bridge's rules (embeddings.ts) on a fake model: no download, no ONNX Runtime.
 
 use std::collections::VecDeque;
+use std::sync::Condvar;
 use std::sync::atomic::{AtomicUsize, Ordering};
 use std::sync::mpsc::Receiver;
 
