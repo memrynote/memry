@@ -2,6 +2,8 @@ import { useState, useEffect, useCallback } from 'react'
 import { InputOTP, InputOTPGroup, InputOTPSlot } from '@/components/ui/input-otp'
 import { Loader2, Clock } from '@/lib/icons'
 import { useT } from '@memry/i18n/renderer'
+import { subscribeToEvent } from '@/services/tauri-event'
+import { events } from '../../../../generated/bindings'
 
 interface OtpInputProps {
   onComplete: (code: string) => void
@@ -66,7 +68,7 @@ export function OtpInput({
   }, [error, isVerifying])
 
   useEffect(() => {
-    const unsubscribe = window.api.onOtpDetected((event) => {
+    const unsubscribe = subscribeToEvent(events.authOtpDetectedEvent, (event) => {
       if (event.code && /^\d{6}$/.test(event.code)) {
         setValue(event.code)
         onComplete(event.code)

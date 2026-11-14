@@ -4,6 +4,7 @@ import { Button } from '@/components/ui/button'
 import { cn } from '@/lib/utils'
 import { extractErrorMessage } from '@/lib/ipc-error'
 import { trackRendererError } from '@/lib/telemetry-diagnostics'
+import { authService } from '@/services/auth-service'
 import { useT } from '@memry/i18n/renderer'
 import { useAuth, type WizardStep } from '@/contexts/auth-context'
 import { EmailEntryForm } from '@/components/sync/email-entry-form'
@@ -94,7 +95,7 @@ export function SetupWizard({
     if (wizardStep !== 'recovery-display' && wizardStep !== 'recovery-confirm') return undefined
     if (recoveryPhrase) return undefined
     let cancelled = false
-    void window.api.syncSetup
+    void authService
       .getRecoveryPhrase()
       .then((phrase) => {
         if (cancelled) return
