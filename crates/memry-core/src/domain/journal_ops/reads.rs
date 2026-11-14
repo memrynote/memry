@@ -47,8 +47,8 @@ use crate::domain::journal::{self, ITEM_TYPE};
 use crate::domain::journal_rules::{
     ActivityLevel, JOURNAL_PREVIEW_LENGTH, JournalHeatmapDay, JournalMonthActivity, JournalStreak,
     calculate_activity_level, compute_journal_streak, count_words, extract_journal_preview,
-    heatmap_day, is_same_day_in_other_year, month_activity, month_days, same_day_month_days,
-    utf16_len,
+    heatmap_day, is_same_day_in_other_year, js_trim, month_activity, month_days,
+    same_day_month_days, utf16_len,
 };
 use crate::domain::note_meta::NoteProperty;
 use crate::domain::notes::names;
@@ -210,17 +210,17 @@ pub fn month(
 
     let mut days = Vec::new();
     for calendar_day in month_days(year, month - 1, today).into_iter().rev() {
-        let entry = entries
+        let body = entries
             .iter()
             .find(|(_, date)| *date == calendar_day.date)
-            .map(|(id, _)| id.as_str());
+            .map(|(id, _)| day_body(conn, id))
+            .transpose()?;
         days.push(listed_day(
-            conn,
-            entry,
+            body,
             calendar_day.date,
             calendar_day.is_today,
             calendar_day.is_future,
-        )?);
+        ));
     }
 
     Ok(JournalMonth {
@@ -238,6 +238,13 @@ pub fn month(
 /// so no year bound applies and no month is read whole; the leap-day rule
 /// ([`is_same_day_in_other_year`]) then drops the same year and a leap year's
 /// Feb 28.
+///
+/// A pulled body whose text trims to nothing is dropped, as desktop drops a
+/// day whose `content.trim()` is `''`. A body not pulled to this device yet is
+/// kept: its text is unknown here, not empty, and the row stands for a day
+/// the user wrote. The rule stays here because the Month view lists every
+/// calendar day and the heatmap and Year view count characters, which an
+/// empty body already reads as 0.
 pub fn same_day_entries(
     conn: &Connection,
     date: &str,
@@ -259,28 +266,32 @@ pub fn same_day_entries(
         .map_err(failed)?
         .collect::<Result<_, _>>()
         .map_err(failed)?;
-    rows.into_iter()
-        .filter(|(_, candidate)| is_same_day_in_other_year(date, candidate))
-        .map(|(id, candidate)| {
-            let (is_today, is_future) = (candidate == today, candidate.as_str() > today);
-            listed_day(conn, Some(&id), candidate, is_today, is_future)
-        })
-        .collect()
+    let mut entries = Vec::new();
+    for (id, candidate) in rows {
+        if !is_same_day_in_other_year(date, &candidate) {
+            continue;
+        }
+        let body = day_body(conn, &id)?;
+        if body.state != JournalBodyState::NotPulled && js_trim(&body.text).is_empty() {
+            continue;
+        }
+        let (is_today, is_future) = (candidate == today, candidate.as_str() > today);
+        entries.push(listed_day(Some(body), candidate, is_today, is_future));
+    }
+    Ok(entries)
 }
 
-/// One day as the Month view and the same-day list show it; `entry` is the
-/// live record id, `None` for a day without one.
+/// One day as the Month view and the same-day list show it; `body` is the
+/// live entry's body, `None` for a day without one.
 fn listed_day(
-    conn: &Connection,
-    entry: Option<&str>,
+    body: Option<DayBody>,
     date: String,
     is_today: bool,
     is_future: bool,
-) -> Result<JournalMonthEntry, CrdtError> {
-    let body = entry.map(|id| day_body(conn, id)).transpose()?;
+) -> JournalMonthEntry {
     let character_count = body.as_ref().map_or(0, DayBody::character_count);
-    Ok(JournalMonthEntry {
-        has_entry: entry.is_some(),
+    JournalMonthEntry {
+        has_entry: body.is_some(),
         level: calculate_activity_level(character_count),
         preview: body.as_ref().map_or_else(String::new, |body| {
             extract_journal_preview(&body.text, JOURNAL_PREVIEW_LENGTH)
@@ -290,7 +301,7 @@ fn listed_day(
         date,
         is_today,
         is_future,
-    })
+    }
 }
 
 /// The Year view for `year`: twelve month cards, totals and the streak.

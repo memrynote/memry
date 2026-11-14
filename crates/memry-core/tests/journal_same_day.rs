@@ -12,6 +12,7 @@
 //! | the query lists other years newest first, leap days on Feb 28 | `getJournalSameDayEntries`     |
 //! | the query has no year bound and skips tombstones              | years 0000-9999, live only     |
 //! | the query carries previews, levels and today flags            | the rail's row                 |
+//! | the query drops empty and whitespace-only bodies              | `content.trim() === ''`        |
 
 use std::sync::{Arc, Mutex};
 
@@ -48,6 +49,14 @@ fn record(conn: &Connection, date: &str, deleted_at: Option<i64>) {
 
 /// A live day pulled from the server, with a body holding `text`.
 fn day(conn: &Connection, date: &str, text: &str) {
+    pulled_day(conn, date, &[text], None);
+}
+
+/// A live day pulled from the server: one paragraph per entry of
+/// `paragraphs`, then `bare` as a text node outside any block. Extraction
+/// trims a block's line but not a bare node, so only a bare node can extract
+/// to whitespace-only text.
+fn pulled_day(conn: &Connection, date: &str, paragraphs: &[&str], bare: Option<&str>) {
     record(conn, date, None);
     let doc_id = format!("j{date}");
     let captured: Arc<Mutex<Vec<Vec<u8>>>> = Arc::new(Mutex::new(Vec::new()));
@@ -64,9 +73,14 @@ fn day(conn: &Connection, date: &str, text: &str) {
                 .get_xml_fragment("prosemirror")
                 .expect("the root is typed at open");
             let group = fragment.push_back(txn, XmlElementPrelim::empty("blockGroup"));
-            let container = group.push_back(txn, XmlElementPrelim::empty("blockContainer"));
-            let paragraph = container.push_back(txn, XmlElementPrelim::empty("paragraph"));
-            paragraph.push_back(txn, XmlTextPrelim::new(text));
+            for text in paragraphs {
+                let container = group.push_back(txn, XmlElementPrelim::empty("blockContainer"));
+                let paragraph = container.push_back(txn, XmlElementPrelim::empty("paragraph"));
+                paragraph.push_back(txn, XmlTextPrelim::new(*text));
+            }
+            if let Some(text) = bare {
+                group.push_back(txn, XmlTextPrelim::new(text));
+            }
         })
         .expect("a write transaction");
     let update = captured.lock().expect("lock")[0].clone();
@@ -207,4 +221,42 @@ fn the_query_carries_previews_levels_and_today_flags() {
         ]
     );
     assert!(days.iter().all(|day| day.has_entry));
+}
+
+#[test]
+fn the_query_drops_empty_and_whitespace_only_bodies_but_keeps_not_pulled_ones() {
+    let conn = data();
+    day(&conn, "2096-06-15", "Lake swim.");
+    day(&conn, "2095-06-15", "");
+    pulled_day(
+        &conn,
+        "2094-06-15",
+        &["", " \u{00A0}"],
+        Some(" \n\u{FEFF}\t"),
+    );
+    record(&conn, "2093-06-15", None);
+
+    let state = |date| {
+        reads::day(&conn, date)
+            .expect("read")
+            .map(|day| day.body_state)
+    };
+    assert_eq!(state("2095-06-15"), Some(JournalBodyState::Empty));
+    assert_eq!(
+        state("2094-06-15"),
+        Some(JournalBodyState::Present),
+        "the bare node keeps whitespace-only text past extraction"
+    );
+    let rows: Vec<_> = reads::same_day_entries(&conn, "2097-06-15", "2097-06-15")
+        .expect("read")
+        .into_iter()
+        .map(|day| (day.date, day.body_state))
+        .collect();
+    assert_eq!(
+        rows,
+        [
+            ("2096-06-15".to_owned(), Some(JournalBodyState::Present)),
+            ("2093-06-15".to_owned(), Some(JournalBodyState::NotPulled)),
+        ]
+    );
 }
