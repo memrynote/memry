@@ -1,6 +1,6 @@
 use std::collections::HashMap;
 use std::fs;
-use std::sync::atomic::{AtomicUsize, Ordering};
+use std::sync::atomic::{AtomicBool, AtomicUsize, Ordering};
 use std::sync::mpsc::{Receiver, Sender, channel};
 use std::sync::{Arc, Mutex};
 use std::time::Duration;
@@ -27,6 +27,8 @@ const COOL: StepConditions = StepConditions {
 struct Fake {
     gate: Option<Arc<Mutex<Receiver<()>>>>,
     entered: Option<Sender<()>>,
+    /// Set by a test: the next `embed` finds the session poisoned.
+    poisoned: Arc<AtomicBool>,
 }
 
 impl Embed for Fake {
@@ -41,6 +43,9 @@ impl Embed for Fake {
             gate.lock().unwrap().recv().unwrap();
         }
         std::thread::sleep(Duration::from_millis(5));
+        if self.poisoned.swap(false, Ordering::SeqCst) {
+            return Err(SemanticError::Poisoned);
+        }
         if input.contains("poison") {
             return Err(SemanticError::inference("fake inference failed"));
         }
@@ -59,16 +64,18 @@ type Docs = HashMap<String, (Arc<Document>, Arc<Mutex<Vec<u8>>>)>;
 struct Setup {
     scratch: Scratch,
     loads: Arc<AtomicUsize>,
+    poisoned: Arc<AtomicBool>,
     semantic: SemanticSearch,
     vault: Arc<Vault>,
 }
 
-fn loader(loads: Arc<AtomicUsize>, gate: Option<Gate>) -> Loader {
+fn loader(loads: Arc<AtomicUsize>, poisoned: Arc<AtomicBool>, gate: Option<Gate>) -> Loader {
     Arc::new(move |_| {
         loads.fetch_add(1, Ordering::SeqCst);
         Ok(Arc::new(Fake {
             gate: gate.as_ref().map(|(gate, _)| gate.clone()),
             entered: gate.as_ref().map(|(_, entered)| entered.clone()),
+            poisoned: poisoned.clone(),
         }) as Arc<dyn Embed>)
     })
 }
@@ -84,7 +91,7 @@ impl Setup {
             self.scratch.models(manifest(&files)),
             Cdn::new(&files),
             Wifi::on(),
-            loader(self.loads.clone(), gate),
+            loader(self.loads.clone(), self.poisoned.clone(), gate),
         )
     }
 
@@ -196,16 +203,18 @@ async fn setup() -> Setup {
     fs::create_dir_all(&vault_dir).unwrap();
     let vault = Arc::new(Vault::open("v1".into(), vault_dir.to_string_lossy().into()).unwrap());
     let loads = Arc::new(AtomicUsize::new(0));
+    let poisoned = Arc::new(AtomicBool::new(false));
     let files = files();
     let semantic = SemanticSearch::with_loader(
         scratch.models(manifest(&files)),
         Cdn::new(&files),
         Wifi::on(),
-        loader(loads.clone(), None),
+        loader(loads.clone(), poisoned.clone(), None),
     );
     let setup = Setup {
         scratch,
         loads,
+        poisoned,
         semantic,
         vault,
     };
@@ -544,3 +553,6 @@ async fn disable_during_a_step_leaves_no_vectors_db_behind() {
     }
     assert_eq!(s.step().await, stopped(StepStop::ModelNotReady));
 }
+
+#[path = "semantic_step_attempt_tests.rs"]
+mod attempt;

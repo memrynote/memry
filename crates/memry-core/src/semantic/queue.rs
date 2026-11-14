@@ -18,6 +18,14 @@
 //!    holds up the notes behind it. The failure writes no state row: an edit or a
 //!    rename gives it a new key and a relaunch empties the set, and either
 //!    retries it. Until then its old vectors, if any, keep serving.
+//! 6. **A note whose window dies with the process is skipped until it
+//!    changes.** A row in `vectors.db`'s `note_embed_attempts` names the
+//!    note's source key while each window runs. A row a later step finds
+//!    belongs to a window that never returned, most often because iOS killed
+//!    the process for memory, so its key joins the skip set of invariant 5.
+//!    The row outlives a relaunch, so the note stays skipped until an edit or
+//!    a rename gives it a new key. A kill between windows leaves no row, and
+//!    the note resumes.
 
 use std::collections::{HashMap, HashSet};
 use std::time::Duration;
@@ -149,6 +157,10 @@ impl InFlight {
             windows,
             done: Vec::new(),
         }
+    }
+
+    pub(crate) fn note_id(&self) -> &str {
+        &self.state.note_id
     }
 
     pub(crate) fn source_key(&self) -> [u8; 32] {

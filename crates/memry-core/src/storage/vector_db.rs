@@ -183,6 +183,40 @@ impl<'c> VectorStore<'c> {
         tx.commit().map_err(failed)
     }
 
+    /// Marks `note_id` as in inference from `source_key`, replacing any
+    /// earlier mark.
+    pub fn begin_attempt(&self, note_id: &str, source_key: &[u8; 32]) -> Result<(), StorageError> {
+        self.conn
+            .execute(
+                "INSERT OR REPLACE INTO note_embed_attempts (note_id, source_key) VALUES (?1, ?2)",
+                params![note_id, source_key],
+            )
+            .map(drop)
+            .map_err(failed)
+    }
+
+    pub fn end_attempt(&self, note_id: &str) -> Result<(), StorageError> {
+        self.conn
+            .execute(
+                "DELETE FROM note_embed_attempts WHERE note_id = ?1",
+                [note_id],
+            )
+            .map(drop)
+            .map_err(failed)
+    }
+
+    /// The source keys of windows that began and never ended.
+    pub fn attempts(&self) -> Result<Vec<[u8; 32]>, StorageError> {
+        let mut statement = self
+            .conn
+            .prepare("SELECT source_key FROM note_embed_attempts")
+            .map_err(failed)?;
+        statement
+            .query_map([], |row| row.get(0))
+            .and_then(Iterator::collect)
+            .map_err(failed)
+    }
+
     /// Every window built with `vector_key`, at any input version: a stale
     /// version keeps serving until it is re-embedded, as on desktop. Another
     /// model's vectors never serve.

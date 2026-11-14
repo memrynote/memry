@@ -24,7 +24,8 @@ pub enum ReleaseReason {
     MemoryWarning,
 }
 
-/// A window the model ran. A model that could not be had is the `Err` around it.
+/// A window the model ran. A model that could not be had, or a session a
+/// panic poisoned, is the `Err` around it: neither is the input's fault.
 pub enum WindowOutcome {
     Embedded(Box<Vector>),
     InputFailed(SemanticError),
@@ -109,6 +110,7 @@ impl ModelHost {
             .unwrap_or_else(|panicked| Err(SemanticError::inference(panicked)));
         if matches!(outcome, Err(SemanticError::Poisoned)) {
             self.evict(&embedder);
+            return Err(SemanticError::Poisoned);
         }
         Ok(outcome.map_or_else(WindowOutcome::InputFailed, |vector| {
             WindowOutcome::Embedded(Box::new(vector))

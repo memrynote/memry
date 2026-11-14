@@ -122,7 +122,34 @@ fn rows_survive_a_reopen() {
             ("n1".to_owned(), 1, vector(2))
         ]
     );
-    assert_eq!(with(&db, user_version), 1);
+    assert_eq!(with(&db, user_version), 2);
+}
+
+#[test]
+fn a_version_one_file_migrates_forward_and_keeps_its_vectors() {
+    let scratch = Scratch::new("v1");
+    let path = scratch.vectors();
+    let db = opened(&path);
+    with(&db, |conn| {
+        VectorStore::new(conn).replace_note(&state("n1", "gemma-a", 1), &[vector(1)], 1)?;
+        sql(
+            conn,
+            "DROP TABLE note_embed_attempts; PRAGMA user_version = 1;",
+        )
+    });
+    drop(db);
+
+    let db = opened(&path);
+
+    assert_eq!(with(&db, user_version), 2);
+    assert_eq!(scan(&db, "gemma-a"), [("n1".to_owned(), 0, vector(1))]);
+    with(&db, |conn| {
+        VectorStore::new(conn).begin_attempt("n1", &[7; 32])
+    });
+    assert_eq!(
+        with(&db, |conn| VectorStore::new(conn).attempts()),
+        [[7; 32]]
+    );
 }
 
 #[test]
@@ -133,7 +160,7 @@ fn a_corrupt_file_is_rebuilt_empty() {
 
     let db = opened(&path);
 
-    assert_eq!(with(&db, user_version), 1);
+    assert_eq!(with(&db, user_version), 2);
     assert!(with(&db, |conn| VectorStore::new(conn).states()).is_empty());
 }
 
@@ -147,7 +174,7 @@ fn a_newer_additive_file_opens_untouched_and_stays_readable() {
             conn,
             "ALTER TABLE note_vectors ADD COLUMN quantized BLOB;
              ALTER TABLE note_vector_state ADD COLUMN model_rev TEXT NOT NULL DEFAULT '';
-             PRAGMA user_version = 2;",
+             PRAGMA user_version = 3;",
         )?;
         VectorStore::new(conn).replace_note(&state("n1", "gemma-a", 1), &[vector(3)], 1)
     });
@@ -155,7 +182,7 @@ fn a_newer_additive_file_opens_untouched_and_stays_readable() {
 
     let db = opened(&path);
 
-    assert_eq!(with(&db, user_version), 2);
+    assert_eq!(with(&db, user_version), 3);
     assert_eq!(scan(&db, "gemma-a"), [("n1".to_owned(), 0, vector(3))]);
     with(&db, |conn| {
         VectorStore::new(conn).replace_note(&state("n2", "gemma-a", 1), &[vector(4)], 2)

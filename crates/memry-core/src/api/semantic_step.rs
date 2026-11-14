@@ -72,6 +72,16 @@ impl SemanticSearch {
 
         let sources = data.call(|conn| queue::sources(conn)).await?;
         let states = vectors.call(|conn| VectorStore::new(conn).states()).await?;
+        let died = vectors
+            .call(|conn| VectorStore::new(conn).attempts())
+            .await?;
+        for source_key in died {
+            if lock(&self.skipped).insert(source_key) {
+                eprintln!(
+                    "memry-core: a note's embedding died with the process, skipped until it changes"
+                );
+            }
+        }
         let plan = queue::plan(&sources, &states, key, &lock(&self.skipped));
         if !plan.prune.is_empty() {
             let prune = plan.prune.clone();
@@ -104,7 +114,17 @@ impl SemanticSearch {
 
         let started = Instant::now();
         if let Some(window) = note.next_window() {
-            match self.host.embed_background(window.as_str().to_owned()).await {
+            let input = window.as_str().to_owned();
+            let (id, source_key) = (note.note_id().to_owned(), note.source_key());
+            vectors
+                .call(move |conn| VectorStore::new(conn).begin_attempt(&id, &source_key))
+                .await?;
+            let outcome = self.host.embed_background(input).await;
+            let id = note.note_id().to_owned();
+            vectors
+                .call(move |conn| VectorStore::new(conn).end_attempt(&id))
+                .await?;
+            match outcome {
                 Ok(WindowOutcome::Embedded(vector)) => note.push(&vector),
                 Ok(WindowOutcome::InputFailed(error)) if !self.host.take_pressure() => {
                     eprintln!(
