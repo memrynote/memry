@@ -70,10 +70,6 @@ final class QuickCapture {
     /// files to different kinds.
     let homeDraft = CaptureDraft()
     let journalDraft = CaptureDraft()
-    /// The home sheet's last confirmation, until the shell clears it. Kept
-    /// here, not in the shell's state: at compact width a tab's content does
-    /// not redraw for its shell's state, only for what its own views read.
-    var receipt: CaptureReceipt?
     private let vault: Vault
     private let secureStore: any SecureStore
     private let tasks: TasksStore?

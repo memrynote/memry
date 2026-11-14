@@ -7,6 +7,8 @@ import SwiftUI
 
 struct HomeTab: View {
     let switchVault: (() -> Void)?
+    /// The last capture's confirmation, shown beside the "+".
+    let receipt: CaptureReceipt?
     /// Opens the shell's quick capture sheet.
     let capture: () -> Void
     let open: (CaptureReceipt) -> Void
@@ -52,8 +54,7 @@ struct HomeTab: View {
         .overlay(alignment: .bottomTrailing) {
             if quickCapture != nil {
                 HStack(spacing: Tokens.Space.medium) {
-                    // The last capture's confirmation, beside the "+".
-                    if let receipt = quickCapture?.receipt {
+                    if let receipt {
                         CaptureToast(receipt: receipt) { open(receipt) }
                     }
                     if items.contains(.floatingCapture) {
