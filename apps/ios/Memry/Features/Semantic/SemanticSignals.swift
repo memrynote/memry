@@ -46,7 +46,7 @@ private struct SemanticEmbeddingScope: ViewModifier {
             .onChange(of: scenePhase) { _, phase in
                 guard phase == .background else { return }
                 semantic?.release(reason: .background)
-                SemanticBackgroundTask.shared.scheduleIfDue()
+                SemanticBackgroundTask.shared.scheduleIfReady()
             }
             .onReceive(memoryWarnings) { _ in semantic?.release(reason: .memoryWarning) }
     }

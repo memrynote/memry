@@ -1,6 +1,7 @@
 import BackgroundTasks
 import Foundation
 import MemryCore
+import UIKit
 
 // #4512. The background embedder. iOS runs `com.memry.app.semantic.embed`
 // while the phone charges; the core decides each step's work and pace, and
@@ -50,12 +51,12 @@ final class SemanticBackgroundTask {
         return request
     }
 
-    /// Asks for a run when this vault still has notes to embed.
-    func scheduleIfDue() {
-        guard let semantic, let vault else { return }
-        let status = semantic.status(vault: vault)
-        guard status.model == .ready, status.embeddedNotes < status.totalNotes else { return }
-        Self.schedule()
+    /// Asks for a run whenever the model is ready. The status counts cannot
+    /// see an edited, renamed or replaced note, so the step decides; one with
+    /// nothing due answers `finished` at once.
+    func scheduleIfReady(schedule: () -> Void = SemanticBackgroundTask.schedule) {
+        guard let semantic, let vault, semantic.status(vault: vault).model == .ready else { return }
+        schedule()
     }
 
     nonisolated static func schedule() {
@@ -71,19 +72,26 @@ final class SemanticBackgroundTask {
         if let semantic, let vault {
             step = { try await semantic.embedStep(vault: vault, conditions: $0) }
         }
-        Self.drive(task, step: step, conditions: SemanticSignals.current, reschedule: Self.schedule)
+        let semantic = semantic
+        Self.drive(task, step: step, conditions: SemanticSignals.current, reschedule: Self.schedule) {
+            guard UIApplication.shared.applicationState != .active else { return }
+            semantic?.release(reason: .background)
+        }
     }
 
     /// Steps until the core says finished or stopped, or iOS expires the task.
     /// Expiry completes the task at once: a window in flight writes nothing
     /// until its note's last window commits, so at most that note is lost.
+    /// `release` runs once the last step returns, since the core ignores a
+    /// background release while a window holds the model.
     @discardableResult
     static func drive(
         _ task: SemanticTaskRun,
         step: SemanticStep?,
         conditions: @escaping @MainActor () -> StepConditions,
         reschedule: @escaping @MainActor () -> Void,
-        rest: @escaping @Sendable (UInt32) async throws -> Void = { try await Task.sleep(for: .milliseconds($0)) }
+        rest: @escaping @Sendable (UInt32) async throws -> Void = { try await Task.sleep(for: .milliseconds($0)) },
+        release: @escaping @MainActor () -> Void
     ) -> Task<Void, Never> {
         var completed = false
         let complete = { (success: Bool) in
@@ -93,6 +101,7 @@ final class SemanticBackgroundTask {
             task.setTaskCompleted(success: success)
         }
         let work = Task { @MainActor in
+            defer { release() }
             guard let step else { return complete(true) }
             while !Task.isCancelled {
                 do {
