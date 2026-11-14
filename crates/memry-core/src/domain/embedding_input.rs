@@ -10,10 +10,14 @@
 
 use super::journal_rules::is_js_whitespace;
 
-/// Bumped on desktop whenever the shaped text changes. A Rust test holds it to
-/// the vector class's `meta.inputVersion`.
-pub const EMBEDDING_INPUT_VERSION: u32 = 6;
+/// Bumped on desktop whenever the shaped text or the token cap changes. A Rust
+/// test holds it to the vector class's `meta.inputVersion`.
+pub const EMBEDDING_INPUT_VERSION: u32 = 7;
 pub const MAX_INPUT_UNITS: usize = 4000;
+/// Tokens of one model input, BOS and EOS included. Units do not bound tokens:
+/// a 4000-unit window of CJK Extension B is ~8000, and attention memory grows
+/// with the square of the count.
+pub const MAX_INPUT_TOKENS: usize = 1536;
 pub const MAX_WINDOWS: usize = 16;
 pub const MAX_CHUNK_TITLE_UNITS: usize = 200;
 pub const MIN_TEXT_UNITS: usize = 10;
@@ -90,6 +94,16 @@ pub fn chunks(title: &str, content: &str) -> Vec<Window> {
         .filter(|(index, piece)| *index == 0 || piece.len() >= MIN_TEXT_UNITS)
         .map(|(_, piece)| Window::from_units(&[&header[..], piece].concat()))
         .collect()
+}
+
+/// `capEmbeddingTokens`: past [`MAX_INPUT_TOKENS`], the first tokens and then
+/// the input's last one, so the model still sees its closing EOS.
+pub fn cap_tokens(ids: &mut Vec<u32>) {
+    if ids.len() > MAX_INPUT_TOKENS {
+        let last = ids[ids.len() - 1];
+        ids.truncate(MAX_INPUT_TOKENS - 1);
+        ids.push(last);
+    }
 }
 
 /// `findChunkCut`: just past the last separator found at or after half the

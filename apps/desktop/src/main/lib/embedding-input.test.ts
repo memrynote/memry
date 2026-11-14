@@ -6,7 +6,9 @@ import {
   MAX_INTERLEAVED_TEXT_LENGTH,
   MAX_EMBEDDING_CHUNKS,
   buildQueryEmbeddingInput,
-  MAX_EMBEDDING_INPUT_LENGTH
+  capEmbeddingTokens,
+  MAX_EMBEDDING_INPUT_LENGTH,
+  MAX_EMBEDDING_INPUT_TOKENS
 } from './embedding-input'
 
 describe('buildEmbeddingInput', () => {
@@ -124,5 +126,24 @@ describe('buildInterleavedInput', () => {
     expect(buildInterleavedInput('  hi ')).toBeNull()
     expect(buildInterleavedInput('')).toBeNull()
     expect(buildInterleavedInput(null)).toBeNull()
+  })
+})
+
+describe('capEmbeddingTokens', () => {
+  const ids = (count: number): number[] => Array.from({ length: count }, (_, i) => i)
+
+  it('leaves an input at or under the cap untouched', () => {
+    expect(capEmbeddingTokens(ids(5))).toEqual(ids(5))
+    expect(capEmbeddingTokens(ids(MAX_EMBEDDING_INPUT_TOKENS))).toEqual(
+      ids(MAX_EMBEDDING_INPUT_TOKENS)
+    )
+  })
+
+  it('keeps the head and the closing token of a longer input', () => {
+    const long = ids(MAX_EMBEDDING_INPUT_TOKENS * 3)
+    expect(capEmbeddingTokens(long)).toEqual([
+      ...ids(MAX_EMBEDDING_INPUT_TOKENS - 1),
+      long[long.length - 1]
+    ])
   })
 })

@@ -36594,7 +36594,8 @@ public func validateRecoveryPhrase(phrase: String)throws  -> String  {
 }
 /**
  * Runs every case of `embedding-input.json` and answers `{ cases: [{ name,
- * actual: { document, chunks } }], queries: [{ name, actual }] }`.
+ * actual: { document, chunks } }], queries: [{ name, actual }], tokens: [{
+ * name, actual }] }`.
  */
 public func embeddingInputConformance(vectorJson: String) -> String  {
     return try!  FfiConverterString.lift(try! rustCall() {
@@ -36876,7 +36877,7 @@ private let initializationResult: InitializationResult = {
     if (uniffi_memry_core_checksum_func_validate_recovery_phrase() != 42065) {
         return InitializationResult.apiChecksumMismatch
     }
-    if (uniffi_memry_core_checksum_func_embedding_input_conformance() != 55842) {
+    if (uniffi_memry_core_checksum_func_embedding_input_conformance() != 24851) {
         return InitializationResult.apiChecksumMismatch
     }
     if (uniffi_memry_core_checksum_func_inbox_conformance() != 10056) {
