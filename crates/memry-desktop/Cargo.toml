@@ -192,6 +192,10 @@ name = "extract_bench"
 path = "tests/extract_bench.rs"
 
 [[test]]
+name = "model_download_proxy"
+path = "tests/model_download_proxy.rs"
+
+[[test]]
 name = "sync_harness"
 path = "tests/sync_harness.rs"
 
