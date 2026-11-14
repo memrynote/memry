@@ -2,9 +2,10 @@
  * Class: embedding-input (`embedding-input.json`).
  *
  * Desktop's own shaping, imported for real: `buildEmbeddingInput` (document
- * task), `buildEmbeddingChunks` and `buildQueryEmbeddingInput` from
- * `apps/desktop/src/main/lib/embedding-input.ts`. Each case records the text
- * desktop feeds the model for a title and content, or for a query.
+ * task), `buildEmbeddingChunks`, `buildQueryEmbeddingInput` and
+ * `capEmbeddingTokens` from `apps/desktop/src/main/lib/embedding-input.ts`.
+ * Each case records the text desktop feeds the model for a title and content,
+ * or for a query, and each token case the ids it feeds for a tokenized input.
  *
  * Desktop cuts in UTF-16 code units, so a cut can split a surrogate pair. The
  * expected text goes through `toWellFormed()`, which turns each lone surrogate
@@ -235,6 +236,29 @@ const QUERY_CASES: readonly QueryCase[] = [
   }
 ]
 
+interface TokenCase {
+  readonly name: string
+  readonly pins: string
+  readonly ids: readonly number[]
+}
+
+/** `count` ids shaped like a tokenized input: BOS (2), content, EOS (1). */
+const tokenIds = (count: number): number[] => [
+  2,
+  ...Array.from({ length: count - 2 }, (_, i) => 10 + i),
+  1
+]
+
+const TOKEN_CASES: readonly TokenCase[] = [
+  { name: 'short', pins: 'an input under the cap is fed whole', ids: tokenIds(4) },
+  { name: 'at the cap', pins: '1536 tokens is fed whole', ids: tokenIds(1536) },
+  {
+    name: 'over the cap',
+    pins: 'the first 1535 tokens, then the last one (EOS)',
+    ids: tokenIds(1600)
+  }
+]
+
 const wellFormed = (text: string): string => text.toWellFormed()
 
 export function buildEmbeddingInput(): Record<string, unknown> {
@@ -246,7 +270,8 @@ export function buildEmbeddingInput(): Record<string, unknown> {
       inputVersion: shaping.EMBEDDING_INPUT_VERSION,
       maxInputUnits: shaping.MAX_EMBEDDING_INPUT_LENGTH,
       maxWindows: shaping.MAX_EMBEDDING_CHUNKS,
-      caseCount: NOTE_CASES.length + QUERY_CASES.length
+      maxInputTokens: shaping.MAX_EMBEDDING_INPUT_TOKENS,
+      caseCount: NOTE_CASES.length + QUERY_CASES.length + TOKEN_CASES.length
     },
     cases: NOTE_CASES.map((c) => {
       const document = shaping.buildEmbeddingInput(
@@ -266,6 +291,7 @@ export function buildEmbeddingInput(): Record<string, unknown> {
     queries: QUERY_CASES.map((c) => {
       const input = shaping.buildQueryEmbeddingInput(c.query)
       return { ...c, expected: input ? wellFormed(input) : null }
-    })
+    }),
+    tokens: TOKEN_CASES.map((c) => ({ ...c, expected: shaping.capEmbeddingTokens(c.ids) }))
   }
 }

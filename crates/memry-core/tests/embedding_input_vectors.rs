@@ -5,7 +5,9 @@
 mod support;
 
 use memry_core::api::embedding_input_conformance::embedding_input_conformance;
-use memry_core::domain::embedding_input::{EMBEDDING_INPUT_VERSION, MAX_INPUT_UNITS, MAX_WINDOWS};
+use memry_core::domain::embedding_input::{
+    EMBEDDING_INPUT_VERSION, MAX_INPUT_TOKENS, MAX_INPUT_UNITS, MAX_WINDOWS,
+};
 use serde_json::Value;
 use support::vector_file;
 
@@ -26,6 +28,10 @@ fn meta_matches_the_crate_constants() {
     );
     assert_eq!(meta["maxInputUnits"].as_u64(), Some(MAX_INPUT_UNITS as u64));
     assert_eq!(meta["maxWindows"].as_u64(), Some(MAX_WINDOWS as u64));
+    assert_eq!(
+        meta["maxInputTokens"].as_u64(),
+        Some(MAX_INPUT_TOKENS as u64)
+    );
 }
 
 #[test]
@@ -49,6 +55,21 @@ fn every_query_shapes_as_desktop_does() {
     let (file, out) = shaped();
     let expected = file["queries"].as_array().expect("queries");
     let actual = out["queries"].as_array().expect("results");
+    assert_eq!(expected.len(), actual.len());
+    for (want, got) in expected.iter().zip(actual) {
+        assert_eq!(
+            got["actual"], want["expected"],
+            "{}: {}",
+            want["name"], want["pins"]
+        );
+    }
+}
+
+#[test]
+fn every_tokenized_input_is_capped_as_desktop_caps_it() {
+    let (file, out) = shaped();
+    let expected = file["tokens"].as_array().expect("tokens");
+    let actual = out["tokens"].as_array().expect("results");
     assert_eq!(expected.len(), actual.len());
     for (want, got) in expected.iter().zip(actual) {
         assert_eq!(
