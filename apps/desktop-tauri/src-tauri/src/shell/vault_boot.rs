@@ -186,14 +186,10 @@ fn register_vault_watcher(app: &AppHandle<Wry>, session: &Session) {
 }
 
 /// The open's build or a `vault_reindex` ended: the notes it left marked are embedded now
-/// (Electron's `drainDeferredEmbeddings`, `vault/index.ts:996-1015`). Nothing while no
-/// embedding lane is registered.
+/// ([`memry_desktop::embedding::projector::drain_deferred`]).
 fn drain_deferred_embeddings(app: &AppHandle<Wry>, session: &Session) {
-    if app
-        .try_state::<Arc<NoteIndex>>()
-        .is_some_and(|index| index.indexing().is_none())
-    {
-        memry_desktop::embedding::projector::drain_deferred(session);
+    if let Some(index) = app.try_state::<Arc<NoteIndex>>() {
+        memry_desktop::embedding::projector::drain_deferred(session, &index);
     }
 }
 

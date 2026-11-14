@@ -8,8 +8,12 @@
 //! | with AI off a note is only marked; AI on embeds it     | `isAIEnabled`, `reconcileProjections`    |
 //! | AI turned off mid-pass stops the pass                  | `canContinue`                            |
 //! | while indexing a note is only marked; the drain embeds | `drainDeferredEmbeddings`                |
-//! | an edit landing mid-embed leaves the edit's vector     | `revisions`, mark before embed           |
-//! | a drain after close starts no model thread             | REVIEW-4548                              |
+//! | a reindex's end drains the notes it deferred           | `drainDeferredEmbeddings`                |
+//! | an edit landing mid-embed stops the stale store        | `revisions`, bumped at publish           |
+//! | an edit queued at close is owed and embedded on reopen | `markDirty` at publish, REVIEW-4548      |
+//! | a reconcile while indexing keeps every vector          | prune after the walk                     |
+//! | a rebuild while indexing loads nothing, clears nothing | prune after the walk                     |
+//! | a reconcile drops the vectors of a note gone           | `reconcile`'s prune                      |
 //! | a reopen with unchanged files embeds nothing           | `reconcile` owes nothing                 |
 
 #[allow(unused_imports)]
@@ -22,7 +26,7 @@ use std::fs;
 use std::hash::{Hash, Hasher};
 use std::sync::atomic::{AtomicBool, AtomicUsize, Ordering};
 use std::sync::mpsc::{self, Receiver, Sender};
-use std::sync::{Arc, Condvar, Mutex};
+use std::sync::{Arc, Condvar, Mutex, OnceLock, Weak};
 use std::time::{Duration, Instant};
 
 use memry_core::domain::embedding_input::EMBEDDING_INPUT_VERSION;
@@ -33,7 +37,8 @@ use memry_desktop::embedding::service::{
     EMBEDDING_DIMENSION, EmbeddingService, Engine, ModelLoader, ModelProgress, Timing,
 };
 use memry_desktop::notes::identity::NotesIdentity;
-use memry_desktop::session::projection::{ProjectionEvent, feed};
+use memry_desktop::notes::index::{IndexReport, NoteIndex};
+use memry_desktop::session::projection::{CancelToken, ProjectionEvent, Projector, feed};
 use memry_desktop::vault::consumer::Applied;
 use rusqlite::OptionalExtension;
 use vault_env::{Env, WAIT, env, indexed};
@@ -120,13 +125,36 @@ impl ModelLoader for Loader {
 struct Lane {
     e: Env,
     model: Arc<Model>,
+    service: Arc<EmbeddingService>,
+    projector: Arc<NoteEmbeddingProjector>,
+    index: Arc<NoteIndex>,
     ai: Arc<AtomicBool>,
+    /// Indexing as the projector sees it, on top of the note index's own.
     indexing: Arc<AtomicBool>,
 }
 
-/// A vault with the embedding lane registered as the app will, opened and indexed.
+/// A vault with the note index and the embedding lane registered as `vault_boot` registers
+/// them, opened and indexed.
 fn lane() -> Lane {
     let mut e = env(|store| Some(NotesIdentity::new(store)));
+    let built: Arc<OnceLock<Weak<NoteIndex>>> = Arc::default();
+    let index = {
+        let (built, session) = (built.clone(), e.session.clone());
+        NoteIndex::new(
+            e.tier.clone(),
+            move |report| {
+                if let (IndexReport::Indexing, Some(index)) =
+                    (report, built.get().and_then(Weak::upgrade))
+                {
+                    drain_deferred(&session, &index);
+                }
+            },
+            |_| {},
+            |_| {},
+        )
+    };
+    built.set(Arc::downgrade(&index)).unwrap();
+    index.register(&e.session);
     let model = Arc::new(Model::default());
     let service = EmbeddingService::new(
         Arc::new(Loader(model.clone())),
@@ -143,12 +171,17 @@ fn lane() -> Lane {
             Arc::new(move |_| ai.load(Ordering::SeqCst))
         },
         {
-            let indexing = indexing.clone();
-            Arc::new(move || indexing.load(Ordering::SeqCst))
+            let (indexing, index) = (indexing.clone(), Arc::downgrade(&index));
+            Arc::new(move || {
+                indexing.load(Ordering::SeqCst)
+                    || index
+                        .upgrade()
+                        .is_some_and(|index| index.indexing().is_some())
+            })
         },
         Arc::new(|_| {}),
     );
-    e.session.register_projector(projector);
+    e.session.register_projector(projector.clone());
     service.register(&e.session);
     feed::watch(&e.session, e.tier.subscribe()).unwrap();
     e.open();
@@ -157,6 +190,9 @@ fn lane() -> Lane {
     let l = Lane {
         e,
         model,
+        service,
+        projector,
+        index,
         ai,
         indexing,
     };
@@ -178,6 +214,30 @@ impl Lane {
             }
             other => panic!("{other:?}"),
         }
+    }
+
+    /// The note's event, published here and now as the feed publishes it.
+    fn publish(&self, note_id: &str) {
+        let note_id = note_id.to_owned();
+        feed::publish(
+            &self.e.session,
+            ProjectionEvent::NoteFileChanged { note_id },
+        );
+    }
+
+    /// Every `note_files` row gone from `data.db`, as a half-built index can leave it.
+    fn forget_note_files(&self) {
+        self.e
+            .core()
+            .db_handle()
+            .call_blocking(|conn| Ok(conn.execute("DELETE FROM note_files", []).unwrap()))
+            .unwrap();
+    }
+
+    fn reconcile(&self) {
+        let runtime = self.e.session.projections().expect("open");
+        runtime.reconcile_named(&PROJECTORS).unwrap();
+        self.settled();
     }
 
     fn query<T: Send + 'static>(
@@ -333,7 +393,7 @@ fn ai_turned_off_mid_pass_stops_embedding() {
     l.settled();
     let (gate, reached) = l.hold_next();
     l.indexing.store(false, Ordering::SeqCst);
-    drain_deferred(&l.e.session);
+    drain_deferred(&l.e.session, &l.index);
     reached
         .recv_timeout(WAIT)
         .expect("the pass reached the model");
@@ -358,63 +418,151 @@ fn while_indexing_a_note_is_only_marked_and_the_drain_embeds_it() {
     assert_eq!(l.embeds(), 0);
 
     l.indexing.store(false, Ordering::SeqCst);
-    drain_deferred(&l.e.session);
+    drain_deferred(&l.e.session, &l.index);
+    l.embedded(&id);
+}
+
+const EDITED: &str = "Alpha now holds an edited body instead.\n";
+
+#[test]
+fn a_reindex_end_drains_the_notes_it_deferred() {
+    let mut l = lane();
+    l.ai.store(false, Ordering::SeqCst);
+    let id = l.write("a.md", ALPHA);
+    l.marked(&id);
+    l.settled();
+    l.ai.store(true, Ordering::SeqCst);
+
+    l.index.reindex(|_| {}).unwrap();
     l.embedded(&id);
 }
 
 #[test]
-fn an_edit_landing_mid_embed_leaves_the_edits_vector() {
+fn an_edit_landing_mid_embed_stops_the_stale_store() {
     let mut l = lane();
-    let (gate, reached) = l.hold_next();
+    let (first, reached) = l.hold_next();
     let id = l.write("a.md", ALPHA);
     reached
         .recv_timeout(WAIT)
         .expect("the lane reached the model");
 
-    l.write("a.md", "Alpha now holds an edited body instead.\n");
-    gate.release();
+    l.write("a.md", EDITED);
+    l.publish(&id);
+    let (second, reached) = l.hold_next();
+    first.release();
+    reached
+        .recv_timeout(WAIT)
+        .expect("the next inference reached the model");
+    let next = l.model.embedded.lock().unwrap().last().cloned().unwrap();
+    assert!(
+        next.contains("edited body"),
+        "the stale embed went on: {next}"
+    );
+    assert!(l.head(&id).is_none(), "the stale body was stored");
+
+    second.release();
     l.until("the edit's vector", |l| {
         l.head_text(&id)
             .is_some_and(|text| text.contains("edited body"))
     });
     l.settled();
-    let head = l.head_text(&id).unwrap();
-    assert!(
-        head.contains("edited body"),
-        "the stale body was kept: {head}"
-    );
-    assert_eq!(l.state(&id).map(|(v, _)| v), Some(6));
+    assert!(l.head_text(&id).unwrap().contains("edited body"));
 }
 
 #[test]
-fn a_drain_after_close_starts_no_model_thread() {
+fn an_edit_queued_at_close_is_owed_and_embedded_after_reopen() {
     let mut l = lane();
+    let edited = l.write("b.md", BETA);
+    l.embedded(&edited);
+    l.settled();
     let (gate, reached) = l.hold_next();
-    l.write("a.md", ALPHA);
+    let held = l.write("a.md", ALPHA);
     reached
         .recv_timeout(WAIT)
         .expect("the lane reached the model");
-    let loads = l.model.loads.load(Ordering::SeqCst);
-    let queued: Vec<String> = [("b.md", BETA), ("c.md", GAMMA)]
+    let (embeds, loads) = (l.embeds(), l.model.loads.load(Ordering::SeqCst));
+
+    l.write("b.md", "Beta now holds an edited body instead.\n");
+    l.marked(&edited);
+    // The held embed resumes inside the close, after the token is set and while the lanes
+    // drain, so the drained edit reaches `project` too.
+    let release = gate.clone();
+    l.e.session
+        .on_close("release-held-embed", Arc::new(move |_| release.release()));
+    l.e.close();
+    assert_eq!(l.embeds(), embeds, "embedded during the close");
+    assert_eq!(l.model.loads.load(Ordering::SeqCst), loads);
+
+    l.e.open();
+    l.e.facts_until(indexed);
+    l.until("the edit's vector", |l| {
+        l.head_text(&edited)
+            .is_some_and(|text| text.contains("edited body"))
+    });
+    l.embedded(&held);
+}
+
+#[test]
+fn a_reconcile_while_indexing_keeps_every_vector() {
+    let mut l = lane();
+    let ids: Vec<String> = [("a.md", ALPHA), ("b.md", BETA)]
         .into_iter()
         .map(|(rel, text)| l.write(rel, text))
         .collect();
-    let runtime = l.e.session.projections().unwrap();
-    for note_id in queued {
-        runtime.publish(ProjectionEvent::NoteFileChanged { note_id });
+    for id in &ids {
+        l.embedded(id);
     }
-    drop(runtime);
+    l.settled();
 
-    l.e.close();
-    gate.release();
+    l.indexing.store(true, Ordering::SeqCst);
+    l.forget_note_files();
+    l.reconcile();
+    for id in &ids {
+        assert_eq!(l.state(id).map(|(v, _)| v), Some(6), "{id} lost its state");
+        assert!(l.head(id).is_some(), "{id} lost its vector");
+    }
+}
+
+#[test]
+fn a_rebuild_while_indexing_loads_no_model_and_clears_nothing() {
+    let mut l = lane();
+    let id = l.write("a.md", ALPHA);
+    l.embedded(&id);
+    l.settled();
+    l.service.stop();
+    l.until("the model unloaded", |l| !l.service.status().loaded);
+    let loads = l.model.loads.load(Ordering::SeqCst);
+    l.indexing.store(true, Ordering::SeqCst);
+
+    assert!(l.projector.rebuild(&CancelToken::default()).is_err());
     assert_eq!(
         l.model.loads.load(Ordering::SeqCst),
         loads,
-        "a model thread loaded after close"
+        "a model loaded"
     );
-    let embedded = l.model.embedded.lock().unwrap().clone();
-    assert_eq!(embedded.len(), 1, "embedded after close: {embedded:?}");
-    assert!(embedded[0].contains("Alpha"), "{embedded:?}");
+    assert_eq!(l.state(&id).map(|(v, _)| v), Some(6));
+
+    l.forget_note_files();
+    assert!(l.projector.rebuild(&CancelToken::default()).is_err());
+    assert_eq!(
+        l.state(&id).map(|(v, _)| v),
+        Some(6),
+        "the vectors were cleared"
+    );
+    assert!(l.head(&id).is_some());
+}
+
+#[test]
+fn a_reconcile_drops_the_vectors_of_a_note_gone() {
+    let mut l = lane();
+    let id = l.write("a.md", ALPHA);
+    l.embedded(&id);
+    l.settled();
+
+    l.forget_note_files();
+    l.reconcile();
+    assert_eq!(l.state(&id), None);
+    assert!(l.head(&id).is_none());
 }
 
 #[test]

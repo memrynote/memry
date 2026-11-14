@@ -24,6 +24,8 @@ use std::thread::JoinHandle;
 use std::time::{Duration, Instant};
 
 pub use bus::{DEFAULT_QUEUE_LIMIT, ProjectionBus};
+
+use super::OpenVault;
 pub use event::{
     EventKind, FileNoteProjection, MarkdownNoteProjection, NoteProjectionRecord, ProjectionEvent,
 };
@@ -55,6 +57,14 @@ pub trait Projector: Send + Sync + 'static {
     }
 
     fn handles(&self, event: &ProjectionEvent) -> bool;
+
+    /// Runs on the publisher's thread before the event is queued, outside the lane's turn,
+    /// with the vault the event belongs to, even once the runtime is stopping: what must
+    /// outlive the event being dropped (a close drains with its token set, then clears the
+    /// queue). Cheap: no model, no wait on the lane.
+    fn published(&self, _event: &ProjectionEvent, _open: &OpenVault) -> Result<(), String> {
+        Ok(())
+    }
 
     /// `cancel` is set once the session closes: an event the close drains must not start work
     /// that outlives the vault (a model load).
@@ -237,6 +247,19 @@ impl ProjectionRuntime {
 
     pub fn cancel_token(&self) -> CancelToken {
         self.cancel.clone()
+    }
+
+    /// [`Projector::published`] of each lane that handles the event, here and with `open`
+    /// (the vault this runtime serves), then [`Self::publish`].
+    pub fn publish_from(&self, open: &OpenVault, event: ProjectionEvent) {
+        for lane in &self.lanes {
+            if lane.projector.handles(&event)
+                && let Err(error) = lane.projector.published(&event, open)
+            {
+                tracing::error!(projector = lane.projector.name(), %error, "projection publish hook failed");
+            }
+        }
+        self.publish(event);
     }
 
     /// Queues the event on every lane. Refused (and logged) once the runtime is stopping:

@@ -3,8 +3,10 @@
 //! [`EmbeddingService`] and the core's note vector store ([`Search`]'s `*_note_embeddings`).
 //!
 //! - **What is owed lives in `index.db`.** An event marks its note dirty (input version `0`)
-//!   before anything else (`markDirty`, :188-203), so a note whose embed is skipped (AI off,
-//!   indexing, a failed load, a close) stays owed across restarts, and the reconcile finds it.
+//!   and bumps its revision when it is published ([`Projector::published`]), on the
+//!   publisher's thread and outside the lane (`markDirty`, :188-203). A note whose embed is
+//!   skipped (AI off, indexing, a failed load, an event a close drained or dropped) stays owed
+//!   across restarts, and the reconcile finds it.
 //! - **Deferred while indexing** (:376-378, 446-448): an event during the open's build or a
 //!   `vault_reindex` only marks its note; [`drain_deferred`] runs the reconcile once the index
 //!   stops indexing (`drainDeferredEmbeddings`, `vault/index.ts:996-1015`, and the build's tail,
@@ -12,7 +14,10 @@
 //! - **Gated before every inference** (`canContinue`, :216-218): the session's cancel token
 //!   (set when the vault closes, before its close hooks stop the model), the vault still being
 //!   the one the work started on, the AI setting, and no newer event on the note. An event the
-//!   close drains therefore embeds nothing and starts no model thread (REVIEW-4548).
+//!   close drains therefore embeds nothing and starts no model thread (REVIEW-4548). The last
+//!   check and the store are two steps: an edit published between them can have its dirty
+//!   mark overwritten by the older vector's store. The edit's queued event replaces that
+//!   vector, unless a close drops the event first.
 //! - **Markdown notes only.** File notes and the attachment text Electron appends
 //!   (`withAttachmentText`, :128-133) come with the extracted-text tables (Step 25, #3542).
 
@@ -28,6 +33,7 @@ use memry_core::domain::note_embeddings::EmbeddableNote;
 use memry_core::markdown::frontmatter::split_frontmatter_block;
 
 use super::service::EmbeddingService;
+use crate::notes::index::NoteIndex;
 use crate::session::projection::{CancelToken, ProjectionEvent, Projector};
 use crate::session::{OpenVault, Session};
 use crate::vault::note_file::read_note_lossy;
@@ -247,17 +253,18 @@ impl NoteEmbeddingProjector {
     }
 
     /// `note.text-extracted` for a markdown note and the tier's note writes (:400-425,
-    /// 436-456): mark it, then embed it unless the index is building.
+    /// 436-456): embed it, against the revision it has now, unless the index is building. It
+    /// was marked when it was published.
     fn note_changed(&self, work: &Work<'_>, note_id: &str) -> Result<(), String> {
-        let Some(note) = work.open.search.embeddable_note(note_id).map_err(text)? else {
-            return Ok(());
-        };
-        let revision = self.mark_dirty(work, note_id)?;
         if (self.indexing)() || !self.may_embed(work) {
             return Ok(());
         }
+        let revision = self.revision(note_id);
+        let Some(note) = work.open.search.embeddable_note(note_id).map_err(text)? else {
+            return Ok(());
+        };
         let content = self.content(work, &note)?;
-        self.update(work, &note, &content, Some(revision)).map(drop)
+        self.update(work, &note, &content, revision).map(drop)
     }
 }
 
@@ -280,18 +287,33 @@ impl Projector for NoteEmbeddingProjector {
         )
     }
 
+    /// `markDirty` and the revision bump, before the lane: an event a close drains or drops
+    /// leaves its note owed, and an embed in flight for the note stops before it stores.
+    fn published(&self, event: &ProjectionEvent, open: &OpenVault) -> Result<(), String> {
+        match event {
+            ProjectionEvent::NoteDeleted { note_id, .. } => {
+                self.bump(note_id);
+                Ok(())
+            }
+            ProjectionEvent::NoteFileChanged { note_id }
+            | ProjectionEvent::NoteTextExtracted { note_id } => {
+                self.bump(note_id);
+                open.search.mark_embedding_dirty(note_id).map_err(text)
+            }
+            _ => Ok(()),
+        }
+    }
+
     fn project(&self, event: &ProjectionEvent, cancel: &CancelToken) -> Result<(), String> {
         let Some(work) = self.work(cancel) else {
             return Ok(());
         };
         match event {
-            ProjectionEvent::NoteDeleted { note_id, .. } => {
-                self.bump(note_id);
-                work.open
-                    .search
-                    .delete_note_embedding(note_id)
-                    .map_err(text)
-            }
+            ProjectionEvent::NoteDeleted { note_id, .. } => work
+                .open
+                .search
+                .delete_note_embedding(note_id)
+                .map_err(text),
             ProjectionEvent::NoteFileChanged { note_id }
             | ProjectionEvent::NoteTextExtracted { note_id } => self.note_changed(&work, note_id),
             _ => Ok(()),
@@ -299,11 +321,15 @@ impl Projector for NoteEmbeddingProjector {
     }
 
     /// `runRebuild` (:285-358): every note owed, embedded again; old vectors stay until each
-    /// note's new ones replace them.
+    /// note's new ones replace them. Refused while the index builds: `note_files` may be
+    /// half filled, and the drain reconciles once it is done.
     fn rebuild(&self, cancel: &CancelToken) -> Result<(), String> {
         let Some(work) = self.work(cancel) else {
             return Ok(());
         };
+        if (self.indexing)() {
+            return Err("The index is building".into());
+        }
         if !(self.ai_enabled)(&work.open) {
             return Err("AI is disabled".into());
         }
@@ -334,15 +360,16 @@ impl Projector for NoteEmbeddingProjector {
 
     /// `reconcile` (:483-583): drop the vectors of gone notes, then embed the notes with no
     /// vector, an older input version or a dirty mark. Left to [`drain_deferred`] while the
-    /// index builds; a failed model load leaves the work owed.
+    /// index builds, the prune included: `note_files` may be half filled (Electron prunes after
+    /// the walk, `vault/index.ts:586-599`). A failed model load leaves the work owed.
     fn reconcile(&self, cancel: &CancelToken) -> Result<(), String> {
         let Some(work) = self.work(cancel) else {
             return Ok(());
         };
-        work.open.search.prune_note_embeddings().map_err(text)?;
         if (self.indexing)() || !self.may_embed(&work) {
             return Ok(());
         }
+        work.open.search.prune_note_embeddings().map_err(text)?;
         let owed = work.open.search.owed_note_embeddings().map_err(text)?;
         if owed.is_empty() {
             return Ok(());
@@ -372,11 +399,13 @@ impl Projector for NoteEmbeddingProjector {
     }
 }
 
-/// `drainDeferredEmbeddings`: the notes the index build deferred are embedded now, in the
-/// background. Call it when the open vault's index stops indexing. Nothing when no vault is
-/// open or no embedding lane runs.
-pub fn drain_deferred(session: &Session) {
-    if let Some(runtime) = session.projections()
+/// `drainDeferredEmbeddings` (`vault/index.ts:996-1015`): once `index` has stopped indexing,
+/// the notes its build or reindex deferred are embedded, in the background. Call it on each
+/// [`IndexReport::Indexing`](crate::notes::index::IndexReport::Indexing). Nothing while it
+/// still indexes, when no vault is open, or when no embedding lane runs.
+pub fn drain_deferred(session: &Session, index: &NoteIndex) {
+    if index.indexing().is_none()
+        && let Some(runtime) = session.projections()
         && let Err(error) = runtime.reconcile_named(&[NAME])
     {
         tracing::error!(%error, "deferred embedding drain did not start");
