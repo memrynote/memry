@@ -135,7 +135,7 @@ enum SettingsCopy {
     static let privacy = "Privacy"
     static let usageMetrics = "Share Anonymous Usage Metrics"
     static let handoff = "Handoff between devices"
-    static let privacyFooter = "This \(ThisDevice.noun). Handoff shares which note, day or task is open, never its text. Metrics never include note content, titles or tags."
+    static let privacyFooter = "This \(ThisDevice.noun). Off stops this \(ThisDevice.noun) offering the open note, day or task to your other devices; it still opens what they hand off. Handoff shares which item is open, never its text. Metrics never include note content, titles or tags."
 
     // Appearance
     static let colorMode = "Color Mode"
