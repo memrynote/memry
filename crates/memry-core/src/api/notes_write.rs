@@ -415,6 +415,25 @@ impl NotesWriter {
             .map_err(PropertyWriteError::from)
     }
 
+    /// Sets the note's `fullWidth` override, as desktop's page-menu toggle
+    /// does: always a boolean, never cleared, so `false` pins normal width
+    /// against a global Full setting. Every other property stays as it is.
+    pub fn set_full_width(&self, id: String, full_width: bool) -> Result<(), PropertyWriteError> {
+        let device_id = self.device_id.clone();
+        self.db
+            .call_blocking(move |conn| {
+                Ok(notes::set_full_width(
+                    conn,
+                    &id,
+                    full_width,
+                    &device_id,
+                    now_ms(),
+                ))
+            })
+            .map_err(PropertyWriteError::from)?
+            .map_err(PropertyWriteError::from)
+    }
+
     /// Renames one property on this note, keeping its value, as desktop's
     /// `properties:rename` does: the old key is dropped rather than left
     /// `null`, a missing `from` is `NotFound`, and a `to` the note already
