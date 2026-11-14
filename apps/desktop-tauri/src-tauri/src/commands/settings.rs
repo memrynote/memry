@@ -6,6 +6,8 @@
 use std::sync::Arc;
 
 use memry_desktop::ai::features::{self, AiSettings, AiSettingsPatch};
+use memry_desktop::embedding::PROJECTORS as EMBEDDING_PROJECTORS;
+use memry_desktop::embedding::service::EmbeddingService;
 use memry_desktop::fold::agent::FoldAgents;
 use memry_desktop::fold::service::FoldService;
 use memry_desktop::registry::AppConfig;
@@ -192,7 +194,9 @@ pub async fn settings_get_ai(app: AppHandle<Wry>) -> Result<AiSettings, CommandE
 /// `settings:setAISettings` (`writeAISettings`): writes the switches, forgets the fold's
 /// agent detection when a switch the fold reads changed (`refreshNoteFold`), and announces
 /// `ai` with the written fields, one `setting_changed` each. With no vault open it refuses with
-/// the localized "no vault is open"; an empty patch only announces.
+/// the localized "no vault is open"; an empty patch only announces. Turning AI on clears the
+/// embedding model's load backoff and, when it was off, starts a catch-up pass of the embedding
+/// projectors; turning it off stops the model (ai-settings.ts:72-74, :105-119).
 #[tauri::command]
 #[specta::specta]
 pub async fn settings_set_ai<R: Runtime>(
@@ -203,10 +207,23 @@ pub async fn settings_set_ai<R: Runtime>(
     let vault = open_vault(&app)?;
     let fields = patch.fields();
     let touches_fold = patch.touches_fold();
-    blocking("settings_set_ai", move || {
-        features::write(&service, Some(&vault), &patch).map_err(map_error)
+    let enabled = patch.enabled;
+    let was_enabled = blocking("settings_set_ai", move || {
+        let was_enabled = features::read(&service, Some(&vault))
+            .map_err(map_error)?
+            .enabled;
+        features::write(&service, Some(&vault), &patch).map_err(map_error)?;
+        Ok(was_enabled)
     })
     .await?;
+    let embedding = app
+        .try_state::<Arc<EmbeddingService>>()
+        .map(|service| service.inner().clone());
+    if enabled == Some(true)
+        && let Some(embedding) = &embedding
+    {
+        embedding.reset_failure();
+    }
     // `refreshNoteFold`: forget the agent detection, then every fetched note fetches again.
     if touches_fold {
         if let Some(agents) = app.try_state::<Arc<FoldAgents>>() {
@@ -227,6 +244,23 @@ pub async fn settings_set_ai<R: Runtime>(
         for field in &fields {
             setting_changed(&service, &format!("ai.{field}"));
         }
+    }
+    match (enabled, was_enabled) {
+        (Some(true), false) => {
+            let pass = app
+                .try_state::<Session>()
+                .and_then(|session| session.projections())
+                .map(|projections| projections.reconcile_named(&EMBEDDING_PROJECTORS));
+            if let Some(Err(error)) = pass {
+                tracing::error!(scope = "Settings", "AI embedding recovery failed: {error}");
+            }
+        }
+        (Some(false), true) => {
+            if let Some(embedding) = &embedding {
+                embedding.stop();
+            }
+        }
+        _ => {}
     }
     Ok(())
 }
