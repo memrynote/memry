@@ -126,6 +126,7 @@ final class JournalUITests: XCTestCase {
     /// leaves the day alone; ⌥⌘← / ⌥⌘→ change the day from inside it.
     func testArrowKeysInTheEditorMoveTheCaretNotTheDay() throws {
         try openJournal(today: Self.randomDay())
+        app.primeCommandKeys()
         let field = app.descendants(matching: .any)["journal.day.firstLine"].firstMatch
         for _ in 0 ..< 10 where !field.waitForExistence(timeout: 3) {
             app.buttons["journal.day.next"].firstMatch.tap()
