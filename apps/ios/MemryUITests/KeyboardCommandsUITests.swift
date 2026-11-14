@@ -150,16 +150,18 @@ final class KeyboardCommandsUITests: XCTestCase {
         try openVault()
         sidebarRow("Tasks").tap()
         let toggle = app.buttons["dayPanel.toggle"].firstMatch
-        guard toggle.waitForExistence(timeout: 5) else {
+        let panel = app.descendants(matching: .any)["dayPanel"]
+        guard toggle.waitForExistence(timeout: 5) || panel.exists else {
             throw XCTSkip("The window cannot hold the Day Panel: run on a 13\" iPad in landscape.")
         }
-        let panel = app.descendants(matching: .any)["dayPanel"]
         if panel.exists { app.typeKey("b", modifierFlags: [.shift, .command]) }
         XCTAssertTrue(panel.waitForNonExistence(timeout: 5))
+        XCTAssertTrue(toggle.waitForExistence(timeout: 5), "the closed panel has no toolbar button")
 
         app.typeKey("b", modifierFlags: [.shift, .command])
         XCTAssertTrue(panel.waitForExistence(timeout: 5), "⇧⌘B did not open the Day Panel")
-        XCTAssertEqual(toggle.label, "Hide Day Panel")
+        XCTAssertTrue(toggle.waitForNonExistence(timeout: 5), "the toolbar button stays beside the open panel")
+        XCTAssertTrue(app.buttons["dayPanel.hide"].firstMatch.exists, "the open panel has no hide button")
         let date = app.staticTexts["dayPanel.date"]
         XCTAssertEqual(date.label, "Today", "off the journal page the panel opens on today")
         attach("day-panel-tasks")
@@ -204,9 +206,48 @@ final class KeyboardCommandsUITests: XCTestCase {
         XCTAssertTrue(panel.waitForExistence(timeout: 5), "⇧⌘B did not open the panel beside the note")
         XCTAssertTrue(inspector.waitForNonExistence(timeout: 5), "opening the panel did not close the inspector")
 
-        app.typeKey("b", modifierFlags: [.shift, .command])
-        XCTAssertTrue(panel.waitForNonExistence(timeout: 5), "⇧⌘B did not close the Day Panel")
+        app.buttons["dayPanel.hide"].firstMatch.tap()
+        XCTAssertTrue(panel.waitForNonExistence(timeout: 5), "the panel's hide button did not close it")
+        XCTAssertTrue(toggle.waitForExistence(timeout: 5), "the closed panel's toolbar button did not come back")
         deleteNote(name)
+    }
+
+    /// #4380 (REVIEW-4681 M2): beside the open panel the Journal day keeps
+    /// More and Search in its bar, and the panel leaves day stepping to the
+    /// page. On the month level a day picked in the panel opens that day.
+    func testTheJournalKeepsItsToolbarBesideTheDayPanel() throws {
+        try openVault()
+        app.typeKey("t", modifierFlags: .command)
+        let day = app.descendants(matching: .any)["journal.day"]
+        XCTAssertTrue(day.waitForExistence(timeout: 10), "⌘T did not open the Journal on a day")
+        let panel = app.descendants(matching: .any)["dayPanel"]
+        guard panel.waitForExistence(timeout: 3) || app.buttons["dayPanel.toggle"].exists else {
+            throw XCTSkip("The window cannot hold the Day Panel: run on an iPad in landscape.")
+        }
+        if !panel.exists { app.buttons["dayPanel.toggle"].firstMatch.tap() }
+        XCTAssertTrue(panel.waitForExistence(timeout: 5))
+        Thread.sleep(forTimeInterval: 1)
+        XCTAssertTrue(app.buttons["journal.more"].firstMatch.isHittable, "More left the bar beside the panel")
+        XCTAssertTrue(app.buttons["search.open"].firstMatch.isHittable, "Search left the bar beside the panel")
+        XCTAssertFalse(app.buttons["OverflowBarButtonItem"].exists, "the bar folded into its overflow")
+        XCTAssertFalse(app.buttons["dayPanel.previous"].exists, "the panel repeats the page's day stepping")
+        attach("journal-day-beside-panel")
+
+        app.buttons["journal.day.titleMenu"].firstMatch.tap()
+        let month = app.descendants(matching: .any).matching(identifier: "journal.titleMenu.month").firstMatch
+        XCTAssertTrue(month.waitForExistence(timeout: 5), "the title menu has no Month")
+        month.tap()
+        XCTAssertTrue(app.descendants(matching: .any)["journal.month"].waitForExistence(timeout: 10), "the month did not open")
+        XCTAssertTrue(panel.waitForExistence(timeout: 5), "the panel left the month level")
+        // The mini month's day cells, by their spoken label ("Monday, October 26").
+        let days = panel.buttons.matching(NSPredicate(format: "label MATCHES '^[A-Z][a-z]+day, .*'"))
+        let cell = days.element(boundBy: 10)
+        XCTAssertTrue(cell.waitForExistence(timeout: 5), "the panel has no month to pick from")
+        let picked = cell.label
+        cell.tap()
+        XCTAssertTrue(day.waitForExistence(timeout: 10), "a day picked on the month level did not open")
+        XCTAssertTrue(days.matching(NSPredicate(format: "label == %@", picked)).firstMatch.wait(for: \.isSelected, toEqual: true, timeout: 5),
+                      "the panel does not follow the opened day")
     }
 
     // MARK: Helpers
