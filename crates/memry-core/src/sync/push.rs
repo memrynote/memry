@@ -135,7 +135,7 @@ pub struct PushReport {
 /// What [`PushCoordinator::build`] made of one queued row.
 enum Built {
     /// Read and opened, sealed with the rest of the batch.
-    Ready(PendingRecord),
+    Ready(Box<PendingRecord>),
     Retired(String),
     Held(String),
 }
@@ -242,7 +242,7 @@ impl PushCoordinator {
         let mut ready: Vec<(Collapsed, PendingRecord)> = Vec::with_capacity(items.len());
         for item in items {
             match self.build(&item).await? {
-                Built::Ready(pending) => ready.push((item, pending)),
+                Built::Ready(pending) => ready.push((item, *pending)),
                 // A sealed agent row that does not open waits: no key is
                 // installed, or a sealed key fails under the installed one
                 // (another key, an unknown envelope version, altered bytes).
@@ -371,7 +371,7 @@ impl PushCoordinator {
                 Err(error) => return Ok(Built::Held(format!("{HELD_REASON}: {error}"))),
             }
         }
-        Ok(Built::Ready(PendingRecord { operation, row }))
+        Ok(Built::Ready(Box::new(PendingRecord { operation, row })))
     }
 
     /// Seals a batch on `spawn_blocking`: encryption and signing over a page
