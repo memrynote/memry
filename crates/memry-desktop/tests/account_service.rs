@@ -407,7 +407,7 @@ async fn send_both(f: &Fixture, telemetry: &Service) -> Option<String> {
         source: IosBetaSource::Settings,
     };
     let url = "https://sync.test/ios-beta/join";
-    let joined = ios_beta::join(&*f.script, url, input, telemetry, bearer.as_deref()).await;
+    let joined = ios_beta::join(&*f.script, url, input, Some(telemetry), bearer.as_deref()).await;
     assert!(joined.success, "{joined:?}");
     let bearers = f.script.bearers.lock().unwrap();
     let [feedback, join] = &bearers[bearers.len() - 2..] else {

@@ -3,11 +3,49 @@
 //! The install id rides along only while telemetry is on, so a user who opted out is never
 //! linked to their email.
 
-use memry_core::seams::transport::Transport;
-use serde::{Deserialize, Serialize};
+use std::sync::LazyLock;
 
-use super::report::{looks_like_email, post_json};
+use memry_core::seams::transport::Transport;
+use regex::Regex;
+use serde::{Deserialize, Serialize};
+use serde_json::Value;
+
+use super::report::send_json;
 use super::service::Service;
+
+/// zod 4's `.email()` pattern, which `IosBetaJoinInputSchema` applies. The `regex` crate has no
+/// lookahead, so `is_schema_email` checks zod's `(?!\.)(?!.*\.\.)` by hand.
+static EMAIL: LazyLock<Regex> = LazyLock::new(|| {
+    Regex::new(r"^[A-Za-z0-9_'+\-.]*[A-Za-z0-9_+-]@([A-Za-z0-9][A-Za-z0-9\-]*\.)+[A-Za-z]{2,}$")
+        .expect("email pattern")
+});
+
+/// `z.string().trim().email().max(254)` on an already trimmed address.
+fn is_schema_email(email: &str) -> bool {
+    !email.starts_with('.')
+        && !email.contains("..")
+        && email.chars().count() <= 254
+        && EMAIL.is_match(email)
+}
+
+/// The message Electron's `syncFetch` (`apps/desktop/src/main/sync/http-client.ts`) throws for a
+/// non-2xx answer, which `joinIosBeta` hands to the renderer.
+fn refusal_message(status: u16, body: &[u8]) -> String {
+    if status == 429 {
+        return "Too many requests. Please try again later.".to_owned();
+    }
+    let Ok(body) = serde_json::from_slice::<Value>(body) else {
+        return format!("Server returned {status}");
+    };
+    fn text(v: Option<&Value>) -> Option<&str> {
+        v.and_then(Value::as_str).filter(|s| !s.is_empty())
+    }
+    let error = body.get("error");
+    text(error)
+        .or_else(|| text(error.and_then(|e| e.get("message"))))
+        .or_else(|| text(body.get("message")))
+        .map_or_else(|| format!("Server error ({status})"), str::to_owned)
+}
 
 /// Where in the app the user asked for the invite (`IOS_BETA_SOURCES`).
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize, specta::Type)]
@@ -55,18 +93,22 @@ impl IosBetaJoinResult {
 }
 
 /// Posts the join request to `url` (the server's `/ios-beta/join`), with the account's token when
-/// the user is signed in (`join-ios-beta.ts:32-33`).
+/// the user is signed in (`join-ios-beta.ts:32-33`). `telemetry` is `None` until its launch stage
+/// has run, and the join then fails.
 pub async fn join(
     transport: &dyn Transport,
     url: &str,
     input: IosBetaJoinInput,
-    telemetry: &Service,
+    telemetry: Option<&Service>,
     bearer: Option<&str>,
 ) -> IosBetaJoinResult {
     let email = input.email.trim();
-    if email.chars().count() > 254 || !looks_like_email(email) {
+    if !is_schema_email(email) {
         return IosBetaJoinResult::failed("INVALID_IOS_BETA_JOIN");
     }
+    let Some(telemetry) = telemetry else {
+        return IosBetaJoinResult::failed("TELEMETRY_NOT_INITIALIZED");
+    };
     let context = telemetry.context();
     let request = IosBetaJoinRequest {
         email,
@@ -79,14 +121,16 @@ pub async fn join(
         Ok(body) => body,
         Err(error) => return IosBetaJoinResult::failed(error.to_string()),
     };
-    match post_json(transport, url, body, bearer).await {
-        Ok(()) => IosBetaJoinResult {
-            success: true,
-            error: None,
-        },
-        Err(error) => {
-            tracing::error!(scope = "IosBeta", "iPhone beta join failed: {error}");
-            IosBetaJoinResult::failed(error)
+    let error = match send_json(transport, url, body, bearer).await {
+        Ok(response) if (200..300).contains(&response.status) => {
+            return IosBetaJoinResult {
+                success: true,
+                error: None,
+            };
         }
-    }
+        Ok(response) => refusal_message(response.status, &response.body),
+        Err(error) => error,
+    };
+    tracing::error!(scope = "IosBeta", "iPhone beta join failed: {error}");
+    IosBetaJoinResult::failed(error)
 }

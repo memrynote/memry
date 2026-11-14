@@ -35,6 +35,9 @@ mod api_notes_write;
 mod api_search;
 #[path = "api_search_cjk.rs"]
 mod api_search_cjk;
+#[cfg(feature = "markdown")]
+#[path = "api_search_file_text.rs"]
+mod api_search_file_text;
 #[path = "api_sync_declaration.rs"]
 mod api_sync_declaration;
 #[path = "api_sync_oversized_update.rs"]
@@ -286,6 +289,8 @@ mod journal_metadata;
 mod journal_reads;
 #[path = "journal_reminders.rs"]
 mod journal_reminders;
+#[path = "journal_same_day_reads.rs"]
+mod journal_same_day_reads;
 #[path = "journal_seed.rs"]
 mod journal_seed;
 #[path = "journal_settings.rs"]
@@ -382,6 +387,10 @@ mod portal_reads;
 mod portal_vectors;
 #[path = "projector_null_tolerance.rs"]
 mod projector_null_tolerance;
+// `note_properties` is desktop only (`markdown`).
+#[cfg(feature = "markdown")]
+#[path = "property_reads_load.rs"]
+mod property_reads_load;
 #[path = "push_crdt_update_cap.rs"]
 mod push_crdt_update_cap;
 #[path = "push_delete_wins.rs"]
