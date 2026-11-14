@@ -241,6 +241,27 @@ struct NoteMetadataViewModelTests {
         #expect(writer.all.isEmpty)
     }
 
+    /// #4680: every page on the note re-reads after a title lands, and only
+    /// then: an unchanged title or a failed write announces nothing.
+    @Test func only_a_landed_rename_announces_the_saved_title() async {
+        let id = "note-\(UUID().uuidString)"
+        var announced = 0
+        let observer = NotificationCenter.default.addObserver(
+            forName: NoteReadViewModel.titleSaved, object: id, queue: nil
+        ) { _ in announced += 1 }
+        defer { NotificationCenter.default.removeObserver(observer) }
+        let model = NoteMetadataViewModel(noteId: id, writer: ScriptedMetadataWriter())
+        let failing = NoteMetadataViewModel(
+            noteId: id, writer: ScriptedMetadataWriter(failure: StorageError.Failed(what: "x"))
+        )
+
+        await model.rename(to: "Same", current: "Same")
+        await failing.rename(to: "New", current: "Old")
+        #expect(announced == 0)
+        await model.rename(to: "New", current: "Old")
+        #expect(announced == 1)
+    }
+
     /// Clearing an icon is `nil`, which the core writes as an explicit null
     /// rather than removing the key (§13.4).
     @Test func the_icon_sets_and_clears() async {
@@ -600,15 +621,15 @@ struct NoteTagSuggestionsTests {
 @Suite("Typed property values reach the payload once, never over a Clear (#4616)")
 @MainActor
 struct NotePropertyDraftCommitsTests {
-    private func row() -> (NoteMetadataViewModel, ScriptedMetadataWriter, NotePropertyDraftCommits) {
+    private func row() -> (NoteMetadataViewModel, ScriptedMetadataWriter, DraftCommits) {
         let writer = ScriptedMetadataWriter()
-        return (NoteMetadataViewModel(noteId: "note-1", writer: writer), writer, NotePropertyDraftCommits())
+        return (NoteMetadataViewModel(noteId: "note-1", writer: writer), writer, DraftCommits())
     }
 
     /// What the row does when an edit ends: Return is `explicit`, a blur or
     /// the row going is not.
     private func end(
-        _ commits: inout NotePropertyDraftCommits, _ draft: String, _ model: NoteMetadataViewModel,
+        _ commits: inout DraftCommits, _ draft: String, _ model: NoteMetadataViewModel,
         explicit: Bool = false
     ) async {
         if let value = commits.take(draft, explicit: explicit) {

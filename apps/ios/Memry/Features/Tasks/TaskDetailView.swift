@@ -196,7 +196,7 @@ struct TaskDetailTitleField: View {
     static var font: Font { TypeRole(.documentTitle, weight: .bold).font }
 
     @State private var draft = ""
-    @State private var commits = TaskTitleCommits()
+    @State private var commits = DraftCommits()
     @FocusState private var focused: Bool
 
     var body: some View {
@@ -212,7 +212,7 @@ struct TaskDetailTitleField: View {
             .accessibilityIdentifier("tasks.detail.title")
             .onAppear { draft = task.title }
             .onChange(of: task.title) { _, title in
-                if !focused { draft = title }
+                draft = commits.follow(draft, stored: title)
             }
             .onChange(of: focused) { _, isFocused in
                 if isFocused { commits.begin(draft) } else { commit() }
@@ -230,8 +230,10 @@ struct TaskDetailTitleField: View {
 
     private func commit() {
         let current = store.items[task.id] ?? task
-        guard let text = commits.take(draft) else {
-            // Untouched: show a title a peer synced while the field had focus.
+        // A blank title is dropped: a task cannot be untitled.
+        guard let text = commits.take(draft, explicit: false) else {
+            // Untouched or blank: show the stored title, which a peer may
+            // have synced while the field had focus.
             draft = current.title
             return
         }
@@ -242,24 +244,6 @@ struct TaskDetailTitleField: View {
                 draft = store.items[task.id]?.title ?? task.title
             }
         }
-    }
-}
-
-/// Which title edits reach the store. Only text the user changed since focus
-/// came in is written: a draft left as it was must not overwrite a title a
-/// peer synced meanwhile. Focus leaving and the field going away at once
-/// commit one edit twice: the first take ends it, so one write.
-struct TaskTitleCommits {
-    private var focusedOn: String?
-
-    /// Focus came in on the field showing `draft`.
-    mutating func begin(_ draft: String) { focusedOn = draft }
-
-    /// The text to write, or `nil` when it was not changed since focus came in.
-    mutating func take(_ text: String) -> String? {
-        guard let base = focusedOn else { return nil }
-        focusedOn = nil
-        return text == base ? nil : text
     }
 }
 
