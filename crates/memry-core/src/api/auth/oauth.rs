@@ -16,11 +16,17 @@
 //! manager `verify_email_code` stores into. A shell that posted this itself
 //! would be a second protocol client the core cannot see.
 
+use std::fmt;
+use std::time::Duration;
+
 use base64::Engine as _;
 use base64::engine::general_purpose::STANDARD as BASE64_STANDARD;
+use tokio::time::Instant;
 
-use crate::api::errors::AuthError;
-use crate::protocol::auth::{AuthRoutes, NativeOAuthRequest, random_nonce};
+use crate::api::errors::{ApiError, AuthError};
+use crate::protocol::auth::{
+    AuthRoutes, NativeOAuthRequest, OAuthCallbackRequest, OAuthSignInResponse, random_nonce,
+};
 
 use super::{AuthEvent, AuthSession, AuthState, state_name};
 
@@ -76,15 +82,8 @@ impl AuthSession {
     /// between this call and the next, and the core neither opens nor sees it
     /// (research R14 forbids the Google iOS SDK).
     pub fn begin_provider_sign_in(&self, provider: AuthProvider) -> Result<AuthState, AuthError> {
-        let next = self.apply(
-            AuthEvent::ProviderSheetOpened {
-                provider: provider.slug().to_string(),
-            },
-            "open a provider sheet",
-        )?;
-        let mut pending = self.pending.lock().unwrap_or_else(|e| e.into_inner());
-        pending.session_nonce = Some(random_nonce());
-        Ok(next)
+        // A native sheet takes no browser callback.
+        self.open_provider_attempt(provider, None)
     }
 
     /// `AwaitingProviderToken -> SignedOut`. The sheet closed without a token.
@@ -110,6 +109,10 @@ impl AuthSession {
     /// caller bug rather than a no-op — unlike `restore`, which the process
     /// lifecycle drives rather than the user.
     pub fn abandon_provider_sign_in(&self) -> Result<AuthState, AuthError> {
+        // Held across the check and the edge, in the order
+        // `accept_provider_answer` takes the two locks, so an answer that is
+        // landing either wins before this looks or finds its attempt ended.
+        let mut pending = self.pending.lock().unwrap_or_else(|e| e.into_inner());
         let state = self.state_now();
         if !matches!(state, AuthState::AwaitingProviderToken { .. }) {
             return Err(AuthError::InvalidState {
@@ -117,13 +120,11 @@ impl AuthSession {
                 state: state_name(&state),
             });
         }
-        {
-            // The nonce belongs to the attempt that just ended. Leaving it in
-            // place would let a later registration present a nonce no setup
-            // token was signed over (chapter 02 §2.6).
-            let mut pending = self.pending.lock().unwrap_or_else(|e| e.into_inner());
-            pending.session_nonce = None;
-        }
+        // The nonce belongs to the attempt that just ended. Leaving it in
+        // place would let a later registration present a nonce no setup
+        // token was signed over (chapter 02 §2.6).
+        pending.session_nonce = None;
+        pending.web_callback = None;
         self.apply(AuthEvent::SignInFailed, "abandon a provider sign-in")
     }
 
@@ -167,32 +168,229 @@ impl AuthSession {
         let public = Self::signing_public_key(&secret)?;
         let request = NativeOAuthRequest {
             id_token,
-            session_nonce,
+            session_nonce: session_nonce.clone(),
             device_public_key: BASE64_STANDARD.encode(public),
         };
 
-        let response =
-            match AuthRoutes::sign_in_with_provider(&self.http, &provider, &request).await {
-                Ok(response) => response,
-                Err(error) => {
-                    self.apply(AuthEvent::SignInFailed, "fail a sign-in")?;
-                    return Err(error.into());
-                }
-            };
-
-        // §C.1 draws two edges out of `AwaitingProviderToken`, and a response
-        // with no setup token is not the one to `SetupPending` — the same rule
-        // `verify_email_code` applies to its own answer.
-        let Some(setup_token) = response.setup_token else {
-            self.apply(AuthEvent::SignInFailed, "fail a sign-in")?;
-            return Err(AuthError::NoSetupToken);
-        };
-        self.tokens.store_setup_token(&setup_token)?;
-        let state = self.apply(AuthEvent::SetupTokenIssued, "accept a setup token")?;
+        let answer = AuthRoutes::sign_in_with_provider(&self.http, &provider, &request).await;
+        let (state, response) = self.accept_provider_answer(answer, &session_nonce)?;
         Ok(ProviderSignInOutcome {
             state,
             is_new_user: response.is_new_user.unwrap_or(false),
             needs_setup: response.needs_setup.unwrap_or(false),
         })
+    }
+}
+
+/// How long a web attempt waits for its callback, Electron's
+/// `OAUTH_SESSION_TIMEOUT_MS` (`ipc/auth-oauth-state.ts:14`).
+const WEB_ATTEMPT_TTL: Duration = Duration::from_secs(10 * 60);
+
+/// The browser callback one web attempt waits for: the `state` the server
+/// signed into the authorization URL, the loopback redirect it was signed
+/// for, and when the attempt opened.
+#[derive(Clone)]
+pub(super) struct ExpectedCallback {
+    state: String,
+    redirect_uri: String,
+    opened_at: Instant,
+}
+
+impl fmt::Debug for ExpectedCallback {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        f.debug_struct("ExpectedCallback")
+            .field("state", &"<redacted>")
+            .field("redirect_uri", &self.redirect_uri)
+            .field("opened_at", &self.opened_at)
+            .finish()
+    }
+}
+
+/// What the browser callback answered: [`ProviderSignInOutcome`] plus
+/// `knownDevice`, which decides whether the recovery phrase is asked for
+/// (`apps/desktop/src/main/ipc/auth-oauth-handlers.ts:265`). Absent flags read
+/// as `false`, `knownDevice` included (chapter 02: servers before the field
+/// omit it).
+///
+/// Rust-only, as the two methods that produce it: desktop is the one shell with
+/// a loopback redirect, and iOS uses the native route (chapter 02 §2.13).
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct WebSignInOutcome {
+    pub state: AuthState,
+    pub is_new_user: bool,
+    pub needs_setup: bool,
+    pub known_device: bool,
+}
+
+impl AuthSession {
+    /// `SignedOut -> AwaitingProviderToken` for a browser sign-in, recording the
+    /// callback the attempt waits for.
+    ///
+    /// The shell calls it once the server has answered the authorization
+    /// request (`GET /auth/oauth/:provider?redirect_uri=`) with the provider
+    /// URL, whose `state` it passes here with the loopback `redirect_uri` it
+    /// asked for — Electron's `oauthSessions.set(state, …)`
+    /// (`ipc/auth-oauth-handlers.ts:147-154`). Mints the §2.6 nonce as
+    /// [`Self::begin_provider_sign_in`] does. Makes no request. An empty
+    /// `state` or `redirect_uri` opens nothing.
+    pub fn begin_provider_web_sign_in(
+        &self,
+        provider: AuthProvider,
+        state: String,
+        redirect_uri: String,
+    ) -> Result<AuthState, AuthError> {
+        if state.is_empty() || redirect_uri.is_empty() {
+            return Err(AuthError::InvalidState {
+                action: "open a web sign-in without a state or redirect".to_string(),
+                state: state_name(&self.state_now()),
+            });
+        }
+        self.open_provider_attempt(
+            provider,
+            Some(ExpectedCallback {
+                state,
+                redirect_uri,
+                opened_at: Instant::now(),
+            }),
+        )
+    }
+
+    /// `SignedOut -> AwaitingProviderToken` with a fresh §2.6 nonce and the
+    /// callback the attempt waits for, all under the pending lock, taken before
+    /// the state lock as on every edge out of an attempt.
+    fn open_provider_attempt(
+        &self,
+        provider: AuthProvider,
+        web_callback: Option<ExpectedCallback>,
+    ) -> Result<AuthState, AuthError> {
+        let mut pending = self.pending.lock().unwrap_or_else(|e| e.into_inner());
+        let next = self.apply(
+            AuthEvent::ProviderSheetOpened {
+                provider: provider.slug().to_string(),
+            },
+            "open a provider sheet",
+        )?;
+        pending.session_nonce = Some(random_nonce());
+        pending.web_callback = web_callback;
+        Ok(next)
+    }
+
+    /// `AwaitingProviderToken -> SetupPending`, or `-> SignedOut` when the
+    /// server refuses the code: the browser callback's `code` exchanged with
+    /// this attempt's nonce and device key.
+    ///
+    /// **Once, and only for the attempt's own `state`.** A `state` this attempt
+    /// did not open is refused before any request and leaves the attempt
+    /// waiting, so a forged callback cannot cancel the user's sign-in; the
+    /// matching callback spends the expectation before it posts, so a second
+    /// delivery — concurrent, after success, or after a refusal — is refused
+    /// without a request. Electron's `consumeOAuthSession`
+    /// (`ipc/auth-oauth-state.ts:27-38`) has the same rule. The server checks
+    /// the `state` signature and its five-minute expiry
+    /// (`apps/sync-server/src/routes/auth.ts:172-207`) but keeps no record of
+    /// spent states, so the single use is the client's to enforce. A callback
+    /// more than ten minutes after the attempt opened is refused and spent, as
+    /// Electron's is.
+    pub async fn complete_provider_web_callback(
+        &self,
+        code: String,
+        state: String,
+    ) -> Result<WebSignInOutcome, AuthError> {
+        let current = self.state_now();
+        let AuthState::AwaitingProviderToken { provider } = &current else {
+            return Err(AuthError::InvalidState {
+                action: "complete a provider callback".to_string(),
+                state: state_name(&current),
+            });
+        };
+        let provider = provider.clone();
+        // Read before the expectation is spent, so a locked store leaves the
+        // attempt intact for a retry.
+        let secret = self.signing_secret_key()?;
+        let public = Self::signing_public_key(&secret)?;
+
+        let refused = |action: &str| AuthError::InvalidState {
+            action: action.to_string(),
+            state: state_name(&current),
+        };
+        let (expected, session_nonce) = {
+            let mut pending = self.pending.lock().unwrap_or_else(|e| e.into_inner());
+            let Some(session_nonce) = pending.session_nonce.clone() else {
+                return Err(refused("complete a provider callback that minted no nonce"));
+            };
+            match pending.web_callback.take() {
+                Some(expected) if expected.state == state => {
+                    if expected.opened_at.elapsed() > WEB_ATTEMPT_TTL {
+                        return Err(refused(
+                            "complete a provider callback whose attempt expired",
+                        ));
+                    }
+                    (expected, session_nonce)
+                }
+                other => {
+                    pending.web_callback = other;
+                    return Err(refused(
+                        "complete a provider callback this attempt is not waiting for",
+                    ));
+                }
+            }
+        };
+
+        let request = OAuthCallbackRequest {
+            code,
+            state: expected.state,
+            redirect_uri: expected.redirect_uri,
+            session_nonce: session_nonce.clone(),
+            device_public_key: BASE64_STANDARD.encode(public),
+        };
+        let answer = AuthRoutes::sign_in_with_web_callback(&self.http, &provider, &request).await;
+        let (state, response) = self.accept_provider_answer(answer, &session_nonce)?;
+        Ok(WebSignInOutcome {
+            state,
+            is_new_user: response.is_new_user.unwrap_or(false),
+            needs_setup: response.needs_setup.unwrap_or(false),
+            known_device: response.known_device.unwrap_or(false),
+        })
+    }
+
+    /// The one way out of `AwaitingProviderToken` for both provider routes: a
+    /// setup token moves to `SetupPending`, anything else takes the failure
+    /// edge. §C.1 draws two edges out of the state, and a response with no
+    /// setup token is not the one to `SetupPending` — the same rule
+    /// `verify_email_code` applies to its own answer.
+    ///
+    /// **Only for the attempt that asked.** `session_nonce` is the attempt's
+    /// identity: every begin mints a new one, and abandon and sign-out clear
+    /// it. An answer that lands after its attempt ended — the user cancelled
+    /// while the browser delivered the code — is refused without storing its
+    /// token or moving the machine, since that token is signed over a nonce no
+    /// registration will present (§2.6). The pending lock is held to the end,
+    /// so an abandon cannot slip between the check and the edge.
+    fn accept_provider_answer(
+        &self,
+        answer: Result<OAuthSignInResponse, ApiError>,
+        session_nonce: &str,
+    ) -> Result<(AuthState, OAuthSignInResponse), AuthError> {
+        let pending = self.pending.lock().unwrap_or_else(|e| e.into_inner());
+        if pending.session_nonce.as_deref() != Some(session_nonce) {
+            return Err(AuthError::InvalidState {
+                action: "accept a provider answer for an attempt that ended".to_string(),
+                state: state_name(&self.state_now()),
+            });
+        }
+        let response = match answer {
+            Ok(response) => response,
+            Err(error) => {
+                self.apply(AuthEvent::SignInFailed, "fail a sign-in")?;
+                return Err(error.into());
+            }
+        };
+        let Some(setup_token) = response.setup_token.as_deref() else {
+            self.apply(AuthEvent::SignInFailed, "fail a sign-in")?;
+            return Err(AuthError::NoSetupToken);
+        };
+        self.tokens.store_setup_token(setup_token)?;
+        let state = self.apply(AuthEvent::SetupTokenIssued, "accept a setup token")?;
+        Ok((state, response))
     }
 }
