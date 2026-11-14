@@ -109,11 +109,11 @@ struct TaskListScreen: View {
     }
 
     /// The Undo toast, and the "+" beside it when nothing else owns the
-    /// bottom of the screen.
+    /// bottom of the screen. The split view's "+" is in the toolbar (D4).
     private var bottomOverlay: some View {
         HStack(alignment: .center, spacing: Tokens.Space.medium) {
             TasksToast(store: store)
-            if composer == nil, !isSelecting {
+            if composer == nil, !isSelecting, !router.tasksSplit {
                 FloatingAddButton(
                     label: TasksCopy.addTask,
                     hint: TasksCopy.addButtonHint,
@@ -148,6 +148,11 @@ struct TaskListScreen: View {
             ToolbarItemGroup(placement: .topBarTrailing) {
                 filterButton
                 TaskListMoreMenu(store: store) { editMode = .active }
+            }
+            if router.tasksSplit {
+                ToolbarItem(placement: .topBarTrailing) {
+                    TaskAddToolbarButton { composer = TaskComposerRequest(projectId: store.state.projectId) }
+                }
             }
             GlobalSearchToolbarItem()
         }

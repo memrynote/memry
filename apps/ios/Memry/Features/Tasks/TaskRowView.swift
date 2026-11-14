@@ -47,7 +47,7 @@ struct TaskRowView: View {
             if let selection {
                 content.contentShape(.rect).onTapGesture(perform: selection.toggle)
             } else {
-                NavigationLink(value: TasksRoute.task(task.id)) { content }
+                TaskOpenLink(id: task.id) { content }
                     .navigationLinkIndicatorVisibility(.hidden)
                 if pushesBranch { TaskBranchChip(task: task, store: store) }
             }
@@ -64,7 +64,7 @@ struct TaskRowView: View {
         .modifier(TaskRowActions(task: task, store: store, complete: toggleComplete))
         .accessibilityElement(children: .ignore)
         .accessibilityLabel(store.rowAccessibilityLabel(task))
-        .accessibilityAddTraits(selection?.isSelected == true ? [.isButton, .isSelected] : .isButton)
+        .accessibilityAddTraits(selection?.isSelected == true || isOpen ? [.isButton, .isSelected] : .isButton)
         .accessibilityAction {
             if let selection { selection.toggle() } else { router?.open(.task(task.id)) }
         }
@@ -84,6 +84,11 @@ struct TaskRowView: View {
             router?.open(.branch(task.id))
         })
         .accessibilityIdentifier("tasks.row.\(task.id)")
+    }
+
+    /// The split view's detail column shows this task.
+    private var isOpen: Bool {
+        selection == nil && router?.tasksSplit == true && router?.detailTask == task.id
     }
 
     /// Children the list does not draw: the chip pushes them instead.

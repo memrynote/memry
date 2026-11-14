@@ -134,7 +134,8 @@ enum SettingsCopy {
     static let checkSpelling = "Check spelling"
     static let privacy = "Privacy"
     static let usageMetrics = "Share Anonymous Usage Metrics"
-    static let privacyFooter = "This \(ThisDevice.noun). Metrics never include note content, titles or tags."
+    static let handoff = "Handoff between devices"
+    static let privacyFooter = "This \(ThisDevice.noun). Handoff shares which note, day or task is open, never its text. Metrics never include note content, titles or tags."
 
     // Appearance
     static let colorMode = "Color Mode"

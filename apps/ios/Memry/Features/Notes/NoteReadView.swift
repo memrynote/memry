@@ -392,5 +392,6 @@ struct NoteReadView: View {
             await model.loadIfNeeded()
             await model.refreshFromRemote()
         }
+        .handoff(.note(model.route.id))
     }
 }

@@ -65,6 +65,10 @@
 	<string>Memry uses the camera to scan the QR code that links this device to your vault, and to take photos you capture to your inbox.</string>
 	<key>NSMicrophoneUsageDescription</key>
 	<string>Memry records the voice memos you capture to your inbox.</string>
+	<key>NSUserActivityTypes</key>
+	<array>
+		<string>com.memrynote.app.open-item</string>
+	</array>
 	<key>NSSpeechRecognitionUsageDescription</key>
 	<string>Memry turns your voice memos into text on this device. The audio never leaves your device for this.</string>
 	<key>UIApplicationSceneManifest</key>
