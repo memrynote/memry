@@ -146,7 +146,6 @@ struct VaultTabsView<Notes: View, Tasks: View, Journal: View, More: View>: View 
         .onChange(of: width) {
             showsMenu = false
             showsSearch = false
-            commandPalette = nil
         }
         // Settings is a split view in the sidebar's width (#4348).
         .onChange(of: width, initial: true) { _, width in router.setSettingsSplit(width == .regular) }
@@ -276,11 +275,7 @@ struct VaultTabsView<Notes: View, Tasks: View, Journal: View, More: View>: View 
             newNote: newNote,
             quickCapture: quickCapture,
             search: openSearch,
-            commandPalette: { commands in
-                withTransaction(\.disablesAnimations, width == .regular) {
-                    commandPalette = CommandPaletteRequest(commands: commands)
-                }
-            }
+            commandPalette: { $commandPalette.open($0, width: width) }
         )
     }
 

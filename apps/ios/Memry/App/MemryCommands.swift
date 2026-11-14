@@ -8,8 +8,9 @@ import UIKit
 // `packages/contracts/src/commands/`; iPad additions and substitutes for keys
 // iPadOS reserves follow epic #4334's keyboard decisions.
 //
-// **One registry (#4379).** A command's id, title and key live here, and its
-// `can` and `run` on `VaultCommands`. The menu bar and the ⌘P palette
+// **One registry (#4379).** A command's id, titles and key live here, and its
+// `can` and `run` on `VaultCommands`. It has two titles: the menu bar's short
+// iOS name (`title`) and the catalog's name the palette shows (`paletteTitle`). The menu bar and the ⌘P palette
 // (`CommandPalette`) both list these, so a command is defined once.
 //
 // A command fires only while nothing is presented over the window: a sheet,
@@ -73,8 +74,20 @@ enum AppCommand: Hashable {
         }
     }
 
-    /// The catalog's name. A page's is `VaultCommands.title(_:)`.
+    /// The menu bar's short name. A page's is `VaultCommands.title(_:)`.
     var title: String {
+        switch self {
+        case .settings: CommandCopy.Menu.settings
+        case .today: CommandCopy.Menu.today
+        case .previousDay: CommandCopy.Menu.previousDay
+        case .nextDay: CommandCopy.Menu.nextDay
+        default: paletteTitle
+        }
+    }
+
+    /// The catalog's name, which the palette shows and matches. A page's is
+    /// `VaultCommands.paletteTitle(_:)`.
+    var paletteTitle: String {
         switch self {
         case .newNote: CommandCopy.newNote
         case .quickCapture: QuickCaptureCopy.commandTitle
@@ -117,6 +130,15 @@ enum CommandCopy {
     static let nextDay = "Next Journal Period"
     /// `go.*`: "Go to Home", "Go to Inbox", …
     static func goTo(_ page: String) -> String { "Go to \(page)" }
+
+    /// The menu bar's short iOS names where they differ from the catalog's.
+    /// A page's is the page's own title.
+    enum Menu {
+        static let settings = "Settings…"
+        static let today = "Today"
+        static let previousDay = "Previous Day"
+        static let nextDay = "Next Day"
+    }
 
     // common.json › commandsPalette
     static let paletteTitle = "Commands"

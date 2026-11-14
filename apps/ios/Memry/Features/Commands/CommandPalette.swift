@@ -17,9 +17,20 @@ struct CommandPaletteRequest: Identifiable {
     let commands: VaultCommands
 }
 
+extension Binding<CommandPaletteRequest?> {
+    /// Opens the palette over `commands`: in place at regular width, as
+    /// desktop's, and sliding up as a sheet at compact width.
+    func open(_ commands: VaultCommands, width: LayoutWidth) {
+        withTransaction(\.disablesAnimations, width == .regular) {
+            wrappedValue = CommandPaletteRequest(commands: commands)
+        }
+    }
+}
+
 extension View {
     /// Shows `request`'s palette the way `width` shows it, and runs the chosen
-    /// command once it has closed.
+    /// command once it has closed. A width change closes it rather than swap
+    /// the palette for the sheet mid-query.
     func commandPalette(_ request: Binding<CommandPaletteRequest?>, width: LayoutWidth) -> some View {
         modifier(CommandPalettePresenter(request: request, width: width))
     }
@@ -41,6 +52,7 @@ private struct CommandPalettePresenter: ViewModifier {
                 palette(request, .palette)
                     .presentationBackground(.clear)
             }
+            .onChange(of: width) { request = nil }
     }
 
     private func shown(_ shown: LayoutWidth) -> Binding<CommandPaletteRequest?> {
@@ -134,7 +146,7 @@ struct CommandPalette: View {
     private func row(_ command: AppCommand) -> some View {
         Button { run(command) } label: {
             HStack {
-                Text(commands.title(command))
+                Text(commands.paletteTitle(command))
                     .foregroundStyle(Tokens.Text.primary.color)
                 Spacer()
                 Text(command.shortcut.symbols)

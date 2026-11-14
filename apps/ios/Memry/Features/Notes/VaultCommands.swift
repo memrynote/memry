@@ -45,10 +45,16 @@ struct VaultCommands {
         return command.id
     }
 
-    /// A page command's catalog name, "Go to <page>", or the command's own.
+    /// A page command's menu name, the page's own, or the command's.
     func title(_ command: AppCommand) -> String {
-        if case let .page(number) = command, let page = page(number) { return CommandCopy.goTo(page.title) }
+        if case let .page(number) = command, let page = page(number) { return page.title }
         return command.title
+    }
+
+    /// A page command's catalog name, "Go to <page>", or the command's own.
+    func paletteTitle(_ command: AppCommand) -> String {
+        if case let .page(number) = command, let page = page(number) { return CommandCopy.goTo(page.title) }
+        return command.paletteTitle
     }
 
     /// The palette's rows for `query`: every menu command that can run now
@@ -59,7 +65,7 @@ struct VaultCommands {
         return menuCommands.enumerated()
             .filter { $0.element != .commandPalette && can($0.element) }
             .map { index, command in
-                let score = needle.isEmpty ? 1 : CommandMatch.score(title(command), needle)
+                let score = needle.isEmpty ? 1 : CommandMatch.score(paletteTitle(command), needle)
                 return (command, score, command.context == .app ? 0 : 1, -index)
             }
             .filter { $0.1 > 0 }

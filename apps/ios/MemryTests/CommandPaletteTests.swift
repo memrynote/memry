@@ -42,7 +42,40 @@ struct CommandPaletteTests {
         let ids = commands.menuCommands.map(commands.id)
         #expect(Set(ids).count == ids.count)
         #expect(commands.id(.page(1)) == "go.home")
-        #expect(commands.title(.page(1)) == "Go to Home")
+    }
+
+    /// Kaan's call on #4666: the menu bar keeps iOS's short names, the palette
+    /// shows and matches the catalog's.
+    @Test func the_menu_bar_shows_short_names_and_the_palette_the_catalogs() {
+        let commands = commands()
+        let menu = [AppCommand.newNote, .newTask, .settings, .today, .previousDay, .nextDay, .page(1), .page(2)]
+        #expect(menu.map(commands.title) == [
+            "New Note", "New Task", "Settings…", "Today", "Previous Day", "Next Day", "Home", "Inbox",
+        ])
+        #expect(menu.map(commands.paletteTitle) == [
+            "New Note", "New Task", "Open Settings", "Go to Today's Journal",
+            "Previous Journal Period", "Next Journal Period", "Go to Home", "Go to Inbox",
+        ])
+        #expect(commands.paletteCommands(matching: "open settings") == [.settings])
+    }
+
+    /// L4: the palette lists `fixed`, so a command missing from it would be
+    /// in the menu bar but not the palette.
+    @Test func every_command_but_the_pages_is_in_fixed() {
+        let all: [AppCommand] = [
+            .newNote, .quickCapture, .newTask, .search, .commandPalette, .settings, .today, .previousDay, .nextDay,
+        ]
+        for command in all {
+            // Exhaustive: a new case does not compile until it is listed above.
+            switch command {
+            case .newNote, .quickCapture, .newTask, .search, .commandPalette, .settings, .today, .previousDay,
+                 .nextDay, .page: break
+            }
+        }
+        let menuBar = AppCommand.newItem + [.settings] + AppCommand.find + AppCommand.journal
+        #expect(Set(all) == Set(AppCommand.fixed))
+        #expect(Set(menuBar) == Set(AppCommand.fixed))
+        #expect(AppCommand.fixed.count == Set(AppCommand.fixed).count)
     }
 
     @Test func a_query_narrows_to_matches_best_first() {
