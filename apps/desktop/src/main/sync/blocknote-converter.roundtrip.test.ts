@@ -17,6 +17,11 @@ import {
   ROUNDTRIP_CASES,
   createSeededRandom
 } from '@memry/editor-schema/conformance'
+import {
+  MENTION_TOKEN_REGEX,
+  parseLinkMentionToken,
+  serializeLinkMentionToken
+} from '@memry/editor-schema/inline'
 import { writeMarkdownSourceToYDoc } from '@memry/shared/markdown-source'
 import { markdownToYFragment, yDocToMarkdown, yFragmentToBlocks } from './blocknote-converter'
 import { parseNote } from '../vault/frontmatter'
@@ -136,13 +141,31 @@ describe('golden vault round-trip fixtures, main pipeline', () => {
     expect(fixtures.length).toBeGreaterThanOrEqual(4)
   })
 
-  it.each(fixtures)('%s body survives the converter round-trip byte-identical', async (name) => {
+  // The fixtures hold link mention tokens older builds wrote, `_` raw. The seed
+  // promotes them (#4478) and house style writes them in the closed alphabet;
+  // every other byte comes back as it was.
+  const withMentionsReencoded = (markdown: string): string =>
+    markdown.replace(MENTION_TOKEN_REGEX, (token, payload: string) => {
+      const url = parseLinkMentionToken(payload)
+      return url ? serializeLinkMentionToken(url) : token
+    })
+
+  const fixtureBody = (name: string): string => {
     const filePath = path.join(fixturesDir, name)
     const raw = readFileSync(filePath, 'utf-8')
-    const markdown = parseNote(raw, filePath).content.replace(/^\n+/, '').replace(/\n$/, '')
+    return parseNote(raw, filePath).content.replace(/^\n+/, '').replace(/\n$/, '')
+  }
+
+  it.each(fixtures)('%s body survives the converter round-trip byte-identical', async (name) => {
+    const markdown = fixtureBody(name)
     const once = await roundTrip(markdown)
-    expect(once, 'round-trip is identity').toBe(markdown)
+    expect(once, 'round-trip is identity').toBe(withMentionsReencoded(markdown))
     expect(await roundTrip(once), 'second round-trip changes nothing').toBe(once)
+  })
+
+  it.each(fixtures)('%s body comes back byte-identical beside its source record', async (name) => {
+    const markdown = fixtureBody(name)
+    expect(await roundTripPreservingSource(markdown)).toBe(markdown)
   })
 })
 

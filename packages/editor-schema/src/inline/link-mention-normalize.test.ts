@@ -109,23 +109,6 @@ describe('normalizeLinkMentions', () => {
     expect((out[0] as any).children[0].content[0].type).toBe('linkMention')
   })
 
-  it('leaves a token an older build wrote as text when asked to stay byte-neutral', () => {
-    const legacy = '((mention:https%3A%2F%2Fx.test%2Fa_b))'
-    const blocks = [
-      {
-        type: 'paragraph',
-        props: {},
-        content: [{ type: 'text', text: `${legacy} and ${token}`, styles: {} }],
-        children: []
-      }
-    ] as unknown as Block[]
-
-    const { blocks: out } = normalizeLinkMentions(blocks, { byteNeutralOnly: true })
-
-    expect((out[0] as any).content.map((run: any) => run.type)).toEqual(['text', 'linkMention'])
-    expect((out[0] as any).content[0].text).toBe(`${legacy} and `)
-  })
-
   it('is a no-op when no token is present', () => {
     const blocks = [
       {

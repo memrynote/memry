@@ -80,14 +80,38 @@ opened from a template on the phone, and neither write closes it.
 **Normative, and a client MUST NOT assume otherwise.** Desktop does more than BlockNote's
 markdown parse and export.
 
-- **Inbound**, `markdownToYFragment` (`apps/desktop/src/main/sync/blocknote-converter.ts:548`)
-  runs `prepareFragmentSeed` (`:586`), which takes writing tools markers, CriticMarkup and link
-  reference definitions out of the text before the parse, then `applyFragmentSeed` (`:636`),
-  which writes the blocks and those side channels, then `recordMarkdownSourceInYDoc` (`:690`).
-  `prepareFragmentSeed` turns each `((mention:…))` token that serializes back to its own bytes
-  into a `linkMention` node with only `url` and `domain` set (`:610`). A token an older build
-  wrote with `_ * ! ~ '` raw stays text, and the editor promotes it on open. The core's seed
-  keeps a line holding a token as literal text (§12.1.0).
+- **Inbound**, `markdownToYFragment` (`apps/desktop/src/main/sync/blocknote-converter.ts:535`)
+  runs `prepareFragmentSeed` (`:573`), which takes writing tools markers, CriticMarkup and link
+  reference definitions out of the text before the parse, then `applyFragmentSeed` (`:631`),
+  which writes the blocks and those side channels, then `recordMarkdownSourceInYDoc` (`:685`).
+  The core's seed keeps a line holding a token as literal text (§12.1.0).
+
+#### 12.1.1.1 Link mentions are promoted at seed
+
+**Normative.** `prepareFragmentSeed` promotes every `((mention:…))` token
+(`apps/desktop/src/main/sync/blocknote-converter.ts:612`,
+`packages/editor-schema/src/inline/link-mention-normalize.ts:17-64`):
+
+- A token is a match of `MENTION_TOKEN_REGEX`
+  (`packages/editor-schema/src/inline/link-mention.ts:28`) in a text run of any block except a
+  `codeBlock`, table cells and nested blocks included, whose payload `parseLinkMentionToken`
+  (`:81`) accepts. Accepted payloads include the legacy ones: `_ * ! ~ '` raw, as builds before
+  #1844 wrote them, and a stray whitespace or remark backslash, which the parse strips.
+- The token becomes a `linkMention` node with `url` set to the parsed URL and `domain` set to
+  the URL's hostname with its first `www.` removed, or to the URL itself when `new URL` throws.
+  `title`, `favicon` and `siteName` stay empty; the editor fills them in on open.
+- Text before and after the token stays in the run, with the run's styles.
+
+The node serializes in the closed alphabet (§12.7), so a legacy token cannot come back from the
+node alone: `a_b` and `a%5Fb` decode to the same URL. The source record (§12.10) keeps the file's
+bytes while the paragraph holding the token is unedited, edits in other blocks included. When
+that paragraph is edited, or the doc has no record, the token is written re-encoded. The
+`legacy link mention token` cases of the `markdown-roundtrip` vectors pin both outcomes.
+
+A seed MUST promote exactly these tokens. A token a seed leaves as text is promoted by each
+device's editor on open, and two devices doing that before they sync merge two chips per
+mention (#3871, #4478).
+
 - **Outbound**, the vault write-back calls `serializeNoteBody`
   (`apps/desktop/src/main/sync/crdt-writeback.ts:603`,
   `apps/desktop/src/main/sync/writing-markdown.ts:430`). It runs `yDocToMarkdown`
