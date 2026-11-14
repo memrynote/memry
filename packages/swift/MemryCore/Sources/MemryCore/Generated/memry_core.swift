@@ -8212,6 +8212,11 @@ public protocol SearchProtocol: AnyObject, Sendable {
      *
      * A query carrying no searchable term returns **empty, not everything**:
      * an empty search box is not a request for the whole vault.
+     *
+     * With semantic search on and its model loaded, notes and journals near
+     * the query's meaning fuse into their groups. The query is embedded
+     * before any database lock is taken, and never waits on a model load:
+     * the first query starts the load and answers from FTS alone.
      */
     func search(query: String, filter: SearchFilter?, limit: UInt32) throws  -> SearchGroups
     
@@ -8359,6 +8364,11 @@ open func reindex()throws  -> ReindexSummary  {
      *
      * A query carrying no searchable term returns **empty, not everything**:
      * an empty search box is not a request for the whole vault.
+     *
+     * With semantic search on and its model loaded, notes and journals near
+     * the query's meaning fuse into their groups. The query is embedded
+     * before any database lock is taken, and never waits on a model load:
+     * the first query starts the load and answers from FTS alone.
      */
 open func search(query: String, filter: SearchFilter?, limit: UInt32)throws  -> SearchGroups  {
     return try  FfiConverterTypeSearchGroups_lift(try rustCallWithError(FfiConverterTypeStorageError_lift) {
@@ -12298,9 +12308,10 @@ public protocol VaultProtocol: AnyObject, Sendable {
      * **Opens `index.db`, which [`Vault::open`] does not**, and rebuilds it
      * when the file cannot be trusted — so this one is not free, and a vault
      * that is never searched never opens it. Hold the handle rather than
-     * rebuilding it per keystroke.
+     * rebuilding it per keystroke. `semantic` fuses on-device semantic hits
+     * into the results while it is on; `None` searches FTS alone.
      */
-    func search() throws  -> Search
+    func search(semantic: SemanticSearch?) throws  -> Search
     
     /**
      * The search sheet's recently opened results, device-local (#4322).
@@ -12551,13 +12562,15 @@ open func notesWriter(store: SecureStore)throws  -> NotesWriter  {
      * **Opens `index.db`, which [`Vault::open`] does not**, and rebuilds it
      * when the file cannot be trusted — so this one is not free, and a vault
      * that is never searched never opens it. Hold the handle rather than
-     * rebuilding it per keystroke.
+     * rebuilding it per keystroke. `semantic` fuses on-device semantic hits
+     * into the results while it is on; `None` searches FTS alone.
      */
-open func search()throws  -> Search  {
+open func search(semantic: SemanticSearch?)throws  -> Search  {
     return try  FfiConverterTypeSearch_lift(try rustCallWithError(FfiConverterTypeStorageError_lift) {
         uniffiCallStatus in
     uniffi_memry_core_fn_method_vault_search(
-            self.uniffiCloneHandle(),uniffiCallStatus
+            self.uniffiCloneHandle(),
+        FfiConverterOptionTypeSemanticSearch.lower(semantic),uniffiCallStatus
     )
 })
 }
@@ -23912,9 +23925,10 @@ public struct SearchResult: Equatable, Hashable {
      */
     public var folderPath: String?
     /**
-     * The bm25 score: negative, and more negative is a better match. Carried
-     * so a shell can show relevance if it wants to, never re-sorted — the
-     * order returned is already the ranking.
+     * A per-kind diagnostic value, never re-sorted: the order returned is
+     * already the ranking. The bm25 score for a body hit (negative, more
+     * negative is better), zero for a fuzzy or alias hit, and the cosine for
+     * a semantic hit.
      */
     public var score: Double
     /**
@@ -23924,8 +23938,9 @@ public struct SearchResult: Equatable, Hashable {
      */
     public var snippet: [SnippetSegment]
     /**
-     * Whether the index, the fuzzy title fallback or an alias found the hit
-     * (#4319). Only a body hit carries a snippet.
+     * Whether the index, the fuzzy title fallback, an alias (#4319) or the
+     * on-device embedding (#4505) found the hit. Only a body hit carries a
+     * snippet.
      */
     public var matchKind: MatchKind
     /**
@@ -23953,9 +23968,10 @@ public struct SearchResult: Equatable, Hashable {
          * for everything that is not a note.
          */folderPath: String?, 
         /**
-         * The bm25 score: negative, and more negative is a better match. Carried
-         * so a shell can show relevance if it wants to, never re-sorted — the
-         * order returned is already the ranking.
+         * A per-kind diagnostic value, never re-sorted: the order returned is
+         * already the ranking. The bm25 score for a body hit (negative, more
+         * negative is better), zero for a fuzzy or alias hit, and the cosine for
+         * a semantic hit.
          */score: Double, 
         /**
          * The body text around the match, highlighted runs marked (#4316). Plain
@@ -23963,8 +23979,9 @@ public struct SearchResult: Equatable, Hashable {
          * (a task's description) is.
          */snippet: [SnippetSegment], 
         /**
-         * Whether the index, the fuzzy title fallback or an alias found the hit
-         * (#4319). Only a body hit carries a snippet.
+         * Whether the index, the fuzzy title fallback, an alias (#4319) or the
+         * on-device embedding (#4505) found the hit. Only a body hit carries a
+         * snippet.
          */matchKind: MatchKind, 
         /**
          * The alias the query matched, for a note or journal whose title does
@@ -30597,6 +30614,11 @@ public enum MatchKind: Equatable, Hashable {
      * One of the note's or journal day's aliases is or starts with the query.
      */
     case alias
+    /**
+     * Only the on-device embedding found it: the note means what the query
+     * means without holding its words ([`semantic`]).
+     */
+    case semantic
 
 
 
@@ -30624,6 +30646,8 @@ public struct FfiConverterTypeMatchKind: FfiConverterRustBuffer {
         
         case 3: return .alias
         
+        case 4: return .semantic
+        
         default: throw UniffiInternalError.unexpectedEnumCase
         }
     }
@@ -30642,6 +30666,10 @@ public struct FfiConverterTypeMatchKind: FfiConverterRustBuffer {
         
         case .alias:
             writeInt(&buf, Int32(3))
+        
+        
+        case .semantic:
+            writeInt(&buf, Int32(4))
         
         }
     }
@@ -32841,6 +32869,30 @@ fileprivate struct FfiConverterOptionData: FfiConverterRustBuffer {
         switch try readInt(&buf) as Int8 {
         case 0: return nil
         case 1: return try FfiConverterData.read(from: &buf)
+        default: throw UniffiInternalError.unexpectedOptionalTag
+        }
+    }
+}
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
+fileprivate struct FfiConverterOptionTypeSemanticSearch: FfiConverterRustBuffer {
+    typealias SwiftType = SemanticSearch?
+
+    public static func write(_ value: SwiftType, into buf: inout [UInt8]) {
+        guard let value = value else {
+            writeInt(&buf, Int8(0))
+            return
+        }
+        writeInt(&buf, Int8(1))
+        FfiConverterTypeSemanticSearch.write(value, into: &buf)
+    }
+
+    public static func read(from buf: inout (data: Data, offset: Data.Index)) throws -> SwiftType {
+        switch try readInt(&buf) as Int8 {
+        case 0: return nil
+        case 1: return try FfiConverterTypeSemanticSearch.read(from: &buf)
         default: throw UniffiInternalError.unexpectedOptionalTag
         }
     }
@@ -36928,7 +36980,7 @@ private let initializationResult: InitializationResult = {
     if (uniffi_memry_core_checksum_method_search_reindex() != 12616) {
         return InitializationResult.apiChecksumMismatch
     }
-    if (uniffi_memry_core_checksum_method_search_search() != 47560) {
+    if (uniffi_memry_core_checksum_method_search_search() != 1136) {
         return InitializationResult.apiChecksumMismatch
     }
     if (uniffi_memry_core_checksum_method_search_unlinked_mentions() != 24332) {
@@ -37357,7 +37409,7 @@ private let initializationResult: InitializationResult = {
     if (uniffi_memry_core_checksum_method_vault_notes_writer() != 9506) {
         return InitializationResult.apiChecksumMismatch
     }
-    if (uniffi_memry_core_checksum_method_vault_search() != 52313) {
+    if (uniffi_memry_core_checksum_method_vault_search() != 55225) {
         return InitializationResult.apiChecksumMismatch
     }
     if (uniffi_memry_core_checksum_method_vault_search_recents() != 42539) {

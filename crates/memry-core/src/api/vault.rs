@@ -48,6 +48,7 @@ use crate::api::notes::Notes;
 use crate::api::notes_write::NotesWriter;
 use crate::api::search::Search;
 use crate::api::search_recents::SearchRecents;
+use crate::api::semantic::SemanticSearch;
 use crate::api::sync::VaultSync;
 use crate::api::tasks::Tasks;
 use crate::seams::secure_store::SecureStore;
@@ -224,9 +225,17 @@ impl Vault {
     /// **Opens `index.db`, which [`Vault::open`] does not**, and rebuilds it
     /// when the file cannot be trusted — so this one is not free, and a vault
     /// that is never searched never opens it. Hold the handle rather than
-    /// rebuilding it per keystroke.
-    pub fn search(&self) -> Result<Arc<Search>, StorageError> {
-        Ok(Arc::new(Search::over(self.db.clone(), &self.directory)?))
+    /// rebuilding it per keystroke. `semantic` fuses on-device semantic hits
+    /// into the results while it is on; `None` searches FTS alone.
+    pub fn search(
+        &self,
+        semantic: Option<Arc<SemanticSearch>>,
+    ) -> Result<Arc<Search>, StorageError> {
+        Ok(Arc::new(Search::over(
+            self.db.clone(),
+            &self.directory,
+            semantic,
+        )?))
     }
 
     /// The search sheet's recently opened results, device-local (#4322).

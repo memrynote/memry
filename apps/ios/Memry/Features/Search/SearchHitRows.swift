@@ -41,7 +41,8 @@ struct SearchHitRow: View {
 
 /// One note or journal hit: the note's emoji and title over its folder, or
 /// the journal's relative day over "Journal" (#4323), with "also: <alias>"
-/// leading that line when an alias matched (#4319), then the snippet.
+/// leading that line when an alias matched (#4319), then the snippet, which a
+/// hit only semantic search found does not have (#4505).
 struct SearchHitLabel: View {
     let hit: SearchResult
 

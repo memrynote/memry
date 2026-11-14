@@ -4,7 +4,8 @@ import MemryCore
 /// What a search hit row says (#4323), after desktop's `search-result-item`:
 /// a note's emoji and title over its folder, a journal's relative day over
 /// "Journal", a task's title. A note or journal an alias found also says
-/// "also: <alias>" (#4319). The snippet line follows in the view.
+/// "also: <alias>" (#4319). The snippet line follows in the view; a note or
+/// journal only semantic search found has none (#4505), as on desktop.
 struct SearchRowText: Equatable {
     enum Caption: Equatable {
         /// The full vault folder; the view truncates it at the head.
