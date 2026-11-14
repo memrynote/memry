@@ -10,7 +10,8 @@ import XCTest
 // not a pass: check the run's skip count before calling a UI plan green.
 //
 // Every event a test writes is titled `[agent] ui-<run>…` and deleted by the
-// same test (lane F), so a green run leaves nothing behind.
+// same test (lane F), so a green run leaves nothing behind. A teardown
+// block deletes it by that title when a lane fails before it does.
 @MainActor
 final class CalendarUITests: XCTestCase {
     let app = XCUIApplication()
@@ -171,6 +172,58 @@ final class CalendarUITests: XCTestCase {
         }
     }
 
+    // MARK: K — move and resize by hold and drag (#4352)
+
+    /// The touch path of the hold + drag `CalendarHoldDrag` reads. A pointer
+    /// click-and-hold reaches the same recogniser as an indirect touch; the
+    /// simulator cannot send one, so this lane stands in for it.
+    func testLaneKHoldAndDragMovesThenResizesAnEvent() throws {
+        try openCalendar()
+        // Week opens at 8 AM, so the 9–10 event is on screen; Day opens today at the now line.
+        pickView("Week")
+        openTitleMenu()
+        app.buttons["calendar.menu.today"].firstMatch.tap()
+        let title = createEvent()
+        // iPad portrait: the New event sheet leaves the sidebar over the grid,
+        // and the first touch only closes it. A tap on empty time does nothing.
+        app.windows.firstMatch.coordinate(withNormalizedOffset: CGVector(dx: 0.6, dy: 0.85)).tap()
+        let event = chip(title)
+        let hour = try hourHeight()
+        // Hold the chip's upper half (clear of the bottom handle), drag two hours down.
+        let grip = event.coordinate(withNormalizedOffset: CGVector(dx: 0.5, dy: 0.3))
+        grip.press(forDuration: 0.8, thenDragTo: grip.withOffset(CGVector(dx: 0, dy: hour * 2)))
+        // A synthesized drag overshoots by a 15-minute snap or so: about two hours later is the move.
+        XCTAssertTrue(chip(title, containing: "11:").waitForExistence(timeout: 10), "the event did not move to 11: \(event.label)")
+        // The bottom edge's handle: drag it one hour down.
+        let edge = chip(title).coordinate(withNormalizedOffset: CGVector(dx: 0.5, dy: 1)).withOffset(CGVector(dx: 0, dy: 2))
+        edge.press(forDuration: 0.8, thenDragTo: edge.withOffset(CGVector(dx: 0, dy: hour)))
+        XCTAssertTrue(waitUntil { !self.chip(title).label.contains("· 1h,") }, "the event did not resize: \(chip(title).label)")
+        chip(title).tap()
+        XCTAssertTrue(element("calendar.sheet.event").waitForExistence(timeout: 10))
+        deleteOpenEvent(title)
+    }
+
+    // MARK: L — page by swiping
+
+    func testLaneLSwipePagesWeekMonthAndYear() throws {
+        try openCalendar()
+        // The title names the month or the year, the subtitle the week.
+        let title = app.buttons["calendar.titleMenu"].firstMatch
+        let subtitle = element("calendar.subtitle")
+        let period = { "\(title.label) \(subtitle.label)" }
+        for (label, identifier) in [("Week", "calendar.week"), ("Month", "calendar.month"), ("Year", "calendar.year")] {
+            pickView(label)
+            let view = element(identifier)
+            XCTAssertTrue(view.waitForExistence(timeout: 10))
+            let before = period()
+            view.swipeLeft()
+            XCTAssertTrue(waitUntil { period() != before }, "\(label) did not page forward from \(before)")
+            view.swipeRight()
+            XCTAssertTrue(waitUntil { period() == before }, "\(label) did not page back to \(before): \(period())")
+        }
+        pickView("Day")
+    }
+
     // MARK: Helpers
 
     private func element(_ identifier: String) -> XCUIElement {
@@ -183,6 +236,8 @@ final class CalendarUITests: XCTestCase {
         let names = (ProcessInfo.processInfo.environment["MEMRY_UI_VAULT"] ?? "MemryNote").split(separator: "|").map(String.init)
         let vault = app.staticTexts.matching(NSPredicate(format: "label IN %@", names)).firstMatch
         let more = app.buttons["Menu"].firstMatch
+        // On iPad the bar sits at the top and has no Menu: Calendar is in it.
+        let tab = app.buttons["Calendar"].firstMatch
         // Signed out lands on the welcome screen first, or on sign-in once
         // past it.
         let signIn = app.descendants(matching: .any).matching(NSPredicate(
@@ -190,17 +245,16 @@ final class CalendarUITests: XCTestCase {
         )).firstMatch
         // The first launch of a run opens the vault and syncs: allow it time.
         let deadline = Date().addingTimeInterval(120)
-        while Date() < deadline, !more.exists {
+        while Date() < deadline, !more.exists, !tab.exists {
             if signIn.exists {
                 throw XCTSkip("Signed out: sign in to the staging test account first (tasks.md §0.4).")
             }
             if vault.exists, vault.isHittable { vault.tap() }
             Thread.sleep(forTimeInterval: 0.5)
         }
-        XCTAssertTrue(more.waitForExistence(timeout: 5),
+        XCTAssertTrue(more.exists || tab.exists,
                       "the vault did not open: \(app.buttons.allElementsBoundByIndex.prefix(10).map(\.label))")
         // Calendar sits in the bar or behind Menu, by desktop's rail order.
-        let tab = app.buttons["Calendar"].firstMatch
         if tab.exists {
             tab.tap()
         } else {
@@ -242,6 +296,22 @@ final class CalendarUITests: XCTestCase {
         app.buttons.matching(NSPredicate(format: "label BEGINSWITH %@", "Event, \(title),")).firstMatch
     }
 
+    private func chip(_ title: String, containing text: String) -> XCUIElement {
+        app.buttons.matching(NSPredicate(format: "label BEGINSWITH %@ AND label CONTAINS %@", "Event, \(title),", text)).firstMatch
+    }
+
+    private func waitUntil(_ condition: @escaping () -> Bool) -> Bool {
+        let met = XCTNSPredicateExpectation(predicate: NSPredicate { _, _ in condition() }, object: nil)
+        return XCTWaiter().wait(for: [met], timeout: 5) == .completed
+    }
+
+    /// One hour of the grid on screen: the event `createEvent` makes runs 9–10.
+    private func hourHeight() throws -> CGFloat {
+        let event = app.buttons.matching(NSPredicate(format: "label BEGINSWITH %@", "Event, [agent] \(run),")).firstMatch
+        XCTAssertTrue(event.waitForExistence(timeout: 5))
+        return event.frame.height + 1
+    }
+
     /// + opens the New event sheet (13) on the anchor day, 9–10; ✓ saves.
     @discardableResult
     private func createEvent() -> String {
@@ -253,8 +323,33 @@ final class CalendarUITests: XCTestCase {
         XCTAssertTrue(field.waitForExistence(timeout: 5))
         field.typeText(title)
         app.buttons["calendar.editor.save"].firstMatch.tap()
+        addTeardownBlock { [self] in removeLeftover(title) }
         XCTAssertTrue(chip(title).waitForExistence(timeout: 10), "the new event is not on the grid")
         return title
+    }
+
+    /// A lane that failed after `createEvent` would leave its `[agent]` event in the vault: delete it by title. A no-op once the lane deleted it.
+    private func removeLeftover(_ title: String) {
+        guard app.state == .runningForeground else { return }
+        for _ in 0 ..< 3 {
+            let sheet = element("calendar.sheet.event")
+            if !sheet.exists {
+                // The editor or a menu may still be up from the failed step.
+                if app.buttons["calendar.editor.save"].exists { app.buttons["calendar.editor.save"].firstMatch.tap() }
+                guard chip(title).waitForExistence(timeout: 2), chip(title).isHittable else { return }
+                chip(title).tap()
+                guard sheet.waitForExistence(timeout: 5) else { continue }
+            }
+            let more = app.buttons["calendar.sheet.more"].firstMatch
+            guard more.waitForExistence(timeout: 3) else { continue }
+            more.tap()
+            let delete = app.buttons["Delete event"].firstMatch
+            guard delete.waitForExistence(timeout: 3) else { continue }
+            delete.tap()
+            let confirm = app.alerts.buttons["Delete"].firstMatch
+            if confirm.waitForExistence(timeout: 3) { confirm.tap() }
+            if chip(title).waitForNonExistence(timeout: 5) { return }
+        }
     }
 
     private func deleteOpenEvent(_ title: String) {

@@ -19,7 +19,11 @@ import Observation
 // this model: SwiftUI can keep a dismissed sheet's model alive, and a model
 // that followed the index itself kept querying for a sheet nobody sees.
 //
-// **Results are the core's ranking, never re-sorted.** bm25 ordering is what
+// **Semantic hits fuse in the core.** With semantic search on, the core folds
+// notes near the query's meaning into the notes and journals groups (#4505).
+// The first query after launch starts the model load and answers from FTS.
+//
+// **Results are the core's ranking, never re-sorted.** The order is what
 // the query returned; a shell that sorted by date would be answering a
 // different question than the one the user asked.
 
@@ -52,8 +56,8 @@ struct CoreVaultSearch: VaultSearching {
     ///   then has no search, which is a smaller failure than a browse screen
     ///   that will not open — hence the optional handoff in
     ///   ``VaultBrowseViewModel``.
-    init(vault: Vault, executor: CoreExecutor) throws {
-        search = try vault.search()
+    init(vault: Vault, executor: CoreExecutor, semantic: SemanticSearch? = nil) throws {
+        search = try vault.search(semantic: semantic)
         self.executor = executor
     }
 

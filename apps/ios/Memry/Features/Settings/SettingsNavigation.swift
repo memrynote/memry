@@ -10,7 +10,7 @@ enum SettingsRoute: Hashable, Sendable {
     case account, storage, devices, vaults
     case general, newNotesFolder
     case appearance, font
-    case features, about
+    case features, semanticSearch, about
     case inbox, tasks
     case templates, template(String)
     case tags, properties, property(String)
@@ -34,7 +34,7 @@ enum SettingsRoute: Hashable, Sendable {
         case .font: .appearance
         case .template: .templates
         case .property: .properties
-        case .root, .account, .vaults, .general, .appearance, .features, .about,
+        case .root, .account, .vaults, .general, .appearance, .features, .semanticSearch, .about,
              .inbox, .tasks, .templates, .tags, .properties, .readwise: self
         }
     }
@@ -213,6 +213,7 @@ struct SettingsDestination: View {
         case .appearance: AppearanceScreen(store: context.store)
         case .font: FontScreen(store: context.store)
         case .features: FeaturesScreen(local: context.local)
+        case .semanticSearch: SemanticSearchScreen(vault: context.vault, executor: context.executor)
         case .about: AboutScreen()
         case .inbox: InboxSettingsDestination()
         case .tasks: TaskSettingsView(store: context.tasks)

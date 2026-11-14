@@ -108,6 +108,33 @@ struct NotesSplitRouterTests {
         #expect(text.contains("plan") && text.contains("loose"))
     }
 
+    /// #4503: a switch to compact width can build a new Notes page, which
+    /// restores its stack from the save. A note the split view opened, here
+    /// by the list's "+" (`NotesSplitView.open`), is on that stack.
+    @Test("a note created in the split view is on the stack a new compact page restores")
+    func splitWritesTheCompactSave() throws {
+        let snapshot = snapshot()
+        let router = NotesSplitRouter(snapshot: snapshot)
+        router.isSplit = true
+        router.show(.folder("Projects"))
+        router.select(NoteRoute(id: "created"))
+        let restored = snapshot.path(NotesSplitRouter.compactKey)
+        #expect(restored.count == 2)
+        let saved = try JSONEncoder().encode(#require(restored.codable))
+        let text = String(decoding: saved, as: UTF8.self)
+        #expect(text.contains("Projects") && text.contains("created"))
+    }
+
+    /// At compact width the phone stack owns its save, which can be deeper
+    /// than the router's place (a folder inside a folder).
+    @Test("the phone stack's save is its own at compact width")
+    func compactKeepsItsSave() {
+        let snapshot = snapshot()
+        let router = NotesSplitRouter(snapshot: snapshot)
+        router.shown(NoteRoute(id: "plan"))
+        #expect(snapshot.stack(NotesSplitRouter.compactKey) == nil)
+    }
+
     @Test("a note the phone stack shows becomes the one regular width opens")
     func compactReportsTheNote() {
         let router = NotesSplitRouter()

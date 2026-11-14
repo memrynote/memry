@@ -124,6 +124,7 @@ enum ErrorMapping {
         // T237. `SyncError` is newer still, and it arrived uncovered for
         // exactly the reason `LinkingError` did. `ErrorMappingSync.swift`.
         if let error = error as? SyncError { return userFacing(error) }
+        if let error = error as? SemanticError { return userFacing(error) }
         return nil
     }
 

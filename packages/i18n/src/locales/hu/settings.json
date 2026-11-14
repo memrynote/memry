@@ -1232,6 +1232,10 @@
     "loadingAria": "Eszközök betöltése",
     "none": "Még nincsenek társított eszközök",
     "linkNew": "Új eszköz társítása",
+    "linkNeedsPlan": {
+      "title": "A társításhoz szinkronizálási csomag szükséges",
+      "description": "A társított eszköz csak akkor látja a jegyzeteit, ha a szinkronizálás be van kapcsolva. Csomag nélkül jelentkezzen be rajta a helyreállítási kifejezéssel, és az eszköz megtartja a saját széfjét."
+    },
     "thisDevice": "Ez az eszköz",
     "lastSeen": "Utoljára aktív: {time} ezelőtt",
     "linked": "Társítva: {time} ezelőtt",
