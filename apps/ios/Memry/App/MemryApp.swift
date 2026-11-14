@@ -35,6 +35,7 @@ final class MemryAppDelegate: NSObject, UIApplicationDelegate {
         _ = ThisDevice.isPad
         UNUserNotificationCenter.current().delegate = ReminderNotificationDelegate.shared
         CalendarBackgroundRefresh.register()
+        SemanticBackgroundTask.register()
         TelemetryLaunch.start()
         // One-time hints (the Notes "+" hold). A failure only means no tips.
         #if DEBUG
