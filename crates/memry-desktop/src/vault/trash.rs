@@ -6,7 +6,45 @@ use std::path::Path;
 
 /// Moves the file or folder at `path` to the OS trash.
 pub fn move_to_trash(path: &Path) -> Result<(), String> {
-    context().delete(path).map_err(|error| error.to_string())
+    let first = context().delete(path);
+    match first {
+        Ok(()) => Ok(()),
+        Err(error) => {
+            probe_dump(path);
+            let again = context().delete(path);
+            eprintln!("PROBE4668 retry after failure: {again:?}");
+            Err(error.to_string())
+        }
+    }
+}
+
+fn probe_dump(path: &Path) {
+    use std::os::windows::fs::OpenOptionsExt;
+    eprintln!("PROBE4668 first delete failed for {}", path.display());
+    fn walk(p: &Path, depth: usize) {
+        let Ok(rd) = std::fs::read_dir(p) else {
+            eprintln!("PROBE4668 {:indent$}cannot list {}", "", p.display(), indent = depth * 2);
+            return;
+        };
+        for entry in rd.flatten() {
+            let path = entry.path();
+            let meta = entry.metadata().ok();
+            let is_dir = meta.as_ref().is_some_and(|m| m.is_dir());
+            let locked = if is_dir {
+                String::new()
+            } else {
+                match std::fs::OpenOptions::new().read(true).share_mode(0).open(&path) {
+                    Ok(_) => "unlocked".to_owned(),
+                    Err(e) => format!("LOCKED {e}"),
+                }
+            };
+            eprintln!("PROBE4668 {:indent$}{} {}", "", path.display(), locked, indent = depth * 2);
+            if is_dir {
+                walk(&path, depth + 1);
+            }
+        }
+    }
+    walk(path, 1);
 }
 
 /// On macOS, `NSFileManager.trashItem` as Electron's `shell.trashItem` does. The crate's
