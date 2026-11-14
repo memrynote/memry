@@ -39,8 +39,9 @@ use std::sync::Arc;
 use rusqlite::{Connection, OptionalExtension as _, params};
 
 use crate::api::errors::StorageError;
+use crate::crdt::blocks::{extract_blocks, is_inline_node};
 use crate::crdt::errors::CrdtError;
-use crate::crdt::registry::{DocumentRegistry, UpdateSink};
+use crate::crdt::registry::{Document, DocumentRegistry, UpdateSink};
 use crate::crdt::text_extract::extract_text;
 use crate::crdt::update_log::{self, LOCAL_NAMESPACE_PREFIX};
 use crate::domain::journal::{self, ITEM_TYPE};
@@ -239,9 +240,12 @@ pub fn month(
 /// ([`is_same_day_in_other_year`]) then drops the same year and a leap year's
 /// Feb 28.
 ///
-/// A pulled body whose text trims to nothing is dropped, as desktop drops a
-/// day whose `content.trim()` is `''`. A body not pulled to this device yet is
-/// kept: its text is unknown here, not empty, and the row stands for a day
+/// Desktop drops a day whose markdown file `trim()`s to `''`. Core holds no
+/// markdown, so it drops a pulled day only when [`is_blank`] holds: its
+/// extracted text `trim()`s to `''` and its body has no block but paragraphs
+/// whose own text does too. An image, a divider, a table or a file block has
+/// markdown on desktop and keeps the day here. A body not pulled to this
+/// device yet is kept: its text is unknown here, not empty, and the row stands for a day
 /// the user wrote. The rule stays here because the Month view lists every
 /// calendar day and the heatmap and Year view count characters, which an
 /// empty body already reads as 0.
@@ -272,13 +276,33 @@ pub fn same_day_entries(
             continue;
         }
         let body = day_body(conn, &id)?;
-        if body.state != JournalBodyState::NotPulled && js_trim(&body.text).is_empty() {
+        if body.state != JournalBodyState::NotPulled && is_blank(conn, &id, &body.text)? {
             continue;
         }
         let (is_today, is_future) = (candidate == today, candidate.as_str() > today);
         entries.push(listed_day(Some(body), candidate, is_today, is_future));
     }
     Ok(entries)
+}
+
+/// Whether a pulled day's body, extracted as `text`, holds nothing desktop's
+/// markdown would keep: every block is a paragraph, and neither `text` nor any
+/// paragraph's own runs hold more than JS `trim()` whitespace or an inline node.
+/// The runs are read as well as `text` because extraction trims a line's end
+/// with Rust's whitespace set, which strips NEL (U+0085) where JS keeps it.
+/// The blocks cost a log replay, paid only for a day whose text is already
+/// blank.
+fn is_blank(conn: &Connection, id: &str, text: &str) -> Result<bool, CrdtError> {
+    if !js_trim(text).is_empty() {
+        return Ok(false);
+    }
+    let blocks = extract_blocks(&*rebuilt_document(conn, id)?)?;
+    Ok(blocks.iter().all(|block| {
+        block.kind == "paragraph"
+            && block.inline.iter().all(|run| {
+                js_trim(&run.text).is_empty() && !run.marks.iter().any(|mark| is_inline_node(mark))
+            })
+    }))
 }
 
 /// One day as the Month view and the same-day list show it; `body` is the
@@ -442,7 +466,7 @@ fn day_body(conn: &Connection, id: &str) -> Result<DayBody, CrdtError> {
         .map_err(failed)?;
     let text = match cached {
         Some((text, Some(source_seq))) if source_seq == body_version(conn, id)? => text,
-        _ => rebuilt_text(conn, id)?,
+        _ => extract_text(&*rebuilt_document(conn, id)?)?,
     };
     let state = if text.is_empty() {
         JournalBodyState::Empty
@@ -463,16 +487,15 @@ fn log_rows(conn: &Connection, row_id: &str) -> Result<i64, StorageError> {
     .map_err(failed)
 }
 
-/// The body rebuilt from the durable log and extracted, without writing the
-/// cache row back.
-fn rebuilt_text(conn: &Connection, id: &str) -> Result<String, CrdtError> {
+/// The body rebuilt from the durable log, without writing the cache row back.
+fn rebuilt_document(conn: &Connection, id: &str) -> Result<Arc<Document>, CrdtError> {
     let plan = update_log::load_plan(conn, id)?;
     let sink: UpdateSink = Arc::new(|_, _| {});
     let document = DocumentRegistry::new(READER_DEVICE_ID, sink).get_or_open(id)?;
     for blob in plan.blobs() {
         document.apply_durable_update(blob)?;
     }
-    extract_text(&document)
+    Ok(document)
 }
 
 fn valid_year(year: i64) -> Result<i64, StorageError> {
