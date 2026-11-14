@@ -70,7 +70,9 @@ fn the_marker_row_follows_its_folder_through_a_rename() {
     let (e, notes) = mixed_work();
     let open = e.session.current().unwrap();
 
-    notes.rename_folder(&open, "Work", "Projects", |_| {}).unwrap();
+    notes
+        .rename_folder(&open, "Work", "Projects", |_| {})
+        .unwrap();
 
     let in_level = |level: &str| -> Vec<String> {
         let mut rows: Vec<(String, String, i64)> = slots(&e)
@@ -82,7 +84,12 @@ fn the_marker_row_follows_its_folder_through_a_rename() {
     };
     assert_eq!(
         in_level("Projects"),
-        paths(&["Projects/", "Projects/a.md", "Projects/Sub", "Projects/b.md"])
+        paths(&[
+            "Projects/",
+            "Projects/a.md",
+            "Projects/Sub",
+            "Projects/b.md"
+        ])
     );
     assert_eq!(in_level("Work"), Vec::<String>::new());
 }
