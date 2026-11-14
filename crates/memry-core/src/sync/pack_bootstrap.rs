@@ -17,9 +17,9 @@
 //! unverifiable entry leaves the affected notes to the item-granular bodies
 //! pass. Nothing here fails the first sync.
 //!
-//! Packs transfer one at a time, newest first, held in memory: a pack is
-//! capped near 24 MiB by the writer, and one at a time keeps a phone's peak
-//! memory to one pack.
+//! Packs transfer newest first, held in memory: a pack is capped near 24 MiB
+//! by the writer. One at a time by default keeps a phone's peak memory to one
+//! pack; [`PackBootstrap::with_concurrency`] downloads a batch together.
 
 use std::collections::HashSet;
 use std::sync::Arc;
@@ -95,6 +95,8 @@ pub struct PackBootstrap {
     db: Db,
     bodies: Arc<BodyPull>,
     vault_id: Option<String>,
+    /// Packs in flight at once, each held in memory (about 24 MiB at most).
+    concurrency: usize,
 }
 
 impl PackBootstrap {
@@ -104,7 +106,16 @@ impl PackBootstrap {
             db,
             bodies,
             vault_id: None,
+            concurrency: 1,
         }
+    }
+
+    /// Downloads up to `packs` packs at once; one at a time unless set, which
+    /// keeps a phone's peak memory to one pack. Desktop passes 3, as Electron's
+    /// `pack-bootstrap.ts` does.
+    pub fn with_concurrency(mut self, packs: usize) -> Self {
+        self.concurrency = packs.max(1);
+        self
     }
 
     pub fn with_vault(mut self, vault_id: &str) -> Self {
@@ -143,41 +154,49 @@ impl PackBootstrap {
             .and_then(|text| serde_json::from_str(&text).ok())
             .unwrap_or_default();
         let mut relisted: Option<Vec<PackSummary>> = None;
-        for pack in &packs {
-            if completed.contains(&pack.id) {
-                continue;
+        let pending: Vec<&PackSummary> = packs
+            .iter()
+            .filter(|pack| !completed.contains(&pack.id))
+            .collect();
+        for batch in pending.chunks(self.concurrency) {
+            let mut urls = Vec::with_capacity(batch.len());
+            for pack in batch {
+                match self.live_url(pack, &mut relisted).await {
+                    Some(url) => urls.push((pack, url)),
+                    None => report
+                        .fallback_reasons
+                        .push(format!("pack {} expired and was not re-signed", pack.id)),
+                }
             }
-            let url = if pack.live(now()) {
-                pack.url.clone()
-            } else {
-                // The listing's URLs are signed once with a TTL in minutes; a
-                // large vault outlives it. One re-list mints fresh ones.
-                if relisted.is_none() {
-                    relisted = Some(self.list(now()).await.map(|l| l.packs).unwrap_or_default());
-                }
-                match relisted
-                    .iter()
-                    .flatten()
-                    .find(|fresh| fresh.id == pack.id && fresh.live(now()))
-                {
-                    Some(fresh) => fresh.url.clone(),
-                    None => {
-                        report
-                            .fallback_reasons
-                            .push(format!("pack {} expired and was not re-signed", pack.id));
-                        continue;
+            // The batch downloads together; each lands in order once all are in.
+            let mut downloads = tokio::task::JoinSet::new();
+            for (index, (_, url)) in urls.iter().enumerate() {
+                let http = Arc::clone(&self.http);
+                let url = url.clone();
+                downloads.spawn(async move { (index, download(&http, &url).await) });
+            }
+            let mut bodies: Vec<Option<Result<Vec<u8>, String>>> = vec![None; urls.len()];
+            while let Some(joined) = downloads.join_next().await {
+                let (index, body) = joined.map_err(|error| StorageError::Failed {
+                    what: format!("a pack download task failed: {error}"),
+                })?;
+                bodies[index] = Some(body);
+            }
+            for ((pack, _), body) in urls.iter().zip(bodies) {
+                let applied = match body.expect("every download joined") {
+                    Ok(bytes) => self.apply_pack(&bytes, &mut report).await?,
+                    Err(reason) => Err(reason),
+                };
+                match applied {
+                    Ok(()) => {
+                        completed.insert(pack.id.clone());
+                        self.write_completed(&completed).await?;
+                        report.packs_applied += 1;
                     }
+                    Err(reason) => report
+                        .fallback_reasons
+                        .push(format!("pack {}: {reason}", pack.id)),
                 }
-            };
-            match self.apply_pack(&url, &mut report).await? {
-                Ok(()) => {
-                    completed.insert(pack.id.clone());
-                    self.write_completed(&completed).await?;
-                    report.packs_applied += 1;
-                }
-                Err(reason) => report
-                    .fallback_reasons
-                    .push(format!("pack {}: {reason}", pack.id)),
             }
         }
 
@@ -214,22 +233,37 @@ impl PackBootstrap {
             .await
     }
 
-    /// Downloads one pack and seeds every fresh, verifiable snapshot in it.
-    /// The outer `Err` is local storage; the inner one is a pack-level
-    /// fallback (transfer or digest failure).
+    /// A presigned URL for `pack` that is still live, re-listing once per run
+    /// when the listing's has lapsed. `None` when the pack was not re-signed.
+    async fn live_url(
+        &self,
+        pack: &PackSummary,
+        relisted: &mut Option<Vec<PackSummary>>,
+    ) -> Option<String> {
+        if pack.live(now()) {
+            return Some(pack.url.clone());
+        }
+        // The listing's URLs are signed once with a TTL in minutes; a large
+        // vault outlives it. One re-list mints fresh ones.
+        if relisted.is_none() {
+            *relisted = Some(self.list(now()).await.map(|l| l.packs).unwrap_or_default());
+        }
+        relisted
+            .iter()
+            .flatten()
+            .find(|fresh| fresh.id == pack.id && fresh.live(now()))
+            .map(|fresh| fresh.url.clone())
+    }
+
+    /// Seeds every fresh, verifiable snapshot in one downloaded pack. The
+    /// outer `Err` is local storage; the inner one is a pack-level fallback
+    /// (a digest or parse failure).
     async fn apply_pack(
         &self,
-        url: &str,
+        bytes: &[u8],
         report: &mut PackBootstrapReport,
     ) -> Result<Result<(), String>, StorageError> {
-        let request = ApiRequest::new("GET", url)
-            .auth(Auth::None)
-            .retry(RetryPolicy::polled());
-        let bytes = match self.http.send(request).await {
-            Ok(response) => response.body,
-            Err(error) => return Ok(Err(error.to_string())),
-        };
-        let pack = match parse_pack(&bytes) {
+        let pack = match parse_pack(bytes) {
             Ok(pack) => pack,
             Err(error) => return Ok(Err(error.to_string())),
         };
@@ -247,7 +281,7 @@ impl PackBootstrap {
                 report.entries_skipped += 1;
                 continue;
             }
-            let Ok(packed) = extract_entry(&bytes, entry) else {
+            let Ok(packed) = extract_entry(bytes, entry) else {
                 report.entries_failed += 1;
                 continue;
             };
@@ -350,6 +384,17 @@ fn snapshot_meta(meta: Option<&Json>) -> Option<(i64, String)> {
     let sequence_num = meta.get("sequenceNum").and_then(Json::as_i64)?;
     let revision = meta.get("revision").and_then(Json::as_str)?;
     (!revision.is_empty()).then(|| (sequence_num, revision.to_owned()))
+}
+
+/// One pack's bytes from its presigned URL. `Err` is a fallback reason.
+async fn download(http: &HttpClient, url: &str) -> Result<Vec<u8>, String> {
+    let request = ApiRequest::new("GET", url)
+        .auth(Auth::None)
+        .retry(RetryPolicy::polled());
+    http.send(request)
+        .await
+        .map(|response| response.body)
+        .map_err(|error| error.to_string())
 }
 
 /// The highest `maxCursor` covered by an unbroken run of completed packs,
