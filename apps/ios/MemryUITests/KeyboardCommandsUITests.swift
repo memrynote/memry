@@ -4,7 +4,8 @@ import XCTest
 // #4355: the app's keyboard commands on iPad. ⌘2 opens the second page in
 // the sidebar, ⌘N makes a note and puts its title under the caret, ⌘K opens
 // search from inside the note's body, and no command fires while a sheet is
-// up.
+// up. #4379: ⌘P opens the command palette, and its Return runs the row the
+// way the menu bar does, including a command that presents search or a sheet.
 //
 // **Precondition:** a full-screen iPad simulator with a vault open (the
 // staging test account, or a free vault on this device). A run that lands on
@@ -59,6 +60,66 @@ final class KeyboardCommandsUITests: XCTestCase {
         deleteNote(name)
     }
 
+    func testCommandPaletteRunsNewNote() throws {
+        try openVault()
+        sidebarRow("Home").tap()
+        app.typeKey("p", modifierFlags: .command)
+        let field = app.textFields["commands.palette.field"]
+        XCTAssertTrue(field.waitForExistence(timeout: 5), "⌘P did not open the command palette")
+        XCTAssertTrue(app.buttons["commands.row.nav.newNote"].waitForExistence(timeout: 5))
+        attach("command-palette")
+        field.typeText("new note")
+        XCTAssertTrue(app.buttons["commands.row.nav.newNote"].waitForExistence(timeout: 5))
+        XCTAssertFalse(app.buttons["commands.row.create.task"].exists, "\"new note\" still lists New Task")
+        attach("command-palette-query")
+        field.typeText("\n")
+        XCTAssertTrue(field.waitForNonExistence(timeout: 5), "Return did not close the palette")
+        let notes = sidebarRow("Notes")
+        XCTAssertTrue(notes.wait(for: \.isSelected, toEqual: true, timeout: 5), "New Note did not open Notes")
+        let title = app.textFields["Title"]
+        XCTAssertTrue(title.waitForExistence(timeout: 10), "Return did not open a new note")
+        let name = "[agent] \(run) made by palette"
+        title.typeText("\(name)\n")
+
+        // Esc (⌘. here) closes it without running anything.
+        app.typeKey("p", modifierFlags: .command)
+        XCTAssertTrue(field.waitForExistence(timeout: 5), "⌘P did not open the palette from the editor")
+        app.typeKey(".", modifierFlags: .command)
+        XCTAssertTrue(field.waitForNonExistence(timeout: 5))
+
+        deleteNote(name)
+    }
+
+    /// REVIEW-4666 M1: a command that presents runs once the palette has gone,
+    /// so its presentation shows and ⌘K still opens search after it.
+    func testCommandPaletteRunsPresentingCommands() throws {
+        try openVault()
+        let palette = app.textFields["commands.palette.field"]
+        let search = app.textFields["search.palette.field"]
+        app.typeKey("p", modifierFlags: .command)
+        XCTAssertTrue(palette.waitForExistence(timeout: 5), "⌘P did not open the command palette")
+        palette.typeText("search\n")
+        XCTAssertTrue(search.waitForExistence(timeout: 5), "Search from the palette did not open search")
+        attach("palette-search")
+        app.typeKey(".", modifierFlags: .command)
+        XCTAssertTrue(search.waitForNonExistence(timeout: 5))
+        app.typeKey("k", modifierFlags: .command)
+        XCTAssertTrue(search.waitForExistence(timeout: 5), "⌘K did not open search after the palette ran it")
+        app.typeKey(".", modifierFlags: .command)
+        XCTAssertTrue(search.waitForNonExistence(timeout: 5))
+
+        app.typeKey("p", modifierFlags: .command)
+        XCTAssertTrue(palette.waitForExistence(timeout: 5))
+        palette.typeText("quick capture\n")
+        let capture = app.descendants(matching: .any)["capture.field"].firstMatch
+        XCTAssertTrue(capture.waitForExistence(timeout: 5), "Quick Capture from the palette did not open its sheet")
+        app.coordinate(withNormalizedOffset: CGVector(dx: 0.03, dy: 0.5)).tap()
+        XCTAssertTrue(capture.waitForNonExistence(timeout: 5), "the capture sheet did not close")
+        app.typeKey("k", modifierFlags: .command)
+        XCTAssertTrue(search.waitForExistence(timeout: 5), "⌘K did not open search after Quick Capture")
+        app.typeKey(".", modifierFlags: .command)
+    }
+
     /// REVIEW-4523: a command under a sheet would set state SwiftUI then
     /// drops with the presentation, leaving search dead.
     func testCommandsWaitWhileASheetIsUp() throws {
@@ -69,6 +130,11 @@ final class KeyboardCommandsUITests: XCTestCase {
         app.typeKey("k", modifierFlags: .command)
         let search = app.textFields["search.palette.field"]
         XCTAssertFalse(search.waitForExistence(timeout: 2), "⌘K opened search under the capture sheet")
+        app.typeKey("p", modifierFlags: .command)
+        XCTAssertFalse(
+            app.textFields["commands.palette.field"].waitForExistence(timeout: 2),
+            "⌘P opened the command palette under the capture sheet"
+        )
 
         app.coordinate(withNormalizedOffset: CGVector(dx: 0.03, dy: 0.5)).tap()
         XCTAssertTrue(capture.waitForNonExistence(timeout: 5), "the capture sheet did not close")

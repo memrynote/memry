@@ -24,7 +24,8 @@ struct VaultCommandsTests {
             pages: VaultTabLayout(savedOrder: [], width: width) { _ in true }.commandPages,
             newNote: newNote,
             quickCapture: nil,
-            search: {}
+            search: {},
+            commandPalette: { _ in }
         )
         commands.journalDay = journalDay
         commands.today = { "2099-03-04" }
