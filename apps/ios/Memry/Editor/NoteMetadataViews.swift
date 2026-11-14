@@ -619,9 +619,9 @@ struct NotePropertyEditor: View {
         // A typed value lands when the field is left or the row goes, as on
         // Return: the rail can close, or the page change, before Return.
         .onChange(of: valueFocused) { _, isFocused in
-            if isFocused { commits.begin(draft) } else { submit() }
+            if isFocused { commits.begin(draft) } else { submit(explicit: false) }
         }
-        .onDisappear(perform: submit)
+        .onDisappear { submit(explicit: false) }
         .alert("Rename property", isPresented: $renaming) {
             TextField("Property name", text: $nameDraft)
                 .textInputAutocapitalization(.never)
@@ -677,12 +677,20 @@ struct NotePropertyEditor: View {
         }
     }
 
-    private func submit() {
-        if let value = commits.take(draft) {
+    /// Return is `explicit`: it ends the edit before the field loses focus,
+    /// so the blur that follows finds no edit and leaves the draft alone.
+    private func submit(explicit: Bool) {
+        guard commits.editing else { return }
+        if let value = commits.take(draft, explicit: explicit) {
             commit(value)
         } else {
             draft = NotePropertyJSON.decode(property)
         }
+    }
+
+    private func returned() {
+        submit(explicit: true)
+        valueFocused = false
     }
 
     /// The draft empties with the value (#4616), so a Return or a blur after
@@ -818,7 +826,7 @@ struct NotePropertyEditor: View {
             TextField("Empty", text: $draft)
                 .keyboardType(.decimalPad)
                 .focused($valueFocused)
-                .onSubmit { valueFocused = false }
+                .onSubmit(returned)
                 .accessibilityLabel(property.name)
 
         case .url:
@@ -827,7 +835,7 @@ struct NotePropertyEditor: View {
                 .textInputAutocapitalization(.never)
                 .foregroundStyle(Tokens.Text.tint.color)
                 .focused($valueFocused)
-                .onSubmit { valueFocused = false }
+                .onSubmit(returned)
                 .accessibilityLabel(property.name)
 
         default:
@@ -836,7 +844,7 @@ struct NotePropertyEditor: View {
             // typed, which the model turns back into a JSON array.
             TextField("Empty", text: $draft)
                 .focused($valueFocused)
-                .onSubmit { valueFocused = false }
+                .onSubmit(returned)
                 .accessibilityLabel(property.name)
         }
     }
@@ -936,10 +944,14 @@ struct NotePropertyEditor: View {
 /// value the user changed since focus came in is written, so a draft left
 /// as it was never writes back over a Clear, a sync or the rail's copy of
 /// the row (#4616). Return and leaving the field end one edit: the first
-/// take ends it, so one write. An emptied field writes nothing; Clear is how
-/// a value is emptied.
+/// take ends it, so one write. Return on an emptied field writes the empty
+/// value; leaving one writes nothing, so a blur cannot empty a value. Clear
+/// rebases the edit to `""`, so an untyped Return after it writes nothing.
 struct NotePropertyDraftCommits {
     private var focusedOn: String?
+
+    /// An edit is in progress: focus came in and no take has ended it.
+    var editing: Bool { focusedOn != nil }
 
     /// Focus came in on the field showing `draft`.
     mutating func begin(_ draft: String) { focusedOn = draft }
@@ -951,10 +963,13 @@ struct NotePropertyDraftCommits {
     }
 
     /// The value to write, or `nil` when there is nothing to write.
-    mutating func take(_ text: String) -> String? {
+    /// `explicit` is a Return, the only end of an edit that writes an
+    /// emptied field.
+    mutating func take(_ text: String, explicit: Bool) -> String? {
         guard let base = focusedOn else { return nil }
         focusedOn = nil
-        return text == base || text.isEmpty ? nil : text
+        guard text != base, explicit || !text.isEmpty else { return nil }
+        return text
     }
 }
 

@@ -63,7 +63,10 @@ struct NotesSplitView: View {
         // settles: after a width change (a rotation, the page sidebar
         // sliding in) the split view writes its own choice over the binding
         // about 70ms later, which would leave the list beside the rail.
-        .task(id: widthColumns) {
+        // Keyed on the width as well: with the rail open the page sidebar
+        // sliding in leaves `widthColumns` at `.detailOnly` but still
+        // triggers that write.
+        .task(id: ColumnsKey(columns: widthColumns, holdsThreeColumns: holdsThreeColumns)) {
             columns = widthColumns
             guard (try? await Task.sleep(for: .milliseconds(400))) != nil else { return }
             columns = widthColumns
@@ -99,6 +102,11 @@ struct NotesSplitView: View {
     private var widthColumns: NavigationSplitViewVisibility {
         if inspectorShown { return .detailOnly }
         return holdsThreeColumns ? .all : .doubleColumn
+    }
+
+    private struct ColumnsKey: Equatable {
+        let columns: NavigationSplitViewVisibility
+        let holdsThreeColumns: Bool
     }
 
     private func open(_ id: String) { router.select(NoteRoute(id: id)) }

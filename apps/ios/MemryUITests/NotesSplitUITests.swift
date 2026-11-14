@@ -369,6 +369,46 @@ final class NotesSplitUITests: XCTestCase {
         deleteNotes([title])
     }
 
+    /// Return on an emptied field writes the empty value; leaving an emptied
+    /// field writes nothing and the value comes back.
+    func testReturnEmptiesAPropertyAndLeavingDoesNot() throws {
+        try openNotes()
+        let title = "[agent] \(run) emptied"
+        makeNote(title)
+        let addProperty = app.buttons["Add a property"].firstMatch
+        XCTAssertTrue(addProperty.waitForExistence(timeout: 10))
+        addProperty.tap()
+        let name = app.textFields["Property name"]
+        XCTAssertTrue(name.waitForExistence(timeout: 10))
+        name.tap()
+        name.typeText("status")
+        app.buttons["Text"].firstMatch.tap()
+        let value = app.textFields["status"].firstMatch
+        XCTAssertTrue(value.waitForExistence(timeout: 10), "the property has no field")
+        let erase = String(repeating: XCUIKeyboardKey.delete.rawValue, count: 8)
+
+        value.tap()
+        value.typeText("kept\n")
+        value.tap()
+        value.typeText(erase)
+        let addTag = app.buttons["Add a tag"].firstMatch
+        XCTAssertTrue(addTag.waitForExistence(timeout: 10))
+        addTag.tap()
+        XCTAssertTrue(matches(NSPredicate(format: "value == 'kept'"), value), "leaving an emptied field lost the value")
+        attach("property-emptied-left")
+
+        value.tap()
+        value.typeText(erase + "\n")
+        attach("property-emptied-returned")
+
+        app.terminate()
+        try openNotes()
+        XCTAssertTrue(page(title).waitForExistence(timeout: 10))
+        let empty = NSPredicate(format: "value == '' OR value == 'Empty' OR value == nil")
+        XCTAssertTrue(matches(empty, app.textFields["status"].firstMatch), "Return on an emptied field wrote nothing")
+        deleteNotes([title])
+    }
+
     // MARK: Helpers
 
     private var inspectorToggle: XCUIElement { app.buttons["note.inspector.toggle"].firstMatch }

@@ -605,9 +605,15 @@ struct NotePropertyDraftCommitsTests {
         return (NoteMetadataViewModel(noteId: "note-1", writer: writer), writer, NotePropertyDraftCommits())
     }
 
-    /// What the row does when an edit ends.
-    private func end(_ commits: inout NotePropertyDraftCommits, _ draft: String, _ model: NoteMetadataViewModel) async {
-        if let value = commits.take(draft) { await model.setProperty("Status", input: value, kind: .text) }
+    /// What the row does when an edit ends: Return is `explicit`, a blur or
+    /// the row going is not.
+    private func end(
+        _ commits: inout NotePropertyDraftCommits, _ draft: String, _ model: NoteMetadataViewModel,
+        explicit: Bool = false
+    ) async {
+        if let value = commits.take(draft, explicit: explicit) {
+            await model.setProperty("Status", input: value, kind: .text)
+        }
     }
 
     @Test func a_clear_then_leaving_the_field_leaves_it_null() async {
@@ -624,7 +630,7 @@ struct NotePropertyDraftCommitsTests {
         await model.clearProperty("Status")
         commits.rebase("")
         commits.begin("")
-        await end(&commits, "", model)
+        await end(&commits, "", model, explicit: true)
         #expect(writer.all == [.clear("Status")])
     }
 
@@ -633,25 +639,47 @@ struct NotePropertyDraftCommitsTests {
         commits.begin("old")
         await model.clearProperty("Status")
         commits.rebase("")
-        await end(&commits, "new", model)
+        await end(&commits, "new", model, explicit: true)
         #expect(writer.all == [.clear("Status"), .property("Status", "\"new\"")])
     }
 
     @Test func return_then_leaving_the_field_writes_once() async {
         var (model, writer, commits) = row()
         commits.begin("")
-        await end(&commits, "typed", model)
+        await end(&commits, "typed", model, explicit: true)
         await end(&commits, "typed", model)
         #expect(writer.all == [.property("Status", "\"typed\"")])
     }
 
-    @Test func an_untouched_or_emptied_field_writes_nothing() async {
+    @Test func an_untouched_field_or_an_emptied_one_left_writes_nothing() async {
         var (model, writer, commits) = row()
         commits.begin("old")
-        await end(&commits, "old", model)
+        await end(&commits, "old", model, explicit: true)
         commits.begin("old")
         await end(&commits, "", model)
         await end(&commits, "late", model)
         #expect(writer.all.isEmpty)
+    }
+
+    @Test func return_on_an_emptied_field_writes_the_empty_value_once() async {
+        var (model, writer, commits) = row()
+        commits.begin("old")
+        await end(&commits, "", model, explicit: true)
+        await end(&commits, "", model)
+        #expect(writer.all == [.property("Status", "\"\"")])
+    }
+
+    @Test func return_on_an_emptied_number_refuses_and_writes_nothing() async {
+        var (model, writer, commits) = row()
+        commits.begin("3")
+        if let value = commits.take("", explicit: true) {
+            await model.setProperty("Count", input: value, kind: .number)
+        }
+        #expect(writer.all.isEmpty)
+        guard case let .failed(error) = model.status else {
+            Issue.record("expected a failure, got \(model.status)")
+            return
+        }
+        #expect(error.code == "property.unrepresentable")
     }
 }
