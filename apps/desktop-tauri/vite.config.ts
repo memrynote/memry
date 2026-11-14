@@ -66,7 +66,6 @@ export default defineConfig({
     outDir: resolve(appRoot, 'dist/renderer'),
     emptyOutDir: true,
     rollupOptions: {
-      // `pdf-host.html` stays in the tree for Step 34 (#3551).
       input: { index: resolve(appRoot, 'src/renderer/index.html') },
       // Every per-icon module in @hugeicons/core-free-icons tags its array literal with
       // /*#__PURE__*/, which rollup only reads on calls; left alone it emits one notice per icon.

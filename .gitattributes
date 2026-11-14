@@ -28,3 +28,5 @@ packages/contracts/test-vectors/markdown-convert/corpus/** -text -whitespace
 # stores in sqlite_schema. A Windows checkout would convert them to CRLF; pin LF so every
 # platform embeds identical migration text.
 crates/memry-core/src/storage/migrations/**/*.sql text eol=lf
+# PDF fixtures of the worker tests: the xref table ends each entry in a space by spec.
+crates/memry-ml-worker/tests/fixtures/*.pdf binary
