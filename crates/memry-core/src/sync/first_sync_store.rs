@@ -12,8 +12,6 @@ use crate::api::errors::StorageError;
 
 use super::body_debt;
 
-use super::first_sync::RECENT_BODY_LIMIT;
-
 /// Pass two's work list: everything the refs pass recorded that still has no
 /// payload, **newest first**.
 ///
@@ -36,7 +34,7 @@ pub(super) fn pending_metadata_ids(conn: &Connection) -> Result<Vec<String>, Sto
 }
 
 /// Pass three's work list: the note and journal documents inside the window,
-/// newest first, capped.
+/// newest first, capped at `limit` (`None`: every one).
 ///
 /// Read from the **projections**, not from `sync_items.updated_at`: the latter
 /// is the instant this device applied the row, which pass two rewrites to
@@ -45,7 +43,10 @@ pub(super) fn pending_metadata_ids(conn: &Connection) -> Result<Vec<String>, Sto
 pub(super) fn recent_document_ids(
     conn: &Connection,
     window_start: i64,
+    limit: Option<usize>,
 ) -> Result<Vec<String>, StorageError> {
+    // SQLite reads a negative `LIMIT` as none.
+    let limit = limit.map_or(-1, |limit| i64::try_from(limit).unwrap_or(i64::MAX));
     let mut statement = conn
         .prepare(
             "SELECT id FROM (
@@ -58,9 +59,7 @@ pub(super) fn recent_document_ids(
         )
         .map_err(sqlite_failed)?;
     let ids = statement
-        .query_map(params![window_start, RECENT_BODY_LIMIT as i64], |row| {
-            row.get::<_, String>(0)
-        })
+        .query_map(params![window_start, limit], |row| row.get::<_, String>(0))
         .map_err(sqlite_failed)?
         .collect::<Result<Vec<String>, _>>()
         .map_err(sqlite_failed)?;
@@ -115,5 +114,35 @@ pub(crate) fn write_meta(conn: &Connection, key: &str, value: &str) -> Result<()
 fn sqlite_failed(error: rusqlite::Error) -> StorageError {
     StorageError::Failed {
         what: error.to_string(),
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use crate::storage::{open_data, test_support::temp_dir};
+
+    /// Desktop's first sync passes no cap: past [`super::super::first_sync::RECENT_BODY_LIMIT`],
+    /// every live document is in the bodies pass's work list, newest first.
+    #[test]
+    fn no_limit_lists_every_live_document_past_the_phone_cap() {
+        let dir = temp_dir("first-sync-no-limit");
+        let db = open_data(&dir.path().join("data.db")).expect("open data.db");
+        let ids = db
+            .call_blocking(|conn| {
+                for n in 0..601i64 {
+                    conn.execute(
+                        "INSERT INTO notes (id, title, modified_at) VALUES (?1, 't', ?2)",
+                        params![format!("note{n:08}"), n],
+                    )
+                    .map_err(sqlite_failed)?;
+                }
+                let capped = recent_document_ids(conn, i64::MIN, Some(500))?;
+                assert_eq!(capped.len(), 500);
+                recent_document_ids(conn, i64::MIN, None)
+            })
+            .unwrap();
+        assert_eq!(ids.len(), 601);
+        assert_eq!(ids[0], "note00000600");
     }
 }

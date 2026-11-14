@@ -85,6 +85,8 @@ pub struct Vault {
 
 // The desktop tag hub's accessors (Step 13j), kept apart for the line ceiling.
 mod tags;
+// The desktop sync driver and the server vault binding (#3534).
+mod sync_driver;
 
 impl Vault {
     /// [`Vault::open`] with explicit [`OpenOptions`], for desktop. Not on the FFI surface.

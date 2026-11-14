@@ -381,7 +381,10 @@ vi.mock('../src/generated/bindings', () => {
       // The level only goes into the fold service's failure log; Electron's `get` takes none.
       foldRun: (noteId: string) => window.api.noteFold.get(noteId),
       foldRetry: (noteId: string | null) => window.api.noteFold.retry(noteId ?? undefined),
-      foldGetLastRun: () => window.api.noteFold.getLastRun()
+      foldGetLastRun: () => window.api.noteFold.getLastRun(),
+      // Settings > General reads it on mount; the row's own test mocks the bindings.
+      ocrLanguagesGetState: () =>
+        Promise.resolve({ selected: ['eng'], statuses: { eng: { state: 'ready' } } })
     },
     events: {
       vaultStatusChangedEvent: event(() => window.api.onVaultStatusChanged, revised),
@@ -402,6 +405,7 @@ vi.mock('../src/generated/bindings', () => {
       // The icon library (lib/custom-icons-store.ts) refetches on it; its tests mock the service.
       customIconsUpdatedEvent: { listen: async () => () => undefined },
       vaultNoticesChangedEvent: { listen: async () => () => undefined },
+      ocrLanguagesChangedEvent: { listen: async () => () => undefined },
       journalEntryCreatedEvent: event(() => api().onJournalEntryCreated),
       journalEntryUpdatedEvent: event(() => api().onJournalEntryUpdated),
       journalEntryDeletedEvent: event(() => api().onJournalEntryDeleted),
@@ -470,14 +474,6 @@ const createMockApi = () => ({
     }),
     onUpdated: vi.fn().mockReturnValue(() => {})
   },
-
-  // OCR languages (read by Settings > General on mount)
-  ocrLanguages: {
-    get: vi.fn().mockResolvedValue({ selected: ['eng'], statuses: { eng: { state: 'ready' } } }),
-    set: vi.fn(),
-    retry: vi.fn()
-  },
-  onOcrLanguagesChanged: vi.fn().mockReturnValue(() => {}),
 
   // Auto-updater API (used by useAppUpdater on mount)
   updater: {
