@@ -1,6 +1,6 @@
 import sodium from 'libsodium-wrappers-sumo'
 
-import { decrypt, encrypt } from '../crypto'
+import { decrypt, encrypt } from '../crypto/encryption'
 
 const NAME_AAD_PREFIX = 'vault-name-v1'
 const ICON_AAD_PREFIX = 'vault-icon-v1'

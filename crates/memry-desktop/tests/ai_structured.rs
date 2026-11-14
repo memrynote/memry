@@ -449,3 +449,25 @@ async fn provider_text_is_left_alone_for_a_short_key_or_a_provider_without_one()
         assert_eq!(error.to_string(), text, "{provider:?}");
     }
 }
+
+#[tokio::test]
+async fn a_short_custom_key_quoted_back_is_cut_out_as_a_whole_token() {
+    // LiteLLM's default master key.
+    const SHORT: &str = "sk-1234";
+    let fake = fake(vec![Reply::json(
+        400,
+        &json!({ "error": { "message": "Invalid key sk-1234. Keys look like sk-12345678." } }),
+    )])
+    .await;
+    let error = call(
+        &proxy(),
+        &settings(AiProvider::Custom, &fake.base, SHORT),
+        NOW,
+    )
+    .await
+    .unwrap_err();
+    assert_eq!(
+        error.to_string(),
+        "Invalid key [redacted]. Keys look like sk-12345678."
+    );
+}

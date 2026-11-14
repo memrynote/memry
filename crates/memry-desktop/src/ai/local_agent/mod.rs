@@ -4,7 +4,7 @@
 //! with server-sent events, and Ollama's native `POST <base without /v1>/api/chat` with NDJSON.
 //!
 //! A library with no runtime wiring: Step 28 (#3545) drives [`LocalAgent::run`] for chat turns
-//! and the fold calls [`LocalAgent::complete_structured`]. Every request goes out on the
+//! and the fold calls [`LocalAgent::complete_structured`] on the model it detected. Every request goes out on the
 //! [`ProbeClient`] (no proxy, no redirects) with the key from [`LocalProviderStore::read`], and no
 //! event or log carries the key.
 
@@ -283,18 +283,15 @@ impl LocalAgent {
         self.inner.provider().await.redact(text)
     }
 
-    /// `completeStructured`: one run without tools, drained, whose reply must hold one JSON object
-    /// that `T` reads (`T` stands in for the zod schema of Electron).
-    pub async fn complete_structured<T: DeserializeOwned>(
-        &self,
-        prompt: &str,
-    ) -> Result<T, StructuredError> {
-        self.complete_structured_on(prompt, None).await
+    /// The model the settings name now, empty for the server's default. Read without a probe.
+    pub async fn configured_model(&self) -> String {
+        self.inner.provider().await.model
     }
 
-    /// [`Self::complete_structured`] on `model` (`None`: the configured one). The fold pins the
-    /// model it detected, which its cache key names.
-    pub async fn complete_structured_on<T: DeserializeOwned>(
+    /// `completeStructured`: one run without tools on `model` (`None`: the configured one),
+    /// drained, whose reply must hold one JSON object that `T` reads (`T` stands in for the zod
+    /// schema of Electron). The fold pins the model it detected, which its cache key names.
+    pub async fn complete_structured<T: DeserializeOwned>(
         &self,
         prompt: &str,
         model: Option<String>,

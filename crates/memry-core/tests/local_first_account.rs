@@ -21,7 +21,7 @@ use base64::Engine as _;
 use base64::engine::general_purpose::STANDARD as BASE64;
 use http_fakes::*;
 use memry_core::api::auth::{AuthSession, DeviceDescriptor, ensure_device_identity};
-use memry_core::api::crypto::decrypt_vault_name;
+use memry_core::api::crypto::{decrypt_vault_icon, decrypt_vault_name, encrypt_vault_icon};
 use memry_core::api::errors::{ApiError, AuthError, SecureStoreError, StorageError};
 use memry_core::api::vault::Vault;
 use memry_core::protocol::auth::DevicePlatform;
@@ -211,6 +211,59 @@ async fn a_registered_vault_name_opens_with_the_vault_key() {
         body["nameNonce"].as_str().unwrap().into(),
     );
     assert_eq!(opened.as_deref(), Some("Phone"));
+}
+
+/// `PUT /sync/vaults/:vaultId/icon` (chapter 05 §5.11.1): an icon goes up
+/// sealed and opens with the vault key, a reset sends both fields null, and
+/// the answer is the server's `applied`.
+#[tokio::test]
+async fn a_vault_icon_goes_up_sealed_and_returns_applied() {
+    let (session, transport) = signed_in(vec![
+        response(200, r#"{"success":true,"applied":true}"#),
+        response(200, r#"{"success":true,"applied":false}"#),
+        response(200, r#"{"success":true}"#),
+    ])
+    .await;
+    let id = "0f8e3a52-9c1d-4b7e-a2f0-5d6c7b8a9e01";
+    let sealed = encrypt_vault_icon(&MASTER_KEY, id, "icon:Book01Icon").unwrap();
+
+    assert!(
+        session
+            .set_vault_icon(id, Some(&sealed), 1_700_000_000_000)
+            .await
+            .unwrap()
+    );
+    let call = last_call(&transport);
+    assert_eq!(call.method, "PUT");
+    assert!(
+        call.url.ends_with(&format!("/sync/vaults/{id}/icon")),
+        "{}",
+        call.url
+    );
+    let body = body_json(&call);
+    assert_eq!(body["iconUpdatedAt"], 1_700_000_000_000_i64);
+    let opened = decrypt_vault_icon(
+        &MASTER_KEY,
+        id,
+        body["encryptedIcon"].as_str().unwrap(),
+        body["iconNonce"].as_str().unwrap(),
+    );
+    assert_eq!(opened.as_deref(), Some("icon:Book01Icon"));
+
+    assert!(
+        !session
+            .set_vault_icon(id, None, 1_700_000_000_001)
+            .await
+            .unwrap()
+    );
+    let body = body_json(&last_call(&transport));
+    assert!(body["encryptedIcon"].is_null() && body["iconNonce"].is_null());
+    assert!(body.as_object().unwrap().contains_key("encryptedIcon"));
+
+    match session.set_vault_icon(id, None, 1_700_000_000_002).await {
+        Err(ApiError::MalformedResponse { .. }) => {}
+        other => panic!("a reply without `applied` is malformed, got {other:?}"),
+    }
 }
 
 #[tokio::test]
