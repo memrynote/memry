@@ -86,20 +86,26 @@ final class EditorSession {
     private(set) var hasSelection = false
     private(set) var trigger: InlineTrigger?
     private(set) var suggestions: [EditorSuggestion] = [] {
-        didSet { highlighted = 0 }
+        didSet { menuChanged() }
     }
     /// The open `#` menu, when no `[[` / `@` menu is.
     private(set) var tagTrigger: HashTagTrigger?
     private(set) var tagSuggestions: [TagSuggestion] = [] {
-        didSet { highlighted = 0 }
+        didSet { menuChanged() }
     }
     /// The open menu's row that Return picks, moved by the arrow keys.
     var highlighted = 0
-    /// The arrow keys moved `highlighted` (`menuFollowsKeys`).
+    /// The arrow keys moved `highlighted` in the open menu
+    /// (`menuFollowsKeys`).
     var highlightMoved = false
-    /// Where the menu Esc closed starts, so it stays closed while the caret
-    /// is still in that trigger.
-    @ObservationIgnored private var dismissedMenu: Int?
+    /// The menu Esc closed, by its trigger character and where it starts, so
+    /// it stays closed while the caret is still in that trigger.
+    @ObservationIgnored private var dismissedMenu: DismissedMenu?
+
+    private struct DismissedMenu: Equatable {
+        let trigger: Character
+        let location: Int
+    }
     /// The link alert over the selection is open (`editLink`).
     var linkPrompt = false
     /// Seam for tests; the app reads the attached keyboard.
@@ -412,10 +418,12 @@ final class EditorSession {
         let typed = range.length == 0 && !inCode ? InlineTrigger.active(in: textView.text, caret: range.location) : nil
         let typedTag = range.length == 0 && !inCode
             ? HashTagTrigger.active(in: textView.text, caret: range.location) : nil
-        if let dismissed = dismissedMenu, typed?.range.location != dismissed, typedTag?.range.location != dismissed {
+        let typedMenu = typed.map(Self.dismissable)
+        let typedTagMenu = typedTag.map { DismissedMenu(trigger: "#", location: $0.range.location) }
+        if let dismissed = dismissedMenu, typedMenu != dismissed, typedTagMenu != dismissed {
             dismissedMenu = nil
         }
-        let next = typed?.range.location == dismissedMenu ? nil : typed
+        let next = typedMenu == dismissedMenu ? nil : typed
         if next != trigger {
             let leftWiki: Bool = if case .wiki = trigger { next == nil } else { false }
             trigger = next
@@ -431,7 +439,7 @@ final class EditorSession {
             // The caret left a finished `[[target]]`: it becomes a link.
             if leftWiki, !WikiLinkText.typed(in: textView.text, since: field.base).isEmpty { commit(field) }
         }
-        let nextTag = trigger == nil && typedTag?.range.location != dismissedMenu ? typedTag : nil
+        let nextTag = trigger == nil && typedTagMenu != dismissedMenu ? typedTag : nil
         if nextTag != tagTrigger {
             tagTrigger = nextTag
             tagSuggestions = nextTag.map { TagSuggestions.rank(query: $0.query, tags: tags) } ?? []
@@ -442,11 +450,29 @@ final class EditorSession {
     /// Esc over an open menu: it closes and stays closed until the caret
     /// leaves its trigger.
     func closeMenu() {
-        dismissedMenu = trigger?.range.location ?? tagTrigger?.range.location
+        dismissedMenu = trigger.map(Self.dismissable)
+            ?? tagTrigger.map { DismissedMenu(trigger: "#", location: $0.range.location) }
         trigger = nil
         suggestions = []
         tagTrigger = nil
         tagSuggestions = []
+    }
+
+    private static func dismissable(_ trigger: InlineTrigger) -> DismissedMenu {
+        let character: Character = switch trigger {
+        case .wiki: "["
+        case .mention: "@"
+        case .slash: "/"
+        }
+        return DismissedMenu(trigger: character, location: trigger.range.location)
+    }
+
+    /// A menu's rows changed: the highlight goes back to the first, and a
+    /// closed menu forgets the arrows, so on-screen Return makes a block
+    /// again once the keyboard is detached.
+    private func menuChanged() {
+        highlighted = 0
+        if !menuOpen { highlightMoved = false }
     }
 
     // MARK: Ordered writes
@@ -1070,23 +1096,45 @@ final class EditorSession {
 
     // MARK: Undo
 
-    var canUndo: Bool { history.canUndo || (field?.textView.editorUndo.typing()?.canUndo ?? false) }
-    var canRedo: Bool { history.canRedo || (field?.textView.editorUndo.typing()?.canRedo ?? false) }
+    /// What `undo()` and `redo()` would take: typing counts only while the
+    /// block holds uncommitted typing.
+    var canUndo: Bool { history.canUndo || (pendingTyping?.canUndo ?? false) }
+    var canRedo: Bool { history.canRedo || (pendingTyping?.canRedo ?? false) }
+
+    /// The text view's typing undo, while the open block's typing is not yet
+    /// committed. After a commit, the typing is a history step.
+    private var pendingTyping: UndoManager? {
+        field?.dirty == true ? field?.textView.editorUndo.typing() : nil
+    }
+
+    /// The open block's text before the latest run of typing undos, which
+    /// typing redo would bring back (`undo`).
+    @ObservationIgnored private var undoneTyping: (blockId: String, text: String)?
 
     /// Typing in the open block first, through the text view's own undo;
     /// then the writes this session made, newest first. The toolbar, ⌘Z
     /// and the system's undo all land here (`BlockUndoManager`).
     func undo() {
-        if let typing = field?.textView.editorUndo.typing(), typing.canUndo, field?.dirty == true {
+        if let field, let typing = pendingTyping, typing.canUndo {
+            if !typing.canRedo { undoneTyping = (field.blockId, field.textView.text) }
             typing.undo()
             return
         }
+        guard history.canUndo else { return }
+        // The block step's replay drops the text view's typing redo, so typing
+        // undone before it is kept as a history step to redo after it.
+        if let field, let undone = undoneTyping, undone.blockId == field.blockId,
+           pendingTyping?.canRedo == true, undone.text != field.textView.text {
+            let formatted = BlockText.isFormatted(field.block.inline) || undone.text.contains(BlockText.placeholder)
+            history.keepRedo(Self.textStep(field.blockId, from: field.textView.text, to: undone.text, formatted: formatted))
+        }
+        undoneTyping = nil
         guard let step = history.popUndo() else { return }
         replay([step.backward] + step.backwardAfter)
     }
 
     func redo() {
-        if let typing = field?.textView.editorUndo.typing(), typing.canRedo, field?.dirty == true {
+        if let typing = pendingTyping, typing.canRedo {
             typing.redo()
             return
         }

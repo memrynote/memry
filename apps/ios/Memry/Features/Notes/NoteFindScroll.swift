@@ -86,8 +86,8 @@ struct NoteFindScroll: ViewModifier {
     var answersFind = true
 
     @State private var query = NoteFindQuery()
-    /// Find was opened from the keyboard, so its field takes the typing.
-    @State private var focusField = false
+    /// ⌘F presses since find opened: each puts the caret in its field.
+    @State private var focusRequest = 0
     @State private var pendingQuery: String?
     @Environment(\.accessibilityReduceMotion) private var reduceMotion
     private let requests = SearchFindRequests.shared
@@ -100,7 +100,7 @@ struct NoteFindScroll: ViewModifier {
                 .background {
                     if answersFind {
                         Button("Find in note") {
-                            focusField = true
+                            focusRequest += 1
                             finding = true
                         }
                             .keyboardShortcut("f", modifiers: .command)
@@ -111,7 +111,7 @@ struct NoteFindScroll: ViewModifier {
                 }
                 .safeAreaInset(edge: .top) {
                     if finding {
-                        NoteFindPanel(blocks: blocks, query: $query.text, focusField: focusField) { index in
+                        NoteFindPanel(blocks: blocks, query: $query.text, focusRequest: focusRequest) { index in
                             proxy.scrollTo(index, anchor: .top)
                         } close: {
                             finding = false
@@ -120,7 +120,7 @@ struct NoteFindScroll: ViewModifier {
                 }
                 .onChange(of: finding) { _, open in
                     query.finding(open)
-                    if !open { focusField = false }
+                    if !open { focusRequest = 0 }
                 }
                 .onChange(of: requests.pending, initial: true) {
                     if let query = requests.take(for: target) { pendingQuery = query }

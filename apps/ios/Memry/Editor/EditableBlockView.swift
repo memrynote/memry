@@ -169,8 +169,11 @@ final class BlockTextView: UITextView {
     }
 
     /// Ahead of the text view's own, so Tab nests instead of typing a tab
-    /// and ⌘Z undoes through the session.
+    /// and ⌘Z undoes through the session. None while marked text is
+    /// pending: an IME composition keeps its keys, and a command's commit
+    /// would cancel it.
     override var keyCommands: [UIKeyCommand]? {
+        guard markedTextRange == nil else { return super.keyCommands }
         let editor = (editorKeys?() ?? []).map { $0.keyCommand(action: #selector(editorKey(_:))) }
         return editor + (super.keyCommands ?? [])
     }
@@ -189,8 +192,6 @@ final class BlockTextView: UITextView {
     var typingUndo: UndoManager? { super.undoManager }
 }
 
-/// Draws the fill under a typed `#tag` (`BlockText.markTags`) as a rounded
-/// pill, padded into the kern around it. Other fills draw as usual.
 /// The undo manager a block's text view answers with. `undo()` and
 /// `redo()` go through the session (`EditorSession.undo`), which undoes
 /// typing first, in `typing`, and its own steps after that.
@@ -203,8 +204,10 @@ final class BlockUndoManager: UndoManager {
     var sessionCanUndo: () -> Bool = { false }
     var sessionCanRedo: () -> Bool = { false }
 
-    override var canUndo: Bool { typing()?.canUndo == true || sessionCanUndo() }
-    override var canRedo: Bool { typing()?.canRedo == true || sessionCanRedo() }
+    /// The session's answer once wired (`EditorSession.canUndo`), which
+    /// counts typing only where its `undo()` would take it.
+    override var canUndo: Bool { sessionUndo == nil ? typing()?.canUndo == true : sessionCanUndo() }
+    override var canRedo: Bool { sessionRedo == nil ? typing()?.canRedo == true : sessionCanRedo() }
 
     override func undo() {
         guard let sessionUndo else { return typing()?.undo() ?? () }
@@ -217,6 +220,8 @@ final class BlockUndoManager: UndoManager {
     }
 }
 
+/// Draws the fill under a typed `#tag` (`BlockText.markTags`) as a rounded
+/// pill, padded into the kern around it. Other fills draw as usual.
 final class TagPillLayoutManager: NSLayoutManager {
     override func fillBackgroundRectArray(
         _ rectArray: UnsafePointer<CGRect>,
@@ -311,8 +316,8 @@ final class BlockField: NSObject, UITextViewDelegate, UIGestureRecognizerDelegat
         undo.typing = { [weak textView] in textView?.typingUndo }
         undo.sessionUndo = { [weak self] in self?.session?.undo() }
         undo.sessionRedo = { [weak self] in self?.session?.redo() }
-        undo.sessionCanUndo = { [weak self] in self?.session?.history.canUndo ?? false }
-        undo.sessionCanRedo = { [weak self] in self?.session?.history.canRedo ?? false }
+        undo.sessionCanUndo = { [weak self] in self?.session?.canUndo ?? false }
+        undo.sessionCanRedo = { [weak self] in self?.session?.canRedo ?? false }
     }
 
     var blockId: String { block.id ?? "" }

@@ -72,6 +72,10 @@ final class EditorKeyboardUITests: XCTestCase {
         app.typeText("Second")
         XCTAssertTrue(app.staticTexts["1 match"].waitForExistence(timeout: 5), "find did not search")
         attach("command-f-find")
+        second.tap()
+        XCTAssertTrue(matches(NSPredicate(format: "hasKeyboardFocus == true"), second), "the block took no caret")
+        app.typeKey("f", modifierFlags: .command)
+        XCTAssertTrue(matches(NSPredicate(format: "hasKeyboardFocus == true"), find), "a second ⌘F did not re-focus find")
         app.buttons["find.close"].tap()
 
         deleteNotes([title])

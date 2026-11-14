@@ -121,7 +121,13 @@ extension EditorSession {
     /// Runs a key command against the focused block, through the operation
     /// the toolbar's matching button uses.
     func perform(_ command: EditorKeyCommand) {
+        // An IME composition keeps its keys (`BlockTextView.keyCommands`).
+        guard field?.textView.markedTextRange == nil else { return }
         switch command {
+        // Desktop's code block types two spaces for Tab, as typing
+        // (BlockNote's `CodeKeyboardShortcutsExtension`), and leaves ⇧Tab
+        // to lift the block.
+        case .indent where focusedKind == "codeBlock": field?.textView.insertText("  ")
         // The toolbar disables these where the core refuses the move; a
         // refused move recorded as a step would undo into a wrong one.
         case .indent: if canIndent { nest(true) }

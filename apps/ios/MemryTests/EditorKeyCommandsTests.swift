@@ -29,16 +29,16 @@ private final class Page {
     let field: BlockField
 
     /// Blocks `a` and `b`, the caret in `focus`, `b` nested under `a` when
-    /// `nested`. `text` is drawn in the focused block.
-    init(focus: String = "b", nested: Bool = false, text: String = "hi", keyboard: Bool = true) {
+    /// `nested`. `text` is drawn in the focused block, a `kind` block.
+    init(focus: String = "b", nested: Bool = false, text: String = "hi", kind: String = "paragraph", keyboard: Bool = true) {
         model = NoteEditorViewModel(noteId: "n1", editor: editor)
         session = model.session
         session.model = model
         session.hardwareKeyboard = HardwareKeyboard(attached: keyboard)
         let run = { (text: String) in [InlineRun(text: text, marks: [], markAttrs: [:], target: nil)] }
         let blocks = [
-            Block(id: "a", kind: "paragraph", depth: 0, props: [], inline: run(focus == "a" ? text : "top")),
-            Block(id: "b", kind: "paragraph", depth: nested ? 1 : 0, props: [], inline: run(focus == "b" ? text : "below")),
+            Block(id: "a", kind: focus == "a" ? kind : "paragraph", depth: 0, props: [], inline: run(focus == "a" ? text : "top")),
+            Block(id: "b", kind: focus == "b" ? kind : "paragraph", depth: nested ? 1 : 0, props: [], inline: run(focus == "b" ? text : "below")),
         ]
         session.blocks = { blocks }
         let style = BlockText.Style(font: .systemFont(ofSize: 17), ink: .label, titleExists: nil)
@@ -116,6 +116,77 @@ struct EditorKeyCommandsTests {
         let nested = Page(nested: true)
         await nested.press("\t", .shift)
         #expect(nested.editor.all.last == .outdent(blockId: "b"))
+    }
+
+    /// Desktop's code block: Tab types two spaces over the selection, as
+    /// typing, and ⇧Tab still lifts the block.
+    @Test func tabInACodeBlockTypesTwoSpacesAndShiftTabLiftsIt() async throws {
+        let page = Page(kind: "codeBlock")
+        let window = try page.showInWindow()
+        defer { window.isHidden = true }
+        await page.press("\t", writes: false)
+        #expect(page.field.textView.text == "hi  ")
+        page.field.textView.selectedRange = NSRange(location: 0, length: 2)
+        await page.press("\t", writes: false)
+        #expect(page.field.textView.text == "    ")
+        #expect(page.field.dirty, "the spaces are typing, committed like it")
+        page.session.enqueue {}
+        await page.session.tail?.value
+        #expect(page.editor.all.isEmpty, "Tab did not nest the code block")
+
+        let nested = Page(nested: true, kind: "codeBlock")
+        await nested.press("\t", .shift)
+        #expect(nested.editor.all.last == .outdent(blockId: "b"))
+    }
+
+    /// DATA-LOSS: an IME composition keeps the keyboard. Tab and ⌘B would
+    /// commit the unconverted text and cancel the composition.
+    @Test func noEditorKeysWhileMarkedTextIsPending() async throws {
+        let page = Page()
+        let window = try page.showInWindow()
+        defer { window.isHidden = true }
+        page.field.textView.selectedRange = NSRange(location: 0, length: 2)
+        page.session.selectionChanged(in: page.field)
+        page.field.textView.setMarkedText("に", selectedRange: NSRange(location: 1, length: 0))
+        #expect(page.field.textView.markedTextRange != nil)
+        #expect(!page.has("\t"))
+        #expect(!page.has("b", .command))
+        page.session.perform(.indent)
+        page.session.perform(.bold)
+        page.session.enqueue {}
+        await page.session.tail?.value
+        #expect(page.editor.all.isEmpty, "nothing committed")
+        #expect(page.field.textView.markedTextRange != nil, "the composition is still open")
+        #expect(!page.session.history.canUndo)
+    }
+
+    /// Nest, type, ⌘Z ⌘Z, then ⇧⌘Z ⇧⌘Z brings back the nest and then the
+    /// typing; redo says so after every step.
+    @Test func redoAfterABlockUndoRestoresTheTypingUndoneBeforeIt() async throws {
+        let page = Page()
+        let window = try page.showInWindow()
+        defer { window.isHidden = true }
+        let undo = try #require(page.field.textView.undoManager)
+        await page.press("\t")
+        #expect(!undo.canRedo)
+        page.field.textView.insertText("!")
+        try await Task.sleep(for: .milliseconds(50))
+        #expect(!undo.canRedo)
+
+        undo.undo()
+        #expect(page.field.textView.text == "hi", "the first ⌘Z undoes the typing")
+        #expect(undo.canRedo)
+        await page.reloaded { undo.undo() }
+        #expect(page.editor.all.last == .outdent(blockId: "b"), "the second ⌘Z undoes the nest")
+        #expect(undo.canRedo)
+
+        await page.reloaded { undo.redo() }
+        #expect(page.editor.all.last == .indent(blockId: "b"), "the first ⇧⌘Z redoes the nest")
+        #expect(undo.canRedo)
+        await page.reloaded { undo.redo() }
+        #expect(page.editor.all.last == .setText(blockId: "b", text: "hi!"), "the second ⇧⌘Z redoes the typing")
+        #expect(!undo.canRedo)
+        #expect(undo.canUndo)
     }
 
     @Test func tabWhereTheCoreRefusesWritesNothing() async {
@@ -248,6 +319,21 @@ struct EditorKeyCommandsTests {
         #expect(tag == ["world"])
     }
 
+    /// The arrows moved the highlight, then the menu closed: with no
+    /// hardware keyboard, Return over the next menu makes a block again.
+    @Test func closingTheMenuForgetsTheArrows() async {
+        let page = Page(text: "", keyboard: false)
+        page.session.tags = ["work", "world"]
+        page.type("#wo")
+        await page.press(UIKeyCommand.inputDownArrow, writes: false)
+        #expect(page.session.highlightMoved)
+        page.type("")
+        #expect(!page.session.menuOpen)
+        #expect(!page.session.highlightMoved)
+        page.type("#wo")
+        #expect(!page.session.pickHighlighted())
+    }
+
     @Test func returnOverATagMenuStillMakesABlockWithTheOnScreenKeyboard() {
         let page = Page(text: "", keyboard: false)
         page.session.tags = ["work"]
@@ -268,5 +354,16 @@ struct EditorKeyCommandsTests {
         #expect(page.session.menuOpen, "a new trigger opens again")
         await page.press(".", .command, writes: false)
         #expect(!page.session.menuOpen)
+    }
+
+    /// Esc closes one kind of menu: another trigger typed at the same place
+    /// opens its own.
+    @Test func escapeClosesOnlyThatTriggersMenu() async {
+        let page = Page(text: "")
+        page.session.tags = ["work"]
+        page.type("/")
+        await page.press(UIKeyCommand.inputEscape, writes: false)
+        page.type("#wo")
+        #expect(!page.session.tagSuggestions.isEmpty, "the # menu opened where the / menu was closed")
     }
 }
