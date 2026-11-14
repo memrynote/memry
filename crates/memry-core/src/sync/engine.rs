@@ -107,7 +107,7 @@ pub struct SyncEngine {
     /// Pages one pass walks before yielding the gate.
     max_pages: u32,
     /// The exclusive queue. Held for a whole pass.
-    gate: tokio::sync::Mutex<()>,
+    gate: Arc<tokio::sync::Mutex<()>>,
     /// True while a [`SyncEngine::wake`] pass waits for the gate (#2290).
     wake_queued: AtomicBool,
     state: Mutex<SyncState>,
@@ -133,7 +133,7 @@ impl SyncEngine {
             push: None,
             seeds: Vec::new(),
             max_pages: MAX_PAGES_PER_PASS,
-            gate: tokio::sync::Mutex::new(()),
+            gate: Arc::default(),
             wake_queued: AtomicBool::new(false),
             state: Mutex::new(SyncState::Idle),
             policy,
@@ -154,6 +154,13 @@ impl SyncEngine {
     /// Pages one pass walks before it yields the gate; at least one.
     pub fn with_max_pages(mut self, pages: u32) -> Self {
         self.max_pages = pages.max(1);
+        self
+    }
+
+    /// Shares `gate` with every other holder of it, such as the process-wide
+    /// gate of one vault, instead of a gate of this engine's own.
+    pub fn with_gate(mut self, gate: Arc<tokio::sync::Mutex<()>>) -> Self {
+        self.gate = gate;
         self
     }
 

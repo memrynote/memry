@@ -6,6 +6,9 @@
 //! | records converge through the driver                    | notes, tasks, projects, the six Step 16 types |
 //! | the driver's seeds carry definitions, tags and locks   | Electron's pull, `seedUnclocked`, push |
 //! | a paused driver runs no pass                           | the supervisor's pause                |
+//! | a device registered after the driver opened            | ch. 01 §1.4.0, applied in the same pass |
+//! | passes over one vault serialize                        | one pass gate: drivers and `sync_now` |
+//! | the driver sends the bound vault id                    | K1: unbound refused, rebinding refused |
 
 #![cfg(feature = "harness")]
 
@@ -22,7 +25,7 @@ use base64::Engine as _;
 use base64::engine::general_purpose::STANDARD as BASE64;
 use harness_server::{NoPins, Online, Server};
 use memry_core::api::auth::{AuthSession, DeviceDescriptor};
-use memry_core::api::errors::StorageError;
+use memry_core::api::errors::{StorageError, SyncError};
 use memry_core::api::projects::ProjectDraft;
 use memry_core::api::tasks_write::NewTaskInput;
 use memry_core::api::vault::Vault;
@@ -34,32 +37,35 @@ use memry_core::protocol::auth::DevicePlatform;
 use memry_core::seams::secure_store::{SecureStore, SecureStoreKey};
 use memry_core::storage::Db;
 use memry_core::sync::driver::{DriverConfig, SyncDriver};
-use memry_core::sync::engine::PassReport;
+use memry_core::sync::engine::{PassReport, PassSeed};
 use memry_core::sync::first_sync::SilentProgress;
 use memry_core::sync::state::PassTrigger;
 use memry_desktop::notes::property_definitions::{
     DefinitionType, DefinitionsSeed, PropertyDefinitions,
 };
 use memry_desktop::seams::transport::app_transport;
-use serde_json::json;
+use serde_json::{Value, json};
 use zeroize::Zeroizing;
 
 const MASTER_KEY: [u8; 32] = [9u8; 32];
 const AT_REST: [u8; 32] = [5u8; 32];
 const NOW: i64 = 1_760_000_000_000;
 
-/// One desktop vault, registered as the server's device `at`, synced by a driver.
-struct Device {
-    _dir: tempfile::TempDir,
+/// The server vault every harness device binds (decision K1), unless a case names another.
+const VAULT: &str = "harness-vault";
+
+/// One desktop vault and its session, before any driver.
+struct Local {
+    dir: tempfile::TempDir,
     core: Vault,
     store: Arc<dyn SecureStore>,
     definitions: Arc<PropertyDefinitions>,
-    driver: SyncDriver,
+    session: Arc<AuthSession>,
 }
 
-impl Device {
-    async fn new(server: &Server, at: usize) -> Self {
-        let boot = &server.devices[at];
+impl Local {
+    /// A vault signed in as the server's device `boot` (the bootstrap's device shape).
+    fn new(url: &str, boot: &Value) -> Self {
         let secret = BASE64
             .decode(boot["signingSecretKey"].as_str().unwrap())
             .unwrap();
@@ -87,10 +93,10 @@ impl Device {
             AuthSession::new(
                 transport,
                 store.clone(),
-                server.url.clone(),
+                url.to_owned(),
                 "desktop".into(),
                 DeviceDescriptor {
-                    name: format!("harness-{at}"),
+                    name: format!("harness-{}", boot["deviceId"].as_str().unwrap()),
                     platform: DevicePlatform::Macos,
                     form_factor: None,
                     os_version: None,
@@ -100,17 +106,64 @@ impl Device {
             )
             .unwrap(),
         );
-        let seeds: Vec<Arc<dyn memry_core::sync::engine::PassSeed>> =
-            vec![Arc::new(DefinitionsSeed(Arc::clone(&definitions)))];
-        let driver = core
-            .sync_driver(session, Arc::new(Online), DriverConfig::desktop(), seeds)
+        Self {
+            dir,
+            core,
+            store,
+            definitions,
+            session,
+        }
+    }
+
+    /// A desktop driver over this vault: the caller's definitions seed, then `seeds`.
+    async fn driver(&self, seeds: Vec<Arc<dyn PassSeed>>) -> Result<SyncDriver, SyncError> {
+        let mut all: Vec<Arc<dyn PassSeed>> =
+            vec![Arc::new(DefinitionsSeed(Arc::clone(&self.definitions)))];
+        all.extend(seeds);
+        self.core
+            .sync_driver(
+                Arc::clone(&self.session),
+                Arc::new(Online),
+                DriverConfig::desktop(),
+                all,
+            )
             .await
-            .expect("the driver");
+    }
+}
+
+/// One desktop vault, bound to a server vault and synced by a driver.
+struct Device {
+    _dir: tempfile::TempDir,
+    core: Vault,
+    store: Arc<dyn SecureStore>,
+    definitions: Arc<PropertyDefinitions>,
+    session: Arc<AuthSession>,
+    driver: SyncDriver,
+}
+
+impl Device {
+    /// The server's bootstrap device `at`, bound to [`VAULT`].
+    async fn new(server: &Server, at: usize) -> Self {
+        Self::bound(&server.url, &server.devices[at], VAULT, Vec::new()).await
+    }
+
+    async fn bound(url: &str, boot: &Value, vault: &str, seeds: Vec<Arc<dyn PassSeed>>) -> Self {
+        let local = Local::new(url, boot);
+        local.core.bind_server_vault(vault).unwrap();
+        let driver = local.driver(seeds).await.expect("the driver");
+        let Local {
+            dir,
+            core,
+            store,
+            definitions,
+            session,
+        } = local;
         Self {
             _dir: dir,
             core,
             store,
             definitions,
+            session,
             driver,
         }
     }
@@ -174,6 +227,26 @@ impl Device {
                     |row| row.get(0),
                 )
                 .map(Some)
+                .or_else(|error| match error {
+                    rusqlite::Error::QueryReturnedNoRows => Ok(None),
+                    other => Err(failed(other)),
+                })
+            })
+            .unwrap()
+    }
+}
+
+impl Device {
+    /// Why the record is held corrupt, if it is.
+    fn corrupt(&self, item_type: &str, item_id: &str) -> Option<String> {
+        let (item_type, item_id) = (item_type.to_owned(), item_id.to_owned());
+        self.db()
+            .call_blocking(move |conn| {
+                conn.query_row(
+                    "SELECT corrupt_reason FROM sync_items WHERE item_type = ?1 AND item_id = ?2",
+                    [&item_type, &item_id],
+                    |row| row.get(0),
+                )
                 .or_else(|error| match error {
                     rusqlite::Error::QueryReturnedNoRows => Ok(None),
                     other => Err(failed(other)),
@@ -415,4 +488,127 @@ async fn a_paused_driver_runs_no_pass() {
     assert!(a.sync().await.pushed);
     b.sync().await;
     assert_eq!(b.ids("note").len(), 1);
+}
+
+/// A device that registers after A's driver opened, and pushes: A's next pass applies the record
+/// (chapter 01 §1.4.0, a signer missing from the directory is the ordinary case), never holding it
+/// corrupt behind a cursor that moved past it.
+#[tokio::test(flavor = "multi_thread")]
+async fn a_device_registered_after_the_driver_opened_is_applied_in_the_same_pass() {
+    let mut server = Server::start();
+    let a = Device::new(&server, 0).await;
+    let late = server.register();
+    let c = Device::bound(&server.url, &late, VAULT, Vec::new()).await;
+    let note = c
+        .core
+        .notes_writer(c.store.clone())
+        .unwrap()
+        .create("Late".into(), None)
+        .unwrap();
+    assert!(c.sync().await.pushed);
+
+    a.sync().await;
+    assert_eq!(a.corrupt("note", &note), None, "not held corrupt");
+    assert!(
+        a.stored("note", &note).is_some(),
+        "applied in the same pass"
+    );
+}
+
+/// Tries `pass` from inside the outer pass, the first time it runs, and records whether it was
+/// still waiting when the outer pass gave up on it.
+struct Probe {
+    attempts: std::sync::Mutex<Option<Attempts>>,
+    blocked: std::sync::Mutex<Vec<&'static str>>,
+}
+
+struct Attempts {
+    driver: Arc<SyncDriver>,
+    vault_sync: Arc<memry_core::api::sync::VaultSync>,
+}
+
+#[async_trait::async_trait]
+impl PassSeed for Probe {
+    async fn seed(&self) -> Result<(), StorageError> {
+        let Some(attempts) = self.attempts.lock().unwrap().take() else {
+            return Ok(());
+        };
+        let wait = std::time::Duration::from_secs(5);
+        let driver = tokio::time::timeout(wait, attempts.driver.run_pass(PassTrigger::Explicit));
+        if driver.await.is_err() {
+            self.blocked.lock().unwrap().push("driver");
+        }
+        if tokio::time::timeout(wait, attempts.vault_sync.sync_now())
+            .await
+            .is_err()
+        {
+            self.blocked.lock().unwrap().push("sync_now");
+        }
+        Ok(())
+    }
+}
+
+/// A second driver over the same vault, and `VaultSync::sync_now`, wait for a running pass: two
+/// overlapping passes would push the same outbox rows twice.
+#[tokio::test(flavor = "multi_thread")]
+async fn passes_over_one_vault_serialize() {
+    let server = Server::start();
+    let probe = Arc::new(Probe {
+        attempts: std::sync::Mutex::default(),
+        blocked: std::sync::Mutex::default(),
+    });
+    let a = Device::bound(&server.url, &server.devices[0], VAULT, vec![probe.clone()]).await;
+    let second = a
+        .core
+        .sync_driver(
+            Arc::clone(&a.session),
+            Arc::new(Online),
+            DriverConfig::desktop(),
+            Vec::new(),
+        )
+        .await
+        .map(Arc::new)
+        .expect("a second driver");
+    *probe.attempts.lock().unwrap() = Some(Attempts {
+        driver: Arc::clone(&second),
+        vault_sync: a.core.sync(Arc::clone(&a.session)),
+    });
+
+    a.sync().await;
+    assert_eq!(*probe.blocked.lock().unwrap(), ["driver", "sync_now"]);
+    assert!(second.run_pass(PassTrigger::Explicit).await.is_some());
+}
+
+/// Decision K1: the driver of a desktop vault sends the bound server vault id on every request.
+/// An unbound vault gets no driver (the server would route it to the account's only vault), and
+/// a bound vault cannot be rebound to another id.
+#[tokio::test(flavor = "multi_thread")]
+async fn the_driver_sends_the_bound_vault_id() {
+    let mut server = Server::start();
+    let unbound = Local::new(&server.url, &server.devices[0]);
+    assert!(unbound.driver(Vec::new()).await.is_err(), "unbound refused");
+    unbound.core.bind_server_vault("vault-a").unwrap();
+    assert!(unbound.core.bind_server_vault("vault-b").is_err());
+    unbound.core.bind_server_vault("vault-a").unwrap();
+    assert_eq!(
+        unbound.core.server_vault_id().unwrap().as_deref(),
+        Some("vault-a")
+    );
+    drop(unbound);
+
+    let a = Device::bound(&server.url, &server.devices[0], "vault-a", Vec::new()).await;
+    let b = Device::bound(&server.url, &server.devices[1], "vault-b", Vec::new()).await;
+    let late = server.register();
+    let c = Device::bound(&server.url, &late, "vault-a", Vec::new()).await;
+    let note = a
+        .core
+        .notes_writer(a.store.clone())
+        .unwrap()
+        .create("Mine".into(), None)
+        .unwrap();
+    assert!(a.sync().await.pushed);
+    b.sync().await;
+    c.sync().await;
+    assert!(b.ids("note").is_empty(), "another server vault");
+    assert!(c.stored("note", &note).is_some(), "the same server vault");
 }

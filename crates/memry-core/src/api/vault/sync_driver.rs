@@ -15,8 +15,8 @@ use crate::sync::server_vault;
 impl Vault {
     /// Binds this vault to the server's vault `id` (decision K1 of #3534): the
     /// one op the sign-in binding calls, and the id every later request and
-    /// socket of a driver carries. A driver already built keeps the id it was
-    /// built with.
+    /// socket of a driver carries. Rebinding the same id is a no-op; another
+    /// id is refused ([`server_vault::bind`]).
     #[doc(hidden)]
     pub fn bind_server_vault(&self, id: &str) -> Result<(), StorageError> {
         let id = id.to_owned();
@@ -31,7 +31,9 @@ impl Vault {
     }
 
     /// A [`SyncDriver`] over this vault and `session`. `seeds` run after the
-    /// driver's own tag and lock seeds.
+    /// driver's own tag and lock seeds. Its passes share the vault's one pass
+    /// gate with every other driver and [`crate::api::sync::VaultSync`] of it.
+    /// Refused while no server vault is bound.
     #[doc(hidden)]
     pub async fn sync_driver(
         &self,
@@ -47,6 +49,7 @@ impl Vault {
             reachability,
             config,
             seeds,
+            pass_gate: crate::api::sync::pass_gate(&self.id),
         })
         .await
     }

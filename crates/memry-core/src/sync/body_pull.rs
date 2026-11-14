@@ -289,35 +289,38 @@ impl BodyPull {
         doc_id: &str,
         probed: Option<&SnapshotMeta>,
     ) -> Result<BodyPullReport, BodyPullError> {
-        let report = self.pull_stored(doc_id, probed).await?;
+        let mut report = BodyPullReport {
+            documents: 1,
+            ..BodyPullReport::default()
+        };
+        // Told on the error path too: a page that fails after earlier pages
+        // committed leaves those updates stored.
+        let pulled = self.pull_stored(doc_id, probed, &mut report).await;
         if report.baselines + report.updates > 0 {
             self.tell_observers(doc_id).await;
         }
-        Ok(report)
+        pulled.map(|()| report)
     }
 
     async fn pull_stored(
         &self,
         doc_id: &str,
         probed: Option<&SnapshotMeta>,
-    ) -> Result<BodyPullReport, BodyPullError> {
-        let mut report = BodyPullReport {
-            documents: 1,
-            ..BodyPullReport::default()
-        };
+        report: &mut BodyPullReport,
+    ) -> Result<(), BodyPullError> {
         let mut cursor = self.read_cursor(doc_id).await?;
 
         // §7.8, first clause: a cursor of 0 always takes the snapshot first.
         // There is no incremental that could have told us about it, because
         // everything at or below the watermark is answered with silence.
         if cursor == 0 {
-            if self.fetch_baseline(doc_id, cursor, &mut report).await? {
+            if self.fetch_baseline(doc_id, cursor, report).await? {
                 cursor = self.read_cursor(doc_id).await?;
             } else if !report.stopped.is_empty() {
                 // A baseline that exists and could not be used: paging on
                 // from 0 would store the updates above the watermark and move
                 // the cursor past the state below it for good.
-                return Ok(report);
+                return Ok(());
             }
         }
         // §7.8, second clause, from the probe: a server before #2299 sends no
@@ -328,26 +331,26 @@ impl BodyPull {
             && let Some(meta) = probed
             && self.baseline_due(doc_id, meta).await?
         {
-            if self.fetch_baseline(doc_id, cursor, &mut report).await? {
+            if self.fetch_baseline(doc_id, cursor, report).await? {
                 cursor = self.read_cursor(doc_id).await?;
             } else if !report.stopped.is_empty() {
-                return Ok(report);
+                return Ok(());
             }
         }
 
         let mut has_more = false;
         for _ in 0..MAX_PAGES_PER_DOCUMENT {
-            let page = self.fetch_page(doc_id, cursor, &mut report).await?;
+            let page = self.fetch_page(doc_id, cursor, report).await?;
 
             // §7.8, second clause, widened by #2299: the server advertises a
             // snapshot whose revision differs from the stored one.
             if let Some(meta) = page.snapshot_meta.as_ref()
                 && self.baseline_due(doc_id, meta).await?
             {
-                if self.fetch_baseline(doc_id, cursor, &mut report).await? {
+                if self.fetch_baseline(doc_id, cursor, report).await? {
                     cursor = self.read_cursor(doc_id).await?;
                 } else if !report.stopped.is_empty() {
-                    return Ok(report);
+                    return Ok(());
                 }
             }
 
@@ -400,7 +403,7 @@ impl BodyPull {
             self.hold_empty_body(doc_id).await?;
         }
 
-        Ok(report)
+        Ok(())
     }
 
     /// `GET /sync/crdt/snapshot/:noteId` and the store that follows it (§7.8,

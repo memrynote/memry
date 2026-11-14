@@ -38,7 +38,10 @@ impl Server {
         std::thread::spawn(move || {
             for line in out.lines().map_while(Result::ok) {
                 match serde_json::from_str::<Value>(&line) {
-                    Ok(value) if value.get("harnessMarkers").is_some() => {
+                    Ok(value)
+                        if value.get("harnessMarkers").is_some()
+                            || value.get("harnessDevice").is_some() =>
+                    {
                         let _ = reply.send(value);
                     }
                     _ => eprintln!("[worker] {line}"),
@@ -58,13 +61,25 @@ impl Server {
     /// for a user with no entitlement). Returns how many markers the server holds.
     #[allow(dead_code)] // One binary purges.
     pub fn purge(&mut self) -> u64 {
+        self.command("purge")["harnessMarkers"]
+            .as_u64()
+            .expect("a marker count")
+    }
+
+    /// Registers one more device for the same user, now, and returns it in the bootstrap's
+    /// device shape.
+    #[allow(dead_code)] // One binary registers.
+    pub fn register(&mut self) -> Value {
+        self.command("register")["harnessDevice"].clone()
+    }
+
+    fn command(&mut self, line: &str) -> Value {
         let stdin = self.child.stdin.as_mut().expect("its stdin");
         stdin
-            .write_all(b"purge\n")
+            .write_all(format!("{line}\n").as_bytes())
             .and_then(|()| stdin.flush())
-            .expect("purge");
-        let reply = self.replies.recv().expect("the purge reply");
-        reply["harnessMarkers"].as_u64().expect("a marker count")
+            .expect("a harness command");
+        self.replies.recv().expect("the command's reply")
     }
 }
 

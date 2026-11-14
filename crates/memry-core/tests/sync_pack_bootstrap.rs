@@ -560,3 +560,57 @@ async fn a_seeded_or_pulled_body_is_told_to_the_observers_after_it_commits() {
         "the pulled update once, after it committed; the empty pull tells no one"
     );
 }
+
+/// A pull whose first page committed an update and whose second page then fails (a `500` through
+/// the whole retry ladder) still names the document: the stored update is in the database, so the
+/// file must follow it, error or not.
+#[tokio::test]
+async fn a_failed_later_page_still_tells_the_observers_of_the_update_already_stored() {
+    let db = scratch_db("observers-failed-page");
+    let (public_key, secret_key) =
+        memry_core::crypto::sodium::sign_seed_keypair(&[7u8; 32]).expect("keypair");
+    let update = BASE64.encode(packed(NOTE, &body_update("Page one"), &secret_key));
+    let mut script = vec![
+        response(200, &json!({"snapshot": null}).to_string()),
+        response(
+            200,
+            &json!({"updates": [{"sequenceNum": 1, "data": update, "signerDeviceId": "device-a"}],
+                    "hasMore": true})
+            .to_string(),
+        ),
+    ];
+    script.extend((0..4).map(|_| response(500, "{}")));
+    let transport = FakeTransport::new(script);
+    let http = Arc::new(
+        HttpClient::new(
+            transport,
+            "https://sync.example",
+            ClientIdentity::new("ios", "1.2.3").expect("a valid identity"),
+        )
+        .with_sleeper(http_fakes::RecordingSleeper::new()),
+    );
+    let observers = Arc::new(Observers::default());
+    let watcher = Arc::new(BodyWatcher {
+        db: db.clone(),
+        heard: std::sync::Mutex::default(),
+    });
+    observers.register(watcher.clone());
+    let bodies = BodyPull::new(
+        http,
+        db.clone(),
+        Declaration::subscribed(),
+        Arc::new(Directory {
+            device_id: "device-a".into(),
+            public_key,
+        }),
+    )
+    .with_observers(observers);
+
+    assert!(bodies.pull_document(NOTE).await.is_err(), "page two failed");
+    assert_eq!(text_of(&db, NOTE), "Page one");
+    assert_eq!(
+        *watcher.heard.lock().unwrap(),
+        [(vec![NOTE.to_owned()], Some("1".to_owned()))],
+        "the committed update is told although the pull failed"
+    );
+}

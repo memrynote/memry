@@ -14,8 +14,13 @@
 //!   persists the flag (`meta` `sync.paused`, the supervisor's).
 //! - **The seeds.** The tag seed and the lock seed are registered here; the
 //!   caller adds its own (desktop's property definitions).
-//! - **The server vault id** ([`super::server_vault`]) on every request, when
-//!   one is bound.
+//! - **The server vault id** ([`super::server_vault`]) on every request. An
+//!   unbound vault gets no driver: it would send no header, and the server
+//!   routes such a request to the account's only vault.
+//! - **One pass at a time per vault**, across every driver and `VaultSync` of
+//!   it: the caller hands in the vault's process-wide pass gate.
+//! - **The device directory** ([`cipher`]): refetched after a lookup missed,
+//!   and the records that missed re-pulled in the same pass.
 //! - **The snapshot cadence** (chapter 07 §7.13.3): which documents asked for
 //!   a snapshot, and which are due. The push itself needs the resident
 //!   document and is the supervisor's.
@@ -105,6 +110,8 @@ pub struct DriverParts {
     pub config: DriverConfig,
     /// Seeds the caller owns, run after the driver's own.
     pub seeds: Vec<Arc<dyn PassSeed>>,
+    /// The vault's one pass gate (`api::sync::pass_gate`).
+    pub pass_gate: Arc<tokio::sync::Mutex<()>>,
 }
 
 /// The first sync's parts, built once and run under the pass gate.
@@ -132,7 +139,7 @@ pub struct SyncDriver {
 impl SyncDriver {
     /// Builds the driver. Fetches the device directory once, so it fails
     /// offline; reads the master key, so it fails [`SyncError::Locked`] on a
-    /// device nothing unlocked.
+    /// device nothing unlocked; refuses a vault bound to no server vault.
     pub async fn open(parts: DriverParts) -> Result<Self, SyncError> {
         let DriverParts {
             db,
@@ -141,7 +148,14 @@ impl SyncDriver {
             reachability,
             config,
             seeds,
+            pass_gate,
         } = parts;
+        let server_vault = db
+            .call(|conn| super::server_vault::bound(conn))
+            .await?
+            .ok_or_else(|| StorageError::Failed {
+                what: "this vault is bound to no server vault; bind it before syncing".into(),
+            })?;
         let http = session.http();
         let master_key = Zeroizing::new(session.master_key()?.ok_or(SyncError::Locked)?);
         let vault_key = Zeroizing::new(keys::derive_vault_key(&master_key)?.to_vec());
@@ -156,12 +170,11 @@ impl SyncDriver {
             what: error.to_string(),
         })?;
         let sealer = Arc::new(AccountSealer::new(vault_key.to_vec(), signer));
-        let server_vault = db.call(|conn| super::server_vault::bound(conn)).await?;
         let observers = Arc::new(Observers::default());
         let declaration = config.declaration.clone();
 
         let pull_loop = || {
-            let pull = PullLoop::new(
+            PullLoop::new(
                 Arc::clone(&http),
                 db.clone(),
                 declaration.clone(),
@@ -169,40 +182,33 @@ impl SyncDriver {
             )
             .with_clock_device(&device_id)
             .with_at_rest_key(at_rest.clone())
-            .with_observers(Arc::clone(&observers));
-            match &server_vault {
-                Some(vault) => pull.with_vault(vault),
-                None => pull,
-            }
+            .with_observers(Arc::clone(&observers))
+            .with_vault(&server_vault)
         };
         let feed = pull_loop().with_note_bodies(cipher.clone());
-        let mut push =
-            PushCoordinator::new(Arc::clone(&http), db.clone(), declaration.clone(), sealer)
-                .with_at_rest_key(at_rest.clone());
-        let mut bootstrap = BootstrapClient::new(Arc::clone(&http));
-        let mut bodies = BodyPull::new(
-            Arc::clone(&http),
-            db.clone(),
-            declaration.clone(),
-            cipher.clone(),
-        )
-        .with_observers(Arc::clone(&observers));
-        if let Some(vault) = &server_vault {
-            push = push.with_vault(vault);
-            bootstrap = bootstrap.with_vault(vault);
-            bodies = bodies.with_vault(vault);
-        }
-        let bootstrap = Arc::new(bootstrap);
-        let bodies = Arc::new(bodies.with_bootstrap(Arc::clone(&bootstrap)));
-        let mut packs = PackBootstrap::new(Arc::clone(&http), db.clone(), Arc::clone(&bodies))
-            .with_concurrency(config.pack_concurrency);
-        if let Some(vault) = &server_vault {
-            packs = packs.with_vault(vault);
-        }
+        let push = PushCoordinator::new(Arc::clone(&http), db.clone(), declaration.clone(), sealer)
+            .with_at_rest_key(at_rest.clone())
+            .with_vault(&server_vault);
+        let bootstrap = Arc::new(BootstrapClient::new(Arc::clone(&http)).with_vault(&server_vault));
+        let bodies = Arc::new(
+            BodyPull::new(
+                Arc::clone(&http),
+                db.clone(),
+                declaration.clone(),
+                cipher.clone(),
+            )
+            .with_observers(Arc::clone(&observers))
+            .with_vault(&server_vault)
+            .with_bootstrap(Arc::clone(&bootstrap)),
+        );
+        let packs = PackBootstrap::new(Arc::clone(&http), db.clone(), Arc::clone(&bodies))
+            .with_concurrency(config.pack_concurrency)
+            .with_vault(&server_vault);
 
         let tags = TagHub::over(db.clone(), &session.store)?;
         let mut engine = SyncEngine::new(Arc::new(feed), Arc::clone(&http), reachability)
             .with_push(Arc::new(push))
+            .with_gate(pass_gate)
             .with_max_pages(config.max_pages_per_pass)
             .with_seed(Arc::new(TagSeed(Arc::new(tags))));
         #[cfg(feature = "markdown")]
@@ -247,8 +253,10 @@ impl SyncDriver {
         if self.is_paused() {
             return None;
         }
-        self.refresh_directory().await;
-        Some(self.engine.run_pass(trigger).await)
+        self.settle_misses().await;
+        let pass = self.engine.run_pass(trigger).await;
+        self.settle_misses().await;
+        Some(pass)
     }
 
     /// A socket hint ([`SyncEngine::wake`]); `None` while paused or dropped.
@@ -256,8 +264,10 @@ impl SyncDriver {
         if self.is_paused() {
             return None;
         }
-        self.refresh_directory().await;
-        self.engine.wake(cursor).await
+        self.settle_misses().await;
+        let pass = self.engine.wake(cursor).await;
+        self.settle_misses().await;
+        pass
     }
 
     /// Whether this vault has not finished a first sync yet.
@@ -278,7 +288,7 @@ impl SyncDriver {
         if self.is_paused() {
             return Ok(None);
         }
-        self.refresh_directory().await;
+        self.settle_misses().await;
         let first_sync = {
             let _gate = self.engine.hold_gate().await;
             FirstSync::new(
@@ -294,11 +304,16 @@ impl SyncDriver {
             .await?
         };
         let mut passes = Vec::new();
+        let mut cursor = None;
         loop {
             let Some(pass) = self.run_pass(PassTrigger::Explicit).await else {
                 break;
             };
-            let more = pass.pull.has_more && pass.final_state == SyncState::Idle;
+            // A pass that left the cursor where it was would repeat forever.
+            let more = pass.pull.has_more
+                && pass.final_state == SyncState::Idle
+                && pass.pull.cursor != cursor;
+            cursor.clone_from(&pass.pull.cursor);
             passes.push(pass);
             if !more {
                 break;
@@ -364,11 +379,33 @@ impl SyncDriver {
             .unwrap_or_else(std::sync::PoisonError::into_inner)
     }
 
-    /// A failed refetch is logged; the pass runs on the old directory and its
-    /// unresolved signers stay unverified, never dropped (chapter 01 §1.4.0).
-    async fn refresh_directory(&self) {
-        if let Err(error) = self.cipher.refresh_if_missed(&self.http).await {
+    /// After a lookup missed (chapter 01 §1.4.0): refetches the directory and
+    /// re-pulls, by id, the records that missed, under the pass gate. Their
+    /// rows were stored corrupt and the feed cursor moved past them, so this
+    /// is their only way back. A failed refetch or re-pull is logged and kept
+    /// for the next call; the pass runs on the old directory meanwhile.
+    async fn settle_misses(&self) {
+        if !self.cipher.has_missed() {
+            return;
+        }
+        let _gate = self.engine.hold_gate().await;
+        if let Err(error) = self.cipher.refresh(&self.http).await {
             eprintln!("memry-core: refetching the device directory failed: {error}");
+            return;
+        }
+        let ids = self.cipher.take_missed();
+        if ids.is_empty() {
+            return;
+        }
+        match self.first.pull.fetch_ids(&ids).await {
+            Ok(_) => self.cipher.forget_missed(),
+            Err(error) => {
+                eprintln!(
+                    "memry-core: re-pulling {} record(s) of a new signer failed: {error}",
+                    ids.len()
+                );
+                self.cipher.keep_missed(ids);
+            }
         }
     }
 }
