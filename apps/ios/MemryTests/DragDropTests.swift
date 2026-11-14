@@ -105,8 +105,20 @@ struct DragDropTests {
             unopenable
         ])
         #expect(captured == 1)
-        #expect(vault.store.failure == InboxErrors.dropFailed(2))
+        #expect(vault.store.failure == InboxErrors.dropFailed(2, first: InboxErrors.dropUnreadable))
         #expect(vault.store.failure?.title.hasPrefix("2 ") == true)
+    }
+
+    /// A capture's write clears the failure row, so a failed item followed by
+    /// a captured one must still leave the failure on screen.
+    @Test func a_failure_stays_visible_after_a_later_item_of_the_drop_is_captured() async throws {
+        let vault = try InboxTestVault()
+        let captured = await vault.store.capture(dropped: [
+            .failed(InboxErrors.dropUnreadable),
+            .text("[agent] kept after a failure")
+        ])
+        #expect(captured == 1)
+        #expect(vault.store.failure == InboxErrors.dropUnreadable)
     }
 
     /// The picked-file limit holds for a drop: a file over 50 MB is refused
@@ -207,6 +219,7 @@ struct DragDropTests {
         NoteDrag.dropped()
         let directory = FileManager.default.temporaryDirectory.appendingPathComponent("memry-drop-\(UUID().uuidString)")
         try FileManager.default.createDirectory(at: directory, withIntermediateDirectories: true)
+        defer { try? FileManager.default.removeItem(at: directory) }
         let vault = try Vault.open(vaultId: "vault-drop", directory: directory.path)
         let model = VaultBrowseViewModel(vault: vault, executor: CoreExecutor(), store: TaskTestKeychain())
         let writer = try #require(model.writer)

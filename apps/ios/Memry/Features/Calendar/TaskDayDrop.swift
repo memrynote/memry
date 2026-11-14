@@ -25,6 +25,7 @@ struct TaskDrag: Transferable, Sendable {
 
     static var transferRepresentation: some TransferRepresentation {
         DataRepresentation(exportedContentType: .memryTasks) { Data(TaskDragPayload.encode($0.ids).utf8) }
+            .visibility(.ownProcess)
         ProxyRepresentation { TaskDragPayload.encode($0.ids) }
     }
 }

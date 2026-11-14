@@ -56,13 +56,10 @@ enum InboxErrors {
         "Nothing was captured from it. Try dropping it again."
     )
 
-    /// More than one item of a drop failed.
-    static func dropFailed(_ count: Int) -> UserFacingError {
-        make(
-            "inbox.dropFailed",
-            "\(count) dropped items couldn't be captured.",
-            "Images, audio, video and PDFs up to 50 MB can be. Try dropping them again."
-        )
+    /// More than one item of a drop failed, for whatever reasons; `first`
+    /// is the first one's row, when it has one.
+    static func dropFailed(_ count: Int, first: UserFacingError?) -> UserFacingError {
+        make("inbox.dropFailed", "\(count) items couldn't be added.", first.map { "The first: \($0.title)" })
     }
 
     static let microphoneDenied = make(

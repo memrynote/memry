@@ -117,8 +117,10 @@ enum InboxDrop {
 }
 
 extension InboxStore {
-    /// Captures every dropped item, and shows each failure: one by its own
-    /// row, several by their count. Answers how many were captured.
+    /// Captures every dropped item, then shows the drop's failures once: one
+    /// by its own row, several by their count. A capture's write clears the
+    /// failure row, so a failure shown mid-loop would vanish behind a later
+    /// success. Answers how many were captured.
     @discardableResult
     func captureDropped(_ providers: [NSItemProvider]) async -> Int {
         let core = core
@@ -136,6 +138,9 @@ extension InboxStore {
     func capture(dropped items: [InboxDrop.Item]) async -> Int {
         var captured = 0
         var failed = 0
+        /// The first failure that has a row; a capture's own path sets it.
+        var first: UserFacingError?
+        clearFailure()
         for item in items {
             let result: InboxCaptureResult
             switch item {
@@ -146,23 +151,29 @@ extension InboxStore {
                 // Mapped, not read: the file is not loaded into memory whole.
                 guard let data = try? Data(contentsOf: url, options: .mappedIfSafe) else {
                     Log.core.error("a dropped file could not be opened", .code(InboxErrors.dropUnopenable.code))
-                    fail(InboxErrors.dropUnopenable)
+                    first = first ?? InboxErrors.dropUnopenable
                     failed += 1
                     continue
                 }
                 result = await captureFile(data: data, filename: filename, mimeType: mimeType)
             case let .failed(error):
-                fail(error)
+                first = first ?? error
                 failed += 1
                 continue
             }
             switch result {
             case .captured: captured += 1
             case .duplicate: showToast(InboxCopy.sharedAlreadyCaptured)
-            case .failed: failed += 1
+            case .failed:
+                first = first ?? failure
+                failed += 1
             }
         }
-        if failed > 1 { fail(InboxErrors.dropFailed(failed)) }
+        if failed > 1 {
+            fail(InboxErrors.dropFailed(failed, first: first))
+        } else if let first {
+            fail(first)
+        }
         return captured
     }
 }
