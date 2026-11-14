@@ -59,17 +59,36 @@ private final class Page {
             field.textView.editorKey(command)
             return
         }
+        await reloaded { field.textView.editorKey(command) }
+    }
+
+    /// Runs `work` and waits for the first page reload after it. A later one
+    /// (a block another suite's window resigned commits too) is ignored.
+    func reloaded(_ work: () -> Void) async {
         await withCheckedContinuation { (done: CheckedContinuation<Void, Never>) in
-            session.reload = { done.resume() }
-            field.textView.editorKey(command)
+            var waiting = true
+            session.reload = {
+                if waiting { done.resume() }
+                waiting = false
+            }
+            work()
         }
     }
 
-    func reloaded(_ work: () -> Void) async {
-        await withCheckedContinuation { (done: CheckedContinuation<Void, Never>) in
-            session.reload = { done.resume() }
-            work()
-        }
+    /// The block in a key window with the caret, where UIKit registers its
+    /// typing undo as it does on screen.
+    func showInWindow() throws -> UIWindow {
+        let scene = try #require(UIApplication.shared.connectedScenes.first as? UIWindowScene)
+        let window = UIWindow(windowScene: scene)
+        window.rootViewController = UIViewController()
+        window.makeKeyAndVisible()
+        field.textView.frame = CGRect(x: 0, y: 0, width: 300, height: 44)
+        // As `makeUIView` sets it.
+        field.textView.delegate = field
+        window.rootViewController?.view.addSubview(field.textView)
+        #expect(field.textView.becomeFirstResponder())
+        field.textView.selectedRange = NSRange(location: field.textView.text.utf16.count, length: 0)
+        return window
     }
 
     func has(_ input: String, _ modifiers: UIKeyModifierFlags = []) -> Bool {
@@ -83,6 +102,9 @@ private final class Page {
     }
 }
 
+/// Serialized: the window tests take the first responder, which a parallel
+/// test's block would resign, committing its typing mid-press.
+@Suite(.serialized)
 @MainActor
 struct EditorKeyCommandsTests {
     @Test func tabNestsTheBlockAndShiftTabLiftsIt() async {
@@ -125,22 +147,43 @@ struct EditorKeyCommandsTests {
         #expect(page.editor.all.last == .indent(blockId: "b"))
     }
 
-    @Test func systemUndoTakesTypingBeforeABlockStep() async {
+    /// UIKit's own typing undo, with the block in a window: it registers
+    /// where the session looks for it (`typingUndo`), not in the
+    /// `BlockUndoManager` the text view answers with, and ⌘Z takes it
+    /// before the block step under it.
+    @Test func systemUndoTakesTypingBeforeABlockStep() async throws {
         let page = Page()
+        let window = try page.showInWindow()
+        defer { window.isHidden = true }
         await page.press("\t")
-        page.type("hi there")
-        // UIKit registers typing up the responder chain, which a text view
-        // outside a window does not have.
-        let typing = UndoManager()
-        typing.groupsByEvent = false
-        typing.beginUndoGrouping()
-        typing.registerUndo(withTarget: page.field.textView) { $0.text = "hi" }
-        typing.endUndoGrouping()
-        page.field.textView.editorUndo.typing = { typing }
+        page.field.textView.insertText("!")
+        try await Task.sleep(for: .milliseconds(50))
+        #expect(page.field.dirty)
+        #expect(page.field.textView.typingUndo?.canUndo == true, "typing registered elsewhere")
         page.field.textView.undoManager?.undo()
         #expect(page.field.textView.text == "hi")
         #expect(page.editor.all.last == .indent(blockId: "b"), "the block step waits for the typing")
         #expect(page.session.history.canUndo)
+    }
+
+    /// DATA-LOSS: typing, then a nest, then ⌘Z twice undoes the nest and then
+    /// the typing, never the other way round and never dropping the typing.
+    @Test func systemUndoUndoesANestThenTheTypingBeforeIt() async throws {
+        let page = Page()
+        let window = try page.showInWindow()
+        defer { window.isHidden = true }
+        page.field.textView.insertText("!")
+        try await Task.sleep(for: .milliseconds(50))
+        await page.press("\t")
+        #expect(page.editor.all == [.setText(blockId: "b", text: "hi!"), .indent(blockId: "b")])
+
+        await page.reloaded { page.field.textView.undoManager?.undo() }
+        #expect(page.editor.all.last == .outdent(blockId: "b"), "the first ⌘Z undoes the nest")
+        #expect(page.field.textView.text == "hi!", "the typing waits for the second ⌘Z")
+
+        await page.reloaded { page.field.textView.undoManager?.undo() }
+        #expect(page.editor.all.last == .setText(blockId: "b", text: "hi"), "the second ⌘Z undoes the typing")
+        #expect(page.editor.all.count == 4)
     }
 
     /// Desktop's keys: ⌘B, ⌘I, ⌘U, ⇧⌘S and ⌘E.
@@ -167,10 +210,7 @@ struct EditorKeyCommandsTests {
         page.session.selectionChanged(in: page.field)
         await page.press("k", [.command, .shift], writes: false)
         #expect(page.session.linkPrompt)
-        await withCheckedContinuation { (done: CheckedContinuation<Void, Never>) in
-            page.session.reload = { done.resume() }
-            page.session.addLink(" https://memry.app ")
-        }
+        await page.reloaded { page.session.addLink(" https://memry.app ") }
         #expect(page.editor.all.last == .setMark(blockId: "b", start: 0, end: 2, mark: "link", value: "https://memry.app"))
     }
 
@@ -198,8 +238,7 @@ struct EditorKeyCommandsTests {
         #expect(page.session.highlighted == page.session.tagSuggestions.count - 1, "↑ wraps to the last row")
         await page.press(UIKeyCommand.inputDownArrow, writes: false)
         await page.press(UIKeyCommand.inputDownArrow, writes: false)
-        await withCheckedContinuation { (done: CheckedContinuation<Void, Never>) in
-            page.session.reload = { done.resume() }
+        await page.reloaded {
             _ = page.field.textView(page.field.textView, shouldChangeTextIn: NSRange(location: 3, length: 0), replacementText: "\n")
         }
         let tag = page.editor.all.compactMap { edit -> String? in
