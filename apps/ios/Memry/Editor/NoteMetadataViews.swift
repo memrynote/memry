@@ -89,7 +89,7 @@ struct NoteTitleEditor: View {
     var returnToBody: (() -> Void)?
 
     @State private var draft: String = ""
-    @State private var editing = false
+    @State private var commits = DraftCommits()
     @State private var pickingIcon = false
     /// A new note's title wants the caret until the user types or moves it.
     @State private var claimsFocus = false
@@ -97,19 +97,20 @@ struct NoteTitleEditor: View {
     @FocusState private var focused: Bool
 
     private func commit() {
-        guard editing else { return }
-        editing = false
+        guard commits.editing else { return }
         // Unchanged titles write nothing, so tapping in and out does not
-        // enqueue a push. Compared here as well as in the model: the model's
-        // `current` reads "Untitled note" while the page reloads.
-        if draft != title { rename(draft) }
+        // enqueue a push. Compared with the title too, as well as in the
+        // model: the model's `current` reads "Untitled note" while the page
+        // reloads. Emptying a title is an edit on any end, so every end is
+        // explicit.
+        if let text = commits.take(draft, explicit: true), text != title { rename(text) }
         // Only the title's own focus: when a tap in a block ended the edit,
         // that block is already first responder and keeps its caret.
         focused = false
     }
 
     private func commitAndContinue() {
-        guard editing else { return }
+        guard commits.editing else { return }
         commit()
         returnToBody?()
     }
@@ -133,7 +134,7 @@ struct NoteTitleEditor: View {
                 TextField(
                     "",
                     text: Binding(
-                        get: { editing ? draft : title },
+                        get: { commits.editing ? draft : title },
                         set: { value in
                             // A vertical field takes Return as a newline
                             // rather than a submit; a title is one line, so
@@ -159,9 +160,9 @@ struct NoteTitleEditor: View {
                 .onChange(of: focused) { _, isFocused in
                     if isFocused {
                         EditorFocusMemory.shared.forget()
-                        if !editing {
+                        if !commits.editing {
                             draft = title
-                            editing = true
+                            commits.begin(title)
                         }
                     } else {
                         commit()
@@ -170,9 +171,11 @@ struct NoteTitleEditor: View {
                 // A draft the user has not changed follows the saved title.
                 // A page drawn again by a size-class change reads the note
                 // before the title typed on the page before is saved; its
-                // stale empty draft must not be written over it (#4532).
-                .onChange(of: title) { old, new in
-                    if editing, draft == old { draft = new }
+                // stale empty draft must not be written over it (#4532). An
+                // input method's composition is in the draft, so a composing
+                // field never follows and keeps its composition.
+                .onChange(of: title) { _, new in
+                    if commits.editing { draft = commits.follow(draft, stored: new) }
                 }
                 // A note with no title (a new one) opens with the caret in
                 // its title, as desktop does. Not when the page is drawn
@@ -570,7 +573,7 @@ struct NotePropertyEditor: View {
 
     @State private var draft: String = ""
     @State private var loaded = false
-    @State private var commits = NotePropertyDraftCommits()
+    @State private var commits = DraftCommits()
     @FocusState private var valueFocused: Bool
     @State private var renaming = false
     @State private var nameDraft = ""
@@ -619,9 +622,9 @@ struct NotePropertyEditor: View {
             loaded = true
         }
         // A write from elsewhere (a Clear, the other copy of this row, sync)
-        // shows here unless the field is being edited.
+        // shows here unless the field holds a value typed in it.
         .onChange(of: property.valueJson) {
-            if !valueFocused { draft = NotePropertyJSON.decode(property) }
+            draft = commits.follow(draft, stored: NotePropertyJSON.decode(property))
         }
         // A typed value lands when the field is left or the row goes, as on
         // Return: the rail can close, or the page change, before Return.
@@ -944,39 +947,6 @@ struct NotePropertyEditor: View {
                 .accessibilityLabel("Remove \(title) from \(property.name)")
             }
         }
-    }
-}
-
-/// Which typed property values are written, after `TaskTitleCommits`. Only a
-/// value the user changed since focus came in is written, so a draft left
-/// as it was never writes back over a Clear, a sync or the rail's copy of
-/// the row (#4616). Return and leaving the field end one edit: the first
-/// take ends it, so one write. Return on an emptied field writes the empty
-/// value; leaving one writes nothing, so a blur cannot empty a value. Clear
-/// rebases the edit to `""`, so an untyped Return after it writes nothing.
-struct NotePropertyDraftCommits {
-    private var focusedOn: String?
-
-    /// An edit is in progress: focus came in and no take has ended it.
-    var editing: Bool { focusedOn != nil }
-
-    /// Focus came in on the field showing `draft`.
-    mutating func begin(_ draft: String) { focusedOn = draft }
-
-    /// The value was replaced under an edit in progress (a Clear): it starts
-    /// again from `draft`.
-    mutating func rebase(_ draft: String) {
-        if focusedOn != nil { focusedOn = draft }
-    }
-
-    /// The value to write, or `nil` when there is nothing to write.
-    /// `explicit` is a Return, the only end of an edit that writes an
-    /// emptied field.
-    mutating func take(_ text: String, explicit: Bool) -> String? {
-        guard let base = focusedOn else { return nil }
-        focusedOn = nil
-        guard text != base, explicit || !text.isEmpty else { return nil }
-        return text
     }
 }
 
