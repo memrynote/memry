@@ -317,3 +317,33 @@ fn projection_project_reconcile_and_rebuild_never_overlap_on_one_projector() {
     runtime.stop(true);
     assert_eq!(probe.peak.load(Ordering::SeqCst), 1);
 }
+
+/// `reconcileProjections(['embedding', ...])` when AI turns on (ai-settings.ts:105-113): only the
+/// named projectors run, a failure is not rebuilt, and a stopped runtime runs nothing.
+#[test]
+fn projection_a_named_reconcile_runs_only_those_projectors_and_rebuilds_nothing() {
+    let mut named = fake("embedding", false);
+    Arc::get_mut(&mut named.fake)
+        .expect("sole owner")
+        .reconcile_error = Some("model offline");
+    let other = fake("search", false);
+    let runtime = ProjectionRuntime::start(
+        vec![named.fake.clone(), other.fake.clone()],
+        DEFAULT_QUEUE_LIMIT,
+    )
+    .expect("start");
+    runtime
+        .reconcile_named(&["embedding", "voice-embedding"])
+        .expect("pass");
+    let end = Instant::now() + SETTLE;
+    while runtime.live_threads() > 2 && Instant::now() < end {
+        std::thread::sleep(Duration::from_millis(2));
+    }
+    assert_eq!(named.fake.reconciled.load(Ordering::SeqCst), 1);
+    assert_eq!(named.fake.rebuilt.load(Ordering::SeqCst), 0);
+    assert_eq!(other.fake.reconciled.load(Ordering::SeqCst), 0);
+
+    runtime.stop(false);
+    runtime.reconcile_named(&["embedding"]).expect("no pass");
+    assert_eq!(named.fake.reconciled.load(Ordering::SeqCst), 1);
+}

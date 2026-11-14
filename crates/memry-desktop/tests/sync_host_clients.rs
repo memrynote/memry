@@ -29,6 +29,10 @@ const ALLOWED: &[(&str, &str)] = &[
         "the pinned transport's own errors",
     ),
     (
+        "crates/memry-desktop/src/embedding/download.rs",
+        "the pinned embedding model files from the Hugging Face hub",
+    ),
+    (
         "crates/memry-desktop/src/notes/icons/remote.rs",
         "the image link a person pastes as a custom icon, one GET",
     ),
