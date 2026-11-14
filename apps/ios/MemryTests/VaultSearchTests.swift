@@ -28,11 +28,23 @@ struct VaultSearchTests {
         private let hits: [SearchResult]
         private let failure: (any Error)?
         let reindexFailure: Mutex<(any Error)?>
+        /// Answers `semanticPending` without `semanticHits` until
+        /// `semanticModelLoaded` returns, and for good when the load fails.
+        private let modelLoading: Mutex<Bool>
+        private let loadFails: Bool
+        private let semanticHits: [SearchResult]
+        let loadWaits = Mutex(0)
 
-        init(hits: [SearchResult] = [], failure: (any Error)? = nil, reindexFailure: (any Error)? = nil) {
+        init(
+            hits: [SearchResult] = [], failure: (any Error)? = nil, reindexFailure: (any Error)? = nil,
+            semanticHits: [SearchResult] = [], modelLoading: Bool = false, loadFails: Bool = false
+        ) {
             self.hits = hits
             self.failure = failure
             self.reindexFailure = Mutex(reindexFailure)
+            self.semanticHits = semanticHits
+            self.modelLoading = Mutex(modelLoading)
+            self.loadFails = loadFails
         }
 
         /// Note hits only: the task and inbox groups are asserted against a
@@ -41,7 +53,15 @@ struct VaultSearchTests {
             queries.withLock { $0.append(query) }
             filters.withLock { $0.append(filter) }
             if let failure { throw failure }
-            return SearchGroups(notes: hits, journals: [], tasks: [], inbox: [])
+            let pending = modelLoading.withLock { $0 }
+            return SearchGroups(
+                notes: pending ? hits : hits + semanticHits, journals: [], tasks: [], inbox: [], semanticPending: pending
+            )
+        }
+
+        func semanticModelLoaded() async {
+            loadWaits.withLock { $0 += 1 }
+            if !loadFails { modelLoading.withLock { $0 = false } }
         }
 
         func reindex() async throws {
@@ -109,6 +129,34 @@ struct VaultSearchTests {
         await model.settle()
 
         #expect(search.queries.withLock { $0 } == ["dune"], "the debounced first query never ran")
+        #expect(model.phase == .results([hit("n1", "Dune")]))
+    }
+
+    @Test("a query typed while the model loads runs once more when the load lands")
+    func pendingQueryRerunsAfterTheLoad() async {
+        // #4615: the cold query answered "No Results" and stayed that way until
+        // the next keystroke.
+        let search = ScriptedSearch(semanticHits: [hit("n1", "Saturday afternoon")], modelLoading: true)
+        let model = model(search)
+
+        model.run("puppy playing")
+        await model.settle()
+
+        #expect(search.queries.withLock { $0 } == ["puppy playing", "puppy playing"])
+        #expect(search.loadWaits.withLock { $0 } == 1)
+        #expect(model.phase == .results([hit("n1", "Saturday afternoon")]))
+    }
+
+    @Test("a load that fails re-runs the query once, not in a loop")
+    func failedLoadRerunsOnce() async {
+        let search = ScriptedSearch(hits: [hit("n1", "Dune")], modelLoading: true, loadFails: true)
+        let model = model(search)
+
+        model.run("dune")
+        await model.settle()
+
+        #expect(search.queries.withLock { $0 } == ["dune", "dune"])
+        #expect(search.loadWaits.withLock { $0 } == 1)
         #expect(model.phase == .results([hit("n1", "Dune")]))
     }
 

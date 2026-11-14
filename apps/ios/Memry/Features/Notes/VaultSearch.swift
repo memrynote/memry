@@ -21,7 +21,8 @@ import Observation
 //
 // **Semantic hits fuse in the core.** With semantic search on, the core folds
 // notes near the query's meaning into the notes and journals groups (#4505).
-// The first query after launch starts the model load and answers from FTS.
+// A query typed while the model loads answers from FTS at once, then runs once
+// more when the load lands (#4615).
 //
 // **Results are the core's ranking, never re-sorted.** The order is what
 // the query returned; a shell that sorted by date would be answering a
@@ -34,6 +35,9 @@ protocol VaultSearching: Sendable {
     /// carrying no searchable term returns **empty** — an empty box is not a
     /// request for the whole vault.
     func search(query: String, filter: SearchFilter?, limit: UInt32) async throws -> SearchGroups
+    /// Returns once the semantic model load in flight, if any, has finished.
+    /// A result with `semanticPending` set runs again after it.
+    func semanticModelLoaded() async
     /// Brings the index up to date. Idempotent, and safe on any schedule.
     func reindex() async throws
     /// Every note linking to this one (N800).
@@ -64,6 +68,12 @@ struct CoreVaultSearch: VaultSearching {
     func search(query: String, filter: SearchFilter?, limit: UInt32) async throws -> SearchGroups {
         let search = search
         return try await executor.run { try search.search(query: query, filter: filter, limit: limit) }
+    }
+
+    /// Off the core queue: it waits on a model load, which would hold up every
+    /// other core call behind it.
+    func semanticModelLoaded() async {
+        await search.semanticModelLoaded()
     }
 
     func reindex() async throws {
@@ -213,7 +223,8 @@ final class VaultSearchViewModel {
     }
 
     /// One query. `source` is `nil` for a re-run after a reindex, which is not
-    /// a search the user performed.
+    /// a search the user performed. A result that missed its semantic hits
+    /// because the model was loading runs once more when the load lands.
     private func start(_ trimmed: String, after debounce: Duration, source: StaticString?) -> Task<Void, Never> {
         let filter = filters.record(now: .now, calendar: .current)
         return Task { [search] in
@@ -222,13 +233,9 @@ final class VaultSearchViewModel {
                 let started = ContinuousClock.now
                 let groups = try await search.search(query: trimmed, filter: filter, limit: 50)
                 guard !Task.isCancelled else { return }
-                let hits = groups.notes + groups.journals
-                let count = hits.count + groups.tasks.count + groups.inbox.count
-                Log.storage.info("searched this vault", .count(count))
+                let count = show(groups)
                 if let source { Self.trackPerformed(source: source, count: count, since: started) }
-                taskHits = groups.tasks
-                inboxHits = groups.inbox
-                phase = .results(hits)
+                if groups.semanticPending { await rerunAfterModelLoad(trimmed, filter: filter) }
             } catch is CancellationError {
                 // A newer query owns the screen now.
             } catch {
@@ -246,6 +253,33 @@ final class VaultSearchViewModel {
                 phase = .failed(mapped)
             }
         }
+    }
+
+    /// The results already on screen stay when this fails: they answer the
+    /// query, only without its semantic hits.
+    private func rerunAfterModelLoad(_ trimmed: String, filter: SearchFilter?) async {
+        await search.semanticModelLoaded()
+        guard !Task.isCancelled else { return }
+        do {
+            let groups = try await search.search(query: trimmed, filter: filter, limit: 50)
+            guard !Task.isCancelled else { return }
+            show(groups)
+        } catch is CancellationError {
+            // A newer query owns the screen now.
+        } catch {
+            Log.storage.error("this vault could not be searched again", .code(ErrorMapping.userFacing(error).code))
+        }
+    }
+
+    @discardableResult
+    private func show(_ groups: SearchGroups) -> Int {
+        let hits = groups.notes + groups.journals
+        let count = hits.count + groups.tasks.count + groups.inbox.count
+        Log.storage.info("searched this vault", .count(count))
+        taskHits = groups.tasks
+        inboxHits = groups.inbox
+        phase = .results(hits)
+        return count
     }
 
     /// Desktop `search-handlers.ts`: the count, the time and a coarse bucket,
