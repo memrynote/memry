@@ -46,6 +46,7 @@ struct HomeTab: View {
                         Button("Switch vault", systemImage: "lock.square") { switchVault() }
                     }
                 }
+                DayPanelToolbarItem()
                 if items.contains(.search) {
                     GlobalSearchToolbarItem()
                 }

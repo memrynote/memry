@@ -16,7 +16,7 @@ import UIKit
 // Synced user overrides (`shortcut-bindings`) are follow-up #4383 (Q9).
 
 enum AppCommand: Hashable {
-    case newNote, quickCapture, newTask, search, settings, today, previousDay, nextDay
+    case newNote, quickCapture, newTask, search, settings, today, previousDay, nextDay, dayPanel
     /// The `n`th page in the visible order, 1–9.
     case page(Int)
 
@@ -36,6 +36,8 @@ enum AppCommand: Hashable {
         // caret; the journal page keeps those itself (`JournalDayShortcuts`).
         case .previousDay: KeyboardShortcut(.leftArrow, modifiers: [.option, .command])
         case .nextDay: KeyboardShortcut(.rightArrow, modifiers: [.option, .command])
+        // view.toggleDayPanel
+        case .dayPanel: KeyboardShortcut("b", modifiers: [.shift, .command])
         // app-sidebar.tsx: ⌘1–⌘9 open the nth visible page.
         case let .page(number): KeyboardShortcut(KeyEquivalent(Character(String(number))), modifiers: .command)
         }
@@ -51,12 +53,13 @@ enum AppCommand: Hashable {
         case .today: JournalCopy.goToToday
         case .previousDay: JournalCopy.previousDay
         case .nextDay: JournalCopy.nextDay
+        case .dayPanel: JournalCopy.Rail.label
         case let .page(number): "Page \(number)"
         }
     }
 
     /// Every command with a fixed title, in menu order.
-    static let fixed: [AppCommand] = [.newNote, .quickCapture, .newTask, .search, .settings, .today, .previousDay, .nextDay]
+    static let fixed: [AppCommand] = [.newNote, .quickCapture, .newTask, .search, .settings, .today, .previousDay, .nextDay, .dayPanel]
 }
 
 struct MemryCommands: Commands {
@@ -77,6 +80,9 @@ struct MemryCommands: Commands {
         }
         CommandGroup(replacing: .appSettings) {
             button(.settings)
+        }
+        CommandGroup(after: .sidebar) {
+            button(.dayPanel)
         }
         CommandMenu("Go") {
             button(.search)

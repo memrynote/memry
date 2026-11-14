@@ -4,7 +4,7 @@ import XCTest
 // #4355: the app's keyboard commands on iPad. ⌘2 opens the second page in
 // the sidebar, ⌘N makes a note and puts its title under the caret, ⌘K opens
 // search from inside the note's body, and no command fires while a sheet is
-// up.
+// up. #4380: ⇧⌘B toggles the Day Panel.
 //
 // **Precondition:** a full-screen iPad simulator with a vault open (the
 // staging test account, or a free vault on this device). A run that lands on
@@ -75,6 +75,58 @@ final class KeyboardCommandsUITests: XCTestCase {
         app.typeKey("k", modifierFlags: .command)
         XCTAssertTrue(search.waitForExistence(timeout: 5), "search did not open once the sheet closed")
         app.typeKey(".", modifierFlags: .command)
+    }
+
+    /// #4380: ⇧⌘B toggles the Day Panel beside any page; on the journal
+    /// page it follows the shown day.
+    func testShiftCommandBTogglesTheDayPanel() throws {
+        try openVault()
+        sidebarRow("Tasks").tap()
+        let toggle = app.buttons["dayPanel.toggle"].firstMatch
+        guard toggle.waitForExistence(timeout: 5) else {
+            throw XCTSkip("The window cannot hold the Day Panel: run on a 13\" iPad in landscape.")
+        }
+        let panel = app.descendants(matching: .any)["dayPanel"]
+        if panel.exists { app.typeKey("b", modifierFlags: [.shift, .command]) }
+        XCTAssertTrue(panel.waitForNonExistence(timeout: 5))
+
+        app.typeKey("b", modifierFlags: [.shift, .command])
+        XCTAssertTrue(panel.waitForExistence(timeout: 5), "⇧⌘B did not open the Day Panel")
+        XCTAssertEqual(toggle.label, "Hide Day Panel")
+        let date = app.staticTexts["dayPanel.date"]
+        XCTAssertEqual(date.label, "Today", "off the journal page the panel opens on today")
+        attach("day-panel-tasks")
+
+        sidebarRow("Journal").tap()
+        let previous = app.buttons["journal.day.previous"].firstMatch
+        XCTAssertTrue(previous.waitForExistence(timeout: 10), "the Journal did not open on a day")
+        XCTAssertTrue(panel.exists, "the panel did not stay open on the Journal")
+        previous.tap()
+        XCTAssertTrue(matches(NSPredicate(format: "label != 'Today'"), date), "the panel did not follow the journal's shown day")
+        attach("day-panel-journal")
+
+        // Beside a note the panel and the inspector share one rail's room:
+        // opening one closes the other.
+        app.typeKey("n", modifierFlags: .command)
+        let title = app.textFields["Title"]
+        XCTAssertTrue(title.waitForExistence(timeout: 10), "⌘N did not open a new note")
+        let name = "[agent] \(run) beside the panel"
+        title.typeText("\(name)\n")
+        let body = app.textViews.matching(NSPredicate(format: "identifier BEGINSWITH 'note.block.'")).firstMatch
+        XCTAssertTrue(body.waitForExistence(timeout: 10))
+        XCTAssertTrue(panel.waitForExistence(timeout: 5), "the panel did not stay open on Notes")
+        attach("day-panel-notes")
+        let inspector = app.descendants(matching: .any)["note.inspector"]
+        app.buttons["note.inspector.toggle"].firstMatch.tap()
+        XCTAssertTrue(inspector.waitForExistence(timeout: 5), "the inspector did not open")
+        XCTAssertTrue(panel.waitForNonExistence(timeout: 5), "opening the inspector did not close the panel")
+        app.typeKey("b", modifierFlags: [.shift, .command])
+        XCTAssertTrue(panel.waitForExistence(timeout: 5), "⇧⌘B did not open the panel beside the note")
+        XCTAssertTrue(inspector.waitForNonExistence(timeout: 5), "opening the panel did not close the inspector")
+
+        app.typeKey("b", modifierFlags: [.shift, .command])
+        XCTAssertTrue(panel.waitForNonExistence(timeout: 5), "⇧⌘B did not close the Day Panel")
+        deleteNote(name)
     }
 
     // MARK: Helpers

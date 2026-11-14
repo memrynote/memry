@@ -1,12 +1,14 @@
 import MemryCore
 import SwiftUI
 
-// #4351 (D8, D9). The Journal rail at regular width (DESIGN.md › Tablet ›
-// Side rails): a mini month calendar that jumps to a day and marks the days
-// with an entry, the day's tasks and events, and the same day in other
-// years. No statistics, no AI connections. The day screen lays it beside
-// the pager in its own `Tokens.Size.rail` of width, so the entry never
-// slides under it.
+// #4351 (D8, D9), #4380. The Day Panel (desktop `global-day-panel.tsx`,
+// ⇧⌘B), which is also the Journal rail (DESIGN.md › Tablet › Side rails): the
+// day with ‹ › and Today, a mini month calendar that jumps to a day and marks
+// the days with an entry, the day's tasks and events, and the same day in
+// other years. No statistics, no AI connections. `DayPanelHost` lays it
+// beside every page in its own `Tokens.Size.rail` of width, so the page never
+// slides under it. On the journal page it follows the shown day; elsewhere it
+// shows today until stepped (`SideRails`).
 
 extension EnvironmentValues {
     /// The day screen shows the rail, which carries the day's tasks; the
@@ -14,15 +16,16 @@ extension EnvironmentValues {
     @Entry var journalRailShown = false
 }
 
-struct JournalDayRail: View {
+struct DayPanelRail: View {
     let store: JournalStore
     let date: String
-    /// Shows a day in place, as ‹ › do.
+    /// Shows a day: in place on the journal page, in the panel elsewhere.
     let show: (String) -> Void
 
     var body: some View {
         ScrollView {
             VStack(alignment: .leading, spacing: Tokens.Space.section) {
+                header
                 JournalMiniMonth(store: store, date: date, show: show)
                 JournalDayAgenda(date: date, today: store.clock.today)
                 JournalOnThisDay(store: store, date: date, show: show)
@@ -39,7 +42,36 @@ struct JournalDayRail: View {
         }
         .accessibilityElement(children: .contain)
         .accessibilityLabel(JournalCopy.Rail.label)
-        .accessibilityIdentifier("journal.rail")
+        .accessibilityIdentifier("dayPanel")
+    }
+
+    /// The day, stepped a day at a time as on desktop's panel.
+    private var header: some View {
+        HStack(spacing: 0) {
+            Text(date == store.clock.today ? JournalCopy.today : JournalCopy.inlineTitle(date))
+                .font(Tokens.Typography.heading.font)
+                .foregroundStyle(Tokens.Text.primary.color)
+                .lineLimit(1)
+                .accessibilityAddTraits(.isHeader)
+                .accessibilityIdentifier("dayPanel.date")
+            Spacer(minLength: Tokens.Space.small)
+            if date != store.clock.today {
+                Button(JournalCopy.today) { show(store.clock.today) }
+                    .accessibilityLabel(JournalCopy.goToToday)
+                    .frame(minHeight: Tokens.Size.minimumHitArea)
+                    .accessibilityIdentifier("dayPanel.today")
+            }
+            dayStep(-1, label: JournalCopy.previousDay, symbol: "chevron.backward", id: "previous")
+            dayStep(1, label: JournalCopy.nextDay, symbol: "chevron.forward", id: "next")
+        }
+    }
+
+    private func dayStep(_ offset: Int, label: String, symbol: String, id: String) -> some View {
+        Button(label, systemImage: symbol) { show(JournalDates.adding(offset, to: date)) }
+            .labelStyle(.iconOnly)
+            .frame(width: Tokens.Size.minimumHitArea, height: Tokens.Size.minimumHitArea)
+            .contentShape(.rect)
+            .accessibilityIdentifier("dayPanel.\(id)")
     }
 }
 

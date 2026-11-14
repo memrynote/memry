@@ -7,20 +7,21 @@ import SwiftUI
 // the page already holds. While it shows, the page leaves those sections out;
 // once hidden, they are back under the title and the body as on the phone.
 //
-// **Per device.** Open or closed lives in `@AppStorage` under
+// **Per device.** Open or closed lives in `UserDefaults` under
 // `NoteInspectorLayout.openKey`, never in the vault and never synced. Hidden
 // by default.
 //
-// **Shown only where it fits.** The split view says whether the window holds
-// the reading measure plus the rail, as desktop's review
-// rail hides once content and rail no longer fit (`use-review-rail-shift`).
-// Below that, at compact width, and at accessibility text sizes (which break
-// words in the rail's 320 points, as on Journal's rail), it is hidden and its
-// button goes too.
+// **Shown only where it fits.** `SideRails` says whether the page holds the
+// reading measure plus the rail, as desktop's review rail hides once content
+// and rail no longer fit (`use-review-rail-shift`). Below that, at compact
+// width, and at accessibility text sizes (which break words in the rail's 320
+// points), it is hidden and its button goes too. Where only one rail fits it
+// shares the room with the Day Panel (#4380): opening one closes the other.
 
 extension EnvironmentValues {
-    /// The window holds the note column and the rail. Set by the Notes split
-    /// view; `false` everywhere else, the phone stack included.
+    /// The page holds the note column and the rail. Set by the Notes split
+    /// view from `SideRails`; `false` everywhere else, the phone stack
+    /// included.
     @Entry var noteInspectorFits = false
 
     /// The inspector is on screen, so the page leaves its sections to it.
@@ -31,11 +32,6 @@ enum NoteInspectorLayout {
     /// The per-device open state.
     static let openKey = "notes.inspector.open"
 
-    /// The reading measure plus the rail, 1040pt, so the note keeps its
-    /// measure (`DESIGN.md` › Tablet › Side rails): 13" landscape beside the
-    /// page sidebar (about 1086pt) holds it, 13" portrait (1024-1032pt) does
-    /// not.
-    static let minimumWidth = Tokens.Size.reading + Tokens.Size.rail
 }
 
 /// A note page's side rail: the rail beside the page in its own
@@ -52,24 +48,25 @@ struct NoteInspector: ViewModifier {
     let rail: NoteInspectorRail
 
     @Environment(\.noteInspectorFits) private var fits
-    @AppStorage(NoteInspectorLayout.openKey) private var isOpen = false
+    @Environment(SideRails.self) private var rails: SideRails?
 
     func body(content: Content) -> some View {
-        let shown = fits && isOpen
+        let shown = fits && rails?.inspectorShown == true
         HStack(spacing: 0) {
             content
                 .environment(\.noteInspectorShown, shown)
             if shown { rail }
         }
         .toolbar {
-            if fits {
+            if fits, let rails {
                 ToolbarItem(placement: .topBarTrailing) {
-                    Button(isOpen ? "Hide inspector" : "Show inspector", systemImage: "sidebar.trailing") {
-                        isOpen.toggle()
+                    Button(shown ? "Hide inspector" : "Show inspector", systemImage: "sidebar.trailing") {
+                        rails.toggleInspector()
                     }
                     .accessibilityIdentifier("note.inspector.toggle")
                 }
             }
+            DayPanelToolbarItem()
         }
     }
 }

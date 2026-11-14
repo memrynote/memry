@@ -69,6 +69,13 @@ struct VaultListView: View {
             VaultCalendarScope(vault: vault, secureStore: model.secureStore, filler: filler, tasks: tasksStore) {
             VaultInboxScope(vault: vault, secureStore: model.secureStore, filler: filler) {
                 VaultSettingsScope(vault: vault, model: model, tasks: tasksStore) { settings, browse in
+                VaultJournalScope(
+                    vault: vault,
+                    secureStore: model.secureStore,
+                    isSyncing: tasksStore?.isSyncing ?? false,
+                    tasksStore: tasksStore,
+                    filler: filler
+                ) {
                     VaultTabsView(
                         switchVault: model.isSwitchable ? { Task { await model.chooseAgain() } } : nil,
                         vaultName: VaultLabel(summary).text,
@@ -86,18 +93,13 @@ struct VaultListView: View {
                     }, tasks: {
                         TasksTabContent(store: tasksStore, failure: tasksFailure)
                     }, journal: {
-                        JournalTabContent(
-                            vault: vault,
-                            secureStore: model.secureStore,
-                            isSyncing: tasksStore?.isSyncing ?? false,
-                            tasksStore: tasksStore,
-                            filler: filler
-                        )
+                        JournalTabContent()
                     }, more: {
                         // Settings spec: More › Settings, built next to the tasks store.
                         MoreTabView(context: settings, browse: browse)
                     })
                     .environment(\.handoffVaultId, summary.id)
+                }
                 }
             }
             }

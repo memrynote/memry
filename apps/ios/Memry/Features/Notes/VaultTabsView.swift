@@ -62,6 +62,8 @@ struct VaultTabsView<Notes: View, Tasks: View, Journal: View, More: View>: View 
     @State private var journalRouter = JournalRouter()
     /// The Inbox tab's stack (inbox spec D1).
     @State private var inboxRouter = InboxRouter()
+    /// The Day Panel and the note inspector (#4380).
+    @State private var sideRails = SideRails()
     private let inboxLinks = InboxLinks.shared
     private let calendarLinks = CalendarLinks.shared
     private let handoffLinks = HandoffLinks.shared
@@ -170,6 +172,7 @@ struct VaultTabsView<Notes: View, Tasks: View, Journal: View, More: View>: View 
         .environment(\.openGlobalSearch, openSearch)
         .environment(router)
         .environment(journalRouter)
+        .environment(sideRails)
         // Where the next launch continues (`LaunchSnapshot`).
         .onChange(of: router.selectedTab) { _, tab in
             LaunchSnapshot.shared.setTab(tab.rawValue)
@@ -271,7 +274,8 @@ struct VaultTabsView<Notes: View, Tasks: View, Journal: View, More: View>: View 
             pages: pages,
             newNote: newNote,
             quickCapture: quickCapture,
-            search: openSearch
+            search: openSearch,
+            sideRails: sideRails
         )
     }
 
@@ -294,8 +298,8 @@ struct VaultTabsView<Notes: View, Tasks: View, Journal: View, More: View>: View 
         }
     }
 
-    /// A page with ⇧⌘N's confirmation over it. Home shows its own beside
-    /// its "+".
+    /// A page with ⇧⌘N's confirmation over it and the Day Panel beside it.
+    /// Home shows its own confirmation beside its "+".
     private func shown(_ page: VaultTab) -> some View {
         content(page).overlay(alignment: .bottom) {
             if page != .home, let captureReceipt {
@@ -305,6 +309,7 @@ struct VaultTabsView<Notes: View, Tasks: View, Journal: View, More: View>: View 
                     .padding(.bottom, Tokens.Space.medium)
             }
         }
+        .modifier(DayPanelHost(page: page, isSelected: page == router.selectedTab))
     }
 
     /// One page's screen. A page is either in the bar or behind Menu, so each

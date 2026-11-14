@@ -11,6 +11,7 @@ import Testing
 struct VaultCommandsTests {
     private let tasks = TasksRouter()
     private let journal = JournalRouter()
+    private let rails = SideRails(defaults: UserDefaults(suiteName: "VaultCommandsTests.\(UUID())") ?? .standard)
 
     private func commands(
         width: LayoutWidth = .regular,
@@ -24,7 +25,8 @@ struct VaultCommandsTests {
             pages: VaultTabLayout(savedOrder: [], width: width) { _ in true }.commandPages,
             newNote: newNote,
             quickCapture: nil,
-            search: {}
+            search: {},
+            sideRails: rails
         )
         commands.journalDay = journalDay
         commands.today = { "2099-03-04" }
@@ -123,6 +125,20 @@ struct VaultCommandsTests {
         #expect(!commands.can(.newNote))
         commands.run(.newNote)
         #expect(tasks.selectedTab == .tasks)
+    }
+
+    @Test func day_panel_key_toggles_the_panel_only_where_a_rail_fits() {
+        let commands = commands()
+        rails.room = .none
+        #expect(!commands.can(.dayPanel), "compact width and narrow windows have no panel")
+        commands.run(.dayPanel)
+        #expect(!rails.open.dayPanel)
+
+        rails.room = .one
+        commands.run(.dayPanel)
+        #expect(rails.dayPanelShown)
+        commands.run(.dayPanel)
+        #expect(!rails.dayPanelShown)
     }
 
     @Test func every_command_has_its_own_key() {
