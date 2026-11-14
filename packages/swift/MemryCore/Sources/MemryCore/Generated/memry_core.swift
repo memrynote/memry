@@ -4445,6 +4445,14 @@ public protocol JournalProtocol: AnyObject, Sendable {
     func resolveWikiTarget(target: String) throws  -> WikiTargetMatch?
     
     /**
+     * The day in every other year with a live entry, later years included,
+     * newest first, flagged against `today` (desktop's
+     * `getJournalSameDayEntries`). A Feb 29 shows on Feb 28 of a year
+     * without one, and back.
+     */
+    func sameDayEntries(date: String, today: String) throws  -> [JournalMonthDayRecord]
+    
+    /**
      * Seeds an empty day from a template with the shell's locale strings.
      * A day with a live entry is never seeded (`AlreadyExists`). A template
      * not on this device yet throws `NotFound`; the shell retries later.
@@ -4753,6 +4761,23 @@ open func resolveWikiTarget(target: String)throws  -> WikiTargetMatch?  {
     uniffi_memry_core_fn_method_journal_resolve_wiki_target(
             self.uniffiCloneHandle(),
         FfiConverterString.lower(target),uniffiCallStatus
+    )
+})
+}
+    
+    /**
+     * The day in every other year with a live entry, later years included,
+     * newest first, flagged against `today` (desktop's
+     * `getJournalSameDayEntries`). A Feb 29 shows on Feb 28 of a year
+     * without one, and back.
+     */
+open func sameDayEntries(date: String, today: String)throws  -> [JournalMonthDayRecord]  {
+    return try  FfiConverterSequenceTypeJournalMonthDayRecord.lift(try rustCallWithError(FfiConverterTypeCrdtError_lift) {
+        uniffiCallStatus in
+    uniffi_memry_core_fn_method_journal_same_day_entries(
+            self.uniffiCloneHandle(),
+        FfiConverterString.lower(date),
+        FfiConverterString.lower(today),uniffiCallStatus
     )
 })
 }
@@ -37187,6 +37212,9 @@ private let initializationResult: InitializationResult = {
         return InitializationResult.apiChecksumMismatch
     }
     if (uniffi_memry_core_checksum_method_journal_resolve_wiki_target() != 4674) {
+        return InitializationResult.apiChecksumMismatch
+    }
+    if (uniffi_memry_core_checksum_method_journal_same_day_entries() != 57501) {
         return InitializationResult.apiChecksumMismatch
     }
     if (uniffi_memry_core_checksum_method_journal_seed_from_template() != 21646) {
