@@ -4,7 +4,7 @@
     "oracle": "apps/desktop/scripts/markdown-oracle (Electron converter run in place; gray-matter 4.0.3, js-yaml 3.15.1)",
     "note": "BlockNote markdown parse (markdownToHtml then HTMLToBlocks) as canonical block JSON, without the memry layers. memryLayerNoop says whether blocknote-converter.ts markdownToBlocks returns the same blocks; where it is false, the memry layers of a later stage change the result.",
     "yamlJsonEncoding": "Numbers that JSON cannot carry are {\"$num\": \"NaN\"|\"Infinity\"|\"-Infinity\"|\"-0\"}, a Date is {\"$date\": ISO}, a Buffer is {\"$bin\": base64}, a map with a \"$\"-prefixed key is wrapped as {\"$map\": {...}}. Key order is Object.keys order.",
-    "caseCount": 833
+    "caseCount": 836
   },
   "cases": [
     {
@@ -10995,6 +10995,111 @@
                 {
                   "styles": {},
                   "text": "Intro ((mention:https%3A%2F%2Fexample.com%2F%21%5Fbang%2Fx.y%5F%7Ez)) outro.",
+                  "type": "text"
+                }
+              ],
+              "children": []
+            }
+          ],
+          "memryLayerNoop": true
+        }
+      }
+    },
+    {
+      "id": "bn-parse/bn-parse/rt-legacy-link-mention-token-with-a-raw-undersco",
+      "op": "bn-parse",
+      "input": {
+        "markdown": "Intro ((mention:https%3A%2F%2Fexample.com%2Fa_b)) outro."
+      },
+      "expected": {
+        "status": "ok",
+        "output": {
+          "blocks": [
+            {
+              "type": "paragraph",
+              "props": {
+                "backgroundColor": "default",
+                "textAlignment": "left",
+                "textColor": "default"
+              },
+              "content": [
+                {
+                  "styles": {},
+                  "text": "Intro ((mention:https%3A%2F%2Fexample.com%2Fa_b)) outro.",
+                  "type": "text"
+                }
+              ],
+              "children": []
+            }
+          ],
+          "memryLayerNoop": true
+        }
+      }
+    },
+    {
+      "id": "bn-parse/bn-parse/rt-two-legacy-link-mention-tokens-with-raw",
+      "op": "bn-parse",
+      "input": {
+        "markdown": "See ((mention:https%3A%2F%2Fx.test%2Fa*b_c'd)) and ((mention:https%3A%2F%2Fx.test%2Fe*f~g!)) here."
+      },
+      "expected": {
+        "status": "ok",
+        "output": {
+          "blocks": [
+            {
+              "type": "paragraph",
+              "props": {
+                "backgroundColor": "default",
+                "textAlignment": "left",
+                "textColor": "default"
+              },
+              "content": [
+                {
+                  "styles": {},
+                  "text": "See ((mention:https%3A%2F%2Fx.test%2Fa",
+                  "type": "text"
+                },
+                {
+                  "styles": {
+                    "italic": true
+                  },
+                  "text": "b_c'd)) and ((mention:https%3A%2F%2Fx.test%2Fe",
+                  "type": "text"
+                },
+                {
+                  "styles": {},
+                  "text": "f~g!)) here.",
+                  "type": "text"
+                }
+              ],
+              "children": []
+            }
+          ],
+          "memryLayerNoop": false
+        }
+      }
+    },
+    {
+      "id": "bn-parse/bn-parse/rt-legacy-link-mention-token-with-a-stray-space",
+      "op": "bn-parse",
+      "input": {
+        "markdown": "Intro ((mention:https%3A%2F%2Fx.test%2Fpage )) outro."
+      },
+      "expected": {
+        "status": "ok",
+        "output": {
+          "blocks": [
+            {
+              "type": "paragraph",
+              "props": {
+                "backgroundColor": "default",
+                "textAlignment": "left",
+                "textColor": "default"
+              },
+              "content": [
+                {
+                  "styles": {},
+                  "text": "Intro ((mention:https%3A%2F%2Fx.test%2Fpage )) outro.",
                   "type": "text"
                 }
               ],
