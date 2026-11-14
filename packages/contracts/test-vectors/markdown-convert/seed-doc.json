@@ -4,7 +4,7 @@
     "oracle": "apps/desktop/scripts/markdown-oracle (Electron converter run in place; gray-matter 4.0.3, js-yaml 3.15.1)",
     "note": "The Y.Doc a markdown seed writes (markdownToYFragment): the fragment as canonical text with block ids removed, and the side roots as JSON (markdownSource, criticMarkupMarks, link reference definitions and usages, writing tools records). A writing tools anchor is stated as the text run and index it resolves to, since Yjs ids are free.",
     "yamlJsonEncoding": "Numbers that JSON cannot carry are {\"$num\": \"NaN\"|\"Infinity\"|\"-Infinity\"|\"-0\"}, a Date is {\"$date\": ISO}, a Buffer is {\"$bin\": base64}, a map with a \"$\"-prefixed key is wrapped as {\"$map\": {...}}. Key order is Object.keys order.",
-    "caseCount": 754
+    "caseCount": 755
   },
   "cases": [
     {
@@ -2429,6 +2429,32 @@
           "roots": {
             "markdownSource": {
               "source": "x ((mention:note:a_b_c|T_t)) *y*\n",
+              "htmlComments": true
+            },
+            "criticMarkupMarks": [],
+            "linkReferenceDefinitions": [],
+            "linkReferenceUsages": [],
+            "writingAlternatives": [],
+            "writingGhosts": [],
+            "writingOverflow": []
+          }
+        }
+      }
+    },
+    {
+      "id": "seed-doc/doc-seed/mention-credentials-no-host",
+      "op": "doc-seed",
+      "input": {
+        "markdown": "A ((mention:a%3A%2F%2F%40 )) B ((mention:a%3A%2F%2F%3A%40%2Fx )) C ((mention:a%3A%2F%2F%40))\n"
+      },
+      "expected": {
+        "status": "ok",
+        "output": {
+          "seeded": true,
+          "fragment": "0 element blockGroup\n1 element blockContainer\n2 element paragraph backgroundColor=\"default\" textAlignment=\"left\" textColor=\"default\"\n3 text \"A ((mention:a%3A%2F%2F%40 )) B ((mention:a%3A%2F%2F%3A%40%2Fx )) C \"\n3 element linkMention domain=\"a://@\" favicon=\"\" siteName=\"\" title=\"\" url=\"a://@\"",
+          "roots": {
+            "markdownSource": {
+              "source": "A ((mention:a%3A%2F%2F%40 )) B ((mention:a%3A%2F%2F%3A%40%2Fx )) C ((mention:a%3A%2F%2F%40))\n",
               "htmlComments": true
             },
             "criticMarkupMarks": [],

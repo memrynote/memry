@@ -84,6 +84,24 @@ fn a_stray_space_or_backslash_is_repaired_and_a_non_url_stays_text() {
     );
 }
 
+/// Node's `new URL` fails an authority with credentials and no host; the
+/// `url` crate parses it with an empty host.
+#[test]
+fn credentials_without_a_host_fail_the_url_check_as_in_node() {
+    let blocks = seed_blocks("A ((mention:a%3A%2F%2F%40 )) B ((mention:a%3A%2F%2F%3A%40%2Fx)).");
+    assert_eq!(
+        content(&blocks[0]),
+        &json!([
+            {"type": "text", "text": "A ((mention:a%3A%2F%2F%40 )) B ", "styles": {}},
+            {"type": "linkMention", "props": {
+                "url": "a://:@/x", "domain": "a://:@/x",
+                "title": "", "favicon": "", "siteName": ""
+            }},
+            {"type": "text", "text": ".", "styles": {}},
+        ])
+    );
+}
+
 #[test]
 fn a_legacy_token_in_a_fenced_code_block_or_a_link_label_stays_text() {
     let token = "((mention:https%3A%2F%2Fexample.com%2Fa_b))";

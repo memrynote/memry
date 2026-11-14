@@ -13,8 +13,8 @@ use std::sync::LazyLock;
 
 use regex::Regex;
 use serde_json::{Map, Value as Json, json};
-use url::Url;
 
+use crate::markdown::bn::dom_parser::rules::url::parse_like_node;
 use crate::markdown::frontmatter::js::is_js_whitespace;
 use crate::markdown::shared::critic_markup::uri::decode_uri_component;
 
@@ -25,9 +25,9 @@ static MENTION_TOKEN: LazyLock<Regex> =
 /// `extractDomain`: `new URL(url).hostname.replace('www.', '')`, which drops the
 /// first `www.` wherever it sits, and the URL itself when it does not parse.
 fn extract_domain(url: &str) -> String {
-    match Url::parse(url) {
-        Ok(parsed) => parsed.host_str().unwrap_or("").replacen("www.", "", 1),
-        Err(_) => url.to_owned(),
+    match parse_like_node(url) {
+        Some(parsed) => parsed.host_str().unwrap_or("").replacen("www.", "", 1),
+        None => url.to_owned(),
     }
 }
 
@@ -46,7 +46,7 @@ fn parse_link_mention_token(encoded: &str) -> Option<String> {
         return None;
     }
     let url = decode_uri_component(&repaired)?;
-    Url::parse(&url).is_ok().then_some(url)
+    parse_like_node(&url).map(|_| url)
 }
 
 fn styled_text(text: &str, styles: Option<&Json>) -> Json {
