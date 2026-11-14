@@ -43,21 +43,46 @@ struct TasksDetailTests {
     @Test func a_title_retyped_after_a_peer_rename_is_written() async throws {
         let (vault, id) = try await loaded()
         var commits = TaskTitleCommits()
-        let first = try #require(commits.take("[agent] B", over: try item(vault, id).title))
+        commits.begin(try item(vault, id).title)
+        let taken = commits.take("[agent] B")
+        let first = try #require(taken)
         #expect(await vault.store.detailRename(try item(vault, id), to: first))
         _ = try vault.tasks.setTitle(id: id, title: "[agent] C")
         await vault.store.refresh()
         #expect(try item(vault, id).title == "[agent] C")
-        let again = try #require(commits.take("[agent] B", over: try item(vault, id).title))
+        commits.begin(try item(vault, id).title)
+        let retaken = commits.take("[agent] B")
+        let again = try #require(retaken)
         #expect(await vault.store.detailRename(try item(vault, id), to: again))
         #expect(try item(vault, id).title == "[agent] B")
     }
 
+    /// REVIEW-4529: the title is focused, nothing is typed, a peer renames it
+    /// to C. Blur, Back or a swap must not write the stale A over C.
+    @Test func a_focused_untouched_title_does_not_overwrite_a_peer_rename() async throws {
+        let (vault, id) = try await loaded("[agent] A")
+        var commits = TaskTitleCommits()
+        commits.begin(try item(vault, id).title)
+        _ = try vault.tasks.setTitle(id: id, title: "[agent] C")
+        await vault.store.refresh()
+        if let text = commits.take("[agent] A") {
+            _ = await vault.store.detailRename(try item(vault, id), to: text)
+        }
+        #expect(try item(vault, id).title == "[agent] C")
+    }
+
     @Test func focus_loss_and_going_away_write_one_edit_once() {
         var commits = TaskTitleCommits()
-        #expect(commits.take("B", over: "A") == "B")
-        #expect(commits.take("B", over: "A") == nil)
-        #expect(commits.take("B2", over: "A") == "B2")
+        commits.begin("A")
+        #expect(commits.take("B") == "B")
+        #expect(commits.take("B") == nil)
+        commits.begin("B")
+        #expect(commits.take("B2") == "B2")
+    }
+
+    @Test func going_away_without_focus_writes_nothing() {
+        var commits = TaskTitleCommits()
+        #expect(commits.take("A") == nil)
     }
 
     @Test func status_priority_due_and_project_edits_are_undoable() async throws {

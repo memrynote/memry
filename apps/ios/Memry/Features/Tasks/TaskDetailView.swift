@@ -214,7 +214,7 @@ struct TaskDetailTitleField: View {
                 if !focused { draft = title }
             }
             .onChange(of: focused) { _, isFocused in
-                if !isFocused { commit() }
+                if isFocused { commits.begin(draft) } else { commit() }
             }
             .onDisappear { commit() }
             .onChange(of: draft) { _, text in
@@ -229,7 +229,11 @@ struct TaskDetailTitleField: View {
 
     private func commit() {
         let current = store.items[task.id] ?? task
-        guard let text = commits.take(draft, over: current.title) else { return }
+        guard let text = commits.take(draft) else {
+            // Untouched: show a title a peer synced while the field had focus.
+            draft = current.title
+            return
+        }
         Task {
             let wrote = await store.detailRename(current, to: text)
             if !wrote {
@@ -240,18 +244,21 @@ struct TaskDetailTitleField: View {
     }
 }
 
-/// Which title edits reach the store. Focus leaving and the field going away
-/// at once commit the same text twice: one write. The same text over another
-/// stored title is a new edit (renamed to B, a peer renamed it to C, B typed
-/// again), so the guard keys on both.
+/// Which title edits reach the store. Only text the user changed since focus
+/// came in is written: a draft left as it was must not overwrite a title a
+/// peer synced meanwhile. Focus leaving and the field going away at once
+/// commit one edit twice: the first take ends it, so one write.
 struct TaskTitleCommits {
-    private var sent: (text: String, over: String)?
+    private var focusedOn: String?
 
-    /// The text to write, or `nil` when it already went over this title.
-    mutating func take(_ text: String, over stored: String) -> String? {
-        if let sent, sent.text == text, sent.over == stored { return nil }
-        sent = (text, stored)
-        return text
+    /// Focus came in on the field showing `draft`.
+    mutating func begin(_ draft: String) { focusedOn = draft }
+
+    /// The text to write, or `nil` when it was not changed since focus came in.
+    mutating func take(_ text: String) -> String? {
+        guard let base = focusedOn else { return nil }
+        focusedOn = nil
+        return text == base ? nil : text
     }
 }
 

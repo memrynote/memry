@@ -14,6 +14,9 @@ import XCTest
 final class TasksSplitUITests: XCTestCase {
     let app = XCUIApplication()
     private var run = ""
+    /// tearDown's steps only wait: a failed check there would stop it before
+    /// it resets the filter and the orientation.
+    private var tearingDown = false
 
     override func setUp() async throws {
         continueAfterFailure = false
@@ -22,6 +25,7 @@ final class TasksSplitUITests: XCTestCase {
     }
 
     override func tearDown() async throws {
+        tearingDown = true
         if let result = testRun, result.failureCount + result.unexpectedExceptionCount > 0 { sweep() }
         narrow("")
         XCUIDevice.shared.orientation = .portrait
@@ -232,15 +236,25 @@ final class TasksSplitUITests: XCTestCase {
     }
 
     private func deleteOpenTask() {
-        app.buttons["tasks.detail.more"].firstMatch.tap()
-        app.buttons["tasks.detail.delete"].firstMatch.tap()
+        let more = app.buttons["tasks.detail.more"].firstMatch
+        guard check(more.waitForExistence(timeout: 5), "no detail menu") else { return }
+        more.tap()
+        let delete = app.buttons["tasks.detail.delete"].firstMatch
+        guard check(delete.waitForExistence(timeout: 5), "no Delete in the detail menu") else { return }
+        delete.tap()
         let confirm = app.buttons["tasks.detail.deleteConfirm"].firstMatch
-        XCTAssertTrue(confirm.waitForExistence(timeout: 5))
+        guard check(confirm.waitForExistence(timeout: 5), "no delete confirmation") else { return }
         confirm.tap()
-        XCTAssertTrue(
+        _ = check(
             app.descendants(matching: .any)["tasks.detail.empty"].waitForExistence(timeout: 10),
             "the detail column did not empty after the delete"
         )
+    }
+
+    /// Fails the test on `false`, except in tearDown, which only waits.
+    private func check(_ ok: Bool, _ message: @autoclosure () -> String) -> Bool {
+        if !ok, !tearingDown { XCTFail(message()) }
+        return ok
     }
 
     /// Adds a task through the "+" composer and closes it again.
@@ -309,9 +323,11 @@ final class TasksSplitUITests: XCTestCase {
             if vault.exists { vault.coordinate(withNormalizedOffset: CGVector(dx: 0.5, dy: 0.5)).tap() }
             Thread.sleep(forTimeInterval: 1)
         }
-        XCTAssertTrue(tasks.waitForExistence(timeout: 5), "the sidebar did not show")
+        guard check(tasks.waitForExistence(timeout: 5), "the sidebar did not show") else { return }
         tasks.tap()
-        XCTAssertTrue(app.buttons["tasks.filterButton"].firstMatch.waitForExistence(timeout: 20))
+        guard check(app.buttons["tasks.filterButton"].firstMatch.waitForExistence(timeout: 20), "Tasks did not open") else {
+            return
+        }
         if app.descendants(matching: .any)["tasks.kanban.board"].exists {
             app.buttons["tasks.moreMenu"].firstMatch.tap()
             app.buttons["tasks.more.list"].firstMatch.tap()
@@ -330,7 +346,7 @@ final class TasksSplitUITests: XCTestCase {
         guard button.exists else { return }
         button.tap()
         let field = app.textFields["tasks.filter.search"]
-        XCTAssertTrue(field.waitForExistence(timeout: 5))
+        guard check(field.waitForExistence(timeout: 5), "the filter did not open") else { return }
         field.tap()
         if let current = field.value as? String, !current.isEmpty, current != field.placeholderValue {
             field.typeText(String(repeating: XCUIKeyboardKey.delete.rawValue, count: current.count))
