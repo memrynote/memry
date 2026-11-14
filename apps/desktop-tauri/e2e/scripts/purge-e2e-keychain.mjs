@@ -11,7 +11,7 @@ import { pathToFileURL } from 'node:url'
 
 import {
   PROTECTED_ACCOUNTS,
-  SYNC_SERVICES,
+  KEYCHAIN_SERVICES,
   isPurgeableE2eEntry,
   parseCmdkeyList,
   parseKeychainDump,
@@ -59,7 +59,7 @@ export function listEntries(platform = process.platform) {
     }))
   }
   if (platform === 'linux') {
-    return SYNC_SERVICES.flatMap((service) =>
+    return KEYCHAIN_SERVICES.flatMap((service) =>
       parseSecretToolSearch(capture('secret-tool', ['search', '--all', 'service', service])).map(
         (entry) => ({
           ...entry,
@@ -79,7 +79,7 @@ function main() {
   const all = listEntries()
   const targets = all.filter(isPurgeableE2eEntry)
   console.log(`Scanned ${all.length} keychain items.`)
-  for (const service of SYNC_SERVICES) {
+  for (const service of KEYCHAIN_SERVICES) {
     console.log(`  ${service} items: ${all.filter((e) => e.service === service).length}`)
   }
   console.log(`  e2e items to purge:          ${targets.length}`)

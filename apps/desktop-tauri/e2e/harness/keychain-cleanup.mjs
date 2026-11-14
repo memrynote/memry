@@ -2,8 +2,8 @@
 // Step 04 (#3521) scripts import it, and `node --test` runs its tests without a compiler.
 //
 // The OS keychain is machine-global and outlives the throwaway app data dir. Every e2e app
-// runs under `MEMRY_DEVICE=e2e-<uuid>[-A|-B]`, and the sync accounts are suffixed with it
-// (`apps/desktop/src/main/crypto/keychain-account.ts`), so a run mints a handful of items
+// runs under `MEMRY_DEVICE=e2e-<uuid>[-A|-B]`, and the sync and inline AI accounts are suffixed
+// with it (`apps/desktop/src/main/crypto/keychain-account.ts`), so a run mints a handful of items
 // that only this module reclaims. Best effort: a failure is logged and never thrown.
 import { spawnSync } from 'node:child_process'
 
@@ -12,6 +12,14 @@ export const SYNC_SERVICE = 'com.memrynote.memry'
 /** Electron's service. The Tauri app never writes it; items an older e2e run left are reclaimed. */
 export const ELECTRON_SYNC_SERVICE = 'com.memry.sync'
 export const SYNC_SERVICES = [SYNC_SERVICE, ELECTRON_SYNC_SERVICE]
+/**
+ * The inline AI keys (`memry-desktop/src/ai/settings.rs` `SERVICE`). Their accounts name the
+ * vault, `api-key:<vault id>:<slot>-<device>` (and `api-key:<vault id>-<device>` of older
+ * builds), so they are found by listing the service, not by name.
+ */
+export const AI_INLINE_SERVICE = 'com.memrynote.memry.ai.inline'
+/** Every service an e2e device can mint items under. */
+export const KEYCHAIN_SERVICES = [...SYNC_SERVICES, AI_INLINE_SERVICE]
 
 /** The `KEYCHAIN_ENTRIES` accounts of `@memry/contracts/crypto`; a test keeps them in step. */
 export const KEYCHAIN_ACCOUNTS = [
@@ -53,6 +61,9 @@ export const PROTECTED_ACCOUNTS = new Set([
 /** `master-key-e2e-<uuid>-A`, `setup-token-e2e-vault-deletion-<uuid>`, ... */
 const E2E_SYNC_ACCOUNT = /^[a-z-]+-e2e-[A-Za-z0-9@._-]+$/
 
+/** `api-key:<vault id>[:<slot>]-e2e-<uuid>[-A|-B]` */
+const E2E_AI_INLINE_ACCOUNT = /^api-key:\S+-e2e-[A-Za-z0-9-]+$/
+
 /** Electron safeStorage: service `<app.name> Safe Storage`, app.name `memry-<MEMRY_DEVICE>`. */
 const E2E_SAFE_STORAGE_SERVICE = /^memry-e2e-[A-Za-z0-9-]+ Safe Storage$/
 
@@ -84,6 +95,7 @@ export function isPurgeableE2eEntry({ service, account }) {
   if (SYNC_SERVICES.includes(service)) {
     return account.includes('-e2e-') && E2E_SYNC_ACCOUNT.test(account)
   }
+  if (service === AI_INLINE_SERVICE) return E2E_AI_INLINE_ACCOUNT.test(account)
   return E2E_SAFE_STORAGE_SERVICE.test(service)
 }
 
@@ -133,14 +145,14 @@ export function parseCmdkeyList(text) {
 }
 
 /**
- * A Credential Manager target of a sync service as `{ service, account }`: `<service>/<account>`
+ * A Credential Manager target of an app service as `{ service, account }`: `<service>/<account>`
  * is what this app writes (`secure_store/keyring_backend.rs` `entry`), `<account>.<service>` the
  * store crate's default an older run wrote. Any other target is `undefined`.
  * @param {string} target
  * @returns {{ service: string, account: string } | undefined}
  */
 export function parseWindowsTarget(target) {
-  for (const service of SYNC_SERVICES) {
+  for (const service of KEYCHAIN_SERVICES) {
     if (target.startsWith(`${service}/`)) {
       return { service, account: target.slice(service.length + 1) }
     }
@@ -152,7 +164,7 @@ export function parseWindowsTarget(target) {
 }
 
 /**
- * The Windows targets one e2e device minted: a sync service's account with the device suffix.
+ * The Windows targets one e2e device minted: an app service's account with the device suffix.
  * @param {string[]} targets
  * @param {string} deviceId
  */
@@ -167,7 +179,7 @@ export function windowsTargetsForDevice(targets, deviceId) {
 }
 
 /**
- * `secret-tool search --all service <sync service>` output to `{ service, account }` pairs.
+ * `secret-tool search --all service <app service>` output to `{ service, account }` pairs.
  * Items are blocks that start with `[/org/freedesktop/secrets/...]` and carry
  * `attribute.<name> = <value>` lines.
  * @param {string} text
@@ -191,19 +203,29 @@ export function parseSecretToolSearch(text) {
 }
 
 /**
+ * The listed items one e2e device minted: an app service's account with the device suffix.
+ * @param {{ service?: string, account?: string }[]} entries
+ * @param {string} deviceId
+ * @returns {{ service: string, account: string }[]}
+ */
+export function entriesForDevice(entries, deviceId) {
+  if (!isE2eDeviceId(deviceId)) return []
+  return /** @type {{ service: string, account: string }[]} */ (
+    entries.filter(
+      (entry) =>
+        KEYCHAIN_SERVICES.includes(entry.service ?? '') &&
+        entry.account?.endsWith(`-${deviceId}`) &&
+        !PROTECTED_ACCOUNTS.has(entry.account)
+    )
+  )
+}
+
+/**
  * @param {{ service?: string, account?: string }[]} entries
  * @param {string} deviceId
  */
 export function linuxAccountsForDevice(entries, deviceId) {
-  if (!isE2eDeviceId(deviceId)) return []
-  return entries
-    .filter(
-      (entry) =>
-        SYNC_SERVICES.includes(entry.service ?? '') &&
-        entry.account?.endsWith(`-${deviceId}`) &&
-        !PROTECTED_ACCOUNTS.has(entry.account)
-    )
-    .map((entry) => /** @type {string} */ (entry.account))
+  return entriesForDevice(entries, deviceId).map((entry) => entry.account)
 }
 
 /**
@@ -250,13 +272,22 @@ export function purgeKeychainForDevice(deviceId, options = {}) {
         ],
         { log }
       )
+      // The inline AI accounts name a vault, so they are read from the keychain's listing.
+      const dump = run('security', ['dump-keychain'], { log })
+      for (const { service, account } of entriesForDevice(
+        parseKeychainDump(dump.stdout),
+        deviceId
+      )) {
+        if (service !== AI_INLINE_SERVICE) continue
+        run('security', ['delete-generic-password', '-s', service, '-a', account], { log })
+      }
     } else if (process.platform === 'win32') {
       const listed = run('cmdkey', ['/list'], { log })
       for (const target of windowsTargetsForDevice(parseCmdkeyList(listed.stdout), deviceId)) {
         run('cmdkey', [`/delete:${target}`], { log })
       }
     } else if (process.platform === 'linux') {
-      for (const service of SYNC_SERVICES) {
+      for (const service of KEYCHAIN_SERVICES) {
         const listed = run('secret-tool', ['search', '--all', 'service', service], { log })
         for (const account of linuxAccountsForDevice(
           parseSecretToolSearch(listed.stdout),

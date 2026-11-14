@@ -5,6 +5,7 @@ import { fileURLToPath } from 'node:url'
 
 import {
   KEYCHAIN_ACCOUNTS,
+  entriesForDevice,
   isE2eDeviceId,
   isPurgeableE2eEntry,
   keychainAccountsForDevice,
@@ -18,6 +19,7 @@ import {
 
 const SYNC = 'com.memry.sync'
 const OWN = 'com.memrynote.memry'
+const AI = 'com.memrynote.memry.ai.inline'
 const UUID = 'acc474be-3e59-4621-a8ea-fba2ddd008cc'
 
 test('the account list matches KEYCHAIN_ENTRIES in @memry/contracts', () => {
@@ -100,6 +102,26 @@ test('ignores services outside memry', () => {
   assert.equal(isPurgeableE2eEntry({ service: undefined, account: 'master-key-e2e-x' }), false)
 })
 
+test('matches e2e inline AI keys, slotted and legacy, but no other device', () => {
+  for (const account of [
+    `api-key:vault-1:openai-e2e-${UUID}-A`,
+    `api-key:vault-1:custom:http://127.0.0.1:5555-e2e-${UUID}`,
+    `api-key:vault-1-e2e-${UUID}-B`
+  ]) {
+    assert.equal(isPurgeableE2eEntry({ service: AI, account }), true, account)
+  }
+  for (const account of [
+    'api-key:vault-1:openai',
+    'api-key:vault-1:openai-dev',
+    'api-key:vault-1:anthropic-A',
+    'api-key:vault-1',
+    `master-key-e2e-${UUID}-A`,
+    'api-key:vault 1:openai-e2e-x'
+  ]) {
+    assert.equal(isPurgeableE2eEntry({ service: AI, account }), false, account)
+  }
+})
+
 test('matches e2e safeStorage services but not dev ones', () => {
   const account = `memry-e2e-${UUID}-A Key`
   assert.equal(isPurgeableE2eEntry({ service: `memry-e2e-${UUID}-A Safe Storage`, account }), true)
@@ -166,6 +188,12 @@ const CMDKEY = [
   `    Target: LegacyGeneric:target=${OWN}/device-signing-key-e2e-${UUID}-B`,
   '    Type: Generic',
   '',
+  `    Target: LegacyGeneric:target=${AI}/api-key:vault-1:custom:http://127.0.0.1:5555-e2e-${UUID}-A`,
+  '    Type: Generic',
+  '',
+  `    Target: LegacyGeneric:target=${AI}/api-key:vault-1:openai`,
+  '    Type: Generic',
+  '',
   `    Target: LegacyGeneric:target=${OWN}/device-signing-key`,
   '    Type: Generic',
   '',
@@ -177,10 +205,11 @@ const CMDKEY = [
 test('parses cmdkey /list output and selects only this device (Windows)', () => {
   const targets = parseCmdkeyList(CMDKEY)
 
-  assert.equal(targets.length, 7)
+  assert.equal(targets.length, 9)
   assert.deepEqual(windowsTargetsForDevice(targets, `e2e-${UUID}-A`), [
     `master-key-e2e-${UUID}-A.com.memry.sync`,
-    `${OWN}/master-key-e2e-${UUID}-A`
+    `${OWN}/master-key-e2e-${UUID}-A`,
+    `${AI}/api-key:vault-1:custom:http://127.0.0.1:5555-e2e-${UUID}-A`
   ])
   assert.deepEqual(windowsTargetsForDevice(targets, `e2e-${UUID}-B`), [
     `access-token-e2e-${UUID}-B.com.memry.sync`,
@@ -197,6 +226,10 @@ test('a Windows target names its service and account in either form', () => {
   assert.deepEqual(parseWindowsTarget('master-key-e2e-x.com.memry.sync'), {
     service: SYNC,
     account: 'master-key-e2e-x'
+  })
+  assert.deepEqual(parseWindowsTarget(`${AI}/api-key:v:openai-e2e-x`), {
+    service: AI,
+    account: 'api-key:v:openai-e2e-x'
   })
   assert.equal(parseWindowsTarget(`${OWN}.readwise/token-e2e-x`), undefined)
   assert.equal(parseWindowsTarget('TERMSRV/host'), undefined)
@@ -224,17 +257,47 @@ const SECRET_TOOL = [
   '[/org/freedesktop/secrets/collection/login/15]',
   `attribute.service = ${OWN}`,
   'attribute.username = device-signing-key-e2e-x-A',
+  '[/org/freedesktop/secrets/collection/login/16]',
+  `attribute.service = ${AI}`,
+  'attribute.username = api-key:vault-1:google-e2e-x-A',
+  '[/org/freedesktop/secrets/collection/login/17]',
+  `attribute.service = ${AI}`,
+  'attribute.username = api-key:vault-1:google',
   ''
 ].join('\n')
 
 test('parses secret-tool search output and selects only this device (Linux)', () => {
   const entries = parseSecretToolSearch(SECRET_TOOL)
 
-  assert.equal(entries.length, 4)
+  assert.equal(entries.length, 6)
   assert.deepEqual(linuxAccountsForDevice(entries, 'e2e-x-A'), [
     'master-key-e2e-x-A',
-    'device-signing-key-e2e-x-A'
+    'device-signing-key-e2e-x-A',
+    'api-key:vault-1:google-e2e-x-A'
   ])
   assert.deepEqual(linuxAccountsForDevice(entries, 'e2e-x-B'), ['access-token-e2e-x-B'])
   assert.deepEqual(linuxAccountsForDevice(entries, 'dev'), [])
+})
+
+test('picks the inline AI keys of this device out of a keychain dump (macOS)', () => {
+  const dump = [
+    'keychain: "/Users/x/Library/Keychains/login.keychain-db"',
+    'attributes:',
+    `    "acct"<blob>="api-key:vault-1:custom:http://127.0.0.1:5555-e2e-${UUID}-A"`,
+    `    "svce"<blob>="${AI}"`,
+    'keychain: "/Users/x/Library/Keychains/login.keychain-db"',
+    'attributes:',
+    '    "acct"<blob>="api-key:vault-1:openai"',
+    `    "svce"<blob>="${AI}"`,
+    'keychain: "/Users/x/Library/Keychains/login.keychain-db"',
+    'attributes:',
+    `    "acct"<blob>="api-key:vault-1:openai-e2e-${UUID}-B"`,
+    `    "svce"<blob>="${AI}"`,
+    ''
+  ].join('\n')
+
+  assert.deepEqual(entriesForDevice(parseKeychainDump(dump), `e2e-${UUID}-A`), [
+    { service: AI, account: `api-key:vault-1:custom:http://127.0.0.1:5555-e2e-${UUID}-A` }
+  ])
+  assert.deepEqual(entriesForDevice(parseKeychainDump(dump), 'A'), [])
 })
