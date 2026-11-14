@@ -43,6 +43,14 @@ final class NotesSplitRouter {
     }
 
     static let snapshotKey = "notes.split"
+    /// The phone stack's save (`NotesListView`).
+    static let compactKey = "notes"
+
+    /// Set while the split view shows this router. The phone stack saves its
+    /// own path, but at regular width nothing else saves it, and a switch to
+    /// compact width can build a new Notes page that restores from that save
+    /// (#4503). The router then saves the stack that shows its place.
+    var isSplit = false
 
     var scope: NotesScope = .root {
         didSet { save() }
@@ -132,6 +140,7 @@ final class NotesSplitRouter {
 
     private func save() {
         snapshot?.setStack(Self.snapshotKey, value: Saved(scope: scope, note: note, trail: trail))
+        if isSplit { snapshot?.setPath(Self.compactKey, compactPath()) }
     }
 }
 

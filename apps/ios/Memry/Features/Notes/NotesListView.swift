@@ -40,7 +40,7 @@ struct NotesListView: View {
     /// second route type to the same stack. `NavigationPath` is what holds
     /// both, and it is still `Codable`-restorable, which is what research
     /// R15's rule is written for.
-    @State private var path = LaunchSnapshot.shared.path("notes")
+    @State private var path = LaunchSnapshot.shared.path(NotesSplitRouter.compactKey)
     /// Which folders are open. Held by the screen rather than by the view
     /// model: it is where the user is looking, not what the vault contains,
     /// and a reload must not close what they opened.
@@ -181,7 +181,7 @@ struct NotesListView: View {
                         .onChange(of: requestVaultSync == nil, initial: true) {
                             model.requestSync = requestVaultSync
                         }
-                        .onChange(of: path) { _, path in LaunchSnapshot.shared.setPath("notes", path) }
+                        .onChange(of: path) { _, path in LaunchSnapshot.shared.setPath(NotesSplitRouter.compactKey, path) }
                         .onAppear { Task { await model.refresh() } }
                         .writeFailureAlert(model)
                 }
@@ -198,6 +198,7 @@ struct NotesListView: View {
                 if let id = await model.createNote(in: nil) { notesLinks.open(id) }
             }
         }
+        .onChange(of: width, initial: true) { _, width in router.isSplit = width == .regular }
     }
 }
 

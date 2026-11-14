@@ -9,11 +9,18 @@ struct CalendarYearView: View {
     @Bindable var store: CalendarStore
     let peek: (String) -> Void
 
-    /// Paper 05: three months a row; at accessibility sizes two.
+    /// Paper 05: three months a row, four at regular width (#4352); one
+    /// fewer at accessibility sizes. The same rule as Journal's year.
     @Environment(\.dynamicTypeSize) private var typeSize
+    @Environment(\.horizontalSizeClass) private var horizontalSizeClass
+    @Environment(\.verticalSizeClass) private var verticalSizeClass
     private var columns: [GridItem] {
-        Array(repeating: GridItem(.flexible(), spacing: Tokens.Space.medium, alignment: .top),
-              count: typeSize.isAccessibilitySize ? 2 : 3)
+        let count = JournalYearScreen.columnCount(
+            horizontal: horizontalSizeClass,
+            vertical: verticalSizeClass,
+            accessibilitySize: typeSize.isAccessibilitySize
+        )
+        return Array(repeating: GridItem(.flexible(), spacing: Tokens.Space.medium, alignment: .top), count: count)
     }
 
     var body: some View {
