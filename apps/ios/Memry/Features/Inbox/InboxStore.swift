@@ -17,7 +17,7 @@ import Observation
 // desktop's `archiveWithAnimation`.
 //
 // Screens add operations in `InboxStore+<Feature>.swift` extensions built on
-// ``write(_:_:)``.
+// ``write(background:_:)``.
 
 /// The four places the title menu switches between (00 audit row 1).
 enum InboxView: String, CaseIterable, Identifiable, Sendable {
@@ -193,7 +193,11 @@ final class InboxStore {
         }
     }
 
-    func refresh() async {
+    /// Re-reads what the current view shows. A failed read shows its error.
+    /// A user's read clears the failure row when it succeeds; a `background`
+    /// one (after a sync pass, a link's enrichment) leaves the row, which it
+    /// did not cause.
+    func refresh(background: Bool = false) async {
         let core = core
         let now = nowMs
         let stale = staleDays
@@ -228,7 +232,7 @@ final class InboxStore {
                 patterns = insight.0
                 history = insight.1
             }
-            failure = nil
+            if !background { failure = nil }
             scheduleNotifications()
             publishKnownLinks()
         } catch {
@@ -267,14 +271,18 @@ final class InboxStore {
 
     // MARK: Writing
 
-    /// Runs one core write, re-reads, then syncs.
+    /// Runs one core write, re-reads, then syncs. A `background` write (not
+    /// the user's) leaves the failure row as it is.
     @discardableResult
-    func write<T: Sendable>(_ work: @escaping @Sendable (any InboxProtocol) throws -> T) async -> T? {
+    func write<T: Sendable>(
+        background: Bool = false,
+        _ work: @escaping @Sendable (any InboxProtocol) throws -> T
+    ) async -> T? {
         let core = core
         do {
             let value = try await executor.run { try work(core) }
-            failure = nil
-            await refresh()
+            if !background { failure = nil }
+            await refresh(background: background)
             scheduleSync()
             return value
         } catch {
@@ -344,7 +352,7 @@ final class InboxStore {
     /// captures from another device.
     func syncPassFinished() async {
         await resurfaceDue()
-        await refresh()
+        await refresh(background: true)
     }
 
     // MARK: Errors

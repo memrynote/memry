@@ -59,7 +59,7 @@ enum InboxErrors {
     /// More than one item of a drop failed, for whatever reasons; `first`
     /// is the first one's row, when it has one.
     static func dropFailed(_ count: Int, first: UserFacingError?) -> UserFacingError {
-        make("inbox.dropFailed", "\(count) items couldn't be added.", first.map { "The first: \($0.title)" })
+        make("inbox.dropFailed", "\(count) items couldn't be added.", first.map { "One reason: \($0.title)" })
     }
 
     static let microphoneDenied = make(

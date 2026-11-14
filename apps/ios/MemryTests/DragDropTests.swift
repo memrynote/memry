@@ -121,6 +121,23 @@ struct DragDropTests {
         #expect(vault.store.failure == InboxErrors.dropUnreadable)
     }
 
+    /// The capture asks for a sync pass, and the re-read after that pass did
+    /// not cause the drop's failure, so it leaves the row on screen.
+    @Test func a_failure_stays_visible_after_the_sync_pass_a_capture_asked_for() async throws {
+        let vault = try InboxTestVault()
+        var passes = 0
+        vault.store.requestSync = { passes += 1 }
+        let captured = await vault.store.capture(dropped: [
+            .failed(InboxErrors.dropUnreadable),
+            .text("[agent] kept before a sync pass")
+        ])
+        #expect(captured == 1)
+        #expect(passes > 0)
+        for _ in 0 ..< passes { await vault.store.syncPassFinished() }
+        #expect(vault.store.failure == InboxErrors.dropUnreadable)
+        #expect(vault.store.items.count == 1)
+    }
+
     /// The picked-file limit holds for a drop: a file over 50 MB is refused
     /// with the visible "too large" failure, and nothing is captured.
     @Test func a_dropped_file_over_the_limit_is_refused_on_screen() async throws {
