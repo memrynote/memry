@@ -10,14 +10,16 @@
 #[allow(unused_imports)]
 use crate::http_fakes;
 
-use std::sync::Arc;
+use std::sync::mpsc::{Receiver, Sender, channel};
+use std::sync::{Arc, Mutex};
+use std::time::Duration;
 
 use base64::Engine as _;
 use base64::engine::general_purpose::STANDARD as BASE64_STANDARD;
 use http_fakes::*;
 use memry_core::api::auth::{AuthProvider, AuthSession, AuthState, DeviceDescriptor};
 use memry_core::api::errors::TransportError;
-use memry_core::api::errors::{ApiError, AuthError};
+use memry_core::api::errors::{ApiError, AuthError, SecureStoreError};
 use memry_core::protocol::account::KeyMaterial;
 use memry_core::protocol::auth::DevicePlatform;
 use memry_core::seams::secure_store::{SecureStore, SecureStoreKey};
@@ -30,7 +32,7 @@ const REDIRECT: &str = "http://127.0.0.1:51234/callback";
 
 type Answer = Result<HttpResponse, TransportError>;
 
-fn session(transport: Arc<FakeTransport>, store: Arc<FakeSecureStore>) -> AuthSession {
+fn session(transport: Arc<FakeTransport>, store: Arc<dyn SecureStore>) -> AuthSession {
     AuthSession::new(
         transport as Arc<dyn Transport>,
         store,
@@ -269,7 +271,8 @@ async fn a_replayed_state_is_spent_once_a_new_attempt_opens() {
     assert_eq!(session.state(), awaiting());
 }
 
-#[tokio::test]
+// The paused clock orders the sleeps, so the interleaving does not depend on the runner.
+#[tokio::test(start_paused = true)]
 async fn two_deliveries_of_one_callback_post_once() {
     let transport = FakeTransport::slow(vec![callback_ok("jti-web", false)], 50);
     let session = session(transport.clone(), FakeSecureStore::new());
@@ -332,7 +335,7 @@ async fn an_abandoned_web_attempt_takes_no_late_callback() {
 }
 
 #[tokio::test]
-async fn a_web_sign_in_from_a_signed_in_session_is_refused() {
+async fn a_second_web_sign_in_while_one_is_open_is_refused() {
     let (session, _, _) = opened(vec![]);
     let second = session.begin_provider_web_sign_in(
         AuthProvider::Google,
@@ -481,7 +484,8 @@ async fn a_spent_code_is_not_posted_twice_on_a_5xx() {
     assert_eq!(session.state(), AuthState::SignedOut);
 }
 
-#[tokio::test]
+// The paused clock orders the sleeps, so the interleaving does not depend on the runner.
+#[tokio::test(start_paused = true)]
 async fn an_answer_for_an_abandoned_attempt_stores_nothing() {
     let transport = FakeTransport::slow(vec![callback_ok("jti-late", false)], 50);
     let store = FakeSecureStore::new();
@@ -509,7 +513,8 @@ async fn an_answer_for_an_abandoned_attempt_stores_nothing() {
     assert_eq!(store.text(SecureStoreKey::SetupToken), None);
 }
 
-#[tokio::test]
+// The paused clock orders the sleeps, so the interleaving does not depend on the runner.
+#[tokio::test(start_paused = true)]
 async fn an_answer_for_an_abandoned_attempt_leaves_the_next_attempt_waiting() {
     let transport = FakeTransport::slow(vec![callback_ok("jti-late", false)], 50);
     let store = FakeSecureStore::new();
@@ -543,4 +548,201 @@ async fn an_answer_for_an_abandoned_attempt_leaves_the_next_attempt_waiting() {
     );
     assert_eq!(session.state(), awaiting());
     assert_eq!(store.text(SecureStoreKey::SetupToken), None);
+}
+
+#[tokio::test]
+async fn a_setup_token_that_expires_while_reading_recovery_info_is_renewable() {
+    // The user spends long enough finding the phrase that the setup token ages out:
+    // `recovery-info` answers 401, which is the `SetupExpired` edge `register_device`
+    // also takes, so renewal recovers it (Electron checks expiry first,
+    // `setup-token.ts:108-112`).
+    let (session, _, store) = opened(vec![
+        callback_ok("jti-web", false),
+        error_response(401, "AUTH_INVALID_TOKEN", "Setup token expired"),
+        response(
+            200,
+            &json!({ "success": true, "setupToken": setup_token("jti-renewed") }).to_string(),
+        ),
+    ]);
+    session
+        .complete_provider_web_callback("auth-code".to_string(), STATE.to_string())
+        .await
+        .unwrap();
+
+    let read = session.recovery_info().await;
+    assert!(
+        matches!(
+            read,
+            Err(AuthError::Api {
+                source: ApiError::Unauthorized { .. }
+            })
+        ),
+        "{read:?}"
+    );
+    assert_eq!(session.state(), AuthState::SetupExpired);
+
+    assert_eq!(
+        session.renew_setup_token().await.unwrap(),
+        AuthState::SetupPending
+    );
+    assert_eq!(
+        store.text(SecureStoreKey::SetupToken),
+        Some(setup_token("jti-renewed"))
+    );
+}
+
+/// A store whose first `clear` stops until the test releases it, so a sign-out can be held
+/// inside its clear while another call runs.
+struct ClearGate {
+    inner: Arc<FakeSecureStore>,
+    armed: Mutex<Option<(Sender<()>, Receiver<()>)>>,
+}
+
+impl SecureStore for ClearGate {
+    fn get(&self, key: SecureStoreKey) -> Result<Option<Vec<u8>>, SecureStoreError> {
+        self.inner.get(key)
+    }
+
+    fn set(&self, key: SecureStoreKey, value: Vec<u8>) -> Result<(), SecureStoreError> {
+        self.inner.set(key, value)
+    }
+
+    fn delete(&self, key: SecureStoreKey) -> Result<(), SecureStoreError> {
+        self.inner.delete(key)
+    }
+
+    fn clear(&self) -> Result<(), SecureStoreError> {
+        let armed = self.armed.lock().unwrap().take();
+        if let Some((entered, release)) = armed {
+            entered.send(()).unwrap();
+            release.recv().unwrap();
+        }
+        self.inner.clear()
+    }
+}
+
+fn block_on<F: std::future::Future>(future: F) -> F::Output {
+    tokio::runtime::Builder::new_current_thread()
+        .enable_all()
+        .build()
+        .unwrap()
+        .block_on(future)
+}
+
+#[test]
+fn a_sign_out_racing_a_callback_never_strands_setup_pending() {
+    let transport = FakeTransport::new(vec![callback_ok("jti-late", false)]);
+    let inner = FakeSecureStore::new();
+    let (entered_tx, entered) = channel();
+    let (release, release_rx) = channel();
+    let store = Arc::new(ClearGate {
+        inner: inner.clone(),
+        armed: Mutex::new(Some((entered_tx, release_rx))),
+    });
+    let session = session(transport, store);
+    session
+        .begin_provider_web_sign_in(
+            AuthProvider::Google,
+            STATE.to_string(),
+            REDIRECT.to_string(),
+        )
+        .unwrap();
+
+    std::thread::scope(|scope| {
+        let signing_out = scope.spawn(|| block_on(session.sign_out()));
+        // Sign-out is inside its store clear: the tokens are going, the attempt is not yet
+        // ended.
+        entered.recv().unwrap();
+        let (answered_tx, answered) = channel();
+        let session = &session;
+        let answering = scope.spawn(move || {
+            let late = block_on(
+                session.complete_provider_web_callback("auth-code".to_string(), STATE.to_string()),
+            );
+            answered_tx.send(()).unwrap();
+            late
+        });
+        // Without the lock order the callback completes here, between the clear and the
+        // attempt's reset, and stores a setup token sign-out has already cleared past. With
+        // it the callback waits for sign-out, and this wait gives up; its expiry fails nothing.
+        let _ = answered.recv_timeout(Duration::from_millis(500));
+        release.send(()).unwrap();
+        signing_out.join().unwrap().ok();
+        let late = answering.join().unwrap();
+        assert!(
+            matches!(late, Err(AuthError::InvalidState { .. })),
+            "{late:?}"
+        );
+    });
+
+    assert_ne!(session.state(), AuthState::SetupPending);
+    assert_eq!(inner.text(SecureStoreKey::SetupToken), None);
+}
+
+#[tokio::test]
+async fn a_web_sign_in_without_a_state_or_redirect_opens_nothing() {
+    let transport = FakeTransport::new(vec![]);
+    let session = session(transport, FakeSecureStore::new());
+    for (state, redirect) in [("", REDIRECT), (STATE, "")] {
+        let opened = session.begin_provider_web_sign_in(
+            AuthProvider::Google,
+            state.to_string(),
+            redirect.to_string(),
+        );
+        assert!(
+            matches!(opened, Err(AuthError::InvalidState { .. })),
+            "{opened:?}"
+        );
+        assert_eq!(session.state(), AuthState::SignedOut);
+    }
+}
+
+// Electron drops an attempt ten minutes after it opened (`auth-oauth-state.ts:14,32-35`).
+#[tokio::test(start_paused = true)]
+async fn a_callback_after_ten_minutes_is_refused_and_spent() {
+    let (session, transport, store) = opened(vec![]);
+    tokio::time::advance(Duration::from_secs(10 * 60 + 1)).await;
+
+    for _ in 0..2 {
+        let late = session
+            .complete_provider_web_callback("auth-code".to_string(), STATE.to_string())
+            .await;
+        assert!(
+            matches!(late, Err(AuthError::InvalidState { .. })),
+            "{late:?}"
+        );
+    }
+    assert_eq!(transport.call_count(), 0);
+    assert_eq!(store.text(SecureStoreKey::SetupToken), None);
+}
+
+#[tokio::test(start_paused = true)]
+async fn a_callback_inside_ten_minutes_is_taken() {
+    let (session, _, _) = opened(vec![callback_ok("jti-web", false)]);
+    tokio::time::advance(Duration::from_secs(10 * 60)).await;
+    let outcome = session
+        .complete_provider_web_callback("auth-code".to_string(), STATE.to_string())
+        .await
+        .unwrap();
+    assert_eq!(outcome.state, AuthState::SetupPending);
+}
+
+#[test]
+fn callback_credentials_stay_out_of_debug_output() {
+    use memry_core::protocol::auth::{OAuthCallbackRequest, OAuthSignInResponse};
+    let request = OAuthCallbackRequest {
+        code: "secret-code".to_string(),
+        state: "secret-state".to_string(),
+        redirect_uri: REDIRECT.to_string(),
+        session_nonce: "nonce".to_string(),
+        device_public_key: "key".to_string(),
+    };
+    let response: OAuthSignInResponse = serde_json::from_value(
+        json!({ "success": true, "setupToken": setup_token("jti-printed") }),
+    )
+    .unwrap();
+    let printed = format!("{request:?} {response:?}");
+    for secret in ["secret-code", "secret-state", &setup_token("jti-printed")] {
+        assert!(!printed.contains(secret), "a credential leaked");
+    }
 }

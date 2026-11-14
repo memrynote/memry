@@ -16,8 +16,12 @@
 //! manager `verify_email_code` stores into. A shell that posted this itself
 //! would be a second protocol client the core cannot see.
 
+use std::fmt;
+use std::time::Duration;
+
 use base64::Engine as _;
 use base64::engine::general_purpose::STANDARD as BASE64_STANDARD;
+use tokio::time::Instant;
 
 use crate::api::errors::{ApiError, AuthError};
 use crate::protocol::auth::{
@@ -78,17 +82,8 @@ impl AuthSession {
     /// between this call and the next, and the core neither opens nor sees it
     /// (research R14 forbids the Google iOS SDK).
     pub fn begin_provider_sign_in(&self, provider: AuthProvider) -> Result<AuthState, AuthError> {
-        let next = self.apply(
-            AuthEvent::ProviderSheetOpened {
-                provider: provider.slug().to_string(),
-            },
-            "open a provider sheet",
-        )?;
-        let mut pending = self.pending.lock().unwrap_or_else(|e| e.into_inner());
-        pending.session_nonce = Some(random_nonce());
         // A native sheet takes no browser callback.
-        pending.web_callback = None;
-        Ok(next)
+        self.open_provider_attempt(provider, None)
     }
 
     /// `AwaitingProviderToken -> SignedOut`. The sheet closed without a token.
@@ -187,13 +182,28 @@ impl AuthSession {
     }
 }
 
+/// How long a web attempt waits for its callback, Electron's
+/// `OAUTH_SESSION_TIMEOUT_MS` (`ipc/auth-oauth-state.ts:14`).
+const WEB_ATTEMPT_TTL: Duration = Duration::from_secs(10 * 60);
+
 /// The browser callback one web attempt waits for: the `state` the server
-/// signed into the authorization URL, and the loopback redirect it was signed
-/// for.
-#[derive(Debug, Clone)]
+/// signed into the authorization URL, the loopback redirect it was signed
+/// for, and when the attempt opened.
+#[derive(Clone)]
 pub(super) struct ExpectedCallback {
     state: String,
     redirect_uri: String,
+    opened_at: Instant,
+}
+
+impl fmt::Debug for ExpectedCallback {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        f.debug_struct("ExpectedCallback")
+            .field("state", &"<redacted>")
+            .field("redirect_uri", &self.redirect_uri)
+            .field("opened_at", &self.opened_at)
+            .finish()
+    }
 }
 
 /// What the browser callback answered: [`ProviderSignInOutcome`] plus
@@ -221,19 +231,47 @@ impl AuthSession {
     /// URL, whose `state` it passes here with the loopback `redirect_uri` it
     /// asked for — Electron's `oauthSessions.set(state, …)`
     /// (`ipc/auth-oauth-handlers.ts:147-154`). Mints the §2.6 nonce as
-    /// [`Self::begin_provider_sign_in`] does. Makes no request.
+    /// [`Self::begin_provider_sign_in`] does. Makes no request. An empty
+    /// `state` or `redirect_uri` opens nothing.
     pub fn begin_provider_web_sign_in(
         &self,
         provider: AuthProvider,
         state: String,
         redirect_uri: String,
     ) -> Result<AuthState, AuthError> {
-        let next = self.begin_provider_sign_in(provider)?;
+        if state.is_empty() || redirect_uri.is_empty() {
+            return Err(AuthError::InvalidState {
+                action: "open a web sign-in without a state or redirect".to_string(),
+                state: state_name(&self.state_now()),
+            });
+        }
+        self.open_provider_attempt(
+            provider,
+            Some(ExpectedCallback {
+                state,
+                redirect_uri,
+                opened_at: Instant::now(),
+            }),
+        )
+    }
+
+    /// `SignedOut -> AwaitingProviderToken` with a fresh §2.6 nonce and the
+    /// callback the attempt waits for, all under the pending lock, taken before
+    /// the state lock as on every edge out of an attempt.
+    fn open_provider_attempt(
+        &self,
+        provider: AuthProvider,
+        web_callback: Option<ExpectedCallback>,
+    ) -> Result<AuthState, AuthError> {
         let mut pending = self.pending.lock().unwrap_or_else(|e| e.into_inner());
-        pending.web_callback = Some(ExpectedCallback {
-            state,
-            redirect_uri,
-        });
+        let next = self.apply(
+            AuthEvent::ProviderSheetOpened {
+                provider: provider.slug().to_string(),
+            },
+            "open a provider sheet",
+        )?;
+        pending.session_nonce = Some(random_nonce());
+        pending.web_callback = web_callback;
         Ok(next)
     }
 
@@ -250,7 +288,9 @@ impl AuthSession {
     /// (`ipc/auth-oauth-state.ts:27-38`) has the same rule. The server checks
     /// the `state` signature and its five-minute expiry
     /// (`apps/sync-server/src/routes/auth.ts:172-207`) but keeps no record of
-    /// spent states, so the single use is the client's to enforce.
+    /// spent states, so the single use is the client's to enforce. A callback
+    /// more than ten minutes after the attempt opened is refused and spent, as
+    /// Electron's is.
     pub async fn complete_provider_web_callback(
         &self,
         code: String,
@@ -279,7 +319,14 @@ impl AuthSession {
                 return Err(refused("complete a provider callback that minted no nonce"));
             };
             match pending.web_callback.take() {
-                Some(expected) if expected.state == state => (expected, session_nonce),
+                Some(expected) if expected.state == state => {
+                    if expected.opened_at.elapsed() > WEB_ATTEMPT_TTL {
+                        return Err(refused(
+                            "complete a provider callback whose attempt expired",
+                        ));
+                    }
+                    (expected, session_nonce)
+                }
                 other => {
                     pending.web_callback = other;
                     return Err(refused(

@@ -588,11 +588,11 @@ impl AuthSession {
             // keep the user signed in on this device.
             let _ = AuthRoutes::logout(&self.http).await;
         }
+        // Pending, then state, the order of every edge out of an attempt: a
+        // provider answer lands before this clears or finds its attempt ended.
+        let mut pending = self.pending.lock().unwrap_or_else(|e| e.into_inner());
         self.tokens.clear()?;
-        {
-            let mut pending = self.pending.lock().unwrap_or_else(|e| e.into_inner());
-            *pending = PendingSignIn::default();
-        }
+        *pending = PendingSignIn::default();
         self.apply(AuthEvent::SignedOutByUser, "sign out")
     }
 }

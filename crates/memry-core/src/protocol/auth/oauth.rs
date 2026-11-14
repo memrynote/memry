@@ -11,6 +11,8 @@
 //! responsibility — the routes whose requests the shell cannot assemble,
 //! because the nonce and the device key are core-private.
 
+use std::fmt;
+
 use serde::{Deserialize, Serialize};
 
 use crate::api::errors::ApiError;
@@ -37,7 +39,7 @@ pub struct NativeOAuthRequest {
 /// it is sent because Electron sends it
 /// (`apps/desktop/src/main/ipc/auth-oauth-handlers.ts:239-246`), so both
 /// clients put the same body on the wire.
-#[derive(Debug, Clone, Serialize)]
+#[derive(Clone, Serialize)]
 #[serde(rename_all = "camelCase")]
 pub struct OAuthCallbackRequest {
     pub code: String,
@@ -55,7 +57,7 @@ pub struct OAuthCallbackRequest {
 /// [`super::VerifyOtpResponse`] reads them that way: a body that omits one is
 /// still a body, and the missing `setupToken` — never a missing flag — is what
 /// the caller reports.
-#[derive(Debug, Clone, Default, Deserialize)]
+#[derive(Clone, Default, Deserialize)]
 #[serde(rename_all = "camelCase")]
 pub struct OAuthSignInResponse {
     pub success: bool,
@@ -67,6 +69,35 @@ pub struct OAuthSignInResponse {
     /// field omit it, which reads as false (chapter 02, `POST /auth/otp/verify`).
     pub known_device: Option<bool>,
     pub setup_token: Option<String>,
+}
+
+/// The code and the signed `state` are credentials, so neither reaches a log.
+impl fmt::Debug for OAuthCallbackRequest {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        f.debug_struct("OAuthCallbackRequest")
+            .field("code", &"<redacted>")
+            .field("state", &"<redacted>")
+            .field("redirect_uri", &self.redirect_uri)
+            .field("session_nonce", &self.session_nonce)
+            .field("device_public_key", &self.device_public_key)
+            .finish()
+    }
+}
+
+/// The setup token is a credential, so it never reaches a log.
+impl fmt::Debug for OAuthSignInResponse {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        f.debug_struct("OAuthSignInResponse")
+            .field("success", &self.success)
+            .field("is_new_user", &self.is_new_user)
+            .field("needs_setup", &self.needs_setup)
+            .field("known_device", &self.known_device)
+            .field(
+                "setup_token",
+                &self.setup_token.as_ref().map(|_| "<redacted>"),
+            )
+            .finish()
+    }
 }
 
 impl AuthRoutes {
