@@ -1,6 +1,21 @@
 #!/usr/bin/env sh
 set -eu
 
+# Vercel checks the landing project's root directory before its ignored-build-step
+# command, so a pr-assets/* branch without apps/landing fails with ROOTDIR_NOT_EXIST
+# and emails a failed preview. git feeds the pushed refs on stdin.
+zero_sha=0000000000000000000000000000000000000000
+while read -r _ local_sha remote_ref _; do
+  case "$remote_ref" in
+    refs/heads/pr-assets/*)
+      if [ "$local_sha" != "$zero_sha" ] && ! git cat-file -e "$local_sha:apps/landing/.gitkeep" 2>/dev/null; then
+        printf '\npre-push: %s needs an empty apps/landing/.gitkeep, or Vercel fails the landing preview.\n\n' "$remote_ref" >&2
+        exit 1
+      fi
+      ;;
+  esac
+done
+
 current_branch=$(git branch --show-current)
 
 case "$current_branch" in
