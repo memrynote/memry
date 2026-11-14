@@ -8,7 +8,7 @@ import {
   useRef,
   type ReactNode
 } from 'react'
-import { authService } from '@/services/auth-service'
+import { SETUP_CONFLICT, authService } from '@/services/auth-service'
 import { extractErrorMessage, getIpcErrorCode, IpcFailureError } from '@/lib/ipc-error'
 import { trackRendererError } from '@/lib/telemetry-diagnostics'
 import { setupService } from '@/services/device-service'
@@ -459,8 +459,12 @@ export const AuthProvider = ({ children }: AuthProviderProps): React.JSX.Element
           )
         }
 
-        if (result.needsSetup) {
-          const setupResult = await authService.setupNewAccount()
+        // A setup another device finished first registered this device without the account's
+        // key: the account's phrase links it, as for a device the server does not know.
+        const setupResult = result.needsSetup ? await authService.setupNewAccount() : null
+        const conflicted =
+          setupResult?.success === false && setupResult.errorCode === SETUP_CONFLICT
+        if (setupResult && !conflicted) {
           if (!setupResult.success) {
             throw new Error(
               extractErrorMessage(

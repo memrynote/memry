@@ -7,6 +7,7 @@ use base64::engine::general_purpose::STANDARD as BASE64_STANDARD;
 
 use crate::api::errors::{ApiError, AuthError};
 use crate::protocol::auth::{AuthRoutes, VerifyOtpRequest, VerifyOtpResponse, random_nonce};
+use crate::seams::secure_store::SecureStoreKey;
 
 use super::{AuthEvent, AuthSession, AuthState, PendingSignIn, state_name};
 
@@ -40,16 +41,7 @@ impl AuthSession {
     /// [`Self::resend_email_code`] with the new code's lifetime in seconds,
     /// `None` when the server does not say. Rust-only.
     pub async fn resend_email_code_answer(&self) -> Result<Option<u64>, AuthError> {
-        let email = {
-            let pending = self.pending.lock().unwrap_or_else(|e| e.into_inner());
-            pending.email.clone()
-        };
-        let Some(email) = email else {
-            return Err(AuthError::InvalidState {
-                action: "resend an email code".to_string(),
-                state: state_name(&self.state_now()),
-            });
-        };
+        let email = self.awaiting_email("resend an email code")?;
         Ok(AuthRoutes::resend_otp(&self.http, &email).await?)
     }
 
@@ -66,15 +58,10 @@ impl AuthSession {
         &self,
         code: String,
     ) -> Result<(AuthState, VerifyOtpResponse), AuthError> {
-        let (email, session_nonce) = {
+        let email = self.awaiting_email("verify an email code")?;
+        let session_nonce = {
             let pending = self.pending.lock().unwrap_or_else(|e| e.into_inner());
-            (pending.email.clone(), pending.session_nonce.clone())
-        };
-        let Some(email) = email else {
-            return Err(AuthError::InvalidState {
-                action: "verify an email code".to_string(),
-                state: state_name(&self.state_now()),
-            });
+            pending.session_nonce.clone()
         };
 
         let secret = self.signing_secret_key()?;
@@ -88,7 +75,18 @@ impl AuthSession {
 
         let mut response = match AuthRoutes::verify_otp(&self.http, &request).await {
             Ok(response) => response,
-            Err(error @ ApiError::RateLimited { .. }) => return Err(error.into()), // #2940
+            // A wrong, expired or spent code (`401 AUTH_*_OTP`), or a 429 that
+            // judged nothing (#2940), leaves the attempt waiting for a code: a
+            // resend and then the right code finish it, as on Electron's code
+            // screen. Taking the failure edge here stranded a correct code,
+            // which the server spends before `SetupTokenIssued` is refused.
+            Err(
+                error @ (ApiError::Unauthorized { .. }
+                | ApiError::RateLimited { .. }
+                | ApiError::Status {
+                    status: 400..=499, ..
+                }),
+            ) => return Err(error.into()),
             Err(error) => {
                 self.apply(AuthEvent::SignInFailed, "fail a sign-in")?;
                 return Err(error.into());
@@ -104,6 +102,46 @@ impl AuthSession {
         self.tokens.store_setup_token(&setup_token)?;
         let state = self.apply(AuthEvent::SetupTokenIssued, "accept a setup token")?;
         Ok((state, response))
+    }
+
+    /// The address of the attempt waiting for its code; any other state is
+    /// `InvalidState` with no request, so a code is never sent or spent for an
+    /// attempt that already ended.
+    fn awaiting_email(&self, action: &str) -> Result<String, AuthError> {
+        match self.state_now() {
+            AuthState::AwaitingOtp { email } => Ok(email),
+            state => Err(AuthError::InvalidState {
+                action: action.to_string(),
+                state: state_name(&state),
+            }),
+        }
+    }
+
+    /// Drops a first-device setup that has a setup token and no device yet
+    /// (`SetupPending` or `SetupExpired`), so the user can sign in again
+    /// without a restart. Only the setup token goes: the device key and any
+    /// master key stay. It walks the drawn edges, `SetupTokenExpired` then
+    /// `SetupNotRenewable`, rather than adding one. Rust-only.
+    pub fn abandon_setup(&self) -> Result<AuthState, AuthError> {
+        let mut pending = self.pending.lock().unwrap_or_else(|e| e.into_inner());
+        let mut state = self.state.lock().unwrap_or_else(|e| e.into_inner());
+        let expired = match *state {
+            AuthState::SetupPending => super::transition(&state, &AuthEvent::SetupTokenExpired),
+            AuthState::SetupExpired => Some(AuthState::SetupExpired),
+            _ => None,
+        };
+        let Some(next) =
+            expired.and_then(|expired| super::transition(&expired, &AuthEvent::SetupNotRenewable))
+        else {
+            return Err(AuthError::InvalidState {
+                action: "abandon a setup".to_string(),
+                state: state_name(&state),
+            });
+        };
+        self.store.delete(SecureStoreKey::SetupToken)?;
+        *pending = PendingSignIn::default();
+        *state = next.clone();
+        Ok(next)
     }
 
     /// Ends an email-code attempt that is still waiting for its code, so the

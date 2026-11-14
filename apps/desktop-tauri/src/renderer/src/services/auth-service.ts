@@ -10,24 +10,30 @@ import { commandErrorCode, extractErrorMessage } from '@/lib/ipc-error'
 type Failure = {
   success: false
   error: string
-  errorCode?: typeof LINK_FAILURE_SETUP_SESSION_EXPIRED
+  errorCode?: typeof LINK_FAILURE_SETUP_SESSION_EXPIRED | typeof SETUP_CONFLICT
 }
 
-function failure(error: unknown): Failure {
+/** `setupNewAccount`: another device set the account up first, so its phrase links this one. */
+export const SETUP_CONFLICT = 'account-setup-conflict'
+
+/** The command error codes a call answers with an `errorCode`, and nothing else. */
+type ErrorCodes = Partial<Record<string, NonNullable<Failure['errorCode']>>>
+
+function failure(error: unknown, errorCodes: ErrorCodes): Failure {
   const result: Failure = { success: false, error: extractErrorMessage(error, '') }
-  if (commandErrorCode(error) === 'setup_session_expired') {
-    result.errorCode = LINK_FAILURE_SETUP_SESSION_EXPIRED
-  }
+  const errorCode = errorCodes[commandErrorCode(error) ?? '']
+  if (errorCode) result.errorCode = errorCode
   return result
 }
 
 async function envelope<T extends object>(
-  run: () => Promise<T>
+  run: () => Promise<T>,
+  errorCodes: ErrorCodes = {}
 ): Promise<({ success: true } & T) | Failure> {
   try {
     return { success: true, ...(await run()) }
   } catch (error) {
-    return failure(error)
+    return failure(error, errorCodes)
   }
 }
 
@@ -37,9 +43,10 @@ export const authService = {
   requestOtp: (input: { email: string }) =>
     envelope(async () => sent(await commands.authRequestOtp(input.email))),
 
+  // The address is the pending request's, which the session holds, as for a resend.
   verifyOtp: (input: { email: string; code: string }) =>
     envelope(async () => {
-      const verified = await commands.authVerifyOtp(input.email, input.code)
+      const verified = await commands.authVerifyOtp(input.code)
       return { ...verified, deviceId: verified.deviceId ?? undefined }
     }),
 
@@ -57,7 +64,8 @@ export const authService = {
     return window.api.syncSetup.setupFirstDevice(input)
   },
 
-  setupNewAccount: () => envelope(() => commands.syncSetupNewAccount()),
+  setupNewAccount: () =>
+    envelope(() => commands.syncSetupNewAccount(), { account_setup_conflict: SETUP_CONFLICT }),
 
   confirmRecoveryPhrase: (input: { confirmed: boolean }) =>
     envelope(async () => {
@@ -69,7 +77,9 @@ export const authService = {
   getRecoveryPhrase: () => commands.syncGetRecoveryPhrase(),
 
   linkViaRecovery: (input: { recoveryPhrase: string }) =>
-    envelope(() => commands.syncLinkViaRecovery(input.recoveryPhrase)),
+    envelope(() => commands.syncLinkViaRecovery(input.recoveryPhrase), {
+      setup_session_expired: LINK_FAILURE_SETUP_SESSION_EXPIRED
+    }),
 
   /** The account at launch, from this device alone: offline or waiting still reads as signed in. */
   getAccountInfo: () => commands.accountGetInfo(),

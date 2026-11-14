@@ -79,11 +79,16 @@ impl Script {
     }
 
     fn called(&self, path: &str) -> bool {
+        self.count(path) > 0
+    }
+
+    fn count(&self, path: &str) -> usize {
         self.paths
             .lock()
             .unwrap()
             .iter()
-            .any(|p| p.starts_with(path))
+            .filter(|p| p.starts_with(path))
+            .count()
     }
 }
 
@@ -210,9 +215,7 @@ impl Fixture {
             .request_otp("kaan@example.com".into())
             .await
             .unwrap();
-        self.service
-            .verify_otp("kaan@example.com", "123456".into())
-            .await
+        self.service.verify_otp("123456".into()).await
     }
 
     fn answer_recovery_info(&self, master: [u8; 32]) {
@@ -359,8 +362,23 @@ async fn first_device_setup_stores_the_key_and_holds_the_phrase_until_confirmed(
     assert!(f.service.recovery_phrase().is_none());
 }
 
+/// A phrase another device set up the account with, and the account's key material for it.
+fn account_phrase() -> (String, Value) {
+    let phrase = memry_core::crypto::recovery::generate_phrase().to_string();
+    let salt = [3u8; 16];
+    let seed = memry_core::crypto::recovery::phrase_to_seed(&phrase).unwrap();
+    let master = keys::derive_master_key(seed.as_slice(), &salt).unwrap();
+    let material = json!({
+        "kdfSalt": BASE64.encode(salt),
+        "keyVerifier": keys::account_key_verifier(&master).unwrap(),
+    });
+    (phrase, material)
+}
+
+/// A 409 on `/auth/setup` leaves this device registered with no master key: it is not signed in,
+/// its phrase is dropped, and the account's phrase links it as the device it already is.
 #[tokio::test]
-async fn a_setup_another_device_finished_first_drops_the_phrase() {
+async fn a_setup_another_device_finished_first_links_with_the_accounts_phrase() {
     let f = fixture(Keychain::default());
     f.verify(json!({ "needsSetup": true })).await.unwrap();
     f.answer_registration("server-device-1");
@@ -371,6 +389,86 @@ async fn a_setup_another_device_finished_first_drops_the_phrase() {
     assert!(matches!(error, AccountError::SetupConflict), "{error:?}");
     assert!(f.service.recovery_phrase().is_none());
     assert!(!f.keychain.has(SecureStoreKey::MasterKey));
+    assert!(!f.service.info().signed_in);
+
+    let (phrase, material) = account_phrase();
+    f.script.answer(200, material.clone());
+    let device = f.service.link_via_recovery(phrase).await.unwrap();
+
+    assert_eq!(device, "server-device-1");
+    assert_eq!(f.script.count("/auth/devices"), 1);
+    assert!(f.script.called("/auth/key-verifier"));
+    assert!(f.keychain.has(SecureStoreKey::MasterKey));
+    assert_eq!(f.sync("accountKeyVerifier"), material["keyVerifier"]);
+    assert!(f.service.info().signed_in);
+}
+
+/// A setup that failed before a device was registered gives way to a new sign-in without a
+/// restart; only its setup token goes.
+#[tokio::test]
+async fn a_failed_setup_gives_way_to_a_new_code() {
+    let f = fixture(Keychain::default());
+    f.verify(json!({ "needsSetup": true })).await.unwrap();
+    f.script
+        .answer(400, json!({ "error": { "code": "VALIDATION_ERROR" } }));
+    f.service.setup_new_account().await.unwrap_err();
+    assert!(f.keychain.has(SecureStoreKey::SetupToken));
+    f.script
+        .answer(200, json!({ "success": true, "expiresIn": 600 }));
+
+    let expires = f.service.request_otp("kaan@example.com".into()).await;
+
+    assert_eq!(expires.unwrap(), Some(600));
+    assert_eq!(f.script.count("/auth/otp/request"), 2);
+    assert!(!f.keychain.has(SecureStoreKey::SetupToken));
+    assert!(f.keychain.has(SecureStoreKey::DeviceSigningKey));
+}
+
+/// A setup token whose own `exp` passed while the user looked for the phrase is renewed before
+/// the phrase is checked, not spent on a `401` first (`sync/setup-token.ts:109-113`).
+#[tokio::test]
+async fn a_setup_token_that_aged_out_is_renewed_before_the_phrase_is_checked() {
+    let f = fixture(Keychain::default());
+    let aged = jwt(json!({ "sub": "u", "jti": "jti-old", "exp": 1u64, "type": "setup" }));
+    f.verify(json!({ "needsSetup": false, "setupToken": aged }))
+        .await
+        .unwrap();
+    let (phrase, material) = account_phrase();
+    f.script
+        .answer(200, json!({ "success": true, "setupToken": setup_token() }));
+    f.script.answer(200, material);
+    f.answer_registration("server-device-1");
+
+    let device = f.service.link_via_recovery(phrase).await.unwrap();
+
+    assert_eq!(device, "server-device-1");
+    let paths = f.script.paths.lock().unwrap().clone();
+    assert_eq!(
+        &paths[2..],
+        [
+            "/auth/setup-token/renew",
+            "/auth/recovery-info",
+            "/auth/devices"
+        ]
+    );
+}
+
+/// Once the keys may be published, a config that cannot be written does not take the phrase
+/// with it: the phrase waits and the master key is stored (`device-registration.ts:178-187`).
+#[tokio::test]
+async fn a_config_write_that_fails_after_setup_keeps_the_phrase() {
+    let f = fixture(Keychain::default());
+    f.verify(json!({ "needsSetup": true })).await.unwrap();
+    f.answer_registration("server-device-1");
+    f.script.answer(200, json!({ "success": true }));
+    std::fs::write(f._dir.path().join("memry-config.json"), "[]").unwrap();
+
+    let device = f.service.setup_new_account().await.unwrap();
+
+    assert_eq!(device, "server-device-1");
+    assert!(f.keychain.has(SecureStoreKey::MasterKey));
+    let phrase = f.service.recovery_phrase().expect("the phrase waits");
+    assert_eq!(phrase.split_whitespace().count(), 24);
 }
 
 #[tokio::test]

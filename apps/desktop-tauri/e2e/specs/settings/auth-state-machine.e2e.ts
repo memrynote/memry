@@ -73,7 +73,8 @@ async function readRecoveryWords(page: Page): Promise<string[]> {
       (item.getAttribute('aria-label') ?? '').replace(/^Word \d+:\s*/, '')
     )
   )
-  expect(words).toHaveLength(24)
+  // Counts only: a failed assert on the words would print the phrase into the CI log.
+  expect(words.length).toBe(24)
   expect(words.every((word) => word.length > 0)).toBe(true)
   return words
 }
@@ -128,6 +129,7 @@ test.describe('Auth state machine E2E', () => {
     await expectAuthenticated(page, email)
   })
 
+  // A rejected code keeps the attempt waiting for its code, so the right code still sets up.
   test('keeps setup on OTP step when the code is wrong', async ({ page, syncBootstrap }) => {
     const email = syncBootstrap.email
 
@@ -139,6 +141,9 @@ test.describe('Auth state machine E2E', () => {
     await expect(page.getByText('Invalid OTP code')).toBeVisible()
     await expect(page.getByText('Enter verification code')).toBeVisible()
     await expect(page.getByText('Save your recovery phrase')).toHaveCount(0)
+
+    await submitOtp(page)
+    await readRecoveryWords(page)
   })
 
   test('keeps setup on OTP step when the code is expired', async ({ page, syncBootstrap }) => {
@@ -152,6 +157,10 @@ test.describe('Auth state machine E2E', () => {
     await expect(page.getByText('OTP expired or not found')).toBeVisible()
     await expect(page.getByText('Enter verification code')).toBeVisible()
     await expect(page.getByText('Save your recovery phrase')).toHaveCount(0)
+
+    await seedOtp(syncBootstrap, email)
+    await submitOtp(page)
+    await readRecoveryWords(page)
   })
 
   test('blocks setup completion when the recovery confirmation words are wrong', async ({

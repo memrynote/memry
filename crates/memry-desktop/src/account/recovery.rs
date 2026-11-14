@@ -26,7 +26,8 @@ impl AccountService {
         let device_id = self.register().await?;
         // Electron logs a failed `/auth/setup` and goes on (`device-registration.ts:160-171`).
         // A 409 is the one answer that is not "retry later": another device published first,
-        // so this phrase is not the account's and is never shown.
+        // so this phrase is not the account's and is never shown. The device is registered with
+        // no master key; the account's phrase links it (`link_via_recovery`).
         match self
             .session
             .complete_account_setup(BASE64.encode(&salt), verifier.clone())
@@ -41,11 +42,18 @@ impl AccountService {
             }
             Ok(()) => {}
         }
-        self.keep_master_key(&master, &verifier, &device_id)?;
-        self.write_sync(|sync| {
-            sync.insert("recoveryPhraseConfirmed".into(), Value::Bool(false));
-        })?;
+        // Held before any local write: once the keys may be published, a failed write must not
+        // take the only copy of the phrase with it.
         *self.phrase.lock().unwrap_or_else(|e| e.into_inner()) = Some(phrase);
+        self.keep_master_key(&master, &verifier, &device_id)?;
+        if let Err(error) = self.write_sync(|sync| {
+            sync.insert("recoveryPhraseConfirmed".into(), Value::Bool(false));
+        }) {
+            tracing::warn!(
+                scope = "Account",
+                "the unconfirmed phrase could not be recorded: {error}"
+            );
+        }
         Ok(device_id)
     }
 
@@ -69,15 +77,27 @@ impl AccountService {
     }
 
     /// `LINK_VIA_RECOVERY` (`ipc/auth-device-handlers.ts:427-489`): the phrase must derive the
-    /// account's verifier before anything is registered or stored.
+    /// account's verifier before anything is registered or stored. A device already registered
+    /// without a master key (a setup another device finished first) reads the account's key
+    /// material over its session and is not registered twice.
     pub async fn link_via_recovery(&self, phrase: String) -> Result<String, AccountError> {
         let phrase = Zeroizing::new(phrase);
         let _key_op = self.key_op.lock().await;
         let canonical = Zeroizing::new(
             recovery::validate_phrase(&phrase).map_err(|_| AccountError::InvalidPhrase)?,
         );
-        self.ensure_live_setup_token().await?;
-        let material = self.session.recovery_info().await.map_err(setup_expired)?;
+        let registered = match self.session.state() {
+            AuthState::Registered | AuthState::Refreshing | AuthState::SessionExpired => {
+                Some(self.session.registered_device_id()?)
+            }
+            _ => None,
+        };
+        let material = if registered.is_some() {
+            self.session.key_material().await?
+        } else {
+            self.ensure_live_setup_token().await?;
+            self.session.recovery_info().await.map_err(setup_expired)?
+        };
         let salt = BASE64
             .decode(&material.kdf_salt)
             .map_err(|_| AccountError::Derive)?;
@@ -86,7 +106,10 @@ impl AccountService {
         if !keys::account_key_verifier_matches(&verifier, &material.key_verifier) {
             return Err(AccountError::PhraseMismatch);
         }
-        let device_id = self.register().await?;
+        let device_id = match registered {
+            Some(device_id) => device_id,
+            None => self.register().await?,
+        };
         self.keep_master_key(&master, &verifier, &device_id)?;
         Ok(device_id)
     }
@@ -152,23 +175,24 @@ impl AccountService {
         Ok(self.session.registered_device_id()?)
     }
 
-    /// Electron's `ensureLiveSetupToken` (`sync/setup-token.ts:48-108`): an aged-out setup
-    /// token is renewed in place; one that cannot be is "sign in again".
+    /// Electron's `ensureLiveSetupToken` (`sync/setup-token.ts:109-113`): a setup token that
+    /// aged out, by the server's `401` or by its own `exp`, is renewed in place; one that cannot
+    /// be is "sign in again".
     async fn ensure_live_setup_token(&self) -> Result<(), AccountError> {
-        if self.session.state() == AuthState::SetupExpired {
-            self.session.renew_setup_token().await.map_err(|error| {
-                tracing::warn!(
-                    scope = "Account",
-                    "the setup token could not be renewed: {error}"
-                );
-                AccountError::SetupSessionExpired
-            })?;
-        }
+        self.session.live_setup_token().await.map_err(|error| {
+            tracing::warn!(
+                scope = "Account",
+                "the setup token could not be renewed: {error}"
+            );
+            AccountError::SetupSessionExpired
+        })?;
         Ok(())
     }
 
     /// The master key and what names it: `sync.accountKeyVerifier` (offline key checks) and
-    /// `sync.deviceId`, the server's id (`device-registration.ts:174-205`).
+    /// `sync.deviceId`, the server's id (`device-registration.ts:174-205`). The config write is a
+    /// cache Electron writes best-effort (`device-registration.ts:178-187`): a failure is logged
+    /// and the key stays.
     fn keep_master_key(
         &self,
         master: &[u8],
@@ -176,10 +200,15 @@ impl AccountService {
         device_id: &str,
     ) -> Result<(), AccountError> {
         self.store.set(SecureStoreKey::MasterKey, master.to_vec())?;
-        self.write_sync(|sync| {
+        if let Err(error) = self.write_sync(|sync| {
             sync.insert("accountKeyVerifier".into(), Value::from(verifier));
             sync.insert("deviceId".into(), Value::from(device_id));
-        })?;
+        }) {
+            tracing::warn!(
+                scope = "Account",
+                "the account key verifier could not be cached: {error}"
+            );
+        }
         Ok(())
     }
 }

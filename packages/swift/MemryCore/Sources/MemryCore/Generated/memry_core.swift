@@ -798,6 +798,7 @@ public protocol AuthSessionProtocol: AnyObject, Sendable {
     /**
      * Asks for a fresh code. Not a state transition: chapter 02 §2.11
      * caps it at three per ten minutes and the state is unchanged either way.
+     * Outside `AwaitingOtp` it is `InvalidState` and sends nothing.
      */
     func resendEmailCode() async throws 
     
@@ -810,8 +811,10 @@ public protocol AuthSessionProtocol: AnyObject, Sendable {
     func state()  -> AuthState
     
     /**
-     * `AwaitingOtp -> SetupPending`, or `-> SignedOut` when the code is
-     * rejected. The body is [`Self::verify_email_code_answer`].
+     * `AwaitingOtp -> SetupPending`. A wrong, expired or rate-limited code
+     * (a 4xx) stays in `AwaitingOtp`, so a resend and the right code still
+     * finish the attempt; any other failure is `-> SignedOut`. The body is
+     * [`Self::verify_email_code_answer`].
      */
     func verifyEmailCode(code: String) async throws  -> AuthState
     
@@ -1352,6 +1355,7 @@ open func requestEmailCode(email: String)async throws  -> AuthState  {
     /**
      * Asks for a fresh code. Not a state transition: chapter 02 §2.11
      * caps it at three per ten minutes and the state is unchanged either way.
+     * Outside `AwaitingOtp` it is `InvalidState` and sends nothing.
      */
 open func resendEmailCode()async throws   {
     return
@@ -1399,8 +1403,10 @@ open func state() -> AuthState  {
 }
     
     /**
-     * `AwaitingOtp -> SetupPending`, or `-> SignedOut` when the code is
-     * rejected. The body is [`Self::verify_email_code_answer`].
+     * `AwaitingOtp -> SetupPending`. A wrong, expired or rate-limited code
+     * (a 4xx) stays in `AwaitingOtp`, so a resend and the right code still
+     * finish the attempt; any other failure is `-> SignedOut`. The body is
+     * [`Self::verify_email_code_answer`].
      */
 open func verifyEmailCode(code: String)async throws  -> AuthState  {
     return
@@ -35836,7 +35842,7 @@ private let initializationResult: InitializationResult = {
     if (uniffi_memry_core_checksum_method_authsession_request_email_code() != 33229) {
         return InitializationResult.apiChecksumMismatch
     }
-    if (uniffi_memry_core_checksum_method_authsession_resend_email_code() != 49631) {
+    if (uniffi_memry_core_checksum_method_authsession_resend_email_code() != 10169) {
         return InitializationResult.apiChecksumMismatch
     }
     if (uniffi_memry_core_checksum_method_authsession_sign_out() != 11383) {
@@ -35845,7 +35851,7 @@ private let initializationResult: InitializationResult = {
     if (uniffi_memry_core_checksum_method_authsession_state() != 9316) {
         return InitializationResult.apiChecksumMismatch
     }
-    if (uniffi_memry_core_checksum_method_authsession_verify_email_code() != 23472) {
+    if (uniffi_memry_core_checksum_method_authsession_verify_email_code() != 49057) {
         return InitializationResult.apiChecksumMismatch
     }
     if (uniffi_memry_core_checksum_method_authsession_abandon_provider_sign_in() != 26731) {

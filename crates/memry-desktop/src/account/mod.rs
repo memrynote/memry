@@ -15,7 +15,7 @@ use std::sync::{Arc, Mutex};
 
 use memry_core::api::auth::{AuthSession, AuthState, DeviceDescriptor};
 use memry_core::api::errors::{ApiError, AuthError, SecureStoreError};
-use memry_core::seams::secure_store::SecureStore;
+use memry_core::seams::secure_store::{SecureStore, SecureStoreKey};
 use memry_core::seams::transport::Transport;
 use serde_json::{Map, Value};
 use zeroize::Zeroizing;
@@ -160,10 +160,17 @@ impl AccountService {
     }
 
     /// `POST /auth/otp/request`, then the code's lifetime in seconds. A code already pending for
-    /// another address ends first.
+    /// another address ends first, and so does a setup that never registered a device (a failed
+    /// or expired setup, a locked keychain): only its setup token goes.
     pub async fn request_otp(&self, email: String) -> Result<Option<u64>, AccountError> {
-        if matches!(self.session.state(), AuthState::AwaitingOtp { .. }) {
-            self.session.abandon_email_sign_in()?;
+        match self.session.state() {
+            AuthState::AwaitingOtp { .. } => {
+                self.session.abandon_email_sign_in()?;
+            }
+            AuthState::SetupPending | AuthState::SetupExpired => {
+                self.session.abandon_setup()?;
+            }
+            _ => {}
         }
         Ok(self.session.request_email_code_answer(email).await?.1)
     }
@@ -173,12 +180,20 @@ impl AccountService {
     }
 
     /// `POST /auth/otp/verify`, then the known-device path when the server still lists this
-    /// device's key (`auth-device-handlers.ts:311-341`).
-    pub async fn verify_otp(&self, email: &str, code: String) -> Result<OtpVerified, AccountError> {
+    /// device's key (`auth-device-handlers.ts:311-341`). `sync.email` is the address the code was
+    /// sent to, which the session holds (`auth-device-handlers.ts:325`).
+    pub async fn verify_otp(&self, code: String) -> Result<OtpVerified, AccountError> {
+        // The session refuses the code outside `AwaitingOtp`, so `None` never reaches the write.
+        let email = match self.session.state() {
+            AuthState::AwaitingOtp { email } => Some(email),
+            _ => None,
+        };
         let (_, answer) = self.session.verify_email_code_answer(code).await?;
-        self.write_sync(|sync| {
-            sync.insert("email".into(), Value::from(email));
-        })?;
+        if let Some(email) = email {
+            self.write_sync(|sync| {
+                sync.insert("email".into(), Value::from(email));
+            })?;
+        }
         let needs_setup = answer.needs_setup.unwrap_or(false);
         let device_id = if !needs_setup && answer.known_device == Some(true) {
             self.sign_in_known_device().await?
@@ -210,12 +225,15 @@ impl AccountService {
         }
     }
 
+    /// Signed in is a session **and** the account's master key: a device registered without one
+    /// (a setup another device finished first) is still waiting for its phrase. A locked keychain
+    /// is not an absent key, so it stays signed in.
     pub fn info(&self) -> AccountInfo {
         self.restore();
         let signed_in = matches!(
             self.session.state(),
             AuthState::Registered | AuthState::Refreshing | AuthState::SessionExpired
-        );
+        ) && !matches!(self.store.get(SecureStoreKey::MasterKey), Ok(None));
         let (email, device_id, confirmed) = self.config.read(|config| {
             let sync = config.get("sync");
             let text = |key: &str| sync.and_then(|s| s.get(key)).and_then(Value::as_str);

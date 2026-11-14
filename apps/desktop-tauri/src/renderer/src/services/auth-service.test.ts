@@ -14,7 +14,7 @@ const mocks = vi.hoisted(() => ({
 
 vi.mock('../../../generated/bindings', () => ({ commands: mocks.commands }))
 
-import { authService } from './auth-service'
+import { SETUP_CONFLICT, authService } from './auth-service'
 
 /** A rejected Tauri command: the serialized `CommandError`. */
 const rejected = (code: string, message: string) => ({ kind: 'auth', code, message })
@@ -52,7 +52,7 @@ describe('auth-service', () => {
       deviceId: undefined
     })
     expect(mocks.commands.authRequestOtp).toHaveBeenCalledWith('me@example.com')
-    expect(mocks.commands.authVerifyOtp).toHaveBeenCalledWith('me@example.com', '123456')
+    expect(mocks.commands.authVerifyOtp).toHaveBeenCalledWith('123456')
   })
 
   it('turns a rejected command into a failure, with the code a dead setup token carries', async () => {
@@ -71,6 +71,23 @@ describe('auth-service', () => {
     await expect(authService.linkViaRecovery({ recoveryPhrase: 'words' })).resolves.toEqual({
       success: false,
       error: 'Not this account.'
+    })
+
+    // Only the phrase link reads a dead setup token as `setup-session-expired`.
+    mocks.commands.syncSetupNewAccount.mockRejectedValueOnce(
+      rejected('setup_session_expired', 'Sign in again.')
+    )
+    await expect(authService.setupNewAccount()).resolves.toEqual({
+      success: false,
+      error: 'Sign in again.'
+    })
+    mocks.commands.syncSetupNewAccount.mockRejectedValueOnce(
+      rejected('account_setup_conflict', 'Another device set up this account first.')
+    )
+    await expect(authService.setupNewAccount()).resolves.toEqual({
+      success: false,
+      error: 'Another device set up this account first.',
+      errorCode: SETUP_CONFLICT
     })
 
     mocks.commands.syncSetupNewAccount.mockResolvedValueOnce({ deviceId: 'device-1' })

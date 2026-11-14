@@ -21,6 +21,7 @@ const serviceMocks = vi.hoisted(() => ({
 }))
 
 vi.mock('@/services/auth-service', () => ({
+  SETUP_CONFLICT: 'account-setup-conflict',
   authService: serviceMocks.authService
 }))
 
@@ -498,6 +499,21 @@ describe('AuthProvider', () => {
     await expect(async () => result.current.verifyOtp('123456')).rejects.toThrow(
       'setup account failed'
     )
+
+    // Another device set the account up first: its phrase links this one.
+    serviceMocks.authService.verifyOtp.mockResolvedValueOnce({ success: true, needsSetup: true })
+    serviceMocks.authService.setupNewAccount.mockResolvedValueOnce({
+      success: false,
+      error: 'set up elsewhere',
+      errorCode: 'account-setup-conflict'
+    })
+    await act(async () => {
+      expect(await result.current.verifyOtp('123456')).toEqual({
+        deviceId: '',
+        needsRecoverySetup: true,
+        needsRecoveryInput: true
+      })
+    })
 
     serviceMocks.authService.verifyOtp.mockResolvedValueOnce({ success: true, needsSetup: false })
     await act(async () => {

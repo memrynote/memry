@@ -127,11 +127,10 @@ pub async fn auth_resend_otp(app: AppHandle<Wry>) -> Result<AuthOtpSent, Command
 #[specta::specta]
 pub async fn auth_verify_otp(
     app: AppHandle<Wry>,
-    email: String,
     code: String,
 ) -> Result<AuthOtpVerified, CommandError> {
     let verified = account(&app)
-        .verify_otp(&email, code)
+        .verify_otp(code)
         .await
         .map_err(|e| map_error(&app, "auth_verify_otp", &e))?;
     app.state::<OtpClipboardWatch>().stop();

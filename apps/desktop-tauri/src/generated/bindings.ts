@@ -17,7 +17,7 @@ export const commands = {
 	/**  `sync:auth-resend-otp`, to the address of the pending request. */
 	authResendOtp: () => __TAURI_INVOKE<AuthOtpSent>("auth_resend_otp"),
 	/**  `sync:auth-verify-otp`, then the known-device path. */
-	authVerifyOtp: (email: string, code: string) => __TAURI_INVOKE<AuthOtpVerified>("auth_verify_otp", { email, code }),
+	authVerifyOtp: (code: string) => __TAURI_INVOKE<AuthOtpVerified>("auth_verify_otp", { code }),
 	/**  `sync:confirm-recovery-phrase`. */
 	syncConfirmRecoveryPhrase: (confirmed: boolean) => __TAURI_INVOKE<null>("sync_confirm_recovery_phrase", { confirmed }),
 	/**  `sync:get-recovery-phrase`: the phrase of the setup, until it is confirmed. */

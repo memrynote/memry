@@ -373,24 +373,207 @@ async fn a_verify_with_no_setup_token_falls_back_to_signed_out() {
     assert_eq!(session.state(), AuthState::SignedOut);
 }
 
+/// A wrong or expired code (`401 AUTH_INVALID_OTP`, `AUTH_OTP_EXPIRED`) keeps
+/// the attempt waiting for its code: a resend and the right code finish it.
+/// Taking the failure edge here left the pending address behind, so the right
+/// code was spent server-side and `SetupTokenIssued` was then refused from
+/// `SignedOut` with the setup token already stored.
 #[tokio::test]
-async fn a_rejected_code_returns_to_signed_out() {
+async fn a_rejected_code_keeps_the_attempt_and_the_right_code_finishes_it() {
     let transport = FakeTransport::new(vec![
         response(200, r#"{"success":true}"#),
         error_response(401, "AUTH_INVALID_OTP", "wrong code"),
+        error_response(401, "AUTH_OTP_EXPIRED", "expired"),
+        response(200, r#"{"success":true,"expiresIn":600}"#),
+        response(
+            200,
+            &format!(
+                r#"{{"success":true,"setupToken":"{}"}}"#,
+                setup_token("jti-1")
+            ),
+        ),
     ]);
-    let session = session(transport, FakeSecureStore::new());
+    let store = FakeSecureStore::new();
+    let session = session(transport.clone(), store.clone());
     session
         .request_email_code("kaan@example.com".to_string())
         .await
         .unwrap();
 
+    for code in ["000000", "123456"] {
+        let error = session
+            .verify_email_code(code.to_string())
+            .await
+            .unwrap_err();
+        assert!(
+            matches!(
+                error,
+                AuthError::Api {
+                    source: ApiError::Unauthorized { .. }
+                }
+            ),
+            "{error:?}"
+        );
+        assert_eq!(
+            session.state(),
+            AuthState::AwaitingOtp {
+                email: "kaan@example.com".to_string()
+            }
+        );
+    }
+    assert_eq!(session.resend_email_code_answer().await.unwrap(), Some(600));
+
+    assert_eq!(
+        session
+            .verify_email_code("654321".to_string())
+            .await
+            .unwrap(),
+        AuthState::SetupPending
+    );
+    assert!(store.text(SecureStoreKey::SetupToken).is_some());
+}
+
+/// A verify that is not a code judgement (here no setup token) ends the attempt,
+/// and once it has ended neither a resend nor a verify reaches the server: a
+/// code spent there could never land.
+#[tokio::test]
+async fn an_ended_attempt_sends_no_resend_and_no_verify() {
+    let transport = FakeTransport::new(vec![
+        response(200, r#"{"success":true}"#),
+        response(200, r#"{"success":false}"#),
+    ]);
+    let session = session(transport.clone(), FakeSecureStore::new());
     session
-        .verify_email_code("000000".to_string())
+        .request_email_code("kaan@example.com".to_string())
+        .await
+        .unwrap();
+    session
+        .verify_email_code("123456".to_string())
+        .await
+        .unwrap_err();
+    assert_eq!(session.state(), AuthState::SignedOut);
+
+    let resend = session.resend_email_code().await.unwrap_err();
+    let verify = session
+        .verify_email_code("123456".to_string())
         .await
         .unwrap_err();
 
-    assert_eq!(session.state(), AuthState::SignedOut);
+    assert!(
+        matches!(resend, AuthError::InvalidState { .. }),
+        "{resend:?}"
+    );
+    assert!(
+        matches!(verify, AuthError::InvalidState { .. }),
+        "{verify:?}"
+    );
+    assert_eq!(transport.call_count(), 2);
+}
+
+/// Walks `SignedOut -> AwaitingOtp -> SetupPending` with `token` as the
+/// setup token the verify hands out.
+async fn setup_pending(
+    token: &str,
+    extra: Vec<
+        Result<memry_core::seams::transport::HttpResponse, memry_core::api::errors::TransportError>,
+    >,
+) -> (AuthSession, Arc<FakeTransport>, Arc<FakeSecureStore>) {
+    let mut script = vec![
+        response(200, r#"{"success":true}"#),
+        response(
+            200,
+            &format!(r#"{{"success":true,"setupToken":"{token}"}}"#),
+        ),
+    ];
+    script.extend(extra);
+    let transport = FakeTransport::new(script);
+    let store = FakeSecureStore::new();
+    let session = session(transport.clone(), store.clone());
+    session
+        .request_email_code("kaan@example.com".to_string())
+        .await
+        .unwrap();
+    session
+        .verify_email_code("123456".to_string())
+        .await
+        .unwrap();
+    (session, transport, store)
+}
+
+/// A setup that never registered a device (a failed registration, an expired
+/// grant) can be dropped for a new sign-in without a restart; only the setup
+/// token goes, the device key stays.
+#[tokio::test]
+async fn abandoning_a_setup_drops_only_the_setup_token() {
+    let (session, transport, store) = setup_pending(&setup_token("jti-1"), vec![]).await;
+    let device_key = store.get(SecureStoreKey::DeviceSigningKey).unwrap();
+    assert!(device_key.is_some());
+    assert_eq!(session.abandon_setup().unwrap(), AuthState::SignedOut);
+    assert_eq!(store.text(SecureStoreKey::SetupToken), None);
+    assert_eq!(
+        store.get(SecureStoreKey::DeviceSigningKey).unwrap(),
+        device_key
+    );
+
+    // From `SetupExpired` too, after a new code.
+    transport.push(response(200, r#"{"success":true}"#));
+    transport.push(response(
+        200,
+        &format!(
+            r#"{{"success":true,"setupToken":"{}"}}"#,
+            setup_token("jti-2")
+        ),
+    ));
+    transport.push(error_response(401, "AUTH_INVALID_TOKEN", "spent"));
+    session
+        .request_email_code("kaan@example.com".to_string())
+        .await
+        .unwrap();
+    session
+        .verify_email_code("123456".to_string())
+        .await
+        .unwrap();
+    session.register_device().await.unwrap_err();
+    assert_eq!(session.state(), AuthState::SetupExpired);
+    assert_eq!(session.abandon_setup().unwrap(), AuthState::SignedOut);
+    assert!(matches!(
+        session.abandon_setup().unwrap_err(),
+        AuthError::InvalidState { .. }
+    ));
+}
+
+/// Electron's `ensureLiveSetupToken` (`sync/setup-token.ts:109-113`): a setup
+/// token whose `exp` has passed is renewed before it is spent, from
+/// `SetupPending`, with no `401` first.
+#[tokio::test]
+async fn a_setup_token_past_its_exp_is_renewed_before_use() {
+    let aged = jwt(json!({ "sub": "user-1", "jti": "jti-old", "exp": 1u64, "type": "setup" }));
+    let renewed = setup_token("jti-new");
+    let (session, transport, store) = setup_pending(
+        &aged,
+        vec![response(
+            200,
+            &format!(r#"{{"success":true,"setupToken":"{renewed}"}}"#),
+        )],
+    )
+    .await;
+    assert_eq!(session.state(), AuthState::SetupPending);
+
+    assert_eq!(
+        session.live_setup_token().await.unwrap(),
+        AuthState::SetupPending
+    );
+
+    let renewal = transport.calls_to("/auth/setup-token/renew");
+    assert_eq!(renewal.len(), 1);
+    assert_eq!(body_json(&renewal[0])["setupToken"], aged.as_str());
+    assert_eq!(store.text(SecureStoreKey::SetupToken), Some(renewed));
+    // A live token is left alone.
+    assert_eq!(
+        session.live_setup_token().await.unwrap(),
+        AuthState::SetupPending
+    );
+    assert_eq!(transport.call_count(), 3);
 }
 
 /// #2940: a 429 on verify judged no code, so the sign-in stays on the code

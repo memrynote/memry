@@ -357,12 +357,15 @@ impl AuthSession {
 
     /// Asks for a fresh code. Not a state transition: chapter 02 §2.11
     /// caps it at three per ten minutes and the state is unchanged either way.
+    /// Outside `AwaitingOtp` it is `InvalidState` and sends nothing.
     pub async fn resend_email_code(&self) -> Result<(), AuthError> {
         self.resend_email_code_answer().await.map(|_| ())
     }
 
-    /// `AwaitingOtp -> SetupPending`, or `-> SignedOut` when the code is
-    /// rejected. The body is [`Self::verify_email_code_answer`].
+    /// `AwaitingOtp -> SetupPending`. A wrong, expired or rate-limited code
+    /// (a 4xx) stays in `AwaitingOtp`, so a resend and the right code still
+    /// finish the attempt; any other failure is `-> SignedOut`. The body is
+    /// [`Self::verify_email_code_answer`].
     pub async fn verify_email_code(&self, code: String) -> Result<AuthState, AuthError> {
         Ok(self.verify_email_code_answer(code).await?.0)
     }
