@@ -20,6 +20,8 @@ const baseBacklink: Backlink = {
   noteId: 'note-a',
   noteTitle: 'John',
   date: new Date('2026-05-08'),
+  sourceJournalDate: null,
+  sourceTags: [],
   mentions: [],
   mentionCount: 0,
   truncated: false
