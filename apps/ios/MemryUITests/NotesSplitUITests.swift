@@ -234,6 +234,17 @@ final class NotesSplitUITests: XCTestCase {
         XCTAssertTrue(far.wait(for: \.isHittable, toEqual: true, timeout: 5), "the outline did not scroll to the far heading")
         attach("inspector-outline-far")
 
+        // A rotation there and back brings the rail back alone: the list
+        // stays collapsed beside it.
+        XCUIDevice.shared.orientation = .portrait
+        XCTAssertTrue(page(title).waitForExistence(timeout: 10))
+        XCUIDevice.shared.orientation = .landscapeLeft
+        let rail = app.descendants(matching: .any)["note.inspector"]
+        XCTAssertTrue(rail.waitForExistence(timeout: 10), "the rail did not come back")
+        Thread.sleep(forTimeInterval: 1)
+        XCTAssertFalse(app.buttons["notes.addButton"].firstMatch.isHittable, "the list came back beside the rail")
+        attach("inspector-rotated-back")
+
         hideInspector()
         attach("inspector-closed-landscape")
         XCUIDevice.shared.orientation = .portrait
@@ -274,6 +285,52 @@ final class NotesSplitUITests: XCTestCase {
 
         hideInspector()
         deleteNotes([source, target])
+    }
+
+    /// #4347: a property value and a tag typed in the inspector, with no
+    /// Return, land when the field is left and when the rail closes.
+    func testDraftsTypedInTheInspectorLandWhenItCloses() throws {
+        try openNotes()
+        let title = "[agent] \(run) drafts"
+        makeNote(title)
+        try showInspector()
+
+        let addProperty = app.buttons["Add a property"].firstMatch
+        XCTAssertTrue(addProperty.waitForExistence(timeout: 10), "the inspector offers no property")
+        addProperty.tap()
+        let name = app.textFields["Property name"]
+        XCTAssertTrue(name.waitForExistence(timeout: 10))
+        name.tap()
+        name.typeText("status")
+        app.buttons["Text"].firstMatch.tap()
+        let value = app.textFields["status"].firstMatch
+        XCTAssertTrue(value.waitForExistence(timeout: 10), "the property has no field")
+        value.tap()
+        value.typeText("drafted")
+
+        // Leaving the value for the tag field is the blur path.
+        let addTag = app.buttons["Add a tag"].firstMatch
+        XCTAssertTrue(addTag.waitForExistence(timeout: 10))
+        addTag.tap()
+        let tagField = app.textFields["Add a tag"].firstMatch
+        XCTAssertTrue(matches(NSPredicate(format: "hasKeyboardFocus == true"), tagField), "the tag field has no caret")
+        tagField.typeText(run)
+        attach("inspector-drafts-typed")
+
+        // Closing the rail is the disappear path.
+        hideInspector()
+        let pageValue = app.textFields["status"].firstMatch
+        XCTAssertTrue(matches(NSPredicate(format: "value == 'drafted'"), pageValue), "the typed value was lost")
+        XCTAssertTrue(app.staticTexts[run].firstMatch.waitForExistence(timeout: 10), "the typed tag was lost")
+        attach("inspector-drafts-landed")
+
+        // Written, not only drawn: the note comes back with both (D6).
+        app.terminate()
+        try openNotes()
+        XCTAssertTrue(page(title).waitForExistence(timeout: 10))
+        XCTAssertTrue(matches(NSPredicate(format: "value == 'drafted'"), app.textFields["status"].firstMatch))
+        XCTAssertTrue(app.staticTexts[run].firstMatch.waitForExistence(timeout: 10))
+        deleteNotes([title])
     }
 
     // MARK: Helpers

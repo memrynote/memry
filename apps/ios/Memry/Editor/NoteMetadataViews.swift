@@ -335,9 +335,13 @@ struct NoteTagEditor: View {
             }
         }
         .onAppear { if startsFocused { focused = true } }
+        // A typed tag lands when the field is left, as on Return: the rail
+        // can close, or the page change, before Return is pressed.
         .onChange(of: focused) { _, isFocused in
-            if !isFocused, draft.isEmpty { onIdle() }
+            guard !isFocused else { return }
+            if draft.isEmpty { onIdle() } else { commit() }
         }
+        .onDisappear(perform: commit)
     }
 
     private func choose(_ tag: String) {
@@ -459,6 +463,9 @@ struct NotePropertyEditor: View {
 
     @State private var draft: String = ""
     @State private var loaded = false
+    /// The draft holds keys not yet written.
+    @State private var typed = false
+    @FocusState private var valueFocused: Bool
     @State private var renaming = false
     @State private var nameDraft = ""
     @State private var pickingDate = false
@@ -497,6 +504,17 @@ struct NotePropertyEditor: View {
             draft = NotePropertyJSON.decode(property)
             loaded = true
         }
+        // A write from elsewhere (the other copy of this row, sync) shows
+        // here unless keys are waiting.
+        .onChange(of: property.valueJson) {
+            if !typed { draft = NotePropertyJSON.decode(property) }
+        }
+        // Typed keys land when the field is left or the row goes, as on
+        // Return: the rail can close, or the page change, before Return.
+        .onChange(of: valueFocused) { _, isFocused in
+            if !isFocused { submit(explicit: false) }
+        }
+        .onDisappear { submit(explicit: false) }
         .alert("Rename property", isPresented: $renaming) {
             TextField("Property name", text: $nameDraft)
                 .textInputAutocapitalization(.never)
@@ -551,6 +569,20 @@ struct NotePropertyEditor: View {
         } else {
             label.accessibilityHidden(true)
         }
+    }
+
+    private var typing: Binding<String> {
+        Binding(get: { draft }, set: { draft = $0; typed = true })
+    }
+
+    /// Writes typed keys once: Return then leaving the field is one write.
+    /// Leaving an emptied field writes nothing; Return on it writes the
+    /// empty value, as before.
+    private func submit(explicit: Bool) {
+        guard typed, explicit || !draft.isEmpty else { return }
+        typed = false
+        guard draft != NotePropertyJSON.decode(property) else { return }
+        commit(draft)
     }
 
     private func startRenaming() {
@@ -675,25 +707,28 @@ struct NotePropertyEditor: View {
             .accessibilityLabel(property.name)
 
         case .number:
-            TextField("Empty", text: $draft)
+            TextField("Empty", text: typing)
                 .keyboardType(.decimalPad)
-                .onSubmit { commit(draft) }
+                .focused($valueFocused)
+                .onSubmit { submit(explicit: true) }
                 .accessibilityLabel(property.name)
 
         case .url:
-            TextField("Empty", text: $draft)
+            TextField("Empty", text: typing)
                 .keyboardType(.URL)
                 .textInputAutocapitalization(.never)
                 .foregroundStyle(Tokens.Text.tint.color)
-                .onSubmit { commit(draft) }
+                .focused($valueFocused)
+                .onSubmit { submit(explicit: true) }
                 .accessibilityLabel(property.name)
 
         default:
             // text, a choice with no options, and any type this build has
             // never heard of. A comma-separated list is how an array type is
             // typed, which the model turns back into a JSON array.
-            TextField("Empty", text: $draft)
-                .onSubmit { commit(draft) }
+            TextField("Empty", text: typing)
+                .focused($valueFocused)
+                .onSubmit { submit(explicit: true) }
                 .accessibilityLabel(property.name)
         }
     }
