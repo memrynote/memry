@@ -1,13 +1,16 @@
 //! What the embedding lane owes is read from `index.db` and `note_files`, never from an event
-//! (VERIFY-4656): each vector records the `note_files` content hash it was built from, and the
-//! reconcile embeds every note whose hash moved since. An edit whose event a close dropped, an
-//! edit made while the app was closed, and an index from before the hashes are each embedded
-//! on the next open.
+//! (VERIFY-4656): each vector records the hash of the bytes it was built from and the title it
+//! was built with, and the reconcile embeds every note whose file hash or title moved since. An
+//! edit or a rename whose event a close dropped, one made while the app was closed, and an
+//! index from before the hashes are each embedded on the next open.
 //!
 //! | Test                                                      | Owed because                     |
 //! | --------------------------------------------------------- | -------------------------------- |
 //! | an edit closed within the write-back debounce is embedded | the close's write-back moved it  |
 //! | an edit on disk while closed is embedded on reopen        | the open's walk moved it         |
+//! | a rename on disk while closed is embedded on reopen       | the open's walk retitled it      |
+//! | a rename whose event embedded nothing before the close    | the rename retitled it           |
+//! | a refused outside edit records the bytes it embedded      | (not owed: the hash names them)  |
 //! | an index from before the hashes embeds once, keeps all    | no hash recorded                 |
 
 use std::sync::{Arc, Mutex};
@@ -16,10 +19,45 @@ use std::time::{Duration, Instant};
 use memry_desktop::session::OpenStage;
 use memry_desktop::vault::consumer::Applied;
 
+use memry_desktop::vault::hash::content_hash;
+use rusqlite::OptionalExtension as _;
+
 use crate::embedding_lane::{ALPHA, BETA, Lane, lane};
 use crate::vault_env::{WAIT, indexed};
 
 const EDITED: &str = "Alpha now holds an edited body instead.";
+
+/// Holds the next open until the tier's walk has told `walked`: the feed drops that fact, so
+/// only the reconcile can embed what it reports.
+fn hold_open_until_walked(l: &Lane, walked: impl Fn(&Applied) -> bool + Send + Sync + 'static) {
+    let facts = Mutex::new(l.e.tier.subscribe());
+    l.e.session.on_open(
+        "embedding-owed-walk",
+        OpenStage::Defaults,
+        Arc::new(move |_| {
+            let mut facts = facts.lock().unwrap();
+            let deadline = Instant::now() + WAIT;
+            while Instant::now() < deadline {
+                match facts.try_recv() {
+                    Ok(fact) if walked(&fact) => {
+                        std::thread::sleep(Duration::from_millis(300));
+                        return Ok(());
+                    }
+                    Ok(_) => {}
+                    Err(_) => std::thread::sleep(Duration::from_millis(20)),
+                }
+            }
+            Ok(())
+        }),
+    );
+}
+
+fn until_titled(l: &Lane, id: &str, title: &str) {
+    let header = format!("title: {title} |");
+    l.until("the renamed note's vector", |l| {
+        l.head_text(id).is_some_and(|text| text.contains(&header))
+    });
+}
 
 fn reopen(l: &mut Lane) {
     l.e.open();
@@ -62,30 +100,108 @@ fn an_edit_on_disk_while_closed_is_embedded_on_reopen() {
     l.e.close();
     l.e.write("a.md", &format!("{EDITED}\n"));
 
-    // The reopen's walk reports the edit before the vault is open, and the feed drops it: this
-    // hook holds the open until the feed has seen the fact.
-    let walked = Mutex::new(l.e.tier.subscribe());
-    l.e.session.on_open(
-        "embedding-owed-walk",
-        OpenStage::Defaults,
-        Arc::new(move |_| {
-            let mut walked = walked.lock().unwrap();
-            let deadline = Instant::now() + WAIT;
-            while Instant::now() < deadline {
-                match walked.try_recv() {
-                    Ok(Applied::Changed { path, .. }) if path == "a.md" => {
-                        std::thread::sleep(Duration::from_millis(300));
-                        return Ok(());
-                    }
-                    Ok(_) => {}
-                    Err(_) => std::thread::sleep(Duration::from_millis(20)),
-                }
-            }
-            Ok(())
-        }),
+    // The reopen's walk reports the edit before the vault is open, and the feed drops it.
+    hold_open_until_walked(
+        &l,
+        |fact| matches!(fact, Applied::Changed { path, .. } if path == "a.md"),
     );
     reopen(&mut l);
     until_edited(&l, &id);
+}
+
+#[test]
+fn a_rename_on_disk_while_closed_is_embedded_on_reopen() {
+    let mut l = lane();
+    let id = l.write("alpha-note.md", ALPHA);
+    l.embedded(&id);
+    l.settled();
+    until_titled(&l, &id, "alpha-note");
+    l.e.close();
+    std::fs::rename(
+        l.e.vault.join("alpha-note.md"),
+        l.e.vault.join("renamed-note.md"),
+    )
+    .unwrap();
+
+    hold_open_until_walked(
+        &l,
+        |fact| matches!(fact, Applied::Renamed { new_path, .. } if new_path == "renamed-note.md"),
+    );
+    reopen(&mut l);
+    until_titled(&l, &id, "renamed-note");
+}
+
+#[test]
+fn a_rename_whose_event_embedded_nothing_before_the_close_is_embedded_on_reopen() {
+    let mut l = lane();
+    let id = l.write("alpha-note.md", ALPHA);
+    l.embedded(&id);
+    l.settled();
+
+    // The rename's event reaches the lane while it defers (an index build), and the close
+    // drops what the drain would have run.
+    l.indexing.store(true, std::sync::atomic::Ordering::SeqCst);
+    std::fs::rename(
+        l.e.vault.join("alpha-note.md"),
+        l.e.vault.join("renamed-note.md"),
+    )
+    .unwrap();
+    l.e.facts_until(
+        |fact| matches!(fact, Applied::Renamed { new_path, .. } if new_path == "renamed-note.md"),
+    );
+    l.settled();
+    l.e.close();
+    l.indexing.store(false, std::sync::atomic::Ordering::SeqCst);
+
+    reopen(&mut l);
+    until_titled(&l, &id, "renamed-note");
+}
+
+/// The hash a note's vectors record, from `note_embedding_hashes`.
+fn recorded_hash(l: &Lane, id: &str) -> Option<String> {
+    let id = id.to_owned();
+    l.query(move |conn| {
+        conn.query_row(
+            "SELECT content_hash FROM note_embedding_hashes WHERE note_id = ?1",
+            [id],
+            |row| row.get(0),
+        )
+        .optional()
+        .map(Option::flatten)
+    })
+}
+
+#[test]
+fn a_refused_outside_edit_records_the_hash_of_the_bytes_it_embedded() {
+    let mut l = lane();
+    let id = l.write("a.md", ALPHA);
+    l.embedded(&id);
+    l.settled();
+
+    // As the tier leaves a file whose outside edit the document refused: the document's hash
+    // in `note_files`, the file's bytes in `note_file_hashes`.
+    let note = id.clone();
+    l.e.core()
+        .db_handle()
+        .call_blocking(move |conn| {
+            Ok(conn
+                .execute(
+                    "UPDATE note_files SET content_hash = 'refused0' WHERE note_id = ?1",
+                    [note],
+                )
+                .unwrap())
+        })
+        .unwrap();
+    l.publish(&id);
+    l.settled();
+    l.embedded(&id);
+
+    assert_eq!(
+        recorded_hash(&l, &id),
+        Some(content_hash(&l.e.read("a.md"))),
+        "the hash names the bytes the vectors were built from"
+    );
+    assert!(l.owed().is_empty(), "the embedded bytes are on disk");
 }
 
 #[test]

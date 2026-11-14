@@ -6,11 +6,11 @@
 //! A note's head window goes to `vec_notes`, each later window to `vec_note_chunks`
 //! (`<note_id>#<n>`), its `similarity` vector to `vec_note_similar`, and its
 //! `note_embedding_state` row records the input version and the number of later windows, all
-//! in one transaction, with its `note_embedding_hashes` row: the `note_files` content hash the
-//! note had when it was listed, before its file was read. The file is written before its row
-//! (`vault::writeback`), so that hash never names newer text than the vectors hold. A note
-//! whose hash moved since, or that has no hash row, is owed: whatever happened to the events
-//! of its edits (a close, a missed fact, an edit made while the app was closed). Input version
+//! in one transaction, with its `note_embedding_hashes` row: the hash of the file bytes the
+//! vectors were built from and the title they were built with. A note whose file hash (else
+//! its document's) or title moved since, or that has no hash row, is owed: whatever happened
+//! to the events of its edits and renames (a close, a missed fact, a change made while the app
+//! was closed). Input version
 //! `0` is the dirty sentinel a rebuild sets: every build (older ones too) treats it as owed.
 //! Old vectors keep answering until new ones replace them.
 //!
@@ -40,8 +40,9 @@ pub struct EmbeddableNote {
     /// The note's title; a journal day's is its file name without `.md`
     /// (`extractTitleFromPath`), as Electron's index titles it.
     pub title: String,
-    /// The hash the note index compares (`note_stats::unindexed`): the text the note's
-    /// document holds, else the file's last read. `None` when the tier never read the file.
+    /// The hash of the bytes on disk (`note_file_hashes.file_hash`), else of the text the
+    /// note's document holds: what the projector reads and hashes when it embeds. `None` when
+    /// the tier never read the file.
     pub content_hash: Option<String>,
 }
 
@@ -54,7 +55,7 @@ fn file_title(path: &str) -> String {
 }
 
 const EMBEDDABLE: &str = "SELECT f.note_id, f.path, n.title, \
-     COALESCE(f.content_hash, h.file_hash) FROM note_files f \
+     COALESCE(h.file_hash, f.content_hash) FROM note_files f \
      LEFT JOIN notes n ON n.id = f.note_id AND n.deleted_at IS NULL \
      LEFT JOIN note_file_hashes h ON h.note_id = f.note_id \
      WHERE f.file_type = 'markdown'";
@@ -146,12 +147,13 @@ fn delete_rows(index: &Connection, note_id: &str) -> Result<(), StorageError> {
 }
 
 /// `storeNoteEmbeddings`: the note's windows (the head first) and its `similarity` vector,
-/// replacing what it had, with its state row at the current input version and the
-/// `content_hash` the note was listed with.
+/// replacing what it had, with its state row at the current input version, the hash of the
+/// bytes they were built from and the title they were built with.
 pub fn store(
     index: &Connection,
     note_id: &str,
     content_hash: Option<&str>,
+    title: &str,
     windows: &[Vec<f32>],
     similar: &[f32],
 ) -> Result<(), StorageError> {
@@ -195,8 +197,9 @@ pub fn store(
         .map_err(failed)?;
     transaction
         .execute(
-            "INSERT OR REPLACE INTO note_embedding_hashes (note_id, content_hash) VALUES (?1, ?2)",
-            params![note_id, content_hash],
+            "INSERT OR REPLACE INTO note_embedding_hashes (note_id, content_hash, title)
+             VALUES (?1, ?2, ?3)",
+            params![note_id, content_hash, title],
         )
         .map_err(failed)?;
     transaction.commit().map_err(failed)
@@ -247,7 +250,7 @@ pub fn prune(index: &Connection, live: &HashSet<String>) -> Result<usize, Storag
 
 /// The notes of `notes` owed a vector: those with none first (semantic search cannot find
 /// them), then those built from another input version, marked dirty, or from another
-/// content hash than the note has now (none recorded included).
+/// content hash or title than the note has now (none recorded included).
 pub fn owed(
     index: &Connection,
     notes: Vec<EmbeddableNote>,
@@ -255,16 +258,18 @@ pub fn owed(
     let embedded = ids(index, "SELECT note_id FROM vec_notes")?;
     let mut statement = index
         .prepare(
-            "SELECT s.note_id, h.note_id IS NOT NULL, h.content_hash
+            "SELECT s.note_id, h.note_id IS NOT NULL, h.content_hash, h.title
              FROM note_embedding_state s
              LEFT JOIN note_embedding_hashes h ON h.note_id = s.note_id
              WHERE s.input_version = ?1",
         )
         .map_err(failed)?;
-    let built: HashMap<String, Option<Option<String>>> = statement
+    type Built = (Option<String>, Option<String>);
+    let built: HashMap<String, Option<Built>> = statement
         .query_map([EMBEDDING_INPUT_VERSION], |row| {
             let hashed: bool = row.get(1)?;
-            Ok((row.get(0)?, hashed.then(|| row.get(2)).transpose()?))
+            let recorded = || Ok::<_, rusqlite::Error>((row.get(2)?, row.get(3)?));
+            Ok((row.get(0)?, hashed.then(recorded).transpose()?))
         })
         .map_err(failed)?
         .collect::<Result<_, _>>()
@@ -272,7 +277,10 @@ pub fn owed(
     let current = |note: &EmbeddableNote| {
         built
             .get(&note.note_id)
-            .is_some_and(|hash| hash.as_ref() == Some(&note.content_hash))
+            .and_then(Option::as_ref)
+            .is_some_and(|(hash, title)| {
+                *hash == note.content_hash && title.as_deref() == Some(note.title.as_str())
+            })
     };
     let (missing, stale): (Vec<_>, Vec<_>) = notes
         .into_iter()

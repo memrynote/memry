@@ -2,24 +2,25 @@
 //! `apps/desktop/src/main/projections/projectors/embedding-projector.ts` over the
 //! [`EmbeddingService`] and the core's note vector store ([`Search`]'s `*_note_embeddings`).
 //!
-//! - **What is owed lives in `index.db`.** Each note's vectors record the `note_files` content
-//!   hash they were built from ([`note_embeddings`](memry_core::domain::note_embeddings)), and
-//!   the reconcile embeds every note whose hash moved since. Events only make the embed
+//! - **What is owed lives in `index.db`.** Each note's vectors record the hash of the bytes
+//!   they were built from and the title they were built with
+//!   ([`note_embeddings`](memry_core::domain::note_embeddings)), and the reconcile embeds every
+//!   note whose file hash or title moved since. Events only make the embed
 //!   prompt: a note whose embed is skipped (AI off, indexing, a failed load, an event a close
 //!   drained or dropped, a fact published before the vault was open) stays owed across
 //!   restarts, and the reconcile finds it. Electron marks the note dirty per event instead
 //!   (`markDirty`, :188-203), which an event that never arrives cannot do.
 //! - **Deferred while indexing** (:376-378, 446-448): an event during the open's build or a
-//!   `vault_reindex` only marks its note; [`drain_deferred`] runs the reconcile once the index
-//!   stops indexing (`drainDeferredEmbeddings`, `vault/index.ts:996-1015`, and the build's tail,
-//!   :586-599).
+//!   `vault_reindex` embeds nothing: its note stays owed, and [`drain_deferred`] runs the
+//!   reconcile once the index stops indexing (`drainDeferredEmbeddings`,
+//!   `vault/index.ts:996-1015`, and the build's tail, :586-599).
 //! - **Gated before every inference** (`canContinue`, :216-218): the session's cancel token
 //!   (set when the vault closes, before its close hooks stop the model), the vault still being
 //!   the one the work started on, the AI setting, and no newer event on the note. An event the
 //!   close drains therefore embeds nothing and starts no model thread (REVIEW-4548). The last
 //!   check and the store are two steps: an edit published between them gets the older
-//!   vector stored, with the older hash, so the edit stays owed. Its queued event replaces that
-//!   vector, or the next reconcile does.
+//!   vector stored, with the hash of the older bytes, so the edit stays owed. Its queued event
+//!   replaces that vector, or the next reconcile does.
 //! - **Markdown notes only.** File notes and the attachment text Electron appends
 //!   (`withAttachmentText`, :128-133) come with the extracted-text tables (Step 25, #3542).
 
@@ -146,10 +147,14 @@ impl NoteEmbeddingProjector {
         Ok(revision)
     }
 
-    /// The note's body as Electron reads it (`readVaultFile` and `parseNote(..).content`).
-    fn content(&self, work: &Work<'_>, note: &EmbeddableNote) -> Result<String, String> {
+    /// The note's body as Electron reads it (`readVaultFile` and `parseNote(..).content`), and
+    /// the hash of the bytes read, which its vectors record.
+    fn content(&self, work: &Work<'_>, note: &EmbeddableNote) -> Result<(String, String), String> {
         match read_note_lossy(&work.open.path, &note.path) {
-            Ok(Some(file)) => Ok(split_frontmatter_block(&file.raw).body.to_owned()),
+            Ok(Some(file)) => Ok((
+                split_frontmatter_block(&file.raw).body.to_owned(),
+                file.hash,
+            )),
             Ok(None) => Err(format!("Note file is missing: {}", note.path)),
             Err(error) => Err(format!("{}: {error}", note.path)),
         }
@@ -160,7 +165,7 @@ impl NoteEmbeddingProjector {
         &self,
         work: &Work<'_>,
         note: &EmbeddableNote,
-        content: &str,
+        (content, read_hash): &(String, String),
         revision: Option<u64>,
     ) -> Result<bool, String> {
         let current = || self.may_embed(work) && self.revision(&note.note_id) == revision;
@@ -206,7 +211,7 @@ impl NoteEmbeddingProjector {
         }
         work.open
             .search
-            .store_note_embeddings(note, vectors, similar)
+            .store_note_embeddings(note, read_hash, vectors, similar)
             .map_err(text)?;
         Ok(true)
     }
@@ -222,7 +227,7 @@ impl NoteEmbeddingProjector {
             if self.revision(&note.note_id) == *revision {
                 let embedded = self
                     .content(work, note)
-                    .and_then(|content| self.update(work, note, &content, *revision));
+                    .and_then(|read| self.update(work, note, &read, *revision));
                 match embedded {
                     Ok(true) => computed += 1,
                     Ok(false) => {}
@@ -255,8 +260,7 @@ impl NoteEmbeddingProjector {
     }
 
     /// `note.text-extracted` for a markdown note and the tier's note writes (:400-425,
-    /// 436-456): embed it, against the revision it has now, unless the index is building. Its
-    /// content hash is read before its file, so the stored hash never names newer text.
+    /// 436-456): embed it, against the revision it has now, unless the index is building.
     fn note_changed(&self, work: &Work<'_>, note_id: &str) -> Result<(), String> {
         if (self.indexing)() || !self.may_embed(work) {
             return Ok(());
@@ -265,8 +269,8 @@ impl NoteEmbeddingProjector {
         let Some(note) = work.open.search.embeddable_note(note_id).map_err(text)? else {
             return Ok(());
         };
-        let content = self.content(work, &note)?;
-        self.update(work, &note, &content, revision).map(drop)
+        let read = self.content(work, &note)?;
+        self.update(work, &note, &read, revision).map(drop)
     }
 }
 
@@ -355,9 +359,10 @@ impl Projector for NoteEmbeddingProjector {
     }
 
     /// `reconcile` (:483-583): drop the vectors of gone notes, then embed the notes with no
-    /// vector, an older input version, a dirty mark or another content hash. Left to [`drain_deferred`] while the
-    /// index builds, the prune included: `note_files` may be half filled (Electron prunes after
-    /// the walk, `vault/index.ts:586-599`). A failed model load leaves the work owed.
+    /// vector, an older input version, a dirty mark, or another content hash or title. Left to
+    /// [`drain_deferred`] while the index builds, the prune included: `note_files` may be half
+    /// filled (Electron prunes after the walk, `vault/index.ts:586-599`). A failed model load
+    /// leaves the work owed.
     fn reconcile(&self, cancel: &CancelToken) -> Result<(), String> {
         let Some(work) = self.work(cancel) else {
             return Ok(());

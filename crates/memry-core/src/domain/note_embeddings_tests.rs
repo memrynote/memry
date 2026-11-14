@@ -143,7 +143,7 @@ fn markdown_notes_and_days_are_embeddable_with_their_titles() {
 #[test]
 fn store_writes_head_chunks_similar_and_state_in_one_go() {
     let d = dbs();
-    d.index(|conn| store(conn, "n1", None, &[v(1.0), v(2.0), v(3.0)], &v(4.0)));
+    d.index(|conn| store(conn, "n1", None, "One", &[v(1.0), v(2.0), v(3.0)], &v(4.0)));
     assert_eq!(d.state("n1"), Some((i64::from(EMBEDDING_INPUT_VERSION), 2)));
     assert_eq!(d.count("SELECT count(*) FROM vec_note_chunks"), 2);
     let (head, similar, second) = d.index(|conn| {
@@ -158,7 +158,7 @@ fn store_writes_head_chunks_similar_and_state_in_one_go() {
     assert_eq!(second, Some(v(3.0)));
 
     // A shorter note drops the chunks it no longer has.
-    d.index(|conn| store(conn, "n1", None, &[v(5.0)], &v(6.0)));
+    d.index(|conn| store(conn, "n1", None, "One", &[v(5.0)], &v(6.0)));
     assert_eq!(d.state("n1"), Some((i64::from(EMBEDDING_INPUT_VERSION), 0)));
     assert_eq!(d.count("SELECT count(*) FROM vec_note_chunks"), 0);
     assert_eq!(d.count("SELECT count(*) FROM vec_notes"), 1);
@@ -168,14 +168,14 @@ fn store_writes_head_chunks_similar_and_state_in_one_go() {
 fn dirty_keeps_the_old_vectors_until_a_build_replaces_them() {
     let d = dbs();
     d.file("n1", "n1.md", "markdown", Some("One"));
-    d.index(|conn| store(conn, "n1", None, &[v(1.0), v(2.0)], &v(3.0)));
+    d.index(|conn| store(conn, "n1", None, "One", &[v(1.0), v(2.0)], &v(3.0)));
     assert!(d.owed().is_empty());
     d.index(|conn| mark_dirty(conn, "n1"));
     assert_eq!(d.state("n1"), Some((0, 1)));
     assert_eq!(d.count("SELECT count(*) FROM vec_notes"), 1);
     assert_eq!(d.owed(), ["n1"]);
     // The chunk count kept by the dirty row still finds the old chunk.
-    d.index(|conn| store(conn, "n1", None, &[v(4.0)], &v(5.0)));
+    d.index(|conn| store(conn, "n1", None, "One", &[v(4.0)], &v(5.0)));
     assert_eq!(d.count("SELECT count(*) FROM vec_note_chunks"), 0);
 }
 
@@ -186,8 +186,8 @@ fn owed_lists_notes_with_no_vector_first_then_stale_ones() {
     d.file("b", "b.md", "markdown", Some("B"));
     d.file("c", "c.md", "markdown", Some("C"));
     d.index(|conn| {
-        store(conn, "a", None, &[v(1.0)], &v(1.0))?;
-        store(conn, "c", None, &[v(1.0)], &v(1.0))?;
+        store(conn, "a", None, "A", &[v(1.0)], &v(1.0))?;
+        store(conn, "c", None, "C", &[v(1.0)], &v(1.0))?;
         conn.execute(
             "UPDATE note_embedding_state SET input_version = 5 WHERE note_id = 'a'",
             [],
@@ -203,21 +203,45 @@ fn a_note_is_owed_until_its_vectors_were_built_from_the_hash_it_has_now() {
     let d = dbs();
     d.file("n1", "n1.md", "markdown", Some("One"));
     d.hashes("n1", Some("aaaa0001"), None);
-    d.index(|conn| store(conn, "n1", Some("aaaa0001"), &[v(1.0)], &v(1.0)));
+    d.index(|conn| store(conn, "n1", Some("aaaa0001"), "One", &[v(1.0)], &v(1.0)));
     assert!(d.owed().is_empty());
 
     // An edit whose event never reached the lane: only `note_files` moved.
     d.hashes("n1", Some("aaaa0002"), None);
     assert_eq!(d.owed(), ["n1"]);
-    // A file the document refused: the hash of the file's last read.
-    d.hashes("n1", None, Some("ffff0001"));
+    // A file the document refused: the hash of the bytes on disk, which the projector reads.
+    d.hashes("n1", Some("aaaa0002"), Some("ffff0001"));
     assert_eq!(d.owed(), ["n1"]);
-    d.index(|conn| store(conn, "n1", Some("ffff0001"), &[v(2.0)], &v(2.0)));
+    d.index(|conn| store(conn, "n1", Some("ffff0001"), "One", &[v(2.0)], &v(2.0)));
     assert!(d.owed().is_empty());
+    // The write-back puts the document's text back on disk: the vectors hold other bytes.
+    d.hashes("n1", Some("aaaa0002"), Some("aaaa0002"));
+    assert_eq!(d.owed(), ["n1"]);
+    d.index(|conn| store(conn, "n1", Some("aaaa0002"), "One", &[v(2.0)], &v(2.0)));
     // A file the tier never read: no hash on either side.
     d.hashes("n1", None, None);
     assert_eq!(d.owed(), ["n1"]);
-    d.index(|conn| store(conn, "n1", None, &[v(3.0)], &v(3.0)));
+    d.index(|conn| store(conn, "n1", None, "One", &[v(3.0)], &v(3.0)));
+    assert!(d.owed().is_empty());
+}
+
+#[test]
+fn a_note_is_owed_until_its_vectors_were_built_with_the_title_it_has_now() {
+    let d = dbs();
+    d.file("n1", "n1.md", "markdown", Some("One"));
+    d.hashes("n1", Some("aaaa0001"), Some("aaaa0001"));
+    d.index(|conn| store(conn, "n1", Some("aaaa0001"), "One", &[v(1.0)], &v(1.0)));
+    assert!(d.owed().is_empty());
+
+    // A rename whose event never reached the lane: only the title moved.
+    d.data
+        .call_blocking(|conn| {
+            conn.execute("UPDATE notes SET title = 'Renamed' WHERE id = 'n1'", [])
+                .map_err(failed)
+        })
+        .expect("rename");
+    assert_eq!(d.owed(), ["n1"]);
+    d.index(|conn| store(conn, "n1", Some("aaaa0001"), "Renamed", &[v(2.0)], &v(2.0)));
     assert!(d.owed().is_empty());
 }
 
@@ -227,7 +251,7 @@ fn vectors_from_before_the_hashes_are_owed_and_kept() {
     d.file("n1", "n1.md", "markdown", Some("One"));
     d.hashes("n1", Some("aaaa0001"), None);
     d.index(|conn| {
-        store(conn, "n1", Some("aaaa0001"), &[v(1.0)], &v(1.0))?;
+        store(conn, "n1", Some("aaaa0001"), "One", &[v(1.0)], &v(1.0))?;
         conn.execute("DELETE FROM note_embedding_hashes", [])
             .map_err(failed)
             .map(drop)
@@ -242,8 +266,8 @@ fn prune_drops_everything_a_gone_note_owned() {
     let d = dbs();
     d.file("kept", "kept.md", "markdown", Some("Kept"));
     d.index(|conn| {
-        store(conn, "kept", None, &[v(1.0)], &v(1.0))?;
-        store(conn, "gone", None, &[v(1.0), v(2.0)], &v(1.0))?;
+        store(conn, "kept", None, "Kept", &[v(1.0)], &v(1.0))?;
+        store(conn, "gone", None, "Gone", &[v(1.0), v(2.0)], &v(1.0))?;
         mark_dirty(conn, "dirty-gone")
     });
     let live: HashSet<String> = d.embeddable().into_iter().map(|n| n.note_id).collect();
@@ -259,8 +283,8 @@ fn prune_drops_everything_a_gone_note_owned() {
 fn delete_and_clear_leave_no_row() {
     let d = dbs();
     d.index(|conn| {
-        store(conn, "a", None, &[v(1.0), v(2.0)], &v(1.0))?;
-        store(conn, "b", None, &[v(1.0)], &v(1.0))?;
+        store(conn, "a", None, "A", &[v(1.0), v(2.0)], &v(1.0))?;
+        store(conn, "b", None, "B", &[v(1.0)], &v(1.0))?;
         delete(conn, "a")
     });
     assert_eq!(d.state("a"), None);
