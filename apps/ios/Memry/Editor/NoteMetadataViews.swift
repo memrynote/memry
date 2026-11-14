@@ -167,6 +167,13 @@ struct NoteTitleEditor: View {
                         commit()
                     }
                 }
+                // A draft the user has not changed follows the saved title.
+                // A page drawn again by a size-class change reads the note
+                // before the title typed on the page before is saved; its
+                // stale empty draft must not be written over it (#4532).
+                .onChange(of: title) { old, new in
+                    if editing, draft == old { draft = new }
+                }
                 // A note with no title (a new one) opens with the caret in
                 // its title, as desktop does. Not when the page is drawn
                 // again under a block that had the caret (#4457).

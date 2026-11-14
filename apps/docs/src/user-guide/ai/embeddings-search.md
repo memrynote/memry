@@ -58,7 +58,7 @@ group and has no highlighted snippet. Typing `cat` can surface a note about kitt
 English, with no shared word.
 
 Only a note's vector needs to exist, so a note that is not embedded yet is found by keywords only.
-Meaning-only matches need a similarity of about 0.65 or more, so unrelated notes are not listed. The
+Meaning-only matches need a similarity of about 0.725 or more, so unrelated notes are not listed. The
 first search after launch starts the model and answers by keywords alone, because loading takes
 seconds; later searches include meaning. Queries with `AND`, `OR`, `NOT` or quoted phrases, queries
 under three characters, and searches with embeddings off are keyword-only.
@@ -95,8 +95,8 @@ text vectors, and a match lists the image (or the note that embeds it) with the 
   one at a time, after the vault is open. A quit part-way continues where it stopped. Renaming or
   moving an image re-embeds it under its new identity, and deleting it, or removing it from a note,
   drops its vector.
-- **Limits.** Matching a picture to a word is looser than matching text to text, so image hits need
-  a higher similarity (about 0.68) and a related animal can match, such as `dog` finding a cat photo.
+- **Limits.** Matching a picture to a word is looser than matching text to text, so images have
+  their own similarity floor of about 0.68, and a related animal can match, such as `dog` finding a cat photo.
   An image that fails to embed is tried again the next time its note changes or the vault opens.
 
 Vectors stay in the local index database and are rebuilt from your vault; none of it syncs.
@@ -209,8 +209,8 @@ next vault open or when the transcription finishes.
 - **Why transcript first.** On Turkish and English recordings, a transcript vector found a spoken or
   typed description of a memo at least as often as the audio vector, and combining the two did no
   better. Audio is the only signal for a recording with no words, so that is where it is used.
-- **Limits.** Matching sound to a word is looser than text to text, so audio hits need a similarity
-  of about 0.68. Queries are typed text; speaking a query is not supported.
+- **Limits.** Matching sound to a word is looser than text to text, so audio has its own
+  similarity floor of about 0.68. Queries are typed text; speaking a query is not supported.
 
 ## Model Size
 

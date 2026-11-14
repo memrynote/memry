@@ -150,12 +150,17 @@ private struct NotesSidebar: View {
     var body: some View {
         List(selection: Binding(get: { router.scope }, set: { if let scope = $0 { router.show(scope) } })) {
             Label(VaultTab.notes.title, systemImage: VaultTab.notes.symbol)
+                .frame(maxWidth: .infinity, alignment: .leading)
+                .modifier(NoteFolderDropTarget(folder: nil, model: model))
                 .tag(NotesScope.root)
                 .accessibilityIdentifier("notes.sidebar.root")
             if let roots = model.outline?.roots, !roots.isEmpty {
                 Section("Collections") {
                     OutlineGroup(roots, children: \.sidebarChildren) { node in
                         FolderSidebarLabel(node: node)
+                            .frame(maxWidth: .infinity, alignment: .leading)
+                            .modifier(NoteFolderDropTarget(folder: node.folder.path, model: model))
+                            .accessibilityIdentifier("notes.sidebar.folder.\(node.folder.path)")
                             .tag(NotesScope.folder(node.folder.path))
                     }
                 }

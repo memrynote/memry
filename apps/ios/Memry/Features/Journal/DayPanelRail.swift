@@ -173,6 +173,7 @@ private struct JournalMiniMonth: View {
             .contentShape(.rect)
         }
         .buttonStyle(.plain)
+        .modifier(TaskDayDropTarget(day: day))
         .accessibilityLabel(JournalCopy.Rail.dayCell(day, hasEntry: marked))
         .accessibilityAddTraits(isShown ? [.isButton, .isSelected] : .isButton)
         .accessibilityValue(isToday ? JournalCopy.today : "")
