@@ -207,6 +207,7 @@ fn anthropic_capabilities_follow_the_sdk_model_table() {
         ("claude-opus-5-5", true, 128_000),
         ("claude-haiku-5-5", true, 128_000),
         ("claude-opus-5", true, 128_000),
+        ("claude-fable-5-2", true, 128_000),
         ("claude-fable-5-1", true, 128_000),
         ("claude-fable-5", true, 128_000),
         ("anthropic/claude-haiku-4-5", true, 64_000),
@@ -263,4 +264,46 @@ fn an_anthropic_answer_cut_at_the_token_limit_says_so() {
         native.object::<Value>(ended.to_string().as_bytes()),
         Err(StructuredError::NoObject(_))
     ));
+}
+
+#[test]
+fn a_chat_responses_or_google_answer_cut_at_the_token_limit_says_so() {
+    let cut = "{\"items\":[{\"a\":";
+    let cases = [
+        (
+            Dialect::Chat,
+            json!({ "choices": [{ "message": { "content": cut }, "finish_reason": "length" }] }),
+            json!({ "choices": [{ "message": { "content": cut }, "finish_reason": "stop" }] }),
+        ),
+        (
+            Dialect::Responses,
+            json!({ "status": "incomplete", "output": [{ "type": "message", "content": [
+                { "type": "output_text", "text": cut },
+            ] }] }),
+            json!({ "status": "completed", "output": [{ "type": "message", "content": [
+                { "type": "output_text", "text": cut },
+            ] }] }),
+        ),
+        (
+            Dialect::Google,
+            json!({ "candidates": [{ "content": { "parts": [{ "text": cut }] },
+                "finishReason": "MAX_TOKENS" }] }),
+            json!({ "candidates": [{ "content": { "parts": [{ "text": cut }] },
+                "finishReason": "STOP" }] }),
+        ),
+    ];
+    for (dialect, limited, ended) in cases {
+        assert_eq!(
+            dialect.object::<Value>(limited.to_string().as_bytes()),
+            Err(StructuredError::OutputLimit),
+            "{dialect:?}"
+        );
+        assert!(
+            matches!(
+                dialect.object::<Value>(ended.to_string().as_bytes()),
+                Err(StructuredError::NoObject(_))
+            ),
+            "{dialect:?}"
+        );
+    }
 }

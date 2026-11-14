@@ -20,9 +20,12 @@ use memry_core::seams::secure_store::{SecureStore, SecureStoreKey};
 use memry_desktop::ai::provider::AiProvider;
 use memry_desktop::ai::proxy::AiProxy;
 use memry_desktop::ai::settings::{InlineAiStore, InlineAiUpdates};
+use memry_desktop::notes::service::NotesService;
 use memry_desktop::registry::AppConfig;
 use memry_desktop::seams::secure_store::GenericSecrets;
 use memry_desktop::settings::SettingsService;
+use memry_desktop::tags::schema::Schemas;
+use memry_desktop::tags::schema::view::{FieldType, NewFieldSpec, TagSchemaCommand};
 use serde_json::{Value, json};
 use support::Mocked;
 use tauri::Manager;
@@ -100,7 +103,16 @@ fn fixture() -> Fixture {
             memry_tauri::commands::ai_structured::tags_fill_status::<MockRuntime>,
             memry_tauri::commands::ai_structured::tags_fill_fields::<MockRuntime>,
         ]);
-    let mocked = Mocked::open(&[("Note.md", "# Note\n\nMet Elif at Globex.\n")], commands);
+    let mocked = Mocked::open(
+        &[
+            ("Note.md", "# Note\n\nMet Elif at Globex.\n"),
+            (
+                "Elif.md",
+                "---\ntags: [person]\n---\nElif works at Globex.\n",
+            ),
+        ],
+        commands,
+    );
     let note = mocked
         .session()
         .current()
@@ -393,5 +405,55 @@ fn a_writing_assist_ended_by_its_vault_its_page_or_a_broken_answer_shows_transla
             "ai.writingAssistFailed".to_owned(),
             format!("Could not reach {host}. Check your internet connection and try again.")
         )
+    );
+}
+
+#[test]
+fn a_field_fill_ended_by_its_vault_shows_translated_text() {
+    let f = fixture();
+    let app = f.mocked.webview.app_handle();
+    let open = f.mocked.session().current().unwrap();
+    Schemas::open(&open, &app.state::<NotesService>(), "en")
+        .unwrap()
+        .run(
+            TagSchemaCommand::AddField {
+                tag: "person".to_owned(),
+                field: NewFieldSpec {
+                    name: "Company".to_owned(),
+                    type_name: FieldType::Text,
+                    options: None,
+                    relation: None,
+                },
+                index: None,
+            },
+            &mut |_, _, _| {},
+        )
+        .unwrap();
+    let elif = open
+        .vault
+        .note_files()
+        .by_path("Elif.md")
+        .unwrap()
+        .expect("a row for Elif.md")
+        .note_id;
+    let proxy = app.state::<Arc<AiProxy>>().inner().clone();
+    f.set(AiProvider::Custom, true, KEY, &serve(None));
+    let ender = std::thread::spawn(move || {
+        // Watchdog on the wait for the request, not a budget.
+        let deadline = Instant::now() + Duration::from_secs(10);
+        while proxy.in_flight() == 0 {
+            assert!(Instant::now() < deadline, "the request never opened");
+            std::thread::sleep(Duration::from_millis(5));
+        }
+        proxy.cancel_all();
+    });
+    let result = f.mocked.invoke(
+        "tags_fill_fields",
+        json!({ "input": { "noteId": elif, "acceptDisclosure": true } }),
+    );
+    ender.join().unwrap();
+    assert_eq!(
+        result.unwrap(),
+        json!({ "kind": "failed", "message": "No vault is open. Please open a vault first." })
     );
 }

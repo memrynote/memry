@@ -128,26 +128,29 @@ export function AISettings({
   useEffect(() => {
     let cancelled = false
     void (async () => {
-      try {
-        const [aiSettings, status, voiceConfig, voiceStatus, voiceKeyStatus] = await Promise.all([
+      // Each part loads on its own: one that fails (a domain not ported yet) keeps the rest.
+      const [aiSettings, status, voiceConfig, voiceStatus, voiceKeyStatus] =
+        await Promise.allSettled([
           window.api.settings.getAISettings(),
           window.api.settings.getAIModelStatus(),
           window.api.settings.getVoiceTranscriptionSettings(),
           window.api.settings.getVoiceModelStatus(),
           window.api.settings.getVoiceTranscriptionOpenAIKeyStatus()
         ])
-        if (cancelled) return
-        setSettings((prev) => ({ ...prev, ...aiSettings }))
-        setModelStatus(status)
-        setVoiceSettings({ ...VOICE_TRANSCRIPTION_SETTINGS_DEFAULTS, ...voiceConfig })
-        setVoiceModelStatus(voiceStatus)
-        setHasVoiceApiKey(voiceKeyStatus.hasApiKey)
-      } catch (error) {
-        if (cancelled) return
-        log.error('Failed to load AI settings:', error)
-      } finally {
-        if (!cancelled) setIsLoading(false)
+      if (cancelled) return
+      for (const part of [aiSettings, status, voiceConfig, voiceStatus, voiceKeyStatus]) {
+        if (part.status === 'rejected') log.error('Failed to load AI settings:', part.reason)
       }
+      if (aiSettings.status === 'fulfilled') {
+        setSettings((prev) => ({ ...prev, ...aiSettings.value }))
+      }
+      if (status.status === 'fulfilled') setModelStatus(status.value)
+      if (voiceConfig.status === 'fulfilled') {
+        setVoiceSettings({ ...VOICE_TRANSCRIPTION_SETTINGS_DEFAULTS, ...voiceConfig.value })
+      }
+      if (voiceStatus.status === 'fulfilled') setVoiceModelStatus(voiceStatus.value)
+      if (voiceKeyStatus.status === 'fulfilled') setHasVoiceApiKey(voiceKeyStatus.value.hasApiKey)
+      setIsLoading(false)
     })()
     return () => {
       cancelled = true

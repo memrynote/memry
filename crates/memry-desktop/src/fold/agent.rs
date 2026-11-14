@@ -213,12 +213,14 @@ impl FoldBackend for FoldAgents {
     async fn run(&self, writer: &FoldWriter, prompt: &str) -> Result<Value, String> {
         match writer.id {
             FoldAgentChoice::LocalOpenaiCompatible => {
+                // Detected with no model, the cache key says `default`: a model configured since
+                // would write its reply under that key, so the run waits for a new detection.
+                if writer.model.is_none() && !self.local.configured_model().await.is_empty() {
+                    self.reset();
+                    return Err("the local model changed after the fold detected it".to_owned());
+                }
                 let model = writer.model.clone();
-                match self
-                    .local
-                    .complete_structured_on::<Value>(prompt, model)
-                    .await
-                {
+                match self.local.complete_structured::<Value>(prompt, model).await {
                     Ok(reply) => Ok(reply),
                     Err(error) => Err(self.local.redact(error.to_string()).await),
                 }
