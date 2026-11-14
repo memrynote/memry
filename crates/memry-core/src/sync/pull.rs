@@ -54,7 +54,7 @@ use super::changes_page::{ChangesPage, read_changes_page, requested_ids, uncover
 use super::driver::Observers;
 use super::feed_restart;
 use super::note_body_feed::{self, NOTE_BODY_SYNC_TYPE};
-use super::pull_decode;
+
 use super::store::{self, RECORD_CURSOR_SCOPE};
 
 /// §5.10.2: a new client SHOULD request the server's ceiling. Five times fewer
@@ -263,7 +263,7 @@ impl PullLoop {
             .await?;
 
         let inline = ask_inline && cursor.is_some();
-        let page = self.fetch_changes(cursor.as_deref(), inline).await?;
+        let mut page = self.fetch_changes(cursor.as_deref(), inline).await?;
         let mut report = PullReport {
             pages: 1,
             has_more: page.has_more,
@@ -275,11 +275,11 @@ impl PullLoop {
 
         let fetch = uncovered_ids(&page, &ids);
 
-        self.take_items(&page.inline, &mut report, &mut pending)
+        self.take_items(std::mem::take(&mut page.inline), &mut report, &mut pending)
             .await?;
         for chunk in fetch.chunks(MAX_PULL_IDS) {
-            let body = self.fetch_bodies(chunk).await?;
-            let Some(items) = body.get("items").and_then(Json::as_array) else {
+            let mut body = self.fetch_bodies(chunk).await?;
+            let Some(items) = Self::pulled_items(&mut body) else {
                 // §5.14 (#2285): not a pull envelope at all, which is a server
                 // contract regression. Nothing from the page is applied and the
                 // cursor holds, so the page is still there to re-pull once the
@@ -358,20 +358,12 @@ impl PullLoop {
         let mut pending: Vec<Pending> = Vec::with_capacity(ids.len());
 
         for chunk in ids.chunks(MAX_PULL_IDS) {
-            let body = self.fetch_bodies(chunk).await?;
-            let Some(items) = body.get("items").and_then(Json::as_array) else {
+            let mut body = self.fetch_bodies(chunk).await?;
+            let Some(items) = Self::pulled_items(&mut body) else {
                 report.dropped_pages += 1;
                 continue;
             };
-            for item in items {
-                match pull_decode::decode(&self.declaration, self.cipher.as_ref(), item) {
-                    Ok(decoded) => pending.push(decoded),
-                    Err(corrupt) => {
-                        report.corrupt += 1;
-                        self.record_corrupt(item, &corrupt).await?;
-                    }
-                }
-            }
+            self.take_items(items, &mut report, &mut pending).await?;
         }
 
         pending.sort_by_key(|item| apply::apply_rank(item.item_type()));
