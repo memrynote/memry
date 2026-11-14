@@ -215,6 +215,9 @@ final class NotesSplitUITests: XCTestCase {
 
         toggleFullWidth()
         XCTAssertTrue(fullWidthIsOn(), "the toggle did not turn Full width on")
+        // Desktop lists `fullWidth` as a property and shows it on toggle.
+        XCTAssertTrue(app.staticTexts["fullWidth"].waitForExistence(timeout: 5),
+                      "the toggle's property row did not show until the note reopened")
 
         app.terminate()
         try openNotes()

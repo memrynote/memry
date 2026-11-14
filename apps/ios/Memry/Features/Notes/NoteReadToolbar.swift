@@ -109,7 +109,15 @@ struct NoteReadToolbar: ViewModifier {
             }
             if actions.canWrite {
                 let isFull = isFullWidth
-                items.toggleFullWidth = { Task { await actions.toggleFullWidth(isFull: isFull) } }
+                // Re-read so the `fullWidth` property row shows at once, as
+                // desktop's refetch does; a vault with no sync pass has no
+                // other trigger.
+                items.toggleFullWidth = {
+                    Task {
+                        await actions.toggleFullWidth(isFull: isFull)
+                        await model.reload()
+                    }
+                }
             }
         }
         items.isFullWidth = isFullWidth
