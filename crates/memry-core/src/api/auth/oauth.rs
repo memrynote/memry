@@ -114,6 +114,10 @@ impl AuthSession {
     /// caller bug rather than a no-op — unlike `restore`, which the process
     /// lifecycle drives rather than the user.
     pub fn abandon_provider_sign_in(&self) -> Result<AuthState, AuthError> {
+        // Held across the check and the edge, in the order
+        // `accept_provider_answer` takes the two locks, so an answer that is
+        // landing either wins before this looks or finds its attempt ended.
+        let mut pending = self.pending.lock().unwrap_or_else(|e| e.into_inner());
         let state = self.state_now();
         if !matches!(state, AuthState::AwaitingProviderToken { .. }) {
             return Err(AuthError::InvalidState {
@@ -121,14 +125,11 @@ impl AuthSession {
                 state: state_name(&state),
             });
         }
-        {
-            // The nonce belongs to the attempt that just ended. Leaving it in
-            // place would let a later registration present a nonce no setup
-            // token was signed over (chapter 02 §2.6).
-            let mut pending = self.pending.lock().unwrap_or_else(|e| e.into_inner());
-            pending.session_nonce = None;
-            pending.web_callback = None;
-        }
+        // The nonce belongs to the attempt that just ended. Leaving it in
+        // place would let a later registration present a nonce no setup
+        // token was signed over (chapter 02 §2.6).
+        pending.session_nonce = None;
+        pending.web_callback = None;
         self.apply(AuthEvent::SignInFailed, "abandon a provider sign-in")
     }
 
@@ -172,12 +173,12 @@ impl AuthSession {
         let public = Self::signing_public_key(&secret)?;
         let request = NativeOAuthRequest {
             id_token,
-            session_nonce,
+            session_nonce: session_nonce.clone(),
             device_public_key: BASE64_STANDARD.encode(public),
         };
 
         let answer = AuthRoutes::sign_in_with_provider(&self.http, &provider, &request).await;
-        let (state, response) = self.accept_provider_answer(answer)?;
+        let (state, response) = self.accept_provider_answer(answer, &session_nonce)?;
         Ok(ProviderSignInOutcome {
             state,
             is_new_user: response.is_new_user.unwrap_or(false),
@@ -268,38 +269,35 @@ impl AuthSession {
         let secret = self.signing_secret_key()?;
         let public = Self::signing_public_key(&secret)?;
 
+        let refused = |action: &str| AuthError::InvalidState {
+            action: action.to_string(),
+            state: state_name(&current),
+        };
         let (expected, session_nonce) = {
             let mut pending = self.pending.lock().unwrap_or_else(|e| e.into_inner());
+            let Some(session_nonce) = pending.session_nonce.clone() else {
+                return Err(refused("complete a provider callback that minted no nonce"));
+            };
             match pending.web_callback.take() {
-                Some(expected) if expected.state == state => {
-                    (expected, pending.session_nonce.clone())
-                }
+                Some(expected) if expected.state == state => (expected, session_nonce),
                 other => {
                     pending.web_callback = other;
-                    return Err(AuthError::InvalidState {
-                        action: "complete a provider callback this attempt is not waiting for"
-                            .to_string(),
-                        state: state_name(&current),
-                    });
+                    return Err(refused(
+                        "complete a provider callback this attempt is not waiting for",
+                    ));
                 }
             }
-        };
-        let Some(session_nonce) = session_nonce else {
-            return Err(AuthError::InvalidState {
-                action: "complete a provider callback that minted no nonce".to_string(),
-                state: state_name(&current),
-            });
         };
 
         let request = OAuthCallbackRequest {
             code,
             state: expected.state,
             redirect_uri: expected.redirect_uri,
-            session_nonce,
+            session_nonce: session_nonce.clone(),
             device_public_key: BASE64_STANDARD.encode(public),
         };
         let answer = AuthRoutes::sign_in_with_web_callback(&self.http, &provider, &request).await;
-        let (state, response) = self.accept_provider_answer(answer)?;
+        let (state, response) = self.accept_provider_answer(answer, &session_nonce)?;
         Ok(WebSignInOutcome {
             state,
             is_new_user: response.is_new_user.unwrap_or(false),
@@ -313,10 +311,26 @@ impl AuthSession {
     /// edge. §C.1 draws two edges out of the state, and a response with no
     /// setup token is not the one to `SetupPending` — the same rule
     /// `verify_email_code` applies to its own answer.
+    ///
+    /// **Only for the attempt that asked.** `session_nonce` is the attempt's
+    /// identity: every begin mints a new one, and abandon and sign-out clear
+    /// it. An answer that lands after its attempt ended — the user cancelled
+    /// while the browser delivered the code — is refused without storing its
+    /// token or moving the machine, since that token is signed over a nonce no
+    /// registration will present (§2.6). The pending lock is held to the end,
+    /// so an abandon cannot slip between the check and the edge.
     fn accept_provider_answer(
         &self,
         answer: Result<OAuthSignInResponse, ApiError>,
+        session_nonce: &str,
     ) -> Result<(AuthState, OAuthSignInResponse), AuthError> {
+        let pending = self.pending.lock().unwrap_or_else(|e| e.into_inner());
+        if pending.session_nonce.as_deref() != Some(session_nonce) {
+            return Err(AuthError::InvalidState {
+                action: "accept a provider answer for an attempt that ended".to_string(),
+                state: state_name(&self.state_now()),
+            });
+        }
         let response = match answer {
             Ok(response) => response,
             Err(error) => {

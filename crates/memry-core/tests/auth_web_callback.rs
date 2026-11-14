@@ -467,3 +467,80 @@ async fn recovery_info_without_a_setup_token_makes_no_request() {
     assert!(matches!(result, Err(AuthError::NoSetupToken)), "{result:?}");
     assert_eq!(transport.call_count(), 0);
 }
+
+#[tokio::test]
+async fn a_spent_code_is_not_posted_twice_on_a_5xx() {
+    // Google redeems a code once; a 5xx after the server exchanged it must not
+    // be retried into a refusal. Electron's `postToServer` does not retry.
+    let (session, transport, _) = opened(vec![error_response(503, "INTERNAL_ERROR", "busy")]);
+    let result = session
+        .complete_provider_web_callback("auth-code".to_string(), STATE.to_string())
+        .await;
+    assert!(matches!(result, Err(AuthError::Api { .. })), "{result:?}");
+    assert_eq!(transport.call_count(), 1);
+    assert_eq!(session.state(), AuthState::SignedOut);
+}
+
+#[tokio::test]
+async fn an_answer_for_an_abandoned_attempt_stores_nothing() {
+    let transport = FakeTransport::slow(vec![callback_ok("jti-late", false)], 50);
+    let store = FakeSecureStore::new();
+    let session = session(transport.clone(), store.clone());
+    session
+        .begin_provider_web_sign_in(
+            AuthProvider::Google,
+            STATE.to_string(),
+            REDIRECT.to_string(),
+        )
+        .unwrap();
+
+    let (late, ()) = tokio::join!(
+        session.complete_provider_web_callback("auth-code".to_string(), STATE.to_string()),
+        async {
+            tokio::time::sleep(std::time::Duration::from_millis(10)).await;
+            session.abandon_provider_sign_in().unwrap();
+        },
+    );
+    assert!(
+        matches!(late, Err(AuthError::InvalidState { .. })),
+        "{late:?}"
+    );
+    assert_eq!(session.state(), AuthState::SignedOut);
+    assert_eq!(store.text(SecureStoreKey::SetupToken), None);
+}
+
+#[tokio::test]
+async fn an_answer_for_an_abandoned_attempt_leaves_the_next_attempt_waiting() {
+    let transport = FakeTransport::slow(vec![callback_ok("jti-late", false)], 50);
+    let store = FakeSecureStore::new();
+    let session = session(transport.clone(), store.clone());
+    session
+        .begin_provider_web_sign_in(
+            AuthProvider::Google,
+            STATE.to_string(),
+            REDIRECT.to_string(),
+        )
+        .unwrap();
+
+    let (late, ()) = tokio::join!(
+        session.complete_provider_web_callback("auth-code".to_string(), STATE.to_string()),
+        async {
+            tokio::time::sleep(std::time::Duration::from_millis(10)).await;
+            session.abandon_provider_sign_in().unwrap();
+            session
+                .begin_provider_web_sign_in(
+                    AuthProvider::Google,
+                    "state-jwt-2".to_string(),
+                    REDIRECT.to_string(),
+                )
+                .unwrap();
+        },
+    );
+    // The old answer was signed over the old nonce; it must not move the new attempt.
+    assert!(
+        matches!(late, Err(AuthError::InvalidState { .. })),
+        "{late:?}"
+    );
+    assert_eq!(session.state(), awaiting());
+    assert_eq!(store.text(SecureStoreKey::SetupToken), None);
+}

@@ -14,7 +14,7 @@
 use serde::{Deserialize, Serialize};
 
 use crate::api::errors::ApiError;
-use crate::protocol::http::{ApiRequest, HttpClient};
+use crate::protocol::http::{ApiRequest, HttpClient, RetryPolicy};
 
 use super::AuthRoutes;
 
@@ -88,14 +88,23 @@ impl AuthRoutes {
     }
 
     /// `POST /auth/oauth/:provider/callback`. Unauthenticated, like the native
-    /// route: the authorization code is the credential. Same retry ladder, for
-    /// the same reason — a refused code is fatal on the first answer.
+    /// route: the authorization code is the credential.
+    ///
+    /// **Never retried.** The provider redeems a code once, and the server
+    /// redeems it before it can fail on its own storage
+    /// (`apps/sync-server/src/routes/auth.ts:350-376`), so a retried 5xx posts
+    /// a spent code and turns the real failure into a refusal. Electron's
+    /// `postToServer` does not retry either.
     pub async fn sign_in_with_web_callback(
         http: &HttpClient,
         provider: &str,
         request: &OAuthCallbackRequest,
     ) -> Result<OAuthSignInResponse, ApiError> {
-        http.send_json(ApiRequest::post(&format!("/auth/oauth/{provider}/callback")).json(request))
-            .await
+        http.send_json(
+            ApiRequest::post(&format!("/auth/oauth/{provider}/callback"))
+                .json(request)
+                .retry(RetryPolicy::never()),
+        )
+        .await
     }
 }
