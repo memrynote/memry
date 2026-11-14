@@ -117,7 +117,7 @@ fn a_png_profile_that_unpacks_past_10_mib_is_refused_before_decoding() {
 
 #[test]
 fn a_progressive_jpegs_coefficient_buffers_count_toward_the_allocation_cap() {
-    // 10000x10000 at 4:2:0: 300 MB of RGB fits the cap, the 300 MB of coefficients a progressive
+    // 10000x10000: 300 MB of RGB fits the cap, the 602 MB of coefficients a progressive
     // decode holds besides it do not.
     let mut bytes = fixture("jpeg progressive @140");
     let sof = bytes
@@ -127,8 +127,69 @@ fn a_progressive_jpegs_coefficient_buffers_count_toward_the_allocation_cap() {
     bytes[sof + 5..sof + 9].copy_from_slice(&[0x27, 0x10, 0x27, 0x10]);
     assert_eq!(
         message(prepare(&bytes, 1)),
-        "image needs 600000000 bytes to decode, over the 536870912-byte limit"
+        "image needs 901921536 bytes to decode, over the 536870912-byte limit"
     );
+}
+
+#[test]
+fn a_fill_byte_before_the_frame_header_does_not_hide_a_progressive_jpegs_coefficients() {
+    // 13000x13000 progressive: 507 MB of RGB fits the cap, its coefficients do not. `FF 00` after
+    // the start marker is a fill byte to zune-jpeg; a walk that reads it as a segment skips
+    // 0xFFDB bytes, where this file holds a scan and an end marker.
+    let progressive = fixture("jpeg progressive @140");
+    let mut bytes = [&[0xFF, 0xD8, 0xFF, 0x00], &progressive[2..]].concat();
+    let sof = bytes
+        .windows(2)
+        .position(|pair| pair == [0xFF, 0xC2])
+        .expect("SOF2");
+    bytes[sof + 5..sof + 9].copy_from_slice(&[0x32, 0xC8, 0x32, 0xC8]);
+    bytes.resize(4 + 0xFFDB, 0);
+    bytes.extend([0xFF, 0xDA, 0x00, 0x02, 0xFF, 0xD9]);
+    assert_eq!(
+        message(prepare(&bytes, 1)),
+        "image needs 1524747456 bytes to decode, over the 536870912-byte limit"
+    );
+}
+
+#[test]
+fn a_frame_header_shorter_than_its_length_field_is_an_error() {
+    for length in [0, 1] {
+        let bytes = vec![0xFF, 0xD8, 0xFF, 0xC2, 0x00, length];
+        let error = on_small_stack(move || prepare(&bytes, 1).err());
+        assert!(error.is_some(), "length {length} decoded");
+    }
+}
+
+#[test]
+fn only_the_first_png_profile_is_unpacked() {
+    // The `png` crate skips a second `iCCP` without unpacking it, so the image decodes.
+    let png = png_with_profile(&[0; 128]);
+    let mut bomb = b"icc\0\0".to_vec();
+    bomb.extend(fdeflate::compress_to_vec(&vec![0; MAX_ICC_BYTES + 1]));
+    let idat = png
+        .windows(4)
+        .position(|kind| kind == b"IDAT")
+        .expect("IDAT")
+        - 4;
+    let bytes = [&png[..idat], &png_chunk(b"iCCP", &bomb), &png[idat..]].concat();
+    assert!(prepare(&bytes, 1).is_ok());
+}
+
+#[test]
+fn a_four_component_jpeg_is_cmyk() {
+    let jpeg = fixture("jpeg 4:4:4 @140");
+    assert!(!is_cmyk_jpeg(&jpeg));
+    // One more component in the frame header: length 17 to 20, count 3 to 4.
+    let sof = jpeg
+        .windows(2)
+        .position(|pair| pair == [0xFF, 0xC0])
+        .expect("SOF0");
+    let mut cmyk = jpeg[..sof + 19].to_vec();
+    cmyk[sof + 3] = 20;
+    cmyk[sof + 9] = 4;
+    cmyk.extend([4, 0x11, 0]);
+    cmyk.extend(&jpeg[sof + 19..]);
+    assert!(is_cmyk_jpeg(&cmyk));
 }
 
 #[test]

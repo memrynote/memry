@@ -20,6 +20,8 @@ image = { workspace = true }
 moxcms = "0.8"
 # zlib inflate in pure Rust (the `png` crate's own): bounds an `iCCP` profile before decoding.
 fdeflate = "0.3"
+# The JPEG decoder `image` runs: its header reader sizes a progressive frame before decoding.
+zune-jpeg = "0.5"
 
 # ONNX Runtime 1.31.0 is linked statically (crates/AGENTS.md, ONNX Runtime). Apple Silicon links
 # ort-sys's prebuilt archive, downloaded at build time. pyke builds the Apple Silicon archive with

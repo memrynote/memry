@@ -8,6 +8,8 @@
 use std::io::Cursor;
 
 use image::{DynamicImage, ImageDecoder, ImageFormat, ImageReader, Limits};
+use zune_jpeg::zune_core::options::DecoderOptions;
+use zune_jpeg::{ImageInfo, JpegDecoder};
 
 use crate::MlError;
 
@@ -98,8 +100,9 @@ pub fn pixel_tensor(image: Rgb8, max_soft_tokens: usize) -> Result<PixelTensor, 
 /// HEIF and the other formats libvips reads are refused (a vault image is PNG, JPEG, GIF or WebP);
 /// zune-jpeg runs with `strict_mode` off as `image` sets it, so of libjpeg's warnings only the
 /// missing end marker is refused; a grey or CMYK profile is dropped where libvips converts through
-/// it; and a 16-bit image is cut to 8 bits before its profile applies, where libvips converts at
-/// 16 bits.
+/// it; a CMYK or YCCK JPEG (`is_cmyk_jpeg`) is converted to RGB by zune-jpeg's naive formula,
+/// without a profile; and a 16-bit image is cut to 8 bits before its profile applies, where
+/// libvips converts at 16 bits.
 pub fn decode(bytes: &[u8]) -> Result<Rgb8, MlError> {
     if bytes.len() > MAX_IMAGE_BYTES {
         return Err(input(format!(
@@ -156,69 +159,51 @@ pub fn decode(bytes: &[u8]) -> Result<Rgb8, MlError> {
     to_rgb8(image, icc.as_deref())
 }
 
-/// Walks a JPEG's segments to its first scan. Refuses one that no end-of-image marker closes:
-/// entropy-coded data stuffs every 0xFF with a zero byte, so the first `FF D9` after the first scan
-/// header is the marker, and an EXIF thumbnail's own markers sit inside an APP segment the walk
-/// skips. sharp fails on libjpeg's warning there; zune-jpeg would decode the rest as grey.
+/// Reads a JPEG's headers to its first scan, as `image` has zune-jpeg read them. Refuses one that
+/// no end-of-image marker closes: entropy-coded data stuffs every 0xFF with a zero byte, so the
+/// first `FF D9` after the first scan header is the marker, and an EXIF thumbnail's own markers sit
+/// inside an APP segment before it. sharp fails on libjpeg's warning there; zune-jpeg would decode
+/// the rest as grey.
 ///
-/// Returns the bytes of the coefficient buffers zune-jpeg holds for a progressive frame (`SOF2`,
-/// `mcu_prog.rs`): per component, 64 `i16` per 8x8 block over the padded MCU grid. A baseline
-/// frame decodes row by row and holds none.
+/// Returns the bytes of the coefficient buffers zune-jpeg holds for a progressive frame
+/// (`mcu_prog.rs`): per component, one `i16` per pixel of the MCU grid, which sampling factors of
+/// up to 4 pad to a multiple of 32. A baseline frame decodes row by row and holds none.
 fn jpeg_coefficient_bytes(bytes: &[u8]) -> Result<u64, MlError> {
-    let mut coefficients = 0;
-    let mut at = 2;
-    while at + 4 <= bytes.len() {
-        if bytes[at] != 0xFF {
-            break;
-        }
-        let marker = bytes[at + 1];
-        if marker == 0xFF {
-            at += 1;
-            continue;
-        }
-        let length = usize::from(u16::from_be_bytes([bytes[at + 2], bytes[at + 3]]));
-        if marker == 0xC2 {
-            let end = (at + 2 + length).min(bytes.len());
-            coefficients = progressive_coefficient_bytes(&bytes[at + 4..end]);
-        }
-        if marker == 0xDA {
-            if bytes[at + 2..].windows(2).any(|pair| pair == [0xFF, 0xD9]) {
-                return Ok(coefficients);
-            }
-            break;
-        }
-        at += 2 + length;
+    let (info, scan) = jpeg_headers(bytes)?;
+    if !bytes[scan..].windows(2).any(|pair| pair == [0xFF, 0xD9]) {
+        return Err(input("VipsJpeg: premature end of JPEG image"));
     }
-    Err(input("VipsJpeg: premature end of JPEG image"))
+    if !info.sof.is_progressive() {
+        return Ok(0);
+    }
+    let pad = |side: u16| u64::from(side).next_multiple_of(32);
+    Ok(u64::from(info.components) * 2 * pad(info.width) * pad(info.height))
 }
 
-/// The coefficient bytes of a progressive frame header (`P`, `Y`, `X`, `Nf`, then `Nf` times
-/// `C`, `HV`, `Tq`). A single component decodes at 1x1 whatever its factors say.
-fn progressive_coefficient_bytes(header: &[u8]) -> u64 {
-    let [_, h0, h1, w0, w1, count, components @ ..] = header else {
-        return 0;
+/// Whether a JPEG is CMYK or YCCK (four components). `decode` converts one with zune-jpeg's
+/// formula, not through a profile as libvips does; what it should do instead is Kaan's call.
+pub fn is_cmyk_jpeg(bytes: &[u8]) -> bool {
+    jpeg_headers(bytes).is_ok_and(|(info, _)| info.components == 4)
+}
+
+/// The frame of a JPEG and the offset its first scan's data starts at.
+fn jpeg_headers(bytes: &[u8]) -> Result<(ImageInfo, usize), MlError> {
+    let options = DecoderOptions::default()
+        .set_strict_mode(false)
+        .set_max_width(usize::MAX)
+        .set_max_height(usize::MAX);
+    let mut stream = Cursor::new(bytes);
+    let info = {
+        let mut decoder = JpegDecoder::new_with_options(&mut stream, options);
+        decoder
+            .decode_headers()
+            .map_err(|error| input(format!("cannot decode image: {error}")))?;
+        decoder
+            .info()
+            .ok_or_else(|| input("JPEG has no frame header"))?
     };
-    let (height, width) = (
-        u64::from(u16::from_be_bytes([*h0, *h1])),
-        u64::from(u16::from_be_bytes([*w0, *w1])),
-    );
-    let factors: Vec<(u64, u64)> = components
-        .as_chunks::<3>()
-        .0
-        .iter()
-        .take(usize::from(*count))
-        .map(|&[_, sampling, _]| match count {
-            1 => (1, 1),
-            _ => (
-                u64::from(sampling >> 4).max(1),
-                u64::from(sampling & 0x0F).max(1),
-            ),
-        })
-        .collect();
-    let h_max = factors.iter().map(|&(h, _)| h).max().unwrap_or(1);
-    let v_max = factors.iter().map(|&(_, v)| v).max().unwrap_or(1);
-    let mcus = width.div_ceil(8 * h_max) * height.div_ceil(8 * v_max);
-    factors.iter().map(|&(h, v)| mcus * 64 * h * v * 2).sum()
+    let scan = usize::try_from(stream.position()).unwrap_or(bytes.len());
+    Ok((info, scan.min(bytes.len())))
 }
 
 /// Refuses a PNG whose `iCCP` profile unpacks past `MAX_ICC_BYTES`. The `png` crate inflates the
@@ -245,6 +230,8 @@ fn check_png_profile(bytes: &[u8]) -> Result<(), MlError> {
                         "colour profile unpacks to more than {MAX_ICC_BYTES} bytes"
                     )));
                 }
+                // The `png` crate skips a second one without unpacking it.
+                break;
             }
             _ => {}
         }

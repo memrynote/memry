@@ -4131,6 +4131,7 @@ dependencies = [
  "tokenizers",
  "tracing",
  "windows",
+ "zune-jpeg",
 ]
 
 [[package]]
