@@ -139,7 +139,7 @@ pub fn reindex_until(
             if stop() {
                 return Ok(None);
             }
-            index_note(data, &names, &transaction, id, now_ms, &mut done)?;
+            index_note(data, &names, &transaction, id, now_ms, full, &mut done)?;
         }
         if !full {
             super::links::reresolve(&names, &transaction, &note_ids, &mut done.links)?;
@@ -238,12 +238,13 @@ fn index_note(
     index: &Connection,
     id: &str,
     now_ms: i64,
+    full: bool,
     done: &mut Reindexed,
 ) -> Result<(), StorageError> {
     let before = links::rows(index, id)?;
     #[cfg(feature = "markdown")]
     let refs_before = super::block_refs::usage_rows(index, id)?;
-    index_note_rows(data, names, index, id, now_ms, done)?;
+    index_note_rows(data, names, index, id, now_ms, full, done)?;
     done.links.note(id, &before, &links::rows(index, id)?);
     #[cfg(feature = "markdown")]
     {
@@ -254,18 +255,23 @@ fn index_note(
     Ok(())
 }
 
-/// Delete first, then insert if it still earns a row.
+/// Delete first, then insert if it still earns a row. A `full` pass emptied
+/// `fts_notes` already, and skips the delete: `id` is UNINDEXED, so each one
+/// scans the table and a rebuild of them would be quadratic.
 fn index_note_rows(
     data: &Connection,
     names: &WikiNames,
     index: &Connection,
     id: &str,
     now_ms: i64,
+    full: bool,
     done: &mut Reindexed,
 ) -> Result<(), StorageError> {
-    index
-        .execute("DELETE FROM fts_notes WHERE id = ?1", params![id])
-        .map_err(failed)?;
+    if !full {
+        index
+            .execute("DELETE FROM fts_notes WHERE id = ?1", params![id])
+            .map_err(failed)?;
+    }
     // The note's outgoing links go with it. Deleting first means a note that
     // stopped linking somewhere really stops: an insert-only pass would leave
     // a backlink the source no longer makes.
@@ -368,6 +374,8 @@ fn note_content(
 /// (Electron's `note.text-extracted`, `search-projector.ts:576-585`). Title,
 /// tags and links stay as the last reindex wrote them, and a note the index has
 /// no row for is left to the reindex that writes it. `true` when a row changed.
+/// A note that is gone or corrupt in `data.db` is an error: the caller named a
+/// note the index must not hold.
 #[cfg(feature = "markdown")]
 pub fn refresh_note_text(
     data: &Connection,
@@ -375,20 +383,51 @@ pub fn refresh_note_text(
     id: &str,
     now_ms: i64,
 ) -> Result<bool, StorageError> {
-    let indexed: bool = index
+    let row = data
         .query_row(
-            "SELECT EXISTS (SELECT 1 FROM fts_notes WHERE id = ?1)",
+            "SELECT item_type, deleted_at, corrupt_reason FROM sync_items
+             WHERE item_id = ?1 AND item_type IN ('note', 'journal')
+             ORDER BY item_type LIMIT 1",
+            params![id],
+            |row| {
+                Ok((
+                    row.get::<_, String>(0)?,
+                    row.get::<_, Option<i64>>(1)?,
+                    row.get::<_, Option<String>>(2)?,
+                ))
+            },
+        )
+        .optional()
+        .map_err(failed)?;
+    match row {
+        None | Some((_, Some(_), _)) => {
+            return Err(StorageError::NotFound {
+                what: format!("note {id} to refresh its file text"),
+            });
+        }
+        Some((item_type, None, Some(reason))) => {
+            return Err(StorageError::Failed {
+                what: format!("{item_type}/{id} is corrupt, its file text not refreshed: {reason}"),
+            });
+        }
+        Some((_, None, None)) => {}
+    }
+    // One lookup by the UNINDEXED `id`, then the write by rowid.
+    let rowid: Option<i64> = index
+        .query_row(
+            "SELECT rowid FROM fts_notes WHERE id = ?1",
             params![id],
             |row| row.get(0),
         )
+        .optional()
         .map_err(failed)?;
-    if !indexed {
+    let Some(rowid) = rowid else {
         return Ok(false);
-    }
+    };
     index
         .execute(
-            "UPDATE fts_notes SET content = ?2 WHERE id = ?1",
-            params![id, note_content(data, index, id, now_ms)?],
+            "UPDATE fts_notes SET content = ?2 WHERE rowid = ?1",
+            params![rowid, note_content(data, index, id, now_ms)?],
         )
         .map_err(failed)?;
     Ok(true)
