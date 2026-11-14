@@ -2,7 +2,8 @@ import XCTest
 
 // #4667: the editor's Link prompt takes the keys. Typing the address goes
 // into the prompt, not over the selected word, and Add links that word.
-// iPad opens the prompt with ⇧⌘K, iPhone with the format row's link button.
+// iPad opens the prompt with the toolbar's link button and with ⇧⌘K, iPhone
+// with the format row's link button. ⌘Z after Add removes the link.
 //
 // **Precondition:** a simulator with a vault open (the staging test account,
 // or a free vault on this device). A run that lands on sign-in skips; a skip
@@ -36,7 +37,7 @@ final class EditorLinkPromptUITests: XCTestCase {
         let prompt = app.alerts["Link"]
         let address = prompt.textFields.firstMatch
         // Cancel drops the address and keeps the selection.
-        openPrompt()
+        openPrompt(byButton: true)
         app.typeText("dropped")
         prompt.buttons["Cancel"].tap()
         XCTAssertTrue(prompt.waitForNonExistence(timeout: 5))
@@ -55,6 +56,15 @@ final class EditorLinkPromptUITests: XCTestCase {
         XCTAssertTrue(prompt.waitForNonExistence(timeout: 5))
         XCTAssertEqual(block.value as? String, "go linkword")
         XCTAssertTrue(linkButton.wait(for: \.isSelected, toEqual: true, timeout: 5), "Add did not link the selection")
+
+        // ⌘Z removes the link and leaves the word; ⇧⌘Z puts it back.
+        if tablet {
+            app.typeKey("z", modifierFlags: .command)
+            XCTAssertTrue(linkButton.wait(for: \.isSelected, toEqual: false, timeout: 5), "⌘Z did not remove the link")
+            XCTAssertEqual(block.value as? String, "go linkword", "⌘Z changed the text")
+            app.typeKey("z", modifierFlags: [.command, .shift])
+            XCTAssertTrue(linkButton.wait(for: \.isSelected, toEqual: true, timeout: 5), "⇧⌘Z did not put the link back")
+        }
 
         // After a relaunch the word is unchanged and still linked.
         app.terminate()
@@ -75,11 +85,12 @@ final class EditorLinkPromptUITests: XCTestCase {
 
     // MARK: Helpers
 
-    /// Opens the Link prompt over the selection: ⇧⌘K on iPad, the format
-    /// row's link button on iPhone. On iPhone it taps the field, which used
-    /// to hand the next key to the block and close the prompt.
-    private func openPrompt() {
-        if tablet {
+    /// Opens the Link prompt over the selection: ⇧⌘K on iPad unless
+    /// `byButton`, the format row's link button otherwise. On iPhone it taps
+    /// the field, which used to hand the next key to the block and close the
+    /// prompt.
+    private func openPrompt(byButton: Bool = false) {
+        if tablet, !byButton {
             app.typeKey("k", modifierFlags: [.command, .shift])
         } else {
             XCTAssertTrue(linkButton.waitForExistence(timeout: 5), "no format row over the selection")

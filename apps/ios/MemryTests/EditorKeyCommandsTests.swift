@@ -281,10 +281,10 @@ struct EditorKeyCommandsTests {
         #expect(!page.has("k", .command), "⌘K is global search")
         let window = try page.showInWindow()
         defer { window.isHidden = true }
-        let selection = NSRange(location: 0, length: 2)
-        page.field.textView.selectedRange = selection
+        page.field.textView.selectedRange = NSRange(location: 0, length: 2)
         page.session.selectionChanged(in: page.field)
         await page.press("k", [.command, .shift], writes: false)
+        let target = LinkPrompt.Target(blockId: "b", text: "hi", selection: NSRange(location: 0, length: 2))
         let alert = try #require(window.rootViewController?.presentedViewController as? UIAlertController)
         #expect(alert.title == "Link")
         #expect(alert.textFields?.count == 1)
@@ -297,11 +297,42 @@ struct EditorKeyCommandsTests {
         await withCheckedContinuation { done in alert.dismiss(animated: false) { done.resume() } }
         page.field.textView.selectedRange = NSRange(location: 2, length: 0)
         await page.reloaded {
-            LinkPrompt.finish(" https://memry.app ", selection: selection, textView: page.field.textView, session: page.session)
+            LinkPrompt.finish(" https://memry.app ", target: target, field: page.field, session: page.session)
         }
         #expect(page.field.textView.isFirstResponder)
         #expect(page.field.textView.text == "hi")
         #expect(page.editor.all.last == .setMark(blockId: "b", start: 0, end: 2, mark: "link", value: "https://memry.app"))
+    }
+
+    /// The block's text, or the block in its row, changed while the prompt
+    /// was open: the saved range names other text, so Add links nothing,
+    /// says so, and puts the caret back inside the text there is now.
+    @Test(arguments: [("b", "x"), ("a", "hi there")])
+    func addLinksNothingWhenTheBlockChangedUnderThePrompt(blockId: String, text: String) async {
+        let page = Page(text: "hi there")
+        let target = LinkPrompt.Target(blockId: "b", text: "hi there", selection: NSRange(location: 3, length: 5))
+        page.field.block = Block(
+            id: blockId, kind: "paragraph", depth: 0, props: [],
+            inline: [InlineRun(text: text, marks: [], markAttrs: [:], target: nil)]
+        )
+        page.field.render()
+        LinkPrompt.finish("https://memry.app", target: target, field: page.field, session: page.session)
+        await page.session.tail?.value
+        #expect(page.editor.all.isEmpty, "a link was written over changed text")
+        #expect(page.session.failure == LinkPrompt.textChanged)
+        let length = page.field.textView.textStorage.length
+        #expect(NSMaxRange(page.field.textView.selectedRange) <= length)
+        #expect(page.field.textView.text == text)
+    }
+
+    /// Cancel over shorter text puts the caret back clamped to it.
+    @Test func cancelClampsTheCaretToTheTextThereIsNow() {
+        let page = Page(text: "x")
+        let target = LinkPrompt.Target(blockId: "b", text: "hi there", selection: NSRange(location: 3, length: 5))
+        LinkPrompt.finish(nil, target: target, field: page.field, session: page.session)
+        #expect(page.field.textView.selectedRange == NSRange(location: 1, length: 0))
+        #expect(page.session.failure == nil)
+        #expect(page.editor.all.isEmpty)
     }
 
     @Test func menuKeysExistOnlyOverAnOpenMenu() {

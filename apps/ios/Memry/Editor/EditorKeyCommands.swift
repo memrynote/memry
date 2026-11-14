@@ -151,7 +151,7 @@ extension EditorSession {
         if selectionMarks.contains("link") {
             toggleMark("link")
         } else {
-            LinkPrompt.present(session: self, textView: field.textView)
+            LinkPrompt.present(session: self, field: field)
         }
     }
 

@@ -21,7 +21,7 @@ enum FormatEditMenu {
         ("code", "Code", "chevron.left.forwardslash.chevron.right"),
     ]
 
-    static func menu(session: EditorSession, textView: UITextView) -> UIMenu {
+    static func menu(session: EditorSession, field: BlockField) -> UIMenu {
         let active = session.selectionMarks
         var children: [UIMenuElement] = marks.map { mark in
             let action = UIAction(
@@ -33,11 +33,11 @@ enum FormatEditMenu {
         let linked = active.contains("link")
         children.append(UIAction(
             title: linked ? "Remove Link" : "Link\u{2026}", image: UIImage(systemName: "link")
-        ) { [weak textView] _ in
+        ) { [weak field] _ in
             if linked {
                 session.toggleMark("link")
-            } else if let textView {
-                LinkPrompt.present(session: session, textView: textView)
+            } else if let field {
+                LinkPrompt.present(session: session, field: field)
             }
         })
         children.append(colours(title: "Text Colour", symbol: "paintpalette", mark: "textColor", session: session) {

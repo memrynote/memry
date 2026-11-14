@@ -582,7 +582,7 @@ final class BlockField: NSObject, UITextViewDelegate, UIGestureRecognizerDelegat
         _ textView: UITextView, editMenuForTextIn range: NSRange, suggestedActions: [UIMenuElement]
     ) -> UIMenu? {
         guard range.length > 0, let session else { return nil }
-        return UIMenu(children: [FormatEditMenu.menu(session: session, textView: textView)] + suggestedActions)
+        return UIMenu(children: [FormatEditMenu.menu(session: session, field: self)] + suggestedActions)
     }
 }
 
