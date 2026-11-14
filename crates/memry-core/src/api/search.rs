@@ -45,6 +45,8 @@ mod block_refs;
 #[cfg(feature = "vec")]
 mod embeddings;
 #[cfg(feature = "markdown")]
+mod file_text;
+#[cfg(feature = "markdown")]
 mod fold;
 #[cfg(feature = "markdown")]
 mod objects;

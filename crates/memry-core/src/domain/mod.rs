@@ -28,6 +28,9 @@ mod desktop_records;
 pub mod embedding_input;
 #[cfg(feature = "markdown")]
 pub mod external_feed;
+// Desktop's attachment text; iOS reads no file text.
+#[cfg(feature = "markdown")]
+pub mod file_text;
 // The desktop note fold cache; iOS folds no note.
 #[cfg(feature = "markdown")]
 pub mod fold_chunks;
