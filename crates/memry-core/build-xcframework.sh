@@ -73,11 +73,16 @@ if [[ ! -d "$ort_dir" ]]; then
   trap - EXIT
 fi
 ort_xcfwk="$ort_dir/onnxruntime.xcframework"
-if [[ ! -d "$ort_xcfwk" ]]; then
-  echo "error: $ort_xcfwk is missing; delete $ort_dir and rerun" >&2
-  exit 1
-fi
+ort_device="$ort_xcfwk/ios-arm64/onnxruntime.framework/onnxruntime"
 ort_sim="$ort_xcfwk/ios-arm64_x86_64-simulator/onnxruntime.framework/onnxruntime"
+# Only the zip is checksummed, so a partial CI cache restore shows up here
+# rather than as a lipo or linker error.
+for binary in "$ort_device" "$ort_sim"; do
+  if [[ ! -f "$binary" ]]; then
+    echo "error: $binary is missing; delete $ort_dir and rerun" >&2
+    exit 1
+  fi
+done
 ort_thin="$workspace_dir/target/onnxruntime/$ort_sha"
 for arch in arm64 x86_64; do
   thin="$ort_thin/$arch-sim/libonnxruntime.a"
@@ -91,24 +96,37 @@ done
 rm -rf "$staging"
 for target in "${targets[@]}"; do
   rustup target add "$target" >/dev/null
+  # With the xcframework, ort-sys links ONNX Runtime as a framework and leaves
+  # it out of the archive, so it is merged in below. ort-sys finds the
+  # xcframework only for the arm64 triples; for x86_64 rustc bundles the thin
+  # archive itself, and merging would add it a second time.
   case "$target" in
     aarch64-apple-ios)
       ort_env=(ORT_IOS_XCFWK_PATH="$ort_xcfwk")
-      ort_lib="$ort_xcfwk/ios-arm64/onnxruntime.framework/onnxruntime" ;;
+      ort_lib="$ort_device" ;;
     aarch64-apple-ios-sim)
       ort_env=(ORT_IOS_XCFWK_PATH="$ort_xcfwk")
       ort_lib="$ort_thin/arm64-sim/libonnxruntime.a" ;;
     x86_64-apple-ios)
-      # ort-sys finds the xcframework only for the arm64 triples.
       ort_env=(ORT_LIB_PATH="$ort_thin/x86_64-sim")
-      ort_lib="$ort_thin/x86_64-sim/libonnxruntime.a" ;;
+      ort_lib="" ;;
   esac
   env "${ort_env[@]}" cargo build -p memry-core --target "$target" --profile "$cargo_profile" --features semantic
   # Merged into a copy: merging into cargo's own output would add ONNX Runtime
   # a second time whenever cargo has nothing to rebuild.
+  built="$workspace_dir/target/$target/$profile/libmemry_core.a"
+  staged="$staging/$target/libmemry_core.a"
   mkdir -p "$staging/$target"
-  libtool -static -no_warning_for_no_symbols -o "$staging/$target/libmemry_core.a" \
-    "$workspace_dir/target/$target/$profile/libmemry_core.a" "$ort_lib"
+  if [[ -n "$ort_lib" ]]; then
+    libtool -static -no_warning_for_no_symbols -o "$staged" "$built" "$ort_lib"
+  else
+    cp "$built" "$staged"
+  fi
+  ort_copies="$(nm -g "$staged" 2>/dev/null | grep -c ' T _OrtGetApiBase$' || true)"
+  if [[ "$ort_copies" != 1 ]]; then
+    echo "error: $staged defines _OrtGetApiBase $ort_copies times; expected exactly one ONNX Runtime" >&2
+    exit 1
+  fi
 done
 
 # One bindgen run over any one built library: the metadata is identical across

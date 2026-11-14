@@ -54,7 +54,7 @@ let package = Package(
                 .linkedLibrary("z"),
                 .linkedLibrary("c++"),
                 .linkedFramework("CoreML"),
-                .linkedFramework("UIKit"),
+                .linkedFramework("UIKit", .when(platforms: [.iOS])),
                 .linkedFramework("Network"),
             ]
         ),

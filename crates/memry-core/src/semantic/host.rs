@@ -1,6 +1,7 @@
 //! The one in-memory model slot per process. The model is 330 MB resident and
 //! peaks at 427 MB while loading (#4437 spike), so two copies never coexist.
 
+use std::panic::{AssertUnwindSafe, catch_unwind};
 use std::sync::{Arc, Mutex, MutexGuard, PoisonError};
 
 use super::{Embed, SemanticError, Threads, Vector};
@@ -16,16 +17,16 @@ pub struct ModelHost {
 
 struct State {
     slot: Slot,
+    /// Bumped by every unload. A load that finishes under a newer generation
+    /// was overtaken by an unload and drops its result.
     generation: u64,
 }
 
 enum Slot {
     Unloaded,
-    /// A load that finishes and no longer matches this generation was
-    /// overtaken by an unload, and drops its result.
-    Loading {
-        generation: u64,
-    },
+    /// Stays until its load finishes, even across an unload, so a second
+    /// model never loads beside it.
+    Loading,
     Loaded(Arc<dyn Embed>),
 }
 
@@ -53,36 +54,49 @@ impl ModelHost {
             Ok(vector) => vector,
             Err(error) => {
                 eprintln!("memry-core: query embedding failed, FTS only: {error}");
+                if matches!(error, SemanticError::Poisoned) {
+                    self.evict(&embedder);
+                }
                 None
             }
         }
     }
 
     pub fn unload(&self) {
-        lock(&self.state).slot = Slot::Unloaded;
+        let mut state = lock(&self.state);
+        state.generation += 1;
+        if let Slot::Loaded(_) = state.slot {
+            state.slot = Slot::Unloaded;
+        }
+    }
+
+    fn evict(&self, broken: &Arc<dyn Embed>) {
+        let mut state = lock(&self.state);
+        if let Slot::Loaded(current) = &state.slot
+            && std::ptr::addr_eq(Arc::as_ptr(current), Arc::as_ptr(broken))
+        {
+            state.slot = Slot::Unloaded;
+        }
     }
 
     fn loaded_or_start_load(&self) -> Option<Arc<dyn Embed>> {
         let mut state = lock(&self.state);
         match &state.slot {
             Slot::Loaded(embedder) => return Some(embedder.clone()),
-            Slot::Loading { .. } => return None,
+            Slot::Loading => return None,
             Slot::Unloaded => {}
         }
-        state.generation += 1;
+        state.slot = Slot::Loading;
         let generation = state.generation;
-        state.slot = Slot::Loading { generation };
         drop(state);
 
         let (shared, load) = (self.state.clone(), self.load.clone());
         runtime().spawn_blocking(move || {
-            let loaded = load(Threads::Foreground);
+            let loaded = catch_unwind(AssertUnwindSafe(|| load(Threads::Foreground)))
+                .unwrap_or_else(|_| Err(SemanticError::inference("model load panicked")));
             let mut state = lock(&shared);
-            if !matches!(state.slot, Slot::Loading { generation: current } if current == generation)
-            {
-                return;
-            }
             state.slot = match loaded {
+                Ok(_) if state.generation != generation => Slot::Unloaded,
                 Ok(embedder) => Slot::Loaded(embedder),
                 Err(error) => {
                     eprintln!("memry-core: embedding model load failed: {error}");
@@ -98,7 +112,7 @@ impl ModelHost {
 mod tests {
     use std::sync::atomic::{AtomicUsize, Ordering};
     use std::sync::mpsc::{Sender, channel};
-    use std::sync::{Mutex, Weak};
+    use std::sync::{Mutex, TryLockError, Weak};
     use std::time::{Duration, Instant};
 
     use super::*;
@@ -121,21 +135,30 @@ mod tests {
             Ok(vector())
         }
         fn try_embed(&self, _: &str) -> Result<Option<Vector>, SemanticError> {
-            Ok(self.session.try_lock().ok().map(|_| vector()))
+            match self.session.try_lock() {
+                Ok(_) => Ok(Some(vector())),
+                Err(TryLockError::WouldBlock) => Ok(None),
+                Err(TryLockError::Poisoned(_)) => Err(SemanticError::Poisoned),
+            }
         }
     }
 
-    /// A loader that blocks until the test answers: `true` loads a fake,
-    /// `false` fails.
+    enum Outcome {
+        Load,
+        Fail,
+        Panic,
+    }
+
+    /// A loader that blocks until the test answers with an `Outcome`.
     struct Harness {
         host: ModelHost,
-        answer: Sender<bool>,
+        answer: Sender<Outcome>,
         calls: Arc<AtomicUsize>,
         built: Arc<Mutex<Vec<Weak<Fake>>>>,
     }
 
     fn harness() -> Harness {
-        let (answer, answers) = channel::<bool>();
+        let (answer, answers) = channel::<Outcome>();
         let answers = Arc::new(Mutex::new(answers));
         let calls = Arc::new(AtomicUsize::new(0));
         let built = Arc::new(Mutex::new(Vec::new()));
@@ -143,8 +166,13 @@ mod tests {
         let load: Loader = Arc::new(move |threads| {
             assert_eq!(threads, Threads::Foreground);
             counter.fetch_add(1, Ordering::SeqCst);
-            if !answers.lock().unwrap().recv().unwrap() {
-                return Err(SemanticError::inference("fake load failed"));
+            // Bound before the match: panicking with the guard alive would
+            // poison `answers` for every later load.
+            let outcome = answers.lock().unwrap().recv().unwrap();
+            match outcome {
+                Outcome::Load => {}
+                Outcome::Fail => return Err(SemanticError::inference("fake load failed")),
+                Outcome::Panic => panic!("fake load panicked"),
             }
             let fake = Arc::new(Fake {
                 session: Mutex::new(()),
@@ -177,7 +205,7 @@ mod tests {
             assert_eq!(h.host.query_vector("q"), None);
         }
         until(|| h.calls.load(Ordering::SeqCst) == 1);
-        h.answer.send(true).unwrap();
+        h.answer.send(Outcome::Load).unwrap();
         until(|| h.host.query_vector("q").is_some());
         assert_eq!(h.calls.load(Ordering::SeqCst), 1);
     }
@@ -186,7 +214,7 @@ mod tests {
     fn a_busy_session_answers_none_instead_of_waiting() {
         let h = harness();
         h.host.query_vector("q");
-        h.answer.send(true).unwrap();
+        h.answer.send(Outcome::Load).unwrap();
         until(|| h.host.query_vector("q").is_some());
 
         let fake = h.built.lock().unwrap()[0].upgrade().expect("loaded");
@@ -202,7 +230,7 @@ mod tests {
         h.host.query_vector("q");
         until(|| h.calls.load(Ordering::SeqCst) == 1);
         h.host.unload();
-        h.answer.send(true).unwrap();
+        h.answer.send(Outcome::Load).unwrap();
         until(|| {
             let built = h.built.lock().unwrap();
             built.len() == 1 && built[0].upgrade().is_none()
@@ -216,7 +244,7 @@ mod tests {
     fn unload_frees_a_loaded_model_and_the_next_query_reloads() {
         let h = harness();
         h.host.query_vector("q");
-        h.answer.send(true).unwrap();
+        h.answer.send(Outcome::Load).unwrap();
         until(|| h.host.query_vector("q").is_some());
 
         h.host.unload();
@@ -229,12 +257,74 @@ mod tests {
     fn a_failed_load_is_retried_by_the_next_query() {
         let h = harness();
         h.host.query_vector("q");
-        h.answer.send(false).unwrap();
+        h.answer.send(Outcome::Fail).unwrap();
         until(|| {
             h.host.query_vector("q");
             h.calls.load(Ordering::SeqCst) == 2
         });
-        h.answer.send(true).unwrap();
+        h.answer.send(Outcome::Load).unwrap();
+        until(|| h.host.query_vector("q").is_some());
+    }
+
+    #[test]
+    fn a_panicking_load_is_retried_by_the_next_query() {
+        let h = harness();
+        h.host.query_vector("q");
+        h.answer.send(Outcome::Panic).unwrap();
+        until(|| {
+            h.host.query_vector("q");
+            h.calls.load(Ordering::SeqCst) == 2
+        });
+        h.answer.send(Outcome::Load).unwrap();
+        until(|| h.host.query_vector("q").is_some());
+    }
+
+    #[test]
+    fn a_query_after_an_unload_during_a_load_waits_for_that_load_instead_of_starting_another() {
+        let h = harness();
+        h.host.query_vector("q");
+        until(|| h.calls.load(Ordering::SeqCst) == 1);
+        h.host.unload();
+        assert_eq!(h.host.query_vector("q"), None);
+
+        // The blocking pool is FIFO: once this marker has run, a second load
+        // spawned by the query above has started too.
+        let (ran, marker) = channel();
+        runtime().spawn_blocking(move || ran.send(()).unwrap());
+        marker.recv().unwrap();
+        assert_eq!(h.calls.load(Ordering::SeqCst), 1);
+
+        h.answer.send(Outcome::Load).unwrap();
+        until(|| {
+            let built = h.built.lock().unwrap();
+            built.len() == 1 && built[0].upgrade().is_none()
+        });
+        h.host.query_vector("q");
+        until(|| h.calls.load(Ordering::SeqCst) == 2);
+        h.answer.send(Outcome::Load).unwrap();
+        until(|| h.host.query_vector("q").is_some());
+    }
+
+    #[test]
+    fn a_session_poisoned_by_a_panic_is_evicted_and_reloaded() {
+        let h = harness();
+        h.host.query_vector("q");
+        h.answer.send(Outcome::Load).unwrap();
+        until(|| h.host.query_vector("q").is_some());
+
+        let fake = h.built.lock().unwrap()[0].upgrade().expect("loaded");
+        let poisoned = std::thread::spawn(move || {
+            let _session = fake.session.lock().unwrap();
+            panic!("inference panicked");
+        })
+        .join();
+        assert!(poisoned.is_err());
+
+        assert_eq!(h.host.query_vector("q"), None);
+        assert!(h.built.lock().unwrap()[0].upgrade().is_none());
+        h.host.query_vector("q");
+        until(|| h.calls.load(Ordering::SeqCst) == 2);
+        h.answer.send(Outcome::Load).unwrap();
         until(|| h.host.query_vector("q").is_some());
     }
 }
