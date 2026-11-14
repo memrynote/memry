@@ -368,3 +368,82 @@ fn bootstrap(db: &Db, transport: Arc<FakeTransport>) -> PackBootstrap {
     ));
     PackBootstrap::new(http, db.clone(), bodies)
 }
+
+/// Serves a listing of five packs and answers each download after a second, counting how many
+/// downloads are in flight at once.
+struct SlowPacks {
+    in_flight: std::sync::atomic::AtomicUsize,
+    most: std::sync::atomic::AtomicUsize,
+}
+
+#[async_trait::async_trait]
+impl memry_core::seams::transport::Transport for SlowPacks {
+    async fn send(
+        &self,
+        request: memry_core::seams::transport::HttpRequest,
+    ) -> Result<memry_core::seams::transport::HttpResponse, memry_core::api::errors::TransportError>
+    {
+        use std::sync::atomic::Ordering::SeqCst;
+        if request.url.contains("/sync/packs") {
+            let packs: Vec<Json> = (1..=5)
+                .map(|n| {
+                    json!({"id": format!("p{n}"), "itemKind": "crdt_snapshot", "maxCursor": n * 10,
+                           "url": format!("https://r2.example/packs/p{n}"),
+                           "expiresAt": 4_000_000_000i64})
+                })
+                .collect();
+            return response(200, &json!({ "packs": packs }).to_string());
+        }
+        let now = self.in_flight.fetch_add(1, SeqCst) + 1;
+        self.most.fetch_max(now, SeqCst);
+        tokio::time::sleep(std::time::Duration::from_secs(1)).await;
+        self.in_flight.fetch_sub(1, SeqCst);
+        bytes_response(mpak(&[(NOTE, None, vec![1])]))
+    }
+
+    fn open_socket(
+        &self,
+        _request: memry_core::seams::transport::SocketRequest,
+        _listener: Arc<dyn memry_core::seams::transport::SocketListener>,
+    ) -> Result<
+        Arc<dyn memry_core::seams::transport::SocketHandle>,
+        memry_core::api::errors::TransportError,
+    > {
+        Err(memry_core::api::errors::TransportError::Failed {
+            what: "no sockets here".into(),
+        })
+    }
+}
+
+/// Desktop's `with_concurrency(3)`: three packs download at once and never more, and every pack
+/// still lands with the watermark over all five.
+#[tokio::test(start_paused = true)]
+async fn a_concurrent_bootstrap_downloads_three_packs_at_once() {
+    let db = scratch_db("concurrent");
+    let server = Arc::new(SlowPacks {
+        in_flight: Default::default(),
+        most: Default::default(),
+    });
+    let http = Arc::new(HttpClient::new(
+        server.clone(),
+        "https://sync.example",
+        ClientIdentity::new("desktop", "1.2.3").expect("a valid identity"),
+    ));
+    let bodies = Arc::new(BodyPull::new(
+        Arc::clone(&http),
+        db.clone(),
+        Declaration::subscribed(),
+        Arc::new(Directory {
+            device_id: "device-a".into(),
+            public_key: vec![0; 32],
+        }),
+    ));
+    let report = PackBootstrap::new(http, db.clone(), bodies)
+        .with_concurrency(3)
+        .run(1_000)
+        .await
+        .expect("run");
+    assert_eq!(server.most.load(std::sync::atomic::Ordering::SeqCst), 3);
+    assert_eq!(report.packs_applied, 5);
+    assert_eq!(report.applied_through_cursor, Some(50));
+}
