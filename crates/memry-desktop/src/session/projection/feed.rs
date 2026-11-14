@@ -9,7 +9,7 @@ use tokio::sync::broadcast::Receiver;
 use tokio::sync::broadcast::error::RecvError;
 
 use super::ProjectionEvent;
-use crate::session::{Session, lock};
+use crate::session::Session;
 use crate::vault::consumer::Applied;
 
 /// The event a fact owes the projectors, if any.
@@ -32,23 +32,17 @@ pub fn event(fact: Applied) -> Option<ProjectionEvent> {
     }
 }
 
-/// `event` on the open vault's runtime, through [`super::ProjectionRuntime::publish_from`] with that
-/// vault, both read under one lock so a switch cannot pair one vault's hooks with another's
-/// lanes. Nothing when no vault is open.
+/// `event` on the open vault's runtime. Nothing when no vault is open: what the event owed is
+/// still owed (the embedding lane's stored hashes), and the next open's reconcile pays it.
 pub fn publish(session: &Session, event: ProjectionEvent) {
-    let open = lock(&session.inner.state)
-        .open
-        .as_ref()
-        .map(|open| (open.view.clone(), open.runtime.clone()));
-    if let Some((view, runtime)) = open {
-        runtime.publish_from(&view, event);
+    if let Some(runtime) = session.projections() {
+        runtime.publish(event);
     }
 }
 
 /// [`publish`]es each fact of `facts`, on its own thread, until the tier goes away. Missed
-/// facts (a lagged subscription) make every lane reconcile. That recovers what a lane's
-/// reconcile can see; the embedding lane's cannot tell an edited note from an unchanged one,
-/// so a missed edit keeps its older vector until the note changes again.
+/// facts (a lagged subscription) make every lane reconcile, which recovers what a lane's
+/// reconcile can see: the embedding lane's finds every note whose content hash moved.
 pub fn watch(session: &Session, mut facts: Receiver<Applied>) -> std::io::Result<()> {
     let session = session.clone();
     std::thread::Builder::new()

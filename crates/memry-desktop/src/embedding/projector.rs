@@ -2,11 +2,13 @@
 //! `apps/desktop/src/main/projections/projectors/embedding-projector.ts` over the
 //! [`EmbeddingService`] and the core's note vector store ([`Search`]'s `*_note_embeddings`).
 //!
-//! - **What is owed lives in `index.db`.** An event marks its note dirty (input version `0`)
-//!   and bumps its revision when it is published ([`Projector::published`]), on the
-//!   publisher's thread and outside the lane (`markDirty`, :188-203). A note whose embed is
-//!   skipped (AI off, indexing, a failed load, an event a close drained or dropped) stays owed
-//!   across restarts, and the reconcile finds it.
+//! - **What is owed lives in `index.db`.** Each note's vectors record the `note_files` content
+//!   hash they were built from ([`note_embeddings`](memry_core::domain::note_embeddings)), and
+//!   the reconcile embeds every note whose hash moved since. Events only make the embed
+//!   prompt: a note whose embed is skipped (AI off, indexing, a failed load, an event a close
+//!   drained or dropped, a fact published before the vault was open) stays owed across
+//!   restarts, and the reconcile finds it. Electron marks the note dirty per event instead
+//!   (`markDirty`, :188-203), which an event that never arrives cannot do.
 //! - **Deferred while indexing** (:376-378, 446-448): an event during the open's build or a
 //!   `vault_reindex` only marks its note; [`drain_deferred`] runs the reconcile once the index
 //!   stops indexing (`drainDeferredEmbeddings`, `vault/index.ts:996-1015`, and the build's tail,
@@ -15,9 +17,9 @@
 //!   (set when the vault closes, before its close hooks stop the model), the vault still being
 //!   the one the work started on, the AI setting, and no newer event on the note. An event the
 //!   close drains therefore embeds nothing and starts no model thread (REVIEW-4548). The last
-//!   check and the store are two steps: an edit published between them can have its dirty
-//!   mark overwritten by the older vector's store. The edit's queued event replaces that
-//!   vector, unless a close drops the event first.
+//!   check and the store are two steps: an edit published between them gets the older
+//!   vector stored, with the older hash, so the edit stays owed. Its queued event replaces that
+//!   vector, or the next reconcile does.
 //! - **Markdown notes only.** File notes and the attachment text Electron appends
 //!   (`withAttachmentText`, :128-133) come with the extracted-text tables (Step 25, #3542).
 
@@ -62,7 +64,7 @@ pub struct NoteEmbeddingProjector {
     indexing: Indexing,
     progress: ProgressSink,
     /// `revisions`: guards a computation against a newer event on its note. Not a queue: the
-    /// dirty rows are.
+    /// stored hashes are.
     revisions: Mutex<HashMap<String, u64>>,
     next_revision: AtomicU64,
 }
@@ -204,7 +206,7 @@ impl NoteEmbeddingProjector {
         }
         work.open
             .search
-            .store_note_embeddings(&note.note_id, vectors, similar)
+            .store_note_embeddings(note, vectors, similar)
             .map_err(text)?;
         Ok(true)
     }
@@ -253,8 +255,8 @@ impl NoteEmbeddingProjector {
     }
 
     /// `note.text-extracted` for a markdown note and the tier's note writes (:400-425,
-    /// 436-456): embed it, against the revision it has now, unless the index is building. It
-    /// was marked when it was published.
+    /// 436-456): embed it, against the revision it has now, unless the index is building. Its
+    /// content hash is read before its file, so the stored hash never names newer text.
     fn note_changed(&self, work: &Work<'_>, note_id: &str) -> Result<(), String> {
         if (self.indexing)() || !self.may_embed(work) {
             return Ok(());
@@ -287,20 +289,14 @@ impl Projector for NoteEmbeddingProjector {
         )
     }
 
-    /// `markDirty` and the revision bump, before the lane: an event a close drains or drops
-    /// leaves its note owed, and an embed in flight for the note stops before it stores.
-    fn published(&self, event: &ProjectionEvent, open: &OpenVault) -> Result<(), String> {
-        match event {
-            ProjectionEvent::NoteDeleted { note_id, .. } => {
-                self.bump(note_id);
-                Ok(())
-            }
-            ProjectionEvent::NoteFileChanged { note_id }
-            | ProjectionEvent::NoteTextExtracted { note_id } => {
-                self.bump(note_id);
-                open.search.mark_embedding_dirty(note_id).map_err(text)
-            }
-            _ => Ok(()),
+    /// The revision bump, before the lane: an embed in flight for the note stops before it
+    /// stores a vector the event already made stale.
+    fn published(&self, event: &ProjectionEvent) {
+        if let ProjectionEvent::NoteDeleted { note_id, .. }
+        | ProjectionEvent::NoteFileChanged { note_id }
+        | ProjectionEvent::NoteTextExtracted { note_id } = event
+        {
+            self.bump(note_id);
         }
     }
 
@@ -359,7 +355,7 @@ impl Projector for NoteEmbeddingProjector {
     }
 
     /// `reconcile` (:483-583): drop the vectors of gone notes, then embed the notes with no
-    /// vector, an older input version or a dirty mark. Left to [`drain_deferred`] while the
+    /// vector, an older input version, a dirty mark or another content hash. Left to [`drain_deferred`] while the
     /// index builds, the prune included: `note_files` may be half filled (Electron prunes after
     /// the walk, `vault/index.ts:586-599`). A failed model load leaves the work owed.
     fn reconcile(&self, cancel: &CancelToken) -> Result<(), String> {

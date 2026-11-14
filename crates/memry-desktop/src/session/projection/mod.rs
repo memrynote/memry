@@ -24,8 +24,6 @@ use std::thread::JoinHandle;
 use std::time::{Duration, Instant};
 
 pub use bus::{DEFAULT_QUEUE_LIMIT, ProjectionBus};
-
-use super::OpenVault;
 pub use event::{
     EventKind, FileNoteProjection, MarkdownNoteProjection, NoteProjectionRecord, ProjectionEvent,
 };
@@ -58,13 +56,10 @@ pub trait Projector: Send + Sync + 'static {
 
     fn handles(&self, event: &ProjectionEvent) -> bool;
 
-    /// Runs on the publisher's thread before the event is queued, outside the lane's turn,
-    /// with the vault the event belongs to, even once the runtime is stopping: what must
-    /// outlive the event being dropped (a close drains with its token set, then clears the
-    /// queue). Cheap: no model, no wait on the lane.
-    fn published(&self, _event: &ProjectionEvent, _open: &OpenVault) -> Result<(), String> {
-        Ok(())
-    }
+    /// Runs on the publisher's thread when an event it handles is published, before it is
+    /// queued and outside the lane's turn, even once the runtime is stopping. Cheap: no I/O,
+    /// no model, no wait on the lane.
+    fn published(&self, _event: &ProjectionEvent) {}
 
     /// `cancel` is set once the session closes: an event the close drains must not start work
     /// that outlives the vault (a model load).
@@ -249,22 +244,15 @@ impl ProjectionRuntime {
         self.cancel.clone()
     }
 
-    /// [`Projector::published`] of each lane that handles the event, here and with `open`
-    /// (the vault this runtime serves), then [`Self::publish`].
-    pub fn publish_from(&self, open: &OpenVault, event: ProjectionEvent) {
+    /// [`Projector::published`] of each lane that handles the event, then queues the event on
+    /// every lane. Refused (and logged) once the runtime is stopping: anything still emitting
+    /// would refill a lane as fast as the drain empties it.
+    pub fn publish(&self, event: ProjectionEvent) {
         for lane in &self.lanes {
-            if lane.projector.handles(&event)
-                && let Err(error) = lane.projector.published(&event, open)
-            {
-                tracing::error!(projector = lane.projector.name(), %error, "projection publish hook failed");
+            if lane.projector.handles(&event) {
+                lane.projector.published(&event);
             }
         }
-        self.publish(event);
-    }
-
-    /// Queues the event on every lane. Refused (and logged) once the runtime is stopping:
-    /// anything still emitting would refill a lane as fast as the drain empties it.
-    pub fn publish(&self, event: ProjectionEvent) {
         if self.stopping.load(Ordering::SeqCst) {
             tracing::debug!(kind = ?event.kind(), "projection event refused: runtime is stopping");
             return;

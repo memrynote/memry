@@ -24,15 +24,18 @@ impl Search {
             .call_blocking(move |index| note_embeddings::mark_dirty(index, &note_id))
     }
 
+    /// The note's vectors, recorded as built from the content hash it was listed with
+    /// ([`note_embeddings::store`]).
     pub fn store_note_embeddings(
         &self,
-        note_id: &str,
+        note: &EmbeddableNote,
         windows: Vec<Vec<f32>>,
         similar: Vec<f32>,
     ) -> Result<(), StorageError> {
-        let note_id = note_id.to_owned();
-        self.index
-            .call_blocking(move |index| note_embeddings::store(index, &note_id, &windows, &similar))
+        let (note_id, hash) = (note.note_id.clone(), note.content_hash.clone());
+        self.index.call_blocking(move |index| {
+            note_embeddings::store(index, &note_id, hash.as_deref(), &windows, &similar)
+        })
     }
 
     pub fn delete_note_embedding(&self, note_id: &str) -> Result<(), StorageError> {
