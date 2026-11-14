@@ -47,15 +47,14 @@ use crate::protocol::envelope::{EnvelopeError, RecordEnvelope};
 use crate::protocol::http::{ApiRequest, Auth, HttpClient, SYNC_TYPES_HEADER, VAULT_ID_HEADER};
 use crate::protocol::types::Declaration;
 use crate::storage::Db;
-use crate::storage::repositories::sync_items;
 
 use super::apply::{self, Pending};
 use super::body_pull::CrdtCipher;
 use super::changes_page::{ChangesPage, read_changes_page, requested_ids, uncovered_ids};
 use super::driver::Observers;
 use super::feed_restart;
-use super::note_body_feed::{self, FeedClient, FetchedBodies, NOTE_BODY_SYNC_TYPE};
-use super::pull_decode::{self, server_cursor};
+use super::note_body_feed::{self, NOTE_BODY_SYNC_TYPE};
+use super::pull_decode;
 use super::store::{self, RECORD_CURSOR_SCOPE};
 
 /// §5.10.2: a new client SHOULD request the server's ceiling. Five times fewer
@@ -82,6 +81,7 @@ pub trait RecordCipher: Send + Sync {
 pub use super::pull_report::{PullError, PullReport};
 
 mod apply_step;
+mod items;
 
 pub use super::feed_restart::{META_CURSOR_SKIP_REPAIR, META_RECORD_DECLARATION};
 
@@ -310,7 +310,8 @@ impl PullLoop {
         // Only a loop that lands bodies owes them: its caller is the one that
         // settles the debts (#2297 review A-7).
         let owe_bodies = self.bodies.is_some();
-        let outcomes = self.apply_all(pending, untyped, owe_bodies).await?;
+        let mut outcomes = self.apply_all(pending, untyped, owe_bodies).await?;
+        let feed = std::mem::take(&mut outcomes.feed);
         report.applied += outcomes.applied;
         report.deleted += outcomes.deleted;
         report.skipped += outcomes.skipped;
@@ -334,6 +335,7 @@ impl PullLoop {
                 .bodies_applied(report.advanced_documents.clone())
                 .await;
         }
+        self.tell(feed).await;
 
         // §5.14's breaker, all three conditions or none.
         let yielded = report.applied + report.deleted + report.skipped + report.expired;
@@ -373,7 +375,8 @@ impl PullLoop {
         }
 
         pending.sort_by_key(|item| apply::apply_rank(item.item_type()));
-        let outcomes = self.apply_all(pending, Vec::new(), true).await?;
+        let mut outcomes = self.apply_all(pending, Vec::new(), true).await?;
+        self.tell(std::mem::take(&mut outcomes.feed)).await;
         report.applied += outcomes.applied;
         report.deleted += outcomes.deleted;
         report.skipped += outcomes.skipped;
@@ -381,70 +384,6 @@ impl PullLoop {
         report.expired += outcomes.expired;
         report.purged_documents.extend(outcomes.purged_documents);
         Ok(report)
-    }
-
-    /// Decodes pulled items per item (§5.14): each one is pending or one
-    /// recorded corrupt item.
-    async fn take_items(
-        &self,
-        items: &[Json],
-        report: &mut PullReport,
-        pending: &mut Vec<Pending>,
-    ) -> Result<(), PullError> {
-        for item in items {
-            match pull_decode::decode(&self.declaration, self.cipher.as_ref(), item) {
-                Ok(decoded) => pending.push(decoded),
-                Err(corrupt) => {
-                    report.corrupt += 1;
-                    self.record_corrupt(item, &corrupt).await?;
-                }
-            }
-        }
-        Ok(())
-    }
-
-    /// [`note_body_feed::fetch`] for this page, when bodies are declared.
-    ///
-    /// The bodies dropped unfetched are those of a note or journal this page
-    /// deletes: a typed tombstone of a document type, or an id in `deleted`
-    /// with no typed item, which deletes every row under it (§5.12.1). A tag
-    /// that shares a note's id deletes no body.
-    async fn fetch_note_bodies(
-        &self,
-        page: &ChangesPage,
-        pending: &[Pending],
-    ) -> Result<FetchedBodies, PullError> {
-        let Some(cipher) = self.bodies.as_deref() else {
-            return Ok(FetchedBodies::default());
-        };
-        let dropped: Vec<String> = page
-            .deleted
-            .iter()
-            .filter(|id| {
-                let typed: Vec<&Pending> = pending
-                    .iter()
-                    .filter(|item| item.item_id() == *id)
-                    .collect();
-                typed.is_empty()
-                    || typed.iter().any(|item| {
-                        matches!(item, Pending::Tombstone { .. })
-                            && apply::DOCUMENT_TYPES.contains(&item.item_type())
-                    })
-            })
-            .cloned()
-            .collect();
-        let entries = page.note_bodies.clone();
-        let held = self
-            .db
-            .call(move |conn| note_body_feed::held_bodies(conn, entries.as_deref()))
-            .await?;
-        let request = |method: &str, path: &str| self.request(method, path);
-        let client = FeedClient {
-            http: &self.http,
-            request: &request,
-            cipher,
-        };
-        Ok(note_body_feed::fetch(&client, page.note_bodies.as_deref(), &dropped, &held).await)
     }
 
     async fn fetch_changes(
@@ -489,33 +428,6 @@ impl PullLoop {
             request = request.header(VAULT_ID_HEADER, vault_id);
         }
         request
-    }
-
-    /// Records a corrupt item against its row when the wire told us enough to
-    /// find one (§5.14, chapter 13 §13.2 rule 5).
-    ///
-    /// An item so malformed that neither its id nor its type is readable is
-    /// counted and nothing else: there is no row to flag, and inventing a key
-    /// for it would put an unaddressable row in `sync_items` forever.
-    async fn record_corrupt(&self, item: &Json, reason: &str) -> Result<(), PullError> {
-        let (Some(item_id), Some(item_type)) = (
-            item.get("id").and_then(Json::as_str),
-            item.get("type").and_then(Json::as_str),
-        ) else {
-            return Ok(());
-        };
-        let item_id = item_id.to_owned();
-        let item_type = item_type.to_owned();
-        let reason = reason.to_owned();
-        let cursor = server_cursor(item);
-        let now = now_ms();
-        self.db
-            .call(move |conn| {
-                sync_items::upsert_metadata_only(conn, &item_type, &item_id, now, cursor)?;
-                sync_items::mark_corrupt(conn, &item_type, &item_id, &reason, now)
-            })
-            .await?;
-        Ok(())
     }
 }
 

@@ -50,8 +50,10 @@ use crate::crypto::agent_envelope::AtRestKey;
 use crate::storage::repositories::sync_items::{ApplyOutcome, InboundRecord};
 
 use super::clock::VectorClock;
+use super::driver::observer::AppliedFeed;
 use super::{refused_items, store};
 
+mod feed;
 mod record;
 mod tombstone;
 
@@ -127,6 +129,8 @@ pub(crate) struct ApplyTotals {
     /// `skipped` too. The pull records them in [`super::refused_items`] under
     /// its app version, which this step does not know.
     pub(crate) refused: Vec<(String, String)>,
+    /// What the observers hear once the page commits.
+    pub(crate) feed: AppliedFeed,
 }
 
 /// The two item types whose bodies are CRDT documents (chapter 07, §12.3).
@@ -198,8 +202,10 @@ pub(crate) fn apply_page(
                     refused_items::resolve(conn, &record.item_type, &record.item_id)?;
                     continue;
                 }
-                let outcome = apply_record(conn, &record, now_ms, clock_device, at_rest)?;
+                let existed = feed::is_live(conn, &record.item_type, &record.item_id)?;
+                let (outcome, merged) = apply_record(conn, &record, now_ms, clock_device, at_rest)?;
                 refused_items::settle(conn, &record, &outcome, &mut totals.refused)?;
+                feed::record(conn, &mut totals.feed, &record, &outcome, existed, merged)?;
                 match outcome {
                     ApplyOutcome::Applied => {
                         totals.applied += 1;
@@ -229,5 +235,7 @@ fn sqlite_failed(error: rusqlite::Error) -> StorageError {
 
 #[cfg(test)]
 mod bench;
+#[cfg(test)]
+mod feed_tests;
 #[cfg(test)]
 mod tests;

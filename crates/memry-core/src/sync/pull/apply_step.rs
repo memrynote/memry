@@ -6,6 +6,7 @@ use serde_json::Value as Json;
 
 use super::{MAX_PULL_IDS, PullError, PullLoop, now_ms};
 use crate::sync::apply::{self, ApplyTotals, Pending};
+use crate::sync::driver::observer::AppliedFeed;
 use crate::sync::refused_items::{self, CORE_BUILD};
 use crate::sync::{body_debt, pull_decode};
 
@@ -55,6 +56,15 @@ impl PullLoop {
                 Ok(totals)
             })
             .await?)
+    }
+
+    /// Tells the observers what an apply committed
+    /// ([`crate::sync::driver::observer::Observers::applied`]).
+    /// Called after the commit, never inside it: an observer reads the row.
+    pub(super) async fn tell(&self, feed: AppliedFeed) {
+        if let Some(observers) = &self.observers {
+            observers.applied(feed).await;
+        }
     }
 
     /// Refetches the records another core build refused
@@ -115,8 +125,10 @@ impl PullLoop {
             }
         }
         pending.sort_by_key(|item| apply::apply_rank(item.item_type()));
-        self.apply_all(pending, Vec::new(), self.bodies.is_some())
+        let totals = self
+            .apply_all(pending, Vec::new(), self.bodies.is_some())
             .await?;
+        self.tell(totals.feed).await;
         let gone: Vec<(String, String)> = requested.difference(&answered).cloned().collect();
         self.db
             .call(move |conn| {

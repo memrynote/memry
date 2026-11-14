@@ -206,6 +206,7 @@ pub(crate) fn apply_remote_merged(
     write_merged(conn, record, &changes, now_ms)?;
     Ok(Inbound::Merged {
         conflicted_fields: result.conflicted_fields,
+        conflicts: Vec::new(),
     })
 }
 

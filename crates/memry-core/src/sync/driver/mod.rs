@@ -59,7 +59,10 @@ use super::pull::PullLoop;
 use super::push::PushCoordinator;
 use super::state::{PassTrigger, SyncState, WriteGate};
 use cipher::DirectoryCipher;
-pub use observer::{AppliedOutcome, AppliedRecord, ApplyObserver, FieldConflict, Observers};
+pub use observer::{
+    AppliedFeed, AppliedOutcome, AppliedRecord, ApplyObserver, AttachmentDownload, FieldConflict,
+    Observers,
+};
 
 /// How a driver syncs.
 #[derive(Debug, Clone)]
