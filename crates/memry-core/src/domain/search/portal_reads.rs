@@ -21,7 +21,7 @@ use crate::domain::wiki_target::WikiNames;
 use crate::domain::{note_stats, reads, tag_reads, vault_locks};
 use crate::portal::{extract_anchor, list_doc_blocks, strip_anchor};
 
-use super::{HitKind, failed, links::target_id, match_expression, search_notes};
+use super::{HitKind, NOTES_RANK, failed, links::target_id, note_kind};
 
 /// Notes a search opens at most; each one costs a document replay.
 pub const CANDIDATE_CAP: usize = 40;
@@ -276,18 +276,11 @@ fn markdown_notes(
         .map_err(failed)?;
     let mut limit = want;
     loop {
-        let hits = search_notes(data, index, text, limit)?;
-        let ids = hits
-            .iter()
-            .filter(|hit| matches!(hit.kind, HitKind::Note))
-            .map(|hit| hit.id.clone())
-            .collect();
-        let names = named(data, &ids)?;
-        let notes: Vec<String> = hits
+        let ids = ranked_notes(data, index, &expression, limit)?;
+        let names = named(data, &ids.iter().cloned().collect())?;
+        let notes: Vec<String> = ids
             .into_iter()
-            .filter(|hit| matches!(hit.kind, HitKind::Note))
-            .filter(|hit| names.get(&hit.id).is_some_and(|name| name.markdown))
-            .map(|hit| hit.id)
+            .filter(|id| names.get(id).is_some_and(|name| name.markdown))
             .take(want)
             .collect();
         if notes.len() == want || limit as i64 >= matching {
@@ -295,6 +288,46 @@ fn markdown_notes(
         }
         limit *= 2;
     }
+}
+
+/// The live notes, journal days left out, among the first `limit` `fts_notes` rows `expression`
+/// matches, best first.
+fn ranked_notes(
+    data: &Connection,
+    index: &Connection,
+    expression: &str,
+    limit: usize,
+) -> Result<Vec<String>, StorageError> {
+    let mut statement = index
+        .prepare(&format!(
+            "SELECT id FROM fts_notes WHERE fts_notes MATCH ?1 ORDER BY {NOTES_RANK} LIMIT ?2"
+        ))
+        .map_err(failed)?;
+    let ids = statement
+        .query_map(params![expression, limit as i64], |row| {
+            row.get::<_, String>(0)
+        })
+        .map_err(failed)?
+        .collect::<Result<Vec<_>, _>>()
+        .map_err(failed)?;
+    let mut notes = Vec::new();
+    for id in ids {
+        if matches!(note_kind(data, &id)?, Some(HitKind::Note { .. })) {
+            notes.push(id);
+        }
+    }
+    Ok(notes)
+}
+
+/// Every alphanumeric run of `query`, quoted, all required. The portal's own expression,
+/// apart from the search sheet's [`super::query`].
+fn match_expression(query: &str) -> Option<String> {
+    let terms: Vec<String> = query
+        .split(|character: char| !character.is_alphanumeric())
+        .filter(|term| !term.is_empty())
+        .map(|term| format!("\"{term}\""))
+        .collect();
+    (!terms.is_empty()).then(|| terms.join(" AND "))
 }
 
 /// Blocks matching a search portal's query: every lowercased word of `text` is in the block's

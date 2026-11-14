@@ -98,9 +98,7 @@ struct AccountSubscriptionSection: View {
 
     private func manage() async {
         if BillingFacts.isAppStore(billing) {
-            guard let scene = UIApplication.shared.connectedScenes
-                .first(where: { $0.activationState == .foregroundActive }) as? UIWindowScene
-            else {
+            guard let scene = PresentingWindow.resolve()?.windowScene else {
                 failure = BillingCopy.manageFailed
                 return
             }

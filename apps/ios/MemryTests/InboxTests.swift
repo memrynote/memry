@@ -213,6 +213,31 @@ struct InboxStoreTests {
         #expect(vault.store.items.map(\.id) == [id])
     }
 
+    /// The sidebar's Inbox badge is desktop's count (`app-sidebar.tsx`
+    /// `inboxCount`): a reminder stops counting once viewed, a capture counts
+    /// until it leaves. Reminders arrive from desktop, so the test turns two
+    /// captures into reminders in the vault's tables.
+    @Test func the_badge_skips_viewed_reminders_like_desktop() async throws {
+        let scratch = try InboxTestVault()
+        for text in ["[agent] keep this one", "[agent] remind me first", "[agent] remind me second"] {
+            _ = await scratch.store.capture(text)
+        }
+        #expect(scratch.store.badgeCount == 3)
+        let database = scratch.directory.appendingPathComponent(VaultFiles.dataDatabaseName).path
+        try execute("""
+            UPDATE sync_items SET payload = json_set(payload, '$.type', 'reminder')
+             WHERE item_type = 'inbox' AND item_id IN (SELECT id FROM inbox_items WHERE title LIKE '[agent] remind%');
+            UPDATE inbox_items SET type = 'reminder' WHERE title LIKE '[agent] remind%';
+            """, in: database)
+        await scratch.store.refresh()
+        guard let viewed = scratch.store.items.first(where: { $0.itemType == "reminder" }) else {
+            Issue.record("expected the reminders")
+            return
+        }
+        await scratch.store.markViewed(viewed.id)
+        #expect(scratch.store.badgeCount == 2)
+    }
+
     @Test func the_type_filter_and_the_views() async throws {
         let vault = try InboxTestVault()
         _ = await vault.store.capture("[agent] one note here to keep")
@@ -348,13 +373,13 @@ struct InboxFailureTests {
         await scratch.store.load()
         #expect(scratch.store.failure == nil)
     }
+}
 
-    private func execute(_ sql: String, in path: String) throws {
-        var handle: OpaquePointer?
-        guard sqlite3_open(path, &handle) == SQLITE_OK else { throw CocoaError(.fileReadUnknown) }
-        defer { sqlite3_close(handle) }
-        guard sqlite3_exec(handle, sql, nil, nil, nil) == SQLITE_OK else { throw CocoaError(.fileWriteUnknown) }
-    }
+private func execute(_ sql: String, in path: String) throws {
+    var handle: OpaquePointer?
+    guard sqlite3_open(path, &handle) == SQLITE_OK else { throw CocoaError(.fileReadUnknown) }
+    defer { sqlite3_close(handle) }
+    guard sqlite3_exec(handle, sql, nil, nil, nil) == SQLITE_OK else { throw CocoaError(.fileWriteUnknown) }
 }
 
 /// A filler whose upload refuses (the shared default), nothing else scripted.
@@ -363,7 +388,7 @@ private final class UploadRefused: VaultFilling, @unchecked Sendable {
     func firstSync(
         progress: @escaping @MainActor @Sendable (SyncProgress) -> Void
     ) async throws -> FirstSyncSummary { .none }
-    func fetchNoteBody(noteId: String) async throws -> BodyFetchSummary {
+    func pullNoteBody(noteId: String) async throws -> BodyFetchSummary {
         BodyFetchSummary(updates: 0, baselines: 0, stopped: false)
     }
 }

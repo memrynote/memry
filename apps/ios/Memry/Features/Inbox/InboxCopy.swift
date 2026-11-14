@@ -175,7 +175,7 @@ enum InboxCopy {
     static func restored(_ title: String) -> String { "“\(title)” restored" }
     static let linkedToNote = "Linked to note"
     static func linkedToNotes(_ count: Int) -> String { count == 1 ? linkedToNote : "Linked to \(count) notes" }
-    static let embedFellBackToLink = "The image could not be filed in the sidebar on this phone — embedded in the note instead"
+    static let embedFellBackToLink = "The image could not be filed in the sidebar on this \(ThisDevice.noun) — embedded in the note instead"
     static func convertedTo(_ target: String) -> String { "Converted to \(target)" }
     static let changesUndone = "Changes undone"
 
@@ -192,7 +192,7 @@ enum InboxCopy {
     static let send = "Capture"
     static let recording = "Recording"
     static func recordingElapsed(_ time: String) -> String { "Recording, \(time)" }
-    static let transcribedHere = "Transcribed on this iPhone after you stop"
+    static let transcribedHere = "Transcribed on this \(ThisDevice.noun) after you stop"
     static let cancelRecording = "Cancel recording"
     static let stopRecording = "Stop recording"
     /// Paper 05: "Already captured: “How Linear builds product” · 12m ago";

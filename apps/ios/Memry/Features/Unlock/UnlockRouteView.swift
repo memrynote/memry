@@ -74,6 +74,7 @@ struct UnlockRouteView: View {
                 footnote
             }
             .frame(maxWidth: .infinity, alignment: .leading)
+            .measuredColumn(Tokens.Size.form)
             .padding(.horizontal, Tokens.Space.screenInline)
             .padding(.vertical, Tokens.Space.screenBlock)
         }
@@ -85,7 +86,7 @@ struct UnlockRouteView: View {
             Text("Unlock your vault")
                 .font(Tokens.Typography.screenTitle.font)
                 .foregroundStyle(Tokens.Text.primary.color)
-            Text("This phone is signed in, but your notes are still sealed. Pick whichever key you have to hand.")
+            Text("This \(ThisDevice.noun) is signed in, but your notes are still sealed. Pick whichever key you have to hand.")
                 .font(Tokens.Typography.body.font)
                 .foregroundStyle(Tokens.Text.secondary.color)
         }

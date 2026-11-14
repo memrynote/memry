@@ -3,9 +3,6 @@
     "copyFailed": "Hindi makopya ang portal",
     "hiddenCount": "{count} ang nakatago",
     "windowFailed": "Hindi mabuksan ang portal na ito. Buksan na lang ang pinagmulang tala.",
-    "noTarget": "Wala pang target ang portal na ito. Magdagdag ng tala sa definition, o alisin ang block.",
-    "invalidJson": "Hindi valid na JSON ang definition ng portal na ito. Ayusin ito sa ibaba, o alisin ang block.",
-    "invalidShape": "Walang tala o paghahanap ang definition ng portal na ito. Ayusin ito sa ibaba, o alisin ang block.",
     "unreadable": "Hindi mabasa ang portal na ito. Alisin ang block at magdagdag ng bagong portal.",
     "search": {
       "editQuery": "I-edit ang query",

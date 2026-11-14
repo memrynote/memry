@@ -433,10 +433,7 @@
       "empty": "Încă nu există nimic care să corespundă acestei vizualizări.",
       "loadFailed": "Nu s-a putut încărca această vizualizare. Notițele în sine sunt neatinse.",
       "folderMissing": "Acest dosar nu mai există în seif. Alegeți altă sursă.",
-      "unreadable": "Această vizualizare nu poate fi citită. Alege o sursă mai sus sau elimină blocul.",
-      "invalidJson": "Definiția acestei vizualizări nu este un JSON valid. Corectați-o mai jos sau eliminați blocul.",
-      "invalidShape": "Definiția acestei vizualizări nu are o sursă. Alegeți una mai sus sau corectați definiția mai jos.",
-      "definition": "Definiție"
+      "unreadable": "Această vizualizare nu poate fi citită. Alege o sursă mai sus sau elimină blocul."
     },
     "chart": {
       "title": "Grafic",

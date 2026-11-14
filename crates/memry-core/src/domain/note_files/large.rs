@@ -1,4 +1,4 @@
-//! Which notes' files are large-file class (table `note_large_files`, migration 23): the class
+//! Which notes' files are large-file class (table `note_large_files`, migration 26): the class
 //! the desktop tier measured when it last read the file. The editor reads it to open the
 //! document read-only and refuse its edits (`api::editor`); the thresholds are
 //! `markdown::shared::markdown_class`'s. No row is note class.

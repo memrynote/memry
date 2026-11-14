@@ -34,7 +34,7 @@ use crate::domain::note_stats::{self, MeasuredFile, NoteStatsRow, StoredStats, U
 #[cfg(feature = "markdown")]
 use crate::domain::notes::journal_day;
 use crate::domain::notes::link_rewrite::LinkNames;
-use crate::domain::search::{self, HitKind, LinkChanges, SearchHit};
+use crate::domain::search::{self, LinkChanges, SearchFilter, SearchHit};
 use crate::domain::unlinked_mentions::{self, UnlinkedMention};
 use crate::domain::wiki_target;
 use crate::storage::{Db, open_index};
@@ -46,45 +46,11 @@ mod block_refs;
 mod fold;
 #[cfg(feature = "markdown")]
 mod objects;
+mod results;
 #[cfg(feature = "markdown")]
 mod tags;
 
-/// One search result.
-///
-/// Flattened from [`SearchHit`] because uniffi has no enum-with-payload that
-/// reads well in Swift here: `journal_date` is `Some` exactly when `kind` is
-/// `journal`, and nothing else distinguishes the two.
-#[derive(Debug, Clone, PartialEq, uniffi::Record)]
-pub struct SearchResult {
-    pub id: String,
-    pub title: String,
-    /// `note`, `journal` or `task`.
-    pub kind: String,
-    /// The journal's calendar date, and `None` for everything else. A journal
-    /// entry has no title of its own (§A.5), so this is what names it.
-    pub journal_date: Option<String>,
-    /// The bm25 score: negative, and more negative is a better match. Carried
-    /// so a shell can show relevance if it wants to, never re-sorted — the
-    /// order returned is already the ranking.
-    pub score: f64,
-}
-
-impl From<SearchHit> for SearchResult {
-    fn from(hit: SearchHit) -> Self {
-        let (kind, journal_date) = match hit.kind {
-            HitKind::Note => ("note", None),
-            HitKind::Journal { date } => ("journal", Some(date)),
-            HitKind::Task => ("task", None),
-        };
-        Self {
-            id: hit.id,
-            title: hit.title,
-            kind: kind.to_owned(),
-            journal_date,
-            score: hit.score,
-        }
-    }
-}
+pub use results::{SearchGroups, SearchResult};
 
 /// What a reindex did.
 #[derive(Debug, Clone, PartialEq, Eq, uniffi::Record)]
@@ -503,12 +469,20 @@ impl Search {
         })
     }
 
-    /// Notes and journals matching `query`, best first.
+    /// Everything matching `query`, in desktop's four groups, each best
+    /// first and at most `limit` long. `filter` narrows the types, the
+    /// modified date and the tags; `None` narrows nothing.
     ///
     /// A query carrying no searchable term returns **empty, not everything**:
     /// an empty search box is not a request for the whole vault.
-    pub fn notes(&self, query: String, limit: u32) -> Result<Vec<SearchResult>, StorageError> {
+    pub fn search(
+        &self,
+        query: String,
+        filter: Option<SearchFilter>,
+        limit: u32,
+    ) -> Result<SearchGroups, StorageError> {
         let index = self.index.clone();
+        let filter = filter.unwrap_or_default();
         let limit = limit as usize;
         // Two pooled readers, so two snapshots: one of `data.db` and one of
         // `index.db`, each the last commit when its reader started the call. A
@@ -519,28 +493,15 @@ impl Search {
         // routes through the writer, as the pre-pool code did.
         self.data.read_blocking(move |data| {
             index.read_blocking(|index| {
-                Ok(search::search_notes(data, index, &query, limit)?
-                    .into_iter()
-                    .map(SearchResult::from)
-                    .collect())
-            })
-        })
-    }
-
-    /// Tasks matching `query`, best first.
-    ///
-    /// Its own list rather than one merged with the notes: a bm25 score is
-    /// relative to the table it was computed over, so interleaving the two
-    /// would be inventing an order neither ranking supports.
-    pub fn tasks(&self, query: String, limit: u32) -> Result<Vec<SearchResult>, StorageError> {
-        let index = self.index.clone();
-        let limit = limit as usize;
-        self.data.read_blocking(move |data| {
-            index.read_blocking(|index| {
-                Ok(search::search_tasks(data, index, &query, limit)?
-                    .into_iter()
-                    .map(SearchResult::from)
-                    .collect())
+                let groups = search::search(data, index, &query, &filter, limit)?;
+                let results =
+                    |hits: Vec<SearchHit>| hits.into_iter().map(SearchResult::from).collect();
+                Ok(SearchGroups {
+                    notes: results(groups.notes),
+                    journals: results(groups.journals),
+                    tasks: results(groups.tasks),
+                    inbox: results(groups.inbox),
+                })
             })
         })
     }

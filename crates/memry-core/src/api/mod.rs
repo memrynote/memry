@@ -40,6 +40,7 @@ pub mod projects;
 pub mod relation_targets;
 pub mod runtime;
 pub mod search;
+pub mod search_recents;
 pub mod settings;
 pub mod sync;
 pub mod tag_hub;

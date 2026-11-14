@@ -123,7 +123,7 @@ import type {
 } from '@memry/contracts/folder-view-api'
 import type { ResolvedRelationRef } from '@memry/contracts/properties-api'
 import type { GetLinkedHereResponse, SearchObjectsResponse } from '@memry/contracts/tag-objects-api'
-import type { GetPropertyRowsOutput } from '@memry/contracts/journal-api'
+import type { GetPropertyRowsOutput, SameDayEntry } from '@memry/contracts/journal-api'
 import type {
   StickyDraft,
   StickyOpenTargetInput,
@@ -392,6 +392,8 @@ export interface MonthEntryPreview {
   tags: string[]
 }
 
+export type { SameDayEntry }
+
 export interface MonthStats {
   year: number
   month: number
@@ -592,6 +594,7 @@ export interface JournalClientAPI {
   getHeatmap(year: number): Promise<HeatmapEntry[]>
   getMonthEntries(year: number, month: number): Promise<MonthEntryPreview[]>
   getYearStats(year: number): Promise<MonthStats[]>
+  getSameDayEntries(date: string): Promise<SameDayEntry[]>
 
   // Context
   getDayContext(date: string): Promise<DayContext>
@@ -1067,6 +1070,10 @@ export interface JournalSettings {
   showAIConnections: boolean
   /** Whether to show the stats footer at the bottom of journal entries */
   showStatsFooter: boolean
+  /** Show the same day from past years under a journal entry */
+  showOnThisDay: boolean
+  /** Show every year of the day in full under the entry (the Forever Journal) */
+  allYearsView: boolean
 }
 
 export type AISettings = AiSettings

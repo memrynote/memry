@@ -82,7 +82,6 @@ extension CalendarScreen {
             open: { open($0) },
             complete: { item in Task { await store.completeTask(item) } },
             contextMenu: { item in AnyView(itemMenu(item)) },
-            menu: { menuItem = $0 },
             select: { day, start, end in
                 composer = CalendarComposerRequest(day: day, startMinute: start, endMinute: end, isAllDay: false)
             },

@@ -198,7 +198,11 @@ fn api_reads(s: &Seeded) -> impl Fn(usize) + '_ {
             assert!(s.tasks.get(id).expect("a task").is_some());
         }
         _ => {
-            let hits = s.search.notes("quarterly".to_owned(), 50).expect("search");
+            let hits = s
+                .search
+                .search("quarterly".to_owned(), None, 50)
+                .expect("search")
+                .notes;
             assert!(!hits.is_empty());
         }
     }

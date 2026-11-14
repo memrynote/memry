@@ -224,7 +224,7 @@ struct CalendarEventKitScreen: View {
         .tint(Tokens.Tint.base.color)
         .scrollContentBackground(.hidden)
         .background(Tokens.Canvas.background.color)
-        .navigationTitle(CalendarCopy.thisIPhone)
+        .navigationTitle(CalendarCopy.thisDevice)
         .navigationBarTitleDisplayMode(.large)
         .onAppear { eventKit.refreshAccess(); eventKit.reloadCalendars(synced: store.sources) }
     }
@@ -270,11 +270,11 @@ extension CalendarCopy {
         }
     }
 
-    static let eventKitExplainer = "Shows every calendar the Calendar app already has on this iPhone: iCloud, Google, Exchange. No sign-in, read-only, and the events never leave this iPhone."
+    static let eventKitExplainer = "Shows every calendar the Calendar app already has on this \(ThisDevice.noun): iCloud, Google, Exchange. No sign-in, read-only, and the events never leave this \(ThisDevice.noun)."
     static let eventKitAllow = "Allow calendar access"
     static let eventKitAsksOnce = "iOS asks once. You can change it later in Settings."
-    static let eventKitRestrictedBody = "Calendar access is restricted on this iPhone (Screen Time or a device profile), so memrynote can't read its calendars."
-    static let eventKitShow = "Show This iPhone's calendars"
+    static let eventKitRestrictedBody = "Calendar access is restricted on this \(ThisDevice.noun) (Screen Time or a device profile), so memrynote can't read its calendars."
+    static let eventKitShow = "Show This \(ThisDevice.noun)'s calendars"
     static let eventKitDeniedBody = "Calendar access is off for memrynote. Turn it on in Settings › Privacy & Security › Calendars, then check again."
     static let eventKitWriteOnlyBody = "memrynote can add events but not read them. Choose Full Access in Settings › Privacy & Security › Calendars, then check again."
     static let openSettings = "Open Settings"

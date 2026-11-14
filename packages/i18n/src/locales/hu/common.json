@@ -3,9 +3,6 @@
     "copyFailed": "Nem sikerült átmásolni a portált",
     "hiddenCount": "{count} rejtett",
     "windowFailed": "Ezt a portált nem sikerült megnyitni. Nyissa meg inkább a forrásjegyzetet.",
-    "noTarget": "Ennek a portálnak még nincs célja. Adjon jegyzetet a definícióhoz, vagy távolítsa el a blokkot.",
-    "invalidJson": "Ennek a portálnak a definíciója nem érvényes JSON. Javítsa lent, vagy távolítsa el a blokkot.",
-    "invalidShape": "Ennek a portálnak a definíciójában nincs jegyzet vagy keresés. Javítsa lent, vagy távolítsa el a blokkot.",
     "unreadable": "Ez a portál nem olvasható. Távolítsa el a blokkot, és adjon hozzá új portált.",
     "search": {
       "editQuery": "Lekérdezés szerkesztése",
