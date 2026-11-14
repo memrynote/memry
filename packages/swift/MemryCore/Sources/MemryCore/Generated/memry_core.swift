@@ -26500,6 +26500,21 @@ public struct VaultSummary: Equatable, Hashable {
      * The nonce `encrypted_name` was sealed with, base64.
      */
     public var nameNonce: String?
+    /**
+     * The icon as the server holds it, sealed like the name under
+     * `vault-icon-v1:<vaultUuid>` (chapter 04 §4.16), and opened by
+     * [`crate::api::crypto::decrypt_vault_icon`]. Absent when the icon was
+     * never set or was reset, and from servers that predate vault icons.
+     */
+    public var encryptedIcon: String?
+    /**
+     * The nonce `encrypted_icon` was sealed with, base64.
+     */
+    public var iconNonce: String?
+    /**
+     * The last icon change the server accepted, epoch ms; absent when none.
+     */
+    public var iconUpdatedAt: Int64?
 
     // Default memberwise initializers are never public by default, so we
     // declare one manually.
@@ -26519,11 +26534,26 @@ public struct VaultSummary: Equatable, Hashable {
          */encryptedName: String? = nil, 
         /**
          * The nonce `encrypted_name` was sealed with, base64.
-         */nameNonce: String? = nil) {
+         */nameNonce: String? = nil, 
+        /**
+         * The icon as the server holds it, sealed like the name under
+         * `vault-icon-v1:<vaultUuid>` (chapter 04 §4.16), and opened by
+         * [`crate::api::crypto::decrypt_vault_icon`]. Absent when the icon was
+         * never set or was reset, and from servers that predate vault icons.
+         */encryptedIcon: String? = nil, 
+        /**
+         * The nonce `encrypted_icon` was sealed with, base64.
+         */iconNonce: String? = nil, 
+        /**
+         * The last icon change the server accepted, epoch ms; absent when none.
+         */iconUpdatedAt: Int64? = nil) {
         self.id = id
         self.name = name
         self.encryptedName = encryptedName
         self.nameNonce = nameNonce
+        self.encryptedIcon = encryptedIcon
+        self.iconNonce = iconNonce
+        self.iconUpdatedAt = iconUpdatedAt
     }
 
     
@@ -26545,7 +26575,10 @@ public struct FfiConverterTypeVaultSummary: FfiConverterRustBuffer {
                 id: FfiConverterString.read(from: &buf), 
                 name: FfiConverterOptionString.read(from: &buf), 
                 encryptedName: FfiConverterOptionString.read(from: &buf), 
-                nameNonce: FfiConverterOptionString.read(from: &buf)
+                nameNonce: FfiConverterOptionString.read(from: &buf), 
+                encryptedIcon: FfiConverterOptionString.read(from: &buf), 
+                iconNonce: FfiConverterOptionString.read(from: &buf), 
+                iconUpdatedAt: FfiConverterOptionInt64.read(from: &buf)
         )
     }
 
@@ -26554,6 +26587,9 @@ public struct FfiConverterTypeVaultSummary: FfiConverterRustBuffer {
         FfiConverterOptionString.write(value.name, into: &buf)
         FfiConverterOptionString.write(value.encryptedName, into: &buf)
         FfiConverterOptionString.write(value.nameNonce, into: &buf)
+        FfiConverterOptionString.write(value.encryptedIcon, into: &buf)
+        FfiConverterOptionString.write(value.iconNonce, into: &buf)
+        FfiConverterOptionInt64.write(value.iconUpdatedAt, into: &buf)
     }
 }
 
@@ -35316,8 +35352,8 @@ public func decompressPayload(frame: Data)throws  -> Data  {
  * A vault's name, opened from the sealed form the registry carries.
  *
  * The server never sees a vault name: desktop seals it under the vault key
- * with `vault-name-v1:<vaultUuid>` as associated data
- * (`apps/desktop/src/main/sync/vault-name-crypto.ts`), so the registry row
+ * with `vault-name-v1:<vaultUuid>` as associated data (chapter 04 §4.15,
+ * `apps/desktop/src/main/sync/vault-name-crypto.ts`), so the registry row
  * holds only `encryptedName` and `nameNonce`. The associated data binds the
  * name to its vault, which is what stops a server swapping two rows' names.
  *
@@ -35694,7 +35730,7 @@ private let initializationResult: InitializationResult = {
     if (uniffi_memry_core_checksum_func_decompress_payload() != 43810) {
         return InitializationResult.apiChecksumMismatch
     }
-    if (uniffi_memry_core_checksum_func_decrypt_vault_name() != 40557) {
+    if (uniffi_memry_core_checksum_func_decrypt_vault_name() != 53390) {
         return InitializationResult.apiChecksumMismatch
     }
     if (uniffi_memry_core_checksum_func_derive_master_key() != 62810) {

@@ -68,6 +68,7 @@ import { buildTaskParsing } from './vectors/task-parsing'
 import { buildTextExtract } from './vectors/text-extract'
 import { buildVersionedValues } from './vectors/versioned-values'
 import { buildUnlinkedMentions } from './vectors/unlinked-mentions'
+import { buildVaultName } from './vectors/vault-name'
 import { buildWikiTargetResolution } from './vectors/wiki-target-resolution'
 import { VECTORS_DIR, committedVector, writeVectorFile } from './vectors/shared'
 
@@ -88,6 +89,7 @@ const CLASSES: readonly VectorClass[] = [
     files: [{ path: 'record-envelope.json', build: buildRecordEnvelope }]
   },
   { name: 'agent-envelope', files: [{ path: 'agent-envelope.json', build: buildAgentEnvelope }] },
+  { name: 'vault-name', files: [{ path: 'vault-name.json', build: buildVaultName }] },
   { name: 'crdt-update', files: [{ path: 'crdt-update.json', build: buildCrdtUpdate }] },
   { name: 'crdt-compact', files: [{ path: 'crdt-compact.json', build: buildCrdtCompact }] },
   { name: 'cbor-canonical', files: [{ path: 'cbor-canonical.json', build: buildCborCanonical }] },

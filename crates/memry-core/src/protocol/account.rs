@@ -72,6 +72,18 @@ pub struct VaultSummary {
     /// The nonce `encrypted_name` was sealed with, base64.
     #[uniffi(default = None)]
     pub name_nonce: Option<String>,
+    /// The icon as the server holds it, sealed like the name under
+    /// `vault-icon-v1:<vaultUuid>` (chapter 04 §4.16), and opened by
+    /// [`crate::api::crypto::decrypt_vault_icon`]. Absent when the icon was
+    /// never set or was reset, and from servers that predate vault icons.
+    #[uniffi(default = None)]
+    pub encrypted_icon: Option<String>,
+    /// The nonce `encrypted_icon` was sealed with, base64.
+    #[uniffi(default = None)]
+    pub icon_nonce: Option<String>,
+    /// The last icon change the server accepted, epoch ms; absent when none.
+    #[uniffi(default = None)]
+    pub icon_updated_at: Option<i64>,
 }
 
 /// The signer key directory of chapter 01 §1.4.0.
@@ -225,6 +237,9 @@ fn read_vaults(body: &Json) -> Option<Vec<VaultSummary>> {
             name: text(row, &["name"]),
             encrypted_name: text(row, &["encryptedName"]),
             name_nonce: text(row, &["nameNonce"]),
+            encrypted_icon: text(row, &["encryptedIcon"]),
+            icon_nonce: text(row, &["iconNonce"]),
+            icon_updated_at: row.get("iconUpdatedAt").and_then(Json::as_i64),
         });
     }
     Some(vaults)
@@ -355,18 +370,47 @@ mod tests {
                 name: Some("Work".to_string()),
                 encrypted_name: None,
                 name_nonce: None,
+                encrypted_icon: None,
+                icon_nonce: None,
+                icon_updated_at: None,
             },
             VaultSummary {
                 id: "v2".to_string(),
                 name: None,
                 encrypted_name: None,
                 name_nonce: None,
+                encrypted_icon: None,
+                icon_nonce: None,
+                icon_updated_at: None,
             },
         ];
         assert_eq!(read_vaults(&bare).as_deref(), Some(expected.as_slice()));
         assert_eq!(read_vaults(&wrapped).as_deref(), Some(expected.as_slice()));
         // A body that is neither is a malformed response, not an empty account.
         assert_eq!(read_vaults(&json!({ "ok": true })), None);
+    }
+
+    /// Chapter 05 §5.11.1: servers that predate vault icons omit the three
+    /// fields, and a reader treats absent as null.
+    #[test]
+    fn the_icon_fields_are_read_and_absent_reads_as_none() {
+        let body = json!({ "vaults": [
+            { "vaultUuid": "v1", "encryptedIcon": "Y2lwaGVy", "iconNonce": "bm9uY2U=", "iconUpdatedAt": 1_700_000_000_000_i64 },
+            { "vaultUuid": "v2", "encryptedIcon": null, "iconNonce": null, "iconUpdatedAt": null },
+            { "vaultUuid": "v3" }
+        ]});
+        let rows = read_vaults(&body).expect("rows");
+        assert_eq!(rows[0].encrypted_icon.as_deref(), Some("Y2lwaGVy"));
+        assert_eq!(rows[0].icon_nonce.as_deref(), Some("bm9uY2U="));
+        assert_eq!(rows[0].icon_updated_at, Some(1_700_000_000_000));
+        for row in &rows[1..] {
+            assert_eq!(
+                (&row.encrypted_icon, &row.icon_nonce, row.icon_updated_at),
+                (&None, &None, None),
+                "{}",
+                row.id
+            );
+        }
     }
 
     #[test]
