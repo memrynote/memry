@@ -32,7 +32,7 @@ struct NotesSplitView: View {
     @State private var holdsThreeColumns = false
     /// 13" landscape is 1366-1376pt wide. Every smaller iPad in landscape
     /// (at most 1210pt), 13" portrait (1024-1032pt) and 13" landscape beside
-    /// the page sidebar (about 1090pt) stay below it.
+    /// the page sidebar (about 1086pt) stay below it.
     private static let threeColumnWidth: CGFloat = 1300
     @State private var expanded: Set<String> = []
     @State private var inspectorFits = false
@@ -59,14 +59,15 @@ struct NotesSplitView: View {
         .onGeometryChange(for: Bool.self) { $0.size.width >= NoteInspectorLayout.minimumWidth } action: {
             inspectorFits = $0
         }
-        // Once the layout settles. While the page sidebar slides in, the
-        // split view writes its own choice (all three columns) over the
-        // binding, about 70ms after the width changes.
-        .task(id: holdsThreeColumns) {
+        // One owner for the columns, set at once and again when the layout
+        // settles: after a width change (a rotation, the page sidebar
+        // sliding in) the split view writes its own choice over the binding
+        // about 70ms later, which would leave the list beside the rail.
+        .task(id: widthColumns) {
+            columns = widthColumns
             guard (try? await Task.sleep(for: .milliseconds(400))) != nil else { return }
             columns = widthColumns
         }
-        .onChange(of: inspectorShown) { columns = widthColumns }
         .environment(\.noteInspectorFits, railFits)
         .environment(router)
         // A search hit or a capture's "View": the note in the detail column,
