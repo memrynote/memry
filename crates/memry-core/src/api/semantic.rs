@@ -13,7 +13,7 @@ use crate::seams::reachability::{Reachability, Reachable};
 use crate::seams::transport::Transport;
 use crate::semantic::download::{self, DownloadEnd, DownloadError};
 use crate::semantic::queue::InFlight;
-use crate::semantic::{Loader, ModelDir, ModelHost, SemanticError, load};
+use crate::semantic::{Loader, ModelDir, ModelHost, QueryVector, SemanticError, load};
 use crate::storage::Db;
 use crate::storage::vector_db::{self, VectorStore};
 
@@ -268,26 +268,35 @@ impl SemanticSearch {
     }
 
     /// The semantic leg of one search over the vault in `vault_dir`, best
-    /// first. Empty means FTS only: the query takes no semantic leg, the model
-    /// is off, still downloading or loading, or the leg failed. Never waits on
-    /// a model load; the first query starts one.
-    pub(crate) fn hits(&self, vault_dir: &Path, query: &str) -> Vec<SemanticHit> {
+    /// first. `None` while the model loads, which this query may have started:
+    /// the query wanted the leg and the shell can run it again once
+    /// [`Self::load_finished`] returns. Empty means FTS only: the query takes
+    /// no semantic leg, the model is off or still downloading, or the leg
+    /// failed. Never waits on a model load.
+    pub(crate) fn hits(&self, vault_dir: &Path, query: &str) -> Option<Vec<SemanticHit>> {
         if !wants_semantic(query) || !self.model.opted_in() || self.model.verified().is_none() {
-            return Vec::new();
+            return Some(Vec::new());
         }
-        let Some(vector) = query_input(query).and_then(|window| self.host.query_vector(&window))
-        else {
-            return Vec::new();
+        let vector = match query_input(query).map(|window| self.host.query_vector(&window)) {
+            Some(QueryVector::Embedded(vector)) => *vector,
+            Some(QueryVector::Loading) => return None,
+            Some(QueryVector::Unavailable) | None => return Some(Vec::new()),
         };
         let key = self.model.manifest().vector_key;
-        self.with_vectors(vault_dir, |conn| {
-            nearest(&vector, VectorStore::new(conn).scan(key)?)
-        })
-        .map(Option::unwrap_or_default)
-        .unwrap_or_else(|error| {
-            eprintln!("memry-core: semantic leg failed, FTS only: {error}");
-            Vec::new()
-        })
+        let hits = self
+            .with_vectors(vault_dir, |conn| {
+                nearest(&vector, VectorStore::new(conn).scan(key)?)
+            })
+            .map(Option::unwrap_or_default)
+            .unwrap_or_else(|error| {
+                eprintln!("memry-core: semantic leg failed, FTS only: {error}");
+                Vec::new()
+            });
+        Some(hits)
+    }
+
+    pub(crate) async fn load_finished(&self) -> bool {
+        self.host.load_finished().await
     }
 
     fn embedded_notes(&self, vault_dir: &Path) -> Result<u32, StorageError> {

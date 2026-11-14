@@ -102,6 +102,11 @@ pub struct SearchGroups {
     pub tasks: Vec<SearchResult>,
     /// Captures in every state: filed, archived and snoozed ones too (#4320).
     pub inbox: Vec<SearchResult>,
+    /// The query wanted semantic hits and got FTS alone because the model
+    /// was loading (#4615). Run it once more after
+    /// [`Search::semantic_model_loaded`] returns.
+    #[uniffi(default = false)]
+    pub semantic_pending: bool,
 }
 
 /// What a reindex did.
@@ -173,7 +178,7 @@ impl Search {
     }
 }
 
-#[uniffi::export]
+#[uniffi::export(async_runtime = "tokio")]
 impl Search {
     /// Every note linking to this one (N800).
     ///
@@ -345,7 +350,8 @@ impl Search {
     /// With semantic search on and its model loaded, notes and journals near
     /// the query's meaning fuse into their groups. The query is embedded
     /// before any database lock is taken, and never waits on a model load:
-    /// the first query starts the load and answers from FTS alone.
+    /// the first query starts the load and answers from FTS alone, with
+    /// `semantic_pending` set.
     pub fn search(
         &self,
         query: String,
@@ -355,11 +361,15 @@ impl Search {
         let index = self.index.clone();
         let filter = filter.unwrap_or_default();
         let limit = limit as usize;
-        let hits = self
+        let (hits, semantic_pending) = match self
             .semantic
             .as_ref()
             .map(|semantic| semantic.hits(&self.directory, &query))
-            .unwrap_or_default();
+        {
+            Some(None) => (Vec::new(), true),
+            Some(Some(hits)) => (hits, false),
+            None => (Vec::new(), false),
+        };
         self.data.call_blocking(move |data| {
             index.call_blocking(|index| {
                 let mut groups = search::search(data, index, &query, &filter, limit)?;
@@ -375,9 +385,21 @@ impl Search {
                     journals: results(groups.journals),
                     tasks: results(groups.tasks),
                     inbox: results(groups.inbox),
+                    semantic_pending,
                 })
             })
         })
+    }
+
+    /// Waits for the semantic model load in flight, if any, and answers
+    /// whether the model is loaded now. A search that came back with
+    /// `semantic_pending` runs again once, and only on `true`: a load that
+    /// failed or was released by a memory warning answers `false`.
+    pub async fn semantic_model_loaded(&self) -> bool {
+        match &self.semantic {
+            Some(semantic) => semantic.load_finished().await,
+            None => false,
+        }
     }
 
     /// Brings the index up to date with the vault.

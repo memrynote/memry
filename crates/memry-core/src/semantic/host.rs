@@ -31,6 +31,16 @@ pub enum WindowOutcome {
     InputFailed(SemanticError),
 }
 
+/// What the query path got instead of waiting.
+#[derive(Debug, PartialEq)]
+pub enum QueryVector {
+    Embedded(Box<Vector>),
+    /// A load is in flight, this query's or an earlier one's.
+    Loading,
+    /// The session was busy or the embedding failed.
+    Unavailable,
+}
+
 pub struct ModelHost {
     state: Arc<Mutex<State>>,
     load: Loader,
@@ -81,20 +91,36 @@ impl ModelHost {
     }
 
     /// The query path, which never waits. Loaded: one `try_embed`. Unloaded:
-    /// starts a foreground load on the blocking pool and answers `None`, so
-    /// search falls back to FTS. Loading or busy: `None`.
-    pub fn query_vector(&self, window: &Window) -> Option<Vector> {
-        let embedder = self.loaded_or_start_load()?;
+    /// starts a foreground load on the blocking pool and answers `Loading`,
+    /// so search falls back to FTS.
+    pub fn query_vector(&self, window: &Window) -> QueryVector {
+        let Some(embedder) = self.loaded_or_start_load() else {
+            return QueryVector::Loading;
+        };
         match embedder.try_embed(window.as_str()) {
-            Ok(vector) => vector,
+            Ok(Some(vector)) => QueryVector::Embedded(Box::new(vector)),
+            Ok(None) => QueryVector::Unavailable,
             Err(error) => {
                 eprintln!("memry-core: query embedding failed, FTS only: {error}");
                 if matches!(error, SemanticError::Poisoned) {
                     self.evict(&embedder);
                 }
-                None
+                QueryVector::Unavailable
             }
         }
+    }
+
+    /// Waits for the load in flight, if any, and answers whether a model is
+    /// loaded now. A load overtaken by an unload or that failed answers
+    /// `false`, so a memory warning is never undone by a reload.
+    pub async fn load_finished(&self) -> bool {
+        let notified = self.loaded.notified();
+        tokio::pin!(notified);
+        notified.as_mut().enable();
+        if matches!(lock(&self.state).slot, Slot::Loading) {
+            notified.await;
+        }
+        matches!(lock(&self.state).slot, Slot::Loaded(_))
     }
 
     pub async fn embed_background(&self, input: String) -> Result<WindowOutcome, SemanticError> {
@@ -339,12 +365,33 @@ mod tests {
     fn a_cold_query_starts_one_load_and_answers_none_until_it_finishes() {
         let h = harness();
         for _ in 0..3 {
-            assert_eq!(h.host.query_vector(&q()), None);
+            assert_eq!(h.host.query_vector(&q()), QueryVector::Loading);
         }
         until(|| h.calls.load(Ordering::SeqCst) == 1);
         h.answer.send(Outcome::Load).unwrap();
-        until(|| h.host.query_vector(&q()).is_some());
+        until(|| matches!(h.host.query_vector(&q()), QueryVector::Embedded(_)));
         assert_eq!(h.calls.load(Ordering::SeqCst), 1);
+    }
+
+    #[test]
+    fn load_finished_returns_once_the_load_in_flight_lands() {
+        let h = harness();
+        assert!(
+            !runtime().block_on(h.host.load_finished()),
+            "nothing loaded"
+        );
+        h.host.query_vector(&q());
+        std::thread::scope(|scope| {
+            let waiter = scope.spawn(|| runtime().block_on(h.host.load_finished()));
+            until(|| h.calls.load(Ordering::SeqCst) == 1);
+            assert!(!waiter.is_finished(), "the load is still gated");
+            h.answer.send(Outcome::Load).unwrap();
+            assert!(waiter.join().unwrap(), "the model is loaded");
+        });
+        assert_eq!(
+            h.host.query_vector(&q()),
+            QueryVector::Embedded(Box::new(vector()))
+        );
     }
 
     #[test]
@@ -352,13 +399,16 @@ mod tests {
         let h = harness();
         h.host.query_vector(&q());
         h.answer.send(Outcome::Load).unwrap();
-        until(|| h.host.query_vector(&q()).is_some());
+        until(|| matches!(h.host.query_vector(&q()), QueryVector::Embedded(_)));
 
         let fake = h.built.lock().unwrap()[0].upgrade().expect("loaded");
         let held = fake.session.lock().unwrap();
-        assert_eq!(h.host.query_vector(&q()), None);
+        assert_eq!(h.host.query_vector(&q()), QueryVector::Unavailable);
         drop(held);
-        assert_eq!(h.host.query_vector(&q()), Some(vector()));
+        assert_eq!(
+            h.host.query_vector(&q()),
+            QueryVector::Embedded(Box::new(vector()))
+        );
     }
 
     #[test]
@@ -373,7 +423,7 @@ mod tests {
             built.len() == 1 && built[0].upgrade().is_none()
         });
 
-        assert_eq!(h.host.query_vector(&q()), None);
+        assert_eq!(h.host.query_vector(&q()), QueryVector::Loading);
         until(|| h.calls.load(Ordering::SeqCst) == 2);
     }
 
@@ -382,11 +432,11 @@ mod tests {
         let h = harness();
         h.host.query_vector(&q());
         h.answer.send(Outcome::Load).unwrap();
-        until(|| h.host.query_vector(&q()).is_some());
+        until(|| matches!(h.host.query_vector(&q()), QueryVector::Embedded(_)));
 
         h.host.unload();
         assert!(h.built.lock().unwrap()[0].upgrade().is_none());
-        assert_eq!(h.host.query_vector(&q()), None);
+        assert_eq!(h.host.query_vector(&q()), QueryVector::Loading);
         until(|| h.calls.load(Ordering::SeqCst) == 2);
     }
 
@@ -400,7 +450,7 @@ mod tests {
             h.calls.load(Ordering::SeqCst) == 2
         });
         h.answer.send(Outcome::Load).unwrap();
-        until(|| h.host.query_vector(&q()).is_some());
+        until(|| matches!(h.host.query_vector(&q()), QueryVector::Embedded(_)));
     }
 
     #[test]
@@ -413,7 +463,7 @@ mod tests {
             h.calls.load(Ordering::SeqCst) == 2
         });
         h.answer.send(Outcome::Load).unwrap();
-        until(|| h.host.query_vector(&q()).is_some());
+        until(|| matches!(h.host.query_vector(&q()), QueryVector::Embedded(_)));
     }
 
     #[test]
@@ -422,7 +472,7 @@ mod tests {
         h.host.query_vector(&q());
         until(|| h.calls.load(Ordering::SeqCst) == 1);
         h.host.unload();
-        assert_eq!(h.host.query_vector(&q()), None);
+        assert_eq!(h.host.query_vector(&q()), QueryVector::Loading);
 
         // The blocking pool is FIFO: once this marker has run, a second load
         // spawned by the query above has started too.
@@ -439,7 +489,7 @@ mod tests {
         h.host.query_vector(&q());
         until(|| h.calls.load(Ordering::SeqCst) == 2);
         h.answer.send(Outcome::Load).unwrap();
-        until(|| h.host.query_vector(&q()).is_some());
+        until(|| matches!(h.host.query_vector(&q()), QueryVector::Embedded(_)));
     }
 
     #[test]
@@ -465,7 +515,7 @@ mod tests {
         let h = harness();
         h.host.query_vector(&q());
         h.answer.send(Outcome::Load).unwrap();
-        until(|| h.host.query_vector(&q()).is_some());
+        until(|| matches!(h.host.query_vector(&q()), QueryVector::Embedded(_)));
 
         let fake = h.built.lock().unwrap()[0].upgrade().expect("loaded");
         let poisoned = std::thread::spawn(move || {
@@ -475,11 +525,11 @@ mod tests {
         .join();
         assert!(poisoned.is_err());
 
-        assert_eq!(h.host.query_vector(&q()), None);
+        assert_eq!(h.host.query_vector(&q()), QueryVector::Unavailable);
         assert!(h.built.lock().unwrap()[0].upgrade().is_none());
         h.host.query_vector(&q());
         until(|| h.calls.load(Ordering::SeqCst) == 2);
         h.answer.send(Outcome::Load).unwrap();
-        until(|| h.host.query_vector(&q()).is_some());
+        until(|| matches!(h.host.query_vector(&q()), QueryVector::Embedded(_)));
     }
 }
