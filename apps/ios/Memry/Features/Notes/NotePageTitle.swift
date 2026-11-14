@@ -22,7 +22,10 @@ struct NotePageTitle: View {
                 rename: { title in
                     Task {
                         await metadataModel.rename(to: title, current: model.displayTitle)
-                        await model.reload()
+                        // Every page on this note re-reads, not only this
+                        // one: a size-class change commits the title as it
+                        // draws the note again as a new page (#4532).
+                        NotificationCenter.default.post(name: NoteReadViewModel.titleSaved, object: model.route.id)
                     }
                 },
                 setIcon: { icon in
