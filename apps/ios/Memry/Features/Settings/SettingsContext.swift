@@ -18,6 +18,7 @@ final class SettingsContext {
     let account: AccountModel
     let vaults: VaultSelectionViewModel
     let vaultId: String
+    let vault: Vault
     let executor: CoreExecutor
 
     init(
@@ -29,6 +30,7 @@ final class SettingsContext {
         account: AccountModel,
         vaults: VaultSelectionViewModel,
         vaultId: String,
+        vault: Vault,
         executor: CoreExecutor = .shared
     ) {
         self.store = store
@@ -39,6 +41,7 @@ final class SettingsContext {
         self.account = account
         self.vaults = vaults
         self.vaultId = vaultId
+        self.vault = vault
         self.executor = executor
     }
 

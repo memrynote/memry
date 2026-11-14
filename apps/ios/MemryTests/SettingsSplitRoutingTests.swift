@@ -22,7 +22,7 @@ struct SettingsSplitRoutingTests {
         let router = TasksRouter()
         router.setSettingsSplit(true)
         let rows = SettingsRootRows(account: .free(email: nil), isOn: { _ in true }).routes
-        #expect(rows.count == 12)
+        #expect(rows.count == 13)
         for route in rows {
             router.openSettings(route)
             #expect(router.selectedTab == .more)

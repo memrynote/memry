@@ -10,14 +10,15 @@
 //!   -output /tmp/ort-macos/libonnxruntime.a
 //! cd crates && ORT_LIB_PATH=/tmp/ort-macos \
 //!   RUSTFLAGS="-C link-arg=$(xcrun clang --print-runtime-dir)/libclang_rt.osx.a" \
-//!   MEMRY_MODEL_DIR=<dir holding tokenizer.json and onnx/model_q4.onnx{,_data}> \
+//!   MEMRY_MODEL_DIR=<a models dir: the app's, or one holding embeddinggemma-2-q4-daa72c512439/ with
+//!     tokenizer.json and onnx/model_q4.onnx{,_data} at their pinned sizes> \
 //!   cargo test -p memry-core --features semantic --test embedding_parity -- --ignored --nocapture
 //! ```
 #![cfg(feature = "semantic")]
 
 use std::path::PathBuf;
 
-use memry_core::semantic::{Threads, load, truncate_renormalize};
+use memry_core::semantic::{ModelDir, Threads, load, truncate_renormalize};
 
 #[derive(serde::Deserialize)]
 struct Case {
@@ -29,12 +30,16 @@ struct Case {
 #[test]
 #[ignore = "needs MEMRY_MODEL_DIR and ONNX Runtime; see the module docs"]
 fn core_vectors_match_desktop() {
-    let dir = PathBuf::from(std::env::var("MEMRY_MODEL_DIR").expect("MEMRY_MODEL_DIR"));
+    let model = ModelDir::new(PathBuf::from(
+        std::env::var("MEMRY_MODEL_DIR").expect("MEMRY_MODEL_DIR"),
+    ))
+    .verified()
+    .expect("every pinned model file at its final name and size");
     let cases: Vec<Case> =
         serde_json::from_str(include_str!("fixtures/embedding_parity.json")).expect("fixture");
     assert_eq!(cases.len(), 20);
 
-    let embedder = load(&dir, Threads::Foreground).expect("load");
+    let embedder = load(&model, Threads::Foreground).expect("load");
     let mut worst = f32::MAX;
     for case in &cases {
         let desktop = truncate_renormalize(&case.vector).expect("desktop vector");
@@ -47,7 +52,7 @@ fn core_vectors_match_desktop() {
 
     drop(embedder);
     let reloaded =
-        load(&dir, Threads::Background).expect("a reload reuses the process environment");
+        load(&model, Threads::Background).expect("a reload reuses the process environment");
     let desktop = truncate_renormalize(&cases[0].vector).expect("desktop vector");
     assert!(reloaded.embed(&cases[0].text).expect("embed").dot(&desktop) >= 0.9999);
 }

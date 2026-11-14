@@ -1,3 +1,4 @@
+import Combine
 import SwiftUI
 import TipKit
 import UIKit
@@ -62,6 +63,9 @@ final class MemryAppDelegate: NSObject, UIApplicationDelegate {
 struct RootView: View {
     @Environment(\.scenePhase) private var scenePhase
     @State private var shell = ShellState()
+    private let pathChanged = NotificationCenter.default
+        .publisher(for: PathReachability.attachmentPathChanged)
+        .receive(on: DispatchQueue.main)
 
     var body: some View {
         // T147. The scaffold is gone, and so is the `--spike-s3` branch that
@@ -89,6 +93,8 @@ struct RootView: View {
             // so the loop cannot outlive its owner and there is nothing to
             // leak.
             .task { await shell.consume() }
+            .environment(\.semanticSearch, shell.semantic)
+            .onReceive(pathChanged) { _ in shell.resumeSemanticDownload() }
             .onChange(of: scenePhase, initial: true) { _, phase in
                 shell.scenePhaseChanged(to: phase)
                 // `.inactive` is a pulled-down Control Center as often as a

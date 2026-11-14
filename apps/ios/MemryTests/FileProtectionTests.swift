@@ -261,6 +261,15 @@ struct VaultFilesRealFilesystemTests {
         }
     }
 
+    @Test("the models directory sits beside the vaults and is excluded from backup")
+    func modelsDirSitsOutsideTheVaults() throws {
+        let models = try files.modelsDir()
+
+        #expect(models == root.appendingPathComponent(VaultFiles.modelsDirectoryName, isDirectory: true))
+        #expect(try excludedFromBackup(models) == true)
+        #expect(try files.modelsDir() == models, "idempotent")
+    }
+
     /// The write path really runs — `setAttributes` on a real `-wal` and a real
     /// `-shm`, in the real order, through the real `FileManager`. What it
     /// cannot do here is observe the result; see

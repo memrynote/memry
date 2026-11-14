@@ -115,8 +115,40 @@ final class ShellState {
         secureStore == .locked ? ErrorMapping.userFacing(SecureStoreError.Locked) : nil
     }
 
+    let semantic: SemanticSearch?
+
     init(probe: any SecureStoreProbe = KeychainProbe()) {
         self.probe = probe
+        semantic = Self.makeSemantic(emitter: events.emitter)
+    }
+
+    /// Its own transport: the auth graph's does not exist yet when the shell
+    /// starts, and the download needs none of its identity.
+    private static func makeSemantic(emitter: CoreEventEmitter) -> SemanticSearch? {
+        do {
+            let models = try VaultFiles(emitter: emitter).modelsDir()
+            return SemanticSearch(
+                modelsDir: models.path,
+                transport: URLSessionTransport(emitter: emitter),
+                reachability: PathReachability.forAttachments
+            )
+        } catch {
+            let code = ErrorMapping.userFacing(error).code
+            Log.storage.error("the semantic models directory could not be made", .code(code))
+            return nil
+        }
+    }
+
+    func resumeSemanticDownload() {
+        guard let semantic else { return }
+        Task {
+            do {
+                _ = try await semantic.resume()
+            } catch {
+                let code = ErrorMapping.userFacing(error).code
+                Log.core.error("the semantic model download could not resume", .code(code))
+            }
+        }
     }
 
     /// Drains the hub for as long as the owner lives.
@@ -150,6 +182,7 @@ final class ShellState {
     func scenePhaseChanged(to phase: ScenePhase) {
         guard phase == .active else { return }
         emitter.emit(CoreEvent(.scenePhase))
+        resumeSemanticDownload()
     }
 
     /// One hint. Six topics, and what each of them causes to be re-read.

@@ -35,7 +35,7 @@
 //! cross: the cost of this shape is that `Vault` then holds it and `Notes` asks
 //! `Vault` to seal, rather than each object carrying its own copy.
 
-use std::path::PathBuf;
+use std::path::{Path, PathBuf};
 use std::sync::Arc;
 
 use crate::api::auth::AuthSession;
@@ -76,6 +76,10 @@ impl Vault {
     #[doc(hidden)]
     pub fn db_handle(&self) -> Db {
         self.db.clone()
+    }
+
+    pub(crate) fn directory(&self) -> &Path {
+        Path::new(&self.directory)
     }
 }
 
