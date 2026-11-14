@@ -47,7 +47,7 @@ const HUB_BLURBS: Record<AlternativeConfig['pageKey'], string> = {
   tanaAlternative:
     "Tana structures your workspace with supertags in a proprietary cloud graph that isn't end-to-end encrypted. memrynote stores each note as a portable Markdown file, encrypts sync so the server never reads your content, and ships tasks, a calendar, and a journal with no schema to design first.",
   heptabaseAlternative:
-    "Heptabase's infinite whiteboard is built for spatial thinking, but your cards live in a proprietary cloud format. memrynote trades the canvas for a complete daily workspace — Markdown notes, tasks, a calendar, and a journal — stored as files you own and synced with end-to-end encryption.",
+    "Heptabase's infinite whiteboard is built for spatial thinking, but your cards live in a proprietary cloud format. memrynote adds a canvas of live cards to a complete daily workspace — Markdown notes, tasks, a calendar, and a journal — stored as files you own and synced with end-to-end encryption.",
   standardNotesAlternative:
     'Standard Notes and memrynote both encrypt everything before it syncs and publish their source. memrynote keeps the working copy of each note as a plain Markdown file in your own folder, and adds task projects, a calendar, and a daily journal to the same encrypted vault.',
   notesnookAlternative:

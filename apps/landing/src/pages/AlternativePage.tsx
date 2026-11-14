@@ -70,6 +70,9 @@ function AlternativePage({ config }: { config: AlternativeConfig }) {
               <Button asChild size="lg" variant="secondary">
                 <Link to="/pricing">See pricing</Link>
               </Button>
+              <Button asChild size="lg" variant="secondary">
+                <Link to="/ios-beta">Join the iPhone beta</Link>
+              </Button>
             </div>
           </motion.div>
         </Container>

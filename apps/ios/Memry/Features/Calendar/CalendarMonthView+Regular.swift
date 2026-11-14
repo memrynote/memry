@@ -167,6 +167,7 @@ struct CalendarMonthWeekRow: View {
         }
         .clipped()
         .contentShape(.rect)
+        .modifier(TaskDayDropTarget(day: day))
         .pointerHover(.row)
         .onTapGesture(count: 2) {
             store.state.anchorDate = day

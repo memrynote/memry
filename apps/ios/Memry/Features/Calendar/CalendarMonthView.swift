@@ -136,6 +136,7 @@ struct CalendarMonthView: View {
         }
         .frame(maxWidth: .infinity, minHeight: Tokens.Size.minimumHitArea + Tokens.Space.small, alignment: .top)
         .contentShape(.rect)
+        .modifier(TaskDayDropTarget(day: day))
         .pointerHover(.row)
         .onTapGesture(count: 2) {
             store.state.anchorDate = day
@@ -267,6 +268,7 @@ struct CalendarAgendaRow: View {
         }
         .buttonStyle(.plain)
         .pointerHover(.row)
+        .modifier(TaskDragSource(id: item.sourceType == "task" ? item.sourceId : nil))
         .calendarItemMenu(actions.contextMenu, item: item)
         .accessibilityLabel(CalendarItemStyle.accessibilityLabel(item))
         .accessibilityIdentifier("calendar.row.\(item.projectionId)")
