@@ -1,19 +1,22 @@
 //! `packages/contracts/test-vectors/pixel-tensors.json`: the pixels Electron's image path hands the
 //! vision encoder (`crates/memry-ml/tests/golden/generate-image.mjs`). PNG, WebP and GIF inputs
 //! match bit for bit. JPEG decoding and ICC conversion are a known divergence (test-vectors
-//! README): those cases match in every size and position and stay within `maxLevelDiff` per
-//! channel of Electron's decoded pixels.
+//! README): those cases, found from the input bytes, match in every size and position and stay
+//! within `maxLevelDiff` per channel of Electron's decoded pixels, which never exceeds
+//! `MAX_LEVEL_DIFF`.
 
-use std::path::{Path, PathBuf};
+mod common;
 
 use base64::Engine as _;
+use common::{divergence, root};
 use memry_ml::image_prep::{self, PixelTensor};
 use serde_json::Value;
 use sha2::{Digest, Sha256};
 
-fn root() -> PathBuf {
-    Path::new(env!("CARGO_MANIFEST_DIR")).join("../..")
-}
+/// Ceilings on the file's `maxLevelDiff`, a margin over the measured maxima (jpeg 4, icc 1,
+/// jpeg+icc 6). The file may hold tighter bounds, never looser ones; raising a ceiling needs
+/// Kaan's approval.
+const MAX_LEVEL_DIFF: [(&str, u64); 3] = [("jpeg", 6), ("icc", 2), ("jpeg+icc", 8)];
 
 fn vectors() -> Value {
     let path = root().join("packages/contracts/test-vectors/pixel-tensors.json");
@@ -53,6 +56,33 @@ fn max_level_diff(a: &[u8], b: &[u8]) -> u8 {
         .unwrap_or(0)
 }
 
+/// The bounds and divergence tags of a file that loosen what the inputs allow: a `maxLevelDiff`
+/// over its ceiling, or a `divergent` tag the input's bytes do not call for.
+fn limit_failures(file: &Value) -> Vec<String> {
+    let mut failures = Vec::new();
+    for (kind, ceiling) in MAX_LEVEL_DIFF {
+        match file["maxLevelDiff"][kind].as_u64() {
+            Some(bound) if bound <= ceiling => {}
+            bound => failures.push(format!(
+                "maxLevelDiff.{kind} is {bound:?}, over the ceiling {ceiling}"
+            )),
+        }
+    }
+    for case in file["cases"].as_array().expect("cases") {
+        if case["expected"].get("error").is_some() {
+            continue;
+        }
+        let derived = divergence(&input_bytes(case));
+        if case["divergent"].as_str() != derived {
+            failures.push(format!(
+                "{}: tagged {} but the input is {derived:?}",
+                case["name"], case["divergent"]
+            ));
+        }
+    }
+    failures
+}
+
 /// Checks one valid case and returns the measured level difference of a divergent one.
 fn check(name: &str, case: &Value, bytes: &[u8], limits: &Value) -> Option<u8> {
     let expected = &case["expected"];
@@ -89,7 +119,7 @@ fn check(name: &str, case: &Value, bytes: &[u8], limits: &Value) -> Option<u8> {
         expected["positionIds"],
         "{name}: position ids"
     );
-    let Some(kind) = case["divergent"].as_str() else {
+    let Some(kind) = divergence(bytes) else {
         assert_eq!(
             sha256(&decoded.data),
             want["sha256"],
@@ -107,7 +137,12 @@ fn check(name: &str, case: &Value, bytes: &[u8], limits: &Value) -> Option<u8> {
         .decode(rgb)
         .expect("base64");
     let diff = max_level_diff(&decoded.data, &oracle);
-    let bound = limits[kind].as_u64().expect("maxLevelDiff");
+    let ceiling = MAX_LEVEL_DIFF
+        .iter()
+        .find(|(k, _)| *k == kind)
+        .expect("kind")
+        .1;
+    let bound = limits[kind].as_u64().expect("maxLevelDiff").min(ceiling);
     assert!(
         u64::from(diff) <= bound,
         "{name}: decoded pixels differ by {diff} levels, over the {kind} bound {bound}"
@@ -120,6 +155,8 @@ fn every_case_matches_electrons_preprocessing() {
     let file = vectors();
     let cases = file["cases"].as_array().expect("cases");
     assert!(cases.len() >= 50, "{} cases", cases.len());
+    let loosened = limit_failures(&file);
+    assert!(loosened.is_empty(), "{}", loosened.join("\n"));
     let (mut exact, mut bounded, mut failures) = (0, 0, Vec::new());
     for case in cases {
         let name = case["name"].as_str().expect("name");
@@ -148,7 +185,7 @@ fn every_case_matches_electrons_preprocessing() {
                 bounded += 1;
                 eprintln!("{name}: max level diff {diff}");
             }
-            Ok(Some(None)) if case["divergent"].is_null() => exact += 1,
+            Ok(Some(None)) if divergence(&bytes).is_none() => exact += 1,
             Ok(Some(None)) => bounded += 1,
             Ok(None) => {}
         }
@@ -158,4 +195,44 @@ fn every_case_matches_electrons_preprocessing() {
         exact >= 20 && bounded >= 10,
         "{exact} exact, {bounded} bounded"
     );
+}
+
+fn case_at(file: &Value, name: &str) -> usize {
+    file["cases"]
+        .as_array()
+        .expect("cases")
+        .iter()
+        .position(|case| case["name"] == name)
+        .expect(name)
+}
+
+#[test]
+fn a_file_that_loosens_a_bound_or_a_tag_fails() {
+    let file = vectors();
+    assert_eq!(limit_failures(&file), Vec::<String>::new());
+    let tampered = |name: &str, edit: fn(&mut Value)| {
+        let mut copy = file.clone();
+        edit(&mut copy);
+        assert!(!limit_failures(&copy).is_empty(), "{name} passed");
+    };
+    tampered("jpeg bound raised", |file| {
+        file["maxLevelDiff"]["jpeg"] = 7.into()
+    });
+    tampered("icc bound removed", |file| {
+        file["maxLevelDiff"]
+            .as_object_mut()
+            .expect("bounds")
+            .remove("icc");
+    });
+    tampered("jpeg untagged", |file| {
+        let at = case_at(file, "jpeg 4:2:0 @140");
+        file["cases"][at]
+            .as_object_mut()
+            .expect("case")
+            .remove("divergent");
+    });
+    tampered("png tagged divergent", |file| {
+        let at = case_at(file, "png rgb @140");
+        file["cases"][at]["divergent"] = "jpeg".into();
+    });
 }

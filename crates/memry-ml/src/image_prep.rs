@@ -17,9 +17,17 @@ pub const MAX_IMAGE_BYTES: usize = 30 * 1024 * 1024;
 /// sharp's default `limitInputPixels` (0x3FFF squared): larger images fail to decode there.
 const MAX_INPUT_PIXELS: u64 = 0x3FFF * 0x3FFF;
 
-/// Ceiling on any one buffer the decoder allocates. sharp has none below its pixel limit; this
-/// refuses an RGBA image above 128 megapixels, which Electron would still decode.
+/// Ceiling on what one decode holds at its peak: the frame buffer, plus the coefficients of a
+/// progressive JPEG. sharp has none below its pixel limit; this refuses an RGBA image above 128
+/// megapixels, which Electron would still decode. `Limits::max_alloc` caps each allocation on its
+/// own and not every decoder checks it before allocating, so `decode` checks the sum from the
+/// headers. The buffers after the decode (the RGB copy, the copy `to_srgb` converts from, the
+/// resize's padded input) are each at most the frame buffer's size.
 const MAX_DECODE_ALLOC: u64 = 512 * 1024 * 1024;
+
+/// Larger colour profiles are refused. A PNG stores its profile deflated, so a few kilobytes can
+/// unpack to the whole allocation cap; JPEG and WebP store it as is, within `MAX_IMAGE_BYTES`.
+pub(crate) const MAX_ICC_BYTES: usize = 10 * 1024 * 1024;
 
 /// `patch_size`, `pooling_kernel_size` and the patch width of `preprocessor_config.json`.
 const PATCH_SIZE: usize = 16;
@@ -85,6 +93,13 @@ pub fn pixel_tensor(image: Rgb8, max_soft_tokens: usize) -> Result<PixelTensor, 
 /// `RawImage.fromBlob` then `.rgb()`: sharp decodes the first frame, applies the EXIF
 /// orientation, converts an embedded ICC profile to sRGB and writes 8-bit samples; transformers.js
 /// then drops alpha.
+///
+/// Known differences from sharp besides the JPEG and ICC levels (test-vectors README): TIFF, AVIF,
+/// HEIF and the other formats libvips reads are refused (a vault image is PNG, JPEG, GIF or WebP);
+/// zune-jpeg runs with `strict_mode` off as `image` sets it, so of libjpeg's warnings only the
+/// missing end marker is refused; a grey or CMYK profile is dropped where libvips converts through
+/// it; and a 16-bit image is cut to 8 bits before its profile applies, where libvips converts at
+/// 16 bits.
 pub fn decode(bytes: &[u8]) -> Result<Rgb8, MlError> {
     if bytes.len() > MAX_IMAGE_BYTES {
         return Err(input(format!(
@@ -99,10 +114,14 @@ pub fn decode(bytes: &[u8]) -> Result<Rgb8, MlError> {
     ) {
         return Err(input(format!("unsupported image format {format:?}")));
     }
-    if format == ImageFormat::Jpeg && !jpeg_has_end(bytes) {
-        // sharp fails on libjpeg's warning; zune-jpeg would decode the rest as grey.
-        return Err(input("VipsJpeg: premature end of JPEG image"));
-    }
+    let coefficients = match format {
+        ImageFormat::Jpeg => jpeg_coefficient_bytes(bytes)?,
+        ImageFormat::Png => {
+            check_png_profile(bytes)?;
+            0
+        }
+        _ => 0,
+    };
     let mut reader = ImageReader::with_format(Cursor::new(bytes), format);
     let mut limits = Limits::default();
     limits.max_alloc = Some(MAX_DECODE_ALLOC);
@@ -116,11 +135,12 @@ pub fn decode(bytes: &[u8]) -> Result<Rgb8, MlError> {
     if u64::from(width) * u64::from(height) > MAX_INPUT_PIXELS {
         return Err(input("Input image exceeds pixel limit".to_owned()));
     }
-    // The decoders do not all check `Limits::max_alloc` before allocating the frame buffer.
-    if decoder.total_bytes() > MAX_DECODE_ALLOC {
+    // The decoders do not all check `Limits::max_alloc` before allocating the frame buffer, and a
+    // progressive JPEG holds its coefficients besides it.
+    let peak = decoder.total_bytes().saturating_add(coefficients);
+    if peak > MAX_DECODE_ALLOC {
         return Err(input(format!(
-            "image needs {} bytes to decode, over the {MAX_DECODE_ALLOC}-byte limit",
-            decoder.total_bytes()
+            "image needs {peak} bytes to decode, over the {MAX_DECODE_ALLOC}-byte limit"
         )));
     }
     let orientation = decoder.orientation().map_err(decode_error)?;
@@ -136,14 +156,20 @@ pub fn decode(bytes: &[u8]) -> Result<Rgb8, MlError> {
     to_rgb8(image, icc.as_deref())
 }
 
-/// Whether a JPEG's segments lead to a scan that an end-of-image marker closes. Entropy-coded data
-/// stuffs every 0xFF with a zero byte, so the first `FF D9` after the first scan header is the
-/// marker; an EXIF thumbnail's own markers sit inside an APP segment the walk skips.
-fn jpeg_has_end(bytes: &[u8]) -> bool {
+/// Walks a JPEG's segments to its first scan. Refuses one that no end-of-image marker closes:
+/// entropy-coded data stuffs every 0xFF with a zero byte, so the first `FF D9` after the first scan
+/// header is the marker, and an EXIF thumbnail's own markers sit inside an APP segment the walk
+/// skips. sharp fails on libjpeg's warning there; zune-jpeg would decode the rest as grey.
+///
+/// Returns the bytes of the coefficient buffers zune-jpeg holds for a progressive frame (`SOF2`,
+/// `mcu_prog.rs`): per component, 64 `i16` per 8x8 block over the padded MCU grid. A baseline
+/// frame decodes row by row and holds none.
+fn jpeg_coefficient_bytes(bytes: &[u8]) -> Result<u64, MlError> {
+    let mut coefficients = 0;
     let mut at = 2;
     while at + 4 <= bytes.len() {
         if bytes[at] != 0xFF {
-            return false;
+            break;
         }
         let marker = bytes[at + 1];
         if marker == 0xFF {
@@ -151,12 +177,80 @@ fn jpeg_has_end(bytes: &[u8]) -> bool {
             continue;
         }
         let length = usize::from(u16::from_be_bytes([bytes[at + 2], bytes[at + 3]]));
+        if marker == 0xC2 {
+            let end = (at + 2 + length).min(bytes.len());
+            coefficients = progressive_coefficient_bytes(&bytes[at + 4..end]);
+        }
         if marker == 0xDA {
-            return bytes[at + 2..].windows(2).any(|pair| pair == [0xFF, 0xD9]);
+            if bytes[at + 2..].windows(2).any(|pair| pair == [0xFF, 0xD9]) {
+                return Ok(coefficients);
+            }
+            break;
         }
         at += 2 + length;
     }
-    false
+    Err(input("VipsJpeg: premature end of JPEG image"))
+}
+
+/// The coefficient bytes of a progressive frame header (`P`, `Y`, `X`, `Nf`, then `Nf` times
+/// `C`, `HV`, `Tq`). A single component decodes at 1x1 whatever its factors say.
+fn progressive_coefficient_bytes(header: &[u8]) -> u64 {
+    let [_, h0, h1, w0, w1, count, components @ ..] = header else {
+        return 0;
+    };
+    let (height, width) = (
+        u64::from(u16::from_be_bytes([*h0, *h1])),
+        u64::from(u16::from_be_bytes([*w0, *w1])),
+    );
+    let factors: Vec<(u64, u64)> = components
+        .as_chunks::<3>()
+        .0
+        .iter()
+        .take(usize::from(*count))
+        .map(|&[_, sampling, _]| match count {
+            1 => (1, 1),
+            _ => (
+                u64::from(sampling >> 4).max(1),
+                u64::from(sampling & 0x0F).max(1),
+            ),
+        })
+        .collect();
+    let h_max = factors.iter().map(|&(h, _)| h).max().unwrap_or(1);
+    let v_max = factors.iter().map(|&(_, v)| v).max().unwrap_or(1);
+    let mcus = width.div_ceil(8 * h_max) * height.div_ceil(8 * v_max);
+    factors.iter().map(|&(h, v)| mcus * 64 * h * v * 2).sum()
+}
+
+/// Refuses a PNG whose `iCCP` profile unpacks past `MAX_ICC_BYTES`. The `png` crate inflates the
+/// profile while reading the header, up to the whole allocation cap, and drops one it cannot
+/// read; a few kilobytes of zlib can unpack to hundreds of megabytes.
+fn check_png_profile(bytes: &[u8]) -> Result<(), MlError> {
+    let mut at = 8;
+    while let Some(header) = bytes.get(at..at + 8) {
+        let length = u32::from_be_bytes([header[0], header[1], header[2], header[3]]) as usize;
+        let data = bytes.get(at + 8..).unwrap_or_default();
+        let data = &data[..length.min(data.len())];
+        match &header[4..] {
+            b"IDAT" => break,
+            b"iCCP" => {
+                // Keyword, NUL, compression method, then the zlib stream.
+                let Some(name_end) = data.iter().position(|&byte| byte == 0) else {
+                    break;
+                };
+                let stream = data.get(name_end + 2..).unwrap_or_default();
+                if let Err(fdeflate::BoundedDecompressionError::OutputTooLarge { .. }) =
+                    fdeflate::decompress_to_vec_bounded(stream, MAX_ICC_BYTES)
+                {
+                    return Err(input(format!(
+                        "colour profile unpacks to more than {MAX_ICC_BYTES} bytes"
+                    )));
+                }
+            }
+            _ => {}
+        }
+        at += 12 + length;
+    }
+    Ok(())
 }
 
 /// The 8-bit RGB samples transformers.js keeps. sharp writes a grey image as RGB and
@@ -219,27 +313,37 @@ fn grey_to_rgb<T: Copy>(samples: &[T], channels: usize, to_u8: impl Fn(T) -> u8)
 /// sharp's `icc_transform` to sRGB with the perceptual intent. libvips runs Little CMS; this runs
 /// moxcms, pure Rust (Kaan, 2026-11-13), whose output differs by a level or two in a channel
 /// (`maxLevelDiff` of `pixel-tensors.json`). A profile moxcms cannot read is ignored, as sharp
-/// ignores an invalid one.
+/// ignores an invalid one; so is one that is not RGB, which libvips would apply (`decode`). Each
+/// dropped profile is logged.
 fn to_srgb(data: &mut [u8], profile: &[u8]) {
     use moxcms::{ColorProfile, DataColorSpace, Layout, RenderingIntent, TransformOptions};
-    let Ok(source) = ColorProfile::new_from_slice(profile) else {
-        return;
+    let dropped = |reason: &dyn std::fmt::Display| {
+        tracing::warn!(bytes = profile.len(), %reason, "image colour profile ignored");
+    };
+    let source = match ColorProfile::new_from_slice(profile) {
+        Ok(source) => source,
+        Err(error) => return dropped(&error),
     };
     if source.color_space != DataColorSpace::Rgb {
-        return;
+        return dropped(&format_args!("{:?} profile", source.color_space));
     }
     let options = TransformOptions {
         rendering_intent: RenderingIntent::Perceptual,
         ..TransformOptions::default()
     };
-    let Ok(transform) =
-        source.create_transform_8bit(Layout::Rgb, &ColorProfile::new_srgb(), Layout::Rgb, options)
-    else {
-        return;
+    let transform = match source.create_transform_8bit(
+        Layout::Rgb,
+        &ColorProfile::new_srgb(),
+        Layout::Rgb,
+        options,
+    ) {
+        Ok(transform) => transform,
+        Err(error) => return dropped(&error),
     };
     let src = data.to_vec();
-    if transform.transform(&src, data).is_err() {
+    if let Err(error) = transform.transform(&src, data) {
         data.copy_from_slice(&src);
+        dropped(&error);
     }
 }
 

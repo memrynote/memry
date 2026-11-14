@@ -129,15 +129,30 @@ profiles through Little CMS. `memry-ml` decodes in pure Rust (Kaan, 2026-11-13):
 zune-jpeg (the `image` crate) and profiles through moxcms, with no C decoder in the build. PNG,
 WebP and GIF decode, resize and patch bit for bit, so those cases hold exact sha256 hashes and
 their vectors meet the text bounds (cosine 1.000000 measured). JPEG and ICC-tagged inputs decode
-a few levels apart. Measured on macOS arm64, the largest per-channel difference of the decoded
-pixels is 4 for a JPEG (all subsamplings, progressive, grey and the seven EXIF orientations), 1
-for an ICC-tagged PNG or WebP and 6 for an ICC-tagged JPEG; `pixel-tensors.json` stores Electron's
-decoded pixels for those small inputs and `pixel_tensors.rs` holds the Rust to `maxLevelDiff`
-(6, 2 and 8) while every size, patch count and position id stays exact. The embedding moves with
+a few levels apart. The tests read each case's class (`jpeg`, `icc`, `jpeg+icc`) from the input
+bytes (`crates/memry-ml/tests/common/mod.rs`), and the generator tags it the same way from sharp's
+metadata: a tag the bytes do not call for fails. Measured on macOS arm64, the largest per-channel
+difference of the decoded pixels is 4 for a JPEG (all subsamplings, progressive, grey), 1 for an
+ICC-tagged PNG or WebP and 6 for an ICC-tagged JPEG (the P3 one; the seven EXIF orientations, whose
+sRGB profile sharp writes, 4). `pixel-tensors.json` stores Electron's decoded pixels for those
+small inputs and `pixel_tensors.rs` holds the Rust to `maxLevelDiff` under the ceilings 6, 2 and 8
+it hard-codes, while every size, patch count and position id stays exact. The embedding moves with
 the pixels: cosine with Electron's vector 0.99972 to 0.99998 for the sample photos (0.9995 at worst
 over 20 images measured while porting) and 0.99969 for the P3-tagged PNG, under the 0.9999 text
-bound. `golden_image.rs` holds them to `divergentMinCosine` (0.999 for both) and never lower. A
+bound. `golden_image.rs` holds them to `divergentMinCosine` and never under its hard-coded 0.999;
+a test edits the files to show that a looser bound or a wrong tag fails. Raising a ceiling or
+lowering the floor needs Kaan. A
 truncated JPEG fails in both: sharp on libjpeg's warning, `memry-ml` on the missing end marker.
+
+Not covered by a vector, and different from Electron: a CMYK or YCCK JPEG (zune-jpeg converts it to
+RGB without a profile where libvips converts through the embedded or its built-in CMYK profile;
+measured 46 and 41 levels, cosine 0.977 and 0.986, PR #4525), a grey or CMYK profile on any image
+(dropped and logged where libvips applies it), a 16-bit image with a profile (cut to 8 bits before
+the profile applies, where libvips converts at 16 bits), JPEG warnings other than a missing end
+marker (zune-jpeg runs with `strict_mode` off) and a file in a format libvips reads but a vault
+image is not (TIFF, AVIF, HEIF: refused). `--check` regenerates from the committed synthesized
+inputs. `pixel-tensors.json` records the sharp, libvips and transformers.js versions it was written
+under, `embeddings-image.json` the transformers.js version.
 
 ### `markdown-convert/`
 

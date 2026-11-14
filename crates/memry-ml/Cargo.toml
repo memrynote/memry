@@ -13,11 +13,13 @@ tokenizers = { workspace = true }
 sha2 = { workspace = true }
 hex = { workspace = true }
 thiserror = { workspace = true }
-# Decoders of the formats a vault image note can hold (packages/shared file-types.ts, minus SVG).
-image = { version = "0.25", default-features = false, features = ["png", "jpeg", "gif", "webp"] }
+tracing = { workspace = true }
+image = { workspace = true }
 # Colour management in pure Rust (Kaan, 2026-11-13): sharp converts with Little CMS, so a
 # profile-tagged image can differ by a level per channel (test-vectors README, pixel tensors).
 moxcms = "0.8"
+# zlib inflate in pure Rust (the `png` crate's own): bounds an `iCCP` profile before decoding.
+fdeflate = "0.3"
 
 # ONNX Runtime 1.31.0 is linked statically (crates/AGENTS.md, ONNX Runtime). Apple Silicon links
 # ort-sys's prebuilt archive, downloaded at build time. pyke builds the Apple Silicon archive with

@@ -14,10 +14,12 @@
  *
  * Inputs are the repo's sample photos (`apps/cli/src/sandbox/assets`, by path and sha256) and
  * small images this script encodes with sharp, stored as base64 so the Rust test reads the same
- * bytes. JPEG decoding and ICC conversion are a known divergence (test-vectors README): those
- * cases also store the oracle's decoded pixels, and the Rust holds them to `maxLevelDiff`.
+ * bytes. With `--check`, the synthesized inputs are the committed ones, so the check compares
+ * the preprocessing, not sharp's encoder. JPEG decoding and ICC conversion are a known divergence
+ * (test-vectors README): those cases, found from the input bytes, also store the oracle's decoded
+ * pixels, and the Rust holds them to `maxLevelDiff`.
  */
-import { readFileSync } from 'node:fs'
+import { existsSync, readFileSync } from 'node:fs'
 import os from 'node:os'
 import { join, resolve } from 'node:path'
 
@@ -65,7 +67,8 @@ const PAGE_TOKENS = 280
 /**
  * Largest per-channel difference between Electron's decoded pixels and the Rust ones in the
  * divergent cases (JPEG: zune-jpeg against libjpeg-turbo; ICC: moxcms against Little CMS), with a
- * margin over the measured maximum (jpeg 4, icc 1, jpeg+icc 6).
+ * margin over the measured maximum (jpeg 4, icc 1, jpeg+icc 6). `pixel_tensors.rs` holds the same
+ * values as ceilings: a higher one fails there.
  */
 const MAX_LEVEL_DIFF = { jpeg: 6, icc: 2, 'jpeg+icc': 8 }
 
@@ -90,7 +93,7 @@ const TOLERANCE = { minCosine: 0.9999, maxComponentDiff: 0.001 }
  * photos 0.99972 to 0.99998 here, 0.9995 at worst over 20 sample images; the P3-tagged PNG
  * 0.99969. The bound leaves a margin of 5e-4 under the worst.
  */
-const DIVERGENT_MIN_COSINE = { jpeg: 0.999, icc: 0.999 }
+const DIVERGENT_MIN_COSINE = { jpeg: 0.999, icc: 0.999, 'jpeg+icc': 0.999 }
 
 const asset = (name) => readFileSync(join(ROOT, ASSETS, name))
 
@@ -138,8 +141,24 @@ async function animated(format) {
 }
 
 /**
- * The synthesized inputs. `divergent` marks the cases whose decoded pixels the Rust only bounds.
- * Sizes stay small so the base64 stays small; the budgets put most of them through the resize.
+ * The divergence class of an input, as `crates/memry-ml/tests/common/mod.rs` reads it from the
+ * bytes: a JPEG, an ICC profile, both, or none (decoded bit for bit).
+ */
+async function divergence(bytes) {
+  let metadata = {}
+  try {
+    metadata = await sharp(bytes).metadata()
+  } catch {
+    // An input sharp cannot read is refused in both and carries no class.
+  }
+  const { format, hasProfile } = metadata
+  if (format === 'jpeg') return hasProfile ? 'jpeg+icc' : 'jpeg'
+  return hasProfile ? 'icc' : undefined
+}
+
+/**
+ * The synthesized inputs. Sizes stay small so the base64 stays small; the budgets put most of them
+ * through the resize.
  */
 async function synthesized() {
   const base = () => photo('photo-istanbul.jpg', 64, 48)
@@ -152,20 +171,16 @@ async function synthesized() {
     ['png palette', (await base()).png({ palette: true, colours: 64, dither: 0 }).toBuffer()],
     ['png palette trns', (await rgba()).png({ palette: true, colours: 64, dither: 0 }).toBuffer()],
     ['png 16-bit', (await base()).toColourspace('rgb16').png().toBuffer()],
-    ['png p3 profile', (await base()).withIccProfile('p3').png().toBuffer(), 'icc'],
+    ['png p3 profile', (await base()).withIccProfile('p3').png().toBuffer()],
     ['png exact size', (await photo('photo-romanesco.jpg', 48, 48)).png().toBuffer()],
     ['png 1x500', (await photo('photo-new-york.jpg', 1, 500)).png().toBuffer()],
     ['png 500x1', (await photo('photo-new-york.jpg', 500, 1)).png().toBuffer()],
     ['png 3x200', (await photo('photo-new-york.jpg', 3, 200)).png().toBuffer()],
-    ['jpeg 4:2:0', (await base()).jpeg({ quality: 85 }).toBuffer(), 'jpeg'],
-    [
-      'jpeg 4:4:4',
-      (await base()).jpeg({ quality: 90, chromaSubsampling: '4:4:4' }).toBuffer(),
-      'jpeg'
-    ],
-    ['jpeg progressive', (await base()).jpeg({ progressive: true }).toBuffer(), 'jpeg'],
-    ['jpeg grey', (await base()).greyscale().jpeg().toBuffer(), 'jpeg'],
-    ['jpeg p3 profile', (await base()).withIccProfile('p3').jpeg().toBuffer(), 'jpeg+icc'],
+    ['jpeg 4:2:0', (await base()).jpeg({ quality: 85 }).toBuffer()],
+    ['jpeg 4:4:4', (await base()).jpeg({ quality: 90, chromaSubsampling: '4:4:4' }).toBuffer()],
+    ['jpeg progressive', (await base()).jpeg({ progressive: true }).toBuffer()],
+    ['jpeg grey', (await base()).greyscale().jpeg().toBuffer()],
+    ['jpeg p3 profile', (await base()).withIccProfile('p3').jpeg().toBuffer()],
     ...(await Promise.all(
       [2, 3, 4, 5, 6, 7, 8].map(async (orientation) => [
         `jpeg orientation ${orientation}`,
@@ -174,25 +189,20 @@ async function synthesized() {
         )
           .jpeg({ quality: 90 })
           .withMetadata({ orientation })
-          .toBuffer(),
-        'jpeg'
+          .toBuffer()
       ])
     )),
     ['webp lossy', (await base()).webp({ quality: 80 }).toBuffer()],
     ['webp lossless', (await base()).webp({ lossless: true }).toBuffer()],
     ['webp alpha', (await rgba()).webp({ lossless: true }).toBuffer()],
-    [
-      'webp p3 profile',
-      (await base()).withIccProfile('p3').webp({ lossless: true }).toBuffer(),
-      'icc'
-    ],
+    ['webp p3 profile', (await base()).withIccProfile('p3').webp({ lossless: true }).toBuffer()],
     ['webp animated', await animated('webp')],
     ['gif', (await base()).gif().toBuffer()],
     ['gif transparent', (await rgba()).gif().toBuffer()],
     ['gif animated', await animated('gif')]
   ]
   const valid = await Promise.all(
-    cases.map(async ([name, bytes, divergent]) => ({ name, bytes: await bytes, divergent }))
+    cases.map(async ([name, bytes]) => ({ name, bytes: await bytes }))
   )
   const png = valid[0].bytes
   const jpeg = valid.find((item) => item.name === 'jpeg 4:2:0').bytes
@@ -266,18 +276,20 @@ async function pixelTensorsFile(inputs) {
   const cases = []
   for (const input of inputs) {
     for (const softTokens of input.softTokens) {
+      // Large repo photos carry no pixels: the Rust bounds their embeddings instead.
+      const expected = await pixelTensor(
+        processor,
+        input.bytes,
+        softTokens,
+        input.divergent && input.source.input
+      )
+      const divergent = input.divergent && !expected.error ? { divergent: input.divergent } : {}
       cases.push({
         name: `${input.name} @${softTokens}`,
         ...input.source,
         softTokens,
-        ...(input.divergent ? { divergent: input.divergent } : {}),
-        // Large repo photos carry no pixels: the Rust bounds their embeddings instead.
-        expected: await pixelTensor(
-          processor,
-          input.bytes,
-          softTokens,
-          input.divergent && input.source.input
-        )
+        ...divergent,
+        expected
       })
     }
   }
@@ -286,6 +298,7 @@ async function pixelTensorsFile(inputs) {
       "Electron's image preprocessing (RawImage.fromBlob, .rgb(), Gemma4ImageProcessor) per input and soft-token budget: decoded and resized sizes, sha256 of the decoded RGB bytes, of pixel_values (f32 LE) and of image_position_ids (i64 LE), or the error. Divergent cases (JPEG decoding, ICC conversion) carry the decoded RGB as base64 and maxLevelDiff.",
     generator: 'crates/memry-ml/tests/golden/generate-image.mjs',
     sharp: sharp.versions.sharp,
+    transformers: env.version,
     vips: sharp.versions.vips,
     imageProcessor: IMAGE_PROCESSOR,
     maxLevelDiff: MAX_LEVEL_DIFF,
@@ -293,19 +306,34 @@ async function pixelTensorsFile(inputs) {
   }
 }
 
+/** The synthesized inputs of the committed `pixel-tensors.json` by name, for `--check`. */
+function committedInputs() {
+  const path = join(VECTORS, 'pixel-tensors.json')
+  if (!process.argv.includes('--check') || !existsSync(path)) return new Map()
+  const { cases } = JSON.parse(readFileSync(path, 'utf8'))
+  return new Map(
+    cases
+      .filter((item) => item.input !== undefined)
+      .map((item) => [item.name.replace(/ @\d+$/, ''), Buffer.from(item.input, 'base64')])
+  )
+}
+
 async function allInputs() {
-  const small = await synthesized()
+  const committed = committedInputs()
+  const small = (await synthesized()).map(({ name, bytes }) => ({
+    name,
+    bytes: committed.get(name) ?? bytes
+  }))
   const budgets = (name) =>
     name === 'png exact size'
       ? [1]
       : /^png \d+x\d+$/.test(name)
         ? [1, IMAGE_TOKENS]
         : [IMAGE_TOKENS]
-  return [
-    ...small.map(({ name, bytes, divergent }) => ({
+  const inputs = [
+    ...small.map(({ name, bytes }) => ({
       name,
       bytes,
-      divergent,
       softTokens: budgets(name),
       source: { input: bytes.toString('base64') }
     })),
@@ -314,12 +342,14 @@ async function allInputs() {
       return {
         name,
         bytes,
-        divergent: name.endsWith('.jpg') ? 'jpeg' : undefined,
         softTokens: [IMAGE_TOKENS, PAGE_TOKENS],
         source: { path: `${ASSETS}/${name}`, sha256: sha256(bytes) }
       }
     })
   ]
+  return Promise.all(
+    inputs.map(async (input) => ({ ...input, divergent: await divergence(input.bytes) }))
+  )
 }
 
 async function main() {
@@ -395,7 +425,7 @@ async function embeddingsFile(dir, all) {
       image: input.name,
       softTokens,
       text,
-      divergent: input.name.endsWith('.jpg') ? 'jpeg' : (input.divergent ?? null),
+      divergent: input.divergent ?? null,
       tokenIds,
       embedding: storedVector(truncateEmbedding(output.sentence_embedding.data))
     })
@@ -405,6 +435,7 @@ async function embeddingsFile(dir, all) {
     description:
       'embedding-worker.ts embedImage on transformers.js: token ids and the stored 256-value vector per image, soft-token budget and interleaved text. Images are pixel-tensors.json inputs by name.',
     generator: 'crates/memry-ml/tests/golden/generate-image.mjs',
+    transformers: env.version,
     model: MODEL_REPO,
     revision: MODEL_REVISION,
     files: Object.fromEntries(

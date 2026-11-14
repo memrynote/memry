@@ -1,6 +1,7 @@
 {
   "description": "embedding-worker.ts embedImage on transformers.js: token ids and the stored 256-value vector per image, soft-token budget and interleaved text. Images are pixel-tensors.json inputs by name.",
   "generator": "crates/memry-ml/tests/golden/generate-image.mjs",
+  "transformers": "4.3.1",
   "model": "onnx-community/embeddinggemma-2-ONNX",
   "revision": "daa72c51243991dfcaf9f9137d2c573d8f7790c0",
   "files": {
@@ -19,7 +20,8 @@
   },
   "divergentMinCosine": {
     "jpeg": 0.999,
-    "icc": 0.999
+    "icc": 0.999,
+    "jpeg+icc": 0.999
   },
   "cases": [
     {
@@ -27,7 +29,7 @@
       "image": "photo-istanbul.jpg",
       "softTokens": 140,
       "text": null,
-      "divergent": "jpeg",
+      "divergent": "jpeg+icc",
       "tokenIds": [
         2,
         255999,
@@ -827,7 +829,7 @@
       "image": "photo-romanesco.jpg",
       "softTokens": 140,
       "text": null,
-      "divergent": "jpeg",
+      "divergent": "jpeg+icc",
       "tokenIds": [
         2,
         255999,
@@ -1218,7 +1220,7 @@
       "image": "photo-istanbul.jpg",
       "softTokens": 280,
       "text": null,
-      "divergent": "jpeg",
+      "divergent": "jpeg+icc",
       "tokenIds": [
         2,
         255999,
@@ -2604,7 +2606,7 @@
         0.0407279246,
         -0.0529863238,
         -0.0493230298,
-        3.94808148e-06,
+        0.00000394808148,
         0.00650783256,
         0.041644536,
         0.104666449,
@@ -3016,7 +3018,7 @@
         0.0028918332,
         -0.011733924,
         0.0365707614,
-        -8.79222061e-05,
+        -0.0000879222061,
         0.113218188,
         -0.0694477782,
         0.0506769828,
@@ -5220,7 +5222,7 @@
         -0.0395978503,
         -0.000407354994,
         -0.0365616903,
-        -5.4221251e-05,
+        -0.000054221251,
         0.0695515051,
         0.0303461421,
         0.0316490121,
@@ -5363,7 +5365,7 @@
         0.00182907819,
         0.0198540334,
         -0.0137800099,
-        2.96830185e-05,
+        0.0000296830185,
         -0.0400061198,
         -0.0357812382,
         0.0171500295,
@@ -5615,7 +5617,7 @@
         0.0932032391,
         -0.0608226992,
         -0.0322616249,
-        1.86940888e-05,
+        0.0000186940888,
         0.0835133195,
         -0.0125651658,
         -0.0215753559,

@@ -1,20 +1,25 @@
 //! Parity with transformers.js: `packages/contracts/test-vectors/embeddings-image.json`, written by
 //! `tests/golden/generate-image.mjs` from Electron's `embedImage`, holds the token ids and the
 //! stored vector of photos, an OCR page with and without its text and small lossless images.
-//! Token ids are exact. PNG, WebP and GIF vectors meet the text bounds; JPEG and ICC-tagged images
-//! decode differently (test-vectors README) and meet the file's measured `divergentMinCosine`.
+//! Token ids are exact. PNG, WebP and GIF vectors meet the text bounds; JPEG and ICC-tagged images,
+//! found from the input bytes, decode differently (test-vectors README) and meet the file's
+//! `divergentMinCosine`, which never goes under `MIN_DIVERGENT_COSINE`.
 //! Needs the pinned text and vision files in `MEMRY_ML_MODEL_DIR`; CI runs it on the full tier.
 //! Run: `cargo test -p memry-ml --test golden_image -- --ignored`.
 
-use std::path::{Path, PathBuf};
+mod common;
+
+use std::path::PathBuf;
 
 use base64::Engine as _;
+use common::{divergence, root};
 use memry_ml::{EMBEDDING_DIMENSION, EmbeddingEngine, LoadOptions, ModelGroup, image_prep};
 use serde_json::Value;
 
-fn root() -> PathBuf {
-    Path::new(env!("CARGO_MANIFEST_DIR")).join("../..")
-}
+/// The floor of every divergent class's cosine with Electron's vector; lowering it needs Kaan's
+/// approval.
+const MIN_DIVERGENT_COSINE: f64 = 0.999;
+const DIVERGENT: [&str; 3] = ["jpeg", "icc", "jpeg+icc"];
 
 fn read_json(name: &str) -> Value {
     let path = root().join("packages/contracts/test-vectors").join(name);
@@ -41,6 +46,75 @@ fn image_bytes(pixels: &Value, image: &str) -> Vec<u8> {
     std::fs::read(root().join(case["path"].as_str().expect("path"))).expect("asset")
 }
 
+/// The bounds and divergence tags of `embeddings-image.json` that loosen what the inputs allow: text
+/// bounds looser than `golden_text.rs`, a divergent cosine under the floor, or a `divergent` tag
+/// the image's bytes do not call for.
+fn bound_failures(vectors: &Value, pixels: &Value) -> Vec<String> {
+    let mut failures = Vec::new();
+    let tolerance = &vectors["tolerance"];
+    if !(tolerance["minCosine"]
+        .as_f64()
+        .is_some_and(|cosine| cosine >= 0.9999)
+        && tolerance["maxComponentDiff"]
+            .as_f64()
+            .is_some_and(|diff| diff <= 0.001))
+    {
+        failures.push(format!(
+            "tolerance {tolerance} is looser than the text bounds"
+        ));
+    }
+    for kind in DIVERGENT {
+        let bound = vectors["divergentMinCosine"][kind].as_f64();
+        if !bound.is_some_and(|bound| bound >= MIN_DIVERGENT_COSINE) {
+            failures.push(format!(
+                "divergentMinCosine.{kind} is {bound:?}, under {MIN_DIVERGENT_COSINE}"
+            ));
+        }
+    }
+    for case in vectors["cases"].as_array().expect("cases") {
+        let derived = divergence(&image_bytes(pixels, case["image"].as_str().expect("image")));
+        if case["divergent"].as_str() != derived {
+            failures.push(format!(
+                "{}: tagged {} but the image is {derived:?}",
+                case["name"], case["divergent"]
+            ));
+        }
+    }
+    failures
+}
+
+#[test]
+fn a_file_that_loosens_a_bound_or_a_tag_fails() {
+    let vectors = read_json("embeddings-image.json");
+    let pixels = read_json("pixel-tensors.json");
+    assert_eq!(bound_failures(&vectors, &pixels), Vec::<String>::new());
+    type Edit = (&'static str, fn(&mut Value));
+    let edits: [Edit; 4] = [
+        ("jpeg floor lowered", |file| {
+            file["divergentMinCosine"]["jpeg"] = 0.99.into();
+        }),
+        ("text bound loosened", |file| {
+            file["tolerance"]["minCosine"] = 0.999.into();
+        }),
+        ("jpeg untagged", |file| {
+            file["cases"][0]["divergent"] = Value::Null
+        }),
+        ("png tagged divergent", |file| {
+            let cases = file["cases"].as_array_mut().expect("cases");
+            let png = cases
+                .iter_mut()
+                .find(|case| case["image"] == "png rgb")
+                .expect("png rgb");
+            png["divergent"] = "icc".into();
+        }),
+    ];
+    for (name, edit) in edits {
+        let mut copy = vectors.clone();
+        edit(&mut copy);
+        assert!(!bound_failures(&copy, &pixels).is_empty(), "{name} passed");
+    }
+}
+
 fn cosine(a: &[f32], b: &[f32]) -> f64 {
     a.iter()
         .zip(b)
@@ -53,12 +127,13 @@ fn cosine(a: &[f32], b: &[f32]) -> f64 {
 fn image_embeddings_match_electron() {
     let vectors = read_json("embeddings-image.json");
     let pixels = read_json("pixel-tensors.json");
+    let loosened = bound_failures(&vectors, &pixels);
+    assert!(loosened.is_empty(), "{}", loosened.join("\n"));
     let tolerance = &vectors["tolerance"];
     let min_cosine = tolerance["minCosine"].as_f64().expect("minCosine");
     let max_diff = tolerance["maxComponentDiff"]
         .as_f64()
         .expect("maxComponentDiff");
-    assert!(min_cosine >= 0.9999 && max_diff <= 0.001);
     let dir = PathBuf::from(std::env::var_os("MEMRY_ML_MODEL_DIR").expect("MEMRY_ML_MODEL_DIR"));
     memry_ml::verify(&dir, ModelGroup::Text).expect("the pinned text files");
     memry_ml::verify(&dir, ModelGroup::Vision).expect("the pinned vision files");
@@ -104,12 +179,12 @@ fn image_embeddings_match_electron() {
             .map(|(a, b)| f64::from((a - b).abs()))
             .fold(0.0, f64::max);
         eprintln!("{name}: cosine {cos:.6}, largest component difference {worst:.6}");
-        match case["divergent"].as_str() {
+        match divergence(&bytes) {
             Some(kind) => {
                 let bound = vectors["divergentMinCosine"][kind]
                     .as_f64()
-                    .unwrap_or_else(|| panic!("divergentMinCosine.{kind}"));
-                assert!(bound >= 0.999, "the {kind} bound may not go under 0.999");
+                    .unwrap_or_else(|| panic!("divergentMinCosine.{kind}"))
+                    .max(MIN_DIVERGENT_COSINE);
                 if cos < bound {
                     failures.push(format!(
                         "{name}: cosine {cos} under the {kind} bound {bound}"

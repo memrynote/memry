@@ -4115,6 +4115,7 @@ name = "memry-ml"
 version = "0.0.0"
 dependencies = [
  "base64 0.22.1",
+ "fdeflate",
  "hex",
  "image",
  "libc",
@@ -4128,6 +4129,7 @@ dependencies = [
  "tempfile",
  "thiserror 2.0.20",
  "tokenizers",
+ "tracing",
  "windows",
 ]
 

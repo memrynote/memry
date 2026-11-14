@@ -20,12 +20,28 @@ fn png_header(width: u32, height: u32) -> Vec<u8> {
         (b"IDAT", Vec::new()),
         (b"IEND", Vec::new()),
     ] {
-        let chunk = [kind.as_slice(), &data].concat();
-        png.extend(u32::try_from(data.len()).expect("small").to_be_bytes());
-        png.extend(&chunk);
-        png.extend(crc32(&chunk).to_be_bytes());
+        png.extend(png_chunk(kind, &data));
     }
     png
+}
+
+fn png_chunk(kind: &[u8; 4], data: &[u8]) -> Vec<u8> {
+    let body = [kind.as_slice(), data].concat();
+    let mut chunk = u32::try_from(data.len())
+        .expect("small")
+        .to_be_bytes()
+        .to_vec();
+    chunk.extend(&body);
+    chunk.extend(crc32(&body).to_be_bytes());
+    chunk
+}
+
+/// A valid PNG with an `iCCP` chunk, after `IHDR`, whose zlib stream unpacks to `profile`.
+fn png_with_profile(profile: &[u8]) -> Vec<u8> {
+    let png = fixture("png rgb @140");
+    let mut iccp = b"icc\0\0".to_vec();
+    iccp.extend(fdeflate::compress_to_vec(profile));
+    [&png[..33], &png_chunk(b"iCCP", &iccp), &png[33..]].concat()
 }
 
 fn crc32(bytes: &[u8]) -> u32 {
@@ -89,6 +105,33 @@ fn an_image_whose_buffer_passes_the_allocation_cap_is_refused_before_allocating(
 }
 
 #[test]
+fn a_png_profile_that_unpacks_past_10_mib_is_refused_before_decoding() {
+    let bytes = png_with_profile(&vec![0; MAX_ICC_BYTES + 1]);
+    assert!(bytes.len() < 64 * 1024, "{} bytes", bytes.len());
+    assert_eq!(
+        message(prepare(&bytes, 1)),
+        "colour profile unpacks to more than 10485760 bytes"
+    );
+    assert!(prepare(&png_with_profile(&vec![0; MAX_ICC_BYTES]), 1).is_ok());
+}
+
+#[test]
+fn a_progressive_jpegs_coefficient_buffers_count_toward_the_allocation_cap() {
+    // 10000x10000 at 4:2:0: 300 MB of RGB fits the cap, the 300 MB of coefficients a progressive
+    // decode holds besides it do not.
+    let mut bytes = fixture("jpeg progressive @140");
+    let sof = bytes
+        .windows(2)
+        .position(|pair| pair == [0xFF, 0xC2])
+        .expect("SOF2");
+    bytes[sof + 5..sof + 9].copy_from_slice(&[0x27, 0x10, 0x27, 0x10]);
+    assert_eq!(
+        message(prepare(&bytes, 1)),
+        "image needs 600000000 bytes to decode, over the 536870912-byte limit"
+    );
+}
+
+#[test]
 fn soft_token_budgets_outside_1_to_1120_are_refused() {
     let bytes = fixture("png rgb @140");
     for budget in [0, MAX_SOFT_TOKENS + 1] {
@@ -139,13 +182,30 @@ fn the_resize_interpolates_each_output_pixel_once() {
     }
 }
 
-const VALID: [&str; 5] = [
+/// Each format, and the inputs whose ICC profile (`p3`) or EXIF orientation the decode reads.
+const VALID: [&str; 9] = [
     "png rgba @140",
     "jpeg progressive @140",
     "webp lossy @140",
     "gif animated @140",
     "png 16-bit @140",
+    "png p3 profile @140",
+    "jpeg p3 profile @140",
+    "webp p3 profile @140",
+    "jpeg orientation 6 @140",
 ];
+
+/// The Display P3 profile sharp embeds.
+fn p3_profile() -> Vec<u8> {
+    let bytes = fixture("png p3 profile @140");
+    let reader = image::ImageReader::with_format(std::io::Cursor::new(bytes), ImageFormat::Png);
+    reader
+        .into_decoder()
+        .expect("decoder")
+        .icc_profile()
+        .expect("profile")
+        .expect("p3")
+}
 
 proptest! {
     #![proptest_config(proptest_config(256))]
@@ -177,5 +237,29 @@ proptest! {
             prop_assert_eq!(tensor.position_ids.len(), max_patches * 2);
             prop_assert!(tensor.resized.width * tensor.resized.height <= max_patches * 256);
         }
+    }
+
+    /// A profile with bytes overwritten or cut converts or is ignored, never panics, and leaves
+    /// the pixel count unchanged.
+    #[test]
+    fn mutated_profiles_never_panic(
+        edits in proptest::collection::vec((any::<prop::sample::Index>(), any::<u8>()), 1..16),
+        cut in any::<prop::sample::Index>(),
+        pixels in proptest::collection::vec(any::<u8>(), 0..64),
+    ) {
+        let mut profile = p3_profile();
+        for (index, value) in &edits {
+            let at = index.index(profile.len());
+            profile[at] = *value;
+        }
+        if edits.len() % 2 == 0 {
+            profile.truncate(cut.index(profile.len()) + 1);
+        }
+        let mut data = pixels[..pixels.len() / 3 * 3].to_vec();
+        let len = data.len();
+        on_small_stack(move || {
+            to_srgb(&mut data, &profile);
+            assert_eq!(data.len(), len);
+        });
     }
 }

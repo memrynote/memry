@@ -91,7 +91,7 @@ export function writeOrCheck(out, fresh, tolerance) {
     process.stdout.write(`wrote ${out}\n`)
     return
   }
-  let found = [`${basename(out)} is missing`]
+  let found
   try {
     found = differences(JSON.parse(readFileSync(out, 'utf8')), JSON.parse(fresh), tolerance)
   } catch (error) {
