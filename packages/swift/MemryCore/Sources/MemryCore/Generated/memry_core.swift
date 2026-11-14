@@ -31817,6 +31817,10 @@ enum SemanticError: Swift.Error, Equatable, Hashable, Foundation.LocalizedError 
     case Unavailable
     case Inference(what: String
     )
+    /**
+     * A panic during inference poisoned the session; only a reload clears it.
+     */
+    case Poisoned
     case Storage(source: StorageError
     )
 
@@ -31852,7 +31856,8 @@ public struct FfiConverterTypeSemanticError: FfiConverterRustBuffer {
         case 2: return .Inference(
             what: try FfiConverterString.read(from: &buf)
             )
-        case 3: return .Storage(
+        case 3: return .Poisoned
+        case 4: return .Storage(
             source: try FfiConverterTypeStorageError.read(from: &buf)
             )
 
@@ -31876,8 +31881,12 @@ public struct FfiConverterTypeSemanticError: FfiConverterRustBuffer {
             FfiConverterString.write(what, into: &buf)
             
         
-        case let .Storage(source):
+        case .Poisoned:
             writeInt(&buf, Int32(3))
+        
+        
+        case let .Storage(source):
+            writeInt(&buf, Int32(4))
             FfiConverterTypeStorageError.write(source, into: &buf)
             
         }
