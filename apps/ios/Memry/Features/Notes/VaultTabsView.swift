@@ -76,6 +76,8 @@ struct VaultTabsView<Notes: View, Tasks: View, Journal: View, More: View>: View 
     @State private var order = VaultTabOrder.shared
     @State private var showsMenu = false
     @State private var showsSearch = false
+    /// The ⌘P palette (#4379), with the commands it was opened over.
+    @State private var commandPalette: CommandPaletteRequest?
     /// Quick capture: Home's "+" and ⇧⌘N open the same sheet from here.
     @State private var capturing = false
     @State private var captureReceipt: CaptureReceipt?
@@ -167,6 +169,7 @@ struct VaultTabsView<Notes: View, Tasks: View, Journal: View, More: View>: View 
             searchView(.palette)
                 .presentationBackground(.clear)
         }
+        .commandPalette($commandPalette, width: width)
         .environment(\.openGlobalSearch, openSearch)
         .environment(router)
         .environment(journalRouter)
@@ -271,7 +274,8 @@ struct VaultTabsView<Notes: View, Tasks: View, Journal: View, More: View>: View 
             pages: pages,
             newNote: newNote,
             quickCapture: quickCapture,
-            search: openSearch
+            search: openSearch,
+            commandPalette: { $commandPalette.open($0, width: width) }
         )
     }
 
